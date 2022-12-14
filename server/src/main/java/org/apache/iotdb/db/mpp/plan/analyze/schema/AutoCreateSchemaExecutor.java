@@ -25,36 +25,129 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.mpp.common.schematree.ClusterSchemaTree;
 import org.apache.iotdb.db.mpp.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.mpp.plan.statement.internal.InternalCreateTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ActivateTemplateStatement;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.db.utils.EncodingInferenceUtils.getDefaultEncoding;
+
 class AutoCreateSchemaExecutor {
 
   private final Function<Statement, ExecutionResult> statementExecutor;
+  private final Function<PartialPath, Pair<Template, PartialPath>> templateSetInfoProvider;
 
-  AutoCreateSchemaExecutor(Function<Statement, ExecutionResult> statementExecutor) {
+  AutoCreateSchemaExecutor(
+      Function<Statement, ExecutionResult> statementExecutor,
+      Function<PartialPath, Pair<Template, PartialPath>> templateSetInfoProvider) {
     this.statementExecutor = statementExecutor;
+    this.templateSetInfoProvider = templateSetInfoProvider;
+  }
+
+  void autoCreateSchema(
+      ClusterSchemaTree schemaTree,
+      PartialPath devicePath,
+      List<Integer> indexOfMissingMeasurements,
+      String[] measurements,
+      Function<Integer, TSDataType> getDataType,
+      TSEncoding[] encodings,
+      CompressionType[] compressionTypes,
+      boolean isAligned) {
+    // check whether there is template should be activated
+    Pair<Template, PartialPath> templateInfo = templateSetInfoProvider.apply(devicePath);
+    if (templateInfo != null) {
+      Template template = templateInfo.left;
+      boolean shouldActivateTemplate = false;
+      for (int index : indexOfMissingMeasurements) {
+        if (template.hasSchema(measurements[index])) {
+          shouldActivateTemplate = true;
+          break;
+        }
+      }
+
+      if (shouldActivateTemplate) {
+        internalActivateTemplate(devicePath);
+        List<Integer> recheckedIndexOfMissingMeasurements = new ArrayList<>();
+        for (int i = 0; i < indexOfMissingMeasurements.size(); i++) {
+          if (!template.hasSchema(measurements[i])) {
+            recheckedIndexOfMissingMeasurements.add(indexOfMissingMeasurements.get(i));
+          }
+        }
+        indexOfMissingMeasurements = recheckedIndexOfMissingMeasurements;
+        for (Map.Entry<String, IMeasurementSchema> entry : template.getSchemaMap().entrySet()) {
+          schemaTree.appendSingleMeasurement(
+              devicePath.concatNode(entry.getKey()),
+              (MeasurementSchema) entry.getValue(),
+              null,
+              null,
+              template.isDirectAligned());
+        }
+
+        if (indexOfMissingMeasurements.isEmpty()) {
+          return;
+        }
+      }
+    }
+
+    // auto create the rest missing timeseries
+    List<String> missingMeasurements = new ArrayList<>(indexOfMissingMeasurements.size());
+    List<TSDataType> dataTypesOfMissingMeasurement =
+        new ArrayList<>(indexOfMissingMeasurements.size());
+    List<TSEncoding> encodingsOfMissingMeasurement =
+        new ArrayList<>(indexOfMissingMeasurements.size());
+    List<CompressionType> compressionTypesOfMissingMeasurement =
+        new ArrayList<>(indexOfMissingMeasurements.size());
+    indexOfMissingMeasurements.forEach(
+        index -> {
+          TSDataType tsDataType = getDataType.apply(index);
+          // tsDataType == null means insert null value to a non-exist series
+          // should skip creating them
+          if (tsDataType != null) {
+            missingMeasurements.add(measurements[index]);
+            dataTypesOfMissingMeasurement.add(tsDataType);
+            encodingsOfMissingMeasurement.add(
+                encodings == null ? getDefaultEncoding(tsDataType) : encodings[index]);
+            compressionTypesOfMissingMeasurement.add(
+                compressionTypes == null
+                    ? TSFileDescriptor.getInstance().getConfig().getCompressor()
+                    : compressionTypes[index]);
+          }
+        });
+
+    if (!missingMeasurements.isEmpty()) {
+      schemaTree.mergeSchemaTree(
+          internalCreateTimeseries(
+              devicePath,
+              missingMeasurements,
+              dataTypesOfMissingMeasurement,
+              encodingsOfMissingMeasurement,
+              compressionTypesOfMissingMeasurement,
+              isAligned));
+    }
   }
 
   // try to create the target timeseries and return schemaTree involving successfully created
   // timeseries and existing timeseries
-  ClusterSchemaTree internalCreateTimeseries(
+  private ClusterSchemaTree internalCreateTimeseries(
       PartialPath devicePath,
       List<String> measurements,
       List<TSDataType> tsDataTypes,
@@ -125,7 +218,7 @@ class AutoCreateSchemaExecutor {
     return alreadyExistingMeasurements;
   }
 
-  void internalActivateTemplate(PartialPath devicePath) {
+  private void internalActivateTemplate(PartialPath devicePath) {
     ExecutionResult executionResult =
         statementExecutor.apply(new ActivateTemplateStatement(devicePath));
     TSStatus status = executionResult.status;

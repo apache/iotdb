@@ -34,12 +34,10 @@ import org.apache.iotdb.db.mpp.plan.Coordinator;
 import org.apache.iotdb.db.mpp.plan.analyze.ClusterPartitionFetcher;
 import org.apache.iotdb.db.mpp.plan.statement.internal.SchemaFetchStatement;
 import org.apache.iotdb.db.query.control.SessionManager;
-import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.Pair;
-import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import java.util.ArrayList;
@@ -52,8 +50,6 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
-
-import static org.apache.iotdb.db.utils.EncodingInferenceUtils.getDefaultEncoding;
 
 public class ClusterSchemaFetcher implements ISchemaFetcher {
 
@@ -73,7 +69,8 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
                   "",
                   ClusterPartitionFetcher.getInstance(),
                   this,
-                  config.getQueryTimeoutThreshold()));
+                  config.getQueryTimeoutThreshold()),
+          templateManager::checkTemplateSetInfo);
   private final ClusterSchemaFetchExecutor clusterSchemaFetchExecutor =
       new ClusterSchemaFetchExecutor(
           coordinator,
@@ -102,15 +99,17 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
 
   @Override
   public ClusterSchemaTree fetchSchema(PathPatternTree patternTree) {
-    return fetchSchema(patternTree, false);
+    return checkPatternTreeAndFetchSchema(patternTree, false);
   }
 
   @Override
   public ClusterSchemaTree fetchSchemaWithTags(PathPatternTree patternTree) {
-    return fetchSchema(patternTree, true);
+    return checkPatternTreeAndFetchSchema(patternTree, true);
   }
 
-  private ClusterSchemaTree fetchSchema(PathPatternTree patternTree, boolean withTags) {
+  // used for patternTree that may have wildcard, mainly for data query
+  private ClusterSchemaTree checkPatternTreeAndFetchSchema(
+      PathPatternTree patternTree, boolean withTags) {
     Map<Integer, Template> templateMap = new HashMap<>();
     patternTree.constructTree();
     List<PartialPath> pathPatternList = patternTree.getAllPathPatterns();
@@ -208,7 +207,7 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
       for (int index : indexOfMissingMeasurements) {
         patternTree.appendFullPath(devicePath, measurements[index]);
       }
-      ClusterSchemaTree remoteSchemaTree = fetchSchema(patternTree);
+      ClusterSchemaTree remoteSchemaTree = fetchSchemaFromRemote(patternTree);
       if (!remoteSchemaTree.isEmpty()) {
         schemaTree.mergeSchemaTree(remoteSchemaTree);
         schemaCache.put(remoteSchemaTree);
@@ -276,7 +275,7 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
       }
 
       // try fetch the missing schema from remote and cache fetched schema
-      ClusterSchemaTree remoteSchemaTree = fetchSchema(patternTree);
+      ClusterSchemaTree remoteSchemaTree = fetchSchemaFromRemote(patternTree);
       if (!remoteSchemaTree.isEmpty()) {
         schemaTree.mergeSchemaTree(remoteSchemaTree);
         schemaCache.put(remoteSchemaTree);
@@ -320,6 +319,18 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
     return templateManager.getAllPathsSetTemplate(templateName);
   }
 
+  // used for patternTree without wildcard, mainly for data insert and load tsFile
+  private ClusterSchemaTree fetchSchemaFromRemote(PathPatternTree patternTree) {
+    Map<Integer, Template> templateMap = new HashMap<>();
+    patternTree.constructTree();
+    List<PartialPath> pathPatternList = patternTree.getAllPathPatterns();
+    for (PartialPath pattern : pathPatternList) {
+      templateMap.putAll(templateManager.checkAllRelatedTemplate(pattern));
+    }
+    return clusterSchemaFetchExecutor.executeSchemaFetchQuery(
+        new SchemaFetchStatement(patternTree, templateMap, false));
+  }
+
   // check which measurements are missing and auto create the missing measurements and merge them
   // into given schemaTree
   private void checkAndAutoCreateMissingMeasurements(
@@ -338,90 +349,28 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
             indexOfMissingMeasurements.stream()
                 .map(index -> measurements[index])
                 .collect(Collectors.toList()));
-    if (deviceSchemaInfo != null) {
+    List<Integer> recheckedIndexOfMissingMeasurements;
+    if (deviceSchemaInfo == null) {
+      recheckedIndexOfMissingMeasurements = indexOfMissingMeasurements;
+    } else {
+      recheckedIndexOfMissingMeasurements = new ArrayList<>(indexOfMissingMeasurements.size());
       List<MeasurementSchema> schemaList = deviceSchemaInfo.getMeasurementSchemaList();
-      int removedCount = 0;
       for (int i = 0, size = schemaList.size(); i < size; i++) {
-        if (schemaList.get(i) != null) {
-          indexOfMissingMeasurements.remove(i - removedCount);
-          removedCount++;
+        if (schemaList.get(i) == null) {
+          recheckedIndexOfMissingMeasurements.add(indexOfMissingMeasurements.get(i));
         }
       }
     }
-    if (indexOfMissingMeasurements.isEmpty()) {
-      return;
-    }
-
-    // check whether there is template should be activated
-    Pair<Template, PartialPath> templateInfo = templateManager.checkTemplateSetInfo(devicePath);
-    if (templateInfo != null) {
-      Template template = templateInfo.left;
-      boolean shouldActivateTemplate = false;
-      for (int index : indexOfMissingMeasurements) {
-        if (template.hasSchema(measurements[index])) {
-          shouldActivateTemplate = true;
-          break;
-        }
-      }
-
-      if (shouldActivateTemplate) {
-        autoCreateSchemaExecutor.internalActivateTemplate(devicePath);
-        List<Integer> recheckedIndexOfMissingMeasurements = new ArrayList<>();
-        for (int i = 0; i < indexOfMissingMeasurements.size(); i++) {
-          if (!template.hasSchema(measurements[i])) {
-            recheckedIndexOfMissingMeasurements.add(indexOfMissingMeasurements.get(i));
-          }
-        }
-        indexOfMissingMeasurements = recheckedIndexOfMissingMeasurements;
-        for (Map.Entry<String, IMeasurementSchema> entry : template.getSchemaMap().entrySet()) {
-          schemaTree.appendSingleMeasurement(
-              devicePath.concatNode(entry.getKey()),
-              (MeasurementSchema) entry.getValue(),
-              null,
-              null,
-              template.isDirectAligned());
-        }
-
-        if (indexOfMissingMeasurements.isEmpty()) {
-          return;
-        }
-      }
-    }
-
-    // auto create the rest missing timeseries
-    List<String> missingMeasurements = new ArrayList<>(indexOfMissingMeasurements.size());
-    List<TSDataType> dataTypesOfMissingMeasurement =
-        new ArrayList<>(indexOfMissingMeasurements.size());
-    List<TSEncoding> encodingsOfMissingMeasurement =
-        new ArrayList<>(indexOfMissingMeasurements.size());
-    List<CompressionType> compressionTypesOfMissingMeasurement =
-        new ArrayList<>(indexOfMissingMeasurements.size());
-    indexOfMissingMeasurements.forEach(
-        index -> {
-          TSDataType tsDataType = getDataType.apply(index);
-          // tsDataType == null means insert null value to a non-exist series
-          // should skip creating them
-          if (tsDataType != null) {
-            missingMeasurements.add(measurements[index]);
-            dataTypesOfMissingMeasurement.add(tsDataType);
-            encodingsOfMissingMeasurement.add(
-                encodings == null ? getDefaultEncoding(tsDataType) : encodings[index]);
-            compressionTypesOfMissingMeasurement.add(
-                compressionTypes == null
-                    ? TSFileDescriptor.getInstance().getConfig().getCompressor()
-                    : compressionTypes[index]);
-          }
-        });
-
-    if (!missingMeasurements.isEmpty()) {
-      schemaTree.mergeSchemaTree(
-          autoCreateSchemaExecutor.internalCreateTimeseries(
-              devicePath,
-              missingMeasurements,
-              dataTypesOfMissingMeasurement,
-              encodingsOfMissingMeasurement,
-              compressionTypesOfMissingMeasurement,
-              isAligned));
+    if (!recheckedIndexOfMissingMeasurements.isEmpty()) {
+      autoCreateSchemaExecutor.autoCreateSchema(
+          schemaTree,
+          devicePath,
+          recheckedIndexOfMissingMeasurements,
+          measurements,
+          getDataType,
+          encodings,
+          compressionTypes,
+          isAligned);
     }
   }
 
