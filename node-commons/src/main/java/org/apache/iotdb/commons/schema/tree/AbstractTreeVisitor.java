@@ -487,6 +487,14 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
       }
     }
 
+    /**
+     * Try to get next matched state from sourceState and add it into currentStateMatchInfo
+     *
+     * @param child child node to match
+     * @param sourceState source state
+     * @param currentStateMatchInfo currentStateMatchInfo
+     * @return iterator of rest transitions
+     */
     private Iterator<IFATransition> tryGetNextMatchedState(
         N child, IFAState sourceState, IStateMatchInfo currentStateMatchInfo) {
       Map<String, IFATransition> preciseMatchTransitionMap =
@@ -576,6 +584,8 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
               matchedStateSize = currentStateMatchInfo.getMatchedStateSize();
               transitionIterator =
                   tryGetNextMatchedState(currentNode, sourceState, currentStateMatchInfo);
+              // change of matchedStateSize means currentNode there is transition from sourceState
+              // matching currentNode
               if (matchedStateSize != currentStateMatchInfo.getMatchedStateSize()) {
                 matchedState = currentStateMatchInfo.getMatchedState(matchedStateSize);
                 currentStateMatchInfo.setSourceStateOrdinal(sourceStateOrdinal);
