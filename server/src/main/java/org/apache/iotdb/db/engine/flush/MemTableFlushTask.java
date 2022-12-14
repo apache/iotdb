@@ -304,7 +304,7 @@ public class MemTableFlushTask {
             lastIndex = storageGroup.length();
           }
           MetricService.getInstance()
-              .countWithInternalReport(
+              .gaugeWithInternalReport(
                   memTable.getTotalPointsNum(),
                   Metric.POINTS.toString(),
                   MetricLevel.CORE,
