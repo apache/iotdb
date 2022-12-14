@@ -59,11 +59,13 @@ class ClusterSchemaFetchExecutor {
   private final BiFunction<Long, Statement, ExecutionResult> statementExecutor;
   private final Function<PartialPath, Map<Integer, Template>> templateSetInfoProvider;
 
-  private final Map<PartialPath, Pair<AtomicInteger, ClusterSchemaTree>> fetchedResultMap = new ConcurrentHashMap<>();
+  private final Map<PartialPath, Pair<AtomicInteger, ClusterSchemaTree>> fetchedResultMap =
+      new ConcurrentHashMap<>();
 
-  private final Map<PartialPath, Pair<AtomicInteger, Set<String>>> executingTaskMap = new ConcurrentHashMap<>();
+  private final Map<PartialPath, DeviceSchemaFetchTask> executingTaskMap =
+      new ConcurrentHashMap<>();
 
-  private final Map<PartialPath, Pair<AtomicInteger, Set<String>>> waitingTaskMap = new ConcurrentHashMap<>();
+  private final Map<PartialPath, DeviceSchemaFetchTask> waitingTaskMap = new ConcurrentHashMap<>();
 
   ClusterSchemaFetchExecutor(
       Coordinator coordinator,
@@ -76,53 +78,68 @@ class ClusterSchemaFetchExecutor {
     this.templateSetInfoProvider = templateSetInfoProvider;
   }
 
-  ClusterSchemaTree fetchSchemaOfOneDevice(PartialPath devicePath, List<String> measurements){
+  ClusterSchemaTree fetchSchemaOfOneDevice(PartialPath devicePath, List<String> measurements) {
 
     final AtomicBoolean shouldWait = new AtomicBoolean(true);
-    executingTaskMap.compute(devicePath, (key, value) -> {
-      if (value == null){
-        return null;
-      }
-      if (value.right.size() < measurements.size()){
-        shouldWait.set(false);
-        return value;
-      }
-      for (String measurement: measurements){
-        if (!value.right.contains(measurement)){
-          shouldWait.set(false);
+    executingTaskMap.compute(
+        devicePath,
+        (key, value) -> {
+          if (value == null) {
+            return null;
+          }
+          shouldWait.set(value.checkAndAddWaitingThread(measurements));
           return value;
-        }
-      }
-      value.left.getAndIncrement();
-      return value;
-    });
-    if (shouldWait.get()){
-      while (!fetchedResultMap.containsKey(devicePath));
-      ClusterSchemaTree schemaTree = new ClusterSchemaTree();
-      Pair<AtomicInteger, ClusterSchemaTree> pair = fetchedResultMap.get(devicePath);
-      if (pair.left.decrementAndGet() == 0){
-        fetchedResultMap.remove(devicePath);
-      }
-    }else {
-      Pair<AtomicInteger, Set<String>> task = waitingTaskMap.compute(devicePath, (key, value) -> {
-        if (value == null){
-          value = new Pair<>(new AtomicInteger(0), new HashSet<>());
-        }
-        value.left.getAndIncrement();
-        value.right.addAll(measurements);
-        return value;
-      });
-      synchronized (task){
-        while (executingTaskMap.computeIfAbsent(devicePath, key -> task)!=task);
-        PathPatternTree patternTree = new PathPatternTree();
-        for (String measurement: task.right){
-          patternTree.appendFullPath(devicePath, measurement);
-        }
-        ClusterSchemaTree fetchedSchemaTree = executeSchemaFetchQuery(new SchemaFetchStatement(patternTree, templateSetInfoProvider.apply(devicePath), false));
-        Pair<AtomicInteger, ClusterSchemaTree> fetchSchemaResult = new Pair<>(task.left, fetchedSchemaTree);
-        while (fetchedResultMap.computeIfAbsent(devicePath, key -> fetchSchemaResult) != fetchSchemaResult);
+        });
 
+    if (!shouldWait.get()) {
+      DeviceSchemaFetchTask task =
+          waitingTaskMap.compute(
+              devicePath,
+              (key, value) -> {
+                if (value == null) {
+                  value = new DeviceSchemaFetchTask();
+                }
+                value.addWaitingThread(measurements);
+                return value;
+              });
+      if (executingTaskMap.get(devicePath) != task) {
+        synchronized (task) {
+          if (executingTaskMap.get(devicePath) != task) {
+            while (true) {
+              if (executingTaskMap.computeIfAbsent(devicePath, key -> task) != task) {
+                break;
+              }
+            }
+            PathPatternTree patternTree = new PathPatternTree();
+            for (String measurement : task.measurementSet) {
+              patternTree.appendFullPath(devicePath, measurement);
+            }
+            ClusterSchemaTree fetchedSchemaTree =
+                executeSchemaFetchQuery(
+                    new SchemaFetchStatement(
+                        patternTree, templateSetInfoProvider.apply(devicePath), false));
+            Pair<AtomicInteger, ClusterSchemaTree> fetchSchemaResult =
+                new Pair<>(new AtomicInteger(task.waitingThreadNum), fetchedSchemaTree);
+            while (true) {
+              if (fetchedResultMap.computeIfAbsent(devicePath, key -> fetchSchemaResult)
+                  != fetchSchemaResult) {
+                break;
+              }
+            }
+          }
+        }
       }
+    }
+
+    while (true) {
+      if (!fetchedResultMap.containsKey(devicePath)) {
+        break;
+      }
+    }
+    ClusterSchemaTree schemaTree = new ClusterSchemaTree();
+    Pair<AtomicInteger, ClusterSchemaTree> pair = fetchedResultMap.get(devicePath);
+    if (pair.left.decrementAndGet() == 0) {
+      fetchedResultMap.remove(devicePath);
     }
 
     return null;
@@ -184,6 +201,31 @@ class ClusterSchemaFetchExecutor {
       }
     } catch (IOException e) {
       // Totally memory operation. This case won't happen.
+    }
+  }
+
+  private static class DeviceSchemaFetchTask {
+
+    private int waitingThreadNum = 0;
+
+    private final Set<String> measurementSet = new HashSet<>();
+
+    private boolean checkAndAddWaitingThread(List<String> measurements) {
+      if (measurementSet.size() < measurements.size()) {
+        return false;
+      }
+      for (String measurement : measurements) {
+        if (!measurementSet.contains(measurement)) {
+          return false;
+        }
+      }
+      waitingThreadNum++;
+      return true;
+    }
+
+    private void addWaitingThread(List<String> measurements) {
+      waitingThreadNum++;
+      measurementSet.addAll(measurements);
     }
   }
 }
