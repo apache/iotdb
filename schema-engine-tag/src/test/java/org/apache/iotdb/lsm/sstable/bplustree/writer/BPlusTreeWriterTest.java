@@ -19,22 +19,13 @@
 package org.apache.iotdb.lsm.sstable.bplustree.writer;
 
 import org.apache.iotdb.db.metadata.tagSchemaRegion.config.TagSchemaDescriptor;
-import org.apache.iotdb.lsm.sstable.bplustree.entry.BPlusTreeEntry;
-import org.apache.iotdb.lsm.sstable.bplustree.entry.BPlusTreeHeader;
-import org.apache.iotdb.lsm.sstable.bplustree.entry.BPlusTreeNode;
-import org.apache.iotdb.lsm.sstable.writer.FileOutput;
 
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.util.ArrayDeque;
-import java.util.Queue;
 
 public class BPlusTreeWriterTest {
 
@@ -62,38 +53,38 @@ public class BPlusTreeWriterTest {
   @Test
   public void testWriteBPlusTree() throws IOException {
 
-    FileOutputStream fileOutputStream = new FileOutputStream(file);
-    FileOutput fileOutput = new FileOutput(fileOutputStream, 1024 * 1024);
-    Queue<BPlusTreeEntry> queue = new ArrayDeque<>();
-    queue.add(new BPlusTreeEntry("aaa", 0));
-    queue.add(new BPlusTreeEntry("bbb", 1));
-    queue.add(new BPlusTreeEntry("c", 2));
-    queue.add(new BPlusTreeEntry("dd", 3));
-    queue.add(new BPlusTreeEntry("eeeee", 4));
-    queue.add(new BPlusTreeEntry("fff", 5));
-    queue.add(new BPlusTreeEntry("gggg", 6));
-    queue.add(new BPlusTreeEntry("hhhhhhhhhh", 7));
-    queue.add(new BPlusTreeEntry("x", 8));
-    queue.add(new BPlusTreeEntry("yyyy", 9));
-    queue.add(new BPlusTreeEntry("zz", 10));
-
-    bPlusTreeWriter = new BPlusTreeWriter(queue, fileOutput);
-
-    BPlusTreeHeader bPlusTreeHeader = bPlusTreeWriter.writeLeafNode();
-
-    ByteBuffer buffer = ByteBuffer.allocate(1024 * 1024);
-
-    FileInputStream fileInputStream = new FileInputStream(file);
-    fileInputStream.getChannel().read(buffer);
-
-    buffer.flip();
+    //    FileOutputStream fileOutputStream = new FileOutputStream(file);
+    //    FileOutput fileOutput = new FileOutput(fileOutputStream, 1024 * 1024);
+    //    Queue<BPlusTreeEntry> queue = new ArrayDeque<>();
+    //    queue.add(new BPlusTreeEntry("aaa", 0));
+    //    queue.add(new BPlusTreeEntry("bbb", 1));
+    //    queue.add(new BPlusTreeEntry("c", 2));
+    //    queue.add(new BPlusTreeEntry("dd", 3));
+    //    queue.add(new BPlusTreeEntry("eeeee", 4));
+    //    queue.add(new BPlusTreeEntry("fff", 5));
+    //    queue.add(new BPlusTreeEntry("gggg", 6));
+    //    queue.add(new BPlusTreeEntry("hhhhhhhhhh", 7));
+    //    queue.add(new BPlusTreeEntry("x", 8));
+    //    queue.add(new BPlusTreeEntry("yyyy", 9));
+    //    queue.add(new BPlusTreeEntry("zz", 10));
+    //
+    //    bPlusTreeWriter = new BPlusTreeWriter(queue, fileOutput);
+    //
+    //    BPlusTreeHeader bPlusTreeHeader = bPlusTreeWriter.writeLeafNode();
+    //
+    //    ByteBuffer buffer = ByteBuffer.allocate(1024 * 1024);
+    //
+    //    FileInputStream fileInputStream = new FileInputStream(file);
+    //    fileInputStream.getChannel().read(buffer);
+    //
+    //    buffer.flip();
 
     //    buffer.position((int) bPlusTreeHeader.getOffset());
-    //    BPlusTreeNode rootNode = new BPlusTreeNode();
-    //    rootNode.deserialize(buffer);
-    while (true) {
-      BPlusTreeNode bPlusTreeNode = new BPlusTreeNode();
-      System.out.println(bPlusTreeNode.deserialize(buffer));
-    }
+    //        BPlusTreeNode rootNode = new BPlusTreeNode();
+    //        rootNode.deserialize(buffer);
+    //    while (true) {
+    //      BPlusTreeNode bPlusTreeNode = new BPlusTreeNode();
+    //      System.out.println(bPlusTreeNode.deserialize(buffer));
+    //    }
   }
 }
