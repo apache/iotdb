@@ -36,10 +36,12 @@ public class SingleDeviceViewNode extends SingleChildProcessNode {
   private final String device;
 
   // To reduce memory cost, SingleDeviceViewNode doesn't serialize and deserialize
-  // outputColumnNames.
-  // It just rebuilds using the infos from parent node.
-  private List<String> outputColumnNames;
+  // outputColumnNames.It just rebuilds using the infos from parent node.
+  private final List<String> outputColumnNames;
   private final List<Integer> deviceToMeasurementIndexes;
+  // For some isolated SingleDeviceViewNodes without parent node, they need to cache
+  // the outputColumnNames themselves.
+  private boolean cacheOutputColumnNames = false;
 
   public SingleDeviceViewNode(
       PlanNodeId id,
@@ -53,25 +55,43 @@ public class SingleDeviceViewNode extends SingleChildProcessNode {
   }
 
   public SingleDeviceViewNode(
-      PlanNodeId id, String device, List<Integer> deviceToMeasurementIndexes) {
+      PlanNodeId id,
+      boolean cacheOutputColumnNames,
+      List<String> outputColumnNames,
+      String device,
+      List<Integer> deviceToMeasurementIndexes) {
     super(id);
     this.device = device;
+    this.cacheOutputColumnNames = cacheOutputColumnNames;
+    this.outputColumnNames = outputColumnNames;
     this.deviceToMeasurementIndexes = deviceToMeasurementIndexes;
   }
 
   @Override
   public PlanNode clone() {
     return new SingleDeviceViewNode(
-        getPlanNodeId(), outputColumnNames, device, deviceToMeasurementIndexes);
+        getPlanNodeId(),
+        cacheOutputColumnNames,
+        outputColumnNames,
+        device,
+        deviceToMeasurementIndexes);
   }
 
   @Override
   public List<String> getOutputColumnNames() {
-    return outputColumnNames;
+    return this.outputColumnNames;
+  }
+
+  public void setCacheOutputColumnNames(boolean cacheOutputColumnNames) {
+    this.cacheOutputColumnNames = cacheOutputColumnNames;
   }
 
   public String getDevice() {
     return device;
+  }
+
+  public boolean isCacheOutputColumnNames() {
+    return cacheOutputColumnNames;
   }
 
   public List<Integer> getDeviceToMeasurementIndexes() {
@@ -87,9 +107,16 @@ public class SingleDeviceViewNode extends SingleChildProcessNode {
   protected void serializeAttributes(ByteBuffer byteBuffer) {
     PlanNodeType.SINGLE_DEVICE_VIEW.serialize(byteBuffer);
     ReadWriteIOUtils.write(device, byteBuffer);
+    ReadWriteIOUtils.write(cacheOutputColumnNames, byteBuffer);
     ReadWriteIOUtils.write(deviceToMeasurementIndexes.size(), byteBuffer);
     for (Integer index : deviceToMeasurementIndexes) {
       ReadWriteIOUtils.write(index, byteBuffer);
+    }
+    if (cacheOutputColumnNames) {
+      ReadWriteIOUtils.write(outputColumnNames.size(), byteBuffer);
+      for (String column : outputColumnNames) {
+        ReadWriteIOUtils.write(column, byteBuffer);
+      }
     }
   }
 
@@ -97,23 +124,41 @@ public class SingleDeviceViewNode extends SingleChildProcessNode {
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
     PlanNodeType.SINGLE_DEVICE_VIEW.serialize(stream);
     ReadWriteIOUtils.write(device, stream);
+    ReadWriteIOUtils.write(cacheOutputColumnNames, stream);
     ReadWriteIOUtils.write(deviceToMeasurementIndexes.size(), stream);
     for (Integer index : deviceToMeasurementIndexes) {
       ReadWriteIOUtils.write(index, stream);
+    }
+    if (cacheOutputColumnNames) {
+      ReadWriteIOUtils.write(outputColumnNames.size(), stream);
+      for (String column : outputColumnNames) {
+        ReadWriteIOUtils.write(column, stream);
+      }
     }
   }
 
   public static SingleDeviceViewNode deserialize(ByteBuffer byteBuffer) {
     String device = ReadWriteIOUtils.readString(byteBuffer);
+    boolean cacheOutputColumnNames = ReadWriteIOUtils.readBool(byteBuffer);
     int listSize = ReadWriteIOUtils.readInt(byteBuffer);
     List<Integer> deviceToMeasurementIndexes = new ArrayList<>(listSize);
     while (listSize > 0) {
       deviceToMeasurementIndexes.add(ReadWriteIOUtils.readInt(byteBuffer));
       listSize--;
     }
+    List<String> outputColumnNames = null;
+    if (cacheOutputColumnNames) {
+      int columnSize = ReadWriteIOUtils.readInt(byteBuffer);
+      outputColumnNames = new ArrayList<>();
+      while (columnSize > 0) {
+        outputColumnNames.add(ReadWriteIOUtils.readString(byteBuffer));
+        columnSize--;
+      }
+    }
 
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
-    return new SingleDeviceViewNode(planNodeId, device, deviceToMeasurementIndexes);
+    return new SingleDeviceViewNode(
+        planNodeId, cacheOutputColumnNames, outputColumnNames, device, deviceToMeasurementIndexes);
   }
 
   @Override

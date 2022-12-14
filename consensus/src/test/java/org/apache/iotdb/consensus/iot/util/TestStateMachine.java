@@ -113,7 +113,7 @@ public class TestStateMachine implements IStateMachine, IStateMachine.EventApi {
 
   @Override
   public boolean takeSnapshot(File snapshotDir) {
-    return false;
+    return true;
   }
 
   @Override

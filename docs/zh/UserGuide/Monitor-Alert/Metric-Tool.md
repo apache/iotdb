@@ -21,7 +21,7 @@
 
 在 IoTDB 的运行过程中，我们希望对 IoTDB 的状态进行观测，以便于排查系统问题或者及时发现系统潜在的风险，能够**反映系统运行状态的一系列指标**就是系统监控指标。
 
-# 1. 什么场景下会使用到监控?
+## 1. 什么场景下会使用到监控?
 
 那么什么时候会用到监控框架呢？下面列举一些常见的场景。
 
@@ -44,53 +44,52 @@
 
    此时我们可能需要通过错误日志的数量、集群节点的状态等指标来判断系统是否在正常运行。
 
-# 2. 什么人需要使用监控?
+## 2. 什么人需要使用监控?
 
 所有关注系统状态的人员都可以使用，包括但不限于研发、测试、运维、DBA等等
 
-# 3. 什么是监控指标？
+## 3. 什么是监控指标？
 
-## 3.1. 监控指标名词解释
+### 3.1. 监控指标名词解释
 
 在 IoTDB 的监控模块，每个监控指标被 `Metric Name` 和 `Tags` 唯一标识。
 
-- `Metric Name`：**指标类型名称**，比如logback_events表示日志事件。
-- `Tags`：**指标分类**，形式为Key-Value对，每个指标下面可以有0到多个分类，常见的Key-Value对：
-    - `name = xxx`：被监控项的名称，比如对`entry_seconds_count`这个监控项，name 的含义是被监控的接口名称。
-    - `status = xxx`：被监控项的状态细分，比如监控 Task 的监控项可以通过该参数，将运行的 Task 和停止的 Task 分开。
-    - `user = xxx`：被监控项和某个特定用户相关，比如统计root用户的写入总次数。
-    - 根据具体情况自定义：比如logback_events_total下有一个```level```的分类，用来表示特定级别下的日志数量
+- `Metric Name`：指标类型名称，比如`logback_events`表示日志事件。
+- `Tags`：指标分类，形式为Key-Value对，每个指标下面可以有0到多个分类，常见的Key-Value对：
+  - `name = xxx`：被监控对象的名称，是对**业务逻辑**的说明。比如对于`Metric Name = entry_seconds_count`类型的监控项，name的含义是指被监控的业务接口。
+  - `type = xxx`：监控指标类型细分，是对**监控指标**本身的说明。比如对于`Metric Name = point`类型的监控项，type的含义是指监控具体是什么类型的点数。
+  - `status = xxx`：被监控对象的状态，是对**业务逻辑**的说明。比如对于`Metric Name = Task`类型的监控项可以通过该参数，从而区分被监控对象的状态。
+  - `user = xxx`：被监控对象的相关用户，是对**业务逻辑**的说明。比如统计`root`用户的写入总点数。
+  - 根据具体情况自定义：比如logback_events_total下有一个level的分类，用来表示特定级别下的日志数量。
 - `Metric Level`：**指标管理级别**，默认启动级别为`Core`级别，建议启动级别为`Important级别`，审核严格程度`Core > Important > Normal > All`
     - `Core`：系统的核心指标，供**系统内核和运维人员**使用，关乎系统的**性能、稳定性、安全性**，比如实例的状况，系统的负载等。
     - `Important`：模块的重要指标，供**运维和测试人员**使用，直接关乎**每个模块的运行状态**，比如合并文件个数、执行情况等。
     - `Normal`：模块的一般指标，供**开发人员**使用，方便在出现问题时**定位模块**，比如合并中的特定关键操作情况。
     - `All`：模块的全部指标，供**模块开发人员**使用，往往在复现问题的时候使用，从而快速解决问题。
-
-## 3.2. 监控指标对外获取数据格式
-
+    
+### 3.2. 监控指标对外获取数据格式
 - IoTDB 对外提供 JMX、 Prometheus 和 IoTDB 格式的监控指标：
     - 对于 JMX ，可以通过```org.apache.iotdb.metrics```获取系统监控指标指标。
     - 对于 Prometheus ，可以通过对外暴露的端口获取监控指标的值
     - 对于 IoTDB 方式对外暴露：可以通过执行 IoTDB 的查询来获取监控指标
 
-# 4. 监控指标有哪些？
+## 4. 监控指标有哪些？
 
 目前，IoTDB 对外提供一些主要模块的监控指标，并且随着新功能的开发以及系统优化或者重构，监控指标也会同步添加和更新。如果想自己在 IoTDB
 中添加更多系统监控指标埋点，可以参考[IoTDB Metrics Framework](https://github.com/apache/iotdb/tree/master/metrics)使用说明。
 
-## 4.1. Core 级别监控指标
+### 4.1. Core 级别监控指标
 
 Core 级别的监控指标在系统运行中默认开启，每一个 Core 级别的监控指标的添加都需要经过谨慎的评估，目前 Core 级别的监控指标如下所述：
 
-### 4.1.1. 集群运行状态
+#### 4.1.1. 集群运行状态
 
 | Metric      | Tags                                            | Type      | Description                            |
 | ----------- | ----------------------------------------------- | --------- | -------------------------------------- |
 | config_node | name="total",status="Registered/Online/Unknown" | AutoGauge | 已注册/在线/离线 confignode 的节点数量 |
 | data_node   | name="total",status="Registered/Online/Unknown" | AutoGauge | 已注册/在线/离线 datanode 的节点数量   |
 
-### 4.1.2. IoTDB 进程运行状态
-
+#### 4.1.2. IoTDB 进程运行状态
 | Metric            | Tags           | Type      | Description                         |
 | ----------------- | -------------- | --------- | ----------------------------------- |
 | process_cpu_load  | name="process" | AutoGauge | IoTDB 进程的 CPU 占用率，单位为%    |
@@ -99,8 +98,7 @@ Core 级别的监控指标在系统运行中默认开启，每一个 Core 级别
 | process_total_mem | name="memory"  | AutoGauge | IoTDB 进程当前已申请内存            |
 | process_free_mem  | name="memory"  | AutoGauge | IoTDB 进程当前剩余可用内存          |
 
-### 4.1.3. 系统运行状态
-
+#### 4.1.3. 系统运行状态
 | Metric                         | Tags          | Type      | Description                              |
 | ------------------------------ | ------------- | --------- | ---------------------------------------- |
 | sys_cpu_load                   | name="system" | AutoGauge | 系统的 CPU 占用率，单位为%               |
@@ -113,19 +111,17 @@ Core 级别的监控指标在系统运行中默认开启，每一个 Core 级别
 | sys_disk_total_space           | name="disk"   | AutoGauge | 系统磁盘总大小                           |
 | sys_disk_free_space            | name="disk"   | AutoGauge | 系统磁盘可用大小                         |
 
-## 4.2. Important 级别监控指标
+### 4.2. Important 级别监控指标
 
 目前 Important 级别的监控指标如下所述：
 
-### 4.2.1. 集群运行状态
-
+#### 4.2.1. 集群运行状态
 | Metric                    | Tags                                              | Type  | Description                    |
 | ------------------------- | ------------------------------------------------- | ----- | ------------------------------ |
 | cluster_node_leader_count | name="{{ip}}:{{port}}"                            | Gauge | 节点上共识组Leader的数量       |
 | cluster_node_status       | name="{{ip}}:{{port}}",type="ConfigNode/DataNode" | Gauge | 节点的状态，0=Unkonwn 1=online |
 
-### 4.2.2. 节点统计
-
+#### 4.2.2. 节点统计
 | Metric   | Tags                                       | Type      | Description                          |
 | -------- | ------------------------------------------ | --------- | ------------------------------------ |
 | quantity | name="database"                            | AutoGauge | 系统数据库数量                       |
@@ -136,8 +132,7 @@ Core 级别的监控指标在系统运行中默认开启，每一个 Core 级别
 | region   | name="{{ip}}:{{port}}",type="SchemaRegion" | Gauge     | 分区表中对应节点上 DataRegion 总数量 |
 | region   | name="{{ip}}:{{port}}",type="DataRegion"   | Gauge     | 分区表中对应节点上 DataRegion 总数量 |
 
-### 4.2.3. IoT共识协议统计
-
+#### 4.2.3. IoT共识协议统计
 | Metric        | Tags                                                                                         | Type      | Description                      |
 | ------------- | -------------------------------------------------------------------------------------------- | --------- | -------------------------------- |
 | iot_consensus | name="logDispatcher-{{IP}}:{{Port}}", region="{{region}}", type="currentSyncIndex"           | AutoGauge | 副本组同步线程的当前同步进度     |
@@ -152,8 +147,7 @@ Core 级别的监控指标在系统运行中默认开启，每一个 Core 级别
 | stage         | name="iot_consensus", region="{{region}}", type="constructBatch"                             | Histogram | 同步线程构造 Batch 耗时          |
 | stage         | name="iot_consensus", region="{{region}}", type="syncLogTimePerRequest"                      | Histogram | 异步回调流程同步日志耗时         |
 
-### 4.2.4. 缓存统计
-
+#### 4.2.4. 缓存统计
 | Metric    | Tags                               | Type      | Description                                             |
 | --------- | ---------------------------------- | --------- | ------------------------------------------------------- |
 | cache_hit | name="chunk"                       | AutoGauge | ChunkCache的命中率，单位为%                             |
@@ -167,8 +161,7 @@ Core 级别的监控指标在系统运行中默认开启，每一个 Core 级别
 | cache     | name="DataPartition", type="hit"   | Counter   | DataPartition Cache 的命中次数                          |
 | cache     | name="DataPartition", type="all"   | Counter   | DataPartition Cache 的访问次数                          |
 
-### 4.2.5. 接口层统计
-
+#### 4.2.5. 接口层统计
 | Metric                | Tags                               | Type      | Description                         |
 | --------------------- | ---------------------------------- | --------- | ----------------------------------- |
 | operation             | name = "{{name}}"                  | Histogram | 客户端执行的操作的耗时情况          |
@@ -182,16 +175,14 @@ Core 级别的监控指标在系统运行中默认开启，每一个 Core 级别
 | thrift_active_threads | name="MPPDataExchangeRPC-Service"  | AutoGauge | MPP 框架的内部活跃 Thrift 连接数    |
 | thrift_active_threads | name="ClientRPC-Service"           | AutoGauge | Client 建立的活跃 Thrift 连接数     |
 
-### 4.2.6. 内存统计
-
+#### 4.2.6. 内存统计
 | Metric | Tags                          | Type      | Description                                       |
 | ------ | ----------------------------- | --------- | ------------------------------------------------- |
 | mem    | name="database_{{name}}"      | AutoGauge | DataNode内对应DataRegion的内存占用，单位为byte    |
 | mem    | name="chunkMetaData_{{name}}" | AutoGauge | 写入TsFile时的ChunkMetaData的内存占用，单位为byte |
 | mem    | name="IoTConsensus"           | AutoGauge | IoT共识协议的内存占用，单位为byte                 |
 
-### 4.2.7. 任务统计
-
+#### 4.2.7. 任务统计
 | Metric    | Tags                                              | Type      | Description        |
 | --------- | ------------------------------------------------- | --------- | ------------------ |
 | queue     | name="compaction_inner", status="running/waiting" | Gauge     | 空间内合并任务数   |
@@ -200,8 +191,7 @@ Core 级别的监控指标在系统运行中默认开启，每一个 Core 级别
 | queue     | name="flush",status="running/waiting"             | AutoGauge | 刷盘任务数         |
 | queue     | name="Sub_RawQuery",status="running/waiting"      | AutoGauge | Sub_RawQuery任务数 |
 
-### 4.2.8. 合并统计
-
+#### 4.2.8. 合并统计
 | Metric                | Tags                                                | Type    | Description        |
 | --------------------- | --------------------------------------------------- | ------- | ------------------ |
 | data_written          | name="compaction", type="aligned/not-aligned/total" | Counter | 合并时写入量       |
@@ -210,7 +200,7 @@ Core 级别的监控指标在系统运行中默认开启，每一个 Core 级别
 | compaction_task_count | name = "inner_compaction", type="unsequence"        | Counter | 乱序空间内合并次数 |
 | compaction_task_count | name = "cross_compaction", type="cross"             | Counter | 跨空间合并次数     |
 
-### 4.2.9. 文件统计信息
+#### 4.2.9. 文件统计信息
 
 | Metric     | Tags                         | Type      | Description          |
 | ---------- |------------------------------| --------- |----------------------|
@@ -227,8 +217,7 @@ Core 级别的监控指标在系统运行中默认开启，每一个 Core 级别
 | file_count| name="inner-unseq-file-size" |AutoGauge| 乱序空间内合并临时文件大小，单位为byte |
 | file_count| name="cross-file-size"       |AutoGauge| 跨空间合并临时文件大小，单位为byte  |
 
-### 4.2.10. IoTDB 进程统计
-
+#### 4.2.10. IoTDB 进程统计
 | Metric                | Tags           | Type      | Description                          |
 | --------------------- | -------------- | --------- | ------------------------------------ |
 | process_used_mem      | name="memory"  | AutoGauge | IoTDB 进程当前使用内存               |
@@ -236,13 +225,12 @@ Core 级别的监控指标在系统运行中默认开启，每一个 Core 级别
 | process_threads_count | name="process" | AutoGauge | IoTDB 进程当前线程数                 |
 | process_status        | name="process" | AutoGauge | IoTDB 进程存活状态，1为存活，0为终止 |
 
-### 4.2.11. IoTDB 日志统计
-
+#### 4.2.11. IoTDB 日志统计
 | Metric         | Tags                                | Type    | Description        |
 | -------------- | ----------------------------------- | ------- | ------------------ |
 | logback_events | level="trace/debug/info/warn/error" | Counter | 不同类型的日志个数 |
 
-### 4.2.12. JVM 线程统计
+#### 4.2.12. JVM 线程统计
 
 | Metric                     | Tags                                                          | Type      | Description              |
 | -------------------------- | ------------------------------------------------------------- | --------- | ------------------------ |
@@ -251,8 +239,7 @@ Core 级别的监控指标在系统运行中默认开启，每一个 Core 级别
 | jvm_threads_peak_threads   |                                                               | AutoGauge | 峰值线程数               |
 | jvm_threads_states_threads | state="runnable/blocked/waiting/timed-waiting/new/terminated" | AutoGauge | 当前处于各种状态的线程数 |
 
-### 4.2.13. JVM GC 统计
-
+#### 4.2.13. JVM GC 统计
 | Metric                        | Tags                                                  | Type      | Description                            |
 | ----------------------------- | ----------------------------------------------------- | --------- | -------------------------------------- |
 | jvm_gc_pause                  | action="end of major GC/end of minor GC",cause="xxxx" | Timer     | 不同原因的Young GC/Full GC的次数与耗时 |
@@ -264,8 +251,7 @@ Core 级别的监控指标在系统运行中默认开启，每一个 Core 级别
 | jvm_gc_memory_promoted_bytes  |                                                       | Counter   | 老年代内存正向增长累计值               |
 | jvm_gc_memory_allocated_bytes |                                                       | Counter   | GC分配内存正向增长累计值               |
 
-### 4.2.14. JVM 内存统计
-
+#### 4.2.14. JVM 内存统计
 | Metric                          | Tags                            | Type      | Description          |
 | ------------------------------- | ------------------------------- | --------- | -------------------- |
 | jvm_buffer_memory_used_bytes    | id="direct/mapped"              | AutoGauge | 已经使用的缓冲区大小 |
@@ -275,39 +261,33 @@ Core 级别的监控指标在系统运行中默认开启，每一个 Core 级别
 | jvm_memory_max_bytes            | {area="heap/nonheap",id="xxx",} | AutoGauge | 最大内存             |
 | jvm_memory_used_bytes           | {area="heap/nonheap",id="xxx",} | AutoGauge | 已使用内存大小       |
 
-### 4.2.15. JVM 类加载统计
-
+#### 4.2.15. JVM 类加载统计
 | Metric                       | Tags | Type      | Description         |
 | ---------------------------- | ---- | --------- | ------------------- |
 | jvm_classes_unloaded_classes |      | AutoGauge | 累计卸载的class数量 |
 | jvm_classes_loaded_classes   |      | AutoGauge | 累计加载的class数量 |
 
-### 4.2.16. JVM 编译时间统计
-
+####  4.2.16. JVM 编译时间统计
 | Metric                  | Tags                                          | Type      | Description        |
 | ----------------------- | --------------------------------------------- | --------- | ------------------ |
 | jvm_compilation_time_ms | {compiler="HotSpot 64-Bit Tiered Compilers",} | AutoGauge | 耗费在编译上的时间 |
 
-## 4.3. All 级别监控指标
-
+### 4.3. All 级别监控指标
 目前还没有All级别的监控指标，后续会持续添加。
 
-# 5. 怎样获取这些系统监控？
+## 5. 怎样获取这些系统监控？
 
 - 监控模块的相关配置均在`conf/iotdb-{datanode/confignode}.properties`中，所有配置项支持通过`load configuration`命令热加载。
 
-## 5.1. 使用 JMX 方式
-
+### 5.1. 使用 JMX 方式
 对于使用 JMX 对外暴露的指标，可以通过 Jconsole 来进行查看。在进入 Jconsole 监控页面后，首先会看到 IoTDB 的各类运行情况的概览。在这里，您可以看到堆内存信息、线程信息、类信息以及服务器的 CPU 使用情况。
 
-### 5.1.1. 获取监控指标数据
-
+#### 5.1.1. 获取监控指标数据
 连接到 JMX 后，您可以通过 "MBeans" 标签找到名为 "org.apache.iotdb.metrics" 的 "MBean"，可以在侧边栏中查看所有监控指标的具体值。
 
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" alt="metric-jmx" src="https://user-images.githubusercontent.com/46039728/204018765-6fda9391-ebcf-4c80-98c5-26f34bd74df0.png">
 
-### 5.1.2. 获取其他相关数据
-
+#### 5.1.2. 获取其他相关数据
 连接到 JMX 后，您可以通过 "MBeans" 标签找到名为 "org.apache.iotdb.service" 的 "MBean"，如下图所示，了解服务的基本状态
 
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/46039728/149951720-707f1ee8-32ee-4fde-9252-048caebd232e.png"> <br>
@@ -316,10 +296,9 @@ Core 级别的监控指标在系统运行中默认开启，每一个 Core 级别
 
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/112426760-73e3da80-8d73-11eb-9a8f-9232d1f2033b.png">
 
-## 5.2. 使用 Prometheus 方式
+### 5.2. 使用 Prometheus 方式
 
-### 5.2.1. 监控指标的 Prometheus 映射关系
-
+#### 5.2.1. 监控指标的 Prometheus 映射关系
 > 对于 Metric Name 为 name, Tags 为 K1=V1, ..., Kn=Vn 的监控指标有如下映射，其中 value 为具体值
 
 | 监控指标类型     | 映射关系                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
@@ -330,8 +309,7 @@ Core 级别的监控指标在系统运行中默认开启，每一个 Core 级别
 | Rate             | name_total{k1="V1", ..., Kn="Vn"} value <br> name_total{k1="V1", ..., Kn="Vn", rate="m1"} value <br> name_total{k1="V1", ..., Kn="Vn", rate="m5"} value  <br> name_total{k1="V1", ..., Kn="Vn", rate="m15"} value <br> name_total{k1="V1", ..., Kn="Vn", rate="mean"} value                                                                                                                                                                                                        |
 | Timer            | name_seconds_max{k1="V1", ..., Kn="Vn"} value <br> name_seconds_sum{k1="V1", ..., Kn="Vn"} value <br> name_seconds_count{k1="V1", ..., Kn="Vn"} value <br> name_seconds{k1="V1", ..., Kn="Vn", quantile="0.0"} value <br> name_seconds{k1="V1", ..., Kn="Vn", quantile="0.25"} value <br> name_seconds{k1="V1", ..., Kn="Vn", quantile="0.5"} value <br> name_seconds{k1="V1", ..., Kn="Vn", quantile="0.75"} value <br> name_seconds{k1="V1", ..., Kn="Vn", quantile="1.0"} value |
 
-### 5.2.2. 修改配置文件
-
+#### 5.2.2. 修改配置文件
 1) 以 DataNode 为例，修改 iotdb-datanode.properties 配置文件如下：
 
 ```properties
@@ -354,7 +332,7 @@ file_count{name="seq",} 2.0
 ...
 ```
 
-### 5.2.3. Prometheus + Grafana
+#### 5.2.3. Prometheus + Grafana
 
 如上所示，IoTDB 对外暴露出标准的 Prometheus 格式的监控指标数据，可以使用 Prometheus 采集并存储监控指标，使用 Grafana 可视化监控指标。
 
@@ -395,21 +373,19 @@ static_configs:
 
 [Grafana从Prometheus查询数据并绘图的文档](https://prometheus.io/docs/visualization/grafana/#grafana-support-for-prometheus)
 
-### 5.2.4. Apache IoTDB Dashboard
-
+#### 5.2.4. Apache IoTDB Dashboard
 我们提供了Apache IoTDB Dashboard，在Grafana中显示的效果图如下所示：
 
 ![Apache IoTDB Dashboard](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/System%20Tools/Metrics/dashboard.png)
 
-#### 5.2.4.1. 如何获取 Apache IoTDB Dashboard？
+##### 5.2.4.1. 如何获取 Apache IoTDB Dashboard？
 
 1. 您可以在 grafana-metrics-example 文件夹下获取到对应不同iotdb版本的Dashboard的json文件。
 2. 您可以访问[Grafana Dashboard官网](https://grafana.com/grafana/dashboards/)搜索`Apache IoTDB Dashboard`并使用
 
 在创建Grafana时，您可以选择Import刚刚下载的json文件，并为Apache IoTDB Dashboard选择对应目标数据源。
 
-#### 5.2.4.2. Apache IoTDB ConfigNode Dashboard 说明
-
+##### 5.2.4.2. Apache IoTDB ConfigNode Dashboard 说明
 > 除特殊说明的监控项以外，以下监控项均保证在Important级别的监控框架中可用。
 
 - `Overview`：系统概述
@@ -439,9 +415,8 @@ static_configs:
     - `Log Number Per Minute`：IoTDB 进程平均每分钟日志数
     - `The Time Consumed of Compliation Per Minute`：平均每分钟编译耗时
     - `The Number Of Class`：JVM 加载和卸载的类数量
-
-#### 5.2.4.3. Apache IoTDB DataNode Dashboard 说明
-
+    
+##### 5.2.4.3. Apache IoTDB DataNode Dashboard 说明
 > 除特殊说明的监控项以外，以下监控项均保证在Important级别的监控框架中可用。
 
 - `Overview`：系统概述
@@ -495,20 +470,18 @@ static_configs:
     - `The Time Consumed of Compliation Per Minute`：平均每分钟编译耗时
     - `The Number Of Class`：JVM 加载和卸载的类数量
 
-## 5.3. 使用 IoTDB 方式
+### 5.3. 使用 IoTDB 方式
 
-### 5.3.1. 监控指标的 IoTDB 映射关系
-
-> 对于 Metric Name 为 name, Tags 为 K1=V1, ..., Kn=Vn 的监控指标有如下映射，以默认写到 root.__system.metric 为例
+#### 5.3.1. 监控指标的 IoTDB 映射关系
+> 对于 Metric Name 为 name, Tags 为 K1=V1, ..., Kn=Vn 的监控指标有如下映射，以默认写到 root.__system.metric.`ip:port` 为例
 
 | 监控指标类型     | 映射关系                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
 | ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Counter          | root.__system.metric.name.`K1=V1`...`Kn=Vn`.value                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
-| AutoGauge、Gauge | root.__system.metric.name.`K1=V1`...`Kn=Vn`.value                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
-| Histogram        | root.__system.metric.name.`K1=V1`...`Kn=Vn`.count <br> root.__system.metric.name.`K1=V1`...`Kn=Vn`.max <br> root.__system.metric.name.`K1=V1`...`Kn=Vn`.sum <br> root.__system.metric.name.`K1=V1`...`Kn=Vn`.p0 <br> root.__system.metric.name.`K1=V1`...`Kn=Vn`.p25 <br> root.__system.metric.name.`K1=V1`...`Kn=Vn`.p50 <br> root.__system.metric.name.`K1=V1`...`Kn=Vn`.p75 <br> root.__system.metric.name.`K1=V1`...`Kn=Vn`.p100                                                                                                                                                                                                                      |
-| Rate             | root.__system.metric.name.`K1=V1`...`Kn=Vn`.count <br> root.__system.metric.name.`K1=V1`...`Kn=Vn`.mean <br> root.__system.metric.name.`K1=V1`...`Kn=Vn`.m1 <br> root.__system.metric.name.`K1=V1`...`Kn=Vn`.m5 <br> root.__system.metric.name.`K1=V1`...`Kn=Vn`.m15                                                                                                                                                                                                                                                                                                                                                                                      |
-| Timer            | root.__system.metric.name.`K1=V1`...`Kn=Vn`.count <br> root.__system.metric.name.`K1=V1`...`Kn=Vn`.max <br> root.__system.metric.name.`K1=V1`...`Kn=Vn`.mean <br> root.__system.metric.name.`K1=V1`...`Kn=Vn`.sum <br> root.__system.metric.name.`K1=V1`...`Kn=Vn`.p0 <br> root.__system.metric.name.`K1=V1`...`Kn=Vn`.p25 <br> root.__system.metric.name.`K1=V1`...`Kn=Vn`.p50 <br> root.__system.metric.name.`K1=V1`...`Kn=Vn`.p75 <br> root.__system.metric.name.`K1=V1`...`Kn=Vn`.p100   <br> root.__system.metric.name.`K1=V1`...`Kn=Vn`.m1 <br> root.__system.metric.name.`K1=V1`...`Kn=Vn`.m5 <br> root.__system.metric.name.`K1=V1`...`Kn=Vn`.m15 |
+| Counter          | root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.value                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| AutoGauge、Gauge | root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.value                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| Histogram        | root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.count <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.max <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.sum <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.p0 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.p25 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.p50 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.p75 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.p100                                                                                                                                                                                                                      |
+| Rate             | root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.count <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.mean <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.m1 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.m5 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.m15                                                                                                                                                                                                                                                                                                                                                                                      |
+| Timer            | root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.count <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.max <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.mean <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.sum <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.p0 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.p25 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.p50 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.p75 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.p100   <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.m1 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.m5 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.m15 |
 
-### 5.3.2. 获取监控指标
-
+#### 5.3.2. 获取监控指标
 根据如上的映射关系，可以构成相关的 IoTDB 查询语句获取监控指标
