@@ -30,6 +30,7 @@ import org.apache.iotdb.lsm.levelProcess.LevelProcessorChain;
 import org.apache.iotdb.lsm.manager.DeletionManager;
 import org.apache.iotdb.lsm.manager.FlushManager;
 import org.apache.iotdb.lsm.manager.InsertionManager;
+import org.apache.iotdb.lsm.manager.MemManager;
 import org.apache.iotdb.lsm.manager.QueryManager;
 import org.apache.iotdb.lsm.manager.RecoverManager;
 import org.apache.iotdb.lsm.manager.WALManager;
@@ -50,7 +51,7 @@ import java.util.List;
  *
  * @param <T> The type of root memory node handled by this engine
  */
-public class LSMEngineBuilder<T> {
+public class LSMEngineBuilder<T extends MemManager> {
 
   private static final Logger logger = LoggerFactory.getLogger(LSMEngineBuilder.class);
 
