@@ -209,7 +209,7 @@ public abstract class ServiceProvider {
       openSessionResp.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
       openSessionResp.setMessage("Login successfully");
 
-      SESSION_MANAGER.supplySession(session, username, zoneId, clientVersion, enableAudit);
+      SESSION_MANAGER.supplySession(session, username, zoneId, clientVersion);
       if (enableAuditLog) {
         AuditLogUtils.writeAuditLog(
             String.format(
