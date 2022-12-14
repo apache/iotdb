@@ -262,7 +262,7 @@ public class MetricConfig {
     return isStoreToLocal;
   }
 
-  public void setStoreToLocal(boolean storeToLocal) {
+  public void setIsStoreToLocal(boolean storeToLocal) {
     isStoreToLocal = storeToLocal;
   }
 
