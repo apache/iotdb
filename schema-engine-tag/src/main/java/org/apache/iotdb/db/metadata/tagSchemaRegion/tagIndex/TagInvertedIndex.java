@@ -83,7 +83,9 @@ public class TagInvertedIndex implements ITagInvertedIndex {
       lsmEngine =
           new LSMEngineBuilder<MemTableGroup>()
               .buildLSMManagers(
-                  "org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex", walManager, memManager)
+                  "org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex",
+                  walManager,
+                  memTableGroup)
               .buildRootMemNode(memTableGroup)
               .build();
 
