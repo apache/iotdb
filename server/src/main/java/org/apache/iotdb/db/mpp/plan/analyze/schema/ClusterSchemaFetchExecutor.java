@@ -48,6 +48,8 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -79,7 +81,6 @@ class ClusterSchemaFetchExecutor {
   }
 
   ClusterSchemaTree fetchSchemaOfOneDevice(PartialPath devicePath, List<String> measurements) {
-
     final AtomicBoolean shouldWait = new AtomicBoolean(true);
     executingTaskMap.compute(
         devicePath,
@@ -201,6 +202,53 @@ class ClusterSchemaFetchExecutor {
       }
     } catch (IOException e) {
       // Totally memory operation. This case won't happen.
+    }
+  }
+
+  private class DeviceSchemaFetchTaskExecutor {
+
+    private volatile DeviceSchemaFetchTask waitingTask;
+
+    private volatile DeviceSchemaFetchTask executingTask;
+
+    private volatile int restThreadNum;
+
+    private volatile ClusterSchemaTree fetchedResult;
+
+    private final ReadWriteLock readWriteLock = new ReentrantReadWriteLock();
+
+    private ClusterSchemaTree execute(List<String> measurements) {
+      boolean needNewTask = false;
+      readWriteLock.readLock().lock();
+      try {
+        if (executingTask != null) {
+          needNewTask = !executingTask.checkAndAddWaitingThread(measurements);
+        }
+        if (needNewTask) {
+          DeviceSchemaFetchTask task = waitingTask;
+          synchronized (this) {
+            readWriteLock.readLock().unlock();
+            readWriteLock.writeLock().lock();
+            try {
+              if (waitingTask == null) {
+                waitingTask = new DeviceSchemaFetchTask();
+                task = waitingTask;
+              }
+              waitingTask.addWaitingThread(measurements);
+            } finally {
+              readWriteLock.writeLock().unlock();
+            }
+          }
+          synchronized (task) {
+          }
+        }
+      } finally {
+        readWriteLock.readLock().unlock();
+      }
+
+      if (!executingTask.checkAndAddWaitingThread(measurements)) {}
+
+      return null;
     }
   }
 
