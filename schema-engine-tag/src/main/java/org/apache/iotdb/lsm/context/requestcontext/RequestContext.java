@@ -83,7 +83,11 @@ public class RequestContext {
    * @return response result
    */
   public <T> T getValue() {
-    return (T) getResponse().getValue();
+    if (getResponse() == null) {
+      return null;
+    } else {
+      return (T) getResponse().getValue();
+    }
   }
 
   /**

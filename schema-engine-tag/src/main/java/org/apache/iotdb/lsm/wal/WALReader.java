@@ -33,7 +33,7 @@ import java.util.NoSuchElementException;
 public class WALReader implements IWALReader {
   private static final Logger logger = LoggerFactory.getLogger(WALReader.class);
   // wal file
-  private final File logFile;
+  private File logFile;
   // wal record prototype, clone on read
   private final IWALRecord prototype;
   private DataInputStream logStream;
@@ -90,6 +90,13 @@ public class WALReader implements IWALReader {
     IWALRecord walRecord = nextRecord;
     nextRecord = null;
     return walRecord;
+  }
+
+  public void update(File logFile) throws IOException {
+    close();
+    this.logFile = logFile;
+    this.logStream =
+        new DataInputStream(new BufferedInputStream(Files.newInputStream(logFile.toPath())));
   }
 
   @Override

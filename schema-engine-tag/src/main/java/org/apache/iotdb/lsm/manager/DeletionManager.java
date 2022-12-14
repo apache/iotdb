@@ -40,7 +40,7 @@ public class DeletionManager<T, R extends IDeletionRequest>
    */
   @Override
   public void preProcess(T root, R deletionRequest, DeleteRequestContext context) {
-    walManager.write(deletionRequest);
+    walManager.write(root, deletionRequest);
   }
 
   @Override

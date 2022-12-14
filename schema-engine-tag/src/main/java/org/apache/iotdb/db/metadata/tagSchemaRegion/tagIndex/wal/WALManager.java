@@ -20,6 +20,7 @@ package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.wal;
 
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.Request.DeletionRequest;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.Request.InsertionRequest;
+import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemTableGroup;
 import org.apache.iotdb.lsm.request.IRequest;
 import org.apache.iotdb.lsm.wal.IWALRecord;
 import org.apache.iotdb.lsm.wal.WALReader;
@@ -30,7 +31,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 
 /** Manage wal entry writes and reads */
-public class WALManager extends org.apache.iotdb.lsm.manager.WALManager {
+public class WALManager extends org.apache.iotdb.lsm.manager.WALManager<MemTableGroup> {
 
   private static final Logger logger = LoggerFactory.getLogger(WALManager.class);
 
@@ -39,17 +40,17 @@ public class WALManager extends org.apache.iotdb.lsm.manager.WALManager {
   private static final int DELETE = 2;
 
   public WALManager(
-      String schemaDirPath,
-      String walFileName,
+      String walDirPath,
+      String walFilePrefix,
       int walBufferSize,
       IWALRecord walRecord,
       boolean forceEachWrite)
       throws IOException {
-    super(schemaDirPath, walFileName, walBufferSize, walRecord, forceEachWrite);
+    super(walDirPath, walFilePrefix, walBufferSize, walRecord, forceEachWrite);
   }
 
-  public WALManager(String schemaDirPath) {
-    super(schemaDirPath);
+  public WALManager(String walDirPath) {
+    super(walDirPath);
   }
 
   /**
@@ -59,15 +60,15 @@ public class WALManager extends org.apache.iotdb.lsm.manager.WALManager {
    * @throws IOException
    */
   @Override
-  public synchronized void write(IRequest request) {
+  public synchronized void write(MemTableGroup memTableGroup, IRequest request) {
     if (isRecover()) return;
     try {
       switch (request.getRequestType()) {
         case INSERT:
-          process((InsertionRequest) request);
+          process(memTableGroup, (InsertionRequest) request);
           break;
         case DELETE:
-          process((DeletionRequest) request);
+          process(memTableGroup, (DeletionRequest) request);
           break;
         default:
           break;
@@ -123,9 +124,21 @@ public class WALManager extends org.apache.iotdb.lsm.manager.WALManager {
    * @param request insert request
    * @throws IOException
    */
-  private void process(InsertionRequest request) throws IOException {
+  private void process(MemTableGroup memTableGroup, InsertionRequest request) throws IOException {
     WALEntry walEntry = new WALEntry(INSERT, request.getKeys(), request.getValue());
+    if (checkUpdateWalFile(memTableGroup, request)) {
+      updateFile(getWalFileName(currentFileID));
+    }
     getWalWriter().write(walEntry);
+  }
+
+  private boolean checkUpdateWalFile(MemTableGroup memTableGroup, IRequest request) {
+    if ((Integer) request.getValue() / memTableGroup.getNumOfDeviceIdsInMemTable()
+        != currentFileID) {
+      currentFileID = (Integer) request.getValue() / memTableGroup.getNumOfDeviceIdsInMemTable();
+      return true;
+    }
+    return false;
   }
 
   /**
@@ -134,8 +147,11 @@ public class WALManager extends org.apache.iotdb.lsm.manager.WALManager {
    * @param request delete context
    * @throws IOException
    */
-  private void process(DeletionRequest request) throws IOException {
+  private void process(MemTableGroup memTableGroup, DeletionRequest request) throws IOException {
     WALEntry walEntry = new WALEntry(DELETE, request.getKeys(), request.getValue());
+    if (checkUpdateWalFile(memTableGroup, request)) {
+      updateFile(getWalFileName(currentFileID));
+    }
     getWalWriter().write(walEntry);
   }
 }

@@ -72,7 +72,7 @@ public interface ILSMEngine extends IRecoverable {
   <K, V, R extends IResponse> R flush(IFlushRequest<K, V> flushRequest);
 
   /** recover the ILSMEngine */
-  void recover();
+  void recover() throws IOException;
 
   /**
    * Close all open resources
