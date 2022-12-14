@@ -16,12 +16,6 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.lsm.sstable.reader;
+package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.reader;
 
-import java.io.IOException;
-
-public interface DiskIterator<T> {
-  boolean hasNext() throws IOException;
-
-  T next() throws IOException;
-}
+public class ChunkGroupReader {}

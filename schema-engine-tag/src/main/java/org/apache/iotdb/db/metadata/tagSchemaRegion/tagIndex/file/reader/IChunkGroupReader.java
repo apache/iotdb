@@ -18,15 +18,22 @@
  */
 package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.reader;
 
+import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.entry.Chunk;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.entry.ChunkIndex;
+import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.entry.ChunkIndexEntry;
+import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.entry.ChunkIndexHeader;
+import org.apache.iotdb.lsm.sstable.interator.DiskIterator;
 
 import java.io.IOException;
+import java.util.List;
 
-public interface IChunkGroupReader {
+public interface IChunkGroupReader extends DiskIterator<Integer> {
 
   ChunkIndex readChunkIndex() throws IOException;
 
-  boolean hasNextId() throws IOException;
+  ChunkIndexHeader readChunkIndexHeader() throws IOException;
 
-  int nextId();
+  ChunkIndexEntry readChunkIndexEntry() throws IOException;
+
+  List<Chunk> readChunks() throws IOException;
 }

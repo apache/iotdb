@@ -16,51 +16,47 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.entry;
+package org.apache.iotdb.lsm.sstable.bplustree.entry;
 
-import org.apache.iotdb.lsm.sstable.bplustree.entry.IEntry;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataInput;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
-public class ChunkHeader implements IEntry {
+public enum BPlusTreeNodeType implements IEntry {
+  INTERNAL_NODE((byte) 0),
 
-  private int size;
+  LEAF_NODE((byte) 1);
 
-  public int getSize() {
-    return size;
+  private final byte type;
+
+  BPlusTreeNodeType(byte type) {
+    this.type = type;
   }
 
-  public void setSize(int size) {
-    this.size = size;
+  public byte getType() {
+    return type;
   }
 
   @Override
   public void serialize(DataOutputStream out) throws IOException {
-    out.write(size);
+    ReadWriteIOUtils.write(type, out);
   }
 
   @Override
   public void serialize(ByteBuffer byteBuffer) {
-    byteBuffer.putInt(size);
+    ReadWriteIOUtils.write(type, byteBuffer);
   }
 
   @Override
-  public IEntry deserialize(DataInput in) throws IOException {
-    this.size = in.readInt();
-    return this;
+  public IEntry deserialize(DataInput input) throws IOException {
+    return null;
   }
 
   @Override
   public IEntry deserialize(ByteBuffer byteBuffer) {
-    this.size = byteBuffer.getInt();
-    return this;
-  }
-
-  @Override
-  public String toString() {
-    return "ChunkHeader{" + "size=" + size + '}';
+    return null;
   }
 }

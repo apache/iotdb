@@ -16,16 +16,6 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.reader;
+package org.apache.iotdb.lsm.sstable.bplustree.reader;
 
-import org.apache.iotdb.lsm.sstable.interator.DiskIterator;
-
-import org.roaringbitmap.RoaringBitmap;
-
-import java.io.IOException;
-
-public interface IChunkReader extends DiskIterator<Integer> {
-  RoaringBitmap readRoaringBitmap() throws IOException;
-
-  void close() throws IOException;
-}
+public interface IBPlusTreeReader {}

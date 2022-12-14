@@ -18,10 +18,14 @@
  */
 package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.entry;
 
+import org.apache.iotdb.lsm.sstable.bplustree.entry.IEntry;
+
 import org.roaringbitmap.InvalidRoaringFormat;
 
 import java.io.DataInput;
+import java.io.DataOutputStream;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.Arrays;
 
 public class RoaringBitmapHeader implements IEntry {
@@ -67,6 +71,16 @@ public class RoaringBitmapHeader implements IEntry {
   }
 
   @Override
+  public void serialize(DataOutputStream out) throws IOException {
+    // do nothing
+  }
+
+  @Override
+  public void serialize(ByteBuffer byteBuffer) {
+    // do nothing
+  }
+
+  @Override
   public IEntry deserialize(DataInput in) throws IOException {
     this.cookie = Integer.reverseBytes(in.readInt());
     if ((cookie & '\uffff') != 12347 && cookie != 12346) {
@@ -88,6 +102,11 @@ public class RoaringBitmapHeader implements IEntry {
       }
     }
     return this;
+  }
+
+  @Override
+  public IEntry deserialize(ByteBuffer byteBuffer) {
+    throw new UnsupportedOperationException("deserialize RoaringBitmapHeader from byte buffer");
   }
 
   @Override

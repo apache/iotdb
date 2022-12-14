@@ -16,51 +16,66 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.entry;
+package org.apache.iotdb.lsm.sstable.bplustree.entry;
 
-import org.apache.iotdb.lsm.sstable.bplustree.entry.IEntry;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataInput;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
-public class ChunkHeader implements IEntry {
+public class BPlusTreeEntry implements IEntry {
 
-  private int size;
+  String name;
 
-  public int getSize() {
-    return size;
-  }
+  long offset;
 
-  public void setSize(int size) {
-    this.size = size;
+  public BPlusTreeEntry(String name, long offset) {
+    this.name = name;
+    this.offset = offset;
   }
 
   @Override
   public void serialize(DataOutputStream out) throws IOException {
-    out.write(size);
+    ReadWriteIOUtils.write(name, out);
+    ReadWriteIOUtils.write(offset, out);
   }
 
   @Override
   public void serialize(ByteBuffer byteBuffer) {
-    byteBuffer.putInt(size);
+    ReadWriteIOUtils.write(name, byteBuffer);
+    ReadWriteIOUtils.write(offset, byteBuffer);
   }
 
   @Override
-  public IEntry deserialize(DataInput in) throws IOException {
-    this.size = in.readInt();
+  public IEntry deserialize(DataInput input) throws IOException {
     return this;
   }
 
   @Override
   public IEntry deserialize(ByteBuffer byteBuffer) {
-    this.size = byteBuffer.getInt();
-    return this;
+    return null;
+  }
+
+  public String getName() {
+    return name;
+  }
+
+  public void setName(String name) {
+    this.name = name;
+  }
+
+  public long getOffset() {
+    return offset;
+  }
+
+  public void setOffset(long offset) {
+    this.offset = offset;
   }
 
   @Override
   public String toString() {
-    return "ChunkHeader{" + "size=" + size + '}';
+    return "BPlusTreeEntry{" + "name='" + name + '\'' + ", offset=" + offset + '}';
   }
 }

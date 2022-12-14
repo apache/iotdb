@@ -16,11 +16,6 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.entry;
+package org.apache.iotdb.lsm.sstable.bplustree.writer;
 
-import java.io.DataInput;
-import java.io.IOException;
-
-public interface IEntry {
-  IEntry deserialize(DataInput input) throws IOException;
-}
+public class BPlusTreeWriter implements IBPlusTreeWriter {}

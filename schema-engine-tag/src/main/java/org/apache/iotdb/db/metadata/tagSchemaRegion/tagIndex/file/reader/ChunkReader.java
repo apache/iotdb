@@ -21,7 +21,7 @@ package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.reader;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.entry.ChunkHeader;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.entry.RoaringBitmapHeader;
-import org.apache.iotdb.lsm.sstable.reader.DiskIterator;
+import org.apache.iotdb.lsm.sstable.interator.DiskIterator;
 
 import org.roaringbitmap.RoaringBitmap;
 

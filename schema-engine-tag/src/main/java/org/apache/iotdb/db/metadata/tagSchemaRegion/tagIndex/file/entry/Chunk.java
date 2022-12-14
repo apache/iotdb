@@ -18,10 +18,15 @@
  */
 package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.entry;
 
+import org.apache.iotdb.lsm.sstable.bplustree.entry.IEntry;
+
+import org.roaringbitmap.InvalidRoaringFormat;
 import org.roaringbitmap.RoaringBitmap;
 
 import java.io.DataInput;
+import java.io.DataOutputStream;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 
 public class Chunk implements IEntry {
   private ChunkHeader chunkHeader;
@@ -29,11 +34,36 @@ public class Chunk implements IEntry {
   private RoaringBitmap roaringBitmap;
 
   @Override
+  public void serialize(DataOutputStream out) throws IOException {
+    chunkHeader.serialize(out);
+    roaringBitmap.serialize(out);
+  }
+
+  @Override
+  public void serialize(ByteBuffer byteBuffer) {
+    chunkHeader.serialize(byteBuffer);
+    roaringBitmap.serialize(byteBuffer);
+  }
+
+  @Override
   public IEntry deserialize(DataInput input) throws IOException {
     chunkHeader = new ChunkHeader();
     chunkHeader.deserialize(input);
     roaringBitmap = new RoaringBitmap();
     roaringBitmap.deserialize(input);
+    return this;
+  }
+
+  @Override
+  public IEntry deserialize(ByteBuffer byteBuffer) {
+    chunkHeader = new ChunkHeader();
+    chunkHeader.deserialize(byteBuffer);
+    roaringBitmap = new RoaringBitmap();
+    try {
+      roaringBitmap.deserialize(byteBuffer);
+    } catch (IOException e) {
+      throw new InvalidRoaringFormat(e.getMessage());
+    }
     return this;
   }
 
