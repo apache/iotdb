@@ -27,6 +27,9 @@ public class TagSchemaConfig {
   // the size of wal buffer used to store a wal record
   private int walBufferSize = 1024 * 1024;
 
+  // the maximum number of immutableMemTables, when this is reached, flush operation is required
+  private int numOfImmutableMemTable = 5;
+
   public int getNumOfDeviceIdsInMemTable() {
     return numOfDeviceIdsInMemTable;
   }
@@ -34,7 +37,13 @@ public class TagSchemaConfig {
   public void setNumOfDeviceIdsInMemTable(int numOfDeviceIdsInMemTable) {
     this.numOfDeviceIdsInMemTable = numOfDeviceIdsInMemTable;
   }
+  public int getNumOfImmutableMemTable() {
+    return numOfImmutableMemTable;
+  }
 
+  public void setNumOfImmutableMemTable(int numOfImmutableMemTable) {
+    this.numOfImmutableMemTable = numOfImmutableMemTable;
+  }
   public int getWalBufferSize() {
     return walBufferSize;
   }
