@@ -162,7 +162,7 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
 
   protected void sealChunk(TsFileIOWriter targetWriter, IChunkWriter iChunkWriter, int subTaskId)
       throws IOException {
-    CompactionTaskManager.getInstance().getCompactionIORateLimiter().acquire(1);
+    compactionRateLimiter.acquire(1);
     synchronized (targetWriter) {
       iChunkWriter.writeToFileWriter(targetWriter);
     }
@@ -187,7 +187,7 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
       // seal last chunk to file writer
       chunkWriters[subTaskId].writeToFileWriter(targetWriter);
       chunkPointNumArray[subTaskId] = 0;
-      CompactionTaskManager.getInstance().getCompactionIORateLimiter().acquire(1);
+      compactionRateLimiter.acquire(1);
       targetWriter.writeChunk(chunk, chunkMetadata);
     }
   }
@@ -207,7 +207,7 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
       chunkPointNumArray[subTaskId] = 0;
 
       // flush time chunk
-      CompactionTaskManager.getInstance().getCompactionIORateLimiter().acquire(1);
+      compactionRateLimiter.acquire(1);
       targetWriter.writeChunk(timeChunk, (ChunkMetadata) timeChunkMetadata);
 
       // flush value chunks
@@ -224,7 +224,7 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
               valueChunkWriter.getStatistics());
           continue;
         }
-        CompactionTaskManager.getInstance().getCompactionIORateLimiter().acquire(1);
+        compactionRateLimiter.acquire(1);
         targetWriter.writeChunk(valueChunk, (ChunkMetadata) valueChunkMetadatas.get(i));
       }
     }
