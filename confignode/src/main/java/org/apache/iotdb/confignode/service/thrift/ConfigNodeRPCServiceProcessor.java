@@ -192,7 +192,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
 
   @Override
   public TSStatus restartDataNode(TDataNodeRestartReq req) {
-    return null;
+    return configManager.restartDataNode(req);
   }
 
   @Override

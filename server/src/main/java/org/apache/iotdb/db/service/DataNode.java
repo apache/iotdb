@@ -230,9 +230,7 @@ public class DataNode implements DataNodeMBean {
         StorageEngine.getInstance().updateTTLInfo(dataNodeRegisterResp.getAllTTLInformation());
 
         if (dataNodeRegisterResp.getStatus().getCode()
-                == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-            || dataNodeRegisterResp.getStatus().getCode()
-                == TSStatusCode.DATANODE_ALREADY_REGISTERED.getStatusCode()) {
+            == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
           int dataNodeID = dataNodeRegisterResp.getDataNodeId();
           if (dataNodeID != config.getDataNodeId()) {
             IoTDBStartCheck.getInstance().serializeDataNodeId(dataNodeID);
@@ -268,10 +266,6 @@ public class DataNode implements DataNodeMBean {
 
           logger.info("Register to the cluster successfully");
           return;
-        } else if (dataNodeRegisterResp.getStatus().getCode()
-            == TSStatusCode.REGISTER_DATANODE_WITH_WRONG_ID.getStatusCode()) {
-          logger.error(dataNodeRegisterResp.getStatus().getMessage());
-          throw new StartupException("Cannot register to the cluster.");
         }
       } catch (IOException e) {
         logger.warn("Cannot register to the cluster, because: {}", e.getMessage());
