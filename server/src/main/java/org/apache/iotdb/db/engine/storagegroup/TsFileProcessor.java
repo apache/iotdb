@@ -1270,7 +1270,6 @@ public class TsFileProcessor {
           writer.getFile().length(),
           closeEndTime - closeStartTime);
     }
-    TsFileMetricManager.getInstance().addFile(tsFileResource.getTsFile().length(), sequence);
 
     writer = null;
   }
