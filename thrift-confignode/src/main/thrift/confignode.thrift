@@ -24,9 +24,6 @@ namespace py iotdb.thrift.confignode
 // DataNode
 struct TDataNodeRegisterReq {
   1: required common.TDataNodeConfiguration dataNodeConfiguration
-  // Map<StorageGroupName, TStorageGroupSchema>
-  // DataNode can use statusMap to report its status to the ConfigNode when restart
-  2: optional map<string, TStorageGroupSchema> statusMap
 }
 
 struct TDataNodeRegisterResp {
@@ -98,7 +95,13 @@ struct TCQConfig {
   1: required i64 cqMinEveryIntervalInMs
 }
 
-struct TDataNodeUpdateReq{
+struct TDataNodeRestartReq {
+  1: required common.TDataNodeConfiguration dataNodeConfiguration
+  2: required i64 clusterId
+  // TODO: Add other fields to verify
+}
+
+struct TDataNodeUpdateReq {
   1: required common.TDataNodeLocation dataNodeLocation
 }
 
@@ -330,6 +333,12 @@ struct TConfigNodeRegisterReq {
 struct TConfigNodeRegisterResp {
   1: required common.TSStatus status
   2: required i32 configNodeId
+  3: required i64 clusterId
+}
+
+struct TConfigNodeRestartReq {
+  1: required common.TConfigNodeLocation configNodeLocation
+  2: required i64 clusterId
 }
 
 struct TAddConsensusGroupReq {
@@ -641,6 +650,13 @@ service IConfigNodeRPCService {
   TDataNodeRegisterResp registerDataNode(TDataNodeRegisterReq req)
 
   /**
+  * Restart a existed DataNode
+  *
+  * @return SUCCESS_STATUS if
+  */
+  common.TSStatus restartDataNode(TDataNodeRestartReq req)
+
+  /**
    * Generate a set of DataNodeRemoveProcedure to remove some specific DataNodes from the cluster
    *
    * @return SUCCESS_STATUS if the DataNodeRemoveProcedure submitted successfully
@@ -745,8 +761,8 @@ service IConfigNodeRPCService {
   TSchemaPartitionTableResp getOrCreateSchemaPartitionTable(TSchemaPartitionReq req)
 
   // ======================================================
-    // Node Management
-    // ======================================================
+  // Node Management
+  // ======================================================
 
   /**
    * Get the partition info used for schema node query and get the node info in CluterSchemaInfo.
@@ -834,6 +850,8 @@ service IConfigNodeRPCService {
 
   /** The ConfigNode-leader will notify the Non-Seed-ConfigNode that the registration success */
   common.TSStatus notifyRegisterSuccess()
+
+  common.TSStatus restartConfigNode(TConfigNodeRestartReq req)
 
   /**
    * Remove the specific ConfigNode from the cluster

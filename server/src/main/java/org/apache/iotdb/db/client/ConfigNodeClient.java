@@ -39,6 +39,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCheckUserPrivilegesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
+import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRestartReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCountStorageGroupResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateCQReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateFunctionReq;
@@ -50,6 +51,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRemoveReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRemoveResp;
+import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRestartReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeUpdateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionTableResp;
@@ -331,6 +333,11 @@ public class ConfigNodeClient
       waitAndReconnect();
     }
     throw new TException(MSG_RECONNECTION_FAIL);
+  }
+
+  @Override
+  public TSStatus restartDataNode(TDataNodeRestartReq req) throws TException {
+    return null;
   }
 
   @Override
@@ -821,6 +828,11 @@ public class ConfigNodeClient
   @Override
   public TConfigNodeRegisterResp registerConfigNode(TConfigNodeRegisterReq req) throws TException {
     throw new TException("DataNode to ConfigNode client doesn't support registerConfigNode.");
+  }
+
+  @Override
+  public TSStatus restartConfigNode(TConfigNodeRestartReq req) throws TException {
+    throw new TException("DataNode to ConfigNode client doesn't support restartConfigNode.");
   }
 
   @Override

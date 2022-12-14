@@ -50,6 +50,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Random;
 import java.util.concurrent.TimeUnit;
 
 public class ConfigNode implements ConfigNodeMBean {
@@ -94,7 +95,8 @@ public class ConfigNode implements ConfigNodeMBean {
       /* Restart */
       if (SystemPropertiesUtils.isRestarted()) {
         LOGGER.info("{} is in restarting process...", ConfigNodeConstant.GLOBAL_NAME);
-        /* Always set ConfigNodeId before initConsensusManager */
+        /* Always set ClusterId and ConfigNodeId before initConsensusManager */
+        CONF.setClusterId(SystemPropertiesUtils.loadClusterIdWhenRestarted());
         CONF.setConfigNodeId(SystemPropertiesUtils.loadConfigNodeIdWhenRestarted());
         configManager.initConsensusManager();
         setUpRPCService();
@@ -109,7 +111,8 @@ public class ConfigNode implements ConfigNodeMBean {
             "The current {} is now starting as the Seed-ConfigNode.",
             ConfigNodeConstant.GLOBAL_NAME);
 
-        /* Always set ConfigNodeId before initConsensusManager */
+        /* Always set ClusterId and ConfigNodeId before initConsensusManager */
+        CONF.setClusterId(new Random().nextLong());
         CONF.setConfigNodeId(SEED_CONFIG_NODE_ID);
         configManager.initConsensusManager();
 

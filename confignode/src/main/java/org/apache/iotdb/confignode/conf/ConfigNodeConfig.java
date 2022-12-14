@@ -31,9 +31,10 @@ import java.io.File;
 
 public class ConfigNodeConfig {
 
-  /**
-   * the config node id for cluster mode, the default value -1 should be changed after join cluster
-   */
+  /** ClusterId, the default value -1 will be changed after join cluster */
+  private volatile long clusterId = -1;
+
+  /** ConfigNodeId, the default value -1 will be changed after join cluster */
   private volatile int configNodeId = -1;
 
   /** could set ip or hostname */
@@ -294,6 +295,14 @@ public class ConfigNodeConfig {
       }
     }
     return dir;
+  }
+
+  public long getClusterId() {
+    return clusterId;
+  }
+
+  public void setClusterId(long clusterId) {
+    this.clusterId = clusterId;
   }
 
   public int getConfigNodeId() {

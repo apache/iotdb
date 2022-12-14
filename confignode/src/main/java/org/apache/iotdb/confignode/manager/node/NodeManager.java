@@ -223,6 +223,8 @@ public class NodeManager {
     dataSet.setCqConfig(cqConfig);
   }
 
+  private void verifyDataNode() {}
+
   /**
    * Register DataNode
    *

@@ -196,6 +196,7 @@ public class SystemPropertiesUtils {
   public static void storeSystemParameters() throws IOException {
     Properties systemProperties = getSystemProperties();
 
+    systemProperties.setProperty("cluster_id", String.valueOf(conf.getClusterId()));
     systemProperties.setProperty("config_node_id", String.valueOf(conf.getConfigNodeId()));
 
     // Startup configuration
@@ -245,6 +246,23 @@ public class SystemPropertiesUtils {
   }
 
   /**
+   * Load the cluster_id in confignode-system.properties file. We only invoke this interface when
+   * restarted.
+   *
+   * @return The property of cluster_id in confignode-system.properties file
+   * @throws IOException When load confignode-system.properties file failed
+   */
+  public static long loadClusterIdWhenRestarted() throws IOException {
+    Properties systemProperties = getSystemProperties();
+    try {
+      return Long.parseLong(systemProperties.getProperty("cluster_id", null));
+    } catch (NumberFormatException e) {
+      throw new IOException(
+          "The parameter cluster_id doesn't exist in confignode-system.properties. Please delete data dir and restart again.");
+    }
+  }
+
+  /**
    * Load the config_node_id in confignode-system.properties file. We only invoke this interface
    * when restarted.
    *
@@ -257,7 +275,7 @@ public class SystemPropertiesUtils {
       return Integer.parseInt(systemProperties.getProperty("config_node_id", null));
     } catch (NumberFormatException e) {
       throw new IOException(
-          "The parameter config_node_id doesn't exist in confignode-system.properties");
+          "The parameter config_node_id doesn't exist in confignode-system.properties. Please delete data dir and restart again.");
     }
   }
 
