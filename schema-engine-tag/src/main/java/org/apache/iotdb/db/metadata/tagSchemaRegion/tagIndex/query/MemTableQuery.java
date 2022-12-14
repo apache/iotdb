@@ -29,6 +29,7 @@ import org.roaringbitmap.RoaringBitmap;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 
 /** query for MemTable */
@@ -62,7 +63,8 @@ public class MemTableQuery extends QueryLevelProcessor<MemTable, MemTagValueGrou
   public void query(MemTable memNode, QueryRequest queryRequest, QueryRequestContext context) {
     // if the memTable is immutable, we need to delete the id in deletionList in the query result
     if (memNode.isImmutable()) {
-      RoaringBitmap roaringBitmap = context.getValue();
+      RoaringBitmap roaringBitmap =
+          (RoaringBitmap) Optional.ofNullable(context.getValue()).orElse(new RoaringBitmap());
       Set<Integer> deletionList = memNode.getDeletionList();
       for (Integer id : deletionList) {
         roaringBitmap.remove(id);
