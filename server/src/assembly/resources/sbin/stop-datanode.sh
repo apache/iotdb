@@ -34,14 +34,14 @@ else
   exit 1
 fi
 
-PIDS=$(pgrep -f 'DataNode')
+PID_VERIFY=$(pgrep -f 'DataNode')
 if [ -z "$PID" ]; then
   echo "No DataNode to stop"
   if [ "$(id -u)" -ne 0 ]; then
     echo "Maybe you can try to run in sudo mode to detect the process."
   fi
   exit 1
-elif [[ "${PIDS}" =~ ${PID} ]]; then
+elif [[ "${PID_VERIFY}" =~ ${PID} ]]; then
   kill -s TERM "$PID"
   echo "Stop DataNode, PID:" "$PID"
 else

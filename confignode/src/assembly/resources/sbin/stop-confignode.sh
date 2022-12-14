@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 #
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
@@ -34,13 +34,17 @@ else
   exit 1
 fi
 
+PID_VERIFY=$(pgrep -f 'CONFIGNODE')
 if [ -z "$PID" ]; then
   echo "No ConfigNode to stop"
   if [ "$(id -u)" -ne 0 ]; then
     echo "Maybe you can try to run in sudo mode to detect the process."
   fi
   exit 1
-else
+elif [[ "${PID_VERIFY}" =~ ${PID} ]]; then
   kill -s TERM "$PID"
   echo "Close ConfigNode, PID:" "$PID"
+else
+  echo "No ConfigNode to stop"
+  exit 1
 fi
