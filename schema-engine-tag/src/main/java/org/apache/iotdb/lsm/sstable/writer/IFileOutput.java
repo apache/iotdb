@@ -52,6 +52,13 @@ public interface IFileOutput {
    */
   void write(ByteBuffer b) throws IOException;
 
+  /**
+   * Write a IEntry to disk
+   *
+   * @param entry entry
+   * @return start offset of the entry
+   * @throws IOException
+   */
   long write(IEntry entry) throws IOException;
 
   /**

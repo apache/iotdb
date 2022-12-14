@@ -73,6 +73,11 @@ public class TagSchemaDescriptor {
               properties.getProperty(
                   "num_of_deviceIds_in_memTable",
                   String.valueOf(conf.getNumOfDeviceIdsInMemTable()))));
+      conf.setOutBufferSize(
+          Integer.parseInt(
+              properties.getProperty("out_buffer_size", String.valueOf(conf.getOutBufferSize()))));
+      conf.setDegree(
+          Integer.parseInt(properties.getProperty("degree", String.valueOf(conf.getDegree()))));
     } catch (FileNotFoundException e) {
       logger.warn("Fail to find tag schema region config file {}", tagSchemaConfigPath);
     } catch (IOException e) {

@@ -25,31 +25,26 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
-public enum BPlusTreeNodeType implements IEntry {
-  INVALID_NODE((byte) -1),
+public class BPlusTreeHeader implements IEntry {
 
-  INTERNAL_NODE((byte) 0),
+  String max;
 
-  LEAF_NODE((byte) 1);
+  String min;
 
-  private byte type;
-
-  BPlusTreeNodeType(byte type) {
-    this.type = type;
-  }
-
-  public byte getType() {
-    return type;
-  }
+  long rootNodeoffset = -1;
 
   @Override
   public void serialize(DataOutputStream out) throws IOException {
-    ReadWriteIOUtils.write(type, out);
+    ReadWriteIOUtils.write(max, out);
+    ReadWriteIOUtils.write(min, out);
+    out.writeLong(rootNodeoffset);
   }
 
   @Override
   public void serialize(ByteBuffer byteBuffer) {
-    ReadWriteIOUtils.write(type, byteBuffer);
+    ReadWriteIOUtils.write(max, byteBuffer);
+    ReadWriteIOUtils.write(min, byteBuffer);
+    byteBuffer.putLong(rootNodeoffset);
   }
 
   @Override
@@ -59,12 +54,30 @@ public enum BPlusTreeNodeType implements IEntry {
 
   @Override
   public IEntry deserialize(ByteBuffer byteBuffer) {
-    type = ReadWriteIOUtils.readByte(byteBuffer);
-    return this;
+    return null;
   }
 
-  @Override
-  public String toString() {
-    return "BPlusTreeNodeType{" + "type=" + type + '}';
+  public String getMax() {
+    return max;
+  }
+
+  public void setMax(String max) {
+    this.max = max;
+  }
+
+  public String getMin() {
+    return min;
+  }
+
+  public void setMin(String min) {
+    this.min = min;
+  }
+
+  public long getOffset() {
+    return rootNodeoffset;
+  }
+
+  public void setOffset(long offset) {
+    this.rootNodeoffset = offset;
   }
 }

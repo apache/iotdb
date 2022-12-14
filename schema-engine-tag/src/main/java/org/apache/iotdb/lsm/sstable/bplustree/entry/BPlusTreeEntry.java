@@ -31,6 +31,8 @@ public class BPlusTreeEntry implements IEntry {
 
   long offset;
 
+  public BPlusTreeEntry() {}
+
   public BPlusTreeEntry(String name, long offset) {
     this.name = name;
     this.offset = offset;
@@ -55,7 +57,9 @@ public class BPlusTreeEntry implements IEntry {
 
   @Override
   public IEntry deserialize(ByteBuffer byteBuffer) {
-    return null;
+    name = ReadWriteIOUtils.readString(byteBuffer);
+    offset = ReadWriteIOUtils.readLong(byteBuffer);
+    return this;
   }
 
   public String getName() {

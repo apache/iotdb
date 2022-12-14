@@ -18,4 +18,8 @@
  */
 package org.apache.iotdb.lsm.sstable.bplustree.writer;
 
-public interface IBPlusTreeWriter {}
+import java.io.IOException;
+
+public interface IBPlusTreeWriter {
+  void close() throws IOException;
+}

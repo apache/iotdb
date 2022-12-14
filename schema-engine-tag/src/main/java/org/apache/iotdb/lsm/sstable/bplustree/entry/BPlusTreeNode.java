@@ -18,6 +18,9 @@
  */
 package org.apache.iotdb.lsm.sstable.bplustree.entry;
 
+import org.apache.iotdb.db.metadata.tagSchemaRegion.config.TagSchemaConfig;
+import org.apache.iotdb.db.metadata.tagSchemaRegion.config.TagSchemaDescriptor;
+
 import java.io.DataInput;
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -27,17 +30,27 @@ import java.util.List;
 
 public class BPlusTreeNode implements IEntry {
 
+  private final TagSchemaConfig bPlushTreeConfig =
+      TagSchemaDescriptor.getInstance().getTagSchemaConfig();
+
   private BPlusTreeNodeType bPlusTreeNodeType;
+
+  private int count;
 
   private List<BPlusTreeEntry> bPlusTreeEntries;
 
+  public BPlusTreeNode() {}
+
   public BPlusTreeNode(BPlusTreeNodeType bPlusTreeNodeType) {
     this.bPlusTreeNodeType = bPlusTreeNodeType;
+    bPlusTreeEntries = new ArrayList<>(bPlushTreeConfig.getDegree());
+    count = bPlusTreeEntries.size();
   }
 
   public BPlusTreeNode(BPlusTreeNodeType bPlusTreeNodeType, List<BPlusTreeEntry> bPlusTreeEntries) {
     this.bPlusTreeNodeType = bPlusTreeNodeType;
     this.bPlusTreeEntries = bPlusTreeEntries;
+    count = bPlusTreeEntries.size();
   }
 
   public BPlusTreeNodeType getbPlusTreeNodeType() {
@@ -56,6 +69,14 @@ public class BPlusTreeNode implements IEntry {
     this.bPlusTreeEntries = bPlusTreeEntries;
   }
 
+  public int getCount() {
+    return count;
+  }
+
+  public void setCount(int count) {
+    this.count = count;
+  }
+
   @Override
   public String toString() {
     return "BPlusTreeNode{"
@@ -69,6 +90,7 @@ public class BPlusTreeNode implements IEntry {
   @Override
   public void serialize(DataOutputStream out) throws IOException {
     bPlusTreeNodeType.serialize(out);
+    out.writeInt(count);
     for (BPlusTreeEntry bPlusTreeEntry : bPlusTreeEntries) {
       bPlusTreeEntry.serialize(out);
     }
@@ -77,6 +99,7 @@ public class BPlusTreeNode implements IEntry {
   @Override
   public void serialize(ByteBuffer byteBuffer) {
     bPlusTreeNodeType.serialize(byteBuffer);
+    byteBuffer.putInt(count);
     for (BPlusTreeEntry bPlusTreeEntry : bPlusTreeEntries) {
       bPlusTreeEntry.serialize(byteBuffer);
     }
@@ -89,7 +112,15 @@ public class BPlusTreeNode implements IEntry {
 
   @Override
   public IEntry deserialize(ByteBuffer byteBuffer) {
-    return null;
+    bPlusTreeNodeType = BPlusTreeNodeType.INVALID_NODE;
+    bPlusTreeNodeType.deserialize(byteBuffer);
+    count = byteBuffer.getInt();
+    bPlusTreeEntries = new ArrayList<>(count);
+    for (int i = 0; i < count; i++) {
+      BPlusTreeEntry bPlusTreeEntry = new BPlusTreeEntry();
+      bPlusTreeEntries.add((BPlusTreeEntry) bPlusTreeEntry.deserialize(byteBuffer));
+    }
+    return this;
   }
 
   public void add(BPlusTreeEntry bPlusTreeEntry) {
@@ -97,5 +128,21 @@ public class BPlusTreeNode implements IEntry {
       bPlusTreeEntries = new ArrayList<>();
     }
     bPlusTreeEntries.add(bPlusTreeEntry);
+    count++;
+  }
+
+  public String getMin() {
+    if (bPlusTreeEntries == null || bPlusTreeEntries.size() == 0) return null;
+    return bPlusTreeEntries.get(0).getName();
+  }
+
+  public String getMax() {
+    if (bPlusTreeEntries == null || bPlusTreeEntries.size() == 0) return null;
+    return bPlusTreeEntries.get(bPlusTreeEntries.size() - 1).getName();
+  }
+
+  public boolean needToSplit() {
+    if (bPlusTreeEntries == null) return false;
+    return bPlusTreeEntries.size() >= bPlushTreeConfig.getDegree();
   }
 }

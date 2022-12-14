@@ -27,6 +27,12 @@ public class TagSchemaConfig {
   // the size of wal buffer used to store a wal record
   private int walBufferSize = 1024 * 1024;
 
+  // the size of buffer used to write a record.(unit: byte)
+  private int outBufferSize = 1024 * 1024;
+
+  // degree of a b+ tree
+  private int degree = 100;
+
   public int getNumOfDeviceIdsInMemTable() {
     return numOfDeviceIdsInMemTable;
   }
@@ -43,13 +49,33 @@ public class TagSchemaConfig {
     this.walBufferSize = walBufferSize;
   }
 
+  public int getOutBufferSize() {
+    return outBufferSize;
+  }
+
+  public void setOutBufferSize(int outBufferSize) {
+    this.outBufferSize = outBufferSize;
+  }
+
+  public int getDegree() {
+    return degree;
+  }
+
+  public void setDegree(int degree) {
+    this.degree = degree;
+  }
+
   @Override
   public String toString() {
-    return "TagSchemaConfig["
+    return "TagSchemaConfig{"
         + "numOfDeviceIdsInMemTable="
         + numOfDeviceIdsInMemTable
         + ", walBufferSize="
         + walBufferSize
-        + "]";
+        + ", outBufferSize="
+        + outBufferSize
+        + ", degree="
+        + degree
+        + '}';
   }
 }

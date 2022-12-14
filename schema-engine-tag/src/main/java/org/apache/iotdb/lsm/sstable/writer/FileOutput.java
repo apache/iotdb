@@ -20,7 +20,6 @@ package org.apache.iotdb.lsm.sstable.writer;
 
 import org.apache.iotdb.lsm.sstable.bplustree.entry.IEntry;
 
-import java.io.BufferedOutputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
@@ -33,54 +32,52 @@ import java.nio.ByteBuffer;
 public class FileOutput extends OutputStream implements IFileOutput {
 
   private FileOutputStream outputStream;
-  private BufferedOutputStream bufferedStream;
   private ByteBuffer byteBuffer;
   private long position;
 
   public FileOutput(FileOutputStream outputStream, int bufferCapacity) {
     this.outputStream = outputStream;
-    this.bufferedStream = new BufferedOutputStream(outputStream);
     byteBuffer = ByteBuffer.allocate(bufferCapacity);
     position = 0;
   }
 
   @Override
   public synchronized void write(int b) throws IOException {
-    bufferedStream.write(b);
+    outputStream.write(b);
     position++;
   }
 
   @Override
   public synchronized void write(byte[] b) throws IOException {
-    bufferedStream.write(b);
+    outputStream.write(b);
     position += b.length;
   }
 
   @Override
   public synchronized void write(byte b) throws IOException {
-    bufferedStream.write(b);
+    outputStream.write(b);
     position++;
   }
 
   @Override
   public synchronized void write(byte[] buf, int start, int offset) throws IOException {
-    bufferedStream.write(buf, start, offset);
+    outputStream.write(buf, start, offset);
     position += offset;
   }
 
   @Override
   public synchronized void write(ByteBuffer b) throws IOException {
-    bufferedStream.write(b.array());
-    position += b.array().length;
+    write(b.array(), 0, b.limit());
   }
 
   @Override
   public long write(IEntry entry) throws IOException {
+    long startOffset = position;
     byteBuffer.clear();
     entry.serialize(byteBuffer);
     byteBuffer.flip();
     write(byteBuffer);
-    return position - byteBuffer.array().length;
+    return startOffset;
   }
 
   @Override
@@ -90,8 +87,9 @@ public class FileOutput extends OutputStream implements IFileOutput {
 
   @Override
   public void close() throws IOException {
-    bufferedStream.close();
     outputStream.close();
+    byteBuffer.clear();
+    byteBuffer = null;
   }
 
   @Override
@@ -101,12 +99,11 @@ public class FileOutput extends OutputStream implements IFileOutput {
 
   @Override
   public void flush() throws IOException {
-    this.bufferedStream.flush();
+    outputStream.flush();
   }
 
   @Override
   public void truncate(long size) throws IOException {
-    bufferedStream.flush();
     outputStream.getChannel().truncate(size);
     position = outputStream.getChannel().position();
   }
