@@ -222,7 +222,7 @@ get_real_path() {
   echo "${real_path}"
 }
 
-# check whether same directory's IotDB node process has been running
+# check whether same directory's IoTDB node process has been running
 check_running_process() {
   check_tool_env
 

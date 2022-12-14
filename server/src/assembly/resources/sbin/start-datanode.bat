@@ -141,7 +141,7 @@ IF EXIST "%IOTDB_CONF%\iotdb-datanode.properties" (
   set dn_rpc_port=6667
   set dn_internal_port=9003
   set dn_mpp_data_exchange_port=8777
-  set dn_schema_region_consensus_port=40030
+  set dn_schema_region_consensus_port=50010
   set dn_data_region_consensus_port=40010
 )
 

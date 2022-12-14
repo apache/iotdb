@@ -173,7 +173,7 @@ checkDataNodePortUsages () {
     dn_rpc_port=6667
     dn_internal_port=9003
     dn_mpp_data_exchange_port=8777
-    dn_schema_region_consensus_port=40030
+    dn_schema_region_consensus_port=50010
     dn_data_region_consensus_port=40010
   fi
   if type lsof >/dev/null 2>&1; then
