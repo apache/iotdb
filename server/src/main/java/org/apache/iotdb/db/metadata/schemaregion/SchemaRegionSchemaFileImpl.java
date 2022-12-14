@@ -426,7 +426,7 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
   public boolean createSnapshot(File snapshotDir) {
     if (!initialized) {
       logger.warn(
-          "Failed to create snapshot of schemaRegion {}, because thi schemaRegion has not been initialized.",
+          "Failed to create snapshot of schemaRegion {}, because the schemaRegion has not been initialized.",
           schemaRegionId);
       return false;
     }
