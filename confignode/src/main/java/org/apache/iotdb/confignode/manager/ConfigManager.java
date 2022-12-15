@@ -64,6 +64,7 @@ import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetTimeP
 import org.apache.iotdb.confignode.consensus.request.write.sync.CreatePipeSinkPlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.DropPipeSinkPlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
+import org.apache.iotdb.confignode.consensus.response.ConfigurationResp;
 import org.apache.iotdb.confignode.consensus.response.CountStorageGroupResp;
 import org.apache.iotdb.confignode.consensus.response.DataNodeConfigurationResp;
 import org.apache.iotdb.confignode.consensus.response.DataNodeRegisterResp;
@@ -308,7 +309,7 @@ public class ConfigManager implements IManager {
     if (req.getClusterId() != ConfigNodeDescriptor.getInstance().getConf().getClusterId()) {
       // TODO: Report error cluster id
       return new TSStatus(TSStatusCode.REJECT_NODE_START.getStatusCode())
-          .setMessage("The index of ");
+        .setMessage("The index of ");
     }
 
     TSStatus status = confirmLeader();
@@ -316,6 +317,19 @@ public class ConfigManager implements IManager {
       return nodeManager.restartDataNode(req.getDataNodeConfiguration().getLocation());
     }
     return status;
+  }
+
+  @Override
+  public DataSet getConfiguration() {
+    TSStatus status = confirmLeader();
+    ConfigurationResp dataSet;
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      dataSet = (ConfigurationResp) nodeManager.getConfiguration();
+    } else {
+      dataSet = new ConfigurationResp();
+      dataSet.setStatus(status);
+    }
+    return dataSet;
   }
 
   @Override

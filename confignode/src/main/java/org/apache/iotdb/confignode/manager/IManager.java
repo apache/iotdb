@@ -190,6 +190,13 @@ public interface IManager {
   TSStatus restartDataNode(TDataNodeRestartReq req);
 
   /**
+   * Get configuration information that is not associated with the DataNodeId
+   *
+   * @return ConfigurationResp
+   */
+  DataSet getConfiguration();
+
+  /**
    * Remove DataNode
    *
    * @param removeDataNodePlan RemoveDataNodePlan
