@@ -78,7 +78,7 @@ public class DataNodeServerCommandLine extends ServerCommandLine {
 
     // Check config of IoTDB, and set some configs in cluster mode
     try {
-      dataNode.serverCheckAndInit(mode);
+      dataNode.serverCheckAndInit();
     } catch (ConfigurationException | IOException e) {
       LOGGER.error("Meet error when doing start checking", e);
       return -1;
