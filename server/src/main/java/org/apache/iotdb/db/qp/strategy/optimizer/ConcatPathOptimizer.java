@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.query.PathNumOverLimitException;
 import org.apache.iotdb.db.exception.sql.SQLParserException;
+import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.ResultColumn;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
@@ -44,7 +45,6 @@ import org.apache.iotdb.db.qp.logical.crud.SelectComponent;
 import org.apache.iotdb.db.qp.logical.crud.WhereComponent;
 import org.apache.iotdb.db.qp.utils.GroupByLevelController;
 import org.apache.iotdb.db.qp.utils.WildcardsRemover;
-import org.apache.iotdb.db.service.IoTDB;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -366,8 +366,8 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
     try {
       for (PartialPath originalPath : originalPaths) {
         List<MeasurementPath> all =
-            IoTDB.schemaProcessor.getMeasurementPathsWithAlias(
-                    originalPath, 0, 0, isPrefixMatch, false)
+            LocalSchemaProcessor.getInstance()
+                .getMeasurementPathsWithAlias(originalPath, 0, 0, isPrefixMatch, false)
                 .left;
         if (all.isEmpty()) {
           throw new LogicalOptimizeException(

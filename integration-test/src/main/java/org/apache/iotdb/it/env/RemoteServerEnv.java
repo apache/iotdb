@@ -195,6 +195,11 @@ public class RemoteServerEnv implements BaseEnv {
   }
 
   @Override
+  public void registerNewConfigNode() {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
   public void startDataNode(int index) {
     throw new UnsupportedOperationException();
   }

@@ -551,6 +551,38 @@ public abstract class AbstractEnv implements BaseEnv {
   }
 
   @Override
+  public void registerNewConfigNode() {
+    final ConfigNodeWrapper newConfigNodeWrapper =
+        new ConfigNodeWrapper(
+            false,
+            configNodeWrapperList.get(0).getIpAndPortString(),
+            getTestClassName(),
+            getTestMethodName(),
+            EnvUtils.searchAvailablePorts());
+    configNodeWrapperList.add(newConfigNodeWrapper);
+    newConfigNodeWrapper.createDir();
+    newConfigNodeWrapper.changeConfig(ConfigFactory.getConfig().getConfignodeProperties());
+
+    // Start new ConfigNode
+    RequestDelegate<Void> configNodeDelegate =
+        new ParallelRequestDelegate<>(
+            Collections.singletonList(newConfigNodeWrapper.getIpAndPortString()),
+            NODE_START_TIMEOUT);
+    configNodeDelegate.addRequest(
+        () -> {
+          newConfigNodeWrapper.start();
+          return null;
+        });
+
+    try {
+      configNodeDelegate.requestAll();
+    } catch (SQLException e) {
+      logger.error("Start configNode failed", e);
+      fail();
+    }
+  }
+
+  @Override
   public void startDataNode(int index) {
     dataNodeWrapperList.get(index).start();
   }

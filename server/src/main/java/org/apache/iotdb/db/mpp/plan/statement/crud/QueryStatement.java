@@ -299,6 +299,13 @@ public class QueryStatement extends Statement {
     return orderByComponent.getTimeOrder();
   }
 
+  public Ordering getResultDeviceOrder() {
+    if (orderByComponent == null || !orderByComponent.isOrderByDevice()) {
+      return Ordering.ASC;
+    }
+    return orderByComponent.getDeviceOrder();
+  }
+
   public List<SortItem> getSortItemList() {
     if (orderByComponent == null) {
       return Collections.emptyList();
@@ -397,10 +404,6 @@ public class QueryStatement extends Statement {
 
       if (isOrderByTimeseries()) {
         throw new SemanticException("Sorting by timeseries is only supported in last queries.");
-      }
-      if (isOrderByDevice()) {
-        // TODO support sort by device
-        throw new SemanticException("Sorting by device is not yet supported.");
       }
     }
 

@@ -21,8 +21,8 @@ package org.apache.iotdb.db.query.dataset;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
 import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
-import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
@@ -69,7 +69,7 @@ public class ShowDevicesDataSet extends ShowDataSet {
   @Override
   public List<RowRecord> getQueryDataSet() throws MetadataException {
     List<ShowDevicesResult> devicesList =
-        IoTDB.schemaProcessor.getMatchedDevices((ShowDevicesPlan) plan);
+        LocalSchemaProcessor.getInstance().getMatchedDevices((ShowDevicesPlan) plan);
     List<RowRecord> records = new ArrayList<>();
     for (ShowDevicesResult result : devicesList) {
       RowRecord record = new RowRecord(0);

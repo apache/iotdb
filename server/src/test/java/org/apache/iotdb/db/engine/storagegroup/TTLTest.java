@@ -35,6 +35,7 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.query.OutOfTTLException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.mpp.plan.parser.StatementGenerator;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
@@ -43,7 +44,6 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.SetTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.UnSetTTLStatement;
 import org.apache.iotdb.db.query.reader.series.SeriesRawDataBatchReader;
-import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.utils.SchemaTestUtils;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
@@ -99,20 +99,21 @@ public class TTLTest {
   }
 
   private void createSchemas() throws MetadataException, DataRegionException {
-    IoTDB.schemaProcessor.setStorageGroup(new PartialPath(sg1));
-    IoTDB.schemaProcessor.setStorageGroup(new PartialPath(sg2));
+    LocalSchemaProcessor.getInstance().setStorageGroup(new PartialPath(sg1));
+    LocalSchemaProcessor.getInstance().setStorageGroup(new PartialPath(sg2));
     dataRegion =
         new DataRegion(
             IoTDBDescriptor.getInstance().getConfig().getSystemDir(),
             String.valueOf(dataRegionId1.getId()),
             new DirectFlushPolicy(),
             sg1);
-    IoTDB.schemaProcessor.createTimeseries(
-        new PartialPath(g1s1),
-        TSDataType.INT64,
-        TSEncoding.PLAIN,
-        CompressionType.UNCOMPRESSED,
-        Collections.emptyMap());
+    LocalSchemaProcessor.getInstance()
+        .createTimeseries(
+            new PartialPath(g1s1),
+            TSDataType.INT64,
+            TSEncoding.PLAIN,
+            CompressionType.UNCOMPRESSED,
+            Collections.emptyMap());
   }
 
   @Test
@@ -121,20 +122,20 @@ public class TTLTest {
     boolean caught = false;
 
     try {
-      IoTDB.schemaProcessor.setTTL(new PartialPath(sg1 + ".notExist"), ttl);
+      LocalSchemaProcessor.getInstance().setTTL(new PartialPath(sg1 + ".notExist"), ttl);
     } catch (MetadataException e) {
       caught = true;
     }
     assertTrue(caught);
 
     // normally set ttl
-    IoTDB.schemaProcessor.setTTL(new PartialPath(sg1), ttl);
+    LocalSchemaProcessor.getInstance().setTTL(new PartialPath(sg1), ttl);
     IStorageGroupMNode mNode =
-        IoTDB.schemaProcessor.getStorageGroupNodeByPath(new PartialPath(sg1));
+        LocalSchemaProcessor.getInstance().getStorageGroupNodeByPath(new PartialPath(sg1));
     assertEquals(ttl, mNode.getDataTTL());
 
     // default ttl
-    mNode = IoTDB.schemaProcessor.getStorageGroupNodeByPath(new PartialPath(sg2));
+    mNode = LocalSchemaProcessor.getInstance().getStorageGroupNodeByPath(new PartialPath(sg2));
     assertEquals(Long.MAX_VALUE, mNode.getDataTTL());
   }
 

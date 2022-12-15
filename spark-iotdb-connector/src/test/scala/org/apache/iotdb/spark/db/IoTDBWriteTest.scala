@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.spark.db
 
-import org.apache.iotdb.db.service.IoTDB
+import org.apache.iotdb.db.service.NewIoTDB
 import org.apache.iotdb.jdbc.Config
 import org.apache.iotdb.session.Session
 import org.apache.spark.sql.SparkSession
@@ -28,7 +28,7 @@ import org.scalatest.{BeforeAndAfterAll, FunSuite, shortstacks}
 
 // TODO move it to integration-test
 class IoTDBWriteTest extends FunSuite with BeforeAndAfterAll {
-  private var daemon: IoTDB = _
+  private var daemon: NewIoTDB = _
   private var spark: SparkSession = _
   private var session: Session = _
 
@@ -37,8 +37,8 @@ class IoTDBWriteTest extends FunSuite with BeforeAndAfterAll {
     System.setProperty("IOTDB_CONF", "src/test/resources/")
     super.beforeAll()
 
-    daemon = IoTDB.getInstance
-    daemon.active()
+    daemon = NewIoTDB.getInstance
+    daemon.active(false)
     EnvironmentUtils.envSetUp()
     Class.forName(Config.JDBC_DRIVER_NAME)
 

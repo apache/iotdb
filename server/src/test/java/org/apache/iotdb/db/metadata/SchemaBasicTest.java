@@ -33,7 +33,6 @@ import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.ShowResult;
 import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
-import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -85,7 +84,7 @@ public abstract class SchemaBasicTest {
 
   @Test
   public void testAddPathAndExist() throws IllegalPathException {
-    LocalSchemaProcessor schemaProcessor = IoTDB.schemaProcessor;
+    LocalSchemaProcessor schemaProcessor = LocalSchemaProcessor.getInstance();
     assertTrue(schemaProcessor.isPathExist(new PartialPath("root")));
 
     assertFalse(schemaProcessor.isPathExist(new PartialPath("root.laptop")));
@@ -256,7 +255,7 @@ public abstract class SchemaBasicTest {
    */
   @Test
   public void testDeleteNonExistentTimeseries() {
-    LocalSchemaProcessor schemaProcessor = IoTDB.schemaProcessor;
+    LocalSchemaProcessor schemaProcessor = LocalSchemaProcessor.getInstance();
     try {
       schemaProcessor.deleteTimeseries(new PartialPath("root.non.existent"));
       fail();
@@ -271,7 +270,7 @@ public abstract class SchemaBasicTest {
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   @Test
   public void testCreateAlignedTimeseries() throws MetadataException {
-    LocalSchemaProcessor schemaProcessor = IoTDB.schemaProcessor;
+    LocalSchemaProcessor schemaProcessor = LocalSchemaProcessor.getInstance();
     try {
       schemaProcessor.setStorageGroup(new PartialPath("root.laptop"));
     } catch (MetadataException e) {
@@ -352,7 +351,7 @@ public abstract class SchemaBasicTest {
   @Test
   @SuppressWarnings("squid:S5783")
   public void testGetAllTimeseriesCount() {
-    LocalSchemaProcessor schemaProcessor = IoTDB.schemaProcessor;
+    LocalSchemaProcessor schemaProcessor = LocalSchemaProcessor.getInstance();
 
     try {
       schemaProcessor.setStorageGroup(new PartialPath("root.laptop"));
@@ -416,7 +415,7 @@ public abstract class SchemaBasicTest {
   @Test
   public void testSetStorageGroupAndExist() {
 
-    LocalSchemaProcessor schemaProcessor = IoTDB.schemaProcessor;
+    LocalSchemaProcessor schemaProcessor = LocalSchemaProcessor.getInstance();
 
     try {
       assertFalse(schemaProcessor.isStorageGroup(new PartialPath("root")));
@@ -442,7 +441,7 @@ public abstract class SchemaBasicTest {
   @Test
   public void testRecover() throws Exception {
 
-    LocalSchemaProcessor schemaProcessor = IoTDB.schemaProcessor;
+    LocalSchemaProcessor schemaProcessor = LocalSchemaProcessor.getInstance();
 
     try {
 
@@ -514,7 +513,7 @@ public abstract class SchemaBasicTest {
   @Test
   public void testGetAllFileNamesByPath() {
 
-    LocalSchemaProcessor schemaProcessor = IoTDB.schemaProcessor;
+    LocalSchemaProcessor schemaProcessor = LocalSchemaProcessor.getInstance();
     try {
       schemaProcessor.setStorageGroup(new PartialPath("root.laptop.d1"));
       schemaProcessor.setStorageGroup(new PartialPath("root.laptop.d2"));
@@ -551,7 +550,7 @@ public abstract class SchemaBasicTest {
 
   @Test
   public void testCheckStorageExistOfPath() {
-    LocalSchemaProcessor schemaProcessor = IoTDB.schemaProcessor;
+    LocalSchemaProcessor schemaProcessor = LocalSchemaProcessor.getInstance();
 
     try {
       assertTrue(schemaProcessor.getMeasurementPaths(new PartialPath("root")).isEmpty());
@@ -610,7 +609,7 @@ public abstract class SchemaBasicTest {
 
   @Test
   public void testShowChildNodesWithGivenPrefix() {
-    LocalSchemaProcessor schemaProcessor = IoTDB.schemaProcessor;
+    LocalSchemaProcessor schemaProcessor = LocalSchemaProcessor.getInstance();
     try {
       schemaProcessor.setStorageGroup(new PartialPath("root.laptop"));
       schemaProcessor.createTimeseries(
@@ -686,7 +685,7 @@ public abstract class SchemaBasicTest {
 
   @Test
   public void testGetDevicesWithGivenPrefix() {
-    LocalSchemaProcessor schemaProcessor = IoTDB.schemaProcessor;
+    LocalSchemaProcessor schemaProcessor = LocalSchemaProcessor.getInstance();
 
     try {
       schemaProcessor.setStorageGroup(new PartialPath("root.laptop"));
@@ -733,7 +732,7 @@ public abstract class SchemaBasicTest {
 
   @Test
   public void testGetChildNodePathInNextLevel() {
-    LocalSchemaProcessor schemaProcessor = IoTDB.schemaProcessor;
+    LocalSchemaProcessor schemaProcessor = LocalSchemaProcessor.getInstance();
     String[] res =
         new String[] {
           "[TSchemaNode(nodeName:root.laptop, nodeType:2), TSchemaNode(nodeName:root.vehicle, nodeType:2)]",
@@ -922,7 +921,7 @@ public abstract class SchemaBasicTest {
 
   @Test
   public void testShowTimeseries() {
-    LocalSchemaProcessor schemaProcessor = IoTDB.schemaProcessor;
+    LocalSchemaProcessor schemaProcessor = LocalSchemaProcessor.getInstance();
     try {
       schemaProcessor.createTimeseries(
           new PartialPath("root.laptop.d1.s0"),
@@ -947,7 +946,7 @@ public abstract class SchemaBasicTest {
 
   @Test
   public void testTotalSeriesNumber() throws Exception {
-    LocalSchemaProcessor schemaProcessor = IoTDB.schemaProcessor;
+    LocalSchemaProcessor schemaProcessor = LocalSchemaProcessor.getInstance();
 
     try {
       schemaProcessor.setStorageGroup(new PartialPath("root.laptop"));
@@ -1004,7 +1003,7 @@ public abstract class SchemaBasicTest {
 
   @Test
   public void testStorageGroupNameWithHyphen() throws IllegalPathException {
-    LocalSchemaProcessor schemaProcessor = IoTDB.schemaProcessor;
+    LocalSchemaProcessor schemaProcessor = LocalSchemaProcessor.getInstance();
     assertTrue(schemaProcessor.isPathExist(new PartialPath("root")));
 
     assertFalse(schemaProcessor.isPathExist(new PartialPath("root.group_with_hyphen")));
@@ -1021,7 +1020,7 @@ public abstract class SchemaBasicTest {
 
   @Test
   public void testCreateTimeseriesAndInsertWithAlignedData() {
-    LocalSchemaProcessor schemaProcessor = IoTDB.schemaProcessor;
+    LocalSchemaProcessor schemaProcessor = LocalSchemaProcessor.getInstance();
     try {
       schemaProcessor.setStorageGroup(new PartialPath("root.laptop"));
       schemaProcessor.createTimeseries(
@@ -1061,7 +1060,7 @@ public abstract class SchemaBasicTest {
 
   @Test
   public void testCreateAlignedTimeseriesWithIllegalNames() throws Exception {
-    LocalSchemaProcessor schemaProcessor = IoTDB.schemaProcessor;
+    LocalSchemaProcessor schemaProcessor = LocalSchemaProcessor.getInstance();
     schemaProcessor.setStorageGroup(new PartialPath("root.laptop"));
     PartialPath deviceId = new PartialPath("root.laptop.d1");
     String[] measurementIds = {"time", "timestamp", "TIME", "TIMESTAMP"};
@@ -1110,7 +1109,7 @@ public abstract class SchemaBasicTest {
 
   @Test
   public void testCreateAlignedTimeseriesWithAliasAndTags() throws Exception {
-    LocalSchemaProcessor schemaProcessor = IoTDB.schemaProcessor;
+    LocalSchemaProcessor schemaProcessor = LocalSchemaProcessor.getInstance();
     schemaProcessor.setStorageGroup(new PartialPath("root.laptop"));
     PartialPath devicePath = new PartialPath("root.laptop.device0");
     List<String> measurements = Arrays.asList("s1", "s2", "s3", "s4", "s5");
@@ -1180,7 +1179,7 @@ public abstract class SchemaBasicTest {
 
   @Test
   public void testGetStorageGroupNodeByPath() {
-    LocalSchemaProcessor schemaProcessor = IoTDB.schemaProcessor;
+    LocalSchemaProcessor schemaProcessor = LocalSchemaProcessor.getInstance();
     PartialPath partialPath = null;
 
     try {
@@ -1237,7 +1236,7 @@ public abstract class SchemaBasicTest {
 
   @Test
   public void testTagIndexRecovery() throws Exception {
-    LocalSchemaProcessor schemaProcessor = IoTDB.schemaProcessor;
+    LocalSchemaProcessor schemaProcessor = LocalSchemaProcessor.getInstance();
     PartialPath path = new PartialPath("root.sg.d.s");
     Map<String, String> tags = new HashMap<>();
     tags.put("description", "oldValue");
