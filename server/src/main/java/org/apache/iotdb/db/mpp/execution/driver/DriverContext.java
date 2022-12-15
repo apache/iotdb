@@ -22,6 +22,7 @@ import org.apache.iotdb.db.mpp.execution.exchange.ISinkHandle;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.execution.schedule.task.DriverTaskId;
+import org.apache.iotdb.db.mpp.execution.timer.RuleBasedTimeSliceAllocator;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 
 import java.util.ArrayList;
@@ -37,12 +38,14 @@ public class DriverContext {
   private final FragmentInstanceContext fragmentInstanceContext;
   private final List<OperatorContext> operatorContexts = new ArrayList<>();
   private ISinkHandle sinkHandle;
+  private final RuleBasedTimeSliceAllocator timeSliceAllocator;
 
   private final AtomicBoolean finished = new AtomicBoolean();
 
   public DriverContext(FragmentInstanceContext fragmentInstanceContext, int pipelineId) {
     this.fragmentInstanceContext = fragmentInstanceContext;
     this.driverTaskID = new DriverTaskId(fragmentInstanceContext.getId(), pipelineId);
+    this.timeSliceAllocator = new RuleBasedTimeSliceAllocator();
   }
 
   public OperatorContext addOperatorContext(
@@ -84,6 +87,10 @@ public class DriverContext {
 
   public List<OperatorContext> getOperatorContexts() {
     return operatorContexts;
+  }
+
+  public RuleBasedTimeSliceAllocator getTimeSliceAllocator() {
+    return timeSliceAllocator;
   }
 
   public int getPipelineId() {

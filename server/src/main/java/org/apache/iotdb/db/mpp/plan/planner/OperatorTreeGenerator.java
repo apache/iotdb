@@ -305,6 +305,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
 
     ((DataDriverContext) context.getDriverContext()).addSourceOperator(seriesScanOperator);
     ((DataDriverContext) context.getDriverContext()).addPath(seriesPath);
+    context.getDriverContext().setInputDriver(true);
     context
         .getTimeSliceAllocator()
         .recordExecutionWeight(operatorContext, seriesPath.getColumnNum());
@@ -1584,23 +1585,31 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
       // Create pipelines for children
       LocalExecutionPlanContext subContext = context.createSubContext();
       Operator childOperation = childSource.accept(this, subContext);
-      ISinkHandle localSinkHandle =
-          MPP_DATA_EXCHANGE_MANAGER.createLocalSinkHandleForPipeline(subContext.getDriverContext());
-      subContext.setSinkHandle(localSinkHandle);
-      context.addPipelineDriverFactory(childOperation, subContext.getDriverContext());
+      // If the child belongs to another fragment instance, we don't create pipeline for it
+      if (childOperation instanceof ExchangeOperator) {
+        children.add(childOperation);
+      } else {
+        ISinkHandle localSinkHandle =
+            MPP_DATA_EXCHANGE_MANAGER.createLocalSinkHandleForPipeline(
+                subContext.getDriverContext());
+        subContext.setSinkHandle(localSinkHandle);
+        subContext.addPipelineDriverFactory(childOperation, subContext.getDriverContext());
 
-      ExchangeOperator sourceOperator =
-          new ExchangeOperator(
-              context
-                  .getDriverContext()
-                  .addOperatorContext(
-                      context.getNextOperatorId(), null, ExchangeOperator.class.getSimpleName()),
-              MPP_DATA_EXCHANGE_MANAGER.createLocalSourceHandleForPipeline(
-                  ((LocalSinkHandle) localSinkHandle).getSharedTsBlockQueue(),
-                  context.getDriverContext()),
-              childSource.getPlanNodeId());
-      context.getTimeSliceAllocator().recordExecutionWeight(sourceOperator.getOperatorContext(), 1);
-      children.add(sourceOperator);
+        ExchangeOperator sourceOperator =
+            new ExchangeOperator(
+                context
+                    .getDriverContext()
+                    .addOperatorContext(
+                        context.getNextOperatorId(), null, ExchangeOperator.class.getSimpleName()),
+                MPP_DATA_EXCHANGE_MANAGER.createLocalSourceHandleForPipeline(
+                    ((LocalSinkHandle) localSinkHandle).getSharedTsBlockQueue(),
+                    context.getDriverContext()),
+                childSource.getPlanNodeId());
+        context
+            .getTimeSliceAllocator()
+            .recordExecutionWeight(sourceOperator.getOperatorContext(), 1);
+        children.add(sourceOperator);
+      }
     }
 
     OperatorContext operatorContext =

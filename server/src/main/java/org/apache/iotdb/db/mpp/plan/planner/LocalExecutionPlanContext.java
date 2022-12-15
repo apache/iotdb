@@ -69,8 +69,6 @@ public class LocalExecutionPlanContext {
   // whether we need to update last cache
   private boolean needUpdateLastCache;
 
-  private final RuleBasedTimeSliceAllocator timeSliceAllocator;
-
   // for data region
   public LocalExecutionPlanContext(
       TypeProvider typeProvider,
@@ -79,7 +77,6 @@ public class LocalExecutionPlanContext {
       Filter timeFilter,
       IDataRegionForQuery dataRegionForQuery) {
     this.typeProvider = typeProvider;
-    this.timeSliceAllocator = new RuleBasedTimeSliceAllocator();
     this.allSensorsMap = new ConcurrentHashMap<>();
     this.dataRegionTTL = dataRegionTTL;
     this.nextOperatorId = new AtomicInteger(0);
@@ -97,7 +94,6 @@ public class LocalExecutionPlanContext {
     this.dataRegionTTL = parentContext.dataRegionTTL;
     this.nextPipelineId = parentContext.nextPipelineId;
     this.pipelineDriverFactories = parentContext.pipelineDriverFactories;
-    this.timeSliceAllocator = parentContext.timeSliceAllocator;
     this.driverContext =
         parentContext.getDriverContext().createSubDriverContext(getNextPipelineId());
   }
@@ -109,8 +105,6 @@ public class LocalExecutionPlanContext {
     this.typeProvider = null;
     this.nextOperatorId = new AtomicInteger(0);
 
-    // only used in `order by heat`
-    this.timeSliceAllocator = new RuleBasedTimeSliceAllocator();
     // there is no ttl in schema region, so we don't care this field
     this.dataRegionTTL = Long.MAX_VALUE;
     this.driverContext = new SchemaDriverContext(instanceContext, schemaRegion);
@@ -121,7 +115,8 @@ public class LocalExecutionPlanContext {
         .getOperatorContexts()
         .forEach(
             operatorContext ->
-                operatorContext.setMaxRunTime(timeSliceAllocator.getMaxRunTime(operatorContext)));
+                operatorContext.setMaxRunTime(
+                    driverContext.getTimeSliceAllocator().getMaxRunTime(operatorContext)));
     pipelineDriverFactories.add(new PipelineDriverFactory(operation, driverContext));
   }
 
@@ -201,7 +196,7 @@ public class LocalExecutionPlanContext {
   }
 
   public RuleBasedTimeSliceAllocator getTimeSliceAllocator() {
-    return timeSliceAllocator;
+    return driverContext.getTimeSliceAllocator();
   }
 
   public FragmentInstanceContext getInstanceContext() {
