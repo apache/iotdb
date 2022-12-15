@@ -217,6 +217,7 @@ public class SourceHandleTest {
             mockTsBlockSerde,
             mockSourceHandleListener,
             mockClientManager);
+    sourceHandle.setMaxBytesCanReserve(Long.MAX_VALUE);
     Assert.assertFalse(sourceHandle.isBlocked().isDone());
     Assert.assertFalse(sourceHandle.isAborted());
     Assert.assertFalse(sourceHandle.isFinished());
@@ -230,7 +231,12 @@ public class SourceHandleTest {
             .collect(Collectors.toList()));
     try {
       Mockito.verify(spyMemoryPool, Mockito.timeout(10_000).times(6))
-          .reserve(queryId, mockTsBlockSize);
+          .reserve(
+              queryId,
+              localFragmentInstanceId.getInstanceId(),
+              localPlanNodeId,
+              mockTsBlockSize,
+              Long.MAX_VALUE);
       Mockito.verify(mockClient, Mockito.timeout(10_0000).times(1))
           .getDataBlock(
               Mockito.argThat(
@@ -257,7 +263,7 @@ public class SourceHandleTest {
     // The local fragment instance consumes the data blocks.
     for (int i = 0; i < numOfMockTsBlock; i++) {
       Mockito.verify(spyMemoryPool, Mockito.timeout(10_0000).times(i))
-          .free(queryId, mockTsBlockSize);
+          .free(queryId, localFragmentInstanceId.getInstanceId(), localPlanNodeId, mockTsBlockSize);
       sourceHandle.receive();
       try {
         if (i < 5) {

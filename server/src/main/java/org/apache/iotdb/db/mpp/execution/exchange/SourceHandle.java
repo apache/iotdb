@@ -373,6 +373,7 @@ public class SourceHandle implements ISourceHandle {
     return maxBytesCanReserve;
   }
 
+  @Override
   public void setMaxBytesCanReserve(long maxBytesCanReserve) {
     this.maxBytesCanReserve = maxBytesCanReserve;
   }

@@ -34,7 +34,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class SharedTsBlockQueueTest {
-  @Test(timeout = 5000L)
+    @Test(timeout = 5000L)
   public void concurrencyTest() {
     final String queryId = "q0";
     final long mockTsBlockSize = 1024L * 1024L;
@@ -45,7 +45,10 @@ public class SharedTsBlockQueueTest {
         Mockito.spy(new MemoryPool("test", 10 * mockTsBlockSize, 5 * mockTsBlockSize));
     Mockito.when(mockLocalMemoryManager.getQueryPool()).thenReturn(spyMemoryPool);
     SharedTsBlockQueue queue =
-        new SharedTsBlockQueue(new TFragmentInstanceId(queryId, 0, "0"), mockLocalMemoryManager);
+        new SharedTsBlockQueue(
+            new TFragmentInstanceId(queryId, 0, "0"), "test", mockLocalMemoryManager);
+    queue.getCanAddTsBlock().set(null);
+    queue.setMaxBytesCanReserve(Long.MAX_VALUE);
 
     ExecutorService executor = Executors.newFixedThreadPool(2);
     AtomicReference<Integer> numOfTimesSenderBlocked = new AtomicReference<>(0);

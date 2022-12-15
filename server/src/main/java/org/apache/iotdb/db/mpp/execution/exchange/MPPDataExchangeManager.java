@@ -41,7 +41,9 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Optional;
@@ -529,5 +531,13 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
             fragmentInstanceId.instanceId)
         + "."
         + suffix;
+  }
+
+  public ISinkHandle getISinkHandle(TFragmentInstanceId fragmentInstanceId) {
+    return sinkHandles.get(fragmentInstanceId);
+  }
+
+  public List<ISourceHandle> getISourceHandle(TFragmentInstanceId fragmentInstanceId) {
+    return new ArrayList<>(sourceHandles.get(fragmentInstanceId).values());
   }
 }

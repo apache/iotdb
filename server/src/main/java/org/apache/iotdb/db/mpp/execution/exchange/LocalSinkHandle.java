@@ -187,6 +187,8 @@ public class LocalSinkHandle implements ISinkHandle {
     return remotePlanNodeId;
   }
 
+  public void setMaxBytesCanReserve() {}
+
   SharedTsBlockQueue getSharedTsBlockQueue() {
     return queue;
   }
@@ -197,5 +199,10 @@ public class LocalSinkHandle implements ISinkHandle {
     } else if (closed) {
       throw new IllegalStateException("Sink Handle is closed.");
     }
+  }
+
+  @Override
+  public void setMaxBytesCanReserve(long maxBytesCanReserve) {
+    queue.setMaxBytesCanReserve(maxBytesCanReserve);
   }
 }
