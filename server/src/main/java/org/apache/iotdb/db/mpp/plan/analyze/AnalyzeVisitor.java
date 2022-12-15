@@ -230,7 +230,12 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
           throw new SemanticException("Only time filters are supported in LAST query");
         }
         analyzeOrderBy(analysis, queryStatement);
-        analyzeLastSource(analysis, queryStatement, schemaTree);
+
+        List<Expression> selectExpressions = new ArrayList<>();
+        for (ResultColumn resultColumn : queryStatement.getSelectComponent().getResultColumns()) {
+          selectExpressions.add(resultColumn.getExpression());
+        }
+        analyzeLastSource(analysis, selectExpressions, schemaTree);
 
         analysis.setRespDatasetHeader(DatasetHeaderFactory.getLastQueryHeader());
 
@@ -337,7 +342,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   }
 
   private void analyzeLastSource(
-      Analysis analysis, QueryStatement queryStatement, ISchemaTree schemaTree) {
+      Analysis analysis, List<Expression> selectExpressions, ISchemaTree schemaTree) {
     Set<Expression> sourceExpressions;
 
     List<SortItem> sortItemList = analysis.getMergeOrderParameter().getSortItemList();
@@ -356,9 +361,9 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       sourceExpressions = new LinkedHashSet<>();
     }
 
-    for (ResultColumn resultColumn : queryStatement.getSelectComponent().getResultColumns()) {
+    for (Expression selectExpression : selectExpressions) {
       sourceExpressions.addAll(
-          ExpressionAnalyzer.removeWildcardInExpression(resultColumn.getExpression(), schemaTree));
+          ExpressionAnalyzer.removeWildcardInExpression(selectExpression, schemaTree));
     }
     analysis.setSourceExpressions(sourceExpressions);
   }
@@ -731,9 +736,6 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     }
     if (analysis.hasValueFilter()) {
       throw new SemanticException("Only time filters are supported in GROUP BY TAGS query");
-    }
-    if (queryStatement.hasHaving()) {
-      throw new SemanticException("Having clause is not supported yet in GROUP BY TAGS query");
     }
     Map<List<String>, LinkedHashMap<Expression, List<Expression>>>
         tagValuesToGroupedTimeseriesOperands = new HashMap<>();
@@ -2067,27 +2069,13 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       logger.debug("[StartFetchSchema]");
       ISchemaTree schemaTree = schemaFetcher.fetchSchema(patternTree);
       logger.debug("[EndFetchSchema]]");
-      List<MeasurementPath> allSelectedPath = schemaTree.getAllMeasurement();
 
-      Set<Expression> sourceExpressions =
-          allSelectedPath.stream()
-              .map(TimeSeriesOperand::new)
-              .collect(Collectors.toCollection(LinkedHashSet::new));
-      analysis.setSourceExpressions(sourceExpressions);
-      sourceExpressions.forEach(expression -> analyzeExpression(analysis, expression));
-
-      Set<String> deviceSet =
-          allSelectedPath.stream().map(MeasurementPath::getDevice).collect(Collectors.toSet());
-      Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap = new HashMap<>();
-      for (String devicePath : deviceSet) {
-        DataPartitionQueryParam queryParam = new DataPartitionQueryParam();
-        queryParam.setDevicePath(devicePath);
-        sgNameToQueryParamsMap
-            .computeIfAbsent(schemaTree.getBelongedDatabase(devicePath), key -> new ArrayList<>())
-            .add(queryParam);
-      }
-      DataPartition dataPartition = partitionFetcher.getDataPartition(sgNameToQueryParamsMap);
-      analysis.setDataPartitionInfo(dataPartition);
+      analyzeLastSource(
+          analysis,
+          Collections.singletonList(
+              new TimeSeriesOperand(showTimeSeriesStatement.getPathPattern())),
+          schemaTree);
+      analyzeDataPartition(analysis, new QueryStatement(), schemaTree);
     }
 
     analysis.setRespDatasetHeader(DatasetHeaderFactory.getShowTimeSeriesHeader());
