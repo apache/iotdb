@@ -88,7 +88,7 @@ public class DirectoryChecker {
   }
 
   public boolean isCrossDisk(String[] dirs) throws IOException {
-    if (dirs.length == 0) {
+    if (dirs.length < 2) {
       return false;
     }
     Path root = mountOf(new File(dirs[0]).toPath());
