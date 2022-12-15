@@ -105,6 +105,10 @@ public class DataNode implements DataNodeMBean {
       String.format(
           "%s:%s=%s", "org.apache.iotdb.datanode.service", IoTDBConstant.JMX_TYPE, "DataNode");
 
+  private static final File SYSTEM_PROPERTIES =
+      SystemFileFactory.INSTANCE.getFile(
+          config.getSchemaDir() + File.separator + IoTDBStartCheck.PROPERTIES_FILE_NAME);
+
   /**
    * when joining a cluster or getting configuration this node will retry at most "DEFAULT_RETRY"
    * times before returning a failure to the client
@@ -137,9 +141,10 @@ public class DataNode implements DataNodeMBean {
   }
 
   protected void doAddNode() {
+    boolean isFirstStart = false;
     try {
       // Check if this DataNode is start for the first time and do other pre-checks
-      boolean isFirstStart = prepareDataNode();
+      isFirstStart = prepareDataNode();
 
       // Set target ConfigNodeList from iotdb-datanode.properties file
       ConfigNodeInfo.getInstance().updateConfigNodeList(config.getTargetConfigNodeList());
@@ -169,6 +174,11 @@ public class DataNode implements DataNodeMBean {
 
     } catch (StartupException | ConfigurationException | IOException e) {
       logger.error("Fail to start server", e);
+      if (isFirstStart) {
+        // Delete the system.properties file when first start failed.
+        // Therefore, the next time this DataNode is start will still be seen as the first time.
+        SYSTEM_PROPERTIES.deleteOnExit();
+      }
       stop();
     }
   }
@@ -179,10 +189,7 @@ public class DataNode implements DataNodeMBean {
     config.setClusterMode(true);
 
     // Notice: Consider this DataNode as first start if the system.properties file doesn't exist
-    boolean isFirstStart =
-        SystemFileFactory.INSTANCE
-            .getFile(config.getSchemaDir() + File.separator + IoTDBStartCheck.PROPERTIES_FILE_NAME)
-            .exists();
+    boolean isFirstStart = !SYSTEM_PROPERTIES.exists();
 
     // Check target ConfigNodes
     for (TEndPoint endPoint : config.getTargetConfigNodeList()) {
@@ -221,15 +228,20 @@ public class DataNode implements DataNodeMBean {
    * @throws StartupException When failed connect to ConfigNode-leader
    */
   private void pullAndCheckSystemConfigurations() throws StartupException {
+    logger.info("Pulling system configurations from the ConfigNode-leader...");
+
     /* Pull system configurations */
     int retry = DEFAULT_RETRY;
     TSystemConfigurationResp configurationResp = null;
     while (retry > 0) {
       try (ConfigNodeClient configNodeClient = new ConfigNodeClient()) {
         configurationResp = configNodeClient.getSystemConfiguration();
+        break;
       } catch (TException e) {
         // Read ConfigNodes from system.properties and retry
-        logger.warn("Cannot register to the cluster, because: {}", e.getMessage());
+        logger.warn(
+            "Cannot pull system configurations from ConfigNode-leader, because: {}",
+            e.getMessage());
         ConfigNodeInfo.getInstance().loadConfigNodeList();
         retry--;
       }
@@ -245,8 +257,10 @@ public class DataNode implements DataNodeMBean {
     }
     if (configurationResp == null) {
       // All tries failed
-      logger.error("Cannot get configuration from ConfigNode after {} retries", DEFAULT_RETRY);
-      throw new StartupException("Cannot get configuration from ConfigNode");
+      logger.error(
+          "Cannot pull system configurations from ConfigNode-leader after {} retries",
+          DEFAULT_RETRY);
+      throw new StartupException("Cannot pull system configurations from ConfigNode-leader");
     }
 
     /* Load system configurations */
@@ -280,6 +294,8 @@ public class DataNode implements DataNodeMBean {
     } catch (Exception e) {
       throw new StartupException(e.getMessage());
     }
+
+    logger.info("Successfully pull system configurations from ConfigNode-leader.");
   }
 
   /**
@@ -320,6 +336,8 @@ public class DataNode implements DataNodeMBean {
 
   /** Register this DataNode into cluster */
   private void sendRegisterRequestToConfigNode() throws StartupException, IOException {
+    logger.info("Sending register request to ConfigNode-leader...");
+
     /* Send register request */
     int retry = DEFAULT_RETRY;
     TDataNodeRegisterReq req = new TDataNodeRegisterReq();
@@ -328,6 +346,7 @@ public class DataNode implements DataNodeMBean {
     while (retry > 0) {
       try (ConfigNodeClient configNodeClient = new ConfigNodeClient()) {
         dataNodeRegisterResp = configNodeClient.registerDataNode(req);
+        break;
       } catch (TException e) {
         // Read ConfigNodes from system.properties and retry
         logger.warn("Cannot register to the cluster, because: {}", e.getMessage());
@@ -353,15 +372,18 @@ public class DataNode implements DataNodeMBean {
     }
 
     if (dataNodeRegisterResp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+
       /* Store runtime configurations when register success */
+      String clusterName = dataNodeRegisterResp.getClusterName();
+      config.setClusterName(dataNodeRegisterResp.getClusterName());
       int dataNodeID = dataNodeRegisterResp.getDataNodeId();
-      if (dataNodeID != config.getDataNodeId()) {
-        IoTDBStartCheck.getInstance().serializeDataNodeId(dataNodeID);
-        config.setDataNodeId(dataNodeID);
-      }
+      config.setDataNodeId(dataNodeID);
+      IoTDBStartCheck.getInstance().serializeClusterNameAndDataNodeId(clusterName, dataNodeID);
+
       storeRuntimeConfigurations(
           dataNodeRegisterResp.getConfigNodeList(), dataNodeRegisterResp.getRuntimeConfiguration());
-      logger.info("Register to the cluster successfully");
+
+      logger.info("Successfully register to the cluster");
     } else {
       /* Throw exception when register failed */
       logger.error(dataNodeRegisterResp.getStatus().getMessage());
@@ -370,17 +392,22 @@ public class DataNode implements DataNodeMBean {
   }
 
   private void sendRestartRequestToConfigNode() throws StartupException {
+    logger.info("Sending restart request to ConfigNode-leader...");
+
     /* Send restart request */
     int retry = DEFAULT_RETRY;
     TDataNodeRestartReq req = new TDataNodeRestartReq();
+    req.setClusterName(config.getClusterName());
     req.setDataNodeConfiguration(generateDataNodeConfiguration());
     TDataNodeRestartResp dataNodeRestartResp = null;
     while (retry > 0) {
       try (ConfigNodeClient configNodeClient = new ConfigNodeClient()) {
         dataNodeRestartResp = configNodeClient.restartDataNode(req);
+        break;
       } catch (TException e) {
         // Read ConfigNodes from system.properties and retry
-        logger.warn("Cannot register to the cluster, because: {}", e.getMessage());
+        logger.warn(
+            "Cannot send restart request to the ConfigNode-leader, because: {}", e.getMessage());
         ConfigNodeInfo.getInstance().loadConfigNodeList();
         retry--;
       }
@@ -403,10 +430,10 @@ public class DataNode implements DataNodeMBean {
     }
 
     if (dataNodeRestartResp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      /* Store runtime configurations when register success */
+      /* Store runtime configurations when restart request is accepted */
       storeRuntimeConfigurations(
           dataNodeRestartResp.getConfigNodeList(), dataNodeRestartResp.getRuntimeConfiguration());
-      logger.info("Register to the cluster successfully");
+      logger.info("Restart request is accepted.");
     } else {
       /* Throw exception when restart is rejected */
       throw new StartupException(dataNodeRestartResp.getStatus().getMessage());

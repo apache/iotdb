@@ -291,7 +291,7 @@ public class NodeManager {
   public TDataNodeRestartResp restartDataNode(TDataNodeLocation dataNodeLocation) {
     // TODO: @Itami-Sho update peer if necessary
     TDataNodeRestartResp resp = new TDataNodeRestartResp();
-    resp.setStatus(ClusterNodeStartUtils.ACCEPT_NODE_REGISTRATION);
+    resp.setStatus(ClusterNodeStartUtils.ACCEPT_NODE_RESTART);
     resp.setConfigNodeList(getRegisteredConfigNodes());
     resp.setRuntimeConfiguration(getRuntimeConfiguration());
     return resp;
@@ -395,6 +395,7 @@ public class NodeManager {
     configManager.getProcedureManager().addConfigNode(req);
     return new TConfigNodeRegisterResp()
         .setStatus(ClusterNodeStartUtils.ACCEPT_NODE_REGISTRATION)
+        .setClusterName(CONF.getClusterName())
         .setConfigNodeId(nodeId);
   }
 

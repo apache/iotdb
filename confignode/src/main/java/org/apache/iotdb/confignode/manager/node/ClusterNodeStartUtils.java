@@ -177,17 +177,7 @@ public class ClusterNodeStartUtils {
 
     boolean isNodeAlive;
     NodeStatus nodeStatus = configManager.getNodeManager().getNodeStatusByNodeId(nodeId);
-    switch (nodeStatus) {
-      case Unknown:
-        isNodeAlive = false;
-        break;
-      case Running:
-      case ReadOnly:
-      case Removing:
-      default:
-        isNodeAlive = true;
-        break;
-    }
+    isNodeAlive = nodeStatus != null && !NodeStatus.Unknown.equals(nodeStatus);
     if (isNodeAlive) {
       /* Reject restart because the Node is still alive */
       status.setCode(TSStatusCode.REJECT_NODE_START.getStatusCode());
@@ -207,13 +197,13 @@ public class ClusterNodeStartUtils {
     switch (nodeType) {
       case ConfigNode:
         isTEndPointUpdated =
-            compareTEndPointsOfTConfigNodeLocation(
+            isTEndPointsOfTConfigNodeLocationUpdated(
                 (TConfigNodeLocation) nodeLocation, (TConfigNodeLocation) matchedNodeLocation);
         break;
       case DataNode:
       default:
         isTEndPointUpdated =
-            compareTEndPointsOfTDataNodeLocation(
+            isTEndPointsOfTDataNodeLocationUpdated(
                 (TDataNodeLocation) nodeLocation, (TDataNodeLocation) matchedNodeLocation);
         break;
     }
@@ -342,50 +332,48 @@ public class ClusterNodeStartUtils {
   }
 
   /**
-   * Compare if all TEndPoints between two ConfigNodes are equal.
+   * Check if some TEndPoints of the specified ConfigNode have updated.
    *
-   * @return True if all TEndPoints of configNodeLocationA and configNodeLocationB are equals, false
-   *     otherwise.
+   * @return True if some TEndPoints of the specified ConfigNode have updated, false otherwise.
    */
-  public static boolean compareTEndPointsOfTConfigNodeLocation(
+  public static boolean isTEndPointsOfTConfigNodeLocationUpdated(
       TConfigNodeLocation configNodeLocationA, TConfigNodeLocation configNodeLocationB) {
     if (!configNodeLocationA
         .getInternalEndPoint()
         .equals(configNodeLocationB.getInternalEndPoint())) {
-      return false;
+      return true;
     }
-    return configNodeLocationA
+    return !configNodeLocationA
         .getConsensusEndPoint()
         .equals(configNodeLocationB.getConsensusEndPoint());
   }
 
   /**
-   * Compare if all TEndPoints between two DataNodes are equal.
+   * Check if some TEndPoints of the specified DataNode have updated.
    *
-   * @return True if all TEndPoints of dataNodeLocationA and dataNodeLocationB are equals, false
-   *     otherwise.
+   * @return True if some TEndPoints of the specified DataNode have updated, false otherwise.
    */
-  public static boolean compareTEndPointsOfTDataNodeLocation(
+  public static boolean isTEndPointsOfTDataNodeLocationUpdated(
       TDataNodeLocation dataNodeLocationA, TDataNodeLocation dataNodeLocationB) {
     if (!dataNodeLocationA
         .getClientRpcEndPoint()
         .equals(dataNodeLocationB.getClientRpcEndPoint())) {
-      return false;
+      return true;
     }
     if (!dataNodeLocationA.getInternalEndPoint().equals(dataNodeLocationB.getInternalEndPoint())) {
-      return false;
+      return true;
     }
     if (!dataNodeLocationA
         .getMPPDataExchangeEndPoint()
         .equals(dataNodeLocationB.getMPPDataExchangeEndPoint())) {
-      return false;
+      return true;
     }
     if (!dataNodeLocationA
         .getSchemaRegionConsensusEndPoint()
         .equals(dataNodeLocationB.getSchemaRegionConsensusEndPoint())) {
-      return false;
+      return true;
     }
-    return dataNodeLocationA
+    return !dataNodeLocationA
         .getDataRegionConsensusEndPoint()
         .equals(dataNodeLocationB.getDataRegionConsensusEndPoint());
   }

@@ -41,6 +41,7 @@ import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
+import org.apache.iotdb.confignode.conf.SystemPropertiesUtils;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
 import org.apache.iotdb.confignode.consensus.request.read.datanode.GetDataNodeConfigurationPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetDataPartitionPlan;
@@ -297,7 +298,11 @@ public class ConfigManager implements IManager {
   @Override
   public TDataNodeRestartResp restartDataNode(TDataNodeRestartReq req) {
     TSStatus status = confirmLeader();
-    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    // Notice: The Seed-ConfigNode must also have the privilege to do Node restart check.
+    // Otherwise, the IoTDB-cluster will not have the ability to restart from scratch.
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        || ConfigNodeDescriptor.getInstance().isSeedConfigNode()
+        || SystemPropertiesUtils.isSeedConfigNode()) {
       status =
           ClusterNodeStartUtils.confirmNodeRestart(
               NodeType.DataNode,
@@ -792,7 +797,11 @@ public class ConfigManager implements IManager {
   @Override
   public TSStatus restartConfigNode(TConfigNodeRestartReq req) {
     TSStatus status = confirmLeader();
-    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    // Notice: The Seed-ConfigNode must also have the privilege to do Node restart check.
+    // Otherwise, the IoTDB-cluster will not have the ability to restart from scratch.
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        || ConfigNodeDescriptor.getInstance().isSeedConfigNode()
+        || SystemPropertiesUtils.isSeedConfigNode()) {
       status =
           ClusterNodeStartUtils.confirmNodeRestart(
               NodeType.ConfigNode,

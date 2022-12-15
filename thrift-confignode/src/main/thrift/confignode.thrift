@@ -346,8 +346,8 @@ struct TConfigNodeRegisterReq {
 
 struct TConfigNodeRegisterResp {
   1: required common.TSStatus status
-  2: required i32 configNodeId
-  3: required string clusterName
+  2: required string clusterName
+  3: required i32 configNodeId
 }
 
 struct TConfigNodeRestartReq {

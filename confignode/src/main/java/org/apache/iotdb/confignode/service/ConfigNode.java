@@ -101,12 +101,16 @@ public class ConfigNode implements ConfigNodeMBean {
         CONF.setClusterName(SystemPropertiesUtils.loadClusterNameWhenRestarted());
         CONF.setConfigNodeId(SystemPropertiesUtils.loadConfigNodeIdWhenRestarted());
 
-        sendRestartConfigNodeRequest();
+        if (!SystemPropertiesUtils.isSeedConfigNode()) {
+          // The non-seed-ConfigNodes should send restart request
+          sendRestartConfigNodeRequest();
+        }
 
         configManager.initConsensusManager();
         setUpRPCService();
         LOGGER.info(
-            "{} has successfully started and joined the cluster.", ConfigNodeConstant.GLOBAL_NAME);
+            "{} has successfully restarted and joined the cluster.",
+            ConfigNodeConstant.GLOBAL_NAME);
         return;
       }
 

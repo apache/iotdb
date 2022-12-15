@@ -206,8 +206,12 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
 
   @Override
   public TDataNodeRestartResp restartDataNode(TDataNodeRestartReq req) {
+    TDataNodeRestartResp resp = configManager.restartDataNode(req);
 
-    return configManager.restartDataNode(req);
+    // Print log to record the ConfigNode that performs the RestartDatanodeRequest
+    LOGGER.info("Execute RestartDatanodeRequest {} with result {}", req, resp);
+
+    return resp;
   }
 
   @Override
@@ -478,7 +482,12 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
 
   @Override
   public TSStatus restartConfigNode(TConfigNodeRestartReq req) {
-    return null;
+    TSStatus status = configManager.restartConfigNode(req);
+
+    // Print log to record the ConfigNode that performs the RegisterConfigNodeRequest
+    LOGGER.info("Execute RestartConfigNodeRequest {} with result {}", req, status);
+
+    return status;
   }
 
   /** For leader to remove ConfigNode configuration in consensus layer */
