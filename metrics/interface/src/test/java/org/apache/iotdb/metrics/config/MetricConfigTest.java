@@ -40,13 +40,13 @@ public class MetricConfigTest {
     properties.setProperty("cn_metric_level", "ALL");
     properties.setProperty("cn_metric_async_collect_period", "10");
     properties.setProperty("cn_metric_prometheus_reporter_port", "9090");
-    properties.setProperty("cn_iotdb_reporter_host", "0.0.0.0");
-    properties.setProperty("cn_iotdb_reporter_port", "6669");
-    properties.setProperty("cn_iotdb_reporter_username", "user");
-    properties.setProperty("cn_iotdb_reporter_password", "password");
-    properties.setProperty("cn_iotdb_reporter_max_connection_number", "1");
-    properties.setProperty("cn_iotdb_reporter_location", "metric");
-    properties.setProperty("cn_iotdb_reporter_push_period", "5");
+    properties.setProperty("cn_metric_iotdb_reporter_host", "0.0.0.0");
+    properties.setProperty("cn_metric_iotdb_reporter_port", "6669");
+    properties.setProperty("cn_metric_iotdb_reporter_username", "user");
+    properties.setProperty("cn_metric_iotdb_reporter_password", "password");
+    properties.setProperty("cn_metric_iotdb_reporter_max_connection_number", "1");
+    properties.setProperty("cn_metric_iotdb_reporter_location", "metric");
+    properties.setProperty("cn_metric_iotdb_reporter_push_period", "5");
 
     MetricConfigDescriptor.getInstance().loadProps(properties);
 
