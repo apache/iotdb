@@ -24,6 +24,7 @@ import java.io.DataInput;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Objects;
 
 public class BPlusTreeHeader implements IEntry {
 
@@ -55,6 +56,21 @@ public class BPlusTreeHeader implements IEntry {
   @Override
   public IEntry deserialize(ByteBuffer byteBuffer) {
     return null;
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    BPlusTreeHeader that = (BPlusTreeHeader) o;
+    return rootNodeoffset == that.rootNodeoffset
+        && Objects.equals(max, that.max)
+        && Objects.equals(min, that.min);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(max, min, rootNodeoffset);
   }
 
   public String getMax() {

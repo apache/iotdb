@@ -27,6 +27,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 public class BPlusTreeNode implements IEntry {
 
@@ -121,6 +122,22 @@ public class BPlusTreeNode implements IEntry {
       bPlusTreeEntries.add((BPlusTreeEntry) bPlusTreeEntry.deserialize(byteBuffer));
     }
     return this;
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    BPlusTreeNode that = (BPlusTreeNode) o;
+    return count == that.count
+        && Objects.equals(bPlushTreeConfig, that.bPlushTreeConfig)
+        && bPlusTreeNodeType == that.bPlusTreeNodeType
+        && Objects.equals(bPlusTreeEntries, that.bPlusTreeEntries);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(bPlushTreeConfig, bPlusTreeNodeType, count, bPlusTreeEntries);
   }
 
   public void add(BPlusTreeEntry bPlusTreeEntry) {

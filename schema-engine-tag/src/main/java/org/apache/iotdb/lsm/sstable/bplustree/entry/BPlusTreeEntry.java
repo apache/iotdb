@@ -24,6 +24,7 @@ import java.io.DataInput;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Objects;
 
 public class BPlusTreeEntry implements IEntry {
 
@@ -60,6 +61,19 @@ public class BPlusTreeEntry implements IEntry {
     name = ReadWriteIOUtils.readString(byteBuffer);
     offset = ReadWriteIOUtils.readLong(byteBuffer);
     return this;
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    BPlusTreeEntry that = (BPlusTreeEntry) o;
+    return offset == that.offset && Objects.equals(name, that.name);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(name, offset);
   }
 
   public String getName() {

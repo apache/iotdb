@@ -32,41 +32,47 @@ public interface IBPlusTreeWriter {
    * generate a b+ tree and header for records and write to disk
    *
    * @param records a map that holds all records, the map can be unordered
+   * @param ordered whether the queue is in order
    * @return start offset of the b+ tree
    * @throws IOException
    */
-  long write(Map<String, Long> records) throws IOException;
+  long write(Map<String, Long> records, boolean ordered) throws IOException;
 
   /**
    * generate a b+ tree for records and write to disk
    *
    * @param records a map that holds all records, the map can be unordered
+   * @param ordered whether the queue is in order
    * @return b+ tree header
    * @throws IOException
    */
-  BPlusTreeHeader writeBPlusTree(Map<String, Long> records) throws IOException;
+  BPlusTreeHeader writeBPlusTree(Map<String, Long> records, boolean ordered) throws IOException;
 
   /**
    * generate a b+ tree and header for records and write to disk
    *
    * @param records a queue that holds all records, the queue can be unordered
+   * @param ordered whether the queue is in order
    * @return start offset of the b+ tree
    * @throws IOException
    */
-  long write(Queue<BPlusTreeEntry> records) throws IOException;
+  long write(Queue<BPlusTreeEntry> records, boolean ordered) throws IOException;
 
   /**
    * generate a b+ tree for records and write to disk
    *
    * @param records a queue that holds all records, the queue can be unordered
+   * @param ordered whether the queue is in order
    * @return b+ tree header
    * @throws IOException
    */
-  BPlusTreeHeader writeBPlusTree(Queue<BPlusTreeEntry> records) throws IOException;
+  BPlusTreeHeader writeBPlusTree(Queue<BPlusTreeEntry> records, boolean ordered) throws IOException;
 
   /**
    * collect the records to be written to the disk, and only call write or writeBPlusTree to
-   * actually write to the disk
+   * actually write to the disk, if the written records are ordered, you can directly call the write
+   * or writeBPlusTree methods to write to disk, otherwise call the sortAndWrite and
+   * sortAndWriteBPlusTree methods
    *
    * @param name name of the record
    * @param offset offset of the record
@@ -89,6 +95,22 @@ public interface IBPlusTreeWriter {
    * @throws IOException
    */
   BPlusTreeHeader writeBPlusTree() throws IOException;
+
+  /**
+   * generate a b+ tree and header for records and write to disk, first the records are sorted
+   *
+   * @return start offset of the b+ tree
+   * @throws IOException
+   */
+  long sortAndWrite() throws IOException;
+
+  /**
+   * generate a b+ tree for records and write to disk, first the records are sorted
+   *
+   * @return b+ tree header
+   * @throws IOException
+   */
+  BPlusTreeHeader sortAndWriteBPlusTree() throws IOException;
 
   /**
    * close resource

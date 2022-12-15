@@ -19,13 +19,29 @@
 package org.apache.iotdb.lsm.sstable.bplustree.writer;
 
 import org.apache.iotdb.db.metadata.tagSchemaRegion.config.TagSchemaDescriptor;
+import org.apache.iotdb.lsm.sstable.bplustree.entry.BPlusTreeEntry;
+import org.apache.iotdb.lsm.sstable.bplustree.entry.BPlusTreeHeader;
+import org.apache.iotdb.lsm.sstable.bplustree.entry.BPlusTreeNode;
+import org.apache.iotdb.lsm.sstable.writer.FileOutput;
 
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Queue;
+import java.util.TreeMap;
+
+import static org.junit.Assert.assertEquals;
 
 public class BPlusTreeWriterTest {
 
@@ -33,13 +49,43 @@ public class BPlusTreeWriterTest {
 
   BPlusTreeWriter bPlusTreeWriter;
 
+  FileInputStream fileInputStream;
+
+  Queue<BPlusTreeEntry> orderedQueue;
+
+  Queue<BPlusTreeEntry> unorderedQueue;
+
   int degree;
 
   @Before
   public void setUp() throws Exception {
     file = new File("BPlusTreeWriterTest.txt");
     degree = TagSchemaDescriptor.getInstance().getTagSchemaConfig().getDegree();
-    TagSchemaDescriptor.getInstance().getTagSchemaConfig().setDegree(4);
+    TagSchemaDescriptor.getInstance().getTagSchemaConfig().setDegree(3);
+    orderedQueue = new ArrayDeque<>();
+    orderedQueue.add(new BPlusTreeEntry("aaa", 0));
+    orderedQueue.add(new BPlusTreeEntry("bbb", 1));
+    orderedQueue.add(new BPlusTreeEntry("c", 2));
+    orderedQueue.add(new BPlusTreeEntry("dd", 3));
+    orderedQueue.add(new BPlusTreeEntry("eeeee", 4));
+    orderedQueue.add(new BPlusTreeEntry("fff", 5));
+    orderedQueue.add(new BPlusTreeEntry("gggg", 6));
+    orderedQueue.add(new BPlusTreeEntry("hhhhhhhhhh", 7));
+    orderedQueue.add(new BPlusTreeEntry("x", 8));
+    orderedQueue.add(new BPlusTreeEntry("yyyy", 9));
+    orderedQueue.add(new BPlusTreeEntry("zz", 10));
+    unorderedQueue = new ArrayDeque<>();
+    unorderedQueue.add(new BPlusTreeEntry("bbb", 1));
+    unorderedQueue.add(new BPlusTreeEntry("c", 2));
+    unorderedQueue.add(new BPlusTreeEntry("aaa", 0));
+    unorderedQueue.add(new BPlusTreeEntry("dd", 3));
+    unorderedQueue.add(new BPlusTreeEntry("fff", 5));
+    unorderedQueue.add(new BPlusTreeEntry("eeeee", 4));
+    unorderedQueue.add(new BPlusTreeEntry("gggg", 6));
+    unorderedQueue.add(new BPlusTreeEntry("hhhhhhhhhh", 7));
+    unorderedQueue.add(new BPlusTreeEntry("zz", 10));
+    unorderedQueue.add(new BPlusTreeEntry("yyyy", 9));
+    unorderedQueue.add(new BPlusTreeEntry("x", 8));
   }
 
   @After
@@ -47,46 +93,141 @@ public class BPlusTreeWriterTest {
     if (bPlusTreeWriter != null) {
       bPlusTreeWriter.close();
     }
+    if (fileInputStream != null) {
+      fileInputStream.close();
+    }
     TagSchemaDescriptor.getInstance().getTagSchemaConfig().setDegree(degree);
     bPlusTreeWriter = null;
     file.delete();
+    orderedQueue = null;
+    unorderedQueue = null;
   }
 
   @Test
   public void testWriteBPlusTree() throws IOException {
 
-    //    FileOutputStream fileOutputStream = new FileOutputStream(file);
-    //    FileOutput fileOutput = new FileOutput(fileOutputStream, 1024 * 1024);
-    //    Queue<BPlusTreeEntry> queue = new ArrayDeque<>();
-    //    queue.add(new BPlusTreeEntry("aaa", 0));
-    //    queue.add(new BPlusTreeEntry("bbb", 1));
-    //    queue.add(new BPlusTreeEntry("c", 2));
-    //    queue.add(new BPlusTreeEntry("dd", 3));
-    //    queue.add(new BPlusTreeEntry("eeeee", 4));
-    //    queue.add(new BPlusTreeEntry("fff", 5));
-    //    queue.add(new BPlusTreeEntry("gggg", 6));
-    //    queue.add(new BPlusTreeEntry("hhhhhhhhhh", 7));
-    //    queue.add(new BPlusTreeEntry("x", 8));
-    //    queue.add(new BPlusTreeEntry("yyyy", 9));
-    //    queue.add(new BPlusTreeEntry("zz", 10));
-    //
-    //    bPlusTreeWriter = new BPlusTreeWriter(queue, fileOutput);
-    //
-    //    BPlusTreeHeader bPlusTreeHeader = bPlusTreeWriter.writeLeafNode();
-    //
-    //    ByteBuffer buffer = ByteBuffer.allocate(1024 * 1024);
-    //
-    //    FileInputStream fileInputStream = new FileInputStream(file);
-    //    fileInputStream.getChannel().read(buffer);
-    //
-    //    buffer.flip();
+    FileOutputStream fileOutputStream = new FileOutputStream(file);
+    FileOutput fileOutput = new FileOutput(fileOutputStream, 1024 * 1024);
+    bPlusTreeWriter = new BPlusTreeWriter(fileOutput);
+    orderedQueue.forEach(
+        bPlusTreeEntry ->
+            bPlusTreeWriter.collectRecord(bPlusTreeEntry.getName(), bPlusTreeEntry.getOffset()));
 
-    //    buffer.position((int) bPlusTreeHeader.getOffset());
-    //        BPlusTreeNode rootNode = new BPlusTreeNode();
-    //        rootNode.deserialize(buffer);
-    //    while (true) {
-    //      BPlusTreeNode bPlusTreeNode = new BPlusTreeNode();
-    //      System.out.println(bPlusTreeNode.deserialize(buffer));
-    //    }
+    BPlusTreeHeader bPlusTreeHeader = bPlusTreeWriter.writeBPlusTree();
+
+    assertTest(bPlusTreeHeader);
+  }
+
+  @Test
+  public void testSortAndWriteBPlusTree() throws IOException {
+
+    FileOutputStream fileOutputStream = new FileOutputStream(file);
+    FileOutput fileOutput = new FileOutput(fileOutputStream, 1024 * 1024);
+    bPlusTreeWriter = new BPlusTreeWriter(fileOutput);
+    unorderedQueue.forEach(
+        bPlusTreeEntry ->
+            bPlusTreeWriter.collectRecord(bPlusTreeEntry.getName(), bPlusTreeEntry.getOffset()));
+    BPlusTreeHeader bPlusTreeHeader = bPlusTreeWriter.sortAndWriteBPlusTree();
+
+    assertTest(bPlusTreeHeader);
+  }
+
+  @Test
+  public void testWriteBPlusTreeFromOrderedQueue() throws IOException {
+
+    FileOutputStream fileOutputStream = new FileOutputStream(file);
+    FileOutput fileOutput = new FileOutput(fileOutputStream, 1024 * 1024);
+
+    bPlusTreeWriter = new BPlusTreeWriter(fileOutput);
+
+    BPlusTreeHeader bPlusTreeHeader = bPlusTreeWriter.writeBPlusTree(orderedQueue, true);
+
+    assertTest(bPlusTreeHeader);
+  }
+
+  @Test
+  public void testWriteBPlusTreeFromUnOrderedQueue() throws IOException {
+
+    FileOutputStream fileOutputStream = new FileOutputStream(file);
+    FileOutput fileOutput = new FileOutput(fileOutputStream, 1024 * 1024);
+
+    bPlusTreeWriter = new BPlusTreeWriter(fileOutput);
+
+    BPlusTreeHeader bPlusTreeHeader = bPlusTreeWriter.writeBPlusTree(unorderedQueue, false);
+
+    assertTest(bPlusTreeHeader);
+  }
+
+  @Test
+  public void testWriteBPlusTreeFromOrderedMap() throws IOException {
+
+    FileOutputStream fileOutputStream = new FileOutputStream(file);
+    FileOutput fileOutput = new FileOutput(fileOutputStream, 1024 * 1024);
+
+    Map<String, Long> map = new TreeMap<>();
+
+    orderedQueue.forEach(
+        bPlusTreeEntry -> map.put(bPlusTreeEntry.getName(), bPlusTreeEntry.getOffset()));
+    bPlusTreeWriter = new BPlusTreeWriter(fileOutput);
+
+    BPlusTreeHeader bPlusTreeHeader = bPlusTreeWriter.writeBPlusTree(map, true);
+
+    assertTest(bPlusTreeHeader);
+  }
+
+  @Test
+  public void testWriteBPlusTreeFromUnOrderedMap() throws IOException {
+
+    FileOutputStream fileOutputStream = new FileOutputStream(file);
+    FileOutput fileOutput = new FileOutput(fileOutputStream, 1024 * 1024);
+
+    Map<String, Long> map = new HashMap<>();
+
+    unorderedQueue.forEach(
+        bPlusTreeEntry -> map.put(bPlusTreeEntry.getName(), bPlusTreeEntry.getOffset()));
+    bPlusTreeWriter = new BPlusTreeWriter(fileOutput);
+
+    BPlusTreeHeader bPlusTreeHeader = bPlusTreeWriter.writeBPlusTree(map, false);
+
+    assertTest(bPlusTreeHeader);
+  }
+
+  private void assertTest(BPlusTreeHeader bPlusTreeHeader) throws IOException {
+
+    assertEquals(bPlusTreeHeader.getMax(), "zz");
+    assertEquals(bPlusTreeHeader.getMin(), "aaa");
+
+    ByteBuffer buffer = ByteBuffer.allocate(1024 * 1024);
+
+    fileInputStream = new FileInputStream(file);
+    fileInputStream.getChannel().read(buffer);
+
+    buffer.flip();
+    List<BPlusTreeNode> bPlusTreeNodes = new ArrayList<>();
+
+    while (buffer.position() < buffer.limit()) {
+      BPlusTreeNode bPlusTreeNode = new BPlusTreeNode();
+      bPlusTreeNode.deserialize(buffer);
+      bPlusTreeNodes.add(bPlusTreeNode);
+    }
+    assertEquals(bPlusTreeNodes.size(), 7);
+
+    buffer.position((int) bPlusTreeHeader.getOffset());
+    BPlusTreeNode rootNode = new BPlusTreeNode();
+    rootNode.deserialize(buffer);
+
+    assertEquals(rootNode, bPlusTreeNodes.get(bPlusTreeNodes.size() - 1));
+
+    buffer.position((int) rootNode.getbPlusTreeEntries().get(0).getOffset());
+    BPlusTreeNode nextLevelNode = new BPlusTreeNode();
+    nextLevelNode.deserialize(buffer);
+
+    assertEquals(nextLevelNode, bPlusTreeNodes.get(bPlusTreeNodes.size() - 3));
+
+    buffer.position((int) nextLevelNode.getbPlusTreeEntries().get(0).getOffset());
+    nextLevelNode = new BPlusTreeNode();
+    nextLevelNode.deserialize(buffer);
+
+    assertEquals(nextLevelNode, bPlusTreeNodes.get(0));
   }
 }

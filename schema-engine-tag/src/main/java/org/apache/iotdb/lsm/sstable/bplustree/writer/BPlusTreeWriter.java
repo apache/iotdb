@@ -45,6 +45,13 @@ public class BPlusTreeWriter implements IBPlusTreeWriter {
 
   private BPlusTreeHeader bPlushTreeHeader;
 
+  public BPlusTreeWriter(FileOutput fileOutput) {
+    this.fileOutput = fileOutput;
+    this.currentBPlusTreeEntryQueue = new ArrayDeque<>();
+    this.upperLevelBPlusTreeEntryQueue = new ArrayDeque<>();
+    bPlushTreeHeader = new BPlusTreeHeader();
+  }
+
   public BPlusTreeWriter(Queue<BPlusTreeEntry> bPlusTreeEntryQueue, FileOutput fileOutput) {
     this.currentBPlusTreeEntryQueue = bPlusTreeEntryQueue;
     this.upperLevelBPlusTreeEntryQueue = new ArrayDeque<>();
@@ -53,15 +60,16 @@ public class BPlusTreeWriter implements IBPlusTreeWriter {
   }
 
   /**
-   * generate a b+ tree for records and write to disk
+   * generate a b+ tree and header for records and write to disk
    *
    * @param records a map that holds all records, the map can be unordered
+   * @param ordered whether the queue is in order
    * @return start offset of the b+ tree
    * @throws IOException
    */
   @Override
-  public long write(Map<String, Long> records) throws IOException {
-    setCurrentBPlusTreeEntryQueue(records);
+  public long write(Map<String, Long> records, boolean ordered) throws IOException {
+    setCurrentBPlusTreeEntryQueue(records, ordered);
     BPlusTreeHeader bPlusTreeHeader = writeBPlusTree();
     return fileOutput.write(bPlusTreeHeader);
   }
@@ -70,12 +78,14 @@ public class BPlusTreeWriter implements IBPlusTreeWriter {
    * generate a b+ tree for records and write to disk
    *
    * @param records a map that holds all records, the map can be unordered
+   * @param ordered whether the queue is in order
    * @return b+ tree header
    * @throws IOException
    */
   @Override
-  public BPlusTreeHeader writeBPlusTree(Map<String, Long> records) throws IOException {
-    setCurrentBPlusTreeEntryQueue(records);
+  public BPlusTreeHeader writeBPlusTree(Map<String, Long> records, boolean ordered)
+      throws IOException {
+    setCurrentBPlusTreeEntryQueue(records, ordered);
     return writeBPlusTree();
   }
 
@@ -83,12 +93,13 @@ public class BPlusTreeWriter implements IBPlusTreeWriter {
    * generate a b+ tree and header for records and write to disk
    *
    * @param records a queue that holds all records, the queue can be unordered
+   * @param ordered whether the queue is in order
    * @return start offset of the b+ tree
    * @throws IOException
    */
   @Override
-  public long write(Queue<BPlusTreeEntry> records) throws IOException {
-    setCurrentBPlusTreeEntryQueue(records);
+  public long write(Queue<BPlusTreeEntry> records, boolean ordered) throws IOException {
+    setCurrentBPlusTreeEntryQueue(records, ordered);
     BPlusTreeHeader bPlusTreeHeader = writeBPlusTree();
     return fileOutput.write(bPlusTreeHeader);
   }
@@ -97,18 +108,22 @@ public class BPlusTreeWriter implements IBPlusTreeWriter {
    * generate a b+ tree for records and write to disk
    *
    * @param records a queue that holds all records, the queue can be unordered
+   * @param ordered whether the queue is in order
    * @return b+ tree header
    * @throws IOException
    */
   @Override
-  public BPlusTreeHeader writeBPlusTree(Queue<BPlusTreeEntry> records) throws IOException {
-    setCurrentBPlusTreeEntryQueue(records);
+  public BPlusTreeHeader writeBPlusTree(Queue<BPlusTreeEntry> records, boolean ordered)
+      throws IOException {
+    setCurrentBPlusTreeEntryQueue(records, ordered);
     return writeBPlusTree();
   }
 
   /**
    * collect the records to be written to the disk, and only call write or writeBPlusTree to
-   * actually write to the disk
+   * actually write to the disk, if the written records are ordered, you can directly call the write
+   * or writeBPlusTree methods to write to disk, otherwise call the sortAndWrite and
+   * sortAndWriteBPlusTree methods
    *
    * @param name name of the record
    * @param offset offset of the record
@@ -164,6 +179,30 @@ public class BPlusTreeWriter implements IBPlusTreeWriter {
     }
     currentBPlusTreeEntryQueue = upperLevelBPlusTreeEntryQueue;
     return writeInternalNode();
+  }
+
+  /**
+   * generate a b+ tree and header for records and write to disk, first the records are sorted
+   *
+   * @return start offset of the b+ tree
+   * @throws IOException
+   */
+  @Override
+  public long sortAndWrite() throws IOException {
+    sortCurrentBPlusTreeEntryQueue();
+    return write();
+  }
+
+  /**
+   * generate a b+ tree for records and write to disk, first the records are sorted
+   *
+   * @return b+ tree header
+   * @throws IOException
+   */
+  @Override
+  public BPlusTreeHeader sortAndWriteBPlusTree() throws IOException {
+    sortCurrentBPlusTreeEntryQueue();
+    return writeBPlusTree();
   }
 
   private BPlusTreeHeader writeInternalNode() throws IOException {
@@ -232,20 +271,36 @@ public class BPlusTreeWriter implements IBPlusTreeWriter {
     return bPlushTreeHeader;
   }
 
-  private void setCurrentBPlusTreeEntryQueue(Map<String, Long> records) {
-    records.entrySet().stream()
-        .sorted(Map.Entry.comparingByKey())
-        .forEach(
-            stringIntegerEntry ->
-                currentBPlusTreeEntryQueue.add(
-                    new BPlusTreeEntry(
-                        stringIntegerEntry.getKey(), stringIntegerEntry.getValue())));
+  private void setCurrentBPlusTreeEntryQueue(Map<String, Long> records, boolean ordered) {
+    if (ordered) {
+      records.forEach(
+          (key, value) -> currentBPlusTreeEntryQueue.add(new BPlusTreeEntry(key, value)));
+    } else {
+      records.entrySet().stream()
+          .sorted(Map.Entry.comparingByKey())
+          .forEach(
+              entry ->
+                  currentBPlusTreeEntryQueue.add(
+                      new BPlusTreeEntry(entry.getKey(), entry.getValue())));
+    }
   }
 
-  private void setCurrentBPlusTreeEntryQueue(Queue<BPlusTreeEntry> records) {
-    records.stream()
+  private void setCurrentBPlusTreeEntryQueue(Queue<BPlusTreeEntry> records, boolean ordered) {
+    if (ordered) {
+      currentBPlusTreeEntryQueue = records;
+    } else {
+      records.stream()
+          .sorted(Comparator.comparing(BPlusTreeEntry::getName))
+          .forEach(bPlusTreeEntry -> currentBPlusTreeEntryQueue.add(bPlusTreeEntry));
+    }
+  }
+
+  private void sortCurrentBPlusTreeEntryQueue() {
+    Queue<BPlusTreeEntry> queue = new ArrayDeque<>();
+    currentBPlusTreeEntryQueue.stream()
         .sorted(Comparator.comparing(BPlusTreeEntry::getName))
-        .forEach(bPlusTreeEntry -> currentBPlusTreeEntryQueue.add(bPlusTreeEntry));
+        .forEach(queue::add);
+    currentBPlusTreeEntryQueue = queue;
   }
 
   @Override
