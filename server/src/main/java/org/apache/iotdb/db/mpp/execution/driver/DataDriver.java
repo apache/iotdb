@@ -30,6 +30,7 @@ import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 import com.google.common.util.concurrent.SettableFuture;
+
 import javax.annotation.concurrent.NotThreadSafe;
 
 import java.util.HashSet;
