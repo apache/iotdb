@@ -24,7 +24,7 @@ import org.apache.iotdb.lsm.sstable.bplustree.entry.BPlusTreeEntry;
 import org.apache.iotdb.lsm.sstable.bplustree.entry.BPlusTreeHeader;
 import org.apache.iotdb.lsm.sstable.bplustree.entry.BPlusTreeNode;
 import org.apache.iotdb.lsm.sstable.bplustree.entry.BPlusTreeNodeType;
-import org.apache.iotdb.lsm.sstable.writer.FileOutput;
+import org.apache.iotdb.lsm.sstable.fileIO.FileOutput;
 
 import java.io.IOException;
 import java.util.ArrayDeque;
@@ -155,18 +155,20 @@ public class BPlusTreeWriter implements IBPlusTreeWriter {
    */
   @Override
   public BPlusTreeHeader writeBPlusTree() throws IOException {
-    setBPlushTreeHeaderMaxAndMin();
+    setBPlushTreeHeader();
     BPlusTreeNode bPlusTreeNode = new BPlusTreeNode(BPlusTreeNodeType.LEAF_NODE);
     BPlusTreeEntry bPlusTreeEntry = null;
     if (currentBPlusTreeEntryQueue.size() <= bPlushTreeConfig.getDegree()) {
       return directWriteOneBPlusTreeNode(BPlusTreeNodeType.LEAF_NODE);
     }
+    int count = 0;
     while (!currentBPlusTreeEntryQueue.isEmpty()) {
       bPlusTreeEntry = currentBPlusTreeEntryQueue.poll();
       if (!bPlusTreeNode.needToSplit(bPlushTreeConfig.getDegree())) {
         bPlusTreeNode.add(bPlusTreeEntry);
       } else {
         writeBPlusTreeNode(bPlusTreeNode);
+        count++;
         bPlusTreeNode = new BPlusTreeNode(BPlusTreeNodeType.LEAF_NODE);
         bPlusTreeNode.add(bPlusTreeEntry);
       }
@@ -176,8 +178,10 @@ public class BPlusTreeWriter implements IBPlusTreeWriter {
     }
     if (bPlusTreeNode.getCount() > 0) {
       writeBPlusTreeNode(bPlusTreeNode);
+      count++;
     }
     currentBPlusTreeEntryQueue = upperLevelBPlusTreeEntryQueue;
+    bPlushTreeHeader.setLeftNodeCount(count);
     return writeInternalNode();
   }
 
@@ -246,15 +250,16 @@ public class BPlusTreeWriter implements IBPlusTreeWriter {
     this.fileOutput = fileOutput;
   }
 
-  private void setBPlushTreeHeaderMaxAndMin() {
+  private void setBPlushTreeHeader() {
     if (!currentBPlusTreeEntryQueue.isEmpty()) {
       bPlushTreeHeader.setMax(currentBPlusTreeEntryQueue.peek().getName());
       bPlushTreeHeader.setMin(currentBPlusTreeEntryQueue.peek().getName());
+      bPlushTreeHeader.setFirstLeftNodeOffset(fileOutput.getPosition());
     }
   }
 
   private long writeBPlusTreeNode(BPlusTreeNode bPlusTreeNode) throws IOException {
-    long startOffset = fileOutput.write(bPlusTreeNode);
+    long startOffset = fileOutput.writeToOutStream(bPlusTreeNode);
     upperLevelBPlusTreeEntryQueue.add(new BPlusTreeEntry(bPlusTreeNode.getMin(), startOffset));
     return startOffset;
   }
@@ -266,7 +271,10 @@ public class BPlusTreeWriter implements IBPlusTreeWriter {
     }
     if (bPlusTreeNode.getCount() > 0) {
       long rootNodeOffset = writeBPlusTreeNode(bPlusTreeNode);
-      bPlushTreeHeader.setOffset(rootNodeOffset);
+      bPlushTreeHeader.setRootNodeOffset(rootNodeOffset);
+    }
+    if (type.equals(BPlusTreeNodeType.LEAF_NODE)) {
+      bPlushTreeHeader.setLeftNodeCount(1);
     }
     return bPlushTreeHeader;
   }

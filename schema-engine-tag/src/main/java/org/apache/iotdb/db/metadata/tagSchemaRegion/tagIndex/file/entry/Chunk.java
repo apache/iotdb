@@ -23,7 +23,7 @@ import org.apache.iotdb.lsm.sstable.bplustree.entry.IEntry;
 import org.roaringbitmap.InvalidRoaringFormat;
 import org.roaringbitmap.RoaringBitmap;
 
-import java.io.DataInput;
+import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -47,7 +47,7 @@ public class Chunk implements IEntry {
   }
 
   @Override
-  public IEntry deserialize(DataInput input) throws IOException {
+  public IEntry deserialize(DataInputStream input) throws IOException {
     chunkHeader = new ChunkHeader();
     chunkHeader.deserialize(input);
     roaringBitmap = new RoaringBitmap();

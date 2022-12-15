@@ -16,10 +16,11 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.lsm.sstable.writer;
+package org.apache.iotdb.lsm.sstable.fileIO;
 
 import org.apache.iotdb.lsm.sstable.bplustree.entry.IEntry;
 
+import java.io.DataOutputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
@@ -32,11 +33,13 @@ import java.nio.ByteBuffer;
 public class FileOutput extends OutputStream implements IFileOutput {
 
   private FileOutputStream outputStream;
+  private DataOutputStream dataOutputStream;
   private ByteBuffer byteBuffer;
   private long position;
 
   public FileOutput(FileOutputStream outputStream, int bufferCapacity) {
     this.outputStream = outputStream;
+    dataOutputStream = new DataOutputStream(outputStream);
     byteBuffer = ByteBuffer.allocate(bufferCapacity);
     position = 0;
   }
@@ -71,12 +74,20 @@ public class FileOutput extends OutputStream implements IFileOutput {
   }
 
   @Override
-  public long write(IEntry entry) throws IOException {
+  public synchronized long write(IEntry entry) throws IOException {
     long startOffset = position;
     byteBuffer.clear();
     entry.serialize(byteBuffer);
     byteBuffer.flip();
     write(byteBuffer);
+    return startOffset;
+  }
+
+  @Override
+  public long writeToOutStream(IEntry entry) throws IOException {
+    long startOffset = position;
+    entry.serialize(dataOutputStream);
+    this.position = outputStream.getChannel().position();
     return startOffset;
   }
 
@@ -88,13 +99,14 @@ public class FileOutput extends OutputStream implements IFileOutput {
   @Override
   public void close() throws IOException {
     outputStream.close();
+    dataOutputStream.close();
     byteBuffer.clear();
     byteBuffer = null;
   }
 
   @Override
-  public OutputStream wrapAsStream() {
-    return this;
+  public DataOutputStream wrapAsStream() {
+    return dataOutputStream;
   }
 
   @Override

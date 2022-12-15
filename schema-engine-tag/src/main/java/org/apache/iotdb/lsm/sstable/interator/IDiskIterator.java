@@ -20,7 +20,7 @@ package org.apache.iotdb.lsm.sstable.interator;
 
 import java.io.IOException;
 
-public interface DiskIterator<T> {
+public interface IDiskIterator<T> {
   boolean hasNext() throws IOException;
 
   T next() throws IOException;

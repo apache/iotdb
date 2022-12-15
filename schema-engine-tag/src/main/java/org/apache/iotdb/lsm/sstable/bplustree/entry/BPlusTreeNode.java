@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.lsm.sstable.bplustree.entry;
 
-import java.io.DataInput;
+import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -101,8 +101,16 @@ public class BPlusTreeNode implements IEntry {
   }
 
   @Override
-  public IEntry deserialize(DataInput input) throws IOException {
-    return null;
+  public IEntry deserialize(DataInputStream input) throws IOException {
+    bPlusTreeNodeType = BPlusTreeNodeType.INVALID_NODE;
+    bPlusTreeNodeType.deserialize(input);
+    count = input.readInt();
+    bPlusTreeEntries = new ArrayList<>(count);
+    for (int i = 0; i < count; i++) {
+      BPlusTreeEntry bPlusTreeEntry = new BPlusTreeEntry();
+      bPlusTreeEntries.add((BPlusTreeEntry) bPlusTreeEntry.deserialize(input));
+    }
+    return this;
   }
 
   @Override

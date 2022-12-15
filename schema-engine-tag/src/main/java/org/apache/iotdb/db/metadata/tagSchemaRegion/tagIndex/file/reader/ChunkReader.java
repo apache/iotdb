@@ -21,12 +21,13 @@ package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.reader;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.entry.ChunkHeader;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.entry.RoaringBitmapHeader;
-import org.apache.iotdb.lsm.sstable.interator.DiskIterator;
+import org.apache.iotdb.lsm.sstable.fileIO.FileInput;
+import org.apache.iotdb.lsm.sstable.fileIO.IFileInput;
+import org.apache.iotdb.lsm.sstable.interator.IDiskIterator;
 
 import org.roaringbitmap.RoaringBitmap;
 
 import java.io.IOException;
-import java.io.RandomAccessFile;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -34,7 +35,7 @@ import java.util.NoSuchElementException;
 
 public class ChunkReader implements IChunkReader {
 
-  private final RandomAccessFile tiFileIuput;
+  private final IFileInput tiFileIuput;
 
   private Integer nextID;
 
@@ -46,19 +47,19 @@ public class ChunkReader implements IChunkReader {
 
   private int index;
 
-  private DiskIterator<Integer> containerIterator;
+  private IDiskIterator<Integer> containerIterator;
 
-  public ChunkReader(RandomAccessFile tiFileIuput) throws IOException {
+  public ChunkReader(FileInput tiFileIuput) throws IOException {
     this.tiFileIuput = tiFileIuput;
     chunkHeader = new ChunkHeader();
-    chunkHeader.deserialize(tiFileIuput);
+    tiFileIuput.read(chunkHeader);
   }
 
   @Override
   public RoaringBitmap readRoaringBitmap() throws IOException {
     if (roaringBitmap == null) {
       roaringBitmap = new RoaringBitmap();
-      roaringBitmap.deserialize(tiFileIuput);
+      roaringBitmap.deserialize(tiFileIuput.wrapAsInputStream());
       return roaringBitmap;
     }
     return roaringBitmap;
@@ -77,7 +78,8 @@ public class ChunkReader implements IChunkReader {
     }
     if (roaringBitmapHeader == null) {
       roaringBitmapHeader = new RoaringBitmapHeader();
-      roaringBitmapHeader = (RoaringBitmapHeader) roaringBitmapHeader.deserialize(tiFileIuput);
+      roaringBitmapHeader =
+          (RoaringBitmapHeader) roaringBitmapHeader.deserialize(tiFileIuput.wrapAsInputStream());
       if (!roaringBitmapHeader.hasRun() || roaringBitmapHeader.getSize() >= 4) {
         tiFileIuput.skipBytes(roaringBitmapHeader.getSize() * 4);
       }
@@ -121,7 +123,7 @@ public class ChunkReader implements IChunkReader {
     return nowId;
   }
 
-  private class BitmapContainerIterator implements DiskIterator<Integer> {
+  private class BitmapContainerIterator implements IDiskIterator<Integer> {
 
     private int high;
     private List<Integer> ids;
@@ -192,7 +194,7 @@ public class ChunkReader implements IChunkReader {
     }
   }
 
-  private class ArrayContainerIterator implements DiskIterator<Integer> {
+  private class ArrayContainerIterator implements IDiskIterator<Integer> {
 
     private Character next;
 

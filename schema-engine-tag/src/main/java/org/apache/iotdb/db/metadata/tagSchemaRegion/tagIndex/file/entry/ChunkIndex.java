@@ -20,7 +20,7 @@ package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.entry;
 
 import org.apache.iotdb.lsm.sstable.bplustree.entry.IEntry;
 
-import java.io.DataInput;
+import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -70,7 +70,7 @@ public class ChunkIndex implements IEntry {
   public void serialize(ByteBuffer byteBuffer) {}
 
   @Override
-  public IEntry deserialize(DataInput input) throws IOException {
+  public IEntry deserialize(DataInputStream input) throws IOException {
     return null;
   }
 

@@ -20,7 +20,7 @@ package org.apache.iotdb.lsm.sstable.bplustree.entry;
 
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
-import java.io.DataInput;
+import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -32,30 +32,48 @@ public class BPlusTreeHeader implements IEntry {
 
   String min;
 
-  long rootNodeoffset = -1;
+  long rootNodeOffset = -1;
+
+  long firstLeftNodeOffset = -1;
+
+  int leftNodeCount = -1;
 
   @Override
   public void serialize(DataOutputStream out) throws IOException {
     ReadWriteIOUtils.write(max, out);
     ReadWriteIOUtils.write(min, out);
-    out.writeLong(rootNodeoffset);
+    out.writeLong(rootNodeOffset);
+    out.writeLong(firstLeftNodeOffset);
+    out.writeInt(leftNodeCount);
   }
 
   @Override
   public void serialize(ByteBuffer byteBuffer) {
     ReadWriteIOUtils.write(max, byteBuffer);
     ReadWriteIOUtils.write(min, byteBuffer);
-    byteBuffer.putLong(rootNodeoffset);
+    byteBuffer.putLong(rootNodeOffset);
+    byteBuffer.putLong(firstLeftNodeOffset);
+    byteBuffer.putInt(leftNodeCount);
   }
 
   @Override
-  public IEntry deserialize(DataInput input) throws IOException {
-    return null;
+  public IEntry deserialize(DataInputStream input) throws IOException {
+    max = ReadWriteIOUtils.readString(input);
+    min = ReadWriteIOUtils.readString(input);
+    rootNodeOffset = ReadWriteIOUtils.readLong(input);
+    firstLeftNodeOffset = ReadWriteIOUtils.readLong(input);
+    leftNodeCount = ReadWriteIOUtils.readInt(input);
+    return this;
   }
 
   @Override
   public IEntry deserialize(ByteBuffer byteBuffer) {
-    return null;
+    max = ReadWriteIOUtils.readString(byteBuffer);
+    min = ReadWriteIOUtils.readString(byteBuffer);
+    rootNodeOffset = ReadWriteIOUtils.readLong(byteBuffer);
+    firstLeftNodeOffset = ReadWriteIOUtils.readLong(byteBuffer);
+    leftNodeCount = ReadWriteIOUtils.readInt(byteBuffer);
+    return this;
   }
 
   @Override
@@ -63,14 +81,16 @@ public class BPlusTreeHeader implements IEntry {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
     BPlusTreeHeader that = (BPlusTreeHeader) o;
-    return rootNodeoffset == that.rootNodeoffset
+    return rootNodeOffset == that.rootNodeOffset
+        && firstLeftNodeOffset == that.firstLeftNodeOffset
+        && leftNodeCount == that.leftNodeCount
         && Objects.equals(max, that.max)
         && Objects.equals(min, that.min);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(max, min, rootNodeoffset);
+    return Objects.hash(max, min, rootNodeOffset, firstLeftNodeOffset, leftNodeCount);
   }
 
   public String getMax() {
@@ -89,11 +109,27 @@ public class BPlusTreeHeader implements IEntry {
     this.min = min;
   }
 
-  public long getOffset() {
-    return rootNodeoffset;
+  public long getRootNodeOffset() {
+    return rootNodeOffset;
   }
 
-  public void setOffset(long offset) {
-    this.rootNodeoffset = offset;
+  public void setRootNodeOffset(long rootNodeOffset) {
+    this.rootNodeOffset = rootNodeOffset;
+  }
+
+  public long getFirstLeftNodeOffset() {
+    return firstLeftNodeOffset;
+  }
+
+  public void setFirstLeftNodeOffset(long firstLeftNodeOffset) {
+    this.firstLeftNodeOffset = firstLeftNodeOffset;
+  }
+
+  public int getLeftNodeCount() {
+    return leftNodeCount;
+  }
+
+  public void setLeftNodeCount(int leftNodeCount) {
+    this.leftNodeCount = leftNodeCount;
   }
 }

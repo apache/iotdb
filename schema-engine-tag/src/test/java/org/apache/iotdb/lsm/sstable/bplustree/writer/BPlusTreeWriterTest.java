@@ -22,7 +22,7 @@ import org.apache.iotdb.db.metadata.tagSchemaRegion.config.TagSchemaDescriptor;
 import org.apache.iotdb.lsm.sstable.bplustree.entry.BPlusTreeEntry;
 import org.apache.iotdb.lsm.sstable.bplustree.entry.BPlusTreeHeader;
 import org.apache.iotdb.lsm.sstable.bplustree.entry.BPlusTreeNode;
-import org.apache.iotdb.lsm.sstable.writer.FileOutput;
+import org.apache.iotdb.lsm.sstable.fileIO.FileOutput;
 
 import org.junit.After;
 import org.junit.Before;
@@ -196,6 +196,8 @@ public class BPlusTreeWriterTest {
 
     assertEquals(bPlusTreeHeader.getMax(), "zz");
     assertEquals(bPlusTreeHeader.getMin(), "aaa");
+    assertEquals(bPlusTreeHeader.getFirstLeftNodeOffset(), 0);
+    assertEquals(bPlusTreeHeader.getLeftNodeCount(), 4);
 
     ByteBuffer buffer = ByteBuffer.allocate(1024 * 1024);
 
@@ -212,7 +214,7 @@ public class BPlusTreeWriterTest {
     }
     assertEquals(bPlusTreeNodes.size(), 7);
 
-    buffer.position((int) bPlusTreeHeader.getOffset());
+    buffer.position((int) bPlusTreeHeader.getRootNodeOffset());
     BPlusTreeNode rootNode = new BPlusTreeNode();
     rootNode.deserialize(buffer);
 
@@ -229,5 +231,12 @@ public class BPlusTreeWriterTest {
     nextLevelNode.deserialize(buffer);
 
     assertEquals(nextLevelNode, bPlusTreeNodes.get(0));
+
+    buffer.position((int) bPlusTreeHeader.getFirstLeftNodeOffset());
+    for (int i = 0; i < bPlusTreeHeader.getLeftNodeCount(); i++) {
+      BPlusTreeNode leftNode = new BPlusTreeNode();
+      leftNode.deserialize(buffer);
+      assertEquals(leftNode, bPlusTreeNodes.get(i));
+    }
   }
 }

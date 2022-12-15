@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.reader;
 
+import org.apache.iotdb.lsm.sstable.fileIO.FileInput;
+
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -27,7 +29,6 @@ import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
 
 import static org.junit.Assert.assertEquals;
@@ -42,7 +43,7 @@ public class ChunkReaderTest {
   public void setUp() throws Exception {
     file = new File("testReadRoaringBitmap");
     serializeChunk(file);
-    RandomAccessFile dataInput = new RandomAccessFile(file, "r");
+    FileInput dataInput = new FileInput(file);
     chunkReader = new ChunkReader(dataInput);
   }
 

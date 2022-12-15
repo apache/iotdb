@@ -16,10 +16,11 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.lsm.sstable.writer;
+package org.apache.iotdb.lsm.sstable.fileIO;
 
 import org.apache.iotdb.lsm.sstable.bplustree.entry.IEntry;
 
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
@@ -53,13 +54,22 @@ public interface IFileOutput {
   void write(ByteBuffer b) throws IOException;
 
   /**
-   * Write a IEntry to disk
+   * Write a IEntry to disk, use a byte buffer
    *
    * @param entry entry
    * @return start offset of the entry
    * @throws IOException
    */
   long write(IEntry entry) throws IOException;
+
+  /**
+   * Write a IEntry to disk, using out stream
+   *
+   * @param entry entry
+   * @return start offset of the entry
+   * @throws IOException
+   */
+  long writeToOutStream(IEntry entry) throws IOException;
 
   /**
    * gets the current position of the Output. This method is usually used for recording where the
@@ -84,7 +94,7 @@ public interface IFileOutput {
    * @return an output stream whose position is the same with this Output
    * @throws IOException if an I/O error occurs.
    */
-  OutputStream wrapAsStream() throws IOException;
+  DataOutputStream wrapAsStream() throws IOException;
 
   /**
    * the same with {@link OutputStream#flush()}.

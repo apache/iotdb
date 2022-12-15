@@ -22,7 +22,7 @@ import org.apache.iotdb.lsm.sstable.bplustree.entry.IEntry;
 
 import org.roaringbitmap.InvalidRoaringFormat;
 
-import java.io.DataInput;
+import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -81,7 +81,7 @@ public class RoaringBitmapHeader implements IEntry {
   }
 
   @Override
-  public IEntry deserialize(DataInput in) throws IOException {
+  public IEntry deserialize(DataInputStream in) throws IOException {
     this.cookie = Integer.reverseBytes(in.readInt());
     if ((cookie & '\uffff') != 12347 && cookie != 12346) {
       throw new InvalidRoaringFormat("find a valid cookie.");

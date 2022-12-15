@@ -18,4 +18,15 @@
  */
 package org.apache.iotdb.lsm.sstable.bplustree.reader;
 
-public interface IBPlusTreeReader {}
+import org.apache.iotdb.lsm.sstable.bplustree.entry.BPlusTreeHeader;
+import org.apache.iotdb.lsm.sstable.bplustree.entry.BPlusTreeNode;
+import org.apache.iotdb.lsm.sstable.interator.IDiskIterator;
+
+import java.io.IOException;
+
+public interface IBPlusTreeReader extends IDiskIterator<BPlusTreeNode> {
+
+  BPlusTreeHeader readBPlusTreeHeader(long bPlusTreeStartOffset) throws IOException;
+
+  void close() throws IOException;
+}

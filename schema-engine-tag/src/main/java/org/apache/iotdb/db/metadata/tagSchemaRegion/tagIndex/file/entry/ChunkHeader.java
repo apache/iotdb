@@ -20,7 +20,7 @@ package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.entry;
 
 import org.apache.iotdb.lsm.sstable.bplustree.entry.IEntry;
 
-import java.io.DataInput;
+import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -49,7 +49,7 @@ public class ChunkHeader implements IEntry {
   }
 
   @Override
-  public IEntry deserialize(DataInput in) throws IOException {
+  public IEntry deserialize(DataInputStream in) throws IOException {
     this.size = in.readInt();
     return this;
   }

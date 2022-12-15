@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.lsm.sstable.bplustree.entry;
 
-import java.io.DataInput;
+import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -29,7 +29,7 @@ public interface IEntry {
 
   void serialize(ByteBuffer byteBuffer);
 
-  IEntry deserialize(DataInput input) throws IOException;
+  IEntry deserialize(DataInputStream input) throws IOException;
 
   IEntry deserialize(ByteBuffer byteBuffer);
 }

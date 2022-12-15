@@ -22,12 +22,12 @@ import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.entry.Chunk;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.entry.ChunkIndex;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.entry.ChunkIndexEntry;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.entry.ChunkIndexHeader;
-import org.apache.iotdb.lsm.sstable.interator.DiskIterator;
+import org.apache.iotdb.lsm.sstable.interator.IDiskIterator;
 
 import java.io.IOException;
 import java.util.List;
 
-public interface IChunkGroupReader extends DiskIterator<Integer> {
+public interface IChunkGroupReader extends IDiskIterator<Integer> {
 
   ChunkIndex readChunkIndex() throws IOException;
 

@@ -20,7 +20,7 @@ package org.apache.iotdb.lsm.sstable.bplustree.entry;
 
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
-import java.io.DataInput;
+import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -52,7 +52,9 @@ public class BPlusTreeEntry implements IEntry {
   }
 
   @Override
-  public IEntry deserialize(DataInput input) throws IOException {
+  public IEntry deserialize(DataInputStream input) throws IOException {
+    name = ReadWriteIOUtils.readString(input);
+    offset = ReadWriteIOUtils.readLong(input);
     return this;
   }
 
