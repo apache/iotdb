@@ -37,6 +37,7 @@ import org.mockito.internal.util.collections.Sets;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
@@ -591,5 +592,25 @@ public class ClusterSchemaTreeTest {
         schemaTree
             .searchDeviceSchemaInfo(new PartialPath("root.sg.d1"), Collections.singletonList("s1"))
             .isAligned());
+  }
+
+  @Test
+  public void testExtractDeviceSubTree() throws Exception {
+    SchemaNode root = generateSchemaTree();
+    ClusterSchemaTree schemaTree = new ClusterSchemaTree(root);
+    schemaTree.setDatabases(Collections.singleton("root.sg"));
+    ClusterSchemaTree subTree =
+        schemaTree.extractDeviceSubTree(
+            new PartialPath("root.sg.d1"), Arrays.asList("s1", "status"));
+    Assert.assertEquals(
+        2,
+        subTree
+            .searchDeviceSchemaInfo(new PartialPath("root.sg.d1"), Arrays.asList("s1", "status"))
+            .getMeasurementSchemaList()
+            .size());
+    ClusterSchemaTree emptyTree =
+        schemaTree.extractDeviceSubTree(
+            new PartialPath("root.sg.d"), Collections.singletonList("s1"));
+    Assert.assertTrue(emptyTree.isEmpty());
   }
 }

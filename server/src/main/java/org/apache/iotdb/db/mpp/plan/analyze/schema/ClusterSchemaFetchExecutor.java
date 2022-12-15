@@ -39,6 +39,7 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -80,15 +81,18 @@ class ClusterSchemaFetchExecutor {
                 (key, value) -> {
                   if (value == null) {
                     value = new DeviceSchemaFetchTaskExecutor();
-                    value.incReferenceCount();
                   }
+                  value.incReferenceCount();
                   return value;
                 })
             .execute(devicePath, measurements);
     deviceSchemaFetchTaskExecutorMap.compute(
         devicePath,
         (key, value) -> {
-          if (value == null || value.decAndGetReferenceCount() == 0) {
+          if (value == null) {
+            throw new IllegalStateException();
+          }
+          if (value.decAndGetReferenceCount() == 0) {
             return null;
           }
           return value;
@@ -235,23 +239,17 @@ class ClusterSchemaFetchExecutor {
 
   private static class DeviceSchemaFetchTask {
 
-    private final Set<String> measurementSet = new HashSet<>();
+    private final Set<String> measurementSet = Collections.synchronizedSet(new HashSet<>());
 
     private volatile boolean hasSubmitThread = false;
 
-    private volatile ClusterSchemaTree taskResult;
+    private volatile ClusterSchemaTree taskResult = null;
 
     private boolean canCoverRequest(List<String> measurements) {
       if (measurementSet.size() < measurements.size()) {
         return false;
       }
-      for (String measurement : measurements) {
-        if (!measurementSet.contains(measurement)) {
-          return false;
-        }
-      }
-
-      return true;
+      return measurementSet.containsAll(measurements);
     }
 
     private void addRequest(List<String> measurements) {

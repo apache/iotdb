@@ -39,6 +39,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Deque;
 import java.util.List;
 import java.util.Map;
@@ -327,10 +328,10 @@ public class ClusterSchemaTree implements ISchemaTree {
   }
 
   public ClusterSchemaTree extractDeviceSubTree(PartialPath devicePath, List<String> measurements) {
-    SchemaNode root = new SchemaInternalNode(PATH_ROOT);
+    SchemaNode clonedRoot = new SchemaInternalNode(PATH_ROOT);
     String[] nodes = devicePath.getNodes();
-    SchemaNode cur = root;
-    SchemaNode clonedCur = root;
+    SchemaNode cur = this.root;
+    SchemaNode clonedCur = clonedRoot;
     SchemaNode clonedChild;
     for (int i = 1; i < nodes.length - 1; i++) {
       cur = cur.getChild(nodes[i]);
@@ -350,12 +351,13 @@ public class ClusterSchemaTree implements ISchemaTree {
 
     SchemaEntityNode deviceNode = cur.getAsEntityNode();
     SchemaEntityNode clonedDeviceNode = new SchemaEntityNode(nodes[nodes.length - 1]);
+    clonedCur.addChild(nodes[nodes.length - 1], clonedDeviceNode);
     clonedDeviceNode.setAligned(deviceNode.isAligned());
     SchemaNode child;
     SchemaMeasurementNode measurementNode;
     for (String measurement : measurements) {
       child = deviceNode.getChild(measurement);
-      if (child.isMeasurement()) {
+      if (child != null && child.isMeasurement()) {
         measurementNode = child.getAsMeasurementNode();
         clonedDeviceNode.addChild(measurementNode.getName(), measurementNode);
         if (measurementNode.getAlias() != null) {
@@ -363,6 +365,8 @@ public class ClusterSchemaTree implements ISchemaTree {
         }
       }
     }
-    return new ClusterSchemaTree(root);
+    ClusterSchemaTree result = new ClusterSchemaTree(clonedRoot);
+    result.setDatabases(Collections.singleton(getBelongedDatabase(devicePath)));
+    return result;
   }
 }
