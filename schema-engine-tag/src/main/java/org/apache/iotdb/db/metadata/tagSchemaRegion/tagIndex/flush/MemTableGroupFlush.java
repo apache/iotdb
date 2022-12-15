@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.flush;
 
+import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.entry.TiFile;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemTable;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemTableGroup;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.response.FlushResponse;
@@ -25,6 +26,7 @@ import org.apache.iotdb.lsm.annotation.FlushProcessor;
 import org.apache.iotdb.lsm.context.requestcontext.FlushRequestContext;
 import org.apache.iotdb.lsm.levelProcess.FlushLevelProcessor;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -37,14 +39,14 @@ public class MemTableGroupFlush extends FlushLevelProcessor<MemTableGroup, MemTa
   public List<MemTable> getChildren(
       MemTableGroup memNode, Object request, FlushRequestContext context) {
     FlushResponse flushResponse = new FlushResponse();
-    //    Map<Integer, TiFile> tiFileMap = new HashMap<>();
-    //    for (Map.Entry<Integer, MemTable> entry : memNode.getImmutableMemTables().entrySet()) {
-    //      tiFileMap.put(entry.getKey(), new TiFile());
-    //    }
-    context.setMemTableIndexMap(
+    Map<Integer, TiFile> tiFileMap = new HashMap<>();
+    for (Map.Entry<Integer, MemTable> entry : memNode.getImmutableMemTables().entrySet()) {
+      tiFileMap.put(entry.getKey(), new TiFile());
+    }
+    flushResponse.setValue(tiFileMap);
+    flushResponse.setMemTableIndexMap(
         memNode.getImmutableMemTables().entrySet().stream()
             .collect(Collectors.toMap(Map.Entry::getValue, Map.Entry::getKey)));
-    //    flushResponse.setValue(tiFileMap);
     context.setResponse(flushResponse);
     return (List<MemTable>) memNode.getImmutableMemTables().values();
   }

@@ -18,12 +18,7 @@
  */
 package org.apache.iotdb.lsm.context.requestcontext;
 
-import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemChunk;
-import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemChunkGroup;
-import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemTable;
 import org.apache.iotdb.lsm.strategy.RBFSAccessStrategy;
-
-import java.util.Map;
 
 /**
  * represents the context of a flush request, this class can be extended to implement a custom
@@ -31,47 +26,9 @@ import java.util.Map;
  */
 public class FlushRequestContext extends RequestContext {
 
-  Map<MemTable, Integer> memTableIndexMap;
-
-  Map<MemChunkGroup, Integer> memChunkGroupIndexMap;
-
-  Map<MemChunk, Integer> memChunkIndexMap;
-
   public FlushRequestContext() {
     super();
     // use the reverse breadth-first traversal strategy to access memory nodes
     accessStrategy = new RBFSAccessStrategy();
-  }
-
-  public Map<MemTable, Integer> getMemTableIndexMap() {
-    return memTableIndexMap;
-  }
-
-  public void setMemTableIndexMap(Map<MemTable, Integer> memTableIndexMap) {
-    this.memTableIndexMap = memTableIndexMap;
-  }
-
-  public Map<MemChunkGroup, Integer> getMemChunkGroupIndexMap() {
-    return memChunkGroupIndexMap;
-  }
-
-  public void setMemChunkGroupIndexMap(Map<MemChunkGroup, Integer> memChunkGroupIndexMap) {
-    this.memChunkGroupIndexMap = memChunkGroupIndexMap;
-  }
-
-  public Map<MemChunk, Integer> getMemChunkIndexMap() {
-    return memChunkIndexMap;
-  }
-
-  public void setMemChunkIndexMap(Map<MemChunk, Integer> memChunkIndexMap) {
-    this.memChunkIndexMap = memChunkIndexMap;
-  }
-
-  public Integer getMemTableIndex(MemTable memTable) {
-    return memTableIndexMap.get(memTable);
-  }
-
-  public Integer getMemChunkGroupIndex(MemChunkGroup memChunkGroup) {
-    return memChunkGroupIndexMap.get(memChunkGroup);
   }
 }

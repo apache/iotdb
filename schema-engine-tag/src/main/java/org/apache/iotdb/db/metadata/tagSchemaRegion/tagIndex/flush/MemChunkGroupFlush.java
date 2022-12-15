@@ -20,6 +20,7 @@ package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.flush;
 
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemChunk;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemChunkGroup;
+import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.response.FlushResponse;
 import org.apache.iotdb.lsm.annotation.FlushProcessor;
 import org.apache.iotdb.lsm.context.requestcontext.FlushRequestContext;
 import org.apache.iotdb.lsm.levelProcess.FlushLevelProcessor;
@@ -36,11 +37,12 @@ public class MemChunkGroupFlush extends FlushLevelProcessor<MemChunkGroup, MemCh
   public List<MemChunk> getChildren(
       MemChunkGroup memNode, Object request, FlushRequestContext context) {
 
+    FlushResponse flushResponse = context.getResponse();
     Map<MemChunk, Integer> memChunkIndexMap = new HashMap<>();
     for (Map.Entry<String, MemChunk> entry : memNode.getMemChunkGroupMap().entrySet()) {
-      memChunkIndexMap.put(entry.getValue(), context.getMemChunkGroupIndex(memNode));
+      memChunkIndexMap.put(entry.getValue(), flushResponse.getMemChunkGroupIndex(memNode));
     }
-    context.setMemChunkIndexMap(memChunkIndexMap);
+    flushResponse.setMemChunkIndexMap(memChunkIndexMap);
     return (List<MemChunk>) memNode.getMemChunkGroupMap().values();
   }
 

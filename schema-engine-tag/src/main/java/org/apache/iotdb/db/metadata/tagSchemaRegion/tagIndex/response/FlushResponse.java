@@ -19,12 +19,57 @@
 package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.response;
 
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.entry.TiFile;
+import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemChunk;
+import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemChunkGroup;
+import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemTable;
 import org.apache.iotdb.lsm.response.BaseResponse;
 
 import java.util.HashMap;
 import java.util.Map;
 
 public class FlushResponse extends BaseResponse<Map<Integer, TiFile>> {
+
+  Map<MemTable, Integer> memTableIndexMap;
+
+  Map<MemChunkGroup, Integer> memChunkGroupIndexMap;
+
+  Map<MemChunk, Integer> memChunkIndexMap;
+
+  public Map<MemTable, Integer> getMemTableIndexMap() {
+    return memTableIndexMap;
+  }
+
+  public void setMemTableIndexMap(Map<MemTable, Integer> memTableIndexMap) {
+    this.memTableIndexMap = memTableIndexMap;
+  }
+
+  public Map<MemChunkGroup, Integer> getMemChunkGroupIndexMap() {
+    return memChunkGroupIndexMap;
+  }
+
+  public void setMemChunkGroupIndexMap(Map<MemChunkGroup, Integer> memChunkGroupIndexMap) {
+    this.memChunkGroupIndexMap = memChunkGroupIndexMap;
+  }
+
+  public Map<MemChunk, Integer> getMemChunkIndexMap() {
+    return memChunkIndexMap;
+  }
+
+  public void setMemChunkIndexMap(Map<MemChunk, Integer> memChunkIndexMap) {
+    this.memChunkIndexMap = memChunkIndexMap;
+  }
+
+  public Integer getMemTableIndex(MemTable memTable) {
+    return memTableIndexMap.get(memTable);
+  }
+
+  public Integer getMemChunkGroupIndex(MemChunkGroup memChunkGroup) {
+    return memChunkGroupIndexMap.get(memChunkGroup);
+  }
+
+  public Integer getMemChunkIndex(MemChunk memChunk) {
+    return memChunkGroupIndexMap.get(memChunk);
+  }
 
   public void updateTiFie(Integer id, TiFile tiFile) {
     Map<Integer, TiFile> tiFileMap = getValue();
