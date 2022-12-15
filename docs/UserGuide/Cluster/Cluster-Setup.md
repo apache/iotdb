@@ -28,8 +28,8 @@ This document describes how to install and start IoTDB Cluster (1.0.0).
 1. JDK>=1.8.
 2. Max open file 65535.
 3. Disable the swap memory.
-4. Ensure that data/confignode directory has been cleared when starting the ConfigNode for the first time,
-and data/datanode directory has been cleared when starting the DataNode for the first time
+4. Ensure that data/confignode directory has been cleared when starting ConfigNode for the first time,
+and data/datanode directory has been cleared when starting DataNode for the first time
 5. Turn off the firewall of the server if the entire cluster is in a trusted environment.
 6. By default, IoTDB Cluster will use ports 22277, 22278 for the ConfigNode and 
 6667, 8777, 9003, 40010 and 50010 for the DataNode. 
@@ -288,7 +288,8 @@ Please read the [Cli manual](https://iotdb.apache.org/UserGuide/Master/QuickStar
 
 Use a 3C3D(3 ConfigNodes and 3 DataNodes) as an example.
 Assumed that the IP addresses of the 3 ConfigNodes are 192.168.1.10, 192.168.1.11 and 192.168.1.12, and the default ports 22277 and 22278 are used.
-Assumed that the IP addresses of the 3 DataNodes are 192.168.1.20, 192.168.1.21, and 192.168.1.22, and the default ports 9003, 6667, 40010, 50010 and 8777 are used.
+Assumed that the IP addresses of the 3 DataNodes are 192.168.1.20, 192.168.1.21 and 192.168.1.22, and the default ports 9003, 6667, 40010, 50010 and 8777 are used.
+
 After starting the cluster successfully according to chapter 6.1, you can run the `show cluster details` command on the Cli, and you will see the following results:
 
 ```
