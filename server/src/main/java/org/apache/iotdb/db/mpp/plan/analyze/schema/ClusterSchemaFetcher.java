@@ -124,9 +124,13 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
     }
 
     List<PartialPath> fullPathList = new ArrayList<>();
+    Map<PartialPath, List<String>> deviceMap = new HashMap<>();
     for (PartialPath pattern : pathPatternList) {
       if (!pattern.hasWildcard()) {
         fullPathList.add(pattern);
+        deviceMap
+            .computeIfAbsent(pattern.getDevicePath(), k -> new ArrayList<>())
+            .add(pattern.getMeasurement());
       }
     }
 
@@ -164,9 +168,15 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
         }
       }
 
-      schemaTree =
-          clusterSchemaFetchExecutor.executeSchemaFetchQuery(
-              new SchemaFetchStatement(patternTree, templateMap, false));
+      if (deviceMap.size() == 1) {
+        Map.Entry<PartialPath, List<String>> entry = deviceMap.entrySet().iterator().next();
+        schemaTree =
+            clusterSchemaFetchExecutor.fetchSchemaOfOneDevice(entry.getKey(), entry.getValue());
+      } else {
+        schemaTree =
+            clusterSchemaFetchExecutor.executeSchemaFetchQuery(
+                new SchemaFetchStatement(patternTree, templateMap, false));
+      }
 
       // only cache the schema fetched by full path
       List<MeasurementPath> measurementPathList;
@@ -204,11 +214,12 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
       }
 
       // try fetch the missing schema from remote and cache fetched schema
-      PathPatternTree patternTree = new PathPatternTree();
-      for (int index : indexOfMissingMeasurements) {
-        patternTree.appendFullPath(devicePath, measurements[index]);
-      }
-      ClusterSchemaTree remoteSchemaTree = fetchSchemaFromRemote(patternTree);
+      ClusterSchemaTree remoteSchemaTree =
+          clusterSchemaFetchExecutor.fetchSchemaOfOneDevice(
+              devicePath,
+              indexOfMissingMeasurements.stream()
+                  .map(index -> measurements[index])
+                  .collect(Collectors.toList()));
       if (!remoteSchemaTree.isEmpty()) {
         schemaTree.mergeSchemaTree(remoteSchemaTree);
         schemaCache.put(remoteSchemaTree);
