@@ -22,6 +22,33 @@ package org.apache.iotdb.db.mpp.plan.planner;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.CountSchemaMergeNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.DevicesCountNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.DevicesSchemaScanNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.LevelTimeSeriesCountNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.NodeManagementMemoryMergeNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.NodePathsConvertNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.NodePathsCountNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.NodePathsSchemaScanNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaFetchMergeNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaFetchScanNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaQueryMergeNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaQueryOrderByHeatNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaQueryScanNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.TimeSeriesCountNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.TimeSeriesSchemaScanNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.ActivateTemplateNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.AlterTimeSeriesNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.ConstructSchemaBlackListNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateAlignedTimeSeriesNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateMultiTimeSeriesNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateTimeSeriesNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.DeactivateTemplateNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.DeleteTimeSeriesNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.InternalCreateTimeSeriesNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.PreDeactivateTemplateNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.RollbackPreDeactivateTemplateNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.RollbackSchemaBlackListNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.AggregationNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.DeviceMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.DeviceViewIntoNode;
@@ -33,9 +60,11 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.GroupByLevelNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.GroupByTagNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.IntoNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.LimitNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.MergeSortNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.OffsetNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.ProcessNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.ProjectNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.SingleDeviceViewNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.SlidingWindowAggregationNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.SortNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.TimeJoinNode;
@@ -52,6 +81,12 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.LastQueryScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesAggregationScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SourceNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.DeleteDataNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertMultiTabletsNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowsNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowsOfOneDeviceNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertTabletNode;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -311,6 +346,232 @@ public class MemoryDistributionCalculator
 
   @Override
   public Void visitVerticallyConcat(VerticallyConcatNode node, MemoryDistributionContext context) {
+    processConsumeAllChildrenAtTheSameTime(node);
+    return null;
+  }
+
+  @Override
+  public Void visitSchemaQueryMerge(SchemaQueryMergeNode node, MemoryDistributionContext context) {
+    processConsumeAllChildrenAtTheSameTime(node);
+    return null;
+  }
+
+  @Override
+  public Void visitSchemaQueryScan(SchemaQueryScanNode node, MemoryDistributionContext context) {
+    processConsumeAllChildrenAtTheSameTime(node);
+    return null;
+  }
+
+  @Override
+  public Void visitSchemaQueryOrderByHeat(
+      SchemaQueryOrderByHeatNode node, MemoryDistributionContext context) {
+    processConsumeAllChildrenAtTheSameTime(node);
+    return null;
+  }
+
+  @Override
+  public Void visitTimeSeriesSchemaScan(
+      TimeSeriesSchemaScanNode node, MemoryDistributionContext context) {
+    processConsumeAllChildrenAtTheSameTime(node);
+    return null;
+  }
+
+  @Override
+  public Void visitDevicesSchemaScan(
+      DevicesSchemaScanNode node, MemoryDistributionContext context) {
+    processConsumeAllChildrenAtTheSameTime(node);
+    return null;
+  }
+
+  @Override
+  public Void visitDevicesCount(DevicesCountNode node, MemoryDistributionContext context) {
+    processConsumeAllChildrenAtTheSameTime(node);
+    return null;
+  }
+
+  @Override
+  public Void visitTimeSeriesCount(TimeSeriesCountNode node, MemoryDistributionContext context) {
+    processConsumeAllChildrenAtTheSameTime(node);
+    return null;
+  }
+
+  @Override
+  public Void visitLevelTimeSeriesCount(
+      LevelTimeSeriesCountNode node, MemoryDistributionContext context) {
+    processConsumeAllChildrenAtTheSameTime(node);
+    return null;
+  }
+
+  @Override
+  public Void visitCountMerge(CountSchemaMergeNode node, MemoryDistributionContext context) {
+    processConsumeAllChildrenAtTheSameTime(node);
+    return null;
+  }
+
+  @Override
+  public Void visitCreateTimeSeries(CreateTimeSeriesNode node, MemoryDistributionContext context) {
+    processConsumeAllChildrenAtTheSameTime(node);
+    return null;
+  }
+
+  @Override
+  public Void visitSchemaFetchMerge(SchemaFetchMergeNode node, MemoryDistributionContext context) {
+    processConsumeAllChildrenAtTheSameTime(node);
+    return null;
+  }
+
+  @Override
+  public Void visitSchemaFetchScan(SchemaFetchScanNode node, MemoryDistributionContext context) {
+    processConsumeAllChildrenAtTheSameTime(node);
+    return null;
+  }
+
+  @Override
+  public Void visitCreateAlignedTimeSeries(
+      CreateAlignedTimeSeriesNode node, MemoryDistributionContext context) {
+    processConsumeAllChildrenAtTheSameTime(node);
+    return null;
+  }
+
+  @Override
+  public Void visitCreateMultiTimeSeries(
+      CreateMultiTimeSeriesNode node, MemoryDistributionContext context) {
+    processConsumeAllChildrenAtTheSameTime(node);
+    return null;
+  }
+
+  @Override
+  public Void visitAlterTimeSeries(AlterTimeSeriesNode node, MemoryDistributionContext context) {
+    processConsumeAllChildrenAtTheSameTime(node);
+    return null;
+  }
+
+  @Override
+  public Void visitInsertRow(InsertRowNode node, MemoryDistributionContext context) {
+    processConsumeAllChildrenAtTheSameTime(node);
+    return null;
+  }
+
+  @Override
+  public Void visitInsertTablet(InsertTabletNode node, MemoryDistributionContext context) {
+    processConsumeAllChildrenAtTheSameTime(node);
+    return null;
+  }
+
+  @Override
+  public Void visitInsertRows(InsertRowsNode node, MemoryDistributionContext context) {
+    processConsumeAllChildrenAtTheSameTime(node);
+    return null;
+  }
+
+  @Override
+  public Void visitInsertMultiTablets(
+      InsertMultiTabletsNode node, MemoryDistributionContext context) {
+    processConsumeAllChildrenAtTheSameTime(node);
+    return null;
+  }
+
+  @Override
+  public Void visitInsertRowsOfOneDevice(
+      InsertRowsOfOneDeviceNode node, MemoryDistributionContext context) {
+    processConsumeAllChildrenAtTheSameTime(node);
+    return null;
+  }
+
+  @Override
+  public Void visitNodePathsSchemaScan(
+      NodePathsSchemaScanNode node, MemoryDistributionContext context) {
+    processConsumeAllChildrenAtTheSameTime(node);
+    return null;
+  }
+
+  @Override
+  public Void visitNodeManagementMemoryMerge(
+      NodeManagementMemoryMergeNode node, MemoryDistributionContext context) {
+    processConsumeAllChildrenAtTheSameTime(node);
+    return null;
+  }
+
+  @Override
+  public Void visitNodePathConvert(NodePathsConvertNode node, MemoryDistributionContext context) {
+    processConsumeAllChildrenAtTheSameTime(node);
+    return null;
+  }
+
+  @Override
+  public Void visitNodePathsCount(NodePathsCountNode node, MemoryDistributionContext context) {
+    processConsumeAllChildrenAtTheSameTime(node);
+    return null;
+  }
+
+  @Override
+  public Void visitDeleteTimeseries(DeleteTimeSeriesNode node, MemoryDistributionContext context) {
+    processConsumeAllChildrenAtTheSameTime(node);
+    return null;
+  }
+
+  @Override
+  public Void visitConstructSchemaBlackList(
+      ConstructSchemaBlackListNode node, MemoryDistributionContext context) {
+    processConsumeAllChildrenAtTheSameTime(node);
+    return null;
+  }
+
+  @Override
+  public Void visitRollbackSchemaBlackList(
+      RollbackSchemaBlackListNode node, MemoryDistributionContext context) {
+    processConsumeAllChildrenAtTheSameTime(node);
+    return null;
+  }
+
+  @Override
+  public Void visitDeleteData(DeleteDataNode node, MemoryDistributionContext context) {
+    processConsumeAllChildrenAtTheSameTime(node);
+    return null;
+  }
+
+  @Override
+  public Void visitInternalCreateTimeSeries(
+      InternalCreateTimeSeriesNode node, MemoryDistributionContext context) {
+    processConsumeAllChildrenAtTheSameTime(node);
+    return null;
+  }
+
+  @Override
+  public Void visitActivateTemplate(ActivateTemplateNode node, MemoryDistributionContext context) {
+    processConsumeAllChildrenAtTheSameTime(node);
+    return null;
+  }
+
+  @Override
+  public Void visitPreDeactivateTemplate(
+      PreDeactivateTemplateNode node, MemoryDistributionContext context) {
+    processConsumeAllChildrenAtTheSameTime(node);
+    return null;
+  }
+
+  @Override
+  public Void visitRollbackPreDeactivateTemplate(
+      RollbackPreDeactivateTemplateNode node, MemoryDistributionContext context) {
+    processConsumeAllChildrenAtTheSameTime(node);
+    return null;
+  }
+
+  @Override
+  public Void visitDeactivateTemplate(
+      DeactivateTemplateNode node, MemoryDistributionContext context) {
+    processConsumeAllChildrenAtTheSameTime(node);
+    return null;
+  }
+
+  @Override
+  public Void visitSingleDeviceView(SingleDeviceViewNode node, MemoryDistributionContext context) {
+    processConsumeAllChildrenAtTheSameTime(node);
+    return null;
+  }
+
+  @Override
+  public Void visitMergeSort(MergeSortNode node, MemoryDistributionContext context) {
     processConsumeAllChildrenAtTheSameTime(node);
     return null;
   }

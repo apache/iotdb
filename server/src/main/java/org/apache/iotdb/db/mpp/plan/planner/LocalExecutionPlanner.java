@@ -107,6 +107,9 @@ public class LocalExecutionPlanner {
 
     Operator root = plan.accept(new OperatorTreeGenerator(), context);
 
+    // calculate memory distribution of ISinkHandle/ISourceHandle
+    setMemoryLimitForHandle(instanceContext.getId().toThrift(), plan);
+
     // check whether current free memory is enough to execute current query
     checkMemory(root, instanceContext.getStateMachine());
 
@@ -123,9 +126,10 @@ public class LocalExecutionPlanner {
   private void setMemoryLimitForHandle(TFragmentInstanceId fragmentInstanceId, PlanNode plan) {
     MemoryDistributionCalculator visitor = new MemoryDistributionCalculator();
     plan.accept(visitor, null);
+    long totalSplit = visitor.calculateTotalSplit();
     long maxBytesOneHandleCanReserve =
         IoTDBDescriptor.getInstance().getConfig().getMaxBytesPerFragmentInstance()
-            / visitor.calculateTotalSplit();
+            / (totalSplit == 0 ? 1 : totalSplit);
     for (ISourceHandle handle :
         MPPDataExchangeService.getInstance()
             .getMPPDataExchangeManager()

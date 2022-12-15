@@ -538,6 +538,10 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
   }
 
   public List<ISourceHandle> getISourceHandle(TFragmentInstanceId fragmentInstanceId) {
-    return new ArrayList<>(sourceHandles.get(fragmentInstanceId).values());
+    if (sourceHandles.containsKey(fragmentInstanceId)) {
+      return new ArrayList<>(sourceHandles.get(fragmentInstanceId).values());
+    } else {
+      return new ArrayList<>();
+    }
   }
 }

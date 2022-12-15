@@ -90,7 +90,7 @@ public class SourceHandle implements ISourceHandle {
   private boolean closed = false;
 
   /** max bytes this SourceHandle can reserve. */
-  private long maxBytesCanReserve;
+  private long maxBytesCanReserve = Long.MAX_VALUE;
 
   /**
    * this is set to true after calling isBlocked() at least once which indicates that this

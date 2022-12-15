@@ -95,7 +95,7 @@ public class SinkHandle implements ISinkHandle {
   private boolean noMoreTsBlocks = false;
 
   /** max bytes this SourceHandle can reserve. */
-  private long maxBytesCanReserve;
+  private long maxBytesCanReserve = Long.MAX_VALUE;
 
   public SinkHandle(
       TEndPoint remoteEndpoint,
