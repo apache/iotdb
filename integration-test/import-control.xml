@@ -65,6 +65,7 @@
     <allow class="org.apache.iotdb.commons.exception.IllegalPathException" />
     <allow class="org.apache.commons.codec.digest.DigestUtils" />
     <allow class="org.apache.iotdb.commons.trigger.service.TriggerExecutableManager" />
+    <allow class="org.apache.iotdb.db.mpp.plan.statement.AuthorType" />
     <allow class="org.apache.iotdb.commons.trigger.TriggerInformation" />
     <allow class="org.apache.iotdb.commons.udf.UDFInformation" />
     <allow class="org.apache.iotdb.commons.cq.CQState" />

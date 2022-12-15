@@ -210,4 +210,12 @@ public interface BaseEnv {
   void shutdownDataNode(int index);
 
   int getMqttPort();
+
+  String getIP();
+
+  String getPort();
+
+  String getSbinPath();
+
+  String getLibPath();
 }

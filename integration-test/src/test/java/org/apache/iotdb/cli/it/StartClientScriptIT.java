@@ -16,27 +16,46 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.cli;
+package org.apache.iotdb.cli.it;
 
-import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.it.framework.IoTDBTestRunner;
+import org.apache.iotdb.itbase.category.ClusterIT;
+import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 
-import org.junit.After;
-import org.junit.Before;
+import org.junit.AfterClass;
+import org.junit.BeforeClass;
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
+import org.junit.runner.RunWith;
 
 import java.io.File;
 import java.io.IOException;
 
+@RunWith(IoTDBTestRunner.class)
+@Category({LocalStandaloneIT.class, ClusterIT.class})
 public class StartClientScriptIT extends AbstractScript {
 
-  @Before
-  public void setUp() {
-    EnvironmentUtils.envSetUp();
+  private static String ip;
+
+  private static String port;
+
+  private static String sbinPath;
+
+  private static String libPath;
+
+  @BeforeClass
+  public static void setUp() throws Exception {
+    EnvFactory.getEnv().initBeforeClass();
+    ip = EnvFactory.getEnv().getIP();
+    port = EnvFactory.getEnv().getPort();
+    sbinPath = EnvFactory.getEnv().getSbinPath();
+    libPath = EnvFactory.getEnv().getLibPath();
   }
 
-  @After
-  public void tearDown() throws Exception {
-    EnvironmentUtils.cleanEnv();
+  @AfterClass
+  public static void tearDown() throws Exception {
+    EnvFactory.getEnv().cleanAfterClass();
   }
 
   @Test
@@ -51,7 +70,6 @@ public class StartClientScriptIT extends AbstractScript {
 
   @Override
   protected void testOnWindows() throws IOException {
-    String dir = getCliPath();
     final String[] output = {
       "Error: Connection Error, please check whether the network is available or the server has started. Host is 127.0.0.1, port is 6668."
     };
@@ -59,9 +77,9 @@ public class StartClientScriptIT extends AbstractScript {
         new ProcessBuilder(
             "cmd.exe",
             "/c",
-            dir + File.separator + "sbin" + File.separator + "start-cli.bat",
+            sbinPath + File.separator + "start-cli.bat",
             "-h",
-            "127.0.0.1",
+            ip,
             "-p",
             "6668",
             "-u",
@@ -71,6 +89,7 @@ public class StartClientScriptIT extends AbstractScript {
             "&",
             "exit",
             "%^errorlevel%");
+    builder.environment().put("CLASSPATH", libPath);
     testOutput(builder, output, 1);
 
     final String[] output2 = {"Msg: The statement is executed successfully."};
@@ -78,7 +97,11 @@ public class StartClientScriptIT extends AbstractScript {
         new ProcessBuilder(
             "cmd.exe",
             "/c",
-            dir + File.separator + "sbin" + File.separator + "start-cli.bat",
+            sbinPath + File.separator + "start-cli.bat",
+            "-h",
+            ip,
+            "-p",
+            port,
             "-maxPRC",
             "0",
             "-e",
@@ -86,6 +109,7 @@ public class StartClientScriptIT extends AbstractScript {
             "&",
             "exit",
             "%^errorlevel%");
+    builder2.environment().put("CLASSPATH", libPath);
     testOutput(builder2, output2, 0);
 
     final String[] output3 = {
@@ -95,44 +119,50 @@ public class StartClientScriptIT extends AbstractScript {
         new ProcessBuilder(
             "cmd.exe",
             "/c",
-            dir + File.separator + "sbin" + File.separator + "start-cli.bat",
+            sbinPath + File.separator + "start-cli.bat",
             "-maxPRC",
             "-1111111111111111111111111111",
             "&",
             "exit",
             "%^errorlevel%");
+    builder3.environment().put("CLASSPATH", libPath);
     testOutput(builder3, output3, 1);
   }
 
   @Override
   protected void testOnUnix() throws IOException {
-    String dir = getCliPath();
     final String[] output = {
       "Error: Connection Error, please check whether the network is available or the server has started. Host is 127.0.0.1, port is 6668."
     };
     ProcessBuilder builder =
         new ProcessBuilder(
             "sh",
-            dir + File.separator + "sbin" + File.separator + "start-cli.sh",
+            sbinPath + File.separator + "start-cli.sh",
             "-h",
-            "127.0.0.1",
+            ip,
             "-p",
             "6668",
             "-u",
             "root",
             "-pw",
             "root");
+    builder.environment().put("CLASSPATH", libPath);
     testOutput(builder, output, 1);
 
     final String[] output2 = {"Msg: The statement is executed successfully."};
     ProcessBuilder builder2 =
         new ProcessBuilder(
             "sh",
-            dir + File.separator + "sbin" + File.separator + "start-cli.sh",
+            sbinPath + File.separator + "start-cli.sh",
+            "-h",
+            ip,
+            "-p",
+            port,
             "-maxPRC",
             "0",
             "-e",
             "\"flush\"");
+    builder2.environment().put("CLASSPATH", libPath);
     testOutput(builder2, output2, 0);
 
     final String[] output3 = {
@@ -141,9 +171,10 @@ public class StartClientScriptIT extends AbstractScript {
     ProcessBuilder builder3 =
         new ProcessBuilder(
             "sh",
-            dir + File.separator + "sbin" + File.separator + "start-cli.sh",
+            sbinPath + File.separator + "start-cli.sh",
             "-maxPRC",
             "-1111111111111111111111111111");
+    builder3.environment().put("CLASSPATH", libPath);
     testOutput(builder3, output3, 1);
   }
 }
