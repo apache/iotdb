@@ -27,7 +27,6 @@ import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
-import org.apache.iotdb.db.qp.physical.sys.CreateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -845,80 +844,6 @@ public abstract class SchemaBasicTest {
     }
   }
 
-  @SuppressWarnings("Duplicates")
-  private CreateTemplatePlan getTreeTemplatePlan() {
-    /**
-     * Construct a template like: create schema template treeTemplate ( (d1.s1 INT32 GORILLA
-     * SNAPPY), (s2 INT32 GORILLA SNAPPY), (GPS.x FLOAT RLE SNAPPY), (GPS.y FLOAT RLE SNAPPY), )with
-     * aligned (GPS)
-     */
-    List<List<String>> measurementList = new ArrayList<>();
-    measurementList.add(Collections.singletonList("d1.s1"));
-    measurementList.add(Collections.singletonList("s2"));
-    measurementList.add(Arrays.asList("GPS.x", "GPS.y"));
-
-    List<List<TSDataType>> dataTypeList = new ArrayList<>();
-    dataTypeList.add(Collections.singletonList(TSDataType.INT32));
-    dataTypeList.add(Collections.singletonList(TSDataType.INT32));
-    dataTypeList.add(Arrays.asList(TSDataType.FLOAT, TSDataType.FLOAT));
-
-    List<List<TSEncoding>> encodingList = new ArrayList<>();
-    encodingList.add(Collections.singletonList(TSEncoding.GORILLA));
-    encodingList.add(Collections.singletonList(TSEncoding.GORILLA));
-    encodingList.add(Arrays.asList(TSEncoding.RLE, TSEncoding.RLE));
-
-    List<List<CompressionType>> compressionTypes = new ArrayList<>();
-    compressionTypes.add(Collections.singletonList(CompressionType.GZIP));
-    compressionTypes.add(Collections.singletonList(CompressionType.SNAPPY));
-    compressionTypes.add(Arrays.asList(CompressionType.SNAPPY, CompressionType.SNAPPY));
-
-    return new CreateTemplatePlan(
-        "treeTemplate", measurementList, dataTypeList, encodingList, compressionTypes);
-  }
-
-  @SuppressWarnings("Duplicates")
-  private CreateTemplatePlan getCreateTemplatePlan() {
-    List<List<String>> measurementList = new ArrayList<>();
-    measurementList.add(Collections.singletonList("s11"));
-
-    List<String> measurements = new ArrayList<>();
-    for (int i = 0; i < 10; i++) {
-      measurements.add("vector.s" + i);
-    }
-    measurementList.add(measurements);
-
-    List<List<TSDataType>> dataTypeList = new ArrayList<>();
-    dataTypeList.add(Collections.singletonList(TSDataType.INT64));
-    List<TSDataType> dataTypes = new ArrayList<>();
-    for (int i = 0; i < 10; i++) {
-      dataTypes.add(TSDataType.INT64);
-    }
-    dataTypeList.add(dataTypes);
-
-    List<List<TSEncoding>> encodingList = new ArrayList<>();
-    encodingList.add(Collections.singletonList(TSEncoding.RLE));
-    List<TSEncoding> encodings = new ArrayList<>();
-    for (int i = 0; i < 10; i++) {
-      encodings.add(TSEncoding.RLE);
-    }
-    encodingList.add(encodings);
-
-    List<List<CompressionType>> compressionTypes = new ArrayList<>();
-    List<CompressionType> compressorList = new ArrayList<>();
-    for (int i = 0; i < 10; i++) {
-      compressorList.add(CompressionType.SNAPPY);
-    }
-    compressionTypes.add(Collections.singletonList(CompressionType.SNAPPY));
-    compressionTypes.add(compressorList);
-
-    List<String> schemaNames = new ArrayList<>();
-    schemaNames.add("s21");
-    schemaNames.add("vector");
-
-    return new CreateTemplatePlan(
-        "template1", schemaNames, measurementList, dataTypeList, encodingList, compressionTypes);
-  }
-
   @Test
   public void testShowTimeseries() {
     LocalSchemaProcessor schemaProcessor = LocalSchemaProcessor.getInstance();
@@ -1212,26 +1137,6 @@ public abstract class SchemaBasicTest {
     } catch (MetadataException e) {
       fail(e.getMessage());
     }
-  }
-
-  private CreateTemplatePlan getCreateTemplatePlan(String schemaName) {
-    List<List<String>> measurementList = new ArrayList<>();
-    measurementList.add(Collections.singletonList("s0"));
-
-    List<List<TSDataType>> dataTypeList = new ArrayList<>();
-    dataTypeList.add(Collections.singletonList(TSDataType.INT32));
-
-    List<List<TSEncoding>> encodingList = new ArrayList<>();
-    encodingList.add(Collections.singletonList(TSEncoding.RLE));
-
-    List<List<CompressionType>> compressionTypes = new ArrayList<>();
-    compressionTypes.add(Collections.singletonList(compressionType));
-
-    List<String> schemaNames = new ArrayList<>();
-    schemaNames.add(schemaName);
-
-    return new CreateTemplatePlan(
-        "template1", schemaNames, measurementList, dataTypeList, encodingList, compressionTypes);
   }
 
   @Test

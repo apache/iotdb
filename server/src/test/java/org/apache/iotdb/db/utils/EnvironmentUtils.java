@@ -39,13 +39,10 @@ import org.apache.iotdb.db.metadata.idtable.entry.DeviceIDFactory;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
-import org.apache.iotdb.db.query.control.QueryTimeManager;
-import org.apache.iotdb.db.query.executor.LastQueryExecutor;
 import org.apache.iotdb.db.rescon.MemTableManager;
 import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
 import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.db.rescon.TsFileResourceManager;
-import org.apache.iotdb.db.service.NewIoTDB;
 import org.apache.iotdb.db.sync.common.LocalSyncInfoFetcher;
 import org.apache.iotdb.db.wal.WALManager;
 import org.apache.iotdb.db.wal.recover.WALRecoverManager;
@@ -90,8 +87,6 @@ public class EnvironmentUtils {
 
   private static final long oldGroupSizeInByte = config.getMemtableSizeThreshold();
 
-  private static NewIoTDB daemon;
-
   private static TConfiguration tConfiguration = TConfigurationConst.defaultTConfiguration;
 
   public static boolean examinePorts =
@@ -111,10 +106,6 @@ public class EnvironmentUtils {
     }
 
     logger.debug("EnvironmentUtil cleanEnv...");
-    if (daemon != null) {
-      daemon.stop();
-      daemon = null;
-    }
     QueryResourceManager.getInstance().endQuery(TEST_QUERY_JOB_ID);
 
     // clear opened file streams
@@ -154,10 +145,6 @@ public class EnvironmentUtils {
       TimeSeriesMetadataCache.getInstance().clear();
       BloomFilterCache.getInstance().clear();
     }
-    // close metadata
-    NewIoTDB.configManager.clear();
-
-    QueryTimeManager.getInstance().clear();
 
     // close array manager
     PrimitiveArrayManager.close();
@@ -173,9 +160,6 @@ public class EnvironmentUtils {
 
     // clear id table manager
     IDTableManager.getInstance().clear();
-
-    // clear last query executor
-    LastQueryExecutor.clear();
 
     // clear SyncLogger
     LocalSyncInfoFetcher.getInstance().close();
@@ -282,15 +266,6 @@ public class EnvironmentUtils {
     config.setAvgSeriesPointNumberThreshold(Integer.MAX_VALUE);
     // use async wal mode in test
     config.setAvgSeriesPointNumberThreshold(Integer.MAX_VALUE);
-    if (daemon == null) {
-      daemon = new NewIoTDB();
-    }
-    try {
-      EnvironmentUtils.daemon.active(true);
-    } catch (Exception e) {
-      e.printStackTrace();
-      fail(e.getMessage());
-    }
 
     createAllDir();
 
@@ -301,37 +276,17 @@ public class EnvironmentUtils {
     TEST_QUERY_CONTEXT = new QueryContext(TEST_QUERY_JOB_ID);
   }
 
-  public static void stopDaemon() {
-    if (daemon != null) {
-      daemon.stop();
-    }
-  }
+  public static void stopDaemon() {}
 
-  public static void shutdownDaemon() throws Exception {
-    if (daemon != null) {
-      daemon.shutdown();
-    }
-  }
+  public static void shutdownDaemon() throws Exception {}
 
-  public static void activeDaemon() {
-    if (daemon != null) {
-      daemon.active(true);
-    }
-  }
+  public static void activeDaemon() {}
 
-  public static void reactiveDaemon() {
-    if (daemon == null) {
-      daemon = new NewIoTDB();
-      daemon.active(true);
-    } else {
-      activeDaemon();
-    }
-  }
+  public static void reactiveDaemon() {}
 
   public static void restartDaemon() throws Exception {
     shutdownDaemon();
     stopDaemon();
-    NewIoTDB.configManager.clear();
     IDTableManager.getInstance().clear();
     TsFileResourceManager.getInstance().clear();
     WALManager.getInstance().clear();

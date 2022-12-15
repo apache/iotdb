@@ -218,7 +218,6 @@ public class TTLTest {
                 SchemaTestUtils.getMeasurementPath(sg1 + TsFileConstant.PATH_SEPARATOR + s1)),
             sg1,
             EnvironmentUtils.TEST_QUERY_CONTEXT,
-            null,
             null);
     List<TsFileResource> seqResource = dataSource.getSeqResources();
     List<TsFileResource> unseqResource = dataSource.getUnseqResources();
@@ -234,7 +233,6 @@ public class TTLTest {
                 SchemaTestUtils.getMeasurementPath(sg1 + TsFileConstant.PATH_SEPARATOR + s1)),
             sg1,
             EnvironmentUtils.TEST_QUERY_CONTEXT,
-            null,
             null);
     seqResource = dataSource.getSeqResources();
     unseqResource = dataSource.getUnseqResources();
@@ -274,7 +272,6 @@ public class TTLTest {
                 SchemaTestUtils.getMeasurementPath(sg1 + TsFileConstant.PATH_SEPARATOR + s1)),
             sg1,
             EnvironmentUtils.TEST_QUERY_CONTEXT,
-            null,
             null);
     seqResource = dataSource.getSeqResources();
     unseqResource = dataSource.getUnseqResources();

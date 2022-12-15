@@ -22,42 +22,24 @@ package org.apache.iotdb.db.metadata.storagegroup;
 import org.apache.iotdb.common.rpc.thrift.TSchemaNode;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.mtree.ConfigMTree;
-import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
-import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
-import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
 import org.apache.iotdb.tsfile.utils.Pair;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import java.io.File;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import static org.apache.iotdb.db.metadata.MetadataConstant.STORAGE_GROUP_LOG;
-
+// Never support restart
 // This class implements all the interfaces for database management. The MTreeAboveSg is used
 // to manage all the databases and MNodes above database.
+@Deprecated
 public class StorageGroupSchemaManager implements IStorageGroupSchemaManager {
 
-  private static final Logger logger = LoggerFactory.getLogger(StorageGroupSchemaManager.class);
-
-  private IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-
-  private StorageGroupLogWriter logWriter;
-
   private ConfigMTree mtree;
-
-  private boolean isRecover = true;
 
   private static class StorageGroupManagerHolder {
 
@@ -73,64 +55,51 @@ public class StorageGroupSchemaManager implements IStorageGroupSchemaManager {
   private StorageGroupSchemaManager() {}
 
   public synchronized void init() throws MetadataException, IOException {
-    isRecover = true;
 
     mtree = new ConfigMTree();
 
     recoverLog();
-    logWriter = new StorageGroupLogWriter(config.getSchemaDir(), STORAGE_GROUP_LOG);
-
-    isRecover = false;
   }
 
   public void recoverLog() throws IOException {
-    File logFile = new File(config.getSchemaDir(), STORAGE_GROUP_LOG);
-    if (!logFile.exists()) {
-      return;
-    }
-    try (StorageGroupLogReader logReader =
-        new StorageGroupLogReader(config.getSchemaDir(), STORAGE_GROUP_LOG)) {
-      PhysicalPlan plan;
-      while (logReader.hasNext()) {
-        plan = logReader.next();
-        try {
-          switch (plan.getOperatorType()) {
-            case SET_STORAGE_GROUP:
-              SetStorageGroupPlan setStorageGroupPlan = (SetStorageGroupPlan) plan;
-              setStorageGroup(setStorageGroupPlan.getPath());
-              break;
-            case DELETE_STORAGE_GROUP:
-              DeleteStorageGroupPlan deleteStorageGroupPlan = (DeleteStorageGroupPlan) plan;
-              deleteStorageGroup(deleteStorageGroupPlan.getPaths().get(0));
-              break;
-            case TTL:
-              SetTTLPlan setTTLPlan = (SetTTLPlan) plan;
-              setTTL(setTTLPlan.getStorageGroup(), setTTLPlan.getDataTTL());
-              break;
-            default:
-              logger.error("Unrecognizable command {}", plan.getOperatorType());
-          }
-        } catch (MetadataException | IOException e) {
-          logger.error("Error occurred while redo database log", e);
-        }
-      }
-    }
+    //    File logFile = new File(config.getSchemaDir(), STORAGE_GROUP_LOG);
+    //    if (!logFile.exists()) {
+    //      return;
+    //    }
+    //    try (StorageGroupLogReader logReader =
+    //        new StorageGroupLogReader(config.getSchemaDir(), STORAGE_GROUP_LOG)) {
+    //      PhysicalPlan plan;
+    //      while (logReader.hasNext()) {
+    //        plan = logReader.next();
+    //        try {
+    //          switch (plan.getOperatorType()) {
+    //            case SET_STORAGE_GROUP:
+    //              SetStorageGroupPlan setStorageGroupPlan = (SetStorageGroupPlan) plan;
+    //              setStorageGroup(setStorageGroupPlan.getPath());
+    //              break;
+    //            case DELETE_STORAGE_GROUP:
+    //              DeleteStorageGroupPlan deleteStorageGroupPlan = (DeleteStorageGroupPlan) plan;
+    //              deleteStorageGroup(deleteStorageGroupPlan.getPaths().get(0));
+    //              break;
+    //            case TTL:
+    //              SetTTLPlan setTTLPlan = (SetTTLPlan) plan;
+    //              setTTL(setTTLPlan.getStorageGroup(), setTTLPlan.getDataTTL());
+    //              break;
+    //            default:
+    //              logger.error("Unrecognizable command {}", plan.getOperatorType());
+    //          }
+    //        } catch (MetadataException | IOException e) {
+    //          logger.error("Error occurred while redo database log", e);
+    //        }
+    //      }
+    //    }
+    throw new UnsupportedOperationException();
   }
 
   @Override
-  public void forceLog() {
-    try {
-      logWriter.force();
-    } catch (IOException e) {
-      logger.error("Cannot force database log", e);
-    }
-  }
+  public void forceLog() {}
 
   public synchronized void clear() throws IOException {
-    if (logWriter != null) {
-      logWriter.close();
-      logWriter = null;
-    }
 
     if (mtree != null) {
       mtree.clear();
@@ -140,13 +109,6 @@ public class StorageGroupSchemaManager implements IStorageGroupSchemaManager {
   @Override
   public void setStorageGroup(PartialPath path) throws MetadataException {
     mtree.setStorageGroup(path);
-    if (!isRecover) {
-      try {
-        logWriter.setStorageGroup(path);
-      } catch (IOException e) {
-        throw new MetadataException(e);
-      }
-    }
   }
 
   @Override
@@ -176,21 +138,11 @@ public class StorageGroupSchemaManager implements IStorageGroupSchemaManager {
   @Override
   public synchronized void deleteStorageGroup(PartialPath storageGroup) throws MetadataException {
     mtree.deleteStorageGroup(storageGroup);
-    if (!isRecover) {
-      try {
-        logWriter.deleteStorageGroup(storageGroup);
-      } catch (IOException e) {
-        throw new MetadataException(e);
-      }
-    }
   }
 
   @Override
   public void setTTL(PartialPath storageGroup, long dataTTL) throws MetadataException, IOException {
     mtree.getStorageGroupNodeByStorageGroupPath(storageGroup).setDataTTL(dataTTL);
-    if (!isRecover) {
-      logWriter.setTTL(storageGroup, dataTTL);
-    }
   }
 
   @Override
