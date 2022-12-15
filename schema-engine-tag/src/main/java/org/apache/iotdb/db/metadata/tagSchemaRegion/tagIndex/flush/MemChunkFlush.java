@@ -18,24 +18,22 @@
  */
 package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.flush;
 
-import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemChunkGroup;
-import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemTagValueGroup;
+import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemChunk;
 import org.apache.iotdb.lsm.annotation.FlushProcessor;
 import org.apache.iotdb.lsm.context.requestcontext.FlushRequestContext;
 import org.apache.iotdb.lsm.levelProcess.FlushLevelProcessor;
 
 import java.util.List;
 
-/** flush for MemTagValueGroup */
-@FlushProcessor(level = 2)
-public class MemTagValueGroupFlush extends FlushLevelProcessor<MemTagValueGroup, MemChunkGroup> {
+/** flush for MemChunk */
+@FlushProcessor(level = 3)
+public class MemChunkFlush extends FlushLevelProcessor<MemChunk, Object> {
 
   @Override
-  public List<MemChunkGroup> getChildren(
-      MemTagValueGroup memNode, Object request, FlushRequestContext context) {
+  public List<Object> getChildren(MemChunk memNode, Object request, FlushRequestContext context) {
     return null;
   }
 
   @Override
-  public void flush(MemTagValueGroup memNode, FlushRequestContext context) {}
+  public void flush(MemChunk memNode, FlushRequestContext context) {}
 }

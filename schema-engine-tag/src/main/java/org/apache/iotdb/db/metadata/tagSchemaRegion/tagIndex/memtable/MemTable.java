@@ -23,7 +23,7 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-/** used to manage tagKey -> MemTagValueGroup */
+/** used to manage tagKey -> MemChunkGroup */
 public class MemTable {
 
   public static final String WORKING = "working";
@@ -31,7 +31,7 @@ public class MemTable {
   public static final String IMMUTABLE = "immutable";
 
   // manage tagKey -> MemTagChunkGroup
-  private Map<String, MemTagValueGroup> memTagValueGroupMap;
+  private Map<String, MemChunkGroup> memTagValueGroupMap;
 
   private String status;
 
@@ -48,7 +48,7 @@ public class MemTable {
   public void put(String tagKey) {
     if (this.status.equals(IMMUTABLE)) return;
     if (!memTagValueGroupMap.containsKey(tagKey)) {
-      memTagValueGroupMap.put(tagKey, new MemTagValueGroup());
+      memTagValueGroupMap.put(tagKey, new MemChunkGroup());
     }
   }
 
@@ -65,7 +65,7 @@ public class MemTable {
         + '}';
   }
 
-  public MemTagValueGroup get(String tagKey) {
+  public MemChunkGroup get(String tagKey) {
     return memTagValueGroupMap.get(tagKey);
   }
 

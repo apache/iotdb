@@ -19,33 +19,39 @@
 package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.insertion;
 
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.Request.InsertionRequest;
+import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemChunk;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemChunkGroup;
 import org.apache.iotdb.lsm.annotation.InsertionProcessor;
 import org.apache.iotdb.lsm.context.requestcontext.InsertRequestContext;
 import org.apache.iotdb.lsm.levelProcess.InsertLevelProcessor;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /** insertion for MemChunkGroup */
-@InsertionProcessor(level = 3)
+@InsertionProcessor(level = 2)
 public class MemChunkGroupInsertion
-    extends InsertLevelProcessor<MemChunkGroup, Object, InsertionRequest> {
+    extends InsertLevelProcessor<MemChunkGroup, MemChunk, InsertionRequest> {
 
   /**
-   * MemChunkGroup is the last layer of memory nodes, no children
+   * get all MemChunks that need to be processed in the current MemChunkGroup
    *
    * @param memNode memory node
    * @param context request context
-   * @return null
+   * @return A list of saved MemChunks
    */
   @Override
-  public List<Object> getChildren(
+  public List<MemChunk> getChildren(
       MemChunkGroup memNode, InsertionRequest insertionRequest, InsertRequestContext context) {
-    return null;
+    List<MemChunk> memChunks = new ArrayList<>();
+    String tagValue = insertionRequest.getKey(context);
+    MemChunk child = memNode.get(tagValue);
+    if (child != null) memChunks.add(child);
+    return memChunks;
   }
 
   /**
-   * the insert method corresponding to the MemChunkGroup node
+   * the insert method corresponding to the MemCunkGroup node
    *
    * @param memNode memory node
    * @param context insert request context
@@ -53,7 +59,7 @@ public class MemChunkGroupInsertion
   @Override
   public void insert(
       MemChunkGroup memNode, InsertionRequest insertionRequest, InsertRequestContext context) {
-    Integer deviceID = insertionRequest.getValue();
-    memNode.put(deviceID);
+    String tagValue = insertionRequest.getKey(context);
+    memNode.put(tagValue);
   }
 }
