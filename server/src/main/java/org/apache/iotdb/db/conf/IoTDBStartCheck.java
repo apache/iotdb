@@ -205,9 +205,17 @@ public class IoTDBStartCheck {
    * accessing same director.
    */
   public void checkDirectory() throws ConfigurationException, IOException {
+
     // check data dirs
     for (String dataDir : config.getDataDirs()) {
       DirectoryChecker.getInstance().registerDirectory(new File(dataDir));
+    }
+    if (config.isClusterMode()
+        && config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.RATIS_CONSENSUS)) {
+      if (DirectoryChecker.getInstance().isCrossDisk(config.getDataDirs())) {
+        throw new ConfigurationException(
+            "Configuring the data directories as cross-disk directories is not supported under RatisConsensus(it will be supported in a later version).");
+      }
     }
     // check system dir
     DirectoryChecker.getInstance().registerDirectory(new File(config.getSystemDir()));
