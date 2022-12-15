@@ -21,11 +21,8 @@ package org.apache.iotdb.db.mpp.plan.statement.sys;
 
 import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.mpp.plan.statement.component.OrderByComponent;
-import org.apache.iotdb.db.mpp.plan.statement.component.SortItem;
 import org.apache.iotdb.db.mpp.plan.statement.component.WhereCondition;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStatement;
-
-import java.util.List;
 
 public class ShowQueriesStatement extends ShowStatement {
 
@@ -37,8 +34,6 @@ public class ShowQueriesStatement extends ShowStatement {
   private int rowOffset;
 
   public ShowQueriesStatement() {}
-
-  public void orderBySemanticCheck(List<SortItem> sortItemList) {}
 
   @Override
   public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
@@ -54,7 +49,6 @@ public class ShowQueriesStatement extends ShowStatement {
   }
 
   public void setOrderByComponent(OrderByComponent orderByComponent) {
-    orderBySemanticCheck(orderByComponent.getSortItemList());
     this.orderByComponent = orderByComponent;
   }
 
