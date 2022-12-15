@@ -24,6 +24,7 @@ import java.io.DataInput;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Objects;
 
 public class ChunkHeader implements IEntry {
 
@@ -57,6 +58,19 @@ public class ChunkHeader implements IEntry {
   public IEntry deserialize(ByteBuffer byteBuffer) {
     this.size = byteBuffer.getInt();
     return this;
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    ChunkHeader that = (ChunkHeader) o;
+    return size == that.size;
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(size);
   }
 
   @Override

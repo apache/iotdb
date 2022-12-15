@@ -18,7 +18,15 @@
  */
 package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.entry;
 
-public class ChunkIndexHeader {
+import org.apache.iotdb.lsm.sstable.bplustree.entry.IEntry;
+
+import java.io.DataInput;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.Objects;
+
+public class ChunkIndexHeader implements IEntry {
   private int size;
 
   public ChunkIndexHeader(int size) {
@@ -36,5 +44,34 @@ public class ChunkIndexHeader {
   @Override
   public String toString() {
     return "ChunkIndexHeader{" + "size=" + size + '}';
+  }
+
+  @Override
+  public void serialize(DataOutputStream out) throws IOException {}
+
+  @Override
+  public void serialize(ByteBuffer byteBuffer) {}
+
+  @Override
+  public IEntry deserialize(DataInput input) throws IOException {
+    return null;
+  }
+
+  @Override
+  public IEntry deserialize(ByteBuffer byteBuffer) {
+    return null;
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    ChunkIndexHeader that = (ChunkIndexHeader) o;
+    return size == that.size;
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(size);
   }
 }

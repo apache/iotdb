@@ -18,9 +18,16 @@
  */
 package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.entry;
 
-import java.util.List;
+import org.apache.iotdb.lsm.sstable.bplustree.entry.IEntry;
 
-public class ChunkIndex {
+import java.io.DataInput;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.List;
+import java.util.Objects;
+
+public class ChunkIndex implements IEntry {
   private List<ChunkIndexEntry> chunkIndexEntries;
 
   private ChunkIndexHeader chunkIndexHeader;
@@ -54,5 +61,35 @@ public class ChunkIndex {
         + ", chunkIndexHeader="
         + chunkIndexHeader
         + '}';
+  }
+
+  @Override
+  public void serialize(DataOutputStream out) throws IOException {}
+
+  @Override
+  public void serialize(ByteBuffer byteBuffer) {}
+
+  @Override
+  public IEntry deserialize(DataInput input) throws IOException {
+    return null;
+  }
+
+  @Override
+  public IEntry deserialize(ByteBuffer byteBuffer) {
+    return null;
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    ChunkIndex that = (ChunkIndex) o;
+    return Objects.equals(chunkIndexEntries, that.chunkIndexEntries)
+        && Objects.equals(chunkIndexHeader, that.chunkIndexHeader);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(chunkIndexEntries, chunkIndexHeader);
   }
 }

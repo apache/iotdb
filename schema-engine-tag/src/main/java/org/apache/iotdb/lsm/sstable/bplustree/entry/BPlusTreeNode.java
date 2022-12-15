@@ -18,9 +18,6 @@
  */
 package org.apache.iotdb.lsm.sstable.bplustree.entry;
 
-import org.apache.iotdb.db.metadata.tagSchemaRegion.config.TagSchemaConfig;
-import org.apache.iotdb.db.metadata.tagSchemaRegion.config.TagSchemaDescriptor;
-
 import java.io.DataInput;
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -30,9 +27,6 @@ import java.util.List;
 import java.util.Objects;
 
 public class BPlusTreeNode implements IEntry {
-
-  private final TagSchemaConfig bPlushTreeConfig =
-      TagSchemaDescriptor.getInstance().getTagSchemaConfig();
 
   private BPlusTreeNodeType bPlusTreeNodeType;
 
@@ -44,7 +38,7 @@ public class BPlusTreeNode implements IEntry {
 
   public BPlusTreeNode(BPlusTreeNodeType bPlusTreeNodeType) {
     this.bPlusTreeNodeType = bPlusTreeNodeType;
-    bPlusTreeEntries = new ArrayList<>(bPlushTreeConfig.getDegree());
+    bPlusTreeEntries = new ArrayList<>();
     count = bPlusTreeEntries.size();
   }
 
@@ -130,14 +124,13 @@ public class BPlusTreeNode implements IEntry {
     if (o == null || getClass() != o.getClass()) return false;
     BPlusTreeNode that = (BPlusTreeNode) o;
     return count == that.count
-        && Objects.equals(bPlushTreeConfig, that.bPlushTreeConfig)
         && bPlusTreeNodeType == that.bPlusTreeNodeType
         && Objects.equals(bPlusTreeEntries, that.bPlusTreeEntries);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(bPlushTreeConfig, bPlusTreeNodeType, count, bPlusTreeEntries);
+    return Objects.hash(bPlusTreeNodeType, count, bPlusTreeEntries);
   }
 
   public void add(BPlusTreeEntry bPlusTreeEntry) {
@@ -158,8 +151,8 @@ public class BPlusTreeNode implements IEntry {
     return bPlusTreeEntries.get(bPlusTreeEntries.size() - 1).getName();
   }
 
-  public boolean needToSplit() {
+  public boolean needToSplit(int degree) {
     if (bPlusTreeEntries == null) return false;
-    return bPlusTreeEntries.size() >= bPlushTreeConfig.getDegree();
+    return bPlusTreeEntries.size() >= degree;
   }
 }

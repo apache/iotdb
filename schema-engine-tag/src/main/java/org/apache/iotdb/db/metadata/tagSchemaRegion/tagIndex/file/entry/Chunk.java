@@ -27,6 +27,7 @@ import java.io.DataInput;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Objects;
 
 public class Chunk implements IEntry {
   private ChunkHeader chunkHeader;
@@ -65,6 +66,20 @@ public class Chunk implements IEntry {
       throw new InvalidRoaringFormat(e.getMessage());
     }
     return this;
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    Chunk chunk = (Chunk) o;
+    return Objects.equals(chunkHeader, chunk.chunkHeader)
+        && Objects.equals(roaringBitmap, chunk.roaringBitmap);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(chunkHeader, roaringBitmap);
   }
 
   public ChunkHeader getChunkHeader() {

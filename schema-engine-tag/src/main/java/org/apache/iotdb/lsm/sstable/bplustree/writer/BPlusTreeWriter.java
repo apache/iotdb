@@ -163,7 +163,7 @@ public class BPlusTreeWriter implements IBPlusTreeWriter {
     }
     while (!currentBPlusTreeEntryQueue.isEmpty()) {
       bPlusTreeEntry = currentBPlusTreeEntryQueue.poll();
-      if (!bPlusTreeNode.needToSplit()) {
+      if (!bPlusTreeNode.needToSplit(bPlushTreeConfig.getDegree())) {
         bPlusTreeNode.add(bPlusTreeEntry);
       } else {
         writeBPlusTreeNode(bPlusTreeNode);
@@ -214,7 +214,7 @@ public class BPlusTreeWriter implements IBPlusTreeWriter {
         return directWriteOneBPlusTreeNode(BPlusTreeNodeType.INTERNAL_NODE);
       }
       BPlusTreeEntry bPlusTreeEntry = currentBPlusTreeEntryQueue.poll();
-      if (!bPlusTreeNode.needToSplit()) {
+      if (!bPlusTreeNode.needToSplit(bPlushTreeConfig.getDegree())) {
         bPlusTreeNode.add(bPlusTreeEntry);
       } else {
         writeBPlusTreeNode(bPlusTreeNode);
