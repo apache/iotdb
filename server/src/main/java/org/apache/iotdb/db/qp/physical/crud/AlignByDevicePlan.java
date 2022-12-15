@@ -129,7 +129,6 @@ public class AlignByDevicePlan extends QueryPlan {
       }
     }
     setAggregations(deduplicatedAggregations);
-    this.paths = null;
   }
 
   @Override
