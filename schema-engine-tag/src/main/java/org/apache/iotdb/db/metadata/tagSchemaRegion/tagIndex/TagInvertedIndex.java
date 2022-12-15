@@ -25,11 +25,11 @@ import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.Request.DeletionReq
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.Request.InsertionRequest;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.Request.QueryRequest;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemTableGroup;
-import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.response.QueryResponse;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.wal.WALEntry;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.wal.WALManager;
 import org.apache.iotdb.lsm.engine.LSMEngine;
 import org.apache.iotdb.lsm.engine.LSMEngineBuilder;
+import org.apache.iotdb.lsm.response.BaseResponse;
 
 import org.roaringbitmap.RoaringBitmap;
 import org.slf4j.Logger;
@@ -172,7 +172,7 @@ public class TagInvertedIndex implements ITagInvertedIndex {
    */
   private RoaringBitmap getMatchedIDs(String tagKey, String tagValue) {
     QueryRequest queryRequest = new QueryRequest(generateKeys(tagKey, tagValue));
-    QueryResponse response = lsmEngine.query(queryRequest);
+    BaseResponse<RoaringBitmap> response = lsmEngine.query(queryRequest);
     return response.getValue();
   }
 

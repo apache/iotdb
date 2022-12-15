@@ -23,7 +23,7 @@ import org.apache.iotdb.lsm.request.IDeletionRequest;
 import org.apache.iotdb.lsm.request.IFlushRequest;
 import org.apache.iotdb.lsm.request.IInsertionRequest;
 import org.apache.iotdb.lsm.request.IQueryRequest;
-import org.apache.iotdb.lsm.response.IResponse;
+import org.apache.iotdb.lsm.response.BaseResponse;
 
 import java.io.IOException;
 
@@ -40,7 +40,7 @@ public interface ILSMEngine extends IRecoverable {
    * @param <V> The type of value in the request data
    * @param <R> type of response
    */
-  <K, V, R extends IResponse> R insert(IInsertionRequest<K, V> insertionRequest);
+  <K, V, R extends BaseResponse> R insert(IInsertionRequest<K, V> insertionRequest);
 
   /**
    * Use this ILSMEngine to query
@@ -49,7 +49,7 @@ public interface ILSMEngine extends IRecoverable {
    * @param <K> The type of key in the request data
    * @param <R> type of response
    */
-  <K, R extends IResponse> R query(IQueryRequest<K> queryRequest);
+  <K, R extends BaseResponse> R query(IQueryRequest<K> queryRequest);
 
   /**
    * Use this ILSMEngine to delete data
@@ -59,7 +59,7 @@ public interface ILSMEngine extends IRecoverable {
    * @param <V> The type of value in the request data
    * @param <R> type of response
    */
-  <K, V, R extends IResponse> R delete(IDeletionRequest<K, V> deletionRequest);
+  <K, V, R extends BaseResponse> R delete(IDeletionRequest<K, V> deletionRequest);
 
   /**
    * Use this ILSMEngine to flush data
@@ -69,7 +69,7 @@ public interface ILSMEngine extends IRecoverable {
    * @param <V> The type of value in the request data
    * @param <R> type of response
    */
-  <K, V, R extends IResponse> R flush(IFlushRequest<K, V> flushRequest);
+  <K, V, R extends BaseResponse> R flush(IFlushRequest<K, V> flushRequest);
 
   /** recover the ILSMEngine */
   void recover() throws IOException;

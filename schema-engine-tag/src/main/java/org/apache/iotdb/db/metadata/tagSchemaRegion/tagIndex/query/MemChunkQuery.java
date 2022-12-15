@@ -20,10 +20,10 @@ package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.query;
 
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.Request.QueryRequest;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemChunk;
-import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.response.QueryResponse;
 import org.apache.iotdb.lsm.annotation.QueryProcessor;
 import org.apache.iotdb.lsm.context.requestcontext.QueryRequestContext;
 import org.apache.iotdb.lsm.levelProcess.QueryLevelProcessor;
+import org.apache.iotdb.lsm.response.BaseResponse;
 
 import org.roaringbitmap.RoaringBitmap;
 
@@ -54,9 +54,9 @@ public class MemChunkQuery extends QueryLevelProcessor<MemChunk, Object, QueryRe
    */
   @Override
   public void query(MemChunk memNode, QueryRequest queryRequest, QueryRequestContext context) {
-    QueryResponse response = context.getResponse();
+    BaseResponse<RoaringBitmap> response = context.getResponse();
     if (response == null) {
-      response = new QueryResponse();
+      response = new BaseResponse<RoaringBitmap>();
       context.setResponse(response);
     }
     RoaringBitmap roaringBitmap = context.getValue();

@@ -16,32 +16,29 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.lsm.context.requestcontext;
+package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.response;
 
-import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemTable;
-import org.apache.iotdb.lsm.strategy.RBFSAccessStrategy;
+import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.entry.TiFile;
+import org.apache.iotdb.lsm.response.BaseResponse;
 
+import java.util.HashMap;
 import java.util.Map;
 
-/**
- * represents the context of a flush request, this class can be extended to implement a custom
- * context
- */
-public class FlushRequestContext extends RequestContext {
+public class FlushResponse extends BaseResponse<Map<Integer, TiFile>> {
 
-  Map<MemTable, Integer> memTableIndexMap;
-
-  public FlushRequestContext() {
-    super();
-    // use the reverse breadth-first traversal strategy to access memory nodes
-    accessStrategy = new RBFSAccessStrategy();
+  public void updateTiFie(Integer id, TiFile tiFile) {
+    Map<Integer, TiFile> tiFileMap = getValue();
+    if (tiFileMap == null) {
+      tiFileMap = new HashMap<>();
+    }
+    tiFileMap.put(id, tiFile);
   }
 
-  public Map<MemTable, Integer> getMemTableIndexMap() {
-    return memTableIndexMap;
-  }
-
-  public void setMemTableIndexMap(Map<MemTable, Integer> memTableIndexMap) {
-    this.memTableIndexMap = memTableIndexMap;
+  public TiFile getTiFile(Integer id) {
+    Map<Integer, TiFile> tiFileMap = getValue();
+    if (tiFileMap == null) {
+      return null;
+    }
+    return tiFileMap.get(id);
   }
 }

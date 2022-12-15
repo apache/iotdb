@@ -16,31 +16,6 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.lsm.response;
+package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.entry;
 
-import java.util.List;
-
-/**
- * Indicates the response after the lsm framework processes the request, encapsulating the response
- * value and exception information.
- *
- * @param <T> type of the response result
- */
-public interface IResponse<T> {
-
-  T getValue();
-
-  void setValue(T value);
-
-  List<Exception> getExceptions();
-
-  void setExceptions(List<Exception> exceptions);
-
-  /**
-   * If an exception needs to be thrown during the processing of the request, this method can be
-   * used to accept the exception
-   *
-   * @param e Exception
-   */
-  void addException(Exception e);
-}
+public class TiFile {}

@@ -131,9 +131,10 @@ public class LSMEngineBuilder<T extends IMemManager> {
    * @param levelProcessChain flush level processors chain
    * @param memManager
    */
-  public <R extends IFlushRequest> LSMEngineBuilder<T> buildFlushManager(
-      LevelProcessorChain<T, R, FlushRequestContext> levelProcessChain, T memManager) {
-    FlushManager<T, R> flushManager = new FlushManager<>(lsmEngine.getWalManager(), memManager);
+  public <R extends IFlushRequest, C extends FlushRequestContext>
+      LSMEngineBuilder<T> buildFlushManager(
+          LevelProcessorChain<T, R, C> levelProcessChain, T memManager) {
+    FlushManager<T, R, C> flushManager = new FlushManager<>(lsmEngine.getWalManager(), memManager);
     flushManager.setLevelProcessorsChain(levelProcessChain);
     buildFlushManager(flushManager);
     return this;
@@ -145,8 +146,8 @@ public class LSMEngineBuilder<T extends IMemManager> {
    * @param flushManager DeletionManager object
    * @param <R> extends IDeletionRequest
    */
-  public <R extends IFlushRequest> LSMEngineBuilder<T> buildFlushManager(
-      FlushManager<T, R> flushManager) {
+  public <R extends IFlushRequest, C extends FlushRequestContext>
+      LSMEngineBuilder<T> buildFlushManager(FlushManager<T, R, C> flushManager) {
     lsmEngine.setFlushManager(flushManager);
     return this;
   }

@@ -57,20 +57,20 @@ public class FlushManager<T extends IMemManager, R extends IFlushRequest>
     }
   }
 
-  private void updateWal(FlushRequestContext flushRequestContext) {
+  private void updateWal(FlushRequestContext flushRequestBaseContext) {
     // TODO delete wal file
   }
 
-  private void flushToDisk(FlushRequestContext flushRequestContext) {
+  private void flushToDisk(FlushRequestContext flushRequestBaseContext) {
     // TODO flush to disk
   }
 
   private FlushRequestContext flush() {
-    FlushRequestContext flushRequestContext = new FlushRequestContext();
+    FlushRequestContext flushRequestBaseContext = new FlushRequestContext();
     IFlushRequest flushRequest = new IFlushRequest();
-    process(memManager, (R) flushRequest, flushRequestContext);
-    flushToDisk(flushRequestContext);
-    return flushRequestContext;
+    process(memManager, (R) flushRequest, flushRequestBaseContext);
+    flushToDisk(flushRequestBaseContext);
+    return flushRequestBaseContext;
   }
 
   @Override
