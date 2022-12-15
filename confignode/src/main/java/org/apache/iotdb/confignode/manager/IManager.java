@@ -75,6 +75,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetTemplateResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTimeSlotListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetUDFTableResp;
+import org.apache.iotdb.confignode.rpc.thrift.TMigrateRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TRecordPipeMessageReq;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionMigrateResultReportReq;
@@ -177,6 +178,13 @@ public interface IManager {
    * @return DataNodeConfigurationDataSet
    */
   DataSet registerDataNode(RegisterDataNodePlan registerDataNodePlan);
+
+  /**
+   * Get configuration information that is not associated with the DataNodeId
+   *
+   * @return ConfigurationResp
+   */
+  DataSet getConfiguration();
 
   /**
    * Remove DataNode
@@ -532,6 +540,8 @@ public interface IManager {
   TGetTimeSlotListResp getTimeSlotList(GetTimeSlotListPlan plan);
 
   TGetSeriesSlotListResp getSeriesSlotList(GetSeriesSlotListPlan plan);
+
+  TSStatus migrateRegion(TMigrateRegionReq req);
 
   TSStatus createCQ(TCreateCQReq req);
 

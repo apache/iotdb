@@ -24,7 +24,9 @@ import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
+import org.apache.iotdb.db.engine.storagegroup.VirtualDataRegion;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceInfo;
+import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceManager;
 import org.apache.iotdb.db.mpp.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.utils.SetThreadName;
 
@@ -69,6 +71,26 @@ public class RegionReadExecutor {
       return resp;
     } catch (Throwable t) {
       LOGGER.error("Execute FragmentInstance in ConsensusGroup {} failed.", groupId, t);
+      RegionExecutionResult resp = new RegionExecutionResult();
+      resp.setAccepted(false);
+      resp.setMessage("Execute FragmentInstance failed: " + t.getMessage());
+      return resp;
+    }
+  }
+
+  public RegionExecutionResult execute(FragmentInstance fragmentInstance) {
+    // execute fragment instance in state machine
+    try (SetThreadName threadName = new SetThreadName(fragmentInstance.getId().getFullId())) {
+      RegionExecutionResult resp = new RegionExecutionResult();
+      // FI with queryExecutor will be executed directly
+      FragmentInstanceInfo info =
+          FragmentInstanceManager.getInstance()
+              .execDataQueryFragmentInstance(fragmentInstance, VirtualDataRegion.getInstance());
+      resp.setAccepted(!info.getState().isFailed());
+      resp.setMessage(info.getMessage());
+      return resp;
+    } catch (Throwable t) {
+      LOGGER.error("Execute FragmentInstance in QueryExecutor failed.", t);
       RegionExecutionResult resp = new RegionExecutionResult();
       resp.setAccepted(false);
       resp.setMessage("Execute FragmentInstance failed: " + t.getMessage());

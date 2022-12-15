@@ -22,7 +22,6 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
-import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -46,7 +45,7 @@ public class SchemaAdvancedTest {
   @Before
   public void setUp() throws Exception {
     EnvironmentUtils.envSetUp();
-    schemaProcessor = IoTDB.schemaProcessor;
+    schemaProcessor = LocalSchemaProcessor.getInstance();
 
     schemaProcessor.setStorageGroup(new PartialPath("root.vehicle.d0"));
     schemaProcessor.setStorageGroup(new PartialPath("root.vehicle.d1"));

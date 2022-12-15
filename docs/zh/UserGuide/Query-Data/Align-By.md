@@ -59,3 +59,7 @@ select * from root.ln.** where time <= 2017-11-01T00:01:00 align by device;
 Total line number = 6
 It costs 0.012s
 ```
+## 设备对齐模式下的排序
+在设备对齐模式下，默认按照设备名的字典序升序排列，每个设备内部按照时间戳大小升序排列，可以通过 `ORDER BY` 子句调整设备列和时间列的排序优先级。
+
+详细说明及示例见文档 [结果集排序](./Order-By.md)。 
