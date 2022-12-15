@@ -37,6 +37,7 @@ import org.apache.iotdb.confignode.conf.SystemPropertiesUtils;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
+import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRestartReq;
 import org.apache.iotdb.confignode.service.thrift.ConfigNodeRPCService;
 import org.apache.iotdb.confignode.service.thrift.ConfigNodeRPCServiceProcessor;
 import org.apache.iotdb.db.service.metrics.ProcessMetrics;
@@ -60,6 +61,7 @@ public class ConfigNode implements ConfigNodeMBean {
   private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
   private static final CommonConfig COMMON_CONF = CommonDescriptor.getInstance().getConfig();
 
+  private static final int STARTUP_RETRY_NUM = 5;
   private static final int SCHEDULE_WAITING_RETRY_NUM = 20;
 
   private static final int SEED_CONFIG_NODE_ID = 0;
@@ -95,9 +97,13 @@ public class ConfigNode implements ConfigNodeMBean {
       /* Restart */
       if (SystemPropertiesUtils.isRestarted()) {
         LOGGER.info("{} is in restarting process...", ConfigNodeConstant.GLOBAL_NAME);
-        /* Always set ClusterId and ConfigNodeId before initConsensusManager */
+
+        /* Always restore ClusterId and ConfigNodeId first */
         CONF.setClusterId(SystemPropertiesUtils.loadClusterIdWhenRestarted());
         CONF.setConfigNodeId(SystemPropertiesUtils.loadConfigNodeIdWhenRestarted());
+
+        restartConfigNode();
+
         configManager.initConsensusManager();
         setUpRPCService();
         LOGGER.info(
@@ -246,7 +252,7 @@ public class ConfigNode implements ConfigNodeMBean {
       throw new StartupException("The targetConfigNode setting in conf is empty");
     }
 
-    for (int retry = 0; retry < 3; retry++) {
+    for (int retry = 0; retry < STARTUP_RETRY_NUM; retry++) {
       TSStatus status;
       TConfigNodeRegisterResp resp = null;
       Object obj =
@@ -293,6 +299,20 @@ public class ConfigNode implements ConfigNodeMBean {
     LOGGER.error(
         "The current ConfigNode can't send register request to the Seed-ConfigNode after all retries!");
     stop();
+  }
+
+  private void restartConfigNode() {
+    TConfigNodeRestartReq req = new TConfigNodeRestartReq(
+      new TConfigNodeLocation(
+        CONF.getConfigNodeId(),
+        new TEndPoint(CONF.getInternalAddress(), CONF.getInternalPort()),
+        new TEndPoint(CONF.getInternalAddress(), CONF.getConsensusPort())),
+      CONF.getClusterId()
+    );
+
+    for (int retry = 0; retry < 3; retry++) {
+      TSStatus status =
+    }
   }
 
   private void setUpRPCService() throws StartupException {

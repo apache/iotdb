@@ -63,6 +63,13 @@ public class ClusterNodeVerifyUtils {
     }
   }
 
+  /**
+   * Check if there exists a registered ConfigNode who has the same index of the given one.
+   *
+   * @param configNodeLocation The given ConfigNode
+   * @param registeredConfigNodes Registered ConfigNodes
+   * @return The ConfigNodeLocation who has the same index of the given one, null otherwise.
+   */
   public static TConfigNodeLocation matchRegisteredConfigNode(
       TConfigNodeLocation configNodeLocation, List<TConfigNodeLocation> registeredConfigNodes) {
     for (TConfigNodeLocation registeredConfigNode : registeredConfigNodes) {
@@ -74,6 +81,11 @@ public class ClusterNodeVerifyUtils {
     return null;
   }
 
+  /**
+   * Compare if all TEndPoints between two ConfigNodes are equal.
+   *
+   * @return True if all TEndPoints of configNodeLocationA and configNodeLocationB are equals, false otherwise.
+   */
   public static boolean compareTEndPointsOfTConfigNodeLocation(
       TConfigNodeLocation configNodeLocationA, TConfigNodeLocation configNodeLocationB) {
     if (!configNodeLocationA
@@ -137,6 +149,13 @@ public class ClusterNodeVerifyUtils {
     }
   }
 
+  /**
+   * Check if there exists a registered DataNode who has the same index of the given one.
+   *
+   * @param dataNodeLocation The given DataNode
+   * @param registeredDataNodes Registered DataNodes
+   * @return The DataNodeLocation who has the same index of the given one, null otherwise.
+   */
   public static TDataNodeLocation matchRegisteredDataNode(
       TDataNodeLocation dataNodeLocation, List<TDataNodeConfiguration> registeredDataNodes) {
     for (TDataNodeConfiguration registeredDataNode : registeredDataNodes) {
@@ -148,6 +167,11 @@ public class ClusterNodeVerifyUtils {
     return null;
   }
 
+  /**
+   * Compare if all TEndPoints between two DataNodes are equal.
+   *
+   * @return True if all TEndPoints of dataNodeLocationA and dataNodeLocationB are equals, false otherwise.
+   */
   public static boolean compareTEndPointsOfTDataNodeLocation(
       TDataNodeLocation dataNodeLocationA, TDataNodeLocation dataNodeLocationB) {
     if (!dataNodeLocationA
