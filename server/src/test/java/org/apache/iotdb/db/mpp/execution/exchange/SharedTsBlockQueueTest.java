@@ -21,7 +21,6 @@ package org.apache.iotdb.db.mpp.execution.exchange;
 
 import org.apache.iotdb.db.mpp.execution.memory.LocalMemoryManager;
 import org.apache.iotdb.db.mpp.execution.memory.MemoryPool;
-import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import org.apache.commons.lang3.Validate;
@@ -44,8 +43,7 @@ public class SharedTsBlockQueueTest {
     MemoryPool spyMemoryPool =
         Mockito.spy(new MemoryPool("test", 10 * mockTsBlockSize, 5 * mockTsBlockSize));
     Mockito.when(mockLocalMemoryManager.getQueryPool()).thenReturn(spyMemoryPool);
-    SharedTsBlockQueue queue =
-        new SharedTsBlockQueue(new TFragmentInstanceId(queryId, 0, "0"), mockLocalMemoryManager);
+    SharedTsBlockQueue queue = new SharedTsBlockQueue(queryId, mockLocalMemoryManager);
 
     ExecutorService executor = Executors.newFixedThreadPool(2);
     AtomicReference<Integer> numOfTimesSenderBlocked = new AtomicReference<>(0);

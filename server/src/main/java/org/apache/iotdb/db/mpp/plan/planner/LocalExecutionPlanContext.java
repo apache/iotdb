@@ -100,8 +100,9 @@ public class LocalExecutionPlanContext {
     this.dataRegionTTL = parentContext.dataRegionTTL;
     this.nextPipelineId = parentContext.nextPipelineId;
     this.pipelineDriverFactories = parentContext.pipelineDriverFactories;
-    this.timeSliceAllocator = new RuleBasedTimeSliceAllocator();
-    this.driverContext = parentContext.getDriverContext().createSubDriverContext();
+    this.timeSliceAllocator = parentContext.timeSliceAllocator;
+    this.driverContext =
+        parentContext.getDriverContext().createSubDriverContext(getNextPipelineId());
   }
 
   // for schema region
@@ -120,7 +121,7 @@ public class LocalExecutionPlanContext {
   }
 
   public void addPipelineDriverFactory(
-      boolean inputDriver, boolean outputDriver, Operator operator) {
+      boolean inputDriver, boolean outputDriver, Operator operator, DriverContext driverContext) {
     driverContext
         .getOperatorContexts()
         .forEach(

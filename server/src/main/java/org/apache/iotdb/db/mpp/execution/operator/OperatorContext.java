@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.mpp.execution.operator;
 
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.mpp.common.SessionInfo;
 import org.apache.iotdb.db.mpp.execution.driver.DriverContext;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
@@ -38,8 +39,6 @@ public class OperatorContext {
   private final PlanNodeId planNodeId;
   private final String operatorType;
   private DriverContext driverContext;
-
-  // Only Used for test
   private FragmentInstanceContext fragmentInstanceContext;
 
   private Duration maxRunTime;
@@ -50,9 +49,10 @@ public class OperatorContext {
     this.planNodeId = planNodeId;
     this.operatorType = operatorType;
     this.driverContext = driverContext;
+    this.fragmentInstanceContext = driverContext.getFragmentInstanceContext();
   }
 
-  // Only Used for test Now !
+  @TestOnly
   public OperatorContext(
       int operatorId,
       PlanNodeId planNodeId,
@@ -81,7 +81,7 @@ public class OperatorContext {
   }
 
   public FragmentInstanceContext getInstanceContext() {
-    return getDriverContext().getFragmentInstanceContext();
+    return fragmentInstanceContext;
   }
 
   public Duration getMaxRunTime() {

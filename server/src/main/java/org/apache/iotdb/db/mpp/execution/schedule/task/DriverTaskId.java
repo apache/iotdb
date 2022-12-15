@@ -26,43 +26,52 @@ import org.apache.iotdb.db.mpp.execution.schedule.queue.ID;
 import org.jetbrains.annotations.NotNull;
 
 /** the class of id of the fragment instance task */
-public class DriverTaskID implements ID, Comparable<DriverTaskID> {
+public class DriverTaskId implements ID, Comparable<DriverTaskId> {
 
-  private final FragmentInstanceId id;
+  private final FragmentInstanceId fragmentInstanceId;
+  private final int pipelineId;
+  private final String fullId;
 
-  public DriverTaskID(FragmentInstanceId id) {
-    this.id = id;
+  public DriverTaskId(FragmentInstanceId id, int pipelineId) {
+    this.fragmentInstanceId = id;
+    this.pipelineId = pipelineId;
+    this.fullId = String.format("%s.%d", id.getFullId(), pipelineId);
   }
 
   @Override
   public boolean equals(Object o) {
-    return o instanceof DriverTaskID && ((DriverTaskID) o).id.equals(id);
-  }
-
-  @Override
-  public int hashCode() {
-    return id.hashCode();
+    return o instanceof DriverTaskId
+        && ((DriverTaskId) o).fragmentInstanceId.equals(fragmentInstanceId)
+        && ((DriverTaskId) o).pipelineId == pipelineId;
   }
 
   public String toString() {
-    return id.getFullId();
+    return fullId;
   }
 
-  public String getInstanceId() {
-    return id.getInstanceId();
+  public FragmentInstanceId getFragmentInstanceId() {
+    return fragmentInstanceId;
   }
 
   public PlanFragmentId getFragmentId() {
-    return id.getFragmentId();
+    return fragmentInstanceId.getFragmentId();
   }
 
   public QueryId getQueryId() {
-    return id.getQueryId();
+    return fragmentInstanceId.getQueryId();
+  }
+
+  public int getPipelineId() {
+    return pipelineId;
+  }
+
+  public String getFullId() {
+    return fullId;
   }
 
   // This is the default comparator of FragmentInstanceID
   @Override
-  public int compareTo(@NotNull DriverTaskID o) {
+  public int compareTo(@NotNull DriverTaskId o) {
     return String.CASE_INSENSITIVE_ORDER.compare(this.toString(), o.toString());
   }
 }

@@ -20,6 +20,7 @@ package org.apache.iotdb.db.mpp.execution.driver;
 
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.execution.exchange.ISinkHandle;
+import org.apache.iotdb.db.mpp.execution.schedule.task.DriverTaskId;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import io.airlift.units.Duration;
@@ -54,7 +55,9 @@ public interface IDriver {
    *
    * @return a {@link FragmentInstanceId} instance.
    */
-  FragmentInstanceId getInfo();
+  DriverTaskId getDriverTaskId();
+
+  void setDriverTaskId(DriverTaskId driverTaskId);
 
   /** clear resource used by this fragment instance */
   void close();

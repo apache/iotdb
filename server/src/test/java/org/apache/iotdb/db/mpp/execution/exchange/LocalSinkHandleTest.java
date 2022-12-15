@@ -48,12 +48,11 @@ public class LocalSinkHandleTest {
         Mockito.mock(MPPDataExchangeManager.SinkHandleListener.class);
     // Construct a shared TsBlock queue.
     SharedTsBlockQueue queue =
-        new SharedTsBlockQueue(remoteFragmentInstanceId, mockLocalMemoryManager);
+        new SharedTsBlockQueue(remoteFragmentInstanceId.queryId, mockLocalMemoryManager);
 
     // Construct SinkHandle.
     LocalSinkHandle localSinkHandle =
-        new LocalSinkHandle(
-            remoteFragmentInstanceId, localFragmentInstanceId, queue, mockSinkHandleListener);
+        new LocalSinkHandle(localFragmentInstanceId, queue, mockSinkHandleListener);
     Assert.assertTrue(localSinkHandle.isFull().isDone());
     Assert.assertFalse(localSinkHandle.isFinished());
     Assert.assertFalse(localSinkHandle.isAborted());
@@ -109,12 +108,11 @@ public class LocalSinkHandleTest {
         Mockito.mock(MPPDataExchangeManager.SinkHandleListener.class);
     // Construct a shared tsblock queue.
     SharedTsBlockQueue queue =
-        new SharedTsBlockQueue(remoteFragmentInstanceId, mockLocalMemoryManager);
+        new SharedTsBlockQueue(remoteFragmentInstanceId.queryId, mockLocalMemoryManager);
 
     // Construct SinkHandle.
     LocalSinkHandle localSinkHandle =
-        new LocalSinkHandle(
-            remoteFragmentInstanceId, localFragmentInstanceId, queue, mockSinkHandleListener);
+        new LocalSinkHandle(localFragmentInstanceId, queue, mockSinkHandleListener);
     Assert.assertTrue(localSinkHandle.isFull().isDone());
     Assert.assertFalse(localSinkHandle.isFinished());
     Assert.assertFalse(localSinkHandle.isAborted());

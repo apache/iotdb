@@ -46,15 +46,11 @@ public class LocalSourceHandleTest {
     SourceHandleListener mockSourceHandleListener = Mockito.mock(SourceHandleListener.class);
     // Construct a shared TsBlock queue.
     SharedTsBlockQueue queue =
-        new SharedTsBlockQueue(localFragmentInstanceId, mockLocalMemoryManager);
+        new SharedTsBlockQueue(localFragmentInstanceId.queryId, mockLocalMemoryManager);
 
     LocalSourceHandle localSourceHandle =
         new LocalSourceHandle(
-            remoteFragmentInstanceId,
-            localFragmentInstanceId,
-            localPlanNodeId,
-            queue,
-            mockSourceHandleListener);
+            localFragmentInstanceId, localPlanNodeId, queue, mockSourceHandleListener);
     Assert.assertFalse(localSourceHandle.isBlocked().isDone());
     Assert.assertFalse(localSourceHandle.isAborted());
     Assert.assertFalse(localSourceHandle.isFinished());
@@ -94,15 +90,11 @@ public class LocalSourceHandleTest {
     SourceHandleListener mockSourceHandleListener = Mockito.mock(SourceHandleListener.class);
     // Construct a shared tsblock queue.
     SharedTsBlockQueue queue =
-        new SharedTsBlockQueue(localFragmentInstanceId, mockLocalMemoryManager);
+        new SharedTsBlockQueue(localFragmentInstanceId.queryId, mockLocalMemoryManager);
 
     LocalSourceHandle localSourceHandle =
         new LocalSourceHandle(
-            remoteFragmentInstanceId,
-            localFragmentInstanceId,
-            localPlanNodeId,
-            queue,
-            mockSourceHandleListener);
+            localFragmentInstanceId, localPlanNodeId, queue, mockSourceHandleListener);
     ListenableFuture<?> future = localSourceHandle.isBlocked();
     Assert.assertFalse(future.isDone());
     Assert.assertFalse(localSourceHandle.isAborted());

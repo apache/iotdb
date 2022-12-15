@@ -20,17 +20,15 @@
 package org.apache.iotdb.db.mpp.execution.exchange;
 
 import org.apache.iotdb.db.mpp.execution.memory.LocalMemoryManager;
-import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
+import javax.annotation.concurrent.NotThreadSafe;
 import org.apache.commons.lang3.Validate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import javax.annotation.concurrent.NotThreadSafe;
 
 import java.util.LinkedList;
 import java.util.Queue;
@@ -44,7 +42,7 @@ public class SharedTsBlockQueue {
 
   private static final Logger logger = LoggerFactory.getLogger(SharedTsBlockQueue.class);
 
-  private final TFragmentInstanceId localFragmentInstanceId;
+  private final String queryId;
   private final LocalMemoryManager localMemoryManager;
 
   private boolean noMoreTsBlocks = false;
@@ -62,10 +60,8 @@ public class SharedTsBlockQueue {
   private LocalSourceHandle sourceHandle;
   private LocalSinkHandle sinkHandle;
 
-  public SharedTsBlockQueue(
-      TFragmentInstanceId fragmentInstanceId, LocalMemoryManager localMemoryManager) {
-    this.localFragmentInstanceId =
-        Validate.notNull(fragmentInstanceId, "fragment instance ID cannot be null");
+  public SharedTsBlockQueue(String queryId, LocalMemoryManager localMemoryManager) {
+    this.queryId = Validate.notNull(queryId, "QueryId cannot be null");
     this.localMemoryManager =
         Validate.notNull(localMemoryManager, "local memory manager cannot be null");
   }
@@ -124,9 +120,7 @@ public class SharedTsBlockQueue {
     if (sinkHandle != null) {
       sinkHandle.checkAndInvokeOnFinished();
     }
-    localMemoryManager
-        .getQueryPool()
-        .free(localFragmentInstanceId.getQueryId(), tsBlock.getRetainedSizeInBytes());
+    localMemoryManager.getQueryPool().free(queryId, tsBlock.getRetainedSizeInBytes());
     bufferRetainedSizeInBytes -= tsBlock.getRetainedSizeInBytes();
     if (blocked.isDone() && queue.isEmpty() && !noMoreTsBlocks) {
       blocked = SettableFuture.create();
@@ -147,9 +141,7 @@ public class SharedTsBlockQueue {
     Validate.notNull(tsBlock, "TsBlock cannot be null");
     Validate.isTrue(blockedOnMemory == null || blockedOnMemory.isDone(), "queue is full");
     Pair<ListenableFuture<Void>, Boolean> pair =
-        localMemoryManager
-            .getQueryPool()
-            .reserve(localFragmentInstanceId.getQueryId(), tsBlock.getRetainedSizeInBytes());
+        localMemoryManager.getQueryPool().reserve(queryId, tsBlock.getRetainedSizeInBytes());
     blockedOnMemory = pair.left;
     bufferRetainedSizeInBytes += tsBlock.getRetainedSizeInBytes();
 
@@ -189,9 +181,7 @@ public class SharedTsBlockQueue {
     }
     queue.clear();
     if (bufferRetainedSizeInBytes > 0L) {
-      localMemoryManager
-          .getQueryPool()
-          .free(localFragmentInstanceId.getQueryId(), bufferRetainedSizeInBytes);
+      localMemoryManager.getQueryPool().free(queryId, bufferRetainedSizeInBytes);
       bufferRetainedSizeInBytes = 0;
     }
   }
@@ -210,9 +200,7 @@ public class SharedTsBlockQueue {
     }
     queue.clear();
     if (bufferRetainedSizeInBytes > 0L) {
-      localMemoryManager
-          .getQueryPool()
-          .free(localFragmentInstanceId.getQueryId(), bufferRetainedSizeInBytes);
+      localMemoryManager.getQueryPool().free(queryId, bufferRetainedSizeInBytes);
       bufferRetainedSizeInBytes = 0;
     }
   }
@@ -231,9 +219,7 @@ public class SharedTsBlockQueue {
     }
     queue.clear();
     if (bufferRetainedSizeInBytes > 0L) {
-      localMemoryManager
-          .getQueryPool()
-          .free(localFragmentInstanceId.getQueryId(), bufferRetainedSizeInBytes);
+      localMemoryManager.getQueryPool().free(queryId, bufferRetainedSizeInBytes);
       bufferRetainedSizeInBytes = 0;
     }
   }

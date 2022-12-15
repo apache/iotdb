@@ -20,18 +20,12 @@
 package org.apache.iotdb.db.mpp.plan.planner;
 
 import org.apache.iotdb.db.mpp.execution.driver.DataDriver;
-import org.apache.iotdb.db.mpp.execution.driver.DataDriverContext;
 import org.apache.iotdb.db.mpp.execution.driver.Driver;
 import org.apache.iotdb.db.mpp.execution.driver.DriverContext;
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
-import org.apache.iotdb.db.mpp.execution.operator.source.SourceOperator;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 
 import javax.annotation.concurrent.GuardedBy;
-
-import java.util.List;
-import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkState;
 import static java.util.Objects.requireNonNull;
@@ -43,7 +37,7 @@ public class PipelineDriverFactory {
   private final boolean inputDriver;
   private final boolean outputDriver;
   private final Operator rootOperator;
-  private final List<PlanNodeId> sourceId;
+  // private final List<PlanNodeId> sourceId;
   // 控制 Instance 的数量 = 并行度
   // private final OptionalInt driverInstances;
 
@@ -62,11 +56,11 @@ public class PipelineDriverFactory {
     this.rootOperator = requireNonNull(operator, "rootOperator is null");
     // this.driverInstances = requireNonNull(driverInstances, "driverInstances is null");
     this.driverContext = driverContext;
-    this.sourceId =
-        ((DataDriverContext) driverContext)
-            .getSourceOperators().stream()
-                .map(SourceOperator::getSourceId)
-                .collect(Collectors.toList());
+    //    this.sourceId =
+    //        ((DataDriverContext) driverContext)
+    //            .getSourceOperators().stream()
+    //                .map(SourceOperator::getSourceId)
+    //                .collect(Collectors.toList());
   }
 
   public DriverContext getDriverContext() {

@@ -21,7 +21,6 @@ package org.apache.iotdb.db.mpp.execution.operator.source;
 import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.reader.universal.AlignedDescPriorityMergeReader;
 import org.apache.iotdb.db.query.reader.universal.AlignedPriorityMergeReader;
@@ -49,7 +48,7 @@ public class AlignedSeriesScanUtil extends SeriesScanUtil {
   public AlignedSeriesScanUtil(
       PartialPath seriesPath,
       Set<String> allSensors,
-      FragmentInstanceContext context,
+      QueryContext context,
       Filter timeFilter,
       Filter valueFilter,
       boolean ascending) {

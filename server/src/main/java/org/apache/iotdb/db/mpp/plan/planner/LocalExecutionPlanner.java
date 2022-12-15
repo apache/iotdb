@@ -76,7 +76,8 @@ public class LocalExecutionPlanner {
     // check whether current free memory is enough to execute current query
     checkMemory(root, instanceContext.getStateMachine());
 
-    context.addPipelineDriverFactory(context.isInputDriver(), true, root);
+    context.addPipelineDriverFactory(
+        context.isInputDriver(), true, root, context.getDriverContext());
 
     return context.getPipelineDriverFactories();
   }

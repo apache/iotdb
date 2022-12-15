@@ -29,7 +29,7 @@ import java.util.Objects;
 /** The fragment instance ID class. */
 public class FragmentInstanceId {
 
-  private final String fullId;
+  private String fullId;
   private final QueryId queryId;
   private final PlanFragmentId fragmentId;
   private final String instanceId;

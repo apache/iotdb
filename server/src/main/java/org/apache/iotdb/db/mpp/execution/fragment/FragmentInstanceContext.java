@@ -36,7 +36,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
-import static org.h2.mvstore.DataUtils.checkArgument;
+import static com.google.common.base.Preconditions.checkArgument;
 
 public class FragmentInstanceContext extends QueryContext {
 
@@ -143,7 +143,7 @@ public class FragmentInstanceContext extends QueryContext {
     }
   }
 
-  // TODO Remove this
+  @TestOnly
   public OperatorContext addOperatorContext(
       int operatorId, PlanNodeId planNodeId, String operatorType) {
     checkArgument(operatorId >= 0, "operatorId is negative");

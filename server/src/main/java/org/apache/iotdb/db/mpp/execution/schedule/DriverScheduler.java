@@ -32,7 +32,7 @@ import org.apache.iotdb.db.mpp.execution.schedule.queue.IndexedBlockingQueue;
 import org.apache.iotdb.db.mpp.execution.schedule.queue.L1PriorityQueue;
 import org.apache.iotdb.db.mpp.execution.schedule.queue.L2PriorityQueue;
 import org.apache.iotdb.db.mpp.execution.schedule.task.DriverTask;
-import org.apache.iotdb.db.mpp.execution.schedule.task.DriverTaskID;
+import org.apache.iotdb.db.mpp.execution.schedule.task.DriverTaskId;
 import org.apache.iotdb.db.mpp.execution.schedule.task.DriverTaskStatus;
 import org.apache.iotdb.db.utils.SetThreadName;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
@@ -42,6 +42,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
@@ -62,7 +63,7 @@ public class DriverScheduler implements IDriverScheduler, IService {
   private final IndexedBlockingQueue<DriverTask> readyQueue;
   private final IndexedBlockingQueue<DriverTask> timeoutQueue;
   private final Set<DriverTask> blockedTasks;
-  private final Map<QueryId, Set<DriverTask>> queryMap;
+  private final Map<QueryId, Map<FragmentInstanceId, Set<DriverTask>>> queryMap;
   private final ITaskScheduler scheduler;
   private IMPPDataExchangeManager blockManager;
 
@@ -156,17 +157,22 @@ public class DriverScheduler implements IDriverScheduler, IService {
   }
 
   @Override
-  public void submitDrivers(QueryId queryId, List<IDriver> instances, long timeOut) {
+  public void submitDrivers(QueryId queryId, List<IDriver> drivers, long timeOut) {
     List<DriverTask> tasks =
-        instances.stream()
+        drivers.stream()
             .map(
                 v ->
                     new DriverTask(
                         v, timeOut > 0 ? timeOut : QUERY_TIMEOUT_MS, DriverTaskStatus.READY))
             .collect(Collectors.toList());
-    queryMap
-        .computeIfAbsent(queryId, v -> Collections.synchronizedSet(new HashSet<>()))
-        .addAll(tasks);
+    for (DriverTask driverTask : tasks) {
+      queryMap
+          .computeIfAbsent(queryId, v -> new ConcurrentHashMap<>())
+          .computeIfAbsent(
+              driverTask.getDriverTaskId().getFragmentInstanceId(),
+              v -> Collections.synchronizedSet(new HashSet<>()))
+          .add(driverTask);
+    }
     for (DriverTask task : tasks) {
       task.lock();
       try {
@@ -183,67 +189,81 @@ public class DriverScheduler implements IDriverScheduler, IService {
 
   @Override
   public void abortQuery(QueryId queryId) {
-    Set<DriverTask> queryRelatedTasks = queryMap.remove(queryId);
-    if (queryRelatedTasks != null) {
-      for (DriverTask task : queryRelatedTasks) {
-        task.lock();
-        try {
-          task.setAbortCause(FragmentInstanceAbortedException.BY_QUERY_CASCADING_ABORTED);
-          clearDriverTask(task);
-        } finally {
-          task.unlock();
+    Map<FragmentInstanceId, Set<DriverTask>> queryRelatedTasks = queryMap.remove(queryId);
+    for (Set<DriverTask> fragmentRelatedTasks : queryRelatedTasks.values()) {
+      if (fragmentRelatedTasks != null) {
+        for (DriverTask task : fragmentRelatedTasks) {
+          task.lock();
+          try {
+            task.setAbortCause(DriverTaskAbortedException.BY_QUERY_CASCADING_ABORTED);
+            clearDriverTask(task);
+          } finally {
+            task.unlock();
+          }
         }
+      }
+    }
+    // help for gc
+    queryRelatedTasks = null;
+  }
+
+  @Override
+  public void abortFragmentInstance(FragmentInstanceId instanceId) {
+    Set<DriverTask> instanceRelatedTasks = queryMap.get(instanceId.getQueryId()).remove(instanceId);
+    for (DriverTask task : instanceRelatedTasks) {
+      if (task == null) {
+        return;
+      }
+      task.lock();
+      try {
+        task.setAbortCause(DriverTaskAbortedException.BY_FRAGMENT_ABORT_CALLED);
+        clearDriverTask(task);
+      } finally {
+        task.unlock();
       }
     }
   }
 
   @Override
-  public void abortFragmentInstance(FragmentInstanceId instanceId) {
-    DriverTask task = timeoutQueue.get(new DriverTaskID(instanceId));
-    if (task == null) {
-      return;
-    }
-    task.lock();
-    try {
-      task.setAbortCause(FragmentInstanceAbortedException.BY_FRAGMENT_ABORT_CALLED);
-      clearDriverTask(task);
-    } finally {
-      task.unlock();
-    }
-  }
-
-  @Override
-  public double getSchedulePriority(FragmentInstanceId instanceId) {
-    DriverTask task = timeoutQueue.get(new DriverTaskID(instanceId));
+  public double getSchedulePriority(DriverTaskId driverTaskID) {
+    DriverTask task = timeoutQueue.get(driverTaskID);
     if (task == null) {
       throw new IllegalStateException(
-          "the fragmentInstance " + instanceId.getFullId() + " has been cleared");
+          "the fragmentInstance " + driverTaskID.getFullId() + " has been cleared");
     }
     return task.getSchedulePriority();
   }
 
   private void clearDriverTask(DriverTask task) {
-    try (SetThreadName fragmentInstanceName =
-        new SetThreadName(task.getFragmentInstance().getInfo().getFullId())) {
+    try (SetThreadName driverTaskName =
+        new SetThreadName(task.getDriver().getDriverTaskId().getFullId())) {
       if (task.getStatus() != DriverTaskStatus.FINISHED) {
         task.setStatus(DriverTaskStatus.ABORTED);
       }
-      readyQueue.remove(task.getId());
-      timeoutQueue.remove(task.getId());
+      readyQueue.remove(task.getDriverTaskId());
+      timeoutQueue.remove(task.getDriverTaskId());
       blockedTasks.remove(task);
-      Set<DriverTask> tasks = queryMap.get(task.getId().getQueryId());
-      if (tasks != null) {
-        tasks.remove(task);
-        if (tasks.isEmpty()) {
-          queryMap.remove(task.getId().getQueryId());
+      Map<FragmentInstanceId, Set<DriverTask>> queryRelatedTasks =
+          queryMap.get(task.getDriverTaskId().getQueryId());
+      if (queryRelatedTasks != null) {
+        Set<DriverTask> instanceRelatedTasks =
+            queryRelatedTasks.get(task.getDriverTaskId().getFragmentInstanceId());
+        if (instanceRelatedTasks != null) {
+          instanceRelatedTasks.remove(task);
+          if (instanceRelatedTasks.isEmpty()) {
+            queryRelatedTasks.remove(task.getDriverTaskId().getFragmentInstanceId());
+          }
+        }
+        if (queryRelatedTasks.isEmpty()) {
+          queryMap.remove(task.getDriverTaskId().getQueryId());
         }
       }
       if (task.getAbortCause() != null) {
         try {
-          task.getFragmentInstance()
+          task.getDriver()
               .failed(
-                  new FragmentInstanceAbortedException(
-                      task.getFragmentInstance().getInfo(), task.getAbortCause()));
+                  new DriverTaskAbortedException(
+                      task.getDriver().getDriverTaskId().getFullId(), task.getAbortCause()));
         } catch (Exception e) {
           logger.error("Clear DriverTask failed", e);
         }
@@ -252,9 +272,9 @@ public class DriverScheduler implements IDriverScheduler, IService {
         try {
           blockManager.forceDeregisterFragmentInstance(
               new TFragmentInstanceId(
-                  task.getId().getQueryId().getId(),
-                  task.getId().getFragmentId().getId(),
-                  task.getId().getInstanceId()));
+                  task.getDriverTaskId().getQueryId().getId(),
+                  task.getDriverTaskId().getFragmentId().getId(),
+                  task.getDriverTaskId().getFragmentInstanceId().getInstanceId()));
         } catch (Exception e) {
           logger.error("Clear DriverTask failed", e);
         }
@@ -282,7 +302,7 @@ public class DriverScheduler implements IDriverScheduler, IService {
   }
 
   @TestOnly
-  Map<QueryId, Set<DriverTask>> getQueryMap() {
+  Map<QueryId, Map<FragmentInstanceId, Set<DriverTask>>> getQueryMap() {
     return queryMap;
   }
 
@@ -375,8 +395,8 @@ public class DriverScheduler implements IDriverScheduler, IService {
 
     @Override
     public void toAborted(DriverTask task) {
-      try (SetThreadName fragmentInstanceName =
-          new SetThreadName(task.getFragmentInstance().getInfo().getFullId())) {
+      try (SetThreadName driverTaskName =
+          new SetThreadName(task.getDriver().getDriverTaskId().getFullId())) {
         task.lock();
         try {
           // If a task is already in an end state, it indicates that the task is finalized in other
@@ -386,24 +406,26 @@ public class DriverScheduler implements IDriverScheduler, IService {
           }
           logger.warn(
               "The task {} is aborted. All other tasks in the same query will be cancelled",
-              task.getId().toString());
+              task.getDriverTaskId().toString());
           clearDriverTask(task);
         } finally {
           task.unlock();
         }
-        QueryId queryId = task.getId().getQueryId();
-        Set<DriverTask> queryRelatedTasks = queryMap.remove(queryId);
-        if (queryRelatedTasks != null) {
-          for (DriverTask otherTask : queryRelatedTasks) {
-            if (task.equals(otherTask)) {
-              continue;
-            }
-            otherTask.lock();
-            try {
-              otherTask.setAbortCause(FragmentInstanceAbortedException.BY_QUERY_CASCADING_ABORTED);
-              clearDriverTask(otherTask);
-            } finally {
-              otherTask.unlock();
+        QueryId queryId = task.getDriverTaskId().getQueryId();
+        Collection<Set<DriverTask>> queryRelatedTasks = queryMap.get(queryId).values();
+        for (Set<DriverTask> fragmentRelatedTasks : queryRelatedTasks) {
+          if (fragmentRelatedTasks != null) {
+            for (DriverTask otherTask : fragmentRelatedTasks) {
+              if (task.equals(otherTask)) {
+                continue;
+              }
+              otherTask.lock();
+              try {
+                otherTask.setAbortCause(DriverTaskAbortedException.BY_QUERY_CASCADING_ABORTED);
+                clearDriverTask(otherTask);
+              } finally {
+                otherTask.unlock();
+              }
             }
           }
         }

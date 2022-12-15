@@ -86,7 +86,8 @@ public abstract class IndexedBlockingQueue<E extends IDIndexedAccessible> {
       throw new NullPointerException("pushed element is null");
     }
     Preconditions.checkState(
-        !contains(element), "The queue has already contained the element: " + element.getId());
+        !contains(element),
+        "The queue has already contained the element: " + element.getDriverTaskId());
     Preconditions.checkState(size < MAX_CAPACITY, "The queue is full");
     pushToQueue(element);
     size++;

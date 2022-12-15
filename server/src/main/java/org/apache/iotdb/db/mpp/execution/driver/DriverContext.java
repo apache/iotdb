@@ -21,27 +21,28 @@ package org.apache.iotdb.db.mpp.execution.driver;
 import org.apache.iotdb.db.mpp.execution.exchange.ISinkHandle;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
+import org.apache.iotdb.db.mpp.execution.schedule.task.DriverTaskId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 
+import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
 public class DriverContext {
 
-  protected int pipelineId;
+  public DriverTaskId driverTaskID;
   // only used to pass QueryContext
   private final FragmentInstanceContext fragmentInstanceContext;
-
-  private final List<OperatorContext> operatorContexts = new CopyOnWriteArrayList<>();
+  private final List<OperatorContext> operatorContexts = new ArrayList<>();
   private ISinkHandle sinkHandle;
 
   private final AtomicBoolean finished = new AtomicBoolean();
 
-  public DriverContext(FragmentInstanceContext fragmentInstanceContext) {
+  public DriverContext(FragmentInstanceContext fragmentInstanceContext, int pipelineId) {
     this.fragmentInstanceContext = fragmentInstanceContext;
+    this.driverTaskID = new DriverTaskId(fragmentInstanceContext.getId(), pipelineId);
   }
 
   public OperatorContext addOperatorContext(
@@ -61,8 +62,8 @@ public class DriverContext {
     return operatorContext;
   }
 
-  public DriverContext createSubDriverContext() {
-    return null;
+  public DriverContext createSubDriverContext(int pipelineId) {
+    throw new IllegalArgumentException("SubDriver cannot be created by parent driver class.");
   }
 
   public void setSinkHandle(ISinkHandle sinkHandle) {
@@ -77,8 +78,16 @@ public class DriverContext {
     return operatorContexts;
   }
 
-  public int getId() {
-    return pipelineId;
+  public int getPipelineId() {
+    return driverTaskID.getPipelineId();
+  }
+
+  public DriverTaskId getDriverTaskID() {
+    return driverTaskID;
+  }
+
+  public void setDriverTaskID(DriverTaskId driverTaskID) {
+    this.driverTaskID = driverTaskID;
   }
 
   public FragmentInstanceContext getFragmentInstanceContext() {

@@ -253,6 +253,35 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
     }
   }
 
+  /** Listen to the state changes of a source handle. */
+  static class PipelineSourceHandleListenerImpl implements SourceHandleListener {
+
+    private final IMPPDataExchangeManagerCallback<Throwable> onFailureCallback;
+
+    public PipelineSourceHandleListenerImpl(
+        IMPPDataExchangeManagerCallback<Throwable> onFailureCallback) {
+      this.onFailureCallback = onFailureCallback;
+    }
+
+    @Override
+    public void onFinished(ISourceHandle sourceHandle) {
+      logger.debug("[ScHListenerOnFinish]");
+    }
+
+    @Override
+    public void onAborted(ISourceHandle sourceHandle) {
+      logger.debug("[ScHListenerOnAbort]");
+    }
+
+    @Override
+    public void onFailure(ISourceHandle sourceHandle, Throwable t) {
+      logger.warn("Source handle failed due to: ", t);
+      if (onFailureCallback != null) {
+        onFailureCallback.call(t);
+      }
+    }
+  }
+
   /** Listen to the state changes of a sink handle. */
   class SinkHandleListenerImpl implements SinkHandleListener {
 
@@ -304,6 +333,44 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
     }
   }
 
+  /** Listen to the state changes of a sink handle. */
+  static class PipelineSinkHandleListenerImpl implements SinkHandleListener {
+
+    private final FragmentInstanceContext context;
+    private final IMPPDataExchangeManagerCallback<Throwable> onFailureCallback;
+
+    public PipelineSinkHandleListenerImpl(
+        FragmentInstanceContext context,
+        IMPPDataExchangeManagerCallback<Throwable> onFailureCallback) {
+      this.context = context;
+      this.onFailureCallback = onFailureCallback;
+    }
+
+    @Override
+    public void onFinish(ISinkHandle sinkHandle) {
+      logger.debug("[SkHListenerOnFinish]");
+    }
+
+    @Override
+    public void onEndOfBlocks(ISinkHandle sinkHandle) {
+      logger.debug("[SkHListenerOnEndOfTsBlocks]");
+    }
+
+    @Override
+    public Optional<Throwable> onAborted(ISinkHandle sinkHandle) {
+      logger.debug("[SkHListenerOnAbort]");
+      return context.getFailureCause();
+    }
+
+    @Override
+    public void onFailure(ISinkHandle sinkHandle, Throwable t) {
+      logger.warn("Sink handle failed due to", t);
+      if (onFailureCallback != null) {
+        onFailureCallback.call(t);
+      }
+    }
+  }
+
   private final LocalMemoryManager localMemoryManager;
   private final Supplier<TsBlockSerde> tsBlockSerdeFactory;
   private final ExecutorService executorService;
@@ -337,7 +404,7 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
   }
 
   @Override
-  public synchronized ISinkHandle createLocalSinkHandle(
+  public synchronized ISinkHandle createLocalSinkHandleForFragment(
       TFragmentInstanceId localFragmentInstanceId,
       TFragmentInstanceId remoteFragmentInstanceId,
       String remotePlanNodeId,
@@ -364,12 +431,11 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
               .getSharedTsBlockQueue();
     } else {
       logger.debug("Create shared tsblock queue");
-      queue = new SharedTsBlockQueue(remoteFragmentInstanceId, localMemoryManager);
+      queue = new SharedTsBlockQueue(remoteFragmentInstanceId.queryId, localMemoryManager);
     }
 
     LocalSinkHandle localSinkHandle =
         new LocalSinkHandle(
-            remoteFragmentInstanceId,
             localFragmentInstanceId,
             queue,
             new SinkHandleListenerImpl(instanceContext, instanceContext::failed));
@@ -377,22 +443,17 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
     return localSinkHandle;
   }
 
-  public synchronized ISinkHandle createLocalSinkHandleForPipeline(
-      TFragmentInstanceId localFragmentInstanceId,
-      TFragmentInstanceId remoteFragmentInstanceId,
-      FragmentInstanceContext instanceContext) {
+  /**
+   * As we know the upstream and downstream node of shared queue, we don't need to put it into the
+   * sinkHandle and sourceHandle map.
+   */
+  public ISinkHandle createLocalSinkHandleForPipeline(FragmentInstanceContext instanceContext) {
+    logger.debug("Create local sink handle for {}", instanceContext.getId());
+    SharedTsBlockQueue queue =
+        new SharedTsBlockQueue(instanceContext.getId().getQueryId().getId(), localMemoryManager);
 
-    logger.debug("Create shared tsblock queue");
-    SharedTsBlockQueue queue = new SharedTsBlockQueue(remoteFragmentInstanceId, localMemoryManager);
-
-    LocalSinkHandle localSinkHandle =
-        new LocalSinkHandle(
-            remoteFragmentInstanceId,
-            localFragmentInstanceId,
-            queue,
-            new SinkHandleListenerImpl(instanceContext, instanceContext::failed));
-    // sinkHandles.put(localFragmentInstanceId, localSinkHandle);
-    return localSinkHandle;
+    return new LocalSinkHandle(
+        queue, new PipelineSinkHandleListenerImpl(instanceContext, instanceContext::failed));
   }
 
   @Override
@@ -429,8 +490,14 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
     return sinkHandle;
   }
 
+  public synchronized ISourceHandle createLocalSourceHandleForPipeline(
+      SharedTsBlockQueue queue, FragmentInstanceContext context) {
+    logger.debug("Create local sink handle for {}", context.getId());
+    return new LocalSourceHandle(queue, new PipelineSourceHandleListenerImpl(context::failed));
+  }
+
   @Override
-  public synchronized ISourceHandle createLocalSourceHandle(
+  public synchronized ISourceHandle createLocalSourceHandleForFragment(
       TFragmentInstanceId localFragmentInstanceId,
       String localPlanNodeId,
       TFragmentInstanceId remoteFragmentInstanceId,
@@ -456,11 +523,10 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
       queue = ((LocalSinkHandle) sinkHandles.get(remoteFragmentInstanceId)).getSharedTsBlockQueue();
     } else {
       logger.debug("Create shared tsblock queue");
-      queue = new SharedTsBlockQueue(localFragmentInstanceId, localMemoryManager);
+      queue = new SharedTsBlockQueue(localFragmentInstanceId.queryId, localMemoryManager);
     }
     LocalSourceHandle localSourceHandle =
         new LocalSourceHandle(
-            remoteFragmentInstanceId,
             localFragmentInstanceId,
             localPlanNodeId,
             queue,

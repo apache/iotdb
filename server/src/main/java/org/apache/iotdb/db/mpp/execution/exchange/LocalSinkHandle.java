@@ -38,8 +38,7 @@ public class LocalSinkHandle implements ISinkHandle {
 
   private static final Logger logger = LoggerFactory.getLogger(LocalSinkHandle.class);
 
-  private final TFragmentInstanceId remoteFragmentInstanceId;
-  private final TFragmentInstanceId localFragmentInstanceId;
+  private TFragmentInstanceId localFragmentInstanceId;
   private final SinkHandleListener sinkHandleListener;
 
   private final SharedTsBlockQueue queue;
@@ -47,12 +46,16 @@ public class LocalSinkHandle implements ISinkHandle {
   private boolean aborted = false;
   private boolean closed = false;
 
+  public LocalSinkHandle(SharedTsBlockQueue queue, SinkHandleListener sinkHandleListener) {
+    this.sinkHandleListener = Validate.notNull(sinkHandleListener);
+    this.queue = Validate.notNull(queue);
+    this.queue.setSinkHandle(this);
+  }
+
   public LocalSinkHandle(
-      TFragmentInstanceId remoteFragmentInstanceId,
       TFragmentInstanceId localFragmentInstanceId,
       SharedTsBlockQueue queue,
       SinkHandleListener sinkHandleListener) {
-    this.remoteFragmentInstanceId = Validate.notNull(remoteFragmentInstanceId);
     this.localFragmentInstanceId = Validate.notNull(localFragmentInstanceId);
     this.sinkHandleListener = Validate.notNull(sinkHandleListener);
     this.queue = Validate.notNull(queue);
@@ -175,11 +178,7 @@ public class LocalSinkHandle implements ISinkHandle {
     logger.debug("[EndCloseLocalSinkHandle]");
   }
 
-  public TFragmentInstanceId getRemoteFragmentInstanceId() {
-    return remoteFragmentInstanceId;
-  }
-
-  SharedTsBlockQueue getSharedTsBlockQueue() {
+  public SharedTsBlockQueue getSharedTsBlockQueue() {
     return queue;
   }
 

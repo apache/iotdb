@@ -59,7 +59,7 @@ public class MPPDataExchangeManagerTest {
                         .SyncDataNodeMPPDataExchangeServiceClientPoolFactory()));
 
     ISinkHandle localSinkHandle =
-        mppDataExchangeManager.createLocalSinkHandle(
+        mppDataExchangeManager.createLocalSinkHandleForFragment(
             localFragmentInstanceId,
             remoteFragmentInstanceId,
             remotePlanNodeId,
@@ -68,7 +68,7 @@ public class MPPDataExchangeManagerTest {
     Assert.assertTrue(localSinkHandle instanceof LocalSinkHandle);
 
     ISourceHandle localSourceHandle =
-        mppDataExchangeManager.createLocalSourceHandle(
+        mppDataExchangeManager.createLocalSourceHandleForFragment(
             remoteFragmentInstanceId, remotePlanNodeId, localFragmentInstanceId, t -> {});
 
     Assert.assertTrue(localSourceHandle instanceof LocalSourceHandle);
@@ -102,13 +102,13 @@ public class MPPDataExchangeManagerTest {
                         .SyncDataNodeMPPDataExchangeServiceClientPoolFactory()));
 
     ISourceHandle localSourceHandle =
-        mppDataExchangeManager.createLocalSourceHandle(
+        mppDataExchangeManager.createLocalSourceHandleForFragment(
             localFragmentInstanceId, localPlanNodeId, remoteFragmentInstanceId, t -> {});
 
     Assert.assertTrue(localSourceHandle instanceof LocalSourceHandle);
 
     ISinkHandle localSinkHandle =
-        mppDataExchangeManager.createLocalSinkHandle(
+        mppDataExchangeManager.createLocalSinkHandleForFragment(
             remoteFragmentInstanceId,
             localFragmentInstanceId,
             localPlanNodeId,

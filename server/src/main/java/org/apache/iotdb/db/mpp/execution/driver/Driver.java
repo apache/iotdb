@@ -18,19 +18,18 @@
  */
 package org.apache.iotdb.db.mpp.execution.driver;
 
-import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.execution.exchange.ISinkHandle;
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
+import org.apache.iotdb.db.mpp.execution.schedule.task.DriverTaskId;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
 import io.airlift.units.Duration;
+import javax.annotation.concurrent.GuardedBy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import javax.annotation.concurrent.GuardedBy;
 
 import java.util.List;
 import java.util.Optional;
@@ -50,9 +49,9 @@ public abstract class Driver implements IDriver {
 
   protected static final Logger LOGGER = LoggerFactory.getLogger(Driver.class);
 
+  protected final DriverContext driverContext;
   protected final Operator root;
   protected final ISinkHandle sinkHandle;
-  protected final DriverContext driverContext;
   protected final AtomicReference<SettableFuture<?>> driverBlockedFuture = new AtomicReference<>();
   protected final AtomicReference<State> state = new AtomicReference<>(State.ALIVE);
 
@@ -66,10 +65,10 @@ public abstract class Driver implements IDriver {
 
   public Driver(Operator root, DriverContext driverContext) {
     checkNotNull(root, "root Operator should not be null");
-    // checkNotNull(sinkHandle, "SinkHandle should not be null");
+    checkNotNull(driverContext.getSinkHandle(), "SinkHandle should not be null");
+    this.driverContext = driverContext;
     this.root = root;
     this.sinkHandle = driverContext.getSinkHandle();
-    this.driverContext = driverContext;
 
     // initially the driverBlockedFuture is not blocked (it is completed)
     SettableFuture<Void> future = SettableFuture.create();
@@ -134,8 +133,13 @@ public abstract class Driver implements IDriver {
   }
 
   @Override
-  public FragmentInstanceId getInfo() {
-    return driverContext.getFragmentInstanceContext().getId();
+  public DriverTaskId getDriverTaskId() {
+    return driverContext.getDriverTaskID();
+  }
+
+  @Override
+  public void setDriverTaskId(DriverTaskId driverTaskId) {
+    this.driverContext.driverTaskID = driverTaskId;
   }
 
   @Override
@@ -311,7 +315,10 @@ public abstract class Driver implements IDriver {
       // this shouldn't happen but be safe
       inFlightException =
           addSuppressedException(
-              inFlightException, t, "Error destroying driver for task %s", driverContext.getId());
+              inFlightException,
+              t,
+              "Error destroying driver for task %s",
+              driverContext.getPipelineId());
     } finally {
       releaseResource();
     }
@@ -343,7 +350,7 @@ public abstract class Driver implements IDriver {
               t,
               "Error closing operator {} for fragment instance {}",
               root.getOperatorContext().getOperatorId(),
-              driverContext.getId());
+              driverContext.getPipelineId());
     } finally {
       // reset the interrupted flag
       if (wasInterrupted) {

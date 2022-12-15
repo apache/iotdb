@@ -58,7 +58,7 @@ public class L1PriorityQueueTest {
     Thread.sleep(100);
     Assert.assertEquals(Thread.State.TERMINATED, t1.getState());
     Assert.assertEquals(1, res.size());
-    Assert.assertEquals(e2.getId().toString(), res.get(0).getId().toString());
+    Assert.assertEquals(e2.getDriverTaskId().toString(), res.get(0).getDriverTaskId().toString());
   }
 
   @Test
@@ -102,9 +102,9 @@ public class L1PriorityQueueTest {
     QueueElement e2 = new QueueElement(new QueueElement.QueueElementID(2), 5);
     queue.push(e2);
     Assert.assertEquals(2, queue.size());
-    Assert.assertEquals(e2.getId().toString(), queue.poll().getId().toString());
+    Assert.assertEquals(e2.getDriverTaskId().toString(), queue.poll().getDriverTaskId().toString());
     Assert.assertEquals(1, queue.size());
-    Assert.assertEquals(e1.getId().toString(), queue.poll().getId().toString());
+    Assert.assertEquals(e1.getDriverTaskId().toString(), queue.poll().getDriverTaskId().toString());
     Assert.assertEquals(0, queue.size());
   }
 

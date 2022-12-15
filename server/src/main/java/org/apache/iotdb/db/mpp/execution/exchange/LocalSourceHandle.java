@@ -41,9 +41,8 @@ public class LocalSourceHandle implements ISourceHandle {
 
   private static final Logger logger = LoggerFactory.getLogger(LocalSourceHandle.class);
 
-  private final TFragmentInstanceId remoteFragmentInstanceId;
-  private final TFragmentInstanceId localFragmentInstanceId;
-  private final String localPlanNodeId;
+  private TFragmentInstanceId localFragmentInstanceId;
+  private String localPlanNodeId;
   private final SourceHandleListener sourceHandleListener;
   private final SharedTsBlockQueue queue;
   private boolean aborted = false;
@@ -52,17 +51,24 @@ public class LocalSourceHandle implements ISourceHandle {
 
   private int currSequenceId;
 
-  private final String threadName;
+  private String threadName;
 
   private static final TsBlockSerde serde = new TsBlockSerde();
 
+  // For pipeline
+  public LocalSourceHandle(SharedTsBlockQueue queue, SourceHandleListener sourceHandleListener) {
+    this.queue = Validate.notNull(queue);
+    this.queue.setSourceHandle(this);
+    this.sourceHandleListener = Validate.notNull(sourceHandleListener);
+    this.threadName = "local pipeline source handle";
+  }
+
+  // For fragment
   public LocalSourceHandle(
-      TFragmentInstanceId remoteFragmentInstanceId,
       TFragmentInstanceId localFragmentInstanceId,
       String localPlanNodeId,
       SharedTsBlockQueue queue,
       SourceHandleListener sourceHandleListener) {
-    this.remoteFragmentInstanceId = Validate.notNull(remoteFragmentInstanceId);
     this.localFragmentInstanceId = Validate.notNull(localFragmentInstanceId);
     this.localPlanNodeId = Validate.notNull(localPlanNodeId);
     this.queue = Validate.notNull(queue);
@@ -226,11 +232,7 @@ public class LocalSourceHandle implements ISourceHandle {
     }
   }
 
-  public TFragmentInstanceId getRemoteFragmentInstanceId() {
-    return remoteFragmentInstanceId;
-  }
-
-  SharedTsBlockQueue getSharedTsBlockQueue() {
+  public SharedTsBlockQueue getSharedTsBlockQueue() {
     return queue;
   }
 }

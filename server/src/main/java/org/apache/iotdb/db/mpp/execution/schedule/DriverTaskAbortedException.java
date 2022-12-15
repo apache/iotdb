@@ -18,11 +18,10 @@
  */
 package org.apache.iotdb.db.mpp.execution.schedule;
 
-import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.execution.driver.IDriver;
 
 /** A common exception to pass to {@link IDriver#failed(Throwable)} */
-public class FragmentInstanceAbortedException extends Exception {
+public class DriverTaskAbortedException extends Exception {
 
   public static final String BY_TIMEOUT = "timeout";
   public static final String BY_FRAGMENT_ABORT_CALLED = " called";
@@ -30,7 +29,7 @@ public class FragmentInstanceAbortedException extends Exception {
   public static final String BY_ALREADY_BEING_CANCELLED = "already being cancelled";
   public static final String BY_INTERNAL_ERROR_SCHEDULED = "internal error scheduled";
 
-  public FragmentInstanceAbortedException(FragmentInstanceId id, String causeMsg) {
-    super(String.format("FragmentInstance %s is aborted by %s", id.toString(), causeMsg));
+  public DriverTaskAbortedException(String driverTaskName, String causeMsg) {
+    super(String.format("DriverTask %s is aborted by %s", driverTaskName, causeMsg));
   }
 }

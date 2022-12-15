@@ -35,6 +35,7 @@ import org.apache.iotdb.db.mpp.execution.driver.DataDriverContext;
 import org.apache.iotdb.db.mpp.execution.driver.SchemaDriverContext;
 import org.apache.iotdb.db.mpp.execution.exchange.ISinkHandle;
 import org.apache.iotdb.db.mpp.execution.exchange.ISourceHandle;
+import org.apache.iotdb.db.mpp.execution.exchange.LocalSinkHandle;
 import org.apache.iotdb.db.mpp.execution.exchange.MPPDataExchangeManager;
 import org.apache.iotdb.db.mpp.execution.exchange.MPPDataExchangeService;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceManager;
@@ -1533,28 +1534,22 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
       Operator childOperation = childSource.accept(this, subContext);
       ISinkHandle localSinkHandle =
           MPP_DATA_EXCHANGE_MANAGER.createLocalSinkHandleForPipeline(
-              subContext.getFragmentInstanceId().toThrift(),
-              subContext.getFragmentInstanceId().toThrift(),
               subContext.getInstanceContext());
       subContext.setSinkHandle(localSinkHandle);
-      subContext
-          .getDriverContext()
-          .getOperatorContexts()
-          .forEach(
-              operatorContext ->
-                  operatorContext.setMaxRunTime(
-                      subContext.getTimeSliceAllocator().getMaxRunTime(operatorContext)));
-      context.addPipelineDriverFactory(subContext.isInputDriver(), false, childOperation);
+      context.addPipelineDriverFactory(
+          subContext.isInputDriver(), false, childOperation, subContext.getDriverContext());
 
       ExchangeOperator sourceOperator =
           new ExchangeOperator(
-              childOperation.getOperatorContext(),
-              MPP_DATA_EXCHANGE_MANAGER.createLocalSourceHandle(
-                  subContext.getFragmentInstanceId().toThrift(),
-                  childSource.getPlanNodeId().getId(),
-                  subContext.getFragmentInstanceId().toThrift(),
-                  context.getInstanceContext()::failed),
+              context
+                  .getDriverContext()
+                  .addOperatorContext(
+                      context.getNextOperatorId(), null, ExchangeOperator.class.getSimpleName()),
+              MPP_DATA_EXCHANGE_MANAGER.createLocalSourceHandleForPipeline(
+                  ((LocalSinkHandle) localSinkHandle).getSharedTsBlockQueue(),
+                  context.getInstanceContext()),
               childSource.getPlanNodeId());
+      context.getTimeSliceAllocator().recordExecutionWeight(sourceOperator.getOperatorContext(), 1);
       children.add(sourceOperator);
     }
 
@@ -1646,7 +1641,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     TEndPoint upstreamEndPoint = node.getUpstreamEndpoint();
     ISourceHandle sourceHandle =
         isSameNode(upstreamEndPoint)
-            ? MPP_DATA_EXCHANGE_MANAGER.createLocalSourceHandle(
+            ? MPP_DATA_EXCHANGE_MANAGER.createLocalSourceHandleForFragment(
                 localInstanceId.toThrift(),
                 node.getPlanNodeId().getId(),
                 remoteInstanceId.toThrift(),
@@ -1673,7 +1668,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
 
     ISinkHandle sinkHandle =
         isSameNode(downStreamEndPoint)
-            ? MPP_DATA_EXCHANGE_MANAGER.createLocalSinkHandle(
+            ? MPP_DATA_EXCHANGE_MANAGER.createLocalSinkHandleForFragment(
                 localInstanceId.toThrift(),
                 targetInstanceId.toThrift(),
                 node.getDownStreamPlanNodeId().getId(),

@@ -42,7 +42,7 @@ package org.apache.iotdb.db.mpp.execution.schedule.queue;
  */
 public interface IDIndexedAccessible {
 
-  ID getId();
+  ID getDriverTaskId();
 
   void setId(ID id);
 }

@@ -198,7 +198,7 @@ public class FragmentInstanceManager {
                     instanceId,
                     context,
                     Collections.singletonList(driver),
-                    null,
+                    driver.getSinkHandle(),
                     stateMachine,
                     failedInstances,
                     instance.getTimeOut());

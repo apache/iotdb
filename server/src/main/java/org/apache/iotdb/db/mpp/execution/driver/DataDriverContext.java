@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.mpp.execution.driver;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.engine.storagegroup.IDataRegionForQuery;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.mpp.execution.operator.source.DataSourceOperator;
@@ -40,28 +41,27 @@ public class DataDriverContext extends DriverContext {
       int pipelineId,
       Filter timeFilter,
       IDataRegionForQuery dataRegion) {
-    super(fragmentInstanceContext);
-    this.pipelineId = pipelineId;
+    super(fragmentInstanceContext, pipelineId);
     this.timeFilter = timeFilter;
     this.dataRegion = dataRegion;
   }
 
-  // Only used for test
+  @TestOnly
   public DataDriverContext(
       FragmentInstanceContext fragmentInstanceContext,
       List<PartialPath> paths,
       Filter timeFilter,
       IDataRegionForQuery dataRegion,
       List<DataSourceOperator> sourceOperators) {
-    super(fragmentInstanceContext);
+    super(fragmentInstanceContext, 0);
     this.paths = paths;
     this.timeFilter = timeFilter;
     this.dataRegion = dataRegion;
     this.sourceOperators = sourceOperators;
   }
 
-  public DataDriverContext(DataDriverContext parentContext) {
-    super(parentContext.getFragmentInstanceContext());
+  public DataDriverContext(DataDriverContext parentContext, int pipelineId) {
+    super(parentContext.getFragmentInstanceContext(), pipelineId);
     this.timeFilter = parentContext.timeFilter;
     this.dataRegion = parentContext.dataRegion;
   }
@@ -97,7 +97,7 @@ public class DataDriverContext extends DriverContext {
     return sourceOperators;
   }
 
-  public DriverContext createSubDriverContext() {
-    return new DataDriverContext(this);
+  public DriverContext createSubDriverContext(int pipelineId) {
+    return new DataDriverContext(this, pipelineId);
   }
 }

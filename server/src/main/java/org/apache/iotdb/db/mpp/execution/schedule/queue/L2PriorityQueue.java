@@ -80,24 +80,24 @@ public class L2PriorityQueue<E extends IDIndexedAccessible> extends IndexedBlock
     }
     E element = workingSortedElements.first();
     workingSortedElements.remove(element);
-    workingKeyedElements.remove(element.getId());
+    workingKeyedElements.remove(element.getDriverTaskId());
     return element;
   }
 
   @Override
   protected void pushToQueue(E element) {
-    idleKeyedElements.put(element.getId(), element);
+    idleKeyedElements.put(element.getDriverTaskId(), element);
     idleSortedElements.add(element);
   }
 
   @Override
   protected E remove(E element) {
-    E e = workingKeyedElements.remove(element.getId());
+    E e = workingKeyedElements.remove(element.getDriverTaskId());
     if (e != null) {
       workingSortedElements.remove(e);
       return e;
     }
-    e = idleKeyedElements.remove(element.getId());
+    e = idleKeyedElements.remove(element.getDriverTaskId());
     if (e != null) {
       idleSortedElements.remove(e);
     }
@@ -106,17 +106,17 @@ public class L2PriorityQueue<E extends IDIndexedAccessible> extends IndexedBlock
 
   @Override
   protected boolean contains(E element) {
-    return workingKeyedElements.containsKey(element.getId())
-        || idleKeyedElements.containsKey(element.getId());
+    return workingKeyedElements.containsKey(element.getDriverTaskId())
+        || idleKeyedElements.containsKey(element.getDriverTaskId());
   }
 
   @Override
   protected E get(E element) {
-    E e = workingKeyedElements.get(element.getId());
+    E e = workingKeyedElements.get(element.getDriverTaskId());
     if (e != null) {
       return e;
     }
-    return idleKeyedElements.get(element.getId());
+    return idleKeyedElements.get(element.getDriverTaskId());
   }
 
   @Override
