@@ -191,7 +191,8 @@ public class DataDriverTest {
       IDriver dataDriver = null;
       try {
         dataDriver = new DataDriver(limitOperator, driverContext);
-        assertEquals(fragmentInstanceContext.getId(), dataDriver.getDriverTaskId());
+        assertEquals(
+            fragmentInstanceContext.getId(), dataDriver.getDriverTaskId().getFragmentInstanceId());
 
         assertFalse(dataDriver.isFinished());
 
