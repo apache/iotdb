@@ -41,7 +41,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static com.google.common.base.Preconditions.checkArgument;
@@ -50,13 +49,10 @@ import static java.util.Objects.requireNonNull;
 // Attention: We should use thread-safe data structure for members that are shared by all pipelines
 public class LocalExecutionPlanContext {
 
-  private final FragmentInstanceContext instanceContext;
-  private AtomicInteger nextOperatorId;
+  private final DriverContext driverContext;
+  private final AtomicInteger nextOperatorId;
   private final TypeProvider typeProvider;
   private final Map<String, Set<String>> allSensorsMap;
-
-  private boolean inputDriver = true;
-  private DriverContext driverContext;
   // this is shared with all subContexts
   private AtomicInteger nextPipelineId;
   private List<PipelineDriverFactory> pipelineDriverFactories;
@@ -83,7 +79,6 @@ public class LocalExecutionPlanContext {
       Filter timeFilter,
       IDataRegionForQuery dataRegionForQuery) {
     this.typeProvider = typeProvider;
-    this.instanceContext = instanceContext;
     this.timeSliceAllocator = new RuleBasedTimeSliceAllocator();
     this.allSensorsMap = new ConcurrentHashMap<>();
     this.dataRegionTTL = dataRegionTTL;
@@ -91,14 +86,13 @@ public class LocalExecutionPlanContext {
     this.nextPipelineId = new AtomicInteger(0);
     this.driverContext =
         new DataDriverContext(instanceContext, getNextPipelineId(), timeFilter, dataRegionForQuery);
-    this.pipelineDriverFactories = new CopyOnWriteArrayList<>();
+    this.pipelineDriverFactories = new ArrayList<>();
   }
 
-  // for create sub context
+  // For creating subContext, differ from parent context mainly in driver context
   public LocalExecutionPlanContext(LocalExecutionPlanContext parentContext) {
     this.nextOperatorId = parentContext.nextOperatorId;
     this.typeProvider = parentContext.typeProvider;
-    this.instanceContext = parentContext.instanceContext;
     this.allSensorsMap = parentContext.allSensorsMap;
     this.dataRegionTTL = parentContext.dataRegionTTL;
     this.nextPipelineId = parentContext.nextPipelineId;
@@ -111,7 +105,6 @@ public class LocalExecutionPlanContext {
   // for schema region
   public LocalExecutionPlanContext(
       FragmentInstanceContext instanceContext, ISchemaRegion schemaRegion) {
-    this.instanceContext = instanceContext;
     this.allSensorsMap = new ConcurrentHashMap<>();
     this.typeProvider = null;
     this.nextOperatorId = new AtomicInteger(0);
@@ -123,16 +116,13 @@ public class LocalExecutionPlanContext {
     this.driverContext = new SchemaDriverContext(instanceContext, schemaRegion);
   }
 
-  public void addPipelineDriverFactory(
-      boolean inputDriver, boolean outputDriver, Operator operator, DriverContext driverContext) {
+  public void addPipelineDriverFactory(Operator operation, DriverContext driverContext) {
     driverContext
         .getOperatorContexts()
         .forEach(
             operatorContext ->
                 operatorContext.setMaxRunTime(timeSliceAllocator.getMaxRunTime(operatorContext)));
-    pipelineDriverFactories.add(
-        new PipelineDriverFactory(
-            getNextPipelineId(), inputDriver, outputDriver, operator, driverContext));
+    pipelineDriverFactories.add(new PipelineDriverFactory(operation, driverContext));
   }
 
   public LocalExecutionPlanContext createSubContext() {
@@ -140,15 +130,11 @@ public class LocalExecutionPlanContext {
   }
 
   public FragmentInstanceId getFragmentInstanceId() {
-    return this.instanceContext.getId();
+    return driverContext.getFragmentInstanceContext().getId();
   }
 
   public List<PipelineDriverFactory> getPipelineDriverFactories() {
     return pipelineDriverFactories;
-  }
-
-  public Map<String, Set<String>> getAllSensorsMap() {
-    return allSensorsMap;
   }
 
   public DriverContext getDriverContext() {
@@ -160,11 +146,7 @@ public class LocalExecutionPlanContext {
   }
 
   public boolean isInputDriver() {
-    return inputDriver;
-  }
-
-  public void setInputDriver(boolean inputDriver) {
-    this.inputDriver = inputDriver;
+    return driverContext.isInputDriver();
   }
 
   public int getNextOperatorId() {
@@ -223,7 +205,7 @@ public class LocalExecutionPlanContext {
   }
 
   public FragmentInstanceContext getInstanceContext() {
-    return instanceContext;
+    return driverContext.getFragmentInstanceContext();
   }
 
   public Filter getLastQueryTimeFilter() {

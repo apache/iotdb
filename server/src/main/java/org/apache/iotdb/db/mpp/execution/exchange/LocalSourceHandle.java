@@ -56,11 +56,12 @@ public class LocalSourceHandle implements ISourceHandle {
   private static final TsBlockSerde serde = new TsBlockSerde();
 
   // For pipeline
-  public LocalSourceHandle(SharedTsBlockQueue queue, SourceHandleListener sourceHandleListener) {
+  public LocalSourceHandle(
+      SharedTsBlockQueue queue, SourceHandleListener sourceHandleListener, String threadName) {
     this.queue = Validate.notNull(queue);
     this.queue.setSourceHandle(this);
     this.sourceHandleListener = Validate.notNull(sourceHandleListener);
-    this.threadName = "local pipeline source handle";
+    this.threadName = threadName;
   }
 
   // For fragment

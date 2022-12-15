@@ -133,13 +133,9 @@ public class FragmentInstanceManager {
                           dataRegion);
 
                   List<IDriver> drivers = new ArrayList<>();
-                  ISinkHandle sinkHandle = null;
-                  for (PipelineDriverFactory driverFactory : driverFactories) {
-                    drivers.add(driverFactory.createDriver());
-                    if (driverFactory.isOutputDriver()) {
-                      sinkHandle = driverFactory.getDriverContext().getSinkHandle();
-                    }
-                  }
+                  driverFactories.forEach(factory -> drivers.add(factory.createDriver()));
+                  // get the sinkHandle of last driver
+                  ISinkHandle sinkHandle = drivers.get(drivers.size() - 1).getSinkHandle();
 
                   return createFragmentInstanceExecution(
                       scheduler,

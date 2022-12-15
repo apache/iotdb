@@ -52,8 +52,6 @@ public class LocalExecutionPlanner {
   private long freeMemoryForOperators =
       IoTDBDescriptor.getInstance().getConfig().getAllocateMemoryForOperators();
 
-  private final int defaultParallelism = 1;
-
   public static LocalExecutionPlanner getInstance() {
     return InstanceHolder.INSTANCE;
   }
@@ -69,15 +67,14 @@ public class LocalExecutionPlanner {
         new LocalExecutionPlanContext(
             types, instanceContext, dataRegion.getDataTTL(), timeFilter, dataRegion);
 
-    // Generate pipelines and operators
-    // Return the last pipeline data structure
+    // Generate pipelines, return the last pipeline data structure
+    // TODO Replace operator with operatorFactory to build multiple driver for one pipeline
     Operator root = plan.accept(new OperatorTreeGenerator(), context);
 
     // check whether current free memory is enough to execute current query
     checkMemory(root, instanceContext.getStateMachine());
 
-    context.addPipelineDriverFactory(
-        context.isInputDriver(), true, root, context.getDriverContext());
+    context.addPipelineDriverFactory(root, context.getDriverContext());
 
     return context.getPipelineDriverFactories();
   }

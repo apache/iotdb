@@ -32,8 +32,8 @@ import static com.google.common.base.Preconditions.checkArgument;
 
 public class DriverContext {
 
-  public DriverTaskId driverTaskID;
-  // only used to pass QueryContext
+  private boolean inputDriver = true;
+  private DriverTaskId driverTaskID;
   private final FragmentInstanceContext fragmentInstanceContext;
   private final List<OperatorContext> operatorContexts = new ArrayList<>();
   private ISinkHandle sinkHandle;
@@ -63,7 +63,7 @@ public class DriverContext {
   }
 
   public DriverContext createSubDriverContext(int pipelineId) {
-    throw new IllegalArgumentException("SubDriver cannot be created by parent driver class.");
+    throw new UnsupportedOperationException();
   }
 
   public void setSinkHandle(ISinkHandle sinkHandle) {
@@ -72,6 +72,14 @@ public class DriverContext {
 
   public ISinkHandle getSinkHandle() {
     return sinkHandle;
+  }
+
+  public boolean isInputDriver() {
+    return inputDriver;
+  }
+
+  public void setInputDriver(boolean inputDriver) {
+    this.inputDriver = inputDriver;
   }
 
   public List<OperatorContext> getOperatorContexts() {

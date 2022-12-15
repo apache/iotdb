@@ -274,7 +274,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
 
     ((DataDriverContext) context.getDriverContext()).addSourceOperator(seriesScanOperator);
     ((DataDriverContext) context.getDriverContext()).addPath(seriesPath);
-    context.setInputDriver(true);
+    context.getDriverContext().setInputDriver(true);
     context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
     return seriesScanOperator;
   }
@@ -1581,14 +1581,13 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
   public Operator visitTimeJoin(TimeJoinNode node, LocalExecutionPlanContext context) {
     List<Operator> children = new ArrayList<>();
     for (PlanNode childSource : node.getChildren()) {
+      // Create pipelines for children
       LocalExecutionPlanContext subContext = context.createSubContext();
       Operator childOperation = childSource.accept(this, subContext);
       ISinkHandle localSinkHandle =
-          MPP_DATA_EXCHANGE_MANAGER.createLocalSinkHandleForPipeline(
-              subContext.getInstanceContext());
+          MPP_DATA_EXCHANGE_MANAGER.createLocalSinkHandleForPipeline(subContext.getDriverContext());
       subContext.setSinkHandle(localSinkHandle);
-      context.addPipelineDriverFactory(
-          subContext.isInputDriver(), false, childOperation, subContext.getDriverContext());
+      context.addPipelineDriverFactory(childOperation, subContext.getDriverContext());
 
       ExchangeOperator sourceOperator =
           new ExchangeOperator(
@@ -1598,7 +1597,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                       context.getNextOperatorId(), null, ExchangeOperator.class.getSimpleName()),
               MPP_DATA_EXCHANGE_MANAGER.createLocalSourceHandleForPipeline(
                   ((LocalSinkHandle) localSinkHandle).getSharedTsBlockQueue(),
-                  context.getInstanceContext()),
+                  context.getDriverContext()),
               childSource.getPlanNodeId());
       context.getTimeSliceAllocator().recordExecutionWeight(sourceOperator.getOperatorContext(), 1);
       children.add(sourceOperator);

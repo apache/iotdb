@@ -59,9 +59,9 @@ public class DriverTaskThread extends AbstractDriverThread {
     if (!scheduler.readyToRunning(task)) {
       return;
     }
-    IDriver instance = task.getDriver();
+    IDriver driver = task.getDriver();
     CpuTimer timer = new CpuTimer();
-    ListenableFuture<?> future = instance.processFor(EXECUTION_TIME_SLICE);
+    ListenableFuture<?> future = driver.processFor(EXECUTION_TIME_SLICE);
     CpuTimer.CpuDuration duration = timer.elapsedTime();
     // long cost = System.nanoTime() - startTime;
     // If the future is cancelled, the task is in an error and should be thrown.
@@ -73,7 +73,7 @@ public class DriverTaskThread extends AbstractDriverThread {
     ExecutionContext context = new ExecutionContext();
     context.setCpuDuration(duration);
     context.setTimeSlice(EXECUTION_TIME_SLICE);
-    if (instance.isFinished()) {
+    if (driver.isFinished()) {
       scheduler.runningToFinished(task, context);
       return;
     }

@@ -22,6 +22,7 @@ package org.apache.iotdb.db.mpp.execution.exchange;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeMPPDataExchangeServiceClient;
+import org.apache.iotdb.db.mpp.execution.driver.DriverContext;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.mpp.execution.memory.LocalMemoryManager;
 import org.apache.iotdb.db.utils.SetThreadName;
@@ -253,7 +254,10 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
     }
   }
 
-  /** Listen to the state changes of a source handle. */
+  /**
+   * Listen to the state changes of a source handle of pipeline. Since we register nothing in the
+   * exchangeManager, so we don't need to remove it too.
+   */
   static class PipelineSourceHandleListenerImpl implements SourceHandleListener {
 
     private final IMPPDataExchangeManagerCallback<Throwable> onFailureCallback;
@@ -333,7 +337,11 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
     }
   }
 
-  /** Listen to the state changes of a sink handle. */
+  /**
+   * Listen to the state changes of a sink handle of pipeline. And since the finish of pipeline sink
+   * handle doesn't equal the finish of the whole fragment, therefore we don't need to notify
+   * fragment context. But if it's aborted or failed, it can lead to the total fail.
+   */
   static class PipelineSinkHandleListenerImpl implements SinkHandleListener {
 
     private final FragmentInstanceContext context;
@@ -445,15 +453,17 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
 
   /**
    * As we know the upstream and downstream node of shared queue, we don't need to put it into the
-   * sinkHandle and sourceHandle map.
+   * sinkHandle map.
    */
-  public ISinkHandle createLocalSinkHandleForPipeline(FragmentInstanceContext instanceContext) {
-    logger.debug("Create local sink handle for {}", instanceContext.getId());
+  public ISinkHandle createLocalSinkHandleForPipeline(DriverContext driverContext) {
+    logger.debug("Create local sink handle for {}", driverContext.getDriverTaskID());
     SharedTsBlockQueue queue =
-        new SharedTsBlockQueue(instanceContext.getId().getQueryId().getId(), localMemoryManager);
-
+        new SharedTsBlockQueue(
+            driverContext.getDriverTaskID().getQueryId().getId(), localMemoryManager);
     return new LocalSinkHandle(
-        queue, new PipelineSinkHandleListenerImpl(instanceContext, instanceContext::failed));
+        queue,
+        new PipelineSinkHandleListenerImpl(
+            driverContext.getFragmentInstanceContext(), driverContext::failed));
   }
 
   @Override
@@ -490,10 +500,17 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
     return sinkHandle;
   }
 
+  /**
+   * As we know the upstream and downstream node of shared queue, we don't need to put it into the
+   * sourceHandle map.
+   */
   public synchronized ISourceHandle createLocalSourceHandleForPipeline(
-      SharedTsBlockQueue queue, FragmentInstanceContext context) {
-    logger.debug("Create local sink handle for {}", context.getId());
-    return new LocalSourceHandle(queue, new PipelineSourceHandleListenerImpl(context::failed));
+      SharedTsBlockQueue queue, DriverContext context) {
+    logger.debug("Create local source handle for {}", context.getDriverTaskID());
+    return new LocalSourceHandle(
+        queue,
+        new PipelineSourceHandleListenerImpl(context::failed),
+        context.getDriverTaskID().toString());
   }
 
   @Override

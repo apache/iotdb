@@ -31,10 +31,10 @@ import java.util.List;
 /** TODO Add javadoc for context */
 public class DataDriverContext extends DriverContext {
 
-  private List<PartialPath> paths;
+  private final List<PartialPath> paths;
   private Filter timeFilter;
-  private IDataRegionForQuery dataRegion;
-  private List<DataSourceOperator> sourceOperators = new ArrayList<>();
+  private final IDataRegionForQuery dataRegion;
+  private final List<DataSourceOperator> sourceOperators;
 
   public DataDriverContext(
       FragmentInstanceContext fragmentInstanceContext,
@@ -44,6 +44,8 @@ public class DataDriverContext extends DriverContext {
     super(fragmentInstanceContext, pipelineId);
     this.timeFilter = timeFilter;
     this.dataRegion = dataRegion;
+    this.paths = new ArrayList<>();
+    this.sourceOperators = new ArrayList<>();
   }
 
   @TestOnly
@@ -64,12 +66,11 @@ public class DataDriverContext extends DriverContext {
     super(parentContext.getFragmentInstanceContext(), pipelineId);
     this.timeFilter = parentContext.timeFilter;
     this.dataRegion = parentContext.dataRegion;
+    this.paths = new ArrayList<>();
+    this.sourceOperators = new ArrayList<>();
   }
 
   public void addPath(PartialPath path) {
-    if (this.paths == null) {
-      this.paths = new ArrayList<>();
-    }
     this.paths.add(path);
   }
 

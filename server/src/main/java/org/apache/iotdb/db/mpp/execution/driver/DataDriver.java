@@ -66,9 +66,7 @@ public class DataDriver extends Driver {
         initialize();
       } catch (Throwable t) {
         LOGGER.error(
-            "Failed to do the initialization for fragment instance {} ",
-            driverContext.getPipelineId(),
-            t);
+            "Failed to do the initialization for driver {} ", driverContext.getDriverTaskID(), t);
         driverContext.failed(t);
         blockedFuture.setException(t);
         return false;

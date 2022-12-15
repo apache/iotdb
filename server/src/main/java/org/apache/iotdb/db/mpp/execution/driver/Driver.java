@@ -147,7 +147,7 @@ public abstract class Driver implements IDriver {
 
   @Override
   public void setDriverTaskId(DriverTaskId driverTaskId) {
-    this.driverContext.driverTaskID = driverTaskId;
+    this.driverContext.setDriverTaskID(driverTaskId);
   }
 
   @Override
@@ -326,7 +326,7 @@ public abstract class Driver implements IDriver {
               inFlightException,
               t,
               "Error destroying driver for task %s",
-              driverContext.getPipelineId());
+              driverContext.getDriverTaskID());
     } finally {
       releaseResource();
     }
@@ -356,9 +356,9 @@ public abstract class Driver implements IDriver {
           addSuppressedException(
               inFlightException,
               t,
-              "Error closing operator {} for fragment instance {}",
+              "Error closing operator {} for driver task {}",
               root.getOperatorContext().getOperatorId(),
-              driverContext.getPipelineId());
+              driverContext.getDriverTaskID());
     } finally {
       // reset the interrupted flag
       if (wasInterrupted) {

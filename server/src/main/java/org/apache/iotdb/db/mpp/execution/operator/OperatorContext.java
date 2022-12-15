@@ -36,11 +36,10 @@ import java.util.Objects;
 public class OperatorContext {
 
   private final int operatorId;
+  // It seems it's never used.
   private final PlanNodeId planNodeId;
   private final String operatorType;
   private DriverContext driverContext;
-  private FragmentInstanceContext fragmentInstanceContext;
-
   private Duration maxRunTime;
 
   public OperatorContext(
@@ -49,7 +48,6 @@ public class OperatorContext {
     this.planNodeId = planNodeId;
     this.operatorType = operatorType;
     this.driverContext = driverContext;
-    this.fragmentInstanceContext = driverContext.getFragmentInstanceContext();
   }
 
   @TestOnly
@@ -61,7 +59,7 @@ public class OperatorContext {
     this.operatorId = operatorId;
     this.planNodeId = planNodeId;
     this.operatorType = operatorType;
-    this.fragmentInstanceContext = fragmentInstanceContext;
+    this.driverContext = new DriverContext(fragmentInstanceContext, 0);
   }
 
   public int getOperatorId() {
@@ -81,7 +79,7 @@ public class OperatorContext {
   }
 
   public FragmentInstanceContext getInstanceContext() {
-    return fragmentInstanceContext;
+    return driverContext.getFragmentInstanceContext();
   }
 
   public Duration getMaxRunTime() {

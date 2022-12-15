@@ -44,13 +44,11 @@ import static java.util.Objects.requireNonNull;
 public class SeriesScanOperator implements DataSourceOperator {
 
   public static class SeriesScanOperatorFactory implements SourceOperatorFactory {
-    // private final int operatorId;
+    private final int operatorId;
     private final PlanNodeId sourceId;
     private final PartialPath seriesPath;
     private final Set<String> allSensors;
     private final TSDataType dataType;
-    // TODO we should create a new operatorContext for each operator instead of passing one
-    private final OperatorContext operatorContext;
     private final Filter timeFilter;
     private final Filter valueFilter;
     private final boolean ascending;
@@ -58,7 +56,7 @@ public class SeriesScanOperator implements DataSourceOperator {
 
     public SeriesScanOperatorFactory(
         OperatorContext operatorContext,
-        // int operatorId,
+        int operatorId,
         PlanNodeId sourceId,
         PartialPath seriesPath,
         Set<String> allSensors,
@@ -66,8 +64,7 @@ public class SeriesScanOperator implements DataSourceOperator {
         Filter timeFilter,
         Filter valueFilter,
         boolean ascending) {
-      this.operatorContext = operatorContext;
-      // this.operatorId = operatorId;
+      this.operatorId = operatorId;
       this.sourceId = requireNonNull(sourceId, "sourceId is null");
       this.seriesPath = requireNonNull(seriesPath, "seriesPath is null");
       this.allSensors = requireNonNull(allSensors, "allSensors is null");
@@ -77,10 +74,9 @@ public class SeriesScanOperator implements DataSourceOperator {
       this.ascending = ascending;
     }
 
-    //    public int getOperatorId()
-    //    {
-    //      return operatorId;
-    //    }
+    public int getOperatorId() {
+      return operatorId;
+    }
 
     @Override
     public PlanNodeId getSourceId() {
@@ -98,8 +94,8 @@ public class SeriesScanOperator implements DataSourceOperator {
     @Override
     public SourceOperator createOperator(DriverContext driverContext) {
       checkState(!closed, "Factory is already closed");
-      // OperatorContext operatorContext = driverContext.addOperatorContext(operatorId, sourceId,
-      // getOperatorType());
+      OperatorContext operatorContext =
+          driverContext.addOperatorContext(operatorId, sourceId, getOperatorType());
       return new SeriesScanOperator(
           operatorContext,
           sourceId,

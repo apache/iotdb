@@ -44,8 +44,7 @@ public class FragmentInstanceContext extends QueryContext {
   private static final long END_TIME_INITIAL_VALUE = -1L;
   private final FragmentInstanceId id;
 
-  // TODO if we split one fragment instance into multiple pipelines to run, we need to replace it
-  // with CopyOnWriteArrayList or some other thread safe data structure
+  // TODO Remove this, just use operatorContexts in driverContext
   private final List<OperatorContext> operatorContexts = new ArrayList<>();
 
   private final FragmentInstanceStateMachine stateMachine;
