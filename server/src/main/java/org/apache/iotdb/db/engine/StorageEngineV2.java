@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.exception.ShutdownException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
@@ -653,9 +654,24 @@ public class StorageEngineV2 implements IService {
             && config
                 .getDataRegionConsensusProtocolClass()
                 .equals(ConsensusFactory.IOT_CONSENSUS)) {
+          // delete wal
           WALManager.getInstance()
               .deleteWALNode(
                   region.getDatabaseName() + FILE_NAME_SEPARATOR + region.getDataRegionId());
+          // delete snapshot
+          for (String dataDir : config.getDataDirs()) {
+            File regionSnapshotDir =
+                new File(
+                    dataDir + File.separator + IoTDBConstant.SNAPSHOT_FOLDER_NAME,
+                    region.getDatabaseName() + FILE_NAME_SEPARATOR + regionId.getId());
+            if (regionSnapshotDir.exists()) {
+              try {
+                FileUtils.deleteDirectory(regionSnapshotDir);
+              } catch (IOException e) {
+                logger.error("Failed to delete snapshot dir {}", regionSnapshotDir, e);
+              }
+            }
+          }
         }
         SyncService.getInstance().unregisterDataRegion(region.getDataRegionId());
       } catch (Exception e) {
