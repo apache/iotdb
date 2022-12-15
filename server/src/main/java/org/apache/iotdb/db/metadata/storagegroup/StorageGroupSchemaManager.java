@@ -58,7 +58,7 @@ public class StorageGroupSchemaManager implements IStorageGroupSchemaManager {
 
     mtree = new ConfigMTree();
 
-    recoverLog();
+    //    recoverLog();
   }
 
   public void recoverLog() throws IOException {
