@@ -307,11 +307,11 @@ public class ConfigNode implements ConfigNodeMBean {
   private void sendRestartConfigNodeRequest() throws IOException, StartupException {
     TConfigNodeRestartReq req =
         new TConfigNodeRestartReq(
+            CONF.getClusterName(),
             new TConfigNodeLocation(
                 CONF.getConfigNodeId(),
                 new TEndPoint(CONF.getInternalAddress(), CONF.getInternalPort()),
-                new TEndPoint(CONF.getInternalAddress(), CONF.getConsensusPort())),
-            CONF.getClusterName());
+                new TEndPoint(CONF.getInternalAddress(), CONF.getConsensusPort())));
 
     TEndPoint targetConfigNode = CONF.getTargetConfigNode();
     if (targetConfigNode == null) {

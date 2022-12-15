@@ -183,7 +183,7 @@ public class ClusterNodeStartUtils {
       status.setCode(TSStatusCode.REJECT_NODE_START.getStatusCode());
       status.setMessage(
           String.format(
-              "Reject %s restart. Because there already exists a alive Node with the same nodeId=%d in the target cluster."
+              "Reject %s restart. Because there already exists an alive Node with the same nodeId=%d in the target cluster."
                   + POSSIBLE_SOLUTIONS
                   + "\t1. Maybe you've just shutdown this Node recently. Please wait about %s for the ConfigNode-leader to mark this Node as Unknown before retry start. You can use SQL \"show cluster details\" to find out this Node's status."
                   + "\n\t2. Maybe you start this Node by copying the 'data' dir of another alive Node. Please delete 'data' dir and retry start.",

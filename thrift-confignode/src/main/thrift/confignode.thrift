@@ -346,13 +346,13 @@ struct TConfigNodeRegisterReq {
 
 struct TConfigNodeRegisterResp {
   1: required common.TSStatus status
-  2: required string clusterName
-  3: required i32 configNodeId
+  2: optional string clusterName
+  3: optional i32 configNodeId
 }
 
 struct TConfigNodeRestartReq {
-  1: required common.TConfigNodeLocation configNodeLocation
-  2: required string clusterName
+  1: required string clusterName
+  2: required common.TConfigNodeLocation configNodeLocation
 }
 
 struct TAddConsensusGroupReq {
