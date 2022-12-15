@@ -169,6 +169,10 @@ DATABASES
     : D A T A B A S E S
     ;
 
+DATANODEID
+    : D A T A N O D E I D
+    ;
+
 DATANODES
 
     : D A T A N O D E S
@@ -220,6 +224,10 @@ DISCARD
 
 DROP
     : D R O P
+    ;
+
+ELAPSEDTIME
+    : E L A P S E D T I M E
     ;
 
 END
@@ -470,6 +478,10 @@ QUERY
     : Q U E R Y
     ;
 
+QUERYID
+    : Q U E R Y I D
+    ;
+
 RANGE
     : R A N G E
     ;
@@ -574,12 +586,16 @@ STARTTIME
     : S T A R T T I M E
     ;
 
+STATEFUL
+    : S T A T E F U L
+    ;
+
 STATELESS
     : S T A T E L E S S
     ;
 
-STATEFUL
-    : S T A T E F U L
+STATEMENT
+    : S T A T E M E N T
     ;
 
 STOP

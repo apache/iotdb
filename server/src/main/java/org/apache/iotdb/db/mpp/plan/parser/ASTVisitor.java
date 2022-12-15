@@ -181,6 +181,8 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.utils.Pair;
 
+import com.google.common.collect.ImmutableSet;
+
 import java.io.FileNotFoundException;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -971,7 +973,10 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
     // parse ORDER BY
     if (ctx.orderByClause() != null) {
-      queryStatement.setOrderByComponent(parseOrderByClause(ctx.orderByClause()));
+      queryStatement.setOrderByComponent(
+          parseOrderByClause(
+              ctx.orderByClause(),
+              ImmutableSet.of(SortKey.TIME, SortKey.DEVICE, SortKey.TIMESERIES)));
     }
 
     // parse FILL
@@ -1199,7 +1204,9 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   }
 
   // ---- Order By Clause
-  private OrderByComponent parseOrderByClause(IoTDBSqlParser.OrderByClauseContext ctx) {
+  // all SortKeys should be contained by limitSet
+  private OrderByComponent parseOrderByClause(
+      IoTDBSqlParser.OrderByClauseContext ctx, ImmutableSet<SortKey> limitSet) {
     OrderByComponent orderByComponent = new OrderByComponent();
     Set<SortKey> sortKeySet = new HashSet<>();
     for (IoTDBSqlParser.OrderByAttributeClauseContext orderByAttributeClauseContext :
@@ -1207,6 +1214,10 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       SortItem sortItem = parseOrderByAttributeClause(orderByAttributeClauseContext);
 
       SortKey sortKey = sortItem.getSortKey();
+      if (!limitSet.contains(sortKey)) {
+        throw new SemanticException(
+            String.format("ORDER BY: sort key[%s] is not contained in '%s'", sortKey, limitSet));
+      }
       if (sortKeySet.contains(sortKey)) {
         throw new SemanticException(String.format("ORDER BY: duplicate sort key '%s'", sortKey));
       } else {
@@ -2545,7 +2556,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   // show query processlist
 
   @Override
-  public Statement visitShowQueryProcesslist(IoTDBSqlParser.ShowQueryProcesslistContext ctx) {
+  public Statement visitShowQueries(IoTDBSqlParser.ShowQueriesContext ctx) {
     ShowQueriesStatement showQueriesStatement = new ShowQueriesStatement();
     // parse WHERE
     if (ctx.whereClause() != null) {
@@ -2554,7 +2565,15 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
     // parse ORDER BY
     if (ctx.orderByClause() != null) {
-      showQueriesStatement.setOrderByComponent(parseOrderByClause(ctx.orderByClause()));
+      showQueriesStatement.setOrderByComponent(
+          parseOrderByClause(
+              ctx.orderByClause(),
+              ImmutableSet.of(
+                  SortKey.TIME,
+                  SortKey.QUERYID,
+                  SortKey.DATANODEID,
+                  SortKey.ELAPSEDTIME,
+                  SortKey.STATEMENT)));
     }
 
     // parse LIMIT & OFFSET
