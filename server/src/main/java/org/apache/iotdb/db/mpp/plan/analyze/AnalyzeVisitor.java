@@ -46,7 +46,6 @@ import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
-import org.apache.iotdb.db.mpp.common.NodeRef;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
@@ -2583,16 +2582,11 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       return;
     }
 
-    ExpressionTypeAnalyzer analyzer = new ExpressionTypeAnalyzer();
     Expression whereExpression =
-        ExpressionAnalyzer.replaceTimeSeriesOperand(
-            whereCondition.getPredicate(),
-            ColumnHeaderConstant.showQueriesColumnHeaders,
-            analyzer.getExpressionTypes());
-    analyzer.analyze(whereExpression);
-    ExpressionTypeAnalyzer.updateAnalysis(analysis, analyzer);
+        ExpressionAnalyzer.bindTypeForTimeSeriesOperand(
+            whereCondition.getPredicate(), ColumnHeaderConstant.showQueriesColumnHeaders);
 
-    TSDataType outputType = analyzer.getExpressionTypes().get(NodeRef.of(whereExpression));
+    TSDataType outputType = analyzeExpression(analysis, whereExpression);
     if (outputType != TSDataType.BOOLEAN) {
       throw new SemanticException(
           String.format(

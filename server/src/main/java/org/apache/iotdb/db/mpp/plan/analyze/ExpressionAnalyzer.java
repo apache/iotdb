@@ -25,7 +25,6 @@ import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.db.exception.sql.SemanticException;
-import org.apache.iotdb.db.mpp.common.NodeRef;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
 import org.apache.iotdb.db.mpp.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
@@ -54,7 +53,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -1229,65 +1227,58 @@ public class ExpressionAnalyzer {
   }
 
   /**
-   * Replace TimeSeriesOperand in Expression with according ColumnHeaderName, and put Type of new
-   * TimeSeriesOperand to TypeMap. eg:
+   * Bind DataType for TimeSeriesOperand in Expression with according ColumnHeaderName. eg:
    *
    * <p>columnHeaders: [[QueryId, TEXT], [DataNodeId, INT32]...]
    *
-   * <p>dataNodeID > 1 -> DataNodeId > 1, reconstruct and put Type of `DataNodeID` as INT32
+   * <p>dataNodeID > 1 -> DataNodeId > 1, `DataNodeID` will be a MeasurementPath with INT32
    *
    * <p>errorInput > 1, no according ColumnHeaderName of `errorInput`, throw exception
    */
-  public static Expression replaceTimeSeriesOperand(
-      Expression predicate,
-      List<ColumnHeader> columnHeaders,
-      Map<NodeRef<Expression>, TSDataType> expressionTypes) {
+  public static Expression bindTypeForTimeSeriesOperand(
+      Expression predicate, List<ColumnHeader> columnHeaders) {
     if (predicate instanceof TernaryExpression) {
       Expression firstExpression =
-          replaceTimeSeriesOperand(
-              ((TernaryExpression) predicate).getFirstExpression(), columnHeaders, expressionTypes);
+          bindTypeForTimeSeriesOperand(
+              ((TernaryExpression) predicate).getFirstExpression(), columnHeaders);
       Expression secondExpression =
-          replaceTimeSeriesOperand(
-              ((TernaryExpression) predicate).getSecondExpression(),
-              columnHeaders,
-              expressionTypes);
+          bindTypeForTimeSeriesOperand(
+              ((TernaryExpression) predicate).getSecondExpression(), columnHeaders);
       Expression thirdExpression =
-          replaceTimeSeriesOperand(
-              ((TernaryExpression) predicate).getThirdExpression(), columnHeaders, expressionTypes);
+          bindTypeForTimeSeriesOperand(
+              ((TernaryExpression) predicate).getThirdExpression(), columnHeaders);
       return reconstructTernaryExpression(
           predicate, firstExpression, secondExpression, thirdExpression);
     } else if (predicate instanceof BinaryExpression) {
       Expression leftExpression =
-          replaceTimeSeriesOperand(
-              ((BinaryExpression) predicate).getLeftExpression(), columnHeaders, expressionTypes);
+          bindTypeForTimeSeriesOperand(
+              ((BinaryExpression) predicate).getLeftExpression(), columnHeaders);
       Expression rightExpression =
-          replaceTimeSeriesOperand(
-              ((BinaryExpression) predicate).getRightExpression(), columnHeaders, expressionTypes);
+          bindTypeForTimeSeriesOperand(
+              ((BinaryExpression) predicate).getRightExpression(), columnHeaders);
       return reconstructBinaryExpression(
           predicate.getExpressionType(), leftExpression, rightExpression);
     } else if (predicate instanceof UnaryExpression) {
       Expression expression =
-          replaceTimeSeriesOperand(
-              ((UnaryExpression) predicate).getExpression(), columnHeaders, expressionTypes);
+          bindTypeForTimeSeriesOperand(
+              ((UnaryExpression) predicate).getExpression(), columnHeaders);
       return reconstructUnaryExpression((UnaryExpression) predicate, expression);
     } else if (predicate instanceof FunctionExpression) {
       List<Expression> expressions = predicate.getExpressions();
       List<Expression> childrenExpressions = new ArrayList<>();
       for (Expression expression : expressions) {
-        childrenExpressions.add(
-            replaceTimeSeriesOperand(expression, columnHeaders, expressionTypes));
+        childrenExpressions.add(bindTypeForTimeSeriesOperand(expression, columnHeaders));
       }
       return reconstructFunctionExpression((FunctionExpression) predicate, childrenExpressions);
     } else if (predicate instanceof TimeSeriesOperand) {
       String oldPathString = ((TimeSeriesOperand) predicate).getPath().getFullPath();
-
+      // There are not too many TimeSeriesOperand and columnHeaders in our case,
+      // so we use `for loop` instead of map to get the matched columnHeader for oldPath here.
       for (ColumnHeader columnHeader : columnHeaders) {
         if (oldPathString.equalsIgnoreCase(columnHeader.getColumnName())) {
           try {
-            Expression newTimeSeriesOperand =
-                reconstructTimeSeriesOperand(new PartialPath(columnHeader.getColumnName()));
-            expressionTypes.put(NodeRef.of(newTimeSeriesOperand), columnHeader.getColumnType());
-            return newTimeSeriesOperand;
+            return reconstructTimeSeriesOperand(
+                new MeasurementPath(columnHeader.getColumnName(), columnHeader.getColumnType()));
           } catch (IllegalPathException ignored) {
           }
         }

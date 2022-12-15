@@ -54,7 +54,7 @@ public class ExpressionTypeAnalyzer {
 
   private final Map<NodeRef<Expression>, TSDataType> expressionTypes = new LinkedHashMap<>();
 
-  public ExpressionTypeAnalyzer() {}
+  private ExpressionTypeAnalyzer() {}
 
   public static void analyzeExpression(Analysis analysis, Expression expression) {
     ExpressionTypeAnalyzer analyzer = new ExpressionTypeAnalyzer();
@@ -71,7 +71,7 @@ public class ExpressionTypeAnalyzer {
     types.putAll(analyzer.getExpressionTypes());
   }
 
-  public static void updateAnalysis(Analysis analysis, ExpressionTypeAnalyzer analyzer) {
+  private static void updateAnalysis(Analysis analysis, ExpressionTypeAnalyzer analyzer) {
     analysis.addTypes(analyzer.getExpressionTypes());
   }
 
