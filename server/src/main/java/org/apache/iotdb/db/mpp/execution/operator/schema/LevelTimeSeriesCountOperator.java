@@ -140,7 +140,7 @@ public class LevelTimeSeriesCountOperator implements SourceOperator {
 
   @Override
   public boolean isFinished() {
-    return !hasNext();
+    return !hasNextWithTimer();
   }
 
   @Override

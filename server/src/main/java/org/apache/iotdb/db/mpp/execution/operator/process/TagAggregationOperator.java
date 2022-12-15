@@ -127,7 +127,7 @@ public class TagAggregationOperator implements ProcessOperator {
       }
 
       // If the data is unavailable first, try to find next tsblock of the child.
-      inputTsBlocks[i] = children.get(i).next();
+      inputTsBlocks[i] = children.get(i).nextWithTimer();
       consumedIndices[i] = 0;
       canCallNext[i] = false;
 
@@ -186,7 +186,7 @@ public class TagAggregationOperator implements ProcessOperator {
   @Override
   public boolean hasNext() {
     for (int i = 0; i < children.size(); i++) {
-      if (dataUnavailable(i) && !children.get(i).hasNext()) {
+      if (dataUnavailable(i) && !children.get(i).hasNextWithTimer()) {
         return false;
       }
     }
@@ -195,7 +195,7 @@ public class TagAggregationOperator implements ProcessOperator {
 
   @Override
   public boolean isFinished() {
-    return !this.hasNext();
+    return !this.hasNextWithTimer();
   }
 
   @Override

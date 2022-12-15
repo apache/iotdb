@@ -52,7 +52,7 @@ public class LimitOperator implements ProcessOperator {
 
   @Override
   public TsBlock next() {
-    TsBlock block = child.next();
+    TsBlock block = child.nextWithTimer();
     if (block == null) {
       return null;
     }
@@ -68,7 +68,7 @@ public class LimitOperator implements ProcessOperator {
 
   @Override
   public boolean hasNext() {
-    return remainingLimit > 0 && child.hasNext();
+    return remainingLimit > 0 && child.hasNextWithTimer();
   }
 
   @Override

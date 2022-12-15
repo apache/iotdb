@@ -308,7 +308,7 @@ public class QueryExecution implements IQueryExecution {
 
     if (rawStatement.isQuery()) {
       QueryMetricsManager.getInstance()
-          .addPlanCost(DISTRIBUTION_PLANNER, System.nanoTime() - startTime);
+          .recordPlanCost(DISTRIBUTION_PLANNER, System.nanoTime() - startTime);
     }
     if (isQuery() && logger.isDebugEnabled()) {
       logger.debug(

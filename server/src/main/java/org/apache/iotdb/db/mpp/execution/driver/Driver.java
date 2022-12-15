@@ -21,6 +21,8 @@ package org.apache.iotdb.db.mpp.execution.driver;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.execution.exchange.ISinkHandle;
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
+import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
+import org.apache.iotdb.db.mpp.metric.QueryMetricsManager;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 
 import com.google.common.collect.ImmutableList;
@@ -57,6 +59,8 @@ public abstract class Driver implements IDriver {
   protected final AtomicReference<State> state = new AtomicReference<>(State.ALIVE);
 
   protected final DriverLock exclusiveLock = new DriverLock();
+
+  protected final QueryMetricsManager QUERY_METRICS = QueryMetricsManager.getInstance();
 
   protected enum State {
     ALIVE,
@@ -182,8 +186,8 @@ public abstract class Driver implements IDriver {
       if (!blocked.isDone()) {
         return blocked;
       }
-      if (root.hasNext()) {
-        TsBlock tsBlock = root.next();
+      if (root.hasNextWithTimer()) {
+        TsBlock tsBlock = root.nextWithTimer();
         if (tsBlock != null && !tsBlock.isEmpty()) {
           sinkHandle.send(tsBlock);
         }
@@ -332,6 +336,17 @@ public abstract class Driver implements IDriver {
     try {
       root.close();
       sinkHandle.setNoMoreTsBlocks();
+
+      // record operator execution statistics to metrics
+      List<OperatorContext> operatorContexts =
+          driverContext.getFragmentInstanceContext().getOperatorContexts();
+      for (OperatorContext operatorContext : operatorContexts) {
+        String operatorType = operatorContext.getOperatorType();
+        QUERY_METRICS.recordOperatorExecutionCost(
+            operatorType, operatorContext.getTotalExecutionTimeInNanos());
+        QUERY_METRICS.recordOperatorExecutionCount(
+            operatorType, operatorContext.getNextCalledCount());
+      }
     } catch (InterruptedException t) {
       // don't record the stack
       wasInterrupted = true;

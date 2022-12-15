@@ -211,7 +211,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       } else {
         schemaTree = schemaFetcher.fetchSchema(patternTree);
       }
-      QueryMetricsManager.getInstance().addPlanCost(SCHEMA_FETCHER, System.nanoTime() - startTime);
+      QueryMetricsManager.getInstance()
+          .recordPlanCost(SCHEMA_FETCHER, System.nanoTime() - startTime);
       logger.debug("[EndFetchSchema]");
 
       // If there is no leaf node in the schema tree, the query should be completed immediately
@@ -1175,7 +1176,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       }
     } finally {
       QueryMetricsManager.getInstance()
-          .addPlanCost(PARTITION_FETCHER, System.nanoTime() - startTime);
+          .recordPlanCost(PARTITION_FETCHER, System.nanoTime() - startTime);
     }
   }
 

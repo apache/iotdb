@@ -47,7 +47,7 @@ public class Analyzer {
         new AnalyzeVisitor(partitionFetcher, schemaFetcher).process(statement, context);
 
     if (statement.isQuery()) {
-      QueryMetricsManager.getInstance().addPlanCost(ANALYZER, System.nanoTime() - startTime);
+      QueryMetricsManager.getInstance().recordPlanCost(ANALYZER, System.nanoTime() - startTime);
     }
     return analysis;
   }

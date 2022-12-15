@@ -520,7 +520,7 @@ public class StatementGenerator {
       }
       return astVisitor.visit(tree);
     } finally {
-      QueryMetricsManager.getInstance().addPlanCost(SQL_PARSER, System.nanoTime() - startTime);
+      QueryMetricsManager.getInstance().recordPlanCost(SQL_PARSER, System.nanoTime() - startTime);
     }
   }
 

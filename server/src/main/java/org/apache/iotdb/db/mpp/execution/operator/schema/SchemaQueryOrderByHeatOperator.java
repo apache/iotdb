@@ -87,8 +87,8 @@ public class SchemaQueryOrderByHeatOperator implements ProcessOperator {
         if (operator.isFinished()) {
           noMoreTsBlocks[i] = true;
         } else {
-          if (operator.hasNext()) {
-            TsBlock tsBlock = operator.next();
+          if (operator.hasNextWithTimer()) {
+            TsBlock tsBlock = operator.nextWithTimer();
             if (null != tsBlock && !tsBlock.isEmpty()) {
               if (isShowTimeSeriesBlock(tsBlock)) {
                 showTimeSeriesResult.add(tsBlock);
@@ -203,7 +203,7 @@ public class SchemaQueryOrderByHeatOperator implements ProcessOperator {
 
   @Override
   public boolean isFinished() {
-    return !hasNext();
+    return !hasNextWithTimer();
   }
 
   @Override

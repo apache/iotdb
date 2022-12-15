@@ -99,7 +99,7 @@ public class VerticallyConcatOperator implements ProcessOperator {
     for (int i = 0; i < inputOperatorsCount; i++) {
       if (empty(i)) {
         inputIndex[i] = 0;
-        inputTsBlocks[i] = children.get(i).next();
+        inputTsBlocks[i] = children.get(i).nextWithTimer();
         if (empty(i)) {
           // child operator has not prepared TsBlock well
           return null;
@@ -144,7 +144,7 @@ public class VerticallyConcatOperator implements ProcessOperator {
     if (finished) {
       return false;
     }
-    return !empty(0) || children.get(0).hasNext();
+    return !empty(0) || children.get(0).hasNextWithTimer();
   }
 
   @Override
@@ -159,7 +159,7 @@ public class VerticallyConcatOperator implements ProcessOperator {
     if (finished) {
       return true;
     }
-    return finished = empty(0) && !children.get(0).hasNext();
+    return finished = empty(0) && !children.get(0).hasNextWithTimer();
   }
 
   @Override

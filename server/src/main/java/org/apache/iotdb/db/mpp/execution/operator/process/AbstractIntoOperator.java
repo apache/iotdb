@@ -139,8 +139,8 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
     }
     cachedTsBlock = null;
 
-    if (child.hasNext()) {
-      TsBlock inputTsBlock = child.next();
+    if (child.hasNextWithTimer()) {
+      TsBlock inputTsBlock = child.nextWithTimer();
       processTsBlock(inputTsBlock);
 
       // call child.next only once

@@ -87,7 +87,7 @@ public class LinearFillOperator implements ProcessOperator {
     // make sure we call child.next() at most once
     if (cachedTsBlock.isEmpty()) {
       canCallNext = false;
-      TsBlock nextTsBlock = child.next();
+      TsBlock nextTsBlock = child.nextWithTimer();
       // child operator's calculation is not finished, so we just return null
       if (nextTsBlock == null || nextTsBlock.isEmpty()) {
         return nextTsBlock;
@@ -144,7 +144,7 @@ public class LinearFillOperator implements ProcessOperator {
   @Override
   public boolean hasNext() {
     // if child.hasNext() return false, it means that there is no more tsBlocks
-    noMoreTsBlock = !child.hasNext();
+    noMoreTsBlock = !child.hasNextWithTimer();
     // if there is more tsBlock, we can call child.next() once
     canCallNext = !noMoreTsBlock;
     return !cachedTsBlock.isEmpty() || !noMoreTsBlock;
@@ -212,7 +212,7 @@ public class LinearFillOperator implements ProcessOperator {
     if (canCallNext) { // if we can call child.next(), we call that and cache it in
       // cachedTsBlock
       canCallNext = false;
-      TsBlock nextTsBlock = child.next();
+      TsBlock nextTsBlock = child.nextWithTimer();
       // child operator's calculation is not finished, so we just return null
       if (nextTsBlock == null || nextTsBlock.isEmpty()) {
         return false;

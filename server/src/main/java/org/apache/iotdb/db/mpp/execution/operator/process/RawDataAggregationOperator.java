@@ -58,7 +58,7 @@ public class RawDataAggregationOperator extends SingleInputAggregationOperator {
   }
 
   private boolean hasMoreData() {
-    return inputTsBlock != null || child.hasNext();
+    return inputTsBlock != null || child.hasNextWithTimer();
   }
 
   @Override
@@ -72,10 +72,10 @@ public class RawDataAggregationOperator extends SingleInputAggregationOperator {
       inputTsBlock = null;
 
       // NOTE: child.next() can only be invoked once
-      if (child.hasNext() && canCallNext) {
-        inputTsBlock = child.next();
+      if (child.hasNextWithTimer() && canCallNext) {
+        inputTsBlock = child.nextWithTimer();
         canCallNext = false;
-      } else if (child.hasNext()) {
+      } else if (child.hasNextWithTimer()) {
         // if child still has next but can't be invoked now
         return false;
       } else {

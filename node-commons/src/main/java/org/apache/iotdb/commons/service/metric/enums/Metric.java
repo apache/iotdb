@@ -62,7 +62,9 @@ public enum Metric {
   THRIFT_ACTIVE_THREADS,
   IOT_CONSENSUS,
   STAGE,
-  QUERY_PLAN_COST;
+  QUERY_PLAN_COST,
+  OPERATOR_EXECUTION_COST,
+  OPERATOR_EXECUTION_COUNT;
 
   @Override
   public String toString() {

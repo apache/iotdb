@@ -52,7 +52,7 @@ public class OffsetOperator implements ProcessOperator {
 
   @Override
   public TsBlock next() {
-    TsBlock block = child.next();
+    TsBlock block = child.nextWithTimer();
     if (block == null) {
       return null;
     }
@@ -67,7 +67,7 @@ public class OffsetOperator implements ProcessOperator {
 
   @Override
   public boolean hasNext() {
-    return child.hasNext();
+    return child.hasNextWithTimer();
   }
 
   @Override

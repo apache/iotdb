@@ -96,8 +96,8 @@ public class MergeSortOperator implements ProcessOperator {
   public TsBlock next() {
     // 1. fill consumed up TsBlock
     for (int i = 0; i < inputOperatorsCount; i++) {
-      if (!noMoreTsBlocks[i] && isTsBlockEmpty(i) && inputOperators.get(i).hasNext()) {
-        inputTsBlocks[i] = inputOperators.get(i).next();
+      if (!noMoreTsBlocks[i] && isTsBlockEmpty(i) && inputOperators.get(i).hasNextWithTimer()) {
+        inputTsBlocks[i] = inputOperators.get(i).nextWithTimer();
         if (inputTsBlocks[i] == null || inputTsBlocks[i].isEmpty()) {
           return null;
         }
@@ -160,7 +160,7 @@ public class MergeSortOperator implements ProcessOperator {
       if (!isTsBlockEmpty(i)) {
         return true;
       } else if (!noMoreTsBlocks[i]) {
-        if (inputOperators.get(i).hasNext()) {
+        if (inputOperators.get(i).hasNextWithTimer()) {
           return true;
         } else {
           noMoreTsBlocks[i] = true;

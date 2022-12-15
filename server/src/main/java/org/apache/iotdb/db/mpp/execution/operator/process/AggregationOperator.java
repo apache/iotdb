@@ -175,7 +175,7 @@ public class AggregationOperator implements ProcessOperator {
 
   @Override
   public boolean isFinished() {
-    return !this.hasNext();
+    return !this.hasNextWithTimer();
   }
 
   @Override
@@ -194,7 +194,7 @@ public class AggregationOperator implements ProcessOperator {
         return false;
       }
 
-      inputTsBlocks[i] = children.get(i).next();
+      inputTsBlocks[i] = children.get(i).nextWithTimer();
       canCallNext[i] = false;
       if (inputTsBlocks[i] == null) {
         return false;

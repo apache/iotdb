@@ -22,18 +22,41 @@ package org.apache.iotdb.db.mpp.metric;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
-import org.apache.iotdb.metrics.type.Timer;
 import org.apache.iotdb.metrics.utils.MetricLevel;
+
+import java.util.concurrent.TimeUnit;
 
 public class QueryMetricsManager {
 
   private final MetricService metricService = MetricService.getInstance();
 
-  public void addPlanCost(String stage, long costTimeInNanos) {
-    Timer timer =
-        metricService.getOrCreateTimer(
-            Metric.QUERY_PLAN_COST.toString(), MetricLevel.IMPORTANT, Tag.STAGE.toString(), stage);
-    timer.updateNanos(costTimeInNanos);
+  public void recordPlanCost(String stage, long costTimeInNanos) {
+    metricService.timer(
+        costTimeInNanos,
+        TimeUnit.NANOSECONDS,
+        Metric.QUERY_PLAN_COST.toString(),
+        MetricLevel.IMPORTANT,
+        Tag.STAGE.toString(),
+        stage);
+  }
+
+  public void recordOperatorExecutionCost(String operatorType, long costTimeInNanos) {
+    metricService.timer(
+        costTimeInNanos,
+        TimeUnit.NANOSECONDS,
+        Metric.OPERATOR_EXECUTION_COST.toString(),
+        MetricLevel.IMPORTANT,
+        Tag.NAME.toString(),
+        operatorType);
+  }
+
+  public void recordOperatorExecutionCount(String operatorType, long count) {
+    metricService.count(
+        count,
+        Metric.OPERATOR_EXECUTION_COUNT.toString(),
+        MetricLevel.IMPORTANT,
+        Tag.NAME.toString(),
+        operatorType);
   }
 
   public static QueryMetricsManager getInstance() {

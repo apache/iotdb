@@ -96,8 +96,8 @@ public class CountMergeOperator implements ProcessOperator {
       if (childrenTsBlocks[i] == null) {
         // when this operator is not blocked, it means all children that have not return TsBlock is
         // not blocked.
-        if (children.get(i).hasNext()) {
-          TsBlock tsBlock = children.get(i).next();
+        if (children.get(i).hasNextWithTimer()) {
+          TsBlock tsBlock = children.get(i).nextWithTimer();
           if (tsBlock == null || tsBlock.isEmpty()) {
             allChildrenReady = false;
           } else {
@@ -164,7 +164,7 @@ public class CountMergeOperator implements ProcessOperator {
 
   @Override
   public boolean isFinished() {
-    return !hasNext();
+    return !hasNextWithTimer();
   }
 
   @Override

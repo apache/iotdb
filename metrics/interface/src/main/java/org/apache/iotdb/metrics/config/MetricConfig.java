@@ -25,7 +25,7 @@ import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.ReporterType;
 
 import java.util.ArrayList;
-import java.util.Collections;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 
@@ -34,7 +34,8 @@ public class MetricConfig {
   private MetricFrameType metricFrameType = MetricFrameType.MICROMETER;
 
   /** The list of reporters provide metrics for external tool */
-  private List<ReporterType> metricReporterList = Collections.singletonList(ReporterType.JMX);
+  private List<ReporterType> metricReporterList =
+      Arrays.asList(ReporterType.JMX, ReporterType.PROMETHEUS);
 
   /** The level of metric service */
   private MetricLevel metricLevel = MetricLevel.IMPORTANT;
