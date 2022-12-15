@@ -46,7 +46,9 @@ import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
+import org.apache.iotdb.db.mpp.common.NodeRef;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
+import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
 import org.apache.iotdb.db.mpp.common.header.DatasetHeaderFactory;
 import org.apache.iotdb.db.mpp.common.schematree.DeviceSchemaInfo;
@@ -2547,36 +2549,57 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     analysis.setStatement(showQueriesStatement);
     analysis.setRespDatasetHeader(DatasetHeaderFactory.getShowQueriesHeader());
 
-    List<TDataNodeLocation> allRunningDataNodeLocations = getAllRunningDataNodeLocations();
+    List<TDataNodeLocation> allRunningDataNodeLocations = getRunningDataNodeLocations();
     if (allRunningDataNodeLocations.isEmpty()) {
       analysis.setFinishQueryAfterAnalyze(true);
     }
     // TODO Constant folding optimization for Where Predicate after True/False Constant introduced
     analysis.setRunningDataNodeLocations(allRunningDataNodeLocations);
 
-    WhereCondition whereCondition = showQueriesStatement.getWhereCondition();
-    if(whereCondition != null) {
-      Expression whereExpression = whereCondition.getPredicate();
-      analyzeExpression(analysis, whereExpression);
-      analysis.setWhereExpression(whereExpression);
-    }
+    analyzeWhere(analysis, showQueriesStatement);
 
     return analysis;
   }
 
-  private List<TDataNodeLocation> getAllRunningDataNodeLocations() {
+  private List<TDataNodeLocation> getRunningDataNodeLocations() {
     try (ConfigNodeClient client =
         ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.configNodeRegionId)) {
       TGetDataNodeLocationsResp showDataNodesResp = client.getRunningDataNodeLocations();
       if (showDataNodesResp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         throw new StatementAnalyzeException(
-            "An error occurred when executing getDataPartition():"
+            "An error occurred when executing getRunningDataNodeLocations():"
                 + showDataNodesResp.getStatus().getMessage());
       }
       return showDataNodesResp.getDataNodeLocationList();
     } catch (TException | IOException e) {
       throw new StatementAnalyzeException(
-          "An error occurred when executing getDataPartition():" + e.getMessage());
+          "An error occurred when executing getRunningDataNodeLocations():" + e.getMessage());
     }
+  }
+
+  private void analyzeWhere(Analysis analysis, ShowQueriesStatement showQueriesStatement) {
+    WhereCondition whereCondition = showQueriesStatement.getWhereCondition();
+    if (whereCondition == null) {
+      return;
+    }
+
+    ExpressionTypeAnalyzer analyzer = new ExpressionTypeAnalyzer();
+    Expression whereExpression =
+        ExpressionAnalyzer.replaceTimeSeriesOperand(
+            whereCondition.getPredicate(),
+            ColumnHeaderConstant.showQueriesColumnHeaders,
+            analyzer.getExpressionTypes());
+    analyzer.analyze(whereExpression);
+    ExpressionTypeAnalyzer.updateAnalysis(analysis, analyzer);
+
+    TSDataType outputType = analyzer.getExpressionTypes().get(NodeRef.of(whereExpression));
+    if (outputType != TSDataType.BOOLEAN) {
+      throw new SemanticException(
+          String.format(
+              "The output type of the expression in WHERE clause should be BOOLEAN, actual data type: %s.",
+              outputType));
+    }
+
+    analysis.setWhereExpression(whereExpression);
   }
 }

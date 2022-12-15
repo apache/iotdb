@@ -471,6 +471,10 @@ public class Analysis {
     this.expressionTypes.putAll(types);
   }
 
+  public void addType(NodeRef<Expression> expressionNodeRef, TSDataType dataType) {
+    this.expressionTypes.put(expressionNodeRef, dataType);
+  }
+
   public Set<Expression> getDeviceViewOutputExpressions() {
     return deviceViewOutputExpressions;
   }
