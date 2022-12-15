@@ -22,21 +22,7 @@ namespace java org.apache.iotdb.confignode.rpc.thrift
 namespace py iotdb.thrift.confignode
 
 // DataNode
-struct TDataNodeRegisterReq {
-  1: required common.TDataNodeConfiguration dataNodeConfiguration
-}
-
-struct TDataNodeRegisterResp {
-  1: required common.TSStatus status
-  2: required list<common.TConfigNodeLocation> configNodeList
-  3: optional i32 dataNodeId
-  4: optional binary templateInfo
-  5: optional list<binary> allTriggerInformation
-  6: optional list<binary> allUDFInformation
-  7: optional binary allTTLInformation
-}
-
-struct TConfigurationResp{
+struct TSystemConfigurationResp {
   1: required common.TSStatus status
   2: optional TGlobalConfig globalConfig
   3: optional TRatisConfig ratisConfig
@@ -99,10 +85,34 @@ struct TCQConfig {
   1: required i64 cqMinEveryIntervalInMs
 }
 
-struct TDataNodeRestartReq {
+struct TRuntimeConfiguration {
+  1: required binary templateInfo
+  2: required list<binary> allTriggerInformation
+  3: required list<binary> allUDFInformation
+  4: required binary allTTLInformation
+}
+
+struct TDataNodeRegisterReq {
   1: required common.TDataNodeConfiguration dataNodeConfiguration
-  2: required i64 clusterId
-  // TODO: Add other fields to verify
+}
+
+struct TDataNodeRegisterResp {
+  1: required common.TSStatus status
+  2: required list<common.TConfigNodeLocation> configNodeList
+  3: optional string clusterName
+  4: optional i32 dataNodeId
+  5: optional TRuntimeConfiguration runtimeConfiguration
+}
+
+struct TDataNodeRestartReq {
+  1: required string clusterName
+  2: required common.TDataNodeConfiguration dataNodeConfiguration
+}
+
+struct TDataNodeRestartResp {
+  1: required common.TSStatus status
+  2: required list<common.TConfigNodeLocation> configNodeList
+  3: optional TRuntimeConfiguration runtimeConfiguration
 }
 
 struct TDataNodeUpdateReq {
@@ -337,12 +347,12 @@ struct TConfigNodeRegisterReq {
 struct TConfigNodeRegisterResp {
   1: required common.TSStatus status
   2: required i32 configNodeId
-  3: required i64 clusterId
+  3: required string clusterName
 }
 
 struct TConfigNodeRestartReq {
   1: required common.TConfigNodeLocation configNodeLocation
-  2: required i64 clusterId
+  2: required string clusterName
 }
 
 struct TAddConsensusGroupReq {
@@ -658,13 +668,12 @@ service IConfigNodeRPCService {
    *
    * @return SUCCESS_STATUS if
    */
-  common.TSStatus restartDataNode(TDataNodeRegisterReq req)
+  TDataNodeRestartResp restartDataNode(TDataNodeRestartReq req)
 
   /**
-   * common.TSStatus restartDataNode(TDataNodeRestartReq req)
-   * Get configuration information that is not associated with the DataNodeId
+   * Get system configurations. i.e. configurations that is not associated with the DataNodeId
    */
-  TConfigurationResp getConfiguration()
+  TSystemConfigurationResp getSystemConfiguration()
 
   /**
    * Generate a set of DataNodeRemoveProcedure to remove some specific DataNodes from the cluster

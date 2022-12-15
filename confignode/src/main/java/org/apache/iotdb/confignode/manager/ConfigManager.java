@@ -29,6 +29,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.cluster.NodeStatus;
+import org.apache.iotdb.commons.cluster.NodeType;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
@@ -79,6 +80,7 @@ import org.apache.iotdb.confignode.consensus.response.TemplateSetInfoResp;
 import org.apache.iotdb.confignode.consensus.statemachine.ConfigNodeRegionStateMachine;
 import org.apache.iotdb.confignode.manager.cq.CQManager;
 import org.apache.iotdb.confignode.manager.load.LoadManager;
+import org.apache.iotdb.confignode.manager.node.ClusterNodeStartUtils;
 import org.apache.iotdb.confignode.manager.node.NodeManager;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
 import org.apache.iotdb.confignode.persistence.AuthorInfo;
@@ -100,6 +102,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRestartReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRestartResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDeactivateSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteTimeSeriesReq;
@@ -259,77 +262,57 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public DataSet registerDataNode(RegisterDataNodePlan registerDataNodePlan) {
-    DataNodeRegisterResp dataSet;
-    // Reject register DataNode because the dataNodeId != -1
-    if (registerDataNodePlan.getDataNodeConfiguration().getLocation().getDataNodeId() != -1) {
-      dataSet = new DataNodeRegisterResp();
-      dataSet.setStatus(
-          new TSStatus(TSStatusCode.REJECT_NODE_START.getStatusCode())
-              .setMessage("Register DataNode failed. Please delete data dir and retry start."));
-      return dataSet;
-    }
-
-    TSStatus status = confirmLeader();
-    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      // Register the new DataNode into the cluster
-      dataSet = (DataNodeRegisterResp) nodeManager.registerDataNode(registerDataNodePlan);
-      if (dataSet.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        // Collect module information when register success
-        triggerManager.getTriggerInfo().acquireTriggerTableLock();
-        udfManager.getUdfInfo().acquireUDFTableLock();
-        try {
-          dataSet.setTemplateInfo(clusterSchemaManager.getAllTemplateSetInfo());
-          dataSet.setTriggerInformation(
-              triggerManager.getTriggerTable(false).getAllTriggerInformation());
-          dataSet.setAllUDFInformation(udfManager.getUDFTable().getAllUDFInformation());
-          dataSet.setAllTTLInformation(clusterSchemaManager.getAllTTLInfo());
-        } finally {
-          triggerManager.getTriggerInfo().releaseTriggerTableLock();
-          udfManager.getUdfInfo().releaseUDFTableLock();
-        }
-      }
-
-    } else {
-      dataSet = new DataNodeRegisterResp();
-      dataSet.setStatus(status);
-      dataSet.setConfigNodeList(nodeManager.getRegisteredConfigNodes());
-    }
-    return dataSet;
-  }
-
-  @Override
-  public TSStatus restartDataNode(TDataNodeRestartReq req) {
-
-    if (req.getDataNodeConfiguration().getLocation().getDataNodeId() <= 0) {
-      // TODO: Report error node id
-      return new TSStatus();
-    }
-
-    if (req.getClusterId() != ConfigNodeDescriptor.getInstance().getConf().getClusterId()) {
-      // TODO: Report error cluster id
-      return new TSStatus(TSStatusCode.REJECT_NODE_START.getStatusCode())
-        .setMessage("The index of ");
-    }
-
-    TSStatus status = confirmLeader();
-    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return nodeManager.restartDataNode(req.getDataNodeConfiguration().getLocation());
-    }
-    return status;
-  }
-
-  @Override
-  public DataSet getConfiguration() {
+  public DataSet getSystemConfiguration() {
     TSStatus status = confirmLeader();
     ConfigurationResp dataSet;
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      dataSet = (ConfigurationResp) nodeManager.getConfiguration();
+      dataSet = (ConfigurationResp) nodeManager.getSystemConfiguration();
     } else {
       dataSet = new ConfigurationResp();
       dataSet.setStatus(status);
     }
     return dataSet;
+  }
+
+  @Override
+  public DataSet registerDataNode(RegisterDataNodePlan registerDataNodePlan) {
+    TSStatus status = confirmLeader();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      status =
+          ClusterNodeStartUtils.confirmNodeRegistration(
+              NodeType.DataNode,
+              registerDataNodePlan.getDataNodeConfiguration().getLocation(),
+              this);
+      if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return nodeManager.registerDataNode(registerDataNodePlan);
+      }
+    }
+
+    DataNodeRegisterResp resp = new DataNodeRegisterResp();
+    resp.setStatus(status);
+    resp.setConfigNodeList(getNodeManager().getRegisteredConfigNodes());
+    return resp;
+  }
+
+  @Override
+  public TDataNodeRestartResp restartDataNode(TDataNodeRestartReq req) {
+    TSStatus status = confirmLeader();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      status =
+          ClusterNodeStartUtils.confirmNodeRestart(
+              NodeType.DataNode,
+              req.getClusterName(),
+              req.getDataNodeConfiguration().getLocation().getDataNodeId(),
+              req.getDataNodeConfiguration().getLocation(),
+              this);
+      if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return nodeManager.restartDataNode(req.getDataNodeConfiguration().getLocation());
+      }
+    }
+
+    return new TDataNodeRestartResp()
+        .setStatus(status)
+        .setConfigNodeList(getNodeManager().getRegisteredConfigNodes());
   }
 
   @Override
@@ -349,15 +332,7 @@ public class ConfigManager implements IManager {
     TSStatus status = confirmLeader();
     DataNodeRegisterResp dataSet;
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      triggerManager.getTriggerInfo().acquireTriggerTableLock();
-      try {
-        dataSet = (DataNodeRegisterResp) nodeManager.updateDataNode(updateDataNodePlan);
-        dataSet.setTemplateInfo(clusterSchemaManager.getAllTemplateSetInfo());
-        dataSet.setTriggerInformation(
-            triggerManager.getTriggerTable(false).getAllTriggerInformation());
-      } finally {
-        triggerManager.getTriggerInfo().releaseTriggerTableLock();
-      }
+      dataSet = (DataNodeRegisterResp) nodeManager.updateDataNode(updateDataNodePlan);
     } else {
       dataSet = new DataNodeRegisterResp();
       dataSet.setStatus(status);
@@ -701,6 +676,13 @@ public class ConfigManager implements IManager {
   }
 
   private TSStatus confirmLeader() {
+    // Make sure the consensus layer has been initialized
+    if (getConsensusManager() == null) {
+      return new TSStatus(TSStatusCode.CONSENSUS_NOT_INITIALIZED.getStatusCode())
+          .setMessage(
+              "ConsensusManager of target-ConfigNode is not initialized, "
+                  + "please make sure the target-ConfigNode has been started successfully.");
+    }
     return getConsensusManager().confirmLeader();
   }
 
@@ -788,37 +770,20 @@ public class ConfigManager implements IManager {
 
   @Override
   public TConfigNodeRegisterResp registerConfigNode(TConfigNodeRegisterReq req) {
-    if (req.getConfigNodeLocation().getConfigNodeId() != -1) {
-      // TODO: return error confignode id
-      return new TConfigNodeRegisterResp();
-    }
-
     final int ERROR_STATUS_NODE_ID = -1;
-    TSStatus status;
-    TSStatus errorStatus;
 
-    // Make sure the consensus layer is initialized
-    if (getConsensusManager() == null) {
-      errorStatus = new TSStatus(TSStatusCode.CONSENSUS_NOT_INITIALIZED.getStatusCode());
-      errorStatus.setMessage(
-          "ConsensusManager of target-ConfigNode is not initialized, "
-              + "please make sure the target-ConfigNode has been started successfully.");
-      return new TConfigNodeRegisterResp()
-          .setStatus(errorStatus)
-          .setConfigNodeId(ERROR_STATUS_NODE_ID);
-    }
-
-    status = confirmLeader();
+    TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       // Make sure the global configurations are consist
-      errorStatus = checkConfigNodeGlobalConfig(req);
-      if (errorStatus != null) {
-        return new TConfigNodeRegisterResp()
-            .setStatus(errorStatus)
-            .setConfigNodeId(ERROR_STATUS_NODE_ID);
+      status = checkConfigNodeGlobalConfig(req);
+      if (status == null) {
+        status =
+            ClusterNodeStartUtils.confirmNodeRegistration(
+                NodeType.ConfigNode, req.getConfigNodeLocation(), this);
+        if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          return nodeManager.registerConfigNode(req);
+        }
       }
-
-      return nodeManager.registerConfigNode(req);
     }
 
     return new TConfigNodeRegisterResp().setStatus(status).setConfigNodeId(ERROR_STATUS_NODE_ID);
@@ -826,20 +791,18 @@ public class ConfigManager implements IManager {
 
   @Override
   public TSStatus restartConfigNode(TConfigNodeRestartReq req) {
-    if (req.getConfigNodeLocation().getConfigNodeId() <= 0) {
-      // TODO: Report error node id
-      return new TSStatus();
-    }
-
-    if (req.getClusterId() != ConfigNodeDescriptor.getInstance().getConf().getClusterId()) {
-      // TODO: Report error cluster id
-      return new TSStatus(TSStatusCode.REJECT_NODE_START.getStatusCode())
-          .setMessage("The index of ");
-    }
-
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return nodeManager.restartConfigNode(req.getConfigNodeLocation());
+      status =
+          ClusterNodeStartUtils.confirmNodeRestart(
+              NodeType.ConfigNode,
+              req.getClusterName(),
+              req.getConfigNodeLocation().getConfigNodeId(),
+              req.getConfigNodeLocation(),
+              this);
+      if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return nodeManager.restartConfigNode(req.getConfigNodeLocation());
+      }
     }
     return status;
   }

@@ -31,8 +31,8 @@ import java.io.File;
 
 public class ConfigNodeConfig {
 
-  /** ClusterId, the default value -1 will be changed after join cluster */
-  private volatile long clusterId = -1;
+  /** ClusterId, the default value "testCluster" will be changed after join cluster */
+  private volatile String clusterName = "testCluster";
 
   /** ConfigNodeId, the default value -1 will be changed after join cluster */
   private volatile int configNodeId = -1;
@@ -297,12 +297,12 @@ public class ConfigNodeConfig {
     return dir;
   }
 
-  public long getClusterId() {
-    return clusterId;
+  public String getClusterName() {
+    return clusterName;
   }
 
-  public void setClusterId(long clusterId) {
-    this.clusterId = clusterId;
+  public void setClusterName(String clusterName) {
+    this.clusterName = clusterName;
   }
 
   public int getConfigNodeId() {

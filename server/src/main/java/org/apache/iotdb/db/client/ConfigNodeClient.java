@@ -40,7 +40,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TCheckUserPrivilegesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRestartReq;
-import org.apache.iotdb.confignode.rpc.thrift.TConfigurationResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCountStorageGroupResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateCQReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateFunctionReq;
@@ -53,6 +52,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRemoveReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRemoveResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRestartReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRestartResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeUpdateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionTableResp;
@@ -108,6 +108,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowStorageGroupResp;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchemaResp;
+import org.apache.iotdb.confignode.rpc.thrift.TSystemConfigurationResp;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsetSchemaTemplateReq;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -308,6 +309,27 @@ public class ConfigNodeClient
   }
 
   @Override
+  public TSystemConfigurationResp getSystemConfiguration() throws TException {
+    for (int i = 0; i < RETRY_NUM; i++) {
+      try {
+        TSystemConfigurationResp resp = client.getSystemConfiguration();
+        if (!updateConfigNodeLeader(resp.status)) {
+          return resp;
+        }
+      } catch (TException e) {
+        logger.warn(
+            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            configNode,
+            config.getAddressAndPort(),
+            Thread.currentThread().getStackTrace()[1].getMethodName());
+        configLeader = null;
+      }
+      waitAndReconnect();
+    }
+    throw new TException(MSG_RECONNECTION_FAIL);
+  }
+
+  @Override
   public TDataNodeRegisterResp registerDataNode(TDataNodeRegisterReq req) throws TException {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
@@ -337,15 +359,10 @@ public class ConfigNodeClient
   }
 
   @Override
-  public TSStatus restartDataNode(TDataNodeRestartReq req) throws TException {
-    return null;
-  }
-
-  @Override
-  public TConfigurationResp getConfiguration() throws TException {
+  public TDataNodeRestartResp restartDataNode(TDataNodeRestartReq req) throws TException {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
-        TConfigurationResp resp = client.getConfiguration();
+        TDataNodeRestartResp resp = client.restartDataNode(req);
         if (!updateConfigNodeLeader(resp.status)) {
           return resp;
         }

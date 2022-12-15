@@ -51,7 +51,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.Random;
 import java.util.concurrent.TimeUnit;
 
 public class ConfigNode implements ConfigNodeMBean {
@@ -99,10 +98,10 @@ public class ConfigNode implements ConfigNodeMBean {
         LOGGER.info("{} is in restarting process...", ConfigNodeConstant.GLOBAL_NAME);
 
         /* Always restore ClusterId and ConfigNodeId first */
-        CONF.setClusterId(SystemPropertiesUtils.loadClusterIdWhenRestarted());
+        CONF.setClusterName(SystemPropertiesUtils.loadClusterNameWhenRestarted());
         CONF.setConfigNodeId(SystemPropertiesUtils.loadConfigNodeIdWhenRestarted());
 
-        restartConfigNode();
+        sendRestartConfigNodeRequest();
 
         configManager.initConsensusManager();
         setUpRPCService();
@@ -118,7 +117,6 @@ public class ConfigNode implements ConfigNodeMBean {
             ConfigNodeConstant.GLOBAL_NAME);
 
         /* Always set ClusterId and ConfigNodeId before initConsensusManager */
-        CONF.setClusterId(new Random().nextLong());
         CONF.setConfigNodeId(SEED_CONFIG_NODE_ID);
         configManager.initConsensusManager();
 
@@ -148,7 +146,7 @@ public class ConfigNode implements ConfigNodeMBean {
       // We set up Non-Seed ConfigNode's RPC service before sending the register request
       // in order to facilitate the scheduling of capacity expansion process in ConfigNode-leader
       setUpRPCService();
-      registerConfigNode();
+      sendRegisterConfigNodeRequest();
       // The initial startup of Non-Seed-ConfigNode is not yet finished,
       // we should wait for leader's scheduling
       LOGGER.info(
@@ -225,7 +223,7 @@ public class ConfigNode implements ConfigNodeMBean {
   }
 
   /** Register Non-seed ConfigNode when first startup */
-  private void registerConfigNode() throws StartupException, IOException {
+  private void sendRegisterConfigNodeRequest() throws StartupException, IOException {
     TConfigNodeRegisterReq req =
         new TConfigNodeRegisterReq(
             new TConfigNodeLocation(
@@ -248,7 +246,8 @@ public class ConfigNode implements ConfigNodeMBean {
 
     TEndPoint targetConfigNode = CONF.getTargetConfigNode();
     if (targetConfigNode == null) {
-      LOGGER.error("The targetConfigNode setting in conf is empty");
+      LOGGER.error(
+          "Please set the cn_target_config_node_list parameter in iotdb-confignode.properties file.");
       throw new StartupException("The targetConfigNode setting in conf is empty");
     }
 
@@ -297,21 +296,48 @@ public class ConfigNode implements ConfigNodeMBean {
     }
 
     LOGGER.error(
-        "The current ConfigNode can't send register request to the Seed-ConfigNode after all retries!");
+        "The current ConfigNode can't send register request to the ConfigNode-leader after all retries!");
     stop();
   }
 
-  private void restartConfigNode() {
-    TConfigNodeRestartReq req = new TConfigNodeRestartReq(
-      new TConfigNodeLocation(
-        CONF.getConfigNodeId(),
-        new TEndPoint(CONF.getInternalAddress(), CONF.getInternalPort()),
-        new TEndPoint(CONF.getInternalAddress(), CONF.getConsensusPort())),
-      CONF.getClusterId()
-    );
+  private void sendRestartConfigNodeRequest() throws IOException, StartupException {
+    TConfigNodeRestartReq req =
+        new TConfigNodeRestartReq(
+            new TConfigNodeLocation(
+                CONF.getConfigNodeId(),
+                new TEndPoint(CONF.getInternalAddress(), CONF.getInternalPort()),
+                new TEndPoint(CONF.getInternalAddress(), CONF.getConsensusPort())),
+            CONF.getClusterName());
 
-    for (int retry = 0; retry < 3; retry++) {
+    TEndPoint targetConfigNode = CONF.getTargetConfigNode();
+    if (targetConfigNode == null) {
+      LOGGER.error(
+          "Please set the cn_target_config_node_list parameter in iotdb-confignode.properties file.");
+      throw new StartupException("The targetConfigNode setting in conf is empty");
+    }
+
+    for (int retry = 0; retry < STARTUP_RETRY_NUM; retry++) {
       TSStatus status =
+          (TSStatus)
+              SyncConfigNodeClientPool.getInstance()
+                  .sendSyncRequestToConfigNodeWithRetry(
+                      targetConfigNode, req, ConfigNodeRequestType.RESTART_CONFIG_NODE);
+
+      if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        LOGGER.info("Registration request of current ConfigNode is accepted.");
+        return;
+      } else if (status.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
+        targetConfigNode = status.getRedirectNode();
+        LOGGER.info("ConfigNode need redirect to  {}.", targetConfigNode);
+      } else {
+        throw new StartupException(status.getMessage());
+      }
+
+      try {
+        TimeUnit.MILLISECONDS.sleep(1000);
+      } catch (InterruptedException e) {
+        throw new StartupException("Register ConfigNode failed!");
+      }
     }
   }
 

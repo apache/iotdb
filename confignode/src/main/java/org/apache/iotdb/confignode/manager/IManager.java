@@ -57,6 +57,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRestartReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRestartResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDeactivateSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteTimeSeriesReq;
@@ -175,6 +176,13 @@ public interface IManager {
   CQManager getCQManager();
 
   /**
+   * Get system configurations that is not associated with the DataNodeId
+   *
+   * @return SystemConfigurationResp
+   */
+  DataSet getSystemConfiguration();
+
+  /**
    * Register DataNode
    *
    * @return DataNodeConfigurationDataSet
@@ -184,17 +192,10 @@ public interface IManager {
   /**
    * Restart DataNode
    *
-   * @param dataNodeRestartReq TDataNodeRestartReq
+   * @param req TDataNodeRestartReq
    * @return SUCCESS_STATUS if allow DataNode to restart, REJECT_START otherwise
    */
-  TSStatus restartDataNode(TDataNodeRestartReq req);
-
-  /**
-   * Get configuration information that is not associated with the DataNodeId
-   *
-   * @return ConfigurationResp
-   */
-  DataSet getConfiguration();
+  TDataNodeRestartResp restartDataNode(TDataNodeRestartReq req);
 
   /**
    * Remove DataNode
