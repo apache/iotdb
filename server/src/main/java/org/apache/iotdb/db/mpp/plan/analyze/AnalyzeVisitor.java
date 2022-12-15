@@ -144,6 +144,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.TimeZone;
+import java.util.TreeSet;
 import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkState;
@@ -229,7 +230,14 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
           throw new SemanticException("Only time filters are supported in LAST query");
         }
         analyzeOrderBy(analysis, queryStatement);
-        return analyzeLast(analysis, schemaTree.getAllMeasurement(), schemaTree);
+        analyzeLastSource(analysis, queryStatement, schemaTree);
+
+        analysis.setRespDatasetHeader(DatasetHeaderFactory.getLastQueryHeader());
+
+        // fetch partition information
+        analyzeDataPartition(analysis, queryStatement, schemaTree);
+
+        return analysis;
       }
 
       List<Pair<Expression, String>> outputExpressions;
@@ -328,9 +336,10 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     analysis.setHasValueFilter(hasValueFilter);
   }
 
-  private Analysis analyzeLast(
-      Analysis analysis, List<MeasurementPath> allSelectedPath, ISchemaTree schemaTree) {
+  private void analyzeLastSource(
+      Analysis analysis, QueryStatement queryStatement, ISchemaTree schemaTree) {
     Set<Expression> sourceExpressions;
+
     List<SortItem> sortItemList = analysis.getMergeOrderParameter().getSortItemList();
     if (sortItemList.size() > 0) {
       checkState(
@@ -338,61 +347,20 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
           "Last queries only support sorting by timeseries now.");
       boolean isAscending = sortItemList.get(0).getOrdering() == Ordering.ASC;
       sourceExpressions =
-          allSelectedPath.stream()
-              .map(TimeSeriesOperand::new)
-              .sorted(
-                  (o1, o2) ->
-                      isAscending
-                          ? o1.getExpressionString().compareTo(o2.getExpressionString())
-                          : o2.getExpressionString().compareTo(o1.getExpressionString()))
-              .collect(Collectors.toCollection(LinkedHashSet::new));
+          new TreeSet<>(
+              (e1, e2) ->
+                  isAscending
+                      ? e1.toString().compareTo(e2.toString())
+                      : e2.toString().compareTo(e1.toString()));
     } else {
-      sourceExpressions =
-          allSelectedPath.stream()
-              .map(TimeSeriesOperand::new)
-              .collect(Collectors.toCollection(LinkedHashSet::new));
+      sourceExpressions = new LinkedHashSet<>();
     }
 
+    for (ResultColumn resultColumn : queryStatement.getSelectComponent().getResultColumns()) {
+      sourceExpressions.addAll(
+          ExpressionAnalyzer.removeWildcardInExpression(resultColumn.getExpression(), schemaTree));
+    }
     analysis.setSourceExpressions(sourceExpressions);
-
-    analysis.setRespDatasetHeader(DatasetHeaderFactory.getLastQueryHeader());
-
-    Set<String> deviceSet =
-        allSelectedPath.stream().map(MeasurementPath::getDevice).collect(Collectors.toSet());
-
-    Pair<List<TTimePartitionSlot>, Pair<Boolean, Boolean>> res =
-        getTimePartitionSlotList(analysis.getGlobalTimeFilter());
-
-    DataPartition dataPartition;
-
-    // there is no satisfied time range
-    if (res.left.isEmpty() && !res.right.left) {
-      dataPartition =
-          new DataPartition(
-              Collections.emptyMap(),
-              CONFIG.getSeriesPartitionExecutorClass(),
-              CONFIG.getSeriesPartitionSlotNum());
-    } else {
-      Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap = new HashMap<>();
-      for (String devicePath : deviceSet) {
-        DataPartitionQueryParam queryParam =
-            new DataPartitionQueryParam(devicePath, res.left, res.right.left, res.right.right);
-        sgNameToQueryParamsMap
-            .computeIfAbsent(schemaTree.getBelongedDatabase(devicePath), key -> new ArrayList<>())
-            .add(queryParam);
-      }
-
-      if (res.right.left || res.right.right) {
-        dataPartition =
-            partitionFetcher.getDataPartitionWithUnclosedTimeRange(sgNameToQueryParamsMap);
-      } else {
-        dataPartition = partitionFetcher.getDataPartition(sgNameToQueryParamsMap);
-      }
-    }
-
-    analysis.setDataPartitionInfo(dataPartition);
-
-    return analysis;
   }
 
   private Map<Integer, List<Pair<Expression, String>>> analyzeSelect(
