@@ -46,6 +46,7 @@ import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
 import org.apache.iotdb.db.mpp.common.header.DatasetHeaderFactory;
 import org.apache.iotdb.db.mpp.common.schematree.DeviceSchemaInfo;
 import org.apache.iotdb.db.mpp.common.schematree.ISchemaTree;
+import org.apache.iotdb.db.mpp.metric.QueryMetricsManager;
 import org.apache.iotdb.db.mpp.plan.Coordinator;
 import org.apache.iotdb.db.mpp.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
@@ -153,6 +154,8 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.LOSS;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
 import static org.apache.iotdb.db.metadata.MetadataConstant.ALL_RESULT_NODES;
 import static org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant.DEVICE;
+import static org.apache.iotdb.db.mpp.metric.QueryPlanCostMetrics.PARTITION_FETCHER;
+import static org.apache.iotdb.db.mpp.metric.QueryPlanCostMetrics.SCHEMA_FETCHER;
 import static org.apache.iotdb.db.mpp.plan.analyze.SelectIntoUtils.constructTargetDevice;
 import static org.apache.iotdb.db.mpp.plan.analyze.SelectIntoUtils.constructTargetMeasurement;
 import static org.apache.iotdb.db.mpp.plan.analyze.SelectIntoUtils.constructTargetPath;
@@ -201,13 +204,16 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
       // request schema fetch API
       logger.debug("[StartFetchSchema]");
+      long startTime = System.nanoTime();
       ISchemaTree schemaTree;
       if (queryStatement.isGroupByTag()) {
         schemaTree = schemaFetcher.fetchSchemaWithTags(patternTree);
       } else {
         schemaTree = schemaFetcher.fetchSchema(patternTree);
       }
+      QueryMetricsManager.getInstance().addPlanCost(SCHEMA_FETCHER, System.nanoTime() - startTime);
       logger.debug("[EndFetchSchema]");
+
       // If there is no leaf node in the schema tree, the query should be completed immediately
       if (schemaTree.isEmpty()) {
         if (queryStatement.isSelectInto()) {
@@ -228,8 +234,23 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         if (analysis.hasValueFilter()) {
           throw new SemanticException("Only time filters are supported in LAST query");
         }
+
         analyzeOrderBy(analysis, queryStatement);
-        return analyzeLast(analysis, schemaTree.getAllMeasurement(), schemaTree);
+
+        List<MeasurementPath> allSelectedPath = schemaTree.getAllMeasurement();
+        analyzeLastSource(analysis, allSelectedPath);
+
+        // set header
+        analysis.setRespDatasetHeader(DatasetHeaderFactory.getLastQueryHeader());
+
+        // fetch partition information
+        Set<String> deviceSet =
+            allSelectedPath.stream().map(MeasurementPath::getDevice).collect(Collectors.toSet());
+        DataPartition dataPartition =
+            fetchDataPartitionByDevices(deviceSet, schemaTree, analysis.getGlobalTimeFilter());
+        analysis.setDataPartitionInfo(dataPartition);
+
+        return analysis;
       }
 
       List<Pair<Expression, String>> outputExpressions;
@@ -328,8 +349,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     analysis.setHasValueFilter(hasValueFilter);
   }
 
-  private Analysis analyzeLast(
-      Analysis analysis, List<MeasurementPath> allSelectedPath, ISchemaTree schemaTree) {
+  private void analyzeLastSource(Analysis analysis, List<MeasurementPath> allSelectedPath) {
     Set<Expression> sourceExpressions;
     List<SortItem> sortItemList = analysis.getMergeOrderParameter().getSortItemList();
     if (sortItemList.size() > 0) {
@@ -352,47 +372,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
               .map(TimeSeriesOperand::new)
               .collect(Collectors.toCollection(LinkedHashSet::new));
     }
-
     analysis.setSourceExpressions(sourceExpressions);
-
-    analysis.setRespDatasetHeader(DatasetHeaderFactory.getLastQueryHeader());
-
-    Set<String> deviceSet =
-        allSelectedPath.stream().map(MeasurementPath::getDevice).collect(Collectors.toSet());
-
-    Pair<List<TTimePartitionSlot>, Pair<Boolean, Boolean>> res =
-        getTimePartitionSlotList(analysis.getGlobalTimeFilter());
-
-    DataPartition dataPartition;
-
-    // there is no satisfied time range
-    if (res.left.isEmpty() && !res.right.left) {
-      dataPartition =
-          new DataPartition(
-              Collections.emptyMap(),
-              CONFIG.getSeriesPartitionExecutorClass(),
-              CONFIG.getSeriesPartitionSlotNum());
-    } else {
-      Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap = new HashMap<>();
-      for (String devicePath : deviceSet) {
-        DataPartitionQueryParam queryParam =
-            new DataPartitionQueryParam(devicePath, res.left, res.right.left, res.right.right);
-        sgNameToQueryParamsMap
-            .computeIfAbsent(schemaTree.getBelongedDatabase(devicePath), key -> new ArrayList<>())
-            .add(queryParam);
-      }
-
-      if (res.right.left || res.right.right) {
-        dataPartition =
-            partitionFetcher.getDataPartitionWithUnclosedTimeRange(sgNameToQueryParamsMap);
-      } else {
-        dataPartition = partitionFetcher.getDataPartition(sgNameToQueryParamsMap);
-      }
-    }
-
-    analysis.setDataPartitionInfo(dataPartition);
-
-    return analysis;
   }
 
   private Map<Integer, List<Pair<Expression, String>>> analyzeSelect(
@@ -1168,28 +1148,34 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
   private DataPartition fetchDataPartitionByDevices(
       Set<String> deviceSet, ISchemaTree schemaTree, Filter globalTimeFilter) {
-    Pair<List<TTimePartitionSlot>, Pair<Boolean, Boolean>> res =
-        getTimePartitionSlotList(globalTimeFilter);
-    // there is no satisfied time range
-    if (res.left.isEmpty() && !res.right.left) {
-      return new DataPartition(
-          Collections.emptyMap(),
-          CONFIG.getSeriesPartitionExecutorClass(),
-          CONFIG.getSeriesPartitionSlotNum());
-    }
-    Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap = new HashMap<>();
-    for (String devicePath : deviceSet) {
-      DataPartitionQueryParam queryParam =
-          new DataPartitionQueryParam(devicePath, res.left, res.right.left, res.right.right);
-      sgNameToQueryParamsMap
-          .computeIfAbsent(schemaTree.getBelongedDatabase(devicePath), key -> new ArrayList<>())
-          .add(queryParam);
-    }
+    long startTime = System.nanoTime();
+    try {
+      Pair<List<TTimePartitionSlot>, Pair<Boolean, Boolean>> res =
+          getTimePartitionSlotList(globalTimeFilter);
+      // there is no satisfied time range
+      if (res.left.isEmpty() && !res.right.left) {
+        return new DataPartition(
+            Collections.emptyMap(),
+            CONFIG.getSeriesPartitionExecutorClass(),
+            CONFIG.getSeriesPartitionSlotNum());
+      }
+      Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap = new HashMap<>();
+      for (String devicePath : deviceSet) {
+        DataPartitionQueryParam queryParam =
+            new DataPartitionQueryParam(devicePath, res.left, res.right.left, res.right.right);
+        sgNameToQueryParamsMap
+            .computeIfAbsent(schemaTree.getBelongedDatabase(devicePath), key -> new ArrayList<>())
+            .add(queryParam);
+      }
 
-    if (res.right.left || res.right.right) {
-      return partitionFetcher.getDataPartitionWithUnclosedTimeRange(sgNameToQueryParamsMap);
-    } else {
-      return partitionFetcher.getDataPartition(sgNameToQueryParamsMap);
+      if (res.right.left || res.right.right) {
+        return partitionFetcher.getDataPartitionWithUnclosedTimeRange(sgNameToQueryParamsMap);
+      } else {
+        return partitionFetcher.getDataPartition(sgNameToQueryParamsMap);
+      }
+    } finally {
+      QueryMetricsManager.getInstance()
+          .addPlanCost(PARTITION_FETCHER, System.nanoTime() - startTime);
     }
   }
 

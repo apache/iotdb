@@ -61,7 +61,8 @@ public enum Metric {
   THRIFT_CONNECTIONS,
   THRIFT_ACTIVE_THREADS,
   IOT_CONSENSUS,
-  STAGE;
+  STAGE,
+  QUERY_PLAN_COST;
 
   @Override
   public String toString() {

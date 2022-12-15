@@ -30,7 +30,7 @@ import java.util.Objects;
 
 public class TimeSeriesMetadataCacheMetrics implements IMetricSet {
 
-  private TimeSeriesMetadataCache timeSeriesMetadataCache;
+  private final TimeSeriesMetadataCache timeSeriesMetadataCache;
 
   public TimeSeriesMetadataCacheMetrics(TimeSeriesMetadataCache timeSeriesMetadataCache) {
     this.timeSeriesMetadataCache = timeSeriesMetadataCache;

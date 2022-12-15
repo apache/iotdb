@@ -29,7 +29,8 @@ import org.apache.iotdb.metrics.utils.MetricType;
 import java.util.Objects;
 
 public class ChunkCacheMetrics implements IMetricSet {
-  private ChunkCache chunkCache;
+
+  private final ChunkCache chunkCache;
 
   public ChunkCacheMetrics(ChunkCache chunkCache) {
     this.chunkCache = chunkCache;

@@ -33,6 +33,7 @@ import org.apache.iotdb.db.mpp.execution.QueryState;
 import org.apache.iotdb.db.mpp.execution.QueryStateMachine;
 import org.apache.iotdb.db.mpp.execution.exchange.ISourceHandle;
 import org.apache.iotdb.db.mpp.execution.exchange.MPPDataExchangeService;
+import org.apache.iotdb.db.mpp.metric.QueryMetricsManager;
 import org.apache.iotdb.db.mpp.plan.analyze.Analysis;
 import org.apache.iotdb.db.mpp.plan.analyze.Analyzer;
 import org.apache.iotdb.db.mpp.plan.analyze.IPartitionFetcher;
@@ -81,6 +82,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Throwables.throwIfUnchecked;
+import static org.apache.iotdb.db.mpp.metric.QueryPlanCostMetrics.DISTRIBUTION_PLANNER;
 import static org.apache.iotdb.db.mpp.plan.constant.DataNodeEndPoints.isSameNode;
 
 /**
@@ -300,8 +302,14 @@ public class QueryExecution implements IQueryExecution {
 
   // Generate the distributed plan and split it into fragments
   public void doDistributedPlan() {
+    long startTime = System.nanoTime();
     DistributionPlanner planner = new DistributionPlanner(this.analysis, this.logicalPlan);
     this.distributedPlan = planner.planFragments();
+
+    if (rawStatement.isQuery()) {
+      QueryMetricsManager.getInstance()
+          .addPlanCost(DISTRIBUTION_PLANNER, System.nanoTime() - startTime);
+    }
     if (isQuery() && logger.isDebugEnabled()) {
       logger.debug(
           "distribution plan done. Fragment instance count is {}, details is: \n {}",

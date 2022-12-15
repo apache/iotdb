@@ -19,13 +19,15 @@
 package org.apache.iotdb.db.mpp.plan.planner;
 
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
+import org.apache.iotdb.db.mpp.metric.QueryMetricsManager;
 import org.apache.iotdb.db.mpp.plan.analyze.Analysis;
 import org.apache.iotdb.db.mpp.plan.optimization.PlanOptimizer;
 import org.apache.iotdb.db.mpp.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.mpp.plan.statement.crud.QueryStatement;
 
 import java.util.List;
+
+import static org.apache.iotdb.db.mpp.metric.QueryPlanCostMetrics.LOGICAL_PLANNER;
 
 /** Generate a logical plan for the statement. */
 public class LogicalPlanner {
@@ -39,10 +41,13 @@ public class LogicalPlanner {
   }
 
   public LogicalQueryPlan plan(Analysis analysis) {
+    long startTime = System.nanoTime();
     PlanNode rootNode = new LogicalPlanVisitor(analysis).process(analysis.getStatement(), context);
 
     // optimize the query logical plan
-    if (analysis.getStatement() instanceof QueryStatement) {
+    if (analysis.getStatement().isQuery()) {
+      QueryMetricsManager.getInstance().addPlanCost(LOGICAL_PLANNER, System.nanoTime() - startTime);
+
       for (PlanOptimizer optimizer : optimizers) {
         rootNode = optimizer.optimize(rootNode, context);
       }
