@@ -23,20 +23,25 @@ import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemTable;
 import org.apache.iotdb.lsm.annotation.FlushProcessor;
 import org.apache.iotdb.lsm.context.requestcontext.FlushRequestContext;
 import org.apache.iotdb.lsm.levelProcess.FlushLevelProcessor;
-import org.apache.iotdb.tsfile.utils.Pair;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /** flush for MemTable */
 @FlushProcessor(level = 1)
-public class MemTableFlush
-    extends FlushLevelProcessor<Pair<Integer, MemTable>, Pair<Integer, MemChunkGroup>> {
+public class MemTableFlush extends FlushLevelProcessor<MemTable, MemChunkGroup> {
   @Override
-  public List<Pair<Integer, MemChunkGroup>> getChildren(
-      Pair<Integer, MemTable> memNode, Object request, FlushRequestContext context) {
-    return null;
+  public List<MemChunkGroup> getChildren(
+      MemTable memNode, Object request, FlushRequestContext context) {
+    Map<MemChunkGroup, Integer> memChunkGroupIndexMap = new HashMap<>();
+    for (Map.Entry<String, MemChunkGroup> entry : memNode.getMemChunkGroupMap().entrySet()) {
+      memChunkGroupIndexMap.put(entry.getValue(), context.getMemTableIndex(memNode));
+    }
+    context.setMemChunkGroupIndexMap(memChunkGroupIndexMap);
+    return (List<MemChunkGroup>) memNode.getMemChunkGroupMap().values();
   }
 
   @Override
-  public void flush(Pair<Integer, MemTable> memNode, FlushRequestContext context) {}
+  public void flush(MemTable memNode, FlushRequestContext context) {}
 }

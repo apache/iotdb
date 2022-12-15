@@ -24,7 +24,7 @@ import java.util.Map;
 /** used to manage tagValue -> MemChunk */
 public class MemChunkGroup {
 
-  // manage tagValue -> MemChunkGroup
+  // manage tagValue -> MemChunk
   private Map<String, MemChunk> memChunkGroupMap;
 
   public MemChunkGroup() {
@@ -52,5 +52,13 @@ public class MemChunkGroup {
 
   public boolean isEmpty() {
     return memChunkGroupMap.isEmpty();
+  }
+
+  public Map<String, MemChunk> getMemChunkGroupMap() {
+    return memChunkGroupMap;
+  }
+
+  public void setMemChunkGroupMap(Map<String, MemChunk> memChunkGroupMap) {
+    this.memChunkGroupMap = memChunkGroupMap;
   }
 }

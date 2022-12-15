@@ -24,7 +24,9 @@ import org.apache.iotdb.lsm.annotation.FlushProcessor;
 import org.apache.iotdb.lsm.context.requestcontext.FlushRequestContext;
 import org.apache.iotdb.lsm.levelProcess.FlushLevelProcessor;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /** flush for MemChunkGroup */
 @FlushProcessor(level = 2)
@@ -33,7 +35,13 @@ public class MemChunkGroupFlush extends FlushLevelProcessor<MemChunkGroup, MemCh
   @Override
   public List<MemChunk> getChildren(
       MemChunkGroup memNode, Object request, FlushRequestContext context) {
-    return null;
+
+    Map<MemChunk, Integer> memChunkIndexMap = new HashMap<>();
+    for (Map.Entry<String, MemChunk> entry : memNode.getMemChunkGroupMap().entrySet()) {
+      memChunkIndexMap.put(entry.getValue(), context.getMemChunkGroupIndex(memNode));
+    }
+    context.setMemChunkIndexMap(memChunkIndexMap);
+    return (List<MemChunk>) memNode.getMemChunkGroupMap().values();
   }
 
   @Override
