@@ -39,7 +39,6 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -179,16 +178,20 @@ class ClusterSchemaFetchExecutor {
       if (task == null || !task.canCoverRequest(measurements)) {
         readWriteLock.readLock().lock();
         try {
+          boolean needAdd = true;
           if ((task = this.newTask) == null) {
             synchronized (this) {
               if ((task = this.newTask) == null) {
-                task = this.newTask = new DeviceSchemaFetchTask();
+                task = this.newTask = new DeviceSchemaFetchTask(measurements);
+                needAdd = false;
               }
             }
           }
-          // this operation shall be blocked by task submitting operation
-          // since once the task has been submitted, the info new added requests will be invalid
-          task.addRequest(measurements);
+          if (needAdd) {
+            // this operation shall be blocked by task submitting operation
+            // since once the task has been submitted, the info new added requests will be invalid
+            task.addRequest(measurements);
+          }
         } finally {
           readWriteLock.readLock().unlock();
         }
@@ -239,12 +242,19 @@ class ClusterSchemaFetchExecutor {
 
   private static class DeviceSchemaFetchTask {
 
-    private final Set<String> measurementSet = Collections.synchronizedSet(new HashSet<>());
+    private final Set<String> measurementSet;
+
+    private volatile boolean isSingleRequest = true;
 
     private volatile boolean hasSubmitThread = false;
 
     private volatile ClusterSchemaTree taskResult = null;
 
+    private DeviceSchemaFetchTask(List<String> measurements) {
+      measurementSet = new HashSet<>(measurements);
+    }
+
+    // only be called after this task is submitted
     private boolean canCoverRequest(List<String> measurements) {
       if (measurementSet.size() < measurements.size()) {
         return false;
@@ -252,8 +262,12 @@ class ClusterSchemaFetchExecutor {
       return measurementSet.containsAll(measurements);
     }
 
-    private void addRequest(List<String> measurements) {
+    // only be called when this task is not submitted
+    private synchronized void addRequest(List<String> measurements) {
       measurementSet.addAll(measurements);
+      if (isSingleRequest) {
+        isSingleRequest = false;
+      }
     }
 
     private boolean isSubmitting() {
@@ -291,7 +305,11 @@ class ClusterSchemaFetchExecutor {
           break;
         }
       }
-      return taskResult.extractDeviceSubTree(devicePath, measurements);
+      if (isSingleRequest) {
+        return taskResult;
+      } else {
+        return taskResult.extractDeviceSubTree(devicePath, measurements);
+      }
     }
   }
 }
