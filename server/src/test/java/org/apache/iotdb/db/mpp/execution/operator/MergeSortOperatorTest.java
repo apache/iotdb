@@ -171,11 +171,11 @@ public class MergeSortOperatorTest {
           new MeasurementPath(MERGE_SORT_OPERATOR_TEST_SG + ".device2.sensor1", TSDataType.INT32);
       SeriesScanOperator seriesScanOperator1 =
           new SeriesScanOperator(
+              fragmentInstanceContext.getOperatorContexts().get(0),
               planNodeId1,
               measurementPath1,
               Collections.singleton("sensor0"),
               TSDataType.INT32,
-              fragmentInstanceContext.getOperatorContexts().get(0),
               null,
               null,
               timeOrdering == Ordering.ASC);
@@ -185,11 +185,11 @@ public class MergeSortOperatorTest {
           .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
       SeriesScanOperator seriesScanOperator2 =
           new SeriesScanOperator(
+              fragmentInstanceContext.getOperatorContexts().get(1),
               planNodeId2,
               measurementPath2,
               Collections.singleton("sensor0"),
               TSDataType.INT32,
-              fragmentInstanceContext.getOperatorContexts().get(1),
               null,
               null,
               timeOrdering == Ordering.ASC);
@@ -199,11 +199,11 @@ public class MergeSortOperatorTest {
           .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
       SeriesScanOperator seriesScanOperator3 =
           new SeriesScanOperator(
+              fragmentInstanceContext.getOperatorContexts().get(2),
               planNodeId3,
               measurementPath3,
               Collections.singleton("sensor1"),
               TSDataType.INT32,
-              fragmentInstanceContext.getOperatorContexts().get(2),
               null,
               null,
               timeOrdering == Ordering.ASC);
@@ -213,11 +213,11 @@ public class MergeSortOperatorTest {
           .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
       SeriesScanOperator seriesScanOperator4 =
           new SeriesScanOperator(
+              fragmentInstanceContext.getOperatorContexts().get(3),
               planNodeId4,
               measurementPath4,
               Collections.singleton("sensor0"),
               TSDataType.INT32,
-              fragmentInstanceContext.getOperatorContexts().get(3),
               null,
               null,
               timeOrdering == Ordering.ASC);
@@ -227,11 +227,11 @@ public class MergeSortOperatorTest {
           .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
       SeriesScanOperator seriesScanOperator5 =
           new SeriesScanOperator(
+              fragmentInstanceContext.getOperatorContexts().get(4),
               planNodeId5,
               measurementPath5,
               Collections.singleton("sensor1"),
               TSDataType.INT32,
-              fragmentInstanceContext.getOperatorContexts().get(4),
               null,
               null,
               timeOrdering == Ordering.ASC);
@@ -598,11 +598,11 @@ public class MergeSortOperatorTest {
 
       SeriesScanOperator seriesScanOperator1 =
           new SeriesScanOperator(
+              fragmentInstanceContext.getOperatorContexts().get(0),
               planNodeId1,
               measurementPath1,
               Collections.singleton("sensor0"),
               TSDataType.INT32,
-              fragmentInstanceContext.getOperatorContexts().get(0),
               null,
               null,
               timeOrdering == Ordering.ASC);
@@ -612,11 +612,11 @@ public class MergeSortOperatorTest {
           .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
       SeriesScanOperator seriesScanOperator2 =
           new SeriesScanOperator(
+              fragmentInstanceContext.getOperatorContexts().get(1),
               planNodeId2,
               measurementPath2,
               Collections.singleton("sensor0"),
               TSDataType.INT32,
-              fragmentInstanceContext.getOperatorContexts().get(1),
               null,
               null,
               timeOrdering == Ordering.ASC);
@@ -626,11 +626,11 @@ public class MergeSortOperatorTest {
           .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
       SeriesScanOperator seriesScanOperator3 =
           new SeriesScanOperator(
+              fragmentInstanceContext.getOperatorContexts().get(2),
               planNodeId3,
               measurementPath3,
               Collections.singleton("sensor1"),
               TSDataType.INT32,
-              fragmentInstanceContext.getOperatorContexts().get(2),
               null,
               null,
               timeOrdering == Ordering.ASC);
@@ -640,11 +640,11 @@ public class MergeSortOperatorTest {
           .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
       SeriesScanOperator seriesScanOperator4 =
           new SeriesScanOperator(
+              fragmentInstanceContext.getOperatorContexts().get(3),
               planNodeId4,
               measurementPath4,
               Collections.singleton("sensor0"),
               TSDataType.INT32,
-              fragmentInstanceContext.getOperatorContexts().get(3),
               null,
               null,
               timeOrdering == Ordering.ASC);
@@ -654,11 +654,11 @@ public class MergeSortOperatorTest {
           .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
       SeriesScanOperator seriesScanOperator5 =
           new SeriesScanOperator(
+              fragmentInstanceContext.getOperatorContexts().get(4),
               planNodeId5,
               measurementPath5,
               Collections.singleton("sensor1"),
               TSDataType.INT32,
-              fragmentInstanceContext.getOperatorContexts().get(4),
               null,
               null,
               timeOrdering == Ordering.ASC);
@@ -668,11 +668,11 @@ public class MergeSortOperatorTest {
           .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
       SeriesScanOperator seriesScanOperator6 =
           new SeriesScanOperator(
+              fragmentInstanceContext.getOperatorContexts().get(5),
               planNodeId6,
               measurementPath6,
               Collections.singleton("sensor0"),
               TSDataType.INT32,
-              fragmentInstanceContext.getOperatorContexts().get(5),
               null,
               null,
               timeOrdering == Ordering.ASC);
@@ -682,11 +682,11 @@ public class MergeSortOperatorTest {
           .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
       SeriesScanOperator seriesScanOperator7 =
           new SeriesScanOperator(
+              fragmentInstanceContext.getOperatorContexts().get(6),
               planNodeId7,
               measurementPath7,
               Collections.singleton("sensor1"),
               TSDataType.INT32,
-              fragmentInstanceContext.getOperatorContexts().get(6),
               null,
               null,
               timeOrdering == Ordering.ASC);
@@ -1062,11 +1062,11 @@ public class MergeSortOperatorTest {
 
       SeriesScanOperator seriesScanOperator1 =
           new SeriesScanOperator(
+              fragmentInstanceContext.getOperatorContexts().get(0),
               planNodeId1,
               measurementPath1,
               Collections.singleton("sensor0"),
               TSDataType.INT32,
-              fragmentInstanceContext.getOperatorContexts().get(0),
               null,
               null,
               timeOrdering == Ordering.ASC);
@@ -1076,11 +1076,11 @@ public class MergeSortOperatorTest {
           .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
       SeriesScanOperator seriesScanOperator2 =
           new SeriesScanOperator(
+              fragmentInstanceContext.getOperatorContexts().get(1),
               planNodeId2,
               measurementPath2,
               Collections.singleton("sensor0"),
               TSDataType.INT32,
-              fragmentInstanceContext.getOperatorContexts().get(1),
               null,
               null,
               timeOrdering == Ordering.ASC);
@@ -1090,11 +1090,11 @@ public class MergeSortOperatorTest {
           .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
       SeriesScanOperator seriesScanOperator3 =
           new SeriesScanOperator(
+              fragmentInstanceContext.getOperatorContexts().get(2),
               planNodeId3,
               measurementPath3,
               Collections.singleton("sensor1"),
               TSDataType.INT32,
-              fragmentInstanceContext.getOperatorContexts().get(2),
               null,
               null,
               timeOrdering == Ordering.ASC);
@@ -1104,11 +1104,11 @@ public class MergeSortOperatorTest {
           .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
       SeriesScanOperator seriesScanOperator4 =
           new SeriesScanOperator(
+              fragmentInstanceContext.getOperatorContexts().get(3),
               planNodeId4,
               measurementPath4,
               Collections.singleton("sensor0"),
               TSDataType.INT32,
-              fragmentInstanceContext.getOperatorContexts().get(3),
               null,
               null,
               timeOrdering == Ordering.ASC);
@@ -1118,11 +1118,11 @@ public class MergeSortOperatorTest {
           .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
       SeriesScanOperator seriesScanOperator5 =
           new SeriesScanOperator(
+              fragmentInstanceContext.getOperatorContexts().get(4),
               planNodeId5,
               measurementPath5,
               Collections.singleton("sensor1"),
               TSDataType.INT32,
-              fragmentInstanceContext.getOperatorContexts().get(4),
               null,
               null,
               timeOrdering == Ordering.ASC);
@@ -1132,11 +1132,11 @@ public class MergeSortOperatorTest {
           .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
       SeriesScanOperator seriesScanOperator6 =
           new SeriesScanOperator(
+              fragmentInstanceContext.getOperatorContexts().get(5),
               planNodeId6,
               measurementPath6,
               Collections.singleton("sensor0"),
               TSDataType.INT32,
-              fragmentInstanceContext.getOperatorContexts().get(5),
               null,
               null,
               timeOrdering == Ordering.ASC);
@@ -1146,11 +1146,11 @@ public class MergeSortOperatorTest {
           .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
       SeriesScanOperator seriesScanOperator7 =
           new SeriesScanOperator(
+              fragmentInstanceContext.getOperatorContexts().get(6),
               planNodeId7,
               measurementPath7,
               Collections.singleton("sensor1"),
               TSDataType.INT32,
-              fragmentInstanceContext.getOperatorContexts().get(6),
               null,
               null,
               timeOrdering == Ordering.ASC);
