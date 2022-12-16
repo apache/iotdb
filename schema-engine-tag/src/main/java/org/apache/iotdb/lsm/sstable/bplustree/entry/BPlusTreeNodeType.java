@@ -26,11 +26,11 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 
 public enum BPlusTreeNodeType implements IEntry {
-  INVALID_NODE((byte) -1),
+  INVALID_NODE((byte) 0),
 
-  INTERNAL_NODE((byte) 0),
+  INTERNAL_NODE((byte) 1),
 
-  LEAF_NODE((byte) 1);
+  LEAF_NODE((byte) 2);
 
   private byte type;
 
@@ -54,14 +54,12 @@ public enum BPlusTreeNodeType implements IEntry {
 
   @Override
   public IEntry deserialize(DataInputStream input) throws IOException {
-    type = ReadWriteIOUtils.readByte(input);
-    return this;
+    throw new UnsupportedOperationException("deserialize BPlusTreeNodeType");
   }
 
   @Override
   public IEntry deserialize(ByteBuffer byteBuffer) {
-    type = ReadWriteIOUtils.readByte(byteBuffer);
-    return this;
+    throw new UnsupportedOperationException("deserialize BPlusTreeNodeType");
   }
 
   @Override

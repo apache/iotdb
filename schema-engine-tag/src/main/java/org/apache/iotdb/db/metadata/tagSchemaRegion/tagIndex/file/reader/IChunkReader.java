@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.reader;
 
+import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.entry.ChunkHeader;
 import org.apache.iotdb.lsm.sstable.interator.IDiskIterator;
 
 import org.roaringbitmap.RoaringBitmap;
@@ -25,7 +26,10 @@ import org.roaringbitmap.RoaringBitmap;
 import java.io.IOException;
 
 public interface IChunkReader extends IDiskIterator<Integer> {
-  RoaringBitmap readRoaringBitmap() throws IOException;
+
+  RoaringBitmap readRoaringBitmap(long offset) throws IOException;
+
+  ChunkHeader readChunkHeader(long offset) throws IOException;
 
   void close() throws IOException;
 }

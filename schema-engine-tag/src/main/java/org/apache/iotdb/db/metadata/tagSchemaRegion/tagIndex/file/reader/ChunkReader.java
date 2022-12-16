@@ -35,13 +35,13 @@ import java.util.NoSuchElementException;
 
 public class ChunkReader implements IChunkReader {
 
-  private final IFileInput tiFileIuput;
+  private final IFileInput tiFileInput;
 
   private Integer nextID;
 
   private RoaringBitmap roaringBitmap;
 
-  private final ChunkHeader chunkHeader;
+  private ChunkHeader chunkHeader;
 
   private RoaringBitmapHeader roaringBitmapHeader;
 
@@ -49,26 +49,29 @@ public class ChunkReader implements IChunkReader {
 
   private IDiskIterator<Integer> containerIterator;
 
-  public ChunkReader(FileInput tiFileIuput) throws IOException {
-    this.tiFileIuput = tiFileIuput;
-    chunkHeader = new ChunkHeader();
-    tiFileIuput.read(chunkHeader);
+  public ChunkReader(FileInput tiFileInput) throws IOException {
+    this.tiFileInput = tiFileInput;
   }
 
   @Override
-  public RoaringBitmap readRoaringBitmap() throws IOException {
-    if (roaringBitmap == null) {
-      roaringBitmap = new RoaringBitmap();
-      roaringBitmap.deserialize(tiFileIuput.wrapAsInputStream());
-      return roaringBitmap;
-    }
+  public RoaringBitmap readRoaringBitmap(long offset) throws IOException {
+    tiFileInput.position(offset);
+    RoaringBitmap roaringBitmap = new RoaringBitmap();
+    roaringBitmap.deserialize(tiFileInput.wrapAsInputStream());
     return roaringBitmap;
+  }
+
+  @Override
+  public ChunkHeader readChunkHeader(long offset) throws IOException {
+    ChunkHeader chunkHeader = new ChunkHeader();
+    tiFileInput.read(chunkHeader, offset);
+    return chunkHeader;
   }
 
   @TestOnly
   @Override
   public void close() throws IOException {
-    tiFileIuput.close();
+    tiFileInput.close();
   }
 
   @Override
@@ -76,12 +79,20 @@ public class ChunkReader implements IChunkReader {
     if (nextID != null) {
       return true;
     }
+    if (chunkHeader == null) {
+      chunkHeader = new ChunkHeader();
+      long chunkHeaderOffset = tiFileInput.position();
+      chunkHeader = readChunkHeader(chunkHeaderOffset);
+      if (chunkHeader.getCount() == 0) {
+        return false;
+      }
+      tiFileInput.position(chunkHeaderOffset - chunkHeader.getSize());
+    }
     if (roaringBitmapHeader == null) {
       roaringBitmapHeader = new RoaringBitmapHeader();
-      roaringBitmapHeader =
-          (RoaringBitmapHeader) roaringBitmapHeader.deserialize(tiFileIuput.wrapAsInputStream());
+      tiFileInput.read(roaringBitmapHeader);
       if (!roaringBitmapHeader.hasRun() || roaringBitmapHeader.getSize() >= 4) {
-        tiFileIuput.skipBytes(roaringBitmapHeader.getSize() * 4);
+        tiFileInput.skipBytes(roaringBitmapHeader.getSize() * 4);
       }
     }
     int[] cardinalities = roaringBitmapHeader.getCardinalities();
@@ -156,7 +167,7 @@ public class ChunkReader implements IChunkReader {
           }
         }
         while (high < 1024) {
-          long bitmap = Long.reverseBytes(tiFileIuput.readLong());
+          long bitmap = Long.reverseBytes(tiFileInput.readLong());
           ids = parseBitmap(bitmap);
           iterator = ids.iterator();
           if (iterator.hasNext()) {
@@ -167,7 +178,7 @@ public class ChunkReader implements IChunkReader {
           high++;
         }
       }
-      tiFileIuput.skipBytes((1023 - high) * 8);
+      tiFileInput.skipBytes((1023 - high) * 8);
       return false;
     }
 
@@ -212,7 +223,7 @@ public class ChunkReader implements IChunkReader {
         return true;
       }
       if (index < containerLength) {
-        next = Character.reverseBytes(tiFileIuput.readChar());
+        next = Character.reverseBytes(tiFileInput.readChar());
         index++;
         return true;
       }

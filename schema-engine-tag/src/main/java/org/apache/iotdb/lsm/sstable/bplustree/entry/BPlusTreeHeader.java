@@ -93,6 +93,24 @@ public class BPlusTreeHeader implements IEntry {
     return Objects.hash(max, min, rootNodeOffset, firstLeftNodeOffset, leftNodeCount);
   }
 
+  @Override
+  public String toString() {
+    return "BPlusTreeHeader{"
+        + "max='"
+        + max
+        + '\''
+        + ", min='"
+        + min
+        + '\''
+        + ", rootNodeOffset="
+        + rootNodeOffset
+        + ", firstLeftNodeOffset="
+        + firstLeftNodeOffset
+        + ", leftNodeCount="
+        + leftNodeCount
+        + '}';
+  }
+
   public String getMax() {
     return max;
   }

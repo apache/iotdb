@@ -30,6 +30,21 @@ public class ChunkHeader implements IEntry {
 
   private int size;
 
+  private int count;
+
+  private int maxID;
+
+  private int minID;
+
+  public ChunkHeader() {}
+
+  public ChunkHeader(int size, int count, int maxID, int minID) {
+    this.size = size;
+    this.count = count;
+    this.maxID = maxID;
+    this.minID = minID;
+  }
+
   public int getSize() {
     return size;
   }
@@ -40,23 +55,35 @@ public class ChunkHeader implements IEntry {
 
   @Override
   public void serialize(DataOutputStream out) throws IOException {
-    out.write(size);
+    out.writeInt(size);
+    out.writeInt(count);
+    out.writeInt(maxID);
+    out.writeInt(minID);
   }
 
   @Override
   public void serialize(ByteBuffer byteBuffer) {
     byteBuffer.putInt(size);
+    byteBuffer.putInt(count);
+    byteBuffer.putInt(maxID);
+    byteBuffer.putInt(minID);
   }
 
   @Override
   public IEntry deserialize(DataInputStream in) throws IOException {
     this.size = in.readInt();
+    count = in.readInt();
+    maxID = in.readInt();
+    minID = in.readInt();
     return this;
   }
 
   @Override
   public IEntry deserialize(ByteBuffer byteBuffer) {
     this.size = byteBuffer.getInt();
+    count = byteBuffer.getInt();
+    maxID = byteBuffer.getInt();
+    minID = byteBuffer.getInt();
     return this;
   }
 
@@ -65,16 +92,49 @@ public class ChunkHeader implements IEntry {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
     ChunkHeader that = (ChunkHeader) o;
-    return size == that.size;
+    return size == that.size && count == that.count && maxID == that.maxID && minID == that.minID;
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(size);
+    return Objects.hash(size, count, maxID, minID);
   }
 
   @Override
   public String toString() {
-    return "ChunkHeader{" + "size=" + size + '}';
+    return "ChunkHeader{"
+        + "size="
+        + size
+        + ", count="
+        + count
+        + ", maxID="
+        + maxID
+        + ", minID="
+        + minID
+        + '}';
+  }
+
+  public int getCount() {
+    return count;
+  }
+
+  public void setCount(int count) {
+    this.count = count;
+  }
+
+  public int getMaxID() {
+    return maxID;
+  }
+
+  public void setMaxID(int maxID) {
+    this.maxID = maxID;
+  }
+
+  public int getMinID() {
+    return minID;
+  }
+
+  public void setMinID(int minID) {
+    this.minID = minID;
   }
 }

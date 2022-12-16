@@ -18,13 +18,19 @@
  */
 package org.apache.iotdb.lsm.sstable.bplustree.entry;
 
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 
 public class BPlusTreeNode implements IEntry {
 
@@ -39,7 +45,7 @@ public class BPlusTreeNode implements IEntry {
   public BPlusTreeNode(BPlusTreeNodeType bPlusTreeNodeType) {
     this.bPlusTreeNodeType = bPlusTreeNodeType;
     bPlusTreeEntries = new ArrayList<>();
-    count = bPlusTreeEntries.size();
+    count = 0;
   }
 
   public BPlusTreeNode(BPlusTreeNodeType bPlusTreeNodeType, List<BPlusTreeEntry> bPlusTreeEntries) {
@@ -102,8 +108,14 @@ public class BPlusTreeNode implements IEntry {
 
   @Override
   public IEntry deserialize(DataInputStream input) throws IOException {
-    bPlusTreeNodeType = BPlusTreeNodeType.INVALID_NODE;
-    bPlusTreeNodeType.deserialize(input);
+    byte type = input.readByte();
+    if (type == 0) {
+      bPlusTreeNodeType = BPlusTreeNodeType.INVALID_NODE;
+    } else if (type == 1) {
+      bPlusTreeNodeType = BPlusTreeNodeType.INTERNAL_NODE;
+    } else {
+      bPlusTreeNodeType = BPlusTreeNodeType.LEAF_NODE;
+    }
     count = input.readInt();
     bPlusTreeEntries = new ArrayList<>(count);
     for (int i = 0; i < count; i++) {
@@ -115,8 +127,14 @@ public class BPlusTreeNode implements IEntry {
 
   @Override
   public IEntry deserialize(ByteBuffer byteBuffer) {
-    bPlusTreeNodeType = BPlusTreeNodeType.INVALID_NODE;
-    bPlusTreeNodeType.deserialize(byteBuffer);
+    byte type = ReadWriteIOUtils.readByte(byteBuffer);
+    if (type == 0) {
+      bPlusTreeNodeType = BPlusTreeNodeType.INVALID_NODE;
+    } else if (type == 1) {
+      bPlusTreeNodeType = BPlusTreeNodeType.INTERNAL_NODE;
+    } else {
+      bPlusTreeNodeType = BPlusTreeNodeType.LEAF_NODE;
+    }
     count = byteBuffer.getInt();
     bPlusTreeEntries = new ArrayList<>(count);
     for (int i = 0; i < count; i++) {
@@ -162,5 +180,50 @@ public class BPlusTreeNode implements IEntry {
   public boolean needToSplit(int degree) {
     if (bPlusTreeEntries == null) return false;
     return bPlusTreeEntries.size() >= degree;
+  }
+
+  public List<BPlusTreeEntry> getBPlusTreeEntryFromLeafNode(Set<String> names) {
+    if (!bPlusTreeNodeType.equals(BPlusTreeNodeType.LEAF_NODE)) {
+      return null;
+    }
+    if (bPlusTreeEntries == null
+        || bPlusTreeEntries.size() == 0
+        || names == null
+        || names.size() == 0) {
+      return new ArrayList<>();
+    }
+    List<BPlusTreeEntry> bPlusTreeEntryList = new ArrayList<>();
+    for (BPlusTreeEntry bPlusTreeEntry : bPlusTreeEntries) {
+      if (names.contains(bPlusTreeEntry.getName())) {
+        bPlusTreeEntryList.add(bPlusTreeEntry);
+      }
+    }
+    return bPlusTreeEntryList;
+  }
+
+  public Map<BPlusTreeEntry, Set<String>> getBPlusTreeEntryFromInternalNode(Set<String> names) {
+    if (!bPlusTreeNodeType.equals(BPlusTreeNodeType.INTERNAL_NODE)) {
+      return null;
+    }
+    if (bPlusTreeEntries == null
+        || bPlusTreeEntries.size() == 0
+        || names == null
+        || names.size() == 0) {
+      return new HashMap<>();
+    }
+    Map<BPlusTreeEntry, Set<String>> map = new HashMap<>();
+    for (String name : names) {
+      for (int i = bPlusTreeEntries.size() - 1; i >= 0; i--) {
+        BPlusTreeEntry bPlusTreeEntry = bPlusTreeEntries.get(i);
+        if (bPlusTreeEntry.getName().compareTo(name) <= 0) {
+          if (!map.containsKey(bPlusTreeEntry)) {
+            map.put(bPlusTreeEntry, new HashSet<>());
+          }
+          map.get(bPlusTreeEntry).add(name);
+          break;
+        }
+      }
+    }
+    return map;
   }
 }

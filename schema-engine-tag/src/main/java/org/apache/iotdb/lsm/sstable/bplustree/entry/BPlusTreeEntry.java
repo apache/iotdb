@@ -98,4 +98,10 @@ public class BPlusTreeEntry implements IEntry {
   public String toString() {
     return "BPlusTreeEntry{" + "name='" + name + '\'' + ", offset=" + offset + '}';
   }
+
+  public static int compareWithOffset(BPlusTreeEntry o1, BPlusTreeEntry o2) {
+    if (o1 == null) return -1;
+    if (o2 == null) return 1;
+    return Long.compare(o1.getOffset(), o2.getOffset());
+  }
 }

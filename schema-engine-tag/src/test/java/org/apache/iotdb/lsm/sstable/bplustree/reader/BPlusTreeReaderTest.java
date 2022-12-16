@@ -22,6 +22,7 @@ import org.apache.iotdb.db.metadata.tagSchemaRegion.config.TagSchemaDescriptor;
 import org.apache.iotdb.lsm.sstable.bplustree.entry.BPlusTreeEntry;
 import org.apache.iotdb.lsm.sstable.bplustree.entry.BPlusTreeHeader;
 import org.apache.iotdb.lsm.sstable.bplustree.entry.BPlusTreeNode;
+import org.apache.iotdb.lsm.sstable.bplustree.entry.BPlusTreeNodeType;
 import org.apache.iotdb.lsm.sstable.bplustree.writer.BPlusTreeWriter;
 import org.apache.iotdb.lsm.sstable.fileIO.FileOutput;
 
@@ -36,10 +37,14 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Queue;
+import java.util.Set;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 public class BPlusTreeReaderTest {
 
@@ -104,6 +109,15 @@ public class BPlusTreeReaderTest {
   }
 
   @Test
+  public void testGetBPlusTreeRootNode() throws IOException {
+    BPlusTreeNode bPlusTreeNode = bPlusTreeReader.readBPlusTreeRootNode();
+    BPlusTreeNode tmp = new BPlusTreeNode(BPlusTreeNodeType.INTERNAL_NODE);
+    tmp.add(new BPlusTreeEntry("aaa", 190));
+    tmp.add(new BPlusTreeEntry("yyyy", 240));
+    assertEquals(tmp, bPlusTreeNode);
+  }
+
+  @Test
   public void testIterateOverRecords() throws IOException {
     ByteBuffer buffer = ByteBuffer.allocate(1024 * 1024);
 
@@ -128,5 +142,31 @@ public class BPlusTreeReaderTest {
       assertEquals(bPlusTreeNodes.get(i), bPlusTreeReader.next());
       i++;
     }
+  }
+
+  @Test
+  public void testGetBPlusTreeEntries() throws IOException {
+    BPlusTreeHeader bPlusTreeHeader = bPlusTreeReader.readBPlusTreeHeader(offset);
+    Set<String> names = new HashSet<>();
+    names.add("");
+    names.add("aaa");
+    names.add("bbb");
+    names.add("cccc");
+    names.add("fff");
+    names.add("hhhhhhhhhh");
+    names.add("sdsddfdsf");
+    names.add("yyyy");
+    names.add("zz");
+    List<BPlusTreeEntry> bPlusTreeEntries = bPlusTreeReader.getBPlusTreeEntries(names);
+    Set<BPlusTreeEntry> bPlusTreeEntrySet = new HashSet<>(bPlusTreeEntries);
+    assertTrue(bPlusTreeEntrySet.contains(new BPlusTreeEntry("aaa", 0)));
+    assertTrue(bPlusTreeEntrySet.contains(new BPlusTreeEntry("bbb", 1)));
+    assertTrue(bPlusTreeEntrySet.contains(new BPlusTreeEntry("fff", 5)));
+    assertTrue(bPlusTreeEntrySet.contains(new BPlusTreeEntry("hhhhhhhhhh", 7)));
+    assertTrue(bPlusTreeEntrySet.contains(new BPlusTreeEntry("zz", 10)));
+    assertTrue(bPlusTreeEntrySet.contains(new BPlusTreeEntry("yyyy", 9)));
+    assertFalse(bPlusTreeEntrySet.contains(new BPlusTreeEntry("cccc", 10)));
+    assertFalse(bPlusTreeEntrySet.contains(new BPlusTreeEntry("", -1)));
+    assertFalse(bPlusTreeEntrySet.contains(new BPlusTreeEntry("sdsddfdsf", 13)));
   }
 }
