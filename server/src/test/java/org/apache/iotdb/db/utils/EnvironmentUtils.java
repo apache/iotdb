@@ -172,6 +172,13 @@ public class EnvironmentUtils {
     // clear SyncLogger
     LocalSyncInfoFetcher.getInstance().close();
 
+    // sleep to wait other background threads to exit
+    try {
+      TimeUnit.MILLISECONDS.sleep(100);
+    } catch (InterruptedException e) {
+      throw new RuntimeException(e);
+    }
+
     // delete all directory
     cleanAllDir();
     config.setSeqTsFileSize(oldSeqTsFileSize);

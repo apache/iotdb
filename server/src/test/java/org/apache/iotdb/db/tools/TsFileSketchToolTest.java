@@ -157,7 +157,7 @@ public class TsFileSketchToolTest {
   }
 
   @Test
-  public void tsFileSketchToolTest() {
+  public void tsFileSketchToolTest() throws IOException {
     String[] args = new String[2];
     args[0] = path;
     args[1] = sketchOut;
@@ -173,6 +173,7 @@ public class TsFileSketchToolTest {
         Assert.fail();
       }
     }
+    tool.close();
   }
 
   @After
