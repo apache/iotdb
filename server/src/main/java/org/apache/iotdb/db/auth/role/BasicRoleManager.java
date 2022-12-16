@@ -18,9 +18,12 @@
  */
 package org.apache.iotdb.db.auth.role;
 
+import org.apache.iotdb.db.audit.AuditLogOperation;
+import org.apache.iotdb.db.audit.AuditLogger;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.entity.Role;
 import org.apache.iotdb.db.concurrent.HashLock;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.utils.AuthUtils;
 
 import java.io.IOException;
@@ -37,6 +40,8 @@ import java.util.Set;
  */
 public abstract class BasicRoleManager implements IRoleManager {
 
+  private static final boolean enableAuditLog =
+      IoTDBDescriptor.getInstance().getConfig().isEnableAuditLog();
   private Map<String, Role> roleMap;
   private IRoleAccessor accessor;
   private HashLock lock;
@@ -67,23 +72,25 @@ public abstract class BasicRoleManager implements IRoleManager {
   }
 
   @Override
-  public boolean createRole(String rolename) throws AuthException {
-    AuthUtils.validateRolename(rolename);
-
-    Role role = getRole(rolename);
+  public boolean createRole(String roleName) throws AuthException {
+    AuthUtils.validateRolename(roleName);
+    if (enableAuditLog) {
+      AuditLogger.log(String.format("the role %s is created ", roleName), AuditLogOperation.DDL);
+    }
+    Role role = getRole(roleName);
     if (role != null) {
       return false;
     }
-    lock.writeLock(rolename);
+    lock.writeLock(roleName);
     try {
-      role = new Role(rolename);
+      role = new Role(roleName);
       accessor.saveRole(role);
-      roleMap.put(rolename, role);
+      roleMap.put(roleName, role);
       return true;
     } catch (IOException e) {
       throw new AuthException(e);
     } finally {
-      lock.writeUnlock(rolename);
+      lock.writeUnlock(roleName);
     }
   }
 

@@ -135,6 +135,7 @@ public class PublishHandler extends AbstractInterceptHandler {
                 event.getTimestamp(),
                 event.getMeasurements().toArray(new String[0]),
                 event.getValues().toArray(new String[0]));
+        plan.setNativeInsertApi(true);
         TSStatus tsStatus = serviceProvider.checkAuthority(plan, session);
         if (tsStatus != null) {
           LOG.warn(tsStatus.message);
