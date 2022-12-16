@@ -180,6 +180,13 @@ public interface IManager {
   DataSet registerDataNode(RegisterDataNodePlan registerDataNodePlan);
 
   /**
+   * Get configuration information that is not associated with the DataNodeId
+   *
+   * @return ConfigurationResp
+   */
+  DataSet getConfiguration();
+
+  /**
    * Remove DataNode
    *
    * @param removeDataNodePlan RemoveDataNodePlan

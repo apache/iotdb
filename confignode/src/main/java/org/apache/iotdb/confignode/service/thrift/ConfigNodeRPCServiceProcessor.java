@@ -54,6 +54,7 @@ import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetTTLPl
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetTimePartitionIntervalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.CreatePipeSinkPlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.DropPipeSinkPlan;
+import org.apache.iotdb.confignode.consensus.response.ConfigurationResp;
 import org.apache.iotdb.confignode.consensus.response.CountStorageGroupResp;
 import org.apache.iotdb.confignode.consensus.response.DataNodeConfigurationResp;
 import org.apache.iotdb.confignode.consensus.response.DataNodeRegisterResp;
@@ -70,6 +71,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCheckUserPrivilegesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
+import org.apache.iotdb.confignode.rpc.thrift.TConfigurationResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCountStorageGroupResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateCQReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateFunctionReq;
@@ -185,6 +187,16 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
     // Print log to record the ConfigNode that performs the RegisterDatanodeRequest
     LOGGER.info("Execute RegisterDatanodeRequest {} with result {}", req, resp);
 
+    return resp;
+  }
+
+  @Override
+  public TConfigurationResp getConfiguration() {
+    TConfigurationResp resp =
+        ((ConfigurationResp) configManager.getConfiguration()).convertToRpcDataNodeRegisterResp();
+
+    // Print log to record the ConfigNode that performs the GetConfigurationRequest
+    LOGGER.info("Execute GetConfigurationRequest with result {}", resp);
     return resp;
   }
 
