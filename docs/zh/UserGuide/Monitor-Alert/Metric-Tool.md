@@ -121,13 +121,14 @@ Core 级别的监控指标在系统运行中默认开启，每一个 Core 级别
 | cluster_node_status       | name="{{ip}}:{{port}}",type="ConfigNode/DataNode" | Gauge | 节点的状态，0=Unkonwn 1=online |
 
 #### 4.2.2. 节点统计
-| Metric   | Tags                                       | Type      | Description                          |
-| -------- | ------------------------------------------ | --------- | ------------------------------------ |
-| quantity | name="database"                            | AutoGauge | 系统数据库数量                       |
-| quantity | name="timeSeries"                          | AutoGauge | 系统时间序列数量                     |
-| quantity | name="pointsIn"                            | Counter   | 系统累计写入点数                     |
-| region   | name="total",type="SchemaRegion"           | AutoGauge | 分区表中 SchemaRegion 总数量         |
-| region   | name="total",type="DataRegion"             | AutoGauge | 分区表中 DataRegion 总数量           |
+| Metric   | Tags                                       | Type      | Description              |
+| -------- | ------------------------------------------ | --------- |--------------------------|
+| quantity | name="database"                            | AutoGauge | 系统数据库数量                  |
+| quantity | name="timeSeries"                          | AutoGauge | 系统时间序列数量                 |
+| quantity | name="pointsIn"                            | Counter   | 系统累计写入点数                 |
+| points   | database="{{database}}", type="flush"      | Gauge     | 最新一个刷盘的memtale的点数        |
+| region   | name="total",type="SchemaRegion"           | AutoGauge | 分区表中 SchemaRegion 总数量    |
+| region   | name="total",type="DataRegion"             | AutoGauge | 分区表中 DataRegion 总数量      |
 | region   | name="{{ip}}:{{port}}",type="SchemaRegion" | Gauge     | 分区表中对应节点上 DataRegion 总数量 |
 | region   | name="{{ip}}:{{port}}",type="DataRegion"   | Gauge     | 分区表中对应节点上 DataRegion 总数量 |
 
