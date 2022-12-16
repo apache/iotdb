@@ -245,6 +245,8 @@ public class SourceHandle implements ISourceHandle {
     checkState();
     if (!canGetTsBlockFromRemote) {
       canGetTsBlockFromRemote = true;
+      // submit get data task once isBlocked is called to ensure that the blocked future will be
+      // completed in case that trySubmitGetDataBlocksTask() is not called.
       trySubmitGetDataBlocksTask();
     }
     return nonCancellationPropagating(blocked);
