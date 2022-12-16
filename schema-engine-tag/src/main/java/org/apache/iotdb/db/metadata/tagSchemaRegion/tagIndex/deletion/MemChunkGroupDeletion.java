@@ -19,29 +19,35 @@
 package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.deletion;
 
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.Request.DeletionRequest;
+import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemChunk;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemChunkGroup;
 import org.apache.iotdb.lsm.annotation.DeletionProcessor;
 import org.apache.iotdb.lsm.context.requestcontext.DeleteRequestContext;
 import org.apache.iotdb.lsm.levelProcess.DeleteLevelProcessor;
 
+import java.util.ArrayList;
 import java.util.List;
 
-/** deletion for MemChunkGroup */
-@DeletionProcessor(level = 3)
+/** deletion for MemTagValueGroup */
+@DeletionProcessor(level = 2)
 public class MemChunkGroupDeletion
-    extends DeleteLevelProcessor<MemChunkGroup, Object, DeletionRequest> {
+    extends DeleteLevelProcessor<MemChunkGroup, MemChunk, DeletionRequest> {
 
   /**
-   * MemChunkGroup is the last layer of memory nodes, no children
+   * get all MemChunkGroups that need to be processed in the current MemChunkGroup
    *
    * @param memNode memory node
    * @param context request context
-   * @return null
+   * @return A list of saved MemChunks
    */
   @Override
-  public List<Object> getChildren(
-      MemChunkGroup memNode, DeletionRequest request, DeleteRequestContext context) {
-    return null;
+  public List<MemChunk> getChildren(
+      MemChunkGroup memNode, DeletionRequest deletionRequest, DeleteRequestContext context) {
+    List<MemChunk> memChunks = new ArrayList<>();
+    String tagValue = deletionRequest.getKey(context);
+    MemChunk child = memNode.get(tagValue);
+    if (child != null) memChunks.add(child);
+    return memChunks;
   }
 
   /**
@@ -51,8 +57,12 @@ public class MemChunkGroupDeletion
    * @param context deletion request context
    */
   @Override
-  public void delete(MemChunkGroup memNode, DeletionRequest request, DeleteRequestContext context) {
-    Integer deviceID = request.getValue();
-    memNode.remove(deviceID);
+  public void delete(
+      MemChunkGroup memNode, DeletionRequest deletionRequest, DeleteRequestContext context) {
+    String tagValue = deletionRequest.getKey(context);
+    MemChunk child = memNode.get(tagValue);
+    if (child == null || child.isEmpty()) {
+      memNode.remove(tagValue);
+    }
   }
 }

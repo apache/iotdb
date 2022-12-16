@@ -32,6 +32,8 @@ public class MemTableGroup implements IMemManager {
   // (maxDeviceID / numOfDeviceIdsInMemTable) -> MemTable
   private Map<Integer, MemTable> immutableMemTables;
 
+  // TODO add flushTables(immutableMemTables backup,and clear immutableMemTables)
+
   private MemTable workingMemTable;
 
   // the largest device id saved by the current MemTable

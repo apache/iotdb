@@ -16,19 +16,6 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.lsm.context.requestcontext;
+package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.entry;
 
-import org.apache.iotdb.lsm.strategy.RBFSAccessStrategy;
-
-/**
- * represents the context of a flush request, this class can be extended to implement a custom
- * context
- */
-public class FlushRequestContext extends RequestContext {
-
-  public FlushRequestContext() {
-    super();
-    // use the reverse breadth-first traversal strategy to access memory nodes
-    accessStrategy = new RBFSAccessStrategy();
-  }
-}
+public class TiFile {}

@@ -16,31 +16,39 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.lsm.response;
+package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable;
 
-import java.util.List;
+import org.roaringbitmap.RoaringBitmap;
 
-/**
- * Indicates the response after the lsm framework processes the request, encapsulating the response
- * value and exception information.
- *
- * @param <T> type of the response result
- */
-public interface IResponse<T> {
+/** used to manage the device id collection */
+public class MemChunk {
 
-  T getValue();
+  // manage the device id collection, see: https://github.com/RoaringBitmap/RoaringBitmap
+  private RoaringBitmap roaringBitmap;
 
-  void setValue(T value);
+  public MemChunk() {
+    roaringBitmap = new RoaringBitmap();
+  }
 
-  List<Exception> getExceptions();
+  public boolean isEmpty() {
+    if (roaringBitmap == null) return true;
+    return roaringBitmap.isEmpty();
+  }
 
-  void setExceptions(List<Exception> exceptions);
+  @Override
+  public String toString() {
+    return roaringBitmap.toString();
+  }
 
-  /**
-   * If an exception needs to be thrown during the processing of the request, this method can be
-   * used to accept the exception
-   *
-   * @param e Exception
-   */
-  void addException(Exception e);
+  public void put(int id) {
+    roaringBitmap.add(id);
+  }
+
+  public void remove(int id) {
+    roaringBitmap.remove(id);
+  }
+
+  public RoaringBitmap getRoaringBitmap() {
+    return this.roaringBitmap;
+  }
 }

@@ -35,7 +35,7 @@ import org.apache.iotdb.lsm.request.IFlushRequest;
 import org.apache.iotdb.lsm.request.IInsertionRequest;
 import org.apache.iotdb.lsm.request.IQueryRequest;
 import org.apache.iotdb.lsm.request.IRequest;
-import org.apache.iotdb.lsm.response.IResponse;
+import org.apache.iotdb.lsm.response.BaseResponse;
 
 import java.io.IOException;
 
@@ -78,7 +78,7 @@ public class LSMEngine<T extends IMemManager> implements ILSMEngine {
    * @param <R> type of response
    */
   @Override
-  public <K, V, R extends IResponse> R insert(IInsertionRequest<K, V> insertionRequest) {
+  public <K, V, R extends BaseResponse> R insert(IInsertionRequest<K, V> insertionRequest) {
     InsertRequestContext insertRequestContext = new InsertRequestContext();
     insertionManager.process(rootMemNode, insertionRequest, insertRequestContext);
     return insertRequestContext.getResponse();
@@ -92,7 +92,7 @@ public class LSMEngine<T extends IMemManager> implements ILSMEngine {
    * @param <R> type of response
    */
   @Override
-  public <K, R extends IResponse> R query(IQueryRequest<K> queryRequest) {
+  public <K, R extends BaseResponse> R query(IQueryRequest<K> queryRequest) {
     QueryRequestContext queryRequestContext = new QueryRequestContext();
     queryManager.process(rootMemNode, queryRequest, queryRequestContext);
     return queryRequestContext.getResponse();
@@ -107,7 +107,7 @@ public class LSMEngine<T extends IMemManager> implements ILSMEngine {
    * @param <R> type of response
    */
   @Override
-  public <K, V, R extends IResponse> R delete(IDeletionRequest<K, V> deletionRequest) {
+  public <K, V, R extends BaseResponse> R delete(IDeletionRequest<K, V> deletionRequest) {
     DeleteRequestContext deleteRequestContext = new DeleteRequestContext();
     deletionManager.process(rootMemNode, deletionRequest, deleteRequestContext);
     return deleteRequestContext.getResponse();
@@ -122,7 +122,7 @@ public class LSMEngine<T extends IMemManager> implements ILSMEngine {
    * @param <R> type of response
    */
   @Override
-  public <K, V, R extends IResponse> R flush(IFlushRequest<K, V> flushRequest) {
+  public <K, V, R extends BaseResponse> R flush(IFlushRequest<K, V> flushRequest) {
     FlushRequestContext flushRequestContext = new FlushRequestContext();
     flushManager.process(rootMemNode, flushRequest, flushRequestContext);
     return flushRequestContext.getResponse();
@@ -180,7 +180,8 @@ public class LSMEngine<T extends IMemManager> implements ILSMEngine {
     this.queryManager = (QueryManager<T, IQueryRequest>) queryManager;
   }
 
-  protected <R extends IFlushRequest> void setFlushManager(FlushManager<T, R> flushManager) {
+  protected <R extends IFlushRequest, C extends FlushRequestContext> void setFlushManager(
+      FlushManager<T, R> flushManager) {
     this.flushManager = (FlushManager<T, IFlushRequest>) flushManager;
   }
 

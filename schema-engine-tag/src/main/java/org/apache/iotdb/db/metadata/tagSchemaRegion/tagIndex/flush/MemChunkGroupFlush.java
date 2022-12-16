@@ -18,21 +18,32 @@
  */
 package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.flush;
 
+import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemChunk;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemChunkGroup;
+import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.response.FlushResponse;
 import org.apache.iotdb.lsm.annotation.FlushProcessor;
 import org.apache.iotdb.lsm.context.requestcontext.FlushRequestContext;
 import org.apache.iotdb.lsm.levelProcess.FlushLevelProcessor;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /** flush for MemChunkGroup */
-@FlushProcessor(level = 3)
-public class MemChunkGroupFlush extends FlushLevelProcessor<MemChunkGroup, Object> {
+@FlushProcessor(level = 2)
+public class MemChunkGroupFlush extends FlushLevelProcessor<MemChunkGroup, MemChunk> {
 
   @Override
-  public List<Object> getChildren(
+  public List<MemChunk> getChildren(
       MemChunkGroup memNode, Object request, FlushRequestContext context) {
-    return null;
+
+    FlushResponse flushResponse = context.getResponse();
+    Map<MemChunk, Integer> memChunkIndexMap = new HashMap<>();
+    for (Map.Entry<String, MemChunk> entry : memNode.getMemChunkGroupMap().entrySet()) {
+      memChunkIndexMap.put(entry.getValue(), flushResponse.getMemChunkGroupIndex(memNode));
+    }
+    flushResponse.setMemChunkIndexMap(memChunkIndexMap);
+    return (List<MemChunk>) memNode.getMemChunkGroupMap().values();
   }
 
   @Override

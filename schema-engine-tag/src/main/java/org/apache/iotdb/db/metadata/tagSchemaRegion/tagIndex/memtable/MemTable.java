@@ -23,15 +23,15 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-/** used to manage tagKey -> MemTagValueGroup */
+/** used to manage tagKey -> MemChunkGroup */
 public class MemTable {
 
   public static final String WORKING = "working";
 
   public static final String IMMUTABLE = "immutable";
 
-  // manage tagKey -> MemTagChunkGroup
-  private Map<String, MemTagValueGroup> memTagValueGroupMap;
+  // manage tagKey -> MemChunkGroup
+  private Map<String, MemChunkGroup> memChunkGroupMap;
 
   private String status;
 
@@ -40,15 +40,15 @@ public class MemTable {
   private Set<Integer> deletionList;
 
   public MemTable(String status) {
-    memTagValueGroupMap = new HashMap<>();
+    memChunkGroupMap = new HashMap<>();
     this.status = status;
     deletionList = new HashSet<>();
   }
 
   public void put(String tagKey) {
     if (this.status.equals(IMMUTABLE)) return;
-    if (!memTagValueGroupMap.containsKey(tagKey)) {
-      memTagValueGroupMap.put(tagKey, new MemTagValueGroup());
+    if (!memChunkGroupMap.containsKey(tagKey)) {
+      memChunkGroupMap.put(tagKey, new MemChunkGroup());
     }
   }
 
@@ -56,7 +56,7 @@ public class MemTable {
   public String toString() {
     return "MemTable{"
         + "memChunkGroupMap="
-        + memTagValueGroupMap
+        + memChunkGroupMap
         + ", status='"
         + status
         + '\''
@@ -65,12 +65,12 @@ public class MemTable {
         + '}';
   }
 
-  public MemTagValueGroup get(String tagKey) {
-    return memTagValueGroupMap.get(tagKey);
+  public MemChunkGroup get(String tagKey) {
+    return memChunkGroupMap.get(tagKey);
   }
 
   public void remove(String tagKey) {
-    memTagValueGroupMap.remove(tagKey);
+    memChunkGroupMap.remove(tagKey);
   }
 
   public boolean isImmutable() {
@@ -83,5 +83,13 @@ public class MemTable {
 
   public void setStatus(String status) {
     this.status = status;
+  }
+
+  public Map<String, MemChunkGroup> getMemChunkGroupMap() {
+    return memChunkGroupMap;
+  }
+
+  public void setMemChunkGroupMap(Map<String, MemChunkGroup> memChunkGroupMap) {
+    this.memChunkGroupMap = memChunkGroupMap;
   }
 }
