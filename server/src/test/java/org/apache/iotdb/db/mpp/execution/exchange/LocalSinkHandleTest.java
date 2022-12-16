@@ -84,11 +84,11 @@ public class LocalSinkHandleTest {
       localSinkHandle.send(Utils.createMockTsBlock(mockTsBlockSize));
       numOfSentTsblocks += 1;
     }
-    Assert.assertEquals(6, numOfSentTsblocks);
+    Assert.assertEquals(11, numOfSentTsblocks);
     Assert.assertFalse(localSinkHandle.isFull().isDone());
     Assert.assertFalse(localSinkHandle.isFinished());
-    Assert.assertEquals(6 * mockTsBlockSize, localSinkHandle.getBufferRetainedSizeInBytes());
-    Mockito.verify(spyMemoryPool, Mockito.times(6))
+    Assert.assertEquals(11 * mockTsBlockSize, localSinkHandle.getBufferRetainedSizeInBytes());
+    Mockito.verify(spyMemoryPool, Mockito.times(11))
         .reserve(
             queryId,
             localFragmentInstanceId.getInstanceId(),
@@ -102,11 +102,11 @@ public class LocalSinkHandleTest {
       queue.remove();
       numOfReceivedTsblocks += 1;
     }
-    Assert.assertEquals(6, numOfReceivedTsblocks);
+    Assert.assertEquals(11, numOfReceivedTsblocks);
     Assert.assertTrue(localSinkHandle.isFull().isDone());
     Assert.assertFalse(localSinkHandle.isFinished());
     Assert.assertEquals(0L, localSinkHandle.getBufferRetainedSizeInBytes());
-    Mockito.verify(spyMemoryPool, Mockito.times(6))
+    Mockito.verify(spyMemoryPool, Mockito.times(11))
         .free(queryId, localFragmentInstanceId.getInstanceId(), remotePlanNodeId, mockTsBlockSize);
 
     // Set no-more-TsBlocks.
@@ -171,12 +171,12 @@ public class LocalSinkHandleTest {
       localSinkHandle.send(Utils.createMockTsBlock(mockTsBlockSize));
       numOfSentTsblocks += 1;
     }
-    Assert.assertEquals(6, numOfSentTsblocks);
+    Assert.assertEquals(11, numOfSentTsblocks);
     ListenableFuture<?> blocked = localSinkHandle.isFull();
     Assert.assertFalse(blocked.isDone());
     Assert.assertFalse(localSinkHandle.isFinished());
-    Assert.assertEquals(6 * mockTsBlockSize, localSinkHandle.getBufferRetainedSizeInBytes());
-    Mockito.verify(spyMemoryPool, Mockito.times(6))
+    Assert.assertEquals(11 * mockTsBlockSize, localSinkHandle.getBufferRetainedSizeInBytes());
+    Mockito.verify(spyMemoryPool, Mockito.times(11))
         .reserve(
             queryId,
             localFragmentInstanceId.getInstanceId(),

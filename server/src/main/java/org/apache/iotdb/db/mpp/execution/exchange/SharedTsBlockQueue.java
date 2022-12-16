@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.mpp.execution.exchange;
 
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.execution.memory.LocalMemoryManager;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
@@ -70,7 +71,8 @@ public class SharedTsBlockQueue {
   private LocalSourceHandle sourceHandle;
   private LocalSinkHandle sinkHandle;
 
-  private long maxBytesCanReserve = Long.MAX_VALUE;
+  private long maxBytesCanReserve =
+      IoTDBDescriptor.getInstance().getConfig().getMaxBytesPerFragmentInstance();
 
   public SharedTsBlockQueue(
       TFragmentInstanceId fragmentInstanceId,

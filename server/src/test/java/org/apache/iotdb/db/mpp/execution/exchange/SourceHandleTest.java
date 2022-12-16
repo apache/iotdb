@@ -217,7 +217,7 @@ public class SourceHandleTest {
             mockTsBlockSerde,
             mockSourceHandleListener,
             mockClientManager);
-    sourceHandle.setMaxBytesCanReserve(Long.MAX_VALUE);
+    sourceHandle.setMaxBytesCanReserve(5 * mockTsBlockSize);
     Assert.assertFalse(sourceHandle.isBlocked().isDone());
     Assert.assertFalse(sourceHandle.isAborted());
     Assert.assertFalse(sourceHandle.isFinished());
@@ -236,7 +236,7 @@ public class SourceHandleTest {
               localFragmentInstanceId.getInstanceId(),
               localPlanNodeId,
               mockTsBlockSize,
-              Long.MAX_VALUE);
+              5 * mockTsBlockSize);
       Mockito.verify(mockClient, Mockito.timeout(10_0000).times(1))
           .getDataBlock(
               Mockito.argThat(
