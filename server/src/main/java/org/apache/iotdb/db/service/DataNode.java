@@ -88,6 +88,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 public class DataNode implements DataNodeMBean {
@@ -228,6 +229,12 @@ public class DataNode implements DataNodeMBean {
         throw new StartupException(e.getMessage());
       }
       retry--;
+
+      try {
+        TimeUnit.SECONDS.sleep(1);
+      } catch (InterruptedException ignored) {
+        // ignored
+      }
     }
     // all tries failed
     logger.error("Cannot get configuration from ConfigNode after {} retries", DEFAULT_RETRY);
