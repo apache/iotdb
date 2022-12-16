@@ -115,6 +115,8 @@ public class DataNode implements DataNodeMBean {
    */
   private static final int DEFAULT_RETRY = 10;
 
+  private static final long DEFAULT_RETRY_INTERVAL_IN_MS = config.getJoinClusterRetryIntervalMs();
+
   private final TEndPoint thisNode = new TEndPoint();
 
   /** Hold the information of trigger, udf...... */
@@ -245,7 +247,7 @@ public class DataNode implements DataNodeMBean {
 
       try {
         // wait to start the next try
-        Thread.sleep(config.getJoinClusterRetryIntervalMs());
+        Thread.sleep(DEFAULT_RETRY_INTERVAL_IN_MS);
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
         logger.warn("Unexpected interruption when waiting to register to the cluster", e);
@@ -353,7 +355,7 @@ public class DataNode implements DataNodeMBean {
 
       try {
         // wait to start the next try
-        Thread.sleep(config.getJoinClusterRetryIntervalMs());
+        Thread.sleep(DEFAULT_RETRY_INTERVAL_IN_MS);
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
         logger.warn("Unexpected interruption when waiting to register to the cluster", e);
@@ -411,7 +413,7 @@ public class DataNode implements DataNodeMBean {
 
       try {
         // wait to start the next try
-        Thread.sleep(config.getJoinClusterRetryIntervalMs());
+        Thread.sleep(DEFAULT_RETRY_INTERVAL_IN_MS);
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
         logger.warn("Unexpected interruption when waiting to register to the cluster", e);

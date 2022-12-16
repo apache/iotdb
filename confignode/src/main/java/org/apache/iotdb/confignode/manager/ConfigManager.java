@@ -266,7 +266,11 @@ public class ConfigManager implements IManager {
   public DataSet getSystemConfiguration() {
     TSStatus status = confirmLeader();
     ConfigurationResp dataSet;
-    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    // Notice: The Seed-ConfigNode must also have the privilege to give system configuration.
+    // Otherwise, the IoTDB-cluster will not have the ability to restart from scratch.
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        || ConfigNodeDescriptor.getInstance().isSeedConfigNode()
+        || SystemPropertiesUtils.isSeedConfigNode()) {
       dataSet = (ConfigurationResp) nodeManager.getSystemConfiguration();
     } else {
       dataSet = new ConfigurationResp();

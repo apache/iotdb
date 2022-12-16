@@ -60,8 +60,9 @@ public class ConfigNode implements ConfigNodeMBean {
   private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
   private static final CommonConfig COMMON_CONF = CommonDescriptor.getInstance().getConfig();
 
-  private static final int STARTUP_RETRY_NUM = 5;
+  private static final int STARTUP_RETRY_NUM = 10;
   private static final int SCHEDULE_WAITING_RETRY_NUM = 20;
+  private static final long STARTUP_RETRY_INTERVAL_IN_MS = TimeUnit.SECONDS.toMillis(30);
 
   private static final int SEED_CONFIG_NODE_ID = 0;
 
@@ -167,7 +168,7 @@ public class ConfigNode implements ConfigNodeMBean {
         }
 
         try {
-          TimeUnit.MILLISECONDS.sleep(1000);
+          TimeUnit.MILLISECONDS.sleep(STARTUP_RETRY_INTERVAL_IN_MS);
         } catch (InterruptedException e) {
           LOGGER.warn("Waiting leader's scheduling is interrupted.");
         }
@@ -293,7 +294,7 @@ public class ConfigNode implements ConfigNodeMBean {
       }
 
       try {
-        TimeUnit.MILLISECONDS.sleep(1000);
+        TimeUnit.MILLISECONDS.sleep(STARTUP_RETRY_INTERVAL_IN_MS);
       } catch (InterruptedException e) {
         throw new StartupException("Register ConfigNode failed!");
       }
@@ -338,7 +339,7 @@ public class ConfigNode implements ConfigNodeMBean {
       }
 
       try {
-        TimeUnit.MILLISECONDS.sleep(1000);
+        TimeUnit.MILLISECONDS.sleep(STARTUP_RETRY_INTERVAL_IN_MS);
       } catch (InterruptedException e) {
         throw new StartupException("Register ConfigNode failed!");
       }
