@@ -44,6 +44,7 @@ import org.apache.iotdb.confignode.consensus.request.write.sync.ShowPipePlan;
 import org.apache.iotdb.confignode.consensus.response.PipeResp;
 import org.apache.iotdb.confignode.consensus.response.PipeSinkResp;
 import org.apache.iotdb.confignode.manager.node.NodeManager;
+import org.apache.iotdb.confignode.manager.node.heartbeat.NodeStatistics;
 import org.apache.iotdb.confignode.persistence.sync.ClusterSyncInfo;
 import org.apache.iotdb.confignode.procedure.impl.sync.OperatePipeProcedureRollbackProcessor;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllPipeInfoResp;
@@ -53,6 +54,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TCreatePipeOnDataNodeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TOperatePipeOnDataNodeReq;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import com.google.common.eventbus.Subscribe;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -284,6 +286,11 @@ public class SyncManager {
     AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
 
     return clientHandler.getResponseMap();
+  }
+
+  @Subscribe
+  public void handleNodeStatistics(Map<Integer, NodeStatistics[]> differentNodeStatisticsMap) {
+    // TODO
   }
 
   // endregion

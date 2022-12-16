@@ -21,6 +21,7 @@ package org.apache.iotdb.confignode.manager;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathDeserializeUtil;
 import org.apache.iotdb.commons.trigger.TriggerInformation;
@@ -38,6 +39,7 @@ import org.apache.iotdb.confignode.consensus.response.TransferringTriggersResp;
 import org.apache.iotdb.confignode.consensus.response.TriggerLocationResp;
 import org.apache.iotdb.confignode.consensus.response.TriggerTableResp;
 import org.apache.iotdb.confignode.manager.node.NodeManager;
+import org.apache.iotdb.confignode.manager.node.heartbeat.NodeStatistics;
 import org.apache.iotdb.confignode.persistence.TriggerInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTriggerReq;
@@ -54,10 +56,12 @@ import org.apache.iotdb.trigger.api.enums.TriggerEvent;
 import org.apache.iotdb.trigger.api.enums.TriggerType;
 import org.apache.iotdb.tsfile.utils.Binary;
 
+import com.google.common.eventbus.Subscribe;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -247,5 +251,19 @@ public class TriggerManager {
             DataNodeRequestType.UPDATE_TRIGGER_LOCATION, request, dataNodeLocationMap);
     AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
     return clientHandler.getResponseList();
+  }
+
+  @Subscribe
+  public void handleNodeStatistics(Map<Integer, NodeStatistics[]> differentNodeStatisticsMap) {
+    List<TDataNodeLocation> newUnknownNodes = new ArrayList<>();
+    for (Map.Entry<Integer, NodeStatistics[]> entry : differentNodeStatisticsMap.entrySet()) {
+      if (entry.getValue()[0].getStatus().equals(NodeStatus.Unknown)) {
+        newUnknownNodes.add(
+            configManager.getNodeManager().getRegisteredDataNode(entry.getKey()).getLocation());
+      }
+    }
+    if (!newUnknownNodes.isEmpty()) {
+      configManager.transfer(newUnknownNodes);
+    }
   }
 }

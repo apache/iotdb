@@ -197,7 +197,6 @@ public class ConfigNodeRegionStateMachine
       configManager.getLoadManager().startLoadStatisticsService();
       configManager.getLoadManager().getRouteBalancer().startRouteBalancingService();
       configManager.getNodeManager().startHeartbeatService();
-      configManager.getNodeManager().startUnknownDataNodeDetector();
       configManager.getPartitionManager().startRegionCleaner();
 
       // we do cq recovery async for two reasons:
@@ -218,7 +217,6 @@ public class ConfigNodeRegionStateMachine
       configManager.getLoadManager().stopLoadStatisticsService();
       configManager.getLoadManager().getRouteBalancer().stopRouteBalancingService();
       configManager.getNodeManager().stopHeartbeatService();
-      configManager.getNodeManager().stopUnknownDataNodeDetector();
       configManager.getPartitionManager().stopRegionCleaner();
       configManager.getCQManager().stopCQScheduler();
     }

@@ -54,12 +54,15 @@ import org.apache.iotdb.confignode.manager.partition.heartbeat.RegionStatistics;
 import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
 
+import com.google.common.eventbus.AsyncEventBus;
+import com.google.common.eventbus.EventBus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -91,12 +94,21 @@ public class LoadManager {
       IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("Cluster-LoadStatistics-Service");
   private final Object scheduleMonitor = new Object();
 
+  private final EventBus eventBus =
+      new AsyncEventBus("LoadManager-EventBus", Executors.newFixedThreadPool(5));
+
   public LoadManager(IManager configManager) {
     this.configManager = configManager;
 
     this.regionBalancer = new RegionBalancer(configManager);
     this.partitionBalancer = new PartitionBalancer(configManager);
     this.routeBalancer = new RouteBalancer(configManager);
+
+    eventBus.register(configManager.getClusterSchemaManager());
+    eventBus.register(configManager.getSyncManager());
+    eventBus.register(configManager.getTriggerManager());
+    eventBus.register(configManager.getCQManager());
+
     MetricService.getInstance().addMetricSet(new LoadManagerMetrics(configManager));
   }
 
@@ -185,20 +197,26 @@ public class LoadManager {
     // Broadcast the RegionRouteMap if some LoadStatistics has changed
     boolean isNeedBroadcast = false;
 
-    // Update NodeStatistics
-    Map<Integer, NodeStatistics> differentNodeStatisticsMap = new ConcurrentHashMap<>();
+    // Update NodeStatistics:
+    // NodeStatistics[]:index 0 means the current NodeStatistics, index 1 means the previous
+    // NodeStatistics
+    Map<Integer, NodeStatistics[]> differentNodeStatisticsMap = new ConcurrentHashMap<>();
     getNodeManager()
         .getNodeCacheMap()
         .forEach(
             (nodeId, nodeCache) -> {
+              NodeStatistics preNodeStatistics = nodeCache.getPreviousStatistics().deepCopy();
               if (nodeCache.periodicUpdate()) {
                 // Update and record the changed NodeStatistics
-                differentNodeStatisticsMap.put(nodeId, nodeCache.getStatistics());
+                differentNodeStatisticsMap.put(
+                    nodeId, new NodeStatistics[] {nodeCache.getStatistics(), preNodeStatistics});
+                LOGGER.info("previous NodeStatistics: {}", preNodeStatistics);
               }
             });
     if (!differentNodeStatisticsMap.isEmpty()) {
       isNeedBroadcast = true;
       recordNodeStatistics(differentNodeStatisticsMap);
+      eventBus.post(differentNodeStatisticsMap);
     }
 
     // Update RegionGroupStatistics
@@ -230,14 +248,14 @@ public class LoadManager {
     }
   }
 
-  private void recordNodeStatistics(Map<Integer, NodeStatistics> differentNodeStatisticsMap) {
+  private void recordNodeStatistics(Map<Integer, NodeStatistics[]> differentNodeStatisticsMap) {
     LOGGER.info("[UpdateLoadStatistics] NodeStatisticsMap: ");
-    for (Map.Entry<Integer, NodeStatistics> nodeCacheEntry :
+    for (Map.Entry<Integer, NodeStatistics[]> nodeCacheEntry :
         differentNodeStatisticsMap.entrySet()) {
       LOGGER.info(
           "[UpdateLoadStatistics]\t {}={}",
           "nodeId{" + nodeCacheEntry.getKey() + "}",
-          nodeCacheEntry.getValue());
+          nodeCacheEntry.getValue()[0]);
     }
   }
 
@@ -328,5 +346,9 @@ public class LoadManager {
 
   private PartitionManager getPartitionManager() {
     return configManager.getPartitionManager();
+  }
+
+  public EventBus getEventBus() {
+    return eventBus;
   }
 }

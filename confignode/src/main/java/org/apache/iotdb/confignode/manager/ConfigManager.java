@@ -234,9 +234,9 @@ public class ConfigManager implements IManager {
     this.procedureManager = new ProcedureManager(this, procedureInfo);
     this.udfManager = new UDFManager(this, udfInfo);
     this.triggerManager = new TriggerManager(this, triggerInfo);
-    this.loadManager = new LoadManager(this);
     this.syncManager = new SyncManager(this, syncInfo);
     this.cqManager = new CQManager(this);
+    this.loadManager = new LoadManager(this);
   }
 
   public void initConsensusManager() throws IOException {
