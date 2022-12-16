@@ -18,4 +18,29 @@
  */
 package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.entry;
 
-public class TiFile {}
+import java.util.ArrayList;
+import java.util.List;
+
+public class TiFile {
+
+  private List<Chunk> chunkGroup;
+
+  public TiFile() {
+    this.chunkGroup = new ArrayList<>();
+  }
+
+  public List<Chunk> getChunkGroup() {
+    return chunkGroup;
+  }
+
+  public void setChunkGroup(List<Chunk> chunkGroup) {
+    this.chunkGroup = chunkGroup;
+  }
+
+  public void addChunk(Chunk chunk) {
+    if (chunkGroup == null) {
+      chunkGroup = new ArrayList<>();
+    }
+    this.chunkGroup.add(chunk);
+  }
+}

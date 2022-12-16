@@ -57,6 +57,7 @@ public class ChunkHeader implements IEntry {
   public void serialize(DataOutputStream out) throws IOException {
     out.writeInt(size);
     out.writeInt(count);
+    // TODO if count == 0
     out.writeInt(maxID);
     out.writeInt(minID);
   }

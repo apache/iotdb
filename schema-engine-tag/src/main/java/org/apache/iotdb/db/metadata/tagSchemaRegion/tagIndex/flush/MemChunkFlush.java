@@ -21,6 +21,7 @@ package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.flush;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.entry.TiFile;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemChunk;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.response.FlushResponse;
+import org.apache.iotdb.db.metadata.tagSchemaRegion.utils.ConvertUtils;
 import org.apache.iotdb.lsm.annotation.FlushProcessor;
 import org.apache.iotdb.lsm.context.requestcontext.FlushRequestContext;
 import org.apache.iotdb.lsm.levelProcess.FlushLevelProcessor;
@@ -41,5 +42,6 @@ public class MemChunkFlush extends FlushLevelProcessor<MemChunk, Object> {
     FlushResponse flushResponse = context.getResponse();
     Integer id = flushResponse.getMemChunkIndex(memNode);
     TiFile tiFile = flushResponse.getTiFile(id);
+    tiFile.addChunk(ConvertUtils.getChunkFromMemChunk(memNode));
   }
 }

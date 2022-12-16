@@ -37,6 +37,7 @@ public class Chunk implements IEntry {
 
   @Override
   public void serialize(DataOutputStream out) throws IOException {
+    roaringBitmap.getSizeInBytes();
     roaringBitmap.serialize(out);
     chunkHeader.serialize(out);
   }
