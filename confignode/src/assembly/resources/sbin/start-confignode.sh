@@ -106,7 +106,7 @@ while true; do
 done
 
 if [ "$(id -u)" -ne 0 ]; then
-  echo "Warning: in some systems, ConfigNode must run in sudo mode to write data. The process may fail."
+  echo "Notice: in some systems, ConfigNode must run in sudo mode to write data. The process may fail."
 fi
 
 #checkAllVariables is in iotdb-common.sh
