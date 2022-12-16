@@ -121,8 +121,8 @@ public class FileInput implements IFileInput {
   }
 
   @Override
-  public void skipBytes(int n) throws IOException {
-    dataInputStream.skipBytes(n);
+  public int skipBytes(int n) throws IOException {
+    return dataInputStream.skipBytes(n);
   }
 
   @Override

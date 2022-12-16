@@ -21,6 +21,7 @@ package org.apache.iotdb.lsm.sstable.fileIO;
 import org.apache.iotdb.lsm.sstable.bplustree.entry.IEntry;
 
 import java.io.DataInputStream;
+import java.io.EOFException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.AsynchronousCloseException;
@@ -110,31 +111,107 @@ public interface IFileInput {
    */
   int read(byte[] b, int off, int len) throws IOException;
 
+  /**
+   * read an entry from the file offset
+   *
+   * @param entry a IEntry object
+   * @param offset a non-negative integer counting the number of bytes from the beginning of the
+   *     IFileInput
+   * @exception EOFException if this input stream reaches the end before reading two bytes.
+   * @exception IOException the stream has been closed and the contained input stream does not
+   *     support reading after close, or another I/O error occurs.
+   */
   void read(IEntry entry, long offset) throws IOException;
 
+  /**
+   * read an entry from the file offset
+   *
+   * @param entry a IEntry object
+   * @exception EOFException if this input stream reaches the end before reading two bytes.
+   * @exception IOException the stream has been closed and the contained input stream does not
+   *     support reading after close, or another I/O error occurs.
+   */
   void read(IEntry entry) throws IOException;
 
+  /**
+   * Returns the unique {@link java.nio.channels.FileChannel FileChannel} object associated with
+   * this file input.
+   *
+   * <p>The initial {@link java.nio.channels.FileChannel#position() position} of the returned
+   * channel will be equal to the number of bytes read from the file so far. Reading bytes from this
+   * file input will increment the channel's position. Changing the channel's position, either
+   * explicitly or by reading, will change this file input's file position.
+   *
+   * @return the file channel associated with this file input
+   */
   FileChannel wrapAsFileChannel() throws IOException;
 
+  /**
+   * Returns the unique {@link java.io.DataInputStream DataInputStream} object associated with this
+   * file input.
+   *
+   * <p>Reading bytes from this DataInputStream will increment the file input's position. Changing
+   * the file input's position, either explicitly or by reading, will change this DataInputStream's
+   * current position to be read
+   *
+   * @return the DataInputStream associated with this file input
+   */
   DataInputStream wrapAsInputStream() throws IOException;
 
   /**
-   * Closes this channel.
+   * Closes this file input and releases any system resources associated with the file input.
    *
-   * <p>If the channel has already been closed then this method returns immediately.
+   * <p>If this stream has an associated channel and stream then the channel and stream is closed as
+   * well.
    *
-   * @throws IOException If an I/O error occurs
+   * @exception IOException if an I/O error occurs.
    */
   void close() throws IOException;
 
   /** read 4 bytes from the Input and convert it to a integer. */
   int readInt() throws IOException;
 
+  /**
+   * See the general contract of the <code>readChar</code> method of <code>DataInput</code>.
+   *
+   * <p>Bytes for this operation are read from the contained input stream.
+   *
+   * @return the next two bytes of this input stream, interpreted as a <code>char</code>.
+   * @exception EOFException if this input stream reaches the end before reading two bytes.
+   * @exception IOException the stream has been closed and the contained input stream does not
+   *     support reading after close, or another I/O error occurs.
+   */
   char readChar() throws IOException;
 
+  /**
+   * See the general contract of the <code>readLong</code> method of <code>DataInput</code>.
+   *
+   * <p>Bytes for this operation are read from the contained input stream.
+   *
+   * @return the next eight bytes of this input stream, interpreted as a <code>long</code>.
+   * @exception EOFException if this input stream reaches the end before reading eight bytes.
+   * @exception IOException the stream has been closed and the contained input stream does not
+   *     support reading after close, or another I/O error occurs.
+   */
   long readLong() throws IOException;
 
-  void skipBytes(int n) throws IOException;
+  /**
+   * See the general contract of the <code>skipBytes</code> method of <code>DataInput</code>.
+   *
+   * <p>Bytes for this operation are read from the contained input stream.
+   *
+   * @param n the number of bytes to be skipped.
+   * @return the actual number of bytes skipped.
+   * @exception IOException if the contained input stream does not support seek, or the stream has
+   *     been closed and the contained input stream does not support reading after close, or another
+   *     I/O error occurs.
+   */
+  int skipBytes(int n) throws IOException;
 
+  /**
+   * Get the file path that this file input is reading
+   *
+   * @return file path
+   */
   String getFilePath();
 }
