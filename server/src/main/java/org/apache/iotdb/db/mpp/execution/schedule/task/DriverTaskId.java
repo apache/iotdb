@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.mpp.execution.schedule.task;
 
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
@@ -24,6 +25,8 @@ import org.apache.iotdb.db.mpp.common.QueryId;
 import org.apache.iotdb.db.mpp.execution.schedule.queue.ID;
 
 import org.jetbrains.annotations.NotNull;
+
+import java.util.Objects;
 
 /** the class of id of the fragment instance task */
 public class DriverTaskId implements ID, Comparable<DriverTaskId> {
@@ -36,6 +39,11 @@ public class DriverTaskId implements ID, Comparable<DriverTaskId> {
     this.fragmentInstanceId = id;
     this.pipelineId = pipelineId;
     this.fullId = String.format("%s.%d", id.getFullId(), pipelineId);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(fragmentInstanceId, pipelineId);
   }
 
   @Override

@@ -358,6 +358,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
 
     ((DataDriverContext) context.getDriverContext()).addSourceOperator(aggregateScanOperator);
     ((DataDriverContext) context.getDriverContext()).addPath(seriesPath);
+    context.getDriverContext().setInputDriver(true);
     context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, aggregators.size());
     return aggregateScanOperator;
   }
@@ -420,6 +421,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     ((DataDriverContext) context.getDriverContext())
         .addSourceOperator(seriesAggregationScanOperator);
     ((DataDriverContext) context.getDriverContext()).addPath(seriesPath);
+    context.getDriverContext().setInputDriver(true);
     context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, aggregators.size());
     return seriesAggregationScanOperator;
   }
