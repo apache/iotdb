@@ -34,7 +34,7 @@ else
   exit 1
 fi
 
-PID_VERIFY=$(pgrep -f 'CONFIGNODE')
+PID_VERIFY=$(ps ax | grep -i 'ConfigNode' | grep java | grep -v grep | awk '{print $1}')
 if [ -z "$PID" ]; then
   echo "No ConfigNode to stop"
   if [ "$(id -u)" -ne 0 ]; then

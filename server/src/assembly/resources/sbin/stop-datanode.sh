@@ -34,7 +34,7 @@ else
   exit 1
 fi
 
-PID_VERIFY=$(pgrep -f 'DataNode')
+PID_VERIFY=$(ps ax | grep -i 'DataNode' | grep java | grep -v grep | awk '{print $1}')
 if [ -z "$PID" ]; then
   echo "No DataNode to stop"
   if [ "$(id -u)" -ne 0 ]; then
@@ -48,7 +48,4 @@ else
   echo "No DataNode to stop"
   exit 1
 fi
-
-
-
 
