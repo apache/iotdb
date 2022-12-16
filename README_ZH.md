@@ -135,15 +135,16 @@ Thrift官方网址为：https://thrift.apache.org/
 git clone https://github.com/apache/iotdb.git
 ```
 
-默认的主分支是master分支，如果你想使用某个发布版本x.x.x，请切换分支:
+默认的主分支是master分支，如果你想使用某个发布版本x.x.x，请切换 tag:
 
-```
-git checkout rel/x.x.x
-```
-
-从0.11.3开始，版本的标签风格改为vx.x.x：
 ```
 git checkout vx.x.x
+```
+
+或者切换大版本所在分支
+
+```
+git checkout rel/x.x
 ```
 
 ### 源码编译 IoTDB

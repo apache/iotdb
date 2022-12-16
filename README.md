@@ -148,13 +148,13 @@ git clone https://github.com/apache/iotdb.git
 The default dev branch is the master branch, If you want to use a released version x.x.x:
 
 ```
-git checkout release/x.x.x
-```
-
-From v0.11.3 on, the tag name format is change to: vx.x.x:
-
-```
 git checkout vx.x.x
+```
+
+Or checkout to the branch of a big version
+
+```
+git checkout rel/x.x
 ```
 
 ### Build IoTDB from source
