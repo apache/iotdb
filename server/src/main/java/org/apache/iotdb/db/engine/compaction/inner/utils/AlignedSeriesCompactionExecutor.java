@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.engine.compaction.inner.utils;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.TsFileMetricManager;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.compaction.constant.CompactionType;
@@ -127,6 +128,7 @@ public class AlignedSeriesCompactionExecutor {
   }
 
   public void execute() throws IOException {
+    long originTempFileSize = writer.getPos();
     while (readerAndChunkMetadataList.size() > 0) {
       Pair<TsFileSequenceReader, List<AlignedChunkMetadata>> readerListPair =
           readerAndChunkMetadataList.removeFirst();
@@ -152,6 +154,10 @@ public class AlignedSeriesCompactionExecutor {
       chunkWriter.writeToFileWriter(writer);
     }
     writer.checkMetadataSizeAndMayFlush();
+
+    // update temporal file metrics
+    TsFileMetricManager.getInstance()
+        .addCompactionTempFileSize(true, true, writer.getPos() - originTempFileSize);
   }
 
   private void compactOneAlignedChunk(AlignedChunkReader chunkReader) throws IOException {
