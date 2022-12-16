@@ -278,7 +278,7 @@ checkConfigNodePortUsages () {
       occupied=true
     fi
   else
-    echo " Error: No necessary tool, stop ports checking"
+    echo " Error: No necessary tool to check whether given port is occupied, stop ports checking"
     echo " Please install 'lsof' or 'netstat'."
   fi
   if [ $occupied = true ]; then
