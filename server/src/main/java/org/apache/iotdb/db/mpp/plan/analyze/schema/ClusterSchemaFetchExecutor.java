@@ -39,6 +39,7 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -48,7 +49,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.BiFunction;
-import java.util.function.Function;
 import java.util.function.Supplier;
 
 class ClusterSchemaFetchExecutor {
@@ -56,7 +56,8 @@ class ClusterSchemaFetchExecutor {
   private final Coordinator coordinator;
   private final Supplier<Long> queryIdProvider;
   private final BiFunction<Long, Statement, ExecutionResult> statementExecutor;
-  private final Function<PartialPath, Map<Integer, Template>> templateSetInfoProvider;
+  private final BiFunction<PartialPath, Collection<String>, Map<Integer, Template>>
+      templateSetInfoProvider;
 
   private final Map<PartialPath, DeviceSchemaFetchTaskExecutor> deviceSchemaFetchTaskExecutorMap =
       new ConcurrentHashMap<>();
@@ -65,7 +66,7 @@ class ClusterSchemaFetchExecutor {
       Coordinator coordinator,
       Supplier<Long> queryIdProvider,
       BiFunction<Long, Statement, ExecutionResult> statementExecutor,
-      Function<PartialPath, Map<Integer, Template>> templateSetInfoProvider) {
+      BiFunction<PartialPath, Collection<String>, Map<Integer, Template>> templateSetInfoProvider) {
     this.coordinator = coordinator;
     this.queryIdProvider = queryIdProvider;
     this.statementExecutor = statementExecutor;
@@ -219,7 +220,7 @@ class ClusterSchemaFetchExecutor {
                 executeSchemaFetchQuery(
                     new SchemaFetchStatement(
                         task.generatePatternTree(devicePath),
-                        templateSetInfoProvider.apply(devicePath),
+                        templateSetInfoProvider.apply(devicePath, task.measurementSet),
                         false)));
             // release this field for new task execution
             this.executingTask = null;
