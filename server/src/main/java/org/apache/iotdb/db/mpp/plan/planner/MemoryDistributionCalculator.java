@@ -115,8 +115,7 @@ public class MemoryDistributionCalculator
   @Override
   public Void visitPlan(PlanNode node, MemoryDistributionContext context) {
     // Throw exception here because we want to ensure that all new ProcessNode/SourceNode implement
-    // this method
-    // correctly.
+    // this method correctly.
     if (node instanceof SourceNode || node instanceof ProcessNode) {
       throw new UnsupportedOperationException("Should call concrete visitXX method");
     }
@@ -352,7 +351,7 @@ public class MemoryDistributionCalculator
 
   @Override
   public Void visitSchemaQueryMerge(SchemaQueryMergeNode node, MemoryDistributionContext context) {
-    processConsumeAllChildrenAtTheSameTime(node);
+    processConsumeChildrenOneByOneNode(node);
     return null;
   }
 
@@ -404,7 +403,7 @@ public class MemoryDistributionCalculator
 
   @Override
   public Void visitCountMerge(CountSchemaMergeNode node, MemoryDistributionContext context) {
-    processConsumeAllChildrenAtTheSameTime(node);
+    processConsumeChildrenOneByOneNode(node);
     return null;
   }
 
@@ -416,7 +415,7 @@ public class MemoryDistributionCalculator
 
   @Override
   public Void visitSchemaFetchMerge(SchemaFetchMergeNode node, MemoryDistributionContext context) {
-    processConsumeAllChildrenAtTheSameTime(node);
+    processConsumeChildrenOneByOneNode(node);
     return null;
   }
 
@@ -603,7 +602,7 @@ public class MemoryDistributionCalculator
     }
   }
 
-  class MemoryDistributionContext {
+  static class MemoryDistributionContext {
     final PlanNodeId planNodeId;
     final MemoryDistributionType memoryDistributionType;
 

@@ -61,7 +61,7 @@ public class SharedTsBlockQueue {
    * this is completed after calling isBlocked for the first time which indicates this queue needs
    * to output data
    */
-  private final SettableFuture<Void> canAddTsBlock = SettableFuture.create();
+  private SettableFuture<Void> canAddTsBlock = SettableFuture.create();
 
   private ListenableFuture<Void> blockedOnMemory;
 
@@ -100,8 +100,9 @@ public class SharedTsBlockQueue {
   }
 
   public ListenableFuture<Void> isBlocked() {
-    if (!canAddTsBlock.isDone()) {
+    if (canAddTsBlock != null) {
       canAddTsBlock.set(null);
+      canAddTsBlock = null;
     }
     return blocked;
   }

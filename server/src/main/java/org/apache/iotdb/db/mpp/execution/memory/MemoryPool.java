@@ -158,11 +158,6 @@ public class MemoryPool {
     ListenableFuture<Void> result;
     synchronized (this) {
       if (maxBytes - reservedBytes < bytesToReserve
-          || maxBytesPerFragmentInstance
-                  - queryMemoryReservations.getOrDefault(queryId, Collections.emptyMap())
-                      .getOrDefault(fragmentInstanceId, Collections.emptyMap()).values().stream()
-                      .reduce(0L, Long::sum)
-              < bytesToReserve
           || maxBytesCanReserve
                   - queryMemoryReservations
                       .getOrDefault(queryId, Collections.emptyMap())
@@ -202,11 +197,6 @@ public class MemoryPool {
         bytesToReserve);
 
     if (maxBytes - reservedBytes < bytesToReserve
-        || maxBytesPerFragmentInstance
-                - queryMemoryReservations.getOrDefault(queryId, Collections.emptyMap())
-                    .getOrDefault(fragmentInstanceId, Collections.emptyMap()).values().stream()
-                    .reduce(0L, Long::sum)
-            < bytesToReserve
         || maxBytesCanReserve
                 - queryMemoryReservations
                     .getOrDefault(queryId, Collections.emptyMap())
@@ -217,11 +207,6 @@ public class MemoryPool {
     }
     synchronized (this) {
       if (maxBytes - reservedBytes < bytesToReserve
-          || maxBytesPerFragmentInstance
-                  - queryMemoryReservations.getOrDefault(queryId, Collections.emptyMap())
-                      .getOrDefault(fragmentInstanceId, Collections.emptyMap()).values().stream()
-                      .reduce(0L, Long::sum)
-              < bytesToReserve
           || maxBytesCanReserve
                   - queryMemoryReservations
                       .getOrDefault(queryId, Collections.emptyMap())
@@ -319,13 +304,6 @@ public class MemoryPool {
         String curPlanNodeId = future.getPlanNodeId();
         // check total reserved bytes in memory pool
         if (maxBytes - reservedBytes < bytesToReserve) {
-          continue;
-        }
-        // check total reserved bytes of one fragment instance
-        if (maxBytesPerFragmentInstance - bytesToReserve
-            < queryMemoryReservations.getOrDefault(curQueryId, Collections.emptyMap())
-                .getOrDefault(curFragmentInstanceId, Collections.emptyMap()).values().stream()
-                .reduce(0L, Long::sum)) {
           continue;
         }
         // check total reserved bytes of one Sink/Source handle
