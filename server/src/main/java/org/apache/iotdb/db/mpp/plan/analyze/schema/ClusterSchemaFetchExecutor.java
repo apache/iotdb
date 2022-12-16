@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.db.metadata.template.ITemplateManager;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.mpp.common.schematree.ClusterSchemaTree;
 import org.apache.iotdb.db.mpp.plan.Coordinator;
@@ -39,7 +40,7 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.Collection;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -54,23 +55,22 @@ import java.util.function.Supplier;
 class ClusterSchemaFetchExecutor {
 
   private final Coordinator coordinator;
+  private final ITemplateManager templateManager;
   private final Supplier<Long> queryIdProvider;
   private final BiFunction<Long, Statement, ExecutionResult> statementExecutor;
-  private final BiFunction<PartialPath, Collection<String>, Map<Integer, Template>>
-      templateSetInfoProvider;
 
   private final Map<PartialPath, DeviceSchemaFetchTaskExecutor> deviceSchemaFetchTaskExecutorMap =
       new ConcurrentHashMap<>();
 
   ClusterSchemaFetchExecutor(
       Coordinator coordinator,
+      ITemplateManager templateManager,
       Supplier<Long> queryIdProvider,
-      BiFunction<Long, Statement, ExecutionResult> statementExecutor,
-      BiFunction<PartialPath, Collection<String>, Map<Integer, Template>> templateSetInfoProvider) {
+      BiFunction<Long, Statement, ExecutionResult> statementExecutor) {
     this.coordinator = coordinator;
+    this.templateManager = templateManager;
     this.queryIdProvider = queryIdProvider;
     this.statementExecutor = statementExecutor;
-    this.templateSetInfoProvider = templateSetInfoProvider;
   }
 
   ClusterSchemaTree fetchSchemaOfOneDevice(PartialPath devicePath, List<String> measurements) {
@@ -100,7 +100,42 @@ class ClusterSchemaFetchExecutor {
     return result;
   }
 
-  ClusterSchemaTree executeSchemaFetchQuery(SchemaFetchStatement schemaFetchStatement) {
+  ClusterSchemaTree fetchSchemaOfMultiDevice(
+      List<PartialPath> devicePathList,
+      List<String[]> measurementsList,
+      List<List<Integer>> indexOfMissingMeasurementsList) {
+    PathPatternTree patternTree = new PathPatternTree();
+    for (int i = 0; i < devicePathList.size(); i++) {
+      for (int index : indexOfMissingMeasurementsList.get(i)) {
+        patternTree.appendFullPath(devicePathList.get(i), measurementsList.get(i)[index]);
+      }
+    }
+
+    // all schema can be taken from cache
+    if (patternTree.isEmpty()) {
+      return new ClusterSchemaTree();
+    }
+
+    Map<Integer, Template> templateMap = new HashMap<>();
+    patternTree.constructTree();
+    List<PartialPath> pathPatternList = patternTree.getAllPathPatterns();
+    for (PartialPath pattern : pathPatternList) {
+      templateMap.putAll(templateManager.checkAllRelatedTemplate(pattern));
+    }
+    return executeSchemaFetchQuery(new SchemaFetchStatement(patternTree, templateMap, false));
+  }
+
+  ClusterSchemaTree fetchSchema(PathPatternTree patternTree, boolean withTags) {
+    Map<Integer, Template> templateMap = new HashMap<>();
+    patternTree.constructTree();
+    List<PartialPath> pathPatternList = patternTree.getAllPathPatterns();
+    for (PartialPath pattern : pathPatternList) {
+      templateMap.putAll(templateManager.checkAllRelatedTemplate(pattern));
+    }
+    return executeSchemaFetchQuery(new SchemaFetchStatement(patternTree, templateMap, withTags));
+  }
+
+  private ClusterSchemaTree executeSchemaFetchQuery(SchemaFetchStatement schemaFetchStatement) {
     long queryId = queryIdProvider.get();
     try {
       ExecutionResult executionResult = statementExecutor.apply(queryId, schemaFetchStatement);
@@ -220,7 +255,7 @@ class ClusterSchemaFetchExecutor {
                 executeSchemaFetchQuery(
                     new SchemaFetchStatement(
                         task.generatePatternTree(devicePath),
-                        templateSetInfoProvider.apply(devicePath, task.measurementSet),
+                        templateManager.checkAllRelatedTemplate(devicePath, task.measurementSet),
                         false)));
             // release this field for new task execution
             this.executingTask = null;

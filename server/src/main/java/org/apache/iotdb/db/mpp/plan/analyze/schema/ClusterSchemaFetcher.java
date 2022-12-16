@@ -32,7 +32,6 @@ import org.apache.iotdb.db.mpp.common.schematree.DeviceSchemaInfo;
 import org.apache.iotdb.db.mpp.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.mpp.plan.Coordinator;
 import org.apache.iotdb.db.mpp.plan.analyze.ClusterPartitionFetcher;
-import org.apache.iotdb.db.mpp.plan.statement.internal.SchemaFetchStatement;
 import org.apache.iotdb.db.query.control.SessionManager;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -61,6 +60,7 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
 
   private final AutoCreateSchemaExecutor autoCreateSchemaExecutor =
       new AutoCreateSchemaExecutor(
+          templateManager,
           statement ->
               coordinator.execute(
                   statement,
@@ -69,11 +69,11 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
                   "",
                   ClusterPartitionFetcher.getInstance(),
                   this,
-                  config.getQueryTimeoutThreshold()),
-          templateManager::checkTemplateSetInfo);
+                  config.getQueryTimeoutThreshold()));
   private final ClusterSchemaFetchExecutor clusterSchemaFetchExecutor =
       new ClusterSchemaFetchExecutor(
           coordinator,
+          templateManager,
           () -> SessionManager.getInstance().requestQueryId(),
           (queryId, statement) ->
               coordinator.execute(
@@ -83,8 +83,7 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
                   "",
                   ClusterPartitionFetcher.getInstance(),
                   this,
-                  config.getQueryTimeoutThreshold()),
-          templateManager::checkAllRelatedTemplate);
+                  config.getQueryTimeoutThreshold()));
 
   private static final class ClusterSchemaFetcherHolder {
     private static final ClusterSchemaFetcher INSTANCE = new ClusterSchemaFetcher();
@@ -111,18 +110,12 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
   // used for patternTree that may have wildcard, mainly for data query
   private ClusterSchemaTree checkPatternTreeAndFetchSchema(
       PathPatternTree patternTree, boolean withTags) {
-    Map<Integer, Template> templateMap = new HashMap<>();
+    if (withTags) {
+      return clusterSchemaFetchExecutor.fetchSchema(patternTree, true);
+    }
+
     patternTree.constructTree();
     List<PartialPath> pathPatternList = patternTree.getAllPathPatterns();
-    for (PartialPath pattern : pathPatternList) {
-      templateMap.putAll(templateManager.checkAllRelatedTemplate(pattern));
-    }
-
-    if (withTags) {
-      return clusterSchemaFetchExecutor.executeSchemaFetchQuery(
-          new SchemaFetchStatement(patternTree, templateMap, true));
-    }
-
     List<PartialPath> fullPathList = new ArrayList<>();
     Map<PartialPath, List<String>> deviceMap = new HashMap<>();
     for (PartialPath pattern : pathPatternList) {
@@ -135,8 +128,7 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
     }
 
     if (fullPathList.isEmpty()) {
-      return clusterSchemaFetchExecutor.executeSchemaFetchQuery(
-          new SchemaFetchStatement(patternTree, templateMap, false));
+      return clusterSchemaFetchExecutor.fetchSchema(patternTree, false);
     }
 
     // The schema cache R/W and fetch operation must be locked together thus the cache clean
@@ -173,9 +165,7 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
         schemaTree =
             clusterSchemaFetchExecutor.fetchSchemaOfOneDevice(entry.getKey(), entry.getValue());
       } else {
-        schemaTree =
-            clusterSchemaFetchExecutor.executeSchemaFetchQuery(
-                new SchemaFetchStatement(patternTree, templateMap, false));
+        schemaTree = clusterSchemaFetchExecutor.fetchSchema(patternTree, false);
       }
 
       // only cache the schema fetched by full path
@@ -269,25 +259,27 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
     schemaCache.takeReadLock();
     try {
       ClusterSchemaTree schemaTree = new ClusterSchemaTree();
-      PathPatternTree patternTree = new PathPatternTree();
+      boolean allCached = true;
       List<List<Integer>> indexOfMissingMeasurementsList = new ArrayList<>(devicePathList.size());
       for (int i = 0; i < devicePathList.size(); i++) {
         schemaTree.mergeSchemaTree(schemaCache.get(devicePathList.get(i), measurementsList.get(i)));
         List<Integer> indexOfMissingMeasurements =
             checkMissingMeasurements(schemaTree, devicePathList.get(i), measurementsList.get(i));
-        indexOfMissingMeasurementsList.add(indexOfMissingMeasurements);
-        for (int index : indexOfMissingMeasurements) {
-          patternTree.appendFullPath(devicePathList.get(i), measurementsList.get(i)[index]);
+        if (indexOfMissingMeasurements.size() > 0) {
+          allCached = false;
         }
+        indexOfMissingMeasurementsList.add(indexOfMissingMeasurements);
       }
 
       // all schema can be taken from cache
-      if (patternTree.isEmpty()) {
+      if (allCached) {
         return schemaTree;
       }
 
       // try fetch the missing schema from remote and cache fetched schema
-      ClusterSchemaTree remoteSchemaTree = fetchSchemaFromRemote(patternTree);
+      ClusterSchemaTree remoteSchemaTree =
+          clusterSchemaFetchExecutor.fetchSchemaOfMultiDevice(
+              devicePathList, measurementsList, indexOfMissingMeasurementsList);
       if (!remoteSchemaTree.isEmpty()) {
         schemaTree.mergeSchemaTree(remoteSchemaTree);
         schemaCache.put(remoteSchemaTree);
@@ -329,18 +321,6 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
   @Override
   public Pair<Template, List<PartialPath>> getAllPathsSetTemplate(String templateName) {
     return templateManager.getAllPathsSetTemplate(templateName);
-  }
-
-  // used for patternTree without wildcard, mainly for data insert and load tsFile
-  private ClusterSchemaTree fetchSchemaFromRemote(PathPatternTree patternTree) {
-    Map<Integer, Template> templateMap = new HashMap<>();
-    patternTree.constructTree();
-    List<PartialPath> pathPatternList = patternTree.getAllPathPatterns();
-    for (PartialPath pattern : pathPatternList) {
-      templateMap.putAll(templateManager.checkAllRelatedTemplate(pattern));
-    }
-    return clusterSchemaFetchExecutor.executeSchemaFetchQuery(
-        new SchemaFetchStatement(patternTree, templateMap, false));
   }
 
   // check which measurements are missing and auto create the missing measurements and merge them

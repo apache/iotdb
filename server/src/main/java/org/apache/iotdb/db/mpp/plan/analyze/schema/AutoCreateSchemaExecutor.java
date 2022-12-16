@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.metadata.template.ITemplateManager;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.mpp.common.schematree.ClusterSchemaTree;
 import org.apache.iotdb.db.mpp.plan.execution.ExecutionResult;
@@ -53,14 +54,13 @@ import static org.apache.iotdb.db.utils.EncodingInferenceUtils.getDefaultEncodin
 
 class AutoCreateSchemaExecutor {
 
+  private final ITemplateManager templateManager;
   private final Function<Statement, ExecutionResult> statementExecutor;
-  private final Function<PartialPath, Pair<Template, PartialPath>> templateSetInfoProvider;
 
   AutoCreateSchemaExecutor(
-      Function<Statement, ExecutionResult> statementExecutor,
-      Function<PartialPath, Pair<Template, PartialPath>> templateSetInfoProvider) {
+      ITemplateManager templateManager, Function<Statement, ExecutionResult> statementExecutor) {
+    this.templateManager = templateManager;
     this.statementExecutor = statementExecutor;
-    this.templateSetInfoProvider = templateSetInfoProvider;
   }
 
   void autoCreateSchema(
@@ -73,7 +73,7 @@ class AutoCreateSchemaExecutor {
       CompressionType[] compressionTypes,
       boolean isAligned) {
     // check whether there is template should be activated
-    Pair<Template, PartialPath> templateInfo = templateSetInfoProvider.apply(devicePath);
+    Pair<Template, PartialPath> templateInfo = templateManager.checkTemplateSetInfo(devicePath);
     if (templateInfo != null) {
       Template template = templateInfo.left;
       boolean shouldActivateTemplate = false;
