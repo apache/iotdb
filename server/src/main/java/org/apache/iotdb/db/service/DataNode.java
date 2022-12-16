@@ -207,9 +207,6 @@ public class DataNode implements DataNodeMBean {
     StartupChecks checks = new StartupChecks(IoTDBConstant.DN_ROLE).withDefaultTest();
     checks.verify();
 
-    // Check directories
-    IoTDBStartCheck.getInstance().checkDirectory();
-
     // Check system configurations
     IoTDBStartCheck.getInstance().checkSystemConfig();
 
@@ -284,8 +281,8 @@ public class DataNode implements DataNodeMBean {
 
     /* Check system configurations */
     try {
-      IoTDBStartCheck.getInstance().serializeGlobalConfig(configurationResp.globalConfig);
       IoTDBStartCheck.getInstance().checkDirectory();
+      IoTDBStartCheck.getInstance().serializeGlobalConfig(configurationResp.globalConfig);
       IoTDBDescriptor.getInstance().initClusterSchemaMemoryAllocate();
       if (!config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)) {
         // In current implementation, only IoTConsensus need separated memory from Consensus
