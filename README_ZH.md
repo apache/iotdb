@@ -141,7 +141,7 @@ git clone https://github.com/apache/iotdb.git
 git checkout vx.x.x
 ```
 
-或者切换大版本所在分支
+或者切换大版本所在分支，如 1.0 版本的分支为 rel/1.0
 
 ```
 git checkout rel/x.x

@@ -151,7 +151,7 @@ The default dev branch is the master branch, If you want to use a released versi
 git checkout vx.x.x
 ```
 
-Or checkout to the branch of a big version
+Or checkout to the branch of a big version, e.g., the branch of 1.0 is rel/1.0
 
 ```
 git checkout rel/x.x
