@@ -61,7 +61,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.CROSS_COMPACTION_TMP_FILE_SUFFIX;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_SEPARATOR;
@@ -230,7 +229,6 @@ public class RewriteCrossSpaceCompactionWithFastPerformerTest extends AbstractCo
             seqResources,
             unseqResources,
             new FastCompactionPerformer(true),
-            new AtomicInteger(0),
             0,
             0);
     task.start();
@@ -468,7 +466,6 @@ public class RewriteCrossSpaceCompactionWithFastPerformerTest extends AbstractCo
             seqResources,
             unseqResources,
             new FastCompactionPerformer(true),
-            new AtomicInteger(0),
             0,
             0);
     task.start();
@@ -616,7 +613,6 @@ public class RewriteCrossSpaceCompactionWithFastPerformerTest extends AbstractCo
             seqResources,
             unseqResources,
             new FastCompactionPerformer(true),
-            new AtomicInteger(0),
             0,
             0);
     task.setSourceFilesToCompactionCandidate();
@@ -737,7 +733,6 @@ public class RewriteCrossSpaceCompactionWithFastPerformerTest extends AbstractCo
             seqResources,
             unseqResources,
             new FastCompactionPerformer(true),
-            new AtomicInteger(0),
             0,
             0);
     task.setSourceFilesToCompactionCandidate();

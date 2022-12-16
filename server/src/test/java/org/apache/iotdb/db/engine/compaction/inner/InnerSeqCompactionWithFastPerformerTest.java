@@ -64,7 +64,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.apache.iotdb.db.engine.compaction.utils.CompactionCheckerUtils.putChunk;
 import static org.apache.iotdb.db.engine.compaction.utils.CompactionCheckerUtils.putOnePageChunk;
@@ -1045,13 +1044,8 @@ public class InnerSeqCompactionWithFastPerformerTest {
     ICompactionPerformer performer = new FastCompactionPerformer(false);
     InnerSpaceCompactionTask task =
         new InnerSpaceCompactionTask(
-            0,
-            vsgp.getTsFileResourceManager(),
-            sourceResources,
-            true,
-            performer,
-            new AtomicInteger(0),
-            0);
+            0, vsgp.getTsFileResourceManager(), sourceResources, true, performer, 0);
+
     task.setSourceFilesToCompactionCandidate();
     task.checkValidAndSetMerging();
     // delete data during compaction

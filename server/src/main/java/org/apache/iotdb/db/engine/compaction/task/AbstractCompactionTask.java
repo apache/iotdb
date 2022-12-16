@@ -27,8 +27,6 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.concurrent.atomic.AtomicInteger;
-
 /**
  * AbstractCompactionTask is the base class for all compaction task, it carries out the execution of
  * compaction. AbstractCompactionTask uses a template method, it executes the abstract function
@@ -42,7 +40,6 @@ public abstract class AbstractCompactionTask {
   protected String dataRegionId;
   protected String storageGroupName;
   protected long timePartition;
-  protected final AtomicInteger currentTaskNum;
   protected final TsFileManager tsFileManager;
   protected ICompactionPerformer performer;
   protected int hashCode = -1;
@@ -54,13 +51,11 @@ public abstract class AbstractCompactionTask {
       String dataRegionId,
       long timePartition,
       TsFileManager tsFileManager,
-      AtomicInteger currentTaskNum,
       long serialId) {
     this.storageGroupName = storageGroupName;
     this.dataRegionId = dataRegionId;
     this.timePartition = timePartition;
     this.tsFileManager = tsFileManager;
-    this.currentTaskNum = currentTaskNum;
     this.serialId = serialId;
   }
 
@@ -69,14 +64,14 @@ public abstract class AbstractCompactionTask {
   protected abstract void doCompaction();
 
   public void start() {
-    currentTaskNum.incrementAndGet();
+    CompactionTaskManager.increaseTaskNum();
     boolean isSuccess = false;
     try {
       summary.start();
       doCompaction();
       isSuccess = true;
     } finally {
-      this.currentTaskNum.decrementAndGet();
+      CompactionTaskManager.decreaseTaskNum();
       summary.finish(isSuccess);
       CompactionTaskManager.getInstance().removeRunningTaskFuture(this);
     }

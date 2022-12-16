@@ -49,6 +49,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 /** CompactionMergeTaskPoolManager provides a ThreadPool tPro queue and run all compaction tasks. */
 public class CompactionTaskManager implements IService {
@@ -67,6 +68,7 @@ public class CompactionTaskManager implements IService {
   private WrappedThreadPoolExecutor subCompactionTaskExecutionPool;
 
   public static volatile AtomicInteger currentTaskNum = new AtomicInteger(0);
+  private static final AtomicLong currentCompactionTaskSerialId = new AtomicLong(0);
   private final FixedPriorityBlockingQueue<AbstractCompactionTask> candidateCompactionTaskQueue =
       new FixedPriorityBlockingQueue<>(1024, new DefaultCompactionTaskComparatorImpl());
   // <StorageGroup-DataRegionId,futureSet>, it is used to store all compaction tasks under each
@@ -338,6 +340,18 @@ public class CompactionTaskManager implements IService {
 
   public long getFinishedTaskNum() {
     return finishedTaskNum.get();
+  }
+
+  public static void increaseTaskNum() {
+    currentTaskNum.incrementAndGet();
+  }
+
+  public static void decreaseTaskNum() {
+    currentTaskNum.decrementAndGet();
+  }
+
+  public static long getNextCompactionTaskId() {
+    return currentCompactionTaskSerialId.getAndIncrement();
   }
 
   public void recordTask(AbstractCompactionTask task, Future<CompactionTaskSummary> summary) {

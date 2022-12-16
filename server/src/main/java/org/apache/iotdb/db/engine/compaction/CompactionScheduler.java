@@ -108,7 +108,7 @@ public class CompactionScheduler {
             sequence
                 ? tsFileManager.getSequenceListByTimePartition(timePartition)
                 : tsFileManager.getUnsequenceListByTimePartition(timePartition));
-    for (List<TsFileResource> task : taskList) {
+    for (List<TsFileResource> candidateFileList : taskList) {
       ICompactionPerformer performer =
           sequence
               ? IoTDBDescriptor.getInstance()
@@ -124,11 +124,10 @@ public class CompactionScheduler {
               new InnerSpaceCompactionTask(
                   timePartition,
                   tsFileManager,
-                  task,
+                  candidateFileList,
                   sequence,
                   performer,
-                  CompactionTaskManager.currentTaskNum,
-                  tsFileManager.getNextCompactionTaskId()));
+                  CompactionTaskManager.getNextCompactionTaskId()));
     }
   }
 
@@ -162,9 +161,8 @@ public class CompactionScheduler {
                       .getConfig()
                       .getCrossCompactionPerformer()
                       .createInstance(),
-                  CompactionTaskManager.currentTaskNum,
                   memoryCost.get(i),
-                  tsFileManager.getNextCompactionTaskId()));
+                  CompactionTaskManager.getNextCompactionTaskId()));
     }
   }
 }

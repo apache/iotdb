@@ -42,7 +42,6 @@ import java.io.File;
 import java.io.IOException;
 import java.util.List;
 import java.util.concurrent.Future;
-import java.util.concurrent.atomic.AtomicInteger;
 
 public class CompactionTaskManagerTest extends InnerCompactionTest {
   static final Logger logger = LoggerFactory.getLogger(CompactionTaskManagerTest.class);
@@ -77,11 +76,9 @@ public class CompactionTaskManagerTest extends InnerCompactionTest {
         new TsFileManager("root.compactionTest", "0", tempSGDir.getAbsolutePath());
     tsFileManager.addAll(seqResources, true);
     InnerSpaceCompactionTask task1 =
-        new InnerSpaceCompactionTask(
-            0, tsFileManager, seqResources, true, performer, new AtomicInteger(0), 0);
+        new InnerSpaceCompactionTask(0, tsFileManager, seqResources, true, performer, 0);
     InnerSpaceCompactionTask task2 =
-        new InnerSpaceCompactionTask(
-            0, tsFileManager, seqResources, true, performer, new AtomicInteger(0), 0);
+        new InnerSpaceCompactionTask(0, tsFileManager, seqResources, true, performer, 0);
     seqResources.get(0).readLock();
     CompactionTaskManager manager = CompactionTaskManager.getInstance();
     Future<CompactionTaskSummary> summaryFuture = null;
@@ -121,11 +118,9 @@ public class CompactionTaskManagerTest extends InnerCompactionTest {
         new TsFileManager("root.compactionTest", "0", tempSGDir.getAbsolutePath());
     tsFileManager.addAll(seqResources, true);
     InnerSpaceCompactionTask task1 =
-        new InnerSpaceCompactionTask(
-            0, tsFileManager, seqResources, true, performer, new AtomicInteger(0), 0);
+        new InnerSpaceCompactionTask(0, tsFileManager, seqResources, true, performer, 0);
     InnerSpaceCompactionTask task2 =
-        new InnerSpaceCompactionTask(
-            0, tsFileManager, seqResources, true, performer, new AtomicInteger(0), 0);
+        new InnerSpaceCompactionTask(0, tsFileManager, seqResources, true, performer, 0);
     seqResources.get(0).readLock();
     Future<CompactionTaskSummary> summaryFuture = null;
     try {
@@ -163,11 +158,9 @@ public class CompactionTaskManagerTest extends InnerCompactionTest {
         new TsFileManager("root.compactionTest", "0", tempSGDir.getAbsolutePath());
     tsFileManager.addAll(seqResources, true);
     InnerSpaceCompactionTask task1 =
-        new InnerSpaceCompactionTask(
-            0, tsFileManager, seqResources, true, performer, new AtomicInteger(0), 0);
+        new InnerSpaceCompactionTask(0, tsFileManager, seqResources, true, performer, 0);
     InnerSpaceCompactionTask task2 =
-        new InnerSpaceCompactionTask(
-            0, tsFileManager, seqResources, true, performer, new AtomicInteger(0), 0);
+        new InnerSpaceCompactionTask(0, tsFileManager, seqResources, true, performer, 0);
     CompactionTaskManager manager = CompactionTaskManager.getInstance();
     seqResources.get(0).readLock();
     Assert.assertTrue(manager.addTaskToWaitingQueue(task1));
@@ -191,8 +184,7 @@ public class CompactionTaskManagerTest extends InnerCompactionTest {
         new TsFileManager("root.compactionTest", "0", tempSGDir.getAbsolutePath());
     tsFileManager.addAll(seqResources, true);
     InnerSpaceCompactionTask task1 =
-        new InnerSpaceCompactionTask(
-            0, tsFileManager, seqResources, true, performer, new AtomicInteger(0), 0);
+        new InnerSpaceCompactionTask(0, tsFileManager, seqResources, true, performer, 0);
     CompactionTaskManager manager = CompactionTaskManager.getInstance();
     manager.restart();
     seqResources.get(0).readLock();
@@ -221,8 +213,7 @@ public class CompactionTaskManagerTest extends InnerCompactionTest {
         new TsFileManager("root.compactionTest", "0", tempSGDir.getAbsolutePath());
     tsFileManager.addAll(seqResources, true);
     InnerSpaceCompactionTask task =
-        new InnerSpaceCompactionTask(
-            0, tsFileManager, seqResources, true, performer, new AtomicInteger(0), 0);
+        new InnerSpaceCompactionTask(0, tsFileManager, seqResources, true, performer, 0);
     seqResources.get(0).readLock();
     CompactionTaskManager.getInstance().addTaskToWaitingQueue(task);
 
@@ -252,7 +243,6 @@ public class CompactionTaskManagerTest extends InnerCompactionTest {
             seqResources,
             unseqResources,
             new FastCompactionPerformer(true),
-            new AtomicInteger(0),
             0,
             0);
 

@@ -63,7 +63,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.apache.iotdb.db.engine.compaction.utils.CompactionCheckerUtils.putChunk;
 import static org.apache.iotdb.db.engine.compaction.utils.CompactionCheckerUtils.putOnePageChunk;
@@ -1017,7 +1016,6 @@ public class InnerSeqCompactionWithReadChunkPerformerTest {
             sourceResources,
             true,
             new ReadChunkCompactionPerformer(),
-            new AtomicInteger(0),
             0);
     task.setSourceFilesToCompactionCandidate();
     task.checkValidAndSetMerging();

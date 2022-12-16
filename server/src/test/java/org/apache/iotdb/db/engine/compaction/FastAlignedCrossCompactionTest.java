@@ -45,7 +45,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.apache.iotdb.db.engine.compaction.utils.TsFileGeneratorUtils.createChunkWriter;
 import static org.apache.iotdb.db.engine.compaction.utils.TsFileGeneratorUtils.createDataType;
@@ -236,7 +235,6 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
             seqResources,
             unseqResources,
             new FastCompactionPerformer(true),
-            new AtomicInteger(0),
             0,
             0);
     task.start();
@@ -475,7 +473,6 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
             seqResources,
             unseqResources,
             new FastCompactionPerformer(true),
-            new AtomicInteger(0),
             0,
             0);
     task.start();
@@ -713,7 +710,6 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
             seqResources,
             unseqResources,
             new FastCompactionPerformer(true),
-            new AtomicInteger(0),
             0,
             0);
     task.start();
@@ -968,7 +964,6 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
             seqResources,
             unseqResources,
             new FastCompactionPerformer(true),
-            new AtomicInteger(0),
             0,
             0);
     task.start();
@@ -1316,7 +1311,6 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
             seqResources,
             unseqResources,
             new FastCompactionPerformer(true),
-            new AtomicInteger(0),
             0,
             0);
     task.start();
@@ -1672,7 +1666,6 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
             seqResources,
             unseqResources,
             new FastCompactionPerformer(true),
-            new AtomicInteger(0),
             0,
             0);
     task.start();
@@ -2038,7 +2031,6 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
             seqResources,
             unseqResources,
             new FastCompactionPerformer(true),
-            new AtomicInteger(0),
             0,
             0);
     task.start();
@@ -2388,7 +2380,6 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
             seqResources,
             unseqResources,
             new FastCompactionPerformer(true),
-            new AtomicInteger(0),
             0,
             0);
     task.start();
@@ -2739,7 +2730,6 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
             seqResources,
             unseqResources,
             new FastCompactionPerformer(true),
-            new AtomicInteger(0),
             0,
             0);
     task.start();
@@ -3101,7 +3091,6 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
             seqResources,
             unseqResources,
             new FastCompactionPerformer(true),
-            new AtomicInteger(0),
             0,
             0);
     task.start();
@@ -3514,7 +3503,6 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
             seqResources,
             unseqResources,
             new FastCompactionPerformer(true),
-            new AtomicInteger(0),
             0,
             0);
     task.start();
@@ -3930,7 +3918,6 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
             seqResources,
             unseqResources,
             new FastCompactionPerformer(true),
-            new AtomicInteger(0),
             0,
             0);
     task.start();
@@ -4346,7 +4333,6 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
             seqResources,
             unseqResources,
             new FastCompactionPerformer(true),
-            new AtomicInteger(0),
             0,
             0);
     task.start();
@@ -4811,7 +4797,6 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
             seqResources,
             unseqResources,
             new FastCompactionPerformer(true),
-            new AtomicInteger(0),
             0,
             0);
     task.start();
@@ -5224,7 +5209,6 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
             seqResources,
             unseqResources,
             new FastCompactionPerformer(true),
-            new AtomicInteger(0),
             0,
             0);
     task.start();
@@ -5430,7 +5414,6 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
             seqResources,
             unseqResources,
             new FastCompactionPerformer(true),
-            new AtomicInteger(0),
             0,
             0);
     task.start();
@@ -5695,7 +5678,6 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
             seqResources,
             unseqResources,
             new FastCompactionPerformer(true),
-            new AtomicInteger(0),
             0,
             0);
     task.start();
@@ -6078,7 +6060,6 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
             seqResources,
             unseqResources,
             new FastCompactionPerformer(true),
-            new AtomicInteger(0),
             0,
             0);
     task.start();
@@ -6429,7 +6410,6 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
             seqResources,
             unseqResources,
             new FastCompactionPerformer(true),
-            new AtomicInteger(0),
             0,
             0);
     task.start();
@@ -6668,7 +6648,6 @@ public class FastAlignedCrossCompactionTest extends AbstractCompactionTest {
             seqResources,
             unseqResources,
             new FastCompactionPerformer(true),
-            new AtomicInteger(0),
             0,
             0);
     task.start();

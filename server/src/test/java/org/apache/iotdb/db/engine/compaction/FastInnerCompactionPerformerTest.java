@@ -54,7 +54,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_SEPARATOR;
 import static org.junit.Assert.assertEquals;
@@ -120,13 +119,7 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
     tsFileManager.addAll(unseqResources, false);
     InnerSpaceCompactionTask task =
         new InnerSpaceCompactionTask(
-            0,
-            tsFileManager,
-            seqResources,
-            true,
-            new FastCompactionPerformer(false),
-            new AtomicInteger(0),
-            0);
+            0, tsFileManager, seqResources, true, new FastCompactionPerformer(false), 0);
     task.start();
 
     validateSeqFiles(true);
@@ -217,13 +210,7 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
     tsFileManager.addAll(unseqResources, false);
     InnerSpaceCompactionTask task =
         new InnerSpaceCompactionTask(
-            0,
-            tsFileManager,
-            seqResources,
-            true,
-            new FastCompactionPerformer(false),
-            new AtomicInteger(0),
-            0);
+            0, tsFileManager, seqResources, true, new FastCompactionPerformer(false), 0);
     task.start();
     List<TsFileResource> targetResources = tsFileManager.getTsFileList(true);
     validateSeqFiles(true);
@@ -330,13 +317,7 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
     tsFileManager.addAll(unseqResources, false);
     InnerSpaceCompactionTask task =
         new InnerSpaceCompactionTask(
-            0,
-            tsFileManager,
-            unseqResources,
-            false,
-            new FastCompactionPerformer(false),
-            new AtomicInteger(0),
-            0);
+            0, tsFileManager, unseqResources, false, new FastCompactionPerformer(false), 0);
     task.start();
     List<TsFileResource> targetResources = tsFileManager.getTsFileList(false);
     validateSeqFiles(false);
@@ -444,13 +425,7 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
     tsFileManager.addAll(unseqResources, false);
     InnerSpaceCompactionTask task =
         new InnerSpaceCompactionTask(
-            0,
-            tsFileManager,
-            unseqResources,
-            false,
-            new FastCompactionPerformer(false),
-            new AtomicInteger(0),
-            0);
+            0, tsFileManager, unseqResources, false, new FastCompactionPerformer(false), 0);
     task.start();
     validateSeqFiles(true);
 
@@ -589,13 +564,7 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
     tsFileManager.addAll(unseqResources, false);
     InnerSpaceCompactionTask task =
         new InnerSpaceCompactionTask(
-            0,
-            tsFileManager,
-            unseqResources,
-            false,
-            new FastCompactionPerformer(false),
-            new AtomicInteger(0),
-            0);
+            0, tsFileManager, unseqResources, false, new FastCompactionPerformer(false), 0);
     task.start();
     validateSeqFiles(false);
 
@@ -723,13 +692,7 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
     tsFileManager.addAll(unseqResources, false);
     InnerSpaceCompactionTask task =
         new InnerSpaceCompactionTask(
-            0,
-            tsFileManager,
-            unseqResources,
-            false,
-            new FastCompactionPerformer(false),
-            new AtomicInteger(0),
-            0);
+            0, tsFileManager, unseqResources, false, new FastCompactionPerformer(false), 0);
     task.start();
     validateSeqFiles(false);
 
@@ -843,13 +806,7 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
     tsFileManager.addAll(unseqResources, false);
     InnerSpaceCompactionTask task =
         new InnerSpaceCompactionTask(
-            0,
-            tsFileManager,
-            unseqResources,
-            false,
-            new FastCompactionPerformer(false),
-            new AtomicInteger(0),
-            0);
+            0, tsFileManager, unseqResources, false, new FastCompactionPerformer(false), 0);
     task.start();
     validateSeqFiles(true);
 
@@ -933,13 +890,7 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
     tsFileManager.addAll(unseqResources, false);
     InnerSpaceCompactionTask task =
         new InnerSpaceCompactionTask(
-            0,
-            tsFileManager,
-            seqResources,
-            true,
-            new FastCompactionPerformer(false),
-            new AtomicInteger(0),
-            0);
+            0, tsFileManager, seqResources, true, new FastCompactionPerformer(false), 0);
     task.start();
     List<TsFileResource> targetResources = tsFileManager.getTsFileList(true);
     validateSeqFiles(true);
@@ -1052,13 +1003,7 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
     tsFileManager.addAll(unseqResources, false);
     InnerSpaceCompactionTask task =
         new InnerSpaceCompactionTask(
-            0,
-            tsFileManager,
-            seqResources,
-            true,
-            new FastCompactionPerformer(false),
-            new AtomicInteger(0),
-            0);
+            0, tsFileManager, seqResources, true, new FastCompactionPerformer(false), 0);
     task.start();
     validateSeqFiles(true);
 
@@ -1180,13 +1125,7 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
     tsFileManager.addAll(unseqResources, false);
     InnerSpaceCompactionTask task =
         new InnerSpaceCompactionTask(
-            0,
-            tsFileManager,
-            seqResources,
-            true,
-            new FastCompactionPerformer(false),
-            new AtomicInteger(0),
-            0);
+            0, tsFileManager, seqResources, true, new FastCompactionPerformer(false), 0);
     task.start();
     validateSeqFiles(true);
 
@@ -1313,13 +1252,7 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
     tsFileManager.addAll(unseqResources, false);
     InnerSpaceCompactionTask task =
         new InnerSpaceCompactionTask(
-            0,
-            tsFileManager,
-            unseqResources,
-            false,
-            new FastCompactionPerformer(false),
-            new AtomicInteger(0),
-            0);
+            0, tsFileManager, unseqResources, false, new FastCompactionPerformer(false), 0);
     task.start();
     validateSeqFiles(false);
 
@@ -1496,13 +1429,7 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
     tsFileManager.addAll(unseqResources, false);
     InnerSpaceCompactionTask task =
         new InnerSpaceCompactionTask(
-            0,
-            tsFileManager,
-            unseqResources,
-            false,
-            new FastCompactionPerformer(false),
-            new AtomicInteger(0),
-            0);
+            0, tsFileManager, unseqResources, false, new FastCompactionPerformer(false), 0);
     task.start();
     validateSeqFiles(false);
 
@@ -1659,13 +1586,7 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
     tsFileManager.addAll(unseqResources, false);
     InnerSpaceCompactionTask task =
         new InnerSpaceCompactionTask(
-            0,
-            tsFileManager,
-            unseqResources,
-            false,
-            new FastCompactionPerformer(false),
-            new AtomicInteger(0),
-            0);
+            0, tsFileManager, unseqResources, false, new FastCompactionPerformer(false), 0);
     task.start();
     validateSeqFiles(false);
 
@@ -1774,13 +1695,7 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
     tsFileManager.addAll(unseqResources, false);
     InnerSpaceCompactionTask task =
         new InnerSpaceCompactionTask(
-            0,
-            tsFileManager,
-            unseqResources,
-            false,
-            new FastCompactionPerformer(false),
-            new AtomicInteger(0),
-            0);
+            0, tsFileManager, unseqResources, false, new FastCompactionPerformer(false), 0);
     task.start();
     validateSeqFiles(false);
 

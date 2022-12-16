@@ -46,7 +46,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicInteger;
 
 public class InnerSpaceCompactionTask extends AbstractCompactionTask {
   private static final Logger LOGGER =
@@ -71,14 +70,12 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
       List<TsFileResource> selectedTsFileResourceList,
       boolean sequence,
       ICompactionPerformer performer,
-      AtomicInteger currentTaskNum,
       long serialId) {
     super(
         tsFileManager.getStorageGroupName(),
         tsFileManager.getDataRegionId(),
         timePartition,
         tsFileManager,
-        currentTaskNum,
         serialId);
     this.selectedTsFileResourceList = selectedTsFileResourceList;
     this.sequence = sequence;
