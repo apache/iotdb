@@ -355,7 +355,6 @@ public abstract class Cases {
     session.insertRecords(deviceIds, timestamps, measurementsList, typesList, valuesList);
   }
 
-
   // test https://issues.apache.org/jira/browse/IOTDB-1407
   @Test
   public void showTimeseriesTagsTest() throws SQLException {
