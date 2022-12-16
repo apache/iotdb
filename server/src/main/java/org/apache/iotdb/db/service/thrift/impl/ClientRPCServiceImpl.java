@@ -25,7 +25,6 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
-import org.apache.iotdb.commons.service.metric.enums.Operation;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -244,7 +243,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       return RpcUtils.getTSExecuteStatementResp(
           onQueryException(e, "\"" + statement + "\". " + OperationType.EXECUTE_STATEMENT));
     } finally {
-      addOperationLatency(Operation.EXECUTE_QUERY, startTime);
+      addOperationLatency(OperationType.EXECUTE_STATEMENT, startTime);
       if (finished) {
         COORDINATOR.cleanupQueryExecution(queryId);
       }
@@ -306,7 +305,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       return RpcUtils.getTSExecuteStatementResp(
           onQueryException(e, "\"" + req + "\". " + OperationType.EXECUTE_RAW_DATA_QUERY));
     } finally {
-      addOperationLatency(Operation.EXECUTE_QUERY, startTime);
+      addOperationLatency(OperationType.EXECUTE_RAW_DATA_QUERY, startTime);
       if (finished) {
         COORDINATOR.cleanupQueryExecution(queryId);
       }
@@ -367,7 +366,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       return RpcUtils.getTSExecuteStatementResp(
           onQueryException(e, "\"" + req + "\". " + OperationType.EXECUTE_LAST_DATA_QUERY));
     } finally {
-      addOperationLatency(Operation.EXECUTE_QUERY, startTime);
+      addOperationLatency(OperationType.EXECUTE_LAST_DATA_QUERY, startTime);
       if (finished) {
         COORDINATOR.cleanupQueryExecution(queryId);
       }
@@ -433,7 +432,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       finished = true;
       return RpcUtils.getTSFetchResultsResp(onQueryException(e, OperationType.FETCH_RESULTS));
     } finally {
-      addOperationLatency(Operation.EXECUTE_QUERY, startTime);
+      addOperationLatency(OperationType.FETCH_RESULTS, startTime);
       if (finished) {
         COORDINATOR.cleanupQueryExecution(req.queryId);
       }
@@ -866,7 +865,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
                 PARTITION_FETCHER,
                 SCHEMA_FETCHER,
                 config.getQueryTimeoutThreshold());
-        addOperationLatency(Operation.EXECUTE_ONE_SQL_IN_BATCH, t2);
+        addOperationLatency(OperationType.EXECUTE_STATEMENT, t2);
         results.add(result.status);
       } catch (Exception e) {
         LOGGER.warn("Error occurred when executing executeBatchStatement: ", e);
@@ -878,7 +877,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         results.add(status);
       }
     }
-    addOperationLatency(Operation.EXECUTE_JDBC_BATCH, t1);
+    addOperationLatency(OperationType.EXECUTE_BATCH_STATEMENT, t1);
     return isAllSuccessful
         ? RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "Execute batch statements successfully")
         : RpcUtils.getStatus(results);
@@ -928,7 +927,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       finished = true;
       return RpcUtils.getTSFetchResultsResp(onQueryException(e, OperationType.FETCH_RESULTS));
     } finally {
-      addOperationLatency(Operation.EXECUTE_QUERY, startTime);
+      addOperationLatency(OperationType.FETCH_RESULTS, startTime);
       if (finished) {
         COORDINATOR.cleanupQueryExecution(req.queryId);
       }
@@ -987,7 +986,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       return onNPEOrUnexpectedException(
           e, OperationType.INSERT_RECORDS, TSStatusCode.EXECUTE_STATEMENT_ERROR);
     } finally {
-      addOperationLatency(Operation.EXECUTE_RPC_BATCH_INSERT, t1);
+      addOperationLatency(OperationType.INSERT_RECORDS, t1);
     }
   }
 
@@ -1044,7 +1043,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       return onNPEOrUnexpectedException(
           e, OperationType.INSERT_RECORDS_OF_ONE_DEVICE, TSStatusCode.EXECUTE_STATEMENT_ERROR);
     } finally {
-      addOperationLatency(Operation.EXECUTE_RPC_BATCH_INSERT, t1);
+      addOperationLatency(OperationType.INSERT_RECORDS_OF_ONE_DEVICE, t1);
     }
   }
 
@@ -1104,7 +1103,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           OperationType.INSERT_STRING_RECORDS_OF_ONE_DEVICE,
           TSStatusCode.EXECUTE_STATEMENT_ERROR);
     } finally {
-      addOperationLatency(Operation.EXECUTE_RPC_BATCH_INSERT, t1);
+      addOperationLatency(OperationType.INSERT_STRING_RECORDS_OF_ONE_DEVICE, t1);
     }
   }
 
@@ -1156,7 +1155,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       return onNPEOrUnexpectedException(
           e, OperationType.INSERT_RECORD, TSStatusCode.EXECUTE_STATEMENT_ERROR);
     } finally {
-      addOperationLatency(Operation.EXECUTE_RPC_BATCH_INSERT, t1);
+      addOperationLatency(OperationType.INSERT_RECORD, t1);
     }
   }
 
@@ -1204,7 +1203,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       return onNPEOrUnexpectedException(
           e, OperationType.INSERT_TABLETS, TSStatusCode.EXECUTE_STATEMENT_ERROR);
     } finally {
-      addOperationLatency(Operation.EXECUTE_RPC_BATCH_INSERT, t1);
+      addOperationLatency(OperationType.INSERT_TABLETS, t1);
     }
   }
 
@@ -1251,7 +1250,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       return onNPEOrUnexpectedException(
           e, OperationType.INSERT_TABLET, TSStatusCode.EXECUTE_STATEMENT_ERROR);
     } finally {
-      addOperationLatency(Operation.EXECUTE_RPC_BATCH_INSERT, t1);
+      addOperationLatency(OperationType.INSERT_TABLET, t1);
     }
   }
 
@@ -1305,7 +1304,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       return onNPEOrUnexpectedException(
           e, OperationType.INSERT_STRING_RECORDS, TSStatusCode.EXECUTE_STATEMENT_ERROR);
     } finally {
-      addOperationLatency(Operation.EXECUTE_RPC_BATCH_INSERT, t1);
+      addOperationLatency(OperationType.INSERT_STRING_RECORDS, t1);
     }
   }
 
@@ -1557,7 +1556,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           onQueryException(e, "\"" + statement + "\". " + OperationType.EXECUTE_STATEMENT));
       return null;
     } finally {
-      addOperationLatency(Operation.EXECUTE_QUERY, startTime);
+      addOperationLatency(OperationType.EXECUTE_STATEMENT, startTime);
     }
   }
 
@@ -1766,7 +1765,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       return onNPEOrUnexpectedException(
           e, OperationType.INSERT_STRING_RECORD, TSStatusCode.EXECUTE_STATEMENT_ERROR);
     } finally {
-      addOperationLatency(Operation.EXECUTE_RPC_BATCH_INSERT, t1);
+      addOperationLatency(OperationType.INSERT_STRING_RECORD, t1);
     }
   }
 
@@ -1790,7 +1789,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
   }
 
   /** Add stat of operation into metrics */
-  private void addOperationLatency(Operation operation, long startTime) {
+  private void addOperationLatency(OperationType operation, long startTime) {
     MetricService.getInstance()
         .histogram(
             System.currentTimeMillis() - startTime,
