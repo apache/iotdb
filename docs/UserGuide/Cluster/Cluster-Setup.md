@@ -28,7 +28,8 @@ This document describes how to install and start IoTDB Cluster (1.0.0).
 1. JDK>=1.8.
 2. Max open file 65535.
 3. Disable the swap memory.
-4. Ensure there are no data dir or the data dir is empty before the Node is started for the first time.
+4. Ensure that data/confignode directory has been cleared when starting ConfigNode for the first time,
+and data/datanode directory has been cleared when starting DataNode for the first time
 5. Turn off the firewall of the server if the entire cluster is in a trusted environment.
 6. By default, IoTDB Cluster will use ports 22277, 22278 for the ConfigNode and 
 6667, 8777, 9003, 40010 and 50010 for the DataNode. 
@@ -286,20 +287,23 @@ Please read the [Cli manual](https://iotdb.apache.org/UserGuide/Master/QuickStar
 ## 6.3 Verify Cluster
 
 Use a 3C3D(3 ConfigNodes and 3 DataNodes) as an example.
-Run the `show cluster details` command on the Cli, You will see the following results:
+Assumed that the IP addresses of the 3 ConfigNodes are 192.168.1.10, 192.168.1.11 and 192.168.1.12, and the default ports 22277 and 22278 are used.
+Assumed that the IP addresses of the 3 DataNodes are 192.168.1.20, 192.168.1.21 and 192.168.1.22, and the default ports 9003, 6667, 40010, 50010 and 8777 are used.
+
+After starting the cluster successfully according to chapter 6.1, you can run the `show cluster details` command on the Cli, and you will see the following results:
 
 ```
 IoTDB> show cluster details
-+------+----------+-------+---------------+------------+-------------------+----------+-------+-----------------+-------------------+-------+
-|NodeID|  NodeType| Status|InternalAddress|InternalPort|ConfigConsensusPort|RpcAddress|RpcPort|DataConsensusPort|SchemaConsensusPort|MppPort|
-+------+----------+-------+---------------+------------+-------------------+----------+-------+-----------------+-------------------+-------+
-|     0|ConfigNode|Running|      127.0.0.1|       22277|              22278|          |       |                 |                   |       |
-|     2|ConfigNode|Running|      127.0.0.1|       22279|              22280|          |       |                 |                   |       |
-|     3|ConfigNode|Running|      127.0.0.1|       22281|              22282|          |       |                 |                   |       |
-|     1|  DataNode|Running|      127.0.0.1|        9003|                   | 127.0.0.1|   6667|            40010|              50010|   8777|
-|     4|  DataNode|Running|      127.0.0.1|        9004|                   | 127.0.0.1|   6668|            40011|              50011|   8778|
-|     5|  DataNode|Running|      127.0.0.1|        9005|                   | 127.0.0.1|   6669|            40012|              50012|   8779|
-+------+----------+-------+---------------+------------+-------------------+----------+-------+-----------------+-------------------+-------+
++------+----------+-------+---------------+------------+-------------------+------------+-------+-----------------+-------------------+-------+
+|NodeID|  NodeType| Status|InternalAddress|InternalPort|ConfigConsensusPort|  RpcAddress|RpcPort|DataConsensusPort|SchemaConsensusPort|MppPort|
++------+----------+-------+---------------+------------+-------------------+------------+-------+-----------------+-------------------+-------+
+|     0|ConfigNode|Running|   192.168.1.10|       22277|              22278|            |       |                 |                   |       |
+|     2|ConfigNode|Running|   192.168.1.11|       22277|              22278|            |       |                 |                   |       |
+|     3|ConfigNode|Running|   192.168.1.12|       22277|              22278|            |       |                 |                   |       |
+|     1|  DataNode|Running|   192.168.1.20|        9003|                   |192.168.1.20|   6667|            40010|              50010|   8777|
+|     4|  DataNode|Running|   192.168.1.21|        9003|                   |192.168.1.21|   6667|            40010|              50010|   8777|
+|     5|  DataNode|Running|   192.168.1.22|        9003|                   |192.168.1.22|   6667|            40010|              50010|   8777|
++------+----------+-------+---------------+------------+-------------------+------------+-------+-----------------+-------------------+-------+
 Total line number = 6
 It costs 0.012s
 ```
