@@ -349,8 +349,9 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       Analysis analysis, List<Expression> selectExpressions, ISchemaTree schemaTree) {
     Set<Expression> sourceExpressions;
 
-    List<SortItem> sortItemList = analysis.getMergeOrderParameter().getSortItemList();
-    if (sortItemList.size() > 0) {
+    OrderByParameter orderByParameter = analysis.getMergeOrderParameter();
+    if (orderByParameter != null && orderByParameter.getSortItemList().size() > 0) {
+      List<SortItem> sortItemList = orderByParameter.getSortItemList();
       checkState(
           sortItemList.size() == 1 && sortItemList.get(0).getSortKey() == SortKey.TIMESERIES,
           "Last queries only support sorting by timeseries now.");
