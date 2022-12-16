@@ -658,8 +658,8 @@ public class IoTDBConfig {
    */
   private long mergeIntervalSec = 0L;
 
-  /** The limit of compaction merge can reach per second */
-  private int compactionWriteThroughputMbPerSec = 16;
+  /** The limit of io rate can reach per second */
+  private int compactionIORatePerSec = 50;
 
   /**
    * How many thread will be set up to perform compaction, 10 by default. Set to 1 when less than or
@@ -1913,12 +1913,12 @@ public class IoTDBConfig {
     this.intoOperationExecutionThreadCount = intoOperationExecutionThreadCount;
   }
 
-  public int getCompactionWriteThroughputMbPerSec() {
-    return compactionWriteThroughputMbPerSec;
+  public int getCompactionIORatePerSec() {
+    return compactionIORatePerSec;
   }
 
-  public void setCompactionWriteThroughputMbPerSec(int compactionWriteThroughputMbPerSec) {
-    this.compactionWriteThroughputMbPerSec = compactionWriteThroughputMbPerSec;
+  public void setCompactionIORatePerSec(int compactionIORatePerSec) {
+    this.compactionIORatePerSec = compactionIORatePerSec;
   }
 
   public boolean isEnableMemControl() {
