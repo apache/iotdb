@@ -169,7 +169,7 @@ checkDataNodePortUsages () {
     dn_schema_region_consensus_port=$(sed '/^dn_schema_region_consensus_port=/!d;s/.*=//' "${IOTDB_CONF}"/iotdb-datanode.properties)
     dn_data_region_consensus_port=$(sed '/^dn_data_region_consensus_port=/!d;s/.*=//' "${IOTDB_CONF}"/iotdb-datanode.properties)
   else
-    echo "Cannot find iotdb-datanode.properties, check the default configuration"
+    echo "Warning: cannot find iotdb-datanode.properties, check the default configuration"
     dn_rpc_port=6667
     dn_internal_port=9003
     dn_mpp_data_exchange_port=8777
