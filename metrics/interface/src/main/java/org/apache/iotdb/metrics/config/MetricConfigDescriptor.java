@@ -112,33 +112,35 @@ public class MetricConfigDescriptor {
 
     MetricConfig.IoTDBReporterConfig reporterConfig = loadConfig.getIoTDBReporterConfig();
     reporterConfig.setHost(
-        getProperty("iotdb_reporter_host", reporterConfig.getHost(), properties));
+        getProperty("metric_iotdb_reporter_host", reporterConfig.getHost(), properties));
 
     reporterConfig.setPort(
         Integer.valueOf(
             getProperty(
-                "iotdb_reporter_port", String.valueOf(reporterConfig.getPort()), properties)));
+                "metric_iotdb_reporter_port",
+                String.valueOf(reporterConfig.getPort()),
+                properties)));
 
     reporterConfig.setUsername(
-        getProperty("iotdb_reporter_username", reporterConfig.getUsername(), properties));
+        getProperty("metric_iotdb_reporter_username", reporterConfig.getUsername(), properties));
 
     reporterConfig.setPassword(
-        getProperty("iotdb_reporter_password", reporterConfig.getPassword(), properties));
+        getProperty("metric_iotdb_reporter_password", reporterConfig.getPassword(), properties));
 
     reporterConfig.setMaxConnectionNumber(
         Integer.valueOf(
             getProperty(
-                "iotdb_reporter_max_connection_number",
+                "metric_iotdb_reporter_max_connection_number",
                 String.valueOf(reporterConfig.getMaxConnectionNumber()),
                 properties)));
 
     reporterConfig.setLocation(
-        getProperty("iotdb_reporter_location", reporterConfig.getLocation(), properties));
+        getProperty("metric_iotdb_reporter_location", reporterConfig.getLocation(), properties));
 
     reporterConfig.setPushPeriodInSecond(
         Integer.valueOf(
             getProperty(
-                "iotdb_reporter_push_period",
+                "metric_iotdb_reporter_push_period",
                 String.valueOf(reporterConfig.getPushPeriodInSecond()),
                 properties)));
 
