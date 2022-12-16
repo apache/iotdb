@@ -187,8 +187,6 @@ public class LocalSinkHandle implements ISinkHandle {
     return remotePlanNodeId;
   }
 
-  public void setMaxBytesCanReserve() {}
-
   SharedTsBlockQueue getSharedTsBlockQueue() {
     return queue;
   }
