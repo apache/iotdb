@@ -913,14 +913,14 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Default| 60000 |
 |Effective|After restart system|
 
-* compaction\_write\_throughput\_mb\_per\_sec
+* compaction\_io\_rate\_per\_sec
 
-|Name| compaction\_write\_throughput\_mb\_per\_sec |
-|:---:|:---|
-|Description| The write rate of all compaction tasks in MB/s |
-|Type| Int32 |
-|Default| 16 |
-|Effective|After restart system|
+|Name| compaction\_io\_rate\_per\_sec                    |
+|:---:|:--------------------------------------------------|
+|Description| The io rate of all compaction tasks in one second |
+|Type| Int32                                             |
+|Default| 50                                                |
+|Effective| After restart system                              |
 
 ### Insertion
 

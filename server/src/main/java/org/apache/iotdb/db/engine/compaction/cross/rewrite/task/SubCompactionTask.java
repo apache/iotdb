@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.engine.compaction.cross.rewrite.task;
 
 import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.compaction.CompactionUtils;
 import org.apache.iotdb.db.engine.compaction.writer.AbstractCompactionWriter;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
@@ -91,6 +92,7 @@ public class SubCompactionTask implements Callable<Void> {
         if (dataBatchReader.hasNextBatch()) {
           compactionWriter.startMeasurement(measurementSchemas, taskId);
           CompactionUtils.writeWithReader(compactionWriter, dataBatchReader, taskId);
+          CompactionTaskManager.getInstance().getCompactionIORateLimiter().acquire(1);
           compactionWriter.endMeasurement(taskId);
         }
       }

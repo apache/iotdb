@@ -150,6 +150,9 @@ public class CompactionUtils {
       compactionWriter.startChunkGroup(device, true);
       compactionWriter.startMeasurement(measurementSchemas, 0);
       writeWithReader(compactionWriter, dataBatchReader, 0);
+      CompactionTaskManager.getInstance()
+          .getCompactionIORateLimiter()
+          .acquire(measurementSchemas.size() + 1);
       compactionWriter.endMeasurement(0);
       compactionWriter.endChunkGroup();
     }
