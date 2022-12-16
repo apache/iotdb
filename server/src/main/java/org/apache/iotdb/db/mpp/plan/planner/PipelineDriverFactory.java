@@ -39,8 +39,8 @@ public class PipelineDriverFactory {
   @GuardedBy("this")
   private boolean noMoreDrivers;
 
-  public PipelineDriverFactory(Operator operator, DriverContext driverContext) {
-    this.operation = requireNonNull(operator, "rootOperator is null");
+  public PipelineDriverFactory(Operator operation, DriverContext driverContext) {
+    this.operation = requireNonNull(operation, "rootOperator is null");
     this.driverContext = driverContext;
   }
 
