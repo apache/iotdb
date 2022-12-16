@@ -27,7 +27,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 
 import java.util.List;
 
-import static org.apache.iotdb.db.mpp.metric.QueryPlanCostMetrics.LOGICAL_PLANNER;
+import static org.apache.iotdb.db.mpp.metric.QueryPlanCostMetricSet.LOGICAL_PLANNER;
 
 /** Generate a logical plan for the statement. */
 public class LogicalPlanner {

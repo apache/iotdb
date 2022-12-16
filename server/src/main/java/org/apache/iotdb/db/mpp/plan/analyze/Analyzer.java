@@ -25,7 +25,7 @@ import org.apache.iotdb.db.mpp.metric.QueryMetricsManager;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 
 import static org.apache.iotdb.db.mpp.common.QueryId.mockQueryId;
-import static org.apache.iotdb.db.mpp.metric.QueryPlanCostMetrics.ANALYZER;
+import static org.apache.iotdb.db.mpp.metric.QueryPlanCostMetricSet.ANALYZER;
 
 /** Analyze the statement and generate Analysis. */
 public class Analyzer {

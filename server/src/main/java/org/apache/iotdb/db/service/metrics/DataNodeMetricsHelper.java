@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.service.metrics;
 
 import org.apache.iotdb.commons.service.metric.MetricService;
-import org.apache.iotdb.db.mpp.metric.QueryPlanCostMetrics;
+import org.apache.iotdb.db.mpp.metric.QueryPlanCostMetricSet;
 import org.apache.iotdb.metrics.metricsets.jvm.JvmMetrics;
 import org.apache.iotdb.metrics.metricsets.logback.LogbackMetrics;
 
@@ -34,6 +34,6 @@ public class DataNodeMetricsHelper {
     MetricService.getInstance().addMetricSet(new SystemMetrics(true));
 
     // bind query related metrics
-    MetricService.getInstance().addMetricSet(new QueryPlanCostMetrics());
+    MetricService.getInstance().addMetricSet(new QueryPlanCostMetricSet());
   }
 }

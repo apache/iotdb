@@ -29,7 +29,7 @@ import org.apache.iotdb.metrics.utils.MetricType;
 import java.util.Arrays;
 import java.util.List;
 
-public class QueryPlanCostMetrics implements IMetricSet {
+public class QueryPlanCostMetricSet implements IMetricSet {
 
   public static final String SQL_PARSER = "sql_parser";
   public static final String ANALYZER = "analyzer";

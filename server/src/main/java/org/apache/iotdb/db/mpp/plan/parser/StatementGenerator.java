@@ -102,7 +102,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static org.apache.iotdb.db.mpp.metric.QueryPlanCostMetrics.SQL_PARSER;
+import static org.apache.iotdb.db.mpp.metric.QueryPlanCostMetricSet.SQL_PARSER;
 
 /** Convert SQL and RPC requests to {@link Statement}. */
 public class StatementGenerator {
