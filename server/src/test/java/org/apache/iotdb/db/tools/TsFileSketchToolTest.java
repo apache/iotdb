@@ -162,21 +162,16 @@ public class TsFileSketchToolTest {
     args[0] = path;
     args[1] = sketchOut;
     TsFileSketchTool tool = new TsFileSketchTool(path, sketchOut);
-    try {
-      tool.run();
-      List<ChunkGroupMetadata> chunkGroupMetadataList = tool.getAllChunkGroupMetadata();
-      Assert.assertEquals(2, chunkGroupMetadataList.size());
-      for (ChunkGroupMetadata chunkGroupMetadata : chunkGroupMetadataList) {
-        if (device.equals(chunkGroupMetadata.getDevice())) {
-          Assert.assertEquals(sensorNum, chunkGroupMetadata.getChunkMetadataList().size());
-        } else if (alignedDevice.equals(chunkGroupMetadata.getDevice())) {
-          Assert.assertEquals(sensorNum + 1, chunkGroupMetadata.getChunkMetadataList().size());
-        } else {
-          Assert.fail();
-        }
+    List<ChunkGroupMetadata> chunkGroupMetadataList = tool.getAllChunkGroupMetadata();
+    Assert.assertEquals(2, chunkGroupMetadataList.size());
+    for (ChunkGroupMetadata chunkGroupMetadata : chunkGroupMetadataList) {
+      if (device.equals(chunkGroupMetadata.getDevice())) {
+        Assert.assertEquals(sensorNum, chunkGroupMetadata.getChunkMetadataList().size());
+      } else if (alignedDevice.equals(chunkGroupMetadata.getDevice())) {
+        Assert.assertEquals(sensorNum + 1, chunkGroupMetadata.getChunkMetadataList().size());
+      } else {
+        Assert.fail();
       }
-    } catch (IOException e) {
-      Assert.fail(e.getMessage());
     }
   }
 
