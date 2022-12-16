@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.engine.flush;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.flush.pool.FlushSubTaskPoolManager;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
@@ -295,6 +296,22 @@ public class MemTableFlushTask {
             throw new FlushRunTimeException(e);
           }
           ioTime += System.currentTimeMillis() - starTime;
+        }
+        if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()
+            && !storageGroup.startsWith(IoTDBConstant.SYSTEM_STORAGE_GROUP)) {
+          int lastIndex = storageGroup.lastIndexOf("/");
+          if (lastIndex == -1) {
+            lastIndex = storageGroup.length();
+          }
+          MetricService.getInstance()
+              .gaugeWithInternalReport(
+                  memTable.getTotalPointsNum(),
+                  Metric.POINTS.toString(),
+                  MetricLevel.CORE,
+                  Tag.SG.toString(),
+                  storageGroup.substring(0, lastIndex),
+                  Tag.TYPE.toString(),
+                  "flush");
         }
         LOGGER.debug(
             "flushing a memtable to file {} in storage group {}, io cost {}ms",

@@ -59,6 +59,7 @@ public class MetricConfigTest {
     assertEquals(5, metricConfig.getPredefinedMetrics().size());
     assertEquals(10, (int) metricConfig.getAsyncCollectPeriodInSecond());
     assertEquals(9090, (int) metricConfig.getPrometheusExporterPort());
+    assertTrue(metricConfig.isStoreToLocal());
 
     MetricConfig.IoTDBReporterConfig reporterConfig = metricConfig.getIoTDBReporterConfig();
     assertEquals("0.0.0.0", reporterConfig.getHost());

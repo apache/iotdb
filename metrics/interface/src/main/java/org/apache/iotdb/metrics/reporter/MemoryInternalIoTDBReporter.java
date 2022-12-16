@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -17,25 +17,42 @@
  * under the License.
  */
 
-package org.apache.iotdb.metrics.impl;
+package org.apache.iotdb.metrics.reporter;
 
-import org.apache.iotdb.metrics.type.Histogram;
-import org.apache.iotdb.metrics.type.HistogramSnapshot;
+import org.apache.iotdb.metrics.AbstractMetricManager;
+import org.apache.iotdb.metrics.utils.ReporterType;
 
-public class DoNothingHistogram implements Histogram, DoNothingMetric {
+import java.util.Map;
+
+public class MemoryInternalIoTDBReporter extends InternalIoTDBReporter {
 
   @Override
-  public void update(long value) {
+  protected void writeMetricToIoTDB(Map<String, Object> valueMap, String prefix, long time) {
     // do nothing
   }
 
   @Override
-  public long count() {
-    return 0;
+  protected void writeMetricsToIoTDB(Map<String, Map<String, Object>> valueMap, long time) {
+    // do nothing
   }
 
   @Override
-  public HistogramSnapshot takeSnapshot() {
-    return new DoNothingHistogramSnapshot();
+  public boolean start() {
+    return false;
+  }
+
+  @Override
+  public boolean stop() {
+    return false;
+  }
+
+  @Override
+  public ReporterType getReporterType() {
+    return ReporterType.IOTDB;
+  }
+
+  @Override
+  public void setMetricManager(AbstractMetricManager metricManager) {
+    // do nothing
   }
 }

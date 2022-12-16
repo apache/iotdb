@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -19,37 +19,4 @@
 
 package org.apache.iotdb.metrics.type;
 
-import java.util.Map;
-
-public interface Rate extends IMetric {
-
-  /** get the value of rate */
-  long getCount();
-
-  /** get one minute rate */
-  double getOneMinuteRate();
-
-  /** get mean rate */
-  double getMeanRate();
-
-  /** get five minute rate */
-  double getFiveMinuteRate();
-
-  /** get fifteen minute rate */
-  double getFifteenMinuteRate();
-
-  /** mark in rate */
-  void mark();
-
-  /** mark n in rate */
-  void mark(long n);
-
-  @Override
-  default void constructValueMap(Map<String, Object> result) {
-    result.put("count", getCount());
-    result.put("mean", getMeanRate());
-    result.put("m1", getOneMinuteRate());
-    result.put("m5", getFiveMinuteRate());
-    result.put("m15", getFifteenMinuteRate());
-  }
-}
+public interface AutoGauge extends Gauge {}

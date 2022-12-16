@@ -57,6 +57,9 @@ public class MetricConfig {
   /** The config for iotdb reporter to push metric data */
   private IoTDBReporterConfig ioTDBReporterConfig = new IoTDBReporterConfig();
 
+  /** Whether store predefined metrics locally */
+  private Boolean isStoreToLocal = false;
+
   public static class IoTDBReporterConfig {
     /** The host of iotdb that store metric value */
     private String host = "127.0.0.1";
@@ -159,13 +162,15 @@ public class MetricConfig {
 
   public void copy(MetricConfig newMetricConfig) {
     enableMetric = newMetricConfig.getEnableMetric();
+    enablePerformanceStat = newMetricConfig.getEnablePerformanceStat();
     monitorType = newMetricConfig.getMonitorType();
     metricReporterList = newMetricConfig.getMetricReporterList();
     metricLevel = newMetricConfig.getMetricLevel();
     predefinedMetrics = newMetricConfig.getPredefinedMetrics();
     asyncCollectPeriodInSecond = newMetricConfig.getAsyncCollectPeriodInSecond();
     prometheusExporterPort = newMetricConfig.getPrometheusExporterPort();
-    ioTDBReporterConfig = newMetricConfig.ioTDBReporterConfig;
+    ioTDBReporterConfig = newMetricConfig.getIoTDBReporterConfig();
+    isStoreToLocal = newMetricConfig.isStoreToLocal();
   }
 
   public void updateRpcInstance(String rpcAddress, int rpcPort) {
@@ -253,6 +258,14 @@ public class MetricConfig {
     return rpcPort;
   }
 
+  public boolean isStoreToLocal() {
+    return isStoreToLocal;
+  }
+
+  public void setIsStoreToLocal(boolean storeToLocal) {
+    isStoreToLocal = storeToLocal;
+  }
+
   @Override
   public boolean equals(Object obj) {
     if (!(obj instanceof MetricConfig)) {
@@ -260,12 +273,14 @@ public class MetricConfig {
     }
     MetricConfig anotherMetricConfig = (MetricConfig) obj;
     return enableMetric.equals(anotherMetricConfig.getEnableMetric())
+        && enablePerformanceStat.equals(anotherMetricConfig.getEnablePerformanceStat())
         && monitorType.equals(anotherMetricConfig.getMonitorType())
         && metricReporterList.equals(anotherMetricConfig.getMetricReporterList())
         && metricLevel.equals(anotherMetricConfig.getMetricLevel())
         && predefinedMetrics.equals(anotherMetricConfig.getPredefinedMetrics())
         && asyncCollectPeriodInSecond.equals(anotherMetricConfig.getAsyncCollectPeriodInSecond())
         && prometheusExporterPort.equals(anotherMetricConfig.getPrometheusExporterPort())
-        && ioTDBReporterConfig.equals(anotherMetricConfig.getIoTDBReporterConfig());
+        && ioTDBReporterConfig.equals(anotherMetricConfig.getIoTDBReporterConfig())
+        && isStoreToLocal.equals(anotherMetricConfig.isStoreToLocal());
   }
 }
