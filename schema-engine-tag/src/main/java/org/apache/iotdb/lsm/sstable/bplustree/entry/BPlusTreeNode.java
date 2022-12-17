@@ -34,8 +34,10 @@ import java.util.Set;
 
 public class BPlusTreeNode implements IEntry {
 
+  // leaf node or internal node
   private BPlusTreeNodeType bPlusTreeNodeType;
 
+  // The number of BPlusTreeEntry saved by the b+ tree node
   private int count;
 
   private List<BPlusTreeEntry> bPlusTreeEntries;
@@ -83,6 +85,8 @@ public class BPlusTreeNode implements IEntry {
     return "BPlusTreeNode{"
         + "bPlusTreeNodeType="
         + bPlusTreeNodeType
+        + ", count="
+        + count
         + ", bPlusTreeEntries="
         + bPlusTreeEntries
         + '}';
@@ -182,6 +186,13 @@ public class BPlusTreeNode implements IEntry {
     return bPlusTreeEntries.size() >= degree;
   }
 
+  /**
+   * Determine whether the b+ tree leaf node has a record matching names at one time, and return all
+   * records if there is
+   *
+   * @param names A set of names to be matched
+   * @return Return all records that can match any name in the name set
+   */
   public List<BPlusTreeEntry> getBPlusTreeEntryFromLeafNode(Set<String> names) {
     if (!bPlusTreeNodeType.equals(BPlusTreeNodeType.LEAF_NODE)) {
       return null;
@@ -201,6 +212,14 @@ public class BPlusTreeNode implements IEntry {
     return bPlusTreeEntryList;
   }
 
+  /**
+   * According to the names set, find the next entry that needs to be matched and the names to be
+   * matched by the entry in the internal node
+   *
+   * @param names A set of names to be matched
+   * @return a map, The key is the b+ tree entry, and the value represents the name collection that
+   *     needs to be searched on the b+ tree node corresponding to the entry
+   */
   public Map<BPlusTreeEntry, Set<String>> getBPlusTreeEntryFromInternalNode(Set<String> names) {
     if (!bPlusTreeNodeType.equals(BPlusTreeNodeType.INTERNAL_NODE)) {
       return null;

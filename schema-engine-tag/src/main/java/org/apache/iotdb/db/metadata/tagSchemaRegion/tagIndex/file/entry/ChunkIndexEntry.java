@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.entry;
 
 import org.apache.iotdb.lsm.sstable.bplustree.entry.IEntry;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
@@ -36,7 +37,7 @@ public class ChunkIndexEntry implements IEntry {
 
   private int idMin;
 
-  public ChunkIndexEntry() {};
+  public ChunkIndexEntry() {}
 
   public ChunkIndexEntry(long offset, int count, int idMax, int idMin) {
     this.offset = offset;
@@ -92,19 +93,37 @@ public class ChunkIndexEntry implements IEntry {
   }
 
   @Override
-  public void serialize(DataOutputStream out) throws IOException {}
+  public void serialize(DataOutputStream out) throws IOException {
+    ReadWriteIOUtils.write(offset, out);
+    ReadWriteIOUtils.write(count, out);
+    ReadWriteIOUtils.write(idMax, out);
+    ReadWriteIOUtils.write(idMin, out);
+  }
 
   @Override
-  public void serialize(ByteBuffer byteBuffer) {}
+  public void serialize(ByteBuffer byteBuffer) {
+    ReadWriteIOUtils.write(offset, byteBuffer);
+    ReadWriteIOUtils.write(count, byteBuffer);
+    ReadWriteIOUtils.write(idMax, byteBuffer);
+    ReadWriteIOUtils.write(idMin, byteBuffer);
+  }
 
   @Override
   public IEntry deserialize(DataInputStream input) throws IOException {
-    return null;
+    offset = ReadWriteIOUtils.readLong(input);
+    count = ReadWriteIOUtils.readInt(input);
+    idMax = ReadWriteIOUtils.readInt(input);
+    idMin = ReadWriteIOUtils.readInt(input);
+    return this;
   }
 
   @Override
   public IEntry deserialize(ByteBuffer byteBuffer) {
-    return null;
+    offset = ReadWriteIOUtils.readLong(byteBuffer);
+    count = ReadWriteIOUtils.readInt(byteBuffer);
+    idMax = ReadWriteIOUtils.readInt(byteBuffer);
+    idMin = ReadWriteIOUtils.readInt(byteBuffer);
+    return this;
   }
 
   @Override

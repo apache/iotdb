@@ -123,6 +123,13 @@ public class BPlusTreeReader implements IBPlusTreeReader {
     return now;
   }
 
+  /**
+   * Read the b+ tree once to get all matching b+ tree entries
+   *
+   * @param rootNode {@link org.apache.iotdb.lsm.sstable.bplustree.entry.BPlusTreeNode
+   *     BPlusTreeNode} of the b+ tree
+   * @param names the name of all entries that need to be found
+   */
   @Override
   public List<BPlusTreeEntry> getBPlusTreeEntries(BPlusTreeNode rootNode, Set<String> names)
       throws IOException {

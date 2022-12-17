@@ -21,7 +21,6 @@ package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.reader;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.entry.ChunkHeader;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.entry.RoaringBitmapHeader;
-import org.apache.iotdb.lsm.sstable.fileIO.FileInput;
 import org.apache.iotdb.lsm.sstable.fileIO.IFileInput;
 import org.apache.iotdb.lsm.sstable.interator.IDiskIterator;
 
@@ -33,42 +32,61 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
 
+/**
+ * It is used to read chunk-related objects from TiFile, and supports iterative acquisition of
+ * deviceID
+ */
 public class ChunkReader implements IChunkReader {
 
   private final IFileInput tiFileInput;
 
+  // The deviceID output by the next iteration
   private Integer nextID;
 
   private RoaringBitmap roaringBitmap;
 
-  private final ChunkHeader chunkHeader;
+  private ChunkHeader chunkHeader;
 
   private RoaringBitmapHeader roaringBitmapHeader;
 
+  // Record the number of the currently read container during the iteration process
   private int index;
 
+  // Iteratively read data from the RoaringBitmap container
   private IDiskIterator<Integer> containerIterator;
 
-  public ChunkReader(FileInput tiFileInput) throws IOException {
+  public ChunkReader(IFileInput tiFileInput) throws IOException {
     this.tiFileInput = tiFileInput;
-    chunkHeader = new ChunkHeader();
-    tiFileInput.read(chunkHeader);
+  }
+
+  public ChunkReader(IFileInput tiFileInput, long chunkHeaderOffset) throws IOException {
+    this.tiFileInput = tiFileInput;
+    tiFileInput.position(chunkHeaderOffset);
   }
 
   @Override
-  public RoaringBitmap readRoaringBitmap() throws IOException {
-    if (roaringBitmap == null) {
-      roaringBitmap = new RoaringBitmap();
-      roaringBitmap.deserialize(tiFileInput.wrapAsInputStream());
-      return roaringBitmap;
-    }
+  public RoaringBitmap readRoaringBitmap(long offset) throws IOException {
+    ChunkHeader chunkHeader = readChunkHeader(offset);
+    tiFileInput.position(offset - chunkHeader.getSize());
+    RoaringBitmap roaringBitmap = new RoaringBitmap();
+    roaringBitmap.deserialize(tiFileInput.wrapAsInputStream());
     return roaringBitmap;
+  }
+
+  @Override
+  public ChunkHeader readChunkHeader(long offset) throws IOException {
+    ChunkHeader chunkHeader = new ChunkHeader();
+    tiFileInput.read(chunkHeader, offset);
+    return chunkHeader;
   }
 
   @TestOnly
   @Override
   public void close() throws IOException {
     tiFileInput.close();
+    if (roaringBitmap != null) {
+      roaringBitmap.clear();
+    }
   }
 
   @Override
@@ -76,32 +94,44 @@ public class ChunkReader implements IChunkReader {
     if (nextID != null) {
       return true;
     }
+    // We need to first obtain the roaringBitmap size recorded in the chunkHeader, and get the start
+    // offset of roaringBitmap in the disk file according to the size
+    if (chunkHeader == null) {
+      chunkHeader = new ChunkHeader();
+      long chunkHeaderOffset = tiFileInput.position();
+      chunkHeader = readChunkHeader(chunkHeaderOffset);
+      tiFileInput.position(chunkHeaderOffset - chunkHeader.getSize());
+    }
+    // roaringBitmapHeader records the relevant information of the container
     if (roaringBitmapHeader == null) {
       roaringBitmapHeader = new RoaringBitmapHeader();
-      roaringBitmapHeader =
-          (RoaringBitmapHeader) roaringBitmapHeader.deserialize(tiFileInput.wrapAsInputStream());
+      tiFileInput.read(roaringBitmapHeader);
       if (!roaringBitmapHeader.hasRun() || roaringBitmapHeader.getSize() >= 4) {
         tiFileInput.skipBytes(roaringBitmapHeader.getSize() * 4);
       }
     }
+    // Records the number of deviceIDs saved for each container
     int[] cardinalities = roaringBitmapHeader.getCardinalities();
+    // Records the high 16-bit value of deviceID for each container
     char[] keys = roaringBitmapHeader.getKeys();
+    // First determine whether the current container still has data
     if (containerIterator != null) {
       if (containerIterator.hasNext()) {
         nextID = generateId(keys[index], containerIterator.next());
         return true;
       } else {
+        // If the current container has been iterated, increase the index to get data from the
+        // following container
         index++;
         containerIterator = null;
       }
     }
     while (index < roaringBitmapHeader.getSize()) {
-      if (containerIterator == null) {
-        if (cardinalities[index] > 4096) {
-          containerIterator = new BitmapContainerIterator(cardinalities[index]);
-        } else {
-          containerIterator = new ArrayContainerIterator(cardinalities[index]);
-        }
+      // Get an iterator over the next container to read
+      if (cardinalities[index] > 4096) {
+        containerIterator = new BitmapContainerIterator(cardinalities[index]);
+      } else {
+        containerIterator = new ArrayContainerIterator(cardinalities[index]);
       }
       if (containerIterator.hasNext()) {
         nextID = generateId(keys[index], containerIterator.next());
@@ -109,7 +139,6 @@ public class ChunkReader implements IChunkReader {
       }
       index++;
     }
-
     return false;
   }
 
@@ -123,13 +152,19 @@ public class ChunkReader implements IChunkReader {
     return nowId;
   }
 
+  /**
+   * Used to iteratively obtain records from {@link org.roaringbitmap.BitmapContainer
+   * BitmapContainer}
+   */
   private class BitmapContainerIterator implements IDiskIterator<Integer> {
 
     private int high;
     private List<Integer> ids;
     private Iterator<Integer> iterator;
     private Integer next;
+    // The amount of data stored in this container
     private int containerLength;
+    // How much data has been read
     private int count;
 
     public BitmapContainerIterator(int containerLength) {
@@ -181,6 +216,7 @@ public class ChunkReader implements IChunkReader {
       return now;
     }
 
+    /** Parse the bitmap and get all records */
     private List<Integer> parseBitmap(long bitmap) {
       List<Integer> results = new ArrayList<>();
       long now;
@@ -194,10 +230,13 @@ public class ChunkReader implements IChunkReader {
     }
   }
 
+  /**
+   * Used to iteratively obtain records from {@link org.roaringbitmap.ArrayContainer ArrayContainer}
+   */
   private class ArrayContainerIterator implements IDiskIterator<Integer> {
 
     private Character next;
-
+    // The amount of data stored in this container
     private int containerLength;
 
     private int index;

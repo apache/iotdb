@@ -73,19 +73,45 @@ public class ChunkIndex implements IEntry {
   }
 
   @Override
-  public void serialize(DataOutputStream out) throws IOException {}
+  public void serialize(DataOutputStream out) throws IOException {
+    chunkIndexHeader.serialize(out);
+    for (ChunkIndexEntry chunkIndexEntry : chunkIndexEntries) {
+      chunkIndexEntry.serialize(out);
+    }
+  }
 
   @Override
-  public void serialize(ByteBuffer byteBuffer) {}
+  public void serialize(ByteBuffer byteBuffer) {
+    chunkIndexHeader.serialize(byteBuffer);
+    for (ChunkIndexEntry chunkIndexEntry : chunkIndexEntries) {
+      chunkIndexEntry.serialize(byteBuffer);
+    }
+  }
 
   @Override
   public IEntry deserialize(DataInputStream input) throws IOException {
-    return null;
+    chunkIndexHeader = new ChunkIndexHeader();
+    chunkIndexHeader.deserialize(input);
+    chunkIndexEntries = new ArrayList<>(chunkIndexHeader.getSize());
+    for (int i = 0; i < chunkIndexHeader.getSize(); i++) {
+      ChunkIndexEntry chunkIndexEntry = new ChunkIndexEntry();
+      chunkIndexEntry.deserialize(input);
+      chunkIndexEntries.add(chunkIndexEntry);
+    }
+    return this;
   }
 
   @Override
   public IEntry deserialize(ByteBuffer byteBuffer) {
-    return null;
+    chunkIndexHeader = new ChunkIndexHeader();
+    chunkIndexHeader.deserialize(byteBuffer);
+    chunkIndexEntries = new ArrayList<>(chunkIndexHeader.getSize());
+    for (int i = 0; i < chunkIndexHeader.getSize(); i++) {
+      ChunkIndexEntry chunkIndexEntry = new ChunkIndexEntry();
+      chunkIndexEntry.deserialize(byteBuffer);
+      chunkIndexEntries.add(chunkIndexEntry);
+    }
+    return this;
   }
 
   @Override

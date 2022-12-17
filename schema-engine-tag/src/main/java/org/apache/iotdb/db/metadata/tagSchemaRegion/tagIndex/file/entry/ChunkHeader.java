@@ -30,6 +30,12 @@ public class ChunkHeader implements IEntry {
 
   private int size;
 
+  public ChunkHeader() {}
+
+  public ChunkHeader(int size) {
+    this.size = size;
+  }
+
   public int getSize() {
     return size;
   }
@@ -40,7 +46,7 @@ public class ChunkHeader implements IEntry {
 
   @Override
   public void serialize(DataOutputStream out) throws IOException {
-    out.write(size);
+    out.writeInt(size);
   }
 
   @Override

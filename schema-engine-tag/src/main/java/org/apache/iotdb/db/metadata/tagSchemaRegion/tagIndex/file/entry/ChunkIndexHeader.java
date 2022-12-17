@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.entry;
 
 import org.apache.iotdb.lsm.sstable.bplustree.entry.IEntry;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
@@ -28,6 +29,8 @@ import java.util.Objects;
 
 public class ChunkIndexHeader implements IEntry {
   private int size;
+
+  public ChunkIndexHeader() {}
 
   public ChunkIndexHeader(int size) {
     this.size = size;
@@ -47,19 +50,25 @@ public class ChunkIndexHeader implements IEntry {
   }
 
   @Override
-  public void serialize(DataOutputStream out) throws IOException {}
+  public void serialize(DataOutputStream out) throws IOException {
+    ReadWriteIOUtils.write(size, out);
+  }
 
   @Override
-  public void serialize(ByteBuffer byteBuffer) {}
+  public void serialize(ByteBuffer byteBuffer) {
+    ReadWriteIOUtils.write(size, byteBuffer);
+  }
 
   @Override
   public IEntry deserialize(DataInputStream input) throws IOException {
-    return null;
+    size = ReadWriteIOUtils.readInt(input);
+    return this;
   }
 
   @Override
   public IEntry deserialize(ByteBuffer byteBuffer) {
-    return null;
+    size = ReadWriteIOUtils.readInt(byteBuffer);
+    return this;
   }
 
   @Override

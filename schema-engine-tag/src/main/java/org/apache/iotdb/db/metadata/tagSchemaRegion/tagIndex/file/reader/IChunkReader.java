@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.reader;
 
+import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.entry.ChunkHeader;
 import org.apache.iotdb.lsm.sstable.interator.IDiskIterator;
 
 import org.roaringbitmap.RoaringBitmap;
@@ -25,7 +26,32 @@ import org.roaringbitmap.RoaringBitmap;
 import java.io.IOException;
 
 public interface IChunkReader extends IDiskIterator<Integer> {
-  RoaringBitmap readRoaringBitmap() throws IOException;
 
+  /**
+   * Read the {@link org.roaringbitmap.RoaringBitmap RoaringBitmap} from the given position
+   *
+   * @param offset a non-negative integer counting the number of bytes from the beginning of the
+   *     TiFile
+   * @return a RoaringBitmap instance
+   * @throws IOException Signals that an I/O exception has occurred.
+   */
+  RoaringBitmap readRoaringBitmap(long offset) throws IOException;
+
+  /**
+   * Read the {@link org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.entry.ChunkHeader
+   * ChunkHeader} from the given position
+   *
+   * @param offset a non-negative integer counting the number of bytes from the beginning of the
+   *     TiFile
+   * @return a ChunkHeader instance
+   * @throws IOException Signals that an I/O exception has occurred.
+   */
+  ChunkHeader readChunkHeader(long offset) throws IOException;
+
+  /**
+   * Closes this reader and releases any system resources associated with the reader.
+   *
+   * @exception IOException if an I/O error occurs.
+   */
   void close() throws IOException;
 }

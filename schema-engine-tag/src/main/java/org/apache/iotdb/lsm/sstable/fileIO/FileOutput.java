@@ -57,36 +57,37 @@ public class FileOutput extends OutputStream implements IFileOutput {
   }
 
   @Override
-  public synchronized void write(int b) throws IOException {
+  public void write(int b) throws IOException {
     outputStream.write(b);
     position++;
   }
 
   @Override
-  public synchronized void write(byte[] b) throws IOException {
+  public void write(byte[] b) throws IOException {
     outputStream.write(b);
     position += b.length;
   }
 
   @Override
-  public synchronized void write(byte b) throws IOException {
+  public void write(byte b) throws IOException {
     outputStream.write(b);
     position++;
   }
 
   @Override
-  public synchronized void write(byte[] buf, int start, int offset) throws IOException {
+  public void write(byte[] buf, int start, int offset) throws IOException {
     outputStream.write(buf, start, offset);
     position += offset;
   }
 
   @Override
-  public synchronized void write(ByteBuffer b) throws IOException {
-    write(b.array(), 0, b.limit());
+  public void write(ByteBuffer b) throws IOException {
+    outputStream.getChannel().write(b);
+    position += b.limit();
   }
 
   @Override
-  public synchronized long write(IEntry entry) throws IOException {
+  public long write(IEntry entry) throws IOException {
     long startOffset = position;
     byteBuffer.clear();
     entry.serialize(byteBuffer);
@@ -96,7 +97,7 @@ public class FileOutput extends OutputStream implements IFileOutput {
   }
 
   @Override
-  public synchronized int writeAndGetSize(IEntry entry) throws IOException {
+  public int writeAndGetSize(IEntry entry) throws IOException {
     long startOffset = position;
     byteBuffer.clear();
     entry.serialize(byteBuffer);
@@ -106,7 +107,7 @@ public class FileOutput extends OutputStream implements IFileOutput {
   }
 
   @Override
-  public synchronized long writeToOutStream(IEntry entry) throws IOException {
+  public long writeToOutStream(IEntry entry) throws IOException {
     long startOffset = position;
     entry.serialize(dataOutputStream);
     this.position = outputStream.getChannel().position();
@@ -114,7 +115,7 @@ public class FileOutput extends OutputStream implements IFileOutput {
   }
 
   @Override
-  public synchronized int writeToOutStreamAndGetSize(IEntry entry) throws IOException {
+  public int writeToOutStreamAndGetSize(IEntry entry) throws IOException {
     long startOffset = position;
     entry.serialize(dataOutputStream);
     this.position = outputStream.getChannel().position();

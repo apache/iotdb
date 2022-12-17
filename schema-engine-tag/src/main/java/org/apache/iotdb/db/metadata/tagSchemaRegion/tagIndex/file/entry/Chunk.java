@@ -36,35 +36,35 @@ public class Chunk implements IEntry {
 
   @Override
   public void serialize(DataOutputStream out) throws IOException {
-    chunkHeader.serialize(out);
     roaringBitmap.serialize(out);
+    chunkHeader.serialize(out);
   }
 
   @Override
   public void serialize(ByteBuffer byteBuffer) {
-    chunkHeader.serialize(byteBuffer);
     roaringBitmap.serialize(byteBuffer);
+    chunkHeader.serialize(byteBuffer);
   }
 
   @Override
   public IEntry deserialize(DataInputStream input) throws IOException {
-    chunkHeader = new ChunkHeader();
-    chunkHeader.deserialize(input);
     roaringBitmap = new RoaringBitmap();
     roaringBitmap.deserialize(input);
+    chunkHeader = new ChunkHeader();
+    chunkHeader.deserialize(input);
     return this;
   }
 
   @Override
   public IEntry deserialize(ByteBuffer byteBuffer) {
-    chunkHeader = new ChunkHeader();
-    chunkHeader.deserialize(byteBuffer);
     roaringBitmap = new RoaringBitmap();
     try {
       roaringBitmap.deserialize(byteBuffer);
     } catch (IOException e) {
       throw new InvalidRoaringFormat(e.getMessage());
     }
+    chunkHeader = new ChunkHeader();
+    chunkHeader.deserialize(byteBuffer);
     return this;
   }
 
