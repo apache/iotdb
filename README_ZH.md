@@ -135,26 +135,41 @@ Thrift官方网址为：https://thrift.apache.org/
 git clone https://github.com/apache/iotdb.git
 ```
 
-默认的主分支是master分支，如果你想使用某个发布版本x.x.x，请切换分支:
+默认的主分支是master分支，如果你想使用某个发布版本x.x.x，请切换 tag:
 
-```
-git checkout release/x.x.x
-```
-
-从0.11.3开始，版本的标签风格改为vx.x.x：
 ```
 git checkout vx.x.x
 ```
 
-在 iotdb 根目录下执行 maven 编译:
+或者切换大版本所在分支，如 1.0 版本的分支为 rel/1.0
 
 ```
-> mvn clean package -DskipTests
+git checkout rel/x.x
 ```
+
+### 源码编译 IoTDB
+
+在 iotdb 根目录下执行:
+
+```
+> mvn clean package -pl distribution -am -DskipTests
+```
+
+编译完成后, IoTDB 二进制包将生成在: "distribution/target".
+
+### 只编译 cli
+
+在 iotdb 根目录下执行:
+
+```
+> mvn clean package -pl cli -am -DskipTests
+```
+
+编译完成后, IoTDB cli 将生成在 "cli/target".
+
+### 编译其他模块
 
 通过添加 `-P compile-cpp` 可以进行c++客户端API的编译。
-
-执行完成之后，可以在**distribution/target/apache-iotdb-{project.version}-all-bin.zip**找到编译完成的二进制版本(包括服务器和客户端)
 
 **注意："`thrift/target/generated-sources/thrift`"， "`thrift-sync/target/generated-sources/thrift`"，"`thrift-cluster/target/generated-sources/thrift`"，"`thrift-influxdb/target/generated-sources/thrift`" 和  "`antlr/target/generated-sources/antlr4`" 目录需要添加到源代码根中，以免在 IDE 中产生编译错误。**
 
@@ -359,27 +374,6 @@ server 可以使用 "ctrl-C" 或者执行下面的脚本:
 # Windows
 > sbin\stop-standalone.bat
 ```
-
-## 只编译 server
-
-在 iotdb 根目录下执行:
-
-```
-> mvn clean package -pl server -am -DskipTests
-```
-
-编译完成后, IoTDB server 将生成在: "server/target/iotdb-server-{project.version}".
-
-
-## 只编译 cli
-
-在 iotdb 根目录下执行:
-
-```
-> mvn clean package -pl cli -am -DskipTests
-```
-
-编译完成后, IoTDB cli 将生成在 "cli/target/iotdb-cli-{project.version}".
 
 # 导入导出CSV工具
 

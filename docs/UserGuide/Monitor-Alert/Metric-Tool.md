@@ -19,7 +19,9 @@
 
 -->
 
-Along with IoTDB running, we hope to observe the status of IoTDB, so as to troubleshoot system problems or discover potential system risks in time. A series of metrics that can **reflect the operating status of the system** are system monitoring metrics.
+Along with IoTDB running, we hope to observe the status of IoTDB, so as to troubleshoot system problems or discover
+potential system risks in time. A series of metrics that can **reflect the operating status of the system** are system
+monitoring metrics.
 
 ## 1. When to use metric framework?
 
@@ -27,22 +29,26 @@ Belows are some typical application scenarios
 
 1. System is running slowly
 
-   When system is running slowly, we always hope to have information about system's running status as detail as possible, such as:
+   When system is running slowly, we always hope to have information about system's running status as detail as
+   possible, such as:
 
-   - JVM：Is there FGC? How long does it cost? How much does the memory usage decreased after GC? Are there lots of threads?
-   - System：Is the CPU usage too hi？Are there many disk IOs？
-   - Connections：How many connections are there in the current time？
-   - Interface：What is the TPS and latency of every interface？
-   - Thread Pool：Are there many pending tasks？
-   - Cache Hit Ratio
+    - JVM：Is there FGC? How long does it cost? How much does the memory usage decreased after GC? Are there lots of
+      threads?
+    - System：Is the CPU usage too hi？Are there many disk IOs？
+    - Connections：How many connections are there in the current time？
+    - Interface：What is the TPS and latency of every interface？
+    - Thread Pool：Are there many pending tasks？
+    - Cache Hit Ratio
 
 2. No space left on device
 
-   When meet a "no space left on device" error, we really want to know which kind of data file had a rapid rise in the past hours.
+   When meet a "no space left on device" error, we really want to know which kind of data file had a rapid rise in the
+   past hours.
 
 3. Is the system running in abnormal status
 
-   We could use the count of error logs、the alive status of nodes in cluster, etc, to determine whether the system is running abnormally.
+   We could use the count of error logs、the alive status of nodes in cluster, etc, to determine whether the system is
+   running abnormally.
 
 ## 2. Who will use metric framework?
 Any person cares about the system's status, including but not limited to RD, QA, SRE, DBA, can use the metrics to work more efficiently.
@@ -68,15 +74,17 @@ In IoTDB's metric module, each metrics is uniquely identified by `Metric Name` a
 
 ### 3.2. External data format for metrics
 - IoTDB provides metrics in JMX, Prometheus and IoTDB formats:
-   - For JMX, metrics can be obtained through ```org.apache.iotdb.metrics```.
-   - For Prometheus, the value of the metrics can be obtained through the externally exposed port
-   - External exposure in IoTDB mode: metrics can be obtained by executing IoTDB queries
+    - For JMX, metrics can be obtained through ```org.apache.iotdb.metrics```.
+    - For Prometheus, the value of the metrics can be obtained through the externally exposed port
+    - External exposure in IoTDB mode: metrics can be obtained by executing IoTDB queries
 
 ## 4. The detail of metrics
 
-Currently, IoTDB provides metrics for some main modules externally, and with the development of new functions and system optimization or refactoring, metrics will be added and updated synchronously.
+Currently, IoTDB provides metrics for some main modules externally, and with the development of new functions and system
+optimization or refactoring, metrics will be added and updated synchronously.
 
-If you want to add your own metrics data in IoTDB, please see the [IoTDB Metric Framework] (https://github.com/apache/iotdb/tree/master/metrics) document.
+If you want to add your own metrics data in IoTDB, please see
+the [IoTDB Metric Framework] (https://github.com/apache/iotdb/tree/master/metrics) document.
 
 ### 4.1. Core level metrics
 Core-level metrics are enabled by default during system operation. The addition of each Core-level metrics needs to be carefully evaluated. The current Core-level metrics are as follows:
@@ -187,7 +195,6 @@ Core-level metrics are enabled by default during system operation. The addition 
 | queue     | name="flush",status="running/waiting"             | AutoGauge | The number of flush tasks             |
 | queue     | name="Sub_RawQuery",status="running/waiting"      | AutoGauge | The number of Sub_RawQuery            |
 
-
 #### 4.2.8. Compaction
 | Metric                | Tags                                                | Type    | Description                            |
 | --------------------- | --------------------------------------------------- | ------- | -------------------------------------- |
@@ -198,16 +205,24 @@ Core-level metrics are enabled by default during system operation. The addition 
 | compaction_task_count | name = "cross_compaction", type="cross"             | Counter | The number of corss compction          |
 
 #### 4.2.9. File
-| Metric     | Tags         | Type      | Description                               |
-| ---------- | ------------ | --------- | ----------------------------------------- |
-| file_size  | name="wal"   | AutoGauge | The size of WAL file, Unit: byte          |
-| file_size  | name="seq"   | AutoGauge | The size of sequence TsFile, Unit: byte   |
-| file_size  | name="unseq" | AutoGauge | The size of unsequence TsFile, Unit: byte |
-| file_count | name="wal"   | AutoGauge | The count of WAL file                     |
-| file_count | name="seq"   | AutoGauge | The count of sequence TsFile              |
-| file_count | name="unseq" | AutoGauge | The count of unsequence TsFile            |
+
+| Metric     | Tags         | Type      | Description                                                  |
+| ---------- | ------------ | --------- |--------------------------------------------------------------|
+| file_size  | name="wal"   | AutoGauge | The size of WAL file, Unit: byte                             |
+| file_size  | name="seq"   | AutoGauge | The size of sequence TsFile, Unit: byte                      |
+| file_size  | name="unseq" | AutoGauge | The size of unsequence TsFile, Unit: byte                    |
+| file_count | name="wal"   | AutoGauge | The count of WAL file                                        |
+| file_count | name="seq"   | AutoGauge | The count of sequence TsFile                                 |
+| file_count | name="unseq" | AutoGauge | The count of unsequence TsFile                               |
+| file_count| name="inner-seq-temp-num" | AutoGauge | The count of inner sequence space compaction temporal file   |
+| file_count | name="inner-unseq-temp-num"|AutoGauge| The count of inner unsequence space compaction temporal file |
+| file_count|name="cross-temp-num"|AutoGauge| The count of cross space compaction temporal file            |
+| file_size|name="inner-seq-temp-size" | AutoGauge| The size of inner sequence space compaction temporal file    |
+| file_size|name="inner-unseq-temp-size"|AutoGauge| The size of inner unsequence space compaction temporal file  |
+|file_size|name="cross-temp-size"|AutoGauge|The size of cross space compaction temoporal file|
 
 #### 4.2.10. IoTDB Process
+
 | Metric                | Tags           | Type      | Description                                 |
 | --------------------- | -------------- | --------- | ------------------------------------------- |
 | process_used_mem      | name="memory"  | AutoGauge | The used memory of IoTDB process            |
@@ -275,7 +290,8 @@ Currently there is no All level metrics, and it will continue to be added in the
 
 ## 5. How to get these metrics？
 
-The relevant configuration of the metric module is in `conf/iotdb-{datanode/confignode}.properties`, and all configuration items support hot loading through the `load configuration` command.
+The relevant configuration of the metric module is in `conf/iotdb-{datanode/confignode}.properties`, and all
+configuration items support hot loading through the `load configuration` command.
 
 ### 5.1. JMX
 For metrics exposed externally using JMX, you can view them through Jconsole. After entering the Jconsole monitoring page, you will first see an overview of various running conditions of IoTDB. Here you can see heap memory information, thread information, class information, and the server's CPU usage.
@@ -290,13 +306,14 @@ After connecting to JMX, you can find the "MBean" named "org.apache.iotdb.servic
 
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/46039728/149951720-707f1ee8-32ee-4fde-9252-048caebd232e.png"> <br>
 
-In order to improve query performance, IOTDB caches ChunkMetaData and TsFileMetaData. Users can use MXBean and expand the sidebar `org.apache.iotdb.db.service` to view the cache hit ratio:
+In order to improve query performance, IOTDB caches ChunkMetaData and TsFileMetaData. Users can use MXBean and expand
+the sidebar `org.apache.iotdb.db.service` to view the cache hit ratio:
 
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/112426760-73e3da80-8d73-11eb-9a8f-9232d1f2033b.png">
 
 ### 5.2. Prometheus
 
-#### 5.2.1. The mapping from metric type to prometheus forma
+#### 5.2.1. The mapping from metric type to prometheus format
 > For metrics whose Metric Name is name and Tags are K1=V1, ..., Kn=Vn, the mapping is as follows, where value is a specific value
 
 | Metric Type      | Mapping                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
@@ -319,8 +336,8 @@ dn_metric_prometheus_reporter_port=9091
 Then you can get metrics data as follows
 
 2) Start IoTDB DataNodes
-3) Open a browser or use ```curl``` to visit ```http://servier_ip:9091/metrics```, you can get the following metric data:
-
+3) Open a browser or use ```curl``` to visit ```http://servier_ip:9091/metrics```, you can get the following metric
+   data:
 
 ```
 ...
@@ -334,7 +351,8 @@ file_count{name="seq",} 2.0
 
 #### 5.2.3. Prometheus + Grafana
 
-As shown above, IoTDB exposes monitoring metrics data in the standard Prometheus format to the outside world. Prometheus can be used to collect and store monitoring indicators, and Grafana can be used to visualize monitoring indicators.
+As shown above, IoTDB exposes monitoring metrics data in the standard Prometheus format to the outside world. Prometheus
+can be used to collect and store monitoring indicators, and Grafana can be used to visualize monitoring indicators.
 
 The following picture describes the relationships among IoTDB, Prometheus and Grafana
 
@@ -343,7 +361,8 @@ The following picture describes the relationships among IoTDB, Prometheus and Gr
 1. Along with running, IoTDB will collect its metrics continuously.
 2. Prometheus scrapes metrics from IoTDB at a constant interval (can be configured).
 3. Prometheus saves these metrics to its inner TSDB.
-4. Grafana queries metrics from Prometheus at a constant interval (can be configured) and then presents them on the graph.
+4. Grafana queries metrics from Prometheus at a constant interval (can be configured) and then presents them on the
+   graph.
 
 So, we need to do some additional works to configure and deploy Prometheus and Grafana.
 
@@ -359,8 +378,8 @@ metrics_path: /metrics
 scheme: http
 follow_redirects: true
 static_configs:
-- targets:
-  - localhost:9091
+  - targets:
+      - localhost:9091
 ```
 
 The following documents may help you have a good journey with Prometheus and Grafana.
@@ -380,95 +399,112 @@ We provide the Apache IoTDB Dashboard, and the rendering shown in Grafana is as 
 
 ##### 5.2.4.1. How to get Apache IoTDB Dashboard
 
-1. You can obtain the json files of Dashboards corresponding to different iotdb versions in the grafana-metrics-example folder.
-2. You can visit [Grafana Dashboard official website](https://grafana.com/grafana/dashboards/), search for `Apache IoTDB Dashboard` and use
+1. You can obtain the json files of Dashboards corresponding to different iotdb versions in the grafana-metrics-example
+   folder.
+2. You can visit [Grafana Dashboard official website](https://grafana.com/grafana/dashboards/), search
+   for `Apache IoTDB Dashboard` and use
 
-When creating Grafana, you can select the json file you just downloaded to `Import` and select the corresponding target data source for Apache IoTDB Dashboard.
+When creating Grafana, you can select the json file you just downloaded to `Import` and select the corresponding target
+data source for Apache IoTDB Dashboard.
 
 ##### 5.2.4.2. Apache IoTDB ConfigNode Dashboard Instructions
 > Except for the metrics specified specially, the following metrics are guaranteed to be available in the monitoring framework at the Important levels.
 
 - `Overview`: system overview
-  - `Registered Node`: The number of registered ConfigNode/DataNode
-  - `DataNode`: The status of the cluster DataNode, including Online and Unknown.
-  - `ConfigNode`: The status of the cluster ConfigNode, including Online and Unknown.
-  - `The Status Of Node`: The status of specific nodes in the cluster, including Online and Unknown.
+    - `Registered Node`: The number of registered ConfigNode/DataNode
+    - `DataNode`: The status of the cluster DataNode, including Online and Unknown.
+    - `ConfigNode`: The status of the cluster ConfigNode, including Online and Unknown.
+    - `The Status Of Node`: The status of specific nodes in the cluster, including Online and Unknown.
 - `Region`: Region overview
-  - `Region Number`: the number of Regions, including the total number, the number of DataRegions and the number of SchemaRegions.
-  - `Leadership distribution`: Cluster leader distribution, which refers to the number of Leaders corresponding to the Region on each node.
-  - `Total Region in Node`: The total number of Regions of different Nodes.
-  - `Region in Node`: the number of SchemaRegions/DataRegions of different Nodes.
-  - `Region in Database` (Normal level): the number of Regions in different Databases, including SchemaRegion and DataRegion.
-  - `Slot in Database` (Normal level): The number of Slots in different Databases, including the number of DataSlots and SchemaSlots.
+    - `Region Number`: the number of Regions, including the total number, the number of DataRegions and the number of
+      SchemaRegions.
+    - `Leadership distribution`: Cluster leader distribution, which refers to the number of Leaders corresponding to the
+      Region on each node.
+    - `Total Region in Node`: The total number of Regions of different Nodes.
+    - `Region in Node`: the number of SchemaRegions/DataRegions of different Nodes.
+    - `Region in Database` (Normal level): the number of Regions in different Databases, including SchemaRegion and
+      DataRegion.
+    - `Slot in Database` (Normal level): The number of Slots in different Databases, including the number of DataSlots
+      and SchemaSlots.
 - `System`: system
-  - `CPU Core`: the number of CPU cores in the system.
-  - `CPU Load`: system CPU load, progress CPU load.
-  - `CPU Time Per Minute`: The process takes up the system CPU time per minute on average. Note: multi-core will cause this value to exceed 1 minute.
-  - `System Memory`: the physical memory size of the system, the physical memory size used by the system, and the memory size submitted by the virtual machine.
-  - `System Swap Size`: the total size of the system swap area, the size used by the system swap area.
-  - `Process Memory`: the maximum total memory size of the IoTDB process, the total memory size of the IoTDB process, and the memory size used by the IoTDB process.
-  - `The Number of GC Per Minute`: The average number of GC per minute.
-  - `The Time Consumed Of GC Per Minute`: Average GC time spent per minute.
-  - `The Number Of Java Thread`: The number of threads in different states of the IoTDB process.
-  - `Heap Memory`: the heap memory of the IoTDB process
-  - `Off Heap Memory`: the off-heap memory of the IoTDB process
-  - `Log Number Per Minute`: the average number of logs per minute of the IoTDB process
-  - `The Time Consumed of Compliation Per Minute`: average compilation time per minute
-  - `The Number Of Class`: The number of classes loaded and unloaded by the JVM
-
+    - `CPU Core`: the number of CPU cores in the system.
+    - `CPU Load`: system CPU load, progress CPU load.
+    - `CPU Time Per Minute`: The process takes up the system CPU time per minute on average. Note: multi-core will cause
+      this value to exceed 1 minute.
+    - `System Memory`: the physical memory size of the system, the physical memory size used by the system, and the
+      memory size submitted by the virtual machine.
+    - `System Swap Size`: the total size of the system swap area, the size used by the system swap area.
+    - `Process Memory`: the maximum total memory size of the IoTDB process, the total memory size of the IoTDB process,
+      and the memory size used by the IoTDB process.
+    - `The Number of GC Per Minute`: The average number of GC per minute.
+    - `The Time Consumed Of GC Per Minute`: Average GC time spent per minute.
+    - `The Number Of Java Thread`: The number of threads in different states of the IoTDB process.
+    - `Heap Memory`: the heap memory of the IoTDB process
+    - `Off Heap Memory`: the off-heap memory of the IoTDB process
+    - `Log Number Per Minute`: the average number of logs per minute of the IoTDB process
+    - `The Time Consumed of Compliation Per Minute`: average compilation time per minute
+    - `The Number Of Class`: The number of classes loaded and unloaded by the JVM
+    
 ##### 5.2.4.3. Apache IoTDB DataNode Dashboard Instructions
 > Except for the metrics specified specially, the following metrics are guaranteed to be available in the monitoring framework at the Important levels.
 
 - `Overview`: system overview
-   - `The Number Of Entity`: the number of entities, including time series, etc.
-   - `Write Point Per Minute`: the average number of system write points per minute
-   - `Database Used Memory`: the memory size used by each Database
+    - `The Number Of Entity`: the number of entities, including time series, etc.
+    - `Write Point Per Minute`: the average number of system write points per minute
+    - `Database Used Memory`: the memory size used by each Database
 - `Interface`: interface
-   - `The Time Consumed Of Operation(50%)`: Median time spent by different client operations
-   - `The Time Consumed Of Operation(75%)`: The upper quartile of the time consumed by different client operations
-   - `The Time Consumed Of Operation(100%)`: The maximum time spent by different client operations
-   - `The QPS of Interface`: system interface visits per second
-   - `The Time Consumed Of Interface`: the average time consumed by the system interface
-   - `Cache Hit Rate`: cache hit rate
-   - `Thrift Connection`: the number of Thrift connections established
-   - `Thrift Active Thread`: The number of active Thrift connections established
-- `Engine`: 
-   - `Task Number`: the number of tasks in different states in the system
-   - `The Time Consumed Of Tasking`: Time consumption of tasks in different states in the system
-   - `Compaction Read And Write Per Minute`: the average amount of combined read and write data per minute
-   - `Compaction R/W Ratio Per Minute`: The average ratio of combined read and write data per minute
-   - `Compaction Number Per Minute`: the average number of different types of consolidation tasks per minute
+    - `The Time Consumed Of Operation(50%)`: Median time spent by different client operations
+    - `The Time Consumed Of Operation(75%)`: The upper quartile of the time consumed by different client operations
+    - `The Time Consumed Of Operation(100%)`: The maximum time spent by different client operations
+    - `The QPS of Interface`: system interface visits per second
+    - `The Time Consumed Of Interface`: the average time consumed by the system interface
+    - `Cache Hit Rate`: cache hit rate
+    - `Thrift Connection`: the number of Thrift connections established
+    - `Thrift Active Thread`: The number of active Thrift connections established
+- `Engine`:
+    - `Task Number`: the number of tasks in different states in the system
+    - `The Time Consumed Of Tasking`: Time consumption of tasks in different states in the system
+    - `Compaction Read And Write Per Minute`: the average amount of combined read and write data per minute
+    - `Compaction R/W Ratio Per Minute`: The average ratio of combined read and write data per minute
+    - `Compaction Number Per Minute`: the average number of different types of consolidation tasks per minute
 - `IoTConsensus`：
-   - `IoTConsensus Used Memory`：The size of the memory used by IoTConsensus consensus
-   - `IoTConsensus Sync Index`：the searchIndex and safeIndex of region
-   - `IoTConsensus Overview`：The total sync lag and total size of buffered requests of node
-   - `The time consumed of different stages(50%)`：The median  of the time consumed of different stages
-   - `The time consumed of different stages(75%)`：The upper quartile of the time consumed of different stages
-   - `The time consumed of different stages(100%)`：The max of the time consumed of different stages
-   - `IoTConsensus Search Index Rate`：The increasing rate of searchIndex of region
-   - `IoTConsensus Safe Index Rate`：The increasing rate of safeIndex of region
-   - `IoTConsensus LogDispatcher Request Size`：The number of requests buffered in logDispatcher
-   - `Sync Lag`：The sync lag of region
-   - `Min Peer Sync Lag`：The sync lag between the searchIndex of IoTConsensusServerImpl and the max currentSyncIndex of LogDispatcher
-   - `Sync speed diff of Peers`：The sync lag between the max currentSyncIndex of LogDispatcher and the min currentSyncIndex of LogDispatcher
+    - `IoTConsensus Used Memory`：The size of the memory used by IoTConsensus consensus
+    - `IoTConsensus Sync Index`：the searchIndex and safeIndex of region
+    - `IoTConsensus Overview`：The total sync lag and total size of buffered requests of node
+    - `The time consumed of different stages(50%)`：The median of the time consumed of different stages
+    - `The time consumed of different stages(75%)`：The upper quartile of the time consumed of different stages
+    - `The time consumed of different stages(100%)`：The max of the time consumed of different stages
+    - `IoTConsensus Search Index Rate`：The increasing rate of searchIndex of region
+    - `IoTConsensus Safe Index Rate`：The increasing rate of safeIndex of region
+    - `IoTConsensus LogDispatcher Request Size`：The number of requests buffered in logDispatcher
+    - `Sync Lag`：The sync lag of region
+    - `Min Peer Sync Lag`：The sync lag between the searchIndex of IoTConsensusServerImpl and the max currentSyncIndex of
+      LogDispatcher
+    - `Sync speed diff of Peers`：The sync lag between the max currentSyncIndex of LogDispatcher and the min
+      currentSyncIndex of LogDispatcher
 - `System`: system
-  - `CPU Core`: the number of CPU cores in the system.
-  - `CPU Load`: system CPU load, progress CPU load.
-  - `CPU Time Per Minute`: The process takes up the system CPU time per minute on average. Note: multi-core will cause this value to exceed 1 minute.
-  - `System Memory`: the physical memory size of the system, the physical memory size used by the system, and the memory size submitted by the virtual machine.
-  - `System Swap Size`: the total size of the system swap area, the size used by the system swap area.
-  - `Process Memory`: the maximum total memory size of the IoTDB process, the total memory size of the IoTDB process, and the memory size used by the IoTDB process.
-  - `The Size Of File`: IoTDB system-related file size, including the total file size under wal, the total size of tsfile files under seq, and the total size of tsfile files under unseq
-  - `The Number Of File`: the number of files related to the IoTDB system, including the number of files under wal, the number of tsfile files under seq, and the number of tsfile files under unseq
-  - `The Space Of Disk`: the total size and remaining size of the disk mounted in the current data directory
-  - `The Number of GC Per Minute`: The average number of GC per minute.
-  - `The Time Consumed Of GC Per Minute`: Average GC time spent per minute.
-  - `The Number Of Java Thread`: The number of threads in different states of the IoTDB process.
-  - `Heap Memory`: the heap memory of the IoTDB process
-  - `Off Heap Memory`: the off-heap memory of the IoTDB process
-  - `Log Number Per Minute`: the average number of logs per minute of the IoTDB process
-  - `The Time Consumed of Compliation Per Minute`: average compilation time per minute
-  - `The Number Of Class`: The number of classes loaded and unloaded by the JVM
+    - `CPU Core`: the number of CPU cores in the system.
+    - `CPU Load`: system CPU load, progress CPU load.
+    - `CPU Time Per Minute`: The process takes up the system CPU time per minute on average. Note: multi-core will cause
+      this value to exceed 1 minute.
+    - `System Memory`: the physical memory size of the system, the physical memory size used by the system, and the
+      memory size submitted by the virtual machine.
+    - `System Swap Size`: the total size of the system swap area, the size used by the system swap area.
+    - `Process Memory`: the maximum total memory size of the IoTDB process, the total memory size of the IoTDB process,
+      and the memory size used by the IoTDB process.
+    - `The Size Of File`: IoTDB system-related file size, including the total file size under wal, the total size of
+      tsfile files under seq, and the total size of tsfile files under unseq
+    - `The Number Of File`: the number of files related to the IoTDB system, including the number of files under wal,
+      the number of tsfile files under seq, and the number of tsfile files under unseq
+    - `The Space Of Disk`: the total size and remaining size of the disk mounted in the current data directory
+    - `The Number of GC Per Minute`: The average number of GC per minute.
+    - `The Time Consumed Of GC Per Minute`: Average GC time spent per minute.
+    - `The Number Of Java Thread`: The number of threads in different states of the IoTDB process.
+    - `Heap Memory`: the heap memory of the IoTDB process
+    - `Off Heap Memory`: the off-heap memory of the IoTDB process
+    - `Log Number Per Minute`: the average number of logs per minute of the IoTDB process
+    - `The Time Consumed of Compliation Per Minute`: average compilation time per minute
+    - `The Number Of Class`: The number of classes loaded and unloaded by the JVM
 
 ### 5.3. IoTDB
 

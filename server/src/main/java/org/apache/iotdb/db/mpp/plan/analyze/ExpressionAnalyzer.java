@@ -1185,6 +1185,7 @@ public class ExpressionAnalyzer {
       if (rawPath.isMeasurementAliasExists()) {
         measurementWithSchema.setMeasurementAlias(rawPath.getMeasurementAlias());
       }
+      measurementWithSchema.setTagMap(rawPath.getTagMap());
       return new TimeSeriesOperand(measurementWithSchema);
     } else if (expression instanceof LeafOperand) {
       return expression;
