@@ -77,7 +77,9 @@ public class TagInvertedIndex implements ITagInvertedIndex {
               false);
       // root memory node, used to manage working and immutableMemTables
       MemTableGroup memTableGroup =
-          new MemTableGroup(tagSchemaConfig.getNumOfDeviceIdsInMemTable());
+          new MemTableGroup(
+              tagSchemaConfig.getNumOfDeviceIdsInMemTable(),
+              tagSchemaConfig.getNumOfImmutableMemTable());
 
       // build lsm engine
       lsmEngine =

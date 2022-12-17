@@ -18,16 +18,22 @@
  */
 package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable;
 
+import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.Request.FlushRequest;
 import org.apache.iotdb.lsm.manager.IMemManager;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /** used to manage working and immutableMemTables */
 public class MemTableGroup implements IMemManager {
 
   // the maximum number of device ids managed by a working memTable
   private int numOfDeviceIdsInMemTable;
+
+  // the maximum number of immutableMemTable, over num will flush to disk
+  private int numOfImmutableMemTable;
 
   // (maxDeviceID / numOfDeviceIdsInMemTable) -> MemTable
   private Map<Integer, MemTable> immutableMemTables;
@@ -39,10 +45,9 @@ public class MemTableGroup implements IMemManager {
   // the largest device id saved by the current MemTable
   private int maxDeviceID;
 
-  public MemTableGroup() {}
-
-  public MemTableGroup(int numOfDeviceIdsInMemTable) {
+  public MemTableGroup(int numOfDeviceIdsInMemTable, int numOfImmutableMemTable) {
     this.numOfDeviceIdsInMemTable = numOfDeviceIdsInMemTable;
+    this.numOfImmutableMemTable = numOfImmutableMemTable;
     workingMemTable = new MemTable(MemTable.WORKING);
     immutableMemTables = new HashMap<>();
     maxDeviceID = 0;
@@ -106,6 +111,15 @@ public class MemTableGroup implements IMemManager {
 
   @Override
   public boolean isNeedFlush() {
-    return false;
+    return immutableMemTables.size() > numOfImmutableMemTable;
+  }
+
+  @Override
+  public List<FlushRequest> getFlushRequests() {
+    List<FlushRequest> flushRequests =
+        immutableMemTables.entrySet().stream()
+            .map(entry -> new FlushRequest(entry.getKey(), entry.getValue()))
+            .collect(Collectors.toList());
+    return flushRequests;
   }
 }

@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.lsm.context.requestcontext.FlushRequestContext;
 import org.apache.iotdb.lsm.request.IFlushRequest;
 
+import java.util.List;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
@@ -52,8 +53,11 @@ public class FlushManager<T extends IMemManager, R extends IFlushRequest>
 
   public void checkFlush() {
     if (memManager.isNeedFlush()) {
-      FlushRequestContext flushRequestContext = flush();
-      updateWal(flushRequestContext);
+      List<R> flushRequests = memManager.getFlushRequests();
+      for (R flushRequest : flushRequests) {
+        FlushRequestContext flushRequestContext = flush(flushRequest);
+        updateWal(flushRequestContext);
+      }
     }
   }
 
@@ -65,10 +69,9 @@ public class FlushManager<T extends IMemManager, R extends IFlushRequest>
     // TODO flush to disk
   }
 
-  private FlushRequestContext flush() {
+  private FlushRequestContext flush(R flushRequest) {
     FlushRequestContext flushRequestBaseContext = new FlushRequestContext();
-    IFlushRequest flushRequest = new IFlushRequest();
-    process(memManager, (R) flushRequest, flushRequestBaseContext);
+    process(memManager, flushRequest, flushRequestBaseContext);
     flushToDisk(flushRequestBaseContext);
     return flushRequestBaseContext;
   }

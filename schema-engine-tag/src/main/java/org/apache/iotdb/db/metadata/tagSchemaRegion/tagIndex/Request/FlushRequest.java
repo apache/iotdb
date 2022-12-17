@@ -16,14 +16,35 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.lsm.manager;
+package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.Request;
 
+import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemTable;
 import org.apache.iotdb.lsm.request.IFlushRequest;
 
-import java.util.List;
+public class FlushRequest extends IFlushRequest {
 
-public interface IMemManager<R extends IFlushRequest> {
-  public boolean isNeedFlush();
+  private Integer id;
 
-  public List<R> getFlushRequests();
+  private MemTable memTable;
+
+  public FlushRequest(Integer id, MemTable memTable) {
+    this.id = id;
+    this.memTable = memTable;
+  }
+
+  public Integer getId() {
+    return id;
+  }
+
+  public MemTable getMemTable() {
+    return memTable;
+  }
+
+  public void setId(Integer id) {
+    this.id = id;
+  }
+
+  public void setMemTable(MemTable memTable) {
+    this.memTable = memTable;
+  }
 }
