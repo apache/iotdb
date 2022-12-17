@@ -82,7 +82,7 @@ pipeline {
         stage('Build and UT') {
             when {
                 expression {
-                    env.BRANCH_NAME ==~ /(master|rel/.*|jenkins-.*)/
+                    env.BRANCH_NAME ==~ "(master)|(rel/.*) |(jenkins-.*)"
                 }
             }
             steps {
@@ -100,12 +100,12 @@ pipeline {
         stage('Integration Test') {
             when {
                 expression {
-                    env.BRANCH_NAME ==~ /(master|rel/.*|jenkins-.*)/
+                    env.BRANCH_NAME ==~ "(master)|(rel/.*) |(jenkins-.*)"
                 }
             }
             steps {
                 echo 'Integration Test...'
-                sh "mvn ${MVN_TEST_FAIL_IGNORE} verify -P ClusterIT -pl integration-test -am -DskipUTs -DintegrationTest.threadCount=2 -DintegrationTest.forkCount=2"
+                sh "mvn ${MVN_TEST_FAIL_IGNORE} verify -P ClusterIT -pl integration-test -am -DskipUTs -DintegrationTest.threadCount=3 -DintegrationTest.forkCount=3"
             }
             post {
                 always {
@@ -133,6 +133,27 @@ pipeline {
 //                 }
 //             }
 //         }
+
+        stage('Build') {
+            when {
+                expression {
+                    env.BRANCH_NAME ==~ "(master)|(rel/.*) |(jenkins-.*)"
+                }
+            }
+            steps {
+                echo 'Deploy Prepare'
+                sh 'mvn clean'
+                // We'll deploy to a relative directory so we can
+                // deploy new versions only if the entire build succeeds
+                sh "mvn ${MVN_TEST_FAIL_IGNORE} -DaltDeploymentRepository=snapshot-repo::default::file:./local-snapshots-dir clean deploy -P get-jar-with-dependencies -DskipTests"
+            }
+            post {
+                always {
+                    junit(testResults: '**/surefire-reports/*.xml', allowEmptyResults: true)
+                    junit(testResults: '**/failsafe-reports/*.xml', allowEmptyResults: true)
+                }
+            }
+        }
 
         stage('Code Quality') {
             when {
