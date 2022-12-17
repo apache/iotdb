@@ -87,7 +87,7 @@ pipeline {
             }
             steps {
                 echo 'Building'
-                sh 'mvn ${MVN_TEST_FAIL_IGNORE} ${MVN_LOCAL_REPO_OPT} clean install'
+                sh "mvn ${MVN_TEST_FAIL_IGNORE} ${MVN_LOCAL_REPO_OPT} clean install -P ClusterIT -pl '!integration'"
             }
             post {
                 always {
@@ -106,7 +106,7 @@ pipeline {
                 sh 'mvn clean'
                 // We'll deploy to a relative directory so we can
                 // deploy new versions only if the entire build succeeds
-                sh 'mvn ${MVN_TEST_FAIL_IGNORE} -DaltDeploymentRepository=snapshot-repo::default::file:./local-snapshots-dir clean deploy -P get-jar-with-dependencies'
+                sh "mvn ${MVN_TEST_FAIL_IGNORE} -DaltDeploymentRepository=snapshot-repo::default::file:./local-snapshots-dir clean deploy -P get-jar-with-dependencies -P ClusterIT -pl '!integration'"
             }
             post {
                 always {
