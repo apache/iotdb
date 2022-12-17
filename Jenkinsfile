@@ -87,7 +87,7 @@ pipeline {
             }
             steps {
                 echo 'Building and Unit Test...'
-                sh "mvn ${MVN_TEST_FAIL_IGNORE} clean install -pl '!integration-test'"
+                sh "mvn -T 1C ${MVN_TEST_FAIL_IGNORE} clean install -pl '!integration-test'"
             }
             post {
                 always {
@@ -105,7 +105,7 @@ pipeline {
             }
             steps {
                 echo 'Integration Test...'
-                sh "mvn ${MVN_TEST_FAIL_IGNORE} verify -P ClusterIT -pl integration-test -am -DskipUTs -DintegrationTest.threadCount=3 -DintegrationTest.forkCount=3"
+                sh "mvn ${MVN_TEST_FAIL_IGNORE} verify -P ClusterIT -pl integration-test -am -DskipUTs -DintegrationTest.threadCount=5 -DintegrationTest.forkCount=5"
             }
             post {
                 always {
@@ -115,37 +115,20 @@ pipeline {
             }
         }
 
-//         stage('Build') {
-//             when {
-//                 branch 'master'
-//             }
-//             steps {
-//                 echo 'Building'
-//                 sh 'mvn clean'
-//                 // We'll deploy to a relative directory so we can
-//                 // deploy new versions only if the entire build succeeds
-//                 sh "mvn ${MVN_TEST_FAIL_IGNORE} -DaltDeploymentRepository=snapshot-repo::default::file:./local-snapshots-dir clean deploy -P get-jar-with-dependencies -P ClusterIT -pl '!integration'"
-//             }
-//             post {
-//                 always {
-//                     junit(testResults: '**/surefire-reports/*.xml', allowEmptyResults: true)
-//                     junit(testResults: '**/failsafe-reports/*.xml', allowEmptyResults: true)
-//                 }
-//             }
-//         }
-
-        stage('Build') {
+        stage('Deploy Prepare') {
+        //             when {
+        //                 branch 'master'
+        //             }
             when {
                 expression {
-                    env.BRANCH_NAME ==~ "(master)|(rel/.*) |(jenkins-.*)"
+                    env.BRANCH_NAME ==~ "(master)|(rel/.*)"
                 }
             }
             steps {
                 echo 'Deploy Prepare'
-                sh 'mvn clean'
                 // We'll deploy to a relative directory so we can
                 // deploy new versions only if the entire build succeeds
-                sh "mvn ${MVN_TEST_FAIL_IGNORE} -DaltDeploymentRepository=snapshot-repo::default::file:./local-snapshots-dir clean deploy -P get-jar-with-dependencies -DskipTests"
+                sh "mvn -T 1C -DaltDeploymentRepository=snapshot-repo::default::file:./local-snapshots-dir clean deploy -DskipTests"
             }
             post {
                 always {
