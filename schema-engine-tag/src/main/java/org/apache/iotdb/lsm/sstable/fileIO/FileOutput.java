@@ -21,6 +21,8 @@ package org.apache.iotdb.lsm.sstable.fileIO;
 import org.apache.iotdb.lsm.sstable.bplustree.entry.IEntry;
 
 import java.io.DataOutputStream;
+import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
@@ -32,10 +34,20 @@ import java.nio.ByteBuffer;
  */
 public class FileOutput extends OutputStream implements IFileOutput {
 
+  private static final int DEFAULT_BUFFER_SIZE = 1024 * 1024;
+
   private FileOutputStream outputStream;
   private DataOutputStream dataOutputStream;
   private ByteBuffer byteBuffer;
   private long position;
+
+  public FileOutput(File file) throws FileNotFoundException {
+    this(new FileOutputStream(file), DEFAULT_BUFFER_SIZE);
+  }
+
+  public FileOutput(File file, int bufferCapacity) throws FileNotFoundException {
+    this(new FileOutputStream(file), bufferCapacity);
+  }
 
   public FileOutput(FileOutputStream outputStream, int bufferCapacity) {
     this.outputStream = outputStream;
@@ -84,11 +96,29 @@ public class FileOutput extends OutputStream implements IFileOutput {
   }
 
   @Override
-  public long writeToOutStream(IEntry entry) throws IOException {
+  public synchronized int writeAndGetSize(IEntry entry) throws IOException {
+    long startOffset = position;
+    byteBuffer.clear();
+    entry.serialize(byteBuffer);
+    byteBuffer.flip();
+    write(byteBuffer);
+    return (int) (position - startOffset);
+  }
+
+  @Override
+  public synchronized long writeToOutStream(IEntry entry) throws IOException {
     long startOffset = position;
     entry.serialize(dataOutputStream);
     this.position = outputStream.getChannel().position();
     return startOffset;
+  }
+
+  @Override
+  public synchronized int writeToOutStreamAndGetSize(IEntry entry) throws IOException {
+    long startOffset = position;
+    entry.serialize(dataOutputStream);
+    this.position = outputStream.getChannel().position();
+    return (int) (position - startOffset);
   }
 
   @Override
@@ -101,7 +131,6 @@ public class FileOutput extends OutputStream implements IFileOutput {
     outputStream.close();
     dataOutputStream.close();
     byteBuffer.clear();
-    byteBuffer = null;
   }
 
   @Override

@@ -63,6 +63,15 @@ public interface IFileOutput {
   long write(IEntry entry) throws IOException;
 
   /**
+   * Write a IEntry to disk, use a byte buffer
+   *
+   * @param entry entry
+   * @return byte size of the entry
+   * @throws IOException
+   */
+  int writeAndGetSize(IEntry entry) throws IOException;
+
+  /**
    * Write a IEntry to disk, using out stream
    *
    * @param entry entry
@@ -71,6 +80,14 @@ public interface IFileOutput {
    */
   long writeToOutStream(IEntry entry) throws IOException;
 
+  /**
+   * Write a IEntry to disk, using out stream
+   *
+   * @param entry entry
+   * @return byte size of the entry
+   * @throws IOException
+   */
+  int writeToOutStreamAndGetSize(IEntry entry) throws IOException;
   /**
    * gets the current position of the Output. This method is usually used for recording where the
    * data is. <br>
