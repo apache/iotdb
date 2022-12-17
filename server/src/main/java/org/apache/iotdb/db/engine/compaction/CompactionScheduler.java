@@ -25,6 +25,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.cross.CrossSpaceCompactionTask;
 import org.apache.iotdb.db.engine.compaction.cross.ICrossSpaceSelector;
 import org.apache.iotdb.db.engine.compaction.inner.InnerSpaceCompactionTask;
+import org.apache.iotdb.db.engine.compaction.inner.sizetiered.InnerCompactionCandidate;
 import org.apache.iotdb.db.engine.compaction.performer.ICompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.task.ICompactionSelector;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
@@ -103,12 +104,12 @@ public class CompactionScheduler {
               .getInnerUnsequenceCompactionSelector()
               .createInstance(storageGroupName, dataRegionId, timePartition, tsFileManager);
     }
-    List<List<TsFileResource>> taskList =
+    List<InnerCompactionCandidate> candidates =
         innerSpaceCompactionSelector.selectInnerSpaceTask(
             sequence
                 ? tsFileManager.getSequenceListByTimePartition(timePartition)
                 : tsFileManager.getUnsequenceListByTimePartition(timePartition));
-    for (List<TsFileResource> candidateFileList : taskList) {
+    for (InnerCompactionCandidate candidate : candidates) {
       ICompactionPerformer performer =
           sequence
               ? IoTDBDescriptor.getInstance()
@@ -124,7 +125,7 @@ public class CompactionScheduler {
               new InnerSpaceCompactionTask(
                   timePartition,
                   tsFileManager,
-                  candidateFileList,
+                  candidate.getTsFileResources(),
                   sequence,
                   performer,
                   CompactionTaskManager.getNextCompactionTaskId()));

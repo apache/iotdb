@@ -36,9 +36,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.LinkedList;
 import java.util.List;
-import java.util.PriorityQueue;
 
 /**
  * SizeTieredCompactionSelector selects files to be compacted based on the size of files. The
@@ -143,24 +141,16 @@ public class SizeTieredCompactionSelector
    * @return Returns whether the file was found and submits the merge task
    */
   @Override
-  public List<List<TsFileResource>> selectInnerSpaceTask(List<TsFileResource> tsFileResources) {
-    PriorityQueue<InnerCompactionCandidate> taskPriorityQueue =
-        new PriorityQueue<>(new SizeTieredCompactionTaskComparator());
+  public List<InnerCompactionCandidate> selectInnerSpaceTask(List<TsFileResource> tsFileResources) {
     try {
       int maxLevel = searchMaxFileLevel(tsFileResources);
       for (int currentLevel = 0; currentLevel <= maxLevel; currentLevel++) {
         List<InnerCompactionCandidate> candidates = selectLevelTask(tsFileResources, currentLevel);
         if (candidates.size() > 0) {
-          taskPriorityQueue.addAll(candidates);
-          break;
+          candidates.sort(new SizeTieredCompactionTaskComparator());
+          return candidates;
         }
       }
-      List<List<TsFileResource>> taskList = new LinkedList<>();
-      while (taskPriorityQueue.size() > 0) {
-        List<TsFileResource> resources = taskPriorityQueue.poll().getTsFileResources();
-        taskList.add(resources);
-      }
-      return taskList;
     } catch (Exception e) {
       LOGGER.error("Exception occurs while selecting files", e);
     }
