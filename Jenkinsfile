@@ -79,15 +79,15 @@ pipeline {
             }
         }
 
-        stage('Build (not master)') {
+        stage('Build and UT') {
             when {
                 expression {
-                    env.BRANCH_NAME != 'master'
+                    env.BRANCH_NAME ==~ /(master|rel/.*|jenkins-.*)/
                 }
             }
             steps {
-                echo 'Building'
-                sh "mvn ${MVN_TEST_FAIL_IGNORE}  clean install -P ClusterIT -pl '!integration'"
+                echo 'Building and Unit Test...'
+                sh "mvn ${MVN_TEST_FAIL_IGNORE} clean install -pl '!integration-test'"
             }
             post {
                 always {
@@ -97,16 +97,15 @@ pipeline {
             }
         }
 
-        stage('Build') {
+        stage('Integration Test') {
             when {
-                branch 'master'
+                expression {
+                    env.BRANCH_NAME ==~ /(master|rel/.*|jenkins-.*)/
+                }
             }
             steps {
-                echo 'Building'
-                sh 'mvn clean'
-                // We'll deploy to a relative directory so we can
-                // deploy new versions only if the entire build succeeds
-                sh "mvn ${MVN_TEST_FAIL_IGNORE} -DaltDeploymentRepository=snapshot-repo::default::file:./local-snapshots-dir clean deploy -P get-jar-with-dependencies -P ClusterIT -pl '!integration'"
+                echo 'Integration Test...'
+                sh "mvn ${MVN_TEST_FAIL_IGNORE} verify -P ClusterIT -pl integration-test -am -DskipUTs -DintegrationTest.threadCount=2 -DintegrationTest.forkCount=2"
             }
             post {
                 always {
@@ -115,6 +114,25 @@ pipeline {
                 }
             }
         }
+
+//         stage('Build') {
+//             when {
+//                 branch 'master'
+//             }
+//             steps {
+//                 echo 'Building'
+//                 sh 'mvn clean'
+//                 // We'll deploy to a relative directory so we can
+//                 // deploy new versions only if the entire build succeeds
+//                 sh "mvn ${MVN_TEST_FAIL_IGNORE} -DaltDeploymentRepository=snapshot-repo::default::file:./local-snapshots-dir clean deploy -P get-jar-with-dependencies -P ClusterIT -pl '!integration'"
+//             }
+//             post {
+//                 always {
+//                     junit(testResults: '**/surefire-reports/*.xml', allowEmptyResults: true)
+//                     junit(testResults: '**/failsafe-reports/*.xml', allowEmptyResults: true)
+//                 }
+//             }
+//         }
 
         stage('Code Quality') {
             when {

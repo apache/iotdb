@@ -30,6 +30,7 @@
     <artifactId>integration-test</artifactId>
     <properties>
         <integrationTest.forkCount>1</integrationTest.forkCount>
+        <integrationTest.threadCount>1</integrationTest.threadCount>
         <integrationTest.randomSelectWriteNode>true</integrationTest.randomSelectWriteNode>
         <integrationTest.readAndVerifyWithMultiNode>true</integrationTest.readAndVerifyWithMultiNode>
         <integrationTest.launchNodeInSameJVM>true</integrationTest.launchNodeInSameJVM>
@@ -167,7 +168,7 @@
                             <excludedGroups>${integrationTest.excludedGroups}</excludedGroups>
                             <useSystemClassLoader>false</useSystemClassLoader>
                             <parallel>${integrationTest.parallelMode}</parallel>
-                            <threadCount>1</threadCount>
+                            <threadCount>${integrationTest.threadCount}</threadCount>
                             <forkCount>${integrationTest.forkCount}</forkCount>
                             <reuseForks>false</reuseForks>
                             <systemPropertyVariables>
