@@ -27,6 +27,8 @@ public class IFlushRequest<K, V> implements IRequest<K, V> {
   private String flushDirPath;
   private String flushFileName;
 
+  private int index;
+
   public int getIndex() {
     return index;
   }
@@ -34,8 +36,6 @@ public class IFlushRequest<K, V> implements IRequest<K, V> {
   public void setIndex(int index) {
     this.index = index;
   }
-
-  private int index;
 
   public IFlushRequest(int index) {
     this.index = index;

@@ -56,5 +56,6 @@ public class MemTableFlush extends FlushLevelProcessor<MemTable, MemChunkGroup> 
     FileOutput fileOutput = context.getFileOutput();
     BPlusTreeWriter bPlusTreeWriter = new BPlusTreeWriter(fileOutput);
     bPlusTreeWriter.write(tagKeyToOffset, false);
+    fileOutput.flush();
   }
 }

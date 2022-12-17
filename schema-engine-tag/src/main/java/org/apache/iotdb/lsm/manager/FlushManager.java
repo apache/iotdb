@@ -69,25 +69,26 @@ public class FlushManager<T extends IMemManager, R extends IFlushRequest>
       for (R flushRequest : flushRequests) {
         flushRequest.setFlushDirPath(flushDirPath);
         flushRequest.setFlushFileName(flushFilePrefix + "-0" + flushRequest.getIndex());
-        FlushRequestContext flushRequestContext = flush(flushRequest);
-        updateWal(flushRequestContext);
+        flush(flushRequest);
+        memManager.removeMemData(flushRequest);
+        updateWal(flushRequest);
       }
     }
   }
 
-  private void updateWal(FlushRequestContext flushRequestBaseContext) {
-    // TODO delete wal file
+  private void updateWal(R request) {
+    int index = request.getIndex();
+    walManager.deleteWalFile(index);
   }
 
-  private FlushRequestContext flush(R flushRequest) {
+  private void flush(R flushRequest) {
     FlushRequestContext flushRequestBaseContext = new FlushRequestContext();
     process(memManager, flushRequest, flushRequestBaseContext);
-    return flushRequestBaseContext;
   }
 
   @Override
   public void preProcess(T root, R request, FlushRequestContext context) {
-    String flushFileName = request.getFlushFileName();
+    String flushFileName = request.getFlushFileName() + "tmp";
     File flushFile = new File(this.flushDirPath, flushFileName);
     try {
       if (!flushFile.exists()) {
@@ -100,5 +101,16 @@ public class FlushManager<T extends IMemManager, R extends IFlushRequest>
   }
 
   @Override
-  public void postProcess(T root, R request, FlushRequestContext context) {}
+  public void postProcess(T root, R request, FlushRequestContext context) {
+    FileOutput fileOutput = context.getFileOutput();
+    try {
+      fileOutput.close();
+      String flushFileName = request.getFlushFileName() + "tmp";
+      File flushFile = new File(this.flushDirPath, flushFileName);
+      File newFlushFile = new File(this.flushDirPath, request.getFlushFileName());
+      flushFile.renameTo(newFlushFile);
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    }
+  }
 }

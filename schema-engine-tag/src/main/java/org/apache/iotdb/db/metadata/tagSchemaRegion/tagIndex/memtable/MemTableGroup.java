@@ -122,4 +122,9 @@ public class MemTableGroup implements IMemManager {
             .collect(Collectors.toList());
     return flushRequests;
   }
+
+  @Override
+  public void removeMemData(IFlushRequest request) {
+    immutableMemTables.remove(request.getIndex());
+  }
 }

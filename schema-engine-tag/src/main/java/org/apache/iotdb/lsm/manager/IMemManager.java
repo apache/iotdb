@@ -26,4 +26,6 @@ public interface IMemManager<R extends IFlushRequest> {
   public boolean isNeedFlush();
 
   public List<R> getFlushRequests();
+
+  public void removeMemData(R request);
 }

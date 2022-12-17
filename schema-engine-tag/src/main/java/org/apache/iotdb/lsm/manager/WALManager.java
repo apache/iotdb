@@ -97,6 +97,11 @@ public abstract class WALManager<T> {
     return request;
   }
 
+  public void deleteWalFile(int index) {
+    File file = new File(getWalFileName(index));
+    file.delete();
+  }
+
   protected Integer getWalFileID(File file) {
     return Integer.parseInt(file.getName().substring(walFilePrefix.length()));
   }
@@ -150,7 +155,7 @@ public abstract class WALManager<T> {
     return walDirPath;
   }
 
-  public File getWalFile() {
+  public File getWalFile(int index) {
     return walFile;
   }
 
