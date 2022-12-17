@@ -28,7 +28,6 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
-import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -85,22 +84,19 @@ public class SizeTieredCompactionSelector
    * files to be compacted is found on this layer, it will return false (indicating that it will no
    * longer search for higher layers), otherwise it will return true.
    *
-   * @param level the level to be searched
-   *     each batch
+   * @param level the level to be searched each batch
    * @return return whether to continue the search to higher levels
    * @throws IOException
    */
-  private List<InnerCompactionCandidate> selectLevelTask(List<TsFileResource> tsFileResources, int level)
-      throws IOException {
+  private List<InnerCompactionCandidate> selectLevelTask(
+      List<TsFileResource> tsFileResources, int level) throws IOException {
     List<InnerCompactionCandidate> result = new ArrayList<>();
-    //sort TsFileResources by inner level in ascending
-//    tsFileResources.sort(new TsFileResourceInnerLevelComparator());
     InnerCompactionCandidate candidate = new InnerCompactionCandidate();
     for (TsFileResource currentFile : tsFileResources) {
       if (tsFileShouldBeSkipped(currentFile, level)) {
+        candidate = new InnerCompactionCandidate();
         continue;
       }
-      // 为什么 ？
       if (currentFile.getStatus() != TsFileResourceStatus.CLOSED) {
         candidate = new InnerCompactionCandidate();
         continue;
@@ -127,10 +123,12 @@ public class SizeTieredCompactionSelector
   }
 
   private boolean candidateSatisfied(InnerCompactionCandidate candidate) {
-    return candidate.getFileCount() >= config.getTargetCompactionFileSize() || candidate.getTotalFileSize() >= config.getMaxInnerCompactionCandidateFileNum();
+    return candidate.getTotalFileSize() >= config.getTargetCompactionFileSize()
+        || candidate.getFileCount() >= config.getMaxInnerCompactionCandidateFileNum();
   }
 
-  private boolean tsFileShouldBeSkipped(TsFileResource tsFileResource, int level) throws IOException {
+  private boolean tsFileShouldBeSkipped(TsFileResource tsFileResource, int level)
+      throws IOException {
     TsFileNameGenerator.TsFileName currentFileName =
         TsFileNameGenerator.getTsFileName(tsFileResource.getTsFile().getName());
     return currentFileName.getInnerCompactionCnt() != level;
@@ -181,8 +179,7 @@ public class SizeTieredCompactionSelector
     return maxLevel;
   }
 
-  private class SizeTieredCompactionTaskComparator
-      implements Comparator<InnerCompactionCandidate> {
+  private class SizeTieredCompactionTaskComparator implements Comparator<InnerCompactionCandidate> {
 
     @Override
     public int compare(InnerCompactionCandidate o1, InnerCompactionCandidate o2) {
