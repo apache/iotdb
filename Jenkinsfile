@@ -87,7 +87,7 @@ pipeline {
             }
             steps {
                 echo 'Building'
-                sh "mvn ${MVN_TEST_FAIL_IGNORE} ${MVN_LOCAL_REPO_OPT} clean install -P ClusterIT -pl '!integration'"
+                sh "mvn ${MVN_TEST_FAIL_IGNORE}  clean install -P ClusterIT -pl '!integration'"
             }
             post {
                 always {
