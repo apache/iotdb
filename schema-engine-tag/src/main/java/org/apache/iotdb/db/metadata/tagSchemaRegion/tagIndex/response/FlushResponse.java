@@ -18,18 +18,14 @@
  */
 package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.response;
 
-import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.entry.TiFile;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemChunk;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemChunkGroup;
-import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemTable;
 import org.apache.iotdb.lsm.response.BaseResponse;
 
 import java.util.HashMap;
 import java.util.Map;
 
-public class FlushResponse extends BaseResponse<Map<Integer, TiFile>> {
-
-  Map<MemTable, Long> memTableIndexMap;
+public class FlushResponse extends BaseResponse<Object> {
 
   Map<MemChunkGroup, Long> tagKeyOffsetMap;
 
@@ -38,35 +34,6 @@ public class FlushResponse extends BaseResponse<Map<Integer, TiFile>> {
   public FlushResponse() {
     memChunkOffsetMap = new HashMap<>();
     tagKeyOffsetMap = new HashMap<>();
-    memTableIndexMap = new HashMap<>();
-  }
-
-  public Map<MemTable, Long> getMemTableIndexMap() {
-    return memTableIndexMap;
-  }
-
-  public void setMemTableIndexMap(Map<MemTable, Long> memTableIndexMap) {
-    this.memTableIndexMap = memTableIndexMap;
-  }
-
-  public Map<MemChunkGroup, Long> getTagKeyOffsetMap() {
-    return tagKeyOffsetMap;
-  }
-
-  public void setTagKeyOffsetMap(Map<MemChunkGroup, Long> tagKeyOffsetMap) {
-    this.tagKeyOffsetMap = tagKeyOffsetMap;
-  }
-
-  public Map<MemChunk, Long> getMemChunkOffsetMap() {
-    return memChunkOffsetMap;
-  }
-
-  public void setMemChunkOffsetMap(Map<MemChunk, Long> memChunkOffsetMap) {
-    this.memChunkOffsetMap = memChunkOffsetMap;
-  }
-
-  public Long getMemTableIndex(MemTable memTable) {
-    return memTableIndexMap.get(memTable);
   }
 
   public Long getTagKeyOffset(MemChunkGroup memChunkGroup) {
