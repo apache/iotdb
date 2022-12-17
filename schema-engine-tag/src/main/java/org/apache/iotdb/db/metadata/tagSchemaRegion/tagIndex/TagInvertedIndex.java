@@ -49,7 +49,11 @@ public class TagInvertedIndex implements ITagInvertedIndex {
   // This file records the wal log
   private static final String WAL_FILE_PREFIX = "tag_inverted_index_wal";
 
+  private static final String FLUSH_FILE_PREFIX = "tag_inverted_index_flush";
+
   private static final String WAL_DIR_PATH = "wal";
+
+  private static final String FLUSH_DIR_PATH = "flush";
 
   private static final Logger logger = LoggerFactory.getLogger(TagInvertedIndex.class);
 
@@ -87,7 +91,9 @@ public class TagInvertedIndex implements ITagInvertedIndex {
               .buildLSMManagers(
                   "org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex",
                   walManager,
-                  memTableGroup)
+                  memTableGroup,
+                  schemaDirPath + File.separator + FLUSH_DIR_PATH,
+                  FLUSH_FILE_PREFIX)
               .buildRootMemNode(memTableGroup)
               .build();
 

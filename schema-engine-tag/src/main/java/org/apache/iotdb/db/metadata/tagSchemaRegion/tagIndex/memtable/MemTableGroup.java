@@ -18,8 +18,8 @@
  */
 package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable;
 
-import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.Request.FlushRequest;
 import org.apache.iotdb.lsm.manager.IMemManager;
+import org.apache.iotdb.lsm.request.IFlushRequest;
 
 import java.util.HashMap;
 import java.util.List;
@@ -115,10 +115,10 @@ public class MemTableGroup implements IMemManager {
   }
 
   @Override
-  public List<FlushRequest> getFlushRequests() {
-    List<FlushRequest> flushRequests =
+  public List<IFlushRequest> getFlushRequests() {
+    List<IFlushRequest> flushRequests =
         immutableMemTables.entrySet().stream()
-            .map(entry -> new FlushRequest(entry.getKey(), entry.getValue()))
+            .map(entry -> new IFlushRequest(entry.getKey()))
             .collect(Collectors.toList());
     return flushRequests;
   }

@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.lsm.context.requestcontext;
 
+import org.apache.iotdb.lsm.sstable.fileIO.FileOutput;
 import org.apache.iotdb.lsm.strategy.RBFSAccessStrategy;
 
 /**
@@ -25,6 +26,16 @@ import org.apache.iotdb.lsm.strategy.RBFSAccessStrategy;
  * context
  */
 public class FlushRequestContext extends RequestContext {
+
+  public FileOutput getFileOutput() {
+    return fileOutput;
+  }
+
+  public void setFileOutput(FileOutput fileOutput) {
+    this.fileOutput = fileOutput;
+  }
+
+  private FileOutput fileOutput;
 
   public FlushRequestContext() {
     super();

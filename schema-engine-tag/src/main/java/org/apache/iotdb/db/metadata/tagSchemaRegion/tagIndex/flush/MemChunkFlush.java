@@ -18,18 +18,23 @@
  */
 package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.flush;
 
-import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.entry.TiFile;
+import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.entry.Chunk;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemChunk;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.response.FlushResponse;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.utils.ConvertUtils;
 import org.apache.iotdb.lsm.annotation.FlushProcessor;
 import org.apache.iotdb.lsm.context.requestcontext.FlushRequestContext;
 import org.apache.iotdb.lsm.levelProcess.FlushLevelProcessor;
+import org.apache.iotdb.lsm.sstable.fileIO.FileOutput;
 
+import org.roaringbitmap.RoaringBitmap;
+
+import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.List;
 
 /** flush for MemChunk */
-@FlushProcessor(level = 3)
+@FlushProcessor(level = 2)
 public class MemChunkFlush extends FlushLevelProcessor<MemChunk, Object> {
 
   @Override
@@ -38,10 +43,18 @@ public class MemChunkFlush extends FlushLevelProcessor<MemChunk, Object> {
   }
 
   @Override
-  public void flush(MemChunk memNode, FlushRequestContext context) {
-    FlushResponse flushResponse = context.getResponse();
-    Integer id = flushResponse.getMemChunkIndex(memNode);
-    TiFile tiFile = flushResponse.getTiFile(id);
-    tiFile.addChunk(ConvertUtils.getChunkFromMemChunk(memNode));
+  public void flush(MemChunk memNode, FlushRequestContext context) throws IOException {
+    Chunk chunk = ConvertUtils.getChunkFromMemChunk(memNode);
+    if (chunk == null) {
+      return;
+    }
+    FileOutput fileOutput = context.getFileOutput();
+    RoaringBitmap roaringBitmap = chunk.getRoaringBitmap();
+    byte[] bytes = new byte[chunk.getChunkHeader().getSize()];
+    roaringBitmap.serialize(ByteBuffer.wrap(bytes));
+    fileOutput.write(bytes);
+    long offset = fileOutput.write(chunk.getChunkHeader());
+    FlushResponse response = context.getResponse();
+    response.addChunkOffset(memNode, offset);
   }
 }

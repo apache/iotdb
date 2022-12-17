@@ -18,11 +18,14 @@
  */
 package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.entry;
 
+import org.apache.iotdb.lsm.sstable.fileIO.FileOutput;
+
 import java.util.ArrayList;
 import java.util.List;
 
 public class TiFile {
 
+  private FileOutput fileOutput;
   private List<Chunk> chunkGroup;
 
   public TiFile() {

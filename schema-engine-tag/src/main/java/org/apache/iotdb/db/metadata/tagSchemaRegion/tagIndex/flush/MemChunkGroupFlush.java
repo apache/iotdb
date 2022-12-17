@@ -24,28 +24,39 @@ import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.response.FlushRespo
 import org.apache.iotdb.lsm.annotation.FlushProcessor;
 import org.apache.iotdb.lsm.context.requestcontext.FlushRequestContext;
 import org.apache.iotdb.lsm.levelProcess.FlushLevelProcessor;
+import org.apache.iotdb.lsm.sstable.bplustree.writer.BPlusTreeWriter;
+import org.apache.iotdb.lsm.sstable.fileIO.FileOutput;
 
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 /** flush for MemChunkGroup */
-@FlushProcessor(level = 2)
+@FlushProcessor(level = 1)
 public class MemChunkGroupFlush extends FlushLevelProcessor<MemChunkGroup, MemChunk> {
 
   @Override
   public List<MemChunk> getChildren(
       MemChunkGroup memNode, Object request, FlushRequestContext context) {
-
-    FlushResponse flushResponse = context.getResponse();
-    Map<MemChunk, Integer> memChunkIndexMap = new HashMap<>();
-    for (Map.Entry<String, MemChunk> entry : memNode.getMemChunkGroupMap().entrySet()) {
-      memChunkIndexMap.put(entry.getValue(), flushResponse.getMemChunkGroupIndex(memNode));
-    }
-    flushResponse.setMemChunkIndexMap(memChunkIndexMap);
     return (List<MemChunk>) memNode.getMemChunkGroupMap().values();
   }
 
   @Override
-  public void flush(MemChunkGroup memNode, FlushRequestContext context) {}
+  public void flush(MemChunkGroup memNode, FlushRequestContext context) throws IOException {
+    List<MemChunk> memChunks = getChildren(memNode, null, context);
+    Map<MemChunk, String> memChunkGroupMapReverse =
+        memNode.getMemChunkGroupMap().entrySet().stream()
+            .collect(HashMap::new, (m, v) -> m.put(v.getValue(), v.getKey()), HashMap::putAll);
+    Map<String, Long> tagValueToOffset = new HashMap<>();
+    FlushResponse flushResponse = context.getResponse();
+    for (MemChunk memChunk : memChunks) {
+      tagValueToOffset.put(
+          memChunkGroupMapReverse.get(memChunk), flushResponse.getChunkOffset(memChunk));
+    }
+    FileOutput fileOutput = context.getFileOutput();
+    BPlusTreeWriter bPlusTreeWriter = new BPlusTreeWriter(fileOutput);
+    Long offset = bPlusTreeWriter.write(tagValueToOffset, false);
+    flushResponse.addTagKeyOffset(memNode, offset);
+  }
 }

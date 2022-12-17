@@ -29,61 +29,59 @@ import java.util.Map;
 
 public class FlushResponse extends BaseResponse<Map<Integer, TiFile>> {
 
-  Map<MemTable, Integer> memTableIndexMap;
+  Map<MemTable, Long> memTableIndexMap;
 
-  Map<MemChunkGroup, Integer> memChunkGroupIndexMap;
+  Map<MemChunkGroup, Long> tagKeyOffsetMap;
 
-  Map<MemChunk, Integer> memChunkIndexMap;
+  Map<MemChunk, Long> memChunkOffsetMap;
 
-  public Map<MemTable, Integer> getMemTableIndexMap() {
+  public FlushResponse() {
+    memChunkOffsetMap = new HashMap<>();
+    tagKeyOffsetMap = new HashMap<>();
+    memTableIndexMap = new HashMap<>();
+  }
+
+  public Map<MemTable, Long> getMemTableIndexMap() {
     return memTableIndexMap;
   }
 
-  public void setMemTableIndexMap(Map<MemTable, Integer> memTableIndexMap) {
+  public void setMemTableIndexMap(Map<MemTable, Long> memTableIndexMap) {
     this.memTableIndexMap = memTableIndexMap;
   }
 
-  public Map<MemChunkGroup, Integer> getMemChunkGroupIndexMap() {
-    return memChunkGroupIndexMap;
+  public Map<MemChunkGroup, Long> getTagKeyOffsetMap() {
+    return tagKeyOffsetMap;
   }
 
-  public void setMemChunkGroupIndexMap(Map<MemChunkGroup, Integer> memChunkGroupIndexMap) {
-    this.memChunkGroupIndexMap = memChunkGroupIndexMap;
+  public void setTagKeyOffsetMap(Map<MemChunkGroup, Long> tagKeyOffsetMap) {
+    this.tagKeyOffsetMap = tagKeyOffsetMap;
   }
 
-  public Map<MemChunk, Integer> getMemChunkIndexMap() {
-    return memChunkIndexMap;
+  public Map<MemChunk, Long> getMemChunkOffsetMap() {
+    return memChunkOffsetMap;
   }
 
-  public void setMemChunkIndexMap(Map<MemChunk, Integer> memChunkIndexMap) {
-    this.memChunkIndexMap = memChunkIndexMap;
+  public void setMemChunkOffsetMap(Map<MemChunk, Long> memChunkOffsetMap) {
+    this.memChunkOffsetMap = memChunkOffsetMap;
   }
 
-  public Integer getMemTableIndex(MemTable memTable) {
+  public Long getMemTableIndex(MemTable memTable) {
     return memTableIndexMap.get(memTable);
   }
 
-  public Integer getMemChunkGroupIndex(MemChunkGroup memChunkGroup) {
-    return memChunkGroupIndexMap.get(memChunkGroup);
+  public Long getTagKeyOffset(MemChunkGroup memChunkGroup) {
+    return tagKeyOffsetMap.get(memChunkGroup);
   }
 
-  public Integer getMemChunkIndex(MemChunk memChunk) {
-    return memChunkGroupIndexMap.get(memChunk);
+  public void addChunkOffset(MemChunk memNode, long offset) {
+    memChunkOffsetMap.put(memNode, offset);
   }
 
-  public void updateTiFie(Integer id, TiFile tiFile) {
-    Map<Integer, TiFile> tiFileMap = getValue();
-    if (tiFileMap == null) {
-      tiFileMap = new HashMap<>();
-    }
-    tiFileMap.put(id, tiFile);
+  public Long getChunkOffset(MemChunk memNode) {
+    return memChunkOffsetMap.get(memNode);
   }
 
-  public TiFile getTiFile(Integer id) {
-    Map<Integer, TiFile> tiFileMap = getValue();
-    if (tiFileMap == null) {
-      return null;
-    }
-    return tiFileMap.get(id);
+  public void addTagKeyOffset(MemChunkGroup memNode, Long offset) {
+    tagKeyOffsetMap.put(memNode, offset);
   }
 }

@@ -133,8 +133,12 @@ public class LSMEngineBuilder<T extends IMemManager> {
    */
   public <R extends IFlushRequest, C extends FlushRequestContext>
       LSMEngineBuilder<T> buildFlushManager(
-          LevelProcessorChain<T, R, C> levelProcessChain, T memManager) {
-    FlushManager<T, R> flushManager = new FlushManager<>(lsmEngine.getWalManager(), memManager);
+          LevelProcessorChain<T, R, C> levelProcessChain,
+          T memManager,
+          String flushDirPath,
+          String flushFilePrefix) {
+    FlushManager<T, R> flushManager =
+        new FlushManager<>(lsmEngine.getWalManager(), memManager, flushDirPath, flushFilePrefix);
     flushManager.setLevelProcessorsChain(
         (LevelProcessorChain<T, R, FlushRequestContext>) levelProcessChain);
     buildFlushManager(flushManager);
@@ -203,7 +207,10 @@ public class LSMEngineBuilder<T extends IMemManager> {
    * @param memManager
    */
   private LSMEngineBuilder<T> buildLevelProcessors(
-      ApplicationContext applicationContext, T memManager) {
+      ApplicationContext applicationContext,
+      T memManager,
+      String flushDirPath,
+      String flushFilePrefix) {
     LevelProcessorChain<T, IInsertionRequest, InsertRequestContext> insertionLevelProcessChain =
         generateLevelProcessorsChain(applicationContext.getInsertionLevelProcessClass());
     LevelProcessorChain<T, IDeletionRequest, DeleteRequestContext> deletionLevelProcessChain =
@@ -215,7 +222,7 @@ public class LSMEngineBuilder<T extends IMemManager> {
     return buildQueryManager(queryLevelProcessChain)
         .buildInsertionManager(insertionLevelProcessChain)
         .buildDeletionManager(deletionLevelProcessChain)
-        .buildFlushManager(flushLevelProcessChain, memManager);
+        .buildFlushManager(flushLevelProcessChain, memManager, flushDirPath, flushFilePrefix);
   }
 
   /**
@@ -223,11 +230,12 @@ public class LSMEngineBuilder<T extends IMemManager> {
    *
    * @param packageName package name
    */
-  private LSMEngineBuilder<T> buildLevelProcessors(String packageName, T memManager) {
+  private LSMEngineBuilder<T> buildLevelProcessors(
+      String packageName, T memManager, String flushDirPath, String flushFilePrefix) {
     try {
       ApplicationContext property =
           ApplicationContextGenerator.GeneratePropertyWithAnnotation(packageName);
-      buildLevelProcessors(property, memManager);
+      buildLevelProcessors(property, memManager, flushDirPath, flushFilePrefix);
     } catch (Exception e) {
       logger.error(e.getMessage());
     }
@@ -242,10 +250,14 @@ public class LSMEngineBuilder<T extends IMemManager> {
    * @param memManager
    */
   public LSMEngineBuilder<T> buildLSMManagers(
-      ApplicationContext applicationContext, WALManager walManager, T memManager) {
+      ApplicationContext applicationContext,
+      WALManager walManager,
+      T memManager,
+      String flushDirPath,
+      String flushFilePrefix) {
     try {
       buildWalManager(walManager)
-          .buildLevelProcessors(applicationContext, memManager)
+          .buildLevelProcessors(applicationContext, memManager, flushDirPath, flushFilePrefix)
           .buildRecoverManager();
     } catch (Exception e) {
       logger.error(e.getMessage());
@@ -260,11 +272,15 @@ public class LSMEngineBuilder<T extends IMemManager> {
    * @param walManager WalManager object
    */
   public LSMEngineBuilder<T> buildLSMManagers(
-      String packageName, WALManager walManager, T memManager) {
+      String packageName,
+      WALManager walManager,
+      T memManager,
+      String flushDirPath,
+      String flushFilePrefix) {
     try {
       ApplicationContext property =
           ApplicationContextGenerator.GeneratePropertyWithAnnotation(packageName);
-      buildLSMManagers(property, walManager, memManager);
+      buildLSMManagers(property, walManager, memManager, flushDirPath, flushFilePrefix);
     } catch (Exception e) {
       logger.error(e.getMessage());
     }

@@ -22,7 +22,10 @@ import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.lsm.context.requestcontext.FlushRequestContext;
 import org.apache.iotdb.lsm.request.IFlushRequest;
+import org.apache.iotdb.lsm.sstable.fileIO.FileOutput;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.List;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -37,11 +40,20 @@ public class FlushManager<T extends IMemManager, R extends IFlushRequest>
 
   private ScheduledExecutorService checkFlushThread;
 
+  private String flushDirPath;
+
+  private String flushFilePrefix;
+
   private final int flushIntervalMs = 60_000;
 
-  public FlushManager(WALManager walManager, T memManager) {
+  public FlushManager(
+      WALManager walManager, T memManager, String flushDirPath, String flushFilePrefix) {
     this.walManager = walManager;
     this.memManager = memManager;
+    this.flushDirPath = flushDirPath;
+    File flushDir = new File(flushDirPath);
+    flushDir.mkdirs();
+    this.flushFilePrefix = flushFilePrefix;
     checkFlushThread = IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("LSM-Flush-Service");
     ScheduledExecutorUtil.safelyScheduleAtFixedRate(
         checkFlushThread,
@@ -55,6 +67,8 @@ public class FlushManager<T extends IMemManager, R extends IFlushRequest>
     if (memManager.isNeedFlush()) {
       List<R> flushRequests = memManager.getFlushRequests();
       for (R flushRequest : flushRequests) {
+        flushRequest.setFlushDirPath(flushDirPath);
+        flushRequest.setFlushFileName(flushFilePrefix + "-0" + flushRequest.getIndex());
         FlushRequestContext flushRequestContext = flush(flushRequest);
         updateWal(flushRequestContext);
       }
@@ -65,19 +79,25 @@ public class FlushManager<T extends IMemManager, R extends IFlushRequest>
     // TODO delete wal file
   }
 
-  private void flushToDisk(FlushRequestContext flushRequestBaseContext) {
-    // TODO flush to disk
-  }
-
   private FlushRequestContext flush(R flushRequest) {
     FlushRequestContext flushRequestBaseContext = new FlushRequestContext();
     process(memManager, flushRequest, flushRequestBaseContext);
-    flushToDisk(flushRequestBaseContext);
     return flushRequestBaseContext;
   }
 
   @Override
-  public void preProcess(T root, R request, FlushRequestContext context) {}
+  public void preProcess(T root, R request, FlushRequestContext context) {
+    String flushFileName = request.getFlushFileName();
+    File flushFile = new File(this.flushDirPath, flushFileName);
+    try {
+      if (!flushFile.exists()) {
+        flushFile.createNewFile();
+      }
+      context.setFileOutput(new FileOutput(flushFile));
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    }
+  }
 
   @Override
   public void postProcess(T root, R request, FlushRequestContext context) {}
