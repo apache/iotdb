@@ -105,4 +105,9 @@ public abstract class AbstractInnerCompactionWriter extends AbstractCompactionWr
   public void checkAndMayFlushChunkMetadata() throws IOException {
     fileWriter.checkMetadataSizeAndMayFlush();
   }
+
+  @Override
+  public long getWriterSize() throws IOException {
+    return fileWriter.getPos();
+  }
 }

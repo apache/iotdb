@@ -1045,14 +1045,14 @@ IoTDB ConfigNode 和 DataNode 的公共配置参数位于 `conf` 目录下。
 |    默认值    | 60000                                    |
 | 改后生效方式 | 重启服务生效                             |
 
-* compaction\_write\_throughput\_mb\_per\_sec
+* compaction\_io\_rate\_per\_sec
 
-|名字| compaction\_write\_throughput\_mb\_per\_sec |
-|:---:|:---|
-|描述| 每秒可达到的写入吞吐量合并限制。|
-|类型| int32 |
-|默认值| 16 |
-|改后生效方式| 重启服务生效|
+|名字| compaction\_io\_rate\_per\_sec |
+|:---:|:-------------------------------|
+|描述| 每秒合并随机IO的次数。                   |
+|类型| int32                          |
+|默认值| 50                             |
+|改后生效方式| 重启服务生效                         |
 
 * sub\_compaction\_thread\_count
 
