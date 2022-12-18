@@ -57,7 +57,7 @@ public class ClusterNodeStartUtils {
     final String CONF_FILE_NAME =
         NodeType.ConfigNode.equals(nodeType)
             ? ConfigNodeConstant.CONF_FILE_NAME
-            : IoTDBConstant.CONF_FILE_NAME;
+            : IoTDBConstant.DATA_NODE_CONF_FILE_NAME;
     TSStatus status = new TSStatus();
 
     /* Check if there exist conflict TEndPoints */
@@ -108,7 +108,7 @@ public class ClusterNodeStartUtils {
     final String CONF_FILE_NAME =
         NodeType.ConfigNode.equals(nodeType)
             ? ConfigNodeConstant.CONF_FILE_NAME
-            : IoTDBConstant.CONF_FILE_NAME;
+            : IoTDBConstant.DATA_NODE_CONF_FILE_NAME;
     TSStatus status = new TSStatus();
 
     /* Reject restart if the cluster name is error */
