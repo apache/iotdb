@@ -23,11 +23,21 @@ import org.apache.iotdb.lsm.context.requestcontext.RequestContext;
 import java.util.List;
 
 /** Represents a flush request that can be processed by the lsm framework */
-public class IFlushRequest<K, V> implements IRequest<K, V> {
+public class IFlushRequest<K, V, T> implements IRequest<K, V> {
   private String flushDirPath;
   private String flushFileName;
 
   private int index;
+
+  public T getMemNode() {
+    return memNode;
+  }
+
+  public void setMemNode(T memNode) {
+    this.memNode = memNode;
+  }
+
+  private T memNode;
 
   public int getIndex() {
     return index;
@@ -37,8 +47,9 @@ public class IFlushRequest<K, V> implements IRequest<K, V> {
     this.index = index;
   }
 
-  public IFlushRequest(int index) {
+  public IFlushRequest(int index, T memNode) {
     this.index = index;
+    this.memNode = memNode;
   }
 
   public String getFlushDirPath() {

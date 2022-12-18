@@ -118,7 +118,7 @@ public class MemTableGroup implements IMemManager {
   public List<IFlushRequest> getFlushRequests() {
     List<IFlushRequest> flushRequests =
         immutableMemTables.entrySet().stream()
-            .map(entry -> new IFlushRequest(entry.getKey()))
+            .map(entry -> new IFlushRequest(entry.getKey(), entry.getValue()))
             .collect(Collectors.toList());
     return flushRequests;
   }

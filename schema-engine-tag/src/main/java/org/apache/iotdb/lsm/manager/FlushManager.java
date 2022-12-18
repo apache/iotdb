@@ -44,7 +44,7 @@ public class FlushManager<T extends IMemManager, R extends IFlushRequest>
 
   private String flushFilePrefix;
 
-  private final int flushIntervalMs = 60_000;
+  private final int flushIntervalMs = 1;
 
   public FlushManager(
       WALManager walManager, T memManager, String flushDirPath, String flushFilePrefix) {
@@ -68,7 +68,7 @@ public class FlushManager<T extends IMemManager, R extends IFlushRequest>
       List<R> flushRequests = memManager.getFlushRequests();
       for (R flushRequest : flushRequests) {
         flushRequest.setFlushDirPath(flushDirPath);
-        flushRequest.setFlushFileName(flushFilePrefix + "-0" + flushRequest.getIndex());
+        flushRequest.setFlushFileName(flushFilePrefix + "-0-" + flushRequest.getIndex());
         flush(flushRequest);
         memManager.removeMemData(flushRequest);
         updateWal(flushRequest);
@@ -83,7 +83,7 @@ public class FlushManager<T extends IMemManager, R extends IFlushRequest>
 
   private void flush(R flushRequest) {
     FlushRequestContext flushRequestBaseContext = new FlushRequestContext();
-    process(memManager, flushRequest, flushRequestBaseContext);
+    process((T) flushRequest.getMemNode(), flushRequest, flushRequestBaseContext);
   }
 
   @Override
