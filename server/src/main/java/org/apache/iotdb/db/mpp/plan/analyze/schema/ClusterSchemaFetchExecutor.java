@@ -50,6 +50,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.BiFunction;
+import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 class ClusterSchemaFetchExecutor {
@@ -58,6 +59,7 @@ class ClusterSchemaFetchExecutor {
   private final ITemplateManager templateManager;
   private final Supplier<Long> queryIdProvider;
   private final BiFunction<Long, Statement, ExecutionResult> statementExecutor;
+  private final Consumer<ClusterSchemaTree> schemaCacheUpdater;
 
   private final Map<PartialPath, DeviceSchemaFetchTaskExecutor> deviceSchemaFetchTaskExecutorMap =
       new ConcurrentHashMap<>();
@@ -66,11 +68,13 @@ class ClusterSchemaFetchExecutor {
       Coordinator coordinator,
       ITemplateManager templateManager,
       Supplier<Long> queryIdProvider,
-      BiFunction<Long, Statement, ExecutionResult> statementExecutor) {
+      BiFunction<Long, Statement, ExecutionResult> statementExecutor,
+      Consumer<ClusterSchemaTree> schemaCacheUpdater) {
     this.coordinator = coordinator;
     this.templateManager = templateManager;
     this.queryIdProvider = queryIdProvider;
     this.statementExecutor = statementExecutor;
+    this.schemaCacheUpdater = schemaCacheUpdater;
   }
 
   ClusterSchemaTree fetchSchemaOfOneDevice(PartialPath devicePath, List<String> measurements) {
@@ -122,7 +126,8 @@ class ClusterSchemaFetchExecutor {
     for (PartialPath pattern : pathPatternList) {
       templateMap.putAll(templateManager.checkAllRelatedTemplate(pattern));
     }
-    return executeSchemaFetchQuery(new SchemaFetchStatement(patternTree, templateMap, false));
+    return executeSchemaFetchQueryAndCacheResult(
+        new SchemaFetchStatement(patternTree, templateMap, false));
   }
 
   ClusterSchemaTree fetchSchema(PathPatternTree patternTree, boolean withTags) {
@@ -133,6 +138,23 @@ class ClusterSchemaFetchExecutor {
       templateMap.putAll(templateManager.checkAllRelatedTemplate(pattern));
     }
     return executeSchemaFetchQuery(new SchemaFetchStatement(patternTree, templateMap, withTags));
+  }
+
+  ClusterSchemaTree fetchSchemaWithoutWildcard(
+      List<PartialPath> splitPathList, PathPatternTree rawPatternTree) {
+    Map<Integer, Template> templateMap = new HashMap<>();
+    for (PartialPath path : splitPathList) {
+      templateMap.putAll(templateManager.checkAllRelatedTemplate(path));
+    }
+    return executeSchemaFetchQueryAndCacheResult(
+        new SchemaFetchStatement(rawPatternTree, templateMap, false));
+  }
+
+  private ClusterSchemaTree executeSchemaFetchQueryAndCacheResult(
+      SchemaFetchStatement schemaFetchStatement) {
+    ClusterSchemaTree schemaTree = executeSchemaFetchQuery(schemaFetchStatement);
+    schemaCacheUpdater.accept(schemaTree);
+    return schemaTree;
   }
 
   private ClusterSchemaTree executeSchemaFetchQuery(SchemaFetchStatement schemaFetchStatement) {
@@ -252,7 +274,7 @@ class ClusterSchemaFetchExecutor {
             }
             // do execution and save fetched result
             task.saveResult(
-                executeSchemaFetchQuery(
+                executeSchemaFetchQueryAndCacheResult(
                     new SchemaFetchStatement(
                         task.generatePatternTree(devicePath),
                         templateManager.checkAllRelatedTemplate(devicePath, task.measurementSet),

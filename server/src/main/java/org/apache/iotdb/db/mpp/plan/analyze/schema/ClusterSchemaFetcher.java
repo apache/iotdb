@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.mpp.plan.analyze.schema;
 
-import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -83,7 +82,8 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
                   "",
                   ClusterPartitionFetcher.getInstance(),
                   this,
-                  config.getQueryTimeoutThreshold()));
+                  config.getQueryTimeoutThreshold()),
+          schemaCache::put);
 
   private static final class ClusterSchemaFetcherHolder {
     private static final ClusterSchemaFetcher INSTANCE = new ClusterSchemaFetcher();
@@ -116,48 +116,44 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
 
     patternTree.constructTree();
     List<PartialPath> pathPatternList = patternTree.getAllPathPatterns();
-    List<PartialPath> fullPathList = new ArrayList<>();
+
     Map<PartialPath, List<String>> deviceMap = new HashMap<>();
     for (PartialPath pattern : pathPatternList) {
-      if (!pattern.hasWildcard()) {
-        fullPathList.add(pattern);
+      if (pattern.hasWildcard()) {
+        return clusterSchemaFetchExecutor.fetchSchema(patternTree, false);
+      } else {
         deviceMap
             .computeIfAbsent(pattern.getDevicePath(), k -> new ArrayList<>())
             .add(pattern.getMeasurement());
       }
     }
 
-    if (fullPathList.isEmpty()) {
-      return clusterSchemaFetchExecutor.fetchSchema(patternTree, false);
-    }
-
+    // only patternTree without wildcard will benefit from schema cache
     // The schema cache R/W and fetch operation must be locked together thus the cache clean
     // operation executed by delete timeseries will be effective.
     schemaCache.takeReadLock();
     try {
       ClusterSchemaTree schemaTree;
-      if (fullPathList.size() == pathPatternList.size()) {
-        boolean isAllCached = true;
-        schemaTree = new ClusterSchemaTree();
-        ClusterSchemaTree cachedSchema;
-        Set<String> storageGroupSet = new HashSet<>();
-        for (PartialPath fullPath : fullPathList) {
-          cachedSchema = schemaCache.get(fullPath);
-          if (cachedSchema.isEmpty()) {
-            isAllCached = false;
-            break;
-          } else {
-            schemaTree.mergeSchemaTree(cachedSchema);
-            storageGroupSet.addAll(cachedSchema.getDatabases());
-          }
+      boolean isAllCached = true;
+      schemaTree = new ClusterSchemaTree();
+      ClusterSchemaTree cachedSchema;
+      Set<String> storageGroupSet = new HashSet<>();
+      for (PartialPath fullPath : pathPatternList) {
+        cachedSchema = schemaCache.get(fullPath);
+        if (cachedSchema.isEmpty()) {
+          isAllCached = false;
+          break;
+        } else {
+          schemaTree.mergeSchemaTree(cachedSchema);
+          storageGroupSet.addAll(cachedSchema.getDatabases());
         }
-        if (isAllCached) {
-          // The entry iterating order of HashMap is to some extent decided by the putting order.
-          // Therefore, we must avoid merge operation on cachedSchemaTree and fetchedSchemaTree,
-          // since the cache state varies among DataNodes.
-          schemaTree.setDatabases(storageGroupSet);
-          return schemaTree;
-        }
+      }
+      if (isAllCached) {
+        // The entry iterating order of HashMap is to some extent decided by the putting order.
+        // Therefore, we must avoid merge operation on cachedSchemaTree and fetchedSchemaTree,
+        // since the cache state varies among DataNodes.
+        schemaTree.setDatabases(storageGroupSet);
+        return schemaTree;
       }
 
       if (deviceMap.size() == 1) {
@@ -165,19 +161,10 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
         schemaTree =
             clusterSchemaFetchExecutor.fetchSchemaOfOneDevice(entry.getKey(), entry.getValue());
       } else {
-        schemaTree = clusterSchemaFetchExecutor.fetchSchema(patternTree, false);
+        schemaTree =
+            clusterSchemaFetchExecutor.fetchSchemaWithoutWildcard(pathPatternList, patternTree);
       }
 
-      // only cache the schema fetched by full path
-      List<MeasurementPath> measurementPathList;
-      for (PartialPath fullPath : fullPathList) {
-        measurementPathList = schemaTree.searchMeasurementPaths(fullPath).left;
-        if (measurementPathList.isEmpty()) {
-          continue;
-        }
-        schemaCache.put(
-            schemaTree.getBelongedDatabase(measurementPathList.get(0)), measurementPathList.get(0));
-      }
       return schemaTree;
     } finally {
       schemaCache.releaseReadLock();
@@ -211,8 +198,8 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
                   .map(index -> measurements[index])
                   .collect(Collectors.toList()));
       if (!remoteSchemaTree.isEmpty()) {
-        schemaTree.mergeSchemaTree(remoteSchemaTree);
-        schemaCache.put(remoteSchemaTree);
+        remoteSchemaTree.mergeSchemaTree(schemaTree);
+        schemaTree = remoteSchemaTree;
       }
 
       if (!config.isAutoCreateSchemaEnabled()) {
@@ -281,8 +268,8 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
           clusterSchemaFetchExecutor.fetchSchemaOfMultiDevice(
               devicePathList, measurementsList, indexOfMissingMeasurementsList);
       if (!remoteSchemaTree.isEmpty()) {
-        schemaTree.mergeSchemaTree(remoteSchemaTree);
-        schemaCache.put(remoteSchemaTree);
+        remoteSchemaTree.mergeSchemaTree(schemaTree);
+        schemaTree = remoteSchemaTree;
       }
 
       if (!config.isAutoCreateSchemaEnabled()) {
