@@ -2289,13 +2289,17 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
     Set<String> deduplicatedDevicePaths = new HashSet<>();
 
-    for (PartialPath pathPattern : patternTree.getAllPathPatterns()) {
-      schemaTree
-          .getMatchedDevices(pathPattern)
-          .forEach(
-              deviceSchemaInfo -> {
-                deduplicatedDevicePaths.add(deviceSchemaInfo.getDevicePath().getFullPath());
-              });
+    for (String devicePattern : patternTree.getAllDevicePatterns()) {
+      try {
+        schemaTree
+            .getMatchedDevices(new PartialPath(devicePattern))
+            .forEach(
+                deviceSchemaInfo -> {
+                  deduplicatedDevicePaths.add(deviceSchemaInfo.getDevicePath().getFullPath());
+                });
+      } catch (IllegalPathException ignored) {
+        // won't happen
+      }
     }
 
     deduplicatedDevicePaths.forEach(
