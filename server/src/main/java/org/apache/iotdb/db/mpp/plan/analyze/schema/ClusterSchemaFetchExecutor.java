@@ -286,7 +286,7 @@ class ClusterSchemaFetchExecutor {
       }
 
       // each request takes needed result from the fetched schema tree
-      return task.extractResult(devicePath, measurements);
+      return task.getResult();
     }
 
     private void incReferenceCount() {
@@ -301,8 +301,6 @@ class ClusterSchemaFetchExecutor {
   private static class DeviceSchemaFetchTask {
 
     private final Set<String> measurementSet;
-
-    private volatile boolean isSingleRequest = true;
 
     private volatile boolean hasSubmitThread = false;
 
@@ -323,9 +321,6 @@ class ClusterSchemaFetchExecutor {
     // only be called when this task is not submitted
     private synchronized void addRequest(List<String> measurements) {
       measurementSet.addAll(measurements);
-      if (isSingleRequest) {
-        isSingleRequest = false;
-      }
     }
 
     private boolean isSubmitting() {
@@ -357,17 +352,13 @@ class ClusterSchemaFetchExecutor {
       taskResult = clusterSchemaTree;
     }
 
-    private ClusterSchemaTree extractResult(PartialPath devicePath, List<String> measurements) {
+    private ClusterSchemaTree getResult() {
       while (true) {
         if (taskResult != null) {
           break;
         }
       }
-      if (isSingleRequest) {
-        return taskResult;
-      } else {
-        return taskResult.extractDeviceSubTree(devicePath, measurements);
-      }
+      return taskResult;
     }
   }
 }
