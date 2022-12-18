@@ -50,12 +50,10 @@ import static org.apache.iotdb.db.mpp.common.schematree.node.SchemaNode.SCHEMA_E
 import static org.apache.iotdb.db.mpp.common.schematree.node.SchemaNode.SCHEMA_MEASUREMENT_NODE;
 
 /**
- * This class is used in statement analyzing stage.
+ * This class is an implementation of ISchemaTree as the form of fetched schema from schema cache or
+ * remote DataNodes.
  *
- * <p>Instance of this class is not restrict as an isolated view of invoking thread, which means
- * this instance may contain some schema info used by other threads, thus be careful with operations
- * intended for <b>querying all</b> or <b>with pattern like root.**</b>, unless the user input
- * pattern is root.**.
+ * <p>The instances are always constructed in one thread and may be queried by multi threads.
  */
 public class ClusterSchemaTree implements ISchemaTree {
 
