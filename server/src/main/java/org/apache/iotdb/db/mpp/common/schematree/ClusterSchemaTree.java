@@ -49,6 +49,14 @@ import static org.apache.iotdb.db.metadata.MetadataConstant.ALL_MATCH_PATTERN;
 import static org.apache.iotdb.db.mpp.common.schematree.node.SchemaNode.SCHEMA_ENTITY_NODE;
 import static org.apache.iotdb.db.mpp.common.schematree.node.SchemaNode.SCHEMA_MEASUREMENT_NODE;
 
+/**
+ * This class is used in statement analyzing stage.
+ *
+ * <p>Instance of this class is not restrict as an isolated view of invoking thread, which means
+ * this instance may contain some schema info used by other threads, thus be careful with operations
+ * intended for <b>querying all</b> or <b>with pattern like root.**</b>, unless the user input
+ * pattern is root.**.
+ */
 public class ClusterSchemaTree implements ISchemaTree {
 
   private Set<String> databases;
