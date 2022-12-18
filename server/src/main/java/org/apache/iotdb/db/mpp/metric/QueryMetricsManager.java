@@ -22,6 +22,7 @@ package org.apache.iotdb.db.mpp.metric;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
+import org.apache.iotdb.metrics.utils.MetricInfo;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 
 import java.util.concurrent.TimeUnit;
@@ -57,6 +58,16 @@ public class QueryMetricsManager {
         MetricLevel.IMPORTANT,
         Tag.NAME.toString(),
         operatorType);
+  }
+
+  public void recordSeriesScanCost(String stage, long costTimeInNanos) {
+    MetricInfo metricInfo = SeriesScanCostMetricSet.metricInfoMap.get(stage);
+    metricService.timer(
+        costTimeInNanos,
+        TimeUnit.NANOSECONDS,
+        metricInfo.getName(),
+        MetricLevel.IMPORTANT,
+        metricInfo.getTagsInArray());
   }
 
   public static QueryMetricsManager getInstance() {

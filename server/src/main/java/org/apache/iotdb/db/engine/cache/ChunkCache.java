@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.mpp.metric.QueryMetricsManager;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
@@ -38,6 +39,9 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.util.concurrent.atomic.AtomicLong;
 
+import static org.apache.iotdb.db.mpp.metric.SeriesScanCostMetricSet.READ_CHUNK_ALL;
+import static org.apache.iotdb.db.mpp.metric.SeriesScanCostMetricSet.READ_CHUNK_FILE;
+
 /**
  * This class is used to cache <code>Chunk</code> of <code>ChunkMetaData</code> in IoTDB. The
  * caching strategy is LRU.
@@ -50,6 +54,8 @@ public class ChunkCache {
   private static final long MEMORY_THRESHOLD_IN_CHUNK_CACHE =
       config.getAllocateMemoryForChunkCache();
   private static final boolean CACHE_ENABLE = config.isMetaDataCacheEnable();
+
+  private static final QueryMetricsManager QUERY_METRICS = QueryMetricsManager.getInstance();
 
   private final LoadingCache<ChunkMetadata, Chunk> lruCache;
 
@@ -71,6 +77,7 @@ public class ChunkCache {
             .recordStats()
             .build(
                 chunkMetadata -> {
+                  long startTime = System.nanoTime();
                   try {
                     TsFileSequenceReader reader =
                         FileReaderManager.getInstance()
@@ -79,6 +86,9 @@ public class ChunkCache {
                   } catch (IOException e) {
                     logger.error("Something wrong happened in reading {}", chunkMetadata, e);
                     throw e;
+                  } finally {
+                    QUERY_METRICS.recordSeriesScanCost(
+                        READ_CHUNK_FILE, System.nanoTime() - startTime);
                   }
                 });
 
@@ -99,29 +109,34 @@ public class ChunkCache {
   }
 
   public Chunk get(ChunkMetadata chunkMetaData, boolean debug) throws IOException {
-    if (!CACHE_ENABLE) {
-      TsFileSequenceReader reader =
-          FileReaderManager.getInstance()
-              .get(chunkMetaData.getFilePath(), chunkMetaData.isClosed());
-      Chunk chunk = reader.readMemChunk(chunkMetaData);
+    long startTime = System.nanoTime();
+    try {
+      if (!CACHE_ENABLE) {
+        TsFileSequenceReader reader =
+            FileReaderManager.getInstance()
+                .get(chunkMetaData.getFilePath(), chunkMetaData.isClosed());
+        Chunk chunk = reader.readMemChunk(chunkMetaData);
+        return new Chunk(
+            chunk.getHeader(),
+            chunk.getData().duplicate(),
+            chunkMetaData.getDeleteIntervalList(),
+            chunkMetaData.getStatistics());
+      }
+
+      Chunk chunk = lruCache.get(chunkMetaData);
+
+      if (debug) {
+        DEBUG_LOGGER.info("get chunk from cache whose meta data is: " + chunkMetaData);
+      }
+
       return new Chunk(
           chunk.getHeader(),
           chunk.getData().duplicate(),
           chunkMetaData.getDeleteIntervalList(),
           chunkMetaData.getStatistics());
+    } finally {
+      QUERY_METRICS.recordSeriesScanCost(READ_CHUNK_ALL, System.nanoTime() - startTime);
     }
-
-    Chunk chunk = lruCache.get(chunkMetaData);
-
-    if (debug) {
-      DEBUG_LOGGER.info("get chunk from cache whose meta data is: " + chunkMetaData);
-    }
-
-    return new Chunk(
-        chunk.getHeader(),
-        chunk.getData().duplicate(),
-        chunkMetaData.getDeleteIntervalList(),
-        chunkMetaData.getStatistics());
   }
 
   public double calculateChunkHitRatio() {

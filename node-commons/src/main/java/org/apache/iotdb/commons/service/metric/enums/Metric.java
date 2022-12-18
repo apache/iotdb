@@ -64,7 +64,8 @@ public enum Metric {
   STAGE,
   QUERY_PLAN_COST,
   OPERATOR_EXECUTION_COST,
-  OPERATOR_EXECUTION_COUNT;
+  OPERATOR_EXECUTION_COUNT,
+  SERIES_SCAN_COST;
 
   @Override
   public String toString() {

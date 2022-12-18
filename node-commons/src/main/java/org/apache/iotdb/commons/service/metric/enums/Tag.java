@@ -24,7 +24,8 @@ public enum Tag {
   NAME,
   REGION,
   STATUS,
-  STAGE;
+  STAGE,
+  FROM;
 
   @Override
   public String toString() {
