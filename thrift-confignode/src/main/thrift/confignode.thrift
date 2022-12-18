@@ -666,7 +666,7 @@ service IConfigNodeRPCService {
   /**
    * Restart a existed DataNode
    *
-   * @return SUCCESS_STATUS if
+   * @return SUCCESS_STATUS if restart DataNode success
    */
   TDataNodeRestartResp restartDataNode(TDataNodeRestartReq req)
 

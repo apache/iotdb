@@ -261,7 +261,8 @@ public class SystemPropertiesUtils {
     String clusterName = systemProperties.getProperty("cluster_name", null);
     if (clusterName == null) {
       throw new IOException(
-          "The parameter cluster_id doesn't exist in confignode-system.properties. Please delete data dir and restart again");
+          "The parameter cluster_name doesn't exist in data/confignode/system/confignode-system.properties. "
+              + "Please delete data dir data/confignode and restart again");
     }
     return clusterName;
   }
@@ -279,7 +280,8 @@ public class SystemPropertiesUtils {
       return Integer.parseInt(systemProperties.getProperty("config_node_id", null));
     } catch (NumberFormatException e) {
       throw new IOException(
-          "The parameter config_node_id doesn't exist in confignode-system.properties. Please delete data dir and restart again.");
+          "The parameter config_node_id doesn't exist in data/confignode/system/confignode-system.properties. "
+              + "Please delete data dir data/confignode and restart again.");
     }
   }
 

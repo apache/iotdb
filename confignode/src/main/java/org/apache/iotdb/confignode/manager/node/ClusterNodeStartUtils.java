@@ -43,7 +43,7 @@ public class ClusterNodeStartUtils {
   private static final String CLUSTER_NAME =
       ConfigNodeDescriptor.getInstance().getConf().getClusterName();
 
-  private static final String POSSIBLE_SOLUTIONS = " Possible solutions are as follows:\n";
+  private static final String POSSIBLE_SOLUTIONS = " Possible solutions are as follows:\r\n";
 
   public static final TSStatus ACCEPT_NODE_REGISTRATION =
       new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode())
