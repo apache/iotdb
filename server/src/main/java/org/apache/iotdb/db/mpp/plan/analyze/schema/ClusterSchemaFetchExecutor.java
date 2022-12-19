@@ -308,6 +308,8 @@ class ClusterSchemaFetchExecutor {
 
     private volatile boolean hasSubmitThread = false;
 
+    // This field only updated once, which is protected by hasSubmitThread
+    @SuppressWarnings("squid:S3077")
     private volatile ClusterSchemaTree taskResult = null;
 
     private DeviceSchemaFetchTask(List<String> measurements) {
