@@ -20,6 +20,7 @@
 
 from iotdb.Session import Session
 from iotdb.IoTDBContainer import IoTDBContainer
+from iotdb.utils.IoTDBConstants import TSDataType
 
 # whether the test has passed
 final_flag = True
@@ -44,7 +45,7 @@ def test_delete_date():
         db: IoTDBContainer
         session = Session(db.get_container_host_ip(), db.get_exposed_port(6667))
         session.open(False)
-        session.execute_non_query_statement("CREATE DATABASE root.str_test_01")
+        session.execute_non_query_statement("CREATE Storage group root.str_test_01")
 
         if not session.is_open():
             print("can't open session")
@@ -58,16 +59,17 @@ def test_delete_date():
             ["s_01", "s_02", "s_03"],
         ]
         values_list = [
-            ["False", "22", "33"],
-            ["True", "1", "23"],
-            ["False", "15", "26"],
+            [False, 22, 33],
+            [True, 1, 23],
+            [False, 15, 26],
         ]
 
         if (
-            session.insert_string_records_of_one_device(
+            session.insert_records_of_one_device(
                 "root.str_test_01.d_01",
                 time_list,
                 measurements_list,
+                [TSDataType.BOOLEAN, TSDataType.INT32, TSDataType.INT32],
                 values_list,
             )
             < 0
@@ -83,16 +85,17 @@ def test_delete_date():
             ["s_01", "s_02", "s_03"],
         ]
         values_list = [
-            ["False", "22", "33"],
-            ["True", "1", "23"],
-            ["False", "15", "26"],
+            [False, 22, 33],
+            [True, 1, 23],
+            [False, 15, 26],
         ]
 
         if (
-            session.insert_aligned_string_records_of_one_device(
+            session.insert_aligned_records_of_one_device(
                 "root.str_test_01.d_02",
                 time_list,
                 measurements_list,
+                [TSDataType.BOOLEAN, TSDataType.INT32, TSDataType.INT32],
                 values_list,
             )
             < 0
@@ -104,8 +107,9 @@ def test_delete_date():
         session.delete_data(["root.str_test_01.d_02.s_01", "root.str_test_01.d_02.s_02"], 1)
 
         # execute raw data query sql statement
-        session_data_set = session.execute_raw_data_query(
-            ["root.str_test_01.d_02.s_01", "root.str_test_01.d_02.s_02"], 1, 4
+        session_data_set = session.execute_query_statement(
+            "select s_01, s_02 from root.str_test_01.d_02"
+            + " where time >= 1 and time <= 4"
         )
         session_data_set.set_fetch_size(1024)
         expect_count = 2
@@ -129,8 +133,9 @@ def test_delete_date():
         session.delete_data_in_range(["root.str_test_01.d_02.s_01", "root.str_test_01.d_02.s_02"], 2, 3)
 
         # execute raw data query sql statement
-        session_data_set = session.execute_raw_data_query(
-            ["root.str_test_01.d_02.s_01", "root.str_test_01.d_02.s_02"], 1, 4
+        session_data_set = session.execute_query_statement(
+            "select s_01, s_02 from root.str_test_01.d_02"
+            + " where time >= 1 and time <= 4"
         )
         session_data_set.set_fetch_size(1024)
         expect_count = 0
