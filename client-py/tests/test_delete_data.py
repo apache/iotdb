@@ -63,13 +63,18 @@ def test_delete_date():
             [True, 1, 23],
             [False, 15, 26],
         ]
+        data_types_list = [
+            [TSDataType.BOOLEAN, TSDataType.INT32, TSDataType.INT64],
+            [TSDataType.BOOLEAN, TSDataType.INT32, TSDataType.INT64],
+            [TSDataType.BOOLEAN, TSDataType.INT32, TSDataType.INT64],
+        ]
 
         if (
             session.insert_records_of_one_device(
                 "root.str_test_01.d_01",
                 time_list,
                 measurements_list,
-                [TSDataType.BOOLEAN, TSDataType.INT32, TSDataType.INT32],
+                data_types_list,
                 values_list,
             )
             < 0
@@ -89,13 +94,18 @@ def test_delete_date():
             [True, 1, 23],
             [False, 15, 26],
         ]
+        data_types_list = [
+            [TSDataType.BOOLEAN, TSDataType.INT32, TSDataType.INT64],
+            [TSDataType.BOOLEAN, TSDataType.INT32, TSDataType.INT64],
+            [TSDataType.BOOLEAN, TSDataType.INT32, TSDataType.INT64],
+        ]
 
         if (
             session.insert_aligned_records_of_one_device(
                 "root.str_test_01.d_02",
                 time_list,
                 measurements_list,
-                [TSDataType.BOOLEAN, TSDataType.INT32, TSDataType.INT32],
+                data_types_list,
                 values_list,
             )
             < 0
