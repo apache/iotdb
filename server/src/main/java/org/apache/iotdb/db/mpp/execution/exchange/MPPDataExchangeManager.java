@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeMPPDataExchangeServiceClient;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.mpp.execution.memory.LocalMemoryManager;
+import org.apache.iotdb.db.mpp.metric.QueryMetricsManager;
 import org.apache.iotdb.db.utils.SetThreadName;
 import org.apache.iotdb.mpp.rpc.thrift.MPPDataExchangeService;
 import org.apache.iotdb.mpp.rpc.thrift.TAcknowledgeDataBlockEvent;
@@ -50,6 +51,9 @@ import java.util.concurrent.ExecutorService;
 import java.util.function.Supplier;
 
 import static org.apache.iotdb.db.mpp.common.FragmentInstanceId.createFullId;
+import static org.apache.iotdb.db.mpp.metric.DataExchangeMetricSet.GET_DATA_BLOCK_TASK_SERVER;
+import static org.apache.iotdb.db.mpp.metric.DataExchangeMetricSet.ON_ACKNOWLEDGE_DATA_BLOCK_EVENT_TASK_SERVER;
+import static org.apache.iotdb.db.mpp.metric.DataExchangeMetricSet.SEND_NEW_DATA_BLOCK_EVENT_TASK_SERVER;
 
 public class MPPDataExchangeManager implements IMPPDataExchangeManager {
 
@@ -76,8 +80,11 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
   /** Handle thrift communications. */
   class MPPDataExchangeServiceImpl implements MPPDataExchangeService.Iface {
 
+    private final QueryMetricsManager QUERY_METRICS = QueryMetricsManager.getInstance();
+
     @Override
     public TGetDataBlockResponse getDataBlock(TGetDataBlockRequest req) throws TException {
+      long startTime = System.nanoTime();
       try (SetThreadName fragmentInstanceName =
           new SetThreadName(
               createFullId(
@@ -105,11 +112,15 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
           }
         }
         return resp;
+      } finally {
+        QUERY_METRICS.recordDataExchangeCost(
+            GET_DATA_BLOCK_TASK_SERVER, System.nanoTime() - startTime);
       }
     }
 
     @Override
     public void onAcknowledgeDataBlockEvent(TAcknowledgeDataBlockEvent e) {
+      long startTime = System.nanoTime();
       try (SetThreadName fragmentInstanceName =
           new SetThreadName(
               createFullId(
@@ -133,11 +144,15 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
         logger.warn(
             "ack TsBlock [{}, {}) failed.", e.getStartSequenceId(), e.getEndSequenceId(), t);
         throw t;
+      } finally {
+        QUERY_METRICS.recordDataExchangeCost(
+            ON_ACKNOWLEDGE_DATA_BLOCK_EVENT_TASK_SERVER, System.nanoTime() - startTime);
       }
     }
 
     @Override
     public void onNewDataBlockEvent(TNewDataBlockEvent e) throws TException {
+      long startTime = System.nanoTime();
       try (SetThreadName fragmentInstanceName =
           new SetThreadName(createFullIdFrom(e.targetFragmentInstanceId, e.targetPlanNodeId))) {
         logger.debug(
@@ -171,6 +186,9 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
             (SourceHandle)
                 sourceHandles.get(e.getTargetFragmentInstanceId()).get(e.getTargetPlanNodeId());
         sourceHandle.updatePendingDataBlockInfo(e.getStartSequenceId(), e.getBlockSizes());
+      } finally {
+        QUERY_METRICS.recordDataExchangeCost(
+            SEND_NEW_DATA_BLOCK_EVENT_TASK_SERVER, System.nanoTime() - startTime);
       }
     }
 

@@ -21,6 +21,7 @@ package org.apache.iotdb.db.mpp.execution.exchange;
 
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.db.mpp.execution.exchange.MPPDataExchangeManager.SourceHandleListener;
+import org.apache.iotdb.db.mpp.metric.QueryMetricsManager;
 import org.apache.iotdb.db.utils.SetThreadName;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -36,6 +37,8 @@ import java.nio.ByteBuffer;
 
 import static com.google.common.util.concurrent.Futures.nonCancellationPropagating;
 import static org.apache.iotdb.db.mpp.execution.exchange.MPPDataExchangeManager.createFullIdFrom;
+import static org.apache.iotdb.db.mpp.metric.DataExchangeMetricSet.SOURCE_HANDLE_GET_TSBLOCK_LOCAL;
+import static org.apache.iotdb.db.mpp.metric.DataExchangeMetricSet.SOURCE_HANDLE_SERIALIZE_TSBLOCK_LOCAL;
 
 public class LocalSourceHandle implements ISourceHandle {
 
@@ -55,6 +58,7 @@ public class LocalSourceHandle implements ISourceHandle {
   private final String threadName;
 
   private static final TsBlockSerde serde = new TsBlockSerde();
+  private static final QueryMetricsManager QUERY_METRICS = QueryMetricsManager.getInstance();
 
   public LocalSourceHandle(
       TFragmentInstanceId remoteFragmentInstanceId,
@@ -88,6 +92,7 @@ public class LocalSourceHandle implements ISourceHandle {
 
   @Override
   public TsBlock receive() {
+    long startTime = System.nanoTime();
     try (SetThreadName sourceHandleName = new SetThreadName(threadName)) {
       checkState();
 
@@ -107,6 +112,9 @@ public class LocalSourceHandle implements ISourceHandle {
       }
       checkAndInvokeOnFinished();
       return tsBlock;
+    } finally {
+      QUERY_METRICS.recordDataExchangeCost(
+          SOURCE_HANDLE_GET_TSBLOCK_LOCAL, System.nanoTime() - startTime);
     }
   }
 
@@ -114,10 +122,14 @@ public class LocalSourceHandle implements ISourceHandle {
   public ByteBuffer getSerializedTsBlock() throws IoTDBException {
     TsBlock tsBlock = receive();
     if (tsBlock != null) {
+      long startTime = System.nanoTime();
       try {
         return serde.serialize(tsBlock);
       } catch (Exception e) {
         throw new IoTDBException(e, TSStatusCode.TSBLOCK_SERIALIZE_ERROR.getStatusCode());
+      } finally {
+        QUERY_METRICS.recordDataExchangeCost(
+            SOURCE_HANDLE_SERIALIZE_TSBLOCK_LOCAL, System.nanoTime() - startTime);
       }
     } else {
       return null;

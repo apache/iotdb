@@ -69,7 +69,8 @@ public enum Metric {
   DISPATCHER,
   QUERY_EXECUTION,
   AGGREGATION,
-  QUERY_RESOURCE;
+  QUERY_RESOURCE,
+  DATA_EXCHANGE;
 
   @Override
   public String toString() {

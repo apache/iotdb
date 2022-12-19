@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.client.sync.SyncDataNodeMPPDataExchangeServiceCl
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.mpp.execution.exchange.MPPDataExchangeManager.SinkHandleListener;
 import org.apache.iotdb.db.mpp.execution.memory.LocalMemoryManager;
+import org.apache.iotdb.db.mpp.metric.QueryMetricsManager;
 import org.apache.iotdb.db.utils.SetThreadName;
 import org.apache.iotdb.mpp.rpc.thrift.TEndOfDataBlockEvent;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
@@ -49,6 +50,8 @@ import java.util.concurrent.ExecutorService;
 
 import static com.google.common.util.concurrent.Futures.nonCancellationPropagating;
 import static org.apache.iotdb.db.mpp.common.FragmentInstanceId.createFullId;
+import static org.apache.iotdb.db.mpp.metric.DataExchangeMetricSet.SEND_NEW_DATA_BLOCK_EVENT_TASK_CALLER;
+import static org.apache.iotdb.db.mpp.metric.DataExchangeMetricSet.SINK_HANDLE_SEND_TSBLOCK_REMOTE;
 import static org.apache.iotdb.tsfile.read.common.block.TsBlockBuilderStatus.DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
 
 public class SinkHandle implements ISinkHandle {
@@ -91,6 +94,8 @@ public class SinkHandle implements ISinkHandle {
   private boolean closed = false;
 
   private boolean noMoreTsBlocks = false;
+
+  private static final QueryMetricsManager QUERY_METRICS = QueryMetricsManager.getInstance();
 
   public SinkHandle(
       TEndPoint remoteEndpoint,
@@ -139,30 +144,36 @@ public class SinkHandle implements ISinkHandle {
 
   @Override
   public synchronized void send(TsBlock tsBlock) {
-    Validate.notNull(tsBlock, "tsBlocks is null");
-    checkState();
-    if (!blocked.isDone()) {
-      throw new IllegalStateException("Sink handle is blocked.");
-    }
-    if (noMoreTsBlocks) {
-      return;
-    }
-    long retainedSizeInBytes = tsBlock.getRetainedSizeInBytes();
-    int startSequenceId;
-    startSequenceId = nextSequenceId;
-    blocked =
-        localMemoryManager
-            .getQueryPool()
-            .reserve(localFragmentInstanceId.getQueryId(), retainedSizeInBytes)
-            .left;
-    bufferRetainedSizeInBytes += retainedSizeInBytes;
+    long startTime = System.nanoTime();
+    try {
+      Validate.notNull(tsBlock, "tsBlocks is null");
+      checkState();
+      if (!blocked.isDone()) {
+        throw new IllegalStateException("Sink handle is blocked.");
+      }
+      if (noMoreTsBlocks) {
+        return;
+      }
+      long retainedSizeInBytes = tsBlock.getRetainedSizeInBytes();
+      int startSequenceId;
+      startSequenceId = nextSequenceId;
+      blocked =
+          localMemoryManager
+              .getQueryPool()
+              .reserve(localFragmentInstanceId.getQueryId(), retainedSizeInBytes)
+              .left;
+      bufferRetainedSizeInBytes += retainedSizeInBytes;
 
-    sequenceIdToTsBlock.put(nextSequenceId, new Pair<>(tsBlock, currentTsBlockSize));
-    nextSequenceId += 1;
-    currentTsBlockSize = retainedSizeInBytes;
+      sequenceIdToTsBlock.put(nextSequenceId, new Pair<>(tsBlock, currentTsBlockSize));
+      nextSequenceId += 1;
+      currentTsBlockSize = retainedSizeInBytes;
 
-    // TODO: consider merge multiple NewDataBlockEvent for less network traffic.
-    submitSendNewDataBlockEventTask(startSequenceId, ImmutableList.of(retainedSizeInBytes));
+      // TODO: consider merge multiple NewDataBlockEvent for less network traffic.
+      submitSendNewDataBlockEventTask(startSequenceId, ImmutableList.of(retainedSizeInBytes));
+    } finally {
+      QUERY_METRICS.recordDataExchangeCost(
+          SINK_HANDLE_SEND_TSBLOCK_REMOTE, System.nanoTime() - startTime);
+    }
   }
 
   @Override
@@ -358,6 +369,7 @@ public class SinkHandle implements ISinkHandle {
                 blockSizes);
         while (attempt < MAX_ATTEMPT_TIMES) {
           attempt += 1;
+          long startTime = System.nanoTime();
           try (SyncDataNodeMPPDataExchangeServiceClient client =
               mppDataExchangeServiceClientManager.borrowClient(remoteEndpoint)) {
             client.onNewDataBlockEvent(newDataBlockEvent);
@@ -373,6 +385,9 @@ public class SinkHandle implements ISinkHandle {
               Thread.currentThread().interrupt();
               sinkHandleListener.onFailure(SinkHandle.this, e);
             }
+          } finally {
+            QUERY_METRICS.recordDataExchangeCost(
+                SEND_NEW_DATA_BLOCK_EVENT_TASK_CALLER, System.nanoTime() - startTime);
           }
         }
       }
