@@ -19,10 +19,15 @@
 
 package org.apache.iotdb.db.metadata.schemaRegion;
 
+import org.junit.Test;
+
 // todo add alias and tag test
 public class SchemaRegionAliasAndTagTest extends AbstractSchemaRegionTest {
 
   public SchemaRegionAliasAndTagTest(SchemaRegionTestParams testParams) {
     super(testParams);
   }
+
+  @Test
+  public void emptyTest() {}
 }

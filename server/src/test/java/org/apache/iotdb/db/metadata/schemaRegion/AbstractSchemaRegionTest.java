@@ -24,8 +24,8 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaEngine;
 
 import org.apache.commons.io.FileUtils;
+import org.junit.After;
 import org.junit.Before;
-import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
@@ -70,7 +70,7 @@ public abstract class AbstractSchemaRegionTest {
     SchemaEngine.getInstance().init();
   }
 
-  @Test
+  @After
   public void tearDown() throws Exception {
     SchemaEngine.getInstance().clear();
 

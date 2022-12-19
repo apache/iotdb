@@ -34,9 +34,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 
 import org.apache.commons.lang3.StringUtils;
-import org.junit.After;
 import org.junit.Assert;
-import org.junit.Before;
 import org.junit.Test;
 
 import java.util.Arrays;
@@ -57,16 +55,6 @@ public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
 
   public SchemaRegionBasicTest(SchemaRegionTestParams testParams) {
     super(testParams);
-  }
-
-  @Before
-  public void setUp() throws Exception {
-    super.setUp();
-  }
-
-  @After
-  public void tearDown() throws Exception {
-    super.tearDown();
   }
 
   @Test
