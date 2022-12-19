@@ -31,6 +31,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateMulti
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateTimeSeriesNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.InternalCreateTimeSeriesNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.MeasurementGroup;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.ShowQueriesNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertMultiTabletsNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowNode;
@@ -712,7 +713,13 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
   public PlanNode visitShowQueries(
       ShowQueriesStatement showQueriesStatement, MPPQueryContext context) {
     LogicalPlanBuilder planBuilder = new LogicalPlanBuilder(analysis, context);
-    // TODO planBuilder = planBuilder.planShowQueries()
+    planBuilder =
+        planBuilder
+            .planShowQueries(analysis, showQueriesStatement) // push Filter down
+            .planOneChildOrderBy(
+                analysis.getMergeOrderParameter(), ShowQueriesNode.SHOW_QUERIES_HEADER_COLUMNS)
+            .planLimit(showQueriesStatement.getRowLimit())
+            .planOffset(showQueriesStatement.getRowOffset());
     return planBuilder.getRoot();
   }
 }

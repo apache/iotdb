@@ -2496,7 +2496,26 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       analysis.setFinishQueryAfterAnalyze(true);
     }
     // TODO Constant folding optimization for Where Predicate after True/False Constant introduced
+    if (allRunningDataNodeLocations.isEmpty()) {
+      throw new StatementAnalyzeException("no Running DataNodes");
+    }
     analysis.setRunningDataNodeLocations(allRunningDataNodeLocations);
+
+    Set<Expression> sourceExpressions =
+        analysis.getRespDatasetHeader().getColumnHeaders().stream()
+            .map(
+                columnHeader -> {
+                  try {
+                    return new TimeSeriesOperand(
+                        new MeasurementPath(
+                            columnHeader.getColumnName(), columnHeader.getColumnType()));
+                  } catch (IllegalPathException ignored) {
+                  }
+                  return null;
+                })
+            .collect(Collectors.toSet());
+    analysis.setSourceExpressions(sourceExpressions);
+    sourceExpressions.forEach(expression -> analyzeExpression(analysis, expression));
 
     analyzeWhere(analysis, showQueriesStatement);
 

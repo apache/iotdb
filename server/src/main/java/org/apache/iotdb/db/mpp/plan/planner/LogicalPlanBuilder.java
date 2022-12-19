@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.mpp.plan.planner;
 
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSchemaNode;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.AlignedPath;
@@ -58,10 +59,12 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.FillNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.FilterNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.GroupByLevelNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.GroupByTagNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.HorizontallyConcatNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.IntoNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.LimitNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.MergeSortNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.OffsetNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.ShowQueriesNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.SingleDeviceViewNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.SlidingWindowAggregationNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.TimeJoinNode;
@@ -85,6 +88,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.OrderByParameter;
 import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.db.mpp.plan.statement.component.SortItem;
 import org.apache.iotdb.db.mpp.plan.statement.component.SortKey;
+import org.apache.iotdb.db.mpp.plan.statement.sys.ShowQueriesStatement;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -1109,6 +1113,55 @@ public class LogicalPlanBuilder {
     this.root =
         new PathsUsingTemplateScanNode(
             context.getQueryId().genPlanNodeId(), pathPatternList, templateId);
+    return this;
+  }
+
+  public LogicalPlanBuilder planOneChildOrderBy(
+      OrderByParameter orderByParameter, List<String> outputColumns) {
+    if (orderByParameter.isEmpty()) {
+      return this;
+    }
+    this.root =
+        new MergeSortNode(
+            context.getQueryId().genPlanNodeId(),
+            Collections.singletonList(this.root),
+            orderByParameter,
+            outputColumns);
+    return this;
+  }
+
+  public LogicalPlanBuilder planShowQueries(Analysis analysis, ShowQueriesStatement statement) {
+    List<TDataNodeLocation> dataNodeLocations = analysis.getRunningDataNodeLocations();
+    if (dataNodeLocations.size() == 1) {
+      this.root = new ShowQueriesNode(context.getQueryId().genPlanNodeId());
+    } else {
+      HorizontallyConcatNode concatNode =
+          new HorizontallyConcatNode(context.getQueryId().genPlanNodeId());
+      dataNodeLocations.forEach(
+          dataNodeLocation ->
+              concatNode.addChild(
+                  new LogicalPlanBuilder(analysis, context)
+                      .planSingleShowQueries()
+                      .planFilterAndTransform(
+                          analysis.getWhereExpression(),
+                          analysis.getSourceExpressions(),
+                          false,
+                          statement.getZoneId(),
+                          Ordering.ASC)
+                      .getRoot()));
+      this.root = concatNode;
+    }
+
+    ColumnHeaderConstant.showQueriesColumnHeaders.forEach(
+        columnHeader ->
+            context
+                .getTypeProvider()
+                .setType(columnHeader.getColumnName(), columnHeader.getColumnType()));
+    return this;
+  }
+
+  public LogicalPlanBuilder planSingleShowQueries() {
+    this.root = new ShowQueriesNode(context.getQueryId().genPlanNodeId());
     return this;
   }
 }
