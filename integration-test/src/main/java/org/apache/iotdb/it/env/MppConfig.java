@@ -391,13 +391,15 @@ public class MppConfig implements BaseConfig {
 
   @Override
   public BaseConfig setDataRatisTriggerSnapshotThreshold(long threshold) {
-    confignodeProperties.setProperty("data_region_ratis_snapshot_trigger_threshold", String.valueOf(threshold));
+    confignodeProperties.setProperty(
+        "data_region_ratis_snapshot_trigger_threshold", String.valueOf(threshold));
     return this;
   }
 
   @Override
   public BaseConfig setConfigNodeRatisSnapshotTriggerThreshold(long threshold) {
-    confignodeProperties.setProperty("config_node_ratis_snapshot_trigger_threshold", String.valueOf(threshold));
+    confignodeProperties.setProperty(
+        "config_node_ratis_snapshot_trigger_threshold", String.valueOf(threshold));
     return this;
   }
 }
