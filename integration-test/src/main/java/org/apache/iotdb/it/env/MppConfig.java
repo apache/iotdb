@@ -388,4 +388,16 @@ public class MppConfig implements BaseConfig {
     confignodeProperties.setProperty("query_thread_count", String.valueOf(queryThreadCount));
     return this;
   }
+
+  @Override
+  public BaseConfig setDataRatisTriggerSnapshotThreshold(long threshold) {
+    confignodeProperties.setProperty("data_region_ratis_snapshot_trigger_threshold", String.valueOf(threshold));
+    return this;
+  }
+
+  @Override
+  public BaseConfig setConfigNodeRatisSnapshotTriggerThreshold(long threshold) {
+    confignodeProperties.setProperty("config_node_ratis_snapshot_trigger_threshold", String.valueOf(threshold));
+    return this;
+  }
 }
