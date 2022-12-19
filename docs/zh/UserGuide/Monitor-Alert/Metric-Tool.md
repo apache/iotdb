@@ -66,16 +66,17 @@
     - `Important`：模块的重要指标，供**运维和测试人员**使用，直接关乎**每个模块的运行状态**，比如合并文件个数、执行情况等。
     - `Normal`：模块的一般指标，供**开发人员**使用，方便在出现问题时**定位模块**，比如合并中的特定关键操作情况。
     - `All`：模块的全部指标，供**模块开发人员**使用，往往在复现问题的时候使用，从而快速解决问题。
-
+    
 ### 3.2. 监控指标对外获取数据格式
 - IoTDB 对外提供 JMX、 Prometheus 和 IoTDB 格式的监控指标：
-  - 对于 JMX ，可以通过```org.apache.iotdb.metrics```获取系统监控指标指标。
-  - 对于 Prometheus ，可以通过对外暴露的端口获取监控指标的值
-  - 对于 IoTDB 方式对外暴露：可以通过执行 IoTDB 的查询来获取监控指标
+    - 对于 JMX ，可以通过```org.apache.iotdb.metrics```获取系统监控指标指标。
+    - 对于 Prometheus ，可以通过对外暴露的端口获取监控指标的值
+    - 对于 IoTDB 方式对外暴露：可以通过执行 IoTDB 的查询来获取监控指标
 
 ## 4. 监控指标有哪些？
 
-目前，IoTDB 对外提供一些主要模块的监控指标，并且随着新功能的开发以及系统优化或者重构，监控指标也会同步添加和更新。如果想自己在 IoTDB 中添加更多系统监控指标埋点，可以参考[IoTDB Metrics Framework](https://github.com/apache/iotdb/tree/master/metrics)使用说明。
+目前，IoTDB 对外提供一些主要模块的监控指标，并且随着新功能的开发以及系统优化或者重构，监控指标也会同步添加和更新。如果想自己在 IoTDB
+中添加更多系统监控指标埋点，可以参考[IoTDB Metrics Framework](https://github.com/apache/iotdb/tree/master/metrics)使用说明。
 
 ### 4.1. Core 级别监控指标
 
@@ -121,13 +122,14 @@ Core 级别的监控指标在系统运行中默认开启，每一个 Core 级别
 | cluster_node_status       | name="{{ip}}:{{port}}",type="ConfigNode/DataNode" | Gauge | 节点的状态，0=Unkonwn 1=online |
 
 #### 4.2.2. 节点统计
-| Metric   | Tags                                       | Type      | Description                          |
-| -------- | ------------------------------------------ | --------- | ------------------------------------ |
-| quantity | name="database"                            | AutoGauge | 系统数据库数量                       |
-| quantity | name="timeSeries"                          | AutoGauge | 系统时间序列数量                     |
-| quantity | name="pointsIn"                            | Counter   | 系统累计写入点数                     |
-| region   | name="total",type="SchemaRegion"           | AutoGauge | 分区表中 SchemaRegion 总数量         |
-| region   | name="total",type="DataRegion"             | AutoGauge | 分区表中 DataRegion 总数量           |
+| Metric   | Tags                                       | Type      | Description              |
+| -------- | ------------------------------------------ | --------- |--------------------------|
+| quantity | name="database"                            | AutoGauge | 系统数据库数量                  |
+| quantity | name="timeSeries"                          | AutoGauge | 系统时间序列数量                 |
+| quantity | name="pointsIn"                            | Counter   | 系统累计写入点数                 |
+| points   | database="{{database}}", type="flush"      | Gauge     | 最新一个刷盘的memtale的点数        |
+| region   | name="total",type="SchemaRegion"           | AutoGauge | 分区表中 SchemaRegion 总数量    |
+| region   | name="total",type="DataRegion"             | AutoGauge | 分区表中 DataRegion 总数量      |
 | region   | name="{{ip}}:{{port}}",type="SchemaRegion" | Gauge     | 分区表中对应节点上 DataRegion 总数量 |
 | region   | name="{{ip}}:{{port}}",type="DataRegion"   | Gauge     | 分区表中对应节点上 DataRegion 总数量 |
 
@@ -200,14 +202,21 @@ Core 级别的监控指标在系统运行中默认开启，每一个 Core 级别
 | compaction_task_count | name = "cross_compaction", type="cross"             | Counter | 跨空间合并次数     |
 
 #### 4.2.9. 文件统计信息
-| Metric     | Tags         | Type      | Description                  |
-| ---------- | ------------ | --------- | ---------------------------- |
-| file_size  | name="wal"   | AutoGauge | 写前日志总大小，单位为byte   |
-| file_size  | name="seq"   | AutoGauge | 顺序TsFile总大小，单位为byte |
-| file_size  | name="unseq" | AutoGauge | 乱序TsFile总大小，单位为byte |
-| file_count | name="wal"   | AutoGauge | 写前日志文件个数             |
-| file_count | name="seq"   | AutoGauge | 顺序TsFile文件个数           |
-| file_count | name="unseq" | AutoGauge | 乱序TsFile文件个数           |
+
+| Metric     | Tags                         | Type      | Description          |
+| ---------- |------------------------------| --------- |----------------------|
+| file_size  | name="wal"                   | AutoGauge | 写前日志总大小，单位为byte      |
+| file_size  | name="seq"                   | AutoGauge | 顺序TsFile总大小，单位为byte  |
+| file_size  | name="unseq"                 | AutoGauge | 乱序TsFile总大小，单位为byte  |
+| file_count | name="wal"                   | AutoGauge | 写前日志文件个数             |
+| file_count | name="seq"                   | AutoGauge | 顺序TsFile文件个数         |
+| file_count | name="unseq"                 | AutoGauge | 乱序TsFile文件个数         |
+| file_count| name="inner-seq-file-num"    |AutoGauge| 顺序空间内合并临时文件个数        |
+| file_count| name="inner-unseq-file-num"  |AutoGauge| 乱序空间内合并临时文件个数        |
+| file_count| name="cross-file-num"        |AutoGauge| 跨空间合并临时文件个数          |
+| file_count| name="inner-seq-file-size"   |AutoGauge| 顺序空间内合并临时文件大小，单位为byte |
+| file_count| name="inner-unseq-file-size" |AutoGauge| 乱序空间内合并临时文件大小，单位为byte |
+| file_count| name="cross-file-size"       |AutoGauge| 跨空间合并临时文件大小，单位为byte  |
 
 #### 4.2.10. IoTDB 进程统计
 | Metric                | Tags           | Type      | Description                          |
@@ -263,7 +272,6 @@ Core 级别的监控指标在系统运行中默认开启，每一个 Core 级别
 | Metric                  | Tags                                          | Type      | Description        |
 | ----------------------- | --------------------------------------------- | --------- | ------------------ |
 | jvm_compilation_time_ms | {compiler="HotSpot 64-Bit Tiered Compilers",} | AutoGauge | 耗费在编译上的时间 |
-
 
 ### 4.3. All 级别监控指标
 目前还没有All级别的监控指标，后续会持续添加。
@@ -382,86 +390,86 @@ static_configs:
 > 除特殊说明的监控项以外，以下监控项均保证在Important级别的监控框架中可用。
 
 - `Overview`：系统概述
-  - `Registered Node`：注册的ConfigNode/DataNode个数
-  - `DataNode`：集群DataNode的存活状态，包括Online和Unknown两种。
-  - `ConfigNode`：集群ConfigNode的存活状态，包括Online和Unknown两种。
-  - `The Status Of Node`：集群具体节点运行状态，包括Online和Unkown两种。
+    - `Registered Node`：注册的ConfigNode/DataNode个数
+    - `DataNode`：集群DataNode的存活状态，包括Online和Unknown两种。
+    - `ConfigNode`：集群ConfigNode的存活状态，包括Online和Unknown两种。
+    - `The Status Of Node`：集群具体节点运行状态，包括Online和Unkown两种。
 - `Region`：Region概述
-  - `Region Number`：Region个数，包括总个数，DataRegion 个数和 SchemaRegion 个数。
-  - `Leadership distribution`：集群 Leader 分布情况，指每个节点上对应 Region 的 Leader 的个数。
-  - `Total Region in Node`：不同 Node 的 Region 总数量。
-  - `Region in Node`：不同 Node 的 SchemaRegion/DataRegion 数量。
-  - `Region in Database`（Normal级别）：不同 Database 的 Region 数量，包括 SchemaRegion、DataRegion。
-  - `Slot in Database`(Normal级别)：不同 Database 的Slot数量，包括 DataSlot 数量和 SchemaSlot 数量。
-- `System`：系统 
-  - `CPU Core`：系统 CPU 核数情况。
-  - `CPU Load`：系统 CPU 负载情况、进度 CPU 负载情况。
-  - `CPU Time Per Minute`：进程平均每分钟占用系统 CPU 时间，注意：多核会导致该值超过1分钟。
-  - `System Memory`：系统物理内存大小、系统使用物理内存大小、虚拟机提交的内存大小。
-  - `System Swap Size`：系统交换区总大小、系统交换区使用大小。
-  - `Process Memory`：IoTDB 进程最大内存总大小、IoTDB 进程总内存大小、IoTDB 进程使用内存大小。
-  - `The Number of GC Per Minute`：平均每分钟 GC 次数。
-  - `The Time Consumed Of GC Per Minute`：平均每分钟 GC 耗时。
-  - `The Number Of Java Thread`：IoTDB 进程的不同状态的线程数。
-  - `Heap Memory`：IoTDB 进程的堆内存
-  - `Off Heap Memory`：IoTDB 进程的堆外内存
-  - `Log Number Per Minute`：IoTDB 进程平均每分钟日志数
-  - `The Time Consumed of Compliation Per Minute`：平均每分钟编译耗时
-  - `The Number Of Class`：JVM 加载和卸载的类数量
-
+    - `Region Number`：Region个数，包括总个数，DataRegion 个数和 SchemaRegion 个数。
+    - `Leadership distribution`：集群 Leader 分布情况，指每个节点上对应 Region 的 Leader 的个数。
+    - `Total Region in Node`：不同 Node 的 Region 总数量。
+    - `Region in Node`：不同 Node 的 SchemaRegion/DataRegion 数量。
+    - `Region in Database`（Normal级别）：不同 Database 的 Region 数量，包括 SchemaRegion、DataRegion。
+    - `Slot in Database`(Normal级别)：不同 Database 的Slot数量，包括 DataSlot 数量和 SchemaSlot 数量。
+- `System`：系统
+    - `CPU Core`：系统 CPU 核数情况。
+    - `CPU Load`：系统 CPU 负载情况、进度 CPU 负载情况。
+    - `CPU Time Per Minute`：进程平均每分钟占用系统 CPU 时间，注意：多核会导致该值超过1分钟。
+    - `System Memory`：系统物理内存大小、系统使用物理内存大小、虚拟机提交的内存大小。
+    - `System Swap Size`：系统交换区总大小、系统交换区使用大小。
+    - `Process Memory`：IoTDB 进程最大内存总大小、IoTDB 进程总内存大小、IoTDB 进程使用内存大小。
+    - `The Number of GC Per Minute`：平均每分钟 GC 次数。
+    - `The Time Consumed Of GC Per Minute`：平均每分钟 GC 耗时。
+    - `The Number Of Java Thread`：IoTDB 进程的不同状态的线程数。
+    - `Heap Memory`：IoTDB 进程的堆内存
+    - `Off Heap Memory`：IoTDB 进程的堆外内存
+    - `Log Number Per Minute`：IoTDB 进程平均每分钟日志数
+    - `The Time Consumed of Compliation Per Minute`：平均每分钟编译耗时
+    - `The Number Of Class`：JVM 加载和卸载的类数量
+    
 ##### 5.2.4.3. Apache IoTDB DataNode Dashboard 说明
 > 除特殊说明的监控项以外，以下监控项均保证在Important级别的监控框架中可用。
 
 - `Overview`：系统概述
-  - `The Number Of Entity`：实体数量，包含时间序列等
-  - `Write Point Per Minute`：每分钟系统平均写入点数
-  - `Database Used Memory`：每个 Database 使用的内存大小
+    - `The Number Of Entity`：实体数量，包含时间序列等
+    - `Write Point Per Minute`：每分钟系统平均写入点数
+    - `Database Used Memory`：每个 Database 使用的内存大小
 - `Interface`：接口
-  - `The Time Consumed Of Operation(50%)`：不同客户端操作耗时的中位数
-  - `The Time Consumed Of Operation(75%)`：不同客户端操作耗时的上四分位数
-  - `The Time Consumed Of Operation(100%)`：不同客户端操作耗时的最大值
-  - `The QPS of Interface`：系统接口每秒钟访问次数
-  - `The Time Consumed Of Interface`：系统接口的平均耗时
-  - `Cache Hit Rate`：缓存命中率
-  - `Thrift Connection`：建立的 Thrift 连接个数
-  - `Thrift Active Thread`：建立的活跃的 Thrift 连接的个数
+    - `The Time Consumed Of Operation(50%)`：不同客户端操作耗时的中位数
+    - `The Time Consumed Of Operation(75%)`：不同客户端操作耗时的上四分位数
+    - `The Time Consumed Of Operation(100%)`：不同客户端操作耗时的最大值
+    - `The QPS of Interface`：系统接口每秒钟访问次数
+    - `The Time Consumed Of Interface`：系统接口的平均耗时
+    - `Cache Hit Rate`：缓存命中率
+    - `Thrift Connection`：建立的 Thrift 连接个数
+    - `Thrift Active Thread`：建立的活跃的 Thrift 连接的个数
 - `Engine`：引擎
-  - `Task Number`：系统中不同状态的任务个数
-  - `The Time Consumed Of Tasking`：系统中不同状态的任务的耗时
-  - `Compaction Read And Write Per Minute`：平均每分钟合并读取和写入数据量
-  - `Compaction R/W Ratio Per Minute`：平均每分钟合并读取和写入数据比
-  - `Compaction Number Per Minute`：平均每分钟不同类型的合并任务数量
+    - `Task Number`：系统中不同状态的任务个数
+    - `The Time Consumed Of Tasking`：系统中不同状态的任务的耗时
+    - `Compaction Read And Write Per Minute`：平均每分钟合并读取和写入数据量
+    - `Compaction R/W Ratio Per Minute`：平均每分钟合并读取和写入数据比
+    - `Compaction Number Per Minute`：平均每分钟不同类型的合并任务数量
 - `IoTConsensus`：IoT共识协议
-  - `IoTConsensus Used Memory`：IoT共识层使用的内存大小
-  - `IoTConsensus Sync Index`：不同的Region的写入Index和同步Index
-  - `IoTConsensus Overview`：不同节点的同步总差距、总缓存的请求个数
-  - `The time consumed of different stages(50%)`：不同阶段耗时的中位数
-  - `The time consumed of different stages(75%)`：不同阶段耗时的上四分位数
-  - `The time consumed of different stages(100%)`：不同阶段耗时的最大值
-  - `IoTConsensus Search Index Rate`：不同region的写入Index的增长速度
-  - `IoTConsensus Safe Index Rate`：不同region的同步Index的增长速度
-  - `IoTConsensus LogDispatcher Request Size`：不同的LogDispatcherThread缓存的请求个数
-  - `Sync Lag`：每个region的同步index差距
-  - `Min Peer Sync Lag`：每个region的写入index和同步最快的LogDispatcherThread的同步index之间的差距
-  - `Sync speed diff of Peers`：每个region中同步最快的LogDispatcherThread与同步最慢的LogDispatcherThread之间的同步index差距
-- `System`：系统 
-  - `CPU Core`：系统 CPU 核数情况。
-  - `CPU Load`：系统 CPU 负载情况、进度 CPU 负载情况。
-  - `CPU Time Per Minute`：进程平均每分钟占用系统 CPU 时间，注意：多核会导致该值超过1分钟。
-  - `System Memory`：系统物理内存大小、系统使用物理内存大小、虚拟机提交的内存大小。
-  - `System Swap Size`：系统交换区总大小、系统交换区使用大小。
-  - `Process Memory`：IoTDB 进程最大内存总大小、IoTDB 进程总内存大小、IoTDB 进程使用内存大小。
-  - `The Size Of File`：IoTDB系统相关的文件大小，包括wal下的文件总大小、seq下的tsfile文件总大小、unseq下的tsfile文件总大小
-  - `The Number Of File`：IoTDB系统相关的文件个数，包括wal下的文件个数、seq下的tsfile文件个数、unseq下的tsfile文件个数
-  - `The Space Of Disk`：当前data目录所挂载的磁盘总大小和剩余大小
-  - `The Number of GC Per Minute`：平均每分钟 GC 次数。
-  - `The Time Consumed Of GC Per Minute`：平均每分钟 GC 耗时。
-  - `The Number Of Java Thread`：IoTDB 进程的不同状态的线程数。
-  - `Heap Memory`：IoTDB 进程的堆内存
-  - `Off Heap Memory`：IoTDB 进程的堆外内存
-  - `Log Number Per Minute`：IoTDB 进程平均每分钟日志数
-  - `The Time Consumed of Compliation Per Minute`：平均每分钟编译耗时
-  - `The Number Of Class`：JVM 加载和卸载的类数量
+    - `IoTConsensus Used Memory`：IoT共识层使用的内存大小
+    - `IoTConsensus Sync Index`：不同的Region的写入Index和同步Index
+    - `IoTConsensus Overview`：不同节点的同步总差距、总缓存的请求个数
+    - `The time consumed of different stages(50%)`：不同阶段耗时的中位数
+    - `The time consumed of different stages(75%)`：不同阶段耗时的上四分位数
+    - `The time consumed of different stages(100%)`：不同阶段耗时的最大值
+    - `IoTConsensus Search Index Rate`：不同region的写入Index的增长速度
+    - `IoTConsensus Safe Index Rate`：不同region的同步Index的增长速度
+    - `IoTConsensus LogDispatcher Request Size`：不同的LogDispatcherThread缓存的请求个数
+    - `Sync Lag`：每个region的同步index差距
+    - `Min Peer Sync Lag`：每个region的写入index和同步最快的LogDispatcherThread的同步index之间的差距
+    - `Sync speed diff of Peers`：每个region中同步最快的LogDispatcherThread与同步最慢的LogDispatcherThread之间的同步index差距
+- `System`：系统
+    - `CPU Core`：系统 CPU 核数情况。
+    - `CPU Load`：系统 CPU 负载情况、进度 CPU 负载情况。
+    - `CPU Time Per Minute`：进程平均每分钟占用系统 CPU 时间，注意：多核会导致该值超过1分钟。
+    - `System Memory`：系统物理内存大小、系统使用物理内存大小、虚拟机提交的内存大小。
+    - `System Swap Size`：系统交换区总大小、系统交换区使用大小。
+    - `Process Memory`：IoTDB 进程最大内存总大小、IoTDB 进程总内存大小、IoTDB 进程使用内存大小。
+    - `The Size Of File`：IoTDB系统相关的文件大小，包括wal下的文件总大小、seq下的tsfile文件总大小、unseq下的tsfile文件总大小
+    - `The Number Of File`：IoTDB系统相关的文件个数，包括wal下的文件个数、seq下的tsfile文件个数、unseq下的tsfile文件个数
+    - `The Space Of Disk`：当前data目录所挂载的磁盘总大小和剩余大小
+    - `The Number of GC Per Minute`：平均每分钟 GC 次数。
+    - `The Time Consumed Of GC Per Minute`：平均每分钟 GC 耗时。
+    - `The Number Of Java Thread`：IoTDB 进程的不同状态的线程数。
+    - `Heap Memory`：IoTDB 进程的堆内存
+    - `Off Heap Memory`：IoTDB 进程的堆外内存
+    - `Log Number Per Minute`：IoTDB 进程平均每分钟日志数
+    - `The Time Consumed of Compliation Per Minute`：平均每分钟编译耗时
+    - `The Number Of Class`：JVM 加载和卸载的类数量
 
 ### 5.3. 使用 IoTDB 方式
 

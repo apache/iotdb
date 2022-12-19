@@ -861,10 +861,6 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   private void parseResampleClause(
       IoTDBSqlParser.ResampleClauseContext ctx, CreateContinuousQueryStatement statement) {
-    if (ctx.FOR() != null) {
-      throw new SemanticException("CQ: The syntax of CREATE CQ statement has changed from v0.14");
-    }
-
     if (ctx.EVERY() != null) {
       statement.setEveryInterval(
           DateTimeUtils.convertDurationStrToLong(ctx.everyInterval.getText()));

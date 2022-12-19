@@ -31,6 +31,9 @@ import java.io.RandomAccessFile;
 import java.nio.channels.FileChannel;
 import java.nio.channels.FileLock;
 import java.nio.channels.OverlappingFileLockException;
+import java.nio.file.FileStore;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -82,6 +85,30 @@ public class DirectoryChecker {
     // add to list
     fileList.add(file);
     randomAccessFileList.add(randomAccessFile);
+  }
+
+  public boolean isCrossDisk(String[] dirs) throws IOException {
+    if (dirs.length < 2) {
+      return false;
+    }
+    Path root = mountOf(new File(dirs[0]).toPath());
+    for (int i = 1; i < dirs.length; i++) {
+      Path path = mountOf(new File(dirs[i]).toPath());
+      if (!path.equals(root)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private Path mountOf(Path p) throws IOException {
+    FileStore fs = Files.getFileStore(p);
+    Path temp = p.toAbsolutePath();
+    Path mountp = temp;
+    while ((temp = temp.getParent()) != null && fs.equals(Files.getFileStore(temp))) {
+      mountp = temp;
+    }
+    return mountp;
   }
 
   public void deregisterAll() {
