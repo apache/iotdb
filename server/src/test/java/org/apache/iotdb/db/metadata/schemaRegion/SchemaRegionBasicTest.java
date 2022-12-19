@@ -30,7 +30,6 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.MeasurementAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
-import org.apache.iotdb.db.localconfignode.LocalConfigNode;
 import org.apache.iotdb.db.metadata.MetadataConstant;
 import org.apache.iotdb.db.metadata.plan.schemaregion.impl.ActivateTemplateInClusterPlanImpl;
 import org.apache.iotdb.db.metadata.plan.schemaregion.impl.CreateTimeSeriesPlanImpl;
@@ -44,7 +43,6 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.template.CreateSchemaTemp
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
-import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -73,21 +71,27 @@ import java.util.stream.IntStream;
  * and Schema_File modes. In Schema_File mode, there are three kinds of test environment: full
  * memory, partial memory and non memory.
  */
-public abstract class SchemaRegionBasicTest {
+public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
 
   IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   boolean isClusterMode;
 
+  public SchemaRegionBasicTest(SchemaRegionTestParams testParams) {
+    super(testParams);
+  }
+
   @Before
-  public void setUp() {
+  public void setUp() throws Exception {
     isClusterMode = config.isClusterMode();
     config.setClusterMode(true);
-    LocalConfigNode.getInstance().init();
+    super.setUp();
+    SchemaEngine.getInstance().init();
   }
 
   @After
   public void tearDown() throws Exception {
-    EnvironmentUtils.cleanEnv();
+    SchemaEngine.getInstance().clear();
+    super.tearDown();
     config.setClusterMode(isClusterMode);
   }
 
@@ -141,8 +145,9 @@ public abstract class SchemaRegionBasicTest {
       Assert.assertEquals(1, resultTagMap.size());
       Assert.assertEquals("tag-value", resultTagMap.get("tag-key"));
 
-      LocalConfigNode.getInstance().clear();
-      LocalConfigNode.getInstance().init();
+      SchemaEngine.getInstance().clear();
+      SchemaEngine.getInstance().init();
+
       SchemaEngine.getInstance().createSchemaRegion(storageGroup, schemaRegionId);
       ISchemaRegion newSchemaRegion = SchemaEngine.getInstance().getSchemaRegion(schemaRegionId);
       newSchemaRegion.loadSnapshot(snapshotDir);

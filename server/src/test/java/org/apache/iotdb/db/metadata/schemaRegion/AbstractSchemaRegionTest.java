@@ -1,0 +1,112 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
+package org.apache.iotdb.db.metadata.schemaRegion;
+
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+
+import org.apache.commons.io.FileUtils;
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.Arrays;
+import java.util.List;
+
+@RunWith(Parameterized.class)
+public class AbstractSchemaRegionTest {
+
+  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+
+  private SchemaRegionTestParams rawConfig;
+
+  protected final SchemaRegionTestParams testParams;
+
+  @Parameterized.Parameters(name = "{0}")
+  public static List<SchemaRegionTestParams> getTestModes() {
+    return Arrays.asList(
+        new SchemaRegionTestParams("MemoryMode", "Memory", -1),
+        new SchemaRegionTestParams("SchemaFile-FullMemory", "Schema_File", 10000),
+        new SchemaRegionTestParams("SchemaFile-PartialMemory", "Schema_File", 3),
+        new SchemaRegionTestParams("SchemaFile-NonMemory", "Schema_File", 0));
+  }
+
+  public AbstractSchemaRegionTest(SchemaRegionTestParams testParams) {
+    this.testParams = testParams;
+  }
+
+  @Before
+  public void setUp() throws Exception {
+    rawConfig =
+        new SchemaRegionTestParams(
+            "Raw-Config",
+            config.getSchemaEngineMode(),
+            config.getSchemaRegionDeviceNodeCacheSize());
+    config.setSchemaEngineMode(testParams.schemaEngineMode);
+    config.setCachedMNodeSizeInSchemaFileMode(testParams.cachedMNodeSize);
+  }
+
+  @Test
+  public void tearDown() throws Exception {
+    cleanEnv();
+    config.setSchemaEngineMode(rawConfig.schemaEngineMode);
+    config.setCachedMNodeSizeInSchemaFileMode(rawConfig.cachedMNodeSize);
+  }
+
+  protected static void cleanEnv() throws IOException {
+    FileUtils.deleteDirectory(new File(IoTDBDescriptor.getInstance().getConfig().getSchemaDir()));
+  }
+
+  protected static class SchemaRegionTestParams {
+
+    private final String testModeName;
+
+    private final String schemaEngineMode;
+
+    private final int cachedMNodeSize;
+
+    private SchemaRegionTestParams(
+        String testModeName, String schemaEngineMode, int cachedMNodeSize) {
+      this.testModeName = testModeName;
+      this.schemaEngineMode = schemaEngineMode;
+      this.cachedMNodeSize = cachedMNodeSize;
+    }
+
+    public String getTestModeName() {
+      return testModeName;
+    }
+
+    public String getSchemaEngineMode() {
+      return schemaEngineMode;
+    }
+
+    public int getCachedMNodeSize() {
+      return cachedMNodeSize;
+    }
+
+    @Override
+    public String toString() {
+      return testModeName;
+    }
+  }
+}
