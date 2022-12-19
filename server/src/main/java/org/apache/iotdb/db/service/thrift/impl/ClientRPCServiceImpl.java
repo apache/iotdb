@@ -818,7 +818,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
   @Override
   public TSFetchMetadataResp fetchMetadata(TSFetchMetadataReq req) {
-    throw new UnsupportedOperationException();
+    return new TSFetchMetadataResp(
+        RpcUtils.getStatus(TSStatusCode.UNSUPPORTED_OPERATION, "Fetch Metadata is not supported."));
   }
 
   @Override
@@ -1447,13 +1448,14 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
   @Override
   public TSStatus appendSchemaTemplate(TSAppendSchemaTemplateReq req) {
-    // todo: check measurement using isLegalSingleMeasurements()
-    throw new UnsupportedOperationException();
+    return RpcUtils.getStatus(
+        TSStatusCode.UNSUPPORTED_OPERATION, "Modify template has not been supported.");
   }
 
   @Override
   public TSStatus pruneSchemaTemplate(TSPruneSchemaTemplateReq req) {
-    throw new UnsupportedOperationException();
+    return RpcUtils.getStatus(
+        TSStatusCode.UNSUPPORTED_OPERATION, "Modify template has not been supported.");
   }
 
   @Override
