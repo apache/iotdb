@@ -106,7 +106,7 @@ public class MetaUtilsTest {
 
   @Test
   public void testGetStorageGroupPathByLevel() {
-    int level = 2;
+    int level = 1;
     try {
       assertEquals(
           "root.laptop",

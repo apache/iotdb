@@ -80,6 +80,7 @@ public class MetaUtils {
    * @return Size of partial path list could NOT equal to the input list size. For example, the
    *     vector1 (s1,s2) would be returned once.
    */
+  @Deprecated
   public static List<PartialPath> groupAlignedPaths(List<PartialPath> fullPaths) {
     List<PartialPath> result = new LinkedList<>();
     AlignedPath alignedPath = null;
@@ -100,6 +101,17 @@ public class MetaUtils {
     return result;
   }
 
+  /**
+   * PartialPath of aligned time series will be organized to one AlignedPath. BEFORE this method,
+   * all the aligned time series is NOT united. For example, given root.sg.d1.vector1[s1] and
+   * root.sg.d1.vector1[s2], they will be organized to root.sg.d1.vector1 [s1,s2]
+   *
+   * @param fullPaths full path list without uniting the sub measurement under the same aligned time
+   *     series. The list has been sorted by the alphabetical order, so all the aligned time series
+   *     of one device has already been placed contiguously.
+   * @return Size of partial path list could NOT equal to the input list size. For example, the
+   *     vector1 (s1,s2) would be returned once.
+   */
   public static List<PartialPath> groupAlignedSeries(List<PartialPath> fullPaths) {
     return groupAlignedSeries(fullPaths, new HashMap<>());
   }
@@ -274,6 +286,7 @@ public class MetaUtils {
     return result;
   }
 
+  // TODO： 方法注释，对大小写没处理啊？
   public static Pair<String, String> parseDeadbandInfo(Map<String, String> props) {
     if (props == null) {
       return new Pair<>(null, null);
