@@ -2577,7 +2577,7 @@ public class SessionPool {
   }
 
   public TSBackupConfigurationResp getBackupConfiguration()
-          throws IoTDBConnectionException, StatementExecutionException {
+      throws IoTDBConnectionException, StatementExecutionException {
     for (int i = 0; i < RETRY; i++) {
       Session session = getSession();
       try {
