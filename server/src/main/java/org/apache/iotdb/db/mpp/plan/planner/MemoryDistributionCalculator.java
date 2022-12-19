@@ -50,15 +50,12 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.GroupByLevelNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.GroupByTagNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.IntoNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.LimitNode;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.MergeSortNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.OffsetNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.ProjectNode;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.SingleDeviceViewNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.SlidingWindowAggregationNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.SortNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.TimeJoinNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.TransformNode;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.VerticallyConcatNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.last.LastQueryCollectNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.last.LastQueryMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.last.LastQueryNode;
@@ -323,12 +320,6 @@ public class MemoryDistributionCalculator
   }
 
   @Override
-  public Void visitVerticallyConcat(VerticallyConcatNode node, MemoryDistributionContext context) {
-    processConsumeAllChildrenAtTheSameTime(node);
-    return null;
-  }
-
-  @Override
   public Void visitSchemaQueryMerge(SchemaQueryMergeNode node, MemoryDistributionContext context) {
     processConsumeChildrenOneByOneNode(node);
     return null;
@@ -434,18 +425,6 @@ public class MemoryDistributionCalculator
   @Override
   public Void visitRollbackSchemaBlackList(
       RollbackSchemaBlackListNode node, MemoryDistributionContext context) {
-    processConsumeAllChildrenAtTheSameTime(node);
-    return null;
-  }
-
-  @Override
-  public Void visitSingleDeviceView(SingleDeviceViewNode node, MemoryDistributionContext context) {
-    processConsumeAllChildrenAtTheSameTime(node);
-    return null;
-  }
-
-  @Override
-  public Void visitMergeSort(MergeSortNode node, MemoryDistributionContext context) {
     processConsumeAllChildrenAtTheSameTime(node);
     return null;
   }
