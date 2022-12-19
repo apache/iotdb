@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -17,14 +17,19 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.plan.statement.component;
+package org.apache.iotdb.db.client;
 
-public enum SortKey {
-  TIME,
-  TIMESERIES,
-  DEVICE,
-  QUERYID,
-  DATANODEID,
-  ELAPSEDTIME,
-  STATEMENT
+import org.apache.iotdb.commons.client.IClientManager;
+import org.apache.iotdb.commons.consensus.ConfigNodeRegionId;
+
+public class ConfigNodeClientManager {
+  private static final class ConfigNodeClientManagerHolder {
+    private static final IClientManager<ConfigNodeRegionId, ConfigNodeClient> INSTANCE =
+        new IClientManager.Factory<ConfigNodeRegionId, ConfigNodeClient>()
+            .createClientManager(new DataNodeClientPoolFactory.ConfigNodeClientPoolFactory());
+  }
+
+  public static IClientManager<ConfigNodeRegionId, ConfigNodeClient> getInstance() {
+    return ConfigNodeClientManagerHolder.INSTANCE;
+  }
 }
