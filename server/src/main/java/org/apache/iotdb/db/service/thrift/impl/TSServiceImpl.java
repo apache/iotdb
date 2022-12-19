@@ -1393,7 +1393,7 @@ public class TSServiceImpl implements IClientRPCServiceWithHandler {
 
   @Override
   public TSBackupConfigurationResp getBackupConfiguration() {
-    return null;
+    return new TSBackupConfigurationResp(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
   }
 
   @Override

@@ -459,7 +459,8 @@ public interface ISession extends AutoCloseable {
 
   void sortTablet(Tablet tablet);
 
-  TSBackupConfigurationResp getBackupConfiguration() throws IoTDBConnectionException;
+  TSBackupConfigurationResp getBackupConfiguration()
+      throws IoTDBConnectionException, StatementExecutionException;
 
   TSConnectionInfoResp fetchAllConnections() throws IoTDBConnectionException;
 }

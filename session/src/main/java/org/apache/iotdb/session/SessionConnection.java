@@ -962,13 +962,17 @@ public class SessionConnection {
     }
   }
 
-  protected TSBackupConfigurationResp getBackupConfiguration() throws IoTDBConnectionException {
+  protected TSBackupConfigurationResp getBackupConfiguration()
+      throws IoTDBConnectionException, StatementExecutionException {
+    TSBackupConfigurationResp execResp;
     try {
-      return client.getBackupConfiguration();
+      execResp = client.getBackupConfiguration();
+      RpcUtils.verifySuccess(execResp.getStatus());
     } catch (TException e) {
       if (reconnect()) {
         try {
-          return client.getBackupConfiguration();
+          execResp = client.getBackupConfiguration();
+          RpcUtils.verifySuccess(execResp.getStatus());
         } catch (TException tException) {
           throw new IoTDBConnectionException(tException);
         }
@@ -976,6 +980,7 @@ public class SessionConnection {
         throw new IoTDBConnectionException(logForReconnectionFailure());
       }
     }
+    return execResp;
   }
 
   public TSConnectionInfoResp fetchAllConnections() throws IoTDBConnectionException {

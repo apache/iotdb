@@ -3289,7 +3289,8 @@ public class Session implements ISession {
   }
 
   @Override
-  public TSBackupConfigurationResp getBackupConfiguration() throws IoTDBConnectionException {
+  public TSBackupConfigurationResp getBackupConfiguration()
+      throws IoTDBConnectionException, StatementExecutionException {
     return defaultSessionConnection.getBackupConfiguration();
   }
 
