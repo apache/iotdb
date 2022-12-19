@@ -30,6 +30,7 @@ import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.execution.executor.RegionExecutionResult;
 import org.apache.iotdb.db.mpp.execution.executor.RegionReadExecutor;
 import org.apache.iotdb.db.mpp.execution.executor.RegionWriteExecutor;
+import org.apache.iotdb.db.mpp.metric.QueryMetricsManager;
 import org.apache.iotdb.db.mpp.plan.analyze.QueryType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
@@ -53,6 +54,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 
 import static com.google.common.util.concurrent.Futures.immediateFuture;
+import static org.apache.iotdb.db.mpp.metric.QueryExecutionMetricSet.DISPATCH_READ;
 
 public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
 
@@ -66,6 +68,8 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
   private final int localhostInternalPort;
   private final IClientManager<TEndPoint, SyncDataNodeInternalServiceClient>
       internalServiceClientManager;
+
+  private static final QueryMetricsManager QUERY_METRICS = QueryMetricsManager.getInstance();
 
   public FragmentInstanceDispatcherImpl(
       QueryType type,
@@ -98,6 +102,7 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
     return executor.submit(
         () -> {
           for (FragmentInstance instance : instances) {
+            long startTime = System.nanoTime();
             try (SetThreadName threadName = new SetThreadName(instance.getId().getFullId())) {
               dispatchOneInstance(instance);
             } catch (FragmentInstanceDispatchException e) {
@@ -107,6 +112,8 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
               return new FragInstanceDispatchResult(
                   RpcUtils.getStatus(
                       TSStatusCode.INTERNAL_SERVER_ERROR, "Unexpected errors: " + t.getMessage()));
+            } finally {
+              QUERY_METRICS.recordExecutionCost(DISPATCH_READ, System.nanoTime() - startTime);
             }
           }
           return new FragInstanceDispatchResult(true);

@@ -82,6 +82,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Throwables.throwIfUnchecked;
+import static org.apache.iotdb.db.mpp.metric.QueryExecutionMetricSet.SCHEDULE;
+import static org.apache.iotdb.db.mpp.metric.QueryExecutionMetricSet.WAIT_FOR_RESULT;
 import static org.apache.iotdb.db.mpp.metric.QueryPlanCostMetricSet.DISTRIBUTION_PLANNER;
 import static org.apache.iotdb.db.mpp.plan.constant.DataNodeEndPoints.isSameNode;
 
@@ -125,6 +127,8 @@ public class QueryExecution implements IQueryExecution {
       internalServiceClientManager;
 
   private AtomicBoolean stopped;
+
+  private static final QueryMetricsManager QUERY_METRICS = QueryMetricsManager.getInstance();
 
   public QueryExecution(
       Statement statement,
@@ -268,7 +272,9 @@ public class QueryExecution implements IQueryExecution {
       this.scheduler.start();
       return;
     }
+
     // TODO: (xingtanzjr) initialize the query scheduler according to configuration
+    long startTime = System.nanoTime();
     this.scheduler =
         config.isClusterMode()
             ? new ClusterScheduler(
@@ -288,6 +294,9 @@ public class QueryExecution implements IQueryExecution {
                 scheduledExecutor,
                 internalServiceClientManager);
     this.scheduler.start();
+    if (rawStatement.isQuery()) {
+      QUERY_METRICS.recordExecutionCost(SCHEDULE, System.nanoTime() - startTime);
+    }
   }
 
   // Use LogicalPlanner to do the logical query plan and logical optimization
@@ -307,8 +316,7 @@ public class QueryExecution implements IQueryExecution {
     this.distributedPlan = planner.planFragments();
 
     if (rawStatement.isQuery()) {
-      QueryMetricsManager.getInstance()
-          .recordPlanCost(DISTRIBUTION_PLANNER, System.nanoTime() - startTime);
+      QUERY_METRICS.recordPlanCost(DISTRIBUTION_PLANNER, System.nanoTime() - startTime);
     }
     if (isQuery() && logger.isDebugEnabled()) {
       logger.debug(
@@ -405,8 +413,14 @@ public class QueryExecution implements IQueryExecution {
           return Optional.empty();
         }
 
-        ListenableFuture<?> blocked = resultHandle.isBlocked();
-        blocked.get();
+        long startTime = System.nanoTime();
+        try {
+          ListenableFuture<?> blocked = resultHandle.isBlocked();
+          blocked.get();
+        } finally {
+          QUERY_METRICS.recordExecutionCost(WAIT_FOR_RESULT, System.nanoTime() - startTime);
+        }
+
         if (!resultHandle.isFinished()) {
           // use the getSerializedTsBlock instead of receive to get ByteBuffer result
           T res = dataSupplier.get();

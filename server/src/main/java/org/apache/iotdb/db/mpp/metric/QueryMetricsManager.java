@@ -70,6 +70,16 @@ public class QueryMetricsManager {
         metricInfo.getTagsInArray());
   }
 
+  public void recordExecutionCost(String stage, long costTimeInNanos) {
+    MetricInfo metricInfo = QueryExecutionMetricSet.metricInfoMap.get(stage);
+    metricService.timer(
+        costTimeInNanos,
+        TimeUnit.NANOSECONDS,
+        metricInfo.getName(),
+        MetricLevel.IMPORTANT,
+        metricInfo.getTagsInArray());
+  }
+
   public static QueryMetricsManager getInstance() {
     return QueryMetricsManager.QueryMetricsManagerHolder.INSTANCE;
   }

@@ -47,6 +47,7 @@ import static com.google.common.base.Throwables.throwIfUnchecked;
 import static com.google.common.util.concurrent.MoreExecutors.directExecutor;
 import static java.lang.Boolean.TRUE;
 import static org.apache.iotdb.db.mpp.execution.operator.Operator.NOT_BLOCKED;
+import static org.apache.iotdb.db.mpp.metric.QueryExecutionMetricSet.DRIVER_INTERNAL_PROCESS;
 
 public abstract class Driver implements IDriver {
 
@@ -177,6 +178,7 @@ public abstract class Driver implements IDriver {
   }
 
   private ListenableFuture<?> processInternal() {
+    long startTimeNanos = System.nanoTime();
     try {
       ListenableFuture<?> blocked = root.isBlocked();
       if (!blocked.isDone()) {
@@ -209,6 +211,9 @@ public abstract class Driver implements IDriver {
       newException.addSuppressed(t);
       driverContext.failed(newException);
       throw newException;
+    } finally {
+      QUERY_METRICS.recordExecutionCost(
+          DRIVER_INTERNAL_PROCESS, System.nanoTime() - startTimeNanos);
     }
   }
 
