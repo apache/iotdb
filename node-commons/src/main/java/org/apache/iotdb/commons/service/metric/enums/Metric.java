@@ -68,7 +68,8 @@ public enum Metric {
   SERIES_SCAN_COST,
   DISPATCHER,
   QUERY_EXECUTION,
-  AGGREGATION;
+  AGGREGATION,
+  QUERY_RESOURCE;
 
   @Override
   public String toString() {

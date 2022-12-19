@@ -80,6 +80,11 @@ public class QueryMetricsManager {
         metricInfo.getTagsInArray());
   }
 
+  public void recordQueryResourceNum(String type, int count) {
+    metricService.rate(
+        count, Metric.QUERY_RESOURCE.toString(), MetricLevel.IMPORTANT, Tag.TYPE.toString(), type);
+  }
+
   public static QueryMetricsManager getInstance() {
     return QueryMetricsManager.QueryMetricsManagerHolder.INSTANCE;
   }

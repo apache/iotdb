@@ -48,6 +48,7 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.idtable.entry.DeviceIDFactory;
 import org.apache.iotdb.db.metadata.idtable.entry.IDeviceID;
 import org.apache.iotdb.db.metadata.utils.ResourceByPathUtils;
+import org.apache.iotdb.db.mpp.metric.QueryMetricsManager;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertTabletNode;
@@ -87,6 +88,10 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+
+import static org.apache.iotdb.db.mpp.metric.QueryExecutionMetricSet.GET_QUERY_RESOURCE_FROM_MEM;
+import static org.apache.iotdb.db.mpp.metric.QueryResourceMetricSet.FLUSHING_MEMTABLE;
+import static org.apache.iotdb.db.mpp.metric.QueryResourceMetricSet.WORKING_MEMTABLE;
 
 @SuppressWarnings("java:S1135") // ignore todos
 public class TsFileProcessor {
@@ -162,6 +167,8 @@ public class TsFileProcessor {
 
   /** flush file listener */
   private List<FlushListener> flushListeners = new ArrayList<>();
+
+  private final QueryMetricsManager QUERY_METRICS = QueryMetricsManager.getInstance();
 
   @SuppressWarnings("squid:S107")
   TsFileProcessor(
@@ -1349,61 +1356,70 @@ public class TsFileProcessor {
       QueryContext context,
       List<TsFileResource> tsfileResourcesForQuery)
       throws IOException {
-    Map<PartialPath, List<IChunkMetadata>> pathToChunkMetadataListMap = new HashMap<>();
-    Map<PartialPath, List<ReadOnlyMemChunk>> pathToReadOnlyMemChunkMap = new HashMap<>();
-
-    flushQueryLock.readLock().lock();
+    long startTime = System.nanoTime();
     try {
-      for (PartialPath seriesPath : seriesPaths) {
-        List<ReadOnlyMemChunk> readOnlyMemChunks = new ArrayList<>();
-        for (IMemTable flushingMemTable : flushingMemTables) {
-          if (flushingMemTable.isSignalMemTable()) {
-            continue;
-          }
-          ReadOnlyMemChunk memChunk =
-              flushingMemTable.query(seriesPath, context.getQueryTimeLowerBound(), modsToMemtable);
-          if (memChunk != null) {
-            readOnlyMemChunks.add(memChunk);
-          }
-        }
-        if (workMemTable != null) {
-          ReadOnlyMemChunk memChunk =
-              workMemTable.query(seriesPath, context.getQueryTimeLowerBound(), null);
-          if (memChunk != null) {
-            readOnlyMemChunks.add(memChunk);
-          }
-        }
+      Map<PartialPath, List<IChunkMetadata>> pathToChunkMetadataListMap = new HashMap<>();
+      Map<PartialPath, List<ReadOnlyMemChunk>> pathToReadOnlyMemChunkMap = new HashMap<>();
 
-        List<IChunkMetadata> chunkMetadataList =
-            ResourceByPathUtils.getResourceInstance(seriesPath)
-                .getVisibleMetadataListFromWriter(writer, tsFileResource, context);
+      flushQueryLock.readLock().lock();
+      try {
+        for (PartialPath seriesPath : seriesPaths) {
+          List<ReadOnlyMemChunk> readOnlyMemChunks = new ArrayList<>();
+          for (IMemTable flushingMemTable : flushingMemTables) {
+            if (flushingMemTable.isSignalMemTable()) {
+              continue;
+            }
+            ReadOnlyMemChunk memChunk =
+                flushingMemTable.query(
+                    seriesPath, context.getQueryTimeLowerBound(), modsToMemtable);
+            if (memChunk != null) {
+              readOnlyMemChunks.add(memChunk);
+            }
+          }
+          if (workMemTable != null) {
+            ReadOnlyMemChunk memChunk =
+                workMemTable.query(seriesPath, context.getQueryTimeLowerBound(), null);
+            if (memChunk != null) {
+              readOnlyMemChunks.add(memChunk);
+            }
+          }
 
-        // get in memory data
-        if (!readOnlyMemChunks.isEmpty() || !chunkMetadataList.isEmpty()) {
-          pathToReadOnlyMemChunkMap.put(seriesPath, readOnlyMemChunks);
-          pathToChunkMetadataListMap.put(seriesPath, chunkMetadataList);
+          List<IChunkMetadata> chunkMetadataList =
+              ResourceByPathUtils.getResourceInstance(seriesPath)
+                  .getVisibleMetadataListFromWriter(writer, tsFileResource, context);
+
+          // get in memory data
+          if (!readOnlyMemChunks.isEmpty() || !chunkMetadataList.isEmpty()) {
+            pathToReadOnlyMemChunkMap.put(seriesPath, readOnlyMemChunks);
+            pathToChunkMetadataListMap.put(seriesPath, chunkMetadataList);
+          }
         }
-      }
-    } catch (QueryProcessException | MetadataException e) {
-      logger.error(
-          "{}: {} get ReadOnlyMemChunk has error",
-          storageGroupName,
-          tsFileResource.getTsFile().getName(),
-          e);
-    } finally {
-      flushQueryLock.readLock().unlock();
-      if (logger.isDebugEnabled()) {
-        logger.debug(
-            "{}: {} release flushQueryLock",
+      } catch (QueryProcessException | MetadataException e) {
+        logger.error(
+            "{}: {} get ReadOnlyMemChunk has error",
             storageGroupName,
-            tsFileResource.getTsFile().getName());
-      }
-    }
+            tsFileResource.getTsFile().getName(),
+            e);
+      } finally {
+        QUERY_METRICS.recordQueryResourceNum(FLUSHING_MEMTABLE, flushingMemTables.size());
+        QUERY_METRICS.recordQueryResourceNum(WORKING_MEMTABLE, workMemTable != null ? 1 : 0);
 
-    if (!pathToReadOnlyMemChunkMap.isEmpty() || !pathToChunkMetadataListMap.isEmpty()) {
-      tsfileResourcesForQuery.add(
-          new TsFileResource(
-              pathToReadOnlyMemChunkMap, pathToChunkMetadataListMap, tsFileResource));
+        flushQueryLock.readLock().unlock();
+        if (logger.isDebugEnabled()) {
+          logger.debug(
+              "{}: {} release flushQueryLock",
+              storageGroupName,
+              tsFileResource.getTsFile().getName());
+        }
+      }
+
+      if (!pathToReadOnlyMemChunkMap.isEmpty() || !pathToChunkMetadataListMap.isEmpty()) {
+        tsfileResourcesForQuery.add(
+            new TsFileResource(
+                pathToReadOnlyMemChunkMap, pathToChunkMetadataListMap, tsFileResource));
+      }
+    } finally {
+      QUERY_METRICS.recordExecutionCost(GET_QUERY_RESOURCE_FROM_MEM, System.nanoTime() - startTime);
     }
   }
 

@@ -58,6 +58,7 @@ public class QueryExecutionMetricSet implements IMetricSet {
 
   public static final String LOCAL_EXECUTION_PLANNER = "local_execution_planner";
   public static final String QUERY_RESOURCE_INIT = "query_resource_init";
+  public static final String GET_QUERY_RESOURCE_FROM_MEM = "get_query_resource_from_mem";
   public static final String DRIVER_INTERNAL_PROCESS = "driver_internal_process";
   public static final String WAIT_FOR_RESULT = "wait_for_result";
 
@@ -76,6 +77,13 @@ public class QueryExecutionMetricSet implements IMetricSet {
             Metric.QUERY_EXECUTION.toString(),
             Tag.STAGE.toString(),
             QUERY_RESOURCE_INIT));
+    metricInfoMap.put(
+        GET_QUERY_RESOURCE_FROM_MEM,
+        new MetricInfo(
+            MetricType.TIMER,
+            Metric.QUERY_EXECUTION.toString(),
+            Tag.STAGE.toString(),
+            GET_QUERY_RESOURCE_FROM_MEM));
     metricInfoMap.put(
         DRIVER_INTERNAL_PROCESS,
         new MetricInfo(
