@@ -345,7 +345,23 @@ class Session(object):
         :param paths_list: time series list that the data in.
         :param timestamp: data with time stamp less than or equal to time will be deleted.
         """
-        request = TSDeleteDataReq(self.__session_id, paths_list, timestamp)
+        request = TSDeleteDataReq(self.__session_id, paths_list, -9223372036854775808, end_time)
+        try:
+            status = self.__client.deleteData(request)
+            logger.debug(
+                "delete data from {}, message: {}".format(paths_list, status.message)
+            )
+        except TTransport.TException as e:
+            logger.exception("data deletion fails because: ", e)
+
+    def delete_data_in_range(self, paths_list, start_time, end_time):
+        """
+        delete data >= start_time and data <= end_time in multiple timeseries
+        :param paths_list: time series list that the data in.
+        :param start_time: delete range start time.
+        :param end_time: delete range end time.
+        """
+        request = TSDeleteDataReq(self.__session_id, paths_list, start_time, end_time)
         try:
             status = self.__client.deleteData(request)
             logger.debug(
