@@ -337,10 +337,6 @@ public class SinkHandle implements ISinkHandle {
     return localFragmentInstanceId;
   }
 
-  public long getMaxBytesCanReserve() {
-    return maxBytesCanReserve;
-  }
-
   @Override
   public void setMaxBytesCanReserve(long maxBytesCanReserve) {
     this.maxBytesCanReserve = maxBytesCanReserve;

@@ -37,17 +37,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaQueryO
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaQueryScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.TimeSeriesCountNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.TimeSeriesSchemaScanNode;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.ActivateTemplateNode;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.AlterTimeSeriesNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.ConstructSchemaBlackListNode;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateAlignedTimeSeriesNode;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateMultiTimeSeriesNode;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateTimeSeriesNode;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.DeactivateTemplateNode;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.DeleteTimeSeriesNode;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.InternalCreateTimeSeriesNode;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.PreDeactivateTemplateNode;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.RollbackPreDeactivateTemplateNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.RollbackSchemaBlackListNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.AggregationNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.DeviceMergeNode;
@@ -62,7 +52,6 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.IntoNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.LimitNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.MergeSortNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.OffsetNode;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.ProcessNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.ProjectNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.SingleDeviceViewNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.SlidingWindowAggregationNode;
@@ -80,13 +69,6 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedSeriesScanNo
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.LastQueryScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesAggregationScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesScanNode;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SourceNode;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.DeleteDataNode;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertMultiTabletsNode;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowNode;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowsNode;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowsOfOneDeviceNode;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertTabletNode;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -114,12 +96,10 @@ public class MemoryDistributionCalculator
 
   @Override
   public Void visitPlan(PlanNode node, MemoryDistributionContext context) {
-    // Throw exception here because we want to ensure that all new ProcessNode/SourceNode implement
-    // this method correctly.
-    if (node instanceof SourceNode || node instanceof ProcessNode) {
-      throw new UnsupportedOperationException("Should call concrete visitXX method");
-    }
-    return null;
+    // Throw exception here because we want to ensure that all new PlanNode implement
+    // this method correctly if necessary.
+    // Throw exception insert related node should
+    throw new UnsupportedOperationException("Should call concrete visitXX method");
   }
 
   private void processConsumeChildrenOneByOneNode(PlanNode node) {
@@ -189,28 +169,28 @@ public class MemoryDistributionCalculator
 
   @Override
   public Void visitSeriesScan(SeriesScanNode node, MemoryDistributionContext context) {
-    processConsumeAllChildrenAtTheSameTime(node);
+    // do nothing since SourceNode will not have Exchange/FragmentSink as child
     return null;
   }
 
   @Override
   public Void visitSeriesAggregationScan(
       SeriesAggregationScanNode node, MemoryDistributionContext context) {
-    processConsumeAllChildrenAtTheSameTime(node);
+    // do nothing since SourceNode will not have Exchange/FragmentSink as child
     return null;
   }
 
   @Override
   public Void visitAlignedSeriesScan(
       AlignedSeriesScanNode node, MemoryDistributionContext context) {
-    processConsumeAllChildrenAtTheSameTime(node);
+    // do nothing since SourceNode will not have Exchange/FragmentSink as child
     return null;
   }
 
   @Override
   public Void visitAlignedSeriesAggregationScan(
       AlignedSeriesAggregationScanNode node, MemoryDistributionContext context) {
-    processConsumeAllChildrenAtTheSameTime(node);
+    // do nothing since SourceNode will not have Exchange/FragmentSink as child
     return null;
   }
 
@@ -302,20 +282,20 @@ public class MemoryDistributionCalculator
 
   @Override
   public Void visitLastQueryScan(LastQueryScanNode node, MemoryDistributionContext context) {
-    processConsumeAllChildrenAtTheSameTime(node);
+    // do nothing since SourceNode will not have Exchange/FragmentSink as child
     return null;
   }
 
   @Override
   public Void visitAlignedLastQueryScan(
       AlignedLastQueryScanNode node, MemoryDistributionContext context) {
-    processConsumeAllChildrenAtTheSameTime(node);
+    // do nothing since SourceNode will not have Exchange/FragmentSink as child
     return null;
   }
 
   @Override
   public Void visitLastQuery(LastQueryNode node, MemoryDistributionContext context) {
-    processConsumeAllChildrenAtTheSameTime(node);
+    processConsumeChildrenOneByOneNode(node);
     return null;
   }
 
@@ -327,7 +307,7 @@ public class MemoryDistributionCalculator
 
   @Override
   public Void visitLastQueryCollect(LastQueryCollectNode node, MemoryDistributionContext context) {
-    processConsumeAllChildrenAtTheSameTime(node);
+    processConsumeChildrenOneByOneNode(node);
     return null;
   }
 
@@ -357,7 +337,7 @@ public class MemoryDistributionCalculator
 
   @Override
   public Void visitSchemaQueryScan(SchemaQueryScanNode node, MemoryDistributionContext context) {
-    processConsumeAllChildrenAtTheSameTime(node);
+    // do nothing since SourceNode will not have Exchange/FragmentSink as child
     return null;
   }
 
@@ -371,45 +351,39 @@ public class MemoryDistributionCalculator
   @Override
   public Void visitTimeSeriesSchemaScan(
       TimeSeriesSchemaScanNode node, MemoryDistributionContext context) {
-    processConsumeAllChildrenAtTheSameTime(node);
+    // do nothing since SourceNode will not have Exchange/FragmentSink as child
     return null;
   }
 
   @Override
   public Void visitDevicesSchemaScan(
       DevicesSchemaScanNode node, MemoryDistributionContext context) {
-    processConsumeAllChildrenAtTheSameTime(node);
+    // do nothing since SourceNode will not have Exchange/FragmentSink as child
     return null;
   }
 
   @Override
   public Void visitDevicesCount(DevicesCountNode node, MemoryDistributionContext context) {
-    processConsumeAllChildrenAtTheSameTime(node);
+    // do nothing since SourceNode will not have Exchange/FragmentSink as child
     return null;
   }
 
   @Override
   public Void visitTimeSeriesCount(TimeSeriesCountNode node, MemoryDistributionContext context) {
-    processConsumeAllChildrenAtTheSameTime(node);
+    // do nothing since SourceNode will not have Exchange/FragmentSink as child
     return null;
   }
 
   @Override
   public Void visitLevelTimeSeriesCount(
       LevelTimeSeriesCountNode node, MemoryDistributionContext context) {
-    processConsumeAllChildrenAtTheSameTime(node);
+    // do nothing since SourceNode will not have Exchange/FragmentSink as child
     return null;
   }
 
   @Override
   public Void visitCountMerge(CountSchemaMergeNode node, MemoryDistributionContext context) {
     processConsumeChildrenOneByOneNode(node);
-    return null;
-  }
-
-  @Override
-  public Void visitCreateTimeSeries(CreateTimeSeriesNode node, MemoryDistributionContext context) {
-    processConsumeAllChildrenAtTheSameTime(node);
     return null;
   }
 
@@ -421,66 +395,14 @@ public class MemoryDistributionCalculator
 
   @Override
   public Void visitSchemaFetchScan(SchemaFetchScanNode node, MemoryDistributionContext context) {
-    processConsumeAllChildrenAtTheSameTime(node);
-    return null;
-  }
-
-  @Override
-  public Void visitCreateAlignedTimeSeries(
-      CreateAlignedTimeSeriesNode node, MemoryDistributionContext context) {
-    processConsumeAllChildrenAtTheSameTime(node);
-    return null;
-  }
-
-  @Override
-  public Void visitCreateMultiTimeSeries(
-      CreateMultiTimeSeriesNode node, MemoryDistributionContext context) {
-    processConsumeAllChildrenAtTheSameTime(node);
-    return null;
-  }
-
-  @Override
-  public Void visitAlterTimeSeries(AlterTimeSeriesNode node, MemoryDistributionContext context) {
-    processConsumeAllChildrenAtTheSameTime(node);
-    return null;
-  }
-
-  @Override
-  public Void visitInsertRow(InsertRowNode node, MemoryDistributionContext context) {
-    processConsumeAllChildrenAtTheSameTime(node);
-    return null;
-  }
-
-  @Override
-  public Void visitInsertTablet(InsertTabletNode node, MemoryDistributionContext context) {
-    processConsumeAllChildrenAtTheSameTime(node);
-    return null;
-  }
-
-  @Override
-  public Void visitInsertRows(InsertRowsNode node, MemoryDistributionContext context) {
-    processConsumeAllChildrenAtTheSameTime(node);
-    return null;
-  }
-
-  @Override
-  public Void visitInsertMultiTablets(
-      InsertMultiTabletsNode node, MemoryDistributionContext context) {
-    processConsumeAllChildrenAtTheSameTime(node);
-    return null;
-  }
-
-  @Override
-  public Void visitInsertRowsOfOneDevice(
-      InsertRowsOfOneDeviceNode node, MemoryDistributionContext context) {
-    processConsumeAllChildrenAtTheSameTime(node);
+    // do nothing since SourceNode will not have Exchange/FragmentSink as child
     return null;
   }
 
   @Override
   public Void visitNodePathsSchemaScan(
       NodePathsSchemaScanNode node, MemoryDistributionContext context) {
-    processConsumeAllChildrenAtTheSameTime(node);
+    // do nothing since SourceNode will not have Exchange/FragmentSink as child
     return null;
   }
 
@@ -504,12 +426,6 @@ public class MemoryDistributionCalculator
   }
 
   @Override
-  public Void visitDeleteTimeseries(DeleteTimeSeriesNode node, MemoryDistributionContext context) {
-    processConsumeAllChildrenAtTheSameTime(node);
-    return null;
-  }
-
-  @Override
   public Void visitConstructSchemaBlackList(
       ConstructSchemaBlackListNode node, MemoryDistributionContext context) {
     processConsumeAllChildrenAtTheSameTime(node);
@@ -519,46 +435,6 @@ public class MemoryDistributionCalculator
   @Override
   public Void visitRollbackSchemaBlackList(
       RollbackSchemaBlackListNode node, MemoryDistributionContext context) {
-    processConsumeAllChildrenAtTheSameTime(node);
-    return null;
-  }
-
-  @Override
-  public Void visitDeleteData(DeleteDataNode node, MemoryDistributionContext context) {
-    processConsumeAllChildrenAtTheSameTime(node);
-    return null;
-  }
-
-  @Override
-  public Void visitInternalCreateTimeSeries(
-      InternalCreateTimeSeriesNode node, MemoryDistributionContext context) {
-    processConsumeAllChildrenAtTheSameTime(node);
-    return null;
-  }
-
-  @Override
-  public Void visitActivateTemplate(ActivateTemplateNode node, MemoryDistributionContext context) {
-    processConsumeAllChildrenAtTheSameTime(node);
-    return null;
-  }
-
-  @Override
-  public Void visitPreDeactivateTemplate(
-      PreDeactivateTemplateNode node, MemoryDistributionContext context) {
-    processConsumeAllChildrenAtTheSameTime(node);
-    return null;
-  }
-
-  @Override
-  public Void visitRollbackPreDeactivateTemplate(
-      RollbackPreDeactivateTemplateNode node, MemoryDistributionContext context) {
-    processConsumeAllChildrenAtTheSameTime(node);
-    return null;
-  }
-
-  @Override
-  public Void visitDeactivateTemplate(
-      DeactivateTemplateNode node, MemoryDistributionContext context) {
     processConsumeAllChildrenAtTheSameTime(node);
     return null;
   }

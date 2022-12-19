@@ -127,9 +127,11 @@ public class LocalExecutionPlanner {
     MemoryDistributionCalculator visitor = new MemoryDistributionCalculator();
     plan.accept(visitor, null);
     long totalSplit = visitor.calculateTotalSplit();
+    if (totalSplit == 0) {
+      return;
+    }
     long maxBytesOneHandleCanReserve =
-        IoTDBDescriptor.getInstance().getConfig().getMaxBytesPerFragmentInstance()
-            / (totalSplit == 0 ? 1 : totalSplit);
+        IoTDBDescriptor.getInstance().getConfig().getMaxBytesPerFragmentInstance() / totalSplit;
     for (ISourceHandle handle :
         MPPDataExchangeService.getInstance()
             .getMPPDataExchangeManager()

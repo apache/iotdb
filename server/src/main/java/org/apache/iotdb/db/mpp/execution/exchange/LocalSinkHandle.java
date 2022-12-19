@@ -201,6 +201,7 @@ public class LocalSinkHandle implements ISinkHandle {
 
   @Override
   public void setMaxBytesCanReserve(long maxBytesCanReserve) {
-    queue.setMaxBytesCanReserve(maxBytesCanReserve);
+    // do nothing, the maxBytesCanReserve of SharedTsBlockQueue should be set by corresponding
+    // LocalSourceHandle
   }
 }
