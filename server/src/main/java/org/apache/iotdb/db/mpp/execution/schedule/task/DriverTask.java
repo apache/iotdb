@@ -53,6 +53,9 @@ public class DriverTask implements IDIndexedAccessible {
 
   private String abortCause;
 
+  private long lastEnterReadyQueueTime;
+  private long lastEnterBlockQueueTime;
+
   /** Initialize a dummy instance for queryHolder */
   public DriverTask() {
     this(new StubFragmentInstance(), 0L, null);
@@ -144,6 +147,22 @@ public class DriverTask implements IDIndexedAccessible {
 
   public void setAbortCause(String abortCause) {
     this.abortCause = abortCause;
+  }
+
+  public long getLastEnterReadyQueueTime() {
+    return lastEnterReadyQueueTime;
+  }
+
+  public void setLastEnterReadyQueueTime(long lastEnterReadyQueueTime) {
+    this.lastEnterReadyQueueTime = lastEnterReadyQueueTime;
+  }
+
+  public long getLastEnterBlockQueueTime() {
+    return lastEnterBlockQueueTime;
+  }
+
+  public void setLastEnterBlockQueueTime(long lastEnterBlockQueueTime) {
+    this.lastEnterBlockQueueTime = lastEnterBlockQueueTime;
   }
 
   /** a comparator of ddl, the less the ddl is, the low order it has. */

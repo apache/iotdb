@@ -70,7 +70,8 @@ public enum Metric {
   QUERY_EXECUTION,
   AGGREGATION,
   QUERY_RESOURCE,
-  DATA_EXCHANGE;
+  DATA_EXCHANGE,
+  DRIVER_SCHEDULER;
 
   @Override
   public String toString() {

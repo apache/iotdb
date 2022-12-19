@@ -106,6 +106,16 @@ public class QueryMetricsManager {
         GET_DATA_BLOCK_NUM);
   }
 
+  public void recordTaskQueueTime(String name, long queueTimeInNanos) {
+    metricService.timer(
+        queueTimeInNanos,
+        TimeUnit.NANOSECONDS,
+        Metric.DRIVER_SCHEDULER.toString(),
+        MetricLevel.IMPORTANT,
+        Tag.NAME.toString(),
+        name);
+  }
+
   public static QueryMetricsManager getInstance() {
     return QueryMetricsManager.QueryMetricsManagerHolder.INSTANCE;
   }
