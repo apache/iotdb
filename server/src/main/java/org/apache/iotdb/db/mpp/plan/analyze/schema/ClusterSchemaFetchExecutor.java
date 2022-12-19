@@ -219,9 +219,13 @@ class ClusterSchemaFetchExecutor {
   private class DeviceSchemaFetchTaskExecutor {
 
     // buffer all the requests, waiting for execution
+    // protected by readWriteLock
+    @SuppressWarnings("squid:S3077")
     private volatile DeviceSchemaFetchTask newTask;
 
     // task on executing
+    // all inner fields are
+    @SuppressWarnings("squid:S3077")
     private volatile DeviceSchemaFetchTask executingTask;
 
     // used for concurrent control of newTask R/W operation
