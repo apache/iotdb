@@ -29,6 +29,7 @@ import org.apache.iotdb.lsm.sstable.bplustree.writer.BPlusTreeWriter;
 import org.apache.iotdb.lsm.sstable.fileIO.FileOutput;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -39,7 +40,7 @@ public class MemTableFlush extends FlushLevelProcessor<MemTable, MemChunkGroup> 
   @Override
   public List<MemChunkGroup> getChildren(
       MemTable memNode, IFlushRequest request, FlushRequestContext context) {
-    return (List<MemChunkGroup>) memNode.getMemChunkGroupMap().values();
+    return new ArrayList<>(memNode.getMemChunkGroupMap().values());
   }
 
   @Override

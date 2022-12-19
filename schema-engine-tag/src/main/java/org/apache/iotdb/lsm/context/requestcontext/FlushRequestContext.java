@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.lsm.context.requestcontext;
 
+import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.response.FlushResponse;
 import org.apache.iotdb.lsm.sstable.fileIO.FileOutput;
 import org.apache.iotdb.lsm.strategy.RBFSAccessStrategy;
 
@@ -41,5 +42,6 @@ public class FlushRequestContext extends RequestContext {
     super();
     // use the reverse breadth-first traversal strategy to access memory nodes
     accessStrategy = new RBFSAccessStrategy();
+    response = new FlushResponse();
   }
 }

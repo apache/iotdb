@@ -48,9 +48,6 @@ public class MemChunkFlush extends FlushLevelProcessor<MemChunk, Object> {
   public void flush(MemChunk memNode, IFlushRequest request, FlushRequestContext context)
       throws IOException {
     Chunk chunk = ConvertUtils.getChunkFromMemChunk(memNode);
-    if (chunk == null) {
-      return;
-    }
     FileOutput fileOutput = context.getFileOutput();
     RoaringBitmap roaringBitmap = chunk.getRoaringBitmap();
     byte[] bytes = new byte[chunk.getChunkHeader().getSize()];

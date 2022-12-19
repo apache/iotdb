@@ -29,19 +29,15 @@ public class ConvertUtils {
     Chunk chunk = new Chunk();
     chunk.setRoaringBitmap(memChunk.getRoaringBitmap());
     chunk.setChunkHeader(getChunkHeaderFromMemChunk(memChunk));
-    return null;
+    return chunk;
   }
 
   public static ChunkHeader getChunkHeaderFromMemChunk(MemChunk memChunk) {
     RoaringBitmap roaringBitmap = memChunk.getRoaringBitmap();
     ChunkHeader chunkHeader = new ChunkHeader();
     chunkHeader.setSize(roaringBitmap.serializedSizeInBytes());
-    int[] results = roaringBitmap.stream().toArray();
-    chunkHeader.setSize(results.length);
-    //    if (results.length != 0) {
-    //      chunkHeader.setMinID(results[0]);
-    //      chunkHeader.setMaxID(results[results.length - 1]);
-    //    }
+    //    int[] results = roaringBitmap.stream().toArray();
+    //    chunkHeader.setCount(results.length);
     return chunkHeader;
   }
 }

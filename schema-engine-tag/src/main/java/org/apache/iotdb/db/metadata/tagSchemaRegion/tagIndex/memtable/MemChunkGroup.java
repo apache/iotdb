@@ -25,40 +25,40 @@ import java.util.Map;
 public class MemChunkGroup {
 
   // manage tagValue -> MemChunk
-  private Map<String, MemChunk> memChunkGroupMap;
+  private Map<String, MemChunk> memChunkMap;
 
   public MemChunkGroup() {
-    memChunkGroupMap = new HashMap<>();
+    memChunkMap = new HashMap<>();
   }
 
   public void put(String tagValue) {
-    if (!memChunkGroupMap.containsKey(tagValue)) {
-      memChunkGroupMap.put(tagValue, new MemChunk());
+    if (!memChunkMap.containsKey(tagValue)) {
+      memChunkMap.put(tagValue, new MemChunk());
     }
   }
 
   @Override
   public String toString() {
-    return memChunkGroupMap.toString();
+    return memChunkMap.toString();
   }
 
   public MemChunk get(String tagValue) {
-    return memChunkGroupMap.get(tagValue);
+    return memChunkMap.get(tagValue);
   }
 
   public void remove(String tagValue) {
-    memChunkGroupMap.remove(tagValue);
+    memChunkMap.remove(tagValue);
   }
 
   public boolean isEmpty() {
-    return memChunkGroupMap.isEmpty();
+    return memChunkMap.isEmpty();
   }
 
-  public Map<String, MemChunk> getMemChunkGroupMap() {
-    return memChunkGroupMap;
+  public Map<String, MemChunk> getMemChunkMap() {
+    return memChunkMap;
   }
 
-  public void setMemChunkGroupMap(Map<String, MemChunk> memChunkGroupMap) {
-    this.memChunkGroupMap = memChunkGroupMap;
+  public void setMemChunkMap(Map<String, MemChunk> memChunkMap) {
+    this.memChunkMap = memChunkMap;
   }
 }

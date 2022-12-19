@@ -30,13 +30,13 @@ import java.util.List;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
-public class FlushManager<T extends IMemManager, R extends IFlushRequest>
+public class FlushManager<T, R extends IFlushRequest>
     extends BasicLSMManager<T, R, FlushRequestContext> {
 
   // use wal manager object to write wal file on deletion
   private WALManager walManager;
 
-  private T memManager;
+  private IMemManager memManager;
 
   private ScheduledExecutorService checkFlushThread;
 
@@ -49,7 +49,10 @@ public class FlushManager<T extends IMemManager, R extends IFlushRequest>
   public FlushManager(
       WALManager walManager, T memManager, String flushDirPath, String flushFilePrefix) {
     this.walManager = walManager;
-    this.memManager = memManager;
+    if (!(memManager instanceof IMemManager)) {
+      throw new ClassCastException("memManager must implement IMemManager");
+    }
+    this.memManager = (IMemManager) memManager;
     this.flushDirPath = flushDirPath;
     File flushDir = new File(flushDirPath);
     flushDir.mkdirs();
