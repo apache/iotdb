@@ -201,7 +201,7 @@ public class Coordinator {
         queryExecution.stopAndCleanup();
         queryExecutionMap.remove(queryId);
         if (queryExecution.isQuery()) {
-          long costTime = System.currentTimeMillis() - queryExecution.getStartExecutionTime();
+          long costTime = queryExecution.getTotalExecutionTime();
           if (costTime >= CONFIG.getSlowQueryThreshold()) {
             SLOW_SQL_LOGGER.info(
                 "Cost: {} ms, sql is {}",
@@ -215,5 +215,20 @@ public class Coordinator {
 
   public static Coordinator getInstance() {
     return INSTANCE;
+  }
+
+  public void recordExecutionTime(long queryId, long executionTime) {
+    IQueryExecution queryExecution = getQueryExecution(queryId);
+    if (queryExecution != null) {
+      queryExecution.recordExecutionTime(executionTime);
+    }
+  }
+
+  public long getTotalExecutionTime(long queryId) {
+    IQueryExecution queryExecution = getQueryExecution(queryId);
+    if (queryExecution != null) {
+      return queryExecution.getTotalExecutionTime();
+    }
+    return 0L;
   }
 }

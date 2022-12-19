@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
+import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -39,6 +40,7 @@ import org.apache.iotdb.db.mpp.plan.analyze.IPartitionFetcher;
 import org.apache.iotdb.db.mpp.plan.analyze.ISchemaFetcher;
 import org.apache.iotdb.db.mpp.plan.analyze.StandalonePartitionFetcher;
 import org.apache.iotdb.db.mpp.plan.analyze.StandaloneSchemaFetcher;
+import org.apache.iotdb.db.mpp.plan.constant.StatementType;
 import org.apache.iotdb.db.mpp.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.mpp.plan.execution.IQueryExecution;
 import org.apache.iotdb.db.mpp.plan.parser.StatementGenerator;
@@ -124,6 +126,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.TimeUnit;
 
 import static org.apache.iotdb.db.service.basic.ServiceProvider.AUDIT_LOGGER;
 import static org.apache.iotdb.db.service.basic.ServiceProvider.CURRENT_RPC_VERSION;
@@ -188,6 +191,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     }
 
     long startTime = System.currentTimeMillis();
+    StatementType statementType = null;
     try {
       Statement s =
           StatementGenerator.createStatement(
@@ -206,6 +210,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
       QUERY_FREQUENCY_RECORDER.incrementAndGet();
       AUDIT_LOGGER.debug("Session {} execute Query: {}", req.sessionId, statement);
+      statementType = s.getType();
 
       queryId = SESSION_MANAGER.requestQueryId(SESSION_MANAGER.getCurrSession(), req.statementId);
       // create and cache dataset
@@ -244,7 +249,14 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           onQueryException(e, "\"" + statement + "\". " + OperationType.EXECUTE_STATEMENT));
     } finally {
       addOperationLatency(OperationType.EXECUTE_STATEMENT, startTime);
+      COORDINATOR.recordExecutionTime(queryId, System.currentTimeMillis() - startTime);
       if (finished) {
+        if (statementType != null) {
+          addStatementExecutionLatency(
+              OperationType.EXECUTE_STATEMENT,
+              statementType,
+              COORDINATOR.getTotalExecutionTime(queryId));
+        }
         COORDINATOR.cleanupQueryExecution(queryId);
       }
     }
@@ -306,7 +318,12 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           onQueryException(e, "\"" + req + "\". " + OperationType.EXECUTE_RAW_DATA_QUERY));
     } finally {
       addOperationLatency(OperationType.EXECUTE_RAW_DATA_QUERY, startTime);
+      COORDINATOR.recordExecutionTime(queryId, System.currentTimeMillis() - startTime);
       if (finished) {
+        addStatementExecutionLatency(
+            OperationType.EXECUTE_RAW_DATA_QUERY,
+            StatementType.QUERY,
+            COORDINATOR.getTotalExecutionTime(queryId));
         COORDINATOR.cleanupQueryExecution(queryId);
       }
     }
@@ -367,7 +384,12 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           onQueryException(e, "\"" + req + "\". " + OperationType.EXECUTE_LAST_DATA_QUERY));
     } finally {
       addOperationLatency(OperationType.EXECUTE_LAST_DATA_QUERY, startTime);
+      COORDINATOR.recordExecutionTime(queryId, System.currentTimeMillis() - startTime);
       if (finished) {
+        addStatementExecutionLatency(
+            OperationType.EXECUTE_LAST_DATA_QUERY,
+            StatementType.QUERY,
+            COORDINATOR.getTotalExecutionTime(queryId));
         COORDINATOR.cleanupQueryExecution(queryId);
       }
     }
@@ -402,6 +424,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
   public TSFetchResultsResp fetchResultsV2(TSFetchResultsReq req) {
     long startTime = System.currentTimeMillis();
     boolean finished = false;
+    StatementType statementType = null;
     try {
       if (!SESSION_MANAGER.checkLogin(SESSION_MANAGER.getCurrSession())) {
         return RpcUtils.getTSFetchResultsResp(getNotLoggedInStatus());
@@ -415,6 +438,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         resp.setMoreData(false);
         return resp;
       }
+      statementType = queryExecution.getStatement().getType();
 
       try (SetThreadName queryName = new SetThreadName(queryExecution.getQueryId())) {
         Pair<List<ByteBuffer>, Boolean> pair =
@@ -433,7 +457,14 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       return RpcUtils.getTSFetchResultsResp(onQueryException(e, OperationType.FETCH_RESULTS));
     } finally {
       addOperationLatency(OperationType.FETCH_RESULTS, startTime);
+      COORDINATOR.recordExecutionTime(req.queryId, System.currentTimeMillis() - startTime);
       if (finished) {
+        if (statementType != null) {
+          addStatementExecutionLatency(
+              OperationType.FETCH_RESULTS,
+              statementType,
+              COORDINATOR.getTotalExecutionTime(req.queryId));
+        }
         COORDINATOR.cleanupQueryExecution(req.queryId);
       }
     }
@@ -1797,6 +1828,20 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
             MetricLevel.IMPORTANT,
             "name",
             operation.getName());
+  }
+
+  private void addStatementExecutionLatency(
+      OperationType operation, StatementType statementType, long costTime) {
+    MetricService.getInstance()
+        .timer(
+            costTime,
+            TimeUnit.MILLISECONDS,
+            Metric.OPERATION.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            operation.getName(),
+            Tag.TYPE.toString(),
+            statementType.name());
   }
 
   @Override
