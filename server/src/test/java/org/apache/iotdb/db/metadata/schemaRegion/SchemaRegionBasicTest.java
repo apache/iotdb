@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.metadata.schemaRegion;
 
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.path.MeasurementPath;
@@ -36,8 +37,10 @@ import org.apache.iotdb.db.metadata.plan.schemaregion.impl.CreateTimeSeriesPlanI
 import org.apache.iotdb.db.metadata.plan.schemaregion.impl.DeactivateTemplatePlanImpl;
 import org.apache.iotdb.db.metadata.plan.schemaregion.impl.PreDeactivateTemplatePlanImpl;
 import org.apache.iotdb.db.metadata.plan.schemaregion.impl.RollbackPreDeactivateTemplatePlanImpl;
+import org.apache.iotdb.db.metadata.plan.schemaregion.impl.SchemaRegionPlanFactory;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaEngine;
+import org.apache.iotdb.db.metadata.schemaregion.SchemaEngineMode;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.CreateSchemaTemplateStatement;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
@@ -93,6 +96,9 @@ public abstract class SchemaRegionBasicTest {
 
   @Test
   public void testRatisModeSnapshot() throws Exception {
+    if (config.getSchemaEngineMode().equals(SchemaEngineMode.Schema_File.name())) {
+      return;
+    }
     String schemaRegionConsensusProtocolClass = config.getSchemaRegionConsensusProtocolClass();
     config.setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS);
     try {
@@ -122,6 +128,12 @@ public abstract class SchemaRegionBasicTest {
               null,
               null),
           -1);
+
+      Template template = generateTemplate();
+      schemaRegion.activateSchemaTemplate(
+          SchemaRegionPlanFactory.getActivateTemplateInClusterPlan(
+              new PartialPath("root.sg.d2"), 1, template.getId()),
+          template);
 
       File snapshotDir = new File(config.getSchemaDir() + File.separator + "snapshot");
       snapshotDir.mkdir();
@@ -158,9 +170,32 @@ public abstract class SchemaRegionBasicTest {
       Assert.assertEquals(1, resultTagMap.size());
       Assert.assertEquals("tag-value", resultTagMap.get("tag-key"));
 
+      ShowTimeSeriesPlan showTimeSeriesPlan =
+          new ShowTimeSeriesPlan(new PartialPath("root.sg.*.s1"), false, null, null, 0, 0, false);
+      showTimeSeriesPlan.setRelatedTemplate(Collections.singletonMap(template.getId(), template));
+      result = newSchemaRegion.showTimeseries(showTimeSeriesPlan, null);
+      result.left.sort(ShowTimeSeriesResult::compareTo);
+      Assert.assertEquals(
+          new PartialPath("root.sg.d1.s1").getFullPath(), result.left.get(0).getName());
+      Assert.assertEquals(
+          new PartialPath("root.sg.d2.s1").getFullPath(), result.left.get(1).getName());
+
     } finally {
       config.setSchemaRegionConsensusProtocolClass(schemaRegionConsensusProtocolClass);
     }
+  }
+
+  private Template generateTemplate() throws IllegalPathException {
+    Template template =
+        new Template(
+            new CreateSchemaTemplateStatement(
+                "t1",
+                Collections.singletonList(Collections.singletonList("s1")),
+                Collections.singletonList(Collections.singletonList(TSDataType.INT32)),
+                Collections.singletonList(Collections.singletonList(TSEncoding.PLAIN)),
+                Collections.singletonList(Collections.singletonList(CompressionType.GZIP))));
+    template.setId(1);
+    return template;
   }
 
   @Test
