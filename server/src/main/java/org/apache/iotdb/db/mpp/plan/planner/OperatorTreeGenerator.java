@@ -1703,6 +1703,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                 downStreamEndPoint,
                 targetInstanceId.toThrift(),
                 node.getDownStreamPlanNodeId().getId(),
+                node.getPlanNodeId().getId(),
                 context.getInstanceContext());
     context.setSinkHandle(sinkHandle);
     return child;

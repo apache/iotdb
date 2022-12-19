@@ -430,6 +430,11 @@ struct TGetJarInListResp {
   2: required list<binary> jarList
 }
 
+struct TGetDataNodeLocationsResp {
+  1: required common.TSStatus status
+  2: required list<common.TDataNodeLocation> dataNodeLocationList
+}
+
 // Show cluster
 struct TShowClusterResp {
   1: required common.TSStatus status
@@ -990,6 +995,9 @@ service IConfigNodeRPCService {
 
   /** Migrate a region replica from one dataNode to another */
   common.TSStatus migrateRegion(TMigrateRegionReq req)
+
+  /** Get all DataNodeLocations of Running DataNodes */
+  TGetDataNodeLocationsResp getRunningDataNodeLocations()
 
   // ======================================================
   // Cluster Tools

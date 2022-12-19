@@ -252,7 +252,7 @@ class IoTDBRpcDataSet(object):
 
                     bitmap_buffer = self.__query_data_set.bitmapList[location]
                     bitmap_str = self._to_bitstring(bitmap_buffer)
-                    bit_mask = (np.fromstring(bitmap_str, 'u1') - ord('0')).astype(np.bool)
+                    bit_mask = (np.fromstring(bitmap_str, 'u1') - ord('0')).astype(bool)
                     if len(bit_mask) != total_length:
                         bit_mask = bit_mask[:total_length]
                     tmp_array[bit_mask] = data_array

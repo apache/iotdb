@@ -84,6 +84,7 @@ import org.apache.iotdb.db.mpp.plan.statement.sys.FlushStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.LoadConfigurationStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.MergeStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.SetSystemStatusStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.ShowQueriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ShowVersionStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeSinkStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeStatement;
@@ -316,6 +317,10 @@ public abstract class StatementVisitor<R, C> {
 
   public R visitSetSystemStatus(SetSystemStatusStatement setSystemStatusStatement, C context) {
     return visitStatement(setSystemStatusStatement, context);
+  }
+
+  public R visitShowQueries(ShowQueriesStatement showQueriesStatement, C context) {
+    return visitStatement(showQueriesStatement, context);
   }
 
   public R visitShowRegion(ShowRegionStatement showRegionStatement, C context) {

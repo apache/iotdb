@@ -111,6 +111,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDropCQReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllPipeInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllTemplatesResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetDataNodeLocationsResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetJarInListReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetJarInListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetLocationForTriggerResp;
@@ -1032,6 +1033,18 @@ public class ConfigManager implements IManager {
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
         ? nodeManager.setDataNodeStatus(req)
         : status;
+  }
+
+  @Override
+  public TGetDataNodeLocationsResp getRunningDataNodeLocations() {
+    TSStatus status = confirmLeader();
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        ? new TGetDataNodeLocationsResp(
+            new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()),
+            nodeManager.filterDataNodeThroughStatus(NodeStatus.Running).stream()
+                .map(TDataNodeConfiguration::getLocation)
+                .collect(Collectors.toList()))
+        : new TGetDataNodeLocationsResp(status, Collections.emptyList());
   }
 
   @Override

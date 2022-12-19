@@ -16,31 +16,18 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.metadata.schemaRegion.multimode;
 
-import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.metadata.schemaRegion.SchemaRegionBasicTest;
-import org.apache.iotdb.db.metadata.schemaregion.SchemaEngineMode;
+package org.apache.iotdb.db.metadata.schemaRegion;
 
-import org.junit.After;
-import org.junit.Before;
+import org.junit.Test;
 
-public class SchemaRegionMemoryTest extends SchemaRegionBasicTest {
+// todo add alias and tag test
+public class SchemaRegionAliasAndTagTest extends AbstractSchemaRegionTest {
 
-  IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-  String schemaEngineMode;
-
-  @Before
-  public void setUp() {
-    schemaEngineMode = config.getSchemaEngineMode();
-    config.setSchemaEngineMode(SchemaEngineMode.Memory.name());
-    super.setUp();
+  public SchemaRegionAliasAndTagTest(SchemaRegionTestParams testParams) {
+    super(testParams);
   }
 
-  @After
-  public void tearDown() throws Exception {
-    super.tearDown();
-    config.setSchemaEngineMode(schemaEngineMode);
-  }
+  @Test
+  public void emptyTest() {}
 }
