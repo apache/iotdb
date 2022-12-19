@@ -103,8 +103,9 @@ public class SessionIoTDBReporter extends IoTDBReporter {
                   .getMetricConfig()
                   .getAsyncCollectPeriodInSecond(),
               TimeUnit.SECONDS);
+      return true;
     }
-    return true;
+    return false;
   }
 
   @Override

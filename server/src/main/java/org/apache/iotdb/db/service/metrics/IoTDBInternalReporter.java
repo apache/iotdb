@@ -100,8 +100,9 @@ public class IoTDBInternalReporter extends InternalIoTDBReporter {
                   .getMetricConfig()
                   .getAsyncCollectPeriodInSecond(),
               TimeUnit.SECONDS);
+      return true;
     }
-    return true;
+    return false;
   }
 
   @Override
