@@ -26,6 +26,14 @@ import org.apache.iotdb.tsfile.utils.Pair;
 import java.util.List;
 import java.util.Set;
 
+/**
+ * This interface defines the behaviour of schema tree used in statement analyzing stage.
+ *
+ * <p>The implementing class is not restrict as an isolated view of invoking thread, which means
+ * this instance may contain some schema info used by other threads, thus be careful with operations
+ * intended for <b>querying all</b> or <b>with pattern like root.**</b>, unless the user input
+ * pattern is root.**.
+ */
 public interface ISchemaTree {
   /**
    * Return all measurement paths for given path pattern and filter the result by slimit and offset.

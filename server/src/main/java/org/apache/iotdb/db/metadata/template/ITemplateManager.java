@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.CreateSchemaTemplateStatement;
 import org.apache.iotdb.tsfile.utils.Pair;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
@@ -73,4 +74,7 @@ public interface ITemplateManager {
   Pair<Template, List<PartialPath>> getAllPathsSetTemplate(String templateName);
 
   Map<Integer, Template> checkAllRelatedTemplate(PartialPath pathPattern);
+
+  Map<Integer, Template> checkAllRelatedTemplate(
+      PartialPath devicePath, Collection<String> measurements);
 }

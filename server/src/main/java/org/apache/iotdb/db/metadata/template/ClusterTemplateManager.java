@@ -44,6 +44,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -272,6 +273,27 @@ public class ClusterTemplateManager implements ITemplateManager {
     }
   }
 
+  @Override
+  public Map<Integer, Template> checkAllRelatedTemplate(
+      PartialPath devicePath, Collection<String> measurements) {
+    readWriteLock.readLock().lock();
+    try {
+      Map<Integer, Template> result = new HashMap<>();
+      int templateId;
+      Template template;
+      for (Map.Entry<PartialPath, Integer> entry : pathSetTemplateMap.entrySet()) {
+        templateId = entry.getValue();
+        template = templateIdMap.get(templateId);
+        if (checkIsRelated(devicePath, measurements, entry.getKey(), template)) {
+          result.put(templateId, template);
+        }
+      }
+      return result;
+    } finally {
+      readWriteLock.readLock().unlock();
+    }
+  }
+
   private boolean checkIsRelated(
       PartialPath pathPattern, PartialPath pathSetTemplate, Template template) {
     // e.g. given template t1(s1 int32) set on root.sg, the possible timeseries are matched by
@@ -293,6 +315,22 @@ public class ClusterTemplateManager implements ITemplateManager {
       return pathPattern.overlapWith(
               pathSetTemplate.concatNode(MULTI_LEVEL_PATH_WILDCARD).concatNode(measurement))
           || pathPattern.overlapWith(pathSetTemplate.concatNode(measurement));
+    }
+
+    return false;
+  }
+
+  private boolean checkIsRelated(
+      PartialPath devicePath,
+      Collection<String> measurementList,
+      PartialPath pathSetTemplate,
+      Template template) {
+    if (devicePath.startsWith(pathSetTemplate.getNodes())) {
+      for (String measurement : measurementList) {
+        if (template.hasSchema(measurement)) {
+          return true;
+        }
+      }
     }
 
     return false;

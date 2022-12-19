@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.plan.analyze;
+package org.apache.iotdb.db.mpp.plan.analyze.schema;
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
@@ -37,22 +37,49 @@ import java.util.function.Function;
  */
 public interface ISchemaFetcher {
 
+  /**
+   * The returned instance is not restrict as an isolated view of current thread, which means this
+   * instance may contain some schema info used by other threads, thus be careful with operations
+   * intended for <b>querying all</b> or <b>with pattern like root.**</b>, unless the user input
+   * pattern is root.**.
+   */
   ISchemaTree fetchSchema(PathPatternTree patternTree);
 
+  /**
+   * The returned instance is not restrict as an isolated view of current thread, which means this
+   * instance may contain some schema info used by other threads, thus be careful with operations
+   * intended for <b>querying all</b> or <b>with pattern like root.**</b>, unless the user input
+   * pattern is root.**.
+   */
   ISchemaTree fetchSchemaWithTags(PathPatternTree patternTree);
 
+  /**
+   * The returned instance is not restrict as an isolated view of current thread, which means this
+   * instance may contain some schema info used by other threads, thus be careful with operations
+   * intended for <b>querying all</b> or <b>with pattern like root.**</b>.
+   */
   ISchemaTree fetchSchemaWithAutoCreate(
       PartialPath devicePath,
       String[] measurements,
       Function<Integer, TSDataType> getDataType,
       boolean aligned);
 
+  /**
+   * The returned instance is not restrict as an isolated view of current thread, which means this
+   * instance may contain some schema info used by other threads, thus be careful with operations
+   * intended for <b>querying all</b> or <b>with pattern like root.**</b>.
+   */
   ISchemaTree fetchSchemaListWithAutoCreate(
       List<PartialPath> devicePath,
       List<String[]> measurements,
       List<TSDataType[]> tsDataTypes,
       List<Boolean> aligned);
 
+  /**
+   * The returned instance is not restrict as an isolated view of invoking thread, which means this
+   * instance may contain some schema info used by other threads, thus be careful with operations
+   * intended for <b>querying all</b> or <b>with pattern like root.**</b>.
+   */
   ISchemaTree fetchSchemaListWithAutoCreate(
       List<PartialPath> devicePath,
       List<String[]> measurements,

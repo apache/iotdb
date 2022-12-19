@@ -152,6 +152,10 @@ public class PathPatternTree {
         results.add(
             nodes.size() == 1 ? "" : convertNodesToString(nodes.subList(0, nodes.size() - 1)));
       } else {
+        // the device of root.sg.d.** is root.sg.d and root.sg.d.**
+        if (nodes.size() > 2) {
+          results.add(convertNodesToString(nodes.subList(0, nodes.size() - 1)));
+        }
         results.add(convertNodesToString(nodes));
       }
       if (curNode.isLeaf()) {

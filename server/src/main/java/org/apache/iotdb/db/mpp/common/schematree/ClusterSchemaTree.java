@@ -49,6 +49,12 @@ import static org.apache.iotdb.db.metadata.MetadataConstant.ALL_MATCH_PATTERN;
 import static org.apache.iotdb.db.mpp.common.schematree.node.SchemaNode.SCHEMA_ENTITY_NODE;
 import static org.apache.iotdb.db.mpp.common.schematree.node.SchemaNode.SCHEMA_MEASUREMENT_NODE;
 
+/**
+ * This class is an implementation of ISchemaTree as the form of fetched schema from schema cache or
+ * remote DataNodes.
+ *
+ * <p>The instances are always constructed in one thread and may be queried by multi threads.
+ */
 public class ClusterSchemaTree implements ISchemaTree {
 
   private Set<String> databases;
