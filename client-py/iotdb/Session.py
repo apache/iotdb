@@ -357,7 +357,7 @@ class Session(object):
         :param paths_list: time series list that the data in.
         :param end_time: data with time stamp less than or equal to time will be deleted.
         """
-        request = TSDeleteDataReq(self.__session_id, paths_list, 0x8000000000000000, end_time)
+        request = TSDeleteDataReq(self.__session_id, paths_list, -9223372036854775808, end_time)
         try:
             status = self.__client.deleteData(request)
             logger.debug(
