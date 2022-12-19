@@ -226,6 +226,11 @@ public class SchemaEngine {
 
     if (timedForceMLogThread != null) {
       timedForceMLogThread.shutdown();
+      while (true) {
+        if (!timedForceMLogThread.isTerminated()) {
+          break;
+        }
+      }
       timedForceMLogThread = null;
     }
 

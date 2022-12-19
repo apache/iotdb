@@ -21,6 +21,7 @@ package org.apache.iotdb.db.metadata.schemaRegion;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.metadata.schemaregion.SchemaEngine;
 
 import org.apache.commons.io.FileUtils;
 import org.junit.Before;
@@ -34,7 +35,7 @@ import java.util.Arrays;
 import java.util.List;
 
 @RunWith(Parameterized.class)
-public class AbstractSchemaRegionTest {
+public abstract class AbstractSchemaRegionTest {
 
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
@@ -45,10 +46,10 @@ public class AbstractSchemaRegionTest {
   @Parameterized.Parameters(name = "{0}")
   public static List<SchemaRegionTestParams> getTestModes() {
     return Arrays.asList(
-        new SchemaRegionTestParams("MemoryMode", "Memory", -1),
-        new SchemaRegionTestParams("SchemaFile-FullMemory", "Schema_File", 10000),
-        new SchemaRegionTestParams("SchemaFile-PartialMemory", "Schema_File", 3),
-        new SchemaRegionTestParams("SchemaFile-NonMemory", "Schema_File", 0));
+        new SchemaRegionTestParams("MemoryMode", "Memory", -1, true),
+        new SchemaRegionTestParams("SchemaFile-FullMemory", "Schema_File", 10000, true),
+        new SchemaRegionTestParams("SchemaFile-PartialMemory", "Schema_File", 3, true),
+        new SchemaRegionTestParams("SchemaFile-NonMemory", "Schema_File", 0, true));
   }
 
   public AbstractSchemaRegionTest(SchemaRegionTestParams testParams) {
@@ -61,16 +62,22 @@ public class AbstractSchemaRegionTest {
         new SchemaRegionTestParams(
             "Raw-Config",
             config.getSchemaEngineMode(),
-            config.getSchemaRegionDeviceNodeCacheSize());
+            config.getSchemaRegionDeviceNodeCacheSize(),
+            config.isClusterMode());
     config.setSchemaEngineMode(testParams.schemaEngineMode);
     config.setCachedMNodeSizeInSchemaFileMode(testParams.cachedMNodeSize);
+    config.setClusterMode(testParams.isClusterMode);
+    SchemaEngine.getInstance().init();
   }
 
   @Test
   public void tearDown() throws Exception {
+    SchemaEngine.getInstance().clear();
+
     cleanEnv();
     config.setSchemaEngineMode(rawConfig.schemaEngineMode);
     config.setCachedMNodeSizeInSchemaFileMode(rawConfig.cachedMNodeSize);
+    config.setClusterMode(rawConfig.isClusterMode);
   }
 
   protected static void cleanEnv() throws IOException {
@@ -85,11 +92,14 @@ public class AbstractSchemaRegionTest {
 
     private final int cachedMNodeSize;
 
+    private final boolean isClusterMode;
+
     private SchemaRegionTestParams(
-        String testModeName, String schemaEngineMode, int cachedMNodeSize) {
+        String testModeName, String schemaEngineMode, int cachedMNodeSize, boolean isClusterMode) {
       this.testModeName = testModeName;
       this.schemaEngineMode = schemaEngineMode;
       this.cachedMNodeSize = cachedMNodeSize;
+      this.isClusterMode = isClusterMode;
     }
 
     public String getTestModeName() {
@@ -102,6 +112,10 @@ public class AbstractSchemaRegionTest {
 
     public int getCachedMNodeSize() {
       return cachedMNodeSize;
+    }
+
+    public boolean isClusterMode() {
+      return isClusterMode;
     }
 
     @Override
