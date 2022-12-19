@@ -127,10 +127,11 @@ Core-level metrics are enabled by default during system operation. The addition 
 
 #### 4.2.2. Node
 | Metric   | Tags                                       | Type      | Description                                                   |
-| -------- | ------------------------------------------ | --------- | ------------------------------------------------------------- |
+|----------|--------------------------------------------|-----------|---------------------------------------------------------------|
 | quantity | name="database"                            | AutoGauge | The number of database                                        |
 | quantity | name="timeSeries"                          | AutoGauge | The number of timeseries                                      |
 | quantity | name="pointsIn"                            | Counter   | The number of write points                                    |
+| points   | database="{{database}}", type="flush"      | Gauge     | The point number of last flushed memtable                     |
 | region   | name="total",type="SchemaRegion"           | AutoGauge | The total number of SchemaRegion in PartitionTable            |
 | region   | name="total",type="DataRegion"             | AutoGauge | The total number of DataRegion in PartitionTable              |
 | region   | name="{{ip}}:{{port}}",type="SchemaRegion" | Gauge     | The number of SchemaRegion in PartitionTable of specific node |

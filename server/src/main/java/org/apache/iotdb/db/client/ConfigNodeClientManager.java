@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -17,27 +17,19 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.execution.memory;
+package org.apache.iotdb.db.client;
 
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.commons.client.IClientManager;
+import org.apache.iotdb.commons.consensus.ConfigNodeRegionId;
 
-/**
- * Manages memory of a data node. The memory is divided into two memory pools so that the memory for
- * read and for write can be isolated.
- */
-public class LocalMemoryManager {
-
-  private final MemoryPool queryPool;
-
-  public LocalMemoryManager() {
-    queryPool =
-        new MemoryPool(
-            "query",
-            IoTDBDescriptor.getInstance().getConfig().getAllocateMemoryForDataExchange(),
-            IoTDBDescriptor.getInstance().getConfig().getMaxBytesPerFragmentInstance());
+public class ConfigNodeClientManager {
+  private static final class ConfigNodeClientManagerHolder {
+    private static final IClientManager<ConfigNodeRegionId, ConfigNodeClient> INSTANCE =
+        new IClientManager.Factory<ConfigNodeRegionId, ConfigNodeClient>()
+            .createClientManager(new DataNodeClientPoolFactory.ConfigNodeClientPoolFactory());
   }
 
-  public MemoryPool getQueryPool() {
-    return queryPool;
+  public static IClientManager<ConfigNodeRegionId, ConfigNodeClient> getInstance() {
+    return ConfigNodeClientManagerHolder.INSTANCE;
   }
 }

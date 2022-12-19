@@ -39,8 +39,6 @@ public interface ISchemaTree {
 
   Pair<List<MeasurementPath>, Integer> searchMeasurementPaths(PartialPath pathPattern);
 
-  List<MeasurementPath> getAllMeasurement();
-
   /**
    * Get all device matching the path pattern.
    *
