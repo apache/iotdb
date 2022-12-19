@@ -59,6 +59,48 @@ def test_numpy_tablet_serialization():
     assert tablet_.get_binary_values() == np_tablet_.get_binary_values()
 
 
+def test_numpy_tablet_serialization2():
+
+    measurements_ = ["s_01", "s_02", "s_03", "s_04", "s_05", "s_06"]
+    data_types_ = [
+        TSDataType.BOOLEAN,
+        TSDataType.INT32,
+        TSDataType.INT64,
+        TSDataType.FLOAT,
+        TSDataType.DOUBLE,
+        TSDataType.TEXT,
+    ]
+    values_ = [
+        [None, 10, 11, 1.1, 10011.1, "test01"],
+        [True, None, 11111, 1.25, 101.0, "test02"],
+        [False, 100, None, 188.1, 688.25, "test03"],
+        [True, 0, 0, 0, None, None],
+    ]
+    timestamps_ = [16, 17, 18, 19]
+    tablet_ = Tablet(
+        "root.sg_test_01.d_01", measurements_, data_types_, values_, timestamps_
+    )
+    np_values_ = [
+        np.array([False, True, False, True], np.dtype(">?")),
+        np.array([10, 0, 100, 0], np.dtype(">i4")),
+        np.array([11, 11111, 0, 0], np.dtype(">i8")),
+        np.array([1.1, 1.25, 188.1, 0], np.dtype(">f4")),
+        np.array([10011.1, 101.0, 688.25, 0], np.dtype(">f8")),
+        np.array(["test01", "test02", "test03", ""]),
+    ]
+    np_timestamps_ = np.array([16, 17, 18, 19], np.dtype(">i8"))
+    np_tablet_ = NumpyTablet(
+        "root.sg_test_01.d_01", measurements_, data_types_, np_values_, np_timestamps_
+    )
+    np_tablet_.mark_none_value(0, 0)
+    np_tablet_.mark_none_value(1, 1)
+    np_tablet_.mark_none_value(2, 2)
+    np_tablet_.mark_none_value(4, 3)
+    np_tablet_.mark_none_value(5, 3)
+    assert tablet_.get_binary_timestamps() == np_tablet_.get_binary_timestamps()
+    assert tablet_.get_binary_values() == np_tablet_.get_binary_values()
+
+
 def test_sort_numpy_tablet():
 
     measurements_ = ["s_01", "s_02", "s_03", "s_04", "s_05", "s_06"]

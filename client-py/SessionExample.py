@@ -218,6 +218,24 @@ np_tablet_unsorted = NumpyTablet(
     np_values_unsorted,
     np_timestamps_unsorted,
 )
+
+# insert one numpy tablet into the database.
+np_values_ = [
+    np.array([False, True, False, True], TSDataType.BOOLEAN.np_dtype()),
+    np.array([10, 100, 100, 0], TSDataType.INT32.np_dtype()),
+    np.array([11, 11111, 1, 0], TSDataType.INT64.np_dtype()),
+    np.array([1.1, 1.25, 188.1, 0], TSDataType.FLOAT.np_dtype()),
+    np.array([10011.1, 101.0, 688.25, 6.25], TSDataType.DOUBLE.np_dtype()),
+    np.array(["test01", "test02", "test03", "test04"]),
+]
+np_timestamps_ = np.array([98, 99, 100, 101], TSDataType.INT64.np_dtype())
+np_tablet_with_none = NumpyTablet(
+    "root.sg_test_01.d_02", measurements_, data_types_, np_values_, np_timestamps_
+)
+np_tablet_with_none.mark_none_value(0,0)
+session.insert_tablet(np_tablet_with_none)
+
+
 session.insert_tablet(np_tablet_unsorted)
 print(np_tablet_unsorted.get_timestamps())
 for value in np_tablet_unsorted.get_values():
