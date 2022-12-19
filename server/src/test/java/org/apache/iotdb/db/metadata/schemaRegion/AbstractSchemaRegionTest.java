@@ -19,8 +19,11 @@
 
 package org.apache.iotdb.db.metadata.schemaRegion;
 
+import org.apache.iotdb.commons.consensus.SchemaRegionId;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaEngine;
 
 import org.apache.commons.io.FileUtils;
@@ -73,15 +76,27 @@ public abstract class AbstractSchemaRegionTest {
   @After
   public void tearDown() throws Exception {
     SchemaEngine.getInstance().clear();
-
     cleanEnv();
     config.setSchemaEngineMode(rawConfig.schemaEngineMode);
     config.setCachedMNodeSizeInSchemaFileMode(rawConfig.cachedMNodeSize);
     config.setClusterMode(rawConfig.isClusterMode);
   }
 
-  protected static void cleanEnv() throws IOException {
+  protected void cleanEnv() throws IOException {
     FileUtils.deleteDirectory(new File(IoTDBDescriptor.getInstance().getConfig().getSchemaDir()));
+  }
+
+  protected void simulateRestart() {
+    SchemaEngine.getInstance().clear();
+    SchemaEngine.getInstance().init();
+  }
+
+  protected ISchemaRegion getSchemaRegion(String database, int schemaRegionId) throws Exception {
+    SchemaRegionId regionId = new SchemaRegionId(schemaRegionId);
+    if (SchemaEngine.getInstance().getSchemaRegion(regionId) == null) {
+      SchemaEngine.getInstance().createSchemaRegion(new PartialPath(database), regionId);
+    }
+    return SchemaEngine.getInstance().getSchemaRegion(regionId);
   }
 
   protected static class SchemaRegionTestParams {

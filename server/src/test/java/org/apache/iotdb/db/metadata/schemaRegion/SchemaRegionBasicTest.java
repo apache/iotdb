@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.metadata.schemaRegion;
 
-import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -28,7 +27,6 @@ import org.apache.iotdb.db.exception.metadata.MeasurementAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.metadata.plan.schemaregion.impl.CreateTimeSeriesPlanImpl;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
-import org.apache.iotdb.db.metadata.schemaregion.SchemaEngine;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -59,10 +57,7 @@ public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
 
   @Test
   public void testFetchSchema() throws Exception {
-    PartialPath storageGroup = new PartialPath("root.sg");
-    SchemaRegionId schemaRegionId = new SchemaRegionId(0);
-    SchemaEngine.getInstance().createSchemaRegion(storageGroup, schemaRegionId);
-    ISchemaRegion schemaRegion = SchemaEngine.getInstance().getSchemaRegion(schemaRegionId);
+    ISchemaRegion schemaRegion = getSchemaRegion("root.sg", 0);
 
     schemaRegion.createTimeseries(
         new CreateTimeSeriesPlanImpl(
@@ -137,10 +132,7 @@ public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
 
   @Test
   public void testCheckMeasurementExistence() throws Exception {
-    PartialPath storageGroup = new PartialPath("root.sg");
-    SchemaRegionId schemaRegionId = new SchemaRegionId(0);
-    SchemaEngine.getInstance().createSchemaRegion(storageGroup, schemaRegionId);
-    ISchemaRegion schemaRegion = SchemaEngine.getInstance().getSchemaRegion(schemaRegionId);
+    ISchemaRegion schemaRegion = getSchemaRegion("root.sg", 0);
     schemaRegion.createTimeseries(
         new CreateTimeSeriesPlanImpl(
             new PartialPath("root.sg.wf01.wt01.status"),
@@ -211,10 +203,7 @@ public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
 
   @Test
   public void testConstructSchemaBlackList() throws Exception {
-    PartialPath storageGroup = new PartialPath("root.sg");
-    SchemaRegionId schemaRegionId = new SchemaRegionId(0);
-    SchemaEngine.getInstance().createSchemaRegion(storageGroup, schemaRegionId);
-    ISchemaRegion schemaRegion = SchemaEngine.getInstance().getSchemaRegion(schemaRegionId);
+    ISchemaRegion schemaRegion = getSchemaRegion("root.sg", 0);
     schemaRegion.createTimeseries(
         new CreateTimeSeriesPlanImpl(
             new PartialPath("root.sg.wf01.wt01.status"),

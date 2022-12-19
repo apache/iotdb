@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.metadata.schemaRegion;
 
-import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.db.metadata.plan.schemaregion.impl.ActivateTemplateInClusterPlanImpl;
@@ -28,7 +27,6 @@ import org.apache.iotdb.db.metadata.plan.schemaregion.impl.DeactivateTemplatePla
 import org.apache.iotdb.db.metadata.plan.schemaregion.impl.PreDeactivateTemplatePlanImpl;
 import org.apache.iotdb.db.metadata.plan.schemaregion.impl.RollbackPreDeactivateTemplatePlanImpl;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
-import org.apache.iotdb.db.metadata.schemaregion.SchemaEngine;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.CreateSchemaTemplateStatement;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -55,10 +53,7 @@ public class SchemaRegionTemplateTest extends AbstractSchemaRegionTest {
   /** Test {@link ISchemaRegion#activateSchemaTemplate}. */
   @Test
   public void testActivateSchemaTemplate() throws Exception {
-    PartialPath storageGroup = new PartialPath("root.sg");
-    SchemaRegionId schemaRegionId = new SchemaRegionId(0);
-    SchemaEngine.getInstance().createSchemaRegion(storageGroup, schemaRegionId);
-    ISchemaRegion schemaRegion = SchemaEngine.getInstance().getSchemaRegion(schemaRegionId);
+    ISchemaRegion schemaRegion = getSchemaRegion("root.sg", 0);
     schemaRegion.createTimeseries(
         new CreateTimeSeriesPlanImpl(
             new PartialPath("root.sg.wf01.wt01.status"),
@@ -124,10 +119,7 @@ public class SchemaRegionTemplateTest extends AbstractSchemaRegionTest {
    */
   @Test
   public void testDeactivateTemplate() throws Exception {
-    PartialPath storageGroup = new PartialPath("root.sg");
-    SchemaRegionId schemaRegionId = new SchemaRegionId(0);
-    SchemaEngine.getInstance().createSchemaRegion(storageGroup, schemaRegionId);
-    ISchemaRegion schemaRegion = SchemaEngine.getInstance().getSchemaRegion(schemaRegionId);
+    ISchemaRegion schemaRegion = getSchemaRegion("root.sg", 0);
     schemaRegion.createTimeseries(
         new CreateTimeSeriesPlanImpl(
             new PartialPath("root.sg.wf01.wt01.status"),

@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.metadata.schemaRegion;
 
-import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.consensus.ConsensusFactory;
@@ -27,7 +26,6 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.metadata.MetadataConstant;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
-import org.apache.iotdb.db.metadata.schemaregion.SchemaEngine;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
@@ -58,10 +56,7 @@ public class SchemaRegionManagementTest extends AbstractSchemaRegionTest {
     String schemaRegionConsensusProtocolClass = config.getSchemaRegionConsensusProtocolClass();
     config.setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS);
     try {
-      PartialPath storageGroup = new PartialPath("root.sg");
-      SchemaRegionId schemaRegionId = new SchemaRegionId(0);
-      SchemaEngine.getInstance().createSchemaRegion(storageGroup, schemaRegionId);
-      ISchemaRegion schemaRegion = SchemaEngine.getInstance().getSchemaRegion(schemaRegionId);
+      ISchemaRegion schemaRegion = getSchemaRegion("root.sg", 0);
 
       File mLogFile =
           SystemFileFactory.INSTANCE.getFile(
@@ -103,11 +98,9 @@ public class SchemaRegionManagementTest extends AbstractSchemaRegionTest {
       Assert.assertEquals(1, resultTagMap.size());
       Assert.assertEquals("tag-value", resultTagMap.get("tag-key"));
 
-      SchemaEngine.getInstance().clear();
-      SchemaEngine.getInstance().init();
+      simulateRestart();
 
-      SchemaEngine.getInstance().createSchemaRegion(storageGroup, schemaRegionId);
-      ISchemaRegion newSchemaRegion = SchemaEngine.getInstance().getSchemaRegion(schemaRegionId);
+      ISchemaRegion newSchemaRegion = getSchemaRegion("root.sg", 0);
       newSchemaRegion.loadSnapshot(snapshotDir);
       result =
           newSchemaRegion.showTimeseries(
@@ -132,10 +125,7 @@ public class SchemaRegionManagementTest extends AbstractSchemaRegionTest {
     String schemaRegionConsensusProtocolClass = config.getSchemaRegionConsensusProtocolClass();
     config.setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS);
     try {
-      PartialPath storageGroup = new PartialPath("root.sg");
-      SchemaRegionId schemaRegionId = new SchemaRegionId(0);
-      SchemaEngine.getInstance().createSchemaRegion(storageGroup, schemaRegionId);
-      ISchemaRegion schemaRegion = SchemaEngine.getInstance().getSchemaRegion(schemaRegionId);
+      ISchemaRegion schemaRegion = getSchemaRegion("root.sg", 0);
 
       Map<String, String> tags = new HashMap<>();
       tags.put("tag-key", "tag-value");
