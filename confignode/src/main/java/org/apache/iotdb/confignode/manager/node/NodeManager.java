@@ -48,6 +48,7 @@ import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConf
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RegisterDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RemoveDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.UpdateDataNodePlan;
+import org.apache.iotdb.confignode.consensus.response.ConfigurationResp;
 import org.apache.iotdb.confignode.consensus.response.DataNodeConfigurationResp;
 import org.apache.iotdb.confignode.consensus.response.DataNodeRegisterResp;
 import org.apache.iotdb.confignode.consensus.response.DataNodeToStatusResp;
@@ -74,6 +75,7 @@ import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.response.ConsensusGenericResponse;
 import org.apache.iotdb.mpp.rpc.thrift.THeartbeatReq;
+import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
@@ -133,7 +135,7 @@ public class NodeManager {
     this.random = new Random(System.currentTimeMillis());
   }
 
-  private void setGlobalConfig(DataNodeRegisterResp dataSet) {
+  private void setGlobalConfig(ConfigurationResp dataSet) {
     // Set TGlobalConfig
     final ConfigNodeConfig configNodeConfig = ConfigNodeDescriptor.getInstance().getConf();
     final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
@@ -151,7 +153,7 @@ public class NodeManager {
     dataSet.setGlobalConfig(globalConfig);
   }
 
-  private void setRatisConfig(DataNodeRegisterResp dataSet) {
+  private void setRatisConfig(ConfigurationResp dataSet) {
     final ConfigNodeConfig conf = ConfigNodeDescriptor.getInstance().getConf();
     TRatisConfig ratisConfig = new TRatisConfig();
 
@@ -204,7 +206,7 @@ public class NodeManager {
     dataSet.setRatisConfig(ratisConfig);
   }
 
-  private void setCQConfig(DataNodeRegisterResp dataSet) {
+  private void setCQConfig(ConfigurationResp dataSet) {
     final ConfigNodeConfig conf = ConfigNodeDescriptor.getInstance().getConf();
     TCQConfig cqConfig = new TCQConfig();
     cqConfig.setCqMinEveryIntervalInMs(conf.getCqMinEveryIntervalInMs());
@@ -250,6 +252,17 @@ public class NodeManager {
     dataSet.setDataNodeId(
         registerDataNodePlan.getDataNodeConfiguration().getLocation().getDataNodeId());
     dataSet.setConfigNodeList(getRegisteredConfigNodes());
+    return dataSet;
+  }
+
+  /**
+   * Get configuration
+   *
+   * @return ConfigurationResp. The TSStatus will be set to SUCCESS_STATUS.
+   */
+  public DataSet getConfiguration() {
+    ConfigurationResp dataSet = new ConfigurationResp();
+    dataSet.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
     setGlobalConfig(dataSet);
     setRatisConfig(dataSet);
     setCQConfig(dataSet);
@@ -345,8 +358,6 @@ public class NodeManager {
     dataSet.setStatus(status);
     dataSet.setDataNodeId(updateDataNodePlan.getDataNodeLocation().getDataNodeId());
     dataSet.setConfigNodeList(getRegisteredConfigNodes());
-    setGlobalConfig(dataSet);
-    setRatisConfig(dataSet);
     return dataSet;
   }
 

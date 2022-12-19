@@ -16,16 +16,18 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.consensus.exception;
 
-import java.util.Optional;
+package org.apache.iotdb.commons.path.fa;
 
-public class RatisRequestFailedException extends ConsensusException {
+/** This interface defines the behaviour of a FA(Finite Automation)'s states. */
+public interface IFAState {
 
-  public RatisRequestFailedException(Exception cause) {
-    super(
-        "Ratis request failed "
-            + Optional.ofNullable(cause).map(Exception::getMessage).orElse("Unknown"),
-        cause);
-  }
+  /** @return whether this state is the initial state of the belonged FA */
+  boolean isInitial();
+
+  /** @return whether this state is one of the final state of the belonged FA */
+  boolean isFinal();
+
+  /** @return the index of this state, used for uniquely identifying states in FA */
+  int getIndex();
 }

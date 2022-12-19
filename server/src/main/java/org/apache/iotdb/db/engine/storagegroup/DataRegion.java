@@ -2125,6 +2125,8 @@ public class DataRegion implements IDataRegionForQuery {
     synchronized (closeStorageGroupCondition) {
       closeStorageGroupCondition.notifyAll();
     }
+    TsFileMetricManager.getInstance()
+        .addFile(tsFileProcessor.getTsFileResource().getTsFileSize(), tsFileProcessor.isSequence());
     logger.info("signal closing database condition in {}", databaseName + "-" + dataRegionId);
   }
 
