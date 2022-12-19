@@ -174,7 +174,10 @@ public class PathPatternTreeTest {
             new PartialPath("root.sg1.d1.**"),
             new PartialPath("root.sg1.d1.s1")),
         Arrays.asList(new PartialPath("root.sg1.d1"), new PartialPath("root.sg1.d1.**")),
-        Arrays.asList(new PartialPath("root.sg1"), new PartialPath("root.sg1.d1.**")));
+        Arrays.asList(
+            new PartialPath("root.sg1"),
+            new PartialPath("root.sg1.d1"),
+            new PartialPath("root.sg1.d1.**")));
   }
 
   /**
