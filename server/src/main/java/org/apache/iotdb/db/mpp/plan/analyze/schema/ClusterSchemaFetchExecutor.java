@@ -224,7 +224,7 @@ class ClusterSchemaFetchExecutor {
     private volatile DeviceSchemaFetchTask newTask;
 
     // task on executing
-    // all inner fields are
+    // all inner fields are volatile or final
     @SuppressWarnings("squid:S3077")
     private volatile DeviceSchemaFetchTask executingTask;
 
