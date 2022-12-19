@@ -35,7 +35,7 @@ import java.util.NoSuchElementException;
 
 public class ChunkReader implements IChunkReader {
 
-  private final IFileInput tiFileIuput;
+  private final IFileInput tiFileInput;
 
   private Integer nextID;
 
@@ -49,17 +49,17 @@ public class ChunkReader implements IChunkReader {
 
   private IDiskIterator<Integer> containerIterator;
 
-  public ChunkReader(FileInput tiFileIuput) throws IOException {
-    this.tiFileIuput = tiFileIuput;
+  public ChunkReader(FileInput tiFileInput) throws IOException {
+    this.tiFileInput = tiFileInput;
     chunkHeader = new ChunkHeader();
-    tiFileIuput.read(chunkHeader);
+    tiFileInput.read(chunkHeader);
   }
 
   @Override
   public RoaringBitmap readRoaringBitmap() throws IOException {
     if (roaringBitmap == null) {
       roaringBitmap = new RoaringBitmap();
-      roaringBitmap.deserialize(tiFileIuput.wrapAsInputStream());
+      roaringBitmap.deserialize(tiFileInput.wrapAsInputStream());
       return roaringBitmap;
     }
     return roaringBitmap;
@@ -68,7 +68,7 @@ public class ChunkReader implements IChunkReader {
   @TestOnly
   @Override
   public void close() throws IOException {
-    tiFileIuput.close();
+    tiFileInput.close();
   }
 
   @Override
@@ -79,9 +79,9 @@ public class ChunkReader implements IChunkReader {
     if (roaringBitmapHeader == null) {
       roaringBitmapHeader = new RoaringBitmapHeader();
       roaringBitmapHeader =
-          (RoaringBitmapHeader) roaringBitmapHeader.deserialize(tiFileIuput.wrapAsInputStream());
+          (RoaringBitmapHeader) roaringBitmapHeader.deserialize(tiFileInput.wrapAsInputStream());
       if (!roaringBitmapHeader.hasRun() || roaringBitmapHeader.getSize() >= 4) {
-        tiFileIuput.skipBytes(roaringBitmapHeader.getSize() * 4);
+        tiFileInput.skipBytes(roaringBitmapHeader.getSize() * 4);
       }
     }
     int[] cardinalities = roaringBitmapHeader.getCardinalities();
@@ -156,7 +156,7 @@ public class ChunkReader implements IChunkReader {
           }
         }
         while (high < 1024) {
-          long bitmap = Long.reverseBytes(tiFileIuput.readLong());
+          long bitmap = Long.reverseBytes(tiFileInput.readLong());
           ids = parseBitmap(bitmap);
           iterator = ids.iterator();
           if (iterator.hasNext()) {
@@ -167,7 +167,7 @@ public class ChunkReader implements IChunkReader {
           high++;
         }
       }
-      tiFileIuput.skipBytes((1023 - high) * 8);
+      tiFileInput.skipBytes((1023 - high) * 8);
       return false;
     }
 
@@ -212,7 +212,7 @@ public class ChunkReader implements IChunkReader {
         return true;
       }
       if (index < containerLength) {
-        next = Character.reverseBytes(tiFileIuput.readChar());
+        next = Character.reverseBytes(tiFileInput.readChar());
         index++;
         return true;
       }
