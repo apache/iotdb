@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IActivateTemplateInClusterPlan;
@@ -100,10 +101,32 @@ public interface ISchemaRegion {
   // endregion
 
   // region Interfaces for Timeseries operation
+  /**
+   * Create timeseries.
+   *
+   * @param plan a plan describes how to create the timeseries.
+   * @param offset
+   * @throws MetadataException
+   * */
   void createTimeseries(ICreateTimeSeriesPlan plan, long offset) throws MetadataException;
 
+  /**
+   * Create aligned timeseries.
+   *
+   * @param plan a plan describes how to create the timeseries.
+   * @throws MetadataException
+   * */
   void createAlignedTimeSeries(ICreateAlignedTimeSeriesPlan plan) throws MetadataException;
 
+  /**
+   * Check whether measurement exists.
+   * @param devicePath the path of device that you want to check
+   * @param measurementList a list of measurements that you want to check
+   * @param aliasList a list of alias that you want to check
+   * @return returns a map contains index of the measurements or alias that threw the exception, and exception details.
+   * The exceptions describe whether the measurement or alias exists. For example, a MeasurementAlreadyExistException
+   * means this measurement exists.
+   * */
   Map<Integer, MetadataException> checkMeasurementExistence(
       PartialPath devicePath, List<String> measurementList, List<String> aliasList);
 
@@ -135,6 +158,12 @@ public interface ISchemaRegion {
    */
   void rollbackSchemaBlackList(PathPatternTree patternTree) throws MetadataException;
 
+  /**
+   * Fetch th black list of the matched schema.
+   *
+   * @param patternTree
+   * @throws MetadataException
+   * */
   Set<PartialPath> fetchSchemaBlackList(PathPatternTree patternTree) throws MetadataException;
 
   /**
@@ -160,6 +189,7 @@ public interface ISchemaRegion {
    * path, may contain wildcard. If using prefix match, the path pattern is used to match prefix
    * path. All timeseries start with the matched prefix path will be counted.
    */
+  @Deprecated
   long getAllTimeseriesCount(PartialPath pathPattern, boolean isPrefixMatch)
       throws MetadataException;
 
@@ -188,12 +218,17 @@ public interface ISchemaRegion {
    * To calculate the count of devices for given path pattern. If using prefix match, the path
    * pattern is used to match prefix path. All timeseries start with the matched prefix path will be
    * counted.
+   *
+   * @param pathPattern
+   * @param isPrefixMatch
    */
   long getDevicesNum(PartialPath pathPattern, boolean isPrefixMatch) throws MetadataException;
   // endregion
 
   // region Interfaces for level Node info Query
-  // Get paths of nodes in given level and matching the pathPattern.
+  /**
+   * Get paths of nodes in given level and matching the pathPattern.
+   * */
   List<PartialPath> getNodesListInGivenLevel(
       PartialPath pathPattern, int nodeLevel, boolean isPrefixMatch) throws MetadataException;
 
@@ -220,6 +255,7 @@ public interface ISchemaRegion {
    *
    * @return All child nodes of given seriesPath.
    */
+  @Deprecated
   Set<String> getChildNodeNameInNextLevel(PartialPath pathPattern) throws MetadataException;
   // endregion
 
@@ -231,6 +267,7 @@ public interface ISchemaRegion {
    * @param timeseries a path pattern of the target timeseries
    * @return A HashSet instance which stores devices paths.
    */
+  @Deprecated
   Set<PartialPath> getBelongedDevices(PartialPath timeseries) throws MetadataException;
 
   /**
@@ -241,6 +278,7 @@ public interface ISchemaRegion {
    * @param isPrefixMatch if true, the path pattern is used to match prefix path.
    * @return A HashSet instance which stores devices paths matching the given path pattern.
    */
+  @Deprecated
   Set<PartialPath> getMatchedDevices(PartialPath pathPattern, boolean isPrefixMatch)
       throws MetadataException;
 
@@ -283,6 +321,9 @@ public interface ISchemaRegion {
       PartialPath pathPattern, Map<Integer, Template> templateMap, boolean withTags)
       throws MetadataException;
 
+  /**
+   * Show timeseries.
+   * */
   Pair<List<ShowTimeSeriesResult>, Integer> showTimeseries(
       ShowTimeSeriesPlan plan, QueryContext context) throws MetadataException;
   // endregion
