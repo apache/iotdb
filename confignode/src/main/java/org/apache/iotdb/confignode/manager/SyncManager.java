@@ -53,6 +53,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
 import org.apache.iotdb.mpp.rpc.thrift.TCreatePipeOnDataNodeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TOperatePipeOnDataNodeReq;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import com.google.common.eventbus.Subscribe;
 import org.slf4j.Logger;
@@ -289,7 +290,8 @@ public class SyncManager {
   }
 
   @Subscribe
-  public void handleNodeStatistics(Map<Integer, NodeStatistics[]> differentNodeStatisticsMap) {
+  public void handleNodeStatistics(
+      Map<Integer, Pair<NodeStatistics, NodeStatistics>> differentNodeStatisticsMap) {
     // TODO
   }
 

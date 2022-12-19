@@ -55,6 +55,7 @@ import org.apache.iotdb.trigger.api.enums.FailureStrategy;
 import org.apache.iotdb.trigger.api.enums.TriggerEvent;
 import org.apache.iotdb.trigger.api.enums.TriggerType;
 import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import com.google.common.eventbus.Subscribe;
 import org.slf4j.Logger;
@@ -254,10 +255,12 @@ public class TriggerManager {
   }
 
   @Subscribe
-  public void handleNodeStatistics(Map<Integer, NodeStatistics[]> differentNodeStatisticsMap) {
+  public void handleNodeStatistics(
+      Map<Integer, Pair<NodeStatistics, NodeStatistics>> differentNodeStatisticsMap) {
     List<TDataNodeLocation> newUnknownNodes = new ArrayList<>();
-    for (Map.Entry<Integer, NodeStatistics[]> entry : differentNodeStatisticsMap.entrySet()) {
-      if (entry.getValue()[0].getStatus().equals(NodeStatus.Unknown)) {
+    for (Map.Entry<Integer, Pair<NodeStatistics, NodeStatistics>> entry :
+        differentNodeStatisticsMap.entrySet()) {
+      if (entry.getValue().left.getStatus().equals(NodeStatus.Unknown)) {
         newUnknownNodes.add(
             configManager.getNodeManager().getRegisteredDataNode(entry.getKey()).getLocation());
       }

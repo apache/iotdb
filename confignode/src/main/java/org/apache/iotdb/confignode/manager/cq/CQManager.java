@@ -35,6 +35,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowCQResp;
 import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
 import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import com.google.common.eventbus.Subscribe;
 import org.slf4j.Logger;
@@ -188,7 +189,8 @@ public class CQManager {
   }
 
   @Subscribe
-  public void handleNodeStatistics(Map<Integer, NodeStatistics[]> differentNodeStatisticsMap) {
+  public void handleNodeStatistics(
+      Map<Integer, Pair<NodeStatistics, NodeStatistics>> differentNodeStatisticsMap) {
     // TODO
   }
 }

@@ -716,7 +716,8 @@ public class ClusterSchemaManager {
   }
 
   @Subscribe
-  public void handleNodeStatistics(Map<Integer, NodeStatistics[]> differentNodeStatisticsMap) {
+  public void handleNodeStatistics(
+      Map<Integer, Pair<NodeStatistics, NodeStatistics>> differentNodeStatisticsMap) {
     // TODO
   }
 

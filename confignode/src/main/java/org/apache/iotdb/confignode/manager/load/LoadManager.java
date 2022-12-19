@@ -53,6 +53,7 @@ import org.apache.iotdb.confignode.manager.partition.heartbeat.RegionGroupStatis
 import org.apache.iotdb.confignode.manager.partition.heartbeat.RegionStatistics;
 import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import com.google.common.eventbus.AsyncEventBus;
 import com.google.common.eventbus.EventBus;
@@ -200,7 +201,8 @@ public class LoadManager {
     // Update NodeStatistics:
     // NodeStatistics[]:index 0 means the current NodeStatistics, index 1 means the previous
     // NodeStatistics
-    Map<Integer, NodeStatistics[]> differentNodeStatisticsMap = new ConcurrentHashMap<>();
+    Map<Integer, Pair<NodeStatistics, NodeStatistics>> differentNodeStatisticsMap =
+        new ConcurrentHashMap<>();
     getNodeManager()
         .getNodeCacheMap()
         .forEach(
@@ -209,8 +211,7 @@ public class LoadManager {
               if (nodeCache.periodicUpdate()) {
                 // Update and record the changed NodeStatistics
                 differentNodeStatisticsMap.put(
-                    nodeId, new NodeStatistics[] {nodeCache.getStatistics(), preNodeStatistics});
-                LOGGER.info("previous NodeStatistics: {}", preNodeStatistics);
+                    nodeId, new Pair<>(nodeCache.getStatistics(), preNodeStatistics));
               }
             });
     if (!differentNodeStatisticsMap.isEmpty()) {
@@ -248,14 +249,15 @@ public class LoadManager {
     }
   }
 
-  private void recordNodeStatistics(Map<Integer, NodeStatistics[]> differentNodeStatisticsMap) {
+  private void recordNodeStatistics(
+      Map<Integer, Pair<NodeStatistics, NodeStatistics>> differentNodeStatisticsMap) {
     LOGGER.info("[UpdateLoadStatistics] NodeStatisticsMap: ");
-    for (Map.Entry<Integer, NodeStatistics[]> nodeCacheEntry :
+    for (Map.Entry<Integer, Pair<NodeStatistics, NodeStatistics>> nodeCacheEntry :
         differentNodeStatisticsMap.entrySet()) {
       LOGGER.info(
           "[UpdateLoadStatistics]\t {}={}",
           "nodeId{" + nodeCacheEntry.getKey() + "}",
-          nodeCacheEntry.getValue()[0]);
+          nodeCacheEntry.getValue().left);
     }
   }
 
