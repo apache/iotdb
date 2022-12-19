@@ -806,7 +806,7 @@ public class LocalSchemaProcessor {
       PartialPath fullPath)
       throws MetadataException, IOException {
     getBelongedSchemaRegion(fullPath)
-        .upsertTagsAndAttributes(alias, tagsMap, attributesMap, fullPath);
+        .upsertAliasAndTagsAndAttributes(alias, tagsMap, attributesMap, fullPath);
   }
 
   /**
