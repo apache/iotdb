@@ -105,7 +105,6 @@
         <module>hive-connector</module>
         <module>node-commons</module>
         <module>confignode</module>
-        <module>cross-tests</module>
         <module>zeppelin-interpreter</module>
         <module>client-py</module>
         <module>compile-tools</module>
