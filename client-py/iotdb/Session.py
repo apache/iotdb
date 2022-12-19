@@ -339,11 +339,11 @@ class Session(object):
         data_set.close_operation_handle()
         return result
 
-    def delete_data(self, paths_list, timestamp):
+    def delete_data(self, paths_list, end_time):
         """
-        delete all data <= time in multiple time series
+        delete all data <= end_time in multiple time series
         :param paths_list: time series list that the data in.
-        :param timestamp: data with time stamp less than or equal to time will be deleted.
+        :param end_time: data with time stamp less than or equal to time will be deleted.
         """
         request = TSDeleteDataReq(self.__session_id, paths_list, -9223372036854775808, end_time)
         try:
