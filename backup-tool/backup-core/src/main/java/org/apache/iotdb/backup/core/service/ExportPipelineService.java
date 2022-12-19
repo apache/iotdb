@@ -529,9 +529,9 @@ public class ExportPipelineService {
               loopi, loopMark, mark, size, set, sinkPoolMap, deviceModel, timeseries);
         }
         List<IField>[] array = sinkPoolMap.get(rowRecord.getTimestamp());
-        if(array != null){
-            array[loopi] = fieldList;
-            sinkPoolMap.putIfAbsent(rowRecord.getTimestamp(), array);
+        if (array != null) {
+          array[loopi] = fieldList;
+          sinkPoolMap.putIfAbsent(rowRecord.getTimestamp(), array);
         }
       } else {
         if (mark != 0 && rowRecord.getTimestamp() < mark) {

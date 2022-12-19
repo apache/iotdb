@@ -28,6 +28,10 @@ public class ExportModel extends IECommonModel {
 
   private List<String> measurementList;
 
+  private int virutalStorageGroupNum;
+
+  private long partitionInterval;
+
   public String getIotdbPath() {
     return iotdbPath;
   }
@@ -50,5 +54,21 @@ public class ExportModel extends IECommonModel {
 
   public void setMeasurementList(List<String> measurementList) {
     this.measurementList = measurementList;
+  }
+
+  public int getVirutalStorageGroupNum() {
+    return virutalStorageGroupNum;
+  }
+
+  public void setVirutalStorageGroupNum(int virutalStorageGroupNum) {
+    this.virutalStorageGroupNum = virutalStorageGroupNum;
+  }
+
+  public long getPartitionInterval() {
+    return partitionInterval;
+  }
+
+  public void setPartitionInterval(long partitionInterval) {
+    this.partitionInterval = partitionInterval;
   }
 }

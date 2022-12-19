@@ -52,8 +52,13 @@ public class ExportTool extends AbstractCsvTool {
   private static final String NEED_TIMESERIES_STRUCTURE_ARGS = "se";
   private static final String NEED_TIMESERIES_STRUCTURE_NAME = "need timeseries structure";
 
-  private static final String NEED_ZIP_COMPRESS_ARGS = "z";
-  private static final String NEED_ZIP_COMPRESS_NAME = "need zip compress";
+  private static final String VIRTUAL_STORAGE_GROUP_NUM_ARGS = "vn";
+  private static final String VIRTUAL_STORAGE_GROUP_NUM_NAME =
+      "virtual storage group num , default zero";
+
+  private static final String PARTITION_INTERVAL_ARGS = "pi";
+  private static final String PARTITION_INTERVAL_NAME =
+      "partition interval, zero means partition not enabled";
 
   private static String fileFloder;
 
@@ -67,7 +72,9 @@ public class ExportTool extends AbstractCsvTool {
 
   private static CompressEnum compressEnum;
 
-  private static Boolean needZipCompress;
+  private static int virtualStoragroupNum;
+
+  private static long partitionInterval;
 
   /** main function of export csv tool. */
   public static void main(String[] args) {
@@ -114,6 +121,8 @@ public class ExportTool extends AbstractCsvTool {
     exportModel.setNeedTimeseriesStructure(needTimeseriesStructure);
     // exportModel.setZipCompress(needZipCompress);
     exportModel.setFileFolder(fileFloder);
+    exportModel.setVirutalStorageGroupNum(virtualStoragroupNum);
+    exportModel.setPartitionInterval(partitionInterval);
     return exportModel;
   }
 
@@ -219,13 +228,20 @@ public class ExportTool extends AbstractCsvTool {
       needTimeseriesStructure = false;
     }
 
-    String needZipCompressAlgorithm = commandLine.getOptionValue(NEED_ZIP_COMPRESS_ARGS);
-    if (needZipCompressAlgorithm == null || "".equals(needZipCompressAlgorithm)) {
-      needZipCompress = false;
-    } else if ("true".equals(needZipCompressAlgorithm.trim())) {
-      needZipCompress = true;
+    String virualSGAlgorithm = commandLine.getOptionValue(VIRTUAL_STORAGE_GROUP_NUM_ARGS);
+    if (virualSGAlgorithm == null || "".equals(virualSGAlgorithm)) {
+      virtualStoragroupNum = 0;
     } else {
-      needZipCompress = false;
+      virualSGAlgorithm = virualSGAlgorithm.trim();
+      virtualStoragroupNum = Integer.parseInt(virualSGAlgorithm);
+    }
+
+    String partitionIntervalAlgorithm = commandLine.getOptionValue(PARTITION_INTERVAL_ARGS);
+    if (partitionIntervalAlgorithm == null || "".equals(partitionIntervalAlgorithm)) {
+      partitionInterval = 0;
+    } else {
+      partitionIntervalAlgorithm = partitionIntervalAlgorithm.trim();
+      partitionInterval = Long.parseLong(partitionIntervalAlgorithm);
     }
   }
 
@@ -328,6 +344,25 @@ public class ExportTool extends AbstractCsvTool {
             .desc("iot path")
             .build();
     options.addOption(iotPath);
+
+    Option virutalSGNum =
+        Option.builder(VIRTUAL_STORAGE_GROUP_NUM_ARGS)
+            .longOpt(VIRTUAL_STORAGE_GROUP_NUM_NAME)
+            .argName(VIRTUAL_STORAGE_GROUP_NUM_NAME)
+            .hasArg()
+            .desc("virtual storage group num,this param is used for export tsfile(optional)")
+            .build();
+    options.addOption(virutalSGNum);
+
+    Option partitionInterval =
+        Option.builder(PARTITION_INTERVAL_ARGS)
+            .longOpt(PARTITION_INTERVAL_NAME)
+            .argName(PARTITION_INTERVAL_NAME)
+            .hasArg()
+            .desc(
+                "partition interval,only tsfile need this param,this param is used for export tsfile(optional)")
+            .build();
+    options.addOption(partitionInterval);
 
     Option opCharSet =
         Option.builder(CHAR_SET_ARGS)
