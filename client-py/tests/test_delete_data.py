@@ -126,7 +126,7 @@ def test_delete_date():
         assert actual_count == expect_count
 
         # execute delete data
-        session.delete_data(["root.str_test_01.d_02.s_01", "root.str_test_01.d_02.s_02"], 2, 3)
+        session.delete_data_in_range(["root.str_test_01.d_02.s_01", "root.str_test_01.d_02.s_02"], 2, 3)
 
         # execute raw data query sql statement
         session_data_set = session.execute_raw_data_query(

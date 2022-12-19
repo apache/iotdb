@@ -366,7 +366,7 @@ class Session(object):
         except TTransport.TException as e:
             logger.exception("data deletion fails because: ", e)
 
-    def delete_data(self, paths_list, start_time, end_time):
+    def delete_data_in_range(self, paths_list, start_time, end_time):
         """
         delete data >= start_time and data <= end_time in multiple timeseries
         :param paths_list: time series list that the data in.
