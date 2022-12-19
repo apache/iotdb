@@ -20,7 +20,6 @@ package org.apache.iotdb.lsm.engine;
 
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.lsm.request.IDeletionRequest;
-import org.apache.iotdb.lsm.request.IFlushRequest;
 import org.apache.iotdb.lsm.request.IInsertionRequest;
 import org.apache.iotdb.lsm.request.IQueryRequest;
 import org.apache.iotdb.lsm.response.BaseResponse;
@@ -60,16 +59,6 @@ public interface ILSMEngine extends IRecoverable {
    * @param <R> type of response
    */
   <K, V, R extends BaseResponse> R delete(IDeletionRequest<K, V> deletionRequest);
-
-  /**
-   * Use this ILSMEngine to flush data
-   *
-   * @param flushRequest Encapsulates the data to be flush
-   * @param <K> The type of key in the request data
-   * @param <V> The type of value in the request data
-   * @param <R> type of response
-   */
-  <K, V, R extends BaseResponse> R flush(IFlushRequest<K, V> flushRequest);
 
   /** recover the ILSMEngine */
   void recover() throws IOException;

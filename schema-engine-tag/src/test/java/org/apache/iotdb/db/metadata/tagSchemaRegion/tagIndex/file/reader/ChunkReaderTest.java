@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.reader;
 
-import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.entry.ChunkHeader;
 import org.apache.iotdb.lsm.sstable.fileIO.FileInput;
 
 import org.junit.After;
@@ -33,7 +32,6 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 
 public class ChunkReaderTest {
 
@@ -41,15 +39,12 @@ public class ChunkReaderTest {
 
   ChunkReader chunkReader;
 
-  long chunkHeaderOffset;
-
   @Before
   public void setUp() throws Exception {
     file = new File("testReadRoaringBitmap");
     serializeChunk(file);
     FileInput dataInput = new FileInput(file);
     chunkReader = new ChunkReader(dataInput);
-    dataInput.position(chunkHeaderOffset);
   }
 
   @After
@@ -61,14 +56,8 @@ public class ChunkReaderTest {
 
   @Test
   public void testReadRoaringBitmap() throws IOException {
-    RoaringBitmap roaringBitmap = chunkReader.readRoaringBitmap(0);
+    RoaringBitmap roaringBitmap = chunkReader.readRoaringBitmap();
     assertEquals(4100, roaringBitmap.getCardinality());
-    for (int i = 0; i < 4097; i++) {
-      assertTrue(roaringBitmap.contains(i * 6));
-    }
-    assertTrue(roaringBitmap.contains(100000));
-    assertTrue(roaringBitmap.contains(50000000));
-    assertTrue(roaringBitmap.contains(50000001));
   }
 
   @Test
@@ -89,12 +78,6 @@ public class ChunkReaderTest {
     }
   }
 
-  @Test
-  public void testReadChunkHeader() throws IOException {
-    ChunkHeader chunkHeader = chunkReader.readChunkHeader(chunkHeaderOffset);
-    assertEquals(chunkHeader, new ChunkHeader((int) chunkHeaderOffset, 4100, 50000001, 0));
-  }
-
   private void serializeChunk(File file) throws IOException {
     RoaringBitmap a = new RoaringBitmap();
     for (int i = 0; i < 4097; i++) {
@@ -106,12 +89,10 @@ public class ChunkReaderTest {
     ByteBuffer byteBuffer = ByteBuffer.allocate(1024 * 10);
     a.serialize(byteBuffer);
     int size = byteBuffer.position();
-    ChunkHeader chunkHeader = new ChunkHeader(size, 4100, 50000001, 0);
     byteBuffer.clear();
     DataOutputStream outputStream = new DataOutputStream(new FileOutputStream(file));
+    outputStream.writeInt(size);
     a.serialize(outputStream);
-    chunkHeader.serialize(outputStream);
     outputStream.close();
-    chunkHeaderOffset = size;
   }
 }

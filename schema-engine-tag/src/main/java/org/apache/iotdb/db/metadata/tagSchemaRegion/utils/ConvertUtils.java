@@ -38,10 +38,10 @@ public class ConvertUtils {
     chunkHeader.setSize(roaringBitmap.serializedSizeInBytes());
     int[] results = roaringBitmap.stream().toArray();
     chunkHeader.setSize(results.length);
-    if (results.length != 0) {
-      chunkHeader.setMinID(results[0]);
-      chunkHeader.setMaxID(results[results.length - 1]);
-    }
+    //    if (results.length != 0) {
+    //      chunkHeader.setMinID(results[0]);
+    //      chunkHeader.setMaxID(results[results.length - 1]);
+    //    }
     return chunkHeader;
   }
 }

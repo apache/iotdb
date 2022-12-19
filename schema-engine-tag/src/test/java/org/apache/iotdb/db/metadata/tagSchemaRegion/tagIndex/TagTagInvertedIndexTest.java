@@ -98,6 +98,11 @@ public class TagTagInvertedIndexTest {
     for (Pair<Map<String, String>, Integer> pair : records) {
       tagInvertedIndex.addTags(pair.left, pair.right);
     }
+    try {
+      Thread.sleep(1000000000);
+    } catch (InterruptedException e) {
+      throw new RuntimeException(e);
+    }
   }
 
   public void removeTags() {

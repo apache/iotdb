@@ -30,43 +30,41 @@ import java.nio.ByteBuffer;
 import java.util.Objects;
 
 public class Chunk implements IEntry {
+  private ChunkHeader chunkHeader;
 
   private RoaringBitmap roaringBitmap;
 
-  private ChunkHeader chunkHeader;
-
   @Override
   public void serialize(DataOutputStream out) throws IOException {
-    roaringBitmap.getSizeInBytes();
-    roaringBitmap.serialize(out);
     chunkHeader.serialize(out);
+    roaringBitmap.serialize(out);
   }
 
   @Override
   public void serialize(ByteBuffer byteBuffer) {
-    roaringBitmap.serialize(byteBuffer);
     chunkHeader.serialize(byteBuffer);
+    roaringBitmap.serialize(byteBuffer);
   }
 
   @Override
   public IEntry deserialize(DataInputStream input) throws IOException {
-    roaringBitmap = new RoaringBitmap();
-    roaringBitmap.deserialize(input);
     chunkHeader = new ChunkHeader();
     chunkHeader.deserialize(input);
+    roaringBitmap = new RoaringBitmap();
+    roaringBitmap.deserialize(input);
     return this;
   }
 
   @Override
   public IEntry deserialize(ByteBuffer byteBuffer) {
+    chunkHeader = new ChunkHeader();
+    chunkHeader.deserialize(byteBuffer);
     roaringBitmap = new RoaringBitmap();
     try {
       roaringBitmap.deserialize(byteBuffer);
     } catch (IOException e) {
       throw new InvalidRoaringFormat(e.getMessage());
     }
-    chunkHeader = new ChunkHeader();
-    chunkHeader.deserialize(byteBuffer);
     return this;
   }
 

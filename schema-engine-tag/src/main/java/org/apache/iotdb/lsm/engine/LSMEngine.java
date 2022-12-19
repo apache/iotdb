@@ -113,21 +113,6 @@ public class LSMEngine<T extends IMemManager> implements ILSMEngine {
     return deleteRequestContext.getResponse();
   }
 
-  /**
-   * Use this LSMEngine to flush data
-   *
-   * @param flushRequest Encapsulates the data to be deleted
-   * @param <K> The type of key in the request data
-   * @param <V> The type of value in the request data
-   * @param <R> type of response
-   */
-  @Override
-  public <K, V, R extends BaseResponse> R flush(IFlushRequest<K, V> flushRequest) {
-    FlushRequestContext flushRequestContext = new FlushRequestContext();
-    flushManager.process(rootMemNode, flushRequest, flushRequestContext);
-    return flushRequestContext.getResponse();
-  }
-
   /** recover the LSMEngine */
   @Override
   public void recover() throws IOException {

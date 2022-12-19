@@ -18,14 +18,22 @@
  */
 package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.reader;
 
+import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.entry.Chunk;
+import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.entry.ChunkIndex;
+import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.entry.ChunkIndexEntry;
+import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.entry.ChunkIndexHeader;
 import org.apache.iotdb.lsm.sstable.interator.IDiskIterator;
 
-import org.roaringbitmap.RoaringBitmap;
-
 import java.io.IOException;
+import java.util.List;
 
-public interface IChunkReader extends IDiskIterator<Integer> {
-  RoaringBitmap readRoaringBitmap() throws IOException;
+public interface IChunkGroupReader extends IDiskIterator<Integer> {
 
-  void close() throws IOException;
+  ChunkIndex readChunkIndex() throws IOException;
+
+  ChunkIndexHeader readChunkIndexHeader() throws IOException;
+
+  ChunkIndexEntry readChunkIndexEntry() throws IOException;
+
+  List<Chunk> readChunks() throws IOException;
 }
