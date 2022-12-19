@@ -27,6 +27,8 @@ import org.apache.iotdb.lsm.strategy.RBFSAccessStrategy;
  */
 public class FlushRequestContext extends RequestContext {
 
+  private FileOutput fileOutput;
+
   public FileOutput getFileOutput() {
     return fileOutput;
   }
@@ -34,8 +36,6 @@ public class FlushRequestContext extends RequestContext {
   public void setFileOutput(FileOutput fileOutput) {
     this.fileOutput = fileOutput;
   }
-
-  private FileOutput fileOutput;
 
   public FlushRequestContext() {
     super();

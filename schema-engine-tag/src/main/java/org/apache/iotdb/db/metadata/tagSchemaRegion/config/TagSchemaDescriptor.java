@@ -82,6 +82,9 @@ public class TagSchemaDescriptor {
           Integer.parseInt(
               properties.getProperty(
                   "num_of_immutable_memTable", String.valueOf(conf.getNumOfImmutableMemTable()))));
+      conf.setMaxChunkSize(
+          Long.parseLong(
+              properties.getProperty("max_chunk_size", String.valueOf(conf.getMaxChunkSize()))));
     } catch (FileNotFoundException e) {
       logger.warn("Fail to find tag schema region config file {}", tagSchemaConfigPath);
     } catch (IOException e) {

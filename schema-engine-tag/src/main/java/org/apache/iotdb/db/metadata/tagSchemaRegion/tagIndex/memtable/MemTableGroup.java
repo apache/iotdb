@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable;
 
+import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.Request.FlushRequest;
 import org.apache.iotdb.lsm.manager.IMemManager;
 import org.apache.iotdb.lsm.request.IFlushRequest;
 
@@ -45,9 +46,13 @@ public class MemTableGroup implements IMemManager {
   // the largest device id saved by the current MemTable
   private int maxDeviceID;
 
-  public MemTableGroup(int numOfDeviceIdsInMemTable, int numOfImmutableMemTable) {
+  private long maxChunkSize;
+
+  public MemTableGroup(
+      int numOfDeviceIdsInMemTable, int numOfImmutableMemTable, long maxChunkSize) {
     this.numOfDeviceIdsInMemTable = numOfDeviceIdsInMemTable;
     this.numOfImmutableMemTable = numOfImmutableMemTable;
+    this.maxChunkSize = maxChunkSize;
     workingMemTable = new MemTable(MemTable.WORKING);
     immutableMemTables = new HashMap<>();
     maxDeviceID = 0;
@@ -115,10 +120,10 @@ public class MemTableGroup implements IMemManager {
   }
 
   @Override
-  public List<IFlushRequest> getFlushRequests() {
-    List<IFlushRequest> flushRequests =
+  public List<FlushRequest> getFlushRequests() {
+    List<FlushRequest> flushRequests =
         immutableMemTables.entrySet().stream()
-            .map(entry -> new IFlushRequest(entry.getKey(), entry.getValue()))
+            .map(entry -> new FlushRequest(entry.getKey(), entry.getValue(), maxChunkSize))
             .collect(Collectors.toList());
     return flushRequests;
   }

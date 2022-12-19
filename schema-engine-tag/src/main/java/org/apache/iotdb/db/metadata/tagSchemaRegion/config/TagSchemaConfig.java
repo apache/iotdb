@@ -36,6 +36,8 @@ public class TagSchemaConfig {
   // the maximum number of immutableMemTables, when this is reached, flush operation is required
   private int numOfImmutableMemTable = 5;
 
+  private long maxChunkSize = 1024 * 1024;
+
   public int getNumOfDeviceIdsInMemTable() {
     return numOfDeviceIdsInMemTable;
   }
@@ -90,5 +92,13 @@ public class TagSchemaConfig {
         + ", degree="
         + degree
         + '}';
+  }
+
+  public long getMaxChunkSize() {
+    return maxChunkSize;
+  }
+
+  public void setMaxChunkSize(long maxChunkSize) {
+    this.maxChunkSize = maxChunkSize;
   }
 }

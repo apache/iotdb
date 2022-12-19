@@ -24,6 +24,7 @@ import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.response.FlushRespo
 import org.apache.iotdb.lsm.annotation.FlushProcessor;
 import org.apache.iotdb.lsm.context.requestcontext.FlushRequestContext;
 import org.apache.iotdb.lsm.levelProcess.FlushLevelProcessor;
+import org.apache.iotdb.lsm.request.IFlushRequest;
 import org.apache.iotdb.lsm.sstable.bplustree.writer.BPlusTreeWriter;
 import org.apache.iotdb.lsm.sstable.fileIO.FileOutput;
 
@@ -37,12 +38,13 @@ import java.util.Map;
 public class MemTableFlush extends FlushLevelProcessor<MemTable, MemChunkGroup> {
   @Override
   public List<MemChunkGroup> getChildren(
-      MemTable memNode, Object request, FlushRequestContext context) {
+      MemTable memNode, IFlushRequest request, FlushRequestContext context) {
     return (List<MemChunkGroup>) memNode.getMemChunkGroupMap().values();
   }
 
   @Override
-  public void flush(MemTable memNode, FlushRequestContext context) throws IOException {
+  public void flush(MemTable memNode, IFlushRequest flushRequest, FlushRequestContext context)
+      throws IOException {
     List<MemChunkGroup> memChunkGroups = getChildren(memNode, null, context);
     Map<MemChunkGroup, String> memChunkGroupMapReverse =
         memNode.getMemChunkGroupMap().entrySet().stream()

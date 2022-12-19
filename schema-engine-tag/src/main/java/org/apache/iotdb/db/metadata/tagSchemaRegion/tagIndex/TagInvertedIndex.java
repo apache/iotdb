@@ -83,7 +83,8 @@ public class TagInvertedIndex implements ITagInvertedIndex {
       MemTableGroup memTableGroup =
           new MemTableGroup(
               tagSchemaConfig.getNumOfDeviceIdsInMemTable(),
-              tagSchemaConfig.getNumOfImmutableMemTable());
+              tagSchemaConfig.getNumOfImmutableMemTable(),
+              tagSchemaConfig.getMaxChunkSize());
 
       // build lsm engine
       lsmEngine =

@@ -25,6 +25,7 @@ import org.apache.iotdb.db.metadata.tagSchemaRegion.utils.ConvertUtils;
 import org.apache.iotdb.lsm.annotation.FlushProcessor;
 import org.apache.iotdb.lsm.context.requestcontext.FlushRequestContext;
 import org.apache.iotdb.lsm.levelProcess.FlushLevelProcessor;
+import org.apache.iotdb.lsm.request.IFlushRequest;
 import org.apache.iotdb.lsm.sstable.fileIO.FileOutput;
 
 import org.roaringbitmap.RoaringBitmap;
@@ -38,12 +39,14 @@ import java.util.List;
 public class MemChunkFlush extends FlushLevelProcessor<MemChunk, Object> {
 
   @Override
-  public List<Object> getChildren(MemChunk memNode, Object request, FlushRequestContext context) {
+  public List<Object> getChildren(
+      MemChunk memNode, IFlushRequest request, FlushRequestContext context) {
     return null;
   }
 
   @Override
-  public void flush(MemChunk memNode, FlushRequestContext context) throws IOException {
+  public void flush(MemChunk memNode, IFlushRequest request, FlushRequestContext context)
+      throws IOException {
     Chunk chunk = ConvertUtils.getChunkFromMemChunk(memNode);
     if (chunk == null) {
       return;
