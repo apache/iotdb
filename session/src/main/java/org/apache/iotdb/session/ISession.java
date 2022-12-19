@@ -147,7 +147,13 @@ public interface ISession extends AutoCloseable {
   SessionDataSet executeRawDataQuery(List<String> paths, long startTime, long endTime, long timeOut)
       throws StatementExecutionException, IoTDBConnectionException;
 
-  SessionDataSet executeLastDataQuery(List<String> paths, long LastTime, long timeOut)
+  SessionDataSet executeRawDataQuery(List<String> paths, long startTime, long endTime)
+      throws StatementExecutionException, IoTDBConnectionException;
+
+  SessionDataSet executeLastDataQuery(List<String> paths, long lastTime)
+      throws StatementExecutionException, IoTDBConnectionException;
+
+  SessionDataSet executeLastDataQuery(List<String> paths, long lastTime, long timeOut)
       throws StatementExecutionException, IoTDBConnectionException;
 
   SessionDataSet executeLastDataQuery(List<String> paths)
