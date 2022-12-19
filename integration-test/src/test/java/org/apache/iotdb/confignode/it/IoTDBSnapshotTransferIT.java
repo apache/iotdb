@@ -64,7 +64,7 @@ public class IoTDBSnapshotTransferIT {
         .setDataReplicationFactor(2)
         .setSchemaReplicationFactor(2)
         .setDataRatisTriggerSnapshotThreshold(snapshotMagic)
-        .setConfigNodeRatisSnapshotTriggerThreshold(1); // must trigger snapshot
+        .setConfigNodeRatisSnapshotTriggerThreshold(5); // must trigger snapshot
 
     EnvFactory.getEnv().initClusterEnvironment(3, 3);
   }
