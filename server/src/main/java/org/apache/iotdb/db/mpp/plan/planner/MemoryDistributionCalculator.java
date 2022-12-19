@@ -96,9 +96,8 @@ public class MemoryDistributionCalculator
 
   @Override
   public Void visitPlan(PlanNode node, MemoryDistributionContext context) {
-    // Throw exception here because we want to ensure that all new PlanNode implement
+    // Throw exception here because we want to ensure that all new PlanNodes implement
     // this method correctly if necessary.
-    // Throw exception insert related node should
     throw new UnsupportedOperationException("Should call concrete visitXX method");
   }
 
