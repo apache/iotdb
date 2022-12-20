@@ -30,7 +30,7 @@ public class SyncStatus {
 
   private final IoTConsensusConfig config;
   private final IndexController controller;
-  private final LinkedList<PendingBatch> pendingBatches = new LinkedList<>();
+  private final LinkedList<Batch> pendingBatches = new LinkedList<>();
   private final IoTConsensusMemoryManager iotConsensusMemoryManager =
       IoTConsensusMemoryManager.getInstance();
 
@@ -40,9 +40,9 @@ public class SyncStatus {
   }
 
   /** we may block here if the synchronization pipeline is full */
-  public void addNextBatch(PendingBatch batch) throws InterruptedException {
+  public void addNextBatch(Batch batch) throws InterruptedException {
     synchronized (this) {
-      while (pendingBatches.size() >= config.getReplication().getMaxPendingBatch()
+      while (pendingBatches.size() >= config.getReplication().getMaxPendingBatchesNum()
           || !iotConsensusMemoryManager.reserve(batch.getSerializedSize(), false)) {
         wait();
       }
@@ -53,14 +53,14 @@ public class SyncStatus {
   /**
    * We only set a flag if this batch is not the first one. Notice, We need to confirm that the
    * batch in the parameter is actually in pendingBatches, rather than a reference to a different
-   * object with equal data, so we do not inherit method equals for PendingBatch
+   * object with equal data, so we do not inherit method equals for Batch
    */
-  public void removeBatch(PendingBatch batch) {
+  public void removeBatch(Batch batch) {
     synchronized (this) {
       batch.setSynced(true);
       if (pendingBatches.size() > 0 && pendingBatches.get(0).equals(batch)) {
-        Iterator<PendingBatch> iterator = pendingBatches.iterator();
-        PendingBatch current = iterator.next();
+        Iterator<Batch> iterator = pendingBatches.iterator();
+        Batch current = iterator.next();
         while (current.isSynced()) {
           controller.updateAndGet(current.getEndIndex());
           iterator.remove();
@@ -79,7 +79,7 @@ public class SyncStatus {
 
   public void free() {
     long size = 0;
-    for (PendingBatch pendingBatch : pendingBatches) {
+    for (Batch pendingBatch : pendingBatches) {
       size += pendingBatch.getSerializedSize();
     }
     pendingBatches.clear();
@@ -98,7 +98,7 @@ public class SyncStatus {
   }
 
   @TestOnly
-  public List<PendingBatch> getPendingBatches() {
+  public List<Batch> getPendingBatches() {
     return pendingBatches;
   }
 }
