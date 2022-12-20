@@ -111,6 +111,7 @@
         <module>integration</module>
         <module>rewriteFileTool</module>
         <module>external-api</module>
+        <module>isession</module>
         <!--        <module>library-udf</module>-->
     </modules>
     <!-- Properties Management -->
