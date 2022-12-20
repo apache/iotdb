@@ -181,11 +181,11 @@ Core-level metrics are enabled by default during system operation. The addition 
 | thrift_active_threads | name="ClientRPC-Service"           | AutoGauge | The number of thrift active connections of client              |
 
 #### 4.2.6. Memory
-| Metric | Tags                          | Type      | Description                                                        |
-| ------ | ----------------------------- | --------- | ------------------------------------------------------------------ |
-| mem    | name="database_{{name}}"      | AutoGauge | The memory usage of DataRegion in DataNode, Unit: byte             |
-| mem    | name="chunkMetaData_{{name}}" | AutoGauge | The memory usage of chunkMetaData when writting TsFile, Unit: byte |
-| mem    | name="IoTConsensus"           | AutoGauge | The memory usage of IoTConsensus, Unit: byte                       |
+| Metric | Tags                                  | Type      | Description                                                        |
+| ------ |---------------------------------------| --------- | ------------------------------------------------------------------ |
+| mem    | name="database_{{name}}"              | AutoGauge | The memory usage of DataRegion in DataNode, Unit: byte             |
+| mem    | name="chunkMetaData_{{name}}"         | AutoGauge | The memory usage of chunkMetaData when writting TsFile, Unit: byte |
+| mem    | name="IoTConsensus"                   | AutoGauge | The memory usage of IoTConsensus, Unit: byte                       |
 | mem    | name="schema region memory usage"     | AutoGauge | The memory usage of all SchemaRegion, Unit: byte                   |
 | mem    | name="schema region memory remaining" | AutoGauge | The memory remaining for all SchemaRegion, Unit: byte              |
 
