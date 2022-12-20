@@ -174,15 +174,15 @@ public class SinkHandle implements ISinkHandle {
       int startSequenceId;
       startSequenceId = nextSequenceId;
       blocked =
-              localMemoryManager
-                      .getQueryPool()
-                      .reserve(
-                              localFragmentInstanceId.getQueryId(),
-                              localFragmentInstanceId.getInstanceId(),
-                              localPlanNodeId,
-                              retainedSizeInBytes,
-                              maxBytesCanReserve)
-                      .left;
+          localMemoryManager
+              .getQueryPool()
+              .reserve(
+                  localFragmentInstanceId.getQueryId(),
+                  localFragmentInstanceId.getInstanceId(),
+                  localPlanNodeId,
+                  retainedSizeInBytes,
+                  maxBytesCanReserve)
+              .left;
       bufferRetainedSizeInBytes += retainedSizeInBytes;
 
       sequenceIdToTsBlock.put(nextSequenceId, new Pair<>(tsBlock, currentTsBlockSize));
