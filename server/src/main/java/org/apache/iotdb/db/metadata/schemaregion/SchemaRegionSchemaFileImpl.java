@@ -606,12 +606,12 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
           // the timeseries has already been created and now system is recovering, using the tag
           // info
           // in tagFile to recover index directly
-          mtree.pinMNode(leafMNode);
           tagManager.recoverIndex(offset, leafMNode);
+          mtree.pinMNode(leafMNode);
         } else if (plan.getTags() != null) {
           // tag key, tag value
-          mtree.pinMNode(leafMNode);
           tagManager.addIndex(plan.getTags(), leafMNode);
+          mtree.pinMNode(leafMNode);
         }
 
         // write log
@@ -761,14 +761,14 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
         for (int i = 0; i < measurements.size(); i++) {
           if (tagOffsets != null && !plan.getTagOffsets().isEmpty() && isRecovering) {
             if (tagOffsets.get(i) != -1) {
-              mtree.pinMNode(measurementMNodeList.get(i));
               tagManager.recoverIndex(plan.getTagOffsets().get(i), measurementMNodeList.get(i));
+              mtree.pinMNode(measurementMNodeList.get(i));
             }
           } else if (tagsList != null && !tagsList.isEmpty()) {
             if (tagsList.get(i) != null) {
               // tag key, tag value
-              mtree.pinMNode(measurementMNodeList.get(i));
               tagManager.addIndex(tagsList.get(i), measurementMNodeList.get(i));
+              mtree.pinMNode(measurementMNodeList.get(i));
             }
           }
         }
