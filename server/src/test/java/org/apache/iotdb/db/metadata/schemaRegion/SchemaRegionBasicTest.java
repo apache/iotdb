@@ -28,6 +28,7 @@ import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.metadata.plan.schemaregion.impl.CreateAlignedTimeSeriesPlanImpl;
 import org.apache.iotdb.db.metadata.plan.schemaregion.impl.CreateTimeSeriesPlanImpl;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
+import org.apache.iotdb.db.metadata.schemaregion.SchemaRegionUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -307,26 +308,22 @@ public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
     Assert.assertEquals("root.sg.wf02.wt01.temperature", schemas.get(0).getFullPath());
   }
 
-  private CreateTimeSeriesPlanImpl quickGetCreateTSPlanImpl(PartialPath path) {
-    return new CreateTimeSeriesPlanImpl(
-        path, TSDataType.INT64, TSEncoding.PLAIN, CompressionType.SNAPPY, null, null, null, null);
-  }
-
   @Test
   public void testGetAllTimeseriesCount() throws Exception {
     ISchemaRegion schemaRegion = getSchemaRegion("root.laptop", 0);
 
-    schemaRegion.createTimeseries(quickGetCreateTSPlanImpl(new PartialPath("root.laptop.d0")), -1);
     schemaRegion.createTimeseries(
-        quickGetCreateTSPlanImpl(new PartialPath("root.laptop.d1.s1")), -1);
+        SchemaRegionUtils.getSimpleCreateTSPlanImpl(new PartialPath("root.laptop.d0")), -1);
     schemaRegion.createTimeseries(
-        quickGetCreateTSPlanImpl(new PartialPath("root.laptop.d1.s2.t1")), -1);
+        SchemaRegionUtils.getSimpleCreateTSPlanImpl(new PartialPath("root.laptop.d1.s1")), -1);
     schemaRegion.createTimeseries(
-        quickGetCreateTSPlanImpl(new PartialPath("root.laptop.d1.s3")), -1);
+        SchemaRegionUtils.getSimpleCreateTSPlanImpl(new PartialPath("root.laptop.d1.s2.t1")), -1);
     schemaRegion.createTimeseries(
-        quickGetCreateTSPlanImpl(new PartialPath("root.laptop.d2.s1")), -1);
+        SchemaRegionUtils.getSimpleCreateTSPlanImpl(new PartialPath("root.laptop.d1.s3")), -1);
     schemaRegion.createTimeseries(
-        quickGetCreateTSPlanImpl(new PartialPath("root.laptop.d2.s2")), -1);
+        SchemaRegionUtils.getSimpleCreateTSPlanImpl(new PartialPath("root.laptop.d2.s1")), -1);
+    schemaRegion.createTimeseries(
+        SchemaRegionUtils.getSimpleCreateTSPlanImpl(new PartialPath("root.laptop.d2.s2")), -1);
 
     // for Non prefix matched path
     Assert.assertEquals(
@@ -368,17 +365,18 @@ public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
   public void testGetMeasurementCountGroupByLevel() throws Exception {
     ISchemaRegion schemaRegion = getSchemaRegion("root.laptop", 0);
 
-    schemaRegion.createTimeseries(quickGetCreateTSPlanImpl(new PartialPath("root.laptop.d0")), -1);
     schemaRegion.createTimeseries(
-        quickGetCreateTSPlanImpl(new PartialPath("root.laptop.d1.s1")), -1);
+        SchemaRegionUtils.getSimpleCreateTSPlanImpl(new PartialPath("root.laptop.d0")), -1);
     schemaRegion.createTimeseries(
-        quickGetCreateTSPlanImpl(new PartialPath("root.laptop.d1.s2.t1")), -1);
+        SchemaRegionUtils.getSimpleCreateTSPlanImpl(new PartialPath("root.laptop.d1.s1")), -1);
     schemaRegion.createTimeseries(
-        quickGetCreateTSPlanImpl(new PartialPath("root.laptop.d1.s3")), -1);
+        SchemaRegionUtils.getSimpleCreateTSPlanImpl(new PartialPath("root.laptop.d1.s2.t1")), -1);
     schemaRegion.createTimeseries(
-        quickGetCreateTSPlanImpl(new PartialPath("root.laptop.d2.s1")), -1);
+        SchemaRegionUtils.getSimpleCreateTSPlanImpl(new PartialPath("root.laptop.d1.s3")), -1);
     schemaRegion.createTimeseries(
-        quickGetCreateTSPlanImpl(new PartialPath("root.laptop.d2.s2")), -1);
+        SchemaRegionUtils.getSimpleCreateTSPlanImpl(new PartialPath("root.laptop.d2.s1")), -1);
+    schemaRegion.createTimeseries(
+        SchemaRegionUtils.getSimpleCreateTSPlanImpl(new PartialPath("root.laptop.d2.s2")), -1);
 
     Map<PartialPath, Long> expected = new HashMap<>();
     expected.put(new PartialPath("root"), (long) 6);
@@ -474,17 +472,18 @@ public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
   public void testGetDevicesNum() throws Exception {
     ISchemaRegion schemaRegion = getSchemaRegion("root.laptop", 0);
 
-    schemaRegion.createTimeseries(quickGetCreateTSPlanImpl(new PartialPath("root.laptop.d0")), -1);
     schemaRegion.createTimeseries(
-        quickGetCreateTSPlanImpl(new PartialPath("root.laptop.d1.s1")), -1);
+        SchemaRegionUtils.getSimpleCreateTSPlanImpl(new PartialPath("root.laptop.d0")), -1);
     schemaRegion.createTimeseries(
-        quickGetCreateTSPlanImpl(new PartialPath("root.laptop.d1.s2.t1")), -1);
+        SchemaRegionUtils.getSimpleCreateTSPlanImpl(new PartialPath("root.laptop.d1.s1")), -1);
     schemaRegion.createTimeseries(
-        quickGetCreateTSPlanImpl(new PartialPath("root.laptop.d1.s3")), -1);
+        SchemaRegionUtils.getSimpleCreateTSPlanImpl(new PartialPath("root.laptop.d1.s2.t1")), -1);
     schemaRegion.createTimeseries(
-        quickGetCreateTSPlanImpl(new PartialPath("root.laptop.d2.s1")), -1);
+        SchemaRegionUtils.getSimpleCreateTSPlanImpl(new PartialPath("root.laptop.d1.s3")), -1);
     schemaRegion.createTimeseries(
-        quickGetCreateTSPlanImpl(new PartialPath("root.laptop.d2.s2")), -1);
+        SchemaRegionUtils.getSimpleCreateTSPlanImpl(new PartialPath("root.laptop.d2.s1")), -1);
+    schemaRegion.createTimeseries(
+        SchemaRegionUtils.getSimpleCreateTSPlanImpl(new PartialPath("root.laptop.d2.s2")), -1);
 
     Assert.assertEquals(4, schemaRegion.getDevicesNum(new PartialPath("root.**"), false));
     Assert.assertEquals(1, schemaRegion.getDevicesNum(new PartialPath("root.laptop"), false));

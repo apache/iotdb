@@ -21,6 +21,11 @@ package org.apache.iotdb.db.metadata.schemaregion;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
+import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.metadata.plan.schemaregion.impl.CreateTimeSeriesPlanImpl;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 
 import org.slf4j.Logger;
 
@@ -59,5 +64,10 @@ public class SchemaRegionUtils {
     if (Objects.requireNonNull(storageGroupDir.listFiles()).length == 0) {
       storageGroupDir.delete();
     }
+  }
+
+  public static CreateTimeSeriesPlanImpl getSimpleCreateTSPlanImpl(PartialPath path) {
+    return new CreateTimeSeriesPlanImpl(
+        path, TSDataType.INT64, TSEncoding.PLAIN, CompressionType.SNAPPY, null, null, null, null);
   }
 }
