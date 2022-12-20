@@ -673,7 +673,7 @@ public class TagSchemaRegion implements ISchemaRegion {
   }
 
   @Override
-  public void upsertTagsAndAttributes(
+  public void upsertAliasAndTagsAndAttributes(
       String alias,
       Map<String, String> tagsMap,
       Map<String, String> attributesMap,
