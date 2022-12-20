@@ -605,9 +605,11 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
           // info
           // in tagFile to recover index directly
           tagManager.recoverIndex(offset, leafMNode);
+          mtree.pinMNode(leafMNode);
         } else if (plan.getTags() != null) {
           // tag key, tag value
           tagManager.addIndex(plan.getTags(), leafMNode);
+          mtree.pinMNode(leafMNode);
         }
 
         // write log
@@ -758,11 +760,13 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
           if (tagOffsets != null && !plan.getTagOffsets().isEmpty() && isRecovering) {
             if (tagOffsets.get(i) != -1) {
               tagManager.recoverIndex(plan.getTagOffsets().get(i), measurementMNodeList.get(i));
+              mtree.pinMNode(measurementMNodeList.get(i));
             }
           } else if (tagsList != null && !tagsList.isEmpty()) {
             if (tagsList.get(i) != null) {
               // tag key, tag value
               tagManager.addIndex(tagsList.get(i), measurementMNodeList.get(i));
+              mtree.pinMNode(measurementMNodeList.get(i));
             }
           }
         }
