@@ -201,7 +201,16 @@ public interface ISchemaRegion {
       PartialPath pathPattern, boolean isPrefixMatch, String key, String value, boolean isContains)
       throws MetadataException;
 
-  // The measurements will be grouped by the node in given level and then counted for each group.
+  /**
+   * The measurements will be grouped by the node in given level and then counted for each group. If
+   * no measurements found, but the path is contained in the group, then this path will also be
+   * returned with measurements count zero.
+   *
+   * @param pathPattern
+   * @param level the level you want to group by
+   * @param isPrefixMatch using pathPattern as prefix matched path if set true
+   * @return return a map from PartialPath to the count of matched measurements
+   */
   Map<PartialPath, Long> getMeasurementCountGroupByLevel(
       PartialPath pathPattern, int level, boolean isPrefixMatch) throws MetadataException;
 

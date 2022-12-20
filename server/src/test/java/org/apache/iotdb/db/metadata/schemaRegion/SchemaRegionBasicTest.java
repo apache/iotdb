@@ -323,6 +323,7 @@ public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
     schemaRegion.createTimeseries(
         quickGetCreateTSPlanImpl(new PartialPath("root.laptop.d2.s2")), -1);
 
+    // for Non prefix matched path
     Assert.assertEquals(
         6, schemaRegion.getAllTimeseriesCount(new PartialPath("root.**"), null, false));
     Assert.assertEquals(
@@ -349,5 +350,112 @@ public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
         0, schemaRegion.getAllTimeseriesCount(new PartialPath("root.laptop"), null, false));
     Assert.assertEquals(
         0, schemaRegion.getAllTimeseriesCount(new PartialPath("root.laptop.d3.s1"), null, false));
+
+    // for prefix matched path
+    Assert.assertEquals(6, schemaRegion.getAllTimeseriesCount(new PartialPath("root"), null, true));
+    Assert.assertEquals(
+        6, schemaRegion.getAllTimeseriesCount(new PartialPath("root.laptop"), null, true));
+    Assert.assertEquals(
+        2, schemaRegion.getAllTimeseriesCount(new PartialPath("root.laptop.d2"), null, true));
+  }
+
+  @Test
+  public void testGetMeasurementCountGroupByLevel() throws Exception {
+    ISchemaRegion schemaRegion = getSchemaRegion("root.laptop", 0);
+
+    schemaRegion.createTimeseries(quickGetCreateTSPlanImpl(new PartialPath("root.laptop.d0")), -1);
+    schemaRegion.createTimeseries(
+        quickGetCreateTSPlanImpl(new PartialPath("root.laptop.d1.s1")), -1);
+    schemaRegion.createTimeseries(
+        quickGetCreateTSPlanImpl(new PartialPath("root.laptop.d1.s2.t1")), -1);
+    schemaRegion.createTimeseries(
+        quickGetCreateTSPlanImpl(new PartialPath("root.laptop.d1.s3")), -1);
+    schemaRegion.createTimeseries(
+        quickGetCreateTSPlanImpl(new PartialPath("root.laptop.d2.s1")), -1);
+    schemaRegion.createTimeseries(
+        quickGetCreateTSPlanImpl(new PartialPath("root.laptop.d2.s2")), -1);
+
+    Map<PartialPath, Long> expected = new HashMap<>();
+    expected.put(new PartialPath("root"), (long) 6);
+    Assert.assertEquals(
+        expected,
+        schemaRegion.getMeasurementCountGroupByLevel(new PartialPath("root.**"), 0, false));
+    expected.clear();
+
+    expected.put(new PartialPath("root.laptop.d0"), (long) 1);
+    Assert.assertEquals(
+        expected,
+        schemaRegion.getMeasurementCountGroupByLevel(new PartialPath("root.laptop.d0"), 2, false));
+    expected.clear();
+
+    expected.put(new PartialPath("root.laptop.d1"), (long) 0);
+    Assert.assertEquals(
+        expected,
+        schemaRegion.getMeasurementCountGroupByLevel(new PartialPath("root.laptop.d1"), 2, false));
+    expected.clear();
+
+    expected.put(new PartialPath("root.laptop.d1"), (long) 2);
+    Assert.assertEquals(
+        expected,
+        schemaRegion.getMeasurementCountGroupByLevel(
+            new PartialPath("root.laptop.d1.*"), 2, false));
+    expected.clear();
+
+    expected.put(new PartialPath("root.laptop.d1"), (long) 3);
+    Assert.assertEquals(
+        expected,
+        schemaRegion.getMeasurementCountGroupByLevel(
+            new PartialPath("root.laptop.d1.**"), 2, false));
+    expected.clear();
+
+    expected.put(new PartialPath("root.laptop.d2"), (long) 2);
+    Assert.assertEquals(
+        expected,
+        schemaRegion.getMeasurementCountGroupByLevel(
+            new PartialPath("root.laptop.d2.*"), 2, false));
+    expected.clear();
+
+    expected.put(new PartialPath("root.laptop"), (long) 2);
+    Assert.assertEquals(
+        expected,
+        schemaRegion.getMeasurementCountGroupByLevel(
+            new PartialPath("root.laptop.*.s1"), 1, false));
+    expected.clear();
+
+    expected.put(new PartialPath("root.laptop.d0"), (long) 0);
+    expected.put(new PartialPath("root.laptop.d1"), (long) 1);
+    expected.put(new PartialPath("root.laptop.d2"), (long) 1);
+    Assert.assertEquals(
+        expected,
+        schemaRegion.getMeasurementCountGroupByLevel(
+            new PartialPath("root.laptop.*.s1"), 2, false));
+    expected.clear();
+
+    expected.put(new PartialPath("root.laptop"), (long) 1);
+    Assert.assertEquals(
+        expected,
+        schemaRegion.getMeasurementCountGroupByLevel(
+            new PartialPath("root.laptop.*.s2"), 1, false));
+    expected.clear();
+
+    expected.put(new PartialPath("root.laptop.d0"), (long) 0);
+    expected.put(new PartialPath("root.laptop.d1"), (long) 2);
+    expected.put(new PartialPath("root.laptop.d2"), (long) 2);
+    Assert.assertEquals(
+        expected,
+        schemaRegion.getMeasurementCountGroupByLevel(new PartialPath("root.laptop.*.*"), 2, false));
+    expected.clear();
+
+    // for prefix matched path
+    expected.put(new PartialPath("root"), (long) 6);
+    Assert.assertEquals(
+        expected, schemaRegion.getMeasurementCountGroupByLevel(new PartialPath("root"), 0, true));
+    expected.clear();
+
+    expected.put(new PartialPath("root.laptop.d1"), (long) 3);
+    Assert.assertEquals(
+        expected,
+        schemaRegion.getMeasurementCountGroupByLevel(new PartialPath("root.laptop.d1"), 2, true));
+    expected.clear();
   }
 }
