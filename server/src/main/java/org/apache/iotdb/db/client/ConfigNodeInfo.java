@@ -67,11 +67,7 @@ public class ConfigNodeInfo {
                 + PROPERTIES_FILE_NAME);
   }
 
-  /**
-   * Update ConfigNodeList both in memory and confignode-system.properties file
-   *
-   * @param latestConfigNodes
-   */
+  /** Update ConfigNodeList both in memory and confignode-system.properties file */
   public void updateConfigNodeList(List<TEndPoint> latestConfigNodes) {
     // check whether the config nodes are latest or not
     configNodeInfoReadWriteLock.readLock().lock();
