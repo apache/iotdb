@@ -71,7 +71,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCheckUserPrivilegesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
-import org.apache.iotdb.confignode.rpc.thrift.TConfigurationResp;
+import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRestartReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCountStorageGroupResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateCQReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateFunctionReq;
@@ -83,6 +83,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRemoveReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRemoveResp;
+import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRestartReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRestartResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeUpdateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionTableResp;
@@ -140,6 +142,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowStorageGroupResp;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchemaResp;
+import org.apache.iotdb.confignode.rpc.thrift.TSystemConfigurationResp;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsetSchemaTemplateReq;
 import org.apache.iotdb.confignode.service.ConfigNode;
 import org.apache.iotdb.consensus.common.response.ConsensusGenericResponse;
@@ -178,6 +181,17 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
+  public TSystemConfigurationResp getSystemConfiguration() {
+    TSystemConfigurationResp resp =
+        ((ConfigurationResp) configManager.getSystemConfiguration())
+            .convertToRpcSystemConfigurationResp();
+
+    // Print log to record the ConfigNode that performs the GetConfigurationRequest
+    LOGGER.info("Execute GetSystemConfiguration with result {}", resp);
+    return resp;
+  }
+
+  @Override
   public TDataNodeRegisterResp registerDataNode(TDataNodeRegisterReq req) {
     TDataNodeRegisterResp resp =
         ((DataNodeRegisterResp)
@@ -192,12 +206,12 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
-  public TConfigurationResp getConfiguration() {
-    TConfigurationResp resp =
-        ((ConfigurationResp) configManager.getConfiguration()).convertToRpcDataNodeRegisterResp();
+  public TDataNodeRestartResp restartDataNode(TDataNodeRestartReq req) {
+    TDataNodeRestartResp resp = configManager.restartDataNode(req);
 
-    // Print log to record the ConfigNode that performs the GetConfigurationRequest
-    LOGGER.info("Execute GetConfigurationRequest with result {}", resp);
+    // Print log to record the ConfigNode that performs the RestartDatanodeRequest
+    LOGGER.info("Execute RestartDatanodeRequest {} with result {}", req, resp);
+
     return resp;
   }
 
@@ -463,6 +477,16 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
     LOGGER.info(
         "{} has successfully started and joined the cluster.", ConfigNodeConstant.GLOBAL_NAME);
     return StatusUtils.OK;
+  }
+
+  @Override
+  public TSStatus restartConfigNode(TConfigNodeRestartReq req) {
+    TSStatus status = configManager.restartConfigNode(req);
+
+    // Print log to record the ConfigNode that performs the RegisterConfigNodeRequest
+    LOGGER.info("Execute RestartConfigNodeRequest {} with result {}", req, status);
+
+    return status;
   }
 
   /** For leader to remove ConfigNode configuration in consensus layer */

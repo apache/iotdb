@@ -16,20 +16,18 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.it;
+package org.apache.iotdb.confignode.it.cluster;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
-import org.apache.iotdb.common.rpc.thrift.TNodeResource;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeConfigurationResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterReq;
-import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRemoveReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRemoveResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
@@ -64,7 +62,7 @@ import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({ClusterIT.class})
-public class IoTDBClusterNodeIT {
+public class IoTDBClusterNodeGetterIT {
 
   private static final int testConfigNodeNum = 2;
   private static final int testDataNodeNum = 2;
@@ -244,15 +242,6 @@ public class IoTDBClusterNodeIT {
           new TEndPoint(dataNodeInfo.getRpcAddresss(), dataNodeInfo.getRpcPort() + 3));
       dataNodeLocation.setSchemaRegionConsensusEndPoint(
           new TEndPoint(dataNodeInfo.getRpcAddresss(), dataNodeInfo.getRpcPort() + 4));
-
-      // Re-register DataNode
-      dataNodeConfiguration.setLocation(dataNodeLocation);
-      dataNodeConfiguration.setResource(new TNodeResource(8, 1024 * 1024));
-      dataNodeRegisterReq.setDataNodeConfiguration(dataNodeConfiguration);
-      TDataNodeRegisterResp dataNodeRegisterResp = client.registerDataNode(dataNodeRegisterReq);
-      assertEquals(
-          TSStatusCode.DATANODE_ALREADY_REGISTERED.getStatusCode(),
-          dataNodeRegisterResp.getStatus().getCode());
 
       /* Test query one DataNodeInfo */
       TDataNodeConfigurationResp dataNodeConfigurationResp =

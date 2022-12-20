@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.it;
+package org.apache.iotdb.confignode.it.load;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
@@ -168,7 +168,7 @@ public class IoTDBClusterRegionLeaderBalancingIT {
   public void testMCFLeaderDistribution() throws IOException, InterruptedException, TException {
     final int testConfigNodeNum = 1;
     final int testDataNodeNum = 3;
-    final int retryNum = 100;
+    final int retryNum = 50;
     EnvFactory.getEnv().initClusterEnvironment(testConfigNodeNum, testDataNodeNum);
 
     TSStatus status;

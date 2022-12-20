@@ -182,7 +182,7 @@ public class ConsensusManager {
     }
     consensusImpl.start();
     if (SystemPropertiesUtils.isRestarted()) {
-      // TODO: Check and notify if current ConfigNode's ip or port has changed
+      // TODO: @Itami-Sho Check and notify if current ConfigNode's ip or port has changed
 
       if (SIMPLE_CONSENSUS.equals(CONF.getConfigNodeConsensusProtocolClass())) {
         // Only SIMPLE_CONSENSUS need invoking `createPeerForConsensusGroup` when restarted,
