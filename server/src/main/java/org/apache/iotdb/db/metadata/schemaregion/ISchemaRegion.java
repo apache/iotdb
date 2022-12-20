@@ -25,7 +25,6 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
-import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IActivateTemplateInClusterPlan;
@@ -107,7 +106,7 @@ public interface ISchemaRegion {
    * @param plan a plan describes how to create the timeseries.
    * @param offset
    * @throws MetadataException
-   * */
+   */
   void createTimeseries(ICreateTimeSeriesPlan plan, long offset) throws MetadataException;
 
   /**
@@ -115,18 +114,19 @@ public interface ISchemaRegion {
    *
    * @param plan a plan describes how to create the timeseries.
    * @throws MetadataException
-   * */
+   */
   void createAlignedTimeSeries(ICreateAlignedTimeSeriesPlan plan) throws MetadataException;
 
   /**
    * Check whether measurement exists.
+   *
    * @param devicePath the path of device that you want to check
    * @param measurementList a list of measurements that you want to check
    * @param aliasList a list of alias that you want to check
-   * @return returns a map contains index of the measurements or alias that threw the exception, and exception details.
-   * The exceptions describe whether the measurement or alias exists. For example, a MeasurementAlreadyExistException
-   * means this measurement exists.
-   * */
+   * @return returns a map contains index of the measurements or alias that threw the exception, and
+   *     exception details. The exceptions describe whether the measurement or alias exists. For
+   *     example, a MeasurementAlreadyExistException means this measurement exists.
+   */
   Map<Integer, MetadataException> checkMeasurementExistence(
       PartialPath devicePath, List<String> measurementList, List<String> aliasList);
 
@@ -163,7 +163,7 @@ public interface ISchemaRegion {
    *
    * @param patternTree
    * @throws MetadataException
-   * */
+   */
   Set<PartialPath> fetchSchemaBlackList(PathPatternTree patternTree) throws MetadataException;
 
   /**
@@ -228,7 +228,13 @@ public interface ISchemaRegion {
   // region Interfaces for level Node info Query
   /**
    * Get paths of nodes in given level and matching the pathPattern.
-   * */
+   *
+   * @param pathPattern
+   * @param nodeLevel
+   * @param isPrefixMatch
+   * @throws MetadataException
+   * @return returns a list of PartialPath.
+   */
   List<PartialPath> getNodesListInGivenLevel(
       PartialPath pathPattern, int nodeLevel, boolean isPrefixMatch) throws MetadataException;
 
@@ -323,7 +329,11 @@ public interface ISchemaRegion {
 
   /**
    * Show timeseries.
-   * */
+   *
+   * @param plan
+   * @param context
+   * @throws MetadataException
+   */
   Pair<List<ShowTimeSeriesResult>, Integer> showTimeseries(
       ShowTimeSeriesPlan plan, QueryContext context) throws MetadataException;
   // endregion
