@@ -99,4 +99,9 @@
     <allow pkg="org.apache.iotdb.db.metadata.idtable.trigger_example" />
     <allow pkg="org.apache.iotdb.session.template" />
   </subpackage>
+  <subpackage name="zeppelin.it">
+    <allow class="org.apache.zeppelin.interpreter.InterpreterResult" />
+    <allow class="org.apache.zeppelin.interpreter.InterpreterResult.Code" />
+    <allow class="org.apache.zeppelin.iotdb.IoTDBInterpreter" />
+  </subpackage>
 </import-control>

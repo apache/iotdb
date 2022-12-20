@@ -35,8 +35,6 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.query.OutOfTTLException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
-import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.mpp.plan.parser.StatementGenerator;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowNode;
@@ -45,7 +43,6 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.UnSetTTLStatement;
 import org.apache.iotdb.db.query.reader.series.SeriesRawDataBatchReader;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
-import org.apache.iotdb.db.utils.SchemaTestUtils;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -88,7 +85,13 @@ public class TTLTest {
     prevPartitionInterval = IoTDBDescriptor.getInstance().getConfig().getTimePartitionInterval();
     IoTDBDescriptor.getInstance().getConfig().setTimePartitionInterval(86400000);
     EnvironmentUtils.envSetUp();
-    createSchemas();
+    dataRegion =
+        new DataRegion(
+            IoTDBDescriptor.getInstance().getConfig().getSystemDir(),
+            String.valueOf(dataRegionId1.getId()),
+            new DirectFlushPolicy(),
+            sg1);
+    //    createSchemas();
   }
 
   @After
@@ -96,47 +99,6 @@ public class TTLTest {
     dataRegion.syncCloseAllWorkingTsFileProcessors();
     EnvironmentUtils.cleanEnv();
     IoTDBDescriptor.getInstance().getConfig().setTimePartitionInterval(prevPartitionInterval);
-  }
-
-  private void createSchemas() throws MetadataException, DataRegionException {
-    LocalSchemaProcessor.getInstance().setStorageGroup(new PartialPath(sg1));
-    LocalSchemaProcessor.getInstance().setStorageGroup(new PartialPath(sg2));
-    dataRegion =
-        new DataRegion(
-            IoTDBDescriptor.getInstance().getConfig().getSystemDir(),
-            String.valueOf(dataRegionId1.getId()),
-            new DirectFlushPolicy(),
-            sg1);
-    LocalSchemaProcessor.getInstance()
-        .createTimeseries(
-            new PartialPath(g1s1),
-            TSDataType.INT64,
-            TSEncoding.PLAIN,
-            CompressionType.UNCOMPRESSED,
-            Collections.emptyMap());
-  }
-
-  @Test
-  public void testSetMetaTTL() throws IOException, MetadataException {
-    // exception is expected when setting ttl to a non-exist database
-    boolean caught = false;
-
-    try {
-      LocalSchemaProcessor.getInstance().setTTL(new PartialPath(sg1 + ".notExist"), ttl);
-    } catch (MetadataException e) {
-      caught = true;
-    }
-    assertTrue(caught);
-
-    // normally set ttl
-    LocalSchemaProcessor.getInstance().setTTL(new PartialPath(sg1), ttl);
-    IStorageGroupMNode mNode =
-        LocalSchemaProcessor.getInstance().getStorageGroupNodeByPath(new PartialPath(sg1));
-    assertEquals(ttl, mNode.getDataTTL());
-
-    // default ttl
-    mNode = LocalSchemaProcessor.getInstance().getStorageGroupNodeByPath(new PartialPath(sg2));
-    assertEquals(Long.MAX_VALUE, mNode.getDataTTL());
   }
 
   @Test
@@ -214,8 +176,7 @@ public class TTLTest {
     // files before ttl
     QueryDataSource dataSource =
         dataRegion.query(
-            Collections.singletonList(
-                SchemaTestUtils.getMeasurementPath(sg1 + TsFileConstant.PATH_SEPARATOR + s1)),
+            Collections.singletonList(mockMeasurementPath()),
             sg1,
             EnvironmentUtils.TEST_QUERY_CONTEXT,
             null);
@@ -229,8 +190,7 @@ public class TTLTest {
     // files after ttl
     dataSource =
         dataRegion.query(
-            Collections.singletonList(
-                SchemaTestUtils.getMeasurementPath(sg1 + TsFileConstant.PATH_SEPARATOR + s1)),
+            Collections.singletonList(mockMeasurementPath()),
             sg1,
             EnvironmentUtils.TEST_QUERY_CONTEXT,
             null);
@@ -238,8 +198,7 @@ public class TTLTest {
     unseqResource = dataSource.getUnseqResources();
     assertTrue(seqResource.size() < 4);
     assertEquals(0, unseqResource.size());
-    MeasurementPath path =
-        SchemaTestUtils.getMeasurementPath(sg1 + TsFileConstant.PATH_SEPARATOR + s1);
+    MeasurementPath path = mockMeasurementPath();
     Set<String> allSensors = new HashSet<>();
     allSensors.add(s1);
     IBatchReader reader =
@@ -268,8 +227,7 @@ public class TTLTest {
     dataRegion.setDataTTL(0);
     dataSource =
         dataRegion.query(
-            Collections.singletonList(
-                SchemaTestUtils.getMeasurementPath(sg1 + TsFileConstant.PATH_SEPARATOR + s1)),
+            Collections.singletonList(mockMeasurementPath()),
             sg1,
             EnvironmentUtils.TEST_QUERY_CONTEXT,
             null);
@@ -277,6 +235,17 @@ public class TTLTest {
     unseqResource = dataSource.getUnseqResources();
     assertEquals(0, seqResource.size());
     assertEquals(0, unseqResource.size());
+  }
+
+  private MeasurementPath mockMeasurementPath() throws MetadataException {
+    return new MeasurementPath(
+        new PartialPath(sg1 + TsFileConstant.PATH_SEPARATOR + s1),
+        new MeasurementSchema(
+            s1,
+            TSDataType.INT64,
+            TSEncoding.PLAIN,
+            CompressionType.UNCOMPRESSED,
+            Collections.emptyMap()));
   }
 
   @Test

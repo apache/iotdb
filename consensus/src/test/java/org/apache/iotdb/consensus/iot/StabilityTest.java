@@ -78,7 +78,7 @@ public class StabilityTest {
   }
 
   @Test
-  public void recoveryTest() throws Exception {
+  public void snapshotTest() throws Exception {
     consensusImpl.createPeer(
         dataRegionId,
         Collections.singletonList(new Peer(dataRegionId, 1, new TEndPoint("0.0.0.0", 9000))));
@@ -90,16 +90,6 @@ public class StabilityTest {
 
     constructConsensus();
 
-    ConsensusGenericResponse response =
-        consensusImpl.createPeer(
-            dataRegionId,
-            Collections.singletonList(new Peer(dataRegionId, 1, new TEndPoint("0.0.0.0", 9000))));
-
-    Assert.assertTrue(response.isSuccess());
-  }
-
-  @Test
-  public void cleanOldSnapshotAfterTriggerSnapshotTest() throws InterruptedException {
     ConsensusGenericResponse response =
         consensusImpl.createPeer(
             dataRegionId,
