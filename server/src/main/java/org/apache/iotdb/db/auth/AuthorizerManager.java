@@ -25,7 +25,6 @@ import org.apache.iotdb.commons.auth.authorizer.BasicAuthorizer;
 import org.apache.iotdb.commons.auth.authorizer.IAuthorizer;
 import org.apache.iotdb.commons.auth.entity.Role;
 import org.apache.iotdb.commons.auth.entity.User;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
 import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
 import org.apache.iotdb.db.mpp.plan.execution.config.ConfigTaskResult;
@@ -59,11 +58,7 @@ public class AuthorizerManager implements IAuthorizer {
   public AuthorizerManager() {
     try {
       authorizer = BasicAuthorizer.getInstance();
-      if (IoTDBDescriptor.getInstance().getConfig().isClusterMode()) {
-        authorityFetcher = new ClusterAuthorityFetcher(new BasicAuthorityCache());
-      } else {
-        authorityFetcher = new StandaloneAuthorityFetcher();
-      }
+      authorityFetcher = new ClusterAuthorityFetcher(new BasicAuthorityCache());
     } catch (AuthException e) {
       logger.error("Failed to initial AuthorizerManager", e);
     }

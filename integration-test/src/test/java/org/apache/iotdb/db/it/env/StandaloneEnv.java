@@ -194,17 +194,42 @@ public class StandaloneEnv implements BaseEnv {
   }
 
   @Override
+  public ConfigNodeWrapper generateRandomConfigNodeWrapper() {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public DataNodeWrapper generateRandomDataNodeWrapper() {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public ConfigNodeWrapper getConfigNodeWrapper(int index) {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
   public DataNodeWrapper getDataNodeWrapper(int index) {
     throw new UnsupportedOperationException();
   }
 
   @Override
-  public void registerNewDataNode() {
+  public void registerNewDataNode(boolean isNeedVerify) {
     throw new UnsupportedOperationException();
   }
 
   @Override
-  public void registerNewConfigNode() {
+  public void registerNewConfigNode(boolean isNeedVerify) {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public void registerNewDataNode(DataNodeWrapper newDataNodeWrapper, boolean isNeedVerify) {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public void registerNewConfigNode(ConfigNodeWrapper newConfigNodeWrapper, boolean isNeedVerify) {
     throw new UnsupportedOperationException();
   }
 
@@ -221,5 +246,25 @@ public class StandaloneEnv implements BaseEnv {
   @Override
   public int getMqttPort() {
     return 1883;
+  }
+
+  @Override
+  public String getIP() {
+    return "127.0.0.1";
+  }
+
+  @Override
+  public String getPort() {
+    return "6667";
+  }
+
+  @Override
+  public String getSbinPath() {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public String getLibPath() {
+    throw new UnsupportedOperationException();
   }
 }
