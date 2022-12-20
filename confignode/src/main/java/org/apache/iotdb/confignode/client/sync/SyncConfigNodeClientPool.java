@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.confignode.client.ConfigNodeRequestType;
 import org.apache.iotdb.confignode.rpc.thrift.TAddConsensusGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
+import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRestartReq;
 import org.apache.iotdb.db.client.DataNodeClientPoolFactory;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -79,6 +80,8 @@ public class SyncConfigNodeClientPool {
           case NOTIFY_REGISTER_SUCCESS:
             client.notifyRegisterSuccess();
             return null;
+          case RESTART_CONFIG_NODE:
+            return client.restartConfigNode((TConfigNodeRestartReq) req);
           case REMOVE_CONFIG_NODE:
             return removeConfigNode((TConfigNodeLocation) req, client);
           case DELETE_CONFIG_NODE_PEER:

@@ -571,7 +571,14 @@ public class IoTDBConfig {
   private boolean isClusterMode = false;
 
   /**
-   * the data node id for cluster mode, the default value -1 should be changed after join cluster
+   * The cluster name that this DataNode joined in the cluster mode. The default value "testCluster"
+   * will be changed after join cluster
+   */
+  private String clusterName = "testCluster";
+
+  /**
+   * The DataNodeId of this DataNode for cluster mode. The default value -1 will be changed after
+   * join cluster
    */
   private int dataNodeId = -1;
 
@@ -3075,6 +3082,14 @@ public class IoTDBConfig {
   public void setClusterMode(boolean isClusterMode) {
     this.isClusterMode = isClusterMode;
     checkMultiDirStrategyClassName();
+  }
+
+  public String getClusterName() {
+    return clusterName;
+  }
+
+  public void setClusterName(String clusterName) {
+    this.clusterName = clusterName;
   }
 
   public int getDataNodeId() {
