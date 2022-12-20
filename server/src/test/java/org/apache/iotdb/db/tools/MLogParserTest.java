@@ -120,7 +120,8 @@ public class MLogParserTest {
           .addTags(tags, new PartialPath("root.sg1.device1.s2"));
       schemaEngine
           .getSchemaRegion(new SchemaRegionId(1))
-          .upsertTagsAndAttributes("hello", null, null, new PartialPath("root.sg1.device1.s3"));
+          .upsertAliasAndTagsAndAttributes(
+              "hello", null, null, new PartialPath("root.sg1.device1.s3"));
     } catch (MetadataException | IOException e) {
       e.printStackTrace();
     }
