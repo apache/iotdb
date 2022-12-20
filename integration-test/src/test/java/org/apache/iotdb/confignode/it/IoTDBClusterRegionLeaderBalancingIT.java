@@ -24,12 +24,8 @@ import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.cluster.RegionRoleType;
-import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.confignode.it.utils.ConfigNodeTestUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionTableResp;
-import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionReq;
-import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSetStorageGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
@@ -169,8 +165,7 @@ public class IoTDBClusterRegionLeaderBalancingIT {
   }
 
   @Test
-  public void testMCFLeaderDistribution()
-      throws IOException, InterruptedException, TException, IllegalPathException {
+  public void testMCFLeaderDistribution() throws IOException, InterruptedException, TException {
     final int testConfigNodeNum = 1;
     final int testDataNodeNum = 3;
     final int retryNum = 100;
@@ -186,16 +181,6 @@ public class IoTDBClusterRegionLeaderBalancingIT {
         TSetStorageGroupReq setReq = new TSetStorageGroupReq(new TStorageGroupSchema(sg + i));
         status = client.setStorageGroup(setReq);
         Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
-
-        // Create a SchemaRegionGroup for each StorageGroup
-        TSchemaPartitionTableResp schemaPartitionTableResp =
-            client.getOrCreateSchemaPartitionTable(
-                new TSchemaPartitionReq(
-                    ConfigNodeTestUtils.generatePatternTreeBuffer(
-                        new String[] {sg + i + "." + "d"})));
-        Assert.assertEquals(
-            TSStatusCode.SUCCESS_STATUS.getStatusCode(),
-            schemaPartitionTableResp.getStatus().getCode());
 
         // Create a DataRegionGroup for each StorageGroup
         Map<TSeriesPartitionSlot, TTimeSlotList> seriesSlotMap = new HashMap<>();
@@ -232,9 +217,9 @@ public class IoTDBClusterRegionLeaderBalancingIT {
 
         // All DataNodes have Region-leader
         isDistributionBalanced = leaderCounter.size() == testDataNodeNum;
-        // Each DataNode has exactly 4 Region-leader
+        // Each DataNode has exactly 2 Region-leader
         for (AtomicInteger leaderCount : leaderCounter.values()) {
-          if (leaderCount.get() != 4) {
+          if (leaderCount.get() != 2) {
             isDistributionBalanced = false;
           }
         }
@@ -291,9 +276,9 @@ public class IoTDBClusterRegionLeaderBalancingIT {
 
         // Only Running DataNodes have Region-leader
         isDistributionBalanced = leaderCounter.size() == testDataNodeNum - 1;
-        // Each Running DataNode has exactly 6 Region-leader
+        // Each Running DataNode has exactly 3 Region-leader
         for (AtomicInteger leaderCount : leaderCounter.values()) {
-          if (leaderCount.get() != 6) {
+          if (leaderCount.get() != 3) {
             isDistributionBalanced = false;
           }
         }

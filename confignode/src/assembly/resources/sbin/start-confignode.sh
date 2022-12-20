@@ -31,7 +31,10 @@ foreground="yes"
 
 IOTDB_HEAP_DUMP_COMMAND=""
 
-echo "all parameters are $*"
+if [ $# -ne 0 ]; then
+  echo "All parameters are $*"
+fi
+
 while true; do
     case "$1" in
         -c)
@@ -102,10 +105,15 @@ while true; do
     esac
 done
 
+if [ "$(id -u)" -ne 0 ]; then
+  echo "Notice: in some systems, ConfigNode must run in sudo mode to write data. The process may fail."
+fi
+
 #checkAllVariables is in iotdb-common.sh
 checkAllConfigNodeVariables
 
-
+#checkConfigNodePortUsages is in iotdb-common.sh
+checkConfigNodePortUsages
 
 PARAMS="-s $PARAMS"
 
@@ -114,7 +122,7 @@ initConfigNodeEnv
 
 
 CLASSPATH=""
-for f in ${CONFIGNODE_HOME}/lib/*.jar; do
+for f in "${CONFIGNODE_HOME}"/lib/*.jar; do
   CLASSPATH=${CLASSPATH}":"$f
 done
 classname=org.apache.iotdb.confignode.service.ConfigNode
@@ -138,22 +146,22 @@ launch_service() {
       if [ "x$foreground" == "xyes" ]; then
           iotdb_parms="$iotdb_parms -Diotdb-foreground=yes"
           if [ "x$JVM_ON_OUT_OF_MEMORY_ERROR_OPT" != "x" ]; then
-            [ ! -z "$pidfile" ] && printf "%d" $! > "$pidfile"
+            [ -n "$pidfile" ] && printf "%d" $! > "$pidfile"
               # shellcheck disable=SC2154
               exec $NUMACTL "$JAVA" $JVM_OPTS "$JVM_ON_OUT_OF_MEMORY_ERROR_OPT" $illegal_access_params $iotdb_parms $CONFIGNODE_JMX_OPTS -cp "$CLASSPATH" $IOTDB_JVM_OPTS "$class" $PARAMS
           else
-              [ ! -z "$pidfile" ] && printf "%d" $! > "$pidfile"
+              [ -n "$pidfile" ] && printf "%d" $! > "$pidfile"
               exec $NUMACTL "$JAVA" $JVM_OPTS $illegal_access_params $iotdb_parms $CONFIGNODE_JMX_OPTS -cp "$CLASSPATH" $IOTDB_JVM_OPTS "$class" $PARAMS
           fi
       # Startup IoTDB, background it, and write the pid.
       else
           if [ "x$JVM_ON_OUT_OF_MEMORY_ERROR_OPT" != "x" ]; then
                 exec $NUMACTL "$JAVA" $JVM_OPTS "$JVM_ON_OUT_OF_MEMORY_ERROR_OPT" $illegal_access_params $iotdb_parms $CONFIGNODE_JMX_OPTS -cp "$CLASSPATH" $IOTDB_JVM_OPTS "$class" $PARAMS 2>&1 > /dev/null  <&- &
-                [ ! -z "$pidfile" ] && printf "%d" $! > "$pidfile"
+                [ -n "$pidfile" ] && printf "%d" $! > "$pidfile"
                 true
           else
                 exec $NUMACTL "$JAVA" $JVM_OPTS $illegal_access_params $iotdb_parms $CONFIGNODE_JMX_OPTS -cp "$CLASSPATH" $IOTDB_JVM_OPTS "$class" $PARAMS 2>&1 > /dev/null <&- &
-                [ ! -z "$pidfile" ] && printf "%d" $! > "$pidfile"
+                [ -n "$pidfile" ] && printf "%d" $! > "$pidfile"
                 true
           fi
       fi
