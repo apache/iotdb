@@ -48,12 +48,21 @@ Different configuration parameters take effect in the following three ways:
 
 * schema\_replication\_factor
 
+<<<<<<< HEAD
 |    Name     | schema\_replication\_factor                                      |
 |:-----------:|:-----------------------------------------------------------------|
 | Description | Schema replication num                                           |
 |    Type     | int32                                                            |
 |   Default   | 1                                                                |
 |  Effective  | Take effect on **new created Databases** after restarting system |
+=======
+|Name| schema\_replication\_factor |
+|:---:|:---|
+|Description| Schema replication num|
+|Type| int32 |
+|Default| 1 |
+|Effective|After restarting system|
+>>>>>>> 61cec8a2a3 (change type from int to int32,Bool to Boolean)
 
 * schema\_region\_consensus\_protocol\_class
 
@@ -66,12 +75,21 @@ Different configuration parameters take effect in the following three ways:
 
 * data\_replication\_factor
 
+<<<<<<< HEAD
 |    Name     | data\_replication\_factor                                        |
 |:-----------:|:-----------------------------------------------------------------|
 | Description | Data replication num                                             |
 |    Type     | int32                                                            |
 |   Default   | 1                                                                |
 |  Effective  | Take effect on **new created Databases** after restarting system |
+=======
+|Name| data\_replication\_factor |
+|:---:|:---|
+|Description| Data replication num|
+|Type| int32 |
+|Default| 1 |
+|Effective|After restarting system|
+>>>>>>> 61cec8a2a3 (change type from int to int32,Bool to Boolean)
 
 * data\_region\_consensus\_protocol\_class
 
@@ -86,12 +104,21 @@ Different configuration parameters take effect in the following three ways:
 
 * series\_partition\_slot\_num
 
+<<<<<<< HEAD
 |    Name     | series\_slot\_num                             |
 |:-----------:|:----------------------------------------------|
 | Description | Slot num of series partition                  |
 |    Type     | int32                                         |
 |   Default   | 10000                                         |
 |  Effective  | Only allowed to be modified in first start up |
+=======
+|Name| series\_partition\_slot\_num |
+|:---:|:---|
+|Description| Slot num of series partition |
+|Type| int32 |
+|Default| 10000 |
+|Effective|Only allowed to be modified in first start up|
+>>>>>>> 61cec8a2a3 (change type from int to int32,Bool to Boolean)
 
 * series\_partition\_executor\_class
 
@@ -601,12 +628,21 @@ Different configuration parameters take effect in the following three ways:
 
 * query\_thread\_count
 
+<<<<<<< HEAD
 |Name| query\_thread\_count                                                                                            |
 |:---:|:---------------------------------------------------------------------------------------------------------------------|
 |Description| How many threads can concurrently execute query statement. When <= 0, use CPU core number. |
 |Type| Int32                                                               |
 |Default | CPU core number                                                    |
 |Effective| After restarting system |
+=======
+|    Name     | default\_fill\_interval                         |
+| :---------: | :---------------------------------------------- |
+| Description | Default interval of `group by fill` query in ms |
+|    Type     | int32                                           |
+|   Default   | -1                                              |
+|  Effective  | After restarting system                         |
+>>>>>>> 61cec8a2a3 (change type from int to int32,Bool to Boolean)
 
 * batch\_size
 
@@ -675,6 +711,7 @@ Different configuration parameters take effect in the following three ways:
 
 * enable\_timed\_flush\_seq\_memtable
 
+<<<<<<< HEAD
 |    Name     | enable\_timed\_flush\_seq\_memtable             |
 |:-----------:|:------------------------------------------------|
 | Description | whether to enable timed flush sequence memtable |
@@ -690,6 +727,23 @@ Different configuration parameters take effect in the following three ways:
 |    Type     | int32                                                                                                    |
 |   Default   | 10800000                                                                                                 |
 |  Effective  | hot-load                                                                                                 |
+=======
+|Name| enable\_timed\_flush\_seq\_memtable |
+|:---:|:---|
+|Description| whether to enable timed flush sequence memtable |
+|Type|Boolean|
+|Default| false |
+|Effective| Trigger |
+
+* seq\_memtable\_flush\_interval\_in\_ms
+
+|Name| seq\_memtable\_flush\_interval\_in\_ms |
+|:---:|:---|
+|Description| if a memTable's created time is older than current time minus this, the memtable will be flushed to disk |
+|Type|int32|
+|Default| 3600000 |
+|Effective| Trigger |
+>>>>>>> 61cec8a2a3 (change type from int to int32,Bool to Boolean)
 
 * seq\_memtable\_flush\_check\_interval\_in\_ms
 
@@ -711,12 +765,21 @@ Different configuration parameters take effect in the following three ways:
 
 * unseq\_memtable\_flush\_interval\_in\_ms
 
+<<<<<<< HEAD
 |    Name     | unseq\_memtable\_flush\_interval\_in\_ms                                                                 |
 |:-----------:|:---------------------------------------------------------------------------------------------------------|
 | Description | if a memTable's created time is older than current time minus this, the memtable will be flushed to disk |
 |    Type     | int32                                                                                                    |
 |   Default   | 10800000                                                                                                 |
 |  Effective  | hot-load                                                                                                 |
+=======
+|Name| unseq\_memtable\_flush\_interval\_in\_ms |
+|:---:|:---|
+|Description| if a memTable's created time is older than current time minus this, the memtable will be flushed to disk |
+|Type|int32|
+|Default| 3600000 |
+|Effective| Trigger |
+>>>>>>> 61cec8a2a3 (change type from int to int32,Bool to Boolean)
 
 * unseq\_memtable\_flush\_check\_interval\_in\_ms
 
@@ -754,6 +817,27 @@ Different configuration parameters take effect in the following three ways:
 |Default| 0 |
 |Effective|After restarting system|
 
+<<<<<<< HEAD
+=======
+* query\_thread\_count
+
+|Name| query\_thread\_count                                                                                            |
+|:---:|:---------------------------------------------------------------------------------------------------------------------|
+|Description| The thread number which can concurrently execute query statement. When <= 0, use CPU core number. The default is 16. |
+|Type| int32                                                                                                                |
+|Default| 16                                                                                                                   |
+|Effective| After restarting system                                                                                              |
+
+* sub\_rawQuery\_thread\_count
+
+|Name| sub\_rawQuery\_thread\_count                                                                                        |
+|:---:|:-------------------------------------------------------------------------------------------------------------------------|
+|Description| The thread number which can concurrently read data for raw data query. When <= 0, use CPU core number. The default is 8. |
+|Type| int32                                                                                                                    |
+|Default| 8                                                                                                                        |
+|Effective| After restarting system                                                                                                  |
+
+>>>>>>> 61cec8a2a3 (change type from int to int32,Bool to Boolean)
 * enable\_partial\_insert
 
 |Name| enable\_partial\_insert |
@@ -923,9 +1007,15 @@ Different configuration parameters take effect in the following three ways:
 |Name| chunk\_point\_num\_lower\_bound\_in\_compaction                                              |
 |:---:|:---------------------------------------------------------------------------------------------|
 |Description| A source chunk will be deserialized in compaction when its point num is less than this value |
+<<<<<<< HEAD
 |Type| int32                                                                                        |
 |Default| 1000                                                                                         |
 |Effective| After restart system                                                                         |
+=======
+|Type| int32 |
+|Default| 100 |
+|Effective|After restart system|
+>>>>>>> 61cec8a2a3 (change type from int to int32,Bool to Boolean)
 
 * max\_inner\_compaction\_candidate\_file\_num
 
@@ -963,6 +1053,18 @@ Different configuration parameters take effect in the following three ways:
 |Default| 30000 |
 |Effective|After restart system|
 
+<<<<<<< HEAD
+=======
+* cross\_compaction\_memory\_budget
+
+|Name| cross\_compaction\_memory\_budget |
+|:---:|:---|
+|Description| Memory budget for a cross space compaction |
+|Type| int32 |
+|Default| 2147483648 |
+|Effective|After restart system|
+
+>>>>>>> 61cec8a2a3 (change type from int to int32,Bool to Boolean)
 * compaction\_thread\_count
 
 |Name| compaction\_thread\_count |
@@ -1017,6 +1119,15 @@ Different configuration parameters take effect in the following three ways:
 |Default| true                                                            |
 |Effective| After restart system                                            |
 
+<<<<<<< HEAD
+=======
+|Name| compaction\_write\_throughput\_mb\_per\_sec |
+|:---:|:---|
+|Description| The write rate of all compaction tasks in MB/s |
+|Type| int32 |
+|Default| 16 |
+|Effective|After restart system|
+>>>>>>> 61cec8a2a3 (change type from int to int32,Bool to Boolean)
 
 ### Write Ahead Log Configuration
 
@@ -1132,6 +1243,7 @@ Different configuration parameters take effect in the following three ways:
 
 * max\_number\_of\_points\_in\_page
 
+<<<<<<< HEAD
 |Name| max\_number\_of\_points\_in\_page                                                  |
 |:---:|:-----------------------------------------------------------------------------------|
 |Description| The maximum number of data points (timestamps - valued groups) contained in a page |
@@ -1147,6 +1259,14 @@ Different configuration parameters take effect in the following three ways:
 |Type| int32                              |
 |Default| 1000000                              |
 |Effective| hot-load                           |
+=======
+|Name| max\_number\_of\_points\_in\_page |
+|:---:|:---|
+|Description|The maximum number of data points (timestamps - valued groups) contained in a page|
+|Type|int32|
+|Default| 1048576 |
+|Effective|Trigger|
+>>>>>>> 61cec8a2a3 (change type from int to int32,Bool to Boolean)
 
 * max\_degree\_of\_index\_node
 
@@ -1354,7 +1474,16 @@ Different configuration parameters take effect in the following three ways:
 ### Trigger Configuration
 
 
+<<<<<<< HEAD
 * trigger\_lib\_dir
+=======
+|    Name     | concurrent_window_evaluation_thread                          |
+| :---------: | :----------------------------------------------------------- |
+| Description | How many threads can be used for evaluating sliding windows. When <= 0, use CPU core number. |
+|    Type     | int32                                                        |
+|   Default   | The number of CPU cores                                      |
+|  Effective  | After restarting system                                      |
+>>>>>>> 61cec8a2a3 (change type from int to int32,Bool to Boolean)
 
 |    Name     | trigger\_lib\_dir       |
 | :---------: |:------------------------|
@@ -1372,6 +1501,15 @@ Different configuration parameters take effect in the following three ways:
 |   Default   | 3                                                                                  |
 |  Effective  | After restarting system                                                            |
 
+<<<<<<< HEAD
+=======
+|    Name     | max_pending_window_evaluation_tasks                          |
+| :---------: | :----------------------------------------------------------- |
+| Description | Maximum number of window evaluation tasks that can be pending for execution. When <= 0, the value is 64 by default. |
+|    Type     | int32                                                        |
+|   Default   | 64                                                           |
+|  Effective  | After restarting system                                      |
+>>>>>>> 61cec8a2a3 (change type from int to int32,Bool to Boolean)
 
 ### SELECT-INTO
 
@@ -1406,7 +1544,20 @@ Different configuration parameters take effect in the following three ways:
 
 * continuous\_query\_min\_every\_interval
 
+<<<<<<< HEAD
 |    Name     | continuous\_query\_min\_every\_interval                 |
+=======
+|    Name     | max_pending_continuous_query_tasks                           |
+| :---------: | :----------------------------------------------------------- |
+| Description | Maximum number of continuous query tasks that can be pending for execution |
+|    Type     | int32                                                        |
+|   Default   | 64                                                           |
+|  Effective  | After restarting system                                      |
+
+* continuous_query_min_every_interval
+
+|    Name     | continuous_query_min_every_interval                 |
+>>>>>>> 61cec8a2a3 (change type from int to int32,Bool to Boolean)
 | :---------: | :-------------------------------------------------- |
 | Description | Minimum every interval to perform continuous query. |
 |    Type     | duration                                            |
@@ -1816,7 +1967,7 @@ Different configuration parameters take effect in the following three ways:
 |    Name     | mqtt\_port                                  |
 |:-----------:|:--------------------------------------------|
 | Description | The port to which the MQTT service is bound |
-|    Type     | Int32                                       |
+|    Type     | int32                                       |
 |   Default   | 1883                                        |
 |   Effective    | Trigger                                     |
 
@@ -1825,7 +1976,7 @@ Different configuration parameters take effect in the following three ways:
 |Name| mqtt\_handler\_pool\_size                                   |
 |:---:|:------------------------------------------------------------|
 |Description| The size of the handler pool used to process MQTT messages  |
-|Type| Int32                                                       |
+|Type| int32                                                       |
 |Default| 1                                                           |
 |Effective| Trigger                                                     |
 
@@ -1843,7 +1994,7 @@ Different configuration parameters take effect in the following three ways:
 |  Name  | mqtt\_max\_message\_size                 |
 |:------:|:-----------------------------------------|
 |   Description   | Maximum length of MQTT message in bytes  |
-|   Type   | Int32                                    |
+|   Type   | int32                                    |
 |  Default   | 1048576                                  |
 | Effective | Trigger                                  |
 
@@ -1938,7 +2089,7 @@ Different configuration parameters take effect in the following three ways:
 |Name| rest_service_port |
 |:---:|:------------------|
 |Description| The Rest service listens to the port number      |
-|Type| Int32             |
+|Type| int32             |
 |Default| 18080             |
 |Effective| After restarting system              |
 
@@ -1998,7 +2149,7 @@ Different configuration parameters take effect in the following three ways:
 |Name| rest_query_default_row_size_limit                                                         |
 |:---:|:------------------------------------------------------------------------------------------|
 |Description| The maximum number of rows in a result set that can be returned by a query                |
-|Type| Int32                                                                                     |
+|Type| int32                                                                                     |
 |Default| 10000                                                                                     |
 |Effective| After restarting system                                                                   |
 
@@ -2007,7 +2158,7 @@ Different configuration parameters take effect in the following three ways:
 |Name| cache_expire                                            |
 |:---:|:--------------------------------------------------------|
 |Description| Expiration time for caching customer login information  |
-|Type| Int32                                                   |
+|Type| int32                                                   |
 |Default| 28800                                                   |
 |Effective| After restarting system                                 |
 
@@ -2016,7 +2167,7 @@ Different configuration parameters take effect in the following three ways:
 |Name| cache_max_num |
 |:---:|:--------------|
 |Description| The maximum number of users stored in the cache  |
-|Type| Int32         |
+|Type| int32         |
 |Default| 100           |
 |Effective| After restarting system          |
 
@@ -2025,7 +2176,7 @@ Different configuration parameters take effect in the following three ways:
 |Name| cache_init_num |
 |:---:|:---------------|
 |Description| Initial cache capacity        |
-|Type| Int32          |
+|Type| int32          |
 |Default| 10             |
 |Effective| After restarting system           |
 
@@ -2112,8 +2263,12 @@ Different configuration parameters take effect in the following three ways:
 |Name| idle_timeout  |
 |:---:|:--------------|
 |Description| SSL timeout duration, expressed in seconds |
+<<<<<<< HEAD
 |Type| Int32         |
 >>>>>>> 4d447610fc (add mqtt and rest document)
+=======
+|Type| int32         |
+>>>>>>> 61cec8a2a3 (change type from int to int32,Bool to Boolean)
 |Default| 5000          |
 |Effective| After restarting system          |
 

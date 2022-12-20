@@ -47,6 +47,7 @@ IoTDB ConfigNode 和 DataNode 的公共配置参数位于 `conf` 目录下。
 
 * schema\_replication\_factor
 
+<<<<<<< HEAD
 |   名字   | schema\_replication\_factor |
 |:------:|:----------------------------|
 |   描述   | Database 的默认元数据副本数          |
@@ -54,6 +55,14 @@ IoTDB ConfigNode 和 DataNode 的公共配置参数位于 `conf` 目录下。
 |  默认值   | 1                           |
 | 改后生效方式 | 重启服务后对**新的 Database** 生效    |
 
+=======
+|名字| schema\_replication\_factor |
+|:---:|:---|
+|描述| Database 的默认元数据副本数 |
+|类型| int32 |
+|默认值| 1 |
+|改后生效方式|重启服务生效|
+>>>>>>> 61cec8a2a3 (change type from int to int32,Bool to Boolean)
 
 * schema\_region\_consensus\_protocol\_class
 
@@ -66,12 +75,21 @@ IoTDB ConfigNode 和 DataNode 的公共配置参数位于 `conf` 目录下。
 
 * data\_replication\_factor
 
+<<<<<<< HEAD
 |   名字   | data\_replication\_factor |
 |:------:|:--------------------------|
 |   描述   | Database 的默认数据副本数         |
 |   类型   | int32                     |
 |  默认值   | 1                         |
 | 改后生效方式 | 重启服务后对**新的 Database** 生效  |
+=======
+|名字| data\_replication\_factor |
+|:---:|:---|
+|描述| Database 的默认数据副本数|
+|类型| int32 |
+|默认值| 1 |
+|改后生效方式|重启服务生效|
+>>>>>>> 61cec8a2a3 (change type from int to int32,Bool to Boolean)
 
 * data\_region\_consensus\_protocol\_class
 
@@ -86,12 +104,21 @@ IoTDB ConfigNode 和 DataNode 的公共配置参数位于 `conf` 目录下。
 
 * series\_partition\_slot\_num
 
+<<<<<<< HEAD
 |   名字   | series\_slot\_num |
 |:------:|:------------------|
 |   描述   | 序列分区槽数            |
 |   类型   | int32             |
 |  默认值   | 10000             |
 | 改后生效方式 | 仅允许在第一次启动服务前修改    |
+=======
+|名字| series\_partition\_slot\_num |
+|:---:|:---|
+|描述| 序列分区槽数 |
+|类型| int32 |
+|默认值| 10000 |
+|改后生效方式|仅允许在第一次启动服务前修改|
+>>>>>>> 61cec8a2a3 (change type from int to int32,Bool to Boolean)
 
 * series\_partition\_executor\_class
 
@@ -272,12 +299,21 @@ IoTDB ConfigNode 和 DataNode 的公共配置参数位于 `conf` 目录下。
 
 * primitive\_array\_size
 
+<<<<<<< HEAD
 |   名字   | primitive\_array\_size |
 |:------:|:-----------------------|
 |   描述   | 数组池中的原始数组大小（每个数组的长度）   |
 |   类型   | int32                  |
 |  默认值   | 64                     |
 | 改后生效方式 | 重启服务生效                 |
+=======
+|名字| primary\_array\_size |
+|:---:|:---|
+|描述| 数组池中的原始数组大小（每个数组的长度）|
+|类型| int32 |
+|默认值| 32 |
+|改后生效方式|重启服务生效|
+>>>>>>> 61cec8a2a3 (change type from int to int32,Bool to Boolean)
 
 * flush\_proportion
 
@@ -568,9 +604,15 @@ IoTDB ConfigNode 和 DataNode 的公共配置参数位于 `conf` 目录下。
 
 |名字| max\_deduplicated\_path\_num |
 |:---:|:---|
+<<<<<<< HEAD
 |描述| 单次查询允许的最大路径数。 |
 |类型| Int32 |
 |默认值| 1000 |
+=======
+|描述| SchemaRegion的缓存大小。所有路径检查和将具有相应路径的SchemaRegion中的TSDataType的缓存，都将被用作提高写入速度。|
+|类型|int32|
+|默认值| 300000 |
+>>>>>>> 61cec8a2a3 (change type from int to int32,Bool to Boolean)
 |改后生效方式|重启服务生效|
 
 * mpp\_data\_exchange\_core\_pool\_size
@@ -593,12 +635,39 @@ IoTDB ConfigNode 和 DataNode 的公共配置参数位于 `conf` 目录下。
 
 * mpp\_data\_exchange\_keep\_alive\_time\_in\_ms
 
+<<<<<<< HEAD
 |     名字     | mpp\_data\_exchange\_keep\_alive\_time\_in\_ms |
 | :----------: | :--------------------------------------------- |
 |     描述     | MPP 数据交换最大等待时间                       |
 |     类型     | int32                                            |
 |    默认值    | 1000                                           |
 | 改后生效方式 | 重启服务生效                                   |
+=======
+|   名字   | mpp\_data\_exchange\_keep\_alive\_time\_in\_ms |
+|:------:|:-----------------------------------------------|
+|   描述   | MPP 数据交换最大等待时间                                 |
+|   类型   | int                                            |
+|  默认值   | 1000                                           |
+| 改后生效方式 | 重启服务生效                                         |
+
+* default\_fill\_interval
+
+|名字| default\_fill\_interval |
+|:---:|:---|
+|描述| 填充查询中使用的默认时间段，默认-1表示无限过去时间，以毫秒ms为单位 |
+|类型| int32 |
+|默认值| -1 |
+|改后生效方式|重启服务生效|
+
+* group_by_fill_cache_size_in_mb
+
+|     名字     | group_by_fill_cache_size_in_mb     |
+| :----------: | :--------------------------------- |
+|     描述     | 填充查询中使用的缓存大小，单位是MB |
+|     类型     | Float                              |
+|    默认值    | 1.0                                |
+| 改后生效方式 | 重启服务生效                       |
+>>>>>>> 61cec8a2a3 (change type from int to int32,Bool to Boolean)
 
 * driver\_task\_execution\_time\_slice\_in\_ms
 
@@ -631,17 +700,361 @@ IoTDB ConfigNode 和 DataNode 的公共配置参数位于 `conf` 目录下。
 
 |名字| slow\_query\_threshold |
 |:---:|:---|
+<<<<<<< HEAD
 |描述| 慢查询的时间阈值。单位：毫秒。|
 |类型| Int32 |
 |默认值| 5000 |
 |改后生效方式|热加载|
+=======
+|描述| 慢查询的时间成本（毫秒ms）阈值。 |
+|类型| int32 |
+|默认值| 5000 |
+|改后生效方式|触发生效|
+
+* enable\_external\_sort
+
+|名字| enable\_external\_sort |
+|:---:|:---|
+|描述| 是否开启外部排序功能 |
+|类型| Boolean |
+|默认值| true |
+|改后生效方式|重启服务生效|
+
+* external\_sort\_threshold
+
+|名字| external\_sort\_threshold |
+|:---:|:---|
+|描述| 单个时间序列的最大同时块读取数。若同时chunk读取的数量大于external_sort_threshold，则使用外部排序。当external_sort_threshold增加时，内存中同时排序的chunk数量可能会增加，这会占用更多的内存；external_sort_threshold 减小时，触发外部排序会增加耗时。|
+|类型| int32 |
+|默认值| 1000 |
+|改后生效方式|重启服务生效|
+
+### 存储引擎配置
+
+* timestamp\_precision
+
+|名字| timestamp\_precision |
+|:---:|:---|
+|描述| 时间戳精度，支持 ms、us、ns |
+|类型|String |
+|默认值| ms |
+|改后生效方式|触发生效|
+
+* default\_ttl\_in\_ms
+
+|名字| default\_ttl\_in\_ms |
+|:---:|:---|
+|描述| 数据保留时间，会丢弃 now()-default\_ttl 之前的数据，单位 ms|
+|类型| long |
+|默认值| 36000000 |
+|改后生效方式|重启服务生效|
+
+* memtable\_size\_threshold
+
+|名字| memtable\_size\_threshold |
+|:---:|:---|
+|描述| 内存缓冲区 memtable 阈值 |
+|类型| Long |
+|默认值| 1073741824 |
+|改后生效方式|enable\_mem\_control 为 false 时生效、重启服务生效|
+
+* enable\_timed\_flush\_seq\_memtable
+
+|名字| enable\_timed\_flush\_seq\_memtable |
+|:---:|:---|
+|描述| 是否开启定时刷盘顺序 memtable |
+|类型| Boolean |
+|默认值| false |
+|改后生效方式| 触发生效 |
+
+* seq\_memtable\_flush\_interval\_in\_ms
+
+|名字| seq\_memtable\_flush\_interval\_in\_ms |
+|:---:|:---|
+|描述| 当 memTable 的创建时间小于当前时间减去该值时，该 memtable 需要被刷盘 |
+|类型| int32 |
+|默认值| 3600000 |
+|改后生效方式| 触发生效 |
+
+* seq\_memtable\_flush\_check\_interval\_in\_ms
+
+|名字| seq\_memtable\_flush\_check\_interval\_in\_ms |
+|:---:|:---|
+|描述| 检查顺序 memtable 是否需要刷盘的时间间隔 |
+|类型| int32 |
+|默认值| 600000 |
+|改后生效方式| 触发生效 |
+
+* enable\_timed\_flush\_unseq\_memtable
+
+|名字| enable\_timed\_flush\_unseq\_memtable |
+|:---:|:---|
+|描述| 是否开启定时刷新乱序 memtable |
+|类型| Boolean |
+|默认值| true |
+|改后生效方式| 触发生效 |
+
+* unseq\_memtable\_flush\_interval\_in\_ms
+
+|名字| unseq\_memtable\_flush\_interval\_in\_ms |
+|:---:|:---|
+|描述| 当 memTable 的创建时间小于当前时间减去该值时，该 memtable 需要被刷盘 |
+|类型| int32 |
+|默认值| 3600000 |
+|改后生效方式| 触发生效 |
+
+* unseq\_memtable\_flush\_check\_interval\_in\_ms
+
+|名字| unseq\_memtable\_flush\_check\_interval\_in\_ms |
+|:---:|:---|
+|描述| 检查乱序 memtable 是否需要刷盘的时间间隔 |
+|类型| int32 |
+|默认值| 600000 |
+|改后生效方式| 触发生效 |
+
+* avg\_series\_point\_number\_threshold
+
+|名字| avg\_series\_point\_number\_threshold |
+|:---:|:--------------------------------------|
+|描述| 内存中平均每个时间序列点数最大值，达到触发 flush           |
+|类型| int32                                 |
+|默认值| 100000                                |
+|改后生效方式| 重启服务生效                                |
+
+* flush\_thread\_count
+
+|名字| flush\_thread\_count |
+|:---:|:---|
+|描述| 当 IoTDB 将内存中的数据写入磁盘时，最多启动多少个线程来执行该操作。如果该值小于等于 0，那么采用机器所安装的 CPU 核的数量。默认值为 0。|
+|类型| int32 |
+|默认值| 0 |
+|改后生效方式|重启服务生效|
+
+* query\_thread\_count
+
+|名字| query\_thread\_count                                                   |
+|:---:|:----------------------------------------------------------------------------|
+|描述| 当 IoTDB 对内存中的数据进行查询时，最多启动多少个线程来执行该操作。如果该值小于等于 0，那么采用机器所安装的 CPU 核的数量。默认值为 16。 |
+|类型| int32                                                                       |
+|默认值| 16                                                                          |
+|改后生效方式| 重启服务生效                                                                      |
+
+* sub\_rawQuery\_thread\_count
+
+|名字| sub\_rawQuery\_thread\_count                    |
+|:---:|:------------------------------------------------|
+|描述| 原始数据查询时，最多启动多少个线程来执行该操作。如果设置小于等于 0，会采用机器 CPU 核数 |
+|类型| int32                                           |
+|默认值| 8                                               |
+|改后生效方式| 重启服务生效                                          |
+
+* raw\_query\_blocking\_queue\_capacity
+
+|名字| raw\_query\_blocking\_queue\_capacity |
+|:---:|:--------------------------------------|
+|描述| 原始数据查询中，读任务的阻塞队列长度。默认值为 5             |
+|类型| int32                                 |
+|默认值| 5                                     |
+|改后生效方式| 重启服务生效                                |
+
+* chunk\_buffer\_pool\_enable
+
+|名字| chunk\_buffer\_pool\_enable |
+|:---:|:---|
+|描述| 在将 memtable 序列化为内存中的字节时，是否开启由 IoTDB 而不是 JVM 接管内存管理，默认关闭。 |
+|类型| Boolean |
+|默认值| false |
+|改后生效方式|重启服务生效|
+
+* batch\_size
+
+|名字| batch\_size |
+|:---:|:---|
+|描述| 服务器中每次迭代的数据量（数据条目，即不同时间戳的数量。） |
+|类型| int32 |
+|默认值| 100000 |
+|改后生效方式|重启服务生效|
+
+* enable\_partial\_insert
+
+|名字| enable\_partial\_insert |
+|:---:|:---|
+|描述| 在一次 insert 请求中，如果部分测点写入失败，是否继续写入其他测点。|
+|类型| Boolean |
+|默认值| true |
+|改后生效方式|重启服务生效|
+
+* insert\_multi\_tablet\_enable\_multithreading\_column\_threshold
+
+|     名字     | insert\_multi\_tablet\_enable\_multithreading\_column\_threshold |
+| :----------: |:-----------------------------------------------------------------|
+|     描述     | 插入时启用多线程插入列数的阈值                                                  |
+|     类型     | int32                                                            |
+|    默认值    | 10                                                               |
+| 改后生效方式 | 重启服务生效                                                           |
+
+### 合并配置
+
+* enable\_seq\_space\_compaction
+
+|名字| enable\_seq\_space\_compaction |
+|:---:|:---|
+|描述| 顺序空间内合并，开启顺序文件之间的合并 |
+|类型| Boolean |
+|默认值| true |
+|改后生效方式|重启服务生效|
+
+* enable\_unseq\_space\_compaction
+
+|名字| enable\_unseq\_space\_compaction |
+|:---:|:---|
+|描述| 乱序空间内合并，开启乱序文件之间的合并 |
+|类型| Boolean |
+|默认值| false |
+|改后生效方式|重启服务生效|
+
+* enable\_cross\_space\_compaction
+
+|名字| enable\_cross\_space\_compaction |
+|:---:|:---|
+|描述| 跨空间合并，开启将乱序文件合并到顺序文件中 |
+|类型| Boolean |
+|默认值| true |
+|改后生效方式|重启服务生效|
+
+* compaction\_priority
+
+|名字| compaction\_priority |
+|:---:|:---|
+|描述| 合并时的优先级，BALANCE 各种合并平等，INNER_CROSS 优先进行顺序文件和顺序文件或乱序文件和乱序文件的合并，CROSS_INNER 优先将乱序文件合并到顺序文件中 |
+|类型| String |
+|默认值| BALANCE |
+|改后生效方式|重启服务生效|
+
+* target\_compaction\_file\_size
+
+|名字| target\_compaction\_file\_size |
+|:---:|:---|
+|描述| 空间内合并的目标文件大小 |
+|类型| Int64|
+|默认值| 1073741824 |
+|改后生效方式|重启服务生效|
+
+* target\_chunk\_size
+
+|名字| target\_chunk\_size |
+|:---:|:---|
+|描述| 合并时 Chunk 的目标大小 |
+|类型| Int64|
+|默认值| 1048576|
+|改后生效方式|重启服务生效|
+
+* target\_chunk\_point\_num
+
+|名字| target\_chunk\_point\_num |
+|:---:|:---|
+|描述| 合并时 Chunk 的目标点数 |
+|类型| int32 |
+|默认值| 100000 |
+|改后生效方式|重启服务生效|
+
+* chunk\_size\_lower\_bound\_in\_compaction
+
+|名字| chunk\_size\_lower\_bound\_in\_compaction |
+|:---:|:---|
+|描述| 合并时源 Chunk 的大小小于这个值，将被解开成点进行合并 |
+|类型| Int64 |
+|默认值| 128 |
+|改后生效方式|重启服务生效|
+
+* chunk\_point\_num\_lower\_bound\_in\_compaction
+
+|名字| chunk\_point\_num\_lower\_bound\_in\_compaction |
+|:---:|:---|
+|描述| 合并时源 Chunk 的点数小于这个值，将被解开成点进行合并 |
+|类型| int32 |
+|默认值| 100 |
+|改后生效方式|重启服务生效|
+
+* max\_inner\_compaction\_candidate\_file\_num
+
+|名字| max\_inner\_compaction\_candidate\_file\_num |
+|:---:|:---|
+|描述| 空间内合并中一次合并最多参与的文件数 |
+|类型| int32 |
+|默认值| 30|
+|改后生效方式|重启服务生效|
+
+* max\_cross\_compaction\_candidate\_file\_num
+
+|名字| max\_cross\_compaction\_candidate\_file\_num |
+|:---:|:---|
+|描述| 跨空间合并中一次合并最多参与的文件数 |
+|类型| int32 |
+|默认值| 1000|
+|改后生效方式|重启服务生效|
+
+* cross\_compaction\_file\_selection\_time\_budget
+
+|名字| cross\_compaction\_file\_selection\_time\_budget |
+|:---:|:---|
+|描述| 若一个合并文件选择运行的时间超过这个时间，它将结束，并且当前的文件合并选择将用作为最终选择。当时间小于0 时，则表示时间是无边界的。单位：ms。|
+|类型| int32 |
+|默认值| 30000 |
+|改后生效方式| 重启服务生效|
+
+* cross\_compaction\_memory\_budget
+
+|名字| cross\_compaction\_memory\_budget |
+|:---:|:---|
+|描述| 一个合并任务可以使用多少内存（以字节为单位），默认为最大JVM内存的10%。这只是一个粗略的估计，从一个比较小的值开始，避免OOM。每个新的合并线程可能会占用这样的内存，所以merge_thread_num * merge_memory_budget是合并的预估总内存。|
+|类型| int32 |
+|默认值| 2147483648 |
+|改后生效方式| 重启服务生效|
+
+* compaction\_thread\_count
+
+|名字| compaction\_thread\_count |
+|:---:|:---|
+|描述| 执行合并任务的线程数目 |
+|类型| int32 |
+|默认值| 10 |
+|改后生效方式|重启服务生效|
+
+* compaction\_schedule\_interval\_in\_ms
+
+|名字| compaction\_schedule\_interval\_in\_ms |
+|:---:|:---|
+|描述| 合并调度的时间间隔 |
+|类型| Int64 |
+|默认值| 60000 |
+|改后生效方式|重启服务生效|
+
+* compaction\_submission\_interval\_in\_ms
+
+|名字| compaction\_submission\_interval\_in\_ms |
+|:---:|:---|
+|描述| 合并任务提交的间隔 |
+|类型| Int64 |
+|默认值| 60000 |
+|改后生效方式|重启服务生效|
+
+* compaction\_write\_throughput\_mb\_per\_sec
+
+|名字| compaction\_write\_throughput\_mb\_per\_sec |
+|:---:|:---|
+|描述| 每秒可达到的写入吞吐量合并限制。|
+|类型| int32 |
+|默认值| 16 |
+|改后生效方式| 重启服务生效|
+>>>>>>> 61cec8a2a3 (change type from int to int32,Bool to Boolean)
 
 * query\_timeout\_threshold
 
 |名字| query\_timeout\_threshold |
 |:---:|:---|
 |描述| 查询的最大执行时间。单位：毫秒。|
-|类型| Int32 |
+|类型| int32 |
 |默认值| 60000 |
 |改后生效方式| 重启服务生效|
 
@@ -1076,6 +1489,7 @@ IoTDB ConfigNode 和 DataNode 的公共配置参数位于 `conf` 目录下。
 
 * wal\_mode
 
+<<<<<<< HEAD
 |   名字   | wal\_mode                                                                           |
 |:------:|:------------------------------------------------------------------------------------|
 |   描述   | 写前日志的写入模式. DISABLE 模式下会关闭写前日志；SYNC 模式下写入请求会在成功写入磁盘后返回； ASYNC 模式下写入请求返回时可能尚未成功写入磁盘后。 |
@@ -1163,6 +1577,14 @@ IoTDB ConfigNode 和 DataNode 的公共配置参数位于 `conf` 目录下。
 |   类型   | int64                              |
 |  默认值   | 20000                              |
 | 改后生效方式 | 热加载                                |
+=======
+|名字| wal\_buffer\_size |
+|:---:|:---|
+|描述| 写前日志的 buffer 大小 |
+|类型|int32|
+|默认值| 16777216 |
+|改后生效方式|触发生效|
+>>>>>>> 61cec8a2a3 (change type from int to int32,Bool to Boolean)
 
 ### TsFile 配置
 
@@ -1187,6 +1609,7 @@ IoTDB ConfigNode 和 DataNode 的公共配置参数位于 `conf` 目录下。
 * max\_number\_of\_points\_in\_page
 
 |名字| max\_number\_of\_points\_in\_page |
+<<<<<<< HEAD
 |:---:|:----------------------------------|
 |描述| 一个页中最多包含的数据点（时间戳-值的二元组）数量         |
 |类型| int32                             |
@@ -1201,6 +1624,13 @@ IoTDB ConfigNode 和 DataNode 的公共配置参数位于 `conf` 目录下。
 |类型| int32                        |
 |默认值| 1000000                        |
 |改后生效方式| 热加载                          |
+=======
+|:---:|:---|
+|描述| 一个页中最多包含的数据点（时间戳-值的二元组）数量 |
+|类型| int32 |
+|默认值| 1048576 |
+|改后生效方式|触发生效|
+>>>>>>> 61cec8a2a3 (change type from int to int32,Bool to Boolean)
 
 * max\_string\_length
 
@@ -1281,7 +1711,49 @@ IoTDB ConfigNode 和 DataNode 的公共配置参数位于 `conf` 目录下。
 |描述| FREQ编码的块大小，即一次时频域变换的数据点个数。为了加快编码速度，建议将其设置为2的幂次。 |
 |类型|int32|
 |默认值| 1024 |
+<<<<<<< HEAD
 |改后生效方式|热加载|
+=======
+|改后生效方式|触发生效|
+
+### 水印模块配置
+
+* watermark\_module\_opened
+
+|名字| watermark\_module\_opened |
+|:---:|:---|
+|描述| 是否开启水印水印嵌入功能 |
+|取值| true or false |
+|默认值| false |
+|改后生效方式|重启服务生效|
+
+* watermark\_secret\_key
+
+|名字| watermark\_secret\_key |
+|:---:|:---|
+|描述| 水印嵌入功能秘钥 |
+|类型| String |
+|默认值| IoTDB * 2019@Beijing |
+|改后生效方式|重启服务生效|
+
+* watermark\_bit\_string
+
+|名字| watermark\_bit\_string |
+|:---:|:---|
+|描述| 水印比特字符串 |
+|类型| int32 |
+|默认值| 100101110100 |
+|改后生效方式|重启服务生效|
+
+* watermark\_method
+
+|名字| watermark\_method |
+|:---:|:---|
+|描述| 水印嵌入方法 |
+|类型| String |
+|默认值| GroupBasedLSBMethod(embed_row_cycle=2,embed_lsb_num=5) |
+|改后生效方式|重启服务生效|
+>>>>>>> 61cec8a2a3 (change type from int to int32,Bool to Boolean)
 
 ### 授权配置
 
@@ -1400,12 +1872,21 @@ IoTDB ConfigNode 和 DataNode 的公共配置参数位于 `conf` 目录下。
 
 * trigger\_lib\_dir
 
+<<<<<<< HEAD
 |     名字     | trigger\_lib\_dir |
 | :----------: |:------------------|
 |     描述     | 触发器 JAR 包存放的目录    |
 |     类型     | String            |
 |    默认值    | ext/trigger                  |
 | 改后生效方式 | 重启服务生效            |
+=======
+|     名字     | concurrent_window_evaluation_thread |
+| :----------: | :---------------------------------- |
+|     描述     | 窗口计算线程池的默认线程数          |
+|     类型     | int32                               |
+|    默认值    | CPU核数                             |
+| 改后生效方式 | 重启服务生效                        |
+>>>>>>> 61cec8a2a3 (change type from int to int32,Bool to Boolean)
 
 * stateful\_trigger\_retry\_num\_when\_not\_found
 
@@ -1416,6 +1897,15 @@ IoTDB ConfigNode 和 DataNode 的公共配置参数位于 `conf` 目录下。
 |    默认值    | 3                                               |
 | 改后生效方式 | 重启服务生效                                          |
 
+<<<<<<< HEAD
+=======
+|     名字     | max_pending_window_evaluation_tasks |
+| :----------: | :---------------------------------- |
+|     描述     | 最多允许堆积的窗口计算任务          |
+|     类型     | int32                               |
+|    默认值    | 64                                  |
+| 改后生效方式 | 重启服务生效                        |
+>>>>>>> 61cec8a2a3 (change type from int to int32,Bool to Boolean)
 
 ### SELECT-INTO配置
 
@@ -1441,7 +1931,20 @@ IoTDB ConfigNode 和 DataNode 的公共配置参数位于 `conf` 目录下。
 
 * continuous\_query\_submit\_thread\_count
 
+<<<<<<< HEAD
 |     名字     | continuous\_query\_execution\_thread |
+=======
+|     名字     | max_pending_continuous_query_tasks |
+| :----------: | :--------------------------------- |
+|     描述     | 队列中连续查询最大任务堆积数       |
+|     类型     | int32                              |
+|    默认值    | 64                                 |
+| 改后生效方式 | 重启服务生效                       |
+
+* continuous_query_submit_thread_count
+
+|     名字     | continuous_query_execution_thread |
+>>>>>>> 61cec8a2a3 (change type from int to int32,Bool to Boolean)
 | :----------: |:----------------------------------|
 |     描述     | 执行连续查询任务的线程池的线程数                  |
 |     类型     | int32                             |
@@ -1926,7 +2429,7 @@ IoTDB ConfigNode 和 DataNode 的公共配置参数位于 `conf` 目录下。
 |名字| rest_service_port |
 |:---:|:------------------|
 |描述| Rest服务监听端口号       |
-|类型| Int32             |
+|类型| int32             |
 |默认值| 18080             |
 |改后生效方式| 重启生效              |
 
@@ -1986,7 +2489,7 @@ IoTDB ConfigNode 和 DataNode 的公共配置参数位于 `conf` 目录下。
 |名字| rest_query_default_row_size_limit |
 |:---:|:----------------------------------|
 |描述| 一次查询能返回的结果集最大行数                   |
-|类型| Int32                             |
+|类型| int32                             |
 |默认值| 10000                             |
 |改后生效方式| 重启生效                              |
 
@@ -1995,7 +2498,7 @@ IoTDB ConfigNode 和 DataNode 的公共配置参数位于 `conf` 目录下。
 |名字| cache_expire  |
 |:---:|:--------------|
 |描述| 缓存客户登录信息的过期时间 |
-|类型| Int32         |
+|类型| int32         |
 |默认值| 28800         |
 |改后生效方式| 重启生效          |
 
@@ -2004,7 +2507,7 @@ IoTDB ConfigNode 和 DataNode 的公共配置参数位于 `conf` 目录下。
 |名字| cache_max_num |
 |:---:|:--------------|
 |描述| 缓存中存储的最大用户数量  |
-|类型| Int32         |
+|类型| int32         |
 |默认值| 100           |
 |改后生效方式| 重启生效          |
 
@@ -2013,7 +2516,7 @@ IoTDB ConfigNode 和 DataNode 的公共配置参数位于 `conf` 目录下。
 |名字| cache_init_num |
 |:---:|:---------------|
 |描述| 缓存初始容量         |
-|类型| Int32          |
+|类型| int32          |
 |默认值| 10             |
 |改后生效方式| 重启生效           |
 
@@ -2100,8 +2603,12 @@ IoTDB ConfigNode 和 DataNode 的公共配置参数位于 `conf` 目录下。
 |名字| idle_timeout  |
 |:---:|:--------------|
 |描述| SSL 超时时间，单位为秒 |
+<<<<<<< HEAD
 |类型| Int32         |
 >>>>>>> 4d447610fc (add mqtt and rest document)
+=======
+|类型| int32         |
+>>>>>>> 61cec8a2a3 (change type from int to int32,Bool to Boolean)
 |默认值| 5000          |
 |改后生效方式| 重启生效          |
 
