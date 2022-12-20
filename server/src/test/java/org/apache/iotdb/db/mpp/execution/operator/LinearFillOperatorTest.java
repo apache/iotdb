@@ -126,7 +126,7 @@ public class LinearFillOperatorTest {
 
                 @Override
                 public OperatorContext getOperatorContext() {
-                  return null;
+                  return fragmentInstanceContext.getOperatorContexts().get(0);
                 }
 
                 @Override
@@ -339,7 +339,7 @@ public class LinearFillOperatorTest {
 
                 @Override
                 public OperatorContext getOperatorContext() {
-                  return null;
+                  return fragmentInstanceContext.getOperatorContexts().get(0);
                 }
 
                 @Override
@@ -552,7 +552,7 @@ public class LinearFillOperatorTest {
 
                 @Override
                 public OperatorContext getOperatorContext() {
-                  return null;
+                  return fragmentInstanceContext.getOperatorContexts().get(0);
                 }
 
                 @Override
@@ -765,7 +765,7 @@ public class LinearFillOperatorTest {
 
                 @Override
                 public OperatorContext getOperatorContext() {
-                  return null;
+                  return fragmentInstanceContext.getOperatorContexts().get(0);
                 }
 
                 @Override
@@ -932,7 +932,7 @@ public class LinearFillOperatorTest {
 
                 @Override
                 public OperatorContext getOperatorContext() {
-                  return null;
+                  return fragmentInstanceContext.getOperatorContexts().get(0);
                 }
 
                 @Override
@@ -1052,7 +1052,7 @@ public class LinearFillOperatorTest {
 
                 @Override
                 public OperatorContext getOperatorContext() {
-                  return null;
+                  return fragmentInstanceContext.getOperatorContexts().get(0);
                 }
 
                 @Override
@@ -1172,7 +1172,7 @@ public class LinearFillOperatorTest {
 
                 @Override
                 public OperatorContext getOperatorContext() {
-                  return null;
+                  return fragmentInstanceContext.getOperatorContexts().get(0);
                 }
 
                 @Override

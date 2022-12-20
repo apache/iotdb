@@ -75,7 +75,7 @@ public class FillOperatorTest {
 
                 @Override
                 public OperatorContext getOperatorContext() {
-                  return null;
+                  return fragmentInstanceContext.getOperatorContexts().get(0);
                 }
 
                 @Override
@@ -245,7 +245,7 @@ public class FillOperatorTest {
 
                 @Override
                 public OperatorContext getOperatorContext() {
-                  return null;
+                  return fragmentInstanceContext.getOperatorContexts().get(0);
                 }
 
                 @Override
