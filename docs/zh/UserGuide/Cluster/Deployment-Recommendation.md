@@ -72,6 +72,9 @@
 - data_region_group_per_database
     - 如果是 3C3D 高性能分布式：则改为：集群 CPU 总核数/ 数据副本数
     - 如果是 1C1D，则改为：等于 0.13 的 virtual_storage_group_num 即可 （"database"一词 与 0.13 中的 "sg" 同义）
+- 如果启动时遇到元数据内存不足的提示，这是因为1.0版本中分配给元数据的内存不再全部用于 schema region 存储，可调节如下两个参数
+  - schema_memory_allocate_proportion：增大 schema region 的内存比例
+  - storage_query_schema_consensus_free_memory_proportion：增大 schema 的内存比例
 
 数据迁移：
 配置修改完成后，通过 load-tsfile 工具将 0.13 的 TsFile 都加载进 1.0 的 IoTDB 中，即可使用。
