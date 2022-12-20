@@ -88,7 +88,9 @@ public class MManagerMetrics implements IMetricSet {
             mManager,
             MManager::getTotalTemplateActivatedNumber,
             Tag.NAME.toString(),
-            "device using template");
+            "device using template",
+            Tag.TYPE.toString(),
+            "template");
 
     MetricService.getInstance()
         .getOrCreateAutoGauge(
@@ -97,7 +99,9 @@ public class MManagerMetrics implements IMetricSet {
             mManager,
             MManager::getTotalEstimatedMemoryUsage,
             Tag.NAME.toString(),
-            "schema memory usage");
+            "schema memory usage",
+            Tag.TYPE.toString(),
+            "total");
 
     MetricService.getInstance()
         .getOrCreateAutoGauge(
@@ -108,7 +112,9 @@ public class MManagerMetrics implements IMetricSet {
                 IoTDBDescriptor.getInstance().getConfig().getAllocateMemoryForSchema()
                     - mManager.getTotalEstimatedMemoryUsage(),
             Tag.NAME.toString(),
-            "schema memory remaining");
+            "schema memory remaining",
+            Tag.TYPE.toString(),
+            "total");
   }
 
   @Override
@@ -154,17 +160,26 @@ public class MManagerMetrics implements IMetricSet {
             MetricType.GAUGE,
             Metric.QUANTITY.toString(),
             Tag.NAME.toString(),
-            "device using template");
-
-    MetricService.getInstance()
-        .remove(
-            MetricType.GAUGE, Metric.MEM.toString(), Tag.NAME.toString(), "schema memory usage");
+            "device using template",
+            Tag.TYPE.toString(),
+            "template");
 
     MetricService.getInstance()
         .remove(
             MetricType.GAUGE,
             Metric.MEM.toString(),
             Tag.NAME.toString(),
-            "schema memory remaining");
+            "schema memory usage",
+            Tag.TYPE.toString(),
+            "total");
+
+    MetricService.getInstance()
+        .remove(
+            MetricType.GAUGE,
+            Metric.MEM.toString(),
+            Tag.NAME.toString(),
+            "schema memory remaining",
+            Tag.TYPE.toString(),
+            "total");
   }
 }
