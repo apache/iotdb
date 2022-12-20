@@ -44,7 +44,7 @@ public abstract class IClientSession {
 
   private long logInTime;
 
-  private boolean enableAudit;
+  private boolean enableAudit = true;
 
   abstract String getClientAddress();
 
