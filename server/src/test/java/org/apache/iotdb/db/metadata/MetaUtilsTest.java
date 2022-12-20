@@ -25,14 +25,19 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.InternalMNode;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.junit.Assert;
 import org.junit.Test;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 public class MetaUtilsTest {
 
@@ -69,6 +74,7 @@ public class MetaUtilsTest {
         });
   }
 
+  /** TODO: remove this after delete {@linkplain MetaUtils#groupAlignedPaths} */
   @Test
   public void testGroupAlignedPath() throws MetadataException {
     List<PartialPath> pathList = new ArrayList<>();
@@ -96,5 +102,89 @@ public class MetaUtilsTest {
     assertTrue(result.contains(path1));
     assertTrue(result.contains(path2));
     assertTrue(result.contains(alignedPath));
+  }
+
+  @Test
+  public void testGetStorageGroupPathByLevel() {
+    int level = 1;
+    try {
+      assertEquals(
+          "root.laptop",
+          MetaUtils.getStorageGroupPathByLevel(new PartialPath("root.laptop.d1.s1"), level)
+              .getFullPath());
+    } catch (MetadataException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+
+    boolean caughtException = false;
+    try {
+      MetaUtils.getStorageGroupPathByLevel(new PartialPath("root1.laptop.d1.s1"), level);
+    } catch (MetadataException e) {
+      caughtException = true;
+      assertEquals("root1.laptop.d1.s1 is not a legal path", e.getMessage());
+    }
+    assertTrue(caughtException);
+
+    caughtException = false;
+    try {
+      MetaUtils.getStorageGroupPathByLevel(new PartialPath("root"), level);
+    } catch (MetadataException e) {
+      caughtException = true;
+      assertEquals("root is not a legal path", e.getMessage());
+    }
+    assertTrue(caughtException);
+  }
+
+  @Test
+  public void testGroupAlignedSeries() throws MetadataException {
+    List<PartialPath> pathList = new ArrayList<>();
+    MeasurementPath path1 =
+        new MeasurementPath(new PartialPath("root.sg.device1.s1"), TSDataType.INT32);
+    pathList.add(path1);
+    MeasurementPath path2 =
+        new MeasurementPath(new PartialPath("root.sg.device1.s2"), TSDataType.INT32);
+    pathList.add(path2);
+    MeasurementPath path3 =
+        new MeasurementPath(new PartialPath("root.sg.aligned_device1.s1"), TSDataType.INT32);
+    path3.setUnderAlignedEntity(true);
+    pathList.add(path3);
+    MeasurementPath path4 =
+        new MeasurementPath(new PartialPath("root.sg.aligned_device2.s1"), TSDataType.INT32);
+    path4.setUnderAlignedEntity(true);
+    pathList.add(path4);
+    MeasurementPath path5 =
+        new MeasurementPath(new PartialPath("root.sg.aligned_device1.s2"), TSDataType.INT32);
+    path5.setUnderAlignedEntity(true);
+    pathList.add(path5);
+    MeasurementPath path6 =
+        new MeasurementPath(new PartialPath("root.sg.aligned_device2.s2"), TSDataType.INT32);
+    path6.setUnderAlignedEntity(true);
+    pathList.add(path6);
+
+    AlignedPath alignedPath1 = new AlignedPath(path3);
+    alignedPath1.addMeasurement(path5);
+    AlignedPath alignedPath2 = new AlignedPath(path4);
+    alignedPath2.addMeasurement(path6);
+
+    List<PartialPath> result = MetaUtils.groupAlignedSeries(pathList);
+    assertTrue(result.contains(path1));
+    assertTrue(result.contains(path2));
+    assertTrue(result.contains(alignedPath1));
+    assertTrue(result.contains(alignedPath2));
+  }
+
+  @Test
+  public void testParseDeadbandInfo() {
+    Map<String, String> props = new HashMap<>();
+    Map<String, String> sdtProps = new HashMap<>();
+    props.put("loss", "sdt");
+    sdtProps.put("compdev", "0.01");
+    sdtProps.put("compmintime", "2");
+    sdtProps.put("compmaxtime", "10");
+    props.putAll(sdtProps);
+    Pair<String, String> res = MetaUtils.parseDeadbandInfo(props);
+    Assert.assertEquals("SDT", res.left);
+    Assert.assertEquals(sdtProps.toString(), res.right);
   }
 }
