@@ -412,4 +412,12 @@ public interface BaseConfig {
   default int getQueryThreadCount() {
     return Runtime.getRuntime().availableProcessors();
   }
+
+  default BaseConfig setDataRatisTriggerSnapshotThreshold(long threshold) {
+    return this;
+  }
+
+  default BaseConfig setConfigNodeRatisSnapshotTriggerThreshold(long threshold) {
+    return this;
+  }
 }
