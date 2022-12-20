@@ -134,7 +134,7 @@ public class IoTDBSnapshotTransferIT {
       Assert.assertEquals(
           2 * (snapshotMagic + 1), readResult.getInt("count(root.emma.william.ethereal)"));
 
-      EnvFactory.getEnv().registerNewConfigNode();
+      EnvFactory.getEnv().registerNewConfigNode(true);
       final TShowRegionResp registerResult = configClient.showRegion(new TShowRegionReq());
       Assert.assertNotNull(result.getRegionInfoList());
 

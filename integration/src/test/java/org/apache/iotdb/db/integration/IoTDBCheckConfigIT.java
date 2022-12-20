@@ -90,7 +90,7 @@ public class IoTDBCheckConfigIT {
 
   @Test
   public void testSaveTimeEncoderToSystemProperties() throws Exception {
-    IoTDBStartCheck.getInstance().checkConfig();
+    IoTDBStartCheck.getInstance().checkSystemConfig();
     // read properties from system.properties
     try (FileInputStream inputStream = new FileInputStream(propertiesFile);
         InputStreamReader inputStreamReader =
@@ -110,7 +110,7 @@ public class IoTDBCheckConfigIT {
     writeSystemFile();
     EnvironmentUtils.reactiveDaemon();
     try {
-      IoTDBStartCheck.getInstance().checkConfig();
+      IoTDBStartCheck.getInstance().checkSystemConfig();
     } catch (ConfigurationException t) {
       t.printStackTrace();
       assertEquals("time_encoder", t.getParameter());
@@ -129,7 +129,7 @@ public class IoTDBCheckConfigIT {
     writeSystemFile();
     EnvironmentUtils.reactiveDaemon();
     try {
-      IoTDBStartCheck.getInstance().checkConfig();
+      IoTDBStartCheck.getInstance().checkSystemConfig();
     } catch (Throwable t) {
       fail(t.getMessage());
     }

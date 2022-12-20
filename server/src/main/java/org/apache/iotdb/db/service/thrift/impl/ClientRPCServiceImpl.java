@@ -38,8 +38,6 @@ import org.apache.iotdb.db.mpp.plan.analyze.ClusterPartitionFetcher;
 import org.apache.iotdb.db.mpp.plan.analyze.ClusterSchemaFetcher;
 import org.apache.iotdb.db.mpp.plan.analyze.IPartitionFetcher;
 import org.apache.iotdb.db.mpp.plan.analyze.ISchemaFetcher;
-import org.apache.iotdb.db.mpp.plan.analyze.StandalonePartitionFetcher;
-import org.apache.iotdb.db.mpp.plan.analyze.StandaloneSchemaFetcher;
 import org.apache.iotdb.db.mpp.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.mpp.plan.execution.IQueryExecution;
 import org.apache.iotdb.db.mpp.plan.parser.StatementGenerator;
@@ -71,6 +69,7 @@ import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.ServerProperties;
 import org.apache.iotdb.service.rpc.thrift.TSAppendSchemaTemplateReq;
+import org.apache.iotdb.service.rpc.thrift.TSBackupConfigurationResp;
 import org.apache.iotdb.service.rpc.thrift.TSCancelOperationReq;
 import org.apache.iotdb.service.rpc.thrift.TSCloseOperationReq;
 import org.apache.iotdb.service.rpc.thrift.TSCloseSessionReq;
@@ -100,6 +99,7 @@ import org.apache.iotdb.service.rpc.thrift.TSInsertTabletsReq;
 import org.apache.iotdb.service.rpc.thrift.TSLastDataQueryReq;
 import org.apache.iotdb.service.rpc.thrift.TSOpenSessionReq;
 import org.apache.iotdb.service.rpc.thrift.TSOpenSessionResp;
+import org.apache.iotdb.service.rpc.thrift.TSProtocolVersion;
 import org.apache.iotdb.service.rpc.thrift.TSPruneSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSQueryDataSet;
 import org.apache.iotdb.service.rpc.thrift.TSQueryTemplateReq;
@@ -126,9 +126,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-import static org.apache.iotdb.db.service.basic.ServiceProvider.AUDIT_LOGGER;
-import static org.apache.iotdb.db.service.basic.ServiceProvider.CURRENT_RPC_VERSION;
-import static org.apache.iotdb.db.service.basic.ServiceProvider.QUERY_FREQUENCY_RECORDER;
 import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onIoTDBException;
 import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onNPEOrUnexpectedException;
 import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onQueryException;
@@ -142,6 +139,9 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
   private static final Coordinator COORDINATOR = Coordinator.getInstance();
 
   private static final SessionManager SESSION_MANAGER = SessionManager.getInstance();
+
+  private static final TSProtocolVersion CURRENT_RPC_VERSION =
+      TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V3;
 
   private final IPartitionFetcher PARTITION_FETCHER;
 
@@ -170,13 +170,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       };
 
   public ClientRPCServiceImpl() {
-    if (config.isClusterMode()) {
-      PARTITION_FETCHER = ClusterPartitionFetcher.getInstance();
-      SCHEMA_FETCHER = ClusterSchemaFetcher.getInstance();
-    } else {
-      PARTITION_FETCHER = StandalonePartitionFetcher.getInstance();
-      SCHEMA_FETCHER = StandaloneSchemaFetcher.getInstance();
-    }
+    PARTITION_FETCHER = ClusterPartitionFetcher.getInstance();
+    SCHEMA_FETCHER = ClusterSchemaFetcher.getInstance();
   }
 
   private TSExecuteStatementResp executeStatementInternal(
@@ -204,9 +199,6 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return RpcUtils.getTSExecuteStatementResp(status);
       }
-
-      QUERY_FREQUENCY_RECORDER.incrementAndGet();
-      AUDIT_LOGGER.debug("Session {} execute Query: {}", req.sessionId, statement);
 
       queryId = SESSION_MANAGER.requestQueryId(SESSION_MANAGER.getCurrSession(), req.statementId);
       // create and cache dataset
@@ -269,8 +261,6 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         return RpcUtils.getTSExecuteStatementResp(status);
       }
 
-      QUERY_FREQUENCY_RECORDER.incrementAndGet();
-      AUDIT_LOGGER.debug("Session {} execute Raw Data Query: {}", req.sessionId, req);
       queryId = SESSION_MANAGER.requestQueryId(SESSION_MANAGER.getCurrSession(), req.statementId);
       // create and cache dataset
       ExecutionResult result =
@@ -329,8 +319,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return RpcUtils.getTSExecuteStatementResp(status);
       }
-      QUERY_FREQUENCY_RECORDER.incrementAndGet();
-      AUDIT_LOGGER.debug("Session {} execute Last Data Query: {}", req.sessionId, req);
+
       queryId = SESSION_MANAGER.requestQueryId(SESSION_MANAGER.getCurrSession(), req.statementId);
       // create and cache dataset
       ExecutionResult result =
@@ -550,11 +539,6 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         return getNotLoggedInStatus();
       }
 
-      if (AUDIT_LOGGER.isDebugEnabled()) {
-        AUDIT_LOGGER.debug(
-            "Session-{} create database {}", SESSION_MANAGER.getCurrSession(), storageGroup);
-      }
-
       // Step 1: Create SetStorageGroupStatement
       SetStorageGroupStatement statement =
           (SetStorageGroupStatement) StatementGenerator.createStatement(storageGroup);
@@ -590,11 +574,6 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     try {
       if (!SESSION_MANAGER.checkLogin(SESSION_MANAGER.getCurrSession())) {
         return getNotLoggedInStatus();
-      }
-
-      if (AUDIT_LOGGER.isDebugEnabled()) {
-        AUDIT_LOGGER.debug(
-            "Session-{} create timeseries {}", SESSION_MANAGER.getCurrSession(), req.getPath());
       }
 
       // measurementAlias is also a nodeName
@@ -635,14 +614,6 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     try {
       if (!SESSION_MANAGER.checkLogin(SESSION_MANAGER.getCurrSession())) {
         return getNotLoggedInStatus();
-      }
-
-      if (AUDIT_LOGGER.isDebugEnabled()) {
-        AUDIT_LOGGER.debug(
-            "Session-{} create aligned timeseries {}.{}",
-            SESSION_MANAGER.getCurrSession(),
-            req.getPrefixPath(),
-            req.getMeasurements());
       }
 
       // check whether measurement is legal according to syntax convention
@@ -687,14 +658,6 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     try {
       if (!SESSION_MANAGER.checkLogin(SESSION_MANAGER.getCurrSession())) {
         return getNotLoggedInStatus();
-      }
-
-      if (AUDIT_LOGGER.isDebugEnabled()) {
-        AUDIT_LOGGER.debug(
-            "Session-{} create {} timeseries, the first is {}",
-            SESSION_MANAGER.getCurrSession(),
-            req.getPaths().size(),
-            req.getPaths().get(0));
       }
 
       // check whether measurement is legal according to syntax convention
@@ -777,14 +740,6 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         return getNotLoggedInStatus();
       }
 
-      if (AUDIT_LOGGER.isDebugEnabled()) {
-        AUDIT_LOGGER.debug(
-            "Session-{} delete {} databases, the first is {}",
-            SESSION_MANAGER.getCurrSession(),
-            storageGroups.size(),
-            storageGroups.get(0));
-      }
-
       // Step 1: transfer from DeleteStorageGroupsReq to Statement
       DeleteStorageGroupStatement statement =
           (DeleteStorageGroupStatement) StatementGenerator.createStatement(storageGroups);
@@ -851,9 +806,6 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
           return status;
         }
-
-        QUERY_FREQUENCY_RECORDER.incrementAndGet();
-        AUDIT_LOGGER.debug("Session {} execute Query: {}", req.sessionId, s);
 
         long queryId = SESSION_MANAGER.requestQueryId();
         long t2 = System.currentTimeMillis();
@@ -944,14 +896,6 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         return getNotLoggedInStatus();
       }
 
-      if (AUDIT_LOGGER.isDebugEnabled()) {
-        AUDIT_LOGGER.debug(
-            "Session {} insertRecords, first device {}, first time {}",
-            SESSION_MANAGER.getCurrSession(),
-            req.prefixPaths.get(0),
-            req.getTimestamps().get(0));
-      }
-
       // check whether measurement is legal according to syntax convention
       req.setMeasurementsList(
           PathUtils.checkIsLegalSingleMeasurementListsAndUpdate(req.getMeasurementsList()));
@@ -998,14 +942,6 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     try {
       if (!SESSION_MANAGER.checkLogin(SESSION_MANAGER.getCurrSession())) {
         return getNotLoggedInStatus();
-      }
-
-      if (AUDIT_LOGGER.isDebugEnabled()) {
-        AUDIT_LOGGER.debug(
-            "Session {} insertRecords, device {}, first time {}",
-            SESSION_MANAGER.getCurrSession(),
-            req.prefixPath,
-            req.getTimestamps().get(0));
       }
 
       // check whether measurement is legal according to syntax convention
@@ -1055,14 +991,6 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     try {
       if (!SESSION_MANAGER.checkLogin(SESSION_MANAGER.getCurrSession())) {
         return getNotLoggedInStatus();
-      }
-
-      if (AUDIT_LOGGER.isDebugEnabled()) {
-        AUDIT_LOGGER.debug(
-            "Session {} insertRecords, device {}, first time {}",
-            SESSION_MANAGER.getCurrSession(),
-            req.prefixPath,
-            req.getTimestamps().get(0));
       }
 
       // check whether measurement is legal according to syntax convention
@@ -1116,12 +1044,6 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       if (!SESSION_MANAGER.checkLogin(SESSION_MANAGER.getCurrSession())) {
         return getNotLoggedInStatus();
       }
-
-      AUDIT_LOGGER.debug(
-          "Session {} insertRecord, device {}, time {}",
-          SESSION_MANAGER.getCurrSession(),
-          req.getPrefixPath(),
-          req.getTimestamp());
 
       // check whether measurement is legal according to syntax convention
       req.setMeasurements(PathUtils.checkIsLegalSingleMeasurementsAndUpdate(req.getMeasurements()));
@@ -1264,14 +1186,6 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         return getNotLoggedInStatus();
       }
 
-      if (AUDIT_LOGGER.isDebugEnabled()) {
-        AUDIT_LOGGER.debug(
-            "Session {} insertRecords, first device {}, first time {}",
-            SESSION_MANAGER.getCurrSession(),
-            req.prefixPaths.get(0),
-            req.getTimestamps().get(0));
-      }
-
       // check whether measurement is legal according to syntax convention
       req.setMeasurementsList(
           PathUtils.checkIsLegalSingleMeasurementListsAndUpdate(req.getMeasurementsList()));
@@ -1409,13 +1323,6 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         return getNotLoggedInStatus();
       }
 
-      if (AUDIT_LOGGER.isDebugEnabled()) {
-        AUDIT_LOGGER.debug(
-            "Session-{} create schema template {}",
-            SESSION_MANAGER.getCurrSession(),
-            req.getName());
-      }
-
       // Step 1: transfer from TSCreateSchemaTemplateReq to Statement
       CreateSchemaTemplateStatement statement = StatementGenerator.createStatement(req);
 
@@ -1510,9 +1417,6 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         return resp;
       }
 
-      QUERY_FREQUENCY_RECORDER.incrementAndGet();
-      AUDIT_LOGGER.debug("Session {} execute Query: {}", req.sessionId, statement);
-
       long queryId = SESSION_MANAGER.requestQueryId();
       // create and cache dataset
       ExecutionResult executionResult =
@@ -1570,16 +1474,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         return getNotLoggedInStatus();
       }
 
-      if (AUDIT_LOGGER.isDebugEnabled()) {
-        AUDIT_LOGGER.debug(
-            "Session-{} set schema template {}.{}",
-            SESSION_MANAGER.getCurrSession(),
-            req.getTemplateName(),
-            req.getPrefixPath());
-      }
-
       // Step 1: transfer from TSCreateSchemaTemplateReq to Statement
-
       SetSchemaTemplateStatement statement = StatementGenerator.createStatement(req);
 
       // permission check
@@ -1616,16 +1511,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         return getNotLoggedInStatus();
       }
 
-      if (AUDIT_LOGGER.isDebugEnabled()) {
-        AUDIT_LOGGER.debug(
-            "Session-{} unset schema template {} from {}",
-            SESSION_MANAGER.getCurrSession(),
-            req.getTemplateName(),
-            req.getPrefixPath());
-      }
-
       // Step 1: transfer from TSCreateSchemaTemplateReq to Statement
-
       UnsetSchemaTemplateStatement statement = StatementGenerator.createStatement(req);
 
       // permission check
@@ -1662,15 +1548,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         return getNotLoggedInStatus();
       }
 
-      if (AUDIT_LOGGER.isDebugEnabled()) {
-        AUDIT_LOGGER.debug(
-            "Session-{} drop schema template {}",
-            SESSION_MANAGER.getCurrSession(),
-            req.getTemplateName());
-      }
-
       // Step 1: transfer from TSCreateSchemaTemplateReq to Statement
-
       DropSchemaTemplateStatement statement = StatementGenerator.createStatement(req);
 
       // permission check
@@ -1720,6 +1598,11 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
   }
 
   @Override
+  public TSBackupConfigurationResp getBackupConfiguration() {
+    return new TSBackupConfigurationResp(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
+  }
+
+  @Override
   public TSConnectionInfoResp fetchAllConnectionsInfo() throws TException {
     return SESSION_MANAGER.getAllConnectionInfo();
   }
@@ -1731,12 +1614,6 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       if (!SESSION_MANAGER.checkLogin(SESSION_MANAGER.getCurrSession())) {
         return getNotLoggedInStatus();
       }
-
-      AUDIT_LOGGER.debug(
-          "Session {} insertRecord, device {}, time {}",
-          SESSION_MANAGER.getCurrSession(),
-          req.getPrefixPath(),
-          req.getTimestamp());
 
       // check whether measurement is legal according to syntax convention
       req.setMeasurements(PathUtils.checkIsLegalSingleMeasurementsAndUpdate(req.getMeasurements()));
