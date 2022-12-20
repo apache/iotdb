@@ -20,26 +20,26 @@
 package org.apache.iotdb.consensus.iot.logdispatcher;
 
 import org.apache.iotdb.consensus.config.IoTConsensusConfig;
-import org.apache.iotdb.consensus.iot.thrift.TLogBatch;
+import org.apache.iotdb.consensus.iot.thrift.TLogEntry;
 
 import java.nio.Buffer;
 import java.util.ArrayList;
 import java.util.List;
 
-public class PendingBatch {
+public class Batch {
 
   private final IoTConsensusConfig config;
 
   private long startIndex;
   private long endIndex;
 
-  private final List<TLogBatch> batches = new ArrayList<>();
+  private final List<TLogEntry> logEntries = new ArrayList<>();
 
   private long serializedSize;
   // indicates whether this batch has been successfully synchronized to another node
   private boolean synced;
 
-  public PendingBatch(IoTConsensusConfig config) {
+  public Batch(IoTConsensusConfig config) {
     this.config = config;
   }
 
@@ -47,21 +47,21 @@ public class PendingBatch {
   Note: this method must be called once after all the `addTLogBatch` functions have been called
    */
   public void buildIndex() {
-    if (!batches.isEmpty()) {
-      this.startIndex = batches.get(0).getSearchIndex();
-      this.endIndex = batches.get(batches.size() - 1).getSearchIndex();
+    if (!logEntries.isEmpty()) {
+      this.startIndex = logEntries.get(0).getSearchIndex();
+      this.endIndex = logEntries.get(logEntries.size() - 1).getSearchIndex();
     }
   }
 
-  public void addTLogBatch(TLogBatch batch) {
-    batches.add(batch);
+  public void addTLogEntry(TLogEntry entry) {
+    logEntries.add(entry);
     // TODO Maybe we need to add in additional fields for more accurate calculations
     serializedSize +=
-        batch.getData() == null ? 0 : batch.getData().stream().mapToInt(Buffer::capacity).sum();
+        entry.getData() == null ? 0 : entry.getData().stream().mapToInt(Buffer::capacity).sum();
   }
 
   public boolean canAccumulate() {
-    return batches.size() < config.getReplication().getMaxRequestNumPerBatch()
+    return logEntries.size() < config.getReplication().getMaxLogEntriesNumPerBatch()
         && serializedSize < config.getReplication().getMaxSizePerBatch();
   }
 
@@ -73,8 +73,8 @@ public class PendingBatch {
     return endIndex;
   }
 
-  public List<TLogBatch> getBatches() {
-    return batches;
+  public List<TLogEntry> getLogEntries() {
+    return logEntries;
   }
 
   public boolean isSynced() {
@@ -86,7 +86,7 @@ public class PendingBatch {
   }
 
   public boolean isEmpty() {
-    return batches.isEmpty();
+    return logEntries.isEmpty();
   }
 
   public long getSerializedSize() {
@@ -95,13 +95,13 @@ public class PendingBatch {
 
   @Override
   public String toString() {
-    return "PendingBatch{"
+    return "Batch{"
         + "startIndex="
         + startIndex
         + ", endIndex="
         + endIndex
         + ", size="
-        + batches.size()
+        + logEntries.size()
         + ", serializedSize="
         + serializedSize
         + '}';
