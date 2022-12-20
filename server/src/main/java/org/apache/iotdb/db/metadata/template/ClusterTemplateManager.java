@@ -109,7 +109,14 @@ public class ClusterTemplateManager implements ITemplateManager {
       CreateSchemaTemplateStatement statement) {
     TCreateSchemaTemplateReq req = new TCreateSchemaTemplateReq();
     try {
-      Template template = new Template(statement);
+      Template template =
+          new Template(
+              statement.getName(),
+              statement.getMeasurements(),
+              statement.getDataTypes(),
+              statement.getEncodings(),
+              statement.getCompressors(),
+              statement.getAlignedDeviceId());
       req.setName(template.getName());
       req.setSerializedTemplate(template.serialize());
     } catch (IllegalPathException e) {
