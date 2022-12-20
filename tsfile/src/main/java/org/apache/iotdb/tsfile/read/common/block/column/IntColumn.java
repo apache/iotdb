@@ -68,6 +68,19 @@ public class IntColumn implements Column {
     retainedSizeInBytes = INSTANCE_SIZE + sizeOf(valueIsNull) + sizeOf(values);
   }
 
+  IntColumn(
+      int arrayOffset,
+      int positionCount,
+      boolean[] valueIsNull,
+      int[] values,
+      long retainedSizeInBytes) {
+    this.arrayOffset = arrayOffset;
+    this.positionCount = positionCount;
+    this.values = values;
+    this.valueIsNull = valueIsNull;
+    this.retainedSizeInBytes = retainedSizeInBytes;
+  }
+
   @Override
   public TSDataType getDataType() {
     return TSDataType.INT32;
@@ -136,10 +149,12 @@ public class IntColumn implements Column {
 
   @Override
   public Column subColumn(int fromIndex) {
-    if (fromIndex > positionCount) {
-      throw new IllegalArgumentException("fromIndex is not valid");
-    }
-    return new IntColumn(arrayOffset + fromIndex, positionCount - fromIndex, valueIsNull, values);
+    return new IntColumn(
+        arrayOffset + fromIndex,
+        positionCount - fromIndex,
+        valueIsNull,
+        values,
+        retainedSizeInBytes);
   }
 
   @Override

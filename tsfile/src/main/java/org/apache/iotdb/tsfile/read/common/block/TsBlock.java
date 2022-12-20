@@ -178,7 +178,7 @@ public class TsBlock {
     for (int i = 0; i < subValueColumns.length; i++) {
       subValueColumns[i] = valueColumns[i].subColumn(fromIndex);
     }
-    return new TsBlock(subTimeColumn, subValueColumns);
+    return new TsBlock(false, subTimeColumn.getPositionCount(), subTimeColumn, subValueColumns);
   }
 
   public TsBlock skipFirst() {

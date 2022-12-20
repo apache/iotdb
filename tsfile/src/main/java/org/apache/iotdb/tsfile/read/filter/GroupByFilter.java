@@ -55,11 +55,7 @@ public class GroupByFilter implements Filter, Serializable {
 
   @Override
   public boolean satisfy(long time, Object value) {
-    if (time < startTime || time >= endTime) {
-      return false;
-    } else {
-      return (time - startTime) % slidingStep < interval;
-    }
+    return time >= startTime && time < endTime;
   }
 
   @Override

@@ -68,6 +68,19 @@ public class LongColumn implements Column {
     retainedSizeInBytes = INSTANCE_SIZE + sizeOf(valueIsNull) + sizeOf(values);
   }
 
+  LongColumn(
+      int arrayOffset,
+      int positionCount,
+      boolean[] valueIsNull,
+      long[] values,
+      long retainedSizeInBytes) {
+    this.arrayOffset = arrayOffset;
+    this.positionCount = positionCount;
+    this.values = values;
+    this.valueIsNull = valueIsNull;
+    this.retainedSizeInBytes = retainedSizeInBytes;
+  }
+
   @Override
   public TSDataType getDataType() {
     return TSDataType.INT64;
@@ -136,10 +149,12 @@ public class LongColumn implements Column {
 
   @Override
   public Column subColumn(int fromIndex) {
-    if (fromIndex > positionCount) {
-      throw new IllegalArgumentException("fromIndex is not valid");
-    }
-    return new LongColumn(arrayOffset + fromIndex, positionCount - fromIndex, valueIsNull, values);
+    return new LongColumn(
+        arrayOffset + fromIndex,
+        positionCount - fromIndex,
+        valueIsNull,
+        values,
+        retainedSizeInBytes);
   }
 
   @Override

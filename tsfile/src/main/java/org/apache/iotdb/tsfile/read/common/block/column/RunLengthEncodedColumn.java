@@ -198,9 +198,6 @@ public class RunLengthEncodedColumn implements Column {
 
   @Override
   public Column subColumn(int fromIndex) {
-    if (fromIndex > positionCount) {
-      throw new IllegalArgumentException("fromIndex is not valid");
-    }
     return new RunLengthEncodedColumn(value, positionCount - fromIndex);
   }
 

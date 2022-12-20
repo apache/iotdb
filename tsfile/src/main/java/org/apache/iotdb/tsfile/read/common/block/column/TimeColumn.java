@@ -59,6 +59,13 @@ public class TimeColumn implements Column {
     retainedSizeInBytes = INSTANCE_SIZE + sizeOf(values);
   }
 
+  TimeColumn(int arrayOffset, int positionCount, long[] values, long retainedSizeInBytes) {
+    this.arrayOffset = arrayOffset;
+    this.positionCount = positionCount;
+    this.values = values;
+    this.retainedSizeInBytes = retainedSizeInBytes;
+  }
+
   @Override
   public TSDataType getDataType() {
     return TSDataType.INT64;
@@ -116,10 +123,8 @@ public class TimeColumn implements Column {
 
   @Override
   public Column subColumn(int fromIndex) {
-    if (fromIndex > positionCount) {
-      throw new IllegalArgumentException("fromIndex is not valid");
-    }
-    return new TimeColumn(arrayOffset + fromIndex, positionCount - fromIndex, values);
+    return new TimeColumn(
+        arrayOffset + fromIndex, positionCount - fromIndex, values, retainedSizeInBytes);
   }
 
   @Override

@@ -22,6 +22,8 @@ import org.apache.iotdb.tsfile.encoding.decoder.Decoder;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.statistics.TimeStatistics;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
+import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
+import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -83,6 +85,37 @@ public class TimePageReader {
         timeList.add(timeDecoder.readLong(timeBuffer));
       }
       return timeList.stream().mapToLong(t -> t).toArray();
+    }
+  }
+
+  /**
+   * In case that we use sequence read, and the page doesn't have statistics, so we won't know time
+   * array's length at first
+   */
+  public int[] nextSatisfiedTimeBatch(Filter timeFilter, TimeColumnBuilder timeColumnBuilder) {
+    if (timeFilter == null) {
+      for (int i = 0, size = (int) pageHeader.getStatistics().getCount(); i < size; i++) {
+        timeColumnBuilder.writeLong(timeDecoder.readLong(timeBuffer));
+      }
+      return new int[] {0, (int) pageHeader.getStatistics().getCount()};
+    } else {
+      int offset = 0, size = (int) pageHeader.getStatistics().getCount(), totalCount = 1;
+      long current = timeDecoder.readLong(timeBuffer);
+      while (!timeFilter.satisfy(current, null) && totalCount < size) {
+        current = timeDecoder.readLong(timeBuffer);
+        totalCount++;
+        offset++;
+      }
+      if (!timeFilter.satisfy(current, null)) {
+        return new int[] {size, 0};
+      }
+      timeColumnBuilder.writeLong(current);
+      while (totalCount < size
+          && timeFilter.satisfy(current = timeDecoder.readLong(timeBuffer), null)) {
+        timeColumnBuilder.writeLong(current);
+        totalCount++;
+      }
+      return new int[] {offset, totalCount - offset};
     }
   }
 

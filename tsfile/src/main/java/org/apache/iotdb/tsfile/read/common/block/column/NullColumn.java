@@ -50,13 +50,7 @@ public class NullColumn implements Column {
   }
 
   public NullColumn(int arrayOffset, int positionCount) {
-    if (arrayOffset < 0) {
-      throw new IllegalArgumentException("arrayOffset is negative");
-    }
-    this.arrayOffset = positionCount;
-    if (positionCount < 0) {
-      throw new IllegalArgumentException("positionCount is negative");
-    }
+    this.arrayOffset = arrayOffset;
     this.positionCount = positionCount;
     retainedSizeInBytes = INSTANCE_SIZE;
   }
@@ -104,9 +98,6 @@ public class NullColumn implements Column {
 
   @Override
   public Column subColumn(int fromIndex) {
-    if (fromIndex > positionCount) {
-      throw new IllegalArgumentException("fromIndex is not valid");
-    }
     return new NullColumn(arrayOffset + fromIndex, positionCount - fromIndex);
   }
 

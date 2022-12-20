@@ -127,7 +127,7 @@ public class AggregationUtil {
                 ? inputTsBlock.getEndTime() > curTimeRange.getMax()
                 : inputTsBlock.getEndTime() < curTimeRange.getMin());
     return new Pair<>(
-        isAllAggregatorsHasFinalResult(aggregators) || isTsBlockOutOfBound, inputTsBlock);
+        isTsBlockOutOfBound || isAllAggregatorsHasFinalResult(aggregators), inputTsBlock);
   }
 
   /** Append a row of aggregation results to the result tsBlock. */

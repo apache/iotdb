@@ -328,6 +328,135 @@ public class ValuePageReader {
     }
   }
 
+  public void writeColumnBuilderWithNextBatch(int offset, int length, ColumnBuilder columnBuilder) {
+    if (valueBuffer == null) {
+      for (int i = 0; i < length; i++) {
+        columnBuilder.appendNull();
+      }
+      return;
+    }
+
+    int i = 0;
+    switch (dataType) {
+      case BOOLEAN:
+        // skip offset
+        for (; i < offset; i++) {
+          if (((bitmap[i / 8] & 0xFF) & (MASK >>> (i % 8))) == 0) {
+
+          } else {
+            valueDecoder.readBoolean(valueBuffer);
+          }
+        }
+        // read length
+        for (; i < offset + length; i++) {
+          boolean aBoolean = valueDecoder.readBoolean(valueBuffer);
+          if (((bitmap[i / 8] & 0xFF) & (MASK >>> (i % 8))) == 0) {
+            columnBuilder.appendNull();
+          } else {
+            columnBuilder.writeBoolean(aBoolean);
+          }
+        }
+        break;
+      case INT32:
+        // skip offset
+        for (; i < offset; i++) {
+          if (((bitmap[i / 8] & 0xFF) & (MASK >>> (i % 8))) == 0) {
+
+          } else {
+            valueDecoder.readInt(valueBuffer);
+          }
+        }
+        // read length
+        for (; i < offset + length; i++) {
+          int anInt = valueDecoder.readInt(valueBuffer);
+          if (((bitmap[i / 8] & 0xFF) & (MASK >>> (i % 8))) == 0) {
+            columnBuilder.appendNull();
+          } else {
+            columnBuilder.writeInt(anInt);
+          }
+        }
+        break;
+      case INT64:
+        // skip offset
+        for (; i < offset; i++) {
+          if (((bitmap[i / 8] & 0xFF) & (MASK >>> (i % 8))) == 0) {
+
+          } else {
+            valueDecoder.readLong(valueBuffer);
+          }
+        }
+        // read length
+        for (; i < offset + length; i++) {
+          long aLong = valueDecoder.readLong(valueBuffer);
+          if (((bitmap[i / 8] & 0xFF) & (MASK >>> (i % 8))) == 0) {
+            columnBuilder.appendNull();
+          } else {
+            columnBuilder.writeLong(aLong);
+          }
+        }
+        break;
+      case FLOAT:
+        // skip offset
+        for (; i < offset; i++) {
+          if (((bitmap[i / 8] & 0xFF) & (MASK >>> (i % 8))) == 0) {
+
+          } else {
+            valueDecoder.readFloat(valueBuffer);
+          }
+        }
+        // read length
+        for (; i < offset + length; i++) {
+          float aFloat = valueDecoder.readFloat(valueBuffer);
+          if (((bitmap[i / 8] & 0xFF) & (MASK >>> (i % 8))) == 0) {
+            columnBuilder.appendNull();
+          } else {
+            columnBuilder.writeFloat(aFloat);
+          }
+        }
+        break;
+      case DOUBLE:
+        // skip offset
+        for (; i < offset; i++) {
+          if (((bitmap[i / 8] & 0xFF) & (MASK >>> (i % 8))) == 0) {
+
+          } else {
+            valueDecoder.readDouble(valueBuffer);
+          }
+        }
+        // read length
+        for (; i < offset + length; i++) {
+          double aDouble = valueDecoder.readDouble(valueBuffer);
+          if (((bitmap[i / 8] & 0xFF) & (MASK >>> (i % 8))) == 0) {
+            columnBuilder.appendNull();
+          } else {
+            columnBuilder.writeDouble(aDouble);
+          }
+        }
+        break;
+      case TEXT:
+        // skip offset
+        for (; i < offset; i++) {
+          if (((bitmap[i / 8] & 0xFF) & (MASK >>> (i % 8))) == 0) {
+
+          } else {
+            valueDecoder.readBinary(valueBuffer);
+          }
+        }
+        // read length
+        for (; i < offset + length; i++) {
+          Binary aBinary = valueDecoder.readBinary(valueBuffer);
+          if (((bitmap[i / 8] & 0xFF) & (MASK >>> (i % 8))) == 0) {
+            columnBuilder.appendNull();
+          } else {
+            columnBuilder.writeBinary(aBinary);
+          }
+        }
+        break;
+      default:
+        throw new UnSupportedDataTypeException(String.valueOf(dataType));
+    }
+  }
+
   public Statistics getStatistics() {
     return pageHeader.getStatistics();
   }

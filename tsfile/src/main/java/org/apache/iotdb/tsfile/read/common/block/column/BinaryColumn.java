@@ -70,6 +70,20 @@ public class BinaryColumn implements Column {
     retainedSizeInBytes = INSTANCE_SIZE + sizeOf(valueIsNull) + sizeOf(values);
   }
 
+  BinaryColumn(
+      int arrayOffset,
+      int positionCount,
+      boolean[] valueIsNull,
+      Binary[] values,
+      long retainedSizeInBytes) {
+    this.arrayOffset = arrayOffset;
+    this.positionCount = positionCount;
+    this.values = values;
+    this.valueIsNull = valueIsNull;
+    // TODO we need to sum up all the Binary's retainedSize here
+    this.retainedSizeInBytes = retainedSizeInBytes;
+  }
+
   @Override
   public TSDataType getDataType() {
     return TSDataType.TEXT;
@@ -138,11 +152,12 @@ public class BinaryColumn implements Column {
 
   @Override
   public Column subColumn(int fromIndex) {
-    if (fromIndex > positionCount) {
-      throw new IllegalArgumentException("fromIndex is not valid");
-    }
     return new BinaryColumn(
-        arrayOffset + fromIndex, positionCount - fromIndex, valueIsNull, values);
+        arrayOffset + fromIndex,
+        positionCount - fromIndex,
+        valueIsNull,
+        values,
+        retainedSizeInBytes);
   }
 
   @Override
