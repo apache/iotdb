@@ -548,6 +548,8 @@ service IDataNodeRPCService {
 
   common.TSStatus flush(common.TFlushReq req)
 
+  common.TSStatus settle(common.TSettleReq req)
+
   common.TSStatus clearCache()
 
   common.TSStatus loadConfiguration()
