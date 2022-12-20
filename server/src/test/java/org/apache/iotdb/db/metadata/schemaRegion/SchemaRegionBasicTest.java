@@ -37,12 +37,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.junit.Assert;
 import org.junit.Test;
 
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -312,18 +307,15 @@ public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
   public void testGetAllTimeseriesCount() throws Exception {
     ISchemaRegion schemaRegion = getSchemaRegion("root.laptop", 0);
 
-    schemaRegion.createTimeseries(
-        SchemaRegionUtils.getSimpleCreateTSPlanImpl(new PartialPath("root.laptop.d0")), -1);
-    schemaRegion.createTimeseries(
-        SchemaRegionUtils.getSimpleCreateTSPlanImpl(new PartialPath("root.laptop.d1.s1")), -1);
-    schemaRegion.createTimeseries(
-        SchemaRegionUtils.getSimpleCreateTSPlanImpl(new PartialPath("root.laptop.d1.s2.t1")), -1);
-    schemaRegion.createTimeseries(
-        SchemaRegionUtils.getSimpleCreateTSPlanImpl(new PartialPath("root.laptop.d1.s3")), -1);
-    schemaRegion.createTimeseries(
-        SchemaRegionUtils.getSimpleCreateTSPlanImpl(new PartialPath("root.laptop.d2.s1")), -1);
-    schemaRegion.createTimeseries(
-        SchemaRegionUtils.getSimpleCreateTSPlanImpl(new PartialPath("root.laptop.d2.s2")), -1);
+    SchemaRegionUtils.createSimpleTimeseriesByList(
+        schemaRegion,
+        Arrays.asList(
+            "root.laptop.d0",
+            "root.laptop.d1.s1",
+            "root.laptop.d1.s2.t1",
+            "root.laptop.d1.s3",
+            "root.laptop.d2.s1",
+            "root.laptop.d2.s2"));
 
     // for Non prefix matched path
     Assert.assertEquals(
@@ -365,18 +357,15 @@ public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
   public void testGetMeasurementCountGroupByLevel() throws Exception {
     ISchemaRegion schemaRegion = getSchemaRegion("root.laptop", 0);
 
-    schemaRegion.createTimeseries(
-        SchemaRegionUtils.getSimpleCreateTSPlanImpl(new PartialPath("root.laptop.d0")), -1);
-    schemaRegion.createTimeseries(
-        SchemaRegionUtils.getSimpleCreateTSPlanImpl(new PartialPath("root.laptop.d1.s1")), -1);
-    schemaRegion.createTimeseries(
-        SchemaRegionUtils.getSimpleCreateTSPlanImpl(new PartialPath("root.laptop.d1.s2.t1")), -1);
-    schemaRegion.createTimeseries(
-        SchemaRegionUtils.getSimpleCreateTSPlanImpl(new PartialPath("root.laptop.d1.s3")), -1);
-    schemaRegion.createTimeseries(
-        SchemaRegionUtils.getSimpleCreateTSPlanImpl(new PartialPath("root.laptop.d2.s1")), -1);
-    schemaRegion.createTimeseries(
-        SchemaRegionUtils.getSimpleCreateTSPlanImpl(new PartialPath("root.laptop.d2.s2")), -1);
+    SchemaRegionUtils.createSimpleTimeseriesByList(
+        schemaRegion,
+        Arrays.asList(
+            "root.laptop.d0",
+            "root.laptop.d1.s1",
+            "root.laptop.d1.s2.t1",
+            "root.laptop.d1.s3",
+            "root.laptop.d2.s1",
+            "root.laptop.d2.s2"));
 
     Map<PartialPath, Long> expected = new HashMap<>();
     expected.put(new PartialPath("root"), (long) 6);
@@ -472,18 +461,15 @@ public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
   public void testGetDevicesNum() throws Exception {
     ISchemaRegion schemaRegion = getSchemaRegion("root.laptop", 0);
 
-    schemaRegion.createTimeseries(
-        SchemaRegionUtils.getSimpleCreateTSPlanImpl(new PartialPath("root.laptop.d0")), -1);
-    schemaRegion.createTimeseries(
-        SchemaRegionUtils.getSimpleCreateTSPlanImpl(new PartialPath("root.laptop.d1.s1")), -1);
-    schemaRegion.createTimeseries(
-        SchemaRegionUtils.getSimpleCreateTSPlanImpl(new PartialPath("root.laptop.d1.s2.t1")), -1);
-    schemaRegion.createTimeseries(
-        SchemaRegionUtils.getSimpleCreateTSPlanImpl(new PartialPath("root.laptop.d1.s3")), -1);
-    schemaRegion.createTimeseries(
-        SchemaRegionUtils.getSimpleCreateTSPlanImpl(new PartialPath("root.laptop.d2.s1")), -1);
-    schemaRegion.createTimeseries(
-        SchemaRegionUtils.getSimpleCreateTSPlanImpl(new PartialPath("root.laptop.d2.s2")), -1);
+    SchemaRegionUtils.createSimpleTimeseriesByList(
+        schemaRegion,
+        Arrays.asList(
+            "root.laptop.d0",
+            "root.laptop.d1.s1",
+            "root.laptop.d1.s2.t1",
+            "root.laptop.d1.s3",
+            "root.laptop.d2.s1",
+            "root.laptop.d2.s2"));
 
     Assert.assertEquals(4, schemaRegion.getDevicesNum(new PartialPath("root.**"), false));
     Assert.assertEquals(1, schemaRegion.getDevicesNum(new PartialPath("root.laptop"), false));
@@ -501,5 +487,60 @@ public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
     Assert.assertEquals(4, schemaRegion.getDevicesNum(new PartialPath("root.laptop"), true));
     Assert.assertEquals(3, schemaRegion.getDevicesNum(new PartialPath("root.laptop.d*"), true));
     Assert.assertEquals(1, schemaRegion.getDevicesNum(new PartialPath("root.laptop.d1.*"), true));
+  }
+
+  @Test
+  public void testGetNodesListInGivenLevel() throws Exception {
+    ISchemaRegion schemaRegion = getSchemaRegion("root.laptop", 0);
+
+    SchemaRegionUtils.createSimpleTimeseriesByList(
+        schemaRegion,
+        Arrays.asList(
+            "root.laptop.d0",
+            "root.laptop.d1.s1",
+            "root.laptop.d1.s2.t1",
+            "root.laptop.d1.s3",
+            "root.laptop.d2.s1",
+            "root.laptop.d2.s2"));
+
+    Assert.assertEquals(
+        new LinkedList<>(Arrays.asList(new PartialPath("root"))),
+        schemaRegion.getNodesListInGivenLevel(new PartialPath("root.**"), 0, false));
+    Assert.assertEquals(
+        new LinkedList<>(Arrays.asList(new PartialPath("root.laptop"))),
+        schemaRegion.getNodesListInGivenLevel(new PartialPath("root.**"), 1, false));
+    Assert.assertEquals(
+        new LinkedList<>(Arrays.asList(new PartialPath("root.laptop"))),
+        schemaRegion.getNodesListInGivenLevel(new PartialPath("root.laptop"), 1, false));
+    Assert.assertEquals(
+        new HashSet<>(
+            Arrays.asList(
+                new PartialPath("root.laptop.d0"),
+                new PartialPath("root.laptop.d1"),
+                new PartialPath("root.laptop.d2"))),
+        new HashSet<>(
+            schemaRegion.getNodesListInGivenLevel(new PartialPath("root.laptop.**"), 2, false)));
+    Assert.assertEquals(
+        new HashSet<>(
+            Arrays.asList(
+                new PartialPath("root.laptop.d1.s1"),
+                new PartialPath("root.laptop.d1.s2"),
+                new PartialPath("root.laptop.d1.s3"),
+                new PartialPath("root.laptop.d2.s1"),
+                new PartialPath("root.laptop.d2.s2"))),
+        new HashSet<>(
+            schemaRegion.getNodesListInGivenLevel(new PartialPath("root.laptop.**"), 3, false)));
+    Assert.assertEquals(
+        new HashSet<>(
+            Arrays.asList(
+                new PartialPath("root.laptop.d1.s1"), new PartialPath("root.laptop.d2.s1"))),
+        new HashSet<>(
+            schemaRegion.getNodesListInGivenLevel(new PartialPath("root.laptop.*.s1"), 3, false)));
+    // Empty return
+    Assert.assertEquals(
+        new HashSet<>(Arrays.asList()),
+        new HashSet<>(
+            schemaRegion.getNodesListInGivenLevel(
+                new PartialPath("root.laptop.notExists"), 1, false)));
   }
 }
