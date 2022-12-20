@@ -260,9 +260,10 @@ public class SystemPropertiesUtils {
     Properties systemProperties = getSystemProperties();
     String clusterName = systemProperties.getProperty("cluster_name", null);
     if (clusterName == null) {
-      throw new IOException(
-          "The parameter cluster_name doesn't exist in data/confignode/system/confignode-system.properties. "
-              + "Please delete data dir data/confignode and restart again");
+      LOGGER.warn(
+          "Lack cluster_name field in data/confignode/system/confignode-system.properties, set it as defaultCluster");
+      systemProperties.setProperty("cluster_name", "defaultCluster");
+      return systemProperties.getProperty("cluster_name", null);
     }
     return clusterName;
   }
@@ -295,7 +296,13 @@ public class SystemPropertiesUtils {
   public static boolean isSeedConfigNode() {
     try {
       Properties systemProperties = getSystemProperties();
-      return Boolean.parseBoolean(systemProperties.getProperty("is_seed_config_node", null));
+      boolean isSeedConfigNode =
+          Boolean.parseBoolean(systemProperties.getProperty("is_seed_config_node", null));
+      if (isSeedConfigNode) {
+        return true;
+      } else {
+        return ConfigNodeDescriptor.getInstance().isSeedConfigNode();
+      }
     } catch (IOException ignore) {
       return false;
     }
