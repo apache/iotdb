@@ -199,9 +199,9 @@ public class IoTConsensusConfig {
 
   public static class Replication {
 
-    private final int maxRequestNumPerBatch;
+    private final int maxLogEntriesNumPerBatch;
     private final int maxSizePerBatch;
-    private final int maxPendingBatch;
+    private final int maxPendingBatchesNum;
     private final int maxWaitingTimeForAccumulatingBatchInMs;
     private final long basicRetryWaitTimeMs;
     private final long maxRetryWaitTimeMs;
@@ -212,9 +212,9 @@ public class IoTConsensusConfig {
     private final long allocateMemoryForQueue;
 
     private Replication(
-        int maxRequestNumPerBatch,
+        int maxLogEntriesNumPerBatch,
         int maxSizePerBatch,
-        int maxPendingBatch,
+        int maxPendingBatchesNum,
         int maxWaitingTimeForAccumulatingBatchInMs,
         long basicRetryWaitTimeMs,
         long maxRetryWaitTimeMs,
@@ -223,9 +223,9 @@ public class IoTConsensusConfig {
         long checkpointGap,
         long allocateMemoryForConsensus,
         double maxMemoryRatioForQueue) {
-      this.maxRequestNumPerBatch = maxRequestNumPerBatch;
+      this.maxLogEntriesNumPerBatch = maxLogEntriesNumPerBatch;
       this.maxSizePerBatch = maxSizePerBatch;
-      this.maxPendingBatch = maxPendingBatch;
+      this.maxPendingBatchesNum = maxPendingBatchesNum;
       this.maxWaitingTimeForAccumulatingBatchInMs = maxWaitingTimeForAccumulatingBatchInMs;
       this.basicRetryWaitTimeMs = basicRetryWaitTimeMs;
       this.maxRetryWaitTimeMs = maxRetryWaitTimeMs;
@@ -236,16 +236,16 @@ public class IoTConsensusConfig {
       this.allocateMemoryForQueue = (long) (allocateMemoryForConsensus * maxMemoryRatioForQueue);
     }
 
-    public int getMaxRequestNumPerBatch() {
-      return maxRequestNumPerBatch;
+    public int getMaxLogEntriesNumPerBatch() {
+      return maxLogEntriesNumPerBatch;
     }
 
     public int getMaxSizePerBatch() {
       return maxSizePerBatch;
     }
 
-    public int getMaxPendingBatch() {
-      return maxPendingBatch;
+    public int getMaxPendingBatchesNum() {
+      return maxPendingBatchesNum;
     }
 
     public int getMaxWaitingTimeForAccumulatingBatchInMs() {
@@ -286,11 +286,11 @@ public class IoTConsensusConfig {
 
     public static class Builder {
 
-      private int maxRequestNumPerBatch = 30;
+      private int maxLogEntriesNumPerBatch = 30;
       private int maxSizePerBatch = 16 * 1024 * 1024;
       // (IMPORTANT) Value of this variable should be the same with MAX_REQUEST_CACHE_SIZE
       // in DataRegionStateMachine
-      private int maxPendingBatch = 5;
+      private int maxPendingBatchesNum = 5;
       private int maxWaitingTimeForAccumulatingBatchInMs = 500;
       private long basicRetryWaitTimeMs = TimeUnit.MILLISECONDS.toMillis(100);
       private long maxRetryWaitTimeMs = TimeUnit.SECONDS.toMillis(20);
@@ -300,8 +300,8 @@ public class IoTConsensusConfig {
       private long allocateMemoryForConsensus = Runtime.getRuntime().maxMemory() / 10;
       private double maxMemoryRatioForQueue = 0.6;
 
-      public Replication.Builder setMaxRequestNumPerBatch(int maxRequestNumPerBatch) {
-        this.maxRequestNumPerBatch = maxRequestNumPerBatch;
+      public Replication.Builder setMaxLogEntriesNumPerBatch(int maxLogEntriesNumPerBatch) {
+        this.maxLogEntriesNumPerBatch = maxLogEntriesNumPerBatch;
         return this;
       }
 
@@ -310,8 +310,8 @@ public class IoTConsensusConfig {
         return this;
       }
 
-      public Replication.Builder setMaxPendingBatch(int maxPendingBatch) {
-        this.maxPendingBatch = maxPendingBatch;
+      public Replication.Builder setMaxPendingBatchesNum(int maxPendingBatchesNum) {
+        this.maxPendingBatchesNum = maxPendingBatchesNum;
         return this;
       }
 
@@ -358,9 +358,9 @@ public class IoTConsensusConfig {
 
       public Replication build() {
         return new Replication(
-            maxRequestNumPerBatch,
+            maxLogEntriesNumPerBatch,
             maxSizePerBatch,
-            maxPendingBatch,
+            maxPendingBatchesNum,
             maxWaitingTimeForAccumulatingBatchInMs,
             basicRetryWaitTimeMs,
             maxRetryWaitTimeMs,
