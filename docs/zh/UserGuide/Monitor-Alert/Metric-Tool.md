@@ -176,11 +176,13 @@ Core 级别的监控指标在系统运行中默认开启，每一个 Core 级别
 | thrift_active_threads | name="ClientRPC-Service"           | AutoGauge | Client 建立的活跃 Thrift 连接数     |
 
 #### 4.2.6. 内存统计
-| Metric | Tags                          | Type      | Description                                       |
-| ------ | ----------------------------- | --------- | ------------------------------------------------- |
-| mem    | name="database_{{name}}"      | AutoGauge | DataNode内对应DataRegion的内存占用，单位为byte    |
-| mem    | name="chunkMetaData_{{name}}" | AutoGauge | 写入TsFile时的ChunkMetaData的内存占用，单位为byte |
-| mem    | name="IoTConsensus"           | AutoGauge | IoT共识协议的内存占用，单位为byte                 |
+| Metric | Tags                                  | Type      | Description                          |
+| ------ |---------------------------------------| --------- |--------------------------------------|
+| mem    | name="database_{{name}}"              | AutoGauge | DataNode内对应DataRegion的内存占用，单位为byte   |
+| mem    | name="chunkMetaData_{{name}}"         | AutoGauge | 写入TsFile时的ChunkMetaData的内存占用，单位为byte |
+| mem    | name="IoTConsensus"                   | AutoGauge | IoT共识协议的内存占用，单位为byte                 |
+| mem    | name="schema region memory usage"     | AutoGauge | 所有SchemaRegion的总内存占用，单位为byte         |
+| mem    | name="schema region memory remaining" | AutoGauge | 所有SchemaRegion的总内存剩余，单位为byte         |
 
 #### 4.2.7. 任务统计
 | Metric    | Tags                                              | Type      | Description        |
