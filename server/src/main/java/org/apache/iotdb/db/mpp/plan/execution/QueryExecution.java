@@ -51,7 +51,6 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeUtil;
 import org.apache.iotdb.db.mpp.plan.scheduler.ClusterScheduler;
 import org.apache.iotdb.db.mpp.plan.scheduler.IScheduler;
-import org.apache.iotdb.db.mpp.plan.scheduler.StandaloneScheduler;
 import org.apache.iotdb.db.mpp.plan.scheduler.load.LoadTsFileScheduler;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertBaseStatement;
@@ -274,23 +273,15 @@ public class QueryExecution implements IQueryExecution {
     // TODO: (xingtanzjr) initialize the query scheduler according to configuration
     long startTime = System.nanoTime();
     this.scheduler =
-        config.isClusterMode()
-            ? new ClusterScheduler(
-                context,
-                stateMachine,
-                distributedPlan.getInstances(),
-                context.getQueryType(),
-                executor,
-                writeOperationExecutor,
-                scheduledExecutor,
-                internalServiceClientManager)
-            : new StandaloneScheduler(
-                context,
-                stateMachine,
-                distributedPlan.getInstances(),
-                context.getQueryType(),
-                scheduledExecutor,
-                internalServiceClientManager);
+        new ClusterScheduler(
+            context,
+            stateMachine,
+            distributedPlan.getInstances(),
+            context.getQueryType(),
+            executor,
+            writeOperationExecutor,
+            scheduledExecutor,
+            internalServiceClientManager);
     this.scheduler.start();
     if (rawStatement.isQuery()) {
       QueryStatistics.getInstance()

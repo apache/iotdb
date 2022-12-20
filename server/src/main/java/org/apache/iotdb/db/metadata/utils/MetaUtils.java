@@ -27,17 +27,21 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationDescriptor;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.OrderByParameter;
+import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.TreeMap;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.LOSS;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.SDT_PARAMETERS;
@@ -76,6 +80,7 @@ public class MetaUtils {
    * @return Size of partial path list could NOT equal to the input list size. For example, the
    *     vector1 (s1,s2) would be returned once.
    */
+  @Deprecated
   public static List<PartialPath> groupAlignedPaths(List<PartialPath> fullPaths) {
     List<PartialPath> result = new LinkedList<>();
     AlignedPath alignedPath = null;
@@ -96,9 +101,37 @@ public class MetaUtils {
     return result;
   }
 
+  /**
+   * PartialPath of aligned time series will be organized to one AlignedPath. BEFORE this method,
+   * all the aligned time series is NOT united. For example, given root.sg.d1.vector1[s1] and
+   * root.sg.d1.vector1[s2], they will be organized to root.sg.d1.vector1 [s1,s2]
+   *
+   * @param fullPaths full path list without uniting the sub measurement under the same aligned time
+   *     series. The list has been sorted by the alphabetical order, so all the aligned time series
+   *     of one device has already been placed contiguously.
+   * @return Size of partial path list could NOT equal to the input list size. For example, the
+   *     vector1 (s1,s2) would be returned once.
+   */
   public static List<PartialPath> groupAlignedSeries(List<PartialPath> fullPaths) {
+    return groupAlignedSeries(fullPaths, new HashMap<>());
+  }
+
+  public static List<PartialPath> groupAlignedSeriesWithOrder(
+      List<PartialPath> fullPaths, OrderByParameter orderByParameter) {
+    fullPaths.sort(
+        orderByParameter.getSortItemList().get(0).getOrdering() == Ordering.ASC
+            ? Comparator.naturalOrder()
+            : Comparator.reverseOrder());
+    Map<String, AlignedPath> deviceToAlignedPathMap =
+        orderByParameter.getSortItemList().get(0).getOrdering() == Ordering.ASC
+            ? new TreeMap<>()
+            : new TreeMap<>(Collections.reverseOrder());
+    return groupAlignedSeries(fullPaths, deviceToAlignedPathMap);
+  }
+
+  private static List<PartialPath> groupAlignedSeries(
+      List<PartialPath> fullPaths, Map<String, AlignedPath> deviceToAlignedPathMap) {
     List<PartialPath> result = new ArrayList<>();
-    Map<String, AlignedPath> deviceToAlignedPathMap = new HashMap<>();
     for (PartialPath path : fullPaths) {
       MeasurementPath measurementPath = (MeasurementPath) path;
       if (!measurementPath.isUnderAlignedEntity()) {

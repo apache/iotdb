@@ -59,6 +59,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import static org.apache.iotdb.it.env.AbstractNodeWrapper.templateNodeLibPath;
+import static org.apache.iotdb.it.env.AbstractNodeWrapper.templateNodePath;
 import static org.apache.iotdb.jdbc.Config.VERSION;
 import static org.junit.Assert.fail;
 
@@ -551,6 +553,38 @@ public abstract class AbstractEnv implements BaseEnv {
   }
 
   @Override
+  public void registerNewConfigNode() {
+    final ConfigNodeWrapper newConfigNodeWrapper =
+        new ConfigNodeWrapper(
+            false,
+            configNodeWrapperList.get(0).getIpAndPortString(),
+            getTestClassName(),
+            getTestMethodName(),
+            EnvUtils.searchAvailablePorts());
+    configNodeWrapperList.add(newConfigNodeWrapper);
+    newConfigNodeWrapper.createDir();
+    newConfigNodeWrapper.changeConfig(ConfigFactory.getConfig().getConfignodeProperties());
+
+    // Start new ConfigNode
+    RequestDelegate<Void> configNodeDelegate =
+        new ParallelRequestDelegate<>(
+            Collections.singletonList(newConfigNodeWrapper.getIpAndPortString()),
+            NODE_START_TIMEOUT);
+    configNodeDelegate.addRequest(
+        () -> {
+          newConfigNodeWrapper.start();
+          return null;
+        });
+
+    try {
+      configNodeDelegate.requestAll();
+    } catch (SQLException e) {
+      logger.error("Start configNode failed", e);
+      fail();
+    }
+  }
+
+  @Override
   public void startDataNode(int index) {
     dataNodeWrapperList.get(index).start();
   }
@@ -563,5 +597,25 @@ public abstract class AbstractEnv implements BaseEnv {
   public int getMqttPort() {
     int randomIndex = new Random(System.currentTimeMillis()).nextInt(dataNodeWrapperList.size());
     return dataNodeWrapperList.get(randomIndex).getMqttPort();
+  }
+
+  @Override
+  public String getIP() {
+    return dataNodeWrapperList.get(0).getIp();
+  }
+
+  @Override
+  public String getPort() {
+    return String.valueOf(dataNodeWrapperList.get(0).getPort());
+  }
+
+  @Override
+  public String getSbinPath() {
+    return templateNodePath + File.separator + "sbin";
+  }
+
+  @Override
+  public String getLibPath() {
+    return templateNodeLibPath;
   }
 }

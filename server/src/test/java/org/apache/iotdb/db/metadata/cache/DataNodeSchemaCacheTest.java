@@ -62,7 +62,7 @@ public class DataNodeSchemaCacheTest {
     measurements[1] = "s2";
     measurements[2] = "s3";
 
-    dataNodeSchemaCache.put(generateSchemaTree1());
+    dataNodeSchemaCache.put((ClusterSchemaTree) generateSchemaTree1());
 
     Map<PartialPath, SchemaCacheEntry> schemaCacheEntryMap =
         dataNodeSchemaCache.get(device1, measurements).getAllMeasurement().stream()
@@ -95,7 +95,7 @@ public class DataNodeSchemaCacheTest {
     otherMeasurements[1] = "s4";
     otherMeasurements[2] = "s5";
 
-    dataNodeSchemaCache.put(generateSchemaTree2());
+    dataNodeSchemaCache.put((ClusterSchemaTree) generateSchemaTree2());
 
     schemaCacheEntryMap =
         dataNodeSchemaCache.get(device1, otherMeasurements).getAllMeasurement().stream()
@@ -133,7 +133,7 @@ public class DataNodeSchemaCacheTest {
     Assert.assertNull(dataNodeSchemaCache.getLastCache(seriesPath2));
     Assert.assertNull(dataNodeSchemaCache.getLastCache(seriesPath3));
     // test no last cache
-    dataNodeSchemaCache.put(generateSchemaTree1());
+    dataNodeSchemaCache.put((ClusterSchemaTree) generateSchemaTree1());
     Assert.assertNull(dataNodeSchemaCache.getLastCache(seriesPath1));
     Assert.assertNull(dataNodeSchemaCache.getLastCache(seriesPath2));
     Assert.assertNull(dataNodeSchemaCache.getLastCache(seriesPath3));

@@ -39,6 +39,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCheckUserPrivilegesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
+import org.apache.iotdb.confignode.rpc.thrift.TConfigurationResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCountStorageGroupResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateCQReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateFunctionReq;
@@ -63,6 +64,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDropPipeSinkReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllPipeInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllTemplatesResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetDataNodeLocationsResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetJarInListReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetJarInListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetLocationForTriggerResp;
@@ -79,6 +81,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetTimeSlotListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetUDFTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TLoginReq;
+import org.apache.iotdb.confignode.rpc.thrift.TMigrateRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TPipeSinkInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TRecordPipeMessageReq;
@@ -186,7 +189,7 @@ public class ConfigNodeClient
     try {
       tryToConnect();
     } catch (TException e) {
-      // can not connect to each config node
+      // Can not connect to each config node
       syncLatestConfigNodeList();
       tryToConnect();
     }
@@ -196,7 +199,7 @@ public class ConfigNodeClient
     try {
       transport =
           RpcTransportFactory.INSTANCE.getTransport(
-              // as there is a try-catch already, we do not need to use TSocket.wrap
+              // As there is a try-catch already, we do not need to use TSocket.wrap
               endpoint.getIp(), endpoint.getPort(), (int) connectionTimeout);
       if (!transport.isOpen()) {
         transport.open();
@@ -319,6 +322,27 @@ public class ConfigNodeClient
           newConfigNodes.add(configNodeLocation.getInternalEndPoint());
         }
         configNodes = newConfigNodes;
+      } catch (TException e) {
+        logger.warn(
+            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            configNode,
+            config.getAddressAndPort(),
+            Thread.currentThread().getStackTrace()[1].getMethodName());
+        configLeader = null;
+      }
+      waitAndReconnect();
+    }
+    throw new TException(MSG_RECONNECTION_FAIL);
+  }
+
+  @Override
+  public TConfigurationResp getConfiguration() throws TException {
+    for (int i = 0; i < RETRY_NUM; i++) {
+      try {
+        TConfigurationResp resp = client.getConfiguration();
+        if (!updateConfigNodeLeader(resp.status)) {
+          return resp;
+        }
       } catch (TException e) {
         logger.warn(
             "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
@@ -955,6 +979,27 @@ public class ConfigNodeClient
   @Override
   public TSStatus setDataNodeStatus(TSetDataNodeStatusReq req) throws TException {
     throw new TException("DataNode to ConfigNode client doesn't support setDataNodeStatus.");
+  }
+
+  @Override
+  public TGetDataNodeLocationsResp getRunningDataNodeLocations() throws TException {
+    for (int i = 0; i < RETRY_NUM; i++) {
+      try {
+        TGetDataNodeLocationsResp resp = client.getRunningDataNodeLocations();
+        if (!updateConfigNodeLeader(resp.status)) {
+          return resp;
+        }
+      } catch (TException e) {
+        logger.warn(
+            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            configNode,
+            config.getAddressAndPort(),
+            Thread.currentThread().getStackTrace()[1].getMethodName());
+        configLeader = null;
+      }
+      waitAndReconnect();
+    }
+    throw new TException(MSG_RECONNECTION_FAIL);
   }
 
   @Override
@@ -1703,6 +1748,27 @@ public class ConfigNodeClient
         TGetSeriesSlotListResp resp = client.getSeriesSlotList(req);
         if (!updateConfigNodeLeader(resp.getStatus())) {
           return resp;
+        }
+      } catch (TException e) {
+        logger.warn(
+            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            configNode,
+            config.getAddressAndPort(),
+            Thread.currentThread().getStackTrace()[1].getMethodName());
+        configLeader = null;
+      }
+      waitAndReconnect();
+    }
+    throw new TException(MSG_RECONNECTION_FAIL);
+  }
+
+  @Override
+  public TSStatus migrateRegion(TMigrateRegionReq req) throws TException {
+    for (int i = 0; i < RETRY_NUM; i++) {
+      try {
+        TSStatus status = client.migrateRegion(req);
+        if (!updateConfigNodeLeader(status)) {
+          return status;
         }
       } catch (TException e) {
         logger.warn(

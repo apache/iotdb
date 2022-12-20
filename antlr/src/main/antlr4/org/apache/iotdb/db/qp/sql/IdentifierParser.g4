@@ -64,6 +64,7 @@ keyWords
     | DATA
     | DATABASE
     | DATABASES
+    | DATANODEID
     | DATANODES
     | DEACTIVATE
     | DEBUG
@@ -76,6 +77,7 @@ keyWords
     | DISABLE
     | DISCARD
     | DROP
+    | ELAPSEDTIME
     | END
     | ENDTIME
     | EVERY
@@ -137,6 +139,7 @@ keyWords
     | PRUNE
     | QUERIES
     | QUERY
+    | QUERYID
     | RANGE
     | READONLY
     | REGEXP
@@ -161,8 +164,9 @@ keyWords
     | STORAGE
     | START
     | STARTTIME
-    | STATELESS
     | STATEFUL
+    | STATELESS
+    | STATEMENT
     | STOP
     | SYSTEM
     | TAGS

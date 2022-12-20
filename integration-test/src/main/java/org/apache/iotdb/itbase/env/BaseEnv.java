@@ -201,6 +201,8 @@ public interface BaseEnv {
   /** Register a new DataNode */
   void registerNewDataNode();
 
+  void registerNewConfigNode();
+
   /** Start an existed DataNode */
   void startDataNode(int index);
 
@@ -208,4 +210,12 @@ public interface BaseEnv {
   void shutdownDataNode(int index);
 
   int getMqttPort();
+
+  String getIP();
+
+  String getPort();
+
+  String getSbinPath();
+
+  String getLibPath();
 }

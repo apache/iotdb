@@ -65,6 +65,7 @@ import org.apache.iotdb.db.mpp.plan.expression.unary.LikeExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.LogicNotExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.NegationExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.RegularExpression;
+import org.apache.iotdb.db.mpp.plan.statement.AuthorType;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.mpp.plan.statement.component.FillComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.FillPolicy;
@@ -111,6 +112,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.DropTriggerStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.GetRegionIdStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.GetSeriesSlotListStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.GetTimeSlotListStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.MigrateRegionStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowChildNodesStatement;
@@ -144,6 +146,7 @@ import org.apache.iotdb.db.mpp.plan.statement.sys.FlushStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.LoadConfigurationStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.MergeStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.SetSystemStatusStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.ShowQueriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ShowVersionStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.TracingStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeSinkStatement;
@@ -156,7 +159,6 @@ import org.apache.iotdb.db.mpp.plan.statement.sys.sync.ShowPipeStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.StartPipeStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.StopPipeStatement;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
-import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.ConstantContext;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.CountDevicesContext;
@@ -179,6 +181,8 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.utils.Pair;
+
+import com.google.common.collect.ImmutableSet;
 
 import java.io.FileNotFoundException;
 import java.net.URI;
@@ -858,10 +862,6 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   private void parseResampleClause(
       IoTDBSqlParser.ResampleClauseContext ctx, CreateContinuousQueryStatement statement) {
-    if (ctx.FOR() != null) {
-      throw new SemanticException("CQ: The syntax of CREATE CQ statement has changed from v0.14");
-    }
-
     if (ctx.EVERY() != null) {
       statement.setEveryInterval(
           DateTimeUtils.convertDurationStrToLong(ctx.everyInterval.getText()));
@@ -970,7 +970,10 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
     // parse ORDER BY
     if (ctx.orderByClause() != null) {
-      queryStatement.setOrderByComponent(parseOrderByClause(ctx.orderByClause()));
+      queryStatement.setOrderByComponent(
+          parseOrderByClause(
+              ctx.orderByClause(),
+              ImmutableSet.of(SortKey.TIME, SortKey.DEVICE, SortKey.TIMESERIES)));
     }
 
     // parse FILL
@@ -1198,7 +1201,9 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   }
 
   // ---- Order By Clause
-  private OrderByComponent parseOrderByClause(IoTDBSqlParser.OrderByClauseContext ctx) {
+  // all SortKeys should be contained by limitSet
+  private OrderByComponent parseOrderByClause(
+      IoTDBSqlParser.OrderByClauseContext ctx, ImmutableSet<SortKey> limitSet) {
     OrderByComponent orderByComponent = new OrderByComponent();
     Set<SortKey> sortKeySet = new HashSet<>();
     for (IoTDBSqlParser.OrderByAttributeClauseContext orderByAttributeClauseContext :
@@ -1206,6 +1211,10 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       SortItem sortItem = parseOrderByAttributeClause(orderByAttributeClauseContext);
 
       SortKey sortKey = sortItem.getSortKey();
+      if (!limitSet.contains(sortKey)) {
+        throw new SemanticException(
+            String.format("ORDER BY: sort key[%s] is not contained in '%s'", sortKey, limitSet));
+      }
       if (sortKeySet.contains(sortKey)) {
         throw new SemanticException(String.format("ORDER BY: duplicate sort key '%s'", sortKey));
       } else {
@@ -1698,7 +1707,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   // Create User
   @Override
   public Statement visitCreateUser(IoTDBSqlParser.CreateUserContext ctx) {
-    AuthorStatement authorStatement = new AuthorStatement(AuthorOperator.AuthorType.CREATE_USER);
+    AuthorStatement authorStatement = new AuthorStatement(AuthorType.CREATE_USER);
     authorStatement.setUserName(parseIdentifier(ctx.userName.getText()));
     authorStatement.setPassWord(parseStringLiteral(ctx.password.getText()));
     return authorStatement;
@@ -1708,7 +1717,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   @Override
   public Statement visitCreateRole(IoTDBSqlParser.CreateRoleContext ctx) {
-    AuthorStatement authorStatement = new AuthorStatement(AuthorOperator.AuthorType.CREATE_ROLE);
+    AuthorStatement authorStatement = new AuthorStatement(AuthorType.CREATE_ROLE);
     authorStatement.setRoleName(parseIdentifier(ctx.roleName.getText()));
     return authorStatement;
   }
@@ -1717,7 +1726,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   @Override
   public Statement visitAlterUser(IoTDBSqlParser.AlterUserContext ctx) {
-    AuthorStatement authorStatement = new AuthorStatement(AuthorOperator.AuthorType.UPDATE_USER);
+    AuthorStatement authorStatement = new AuthorStatement(AuthorType.UPDATE_USER);
     authorStatement.setUserName(parseIdentifier(ctx.userName.getText()));
     authorStatement.setNewPassword(parseStringLiteral(ctx.password.getText()));
     return authorStatement;
@@ -1735,7 +1744,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
             .collect(Collectors.toList());
     checkGrantRevokePrivileges(privileges, nodeNameList);
 
-    AuthorStatement authorStatement = new AuthorStatement(AuthorOperator.AuthorType.GRANT_USER);
+    AuthorStatement authorStatement = new AuthorStatement(AuthorType.GRANT_USER);
     authorStatement.setUserName(parseIdentifier(ctx.userName.getText()));
     authorStatement.setPrivilegeList(privileges);
     authorStatement.setNodeNameList(nodeNameList);
@@ -1754,7 +1763,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
             .collect(Collectors.toList());
     checkGrantRevokePrivileges(privileges, nodeNameList);
 
-    AuthorStatement authorStatement = new AuthorStatement(AuthorOperator.AuthorType.GRANT_ROLE);
+    AuthorStatement authorStatement = new AuthorStatement(AuthorType.GRANT_ROLE);
     authorStatement.setRoleName(parseIdentifier(ctx.roleName.getText()));
     authorStatement.setPrivilegeList(privileges);
     authorStatement.setNodeNameList(nodeNameList);
@@ -1765,8 +1774,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   @Override
   public Statement visitGrantRoleToUser(IoTDBSqlParser.GrantRoleToUserContext ctx) {
-    AuthorStatement authorStatement =
-        new AuthorStatement(AuthorOperator.AuthorType.GRANT_USER_ROLE);
+    AuthorStatement authorStatement = new AuthorStatement(AuthorType.GRANT_USER_ROLE);
     authorStatement.setRoleName(parseIdentifier(ctx.roleName.getText()));
     authorStatement.setUserName(parseIdentifier(ctx.userName.getText()));
     return authorStatement;
@@ -1784,7 +1792,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
             .collect(Collectors.toList());
     checkGrantRevokePrivileges(privileges, nodeNameList);
 
-    AuthorStatement authorStatement = new AuthorStatement(AuthorOperator.AuthorType.REVOKE_USER);
+    AuthorStatement authorStatement = new AuthorStatement(AuthorType.REVOKE_USER);
     authorStatement.setUserName(parseIdentifier(ctx.userName.getText()));
     authorStatement.setPrivilegeList(privileges);
     authorStatement.setNodeNameList(nodeNameList);
@@ -1803,7 +1811,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
             .collect(Collectors.toList());
     checkGrantRevokePrivileges(privileges, nodeNameList);
 
-    AuthorStatement authorStatement = new AuthorStatement(AuthorOperator.AuthorType.REVOKE_ROLE);
+    AuthorStatement authorStatement = new AuthorStatement(AuthorType.REVOKE_ROLE);
     authorStatement.setRoleName(parseIdentifier(ctx.roleName.getText()));
     authorStatement.setPrivilegeList(privileges);
     authorStatement.setNodeNameList(nodeNameList);
@@ -1844,8 +1852,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   @Override
   public Statement visitRevokeRoleFromUser(IoTDBSqlParser.RevokeRoleFromUserContext ctx) {
-    AuthorStatement authorStatement =
-        new AuthorStatement(AuthorOperator.AuthorType.REVOKE_USER_ROLE);
+    AuthorStatement authorStatement = new AuthorStatement(AuthorType.REVOKE_USER_ROLE);
     authorStatement.setRoleName(parseIdentifier(ctx.roleName.getText()));
     authorStatement.setUserName(parseIdentifier(ctx.userName.getText()));
     return authorStatement;
@@ -1855,7 +1862,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   @Override
   public Statement visitDropUser(IoTDBSqlParser.DropUserContext ctx) {
-    AuthorStatement authorStatement = new AuthorStatement(AuthorOperator.AuthorType.DROP_USER);
+    AuthorStatement authorStatement = new AuthorStatement(AuthorType.DROP_USER);
     authorStatement.setUserName(parseIdentifier(ctx.userName.getText()));
     return authorStatement;
   }
@@ -1864,7 +1871,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   @Override
   public Statement visitDropRole(IoTDBSqlParser.DropRoleContext ctx) {
-    AuthorStatement authorStatement = new AuthorStatement(AuthorOperator.AuthorType.DROP_ROLE);
+    AuthorStatement authorStatement = new AuthorStatement(AuthorType.DROP_ROLE);
     authorStatement.setRoleName(parseIdentifier(ctx.roleName.getText()));
     return authorStatement;
   }
@@ -1873,7 +1880,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   @Override
   public Statement visitListUser(IoTDBSqlParser.ListUserContext ctx) {
-    AuthorStatement authorStatement = new AuthorStatement(AuthorOperator.AuthorType.LIST_USER);
+    AuthorStatement authorStatement = new AuthorStatement(AuthorType.LIST_USER);
     if (ctx.roleName != null) {
       authorStatement.setRoleName(parseIdentifier(ctx.roleName.getText()));
     }
@@ -1884,7 +1891,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   @Override
   public Statement visitListRole(IoTDBSqlParser.ListRoleContext ctx) {
-    AuthorStatement authorStatement = new AuthorStatement(AuthorOperator.AuthorType.LIST_ROLE);
+    AuthorStatement authorStatement = new AuthorStatement(AuthorType.LIST_ROLE);
     if (ctx.userName != null) {
       authorStatement.setUserName(parseIdentifier(ctx.userName.getText()));
     }
@@ -1895,8 +1902,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   @Override
   public Statement visitListPrivilegesUser(IoTDBSqlParser.ListPrivilegesUserContext ctx) {
-    AuthorStatement authorStatement =
-        new AuthorStatement(AuthorOperator.AuthorType.LIST_USER_PRIVILEGE);
+    AuthorStatement authorStatement = new AuthorStatement(AuthorType.LIST_USER_PRIVILEGE);
     authorStatement.setUserName(parseIdentifier(ctx.userName.getText()));
     List<PartialPath> nodeNameList =
         ctx.prefixPath().stream().map(this::parsePrefixPath).collect(Collectors.toList());
@@ -1908,8 +1914,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   @Override
   public Statement visitListPrivilegesRole(IoTDBSqlParser.ListPrivilegesRoleContext ctx) {
-    AuthorStatement authorStatement =
-        new AuthorStatement(AuthorOperator.AuthorType.LIST_ROLE_PRIVILEGE);
+    AuthorStatement authorStatement = new AuthorStatement(AuthorType.LIST_ROLE_PRIVILEGE);
     authorStatement.setRoleName(parseIdentifier(ctx.roleName.getText()));
     List<PartialPath> nodeNameList =
         ctx.prefixPath().stream().map(this::parsePrefixPath).collect(Collectors.toList());
@@ -2547,6 +2552,42 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     return setSystemStatusStatement;
   }
 
+  // show query processlist
+
+  @Override
+  public Statement visitShowQueries(IoTDBSqlParser.ShowQueriesContext ctx) {
+    ShowQueriesStatement showQueriesStatement = new ShowQueriesStatement();
+    // parse WHERE
+    if (ctx.whereClause() != null) {
+      showQueriesStatement.setWhereCondition(parseWhereClause(ctx.whereClause()));
+    }
+
+    // parse ORDER BY
+    if (ctx.orderByClause() != null) {
+      showQueriesStatement.setOrderByComponent(
+          parseOrderByClause(
+              ctx.orderByClause(),
+              ImmutableSet.of(
+                  SortKey.TIME,
+                  SortKey.QUERYID,
+                  SortKey.DATANODEID,
+                  SortKey.ELAPSEDTIME,
+                  SortKey.STATEMENT)));
+    }
+
+    // parse LIMIT & OFFSET
+    if (ctx.rowPaginationClause() != null) {
+      if (ctx.rowPaginationClause().limitClause() != null) {
+        showQueriesStatement.setRowLimit(parseLimitClause(ctx.rowPaginationClause().limitClause()));
+      }
+      if (ctx.rowPaginationClause().offsetClause() != null) {
+        showQueriesStatement.setRowOffset(
+            parseOffsetClause(ctx.rowPaginationClause().offsetClause()));
+      }
+    }
+    return showQueriesStatement;
+  }
+
   // show region
 
   @Override
@@ -3061,5 +3102,13 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       getTimeSlotListStatement.setEndTime(Long.parseLong(ctx.endTime.getText()));
     }
     return getTimeSlotListStatement;
+  }
+
+  @Override
+  public Statement visitMigrateRegion(IoTDBSqlParser.MigrateRegionContext ctx) {
+    return new MigrateRegionStatement(
+        Integer.parseInt(ctx.regionId.getText()),
+        Integer.parseInt(ctx.fromId.getText()),
+        Integer.parseInt(ctx.toId.getText()));
   }
 }

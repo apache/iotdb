@@ -113,7 +113,7 @@ public class CompactionTaskManager implements IService {
     this.subCompactionTaskExecutionPool =
         (WrappedThreadPoolExecutor)
             IoTDBThreadPoolFactory.newFixedThreadPool(
-                IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount()
+                compactionThreadNum
                     * IoTDBDescriptor.getInstance().getConfig().getSubCompactionTaskNum(),
                 ThreadName.COMPACTION_SUB_SERVICE.getName());
     for (int i = 0; i < compactionThreadNum; ++i) {
@@ -124,6 +124,7 @@ public class CompactionTaskManager implements IService {
   @Override
   public void stop() {
     if (taskExecutionPool != null) {
+      subCompactionTaskExecutionPool.shutdownNow();
       taskExecutionPool.shutdownNow();
       logger.info("Waiting for task taskExecutionPool to shut down");
       waitTermination();
@@ -135,6 +136,7 @@ public class CompactionTaskManager implements IService {
   @Override
   public void waitAndStop(long milliseconds) {
     if (taskExecutionPool != null) {
+      awaitTermination(subCompactionTaskExecutionPool, milliseconds);
       awaitTermination(taskExecutionPool, milliseconds);
       logger.info("Waiting for task taskExecutionPool to shut down in {} ms", milliseconds);
       waitTermination();
@@ -175,7 +177,7 @@ public class CompactionTaskManager implements IService {
   private void waitTermination() {
     long startTime = System.currentTimeMillis();
     int timeMillis = 0;
-    while (!taskExecutionPool.isTerminated()) {
+    while (!subCompactionTaskExecutionPool.isTerminated() || !taskExecutionPool.isTerminated()) {
       try {
         Thread.sleep(200);
       } catch (InterruptedException e) {
@@ -188,6 +190,7 @@ public class CompactionTaskManager implements IService {
       }
     }
     taskExecutionPool = null;
+    subCompactionTaskExecutionPool = null;
     storageGroupTasks.clear();
     logger.info("CompactionManager stopped");
   }
@@ -237,9 +240,8 @@ public class CompactionTaskManager implements IService {
         .containsKey(task);
   }
 
-  public RateLimiter getMergeWriteRateLimiter() {
-    setWriteMergeRate(
-        IoTDBDescriptor.getInstance().getConfig().getCompactionWriteThroughputMbPerSec());
+  public RateLimiter getCompactionIORateLimiter() {
+    setWriteMergeRate(IoTDBDescriptor.getInstance().getConfig().getCompactionIORatePerSec());
     return mergeWriteRateLimiter;
   }
 
@@ -251,16 +253,6 @@ public class CompactionTaskManager implements IService {
     }
     if (mergeWriteRateLimiter.getRate() != throughout) {
       mergeWriteRateLimiter.setRate(throughout);
-    }
-  }
-  /** wait by throughoutMbPerSec limit to avoid continuous Write Or Read */
-  public static void mergeRateLimiterAcquire(RateLimiter limiter, long bytesLength) {
-    while (bytesLength >= Integer.MAX_VALUE) {
-      limiter.acquire(Integer.MAX_VALUE);
-      bytesLength -= Integer.MAX_VALUE;
-    }
-    if (bytesLength > 0) {
-      limiter.acquire((int) bytesLength);
     }
   }
 
@@ -352,15 +344,6 @@ public class CompactionTaskManager implements IService {
   @TestOnly
   public void restart() throws InterruptedException {
     if (IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount() > 0) {
-      if (taskExecutionPool != null) {
-        this.taskExecutionPool.shutdownNow();
-        if (!this.taskExecutionPool.awaitTermination(MAX_WAITING_TIME, TimeUnit.MILLISECONDS)) {
-          throw new InterruptedException(
-              "Has been waiting over "
-                  + MAX_WAITING_TIME / 1000
-                  + " seconds for all compaction tasks to finish.");
-        }
-      }
       if (subCompactionTaskExecutionPool != null) {
         this.subCompactionTaskExecutionPool.shutdownNow();
         if (!this.subCompactionTaskExecutionPool.awaitTermination(
@@ -371,11 +354,13 @@ public class CompactionTaskManager implements IService {
                   + " seconds for all sub compaction tasks to finish.");
         }
       }
-      if (this.subCompactionTaskExecutionPool != null) {
-        subCompactionTaskExecutionPool.shutdownNow();
-        if (!this.subCompactionTaskExecutionPool.awaitTermination(
-            MAX_WAITING_TIME, TimeUnit.MILLISECONDS)) {
-          throw new RuntimeException("Failed to shutdown subCompactionTaskExecutionPool");
+      if (taskExecutionPool != null) {
+        this.taskExecutionPool.shutdownNow();
+        if (!this.taskExecutionPool.awaitTermination(MAX_WAITING_TIME, TimeUnit.MILLISECONDS)) {
+          throw new InterruptedException(
+              "Has been waiting over "
+                  + MAX_WAITING_TIME / 1000
+                  + " seconds for all compaction tasks to finish.");
         }
       }
       initThreadPool();

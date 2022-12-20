@@ -626,13 +626,6 @@ var config = {
 						]
 					},
 					{
-						title: 'Cluster Setup',
-						children: [
-							['Cluster/Cluster-Setup','Cluster Setup'],
-							//['Cluster/Cluster-Setup-Example','Cluster Setup Example']
-						]
-					},
-					{
 						title: 'FAQ',
 						children: [
 							['FAQ/Frequently-asked-questions','Frequently asked questions']
@@ -795,13 +788,6 @@ var config = {
 							['Ecosystem Integration/Flink IoTDB','Flink IoTDB'],
 							['Ecosystem Integration/Flink TsFile','Flink TsFile'],
 							['Ecosystem Integration/NiFi-IoTDB','NiFi IoTDB'],
-						]
-					},
-					{
-						title: 'Cluster Setup',
-						children: [
-							['Cluster/Cluster-Setup','Cluster Setup'],
-							['Cluster/Cluster-Setup-Example','Cluster Setup Example']
 						]
 					},
 					{
@@ -1083,6 +1069,7 @@ var config = {
 						title: 'Quick Start',
 						children: [
 							['QuickStart/QuickStart','Quick Start'],
+							['QuickStart/ClusterQuickStart','Cluster Quick Start'],
 							['QuickStart/WayToGetIoTDB','Download and Setup'],
 							['QuickStart/Command-Line-Interface','Command Line Interface'],
 							['QuickStart/Files','Data storage']
@@ -1843,13 +1830,6 @@ var config = {
 						]
 					},
 					{
-						title: '集群搭建',
-						children: [
-							['Cluster/Cluster-Setup','集群搭建'],
-							//['Cluster/Cluster-Setup-Example','集群搭建示例']
-						]
-					},
-					{
 						title: '常见问题',
 						children: [
 							['FAQ/Frequently-asked-questions','常见问题']
@@ -2006,13 +1986,6 @@ var config = {
 							['Ecosystem Integration/Flink TsFile','Flink-TsFile'],
 							['Ecosystem Integration/Flink IoTDB','Flink-IoTDB'],
 							['Ecosystem Integration/NiFi-IoTDB','NiFi IoTDB']
-						]
-					},
-					{
-						title: '集群搭建',
-						children: [
-							['Cluster/Cluster-Setup','集群搭建'],
-							['Cluster/Cluster-Setup-Example','集群搭建示例']
 						]
 					},
 					{
@@ -2294,6 +2267,7 @@ var config = {
 						title: '快速上手',
 						children: [
 							['QuickStart/QuickStart','快速上手'],
+							['QuickStart/ClusterQuickStart', '集群快速上手'],
 							['QuickStart/WayToGetIoTDB','下载与安装'],
 							['QuickStart/Command-Line-Interface','SQL命令行终端(CLI)'],
 							['QuickStart/Files','数据文件存储']

@@ -29,7 +29,6 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.TestConstant;
-import org.apache.iotdb.db.engine.MetadataManagerHelper;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.compaction.inner.InnerSpaceCompactionTask;
@@ -87,7 +86,6 @@ public class DataRegionTest {
 
   @Before
   public void setUp() throws Exception {
-    MetadataManagerHelper.initMetadata();
     EnvironmentUtils.envSetUp();
     dataRegion = new DummyDataRegion(systemDir, storageGroup);
     StorageEngine.getInstance().setDataRegion(new DataRegionId(0), dataRegion);
@@ -100,7 +98,6 @@ public class DataRegionTest {
       dataRegion.syncDeleteDataFiles();
       StorageEngine.getInstance().deleteDataRegion(new DataRegionId(0));
     }
-    EnvironmentUtils.cleanEnv();
     EnvironmentUtils.cleanDir(TestConstant.OUTPUT_DATA_DIR);
     CompactionTaskManager.getInstance().stop();
     EnvironmentUtils.cleanEnv();
@@ -216,7 +213,6 @@ public class DataRegionTest {
             Collections.singletonList(new PartialPath(deviceId, measurementId)),
             deviceId,
             context,
-            null,
             null);
     Assert.assertEquals(10, queryDataSource.getSeqResources().size());
     for (TsFileResource resource : queryDataSource.getSeqResources()) {
@@ -250,7 +246,6 @@ public class DataRegionTest {
             Collections.singletonList(new PartialPath(deviceId, measurementId)),
             deviceId,
             context,
-            null,
             null);
     Assert.assertEquals(0, queryDataSource.getUnseqResources().size());
   }
@@ -324,7 +319,6 @@ public class DataRegionTest {
             Collections.singletonList(new PartialPath(deviceId, measurementId)),
             deviceId,
             context,
-            null,
             null);
 
     Assert.assertEquals(2, queryDataSource.getSeqResources().size());
@@ -359,7 +353,6 @@ public class DataRegionTest {
             Collections.singletonList(new PartialPath(deviceId, measurementId)),
             deviceId,
             context,
-            null,
             null);
     Assert.assertEquals(10, queryDataSource.getSeqResources().size());
     Assert.assertEquals(10, queryDataSource.getUnseqResources().size());
@@ -403,7 +396,6 @@ public class DataRegionTest {
             Collections.singletonList(new PartialPath(deviceId, measurementId)),
             deviceId,
             context,
-            null,
             null);
     Assert.assertEquals(10, queryDataSource.getSeqResources().size());
     Assert.assertEquals(0, queryDataSource.getUnseqResources().size());
@@ -493,7 +485,6 @@ public class DataRegionTest {
             Collections.singletonList(new PartialPath(deviceId, measurementId)),
             deviceId,
             context,
-            null,
             null);
 
     Assert.assertEquals(2, queryDataSource.getSeqResources().size());
@@ -582,7 +573,6 @@ public class DataRegionTest {
             Collections.singletonList(new PartialPath(deviceId, measurementId)),
             deviceId,
             context,
-            null,
             null);
 
     Assert.assertEquals(2, queryDataSource.getSeqResources().size());
@@ -671,7 +661,6 @@ public class DataRegionTest {
             Collections.singletonList(new PartialPath(deviceId, measurementId)),
             deviceId,
             context,
-            null,
             null);
 
     Assert.assertEquals(2, queryDataSource.getSeqResources().size());
@@ -709,7 +698,6 @@ public class DataRegionTest {
             Collections.singletonList(new PartialPath("root.ln22", measurementId)),
             "root.ln22",
             context,
-            null,
             null);
     Assert.assertEquals(10, queryDataSource.getSeqResources().size());
     Assert.assertEquals(0, queryDataSource.getUnseqResources().size());
@@ -776,7 +764,6 @@ public class DataRegionTest {
             Collections.singletonList(new PartialPath(deviceId, measurementId)),
             deviceId,
             context,
-            null,
             null);
     Assert.assertEquals(2, queryDataSource.getSeqResources().size());
     for (TsFileResource resource : queryDataSource.getSeqResources()) {

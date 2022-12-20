@@ -35,7 +35,6 @@ import org.apache.iotdb.consensus.iot.thrift.TLogBatch;
 import org.apache.iotdb.consensus.iot.thrift.TSyncLogReq;
 import org.apache.iotdb.consensus.iot.wal.ConsensusReqReader;
 import org.apache.iotdb.consensus.iot.wal.GetConsensusReqReaderPlan;
-import org.apache.iotdb.consensus.ratis.Utils;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 
 import org.apache.thrift.TException;
@@ -204,7 +203,7 @@ public class LogDispatcher {
       this.controller =
           new IndexController(
               impl.getStorageDir(),
-              Utils.fromTEndPointToString(peer.getEndpoint()),
+              peer,
               initialSyncIndex,
               config.getReplication().getCheckpointGap());
       this.syncStatus = new SyncStatus(controller, config);

@@ -46,7 +46,7 @@ ddlStatement
     | showSchemaTemplates | showNodesInSchemaTemplate
     | showPathsUsingSchemaTemplate | showPathsSetSchemaTemplate
     | countStorageGroup | countDevices | countTimeseries | countNodes
-    | getRegionId | getTimeSlotList | getSeriesSlotList
+    | getRegionId | getTimeSlotList | getSeriesSlotList | migrateRegion
     ;
 
 dmlStatement
@@ -61,7 +61,7 @@ dclStatement
 utilityStatement
     : merge | fullMerge | flush | clearCache | settle | explain | tracing
     | setSystemStatus | showVersion | showFlushInfo | showLockInfo | showQueryResource
-    | showQueryProcesslist | killQuery | grantWatermarkEmbedding | revokeWatermarkEmbedding
+    | showQueries | killQuery | grantWatermarkEmbedding | revokeWatermarkEmbedding
     | loadConfiguration | loadTimeseries | loadFile | removeFile | unloadFile;
 
 syncStatement
@@ -164,7 +164,6 @@ createContinuousQuery
 resampleClause
     : RESAMPLE
         (EVERY everyInterval=DURATION_LITERAL)?
-        (FOR DURATION_LITERAL)?
         (BOUNDARY boundaryTime=timeValue)?
         (RANGE startTimeOffset=DURATION_LITERAL (COMMA endTimeOffset=DURATION_LITERAL)?)?
     ;
@@ -253,6 +252,11 @@ getTimeSlotList
 // Get Series Slot List
 getSeriesSlotList
     : SHOW (DATA|SCHEMA)? SERIESSLOTID OF path=prefixPath
+    ;
+
+// Migrate Region
+migrateRegion
+    : MIGRATE REGION regionId=INTEGER_LITERAL FROM fromId=INTEGER_LITERAL TO toId=INTEGER_LITERAL
     ;
 
 // Set TTL
@@ -347,7 +351,7 @@ showClusterDetails
 
 // Show Region
 showRegion
-    : SHOW (SCHEMA | DATA)? REGIONS (OF STORAGE GROUP prefixPath? (COMMA prefixPath)*)?
+    : SHOW (SCHEMA | DATA)? REGIONS (OF (STORAGE GROUP | DATABASE) prefixPath? (COMMA prefixPath)*)?
     ;
 
 // Show Data Nodes
@@ -495,6 +499,10 @@ sortKey
     : TIME
     | TIMESERIES
     | DEVICE
+    | QUERYID
+    | DATANODEID
+    | ELAPSEDTIME
+    | STATEMENT
     ;
 
 // ---- Fill Clause
@@ -727,9 +735,12 @@ showQueryResource
     : SHOW QUERY RESOURCE
     ;
 
-// Show Query Processlist
-showQueryProcesslist
-    : SHOW QUERY PROCESSLIST
+// Show Queries / Show Query Processlist
+showQueries
+    : SHOW (QUERIES | QUERY PROCESSLIST)
+    whereClause?
+    orderByClause?
+    rowPaginationClause?
     ;
 
 // Kill Query

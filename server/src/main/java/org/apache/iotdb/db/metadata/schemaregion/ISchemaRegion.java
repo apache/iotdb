@@ -116,6 +116,7 @@ public interface ISchemaRegion {
    * @param isPrefixMatch if true, the path pattern is used to match prefix path
    * @return deletion failed Timeseries
    */
+  @Deprecated
   Pair<Integer, Set<String>> deleteTimeseries(PartialPath pathPattern, boolean isPrefixMatch)
       throws MetadataException;
 
@@ -124,6 +125,8 @@ public interface ISchemaRegion {
    *
    * @param patternTree
    * @throws MetadataException
+   * @return preDeletedNum. If there are intersections of patterns in the patternTree, there may be
+   *     more than are actually pre-deleted.
    */
   long constructSchemaBlackList(PathPatternTree patternTree) throws MetadataException;
 
@@ -135,6 +138,12 @@ public interface ISchemaRegion {
    */
   void rollbackSchemaBlackList(PathPatternTree patternTree) throws MetadataException;
 
+  /**
+   * Fetch schema black list (timeseries that has been pre deleted).
+   *
+   * @param patternTree
+   * @throws MetadataException
+   */
   Set<PartialPath> fetchSchemaBlackList(PathPatternTree patternTree) throws MetadataException;
 
   /**

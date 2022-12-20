@@ -47,6 +47,7 @@ import java.nio.file.Files;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Objects;
 import java.util.Properties;
 
 public class IoTDBStartCheck {
@@ -56,7 +57,7 @@ public class IoTDBStartCheck {
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
 
-  private FSFactory fsFactory = FSFactoryProducer.getFSFactory();
+  private final FSFactory fsFactory = FSFactoryProducer.getFSFactory();
 
   // this file is located in data/system/schema/system.properties
   // If user delete folder "data", system.properties can reset.
@@ -67,48 +68,50 @@ public class IoTDBStartCheck {
   private File propertiesFile;
   private File tmpPropertiesFile;
 
-  private Properties properties = new Properties();
+  private final Properties properties = new Properties();
 
-  private Map<String, String> systemProperties = new HashMap<>();
+  private final Map<String, String> systemProperties = new HashMap<>();
 
   private static final String SYSTEM_PROPERTIES_STRING = "System properties:";
 
   private static final String TIMESTAMP_PRECISION_STRING = "timestamp_precision";
-  private static String timestampPrecision = config.getTimestampPrecision();
+  private static final String timestampPrecision = config.getTimestampPrecision();
 
   private static final String PARTITION_INTERVAL_STRING = "time_partition_interval";
-  private static long timePartitionInterval = config.getTimePartitionInterval();
+  private static final long timePartitionInterval = config.getTimePartitionInterval();
 
   private static final String TSFILE_FILE_SYSTEM_STRING = "tsfile_storage_fs";
-  private static String tsfileFileSystem = config.getTsFileStorageFs().toString();
+  private static final String tsfileFileSystem = config.getTsFileStorageFs().toString();
 
   private static final String TAG_ATTRIBUTE_SIZE_STRING = "tag_attribute_total_size";
-  private static String tagAttributeTotalSize = String.valueOf(config.getTagAttributeTotalSize());
+  private static final String tagAttributeTotalSize =
+      String.valueOf(config.getTagAttributeTotalSize());
 
   private static final String TAG_ATTRIBUTE_FLUSH_INTERVAL = "tag_attribute_flush_interval";
-  private static String tagAttributeFlushInterval =
+  private static final String tagAttributeFlushInterval =
       String.valueOf(config.getTagAttributeFlushInterval());
 
   private static final String MAX_DEGREE_OF_INDEX_STRING = "max_degree_of_index_node";
-  private static String maxDegreeOfIndexNode =
+  private static final String maxDegreeOfIndexNode =
       String.valueOf(TSFileDescriptor.getInstance().getConfig().getMaxDegreeOfIndexNode());
 
   private static final String DATA_REGION_NUM = "data_region_num";
   // for upgrading from old file
   private static final String VIRTUAL_STORAGE_GROUP_NUM = "virtual_storage_group_num";
-  private static String dataRegionNum = String.valueOf(config.getDataRegionNum());
+  private static final String dataRegionNum = String.valueOf(config.getDataRegionNum());
 
   private static final String ENABLE_ID_TABLE = "enable_id_table";
-  private static String enableIDTable = String.valueOf(config.isEnableIDTable());
+  private static final String enableIDTable = String.valueOf(config.isEnableIDTable());
 
   private static final String ENABLE_ID_TABLE_LOG_FILE = "enable_id_table_log_file";
-  private static String enableIdTableLogFile = String.valueOf(config.isEnableIDTableLogFile());
+  private static final String enableIdTableLogFile =
+      String.valueOf(config.isEnableIDTableLogFile());
 
   private static final String SCHEMA_ENGINE_MODE = "schema_engine_mode";
-  private static String schemaEngineMode = String.valueOf(config.getSchemaEngineMode());
+  private static final String schemaEngineMode = String.valueOf(config.getSchemaEngineMode());
 
   private static final String TIME_ENCODER_KEY = "time_encoder";
-  private static String timeEncoderValue =
+  private static final String timeEncoderValue =
       String.valueOf(TSFileDescriptor.getInstance().getConfig().getTimeEncoder());
 
   private static final String DATA_NODE_ID = "data_node_id";
@@ -158,14 +161,14 @@ public class IoTDBStartCheck {
     File dir = SystemFileFactory.INSTANCE.getFile(SCHEMA_DIR);
     if (!dir.exists()) {
       if (!dir.mkdirs()) {
-        logger.error("can not create schema dir: {}", SCHEMA_DIR);
+        logger.error("Can not create schema dir: {}", SCHEMA_DIR);
         System.exit(-1);
       } else {
         logger.info(" {} dir has been created.", SCHEMA_DIR);
       }
     }
 
-    // check time stamp precision
+    // Check time stamp precision
     if (!("ms".equals(timestampPrecision)
         || "us".equals(timestampPrecision)
         || "ns".equals(timestampPrecision))) {
@@ -205,9 +208,17 @@ public class IoTDBStartCheck {
    * accessing same director.
    */
   public void checkDirectory() throws ConfigurationException, IOException {
+
     // check data dirs
     for (String dataDir : config.getDataDirs()) {
       DirectoryChecker.getInstance().registerDirectory(new File(dataDir));
+    }
+    if (config.isClusterMode()
+        && config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.RATIS_CONSENSUS)) {
+      if (DirectoryChecker.getInstance().isCrossDisk(config.getDataDirs())) {
+        throw new ConfigurationException(
+            "Configuring the data directories as cross-disk directories is not supported under RatisConsensus(it will be supported in a later version).");
+      }
     }
     // check system dir
     DirectoryChecker.getInstance().registerDirectory(new File(config.getSystemDir()));
@@ -255,7 +266,7 @@ public class IoTDBStartCheck {
 
       // write properties to system.properties
       try (FileOutputStream outputStream = new FileOutputStream(propertiesFile)) {
-        systemProperties.forEach((k, v) -> properties.setProperty(k, v));
+        systemProperties.forEach(properties::setProperty);
         properties.store(outputStream, SYSTEM_PROPERTIES_STRING);
       }
       return;
@@ -304,7 +315,7 @@ public class IoTDBStartCheck {
         if (sgWALs != null) {
           for (File sgWAL : sgWALs) {
             // make sure wal directory of each sg is empty
-            if (sgWAL.isDirectory() && sgWAL.list().length != 0) {
+            if (sgWAL.isDirectory() && Objects.requireNonNull(sgWAL.list()).length != 0) {
               logger.error(
                   "WAL detected, please stop insertion and run 'SET SYSTEM TO READONLY', then run 'flush' on IoTDB {} before upgrading to {}.",
                   properties.getProperty(IOTDB_VERSION_STRING),

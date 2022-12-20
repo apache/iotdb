@@ -24,6 +24,7 @@ import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.mpp.execution.operator.source.DataSourceOperator;
 import org.apache.iotdb.db.mpp.execution.timer.RuleBasedTimeSliceAllocator;
 import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.utils.Binary;
@@ -54,6 +55,8 @@ public class LocalExecutionPlanContext {
   private int nextOperatorId = 0;
 
   private final TypeProvider typeProvider;
+
+  private List<TSDataType> cachedDataTypes;
 
   // left is cached last value in last query
   // right is full path for each cached last value
@@ -145,6 +148,14 @@ public class LocalExecutionPlanContext {
     checkArgument(this.sinkHandle == null, "There must be at most one SinkNode");
 
     this.sinkHandle = sinkHandle;
+  }
+
+  public void setCachedDataTypes(List<TSDataType> cachedDataTypes) {
+    this.cachedDataTypes = cachedDataTypes;
+  }
+
+  public List<TSDataType> getCachedDataTypes() {
+    return cachedDataTypes;
   }
 
   public TypeProvider getTypeProvider() {
