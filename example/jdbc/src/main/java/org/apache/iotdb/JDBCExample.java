@@ -26,48 +26,68 @@ import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.Random;
 
 public class JDBCExample {
 
   public static void main(String[] args) throws ClassNotFoundException, SQLException {
     Class.forName("org.apache.iotdb.jdbc.IoTDBDriver");
     try (Connection connection =
-            DriverManager.getConnection(
-                "jdbc:iotdb://127.0.0.1:6667?version=V_0_13", "root", "root");
+            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667", "root", "root");
         Statement statement = connection.createStatement()) {
 
       // set JDBC fetchSize
       statement.setFetchSize(10000);
 
-      try {
-        statement.execute("CREATE DATABASE root.sg1");
-        statement.execute(
-            "CREATE TIMESERIES root.sg1.d1.s1 WITH DATATYPE=INT64, ENCODING=RLE, COMPRESSOR=SNAPPY");
-        statement.execute(
-            "CREATE TIMESERIES root.sg1.d1.s2 WITH DATATYPE=INT64, ENCODING=RLE, COMPRESSOR=SNAPPY");
-        statement.execute(
-            "CREATE TIMESERIES root.sg1.d1.s3 WITH DATATYPE=INT64, ENCODING=RLE, COMPRESSOR=SNAPPY");
-      } catch (IoTDBSQLException e) {
-        System.out.println(e.getMessage());
-      }
+      int loop = 10;
+      long minRunTime = Long.MAX_VALUE;
+      long maxRunTime = Long.MIN_VALUE;
+      long totalRunTime = 0;
 
-      for (int i = 0; i <= 100; i++) {
-        statement.addBatch(prepareInsertStatment(i));
-      }
-      statement.executeBatch();
-      statement.clearBatch();
+      for (int i = 0; i < loop; i++) {
+        String sql = getSQL2(50);
+        System.out.println(sql);
+        long startTime = System.currentTimeMillis();
 
-      ResultSet resultSet = statement.executeQuery("select ** from root where time <= 10");
-      outputResult(resultSet);
-      resultSet = statement.executeQuery("select count(**) from root");
-      outputResult(resultSet);
-      resultSet =
-          statement.executeQuery(
-              "select count(**) from root where time >= 1 and time <= 100 group by ([0, 100), 20ms, 20ms)");
-      outputResult(resultSet);
+        ResultSet resultSet = statement.executeQuery(sql);
+
+        // outputResult(resultSet);
+        while (resultSet.next()) {}
+
+        resultSet.close();
+        long runTime = System.currentTimeMillis() - startTime;
+        minRunTime = Math.min(minRunTime, runTime);
+        maxRunTime = Math.max(maxRunTime, runTime);
+        totalRunTime += runTime;
+      }
+      double avgTime = 1.0 * totalRunTime / loop;
+      System.out.println("Avg run time : " + avgTime + "ms");
+      System.out.println("Max run time : " + maxRunTime + "ms");
+      System.out.println("Min run time : " + minRunTime + "ms");
     } catch (IoTDBSQLException e) {
       System.out.println(e.getMessage());
     }
+  }
+
+  // single device
+  private static String getSQL1() {
+    Random random = new Random(System.currentTimeMillis());
+    int device_num = random.nextInt(100);
+    return String.format("select * from root.test.g_0.d_%d", device_num);
+  }
+
+  // 10 device
+  private static String getSQL2(int deviceNum) {
+    Random random = new Random(System.currentTimeMillis());
+    StringBuilder SQLBuilder = new StringBuilder();
+    SQLBuilder.append("select s_0 from ");
+    for (int i = 0; i < deviceNum; i++) {
+      SQLBuilder.append(String.format("root.test.g_0.d_%d", random.nextInt(100)));
+      if (i < deviceNum - 1) {
+        SQLBuilder.append(", ");
+      }
+    }
+    return SQLBuilder.toString();
   }
 
   private static void outputResult(ResultSet resultSet) throws SQLException {
@@ -92,17 +112,5 @@ public class JDBCExample {
       }
       System.out.println("--------------------------\n");
     }
-  }
-
-  private static String prepareInsertStatment(int time) {
-    return "insert into root.sg1.d1(timestamp, s1, s2, s3) values("
-        + time
-        + ","
-        + 1
-        + ","
-        + 1
-        + ","
-        + 1
-        + ")";
   }
 }
