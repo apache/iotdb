@@ -19,7 +19,6 @@
 package org.apache.iotdb.db.query.reader.universal;
 
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.query.control.tracing.TracingManager;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
 
@@ -78,18 +77,9 @@ public class PriorityMergeReader implements IPointReader {
     if (reader.hasNextTimeValuePair()) {
       heap.add(new Element(reader, reader.nextTimeValuePair(), priority));
       currentReadStopTime = Math.max(currentReadStopTime, endTime);
-
-      // for tracing: try to calculate the number of overlapped pages
-      if (context.isEnableTracing()) {
-        addOverlappedPageNum(context.getQueryId());
-      }
     } else {
       reader.close();
     }
-  }
-
-  private void addOverlappedPageNum(long queryId) {
-    TracingManager.getInstance().addOverlappedPageNum(queryId);
   }
 
   public long getCurrentReadStopTime() {

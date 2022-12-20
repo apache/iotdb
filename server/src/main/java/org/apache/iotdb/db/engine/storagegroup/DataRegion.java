@@ -38,6 +38,9 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.TsFileMetricManager;
+import org.apache.iotdb.db.engine.cache.BloomFilterCache;
+import org.apache.iotdb.db.engine.cache.ChunkCache;
+import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.compaction.CompactionRecoverManager;
 import org.apache.iotdb.db.engine.compaction.CompactionScheduler;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
@@ -76,7 +79,6 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.qp.utils.DateTimeUtils;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
-import org.apache.iotdb.db.query.control.QueryFileManager;
 import org.apache.iotdb.db.rescon.TsFileResourceManager;
 import org.apache.iotdb.db.service.SettleService;
 import org.apache.iotdb.db.sync.SyncService;
@@ -132,7 +134,6 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
 import static org.apache.iotdb.db.engine.storagegroup.TsFileResource.TEMP_SUFFIX;
-import static org.apache.iotdb.db.qp.executor.PlanExecutor.operateClearCache;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
 
 /**
@@ -1641,59 +1642,6 @@ public class DataRegion implements IDataRegionForQuery {
     }
   }
 
-  /**
-   * build query data source by searching all tsfile which fit in query filter
-   *
-   * @param pathList data paths
-   * @param context query context
-   * @param timeFilter time filter
-   * @param singleDeviceId selected deviceId (not null only when all the selected series are under
-   *     the same device)
-   * @return query data source
-   */
-  public QueryDataSource query(
-      List<PartialPath> pathList,
-      String singleDeviceId,
-      QueryContext context,
-      QueryFileManager filePathsManager,
-      Filter timeFilter)
-      throws QueryProcessException {
-    readLock();
-    try {
-      List<TsFileResource> seqResources =
-          getFileResourceListForQuery(
-              tsFileManager.getTsFileList(true),
-              upgradeSeqFileList,
-              pathList,
-              singleDeviceId,
-              context,
-              timeFilter,
-              true);
-      List<TsFileResource> unseqResources =
-          getFileResourceListForQuery(
-              tsFileManager.getTsFileList(false),
-              upgradeUnseqFileList,
-              pathList,
-              singleDeviceId,
-              context,
-              timeFilter,
-              false);
-      QueryDataSource dataSource = new QueryDataSource(seqResources, unseqResources);
-      // used files should be added before mergeLock is unlocked, or they may be deleted by
-      // running merge
-      // is null only in tests
-      if (filePathsManager != null) {
-        filePathsManager.addUsedFilesForQuery(context.getQueryId(), dataSource);
-      }
-      dataSource.setDataTTL(dataTTL);
-      return dataSource;
-    } catch (MetadataException e) {
-      throw new QueryProcessException(e);
-    } finally {
-      readUnlock();
-    }
-  }
-
   /** used for mpp */
   @Override
   public QueryDataSource query(
@@ -2125,6 +2073,8 @@ public class DataRegion implements IDataRegionForQuery {
     synchronized (closeStorageGroupCondition) {
       closeStorageGroupCondition.notifyAll();
     }
+    TsFileMetricManager.getInstance()
+        .addFile(tsFileProcessor.getTsFileResource().getTsFileSize(), tsFileProcessor.isSequence());
     logger.info("signal closing database condition in {}", databaseName + "-" + dataRegionId);
   }
 
@@ -2218,6 +2168,12 @@ public class DataRegion implements IDataRegionForQuery {
     } finally {
       oldTsFileResource.writeUnlock();
     }
+  }
+
+  public static void operateClearCache() {
+    ChunkCache.getInstance().clear();
+    TimeSeriesMetadataCache.getInstance().clear();
+    BloomFilterCache.getInstance().clear();
   }
 
   private void loadUpgradedResources(List<TsFileResource> resources, boolean isseq) {

@@ -46,7 +46,6 @@ public class OrderByComponent extends StatementNode {
 
   public void addSortItem(SortItem sortItem) {
     this.sortItemList.add(sortItem);
-
     if (sortItem.getSortKey() == SortKey.TIME) {
       orderByTime = true;
       timeOrderPriority = sortItemList.size() - 1;
@@ -86,7 +85,7 @@ public class OrderByComponent extends StatementNode {
   }
 
   public Ordering getDeviceOrder() {
-    checkState(timeOrderPriority != -1, "The device order is not specified.");
+    checkState(deviceOrderPriority != -1, "The device order is not specified.");
     return sortItemList.get(deviceOrderPriority).getOrdering();
   }
 

@@ -34,7 +34,9 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.GroupByLevelNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.GroupByTagNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.IntoNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.LimitNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.MergeSortNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.OffsetNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.SingleDeviceViewNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.SlidingWindowAggregationNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.SortNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.TimeJoinNode;
@@ -54,6 +56,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationDescriptor
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.CrossSeriesAggregationDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.DeviceViewIntoPathDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.IntoPathDescriptor;
+import org.apache.iotdb.db.mpp.plan.statement.component.SortItem;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.apache.commons.lang3.Validate;
@@ -146,10 +149,32 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
   }
 
   @Override
+  public List<String> visitSingleDeviceView(SingleDeviceViewNode node, GraphContext context) {
+    List<String> boxValue = new ArrayList<>();
+    boxValue.add(String.format("SingleDeviceView-%s", node.getPlanNodeId().getId()));
+    boxValue.add(String.format("DeviceName: %s", node.getDevice()));
+    return render(node, boxValue, context);
+  }
+
+  @Override
   public List<String> visitDeviceView(DeviceViewNode node, GraphContext context) {
     List<String> boxValue = new ArrayList<>();
     boxValue.add(String.format("DeviceView-%s", node.getPlanNodeId().getId()));
     boxValue.add(String.format("DeviceCount: %d", node.getDevices().size()));
+    return render(node, boxValue, context);
+  }
+
+  @Override
+  public List<String> visitMergeSort(MergeSortNode node, GraphContext context) {
+    List<String> boxValue = new ArrayList<>();
+    boxValue.add(String.format("MergeSort-%s", node.getPlanNodeId().getId()));
+    boxValue.add(String.format("ChildrenCount: %d", node.getChildren().size()));
+    StringBuilder sortInfo = new StringBuilder("Order:");
+    for (SortItem sortItem : node.getMergeOrderParameter().getSortItemList()) {
+      sortInfo.append(" ");
+      sortInfo.append(sortItem.getSortKey()).append(" ").append(sortItem.getOrdering());
+    }
+    boxValue.add(sortInfo.toString());
     return render(node, boxValue, context);
   }
 

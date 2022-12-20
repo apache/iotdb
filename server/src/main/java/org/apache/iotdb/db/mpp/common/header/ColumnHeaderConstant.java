@@ -125,6 +125,11 @@ public class ColumnHeaderConstant {
   public static final String CQID = "CQId";
   public static final String QUERY = "Query";
 
+  // column names for show query processlist
+  public static final String QUERY_ID = "QueryId";
+  public static final String ELAPSED_TIME = "ElapsedTime";
+  public static final String STATEMENT = "Statement";
+
   public static final List<ColumnHeader> lastQueryColumnHeaders =
       ImmutableList.of(
           new ColumnHeader(TIMESERIES, TSDataType.TEXT),
@@ -329,4 +334,11 @@ public class ColumnHeaderConstant {
           new ColumnHeader(CQID, TSDataType.TEXT),
           new ColumnHeader(QUERY, TSDataType.TEXT),
           new ColumnHeader(STATE, TSDataType.TEXT));
+
+  public static final List<ColumnHeader> showQueriesColumnHeaders =
+      ImmutableList.of(
+          new ColumnHeader(QUERY_ID, TSDataType.TEXT),
+          new ColumnHeader(DATA_NODE_ID, TSDataType.INT32),
+          new ColumnHeader(ELAPSED_TIME, TSDataType.FLOAT),
+          new ColumnHeader(STATEMENT, TSDataType.TEXT));
 }

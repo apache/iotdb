@@ -20,6 +20,8 @@
 package org.apache.iotdb.consensus.iot.logdispatcher;
 
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.consensus.common.Peer;
+import org.apache.iotdb.consensus.ratis.Utils;
 
 import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
@@ -30,11 +32,15 @@ import javax.annotation.concurrent.ThreadSafe;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.util.Arrays;
+import java.util.Optional;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /** An index controller class to balance the performance degradation of frequent disk I/O. */
 @ThreadSafe
 public class IndexController {
+
+  public static final String SEPARATOR = "-";
 
   private final Logger logger = LoggerFactory.getLogger(IndexController.class);
 
@@ -44,16 +50,23 @@ public class IndexController {
   private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
 
   private final String storageDir;
+
+  private final Peer peer;
   private final String prefix;
   private final long initialIndex;
 
   private final long checkpointGap;
 
-  public IndexController(String storageDir, String prefix, long initialIndex, long checkpointGap) {
+  public IndexController(String storageDir, Peer peer, long initialIndex, long checkpointGap) {
     this.storageDir = storageDir;
-    this.prefix = prefix + '-';
+    this.peer = peer;
+    this.prefix = peer.getNodeId() + SEPARATOR;
     this.checkpointGap = checkpointGap;
     this.initialIndex = initialIndex;
+    // This is because we changed the name of the version file in version 1.0.1. In order to ensure
+    // compatibility with version 1.0.0, we need to add this function. We will remove this function
+    // in the future version 2.x.
+    upgrade();
     restore();
   }
 
@@ -124,6 +137,30 @@ public class IndexController {
     }
   }
 
+  private void upgrade() {
+    File directory = new File(storageDir);
+    String oldPrefix = Utils.fromTEndPointToString(peer.getEndpoint()) + SEPARATOR;
+    Optional.ofNullable(directory.listFiles((dir, name) -> name.startsWith(oldPrefix)))
+        .ifPresent(
+            files ->
+                Arrays.stream(files)
+                    .forEach(
+                        oldFile -> {
+                          String[] splits = oldFile.getName().split(SEPARATOR);
+                          long fileVersion = Long.parseLong(splits[splits.length - 1]);
+                          File newFile = new File(storageDir, prefix + fileVersion);
+                          try {
+                            logger.info(
+                                "version file upgrade, previous: {}, current: {}",
+                                oldFile.getAbsolutePath(),
+                                newFile.getAbsolutePath());
+                            FileUtils.moveFile(oldFile, newFile);
+                          } catch (IOException e) {
+                            logger.error("Error occurred when upgrading version file", e);
+                          }
+                        }));
+  }
+
   private void restore() {
     File directory = new File(storageDir);
     File[] versionFiles = directory.listFiles((dir, name) -> name.startsWith(prefix));
@@ -132,7 +169,7 @@ public class IndexController {
       long maxVersion = 0;
       int maxVersionIndex = 0;
       for (int i = 0; i < versionFiles.length; i++) {
-        long fileVersion = Long.parseLong(versionFiles[i].getName().split("-")[1]);
+        long fileVersion = Long.parseLong(versionFiles[i].getName().split(SEPARATOR)[1]);
         if (fileVersion > maxVersion) {
           maxVersion = fileVersion;
           maxVersionIndex = i;

@@ -18,7 +18,7 @@
 #
 
 FROM openjdk:11-jre-slim
-ARG version=1.0.1-SNAPSHOT
+ARG version=1.0.0
 ARG target=apache-iotdb-${version}-all-bin
 
 RUN apt update \

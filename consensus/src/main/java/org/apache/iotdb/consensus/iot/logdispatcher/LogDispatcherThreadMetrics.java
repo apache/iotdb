@@ -53,7 +53,7 @@ public class LogDispatcherThreadMetrics implements IMetricSet {
             Metric.IOT_CONSENSUS.toString(),
             MetricLevel.IMPORTANT,
             logDispatcherThread,
-            x -> x.getPendingRequestSize() + x.getBufferRequestSize(),
+            x -> x.getPendingEntriesSize() + x.getBufferRequestSize(),
             Tag.NAME.toString(),
             formatName(),
             Tag.REGION.toString(),
