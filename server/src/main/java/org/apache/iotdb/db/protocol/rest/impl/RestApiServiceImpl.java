@@ -190,7 +190,7 @@ public class RestApiServiceImpl extends RestApiService {
 
       InsertTabletPlan insertTabletPlan =
           PhysicalPlanConstructionHandler.constructInsertTabletPlan(insertTabletRequest);
-
+      insertTabletPlan.setNativeInsertApi(true);
       Response response = authorizationHandler.checkAuthority(securityContext, insertTabletPlan);
       if (response != null) {
         return response;
