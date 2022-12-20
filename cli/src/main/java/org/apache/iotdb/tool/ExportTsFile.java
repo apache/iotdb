@@ -260,11 +260,9 @@ public class ExportTsFile extends AbstractTsFileTool {
     final String path = targetDirectory + targetFile + index + ".tsfile";
     try {
       SessionDataSet sessionDataSet = session.executeQueryStatement(sql, 10000);
-      long start = System.currentTimeMillis();
       writeTsFileFile(sessionDataSet, path);
-      long end = System.currentTimeMillis();
       sessionDataSet.closeOperationHandle();
-      System.out.println("Export completely!cost:" + (end - start) + "ms.");
+      System.out.println("Export completely!");
     } catch (StatementExecutionException
         | IoTDBConnectionException
         | IOException

@@ -239,6 +239,14 @@ public class StandaloneEnv implements BaseEnv {
   }
 
   @Override
+<<<<<<< HEAD
+=======
+  public String getToolsPath() {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+>>>>>>> cc5f1f581e (add it on integration-test)
   public String getLibPath() {
     throw new UnsupportedOperationException();
   }

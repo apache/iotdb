@@ -217,5 +217,10 @@ public interface BaseEnv {
 
   String getSbinPath();
 
+<<<<<<< HEAD
+=======
+  String getToolsPath();
+
+>>>>>>> cc5f1f581e (add it on integration-test)
   String getLibPath();
 }

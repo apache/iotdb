@@ -35,6 +35,7 @@
   <allow pkg="org\.apache\.iotdb\.rpc.*" regex="true"/>
   <allow pkg="org\.apache\.commons\.lang3.*" regex="true"/>
   <allow pkg="org\.slf4j.*" regex="true" />
+  <allow pkg="org\.apache\.iotdb\.tools.*" regex="true"/>
   <subpackage name="db.it">
     <disallow pkg="org.apache.iotdb.jdbc.*"/>
     <allow class="org.apache.iotdb.db.constant.TestConstant" />
@@ -98,5 +99,9 @@
     <allow pkg="org\.apache\.iotdb\.tsfile\.file\.metadata.*" regex="true" />
     <allow pkg="org.apache.iotdb.db.metadata.idtable.trigger_example" />
     <allow pkg="org.apache.iotdb.session.template" />
+  </subpackage>
+  <subpackage name="tools">
+    <allow class="org.apache.iotdb.cli.it.AbstractScript" />
+    <allow class="org.apache.iotdb.session.ISession" />
   </subpackage>
 </import-control>
