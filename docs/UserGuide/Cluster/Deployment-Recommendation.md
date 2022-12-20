@@ -72,9 +72,8 @@ Configuration modification:
 - data_region_group_per_database
     - for 3C3D cluster mode: Cluster CPU total core num / data_replication_factor
     - for 1C1D standalone mode: use virtual_storage_group_num in v0.13
-- When encountering messages like "There are too many timeseries in memory", please modify the following two configuration
-  - schema_memory_allocate_proportion: increases the memory proportion of schema region
-  - storage_query_schema_consensus_free_memory_proportion: increases the memory proportion of schema
+- When encountering messages like "There are too many timeseries in memory", please modify the following configuration
+  - storage_query_schema_consensus_free_memory_proportion: double the memory proportion of schema
 
 Data migration:
 After modified the configuration, use load-tsfile tool to load the TsFiles of v0.13 to v1.0.
