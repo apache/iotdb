@@ -34,6 +34,7 @@ import org.apache.iotdb.db.mpp.execution.operator.Operator;
 import org.apache.iotdb.db.mpp.execution.timer.ITimeSliceAllocator;
 import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.db.mpp.statistics.QueryStatistics;
 import org.apache.iotdb.db.utils.SetThreadName;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -42,12 +43,18 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static org.apache.iotdb.db.mpp.statistics.QueryStatistics.ALLOC_EX_MEMORY;
+import static org.apache.iotdb.db.mpp.statistics.QueryStatistics.CHECK_MEMORY;
+import static org.apache.iotdb.db.mpp.statistics.QueryStatistics.NODE_TO_OPERATOR;
+
 /**
  * Used to plan a fragment instance. Currently, we simply change it from PlanNode to executable
  * Operator tree, but in the future, we may split one fragment instance into multiple pipeline to
  * run a fragment instance parallel and take full advantage of multi-cores
  */
 public class LocalExecutionPlanner {
+
+  private static final QueryStatistics QUERY_STATISTICS = QueryStatistics.getInstance();
 
   private static final Logger LOGGER = LoggerFactory.getLogger(LocalExecutionPlanner.class);
 
@@ -69,13 +76,22 @@ public class LocalExecutionPlanner {
     LocalExecutionPlanContext context =
         new LocalExecutionPlanContext(types, instanceContext, dataRegion.getDataTTL());
 
+    long startTime = System.nanoTime();
     Operator root = plan.accept(new OperatorTreeGenerator(), context);
+    long endTime = System.nanoTime();
+    QUERY_STATISTICS.addCost(NODE_TO_OPERATOR, endTime - startTime);
 
+    startTime = endTime;
     // check whether current free memory is enough to execute current query
     checkMemory(root, instanceContext.getStateMachine());
+    endTime = System.nanoTime();
+    QUERY_STATISTICS.addCost(CHECK_MEMORY, endTime - startTime);
 
+    startTime = endTime;
     // calculate memory distribution of ISinkHandle/ISourceHandle
     setMemoryLimitForHandle(instanceContext.getId().toThrift(), plan);
+    endTime = System.nanoTime();
+    QUERY_STATISTICS.addCost(ALLOC_EX_MEMORY, endTime - startTime);
 
     ITimeSliceAllocator timeSliceAllocator = context.getTimeSliceAllocator();
     instanceContext

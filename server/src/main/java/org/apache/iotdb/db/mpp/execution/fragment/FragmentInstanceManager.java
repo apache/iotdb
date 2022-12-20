@@ -48,6 +48,8 @@ import java.util.concurrent.TimeoutException;
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext.createFragmentInstanceContext;
 import static org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceExecution.createFragmentInstanceExecution;
+import static org.apache.iotdb.db.mpp.statistics.QueryStatistics.CREATE_FI_CONTEXT;
+import static org.apache.iotdb.db.mpp.statistics.QueryStatistics.CREATE_FI_EXEC;
 import static org.apache.iotdb.db.mpp.statistics.QueryStatistics.LOCAL_EXECUTION_PLANNER;
 
 public class FragmentInstanceManager {
@@ -116,6 +118,7 @@ public class FragmentInstanceManager {
                 FragmentInstanceStateMachine stateMachine =
                     new FragmentInstanceStateMachine(instanceId, instanceNotificationExecutor);
 
+                long start = System.nanoTime();
                 FragmentInstanceContext context =
                     instanceContext.computeIfAbsent(
                         instanceId,
@@ -125,6 +128,7 @@ public class FragmentInstanceManager {
                                 stateMachine,
                                 instance.getSessionInfo(),
                                 intoOperationExecutor));
+                QUERY_STATISTICS.addCost(CREATE_FI_CONTEXT, System.nanoTime() - start);
 
                 try {
                   DataDriver driver =
@@ -134,6 +138,8 @@ public class FragmentInstanceManager {
                           context,
                           instance.getTimeFilter(),
                           dataRegion);
+
+                  start = System.nanoTime();
                   return createFragmentInstanceExecution(
                       scheduler,
                       instanceId,
@@ -146,6 +152,8 @@ public class FragmentInstanceManager {
                   logger.warn("error when create FragmentInstanceExecution.", t);
                   stateMachine.failed(t);
                   return null;
+                } finally {
+                  QUERY_STATISTICS.addCost(CREATE_FI_EXEC, System.nanoTime() - start);
                 }
               });
       if (execution != null) {

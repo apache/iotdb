@@ -21,6 +21,7 @@ package org.apache.iotdb.db.mpp.execution.exchange;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.execution.memory.LocalMemoryManager;
+import org.apache.iotdb.db.mpp.statistics.QueryStatistics;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -38,10 +39,16 @@ import java.util.Queue;
 
 import static com.google.common.util.concurrent.Futures.immediateVoidFuture;
 import static com.google.common.util.concurrent.MoreExecutors.directExecutor;
+import static org.apache.iotdb.db.mpp.statistics.QueryStatistics.FREE_MEM;
+import static org.apache.iotdb.db.mpp.statistics.QueryStatistics.NOTIFY_END;
+import static org.apache.iotdb.db.mpp.statistics.QueryStatistics.NOTIFY_NEW_TSBLOCK;
+import static org.apache.iotdb.db.mpp.statistics.QueryStatistics.RESERVE_MEMORY;
 
 /** This is not thread safe class, the caller should ensure multi-threads safety. */
 @NotThreadSafe
 public class SharedTsBlockQueue {
+
+  private static final QueryStatistics QUERY_STATISTICS = QueryStatistics.getInstance();
 
   private static final Logger logger = LoggerFactory.getLogger(SharedTsBlockQueue.class);
 
@@ -121,15 +128,17 @@ public class SharedTsBlockQueue {
   }
 
   /** Notify no more tsblocks will be added to the queue. */
-  public void setNoMoreTsBlocks(boolean noMoreTsBlocks) {
+  public void setNoMoreTsBlocks() {
     logger.debug("[SignalNoMoreTsBlockOnQueue]");
     if (closed) {
       logger.warn("queue has been destroyed");
       return;
     }
-    this.noMoreTsBlocks = noMoreTsBlocks;
+    this.noMoreTsBlocks = true;
     if (!blocked.isDone()) {
+      long startTime = System.nanoTime();
       blocked.set(null);
+      QUERY_STATISTICS.addCost(NOTIFY_END, System.nanoTime() - startTime);
     }
     if (this.sourceHandle != null) {
       this.sourceHandle.checkAndInvokeOnFinished();
@@ -150,6 +159,7 @@ public class SharedTsBlockQueue {
     if (sinkHandle != null) {
       sinkHandle.checkAndInvokeOnFinished();
     }
+    long startTime = System.nanoTime();
     localMemoryManager
         .getQueryPool()
         .free(
@@ -157,6 +167,8 @@ public class SharedTsBlockQueue {
             localFragmentInstanceId.getInstanceId(),
             localPlanNodeId,
             tsBlock.getRetainedSizeInBytes());
+    QUERY_STATISTICS.addCost(FREE_MEM, System.nanoTime() - startTime);
+
     bufferRetainedSizeInBytes -= tsBlock.getRetainedSizeInBytes();
     if (blocked.isDone() && queue.isEmpty() && !noMoreTsBlocks) {
       blocked = SettableFuture.create();
@@ -174,19 +186,23 @@ public class SharedTsBlockQueue {
       return immediateVoidFuture();
     }
 
-    Validate.notNull(tsBlock, "TsBlock cannot be null");
-    Validate.isTrue(blockedOnMemory == null || blockedOnMemory.isDone(), "queue is full");
-    Pair<ListenableFuture<Void>, Boolean> pair =
-        localMemoryManager
-            .getQueryPool()
-            .reserve(
-                localFragmentInstanceId.getQueryId(),
-                localFragmentInstanceId.getInstanceId(),
-                localPlanNodeId,
-                tsBlock.getRetainedSizeInBytes(),
-                maxBytesCanReserve);
-    blockedOnMemory = pair.left;
-    bufferRetainedSizeInBytes += tsBlock.getRetainedSizeInBytes();
+    long startTime = System.nanoTime();
+    Pair<ListenableFuture<Void>, Boolean> pair;
+    try {
+      pair =
+          localMemoryManager
+              .getQueryPool()
+              .reserve(
+                  localFragmentInstanceId.getQueryId(),
+                  localFragmentInstanceId.getInstanceId(),
+                  localPlanNodeId,
+                  tsBlock.getRetainedSizeInBytes(),
+                  maxBytesCanReserve);
+      blockedOnMemory = pair.left;
+      bufferRetainedSizeInBytes += tsBlock.getRetainedSizeInBytes();
+    } finally {
+      QUERY_STATISTICS.addCost(RESERVE_MEMORY, System.nanoTime() - startTime);
+    }
 
     // reserve memory failed, we should wait until there is enough memory
     if (!pair.right) {
@@ -203,7 +219,9 @@ public class SharedTsBlockQueue {
     } else { // reserve memory succeeded, add the TsBlock directly
       queue.add(tsBlock);
       if (!blocked.isDone()) {
+        startTime = System.nanoTime();
         blocked.set(null);
+        QUERY_STATISTICS.addCost(NOTIFY_NEW_TSBLOCK, System.nanoTime() - startTime);
       }
     }
 

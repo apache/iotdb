@@ -62,7 +62,7 @@ public class LocalSourceHandleTest {
 
     // Local sink handle produces tsblocks.
     queue.add(Utils.createMockTsBlock(mockTsBlockSize));
-    queue.setNoMoreTsBlocks(true);
+    queue.setNoMoreTsBlocks();
     Assert.assertTrue(localSourceHandle.isBlocked().isDone());
     Assert.assertFalse(localSourceHandle.isAborted());
     Assert.assertFalse(localSourceHandle.isFinished());

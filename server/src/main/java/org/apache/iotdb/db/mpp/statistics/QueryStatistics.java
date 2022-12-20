@@ -48,6 +48,16 @@ public class QueryStatistics {
 
   public static final String LOCAL_EXECUTION_PLANNER = "LocalExecutionPlanner";
 
+  public static final String CREATE_FI_CONTEXT = "CreateFIContext";
+
+  public static final String CREATE_FI_EXEC = "CreateFIExec";
+
+  public static final String NODE_TO_OPERATOR = "ToOpTree";
+
+  public static final String CHECK_MEMORY = "CheckMem";
+
+  public static final String ALLOC_EX_MEMORY = "AllocExchangeMem";
+
   public static final String QUERY_EXECUTION = "QueryExecution";
 
   public static final String QUERY_RESOURCE_INIT = "QueryResourceInit";
@@ -69,12 +79,27 @@ public class QueryStatistics {
 
   public static final String AGG_SCAN_OPERATOR = "AbstractSeriesAggregationScanOperator";
 
+  public static final String CAL_NEXT_AGG_RES = "CalcNextAggRes";
+
+  public static final String CAL_AGG_FROM_RAW_DATA = "CalcAggFromRawData";
+
+  public static final String CAL_AGG_FROM_PAGE = "CalcAggFromPage";
+
+  public static final String CAL_AGG_FROM_CHUNK = "CalcAggFromChunk";
+
+  public static final String CAL_AGG_FROM_FILE = "CalcAggFromFile";
+
   public static final String FILTER_AND_PROJECT_OPERATOR = "FilterAndProjectOperator";
 
   public static final String SINGLE_INPUT_AGG_OPERATOR = "SingleInputAggregationOperator";
 
   public static final String PAGE_READER = "IPageReader";
   public static final String PARSER = "Parser";
+
+  public static final String CREATE_QUERY_EXEC = "CreateQueryExec";
+
+  public static final String SERIALIZE_TSBLOCK = "SerTsBlock";
+
   public static final String ANALYZER = "Analyzer";
   public static final String SCHEMA_FETCHER = "SchemaFetcher";
   public static final String PARTITION_FETCHER = "PartitionFetcher";
@@ -91,6 +116,20 @@ public class QueryStatistics {
   public static final String DRIVER_INTERNAL_PROCESS = "DriverInternalProcess";
 
   public static final String SEND_TSBLOCK = "SendTsBlock";
+
+  public static final String RESERVE_MEMORY = "ReserveMem";
+
+  public static final String NOTIFY_NEW_TSBLOCK = "NotifyNewTsBlock";
+
+  public static final String NOTIFY_END = "NotifyEnd";
+
+  public static final String FREE_MEM = "FreeMem";
+
+  public static final String SINK_HANDLE_END_LISTENER = "SinkHandleEndListener";
+
+  public static final String SINK_HANDLE_FINISH_LISTENER = "SinkHandleFinishListener";
+
+  public static final String CHECK_AND_INVOKE_ON_FINISHED = "CheckAndInvokeOnFinished";
 
   public static final String SET_NO_MORE_TSBLOCK = "SetNoMoreTsBlock";
 
@@ -172,7 +211,7 @@ public class QueryStatistics {
           + "us"
           + ", totalCount="
           + count
-          + ", avgOperationTime="
+          + ", avgOpTime="
           + (time / count)
           + "us"
           + '}';

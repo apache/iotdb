@@ -81,13 +81,7 @@ public class GroupByFilter implements Filter, Serializable {
 
   @Override
   public boolean containStartEndTime(long startTime, long endTime) {
-    if (startTime >= this.startTime && endTime <= this.endTime) {
-      long minTime = startTime - this.startTime;
-      long maxTime = endTime - this.startTime;
-      long count = minTime / slidingStep;
-      return minTime <= interval + count * slidingStep && maxTime <= interval + count * slidingStep;
-    }
-    return false;
+    return startTime >= this.startTime && endTime <= this.endTime;
   }
 
   @Override

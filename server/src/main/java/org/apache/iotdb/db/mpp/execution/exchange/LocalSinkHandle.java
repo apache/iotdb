@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.mpp.execution.exchange;
 
 import org.apache.iotdb.db.mpp.execution.exchange.MPPDataExchangeManager.SinkHandleListener;
+import org.apache.iotdb.db.mpp.statistics.QueryStatistics;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 
@@ -32,8 +33,13 @@ import java.util.List;
 import java.util.Optional;
 
 import static com.google.common.util.concurrent.Futures.nonCancellationPropagating;
+import static org.apache.iotdb.db.mpp.statistics.QueryStatistics.CHECK_AND_INVOKE_ON_FINISHED;
+import static org.apache.iotdb.db.mpp.statistics.QueryStatistics.SINK_HANDLE_END_LISTENER;
+import static org.apache.iotdb.db.mpp.statistics.QueryStatistics.SINK_HANDLE_FINISH_LISTENER;
 
 public class LocalSinkHandle implements ISinkHandle {
+
+  private static final QueryStatistics QUERY_STATISTICS = QueryStatistics.getInstance();
 
   private static final Logger logger = LoggerFactory.getLogger(LocalSinkHandle.class);
 
@@ -92,13 +98,17 @@ public class LocalSinkHandle implements ISinkHandle {
   }
 
   public void checkAndInvokeOnFinished() {
+    long startTime = System.nanoTime();
     synchronized (queue) {
       if (isFinished()) {
         synchronized (this) {
+          long start = System.nanoTime();
           sinkHandleListener.onFinish(this);
+          QUERY_STATISTICS.addCost(SINK_HANDLE_FINISH_LISTENER, System.nanoTime() - start);
         }
       }
     }
+    QUERY_STATISTICS.addCost(CHECK_AND_INVOKE_ON_FINISHED, System.nanoTime() - startTime);
   }
 
   @Override
@@ -135,10 +145,13 @@ public class LocalSinkHandle implements ISinkHandle {
         if (aborted || closed) {
           return;
         }
-        queue.setNoMoreTsBlocks(true);
+        queue.setNoMoreTsBlocks();
+        long startTime = System.nanoTime();
         sinkHandleListener.onEndOfBlocks(this);
+        QUERY_STATISTICS.addCost(SINK_HANDLE_END_LISTENER, System.nanoTime() - startTime);
       }
     }
+
     checkAndInvokeOnFinished();
     logger.debug("[EndSetNoMoreTsBlocksOnLocal]");
   }

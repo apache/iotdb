@@ -164,8 +164,11 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
   private static final SelectResult OLD_SELECT_RESULT =
       (resp, queryExecution, fetchSize) -> {
+        long startTime = System.nanoTime();
         Pair<TSQueryDataSet, Boolean> pair =
             QueryDataSetUtils.convertTsBlockByFetchSize(queryExecution, fetchSize);
+        QueryStatistics.getInstance()
+            .addCost(QueryStatistics.SERIALIZE_TSBLOCK, System.nanoTime() - startTime);
         resp.setQueryDataSet(pair.left);
         return pair.right;
       };
@@ -208,6 +211,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       }
 
       queryId = SESSION_MANAGER.requestQueryId(SESSION_MANAGER.getCurrSession(), req.statementId);
+      long start = System.nanoTime();
       // create and cache dataset
       ExecutionResult result =
           COORDINATOR.execute(
@@ -218,6 +222,10 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
               PARTITION_FETCHER,
               SCHEMA_FETCHER,
               req.getTimeout());
+      if (s.isQuery()) {
+        QueryStatistics.getInstance()
+            .addCost(QueryStatistics.CREATE_QUERY_EXEC, System.nanoTime() - start);
+      }
 
       if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()
           && result.status.code != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {

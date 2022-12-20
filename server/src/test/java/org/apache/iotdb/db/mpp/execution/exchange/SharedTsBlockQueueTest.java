@@ -120,7 +120,7 @@ public class SharedTsBlockQueueTest {
             executor);
       } else {
         synchronized (queue) {
-          queue.setNoMoreTsBlocks(true);
+          queue.setNoMoreTsBlocks();
         }
       }
     }
