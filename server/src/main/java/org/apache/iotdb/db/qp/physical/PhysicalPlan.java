@@ -114,7 +114,7 @@ public abstract class PhysicalPlan {
    */
   private boolean isPrefixMatch = false;
 
-  protected boolean nativeInsertApi = false;
+  protected boolean isNativeInsertApi = false;
 
   /** whether the plan can be split into more than one Plans. Only used in the cluster mode. */
   public boolean canBeSplit() {
@@ -593,10 +593,10 @@ public abstract class PhysicalPlan {
   }
 
   public boolean isNativeInsertApi() {
-    return nativeInsertApi;
+    return isNativeInsertApi;
   }
 
   public void setNativeInsertApi(boolean nativeInsertApi) {
-    this.nativeInsertApi = nativeInsertApi;
+    this.isNativeInsertApi = nativeInsertApi;
   }
 }
