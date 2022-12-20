@@ -58,7 +58,6 @@ public class QueryContext {
   private long queryTimeLowerBound = Long.MIN_VALUE;
 
   private boolean debug;
-  private boolean enableTracing = false;
 
   /**
    * To reduce the cost of memory, we only keep the a certain size statement. For statement whose
@@ -170,14 +169,6 @@ public class QueryContext {
 
   public boolean isDebug() {
     return debug;
-  }
-
-  public boolean isEnableTracing() {
-    return enableTracing;
-  }
-
-  public void setEnableTracing(boolean enableTracing) {
-    this.enableTracing = enableTracing;
   }
 
   public long getQueryTimeLowerBound() {

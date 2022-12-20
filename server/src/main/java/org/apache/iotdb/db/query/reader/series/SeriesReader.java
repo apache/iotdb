@@ -24,8 +24,6 @@ import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.metadata.idtable.IDTable;
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.query.control.QueryTimeManager;
-import org.apache.iotdb.db.query.control.tracing.TracingManager;
 import org.apache.iotdb.db.query.filter.TsFileFilter;
 import org.apache.iotdb.db.query.reader.universal.DescPriorityMergeReader;
 import org.apache.iotdb.db.query.reader.universal.PriorityMergeReader;
@@ -230,9 +228,6 @@ public class SeriesReader {
   }
 
   boolean hasNextFile() throws IOException {
-    if (!QueryTimeManager.checkQueryAlive(context.getQueryId())) {
-      return false;
-    }
 
     if (!unSeqPageReaders.isEmpty()
         || firstPageReader != null
@@ -313,9 +308,6 @@ public class SeriesReader {
    * overlapped chunks are consumed
    */
   boolean hasNextChunk() throws IOException {
-    if (!QueryTimeManager.checkQueryAlive(context.getQueryId())) {
-      return false;
-    }
 
     if (!unSeqPageReaders.isEmpty()
         || firstPageReader != null
@@ -404,21 +396,6 @@ public class SeriesReader {
     List<IChunkMetadata> chunkMetadataList =
         FileLoaderUtils.loadChunkMetadataList(timeSeriesMetadata);
     chunkMetadataList.forEach(chunkMetadata -> chunkMetadata.setSeq(timeSeriesMetadata.isSeq()));
-
-    // for tracing: try to calculate the number of chunk and time-value points in chunk
-    if (context.isEnableTracing()) {
-      long totalChunkPointsNum =
-          chunkMetadataList.stream()
-              .mapToLong(chunkMetadata -> chunkMetadata.getStatistics().getCount())
-              .sum();
-      TracingManager.getInstance()
-          .addChunkInfo(
-              context.getQueryId(),
-              chunkMetadataList.size(),
-              totalChunkPointsNum,
-              timeSeriesMetadata.isSeq());
-    }
-
     cachedChunkMetadata.addAll(chunkMetadataList);
   }
 
@@ -468,9 +445,6 @@ public class SeriesReader {
   @SuppressWarnings("squid:S3776")
   // Suppress high Cognitive Complexity warning
   boolean hasNextPage() throws IOException {
-    if (!QueryTimeManager.checkQueryAlive(context.getQueryId())) {
-      return false;
-    }
 
     /*
      * has overlapped data before
@@ -592,11 +566,6 @@ public class SeriesReader {
     List<IPageReader> pageReaderList =
         FileLoaderUtils.loadPageReaderList(chunkMetaData, timeFilter);
 
-    // for tracing: try to calculate the number of pages
-    if (context.isEnableTracing()) {
-      addTotalPageNumInTracing(context.getQueryId(), pageReaderList.size());
-    }
-
     if (chunkMetaData.isSeq()) {
       if (orderUtils.getAscending()) {
         for (IPageReader iPageReader : pageReaderList) {
@@ -627,10 +596,6 @@ public class SeriesReader {
                       pageReader,
                       false)));
     }
-  }
-
-  private void addTotalPageNumInTracing(long queryId, int pageNum) {
-    TracingManager.getInstance().addTotalPageNum(queryId, pageNum);
   }
 
   /**
@@ -707,10 +672,6 @@ public class SeriesReader {
 
   /** This method should only be used when the method isPageOverlapped() return true. */
   BatchData nextPage() throws IOException {
-
-    if (!hasNextPage() && QueryTimeManager.checkQueryAlive(context.getQueryId())) {
-      throw new IOException("no next page, neither non-overlapped nor overlapped");
-    }
 
     if (hasCachedNextOverlappedPage) {
       hasCachedNextOverlappedPage = false;
@@ -1331,9 +1292,6 @@ public class SeriesReader {
       TsFileResource tsFileResource = dataSource.getSeqResourceByIndex(curSeqFileIndex);
       if (isDelete) {
         curSeqFileIndex--;
-        if (context.isEnableTracing()) {
-          TracingManager.getInstance().addTsFile(context.getQueryId(), tsFileResource, true);
-        }
       }
       return tsFileResource;
     }
@@ -1343,9 +1301,6 @@ public class SeriesReader {
       TsFileResource tsFileResource = dataSource.getUnseqResourceByIndex(curUnseqFileIndex);
       if (isDelete) {
         curUnseqFileIndex++;
-        if (context.isEnableTracing()) {
-          TracingManager.getInstance().addTsFile(context.getQueryId(), tsFileResource, false);
-        }
       }
       return tsFileResource;
     }
@@ -1450,9 +1405,6 @@ public class SeriesReader {
       TsFileResource tsFileResource = dataSource.getSeqResourceByIndex(curSeqFileIndex);
       if (isDelete) {
         curSeqFileIndex++;
-        if (context.isEnableTracing()) {
-          TracingManager.getInstance().addTsFile(context.getQueryId(), tsFileResource, true);
-        }
       }
       return tsFileResource;
     }
@@ -1462,9 +1414,6 @@ public class SeriesReader {
       TsFileResource tsFileResource = dataSource.getUnseqResourceByIndex(curUnseqFileIndex);
       if (isDelete) {
         curUnseqFileIndex++;
-        if (context.isEnableTracing()) {
-          TracingManager.getInstance().addTsFile(context.getQueryId(), tsFileResource, false);
-        }
       }
       return tsFileResource;
     }
