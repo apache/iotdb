@@ -88,7 +88,7 @@ public class MManagerMetrics implements IMetricSet {
             mManager,
             MManager::getTotalTemplateActivatedNumber,
             Tag.NAME.toString(),
-            "device using template",
+            "deviceUsingTemplate",
             Tag.TYPE.toString(),
             "template");
 
@@ -99,7 +99,7 @@ public class MManagerMetrics implements IMetricSet {
             mManager,
             MManager::getTotalEstimatedMemoryUsage,
             Tag.NAME.toString(),
-            "schema memory usage",
+            "schemaUsage",
             Tag.TYPE.toString(),
             "total");
 
@@ -112,7 +112,7 @@ public class MManagerMetrics implements IMetricSet {
                 IoTDBDescriptor.getInstance().getConfig().getAllocateMemoryForSchema()
                     - mManager.getTotalEstimatedMemoryUsage(),
             Tag.NAME.toString(),
-            "schema memory remaining",
+            "schemaRemaining",
             Tag.TYPE.toString(),
             "total");
   }
@@ -160,7 +160,7 @@ public class MManagerMetrics implements IMetricSet {
             MetricType.GAUGE,
             Metric.QUANTITY.toString(),
             Tag.NAME.toString(),
-            "device using template",
+            "deviceUsingTemplate",
             Tag.TYPE.toString(),
             "template");
 
@@ -169,7 +169,7 @@ public class MManagerMetrics implements IMetricSet {
             MetricType.GAUGE,
             Metric.MEM.toString(),
             Tag.NAME.toString(),
-            "schema memory usage",
+            "schemaUsage",
             Tag.TYPE.toString(),
             "total");
 
@@ -178,7 +178,7 @@ public class MManagerMetrics implements IMetricSet {
             MetricType.GAUGE,
             Metric.MEM.toString(),
             Tag.NAME.toString(),
-            "schema memory remaining",
+            "schemaRemaining",
             Tag.TYPE.toString(),
             "total");
   }
