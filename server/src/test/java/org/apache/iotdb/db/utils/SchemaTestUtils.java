@@ -33,7 +33,9 @@ public class SchemaTestUtils {
       throws MetadataException {
     PartialPath pathPattern = new PartialPath(pathPatternString);
     List<MeasurementPath> measurementPaths =
-        LocalSchemaProcessor.getInstance().getMeasurementPaths(pathPattern);
+        LocalSchemaProcessor.getInstance()
+            .getMeasurementPathsWithAlias(pathPattern, 0, 0, false, false)
+            .left;
     assertFalse(measurementPaths.isEmpty());
     return measurementPaths.get(0);
   }
