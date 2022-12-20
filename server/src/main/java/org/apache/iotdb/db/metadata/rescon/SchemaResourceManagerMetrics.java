@@ -55,7 +55,7 @@ public class SchemaResourceManagerMetrics implements IMetricSet {
         memoryStatistics,
         MemoryStatistics::getMemoryUsage,
         Tag.NAME.toString(),
-        "schema region memory usage");
+        "schema_region_total_usage");
 
     metricService.createAutoGauge(
         Metric.MEM.toString(),
@@ -64,7 +64,7 @@ public class SchemaResourceManagerMetrics implements IMetricSet {
         memoryStatistics ->
             memoryStatistics.getMemoryCapacity() - memoryStatistics.getMemoryUsage(),
         Tag.NAME.toString(),
-        "schema region memory remaining");
+        "schema_region_total_remaining");
   }
 
   @Override
@@ -76,13 +76,13 @@ public class SchemaResourceManagerMetrics implements IMetricSet {
         MetricType.AUTO_GAUGE,
         Metric.MEM.toString(),
         Tag.NAME.toString(),
-        "schema region memory usage");
+        "schema_region_total_usage");
 
     metricService.remove(
         MetricType.AUTO_GAUGE,
         Metric.MEM.toString(),
         Tag.NAME.toString(),
-        "schema region memory remaining");
+        "schema_region_total_remaining");
   }
 
   @Override
