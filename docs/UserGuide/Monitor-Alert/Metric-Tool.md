@@ -186,6 +186,8 @@ Core-level metrics are enabled by default during system operation. The addition 
 | mem    | name="database_{{name}}"      | AutoGauge | The memory usage of DataRegion in DataNode, Unit: byte             |
 | mem    | name="chunkMetaData_{{name}}" | AutoGauge | The memory usage of chunkMetaData when writting TsFile, Unit: byte |
 | mem    | name="IoTConsensus"           | AutoGauge | The memory usage of IoTConsensus, Unit: byte                       |
+| mem    | name="schema region memory usage"     | AutoGauge | The memory usage of all SchemaRegion, Unit: byte                   |
+| mem    | name="schema region memory remaining" | AutoGauge | The memory remaining for all SchemaRegion, Unit: byte              |
 
 #### 4.2.7. Task
 | Metric    | Tags                                              | Type      | Description                           |
