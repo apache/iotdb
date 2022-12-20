@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.metadata;
 
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.service.metrics.MetricService;
 import org.apache.iotdb.db.service.metrics.enums.Metric;
 import org.apache.iotdb.db.service.metrics.enums.Tag;
@@ -82,12 +83,32 @@ public class MManagerMetrics implements IMetricSet {
 
     MetricService.getInstance()
         .getOrCreateAutoGauge(
+            Metric.QUANTITY.toString(),
+            MetricLevel.IMPORTANT,
+            mManager,
+            MManager::getTotalTemplateActivatedNumber,
+            Tag.NAME.toString(),
+            "device using template");
+
+    MetricService.getInstance()
+        .getOrCreateAutoGauge(
             Metric.MEM.toString(),
             MetricLevel.IMPORTANT,
             mManager,
-            MManager::getMtreeSize,
+            MManager::getTotalEstimatedMemoryUsage,
             Tag.NAME.toString(),
-            "mtree");
+            "schema memory usage");
+
+    MetricService.getInstance()
+        .getOrCreateAutoGauge(
+            Metric.MEM.toString(),
+            MetricLevel.IMPORTANT,
+            mManager,
+            mManager ->
+                IoTDBDescriptor.getInstance().getConfig().getAllocateMemoryForSchema()
+                    - mManager.getTotalEstimatedMemoryUsage(),
+            Tag.NAME.toString(),
+            "schema memory remaining");
   }
 
   @Override
@@ -129,6 +150,21 @@ public class MManagerMetrics implements IMetricSet {
             "total");
 
     MetricService.getInstance()
-        .remove(MetricType.GAUGE, Metric.MEM.toString(), Tag.NAME.toString(), "mtree");
+        .remove(
+            MetricType.GAUGE,
+            Metric.QUANTITY.toString(),
+            Tag.NAME.toString(),
+            "device using template");
+
+    MetricService.getInstance()
+        .remove(
+            MetricType.GAUGE, Metric.MEM.toString(), Tag.NAME.toString(), "schema memory usage");
+
+    MetricService.getInstance()
+        .remove(
+            MetricType.GAUGE,
+            Metric.MEM.toString(),
+            Tag.NAME.toString(),
+            "schema memory remaining");
   }
 }
