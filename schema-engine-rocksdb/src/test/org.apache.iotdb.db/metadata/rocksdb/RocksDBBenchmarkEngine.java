@@ -24,11 +24,7 @@ import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.MetadataConstant;
-import org.apache.iotdb.db.metadata.logfile.MLogReader;
 import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
-import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.utils.FileUtils;
 
 import org.apache.commons.lang3.ArrayUtils;
@@ -53,10 +49,10 @@ public class RocksDBBenchmarkEngine {
   private static final int BIN_CAPACITY = 100 * 1000;
 
   private File logFile;
-  public static List<List<CreateTimeSeriesPlan>> timeSeriesSet = new ArrayList<>();
+//  public static List<List<CreateTimeSeriesPlan>> timeSeriesSet = new ArrayList<>();
   public static Set<String> measurementPathSet = new HashSet<>();
   public static Set<String> innerPathSet = new HashSet<>();
-  public static List<SetStorageGroupPlan> storageGroups = new ArrayList<>();
+//  public static List<SetStorageGroupPlan> storageGroups = new ArrayList<>();
 
   public RocksDBBenchmarkEngine() {
     String schemaDir = config.getSchemaDir();
@@ -70,79 +66,80 @@ public class RocksDBBenchmarkEngine {
     engine.startTest();
   }
 
-  @Test
-  public void startTest() {
-    RocksDBTestUtils.printMemInfo("Benchmark rocksdb start");
-    try {
-      prepareBenchmark();
-      RocksDBTestUtils.printBenchmarkBaseline(
-          storageGroups, timeSeriesSet, measurementPathSet, innerPathSet);
-      /** rocksdb benchmark * */
-      RSchemaRegion rocksDBManager = new RSchemaRegion();
-      MRocksDBBenchmark mRocksDBBenchmark = new MRocksDBBenchmark(rocksDBManager);
-      mRocksDBBenchmark.testTimeSeriesCreation(timeSeriesSet);
-      mRocksDBBenchmark.testMeasurementNodeQuery(measurementPathSet);
-      RocksDBTestUtils.printReport(mRocksDBBenchmark.benchmarkResults, "rocksDB");
-      RocksDBTestUtils.printMemInfo("Benchmark finished");
-    } catch (IOException | MetadataException e) {
-      logger.error("Error happened when run benchmark", e);
-    }
-  }
+//  @Test
+//  public void startTest() {
+//    RocksDBTestUtils.printMemInfo("Benchmark rocksdb start");
+//    try {
+//      prepareBenchmark();
+//      RocksDBTestUtils.printBenchmarkBaseline(
+//          storageGroups, timeSeriesSet, measurementPathSet, innerPathSet);
+//      /** rocksdb benchmark * */
+//      RSchemaRegion rocksDBManager = new RSchemaRegion();
+//      MRocksDBBenchmark mRocksDBBenchmark = new MRocksDBBenchmark(rocksDBManager);
+//      mRocksDBBenchmark.testTimeSeriesCreation(timeSeriesSet);
+//      mRocksDBBenchmark.testMeasurementNodeQuery(measurementPathSet);
+//      RocksDBTestUtils.printReport(mRocksDBBenchmark.benchmarkResults, "rocksDB");
+//      RocksDBTestUtils.printMemInfo("Benchmark finished");
+//    } catch (IOException | MetadataException e) {
+//      logger.error("Error happened when run benchmark", e);
+//    }
+//  }
 
   public void prepareBenchmark() throws IOException {
     long time = System.currentTimeMillis();
     if (!logFile.exists()) {
       throw new FileNotFoundException("we need a mlog.bin to init the benchmark test");
     }
-    try (MLogReader mLogReader =
-        new MLogReader(config.getSchemaDir(), MetadataConstant.METADATA_LOG)) {
-      parseForTestSet(mLogReader);
-      System.out.println("spend " + (System.currentTimeMillis() - time) + "ms to prepare dataset");
-    } catch (Exception e) {
-      throw new IOException("Failed to parser mlog.bin for err:" + e);
-    }
+    // TODO Add it back after support RocksDB support in v1.0
+//    try (MLogReader mLogReader =
+//        new MLogReader(config.getSchemaDir(), MetadataConstant.METADATA_LOG)) {
+//      parseForTestSet(mLogReader);
+//      System.out.println("spend " + (System.currentTimeMillis() - time) + "ms to prepare dataset");
+//    } catch (Exception e) {
+//      throw new IOException("Failed to parser mlog.bin for err:" + e);
+//    }
   }
 
-  private static void parseForTestSet(MLogReader mLogReader) throws IllegalPathException {
-    List<CreateTimeSeriesPlan> currentList = null;
-    SetStorageGroupPlan setStorageGroupPlan = new SetStorageGroupPlan();
-    setStorageGroupPlan.setPath(new PartialPath("root.iotcloud"));
-    storageGroups.add(setStorageGroupPlan);
-    while (mLogReader.hasNext()) {
-      PhysicalPlan plan = null;
-      try {
-        plan = mLogReader.next();
-        if (plan == null) {
-          continue;
-        }
-        switch (plan.getOperatorType()) {
-          case CREATE_TIMESERIES:
-            CreateTimeSeriesPlan createTimeSeriesPlan = (CreateTimeSeriesPlan) plan;
-            PartialPath path = createTimeSeriesPlan.getPath();
-            if (currentList == null) {
-              currentList = new ArrayList<>(BIN_CAPACITY);
-              timeSeriesSet.add(currentList);
-            }
-            measurementPathSet.add(path.getFullPath());
-
-            innerPathSet.add(path.getDeviceIdString());
-            String[] subNodes = ArrayUtils.subarray(path.getNodes(), 0, path.getNodes().length - 2);
-            innerPathSet.add(String.join(".", subNodes));
-
-            currentList.add(createTimeSeriesPlan);
-            if (currentList.size() >= BIN_CAPACITY) {
-              currentList = null;
-            }
-            break;
-          default:
-            break;
-        }
-      } catch (Exception e) {
-        logger.error(
-            "Can not operate cmd {} for err:", plan == null ? "" : plan.getOperatorType(), e);
-      }
-    }
-  }
+//  private static void parseForTestSet(MLogReader mLogReader) throws IllegalPathException {
+//    List<CreateTimeSeriesPlan> currentList = null;
+//    SetStorageGroupPlan setStorageGroupPlan = new SetStorageGroupPlan();
+//    setStorageGroupPlan.setPath(new PartialPath("root.iotcloud"));
+//    storageGroups.add(setStorageGroupPlan);
+//    while (mLogReader.hasNext()) {
+//      PhysicalPlan plan = null;
+//      try {
+//        plan = mLogReader.next();
+//        if (plan == null) {
+//          continue;
+//        }
+//        switch (plan.getOperatorType()) {
+//          case CREATE_TIMESERIES:
+//            CreateTimeSeriesPlan createTimeSeriesPlan = (CreateTimeSeriesPlan) plan;
+//            PartialPath path = createTimeSeriesPlan.getPath();
+//            if (currentList == null) {
+//              currentList = new ArrayList<>(BIN_CAPACITY);
+//              timeSeriesSet.add(currentList);
+//            }
+//            measurementPathSet.add(path.getFullPath());
+//
+//            innerPathSet.add(path.getDeviceIdString());
+//            String[] subNodes = ArrayUtils.subarray(path.getNodes(), 0, path.getNodes().length - 2);
+//            innerPathSet.add(String.join(".", subNodes));
+//
+//            currentList.add(createTimeSeriesPlan);
+//            if (currentList.size() >= BIN_CAPACITY) {
+//              currentList = null;
+//            }
+//            break;
+//          default:
+//            break;
+//        }
+//      } catch (Exception e) {
+//        logger.error(
+//            "Can not operate cmd {} for err:", plan == null ? "" : plan.getOperatorType(), e);
+//      }
+//    }
+//  }
 
   private void resetEnv() throws IOException {
     File rockdDbFile = new File(ROCKSDB_PATH);

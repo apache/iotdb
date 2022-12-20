@@ -61,7 +61,7 @@ dclStatement
 utilityStatement
     : merge | fullMerge | flush | clearCache | settle | explain
     | setSystemStatus | showVersion | showFlushInfo | showLockInfo | showQueryResource
-    | showQueryProcesslist | killQuery | grantWatermarkEmbedding | revokeWatermarkEmbedding
+    | showQueries | killQuery | grantWatermarkEmbedding | revokeWatermarkEmbedding
     | loadConfiguration | loadTimeseries | loadFile | removeFile | unloadFile;
 
 syncStatement
@@ -499,6 +499,10 @@ sortKey
     : TIME
     | TIMESERIES
     | DEVICE
+    | QUERYID
+    | DATANODEID
+    | ELAPSEDTIME
+    | STATEMENT
     ;
 
 // ---- Fill Clause
@@ -726,9 +730,12 @@ showQueryResource
     : SHOW QUERY RESOURCE
     ;
 
-// Show Query Processlist
-showQueryProcesslist
-    : SHOW QUERY PROCESSLIST
+// Show Queries / Show Query Processlist
+showQueries
+    : SHOW (QUERIES | QUERY PROCESSLIST)
+    whereClause?
+    orderByClause?
+    rowPaginationClause?
     ;
 
 // Kill Query

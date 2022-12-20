@@ -64,7 +64,6 @@ import org.apache.iotdb.db.metadata.rescon.SchemaStatisticsManager;
 import org.apache.iotdb.db.metadata.tag.TagManager;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
-import org.apache.iotdb.db.mpp.common.schematree.DeviceSchemaInfo;
 import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -96,7 +95,6 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.Function;
 import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toList;
@@ -607,9 +605,11 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
           // info
           // in tagFile to recover index directly
           tagManager.recoverIndex(offset, leafMNode);
+          mtree.pinMNode(leafMNode);
         } else if (plan.getTags() != null) {
           // tag key, tag value
           tagManager.addIndex(plan.getTags(), leafMNode);
+          mtree.pinMNode(leafMNode);
         }
 
         // write log
@@ -760,11 +760,13 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
           if (tagOffsets != null && !plan.getTagOffsets().isEmpty() && isRecovering) {
             if (tagOffsets.get(i) != -1) {
               tagManager.recoverIndex(plan.getTagOffsets().get(i), measurementMNodeList.get(i));
+              mtree.pinMNode(measurementMNodeList.get(i));
             }
           } else if (tagsList != null && !tagsList.isEmpty()) {
             if (tagsList.get(i) != null) {
               // tag key, tag value
               tagManager.addIndex(tagsList.get(i), measurementMNodeList.get(i));
+              mtree.pinMNode(measurementMNodeList.get(i));
             }
           }
         }
@@ -1034,33 +1036,8 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
   // endregion
 
   // region Interfaces for metadata info Query
-  /**
-   * Check whether the path exists.
-   *
-   * @param path a full path or a prefix path
-   */
-  @Override
-  public boolean isPathExist(PartialPath path) {
-    try {
-      return mtree.isPathExist(path);
-    } catch (MetadataException e) {
-      logger.error(e.getMessage());
-      return false;
-    }
-  }
 
   // region Interfaces for metadata count
-
-  /**
-   * To calculate the count of timeseries matching given path. The path could be a pattern of a full
-   * path, may contain wildcard. If using prefix match, the path pattern is used to match prefix
-   * path. All timeseries start with the matched prefix path will be counted.
-   */
-  @Override
-  public long getAllTimeseriesCount(PartialPath pathPattern, boolean isPrefixMatch)
-      throws MetadataException {
-    return mtree.getAllTimeseriesCount(pathPattern, isPrefixMatch);
-  }
 
   @Override
   public long getAllTimeseriesCount(
@@ -1139,36 +1116,9 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
       throws MetadataException {
     return mtree.getChildNodePathInNextLevel(pathPattern);
   }
-
-  /**
-   * Get child node in the next level of the given path pattern.
-   *
-   * <p>give pathPattern and the child nodes is those matching pathPattern.*
-   *
-   * <p>e.g., MTree has [root.sg1.d1.s1, root.sg1.d1.s2, root.sg1.d2.s1] given path = root.sg1,
-   * return [d1, d2] given path = root.sg.d1 return [s1,s2]
-   *
-   * @return All child nodes of given seriesPath.
-   */
-  @Override
-  public Set<String> getChildNodeNameInNextLevel(PartialPath pathPattern) throws MetadataException {
-    return mtree.getChildNodeNameInNextLevel(pathPattern);
-  }
   // endregion
 
   // region Interfaces for Entity/Device info Query
-
-  /**
-   * Get all devices that one of the timeseries, matching the given timeseries path pattern, belongs
-   * to.
-   *
-   * @param timeseries a path pattern of the target timeseries
-   * @return A HashSet instance which stores devices paths.
-   */
-  @Override
-  public Set<PartialPath> getBelongedDevices(PartialPath timeseries) throws MetadataException {
-    return mtree.getDevicesByTimeseries(timeseries);
-  }
 
   /**
    * Get all device paths matching the path pattern. If using prefix match, the path pattern is used
@@ -1365,27 +1315,6 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
 
   // region Interfaces and methods for MNode query
 
-  @Override
-  public IMNode getDeviceNode(PartialPath path) throws MetadataException {
-    IMNode node;
-    try {
-      node = mNodeCache.get(path);
-      return node;
-    } catch (Exception e) {
-      if (e.getCause() instanceof MetadataException) {
-        throw new PathNotExistException(path.getFullPath());
-      }
-      throw e;
-    }
-  }
-
-  @Override
-  public IMeasurementMNode getMeasurementMNode(PartialPath fullPath) throws MetadataException {
-    IMeasurementMNode measurementMNode = mtree.getMeasurementMNode(fullPath);
-    mtree.unPinMNode(measurementMNode);
-    return measurementMNode;
-  }
-
   /**
    * Invoked during insertPlan process. Get target MeasurementMNode from given EntityMNode. If the
    * result is not null and is not MeasurementMNode, it means a timeseries with same path cannot be
@@ -1437,8 +1366,7 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
     }
   }
 
-  @Override
-  public void changeAlias(PartialPath path, String alias) throws MetadataException {
+  private void changeAlias(PartialPath path, String alias) throws MetadataException {
     IMeasurementMNode leafMNode = mtree.getMeasurementMNode(path);
     try {
       if (leafMNode.getAlias() != null) {
@@ -1458,7 +1386,7 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
   }
 
   /**
-   * upsert tags and attributes key-value for the timeseries if the key has existed, just use the
+   * Upsert tags and attributes key-value for the timeseries if the key has existed, just use the
    * new value to update it.
    *
    * @param alias newly added alias
@@ -1468,7 +1396,7 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
    */
   @Override
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
-  public void upsertTagsAndAttributes(
+  public void upsertAliasAndTagsAndAttributes(
       String alias,
       Map<String, String> tagsMap,
       Map<String, String> attributesMap,
@@ -1522,10 +1450,11 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
   }
 
   /**
-   * add new attributes key-value for the timeseries
+   * Add new attributes key-value for the timeseries
    *
    * @param attributesMap newly added attributes map
    * @param fullPath timeseries
+   * @throws MetadataException tagLogFile write error or attributes already exist
    */
   @Override
   public void addAttributes(Map<String, String> attributesMap, PartialPath fullPath)
@@ -1548,10 +1477,11 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
   }
 
   /**
-   * add new tags key-value for the timeseries
+   * Add new tags key-value for the timeseries
    *
    * @param tagsMap newly added tags map
    * @param fullPath timeseries
+   * @throws MetadataException tagLogFile write error or tags already exist
    */
   @Override
   public void addTags(Map<String, String> tagsMap, PartialPath fullPath)
@@ -1577,7 +1507,8 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
   }
 
   /**
-   * drop tags or attributes of the timeseries
+   * Drop tags or attributes of the timeseries. It will not throw exception even if the key does not
+   * exist.
    *
    * @param keySet tags key or attributes key
    * @param fullPath timeseries path
@@ -1600,10 +1531,11 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
   }
 
   /**
-   * set/change the values of tags or attributes
+   * Set/change the values of tags or attributes
    *
    * @param alterMap the new tags or attributes key-value
    * @param fullPath timeseries
+   * @throws MetadataException tagLogFile write error or tags/attributes do not exist
    */
   @Override
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
@@ -1624,11 +1556,13 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
   }
 
   /**
-   * rename the tag or attribute's key of the timeseries
+   * Rename the tag or attribute's key of the timeseries
    *
    * @param oldKey old key of tag or attribute
    * @param newKey new key of tag or attribute
    * @param fullPath timeseries
+   * @throws MetadataException tagLogFile write error or does not have tag/attribute or already has
+   *     a tag/attribute named newKey
    */
   @Override
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
@@ -1653,22 +1587,6 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
   private void removeFromTagInvertedIndex(IMeasurementMNode node) throws IOException {
     tagManager.removeFromTagInvertedIndex(node);
   }
-  // endregion
-
-  // region Interfaces and Implementation for InsertPlan process
-
-  @Override
-  public DeviceSchemaInfo getDeviceSchemaInfoWithAutoCreate(
-      PartialPath devicePath,
-      String[] measurements,
-      Function<Integer, TSDataType> getDataType,
-      TSEncoding[] encodings,
-      CompressionType[] compressionTypes,
-      boolean aligned)
-      throws MetadataException {
-    throw new UnsupportedOperationException();
-  }
-
   // endregion
 
   // region Interfaces and Implementation for Template operations

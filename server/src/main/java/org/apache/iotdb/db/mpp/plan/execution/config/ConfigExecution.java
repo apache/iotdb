@@ -31,7 +31,6 @@ import org.apache.iotdb.db.mpp.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.mpp.plan.execution.IQueryExecution;
 import org.apache.iotdb.db.mpp.plan.execution.config.executor.ClusterConfigTaskExecutor;
 import org.apache.iotdb.db.mpp.plan.execution.config.executor.IConfigTaskExecutor;
-import org.apache.iotdb.db.mpp.plan.execution.config.executor.StandaloneConfigTaskExecutor;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
@@ -85,11 +84,7 @@ public class ConfigExecution implements IQueryExecution {
                 context.getSql(),
                 context.getSession() == null ? null : context.getSession().getUserName()));
     this.resultSetConsumed = false;
-    if (config.isClusterMode()) {
-      configTaskExecutor = ClusterConfigTaskExecutor.getInstance();
-    } else {
-      configTaskExecutor = StandaloneConfigTaskExecutor.getInstance();
-    }
+    configTaskExecutor = ClusterConfigTaskExecutor.getInstance();
   }
 
   @TestOnly

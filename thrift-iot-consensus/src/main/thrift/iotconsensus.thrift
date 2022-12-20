@@ -20,17 +20,23 @@
 include "common.thrift"
 namespace java org.apache.iotdb.consensus.iot.thrift
 
-struct TLogBatch {
+// If this TLogEntry comes from the queue in memory, the list size of the data will only be 1.
+// If this TLogEntry comes from wal, the list size of the data may be greater than 1.
+struct TLogEntry {
   1: required list<binary> data
   2: required i64 searchIndex
   3: required bool fromWAL
 }
 
-struct TSyncLogReq {
-  # source peer where the TSyncLogReq is generated
+struct TSyncLogEntriesReq {
+  # source peer where the TSyncLogEntriesReq is generated
   1: required string peerId
   2: required common.TConsensusGroupId consensusGroupId
-  3: required list<TLogBatch> batches
+  3: required list<TLogEntry> logEntries
+}
+
+struct TSyncLogEntriesRes {
+  1: required list<common.TSStatus> statuses
 }
 
 struct TInactivatePeerReq {
@@ -47,10 +53,6 @@ struct TActivatePeerReq {
 
 struct TActivatePeerRes {
   1: required common.TSStatus status
-}
-
-struct TSyncLogRes {
-  1: required list<common.TSStatus> status
 }
 
 struct TBuildSyncLogChannelReq {
@@ -114,7 +116,7 @@ struct TCleanupTransferredSnapshotRes {
 }
 
 service IoTConsensusIService {
-  TSyncLogRes syncLog(TSyncLogReq req)
+  TSyncLogEntriesRes syncLogEntries(TSyncLogEntriesReq req)
   TInactivatePeerRes inactivatePeer(TInactivatePeerReq req)
   TActivatePeerRes activatePeer(TActivatePeerReq req)
   TBuildSyncLogChannelRes buildSyncLogChannel(TBuildSyncLogChannelReq req)

@@ -22,9 +22,9 @@ package org.apache.iotdb.consensus.iot.client;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
+import org.apache.iotdb.consensus.iot.logdispatcher.Batch;
 import org.apache.iotdb.consensus.iot.logdispatcher.LogDispatcher.LogDispatcherThread;
-import org.apache.iotdb.consensus.iot.logdispatcher.PendingBatch;
-import org.apache.iotdb.consensus.iot.thrift.TSyncLogRes;
+import org.apache.iotdb.consensus.iot.thrift.TSyncLogEntriesRes;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -34,30 +34,30 @@ import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.CompletableFuture;
 
-public class DispatchLogHandler implements AsyncMethodCallback<TSyncLogRes> {
+public class DispatchLogHandler implements AsyncMethodCallback<TSyncLogEntriesRes> {
 
   private final Logger logger = LoggerFactory.getLogger(DispatchLogHandler.class);
 
   private final LogDispatcherThread thread;
-  private final PendingBatch batch;
+  private final Batch batch;
   private final long createTime;
   private int retryCount;
 
-  public DispatchLogHandler(LogDispatcherThread thread, PendingBatch batch) {
+  public DispatchLogHandler(LogDispatcherThread thread, Batch batch) {
     this.thread = thread;
     this.batch = batch;
     this.createTime = System.currentTimeMillis();
   }
 
   @Override
-  public void onComplete(TSyncLogRes response) {
-    if (response.getStatus().size() == 1 && needRetry(response.getStatus().get(0).getCode())) {
+  public void onComplete(TSyncLogEntriesRes response) {
+    if (response.getStatuses().size() == 1 && needRetry(response.getStatuses().get(0).getCode())) {
       logger.warn(
           "Can not send {} to peer {} for {} times because {}",
           batch,
           thread.getPeer(),
           ++retryCount,
-          response.getStatus().get(0).getMessage());
+          response.getStatuses().get(0).getMessage());
       sleepCorrespondingTimeAndRetryAsynchronous();
     } else {
       thread.getSyncStatus().removeBatch(batch);
@@ -74,7 +74,7 @@ public class DispatchLogHandler implements AsyncMethodCallback<TSyncLogRes> {
             "syncLogTimePerRequest",
             Tag.REGION.toString(),
             this.thread.getPeer().getGroupId().toString())
-        .update((System.currentTimeMillis() - createTime) / batch.getBatches().size());
+        .update((System.currentTimeMillis() - createTime) / batch.getLogEntries().size());
   }
 
   private boolean needRetry(int statusCode) {
@@ -112,7 +112,7 @@ public class DispatchLogHandler implements AsyncMethodCallback<TSyncLogRes> {
           }
           if (thread.isStopped()) {
             logger.debug(
-                "LogDispatcherThread {} has been stopped, we will ignore the retry PendingBatch {} after {} times",
+                "LogDispatcherThread {} has been stopped, we will not retrying this Batch {} after {} times",
                 thread.getPeer(),
                 batch,
                 retryCount);

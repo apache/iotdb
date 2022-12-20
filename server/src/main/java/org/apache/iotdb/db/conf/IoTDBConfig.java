@@ -31,7 +31,6 @@ import org.apache.iotdb.db.engine.compaction.constant.InnerUnseqCompactionPerfor
 import org.apache.iotdb.db.engine.compaction.constant.InnerUnsequenceCompactionSelector;
 import org.apache.iotdb.db.engine.storagegroup.timeindex.TimeIndexLevel;
 import org.apache.iotdb.db.exception.LoadConfigurationException;
-import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
 import org.apache.iotdb.db.service.thrift.impl.ClientRPCServiceImpl;
 import org.apache.iotdb.db.service.thrift.impl.NewInfluxDBServiceImpl;
 import org.apache.iotdb.db.utils.datastructure.TVListSortAlgorithm;
@@ -530,10 +529,10 @@ public class IoTDBConfig {
   /** Set true to enable writing monitor time series. */
   private boolean enableMonitorSeriesWrite = false;
 
-  /** Cache size of {@code checkAndGetDataTypeCache} in {@link LocalSchemaProcessor}. */
+  /** Cache size of {@code checkAndGetDataTypeCache}. */
   private int schemaRegionDeviceNodeCacheSize = 10000;
 
-  /** Cache size of {@code checkAndGetDataTypeCache} in {@link LocalSchemaProcessor}. */
+  /** Cache size of {@code checkAndGetDataTypeCache}. */
   private int mRemoteSchemaCacheSize = 100000;
 
   /** Is external sort enable. */
@@ -572,7 +571,14 @@ public class IoTDBConfig {
   private boolean isClusterMode = false;
 
   /**
-   * the data node id for cluster mode, the default value -1 should be changed after join cluster
+   * The cluster name that this DataNode joined in the cluster mode. The default value "testCluster"
+   * will be changed after join cluster
+   */
+  private String clusterName = "testCluster";
+
+  /**
+   * The DataNodeId of this DataNode for cluster mode. The default value -1 will be changed after
+   * join cluster
    */
   private int dataNodeId = -1;
 
@@ -1502,7 +1508,7 @@ public class IoTDBConfig {
     this.subRawQueryThreadCount = subRawQueryThreadCount;
   }
 
-  public long getMaxBytesPerQuery() {
+  public long getMaxBytesPerFragmentInstance() {
     return allocateMemoryForDataExchange / queryThreadCount;
   }
 
@@ -3076,6 +3082,14 @@ public class IoTDBConfig {
   public void setClusterMode(boolean isClusterMode) {
     this.isClusterMode = isClusterMode;
     checkMultiDirStrategyClassName();
+  }
+
+  public String getClusterName() {
+    return clusterName;
+  }
+
+  public void setClusterName(String clusterName) {
+    this.clusterName = clusterName;
   }
 
   public int getDataNodeId() {
