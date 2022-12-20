@@ -19,7 +19,7 @@
 version: "3"
 services:
   iodb-confignode:
-    image: apache/iotdb:1.0.1-SNAPSHOT-confignode
+    image: apache/iotdb:1.0.0-confignode
     hostname: iotdb-confignode
     container_name: iotdb-confignode
     environment:
@@ -30,14 +30,14 @@ services:
         - ./logs/confignode:/iotdb/logs
     networks:
       iotdb:
-        ipv4_address: 172.20.0.2
+        ipv4_address: 172.18.0.2
 
   iotdb-datanode1:
-    image: apache/iotdb:1.0.1-SNAPSHOT-datanode
+    image: apache/iotdb:1.0.0-datanode
     hostname: iotdb-datanode-1
     container_name: iotdb-datanode-1
     ports:
-      - "16667:6667"
+      - "6667:6667"
     environment:
       - dn_rpc_address=iotdb-datanode-1
       - dn_internal_address=iotdb-datanode-1
@@ -47,10 +47,10 @@ services:
       - ./logs/datanode1:/iotdb/logs/
     networks:
       iotdb:
-        ipv4_address: 172.20.0.3
+        ipv4_address: 172.18.0.3
 
   iotdb-datanode2:
-    image: apache/iotdb:1.0.1-SNAPSHOT-datanode
+    image: apache/iotdb:1.0.0-datanode
     hostname: iotdb-datanode-2
     container_name: iotdb-datanode-2
     environment:
@@ -62,7 +62,7 @@ services:
       - ./logs/datanode2:/iotdb/logs/
     networks:
       iotdb:
-        ipv4_address: 172.20.0.4
+        ipv4_address: 172.18.0.4
 
 networks:
   iotdb:

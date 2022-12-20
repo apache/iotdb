@@ -98,7 +98,7 @@ docker run -d --name iotdb-service \
               --hostname iotdb-service \
               --network iotdb \
               --ip 172.18.0.6 \
-              -p 26667:6667 \
+              -p 6667:6667 \
               -e cn_internal_address=iotdb-service \
               -e cn_target_config_node_list=iotdb-service:22277 \
               -e dn_rpc_address=iotdb-service \
@@ -110,7 +110,8 @@ docker exec -ti iotdb-service /iotdb/sbin/start-cli.sh -h iotdb-service
 ```
 External access：
 ```shell
-$IOTDB_HOME/sbin/start-cli.sh -h <IP Address/hostname> -p 26667
+# <IP Address/hostname> is the real IP or domain address rather than the one in docker network, could be 127.0.0.1 within the computer.
+$IOTDB_HOME/sbin/start-cli.sh -h <IP Address/hostname> -p 6667
 ```
 Notice：The confignode service would fail when restarting this container if the IP Adress of the container has been changed.
 ```yaml
@@ -122,7 +123,7 @@ services:
     hostname: iotdb-service
     container_name: iotdb-service
     ports:
-      - "26667:6667"
+      - "6667:6667"
     environment:
       - cn_internal_address=iotdb-service
       - cn_target_config_node_list=iotdb-service:22277
@@ -198,4 +199,4 @@ Notice：
 2. In this docker-compose file，`iotdb-2` should be replace with the real IP or hostname of each node to generate docker compose files in the other nodes.
 3. The services would talk with each other, so they need map the /etc/hosts file or add the `extra_hosts` to the docker compose file.
 4. We must start the IoTDB services of `iotdb-1` first at the first time of starting.
-5. Stop all the IoTDB services and clean up the `data` and `logs` directories of the 3 nodes，then start the cluster again.
+5. Stop and remove all the IoTDB services and clean up the `data` and `logs` directories of the 3 nodes，then start the cluster again.
