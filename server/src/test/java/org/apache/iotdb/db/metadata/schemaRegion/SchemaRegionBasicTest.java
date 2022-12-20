@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.MeasurementAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
+import org.apache.iotdb.db.metadata.plan.schemaregion.impl.CreateAlignedTimeSeriesPlanImpl;
 import org.apache.iotdb.db.metadata.plan.schemaregion.impl.CreateTimeSeriesPlanImpl;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -128,6 +129,27 @@ public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
     Assert.assertEquals(TSEncoding.RLE, schemas.get(0).getMeasurementSchema().getEncodingType());
     Assert.assertEquals(
         CompressionType.GZIP, schemas.get(0).getMeasurementSchema().getCompressor());
+  }
+
+  @Test
+  public void testCreateAlignedTimeseries() throws Exception {
+    ISchemaRegion schemaRegion = getSchemaRegion("root.sg", 0);
+    schemaRegion.createAlignedTimeSeries(
+        new CreateAlignedTimeSeriesPlanImpl(
+            new PartialPath("root.sg.wf02.wt01"),
+            Arrays.asList("temperature", "status"),
+            Arrays.asList(TSDataType.valueOf("FLOAT"), TSDataType.valueOf("INT32")),
+            Arrays.asList(TSEncoding.valueOf("RLE"), TSEncoding.valueOf("RLE")),
+            Arrays.asList(CompressionType.SNAPPY, CompressionType.SNAPPY),
+            null,
+            null,
+            null));
+    Map<Integer, MetadataException> checkRes =
+        schemaRegion.checkMeasurementExistence(
+            new PartialPath("root.sg.wf02.wt01"), Arrays.asList("temperature", "status"), null);
+    Assert.assertEquals(2, checkRes.size());
+    Assert.assertTrue(checkRes.get(0) instanceof MeasurementAlreadyExistException);
+    Assert.assertTrue(checkRes.get(1) instanceof MeasurementAlreadyExistException);
   }
 
   @Test
@@ -278,5 +300,54 @@ public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
         schemaRegion.fetchSchema(new PartialPath("root.**"), Collections.EMPTY_MAP, false);
     Assert.assertEquals(1, schemas.size());
     Assert.assertEquals("root.sg.wf02.wt01.temperature", schemas.get(0).getFullPath());
+  }
+
+  private CreateTimeSeriesPlanImpl quickGetCreateTSPlanImpl(PartialPath path) {
+    return new CreateTimeSeriesPlanImpl(
+        path, TSDataType.INT64, TSEncoding.PLAIN, CompressionType.SNAPPY, null, null, null, null);
+  }
+
+  @Test
+  public void testGetAllTimeseriesCount() throws Exception {
+    ISchemaRegion schemaRegion = getSchemaRegion("root.laptop", 0);
+
+    schemaRegion.createTimeseries(quickGetCreateTSPlanImpl(new PartialPath("root.laptop.d0")), -1);
+    schemaRegion.createTimeseries(
+        quickGetCreateTSPlanImpl(new PartialPath("root.laptop.d1.s1")), -1);
+    schemaRegion.createTimeseries(
+        quickGetCreateTSPlanImpl(new PartialPath("root.laptop.d1.s2.t1")), -1);
+    schemaRegion.createTimeseries(
+        quickGetCreateTSPlanImpl(new PartialPath("root.laptop.d1.s3")), -1);
+    schemaRegion.createTimeseries(
+        quickGetCreateTSPlanImpl(new PartialPath("root.laptop.d2.s1")), -1);
+    schemaRegion.createTimeseries(
+        quickGetCreateTSPlanImpl(new PartialPath("root.laptop.d2.s2")), -1);
+
+    Assert.assertEquals(
+        6, schemaRegion.getAllTimeseriesCount(new PartialPath("root.**"), null, false));
+    Assert.assertEquals(
+        6, schemaRegion.getAllTimeseriesCount(new PartialPath("root.laptop.**"), null, false));
+    Assert.assertEquals(
+        1, schemaRegion.getAllTimeseriesCount(new PartialPath("root.laptop.*"), null, false));
+    Assert.assertEquals(
+        4, schemaRegion.getAllTimeseriesCount(new PartialPath("root.laptop.*.*"), null, false));
+    Assert.assertEquals(
+        5, schemaRegion.getAllTimeseriesCount(new PartialPath("root.laptop.*.**"), null, false));
+    Assert.assertEquals(
+        1, schemaRegion.getAllTimeseriesCount(new PartialPath("root.laptop.*.*.t1"), null, false));
+    Assert.assertEquals(
+        2, schemaRegion.getAllTimeseriesCount(new PartialPath("root.laptop.*.s1"), null, false));
+    Assert.assertEquals(
+        3, schemaRegion.getAllTimeseriesCount(new PartialPath("root.laptop.d1.**"), null, false));
+    Assert.assertEquals(
+        2, schemaRegion.getAllTimeseriesCount(new PartialPath("root.laptop.d1.*"), null, false));
+    Assert.assertEquals(
+        1, schemaRegion.getAllTimeseriesCount(new PartialPath("root.laptop.d2.s1"), null, false));
+    Assert.assertEquals(
+        2, schemaRegion.getAllTimeseriesCount(new PartialPath("root.laptop.d2.**"), null, false));
+    Assert.assertEquals(
+        0, schemaRegion.getAllTimeseriesCount(new PartialPath("root.laptop"), null, false));
+    Assert.assertEquals(
+        0, schemaRegion.getAllTimeseriesCount(new PartialPath("root.laptop.d3.s1"), null, false));
   }
 }
