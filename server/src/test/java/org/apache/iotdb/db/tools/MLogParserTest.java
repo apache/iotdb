@@ -19,12 +19,13 @@
 
 package org.apache.iotdb.db.tools;
 
+import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
 import org.apache.iotdb.db.metadata.MetadataConstant;
-import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
+import org.apache.iotdb.db.metadata.plan.schemaregion.impl.SchemaRegionPlanFactory;
+import org.apache.iotdb.db.metadata.schemaregion.SchemaEngine;
 import org.apache.iotdb.db.tools.schema.MLogParser;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -47,20 +48,19 @@ import java.util.Map;
 
 public class MLogParserTest {
 
-  private String[] storageGroups = new String[] {"root.sg0", "root.sg1", "root.sgcc", "root.sg"};
-  private int[] storageGroupIndex = new int[] {0, 1, 3, 4};
+  private String[] storageGroups = new String[] {"root.sg0", "root.sg1", "root.sg"};
+  private int[] schemaRegionIds = new int[] {0, 1, 2};
 
   /*
    * For root.sg0, we prepare 50 CreateTimeseriesPlan.
    * For root.sg1, we prepare 50 CreateTimeseriesPlan, 1 DeleteTimeseriesPlan, 1 ChangeTagOffsetPlan and 1 ChangeAliasPlan.
-   * For root.sgcc, we prepare 0 plans on timeseries or device or template.
    * For root.sg, we prepare none schema plan.
    *
    * For root.ln.cc, we create it and then delete it, thus there's no mlog of root.ln.cc.
    * There' still 1 CreateTemplatePlan in template_log.bin
    *
    * */
-  private int[] mlogLineNum = new int[] {50, 53, 0, 0};
+  private int[] mlogLineNum = new int[] {50, 53, 0};
 
   @Before
   public void setUp() {
@@ -69,25 +69,39 @@ public class MLogParserTest {
 
   @After
   public void tearDown() throws Exception {
-    EnvironmentUtils.cleanEnv();
     File file = new File("target" + File.separator + "tmp" + File.separator + "text.mlog");
-    file.deleteOnExit();
+    file.delete();
     file = new File("target" + File.separator + "tmp" + File.separator + "text.snapshot");
-    file.deleteOnExit();
+    file.delete();
+    EnvironmentUtils.cleanEnv();
   }
 
-  private void prepareData() {
+  private void prepareData() throws Exception {
     // prepare data
+    SchemaEngine schemaEngine = SchemaEngine.getInstance();
+    for (int i = 0; i < storageGroups.length; i++) {
+      SchemaEngine.getInstance()
+          .createSchemaRegion(
+              new PartialPath(storageGroups[i]), new SchemaRegionId(schemaRegionIds[i]));
+    }
+
     for (int i = 0; i < 2; i++) {
       for (int j = 0; j < 5; j++) {
         for (int k = 0; k < 10; k++) {
-          CreateTimeSeriesPlan plan = new CreateTimeSeriesPlan();
           try {
-            plan.setPath(new PartialPath("root.sg" + i + "." + "device" + j + "." + "s" + k));
-            plan.setDataType(TSDataType.INT32);
-            plan.setEncoding(TSEncoding.PLAIN);
-            plan.setCompressor(CompressionType.GZIP);
-            LocalSchemaProcessor.getInstance().createTimeseries(plan);
+            schemaEngine
+                .getSchemaRegion(new SchemaRegionId(schemaRegionIds[i]))
+                .createTimeseries(
+                    SchemaRegionPlanFactory.getCreateTimeSeriesPlan(
+                        new PartialPath("root.sg" + i + "." + "device" + j + "." + "s" + k),
+                        TSDataType.INT32,
+                        TSEncoding.PLAIN,
+                        CompressionType.GZIP,
+                        null,
+                        null,
+                        null,
+                        null),
+                    -1);
           } catch (MetadataException e) {
             e.printStackTrace();
           }
@@ -96,24 +110,24 @@ public class MLogParserTest {
     }
 
     try {
-      LocalSchemaProcessor.getInstance().setStorageGroup(new PartialPath("root.ln.cc"));
-      LocalSchemaProcessor.getInstance().setStorageGroup(new PartialPath("root.sgcc"));
-      LocalSchemaProcessor.getInstance().setTTL(new PartialPath("root.sgcc"), 1234L);
-      LocalSchemaProcessor.getInstance().deleteTimeseries(new PartialPath("root.sg1.device1.s1"));
-      List<PartialPath> paths = new ArrayList<>();
-      paths.add(new PartialPath("root.ln.cc"));
-      LocalSchemaProcessor.getInstance().deleteStorageGroups(paths);
+      schemaEngine
+          .getSchemaRegion(new SchemaRegionId(1))
+          .deleteTimeseries(new PartialPath("root.sg1.device1.s1"), false);
       Map<String, String> tags = new HashMap<String, String>();
       tags.put("tag1", "value1");
-      LocalSchemaProcessor.getInstance().addTags(tags, new PartialPath("root.sg1.device1.s2"));
-      LocalSchemaProcessor.getInstance()
-          .changeAlias(new PartialPath("root.sg1.device1.s3"), "hello");
+      schemaEngine
+          .getSchemaRegion(new SchemaRegionId(1))
+          .addTags(tags, new PartialPath("root.sg1.device1.s2"));
+      schemaEngine
+          .getSchemaRegion(new SchemaRegionId(1))
+          .upsertTagsAndAttributes("hello", null, null, new PartialPath("root.sg1.device1.s3"));
     } catch (MetadataException | IOException e) {
       e.printStackTrace();
     }
 
     try {
-      LocalSchemaProcessor.getInstance().setStorageGroup(new PartialPath("root.sg"));
+      SchemaEngine.getInstance()
+          .createSchemaRegion(new PartialPath("root.sg"), new SchemaRegionId(schemaRegionIds[2]));
     } catch (MetadataException e) {
       e.printStackTrace();
     }
@@ -122,32 +136,22 @@ public class MLogParserTest {
   @Test
   public void testMLogParser() throws Exception {
     prepareData();
-    testNonExistingStorageGroupDir("root.ln.cc");
 
-    LocalSchemaProcessor.getInstance().forceMlog();
+    SchemaEngine.getInstance().forceMlog();
 
     for (int i = 0; i < storageGroups.length; i++) {
-      testParseMLog(storageGroups[i], storageGroupIndex[i], mlogLineNum[i]);
+      testParseMLog(storageGroups[i], schemaRegionIds[i], mlogLineNum[i]);
     }
   }
 
-  private void testNonExistingStorageGroupDir(String storageGroup) {
-    File storageGroupDir =
-        new File(
-            IoTDBDescriptor.getInstance().getConfig().getSchemaDir()
-                + File.separator
-                + storageGroup);
-    Assert.assertFalse(storageGroupDir.exists());
-  }
-
-  private void testParseMLog(String storageGroup, int storageGroupId, int expectedLineNum)
+  private void testParseMLog(String storageGroup, int schemaRegionId, int expectedLineNum)
       throws IOException {
     testParseLog(
         IoTDBDescriptor.getInstance().getConfig().getSchemaDir()
             + File.separator
             + storageGroup
             + File.separator
-            + storageGroupId
+            + schemaRegionId
             + File.separator
             + MetadataConstant.METADATA_LOG,
         expectedLineNum);
