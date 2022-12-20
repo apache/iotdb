@@ -382,6 +382,12 @@ public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
         schemaRegion.getMeasurementCountGroupByLevel(new PartialPath("root.**"), 0, false));
     expected.clear();
 
+    expected.put(new PartialPath("root.laptop"), (long) 1);
+    Assert.assertEquals(
+        expected,
+        schemaRegion.getMeasurementCountGroupByLevel(new PartialPath("root.laptop.*"), 1, false));
+    expected.clear();
+
     expected.put(new PartialPath("root.laptop.d0"), (long) 1);
     Assert.assertEquals(
         expected,
@@ -457,5 +463,39 @@ public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
         expected,
         schemaRegion.getMeasurementCountGroupByLevel(new PartialPath("root.laptop.d1"), 2, true));
     expected.clear();
+  }
+
+  @Test
+  public void testGetDevicesNum() throws Exception {
+    ISchemaRegion schemaRegion = getSchemaRegion("root.laptop", 0);
+
+    schemaRegion.createTimeseries(quickGetCreateTSPlanImpl(new PartialPath("root.laptop.d0")), -1);
+    schemaRegion.createTimeseries(
+        quickGetCreateTSPlanImpl(new PartialPath("root.laptop.d1.s1")), -1);
+    schemaRegion.createTimeseries(
+        quickGetCreateTSPlanImpl(new PartialPath("root.laptop.d1.s2.t1")), -1);
+    schemaRegion.createTimeseries(
+        quickGetCreateTSPlanImpl(new PartialPath("root.laptop.d1.s3")), -1);
+    schemaRegion.createTimeseries(
+        quickGetCreateTSPlanImpl(new PartialPath("root.laptop.d2.s1")), -1);
+    schemaRegion.createTimeseries(
+        quickGetCreateTSPlanImpl(new PartialPath("root.laptop.d2.s2")), -1);
+
+    Assert.assertEquals(4, schemaRegion.getDevicesNum(new PartialPath("root.**"), false));
+    Assert.assertEquals(1, schemaRegion.getDevicesNum(new PartialPath("root.laptop"), false));
+    Assert.assertEquals(2, schemaRegion.getDevicesNum(new PartialPath("root.laptop.*"), false));
+    Assert.assertEquals(0, schemaRegion.getDevicesNum(new PartialPath("root.laptop.d0"), false));
+    Assert.assertEquals(1, schemaRegion.getDevicesNum(new PartialPath("root.laptop.d1"), false));
+    Assert.assertEquals(1, schemaRegion.getDevicesNum(new PartialPath("root.laptop.d1.s2"), false));
+    Assert.assertEquals(1, schemaRegion.getDevicesNum(new PartialPath("root.laptop.d2"), false));
+    Assert.assertEquals(2, schemaRegion.getDevicesNum(new PartialPath("root.laptop.d*"), false));
+    Assert.assertEquals(2, schemaRegion.getDevicesNum(new PartialPath("root.*.d*"), false));
+    Assert.assertEquals(1, schemaRegion.getDevicesNum(new PartialPath("root.**.s2"), false));
+
+    // for prefix matched path
+    Assert.assertEquals(4, schemaRegion.getDevicesNum(new PartialPath("root"), true));
+    Assert.assertEquals(4, schemaRegion.getDevicesNum(new PartialPath("root.laptop"), true));
+    Assert.assertEquals(3, schemaRegion.getDevicesNum(new PartialPath("root.laptop.d*"), true));
+    Assert.assertEquals(1, schemaRegion.getDevicesNum(new PartialPath("root.laptop.d1.*"), true));
   }
 }
