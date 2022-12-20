@@ -164,6 +164,11 @@ public class TsFileSketchTool {
     pw.close();
   }
 
+  public void close() throws IOException {
+    reader.close();
+    pw.close();
+  }
+
   private void printTsFileMetadata(TsFileMetadata tsFileMetaData) {
     try {
       printlnBoth(pw, splitStr + " [TsFileMetadata] begins");

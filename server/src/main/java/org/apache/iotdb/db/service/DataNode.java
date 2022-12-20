@@ -68,8 +68,6 @@ import org.apache.iotdb.db.metadata.template.ClusterTemplateManager;
 import org.apache.iotdb.db.mpp.execution.exchange.MPPDataExchangeService;
 import org.apache.iotdb.db.mpp.execution.schedule.DriverScheduler;
 import org.apache.iotdb.db.protocol.rest.RestService;
-import org.apache.iotdb.db.service.basic.ServiceProvider;
-import org.apache.iotdb.db.service.basic.StandaloneServiceProvider;
 import org.apache.iotdb.db.service.metrics.DataNodeMetricsHelper;
 import org.apache.iotdb.db.service.metrics.IoTDBInternalReporter;
 import org.apache.iotdb.db.service.thrift.impl.ClientRPCServiceImpl;
@@ -132,7 +130,6 @@ public class DataNode implements DataNodeMBean {
   }
 
   private static final RegisterManager registerManager = new RegisterManager();
-  public static ServiceProvider serviceProvider;
 
   public static DataNode getInstance() {
     return DataNodeHolder.INSTANCE;
@@ -480,7 +477,6 @@ public class DataNode implements DataNodeMBean {
 
     Runtime.getRuntime().addShutdownHook(new IoTDBShutdownHook());
     setUncaughtExceptionHandler();
-    initServiceProvider();
 
     logger.info("Recover the schema...");
     initSchemaEngine();
@@ -831,10 +827,6 @@ public class DataNode implements DataNodeMBean {
     } catch (Exception e) {
       logger.error("Stop data node error", e);
     }
-  }
-
-  private void initServiceProvider() throws QueryProcessException {
-    serviceProvider = new StandaloneServiceProvider();
   }
 
   private void initProtocols() throws StartupException {

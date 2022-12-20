@@ -30,6 +30,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 // This class is used for data partition maintaining the map between database and
 // dataRegionIds.
+@Deprecated
 public class LocalDataPartitionInfo {
 
   // storageGroup -> LocalDataPartitionTable

@@ -238,4 +238,24 @@ public class RemoteServerEnv implements BaseEnv {
   public int getMqttPort() {
     throw new UnsupportedOperationException();
   }
+
+  @Override
+  public String getIP() {
+    return ip_addr;
+  }
+
+  @Override
+  public String getPort() {
+    return port;
+  }
+
+  @Override
+  public String getSbinPath() {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public String getLibPath() {
+    throw new UnsupportedOperationException();
+  }
 }

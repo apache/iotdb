@@ -247,4 +247,24 @@ public class StandaloneEnv implements BaseEnv {
   public int getMqttPort() {
     return 1883;
   }
+
+  @Override
+  public String getIP() {
+    return "127.0.0.1";
+  }
+
+  @Override
+  public String getPort() {
+    return "6667";
+  }
+
+  @Override
+  public String getSbinPath() {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public String getLibPath() {
+    throw new UnsupportedOperationException();
+  }
 }
