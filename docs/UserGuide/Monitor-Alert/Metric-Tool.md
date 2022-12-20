@@ -83,9 +83,10 @@ Core-level metrics are enabled by default during system operation. The addition 
 
 #### 4.1.1. Cluster
 | Metric      | Tags                                            | Type      | Description                                         |
-| ----------- | ----------------------------------------------- | --------- | --------------------------------------------------- |
+|-------------|-------------------------------------------------| --------- | --------------------------------------------------- |
 | config_node | name="total",status="Registered/Online/Unknown" | AutoGauge | The number of registered/online/unknown confignodes |
 | data_node   | name="total",status="Registered/Online/Unknown" | AutoGauge | The number of registered/online/unknown datanodes   |
+| points      | database="{{database}}", type="flush"           | Gauge     | The point number of last flushed memtable                     |
 
 #### 4.1.2. IoTDB process
 | Metric            | Tags           | Type      | Description                                            |
@@ -123,7 +124,6 @@ Core-level metrics are enabled by default during system operation. The addition 
 | quantity | name="database"                            | AutoGauge | The number of database                                        |
 | quantity | name="timeSeries"                          | AutoGauge | The number of timeseries                                      |
 | quantity | name="pointsIn"                            | Counter   | The number of write points                                    |
-| points   | database="{{database}}", type="flush"      | Gauge     | The point number of last flushed memtable                     |
 | region   | name="total",type="SchemaRegion"           | AutoGauge | The total number of SchemaRegion in PartitionTable            |
 | region   | name="total",type="DataRegion"             | AutoGauge | The total number of DataRegion in PartitionTable              |
 | region   | name="{{ip}}:{{port}}",type="SchemaRegion" | Gauge     | The number of SchemaRegion in PartitionTable of specific node |
