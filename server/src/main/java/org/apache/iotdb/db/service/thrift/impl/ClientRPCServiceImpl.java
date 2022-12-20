@@ -123,7 +123,6 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.time.ZoneId;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -614,7 +613,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       }
 
       // measurementAlias is also a nodeName
-      PathUtils.isLegalSingleMeasurements(Collections.singletonList(req.getMeasurementAlias()));
+      req.setMeasurementAlias(PathUtils.checkAndReturnSingleMeasurement(req.getMeasurementAlias()));
       // Step 1: transfer from TSCreateTimeseriesReq to Statement
       CreateTimeSeriesStatement statement =
           (CreateTimeSeriesStatement) StatementGenerator.createStatement(req);
@@ -662,9 +661,10 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       }
 
       // check whether measurement is legal according to syntax convention
-      PathUtils.isLegalSingleMeasurements(req.getMeasurementAlias());
+      req.setMeasurementAlias(
+          PathUtils.checkIsLegalSingleMeasurementsAndUpdate(req.getMeasurementAlias()));
 
-      PathUtils.isLegalSingleMeasurements(req.getMeasurements());
+      req.setMeasurements(PathUtils.checkIsLegalSingleMeasurementsAndUpdate(req.getMeasurements()));
 
       // Step 1: transfer from CreateAlignedTimeSeriesReq to Statement
       CreateAlignedTimeSeriesStatement statement =
@@ -713,7 +713,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       }
 
       // check whether measurement is legal according to syntax convention
-      PathUtils.isLegalSingleMeasurements(req.getMeasurementAliasList());
+      req.setMeasurementAliasList(
+          PathUtils.checkIsLegalSingleMeasurementsAndUpdate(req.getMeasurementAliasList()));
 
       // Step 1: transfer from CreateMultiTimeSeriesReq to Statement
       CreateMultiTimeSeriesStatement statement =
@@ -832,7 +833,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
   @Override
   public TSFetchMetadataResp fetchMetadata(TSFetchMetadataReq req) {
-    throw new UnsupportedOperationException();
+    return new TSFetchMetadataResp(
+        RpcUtils.getStatus(TSStatusCode.UNSUPPORTED_OPERATION, "Fetch Metadata is not supported."));
   }
 
   @Override
@@ -973,7 +975,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       }
 
       // check whether measurement is legal according to syntax convention
-      PathUtils.isLegalSingleMeasurementLists(req.getMeasurementsList());
+      req.setMeasurementsList(
+          PathUtils.checkIsLegalSingleMeasurementListsAndUpdate(req.getMeasurementsList()));
 
       // Step 1:  transfer from TSInsertRecordsReq to Statement
       InsertRowsStatement statement = (InsertRowsStatement) StatementGenerator.createStatement(req);
@@ -1028,7 +1031,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       }
 
       // check whether measurement is legal according to syntax convention
-      PathUtils.isLegalSingleMeasurementLists(req.getMeasurementsList());
+      req.setMeasurementsList(
+          PathUtils.checkIsLegalSingleMeasurementListsAndUpdate(req.getMeasurementsList()));
 
       // Step 1: transfer from TSInsertRecordsOfOneDeviceReq to Statement
       InsertRowsOfOneDeviceStatement statement =
@@ -1084,7 +1088,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       }
 
       // check whether measurement is legal according to syntax convention
-      PathUtils.isLegalSingleMeasurementLists(req.getMeasurementsList());
+      req.setMeasurementsList(
+          PathUtils.checkIsLegalSingleMeasurementListsAndUpdate(req.getMeasurementsList()));
 
       // Step 1: transfer from TSInsertStringRecordsOfOneDeviceReq to Statement
       InsertRowsOfOneDeviceStatement statement =
@@ -1141,7 +1146,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           req.getTimestamp());
 
       // check whether measurement is legal according to syntax convention
-      PathUtils.isLegalSingleMeasurements(req.getMeasurements());
+      req.setMeasurements(PathUtils.checkIsLegalSingleMeasurementsAndUpdate(req.getMeasurements()));
 
       InsertRowStatement statement = (InsertRowStatement) StatementGenerator.createStatement(req);
       // return success when this statement is empty because server doesn't need to execute it
@@ -1186,7 +1191,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         return getNotLoggedInStatus();
       }
 
-      PathUtils.isLegalSingleMeasurementLists(req.getMeasurementsList());
+      req.setMeasurementsList(
+          PathUtils.checkIsLegalSingleMeasurementListsAndUpdate(req.getMeasurementsList()));
 
       // Step 1: transfer from TSInsertTabletsReq to Statement
       InsertMultiTabletsStatement statement =
@@ -1234,7 +1240,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       }
 
       // check whether measurement is legal according to syntax convention
-      PathUtils.isLegalSingleMeasurements(req.getMeasurements());
+      req.setMeasurements(PathUtils.checkIsLegalSingleMeasurementsAndUpdate(req.getMeasurements()));
       // Step 1: transfer from TSInsertTabletReq to Statement
       InsertTabletStatement statement =
           (InsertTabletStatement) StatementGenerator.createStatement(req);
@@ -1289,7 +1295,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       }
 
       // check whether measurement is legal according to syntax convention
-      PathUtils.isLegalSingleMeasurementLists(req.getMeasurementsList());
+      req.setMeasurementsList(
+          PathUtils.checkIsLegalSingleMeasurementListsAndUpdate(req.getMeasurementsList()));
 
       InsertRowsStatement statement = (InsertRowsStatement) StatementGenerator.createStatement(req);
       // return success when this statement is empty because server doesn't need to execute it
@@ -1463,13 +1470,14 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
   @Override
   public TSStatus appendSchemaTemplate(TSAppendSchemaTemplateReq req) {
-    // todo: check measurement using isLegalSingleMeasurements()
-    throw new UnsupportedOperationException();
+    return RpcUtils.getStatus(
+        TSStatusCode.UNSUPPORTED_OPERATION, "Modify template has not been supported.");
   }
 
   @Override
   public TSStatus pruneSchemaTemplate(TSPruneSchemaTemplateReq req) {
-    throw new UnsupportedOperationException();
+    return RpcUtils.getStatus(
+        TSStatusCode.UNSUPPORTED_OPERATION, "Modify template has not been supported.");
   }
 
   @Override
@@ -1753,7 +1761,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           req.getTimestamp());
 
       // check whether measurement is legal according to syntax convention
-      PathUtils.isLegalSingleMeasurements(req.getMeasurements());
+      req.setMeasurements(PathUtils.checkIsLegalSingleMeasurementsAndUpdate(req.getMeasurements()));
 
       InsertRowStatement statement = (InsertRowStatement) StatementGenerator.createStatement(req);
 

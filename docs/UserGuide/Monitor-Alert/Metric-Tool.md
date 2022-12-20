@@ -21,7 +21,7 @@
 
 Along with IoTDB running, we hope to observe the status of IoTDB, so as to troubleshoot system problems or discover potential system risks in time. A series of metrics that can **reflect the operating status of the system** are system monitoring metrics.
 
-# 1. When to use metric framework?
+## 1. When to use metric framework?
 
 Belows are some typical application scenarios
 
@@ -44,49 +44,50 @@ Belows are some typical application scenarios
 
    We could use the count of error logs、the alive status of nodes in cluster, etc, to determine whether the system is running abnormally.
 
-# 2. Who will use metric framework?
+## 2. Who will use metric framework?
 Any person cares about the system's status, including but not limited to RD, QA, SRE, DBA, can use the metrics to work more efficiently.
 
-# 3. What is metrics?
+## 3. What is metrics?
 
-## 3.1. Key Concept
+### 3.1. Key Concept
 
 In IoTDB's metric module, each metrics is uniquely identified by `Metric Name` and `Tags`.
 
-- `Metric Name`: The name of metric's category, for example, ```logback_events``` indicates log events。
-- `Tags`: **Metric classification**, in the form of Key-Value pairs, each metric can have 0 or more categories, common Key-Value pairs:
-  - `name = xxx`: The name of the metric. For example, for the monitoring item`entry_seconds_count`, the meaning of name is the name of the monitored interface.
-  - `status = xxx`: The status of the metric is subdivided. For example, the monitoring item of the monitoring task can use this parameter to separate the running task and the stopped task.
-  - `user = xxx`: The metric is related to a specific user, such as the total number of writes by the root user.
-  - Customize for the situation: For example, there is a ```level``` classification under logback_events, which is used to indicate the number of logs under a specific level
+- `Metric Name`: Metric type name, such as `logback_events` means log events.
+- `Tags`: indicator classification, in the form of Key-Value pairs, each indicator can have 0 or more categories, common Key-Value pairs:
+   - `name = xxx`: The name of the monitored object, which is the description of **business logic**. For example, for a monitoring item of type `Metric Name = entry_seconds_count`, the meaning of name refers to the monitored business interface.
+   - `type = xxx`: Monitoring indicator type subdivision, which is a description of **monitoring indicator** itself. For example, for monitoring items of type `Metric Name = point`, the meaning of type refers to the specific type of monitoring points.
+   - `status = xxx`: The status of the monitored object is a description of **business logic**. For example, for monitoring items of type `Metric Name = Task`, this parameter can be used to distinguish the status of the monitored object.
+   - `user = xxx`: The relevant user of the monitored object is a description of **business logic**. For example, count the total points written by the `root` user.
+   - Customize according to the specific situation: For example, there is a level classification under logback_events_total, which is used to indicate the number of logs under a specific level.
 - `Metric Level`: The level of metric managing level, The default startup level is `Core` level, the recommended startup level is `Important level`, and the audit strictness is `Core > Important > Normal > All`
   - `Core`: Core metrics of the system, used by the **operation and maintenance personnel**, which is related to the **performance, stability, and security** of the system, such as the status of the instance, the load of the system, etc.
   - `Important`: Important metrics of the module, which is used by **operation and maintenance and testers**, and is directly related to **the running status of each module**, such as the number of merged files, execution status, etc.
   - `Normal`: Normal metrics of the module, used by **developers** to facilitate **locating the module** when problems occur, such as specific key operation situations in the merger.
   - `All`: All metrics of the module, used by **module developers**, often used when the problem is reproduced, so as to solve the problem quickly.
 
-### 3.1.1. External data format for metrics
+### 3.2. External data format for metrics
 - IoTDB provides metrics in JMX, Prometheus and IoTDB formats:
    - For JMX, metrics can be obtained through ```org.apache.iotdb.metrics```.
    - For Prometheus, the value of the metrics can be obtained through the externally exposed port
    - External exposure in IoTDB mode: metrics can be obtained by executing IoTDB queries
 
-# 4. The detail of metrics
+## 4. The detail of metrics
 
 Currently, IoTDB provides metrics for some main modules externally, and with the development of new functions and system optimization or refactoring, metrics will be added and updated synchronously.
 
 If you want to add your own metrics data in IoTDB, please see the [IoTDB Metric Framework] (https://github.com/apache/iotdb/tree/master/metrics) document.
 
-## 4.1. Core level metrics
+### 4.1. Core level metrics
 Core-level metrics are enabled by default during system operation. The addition of each Core-level metrics needs to be carefully evaluated. The current Core-level metrics are as follows:
 
-### 4.1.1. Cluster
+#### 4.1.1. Cluster
 | Metric      | Tags                                            | Type      | Description                                         |
 | ----------- | ----------------------------------------------- | --------- | --------------------------------------------------- |
 | config_node | name="total",status="Registered/Online/Unknown" | AutoGauge | The number of registered/online/unknown confignodes |
 | data_node   | name="total",status="Registered/Online/Unknown" | AutoGauge | The number of registered/online/unknown datanodes   |
 
-### 4.1.2. IoTDB process
+#### 4.1.2. IoTDB process
 | Metric            | Tags           | Type      | Description                                            |
 | ----------------- | -------------- | --------- | ------------------------------------------------------ |
 | process_cpu_load  | name="process" | AutoGauge | The current CPU usage of IoTDB process, Unit: %        |
@@ -95,7 +96,7 @@ Core-level metrics are enabled by default during system operation. The addition 
 | process_total_mem | name="memory"  | AutoGauge | The current requested memory for IoTDB process         |
 | process_free_mem  | name="memory"  | AutoGauge | The free available memory of IoTDB process             |
 
-### 4.1.3. System
+#### 4.1.3. System
 | Metric                         | Tags          | Type      | Description                                                |
 | ------------------------------ | ------------- | --------- | ---------------------------------------------------------- |
 | sys_cpu_load                   | name="system" | AutoGauge | The current CPU usage of system, Unit: %                   |
@@ -108,26 +109,27 @@ Core-level metrics are enabled by default during system operation. The addition 
 | sys_disk_total_space           | name="disk"   | AutoGauge | The total disk space                                       |
 | sys_disk_free_space            | name="disk"   | AutoGauge | The available disk space                                   |
 
-## 4.2. Important level metrics
+### 4.2. Important level metrics
 
-### 4.2.1. Cluster
+#### 4.2.1. Cluster
 | Metric                    | Tags                                              | Type  | Description                                      |
 | ------------------------- | ------------------------------------------------- | ----- | ------------------------------------------------ |
 | cluster_node_leader_count | name="{{ip}}:{{port}}"                            | Gauge | The count of consensus group leader on each node |
 | cluster_node_status       | name="{{ip}}:{{port}}",type="ConfigNode/DataNode" | Gauge | The current node status, 0=Unkonwn 1=online      |
 
-### 4.2.2. Node
+#### 4.2.2. Node
 | Metric   | Tags                                       | Type      | Description                                                   |
-| -------- | ------------------------------------------ | --------- | ------------------------------------------------------------- |
+|----------|--------------------------------------------|-----------|---------------------------------------------------------------|
 | quantity | name="database"                            | AutoGauge | The number of database                                        |
 | quantity | name="timeSeries"                          | AutoGauge | The number of timeseries                                      |
 | quantity | name="pointsIn"                            | Counter   | The number of write points                                    |
+| points   | database="{{database}}", type="flush"      | Gauge     | The point number of last flushed memtable                     |
 | region   | name="total",type="SchemaRegion"           | AutoGauge | The total number of SchemaRegion in PartitionTable            |
 | region   | name="total",type="DataRegion"             | AutoGauge | The total number of DataRegion in PartitionTable              |
 | region   | name="{{ip}}:{{port}}",type="SchemaRegion" | Gauge     | The number of SchemaRegion in PartitionTable of specific node |
 | region   | name="{{ip}}:{{port}}",type="DataRegion"   | Gauge     | The number of DataRegion in PartitionTable of specific node   |
 
-### 4.2.3. IoTConsensus
+#### 4.2.3. IoTConsensus
 | Metric       | Tags                                                                                         | Type      | Description                                                           |
 | ------------ | -------------------------------------------------------------------------------------------- | --------- | --------------------------------------------------------------------- |
 | mutli_leader | name="logDispatcher-{{IP}}:{{Port}}", region="{{region}}", type="currentSyncIndex"           | AutoGauge | The sync index of synchronization thread in replica group             |
@@ -142,7 +144,7 @@ Core-level metrics are enabled by default during system operation. The addition 
 | stage        | name="iot_consensus", region="{{region}}", type="constructBatch"                             | Histogram | The time consumed to construct batch in synchronization thread        |
 | stage        | name="iot_consensus", region="{{region}}", type="syncLogTimePerRequest"                      | Histogram | The time consumed to sync log in asynchronous callback process        |
 
-### 4.2.4. Cache
+#### 4.2.4. Cache
 | Metric    | Tags                               | Type      | Description                                                              |
 | --------- | ---------------------------------- | --------- | ------------------------------------------------------------------------ |
 | cache_hit | name="chunk"                       | AutoGauge | The cache hit ratio of ChunkCache, Unit: %                               |
@@ -156,7 +158,7 @@ Core-level metrics are enabled by default during system operation. The addition 
 | cache     | name="DataPartition", type="hit"   | Counter   | The hit number of DataPartition Cache                                    |
 | cache     | name="DataPartition", type="all"   | Counter   | The access number of SDataPartition Cache                                |
 
-### 4.2.5. Interface
+#### 4.2.5. Interface
 | Metric                | Tags                               | Type      | Description                                                    |
 | --------------------- | ---------------------------------- | --------- | -------------------------------------------------------------- |
 | operation             | name = "{{name}}"                  | Histogram | The time consumed of operations in client                      |
@@ -170,14 +172,14 @@ Core-level metrics are enabled by default during system operation. The addition 
 | thrift_active_threads | name="MPPDataExchangeRPC-Service"  | AutoGauge | The number of thrift active internal connections in MPP        |
 | thrift_active_threads | name="ClientRPC-Service"           | AutoGauge | The number of thrift active connections of client              |
 
-### 4.2.6. Memory
+#### 4.2.6. Memory
 | Metric | Tags                          | Type      | Description                                                        |
 | ------ | ----------------------------- | --------- | ------------------------------------------------------------------ |
 | mem    | name="database_{{name}}"      | AutoGauge | The memory usage of DataRegion in DataNode, Unit: byte             |
 | mem    | name="chunkMetaData_{{name}}" | AutoGauge | The memory usage of chunkMetaData when writting TsFile, Unit: byte |
 | mem    | name="IoTConsensus"           | AutoGauge | The memory usage of IoTConsensus, Unit: byte                       |
 
-### 4.2.7. Task
+#### 4.2.7. Task
 | Metric    | Tags                                              | Type      | Description                           |
 | --------- | ------------------------------------------------- | --------- | ------------------------------------- |
 | queue     | name="compaction_inner", status="running/waiting" | Gauge     | The number of inner compaction tasks  |
@@ -187,7 +189,7 @@ Core-level metrics are enabled by default during system operation. The addition 
 | queue     | name="Sub_RawQuery",status="running/waiting"      | AutoGauge | The number of Sub_RawQuery            |
 
 
-### 4.2.8. Compaction
+#### 4.2.8. Compaction
 | Metric                | Tags                                                | Type    | Description                            |
 | --------------------- | --------------------------------------------------- | ------- | -------------------------------------- |
 | data_written          | name="compaction", type="aligned/not-aligned/total" | Counter | The written size of compaction         |
@@ -196,7 +198,7 @@ Core-level metrics are enabled by default during system operation. The addition 
 | compaction_task_count | name = "inner_compaction", type="unsequence"        | Counter | The number of inner sequence compction |
 | compaction_task_count | name = "cross_compaction", type="cross"             | Counter | The number of corss compction          |
 
-### 4.2.9. File
+#### 4.2.9. File
 | Metric     | Tags         | Type      | Description                               |
 | ---------- | ------------ | --------- | ----------------------------------------- |
 | file_size  | name="wal"   | AutoGauge | The size of WAL file, Unit: byte          |
@@ -206,7 +208,7 @@ Core-level metrics are enabled by default during system operation. The addition 
 | file_count | name="seq"   | AutoGauge | The count of sequence TsFile              |
 | file_count | name="unseq" | AutoGauge | The count of unsequence TsFile            |
 
-### 4.2.10. IoTDB Process
+#### 4.2.10. IoTDB Process
 | Metric                | Tags           | Type      | Description                                 |
 | --------------------- | -------------- | --------- | ------------------------------------------- |
 | process_used_mem      | name="memory"  | AutoGauge | The used memory of IoTDB process            |
@@ -214,12 +216,12 @@ Core-level metrics are enabled by default during system operation. The addition 
 | process_threads_count | name="process" | AutoGauge | The number of thread of IoTDB process       |
 | process_status        | name="process" | AutoGauge | The status of IoTDB process, 1=live, 0=dead |
 
-### 4.2.11. Log
+#### 4.2.11. Log
 | Metric         | Tags                                | Type    | Description              |
 | -------------- | ----------------------------------- | ------- | ------------------------ |
 | logback_events | level="trace/debug/info/warn/error" | Counter | The number of log events |
 
-### 4.2.12. JVM Thread
+#### 4.2.12. JVM Thread
 
 | Metric                     | Tags                                                          | Type      | Description                              |
 | -------------------------- | ------------------------------------------------------------- | --------- | ---------------------------------------- |
@@ -228,7 +230,7 @@ Core-level metrics are enabled by default during system operation. The addition 
 | jvm_threads_peak_threads   |                                                               | AutoGauge | The number of peak thread                |
 | jvm_threads_states_threads | state="runnable/blocked/waiting/timed-waiting/new/terminated" | AutoGauge | The number of thread in different states |
 
-### 4.2.13. JVM GC
+#### 4.2.13. JVM GC
 | Metric                        | Tags                                                  | Type      | Description                                                                 |
 | ----------------------------- | ----------------------------------------------------- | --------- | --------------------------------------------------------------------------- |
 | jvm_gc_pause                  | action="end of major GC/end of minor GC",cause="xxxx" | Timer     | The number and time consumed of Young GC/Full Gc caused by different reason |
@@ -240,7 +242,7 @@ Core-level metrics are enabled by default during system operation. The addition 
 | jvm_gc_memory_promoted_bytes  |                                                       | Counter   | The accumulative value of positive memory growth of old memory              |
 | jvm_gc_memory_allocated_bytes |                                                       | Counter   | The accumulative value of positive memory growth of allocated memory        |
 
-### 4.2.14. JVM Memory
+#### 4.2.14. JVM Memory
 | Metric                          | Tags                            | Type      | Description                 |
 | ------------------------------- | ------------------------------- | --------- | --------------------------- |
 | jvm_buffer_memory_used_bytes    | id="direct/mapped"              | AutoGauge | The used size of buffer     |
@@ -250,41 +252,41 @@ Core-level metrics are enabled by default during system operation. The addition 
 | jvm_memory_max_bytes            | {area="heap/nonheap",id="xxx",} | AutoGauge | The max memory of JVM       |
 | jvm_memory_used_bytes           | {area="heap/nonheap",id="xxx",} | AutoGauge | The used memory of JVM      |
 
-### 4.2.15. JVM Class
+#### 4.2.15. JVM Class
 | Metric                       | Tags | Type      | Description                  |
 | ---------------------------- | ---- | --------- | ---------------------------- |
 | jvm_classes_unloaded_classes |      | AutoGauge | The number of unloaded class |
 | jvm_classes_loaded_classes   |      | AutoGauge | The number of loaded class   |
 
-### 4.2.16. JVM Compilation
+#### 4.2.16. JVM Compilation
 | Metric                  | Tags                                          | Type      | Description                      |
 | ----------------------- | --------------------------------------------- | --------- | -------------------------------- |
 | jvm_compilation_time_ms | {compiler="HotSpot 64-Bit Tiered Compilers",} | AutoGauge | The time consumed in compilation |
 
-## 4.3. Normal level Metrics
+### 4.3. Normal level Metrics
 
-### 4.3.1. Cluster
+#### 4.3.1. Cluster
 | Metric | Tags                                                           | Type      | Description                                                        |
 | ------ | -------------------------------------------------------------- | --------- | ------------------------------------------------------------------ |
 | region | name="{{DatabaseName}}",type="SchemaRegion/DataRegion"         | AutoGauge | The number of DataRegion/SchemaRegion of database in specific node |
 | slot   | name="{{DatabaseName}}",type="schemaSlotNumber/dataSlotNumber" | AutoGauge | The number of DataSlot/SchemaSlot of database in specific node     |
 
-## 4.4. All Metric
+### 4.4. All Metric
 Currently there is no All level metrics, and it will continue to be added in the future.
 
-# 5. How to get these metrics？
+## 5. How to get these metrics？
 
 The relevant configuration of the metric module is in `conf/iotdb-{datanode/confignode}.properties`, and all configuration items support hot loading through the `load configuration` command.
 
-## 5.1. JMX
+### 5.1. JMX
 For metrics exposed externally using JMX, you can view them through Jconsole. After entering the Jconsole monitoring page, you will first see an overview of various running conditions of IoTDB. Here you can see heap memory information, thread information, class information, and the server's CPU usage.
 
-### 5.1.1. Obtain metric data
+#### 5.1.1. Obtain metric data
 After connecting to JMX, you can find the "MBean" named "org.apache.iotdb.metrics" through the "MBeans" tab, and you can view the specific values of all monitoring metrics in the sidebar.
 
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" alt="metric-jmx" src="https://user-images.githubusercontent.com/46039728/204018765-6fda9391-ebcf-4c80-98c5-26f34bd74df0.png">
 
-### 5.1.2. Get other relevant data
+#### 5.1.2. Get other relevant data
 After connecting to JMX, you can find the "MBean" named "org.apache.iotdb.service" through the "MBeans" tab, as shown in the image below, to understand the basic status of the service
 
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/46039728/149951720-707f1ee8-32ee-4fde-9252-048caebd232e.png"> <br>
@@ -293,9 +295,9 @@ In order to improve query performance, IOTDB caches ChunkMetaData and TsFileMeta
 
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/112426760-73e3da80-8d73-11eb-9a8f-9232d1f2033b.png">
 
-## 5.2. Prometheus
+### 5.2. Prometheus
 
-### 5.2.1. The mapping from metric type to prometheus forma
+#### 5.2.1. The mapping from metric type to prometheus forma
 > For metrics whose Metric Name is name and Tags are K1=V1, ..., Kn=Vn, the mapping is as follows, where value is a specific value
 
 | Metric Type      | Mapping                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
@@ -306,7 +308,7 @@ In order to improve query performance, IOTDB caches ChunkMetaData and TsFileMeta
 | Rate             | name_total{k1="V1", ..., Kn="Vn"} value <br> name_total{k1="V1", ..., Kn="Vn", rate="m1"} value <br> name_total{k1="V1", ..., Kn="Vn", rate="m5"} value  <br> name_total{k1="V1", ..., Kn="Vn", rate="m15"} value <br> name_total{k1="V1", ..., Kn="Vn", rate="mean"} value                                                                                                                                                                                                        |
 | Timer            | name_seconds_max{k1="V1", ..., Kn="Vn"} value <br> name_seconds_sum{k1="V1", ..., Kn="Vn"} value <br> name_seconds_count{k1="V1", ..., Kn="Vn"} value <br> name_seconds{k1="V1", ..., Kn="Vn", quantile="0.0"} value <br> name_seconds{k1="V1", ..., Kn="Vn", quantile="0.25"} value <br> name_seconds{k1="V1", ..., Kn="Vn", quantile="0.5"} value <br> name_seconds{k1="V1", ..., Kn="Vn", quantile="0.75"} value <br> name_seconds{k1="V1", ..., Kn="Vn", quantile="1.0"} value |
 
-### 5.2.2. Config File
+#### 5.2.2. Config File
 1) Taking DataNode as an example, modify the iotdb-datanode.properties configuration file as follows:
 
 ```properties
@@ -331,7 +333,7 @@ file_count{name="seq",} 2.0
 ...
 ```
 
-### 5.2.3. Prometheus + Grafana
+#### 5.2.3. Prometheus + Grafana
 
 As shown above, IoTDB exposes monitoring metrics data in the standard Prometheus format to the outside world. Prometheus can be used to collect and store monitoring indicators, and Grafana can be used to visualize monitoring indicators.
 
@@ -372,19 +374,19 @@ The following documents may help you have a good journey with Prometheus and Gra
 
 [Grafana query metrics from Prometheus](https://prometheus.io/docs/visualization/grafana/#grafana-support-for-prometheus)
 
-### 5.2.4. Apache IoTDB Dashboard
+#### 5.2.4. Apache IoTDB Dashboard
 We provide the Apache IoTDB Dashboard, and the rendering shown in Grafana is as follows:
 
 ![Apache IoTDB Dashboard](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/System%20Tools/Metrics/dashboard.png)
 
-#### 5.2.4.1. How to get Apache IoTDB Dashboard
+##### 5.2.4.1. How to get Apache IoTDB Dashboard
 
 1. You can obtain the json files of Dashboards corresponding to different iotdb versions in the grafana-metrics-example folder.
 2. You can visit [Grafana Dashboard official website](https://grafana.com/grafana/dashboards/), search for `Apache IoTDB Dashboard` and use
 
 When creating Grafana, you can select the json file you just downloaded to `Import` and select the corresponding target data source for Apache IoTDB Dashboard.
 
-#### 5.2.4.2. Apache IoTDB ConfigNode Dashboard Instructions
+##### 5.2.4.2. Apache IoTDB ConfigNode Dashboard Instructions
 > Except for the metrics specified specially, the following metrics are guaranteed to be available in the monitoring framework at the Important levels.
 
 - `Overview`: system overview
@@ -415,7 +417,7 @@ When creating Grafana, you can select the json file you just downloaded to `Impo
   - `The Time Consumed of Compliation Per Minute`: average compilation time per minute
   - `The Number Of Class`: The number of classes loaded and unloaded by the JVM
 
-#### 5.2.4.3. Apache IoTDB DataNode Dashboard Instructions
+##### 5.2.4.3. Apache IoTDB DataNode Dashboard Instructions
 > Except for the metrics specified specially, the following metrics are guaranteed to be available in the monitoring framework at the Important levels.
 
 - `Overview`: system overview
@@ -469,18 +471,18 @@ When creating Grafana, you can select the json file you just downloaded to `Impo
   - `The Time Consumed of Compliation Per Minute`: average compilation time per minute
   - `The Number Of Class`: The number of classes loaded and unloaded by the JVM
 
-## 5.3. IoTDB
+### 5.3. IoTDB
 
-### 5.3.1. IoTDB mapping relationship of metrics
-> For metrics whose Metric Name is name and Tags are K1=V1, ..., Kn=Vn, the mapping is as follows, taking root.__system.metric as an example by default
+#### 5.3.1. IoTDB mapping relationship of metrics
+> For metrics whose Metric Name is name and Tags are K1=V1, ..., Kn=Vn, the mapping is as follows, taking root.__system.metric.`ip:port` as an example by default
 
 | Metric Type      | Mapping                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
 | ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Counter          | root.__system.metric.name.`K1=V1`...`Kn=Vn`.value                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
-| AutoGauge、Gauge | root.__system.metric.name.`K1=V1`...`Kn=Vn`.value                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
-| Histogram        | root.__system.metric.name.`K1=V1`...`Kn=Vn`.count <br> root.__system.metric.name.`K1=V1`...`Kn=Vn`.max <br> root.__system.metric.name.`K1=V1`...`Kn=Vn`.sum <br> root.__system.metric.name.`K1=V1`...`Kn=Vn`.p0 <br> root.__system.metric.name.`K1=V1`...`Kn=Vn`.p25 <br> root.__system.metric.name.`K1=V1`...`Kn=Vn`.p50 <br> root.__system.metric.name.`K1=V1`...`Kn=Vn`.p75 <br> root.__system.metric.name.`K1=V1`...`Kn=Vn`.p100                                                                                                                                                                                                                      |
-| Rate             | root.__system.metric.name.`K1=V1`...`Kn=Vn`.count <br> root.__system.metric.name.`K1=V1`...`Kn=Vn`.mean <br> root.__system.metric.name.`K1=V1`...`Kn=Vn`.m1 <br> root.__system.metric.name.`K1=V1`...`Kn=Vn`.m5 <br> root.__system.metric.name.`K1=V1`...`Kn=Vn`.m15                                                                                                                                                                                                                                                                                                                                                                                      |
-| Timer            | root.__system.metric.name.`K1=V1`...`Kn=Vn`.count <br> root.__system.metric.name.`K1=V1`...`Kn=Vn`.max <br> root.__system.metric.name.`K1=V1`...`Kn=Vn`.mean <br> root.__system.metric.name.`K1=V1`...`Kn=Vn`.sum <br> root.__system.metric.name.`K1=V1`...`Kn=Vn`.p0 <br> root.__system.metric.name.`K1=V1`...`Kn=Vn`.p25 <br> root.__system.metric.name.`K1=V1`...`Kn=Vn`.p50 <br> root.__system.metric.name.`K1=V1`...`Kn=Vn`.p75 <br> root.__system.metric.name.`K1=V1`...`Kn=Vn`.p100   <br> root.__system.metric.name.`K1=V1`...`Kn=Vn`.m1 <br> root.__system.metric.name.`K1=V1`...`Kn=Vn`.m5 <br> root.__system.metric.name.`K1=V1`...`Kn=Vn`.m15 |
+| Counter          | root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.value                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| AutoGauge、Gauge | root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.value                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| Histogram        | root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.count <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.max <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.sum <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.p0 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.p25 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.p50 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.p75 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.p100                                                                                                                                                                                                                      |
+| Rate             | root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.count <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.mean <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.m1 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.m5 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.m15                                                                                                                                                                                                                                                                                                                                                                                      |
+| Timer            | root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.count <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.max <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.mean <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.sum <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.p0 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.p25 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.p50 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.p75 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.p100   <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.m1 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.m5 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.m15 |
 
-### 5.3.2. Obtain metrics
+#### 5.3.2. Obtain metrics
 According to the above mapping relationship, related IoTDB query statements can be formed to obtain metrics

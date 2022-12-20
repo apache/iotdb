@@ -20,10 +20,7 @@ package org.apache.iotdb.confignode.consensus.response;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.confignode.rpc.thrift.TCQConfig;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterResp;
-import org.apache.iotdb.confignode.rpc.thrift.TGlobalConfig;
-import org.apache.iotdb.confignode.rpc.thrift.TRatisConfig;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -39,10 +36,6 @@ public class DataNodeRegisterResp implements DataSet {
   private TSStatus status;
   private List<TConfigNodeLocation> configNodeList;
   private Integer dataNodeId;
-  private TGlobalConfig globalConfig;
-  private TRatisConfig ratisConfig;
-
-  private TCQConfig cqConfig;
   private byte[] templateInfo;
   private List<ByteBuffer> allTriggerInformation;
   private List<ByteBuffer> allUDFInformation;
@@ -51,7 +44,6 @@ public class DataNodeRegisterResp implements DataSet {
 
   public DataNodeRegisterResp() {
     this.dataNodeId = null;
-    this.globalConfig = null;
   }
 
   public TSStatus getStatus() {
@@ -68,18 +60,6 @@ public class DataNodeRegisterResp implements DataSet {
 
   public void setDataNodeId(Integer dataNodeId) {
     this.dataNodeId = dataNodeId;
-  }
-
-  public void setGlobalConfig(TGlobalConfig globalConfig) {
-    this.globalConfig = globalConfig;
-  }
-
-  public void setRatisConfig(TRatisConfig ratisConfig) {
-    this.ratisConfig = ratisConfig;
-  }
-
-  public void setCqConfig(TCQConfig cqConfig) {
-    this.cqConfig = cqConfig;
   }
 
   public void setTemplateInfo(byte[] templateInfo) {
@@ -120,10 +100,7 @@ public class DataNodeRegisterResp implements DataSet {
         || status.getCode() == TSStatusCode.DATANODE_ALREADY_REGISTERED.getStatusCode()
         || status.getCode() == TSStatusCode.DATANODE_NOT_EXIST.getStatusCode()) {
       resp.setDataNodeId(dataNodeId);
-      resp.setGlobalConfig(globalConfig);
       resp.setTemplateInfo(templateInfo);
-      resp.setRatisConfig(ratisConfig);
-      resp.setCqConfig(cqConfig);
       resp.setAllTriggerInformation(allTriggerInformation);
       resp.setAllUDFInformation(allUDFInformation);
       resp.setAllTTLInformation(allTTLInformation);

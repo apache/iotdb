@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.service;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryChecker;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
@@ -53,9 +54,15 @@ public class IoTDBShutdownHook extends Thread {
     }
     WALManager.getInstance().deleteOutdatedWALFiles();
 
-    if (IoTDBDescriptor.getInstance().getConfig().isClusterMode()) {
-      // This setting ensures that compaction work is not discarded
-      // even if there are frequent restarts
+    // We did this work because the RatisConsensus recovery mechanism is different from other
+    // consensus algorithms, which will replace the underlying storage engine based on its own
+    // latest snapshot, while other consensus algorithms will not. This judgement ensures that
+    // compaction work is not discarded even if there are frequent restarts
+    if (IoTDBDescriptor.getInstance().getConfig().isClusterMode()
+        && IoTDBDescriptor.getInstance()
+            .getConfig()
+            .getDataRegionConsensusProtocolClass()
+            .equals(ConsensusFactory.RATIS_CONSENSUS)) {
       DataRegionConsensusImpl.getInstance()
           .getAllConsensusGroupIds()
           .parallelStream()
