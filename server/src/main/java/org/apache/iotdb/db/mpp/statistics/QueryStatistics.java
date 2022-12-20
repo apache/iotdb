@@ -164,11 +164,152 @@ public class QueryStatistics {
 
   private void printQueryStatistics() {
     if (tracing.get()) {
-      operationStatistics.forEach(
-          (k, v) -> {
-            QUERY_STATISTICS_LOGGER.info("Operation: {}, Statistics: {}", k, v);
-          });
-      // line breaker
+
+      String res =
+          System.lineSeparator()
+              + "Client Connection Thread:"
+              + System.lineSeparator()
+              + System.lineSeparator()
+              + "ServerRpcRT "
+              + operationStatistics.get(SERVER_RPC_RT)
+              + System.lineSeparator()
+              + "|___CreateQueryExec "
+              + operationStatistics.get(CREATE_QUERY_EXEC)
+              + System.lineSeparator()
+              + "|   |___Parser "
+              + operationStatistics.get(PARSER)
+              + System.lineSeparator()
+              + "|   |___Analyzer "
+              + operationStatistics.get(ANALYZER)
+              + System.lineSeparator()
+              + "|   |   |___PartitionFetcher "
+              + operationStatistics.get(PARTITION_FETCHER)
+              + System.lineSeparator()
+              + "|   |   |___SchemaFetcher "
+              + operationStatistics.get(SCHEMA_FETCHER)
+              + System.lineSeparator()
+              + "|   |___LogicalPlanner "
+              + operationStatistics.get(LOGICAL_PLANNER)
+              + System.lineSeparator()
+              + "|   |___DistributionPlanner "
+              + operationStatistics.get(DISTRIBUTION_PLANNER)
+              + System.lineSeparator()
+              + "|   |___Dispatcher "
+              + operationStatistics.get(DISPATCHER)
+              + System.lineSeparator()
+              + "|       |___DispatchRead "
+              + operationStatistics.get(DISPATCH_READ)
+              + System.lineSeparator()
+              + "|           |___LocalExecPlanner "
+              + operationStatistics.get(LOCAL_EXECUTION_PLANNER)
+              + System.lineSeparator()
+              + "|               |___FIContext "
+              + operationStatistics.get(CREATE_FI_CONTEXT)
+              + System.lineSeparator()
+              + "|               |___ToOpTree "
+              + operationStatistics.get(NODE_TO_OPERATOR)
+              + System.lineSeparator()
+              + "|               |___CheckMem "
+              + operationStatistics.get(CHECK_MEMORY)
+              + System.lineSeparator()
+              + "|               |___AllocExcgMem "
+              + operationStatistics.get(ALLOC_EX_MEMORY)
+              + System.lineSeparator()
+              + "|               |___FIExec "
+              + operationStatistics.get(CREATE_FI_EXEC)
+              + System.lineSeparator()
+              + "|___SerTsBlock "
+              + operationStatistics.get(SERIALIZE_TSBLOCK)
+              + System.lineSeparator()
+              + "    |___WaitForResult "
+              + operationStatistics.get(WAIT_FOR_RESULT)
+              + System.lineSeparator()
+              + "    |___GetTsBlock "
+              + operationStatistics.get(LOCAL_SOURCE_HANDLE_GET_TSBLOCK)
+              + System.lineSeparator()
+              + "        |___FreeMem "
+              + operationStatistics.get(FREE_MEM)
+              + System.lineSeparator()
+              + "Query Execution Thread:"
+              + System.lineSeparator()
+              + System.lineSeparator()
+              + "|___QueryResourceInit "
+              + operationStatistics.get(QUERY_RESOURCE_INIT)
+              + System.lineSeparator()
+              + "|   |___TsFileList "
+              + operationStatistics.get(QUERY_RESOURCE_LIST)
+              + System.lineSeparator()
+              + "|   |___AddRef "
+              + operationStatistics.get(ADD_REFERENCE)
+              + System.lineSeparator()
+              + "|   |___InitSourceOp "
+              + operationStatistics.get(INIT_SOURCE_OP)
+              + System.lineSeparator()
+              + "|___DriverInternalProcess "
+              + operationStatistics.get(DRIVER_INTERNAL_PROCESS)
+              + System.lineSeparator()
+              + "|   |___AggScanOperator "
+              + operationStatistics.get(AGG_SCAN_OPERATOR)
+              + System.lineSeparator()
+              + "|   |   |___CalcNextAggRes "
+              + operationStatistics.get(CAL_NEXT_AGG_RES)
+              + System.lineSeparator()
+              + "|   |       |___loadTSMeta "
+              + operationStatistics.get(LOAD_TIME_SERIES_METADATA_ALIGNED)
+              + System.lineSeparator()
+              + "|   |       |___AggFromFile "
+              + operationStatistics.get(CAL_AGG_FROM_FILE)
+              + System.lineSeparator()
+              + "|   |       |   |___loadChunkMeta "
+              + operationStatistics.get(LOAD_CHUNK_METADATA_LIST)
+              + System.lineSeparator()
+              + "|   |       |   |___AggFromChunk "
+              + operationStatistics.get(CAL_AGG_FROM_CHUNK)
+              + System.lineSeparator()
+              + "|   |       |       |___loadChunk "
+              + operationStatistics.get(LOAD_PAGE_READER_LIST)
+              + System.lineSeparator()
+              + "|   |       |       |___AggFromPage "
+              + operationStatistics.get(CAL_AGG_FROM_PAGE)
+              + System.lineSeparator()
+              + "|   |       |           |___loadPage "
+              + operationStatistics.get(PAGE_READER)
+              + System.lineSeparator()
+              + "|   |       |           |___AggFromRawData "
+              + operationStatistics.get(CAL_AGG_FROM_RAW_DATA)
+              + System.lineSeparator()
+              + "|   |       |               |___AggProcTsBlock "
+              + operationStatistics.get(AGGREGATOR_PROCESS_TSBLOCK)
+              + System.lineSeparator()
+              + "|   |       |___BuildAggRes "
+              + operationStatistics.get(BUILD_AGG_RES)
+              + System.lineSeparator()
+              + "|   |___SendTsBlock "
+              + operationStatistics.get(SEND_TSBLOCK)
+              + System.lineSeparator()
+              + "|       |___ReserveMem "
+              + operationStatistics.get(RESERVE_MEMORY)
+              + System.lineSeparator()
+              + "|       |___NotifyNewTsBlock "
+              + operationStatistics.get(NOTIFY_NEW_TSBLOCK)
+              + System.lineSeparator()
+              + "|___SetNoMoreTsBlock "
+              + operationStatistics.get(SET_NO_MORE_TSBLOCK)
+              + System.lineSeparator()
+              + "    |___NotifyEnd "
+              + operationStatistics.get(NOTIFY_END)
+              + System.lineSeparator()
+              + "    |___EndListener "
+              + operationStatistics.get(SINK_HANDLE_END_LISTENER)
+              + System.lineSeparator()
+              + "    |___CkAndInvOnFinished "
+              + operationStatistics.get(CHECK_AND_INVOKE_ON_FINISHED)
+              + System.lineSeparator()
+              + "        |___FinishListener "
+              + operationStatistics.get(SINK_HANDLE_FINISH_LISTENER)
+              + System.lineSeparator();
+
+      QUERY_STATISTICS_LOGGER.info(res);
       QUERY_STATISTICS_LOGGER.info("");
     }
   }

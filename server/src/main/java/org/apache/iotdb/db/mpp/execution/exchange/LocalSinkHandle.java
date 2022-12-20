@@ -98,7 +98,6 @@ public class LocalSinkHandle implements ISinkHandle {
   }
 
   public void checkAndInvokeOnFinished() {
-    long startTime = System.nanoTime();
     synchronized (queue) {
       if (isFinished()) {
         synchronized (this) {
@@ -108,7 +107,6 @@ public class LocalSinkHandle implements ISinkHandle {
         }
       }
     }
-    QUERY_STATISTICS.addCost(CHECK_AND_INVOKE_ON_FINISHED, System.nanoTime() - startTime);
   }
 
   @Override
@@ -152,7 +150,9 @@ public class LocalSinkHandle implements ISinkHandle {
       }
     }
 
+    long startTime = System.nanoTime();
     checkAndInvokeOnFinished();
+    QUERY_STATISTICS.addCost(CHECK_AND_INVOKE_ON_FINISHED, System.nanoTime() - startTime);
     logger.debug("[EndSetNoMoreTsBlocksOnLocal]");
   }
 
