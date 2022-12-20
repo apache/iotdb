@@ -43,6 +43,7 @@ import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.appendA
 import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.calculateAggregationFromRawData;
 import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.isAllAggregatorsHasFinalResult;
 import static org.apache.iotdb.db.mpp.statistics.QueryStatistics.AGG_SCAN_OPERATOR;
+import static org.apache.iotdb.db.mpp.statistics.QueryStatistics.BUILD_AGG_RES;
 import static org.apache.iotdb.db.mpp.statistics.QueryStatistics.CAL_AGG_FROM_CHUNK;
 import static org.apache.iotdb.db.mpp.statistics.QueryStatistics.CAL_AGG_FROM_FILE;
 import static org.apache.iotdb.db.mpp.statistics.QueryStatistics.CAL_AGG_FROM_PAGE;
@@ -70,7 +71,9 @@ public abstract class AbstractSeriesAggregationScanOperator implements DataSourc
   protected final List<Aggregator> aggregators;
 
   // using for building result tsBlock
-  protected final TsBlockBuilder resultTsBlockBuilder;
+  private TsBlockBuilder resultTsBlockBuilder;
+
+  private final List<TSDataType> dataTypes;
 
   protected boolean finished = false;
 
@@ -96,11 +99,10 @@ public abstract class AbstractSeriesAggregationScanOperator implements DataSourc
     this.aggregators = aggregators;
     this.timeRangeIterator = timeRangeIterator;
 
-    List<TSDataType> dataTypes = new ArrayList<>();
+    this.dataTypes = new ArrayList<>();
     for (Aggregator aggregator : aggregators) {
       dataTypes.addAll(Arrays.asList(aggregator.getOutputType()));
     }
-    this.resultTsBlockBuilder = new TsBlockBuilder(dataTypes);
 
     this.maxRetainedSize =
         (1L + subSensorSize) * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte();
@@ -144,6 +146,12 @@ public abstract class AbstractSeriesAggregationScanOperator implements DataSourc
 
   @Override
   public TsBlock next() {
+    if (resultTsBlockBuilder == null) {
+      resultTsBlockBuilder = new TsBlockBuilder(dataTypes);
+    } else {
+      // lazy reset until next `next` call
+      resultTsBlockBuilder.reset();
+    }
     // start stopwatch
     long maxRuntime = operatorContext.getMaxRunTime().roundTo(TimeUnit.NANOSECONDS);
     long start = System.nanoTime();
@@ -166,9 +174,7 @@ public abstract class AbstractSeriesAggregationScanOperator implements DataSourc
       }
 
       if (resultTsBlockBuilder.getPositionCount() > 0) {
-        TsBlock resultTsBlock = resultTsBlockBuilder.build();
-        resultTsBlockBuilder.reset();
-        return resultTsBlock;
+        return resultTsBlockBuilder.build();
       } else {
         return null;
       }
@@ -214,8 +220,10 @@ public abstract class AbstractSeriesAggregationScanOperator implements DataSourc
   }
 
   protected void updateResultTsBlock() {
+    long startTime = System.nanoTime();
     appendAggregationResult(
         resultTsBlockBuilder, aggregators, timeRangeIterator.currentOutputTime());
+    operatorContext.addOperatorTime(BUILD_AGG_RES, System.nanoTime() - startTime);
   }
 
   protected boolean calcFromCachedData() {

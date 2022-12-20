@@ -40,7 +40,10 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.db.mpp.statistics.QueryStatistics.ADD_REFERENCE;
+import static org.apache.iotdb.db.mpp.statistics.QueryStatistics.INIT_SOURCE_OP;
 import static org.apache.iotdb.db.mpp.statistics.QueryStatistics.QUERY_RESOURCE_INIT;
+import static org.apache.iotdb.db.mpp.statistics.QueryStatistics.QUERY_RESOURCE_LIST;
 
 /**
  * One dataDriver is responsible for one FragmentInstance which is for data query, which may
@@ -105,16 +108,19 @@ public class DataDriver extends Driver {
           ((DataDriverContext) driverContext).getSourceOperators();
       if (sourceOperators != null && !sourceOperators.isEmpty()) {
         QueryDataSource dataSource = initQueryDataSource();
-        sourceOperators.forEach(
-            sourceOperator -> {
-              // construct QueryDataSource for source operator
-              QueryDataSource queryDataSource =
-                  new QueryDataSource(dataSource.getSeqResources(), dataSource.getUnseqResources());
+        long start = System.nanoTime();
+        for (DataSourceOperator sourceOperator : sourceOperators) {
+          // construct QueryDataSource for source operator
+          QueryDataSource queryDataSource =
+              new QueryDataSource(dataSource.getSeqResources(), dataSource.getUnseqResources());
 
-              queryDataSource.setDataTTL(dataSource.getDataTTL());
+          queryDataSource.setDataTTL(dataSource.getDataTTL());
 
-              sourceOperator.initQueryDataSource(queryDataSource);
-            });
+          sourceOperator.initQueryDataSource(queryDataSource);
+        }
+        driverContext
+            .getFragmentInstanceContext()
+            .addOperationTime(INIT_SOURCE_OP, System.nanoTime() - start);
       }
 
       this.init = true;
@@ -142,16 +148,24 @@ public class DataDriver extends Driver {
           pathList.stream().map(PartialPath::getDevice).collect(Collectors.toSet());
 
       Filter timeFilter = context.getTimeFilter();
+      long startTime = System.nanoTime();
       QueryDataSource dataSource =
           dataRegion.query(
               pathList,
               selectedDeviceIdSet.size() == 1 ? selectedDeviceIdSet.iterator().next() : null,
               driverContext.getFragmentInstanceContext(),
               timeFilter != null ? timeFilter.copy() : null);
+      driverContext
+          .getFragmentInstanceContext()
+          .addOperationTime(QUERY_RESOURCE_LIST, System.nanoTime() - startTime);
 
       // used files should be added before mergeLock is unlocked, or they may be deleted by
       // running merge
+      startTime = System.nanoTime();
       addUsedFilesForQuery(dataSource);
+      driverContext
+          .getFragmentInstanceContext()
+          .addOperationTime(ADD_REFERENCE, System.nanoTime() - startTime);
 
       return dataSource;
     } finally {
@@ -196,8 +210,7 @@ public class DataDriver extends Driver {
    */
   private void addFilePathToMap(TsFileResource tsFile, boolean isClosed) {
     Set<TsFileResource> pathSet = isClosed ? closedFilePaths : unClosedFilePaths;
-    if (!pathSet.contains(tsFile)) {
-      pathSet.add(tsFile);
+    if (pathSet.add(tsFile)) {
       FileReaderManager.getInstance().increaseFileReaderReference(tsFile, isClosed);
     }
   }

@@ -1745,11 +1745,16 @@ public class DataRegion implements IDataRegionForQuery {
       }
     }
 
+    boolean meet = false;
     for (TsFileResource tsFileResource : tsFileResources) {
       if (!tsFileResource.isSatisfied(
           singleDeviceId, timeFilter, isSeq, dataTTL, context.isDebug())) {
+        if (meet) {
+          break;
+        }
         continue;
       }
+      meet = true;
       closeQueryLock.readLock().lock();
       try {
         if (tsFileResource.isClosed()) {

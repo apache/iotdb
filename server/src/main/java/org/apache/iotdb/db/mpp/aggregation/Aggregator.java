@@ -35,6 +35,7 @@ import java.util.Collections;
 import java.util.List;
 
 import static com.google.common.base.Preconditions.checkArgument;
+import static org.apache.iotdb.db.mpp.statistics.QueryStatistics.AGGREGATOR_PROCESS_TSBLOCK;
 
 public class Aggregator {
 
@@ -80,7 +81,7 @@ public class Aggregator {
           Math.max(lastReadReadIndex, accumulator.addInput(controlTimeAndValueColumn, curWindow));
     }
     QueryStatistics.getInstance()
-        .addCost("AggregationScan: calcFromRawData", System.nanoTime() - startTime);
+        .addCost(AGGREGATOR_PROCESS_TSBLOCK, System.nanoTime() - startTime);
     return lastReadReadIndex;
   }
 

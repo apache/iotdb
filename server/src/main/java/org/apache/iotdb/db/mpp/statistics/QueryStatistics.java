@@ -62,6 +62,11 @@ public class QueryStatistics {
 
   public static final String QUERY_RESOURCE_INIT = "QueryResourceInit";
 
+  public static final String INIT_SOURCE_OP = "InitSourceOp";
+
+  public static final String QUERY_RESOURCE_LIST = "TsFileList";
+  public static final String ADD_REFERENCE = "AddRef";
+
   public static final String LOCAL_SOURCE_HANDLE_GET_TSBLOCK = "LocalSourceHandleGetTsBlock";
 
   public static final String LOCAL_SOURCE_HANDLE_SER_TSBLOCK = "LocalSourceHandleSerializeTsBlock";
@@ -83,11 +88,15 @@ public class QueryStatistics {
 
   public static final String CAL_AGG_FROM_RAW_DATA = "CalcAggFromRawData";
 
+  public static final String AGGREGATOR_PROCESS_TSBLOCK = "AggProcTsBlock";
+
   public static final String CAL_AGG_FROM_PAGE = "CalcAggFromPage";
 
   public static final String CAL_AGG_FROM_CHUNK = "CalcAggFromChunk";
 
   public static final String CAL_AGG_FROM_FILE = "CalcAggFromFile";
+
+  public static final String BUILD_AGG_RES = "BuildAggRes";
 
   public static final String FILTER_AND_PROJECT_OPERATOR = "FilterAndProjectOperator";
 
