@@ -35,7 +35,7 @@ public class RatisConfig {
   private final Log log;
   private final LeaderLogAppender leaderLogAppender;
   private final Grpc grpc;
-  private final RatisConsensus ratisConsensus;
+  private final Impl impl;
 
   private RatisConfig(
       Rpc rpc,
@@ -45,7 +45,7 @@ public class RatisConfig {
       Log log,
       Grpc grpc,
       LeaderLogAppender leaderLogAppender,
-      RatisConsensus ratisConsensus) {
+      Impl impl) {
     this.rpc = rpc;
     this.leaderElection = leaderElection;
     this.snapshot = snapshot;
@@ -53,7 +53,7 @@ public class RatisConfig {
     this.log = log;
     this.leaderLogAppender = leaderLogAppender;
     this.grpc = grpc;
-    this.ratisConsensus = ratisConsensus;
+    this.impl = impl;
   }
 
   public Rpc getRpc() {
@@ -84,8 +84,8 @@ public class RatisConfig {
     return grpc;
   }
 
-  public RatisConsensus getRatisConsensus() {
-    return ratisConsensus;
+  public Impl getImpl() {
+    return impl;
   }
 
   public static Builder newBuilder() {
@@ -100,7 +100,7 @@ public class RatisConfig {
     private Log log;
     private LeaderLogAppender leaderLogAppender;
     private Grpc grpc;
-    private RatisConsensus ratisConsensus;
+    private Impl impl;
 
     public RatisConfig build() {
       return new RatisConfig(
@@ -111,7 +111,7 @@ public class RatisConfig {
           log != null ? log : Log.newBuilder().build(),
           grpc != null ? grpc : Grpc.newBuilder().build(),
           leaderLogAppender != null ? leaderLogAppender : LeaderLogAppender.newBuilder().build(),
-          ratisConsensus != null ? ratisConsensus : RatisConsensus.newBuilder().build());
+          impl != null ? impl : Impl.newBuilder().build());
     }
 
     public Builder setRpc(Rpc rpc) {
@@ -144,8 +144,8 @@ public class RatisConfig {
       return this;
     }
 
-    public Builder setRatisConsensus(RatisConsensus ratisConsensus) {
-      this.ratisConsensus = ratisConsensus;
+    public Builder setRatisConsensus(Impl impl) {
+      this.impl = impl;
       return this;
     }
 
@@ -772,7 +772,7 @@ public class RatisConfig {
     }
   }
 
-  public static class RatisConsensus {
+  public static class Impl {
     private final int retryTimesMax;
     private final long retryWaitMillis;
 
@@ -784,7 +784,7 @@ public class RatisConfig {
     private final long triggerSnapshotTime;
     private final long triggerSnapshotFileSize;
 
-    private RatisConsensus(
+    private Impl(
         int retryTimesMax,
         long retryWaitMillis,
         long clientRequestTimeoutMillis,
@@ -835,7 +835,7 @@ public class RatisConfig {
       return triggerSnapshotFileSize;
     }
 
-    public static RatisConsensus.Builder newBuilder() {
+    public static Impl.Builder newBuilder() {
       return new Builder();
     }
 
@@ -853,8 +853,8 @@ public class RatisConfig {
       // 20GB
       private long triggerSnapshotFileSize = 20L << 30;
 
-      public RatisConsensus build() {
-        return new RatisConsensus(
+      public Impl build() {
+        return new Impl(
             retryTimesMax,
             retryWaitMillis,
             clientRequestTimeoutMillis,
@@ -865,43 +865,42 @@ public class RatisConfig {
             triggerSnapshotFileSize);
       }
 
-      public RatisConsensus.Builder setRetryTimesMax(int retryTimesMax) {
+      public Impl.Builder setRetryTimesMax(int retryTimesMax) {
         this.retryTimesMax = retryTimesMax;
         return this;
       }
 
-      public RatisConsensus.Builder setRetryWaitMillis(long retryWaitMillis) {
+      public Impl.Builder setRetryWaitMillis(long retryWaitMillis) {
         this.retryWaitMillis = retryWaitMillis;
         return this;
       }
 
-      public RatisConsensus.Builder setClientRequestTimeoutMillis(long clientRequestTimeoutMillis) {
+      public Impl.Builder setClientRequestTimeoutMillis(long clientRequestTimeoutMillis) {
         this.clientRequestTimeoutMillis = clientRequestTimeoutMillis;
         return this;
       }
 
-      public RatisConsensus.Builder setClientMaxRetryAttempt(int clientMaxRetryAttempt) {
+      public Impl.Builder setClientMaxRetryAttempt(int clientMaxRetryAttempt) {
         this.clientMaxRetryAttempt = clientMaxRetryAttempt;
         return this;
       }
 
-      public RatisConsensus.Builder setClientRetryInitialSleepTimeMs(
-          long clientRetryInitialSleepTimeMs) {
+      public Impl.Builder setClientRetryInitialSleepTimeMs(long clientRetryInitialSleepTimeMs) {
         this.clientRetryInitialSleepTimeMs = clientRetryInitialSleepTimeMs;
         return this;
       }
 
-      public RatisConsensus.Builder setClientRetryMaxSleepTimeMs(long clientRetryMaxSleepTimeMs) {
+      public Impl.Builder setClientRetryMaxSleepTimeMs(long clientRetryMaxSleepTimeMs) {
         this.clientRetryMaxSleepTimeMs = clientRetryMaxSleepTimeMs;
         return this;
       }
 
-      public RatisConsensus.Builder setTriggerSnapshotTime(long triggerSnapshotTime) {
+      public Impl.Builder setTriggerSnapshotTime(long triggerSnapshotTime) {
         this.triggerSnapshotTime = triggerSnapshotTime;
         return this;
       }
 
-      public RatisConsensus.Builder setTriggerSnapshotFileSize(long triggerSnapshotFileSize) {
+      public Impl.Builder setTriggerSnapshotFileSize(long triggerSnapshotFileSize) {
         this.triggerSnapshotFileSize = triggerSnapshotFileSize;
         return this;
       }

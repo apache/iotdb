@@ -32,7 +32,6 @@ import org.slf4j.LoggerFactory;
 import java.util.List;
 import java.util.Optional;
 
-import static com.google.common.util.concurrent.Futures.immediateFuture;
 import static com.google.common.util.concurrent.Futures.nonCancellationPropagating;
 import static org.apache.iotdb.db.mpp.metric.DataExchangeMetricSet.SINK_HANDLE_SEND_TSBLOCK_LOCAL;
 
@@ -46,7 +45,7 @@ public class LocalSinkHandle implements ISinkHandle {
   private final SinkHandleListener sinkHandleListener;
 
   private final SharedTsBlockQueue queue;
-  private volatile ListenableFuture<Void> blocked = immediateFuture(null);
+  private volatile ListenableFuture<Void> blocked;
   private boolean aborted = false;
   private boolean closed = false;
 
@@ -64,6 +63,8 @@ public class LocalSinkHandle implements ISinkHandle {
     this.sinkHandleListener = Validate.notNull(sinkHandleListener);
     this.queue = Validate.notNull(queue);
     this.queue.setSinkHandle(this);
+    // SinkHandle can send data after SourceHandle asks it to
+    blocked = queue.getCanAddTsBlock();
   }
 
   @Override
@@ -206,5 +207,11 @@ public class LocalSinkHandle implements ISinkHandle {
     } else if (closed) {
       throw new IllegalStateException("Sink Handle is closed.");
     }
+  }
+
+  @Override
+  public void setMaxBytesCanReserve(long maxBytesCanReserve) {
+    // do nothing, the maxBytesCanReserve of SharedTsBlockQueue should be set by corresponding
+    // LocalSourceHandle
   }
 }

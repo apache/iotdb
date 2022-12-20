@@ -68,11 +68,6 @@ public class DeviceGroupSchemaTree implements ISchemaTree {
   }
 
   @Override
-  public List<MeasurementPath> getAllMeasurement() {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
   public List<DeviceSchemaInfo> getMatchedDevices(PartialPath pathPattern, boolean isPrefixMatch) {
     throw new UnsupportedOperationException();
   }

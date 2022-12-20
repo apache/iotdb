@@ -23,7 +23,6 @@ import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
-import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.utils.FilePathUtils;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
@@ -79,18 +78,20 @@ public class IDTableManager {
    * @return id table belongs to path's database
    */
   public synchronized IDTable getIDTable(PartialPath devicePath) {
-    try {
-      return idTableMap.computeIfAbsent(
-          IoTDB.schemaProcessor.getStorageGroupNodeByPath(devicePath).getFullPath(),
-          storageGroupPath ->
-              new IDTableHashmapImpl(
-                  SystemFileFactory.INSTANCE.getFile(
-                      systemDir + File.separator + storageGroupPath)));
-    } catch (MetadataException e) {
-      logger.error("get id table failed, path is: " + devicePath + ". caused by: " + e);
-    }
-
-    return null;
+    //    try {
+    //      return idTableMap.computeIfAbsent(
+    //
+    // LocalSchemaProcessor.getInstance().getStorageGroupNodeByPath(devicePath).getFullPath(),
+    //          storageGroupPath ->
+    //              new IDTableHashmapImpl(
+    //                  SystemFileFactory.INSTANCE.getFile(
+    //                      systemDir + File.separator + storageGroupPath)));
+    //    } catch (MetadataException e) {
+    //      logger.error("get id table failed, path is: " + devicePath + ". caused by: " + e);
+    //    }
+    //
+    //    return null;
+    throw new UnsupportedOperationException();
   }
 
   /**

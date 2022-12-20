@@ -62,6 +62,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDropCQReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllPipeInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllTemplatesResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetDataNodeLocationsResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetJarInListReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetJarInListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetLocationForTriggerResp;
@@ -178,6 +179,13 @@ public interface IManager {
    * @return DataNodeConfigurationDataSet
    */
   DataSet registerDataNode(RegisterDataNodePlan registerDataNodePlan);
+
+  /**
+   * Get configuration information that is not associated with the DataNodeId
+   *
+   * @return ConfigurationResp
+   */
+  DataSet getConfiguration();
 
   /**
    * Remove DataNode
@@ -369,6 +377,8 @@ public interface IManager {
 
   /** TestOnly. Set the target DataNode to the specified status */
   TSStatus setDataNodeStatus(TSetDataNodeStatusReq req);
+
+  TGetDataNodeLocationsResp getRunningDataNodeLocations();
 
   /**
    * Get the latest RegionRouteMap

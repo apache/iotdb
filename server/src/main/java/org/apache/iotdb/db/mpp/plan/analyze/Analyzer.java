@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.mpp.plan.analyze;
 
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.metric.QueryMetricsManager;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
@@ -57,13 +56,8 @@ public class Analyzer {
 
     IPartitionFetcher partitionFetcher;
     ISchemaFetcher schemaFetcher;
-    if (IoTDBDescriptor.getInstance().getConfig().isClusterMode()) {
-      partitionFetcher = ClusterPartitionFetcher.getInstance();
-      schemaFetcher = ClusterSchemaFetcher.getInstance();
-    } else {
-      partitionFetcher = StandalonePartitionFetcher.getInstance();
-      schemaFetcher = StandaloneSchemaFetcher.getInstance();
-    }
+    partitionFetcher = ClusterPartitionFetcher.getInstance();
+    schemaFetcher = ClusterSchemaFetcher.getInstance();
 
     Analyzer analyzer = new Analyzer(context, partitionFetcher, schemaFetcher);
     analyzer.analyze(statement);

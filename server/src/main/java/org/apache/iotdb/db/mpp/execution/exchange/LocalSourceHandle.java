@@ -245,4 +245,9 @@ public class LocalSourceHandle implements ISourceHandle {
   SharedTsBlockQueue getSharedTsBlockQueue() {
     return queue;
   }
+
+  @Override
+  public void setMaxBytesCanReserve(long maxBytesCanReserve) {
+    queue.setMaxBytesCanReserve(maxBytesCanReserve);
+  }
 }

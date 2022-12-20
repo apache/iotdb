@@ -42,7 +42,9 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Optional;
@@ -382,7 +384,8 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
               .getSharedTsBlockQueue();
     } else {
       logger.debug("Create shared tsblock queue");
-      queue = new SharedTsBlockQueue(remoteFragmentInstanceId, localMemoryManager);
+      queue =
+          new SharedTsBlockQueue(remoteFragmentInstanceId, remotePlanNodeId, localMemoryManager);
     }
 
     LocalSinkHandle localSinkHandle =
@@ -402,6 +405,7 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
       TEndPoint remoteEndpoint,
       TFragmentInstanceId remoteFragmentInstanceId,
       String remotePlanNodeId,
+      String localPlanNodeId,
       // TODO: replace with callbacks to decouple MPPDataExchangeManager from
       // FragmentInstanceContext
       FragmentInstanceContext instanceContext) {
@@ -420,6 +424,7 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
             remoteEndpoint,
             remoteFragmentInstanceId,
             remotePlanNodeId,
+            localPlanNodeId,
             localFragmentInstanceId,
             localMemoryManager,
             executorService,
@@ -457,7 +462,7 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
       queue = ((LocalSinkHandle) sinkHandles.get(remoteFragmentInstanceId)).getSharedTsBlockQueue();
     } else {
       logger.debug("Create shared tsblock queue");
-      queue = new SharedTsBlockQueue(localFragmentInstanceId, localMemoryManager);
+      queue = new SharedTsBlockQueue(localFragmentInstanceId, localPlanNodeId, localMemoryManager);
     }
     LocalSourceHandle localSourceHandle =
         new LocalSourceHandle(
@@ -544,5 +549,17 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
             fragmentInstanceId.instanceId)
         + "."
         + suffix;
+  }
+
+  public ISinkHandle getISinkHandle(TFragmentInstanceId fragmentInstanceId) {
+    return sinkHandles.get(fragmentInstanceId);
+  }
+
+  public List<ISourceHandle> getISourceHandle(TFragmentInstanceId fragmentInstanceId) {
+    if (sourceHandles.containsKey(fragmentInstanceId)) {
+      return new ArrayList<>(sourceHandles.get(fragmentInstanceId).values());
+    } else {
+      return new ArrayList<>();
+    }
   }
 }

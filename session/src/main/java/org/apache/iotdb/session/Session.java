@@ -591,7 +591,7 @@ public class Session implements ISession {
     request.setDataTypes(dataTypes.stream().map(TSDataType::ordinal).collect(Collectors.toList()));
     request.setEncodings(encodings.stream().map(TSEncoding::ordinal).collect(Collectors.toList()));
     request.setCompressors(
-        compressors.stream().map(CompressionType::ordinal).collect(Collectors.toList()));
+        compressors.stream().map(i -> (int) i.serialize()).collect(Collectors.toList()));
     request.setMeasurementAlias(measurementAliasList);
     request.setTagsList(tagsList);
     request.setAttributesList(attributesList);
@@ -649,7 +649,7 @@ public class Session implements ISession {
 
     List<Integer> compressionOrdinals = new ArrayList<>(paths.size());
     for (CompressionType compression : compressors) {
-      compressionOrdinals.add(compression.ordinal());
+      compressionOrdinals.add((int) compression.serialize());
     }
     request.setCompressors(compressionOrdinals);
 
@@ -780,24 +780,36 @@ public class Session implements ISession {
     }
   }
 
+  @Override
+  public SessionDataSet executeRawDataQuery(List<String> paths, long startTime, long endTime)
+      throws StatementExecutionException, IoTDBConnectionException {
+    return executeRawDataQuery(paths, startTime, endTime, queryTimeoutInMs);
+  }
+
+  @Override
+  public SessionDataSet executeLastDataQuery(List<String> paths, long lastTime)
+      throws StatementExecutionException, IoTDBConnectionException {
+    return executeLastDataQuery(paths, lastTime, queryTimeoutInMs);
+  }
+
   /**
    * query e.g. select last data from paths where time >= lastTime
    *
    * @param paths timeSeries eg. root.ln.d1.s1,root.ln.d1.s2
-   * @param LastTime get the last data, whose timestamp is greater than or equal LastTime e.g.
+   * @param lastTime get the last data, whose timestamp is greater than or equal lastTime e.g.
    *     1621326244168
    */
   @Override
-  public SessionDataSet executeLastDataQuery(List<String> paths, long LastTime, long timeOut)
+  public SessionDataSet executeLastDataQuery(List<String> paths, long lastTime, long timeOut)
       throws StatementExecutionException, IoTDBConnectionException {
     try {
-      return defaultSessionConnection.executeLastDataQuery(paths, LastTime, timeOut);
+      return defaultSessionConnection.executeLastDataQuery(paths, lastTime, timeOut);
     } catch (RedirectException e) {
       handleQueryRedirection(e.getEndPoint());
       if (enableQueryRedirection) {
         // retry
         try {
-          return defaultSessionConnection.executeLastDataQuery(paths, LastTime, timeOut);
+          return defaultSessionConnection.executeLastDataQuery(paths, lastTime, timeOut);
         } catch (RedirectException redirectException) {
           logger.error("redirect twice", redirectException);
           throw new StatementExecutionException("redirect twice, please try again.");
@@ -817,7 +829,7 @@ public class Session implements ISession {
   public SessionDataSet executeLastDataQuery(List<String> paths)
       throws StatementExecutionException, IoTDBConnectionException {
     long time = 0L;
-    return executeLastDataQuery(paths, time, 60000);
+    return executeLastDataQuery(paths, time, queryTimeoutInMs);
   }
 
   /**
@@ -2979,7 +2991,7 @@ public class Session implements ISession {
     req.setDataTypes(dataTypes.stream().map(TSDataType::ordinal).collect(Collectors.toList()));
     req.setEncodings(encodings.stream().map(TSEncoding::ordinal).collect(Collectors.toList()));
     req.setCompressors(
-        compressors.stream().map(CompressionType::ordinal).collect(Collectors.toList()));
+        compressors.stream().map(i -> (int) i.serialize()).collect(Collectors.toList()));
     req.setIsAligned(true);
     defaultSessionConnection.appendSchemaTemplate(req);
   }
@@ -3025,7 +3037,7 @@ public class Session implements ISession {
     req.setDataTypes(dataTypes.stream().map(TSDataType::ordinal).collect(Collectors.toList()));
     req.setEncodings(encodings.stream().map(TSEncoding::ordinal).collect(Collectors.toList()));
     req.setCompressors(
-        compressors.stream().map(CompressionType::ordinal).collect(Collectors.toList()));
+        compressors.stream().map(i -> (int) i.serialize()).collect(Collectors.toList()));
     req.setIsAligned(false);
     defaultSessionConnection.appendSchemaTemplate(req);
   }

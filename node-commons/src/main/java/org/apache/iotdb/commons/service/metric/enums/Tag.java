@@ -24,6 +24,7 @@ public enum Tag {
   NAME,
   REGION,
   STATUS,
+  DATABASE,
   STAGE,
   FROM,
   OPERATION;
