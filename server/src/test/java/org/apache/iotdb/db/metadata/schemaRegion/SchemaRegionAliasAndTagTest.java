@@ -31,6 +31,7 @@ import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -356,6 +357,7 @@ public class SchemaRegionAliasAndTagTest extends AbstractSchemaRegionTest {
   }
 
   @Test
+  @Ignore
   public void testDropTagsOrAttributes() {
     try {
       prepareTimeseries();
