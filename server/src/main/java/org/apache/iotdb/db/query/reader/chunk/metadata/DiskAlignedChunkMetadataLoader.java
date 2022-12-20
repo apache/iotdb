@@ -19,11 +19,9 @@
 package org.apache.iotdb.db.query.reader.chunk.metadata;
 
 import org.apache.iotdb.commons.path.AlignedPath;
-import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.reader.chunk.DiskAlignedChunkLoader;
-import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.AlignedTimeSeriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
@@ -61,19 +59,19 @@ public class DiskAlignedChunkMetadataLoader implements IChunkMetadataLoader {
         ((AlignedTimeSeriesMetadata) timeSeriesMetadata).getCopiedChunkMetadataList();
 
     // get all sub sensors' modifications
-    List<List<Modification>> pathModifications =
-        context.getPathModifications(resource.getModFile(), seriesPath);
-
-    if (context.isDebug()) {
-      DEBUG_LOGGER.info(
-          "Modifications size is {} for file Path: {} ",
-          pathModifications.size(),
-          resource.getTsFilePath());
-      pathModifications.forEach(c -> DEBUG_LOGGER.info(c.toString()));
-    }
-
-    // remove ChunkMetadata that have been deleted
-    QueryUtils.modifyAlignedChunkMetaData(alignedChunkMetadataList, pathModifications);
+    //    List<List<Modification>> pathModifications =
+    //        context.getPathModifications(resource.getModFile(), seriesPath);
+    //
+    //    if (context.isDebug()) {
+    //      DEBUG_LOGGER.info(
+    //          "Modifications size is {} for file Path: {} ",
+    //          pathModifications.size(),
+    //          resource.getTsFilePath());
+    //      pathModifications.forEach(c -> DEBUG_LOGGER.info(c.toString()));
+    //    }
+    //
+    //    // remove ChunkMetadata that have been deleted
+    //    QueryUtils.modifyAlignedChunkMetaData(alignedChunkMetadataList, pathModifications);
 
     if (context.isDebug()) {
       DEBUG_LOGGER.info("After modification Chunk meta data list is: ");

@@ -22,7 +22,6 @@ import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache.TimeSeriesMetadataCacheKey;
-import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
 import org.apache.iotdb.db.mpp.statistics.QueryStatistics;
@@ -156,9 +155,9 @@ public class FileLoaderUtils {
       }
 
       if (timeSeriesMetadata != null) {
-        List<Modification> pathModifications =
-            context.getPathModifications(resource.getModFile(), seriesPath);
-        timeSeriesMetadata.setModified(!pathModifications.isEmpty());
+        //        List<Modification> pathModifications =
+        //            context.getPathModifications(resource.getModFile(), seriesPath);
+        timeSeriesMetadata.setModified(false);
         if (timeSeriesMetadata.getStatistics().getStartTime()
             > timeSeriesMetadata.getStatistics().getEndTime()) {
           return null;
@@ -257,17 +256,16 @@ public class FileLoaderUtils {
         // set modifications to each aligned path
         List<TimeseriesMetadata> valueTimeSeriesMetadataList =
             alignedTimeSeriesMetadata.getValueTimeseriesMetadataList();
-        boolean modified = false;
         for (int i = 0; i < valueTimeSeriesMetadataList.size(); i++) {
           if (valueTimeSeriesMetadataList.get(i) != null) {
-            List<Modification> pathModifications =
-                context.getPathModifications(
-                    resource.getModFile(), vectorPath.getPathWithMeasurement(i));
-            valueTimeSeriesMetadataList.get(i).setModified(!pathModifications.isEmpty());
-            modified = (modified || !pathModifications.isEmpty());
+            //            List<Modification> pathModifications =
+            //                context.getPathModifications(
+            //                    resource.getModFile(), vectorPath.getPathWithMeasurement(i));
+            valueTimeSeriesMetadataList.get(i).setModified(false);
+            //            modified = (modified || !pathModifications.isEmpty());
           }
         }
-        alignedTimeSeriesMetadata.getTimeseriesMetadata().setModified(modified);
+        alignedTimeSeriesMetadata.getTimeseriesMetadata().setModified(false);
       }
       return alignedTimeSeriesMetadata;
     } finally {

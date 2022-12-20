@@ -19,11 +19,9 @@
 package org.apache.iotdb.db.query.reader.chunk.metadata;
 
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.reader.chunk.DiskChunkLoader;
-import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ITimeSeriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
@@ -59,20 +57,20 @@ public class DiskChunkMetadataLoader implements IChunkMetadataLoader {
     List<IChunkMetadata> chunkMetadataList =
         ((TimeseriesMetadata) timeSeriesMetadata).getCopiedChunkMetadataList();
 
-    List<Modification> pathModifications =
-        context.getPathModifications(resource.getModFile(), seriesPath);
+    //    List<Modification> pathModifications =
+    //        context.getPathModifications(resource.getModFile(), seriesPath);
 
-    if (context.isDebug()) {
-      DEBUG_LOGGER.info(
-          "Modifications size is {} for file Path: {} ",
-          pathModifications.size(),
-          resource.getTsFilePath());
-      pathModifications.forEach(c -> DEBUG_LOGGER.info(c.toString()));
-    }
-
-    if (!pathModifications.isEmpty()) {
-      QueryUtils.modifyChunkMetaData(chunkMetadataList, pathModifications);
-    }
+    //    if (context.isDebug()) {
+    //      DEBUG_LOGGER.info(
+    //          "Modifications size is {} for file Path: {} ",
+    //          pathModifications.size(),
+    //          resource.getTsFilePath());
+    //      pathModifications.forEach(c -> DEBUG_LOGGER.info(c.toString()));
+    //    }
+    //
+    //    if (!pathModifications.isEmpty()) {
+    //      QueryUtils.modifyChunkMetaData(chunkMetadataList, pathModifications);
+    //    }
 
     if (context.isDebug()) {
       DEBUG_LOGGER.info("After modification Chunk meta data list is: ");

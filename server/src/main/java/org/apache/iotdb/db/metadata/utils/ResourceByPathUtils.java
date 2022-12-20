@@ -29,7 +29,6 @@ import org.apache.iotdb.db.engine.memtable.IWritableMemChunk;
 import org.apache.iotdb.db.engine.memtable.IWritableMemChunkGroup;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.Modification;
-import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.querycontext.AlignedReadOnlyMemChunk;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
@@ -41,7 +40,6 @@ import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.filter.TsFileFilter;
 import org.apache.iotdb.db.query.reader.series.AlignedSeriesReader;
 import org.apache.iotdb.db.query.reader.series.SeriesReader;
-import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.iotdb.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.AlignedTimeSeriesMetadata;
@@ -353,9 +351,9 @@ class AlignedResourceByPathUtils extends ResourceByPathUtils {
   @Override
   public List<IChunkMetadata> getVisibleMetadataListFromWriter(
       RestorableTsFileIOWriter writer, TsFileResource tsFileResource, QueryContext context) {
-    ModificationFile modificationFile = tsFileResource.getModFile();
-    List<List<Modification>> modifications =
-        context.getPathModifications(modificationFile, partialPath);
+    //    ModificationFile modificationFile = tsFileResource.getModFile();
+    //    List<List<Modification>> modifications =
+    //        context.getPathModifications(modificationFile, partialPath);
 
     List<AlignedChunkMetadata> chunkMetadataList = new ArrayList<>();
     List<ChunkMetadata> timeChunkMetadataList =
@@ -384,7 +382,7 @@ class AlignedResourceByPathUtils extends ResourceByPathUtils {
       }
     }
 
-    QueryUtils.modifyAlignedChunkMetaData(chunkMetadataList, modifications);
+    //    QueryUtils.modifyAlignedChunkMetaData(chunkMetadataList, modifications);
     chunkMetadataList.removeIf(context::chunkNotSatisfy);
     return new ArrayList<>(chunkMetadataList);
   }
@@ -554,8 +552,9 @@ class MeasurementResourceByPathUtils extends ResourceByPathUtils {
   @Override
   public List<IChunkMetadata> getVisibleMetadataListFromWriter(
       RestorableTsFileIOWriter writer, TsFileResource tsFileResource, QueryContext context) {
-    ModificationFile modificationFile = tsFileResource.getModFile();
-    List<Modification> modifications = context.getPathModifications(modificationFile, partialPath);
+    //    ModificationFile modificationFile = tsFileResource.getModFile();
+    //    List<Modification> modifications = context.getPathModifications(modificationFile,
+    // partialPath);
 
     List<IChunkMetadata> chunkMetadataList =
         new ArrayList<>(
@@ -564,7 +563,7 @@ class MeasurementResourceByPathUtils extends ResourceByPathUtils {
                 partialPath.getMeasurement(),
                 partialPath.getSeriesType()));
 
-    QueryUtils.modifyChunkMetaData(chunkMetadataList, modifications);
+    //    QueryUtils.modifyChunkMetaData(chunkMetadataList, modifications);
     chunkMetadataList.removeIf(context::chunkNotSatisfy);
     return chunkMetadataList;
   }
