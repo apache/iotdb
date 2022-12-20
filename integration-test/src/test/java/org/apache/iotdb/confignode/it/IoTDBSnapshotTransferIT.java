@@ -37,7 +37,6 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -50,7 +49,6 @@ import java.util.Optional;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({ClusterIT.class})
-@Ignore
 public class IoTDBSnapshotTransferIT {
 
   private final long snapshotMagic = 99;
