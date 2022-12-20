@@ -16,26 +16,22 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.Request;
+package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.request;
 
 import org.apache.iotdb.lsm.context.requestcontext.RequestContext;
-import org.apache.iotdb.lsm.request.IDeletionRequest;
+import org.apache.iotdb.lsm.request.IQueryRequest;
 
 import java.util.List;
 
-/** Represents a deletion request */
-public class DeletionRequest implements IDeletionRequest<String, Integer> {
+/** Represents a query request */
+public class QueryRequest implements IQueryRequest<String> {
 
   // tags
   List<String> keys;
 
-  // int32 id
-  int value;
-
-  public DeletionRequest(List<String> keys, int value) {
+  public QueryRequest(List<String> keys) {
     super();
     this.keys = keys;
-    this.value = value;
   }
 
   @Override
@@ -46,10 +42,5 @@ public class DeletionRequest implements IDeletionRequest<String, Integer> {
   @Override
   public List<String> getKeys() {
     return keys;
-  }
-
-  @Override
-  public Integer getValue() {
-    return value;
   }
 }

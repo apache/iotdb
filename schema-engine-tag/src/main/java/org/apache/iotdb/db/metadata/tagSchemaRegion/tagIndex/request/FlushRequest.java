@@ -16,31 +16,24 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.Request;
+package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.request;
 
-import org.apache.iotdb.lsm.context.requestcontext.RequestContext;
-import org.apache.iotdb.lsm.request.IQueryRequest;
+import org.apache.iotdb.lsm.request.IFlushRequest;
 
-import java.util.List;
+public class FlushRequest extends IFlushRequest {
 
-/** Represents a query request */
-public class QueryRequest implements IQueryRequest<String> {
+  private long chunkMaxSize;
 
-  // tags
-  List<String> keys;
-
-  public QueryRequest(List<String> keys) {
-    super();
-    this.keys = keys;
+  public FlushRequest(int index, Object memNode, long chunkMaxSize) {
+    super(index, memNode);
+    this.chunkMaxSize = chunkMaxSize;
   }
 
-  @Override
-  public String getKey(RequestContext context) {
-    return keys.get(context.getLevel() - 1);
+  public long getChunkMaxSize() {
+    return chunkMaxSize;
   }
 
-  @Override
-  public List<String> getKeys() {
-    return keys;
+  public void setChunkMaxSize(long chunkMaxSize) {
+    this.chunkMaxSize = chunkMaxSize;
   }
 }

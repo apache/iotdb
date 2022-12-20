@@ -20,24 +20,32 @@ package org.apache.iotdb.db.metadata.tagSchemaRegion.utils;
 
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.entry.Chunk;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.entry.ChunkHeader;
-import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemChunk;
+import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.entry.ChunkIndexEntry;
 
 import org.roaringbitmap.RoaringBitmap;
 
 public class ConvertUtils {
-  public static Chunk getChunkFromMemChunk(MemChunk memChunk) {
+  public static Chunk getChunkFromRoaringBitMap(RoaringBitmap roaringBitmap) {
     Chunk chunk = new Chunk();
-    chunk.setRoaringBitmap(memChunk.getRoaringBitmap());
-    chunk.setChunkHeader(getChunkHeaderFromMemChunk(memChunk));
+    chunk.setRoaringBitmap(roaringBitmap);
+    chunk.setChunkHeader(getChunkHeaderFromRoaringBitMap(roaringBitmap));
     return chunk;
   }
 
-  public static ChunkHeader getChunkHeaderFromMemChunk(MemChunk memChunk) {
-    RoaringBitmap roaringBitmap = memChunk.getRoaringBitmap();
+  public static ChunkHeader getChunkHeaderFromRoaringBitMap(RoaringBitmap roaringBitmap) {
     ChunkHeader chunkHeader = new ChunkHeader();
     chunkHeader.setSize(roaringBitmap.serializedSizeInBytes());
-    //    int[] results = roaringBitmap.stream().toArray();
-    //    chunkHeader.setCount(results.length);
     return chunkHeader;
+  }
+
+  public static ChunkIndexEntry getChunkIndexEntryFromRoaringBitMap(RoaringBitmap roaringBitmap) {
+    ChunkIndexEntry chunkIndexEntry = new ChunkIndexEntry();
+    int[] results = roaringBitmap.stream().toArray();
+    chunkIndexEntry.setCount(results.length);
+    if (results.length != 0) {
+      chunkIndexEntry.setIdMax(results[results.length - 1]);
+      chunkIndexEntry.setIdMin(results[0]);
+    }
+    return chunkIndexEntry;
   }
 }

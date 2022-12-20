@@ -24,6 +24,7 @@ import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
@@ -37,8 +38,16 @@ public class ChunkIndex implements IEntry {
     this.chunkIndexHeader = chunkIndexHeader;
   }
 
+  public ChunkIndex() {
+    this.chunkIndexEntries = new ArrayList<>();
+  }
+
   public List<ChunkIndexEntry> getChunkIndexEntries() {
     return chunkIndexEntries;
+  }
+
+  public void addChunkIndexEntry(ChunkIndexEntry chunkIndexEntry) {
+    this.chunkIndexEntries.add(chunkIndexEntry);
   }
 
   public void setChunkIndexEntries(List<ChunkIndexEntry> chunkIndexEntries) {

@@ -18,8 +18,8 @@
  */
 package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.query;
 
-import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.Request.QueryRequest;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemChunk;
+import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.request.QueryRequest;
 import org.apache.iotdb.lsm.annotation.QueryProcessor;
 import org.apache.iotdb.lsm.context.requestcontext.QueryRequestContext;
 import org.apache.iotdb.lsm.levelProcess.QueryLevelProcessor;

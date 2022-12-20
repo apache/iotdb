@@ -16,30 +16,40 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.lsm.levelProcess;
+package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.request;
 
-import org.apache.iotdb.lsm.context.requestcontext.FlushRequestContext;
+import org.apache.iotdb.lsm.context.requestcontext.RequestContext;
+import org.apache.iotdb.lsm.request.IDeletionRequest;
 
-import java.io.IOException;
+import java.util.List;
 
-/** indicates the flush method of each layer of memory nodes */
-public abstract class FlushLevelProcessor<I, O, R>
-    extends BasicLevelProcessor<I, O, R, FlushRequestContext> {
+/** Represents a deletion request */
+public class DeletionRequest implements IDeletionRequest<String, Integer> {
 
-  /**
-   * the flush method of memory node
-   *
-   * @param memNode memory node
-   * @param context flush request context
-   */
-  public abstract void flush(I memNode, R flushRequest, FlushRequestContext context)
-      throws IOException;
+  // tags
+  List<String> keys;
 
-  public void handle(I memNode, R request, FlushRequestContext context) {
-    try {
-      flush(memNode, request, context);
-    } catch (IOException e) {
-      throw new RuntimeException(e);
-    }
+  // int32 id
+  int value;
+
+  public DeletionRequest(List<String> keys, int value) {
+    super();
+    this.keys = keys;
+    this.value = value;
+  }
+
+  @Override
+  public String getKey(RequestContext context) {
+    return keys.get(context.getLevel() - 1);
+  }
+
+  @Override
+  public List<String> getKeys() {
+    return keys;
+  }
+
+  @Override
+  public Integer getValue() {
+    return value;
   }
 }

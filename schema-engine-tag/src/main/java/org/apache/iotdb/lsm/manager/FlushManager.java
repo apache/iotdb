@@ -81,6 +81,7 @@ public class FlushManager<T, R extends IFlushRequest>
 
   private void updateWal(R request) {
     int index = request.getIndex();
+    // TODO delete failed
     walManager.deleteWalFile(index);
   }
 

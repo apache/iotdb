@@ -18,13 +18,15 @@
  */
 package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.flush;
 
+import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.entry.BloomFilter;
+import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemChunk;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemChunkGroup;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemTable;
+import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.request.FlushRequest;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.response.FlushResponse;
 import org.apache.iotdb.lsm.annotation.FlushProcessor;
 import org.apache.iotdb.lsm.context.requestcontext.FlushRequestContext;
 import org.apache.iotdb.lsm.levelProcess.FlushLevelProcessor;
-import org.apache.iotdb.lsm.request.IFlushRequest;
 import org.apache.iotdb.lsm.sstable.bplustree.writer.BPlusTreeWriter;
 import org.apache.iotdb.lsm.sstable.fileIO.FileOutput;
 
@@ -36,15 +38,15 @@ import java.util.Map;
 
 /** flush for MemTable */
 @FlushProcessor(level = 0)
-public class MemTableFlush extends FlushLevelProcessor<MemTable, MemChunkGroup> {
+public class MemTableFlush extends FlushLevelProcessor<MemTable, MemChunkGroup, FlushRequest> {
   @Override
   public List<MemChunkGroup> getChildren(
-      MemTable memNode, IFlushRequest request, FlushRequestContext context) {
+      MemTable memNode, FlushRequest request, FlushRequestContext context) {
     return new ArrayList<>(memNode.getMemChunkGroupMap().values());
   }
 
   @Override
-  public void flush(MemTable memNode, IFlushRequest flushRequest, FlushRequestContext context)
+  public void flush(MemTable memNode, FlushRequest flushRequest, FlushRequestContext context)
       throws IOException {
     List<MemChunkGroup> memChunkGroups = getChildren(memNode, null, context);
     Map<MemChunkGroup, String> memChunkGroupMapReverse =
@@ -59,6 +61,25 @@ public class MemTableFlush extends FlushLevelProcessor<MemTable, MemChunkGroup> 
     FileOutput fileOutput = context.getFileOutput();
     BPlusTreeWriter bPlusTreeWriter = new BPlusTreeWriter(fileOutput);
     bPlusTreeWriter.write(tagKeyToOffset, false);
+    List<String> tagKeyAndValues = getTagKeyAndValues(memNode);
+    BloomFilter bloomFilter = BloomFilter.getEmptyBloomFilter(0.05, 3);
+    for (String key : tagKeyAndValues) {
+      bloomFilter.add(key);
+    }
+    fileOutput.write(bloomFilter);
     fileOutput.flush();
+  }
+
+  private List<String> getTagKeyAndValues(MemTable memNode) {
+    List<String> tagKeyAndValues = new ArrayList<>();
+    for (Map.Entry<String, MemChunkGroup> entry : memNode.getMemChunkGroupMap().entrySet()) {
+      String tagKey = entry.getKey();
+      for (Map.Entry<String, MemChunk> tagValueEntry :
+          entry.getValue().getMemChunkMap().entrySet()) {
+        String tagValue = tagValueEntry.getKey();
+        tagKeyAndValues.add(tagKey + tagValue);
+      }
+    }
+    return tagKeyAndValues;
   }
 }

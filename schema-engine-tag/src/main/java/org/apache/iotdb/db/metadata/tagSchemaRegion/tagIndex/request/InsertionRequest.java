@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.Request;
+package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.request;
 
 import org.apache.iotdb.lsm.context.requestcontext.RequestContext;
 import org.apache.iotdb.lsm.request.IInsertionRequest;

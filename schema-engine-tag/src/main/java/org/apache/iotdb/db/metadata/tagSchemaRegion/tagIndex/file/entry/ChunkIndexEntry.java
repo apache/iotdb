@@ -36,6 +36,8 @@ public class ChunkIndexEntry implements IEntry {
 
   private int idMin;
 
+  public ChunkIndexEntry() {};
+
   public ChunkIndexEntry(long offset, int count, int idMax, int idMin) {
     this.offset = offset;
     this.count = count;

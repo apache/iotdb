@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable;
 
-import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.Request.FlushRequest;
+import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.request.FlushRequest;
 import org.apache.iotdb.lsm.manager.IMemManager;
 import org.apache.iotdb.lsm.request.IFlushRequest;
 

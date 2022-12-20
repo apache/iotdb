@@ -18,9 +18,9 @@
  */
 package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.wal;
 
-import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.Request.DeletionRequest;
-import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.Request.InsertionRequest;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemTableGroup;
+import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.request.DeletionRequest;
+import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.request.InsertionRequest;
 import org.apache.iotdb.lsm.request.IRequest;
 import org.apache.iotdb.lsm.wal.IWALRecord;
 import org.apache.iotdb.lsm.wal.WALReader;
