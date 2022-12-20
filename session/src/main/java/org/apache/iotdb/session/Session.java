@@ -25,6 +25,7 @@ import org.apache.iotdb.rpc.NoValidValueException;
 import org.apache.iotdb.rpc.RedirectException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.service.rpc.thrift.TSAppendSchemaTemplateReq;
+import org.apache.iotdb.service.rpc.thrift.TSBackupConfigurationResp;
 import org.apache.iotdb.service.rpc.thrift.TSConnectionInfoResp;
 import org.apache.iotdb.service.rpc.thrift.TSCreateAlignedTimeseriesReq;
 import org.apache.iotdb.service.rpc.thrift.TSCreateMultiTimeseriesReq;
@@ -780,24 +781,36 @@ public class Session implements ISession {
     }
   }
 
+  @Override
+  public SessionDataSet executeRawDataQuery(List<String> paths, long startTime, long endTime)
+      throws StatementExecutionException, IoTDBConnectionException {
+    return executeRawDataQuery(paths, startTime, endTime, queryTimeoutInMs);
+  }
+
+  @Override
+  public SessionDataSet executeLastDataQuery(List<String> paths, long lastTime)
+      throws StatementExecutionException, IoTDBConnectionException {
+    return executeLastDataQuery(paths, lastTime, queryTimeoutInMs);
+  }
+
   /**
    * query e.g. select last data from paths where time >= lastTime
    *
    * @param paths timeSeries eg. root.ln.d1.s1,root.ln.d1.s2
-   * @param LastTime get the last data, whose timestamp is greater than or equal LastTime e.g.
+   * @param lastTime get the last data, whose timestamp is greater than or equal lastTime e.g.
    *     1621326244168
    */
   @Override
-  public SessionDataSet executeLastDataQuery(List<String> paths, long LastTime, long timeOut)
+  public SessionDataSet executeLastDataQuery(List<String> paths, long lastTime, long timeOut)
       throws StatementExecutionException, IoTDBConnectionException {
     try {
-      return defaultSessionConnection.executeLastDataQuery(paths, LastTime, timeOut);
+      return defaultSessionConnection.executeLastDataQuery(paths, lastTime, timeOut);
     } catch (RedirectException e) {
       handleQueryRedirection(e.getEndPoint());
       if (enableQueryRedirection) {
         // retry
         try {
-          return defaultSessionConnection.executeLastDataQuery(paths, LastTime, timeOut);
+          return defaultSessionConnection.executeLastDataQuery(paths, lastTime, timeOut);
         } catch (RedirectException redirectException) {
           logger.error("redirect twice", redirectException);
           throw new StatementExecutionException("redirect twice, please try again.");
@@ -817,7 +830,7 @@ public class Session implements ISession {
   public SessionDataSet executeLastDataQuery(List<String> paths)
       throws StatementExecutionException, IoTDBConnectionException {
     long time = 0L;
-    return executeLastDataQuery(paths, time, 60000);
+    return executeLastDataQuery(paths, time, queryTimeoutInMs);
   }
 
   /**
@@ -3273,6 +3286,12 @@ public class Session implements ISession {
   @Override
   public void setEnableRedirection(boolean enableRedirection) {
     this.enableRedirection = enableRedirection;
+  }
+
+  @Override
+  public TSBackupConfigurationResp getBackupConfiguration()
+      throws IoTDBConnectionException, StatementExecutionException {
+    return defaultSessionConnection.getBackupConfiguration();
   }
 
   @Override

@@ -1593,7 +1593,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
       } else {
         ISinkHandle localSinkHandle =
             MPP_DATA_EXCHANGE_MANAGER.createLocalSinkHandleForPipeline(
-                subContext.getDriverContext());
+                subContext.getDriverContext(), childSource.getPlanNodeId().getId());
         subContext.setSinkHandle(localSinkHandle);
         subContext.addPipelineDriverFactory(childOperation, subContext.getDriverContext());
 
@@ -1739,6 +1739,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                 downStreamEndPoint,
                 targetInstanceId.toThrift(),
                 node.getDownStreamPlanNodeId().getId(),
+                node.getPlanNodeId().getId(),
                 context.getInstanceContext());
     context.getDriverContext().setSinkHandle(sinkHandle);
     return child;

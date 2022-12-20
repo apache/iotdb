@@ -23,7 +23,6 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.ServerCommandLine;
 import org.apache.iotdb.commons.exception.BadNodeUrlException;
-import org.apache.iotdb.commons.exception.ConfigurationException;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRemoveReq;
@@ -36,7 +35,6 @@ import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -76,20 +74,6 @@ public class DataNodeServerCommandLine extends ServerCommandLine {
     String mode = args[0];
     LOGGER.info("Running mode {}", mode);
 
-    // Check config of IoTDB, and set some configs in cluster mode
-    try {
-      dataNode.serverCheckAndInit();
-    } catch (ConfigurationException | IOException e) {
-      LOGGER.error("Meet error when doing start checking", e);
-      return -1;
-    }
-
-    // Initialize the current node and its services
-    if (!dataNode.initLocalEngines()) {
-      LOGGER.error("Init local engines error, stop process!");
-      return -1;
-    }
-
     // Start IoTDB kernel first, then start the cluster module
     if (MODE_START.equals(mode)) {
       dataNode.doAddNode();
@@ -116,7 +100,9 @@ public class DataNodeServerCommandLine extends ServerCommandLine {
 
     LOGGER.info("Starting to remove DataNode from cluster, parameter: {}, {}", args[0], args[1]);
 
+    // Load ConfigNodeList from system.properties file
     ConfigNodeInfo.getInstance().loadConfigNodeList();
+
     List<TDataNodeLocation> dataNodeLocations = buildDataNodeLocations(args[1]);
     if (dataNodeLocations.isEmpty()) {
       throw new BadNodeUrlException("No DataNode to remove");

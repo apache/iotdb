@@ -148,24 +148,39 @@ git clone https://github.com/apache/iotdb.git
 The default dev branch is the master branch, If you want to use a released version x.x.x:
 
 ```
-git checkout release/x.x.x
-```
-
-From v0.11.3 on, the tag name format is change to: vx.x.x:
-
-```
 git checkout vx.x.x
 ```
+
+Or checkout to the branch of a big version, e.g., the branch of 1.0 is rel/1.0
+
+```
+git checkout rel/x.x
+```
+
+### Build IoTDB from source
 
 Under the root path of iotdb:
 
 ```
-> mvn clean package -DskipTests
+> mvn clean package -pl distribution -am -DskipTests
 ```
 
-Using `-P compile-cpp` for compiling cpp client (For more details, read client-cpp's Readme file.)
+After being built, the IoTDB distribution is located at the folder: "distribution/target".
 
-Then the binary version (including both server and cli) can be found at **distribution/target/apache-iotdb-{project.version}-all-bin.zip**
+
+### Only build cli
+
+Under the root path of iotdb:
+
+```
+> mvn clean package -pl cli -am -DskipTests
+```
+
+After being built, the IoTDB cli is located at the folder "cli/target".
+
+### Build Others
+
+Using `-P compile-cpp` for compiling cpp client (For more details, read client-cpp's Readme file.)
 
 **NOTE: Directories "`thrift/target/generated-sources/thrift`", "`thrift-sync/target/generated-sources/thrift`",
 "`thrift-cluster/target/generated-sources/thrift`", "`thrift-influxdb/target/generated-sources/thrift`" 
@@ -367,27 +382,6 @@ The server can be stopped with "ctrl-C" or the following script:
 # Windows
 > sbin\stop-standalone.bat
 ```
-
-## Only build server
-
-Under the root path of iotdb:
-
-```
-> mvn clean package -pl server -am -DskipTests
-```
-
-After being built, the IoTDB server is located at the folder: "server/target/iotdb-server-{project.version}".
-
-
-## Only build cli
-
-Under the root path of iotdb:
-
-```
-> mvn clean package -pl cli -am -DskipTests
-```
-
-After being built, the IoTDB cli is located at the folder "cli/target/iotdb-cli-{project.version}".
 
 # Usage of CSV Import and Export Tool
 

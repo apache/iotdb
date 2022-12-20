@@ -30,6 +30,8 @@ import org.apache.iotdb.db.engine.memtable.IWritableMemChunkGroup;
 import org.apache.iotdb.db.exception.runtime.FlushRunTimeException;
 import org.apache.iotdb.db.metadata.idtable.entry.IDeviceID;
 import org.apache.iotdb.db.rescon.SystemInfo;
+import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
+import org.apache.iotdb.metrics.utils.IoTDBMetricsUtils;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
@@ -251,7 +253,26 @@ public class MemTableFlushTask {
             Thread.currentThread().interrupt();
           }
 
-          LOGGER.debug(
+          if (!storageGroup.startsWith(IoTDBMetricsUtils.DATABASE)
+              && MetricLevel.higherOrEqual(
+                  MetricConfigDescriptor.getInstance().getMetricConfig().getMetricLevel(),
+                  MetricLevel.CORE)) {
+            int lastIndex = storageGroup.lastIndexOf("-");
+            if (lastIndex == -1) {
+              lastIndex = storageGroup.length();
+            }
+            MetricService.getInstance()
+                .gaugeWithInternalReport(
+                    memTable.getTotalPointsNum(),
+                    Metric.POINTS.toString(),
+                    MetricLevel.CORE,
+                    Tag.DATABASE.toString(),
+                    storageGroup.substring(0, lastIndex),
+                    Tag.TYPE.toString(),
+                    "flush");
+          }
+
+          LOGGER.info(
               "Database {}, flushing memtable {} into disk: Encoding data cost " + "{} ms.",
               storageGroup,
               writer.getFile().getName(),

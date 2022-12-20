@@ -196,7 +196,12 @@ public class SystemPropertiesUtils {
   public static void storeSystemParameters() throws IOException {
     Properties systemProperties = getSystemProperties();
 
+    // Cluster configuration
+    systemProperties.setProperty("cluster_name", conf.getClusterName());
     systemProperties.setProperty("config_node_id", String.valueOf(conf.getConfigNodeId()));
+    systemProperties.setProperty(
+        "is_seed_config_node",
+        String.valueOf(ConfigNodeDescriptor.getInstance().isSeedConfigNode()));
 
     // Startup configuration
     systemProperties.setProperty("cn_internal_address", String.valueOf(conf.getInternalAddress()));
@@ -245,6 +250,24 @@ public class SystemPropertiesUtils {
   }
 
   /**
+   * Load the cluster_name in confignode-system.properties file. We only invoke this interface when
+   * restarted.
+   *
+   * @return The property of cluster_name in confignode-system.properties file
+   * @throws IOException When load confignode-system.properties file failed
+   */
+  public static String loadClusterNameWhenRestarted() throws IOException {
+    Properties systemProperties = getSystemProperties();
+    String clusterName = systemProperties.getProperty("cluster_name", null);
+    if (clusterName == null) {
+      throw new IOException(
+          "The parameter cluster_name doesn't exist in data/confignode/system/confignode-system.properties. "
+              + "Please delete data dir data/confignode and restart again");
+    }
+    return clusterName;
+  }
+
+  /**
    * Load the config_node_id in confignode-system.properties file. We only invoke this interface
    * when restarted.
    *
@@ -257,7 +280,24 @@ public class SystemPropertiesUtils {
       return Integer.parseInt(systemProperties.getProperty("config_node_id", null));
     } catch (NumberFormatException e) {
       throw new IOException(
-          "The parameter config_node_id doesn't exist in confignode-system.properties");
+          "The parameter config_node_id doesn't exist in data/confignode/system/confignode-system.properties. "
+              + "Please delete data dir data/confignode and restart again.");
+    }
+  }
+
+  /**
+   * Check if the current ConfigNode is SeedConfigNode.
+   *
+   * <p>Notice: Only invoke this interface when restarted.
+   *
+   * @return True if the is_seed_config_node is set to True in iotdb-confignode.properties file
+   */
+  public static boolean isSeedConfigNode() {
+    try {
+      Properties systemProperties = getSystemProperties();
+      return Boolean.parseBoolean(systemProperties.getProperty("is_seed_config_node", null));
+    } catch (IOException ignore) {
+      return false;
     }
   }
 

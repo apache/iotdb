@@ -28,8 +28,6 @@ import org.apache.iotdb.db.mpp.plan.analyze.ClusterPartitionFetcher;
 import org.apache.iotdb.db.mpp.plan.analyze.ClusterSchemaFetcher;
 import org.apache.iotdb.db.mpp.plan.analyze.IPartitionFetcher;
 import org.apache.iotdb.db.mpp.plan.analyze.ISchemaFetcher;
-import org.apache.iotdb.db.mpp.plan.analyze.StandalonePartitionFetcher;
-import org.apache.iotdb.db.mpp.plan.analyze.StandaloneSchemaFetcher;
 import org.apache.iotdb.db.mpp.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.query.control.SessionManager;
@@ -68,13 +66,8 @@ public class MPPPublishHandler extends AbstractInterceptHandler {
 
   public MPPPublishHandler(IoTDBConfig config) {
     this.payloadFormat = PayloadFormatManager.getPayloadFormat(config.getMqttPayloadFormatter());
-    if (config.isClusterMode()) {
-      partitionFetcher = ClusterPartitionFetcher.getInstance();
-      schemaFetcher = ClusterSchemaFetcher.getInstance();
-    } else {
-      partitionFetcher = StandalonePartitionFetcher.getInstance();
-      schemaFetcher = StandaloneSchemaFetcher.getInstance();
-    }
+    partitionFetcher = ClusterPartitionFetcher.getInstance();
+    schemaFetcher = ClusterSchemaFetcher.getInstance();
   }
 
   @Override

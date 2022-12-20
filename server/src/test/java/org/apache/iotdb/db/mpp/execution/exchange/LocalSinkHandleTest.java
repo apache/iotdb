@@ -48,11 +48,26 @@ public class LocalSinkHandleTest {
         Mockito.mock(MPPDataExchangeManager.SinkHandleListener.class);
     // Construct a shared TsBlock queue.
     SharedTsBlockQueue queue =
-        new SharedTsBlockQueue(remoteFragmentInstanceId.queryId, mockLocalMemoryManager);
+        new SharedTsBlockQueue(remoteFragmentInstanceId, remotePlanNodeId, mockLocalMemoryManager);
 
     // Construct SinkHandle.
     LocalSinkHandle localSinkHandle =
         new LocalSinkHandle(localFragmentInstanceId, queue, mockSinkHandleListener);
+
+    queue.setMaxBytesCanReserve(Long.MAX_VALUE);
+
+    // Construct SourceHandle
+    LocalSourceHandle localSourceHandle =
+        new LocalSourceHandle(
+            localFragmentInstanceId,
+            remotePlanNodeId,
+            queue,
+            Mockito.mock(MPPDataExchangeManager.SourceHandleListener.class));
+
+    Assert.assertFalse(localSinkHandle.isFull().isDone());
+    localSourceHandle.isBlocked();
+    // blocked of LocalSinkHandle should be completed after calling isBlocked() of corresponding
+    // LocalSourceHandle
     Assert.assertTrue(localSinkHandle.isFull().isDone());
     Assert.assertFalse(localSinkHandle.isFinished());
     Assert.assertFalse(localSinkHandle.isAborted());
@@ -64,11 +79,17 @@ public class LocalSinkHandleTest {
       localSinkHandle.send(Utils.createMockTsBlock(mockTsBlockSize));
       numOfSentTsblocks += 1;
     }
-    Assert.assertEquals(6, numOfSentTsblocks);
+    Assert.assertEquals(11, numOfSentTsblocks);
     Assert.assertFalse(localSinkHandle.isFull().isDone());
     Assert.assertFalse(localSinkHandle.isFinished());
-    Assert.assertEquals(6 * mockTsBlockSize, localSinkHandle.getBufferRetainedSizeInBytes());
-    Mockito.verify(spyMemoryPool, Mockito.times(6)).reserve(queryId, mockTsBlockSize);
+    Assert.assertEquals(11 * mockTsBlockSize, localSinkHandle.getBufferRetainedSizeInBytes());
+    Mockito.verify(spyMemoryPool, Mockito.times(11))
+        .reserve(
+            queryId,
+            localFragmentInstanceId.getInstanceId(),
+            remotePlanNodeId,
+            mockTsBlockSize,
+            Long.MAX_VALUE);
 
     // Receive TsBlocks.
     int numOfReceivedTsblocks = 0;
@@ -76,11 +97,12 @@ public class LocalSinkHandleTest {
       queue.remove();
       numOfReceivedTsblocks += 1;
     }
-    Assert.assertEquals(6, numOfReceivedTsblocks);
+    Assert.assertEquals(11, numOfReceivedTsblocks);
     Assert.assertTrue(localSinkHandle.isFull().isDone());
     Assert.assertFalse(localSinkHandle.isFinished());
     Assert.assertEquals(0L, localSinkHandle.getBufferRetainedSizeInBytes());
-    Mockito.verify(spyMemoryPool, Mockito.times(6)).free(queryId, mockTsBlockSize);
+    Mockito.verify(spyMemoryPool, Mockito.times(11))
+        .free(queryId, localFragmentInstanceId.getInstanceId(), remotePlanNodeId, mockTsBlockSize);
 
     // Set no-more-TsBlocks.
     localSinkHandle.setNoMoreTsBlocks();
@@ -108,11 +130,26 @@ public class LocalSinkHandleTest {
         Mockito.mock(MPPDataExchangeManager.SinkHandleListener.class);
     // Construct a shared tsblock queue.
     SharedTsBlockQueue queue =
-        new SharedTsBlockQueue(remoteFragmentInstanceId.queryId, mockLocalMemoryManager);
+        new SharedTsBlockQueue(remoteFragmentInstanceId, remotePlanNodeId, mockLocalMemoryManager);
 
     // Construct SinkHandle.
     LocalSinkHandle localSinkHandle =
         new LocalSinkHandle(localFragmentInstanceId, queue, mockSinkHandleListener);
+
+    queue.setMaxBytesCanReserve(Long.MAX_VALUE);
+
+    // Construct SourceHandle
+    LocalSourceHandle localSourceHandle =
+        new LocalSourceHandle(
+            localFragmentInstanceId,
+            remotePlanNodeId,
+            queue,
+            Mockito.mock(MPPDataExchangeManager.SourceHandleListener.class));
+
+    Assert.assertFalse(localSinkHandle.isFull().isDone());
+    localSourceHandle.isBlocked();
+    // blocked of LocalSinkHandle should be completed after calling isBlocked() of corresponding
+    // LocalSourceHandle
     Assert.assertTrue(localSinkHandle.isFull().isDone());
     Assert.assertFalse(localSinkHandle.isFinished());
     Assert.assertFalse(localSinkHandle.isAborted());
@@ -124,12 +161,18 @@ public class LocalSinkHandleTest {
       localSinkHandle.send(Utils.createMockTsBlock(mockTsBlockSize));
       numOfSentTsblocks += 1;
     }
-    Assert.assertEquals(6, numOfSentTsblocks);
+    Assert.assertEquals(11, numOfSentTsblocks);
     ListenableFuture<?> blocked = localSinkHandle.isFull();
     Assert.assertFalse(blocked.isDone());
     Assert.assertFalse(localSinkHandle.isFinished());
-    Assert.assertEquals(6 * mockTsBlockSize, localSinkHandle.getBufferRetainedSizeInBytes());
-    Mockito.verify(spyMemoryPool, Mockito.times(6)).reserve(queryId, mockTsBlockSize);
+    Assert.assertEquals(11 * mockTsBlockSize, localSinkHandle.getBufferRetainedSizeInBytes());
+    Mockito.verify(spyMemoryPool, Mockito.times(11))
+        .reserve(
+            queryId,
+            localFragmentInstanceId.getInstanceId(),
+            remotePlanNodeId,
+            mockTsBlockSize,
+            Long.MAX_VALUE);
 
     // Abort.
     localSinkHandle.abort();

@@ -72,7 +72,7 @@ public class IoTConsensusRPCService extends ThriftService implements IoTConsensu
     try {
       thriftServiceThread =
           new ThriftServiceThread(
-              (TBaseAsyncProcessor) processor,
+              (TBaseAsyncProcessor<?>) processor,
               getID().getName(),
               ThreadName.IOT_CONSENSUS_RPC_PROCESSOR.getName(),
               getBindIP(),
