@@ -88,21 +88,20 @@ public class IoTDBInternalReporter extends InternalIoTDBReporter {
 
   @Override
   public boolean start() {
-    if (currentServiceFuture == null) {
-      currentServiceFuture =
-          ScheduledExecutorUtil.safelyScheduleAtFixedRate(
-              service,
-              () -> {
-                writeMetricToIoTDB(autoGauges);
-              },
-              1,
-              MetricConfigDescriptor.getInstance()
-                  .getMetricConfig()
-                  .getAsyncCollectPeriodInSecond(),
-              TimeUnit.SECONDS);
-      return true;
+    if (currentServiceFuture != null) {
+      LOGGER.warn("IoTDB Internal Reporter already start");
+      return false;
     }
-    return false;
+    currentServiceFuture =
+        ScheduledExecutorUtil.safelyScheduleAtFixedRate(
+            service,
+            () -> {
+              writeMetricToIoTDB(autoGauges);
+            },
+            1,
+            MetricConfigDescriptor.getInstance().getMetricConfig().getAsyncCollectPeriodInSecond(),
+            TimeUnit.SECONDS);
+    return true;
   }
 
   @Override
