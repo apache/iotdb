@@ -25,6 +25,7 @@ import org.apache.iotdb.db.mpp.plan.analyze.ExpressionAnalyzer;
 import org.apache.iotdb.db.mpp.plan.constant.StatementType;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
+import org.apache.iotdb.db.mpp.plan.expression.multi.FunctionExpression;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.mpp.plan.statement.component.FillComponent;
@@ -299,6 +300,13 @@ public class QueryStatement extends Statement {
     return orderByComponent.getTimeOrder();
   }
 
+  public Ordering getResultDeviceOrder() {
+    if (orderByComponent == null || !orderByComponent.isOrderByDevice()) {
+      return Ordering.ASC;
+    }
+    return orderByComponent.getDeviceOrder();
+  }
+
   public List<SortItem> getSortItemList() {
     if (orderByComponent == null) {
       return Collections.emptyList();
@@ -348,6 +356,9 @@ public class QueryStatement extends Statement {
                 : resultColumn.getExpression().getExpressionString());
       }
       if (isGroupByTag()) {
+        if (hasHaving()) {
+          throw new SemanticException("Having clause is not supported yet in GROUP BY TAGS query");
+        }
         for (String s : getGroupByTagComponent().getTagKeys()) {
           if (outputColumn.contains(s)) {
             throw new SemanticException("Output column is duplicated with the tag key: " + s);
@@ -355,6 +366,15 @@ public class QueryStatement extends Statement {
         }
         if (rowLimit > 0 || rowOffset > 0 || seriesLimit > 0 || seriesOffset > 0) {
           throw new SemanticException("Limit or slimit are not supported yet in GROUP BY TAGS");
+        }
+        for (ResultColumn resultColumn : selectComponent.getResultColumns()) {
+          Expression expression = resultColumn.getExpression();
+          if (!(expression instanceof FunctionExpression
+              && expression.getExpressions().get(0) instanceof TimeSeriesOperand
+              && expression.isBuiltInAggregationFunctionExpression())) {
+            throw new SemanticException(
+                expression + " can't be used in group by tag. It will be supported in the future.");
+          }
         }
       }
     } else {
@@ -364,7 +384,7 @@ public class QueryStatement extends Statement {
       }
     }
 
-    if (getHavingCondition() != null) {
+    if (hasHaving()) {
       Expression havingExpression = getHavingCondition().getPredicate();
       if (ExpressionAnalyzer.identifyOutputColumnType(havingExpression, true)
           != ResultColumn.ColumnType.AGGREGATION) {
@@ -397,10 +417,6 @@ public class QueryStatement extends Statement {
 
       if (isOrderByTimeseries()) {
         throw new SemanticException("Sorting by timeseries is only supported in last queries.");
-      }
-      if (isOrderByDevice()) {
-        // TODO support sort by device
-        throw new SemanticException("Sorting by device is not yet supported.");
       }
     }
 

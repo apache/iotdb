@@ -105,14 +105,14 @@ public class SnapshotTaker {
       if (!success) {
         LOGGER.warn(
             "Failed to take snapshot for {}-{}, clean up",
-            dataRegion.getStorageGroupName(),
+            dataRegion.getDatabaseName(),
             dataRegion.getDataRegionId());
         cleanUpWhenFail(finalSnapshotId);
       } else {
         snapshotLogger.logEnd();
         LOGGER.info(
             "Successfully take snapshot for {}-{}, snapshot directory is {}",
-            dataRegion.getStorageGroupName(),
+            dataRegion.getDatabaseName(),
             dataRegion.getDataRegionId(),
             snapshotDir.getParentFile().getAbsolutePath() + File.separator + finalSnapshotId);
       }
@@ -121,7 +121,7 @@ public class SnapshotTaker {
     } catch (Exception e) {
       LOGGER.error(
           "Exception occurs when taking snapshot for {}-{}",
-          dataRegion.getStorageGroupName(),
+          dataRegion.getDatabaseName(),
           dataRegion.getDataRegionId(),
           e);
       return false;
@@ -226,8 +226,8 @@ public class SnapshotTaker {
     }
     stringBuilder.append(IoTDBConstant.SNAPSHOT_FOLDER_NAME);
     stringBuilder.append(File.separator);
-    stringBuilder.append(dataRegion.getStorageGroupName());
-    stringBuilder.append("-");
+    stringBuilder.append(dataRegion.getDatabaseName());
+    stringBuilder.append(IoTDBConstant.FILE_NAME_SEPARATOR);
     stringBuilder.append(dataRegion.getDataRegionId());
     stringBuilder.append(File.separator);
     stringBuilder.append(snapshotId);

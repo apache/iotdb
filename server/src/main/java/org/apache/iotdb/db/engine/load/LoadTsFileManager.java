@@ -290,7 +290,7 @@ public class LoadTsFileManager {
     public String toString() {
       return String.join(
           IoTDBConstant.FILE_NAME_SEPARATOR,
-          dataRegion.getStorageGroupName(),
+          dataRegion.getDatabaseName(),
           dataRegion.getDataRegionId(),
           Long.toString(timePartitionSlot.getStartTime()));
     }

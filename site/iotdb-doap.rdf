@@ -41,7 +41,7 @@
     <name>Apache IoTDB</name>
     <homepage rdf:resource="http://iotdb.apache.org" />
     <asfext:pmc rdf:resource="http://iotdb.apache.org" />
-    <shortdesc>Apache IoTDB is  an IoT native database with high performance for data management and analysis, on the edge and the cloud.</shortdesc>
+    <shortdesc>Apache IoTDB is an IoT native database with high performance for data management and analysis, on the edge and the cloud.</shortdesc>
     <description>Apache IoTDB (Database for Internet of Things) is an integrated data management engine designed for time series data. It provides users with services for data collection, storage and analysis. Due to its light-weight architecture, high performance and rich feature set together with its deep integration with Apache Hadoop, Spark and Flink. Apache IoTDB can meet the requirements of massive data storage, high-speed data ingestion and complex data analysis in the IoT industrial fields.</description>
     <bug-database rdf:resource="https://issues.apache.org/jira/projects/IOTDB" />
     <mailing-list rdf:resource="https://iotdb.apache.org/Development/ContributeGuide.html" />
@@ -61,9 +61,9 @@
 
     <release>
       <Version>
-        <name>apache-iotdb-0.13.0</name>
-        <created>2022-03-20</created>
-        <revision>0.13.0</revision>
+        <name>apache-iotdb-1.0.0</name>
+        <created>2022-12-03</created>
+        <revision>1.0.0</revision>
       </Version>
     </release>
 

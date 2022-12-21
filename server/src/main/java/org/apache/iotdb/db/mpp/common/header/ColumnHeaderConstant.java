@@ -96,8 +96,8 @@ public class ColumnHeaderConstant {
   public static final String REGION_ID = "RegionId";
   public static final String TYPE = "Type";
   public static final String DATA_NODE_ID = "DataNodeId";
-  public static final String SERIES_SLOT_ID = "SeriesSlotId";
-  public static final String TIME_SLOT_ID = "TimeSlotId";
+  public static final String SERIES_SLOT_NUM = "SeriesSlotNum";
+  public static final String TIME_SLOT_NUM = "TimeSlotNum";
   public static final String ROLE = "Role";
 
   // column names for show datanodes
@@ -124,6 +124,11 @@ public class ColumnHeaderConstant {
   // column names for show cq
   public static final String CQID = "CQId";
   public static final String QUERY = "Query";
+
+  // column names for show query processlist
+  public static final String QUERY_ID = "QueryId";
+  public static final String ELAPSED_TIME = "ElapsedTime";
+  public static final String STATEMENT = "Statement";
 
   public static final List<ColumnHeader> lastQueryColumnHeaders =
       ImmutableList.of(
@@ -218,8 +223,8 @@ public class ColumnHeaderConstant {
           new ColumnHeader(TYPE, TSDataType.TEXT),
           new ColumnHeader(STATUS, TSDataType.TEXT),
           new ColumnHeader(DATABASE, TSDataType.TEXT),
-          new ColumnHeader(SERIES_SLOT_ID, TSDataType.INT32),
-          new ColumnHeader(TIME_SLOT_ID, TSDataType.INT64),
+          new ColumnHeader(SERIES_SLOT_NUM, TSDataType.INT32),
+          new ColumnHeader(TIME_SLOT_NUM, TSDataType.INT64),
           new ColumnHeader(DATA_NODE_ID, TSDataType.INT32),
           new ColumnHeader(RPC_ADDRESS, TSDataType.TEXT),
           new ColumnHeader(RPC_PORT, TSDataType.INT32),
@@ -319,14 +324,21 @@ public class ColumnHeaderConstant {
       ImmutableList.of(new ColumnHeader(REGION_ID, TSDataType.INT32));
 
   public static final List<ColumnHeader> getTimeSlotListColumnHeaders =
-      ImmutableList.of(new ColumnHeader(TIME_SLOT_ID, TSDataType.INT64));
+      ImmutableList.of(new ColumnHeader(TIME_SLOT_NUM, TSDataType.INT64));
 
   public static final List<ColumnHeader> getSeriesSlotListColumnHeaders =
-      ImmutableList.of(new ColumnHeader(SERIES_SLOT_ID, TSDataType.INT32));
+      ImmutableList.of(new ColumnHeader(SERIES_SLOT_NUM, TSDataType.INT32));
 
   public static final List<ColumnHeader> showContinuousQueriesColumnHeaders =
       ImmutableList.of(
           new ColumnHeader(CQID, TSDataType.TEXT),
           new ColumnHeader(QUERY, TSDataType.TEXT),
           new ColumnHeader(STATE, TSDataType.TEXT));
+
+  public static final List<ColumnHeader> showQueriesColumnHeaders =
+      ImmutableList.of(
+          new ColumnHeader(QUERY_ID, TSDataType.TEXT),
+          new ColumnHeader(DATA_NODE_ID, TSDataType.INT32),
+          new ColumnHeader(ELAPSED_TIME, TSDataType.FLOAT),
+          new ColumnHeader(STATEMENT, TSDataType.TEXT));
 }

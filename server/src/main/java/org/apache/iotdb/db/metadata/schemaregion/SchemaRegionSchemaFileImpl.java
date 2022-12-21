@@ -424,6 +424,12 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
 
   @Override
   public boolean createSnapshot(File snapshotDir) {
+    if (!initialized) {
+      logger.warn(
+          "Failed to create snapshot of schemaRegion {}, because the schemaRegion has not been initialized.",
+          schemaRegionId);
+      return false;
+    }
     logger.info("Start create snapshot of schemaRegion {}", schemaRegionId);
     boolean isSuccess = true;
     long startTime = System.currentTimeMillis();
@@ -1452,7 +1458,7 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
   }
 
   /**
-   * upsert tags and attributes key-value for the timeseries if the key has existed, just use the
+   * Upsert tags and attributes key-value for the timeseries if the key has existed, just use the
    * new value to update it.
    *
    * @param alias newly added alias
@@ -1462,7 +1468,7 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
    */
   @Override
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
-  public void upsertTagsAndAttributes(
+  public void upsertAliasAndTagsAndAttributes(
       String alias,
       Map<String, String> tagsMap,
       Map<String, String> attributesMap,
@@ -1516,10 +1522,11 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
   }
 
   /**
-   * add new attributes key-value for the timeseries
+   * Add new attributes key-value for the timeseries
    *
    * @param attributesMap newly added attributes map
    * @param fullPath timeseries
+   * @throws MetadataException tagLogFile write error or attributes already exist
    */
   @Override
   public void addAttributes(Map<String, String> attributesMap, PartialPath fullPath)
@@ -1542,10 +1549,11 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
   }
 
   /**
-   * add new tags key-value for the timeseries
+   * Add new tags key-value for the timeseries
    *
    * @param tagsMap newly added tags map
    * @param fullPath timeseries
+   * @throws MetadataException tagLogFile write error or tags already exist
    */
   @Override
   public void addTags(Map<String, String> tagsMap, PartialPath fullPath)
@@ -1571,7 +1579,8 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
   }
 
   /**
-   * drop tags or attributes of the timeseries
+   * Drop tags or attributes of the timeseries. It will not throw exception even if the key does not
+   * exist.
    *
    * @param keySet tags key or attributes key
    * @param fullPath timeseries path
@@ -1594,10 +1603,11 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
   }
 
   /**
-   * set/change the values of tags or attributes
+   * Set/change the values of tags or attributes
    *
    * @param alterMap the new tags or attributes key-value
    * @param fullPath timeseries
+   * @throws MetadataException tagLogFile write error or tags/attributes do not exist
    */
   @Override
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
@@ -1618,11 +1628,13 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
   }
 
   /**
-   * rename the tag or attribute's key of the timeseries
+   * Rename the tag or attribute's key of the timeseries
    *
    * @param oldKey old key of tag or attribute
    * @param newKey new key of tag or attribute
    * @param fullPath timeseries
+   * @throws MetadataException tagLogFile write error or does not have tag/attribute or already has
+   *     a tag/attribute named newKey
    */
   @Override
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning

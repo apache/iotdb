@@ -18,13 +18,8 @@
  */
 package org.apache.iotdb.db.utils;
 
-import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
-import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -34,17 +29,6 @@ import java.util.Collections;
 import java.util.List;
 
 public class SchemaUtilsTest {
-  @Test
-  public void registerTimeseriesTest() throws MetadataException {
-    IoTDB.configManager.init();
-    LocalSchemaProcessor schemaProcessor = IoTDB.schemaProcessor;
-
-    String tsPath = "root.sg.d1.s1";
-    TimeseriesSchema timeseriesSchema = new TimeseriesSchema(tsPath, TSDataType.INT32);
-    SchemaUtils.registerTimeseries(timeseriesSchema);
-    Assert.assertTrue(IoTDB.schemaProcessor.isPathExist(new PartialPath(tsPath)));
-  }
-
   @Test
   public void getAggregatedDataTypesTest() {
     List<TSDataType> measurementTypes = new ArrayList<>();

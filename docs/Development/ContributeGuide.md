@@ -174,24 +174,10 @@ If the version after eclipse 2019
 
 import -> Maven -> Existing Maven Projects
 
-## Debugging code
-
-
-* Server main function：`server/src/main/java/org/apache/iotdb/db/service/IoTDB`, can be started in debug mode.
-* Cli：`cli/src/main/java/org/apache/iotdb/cli/`，Use Cli for linux and WinCli for windows, you can start directly with the parameter "`-h 127.0.0.1 -p 6667 -u root -pw root`"
-* Server rpc implementation (mainly used for cli and server communication, generally start interruption point here):`server/src/main/java/org/apache/iotdb/db/service/TSServiceImpl`
-* all jdbc statements：`executeStatement(TSExecuteStatementReq req)`
-* jdbc query：`executeQueryStatement(TSExecuteStatementReq req)`	
-* native Write interface：`insertRecord(TSInsertRecordReq req)`
-`insertTablet(TSInsertTabletReq req)`
-
-* Storage engine`org.apache.iotdb.db.engine.StorageEngine`
-* Query engine `org.apache.iotdb.db.qp.QueryProcessor`
-
 
 # Frequent Questions When Compiling the Source Code
 
-I could not download thrift-* tools, like `Could not get content
+>Q: I could not download thrift-* tools, like `Could not get content
 org.apache.maven.wagon.TransferFailedException: Transfer failed for https://github.com/apache/iotdb-bin-resources/blob/main/compile-tools/thrift-0.14-ubuntu`
 
  It is due to some network problems (especially in China), you can:
@@ -204,6 +190,18 @@ org.apache.maven.wagon.TransferFailedException: Transfer failed for https://gith
  * Put the file to thrift/target/tools/
 
  * Re-run maven command like `mvn compile`
+
+ 
+ >Q: IConfigNodeRPCService class is unrecognized (IDEA can not find the class even though we have generated it)
+
+ It is because Thrift generate the file too large, which exceeds the lines that IDEA can parse by default. You can find that file and then you will see IDEA claims that. To make it work, you can:
+ 
+ * Click "Help" menu of IDEA
+ * Choose "Edit Customed Properties"
+ * On the opened file (`idea.properties`), add: `idea.max.intellisense.filesize=9000`
+ * Restart IDEA
+ 
+ 
 
 
 ## Recommended Debug Tool 

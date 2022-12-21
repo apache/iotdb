@@ -36,13 +36,15 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaFetchS
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaQueryMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaQueryScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.AggregationNode;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.DeviceMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.DeviceViewNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.GroupByLevelNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.GroupByTagNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.MergeSortNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.MultiChildProcessNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.SingleDeviceViewNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.SlidingWindowAggregationNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.TimeJoinNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.VerticallyConcatNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.last.LastQueryCollectNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.last.LastQueryMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.last.LastQueryNode;
@@ -84,7 +86,65 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
   }
 
   @Override
-  public PlanNode visitDeviceView(DeviceViewNode node, DistributionPlanContext context) {
+  public List<PlanNode> visitMergeSort(MergeSortNode node, DistributionPlanContext context) {
+    MergeSortNode newRoot = cloneMergeSortNodeWithoutChild(node, context);
+    for (int i = 0; i < node.getChildren().size(); i++) {
+      List<PlanNode> rewroteNodes = rewrite(node.getChildren().get(i), context);
+      rewroteNodes.forEach(newRoot::addChild);
+    }
+    return Collections.singletonList(newRoot);
+  }
+
+  private MergeSortNode cloneMergeSortNodeWithoutChild(
+      MergeSortNode node, DistributionPlanContext context) {
+    return new MergeSortNode(
+        context.queryContext.getQueryId().genPlanNodeId(),
+        node.getMergeOrderParameter(),
+        node.getOutputColumnNames());
+  }
+
+  @Override
+  public List<PlanNode> visitSingleDeviceView(
+      SingleDeviceViewNode node, DistributionPlanContext context) {
+
+    if (isAggregationQuery()) {
+      List<PlanNode> rewroteChildren = rewrite(node.getChild(), context);
+      if (rewroteChildren.size() != 1) {
+        throw new IllegalStateException("SingleDeviceViewNode have only one child");
+      }
+      node.setChild(rewroteChildren.get(0));
+      return Collections.singletonList(node);
+    }
+
+    String device = node.getDevice();
+    List<TRegionReplicaSet> regionReplicaSets =
+        analysis.getPartitionInfo(device, analysis.getGlobalTimeFilter());
+
+    List<PlanNode> singleDeviceViewList = new ArrayList<>();
+    for (TRegionReplicaSet tRegionReplicaSet : regionReplicaSets) {
+      singleDeviceViewList.add(
+          buildSingleDeviceViewNodeInRegion(node, tRegionReplicaSet, context.queryContext));
+    }
+
+    return singleDeviceViewList;
+  }
+
+  private PlanNode buildSingleDeviceViewNodeInRegion(
+      PlanNode root, TRegionReplicaSet regionReplicaSet, MPPQueryContext context) {
+    List<PlanNode> children =
+        root.getChildren().stream()
+            .map(child -> buildSingleDeviceViewNodeInRegion(child, regionReplicaSet, context))
+            .collect(Collectors.toList());
+    PlanNode newRoot = root.cloneWithChildren(children);
+    newRoot.setPlanNodeId(context.getQueryId().genPlanNodeId());
+    if (newRoot instanceof SourceNode) {
+      ((SourceNode) newRoot).setRegionReplicaSet(regionReplicaSet);
+    }
+    return newRoot;
+  }
+
+  @Override
+  public List<PlanNode> visitDeviceView(DeviceViewNode node, DistributionPlanContext context) {
     checkArgument(
         node.getDevices().size() == node.getChildren().size(),
         "size of devices and its children in DeviceViewNode should be same");
@@ -108,13 +168,8 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
       relatedDataRegions.addAll(regionReplicaSets);
     }
 
-    DeviceMergeNode deviceMergeNode =
-        new DeviceMergeNode(
-            context.queryContext.getQueryId().genPlanNodeId(),
-            node.getMergeOrderParameter(),
-            node.getDevices());
-
     // Step 2: Iterate all partition and create DeviceViewNode for each region
+    List<PlanNode> deviceViewNodeList = new ArrayList<>();
     for (TRegionReplicaSet regionReplicaSet : relatedDataRegions) {
       List<String> devices = new ArrayList<>();
       List<PlanNode> children = new ArrayList<>();
@@ -128,20 +183,34 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
       for (int i = 0; i < devices.size(); i++) {
         regionDeviceViewNode.addChildDeviceNode(devices.get(i), children.get(i));
       }
-      deviceMergeNode.addChild(regionDeviceViewNode);
+      deviceViewNodeList.add(regionDeviceViewNode);
     }
 
-    return deviceMergeNode;
+    if (deviceViewNodeList.size() == 1) {
+      return deviceViewNodeList;
+    }
+
+    MergeSortNode mergeSortNode =
+        new MergeSortNode(
+            context.queryContext.getQueryId().genPlanNodeId(),
+            node.getMergeOrderParameter(),
+            node.getOutputColumnNames());
+    for (PlanNode deviceViewNode : deviceViewNodeList) {
+      mergeSortNode.addChild(deviceViewNode);
+    }
+    return Collections.singletonList(mergeSortNode);
   }
 
-  private PlanNode processDeviceViewWithAggregation(
+  private List<PlanNode> processDeviceViewWithAggregation(
       DeviceViewNode node, DistributionPlanContext context) {
     DeviceViewNode newRoot = cloneDeviceViewNodeWithoutChild(node, context);
     for (int i = 0; i < node.getDevices().size(); i++) {
-      newRoot.addChildDeviceNode(
-          node.getDevices().get(i), rewrite(node.getChildren().get(i), context));
+      List<PlanNode> rewroteNode = rewrite(node.getChildren().get(i), context);
+      for (PlanNode planNode : rewroteNode) {
+        newRoot.addChildDeviceNode(node.getDevices().get(i), planNode);
+      }
     }
-    return newRoot;
+    return Collections.singletonList(newRoot);
   }
 
   private DeviceViewNode cloneDeviceViewNodeWithoutChild(
@@ -191,7 +260,7 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
   }
 
   @Override
-  public PlanNode visitSchemaQueryMerge(
+  public List<PlanNode> visitSchemaQueryMerge(
       SchemaQueryMergeNode node, DistributionPlanContext context) {
     SchemaQueryMergeNode root = (SchemaQueryMergeNode) node.clone();
     SchemaQueryScanNode seed = (SchemaQueryScanNode) node.getChildren().get(0);
@@ -262,11 +331,12 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
                 });
           });
     }
-    return root;
+    return Collections.singletonList(root);
   }
 
   @Override
-  public PlanNode visitCountMerge(CountSchemaMergeNode node, DistributionPlanContext context) {
+  public List<PlanNode> visitCountMerge(
+      CountSchemaMergeNode node, DistributionPlanContext context) {
     CountSchemaMergeNode root = (CountSchemaMergeNode) node.clone();
     SchemaQueryScanNode seed = (SchemaQueryScanNode) node.getChildren().get(0);
     Set<TRegionReplicaSet> schemaRegions = new HashSet<>();
@@ -286,19 +356,19 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
           schemaQueryScanNode.setRegionReplicaSet(region);
           root.addChild(schemaQueryScanNode);
         });
-    return root;
+    return Collections.singletonList(root);
   }
 
   // TODO: (xingtanzjr) a temporary way to resolve the distribution of single SeriesScanNode issue
   @Override
-  public PlanNode visitSeriesScan(SeriesScanNode node, DistributionPlanContext context) {
+  public List<PlanNode> visitSeriesScan(SeriesScanNode node, DistributionPlanContext context) {
     TimeJoinNode timeJoinNode =
         new TimeJoinNode(context.queryContext.getQueryId().genPlanNodeId(), node.getScanOrder());
     return processRawSeriesScan(node, context, timeJoinNode);
   }
 
   @Override
-  public PlanNode visitAlignedSeriesScan(
+  public List<PlanNode> visitAlignedSeriesScan(
       AlignedSeriesScanNode node, DistributionPlanContext context) {
     TimeJoinNode timeJoinNode =
         new TimeJoinNode(context.queryContext.getQueryId().genPlanNodeId(), node.getScanOrder());
@@ -306,7 +376,8 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
   }
 
   @Override
-  public PlanNode visitLastQueryScan(LastQueryScanNode node, DistributionPlanContext context) {
+  public List<PlanNode> visitLastQueryScan(
+      LastQueryScanNode node, DistributionPlanContext context) {
     LastQueryNode mergeNode =
         new LastQueryNode(
             context.queryContext.getQueryId().genPlanNodeId(),
@@ -316,7 +387,7 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
   }
 
   @Override
-  public PlanNode visitAlignedLastQueryScan(
+  public List<PlanNode> visitAlignedLastQueryScan(
       AlignedLastQueryScanNode node, DistributionPlanContext context) {
     LastQueryNode mergeNode =
         new LastQueryNode(
@@ -326,19 +397,19 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
     return processRawSeriesScan(node, context, mergeNode);
   }
 
-  private PlanNode processRawSeriesScan(
+  private List<PlanNode> processRawSeriesScan(
       SeriesSourceNode node, DistributionPlanContext context, MultiChildProcessNode parent) {
-    List<SeriesSourceNode> sourceNodes = splitSeriesSourceNodeByPartition(node, context);
+    List<PlanNode> sourceNodes = splitSeriesSourceNodeByPartition(node, context);
     if (sourceNodes.size() == 1) {
-      return sourceNodes.get(0);
+      return sourceNodes;
     }
     sourceNodes.forEach(parent::addChild);
-    return parent;
+    return Collections.singletonList(parent);
   }
 
-  private List<SeriesSourceNode> splitSeriesSourceNodeByPartition(
+  private List<PlanNode> splitSeriesSourceNodeByPartition(
       SeriesSourceNode node, DistributionPlanContext context) {
-    List<SeriesSourceNode> ret = new ArrayList<>();
+    List<PlanNode> ret = new ArrayList<>();
     List<TRegionReplicaSet> dataDistribution =
         analysis.getPartitionInfo(node.getPartitionPath(), node.getPartitionTimeFilter());
     if (dataDistribution.size() == 1) {
@@ -357,24 +428,24 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
   }
 
   @Override
-  public PlanNode visitSeriesAggregationScan(
+  public List<PlanNode> visitSeriesAggregationScan(
       SeriesAggregationScanNode node, DistributionPlanContext context) {
     return processSeriesAggregationSource(node, context);
   }
 
   @Override
-  public PlanNode visitAlignedSeriesAggregationScan(
+  public List<PlanNode> visitAlignedSeriesAggregationScan(
       AlignedSeriesAggregationScanNode node, DistributionPlanContext context) {
     return processSeriesAggregationSource(node, context);
   }
 
-  private PlanNode processSeriesAggregationSource(
+  private List<PlanNode> processSeriesAggregationSource(
       SeriesAggregationSourceNode node, DistributionPlanContext context) {
     List<TRegionReplicaSet> dataDistribution =
         analysis.getPartitionInfo(node.getPartitionPath(), node.getPartitionTimeFilter());
     if (dataDistribution.size() == 1) {
       node.setRegionReplicaSet(dataDistribution.get(0));
-      return node;
+      return Collections.singletonList(node);
     }
     List<AggregationDescriptor> leafAggDescriptorList = new ArrayList<>();
     node.getAggregationDescriptorList()
@@ -414,11 +485,11 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
       split.setRegionReplicaSet(dataRegion);
       aggregationNode.addChild(split);
     }
-    return aggregationNode;
+    return Collections.singletonList(aggregationNode);
   }
 
   @Override
-  public PlanNode visitSchemaFetchMerge(
+  public List<PlanNode> visitSchemaFetchMerge(
       SchemaFetchMergeNode node, DistributionPlanContext context) {
     SchemaFetchMergeNode root = (SchemaFetchMergeNode) node.clone();
     Map<String, Set<TRegionReplicaSet>> storageGroupSchemaRegionMap = new HashMap<>();
@@ -443,11 +514,11 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
         root.addChild(schemaFetchScanNode);
       }
     }
-    return root;
+    return Collections.singletonList(root);
   }
 
   @Override
-  public PlanNode visitLastQuery(LastQueryNode node, DistributionPlanContext context) {
+  public List<PlanNode> visitLastQuery(LastQueryNode node, DistributionPlanContext context) {
     // For last query, we need to keep every FI's root node is LastQueryMergeNode. So we
     // force every region group have a parent node even if there is only 1 child for it.
     context.setForceAddParent(true);
@@ -455,9 +526,9 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
     if (context.queryMultiRegion) {
       PlanNode newRoot = genLastQueryRootNode(node, context);
       root.getChildren().forEach(newRoot::addChild);
-      return newRoot;
+      return Collections.singletonList(newRoot);
     } else {
-      return root;
+      return Collections.singletonList(root);
     }
   }
 
@@ -470,14 +541,14 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
   }
 
   @Override
-  public PlanNode visitTimeJoin(TimeJoinNode node, DistributionPlanContext context) {
+  public List<PlanNode> visitTimeJoin(TimeJoinNode node, DistributionPlanContext context) {
     // Although some logic is similar between Aggregation and RawDataQuery,
     // we still use separate method to process the distribution planning now
     // to make the planning procedure more clear
     if (containsAggregationSource(node)) {
       return planAggregationWithTimeJoin(node, context);
     }
-    return processRawMultiChildNode(node, context);
+    return Collections.singletonList(processRawMultiChildNode(node, context));
   }
 
   private PlanNode processRawMultiChildNode(
@@ -556,7 +627,8 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
         // In a general logical query plan, the children of TimeJoinNode should only be
         // SeriesScanNode or SeriesAggregateScanNode
         // So this branch should not be touched.
-        root.addChild(visit(child, context));
+        List<PlanNode> children = visit(child, context);
+        children.forEach(root::addChild);
       }
     }
     return root;
@@ -578,82 +650,115 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
 
   // This method is only used to process the PlanNodeTree whose root is SlidingWindowAggregationNode
   @Override
-  public PlanNode visitSlidingWindowAggregation(
+  public List<PlanNode> visitSlidingWindowAggregation(
       SlidingWindowAggregationNode node, DistributionPlanContext context) {
     DistributionPlanContext childContext = context.copy().setRoot(false);
-    PlanNode child = visit(node.getChild(), childContext);
+    List<PlanNode> children = visit(node.getChild(), childContext);
     PlanNode newRoot = node.clone();
-    newRoot.addChild(child);
-    return newRoot;
+    children.forEach(newRoot::addChild);
+    return Collections.singletonList(newRoot);
   }
 
-  private PlanNode planAggregationWithTimeJoin(TimeJoinNode root, DistributionPlanContext context) {
+  private List<PlanNode> planAggregationWithTimeJoin(
+      TimeJoinNode root, DistributionPlanContext context) {
+    Map<TRegionReplicaSet, List<SeriesAggregationSourceNode>> sourceGroup;
 
-    List<SeriesAggregationSourceNode> sources = splitAggregationSourceByPartition(root, context);
-    Map<TRegionReplicaSet, List<SeriesAggregationSourceNode>> sourceGroup =
-        sources.stream().collect(Collectors.groupingBy(SourceNode::getRegionReplicaSet));
+    // construct newRoot
+    MultiChildProcessNode newRoot;
+    if (context.isRoot) {
+      // This node is the root of PlanTree,
+      // if the aggregated series have only one region,
+      // upstream will give the final aggregate result,
+      // the step of this series' aggregator will be `STATIC`
+      List<SeriesAggregationSourceNode> sources = new ArrayList<>();
+      Map<PartialPath, Integer> regionCountPerSeries = new HashMap<>();
+      boolean[] eachSeriesOneRegion = {true};
+      sourceGroup =
+          splitAggregationSourceByPartition(
+              root, context, sources, eachSeriesOneRegion, regionCountPerSeries);
 
-    // construct AggregationDescriptor for AggregationNode
-    List<AggregationDescriptor> rootAggDescriptorList = new ArrayList<>();
-    for (PlanNode child : root.getChildren()) {
-      SeriesAggregationSourceNode handle = (SeriesAggregationSourceNode) child;
-      handle
-          .getAggregationDescriptorList()
-          .forEach(
-              descriptor -> {
-                rootAggDescriptorList.add(
-                    new AggregationDescriptor(
-                        descriptor.getAggregationFuncName(),
-                        context.isRoot ? AggregationStep.FINAL : AggregationStep.INTERMEDIATE,
-                        descriptor.getInputExpressions()));
-              });
+      if (eachSeriesOneRegion[0]) {
+        newRoot = new VerticallyConcatNode(context.queryContext.getQueryId().genPlanNodeId());
+      } else {
+        List<AggregationDescriptor> rootAggDescriptorList = new ArrayList<>();
+        for (PlanNode child : root.getChildren()) {
+          SeriesAggregationSourceNode handle = (SeriesAggregationSourceNode) child;
+          handle
+              .getAggregationDescriptorList()
+              .forEach(
+                  descriptor ->
+                      rootAggDescriptorList.add(
+                          new AggregationDescriptor(
+                              descriptor.getAggregationFuncName(),
+                              regionCountPerSeries.get(handle.getPartitionPath()) == 1
+                                  ? AggregationStep.STATIC
+                                  : AggregationStep.FINAL,
+                              descriptor.getInputExpressions())));
+        }
+        SeriesAggregationSourceNode seed = (SeriesAggregationSourceNode) root.getChildren().get(0);
+        newRoot =
+            new AggregationNode(
+                context.queryContext.getQueryId().genPlanNodeId(),
+                rootAggDescriptorList,
+                seed.getGroupByTimeParameter(),
+                seed.getScanOrder());
+      }
+    } else {
+      // If this node is not the root node of PlanTree,
+      // it declares that there have something to do at downstream,
+      // the step of this AggregationNode should be `INTERMEDIATE`
+      sourceGroup = splitAggregationSourceByPartition(root, context);
+      List<AggregationDescriptor> rootAggDescriptorList = new ArrayList<>();
+      for (PlanNode child : root.getChildren()) {
+        SeriesAggregationSourceNode handle = (SeriesAggregationSourceNode) child;
+        handle
+            .getAggregationDescriptorList()
+            .forEach(
+                descriptor ->
+                    rootAggDescriptorList.add(
+                        new AggregationDescriptor(
+                            descriptor.getAggregationFuncName(),
+                            AggregationStep.INTERMEDIATE,
+                            descriptor.getInputExpressions())));
+      }
+      SeriesAggregationSourceNode seed = (SeriesAggregationSourceNode) root.getChildren().get(0);
+      newRoot =
+          new AggregationNode(
+              context.queryContext.getQueryId().genPlanNodeId(),
+              rootAggDescriptorList,
+              seed.getGroupByTimeParameter(),
+              seed.getScanOrder());
     }
-    rootAggDescriptorList.forEach(
-        d ->
-            LogicalPlanBuilder.updateTypeProviderByPartialAggregation(
-                d, context.queryContext.getTypeProvider()));
-    checkArgument(
-        sources.size() > 0, "Aggregation sources should not be empty when distribution planning");
-    SeriesAggregationSourceNode seed = sources.get(0);
-    AggregationNode aggregationNode =
-        new AggregationNode(
-            context.queryContext.getQueryId().genPlanNodeId(),
-            rootAggDescriptorList,
-            seed.getGroupByTimeParameter(),
-            seed.getScanOrder());
 
-    final boolean[] addParent = {false};
+    boolean[] addParent = {false};
     sourceGroup.forEach(
         (dataRegion, sourceNodes) -> {
           if (sourceNodes.size() == 1) {
-            aggregationNode.addChild(sourceNodes.get(0));
+            newRoot.addChild(sourceNodes.get(0));
           } else {
             if (!addParent[0]) {
-              sourceNodes.forEach(aggregationNode::addChild);
+              sourceNodes.forEach(newRoot::addChild);
               addParent[0] = true;
             } else {
-              // We clone a TimeJoinNode from root to make the params to be consistent.
-              // But we need to assign a new ID to it
-              TimeJoinNode parentOfGroup = (TimeJoinNode) root.clone();
-              parentOfGroup.setPlanNodeId(context.queryContext.getQueryId().genPlanNodeId());
+              VerticallyConcatNode parentOfGroup =
+                  new VerticallyConcatNode(context.queryContext.getQueryId().genPlanNodeId());
               sourceNodes.forEach(parentOfGroup::addChild);
-              aggregationNode.addChild(parentOfGroup);
+              newRoot.addChild(parentOfGroup);
             }
           }
         });
 
-    return aggregationNode;
+    return Collections.singletonList(newRoot);
   }
 
   @Override
-  public PlanNode visitGroupByLevel(GroupByLevelNode root, DistributionPlanContext context) {
+  public List<PlanNode> visitGroupByLevel(GroupByLevelNode root, DistributionPlanContext context) {
     if (shouldUseNaiveAggregation(root)) {
       return defaultRewrite(root, context);
     }
     // Firstly, we build the tree structure for GroupByLevelNode
-    List<SeriesAggregationSourceNode> sources = splitAggregationSourceByPartition(root, context);
     Map<TRegionReplicaSet, List<SeriesAggregationSourceNode>> sourceGroup =
-        sources.stream().collect(Collectors.groupingBy(SourceNode::getRegionReplicaSet));
+        splitAggregationSourceByPartition(root, context);
 
     boolean containsSlidingWindow =
         root.getChildren().size() == 1
@@ -670,24 +775,27 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
 
     // Then, we calculate the attributes for GroupByLevelNode in each level
     calculateGroupByLevelNodeAttributes(newRoot, 0, context);
-    return newRoot;
+    return Collections.singletonList(newRoot);
   }
 
   @Override
-  public PlanNode visitGroupByTag(GroupByTagNode root, DistributionPlanContext context) {
-    List<SeriesAggregationSourceNode> sources = splitAggregationSourceByPartition(root, context);
+  public List<PlanNode> visitGroupByTag(GroupByTagNode root, DistributionPlanContext context) {
     Map<TRegionReplicaSet, List<SeriesAggregationSourceNode>> sourceGroup =
-        sources.stream().collect(Collectors.groupingBy(SourceNode::getRegionReplicaSet));
+        splitAggregationSourceByPartition(root, context);
 
     boolean containsSlidingWindow =
         root.getChildren().size() == 1
             && root.getChildren().get(0) instanceof SlidingWindowAggregationNode;
 
     // TODO: use 2 phase aggregation to optimize the query
-    return containsSlidingWindow
-        ? groupSourcesForGroupByTagWithSlidingWindow(
-            root, (SlidingWindowAggregationNode) root.getChildren().get(0), sourceGroup, context)
-        : groupSourcesForGroupByTag(root, sourceGroup, context);
+    return Collections.singletonList(
+        containsSlidingWindow
+            ? groupSourcesForGroupByTagWithSlidingWindow(
+                root,
+                (SlidingWindowAggregationNode) root.getChildren().get(0),
+                sourceGroup,
+                context)
+            : groupSourcesForGroupByTag(root, sourceGroup, context));
   }
 
   // If the Aggregation Query contains value filter, we need to use the naive query plan
@@ -721,11 +829,10 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
           if (sourceNodes.size() == 1) {
             parentOfGroup.addChild(sourceNodes.get(0));
           } else {
-            TimeJoinNode timeJoinNode =
-                new TimeJoinNode(
-                    context.queryContext.getQueryId().genPlanNodeId(), root.getScanOrder());
-            sourceNodes.forEach(timeJoinNode::addChild);
-            parentOfGroup.addChild(timeJoinNode);
+            VerticallyConcatNode verticallyConcatNode =
+                new VerticallyConcatNode(context.queryContext.getQueryId().genPlanNodeId());
+            sourceNodes.forEach(verticallyConcatNode::addChild);
+            parentOfGroup.addChild(verticallyConcatNode);
           }
           groups.add(parentOfGroup);
         });
@@ -862,11 +969,10 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
           if (sourceNodes.size() == 1) {
             parentOfGroup.addChild(sourceNodes.get(0));
           } else {
-            PlanNode timeJoinNode =
-                new TimeJoinNode(
-                    context.queryContext.getQueryId().genPlanNodeId(), root.getScanOrder());
-            sourceNodes.forEach(timeJoinNode::addChild);
-            parentOfGroup.addChild(timeJoinNode);
+            VerticallyConcatNode verticallyConcatNode =
+                new VerticallyConcatNode(context.queryContext.getQueryId().genPlanNodeId());
+            sourceNodes.forEach(verticallyConcatNode::addChild);
+            parentOfGroup.addChild(verticallyConcatNode);
           }
           newRoot.addChild(parentOfGroup);
         });
@@ -888,11 +994,10 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
               sourceNodes.forEach(newRoot::addChild);
               addParent[0] = true;
             } else {
-              PlanNode timeJoinNode =
-                  new TimeJoinNode(
-                      context.queryContext.getQueryId().genPlanNodeId(), root.getScanOrder());
-              sourceNodes.forEach(timeJoinNode::addChild);
-              newRoot.addChild(timeJoinNode);
+              VerticallyConcatNode verticallyConcatNode =
+                  new VerticallyConcatNode(context.queryContext.getQueryId().genPlanNodeId());
+              sourceNodes.forEach(verticallyConcatNode::addChild);
+              newRoot.addChild(verticallyConcatNode);
             }
           }
         });
@@ -907,45 +1012,96 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
     return columnName.contains(expression.getExpressionString());
   }
 
-  private List<SeriesAggregationSourceNode> splitAggregationSourceByPartition(
-      PlanNode root, DistributionPlanContext context) {
+  /**
+   * This method is used for rewriting second step AggregationNode like GroupByLevelNode,
+   * GroupByTagNode and SlidingWindowAggregationNode, so the first step AggregationNode's step will
+   * be {@link AggregationStep#PARTIAL}
+   */
+  private Map<TRegionReplicaSet, List<SeriesAggregationSourceNode>>
+      splitAggregationSourceByPartition(PlanNode root, DistributionPlanContext context) {
     // Step 0: get all SeriesAggregationSourceNode in PlanNodeTree
     List<SeriesAggregationSourceNode> rawSources = findAggregationSourceNode(root);
-    // Step 1: split SeriesAggregationSourceNode according to data partition
+
+    // Step 1: construct SeriesAggregationSourceNode for each data region of one Path
     List<SeriesAggregationSourceNode> sources = new ArrayList<>();
-    Map<PartialPath, Integer> regionCountPerSeries = new HashMap<>();
     for (SeriesAggregationSourceNode child : rawSources) {
-      List<TRegionReplicaSet> dataDistribution =
-          analysis.getPartitionInfo(child.getPartitionPath(), child.getPartitionTimeFilter());
-      for (TRegionReplicaSet dataRegion : dataDistribution) {
-        SeriesAggregationSourceNode split = (SeriesAggregationSourceNode) child.clone();
-        split.setPlanNodeId(context.queryContext.getQueryId().genPlanNodeId());
-        split.setRegionReplicaSet(dataRegion);
-        // Let each split reference different object of AggregationDescriptorList
-        split.setAggregationDescriptorList(
-            child.getAggregationDescriptorList().stream()
-                .map(AggregationDescriptor::deepClone)
-                .collect(Collectors.toList()));
-        sources.add(split);
-      }
-      regionCountPerSeries.put(child.getPartitionPath(), dataDistribution.size());
+      constructAggregationSourceNodeForPerRegion(context, sources, child);
     }
 
-    // Step 2: change the step for each SeriesAggregationSourceNode according to its split count
+    // Step 2: change step to PARTIAL for each SeriesAggregationSourceNode and update TypeProvider
     for (SeriesAggregationSourceNode source : sources) {
-      //        boolean isFinal = regionCountPerSeries.get(source.getPartitionPath()) == 1;
-      // TODO: (xingtanzjr) need to optimize this step later. We make it as Partial now.
-      boolean isFinal = false;
       source
           .getAggregationDescriptorList()
           .forEach(
               d -> {
-                d.setStep(isFinal ? AggregationStep.FINAL : AggregationStep.PARTIAL);
+                d.setStep(AggregationStep.PARTIAL);
                 LogicalPlanBuilder.updateTypeProviderByPartialAggregation(
                     d, context.queryContext.getTypeProvider());
               });
     }
-    return sources;
+
+    // Step 3: group all SeriesAggregationSourceNode by each region
+    return sources.stream().collect(Collectors.groupingBy(SourceNode::getRegionReplicaSet));
+  }
+
+  private Map<TRegionReplicaSet, List<SeriesAggregationSourceNode>>
+      splitAggregationSourceByPartition(
+          PlanNode root,
+          DistributionPlanContext context,
+          List<SeriesAggregationSourceNode> sources,
+          boolean[] eachSeriesOneRegion,
+          Map<PartialPath, Integer> regionCountPerSeries) {
+    // Step 0: get all SeriesAggregationSourceNode in PlanNodeTree
+    List<SeriesAggregationSourceNode> rawSources = findAggregationSourceNode(root);
+
+    // Step 1: construct SeriesAggregationSourceNode for each data region of one Path
+    for (SeriesAggregationSourceNode child : rawSources) {
+      regionCountPerSeries.put(
+          child.getPartitionPath(),
+          constructAggregationSourceNodeForPerRegion(context, sources, child));
+    }
+
+    // Step 2: change step to SINGLE or PARTIAL for each SeriesAggregationSourceNode and update
+    // TypeProvider
+    for (SeriesAggregationSourceNode source : sources) {
+      boolean isSingle = regionCountPerSeries.get(source.getPartitionPath()) == 1;
+      source
+          .getAggregationDescriptorList()
+          .forEach(
+              d -> {
+                if (isSingle) {
+                  d.setStep(AggregationStep.SINGLE);
+                } else {
+                  eachSeriesOneRegion[0] = false;
+                  d.setStep(AggregationStep.PARTIAL);
+                  LogicalPlanBuilder.updateTypeProviderByPartialAggregation(
+                      d, context.queryContext.getTypeProvider());
+                }
+              });
+    }
+
+    // Step 3: group all SeriesAggregationSourceNode by each region
+    return sources.stream().collect(Collectors.groupingBy(SourceNode::getRegionReplicaSet));
+  }
+
+  private int constructAggregationSourceNodeForPerRegion(
+      DistributionPlanContext context,
+      List<SeriesAggregationSourceNode> sources,
+      SeriesAggregationSourceNode child) {
+    List<TRegionReplicaSet> dataDistribution =
+        analysis.getPartitionInfo(child.getPartitionPath(), child.getPartitionTimeFilter());
+    for (TRegionReplicaSet dataRegion : dataDistribution) {
+      SeriesAggregationSourceNode split = (SeriesAggregationSourceNode) child.clone();
+      split.setPlanNodeId(context.queryContext.getQueryId().genPlanNodeId());
+      split.setRegionReplicaSet(dataRegion);
+      // Let each split reference different object of AggregationDescriptorList
+      split.setAggregationDescriptorList(
+          child.getAggregationDescriptorList().stream()
+              .map(AggregationDescriptor::deepClone)
+              .collect(Collectors.toList()));
+      sources.add(split);
+    }
+    return dataDistribution.size();
   }
 
   private List<SeriesAggregationSourceNode> findAggregationSourceNode(PlanNode node) {
@@ -960,7 +1116,7 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
     return ret;
   }
 
-  public PlanNode visit(PlanNode node, DistributionPlanContext context) {
+  public List<PlanNode> visit(PlanNode node, DistributionPlanContext context) {
     return node.accept(this, context);
   }
 }

@@ -109,5 +109,5 @@ jobs:
       - name: Test Other Modules with Maven
         shell: bash
         if: ${{ matrix.it_task == 'others'}}
-        run: source ~/.bash_profile && mvn -B clean test -Dtest.port.closed=true -Diotdb.test.skip=true -P compile-library-udf
+        run: source ~/.bash_profile && mvn -B clean test -Dtest.port.closed=true -Diotdb.test.skip=true -P get-jar-with-dependencies
 

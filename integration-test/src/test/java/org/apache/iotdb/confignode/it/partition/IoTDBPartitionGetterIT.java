@@ -401,8 +401,8 @@ public class IoTDBPartitionGetterIT {
         String curSg = sg + i;
 
         // Get RegionIds of specified PartitionSlot
-        getRegionIdReq =
-            new TGetRegionIdReq(sg0, TConsensusGroupType.DataRegion, seriesPartitionSlot);
+        getRegionIdReq = new TGetRegionIdReq(sg0, TConsensusGroupType.DataRegion);
+        getRegionIdReq.setSeriesSlotId(seriesPartitionSlot);
         getRegionIdReq.setTimeSlotId(timePartitionSlot);
         getRegionIdResp = client.getRegionId(getRegionIdReq);
         Assert.assertEquals(

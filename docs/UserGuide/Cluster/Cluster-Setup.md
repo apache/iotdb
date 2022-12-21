@@ -19,409 +19,395 @@
 
 -->
 
-## Cluster Setup
+# 1. Purpose
 
-This article is the setup process of IoTDB Cluster (1.0.0).
+This document describes how to install and start IoTDB Cluster (1.0.0).
 
-## Environments
+# 2. Prerequisites
 
 1. JDK>=1.8.
-
 2. Max open file 65535.
-
 3. Disable the swap memory.
+4. Ensure that data/confignode directory has been cleared when starting ConfigNode for the first time,
+and data/datanode directory has been cleared when starting DataNode for the first time
+5. Turn off the firewall of the server if the entire cluster is in a trusted environment.
+6. By default, IoTDB Cluster will use ports 22277, 22278 for the ConfigNode and 
+6667, 8777, 9003, 40010 and 50010 for the DataNode. 
+Please make sure those ports are not occupied, or you will modify the ports in configuration files. 
 
-## Get the binary distribution
+# 3. Get the Installation Package
 
-### Download
+You can either download the binary release files (see Chap 3.1) or compile with source code (see Chap 3.2).
 
-Download the binary distribution from website [Download Page](https://iotdb.apache.org/Download/).
+## 3.1 Download the binary distribution
 
-### Compiled from source code
+1. Open our website [Download Page](https://iotdb.apache.org/Download/).
+2. Download the binary distribution.
+3. Decompress to get the apache-iotdb-1.0.0-all-bin directory.
 
-Download the source code:
+## 3.2 Compile with source code
 
+### 3.2.1 Download the source code
+
+**Git**
 ```
 git clone https://github.com/apache/iotdb.git
-```
-
-The default branch is master, you should checkout to the release tag:
-
-```
 git checkout v1.0.0
 ```
 
-Under the source root folder:
+**Website**
+1. Open our website [Download Page](https://iotdb.apache.org/Download/).
+2. Download the source code.
+3. Decompress to get the apache-iotdb-1.0.0 directory.
 
+### 3.2.2 Compile source code
+
+Under the source root folder:
 ```
 mvn clean package -pl distribution -am -DskipTests
 ```
 
-Then you will get the binary distribution under **distribution/target**, in which the **all-bin** contains ConfigNode and DataNode, and DataNode contains the Cli.
+Then you will get the binary distribution under 
+**distribution/target/apache-iotdb-1.0.0-SNAPSHOT-all-bin/apache-iotdb-1.0.0-SNAPSHOT-all-bin**.
 
-## Binary Distribution Content
+# 4. Binary Distribution Content
 
-| **Folder**              | **Description**                                                                            |
-|-------------------------|--------------------------------------------------------------------------------------------|
-| conf                    | Configuration files folder, contains configuration files of ConfigNode and DataNode        |
-| data                    | Data files folder, contains data files of ConfigNode and DataNode                          |       |
-| grafana-metrics-example | Grafana metric page module                                                                 |
-| lib                     | Jar files folder                                                                           |
-| licenses                | Licenses files folder                                                                      |
-| logs                    | Logs files folder, contains logs files of ConfigNode and DataNode                          |
-| sbin                    | Shell files folder, contains start/stop/remove shell of ConfigNode and DataNode, cli shell |
-| tools                   | System tools                                                                               |
+| **Folder**              | **Description**                                                                                   |
+|-------------------------|---------------------------------------------------------------------------------------------------|
+| conf                    | Configuration files folder, contains configuration files of ConfigNode, DataNode, JMX and logback |
+| data                    | Data files folder, contains data files of ConfigNode and DataNode                                 |
+| lib                     | Jar files folder                                                                                  |
+| licenses                | Licenses files folder                                                                             |
+| logs                    | Logs files folder, contains logs files of ConfigNode and DataNode                                 |
+| sbin                    | Shell files folder, contains start/stop/remove shell of ConfigNode and DataNode, cli shell        |
+| tools                   | System tools                                                                                      |
 
-## Start the Cluster
+# 5. Cluster Installation and Configuration
 
-Users could start a cluster which contains multiple ConfigNode and DataNode.
-A cluster need at least one ConfigNode and no less than the number of data/schema_replication_factor DataNodes.
+## 5.1 Cluster Installation
+
+`apache-iotdb-1.0.0-SNAPSHOT-all-bin` contains both the ConfigNode and the DataNode. 
+Please deploy the files to all servers of your target cluster. 
+A best practice is deploying the files into the same directory in all servers.
+
+If you want to try the cluster mode on one server, please read 
+[Cluster Quick Start](https://iotdb.apache.org/UserGuide/Master/QuickStart/ClusterQuickStart.html).
+
+## 5.2 Cluster Configuration
+
+We need to modify the configurations on each server.
+Therefore, login each server and switch the working directory to `apache-iotdb-1.0.0-SNAPSHOT-all-bin`.
+The configuration files are stored in the `./conf` directory.
+
+For all ConfigNode servers, we need to modify the common configuration (see Chap 5.2.1) 
+and ConfigNode configuration (see Chap 5.2.2).
+
+For all DataNode servers, we need to modify the common configuration (see Chap 5.2.1) 
+and DataNode configuration (see Chap 5.2.3).
+
+### 5.2.1 Common configuration
+
+Open the common configuration file ./conf/iotdb-common.properties,
+and set the following parameters base on the 
+[Deployment Recommendation](https://iotdb.apache.org/UserGuide/Master/Cluster/Deployment-Recommendation.html):
+
+| **Configuration**                          | **Description**                                                                                                    | **Default**                                     |
+|--------------------------------------------|--------------------------------------------------------------------------------------------------------------------|-------------------------------------------------|
+| config\_node\_consensus\_protocol\_class   | Consensus protocol of ConfigNode                                                                                   | org.apache.iotdb.consensus.ratis.RatisConsensus |
+| schema\_replication\_factor                | Schema replication factor, no more than DataNode number                                                            | 1                                               |
+| schema\_region\_consensus\_protocol\_class | Consensus protocol of schema replicas                                                                              | org.apache.iotdb.consensus.ratis.RatisConsensus |
+| data\_replication\_factor                  | Data replication factor, no more than DataNode number                                                              | 1                                               |
+| data\_region\_consensus\_protocol\_class   | Consensus protocol of data replicas. Note that RatisConsensus currently does not support multiple data directories | org.apache.iotdb.consensus.iot.IoTConsensus     |
+
+**Notice: The preceding configuration parameters cannot be changed after the cluster is started. Ensure that the common configurations of all Nodes are the same. Otherwise, the Nodes cannot be started.**
+
+### 5.2.2 ConfigNode configuration
+
+Open the ConfigNode configuration file ./conf/iotdb-confignode.properties,
+and set the following parameters based on the IP address and available port of the server or VM:
+
+| **Configuration**              | **Description**                                                                                                                          | **Default**     | **Usage**                                                                                                                                                                           |
+|--------------------------------|------------------------------------------------------------------------------------------------------------------------------------------|-----------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| cn\_internal\_address          | Internal rpc service address of ConfigNode                                                                                               | 127.0.0.1       | Set to the IPV4 address or domain name of the server                                                                                                                                |
+| cn\_internal\_port             | Internal rpc service port of ConfigNode                                                                                                  | 22277           | Set to any unoccupied port                                                                                                                                                          |
+| cn\_consensus\_port            | ConfigNode replication consensus protocol communication port                                                                             | 22278           | Set to any unoccupied port                                                                                                                                                          |
+| cn\_target\_config\_node\_list | ConfigNode address to which the node is connected when it is registered to the cluster. Note that Only one ConfigNode can be configured. | 127.0.0.1:22277 | For Seed-ConfigNode, set to its own cn\_internal\_address:cn\_internal\_port; For other ConfigNodes, set to other one running ConfigNode's cn\_internal\_address:cn\_internal\_port |
+
+**Notice: The preceding configuration parameters cannot be changed after the node is started. Ensure that all ports are not occupied. Otherwise, the Node cannot be started.**
+
+### 5.2.3 DataNode configuration
+
+Open the DataNode configuration file ./conf/iotdb-datanode.properties,
+and set the following parameters based on the IP address and available port of the server or VM:
+
+| **Configuration**                   | **Description**                                  | **Default**     | **Usage**                                                                                                                             |
+|-------------------------------------|--------------------------------------------------|-----------------|---------------------------------------------------------------------------------------------------------------------------------------|
+| dn\_rpc\_address                    | Client RPC Service address                       | 127.0.0.1       | Set to the IPV4 address or domain name of the server                                                                                  |
+| dn\_rpc\_port                       | Client RPC Service port                          | 6667            | Set to any unoccupied port                                                                                                            |
+| dn\_internal\_address               | Control flow address of DataNode inside cluster  | 127.0.0.1       | Set to the IPV4 address or domain name of the server                                                                                  |
+| dn\_internal\_port                  | Control flow port of DataNode inside cluster     | 9003            | Set to any unoccupied port                                                                                                            |
+| dn\_mpp\_data\_exchange\_port       | Data flow port of DataNode inside cluster        | 8777            | Set to any unoccupied port                                                                                                            |
+| dn\_data\_region\_consensus\_port   | Data replicas communication port for consensus   | 50010           | Set to any unoccupied port                                                                                                            |
+| dn\_schema\_region\_consensus\_port | Schema replicas communication port for consensus | 40010           | Set to any unoccupied port                                                                                                            |
+| dn\_target\_config\_node\_list      | Running ConfigNode of the Cluster                | 127.0.0.1:22277 | Set to any running ConfigNode's cn\_internal\_address:cn\_internal\_port. You can set multiple values, separate them with commas(",") |
+
+**Notice: The preceding configuration parameters cannot be changed after the node is started. Ensure that all ports are not occupied. Otherwise, the Node cannot be started.**
+
+# 6. Cluster Operation
+
+## 6.1 Starting the cluster
+
+This section describes how to start a cluster that includes several ConfigNodes and DataNodes.
+The cluster can provide services only by starting at least one ConfigNode
+and no less than the number of data/schema_replication_factor DataNodes.
 
 The total process are three steps:
 
-* Start the first ConfigNode
+* Start the Seed-ConfigNode
 * Add ConfigNode (Optional)
 * Add DataNode
 
-### Start the first ConfigNode
+### 6.1.1 Start the Seed-ConfigNode
 
-Please set the important parameters in conf/iotdb-confignode.properties and conf/iotdb-common.properties:
+**The first Node started in the cluster must be ConfigNode. The first started ConfigNode must follow the tutorial in this section.**
 
-iotdb-confignode.properties:
+The first ConfigNode to start is the Seed-ConfigNode, which marks the creation of the new cluster.
+Before start the Seed-ConfigNode, please open its configuration file ./conf/iotdb-confignode.properties and check the following parameters:
 
-| **Configuration**              | **Description**                                                                              |
-|--------------------------------|----------------------------------------------------------------------------------------------|
-| cn\_internal\_address          | Internal rpc service address of ConfigNode                                                   |
-| cn\_internal\_port             | Internal rpc service port of ConfigNode                                                      |
-| cn\_consensus\_port            | ConfigNode replication consensus protocol communication port                                 |
-| cn\_target\_config\_node\_list | Target ConfigNode address, if the current ConfigNode is the first one, then set its own address:port |
+| **Configuration**              | **Check**                                                                                           |
+|--------------------------------|-----------------------------------------------------------------------------------------------------|
+| cn\_internal\_address          | Is set to the IPV4 address or domain name of the server                                             |
+| cn\_internal\_port             | The port isn't occupied                                                                             |
+| cn\_consensus\_port            | The port isn't occupied                                                                             |
+| cn\_target\_config\_node\_list | Is set to its own internal communication address, which is cn\_internal\_address:cn\_internal\_port |
 
-iotdb-common.properties:
+After checking, you can run the startup script on the server:
 
-| **Configuration**                          | **Description**                                                                                      |
-|--------------------------------------------|------------------------------------------------------------------------------------------------------|
-| data\_replication\_factor                  | Data replication factor, no more than DataNode number                                                |
-| data\_region\_consensus\_protocol\_class   | Consensus protocol of data replicas                                                                  |
-| schema\_replication\_factor                | Schema replication factor, no more than DataNode number                                              |
-| schema\_region\_consensus\_protocol\_class | Consensus protocol of schema replicas                                                                |
-
-Start on Linux:
 ```
-# Foreground
+# Linux foreground
 bash ./sbin/start-confignode.sh
 
-# Background
+# Linux background
 nohup bash ./sbin/start-confignode.sh >/dev/null 2>&1 &
+
+# Windows
+.\sbin\start-confignode.bat
 ```
 
-Start on Windows:
+For more details about other configuration parameters of ConfigNode, see the
+[ConfigNode Configurations](https://iotdb.apache.org/UserGuide/Master/Reference/ConfigNode-Config-Manual.html).
+
+### 6.1.2 Add more ConfigNodes (Optional)
+
+**The ConfigNode who isn't the first one started must follow the tutorial in this section.**
+
+You can add more ConfigNodes to the cluster to ensure high availability of ConfigNodes.
+A common configuration is to add extra two ConfigNodes to make the cluster has three ConfigNodes.
+
+Ensure that all configuration parameters in the ./conf/iotdb-common.properites are the same as those in the Seed-ConfigNode; 
+otherwise, it may fail to start or generate runtime errors.
+
+Before start the new ConfigNode, please open its configuration file ./conf/iotdb-confignode.properties and check the following parameters:
+
+| **Configuration**              | **Check**                                                                                                                                              |
+|--------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------|
+| cn\_internal\_address          | Is set to the IPV4 address or domain name of the server                                                                                                |
+| cn\_internal\_port             | The port isn't occupied                                                                                                                                |
+| cn\_consensus\_port            | The port isn't occupied                                                                                                                                |
+| cn\_target\_config\_node\_list | Is set to the internal communication address of an other running ConfigNode. The internal communication address of the seed ConfigNode is recommended. |
+
+After checking, you can run the startup script on the server:
+
 ```
-sbin\start-confignode.bat
+# Linux foreground
+bash ./sbin/start-confignode.sh
+
+# Linux background
+nohup bash ./sbin/start-confignode.sh >/dev/null 2>&1 &
+
+# Windows
+.\sbin\start-confignode.bat
 ```
 
-More details  [ConfigNode Configurations](https://iotdb.apache.org/UserGuide/Master/Reference/ConfigNode-Config-Manual.html).
+For more details about other configuration parameters of ConfigNode, see the
+[ConfigNode Configurations](https://iotdb.apache.org/UserGuide/Master/Reference/ConfigNode-Config-Manual.html).
 
-### Add ConfigNode (Optional)
+### 6.1.3 Start DataNode
 
-This will add the replication factor of ConfigNode, except for the ports that couldn't conflict with, make sure other configurations are the same with existing ConfigNode in Cluster, and set parameter cn\_target\_config\_nodes\_list as an active ConfigNode in Cluster.
+**Before adding DataNodes, ensure that there exists at least one ConfigNode is running in the cluster.**
 
-The adding ConfigNode also use the start-confignode.sh/bat.
+You can add any number of DataNodes to the cluster.
+Before adding a new DataNode, please
+open its configuration file ./conf/iotdb-datanode.properties and check the following parameters:
 
-### Start DataNode
+| **Configuration**                   | **Check**                                                                                                                                            |
+|-------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------|
+| dn\_rpc\_address                    | Is set to the IPV4 address or domain name of the server                                                                                              |
+| dn\_rpc\_port                       | The port isn't occupied                                                                                                                              |
+| dn\_internal\_address               | Is set to the IPV4 address or domain name of the server                                                                                              |
+| dn\_internal\_port                  | The port isn't occupied                                                                                                                              |
+| dn\_mpp\_data\_exchange\_port       | The port isn't occupied                                                                                                                              |
+| dn\_data\_region\_consensus\_port   | The port isn't occupied                                                                                                                              |
+| dn\_schema\_region\_consensus\_port | The port isn't occupied                                                                                                                              |
+| dn\_target\_config\_node\_list      | Is set to the internal communication address of other running ConfigNodes. The internal communication address of the seed ConfigNode is recommended. |
 
-You could add any number of DataNode.
+After checking, you can run the startup script on the server:
 
-Please set the important parameters in iotdb-datanode.properties:
-
-| **Configuration**                   | **Description**                                  |
-|-------------------------------------|--------------------------------------------------|
-| dn\_rpc\_address                    | Client RPC Service address                       |
-| dn\_rpc\_port                       | Client RPC Service port                          |
-| dn\_internal\_address               | Control flow address of DataNode inside cluster  |
-| dn\_internal\_port                  | Control flow port of DataNode inside cluster     |
-| dn\_mpp\_data\_exchange\_port       | Data flow port of DataNode inside cluster        |
-| dn\_data\_region\_consensus\_port   | Data replicas communication port for consensus   |
-| dn\_schema\_region\_consensus\_port | Schema replicas communication port for consensus |
-| dn\_target\_config\_node\_list      | Running ConfigNode of the Cluster                |
-
-Start on Linux:
 ```
-# Foreground
+# Linux foreground
 bash ./sbin/start-datanode.sh
 
-# Background
+# Linux background
 nohup bash ./sbin/start-datanode.sh >/dev/null 2>&1 &
+
+# Windows
+.\sbin\start-datanode.bat
 ```
 
-Start on Windows:
-```
-sbin\start-datanode.bat
-```
+For more details about other configuration parameters of DataNode, see the
+[DataNode Configurations](https://iotdb.apache.org/UserGuide/Master/Reference/DataNode-Config-Manual.html).
 
-More details are in [DataNode Configurations](https://iotdb.apache.org/UserGuide/Master/Reference/DataNode-Config-Manual.html).
+**Notice: The cluster can provide services only if the number of its DataNodes is no less than the number of replicas(max{schema\_replication\_factor, data\_replication\_factor}).**
 
-### Stop IoTDB
-When you meet problem, and want to stop IoTDB ConfigNode and DataNode directly, our shells can help you do this.
+## 6.2 Start Cli
 
-In Windows:
+If the cluster is in local environment, you can directly run the Cli startup script in the ./sbin directory:
 
 ```
-sbin\stop-datanode.bat
-```
-```
-sbin\stop-confignode.bat
-```
-In Linux:
-```
-bash sbin/stop-datanode.sh
-```
-```
-bash sbin/stop-confignode.sh
-```
-Be careful not to miss the "sudo" label, because some port info's acquisition may require root authority. If you can't sudo, just
-use "jps" or "ps aux | grep iotdb" to get the process's id, then use "kill -9 <process-id>" to stop the process.  
+# Linux
+./sbin/start-cli.sh
 
-## Start StandAlone
-If you just want to setup your IoTDB locally, 
-You can quickly init 1C1D (i.e. 1 Confignode and 1 Datanode) environment by our shells.
-
-This will work well if you don't change our default settings.
-
-Start on Windows:
-```
-sbin\start-standalone.bat
-```
-Start on Linux:
-```
-bash sbin/start-standalone.sh
+# Windows
+.\sbin\start-cli.bat
 ```
 
-Besides, with our shell, you can also directly kill these processes.
+If you want to use the Cli to connect to a cluster in the production environment,
+Please read the [Cli manual](https://iotdb.apache.org/UserGuide/Master/QuickStart/Command-Line-Interface.html).
 
-Stop on Windows:
-```
-sbin\stop-standalone.bat
-```
-Stop on Linux:
-```
-bash sbin/stop-standalone.sh
-```
+## 6.3 Verify Cluster
 
-Note: On Linux, the 1C1D processes both launches in the background, and you can see the logs for details. 
+Use a 3C3D(3 ConfigNodes and 3 DataNodes) as an example.
+Assumed that the IP addresses of the 3 ConfigNodes are 192.168.1.10, 192.168.1.11 and 192.168.1.12, and the default ports 22277 and 22278 are used.
+Assumed that the IP addresses of the 3 DataNodes are 192.168.1.20, 192.168.1.21 and 192.168.1.22, and the default ports 9003, 6667, 40010, 50010 and 8777 are used.
 
-The stop-standalone.sh may not work well without sudo, since IoTDB's port numbers may be invisible without permission. 
-If stop-standalone.sh meets some error, you can use "jps" or "ps aux | grep iotdb" to obtain the process ids,
-and use "sudo kill -9 <process-id>" to manually stop the processes.
-
-## Start Cli
-
-Cli shell is in sbin folder.
-
-Start on Linux:
-```
-./datanode/sbin/start-cli.sh
-```
-
-Start on Windows:
-```
-datanode\sbin\start-cli.bat
-```
-
-## Shrink the Cluster
-
-### Remove ConfigNode
-
-Execute the remove-confignode shell on an active ConfigNode, and make sure that there is at least one active ConfigNode in Cluster after removing.
-
-Remove on Linux:
-```
-# Remove the ConfigNode with confignode_id
-./confignode/sbin/remove-confignode.sh <confignode_id>
-
-# Remove the ConfigNode with address:port
-./confignode/sbin/remove-confignode.sh <internal_address>:<internal_port>
-```
-
-Remove on Windows:
-```
-# Remove the ConfigNode with confignode_id
-confignode\sbin\remove-confignode.bat <confignode_id>
-
-# Remove the ConfigNode with address:port
-confignode\sbin\remove-confignode.bat <internal_address>:<internal_port>
-```
-
-### Remove DataNode
-
-Execute the remove-datanode shell on an active DataNode, and make sure that the number of active DataNodes are no less than the number of data/schema_replication_factor in Cluster after removing.
-
-Remove on Linux:
-```
-# Remove the DataNode with datanode_id
-bash ./datanode/sbin/remove-datanode.sh <datanode_id>
-
-# Remove the DataNode with rpc address:port
-bash ./datanode/sbin/remove-datanode.sh <rpc_address>:<rpc_port>
-```
-
-Remove on Windows:
-```
-# Remove the DataNode with datanode_id
-datanode\sbin\remove-datanode.bat <datanode_id>
-
-# Remove the DataNode with rpc address:port
-datanode\sbin\remove-datanode.bat <rpc_address>:<rpc_port>
-```
-
-## Quick Start
-
-This section uses a local environment as an example to 
-illustrate how to start, expand, and shrink a IoTDB Cluster.
-
-### 1. Prepare the Start Environment
-
-Unzip the apache-iotdb-1.0.0-all-bin.zip file to cluster0 folder.
-
-### 2. Start a Minimum Cluster
-
-Start the Cluster version with one ConfigNode and one DataNode(1C1D), and
-the default number of replicas is one.
-```
-./cluster0/sbin/start-confignode.sh
-./cluster0/sbin/start-datanode.sh
-```
-
-### 3. Verify the Minimum Cluster
-
-+ If everything goes well, the minimum cluster will start successfully. Then, we can start the Cli for verification.
-```
-./cluster0/sbin/start-cli.sh
-```
-
-+ Execute the [show cluster](https://iotdb.apache.org/UserGuide/Master/Maintenance-Tools/Maintenance-Command.html#show-all-node-information)
-  command on the Cli. The result is shown below:
-```
-IoTDB> show cluster
-+------+----------+-------+---------------+------------+
-|NodeID|  NodeType| Status|InternalAddress|InternalPort|
-+------+----------+-------+---------------+------------+
-|     0|ConfigNode|Running|      127.0.0.1|       22277|
-|     1|  DataNode|Running|      127.0.0.1|        9003|
-+------+----------+-------+---------------+------------+
-Total line number = 2
-It costs 0.160s
-```
-
-### 4. Prepare the Expanding Environment
-
-Unzip the apache-iotdb-1.0.0-all-bin.zip file to cluster1 and cluster2 folder.
-
-### 5. Modify the Node Configuration file
-
-For folder cluster1:
-
-+ Modify ConfigNode configurations:
-
-| **configuration item**         | **value**       |
-|--------------------------------|-----------------|
-| cn\_internal\_address          | 127.0.0.1       |
-| cn\_internal\_port             | 22279           |
-| cn\_consensus\_port            | 22280           |
-| cn\_target\_config\_node\_list | 127.0.0.1:22277 |
-
-+ Modify DataNode configurations:
-
-| **configuration item**              | **value**       |
-|-------------------------------------|-----------------|
-| dn\_rpc\_address                    | 127.0.0.1       |
-| dn\_rpc\_port                       | 6668            |
-| dn\_internal\_address               | 127.0.0.1       |
-| dn\_internal\_port                  | 9004            |
-| dn\_mpp\_data\_exchange\_port       | 8778            |
-| dn\_data\_region\_consensus\_port   | 40011           |
-| dn\_schema\_region\_consensus\_port | 50011           |
-| dn\_target\_config\_node\_list      | 127.0.0.1:22277 |
-
-For folder cluster2:
-
-+ Modify ConfigNode configurations:
-
-| **configuration item**         | **value**       |
-|--------------------------------|-----------------|
-| cn\_internal\_address          | 127.0.0.1       |
-| cn\_internal\_port             | 22281           |
-| cn\_consensus\_port            | 22282           |
-| cn\_target\_config\_node\_list | 127.0.0.1:22277 |
-
-+ Modify DataNode configurations:
-
-| **configuration item**              | **value**       |
-|-------------------------------------|-----------------|
-| dn\_rpc\_address                    | 127.0.0.1       |
-| dn\_rpc\_port                       | 6669            |
-| dn\_internal\_address               | 127.0.0.1       |
-| dn\_internal\_port                  | 9005            |
-| dn\_mpp\_data\_exchange\_port       | 8779            |
-| dn\_data\_region\_consensus\_port   | 40012           |
-| dn\_schema\_region\_consensus\_port | 50012           |
-| dn\_target\_config\_node\_list      | 127.0.0.1:22277 |
-
-### 6. Expanding the Cluster
-
-Expanding the Cluster to three ConfigNode and three DataNode(3C3D).
-The following commands can be executed in arbitrary order.
+After starting the cluster successfully according to chapter 6.1, you can run the `show cluster details` command on the Cli, and you will see the following results:
 
 ```
-./cluster1/sbin/start-confignode.sh
-./cluster1/sbin/start-datanode.sh
-./cluster2/sbin/start-confignode.sh
-./cluster2/sbin/start-datanode.sh
-```
-
-### 7. Verify Cluster expansion
-
-Execute the show cluster command, then the result is shown below:
-```
-IoTDB> show cluster
-+------+----------+-------+---------------+------------+
-|NodeID|  NodeType| Status|InternalAddress|InternalPort|
-+------+----------+-------+---------------+------------+
-|     0|ConfigNode|Running|      127.0.0.1|       22277|
-|     2|ConfigNode|Running|      127.0.0.1|       22279|
-|     3|ConfigNode|Running|      127.0.0.1|       22281|
-|     1|  DataNode|Running|      127.0.0.1|        9003|
-|     4|  DataNode|Running|      127.0.0.1|        9004|
-|     5|  DataNode|Running|      127.0.0.1|        9005|
-+------+----------+-------+---------------+------------+
+IoTDB> show cluster details
++------+----------+-------+---------------+------------+-------------------+------------+-------+-----------------+-------------------+-------+
+|NodeID|  NodeType| Status|InternalAddress|InternalPort|ConfigConsensusPort|  RpcAddress|RpcPort|DataConsensusPort|SchemaConsensusPort|MppPort|
++------+----------+-------+---------------+------------+-------------------+------------+-------+-----------------+-------------------+-------+
+|     0|ConfigNode|Running|   192.168.1.10|       22277|              22278|            |       |                 |                   |       |
+|     2|ConfigNode|Running|   192.168.1.11|       22277|              22278|            |       |                 |                   |       |
+|     3|ConfigNode|Running|   192.168.1.12|       22277|              22278|            |       |                 |                   |       |
+|     1|  DataNode|Running|   192.168.1.20|        9003|                   |192.168.1.20|   6667|            40010|              50010|   8777|
+|     4|  DataNode|Running|   192.168.1.21|        9003|                   |192.168.1.21|   6667|            40010|              50010|   8777|
+|     5|  DataNode|Running|   192.168.1.22|        9003|                   |192.168.1.22|   6667|            40010|              50010|   8777|
++------+----------+-------+---------------+------------+-------------------+------------+-------+-----------------+-------------------+-------+
 Total line number = 6
 It costs 0.012s
 ```
 
-### 8. Shrinking the Cluster
+If the status of all Nodes is **Running**, the cluster deployment is successful.
+Otherwise, read the run logs of the Node that fails to start and 
+check the corresponding configuration parameters.
 
-+ Remove a ConfigNode:
+## 6.4 Stop IoTDB
+
+This section describes how to manually shut down the ConfigNode or DataNode process of the IoTDB.
+
+### 6.4.1 Stop ConfigNode by script
+
+Run the stop ConfigNode script:
+
 ```
-./cluster0/sbin/remove-confignode.sh 127.0.0.1:22279
+# Linux
+./sbin/stop-confignode.sh
+
+# Windows
+.\sbin\stop-confignode.bat
 ```
 
-+ Remove a DataNode:
+### 6.4.2 Stop DataNode by script
+
+Run the stop DataNode script:
+
 ```
-./cluster0/sbin/remove-datanode.sh 127.0.0.1:6668
+# Linux
+./sbin/stop-datanode.sh
+
+# Windows
+.\sbin\stop-datanode.bat
 ```
 
-### 9. Verify Cluster shrinkage
+### 6.4.3 Kill Node process
 
-Execute the show cluster command, then the result is shown below:
+Get the process number of the Node:
+
 ```
-IoTDB> show cluster
-+------+----------+-------+---------------+------------+
-|NodeID|  NodeType| Status|InternalAddress|InternalPort|
-+------+----------+-------+---------------+------------+
-|     0|ConfigNode|Running|      127.0.0.1|       22277|
-|     3|ConfigNode|Running|      127.0.0.1|       22281|
-|     1|  DataNode|Running|      127.0.0.1|        9003|
-|     5|  DataNode|Running|      127.0.0.1|        9005|
-+------+----------+-------+---------------+------------+
-Total line number = 4
-It costs 0.007s
+jps
+
+# or
+
+ps aux | grep iotdb
 ```
+
+Kill the process：
+
+```
+kill -9 <pid>
+```
+
+**Notice Some ports require root access, in which case use sudo**
+
+## 6.5 Shrink the Cluster
+
+This section describes how to remove ConfigNode or DataNode from the cluster.
+
+### 6.5.1 Remove ConfigNode
+
+Before removing a ConfigNode, ensure that there is at least one active ConfigNode in the cluster after the removal.
+Run the remove-confignode script on an active ConfigNode:
+
+```
+# Linux
+# Remove the ConfigNode with confignode_id
+./sbin/remove-confignode.sh <confignode_id>
+
+# Remove the ConfigNode with address:port
+./sbin/remove-confignode.sh <cn_internal_address>:<cn_internal_port>
+
+
+# Windows
+# Remove the ConfigNode with confignode_id
+.\sbin\remove-confignode.bat <confignode_id>
+
+# Remove the ConfigNode with address:port
+.\sbin\remove-confignode.bat <cn_internal_address>:<cn_internal_portcn_internal_port>
+```
+
+### 6.5.2 Remove DataNode
+
+Before removing a DataNode, ensure that the cluster has at least the number of data/schema replicas DataNodes.
+Run the remove-datanode script on an active DataNode:
+
+```
+# Linux
+# Remove the DataNode with datanode_id
+./sbin/remove-datanode.sh <datanode_id>
+
+# Remove the DataNode with rpc address:port
+./sbin/remove-datanode.sh <dn_rpc_address>:<dn_rpc_port>
+
+
+# Windows
+# Remove the DataNode with datanode_id
+.\sbin\remove-datanode.bat <datanode_id>
+
+# Remove the DataNode with rpc address:port
+.\sbin\remove-datanode.bat <dn_rpc_address>:<dn_rpc_port>
+```
+
+# 7. FAQ
+
+See [FAQ](https://iotdb.apache.org/UserGuide/Master/FAQ/Frequently-asked-questions.html)

@@ -21,8 +21,8 @@ package org.apache.iotdb.db.mpp.common.schematree.visitor;
 
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.commons.path.dfa.IFAState;
-import org.apache.iotdb.commons.path.dfa.IFATransition;
+import org.apache.iotdb.commons.path.fa.IFAState;
+import org.apache.iotdb.commons.path.fa.IFATransition;
 import org.apache.iotdb.db.mpp.common.schematree.node.SchemaNode;
 
 import java.util.Map;

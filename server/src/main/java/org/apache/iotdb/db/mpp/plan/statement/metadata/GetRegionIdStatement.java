@@ -34,29 +34,32 @@ import java.util.Collections;
 import java.util.List;
 
 /**
- * GET REGION statement
+ * GET REGIONID statement
  *
  * <p>Here is the syntax definition:
  *
- * <p>SHOW (DATA|SCHEMA) REGIONID OF path=prefixPath WHERE SERIESSLOTID operator_eq
- * seriesSlot=INTEGER_LITERAL (OPERATOR_AND TIMESLOTID operator_eq timeSlot=INTEGER_LITERAL)?
+ * <p>SHOW (DATA|SCHEMA) REGIONID OF path=prefixPath WHERE (SERIESSLOTID operator_eq
+ * seriesSlot=INTEGER_LITERAL|DEVICEID operator_eq deviceId=prefixPath) (OPERATOR_AND (TIMESLOTID
+ * operator_eq timeSlot=INTEGER_LITERAL| TIMESTAMP operator_eq timeStamp=INTEGER_LITERAL))?
  */
 public class GetRegionIdStatement extends Statement implements IConfigStatement {
 
   private final String storageGroup;
 
-  private final TSeriesPartitionSlot seriesSlotId;
+  private String deviceId;
+
+  private TSeriesPartitionSlot seriesSlotId;
 
   private final TConsensusGroupType partitionType;
 
   private TTimePartitionSlot timeSlotId;
 
-  public GetRegionIdStatement(
-      String storageGroup, TConsensusGroupType partitionType, TSeriesPartitionSlot seriesSlotId) {
+  private long timeStamp = -1;
+
+  public GetRegionIdStatement(String storageGroup, TConsensusGroupType partitionType) {
     super();
     this.storageGroup = storageGroup;
     this.partitionType = partitionType;
-    this.seriesSlotId = seriesSlotId;
   }
 
   public String getStorageGroup() {
@@ -71,12 +74,32 @@ public class GetRegionIdStatement extends Statement implements IConfigStatement 
     return seriesSlotId;
   }
 
+  public String getDeviceId() {
+    return deviceId;
+  }
+
   public TTimePartitionSlot getTimeSlotId() {
     return timeSlotId;
   }
 
+  public long getTimeStamp() {
+    return timeStamp;
+  }
+
   public void setTimeSlotId(TTimePartitionSlot timeSlotId) {
     this.timeSlotId = timeSlotId;
+  }
+
+  public void setSeriesSlotId(TSeriesPartitionSlot seriesSlotId) {
+    this.seriesSlotId = seriesSlotId;
+  }
+
+  public void setDeviceId(String deviceId) {
+    this.deviceId = deviceId;
+  }
+
+  public void setTimeStamp(long timeStamp) {
+    this.timeStamp = timeStamp;
   }
 
   @Override

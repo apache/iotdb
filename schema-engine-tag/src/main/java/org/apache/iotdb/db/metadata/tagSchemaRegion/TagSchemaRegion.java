@@ -42,6 +42,7 @@ import org.apache.iotdb.db.metadata.mnode.EntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
+import org.apache.iotdb.db.metadata.plan.schemaregion.impl.SchemaRegionPlanFactory;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IActivateTemplateInClusterPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.ICreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.ICreateTimeSeriesPlan;
@@ -58,8 +59,6 @@ import org.apache.iotdb.db.metadata.tagSchemaRegion.utils.ShowTimeSeriesResultUt
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.mpp.common.schematree.DeviceSchemaInfo;
 import org.apache.iotdb.db.mpp.common.schematree.MeasurementSchemaInfo;
-import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
-import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -217,7 +216,9 @@ public class TagSchemaRegion implements ISchemaRegion {
       Map<String, String> props)
       throws MetadataException {
     createTimeseries(
-        new CreateTimeSeriesPlan(path, dataType, encoding, compressor, props, null, null, null), 0);
+        SchemaRegionPlanFactory.getCreateTimeSeriesPlan(
+            path, dataType, encoding, compressor, props, null, null, null),
+        0);
   }
 
   private void createAlignedTimeSeries(
@@ -228,7 +229,7 @@ public class TagSchemaRegion implements ISchemaRegion {
       List<CompressionType> compressors)
       throws MetadataException {
     createAlignedTimeSeries(
-        new CreateAlignedTimeSeriesPlan(
+        SchemaRegionPlanFactory.getCreateAlignedTimeSeriesPlan(
             prefixPath, measurements, dataTypes, encodings, compressors, null, null, null));
   }
 
@@ -672,7 +673,7 @@ public class TagSchemaRegion implements ISchemaRegion {
   }
 
   @Override
-  public void upsertTagsAndAttributes(
+  public void upsertAliasAndTagsAndAttributes(
       String alias,
       Map<String, String> tagsMap,
       Map<String, String> attributesMap,

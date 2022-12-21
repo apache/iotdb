@@ -717,35 +717,29 @@ public class ConfigNodeDescriptor {
                     String.valueOf(conf.getRatisFirstElectionTimeoutMaxMs()))
                 .trim()));
 
-    conf.setConfigNodeRatisLogMaxMB(
+    conf.setConfigNodeRatisLogMax(
         Long.parseLong(
-                properties
-                    .getProperty(
-                        "config_node_ratis_log_max_size_mb",
-                        String.valueOf(conf.getConfigNodeRatisLogMaxMB()))
-                    .trim())
-            / 1024
-            / 1024);
+            properties
+                .getProperty(
+                    "config_node_ratis_log_max_size",
+                    String.valueOf(conf.getConfigNodeRatisLogMax()))
+                .trim()));
 
-    conf.setSchemaRegionRatisLogMaxMB(
+    conf.setSchemaRegionRatisLogMax(
         Long.parseLong(
-                properties
-                    .getProperty(
-                        "schema_region_ratis_log_max_size_mb",
-                        String.valueOf(conf.getSchemaRegionRatisLogMaxMB()))
-                    .trim())
-            / 1024
-            / 1024);
+            properties
+                .getProperty(
+                    "schema_region_ratis_log_max_size",
+                    String.valueOf(conf.getSchemaRegionRatisLogMax()))
+                .trim()));
 
-    conf.setDataRegionRatisLogMaxMB(
+    conf.setDataRegionRatisLogMax(
         Long.parseLong(
-                properties
-                    .getProperty(
-                        "data_region_ratis_log_max_size_mb",
-                        String.valueOf(conf.getDataRegionRatisLogMaxMB()))
-                    .trim())
-            / 1024
-            / 1024);
+            properties
+                .getProperty(
+                    "data_region_ratis_log_max_size",
+                    String.valueOf(conf.getDataRegionRatisLogMax()))
+                .trim()));
   }
 
   private void loadCQConfig(Properties properties) {
@@ -785,6 +779,8 @@ public class ConfigNodeDescriptor {
 
   /**
    * Check if the current ConfigNode is SeedConfigNode.
+   *
+   * <p>Notice: Only invoke this interface when first startup.
    *
    * @return True if the target_config_node_list points to itself
    */

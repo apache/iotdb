@@ -29,20 +29,19 @@ import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
-import org.apache.iotdb.db.engine.StorageEngineV2;
+import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.cache.BloomFilterCache;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.flush.FlushManager;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.localconfignode.LocalConfigNode;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
-import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.db.wal.WALManager;
 import org.apache.iotdb.jdbc.Config;
-import org.junit.Assert;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -111,7 +110,7 @@ public class EnvironmentUtils {
     FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
 
     // clean database manager
-    StorageEngineV2.getInstance().reset();
+    StorageEngine.getInstance().reset();
     CommonDescriptor.getInstance().getConfig().setNodeStatus(NodeStatus.Running);
 
     // clean wal
@@ -123,7 +122,7 @@ public class EnvironmentUtils {
       BloomFilterCache.getInstance().clear();
     }
     // close metadata
-    IoTDB.configManager.clear();
+    LocalConfigNode.getInstance().clear();
     MetricService.getInstance().stop();
     // delete all directory
     cleanAllDir();
@@ -160,7 +159,7 @@ public class EnvironmentUtils {
 
   /** disable memory control</br> this function should be called before all code in the setup */
   public static void envSetUp() throws StartupException {
-    IoTDB.configManager.init();
+    LocalConfigNode.getInstance().init();
     createAllDir();
     IAuthorizer authorizer;
     try {
@@ -173,7 +172,7 @@ public class EnvironmentUtils {
     } catch (AuthException e) {
       throw new StartupException(e);
     }
-    StorageEngineV2.getInstance().reset();
+    StorageEngine.getInstance().reset();
     WALManager.getInstance().start();
     FlushManager.getInstance().start();
     TEST_QUERY_JOB_ID = QueryResourceManager.getInstance().assignQueryId();

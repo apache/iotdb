@@ -126,7 +126,7 @@ public class AuthorInfo implements SnapshotProcessor {
         result = getUserPermissionInfo(username);
         result.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
       } catch (AuthException e) {
-        result.setStatus(RpcUtils.getStatus(TSStatusCode.AUTHENTICATION_ERROR, e.getMessage()));
+        result.setStatus(RpcUtils.getStatus(e.getCode(), e.getMessage()));
       }
     } else {
       result = AuthUtils.generateEmptyPermissionInfoResp();
@@ -142,7 +142,7 @@ public class AuthorInfo implements SnapshotProcessor {
       }
     } catch (AuthException e) {
       logger.error("Error occurs when checking the seriesPath {} for user {}", path, username, e);
-      throw new AuthException(e);
+      throw new AuthException(e.getCode(), e);
     }
     return false;
   }
@@ -207,10 +207,12 @@ public class AuthorInfo implements SnapshotProcessor {
           authorizer.revokeRoleFromUser(roleName, userName);
           break;
         default:
-          throw new AuthException("unknown type: " + authorPlan.getAuthorType());
+          throw new AuthException(
+              TSStatusCode.UNSUPPORTED_AUTH_OPERATION,
+              "unknown type: " + authorPlan.getAuthorType());
       }
     } catch (AuthException e) {
-      return RpcUtils.getStatus(TSStatusCode.AUTHENTICATION_ERROR, e.getMessage());
+      return RpcUtils.getStatus(e.getCode(), e.getMessage());
     }
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }
@@ -220,18 +222,13 @@ public class AuthorInfo implements SnapshotProcessor {
     Map<String, List<String>> permissionInfo = new HashMap<>();
     List<String> userList = authorizer.listAllUsers();
     if (!plan.getRoleName().isEmpty()) {
-      Role role;
-      try {
-        role = authorizer.getRole(plan.getRoleName());
-        if (role == null) {
-          result.setStatus(
-              RpcUtils.getStatus(
-                  TSStatusCode.ROLE_NOT_EXIST, "No such role : " + plan.getRoleName()));
-          result.setPermissionInfo(permissionInfo);
-          return result;
-        }
-      } catch (AuthException e) {
-        throw new AuthException(e);
+      Role role = authorizer.getRole(plan.getRoleName());
+      if (role == null) {
+        result.setStatus(
+            RpcUtils.getStatus(
+                TSStatusCode.ROLE_NOT_EXIST, "No such role : " + plan.getRoleName()));
+        result.setPermissionInfo(permissionInfo);
+        return result;
       }
       Iterator<String> itr = userList.iterator();
       while (itr.hasNext()) {
@@ -255,22 +252,15 @@ public class AuthorInfo implements SnapshotProcessor {
     if (plan.getUserName().isEmpty()) {
       roleList.addAll(authorizer.listAllRoles());
     } else {
-      User user;
-      try {
-        user = authorizer.getUser(plan.getUserName());
-        if (user == null) {
-          result.setStatus(
-              RpcUtils.getStatus(
-                  TSStatusCode.USER_NOT_EXIST, "No such user : " + plan.getUserName()));
-          result.setPermissionInfo(permissionInfo);
-          return result;
-        }
-      } catch (AuthException e) {
-        throw new AuthException(e);
+      User user = authorizer.getUser(plan.getUserName());
+      if (user == null) {
+        result.setStatus(
+            RpcUtils.getStatus(
+                TSStatusCode.USER_NOT_EXIST, "No such user : " + plan.getUserName()));
+        result.setPermissionInfo(permissionInfo);
+        return result;
       }
-      for (String roleN : user.getRoleList()) {
-        roleList.add(roleN);
-      }
+      roleList.addAll(user.getRoleList());
     }
 
     permissionInfo.put(IoTDBConstant.COLUMN_ROLE, roleList);
@@ -282,18 +272,12 @@ public class AuthorInfo implements SnapshotProcessor {
   public PermissionInfoResp executeListRolePrivileges(AuthorPlan plan) throws AuthException {
     PermissionInfoResp result = new PermissionInfoResp();
     Map<String, List<String>> permissionInfo = new HashMap<>();
-    Role role;
-    try {
-      role = authorizer.getRole(plan.getRoleName());
-      if (role == null) {
-        result.setStatus(
-            RpcUtils.getStatus(
-                TSStatusCode.ROLE_NOT_EXIST, "No such role : " + plan.getRoleName()));
-        result.setPermissionInfo(permissionInfo);
-        return result;
-      }
-    } catch (AuthException e) {
-      throw new AuthException(e);
+    Role role = authorizer.getRole(plan.getRoleName());
+    if (role == null) {
+      result.setStatus(
+          RpcUtils.getStatus(TSStatusCode.ROLE_NOT_EXIST, "No such role : " + plan.getRoleName()));
+      result.setPermissionInfo(permissionInfo);
+      return result;
     }
     Set<String> rolePrivilegesSet = new HashSet<>();
     for (PathPrivilege pathPrivilege : role.getPrivilegeList()) {
@@ -317,18 +301,12 @@ public class AuthorInfo implements SnapshotProcessor {
   public PermissionInfoResp executeListUserPrivileges(AuthorPlan plan) throws AuthException {
     PermissionInfoResp result = new PermissionInfoResp();
     Map<String, List<String>> permissionInfo = new HashMap<>();
-    User user;
-    try {
-      user = authorizer.getUser(plan.getUserName());
-      if (user == null) {
-        result.setStatus(
-            RpcUtils.getStatus(
-                TSStatusCode.USER_NOT_EXIST, "No such user : " + plan.getUserName()));
-        result.setPermissionInfo(permissionInfo);
-        return result;
-      }
-    } catch (AuthException e) {
-      throw new AuthException(e);
+    User user = authorizer.getUser(plan.getUserName());
+    if (user == null) {
+      result.setStatus(
+          RpcUtils.getStatus(TSStatusCode.USER_NOT_EXIST, "No such user : " + plan.getUserName()));
+      result.setPermissionInfo(permissionInfo);
+      return result;
     }
     List<String> userPrivilegesList = new ArrayList<>();
 

@@ -206,7 +206,7 @@ public class ChunkHeader {
   public static Pair<CompressionType, TSEncoding> deserializeCompressionTypeAndEncoding(
       InputStream inputStream) throws IOException {
     ReadWriteForEncodingUtils.readUnsignedVarInt(inputStream);
-    inputStream.skip(Byte.BYTES); // skip Data type
+    ReadWriteIOUtils.skip(inputStream, Byte.BYTES); // skip Data type
     CompressionType type = ReadWriteIOUtils.readCompressionType(inputStream);
     TSEncoding encoding = ReadWriteIOUtils.readEncoding(inputStream);
     return new Pair<>(type, encoding);

@@ -25,12 +25,10 @@ import org.apache.iotdb.commons.auth.authorizer.BasicAuthorizer;
 import org.apache.iotdb.commons.auth.authorizer.IAuthorizer;
 import org.apache.iotdb.commons.auth.entity.Role;
 import org.apache.iotdb.commons.auth.entity.User;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
 import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
 import org.apache.iotdb.db.mpp.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.mpp.plan.statement.sys.AuthorStatement;
-import org.apache.iotdb.rpc.ConfigNodeConnectionException;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
@@ -53,22 +51,16 @@ public class AuthorizerManager implements IAuthorizer {
 
   private static final Logger logger = LoggerFactory.getLogger(AuthorizerManager.class);
 
-  private IAuthorizer iAuthorizer;
-  private ReentrantReadWriteLock authReadWriteLock;
-  private IoTDBDescriptor conf = IoTDBDescriptor.getInstance();
+  private final ReentrantReadWriteLock authReadWriteLock = new ReentrantReadWriteLock();
+  private IAuthorizer authorizer;
   private IAuthorityFetcher authorityFetcher;
 
   public AuthorizerManager() {
     try {
-      iAuthorizer = BasicAuthorizer.getInstance();
-      authReadWriteLock = new ReentrantReadWriteLock();
-      if (conf.getConfig().isClusterMode()) {
-        authorityFetcher = new ClusterAuthorityFetcher(new BasicAuthorityCache());
-      } else {
-        authorityFetcher = new StandaloneAuthorityFetcher();
-      }
+      authorizer = BasicAuthorizer.getInstance();
+      authorityFetcher = new ClusterAuthorityFetcher(new BasicAuthorityCache());
     } catch (AuthException e) {
-      logger.error(e.getMessage());
+      logger.error("Failed to initial AuthorizerManager", e);
     }
   }
 
@@ -76,7 +68,9 @@ public class AuthorizerManager implements IAuthorizer {
   private static class AuthorizerManagerHolder {
     private static final AuthorizerManager INSTANCE = new AuthorizerManager();
 
-    private AuthorizerManagerHolder() {}
+    private AuthorizerManagerHolder() {
+      // Empty constructor
+    }
   }
 
   public static AuthorizerManager getInstance() {
@@ -87,7 +81,7 @@ public class AuthorizerManager implements IAuthorizer {
   public boolean login(String username, String password) throws AuthException {
     authReadWriteLock.readLock().lock();
     try {
-      return iAuthorizer.login(username, password);
+      return authorizer.login(username, password);
     } finally {
       authReadWriteLock.readLock().unlock();
     }
@@ -97,7 +91,7 @@ public class AuthorizerManager implements IAuthorizer {
   public void createUser(String username, String password) throws AuthException {
     authReadWriteLock.writeLock().lock();
     try {
-      iAuthorizer.createUser(username, password);
+      authorizer.createUser(username, password);
     } finally {
       authReadWriteLock.writeLock().unlock();
     }
@@ -107,7 +101,7 @@ public class AuthorizerManager implements IAuthorizer {
   public void deleteUser(String username) throws AuthException {
     authReadWriteLock.writeLock().lock();
     try {
-      iAuthorizer.deleteUser(username);
+      authorizer.deleteUser(username);
     } finally {
       authReadWriteLock.writeLock().unlock();
     }
@@ -118,7 +112,7 @@ public class AuthorizerManager implements IAuthorizer {
       throws AuthException {
     authReadWriteLock.writeLock().lock();
     try {
-      iAuthorizer.grantPrivilegeToUser(username, path, privilegeId);
+      authorizer.grantPrivilegeToUser(username, path, privilegeId);
     } finally {
       authReadWriteLock.writeLock().unlock();
     }
@@ -129,7 +123,7 @@ public class AuthorizerManager implements IAuthorizer {
       throws AuthException {
     authReadWriteLock.writeLock().lock();
     try {
-      iAuthorizer.revokePrivilegeFromUser(username, path, privilegeId);
+      authorizer.revokePrivilegeFromUser(username, path, privilegeId);
     } finally {
       authReadWriteLock.writeLock().unlock();
     }
@@ -139,7 +133,7 @@ public class AuthorizerManager implements IAuthorizer {
   public void createRole(String roleName) throws AuthException {
     authReadWriteLock.writeLock().lock();
     try {
-      iAuthorizer.createRole(roleName);
+      authorizer.createRole(roleName);
     } finally {
       authReadWriteLock.writeLock().unlock();
     }
@@ -149,7 +143,7 @@ public class AuthorizerManager implements IAuthorizer {
   public void deleteRole(String roleName) throws AuthException {
     authReadWriteLock.writeLock().lock();
     try {
-      iAuthorizer.deleteRole(roleName);
+      authorizer.deleteRole(roleName);
     } finally {
       authReadWriteLock.writeLock().unlock();
     }
@@ -160,7 +154,7 @@ public class AuthorizerManager implements IAuthorizer {
       throws AuthException {
     authReadWriteLock.writeLock().lock();
     try {
-      iAuthorizer.grantPrivilegeToRole(roleName, path, privilegeId);
+      authorizer.grantPrivilegeToRole(roleName, path, privilegeId);
     } finally {
       authReadWriteLock.writeLock().unlock();
     }
@@ -171,7 +165,7 @@ public class AuthorizerManager implements IAuthorizer {
       throws AuthException {
     authReadWriteLock.writeLock().lock();
     try {
-      iAuthorizer.revokePrivilegeFromRole(roleName, path, privilegeId);
+      authorizer.revokePrivilegeFromRole(roleName, path, privilegeId);
     } finally {
       authReadWriteLock.writeLock().unlock();
     }
@@ -181,7 +175,7 @@ public class AuthorizerManager implements IAuthorizer {
   public void grantRoleToUser(String roleName, String username) throws AuthException {
     authReadWriteLock.writeLock().lock();
     try {
-      iAuthorizer.grantRoleToUser(roleName, username);
+      authorizer.grantRoleToUser(roleName, username);
     } finally {
       authReadWriteLock.writeLock().unlock();
     }
@@ -191,7 +185,7 @@ public class AuthorizerManager implements IAuthorizer {
   public void revokeRoleFromUser(String roleName, String username) throws AuthException {
     authReadWriteLock.writeLock().lock();
     try {
-      iAuthorizer.revokeRoleFromUser(roleName, username);
+      authorizer.revokeRoleFromUser(roleName, username);
     } finally {
       authReadWriteLock.writeLock().unlock();
     }
@@ -201,7 +195,7 @@ public class AuthorizerManager implements IAuthorizer {
   public Set<Integer> getPrivileges(String username, String path) throws AuthException {
     authReadWriteLock.readLock().lock();
     try {
-      return iAuthorizer.getPrivileges(username, path);
+      return authorizer.getPrivileges(username, path);
     } finally {
       authReadWriteLock.readLock().unlock();
     }
@@ -211,7 +205,7 @@ public class AuthorizerManager implements IAuthorizer {
   public void updateUserPassword(String username, String newPassword) throws AuthException {
     authReadWriteLock.writeLock().lock();
     try {
-      iAuthorizer.updateUserPassword(username, newPassword);
+      authorizer.updateUserPassword(username, newPassword);
     } finally {
       authReadWriteLock.writeLock().unlock();
     }
@@ -222,7 +216,7 @@ public class AuthorizerManager implements IAuthorizer {
       throws AuthException {
     authReadWriteLock.readLock().lock();
     try {
-      return iAuthorizer.checkUserPrivileges(username, path, privilegeId);
+      return authorizer.checkUserPrivileges(username, path, privilegeId);
     } finally {
       authReadWriteLock.readLock().unlock();
     }
@@ -230,14 +224,14 @@ public class AuthorizerManager implements IAuthorizer {
 
   @Override
   public void reset() throws AuthException {
-    iAuthorizer.reset();
+    authorizer.reset();
   }
 
   @Override
   public List<String> listAllUsers() {
     authReadWriteLock.readLock().lock();
     try {
-      return iAuthorizer.listAllUsers();
+      return authorizer.listAllUsers();
     } finally {
       authReadWriteLock.readLock().unlock();
     }
@@ -247,7 +241,7 @@ public class AuthorizerManager implements IAuthorizer {
   public List<String> listAllRoles() {
     authReadWriteLock.readLock().lock();
     try {
-      return iAuthorizer.listAllRoles();
+      return authorizer.listAllRoles();
     } finally {
       authReadWriteLock.readLock().unlock();
     }
@@ -257,7 +251,7 @@ public class AuthorizerManager implements IAuthorizer {
   public Role getRole(String roleName) throws AuthException {
     authReadWriteLock.readLock().lock();
     try {
-      return iAuthorizer.getRole(roleName);
+      return authorizer.getRole(roleName);
     } finally {
       authReadWriteLock.readLock().unlock();
     }
@@ -267,7 +261,7 @@ public class AuthorizerManager implements IAuthorizer {
   public User getUser(String username) throws AuthException {
     authReadWriteLock.readLock().lock();
     try {
-      return iAuthorizer.getUser(username);
+      return authorizer.getUser(username);
     } finally {
       authReadWriteLock.readLock().unlock();
     }
@@ -277,7 +271,7 @@ public class AuthorizerManager implements IAuthorizer {
   public boolean isUserUseWaterMark(String userName) throws AuthException {
     authReadWriteLock.readLock().lock();
     try {
-      return iAuthorizer.isUserUseWaterMark(userName);
+      return authorizer.isUserUseWaterMark(userName);
     } finally {
       authReadWriteLock.readLock().unlock();
     }
@@ -287,7 +281,7 @@ public class AuthorizerManager implements IAuthorizer {
   public void setUserUseWaterMark(String userName, boolean useWaterMark) throws AuthException {
     authReadWriteLock.readLock().lock();
     try {
-      iAuthorizer.setUserUseWaterMark(userName, useWaterMark);
+      authorizer.setUserUseWaterMark(userName, useWaterMark);
     } finally {
       authReadWriteLock.readLock().unlock();
     }
@@ -297,7 +291,7 @@ public class AuthorizerManager implements IAuthorizer {
   public Map<String, Boolean> getAllUserWaterMarkStatus() {
     authReadWriteLock.readLock().lock();
     try {
-      return iAuthorizer.getAllUserWaterMarkStatus();
+      return authorizer.getAllUserWaterMarkStatus();
     } finally {
       authReadWriteLock.readLock().unlock();
     }
@@ -307,7 +301,7 @@ public class AuthorizerManager implements IAuthorizer {
   public Map<String, User> getAllUsers() {
     authReadWriteLock.readLock().lock();
     try {
-      return iAuthorizer.getAllUsers();
+      return authorizer.getAllUsers();
     } finally {
       authReadWriteLock.readLock().unlock();
     }
@@ -317,7 +311,7 @@ public class AuthorizerManager implements IAuthorizer {
   public Map<String, Role> getAllRoles() {
     authReadWriteLock.readLock().lock();
     try {
-      return iAuthorizer.getAllRoles();
+      return authorizer.getAllRoles();
     } finally {
       authReadWriteLock.readLock().unlock();
     }
@@ -327,7 +321,7 @@ public class AuthorizerManager implements IAuthorizer {
   public void replaceAllUsers(Map<String, User> users) throws AuthException {
     authReadWriteLock.readLock().lock();
     try {
-      iAuthorizer.replaceAllUsers(users);
+      authorizer.replaceAllUsers(users);
     } finally {
       authReadWriteLock.readLock().unlock();
     }
@@ -337,7 +331,7 @@ public class AuthorizerManager implements IAuthorizer {
   public void replaceAllRoles(Map<String, Role> roles) throws AuthException {
     authReadWriteLock.readLock().lock();
     try {
-      iAuthorizer.replaceAllRoles(roles);
+      authorizer.replaceAllRoles(roles);
     } finally {
       authReadWriteLock.readLock().unlock();
     }
@@ -347,7 +341,7 @@ public class AuthorizerManager implements IAuthorizer {
   public boolean processTakeSnapshot(File snapshotDir) throws TException, IOException {
     authReadWriteLock.writeLock().lock();
     try {
-      return iAuthorizer.processTakeSnapshot(snapshotDir);
+      return authorizer.processTakeSnapshot(snapshotDir);
     } finally {
       authReadWriteLock.writeLock().unlock();
     }
@@ -357,7 +351,7 @@ public class AuthorizerManager implements IAuthorizer {
   public void processLoadSnapshot(File snapshotDir) throws TException, IOException {
     authReadWriteLock.writeLock().lock();
     try {
-      iAuthorizer.processLoadSnapshot(snapshotDir);
+      authorizer.processLoadSnapshot(snapshotDir);
     } finally {
       authReadWriteLock.writeLock().unlock();
     }
@@ -374,7 +368,7 @@ public class AuthorizerManager implements IAuthorizer {
   }
 
   /** Check the user */
-  public TSStatus checkUser(String username, String password) throws ConfigNodeConnectionException {
+  public TSStatus checkUser(String username, String password) {
     authReadWriteLock.readLock().lock();
     try {
       return authorityFetcher.checkUser(username, password);

@@ -22,30 +22,31 @@ import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.udf.service.UDFManagementService;
 import org.apache.iotdb.db.auth.AuthorizerManager;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.constant.TestConstant;
-import org.apache.iotdb.db.engine.StorageEngineV2;
+import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.cache.BloomFilterCache;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
+import org.apache.iotdb.db.engine.flush.FlushManager;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.localconfignode.LocalConfigNode;
 import org.apache.iotdb.db.metadata.idtable.IDTableManager;
 import org.apache.iotdb.db.metadata.idtable.entry.DeviceIDFactory;
+import org.apache.iotdb.db.metadata.schemaregion.SchemaEngine;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
-import org.apache.iotdb.db.query.control.QueryTimeManager;
-import org.apache.iotdb.db.query.executor.LastQueryExecutor;
 import org.apache.iotdb.db.rescon.MemTableManager;
 import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
 import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.db.rescon.TsFileResourceManager;
-import org.apache.iotdb.db.service.NewIoTDB;
 import org.apache.iotdb.db.sync.common.LocalSyncInfoFetcher;
 import org.apache.iotdb.db.wal.WALManager;
 import org.apache.iotdb.db.wal.recover.WALRecoverManager;
@@ -90,8 +91,6 @@ public class EnvironmentUtils {
 
   private static final long oldGroupSizeInByte = config.getMemtableSizeThreshold();
 
-  private static NewIoTDB daemon;
-
   private static TConfiguration tConfiguration = TConfigurationConst.defaultTConfiguration;
 
   public static boolean examinePorts =
@@ -111,10 +110,6 @@ public class EnvironmentUtils {
     }
 
     logger.debug("EnvironmentUtil cleanEnv...");
-    if (daemon != null) {
-      daemon.stop();
-      daemon = null;
-    }
     QueryResourceManager.getInstance().endQuery(TEST_QUERY_JOB_ID);
 
     // clear opened file streams
@@ -141,7 +136,11 @@ public class EnvironmentUtils {
     WALManager.getInstance().clear();
     WALRecoverManager.getInstance().clear();
 
-    StorageEngineV2.getInstance().stop();
+    StorageEngine.getInstance().stop();
+
+    SchemaEngine.getInstance().clear();
+    LocalConfigNode.getInstance().clear();
+    FlushManager.getInstance().stop();
 
     CommonDescriptor.getInstance().getConfig().setNodeStatus(NodeStatus.Running);
     // We must disable MQTT service as it will cost a lot of time to be shutdown, which may slow our
@@ -154,10 +153,6 @@ public class EnvironmentUtils {
       TimeSeriesMetadataCache.getInstance().clear();
       BloomFilterCache.getInstance().clear();
     }
-    // close metadata
-    NewIoTDB.configManager.clear();
-
-    QueryTimeManager.getInstance().clear();
 
     // close array manager
     PrimitiveArrayManager.close();
@@ -174,11 +169,15 @@ public class EnvironmentUtils {
     // clear id table manager
     IDTableManager.getInstance().clear();
 
-    // clear last query executor
-    LastQueryExecutor.clear();
-
     // clear SyncLogger
     LocalSyncInfoFetcher.getInstance().close();
+
+    // sleep to wait other background threads to exit
+    try {
+      TimeUnit.MILLISECONDS.sleep(100);
+    } catch (InterruptedException e) {
+      throw new RuntimeException(e);
+    }
 
     // delete all directory
     cleanAllDir();
@@ -282,17 +281,22 @@ public class EnvironmentUtils {
     config.setAvgSeriesPointNumberThreshold(Integer.MAX_VALUE);
     // use async wal mode in test
     config.setAvgSeriesPointNumberThreshold(Integer.MAX_VALUE);
-    if (daemon == null) {
-      daemon = new NewIoTDB();
-    }
-    try {
-      EnvironmentUtils.daemon.active(true);
-    } catch (Exception e) {
-      e.printStackTrace();
-      fail(e.getMessage());
-    }
 
     createAllDir();
+
+    LocalConfigNode.getInstance().init();
+
+    StorageEngine.getInstance().start();
+
+    SchemaEngine.getInstance().init();
+
+    CompactionTaskManager.getInstance().start();
+
+    try {
+      FlushManager.getInstance().start();
+    } catch (StartupException e) {
+      throw new RuntimeException(e);
+    }
 
     // reset id method
     DeviceIDFactory.getInstance().reset();
@@ -301,37 +305,17 @@ public class EnvironmentUtils {
     TEST_QUERY_CONTEXT = new QueryContext(TEST_QUERY_JOB_ID);
   }
 
-  public static void stopDaemon() {
-    if (daemon != null) {
-      daemon.stop();
-    }
-  }
+  public static void stopDaemon() {}
 
-  public static void shutdownDaemon() throws Exception {
-    if (daemon != null) {
-      daemon.shutdown();
-    }
-  }
+  public static void shutdownDaemon() throws Exception {}
 
-  public static void activeDaemon() {
-    if (daemon != null) {
-      daemon.active(true);
-    }
-  }
+  public static void activeDaemon() {}
 
-  public static void reactiveDaemon() {
-    if (daemon == null) {
-      daemon = new NewIoTDB();
-      daemon.active(true);
-    } else {
-      activeDaemon();
-    }
-  }
+  public static void reactiveDaemon() {}
 
   public static void restartDaemon() throws Exception {
     shutdownDaemon();
     stopDaemon();
-    NewIoTDB.configManager.clear();
     IDTableManager.getInstance().clear();
     TsFileResourceManager.getInstance().clear();
     WALManager.getInstance().clear();

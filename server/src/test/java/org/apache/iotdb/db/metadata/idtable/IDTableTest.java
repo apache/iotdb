@@ -101,7 +101,7 @@ package org.apache.iotdb.db.metadata.idtable;
 //
 //  @Test
 //  public void testCreateAlignedTimeseriesAndInsert() {
-//    LocalSchemaProcessor schemaProcessor = IoTDB.schemaProcessor;
+//    LocalSchemaProcessor schemaProcessor = LocalSchemaProcessor.getInstance();
 //
 //    try {
 //      schemaProcessor.setStorageGroup(new PartialPath("root.laptop"));
@@ -184,7 +184,7 @@ package org.apache.iotdb.db.metadata.idtable;
 //
 //  @Test
 //  public void testCreateAlignedTimeseriesAndInsertNotAlignedData() {
-//    LocalSchemaProcessor schemaProcessor = IoTDB.schemaProcessor;
+//    LocalSchemaProcessor schemaProcessor = LocalSchemaProcessor.getInstance();
 //
 //    try {
 //      schemaProcessor.setStorageGroup(new PartialPath("root.laptop"));
@@ -251,7 +251,7 @@ package org.apache.iotdb.db.metadata.idtable;
 //
 //  @Test
 //  public void testCreateTimeseriesAndInsert() {
-//    LocalSchemaProcessor schemaProcessor = IoTDB.schemaProcessor;
+//    LocalSchemaProcessor schemaProcessor = LocalSchemaProcessor.getInstance();
 //    try {
 //      schemaProcessor.setStorageGroup(new PartialPath("root.laptop"));
 //      schemaProcessor.createTimeseries(
@@ -307,7 +307,7 @@ package org.apache.iotdb.db.metadata.idtable;
 //
 //  @Test
 //  public void testCreateTimeseriesAndInsertWithAlignedData() {
-//    LocalSchemaProcessor schemaProcessor = IoTDB.schemaProcessor;
+//    LocalSchemaProcessor schemaProcessor = LocalSchemaProcessor.getInstance();
 //    try {
 //      schemaProcessor.setStorageGroup(new PartialPath("root.laptop"));
 //      schemaProcessor.createTimeseries(
@@ -361,7 +361,7 @@ package org.apache.iotdb.db.metadata.idtable;
 //
 //  @Test
 //  public void testInsertAndAutoCreate() {
-//    LocalSchemaProcessor schemaProcessor = IoTDB.schemaProcessor;
+//    LocalSchemaProcessor schemaProcessor = LocalSchemaProcessor.getInstance();
 //    try {
 //      // construct an insertRowPlan with mismatched data type
 //      long time = 1L;
@@ -449,7 +449,7 @@ package org.apache.iotdb.db.metadata.idtable;
 //
 //  @Test
 //  public void testAlignedInsertAndAutoCreate() {
-//    LocalSchemaProcessor processor = IoTDB.schemaProcessor;
+//    LocalSchemaProcessor processor = LocalSchemaProcessor.getInstance();
 //    try {
 //      // construct an insertRowPlan with mismatched data type
 //      long time = 1L;

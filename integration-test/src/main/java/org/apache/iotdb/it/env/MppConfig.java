@@ -291,7 +291,7 @@ public class MppConfig implements BaseConfig {
   }
 
   @Override
-  public BaseConfig setRatisSnapshotTriggerThreshold(int ratisSnapshotTriggerThreshold) {
+  public BaseConfig setConfigNodeRatisSnapshotTriggerThreshold(int ratisSnapshotTriggerThreshold) {
     confignodeProperties.setProperty(
         "config_node_ratis_snapshot_trigger_threshold",
         String.valueOf(ratisSnapshotTriggerThreshold));
@@ -377,6 +377,22 @@ public class MppConfig implements BaseConfig {
   public BaseConfig setLeastDataRegionGroupNum(int leastDataRegionGroupNum) {
     confignodeProperties.setProperty(
         "least_data_region_group_num", String.valueOf(leastDataRegionGroupNum));
+    return this;
+  }
+
+  @Override
+  public BaseConfig setQueryThreadCount(int queryThreadCount) {
+    if (queryThreadCount <= 0) {
+      queryThreadCount = Runtime.getRuntime().availableProcessors();
+    }
+    confignodeProperties.setProperty("query_thread_count", String.valueOf(queryThreadCount));
+    return this;
+  }
+
+  @Override
+  public BaseConfig setDataRatisTriggerSnapshotThreshold(long threshold) {
+    confignodeProperties.setProperty(
+        "data_region_ratis_snapshot_trigger_threshold", String.valueOf(threshold));
     return this;
   }
 }

@@ -31,7 +31,6 @@ import org.apache.iotdb.db.engine.compaction.constant.InnerUnseqCompactionPerfor
 import org.apache.iotdb.db.engine.compaction.constant.InnerUnsequenceCompactionSelector;
 import org.apache.iotdb.db.engine.storagegroup.timeindex.TimeIndexLevel;
 import org.apache.iotdb.db.exception.LoadConfigurationException;
-import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
 import org.apache.iotdb.db.service.thrift.impl.ClientRPCServiceImpl;
 import org.apache.iotdb.db.service.thrift.impl.NewInfluxDBServiceImpl;
 import org.apache.iotdb.db.utils.datastructure.TVListSortAlgorithm;
@@ -317,7 +316,7 @@ public class IoTDBConfig {
   private int flushThreadCount = Runtime.getRuntime().availableProcessors();
 
   /** How many threads can concurrently execute query statement. When <= 0, use CPU core number. */
-  private int queryThreadCount = Math.max(4, Runtime.getRuntime().availableProcessors());
+  private int queryThreadCount = Runtime.getRuntime().availableProcessors();
 
   /** How many queries can be concurrently executed. When <= 0, use 1000. */
   private int maxAllowedConcurrentQueries = 1000;
@@ -530,10 +529,10 @@ public class IoTDBConfig {
   /** Set true to enable writing monitor time series. */
   private boolean enableMonitorSeriesWrite = false;
 
-  /** Cache size of {@code checkAndGetDataTypeCache} in {@link LocalSchemaProcessor}. */
+  /** Cache size of {@code checkAndGetDataTypeCache}. */
   private int schemaRegionDeviceNodeCacheSize = 10000;
 
-  /** Cache size of {@code checkAndGetDataTypeCache} in {@link LocalSchemaProcessor}. */
+  /** Cache size of {@code checkAndGetDataTypeCache}. */
   private int mRemoteSchemaCacheSize = 100000;
 
   /** Is external sort enable. */
@@ -572,7 +571,14 @@ public class IoTDBConfig {
   private boolean isClusterMode = false;
 
   /**
-   * the data node id for cluster mode, the default value -1 should be changed after join cluster
+   * The cluster name that this DataNode joined in the cluster mode. The default value "testCluster"
+   * will be changed after join cluster
+   */
+  private String clusterName = "testCluster";
+
+  /**
+   * The DataNodeId of this DataNode for cluster mode. The default value -1 will be changed after
+   * join cluster
    */
   private int dataNodeId = -1;
 
@@ -658,8 +664,8 @@ public class IoTDBConfig {
    */
   private long mergeIntervalSec = 0L;
 
-  /** The limit of compaction merge can reach per second */
-  private int compactionWriteThroughputMbPerSec = 16;
+  /** The limit of io rate can reach per second */
+  private int compactionIORatePerSec = 50;
 
   /**
    * How many thread will be set up to perform compaction, 10 by default. Set to 1 when less than or
@@ -684,6 +690,9 @@ public class IoTDBConfig {
    * statements.
    */
   private int selectIntoInsertTabletPlanRowLimit = 10000;
+
+  /** The number of threads in the thread pool that execute insert-tablet tasks. */
+  private int intoOperationExecutionThreadCount = 2;
 
   /** Default TSfile storage is in local file system */
   private FSType tsFileStorageFs = FSType.LOCAL;
@@ -1037,8 +1046,8 @@ public class IoTDBConfig {
   private long ratisFirstElectionTimeoutMinMs = 50L;
   private long ratisFirstElectionTimeoutMaxMs = 150L;
 
-  private long dataRatisLogMaxMB = 20 * 1024;
-  private long schemaRatisLogMaxMB = 2 * 1024;
+  private long dataRatisLogMax = 20L * 1024 * 1024 * 1024; // 20G
+  private long schemaRatisLogMax = 2L * 1024 * 1024 * 1024; // 2G
 
   // customizedProperties, this should be empty by default.
   private Properties customizedProperties = new Properties();
@@ -1252,6 +1261,9 @@ public class IoTDBConfig {
 
   public void setDataDirs(String[] dataDirs) {
     this.dataDirs = dataDirs;
+    // TODO(szywilliam): rewrite the logic here when ratis supports complete snapshot semantic
+    setRatisDataRegionSnapshotDir(
+        dataDirs[0] + File.separator + IoTDBConstant.SNAPSHOT_FOLDER_NAME);
   }
 
   public String getRpcAddress() {
@@ -1344,6 +1356,10 @@ public class IoTDBConfig {
 
   public String getRatisDataRegionSnapshotDir() {
     return ratisDataRegionSnapshotDir;
+  }
+
+  public void setRatisDataRegionSnapshotDir(String ratisDataRegionSnapshotDir) {
+    this.ratisDataRegionSnapshotDir = ratisDataRegionSnapshotDir;
   }
 
   public String getConsensusDir() {
@@ -1492,7 +1508,7 @@ public class IoTDBConfig {
     this.subRawQueryThreadCount = subRawQueryThreadCount;
   }
 
-  public long getMaxBytesPerQuery() {
+  public long getMaxBytesPerFragmentInstance() {
     return allocateMemoryForDataExchange / queryThreadCount;
   }
 
@@ -1902,12 +1918,20 @@ public class IoTDBConfig {
     return selectIntoInsertTabletPlanRowLimit;
   }
 
-  public int getCompactionWriteThroughputMbPerSec() {
-    return compactionWriteThroughputMbPerSec;
+  public int getIntoOperationExecutionThreadCount() {
+    return intoOperationExecutionThreadCount;
   }
 
-  public void setCompactionWriteThroughputMbPerSec(int compactionWriteThroughputMbPerSec) {
-    this.compactionWriteThroughputMbPerSec = compactionWriteThroughputMbPerSec;
+  public void setIntoOperationExecutionThreadCount(int intoOperationExecutionThreadCount) {
+    this.intoOperationExecutionThreadCount = intoOperationExecutionThreadCount;
+  }
+
+  public int getCompactionIORatePerSec() {
+    return compactionIORatePerSec;
+  }
+
+  public void setCompactionIORatePerSec(int compactionIORatePerSec) {
+    this.compactionIORatePerSec = compactionIORatePerSec;
   }
 
   public boolean isEnableMemControl() {
@@ -3060,6 +3084,14 @@ public class IoTDBConfig {
     checkMultiDirStrategyClassName();
   }
 
+  public String getClusterName() {
+    return clusterName;
+  }
+
+  public void setClusterName(String clusterName) {
+    this.clusterName = clusterName;
+  }
+
   public int getDataNodeId() {
     return dataNodeId;
   }
@@ -3564,20 +3596,20 @@ public class IoTDBConfig {
     this.ratisFirstElectionTimeoutMaxMs = ratisFirstElectionTimeoutMaxMs;
   }
 
-  public long getDataRatisLogMaxMB() {
-    return dataRatisLogMaxMB;
+  public long getDataRatisLogMax() {
+    return dataRatisLogMax;
   }
 
-  public void setDataRatisLogMaxMB(long dataRatisLogMaxMB) {
-    this.dataRatisLogMaxMB = dataRatisLogMaxMB;
+  public void setDataRatisLogMax(long dataRatisLogMax) {
+    this.dataRatisLogMax = dataRatisLogMax;
   }
 
-  public long getSchemaRatisLogMaxMB() {
-    return schemaRatisLogMaxMB;
+  public long getSchemaRatisLogMax() {
+    return schemaRatisLogMax;
   }
 
-  public void setSchemaRatisLogMaxMB(long schemaRatisLogMaxMB) {
-    this.schemaRatisLogMaxMB = schemaRatisLogMaxMB;
+  public void setSchemaRatisLogMax(long schemaRatisLogMax) {
+    this.schemaRatisLogMax = schemaRatisLogMax;
   }
 
   public boolean isEnableCompactionValidation() {

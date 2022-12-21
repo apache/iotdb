@@ -29,8 +29,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.TestConstant;
-import org.apache.iotdb.db.engine.MetadataManagerHelper;
-import org.apache.iotdb.db.engine.StorageEngineV2;
+import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.compaction.inner.InnerSpaceCompactionTask;
 import org.apache.iotdb.db.engine.compaction.log.CompactionLogger;
@@ -87,10 +86,9 @@ public class DataRegionTest {
 
   @Before
   public void setUp() throws Exception {
-    MetadataManagerHelper.initMetadata();
     EnvironmentUtils.envSetUp();
     dataRegion = new DummyDataRegion(systemDir, storageGroup);
-    StorageEngineV2.getInstance().setDataRegion(new DataRegionId(0), dataRegion);
+    StorageEngine.getInstance().setDataRegion(new DataRegionId(0), dataRegion);
     CompactionTaskManager.getInstance().start();
   }
 
@@ -98,9 +96,8 @@ public class DataRegionTest {
   public void tearDown() throws Exception {
     if (dataRegion != null) {
       dataRegion.syncDeleteDataFiles();
-      StorageEngineV2.getInstance().deleteDataRegion(new DataRegionId(0));
+      StorageEngine.getInstance().deleteDataRegion(new DataRegionId(0));
     }
-    EnvironmentUtils.cleanEnv();
     EnvironmentUtils.cleanDir(TestConstant.OUTPUT_DATA_DIR);
     CompactionTaskManager.getInstance().stop();
     EnvironmentUtils.cleanEnv();
@@ -216,7 +213,6 @@ public class DataRegionTest {
             Collections.singletonList(new PartialPath(deviceId, measurementId)),
             deviceId,
             context,
-            null,
             null);
     Assert.assertEquals(10, queryDataSource.getSeqResources().size());
     for (TsFileResource resource : queryDataSource.getSeqResources()) {
@@ -250,7 +246,6 @@ public class DataRegionTest {
             Collections.singletonList(new PartialPath(deviceId, measurementId)),
             deviceId,
             context,
-            null,
             null);
     Assert.assertEquals(0, queryDataSource.getUnseqResources().size());
   }
@@ -324,7 +319,6 @@ public class DataRegionTest {
             Collections.singletonList(new PartialPath(deviceId, measurementId)),
             deviceId,
             context,
-            null,
             null);
 
     Assert.assertEquals(2, queryDataSource.getSeqResources().size());
@@ -359,7 +353,6 @@ public class DataRegionTest {
             Collections.singletonList(new PartialPath(deviceId, measurementId)),
             deviceId,
             context,
-            null,
             null);
     Assert.assertEquals(10, queryDataSource.getSeqResources().size());
     Assert.assertEquals(10, queryDataSource.getUnseqResources().size());
@@ -403,7 +396,6 @@ public class DataRegionTest {
             Collections.singletonList(new PartialPath(deviceId, measurementId)),
             deviceId,
             context,
-            null,
             null);
     Assert.assertEquals(10, queryDataSource.getSeqResources().size());
     Assert.assertEquals(0, queryDataSource.getUnseqResources().size());
@@ -493,7 +485,6 @@ public class DataRegionTest {
             Collections.singletonList(new PartialPath(deviceId, measurementId)),
             deviceId,
             context,
-            null,
             null);
 
     Assert.assertEquals(2, queryDataSource.getSeqResources().size());
@@ -582,7 +573,6 @@ public class DataRegionTest {
             Collections.singletonList(new PartialPath(deviceId, measurementId)),
             deviceId,
             context,
-            null,
             null);
 
     Assert.assertEquals(2, queryDataSource.getSeqResources().size());
@@ -671,7 +661,6 @@ public class DataRegionTest {
             Collections.singletonList(new PartialPath(deviceId, measurementId)),
             deviceId,
             context,
-            null,
             null);
 
     Assert.assertEquals(2, queryDataSource.getSeqResources().size());
@@ -709,7 +698,6 @@ public class DataRegionTest {
             Collections.singletonList(new PartialPath("root.ln22", measurementId)),
             "root.ln22",
             context,
-            null,
             null);
     Assert.assertEquals(10, queryDataSource.getSeqResources().size());
     Assert.assertEquals(0, queryDataSource.getUnseqResources().size());
@@ -776,7 +764,6 @@ public class DataRegionTest {
             Collections.singletonList(new PartialPath(deviceId, measurementId)),
             deviceId,
             context,
-            null,
             null);
     Assert.assertEquals(2, queryDataSource.getSeqResources().size());
     for (TsFileResource resource : queryDataSource.getSeqResources()) {
@@ -821,15 +808,15 @@ public class DataRegionTest {
               0);
       CompactionTaskManager.getInstance().addTaskToWaitingQueue(task);
       Thread.sleep(20);
-      List<DataRegion> dataRegions = StorageEngineV2.getInstance().getAllDataRegions();
+      List<DataRegion> dataRegions = StorageEngine.getInstance().getAllDataRegions();
       List<DataRegion> regionsToBeDeleted = new ArrayList<>();
       for (DataRegion region : dataRegions) {
-        if (region.getStorageGroupName().equals(storageGroup)) {
+        if (region.getDatabaseName().equals(storageGroup)) {
           regionsToBeDeleted.add(region);
         }
       }
       for (DataRegion region : regionsToBeDeleted) {
-        StorageEngineV2.getInstance()
+        StorageEngine.getInstance()
             .deleteDataRegion(new DataRegionId(Integer.parseInt(region.getDataRegionId())));
       }
       Thread.sleep(500);
@@ -870,7 +857,7 @@ public class DataRegionTest {
     long preFLushInterval = config.getSeqMemtableFlushInterval();
     config.setEnableTimedFlushSeqMemtable(true);
     config.setSeqMemtableFlushInterval(5);
-    StorageEngineV2.getInstance().rebootTimedService();
+    StorageEngine.getInstance().rebootTimedService();
 
     Thread.sleep(500);
 
@@ -925,7 +912,7 @@ public class DataRegionTest {
     long preFLushInterval = config.getUnseqMemtableFlushInterval();
     config.setEnableTimedFlushUnseqMemtable(true);
     config.setUnseqMemtableFlushInterval(5);
-    StorageEngineV2.getInstance().rebootTimedService();
+    StorageEngine.getInstance().rebootTimedService();
 
     Thread.sleep(500);
 
@@ -1009,15 +996,15 @@ public class DataRegionTest {
       }
     }
 
-    List<DataRegion> dataRegions = StorageEngineV2.getInstance().getAllDataRegions();
+    List<DataRegion> dataRegions = StorageEngine.getInstance().getAllDataRegions();
     List<DataRegion> regionsToBeDeleted = new ArrayList<>();
     for (DataRegion region : dataRegions) {
-      if (region.getStorageGroupName().equals(storageGroup)) {
+      if (region.getDatabaseName().equals(storageGroup)) {
         regionsToBeDeleted.add(region);
       }
     }
     for (DataRegion region : regionsToBeDeleted) {
-      StorageEngineV2.getInstance()
+      StorageEngine.getInstance()
           .deleteDataRegion(new DataRegionId(Integer.parseInt(region.getDataRegionId())));
     }
     Thread.sleep(500);

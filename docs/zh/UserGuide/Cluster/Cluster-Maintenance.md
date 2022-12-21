@@ -316,6 +316,11 @@ Region 继承所在 DataNode 的状态，对 Region 各状态定义如下：
 
 展示一个数据分区（或一个序列槽下的所有数据分区）所在的 DataRegion:
 - `SHOW DATA REGIONID OF root.sg WHERE SERIESSLOTID=s0 (AND TIMESLOTID=t0)`
+  
+其中，”SERIESSLOTID=s0”可以被替换为”DEVICEID=xxx.xx.xx“. 这样的话，sql会自动计算对应该设备id的序列槽。
+
+同样的，"TIMESLOTID=t0"也可以被替换为"TIMESTAMP=t1"。这样，SQL会计算该时间戳对应的时间槽，也就是时间段包含该时间戳的时间槽。
+
 
 示例:
 ```
@@ -343,6 +348,8 @@ It costs 0.006s
 
 展示一个元数据分区所在的 SchemaRegion：
 - `SHOW SCHEMA REGIONID OF root.sg WHERE SERIESSLOTID=s0`
+
+同样的，”SERIESSLOTID“与”TIMESLOTID“依然是可替换的。
 
 示例:
 ```
@@ -405,4 +412,67 @@ IoTDB> show seriesslotid of root.sg
 +------------+
 Total line number = 1
 It costs 0.006s
+```
+
+## 迁移 Region
+以下 SQL 语句可以被用于手动迁移一个 region， 可用于负载均衡或其他目的。
+```
+MIGRATE REGION <Region-id> FROM <original-DataNodeId> TO <dest-DataNodeId>
+```
+示例:
+```
+IoTDB> SHOW REGIONS
++--------+------------+-------+-------------+------------+----------+----------+----------+-------+--------+
+|RegionId|        Type| Status|     Database|SeriesSlotId|TimeSlotId|DataNodeId|RpcAddress|RpcPort|    Role|
++--------+------------+-------+-------------+------------+----------+----------+----------+-------+--------+
+|       0|SchemaRegion|Running|root.test.g_0|         500|         0|         3| 127.0.0.1|   6670|  Leader|
+|       0|SchemaRegion|Running|root.test.g_0|         500|         0|         4| 127.0.0.1|   6681|Follower|
+|       0|SchemaRegion|Running|root.test.g_0|         500|         0|         5| 127.0.0.1|   6668|Follower|
+|       1|  DataRegion|Running|root.test.g_0|         183|       200|         1| 127.0.0.1|   6667|Follower|
+|       1|  DataRegion|Running|root.test.g_0|         183|       200|         3| 127.0.0.1|   6670|Follower|
+|       1|  DataRegion|Running|root.test.g_0|         183|       200|         7| 127.0.0.1|   6669|  Leader|
+|       2|  DataRegion|Running|root.test.g_0|         181|       200|         3| 127.0.0.1|   6670|  Leader|
+|       2|  DataRegion|Running|root.test.g_0|         181|       200|         4| 127.0.0.1|   6681|Follower|
+|       2|  DataRegion|Running|root.test.g_0|         181|       200|         5| 127.0.0.1|   6668|Follower|
+|       3|  DataRegion|Running|root.test.g_0|         180|       200|         1| 127.0.0.1|   6667|Follower|
+|       3|  DataRegion|Running|root.test.g_0|         180|       200|         5| 127.0.0.1|   6668|  Leader|
+|       3|  DataRegion|Running|root.test.g_0|         180|       200|         7| 127.0.0.1|   6669|Follower|
+|       4|  DataRegion|Running|root.test.g_0|         179|       200|         3| 127.0.0.1|   6670|Follower|
+|       4|  DataRegion|Running|root.test.g_0|         179|       200|         4| 127.0.0.1|   6681|  Leader|
+|       4|  DataRegion|Running|root.test.g_0|         179|       200|         7| 127.0.0.1|   6669|Follower|
+|       5|  DataRegion|Running|root.test.g_0|         179|       200|         1| 127.0.0.1|   6667|  Leader|
+|       5|  DataRegion|Running|root.test.g_0|         179|       200|         4| 127.0.0.1|   6681|Follower|
+|       5|  DataRegion|Running|root.test.g_0|         179|       200|         5| 127.0.0.1|   6668|Follower|
++--------+------------+-------+-------------+------------+----------+----------+----------+-------+--------+
+Total line number = 18
+It costs 0.161s
+
+IoTDB> MIGRATE REGION 1 FROM 3 TO 4
+Msg: The statement is executed successfully.
+
+IoTDB> SHOW REGIONS
++--------+------------+-------+-------------+------------+----------+----------+----------+-------+--------+
+|RegionId|        Type| Status|     Database|SeriesSlotId|TimeSlotId|DataNodeId|RpcAddress|RpcPort|    Role|
++--------+------------+-------+-------------+------------+----------+----------+----------+-------+--------+
+|       0|SchemaRegion|Running|root.test.g_0|         500|         0|         3| 127.0.0.1|   6670|  Leader|
+|       0|SchemaRegion|Running|root.test.g_0|         500|         0|         4| 127.0.0.1|   6681|Follower|
+|       0|SchemaRegion|Running|root.test.g_0|         500|         0|         5| 127.0.0.1|   6668|Follower|
+|       1|  DataRegion|Running|root.test.g_0|         183|       200|         1| 127.0.0.1|   6667|Follower|
+|       1|  DataRegion|Running|root.test.g_0|         183|       200|         4| 127.0.0.1|   6681|Follower|
+|       1|  DataRegion|Running|root.test.g_0|         183|       200|         7| 127.0.0.1|   6669|  Leader|
+|       2|  DataRegion|Running|root.test.g_0|         181|       200|         3| 127.0.0.1|   6670|  Leader|
+|       2|  DataRegion|Running|root.test.g_0|         181|       200|         4| 127.0.0.1|   6681|Follower|
+|       2|  DataRegion|Running|root.test.g_0|         181|       200|         5| 127.0.0.1|   6668|Follower|
+|       3|  DataRegion|Running|root.test.g_0|         180|       200|         1| 127.0.0.1|   6667|Follower|
+|       3|  DataRegion|Running|root.test.g_0|         180|       200|         5| 127.0.0.1|   6668|  Leader|
+|       3|  DataRegion|Running|root.test.g_0|         180|       200|         7| 127.0.0.1|   6669|Follower|
+|       4|  DataRegion|Running|root.test.g_0|         179|       200|         3| 127.0.0.1|   6670|Follower|
+|       4|  DataRegion|Running|root.test.g_0|         179|       200|         4| 127.0.0.1|   6681|  Leader|
+|       4|  DataRegion|Running|root.test.g_0|         179|       200|         7| 127.0.0.1|   6669|Follower|
+|       5|  DataRegion|Running|root.test.g_0|         179|       200|         1| 127.0.0.1|   6667|  Leader|
+|       5|  DataRegion|Running|root.test.g_0|         179|       200|         4| 127.0.0.1|   6681|Follower|
+|       5|  DataRegion|Running|root.test.g_0|         179|       200|         5| 127.0.0.1|   6668|Follower|
++--------+------------+-------+-------------+------------+----------+----------+----------+-------+--------+
+Total line number = 18
+It costs 0.165s
 ```

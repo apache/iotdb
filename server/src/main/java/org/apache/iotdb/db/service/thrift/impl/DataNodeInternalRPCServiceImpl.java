@@ -51,12 +51,11 @@ import org.apache.iotdb.consensus.common.response.ConsensusGenericResponse;
 import org.apache.iotdb.consensus.exception.PeerNotInConsensusGroupException;
 import org.apache.iotdb.db.auth.AuthorizerManager;
 import org.apache.iotdb.db.client.ConfigNodeInfo;
-import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.OperationType;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
-import org.apache.iotdb.db.engine.StorageEngineV2;
+import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.cache.BloomFilterCache;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
@@ -80,8 +79,6 @@ import org.apache.iotdb.db.mpp.plan.analyze.ClusterPartitionFetcher;
 import org.apache.iotdb.db.mpp.plan.analyze.ClusterSchemaFetcher;
 import org.apache.iotdb.db.mpp.plan.analyze.IPartitionFetcher;
 import org.apache.iotdb.db.mpp.plan.analyze.ISchemaFetcher;
-import org.apache.iotdb.db.mpp.plan.analyze.StandalonePartitionFetcher;
-import org.apache.iotdb.db.mpp.plan.analyze.StandaloneSchemaFetcher;
 import org.apache.iotdb.db.mpp.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.mpp.plan.execution.IQueryExecution;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
@@ -202,7 +199,6 @@ import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
 import static org.apache.iotdb.db.service.RegionMigrateService.REGION_MIGRATE_PROCESS;
-import static org.apache.iotdb.db.service.basic.ServiceProvider.QUERY_FREQUENCY_RECORDER;
 import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onQueryException;
 
 public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface {
@@ -214,26 +210,19 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   private static final Coordinator COORDINATOR = Coordinator.getInstance();
 
-  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-
   private final IPartitionFetcher PARTITION_FETCHER;
 
   private final ISchemaFetcher SCHEMA_FETCHER;
 
   private final SchemaEngine schemaEngine = SchemaEngine.getInstance();
-  private final StorageEngineV2 storageEngine = StorageEngineV2.getInstance();
+  private final StorageEngine storageEngine = StorageEngine.getInstance();
 
   private final DataNodeRegionManager regionManager = DataNodeRegionManager.getInstance();
 
   public DataNodeInternalRPCServiceImpl() {
     super();
-    if (config.isClusterMode()) {
-      PARTITION_FETCHER = ClusterPartitionFetcher.getInstance();
-      SCHEMA_FETCHER = ClusterSchemaFetcher.getInstance();
-    } else {
-      PARTITION_FETCHER = StandalonePartitionFetcher.getInstance();
-      SCHEMA_FETCHER = StandaloneSchemaFetcher.getInstance();
-    }
+    PARTITION_FETCHER = ClusterPartitionFetcher.getInstance();
+    SCHEMA_FETCHER = ClusterSchemaFetcher.getInstance();
   }
 
   @Override
@@ -241,14 +230,16 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     LOGGER.debug("receive FragmentInstance to group[{}]", req.getConsensusGroupId());
 
     // deserialize ConsensusGroupId
-    ConsensusGroupId groupId;
-    try {
-      groupId = ConsensusGroupId.Factory.createFromTConsensusGroupId(req.getConsensusGroupId());
-    } catch (Throwable t) {
-      LOGGER.warn("Deserialize ConsensusGroupId failed. ", t);
-      TSendFragmentInstanceResp resp = new TSendFragmentInstanceResp(false);
-      resp.setMessage("Deserialize ConsensusGroupId failed: " + t.getMessage());
-      return resp;
+    ConsensusGroupId groupId = null;
+    if (req.consensusGroupId != null) {
+      try {
+        groupId = ConsensusGroupId.Factory.createFromTConsensusGroupId(req.getConsensusGroupId());
+      } catch (Throwable t) {
+        LOGGER.warn("Deserialize ConsensusGroupId failed. ", t);
+        TSendFragmentInstanceResp resp = new TSendFragmentInstanceResp(false);
+        resp.setMessage("Deserialize ConsensusGroupId failed: " + t.getMessage());
+        return resp;
+      }
     }
 
     // We deserialize here instead of the underlying state machine because parallelism is possible
@@ -264,11 +255,14 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     }
 
     RegionReadExecutor executor = new RegionReadExecutor();
-    RegionExecutionResult executionResult = executor.execute(groupId, fragmentInstance);
+    RegionExecutionResult executionResult =
+        groupId == null
+            ? executor.execute(fragmentInstance)
+            : executor.execute(groupId, fragmentInstance);
     TSendFragmentInstanceResp resp = new TSendFragmentInstanceResp();
     resp.setAccepted(executionResult.isAccepted());
     resp.setMessage(executionResult.getMessage());
-
+    // TODO
     return resp;
   }
 
@@ -352,7 +346,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     }
 
     TSStatus resultStatus =
-        StorageEngineV2.getInstance()
+        StorageEngine.getInstance()
             .writeLoadTsFileNode((DataRegionId) groupId, pieceNode, req.uuid);
 
     return createTLoadResp(resultStatus);
@@ -362,7 +356,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   public TLoadResp sendLoadCommand(TLoadCommandReq req) throws TException {
 
     TSStatus resultStatus =
-        StorageEngineV2.getInstance()
+        StorageEngine.getInstance()
             .executeLoadCommand(
                 LoadTsFileScheduler.LoadCommand.values()[req.commandType], req.uuid);
     return createTLoadResp(resultStatus);
@@ -862,8 +856,6 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
         s.getGroupByTimeComponent().setLeftCRightO(true);
       }
       executedSQL = String.join(" ", s.constructFormattedSQL().split("\n")).replaceAll(" +", " ");
-
-      QUERY_FREQUENCY_RECORDER.incrementAndGet();
 
       long queryId =
           SESSION_MANAGER.requestQueryId(session, SESSION_MANAGER.requestStatementId(session));
