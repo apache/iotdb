@@ -1435,6 +1435,12 @@ public class IoTDBDescriptor {
           Long.parseLong(
               properties.getProperty(
                   "slow_query_threshold", Long.toString(conf.getSlowQueryThreshold()))));
+      // update merge_write_throughput_mb_per_sec
+      conf.setCompactionWriteThroughputMbPerSec(
+          Integer.parseInt(
+              properties.getProperty(
+                  "merge_write_throughput_mb_per_sec",
+                  Integer.toString(conf.getCompactionWriteThroughputMbPerSec()))));
 
       // update insert-tablet-plan's row limit for select-into
       conf.setSelectIntoInsertTabletPlanRowLimit(
