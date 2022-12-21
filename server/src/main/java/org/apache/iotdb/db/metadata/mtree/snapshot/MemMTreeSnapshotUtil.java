@@ -301,7 +301,7 @@ public class MemMTreeSnapshotUtil {
         throws IOException {
       ReadWriteIOUtils.write(node.getChildren().size(), outputStream);
       ReadWriteIOUtils.write(node.getName(), outputStream);
-      ReadWriteIOUtils.write(-1, outputStream); // todo template id
+      ReadWriteIOUtils.write(node.getSchemaTemplateIdWithState(), outputStream);
       ReadWriteIOUtils.write(node.isUseTemplate(), outputStream);
     }
   }
@@ -354,7 +354,7 @@ public class MemMTreeSnapshotUtil {
 
     private void deserializeInternalBasicInfo(InternalMNode node, InputStream inputStream)
         throws IOException {
-      int templateId = ReadWriteIOUtils.readInt(inputStream);
+      node.setSchemaTemplateId(ReadWriteIOUtils.readInt(inputStream));
       node.setUseTemplate(ReadWriteIOUtils.readBool(inputStream));
     }
   }

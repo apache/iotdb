@@ -154,6 +154,11 @@ public abstract class RMNode implements IMNode {
   }
 
   @Override
+  public int getSchemaTemplateIdWithState() {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
   public void setSchemaTemplateId(int schemaTemplateId) {
     throw new UnsupportedOperationException();
   }

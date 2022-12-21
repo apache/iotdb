@@ -192,6 +192,11 @@ public class InternalMNode extends MNode {
   }
 
   @Override
+  public int getSchemaTemplateIdWithState() {
+    return schemaTemplateId;
+  }
+
+  @Override
   public void setSchemaTemplateId(int schemaTemplateId) {
     this.schemaTemplateId = schemaTemplateId;
   }

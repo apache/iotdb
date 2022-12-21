@@ -19,18 +19,13 @@
 
 package org.apache.iotdb.db.mpp.execution.operator.schema;
 
-import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
-import org.apache.iotdb.db.metadata.schemaregion.SchemaEngine;
 import org.apache.iotdb.db.mpp.common.schematree.ClusterSchemaTree;
 import org.apache.iotdb.db.mpp.common.schematree.DeviceSchemaInfo;
 import org.apache.iotdb.db.mpp.common.schematree.ISchemaTree;
-import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
-import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
-import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -40,10 +35,9 @@ import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
-import org.junit.After;
 import org.junit.Assert;
-import org.junit.Before;
 import org.junit.Test;
+import org.mockito.Mockito;
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
@@ -54,19 +48,9 @@ import java.util.stream.Collectors;
 
 public class SchemaFetchScanOperatorTest {
 
-  @Before
-  public void setUp() {
-    EnvironmentUtils.envSetUp();
-  }
-
-  @After
-  public void tearDown() throws Exception {
-    EnvironmentUtils.cleanEnv();
-  }
-
   @Test
   public void testSchemaFetchResult() throws Exception {
-    ISchemaRegion schemaRegion = prepareSchemaRegion();
+    ISchemaRegion schemaRegion = mockSchemaRegion();
 
     PathPatternTree patternTree = new PathPatternTree();
     patternTree.appendPathPattern(new PartialPath("root.**.status"));
@@ -109,46 +93,58 @@ public class SchemaFetchScanOperatorTest {
         pair.left.stream().map(MeasurementPath::getFullPath).collect(Collectors.toList()));
   }
 
-  private ISchemaRegion prepareSchemaRegion() throws Exception {
-    SchemaEngine schemaEngine = SchemaEngine.getInstance();
-    SchemaRegionId schemaRegionId = new SchemaRegionId(0);
-    schemaEngine.createSchemaRegion(new PartialPath("root.sg"), schemaRegionId);
-    ISchemaRegion schemaRegion = schemaEngine.getSchemaRegion(schemaRegionId);
+  private ISchemaRegion mockSchemaRegion() throws Exception {
+    ISchemaRegion schemaRegion = Mockito.mock(ISchemaRegion.class);
 
-    CreateTimeSeriesPlan createTimeSeriesPlan =
-        new CreateTimeSeriesPlan(
+    MeasurementPath d1s1 =
+        new MeasurementPath(
             new PartialPath("root.sg.d1.s1"),
-            TSDataType.INT32,
-            TSEncoding.PLAIN,
-            CompressionType.UNCOMPRESSED,
-            null,
-            null,
-            null,
-            null);
-    schemaRegion.createTimeseries(createTimeSeriesPlan, -1);
+            new MeasurementSchema(
+                "s1", TSDataType.INT32, TSEncoding.PLAIN, CompressionType.UNCOMPRESSED, null),
+            false);
+    MeasurementPath d1s2 =
+        new MeasurementPath(
+            new PartialPath("root.sg.d1.s2"),
+            new MeasurementSchema(
+                "s2", TSDataType.INT32, TSEncoding.PLAIN, CompressionType.UNCOMPRESSED, null),
+            false);
+    d1s2.setMeasurementAlias("status");
 
-    createTimeSeriesPlan.setPath(new PartialPath("root.sg.d2.s1"));
-    schemaRegion.createTimeseries(createTimeSeriesPlan, -1);
+    MeasurementPath d2s1 =
+        new MeasurementPath(
+            new PartialPath("root.sg.d2.s1"),
+            new MeasurementSchema(
+                "s1", TSDataType.INT32, TSEncoding.PLAIN, CompressionType.UNCOMPRESSED, null),
+            false);
+    MeasurementPath d2s2 =
+        new MeasurementPath(
+            new PartialPath("root.sg.d2.s2"),
+            new MeasurementSchema(
+                "s2", TSDataType.INT32, TSEncoding.PLAIN, CompressionType.UNCOMPRESSED, null),
+            false);
+    d2s2.setMeasurementAlias("status");
 
-    createTimeSeriesPlan.setAlias("status");
-    createTimeSeriesPlan.setPath(new PartialPath("root.sg.d1.s2"));
-    schemaRegion.createTimeseries(createTimeSeriesPlan, -1);
+    MeasurementPath d2as1 =
+        new MeasurementPath(
+            new PartialPath("root.sg.d2.a.s1"),
+            new MeasurementSchema(
+                "s1", TSDataType.INT32, TSEncoding.PLAIN, CompressionType.UNCOMPRESSED, null),
+            true);
+    MeasurementPath d2as2 =
+        new MeasurementPath(
+            new PartialPath("root.sg.d2.a.s2"),
+            new MeasurementSchema(
+                "s2", TSDataType.INT32, TSEncoding.PLAIN, CompressionType.UNCOMPRESSED, null),
+            true);
+    d2as2.setMeasurementAlias("status");
 
-    createTimeSeriesPlan.setPath(new PartialPath("root.sg.d2.s2"));
-    schemaRegion.createTimeseries(createTimeSeriesPlan, -1);
-
-    CreateAlignedTimeSeriesPlan createAlignedTimeSeriesPlan =
-        new CreateAlignedTimeSeriesPlan(
-            new PartialPath("root.sg.d2.a"),
-            Arrays.asList("s1", "s2"),
-            Arrays.asList(TSDataType.INT32, TSDataType.INT32),
-            Arrays.asList(TSEncoding.PLAIN, TSEncoding.PLAIN),
-            Arrays.asList(CompressionType.UNCOMPRESSED, CompressionType.UNCOMPRESSED),
-            Arrays.asList(null, "status"),
-            Collections.emptyList(),
-            Collections.emptyList());
-
-    schemaRegion.createAlignedTimeSeries(createAlignedTimeSeriesPlan);
+    Mockito.when(
+            schemaRegion.fetchSchema(
+                new PartialPath("root.**.status"), Collections.emptyMap(), false))
+        .thenReturn(Arrays.asList(d1s2, d2as2, d2s2));
+    Mockito.when(
+            schemaRegion.fetchSchema(new PartialPath("root.**.s1"), Collections.emptyMap(), false))
+        .thenReturn(Arrays.asList(d1s1, d2as1, d2s1));
 
     return schemaRegion;
   }
