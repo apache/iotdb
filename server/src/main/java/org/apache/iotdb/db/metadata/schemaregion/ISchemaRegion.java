@@ -281,6 +281,7 @@ public interface ISchemaRegion {
    * @param isPrefixMatch if true, the path pattern is used to match prefix path
    * @param withTags whether returns tag kvs in the result list.
    */
+  @Deprecated
   List<MeasurementPath> getMeasurementPaths(
       PartialPath pathPattern, boolean isPrefixMatch, boolean withTags) throws MetadataException;
 
@@ -291,6 +292,7 @@ public interface ISchemaRegion {
    *
    * @param isPrefixMatch if true, the path pattern is used to match prefix path
    */
+  @Deprecated
   Pair<List<MeasurementPath>, Integer> getMeasurementPathsWithAlias(
       PartialPath pathPattern, int limit, int offset, boolean isPrefixMatch, boolean withTags)
       throws MetadataException;
