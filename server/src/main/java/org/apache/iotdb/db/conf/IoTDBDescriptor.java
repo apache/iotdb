@@ -188,7 +188,7 @@ public class IoTDBDescriptor {
         MetricConfigDescriptor.getInstance().loadProps(commonProperties);
         MetricConfigDescriptor.getInstance()
             .getMetricConfig()
-            .updateRpcInstance(conf.getRpcAddress(), conf.getRpcPort());
+            .updateRpcInstance(conf.getInternalAddress(), conf.getInternalPort());
       }
     } else {
       logger.warn(
