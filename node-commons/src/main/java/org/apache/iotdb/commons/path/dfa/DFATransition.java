@@ -19,6 +19,7 @@
 package org.apache.iotdb.commons.path.dfa;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.path.fa.IFATransition;
 
 import org.apache.commons.lang3.StringUtils;
 
@@ -61,8 +62,7 @@ public class DFATransition implements IFATransition {
     }
   }
 
-  @Override
-  public boolean isBatch() {
+  private boolean isBatch() {
     return IoTDBConstant.ONE_LEVEL_PATH_WILDCARD.equals(acceptEvent);
   }
 

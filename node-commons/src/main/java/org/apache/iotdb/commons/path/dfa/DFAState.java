@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.commons.path.dfa;
 
+import org.apache.iotdb.commons.path.fa.IFAState;
+
 import java.util.Objects;
 
 public class DFAState implements IFAState {

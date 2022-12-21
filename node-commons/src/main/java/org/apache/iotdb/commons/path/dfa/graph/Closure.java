@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.commons.path.dfa.graph;
 
-import org.apache.iotdb.commons.path.dfa.IFAState;
+import org.apache.iotdb.commons.path.fa.IFAState;
 
 import java.util.Objects;
 import java.util.Set;

@@ -19,17 +19,16 @@
 package org.apache.iotdb.commons.path;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.commons.path.dfa.IFAState;
-import org.apache.iotdb.commons.path.dfa.IFATransition;
-import org.apache.iotdb.commons.path.dfa.IPatternFA;
 import org.apache.iotdb.commons.path.dfa.PatternDFA;
+import org.apache.iotdb.commons.path.fa.IFAState;
+import org.apache.iotdb.commons.path.fa.IFATransition;
 
 import org.junit.Assert;
 import org.junit.Ignore;
 import org.junit.Test;
 
+import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
 
 public class PatternDFATest {
   @Test
@@ -96,17 +95,20 @@ public class PatternDFATest {
   }
 
   private boolean checkMatchUsingDFA(PartialPath pattern, PartialPath fullPath) {
-    IPatternFA patternDFA = new PatternDFA.Builder().pattern(pattern).build();
+    PatternDFA patternDFA = new PatternDFA.Builder().pattern(pattern).build();
     IFAState curState = patternDFA.getInitialState();
     for (String node : fullPath.getNodes()) {
-      Map<String, IFATransition> preciseMatchTransitionMap =
-          patternDFA.getPreciseMatchTransition(curState);
-      List<IFATransition> batchMatchTransitionList = patternDFA.getBatchMatchTransition(curState);
+      Iterator<IFATransition> preciseMatchTransitionIterator =
+          patternDFA.getPreciseMatchTransitionIterator(curState);
+      Iterator<IFATransition> batchMatchTransitionIterator =
+          patternDFA.getFuzzyMatchTransitionIterator(curState);
       List<IFATransition> transitionList = patternDFA.getTransition(curState);
-      for (IFATransition transition : batchMatchTransitionList) {
+      while (preciseMatchTransitionIterator.hasNext()) {
+        IFATransition transition = preciseMatchTransitionIterator.next();
         Assert.assertTrue(transitionList.contains(transition));
       }
-      for (IFATransition transition : preciseMatchTransitionMap.values()) {
+      while (batchMatchTransitionIterator.hasNext()) {
+        IFATransition transition = batchMatchTransitionIterator.next();
         Assert.assertTrue(transitionList.contains(transition));
       }
 

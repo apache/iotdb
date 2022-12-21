@@ -45,6 +45,31 @@ import java.util.stream.Collectors;
 public class ClusterSchemaTreeTest {
 
   @Test
+  public void benchmark() throws IllegalPathException {
+    int round = 20;
+    long[] times = new long[round];
+    long startTime;
+    for (int i = 0; i < round; i++) {
+      startTime = System.currentTimeMillis();
+      for (int j = 0; j < 100; j++) {
+        testMultiWildcard();
+      }
+      times[i] = System.currentTimeMillis() - startTime;
+    }
+    long max = 0, min = Long.MAX_VALUE, sum = 0;
+    for (long t : times) {
+      sum += t;
+      if (t > max) {
+        max = t;
+      }
+      if (t < min) {
+        min = t;
+      }
+    }
+    System.out.println("Avg=" + (sum - max - min) / (round - 2));
+  }
+
+  @Test
   public void testSchemaTreeVisitor() throws Exception {
 
     SchemaNode root = generateSchemaTree();

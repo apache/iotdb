@@ -93,6 +93,8 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
     this.root = root;
 
     this.patternFA = new SimpleNFA(pathPattern, isPrefixMatch);
+    //    this.patternFA = new
+    // PatternDFA.Builder().pattern(pathPattern).isPrefix(isPrefixMatch).build();
 
     initStack();
   }

@@ -19,10 +19,11 @@
 package org.apache.iotdb.commons.path.dfa.graph;
 
 import org.apache.iotdb.commons.path.dfa.DFAState;
-import org.apache.iotdb.commons.path.dfa.IFAState;
-import org.apache.iotdb.commons.path.dfa.IFATransition;
+import org.apache.iotdb.commons.path.fa.IFAState;
+import org.apache.iotdb.commons.path.fa.IFATransition;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -115,18 +116,19 @@ public class DFAGraph {
     return new Closure(nextStateSet);
   }
 
-  public List<IFATransition> getTransition(
+  public Map<String, IFATransition> getPreciseMatchTransition(
       IFAState state, Map<String, IFATransition> transitionMap) {
-    List<IFATransition> res = new ArrayList<>();
-    for (IFATransition transition : transitionMap.values()) {
-      if (dfaTransitionTable.get(transition).get(state.getIndex()) != null) {
-        res.add(transition);
+    Map<String, IFATransition> res = new HashMap<>();
+    for (Map.Entry<String, IFATransition> transitionEntry : transitionMap.entrySet()) {
+      if (dfaTransitionTable.get(transitionEntry.getValue()).get(state.getIndex()) != null) {
+        res.put(transitionEntry.getKey(), transitionEntry.getValue());
       }
     }
     return res;
   }
 
-  public List<IFATransition> getTransition(IFAState state, List<IFATransition> transitionList) {
+  public List<IFATransition> getTransition(
+      IFAState state, Collection<IFATransition> transitionList) {
     List<IFATransition> res = new ArrayList<>();
     for (IFATransition transition : transitionList) {
       if (dfaTransitionTable.get(transition).get(state.getIndex()) != null) {
@@ -142,5 +144,13 @@ public class DFAGraph {
 
   public IFAState getInitialState() {
     return dfaStateList.get(0);
+  }
+
+  public int getStateSize() {
+    return dfaStateList.size();
+  }
+
+  public IFAState getState(int index) {
+    return dfaStateList.get(index);
   }
 }

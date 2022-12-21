@@ -21,8 +21,8 @@ package org.apache.iotdb.commons.path.dfa.graph;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.dfa.DFAState;
-import org.apache.iotdb.commons.path.dfa.IFAState;
-import org.apache.iotdb.commons.path.dfa.IFATransition;
+import org.apache.iotdb.commons.path.fa.IFAState;
+import org.apache.iotdb.commons.path.fa.IFATransition;
 
 import org.apache.commons.lang3.StringUtils;
 
@@ -36,7 +36,8 @@ public class NFAGraph {
   private final List<IFAState> nfaStateList = new ArrayList<>();
   private final Map<IFATransition, List<List<IFAState>>> nfaTransitionTable = new HashMap<>();
 
-  public NFAGraph(PartialPath pathPattern, Map<String, IFATransition> transitionMap) {
+  public NFAGraph(
+      PartialPath pathPattern, boolean isPrefix, Map<String, IFATransition> transitionMap) {
     // init start state, index=0
     int index = 0;
     nfaStateList.add(new DFAState(index));
@@ -69,6 +70,11 @@ public class NFAGraph {
         }
       } else {
         nfaTransitionTable.get(transitionMap.get(node)).get(preIndex).add(state);
+      }
+      if (isPrefix && i == pathPattern.getNodeLength() - 1) {
+        for (IFATransition transition : transitionMap.values()) {
+          nfaTransitionTable.get(transition).get(index).add(state);
+        }
       }
     }
   }
