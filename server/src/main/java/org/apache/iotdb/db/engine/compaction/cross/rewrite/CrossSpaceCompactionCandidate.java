@@ -70,12 +70,9 @@ public class CrossSpaceCompactionCandidate {
   private boolean prepareNextSplit() {
     TsFileResourceCandidate unseqFile = unseqFiles.get(nextUnseqFileIndex);
     List<TsFileResourceCandidate> ret = new ArrayList<>();
-    boolean lastTargetSeqFileSelected = false;
-    for (TsFileResourceCandidate seqFile : seqFiles) {
-      if (lastTargetSeqFileSelected) {
-        break;
-      }
-      for (DeviceInfo unseqDeviceInfo : unseqFile.getDevices()) {
+
+    for (DeviceInfo unseqDeviceInfo : unseqFile.getDevices()) {
+      for (TsFileResourceCandidate seqFile : seqFiles) {
         if (!seqFile.containsDevice(unseqDeviceInfo.deviceId)) {
           continue;
         }
@@ -92,24 +89,21 @@ public class CrossSpaceCompactionCandidate {
           // avoid duplication selection
           if (!seqFile.selected) {
             ret.add(seqFile);
+            seqFile.markAsSelected();
           }
-          // prepare
-          lastTargetSeqFileSelected = true;
+          // if this condition is satisfied, all subsequent seq files is unnecessary to check
           break;
         } else if (unseqDeviceInfo.startTime <= seqDeviceInfo.endTime) {
           if (!seqFile.selected) {
             ret.add(seqFile);
+            seqFile.markAsSelected();
           }
-          break;
         }
       }
     }
     // mark candidates in next split as selected even though it may not be added to the final
     // TaskResource
     unseqFile.markAsSelected();
-    for (TsFileResourceCandidate fileCandidate : ret) {
-      fileCandidate.markAsSelected();
-    }
     nextSplit = new CrossCompactionTaskResourceSplit(unseqFile, ret);
     return true;
   }
