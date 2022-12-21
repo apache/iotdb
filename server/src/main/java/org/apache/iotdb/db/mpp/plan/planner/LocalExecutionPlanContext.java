@@ -155,9 +155,13 @@ public class LocalExecutionPlanContext {
     return exchangeSumNum;
   }
 
+  public void setExchangeSumNum(int exchangeSumNum) {
+    this.exchangeSumNum = exchangeSumNum;
+  }
+
   public long getMaxBytesOneHandleCanReserve() {
-    return IoTDBDescriptor.getInstance().getConfig().getMaxBytesPerFragmentInstance()
-        / exchangeSumNum;
+    long maxBytesPerFI = IoTDBDescriptor.getInstance().getConfig().getMaxBytesPerFragmentInstance();
+    return exchangeSumNum == 0 ? maxBytesPerFI : maxBytesPerFI / exchangeSumNum;
   }
 
   public void addExchangeSumNum(int addValue) {

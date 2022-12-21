@@ -201,6 +201,8 @@ import org.apache.iotdb.tsfile.utils.Pair;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import org.apache.commons.lang3.Validate;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -224,6 +226,7 @@ import static org.apache.iotdb.db.mpp.plan.constant.DataNodeEndPoints.isSameNode
 /** This Visitor is responsible for transferring PlanNode Tree to Operator Tree */
 public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionPlanContext> {
 
+  private static final Logger LOGGER = LoggerFactory.getLogger(OperatorTreeGenerator.class);
   private static final MPPDataExchangeManager MPP_DATA_EXCHANGE_MANAGER =
       MPPDataExchangeService.getInstance().getMPPDataExchangeManager();
 
@@ -1583,7 +1586,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
   @Override
   public Operator visitTimeJoin(TimeJoinNode node, LocalExecutionPlanContext context) {
     List<Operator> children = new ArrayList<>();
-    int originExchangeNum = context.getExchangeSumNum();
+    int finalExchangeNum = context.getExchangeSumNum();
     for (PlanNode childSource : node.getChildren()) {
       // Create pipelines for children
       LocalExecutionPlanContext subContext = context.createSubContext();
@@ -1591,7 +1594,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
       // If the child belongs to another fragment instance, we don't create pipeline for it
       if (childOperation instanceof ExchangeOperator) {
         children.add(childOperation);
-        context.addExchangeSumNum(subContext.getExchangeSumNum() - originExchangeNum);
+        finalExchangeNum += 1;
       } else {
         ISinkHandle localSinkHandle =
             MPP_DATA_EXCHANGE_MANAGER.createLocalSinkHandleForPipeline(
@@ -1613,12 +1616,18 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
             .getTimeSliceAllocator()
             .recordExecutionWeight(sourceOperator.getOperatorContext(), 1);
         children.add(sourceOperator);
-        context.addExchangeSumNum(subContext.getExchangeSumNum() - originExchangeNum + 1);
+        finalExchangeNum += subContext.getExchangeSumNum() - context.getExchangeSumNum() + 1;
       }
     }
+    context.setExchangeSumNum(finalExchangeNum);
 
     // Set maxBytesCanReserve for each source handle
     long maxBytesOneHandleCanReserve = context.getMaxBytesOneHandleCanReserve();
+    LOGGER.info(
+        "TimeJoinNode{}'s maxBytesOneHandleCanReserve is: {}, exchangeNum = {}",
+        node.getPlanNodeId(),
+        maxBytesOneHandleCanReserve,
+        context.getExchangeSumNum());
     for (Operator childSource : children) {
       if (!(childSource instanceof ExchangeOperator)) {
         throw new IllegalArgumentException(
@@ -1735,7 +1744,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
 
   @Override
   public Operator visitFragmentSink(FragmentSinkNode node, LocalExecutionPlanContext context) {
-    if (isSameNode(node.getDownStreamEndpoint())) {
+    if (!isSameNode(node.getDownStreamEndpoint())) {
       context.addExchangeSumNum(1);
     }
     Operator child = node.getChild().accept(this, context);

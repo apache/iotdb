@@ -164,6 +164,7 @@ public class MemoryPool {
                       .getOrDefault(fragmentInstanceId, Collections.emptyMap())
                       .getOrDefault(planNodeId, 0L)
               < bytesToReserve) {
+        // LOGGER.info("Cannot reserve {} bytes memory from MemoryPool", bytesToReserve);
         result =
             MemoryReservationFuture.create(
                 queryId, fragmentInstanceId, planNodeId, bytesToReserve, maxBytesCanReserve);
