@@ -571,10 +571,10 @@ public class IoTDBConfig {
   private boolean isClusterMode = false;
 
   /**
-   * The cluster name that this DataNode joined in the cluster mode. The default value "testCluster"
-   * will be changed after join cluster
+   * The cluster name that this DataNode joined in the cluster mode. The default value
+   * "defaultCluster" will be changed after join cluster
    */
-  private String clusterName = "testCluster";
+  private String clusterName = "defaultCluster";
 
   /**
    * The DataNodeId of this DataNode for cluster mode. The default value -1 will be changed after
