@@ -44,7 +44,8 @@ public class CrossCompactionTaskResource {
     return seqFiles;
   }
 
-  public void putResources(TsFileResource unseqFile, List<TsFileResource> seqFiles, long memoryCost) {
+  public void putResources(
+      TsFileResource unseqFile, List<TsFileResource> seqFiles, long memoryCost) {
     addUnseqFile(unseqFile);
     addTargetSeqFiles(seqFiles);
     increaseMemoryCost(memoryCost);
@@ -90,7 +91,8 @@ public class CrossCompactionTaskResource {
   }
 
   public boolean isValid() {
-    // Regarding current implementation of cross compaction task, the unseqFiles and seqFiles should not be empty.
+    // Regarding current implementation of cross compaction task, the unseqFiles and seqFiles should
+    // not be empty.
     // It should be changed once the task execution is optimized.
     // See https://issues.apache.org/jira/browse/IOTDB-5263
     return !unseqFiles.isEmpty() && !seqFiles.isEmpty();

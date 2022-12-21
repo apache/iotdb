@@ -299,7 +299,8 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
       prepareFile(unseqList.get(1), 0, 100, 20);
       prepareFile(unseqList.get(2), 99, 1, 30);
 
-      CrossSpaceCompactionCandidate resource = new CrossSpaceCompactionCandidate(seqList, unseqList);
+      CrossSpaceCompactionCandidate resource =
+          new CrossSpaceCompactionCandidate(seqList, unseqList);
       // the budget is enough to select unseq0 and unseq2, but not unseq1
       // the first selection should only contain seq0 and unseq0
       long originMemoryBudget = SystemInfo.getInstance().getMemorySizeForCompaction();

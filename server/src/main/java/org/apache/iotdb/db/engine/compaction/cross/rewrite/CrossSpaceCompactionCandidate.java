@@ -87,7 +87,9 @@ public class CrossSpaceCompactionCandidate {
           }
         }
         if (unseqDeviceInfo.endTime <= seqDeviceInfo.endTime) {
-          // When scanning the target seqFiles for unseqFile, we traverse them one by one no matter whether it is selected or not. But we only add the unselected seqFiles to next split to avoid duplication selection
+          // When scanning the target seqFiles for unseqFile, we traverse them one by one no matter
+          // whether it is selected or not. But we only add the unselected seqFiles to next split to
+          // avoid duplication selection
           if (!seqFile.selected) {
             ret.add(seqFile);
           }
@@ -102,7 +104,8 @@ public class CrossSpaceCompactionCandidate {
         }
       }
     }
-    // mark candidates in next split as selected even though it may not be added to the final TaskResource
+    // mark candidates in next split as selected even though it may not be added to the final
+    // TaskResource
     unseqFile.markAsSelected();
     for (TsFileResourceCandidate fileCandidate : ret) {
       fileCandidate.markAsSelected();
@@ -113,7 +116,7 @@ public class CrossSpaceCompactionCandidate {
 
   private List<TsFileResourceCandidate> copySeqResource(List<TsFileResource> seqFiles) {
     List<TsFileResourceCandidate> ret = new ArrayList<>();
-    for(TsFileResource resource : seqFiles) {
+    for (TsFileResource resource : seqFiles) {
       ret.add(new TsFileResourceCandidate(resource));
     }
     return ret;
@@ -128,7 +131,9 @@ public class CrossSpaceCompactionCandidate {
   private List<TsFileResourceCandidate> filterUnseqResource(List<TsFileResource> unseqResources) {
     List<TsFileResourceCandidate> ret = new ArrayList<>();
     for (TsFileResource resource : unseqResources) {
-      if (resource.getStatus() != TsFileResourceStatus.CLOSED || !resource.getTsFile().exists() || resource.isDeleted()) {
+      if (resource.getStatus() != TsFileResourceStatus.CLOSED
+          || !resource.getTsFile().exists()
+          || resource.isDeleted()) {
         break;
       } else if (!resource.isDeleted() && resource.stillLives(ttlLowerBound)) {
         ret.add(new TsFileResourceCandidate(resource));
@@ -138,7 +143,9 @@ public class CrossSpaceCompactionCandidate {
   }
 
   public List<TsFileResource> getSeqFiles() {
-    return seqFiles.stream().map(tsFileResourceCandidate -> tsFileResourceCandidate.resource).collect(Collectors.toList());
+    return seqFiles.stream()
+        .map(tsFileResourceCandidate -> tsFileResourceCandidate.resource)
+        .collect(Collectors.toList());
   }
 
   public List<TsFileResourceCandidate> getUnseqFileCandidates() {
@@ -146,14 +153,17 @@ public class CrossSpaceCompactionCandidate {
   }
 
   public List<TsFileResource> getUnseqFiles() {
-    return unseqFiles.stream().map(tsFileResourceCandidate -> tsFileResourceCandidate.resource).collect(Collectors.toList());
+    return unseqFiles.stream()
+        .map(tsFileResourceCandidate -> tsFileResourceCandidate.resource)
+        .collect(Collectors.toList());
   }
 
   protected static class CrossCompactionTaskResourceSplit {
     protected TsFileResourceCandidate unseqFile;
     protected List<TsFileResourceCandidate> seqFiles;
 
-    public CrossCompactionTaskResourceSplit(TsFileResourceCandidate unseqFile, List<TsFileResourceCandidate> seqFiles) {
+    public CrossCompactionTaskResourceSplit(
+        TsFileResourceCandidate unseqFile, List<TsFileResourceCandidate> seqFiles) {
       this.unseqFile = unseqFile;
       this.seqFiles = seqFiles;
     }
@@ -163,10 +173,12 @@ public class CrossSpaceCompactionCandidate {
     protected TsFileResource resource;
     protected boolean selected;
     protected boolean isValidCandidate;
+
     protected TsFileResourceCandidate(TsFileResource tsFileResource) {
       this.resource = tsFileResource;
       this.selected = false;
-      // although we do the judgement here, the task should be validated before executing because the status of file may be changed after the task is submitted to queue
+      // although we do the judgement here, the task should be validated before executing because
+      // the status of file may be changed after the task is submitted to queue
       this.isValidCandidate = tsFileResource.isClosed() && tsFileResource.getTsFile().exists();
     }
 
