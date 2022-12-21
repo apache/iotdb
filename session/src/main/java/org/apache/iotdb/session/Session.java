@@ -420,7 +420,6 @@ public class Session implements ISession {
     }
   }
 
-  @Override
   public SessionConnection constructSessionConnection(
       Session session, TEndPoint endpoint, ZoneId zoneId) throws IoTDBConnectionException {
     if (endpoint == null) {
@@ -668,10 +667,12 @@ public class Session implements ISession {
     return defaultSessionConnection.checkTimeseriesExists(path, queryTimeoutInMs);
   }
 
+  @Override
   public void setQueryTimeout(long timeoutInMs) {
     this.queryTimeoutInMs = timeoutInMs;
   }
 
+  @Override
   public long getQueryTimeout() {
     return queryTimeoutInMs;
   }
