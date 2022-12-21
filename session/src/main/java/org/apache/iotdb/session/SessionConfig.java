@@ -27,7 +27,7 @@ public class SessionConfig {
   public static final String DEFAULT_USER = "root";
   public static final String DEFAULT_PASSWORD = "root";
   public static final int DEFAULT_FETCH_SIZE = 5000;
-  public static final int DEFAULT_CONNECTION_TIMEOUT_MS = 0;
+  public static final int DEFAULT_CONNECTION_TIMEOUT_MS = 60000;
   public static final boolean DEFAULT_REDIRECTION_MODE = true;
 
   public static final int CPU_CORES = Runtime.getRuntime().availableProcessors();
