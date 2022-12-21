@@ -87,7 +87,7 @@ public class PathPatternTree {
     }
     if (!isExist) {
       // remove duplicate path in pathPatternList
-      pathPatternList.removeIf(p -> p.include(pathPattern));
+      pathPatternList.removeIf(pathPattern::include);
       pathPatternList.add(pathPattern);
     }
   }
