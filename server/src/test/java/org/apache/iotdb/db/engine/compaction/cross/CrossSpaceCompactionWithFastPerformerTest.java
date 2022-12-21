@@ -24,7 +24,7 @@ import org.apache.iotdb.db.engine.cache.BloomFilterCache;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
-import org.apache.iotdb.db.engine.compaction.cross.rewrite.CrossSpaceCompactionResource;
+import org.apache.iotdb.db.engine.compaction.cross.rewrite.CrossSpaceCompactionCandidate;
 import org.apache.iotdb.db.engine.compaction.cross.rewrite.RewriteCrossSpaceCompactionSelector;
 import org.apache.iotdb.db.engine.compaction.performer.impl.FastCompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
@@ -403,8 +403,8 @@ public class CrossSpaceCompactionWithFastPerformerTest {
           TsFileResourceList unseqTsFileResourceList = new TsFileResourceList();
           unseqTsFileResourceList.addAll(unseqResources);
           long timeLowerBound = System.currentTimeMillis() - Long.MAX_VALUE;
-          CrossSpaceCompactionResource mergeResource =
-              new CrossSpaceCompactionResource(
+          CrossSpaceCompactionCandidate mergeResource =
+              new CrossSpaceCompactionCandidate(
                   seqTsFileResourceList, unseqTsFileResourceList, timeLowerBound);
           RewriteCrossSpaceCompactionSelector selector =
               new RewriteCrossSpaceCompactionSelector("", "", 0, null);
@@ -708,8 +708,8 @@ public class CrossSpaceCompactionWithFastPerformerTest {
           TsFileResourceList unseqTsFileResourceList = new TsFileResourceList();
           unseqTsFileResourceList.addAll(unseqResources);
           long timeLowerBound = System.currentTimeMillis() - Long.MAX_VALUE;
-          CrossSpaceCompactionResource mergeResource =
-              new CrossSpaceCompactionResource(
+          CrossSpaceCompactionCandidate mergeResource =
+              new CrossSpaceCompactionCandidate(
                   seqTsFileResourceList, unseqTsFileResourceList, timeLowerBound);
           RewriteCrossSpaceCompactionSelector selector =
               new RewriteCrossSpaceCompactionSelector("", "", 0, null);
@@ -1011,8 +1011,8 @@ public class CrossSpaceCompactionWithFastPerformerTest {
           TsFileResourceList unseqTsFileResourceList = new TsFileResourceList();
           unseqTsFileResourceList.addAll(unseqResources);
           long timeLowerBound = System.currentTimeMillis() - Long.MAX_VALUE;
-          CrossSpaceCompactionResource mergeResource =
-              new CrossSpaceCompactionResource(
+          CrossSpaceCompactionCandidate mergeResource =
+              new CrossSpaceCompactionCandidate(
                   seqTsFileResourceList, unseqTsFileResourceList, timeLowerBound);
           RewriteCrossSpaceCompactionSelector selector =
               new RewriteCrossSpaceCompactionSelector("", "", 0, null);

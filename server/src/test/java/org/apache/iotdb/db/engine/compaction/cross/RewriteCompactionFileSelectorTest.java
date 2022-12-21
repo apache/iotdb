@@ -22,7 +22,7 @@ package org.apache.iotdb.db.engine.compaction.cross;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.TestConstant;
-import org.apache.iotdb.db.engine.compaction.cross.rewrite.CrossSpaceCompactionResource;
+import org.apache.iotdb.db.engine.compaction.cross.rewrite.CrossSpaceCompactionCandidate;
 import org.apache.iotdb.db.engine.compaction.cross.rewrite.RewriteCrossSpaceCompactionSelector;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
@@ -85,8 +85,8 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
 
   @Test
   public void testWithFewMemoryBudgeSelection() throws MergeException, IOException {
-    CrossSpaceCompactionResource resource =
-        new CrossSpaceCompactionResource(seqResources, unseqResources);
+    CrossSpaceCompactionCandidate resource =
+        new CrossSpaceCompactionCandidate(seqResources, unseqResources);
     RewriteCrossSpaceCompactionSelector selector =
         new RewriteCrossSpaceCompactionSelector("", "", 0, null);
     List<Pair<List<TsFileResource>, List<TsFileResource>>> selected =
@@ -96,8 +96,8 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
 
   @Test
   public void testRestrictedSelection() throws MergeException, IOException {
-    CrossSpaceCompactionResource resource =
-        new CrossSpaceCompactionResource(seqResources, unseqResources);
+    CrossSpaceCompactionCandidate resource =
+        new CrossSpaceCompactionCandidate(seqResources, unseqResources);
     RewriteCrossSpaceCompactionSelector selector =
         new RewriteCrossSpaceCompactionSelector("", "", 0, null);
     List<Pair<List<TsFileResource>, List<TsFileResource>>> selected =
@@ -207,8 +207,8 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
     newUnseqResources.add(largeUnseqTsFileResource);
 
     long ttlLowerBound = System.currentTimeMillis() - Long.MAX_VALUE;
-    CrossSpaceCompactionResource mergeResource =
-        new CrossSpaceCompactionResource(seqResources, newUnseqResources, ttlLowerBound);
+    CrossSpaceCompactionCandidate mergeResource =
+        new CrossSpaceCompactionCandidate(seqResources, newUnseqResources, ttlLowerBound);
     assertEquals(5, mergeResource.getSeqFiles().size());
     assertEquals(1, mergeResource.getUnseqFiles().size());
   }
@@ -243,8 +243,8 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
     unseqResources.clear();
     unseqResources.add(largeUnseqTsFileResource);
 
-    CrossSpaceCompactionResource resource =
-        new CrossSpaceCompactionResource(seqResources, unseqResources);
+    CrossSpaceCompactionCandidate resource =
+        new CrossSpaceCompactionCandidate(seqResources, unseqResources);
     RewriteCrossSpaceCompactionSelector selector =
         new RewriteCrossSpaceCompactionSelector("", "", 0, null);
     List<Pair<List<TsFileResource>, List<TsFileResource>>> selected =
@@ -299,7 +299,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
       prepareFile(unseqList.get(1), 0, 100, 20);
       prepareFile(unseqList.get(2), 99, 1, 30);
 
-      CrossSpaceCompactionResource resource = new CrossSpaceCompactionResource(seqList, unseqList);
+      CrossSpaceCompactionCandidate resource = new CrossSpaceCompactionCandidate(seqList, unseqList);
       // the budget is enough to select unseq0 and unseq2, but not unseq1
       // the first selection should only contain seq0 and unseq0
       long originMemoryBudget = SystemInfo.getInstance().getMemorySizeForCompaction();
@@ -379,7 +379,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
       unseqList.add(fileResource);
     }
 
-    CrossSpaceCompactionResource resource = new CrossSpaceCompactionResource(seqList, unseqList);
+    CrossSpaceCompactionCandidate resource = new CrossSpaceCompactionCandidate(seqList, unseqList);
     Assert.assertEquals(5, resource.getSeqFiles().size());
     Assert.assertEquals(10, resource.getUnseqFiles().size());
     long origin = SystemInfo.getInstance().getMemorySizeForCompaction();
@@ -452,7 +452,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
       unseqList.add(fileResource);
     }
 
-    CrossSpaceCompactionResource resource = new CrossSpaceCompactionResource(seqList, unseqList);
+    CrossSpaceCompactionCandidate resource = new CrossSpaceCompactionCandidate(seqList, unseqList);
     Assert.assertEquals(5, resource.getSeqFiles().size());
     Assert.assertEquals(1, resource.getUnseqFiles().size());
     long origin = SystemInfo.getInstance().getMemorySizeForCompaction();
@@ -527,7 +527,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
     prepareFile(unseqList.get(0), 7, 3, 7);
     prepareFile(unseqList.get(1), 10, 4, 10);
 
-    CrossSpaceCompactionResource resource = new CrossSpaceCompactionResource(seqList, unseqList);
+    CrossSpaceCompactionCandidate resource = new CrossSpaceCompactionCandidate(seqList, unseqList);
     Assert.assertEquals(5, resource.getSeqFiles().size());
     Assert.assertEquals(2, resource.getUnseqFiles().size());
     long origin = SystemInfo.getInstance().getMemorySizeForCompaction();
@@ -603,7 +603,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
     prepareFile(unseqList.get(2), 14, 3, 14);
     prepareFile(unseqList.get(3), 17, 2, 17);
 
-    CrossSpaceCompactionResource resource = new CrossSpaceCompactionResource(seqList, unseqList);
+    CrossSpaceCompactionCandidate resource = new CrossSpaceCompactionCandidate(seqList, unseqList);
     Assert.assertEquals(5, resource.getSeqFiles().size());
     Assert.assertEquals(4, resource.getUnseqFiles().size());
     long origin = SystemInfo.getInstance().getMemorySizeForCompaction();
@@ -682,7 +682,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
     prepareFile(unseqList.get(2), 14, 3, 14);
     prepareFile(unseqList.get(3), 17, 2, 17);
 
-    CrossSpaceCompactionResource resource = new CrossSpaceCompactionResource(seqList, unseqList);
+    CrossSpaceCompactionCandidate resource = new CrossSpaceCompactionCandidate(seqList, unseqList);
     Assert.assertEquals(5, resource.getSeqFiles().size());
     Assert.assertEquals(4, resource.getUnseqFiles().size());
     long origin = SystemInfo.getInstance().getMemorySizeForCompaction();

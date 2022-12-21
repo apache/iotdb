@@ -23,7 +23,7 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.AbstractCompactionTest;
 import org.apache.iotdb.db.engine.compaction.CompactionUtils;
-import org.apache.iotdb.db.engine.compaction.cross.rewrite.CrossSpaceCompactionResource;
+import org.apache.iotdb.db.engine.compaction.cross.rewrite.CrossSpaceCompactionCandidate;
 import org.apache.iotdb.db.engine.compaction.cross.rewrite.RewriteCrossSpaceCompactionSelector;
 import org.apache.iotdb.db.engine.compaction.performer.ICrossCompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.performer.impl.ReadChunkCompactionPerformer;
@@ -135,8 +135,8 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
 
-    CrossSpaceCompactionResource resource =
-        new CrossSpaceCompactionResource(seqResources, unseqResources);
+    CrossSpaceCompactionCandidate resource =
+        new CrossSpaceCompactionCandidate(seqResources, unseqResources);
     RewriteCrossSpaceCompactionSelector selector =
         new RewriteCrossSpaceCompactionSelector("", "", 0, null);
     List<Pair<List<TsFileResource>, List<TsFileResource>>> selected =
@@ -180,8 +180,8 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
 
-    CrossSpaceCompactionResource resource =
-        new CrossSpaceCompactionResource(seqResources, unseqResources);
+    CrossSpaceCompactionCandidate resource =
+        new CrossSpaceCompactionCandidate(seqResources, unseqResources);
     RewriteCrossSpaceCompactionSelector selector =
         new RewriteCrossSpaceCompactionSelector("", "", 0, null);
     List<Pair<List<TsFileResource>, List<TsFileResource>>> selected =
@@ -231,8 +231,8 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
 
-    CrossSpaceCompactionResource resource =
-        new CrossSpaceCompactionResource(seqResources, unseqResources);
+    CrossSpaceCompactionCandidate resource =
+        new CrossSpaceCompactionCandidate(seqResources, unseqResources);
     RewriteCrossSpaceCompactionSelector selector =
         new RewriteCrossSpaceCompactionSelector("", "", 0, null);
     List<Pair<List<TsFileResource>, List<TsFileResource>>> selected =
@@ -280,8 +280,8 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
 
-    CrossSpaceCompactionResource resource =
-        new CrossSpaceCompactionResource(seqResources, unseqResources);
+    CrossSpaceCompactionCandidate resource =
+        new CrossSpaceCompactionCandidate(seqResources, unseqResources);
     RewriteCrossSpaceCompactionSelector selector =
         new RewriteCrossSpaceCompactionSelector("", "", 0, null);
     List<Pair<List<TsFileResource>, List<TsFileResource>>> selected =
@@ -330,8 +330,8 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
 
-    CrossSpaceCompactionResource resource =
-        new CrossSpaceCompactionResource(seqResources, unseqResources);
+    CrossSpaceCompactionCandidate resource =
+        new CrossSpaceCompactionCandidate(seqResources, unseqResources);
     RewriteCrossSpaceCompactionSelector selector =
         new RewriteCrossSpaceCompactionSelector("", "", 0, null);
     List<Pair<List<TsFileResource>, List<TsFileResource>>> selected =
@@ -379,8 +379,8 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
 
-    CrossSpaceCompactionResource resource =
-        new CrossSpaceCompactionResource(seqResources, unseqResources);
+    CrossSpaceCompactionCandidate resource =
+        new CrossSpaceCompactionCandidate(seqResources, unseqResources);
     RewriteCrossSpaceCompactionSelector selector =
         new RewriteCrossSpaceCompactionSelector("", "", 0, null);
     List<Pair<List<TsFileResource>, List<TsFileResource>>> selected =
@@ -429,8 +429,8 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
 
-    CrossSpaceCompactionResource resource =
-        new CrossSpaceCompactionResource(seqResources, unseqResources);
+    CrossSpaceCompactionCandidate resource =
+        new CrossSpaceCompactionCandidate(seqResources, unseqResources);
     RewriteCrossSpaceCompactionSelector selector =
         new RewriteCrossSpaceCompactionSelector("", "", 0, null);
     List<Pair<List<TsFileResource>, List<TsFileResource>>> selected =
@@ -482,8 +482,8 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
 
-    CrossSpaceCompactionResource resource =
-        new CrossSpaceCompactionResource(seqResources, unseqResources);
+    CrossSpaceCompactionCandidate resource =
+        new CrossSpaceCompactionCandidate(seqResources, unseqResources);
     RewriteCrossSpaceCompactionSelector selector =
         new RewriteCrossSpaceCompactionSelector("", "", 0, null);
     List<Pair<List<TsFileResource>, List<TsFileResource>>> selected =
@@ -533,8 +533,8 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
 
-    CrossSpaceCompactionResource resource =
-        new CrossSpaceCompactionResource(seqResources, unseqResources);
+    CrossSpaceCompactionCandidate resource =
+        new CrossSpaceCompactionCandidate(seqResources, unseqResources);
     RewriteCrossSpaceCompactionSelector selector =
         new RewriteCrossSpaceCompactionSelector("", "", 0, null);
     List<Pair<List<TsFileResource>, List<TsFileResource>>> selected =
@@ -585,8 +585,8 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
 
-    CrossSpaceCompactionResource resource =
-        new CrossSpaceCompactionResource(seqResources, unseqResources);
+    CrossSpaceCompactionCandidate resource =
+        new CrossSpaceCompactionCandidate(seqResources, unseqResources);
     RewriteCrossSpaceCompactionSelector selector =
         new RewriteCrossSpaceCompactionSelector("", "", 0, null);
     List<Pair<List<TsFileResource>, List<TsFileResource>>> selected =
@@ -635,8 +635,8 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
 
-    CrossSpaceCompactionResource resource =
-        new CrossSpaceCompactionResource(seqResources, unseqResources);
+    CrossSpaceCompactionCandidate resource =
+        new CrossSpaceCompactionCandidate(seqResources, unseqResources);
     RewriteCrossSpaceCompactionSelector selector =
         new RewriteCrossSpaceCompactionSelector("", "", 0, null);
     List<Pair<List<TsFileResource>, List<TsFileResource>>> selected =
@@ -687,8 +687,8 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
 
-    CrossSpaceCompactionResource resource =
-        new CrossSpaceCompactionResource(seqResources, unseqResources);
+    CrossSpaceCompactionCandidate resource =
+        new CrossSpaceCompactionCandidate(seqResources, unseqResources);
     RewriteCrossSpaceCompactionSelector selector =
         new RewriteCrossSpaceCompactionSelector("", "", 0, null);
     List<Pair<List<TsFileResource>, List<TsFileResource>>> selected =
@@ -740,8 +740,8 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
 
-    CrossSpaceCompactionResource resource =
-        new CrossSpaceCompactionResource(seqResources, unseqResources);
+    CrossSpaceCompactionCandidate resource =
+        new CrossSpaceCompactionCandidate(seqResources, unseqResources);
     RewriteCrossSpaceCompactionSelector selector =
         new RewriteCrossSpaceCompactionSelector("", "", 0, null);
     List<Pair<List<TsFileResource>, List<TsFileResource>>> selected =
@@ -792,8 +792,8 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
 
-    CrossSpaceCompactionResource resource =
-        new CrossSpaceCompactionResource(seqResources, unseqResources);
+    CrossSpaceCompactionCandidate resource =
+        new CrossSpaceCompactionCandidate(seqResources, unseqResources);
     RewriteCrossSpaceCompactionSelector selector =
         new RewriteCrossSpaceCompactionSelector("", "", 0, null);
     List<Pair<List<TsFileResource>, List<TsFileResource>>> selected =
@@ -846,8 +846,8 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
 
-    CrossSpaceCompactionResource resource =
-        new CrossSpaceCompactionResource(seqResources, unseqResources);
+    CrossSpaceCompactionCandidate resource =
+        new CrossSpaceCompactionCandidate(seqResources, unseqResources);
     RewriteCrossSpaceCompactionSelector selector =
         new RewriteCrossSpaceCompactionSelector("", "", 0, null);
     List<Pair<List<TsFileResource>, List<TsFileResource>>> selected =
@@ -901,8 +901,8 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
 
-    CrossSpaceCompactionResource resource =
-        new CrossSpaceCompactionResource(seqResources, unseqResources);
+    CrossSpaceCompactionCandidate resource =
+        new CrossSpaceCompactionCandidate(seqResources, unseqResources);
     RewriteCrossSpaceCompactionSelector selector =
         new RewriteCrossSpaceCompactionSelector("", "", 0, null);
     List<Pair<List<TsFileResource>, List<TsFileResource>>> selected =
@@ -955,8 +955,8 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
 
-    CrossSpaceCompactionResource resource =
-        new CrossSpaceCompactionResource(seqResources, unseqResources);
+    CrossSpaceCompactionCandidate resource =
+        new CrossSpaceCompactionCandidate(seqResources, unseqResources);
     RewriteCrossSpaceCompactionSelector selector =
         new RewriteCrossSpaceCompactionSelector("", "", 0, null);
     List<Pair<List<TsFileResource>, List<TsFileResource>>> selected =
@@ -1010,8 +1010,8 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
 
-    CrossSpaceCompactionResource resource =
-        new CrossSpaceCompactionResource(seqResources, unseqResources);
+    CrossSpaceCompactionCandidate resource =
+        new CrossSpaceCompactionCandidate(seqResources, unseqResources);
     RewriteCrossSpaceCompactionSelector selector =
         new RewriteCrossSpaceCompactionSelector("", "", 0, null);
     List<Pair<List<TsFileResource>, List<TsFileResource>>> selected =
@@ -1065,8 +1065,8 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
 
-    CrossSpaceCompactionResource resource =
-        new CrossSpaceCompactionResource(seqResources, unseqResources);
+    CrossSpaceCompactionCandidate resource =
+        new CrossSpaceCompactionCandidate(seqResources, unseqResources);
     RewriteCrossSpaceCompactionSelector selector =
         new RewriteCrossSpaceCompactionSelector("", "", 0, null);
     List<Pair<List<TsFileResource>, List<TsFileResource>>> selected =
@@ -1120,8 +1120,8 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
 
-    CrossSpaceCompactionResource resource =
-        new CrossSpaceCompactionResource(seqResources, unseqResources);
+    CrossSpaceCompactionCandidate resource =
+        new CrossSpaceCompactionCandidate(seqResources, unseqResources);
     RewriteCrossSpaceCompactionSelector selector =
         new RewriteCrossSpaceCompactionSelector("", "", 0, null);
     List<Pair<List<TsFileResource>, List<TsFileResource>>> selected =
@@ -1171,8 +1171,8 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
 
-    CrossSpaceCompactionResource resource =
-        new CrossSpaceCompactionResource(seqResources, unseqResources);
+    CrossSpaceCompactionCandidate resource =
+        new CrossSpaceCompactionCandidate(seqResources, unseqResources);
     RewriteCrossSpaceCompactionSelector selector =
         new RewriteCrossSpaceCompactionSelector("", "", 0, null);
     List<Pair<List<TsFileResource>, List<TsFileResource>>> selected =
@@ -1222,8 +1222,8 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
 
-    CrossSpaceCompactionResource resource =
-        new CrossSpaceCompactionResource(seqResources, unseqResources);
+    CrossSpaceCompactionCandidate resource =
+        new CrossSpaceCompactionCandidate(seqResources, unseqResources);
     RewriteCrossSpaceCompactionSelector selector =
         new RewriteCrossSpaceCompactionSelector("", "", 0, null);
     List<Pair<List<TsFileResource>, List<TsFileResource>>> selected =
@@ -1274,8 +1274,8 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
 
-    CrossSpaceCompactionResource resource =
-        new CrossSpaceCompactionResource(seqResources, unseqResources);
+    CrossSpaceCompactionCandidate resource =
+        new CrossSpaceCompactionCandidate(seqResources, unseqResources);
     RewriteCrossSpaceCompactionSelector selector =
         new RewriteCrossSpaceCompactionSelector("", "", 0, null);
     List<Pair<List<TsFileResource>, List<TsFileResource>>> selected =
@@ -1324,8 +1324,8 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
 
-    CrossSpaceCompactionResource resource =
-        new CrossSpaceCompactionResource(seqResources, unseqResources);
+    CrossSpaceCompactionCandidate resource =
+        new CrossSpaceCompactionCandidate(seqResources, unseqResources);
     RewriteCrossSpaceCompactionSelector selector =
         new RewriteCrossSpaceCompactionSelector("", "", 0, null);
     List<Pair<List<TsFileResource>, List<TsFileResource>>> selected =
@@ -1376,8 +1376,8 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
 
-    CrossSpaceCompactionResource resource =
-        new CrossSpaceCompactionResource(seqResources, unseqResources);
+    CrossSpaceCompactionCandidate resource =
+        new CrossSpaceCompactionCandidate(seqResources, unseqResources);
     RewriteCrossSpaceCompactionSelector selector =
         new RewriteCrossSpaceCompactionSelector("", "", 0, null);
     List<Pair<List<TsFileResource>, List<TsFileResource>>> selected =
@@ -1429,8 +1429,8 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
 
-    CrossSpaceCompactionResource resource =
-        new CrossSpaceCompactionResource(seqResources, unseqResources);
+    CrossSpaceCompactionCandidate resource =
+        new CrossSpaceCompactionCandidate(seqResources, unseqResources);
     RewriteCrossSpaceCompactionSelector selector =
         new RewriteCrossSpaceCompactionSelector("", "", 0, null);
     List<Pair<List<TsFileResource>, List<TsFileResource>>> selected =
@@ -1481,8 +1481,8 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
 
-    CrossSpaceCompactionResource resource =
-        new CrossSpaceCompactionResource(seqResources, unseqResources);
+    CrossSpaceCompactionCandidate resource =
+        new CrossSpaceCompactionCandidate(seqResources, unseqResources);
     RewriteCrossSpaceCompactionSelector selector =
         new RewriteCrossSpaceCompactionSelector("", "", 0, null);
     List<Pair<List<TsFileResource>, List<TsFileResource>>> selected =
@@ -1535,8 +1535,8 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
 
-    CrossSpaceCompactionResource resource =
-        new CrossSpaceCompactionResource(seqResources, unseqResources);
+    CrossSpaceCompactionCandidate resource =
+        new CrossSpaceCompactionCandidate(seqResources, unseqResources);
     RewriteCrossSpaceCompactionSelector selector =
         new RewriteCrossSpaceCompactionSelector("", "", 0, null);
     List<Pair<List<TsFileResource>, List<TsFileResource>>> selected =
@@ -1590,8 +1590,8 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
 
-    CrossSpaceCompactionResource resource =
-        new CrossSpaceCompactionResource(seqResources, unseqResources);
+    CrossSpaceCompactionCandidate resource =
+        new CrossSpaceCompactionCandidate(seqResources, unseqResources);
     RewriteCrossSpaceCompactionSelector selector =
         new RewriteCrossSpaceCompactionSelector("", "", 0, null);
     List<Pair<List<TsFileResource>, List<TsFileResource>>> selected =
@@ -1644,8 +1644,8 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
 
-    CrossSpaceCompactionResource resource =
-        new CrossSpaceCompactionResource(seqResources, unseqResources);
+    CrossSpaceCompactionCandidate resource =
+        new CrossSpaceCompactionCandidate(seqResources, unseqResources);
     RewriteCrossSpaceCompactionSelector selector =
         new RewriteCrossSpaceCompactionSelector("", "", 0, null);
     List<Pair<List<TsFileResource>, List<TsFileResource>>> selected =
@@ -1699,8 +1699,8 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
 
-    CrossSpaceCompactionResource resource =
-        new CrossSpaceCompactionResource(seqResources, unseqResources);
+    CrossSpaceCompactionCandidate resource =
+        new CrossSpaceCompactionCandidate(seqResources, unseqResources);
     RewriteCrossSpaceCompactionSelector selector =
         new RewriteCrossSpaceCompactionSelector("", "", 0, null);
     List<Pair<List<TsFileResource>, List<TsFileResource>>> selected =
@@ -1754,8 +1754,8 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
 
-    CrossSpaceCompactionResource resource =
-        new CrossSpaceCompactionResource(seqResources, unseqResources);
+    CrossSpaceCompactionCandidate resource =
+        new CrossSpaceCompactionCandidate(seqResources, unseqResources);
     RewriteCrossSpaceCompactionSelector selector =
         new RewriteCrossSpaceCompactionSelector("", "", 0, null);
     List<Pair<List<TsFileResource>, List<TsFileResource>>> selected =
@@ -1809,8 +1809,8 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
 
-    CrossSpaceCompactionResource resource =
-        new CrossSpaceCompactionResource(seqResources, unseqResources);
+    CrossSpaceCompactionCandidate resource =
+        new CrossSpaceCompactionCandidate(seqResources, unseqResources);
     RewriteCrossSpaceCompactionSelector selector =
         new RewriteCrossSpaceCompactionSelector("", "", 0, null);
     List<Pair<List<TsFileResource>, List<TsFileResource>>> selected =
@@ -1864,8 +1864,8 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
 
-    CrossSpaceCompactionResource resource =
-        new CrossSpaceCompactionResource(seqResources, unseqResources);
+    CrossSpaceCompactionCandidate resource =
+        new CrossSpaceCompactionCandidate(seqResources, unseqResources);
     RewriteCrossSpaceCompactionSelector selector =
         new RewriteCrossSpaceCompactionSelector("", "", 0, null);
     List<Pair<List<TsFileResource>, List<TsFileResource>>> selected =
@@ -1918,8 +1918,8 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
 
-    CrossSpaceCompactionResource resource =
-        new CrossSpaceCompactionResource(seqResources, unseqResources);
+    CrossSpaceCompactionCandidate resource =
+        new CrossSpaceCompactionCandidate(seqResources, unseqResources);
     RewriteCrossSpaceCompactionSelector selector =
         new RewriteCrossSpaceCompactionSelector("", "", 0, null);
     List<Pair<List<TsFileResource>, List<TsFileResource>>> selected =
@@ -1965,8 +1965,8 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
 
-    CrossSpaceCompactionResource resource =
-        new CrossSpaceCompactionResource(seqResources, unseqResources);
+    CrossSpaceCompactionCandidate resource =
+        new CrossSpaceCompactionCandidate(seqResources, unseqResources);
     RewriteCrossSpaceCompactionSelector selector =
         new RewriteCrossSpaceCompactionSelector("", "", 0, null);
     List<Pair<List<TsFileResource>, List<TsFileResource>>> selected =
@@ -2018,8 +2018,8 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
 
-    CrossSpaceCompactionResource resource =
-        new CrossSpaceCompactionResource(seqResources, unseqResources);
+    CrossSpaceCompactionCandidate resource =
+        new CrossSpaceCompactionCandidate(seqResources, unseqResources);
     RewriteCrossSpaceCompactionSelector selector =
         new RewriteCrossSpaceCompactionSelector("", "", 0, null);
     List<Pair<List<TsFileResource>, List<TsFileResource>>> selected =
@@ -2073,8 +2073,8 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
 
-    CrossSpaceCompactionResource resource =
-        new CrossSpaceCompactionResource(seqResources, unseqResources);
+    CrossSpaceCompactionCandidate resource =
+        new CrossSpaceCompactionCandidate(seqResources, unseqResources);
     RewriteCrossSpaceCompactionSelector selector =
         new RewriteCrossSpaceCompactionSelector("", "", 0, null);
     List<Pair<List<TsFileResource>, List<TsFileResource>>> selected =
