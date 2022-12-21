@@ -292,14 +292,14 @@ public interface BaseConfig {
   }
 
   default long getTimePartitionInterval() {
-    return 86400;
+    return 604800000;
   }
 
-  default BaseConfig setRatisSnapshotTriggerThreshold(int ratisSnapshotTriggerThreshold) {
+  default BaseConfig setConfigNodeRatisSnapshotTriggerThreshold(int ratisSnapshotTriggerThreshold) {
     return this;
   }
 
-  default int getRatisSnapshotTriggerThreshold() {
+  default int getConfigNodeRatisSnapshotTriggerThreshold() {
     return 400000;
   }
 
@@ -411,5 +411,9 @@ public interface BaseConfig {
 
   default int getQueryThreadCount() {
     return Runtime.getRuntime().availableProcessors();
+  }
+
+  default BaseConfig setDataRatisTriggerSnapshotThreshold(long threshold) {
+    return this;
   }
 }

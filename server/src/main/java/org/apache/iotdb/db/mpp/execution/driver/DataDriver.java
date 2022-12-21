@@ -20,7 +20,7 @@ package org.apache.iotdb.db.mpp.execution.driver;
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
-import org.apache.iotdb.db.engine.storagegroup.DataRegion;
+import org.apache.iotdb.db.engine.storagegroup.IDataRegionForQuery;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.idtable.IDTable;
@@ -122,7 +122,7 @@ public class DataDriver extends Driver {
    */
   private QueryDataSource initQueryDataSource() throws QueryProcessException {
     DataDriverContext context = (DataDriverContext) driverContext;
-    DataRegion dataRegion = context.getDataRegion();
+    IDataRegionForQuery dataRegion = context.getDataRegion();
     dataRegion.readLock();
     try {
       List<PartialPath> pathList = new ArrayList<>();

@@ -25,7 +25,6 @@ import org.apache.iotdb.db.mpp.plan.expression.visitor.ExpressionVisitor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.mpp.transformation.dag.memory.LayerMemoryAssigner;
 import org.apache.iotdb.db.mpp.transformation.dag.udf.UDTFExecutor;
-import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.io.DataOutputStream;
@@ -87,13 +86,6 @@ public abstract class BinaryExpression extends Expression {
       Map<String, UDTFExecutor> expressionName2Executor, ZoneId zoneId) {
     leftExpression.constructUdfExecutors(expressionName2Executor, zoneId);
     rightExpression.constructUdfExecutors(expressionName2Executor, zoneId);
-  }
-
-  @Override
-  public final void bindInputLayerColumnIndexWithExpression(UDTFPlan udtfPlan) {
-    leftExpression.bindInputLayerColumnIndexWithExpression(udtfPlan);
-    rightExpression.bindInputLayerColumnIndexWithExpression(udtfPlan);
-    inputColumnIndex = udtfPlan.getReaderIndexByExpressionName(toString());
   }
 
   @Override

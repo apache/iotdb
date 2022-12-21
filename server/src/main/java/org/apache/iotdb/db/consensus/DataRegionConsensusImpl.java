@@ -148,7 +148,7 @@ public class DataRegionConsensusImpl {
                                           conf.getDataRatisConsensusLogAppenderBufferSizeMax())
                                       .build())
                               .setRatisConsensus(
-                                  RatisConfig.RatisConsensus.newBuilder()
+                                  RatisConfig.Impl.newBuilder()
                                       .setClientRequestTimeoutMillis(
                                           conf.getDataRatisConsensusRequestTimeoutMs())
                                       .setClientMaxRetryAttempt(
@@ -157,8 +157,7 @@ public class DataRegionConsensusImpl {
                                           conf.getDataRatisConsensusInitialSleepTimeMs())
                                       .setClientRetryMaxSleepTimeMs(
                                           conf.getDataRatisConsensusMaxSleepTimeMs())
-                                      .setTriggerSnapshotFileSize(
-                                          conf.getDataRatisLogMaxMB() * 1024 * 1024)
+                                      .setTriggerSnapshotFileSize(conf.getDataRatisLogMax())
                                       .build())
                               .build())
                       .build(),

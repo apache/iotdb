@@ -77,10 +77,10 @@ import org.apache.iotdb.db.metadata.storagegroup.IStorageGroupSchemaManager;
 import org.apache.iotdb.db.metadata.storagegroup.StorageGroupSchemaManager;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.mpp.plan.constant.DataNodeEndPoints;
+import org.apache.iotdb.db.mpp.plan.statement.AuthorType;
 import org.apache.iotdb.db.mpp.plan.statement.sys.AuthorStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeSinkStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeStatement;
-import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
 import org.apache.iotdb.db.rescon.MemTableManager;
 import org.apache.iotdb.db.sync.SyncService;
 import org.apache.iotdb.db.utils.sync.SyncPipeUtil;
@@ -110,6 +110,7 @@ import java.util.stream.Collectors;
  * This class simulates the behaviour of configNode to manage the configs locally. The schema
  * configs include database and schema region. The data config is dataRegion.
  */
+@Deprecated
 public class LocalConfigNode {
 
   private static final Logger logger = LoggerFactory.getLogger(LocalConfigNode.class);
@@ -796,8 +797,7 @@ public class LocalConfigNode {
 
   // author
   public void operatorPermission(AuthorStatement authorStatement) throws AuthException {
-    AuthorOperator.AuthorType authorType =
-        AuthorOperator.AuthorType.values()[authorStatement.getAuthorType().ordinal()];
+    AuthorType authorType = AuthorType.values()[authorStatement.getAuthorType().ordinal()];
     String userName = authorStatement.getUserName();
     String roleName = authorStatement.getRoleName();
     String password = authorStatement.getPassWord();
@@ -858,14 +858,14 @@ public class LocalConfigNode {
         iAuthorizer.revokeRoleFromUser(roleName, userName);
         break;
       default:
-        throw new AuthException("Unsupported operation " + authorType);
+        throw new AuthException(
+            TSStatusCode.UNSUPPORTED_AUTH_OPERATION, "Unsupported operation " + authorType);
     }
   }
 
   public Map<String, List<String>> queryPermission(AuthorStatement authorStatement)
       throws AuthException {
-    AuthorOperator.AuthorType authorType =
-        AuthorOperator.AuthorType.values()[authorStatement.getAuthorType().ordinal()];
+    AuthorType authorType = AuthorType.values()[authorStatement.getAuthorType().ordinal()];
     switch (authorType) {
       case LIST_USER:
         return executeListRoleUsers(authorStatement);
@@ -876,7 +876,8 @@ public class LocalConfigNode {
       case LIST_ROLE_PRIVILEGE:
         return executeListRolePrivileges(authorStatement);
       default:
-        throw new AuthException("Unsupported operation " + authorType);
+        throw new AuthException(
+            TSStatusCode.UNSUPPORTED_AUTH_OPERATION, "Unsupported operation " + authorType);
     }
   }
 
@@ -884,14 +885,10 @@ public class LocalConfigNode {
       throws AuthException {
     List<String> userList = iAuthorizer.listAllUsers();
     if (authorStatement.getRoleName() != null && !authorStatement.getRoleName().isEmpty()) {
-      Role role;
-      try {
-        role = iAuthorizer.getRole(authorStatement.getRoleName());
-        if (role == null) {
-          throw new AuthException("No such role : " + authorStatement.getRoleName());
-        }
-      } catch (AuthException e) {
-        throw new AuthException(e);
+      Role role = iAuthorizer.getRole(authorStatement.getRoleName());
+      if (role == null) {
+        throw new AuthException(
+            TSStatusCode.ROLE_NOT_EXIST, "No such role : " + authorStatement.getRoleName());
       }
       Iterator<String> itr = userList.iterator();
       while (itr.hasNext()) {
@@ -913,18 +910,12 @@ public class LocalConfigNode {
     if (authorStatement.getUserName() == null || authorStatement.getUserName().isEmpty()) {
       roleList.addAll(iAuthorizer.listAllRoles());
     } else {
-      User user;
-      try {
-        user = iAuthorizer.getUser(authorStatement.getUserName());
-        if (user == null) {
-          throw new AuthException("No such user : " + authorStatement.getUserName());
-        }
-      } catch (AuthException e) {
-        throw new AuthException(e);
+      User user = iAuthorizer.getUser(authorStatement.getUserName());
+      if (user == null) {
+        throw new AuthException(
+            TSStatusCode.USER_NOT_EXIST, "No such user : " + authorStatement.getUserName());
       }
-      for (String roleN : user.getRoleList()) {
-        roleList.add(roleN);
-      }
+      roleList.addAll(user.getRoleList());
     }
 
     Map<String, List<String>> permissionInfo = new HashMap<>();
@@ -935,14 +926,10 @@ public class LocalConfigNode {
   public Map<String, List<String>> executeListRolePrivileges(AuthorStatement authorStatement)
       throws AuthException {
     Map<String, List<String>> permissionInfo = new HashMap<>();
-    Role role;
-    try {
-      role = iAuthorizer.getRole(authorStatement.getRoleName());
-      if (role == null) {
-        throw new AuthException("No such role : " + authorStatement.getRoleName());
-      }
-    } catch (AuthException e) {
-      throw new AuthException(e);
+    Role role = iAuthorizer.getRole(authorStatement.getRoleName());
+    if (role == null) {
+      throw new AuthException(
+          TSStatusCode.ROLE_NOT_EXIST, "No such role : " + authorStatement.getRoleName());
     }
     Set<String> rolePrivilegeSet = new HashSet<>();
     for (PathPrivilege pathPrivilege : role.getPrivilegeList()) {
@@ -964,14 +951,10 @@ public class LocalConfigNode {
   public Map<String, List<String>> executeListUserPrivileges(AuthorStatement authorStatement)
       throws AuthException {
     Map<String, List<String>> permissionInfo = new HashMap<>();
-    User user;
-    try {
-      user = iAuthorizer.getUser(authorStatement.getUserName());
-      if (user == null) {
-        throw new AuthException("No such user : " + authorStatement.getUserName());
-      }
-    } catch (AuthException e) {
-      throw new AuthException(e);
+    User user = iAuthorizer.getUser(authorStatement.getUserName());
+    if (user == null) {
+      throw new AuthException(
+          TSStatusCode.USER_NOT_EXIST, "No such user : " + authorStatement.getUserName());
     }
     List<String> userPrivilegesList = new ArrayList<>();
 

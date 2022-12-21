@@ -27,7 +27,6 @@ import org.apache.iotdb.db.mpp.plan.expression.visitor.ExpressionVisitor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.mpp.transformation.dag.memory.LayerMemoryAssigner;
 import org.apache.iotdb.db.mpp.transformation.dag.udf.UDTFExecutor;
-import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.io.DataOutputStream;
@@ -86,6 +85,25 @@ public abstract class TernaryExpression extends Expression {
     return Arrays.asList(firstExpression, secondExpression, thirdExpression);
   }
 
+  private void reconstruct(
+      List<Expression> firstExpressions,
+      List<Expression> secondExpressions,
+      List<Expression> thirdExpressions,
+      List<Expression> resultExpressions) {
+    for (Expression fe : firstExpressions) {
+      for (Expression se : secondExpressions)
+        for (Expression te : thirdExpressions) {
+          switch (operator()) {
+            case "between":
+              resultExpressions.add(new BetweenExpression(fe, se, te));
+              break;
+            default:
+              throw new UnsupportedOperationException();
+          }
+        }
+    }
+  }
+
   @Override
   public boolean isMappable(Map<NodeRef<Expression>, TSDataType> expressionTypes) {
     return firstExpression.isMappable(expressionTypes)
@@ -99,14 +117,6 @@ public abstract class TernaryExpression extends Expression {
     firstExpression.constructUdfExecutors(expressionName2Executor, zoneId);
     secondExpression.constructUdfExecutors(expressionName2Executor, zoneId);
     thirdExpression.constructUdfExecutors(expressionName2Executor, zoneId);
-  }
-
-  @Override
-  public void bindInputLayerColumnIndexWithExpression(UDTFPlan udtfPlan) {
-    firstExpression.bindInputLayerColumnIndexWithExpression(udtfPlan);
-    secondExpression.bindInputLayerColumnIndexWithExpression(udtfPlan);
-    thirdExpression.bindInputLayerColumnIndexWithExpression(udtfPlan);
-    inputColumnIndex = udtfPlan.getReaderIndexByExpressionName(toString());
   }
 
   @Override

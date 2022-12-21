@@ -22,6 +22,7 @@
   <disallow class="java.sql.DriverManager"/>
   <disallow class="javax.sql.DataSource"/>
   <allow class="java.security.SecureRandom" />
+  <allow class="org.awaitility.Awaitility"/>
   <allow pkg="org\.junit.*" regex="true"/>
   <allow pkg="java.io" />
   <allow pkg="java.nio"/>
@@ -65,6 +66,7 @@
     <allow class="org.apache.iotdb.commons.exception.IllegalPathException" />
     <allow class="org.apache.commons.codec.digest.DigestUtils" />
     <allow class="org.apache.iotdb.commons.trigger.service.TriggerExecutableManager" />
+    <allow class="org.apache.iotdb.db.mpp.plan.statement.AuthorType" />
     <allow class="org.apache.iotdb.commons.trigger.TriggerInformation" />
     <allow class="org.apache.iotdb.commons.udf.UDFInformation" />
     <allow class="org.apache.iotdb.commons.cq.CQState" />
@@ -96,5 +98,10 @@
     <allow pkg="org\.apache\.iotdb\.tsfile\.file\.metadata.*" regex="true" />
     <allow pkg="org.apache.iotdb.db.metadata.idtable.trigger_example" />
     <allow pkg="org.apache.iotdb.session.template" />
+  </subpackage>
+  <subpackage name="zeppelin.it">
+    <allow class="org.apache.zeppelin.interpreter.InterpreterResult" />
+    <allow class="org.apache.zeppelin.interpreter.InterpreterResult.Code" />
+    <allow class="org.apache.zeppelin.iotdb.IoTDBInterpreter" />
   </subpackage>
 </import-control>

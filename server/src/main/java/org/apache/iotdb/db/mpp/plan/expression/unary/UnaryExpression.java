@@ -25,7 +25,6 @@ import org.apache.iotdb.db.mpp.plan.expression.visitor.ExpressionVisitor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.mpp.transformation.dag.memory.LayerMemoryAssigner;
 import org.apache.iotdb.db.mpp.transformation.dag.udf.UDTFExecutor;
-import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.io.DataOutputStream;
@@ -64,15 +63,20 @@ public abstract class UnaryExpression extends Expression {
   }
 
   @Override
-  public final void constructUdfExecutors(
-      Map<String, UDTFExecutor> expressionName2Executor, ZoneId zoneId) {
-    expression.constructUdfExecutors(expressionName2Executor, zoneId);
+  public final boolean isTimeSeriesGeneratingFunctionExpression() {
+    return !isUserDefinedAggregationFunctionExpression();
   }
 
   @Override
-  public final void bindInputLayerColumnIndexWithExpression(UDTFPlan udtfPlan) {
-    expression.bindInputLayerColumnIndexWithExpression(udtfPlan);
-    inputColumnIndex = udtfPlan.getReaderIndexByExpressionName(toString());
+  public final boolean isUserDefinedAggregationFunctionExpression() {
+    return expression.isUserDefinedAggregationFunctionExpression()
+        || expression.isBuiltInAggregationFunctionExpression();
+  }
+
+  @Override
+  public final void constructUdfExecutors(
+      Map<String, UDTFExecutor> expressionName2Executor, ZoneId zoneId) {
+    expression.constructUdfExecutors(expressionName2Executor, zoneId);
   }
 
   @Override

@@ -60,7 +60,9 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.GroupByLevelNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.GroupByTagNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.IntoNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.LimitNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.MergeSortNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.OffsetNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.SingleDeviceViewNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.SlidingWindowAggregationNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.TimeJoinNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.TransformNode;
@@ -74,6 +76,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesAggregationSo
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationStep;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.CrossSeriesAggregationDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.DeviceViewIntoPathDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.FillDescriptor;
@@ -83,7 +86,6 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.OrderByParameter;
 import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.db.mpp.plan.statement.component.SortItem;
 import org.apache.iotdb.db.mpp.plan.statement.component.SortKey;
-import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
@@ -196,7 +198,11 @@ public class LogicalPlanBuilder {
         sourceExpressions.stream()
             .map(expression -> ((TimeSeriesOperand) expression).getPath())
             .collect(Collectors.toList());
-    List<PartialPath> groupedPaths = MetaUtils.groupAlignedSeries(selectedPaths);
+
+    List<PartialPath> groupedPaths =
+        mergeOrderParameter.getSortItemList().isEmpty()
+            ? MetaUtils.groupAlignedSeries(selectedPaths)
+            : MetaUtils.groupAlignedSeriesWithOrder(selectedPaths, mergeOrderParameter);
     for (PartialPath path : groupedPaths) {
       if (path instanceof MeasurementPath) { // non-aligned series
         sourceNodeList.add(
@@ -516,32 +522,73 @@ public class LogicalPlanBuilder {
       Map<String, PlanNode> deviceNameToSourceNodesMap,
       Set<Expression> deviceViewOutputExpressions,
       Map<String, List<Integer>> deviceToMeasurementIndexesMap,
-      Ordering mergeOrder) {
+      List<SortItem> sortItemList) {
     List<String> outputColumnNames =
         deviceViewOutputExpressions.stream()
             .map(Expression::getExpressionString)
             .collect(Collectors.toList());
 
-    DeviceViewNode deviceViewNode =
-        new DeviceViewNode(
-            context.getQueryId().genPlanNodeId(),
-            new OrderByParameter(
-                Arrays.asList(
-                    new SortItem(SortKey.DEVICE, Ordering.ASC),
-                    new SortItem(SortKey.TIME, mergeOrder))),
-            outputColumnNames,
-            deviceToMeasurementIndexesMap);
+    int timePriority = -1, devicePriority = -1;
+    for (int i = 0; i < sortItemList.size(); i++) {
+      SortKey sortKey = sortItemList.get(i).getSortKey();
+      if (sortKey == SortKey.TIME) {
+        timePriority = sortItemList.size() - i;
+      } else if (sortKey == SortKey.DEVICE) {
+        devicePriority = sortItemList.size() - i;
+      }
+    }
+    Ordering deviceOrdering =
+        devicePriority == -1
+            ? Ordering.ASC
+            : sortItemList.get(sortItemList.size() - devicePriority).getOrdering();
+    Ordering timeOrdering =
+        timePriority == -1
+            ? Ordering.ASC
+            : sortItemList.get(sortItemList.size() - timePriority).getOrdering();
 
-    for (Map.Entry<String, PlanNode> entry : deviceNameToSourceNodesMap.entrySet()) {
-      String deviceName = entry.getKey();
-      PlanNode subPlan = entry.getValue();
-      deviceViewNode.addChildDeviceNode(deviceName, subPlan);
+    if ((timePriority == -1 && devicePriority == -1) || devicePriority > timePriority) {
+      DeviceViewNode deviceViewNode =
+          new DeviceViewNode(
+              context.getQueryId().genPlanNodeId(),
+              new OrderByParameter(
+                  Arrays.asList(
+                      new SortItem(SortKey.DEVICE, deviceOrdering),
+                      new SortItem(SortKey.TIME, timeOrdering))),
+              outputColumnNames,
+              deviceToMeasurementIndexesMap);
+
+      for (Map.Entry<String, PlanNode> entry : deviceNameToSourceNodesMap.entrySet()) {
+        String deviceName = entry.getKey();
+        PlanNode subPlan = entry.getValue();
+        deviceViewNode.addChildDeviceNode(deviceName, subPlan);
+      }
+      this.root = deviceViewNode;
+    } else {
+      MergeSortNode mergeSortNode =
+          new MergeSortNode(
+              context.getQueryId().genPlanNodeId(),
+              new OrderByParameter(
+                  Arrays.asList(
+                      new SortItem(SortKey.TIME, timeOrdering),
+                      new SortItem(SortKey.DEVICE, deviceOrdering))),
+              outputColumnNames);
+      for (Map.Entry<String, PlanNode> entry : deviceNameToSourceNodesMap.entrySet()) {
+        String deviceName = entry.getKey();
+        PlanNode subPlan = entry.getValue();
+        SingleDeviceViewNode singleDeviceViewNode =
+            new SingleDeviceViewNode(
+                context.getQueryId().genPlanNodeId(),
+                outputColumnNames,
+                deviceName,
+                deviceToMeasurementIndexesMap.get(deviceName));
+        singleDeviceViewNode.addChild(subPlan);
+        mergeSortNode.addChild(singleDeviceViewNode);
+      }
+      this.root = mergeSortNode;
     }
 
     context.getTypeProvider().setType(DEVICE, TSDataType.TEXT);
     updateTypeProvider(deviceViewOutputExpressions);
-
-    this.root = deviceViewNode;
     return this;
   }
 

@@ -35,10 +35,10 @@ import java.io.DataInputStream;
 import java.io.EOFException;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -63,14 +63,14 @@ public class LocalFileUserAccessor implements IUserAccessor {
   private static final String STRING_ENCODING = "utf-8";
   private static final String userSnapshotFileName = "system" + File.separator + "users";
 
-  private String userDirPath;
+  private final String userDirPath;
   /**
    * Reused buffer for primitive types encoding/decoding, which aim to reduce memory fragments. Use
    * ThreadLocal for thread safety.
    */
-  private ThreadLocal<ByteBuffer> encodingBufferLocal = new ThreadLocal<>();
+  private final ThreadLocal<ByteBuffer> encodingBufferLocal = new ThreadLocal<>();
 
-  private ThreadLocal<byte[]> strBufferLocal = new ThreadLocal<>();
+  private final ThreadLocal<byte[]> strBufferLocal = new ThreadLocal<>();
 
   public LocalFileUserAccessor(String userDirPath) {
     this.userDirPath = userDirPath;
@@ -157,7 +157,7 @@ public class LocalFileUserAccessor implements IUserAccessor {
                 + TEMP_SUFFIX);
 
     try (BufferedOutputStream outputStream =
-        new BufferedOutputStream(new FileOutputStream(userProfile))) {
+        new BufferedOutputStream(Files.newOutputStream(userProfile.toPath()))) {
       try {
         IOUtils.writeString(outputStream, user.getName(), STRING_ENCODING, encodingBufferLocal);
         IOUtils.writeString(outputStream, user.getPassword(), STRING_ENCODING, encodingBufferLocal);

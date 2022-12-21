@@ -31,7 +31,6 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.mpp.transformation.dag.memory.LayerMemoryAssigner;
 import org.apache.iotdb.db.mpp.transformation.dag.udf.UDTFExecutor;
 import org.apache.iotdb.db.mpp.transformation.dag.udf.UDTFInformationInferrer;
-import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.udf.api.customizer.strategy.AccessStrategy;
@@ -167,14 +166,6 @@ public class FunctionExpression extends Expression {
       expression.constructUdfExecutors(expressionName2Executor, zoneId);
     }
     expressionName2Executor.put(expressionString, new UDTFExecutor(functionName, zoneId));
-  }
-
-  @Override
-  public void bindInputLayerColumnIndexWithExpression(UDTFPlan udtfPlan) {
-    for (Expression expression : expressions) {
-      expression.bindInputLayerColumnIndexWithExpression(udtfPlan);
-    }
-    inputColumnIndex = udtfPlan.getReaderIndexByExpressionName(toString());
   }
 
   @Override

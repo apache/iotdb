@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.mpp.execution.memory;
 
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import com.google.common.util.concurrent.AbstractFuture;
@@ -31,6 +32,7 @@ import org.slf4j.LoggerFactory;
 import javax.annotation.Nullable;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
@@ -44,25 +46,61 @@ public class MemoryPool {
   private static final Logger LOGGER = LoggerFactory.getLogger(MemoryPool.class);
 
   public static class MemoryReservationFuture<V> extends AbstractFuture<V> {
+
     private final String queryId;
-    private final long bytes;
+    private final String fragmentInstanceId;
+    private final String planNodeId;
+    private final long bytesToReserve;
+    /**
+     * MemoryReservationFuture is created when SinkHandle or SourceHandle tries to reserve memory
+     * from pool. This field is max Bytes that SinkHandle or SourceHandle can reserve.
+     */
+    private final long maxBytesCanReserve;
 
-    private MemoryReservationFuture(String queryId, long bytes) {
+    private MemoryReservationFuture(
+        String queryId,
+        String fragmentInstanceId,
+        String planNodeId,
+        long bytesToReserve,
+        long maxBytesCanReserve) {
       this.queryId = Validate.notNull(queryId, "queryId cannot be null");
-      Validate.isTrue(bytes > 0L, "bytes should be greater than zero.");
-      this.bytes = bytes;
-    }
-
-    public long getBytes() {
-      return bytes;
+      this.fragmentInstanceId =
+          Validate.notNull(fragmentInstanceId, "fragmentInstanceId cannot be null");
+      this.planNodeId = Validate.notNull(planNodeId, "planNodeId cannot be null");
+      Validate.isTrue(bytesToReserve > 0L, "bytesToReserve should be greater than zero.");
+      Validate.isTrue(maxBytesCanReserve > 0L, "maxBytesCanReserve should be greater than zero.");
+      this.bytesToReserve = bytesToReserve;
+      this.maxBytesCanReserve = maxBytesCanReserve;
     }
 
     public String getQueryId() {
       return queryId;
     }
 
-    public static <V> MemoryReservationFuture<V> create(String queryId, long bytes) {
-      return new MemoryReservationFuture<>(queryId, bytes);
+    public String getFragmentInstanceId() {
+      return fragmentInstanceId;
+    }
+
+    public String getPlanNodeId() {
+      return planNodeId;
+    }
+
+    public long getBytesToReserve() {
+      return bytesToReserve;
+    }
+
+    public long getMaxBytesCanReserve() {
+      return maxBytesCanReserve;
+    }
+
+    public static <V> MemoryReservationFuture<V> create(
+        String queryId,
+        String fragmentInstanceId,
+        String planNodeId,
+        long bytesToReserve,
+        long maxBytesCanReserve) {
+      return new MemoryReservationFuture<>(
+          queryId, fragmentInstanceId, planNodeId, bytesToReserve, maxBytesCanReserve);
     }
 
     @Override
@@ -73,22 +111,25 @@ public class MemoryPool {
 
   private final String id;
   private final long maxBytes;
-  private final long maxBytesPerQuery;
+  private final long maxBytesPerFragmentInstance;
 
   private long reservedBytes = 0L;
-  private final Map<String, Long> queryMemoryReservations = new HashMap<>();
+  /** queryId -> fragmentInstanceId -> planNodeId -> bytesReserved */
+  private final Map<String, Map<String, Map<String, Long>>> queryMemoryReservations =
+      new HashMap<>();
+
   private final Queue<MemoryReservationFuture<Void>> memoryReservationFutures = new LinkedList<>();
 
-  public MemoryPool(String id, long maxBytes, long maxBytesPerQuery) {
+  public MemoryPool(String id, long maxBytes, long maxBytesPerFragmentInstance) {
     this.id = Validate.notNull(id);
     Validate.isTrue(maxBytes > 0L, "max bytes should be greater than zero: %d", maxBytes);
     this.maxBytes = maxBytes;
     Validate.isTrue(
-        maxBytesPerQuery > 0L && maxBytesPerQuery <= maxBytes,
+        maxBytesPerFragmentInstance > 0L && maxBytesPerFragmentInstance <= maxBytes,
         "max bytes per query should be greater than zero while less than or equal to max bytes. maxBytesPerQuery: %d, maxBytes: %d",
-        maxBytesPerQuery,
+        maxBytesPerFragmentInstance,
         maxBytes);
-    this.maxBytesPerQuery = maxBytesPerQuery;
+    this.maxBytesPerFragmentInstance = maxBytesPerFragmentInstance;
   }
 
   public String getId() {
@@ -100,56 +141,93 @@ public class MemoryPool {
   }
 
   /** @return if reserve succeed, pair.right will be true, otherwise false */
-  public Pair<ListenableFuture<Void>, Boolean> reserve(String queryId, long bytes) {
+  public Pair<ListenableFuture<Void>, Boolean> reserve(
+      String queryId,
+      String fragmentInstanceId,
+      String planNodeId,
+      long bytesToReserve,
+      long maxBytesCanReserve) {
     Validate.notNull(queryId);
+    Validate.notNull(fragmentInstanceId);
+    Validate.notNull(planNodeId);
     Validate.isTrue(
-        bytes > 0L && bytes <= maxBytesPerQuery,
-        "bytes should be greater than zero while less than or equal to max bytes per query: %d",
-        bytes);
+        bytesToReserve > 0L && bytesToReserve <= maxBytesPerFragmentInstance,
+        "bytes should be greater than zero while less than or equal to max bytes per fragment instance: %d",
+        bytesToReserve);
 
     ListenableFuture<Void> result;
     synchronized (this) {
-      if (maxBytes - reservedBytes < bytes
-          || maxBytesPerQuery - queryMemoryReservations.getOrDefault(queryId, 0L) < bytes) {
-        result = MemoryReservationFuture.create(queryId, bytes);
+      if (maxBytes - reservedBytes < bytesToReserve
+          || maxBytesCanReserve
+                  - queryMemoryReservations
+                      .getOrDefault(queryId, Collections.emptyMap())
+                      .getOrDefault(fragmentInstanceId, Collections.emptyMap())
+                      .getOrDefault(planNodeId, 0L)
+              < bytesToReserve) {
+        result =
+            MemoryReservationFuture.create(
+                queryId, fragmentInstanceId, planNodeId, bytesToReserve, maxBytesCanReserve);
         memoryReservationFutures.add((MemoryReservationFuture<Void>) result);
         return new Pair<>(result, Boolean.FALSE);
       } else {
-        reservedBytes += bytes;
-        queryMemoryReservations.merge(queryId, bytes, Long::sum);
+        reservedBytes += bytesToReserve;
+        queryMemoryReservations
+            .computeIfAbsent(queryId, x -> new HashMap<>())
+            .computeIfAbsent(fragmentInstanceId, x -> new HashMap<>())
+            .merge(planNodeId, bytesToReserve, Long::sum);
         result = Futures.immediateFuture(null);
         return new Pair<>(result, Boolean.TRUE);
       }
     }
   }
 
-  public boolean tryReserve(String queryId, long bytes) {
+  @TestOnly
+  public boolean tryReserve(
+      String queryId,
+      String fragmentInstanceId,
+      String planNodeId,
+      long bytesToReserve,
+      long maxBytesCanReserve) {
     Validate.notNull(queryId);
+    Validate.notNull(fragmentInstanceId);
+    Validate.notNull(planNodeId);
     Validate.isTrue(
-        bytes > 0L && bytes <= maxBytesPerQuery,
-        "bytes should be greater than zero while less than or equal to max bytes per query: %d",
-        bytes);
+        bytesToReserve > 0L && bytesToReserve <= maxBytesPerFragmentInstance,
+        "bytes should be greater than zero while less than or equal to max bytes per fragment instance: %d",
+        bytesToReserve);
 
-    if (maxBytes - reservedBytes < bytes
-        || maxBytesPerQuery - queryMemoryReservations.getOrDefault(queryId, 0L) < bytes) {
+    if (maxBytes - reservedBytes < bytesToReserve
+        || maxBytesCanReserve
+                - queryMemoryReservations
+                    .getOrDefault(queryId, Collections.emptyMap())
+                    .getOrDefault(fragmentInstanceId, Collections.emptyMap())
+                    .getOrDefault(planNodeId, 0L)
+            < bytesToReserve) {
       return false;
     }
     synchronized (this) {
-      if (maxBytes - reservedBytes < bytes
-          || maxBytesPerQuery - queryMemoryReservations.getOrDefault(queryId, 0L) < bytes) {
+      if (maxBytes - reservedBytes < bytesToReserve
+          || maxBytesCanReserve
+                  - queryMemoryReservations
+                      .getOrDefault(queryId, Collections.emptyMap())
+                      .getOrDefault(fragmentInstanceId, Collections.emptyMap())
+                      .getOrDefault(planNodeId, 0L)
+              < bytesToReserve) {
         return false;
       }
-      reservedBytes += bytes;
-      queryMemoryReservations.merge(queryId, bytes, Long::sum);
+      reservedBytes += bytesToReserve;
+      queryMemoryReservations
+          .computeIfAbsent(queryId, x -> new HashMap<>())
+          .computeIfAbsent(fragmentInstanceId, x -> new HashMap<>())
+          .merge(planNodeId, bytesToReserve, Long::sum);
     }
-
     return true;
   }
 
   /**
    * Cancel the specified memory reservation. If the reservation has finished, do nothing.
    *
-   * @param future The future returned from {@link #reserve(String, long)}
+   * @param future The future returned from {@link #reserve(String, String, String, long, long)}
    * @return If the future has not complete, return the number of bytes being reserved. Otherwise,
    *     return 0.
    */
@@ -163,13 +241,13 @@ public class MemoryPool {
         future instanceof MemoryReservationFuture,
         "invalid future type " + future.getClass().getSimpleName());
     future.cancel(true);
-    return ((MemoryReservationFuture<Void>) future).getBytes();
+    return ((MemoryReservationFuture<Void>) future).getBytesToReserve();
   }
 
   /**
    * Complete the specified memory reservation. If the reservation has finished, do nothing.
    *
-   * @param future The future returned from {@link #reserve(String, long)}
+   * @param future The future returned from {@link #reserve(String, String, String, long, long)}
    * @return If the future has not complete, return the number of bytes being reserved. Otherwise,
    *     return 0.
    */
@@ -183,24 +261,31 @@ public class MemoryPool {
         future instanceof MemoryReservationFuture,
         "invalid future type " + future.getClass().getSimpleName());
     ((MemoryReservationFuture<Void>) future).set(null);
-    return ((MemoryReservationFuture<Void>) future).getBytes();
+    return ((MemoryReservationFuture<Void>) future).getBytesToReserve();
   }
 
-  public void free(String queryId, long bytes) {
+  public void free(String queryId, String fragmentInstanceId, String planNodeId, long bytes) {
     List<MemoryReservationFuture<Void>> futureList = new ArrayList<>();
     synchronized (this) {
       Validate.notNull(queryId);
       Validate.isTrue(bytes > 0L);
 
-      Long queryReservedBytes = queryMemoryReservations.get(queryId);
+      Long queryReservedBytes =
+          queryMemoryReservations
+              .getOrDefault(queryId, Collections.emptyMap())
+              .getOrDefault(fragmentInstanceId, Collections.emptyMap())
+              .get(planNodeId);
       Validate.notNull(queryReservedBytes);
       Validate.isTrue(bytes <= queryReservedBytes);
 
       queryReservedBytes -= bytes;
       if (queryReservedBytes == 0) {
-        queryMemoryReservations.remove(queryId);
+        queryMemoryReservations.get(queryId).get(fragmentInstanceId).remove(planNodeId);
       } else {
-        queryMemoryReservations.put(queryId, queryReservedBytes);
+        queryMemoryReservations
+            .get(queryId)
+            .get(fragmentInstanceId)
+            .put(planNodeId, queryReservedBytes);
       }
       reservedBytes -= bytes;
 
@@ -213,14 +298,26 @@ public class MemoryPool {
         if (future.isCancelled() || future.isDone()) {
           continue;
         }
-        long bytesToReserve = future.getBytes();
+        long bytesToReserve = future.getBytesToReserve();
+        String curQueryId = future.getQueryId();
+        String curFragmentInstanceId = future.getFragmentInstanceId();
+        String curPlanNodeId = future.getPlanNodeId();
+        // check total reserved bytes in memory pool
         if (maxBytes - reservedBytes < bytesToReserve) {
-          return;
+          continue;
         }
-        if (maxBytesPerQuery - queryMemoryReservations.getOrDefault(future.getQueryId(), 0L)
+        // check total reserved bytes of one Sink/Source handle
+        if (future.getMaxBytesCanReserve()
+                - queryMemoryReservations
+                    .getOrDefault(curQueryId, Collections.emptyMap())
+                    .getOrDefault(curFragmentInstanceId, Collections.emptyMap())
+                    .getOrDefault(curPlanNodeId, 0L)
             >= bytesToReserve) {
           reservedBytes += bytesToReserve;
-          queryMemoryReservations.merge(future.getQueryId(), bytesToReserve, Long::sum);
+          queryMemoryReservations
+              .computeIfAbsent(curQueryId, x -> new HashMap<>())
+              .computeIfAbsent(curFragmentInstanceId, x -> new HashMap<>())
+              .merge(curPlanNodeId, bytesToReserve, Long::sum);
           futureList.add(future);
           iterator.remove();
         }
@@ -246,7 +343,14 @@ public class MemoryPool {
   }
 
   public long getQueryMemoryReservedBytes(String queryId) {
-    return queryMemoryReservations.getOrDefault(queryId, 0L);
+    if (!queryMemoryReservations.containsKey(queryId)) {
+      return 0L;
+    }
+    long sum = 0;
+    for (Map<String, Long> map : queryMemoryReservations.get(queryId).values()) {
+      sum = sum + map.values().stream().reduce(0L, Long::sum);
+    }
+    return sum;
   }
 
   public long getReservedBytes() {

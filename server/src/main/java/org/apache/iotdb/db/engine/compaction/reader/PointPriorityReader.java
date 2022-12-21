@@ -46,7 +46,11 @@ public class PointPriorityReader {
 
   private TimeValuePair currentPoint;
 
-  private boolean shouldReadNextPoint = true;
+  private boolean shouldReadPointFromQueue = true;
+
+  private long nextPageStartTime = Long.MAX_VALUE;
+
+  private PointElement currentPointElement;
 
   public PointPriorityReader(SeriesCompactionExecutor.RemovePage removePage) {
     this.removePage = removePage;
@@ -59,8 +63,9 @@ public class PointPriorityReader {
   }
 
   public TimeValuePair currentPoint() {
-    if (shouldReadNextPoint) {
-      // get the highest priority point
+    if (shouldReadPointFromQueue && currentPointElement == null) {
+      // if the current point is overlapped with other pages, then get the highest priority point
+      // from queue
       currentPoint = pointQueue.peek().timeValuePair;
       lastTime = currentPoint.getTimestamp();
 
@@ -69,7 +74,7 @@ public class PointPriorityReader {
         fillAlignedNullValue();
       }
 
-      shouldReadNextPoint = false;
+      shouldReadPointFromQueue = false;
     }
     return currentPoint;
   }
@@ -87,7 +92,7 @@ public class PointPriorityReader {
     int nullValueNum = currentValues.length;
     while (!pointQueue.isEmpty()) {
       if (pointQueue.peek().timestamp > lastTime) {
-        // the smallest time of all pages is later then the last time, then break the loop
+        // the smallest time of all pages is later than the last time, then break the loop
         break;
       } else {
         // find the data points in other pages that has the same timestamp
@@ -118,35 +123,69 @@ public class PointPriorityReader {
   }
 
   public void next() throws IllegalPathException, IOException, WriteProcessException {
-    // remove data points with the same timestamp as the last point
-    while (!pointQueue.isEmpty()) {
-      if (pointQueue.peek().timestamp > lastTime) {
-        // the smallest time of all pages is later than the last time, then break the loop
-        break;
+    if (currentPointElement != null) {
+      IPointReader pointReader = currentPointElement.pointReader;
+      if (pointReader.hasNextTimeValuePair()) {
+        // get the point directly if it is not overlapped with other points
+        currentPoint = pointReader.nextTimeValuePair();
+        if (currentPoint.getTimestamp() >= nextPageStartTime) {
+          // if the point is overlapped with other points, then add it into priority queue
+          currentPointElement.setPoint(currentPoint);
+          pointQueue.add(currentPointElement);
+          currentPointElement = null;
+        }
       } else {
-        // find the data points in other pages that has the same timestamp
-        PointElement pointElement = pointQueue.poll();
-        IPointReader pointReader = pointElement.pointReader;
-        if (pointReader.hasNextTimeValuePair()) {
-          pointElement.setPoint(pointReader.nextTimeValuePair());
-          pointQueue.add(pointElement);
+        // end page
+        PageElement pageElement = currentPointElement.pageElement;
+        currentPointElement = null;
+        removePage.call(pageElement);
+      }
+    } else {
+      // remove data points with the same timestamp as the last point
+      while (!pointQueue.isEmpty()) {
+        if (pointQueue.peek().timestamp > lastTime) {
+          // the smallest time of all pages is later than the last time, then break the loop
+          break;
         } else {
-          // end page
-          removePage.call(pointElement.pageElement);
+          // find the data points in other pages that has the same timestamp
+          PointElement pointElement = pointQueue.poll();
+          IPointReader pointReader = pointElement.pointReader;
+          if (pointReader.hasNextTimeValuePair()) {
+            pointElement.setPoint(pointReader.nextTimeValuePair());
+            nextPageStartTime =
+                pointQueue.size() > 0 ? pointQueue.peek().pageElement.startTime : Long.MAX_VALUE;
+            if (pointElement.timestamp < nextPageStartTime) {
+              currentPointElement = pointElement;
+              currentPoint = currentPointElement.timeValuePair;
+            } else {
+              pointQueue.add(pointElement);
+            }
+          } else {
+            // end page
+            removePage.call(pointElement.pageElement);
+          }
         }
       }
     }
-    shouldReadNextPoint = true;
+    shouldReadPointFromQueue = true;
   }
 
   public boolean hasNext() {
-    return !pointQueue.isEmpty();
+    return currentPointElement != null || !pointQueue.isEmpty();
   }
 
   /** Add a new overlapped page. */
   public void addNewPage(PageElement pageElement) throws IOException {
+    if (currentPointElement != null) {
+      nextPageStartTime = Math.min(nextPageStartTime, pageElement.startTime);
+      if (currentPoint.getTimestamp() >= nextPageStartTime) {
+        currentPointElement.setPoint(currentPoint);
+        pointQueue.add(currentPointElement);
+        currentPointElement = null;
+      }
+    }
     pageElement.deserializePage();
     pointQueue.add(new PointElement(pageElement));
-    shouldReadNextPoint = true;
+    shouldReadPointFromQueue = true;
   }
 }

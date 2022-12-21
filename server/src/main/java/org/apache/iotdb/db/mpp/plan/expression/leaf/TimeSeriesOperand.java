@@ -26,7 +26,6 @@ import org.apache.iotdb.db.mpp.plan.expression.ExpressionType;
 import org.apache.iotdb.db.mpp.plan.expression.visitor.ExpressionVisitor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.mpp.transformation.dag.memory.LayerMemoryAssigner;
-import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.io.DataOutputStream;
@@ -70,11 +69,6 @@ public class TimeSeriesOperand extends LeafOperand {
   @Override
   public boolean isConstantOperandInternal() {
     return false;
-  }
-
-  @Override
-  public void bindInputLayerColumnIndexWithExpression(UDTFPlan udtfPlan) {
-    inputColumnIndex = udtfPlan.getReaderIndexByExpressionName(toString());
   }
 
   @Override

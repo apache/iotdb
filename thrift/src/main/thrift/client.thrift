@@ -96,7 +96,7 @@ struct TSOpenSessionResp {
 struct TSOpenSessionReq {
   1: required TSProtocolVersion client_protocol = TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V3
   2: required string zoneId
-  3: optional string username
+  3: required string username
   4: optional string password
   5: optional map<string, string> configuration
 }
@@ -433,6 +433,13 @@ struct TSyncTransportMetaInfo{
   2:required i64 startIndex
 }
 
+struct TSBackupConfigurationResp {
+  1: required common.TSStatus status
+  2: optional bool enableOperationSync
+  3: optional string secondaryAddress
+  4: optional i32 secondaryPort
+}
+
 enum TSConnectionType {
   THRIFT_BASED
   MQTT_BASED
@@ -559,6 +566,8 @@ service IClientRPCService {
   common.TSStatus sendPipeData(1:binary buff);
 
   common.TSStatus sendFile(1:TSyncTransportMetaInfo metaInfo, 2:binary buff);
+
+  TSBackupConfigurationResp getBackupConfiguration();
 
   TSConnectionInfoResp fetchAllConnectionsInfo();
 }

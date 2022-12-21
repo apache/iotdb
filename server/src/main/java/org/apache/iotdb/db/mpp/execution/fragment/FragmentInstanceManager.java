@@ -21,7 +21,7 @@ package org.apache.iotdb.db.mpp.execution.fragment;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.storagegroup.DataRegion;
+import org.apache.iotdb.db.engine.storagegroup.IDataRegionForQuery;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.execution.driver.DataDriver;
@@ -100,7 +100,7 @@ public class FragmentInstanceManager {
   }
 
   public FragmentInstanceInfo execDataQueryFragmentInstance(
-      FragmentInstance instance, DataRegion dataRegion) {
+      FragmentInstance instance, IDataRegionForQuery dataRegion) {
 
     FragmentInstanceId instanceId = instance.getId();
     try (SetThreadName fragmentInstanceName = new SetThreadName(instanceId.getFullId())) {

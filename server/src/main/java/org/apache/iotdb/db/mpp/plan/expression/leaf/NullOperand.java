@@ -23,7 +23,6 @@ import org.apache.iotdb.db.mpp.plan.expression.ExpressionType;
 import org.apache.iotdb.db.mpp.plan.expression.visitor.ExpressionVisitor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.mpp.transformation.dag.memory.LayerMemoryAssigner;
-import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -45,11 +44,6 @@ public class NullOperand extends LeafOperand {
   @Override
   protected boolean isConstantOperandInternal() {
     return true;
-  }
-
-  @Override
-  public void bindInputLayerColumnIndexWithExpression(UDTFPlan udtfPlan) {
-    // do nothing
   }
 
   @Override

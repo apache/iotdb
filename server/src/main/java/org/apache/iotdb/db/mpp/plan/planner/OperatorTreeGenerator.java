@@ -48,9 +48,11 @@ import org.apache.iotdb.db.mpp.execution.operator.process.FilterAndProjectOperat
 import org.apache.iotdb.db.mpp.execution.operator.process.IntoOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.LimitOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.LinearFillOperator;
+import org.apache.iotdb.db.mpp.execution.operator.process.MergeSortOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.OffsetOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.ProcessOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.RawDataAggregationOperator;
+import org.apache.iotdb.db.mpp.execution.operator.process.SingleDeviceViewOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.SlidingWindowAggregationOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.TagAggregationOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.TransformOperator;
@@ -76,9 +78,11 @@ import org.apache.iotdb.db.mpp.execution.operator.process.fill.previous.IntPrevi
 import org.apache.iotdb.db.mpp.execution.operator.process.fill.previous.LongPreviousFill;
 import org.apache.iotdb.db.mpp.execution.operator.process.join.RowBasedTimeJoinOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.join.TimeJoinOperator;
+import org.apache.iotdb.db.mpp.execution.operator.process.join.VerticallyConcatOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.join.merge.AscTimeComparator;
 import org.apache.iotdb.db.mpp.execution.operator.process.join.merge.ColumnMerger;
 import org.apache.iotdb.db.mpp.execution.operator.process.join.merge.DescTimeComparator;
+import org.apache.iotdb.db.mpp.execution.operator.process.join.merge.MergeSortComparator;
 import org.apache.iotdb.db.mpp.execution.operator.process.join.merge.MultiColumnMerger;
 import org.apache.iotdb.db.mpp.execution.operator.process.join.merge.NonOverlappedMultiColumnMerger;
 import org.apache.iotdb.db.mpp.execution.operator.process.join.merge.SingleColumnMerger;
@@ -145,11 +149,15 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.GroupByLevelNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.GroupByTagNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.IntoNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.LimitNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.MergeSortNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.MultiChildProcessNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.OffsetNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.SingleDeviceViewNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.SlidingWindowAggregationNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.SortNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.TimeJoinNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.TransformNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.VerticallyConcatNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.last.LastQueryCollectNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.last.LastQueryMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.last.LastQueryNode;
@@ -644,6 +652,30 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
   }
 
   @Override
+  public Operator visitSingleDeviceView(
+      SingleDeviceViewNode node, LocalExecutionPlanContext context) {
+    OperatorContext operatorContext =
+        context
+            .getInstanceContext()
+            .addOperatorContext(
+                context.getNextOperatorId(),
+                node.getPlanNodeId(),
+                SingleDeviceViewOperator.class.getSimpleName());
+    Operator child = node.getChild().accept(this, context);
+    List<Integer> deviceColumnIndex = node.getDeviceToMeasurementIndexes();
+    List<TSDataType> outputColumnTypes =
+        node.isCacheOutputColumnNames()
+            ? getOutputColumnTypes(node, context.getTypeProvider())
+            : context.getCachedDataTypes();
+    if (outputColumnTypes == null || outputColumnTypes.size() == 0) {
+      throw new IllegalStateException("OutputColumTypes should not be null/empty");
+    }
+    context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
+    return new SingleDeviceViewOperator(
+        operatorContext, node.getDevice(), child, deviceColumnIndex, outputColumnTypes);
+  }
+
+  @Override
   public Operator visitDeviceView(DeviceViewNode node, LocalExecutionPlanContext context) {
     OperatorContext operatorContext =
         context
@@ -700,6 +732,28 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
     return new DeviceMergeOperator(
         operatorContext, node.getDevices(), children, dataTypes, selector, timeComparator);
+  }
+
+  @Override
+  public Operator visitMergeSort(MergeSortNode node, LocalExecutionPlanContext context) {
+    OperatorContext operatorContext =
+        context
+            .getInstanceContext()
+            .addOperatorContext(
+                context.getNextOperatorId(),
+                node.getPlanNodeId(),
+                MergeSortOperator.class.getSimpleName());
+    List<TSDataType> dataTypes = getOutputColumnTypes(node, context.getTypeProvider());
+    context.setCachedDataTypes(dataTypes);
+    List<Operator> children =
+        node.getChildren().stream()
+            .map(child -> child.accept(this, context))
+            .collect(Collectors.toList());
+
+    List<SortItem> sortItemList = node.getMergeOrderParameter().getSortItemList();
+    context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
+    return new MergeSortOperator(
+        operatorContext, children, dataTypes, MergeSortComparator.getComparator(sortItemList));
   }
 
   @Override
@@ -1533,7 +1587,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                 TimeJoinOperator.class.getSimpleName());
     TimeComparator timeComparator =
         node.getMergeOrder() == Ordering.ASC ? ASC_TIME_COMPARATOR : DESC_TIME_COMPARATOR;
-    List<OutputColumn> outputColumns = generateOutputColumns(node);
+    List<OutputColumn> outputColumns = generateOutputColumnsFromChildren(node);
     List<ColumnMerger> mergers = createColumnMergers(outputColumns, timeComparator);
     List<TSDataType> outputColumnTypes = getOutputColumnTypes(node, context.getTypeProvider());
 
@@ -1547,7 +1601,27 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         timeComparator);
   }
 
-  private List<OutputColumn> generateOutputColumns(TimeJoinNode node) {
+  @Override
+  public Operator visitVerticallyConcat(
+      VerticallyConcatNode node, LocalExecutionPlanContext context) {
+    List<Operator> children =
+        node.getChildren().stream()
+            .map(child -> child.accept(this, context))
+            .collect(Collectors.toList());
+    OperatorContext operatorContext =
+        context
+            .getInstanceContext()
+            .addOperatorContext(
+                context.getNextOperatorId(),
+                node.getPlanNodeId(),
+                VerticallyConcatOperator.class.getSimpleName());
+    List<TSDataType> outputColumnTypes = getOutputColumnTypes(node, context.getTypeProvider());
+
+    context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
+    return new VerticallyConcatOperator(operatorContext, children, outputColumnTypes);
+  }
+
+  private List<OutputColumn> generateOutputColumnsFromChildren(MultiChildProcessNode node) {
     // TODO we should also sort the InputLocation for each column if they are not overlapped
     return makeLayout(node).values().stream()
         .map(inputLocations -> new OutputColumn(inputLocations, inputLocations.size() > 1))
@@ -1629,6 +1703,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                 downStreamEndPoint,
                 targetInstanceId.toThrift(),
                 node.getDownStreamPlanNodeId().getId(),
+                node.getPlanNodeId().getId(),
                 context.getInstanceContext());
     context.setSinkHandle(sinkHandle);
     return child;

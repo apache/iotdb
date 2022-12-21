@@ -50,7 +50,6 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.mpp.plan.statement.StatementNode;
 import org.apache.iotdb.db.mpp.transformation.dag.memory.LayerMemoryAssigner;
 import org.apache.iotdb.db.mpp.transformation.dag.udf.UDTFExecutor;
-import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
@@ -121,10 +120,6 @@ public abstract class Expression extends StatementNode {
   /////////////////////////////////////////////////////////////////////////////////////////////////
 
   protected Integer inputColumnIndex = null;
-
-  // TODO: remove after MPP finish
-  @Deprecated
-  public abstract void bindInputLayerColumnIndexWithExpression(UDTFPlan udtfPlan);
 
   public abstract void bindInputLayerColumnIndexWithExpression(
       Map<String, List<InputLocation>> inputLocations);

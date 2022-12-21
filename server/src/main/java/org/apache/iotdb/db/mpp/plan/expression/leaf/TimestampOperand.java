@@ -24,7 +24,6 @@ import org.apache.iotdb.db.mpp.plan.expression.ExpressionType;
 import org.apache.iotdb.db.mpp.plan.expression.visitor.ExpressionVisitor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.mpp.transformation.dag.memory.LayerMemoryAssigner;
-import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -50,8 +49,8 @@ public class TimestampOperand extends LeafOperand {
   }
 
   @Override
-  public void bindInputLayerColumnIndexWithExpression(UDTFPlan udtfPlan) {
-    // do nothing
+  public boolean isTimeSeriesGeneratingFunctionExpression() {
+    return true;
   }
 
   @Override
