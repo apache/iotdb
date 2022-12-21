@@ -100,15 +100,13 @@
     <allow pkg="org.apache.iotdb.db.metadata.idtable.trigger_example" />
     <allow pkg="org.apache.iotdb.session.template" />
   </subpackage>
-<<<<<<< HEAD
   <subpackage name="zeppelin.it">
     <allow class="org.apache.zeppelin.interpreter.InterpreterResult" />
     <allow class="org.apache.zeppelin.interpreter.InterpreterResult.Code" />
     <allow class="org.apache.zeppelin.iotdb.IoTDBInterpreter" />
-=======
+  </subpackage>
   <subpackage name="tools">
     <allow class="org.apache.iotdb.cli.it.AbstractScript" />
     <allow class="org.apache.iotdb.session.ISession" />
->>>>>>> e4fd412c5d (add it on integration-test)
   </subpackage>
 </import-control>
