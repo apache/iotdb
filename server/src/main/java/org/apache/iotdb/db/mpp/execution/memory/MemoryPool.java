@@ -25,11 +25,10 @@ import org.apache.iotdb.tsfile.utils.Pair;
 import com.google.common.util.concurrent.AbstractFuture;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
+import javax.annotation.Nullable;
 import org.apache.commons.lang3.Validate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import javax.annotation.Nullable;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -164,7 +163,7 @@ public class MemoryPool {
                       .getOrDefault(fragmentInstanceId, Collections.emptyMap())
                       .getOrDefault(planNodeId, 0L)
               < bytesToReserve) {
-        // LOGGER.info("Cannot reserve {} bytes memory from MemoryPool", bytesToReserve);
+        LOGGER.info("Cannot reserve {} bytes memory from MemoryPool", bytesToReserve);
         result =
             MemoryReservationFuture.create(
                 queryId, fragmentInstanceId, planNodeId, bytesToReserve, maxBytesCanReserve);
