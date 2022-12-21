@@ -30,7 +30,6 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
-import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.SchemaDirCreationFailureException;
 import org.apache.iotdb.db.exception.metadata.SeriesNumberOverflowException;
 import org.apache.iotdb.db.exception.metadata.SeriesOverflowException;
@@ -77,11 +76,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
-import com.github.benmanes.caffeine.cache.Caffeine;
-import com.github.benmanes.caffeine.cache.LoadingCache;
-import com.github.benmanes.caffeine.cache.RemovalCause;
-import org.checkerframework.checker.nullness.qual.NonNull;
-import org.checkerframework.checker.nullness.qual.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -159,8 +153,6 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
   private final MemoryStatistics memoryStatistics = MemoryStatistics.getInstance();
 
   private MTreeBelowSGCachedImpl mtree;
-  // device -> DeviceMNode
-  private final LoadingCache<PartialPath, IMNode> mNodeCache;
   private TagManager tagManager;
 
   // seriesNumberMonitor may be null
@@ -179,25 +171,6 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
     storageGroupDirPath = config.getSchemaDir() + File.separator + storageGroupFullPath;
     schemaRegionDirPath = storageGroupDirPath + File.separator + schemaRegionId.getId();
 
-    int cacheSize = config.getSchemaRegionDeviceNodeCacheSize();
-    mNodeCache =
-        Caffeine.newBuilder()
-            .maximumSize(cacheSize)
-            .removalListener(
-                (PartialPath path, IMNode node, RemovalCause cause) -> {
-                  if (!isClearing) {
-                    mtree.unPinMNode(node);
-                  }
-                })
-            .build(
-                new com.github.benmanes.caffeine.cache.CacheLoader<PartialPath, IMNode>() {
-                  @Override
-                  public @Nullable IMNode load(@NonNull PartialPath partialPath)
-                      throws MetadataException {
-
-                    return mtree.getNodeByPath(partialPath);
-                  }
-                });
     this.seriesNumerMonitor = seriesNumerMonitor;
     init();
   }
@@ -368,9 +341,6 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
   public synchronized void clear() {
     isClearing = true;
     try {
-      if (this.mNodeCache != null) {
-        this.mNodeCache.invalidateAll();
-      }
       if (this.mtree != null) {
         this.mtree.clear();
       }
@@ -593,8 +563,6 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
       }
 
       try {
-        // the cached mNode may be replaced by new entityMNode in mtree
-        mNodeCache.invalidate(path.getDevicePath());
 
         // update statistics and schemaDataTypeNumMap
         schemaStatisticsManager.addTimeseries(1);
@@ -749,8 +717,6 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
       }
 
       try {
-        // the cached mNode may be replaced by new entityMNode in mtree
-        mNodeCache.invalidate(prefixPath);
 
         // update statistics and schemaDataTypeNumMap
         schemaStatisticsManager.addTimeseries(seriesCount);
@@ -936,10 +902,6 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
     IMeasurementMNode measurementMNode = pair.right;
     removeFromTagInvertedIndex(measurementMNode);
 
-    IMNode node = measurementMNode.getParent();
-
-    mNodeCache.invalidate(node.getPartialPath());
-
     schemaStatisticsManager.deleteTimeseries(1);
     if (seriesNumerMonitor != null) {
       seriesNumerMonitor.deleteTimeSeries(1);
@@ -977,10 +939,6 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
     removeFromTagInvertedIndex(measurementMNode);
     PartialPath storageGroupPath = pair.left;
 
-    IMNode node = measurementMNode.getParent();
-
-    mNodeCache.invalidate(node.getPartialPath());
-
     schemaStatisticsManager.deleteTimeseries(1);
     if (seriesNumerMonitor != null) {
       seriesNumerMonitor.deleteTimeSeries(1);
@@ -999,27 +957,7 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
    */
   private IMNode getDeviceNodeWithAutoCreate(PartialPath path)
       throws IOException, MetadataException {
-    IMNode node;
-    try {
-      node = mNodeCache.get(path);
-      try {
-        mtree.pinMNode(node);
-        return node;
-      } catch (MetadataException e) {
-        // the node in mNodeCache has been evicted, thus get it via the following progress
-        return mtree.getNodeByPath(path);
-      }
-    } catch (Exception e) {
-      if (e.getCause() instanceof MetadataException) {
-        if (!config.isAutoCreateSchemaEnabled()) {
-          throw new PathNotExistException(path.getFullPath());
-        }
-      } else {
-        throw e;
-      }
-    }
-
-    node = mtree.getDeviceNodeWithAutoCreating(path);
+    IMNode node = mtree.getDeviceNodeWithAutoCreating(path);
     writeToMLog(SchemaRegionPlanFactory.getAutoCreateDeviceMNodePlan(node.getPartialPath()));
     return node;
   }
