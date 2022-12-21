@@ -31,7 +31,6 @@ import org.apache.iotdb.db.engine.compaction.constant.InnerUnseqCompactionPerfor
 import org.apache.iotdb.db.engine.compaction.constant.InnerUnsequenceCompactionSelector;
 import org.apache.iotdb.db.engine.storagegroup.timeindex.TimeIndexLevel;
 import org.apache.iotdb.db.exception.LoadConfigurationException;
-import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
 import org.apache.iotdb.db.service.thrift.impl.ClientRPCServiceImpl;
 import org.apache.iotdb.db.service.thrift.impl.NewInfluxDBServiceImpl;
 import org.apache.iotdb.db.utils.datastructure.TVListSortAlgorithm;
@@ -530,10 +529,10 @@ public class IoTDBConfig {
   /** Set true to enable writing monitor time series. */
   private boolean enableMonitorSeriesWrite = false;
 
-  /** Cache size of {@code checkAndGetDataTypeCache} in {@link LocalSchemaProcessor}. */
+  /** Cache size of {@code checkAndGetDataTypeCache}. */
   private int schemaRegionDeviceNodeCacheSize = 10000;
 
-  /** Cache size of {@code checkAndGetDataTypeCache} in {@link LocalSchemaProcessor}. */
+  /** Cache size of {@code checkAndGetDataTypeCache}. */
   private int mRemoteSchemaCacheSize = 100000;
 
   /** Is external sort enable. */
@@ -572,7 +571,14 @@ public class IoTDBConfig {
   private boolean isClusterMode = false;
 
   /**
-   * the data node id for cluster mode, the default value -1 should be changed after join cluster
+   * The cluster name that this DataNode joined in the cluster mode. The default value
+   * "defaultCluster" will be changed after join cluster
+   */
+  private String clusterName = "defaultCluster";
+
+  /**
+   * The DataNodeId of this DataNode for cluster mode. The default value -1 will be changed after
+   * join cluster
    */
   private int dataNodeId = -1;
 
@@ -658,8 +664,8 @@ public class IoTDBConfig {
    */
   private long mergeIntervalSec = 0L;
 
-  /** The limit of compaction merge can reach per second */
-  private int compactionWriteThroughputMbPerSec = 16;
+  /** The limit of io rate can reach per second */
+  private int compactionIORatePerSec = 50;
 
   /**
    * How many thread will be set up to perform compaction, 10 by default. Set to 1 when less than or
@@ -998,7 +1004,7 @@ public class IoTDBConfig {
   private long throttleThreshold = 50 * 1024 * 1024 * 1024L;
 
   /** Maximum wait time of write cache in IoTConsensus. Unit: ms */
-  private long cacheWindowTimeInMs = 60 * 1000;
+  private long cacheWindowTimeInMs = 10 * 1000;
 
   private long dataRatisConsensusLogAppenderBufferSizeMax = 4 * 1024 * 1024L;
   private long schemaRatisConsensusLogAppenderBufferSizeMax = 4 * 1024 * 1024L;
@@ -1255,6 +1261,9 @@ public class IoTDBConfig {
 
   public void setDataDirs(String[] dataDirs) {
     this.dataDirs = dataDirs;
+    // TODO(szywilliam): rewrite the logic here when ratis supports complete snapshot semantic
+    setRatisDataRegionSnapshotDir(
+        dataDirs[0] + File.separator + IoTDBConstant.SNAPSHOT_FOLDER_NAME);
   }
 
   public String getRpcAddress() {
@@ -1347,6 +1356,10 @@ public class IoTDBConfig {
 
   public String getRatisDataRegionSnapshotDir() {
     return ratisDataRegionSnapshotDir;
+  }
+
+  public void setRatisDataRegionSnapshotDir(String ratisDataRegionSnapshotDir) {
+    this.ratisDataRegionSnapshotDir = ratisDataRegionSnapshotDir;
   }
 
   public String getConsensusDir() {
@@ -1495,7 +1508,7 @@ public class IoTDBConfig {
     this.subRawQueryThreadCount = subRawQueryThreadCount;
   }
 
-  public long getMaxBytesPerQuery() {
+  public long getMaxBytesPerFragmentInstance() {
     return allocateMemoryForDataExchange / queryThreadCount;
   }
 
@@ -1913,12 +1926,12 @@ public class IoTDBConfig {
     this.intoOperationExecutionThreadCount = intoOperationExecutionThreadCount;
   }
 
-  public int getCompactionWriteThroughputMbPerSec() {
-    return compactionWriteThroughputMbPerSec;
+  public int getCompactionIORatePerSec() {
+    return compactionIORatePerSec;
   }
 
-  public void setCompactionWriteThroughputMbPerSec(int compactionWriteThroughputMbPerSec) {
-    this.compactionWriteThroughputMbPerSec = compactionWriteThroughputMbPerSec;
+  public void setCompactionIORatePerSec(int compactionIORatePerSec) {
+    this.compactionIORatePerSec = compactionIORatePerSec;
   }
 
   public boolean isEnableMemControl() {
@@ -3069,6 +3082,14 @@ public class IoTDBConfig {
   public void setClusterMode(boolean isClusterMode) {
     this.isClusterMode = isClusterMode;
     checkMultiDirStrategyClassName();
+  }
+
+  public String getClusterName() {
+    return clusterName;
+  }
+
+  public void setClusterName(String clusterName) {
+    this.clusterName = clusterName;
   }
 
   public int getDataNodeId() {

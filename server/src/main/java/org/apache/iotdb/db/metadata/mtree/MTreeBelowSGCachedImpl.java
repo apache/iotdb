@@ -160,7 +160,10 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
     // recover measurement
     MeasurementCollector<?> collector =
         new MeasurementCollector<Void>(
-            this.storageGroupMNode, new PartialPath(storageGroupMNode.getFullPath()), this.store) {
+            this.storageGroupMNode,
+            new PartialPath(storageGroupMNode.getFullPath()),
+            this.store,
+            false) {
           @Override
           protected void collectMeasurement(IMeasurementMNode node) {
             measurementProcess.accept(node);
@@ -874,6 +877,7 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
           }
         };
     collector.setPrefixMatch(plan.isPrefixMatch());
+    collector.setTemplateMap(plan.getRelatedTemplate());
     collector.setResultSet(new LinkedList<>());
     collector.traverse();
 
@@ -1243,13 +1247,16 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
       throws MetadataException {
     String[] nodes = activatePath.getNodes();
     IMNode cur = storageGroupMNode;
-    List<IMNode> pinnedNodes = new ArrayList<>();
-    IEntityMNode entityMNode = null;
+    IMNode child;
+    IEntityMNode entityMNode;
 
     try {
       for (int i = levelOfSG + 1; i < nodes.length; i++) {
-        cur = store.getChild(cur, nodes[i]);
-        pinnedNodes.add(cur);
+        child = store.getChild(cur, nodes[i]);
+        if (child == null) {
+          throw new PathNotExistException(activatePath.getFullPath());
+        }
+        cur = child;
       }
       synchronized (this) {
         for (String measurement : template.getSchemaMap().keySet()) {
@@ -1278,13 +1285,10 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
       }
       entityMNode.setUseTemplate(true);
       entityMNode.setSchemaTemplateId(template.getId());
+
+      store.updateMNode(entityMNode);
     } finally {
-      if (entityMNode != null) {
-        store.updateMNode(entityMNode);
-      }
-      for (IMNode node : pinnedNodes) {
-        store.unPin(node);
-      }
+      unPinPath(cur);
     }
   }
 

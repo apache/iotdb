@@ -22,24 +22,11 @@ namespace java org.apache.iotdb.confignode.rpc.thrift
 namespace py iotdb.thrift.confignode
 
 // DataNode
-struct TDataNodeRegisterReq {
-  1: required common.TDataNodeConfiguration dataNodeConfiguration
-  // Map<StorageGroupName, TStorageGroupSchema>
-  // DataNode can use statusMap to report its status to the ConfigNode when restart
-  2: optional map<string, TStorageGroupSchema> statusMap
-}
-
-struct TDataNodeRegisterResp {
+struct TSystemConfigurationResp {
   1: required common.TSStatus status
-  2: required list<common.TConfigNodeLocation> configNodeList
-  3: optional i32 dataNodeId
-  4: optional TGlobalConfig globalConfig
-  5: optional binary templateInfo
-  6: optional TRatisConfig ratisConfig
-  7: optional list<binary> allTriggerInformation
-  8: optional TCQConfig cqConfig
-  9: optional list<binary> allUDFInformation
-  10: optional binary allTTLInformation
+  2: optional TGlobalConfig globalConfig
+  3: optional TRatisConfig ratisConfig
+  4: optional TCQConfig cqConfig
 }
 
 struct TGlobalConfig {
@@ -98,7 +85,37 @@ struct TCQConfig {
   1: required i64 cqMinEveryIntervalInMs
 }
 
-struct TDataNodeUpdateReq{
+struct TRuntimeConfiguration {
+  1: required binary templateInfo
+  2: required list<binary> allTriggerInformation
+  3: required list<binary> allUDFInformation
+  4: required binary allTTLInformation
+}
+
+struct TDataNodeRegisterReq {
+  1: required common.TDataNodeConfiguration dataNodeConfiguration
+}
+
+struct TDataNodeRegisterResp {
+  1: required common.TSStatus status
+  2: required list<common.TConfigNodeLocation> configNodeList
+  3: optional string clusterName
+  4: optional i32 dataNodeId
+  5: optional TRuntimeConfiguration runtimeConfiguration
+}
+
+struct TDataNodeRestartReq {
+  1: required string clusterName
+  2: required common.TDataNodeConfiguration dataNodeConfiguration
+}
+
+struct TDataNodeRestartResp {
+  1: required common.TSStatus status
+  2: required list<common.TConfigNodeLocation> configNodeList
+  3: optional TRuntimeConfiguration runtimeConfiguration
+}
+
+struct TDataNodeUpdateReq {
   1: required common.TDataNodeLocation dataNodeLocation
 }
 
@@ -329,7 +346,13 @@ struct TConfigNodeRegisterReq {
 
 struct TConfigNodeRegisterResp {
   1: required common.TSStatus status
-  2: required i32 configNodeId
+  2: optional string clusterName
+  3: optional i32 configNodeId
+}
+
+struct TConfigNodeRestartReq {
+  1: required string clusterName
+  2: required common.TConfigNodeLocation configNodeLocation
 }
 
 struct TAddConsensusGroupReq {
@@ -405,6 +428,11 @@ struct TGetJarInListReq {
 struct TGetJarInListResp {
   1: required common.TSStatus status
   2: required list<binary> jarList
+}
+
+struct TGetDataNodeLocationsResp {
+  1: required common.TSStatus status
+  2: required list<common.TDataNodeLocation> dataNodeLocationList
 }
 
 // Show cluster
@@ -641,6 +669,18 @@ service IConfigNodeRPCService {
   TDataNodeRegisterResp registerDataNode(TDataNodeRegisterReq req)
 
   /**
+   * Restart a existed DataNode
+   *
+   * @return SUCCESS_STATUS if restart DataNode success
+   */
+  TDataNodeRestartResp restartDataNode(TDataNodeRestartReq req)
+
+  /**
+   * Get system configurations. i.e. configurations that is not associated with the DataNodeId
+   */
+  TSystemConfigurationResp getSystemConfiguration()
+
+  /**
    * Generate a set of DataNodeRemoveProcedure to remove some specific DataNodes from the cluster
    *
    * @return SUCCESS_STATUS if the DataNodeRemoveProcedure submitted successfully
@@ -745,8 +785,8 @@ service IConfigNodeRPCService {
   TSchemaPartitionTableResp getOrCreateSchemaPartitionTable(TSchemaPartitionReq req)
 
   // ======================================================
-    // Node Management
-    // ======================================================
+  // Node Management
+  // ======================================================
 
   /**
    * Get the partition info used for schema node query and get the node info in CluterSchemaInfo.
@@ -834,6 +874,8 @@ service IConfigNodeRPCService {
 
   /** The ConfigNode-leader will notify the Non-Seed-ConfigNode that the registration success */
   common.TSStatus notifyRegisterSuccess()
+
+  common.TSStatus restartConfigNode(TConfigNodeRestartReq req)
 
   /**
    * Remove the specific ConfigNode from the cluster
@@ -953,6 +995,9 @@ service IConfigNodeRPCService {
 
   /** Migrate a region replica from one dataNode to another */
   common.TSStatus migrateRegion(TMigrateRegionReq req)
+
+  /** Get all DataNodeLocations of Running DataNodes */
+  TGetDataNodeLocationsResp getRunningDataNodeLocations()
 
   // ======================================================
   // Cluster Tools

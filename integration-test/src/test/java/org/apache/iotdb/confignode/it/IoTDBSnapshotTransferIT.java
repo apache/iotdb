@@ -37,6 +37,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -49,6 +50,7 @@ import java.util.Optional;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({ClusterIT.class})
+@Ignore
 public class IoTDBSnapshotTransferIT {
 
   private final long snapshotMagic = 99;
@@ -132,7 +134,7 @@ public class IoTDBSnapshotTransferIT {
       Assert.assertEquals(
           2 * (snapshotMagic + 1), readResult.getInt("count(root.emma.william.ethereal)"));
 
-      EnvFactory.getEnv().registerNewConfigNode();
+      EnvFactory.getEnv().registerNewConfigNode(true);
       final TShowRegionResp registerResult = configClient.showRegion(new TShowRegionReq());
       Assert.assertNotNull(result.getRegionInfoList());
 

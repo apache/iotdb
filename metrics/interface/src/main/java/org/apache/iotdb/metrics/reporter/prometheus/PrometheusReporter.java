@@ -68,17 +68,23 @@ public class PrometheusReporter implements Reporter {
     if (httpServer != null) {
       return false;
     }
-    httpServer =
-        HttpServer.create()
-            .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 2000)
-            .channelGroup(new DefaultChannelGroup(GlobalEventExecutor.INSTANCE))
-            .port(metricConfig.getPrometheusReporterPort())
-            .route(
-                routes ->
-                    routes.get(
-                        "/metrics",
-                        (request, response) -> response.sendString(Mono.just(scrape()))))
-            .bindNow();
+    try {
+      httpServer =
+          HttpServer.create()
+              .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 2000)
+              .channelGroup(new DefaultChannelGroup(GlobalEventExecutor.INSTANCE))
+              .port(metricConfig.getPrometheusReporterPort())
+              .route(
+                  routes ->
+                      routes.get(
+                          "/metrics",
+                          (request, response) -> response.sendString(Mono.just(scrape()))))
+              .bindNow();
+    } catch (Exception e) {
+      httpServer = null;
+      LOGGER.error("Failed to start prometheus reporter", e);
+      return false;
+    }
     LOGGER.info(
         "http server for metrics started, listen on {}", metricConfig.getPrometheusReporterPort());
     return true;
@@ -194,11 +200,6 @@ public class PrometheusReporter implements Reporter {
     HashMap<String, String> result = new HashMap<>(tags);
     result.put(key, value);
     return result;
-  }
-
-  private static String getHelpMessage(String metric, MetricType type) {
-    return String.format(
-        "Generated from metric import (metric=%s, type=%s)", metric, type.toString());
   }
 
   @Override

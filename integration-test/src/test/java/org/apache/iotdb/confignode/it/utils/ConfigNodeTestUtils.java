@@ -20,17 +20,26 @@ package org.apache.iotdb.confignode.it.utils;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.common.rpc.thrift.TNodeResource;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.confignode.rpc.thrift.IConfigNodeRPCService;
+import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
+import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRestartReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRestartReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
+import org.apache.iotdb.it.env.ConfigFactory;
 import org.apache.iotdb.it.env.ConfigNodeWrapper;
 import org.apache.iotdb.it.env.DataNodeWrapper;
+import org.apache.iotdb.itbase.env.BaseConfig;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 
 import org.apache.thrift.TException;
@@ -47,6 +56,9 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 public class ConfigNodeTestUtils {
+
+  private static final BaseConfig CONF = ConfigFactory.getConfig();
+
   private static final int retryNum = 30;
 
   public static TShowClusterResp getClusterNodeInfos(
@@ -183,5 +195,75 @@ public class ConfigNodeTestUtils {
         Assert.assertTrue(timePartitionTable.containsKey(timePartitionSlot));
       }
     }
+  }
+
+  public static TConfigNodeLocation generateTConfigNodeLocation(
+      int nodeId, ConfigNodeWrapper configNodeWrapper) {
+    return new TConfigNodeLocation(
+        nodeId,
+        new TEndPoint(configNodeWrapper.getIp(), configNodeWrapper.getPort()),
+        new TEndPoint(configNodeWrapper.getIp(), configNodeWrapper.getConsensusPort()));
+  }
+
+  public static TConfigNodeRegisterReq generateTConfigNodeRegisterReq(
+      ConfigNodeWrapper configNodeWrapper) {
+    return new TConfigNodeRegisterReq()
+        .setConfigNodeLocation(generateTConfigNodeLocation(-1, configNodeWrapper))
+        .setDataRegionConsensusProtocolClass(CONF.getDataRegionConsensusProtocolClass())
+        .setSchemaRegionConsensusProtocolClass(CONF.getSchemaRegionConsensusProtocolClass())
+        .setSeriesPartitionSlotNum(CONF.getSeriesPartitionSlotNum())
+        .setSeriesPartitionExecutorClass(
+            "org.apache.iotdb.commons.partition.executor.hash.BKDRHashExecutor")
+        .setDefaultTTL(Long.MAX_VALUE)
+        .setTimePartitionInterval(CONF.getTimePartitionInterval())
+        .setSchemaReplicationFactor(CONF.getSchemaReplicationFactor())
+        .setDataReplicationFactor(CONF.getDataReplicationFactor())
+        .setSchemaRegionPerDataNode(1.0)
+        .setDataRegionPerProcessor(1.0)
+        .setReadConsistencyLevel("strong")
+        .setDiskSpaceWarningThreshold(0.05)
+        .setLeastDataRegionGroupNum(CONF.getLeastDataRegionGroupNum());
+  }
+
+  public static TConfigNodeRestartReq generateTConfigNodeRestartReq(
+      String clusterName, int nodeId, ConfigNodeWrapper configNodeWrapper) {
+    return new TConfigNodeRestartReq(
+        clusterName, generateTConfigNodeLocation(nodeId, configNodeWrapper));
+  }
+
+  public static TDataNodeLocation generateTDataNodeLocation(
+      int nodeId, DataNodeWrapper dataNodeWrapper) {
+    TDataNodeLocation dataNodeLocation = new TDataNodeLocation();
+    dataNodeLocation.setDataNodeId(nodeId);
+    dataNodeLocation.setClientRpcEndPoint(
+        new TEndPoint(dataNodeWrapper.getIp(), dataNodeWrapper.getPort()));
+    dataNodeLocation.setInternalEndPoint(
+        new TEndPoint(dataNodeWrapper.getIp(), dataNodeWrapper.getInternalPort()));
+    dataNodeLocation.setMPPDataExchangeEndPoint(
+        new TEndPoint(dataNodeWrapper.getIp(), dataNodeWrapper.getMppDataExchangePort()));
+    dataNodeLocation.setDataRegionConsensusEndPoint(
+        new TEndPoint(dataNodeWrapper.getIp(), dataNodeWrapper.getDataRegionConsensusPort()));
+    dataNodeLocation.setSchemaRegionConsensusEndPoint(
+        new TEndPoint(dataNodeWrapper.getIp(), dataNodeWrapper.getSchemaRegionConsensusPort()));
+    return dataNodeLocation;
+  }
+
+  public static TDataNodeConfiguration generateTDataNodeConfiguration(
+      int nodeId, DataNodeWrapper dataNodeWrapper) {
+    TNodeResource dataNodeResource = new TNodeResource();
+    dataNodeResource.setCpuCoreNum(Runtime.getRuntime().availableProcessors());
+    dataNodeResource.setMaxMemory(Runtime.getRuntime().totalMemory());
+    return new TDataNodeConfiguration(
+        generateTDataNodeLocation(nodeId, dataNodeWrapper), dataNodeResource);
+  }
+
+  public static TDataNodeRegisterReq generateTDataNodeRegisterReq(DataNodeWrapper dataNodeWrapper) {
+    return new TDataNodeRegisterReq(generateTDataNodeConfiguration(-1, dataNodeWrapper));
+  }
+
+  public static TDataNodeRestartReq generateTDataNodeRestartReq(
+      String clusterName, int nodeId, DataNodeWrapper dataNodeWrapper) {
+    return new TDataNodeRestartReq(
+        clusterName, generateTDataNodeConfiguration(nodeId, dataNodeWrapper));
   }
 }

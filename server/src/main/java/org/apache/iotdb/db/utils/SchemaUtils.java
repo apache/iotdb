@@ -19,25 +19,13 @@
 package org.apache.iotdb.db.utils;
 
 import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
-import org.apache.iotdb.db.exception.metadata.PathNotExistException;
-import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
-import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationType;
 import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
-import org.apache.iotdb.db.query.aggregation.AggregationType;
-import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import java.nio.channels.ClosedByInterruptException;
-import java.nio.channels.ClosedChannelException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -87,27 +75,6 @@ public class SchemaUtils {
     schemaChecker.put(TSDataType.TEXT, textSet);
   }
 
-  private static final Logger logger = LoggerFactory.getLogger(SchemaUtils.class);
-
-  public static void registerTimeseries(TimeseriesSchema schema) {
-    try {
-      logger.debug("Registering timeseries {}", schema);
-      PartialPath path = new PartialPath(schema.getFullPath());
-      TSDataType dataType = schema.getType();
-      TSEncoding encoding = schema.getEncodingType();
-      CompressionType compressionType = schema.getCompressor();
-      LocalSchemaProcessor.getInstance()
-          .createTimeseries(path, dataType, encoding, compressionType, Collections.emptyMap());
-    } catch (PathAlreadyExistException ignored) {
-      // ignore added timeseries
-    } catch (MetadataException e) {
-      if (!(e.getCause() instanceof ClosedByInterruptException)
-          && !(e.getCause() instanceof ClosedChannelException)) {
-        logger.error("Cannot create timeseries {} in snapshot, ignored", schema.getFullPath(), e);
-      }
-    }
-  }
-
   public static List<TSDataType> getSeriesTypesByPaths(Collection<? extends PartialPath> paths) {
     List<TSDataType> dataTypes = new ArrayList<>();
     for (PartialPath path : paths) {
@@ -132,22 +99,6 @@ public class SchemaUtils {
       return Collections.nCopies(measurementDataType.size(), dataType);
     }
     return measurementDataType;
-  }
-
-  public static List<TSDataType> getSeriesTypesByPaths(
-      List<MeasurementPath> paths, List<String> aggregations) {
-    List<TSDataType> tsDataTypes = new ArrayList<>();
-    for (int i = 0; i < paths.size(); i++) {
-      String aggrStr = aggregations != null ? aggregations.get(i) : null;
-      TSDataType dataType = getAggregationType(aggrStr);
-      if (dataType != null) {
-        tsDataTypes.add(dataType);
-      } else {
-        PartialPath path = paths.get(i);
-        tsDataTypes.add(path == null ? null : path.getSeriesType());
-      }
-    }
-    return tsDataTypes;
   }
 
   public static TSDataType getSeriesTypeByPath(PartialPath path, String aggregation) {
@@ -209,27 +160,6 @@ public class SchemaUtils {
         throw new IllegalArgumentException(
             String.format("Invalid Aggregation function: %s", aggregationFunction));
     }
-  }
-
-  /**
-   * If e or one of its recursive causes is a PathNotExistException or StorageGroupNotSetException,
-   * return such an exception or null if it cannot be found.
-   *
-   * @param currEx
-   * @return null or a PathNotExistException or a StorageGroupNotSetException
-   */
-  public static Throwable findMetaMissingException(Throwable currEx) {
-    while (true) {
-      if (currEx instanceof PathNotExistException
-          || currEx instanceof StorageGroupNotSetException) {
-        return currEx;
-      }
-      if (currEx.getCause() == null) {
-        break;
-      }
-      currEx = currEx.getCause();
-    }
-    return null;
   }
 
   public static void checkDataTypeWithEncoding(TSDataType dataType, TSEncoding encoding)

@@ -626,13 +626,6 @@ var config = {
 						]
 					},
 					{
-						title: 'Cluster Setup',
-						children: [
-							['Cluster/Cluster-Setup','Cluster Setup'],
-							//['Cluster/Cluster-Setup-Example','Cluster Setup Example']
-						]
-					},
-					{
 						title: 'FAQ',
 						children: [
 							['FAQ/Frequently-asked-questions','Frequently asked questions']
@@ -795,13 +788,6 @@ var config = {
 							['Ecosystem Integration/Flink IoTDB','Flink IoTDB'],
 							['Ecosystem Integration/Flink TsFile','Flink TsFile'],
 							['Ecosystem Integration/NiFi-IoTDB','NiFi IoTDB'],
-						]
-					},
-					{
-						title: 'Cluster Setup',
-						children: [
-							['Cluster/Cluster-Setup','Cluster Setup'],
-							['Cluster/Cluster-Setup-Example','Cluster Setup Example']
 						]
 					},
 					{
@@ -1006,12 +992,11 @@ var config = {
 							['Maintenance-Tools/Log-Tool','Log Tool'],
 							['Maintenance-Tools/JMX-Tool','JMX Tool'],
 							['Maintenance-Tools/MLogParser-Tool','MLogParser Tool'],
-							['Maintenance-Tools/Load-Tsfile','Load TsFile'],
 							['Maintenance-Tools/IoTDB-Data-Dir-Overview-Tool','IoTDB Data Directory Overview Tool'],
 							['Maintenance-Tools/TsFile-Sketch-Tool','TsFile Sketch Tool'],
 							['Maintenance-Tools/TsFile-Resource-Sketch-Tool','TsFile Resource Sketch Tool'],
 							['Maintenance-Tools/TsFile-Split-Tool','TsFile Split Tool'],
-							['Maintenance-Tools/TsFile-Load-Export-Tool','TsFile Export Tool'],
+							['Maintenance-Tools/TsFile-Load-Export-Tool','TsFile Load Export Tool'],
 							['Maintenance-Tools/CSV-Tool','CSV Load Export Tool'],
 						]
 					},
@@ -1241,12 +1226,11 @@ var config = {
 							['Maintenance-Tools/Log-Tool','Log Tool'],
 							['Maintenance-Tools/JMX-Tool','JMX Tool'],
 							['Maintenance-Tools/MLogParser-Tool','MLogParser Tool'],
-							['Maintenance-Tools/Load-Tsfile','Load TsFile'],
 							['Maintenance-Tools/IoTDB-Data-Dir-Overview-Tool','IoTDB Data Directory Overview Tool'],
 							['Maintenance-Tools/TsFile-Sketch-Tool','TsFile Sketch Tool'],
 							['Maintenance-Tools/TsFile-Resource-Sketch-Tool','TsFile Resource Sketch Tool'],
 							['Maintenance-Tools/TsFile-Split-Tool','TsFile Split Tool'],
-							['Maintenance-Tools/TsFile-Load-Export-Tool','TsFile Export Tool'],
+							['Maintenance-Tools/TsFile-Load-Export-Tool','TsFile Load Export Tool'],
 							['Maintenance-Tools/CSV-Tool','CSV Load Export Tool'],
 						]
 					},
@@ -1844,13 +1828,6 @@ var config = {
 						]
 					},
 					{
-						title: '集群搭建',
-						children: [
-							['Cluster/Cluster-Setup','集群搭建'],
-							//['Cluster/Cluster-Setup-Example','集群搭建示例']
-						]
-					},
-					{
 						title: '常见问题',
 						children: [
 							['FAQ/Frequently-asked-questions','常见问题']
@@ -2007,13 +1984,6 @@ var config = {
 							['Ecosystem Integration/Flink TsFile','Flink-TsFile'],
 							['Ecosystem Integration/Flink IoTDB','Flink-IoTDB'],
 							['Ecosystem Integration/NiFi-IoTDB','NiFi IoTDB']
-						]
-					},
-					{
-						title: '集群搭建',
-						children: [
-							['Cluster/Cluster-Setup','集群搭建'],
-							['Cluster/Cluster-Setup-Example','集群搭建示例']
 						]
 					},
 					{
@@ -2218,12 +2188,11 @@ var config = {
 							['Maintenance-Tools/Log-Tool','日志工具'],
 							['Maintenance-Tools/JMX-Tool','JMX 工具'],
 							['Maintenance-Tools/MLogParser-Tool','Mlog解析工具'],
-							['Maintenance-Tools/Load-Tsfile','加载 TsFile'],
 							['Maintenance-Tools/IoTDB-Data-Dir-Overview-Tool','IoTDB数据文件夹概览工具'],
 							['Maintenance-Tools/TsFile-Sketch-Tool','TsFile概览工具'],
 							['Maintenance-Tools/TsFile-Resource-Sketch-Tool','TsFile Resource概览工具'],
 							['Maintenance-Tools/TsFile-Split-Tool','TsFile 拆分工具'],
-							['Maintenance-Tools/TsFile-Load-Export-Tool','TsFile 导出工具'],
+							['Maintenance-Tools/TsFile-Load-Export-Tool','TsFile 导入导出工具'],
 							['Maintenance-Tools/CSV-Tool','CSV 导入导出工具'],
 						]
 					},
@@ -2453,12 +2422,11 @@ var config = {
 							['Maintenance-Tools/Log-Tool','日志工具'],
 							['Maintenance-Tools/JMX-Tool','JMX 工具'],
 							['Maintenance-Tools/MLogParser-Tool','Mlog解析工具'],
-							['Maintenance-Tools/Load-Tsfile','加载 TsFile'],
 							['Maintenance-Tools/IoTDB-Data-Dir-Overview-Tool','IoTDB数据文件夹概览工具'],
               ['Maintenance-Tools/TsFile-Sketch-Tool','TsFile概览工具'],
               ['Maintenance-Tools/TsFile-Resource-Sketch-Tool','TsFile Resource概览工具'],
 							['Maintenance-Tools/TsFile-Split-Tool','TsFile 拆分工具'],
-							['Maintenance-Tools/TsFile-Load-Export-Tool','TsFile 导出工具'],
+							['Maintenance-Tools/TsFile-Load-Export-Tool','TsFile 导入导出工具'],
 							['Maintenance-Tools/CSV-Tool','CSV 导入导出工具'],
 						]
 					},

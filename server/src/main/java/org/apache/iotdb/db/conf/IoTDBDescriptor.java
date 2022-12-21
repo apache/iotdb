@@ -188,7 +188,7 @@ public class IoTDBDescriptor {
         MetricConfigDescriptor.getInstance().loadProps(commonProperties);
         MetricConfigDescriptor.getInstance()
             .getMetricConfig()
-            .updateRpcInstance(conf.getRpcAddress(), conf.getRpcPort());
+            .updateRpcInstance(conf.getInternalAddress(), conf.getInternalPort());
       }
     } else {
       logger.warn(
@@ -655,11 +655,10 @@ public class IoTDBDescriptor {
                 "max_cross_compaction_candidate_file_size",
                 Long.toString(conf.getMaxCrossCompactionCandidateFileSize()))));
 
-    conf.setCompactionWriteThroughputMbPerSec(
+    conf.setCompactionIORatePerSec(
         Integer.parseInt(
             properties.getProperty(
-                "compaction_write_throughput_mb_per_sec",
-                Integer.toString(conf.getCompactionWriteThroughputMbPerSec()))));
+                "compaction_io_rate_per_sec", Integer.toString(conf.getCompactionIORatePerSec()))));
 
     conf.setEnableCompactionValidation(
         Boolean.parseBoolean(
@@ -1277,7 +1276,7 @@ public class IoTDBDescriptor {
             (int)
                 Math.min(
                     TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes(),
-                    conf.getMaxBytesPerQuery()));
+                    conf.getMaxBytesPerFragmentInstance()));
 
     TSFileDescriptor.getInstance()
         .getConfig()
@@ -1435,7 +1434,12 @@ public class IoTDBDescriptor {
           Long.parseLong(
               properties.getProperty(
                   "slow_query_threshold", Long.toString(conf.getSlowQueryThreshold()))));
-
+      // update merge_write_throughput_mb_per_sec
+      conf.setCompactionIORatePerSec(
+          Integer.parseInt(
+              properties.getProperty(
+                  "compaction_io_rate_per_sec",
+                  Integer.toString(conf.getCompactionIORatePerSec()))));
       // update insert-tablet-plan's row limit for select-into
       conf.setSelectIntoInsertTabletPlanRowLimit(
           Integer.parseInt(

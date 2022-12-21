@@ -38,8 +38,6 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.idtable.entry.DeviceIDFactory;
 import org.apache.iotdb.db.metadata.idtable.entry.IDeviceID;
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.query.executor.fill.AlignedLastPointReader;
-import org.apache.iotdb.db.query.executor.fill.LastPointReader;
 import org.apache.iotdb.db.query.filter.TsFileFilter;
 import org.apache.iotdb.db.query.reader.series.AlignedSeriesReader;
 import org.apache.iotdb.db.query.reader.series.SeriesReader;
@@ -84,14 +82,6 @@ public abstract class ResourceByPathUtils {
     }
     throw new UnsupportedOperationException("Should call exact sub class!");
   }
-
-  public abstract LastPointReader createLastPointReader(
-      TSDataType dataType,
-      Set<String> deviceMeasurements,
-      QueryContext context,
-      QueryDataSource dataSource,
-      long queryTime,
-      Filter timeFilter);
 
   public abstract SeriesReader createSeriesReader(
       Set<String> allSensors,
@@ -152,18 +142,6 @@ class AlignedResourceByPathUtils extends ResourceByPathUtils {
 
   public AlignedResourceByPathUtils(PartialPath partialPath) {
     this.partialPath = (AlignedPath) partialPath;
-  }
-
-  @Override
-  public AlignedLastPointReader createLastPointReader(
-      TSDataType dataType,
-      Set<String> deviceMeasurements,
-      QueryContext context,
-      QueryDataSource dataSource,
-      long queryTime,
-      Filter timeFilter) {
-    return new AlignedLastPointReader(
-        partialPath, dataType, deviceMeasurements, context, dataSource, queryTime, timeFilter);
   }
 
   @Override
@@ -418,18 +396,6 @@ class MeasurementResourceByPathUtils extends ResourceByPathUtils {
 
   protected MeasurementResourceByPathUtils(PartialPath partialPath) {
     this.partialPath = (MeasurementPath) partialPath;
-  }
-
-  @Override
-  public LastPointReader createLastPointReader(
-      TSDataType dataType,
-      Set<String> deviceMeasurements,
-      QueryContext context,
-      QueryDataSource dataSource,
-      long queryTime,
-      Filter timeFilter) {
-    return new LastPointReader(
-        partialPath, dataType, deviceMeasurements, context, dataSource, queryTime, timeFilter);
   }
 
   @Override

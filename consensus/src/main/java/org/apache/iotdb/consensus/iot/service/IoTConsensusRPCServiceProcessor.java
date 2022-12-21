@@ -37,13 +37,13 @@ import org.apache.iotdb.consensus.iot.thrift.TCleanupTransferredSnapshotReq;
 import org.apache.iotdb.consensus.iot.thrift.TCleanupTransferredSnapshotRes;
 import org.apache.iotdb.consensus.iot.thrift.TInactivatePeerReq;
 import org.apache.iotdb.consensus.iot.thrift.TInactivatePeerRes;
-import org.apache.iotdb.consensus.iot.thrift.TLogBatch;
+import org.apache.iotdb.consensus.iot.thrift.TLogEntry;
 import org.apache.iotdb.consensus.iot.thrift.TRemoveSyncLogChannelReq;
 import org.apache.iotdb.consensus.iot.thrift.TRemoveSyncLogChannelRes;
 import org.apache.iotdb.consensus.iot.thrift.TSendSnapshotFragmentReq;
 import org.apache.iotdb.consensus.iot.thrift.TSendSnapshotFragmentRes;
-import org.apache.iotdb.consensus.iot.thrift.TSyncLogReq;
-import org.apache.iotdb.consensus.iot.thrift.TSyncLogRes;
+import org.apache.iotdb.consensus.iot.thrift.TSyncLogEntriesReq;
+import org.apache.iotdb.consensus.iot.thrift.TSyncLogEntriesRes;
 import org.apache.iotdb.consensus.iot.thrift.TTriggerSnapshotLoadReq;
 import org.apache.iotdb.consensus.iot.thrift.TTriggerSnapshotLoadRes;
 import org.apache.iotdb.consensus.iot.thrift.TWaitSyncLogCompleteReq;
@@ -69,7 +69,8 @@ public class IoTConsensusRPCServiceProcessor implements IoTConsensusIService.Asy
   }
 
   @Override
-  public void syncLog(TSyncLogReq req, AsyncMethodCallback<TSyncLogRes> resultHandler) {
+  public void syncLogEntries(
+      TSyncLogEntriesReq req, AsyncMethodCallback<TSyncLogEntriesRes> resultHandler) {
     try {
       ConsensusGroupId groupId =
           ConsensusGroupId.Factory.createFromTConsensusGroupId(req.getConsensusGroupId());
@@ -77,46 +78,48 @@ public class IoTConsensusRPCServiceProcessor implements IoTConsensusIService.Asy
       if (impl == null) {
         String message =
             String.format(
-                "unexpected consensusGroupId %s for TSyncLogReq which size is %s",
-                groupId, req.getBatches().size());
+                "unexpected consensusGroupId %s for TSyncLogEntriesReq which size is %s",
+                groupId, req.getLogEntries().size());
         logger.error(message);
         TSStatus status = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
         status.setMessage(message);
-        resultHandler.onComplete(new TSyncLogRes(Collections.singletonList(status)));
+        resultHandler.onComplete(new TSyncLogEntriesRes(Collections.singletonList(status)));
         return;
       }
       if (impl.isReadOnly()) {
-        String message = "fail to sync log because system is read-only.";
+        String message = "fail to sync logEntries because system is read-only.";
         logger.error(message);
         TSStatus status = new TSStatus(TSStatusCode.SYSTEM_READ_ONLY.getStatusCode());
         status.setMessage(message);
-        resultHandler.onComplete(new TSyncLogRes(Collections.singletonList(status)));
+        resultHandler.onComplete(new TSyncLogEntriesRes(Collections.singletonList(status)));
         return;
       }
       if (!impl.isActive()) {
         TSStatus status = new TSStatus(TSStatusCode.WRITE_PROCESS_REJECT.getStatusCode());
         status.setMessage("peer is inactive and not ready to receive sync log request");
-        resultHandler.onComplete(new TSyncLogRes(Collections.singletonList(status)));
+        resultHandler.onComplete(new TSyncLogEntriesRes(Collections.singletonList(status)));
         return;
       }
-      BatchIndexedConsensusRequest requestsInThisBatch =
+      BatchIndexedConsensusRequest logEntriesInThisBatch =
           new BatchIndexedConsensusRequest(req.peerId);
       // We use synchronized to ensure atomicity of executing multiple logs
-      for (TLogBatch batch : req.getBatches()) {
-        requestsInThisBatch.add(
+      for (TLogEntry entry : req.getLogEntries()) {
+        logEntriesInThisBatch.add(
             impl.buildIndexedConsensusRequestForRemoteRequest(
-                batch.getSearchIndex(),
-                batch.getData().stream()
+                entry.getSearchIndex(),
+                entry.getData().stream()
                     .map(
-                        batch.isFromWAL()
+                        entry.isFromWAL()
                             ? IoTConsensusRequest::new
                             : ByteBufferConsensusRequest::new)
                     .collect(Collectors.toList())));
       }
-      TSStatus writeStatus = impl.getStateMachine().write(requestsInThisBatch);
+      TSStatus writeStatus = impl.getStateMachine().write(logEntriesInThisBatch);
       logger.debug(
-          "execute TSyncLogReq for {} with result {}", req.consensusGroupId, writeStatus.subStatus);
-      resultHandler.onComplete(new TSyncLogRes(writeStatus.subStatus));
+          "execute TSyncLogEntriesReq for {} with result {}",
+          req.consensusGroupId,
+          writeStatus.subStatus);
+      resultHandler.onComplete(new TSyncLogEntriesRes(writeStatus.subStatus));
     } catch (Exception e) {
       resultHandler.onError(e);
     }

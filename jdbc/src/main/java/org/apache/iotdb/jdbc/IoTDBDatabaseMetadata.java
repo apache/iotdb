@@ -870,48 +870,6 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
     }
   }
 
-  private void addToDataSet(List<List<Map>> listbigPaths, ListDataSet dataSet) {
-    List<TSDataType> listType = new ArrayList<>();
-    int i = 0;
-    for (List<Map> listPaths : listbigPaths) {
-      RowRecord record = new RowRecord(0);
-      for (Map<String, Object> map : listPaths) {
-        TSDataType columnType = (TSDataType) map.get("type");
-        Object val = map.get("val");
-        org.apache.iotdb.tsfile.read.common.Field field =
-            new org.apache.iotdb.tsfile.read.common.Field(columnType);
-        switch (columnType) {
-          case TEXT:
-            field.setBinaryV(new Binary(val.toString()));
-            break;
-          case FLOAT:
-            field.setFloatV(((float) val));
-            break;
-          case INT32:
-            field.setIntV(((int) val));
-            break;
-          case INT64:
-            field.setLongV(((long) val));
-            break;
-          case DOUBLE:
-            field.setDoubleV(((double) val));
-            break;
-          case BOOLEAN:
-            field.setBoolV(((boolean) val));
-            break;
-        }
-        record.addField(field);
-        if (i == 0) {
-          listType.add(columnType);
-        }
-      }
-      i++;
-      dataSet.putRecord(record);
-    }
-    dataSet.setDataTypes(listType);
-    dataSet.setColumnNum(listType.size());
-  }
-
   @Override
   public ResultSet getClientInfoProperties() throws SQLException {
     Statement stmt = this.connection.createStatement();

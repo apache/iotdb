@@ -51,10 +51,10 @@ e.g.
 ./do-docker-build.sh -t confignode -v 1.0.0
 ```
 Notice:
-Make directory of src/main/tmp and put the files you'd like to use in dockerfile if you don't want to build the source codes of IoTDB.
+Make directory of src/main/target and put the zip file downloading from the official download page. 
 e.g.
 ```shell
-$ ls -hl tmp/
+$ ls -hl target/
 total 215M
 -rw-r--r-- 1 root root 75M Nov 30 20:04 apache-iotdb-1.0.0-all-bin.zip
 -rw-r--r-- 1 root root 69M Dec  1 17:12 apache-iotdb-1.0.0-confignode-bin.zip
