@@ -84,7 +84,7 @@ public class MetricService extends AbstractMetricService implements MetricServic
     internalReporter.addAutoGauge(this.internalReporter.getAllAutoGauge());
     this.internalReporter.stop();
     this.internalReporter = internalReporter;
-    this.internalReporter.start();
+    startInternalReporter();
     logger.info("Finish reloading internal reporter");
   }
 
@@ -120,7 +120,10 @@ public class MetricService extends AbstractMetricService implements MetricServic
   }
 
   public void startInternalReporter() {
-    this.internalReporter.start();
+    if (!this.internalReporter.start()) {
+      logger.error("Failed to start internal reporter");
+      this.internalReporter = new MemoryInternalIoTDBReporter();
+    }
   }
 
   public static MetricService getInstance() {
