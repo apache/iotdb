@@ -36,7 +36,6 @@ import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import org.apache.thrift.TException;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
@@ -46,7 +45,6 @@ import org.junit.runner.RunWith;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
@@ -127,8 +125,7 @@ public class IoTDBPartitionInheritPolicyIT {
   }
 
   @Test
-  public void testDataPartitionInheritPolicy()
-      throws TException, IOException, InterruptedException {
+  public void testDataPartitionInheritPolicy() throws Exception {
 
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {

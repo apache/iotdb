@@ -21,6 +21,7 @@ package org.apache.iotdb.db.metadata.template;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.IClientManager;
+import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.consensus.ConfigNodeRegionId;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.IoTDBException;
@@ -41,7 +42,6 @@ import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -98,7 +98,7 @@ public class ClusterTemplateManager implements ITemplateManager {
             tsStatus);
       }
       return tsStatus;
-    } catch (TException | IOException e) {
+    } catch (ClientManagerException | TException e) {
       throw new RuntimeException(
           new IoTDBException(
               "create template error.", e, TSStatusCode.CREATE_TEMPLATE_ERROR.getStatusCode()));
@@ -140,7 +140,7 @@ public class ClusterTemplateManager implements ITemplateManager {
                 tGetAllTemplatesResp.getStatus().getMessage(),
                 tGetAllTemplatesResp.getStatus().getCode()));
       }
-    } catch (TException | IOException e) {
+    } catch (ClientManagerException | TException e) {
       throw new RuntimeException(
           new IoTDBException(
               "get all template error.", TSStatusCode.UNDEFINED_TEMPLATE.getStatusCode()));

@@ -172,8 +172,8 @@ public class CQScheduleTask implements Runnable {
         AsyncDataNodeInternalServiceClient client =
             AsyncDataNodeClientPool.getInstance().getAsyncClient(targetDataNode.get());
         client.executeCQ(executeCQReq, new AsyncExecuteCQCallback(startTime, endTime));
-      } catch (Throwable t) {
-        LOGGER.warn("Execute CQ {} failed", cqId, t);
+      } catch (Exception e) {
+        LOGGER.warn("Execute CQ {} failed", cqId, e);
         if (needSubmit()) {
           submitSelf(retryWaitTimeInMS, TimeUnit.MILLISECONDS);
         }

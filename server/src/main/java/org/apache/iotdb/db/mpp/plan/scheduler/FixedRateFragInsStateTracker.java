@@ -21,6 +21,7 @@ package org.apache.iotdb.db.mpp.plan.scheduler;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.IClientManager;
+import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
@@ -35,7 +36,6 @@ import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -131,7 +131,7 @@ public class FixedRateFragInsStateTracker extends AbstractFragInsStateTracker {
 
           updateQueryState(instance.getId(), instanceInfo);
         }
-      } catch (TException | IOException e) {
+      } catch (ClientManagerException | TException e) {
         // TODO: do nothing ?
         logger.warn("error happened while fetching query state", e);
       }

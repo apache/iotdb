@@ -402,7 +402,7 @@ public class SinkHandle implements ISinkHandle {
               mppDataExchangeServiceClientManager.borrowClient(remoteEndpoint)) {
             client.onNewDataBlockEvent(newDataBlockEvent);
             break;
-          } catch (Throwable e) {
+          } catch (Exception e) {
             logger.warn("Failed to send new data block event, attempt times: {}", attempt, e);
             if (attempt == MAX_ATTEMPT_TIMES) {
               sinkHandleListener.onFailure(SinkHandle.this, e);
@@ -442,7 +442,7 @@ public class SinkHandle implements ISinkHandle {
               mppDataExchangeServiceClientManager.borrowClient(remoteEndpoint)) {
             client.onEndOfDataBlockEvent(endOfDataBlockEvent);
             break;
-          } catch (Throwable e) {
+          } catch (Exception e) {
             logger.warn("Failed to send end of data block event, attempt times: {}", attempt, e);
             if (attempt == MAX_ATTEMPT_TIMES) {
               logger.warn("Failed to send end of data block event after all retry", e);

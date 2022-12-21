@@ -72,6 +72,7 @@
     <allow class="org.apache.iotdb.commons.cq.CQState" />
     <allow class="org.apache.iotdb.consensus.ConsensusFactory" />
     <allow class="org.apache.iotdb.confignode.it.utils.ConfigNodeTestUtils" />
+    <allow class="org.apache.iotdb.commons.client.exception.ClientManagerException" />
     <allow pkg="org\.apache\.iotdb\.common\.rpc\.thrift.*" regex="true" />
     <allow pkg="org\.apache\.iotdb\.confignode\.rpc\.thrift.*" regex="true" />
     <allow pkg="org\.apache\.iotdb\.commons\.client\.sync.*" regex="true" />

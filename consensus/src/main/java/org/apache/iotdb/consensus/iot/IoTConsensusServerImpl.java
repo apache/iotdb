@@ -22,6 +22,7 @@ package org.apache.iotdb.consensus.iot;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.IClientManager;
+import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
@@ -332,7 +333,7 @@ public class IoTConsensusServerImpl {
           reader.close();
         }
       }
-    } catch (IOException | TException e) {
+    } catch (Exception e) {
       throw new ConsensusGroupModifyPeerException(
           String.format("error when send snapshot file to %s", targetPeer), e);
     }
@@ -403,7 +404,7 @@ public class IoTConsensusServerImpl {
         throw new ConsensusGroupModifyPeerException(
             String.format("error when inactivating %s. %s", peer, res.getStatus()));
       }
-    } catch (IOException | TException e) {
+    } catch (Exception e) {
       throw new ConsensusGroupModifyPeerException(
           String.format("error when inactivating %s", peer), e);
     }
@@ -420,7 +421,7 @@ public class IoTConsensusServerImpl {
         throw new ConsensusGroupModifyPeerException(
             String.format("error when triggering snapshot load %s. %s", peer, res.getStatus()));
       }
-    } catch (IOException | TException e) {
+    } catch (Exception e) {
       throw new ConsensusGroupModifyPeerException(
           String.format("error when activating %s", peer), e);
     }
@@ -435,7 +436,7 @@ public class IoTConsensusServerImpl {
         throw new ConsensusGroupModifyPeerException(
             String.format("error when activating %s. %s", peer, res.getStatus()));
       }
-    } catch (IOException | TException e) {
+    } catch (Exception e) {
       throw new ConsensusGroupModifyPeerException(
           String.format("error when activating %s", peer), e);
     }
@@ -470,7 +471,7 @@ public class IoTConsensusServerImpl {
             throw new ConsensusGroupModifyPeerException(
                 String.format("build sync log channel failed from %s to %s", peer, targetPeer));
           }
-        } catch (IOException | TException e) {
+        } catch (Exception e) {
           // We use a simple way to deal with the connection issue when notifying other nodes to
           // build sync log. If the un-responsible peer is the peer which will be removed, we cannot
           // suspend the operation and need to skip it. In order to keep the mechanism works fine,
@@ -513,7 +514,7 @@ public class IoTConsensusServerImpl {
             throw new ConsensusGroupModifyPeerException(
                 String.format("remove sync log channel failed from %s to %s", peer, targetPeer));
           }
-        } catch (IOException | TException e) {
+        } catch (Exception e) {
           throw new ConsensusGroupModifyPeerException(
               String.format("error when removing sync log channel to %s", peer), e);
         }
@@ -545,7 +546,7 @@ public class IoTConsensusServerImpl {
             res.safeIndex);
         Thread.sleep(checkIntervalInMs);
       }
-    } catch (IOException | TException e) {
+    } catch (ClientManagerException | TException e) {
       throw new ConsensusGroupModifyPeerException(
           String.format(
               "error when waiting %s to complete SyncLog. %s", targetPeer, e.getMessage()),
@@ -750,7 +751,7 @@ public class IoTConsensusServerImpl {
             String.format(
                 "cleanup remote snapshot failed of %s ,status is %s", targetPeer, res.getStatus()));
       }
-    } catch (IOException | TException e) {
+    } catch (Exception e) {
       throw new ConsensusGroupModifyPeerException(
           String.format("cleanup remote snapshot failed of %s", targetPeer), e);
     }

@@ -21,7 +21,6 @@ package org.apache.iotdb.confignode.it;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
-import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.confignode.rpc.thrift.TCountStorageGroupResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteStorageGroupsReq;
@@ -36,7 +35,6 @@ import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import org.apache.thrift.TException;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -44,7 +42,6 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
-import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -65,8 +62,7 @@ public class IoTDBStorageGroupIT {
   }
 
   @Test
-  public void testSetAndQueryStorageGroup()
-      throws IOException, TException, IllegalPathException, InterruptedException {
+  public void testSetAndQueryStorageGroup() throws Exception {
     TSStatus status;
     final String sg0 = "root.sg0";
     final String sg1 = "root.sg1";
@@ -156,7 +152,7 @@ public class IoTDBStorageGroupIT {
   }
 
   @Test
-  public void testDeleteStorageGroup() throws TException, IOException, InterruptedException {
+  public void testDeleteStorageGroup() throws Exception {
     TSStatus status;
     final String sg0 = "root.sg0";
     final String sg1 = "root.sg1";

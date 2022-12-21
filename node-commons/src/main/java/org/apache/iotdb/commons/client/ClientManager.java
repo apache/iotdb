@@ -19,14 +19,14 @@
 
 package org.apache.iotdb.commons.client;
 
+import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.utils.TestOnly;
 
 import org.apache.commons.pool2.KeyedObjectPool;
-import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
+import java.util.Optional;
 
 public class ClientManager<K, V> implements IClientManager<K, V> {
 
@@ -44,60 +44,42 @@ public class ClientManager<K, V> implements IClientManager<K, V> {
   }
 
   @Override
-  public V borrowClient(K node) throws IOException {
-    V client;
+  public V borrowClient(K node) throws ClientManagerException {
     try {
-      client = pool.borrowObject(node);
-    } catch (TTransportException e) {
-      // External needs to check transport related exception
-      throw new IOException(e);
-    } catch (IOException e) {
-      // External needs the IOException to check connection
-      throw e;
+      return pool.borrowObject(node);
     } catch (Exception e) {
-      // External doesn't care of other exceptions
-      String errorMessage =
-          String.format(
-              "Borrow client from pool for node %s failed, you need to increase dn_max_connection_for_internal_service.",
-              node);
-      logger.warn(errorMessage, e);
-      throw new IOException(errorMessage, e);
+      throw new ClientManagerException(e);
     }
-    return client;
   }
 
-  @Override
-  public V purelyBorrowClient(K node) {
-    V client = null;
-    try {
-      client = pool.borrowObject(node);
-    } catch (Exception ignored) {
-      // Just ignore
-    }
-    return client;
-  }
-
-  // return a V client of the K node to the Manager
+  // return a client V for node K to the ClientManager
+  // Note: We do not define this interface in IClientManager to make you aware that the return of a
+  // client is automatic whenever a particular client is used
   public void returnClient(K node, V client) {
-    if (client != null && node != null) {
-      try {
-        pool.returnObject(node, client);
-      } catch (Exception e) {
-        logger.error(
-            String.format("Return client %s for node %s to pool failed.", client, node), e);
-      }
-    }
+    Optional.ofNullable(node)
+        .ifPresent(
+            x -> {
+              try {
+                pool.returnObject(node, client);
+              } catch (Exception e) {
+                logger.error(
+                    String.format("Return client %s for node %s to pool failed.", client, node), e);
+              }
+            });
   }
 
   @Override
   public void clear(K node) {
-    if (node != null) {
-      try {
-        pool.clear(node);
-      } catch (Exception e) {
-        logger.error(String.format("Clear all client in pool for node %s failed.", node), e);
-      }
-    }
+    Optional.ofNullable(node)
+        .ifPresent(
+            x -> {
+              try {
+                pool.clear(node);
+              } catch (Exception e) {
+                logger.error(
+                    String.format("Clear all client in pool for node %s failed.", node), e);
+              }
+            });
   }
 
   @Override
@@ -105,7 +87,7 @@ public class ClientManager<K, V> implements IClientManager<K, V> {
     try {
       pool.close();
     } catch (Exception e) {
-      logger.error("close client pool failed", e);
+      logger.error("Close client pool failed", e);
     }
   }
 }

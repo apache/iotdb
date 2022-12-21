@@ -20,6 +20,7 @@ package org.apache.iotdb.it.env;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.IClientManager;
+import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.confignode.rpc.thrift.IConfigNodeRPCService;
 import org.apache.iotdb.db.client.DataNodeClientPoolFactory;
@@ -41,10 +42,16 @@ import static org.apache.iotdb.jdbc.Config.VERSION;
 import static org.junit.Assert.fail;
 
 public class RemoteServerEnv implements BaseEnv {
+
   private String ip_addr = System.getProperty("RemoteIp", "127.0.0.1");
   private String port = System.getProperty("RemotePort", "6667");
   private String user = System.getProperty("RemoteUser", "root");
   private String password = System.getProperty("RemotePassword", "root");
+
+  private final IClientManager<TEndPoint, SyncConfigNodeIServiceClient> clientManager =
+      new IClientManager.Factory<TEndPoint, SyncConfigNodeIServiceClient>()
+          .createClientManager(
+              new DataNodeClientPoolFactory.SyncConfigNodeIServiceClientPoolFactory());
 
   @Override
   public void initBeforeClass() {
@@ -64,7 +71,9 @@ public class RemoteServerEnv implements BaseEnv {
   }
 
   @Override
-  public void cleanAfterClass() {}
+  public void cleanAfterClass() {
+    clientManager.close();
+  }
 
   @Override
   public void initBeforeTest() {
@@ -79,7 +88,9 @@ public class RemoteServerEnv implements BaseEnv {
   }
 
   @Override
-  public void cleanAfterTest() {}
+  public void cleanAfterTest() {
+    clientManager.close();
+  }
 
   @Override
   public Connection getConnection(String username, String password) throws SQLException {
@@ -151,15 +162,8 @@ public class RemoteServerEnv implements BaseEnv {
   }
 
   @Override
-  public IConfigNodeRPCService.Iface getLeaderConfigNodeConnection() throws IOException {
-    IClientManager<TEndPoint, SyncConfigNodeIServiceClient> clientManager =
-        new IClientManager.Factory<TEndPoint, SyncConfigNodeIServiceClient>()
-            .createClientManager(
-                new DataNodeClientPoolFactory.SyncConfigNodeIServiceClientPoolFactory());
-    try (SyncConfigNodeIServiceClient client =
-        clientManager.borrowClient(new TEndPoint(ip_addr, 22277))) {
-      return client;
-    }
+  public IConfigNodeRPCService.Iface getLeaderConfigNodeConnection() throws ClientManagerException {
+    return clientManager.borrowClient(new TEndPoint(ip_addr, 22277));
   }
 
   @Override

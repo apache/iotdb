@@ -17,28 +17,11 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.client;
+package org.apache.iotdb.commons.client.exception;
 
-import org.apache.iotdb.commons.client.exception.ClientManagerException;
+public class ClientManagerException extends Exception {
 
-import javax.annotation.concurrent.ThreadSafe;
-
-@ThreadSafe
-public interface IClientManager<K, V> {
-
-  // get a client V for node K from the IClientManager
-  V borrowClient(K node) throws ClientManagerException;
-
-  // clear all clients for node K
-  void clear(K node);
-
-  // close IClientManager, which means closing all clients for all nodes
-  void close();
-
-  class Factory<K, V> {
-
-    public IClientManager<K, V> createClientManager(IClientPoolFactory<K, V> clientPoolFactory) {
-      return new ClientManager<>(clientPoolFactory);
-    }
+  public ClientManagerException(Exception exception) {
+    super(exception);
   }
 }

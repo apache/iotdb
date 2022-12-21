@@ -21,6 +21,7 @@ package org.apache.iotdb.db.mpp.execution.exchange;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.IClientManager;
+import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeMPPDataExchangeServiceClient;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.execution.exchange.MPPDataExchangeManager.SourceHandleListener;
@@ -37,7 +38,6 @@ import org.junit.Assert;
 import org.junit.Test;
 import org.mockito.Mockito;
 
-import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
@@ -81,7 +81,7 @@ public class SourceHandleTest {
               })
           .when(mockClient)
           .getDataBlock(Mockito.any(TGetDataBlockRequest.class));
-    } catch (TException | IOException e) {
+    } catch (ClientManagerException | TException e) {
       e.printStackTrace();
       Assert.fail();
     }
@@ -197,7 +197,7 @@ public class SourceHandleTest {
               })
           .when(mockClient)
           .getDataBlock(Mockito.any(TGetDataBlockRequest.class));
-    } catch (TException | IOException e) {
+    } catch (ClientManagerException | TException e) {
       e.printStackTrace();
       Assert.fail();
     }
@@ -351,7 +351,7 @@ public class SourceHandleTest {
               })
           .when(mockClient)
           .getDataBlock(Mockito.any(TGetDataBlockRequest.class));
-    } catch (TException | IOException e) {
+    } catch (ClientManagerException | TException e) {
       e.printStackTrace();
       Assert.fail();
     }
@@ -523,7 +523,7 @@ public class SourceHandleTest {
       Mockito.doThrow(mockException)
           .when(mockClient)
           .getDataBlock(Mockito.any(TGetDataBlockRequest.class));
-    } catch (TException | IOException e) {
+    } catch (ClientManagerException | TException e) {
       e.printStackTrace();
       Assert.fail();
     }
@@ -606,7 +606,7 @@ public class SourceHandleTest {
               })
           .when(mockClient)
           .getDataBlock(Mockito.any(TGetDataBlockRequest.class));
-    } catch (TException | IOException e) {
+    } catch (ClientManagerException | TException e) {
       e.printStackTrace();
       Assert.fail();
     }

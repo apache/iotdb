@@ -22,6 +22,7 @@ package org.apache.iotdb.db.trigger.executor;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.IClientManager;
+import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.consensus.ConfigNodeRegionId;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -340,7 +341,7 @@ public class TriggerFireVisitor extends PlanVisitor<TriggerFireResult, TriggerEv
               Thread.sleep(4000);
             }
           }
-        } catch (IOException | TException e) {
+        } catch (ClientManagerException | TException e) {
           // IOException means that we failed to borrow client, possibly because corresponding
           // DataNode is down.
           // TException means there's a timeout or broken connection.
@@ -353,7 +354,10 @@ public class TriggerFireVisitor extends PlanVisitor<TriggerFireResult, TriggerEv
               e);
           // update TDataNodeLocation of stateful trigger through config node
           updateLocationOfStatefulTrigger(triggerName, tDataNodeLocation.getDataNodeId());
-        } catch (Throwable e) {
+        } catch (InterruptedException e) {
+          LOGGER.warn("{} interrupted when sleep", triggerName);
+          Thread.currentThread().interrupt();
+        } catch (Exception e) {
           LOGGER.warn(
               "Error occurred when trying to fire trigger({}) on TEndPoint: {}, the cause is: {}",
               triggerName,
@@ -412,7 +416,7 @@ public class TriggerFireVisitor extends PlanVisitor<TriggerFireResult, TriggerEv
         }
       }
       return false;
-    } catch (TException | IOException e) {
+    } catch (ClientManagerException | TException | IOException e) {
       LOGGER.error(
           "Failed to update location of stateful trigger({}) through config node and the cause is {}.",
           triggerName,

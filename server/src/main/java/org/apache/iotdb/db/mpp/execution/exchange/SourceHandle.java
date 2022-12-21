@@ -461,7 +461,7 @@ public class SourceHandle implements ISourceHandle {
               }
             }
             break;
-          } catch (Throwable e) {
+          } catch (Exception e) {
 
             logger.warn(
                 "failed to get data block [{}, {}), attempt times: {}",
@@ -532,7 +532,7 @@ public class SourceHandle implements ISourceHandle {
               mppDataExchangeServiceClientManager.borrowClient(remoteEndpoint)) {
             client.onAcknowledgeDataBlockEvent(acknowledgeDataBlockEvent);
             break;
-          } catch (Throwable e) {
+          } catch (Exception e) {
             logger.warn(
                 "failed to send ack data block event [{}, {}), attempt times: {}",
                 startSequenceId,

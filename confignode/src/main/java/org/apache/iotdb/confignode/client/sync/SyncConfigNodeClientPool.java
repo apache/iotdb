@@ -22,6 +22,7 @@ import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.IClientManager;
+import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.confignode.client.ConfigNodeRequestType;
 import org.apache.iotdb.confignode.rpc.thrift.TAddConsensusGroupReq;
@@ -35,7 +36,6 @@ import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.util.concurrent.TimeUnit;
 
 /** Synchronously send RPC requests to ConfigNode. See confignode.thrift for more details. */
@@ -93,7 +93,7 @@ public class SyncConfigNodeClientPool {
             return RpcUtils.getStatus(
                 TSStatusCode.EXECUTE_STATEMENT_ERROR, "Unknown request type: " + requestType);
         }
-      } catch (Throwable e) {
+      } catch (Exception e) {
         lastException = e;
         LOGGER.warn(
             "{} failed on ConfigNode {}, because {}, retrying {}...",
@@ -118,7 +118,7 @@ public class SyncConfigNodeClientPool {
    */
   public TSStatus removeConfigNode(
       TConfigNodeLocation configNodeLocation, SyncConfigNodeIServiceClient client)
-      throws TException, IOException, InterruptedException {
+      throws ClientManagerException, TException, InterruptedException {
     TSStatus status = client.removeConfigNode(configNodeLocation);
     while (status.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
       TimeUnit.MILLISECONDS.sleep(2000);

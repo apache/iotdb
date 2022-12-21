@@ -21,6 +21,7 @@ package org.apache.iotdb.db.mpp.plan.scheduler;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.IClientManager;
+import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.execution.QueryStateMachine;
@@ -35,7 +36,6 @@ import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceInfoResp;
 
 import org.apache.thrift.TException;
 
-import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
@@ -70,7 +70,7 @@ public abstract class AbstractFragInsStateTracker implements IFragInstanceStateT
   public abstract void abort();
 
   protected FragmentInstanceInfo fetchInstanceInfo(FragmentInstance instance)
-      throws TException, IOException {
+      throws ClientManagerException, TException {
     TEndPoint endPoint = instance.getHostDataNode().internalEndPoint;
     if (isInstanceRunningLocally(endPoint)) {
       FragmentInstanceInfo info =

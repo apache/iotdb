@@ -24,6 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.ClientPoolFactory;
 import org.apache.iotdb.commons.client.IClientManager;
+import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateDataRegionReq;
@@ -42,7 +43,6 @@ import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.util.concurrent.TimeUnit;
 
 /** Synchronously send RPC requests to DataNodes. See mpp.thrift for more details. */
@@ -67,7 +67,7 @@ public class SyncDataNodeClientPool {
     for (int retry = 0; retry < DEFAULT_RETRY_NUM; retry++) {
       try (SyncDataNodeInternalServiceClient client = clientManager.borrowClient(endPoint)) {
         return executeSyncRequest(requestType, client, req);
-      } catch (TException | IOException e) {
+      } catch (ClientManagerException | TException e) {
         lastException = e;
         if (retry != DEFAULT_RETRY_NUM - 1) {
           LOGGER.warn("{} failed on DataNode {}, retrying {}...", requestType, endPoint, retry + 1);
@@ -86,7 +86,7 @@ public class SyncDataNodeClientPool {
     for (int retry = 0; retry < retryNum; retry++) {
       try (SyncDataNodeInternalServiceClient client = clientManager.borrowClient(endPoint)) {
         return executeSyncRequest(requestType, client, req);
-      } catch (TException | IOException e) {
+      } catch (ClientManagerException | TException e) {
         lastException = e;
         if (retry != retryNum - 1) {
           LOGGER.warn("{} failed on DataNode {}, retrying {}...", requestType, endPoint, retry + 1);
@@ -167,7 +167,7 @@ public class SyncDataNodeClientPool {
     try (SyncDataNodeInternalServiceClient client = clientManager.borrowClient(dataNode)) {
       TRegionLeaderChangeReq req = new TRegionLeaderChangeReq(regionId, newLeaderNode);
       status = client.changeRegionLeader(req);
-    } catch (IOException e) {
+    } catch (ClientManagerException e) {
       LOGGER.error("Can't connect to Data node: {}", dataNode, e);
       status = new TSStatus(TSStatusCode.CAN_NOT_CONNECT_DATANODE.getStatusCode());
       status.setMessage(e.getMessage());

@@ -38,10 +38,10 @@ public class ClientPoolProperty<V> {
 
   public static class Builder<V> {
     // when the number of the client to a single node exceeds maxTotalConnectionForEachNode, the
-    // current thread will block waitClientTimeoutMS, ClientManager returns NULL if there are no
-    // clients after the block time
+    // current thread will block waitClientTimeoutMS, ClientManager throws ClientManagerException if
+    // there are no clients after the block time
     private long waitClientTimeoutMS = DefaultProperty.WAIT_CLIENT_TIMEOUT_MS;
-    // the maximum number of clients that can be applied for a node
+    // the maximum number of clients that can be allocated for a node
     private int maxTotalClientForEachNode = DefaultProperty.MAX_TOTAL_CLIENT_FOR_EACH_NODE;
     // the maximum number of clients that can be idle for a node. When the number of idle clients on
     // a node exceeds this number, newly returned clients will be released

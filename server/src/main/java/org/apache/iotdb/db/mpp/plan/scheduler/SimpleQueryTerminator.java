@@ -21,6 +21,7 @@ package org.apache.iotdb.db.mpp.plan.scheduler;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.IClientManager;
+import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.common.QueryId;
@@ -28,10 +29,10 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.mpp.rpc.thrift.TCancelQueryReq;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 
+import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -99,11 +100,11 @@ public class SimpleQueryTerminator implements IQueryTerminator {
       try (SyncDataNodeInternalServiceClient client =
           internalServiceClientManager.borrowClient(endPoint)) {
         client.cancelQuery(new TCancelQueryReq(queryId.getId(), unfinishedFIs));
-      } catch (IOException e) {
+      } catch (ClientManagerException e) {
         logger.warn("can't connect to node {}", endPoint, e);
         // we shouldn't return here and need to cancel queryTasks in other nodes
         succeed = false;
-      } catch (Throwable t) {
+      } catch (TException t) {
         logger.warn("cancel query {} on node {} failed.", queryId.getId(), endPoint, t);
         // we shouldn't return here and need to cancel queryTasks in other nodes
         succeed = false;

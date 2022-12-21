@@ -48,7 +48,6 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
-import java.io.IOException;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
@@ -113,8 +112,7 @@ public class IoTDBAutoRegionGroupExtensionIT {
   }
 
   @Test
-  public void testAutoRegionGroupExtensionPolicy()
-      throws IOException, InterruptedException, TException {
+  public void testAutoRegionGroupExtensionPolicy() throws Exception {
 
     final int retryNum = 100;
 

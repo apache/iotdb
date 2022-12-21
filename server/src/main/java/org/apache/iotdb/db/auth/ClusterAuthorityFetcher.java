@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.auth.entity.PathPrivilege;
 import org.apache.iotdb.commons.auth.entity.Role;
 import org.apache.iotdb.commons.auth.entity.User;
 import org.apache.iotdb.commons.client.IClientManager;
+import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.consensus.ConfigNodeRegionId;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -50,7 +51,6 @@ import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
@@ -139,7 +139,7 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
       } else {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       }
-    } catch (TException | IOException e) {
+    } catch (ClientManagerException | TException e) {
       logger.error("Failed to connect to config node.");
       future.setException(e);
     } catch (AuthException e) {
@@ -173,7 +173,7 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
       } else {
         AuthorizerManager.getInstance().buildTSBlock(authorizerResp.getAuthorizerInfo(), future);
       }
-    } catch (TException | IOException e) {
+    } catch (ClientManagerException | TException e) {
       logger.error("Failed to connect to config node.");
       authorizerResp.setStatus(
           RpcUtils.getStatus(
@@ -209,7 +209,7 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
           CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.configNodeRegionId)) {
         // Send request to some API server
         status = configNodeClient.login(req);
-      } catch (TException | IOException e) {
+      } catch (ClientManagerException | TException e) {
         logger.error("Failed to connect to config node.");
         status = new TPermissionInfoResp();
         status.setStatus(
@@ -236,7 +236,7 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.configNodeRegionId)) {
       // Send request to some API server
       permissionInfoResp = configNodeClient.checkUserPrivileges(req);
-    } catch (TException | IOException e) {
+    } catch (ClientManagerException | TException e) {
       logger.error("Failed to connect to config node.");
       permissionInfoResp = new TPermissionInfoResp();
       permissionInfoResp.setStatus(

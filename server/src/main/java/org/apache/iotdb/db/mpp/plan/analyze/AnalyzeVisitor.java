@@ -20,6 +20,7 @@ package org.apache.iotdb.db.mpp.plan.analyze;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
+import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
@@ -2513,7 +2514,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
                 + showDataNodesResp.getStatus().getMessage());
       }
       return showDataNodesResp.getDataNodeLocationList();
-    } catch (TException | IOException e) {
+    } catch (ClientManagerException | TException e) {
       throw new StatementAnalyzeException(
           "An error occurred when executing getRunningDataNodeLocations():" + e.getMessage());
     }
