@@ -176,6 +176,11 @@ public class InsertMeasurementMNode implements IMeasurementMNode {
   }
 
   @Override
+  public int getSchemaTemplateIdWithState() {
+    throw new UnsupportedOperationException("insert measurement mnode doesn't support this method");
+  }
+
+  @Override
   public void setSchemaTemplateId(int schemaTemplateId) {
     throw new UnsupportedOperationException("insert measurement mnode doesn't support this method");
   }
