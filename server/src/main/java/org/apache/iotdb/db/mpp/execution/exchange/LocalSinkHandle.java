@@ -49,6 +49,7 @@ public class LocalSinkHandle implements ISinkHandle {
     this.sinkHandleListener = Validate.notNull(sinkHandleListener);
     this.queue = Validate.notNull(queue);
     this.queue.setSinkHandle(this);
+    blocked = queue.getCanAddTsBlock();
   }
 
   public LocalSinkHandle(

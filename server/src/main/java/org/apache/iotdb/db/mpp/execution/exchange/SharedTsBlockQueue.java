@@ -27,11 +27,10 @@ import org.apache.iotdb.tsfile.utils.Pair;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
+import javax.annotation.concurrent.NotThreadSafe;
 import org.apache.commons.lang3.Validate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import javax.annotation.concurrent.NotThreadSafe;
 
 import java.util.LinkedList;
 import java.util.Queue;
@@ -100,6 +99,10 @@ public class SharedTsBlockQueue {
 
   public void setMaxBytesCanReserve(long maxBytesCanReserve) {
     this.maxBytesCanReserve = maxBytesCanReserve;
+  }
+
+  public long getMaxBytesCanReserve() {
+    return maxBytesCanReserve;
   }
 
   public ListenableFuture<Void> isBlocked() {

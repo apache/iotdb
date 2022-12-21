@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.mpp.plan.planner;
 
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.storagegroup.IDataRegionForQuery;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
@@ -56,6 +57,7 @@ public class LocalExecutionPlanContext {
   // this is shared with all subContexts
   private AtomicInteger nextPipelineId;
   private List<PipelineDriverFactory> pipelineDriverFactories;
+  private int exchangeSumNum = 0;
 
   private final long dataRegionTTL;
 
@@ -94,6 +96,7 @@ public class LocalExecutionPlanContext {
     this.dataRegionTTL = parentContext.dataRegionTTL;
     this.nextPipelineId = parentContext.nextPipelineId;
     this.pipelineDriverFactories = parentContext.pipelineDriverFactories;
+    this.exchangeSumNum = parentContext.exchangeSumNum;
     this.driverContext =
         parentContext.getDriverContext().createSubDriverContext(getNextPipelineId());
   }
@@ -146,6 +149,19 @@ public class LocalExecutionPlanContext {
 
   public int getNextOperatorId() {
     return nextOperatorId.getAndIncrement();
+  }
+
+  public int getExchangeSumNum() {
+    return exchangeSumNum;
+  }
+
+  public long getMaxBytesOneHandleCanReserve() {
+    return IoTDBDescriptor.getInstance().getConfig().getMaxBytesPerFragmentInstance()
+        / exchangeSumNum;
+  }
+
+  public void addExchangeSumNum(int addValue) {
+    this.exchangeSumNum += addValue;
   }
 
   public Set<String> getAllSensors(String deviceId, String sensorId) {

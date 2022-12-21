@@ -70,28 +70,16 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.LastQueryScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesAggregationScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesScanNode;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
 import static org.apache.iotdb.db.mpp.plan.constant.DataNodeEndPoints.isSameNode;
 
 public class MemoryDistributionCalculator
     extends PlanVisitor<Void, MemoryDistributionCalculator.MemoryDistributionContext> {
-  /** This map is used to calculate the total split of memory */
-  private final Map<PlanNodeId, List<PlanNodeId>> exchangeMap;
+  private int exchangeNum = 0;
 
-  public MemoryDistributionCalculator() {
-    this.exchangeMap = new HashMap<>();
-  }
+  public MemoryDistributionCalculator() {}
 
   public long calculateTotalSplit() {
-    long res = 0;
-    for (List<PlanNodeId> l : exchangeMap.values()) {
-      res += l.size();
-    }
-    return res;
+    return exchangeNum;
   }
 
   @Override
@@ -101,6 +89,7 @@ public class MemoryDistributionCalculator
     throw new UnsupportedOperationException("Should call concrete visitXX method");
   }
 
+  // TODO remove allowPipeline if we support pipeline for all operators
   private void processConsumeChildrenOneByOneNode(PlanNode node) {
     MemoryDistributionContext context =
         new MemoryDistributionContext(
@@ -125,30 +114,27 @@ public class MemoryDistributionCalculator
                 child.accept(this, context);
               }
             });
+    // exchangeNum += node.getChildren().size()
+    // child.accept(this, context);
   }
 
   @Override
   public Void visitExchange(ExchangeNode node, MemoryDistributionContext context) {
     // we do not distinguish LocalSourceHandle/SourceHandle by not letting LocalSinkHandle update
     // the map
+    // TODO why use a map, just +1, +1, if(context.notAdded) +1
     if (context == null) {
       // context == null means this ExchangeNode has no father
-      exchangeMap
-          .computeIfAbsent(node.getPlanNodeId(), x -> new ArrayList<>())
-          .add(node.getPlanNodeId());
+      exchangeNum += 1;
     } else {
       if (context.memoryDistributionType.equals(
           MemoryDistributionType.CONSUME_ALL_CHILDREN_AT_THE_SAME_TIME)) {
-        exchangeMap
-            .computeIfAbsent(context.planNodeId, x -> new ArrayList<>())
-            .add(node.getPlanNodeId());
+        exchangeNum += 1;
       } else if (context.memoryDistributionType.equals(
               MemoryDistributionType.CONSUME_CHILDREN_ONE_BY_ONE)
-          && !exchangeMap.containsKey(context.planNodeId)) {
-        // All children share one split, thus only one node needs to be put into the map
-        exchangeMap
-            .computeIfAbsent(context.planNodeId, x -> new ArrayList<>())
-            .add(node.getPlanNodeId());
+          && !context.exchangeAdded) {
+        context.exchangeAdded = true;
+        exchangeNum += 1;
       }
     }
     return null;
@@ -159,10 +145,9 @@ public class MemoryDistributionCalculator
     // LocalSinkHandle and LocalSourceHandle are one-to-one mapped and only LocalSourceHandle do the
     // update
     if (!isSameNode(node.getDownStreamEndpoint())) {
-      exchangeMap
-          .computeIfAbsent(node.getDownStreamPlanNodeId(), x -> new ArrayList<>())
-          .add(node.getDownStreamPlanNodeId());
+      this.exchangeNum += 1;
     }
+    node.getChild().accept(this, context);
     return null;
   }
 
@@ -239,7 +224,13 @@ public class MemoryDistributionCalculator
 
   @Override
   public Void visitLimit(LimitNode node, MemoryDistributionContext context) {
+    // TODO it's a one-to-one node, just child.accept(visitor, context)
+    // TODO And this way will create a new context by this node, what if it occupied the father node
     processConsumeAllChildrenAtTheSameTime(node);
+    // DeviceView(ConsumeOneChild) - TimeJoin(nodeId 1) - exchange (TimeJoinContext)
+    //                                                  - exchange (TimeJoinContext)
+    //                             - TimeJoin(nodeId 2) - exchange
+    //                                                  - exchange
     return null;
   }
 
@@ -328,6 +319,7 @@ public class MemoryDistributionCalculator
     return null;
   }
 
+  // TODO how to handle schema query
   @Override
   public Void visitSchemaQueryMerge(SchemaQueryMergeNode node, MemoryDistributionContext context) {
     processConsumeChildrenOneByOneNode(node);
@@ -479,6 +471,8 @@ public class MemoryDistributionCalculator
 
   static class MemoryDistributionContext {
     final PlanNodeId planNodeId;
+    // Indicating whether an exchange node has been added as a child
+    boolean exchangeAdded = false;
     final MemoryDistributionType memoryDistributionType;
 
     MemoryDistributionContext(

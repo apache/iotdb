@@ -79,7 +79,7 @@ public class LocalExecutionPlanner {
 
     context.addPipelineDriverFactory(root, context.getDriverContext());
     // calculate memory distribution of ISinkHandle/ISourceHandle
-    setMemoryLimitForHandle(instanceContext.getId().toThrift(), plan);
+    // setMemoryLimitForHandle(instanceContext.getId().toThrift(), plan);
 
     return context.getPipelineDriverFactories();
   }
