@@ -23,7 +23,6 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.metadata.plan.schemaregion.impl.CreateAlignedTimeSeriesPlanImpl;
 import org.apache.iotdb.db.metadata.plan.schemaregion.impl.CreateTimeSeriesPlanImpl;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
-import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -120,22 +119,6 @@ public class SchemaRegionTestUtil {
         TSDataType.INT64,
         TSEncoding.PLAIN,
         CompressionType.SNAPPY,
-        null,
-        null,
-        null,
-        null);
-  }
-
-  public static ShowTimeSeriesResult createSimpleShowTSResultInt64(String path, String sgName)
-      throws Exception {
-    return new ShowTimeSeriesResult(
-        path,
-        null,
-        sgName,
-        TSDataType.INT64,
-        TSEncoding.PLAIN,
-        CompressionType.SNAPPY,
-        0,
         null,
         null,
         null,
