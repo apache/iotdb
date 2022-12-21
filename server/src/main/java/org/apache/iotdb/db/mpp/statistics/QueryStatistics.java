@@ -27,6 +27,7 @@ import org.slf4j.LoggerFactory;
 
 import javax.annotation.concurrent.ThreadSafe;
 
+import java.text.DecimalFormat;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ScheduledExecutorService;
@@ -41,6 +42,8 @@ public class QueryStatistics {
 
   private static final Logger QUERY_STATISTICS_LOGGER =
       LoggerFactory.getLogger(IoTDBConstant.QUERY_STATISTICS_LOGGER_NAME);
+
+  private static final DecimalFormat format = new DecimalFormat("#,###");
 
   private final AtomicBoolean tracing = new AtomicBoolean(false);
 
@@ -406,12 +409,12 @@ public class QueryStatistics {
       long count = totalCount.get();
       return "{"
           + "totalTime="
-          + time
+          + format.format(time)
           + "us"
           + ", totalCount="
-          + count
+          + format.format(count)
           + ", avgOpTime="
-          + (time / count)
+          + format.format(time / count)
           + "us"
           + '}';
     }
