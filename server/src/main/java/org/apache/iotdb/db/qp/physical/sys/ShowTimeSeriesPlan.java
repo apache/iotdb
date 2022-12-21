@@ -24,6 +24,7 @@ import org.apache.iotdb.db.metadata.template.Template;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.util.Map;
+import java.util.Objects;
 
 public class ShowTimeSeriesPlan extends ShowPlan {
 
@@ -117,5 +118,22 @@ public class ShowTimeSeriesPlan extends ShowPlan {
     outputStream.writeInt(offset);
     outputStream.writeBoolean(orderByHeat);
     outputStream.writeLong(index);
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    ShowTimeSeriesPlan that = (ShowTimeSeriesPlan) o;
+    return isContains == that.isContains
+        && orderByHeat == that.orderByHeat
+        && Objects.equals(key, that.key)
+        && Objects.equals(value, that.value)
+        && Objects.equals(relatedTemplate, that.relatedTemplate);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(isContains, key, value, orderByHeat, relatedTemplate);
   }
 }
