@@ -2671,7 +2671,6 @@ public class SessionPool implements ISessionPool {
     return connectionTimeoutInMs;
   }
 
-
   @Override
   public TSBackupConfigurationResp getBackupConfiguration()
       throws IoTDBConnectionException, StatementExecutionException {
