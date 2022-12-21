@@ -22,6 +22,7 @@ package org.apache.iotdb.db.metadata.plan.schemaregion.impl;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.metadata.plan.schemaregion.ISchemaRegionPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.SchemaRegionPlanType;
+import org.apache.iotdb.db.metadata.plan.schemaregion.write.IActivateTemplateInClusterPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IAutoCreateDeviceMNodePlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IChangeAliasPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IChangeTagOffsetPlan;
@@ -134,6 +135,11 @@ public class SchemaRegionPlanFactory {
   public static IRollbackPreDeleteTimeSeriesPlan getRollbackPreDeleteTimeSeriesPlan(
       PartialPath path) {
     return new RollbackPreDeleteTimeSeriesPlanImpl(path);
+  }
+
+  public static IActivateTemplateInClusterPlan getActivateTemplateInClusterPlan(
+      PartialPath activatePath, int templateSetLevel, int templateId) {
+    return new ActivateTemplateInClusterPlanImpl(activatePath, templateSetLevel, templateId);
   }
 
   public static IPreDeactivateTemplatePlan getPreDeactivateTemplatePlan(
