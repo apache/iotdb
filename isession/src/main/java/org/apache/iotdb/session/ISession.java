@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.session;
 
-import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.service.rpc.thrift.TSBackupConfigurationResp;
@@ -33,7 +32,6 @@ import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.thrift.TException;
 
 import java.io.IOException;
-import java.time.ZoneId;
 import java.util.List;
 import java.util.Map;
 
@@ -55,9 +53,6 @@ public interface ISession extends AutoCloseable {
       throws IoTDBConnectionException;
 
   void close() throws IoTDBConnectionException;
-
-  SessionConnection constructSessionConnection(Session session, TEndPoint endpoint, ZoneId zoneId)
-      throws IoTDBConnectionException;
 
   String getTimeZone();
 
@@ -463,4 +458,8 @@ public interface ISession extends AutoCloseable {
       throws IoTDBConnectionException, StatementExecutionException;
 
   TSConnectionInfoResp fetchAllConnections() throws IoTDBConnectionException;
+
+  void setQueryTimeout(long timeoutInMs);
+
+  long getQueryTimeout();
 }
