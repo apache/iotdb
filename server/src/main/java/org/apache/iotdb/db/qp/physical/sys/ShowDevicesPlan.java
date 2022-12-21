@@ -22,6 +22,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.util.Objects;
 
 public class ShowDevicesPlan extends ShowPlan {
 
@@ -51,5 +52,18 @@ public class ShowDevicesPlan extends ShowPlan {
 
   public boolean hasSgCol() {
     return hasSgCol;
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    ShowDevicesPlan that = (ShowDevicesPlan) o;
+    return hasSgCol == that.hasSgCol;
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(hasSgCol);
   }
 }
