@@ -1035,7 +1035,6 @@ var config = {
 						title: 'FAQ',
 						children: [
 							['FAQ/Frequently-asked-questions','Frequently asked questions'],
-							['FAQ/FAQ-for-cluster-setup','FAQ for cluster setup'],
 						]
 					},
 					{
@@ -2233,7 +2232,6 @@ var config = {
 						title: 'FAQ',
 						children: [
 							['FAQ/Frequently-asked-questions','常见问题'],
-							['FAQ/FAQ-for-cluster-setup','分布式部署FAQ'],
 						]
 					},
 					{
