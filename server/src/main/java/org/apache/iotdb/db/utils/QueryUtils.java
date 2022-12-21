@@ -21,15 +21,11 @@ package org.apache.iotdb.db.utils;
 
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.Modification;
-import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
-import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 
-import java.util.Comparator;
 import java.util.List;
-import java.util.TreeMap;
 
 public class QueryUtils {
 
@@ -157,26 +153,5 @@ public class QueryUtils {
       Deletion deletion = (Deletion) modification;
       metaData.insertIntoSortedDeletions(deletion.getTimeRange());
     }
-  }
-
-  private static final Comparator<Long> descendingComparator = (o1, o2) -> Long.compare(o2, o1);
-
-  public static void fillOrderIndexes(
-      QueryDataSource dataSource, String deviceId, boolean ascending) {
-    List<TsFileResource> unseqResources = dataSource.getUnseqResources();
-
-    TreeMap<Long, Integer> orderTimeToIndexMap =
-        ascending ? new TreeMap<>() : new TreeMap<>(descendingComparator);
-    int index = 0;
-    for (TsFileResource resource : unseqResources) {
-      orderTimeToIndexMap.put(resource.getOrderTime(deviceId, ascending), index++);
-    }
-
-    index = 0;
-    int[] orderIndexes = new int[unseqResources.size()];
-    for (Integer orderIndex : orderTimeToIndexMap.values()) {
-      orderIndexes[index++] = orderIndex;
-    }
-    dataSource.setUnSeqFileOrderIndex(orderIndexes);
   }
 }

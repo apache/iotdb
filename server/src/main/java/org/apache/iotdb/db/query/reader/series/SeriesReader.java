@@ -29,7 +29,6 @@ import org.apache.iotdb.db.query.reader.universal.DescPriorityMergeReader;
 import org.apache.iotdb.db.query.reader.universal.PriorityMergeReader;
 import org.apache.iotdb.db.query.reader.universal.PriorityMergeReader.MergeReaderPriority;
 import org.apache.iotdb.db.utils.FileLoaderUtils;
-import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.AlignedTimeSeriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
@@ -185,7 +184,7 @@ public class SeriesReader {
     this.dataType = dataType;
     this.context = context;
     this.dataSource = new QueryDataSource(seqFileResource, unseqFileResource);
-    QueryUtils.fillOrderIndexes(dataSource, seriesPath.getDevice(), ascending);
+    dataSource.fillOrderIndexes(seriesPath.getDevice(), ascending);
     this.timeFilter = timeFilter;
     this.valueFilter = valueFilter;
     this.fileFilter = null;

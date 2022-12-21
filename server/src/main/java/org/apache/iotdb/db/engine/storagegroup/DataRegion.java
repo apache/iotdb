@@ -1733,7 +1733,7 @@ public class DataRegion implements IDataRegionForQuery {
 
     // for upgrade files and old files must be closed
     for (TsFileResource tsFileResource : upgradeTsFileResources) {
-      if (tsFileResource.unsatisfied(
+      if (!tsFileResource.isSatisfied(
           singleDeviceId, timeFilter, isSeq, dataTTL, context.isDebug())) {
         continue;
       }
@@ -1746,7 +1746,7 @@ public class DataRegion implements IDataRegionForQuery {
     }
 
     for (TsFileResource tsFileResource : tsFileResources) {
-      if (tsFileResource.unsatisfied(
+      if (!tsFileResource.isSatisfied(
           singleDeviceId, timeFilter, isSeq, dataTTL, context.isDebug())) {
         continue;
       }
