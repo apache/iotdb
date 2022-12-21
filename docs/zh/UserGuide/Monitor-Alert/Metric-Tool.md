@@ -84,9 +84,10 @@ Core 级别的监控指标在系统运行中默认开启，每一个 Core 级别
 #### 4.1.1. 集群运行状态
 
 | Metric      | Tags                                            | Type      | Description                            |
-| ----------- | ----------------------------------------------- | --------- | -------------------------------------- |
+|-------------|-------------------------------------------------| --------- | -------------------------------------- |
 | config_node | name="total",status="Registered/Online/Unknown" | AutoGauge | 已注册/在线/离线 confignode 的节点数量 |
 | data_node   | name="total",status="Registered/Online/Unknown" | AutoGauge | 已注册/在线/离线 datanode 的节点数量   |
+| points      | database="{{database}}", type="flush"           | Gauge     | 最新一个刷盘的memtale的点数        |
 
 #### 4.1.2. IoTDB 进程运行状态
 | Metric            | Tags           | Type      | Description                         |
@@ -126,7 +127,6 @@ Core 级别的监控指标在系统运行中默认开启，每一个 Core 级别
 | quantity | name="database"                            | AutoGauge | 系统数据库数量                  |
 | quantity | name="timeSeries"                          | AutoGauge | 系统时间序列数量                 |
 | quantity | name="pointsIn"                            | Counter   | 系统累计写入点数                 |
-| points   | database="{{database}}", type="flush"      | Gauge     | 最新一个刷盘的memtale的点数        |
 | region   | name="total",type="SchemaRegion"           | AutoGauge | 分区表中 SchemaRegion 总数量    |
 | region   | name="total",type="DataRegion"             | AutoGauge | 分区表中 DataRegion 总数量      |
 | region   | name="{{ip}}:{{port}}",type="SchemaRegion" | Gauge     | 分区表中对应节点上 DataRegion 总数量 |
