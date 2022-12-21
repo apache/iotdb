@@ -566,9 +566,8 @@ public abstract class AbstractEnv implements BaseEnv {
   public void registerNewConfigNode(ConfigNodeWrapper newConfigNodeWrapper, boolean isNeedVerify) {
     // Start new ConfigNode
     RequestDelegate<Void> configNodeDelegate =
-        new ParallelRequestDelegate<>(
-            Collections.singletonList(newConfigNodeWrapper.getIpAndPortString()),
-            NODE_START_TIMEOUT);
+        new SerialRequestDelegate<>(
+            Collections.singletonList(newConfigNodeWrapper.getIpAndPortString()));
     configNodeDelegate.addRequest(
         () -> {
           newConfigNodeWrapper.start();
