@@ -57,11 +57,16 @@ public class BPlusTreeWriterTest {
 
   int degree;
 
+  int bPlusTreePageSize;
+
   @Before
   public void setUp() throws Exception {
     file = new File("BPlusTreeWriterTest.txt");
     degree = TagSchemaDescriptor.getInstance().getTagSchemaConfig().getDegree();
-    TagSchemaDescriptor.getInstance().getTagSchemaConfig().setDegree(3);
+    TagSchemaDescriptor.getInstance().getTagSchemaConfig().setDegree(4);
+    bPlusTreePageSize =
+        TagSchemaDescriptor.getInstance().getTagSchemaConfig().getbPlusTreePageSize();
+    TagSchemaDescriptor.getInstance().getTagSchemaConfig().setbPlusTreePageSize(50);
     orderedQueue = new ArrayDeque<>();
     orderedQueue.add(new BPlusTreeEntry("aaa", 0));
     orderedQueue.add(new BPlusTreeEntry("bbb", 1));
@@ -97,6 +102,7 @@ public class BPlusTreeWriterTest {
       fileInputStream.close();
     }
     TagSchemaDescriptor.getInstance().getTagSchemaConfig().setDegree(degree);
+    TagSchemaDescriptor.getInstance().getTagSchemaConfig().setbPlusTreePageSize(bPlusTreePageSize);
     bPlusTreeWriter = null;
     file.delete();
     orderedQueue = null;
@@ -197,7 +203,7 @@ public class BPlusTreeWriterTest {
     assertEquals(bPlusTreeHeader.getMax(), "zz");
     assertEquals(bPlusTreeHeader.getMin(), "aaa");
     assertEquals(bPlusTreeHeader.getFirstLeftNodeOffset(), 0);
-    assertEquals(bPlusTreeHeader.getLeftNodeCount(), 4);
+    assertEquals(bPlusTreeHeader.getLeftNodeCount(), 5);
 
     ByteBuffer buffer = ByteBuffer.allocate(1024 * 1024);
 
@@ -212,7 +218,8 @@ public class BPlusTreeWriterTest {
       bPlusTreeNode.deserialize(buffer);
       bPlusTreeNodes.add(bPlusTreeNode);
     }
-    assertEquals(bPlusTreeNodes.size(), 7);
+
+    assertEquals(bPlusTreeNodes.size(), 8);
 
     buffer.position((int) bPlusTreeHeader.getRootNodeOffset());
     BPlusTreeNode rootNode = new BPlusTreeNode();

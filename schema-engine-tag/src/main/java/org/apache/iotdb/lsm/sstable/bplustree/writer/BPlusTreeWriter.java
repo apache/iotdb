@@ -27,6 +27,7 @@ import org.apache.iotdb.lsm.sstable.bplustree.entry.BPlusTreeNodeType;
 import org.apache.iotdb.lsm.sstable.fileIO.FileOutput;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.ArrayDeque;
 import java.util.Comparator;
 import java.util.Map;
@@ -44,6 +45,8 @@ public class BPlusTreeWriter implements IBPlusTreeWriter {
       TagSchemaDescriptor.getInstance().getTagSchemaConfig();
 
   private BPlusTreeHeader bPlushTreeHeader;
+
+  private ByteBuffer byteBuffer;
 
   public BPlusTreeWriter(FileOutput fileOutput) {
     this.fileOutput = fileOutput;
@@ -147,14 +150,7 @@ public class BPlusTreeWriter implements IBPlusTreeWriter {
     return fileOutput.write(bPlusTreeHeader);
   }
 
-  /**
-   * generate a b+ tree for records and write to disk
-   *
-   * @return b+ tree header
-   * @throws IOException
-   */
-  @Override
-  public BPlusTreeHeader writeBPlusTree() throws IOException {
+  public BPlusTreeHeader writeBPlusTreeOnlyUseDegree() throws IOException {
     setBPlushTreeHeader();
     BPlusTreeNode bPlusTreeNode = new BPlusTreeNode(BPlusTreeNodeType.LEAF_NODE);
     BPlusTreeEntry bPlusTreeEntry = null;
@@ -178,6 +174,43 @@ public class BPlusTreeWriter implements IBPlusTreeWriter {
     }
     if (bPlusTreeNode.getCount() > 0) {
       writeBPlusTreeNode(bPlusTreeNode);
+      count++;
+    }
+    currentBPlusTreeEntryQueue = upperLevelBPlusTreeEntryQueue;
+    bPlushTreeHeader.setLeftNodeCount(count);
+    return writeInternalNodeOnlyUseDegree();
+  }
+
+  /**
+   * generate a b+ tree for records and write to disk
+   *
+   * @return b+ tree header
+   * @throws IOException
+   */
+  @Override
+  public BPlusTreeHeader writeBPlusTree() throws IOException {
+    setBPlushTreeHeader();
+    if (byteBuffer == null) {
+      byteBuffer = ByteBuffer.allocate(bPlushTreeConfig.getbPlusTreePageSize());
+    }
+    BPlusTreePage bPlusTreePage = new BPlusTreePage(BPlusTreeNodeType.LEAF_NODE, byteBuffer);
+    BPlusTreeEntry bPlusTreeEntry = null;
+    int count = 0;
+    while (!currentBPlusTreeEntryQueue.isEmpty()) {
+      bPlusTreeEntry = currentBPlusTreeEntryQueue.poll();
+      if (bPlusTreePage.getCount() >= bPlushTreeConfig.getDegree()
+          || !bPlusTreePage.add(bPlusTreeEntry)) {
+        writeBPlusTreePage(bPlusTreePage);
+        count++;
+        bPlusTreePage = new BPlusTreePage(BPlusTreeNodeType.LEAF_NODE, byteBuffer);
+        bPlusTreePage.add(bPlusTreeEntry);
+      }
+    }
+    if (bPlusTreeEntry != null) {
+      bPlushTreeHeader.setMax(bPlusTreeEntry.getName());
+    }
+    if (bPlusTreePage.getCount() > 0) {
+      writeBPlusTreePage(bPlusTreePage);
       count++;
     }
     currentBPlusTreeEntryQueue = upperLevelBPlusTreeEntryQueue;
@@ -209,7 +242,7 @@ public class BPlusTreeWriter implements IBPlusTreeWriter {
     return writeBPlusTree();
   }
 
-  private BPlusTreeHeader writeInternalNode() throws IOException {
+  private BPlusTreeHeader writeInternalNodeOnlyUseDegree() throws IOException {
     upperLevelBPlusTreeEntryQueue = new ArrayDeque<>();
     BPlusTreeNode bPlusTreeNode = new BPlusTreeNode(BPlusTreeNodeType.INTERNAL_NODE);
     int size = currentBPlusTreeEntryQueue.size();
@@ -238,6 +271,39 @@ public class BPlusTreeWriter implements IBPlusTreeWriter {
     return bPlushTreeHeader;
   }
 
+  private BPlusTreeHeader writeInternalNode() throws IOException {
+    upperLevelBPlusTreeEntryQueue = new ArrayDeque<>();
+    BPlusTreePage bPlusTreePage = new BPlusTreePage(BPlusTreeNodeType.INTERNAL_NODE, byteBuffer);
+    int count = 0;
+    long rootNodeOffset = 0;
+    while (!currentBPlusTreeEntryQueue.isEmpty()) {
+      BPlusTreeEntry bPlusTreeEntry = currentBPlusTreeEntryQueue.poll();
+      if (bPlusTreePage.getCount() >= bPlushTreeConfig.getDegree()
+          || !bPlusTreePage.add(bPlusTreeEntry)) {
+        rootNodeOffset = writeBPlusTreePage(bPlusTreePage);
+        count++;
+        bPlusTreePage = new BPlusTreePage(BPlusTreeNodeType.INTERNAL_NODE, byteBuffer);
+        bPlusTreePage.add(bPlusTreeEntry);
+      }
+      if (currentBPlusTreeEntryQueue.isEmpty()) {
+        long offset;
+        if (bPlusTreePage.getCount() > 0) {
+          rootNodeOffset = writeBPlusTreePage(bPlusTreePage);
+          count++;
+        }
+        if (count == 1) {
+          bPlushTreeHeader.setRootNodeOffset(rootNodeOffset);
+          return bPlushTreeHeader;
+        }
+        currentBPlusTreeEntryQueue = upperLevelBPlusTreeEntryQueue;
+        upperLevelBPlusTreeEntryQueue = new ArrayDeque<>();
+        bPlusTreePage = new BPlusTreePage(BPlusTreeNodeType.INTERNAL_NODE, byteBuffer);
+        count = 0;
+      }
+    }
+    return bPlushTreeHeader;
+  }
+
   public Queue<BPlusTreeEntry> getBPlusTreeEntryQueue() {
     return currentBPlusTreeEntryQueue;
   }
@@ -261,6 +327,16 @@ public class BPlusTreeWriter implements IBPlusTreeWriter {
   private long writeBPlusTreeNode(BPlusTreeNode bPlusTreeNode) throws IOException {
     long startOffset = fileOutput.writeToOutStream(bPlusTreeNode);
     upperLevelBPlusTreeEntryQueue.add(new BPlusTreeEntry(bPlusTreeNode.getMin(), startOffset));
+    return startOffset;
+  }
+
+  private long writeBPlusTreePage(BPlusTreePage bPlusTreePage) throws IOException {
+    byteBuffer.put(0, bPlusTreePage.getbPlusTreeNodeType().getType());
+    byteBuffer.putInt(1, bPlusTreePage.getCount());
+    byteBuffer.flip();
+    long startOffset = fileOutput.getPosition();
+    fileOutput.write(byteBuffer);
+    upperLevelBPlusTreeEntryQueue.add(new BPlusTreeEntry(bPlusTreePage.getMin(), startOffset));
     return startOffset;
   }
 

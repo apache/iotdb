@@ -21,14 +21,13 @@ package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.reader;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.entry.ChunkIndex;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.entry.ChunkIndexEntry;
 import org.apache.iotdb.lsm.sstable.fileIO.IFileInput;
-import org.apache.iotdb.lsm.sstable.interator.IDiskIterator;
 
 import org.roaringbitmap.RoaringBitmap;
 
 import java.io.IOException;
 import java.util.NoSuchElementException;
 
-public class ChunkGroupReader implements IDiskIterator<Integer> {
+public class ChunkGroupReader implements IChunkGroupReader {
 
   private final IFileInput tiFileInput;
 
@@ -50,6 +49,7 @@ public class ChunkGroupReader implements IDiskIterator<Integer> {
     tiFileInput.position(offset);
   }
 
+  @Override
   public ChunkIndex readChunkIndex(long offset) throws IOException {
     tiFileInput.position(offset);
     ChunkIndex chunkIndex = new ChunkIndex();
@@ -57,6 +57,7 @@ public class ChunkGroupReader implements IDiskIterator<Integer> {
     return chunkIndex;
   }
 
+  @Override
   public RoaringBitmap readAllDeviceID(long offset) throws IOException {
     if (chunkIndex == null) {
       chunkIndex = readChunkIndex(tiFileInput.position());
@@ -114,6 +115,7 @@ public class ChunkGroupReader implements IDiskIterator<Integer> {
     return nowId;
   }
 
+  @Override
   public void close() throws IOException {
     if (chunkReader != null) {
       chunkReader.close();

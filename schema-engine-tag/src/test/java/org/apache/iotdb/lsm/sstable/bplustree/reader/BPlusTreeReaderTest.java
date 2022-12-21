@@ -58,13 +58,18 @@ public class BPlusTreeReaderTest {
 
   int degree;
 
+  int bPlusTreePageSize;
+
   long offset;
 
   @Before
   public void setUp() throws Exception {
     file = new File("BPlusTreeReaderTest.txt");
     degree = TagSchemaDescriptor.getInstance().getTagSchemaConfig().getDegree();
-    TagSchemaDescriptor.getInstance().getTagSchemaConfig().setDegree(3);
+    TagSchemaDescriptor.getInstance().getTagSchemaConfig().setDegree(4);
+    bPlusTreePageSize =
+        TagSchemaDescriptor.getInstance().getTagSchemaConfig().getbPlusTreePageSize();
+    TagSchemaDescriptor.getInstance().getTagSchemaConfig().setbPlusTreePageSize(50);
     orderedQueue = new ArrayDeque<>();
     orderedQueue.add(new BPlusTreeEntry("aaa", 0));
     orderedQueue.add(new BPlusTreeEntry("bbb", 1));
@@ -96,6 +101,7 @@ public class BPlusTreeReaderTest {
       bPlusTreeReader.close();
     }
     TagSchemaDescriptor.getInstance().getTagSchemaConfig().setDegree(degree);
+    TagSchemaDescriptor.getInstance().getTagSchemaConfig().setbPlusTreePageSize(bPlusTreePageSize);
     file.delete();
   }
 
@@ -105,15 +111,15 @@ public class BPlusTreeReaderTest {
     assertEquals(bPlusTreeHeader.getMax(), "zz");
     assertEquals(bPlusTreeHeader.getMin(), "aaa");
     assertEquals(bPlusTreeHeader.getFirstLeftNodeOffset(), 0);
-    assertEquals(bPlusTreeHeader.getLeftNodeCount(), 4);
+    assertEquals(bPlusTreeHeader.getLeftNodeCount(), 5);
   }
 
   @Test
   public void testGetBPlusTreeRootNode() throws IOException {
     BPlusTreeNode bPlusTreeNode = bPlusTreeReader.readBPlusTreeRootNode();
     BPlusTreeNode tmp = new BPlusTreeNode(BPlusTreeNodeType.INTERNAL_NODE);
-    tmp.add(new BPlusTreeEntry("aaa", 190));
-    tmp.add(new BPlusTreeEntry("yyyy", 240));
+    tmp.add(new BPlusTreeEntry("aaa", 195));
+    tmp.add(new BPlusTreeEntry("hhhhhhhhhh", 244));
     assertEquals(tmp, bPlusTreeNode);
   }
 

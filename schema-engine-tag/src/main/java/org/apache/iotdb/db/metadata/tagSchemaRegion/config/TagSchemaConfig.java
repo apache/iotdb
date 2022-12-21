@@ -31,7 +31,9 @@ public class TagSchemaConfig {
   private int outBufferSize = 1024 * 1024;
 
   // degree of a b+ tree
-  private int degree = 100;
+  private int degree = 250;
+
+  private int bPlusTreePageSize = 4 * 1024;
 
   // the maximum number of immutableMemTables, when this is reached, flush operation is required
   private int numOfImmutableMemTable = 5;
@@ -76,6 +78,14 @@ public class TagSchemaConfig {
 
   public void setDegree(int degree) {
     this.degree = degree;
+  }
+
+  public int getbPlusTreePageSize() {
+    return bPlusTreePageSize;
+  }
+
+  public void setbPlusTreePageSize(int bPlusTreePageSize) {
+    this.bPlusTreePageSize = bPlusTreePageSize;
   }
 
   @Override
