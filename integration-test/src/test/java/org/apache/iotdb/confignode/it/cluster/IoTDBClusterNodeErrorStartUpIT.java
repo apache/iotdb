@@ -67,7 +67,7 @@ public class IoTDBClusterNodeErrorStartUpIT {
   protected static String originalConfigNodeConsensusProtocolClass;
   private static final String testConsensusProtocolClass = ConsensusFactory.RATIS_CONSENSUS;
 
-  private static final String TEST_CLUSTER_NAME = "testCluster";
+  private static final String TEST_CLUSTER_NAME = "defaultCluster";
   private static final String ERROR_CLUSTER_NAME = "errorCluster";
 
   @Before

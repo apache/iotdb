@@ -31,7 +31,6 @@ import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.junit.Assert;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -357,11 +356,32 @@ public class SchemaRegionAliasAndTagTest extends AbstractSchemaRegionTest {
   }
 
   @Test
-  @Ignore
   public void testDropTagsOrAttributes() {
     try {
+      // create timeseries with tags and attributes
       prepareTimeseries();
-      Set<String> keySet = new HashSet<>(Arrays.asList("tag1", "tag2", "attr1", "attr2"));
+      // add tags and attributes after create
+      Set<String> keySet =
+          new HashSet<>(Arrays.asList("tag1", "tag2", "tag3", "attr1", "attr2", "attr3"));
+      Map<String, String> newTags =
+          new HashMap<String, String>() {
+            {
+              put("tag2", "new2");
+              put("tag3", "new3");
+            }
+          };
+      schemaRegion.addTags(newTags, new PartialPath("root.sg.wf01.wt01.v1.s1"));
+      schemaRegion.addTags(newTags, new PartialPath("root.sg.wf01.aligned_device1.s1"));
+      Map<String, String> newAttributes =
+          new HashMap<String, String>() {
+            {
+              put("attr2", "new2");
+              put("attr3", "new3");
+            }
+          };
+      schemaRegion.addAttributes(newAttributes, new PartialPath("root.sg.wf01.wt01.v1.s1"));
+      schemaRegion.addAttributes(newAttributes, new PartialPath("root.sg.wf01.aligned_device1.s1"));
+      // drop all tags and attributes then check
       List<String> fullPaths =
           Arrays.asList(
               "root.sg.wf01.wt01.v1.s1",

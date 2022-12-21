@@ -53,6 +53,8 @@ Description:
 * `-linesPerFile <int>`:
   - Specifying lines of each dump file, `10000` is default.
   - example: `-linesPerFile 1`
+* `-t <timeout>`:
+  - Specifies the timeout period for session queries, in milliseconds
 
 
 More, if you don't use one of `-s` and `-q`, you need to enter some queries after running the export script. The results of the different query will be saved to different CSV files.
@@ -72,6 +74,8 @@ More, if you don't use one of `-s` and `-q`, you need to enter some queries afte
 > tools/export-csv.sh -h 127.0.0.1 -p 6667 -u root -pw root -td ./ -tf yyyy-MM-dd\ HH:mm:ss -s sql.txt
 # Or
 > tools/export-csv.sh -h 127.0.0.1 -p 6667 -u root -pw root -td ./ -tf yyyy-MM-dd\ HH:mm:ss -s sql.txt -linesPerFile 10
+# Or
+> tools/export-csv.sh -h 127.0.0.1 -p 6667 -u root -pw root -td ./ -tf yyyy-MM-dd\ HH:mm:ss -s sql.txt -linesPerFile 10 -t 10000
 
 # Windows
 > tools/export-csv.bat -h 127.0.0.1 -p 6667 -u root -pw root -td ./
@@ -85,6 +89,8 @@ More, if you don't use one of `-s` and `-q`, you need to enter some queries afte
 > tools/export-csv.bat -h 127.0.0.1 -p 6667 -u root -pw root -td ./ -tf yyyy-MM-dd\ HH:mm:ss -s sql.txt
 # Or
 > tools/export-csv.bat -h 127.0.0.1 -p 6667 -u root -pw root -td ./ -tf yyyy-MM-dd\ HH:mm:ss -s sql.txt -linesPerFile 10
+# Or
+> tools/export-csv.sh -h 127.0.0.1 -p 6667 -u root -pw root -td ./ -tf yyyy-MM-dd\ HH:mm:ss -s sql.txt -linesPerFile 10 -t 10000
 ```
 
 ### Sample SQL file
