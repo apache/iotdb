@@ -93,7 +93,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
 @SuppressWarnings({"java:S107", "java:S1135"}) // need enough parameters, ignore todos
-public class Session {
+public class Session implements ISession {
 
   private static final Logger logger = LoggerFactory.getLogger(Session.class);
   protected static final TSProtocolVersion protocolVersion =
@@ -357,18 +357,22 @@ public class Session {
     this.version = version;
   }
 
+  @Override
   public void setFetchSize(int fetchSize) {
     this.fetchSize = fetchSize;
   }
 
+  @Override
   public int getFetchSize() {
     return this.fetchSize;
   }
 
+  @Override
   public Version getVersion() {
     return version;
   }
 
+  @Override
   public void setVersion(Version version) {
     this.version = version;
   }
@@ -377,10 +381,12 @@ public class Session {
     open(false, Config.DEFAULT_CONNECTION_TIMEOUT_MS);
   }
 
+  @Override
   public synchronized void open(boolean enableRPCCompression) throws IoTDBConnectionException {
     open(enableRPCCompression, Config.DEFAULT_CONNECTION_TIMEOUT_MS);
   }
 
+  @Override
   public synchronized void open(boolean enableRPCCompression, int connectionTimeoutInMs)
       throws IoTDBConnectionException {
     if (!isClosed) {
@@ -400,6 +406,7 @@ public class Session {
     }
   }
 
+  @Override
   public synchronized void close() throws IoTDBConnectionException {
     if (isClosed) {
       return;
@@ -425,19 +432,23 @@ public class Session {
     return new SessionConnection(session, endpoint, zoneId);
   }
 
+  @Override
   public SystemStatus getSystemStatus() throws IoTDBConnectionException {
     return defaultSessionConnection.getSystemStatus();
   }
 
+  @Override
   public synchronized String getTimeZone() {
     return defaultSessionConnection.getTimeZone();
   }
 
+  @Override
   public synchronized void setTimeZone(String zoneId)
       throws StatementExecutionException, IoTDBConnectionException {
     defaultSessionConnection.setTimeZone(zoneId);
   }
 
+  @Override
   public void setStorageGroup(String storageGroup)
       throws IoTDBConnectionException, StatementExecutionException {
     try {
@@ -447,6 +458,7 @@ public class Session {
     }
   }
 
+  @Override
   public void deleteStorageGroup(String storageGroup)
       throws IoTDBConnectionException, StatementExecutionException {
     try {
@@ -456,6 +468,7 @@ public class Session {
     }
   }
 
+  @Override
   public void deleteStorageGroups(List<String> storageGroups)
       throws IoTDBConnectionException, StatementExecutionException {
     try {
@@ -465,6 +478,7 @@ public class Session {
     }
   }
 
+  @Override
   public void createTimeseries(
       String path, TSDataType dataType, TSEncoding encoding, CompressionType compressor)
       throws IoTDBConnectionException, StatementExecutionException {
@@ -473,6 +487,7 @@ public class Session {
     defaultSessionConnection.createTimeseries(request);
   }
 
+  @Override
   public void createTimeseries(
       String path,
       TSDataType dataType,
@@ -510,6 +525,7 @@ public class Session {
     return request;
   }
 
+  @Override
   public void createAlignedTimeseries(
       String deviceId,
       List<String> measurements,
@@ -542,6 +558,7 @@ public class Session {
     return request;
   }
 
+  @Override
   public void createMultiTimeseries(
       List<String> paths,
       List<TSDataType> dataTypes,
@@ -604,15 +621,18 @@ public class Session {
     return request;
   }
 
+  @Override
   public boolean checkTimeseriesExists(String path)
       throws IoTDBConnectionException, StatementExecutionException {
     return defaultSessionConnection.checkTimeseriesExists(path, queryTimeoutInMs);
   }
 
+  @Override
   public void setQueryTimeout(long timeoutInMs) {
     this.queryTimeoutInMs = timeoutInMs;
   }
 
+  @Override
   public long getQueryTimeout() {
     return queryTimeoutInMs;
   }
@@ -623,6 +643,7 @@ public class Session {
    * @param sql query statement
    * @return result set
    */
+  @Override
   public SessionDataSet executeQueryStatement(String sql)
       throws StatementExecutionException, IoTDBConnectionException {
     return executeStatementMayRedirect(sql, queryTimeoutInMs);
@@ -635,6 +656,7 @@ public class Session {
    * @param timeoutInMs the timeout of this query, in milliseconds
    * @return result set
    */
+  @Override
   public SessionDataSet executeQueryStatement(String sql, long timeoutInMs)
       throws StatementExecutionException, IoTDBConnectionException {
     return executeStatementMayRedirect(sql, timeoutInMs);
@@ -680,6 +702,7 @@ public class Session {
    *
    * @param sql non query statement
    */
+  @Override
   public void executeNonQueryStatement(String sql)
       throws IoTDBConnectionException, StatementExecutionException {
     defaultSessionConnection.executeNonQueryStatement(sql);
@@ -696,6 +719,7 @@ public class Session {
    * @throws StatementExecutionException statement is not right
    * @throws IoTDBConnectionException the network is not good
    */
+  @Override
   public SessionDataSet executeRawDataQuery(List<String> paths, long startTime, long endTime)
       throws StatementExecutionException, IoTDBConnectionException {
     try {
@@ -724,6 +748,7 @@ public class Session {
    * @param LastTime get the last data, whose timestamp is greater than or equal LastTime e.g.
    *     1621326244168
    */
+  @Override
   public SessionDataSet executeLastDataQuery(List<String> paths, long LastTime)
       throws StatementExecutionException, IoTDBConnectionException {
     try {
@@ -749,6 +774,7 @@ public class Session {
    *
    * @param paths timeSeries. eg.root.ln.d1.s1,root.ln.d1.s2
    */
+  @Override
   public SessionDataSet executeLastDataQuery(List<String> paths)
       throws StatementExecutionException, IoTDBConnectionException {
     long time = 0L;
@@ -762,6 +788,7 @@ public class Session {
    * @see Session#insertRecords(List, List, List, List, List)
    * @see Session#insertTablet(Tablet)
    */
+  @Override
   public void insertRecord(
       String deviceId,
       long time,
@@ -815,6 +842,7 @@ public class Session {
     }
   }
 
+  @Override
   public String getTimestampPrecision() throws TException {
     return defaultSessionConnection.getClient().getProperties().getTimestampPrecision();
   }
@@ -922,6 +950,7 @@ public class Session {
    * @see Session#insertRecords(List, List, List, List, List)
    * @see Session#insertTablet(Tablet)
    */
+  @Override
   public void insertRecord(
       String deviceId,
       long time,
@@ -952,6 +981,7 @@ public class Session {
    * @see Session#insertAlignedRecords(List, List, List, List, List)
    * @see Session#insertTablet(Tablet)
    */
+  @Override
   public void insertAlignedRecord(
       String deviceId,
       long time,
@@ -1019,6 +1049,7 @@ public class Session {
    * @see Session#insertRecords(List, List, List, List, List)
    * @see Session#insertTablet(Tablet)
    */
+  @Override
   public void insertRecord(
       String deviceId, long time, List<String> measurements, List<String> values)
       throws IoTDBConnectionException, StatementExecutionException {
@@ -1043,6 +1074,7 @@ public class Session {
    * @see Session#insertAlignedRecords(List, List, List, List, List)
    * @see Session#insertTablet(Tablet)
    */
+  @Override
   public void insertAlignedRecord(
       String deviceId, long time, List<String> measurements, List<String> values)
       throws IoTDBConnectionException, StatementExecutionException {
@@ -1102,6 +1134,7 @@ public class Session {
    *
    * @see Session#insertTablet(Tablet)
    */
+  @Override
   public void insertRecords(
       List<String> deviceIds,
       List<Long> times,
@@ -1354,6 +1387,7 @@ public class Session {
    *
    * @see Session#insertTablet(Tablet)
    */
+  @Override
   public void insertAlignedRecords(
       List<String> deviceIds,
       List<Long> times,
@@ -1531,6 +1565,7 @@ public class Session {
    *
    * @see Session#insertTablet(Tablet)
    */
+  @Override
   public void insertRecords(
       List<String> deviceIds,
       List<Long> times,
@@ -1581,6 +1616,7 @@ public class Session {
    *
    * @see Session#insertTablet(Tablet)
    */
+  @Override
   public void insertAlignedRecords(
       List<String> deviceIds,
       List<Long> times,
@@ -1629,6 +1665,7 @@ public class Session {
    *
    * @see Session#insertTablet(Tablet)
    */
+  @Override
   public void insertRecordsOfOneDevice(
       String deviceId,
       List<Long> times,
@@ -1649,6 +1686,7 @@ public class Session {
    * @param haveSorted deprecated, whether the times have been sorted
    * @see Session#insertTablet(Tablet)
    */
+  @Override
   public void insertRecordsOfOneDevice(
       String deviceId,
       List<Long> times,
@@ -1692,6 +1730,7 @@ public class Session {
    *
    * @param haveSorted deprecated, whether the times have been sorted
    */
+  @Override
   public void insertStringRecordsOfOneDevice(
       String deviceId,
       List<Long> times,
@@ -1732,6 +1771,7 @@ public class Session {
    * <p>Each row could have same deviceId but different time, number of measurements, number of
    * values as String
    */
+  @Override
   public void insertStringRecordsOfOneDevice(
       String deviceId,
       List<Long> times,
@@ -1750,6 +1790,7 @@ public class Session {
    *
    * @see Session#insertTablet(Tablet)
    */
+  @Override
   public void insertAlignedRecordsOfOneDevice(
       String deviceId,
       List<Long> times,
@@ -1771,6 +1812,7 @@ public class Session {
    * @param haveSorted deprecated, whether the times have been sorted
    * @see Session#insertTablet(Tablet)
    */
+  @Override
   public void insertAlignedRecordsOfOneDevice(
       String deviceId,
       List<Long> times,
@@ -1814,6 +1856,7 @@ public class Session {
    *
    * @param haveSorted deprecated, whether the times have been sorted
    */
+  @Override
   public void insertAlignedStringRecordsOfOneDevice(
       String deviceId,
       List<Long> times,
@@ -1856,6 +1899,7 @@ public class Session {
    *
    * @see Session#insertTablet(Tablet)
    */
+  @Override
   public void insertAlignedStringRecordsOfOneDevice(
       String deviceId,
       List<Long> times,
@@ -2123,6 +2167,7 @@ public class Session {
    *
    * @param tablet data batch
    */
+  @Override
   public void insertTablet(Tablet tablet)
       throws StatementExecutionException, IoTDBConnectionException {
     insertTablet(tablet, false);
@@ -2134,6 +2179,7 @@ public class Session {
    * @param tablet data batch
    * @param sorted deprecated, whether times in Tablet are in ascending order
    */
+  @Override
   public void insertTablet(Tablet tablet, boolean sorted)
       throws IoTDBConnectionException, StatementExecutionException {
     TSInsertTabletReq request = genTSInsertTabletReq(tablet, sorted, false);
@@ -2154,6 +2200,7 @@ public class Session {
    *
    * @param tablet data batch
    */
+  @Override
   public void insertAlignedTablet(Tablet tablet)
       throws StatementExecutionException, IoTDBConnectionException {
     insertAlignedTablet(tablet, false);
@@ -2165,6 +2212,7 @@ public class Session {
    * @param tablet data batch
    * @param sorted deprecated, whether times in Tablet are in ascending order
    */
+  @Override
   public void insertAlignedTablet(Tablet tablet, boolean sorted)
       throws IoTDBConnectionException, StatementExecutionException {
     TSInsertTabletReq request = genTSInsertTabletReq(tablet, sorted, true);
@@ -2204,6 +2252,7 @@ public class Session {
    *
    * @param tablets data batch in multiple device
    */
+  @Override
   public void insertTablets(Map<String, Tablet> tablets)
       throws IoTDBConnectionException, StatementExecutionException {
     insertTablets(tablets, false);
@@ -2216,6 +2265,7 @@ public class Session {
    * @param tablets data batch in multiple device
    * @param sorted deprecated, whether times in each Tablet are in ascending order
    */
+  @Override
   public void insertTablets(Map<String, Tablet> tablets, boolean sorted)
       throws IoTDBConnectionException, StatementExecutionException {
     if (enableCacheLeader) {
@@ -2242,6 +2292,7 @@ public class Session {
    *
    * @param tablets data batch in multiple device
    */
+  @Override
   public void insertAlignedTablets(Map<String, Tablet> tablets)
       throws IoTDBConnectionException, StatementExecutionException {
     insertAlignedTablets(tablets, false);
@@ -2254,6 +2305,7 @@ public class Session {
    * @param tablets data batch in multiple device
    * @param sorted deprecated, whether times in each Tablet are in ascending order
    */
+  @Override
   public void insertAlignedTablets(Map<String, Tablet> tablets, boolean sorted)
       throws IoTDBConnectionException, StatementExecutionException {
     if (enableCacheLeader) {
@@ -2323,6 +2375,7 @@ public class Session {
    * This method NOT insert data into database and the server just return after accept the request,
    * this method should be used to test other time cost in client
    */
+  @Override
   public void testInsertTablet(Tablet tablet)
       throws IoTDBConnectionException, StatementExecutionException {
     testInsertTablet(tablet, false);
@@ -2332,6 +2385,7 @@ public class Session {
    * This method NOT insert data into database and the server just return after accept the request,
    * this method should be used to test other time cost in client
    */
+  @Override
   public void testInsertTablet(Tablet tablet, boolean sorted)
       throws IoTDBConnectionException, StatementExecutionException {
     TSInsertTabletReq request = genTSInsertTabletReq(tablet, sorted, false);
@@ -2342,6 +2396,7 @@ public class Session {
    * This method NOT insert data into database and the server just return after accept the request,
    * this method should be used to test other time cost in client
    */
+  @Override
   public void testInsertTablets(Map<String, Tablet> tablets)
       throws IoTDBConnectionException, StatementExecutionException {
     testInsertTablets(tablets, false);
@@ -2351,6 +2406,7 @@ public class Session {
    * This method NOT insert data into database and the server just return after accept the request,
    * this method should be used to test other time cost in client
    */
+  @Override
   public void testInsertTablets(Map<String, Tablet> tablets, boolean sorted)
       throws IoTDBConnectionException, StatementExecutionException {
     TSInsertTabletsReq request =
@@ -2362,6 +2418,7 @@ public class Session {
    * This method NOT insert data into database and the server just return after accept the request,
    * this method should be used to test other time cost in client
    */
+  @Override
   public void testInsertRecords(
       List<String> deviceIds,
       List<Long> times,
@@ -2389,6 +2446,7 @@ public class Session {
    * This method NOT insert data into database and the server just return after accept the request,
    * this method should be used to test other time cost in client
    */
+  @Override
   public void testInsertRecords(
       List<String> deviceIds,
       List<Long> times,
@@ -2417,6 +2475,7 @@ public class Session {
    * This method NOT insert data into database and the server just return after accept the request,
    * this method should be used to test other time cost in client
    */
+  @Override
   public void testInsertRecord(
       String deviceId, long time, List<String> measurements, List<String> values)
       throws IoTDBConnectionException, StatementExecutionException {
@@ -2438,6 +2497,7 @@ public class Session {
    * This method NOT insert data into database and the server just return after accept the request,
    * this method should be used to test other time cost in client
    */
+  @Override
   public void testInsertRecord(
       String deviceId,
       long time,
@@ -2464,6 +2524,7 @@ public class Session {
    *
    * @param path timeseries to delete, should be a whole path
    */
+  @Override
   public void deleteTimeseries(String path)
       throws IoTDBConnectionException, StatementExecutionException {
     defaultSessionConnection.deleteTimeseries(Collections.singletonList(path));
@@ -2474,6 +2535,7 @@ public class Session {
    *
    * @param paths timeseries to delete, should be a whole path
    */
+  @Override
   public void deleteTimeseries(List<String> paths)
       throws IoTDBConnectionException, StatementExecutionException {
     defaultSessionConnection.deleteTimeseries(paths);
@@ -2485,6 +2547,7 @@ public class Session {
    * @param path data in which time series to delete
    * @param endTime data with time stamp less than or equal to time will be deleted
    */
+  @Override
   public void deleteData(String path, long endTime)
       throws IoTDBConnectionException, StatementExecutionException {
     deleteData(Collections.singletonList(path), Long.MIN_VALUE, endTime);
@@ -2496,6 +2559,7 @@ public class Session {
    * @param paths data in which time series to delete
    * @param endTime data with time stamp less than or equal to time will be deleted
    */
+  @Override
   public void deleteData(List<String> paths, long endTime)
       throws IoTDBConnectionException, StatementExecutionException {
     deleteData(paths, Long.MIN_VALUE, endTime);
@@ -2508,6 +2572,7 @@ public class Session {
    * @param startTime delete range start time
    * @param endTime delete range end time
    */
+  @Override
   public void deleteData(List<String> paths, long startTime, long endTime)
       throws IoTDBConnectionException, StatementExecutionException {
     TSDeleteDataReq request = genTSDeleteDataReq(paths, startTime, endTime);
@@ -2663,6 +2728,7 @@ public class Session {
     return sortedBitMap;
   }
 
+  @Override
   public void setSchemaTemplate(String templateName, String prefixPath)
       throws IoTDBConnectionException, StatementExecutionException {
     TSSetSchemaTemplateReq request = getTSSetSchemaTemplateReq(templateName, prefixPath);
@@ -2683,6 +2749,7 @@ public class Session {
    *
    * @see Template
    */
+  @Override
   public void createSchemaTemplate(Template template)
       throws IOException, IoTDBConnectionException, StatementExecutionException {
     TSCreateSchemaTemplateReq req = new TSCreateSchemaTemplateReq();
@@ -2705,6 +2772,7 @@ public class Session {
    * @param compressors compression type of each measurement in the template
    * @param isAligned specify whether these flat measurements are aligned
    */
+  @Override
   public void createSchemaTemplate(
       String templateName,
       List<String> measurements,
@@ -2748,6 +2816,7 @@ public class Session {
    * @throws StatementExecutionException
    */
   @Deprecated
+  @Override
   public void createSchemaTemplate(
       String name,
       List<String> schemaNames,
@@ -2780,6 +2849,7 @@ public class Session {
    * @param encodings Encoding of these measurements.
    * @param compressors CompressionType of these measurements.
    */
+  @Override
   public void addAlignedMeasurementsInTemplate(
       String templateName,
       List<String> measurementsPath,
@@ -2803,6 +2873,7 @@ public class Session {
    * @param measurementPath If prefix of the path exists in template and not aligned, throw
    *     exception.
    */
+  @Override
   public void addAlignedMeasurementInTemplate(
       String templateName,
       String measurementPath,
@@ -2824,6 +2895,7 @@ public class Session {
    * @param templateName Template to add unaligned measurements.
    * @param measurementsPath If prefix of any path exist in template but aligned, throw exception.
    */
+  @Override
   public void addUnalignedMeasurementsInTemplate(
       String templateName,
       List<String> measurementsPath,
@@ -2846,6 +2918,7 @@ public class Session {
    * @param templateName Template to add a single unaligned measurement.
    * @param measurementPath If prefix of path exists in template but aligned, throw exception.
    */
+  @Override
   public void addUnalignedMeasurementInTemplate(
       String templateName,
       String measurementPath,
@@ -2867,6 +2940,7 @@ public class Session {
    * @param templateName Template to prune.
    * @param path Remove node from template specified by the path, including its children nodes.
    */
+  @Override
   public void deleteNodeInTemplate(String templateName, String path)
       throws IOException, IoTDBConnectionException, StatementExecutionException {
     TSPruneSchemaTemplateReq req = new TSPruneSchemaTemplateReq();
@@ -2876,6 +2950,7 @@ public class Session {
   }
 
   /** @return Amount of measurements in the template */
+  @Override
   public int countMeasurementsInTemplate(String name)
       throws StatementExecutionException, IoTDBConnectionException {
     TSQueryTemplateReq req = new TSQueryTemplateReq();
@@ -2886,6 +2961,7 @@ public class Session {
   }
 
   /** @return If the node specified by the path is a measurement. */
+  @Override
   public boolean isMeasurementInTemplate(String templateName, String path)
       throws StatementExecutionException, IoTDBConnectionException {
     TSQueryTemplateReq req = new TSQueryTemplateReq();
@@ -2897,6 +2973,7 @@ public class Session {
   }
 
   /** @return if there is a node correspond to the path in the template. */
+  @Override
   public boolean isPathExistInTemplate(String templateName, String path)
       throws StatementExecutionException, IoTDBConnectionException {
     TSQueryTemplateReq req = new TSQueryTemplateReq();
@@ -2908,6 +2985,7 @@ public class Session {
   }
 
   /** @return All paths of measurements in the template. */
+  @Override
   public List<String> showMeasurementsInTemplate(String templateName)
       throws StatementExecutionException, IoTDBConnectionException {
     TSQueryTemplateReq req = new TSQueryTemplateReq();
@@ -2919,6 +2997,7 @@ public class Session {
   }
 
   /** @return All paths of measurements under the pattern in the template. */
+  @Override
   public List<String> showMeasurementsInTemplate(String templateName, String pattern)
       throws StatementExecutionException, IoTDBConnectionException {
     TSQueryTemplateReq req = new TSQueryTemplateReq();
@@ -2930,6 +3009,7 @@ public class Session {
   }
 
   /** @return All template names. */
+  @Override
   public List<String> showAllTemplates()
       throws StatementExecutionException, IoTDBConnectionException {
     TSQueryTemplateReq req = new TSQueryTemplateReq();
@@ -2940,6 +3020,7 @@ public class Session {
   }
 
   /** @return All paths have been set to designated template. */
+  @Override
   public List<String> showPathsTemplateSetOn(String templateName)
       throws StatementExecutionException, IoTDBConnectionException {
     TSQueryTemplateReq req = new TSQueryTemplateReq();
@@ -2950,6 +3031,7 @@ public class Session {
   }
 
   /** @return All paths are using designated template. */
+  @Override
   public List<String> showPathsTemplateUsingOn(String templateName)
       throws StatementExecutionException, IoTDBConnectionException {
     TSQueryTemplateReq req = new TSQueryTemplateReq();
@@ -2959,6 +3041,7 @@ public class Session {
     return resp.getMeasurements();
   }
 
+  @Override
   public void unsetSchemaTemplate(String prefixPath, String templateName)
       throws IoTDBConnectionException, StatementExecutionException {
     TSUnsetSchemaTemplateReq request = getTSUnsetSchemaTemplateReq(prefixPath, templateName);
@@ -2966,6 +3049,7 @@ public class Session {
   }
 
   /** Set designated path using template, act like the sql-statement with same name and syntax. */
+  @Override
   public void createTimeseriesOfTemplateOnPath(String path)
       throws IoTDBConnectionException, StatementExecutionException {
     TSSetUsingTemplateReq request = new TSSetUsingTemplateReq();
@@ -2974,11 +3058,13 @@ public class Session {
   }
 
   /** Inverse of {@linkplain #createTimeseriesOfTemplateOnPath}, IMPLYING data deletion. */
+  @Override
   public void deactivateTemplateOn(String templateName, String prefixPath)
       throws IoTDBConnectionException, StatementExecutionException {
     defaultSessionConnection.deactivateTemplate(templateName, prefixPath);
   }
 
+  @Override
   public void dropSchemaTemplate(String templateName)
       throws IoTDBConnectionException, StatementExecutionException {
     TSDropSchemaTemplateReq request = getTSDropSchemaTemplateReq(templateName);
@@ -3073,6 +3159,7 @@ public class Session {
   }
 
   /** Transmit insert record request for operation sync */
+  @Override
   public void operationSyncTransmit(ByteBuffer buffer)
       throws IoTDBConnectionException, StatementExecutionException {
     try {
@@ -3090,27 +3177,33 @@ public class Session {
     return request;
   }
 
+  @Override
   public boolean isEnableQueryRedirection() {
     return enableQueryRedirection;
   }
 
+  @Override
   public void setEnableQueryRedirection(boolean enableQueryRedirection) {
     this.enableQueryRedirection = enableQueryRedirection;
   }
 
+  @Override
   public boolean isEnableCacheLeader() {
     return enableCacheLeader;
   }
 
+  @Override
   public void setEnableCacheLeader(boolean enableCacheLeader) {
     this.enableCacheLeader = enableCacheLeader;
   }
 
+  @Override
   public TSBackupConfigurationResp getBackupConfiguration()
       throws IoTDBConnectionException, StatementExecutionException {
     return defaultSessionConnection.getBackupConfiguration();
   }
 
+  @Override
   public TSConnectionInfoResp fetchAllConnections() throws IoTDBConnectionException {
     return defaultSessionConnection.fetchAllConnections();
   }
