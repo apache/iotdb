@@ -80,10 +80,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
-import com.github.benmanes.caffeine.cache.Caffeine;
-import com.github.benmanes.caffeine.cache.LoadingCache;
-import org.checkerframework.checker.nullness.qual.NonNull;
-import org.checkerframework.checker.nullness.qual.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -157,8 +153,6 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   private MemoryStatistics memoryStatistics = MemoryStatistics.getInstance();
 
   private MTreeBelowSGMemoryImpl mtree;
-  // device -> DeviceMNode
-  private LoadingCache<PartialPath, IMNode> mNodeCache;
   private TagManager tagManager;
 
   // seriesNumberMonitor may be null
@@ -176,19 +170,6 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
 
     storageGroupDirPath = config.getSchemaDir() + File.separator + storageGroupFullPath;
     schemaRegionDirPath = storageGroupDirPath + File.separator + schemaRegionId.getId();
-
-    int cacheSize = config.getSchemaRegionDeviceNodeCacheSize();
-    mNodeCache =
-        Caffeine.newBuilder()
-            .maximumSize(cacheSize)
-            .build(
-                new com.github.benmanes.caffeine.cache.CacheLoader<PartialPath, IMNode>() {
-                  @Override
-                  public @Nullable IMNode load(@NonNull PartialPath partialPath)
-                      throws MetadataException {
-                    return mtree.getNodeByPath(partialPath);
-                  }
-                });
 
     // In ratis mode, no matter create schemaRegion or recover schemaRegion, the working dir should
     // be clear first
@@ -374,10 +355,6 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   @Override
   public synchronized void clear() {
     try {
-
-      if (this.mNodeCache != null) {
-        this.mNodeCache.invalidateAll();
-      }
       if (this.mtree != null) {
         this.mtree.clear();
       }
@@ -572,9 +549,6 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
                 plan.getCompressor(),
                 plan.getProps(),
                 plan.getAlias());
-
-        // the cached mNode may be replaced by new entityMNode in mtree
-        mNodeCache.invalidate(path.getDevicePath());
       } catch (Throwable t) {
         if (seriesNumerMonitor != null) {
           seriesNumerMonitor.deleteTimeSeries(1);
@@ -661,9 +635,6 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
                 plan.getEncodings(),
                 plan.getCompressors(),
                 plan.getAliasList());
-
-        // the cached mNode may be replaced by new entityMNode in mtree
-        mNodeCache.invalidate(prefixPath);
       } catch (Throwable t) {
         if (seriesNumerMonitor != null) {
           seriesNumerMonitor.deleteTimeSeries(seriesCount);
@@ -840,10 +811,6 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     IMeasurementMNode measurementMNode = pair.right;
     removeFromTagInvertedIndex(measurementMNode);
 
-    IMNode node = measurementMNode.getParent();
-
-    mNodeCache.invalidate(node.getPartialPath());
-
     schemaStatisticsManager.deleteTimeseries(1);
     if (seriesNumerMonitor != null) {
       seriesNumerMonitor.deleteTimeSeries(1);
@@ -886,10 +853,6 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     removeFromTagInvertedIndex(measurementMNode);
     PartialPath storageGroupPath = pair.left;
 
-    IMNode node = measurementMNode.getParent();
-
-    mNodeCache.invalidate(node.getPartialPath());
-
     schemaStatisticsManager.deleteTimeseries(1);
     if (seriesNumerMonitor != null) {
       seriesNumerMonitor.deleteTimeSeries(1);
@@ -908,16 +871,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
    */
   private IMNode getDeviceNodeWithAutoCreate(PartialPath path)
       throws IOException, MetadataException {
-    IMNode node;
-    try {
-      return mNodeCache.get(path);
-    } catch (Exception e) {
-      if (!(e.getCause() instanceof MetadataException)) {
-        throw e;
-      }
-    }
-
-    node = mtree.getDeviceNodeWithAutoCreating(path);
+    IMNode node = mtree.getDeviceNodeWithAutoCreating(path);
     writeToMLog(SchemaRegionPlanFactory.getAutoCreateDeviceMNodePlan(node.getPartialPath()));
     return node;
   }
