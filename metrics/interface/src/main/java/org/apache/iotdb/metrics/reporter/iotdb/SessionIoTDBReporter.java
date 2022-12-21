@@ -80,32 +80,31 @@ public class SessionIoTDBReporter extends IoTDBReporter {
   @Override
   @SuppressWarnings("unsafeThreadSchedule")
   public boolean start() {
-    if (currentServiceFuture == null) {
-      currentServiceFuture =
-          service.scheduleAtFixedRate(
-              () -> {
-                try {
-                  Map<String, Map<String, Object>> values = new HashMap<>();
-                  for (Map.Entry<MetricInfo, IMetric> metricEntry :
-                      metricManager.getAllMetrics().entrySet()) {
-                    String prefix = IoTDBMetricsUtils.generatePath(metricEntry.getKey());
-                    Map<String, Object> value = new HashMap<>();
-                    metricEntry.getValue().constructValueMap(value);
-                    values.put(prefix, value);
-                  }
-                  writeMetricsToIoTDB(values, System.currentTimeMillis());
-                } catch (Throwable t) {
-                  LOGGER.error("Schedule task failed", t);
-                }
-              },
-              1,
-              MetricConfigDescriptor.getInstance()
-                  .getMetricConfig()
-                  .getAsyncCollectPeriodInSecond(),
-              TimeUnit.SECONDS);
-      return true;
+    if (currentServiceFuture != null) {
+      LOGGER.warn("IoTDB Session Reporter already start");
+      return false;
     }
-    return false;
+    currentServiceFuture =
+        service.scheduleAtFixedRate(
+            () -> {
+              try {
+                Map<String, Map<String, Object>> values = new HashMap<>();
+                for (Map.Entry<MetricInfo, IMetric> metricEntry :
+                    metricManager.getAllMetrics().entrySet()) {
+                  String prefix = IoTDBMetricsUtils.generatePath(metricEntry.getKey());
+                  Map<String, Object> value = new HashMap<>();
+                  metricEntry.getValue().constructValueMap(value);
+                  values.put(prefix, value);
+                }
+                writeMetricsToIoTDB(values, System.currentTimeMillis());
+              } catch (Throwable t) {
+                LOGGER.error("Schedule task failed", t);
+              }
+            },
+            1,
+            MetricConfigDescriptor.getInstance().getMetricConfig().getAsyncCollectPeriodInSecond(),
+            TimeUnit.SECONDS);
+    return true;
   }
 
   @Override
