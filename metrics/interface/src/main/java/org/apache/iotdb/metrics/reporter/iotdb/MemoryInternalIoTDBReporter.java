@@ -42,12 +42,12 @@ public class MemoryInternalIoTDBReporter extends InternalIoTDBReporter {
 
   @Override
   public boolean start() {
-    return false;
+    return true;
   }
 
   @Override
   public boolean stop() {
-    return false;
+    return true;
   }
 
   @Override
