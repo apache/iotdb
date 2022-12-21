@@ -33,6 +33,7 @@ import java.util.List;
 import java.util.Properties;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
@@ -63,7 +64,8 @@ public abstract class AbstractScript {
 
     if (output != null) {
       for (int i = 0; i < output.length; i++) {
-        assertEquals(output[output.length - 1 - i], outputList.get(outputList.size() - 1 - i));
+        assertTrue(
+            outputList.get(outputList.size() - 1 - i).contains(output[output.length - 1 - i]));
       }
     }
     while (p.isAlive()) {
