@@ -26,7 +26,9 @@ import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.HashSet;
 import java.util.Random;
+import java.util.Set;
 
 public class JDBCExample {
 
@@ -39,7 +41,7 @@ public class JDBCExample {
       // set JDBC fetchSize
       statement.setFetchSize(10000);
 
-      int loop = 10;
+      int loop = 100;
       long minRunTime = Long.MAX_VALUE;
       long maxRunTime = Long.MIN_VALUE;
       long totalRunTime = 0;
@@ -83,6 +85,25 @@ public class JDBCExample {
     SQLBuilder.append("select s_0 from ");
     for (int i = 0; i < deviceNum; i++) {
       SQLBuilder.append(String.format("root.test.g_0.d_%d", random.nextInt(100)));
+      if (i < deviceNum - 1) {
+        SQLBuilder.append(", ");
+      }
+    }
+    return SQLBuilder.toString();
+  }
+
+  private static String getSQL3(int deviceNum) {
+    Random random = new Random(System.currentTimeMillis());
+    StringBuilder SQLBuilder = new StringBuilder();
+    Set<String> devices = new HashSet<>();
+    SQLBuilder.append("select s_0 from ");
+    for (int i = 0; i < deviceNum; i++) {
+      String device = String.format("root.test.g_0.d_%d", random.nextInt(100));
+      while (devices.contains(device)) {
+        device = String.format("root.test.g_0.d_%d", random.nextInt(100));
+      }
+      devices.add(device);
+      SQLBuilder.append(device);
       if (i < deviceNum - 1) {
         SQLBuilder.append(", ");
       }

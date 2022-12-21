@@ -239,8 +239,8 @@ public class LocalSourceHandle implements ISourceHandle {
 
   @Override
   public void setMaxBytesCanReserve(long maxBytesCanReserve) {
-    //    if (maxBytesCanReserve < queue.getMaxBytesCanReserve()) {
-    //      queue.setMaxBytesCanReserve(maxBytesCanReserve);
-    //    }
+    if (maxBytesCanReserve < queue.getMaxBytesCanReserve()) {
+      queue.setMaxBytesCanReserve(maxBytesCanReserve);
+    }
   }
 }
