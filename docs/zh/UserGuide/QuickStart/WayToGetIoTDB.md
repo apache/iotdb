@@ -96,11 +96,12 @@ docker pull apache/iotdb:1.0.0-1c1d
 # 创建 docker bridge 网络
 docker network create --driver=bridge --subnet=172.18.0.0/16 --gateway=172.18.0.1 iotdb
 # 创建 docker 容器
+# 注意：必须固定IP部署。IP改变会导致 confignode 启动失败。
 docker run -d --name iotdb-service \
               --hostname iotdb-service \
               --network iotdb \
               --ip 172.18.0.6 \
-              -p 26667:6667 \
+              -p 6667:6667 \
               -e cn_internal_address=iotdb-service \
               -e cn_target_config_node_list=iotdb-service:22277 \
               -e dn_rpc_address=iotdb-service \
@@ -112,9 +113,9 @@ docker exec -ti iotdb-service /iotdb/sbin/start-cli.sh -h iotdb-service
 ```
 外部连接：
 ```shell
-$IOTDB_HOME/sbin/start-cli.sh -h <主机IP/hostname> -p 26667
+# <主机IP/hostname> 是物理机的真实IP或域名。如果在同一台物理机，可以是127.0.0.1。
+$IOTDB_HOME/sbin/start-cli.sh -h <主机IP/hostname> -p 6667
 ```
-注意：必须固定IP部署。IP改变会导致 confignode 启动失败。
 ```yaml
 # docker-compose-1c1d.yml
 version: "3"
@@ -124,7 +125,7 @@ services:
     hostname: iotdb-service
     container_name: iotdb-service
     ports:
-      - "26667:6667"
+      - "6667:6667"
     environment:
       - cn_internal_address=iotdb-service
       - cn_target_config_node_list=iotdb-service:22277
@@ -199,4 +200,4 @@ services:
 2. 上面docker-compose文件中，`iotdb-2`需要替换为每个节点的 hostname、域名或者IP地址。
 3. 需要映射`/etc/hosts`，文件内配置了 iotdb-1、iotdb-2、iotdb-3 与IP的映射。或者可以在 docker-compose 文件中增加 `extra_hosts` 配置。
 4. 首次启动时，必须首先启动 `iotdb-1`。
-5. 如果部署失败要重新部署集群，必须将所有节点上的IoTDB服务停止，然后清除`data`和`logs`文件夹后，再启动。
+5. 如果部署失败要重新部署集群，必须将所有节点上的IoTDB服务停止并删除，然后清除`data`和`logs`文件夹后，再启动。
