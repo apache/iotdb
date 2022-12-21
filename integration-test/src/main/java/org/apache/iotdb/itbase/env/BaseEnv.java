@@ -233,5 +233,7 @@ public interface BaseEnv {
 
   String getSbinPath();
 
+  String getToolsPath();
+
   String getLibPath();
 }
