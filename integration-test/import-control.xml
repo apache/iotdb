@@ -93,6 +93,7 @@
     <allow class="org.apache.iotdb.service.rpc.thrift.TSConnectionInfoResp" />
     <allow class="org.apache.iotdb.service.rpc.thrift.TSConnectionType" />
     <allow pkg="org\.apache\.iotdb\.session.*" regex="true" />
+    <allow pkg="org\.apache\.iotdb\.isession.*" regex="true" />
     <allow pkg="org\.apache\.iotdb\.tsfile\.write.*" regex="true" />
     <allow pkg="org\.apache\.iotdb\.tsfile\.read.*" regex="true" />
     <allow pkg="org\.apache\.iotdb\.tsfile\.utils.*" regex="true" />

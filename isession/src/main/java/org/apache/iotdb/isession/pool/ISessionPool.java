@@ -16,284 +16,43 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.session;
+package org.apache.iotdb.isession.pool;
 
-import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.isession.template.Template;
+import org.apache.iotdb.isession.util.SystemStatus;
+import org.apache.iotdb.isession.util.Version;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.service.rpc.thrift.TSBackupConfigurationResp;
 import org.apache.iotdb.service.rpc.thrift.TSConnectionInfoResp;
-import org.apache.iotdb.session.template.Template;
-import org.apache.iotdb.session.util.Version;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 
-import org.apache.thrift.TException;
-
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.time.ZoneId;
 import java.util.List;
 import java.util.Map;
 
-public interface ISession extends AutoCloseable {
+public interface ISessionPool {
 
-  Version getVersion();
+  int currentAvailableSize();
 
-  void setVersion(Version version);
+  int currentOccupiedSize();
 
-  int getFetchSize();
+  void close();
 
-  void setFetchSize(int fetchSize);
+  void closeResultSet(SessionDataSetWrapper wrapper);
 
-  void open() throws IoTDBConnectionException;
-
-  void open(boolean enableRPCCompression) throws IoTDBConnectionException;
-
-  void open(boolean enableRPCCompression, int connectionTimeoutInMs)
-      throws IoTDBConnectionException;
-
-  void close() throws IoTDBConnectionException;
-
-  SessionConnection constructSessionConnection(Session session, TEndPoint endpoint, ZoneId zoneId)
-      throws IoTDBConnectionException;
-
-  String getTimeZone();
-
-  void setTimeZone(String zoneId) throws StatementExecutionException, IoTDBConnectionException;
-
-  void setTimeZoneOfSession(String zoneId);
-
-  /** @deprecated Use {@link #createDatabase(String)} instead. */
-  @Deprecated
-  void setStorageGroup(String storageGroup)
-      throws IoTDBConnectionException, StatementExecutionException;
-
-  /** @deprecated Use {@link #deleteDatabase(String)} instead. */
-  @Deprecated
-  void deleteStorageGroup(String storageGroup)
-      throws IoTDBConnectionException, StatementExecutionException;
-
-  /** @deprecated Use {@link #deleteDatabases(List)} instead. */
-  @Deprecated
-  void deleteStorageGroups(List<String> storageGroups)
-      throws IoTDBConnectionException, StatementExecutionException;
-
-  void createDatabase(String database) throws IoTDBConnectionException, StatementExecutionException;
-
-  void deleteDatabase(String database) throws IoTDBConnectionException, StatementExecutionException;
-
-  void deleteDatabases(List<String> databases)
-      throws IoTDBConnectionException, StatementExecutionException;
-
-  void createTimeseries(
-      String path, TSDataType dataType, TSEncoding encoding, CompressionType compressor)
-      throws IoTDBConnectionException, StatementExecutionException;
-
-  void createTimeseries(
-      String path,
-      TSDataType dataType,
-      TSEncoding encoding,
-      CompressionType compressor,
-      Map<String, String> props,
-      Map<String, String> tags,
-      Map<String, String> attributes,
-      String measurementAlias)
-      throws IoTDBConnectionException, StatementExecutionException;
-
-  void createAlignedTimeseries(
-      String deviceId,
-      List<String> measurements,
-      List<TSDataType> dataTypes,
-      List<TSEncoding> encodings,
-      List<CompressionType> compressors,
-      List<String> measurementAliasList)
-      throws IoTDBConnectionException, StatementExecutionException;
-
-  void createAlignedTimeseries(
-      String deviceId,
-      List<String> measurements,
-      List<TSDataType> dataTypes,
-      List<TSEncoding> encodings,
-      List<CompressionType> compressors,
-      List<String> measurementAliasList,
-      List<Map<String, String>> tagsList,
-      List<Map<String, String>> attributesList)
-      throws IoTDBConnectionException, StatementExecutionException;
-
-  void createMultiTimeseries(
-      List<String> paths,
-      List<TSDataType> dataTypes,
-      List<TSEncoding> encodings,
-      List<CompressionType> compressors,
-      List<Map<String, String>> propsList,
-      List<Map<String, String>> tagsList,
-      List<Map<String, String>> attributesList,
-      List<String> measurementAliasList)
-      throws IoTDBConnectionException, StatementExecutionException;
-
-  boolean checkTimeseriesExists(String path)
-      throws IoTDBConnectionException, StatementExecutionException;
-
-  SessionDataSet executeQueryStatement(String sql)
-      throws StatementExecutionException, IoTDBConnectionException;
-
-  SessionDataSet executeQueryStatement(String sql, long timeoutInMs)
-      throws StatementExecutionException, IoTDBConnectionException;
-
-  void executeNonQueryStatement(String sql)
-      throws IoTDBConnectionException, StatementExecutionException;
-
-  SessionDataSet executeRawDataQuery(List<String> paths, long startTime, long endTime, long timeOut)
-      throws StatementExecutionException, IoTDBConnectionException;
-
-  SessionDataSet executeRawDataQuery(List<String> paths, long startTime, long endTime)
-      throws StatementExecutionException, IoTDBConnectionException;
-
-  SessionDataSet executeLastDataQuery(List<String> paths, long lastTime)
-      throws StatementExecutionException, IoTDBConnectionException;
-
-  SessionDataSet executeLastDataQuery(List<String> paths, long lastTime, long timeOut)
-      throws StatementExecutionException, IoTDBConnectionException;
-
-  SessionDataSet executeLastDataQuery(List<String> paths)
-      throws StatementExecutionException, IoTDBConnectionException;
-
-  void insertRecord(
-      String deviceId,
-      long time,
-      List<String> measurements,
-      List<TSDataType> types,
-      Object... values)
-      throws IoTDBConnectionException, StatementExecutionException;
-
-  void insertRecord(
-      String deviceId,
-      long time,
-      List<String> measurements,
-      List<TSDataType> types,
-      List<Object> values)
-      throws IoTDBConnectionException, StatementExecutionException;
-
-  void insertAlignedRecord(
-      String deviceId,
-      long time,
-      List<String> measurements,
-      List<TSDataType> types,
-      List<Object> values)
-      throws IoTDBConnectionException, StatementExecutionException;
-
-  void insertRecord(String deviceId, long time, List<String> measurements, List<String> values)
-      throws IoTDBConnectionException, StatementExecutionException;
-
-  String getTimestampPrecision() throws TException;
-
-  void insertAlignedRecord(
-      String deviceId, long time, List<String> measurements, List<String> values)
-      throws IoTDBConnectionException, StatementExecutionException;
-
-  void insertRecords(
-      List<String> deviceIds,
-      List<Long> times,
-      List<List<String>> measurementsList,
-      List<List<String>> valuesList)
-      throws IoTDBConnectionException, StatementExecutionException;
-
-  void insertAlignedRecords(
-      List<String> deviceIds,
-      List<Long> times,
-      List<List<String>> measurementsList,
-      List<List<String>> valuesList)
-      throws IoTDBConnectionException, StatementExecutionException;
-
-  void insertRecords(
-      List<String> deviceIds,
-      List<Long> times,
-      List<List<String>> measurementsList,
-      List<List<TSDataType>> typesList,
-      List<List<Object>> valuesList)
-      throws IoTDBConnectionException, StatementExecutionException;
-
-  void insertAlignedRecords(
-      List<String> deviceIds,
-      List<Long> times,
-      List<List<String>> measurementsList,
-      List<List<TSDataType>> typesList,
-      List<List<Object>> valuesList)
-      throws IoTDBConnectionException, StatementExecutionException;
-
-  void insertRecordsOfOneDevice(
-      String deviceId,
-      List<Long> times,
-      List<List<String>> measurementsList,
-      List<List<TSDataType>> typesList,
-      List<List<Object>> valuesList)
-      throws IoTDBConnectionException, StatementExecutionException;
-
-  void insertRecordsOfOneDevice(
-      String deviceId,
-      List<Long> times,
-      List<List<String>> measurementsList,
-      List<List<TSDataType>> typesList,
-      List<List<Object>> valuesList,
-      boolean haveSorted)
-      throws IoTDBConnectionException, StatementExecutionException;
-
-  void insertStringRecordsOfOneDevice(
-      String deviceId,
-      List<Long> times,
-      List<List<String>> measurementsList,
-      List<List<String>> valuesList,
-      boolean haveSorted)
-      throws IoTDBConnectionException, StatementExecutionException;
-
-  void insertStringRecordsOfOneDevice(
-      String deviceId,
-      List<Long> times,
-      List<List<String>> measurementsList,
-      List<List<String>> valuesList)
-      throws IoTDBConnectionException, StatementExecutionException;
-
-  void insertAlignedRecordsOfOneDevice(
-      String deviceId,
-      List<Long> times,
-      List<List<String>> measurementsList,
-      List<List<TSDataType>> typesList,
-      List<List<Object>> valuesList)
-      throws IoTDBConnectionException, StatementExecutionException;
-
-  void insertAlignedRecordsOfOneDevice(
-      String deviceId,
-      List<Long> times,
-      List<List<String>> measurementsList,
-      List<List<TSDataType>> typesList,
-      List<List<Object>> valuesList,
-      boolean haveSorted)
-      throws IoTDBConnectionException, StatementExecutionException;
-
-  void insertAlignedStringRecordsOfOneDevice(
-      String deviceId,
-      List<Long> times,
-      List<List<String>> measurementsList,
-      List<List<String>> valuesList,
-      boolean haveSorted)
-      throws IoTDBConnectionException, StatementExecutionException;
-
-  void insertAlignedStringRecordsOfOneDevice(
-      String deviceId,
-      List<Long> times,
-      List<List<String>> measurementsList,
-      List<List<String>> valuesList)
-      throws IoTDBConnectionException, StatementExecutionException;
-
-  void insertTablet(Tablet tablet) throws StatementExecutionException, IoTDBConnectionException;
+  void insertTablet(Tablet tablet) throws IoTDBConnectionException, StatementExecutionException;
 
   void insertTablet(Tablet tablet, boolean sorted)
       throws IoTDBConnectionException, StatementExecutionException;
 
   void insertAlignedTablet(Tablet tablet)
-      throws StatementExecutionException, IoTDBConnectionException;
+      throws IoTDBConnectionException, StatementExecutionException;
 
   void insertAlignedTablet(Tablet tablet, boolean sorted)
       throws IoTDBConnectionException, StatementExecutionException;
@@ -301,13 +60,149 @@ public interface ISession extends AutoCloseable {
   void insertTablets(Map<String, Tablet> tablets)
       throws IoTDBConnectionException, StatementExecutionException;
 
-  void insertTablets(Map<String, Tablet> tablets, boolean sorted)
-      throws IoTDBConnectionException, StatementExecutionException;
-
   void insertAlignedTablets(Map<String, Tablet> tablets)
       throws IoTDBConnectionException, StatementExecutionException;
 
+  void insertTablets(Map<String, Tablet> tablets, boolean sorted)
+      throws IoTDBConnectionException, StatementExecutionException;
+
   void insertAlignedTablets(Map<String, Tablet> tablets, boolean sorted)
+      throws IoTDBConnectionException, StatementExecutionException;
+
+  void insertRecords(
+      List<String> deviceIds,
+      List<Long> times,
+      List<List<String>> measurementsList,
+      List<List<TSDataType>> typesList,
+      List<List<Object>> valuesList)
+      throws IoTDBConnectionException, StatementExecutionException;
+
+  void insertAlignedRecords(
+      List<String> multiSeriesIds,
+      List<Long> times,
+      List<List<String>> multiMeasurementComponentsList,
+      List<List<TSDataType>> typesList,
+      List<List<Object>> valuesList)
+      throws IoTDBConnectionException, StatementExecutionException;
+
+  void insertRecordsOfOneDevice(
+      String deviceId,
+      List<Long> times,
+      List<List<String>> measurementsList,
+      List<List<TSDataType>> typesList,
+      List<List<Object>> valuesList)
+      throws IoTDBConnectionException, StatementExecutionException;
+
+  @Deprecated
+  void insertOneDeviceRecords(
+      String deviceId,
+      List<Long> times,
+      List<List<String>> measurementsList,
+      List<List<TSDataType>> typesList,
+      List<List<Object>> valuesList)
+      throws IoTDBConnectionException, StatementExecutionException;
+
+  void insertStringRecordsOfOneDevice(
+      String deviceId,
+      List<Long> times,
+      List<List<String>> measurementsList,
+      List<List<String>> valuesList)
+      throws IoTDBConnectionException, StatementExecutionException;
+
+  void insertRecordsOfOneDevice(
+      String deviceId,
+      List<Long> times,
+      List<List<String>> measurementsList,
+      List<List<TSDataType>> typesList,
+      List<List<Object>> valuesList,
+      boolean haveSorted)
+      throws IoTDBConnectionException, StatementExecutionException;
+
+  @Deprecated
+  void insertOneDeviceRecords(
+      String deviceId,
+      List<Long> times,
+      List<List<String>> measurementsList,
+      List<List<TSDataType>> typesList,
+      List<List<Object>> valuesList,
+      boolean haveSorted)
+      throws IoTDBConnectionException, StatementExecutionException;
+
+  void insertStringRecordsOfOneDevice(
+      String deviceId,
+      List<Long> times,
+      List<List<String>> measurementsList,
+      List<List<String>> valuesList,
+      boolean haveSorted)
+      throws IoTDBConnectionException, StatementExecutionException;
+
+  void insertAlignedRecordsOfOneDevice(
+      String deviceId,
+      List<Long> times,
+      List<List<String>> measurementsList,
+      List<List<TSDataType>> typesList,
+      List<List<Object>> valuesList)
+      throws IoTDBConnectionException, StatementExecutionException;
+
+  void insertAlignedStringRecordsOfOneDevice(
+      String deviceId,
+      List<Long> times,
+      List<List<String>> measurementsList,
+      List<List<String>> valuesList)
+      throws IoTDBConnectionException, StatementExecutionException;
+
+  void insertAlignedRecordsOfOneDevice(
+      String deviceId,
+      List<Long> times,
+      List<List<String>> measurementsList,
+      List<List<TSDataType>> typesList,
+      List<List<Object>> valuesList,
+      boolean haveSorted)
+      throws IoTDBConnectionException, StatementExecutionException;
+
+  void insertAlignedStringRecordsOfOneDevice(
+      String deviceId,
+      List<Long> times,
+      List<List<String>> measurementsList,
+      List<List<String>> valuesList,
+      boolean haveSorted)
+      throws IoTDBConnectionException, StatementExecutionException;
+
+  void insertRecords(
+      List<String> deviceIds,
+      List<Long> times,
+      List<List<String>> measurementsList,
+      List<List<String>> valuesList)
+      throws IoTDBConnectionException, StatementExecutionException;
+
+  void insertAlignedRecords(
+      List<String> multiSeriesIds,
+      List<Long> times,
+      List<List<String>> multiMeasurementComponentsList,
+      List<List<String>> valuesList)
+      throws IoTDBConnectionException, StatementExecutionException;
+
+  void insertRecord(
+      String deviceId,
+      long time,
+      List<String> measurements,
+      List<TSDataType> types,
+      List<Object> values)
+      throws IoTDBConnectionException, StatementExecutionException;
+
+  void insertAlignedRecord(
+      String multiSeriesId,
+      long time,
+      List<String> multiMeasurementComponents,
+      List<TSDataType> types,
+      List<Object> values)
+      throws IoTDBConnectionException, StatementExecutionException;
+
+  void insertRecord(String deviceId, long time, List<String> measurements, List<String> values)
+      throws IoTDBConnectionException, StatementExecutionException;
+
+  void insertAlignedRecord(
+      String multiSeriesId, long time, List<String> multiMeasurementComponents, List<String> values)
       throws IoTDBConnectionException, StatementExecutionException;
 
   void testInsertTablet(Tablet tablet) throws IoTDBConnectionException, StatementExecutionException;
@@ -352,16 +247,61 @@ public interface ISession extends AutoCloseable {
   void deleteTimeseries(List<String> paths)
       throws IoTDBConnectionException, StatementExecutionException;
 
-  void deleteData(String path, long endTime)
+  void deleteData(String path, long time)
       throws IoTDBConnectionException, StatementExecutionException;
 
-  void deleteData(List<String> paths, long endTime)
+  void deleteData(List<String> paths, long time)
       throws IoTDBConnectionException, StatementExecutionException;
 
   void deleteData(List<String> paths, long startTime, long endTime)
       throws IoTDBConnectionException, StatementExecutionException;
 
-  void setSchemaTemplate(String templateName, String prefixPath)
+  @Deprecated
+  void setStorageGroup(String storageGroupId)
+      throws IoTDBConnectionException, StatementExecutionException;
+
+  @Deprecated
+  void deleteStorageGroup(String storageGroup)
+      throws IoTDBConnectionException, StatementExecutionException;
+
+  @Deprecated
+  void deleteStorageGroups(List<String> storageGroup)
+      throws IoTDBConnectionException, StatementExecutionException;
+
+  void createDatabase(String database) throws IoTDBConnectionException, StatementExecutionException;
+
+  void deleteDatabase(String database) throws IoTDBConnectionException, StatementExecutionException;
+
+  void deleteDatabases(List<String> databases)
+      throws IoTDBConnectionException, StatementExecutionException;
+
+  void createTimeseries(
+      String path, TSDataType dataType, TSEncoding encoding, CompressionType compressor)
+      throws IoTDBConnectionException, StatementExecutionException;
+
+  void createTimeseries(
+      String path,
+      TSDataType dataType,
+      TSEncoding encoding,
+      CompressionType compressor,
+      Map<String, String> props,
+      Map<String, String> tags,
+      Map<String, String> attributes,
+      String measurementAlias)
+      throws IoTDBConnectionException, StatementExecutionException;
+
+  void createMultiTimeseries(
+      List<String> paths,
+      List<TSDataType> dataTypes,
+      List<TSEncoding> encodings,
+      List<CompressionType> compressors,
+      List<Map<String, String>> propsList,
+      List<Map<String, String>> tagsList,
+      List<Map<String, String>> attributesList,
+      List<String> measurementAliasList)
+      throws IoTDBConnectionException, StatementExecutionException;
+
+  boolean checkTimeseriesExists(String path)
       throws IoTDBConnectionException, StatementExecutionException;
 
   void createSchemaTemplate(Template template)
@@ -376,6 +316,7 @@ public interface ISession extends AutoCloseable {
       boolean isAligned)
       throws IOException, IoTDBConnectionException, StatementExecutionException;
 
+  @Deprecated
   void createSchemaTemplate(
       String name,
       List<String> schemaNames,
@@ -443,24 +384,113 @@ public interface ISession extends AutoCloseable {
   List<String> showPathsTemplateUsingOn(String templateName)
       throws StatementExecutionException, IoTDBConnectionException;
 
+  void setSchemaTemplate(String templateName, String prefixPath)
+      throws StatementExecutionException, IoTDBConnectionException;
+
   void unsetSchemaTemplate(String prefixPath, String templateName)
-      throws IoTDBConnectionException, StatementExecutionException;
+      throws StatementExecutionException, IoTDBConnectionException;
 
   void dropSchemaTemplate(String templateName)
+      throws StatementExecutionException, IoTDBConnectionException;
+
+  SessionDataSetWrapper executeQueryStatement(String sql)
       throws IoTDBConnectionException, StatementExecutionException;
 
-  boolean isEnableQueryRedirection();
+  SessionDataSetWrapper executeQueryStatement(String sql, long timeoutInMs)
+      throws IoTDBConnectionException, StatementExecutionException;
 
-  void setEnableQueryRedirection(boolean enableQueryRedirection);
+  /**
+   * execute non query statement
+   *
+   * @param sql non query statement
+   */
+  void executeNonQueryStatement(String sql)
+      throws StatementExecutionException, IoTDBConnectionException;
 
-  boolean isEnableRedirection();
+  @SuppressWarnings("squid:S2095") // Suppress wrapper not closed warning
+  SessionDataSetWrapper executeRawDataQuery(
+      List<String> paths, long startTime, long endTime, long timeOut)
+      throws IoTDBConnectionException, StatementExecutionException;
+
+  SessionDataSetWrapper executeLastDataQuery(List<String> paths, long LastTime, long timeOut)
+      throws StatementExecutionException, IoTDBConnectionException;
+
+  SessionDataSetWrapper executeLastDataQuery(List<String> paths)
+      throws StatementExecutionException, IoTDBConnectionException;
+
+  int getMaxSize();
+
+  String getHost();
+
+  int getPort();
+
+  String getUser();
+
+  String getPassword();
+
+  void setFetchSize(int fetchSize);
+
+  int getFetchSize();
+
+  void setTimeZone(String zoneId) throws StatementExecutionException, IoTDBConnectionException;
+
+  ZoneId getZoneId();
+
+  long getWaitToGetSessionTimeoutInMs();
+
+  boolean isEnableCompression();
 
   void setEnableRedirection(boolean enableRedirection);
 
-  void sortTablet(Tablet tablet);
+  boolean isEnableRedirection();
+
+  void setEnableQueryRedirection(boolean enableQueryRedirection);
+
+  boolean isEnableQueryRedirection();
+
+  int getConnectionTimeoutInMs();
 
   TSBackupConfigurationResp getBackupConfiguration()
       throws IoTDBConnectionException, StatementExecutionException;
 
   TSConnectionInfoResp fetchAllConnections() throws IoTDBConnectionException;
+
+  void setVersion(Version version);
+
+  Version getVersion();
+
+  void setQueryTimeout(long timeoutInMs);
+
+  long getQueryTimeout();
+
+  @Deprecated
+  default void createTimeseriesOfTemplateOnPath(String path)
+      throws IoTDBConnectionException, StatementExecutionException {}
+
+  @Deprecated
+  default void deactivateTempalte(String templateName, String prefixPath)
+      throws IoTDBConnectionException, StatementExecutionException {}
+
+  @Deprecated
+  default SessionDataSetWrapper executeRawDataQuery(
+      List<String> paths, long startTime, long endTime)
+      throws IoTDBConnectionException, StatementExecutionException {
+    return null;
+  }
+
+  @Deprecated
+  default boolean operationSyncTransmit(ByteBuffer buffer)
+      throws IoTDBConnectionException, StatementExecutionException {
+    return false;
+  }
+
+  @Deprecated
+  default SystemStatus getSystemStatus() throws IoTDBConnectionException {
+    return SystemStatus.NORMAL;
+  }
+
+  @Deprecated
+  default boolean isEnableCacheLeader() {
+    return false;
+  }
 }
