@@ -63,17 +63,6 @@ public abstract class UnaryExpression extends Expression {
   }
 
   @Override
-  public final boolean isTimeSeriesGeneratingFunctionExpression() {
-    return !isUserDefinedAggregationFunctionExpression();
-  }
-
-  @Override
-  public final boolean isUserDefinedAggregationFunctionExpression() {
-    return expression.isUserDefinedAggregationFunctionExpression()
-        || expression.isBuiltInAggregationFunctionExpression();
-  }
-
-  @Override
   public final void constructUdfExecutors(
       Map<String, UDTFExecutor> expressionName2Executor, ZoneId zoneId) {
     expression.constructUdfExecutors(expressionName2Executor, zoneId);

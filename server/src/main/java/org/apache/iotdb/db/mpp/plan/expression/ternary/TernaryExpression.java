@@ -41,7 +41,6 @@ public abstract class TernaryExpression extends Expression {
   protected final Expression firstExpression;
   protected final Expression secondExpression;
   protected final Expression thirdExpression;
-  // protected final boolean isNot = false;
 
   public Expression getFirstExpression() {
     return firstExpression;
@@ -83,25 +82,6 @@ public abstract class TernaryExpression extends Expression {
   @Override
   public List<Expression> getExpressions() {
     return Arrays.asList(firstExpression, secondExpression, thirdExpression);
-  }
-
-  private void reconstruct(
-      List<Expression> firstExpressions,
-      List<Expression> secondExpressions,
-      List<Expression> thirdExpressions,
-      List<Expression> resultExpressions) {
-    for (Expression fe : firstExpressions) {
-      for (Expression se : secondExpressions)
-        for (Expression te : thirdExpressions) {
-          switch (operator()) {
-            case "between":
-              resultExpressions.add(new BetweenExpression(fe, se, te));
-              break;
-            default:
-              throw new UnsupportedOperationException();
-          }
-        }
-    }
   }
 
   @Override
