@@ -60,7 +60,6 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static org.apache.iotdb.it.env.AbstractNodeWrapper.templateNodeLibPath;
-import static org.apache.iotdb.it.env.AbstractNodeWrapper.templateNodePath;
 import static org.apache.iotdb.jdbc.Config.VERSION;
 import static org.junit.Assert.fail;
 
@@ -73,6 +72,8 @@ public abstract class AbstractEnv implements BaseEnv {
   protected List<ConfigNodeWrapper> configNodeWrapperList = Collections.emptyList();
   protected List<DataNodeWrapper> dataNodeWrapperList = Collections.emptyList();
   protected String testMethodName = null;
+  public static final String templateNodePath =
+      System.getProperty("user.dir") + File.separator + "target" + File.separator + "template-node";
 
   protected void initEnvironment(int configNodesNum, int dataNodesNum) {
     this.configNodeWrapperList = new ArrayList<>();
@@ -641,6 +642,11 @@ public abstract class AbstractEnv implements BaseEnv {
   @Override
   public String getSbinPath() {
     return templateNodePath + File.separator + "sbin";
+  }
+
+  @Override
+  public String getToolsPath() {
+    return templateNodePath + File.separator + "tools";
   }
 
   @Override
