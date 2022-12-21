@@ -143,12 +143,12 @@ var config = {
 				  {
 					text: 'ASF',
 					items: [
-					  { text: 'Foundation', link: 'http://www.apache.org/'},
-					  { text: 'License', link: 'http://www.apache.org/licenses/'},
-					  { text: 'Security', link: 'http://www.apache.org/security/'},
-					  { text: 'Sponsorship', link: 'http://www.apache.org/foundation/sponsorship.html'},
-					  { text: 'Thanks', link: 'http://www.apache.org/foundation/thanks.html'},
-					  { text: 'Current Events', link: 'http://www.apache.org/events/current-event'},
+					  { text: 'Foundation', link: 'https://www.apache.org/'},
+					  { text: 'License', link: 'https://www.apache.org/licenses/'},
+					  { text: 'Security', link: 'https://www.apache.org/security/'},
+					  { text: 'Sponsorship', link: 'https://www.apache.org/foundation/sponsorship.html'},
+					  { text: 'Thanks', link: 'https://www.apache.org/foundation/thanks.html'},
+					  { text: 'Current Events', link: 'https://www.apache.org/events/current-event'},
 					]
 				  },
 			],
@@ -1351,12 +1351,12 @@ var config = {
 				  {
 					text: 'ASF',
 					items: [
-					  { text: '基金会', link: 'http://www.apache.org/'},
-					  { text: '许可证', link: 'http://www.apache.org/licenses/'},
-					  { text: '安全', link: 'http://www.apache.org/security/'},
-					  { text: '赞助', link: 'http://www.apache.org/foundation/sponsorship.html'},
-					  { text: '致谢', link: 'http://www.apache.org/foundation/thanks.html'},
-					  { text: '活动', link: 'http://www.apache.org/events/current-event'},
+					  { text: '基金会', link: 'https://www.apache.org/'},
+					  { text: '许可证', link: 'https://www.apache.org/licenses/'},
+					  { text: '安全', link: 'https://www.apache.org/security/'},
+					  { text: '赞助', link: 'https://www.apache.org/foundation/sponsorship.html'},
+					  { text: '致谢', link: 'https://www.apache.org/foundation/thanks.html'},
+					  { text: '活动', link: 'https://www.apache.org/events/current-event'},
 					]
 				  },
 			],
