@@ -411,6 +411,21 @@ public class TsFileResource {
     return timeIndex.getDevices(file.getPath(), this);
   }
 
+  public DeviceTimeIndex buildDeviceTimeIndex() throws IOException {
+    readLock();
+    try (InputStream inputStream =
+        FSFactoryProducer.getFSFactory()
+            .getBufferedInputStream(file.getPath() + TsFileResource.RESOURCE_SUFFIX)) {
+      DeviceTimeIndex deviceTimeIndex = new DeviceTimeIndex();
+      return deviceTimeIndex.deserialize(inputStream);
+    } catch (Exception e) {
+      throw new IOException(
+          "Can't read file " + file.getPath() + TsFileResource.RESOURCE_SUFFIX + " from disk", e);
+    } finally {
+      readUnlock();
+    }
+  }
+
   /**
    * Whether this TsFileResource contains this device, if false, it must not contain this device, if
    * true, it may or may not contain this device

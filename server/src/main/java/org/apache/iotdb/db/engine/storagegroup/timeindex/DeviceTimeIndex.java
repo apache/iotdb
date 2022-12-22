@@ -150,6 +150,10 @@ public class DeviceTimeIndex implements ITimeIndex {
     endTimes = Arrays.copyOfRange(endTimes, 0, deviceToIndex.size());
   }
 
+  public Set<String> getDevices() {
+    return deviceToIndex.keySet();
+  }
+
   @Override
   public Set<String> getDevices(String tsFilePath, TsFileResource tsFileResource) {
     return deviceToIndex.keySet();

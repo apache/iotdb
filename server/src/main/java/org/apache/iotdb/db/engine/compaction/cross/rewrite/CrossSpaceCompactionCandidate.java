@@ -21,9 +21,14 @@ package org.apache.iotdb.db.engine.compaction.cross.rewrite;
 
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
+import org.apache.iotdb.db.engine.storagegroup.timeindex.DeviceTimeIndex;
+import org.apache.iotdb.db.engine.storagegroup.timeindex.ITimeIndex;
 
+import java.io.IOException;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
@@ -56,7 +61,7 @@ public class CrossSpaceCompactionCandidate {
     this.nextUnseqFileIndex = 0;
   }
 
-  public boolean hasNextSplit() {
+  public boolean hasNextSplit() throws IOException {
     if (nextUnseqFileIndex >= unseqFiles.size()) {
       return false;
     }
@@ -67,10 +72,15 @@ public class CrossSpaceCompactionCandidate {
     return nextSplit;
   }
 
-  private boolean prepareNextSplit() {
+  private boolean prepareNextSplit() throws IOException {
     TsFileResourceCandidate unseqFile = unseqFiles.get(nextUnseqFileIndex);
     List<TsFileResourceCandidate> ret = new ArrayList<>();
 
+    // The startTime and endTime of each device are different in one TsFile. So we need to do the
+    // check
+    // one by one. And we cannot skip any device in the unseq file because it may lead to omission
+    // of
+    // target seq file
     for (DeviceInfo unseqDeviceInfo : unseqFile.getDevices()) {
       for (TsFileResourceCandidate seqFile : seqFiles) {
         if (!seqFile.containsDevice(unseqDeviceInfo.deviceId)) {
@@ -167,6 +177,7 @@ public class CrossSpaceCompactionCandidate {
     protected TsFileResource resource;
     protected boolean selected;
     protected boolean isValidCandidate;
+    private Map<String, DeviceInfo> deviceInfoMap;
 
     protected TsFileResourceCandidate(TsFileResource tsFileResource) {
       this.resource = tsFileResource;
@@ -176,20 +187,46 @@ public class CrossSpaceCompactionCandidate {
       this.isValidCandidate = tsFileResource.isClosed() && tsFileResource.getTsFile().exists();
     }
 
+    private void prepareDeviceInfos() throws IOException {
+      if (deviceInfoMap != null) {
+        return;
+      }
+      deviceInfoMap = new LinkedHashMap<>();
+      if (resource.getTimeIndexType() == ITimeIndex.FILE_TIME_INDEX_TYPE) {
+        DeviceTimeIndex timeIndex = resource.buildDeviceTimeIndex();
+        for (String deviceId : timeIndex.getDevices()) {
+          deviceInfoMap.put(
+              deviceId,
+              new DeviceInfo(
+                  deviceId, timeIndex.getStartTime(deviceId), timeIndex.getEndTime(deviceId)));
+        }
+      } else {
+        for (String deviceId : resource.getDevices()) {
+          deviceInfoMap.put(
+              deviceId,
+              new DeviceInfo(
+                  deviceId, resource.getStartTime(deviceId), resource.getEndTime(deviceId)));
+        }
+      }
+    }
+
     protected void markAsSelected() {
       this.selected = true;
     }
 
-    protected List<DeviceInfo> getDevices() {
-      return null;
+    protected List<DeviceInfo> getDevices() throws IOException {
+      prepareDeviceInfos();
+      return new ArrayList<>(deviceInfoMap.values());
     }
 
-    protected DeviceInfo getDeviceInfoById(String deviceId) {
-      return null;
+    protected DeviceInfo getDeviceInfoById(String deviceId) throws IOException {
+      prepareDeviceInfos();
+      return deviceInfoMap.get(deviceId);
     }
 
-    protected boolean containsDevice(String deviceId) {
-      return false;
+    protected boolean containsDevice(String deviceId) throws IOException {
+      prepareDeviceInfos();
+      return deviceInfoMap.containsKey(deviceId);
     }
   }
 
@@ -197,5 +234,11 @@ public class CrossSpaceCompactionCandidate {
     protected String deviceId;
     protected long startTime;
     protected long endTime;
+
+    public DeviceInfo(String deviceId, long startTime, long endTime) {
+      this.deviceId = deviceId;
+      this.startTime = startTime;
+      this.endTime = endTime;
+    }
   }
 }
