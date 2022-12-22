@@ -23,6 +23,7 @@ from iotdb.Session import Session
 from iotdb.template.InternalNode import InternalNode
 from iotdb.template.MeasurementNode import MeasurementNode
 from iotdb.template.Template import Template
+from iotdb.utils.BitMap import BitMap
 from iotdb.utils.IoTDBConstants import TSDataType, TSEncoding, Compressor
 from iotdb.utils.Tablet import Tablet
 from iotdb.utils.NumpyTablet import NumpyTablet
@@ -229,10 +230,17 @@ np_values_ = [
     np.array(["test01", "test02", "test03", "test04"]),
 ]
 np_timestamps_ = np.array([98, 99, 100, 101], TSDataType.INT64.np_dtype())
+np_bitmaps_ = []
+for i in range(len(measurements_)):
+    np_bitmaps_.append(BitMap(len(np_timestamps_)))
+np_bitmaps_[0].mark(0)
+np_bitmaps_[1].mark(1)
+np_bitmaps_[2].mark(2)
+np_bitmaps_[4].mark(3)
+np_bitmaps_[5].mark(3)
 np_tablet_with_none = NumpyTablet(
-    "root.sg_test_01.d_02", measurements_, data_types_, np_values_, np_timestamps_
+    "root.sg_test_01.d_02", measurements_, data_types_, np_values_, np_timestamps_, np_bitmaps_
 )
-np_tablet_with_none.mark_none_value(0,0)
 session.insert_tablet(np_tablet_with_none)
 
 

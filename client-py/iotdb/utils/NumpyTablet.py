@@ -22,7 +22,7 @@ from iotdb.utils.BitMap import BitMap
 
 
 class NumpyTablet(object):
-    def __init__(self, device_id, measurements, data_types, values, timestamps):
+    def __init__(self, device_id, measurements, data_types, values, timestamps, bitmaps=None):
         """
         creating a numpy tablet for insertion
           for example, considering device: root.sg1.d1
@@ -38,7 +38,6 @@ class NumpyTablet(object):
         :param values: List of numpy array, the values of each column should be the inner numpy array
         :param timestamps: Numpy array, the timestamps
         """
-        self.bitmaps = None
         if len(values) > 0 and len(values[0]) != len(timestamps):
             raise RuntimeError(
                 "Input error! len(timestamps) does not equal to len(values[0])!"
@@ -67,6 +66,7 @@ class NumpyTablet(object):
         self.__data_types = data_types
         self.__row_number = len(timestamps)
         self.__column_number = len(measurements)
+        self.bitmaps = bitmaps
 
     @staticmethod
     def check_sorted(timestamps):
@@ -122,7 +122,7 @@ class NumpyTablet(object):
             values_tobe_packed = []
             for i in range(self.__column_number):
                 format_str_list.append("?")
-                if self.bitmaps[i] is None:
+                if self.bitmaps[i] is None or self.bitmaps[i].is_all_unmarked():
                     values_tobe_packed.append(False)
                 else:
                     values_tobe_packed.append(True)
