@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.spark.db;
+package org.apache.iotdb.spark.it;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.commons.auth.AuthException;
@@ -54,6 +54,7 @@ import java.sql.Statement;
 import java.util.Locale;
 
 /** This class is used for cleaning test environment in unit test and integration test */
+@Deprecated
 public class EnvironmentUtils {
 
   private static String[] creationSqls =

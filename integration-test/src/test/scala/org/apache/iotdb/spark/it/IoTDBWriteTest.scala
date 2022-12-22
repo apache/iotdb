@@ -17,20 +17,25 @@
  * under the License.
  */
 
-package org.apache.iotdb.spark.db
+package org.apache.iotdb.spark.it
 
-import org.apache.iotdb.jdbc.Config
-import org.apache.iotdb.session.Session
+import org.apache.iotdb.it.env.EnvFactory
+import org.apache.iotdb.it.framework.IoTDBTestRunner
+import org.apache.iotdb.itbase.category.{ClusterIT, LocalStandaloneIT}
+import org.apache.iotdb.session.ISession
 import org.apache.spark.sql.SparkSession
-import org.junit.{AfterClass, Before, Ignore}
+import org.junit.experimental.categories.Category
+import org.junit.runner.RunWith
+import org.junit.{AfterClass, Before}
 import org.scalatest.{BeforeAndAfterAll, FunSuite}
 
-// TODO move it to integration-test
-@Ignore
+@RunWith(classOf[IoTDBTestRunner])
+@Category(Array(classOf[LocalStandaloneIT], classOf[ClusterIT]))
 class IoTDBWriteTest extends FunSuite with BeforeAndAfterAll {
 //  private var daemon: NewIoTDB = _
   private var spark: SparkSession = _
-  private var session: Session = _
+  private var session: ISession = _
+  private var jdbcUrlTemplate = "jdbc:iotdb://%s:%s/"
 
   @Before
   override protected def beforeAll(): Unit = {
@@ -39,8 +44,8 @@ class IoTDBWriteTest extends FunSuite with BeforeAndAfterAll {
 
 //    daemon = NewIoTDB.getInstance
 //    daemon.active(false)
-    EnvironmentUtils.envSetUp()
-    Class.forName(Config.JDBC_DRIVER_NAME)
+    EnvFactory.getEnv.initBeforeClass()
+    jdbcUrlTemplate = jdbcUrlTemplate.format(EnvFactory.getEnv.getIP, EnvFactory.getEnv.getPort)
 
     spark = SparkSession
       .builder()
@@ -48,7 +53,7 @@ class IoTDBWriteTest extends FunSuite with BeforeAndAfterAll {
       .appName("TSFile test")
       .getOrCreate()
 
-    session = new Session("127.0.0.1", 6667, "root", "root")
+    session = EnvFactory.getEnv.getSessionConnection
     session.open()
   }
 
@@ -59,9 +64,8 @@ class IoTDBWriteTest extends FunSuite with BeforeAndAfterAll {
     }
 
 //    daemon.stop()
-    EnvironmentUtils.cleanEnv()
-
     session.close()
+    EnvFactory.getEnv.cleanAfterTest()
     super.afterAll()
   }
 
@@ -78,7 +82,7 @@ class IoTDBWriteTest extends FunSuite with BeforeAndAfterAll {
       .withColumnRenamed("_6", "root.test.d0.s4")
       .withColumnRenamed("_7", "root.test.d0.s5")
     dfWithColumn.write.format("org.apache.iotdb.spark.db")
-      .option("url", "jdbc:iotdb://127.0.0.1:6667/")
+      .option("url", jdbcUrlTemplate)
       .save
 
     val result = session.executeQueryStatement("select ** from root")
@@ -104,7 +108,7 @@ class IoTDBWriteTest extends FunSuite with BeforeAndAfterAll {
       .withColumnRenamed("_7", "s4")
       .withColumnRenamed("_8", "s5")
     dfWithColumn.write.format("org.apache.iotdb.spark.db")
-      .option("url", "jdbc:iotdb://127.0.0.1:6667/")
+      .option("url", jdbcUrlTemplate)
       .save
 
     val result = session.executeQueryStatement("select ** from root")
