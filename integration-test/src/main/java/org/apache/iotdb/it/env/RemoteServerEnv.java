@@ -43,15 +43,11 @@ import static org.junit.Assert.fail;
 
 public class RemoteServerEnv implements BaseEnv {
 
-  private String ip_addr = System.getProperty("RemoteIp", "127.0.0.1");
-  private String port = System.getProperty("RemotePort", "6667");
-  private String user = System.getProperty("RemoteUser", "root");
-  private String password = System.getProperty("RemotePassword", "root");
-
-  private final IClientManager<TEndPoint, SyncConfigNodeIServiceClient> clientManager =
-      new IClientManager.Factory<TEndPoint, SyncConfigNodeIServiceClient>()
-          .createClientManager(
-              new DataNodeClientPoolFactory.SyncConfigNodeIServiceClientPoolFactory());
+  private final String ip_addr = System.getProperty("RemoteIp", "127.0.0.1");
+  private final String port = System.getProperty("RemotePort", "6667");
+  private final String user = System.getProperty("RemoteUser", "root");
+  private final String password = System.getProperty("RemotePassword", "root");
+  private IClientManager<TEndPoint, SyncConfigNodeIServiceClient> clientManager;
 
   @Override
   public void initBeforeClass() {
@@ -63,6 +59,10 @@ public class RemoteServerEnv implements BaseEnv {
       e.printStackTrace();
       fail(e.getMessage());
     }
+    clientManager =
+        new IClientManager.Factory<TEndPoint, SyncConfigNodeIServiceClient>()
+            .createClientManager(
+                new DataNodeClientPoolFactory.SyncConfigNodeIServiceClientPoolFactory());
   }
 
   @Override

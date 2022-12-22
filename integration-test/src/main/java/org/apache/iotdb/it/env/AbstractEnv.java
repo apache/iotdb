@@ -75,14 +75,16 @@ public abstract class AbstractEnv implements BaseEnv {
   protected List<DataNodeWrapper> dataNodeWrapperList = Collections.emptyList();
   protected String testMethodName = null;
 
-  private final IClientManager<TEndPoint, SyncConfigNodeIServiceClient> clientManager =
-      new IClientManager.Factory<TEndPoint, SyncConfigNodeIServiceClient>()
-          .createClientManager(
-              new DataNodeClientPoolFactory.SyncConfigNodeIServiceClientPoolFactory());
+  private IClientManager<TEndPoint, SyncConfigNodeIServiceClient> clientManager;
 
   protected void initEnvironment(int configNodesNum, int dataNodesNum) {
     this.configNodeWrapperList = new ArrayList<>();
     this.dataNodeWrapperList = new ArrayList<>();
+
+    clientManager =
+        new IClientManager.Factory<TEndPoint, SyncConfigNodeIServiceClient>()
+            .createClientManager(
+                new DataNodeClientPoolFactory.SyncConfigNodeIServiceClientPoolFactory());
 
     final String testClassName = getTestClassName();
     final String testMethodName = getTestMethodName();
@@ -463,8 +465,10 @@ public abstract class AbstractEnv implements BaseEnv {
           }
         } catch (Exception e) {
           logger.error(
-              "Borrow ConfigNodeClient from ConfigNode: {} failed, retrying...",
-              configNodeWrapper.getIpAndPortString());
+              String.format(
+                  "Borrow ConfigNodeClient from ConfigNode: %s failed, retrying...",
+                  configNodeWrapper.getIpAndPortString()),
+              e);
         }
 
         // Sleep 1s before next retry
