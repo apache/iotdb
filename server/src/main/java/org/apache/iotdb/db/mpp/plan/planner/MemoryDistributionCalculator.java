@@ -82,7 +82,7 @@ public class MemoryDistributionCalculator
   /** This map is used to calculate the total split of memory */
   private int exchangeNum;
 
-  public long calculateTotalSplit() {
+  public int calculateTotalSplit() {
     return exchangeNum;
   }
 
