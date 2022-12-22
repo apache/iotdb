@@ -44,6 +44,7 @@
         <dependency>
             <groupId>org.apache.spark</groupId>
             <artifactId>spark-core_2.12</artifactId>
+            <version>${spark.version}</version>
             <scope>provided</scope>
             <exclusions>
                 <exclusion>
@@ -59,15 +60,18 @@
         <dependency>
             <groupId>org.apache.spark</groupId>
             <artifactId>spark-sql_2.12</artifactId>
+            <version>${spark.version}</version>
             <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>org.scala-lang</groupId>
             <artifactId>scala-library</artifactId>
+            <version>${scala.version}</version>
         </dependency>
         <dependency>
             <groupId>org.scalatest</groupId>
             <artifactId>scalatest_2.12</artifactId>
+            <version>${scalatest_2.12.version}</version>
             <scope>test</scope>
         </dependency>
     </dependencies>
