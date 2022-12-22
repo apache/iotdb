@@ -27,7 +27,7 @@ import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.mnode.InternalMNode;
 import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
-import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
+import org.apache.iotdb.db.metadata.plan.schemaregion.impl.SchemaRegionPlanFactory;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -103,8 +103,7 @@ public class MRocksDBUnitTest {
     }
 
     rSchemaRegion.createAlignedTimeSeries(
-        new CreateAlignedTimeSeriesPlan(
-            prefixPath, measurements, dataTypes, encodings, compressions, null, null, null));
+            SchemaRegionPlanFactory.getCreateAlignedTimeSeriesPlan(prefixPath, measurements, dataTypes, encodings, compressions, null, null, null));
 
     try {
       PartialPath path = new PartialPath("root.tt.sg.dd.mn");

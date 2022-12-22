@@ -29,10 +29,9 @@ import org.apache.iotdb.db.exception.metadata.MeasurementAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.localconfignode.LocalConfigNode;
+import org.apache.iotdb.db.metadata.plan.schemaregion.impl.SchemaRegionPlanFactory;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaEngine;
-import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
-import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -154,7 +153,7 @@ public class LocalSchemaProcessor {
     try {
       getBelongedSchemaRegionWithAutoCreate(path)
           .createTimeseries(
-              new CreateTimeSeriesPlan(
+              SchemaRegionPlanFactory.getCreateTimeSeriesPlan(
                   path, dataType, encoding, compressor, props, null, null, null),
               -1);
     } catch (PathAlreadyExistException
@@ -178,7 +177,7 @@ public class LocalSchemaProcessor {
       throws MetadataException {
     getBelongedSchemaRegionWithAutoCreate(prefixPath)
         .createAlignedTimeSeries(
-            new CreateAlignedTimeSeriesPlan(
+            SchemaRegionPlanFactory.getCreateAlignedTimeSeriesPlan(
                 prefixPath, measurements, dataTypes, encodings, compressors, null, null, null));
   }
 

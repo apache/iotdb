@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.metadata.schemaregion.rocksdb;
 
-import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
+import org.apache.iotdb.db.metadata.plan.schemaregion.write.ICreateTimeSeriesPlan;
 
 import java.util.Collection;
 import java.util.List;
@@ -30,7 +30,7 @@ public class RocksDBTestUtils {
 
   public static void printBenchmarkBaseline(
       List storageGroups,
-      List<List<CreateTimeSeriesPlan>> timeSeriesSet,
+      List<List<ICreateTimeSeriesPlan>> timeSeriesSet,
       Collection queryTsSet,
       Collection innerPathSet) {
     System.out.println(

@@ -22,7 +22,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
-import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
+import org.apache.iotdb.db.metadata.plan.schemaregion.write.ICreateTimeSeriesPlan;
 
 import org.junit.Ignore;
 import org.slf4j.Logger;
@@ -46,9 +46,9 @@ public class MRocksDBBenchmark {
 
   public List<RocksDBBenchmarkTask.BenchmarkResult> benchmarkResults = new ArrayList<>();
 
-  public void testTimeSeriesCreation(List<List<CreateTimeSeriesPlan>> timeSeriesSet)
+  public void testTimeSeriesCreation(List<List<ICreateTimeSeriesPlan>> timeSeriesSet)
       throws IOException {
-    RocksDBBenchmarkTask<List<CreateTimeSeriesPlan>> task =
+    RocksDBBenchmarkTask<List<ICreateTimeSeriesPlan>> task =
         new RocksDBBenchmarkTask<>(timeSeriesSet, RocksDBTestUtils.WRITE_CLIENT_NUM, 100);
     RocksDBBenchmarkTask.BenchmarkResult result =
         task.runBatchWork(

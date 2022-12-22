@@ -22,8 +22,9 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
-import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
+import org.apache.iotdb.db.metadata.plan.schemaregion.impl.SchemaRegionPlanFactory;
+import org.apache.iotdb.db.metadata.plan.schemaregion.write.ICreateAlignedTimeSeriesPlan;
+import org.apache.iotdb.db.metadata.plan.schemaregion.write.ICreateTimeSeriesPlan;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -153,8 +154,8 @@ public class IDTableWithDeviceIDListImplTest {
   }
 
   private void createAlignedTimeseries() throws Exception {
-    CreateAlignedTimeSeriesPlan plan =
-        new CreateAlignedTimeSeriesPlan(
+    ICreateAlignedTimeSeriesPlan plan =
+        SchemaRegionPlanFactory.getCreateAlignedTimeSeriesPlan(
             new PartialPath(storageGroup + ".d1.aligned_device"),
             Arrays.asList("s1", "s2", "s3"),
             Arrays.asList(
@@ -169,7 +170,7 @@ public class IDTableWithDeviceIDListImplTest {
             null);
     idTableWithDeviceIDList.createAlignedTimeseries(plan);
     plan =
-        new CreateAlignedTimeSeriesPlan(
+        SchemaRegionPlanFactory.getCreateAlignedTimeSeriesPlan(
             new PartialPath(storageGroup + ".d2.aligned_device"),
             Arrays.asList("s1", "s2", "s3"),
             Arrays.asList(
@@ -186,8 +187,8 @@ public class IDTableWithDeviceIDListImplTest {
   }
 
   private void createTimeseries() throws Exception {
-    CreateTimeSeriesPlan createTimeSeriesPlan =
-        new CreateTimeSeriesPlan(
+    ICreateTimeSeriesPlan createTimeSeriesPlan =
+        SchemaRegionPlanFactory.getCreateTimeSeriesPlan(
             new PartialPath(storageGroup + ".d1.s0"),
             TSDataType.valueOf("INT32"),
             TSEncoding.valueOf("RLE"),
@@ -198,7 +199,7 @@ public class IDTableWithDeviceIDListImplTest {
             null);
     idTableWithDeviceIDList.createTimeseries(createTimeSeriesPlan);
     createTimeSeriesPlan =
-        new CreateTimeSeriesPlan(
+        SchemaRegionPlanFactory.getCreateTimeSeriesPlan(
             new PartialPath(storageGroup + ".d2.s0"),
             TSDataType.valueOf("INT32"),
             TSEncoding.valueOf("RLE"),

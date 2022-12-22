@@ -29,7 +29,6 @@ import org.apache.iotdb.db.metadata.MetadataConstant;
 import org.apache.iotdb.db.metadata.plan.schemaregion.impl.SchemaRegionPlanFactory;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.metadata.template.Template;
-import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -73,7 +72,7 @@ public class SchemaRegionManagementTest extends AbstractSchemaRegionTest {
       Map<String, String> tags = new HashMap<>();
       tags.put("tag-key", "tag-value");
       schemaRegion.createTimeseries(
-          new CreateTimeSeriesPlan(
+          SchemaRegionPlanFactory.getCreateTimeSeriesPlan(
               new PartialPath("root.sg.d1.s1"),
               TSDataType.INT32,
               TSEncoding.PLAIN,
@@ -166,7 +165,7 @@ public class SchemaRegionManagementTest extends AbstractSchemaRegionTest {
       for (int i = 0; i < 1000; i++) {
         for (int j = 0; j < 1000; j++) {
           schemaRegion.createTimeseries(
-              new CreateTimeSeriesPlan(
+              SchemaRegionPlanFactory.getCreateTimeSeriesPlan(
                   new PartialPath("root.sg.d" + i + ".s" + j),
                   TSDataType.INT32,
                   TSEncoding.PLAIN,
