@@ -25,7 +25,7 @@ public interface IClientPoolFactory<K, V> {
 
   /**
    * We can implement this interface in other modules and then set the corresponding expected
-   * parameters and client factory classes
+   * parameters and client factory classes.
    */
   KeyedObjectPool<K, V> createClientPool(ClientManager<K, V> manager);
 }

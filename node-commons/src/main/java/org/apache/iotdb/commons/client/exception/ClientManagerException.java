@@ -20,7 +20,6 @@
 package org.apache.iotdb.commons.client.exception;
 
 public class ClientManagerException extends Exception {
-
   public ClientManagerException(Exception exception) {
     super(exception);
   }
