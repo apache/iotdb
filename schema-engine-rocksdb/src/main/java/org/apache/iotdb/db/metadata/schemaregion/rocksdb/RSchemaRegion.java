@@ -1173,7 +1173,7 @@ public class RSchemaRegion implements ISchemaRegion {
     return allResult;
   }
 
-  private IMeasurementMNode getMeasurementMNode(PartialPath fullPath) throws MetadataException {
+  IMeasurementMNode getMeasurementMNode(PartialPath fullPath) throws MetadataException {
     String[] nodes = fullPath.getNodes();
     String key = RSchemaUtils.getLevelPath(nodes, nodes.length - 1);
     IMeasurementMNode node = null;

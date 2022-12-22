@@ -18,26 +18,20 @@
  */
 package org.apache.iotdb.db.metadata.schemaregion.rocksdb;
 
+import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.file.SystemFileFactory;
+import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.MetadataConstant;
-import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.utils.FileUtils;
 
-import org.apache.commons.lang3.ArrayUtils;
-import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 
 import static org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaReadWriteHandler.ROCKSDB_PATH;
@@ -67,7 +61,7 @@ public class RocksDBBenchmarkEngine {
   }
 
 //  @Test
-//  public void startTest() {
+  public void startTest() {
 //    RocksDBTestUtils.printMemInfo("Benchmark rocksdb start");
 //    try {
 //      prepareBenchmark();
@@ -83,7 +77,7 @@ public class RocksDBBenchmarkEngine {
 //    } catch (IOException | MetadataException e) {
 //      logger.error("Error happened when run benchmark", e);
 //    }
-//  }
+  }
 
   public void prepareBenchmark() throws IOException {
     long time = System.currentTimeMillis();

@@ -20,13 +20,13 @@ package org.apache.iotdb.db.metadata.schemaregion.rocksdb;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.mnode.InternalMNode;
 import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
-import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -40,6 +40,7 @@ import org.junit.Test;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -56,7 +57,7 @@ public class MRocksDBUnitTest {
     MNode root = new InternalMNode(null, IoTDBConstant.PATH_ROOT);
     IStorageGroupMNode storageGroupMNode = new StorageGroupMNode(root, "test", -1);
     rSchemaRegion =
-        new RSchemaRegion(storageGroup, schemaRegionId, storageGroupMNode, new RSchemaConfLoader());
+        new RSchemaRegion(storageGroup, schemaRegionId, new RSchemaConfLoader());
   }
 
   @Test
@@ -137,8 +138,8 @@ public class MRocksDBUnitTest {
 
     // test all timeseries number
     Assert.assertEquals(
-        1, rSchemaRegion.getAllTimeseriesCount(new PartialPath("root.tt.sg.dd.m1"), false));
-    Assert.assertEquals(2, rSchemaRegion.getAllTimeseriesCount(new PartialPath("root.**"), false));
+        1, rSchemaRegion.getAllTimeseriesCount(new PartialPath("root.tt.sg.dd.m1"), Collections.emptyMap(),false));
+    Assert.assertEquals(2, rSchemaRegion.getAllTimeseriesCount(new PartialPath("root.**"), Collections.emptyMap(), false));
 
     // test device number
     Assert.assertEquals(
@@ -152,7 +153,7 @@ public class MRocksDBUnitTest {
 
     // test nodes count in given level
     Assert.assertEquals(
-        2, rSchemaRegion.getNodesCountInGivenLevel(new PartialPath("root.tt.sg"), 3, false));
+        2, rSchemaRegion.getNodesListInGivenLevel(new PartialPath("root.tt.sg"), 3, false).size());
   }
 
   @Test
@@ -195,22 +196,22 @@ public class MRocksDBUnitTest {
     }
 
     Assert.assertEquals(
-        rSchemaRegion.getAllTimeseriesCount(new PartialPath("root.**"), false), timeseries.size());
+        rSchemaRegion.getAllTimeseriesCount(new PartialPath("root.**"), Collections.emptyMap(), false), timeseries.size());
 
     int count = timeseries.size();
-    rSchemaRegion.deleteTimeseries(new PartialPath("root.sg.d1.*"));
+    rSchemaRegion.deleteTimeseries(new PartialPath("root.sg.d1.*"), false);
     Assert.assertEquals(
-        rSchemaRegion.getAllTimeseriesCount(new PartialPath("root.**"), false), count - 2);
+        rSchemaRegion.getAllTimeseriesCount(new PartialPath("root.**"), Collections.emptyMap(), false), count - 2);
 
     count = count - 2;
-    rSchemaRegion.deleteTimeseries(new PartialPath("root.sg1.**"));
+    rSchemaRegion.deleteTimeseries(new PartialPath("root.sg1.**"), false);
     Assert.assertEquals(
-        rSchemaRegion.getAllTimeseriesCount(new PartialPath("root.**"), false), count - 4);
+        rSchemaRegion.getAllTimeseriesCount(new PartialPath("root.**"), Collections.emptyMap(), false), count - 4);
 
     count = count - 4;
-    rSchemaRegion.deleteTimeseries(new PartialPath("root.sg.*.m1"));
+    rSchemaRegion.deleteTimeseries(new PartialPath("root.sg.*.m1"), false);
     Assert.assertEquals(
-        rSchemaRegion.getAllTimeseriesCount(new PartialPath("root.**"), false), count - 2);
+        rSchemaRegion.getAllTimeseriesCount(new PartialPath("root.**"), Collections.emptyMap(), false), count - 2);
 
     rSchemaRegion.printScanAllKeys();
   }
@@ -224,7 +225,7 @@ public class MRocksDBUnitTest {
     IMeasurementMNode m1 = rSchemaRegion.getMeasurementMNode(new PartialPath("root.tt.sg.dd.m2"));
     Assert.assertEquals(m1.getAlias(), "ma");
 
-    rSchemaRegion.changeAlias(new PartialPath("root.tt.sg.dd.m2"), "test");
+    rSchemaRegion.upsertAliasAndTagsAndAttributes("test", null, null, new PartialPath("root.tt.sg.dd.m2"));
 
     IMeasurementMNode m2 = rSchemaRegion.getMeasurementMNode(new PartialPath("root.tt.sg.dd.m2"));
     Assert.assertEquals(m2.getAlias(), "test");
@@ -248,14 +249,14 @@ public class MRocksDBUnitTest {
     rSchemaRegion.createTimeseries(
         path4, TSDataType.DOUBLE, TSEncoding.PLAIN, CompressionType.GZIP, null, null);
 
-    Map<PartialPath, Integer> result =
+    Map<PartialPath, Long> result =
         rSchemaRegion.getMeasurementCountGroupByLevel(new PartialPath("root.**"), 3, false);
-    Assert.assertEquals(3, (int) result.get(new PartialPath("root.test.sg.dd")));
-    Assert.assertEquals(1, (int) result.get(new PartialPath("root.test.sg.m4")));
+    Assert.assertEquals(3, (long) result.get(new PartialPath("root.test.sg.dd")));
+    Assert.assertEquals(1, (long) result.get(new PartialPath("root.test.sg.m4")));
 
     result =
         rSchemaRegion.getMeasurementCountGroupByLevel(new PartialPath("root.test.**"), 2, false);
-    Assert.assertEquals(4, (int) result.get(new PartialPath("root.test.sg")));
+    Assert.assertEquals(4, (long) result.get(new PartialPath("root.test.sg")));
   }
 
   @After
