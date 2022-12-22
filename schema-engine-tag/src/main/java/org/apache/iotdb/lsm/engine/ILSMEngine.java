@@ -19,9 +19,10 @@
 package org.apache.iotdb.lsm.engine;
 
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.response.QueryResponse;
 import org.apache.iotdb.lsm.request.IDeletionRequest;
 import org.apache.iotdb.lsm.request.IInsertionRequest;
-import org.apache.iotdb.lsm.request.IQueryRequest;
+import org.apache.iotdb.lsm.request.QueryRequest;
 import org.apache.iotdb.lsm.response.BaseResponse;
 
 import java.io.IOException;
@@ -48,7 +49,7 @@ public interface ILSMEngine extends IRecoverable {
    * @param <K> The type of key in the request data
    * @param <R> type of response
    */
-  <K, R extends BaseResponse> R query(IQueryRequest<K> queryRequest);
+  <K, R extends QueryResponse> R query(QueryRequest<K> queryRequest);
 
   /**
    * Use this ILSMEngine to delete data

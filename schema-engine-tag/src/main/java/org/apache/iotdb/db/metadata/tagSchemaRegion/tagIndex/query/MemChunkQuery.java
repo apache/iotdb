@@ -19,11 +19,11 @@
 package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.query;
 
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemChunk;
-import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.request.QueryRequest;
+import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.request.SingleQueryRequest;
+import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.response.QueryResponse;
 import org.apache.iotdb.lsm.annotation.QueryProcessor;
 import org.apache.iotdb.lsm.context.requestcontext.QueryRequestContext;
 import org.apache.iotdb.lsm.levelProcess.QueryLevelProcessor;
-import org.apache.iotdb.lsm.response.BaseResponse;
 
 import org.roaringbitmap.RoaringBitmap;
 
@@ -31,7 +31,7 @@ import java.util.List;
 
 /** query for MemChunk */
 @QueryProcessor(level = 3)
-public class MemChunkQuery extends QueryLevelProcessor<MemChunk, Object, QueryRequest> {
+public class MemChunkQuery extends QueryLevelProcessor<MemChunk, Object, SingleQueryRequest> {
 
   /**
    * MemChunk is the last layer of memory nodes, no children
@@ -42,7 +42,7 @@ public class MemChunkQuery extends QueryLevelProcessor<MemChunk, Object, QueryRe
    */
   @Override
   public List<Object> getChildren(
-      MemChunk memNode, QueryRequest queryRequest, QueryRequestContext context) {
+      MemChunk memNode, SingleQueryRequest queryRequest, QueryRequestContext context) {
     return null;
   }
 
@@ -53,10 +53,11 @@ public class MemChunkQuery extends QueryLevelProcessor<MemChunk, Object, QueryRe
    * @param context query request context
    */
   @Override
-  public void query(MemChunk memNode, QueryRequest queryRequest, QueryRequestContext context) {
-    BaseResponse<RoaringBitmap> response = context.getResponse();
+  public void query(
+      MemChunk memNode, SingleQueryRequest queryRequest, QueryRequestContext context) {
+    QueryResponse response = context.getResponse();
     if (response == null) {
-      response = new BaseResponse<RoaringBitmap>();
+      response = new QueryResponse();
       context.setResponse(response);
     }
     RoaringBitmap roaringBitmap = context.getValue();

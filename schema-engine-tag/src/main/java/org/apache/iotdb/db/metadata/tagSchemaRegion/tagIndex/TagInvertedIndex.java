@@ -24,12 +24,13 @@ import org.apache.iotdb.db.metadata.tagSchemaRegion.config.TagSchemaDescriptor;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemTableGroup;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.request.DeletionRequest;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.request.InsertionRequest;
-import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.request.QueryRequest;
+import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.request.SingleQueryRequest;
+import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.response.QueryResponse;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.wal.WALEntry;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.wal.WALManager;
 import org.apache.iotdb.lsm.engine.LSMEngine;
 import org.apache.iotdb.lsm.engine.LSMEngineBuilder;
-import org.apache.iotdb.lsm.response.BaseResponse;
+import org.apache.iotdb.lsm.request.QueryRequest;
 
 import org.roaringbitmap.RoaringBitmap;
 import org.slf4j.Logger;
@@ -89,13 +90,13 @@ public class TagInvertedIndex implements ITagInvertedIndex {
       // build lsm engine
       lsmEngine =
           new LSMEngineBuilder<MemTableGroup>()
+              .buildRootMemNode(memTableGroup)
               .buildLSMManagers(
                   "org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex",
                   walManager,
                   memTableGroup,
                   schemaDirPath + File.separator + FLUSH_DIR_PATH,
                   FLUSH_FILE_PREFIX)
-              .buildRootMemNode(memTableGroup)
               .build();
 
       // recover the lsm engine
@@ -144,17 +145,12 @@ public class TagInvertedIndex implements ITagInvertedIndex {
    */
   @Override
   public synchronized List<Integer> getMatchedIDs(Map<String, String> tags) {
-    RoaringBitmap roaringBitmap = new RoaringBitmap();
-    int i = 0;
-    for (Map.Entry<String, String> tag : tags.entrySet()) {
-      RoaringBitmap rb = getMatchedIDs(tag.getKey(), tag.getValue());
-      if (rb == null) continue;
-      else {
-        if (i == 0) roaringBitmap = rb;
-        else roaringBitmap = RoaringBitmap.and(roaringBitmap, rb);
-        i++;
-      }
+    QueryRequest<String> queryRequest = generateQueryRequest(tags);
+    QueryResponse queryResponse = lsmEngine.query(queryRequest);
+    if (queryResponse == null) {
+      return new ArrayList<>();
     }
+    RoaringBitmap roaringBitmap = queryResponse.getValue();
     return Arrays.stream(roaringBitmap.toArray()).boxed().collect(Collectors.toList());
   }
 
@@ -172,17 +168,14 @@ public class TagInvertedIndex implements ITagInvertedIndex {
     return keys;
   }
 
-  /**
-   * Get ids matching the tag
-   *
-   * @param tagKey tag key
-   * @param tagValue tag value
-   * @return roaring bitmap
-   */
-  private RoaringBitmap getMatchedIDs(String tagKey, String tagValue) {
-    QueryRequest queryRequest = new QueryRequest(generateKeys(tagKey, tagValue));
-    BaseResponse<RoaringBitmap> response = lsmEngine.query(queryRequest);
-    return response.getValue();
+  private QueryRequest<String> generateQueryRequest(Map<String, String> tags) {
+    QueryRequest<String> queryRequest = new QueryRequest<>();
+    for (Map.Entry<String, String> entry : tags.entrySet()) {
+      SingleQueryRequest singleQueryRequest =
+          new SingleQueryRequest(generateKeys(entry.getKey(), entry.getValue()));
+      queryRequest.add(singleQueryRequest);
+    }
+    return queryRequest;
   }
 
   /**

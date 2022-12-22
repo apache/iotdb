@@ -16,18 +16,11 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.lsm.request;
+package org.apache.iotdb.lsm.response;
 
-/** Represents a query request that can be processed by the lsm framework */
-public interface IQueryRequest<K> extends IRequest<K, Object> {
+public interface IQueryResponse<T> extends IResponse<T> {
 
-  @Override
-  default Object getValue() {
-    return null;
-  }
+  void or(IQueryResponse<T> queryResponse);
 
-  @Override
-  default RequestType getRequestType() {
-    return RequestType.QUERY;
-  }
+  void and(IQueryResponse<T> queryResponse);
 }

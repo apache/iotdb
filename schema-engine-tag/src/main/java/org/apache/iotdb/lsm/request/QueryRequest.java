@@ -16,31 +16,27 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.request;
+package org.apache.iotdb.lsm.request;
 
-import org.apache.iotdb.lsm.context.requestcontext.RequestContext;
-import org.apache.iotdb.lsm.request.IQueryRequest;
-
+import java.util.ArrayList;
 import java.util.List;
 
-/** Represents a query request */
-public class QueryRequest implements IQueryRequest<String> {
+public class QueryRequest<K> {
+  List<ISingleQueryRequest<K>> singleQueryRequests;
 
-  // tags
-  List<String> keys;
-
-  public QueryRequest(List<String> keys) {
-    super();
-    this.keys = keys;
+  public QueryRequest() {
+    singleQueryRequests = new ArrayList<>();
   }
 
-  @Override
-  public String getKey(RequestContext context) {
-    return keys.get(context.getLevel() - 1);
+  public List<ISingleQueryRequest<K>> getSingleQueryRequests() {
+    return singleQueryRequests;
   }
 
-  @Override
-  public List<String> getKeys() {
-    return keys;
+  public void setSingleQueryRequests(List<ISingleQueryRequest<K>> singleQueryRequests) {
+    this.singleQueryRequests = singleQueryRequests;
+  }
+
+  public void add(ISingleQueryRequest<K> singleQueryRequest) {
+    singleQueryRequests.add(singleQueryRequest);
   }
 }

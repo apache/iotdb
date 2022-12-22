@@ -20,7 +20,7 @@ package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.query;
 
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemChunkGroup;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemTable;
-import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.request.QueryRequest;
+import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.request.SingleQueryRequest;
 import org.apache.iotdb.lsm.annotation.QueryProcessor;
 import org.apache.iotdb.lsm.context.requestcontext.QueryRequestContext;
 import org.apache.iotdb.lsm.levelProcess.QueryLevelProcessor;
@@ -34,7 +34,8 @@ import java.util.Set;
 
 /** query for MemTable */
 @QueryProcessor(level = 1)
-public class MemTableQuery extends QueryLevelProcessor<MemTable, MemChunkGroup, QueryRequest> {
+public class MemTableQuery
+    extends QueryLevelProcessor<MemTable, MemChunkGroup, SingleQueryRequest> {
 
   /**
    * get all MemChunkGroups that need to be processed in the current MemTable
@@ -45,7 +46,7 @@ public class MemTableQuery extends QueryLevelProcessor<MemTable, MemChunkGroup, 
    */
   @Override
   public List<MemChunkGroup> getChildren(
-      MemTable memNode, QueryRequest queryRequest, QueryRequestContext context) {
+      MemTable memNode, SingleQueryRequest queryRequest, QueryRequestContext context) {
     List<MemChunkGroup> memChunkGroups = new ArrayList<>();
     String tagKey = queryRequest.getKey(context);
     MemChunkGroup child = memNode.get(tagKey);
@@ -60,7 +61,8 @@ public class MemTableQuery extends QueryLevelProcessor<MemTable, MemChunkGroup, 
    * @param context query request context
    */
   @Override
-  public void query(MemTable memNode, QueryRequest queryRequest, QueryRequestContext context) {
+  public void query(
+      MemTable memNode, SingleQueryRequest queryRequest, QueryRequestContext context) {
     // if the memTable is immutable, we need to delete the id in deletionList in the query result
     if (memNode.isImmutable()) {
       RoaringBitmap roaringBitmap =

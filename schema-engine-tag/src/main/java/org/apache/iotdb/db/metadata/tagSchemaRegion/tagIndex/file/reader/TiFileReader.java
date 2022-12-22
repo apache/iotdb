@@ -22,11 +22,13 @@ import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.entry.ChunkInd
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.entry.ChunkIndexEntry;
 import org.apache.iotdb.lsm.sstable.bplustree.entry.BPlusTreeEntry;
 import org.apache.iotdb.lsm.sstable.bplustree.reader.BPlusTreeReader;
+import org.apache.iotdb.lsm.sstable.fileIO.FileInput;
 import org.apache.iotdb.lsm.sstable.fileIO.IFileInput;
 import org.apache.iotdb.lsm.sstable.interator.IDiskIterator;
 
 import org.roaringbitmap.RoaringBitmap;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -39,7 +41,7 @@ import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.TreeMap;
 
-public class DiskDeviceIDReader implements IDiskIterator<Integer> {
+public class TiFileReader implements IDiskIterator<Integer> {
 
   private final IFileInput tiFileInput;
 
@@ -55,8 +57,13 @@ public class DiskDeviceIDReader implements IDiskIterator<Integer> {
 
   private Map<String, String> tags;
 
-  public DiskDeviceIDReader(
-      IFileInput tiFileInput, long tagKeyIndexOffset, Map<String, String> tags) throws IOException {
+  public TiFileReader(File file, Map<String, String> tags) throws IOException {
+    this.tiFileInput = new FileInput(file);
+    this.tags = tags;
+  }
+
+  public TiFileReader(IFileInput tiFileInput, long tagKeyIndexOffset, Map<String, String> tags)
+      throws IOException {
     this.tiFileInput = tiFileInput;
     tiFileInput.position(tagKeyIndexOffset);
     this.tagKeyIndexOffset = tagKeyIndexOffset;

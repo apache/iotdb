@@ -18,46 +18,17 @@
  */
 package org.apache.iotdb.lsm.response;
 
-import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Indicates the response after the lsm framework processes the request, encapsulating the response
- * value and exception information.
- *
- * @param <T> type of the response result
- */
-public class BaseResponse<T> implements IResponse<T> {
+public interface IResponse<T> {
 
-  // response value
-  T value;
+  void setValue(T value);
 
-  // If an exception needs to be thrown during the processing of the request, this variable can be
-  // used to accept the exception
-  private List<Exception> exceptions;
+  T getValue();
 
-  public BaseResponse() {}
+  List<Exception> getExceptions();
 
-  public BaseResponse(T value) {
-    this.value = value;
-    exceptions = new ArrayList<>();
-  }
-
-  public void setValue(T value) {
-    this.value = value;
-  };
-
-  public T getValue() {
-    return value;
-  }
-
-  public List<Exception> getExceptions() {
-    return exceptions;
-  }
-
-  public void setExceptions(List<Exception> exceptions) {
-    this.exceptions = exceptions;
-  }
+  void setExceptions(List<Exception> exceptions);
 
   /**
    * If an exception needs to be thrown during the processing of the request, this method can be
@@ -65,10 +36,5 @@ public class BaseResponse<T> implements IResponse<T> {
    *
    * @param e Exception
    */
-  public void addException(Exception e) {
-    if (exceptions == null) {
-      exceptions = new ArrayList<>();
-    }
-    exceptions.add(e);
-  }
+  void addException(Exception e);
 }

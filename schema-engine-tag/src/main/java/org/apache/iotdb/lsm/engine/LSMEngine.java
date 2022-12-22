@@ -19,10 +19,10 @@
 package org.apache.iotdb.lsm.engine;
 
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.response.QueryResponse;
 import org.apache.iotdb.lsm.context.requestcontext.DeleteRequestContext;
 import org.apache.iotdb.lsm.context.requestcontext.FlushRequestContext;
 import org.apache.iotdb.lsm.context.requestcontext.InsertRequestContext;
-import org.apache.iotdb.lsm.context.requestcontext.QueryRequestContext;
 import org.apache.iotdb.lsm.manager.DeletionManager;
 import org.apache.iotdb.lsm.manager.FlushManager;
 import org.apache.iotdb.lsm.manager.IMemManager;
@@ -33,8 +33,9 @@ import org.apache.iotdb.lsm.manager.WALManager;
 import org.apache.iotdb.lsm.request.IDeletionRequest;
 import org.apache.iotdb.lsm.request.IFlushRequest;
 import org.apache.iotdb.lsm.request.IInsertionRequest;
-import org.apache.iotdb.lsm.request.IQueryRequest;
 import org.apache.iotdb.lsm.request.IRequest;
+import org.apache.iotdb.lsm.request.ISingleQueryRequest;
+import org.apache.iotdb.lsm.request.QueryRequest;
 import org.apache.iotdb.lsm.response.BaseResponse;
 
 import java.io.IOException;
@@ -53,7 +54,7 @@ public class LSMEngine<T extends IMemManager> implements ILSMEngine {
   private DeletionManager<T, IDeletionRequest> deletionManager;
 
   // Use the framework's default QueryManager object to handle query requests
-  private QueryManager<T, IQueryRequest> queryManager;
+  private QueryManager<T> queryManager;
 
   // Use the framework's default FlushManager object to handle flush
   private FlushManager<T, IFlushRequest> flushManager;
@@ -92,10 +93,8 @@ public class LSMEngine<T extends IMemManager> implements ILSMEngine {
    * @param <R> type of response
    */
   @Override
-  public <K, R extends BaseResponse> R query(IQueryRequest<K> queryRequest) {
-    QueryRequestContext queryRequestContext = new QueryRequestContext();
-    queryManager.process(rootMemNode, queryRequest, queryRequestContext);
-    return queryRequestContext.getResponse();
+  public <K, R extends QueryResponse> R query(QueryRequest<K> queryRequest) {
+    return queryManager.process(queryRequest);
   }
 
   /**
@@ -161,8 +160,8 @@ public class LSMEngine<T extends IMemManager> implements ILSMEngine {
     this.deletionManager = (DeletionManager<T, IDeletionRequest>) deletionManager;
   }
 
-  protected <R extends IQueryRequest> void setQueryManager(QueryManager<T, R> queryManager) {
-    this.queryManager = (QueryManager<T, IQueryRequest>) queryManager;
+  protected <R extends ISingleQueryRequest> void setQueryManager(QueryManager<T> queryManager) {
+    this.queryManager = queryManager;
   }
 
   protected <R extends IFlushRequest, C extends FlushRequestContext> void setFlushManager(
@@ -184,5 +183,9 @@ public class LSMEngine<T extends IMemManager> implements ILSMEngine {
 
   protected void setRootMemNode(T rootMemNode) {
     this.rootMemNode = rootMemNode;
+  }
+
+  protected T getRootMemNode() {
+    return rootMemNode;
   }
 }
