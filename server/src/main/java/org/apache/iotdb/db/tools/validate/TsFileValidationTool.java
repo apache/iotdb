@@ -130,7 +130,7 @@ public class TsFileValidationTool {
           continue;
         }
         if (printDetails) {
-          printBoth("- Check files in storage group: " + sgDir.getAbsolutePath());
+          printBoth("- Check files in database: " + sgDir.getAbsolutePath());
         }
         // get data region dirs
         File[] dataRegionDirs = sgDir.listFiles();
@@ -165,7 +165,7 @@ public class TsFileValidationTool {
             findUncorrectFiles(tsFiles);
           }
           // clear map
-          clearMap();
+          clearMap(false);
         }
       }
     }
@@ -565,7 +565,10 @@ public class TsFileValidationTool {
     }
   }
 
-  public static void clearMap() {
+  public static void clearMap(boolean resetBadFileNum) {
+    if (resetBadFileNum) {
+      badFileNum = 0;
+    }
     measurementLastTime.clear();
     deviceEndTime.clear();
     isBadFileMap.clear();

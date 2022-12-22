@@ -99,7 +99,7 @@ class Session(object):
         self.__statement_id = None
         self.__zone_id = zone_id
 
-    def open(self, enable_rpc_compression):
+    def open(self, enable_rpc_compression=False):
         if not self.__is_close:
             return
         self.__transport = TTransport.TFramedTransport(
@@ -173,32 +173,32 @@ class Session(object):
 
     def set_storage_group(self, group_name):
         """
-        set one storage group
-        :param group_name: String, storage group name (starts from root)
+        create one database
+        :param group_name: String, database name (starts from root)
         """
         status = self.__client.setStorageGroup(self.__session_id, group_name)
         logger.debug(
-            "setting storage group {} message: {}".format(group_name, status.message)
+            "setting database {} message: {}".format(group_name, status.message)
         )
 
         return Session.verify_success(status)
 
     def delete_storage_group(self, storage_group):
         """
-        delete one storage group.
-        :param storage_group: String, path of the target storage group.
+        delete one database.
+        :param storage_group: String, path of the target database.
         """
         groups = [storage_group]
         return self.delete_storage_groups(groups)
 
     def delete_storage_groups(self, storage_group_lst):
         """
-        delete multiple storage groups.
-        :param storage_group_lst: List, paths of the target storage groups.
+        delete multiple databases.
+        :param storage_group_lst: List, paths of the target databases.
         """
         status = self.__client.deleteStorageGroups(self.__session_id, storage_group_lst)
         logger.debug(
-            "delete storage group(s) {} message: {}".format(
+            "delete database(s) {} message: {}".format(
                 storage_group_lst, status.message
             )
         )
@@ -351,13 +351,29 @@ class Session(object):
         data_set.close_operation_handle()
         return result
 
-    def delete_data(self, paths_list, timestamp):
+    def delete_data(self, paths_list, end_time):
         """
-        delete all data <= time in multiple time series
+        delete all data <= end_time in multiple time series
         :param paths_list: time series list that the data in.
-        :param timestamp: data with time stamp less than or equal to time will be deleted.
+        :param end_time: data with time stamp less than or equal to time will be deleted.
         """
-        request = TSDeleteDataReq(self.__session_id, paths_list, timestamp)
+        request = TSDeleteDataReq(self.__session_id, paths_list, -9223372036854775808, end_time)
+        try:
+            status = self.__client.deleteData(request)
+            logger.debug(
+                "delete data from {}, message: {}".format(paths_list, status.message)
+            )
+        except TTransport.TException as e:
+            logger.exception("data deletion fails because: ", e)
+
+    def delete_data_in_range(self, paths_list, start_time, end_time):
+        """
+        delete data >= start_time and data <= end_time in multiple timeseries
+        :param paths_list: time series list that the data in.
+        :param start_time: delete range start time.
+        :param end_time: delete range end time.
+        """
+        request = TSDeleteDataReq(self.__session_id, paths_list, start_time, end_time)
         try:
             status = self.__client.deleteData(request)
             logger.debug(

@@ -24,6 +24,7 @@ import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -48,7 +49,7 @@ public class IoTDBAlignedDataDeletionIT {
 
   private static String[] creationSqls =
       new String[] {
-        "SET STORAGE GROUP TO root.vehicle",
+        "CREATE DATABASE root.vehicle",
         "CREATE ALIGNED TIMESERIES root.vehicle.d0(s0 INT32 ENCODING=RLE, s1 INT64 ENCODING=RLE, s2 FLOAT ENCODING=RLE, s3 TEXT ENCODING=PLAIN, s4 BOOLEAN ENCODING=PLAIN)",
       };
 
@@ -93,7 +94,8 @@ public class IoTDBAlignedDataDeletionIT {
       statement.execute("insert into root.vehicle.d0(time,s4) aligned values (10,true)");
 
       String errorMsg =
-          "416: For delete statement, where clause can only"
+          TSStatusCode.SEMANTIC_ERROR.getStatusCode()
+              + ": For delete statement, where clause can only"
               + " contain time expressions, value filter is not currently supported.";
 
       try {
@@ -188,7 +190,7 @@ public class IoTDBAlignedDataDeletionIT {
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      //      statement.execute("merge");
+      statement.execute("merge");
       statement.execute("DELETE FROM root.vehicle.d0.** WHERE time <= 15000");
 
       // before merge completes
@@ -215,7 +217,7 @@ public class IoTDBAlignedDataDeletionIT {
   public void testDelAfterFlush() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("SET STORAGE GROUP TO root.ln.wf01.wt01");
+      statement.execute("CREATE DATABASE root.ln.wf01.wt01");
       statement.execute(
           "CREATE TIMESERIES root.ln.wf01.wt01.status WITH DATATYPE=BOOLEAN," + " ENCODING=PLAIN");
       statement.execute(
@@ -316,11 +318,11 @@ public class IoTDBAlignedDataDeletionIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
-      // todo improve to executeBatch
       for (int i = 1; i <= 10000; i++) {
-        statement.execute(
+        statement.addBatch(
             String.format(insertTemplate, i, i, i, (double) i, "'" + i + "'", i % 2 == 0));
       }
+      statement.executeBatch();
       statement.execute("DELETE FROM root.vehicle.d0.s0 WHERE time > 1500 and time <= 9000");
       try (ResultSet set = statement.executeQuery("SELECT s0 FROM root.vehicle.d0")) {
         int cnt = 0;
@@ -338,18 +340,18 @@ public class IoTDBAlignedDataDeletionIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
-      // todo improve to executeBatch
       for (int i = 1; i <= 1000; i++) {
-        statement.execute(
+        statement.addBatch(
             String.format(insertTemplate, i, i, i, (double) i, "'" + i + "'", i % 2 == 0));
       }
+      statement.executeBatch();
       statement.execute("DELETE FROM root.vehicle.d0.s0 WHERE time > 150 and time <= 300");
       statement.execute("DELETE FROM root.vehicle.d0.s0 WHERE time > 300 and time <= 400");
-      // todo improve to executeBatch
       for (int i = 1001; i <= 2000; i++) {
-        statement.execute(
+        statement.addBatch(
             String.format(insertTemplate, i, i, i, (double) i, "'" + i + "'", i % 2 == 0));
       }
+      statement.executeBatch();
       statement.execute("DELETE FROM root.vehicle.d0.s0 WHERE time > 500 and time <= 800");
       statement.execute("DELETE FROM root.vehicle.d0.s0 WHERE time > 900 and time <= 1100");
       statement.execute("DELETE FROM root.vehicle.d0.s0 WHERE time > 1500 and time <= 1650");
@@ -490,15 +492,13 @@ public class IoTDBAlignedDataDeletionIT {
         statement.execute(
             String.format(insertTemplate, i, i, i, (double) i, "'" + i + "'", i % 2 == 0));
       }
-      // TODO: merge
-      // statement.execute("merge");
+      statement.execute("merge");
       // prepare Unseq-File
       for (int i = 1; i <= 100; i++) {
         statement.execute(
             String.format(insertTemplate, i, i, i, (double) i, "'" + i + "'", i % 2 == 0));
       }
-      // TODO: merge
-      // statement.execute("merge");
+      statement.execute("merge");
       // prepare BufferWrite cache
       for (int i = 301; i <= 400; i++) {
         statement.execute(
@@ -524,17 +524,17 @@ public class IoTDBAlignedDataDeletionIT {
         Statement statement = connection.createStatement()) {
 
       // prepare BufferWrite data
-      // todo improve to executeBatch
       for (int i = 10001; i <= 20000; i++) {
-        statement.execute(
+        statement.addBatch(
             String.format(insertTemplate, i, i, i, (double) i, "'" + i + "'", i % 2 == 0));
       }
+      statement.executeBatch();
       // prepare Overflow data
-      // todo improve to executeBatch
       for (int i = 1; i <= 10000; i++) {
-        statement.execute(
+        statement.addBatch(
             String.format(insertTemplate, i, i, i, (double) i, "'" + i + "'", i % 2 == 0));
       }
+      statement.executeBatch();
     }
   }
 }

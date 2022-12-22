@@ -21,11 +21,13 @@ package org.apache.iotdb.db.auth;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.AuthException;
+import org.apache.iotdb.commons.auth.authorizer.BasicAuthorizer;
+import org.apache.iotdb.commons.auth.authorizer.IAuthorizer;
 import org.apache.iotdb.commons.auth.entity.PathPrivilege;
 import org.apache.iotdb.commons.auth.entity.Role;
 import org.apache.iotdb.commons.auth.entity.User;
 import org.apache.iotdb.commons.client.IClientManager;
-import org.apache.iotdb.commons.consensus.PartitionRegionId;
+import org.apache.iotdb.commons.consensus.ConfigNodeRegionId;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.AuthUtils;
@@ -38,8 +40,8 @@ import org.apache.iotdb.db.client.ConfigNodeClient;
 import org.apache.iotdb.db.client.ConfigNodeInfo;
 import org.apache.iotdb.db.client.DataNodeClientPoolFactory;
 import org.apache.iotdb.db.mpp.plan.execution.config.ConfigTaskResult;
+import org.apache.iotdb.db.mpp.plan.statement.AuthorType;
 import org.apache.iotdb.db.mpp.plan.statement.sys.AuthorStatement;
-import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -61,14 +63,20 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
   private static final Logger logger = LoggerFactory.getLogger(ClusterAuthorityFetcher.class);
 
   private IAuthorCache iAuthorCache;
+  private IAuthorizer authorizer;
 
-  private static final IClientManager<PartitionRegionId, ConfigNodeClient>
+  private static final IClientManager<ConfigNodeRegionId, ConfigNodeClient>
       CONFIG_NODE_CLIENT_MANAGER =
-          new IClientManager.Factory<PartitionRegionId, ConfigNodeClient>()
+          new IClientManager.Factory<ConfigNodeRegionId, ConfigNodeClient>()
               .createClientManager(new DataNodeClientPoolFactory.ConfigNodeClientPoolFactory());
 
   public ClusterAuthorityFetcher(IAuthorCache iAuthorCache) {
     this.iAuthorCache = iAuthorCache;
+    try {
+      authorizer = BasicAuthorizer.getInstance();
+    } catch (AuthException e) {
+      logger.error("get user or role permissionInfo failed because ", e);
+    }
   }
 
   @Override
@@ -77,27 +85,29 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
     if (user != null) {
       for (String path : allPath) {
         try {
-          if (!user.checkPrivilege(path, permission)) {
-            if (user.getRoleList().isEmpty()) {
-              return RpcUtils.getStatus(TSStatusCode.NO_PERMISSION_ERROR);
-            }
-            boolean status = false;
-            for (String roleName : user.getRoleList()) {
-              Role role = iAuthorCache.getRoleCache(roleName);
-              // It is detected that the role of the user does not exist in the cache, indicating
-              // that the permission information of the role has changed.
-              // The user cache needs to be initialized
-              if (role == null) {
-                iAuthorCache.invalidateCache(username, "");
-                return checkPath(username, allPath, permission);
+          if (!user.isOpenIdUser() || !authorizer.checkUserPrivileges(username, path, permission)) {
+            if (!user.checkPrivilege(path, permission)) {
+              if (user.getRoleList().isEmpty()) {
+                return RpcUtils.getStatus(TSStatusCode.NO_PERMISSION);
               }
-              status = role.checkPrivilege(path, permission);
-              if (status) {
-                break;
+              boolean status = false;
+              for (String roleName : user.getRoleList()) {
+                Role role = iAuthorCache.getRoleCache(roleName);
+                // It is detected that the role of the user does not exist in the cache, indicating
+                // that the permission information of the role has changed.
+                // The user cache needs to be initialized
+                if (role == null) {
+                  iAuthorCache.invalidateCache(username, "");
+                  return checkPath(username, allPath, permission);
+                }
+                status = role.checkPrivilege(path, permission);
+                if (status) {
+                  break;
+                }
               }
-            }
-            if (!status) {
-              return RpcUtils.getStatus(TSStatusCode.NO_PERMISSION_ERROR);
+              if (!status) {
+                return RpcUtils.getStatus(TSStatusCode.NO_PERMISSION);
+              }
             }
           }
         } catch (AuthException e) {
@@ -114,7 +124,7 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
   public SettableFuture<ConfigTaskResult> operatePermission(AuthorStatement authorStatement) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     try (ConfigNodeClient configNodeClient =
-        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.partitionRegionId)) {
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.configNodeRegionId)) {
       // Construct request using statement
       TAuthorizerReq authorizerReq = statementToAuthorizerReq(authorStatement);
       // Send request to some API server
@@ -123,9 +133,7 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
         logger.error(
             "Failed to execute {} in config node, status is {}.",
-            AuthorOperator.AuthorType.values()[authorizerReq.getAuthorType()]
-                .toString()
-                .toLowerCase(Locale.ROOT),
+            AuthorType.values()[authorizerReq.getAuthorType()].toString().toLowerCase(Locale.ROOT),
             tsStatus);
         future.setException(new IoTDBException(tsStatus.message, tsStatus.code));
       } else {
@@ -148,7 +156,7 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
     TAuthorizerResp authorizerResp = new TAuthorizerResp();
 
     try (ConfigNodeClient configNodeClient =
-        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.partitionRegionId)) {
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.configNodeRegionId)) {
       // Construct request using statement
       TAuthorizerReq authorizerReq = statementToAuthorizerReq(authorStatement);
       // Send request to some API server
@@ -157,9 +165,7 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != authorizerResp.getStatus().getCode()) {
         logger.error(
             "Failed to execute {} in config node, status is {}.",
-            AuthorOperator.AuthorType.values()[authorizerReq.getAuthorType()]
-                .toString()
-                .toLowerCase(Locale.ROOT),
+            AuthorType.values()[authorizerReq.getAuthorType()].toString().toLowerCase(Locale.ROOT),
             authorizerResp.getStatus());
         future.setException(
             new IoTDBException(
@@ -189,17 +195,18 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
   public TSStatus checkUser(String username, String password) {
     User user = iAuthorCache.getUserCache(username);
     if (user != null) {
-      if (password != null && AuthUtils.validatePassword(password, user.getPassword())) {
+      if (user.isOpenIdUser()) {
+        return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+      } else if (password != null && AuthUtils.validatePassword(password, user.getPassword())) {
         return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
       } else {
-        return RpcUtils.getStatus(
-            TSStatusCode.WRONG_LOGIN_PASSWORD_ERROR, "Authentication failed.");
+        return RpcUtils.getStatus(TSStatusCode.WRONG_LOGIN_PASSWORD, "Authentication failed.");
       }
     } else {
       TLoginReq req = new TLoginReq(username, password);
       TPermissionInfoResp status = null;
       try (ConfigNodeClient configNodeClient =
-          CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.partitionRegionId)) {
+          CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.configNodeRegionId)) {
         // Send request to some API server
         status = configNodeClient.login(req);
       } catch (TException | IOException e) {
@@ -226,7 +233,7 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
     TCheckUserPrivilegesReq req = new TCheckUserPrivilegesReq(username, allPath, permission);
     TPermissionInfoResp permissionInfoResp;
     try (ConfigNodeClient configNodeClient =
-        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.partitionRegionId)) {
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.configNodeRegionId)) {
       // Send request to some API server
       permissionInfoResp = configNodeClient.checkUserPrivileges(req);
     } catch (TException | IOException e) {
@@ -256,6 +263,7 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
       String privilege = privilegeList.get(++i);
       pathPrivilegeList.add(toPathPrivilege(path, privilege));
     }
+    user.setOpenIdUser(tPermissionInfoResp.getUserInfo().isIsOpenIdUser());
     user.setPrivilegeList(pathPrivilegeList);
     user.setRoleList(tPermissionInfoResp.getUserInfo().getRoleList());
     for (String roleName : tPermissionInfoResp.getRoleInfo().keySet()) {

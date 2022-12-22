@@ -38,20 +38,17 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 public class MultiTsFileDeviceIterator implements AutoCloseable {
-  // sorted from the newest to the oldest
   private final List<TsFileResource> tsFileResources;
-  private final Map<TsFileResource, TsFileSequenceReader> readerMap = new HashMap<>();
+  private Map<TsFileResource, TsFileSequenceReader> readerMap = new HashMap<>();
   private final Map<TsFileResource, TsFileDeviceIterator> deviceIteratorMap = new HashMap<>();
   private final Map<TsFileResource, List<Modification>> modificationCache = new HashMap<>();
   private Pair<String, Boolean> currentDevice = null;
@@ -59,6 +56,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
   /** Used for inner space compaction. */
   public MultiTsFileDeviceIterator(List<TsFileResource> tsFileResources) throws IOException {
     this.tsFileResources = new ArrayList<>(tsFileResources);
+    // sort the files from the oldest to the newest
     Collections.sort(this.tsFileResources, TsFileResource::compareFileName);
     try {
       for (TsFileResource tsFileResource : this.tsFileResources) {
@@ -76,15 +74,34 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
     }
   }
 
-  /** Used for cross space compaction. */
+  /** Used for cross space compaction with read point performer. */
   public MultiTsFileDeviceIterator(
       List<TsFileResource> seqResources, List<TsFileResource> unseqResources) throws IOException {
     this.tsFileResources = new ArrayList<>(seqResources);
     tsFileResources.addAll(unseqResources);
+    // sort the files from the newest to the oldest
     Collections.sort(this.tsFileResources, TsFileResource::compareFileNameByDesc);
     for (TsFileResource tsFileResource : tsFileResources) {
       TsFileSequenceReader reader =
           FileReaderManager.getInstance().get(tsFileResource.getTsFilePath(), true);
+      readerMap.put(tsFileResource, reader);
+      deviceIteratorMap.put(tsFileResource, reader.getAllDevicesIteratorWithIsAligned());
+    }
+  }
+
+  /** Used for compaction with fast performer. */
+  public MultiTsFileDeviceIterator(
+      List<TsFileResource> seqResources,
+      List<TsFileResource> unseqResources,
+      Map<TsFileResource, TsFileSequenceReader> readerMap)
+      throws IOException {
+    this.tsFileResources = new ArrayList<>(seqResources);
+    tsFileResources.addAll(unseqResources);
+    // sort tsfiles from the newest to the oldest
+    Collections.sort(this.tsFileResources, TsFileResource::compareFileNameByDesc);
+    this.readerMap = readerMap;
+    for (TsFileResource tsFileResource : tsFileResources) {
+      TsFileSequenceReader reader = new TsFileSequenceReader(tsFileResource.getTsFilePath());
       readerMap.put(tsFileResource, reader);
       deviceIteratorMap.put(tsFileResource, reader.getAllDevicesIteratorWithIsAligned());
     }
@@ -142,7 +159,10 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
     Map<String, MeasurementSchema> schemaMap = new ConcurrentHashMap<>();
     // get schemas from the newest file to the oldest file
     for (TsFileResource resource : tsFileResources) {
-      if (!deviceIteratorMap.containsKey(resource)) {
+      if (!deviceIteratorMap.containsKey(resource)
+          || !deviceIteratorMap.get(resource).current().equals(currentDevice)) {
+        // if this tsfile has no more device or next device is not equals to the current device,
+        // which means this tsfile does not contain the current device, then skip it.
         continue;
       }
       TsFileSequenceReader reader = readerMap.get(resource);
@@ -163,6 +183,83 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
     }
     schemaMap.remove("");
     return schemaMap;
+  }
+
+  /**
+   * Get all measurements and their timeseries metadata offset in each source file. It is used for
+   * new fast compaction to compact nonAligned timeseries.
+   *
+   * @return measurement -> tsfile resource -> timeseries metadata <startOffset, endOffset>
+   */
+  public Map<String, Map<TsFileResource, Pair<Long, Long>>>
+      getTimeseriesMetadataOffsetOfCurrentDevice() throws IOException {
+    Map<String, Map<TsFileResource, Pair<Long, Long>>> timeseriesMetadataOffsetMap =
+        new HashMap<>();
+    for (TsFileResource resource : tsFileResources) {
+      if (!deviceIteratorMap.containsKey(resource)
+          || !deviceIteratorMap.get(resource).current().equals(currentDevice)) {
+        // if this tsfile has no more device or next device is not equals to the current device,
+        // which means this tsfile does not contain the current device, then skip it.
+        continue;
+      }
+      TsFileSequenceReader reader = readerMap.get(resource);
+      for (Map.Entry<String, Pair<List<IChunkMetadata>, Pair<Long, Long>>> entrySet :
+          reader
+              .getTimeseriesMetadataOffsetByDevice(
+                  deviceIteratorMap.get(resource).getFirstMeasurementNodeOfCurrentDevice(),
+                  Collections.emptySet(),
+                  false)
+              .entrySet()) {
+        String measurementId = entrySet.getKey();
+        if (!timeseriesMetadataOffsetMap.containsKey(measurementId)) {
+          timeseriesMetadataOffsetMap.put(measurementId, new HashMap<>());
+        }
+        timeseriesMetadataOffsetMap.get(measurementId).put(resource, entrySet.getValue().right);
+      }
+    }
+    return timeseriesMetadataOffsetMap;
+  }
+
+  /**
+   * Get all measurements and their schemas of the current device and the timeseries metadata offset
+   * of each timeseries in each source file. It is used for new fast compaction to compact aligned
+   * timeseries.
+   *
+   * @return measurement -> schema -> tsfile resource -> timeseries metadata <startOffset,
+   *     endOffset>
+   */
+  public Map<String, Pair<MeasurementSchema, Map<TsFileResource, Pair<Long, Long>>>>
+      getTimeseriesSchemaAndMetadataOffsetOfCurrentDevice() throws IOException {
+    Map<String, Pair<MeasurementSchema, Map<TsFileResource, Pair<Long, Long>>>>
+        timeseriesMetadataOffsetMap = new HashMap<>();
+    for (TsFileResource resource : tsFileResources) {
+      if (!deviceIteratorMap.containsKey(resource)
+          || !deviceIteratorMap.get(resource).current().equals(currentDevice)) {
+        // if this tsfile has no more device or next device is not equals to the current device,
+        // which means this tsfile does not contain the current device, then skip it.
+        continue;
+      }
+
+      TsFileSequenceReader reader = readerMap.get(resource);
+      for (Map.Entry<String, Pair<List<IChunkMetadata>, Pair<Long, Long>>> entrySet :
+          reader
+              .getTimeseriesMetadataOffsetByDevice(
+                  deviceIteratorMap.get(resource).getFirstMeasurementNodeOfCurrentDevice(),
+                  timeseriesMetadataOffsetMap.keySet(),
+                  true)
+              .entrySet()) {
+        String measurementId = entrySet.getKey();
+        if (!timeseriesMetadataOffsetMap.containsKey(measurementId)) {
+          MeasurementSchema schema = reader.getMeasurementSchema(entrySet.getValue().left);
+          timeseriesMetadataOffsetMap.put(measurementId, new Pair<>(schema, new HashMap<>()));
+        }
+        timeseriesMetadataOffsetMap
+            .get(measurementId)
+            .right
+            .put(resource, entrySet.getValue().right);
+      }
+    }
+    return timeseriesMetadataOffsetMap;
   }
 
   /**
@@ -292,14 +389,6 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
           chunkMetadataCacheMap.put(reader, new TreeMap<>());
         }
       }
-    }
-
-    public Set<String> getAllMeasurements() throws IOException {
-      Set<String> measurementsSet = new HashSet<>();
-      for (TsFileSequenceReader reader : readerMap.values()) {
-        measurementsSet.addAll(reader.readDeviceMetadata(device).keySet());
-      }
-      return measurementsSet;
     }
 
     /**

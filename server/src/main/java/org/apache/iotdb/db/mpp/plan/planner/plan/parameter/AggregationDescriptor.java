@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.mpp.plan.planner.plan.parameter;
 
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
-import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
@@ -137,10 +136,10 @@ public class AggregationDescriptor {
           outputAggregationNames.add(AggregationType.MAX_TIME.name().toLowerCase());
           break;
         default:
-          outputAggregationNames.add(aggregationFuncName);
+          outputAggregationNames.add(aggregationFuncName.toLowerCase());
       }
     } else {
-      outputAggregationNames.add(aggregationFuncName);
+      outputAggregationNames.add(aggregationFuncName.toLowerCase());
     }
     return outputAggregationNames;
   }

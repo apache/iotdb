@@ -53,6 +53,7 @@ public class MPPQueryContext {
     this.endPointBlackList = new LinkedList<>();
   }
 
+  // TODO too many callers just pass a null SessionInfo which should be forbidden
   public MPPQueryContext(
       String sql,
       QueryId queryId,
@@ -64,20 +65,6 @@ public class MPPQueryContext {
     this.session = session;
     this.localDataBlockEndpoint = localDataBlockEndpoint;
     this.localInternalEndpoint = localInternalEndpoint;
-    this.initResultNodeContext();
-  }
-
-  public MPPQueryContext(
-      String sql,
-      QueryId queryId,
-      SessionInfo session,
-      TEndPoint localDataBlockEndpoint,
-      TEndPoint localInternalEndpoint,
-      long timeOut,
-      long startTime) {
-    this(sql, queryId, session, localDataBlockEndpoint, localInternalEndpoint);
-    this.timeOut = timeOut;
-    this.startTime = startTime;
     this.initResultNodeContext();
   }
 
@@ -143,5 +130,9 @@ public class MPPQueryContext {
 
   public TypeProvider getTypeProvider() {
     return typeProvider;
+  }
+
+  public String getSql() {
+    return sql;
   }
 }

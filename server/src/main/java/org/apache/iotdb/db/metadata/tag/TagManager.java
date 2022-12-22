@@ -23,17 +23,11 @@ import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.StorageEngine;
-import org.apache.iotdb.db.engine.storagegroup.DataRegion;
-import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MetadataConstant;
-import org.apache.iotdb.db.metadata.lastCache.LastCacheManager;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.apache.commons.io.FileUtils;
@@ -232,53 +226,11 @@ public class TagManager {
         }
       }
     }
-
-    // if ordered by heat, we sort all the timeseries by the descending order of the last insert
-    // timestamp
-    if (plan.isOrderByHeat()) {
-      List<DataRegion> list;
-      try {
-        Pair<List<DataRegion>, Map<DataRegion, List<PartialPath>>>
-            lockListAndProcessorToSeriesMapPair =
-                StorageEngine.getInstance()
-                    .mergeLock(
-                        allMatchedNodes.stream()
-                            .map(IMeasurementMNode::getMeasurementPath)
-                            .collect(toList()));
-        list = lockListAndProcessorToSeriesMapPair.left;
-        Map<DataRegion, List<PartialPath>> processorToSeriesMap =
-            lockListAndProcessorToSeriesMapPair.right;
-
-        try {
-          // init QueryDataSource cache
-          QueryResourceManager.getInstance()
-              .initQueryDataSourceCache(processorToSeriesMap, context, null);
-        } catch (Exception e) {
-          logger.error("Meet error when init QueryDataSource ", e);
-          throw new QueryProcessException("Meet error when init QueryDataSource.", e);
-        } finally {
-          StorageEngine.getInstance().mergeUnLock(list);
-        }
-
-        allMatchedNodes =
-            allMatchedNodes.stream()
-                .sorted(
-                    Comparator.comparingLong(
-                            (IMeasurementMNode mNode) ->
-                                LastCacheManager.getLastTimeStamp(mNode, context))
-                        .reversed()
-                        .thenComparing(IMNode::getFullPath))
-                .collect(toList());
-      } catch (StorageEngineException | QueryProcessException e) {
-        throw new MetadataException(e);
-      }
-    } else {
-      // otherwise, we just sort them by the alphabetical order
-      allMatchedNodes =
-          allMatchedNodes.stream()
-              .sorted(Comparator.comparing(IMNode::getFullPath))
-              .collect(toList());
-    }
+    // we just sort them by the alphabetical order
+    allMatchedNodes =
+        allMatchedNodes.stream()
+            .sorted(Comparator.comparing(IMNode::getFullPath))
+            .collect(toList());
 
     return allMatchedNodes;
   }
@@ -390,6 +342,7 @@ public class TagManager {
    * add new attributes key-value for the timeseries
    *
    * @param attributesMap newly added attributes map
+   * @throws MetadataException tagLogFile write error or attributes already exist
    */
   public void addAttributes(
       Map<String, String> attributesMap, PartialPath fullPath, IMeasurementMNode leafMNode)
@@ -417,6 +370,7 @@ public class TagManager {
    *
    * @param tagsMap newly added tags map
    * @param fullPath timeseries
+   * @throws MetadataException tagLogFile write error or tag already exists
    */
   public void addTags(
       Map<String, String> tagsMap, PartialPath fullPath, IMeasurementMNode leafMNode)
@@ -443,7 +397,8 @@ public class TagManager {
   }
 
   /**
-   * drop tags or attributes of the timeseries
+   * Drop tags or attributes of the timeseries. It will not throw exception even if the key does not
+   * exist.
    *
    * @param keySet tags key or attributes key
    */
@@ -516,6 +471,7 @@ public class TagManager {
    * set/change the values of tags or attributes
    *
    * @param alterMap the new tags or attributes key-value
+   * @throws MetadataException tagLogFile write error or tags/attributes do not exist
    */
   public void setTagsOrAttributesValue(
       Map<String, String> alterMap, PartialPath fullPath, IMeasurementMNode leafMNode)
@@ -580,10 +536,12 @@ public class TagManager {
   }
 
   /**
-   * rename the tag or attribute's key of the timeseries
+   * Rename the tag or attribute's key of the timeseries
    *
    * @param oldKey old key of tag or attribute
    * @param newKey new key of tag or attribute
+   * @throws MetadataException tagLogFile write error or does not have tag/attribute or already has
+   *     a tag/attribute named newKey
    */
   public void renameTagOrAttributeKey(
       String oldKey, String newKey, PartialPath fullPath, IMeasurementMNode leafMNode)
@@ -653,6 +611,21 @@ public class TagManager {
   public Pair<Map<String, String>, Map<String, String>> readTagFile(long tagFileOffset)
       throws IOException {
     return tagLogFile.read(config.getTagAttributeTotalSize(), tagFileOffset);
+  }
+
+  /**
+   * Read the tags of this node.
+   *
+   * @param node the node to query.
+   * @return the tag key-value map.
+   * @throws RuntimeException If any IOException happens.
+   */
+  public Map<String, String> readTags(IMeasurementMNode node) {
+    try {
+      return readTagFile(node.getOffset()).getLeft();
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    }
   }
 
   public void clear() throws IOException {

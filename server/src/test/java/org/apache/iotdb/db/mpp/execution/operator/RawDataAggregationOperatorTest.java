@@ -40,10 +40,10 @@ import org.apache.iotdb.db.mpp.execution.operator.process.join.merge.SingleColum
 import org.apache.iotdb.db.mpp.execution.operator.source.SeriesScanOperator;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationStep;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
-import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.db.query.reader.series.SeriesReaderTestUtil;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -232,16 +232,17 @@ public class RawDataAggregationOperatorTest {
       if (resultTsBlock == null) {
         continue;
       }
-      assertEquals(100 * count, resultTsBlock.getTimeColumn().getLong(0));
-      for (int i = 0; i < 2; i++) {
-        assertEquals(result[0][count], resultTsBlock.getColumn(6 * i).getLong(0));
-        assertEquals(result[1][count], resultTsBlock.getColumn(6 * i + 1).getDouble(0), 0.0001);
-        assertEquals(result[2][count], resultTsBlock.getColumn(6 * i + 2).getLong(0));
-        assertEquals(result[3][count], resultTsBlock.getColumn(6 * i + 3).getLong(0));
-        assertEquals(result[4][count], resultTsBlock.getColumn(6 * i + 4).getInt(0));
-        assertEquals(result[5][count], resultTsBlock.getColumn(6 * i + 5).getInt(0));
+      for (int row = 0; row < resultTsBlock.getPositionCount(); row++, count++) {
+        assertEquals(100 * count, resultTsBlock.getTimeColumn().getLong(row));
+        for (int i = 0; i < 2; i++) {
+          assertEquals(result[0][count], resultTsBlock.getColumn(6 * i).getLong(row));
+          assertEquals(result[1][count], resultTsBlock.getColumn(6 * i + 1).getDouble(row), 0.0001);
+          assertEquals(result[2][count], resultTsBlock.getColumn(6 * i + 2).getLong(row));
+          assertEquals(result[3][count], resultTsBlock.getColumn(6 * i + 3).getLong(row));
+          assertEquals(result[4][count], resultTsBlock.getColumn(6 * i + 4).getInt(row));
+          assertEquals(result[5][count], resultTsBlock.getColumn(6 * i + 5).getInt(row));
+        }
       }
-      count++;
     }
     assertEquals(4, count);
   }
@@ -284,17 +285,19 @@ public class RawDataAggregationOperatorTest {
       if (resultTsBlock == null) {
         continue;
       }
-      assertEquals(100 * count, resultTsBlock.getTimeColumn().getLong(0));
-      for (int i = 0; i < 2; i++) {
-        assertEquals(result[0][count], resultTsBlock.getColumn(i).getDouble(0), 0.001);
+
+      for (int row = 0; row < resultTsBlock.getPositionCount(); row++, count++) {
+        assertEquals(100 * count, resultTsBlock.getTimeColumn().getLong(row));
+        for (int i = 0; i < 2; i++) {
+          assertEquals(result[0][count], resultTsBlock.getColumn(i).getDouble(row), 0.001);
+        }
+        for (int i = 2; i < 4; i++) {
+          assertEquals((int) result[1][count], resultTsBlock.getColumn(i).getInt(row));
+        }
+        for (int i = 4; i < 6; i++) {
+          assertEquals((int) result[2][count], resultTsBlock.getColumn(i).getInt(row));
+        }
       }
-      for (int i = 2; i < 4; i++) {
-        assertEquals((int) result[1][count], resultTsBlock.getColumn(i).getInt(0));
-      }
-      for (int i = 4; i < 6; i++) {
-        assertEquals((int) result[2][count], resultTsBlock.getColumn(i).getInt(0));
-      }
-      count++;
     }
     assertEquals(4, count);
   }

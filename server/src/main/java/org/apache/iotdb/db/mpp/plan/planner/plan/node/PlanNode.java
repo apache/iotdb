@@ -18,12 +18,11 @@
  */
 package org.apache.iotdb.db.mpp.plan.planner.plan.node;
 
+import org.apache.iotdb.commons.exception.runtime.SerializationRunTimeException;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
-import org.apache.iotdb.db.exception.runtime.SerializationRunTimeException;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
-import org.apache.commons.lang.Validate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -67,13 +66,14 @@ public abstract class PlanNode implements IConsensusRequest {
   public abstract PlanNode clone();
 
   public PlanNode cloneWithChildren(List<PlanNode> children) {
-    Validate.isTrue(
-        children == null
-            || allowedChildCount() == CHILD_COUNT_NO_LIMIT
-            || children.size() == allowedChildCount(),
-        String.format(
-            "Child count is not correct for PlanNode. Expected: %d, Value: %d",
-            allowedChildCount(), getChildrenCount(children)));
+    if (!(children == null
+        || allowedChildCount() == CHILD_COUNT_NO_LIMIT
+        || children.size() == allowedChildCount())) {
+      throw new IllegalArgumentException(
+          String.format(
+              "Child count is not correct for PlanNode. Expected: %d, Value: %d",
+              allowedChildCount(), getChildrenCount(children)));
+    }
     PlanNode node = clone();
     if (children != null) {
       children.forEach(node::addChild);

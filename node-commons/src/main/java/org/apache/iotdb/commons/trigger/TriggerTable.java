@@ -18,12 +18,23 @@
  */
 package org.apache.iotdb.commons.trigger;
 
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.rpc.thrift.TTriggerState;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import javax.annotation.concurrent.NotThreadSafe;
 
-import java.util.HashMap;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
 /** This Class used to save the information of Triggers and implements methods of manipulate it. */
 @NotThreadSafe
@@ -31,7 +42,7 @@ public class TriggerTable {
   private final Map<String, TriggerInformation> triggerTable;
 
   public TriggerTable() {
-    triggerTable = new HashMap<>();
+    triggerTable = new ConcurrentHashMap<>();
   }
 
   public TriggerTable(Map<String, TriggerInformation> triggerTable) {
@@ -67,18 +78,78 @@ public class TriggerTable {
     triggerTable.get(triggerName).setTriggerState(triggerState);
   }
 
-  // for showTrigger
-  public Map<String, TTriggerState> getAllTriggerStates() {
-    Map<String, TTriggerState> allTriggerStates = new HashMap<>(triggerTable.size());
-    triggerTable.forEach((k, v) -> allTriggerStates.put(k, v.getTriggerState()));
-    return allTriggerStates;
-  }
   // for getTriggerTable
-  public Map<String, TriggerInformation> getTable() {
-    return triggerTable;
+  public List<TriggerInformation> getAllTriggerInformation() {
+    return new ArrayList<>(triggerTable.values());
+  }
+
+  public List<TriggerInformation> getAllStatefulTriggerInformation() {
+    return triggerTable.values().stream()
+        .filter(TriggerInformation::isStateful)
+        .collect(Collectors.toList());
+  }
+
+  public TDataNodeLocation getTriggerLocation(String triggerName) {
+    TriggerInformation triggerInformation = triggerTable.get(triggerName);
+    return triggerInformation == null ? null : triggerInformation.getDataNodeLocation();
+  }
+
+  public List<String> getTransferringTriggers() {
+    return triggerTable.values().stream()
+        .filter(
+            triggerInformation ->
+                triggerInformation.getTriggerState() == TTriggerState.TRANSFERRING)
+        .map(TriggerInformation::getTriggerName)
+        .collect(Collectors.toList());
+  }
+
+  // update stateful trigger to TRANSFERRING which dataNodeLocation is in transferNodes
+  public void updateTriggersOnTransferNodes(List<TDataNodeLocation> transferNodes) {
+    Set<TDataNodeLocation> dataNodeLocationSet = new HashSet<>(transferNodes);
+    triggerTable
+        .values()
+        .forEach(
+            triggerInformation -> {
+              if (triggerInformation.isStateful()
+                  && dataNodeLocationSet.contains(triggerInformation.getDataNodeLocation())) {
+                triggerInformation.setTriggerState(TTriggerState.TRANSFERRING);
+              }
+            });
+  }
+
+  public void updateTriggerLocation(String triggerName, TDataNodeLocation dataNodeLocation) {
+    TriggerInformation triggerInformation = triggerTable.get(triggerName);
+    // triggerInformation will not be null here
+    triggerInformation.setDataNodeLocation(dataNodeLocation);
+    triggerTable.put(triggerName, triggerInformation);
   }
 
   public boolean isEmpty() {
     return triggerTable.isEmpty();
+  }
+
+  @TestOnly
+  public Map<String, TriggerInformation> getTable() {
+    return triggerTable;
+  }
+
+  public void serializeTriggerTable(OutputStream outputStream) throws IOException {
+    ReadWriteIOUtils.write(triggerTable.size(), outputStream);
+    for (TriggerInformation triggerInformation : triggerTable.values()) {
+      ReadWriteIOUtils.write(triggerInformation.serialize(), outputStream);
+    }
+  }
+
+  public void deserializeTriggerTable(InputStream inputStream) throws IOException {
+    int size = ReadWriteIOUtils.readInt(inputStream);
+    while (size > 0) {
+      TriggerInformation triggerInformation = TriggerInformation.deserialize(inputStream);
+      triggerTable.put(triggerInformation.getTriggerName(), triggerInformation);
+      size--;
+    }
+  }
+
+  public void clear() {
+    triggerTable.clear();
   }
 }

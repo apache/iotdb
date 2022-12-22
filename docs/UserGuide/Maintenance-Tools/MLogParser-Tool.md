@@ -23,16 +23,18 @@
 
 After version 0.12.x, IoTDB encodes metadata files into binary format.
 
-If you want to parse metadata into a human readable way, you can use this tool to parse the specified metadata file.
+If you want to parse metadata into a human-readable way, you can use this tool to parse the specified metadata file.
 
-The tool can parse snapshot files and mlog files.
+Currently, the tool can only parse mlog.bin file. 
+
+If the consensus protocol used in cluster for SchemaRegion is RatisConsensus, IoTDB won't use mlog.bin file to store metadata and won't generate mlog.bin file.
 
 ### How to use
 
 Linux/MacOS
-> ./mLogParser.sh -f /your path/mlog.bin -o /your path/mlog.txt
+> ./print-schema-log.sh -f /your path/mlog.bin -o /your path/mlog.txt
 
 Windows
 
-> .\mLogParser.bat -f \your path\mlog.bin -o \your path\mlog.txt
+> .\print-schema-log.bat -f \your path\mlog.bin -o \your path\mlog.txt
 

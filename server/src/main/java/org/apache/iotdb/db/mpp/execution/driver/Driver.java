@@ -100,12 +100,6 @@ public abstract class Driver implements IDriver {
   public ListenableFuture<?> processFor(Duration duration) {
 
     SettableFuture<?> blockedFuture = driverBlockedFuture.get();
-    // initialization may be time-consuming, so we keep it in the processFor method
-    // in normal case, it won't cause deadlock and should finish soon, otherwise it will be a
-    // critical bug
-    if (!init(blockedFuture)) {
-      return blockedFuture;
-    }
 
     // if the driver is blocked we don't need to continue
     if (!blockedFuture.isDone()) {
@@ -120,13 +114,26 @@ public abstract class Driver implements IDriver {
             TimeUnit.MILLISECONDS,
             true,
             () -> {
-              long start = System.nanoTime();
-              do {
-                ListenableFuture<?> future = processInternal();
-                if (!future.isDone()) {
-                  return updateDriverBlockedFuture(future);
+              // only keep doing query processing if driver state is still alive
+              if (state.get() == State.ALIVE) {
+                long start = System.nanoTime();
+                // initialization may be time-consuming, so we keep it in the processFor method
+                // in normal case, it won't cause deadlock and should finish soon, otherwise it will
+                // be a
+                // critical bug
+                // We should do initialization after holding the lock to avoid parallelism problems
+                // with close
+                if (!init(blockedFuture)) {
+                  return blockedFuture;
                 }
-              } while (System.nanoTime() - start < maxRuntime && !isFinishedInternal());
+
+                do {
+                  ListenableFuture<?> future = processInternal();
+                  if (!future.isDone()) {
+                    return updateDriverBlockedFuture(future);
+                  }
+                } while (System.nanoTime() - start < maxRuntime && !isFinishedInternal());
+              }
               return NOT_BLOCKED;
             });
 
@@ -190,7 +197,6 @@ public abstract class Driver implements IDriver {
       }
       return NOT_BLOCKED;
     } catch (Throwable t) {
-      LOGGER.error("Failed to execute fragment instance {}", driverContext.getId(), t);
       List<StackTraceElement> interrupterStack = exclusiveLock.getInterrupterStack();
       if (interrupterStack == null) {
         driverContext.failed(t);

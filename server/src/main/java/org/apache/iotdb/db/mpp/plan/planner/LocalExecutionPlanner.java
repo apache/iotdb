@@ -19,13 +19,15 @@
 package org.apache.iotdb.db.mpp.plan.planner;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.storagegroup.DataRegion;
+import org.apache.iotdb.db.engine.storagegroup.IDataRegionForQuery;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.mpp.exception.MemoryNotEnoughException;
 import org.apache.iotdb.db.mpp.execution.driver.DataDriver;
 import org.apache.iotdb.db.mpp.execution.driver.DataDriverContext;
 import org.apache.iotdb.db.mpp.execution.driver.SchemaDriver;
 import org.apache.iotdb.db.mpp.execution.driver.SchemaDriverContext;
+import org.apache.iotdb.db.mpp.execution.exchange.ISourceHandle;
+import org.apache.iotdb.db.mpp.execution.exchange.MPPDataExchangeService;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceStateMachine;
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
@@ -33,6 +35,7 @@ import org.apache.iotdb.db.mpp.execution.timer.ITimeSliceAllocator;
 import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.utils.SetThreadName;
+import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
@@ -61,14 +64,18 @@ public class LocalExecutionPlanner {
       TypeProvider types,
       FragmentInstanceContext instanceContext,
       Filter timeFilter,
-      DataRegion dataRegion)
+      IDataRegionForQuery dataRegion)
       throws MemoryNotEnoughException {
-    LocalExecutionPlanContext context = new LocalExecutionPlanContext(types, instanceContext);
+    LocalExecutionPlanContext context =
+        new LocalExecutionPlanContext(types, instanceContext, dataRegion.getDataTTL());
 
     Operator root = plan.accept(new OperatorTreeGenerator(), context);
 
     // check whether current free memory is enough to execute current query
     checkMemory(root, instanceContext.getStateMachine());
+
+    // calculate memory distribution of ISinkHandle/ISourceHandle
+    setMemoryLimitForHandle(instanceContext.getId().toThrift(), plan);
 
     ITimeSliceAllocator timeSliceAllocator = context.getTimeSliceAllocator();
     instanceContext
@@ -100,6 +107,9 @@ public class LocalExecutionPlanner {
 
     Operator root = plan.accept(new OperatorTreeGenerator(), context);
 
+    // calculate memory distribution of ISinkHandle/ISourceHandle
+    setMemoryLimitForHandle(instanceContext.getId().toThrift(), plan);
+
     // check whether current free memory is enough to execute current query
     checkMemory(root, instanceContext.getStateMachine());
 
@@ -111,6 +121,27 @@ public class LocalExecutionPlanner {
                 operatorContext.setMaxRunTime(timeSliceAllocator.getMaxRunTime(operatorContext)));
 
     return new SchemaDriver(root, context.getSinkHandle(), schemaDriverContext);
+  }
+
+  private void setMemoryLimitForHandle(TFragmentInstanceId fragmentInstanceId, PlanNode plan) {
+    MemoryDistributionCalculator visitor = new MemoryDistributionCalculator();
+    plan.accept(visitor, null);
+    long totalSplit = visitor.calculateTotalSplit();
+    if (totalSplit == 0) {
+      return;
+    }
+    long maxBytesOneHandleCanReserve =
+        IoTDBDescriptor.getInstance().getConfig().getMaxBytesPerFragmentInstance() / totalSplit;
+    for (ISourceHandle handle :
+        MPPDataExchangeService.getInstance()
+            .getMPPDataExchangeManager()
+            .getISourceHandle(fragmentInstanceId)) {
+      handle.setMaxBytesCanReserve(maxBytesOneHandleCanReserve);
+    }
+    MPPDataExchangeService.getInstance()
+        .getMPPDataExchangeManager()
+        .getISinkHandle(fragmentInstanceId)
+        .setMaxBytesCanReserve(maxBytesOneHandleCanReserve);
   }
 
   private void checkMemory(Operator root, FragmentInstanceStateMachine stateMachine)
@@ -129,10 +160,10 @@ public class LocalExecutionPlanner {
             String.format(
                 "There is not enough memory to execute current fragment instance, current remaining free memory is %d, estimated memory usage for current fragment instance is %d",
                 freeMemoryForOperators, estimatedMemorySize),
-            TSStatusCode.MEMORY_NOT_ENOUGH.getStatusCode());
+            TSStatusCode.MPP_MEMORY_NOT_ENOUGH.getStatusCode());
       } else {
         freeMemoryForOperators -= estimatedMemorySize;
-        LOGGER.info(
+        LOGGER.debug(
             String.format(
                 "[ConsumeMemory] consume: %d, current remaining memory: %d",
                 estimatedMemorySize, freeMemoryForOperators));
@@ -146,7 +177,7 @@ public class LocalExecutionPlanner {
                 new SetThreadName(stateMachine.getFragmentInstanceId().getFullId())) {
               synchronized (this) {
                 this.freeMemoryForOperators += estimatedMemorySize;
-                LOGGER.info(
+                LOGGER.debug(
                     String.format(
                         "[ReleaseMemory] release: %d, current remaining memory: %d",
                         estimatedMemorySize, freeMemoryForOperators));

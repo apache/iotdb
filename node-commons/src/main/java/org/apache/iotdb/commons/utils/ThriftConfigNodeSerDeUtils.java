@@ -136,7 +136,7 @@ public class ThriftConfigNodeSerDeUtils {
     try {
       pipeSinkInfo.write(generateWriteProtocol(stream));
     } catch (TException e) {
-      throw new ThriftSerDeException("Write TConfigNodeLocation failed: ", e);
+      throw new ThriftSerDeException("Write TPipeSinkInfo failed: ", e);
     }
   }
 
@@ -145,7 +145,7 @@ public class ThriftConfigNodeSerDeUtils {
     try {
       pipeSinkInfo.read(generateReadProtocol(buffer));
     } catch (TException e) {
-      throw new ThriftSerDeException("Read TConfigNodeLocation failed: ", e);
+      throw new ThriftSerDeException("Read TPipeSinkInfo failed: ", e);
     }
     return pipeSinkInfo;
   }

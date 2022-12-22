@@ -93,7 +93,7 @@ public class IoTDBUDTFAlignByTimeQueryIT {
   private static void createTimeSeries() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("SET STORAGE GROUP TO root.vehicle");
+      statement.execute("CREATE DATABASE root.vehicle");
       statement.execute("CREATE TIMESERIES root.vehicle.d1.s1 with datatype=INT32,encoding=PLAIN");
       statement.execute("CREATE TIMESERIES root.vehicle.d1.s2 with datatype=INT64,encoding=PLAIN");
       statement.execute("CREATE TIMESERIES root.vehicle.d2.s1 with datatype=FLOAT,encoding=PLAIN");
@@ -103,7 +103,7 @@ public class IoTDBUDTFAlignByTimeQueryIT {
       statement.execute("CREATE TIMESERIES root.vehicle.d4.s1 with datatype=INT32,encoding=PLAIN");
       statement.execute("CREATE TIMESERIES root.vehicle.d4.s2 with datatype=INT32,encoding=PLAIN");
       // create aligned timeseries
-      statement.execute(("CREATE STORAGE GROUP root.sg1"));
+      statement.execute(("CREATE DATABASE root.sg1"));
       statement.execute("CREATE ALIGNED TIMESERIES root.sg1(s1 INT32, s2 INT32)");
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
@@ -152,6 +152,26 @@ public class IoTDBUDTFAlignByTimeQueryIT {
       statement.execute(
           "create function validate as 'org.apache.iotdb.db.query.udf.example.ValidateTester'");
     } catch (SQLException throwable) {
+      fail(throwable.getMessage());
+    }
+  }
+
+  @Test
+  public void queryWithUnquotedAttributes() {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      try {
+        statement.executeQuery("select sum_sec(s1, 'interval'=3) from root.udf.d1;");
+      } catch (SQLException e) {
+        assertTrue(e.getMessage().contains("Attributes of functions should be quoted"));
+      }
+      try {
+        statement.executeQuery(
+            "select sum_sec(s1, 'max_interval'=1, 'standard'=udf) from root.udf.d1;");
+      } catch (SQLException e) {
+        assertTrue(e.getMessage().contains("Attributes of functions should be quoted"));
+      }
+    } catch (Exception throwable) {
       fail(throwable.getMessage());
     }
   }

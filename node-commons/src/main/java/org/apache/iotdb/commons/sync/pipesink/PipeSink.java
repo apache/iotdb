@@ -21,15 +21,15 @@ package org.apache.iotdb.commons.sync.pipesink;
 
 import org.apache.iotdb.commons.exception.sync.PipeSinkException;
 import org.apache.iotdb.confignode.rpc.thrift.TPipeSinkInfo;
-import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
-import java.util.List;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.nio.ByteBuffer;
 import java.util.Map;
 
 public interface PipeSink {
-
-  // TODO: delete this in new-standalone version
-  void setAttribute(List<Pair<String, String>> params) throws PipeSinkException;
 
   void setAttribute(Map<String, String> params) throws PipeSinkException;
 
@@ -40,6 +40,46 @@ public interface PipeSink {
   String showAllAttributes();
 
   TPipeSinkInfo getTPipeSinkInfo();
+
+  void serialize(OutputStream outputStream) throws IOException;
+
+  void deserialize(InputStream inputStream) throws IOException;
+
+  void deserialize(ByteBuffer buffer);
+
+  static PipeSink deserializePipeSink(InputStream inputStream) throws IOException {
+    PipeSinkType pipeSinkType = PipeSinkType.values()[ReadWriteIOUtils.readByte(inputStream)];
+    PipeSink pipeSink;
+    switch (pipeSinkType) {
+      case IoTDB:
+        pipeSink = new IoTDBPipeSink();
+        pipeSink.deserialize(inputStream);
+        break;
+      case ExternalPipe:
+        // TODO(ext-pipe): deserialize external pipesink here
+      default:
+        throw new UnsupportedOperationException(
+            String.format("Can not recognize PipeSinkType %s.", pipeSinkType.name()));
+    }
+    return pipeSink;
+  }
+
+  static PipeSink deserializePipeSink(ByteBuffer buffer) {
+    PipeSinkType pipeSinkType = PipeSinkType.values()[ReadWriteIOUtils.readByte(buffer)];
+    PipeSink pipeSink;
+    switch (pipeSinkType) {
+      case IoTDB:
+        pipeSink = new IoTDBPipeSink();
+        pipeSink.deserialize(buffer);
+        break;
+      case ExternalPipe:
+        // TODO(ext-pipe): deserialize external pipesink here
+      default:
+        throw new UnsupportedOperationException(
+            String.format("Can not recognize PipeSinkType %s.", pipeSinkType.name()));
+    }
+    return pipeSink;
+  }
 
   enum PipeSinkType {
     IoTDB,

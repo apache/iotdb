@@ -31,8 +31,8 @@ import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.DataOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -90,6 +90,12 @@ public class AlignedPath extends PartialPath {
     measurementList = new ArrayList<>();
     PathUtils.isLegalPath(subSensor);
     measurementList.add(subSensor);
+  }
+
+  public AlignedPath(PartialPath vectorPath) {
+    super(vectorPath.getNodes());
+    measurementList = new ArrayList<>();
+    schemaList = new ArrayList<>();
   }
 
   public AlignedPath(MeasurementPath path) {
@@ -155,6 +161,18 @@ public class AlignedPath extends PartialPath {
       schemaList = new ArrayList<>();
     }
     schemaList.add(measurementPath.getMeasurementSchema());
+  }
+
+  public void addMeasurement(String measurement, IMeasurementSchema measurementSchema) {
+    if (measurementList == null) {
+      measurementList = new ArrayList<>();
+    }
+    measurementList.add(measurement);
+
+    if (schemaList == null) {
+      schemaList = new ArrayList<>();
+    }
+    schemaList.add(measurementSchema);
   }
 
   /**
@@ -275,7 +293,7 @@ public class AlignedPath extends PartialPath {
   }
 
   @Override
-  public void serialize(DataOutputStream stream) throws IOException {
+  public void serialize(OutputStream stream) throws IOException {
     PathType.Aligned.serialize(stream);
     super.serializeWithoutType(stream);
     ReadWriteIOUtils.write(measurementList.size(), stream);

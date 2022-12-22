@@ -119,7 +119,7 @@ git clone https://github.com/apache/iotdb.git
 * 修改Grafana的配置文件：找到配置文件（`${Grafana文件目录}\conf\defaults.ini`），并进行如下的修改：
 
   ```ini
-  allow_loading_unsigned_plugins = iotdb
+  allow_loading_unsigned_plugins = apache-iotdb-datasource
   ```
 * 修改Grafana 的插件目录位置:找到配置文件（`${Grafana文件目录}\conf\defaults.ini`），并进行如下的修改：
 
@@ -155,7 +155,7 @@ brew services start grafana
 
 #### 配置 IoTDB REST 服务
 
-进入 `{iotdb 目录}/conf`，打开 `iotdb-rest.properties` 文件，并作如下修改：
+进入 `{iotdb 目录}/conf`，打开 `iotdb-common.properties` 文件，并作如下修改：
 
 ```properties
 # Is the REST service enabled
@@ -294,7 +294,7 @@ Type下拉中有Query、Custom、Text box、Constant、DataSource、Interval、A
 更加详细介绍用法请查看官方手册(https://grafana.com/docs/grafana/latest/variables/)
 
 除了上面的示例外，还支持下面这些语句:
-*  `show storage group`
+*  `show databases`
 *  `show timeseries`
 *  `show child nodes`
 *  `show all ttl`

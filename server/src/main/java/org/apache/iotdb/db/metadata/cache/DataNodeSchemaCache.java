@@ -21,11 +21,10 @@ package org.apache.iotdb.db.metadata.cache;
 
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.common.schematree.ClusterSchemaTree;
-import org.apache.iotdb.db.mpp.common.schematree.ISchemaTree;
-import org.apache.iotdb.db.service.metrics.MetricService;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
@@ -34,6 +33,9 @@ import com.github.benmanes.caffeine.cache.Caffeine;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /**
@@ -100,30 +102,58 @@ public class DataNodeSchemaCache {
    */
   public ClusterSchemaTree get(PartialPath devicePath, String[] measurements) {
     ClusterSchemaTree schemaTree = new ClusterSchemaTree();
+    Set<String> storageGroupSet = new HashSet<>();
     SchemaCacheEntry schemaCacheEntry;
     for (String measurement : measurements) {
       PartialPath path = devicePath.concatNode(measurement);
       schemaCacheEntry = cache.getIfPresent(path);
       if (schemaCacheEntry != null) {
         schemaTree.appendSingleMeasurement(
-            devicePath.concatNode(
-                schemaCacheEntry.getSchemaEntryId()), // the cached path may be alias path
+            devicePath.concatNode(schemaCacheEntry.getSchemaEntryId()),
             schemaCacheEntry.getMeasurementSchema(),
+            schemaCacheEntry.getTagMap(),
             null,
             schemaCacheEntry.isAligned());
+        storageGroupSet.add(schemaCacheEntry.getStorageGroup());
       }
+    }
+    schemaTree.setDatabases(storageGroupSet);
+    return schemaTree;
+  }
+
+  public ClusterSchemaTree get(PartialPath fullPath) {
+    ClusterSchemaTree schemaTree = new ClusterSchemaTree();
+    SchemaCacheEntry schemaCacheEntry = cache.getIfPresent(fullPath);
+    if (schemaCacheEntry != null) {
+      schemaTree.appendSingleMeasurement(
+          fullPath,
+          schemaCacheEntry.getMeasurementSchema(),
+          schemaCacheEntry.getTagMap(),
+          null,
+          schemaCacheEntry.isAligned());
+      schemaTree.setDatabases(Collections.singleton(schemaCacheEntry.getStorageGroup()));
     }
     return schemaTree;
   }
 
-  public void put(ISchemaTree schemaTree) {
+  public void put(ClusterSchemaTree schemaTree) {
     for (MeasurementPath measurementPath : schemaTree.getAllMeasurement()) {
-      SchemaCacheEntry schemaCacheEntry =
-          new SchemaCacheEntry(
-              (MeasurementSchema) measurementPath.getMeasurementSchema(),
-              measurementPath.isUnderAlignedEntity());
-      cache.put(new PartialPath(measurementPath.getNodes()), schemaCacheEntry);
+      putSingleMeasurementPath(schemaTree.getBelongedDatabase(measurementPath), measurementPath);
     }
+  }
+
+  public void put(String storageGroup, MeasurementPath measurementPath) {
+    putSingleMeasurementPath(storageGroup, measurementPath);
+  }
+
+  private void putSingleMeasurementPath(String storageGroup, MeasurementPath measurementPath) {
+    SchemaCacheEntry schemaCacheEntry =
+        new SchemaCacheEntry(
+            storageGroup,
+            (MeasurementSchema) measurementPath.getMeasurementSchema(),
+            measurementPath.getTagMap(),
+            measurementPath.isUnderAlignedEntity());
+    cache.put(new PartialPath(measurementPath.getNodes()), schemaCacheEntry);
   }
 
   public TimeValuePair getLastCache(PartialPath seriesPath) {
@@ -155,6 +185,7 @@ public class DataNodeSchemaCache {
    * aligned sensor without only one sub sensor
    */
   public void updateLastCache(
+      String storageGroup,
       MeasurementPath measurementPath,
       TimeValuePair timeValuePair,
       boolean highPriorityUpdate,
@@ -167,7 +198,9 @@ public class DataNodeSchemaCache {
         if (null == entry) {
           entry =
               new SchemaCacheEntry(
+                  storageGroup,
                   (MeasurementSchema) measurementPath.getMeasurementSchema(),
+                  measurementPath.getTagMap(),
                   measurementPath.isUnderAlignedEntity());
           cache.put(seriesPath, entry);
         }

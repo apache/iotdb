@@ -31,6 +31,7 @@ import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class Utils {
   private static final Logger logger = LoggerFactory.getLogger(Utils.class);
@@ -73,5 +74,37 @@ public class Utils {
       return Collections.emptyList();
     }
     return allFiles;
+  }
+
+  public static class MemorizedFileSizeCalc {
+    private List<Path> memorized;
+    private final File rootDir;
+    private long totalSize;
+
+    public MemorizedFileSizeCalc(File rootDir) {
+      this.memorized = Collections.emptyList();
+      this.rootDir = rootDir;
+      this.totalSize = 0;
+    }
+
+    public synchronized long getTotalFolderSize() {
+      final List<Path> latest = listAllRegularFilesRecursively(rootDir);
+
+      final List<Path> incremental =
+          latest.stream().filter(p -> !memorized.contains(p)).collect(Collectors.toList());
+
+      final List<Path> decremental =
+          memorized.stream().filter(p -> !latest.contains(p)).collect(Collectors.toList());
+
+      totalSize += incremental.stream().mapToLong(p -> p.toFile().length()).sum();
+      if (decremental.size() == memorized.size()) {
+        totalSize = 0;
+      } else {
+        totalSize -= decremental.stream().mapToLong(p -> p.toFile().length()).sum();
+      }
+
+      memorized = latest;
+      return totalSize;
+    }
   }
 }

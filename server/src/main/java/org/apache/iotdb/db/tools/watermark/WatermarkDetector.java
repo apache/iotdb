@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.tools.watermark;
 
 import org.apache.iotdb.db.exception.query.LogicalOperatorException;
-import org.apache.iotdb.db.qp.utils.DatetimeUtils;
+import org.apache.iotdb.db.qp.utils.DateTimeUtils;
 
 import org.apache.thrift.EncodingUtils;
 
@@ -171,7 +171,7 @@ public class WatermarkDetector {
     try {
       timestamp = Long.parseLong(str);
     } catch (NumberFormatException e) {
-      timestamp = DatetimeUtils.convertDatetimeStrToLong(str, ZoneId.systemDefault());
+      timestamp = DateTimeUtils.convertDatetimeStrToLong(str, ZoneId.systemDefault());
     }
     return timestamp;
   }

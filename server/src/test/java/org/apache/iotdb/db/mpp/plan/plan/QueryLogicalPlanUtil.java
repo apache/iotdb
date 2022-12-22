@@ -47,12 +47,12 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesAggregationSc
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationStep;
-import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByLevelDescriptor;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationType;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.CrossSeriesAggregationDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.OrderByParameter;
 import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.db.mpp.plan.statement.component.SortItem;
 import org.apache.iotdb.db.mpp.plan.statement.component.SortKey;
-import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
@@ -153,7 +153,7 @@ public class QueryLogicalPlanUtil {
 
   /* Simple Query */
   static {
-    String sql = "SELECT ** FROM root.sg.d2 LIMIT 10 OFFSET 10";
+    String sql = "SELECT ** FROM root.sg.d2 WHERE time > 100 LIMIT 10 OFFSET 10";
 
     QueryId queryId = new QueryId("test");
     List<PlanNode> sourceNodeList = new ArrayList<>();
@@ -175,6 +175,15 @@ public class QueryLogicalPlanUtil {
     sourceNodeList.add(
         new AlignedSeriesScanNode(
             queryId.genPlanNodeId(), (AlignedPath) schemaMap.get("root.sg.d2.a"), Ordering.ASC));
+
+    for (PlanNode sourceNode : sourceNodeList) {
+      if (sourceNode instanceof SeriesScanNode) {
+        ((SeriesScanNode) sourceNode).setTimeFilter(TimeFilter.gt(100));
+      } else if (sourceNode instanceof AlignedSeriesScanNode) {
+        ((AlignedSeriesScanNode) sourceNode).setTimeFilter(TimeFilter.gt(100));
+      }
+    }
+
     TimeJoinNode timeJoinNode =
         new TimeJoinNode(queryId.genPlanNodeId(), Ordering.ASC, sourceNodeList);
     OffsetNode offsetNode = new OffsetNode(queryId.genPlanNodeId(), timeJoinNode, 10);
@@ -246,7 +255,7 @@ public class QueryLogicalPlanUtil {
   static {
     String sql =
         "SELECT * FROM root.sg.* WHERE time > 100 and s1 > 10 "
-            + "ORDER BY TIME DESC LIMIT 100 OFFSET 100 ALIGN BY DEVICE";
+            + "ORDER BY DEVICE,TIME DESC LIMIT 100 OFFSET 100 ALIGN BY DEVICE";
 
     QueryId queryId = new QueryId("test");
     List<PlanNode> sourceNodeList1 = new ArrayList<>();
@@ -341,7 +350,7 @@ public class QueryLogicalPlanUtil {
                 Arrays.asList(
                     new SortItem(SortKey.DEVICE, Ordering.ASC),
                     new SortItem(SortKey.TIME, Ordering.DESC))),
-            Arrays.asList(ColumnHeaderConstant.COLUMN_DEVICE, "s3", "s1", "s2", "s4"),
+            Arrays.asList(ColumnHeaderConstant.DEVICE, "s3", "s1", "s2", "s4"),
             deviceToMeasurementIndexesMap);
     deviceViewNode.addChildDeviceNode("root.sg.d1", filterNode1);
     deviceViewNode.addChildDeviceNode("root.sg.d2", filterNode2);
@@ -597,40 +606,40 @@ public class QueryLogicalPlanUtil {
             queryId.genPlanNodeId(),
             sourceNodeList,
             Arrays.asList(
-                new GroupByLevelDescriptor(
+                new CrossSeriesAggregationDescriptor(
                     AggregationType.COUNT.name().toLowerCase(),
                     AggregationStep.FINAL,
                     Arrays.asList(
                         new TimeSeriesOperand(schemaMap.get("root.sg.d2.s1")),
                         new TimeSeriesOperand(schemaMap.get("root.sg.d1.s1"))),
                     new TimeSeriesOperand(schemaMap.get("root.sg.*.s1"))),
-                new GroupByLevelDescriptor(
+                new CrossSeriesAggregationDescriptor(
                     AggregationType.COUNT.name().toLowerCase(),
                     AggregationStep.FINAL,
                     Collections.singletonList(
                         new TimeSeriesOperand(schemaMap.get("root.sg.d2.a.s1"))),
                     new TimeSeriesOperand(schemaMap.get("root.sg.*.*.s1"))),
-                new GroupByLevelDescriptor(
+                new CrossSeriesAggregationDescriptor(
                     AggregationType.MAX_VALUE.name().toLowerCase(),
                     AggregationStep.FINAL,
                     Arrays.asList(
                         new TimeSeriesOperand(schemaMap.get("root.sg.d1.s2")),
                         new TimeSeriesOperand(schemaMap.get("root.sg.d2.s2"))),
                     new TimeSeriesOperand(schemaMap.get("root.sg.*.s2"))),
-                new GroupByLevelDescriptor(
+                new CrossSeriesAggregationDescriptor(
                     AggregationType.MAX_VALUE.name().toLowerCase(),
                     AggregationStep.FINAL,
                     Collections.singletonList(
                         new TimeSeriesOperand(schemaMap.get("root.sg.d2.a.s2"))),
                     new TimeSeriesOperand(schemaMap.get("root.sg.*.*.s2"))),
-                new GroupByLevelDescriptor(
+                new CrossSeriesAggregationDescriptor(
                     AggregationType.LAST_VALUE.name().toLowerCase(),
                     AggregationStep.FINAL,
                     Arrays.asList(
                         new TimeSeriesOperand(schemaMap.get("root.sg.d2.s1")),
                         new TimeSeriesOperand(schemaMap.get("root.sg.d1.s1"))),
                     new TimeSeriesOperand(schemaMap.get("root.sg.*.s1"))),
-                new GroupByLevelDescriptor(
+                new CrossSeriesAggregationDescriptor(
                     AggregationType.LAST_VALUE.name().toLowerCase(),
                     AggregationStep.FINAL,
                     Collections.singletonList(
@@ -650,7 +659,7 @@ public class QueryLogicalPlanUtil {
   static {
     String sql =
         "SELECT count(s1), max_value(s2), last_value(s1) FROM root.sg.* WHERE time > 100 "
-            + "ORDER BY TIME DESC LIMIT 100 OFFSET 100 ALIGN BY DEVICE";
+            + "ORDER BY DEVICE,TIME DESC LIMIT 100 OFFSET 100 ALIGN BY DEVICE";
 
     QueryId queryId = new QueryId("test");
     Filter timeFilter = TimeFilter.gt(100);
@@ -735,7 +744,7 @@ public class QueryLogicalPlanUtil {
                     new SortItem(SortKey.DEVICE, Ordering.ASC),
                     new SortItem(SortKey.TIME, Ordering.DESC))),
             Arrays.asList(
-                ColumnHeaderConstant.COLUMN_DEVICE, "count(s1)", "max_value(s2)", "last_value(s1)"),
+                ColumnHeaderConstant.DEVICE, "count(s1)", "max_value(s2)", "last_value(s1)"),
             deviceToMeasurementIndexesMap);
     deviceViewNode.addChildDeviceNode("root.sg.d1", timeJoinNode1);
     deviceViewNode.addChildDeviceNode("root.sg.d2", timeJoinNode2);
@@ -848,21 +857,21 @@ public class QueryLogicalPlanUtil {
             queryId.genPlanNodeId(),
             Collections.singletonList(aggregationNode),
             Arrays.asList(
-                new GroupByLevelDescriptor(
+                new CrossSeriesAggregationDescriptor(
                     AggregationType.COUNT.name().toLowerCase(),
                     AggregationStep.FINAL,
                     Arrays.asList(
                         new TimeSeriesOperand(schemaMap.get("root.sg.d2.s1")),
                         new TimeSeriesOperand(schemaMap.get("root.sg.d1.s1"))),
                     new TimeSeriesOperand(schemaMap.get("root.sg.*.s1"))),
-                new GroupByLevelDescriptor(
+                new CrossSeriesAggregationDescriptor(
                     AggregationType.MAX_VALUE.name().toLowerCase(),
                     AggregationStep.FINAL,
                     Arrays.asList(
                         new TimeSeriesOperand(schemaMap.get("root.sg.d1.s2")),
                         new TimeSeriesOperand(schemaMap.get("root.sg.d2.s2"))),
                     new TimeSeriesOperand(schemaMap.get("root.sg.*.s2"))),
-                new GroupByLevelDescriptor(
+                new CrossSeriesAggregationDescriptor(
                     AggregationType.LAST_VALUE.name().toLowerCase(),
                     AggregationStep.FINAL,
                     Arrays.asList(
@@ -883,7 +892,7 @@ public class QueryLogicalPlanUtil {
   static {
     String sql =
         "SELECT count(s1), max_value(s2), last_value(s1) FROM root.sg.* WHERE time > 100 and s2 > 10 "
-            + "ORDER BY TIME DESC LIMIT 100 OFFSET 100 ALIGN BY DEVICE";
+            + "ORDER BY DEVICE,TIME DESC LIMIT 100 OFFSET 100 ALIGN BY DEVICE";
 
     QueryId queryId = new QueryId("test");
     List<PlanNode> sourceNodeList1 = new ArrayList<>();
@@ -898,9 +907,7 @@ public class QueryLogicalPlanUtil {
             (MeasurementPath) schemaMap.get("root.sg.d1.s2"),
             Ordering.DESC));
     sourceNodeList1.forEach(
-        planNode -> {
-          ((SeriesScanNode) planNode).setTimeFilter(TimeFilter.gt(100));
-        });
+        planNode -> ((SeriesScanNode) planNode).setTimeFilter(TimeFilter.gt(100)));
 
     TimeJoinNode timeJoinNode1 =
         new TimeJoinNode(queryId.genPlanNodeId(), Ordering.DESC, sourceNodeList1);
@@ -1015,7 +1022,7 @@ public class QueryLogicalPlanUtil {
                     new SortItem(SortKey.DEVICE, Ordering.ASC),
                     new SortItem(SortKey.TIME, Ordering.DESC))),
             Arrays.asList(
-                ColumnHeaderConstant.COLUMN_DEVICE, "count(s1)", "max_value(s2)", "last_value(s1)"),
+                ColumnHeaderConstant.DEVICE, "count(s1)", "max_value(s2)", "last_value(s1)"),
             deviceToMeasurementIndexesMap);
     deviceViewNode.addChildDeviceNode("root.sg.d1", aggregationNode1);
     deviceViewNode.addChildDeviceNode("root.sg.d2", aggregationNode2);

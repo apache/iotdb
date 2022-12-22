@@ -22,8 +22,7 @@
 
 # IoTDB
 [![Main Mac and Linux](https://github.com/apache/iotdb/actions/workflows/main-unix.yml/badge.svg)](https://github.com/apache/iotdb/actions/workflows/main-unix.yml)
-[![Main Win](https://github.com/apache/iotdb/actions/workflows/main-win.yml/badge.svg)](https://github.com/apache/iotdb/actions/workflows/main-win.yml)
-[![coveralls](https://coveralls.io/repos/github/apache/iotdb/badge.svg?branch=master)](https://coveralls.io/repos/github/apache/iotdb/badge.svg?branch=master)
+[![Main Win](https://github.com/apache/iotdb/actions/workflows/main-win.yml/badge.svg)](https://github.com/apache/iotdb/actions/workflows/main-win.yml)<!--[![coveralls](https://coveralls.io/repos/github/apache/iotdb/badge.svg?branch=master)](https://coveralls.io/repos/github/apache/iotdb/badge.svg?branch=master)-->
 [![GitHub release](https://img.shields.io/github/release/apache/iotdb.svg)](https://github.com/apache/iotdb/releases)
 [![License](https://img.shields.io/badge/license-Apache%202-4EB1BA.svg)](https://www.apache.org/licenses/LICENSE-2.0.html)
 ![](https://github-size-badge.herokuapp.com/apache/iotdb.svg)
@@ -136,26 +135,41 @@ Thrift官方网址为：https://thrift.apache.org/
 git clone https://github.com/apache/iotdb.git
 ```
 
-默认的主分支是master分支，如果你想使用某个发布版本x.x.x，请切换分支:
+默认的主分支是master分支，如果你想使用某个发布版本x.x.x，请切换 tag:
 
-```
-git checkout release/x.x.x
-```
-
-从0.11.3开始，版本的标签风格改为vx.x.x：
 ```
 git checkout vx.x.x
 ```
 
-在 iotdb 根目录下执行 maven 编译:
+或者切换大版本所在分支，如 1.0 版本的分支为 rel/1.0
 
 ```
-> mvn clean package -DskipTests
+git checkout rel/x.x
 ```
+
+### 源码编译 IoTDB
+
+在 iotdb 根目录下执行:
+
+```
+> mvn clean package -pl distribution -am -DskipTests
+```
+
+编译完成后, IoTDB 二进制包将生成在: "distribution/target".
+
+### 只编译 cli
+
+在 iotdb 根目录下执行:
+
+```
+> mvn clean package -pl cli -am -DskipTests
+```
+
+编译完成后, IoTDB cli 将生成在 "cli/target".
+
+### 编译其他模块
 
 通过添加 `-P compile-cpp` 可以进行c++客户端API的编译。
-
-执行完成之后，可以在**distribution/target/apache-iotdb-{project.version}-all-bin.zip**找到编译完成的二进制版本(包括服务器和客户端)
 
 **注意："`thrift/target/generated-sources/thrift`"， "`thrift-sync/target/generated-sources/thrift`"，"`thrift-cluster/target/generated-sources/thrift`"，"`thrift-influxdb/target/generated-sources/thrift`" 和  "`antlr/target/generated-sources/antlr4`" 目录需要添加到源代码根中，以免在 IDE 中产生编译错误。**
 
@@ -176,19 +190,15 @@ git checkout vx.x.x
 
 ### 启动 IoTDB
 
-可以通过运行 sbin 文件夹下的 start-server 脚本启动 IoTDB。
+可以通过运行 sbin 文件夹下的 start-standalone 脚本启动 1C1D IoTDB。
 
 ```
 # Unix/OS X
-> nohup sbin/start-server.sh >/dev/null 2>&1 &
-or
-> nohup sbin/start-server.sh -c <conf_path> >/dev/null 2>&1 &
+> sbin/start-standalone.sh
 
 # Windows
-> sbin\start-server.bat -c <conf_path>
+> sbin\start-standalone.bat
 ```
-- "-c"是可选的。
-- 选项 "-c" 指定了配置文件所在的文件夹。
 
 ### 使用 IoTDB
 
@@ -231,26 +241,26 @@ IoTDB>
 现在，让我们介绍创建 timeseries、插入数据和查询数据的方法。
 
 
-IoTDB中的数据组织为 timeseries。每个 timeseries 包含多个`数据-时间`对，由一个存储组拥有。
-在定义 timeseries 之前，我们应该先使用SET storage group来定义一个存储组，下面是一个例子:
+IoTDB中的数据组织为 timeseries。每个 timeseries 包含多个`数据-时间`对，由一个 database 拥有。
+在定义 timeseries 之前，我们应该先使用 CREATE DATABASE 来创建一个数据库，下面是一个例子:
 
 ```
-IoTDB> SET STORAGE GROUP TO root.ln
+IoTDB> CREATE DATABASE root.ln
 ```
 
-我们也可以使用`SHOW STORAGE GROUP`来检查正在创建的存储组:
+我们也可以使用`SHOW DATABASES`来检查已创建的数据库:
 
 ```
-IoTDB> SHOW STORAGE GROUP
-+-------------+
-|storage group|
-+-------------+
-|      root.ln|
-+-------------+
+IoTDB> SHOW DATABASES
++--------+
+|Database|
++--------+
+| root.ln|
++--------+
 Total line number = 1
 ```
 
-在设置存储组之后，我们可以使用CREATE TIMESERIES来创建一个新的TIMESERIES。
+在设置 database 之后，我们可以使用CREATE TIMESERIES来创建一个新的TIMESERIES。
 在创建 timeseries 时，我们应该定义它的数据类型和编码方案。这里我们创建两个 timeseries:
 
 
@@ -267,7 +277,7 @@ IoTDB> CREATE TIMESERIES root.ln.wf01.wt01.temperature WITH DATATYPE=FLOAT, ENCO
 ```
 IoTDB> SHOW TIMESERIES
 +-----------------------------+-----+-------------+--------+--------+-----------+----+----------+
-|                   timeseries|alias|storage group|dataType|encoding|compression|tags|attributes|
+|                   timeseries|alias|database|dataType|encoding|compression|tags|attributes|
 +-----------------------------+-----+-------------+--------+--------+-----------+----+----------+
 |root.ln.wf01.wt01.temperature| null|      root.ln|   FLOAT|     RLE|     SNAPPY|null|      null|
 |     root.ln.wf01.wt01.status| null|      root.ln| BOOLEAN|   PLAIN|     SNAPPY|null|      null|
@@ -280,7 +290,7 @@ Total line number = 2
 ```
 IoTDB> SHOW TIMESERIES root.ln.wf01.wt01.status
 +------------------------+-----+-------------+--------+--------+-----------+----+----------+
-|              timeseries|alias|storage group|dataType|encoding|compression|tags|attributes|
+|              timeseries|alias|database|dataType|encoding|compression|tags|attributes|
 +------------------------+-----+-------------+--------+--------+-----------+----+----------+
 |root.ln.wf01.wt01.status| null|      root.ln| BOOLEAN|   PLAIN|     SNAPPY|null|      null|
 +------------------------+-----+-------------+--------+--------+-----------+----+----------+
@@ -359,32 +369,11 @@ server 可以使用 "ctrl-C" 或者执行下面的脚本:
 
 ```
 # Unix/OS X
-> sbin/stop-server.sh
+> sbin/stop-standalone.sh
 
 # Windows
-> sbin\stop-server.bat
+> sbin\stop-standalone.bat
 ```
-
-## 只编译 server
-
-在 iotdb 根目录下执行:
-
-```
-> mvn clean package -pl server -am -DskipTests
-```
-
-编译完成后, IoTDB server 将生成在: "server/target/iotdb-server-{project.version}".
-
-
-## 只编译 cli
-
-在 iotdb 根目录下执行:
-
-```
-> mvn clean package -pl cli -am -DskipTests
-```
-
-编译完成后, IoTDB cli 将生成在 "cli/target/iotdb-cli-{project.version}".
 
 # 导入导出CSV工具
 

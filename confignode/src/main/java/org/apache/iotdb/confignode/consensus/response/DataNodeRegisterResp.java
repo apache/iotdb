@@ -21,25 +21,28 @@ package org.apache.iotdb.confignode.consensus.response;
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterResp;
-import org.apache.iotdb.confignode.rpc.thrift.TGlobalConfig;
-import org.apache.iotdb.confignode.rpc.thrift.TRatisConfig;
+import org.apache.iotdb.confignode.rpc.thrift.TRuntimeConfiguration;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 
 public class DataNodeRegisterResp implements DataSet {
 
   private TSStatus status;
   private List<TConfigNodeLocation> configNodeList;
+
+  private String clusterName;
   private Integer dataNodeId;
-  private TGlobalConfig globalConfig;
-  private TRatisConfig ratisConfig;
-  private byte[] templateInfo;
+
+  private TRuntimeConfiguration runtimeConfiguration;
 
   public DataNodeRegisterResp() {
     this.dataNodeId = null;
-    this.globalConfig = null;
   }
 
   public TSStatus getStatus() {
@@ -54,20 +57,30 @@ public class DataNodeRegisterResp implements DataSet {
     this.configNodeList = configNodeList;
   }
 
+  public void setClusterName(String clusterName) {
+    this.clusterName = clusterName;
+  }
+
   public void setDataNodeId(Integer dataNodeId) {
     this.dataNodeId = dataNodeId;
   }
 
-  public void setGlobalConfig(TGlobalConfig globalConfig) {
-    this.globalConfig = globalConfig;
+  public void setRuntimeConfiguration(TRuntimeConfiguration runtimeConfiguration) {
+    this.runtimeConfiguration = runtimeConfiguration;
   }
 
-  public void setRatisConfig(TRatisConfig ratisConfig) {
-    this.ratisConfig = ratisConfig;
-  }
-
-  public void setTemplateInfo(byte[] templateInfo) {
-    this.templateInfo = templateInfo;
+  public static byte[] convertAllTTLInformation(Map<String, Long> allTTLInformation) {
+    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    try {
+      ReadWriteIOUtils.write(allTTLInformation.size(), outputStream);
+      for (Map.Entry<String, Long> entry : allTTLInformation.entrySet()) {
+        ReadWriteIOUtils.write(entry.getKey(), outputStream);
+        ReadWriteIOUtils.write(entry.getValue(), outputStream);
+      }
+    } catch (IOException ignored) {
+      // Normally, this line will never reach
+    }
+    return outputStream.toByteArray();
   }
 
   public TDataNodeRegisterResp convertToRpcDataNodeRegisterResp() {
@@ -75,12 +88,10 @@ public class DataNodeRegisterResp implements DataSet {
     resp.setStatus(status);
     resp.setConfigNodeList(configNodeList);
 
-    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        || status.getCode() == TSStatusCode.DATANODE_ALREADY_REGISTERED.getStatusCode()) {
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      resp.setClusterName(clusterName);
       resp.setDataNodeId(dataNodeId);
-      resp.setGlobalConfig(globalConfig);
-      resp.setTemplateInfo(templateInfo);
-      resp.setRatisConfig(ratisConfig);
+      resp.setRuntimeConfiguration(runtimeConfiguration);
     }
 
     return resp;

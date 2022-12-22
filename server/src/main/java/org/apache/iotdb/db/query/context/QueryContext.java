@@ -27,7 +27,6 @@ import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.metadata.path.PatternTreeMapFactory;
 import org.apache.iotdb.db.metadata.path.PatternTreeMapFactory.ModsSerializer;
-import org.apache.iotdb.db.query.control.QueryTimeManager;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 
 import java.util.ArrayList;
@@ -59,7 +58,6 @@ public class QueryContext {
   private long queryTimeLowerBound = Long.MIN_VALUE;
 
   private boolean debug;
-  private boolean enableTracing = false;
 
   /**
    * To reduce the cost of memory, we only keep the a certain size statement. For statement whose
@@ -88,7 +86,6 @@ public class QueryContext {
     this.startTime = startTime;
     this.statement = statement;
     this.timeout = timeout;
-    QueryTimeManager.getInstance().registerQuery(this);
   }
 
   /**
@@ -115,7 +112,6 @@ public class QueryContext {
             fileModCache.put(modFile.getFilePath(), allModifications);
           }
           return sortAndMerge(allModifications.getOverlapped(path));
-          //          return allModifications.getOverlapped(path);
         });
   }
 
@@ -129,14 +125,12 @@ public class QueryContext {
           } else if (o1.getFileOffset() != o2.getFileOffset()) {
             return (int) (o1.getFileOffset() - o2.getFileOffset());
           } else {
-            switch (o1.getType()) {
-              case DELETION:
-                Deletion del1 = (Deletion) o1;
-                Deletion del2 = (Deletion) o2;
-                return del1.getTimeRange().compareTo(del2.getTimeRange());
-              default:
-                throw new IllegalArgumentException();
+            if (o1.getType() == Modification.Type.DELETION) {
+              Deletion del1 = (Deletion) o1;
+              Deletion del2 = (Deletion) o2;
+              return del1.getTimeRange().compareTo(del2.getTimeRange());
             }
+            throw new IllegalArgumentException();
           }
         });
     List<Modification> result = new ArrayList<>();
@@ -175,14 +169,6 @@ public class QueryContext {
 
   public boolean isDebug() {
     return debug;
-  }
-
-  public boolean isEnableTracing() {
-    return enableTracing;
-  }
-
-  public void setEnableTracing(boolean enableTracing) {
-    this.enableTracing = enableTracing;
   }
 
   public long getQueryTimeLowerBound() {

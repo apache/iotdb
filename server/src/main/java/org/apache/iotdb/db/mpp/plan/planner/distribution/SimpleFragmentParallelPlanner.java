@@ -21,10 +21,13 @@ package org.apache.iotdb.db.mpp.plan.planner.distribution;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.commons.partition.QueryExecutor;
+import org.apache.iotdb.commons.partition.StorageExecutor;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.plan.analyze.Analysis;
+import org.apache.iotdb.db.mpp.plan.constant.DataNodeEndPoints;
 import org.apache.iotdb.db.mpp.plan.planner.IFragmentParallelPlaner;
 import org.apache.iotdb.db.mpp.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.mpp.plan.planner.plan.PlanFragment;
@@ -100,18 +103,30 @@ public class SimpleFragmentParallelPlanner implements IFragmentParallelPlaner {
             timeFilter,
             queryContext.getQueryType(),
             queryContext.getTimeOut(),
+            queryContext.getSession(),
             fragment.isRoot());
 
     // Get the target region for origin PlanFragment, then its instance will be distributed one
     // of them.
     TRegionReplicaSet regionReplicaSet = fragment.getTargetRegion();
 
-    // Set DataRegion and target host for the instance
+    // Set ExecutorType and target host for the instance
     // We need to store all the replica host in case of the scenario that the instance need to be
     // redirected
     // to another host when scheduling
-    fragmentInstance.setDataRegionAndHost(regionReplicaSet);
-    fragmentInstance.setHostDataNode(selectTargetDataNode(regionReplicaSet));
+    if ((analysis.getDataPartitionInfo() == null || analysis.getDataPartitionInfo().isEmpty())
+        && (analysis.getStatement() instanceof QueryStatement
+            && ((QueryStatement) analysis.getStatement()).isAggregationQuery())) {
+      // AggregationQuery && no data region, we need to execute this FI on local
+      fragmentInstance.setExecutorAndHost(
+          new QueryExecutor(
+              new TDataNodeLocation()
+                  .setInternalEndPoint(DataNodeEndPoints.LOCAL_HOST_INTERNAL_ENDPOINT)
+                  .setMPPDataExchangeEndPoint(DataNodeEndPoints.LOCAL_HOST_DATA_BLOCK_ENDPOINT)));
+    } else {
+      fragmentInstance.setExecutorAndHost(new StorageExecutor(regionReplicaSet));
+      fragmentInstance.setHostDataNode(selectTargetDataNode(regionReplicaSet));
+    }
 
     if (analysis.getStatement() instanceof QueryStatement) {
       fragmentInstance.getFragment().generateTypeProvider(queryContext.getTypeProvider());

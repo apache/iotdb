@@ -20,12 +20,15 @@
 package org.apache.iotdb.db.it.withoutNull;
 
 import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
+import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
+import org.junit.runner.RunWith;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
@@ -35,12 +38,13 @@ import static org.apache.iotdb.db.constant.TestConstant.TIMESTAMP_STR;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
-@Category({ClusterIT.class}) // TODO After old StandAlone remove
+@RunWith(IoTDBTestRunner.class)
+@Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBWithoutAnyNullIT {
 
   private static final String[] dataSet =
       new String[] {
-        "SET STORAGE GROUP TO root.test",
+        "CREATE DATABASE root.test",
         "CREATE TIMESERIES root.test.d1.s1 WITH DATATYPE=INT32, ENCODING=PLAIN",
         "CREATE TIMESERIES root.test.d1.s2 WITH DATATYPE=BOOLEAN, ENCODING=PLAIN",
         "CREATE TIMESERIES root.test.d1.s3 WITH DATATYPE=DOUBLE, ENCODING=PLAIN",

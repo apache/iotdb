@@ -24,7 +24,7 @@
     <parent>
         <artifactId>iotdb-parent</artifactId>
         <groupId>org.apache.iotdb</groupId>
-        <version>0.14.0-SNAPSHOT</version>
+        <version>1.0.1-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
     <artifactId>integration-test</artifactId>
@@ -65,7 +65,17 @@
         </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
+            <artifactId>iotdb-cli</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.iotdb</groupId>
             <artifactId>iotdb-confignode</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.iotdb</groupId>
+            <artifactId>library-udf</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
@@ -76,6 +86,47 @@
             <groupId>org.apache.iotdb</groupId>
             <artifactId>rewrite-tsfile-tool</artifactId>
             <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.awaitility</groupId>
+            <artifactId>awaitility</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.iotdb</groupId>
+            <artifactId>zeppelin-iotdb</artifactId>
+            <version>${project.version}</version>
+            <scope>test</scope>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.slf4j</groupId>
+                    <artifactId>slf4j-jcl</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.slf4j</groupId>
+                    <artifactId>slf4j-api</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.slf4j</groupId>
+                    <artifactId>slf4j-log4j12</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.zeppelin</groupId>
+            <artifactId>zeppelin-interpreter</artifactId>
+            <version>${zeppelin.version}</version>
+            <scope>test</scope>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.slf4j</groupId>
+                    <artifactId>slf4j-api</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.slf4j</groupId>
+                    <artifactId>slf4j-log4j12</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
     </dependencies>
     <dependencyManagement>
@@ -158,7 +209,6 @@
                             <goal>integration-test</goal>
                         </goals>
                         <configuration>
-                            <skipTests>false</skipTests>
                             <groups>${integrationTest.includedGroups}</groups>
                             <excludedGroups>${integrationTest.excludedGroups}</excludedGroups>
                             <useSystemClassLoader>false</useSystemClassLoader>
@@ -180,7 +230,6 @@
                             <goal>verify</goal>
                         </goals>
                         <configuration>
-                            <skipTests>false</skipTests>
                             <summaryFiles>
                                 <summaryFile>target/failsafe-reports/failsafe-summary-IT.xml</summaryFile>
                             </summaryFiles>
@@ -209,11 +258,15 @@
     </build>
     <profiles>
         <profile>
-            <id>LocalStandaloneIT</id>
+            <id>SimpleIT</id>
             <properties>
                 <integrationTest.includedGroups>org.apache.iotdb.itbase.category.LocalStandaloneIT</integrationTest.includedGroups>
                 <integrationTest.excludedGroups/>
-                <integrationTest.testEnv>Standalone</integrationTest.testEnv>
+                <integrationTest.testEnv>Simple</integrationTest.testEnv>
+                <integrationTest.launchNodeInSameJVM>false</integrationTest.launchNodeInSameJVM>
+                <integrationTest.randomSelectWriteNode>false</integrationTest.randomSelectWriteNode>
+                <integrationTest.readAndVerifyWithMultiNode>false</integrationTest.readAndVerifyWithMultiNode>
+                <integrationTest.parallelMode>classes</integrationTest.parallelMode>
             </properties>
             <activation>
                 <activeByDefault>true</activeByDefault>
@@ -240,21 +293,6 @@
                 <integrationTest.launchNodeInSameJVM>false</integrationTest.launchNodeInSameJVM>
                 <integrationTest.randomSelectWriteNode>true</integrationTest.randomSelectWriteNode>
                 <integrationTest.readAndVerifyWithMultiNode>true</integrationTest.readAndVerifyWithMultiNode>
-                <integrationTest.parallelMode>classes</integrationTest.parallelMode>
-            </properties>
-            <activation>
-                <activeByDefault>false</activeByDefault>
-            </activation>
-        </profile>
-        <profile>
-            <id>LocalStandaloneOnMppIT</id>
-            <properties>
-                <integrationTest.includedGroups>org.apache.iotdb.itbase.category.LocalStandaloneIT</integrationTest.includedGroups>
-                <integrationTest.excludedGroups/>
-                <integrationTest.testEnv>LocalStandaloneOnMpp</integrationTest.testEnv>
-                <integrationTest.launchNodeInSameJVM>false</integrationTest.launchNodeInSameJVM>
-                <integrationTest.randomSelectWriteNode>false</integrationTest.randomSelectWriteNode>
-                <integrationTest.readAndVerifyWithMultiNode>false</integrationTest.readAndVerifyWithMultiNode>
                 <integrationTest.parallelMode>classes</integrationTest.parallelMode>
             </properties>
             <activation>

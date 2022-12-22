@@ -26,6 +26,7 @@ import org.apache.iotdb.tsfile.utils.Pair;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * This class is specifically for standalone schema validation during data insertion. Since the
@@ -67,11 +68,6 @@ public class DeviceGroupSchemaTree implements ISchemaTree {
   }
 
   @Override
-  public List<MeasurementPath> getAllMeasurement() {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
   public List<DeviceSchemaInfo> getMatchedDevices(PartialPath pathPattern, boolean isPrefixMatch) {
     throw new UnsupportedOperationException();
   }
@@ -82,17 +78,17 @@ public class DeviceGroupSchemaTree implements ISchemaTree {
   }
 
   @Override
-  public String getBelongedStorageGroup(String pathName) {
+  public String getBelongedDatabase(String pathName) {
     throw new UnsupportedOperationException();
   }
 
   @Override
-  public String getBelongedStorageGroup(PartialPath path) {
+  public String getBelongedDatabase(PartialPath path) {
     throw new UnsupportedOperationException();
   }
 
   @Override
-  public List<String> getStorageGroups() {
+  public Set<String> getDatabases() {
     throw new UnsupportedOperationException();
   }
 }

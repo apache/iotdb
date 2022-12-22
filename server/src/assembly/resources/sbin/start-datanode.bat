@@ -22,6 +22,8 @@ echo ````````````````````````
 echo Starting IoTDB DataNode
 echo ````````````````````````
 
+@REM -----------------------------------------------------------------------------
+@REM SET JAVA
 PATH %PATH%;%JAVA_HOME%\bin\
 set "FULL_VERSION="
 set "MAJOR_VERSION="
@@ -51,7 +53,8 @@ IF "%JAVA_VERSION%" == "7" (
 	goto finally
 )
 
-
+@REM -----------------------------------------------------------------------------
+@REM SET DIR
 if "%OS%" == "Windows_NT" setlocal
 
 pushd %~dp0..
@@ -64,6 +67,7 @@ IF "%1" == "printgc" (
   SHIFT
 )
 
+@setlocal ENABLEDELAYEDEXPANSION ENABLEEXTENSIONS
 SET IOTDB_CONF=%1
 IF "%IOTDB_CONF%" == "" (
   SET IOTDB_CONF=%IOTDB_HOME%\conf
@@ -86,7 +90,107 @@ IF EXIST "%IOTDB_CONF%\datanode-env.bat" (
     CALL "%IOTDB_HOME%/conf/datanode-env.bat"
    )
 ) ELSE (
-  echo "can't find datanode-env.bat"
+  echo "Can't find datanode-env.bat"
+)
+
+@REM CHECK THE PORT USAGES
+IF EXIST "%IOTDB_CONF%\iotdb-datanode.properties" (
+  for /f  "eol=# tokens=2 delims==" %%i in ('findstr /i "^dn_rpc_port"
+    %IOTDB_CONF%\iotdb-datanode.properties') do (
+      set dn_rpc_port=%%i
+  )
+  for /f  "eol=# tokens=2 delims==" %%i in ('findstr /i "^dn_internal_port"
+    %IOTDB_CONF%\iotdb-datanode.properties') do (
+      set dn_internal_port=%%i
+  )
+  for /f  "eol=# tokens=2 delims==" %%i in ('findstr /i "^dn_mpp_data_exchange_port"
+    %IOTDB_CONF%\iotdb-datanode.properties') do (
+      set dn_mpp_data_exchange_port=%%i
+  )
+  for /f  "eol=# tokens=2 delims==" %%i in ('findstr /i "^dn_schema_region_consensus_port"
+    %IOTDB_CONF%\iotdb-datanode.properties') do (
+      set dn_schema_region_consensus_port=%%i
+  )
+  for /f  "eol=# tokens=2 delims==" %%i in ('findstr /i "^dn_data_region_consensus_port"
+    %IOTDB_CONF%\iotdb-datanode.properties') do (
+      set dn_data_region_consensus_port=%%i
+  )
+) ELSE IF EXIST "%IOTDB_HOME%\conf\iotdb-datanode.properties" (
+  for /f  "eol=# tokens=2 delims==" %%i in ('findstr /i "^dn_rpc_port"
+      %IOTDB_HOME%\conf\iotdb-datanode.properties') do (
+        set dn_rpc_port=%%i
+  )
+  for /f  "eol=# tokens=2 delims==" %%i in ('findstr /i "^dn_internal_port"
+      %IOTDB_HOME%\conf\iotdb-datanode.properties') do (
+        set dn_internal_port=%%i
+  )
+  for /f  "eol=# tokens=2 delims==" %%i in ('findstr /i "^dn_mpp_data_exchange_port"
+    %IOTDB_HOME%\conf\iotdb-datanode.properties') do (
+      set dn_mpp_data_exchange_port=%%i
+  )
+  for /f  "eol=# tokens=2 delims==" %%i in ('findstr /i "^dn_schema_region_consensus_port"
+    %IOTDB_HOME%\conf\iotdb-datanode.properties') do (
+      set dn_schema_region_consensus_port=%%i
+  )
+  for /f  "eol=# tokens=2 delims==" %%i in ('findstr /i "^dn_data_region_consensus_port"
+    %IOTDB_HOME%\conf\iotdb-datanode.properties') do (
+      set dn_data_region_consensus_port=%%i
+  )
+) ELSE (
+  echo "Can't find iotdb-datanode.properties, check the default ports"
+  set dn_rpc_port=6667
+  set dn_internal_port=9003
+  set dn_mpp_data_exchange_port=8777
+  set dn_schema_region_consensus_port=50010
+  set dn_data_region_consensus_port=40010
+)
+
+echo Check whether the ports are occupied....
+set occupied=0
+set dn_rpc_port_occupied=0
+set dn_internal_port_occupied=0
+set dn_mpp_data_exchange_port_occupied=0
+set dn_schema_region_consensus_port_occupied=0
+set dn_data_region_consensus_port_occupied=0
+for /f  "tokens=1,3,7 delims=: " %%i in ('netstat /ano') do (
+    if %%i==TCP (
+       if %%j==%dn_rpc_port% (
+         if !dn_rpc_port_occupied!==0 (
+           echo The dn_rpc_port %dn_rpc_port% is already occupied, pid:%%k
+           set occupied=1
+           set dn_rpc_port_occupied=1
+         )
+       ) else if %%j==%dn_internal_port% (
+         if !dn_internal_port_occupied!==0 (
+           echo The dn_internal_port %dn_internal_port% is already occupied, pid:%%k
+           set occupied=1
+           set dn_internal_port_occupied=1
+         )
+       ) else if %%j==%dn_mpp_data_exchange_port% (
+         if !dn_mpp_data_exchange_port_occupied!==0 (
+           echo The dn_mpp_data_exchange_port %dn_mpp_data_exchange_port% is already occupied, pid:%%k
+           set occupied=1
+           set dn_mpp_data_exchange_port_occupied=1
+         )
+       ) else if %%j==%dn_schema_region_consensus_port% (
+         if !dn_schema_region_consensus_port_occupied!==0 (
+           echo The dn_schema_region_consensus_port %dn_schema_region_consensus_port% is already occupied, pid:%%k
+           set occupied=1
+           set dn_schema_region_consensus_port_occupied=1
+         )
+       ) else if %%j==%dn_data_region_consensus_port% (
+         if !dn_data_region_consensus_port_occupied!==0 (
+           echo The dn_data_region_consensus_port %dn_data_region_consensus_port% is already occupied, pid:%%k
+           set occupied=1
+         )
+       )
+    )
+)
+
+if %occupied%==1 (
+  echo There exists occupied port, please change the configuration.
+  TIMEOUT /T 10 /NOBREAK
+  exit 0
 )
 
 @setlocal ENABLEDELAYEDEXPANSION ENABLEEXTENSIONS
@@ -97,12 +201,13 @@ if NOT DEFINED JAVA_HOME goto :err
 @REM -----------------------------------------------------------------------------
 @REM JVM Opts we'll use in legacy run or installation
 set JAVA_OPTS=-ea^
- -Dlogback.configurationFile="%IOTDB_CONF%\logback.xml"^
+ -Dlogback.configurationFile="%IOTDB_CONF%\logback-datanode.xml"^
  -DIOTDB_HOME="%IOTDB_HOME%"^
  -DTSFILE_HOME="%IOTDB_HOME%"^
  -DTSFILE_CONF="%IOTDB_CONF%"^
  -DIOTDB_CONF="%IOTDB_CONF%"
 
+@REM ----------------------------------------------------------------------------
 @REM ***** CLASSPATH library setting *****
 @REM Ensure that any user defined CLASSPATH variables are not used on startup
 if EXIST %IOTDB_HOME%\lib (set CLASSPATH="%IOTDB_HOME%\lib\*") else set CLASSPATH="%IOTDB_HOME%\..\lib\*"
@@ -120,7 +225,38 @@ goto :eof
 
 rem echo CLASSPATH: %CLASSPATH%
 
-"%JAVA_HOME%\bin\java" %ILLEGAL_ACCESS_PARAMS% %JAVA_OPTS% %IOTDB_HEAP_OPTS% -cp %CLASSPATH% %IOTDB_JMX_OPTS% %MAIN_CLASS% %CONF_PARAMS%
+@REM ----------------------------------------------------------------------------
+@REM SET PARA
+
+@REM iotdb-server runs in foreground by default
+@REM set foreground=0
+set foreground=yes
+
+:checkPara
+set COMMANSLINE=%*
+@REM setlocal ENABLEDELAYEDEXPANSION
+:STR_VISTOR
+for /f "tokens=1* delims= " %%a in ("%COMMANSLINE%") do (
+@REM -----more para-----
+for /f "tokens=1* delims==" %%1 in ("%%a") do (
+@REM echo 1=%%1 "|||" 2=%%2
+if "%%1"=="-v" ( java %JAVA_OPTS% -Dlogback.configurationFile="%IOTDB_CONF%/logback-tool.xml" -cp %CLASSPATH% org.apache.iotdb.db.service.GetVersion & goto finally )
+if "%%1"=="-f" ( set foreground=yes)
+if "%%1"=="-d" ( set foreground=0)
+)
+set COMMANSLINE=%%b
+goto STR_VISTOR
+)
+
+@REM ----------------------------------------------------------------------------
+@REM START
+:start
+if %foreground%==yes (
+	java %ILLEGAL_ACCESS_PARAMS% %JAVA_OPTS% %IOTDB_HEAP_OPTS% -cp %CLASSPATH% %IOTDB_JMX_OPTS% %MAIN_CLASS% %CONF_PARAMS%
+	) ELSE (
+	start javaw %ILLEGAL_ACCESS_PARAMS% %JAVA_OPTS% %IOTDB_HEAP_OPTS% -cp %CLASSPATH% %IOTDB_JMX_OPTS% %MAIN_CLASS% %CONF_PARAMS%
+	)
+
 goto finally
 
 :err
@@ -130,7 +266,6 @@ pause
 
 @REM -----------------------------------------------------------------------------
 :finally
-
+@ENDLOCAL
 pause
 
-ENDLOCAL

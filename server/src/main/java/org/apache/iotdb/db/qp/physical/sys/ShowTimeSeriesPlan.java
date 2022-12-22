@@ -18,14 +18,13 @@
  */
 package org.apache.iotdb.db.qp.physical.sys;
 
-import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.metadata.template.Template;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.Map;
+import java.util.Objects;
 
 public class ShowTimeSeriesPlan extends ShowPlan {
 
@@ -122,14 +121,19 @@ public class ShowTimeSeriesPlan extends ShowPlan {
   }
 
   @Override
-  public void deserialize(ByteBuffer buffer) throws IllegalPathException {
-    path = new PartialPath(readString(buffer));
-    isContains = buffer.get() == 1;
-    key = readString(buffer);
-    value = readString(buffer);
-    limit = buffer.getInt();
-    offset = buffer.getInt();
-    orderByHeat = buffer.get() == 1;
-    this.index = buffer.getLong();
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    ShowTimeSeriesPlan that = (ShowTimeSeriesPlan) o;
+    return isContains == that.isContains
+        && orderByHeat == that.orderByHeat
+        && Objects.equals(key, that.key)
+        && Objects.equals(value, that.value)
+        && Objects.equals(relatedTemplate, that.relatedTemplate);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(isContains, key, value, orderByHeat, relatedTemplate);
   }
 }

@@ -21,15 +21,12 @@
 
 # Apache IoTDB
 
-[![Main Mac and Linux](https://github.com/apache/iotdb/actions/workflows/main-unix.yml/badge.svg)](https://github.com/apache/iotdb/actions/workflows/main-unix.yml)
-[![Main Win](https://github.com/apache/iotdb/actions/workflows/main-win.yml/badge.svg)](https://github.com/apache/iotdb/actions/workflows/main-win.yml)
-[![coveralls](https://coveralls.io/repos/github/apache/iotdb/badge.svg?branch=master)](https://coveralls.io/repos/github/apache/iotdb/badge.svg?branch=master)
+[![Python Client](https://github.com/apache/iotdb/actions/workflows/client-python.yml/badge.svg?branch=master)](https://github.com/apache/iotdb/actions/workflows/client-python.yml)
 [![GitHub release](https://img.shields.io/github/release/apache/iotdb.svg)](https://github.com/apache/iotdb/releases)
 [![License](https://img.shields.io/badge/license-Apache%202-4EB1BA.svg)](https://www.apache.org/licenses/LICENSE-2.0.html)
 ![](https://github-size-badge.herokuapp.com/apache/iotdb.svg)
 ![](https://img.shields.io/github/downloads/apache/iotdb/total.svg)
-![](https://img.shields.io/badge/platform-win10%20%7C%20macox%20%7C%20linux-yellow.svg)
-![](https://img.shields.io/badge/java--language-1.8-blue.svg)
+![](https://img.shields.io/badge/platform-win%20%7C%20macos%20%7C%20linux-yellow.svg)
 [![IoTDB Website](https://img.shields.io/website-up-down-green-red/https/shields.io.svg?label=iotdb-website)](https://iotdb.apache.org/)
 
 
@@ -98,15 +95,15 @@ session.close()
 
 ### Data Definition Interface (DDL Interface)
 
-#### Storage Group Management
+#### DATABASE Management
 
-* Set storage group
+* CREATE DATABASE
 
 ```python
 session.set_storage_group(group_name)
 ```
 
-* Delete one or several storage groups
+* Delete one or several databases
 
 ```python
 session.delete_storage_group(group_name)
@@ -481,7 +478,7 @@ Converting the data model of IoTDB into the data model of SQLAlchemy.
 
 The metadata in the IoTDB are：
 
-1. Storage Group
+1. Database
 2. Path
 3. Entity
 4. Measurement
@@ -495,8 +492,8 @@ The mapping relationship between them is：
 
 | The metadata in the SQLAlchemy | The metadata in the IoTDB                            |
 | -------------------- | ---------------------------------------------- |
-| Schema               | Storage Group                                  |
-| Table                | Path ( from storage group to entity ) + Entity |
+| Schema               |      Database                                  |
+| Table                | Path ( from database to entity ) + Entity |
 | Column               | Measurement                                    |
 
 The following figure shows the relationship between the two more intuitively:

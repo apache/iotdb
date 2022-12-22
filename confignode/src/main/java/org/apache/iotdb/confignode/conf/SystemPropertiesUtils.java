@@ -68,31 +68,33 @@ public class SystemPropertiesUtils {
     boolean needReWrite = false;
 
     // Startup configuration
-    String internalAddress = systemProperties.getProperty("internal_address", null);
+    String internalAddress = systemProperties.getProperty("cn_internal_address", null);
     if (internalAddress == null) {
       needReWrite = true;
     } else if (!internalAddress.equals(conf.getInternalAddress())) {
       throw new ConfigurationException(
-          "internal_address", conf.getInternalAddress(), internalAddress);
+          "cn_internal_address", conf.getInternalAddress(), internalAddress);
     }
 
-    if (systemProperties.getProperty("internal_port", null) == null) {
+    if (systemProperties.getProperty("cn_internal_port", null) == null) {
       needReWrite = true;
     } else {
-      int internalPort = Integer.parseInt(systemProperties.getProperty("internal_port"));
+      int internalPort = Integer.parseInt(systemProperties.getProperty("cn_internal_port"));
       if (internalPort != conf.getInternalPort()) {
         throw new ConfigurationException(
-            "internal_port", String.valueOf(conf.getInternalPort()), String.valueOf(internalPort));
+            "cn_internal_port",
+            String.valueOf(conf.getInternalPort()),
+            String.valueOf(internalPort));
       }
     }
 
-    if (systemProperties.getProperty("consensus_port", null) == null) {
+    if (systemProperties.getProperty("cn_consensus_port", null) == null) {
       needReWrite = true;
     } else {
-      int consensusPort = Integer.parseInt(systemProperties.getProperty("consensus_port"));
+      int consensusPort = Integer.parseInt(systemProperties.getProperty("cn_consensus_port"));
       if (consensusPort != conf.getConsensusPort()) {
         throw new ConfigurationException(
-            "consensus_port",
+            "cn_consensus_port",
             String.valueOf(conf.getConsensusPort()),
             String.valueOf(consensusPort));
       }
@@ -141,10 +143,10 @@ public class SystemPropertiesUtils {
     } else {
       int seriesPartitionSlotNum =
           Integer.parseInt(systemProperties.getProperty("series_partition_slot_num"));
-      if (seriesPartitionSlotNum != conf.getSeriesPartitionSlotNum()) {
+      if (seriesPartitionSlotNum != conf.getSeriesSlotNum()) {
         throw new ConfigurationException(
             "series_partition_slot_num",
-            String.valueOf(conf.getSeriesPartitionSlotNum()),
+            String.valueOf(conf.getSeriesSlotNum()),
             String.valueOf(seriesPartitionSlotNum));
       }
     }
@@ -193,10 +195,18 @@ public class SystemPropertiesUtils {
    */
   public static void storeSystemParameters() throws IOException {
     Properties systemProperties = getSystemProperties();
+
+    // Cluster configuration
+    systemProperties.setProperty("cluster_name", conf.getClusterName());
+    systemProperties.setProperty("config_node_id", String.valueOf(conf.getConfigNodeId()));
+    systemProperties.setProperty(
+        "is_seed_config_node",
+        String.valueOf(ConfigNodeDescriptor.getInstance().isSeedConfigNode()));
+
     // Startup configuration
-    systemProperties.setProperty("internal_address", String.valueOf(conf.getInternalAddress()));
-    systemProperties.setProperty("internal_port", String.valueOf(conf.getInternalPort()));
-    systemProperties.setProperty("consensus_port", String.valueOf(conf.getConsensusPort()));
+    systemProperties.setProperty("cn_internal_address", String.valueOf(conf.getInternalAddress()));
+    systemProperties.setProperty("cn_internal_port", String.valueOf(conf.getInternalPort()));
+    systemProperties.setProperty("cn_consensus_port", String.valueOf(conf.getConsensusPort()));
 
     // Consensus protocol configuration
     systemProperties.setProperty(
@@ -208,7 +218,7 @@ public class SystemPropertiesUtils {
 
     // PartitionSlot configuration
     systemProperties.setProperty(
-        "series_partition_slot_num", String.valueOf(conf.getSeriesPartitionSlotNum()));
+        "series_partition_slot_num", String.valueOf(conf.getSeriesSlotNum()));
     systemProperties.setProperty(
         "series_partition_executor_class", conf.getSeriesPartitionExecutorClass());
 
@@ -237,6 +247,65 @@ public class SystemPropertiesUtils {
         "config_node_list", NodeUrlUtils.convertTConfigNodeUrls(configNodes));
 
     storeSystemProperties(systemProperties);
+  }
+
+  /**
+   * Load the cluster_name in confignode-system.properties file. We only invoke this interface when
+   * restarted.
+   *
+   * @return The property of cluster_name in confignode-system.properties file
+   * @throws IOException When load confignode-system.properties file failed
+   */
+  public static String loadClusterNameWhenRestarted() throws IOException {
+    Properties systemProperties = getSystemProperties();
+    String clusterName = systemProperties.getProperty("cluster_name", null);
+    if (clusterName == null) {
+      LOGGER.warn(
+          "Lack cluster_name field in data/confignode/system/confignode-system.properties, set it as defaultCluster");
+      systemProperties.setProperty("cluster_name", "defaultCluster");
+      return systemProperties.getProperty("cluster_name", null);
+    }
+    return clusterName;
+  }
+
+  /**
+   * Load the config_node_id in confignode-system.properties file. We only invoke this interface
+   * when restarted.
+   *
+   * @return The property of config_node_id in confignode-system.properties file
+   * @throws IOException When load confignode-system.properties file failed
+   */
+  public static int loadConfigNodeIdWhenRestarted() throws IOException {
+    Properties systemProperties = getSystemProperties();
+    try {
+      return Integer.parseInt(systemProperties.getProperty("config_node_id", null));
+    } catch (NumberFormatException e) {
+      throw new IOException(
+          "The parameter config_node_id doesn't exist in data/confignode/system/confignode-system.properties. "
+              + "Please delete data dir data/confignode and restart again.");
+    }
+  }
+
+  /**
+   * Check if the current ConfigNode is SeedConfigNode.
+   *
+   * <p>Notice: Only invoke this interface when restarted.
+   *
+   * @return True if the is_seed_config_node is set to True in iotdb-confignode.properties file
+   */
+  public static boolean isSeedConfigNode() {
+    try {
+      Properties systemProperties = getSystemProperties();
+      boolean isSeedConfigNode =
+          Boolean.parseBoolean(systemProperties.getProperty("is_seed_config_node", null));
+      if (isSeedConfigNode) {
+        return true;
+      } else {
+        return ConfigNodeDescriptor.getInstance().isSeedConfigNode();
+      }
+    } catch (IOException ignore) {
+      return false;
+    }
   }
 
   private static synchronized Properties getSystemProperties() throws IOException {

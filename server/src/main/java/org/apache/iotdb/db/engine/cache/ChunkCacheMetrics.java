@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.engine.cache;
 
-import org.apache.iotdb.db.service.metrics.enums.Metric;
-import org.apache.iotdb.db.service.metrics.enums.Tag;
+import org.apache.iotdb.commons.service.metric.enums.Metric;
+import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.utils.MetricLevel;
@@ -37,7 +37,7 @@ public class ChunkCacheMetrics implements IMetricSet {
 
   @Override
   public void bindTo(AbstractMetricService metricService) {
-    metricService.getOrCreateAutoGauge(
+    metricService.createAutoGauge(
         Metric.CACHE_HIT.toString(),
         MetricLevel.IMPORTANT,
         chunkCache,
@@ -49,7 +49,7 @@ public class ChunkCacheMetrics implements IMetricSet {
   @Override
   public void unbindFrom(AbstractMetricService metricService) {
     metricService.remove(
-        MetricType.GAUGE, Metric.CACHE_HIT.toString(), Tag.NAME.toString(), "chunk");
+        MetricType.AUTO_GAUGE, Metric.CACHE_HIT.toString(), Tag.NAME.toString(), "chunk");
   }
 
   @Override

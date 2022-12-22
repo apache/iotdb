@@ -24,6 +24,7 @@ import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.mpp.execution.operator.source.DataSourceOperator;
 import org.apache.iotdb.db.mpp.execution.timer.RuleBasedTimeSliceAllocator;
 import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.utils.Binary;
@@ -35,6 +36,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ExecutorService;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Objects.requireNonNull;
@@ -46,11 +48,15 @@ public class LocalExecutionPlanContext {
   private final Map<String, Set<String>> allSensorsMap;
   // Used to lock corresponding query resources
   private final List<DataSourceOperator> sourceOperators;
+
+  private final long dataRegionTTL;
   private ISinkHandle sinkHandle;
 
   private int nextOperatorId = 0;
 
   private final TypeProvider typeProvider;
+
+  private List<TSDataType> cachedDataTypes;
 
   // left is cached last value in last query
   // right is full path for each cached last value
@@ -62,16 +68,19 @@ public class LocalExecutionPlanContext {
 
   private final RuleBasedTimeSliceAllocator timeSliceAllocator;
 
+  // for data region
   public LocalExecutionPlanContext(
-      TypeProvider typeProvider, FragmentInstanceContext instanceContext) {
+      TypeProvider typeProvider, FragmentInstanceContext instanceContext, long dataRegionTTL) {
     this.typeProvider = typeProvider;
     this.instanceContext = instanceContext;
     this.paths = new ArrayList<>();
     this.allSensorsMap = new HashMap<>();
     this.sourceOperators = new ArrayList<>();
     this.timeSliceAllocator = new RuleBasedTimeSliceAllocator();
+    this.dataRegionTTL = dataRegionTTL;
   }
 
+  // for schema region
   public LocalExecutionPlanContext(FragmentInstanceContext instanceContext) {
     this.instanceContext = instanceContext;
     this.paths = new ArrayList<>();
@@ -81,6 +90,8 @@ public class LocalExecutionPlanContext {
 
     // only used in `order by heat`
     this.timeSliceAllocator = new RuleBasedTimeSliceAllocator();
+    // there is no ttl in schema region, so we don't care this field
+    this.dataRegionTTL = Long.MAX_VALUE;
   }
 
   public int getNextOperatorId() {
@@ -139,6 +150,14 @@ public class LocalExecutionPlanContext {
     this.sinkHandle = sinkHandle;
   }
 
+  public void setCachedDataTypes(List<TSDataType> cachedDataTypes) {
+    this.cachedDataTypes = cachedDataTypes;
+  }
+
+  public List<TSDataType> getCachedDataTypes() {
+    return cachedDataTypes;
+  }
+
   public TypeProvider getTypeProvider() {
     return typeProvider;
   }
@@ -157,5 +176,13 @@ public class LocalExecutionPlanContext {
 
   public boolean isNeedUpdateLastCache() {
     return needUpdateLastCache;
+  }
+
+  public long getDataRegionTTL() {
+    return dataRegionTTL;
+  }
+
+  public ExecutorService getIntoOperationExecutor() {
+    return instanceContext.getIntoOperationExecutor();
   }
 }

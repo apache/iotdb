@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 #
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
@@ -19,12 +19,14 @@
 #
 
 CONFIGNODE_CONF="$(dirname "$0")/../conf"
-internal_port=$(sed '/^internal_port=/!d;s/.*=//' ${CONFIGNODE_CONF}/iotdb-confignode.properties)
+cn_internal_port=$(sed '/^cn_internal_port=/!d;s/.*=//' "${CONFIGNODE_CONF}"/iotdb-confignode.properties)
+
+echo Check whether the internal_port is used..., port is "$cn_internal_port"
 
 if type lsof >/dev/null 2>&1; then
-  PID=$(lsof -t -i:${internal_port} -sTCP:LISTEN)
+  PID=$(lsof -t -i:"${cn_internal_port}" -sTCP:LISTEN)
 elif type netstat >/dev/null 2>&1; then
-  PID=$(netstat -anp 2>/dev/null | grep ":${internal_port} " | grep ' LISTEN ' | awk '{print $NF}' | sed "s|/.*||g")
+  PID=$(netstat -anp 2>/dev/null | grep ":${cn_internal_port} " | grep ' LISTEN ' | awk '{print $NF}' | sed "s|/.*||g")
 else
   echo ""
   echo " Error: No necessary tool."
@@ -32,10 +34,17 @@ else
   exit 1
 fi
 
+PID_VERIFY=$(ps ax | grep -i 'ConfigNode' | grep java | grep -v grep | awk '{print $1}')
 if [ -z "$PID" ]; then
   echo "No ConfigNode to stop"
+  if [ "$(id -u)" -ne 0 ]; then
+    echo "Maybe you can try to run in sudo mode to detect the process."
+  fi
   exit 1
+elif [[ "${PID_VERIFY}" =~ ${PID} ]]; then
+  kill -s TERM "$PID"
+  echo "Close ConfigNode, PID:" "$PID"
 else
-  kill -s TERM $PID
-  echo "close ConfigNode"
+  echo "No ConfigNode to stop"
+  exit 1
 fi

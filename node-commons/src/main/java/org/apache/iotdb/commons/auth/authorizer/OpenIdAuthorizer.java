@@ -19,12 +19,11 @@
 package org.apache.iotdb.commons.auth.authorizer;
 
 import org.apache.iotdb.commons.auth.AuthException;
-import org.apache.iotdb.commons.auth.entity.Role;
-import org.apache.iotdb.commons.auth.entity.User;
 import org.apache.iotdb.commons.auth.role.LocalFileRoleManager;
 import org.apache.iotdb.commons.auth.user.LocalFileUserManager;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import com.nimbusds.jose.JOSEException;
 import com.nimbusds.jose.jwk.RSAKey;
@@ -76,17 +75,18 @@ public class OpenIdAuthorizer extends BasicAuthorizer {
     try {
       providerKey = RSAKey.parse(jwk).toRSAPublicKey();
     } catch (java.text.ParseException | JOSEException e) {
-      throw new AuthException("Unable to get OIDC Provider Key from JWK " + jwk, e);
+      throw new AuthException(
+          TSStatusCode.INIT_AUTH_ERROR, "Unable to get OIDC Provider Key from JWK " + jwk, e);
     }
     logger.info("Initialized with providerKey: {}", providerKey);
   }
 
   public OpenIdAuthorizer(String providerUrl)
       throws AuthException, URISyntaxException, ParseException, IOException {
-    this(getJWKFromProvider(providerUrl));
+    this(getJwkFromProvider(providerUrl));
   }
 
-  private static JSONObject getJWKFromProvider(String providerUrl)
+  private static JSONObject getJwkFromProvider(String providerUrl)
       throws URISyntaxException, IOException, ParseException, AuthException {
     if (providerUrl == null) {
       throw new IllegalArgumentException("OpenID Connect Provider URI must be given!");
@@ -100,13 +100,13 @@ public class OpenIdAuthorizer extends BasicAuthorizer {
     try {
       URL url = new URI(providerMetadata.getJWKSetURI().toString()).toURL();
       logger.debug("Using url {}", url);
-      return getProviderRSAJWK(url.openStream());
+      return getProviderRsaJwk(url.openStream());
     } catch (IOException e) {
-      throw new AuthException("Unable to start the Auth", e);
+      throw new AuthException(TSStatusCode.INIT_AUTH_ERROR, "Unable to start the Auth", e);
     }
   }
 
-  private static JSONObject getProviderRSAJWK(InputStream is) throws ParseException {
+  private static JSONObject getProviderRsaJwk(InputStream is) throws ParseException {
     // Read all data from stream
     StringBuilder sb = new StringBuilder();
     try (Scanner scanner = new Scanner(is)) {
@@ -130,13 +130,13 @@ public class OpenIdAuthorizer extends BasicAuthorizer {
     return null;
   }
 
-  static OIDCProviderMetadata fetchMetadata(String providerUrl)
+  private static OIDCProviderMetadata fetchMetadata(String providerUrl)
       throws URISyntaxException, IOException, ParseException {
-    URI issuerURI = new URI(providerUrl);
-    URL providerConfigurationURL = issuerURI.resolve(".well-known/openid-configuration").toURL();
-    InputStream stream = providerConfigurationURL.openStream();
+    URI issuerUri = new URI(providerUrl);
+    URL providerConfigurationUrl = issuerUri.resolve(".well-known/openid-configuration").toURL();
+    InputStream stream = providerConfigurationUrl.openStream();
     // Read all data from URL
-    String providerInfo = null;
+    String providerInfo;
     try (java.util.Scanner s = new java.util.Scanner(stream)) {
       providerInfo = s.useDelimiter("\\A").hasNext() ? s.next() : "";
     }
@@ -181,6 +181,17 @@ public class OpenIdAuthorizer extends BasicAuthorizer {
     return true;
   }
 
+  public String getIoTDBUserName(String token) {
+    Claims claims = validateToken(token);
+    logger.debug("JWT was validated successfully!");
+    logger.debug("ID: {}", claims.getId());
+    logger.debug("Subject: {}", claims.getSubject());
+    logger.debug("Issuer: {}", claims.getIssuer());
+    logger.debug("Expiration: {}", claims.getExpiration());
+    // Create User if not exists
+    return getUsername(claims);
+  }
+
   private Claims validateToken(String token) {
     return Jwts.parser()
         // Basically ignore the Expiration Date, if there is any???
@@ -193,10 +204,6 @@ public class OpenIdAuthorizer extends BasicAuthorizer {
 
   private String getUsername(Claims claims) {
     return OPENID_USER_PREFIX + claims.getSubject();
-  }
-
-  private String getUsername(String token) {
-    return getUsername(validateToken(token));
   }
 
   @Override
@@ -217,8 +224,7 @@ public class OpenIdAuthorizer extends BasicAuthorizer {
   /**
    * So not with the token!
    *
-   * @param token Usually the JWT but could also be just the name of the user ({@link
-   *     #getUsername(String)}.
+   * @param token Usually the JWT but could also be just the name of the user.
    * @return true if the user is an admin
    */
   @Override
@@ -228,7 +234,7 @@ public class OpenIdAuthorizer extends BasicAuthorizer {
       // This is a username!
       claims = this.loggedClaims.get(token);
     } else {
-      // Its a token
+      // It's a token
       try {
         claims = validateToken(token);
       } catch (JwtException e) {
@@ -251,26 +257,7 @@ public class OpenIdAuthorizer extends BasicAuthorizer {
   @Override
   public boolean checkUserPrivileges(String username, String path, int privilegeId)
       throws AuthException {
-    if (isAdmin(username)) {
-      return true;
-    }
-
-    User user = userManager.getUser(getUsername(username));
-    if (user == null) {
-      throw new AuthException(String.format("No such user : %s", getUsername(username)));
-    }
-    // get privileges of the user
-    if (user.checkPrivilege(path, privilegeId)) {
-      return true;
-    }
-    // merge the privileges of the roles of the user
-    for (String roleName : user.getRoleList()) {
-      Role role = roleManager.getRole(roleName);
-      if (role.checkPrivilege(path, privilegeId)) {
-        return true;
-      }
-    }
-    return false;
+    return isAdmin(username);
   }
 
   @Override

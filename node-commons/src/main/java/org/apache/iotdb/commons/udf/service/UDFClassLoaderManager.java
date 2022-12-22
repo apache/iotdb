@@ -74,7 +74,9 @@ public class UDFClassLoaderManager implements IService {
   public UDFClassLoader updateAndGetActiveClassLoader() throws IOException {
     UDFClassLoader deprecatedClassLoader = activeClassLoader;
     activeClassLoader = new UDFClassLoader(libRoot);
-    deprecatedClassLoader.markAsDeprecated();
+    if (deprecatedClassLoader != null) {
+      deprecatedClassLoader.markAsDeprecated();
+    }
     return activeClassLoader;
   }
 
@@ -113,6 +115,7 @@ public class UDFClassLoaderManager implements IService {
   private static UDFClassLoaderManager INSTANCE = null;
 
   public static synchronized UDFClassLoaderManager setupAndGetInstance(String libRoot) {
+
     if (INSTANCE == null) {
       INSTANCE = new UDFClassLoaderManager(libRoot);
     }

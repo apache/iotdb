@@ -28,8 +28,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-// This class is used for data partition maintaining the map between storage group and
+// This class is used for data partition maintaining the map between database and
 // dataRegionIds.
+@Deprecated
 public class LocalDataPartitionInfo {
 
   // storageGroup -> LocalDataPartitionTable
@@ -77,7 +78,7 @@ public class LocalDataPartitionInfo {
    * Try to allocate a data region for the new time partition slot. This function will try to create
    * new data region to make expansion if the existing data regions meet some condition.
    *
-   * @param storageGroup The path for the storage group.
+   * @param storageGroup The path for the database.
    * @param path The full path for the series.
    * @return The data region id for the time partition slot.
    */

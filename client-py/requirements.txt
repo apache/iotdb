@@ -17,10 +17,10 @@
 #
 
 # Pandas Export
-pandas~=1.3.5
+pandas>=1.3.5
 # Testcontainer
 testcontainers==3.3.0
-numpy~=1.21.4
+numpy>=1.21.4
 # SQLAlchemy Dialect
 sqlalchemy == 1.3.20
 sqlalchemy-utils == 0.36.8

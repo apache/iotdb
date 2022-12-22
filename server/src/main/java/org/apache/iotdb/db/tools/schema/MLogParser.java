@@ -18,29 +18,13 @@
  */
 package org.apache.iotdb.db.tools.schema;
 
-import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.metadata.logfile.MLogReader;
-import org.apache.iotdb.db.metadata.logfile.MLogTxtWriter;
-import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.sys.ActivateTemplatePlan;
-import org.apache.iotdb.db.qp.physical.sys.AppendTemplatePlan;
-import org.apache.iotdb.db.qp.physical.sys.AutoCreateDeviceMNodePlan;
-import org.apache.iotdb.db.qp.physical.sys.ChangeAliasPlan;
-import org.apache.iotdb.db.qp.physical.sys.ChangeTagOffsetPlan;
-import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
-import org.apache.iotdb.db.qp.physical.sys.CreateContinuousQueryPlan;
-import org.apache.iotdb.db.qp.physical.sys.CreateTemplatePlan;
-import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
-import org.apache.iotdb.db.qp.physical.sys.DropContinuousQueryPlan;
-import org.apache.iotdb.db.qp.physical.sys.DropTemplatePlan;
-import org.apache.iotdb.db.qp.physical.sys.MNodePlan;
-import org.apache.iotdb.db.qp.physical.sys.MeasurementMNodePlan;
-import org.apache.iotdb.db.qp.physical.sys.PruneTemplatePlan;
-import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
-import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
-import org.apache.iotdb.db.qp.physical.sys.SetTemplatePlan;
-import org.apache.iotdb.db.qp.physical.sys.StorageGroupMNodePlan;
-import org.apache.iotdb.db.qp.physical.sys.UnsetTemplatePlan;
+import org.apache.iotdb.db.metadata.logfile.BufferedSerializer;
+import org.apache.iotdb.db.metadata.logfile.FakeCRC32Deserializer;
+import org.apache.iotdb.db.metadata.logfile.SchemaLogReader;
+import org.apache.iotdb.db.metadata.logfile.SchemaLogWriter;
+import org.apache.iotdb.db.metadata.plan.schemaregion.ISchemaRegionPlan;
+import org.apache.iotdb.db.metadata.plan.schemaregion.impl.SchemaRegionPlanDeserializer;
+import org.apache.iotdb.db.metadata.plan.schemaregion.impl.SchemaRegionPlanTxtSerializer;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -58,7 +42,7 @@ import java.io.IOException;
 public class MLogParser {
 
   private static final Logger logger = LoggerFactory.getLogger(MLogParser.class);
-  private static final String MLOG_CLI_PREFIX = "MlogParser";
+  private static final String MLOG_CLI_PREFIX = "print-schema-log";
 
   private static final String FILE_ARGS = "f";
   private static final String FILE_NAME = "mlog file";
@@ -162,90 +146,18 @@ public class MLogParser {
   }
 
   public static void parseFromFile(String inputFile, String outputFile) throws IOException {
-    try (MLogReader mLogReader = new MLogReader(inputFile);
-        MLogTxtWriter mLogTxtWriter = new MLogTxtWriter(outputFile)) {
-
+    try (SchemaLogReader<ISchemaRegionPlan> mLogReader =
+            new SchemaLogReader<>(
+                inputFile, new FakeCRC32Deserializer<>(new SchemaRegionPlanDeserializer()));
+        SchemaLogWriter<ISchemaRegionPlan> mLogTxtWriter =
+            new SchemaLogWriter<>(
+                outputFile, new BufferedSerializer<>(new SchemaRegionPlanTxtSerializer()), false)) {
+      ISchemaRegionPlan plan;
       while (mLogReader.hasNext()) {
-        PhysicalPlan plan = mLogReader.next();
-        switch (plan.getOperatorType()) {
-          case CREATE_TIMESERIES:
-            mLogTxtWriter.createTimeseries(
-                (CreateTimeSeriesPlan) plan, ((CreateTimeSeriesPlan) plan).getTagOffset());
-            break;
-          case CREATE_ALIGNED_TIMESERIES:
-            mLogTxtWriter.createAlignedTimeseries((CreateAlignedTimeSeriesPlan) plan);
-            break;
-          case DELETE_TIMESERIES:
-            for (PartialPath partialPath : plan.getPaths()) {
-              mLogTxtWriter.deleteTimeseries(partialPath.getFullPath());
-            }
-            break;
-          case SET_STORAGE_GROUP:
-            mLogTxtWriter.setStorageGroup(((SetStorageGroupPlan) plan).getPath().getFullPath());
-            break;
-          case DELETE_STORAGE_GROUP:
-            for (PartialPath partialPath : plan.getPaths()) {
-              mLogTxtWriter.deleteStorageGroup(partialPath.getFullPath());
-            }
-            break;
-          case TTL:
-            mLogTxtWriter.setTTL(
-                ((SetTTLPlan) plan).getStorageGroup().getFullPath(),
-                ((SetTTLPlan) plan).getDataTTL());
-            break;
-          case CHANGE_ALIAS:
-            mLogTxtWriter.changeAlias(
-                ((ChangeAliasPlan) plan).getPath().getFullPath(),
-                ((ChangeAliasPlan) plan).getAlias());
-            break;
-          case CHANGE_TAG_OFFSET:
-            mLogTxtWriter.changeOffset(
-                ((ChangeTagOffsetPlan) plan).getPath().getFullPath(),
-                ((ChangeTagOffsetPlan) plan).getOffset());
-            break;
-          case MEASUREMENT_MNODE:
-            mLogTxtWriter.serializeMeasurementMNode((MeasurementMNodePlan) plan);
-            break;
-          case STORAGE_GROUP_MNODE:
-            mLogTxtWriter.serializeStorageGroupMNode((StorageGroupMNodePlan) plan);
-            break;
-          case MNODE:
-            mLogTxtWriter.serializeMNode((MNodePlan) plan);
-            break;
-          case CREATE_CONTINUOUS_QUERY:
-            mLogTxtWriter.createContinuousQuery((CreateContinuousQueryPlan) plan);
-            break;
-          case DROP_CONTINUOUS_QUERY:
-            mLogTxtWriter.dropContinuousQuery((DropContinuousQueryPlan) plan);
-            break;
-          case CREATE_TEMPLATE:
-            mLogTxtWriter.createSchemaTemplate((CreateTemplatePlan) plan);
-            break;
-          case APPEND_TEMPLATE:
-            mLogTxtWriter.appendTemplate((AppendTemplatePlan) plan);
-            break;
-          case PRUNE_TEMPLATE:
-            mLogTxtWriter.pruneTemplate((PruneTemplatePlan) plan);
-          case SET_TEMPLATE:
-            mLogTxtWriter.setTemplate((SetTemplatePlan) plan);
-            break;
-          case UNSET_TEMPLATE:
-            mLogTxtWriter.unsetTemplate((UnsetTemplatePlan) plan);
-            break;
-          case DROP_TEMPLATE:
-            mLogTxtWriter.dropTemplate((DropTemplatePlan) plan);
-            break;
-          case ACTIVATE_TEMPLATE:
-            mLogTxtWriter.setUsingTemplate((ActivateTemplatePlan) plan);
-            break;
-          case AUTO_CREATE_DEVICE_MNODE:
-            mLogTxtWriter.autoCreateDeviceNode(
-                ((AutoCreateDeviceMNodePlan) plan).getPath().getFullPath());
-            break;
-          default:
-            logger.warn("unknown plan {}", plan);
-        }
+        plan = mLogReader.next();
+        mLogTxtWriter.write(plan);
       }
+      mLogTxtWriter.force();
     }
   }
 }

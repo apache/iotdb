@@ -11,6 +11,7 @@ on:
       - "new_*"
     paths-ignore:
       - "docs/**"
+      - 'site/**'
   pull_request:
     branches:
       - master
@@ -18,6 +19,7 @@ on:
       - "new_*"
     paths-ignore:
       - "docs/**"
+      - 'site/**'
   # allow manually run the action:
   workflow_dispatch:
 
@@ -35,30 +37,26 @@ jobs:
     if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == 'apache/iotdb' || github.event_name == 'push'
 
     steps:
-      - uses: actions/checkout@v2
-      - name: Set up JDK 11
-        uses: actions/setup-java@v1
-        with:
-          java-version: 11
+      - uses: actions/checkout@v3
       - name: Cache Maven packages
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: ~/.m2
           key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
           restore-keys: ${{ runner.os }}-m2-
-      - name: IT/UT Test
-        # we do not compile client-cpp for saving time, it is tested in client.yml
-        run: mvn -B clean compile post-integration-test -Dcluster.test.skip=true -Dtest.port.closed=true -Pcode-coverage -P '!testcontainer,!influxdb-protocol'
-      - name: Code Coverage (Coveralls)
-        if: ${{ success() }}
-        run: |
-          mvn -B post-integration-test -Pcode-coverage -pl code-coverage
-          mvn -B coveralls:report \
-          -DserviceName=travis_ci \
-          -Dbranch=$BRANCH_NAME \
-          -DpullRequest=$PR_NUMBER \
-          -DrepoToken=${{ secrets.COVERALL_TOKEN }} \
-          -Pcode-coverage -P '!testcontainer'
+#      - name: IT/UT Test
+#        # we do not compile client-cpp for saving time, it is tested in client.yml
+#        run: mvn -B clean compile post-integration-test -Dcluster.test.skip=true -Dtest.port.closed=true -Pcode-coverage -P '!testcontainer,!influxdb-protocol'
+#      - name: Code Coverage (Coveralls)
+#        if: ${{ success() }}
+#        run: |
+#          mvn -B post-integration-test -Pcode-coverage -pl code-coverage
+#          mvn -B coveralls:report \
+#          -DserviceName=travis_ci \
+#          -Dbranch=$BRANCH_NAME \
+#          -DpullRequest=$PR_NUMBER \
+#          -DrepoToken=${{ secrets.COVERALL_TOKEN }} \
+#          -Pcode-coverage -P '!testcontainer'
       - name: SonarCloud Report
         if: ${{ success() }}
         env:

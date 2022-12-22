@@ -23,6 +23,8 @@ import org.apache.iotdb.it.env.ConfigFactory;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
+import org.apache.iotdb.itbase.category.LocalStandaloneIT;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -41,11 +43,11 @@ import static org.apache.iotdb.itbase.constant.TestConstant.lastValue;
 import static org.apache.iotdb.itbase.constant.TestConstant.sum;
 
 @RunWith(IoTDBTestRunner.class)
-@Category({ClusterIT.class}) // TODO After old StandAlone remove
+@Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBHavingIT {
   private static final String[] SQLs =
       new String[] {
-        "SET STORAGE GROUP TO root.test",
+        "CREATE DATABASE root.test",
         "CREATE TIMESERIES root.test.sg1.s1 WITH DATATYPE=BOOLEAN, ENCODING=PLAIN",
         "CREATE TIMESERIES root.test.sg1.s2 WITH DATATYPE=INT32, ENCODING=PLAIN",
         "CREATE TIMESERIES root.test.sg1.s3 WITH DATATYPE=DOUBLE, ENCODING=PLAIN",
@@ -57,38 +59,38 @@ public class IoTDBHavingIT {
         "CREATE ALIGNED TIMESERIES root.test.sg3(s5 INT32, s6 BOOLEAN, s7 DOUBLE, s8 INT32)",
         "CREATE TIMESERIES root.test.sg5.s1 WITH DATATYPE=BOOLEAN, ENCODING=PLAIN",
         "CREATE TIMESERIES root.test.sg5.s9 WITH DATATYPE=INT32, ENCODING=PLAIN",
-        "INSERT INTO root.test.sg1(timestamp,s1,s2, s3, s4) " + "values(1, true, 1, 1.0, 1)",
-        "INSERT INTO root.test.sg2(timestamp,s1,s2, s3, s4) " + "values(1, false, 1, 1.0, 1)",
-        "INSERT INTO root.test.sg1(timestamp, s2) " + "values(2, 2)",
-        "INSERT INTO root.test.sg1(timestamp, s3) " + "values(2, 2.0)",
-        "INSERT INTO root.test.sg1(timestamp, s4) " + "values(2, 2)",
-        "INSERT INTO root.test.sg2(timestamp,s1,s2, s3, s4) " + "values(2, true, 2, 2.0, 2)",
+        "INSERT INTO root.test.sg1(timestamp,s1,s2, s3, s4) values(1, true, 1, 1.0, 1)",
+        "INSERT INTO root.test.sg2(timestamp,s1,s2, s3, s4) values(1, false, 1, 1.0, 1)",
+        "INSERT INTO root.test.sg1(timestamp, s2) values(2, 2)",
+        "INSERT INTO root.test.sg1(timestamp, s3) values(2, 2.0)",
+        "INSERT INTO root.test.sg1(timestamp, s4) values(2, 2)",
+        "INSERT INTO root.test.sg2(timestamp,s1,s2, s3, s4) values(2, true, 2, 2.0, 2)",
         "flush",
-        "INSERT INTO root.test.sg1(timestamp, s1) " + "values(3, false)",
-        "INSERT INTO root.test.sg1(timestamp, s2) " + "values(5, 5)",
-        "INSERT INTO root.test.sg1(timestamp, s3) " + "values(5, 5.0)",
-        "INSERT INTO root.test.sg1(timestamp, s4) " + "values(5, 5)",
-        "INSERT INTO root.test.sg2(timestamp, s2) " + "values(5, 5)",
-        "INSERT INTO root.test.sg2(timestamp, s3) " + "values(5, 5.0)",
-        "INSERT INTO root.test.sg2(timestamp, s4) " + "values(5, 5)",
+        "INSERT INTO root.test.sg1(timestamp, s1) values(3, false)",
+        "INSERT INTO root.test.sg1(timestamp, s2) values(5, 5)",
+        "INSERT INTO root.test.sg1(timestamp, s3) values(5, 5.0)",
+        "INSERT INTO root.test.sg1(timestamp, s4) values(5, 5)",
+        "INSERT INTO root.test.sg2(timestamp, s2) values(5, 5)",
+        "INSERT INTO root.test.sg2(timestamp, s3) values(5, 5.0)",
+        "INSERT INTO root.test.sg2(timestamp, s4) values(5, 5)",
         "flush",
-        "INSERT INTO root.test.sg1(timestamp,s1,s2, s3, s4) " + "values(6, true, 6, 6.0, 6)",
-        "INSERT INTO root.test.sg2(timestamp,s1,s2, s3, s4) " + "values(6, true, 6, 6.0, 6)",
-        "INSERT INTO root.test.sg1(timestamp, s1) " + "values(7, true)",
-        "INSERT INTO root.test.sg1(timestamp, s3) " + "values(7, 7.0)",
-        "INSERT INTO root.test.sg2(timestamp,s1,s2, s3) " + "values(7, true, 7, 7.0)",
+        "INSERT INTO root.test.sg1(timestamp,s1,s2, s3, s4) values(6, true, 6, 6.0, 6)",
+        "INSERT INTO root.test.sg2(timestamp,s1,s2, s3, s4) values(6, true, 6, 6.0, 6)",
+        "INSERT INTO root.test.sg1(timestamp, s1) values(7, true)",
+        "INSERT INTO root.test.sg1(timestamp, s3) values(7, 7.0)",
+        "INSERT INTO root.test.sg2(timestamp,s1,s2, s3) values(7, true, 7, 7.0)",
         "flush",
-        "INSERT INTO root.test.sg1(timestamp, s1) " + "values(8, true)",
-        "INSERT INTO root.test.sg1(timestamp, s2) " + "values(8, 8)",
-        "INSERT INTO root.test.sg1(timestamp, s3) " + "values(8, 8.0)",
-        "INSERT INTO root.test.sg2(timestamp, s3) " + "values(8, 8.0)",
-        "INSERT INTO root.test.sg1(timestamp,s1,s2, s3, s4) " + "values(9, false, 9, 9.0, 9)",
-        "INSERT INTO root.test.sg2(timestamp, s1) " + "values(9, true)",
+        "INSERT INTO root.test.sg1(timestamp, s1) values(8, true)",
+        "INSERT INTO root.test.sg1(timestamp, s2) values(8, 8)",
+        "INSERT INTO root.test.sg1(timestamp, s3) values(8, 8.0)",
+        "INSERT INTO root.test.sg2(timestamp, s3) values(8, 8.0)",
+        "INSERT INTO root.test.sg1(timestamp,s1,s2, s3, s4) values(9, false, 9, 9.0, 9)",
+        "INSERT INTO root.test.sg2(timestamp, s1) values(9, true)",
         "flush",
-        "INSERT INTO root.test.sg2(timestamp, s2) " + "values(9, 9)",
-        "INSERT INTO root.test.sg2(timestamp, s4) " + "values(9, 9)",
-        "INSERT INTO root.test.sg1(timestamp,s1,s2, s3, s4) " + "values(10, true, 10, 10.0, 10)",
-        "INSERT INTO root.test.sg2(timestamp,s1,s2, s3, s4) " + "values(10, true, 10, 10.0, 10)",
+        "INSERT INTO root.test.sg2(timestamp, s2) values(9, 9)",
+        "INSERT INTO root.test.sg2(timestamp, s4) values(9, 9)",
+        "INSERT INTO root.test.sg1(timestamp,s1,s2, s3, s4) values(10, true, 10, 10.0, 10)",
+        "INSERT INTO root.test.sg2(timestamp,s1,s2, s3, s4) values(10, true, 10, 10.0, 10)",
         "flush",
         "INSERT INTO root.test.sg3(time, s5, s6, s7, s8) aligned values(1, 1, true, 1.0, 1)",
         "INSERT INTO root.test.sg3(time, s6, s7, s8) aligned values(2, false, 2.0, 2)",
@@ -99,7 +101,7 @@ public class IoTDBHavingIT {
         "INSERT INTO root.test.sg3(time, s5, s7) aligned values(8, 8, 8.0)",
         "INSERT INTO root.test.sg3(time, s5, s7, s8) aligned values(9, 9, 9.0, 9)",
         "INSERT INTO root.test.sg3(time, s7, s8) aligned values(10, 10.0, 10)",
-        "INSERT INTO root.test.sg5(timestamp, s1, s9) " + "values(1, true, 1)",
+        "INSERT INTO root.test.sg5(timestamp, s1, s9) values(1, true, 1)",
         "flush",
         "CREATE TIMESERIES root.test1.d1.code TEXT",
         "CREATE TIMESERIES root.test1.d1.tem INT32",
@@ -126,19 +128,23 @@ public class IoTDBHavingIT {
   public void testUnsatisfiedRuleQuery() {
     assertTestFail(
         "select count(s1) from root.** group by ([1,3),1ms), level=1 having sum(d1.s1) > 1",
-        "416: When Having used with GroupByLevel: the suffix paths can only be measurement or one-level wildcard");
+        TSStatusCode.SEMANTIC_ERROR.getStatusCode()
+            + ": When Having used with GroupByLevel: the suffix paths can only be measurement or one-level wildcard");
 
     assertTestFail(
         "select count(d1.s1) from root.** group by ([1,3),1ms), level=1 having sum(s1) > 1",
-        "416: When Having used with GroupByLevel: the suffix paths can only be measurement or one-level wildcard");
+        TSStatusCode.SEMANTIC_ERROR.getStatusCode()
+            + ": When Having used with GroupByLevel: the suffix paths can only be measurement or one-level wildcard");
 
     assertTestFail(
         "select count(d1.s1) from root.** group by ([1,3),1ms), level=1 having sum(s1) + s1 > 1",
-        "416: Raw data and aggregation result hybrid calculation is not supported");
+        TSStatusCode.SEMANTIC_ERROR.getStatusCode()
+            + ": Raw data and aggregation result hybrid calculation is not supported");
 
     assertTestFail(
         "select count(d1.s1) from root.** group by ([1,3),1ms), level=1 having s1 + 1 > 1",
-        "416: Expression of HAVING clause must to be an Aggregation");
+        TSStatusCode.SEMANTIC_ERROR.getStatusCode()
+            + ": Expression of HAVING clause must to be an Aggregation");
   }
 
   @Test

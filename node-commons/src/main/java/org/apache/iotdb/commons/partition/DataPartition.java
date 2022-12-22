@@ -91,18 +91,23 @@ public class DataPartition extends Partition {
     TSeriesPartitionSlot seriesPartitionSlot = calculateDeviceGroupId(deviceName);
     // IMPORTANT TODO: (xingtanzjr) need to handle the situation for write operation that there are
     // more than 1 Regions for one timeSlot
-    return dataPartitionMap.get(storageGroup).get(seriesPartitionSlot).entrySet().stream()
-        .filter(entry -> timePartitionSlotList.contains(entry.getKey()))
-        .flatMap(entry -> entry.getValue().stream())
-        .collect(Collectors.toList());
-  }
-
-  public List<TRegionReplicaSet> getAllDataRegionReplicaSetForOneDevice(String deviceName) {
-    String storageGroup = getStorageGroupByDevice(deviceName);
-    TSeriesPartitionSlot seriesPartitionSlot = calculateDeviceGroupId(deviceName);
-    return dataPartitionMap.get(storageGroup).get(seriesPartitionSlot).entrySet().stream()
-        .flatMap(entry -> entry.getValue().stream())
-        .collect(Collectors.toList());
+    List<TRegionReplicaSet> dataRegionReplicaSets = new ArrayList<>();
+    Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>
+        dataBasePartitionMap = dataPartitionMap.get(storageGroup);
+    Map<TTimePartitionSlot, List<TRegionReplicaSet>> slotReplicaSetMap =
+        dataBasePartitionMap.get(seriesPartitionSlot);
+    for (TTimePartitionSlot timePartitionSlot : timePartitionSlotList) {
+      List<TRegionReplicaSet> targetRegionList = slotReplicaSetMap.get(timePartitionSlot);
+      if (targetRegionList == null || targetRegionList.size() == 0) {
+        throw new RuntimeException(
+            String.format(
+                "targetRegionList is empty. device: %s, timeSlot: %s",
+                deviceName, timePartitionSlot));
+      } else {
+        dataRegionReplicaSets.add(targetRegionList.get(targetRegionList.size() - 1));
+      }
+    }
+    return dataRegionReplicaSets;
   }
 
   public TRegionReplicaSet getDataRegionReplicaSetForWriting(
@@ -112,19 +117,18 @@ public class DataPartition extends Partition {
     // TODO return the latest dataRegionReplicaSet for each time partition
     String storageGroup = getStorageGroupByDevice(deviceName);
     TSeriesPartitionSlot seriesPartitionSlot = calculateDeviceGroupId(deviceName);
-    try {
-      List<TRegionReplicaSet> regions =
-          dataPartitionMap.get(storageGroup).get(seriesPartitionSlot).entrySet().stream()
-              .filter(entry -> entry.getKey().equals(timePartitionSlot))
-              .flatMap(entry -> entry.getValue().stream())
-              .collect(Collectors.toList());
-      // IMPORTANT TODO: (xingtanzjr) need to handle the situation for write operation that there
-      // are more than 1 Regions for one timeSlot
-      return regions.get(0);
-    } catch (NullPointerException exception) {
+    if (!dataPartitionMap.containsKey(storageGroup)) {
       throw new RuntimeException(
-          "Failed to auto create storage group because enable_auto_create_schema is FALSE.");
+          "Database not exists and failed to create automatically because enable_auto_create_schema is FALSE.");
     }
+    List<TRegionReplicaSet> regions =
+        dataPartitionMap.get(storageGroup).get(seriesPartitionSlot).entrySet().stream()
+            .filter(entry -> entry.getKey().equals(timePartitionSlot))
+            .flatMap(entry -> entry.getValue().stream())
+            .collect(Collectors.toList());
+    // IMPORTANT TODO: (xingtanzjr) need to handle the situation for write operation that there
+    // are more than 1 Regions for one timeSlot
+    return regions.get(0);
   }
 
   private String getStorageGroupByDevice(String deviceName) {

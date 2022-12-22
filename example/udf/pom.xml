@@ -24,7 +24,7 @@
     <parent>
         <groupId>org.apache.iotdb</groupId>
         <artifactId>iotdb-examples</artifactId>
-        <version>0.14.0-SNAPSHOT</version>
+        <version>1.0.1-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
     <artifactId>udf-example</artifactId>
@@ -97,7 +97,6 @@
         <profile>
             <id>spotless</id>
             <activation>
-                <jdk>[1.8,16)</jdk>
                 <!-- activeByDefault does not take effect-->
                 <file>
                     <exists>.</exists>
@@ -108,7 +107,7 @@
                     <plugin>
                         <groupId>com.diffplug.spotless</groupId>
                         <artifactId>spotless-maven-plugin</artifactId>
-                        <version>2.4.2</version>
+                        <version>${spotless.version}</version>
                         <configuration>
                             <java>
                                 <googleJavaFormat>

@@ -22,17 +22,20 @@
 set current_dir=%~dp0
 set superior_dir=%current_dir%\..\
 
-for /f  "eol=; tokens=2,2 delims==" %%i in ('findstr /i "^rpc_port"
+for /f  "eol=# tokens=2 delims==" %%i in ('findstr /i "^dn_rpc_port"
 %superior_dir%\conf\iotdb-datanode.properties') do (
-  set rpc_port=%%i
+  set dn_rpc_port=%%i
 )
 
-for /f  "eol=; tokens=2,2 delims==" %%i in ('findstr /i "rpc_address"
+echo Check whether the rpc_port is used..., port is %dn_rpc_port%
+
+for /f  "eol=# tokens=2 delims==" %%i in ('findstr /i "dn_rpc_address"
 %superior_dir%\conf\iotdb-datanode.properties') do (
-  set rpc_address=%%i
+  set dn_rpc_address=%%i
 )
 
-for /f "tokens=5" %%a in ('netstat /ano ^| findstr %rpc_address%:%rpc_port%') do (
+for /f "tokens=5" %%a in ('netstat /ano ^| findstr %dn_rpc_address%:%dn_rpc_port%') do (
   taskkill /f /pid %%a
+  echo Close DataNode, PID: %%a
 )
 rem ps ax | grep -i 'iotdb.DataNode' | grep -v grep | awk '{print $1}' | xargs kill -SIGTERM

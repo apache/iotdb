@@ -30,8 +30,9 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
 import org.apache.iotdb.db.engine.storagegroup.timeindex.TimeIndexLevel;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.localconfignode.LocalConfigNode;
+import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
 import org.apache.iotdb.db.query.control.FileReaderManager;
-import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -80,7 +81,7 @@ public class ResourceManagerTest {
 
   @Before
   public void setUp() throws IOException, WriteProcessException, MetadataException {
-    IoTDB.configManager.init();
+    LocalConfigNode.getInstance().init();
     prevTimeIndexMemoryThreshold = CONFIG.getAllocateMemoryForTimeIndex();
     timeIndexLevel = CONFIG.getTimeIndexLevel();
     prepareSeries();
@@ -95,7 +96,7 @@ public class ResourceManagerTest {
     tsFileResourceManager.setTimeIndexMemoryThreshold(prevTimeIndexMemoryThreshold);
     ChunkCache.getInstance().clear();
     TimeSeriesMetadataCache.getInstance().clear();
-    IoTDB.configManager.clear();
+    LocalConfigNode.getInstance().clear();
     TsFileResourceManager.getInstance().clear();
     EnvironmentUtils.cleanAllDir();
   }
@@ -111,16 +112,17 @@ public class ResourceManagerTest {
     for (int i = 0; i < deviceNum; i++) {
       deviceIds[i] = RESOURCE_MANAGER_TEST_SG + PATH_SEPARATOR + "device" + i;
     }
-    IoTDB.schemaProcessor.setStorageGroup(new PartialPath(RESOURCE_MANAGER_TEST_SG));
+    LocalSchemaProcessor.getInstance().setStorageGroup(new PartialPath(RESOURCE_MANAGER_TEST_SG));
     for (String device : deviceIds) {
       for (MeasurementSchema measurementSchema : measurementSchemas) {
         PartialPath devicePath = new PartialPath(device);
-        IoTDB.schemaProcessor.createTimeseries(
-            devicePath.concatNode(measurementSchema.getMeasurementId()),
-            measurementSchema.getType(),
-            measurementSchema.getEncodingType(),
-            measurementSchema.getCompressor(),
-            Collections.emptyMap());
+        LocalSchemaProcessor.getInstance()
+            .createTimeseries(
+                devicePath.concatNode(measurementSchema.getMeasurementId()),
+                measurementSchema.getType(),
+                measurementSchema.getEncodingType(),
+                measurementSchema.getCompressor(),
+                Collections.emptyMap());
       }
     }
   }
@@ -356,7 +358,6 @@ public class ResourceManagerTest {
   @Test(expected = RuntimeException.class)
   public void testAllFileTimeIndexDegrade() throws IOException, WriteProcessException {
     long reducedMemory = 0;
-    CONFIG.setTimeIndexLevel(String.valueOf(TimeIndexLevel.FILE_TIME_INDEX));
     double curTimeIndexMemoryThreshold = 322;
     tsFileResourceManager.setTimeIndexMemoryThreshold(curTimeIndexMemoryThreshold);
     try {
@@ -373,13 +374,12 @@ public class ResourceManagerTest {
                         + 0
                         + ".tsfile"));
         TsFileResource tsFileResource = new TsFileResource(file);
-        tsFileResource.setStatus(TsFileResourceStatus.CLOSED);
-        tsFileResource.updatePlanIndexes((long) i);
-        seqResources.add(tsFileResource);
         assertEquals(
-            TimeIndexLevel.FILE_TIME_INDEX,
+            TimeIndexLevel.DEVICE_TIME_INDEX,
             TimeIndexLevel.valueOf(tsFileResource.getTimeIndexType()));
+        seqResources.add(tsFileResource);
         long previousRamSize = tsFileResource.calculateRamSize();
+        System.out.println(previousRamSize);
         prepareFile(tsFileResource, i * ptNum, ptNum, 0);
         tsFileResourceManager.registerSealedTsFileResource(tsFileResource);
         assertEquals(
@@ -388,7 +388,7 @@ public class ResourceManagerTest {
         reducedMemory = previousRamSize - tsFileResource.calculateRamSize();
       }
     } catch (RuntimeException e) {
-      assertEquals(0, reducedMemory);
+      assertEquals(1072, reducedMemory);
       assertEquals(7, seqResources.size());
       throw e;
     }

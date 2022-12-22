@@ -18,10 +18,13 @@
  */
 package org.apache.iotdb.db.it.aligned;
 
+import org.apache.iotdb.db.it.utils.AlignedWriteUtil;
+import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.it.env.ConfigFactory;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
+import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -47,8 +50,7 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
-// TODO add them back while deleting old standalone
-@Category({ClusterIT.class})
+@Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBAlignedLastQueryIT {
 
   protected static boolean enableSeqSpaceCompaction;
@@ -99,13 +101,13 @@ public class IoTDBAlignedLastQueryIT {
         int cnt = 0;
         while (resultSet.next()) {
           String ans =
-              resultSet.getString(TIMESTAMP_STR)
+              resultSet.getString(ColumnHeaderConstant.TIME)
                   + ","
-                  + resultSet.getString(TIMESEIRES_STR)
+                  + resultSet.getString(ColumnHeaderConstant.TIMESERIES)
                   + ","
-                  + resultSet.getString(VALUE_STR)
+                  + resultSet.getString(ColumnHeaderConstant.VALUE)
                   + ","
-                  + resultSet.getString(DATA_TYPE_STR);
+                  + resultSet.getString(ColumnHeaderConstant.DATATYPE);
           assertTrue(ans, retSet.contains(ans));
           cnt++;
         }

@@ -43,6 +43,8 @@ public abstract class AbstractTsFileTool {
   protected static final String USERNAME_ARGS = "u";
   protected static final String USERNAME_NAME = "username";
 
+  protected static final String TIMEOUT_ARGS = "t";
+  protected static final String TIMEOUT_NAME = "timeout";
   protected static final int MAX_HELP_CONSOLE_WIDTH = 92;
   protected static final int CODE_OK = 0;
   protected static final int CODE_ERROR = 1;

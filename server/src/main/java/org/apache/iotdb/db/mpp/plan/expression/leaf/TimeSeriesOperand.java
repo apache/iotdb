@@ -19,22 +19,20 @@
 
 package org.apache.iotdb.db.mpp.plan.expression.leaf;
 
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathDeserializeUtil;
-import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
-import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.ExpressionType;
 import org.apache.iotdb.db.mpp.plan.expression.visitor.ExpressionVisitor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.mpp.transformation.dag.memory.LayerMemoryAssigner;
-import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 public class TimeSeriesOperand extends LeafOperand {
 
@@ -46,6 +44,13 @@ public class TimeSeriesOperand extends LeafOperand {
 
   public TimeSeriesOperand(ByteBuffer byteBuffer) {
     path = (PartialPath) PathDeserializeUtil.deserialize(byteBuffer);
+  }
+
+  public static TimeSeriesOperand constructColumnHeaderExpression(
+      String columnName, TSDataType dataType) {
+    MeasurementPath measurementPath =
+        new MeasurementPath(new PartialPath(columnName, false), dataType);
+    return new TimeSeriesOperand(measurementPath);
   }
 
   public PartialPath getPath() {
@@ -64,33 +69,6 @@ public class TimeSeriesOperand extends LeafOperand {
   @Override
   public boolean isConstantOperandInternal() {
     return false;
-  }
-
-  @Override
-  public void concat(List<PartialPath> prefixPaths, List<Expression> resultExpressions) {
-    for (PartialPath prefixPath : prefixPaths) {
-      resultExpressions.add(new TimeSeriesOperand(prefixPath.concatPath(path)));
-    }
-  }
-
-  @Override
-  public void removeWildcards(
-      org.apache.iotdb.db.qp.utils.WildcardsRemover wildcardsRemover,
-      List<Expression> resultExpressions)
-      throws LogicalOptimizeException {
-    for (PartialPath actualPath : wildcardsRemover.removeWildcardFrom(path)) {
-      resultExpressions.add(new TimeSeriesOperand(actualPath));
-    }
-  }
-
-  @Override
-  public void collectPaths(Set<PartialPath> pathSet) {
-    pathSet.add(path);
-  }
-
-  @Override
-  public void bindInputLayerColumnIndexWithExpression(UDTFPlan udtfPlan) {
-    inputColumnIndex = udtfPlan.getReaderIndexByExpressionName(toString());
   }
 
   @Override

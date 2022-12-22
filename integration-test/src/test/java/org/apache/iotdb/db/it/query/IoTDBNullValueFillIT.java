@@ -22,6 +22,7 @@ package org.apache.iotdb.db.it.query;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
+import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -34,7 +35,7 @@ import static org.apache.iotdb.db.it.utils.TestUtils.resultSetEqualTest;
 import static org.apache.iotdb.db.it.utils.TestUtils.resultSetEqualWithDescOrderTest;
 
 @RunWith(IoTDBTestRunner.class)
-@Category({ClusterIT.class}) // TODO add LocalStandaloneIT
+@Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBNullValueFillIT {
 
   /**
@@ -66,7 +67,7 @@ public class IoTDBNullValueFillIT {
    */
   private static final String[] sqls =
       new String[] {
-        "SET STORAGE GROUP TO root.sg1",
+        "CREATE DATABASE root.sg1",
         "create aligned timeseries root.sg1.d1(s1 INT32, s2 INT64, s3 FLOAT, s4 DOUBLE, s5 BOOLEAN, s6 TEXT)",
         "insert into root.sg1.d1(time, s2, s4, s6) aligned values(1, 1, 1.0, 't1')",
         "insert into root.sg1.d1(time, s1, s2, s3, s4, s5, s6) aligned values(2, 2, 2, 2.0, 2.0, true, 't2')",
@@ -202,7 +203,7 @@ public class IoTDBNullValueFillIT {
           "1,root.sg1.d2,1,2,1.0,2.0,true,t2,"
         };
     resultSetEqualTest(
-        "select s1, s2, s3, s4, s5, s6 from root.sg1.* fill(previous) order by time desc align by device",
+        "select s1, s2, s3, s4, s5, s6 from root.sg1.* fill(previous) order by device,time desc align by device",
         expectedAlignByDeviceHeader,
         retArray);
   }

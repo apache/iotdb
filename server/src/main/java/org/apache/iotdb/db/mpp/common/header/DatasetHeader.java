@@ -113,4 +113,21 @@ public class DatasetHeader {
   public int getOutputValueColumnCount() {
     return (int) columnHeaders.stream().map(ColumnHeader::getColumnName).distinct().count();
   }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    DatasetHeader that = (DatasetHeader) o;
+    return isIgnoreTimestamp == that.isIgnoreTimestamp && columnHeaders.equals(that.columnHeaders);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(columnHeaders, isIgnoreTimestamp);
+  }
 }

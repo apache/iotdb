@@ -28,10 +28,11 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.memtable.PrimitiveMemTable;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
-import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
-import org.apache.iotdb.db.service.IoTDB;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.wal.buffer.IWALBuffer;
 import org.apache.iotdb.db.wal.buffer.WALBuffer;
@@ -107,39 +108,47 @@ public class WALRecoverManagerTest {
   private TsFileResource tsFileWithWALResource;
   private TsFileResource tsFileWithoutWALResource;
 
+  private boolean isClusterMode;
+
   @Before
   public void setUp() throws Exception {
+    isClusterMode = config.isClusterMode();
     EnvironmentUtils.cleanDir(new File(FILE_WITH_WAL_NAME).getParent());
     EnvironmentUtils.envSetUp();
+    config.setClusterMode(true);
     prevMode = config.getWalMode();
     config.setWalMode(WALMode.SYNC);
     walBuffer = new WALBuffer(WAL_NODE_IDENTIFIER, WAL_NODE_FOLDER);
     checkpointManager = new CheckpointManager(WAL_NODE_IDENTIFIER, WAL_NODE_FOLDER);
-    IoTDB.schemaProcessor.setStorageGroup(new PartialPath(SG_NAME));
-    IoTDB.schemaProcessor.createTimeseries(
-        new PartialPath(DEVICE1_NAME.concat(".s1")),
-        TSDataType.INT32,
-        TSEncoding.RLE,
-        TSFileDescriptor.getInstance().getConfig().getCompressor(),
-        Collections.emptyMap());
-    IoTDB.schemaProcessor.createTimeseries(
-        new PartialPath(DEVICE1_NAME.concat(".s2")),
-        TSDataType.INT64,
-        TSEncoding.RLE,
-        TSFileDescriptor.getInstance().getConfig().getCompressor(),
-        Collections.emptyMap());
-    IoTDB.schemaProcessor.createTimeseries(
-        new PartialPath(DEVICE2_NAME.concat(".s1")),
-        TSDataType.FLOAT,
-        TSEncoding.RLE,
-        TSFileDescriptor.getInstance().getConfig().getCompressor(),
-        Collections.emptyMap());
-    IoTDB.schemaProcessor.createTimeseries(
-        new PartialPath(DEVICE2_NAME.concat(".s2")),
-        TSDataType.DOUBLE,
-        TSEncoding.RLE,
-        TSFileDescriptor.getInstance().getConfig().getCompressor(),
-        Collections.emptyMap());
+    LocalSchemaProcessor.getInstance().setStorageGroup(new PartialPath(SG_NAME));
+    LocalSchemaProcessor.getInstance()
+        .createTimeseries(
+            new PartialPath(DEVICE1_NAME.concat(".s1")),
+            TSDataType.INT32,
+            TSEncoding.RLE,
+            TSFileDescriptor.getInstance().getConfig().getCompressor(),
+            Collections.emptyMap());
+    LocalSchemaProcessor.getInstance()
+        .createTimeseries(
+            new PartialPath(DEVICE1_NAME.concat(".s2")),
+            TSDataType.INT64,
+            TSEncoding.RLE,
+            TSFileDescriptor.getInstance().getConfig().getCompressor(),
+            Collections.emptyMap());
+    LocalSchemaProcessor.getInstance()
+        .createTimeseries(
+            new PartialPath(DEVICE2_NAME.concat(".s1")),
+            TSDataType.FLOAT,
+            TSEncoding.RLE,
+            TSFileDescriptor.getInstance().getConfig().getCompressor(),
+            Collections.emptyMap());
+    LocalSchemaProcessor.getInstance()
+        .createTimeseries(
+            new PartialPath(DEVICE2_NAME.concat(".s2")),
+            TSDataType.DOUBLE,
+            TSEncoding.RLE,
+            TSFileDescriptor.getInstance().getConfig().getCompressor(),
+            Collections.emptyMap());
   }
 
   @After
@@ -153,6 +162,7 @@ public class WALRecoverManagerTest {
     checkpointManager.close();
     walBuffer.close();
     config.setWalMode(prevMode);
+    config.setClusterMode(isClusterMode);
     EnvironmentUtils.cleanDir(new File(FILE_WITH_WAL_NAME).getParent());
     EnvironmentUtils.cleanDir(new File(FILE_WITHOUT_WAL_NAME).getParent());
     EnvironmentUtils.cleanEnv();
@@ -166,7 +176,7 @@ public class WALRecoverManagerTest {
   }
 
   private void prepareCheckpointAndWALFileForNormal()
-      throws MetadataException, ExecutionException, InterruptedException {
+      throws MetadataException, ExecutionException, InterruptedException, QueryProcessException {
     // write useless .wal files, start write threads to write concurrently
     int threadsNum = 5;
     ExecutorService executorService = Executors.newFixedThreadPool(threadsNum);
@@ -183,7 +193,7 @@ public class WALRecoverManagerTest {
               while (walBuffer.getCurrentWALFileVersion() - firstWALVersionId < 2) {
                 WALEntry walEntry =
                     new WALInfoEntry(
-                        memTableId, getInsertTabletPlan(SG_NAME.concat("test_d" + memTableId)));
+                        memTableId, getInsertTabletNode(SG_NAME.concat("test_d" + memTableId)));
                 walBuffer.write(walEntry);
               }
             } catch (IllegalPathException e) {
@@ -208,7 +218,7 @@ public class WALRecoverManagerTest {
     long firstValidVersionId = walBuffer.getCurrentWALFileVersion();
     IMemTable targetMemTable = new PrimitiveMemTable();
     WALEntry walEntry =
-        new WALInfoEntry(targetMemTable.getMemTableId(), getInsertRowPlan(DEVICE2_NAME, 4L), true);
+        new WALInfoEntry(targetMemTable.getMemTableId(), getInsertRowNode(DEVICE2_NAME, 4L), true);
     walBuffer.write(walEntry);
     walEntry.getWalFlushListener().waitForResult();
     // write .checkpoint file
@@ -224,7 +234,7 @@ public class WALRecoverManagerTest {
   }
 
   private void prepareCheckpointAndWALFileForSnapshot()
-      throws MetadataException, ExecutionException, InterruptedException {
+      throws MetadataException, ExecutionException, InterruptedException, QueryProcessException {
     // write useless .wal files, start write threads to write concurrently
     int threadsNum = 5;
     ExecutorService executorService = Executors.newFixedThreadPool(threadsNum);
@@ -241,7 +251,7 @@ public class WALRecoverManagerTest {
               while (walBuffer.getCurrentWALFileVersion() - firstWALVersionId < 2) {
                 WALEntry walEntry =
                     new WALInfoEntry(
-                        memTableId, getInsertTabletPlan(SG_NAME.concat("test_d" + memTableId)));
+                        memTableId, getInsertTabletNode(SG_NAME.concat("test_d" + memTableId)));
                 walBuffer.write(walEntry);
               }
             } catch (IllegalPathException e) {
@@ -265,10 +275,10 @@ public class WALRecoverManagerTest {
     // write normal .wal files
     long firstValidVersionId = walBuffer.getCurrentWALFileVersion();
     IMemTable targetMemTable = new PrimitiveMemTable();
-    InsertRowPlan insertRowPlan = getInsertRowPlan(DEVICE2_NAME, 4L);
-    targetMemTable.insert(insertRowPlan);
+    InsertRowNode insertRowNode = getInsertRowNode(DEVICE2_NAME, 4L);
+    targetMemTable.insert(insertRowNode);
 
-    WALEntry walEntry = new WALInfoEntry(targetMemTable.getMemTableId(), insertRowPlan, true);
+    WALEntry walEntry = new WALInfoEntry(targetMemTable.getMemTableId(), insertRowNode, true);
     walBuffer.write(walEntry);
     walEntry.getWalFlushListener().waitForResult();
 
@@ -299,13 +309,13 @@ public class WALRecoverManagerTest {
     // check file content
     TsFileSequenceReader reader = new TsFileSequenceReader(FILE_WITH_WAL_NAME);
     List<ChunkMetadata> chunkMetadataList =
-        reader.getChunkMetadataList(new Path(DEVICE1_NAME, "s1"));
+        reader.getChunkMetadataList(new Path(DEVICE1_NAME, "s1", true));
     assertNotNull(chunkMetadataList);
-    chunkMetadataList = reader.getChunkMetadataList(new Path(DEVICE1_NAME, "s2"));
+    chunkMetadataList = reader.getChunkMetadataList(new Path(DEVICE1_NAME, "s2", true));
     assertNotNull(chunkMetadataList);
-    chunkMetadataList = reader.getChunkMetadataList(new Path(DEVICE2_NAME, "s1"));
+    chunkMetadataList = reader.getChunkMetadataList(new Path(DEVICE2_NAME, "s1", true));
     assertNotNull(chunkMetadataList);
-    chunkMetadataList = reader.getChunkMetadataList(new Path(DEVICE2_NAME, "s2"));
+    chunkMetadataList = reader.getChunkMetadataList(new Path(DEVICE2_NAME, "s2", true));
     assertNotNull(chunkMetadataList);
     assertEquals(2, chunkMetadataList.size());
     Chunk chunk = reader.readMemChunk(chunkMetadataList.get(0));
@@ -326,13 +336,13 @@ public class WALRecoverManagerTest {
     // region check file without wal
     // check file content
     reader = new TsFileSequenceReader(FILE_WITHOUT_WAL_NAME);
-    chunkMetadataList = reader.getChunkMetadataList(new Path(DEVICE1_NAME, "s1"));
+    chunkMetadataList = reader.getChunkMetadataList(new Path(DEVICE1_NAME, "s1", true));
     assertNotNull(chunkMetadataList);
-    chunkMetadataList = reader.getChunkMetadataList(new Path(DEVICE1_NAME, "s2"));
+    chunkMetadataList = reader.getChunkMetadataList(new Path(DEVICE1_NAME, "s2", true));
     assertNotNull(chunkMetadataList);
-    chunkMetadataList = reader.getChunkMetadataList(new Path(DEVICE2_NAME, "s1"));
+    chunkMetadataList = reader.getChunkMetadataList(new Path(DEVICE2_NAME, "s1", true));
     assertNotNull(chunkMetadataList);
-    chunkMetadataList = reader.getChunkMetadataList(new Path(DEVICE2_NAME, "s2"));
+    chunkMetadataList = reader.getChunkMetadataList(new Path(DEVICE2_NAME, "s2", true));
     assertNotNull(chunkMetadataList);
     assertEquals(1, chunkMetadataList.size());
     chunk = reader.readMemChunk(chunkMetadataList.get(0));
@@ -349,39 +359,43 @@ public class WALRecoverManagerTest {
     // endregion
   }
 
-  private InsertRowPlan getInsertRowPlan(String devicePath, long time) throws MetadataException {
+  private InsertRowNode getInsertRowNode(String devicePath, long time)
+      throws MetadataException, QueryProcessException {
     TSDataType[] dataTypes = new TSDataType[] {TSDataType.FLOAT, TSDataType.DOUBLE};
-    String[] columns = new String[] {1 + "", 1.0 + ""};
+    Object[] columns = new Object[] {1.0f, 1.0d};
     PartialPath path = new PartialPath(devicePath);
     String[] measurements = new String[] {"s1", "s2"};
-    InsertRowPlan insertRowPlan = new InsertRowPlan(path, time, measurements, dataTypes, columns);
-    insertRowPlan.setMeasurementMNodes(
-        new IMeasurementMNode[] {
-          IoTDB.schemaProcessor.getMeasurementMNode(path.concatNode("s1")),
-          IoTDB.schemaProcessor.getMeasurementMNode(path.concatNode("s2"))
+    InsertRowNode insertRowNode =
+        new InsertRowNode(
+            new PlanNodeId(""), path, false, measurements, dataTypes, time, columns, false);
+
+    insertRowNode.setMeasurementSchemas(
+        new MeasurementSchema[] {
+          new MeasurementSchema("s1", TSDataType.FLOAT),
+          new MeasurementSchema("s2", TSDataType.DOUBLE)
         });
-    return insertRowPlan;
+    return insertRowNode;
   }
 
-  private InsertTabletPlan getInsertTabletPlan(String devicePath) throws IllegalPathException {
+  private InsertTabletNode getInsertTabletNode(String devicePath) throws IllegalPathException {
     long[] times = new long[] {110L, 111L, 112L, 113L};
-    List<Integer> dataTypes = new ArrayList<>();
-    dataTypes.add(TSDataType.DOUBLE.ordinal());
-    dataTypes.add(TSDataType.FLOAT.ordinal());
-    dataTypes.add(TSDataType.INT64.ordinal());
-    dataTypes.add(TSDataType.INT32.ordinal());
-    dataTypes.add(TSDataType.BOOLEAN.ordinal());
-    dataTypes.add(TSDataType.TEXT.ordinal());
+    List<TSDataType> dataTypes = new ArrayList<>();
+    dataTypes.add(TSDataType.DOUBLE);
+    dataTypes.add(TSDataType.FLOAT);
+    dataTypes.add(TSDataType.INT64);
+    dataTypes.add(TSDataType.INT32);
+    dataTypes.add(TSDataType.BOOLEAN);
+    dataTypes.add(TSDataType.TEXT);
 
     Object[] columns = new Object[6];
-    columns[0] = new double[4];
-    columns[1] = new float[4];
-    columns[2] = new long[4];
-    columns[3] = new int[4];
-    columns[4] = new boolean[4];
-    columns[5] = new Binary[4];
+    columns[0] = new double[times.length];
+    columns[1] = new float[times.length];
+    columns[2] = new long[times.length];
+    columns[3] = new int[times.length];
+    columns[4] = new boolean[times.length];
+    columns[5] = new Binary[times.length];
 
-    for (int r = 0; r < 4; r++) {
+    for (int r = 0; r < times.length; r++) {
       ((double[]) columns[0])[r] = 1.0 + r;
       ((float[]) columns[1])[r] = 2 + r;
       ((long[]) columns[2])[r] = 10000 + r;
@@ -398,16 +412,27 @@ public class WALRecoverManagerTest {
       bitMaps[i].mark(i % times.length);
     }
 
-    InsertTabletPlan insertTabletPlan =
-        new InsertTabletPlan(
+    InsertTabletNode insertTabletNode =
+        new InsertTabletNode(
+            new PlanNodeId(""),
             new PartialPath(devicePath),
+            true,
             new String[] {"s1", "s2", "s3", "s4", "s5", "s6"},
-            dataTypes);
-    insertTabletPlan.setTimes(times);
-    insertTabletPlan.setColumns(columns);
-    insertTabletPlan.setRowCount(times.length);
-    insertTabletPlan.setBitMaps(bitMaps);
-    return insertTabletPlan;
+            dataTypes.toArray(new TSDataType[0]),
+            times,
+            bitMaps,
+            columns,
+            times.length);
+    insertTabletNode.setMeasurementSchemas(
+        new MeasurementSchema[] {
+          new MeasurementSchema("s1", TSDataType.DOUBLE),
+          new MeasurementSchema("s2", TSDataType.FLOAT),
+          new MeasurementSchema("s3", TSDataType.INT64),
+          new MeasurementSchema("s4", TSDataType.INT32),
+          new MeasurementSchema("s5", TSDataType.BOOLEAN),
+          new MeasurementSchema("s6", TSDataType.TEXT)
+        });
+    return insertTabletNode;
   }
 
   private List<WALRecoverListener> prepareCrashedTsFile()

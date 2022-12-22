@@ -49,15 +49,15 @@ public abstract class TVList implements WALEntryValue {
 
   protected static final int SMALL_ARRAY_LENGTH = 32;
   protected static final String ERR_DATATYPE_NOT_CONSISTENT = "DataType not consistent";
-  long maxChunkRawSizeThreshold =
-      IoTDBDescriptor.getInstance().getConfig().getMaxChunkRawSizeThreshold();
+  protected static final long targetChunkSize =
+      IoTDBDescriptor.getInstance().getConfig().getTargetChunkSize();
   // list of timestamp array, add 1 when expanded -> data point timestamp array
   // index relation: arrayIndex -> elementIndex
   protected List<long[]> timestamps;
   protected int rowCount;
 
   protected boolean sorted = true;
-  protected long minTime;
+  protected long maxTime;
   // record reference count of this tv list
   // currently this reference will only be increase because we can't know when to decrease it
   protected AtomicInteger referenceCount;
@@ -66,7 +66,7 @@ public abstract class TVList implements WALEntryValue {
   public TVList() {
     timestamps = new ArrayList<>();
     rowCount = 0;
-    minTime = Long.MAX_VALUE;
+    maxTime = Long.MIN_VALUE;
     referenceCount = new AtomicInteger();
   }
 
@@ -228,8 +228,8 @@ public abstract class TVList implements WALEntryValue {
     throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
   }
 
-  public long getMinTime() {
-    return minTime;
+  public long getMaxTime() {
+    return maxTime;
   }
 
   public long getVersion() {
@@ -256,12 +256,12 @@ public abstract class TVList implements WALEntryValue {
 
   public int delete(long lowerBound, long upperBound) {
     int newSize = 0;
-    minTime = Long.MAX_VALUE;
+    maxTime = Long.MIN_VALUE;
     for (int i = 0; i < rowCount; i++) {
       long time = getTime(i);
       if (time < lowerBound || time > upperBound) {
         set(i, newSize++);
-        minTime = Math.min(time, minTime);
+        maxTime = Math.max(time, maxTime);
       }
     }
     int deletedNumber = rowCount - newSize;
@@ -285,13 +285,13 @@ public abstract class TVList implements WALEntryValue {
     }
     cloneList.rowCount = rowCount;
     cloneList.sorted = sorted;
-    cloneList.minTime = minTime;
+    cloneList.maxTime = maxTime;
   }
 
   public void clear() {
     rowCount = 0;
     sorted = true;
-    minTime = Long.MAX_VALUE;
+    maxTime = Long.MIN_VALUE;
     clearTime();
     clearValue();
   }
@@ -324,17 +324,17 @@ public abstract class TVList implements WALEntryValue {
     return cloneArray;
   }
 
-  void updateMinTimeAndSorted(long[] time, int start, int end) {
+  void updateMaxTimeAndSorted(long[] time, int start, int end) {
     int length = time.length;
     long inPutMinTime = Long.MAX_VALUE;
     boolean inputSorted = true;
     for (int i = start; i < end; i++) {
       inPutMinTime = Math.min(inPutMinTime, time[i]);
+      maxTime = Math.max(maxTime, time[i]);
       if (inputSorted && i < length - 1 && time[i] > time[i + 1]) {
         inputSorted = false;
       }
     }
-    minTime = Math.min(inPutMinTime, minTime);
     sorted = sorted && inputSorted && (rowCount == 0 || inPutMinTime >= getTime(rowCount - 1));
   }
 

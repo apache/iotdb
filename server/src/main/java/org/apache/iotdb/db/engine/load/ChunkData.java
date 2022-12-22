@@ -22,39 +22,33 @@ package org.apache.iotdb.db.engine.load;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.tsfile.exception.write.PageException;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
+import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
-import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
-import java.io.DataOutputStream;
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.ByteBuffer;
 
-public interface ChunkData {
+public interface ChunkData extends TsFileData {
   String getDevice();
 
   TTimePartitionSlot getTimePartitionSlot();
 
-  long getDataSize();
-
-  void addDataSize(long pageSize);
-
-  void setNotDecode(IChunkMetadata chunkMetadata);
-
-  boolean needDecodeChunk();
-
-  void setHeadPageNeedDecode(boolean headPageNeedDecode);
-
-  void setTailPageNeedDecode(boolean tailPageNeedDecode);
-
-  void setTimePartitionSlot(TTimePartitionSlot timePartitionSlot);
+  void setNotDecode();
 
   boolean isAligned();
 
-  void writeToFileWriter(TsFileIOWriter writer) throws IOException;
+  void writeEntireChunk(ByteBuffer chunkData, IChunkMetadata chunkMetadata) throws IOException;
 
-  void serialize(DataOutputStream stream, File tsFile) throws IOException;
+  void writeEntirePage(PageHeader pageHeader, ByteBuffer pageData) throws IOException;
+
+  void writeDecodePage(long[] times, Object[] values, int satisfiedLength) throws IOException;
+
+  @Override
+  default boolean isModification() {
+    return false;
+  }
 
   static ChunkData deserialize(InputStream stream) throws PageException, IOException {
     boolean isAligned = ReadWriteIOUtils.readBool(stream);
@@ -64,9 +58,12 @@ public interface ChunkData {
   }
 
   static ChunkData createChunkData(
-      boolean isAligned, long offset, String device, ChunkHeader chunkHeader) {
+      boolean isAligned,
+      String device,
+      ChunkHeader chunkHeader,
+      TTimePartitionSlot timePartitionSlot) {
     return isAligned
-        ? new AlignedChunkData(offset, device, chunkHeader)
-        : new NonAlignedChunkData(offset, device, chunkHeader);
+        ? new AlignedChunkData(device, chunkHeader, timePartitionSlot)
+        : new NonAlignedChunkData(device, chunkHeader, timePartitionSlot);
   }
 }

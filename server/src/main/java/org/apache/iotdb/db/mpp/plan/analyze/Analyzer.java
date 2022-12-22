@@ -22,6 +22,8 @@ package org.apache.iotdb.db.mpp.plan.analyze;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 
+import static org.apache.iotdb.db.mpp.common.QueryId.mockQueryId;
+
 /** Analyze the statement and generate Analysis. */
 public class Analyzer {
   private final MPPQueryContext context;
@@ -37,6 +39,18 @@ public class Analyzer {
   }
 
   public Analysis analyze(Statement statement) {
-    return new AnalyzeVisitor(partitionFetcher, schemaFetcher, context).process(statement, context);
+    return new AnalyzeVisitor(partitionFetcher, schemaFetcher).process(statement, context);
+  }
+
+  public static void validate(Statement statement) {
+    MPPQueryContext context = new MPPQueryContext(mockQueryId);
+
+    IPartitionFetcher partitionFetcher;
+    ISchemaFetcher schemaFetcher;
+    partitionFetcher = ClusterPartitionFetcher.getInstance();
+    schemaFetcher = ClusterSchemaFetcher.getInstance();
+
+    Analyzer analyzer = new Analyzer(context, partitionFetcher, schemaFetcher);
+    analyzer.analyze(statement);
   }
 }

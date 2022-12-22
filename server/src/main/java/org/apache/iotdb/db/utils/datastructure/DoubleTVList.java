@@ -49,10 +49,14 @@ public abstract class DoubleTVList extends TVList {
   }
 
   public static DoubleTVList newList() {
-    if (TVLIST_SORT_ALGORITHM == TVListSortAlgorithm.QUICK) {
-      return new QuickDoubleTVList();
+    switch (TVLIST_SORT_ALGORITHM) {
+      case QUICK:
+        return new QuickDoubleTVList();
+      case BACKWARD:
+        return new BackDoubleTVList();
+      default:
+        return new TimDoubleTVList();
     }
-    return new TimDoubleTVList();
   }
 
   @Override
@@ -76,7 +80,7 @@ public abstract class DoubleTVList extends TVList {
     checkExpansion();
     int arrayIndex = rowCount / ARRAY_SIZE;
     int elementIndex = rowCount % ARRAY_SIZE;
-    minTime = Math.min(minTime, timestamp);
+    maxTime = Math.max(maxTime, timestamp);
     timestamps.get(arrayIndex)[elementIndex] = timestamp;
     values.get(arrayIndex)[elementIndex] = value;
     rowCount++;
@@ -175,10 +179,10 @@ public abstract class DoubleTVList extends TVList {
       timeIdxOffset = start;
       // drop null at the end of value array
       int nullCnt =
-          dropNullValThenUpdateMinTimeAndSorted(time, value, bitMap, start, end, timeIdxOffset);
+          dropNullValThenUpdateMaxTimeAndSorted(time, value, bitMap, start, end, timeIdxOffset);
       end -= nullCnt;
     } else {
-      updateMinTimeAndSorted(time, start, end);
+      updateMaxTimeAndSorted(time, start, end);
     }
 
     while (idx < end) {
@@ -207,7 +211,7 @@ public abstract class DoubleTVList extends TVList {
   }
 
   // move null values to the end of time array and value array, then return number of null values
-  int dropNullValThenUpdateMinTimeAndSorted(
+  int dropNullValThenUpdateMaxTimeAndSorted(
       long[] time, double[] values, BitMap bitMap, int start, int end, int tIdxOffset) {
     long inPutMinTime = Long.MAX_VALUE;
     boolean inputSorted = true;
@@ -224,14 +228,15 @@ public abstract class DoubleTVList extends TVList {
         time[tIdx - nullCnt] = time[tIdx];
         values[vIdx - nullCnt] = values[vIdx];
       }
-      // update minTime and sorted
+      // update maxTime and sorted
       tIdx = tIdx - nullCnt;
       inPutMinTime = Math.min(inPutMinTime, time[tIdx]);
+      maxTime = Math.max(maxTime, time[tIdx]);
       if (inputSorted && tIdx > 0 && time[tIdx - 1] > time[tIdx]) {
         inputSorted = false;
       }
     }
-    minTime = Math.min(inPutMinTime, minTime);
+
     sorted = sorted && inputSorted && (rowCount == 0 || inPutMinTime >= getTime(rowCount - 1));
     return nullCnt;
   }

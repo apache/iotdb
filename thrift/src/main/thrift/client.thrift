@@ -16,9 +16,11 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 include "common.thrift"
 namespace java org.apache.iotdb.service.rpc.thrift
 namespace py iotdb.thrift.rpc
+namespace go rpc
 
 struct TSQueryDataSet{
   // ByteBuffer for time column
@@ -66,6 +68,8 @@ struct TSExecuteStatementResp {
   10: optional list<string> sgColumns
   11: optional list<byte> aliasColumns
   12: optional TSTracingInfo tracingInfo
+  13: optional list<binary> queryResult
+  14: optional bool moreData
 }
 
 enum TSProtocolVersion {
@@ -92,7 +96,7 @@ struct TSOpenSessionResp {
 struct TSOpenSessionReq {
   1: required TSProtocolVersion client_protocol = TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V3
   2: required string zoneId
-  3: optional string username
+  3: required string username
   4: optional string password
   5: optional map<string, string> configuration
 }
@@ -173,6 +177,8 @@ struct TSFetchResultsResp{
   3: required bool isAlign
   4: optional TSQueryDataSet queryDataSet
   5: optional TSQueryNonAlignDataSet nonAlignQueryDataSet
+  6: optional list<binary> queryResult
+  7: optional bool moreData
 }
 
 struct TSFetchMetadataResp{
@@ -412,14 +418,12 @@ struct TSDropSchemaTemplateReq {
 
 // The sender and receiver need to check some info to confirm validity
 struct TSyncIdentityInfo{
-  // Check whether the ip of sender is in the white list of receiver.
-  1:required string address
   // Sender needs to tell receiver its identity.
-  2:required string pipeName
-  3:required i64 createTime
+  1:required string pipeName
+  2:required i64 createTime
   // The version of sender and receiver need to be the same.
-  4:required string version
-  5:required string storageGroup
+  3:required string version
+  4:required string database
 }
 
 struct TSyncTransportMetaInfo{
@@ -429,7 +433,44 @@ struct TSyncTransportMetaInfo{
   2:required i64 startIndex
 }
 
+struct TSBackupConfigurationResp {
+  1: required common.TSStatus status
+  2: optional bool enableOperationSync
+  3: optional string secondaryAddress
+  4: optional i32 secondaryPort
+}
+
+enum TSConnectionType {
+  THRIFT_BASED
+  MQTT_BASED
+  INTERNAL
+}
+
+struct TSConnectionInfo {
+  1: required string userName
+  2: required i64 logInTime
+  3: required string connectionId // ip:port for thrift-based service and clientId for mqtt-based service
+  4: required TSConnectionType type
+}
+
+struct TSConnectionInfoResp {
+  1: required list<TSConnectionInfo> connectionInfoList
+}
+
 service IClientRPCService {
+
+  TSExecuteStatementResp executeQueryStatementV2(1:TSExecuteStatementReq req);
+
+  TSExecuteStatementResp executeUpdateStatementV2(1:TSExecuteStatementReq req);
+
+  TSExecuteStatementResp executeStatementV2(1:TSExecuteStatementReq req);
+
+  TSExecuteStatementResp executeRawDataQueryV2(1:TSRawDataQueryReq req);
+
+  TSExecuteStatementResp executeLastDataQueryV2(1:TSLastDataQueryReq req);
+
+  TSFetchResultsResp fetchResultsV2(1:TSFetchResultsReq req);
+
   TSOpenSessionResp openSession(1:TSOpenSessionReq req);
 
   common.TSStatus closeSession(1:TSCloseSessionReq req);
@@ -442,9 +483,9 @@ service IClientRPCService {
 
   TSExecuteStatementResp executeUpdateStatement(1:TSExecuteStatementReq req);
 
-  TSFetchResultsResp fetchResults(1:TSFetchResultsReq req)
+  TSFetchResultsResp fetchResults(1:TSFetchResultsReq req);
 
-  TSFetchMetadataResp fetchMetadata(1:TSFetchMetadataReq req)
+  TSFetchMetadataResp fetchMetadata(1:TSFetchMetadataReq req);
 
   common.TSStatus cancelOperation(1:TSCancelOperationReq req);
 
@@ -525,4 +566,8 @@ service IClientRPCService {
   common.TSStatus sendPipeData(1:binary buff);
 
   common.TSStatus sendFile(1:TSyncTransportMetaInfo metaInfo, 2:binary buff);
+
+  TSBackupConfigurationResp getBackupConfiguration();
+
+  TSConnectionInfoResp fetchAllConnectionsInfo();
 }

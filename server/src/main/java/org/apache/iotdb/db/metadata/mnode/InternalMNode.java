@@ -18,14 +18,9 @@
  */
 package org.apache.iotdb.db.metadata.mnode;
 
-import org.apache.iotdb.db.metadata.logfile.MLogWriter;
 import org.apache.iotdb.db.metadata.mnode.container.IMNodeContainer;
 import org.apache.iotdb.db.metadata.mnode.container.MNodeContainers;
 import org.apache.iotdb.db.metadata.mnode.visitor.MNodeVisitor;
-import org.apache.iotdb.db.metadata.template.Template;
-import org.apache.iotdb.db.qp.physical.sys.MNodePlan;
-
-import java.io.IOException;
 
 import static org.apache.iotdb.db.metadata.MetadataConstant.NON_TEMPLATE;
 
@@ -46,10 +41,14 @@ public class InternalMNode extends MNode {
   @SuppressWarnings("squid:S3077")
   protected transient volatile IMNodeContainer children = null;
 
-  // schema template
+  /**
+   * This field is mainly used in cluster schema template features. In InternalMNode of ConfigMTree,
+   * this field represents the template set on this node. In EntityMNode of MTree in SchemaRegion,
+   * this field represents the template activated on this node. The normal usage value range is [0,
+   * Int.MaxValue], since this is implemented as auto inc id. The default value -1 means
+   * NON_TEMPLATE. This value will be set negative to implement some pre-delete features.
+   */
   protected int schemaTemplateId = NON_TEMPLATE;
-
-  protected Template schemaTemplate = null;
 
   private volatile boolean useTemplate = false;
 
@@ -165,7 +164,6 @@ public class InternalMNode extends MNode {
   public void moveDataToNewMNode(IMNode newMNode) {
     super.moveDataToNewMNode(newMNode);
 
-    newMNode.setSchemaTemplate(schemaTemplate);
     newMNode.setUseTemplate(useTemplate);
     newMNode.setSchemaTemplateId(schemaTemplateId);
 
@@ -188,26 +186,13 @@ public class InternalMNode extends MNode {
     this.children = children;
   }
 
-  /**
-   * get upper template of this node, remember we get nearest template alone this node to root
-   *
-   * @return upper template
-   */
   @Override
-  public Template getUpperTemplate() {
-    IMNode cur = this;
-    while (cur != null) {
-      if (cur.getSchemaTemplate() != null) {
-        return cur.getSchemaTemplate();
-      }
-      cur = cur.getParent();
-    }
-
-    return null;
+  public int getSchemaTemplateId() {
+    return schemaTemplateId >= -1 ? schemaTemplateId : -schemaTemplateId - 2;
   }
 
   @Override
-  public int getSchemaTemplateId() {
+  public int getSchemaTemplateIdWithState() {
     return schemaTemplateId;
   }
 
@@ -216,19 +201,40 @@ public class InternalMNode extends MNode {
     this.schemaTemplateId = schemaTemplateId;
   }
 
+  /**
+   * In InternalMNode, schemaTemplateId represents the template set on this node. The pre unset
+   * mechanism is implemented by making this value negative. Since value 0 and -1 are all occupied,
+   * the available negative value range is [Int.MIN_VALUE, -2]. The value of a pre unset case equals
+   * the negative normal value minus 2. For example, if the id of set template is 0, then - 0 - 2 =
+   * -2 represents the pre unset operation of this template on this node.
+   */
+  @Override
+  public void preUnsetSchemaTemplate() {
+    if (this.schemaTemplateId > -1) {
+      this.schemaTemplateId = -schemaTemplateId - 2;
+    }
+  }
+
+  @Override
+  public void rollbackUnsetSchemaTemplate() {
+    if (schemaTemplateId < -1) {
+      schemaTemplateId = -schemaTemplateId - 2;
+    }
+  }
+
+  @Override
+  public boolean isSchemaTemplatePreUnset() {
+    return schemaTemplateId < -1;
+  }
+
+  @Override
+  public void unsetSchemaTemplate() {
+    this.schemaTemplateId = -1;
+  }
+
   @Override
   public MNodeType getMNodeType(Boolean isConfig) {
     return isConfig ? MNodeType.SG_INTERNAL : MNodeType.INTERNAL;
-  }
-
-  @Override
-  public Template getSchemaTemplate() {
-    return schemaTemplate;
-  }
-
-  @Override
-  public void setSchemaTemplate(Template schemaTemplate) {
-    this.schemaTemplate = schemaTemplate;
   }
 
   @Override
@@ -242,27 +248,7 @@ public class InternalMNode extends MNode {
   }
 
   @Override
-  public void serializeTo(MLogWriter logWriter) throws IOException {
-    serializeChildren(logWriter);
-
-    logWriter.serializeMNode(this);
-  }
-
-  @Override
   public <R, C> R accept(MNodeVisitor<R, C> visitor, C context) {
     return visitor.visitInternalMNode(this, context);
-  }
-
-  void serializeChildren(MLogWriter logWriter) throws IOException {
-    if (children == null) {
-      return;
-    }
-    for (IMNode child : children.values()) {
-      child.serializeTo(logWriter);
-    }
-  }
-
-  public static InternalMNode deserializeFrom(MNodePlan plan) {
-    return new InternalMNode(null, plan.getName());
   }
 }

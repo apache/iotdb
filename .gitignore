@@ -25,6 +25,9 @@ derby-tsfile-db
 # build generated
 **/target/
 
+# build docker images
+tmp
+
 # intermediately generated locally
 
 tsfile-timeseries/src/main/resources/logback.out.out.xml
@@ -37,6 +40,10 @@ tsfile-jdbc/src/main/resources/output/queryRes.csv
 *.txt
 
 *.jar
+!trigger-example.jar
+!TriggerFireTimesCounter.jar
+!udf-example.jar
+
 *.gz
 *.tar.gz
 *.tar

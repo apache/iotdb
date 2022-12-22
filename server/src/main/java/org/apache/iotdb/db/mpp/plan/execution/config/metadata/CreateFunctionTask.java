@@ -26,26 +26,17 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateFunctionStatement;
 
 import com.google.common.util.concurrent.ListenableFuture;
 
-import java.net.URI;
-import java.util.List;
-import java.util.stream.Collectors;
-
 public class CreateFunctionTask implements IConfigTask {
 
-  private final String udfName;
-  private final String className;
-  private final List<String> uris;
+  private final CreateFunctionStatement createFunctionStatement;
 
   public CreateFunctionTask(CreateFunctionStatement createFunctionStatement) {
-    udfName = createFunctionStatement.getUdfName();
-    className = createFunctionStatement.getClassName();
-    uris =
-        createFunctionStatement.getUris().stream().map(URI::toString).collect(Collectors.toList());
+    this.createFunctionStatement = createFunctionStatement;
   }
 
   @Override
   public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskExecutor)
       throws InterruptedException {
-    return configTaskExecutor.createFunction(udfName, className, uris);
+    return configTaskExecutor.createFunction(createFunctionStatement);
   }
 }

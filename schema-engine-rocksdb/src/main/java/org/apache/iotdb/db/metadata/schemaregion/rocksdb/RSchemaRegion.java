@@ -35,44 +35,35 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.AcquireLockTimeoutException;
 import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.AlignedTimeseriesException;
-import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
 import org.apache.iotdb.db.exception.metadata.MNodeTypeMismatchException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.SchemaDirCreationFailureException;
-import org.apache.iotdb.db.metadata.LocalSchemaProcessor.StorageGroupFilter;
 import org.apache.iotdb.db.metadata.MetadataConstant;
 import org.apache.iotdb.db.metadata.idtable.IDTable;
 import org.apache.iotdb.db.metadata.idtable.IDTableManager;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
-import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.mnode.MNodeType;
+import org.apache.iotdb.db.metadata.plan.schemaregion.write.IActivateTemplateInClusterPlan;
+import org.apache.iotdb.db.metadata.plan.schemaregion.write.ICreateAlignedTimeSeriesPlan;
+import org.apache.iotdb.db.metadata.plan.schemaregion.write.ICreateTimeSeriesPlan;
+import org.apache.iotdb.db.metadata.plan.schemaregion.write.IDeactivateTemplatePlan;
+import org.apache.iotdb.db.metadata.plan.schemaregion.write.IPreDeactivateTemplatePlan;
+import org.apache.iotdb.db.metadata.plan.schemaregion.write.IRollbackPreDeactivateTemplatePlan;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaRegionUtils;
-import org.apache.iotdb.db.metadata.schemaregion.rocksdb.mnode.REntityMNode;
 import org.apache.iotdb.db.metadata.schemaregion.rocksdb.mnode.RMNodeType;
 import org.apache.iotdb.db.metadata.schemaregion.rocksdb.mnode.RMNodeValueType;
 import org.apache.iotdb.db.metadata.schemaregion.rocksdb.mnode.RMeasurementMNode;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.utils.MetaFormatUtils;
-import org.apache.iotdb.db.mpp.common.schematree.DeviceSchemaInfo;
-import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
-import org.apache.iotdb.db.qp.physical.sys.ActivateTemplateInClusterPlan;
-import org.apache.iotdb.db.qp.physical.sys.ActivateTemplatePlan;
-import org.apache.iotdb.db.qp.physical.sys.AutoCreateDeviceMNodePlan;
-import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
-import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
-import org.apache.iotdb.db.qp.physical.sys.SetTemplatePlan;
+import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
-import org.apache.iotdb.db.qp.physical.sys.UnsetTemplatePlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.ShowDevicesResult;
 import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
-import org.apache.iotdb.db.utils.EncodingInferenceUtils;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -99,7 +90,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
@@ -117,7 +107,7 @@ import java.util.concurrent.locks.ReentrantLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.BiFunction;
 import java.util.function.Function;
-import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaConstants.ALL_NODE_TYPE_ARRAY;
 import static org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaConstants.DEFAULT_ALIGNED_ENTITY_VALUE;
@@ -150,7 +140,6 @@ public class RSchemaRegion implements ISchemaRegion {
   private String schemaRegionDirPath;
   private String storageGroupFullPath;
   private SchemaRegionId schemaRegionId;
-  private IStorageGroupMNode storageGroupMNode;
   private int storageGroupPathLevel;
 
   public RSchemaRegion() throws MetadataException {
@@ -163,14 +152,10 @@ public class RSchemaRegion implements ISchemaRegion {
   }
 
   public RSchemaRegion(
-      PartialPath storageGroup,
-      SchemaRegionId schemaRegionId,
-      IStorageGroupMNode storageGroupMNode,
-      RSchemaConfLoader rSchemaConfLoader)
+      PartialPath storageGroup, SchemaRegionId schemaRegionId, RSchemaConfLoader rSchemaConfLoader)
       throws MetadataException {
     this.schemaRegionId = schemaRegionId;
     storageGroupFullPath = storageGroup.getFullPath();
-    this.storageGroupMNode = storageGroupMNode;
     init();
     try {
       readWriteHandler = new RSchemaReadWriteHandler(schemaRegionDirPath, rSchemaConfLoader);
@@ -238,7 +223,7 @@ public class RSchemaRegion implements ISchemaRegion {
   }
 
   @Override
-  public void createTimeseries(CreateTimeSeriesPlan plan, long offset) throws MetadataException {
+  public void createTimeseries(ICreateTimeSeriesPlan plan, long offset) throws MetadataException {
     try {
       if (deleteUpdateLock.readLock().tryLock(MAX_LOCK_WAIT_TIME, TimeUnit.MILLISECONDS)) {
         createTimeseries(
@@ -369,8 +354,7 @@ public class RSchemaRegion implements ISchemaRegion {
             } else if (checkResult.getResult(RMNodeType.ENTITY)) {
               if ((checkResult.getValue()[1] & FLAG_IS_ALIGNED) != 0) {
                 throw new AlignedTimeseriesException(
-                    "Timeseries under this entity is aligned, please use createAlignedTimeseries"
-                        + " or change entity.",
+                    "timeseries under this entity is aligned, please use createAlignedTimeseries or change entity.",
                     RSchemaUtils.getPathByLevelPath(levelPath));
               }
             } else {
@@ -506,8 +490,8 @@ public class RSchemaRegion implements ISchemaRegion {
   }
 
   @Override
-  public void createAlignedTimeSeries(CreateAlignedTimeSeriesPlan plan) throws MetadataException {
-    PartialPath prefixPath = plan.getPrefixPath();
+  public void createAlignedTimeSeries(ICreateAlignedTimeSeriesPlan plan) throws MetadataException {
+    PartialPath prefixPath = plan.getDevicePath();
     List<String> measurements = plan.getMeasurements();
     List<TSDataType> dataTypes = plan.getDataTypes();
     List<TSEncoding> encodings = plan.getEncodings();
@@ -517,7 +501,7 @@ public class RSchemaRegion implements ISchemaRegion {
         createAlignedTimeSeries(prefixPath, measurements, dataTypes, encodings);
         // update id table if not in recovering or disable id table log file
         if (config.isEnableIDTable() && !config.isEnableIDTableLogFile()) {
-          IDTable idTable = IDTableManager.getInstance().getIDTable(plan.getPrefixPath());
+          IDTable idTable = IDTableManager.getInstance().getIDTable(plan.getDevicePath());
           idTable.createAlignedTimeseries(plan);
         }
       } else {
@@ -530,6 +514,12 @@ public class RSchemaRegion implements ISchemaRegion {
     } finally {
       deleteUpdateLock.readLock().unlock();
     }
+  }
+
+  @Override
+  public Map<Integer, MetadataException> checkMeasurementExistence(
+      PartialPath devicePath, List<String> measurementList, List<String> aliasList) {
+    throw new UnsupportedOperationException();
   }
 
   private void createEntityRecursively(String[] nodes, int start, int end, boolean aligned)
@@ -555,9 +545,9 @@ public class RSchemaRegion implements ISchemaRegion {
         } else {
           if (start == nodes.length) {
             // make sure sg node and entity node are different
-            // eg.,'root.a' is a storage group path, 'root.a.b' can not be a timeseries
+            // eg.,'root.a' is a database path, 'root.a.b' can not be a timeseries
             if (checkResult.getResult(RMNodeType.STORAGE_GROUP)) {
-              throw new MetadataException("Storage Group Node and Entity Node could not be same!");
+              throw new MetadataException("Database Node and Entity Node could not be same!");
             }
 
             if (!checkResult.getResult(RMNodeType.ENTITY)) {
@@ -642,29 +632,28 @@ public class RSchemaRegion implements ISchemaRegion {
           }
           Set<IMNode> tempSet = ConcurrentHashMap.newKeySet();
 
-          parentNeedsToCheck
-              .parallelStream()
-              .forEach(
-                  currentNode -> {
-                    if (!currentNode.isStorageGroup()) {
-                      PartialPath parentPath = currentNode.getPartialPath();
-                      int level = parentPath.getNodeLength();
-                      int end = parentPath.getNodeLength() - 1;
-                      if (!readWriteHandler.existAnySiblings(
-                          RSchemaUtils.getLevelPathPrefix(parentPath.getNodes(), end, level))) {
-                        try {
-                          readWriteHandler.deleteNode(
-                              parentPath.getNodes(), RSchemaUtils.typeOfMNode(currentNode));
-                          IMNode parentNode = currentNode.getParent();
-                          if (!parentNode.isStorageGroup()) {
-                            tempSet.add(currentNode.getParent());
-                          }
-                        } catch (Exception e) {
-                          logger.warn("delete {} fail.", parentPath.getFullPath(), e);
-                        }
+          Stream<IMNode> parentStream = parentNeedsToCheck.parallelStream();
+          parentStream.forEach(
+              currentNode -> {
+                if (!currentNode.isStorageGroup()) {
+                  PartialPath parentPath = currentNode.getPartialPath();
+                  int level = parentPath.getNodeLength();
+                  int end = parentPath.getNodeLength() - 1;
+                  if (!readWriteHandler.existAnySiblings(
+                      RSchemaUtils.getLevelPathPrefix(parentPath.getNodes(), end, level))) {
+                    try {
+                      readWriteHandler.deleteNode(
+                          parentPath.getNodes(), RSchemaUtils.typeOfMNode(currentNode));
+                      IMNode parentNode = currentNode.getParent();
+                      if (!parentNode.isStorageGroup()) {
+                        tempSet.add(currentNode.getParent());
                       }
+                    } catch (Exception e) {
+                      logger.warn("delete {} fail.", parentPath.getFullPath(), e);
                     }
-                  });
+                  }
+                }
+              });
           parentNeedsToCheck.clear();
           parentNeedsToCheck.addAll(tempSet);
         }
@@ -683,7 +672,7 @@ public class RSchemaRegion implements ISchemaRegion {
   }
 
   @Override
-  public int constructSchemaBlackList(PathPatternTree patternTree) throws MetadataException {
+  public long constructSchemaBlackList(PathPatternTree patternTree) throws MetadataException {
     throw new UnsupportedOperationException();
   }
 
@@ -693,7 +682,7 @@ public class RSchemaRegion implements ISchemaRegion {
   }
 
   @Override
-  public List<PartialPath> fetchSchemaBlackList(PathPatternTree patternTree)
+  public Set<PartialPath> fetchSchemaBlackList(PathPatternTree patternTree)
       throws MetadataException {
     throw new UnsupportedOperationException();
   }
@@ -762,35 +751,33 @@ public class RSchemaRegion implements ISchemaRegion {
       byte[] suffixToMatch =
           RSchemaUtils.getSuffixOfLevelPath(
               ArrayUtils.subarray(nodes, firstNonWildcardIndex, nextFirstWildcardIndex), level);
-
-      scanKeys
-          .parallelStream()
-          .forEach(
-              prefixNodes -> {
-                String levelPrefix =
-                    RSchemaUtils.getLevelPathPrefix(prefixNodes, prefixNodes.length - 1, level);
-                Arrays.stream(nodeType)
-                    .parallel()
-                    .forEach(
-                        x -> {
-                          byte[] startKey = RSchemaUtils.toRocksDBKey(levelPrefix, x);
-                          RocksIterator iterator = readWriteHandler.iterator(null);
-                          iterator.seek(startKey);
-                          while (iterator.isValid()) {
-                            if (!RSchemaUtils.prefixMatch(iterator.key(), startKey)) {
-                              break;
-                            }
-                            if (RSchemaUtils.suffixMatch(iterator.key(), suffixToMatch)) {
-                              if (lastIteration) {
-                                function.apply(iterator.key(), iterator.value());
-                              } else {
-                                tempNodes.add(RSchemaUtils.toMetaNodes(iterator.key()));
-                              }
-                            }
-                            iterator.next();
+      Stream<String[]> scanKeysStream = scanKeys.parallelStream();
+      scanKeysStream.forEach(
+          prefixNodes -> {
+            String levelPrefix =
+                RSchemaUtils.getLevelPathPrefix(prefixNodes, prefixNodes.length - 1, level);
+            Arrays.stream(nodeType)
+                .parallel()
+                .forEach(
+                    x -> {
+                      byte[] startKey = RSchemaUtils.toRocksDBKey(levelPrefix, x);
+                      RocksIterator iterator = readWriteHandler.iterator(null);
+                      iterator.seek(startKey);
+                      while (iterator.isValid()) {
+                        if (!RSchemaUtils.prefixMatch(iterator.key(), startKey)) {
+                          break;
+                        }
+                        if (RSchemaUtils.suffixMatch(iterator.key(), suffixToMatch)) {
+                          if (lastIteration) {
+                            function.apply(iterator.key(), iterator.value());
+                          } else {
+                            tempNodes.add(RSchemaUtils.toMetaNodes(iterator.key()));
                           }
-                        });
-              });
+                        }
+                        iterator.next();
+                      }
+                    });
+          });
       scanKeys.clear();
       scanKeys.addAll(tempNodes);
       tempNodes.clear();
@@ -819,86 +806,22 @@ public class RSchemaRegion implements ISchemaRegion {
     return index;
   }
 
-  protected Pair<Integer, Set<String>> deleteTimeseries(PartialPath pathPattern)
-      throws MetadataException {
-    return deleteTimeseries(pathPattern, false);
-  }
-
-  private IMNode getDeviceNodeWithAutoCreate(PartialPath devicePath, boolean autoCreateSchema)
-      throws MetadataException {
-    IMNode node = null;
-    try {
-      node = getDeviceNode(devicePath);
-      return node;
-    } catch (PathNotExistException e) {
-      if (!config.isAutoCreateSchemaEnabled()) {
-        throw new PathNotExistException(devicePath.getFullPath());
-      }
-      try {
-        createEntityRecursively(
-            devicePath.getNodes(), devicePath.getNodeLength(), storageGroupPathLevel, false);
-        node = getDeviceNode(devicePath);
-      } catch (RocksDBException ex) {
-        throw new MetadataException(ex);
-      } catch (InterruptedException ex) {
-        logger.warn("Acquire lock interrupted", ex);
-        Thread.currentThread().interrupt();
-      }
-    }
-    return node;
-  }
-
   @Override
-  public void autoCreateDeviceMNode(AutoCreateDeviceMNodePlan plan) throws MetadataException {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
-  public boolean isPathExist(PartialPath path) throws MetadataException {
-    if (IoTDBConstant.PATH_ROOT.equals(path.getFullPath())) {
-      return true;
-    }
-
-    String innerPathName = RSchemaUtils.getLevelPath(path.getNodes(), path.getNodeLength() - 1);
-    try {
-      CheckKeyResult checkKeyResult =
-          readWriteHandler.keyExistByTypes(innerPathName, RMNodeType.values());
-      if (checkKeyResult.existAnyKey()) {
-        return true;
-      }
-    } catch (RocksDBException e) {
-      throw new MetadataException(e);
-    }
-    return false;
-  }
-
-  @Override
-  public int getAllTimeseriesCount(PartialPath pathPattern, boolean isPrefixMatch)
-      throws MetadataException {
-    return getCountByNodeType(new Character[] {NODE_TYPE_MEASUREMENT}, pathPattern.getNodes());
-  }
-
-  @Override
-  public int getAllTimeseriesCount(
+  public long getAllTimeseriesCount(
       PartialPath pathPattern, Map<Integer, Template> templateMap, boolean isPrefixMatch)
       throws MetadataException {
     throw new UnsupportedOperationException();
   }
 
   @Override
-  public int getAllTimeseriesCount(
+  public long getAllTimeseriesCount(
       PartialPath pathPattern, boolean isPrefixMatch, String key, String value, boolean isContains)
       throws MetadataException {
     return getMatchedMeasurementPathWithTags(pathPattern.getNodes()).size();
   }
 
-  @TestOnly
-  public int getAllTimeseriesCount(PartialPath pathPattern) throws MetadataException {
-    return getAllTimeseriesCount(pathPattern, false);
-  }
-
   @Override
-  public int getDevicesNum(PartialPath pathPattern, boolean isPrefixMatch)
+  public long getDevicesNum(PartialPath pathPattern, boolean isPrefixMatch)
       throws MetadataException {
     return getCountByNodeType(new Character[] {NODE_TYPE_ENTITY}, pathPattern.getNodes());
   }
@@ -915,38 +838,9 @@ public class RSchemaRegion implements ISchemaRegion {
   }
 
   @Override
-  public int getNodesCountInGivenLevel(PartialPath pathPattern, int level, boolean isPrefixMatch)
-      throws MetadataException {
-    // todo support wildcard
-    if (pathPattern.getFullPath().contains(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD)) {
-      throw new UnsupportedOperationException(
-          "Wildcards are not currently supported for this operation"
-              + " [COUNT NODES pathPattern].");
-    }
-    String innerNameByLevel =
-        RSchemaUtils.getLevelPath(pathPattern.getNodes(), pathPattern.getNodeLength() - 1, level);
-    AtomicInteger atomicInteger = new AtomicInteger(0);
-    Function<String, Boolean> function =
-        s -> {
-          atomicInteger.incrementAndGet();
-          return true;
-        };
-    Arrays.stream(ALL_NODE_TYPE_ARRAY)
-        .parallel()
-        .forEach(
-            x -> {
-              String getKeyByInnerNameLevel =
-                  x + innerNameByLevel + RSchemaConstants.PATH_SEPARATOR + level;
-              readWriteHandler.getKeyByPrefix(getKeyByInnerNameLevel, function);
-            });
-
-    return atomicInteger.get();
-  }
-
-  @Override
-  public Map<PartialPath, Integer> getMeasurementCountGroupByLevel(
+  public Map<PartialPath, Long> getMeasurementCountGroupByLevel(
       PartialPath pathPattern, int level, boolean isPrefixMatch) throws MetadataException {
-    Map<PartialPath, Integer> result = new ConcurrentHashMap<>();
+    Map<PartialPath, Long> result = new ConcurrentHashMap<>();
     BiFunction<byte[], byte[], Boolean> function =
         (a, b) -> {
           String key = new String(a);
@@ -958,7 +852,7 @@ public class RSchemaRegion implements ISchemaRegion {
             } catch (IllegalPathException e) {
               logger.warn(e.getMessage());
             }
-            result.putIfAbsent(path, 0);
+            result.putIfAbsent(path, 0L);
             result.put(path, result.get(path) + 1);
           }
           return true;
@@ -970,7 +864,7 @@ public class RSchemaRegion implements ISchemaRegion {
   }
 
   @Override
-  public Map<PartialPath, Integer> getMeasurementCountGroupByLevel(
+  public Map<PartialPath, Long> getMeasurementCountGroupByLevel(
       PartialPath pathPattern,
       int level,
       boolean isPrefixMatch,
@@ -978,7 +872,7 @@ public class RSchemaRegion implements ISchemaRegion {
       String value,
       boolean isContains)
       throws MetadataException {
-    Map<PartialPath, Integer> result = new ConcurrentHashMap<>();
+    Map<PartialPath, Long> result = new ConcurrentHashMap<>();
     Map<MeasurementPath, Pair<Map<String, String>, Map<String, String>>> measurementPathsAndTags =
         getMatchedMeasurementPathWithTags(pathPattern.getNodes());
     BiFunction<byte[], byte[], Boolean> function;
@@ -997,7 +891,7 @@ public class RSchemaRegion implements ISchemaRegion {
               if (!measurementPathsAndTags.keySet().contains(partialName)) {
                 result.put(path, result.get(path));
               } else {
-                result.putIfAbsent(path, 0);
+                result.putIfAbsent(path, 0L);
                 result.put(path, result.get(path) + 1);
               }
             }
@@ -1015,7 +909,7 @@ public class RSchemaRegion implements ISchemaRegion {
               } catch (IllegalPathException e) {
                 logger.warn(e.getMessage());
               }
-              result.putIfAbsent(path, 0);
+              result.putIfAbsent(path, 0L);
             }
             return true;
           };
@@ -1052,8 +946,7 @@ public class RSchemaRegion implements ISchemaRegion {
 
   @Override
   public List<PartialPath> getNodesListInGivenLevel(
-      PartialPath pathPattern, int nodeLevel, boolean isPrefixMatch, StorageGroupFilter filter)
-      throws MetadataException {
+      PartialPath pathPattern, int nodeLevel, boolean isPrefixMatch) throws MetadataException {
     if (pathPattern.getFullPath().contains(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD)) {
       throw new UnsupportedOperationException(
           formatNotSupportInfo(Thread.currentThread().getStackTrace()[1].getMethodName()));
@@ -1123,40 +1016,6 @@ public class RSchemaRegion implements ISchemaRegion {
   }
 
   @Override
-  public Set<String> getChildNodeNameInNextLevel(PartialPath pathPattern) throws MetadataException {
-    Set<String> childPath =
-        getChildNodePathInNextLevel(pathPattern).stream()
-            .map(node -> node.getNodeName())
-            .collect(Collectors.toSet());
-    Set<String> childName = new HashSet<>();
-    for (String str : childPath) {
-      childName.add(str.substring(str.lastIndexOf(RSchemaConstants.PATH_SEPARATOR) + 1));
-    }
-    return childName;
-  }
-
-  @Override
-  public Set<PartialPath> getBelongedDevices(PartialPath timeseries) throws MetadataException {
-    Set<PartialPath> result = Collections.synchronizedSet(new HashSet<>());
-    BiFunction<byte[], byte[], Boolean> function =
-        (a, b) -> {
-          String path = new String(a);
-          PartialPath partialPath;
-          try {
-            partialPath =
-                new PartialPath(path.substring(0, path.lastIndexOf(IoTDBConstant.PATH_SEPARATOR)));
-          } catch (IllegalPathException e) {
-            return false;
-          }
-          result.add(partialPath);
-          return true;
-        };
-    traverseOutcomeBasins(
-        timeseries.getNodes(), MAX_PATH_DEPTH, function, new Character[NODE_TYPE_ENTITY]);
-    return result;
-  }
-
-  @Override
   public Set<PartialPath> getMatchedDevices(PartialPath pathPattern, boolean isPrefixMatch)
       throws MetadataException {
     Set<PartialPath> allPath = new HashSet<>();
@@ -1198,8 +1057,13 @@ public class RSchemaRegion implements ISchemaRegion {
   }
 
   @Override
-  public List<MeasurementPath> getMeasurementPaths(PartialPath pathPattern, boolean isPrefixMath)
-      throws MetadataException {
+  public List<MeasurementPath> getMeasurementPaths(
+      PartialPath pathPattern, boolean isPrefixMath, boolean withTags) throws MetadataException {
+    if (withTags) {
+      Map<MeasurementPath, Pair<Map<String, String>, Map<String, String>>> results =
+          getMatchedMeasurementPathWithTags(pathPattern.getNodes());
+      return new ArrayList<>(results.keySet());
+    }
     List<MeasurementPath> allResult = Collections.synchronizedList(new ArrayList<>());
     BiFunction<byte[], byte[], Boolean> function =
         (a, b) -> {
@@ -1217,15 +1081,16 @@ public class RSchemaRegion implements ISchemaRegion {
 
   @Override
   public Pair<List<MeasurementPath>, Integer> getMeasurementPathsWithAlias(
-      PartialPath pathPattern, int limit, int offset, boolean isPrefixMatch)
+      PartialPath pathPattern, int limit, int offset, boolean isPrefixMatch, boolean withTags)
       throws MetadataException {
     // todo page query
-    return new Pair<>(getMeasurementPaths(pathPattern, false), offset + limit);
+    return new Pair<>(getMeasurementPaths(pathPattern, false, withTags), offset + limit);
   }
 
   @Override
   public List<MeasurementPath> fetchSchema(
-      PartialPath pathPattern, Map<Integer, Template> templateMap) throws MetadataException {
+      PartialPath pathPattern, Map<Integer, Template> templateMap, boolean withTags)
+      throws MetadataException {
     throw new UnsupportedOperationException();
   }
 
@@ -1255,6 +1120,9 @@ public class RSchemaRegion implements ISchemaRegion {
     for (Entry<MeasurementPath, Pair<Map<String, String>, Map<String, String>>> entry :
         measurementPathsAndTags.entrySet()) {
       MeasurementPath measurementPath = entry.getKey();
+      Pair<String, String> deadbandInfo =
+          MetaUtils.parseDeadbandInfo(
+              ((MeasurementSchema) measurementPath.getMeasurementSchema()).getProps());
       res.add(
           new ShowTimeSeriesResult(
               measurementPath.getFullPath(),
@@ -1265,12 +1133,15 @@ public class RSchemaRegion implements ISchemaRegion {
               measurementPath.getMeasurementSchema().getCompressor(),
               0,
               entry.getValue().left,
-              entry.getValue().right));
+              entry.getValue().right,
+              deadbandInfo.left,
+              deadbandInfo.right));
     }
     // todo Page query, record offset
     return new Pair<>(res, 1);
   }
 
+  @SuppressWarnings("unchecked")
   private Map<MeasurementPath, Pair<Map<String, String>, Map<String, String>>>
       getMatchedMeasurementPathWithTags(String[] nodes) throws IllegalPathException {
     Map<MeasurementPath, Pair<Map<String, String>, Map<String, String>>> allResult =
@@ -1289,10 +1160,12 @@ public class RSchemaRegion implements ISchemaRegion {
           if (!(attributes instanceof Map)) {
             attributes = Collections.emptyMap();
           }
-          @SuppressWarnings("unchecked")
+          Map<String, String> tagMap = (Map<String, String>) tag;
+          Map<String, String> attributesMap = (Map<String, String>) attributes;
           Pair<Map<String, String>, Map<String, String>> tagsAndAttributes =
-              new Pair<>((Map<String, String>) tag, (Map<String, String>) attributes);
+              new Pair<>(tagMap, attributesMap);
           allResult.put(measurementPath, tagsAndAttributes);
+          measurementPath.setTagMap(tagMap);
           return true;
         };
     traverseOutcomeBasins(nodes, MAX_PATH_DEPTH, function, new Character[] {NODE_TYPE_MEASUREMENT});
@@ -1300,47 +1173,7 @@ public class RSchemaRegion implements ISchemaRegion {
     return allResult;
   }
 
-  @Override
-  public List<MeasurementPath> getAllMeasurementByDevicePath(PartialPath devicePath)
-      throws PathNotExistException {
-    List<MeasurementPath> result = new ArrayList<>();
-    String nextLevelPathName =
-        RSchemaUtils.convertPartialPathToInner(
-            devicePath.getFullPath(), devicePath.getNodeLength() + 1, NODE_TYPE_MEASUREMENT);
-    Map<byte[], byte[]> allMeasurementPath =
-        readWriteHandler.getKeyValueByPrefix(nextLevelPathName);
-    for (Map.Entry<byte[], byte[]> entry : allMeasurementPath.entrySet()) {
-      PartialPath pathName;
-      try {
-        pathName = new PartialPath(new String(entry.getKey()));
-      } catch (IllegalPathException e) {
-        throw new PathNotExistException(e.getMessage());
-      }
-      MeasurementSchema measurementSchema =
-          (MeasurementSchema) RSchemaUtils.parseNodeValue(entry.getValue(), RMNodeValueType.SCHEMA);
-      result.add(new MeasurementPath(pathName, measurementSchema));
-    }
-    return result;
-  }
-
-  @Override
-  public IMNode getDeviceNode(PartialPath path) throws MetadataException {
-    String[] nodes = path.getNodes();
-    String levelPath = RSchemaUtils.getLevelPath(nodes, nodes.length - 1);
-    Holder<byte[]> holder = new Holder<>();
-    try {
-      if (readWriteHandler.keyExistByType(levelPath, RMNodeType.ENTITY, holder)) {
-        return new REntityMNode(path.getFullPath(), holder.getValue(), readWriteHandler);
-      } else {
-        throw new PathNotExistException(path.getFullPath());
-      }
-    } catch (RocksDBException e) {
-      throw new MetadataException(e);
-    }
-  }
-
-  @Override
-  public IMeasurementMNode getMeasurementMNode(PartialPath fullPath) throws MetadataException {
+  private IMeasurementMNode getMeasurementMNode(PartialPath fullPath) throws MetadataException {
     String[] nodes = fullPath.getNodes();
     String key = RSchemaUtils.getLevelPath(nodes, nodes.length - 1);
     IMeasurementMNode node = null;
@@ -1366,12 +1199,7 @@ public class RSchemaRegion implements ISchemaRegion {
   }
 
   @Override
-  public void changeAlias(PartialPath path, String alias) throws MetadataException, IOException {
-    upsertTagsAndAttributes(alias, null, null, path);
-  }
-
-  @Override
-  public void upsertTagsAndAttributes(
+  public void upsertAliasAndTagsAndAttributes(
       String alias,
       Map<String, String> tagsMap,
       Map<String, String> attributesMap,
@@ -1822,147 +1650,6 @@ public class RSchemaRegion implements ISchemaRegion {
   }
 
   @Override
-  public IMNode getSeriesSchemasAndReadLockDevice(InsertPlan plan)
-      throws MetadataException, IOException {
-    // devicePath is a logical path which is parent of measurement, whether in template or not
-    PartialPath devicePath = plan.getDevicePath();
-    String[] measurementList = plan.getMeasurements();
-    IMeasurementMNode[] measurementMNodes = plan.getMeasurementMNodes();
-
-    IMNode deviceMNode = getDeviceNodeWithAutoCreate(devicePath, plan.isAligned());
-
-    if (deviceMNode == null) {
-      throw new MetadataException(
-          String.format("Failed to create deviceMNode,device path:[%s]", plan.getDevicePath()));
-    }
-    // check insert non-aligned InsertPlan for aligned timeseries
-    if (deviceMNode.isEntity()) {
-      if (plan.isAligned() && !deviceMNode.getAsEntityMNode().isAligned()) {
-        throw new MetadataException(
-            String.format(
-                "Timeseries under path [%s] is not aligned , please set"
-                    + " InsertPlan.isAligned() = false",
-                plan.getDevicePath()));
-      }
-
-      if (!plan.isAligned() && deviceMNode.getAsEntityMNode().isAligned()) {
-        throw new MetadataException(
-            String.format(
-                "Timeseries under path [%s] is aligned , please set"
-                    + " InsertPlan.isAligned() = true",
-                plan.getDevicePath()));
-      }
-    }
-
-    // get node for each measurement
-    Map<Integer, IMeasurementMNode> nodeMap = new HashMap<>();
-    Map<Integer, PartialPath> missingNodeIndex = new HashMap<>();
-    for (int i = 0; i < measurementList.length; i++) {
-      PartialPath path = new PartialPath(devicePath.getFullPath(), measurementList[i]);
-      IMeasurementMNode node = getMeasurementMNode(path);
-      if (node == null) {
-        if (!config.isAutoCreateSchemaEnabled()) {
-          throw new PathNotExistException(path.getFullPath());
-        }
-        missingNodeIndex.put(i, path);
-      } else {
-        nodeMap.put(i, node);
-      }
-    }
-
-    // create missing nodes
-    if (!missingNodeIndex.isEmpty()) {
-      if (!(plan instanceof InsertRowPlan) && !(plan instanceof InsertTabletPlan)) {
-        throw new MetadataException(
-            String.format(
-                "Only support insertRow and insertTablet, plan is [%s]", plan.getOperatorType()));
-      }
-
-      if (plan.isAligned()) {
-        List<String> measurements = new ArrayList<>();
-        List<TSDataType> dataTypes = new ArrayList<>();
-        List<TSEncoding> encodings = new ArrayList<>();
-        for (Integer index : missingNodeIndex.keySet()) {
-          measurements.add(measurementList[index]);
-          TSDataType type = plan.getDataTypes()[index];
-          dataTypes.add(type);
-          encodings.add(EncodingInferenceUtils.getDefaultEncoding(type));
-        }
-        createAlignedTimeSeries(devicePath, measurements, dataTypes, encodings);
-      } else {
-        for (Map.Entry<Integer, PartialPath> entry : missingNodeIndex.entrySet()) {
-          IMeasurementSchema schema =
-              new MeasurementSchema(
-                  entry.getValue().getMeasurement(), plan.getDataTypes()[entry.getKey()]);
-          createTimeseries(entry.getValue(), schema, null, null, null);
-        }
-      }
-
-      // get the latest node
-      for (Entry<Integer, PartialPath> entry : missingNodeIndex.entrySet()) {
-        nodeMap.put(entry.getKey(), getMeasurementMNode(entry.getValue()));
-      }
-    }
-
-    // check datatype
-    for (int i = 0; i < measurementList.length; i++) {
-      try {
-        // check type is match
-        if (plan instanceof InsertRowPlan || plan instanceof InsertTabletPlan) {
-          try {
-            SchemaRegionUtils.checkDataTypeMatch(plan, i, nodeMap.get(i).getSchema().getType());
-          } catch (DataTypeMismatchException mismatchException) {
-            logger.warn(mismatchException.getMessage());
-            if (!config.isEnablePartialInsert()) {
-              throw mismatchException;
-            } else {
-              // mark failed measurement
-              plan.markFailedMeasurementInsertion(i, mismatchException);
-              continue;
-            }
-          }
-          measurementMNodes[i] = nodeMap.get(i);
-          // set measurementName instead of alias
-          measurementList[i] = nodeMap.get(i).getName();
-        }
-      } catch (MetadataException e) {
-        if (config.isClusterMode()) {
-          logger.debug(
-              "meet error when check {}.{}, message: {}",
-              devicePath,
-              measurementList[i],
-              e.getMessage());
-        } else {
-          logger.warn(
-              "meet error when check {}.{}, message: {}",
-              devicePath,
-              measurementList[i],
-              e.getMessage());
-        }
-        if (config.isEnablePartialInsert()) {
-          // mark failed measurement
-          plan.markFailedMeasurementInsertion(i, e);
-        } else {
-          throw e;
-        }
-      }
-    }
-    return deviceMNode;
-  }
-
-  @Override
-  public DeviceSchemaInfo getDeviceSchemaInfoWithAutoCreate(
-      PartialPath devicePath,
-      String[] measurements,
-      Function<Integer, TSDataType> getDataType,
-      TSEncoding[] encodings,
-      CompressionType[] compressionTypes,
-      boolean aligned)
-      throws MetadataException {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
   public void clear() {
     try {
       readWriteHandler.close();
@@ -1981,59 +1668,43 @@ public class RSchemaRegion implements ISchemaRegion {
   }
 
   @Override
-  public Set<String> getPathsSetTemplate(String templateName) throws MetadataException {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
-  public Set<String> getPathsUsingTemplate(String templateName) throws MetadataException {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
-  public boolean isTemplateAppendable(Template template, List<String> measurements) {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
-  public void setSchemaTemplate(SetTemplatePlan plan) throws MetadataException {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
-  public void unsetSchemaTemplate(UnsetTemplatePlan plan) throws MetadataException {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
-  public void setUsingSchemaTemplate(ActivateTemplatePlan plan) throws MetadataException {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
-  public void activateSchemaTemplate(ActivateTemplateInClusterPlan plan, Template template)
+  public void activateSchemaTemplate(IActivateTemplateInClusterPlan plan, Template template)
       throws MetadataException {
     throw new UnsupportedOperationException();
   }
 
   @Override
-  public List<String> getPathsUsingTemplate(int templateId) throws MetadataException {
+  public List<String> getPathsUsingTemplate(PartialPath pathPattern, int templateId)
+      throws MetadataException {
     throw new UnsupportedOperationException();
   }
 
   @Override
-  public IMNode getMNodeForTrigger(PartialPath fullPath) throws MetadataException {
+  public long constructSchemaBlackListWithTemplate(IPreDeactivateTemplatePlan plan)
+      throws MetadataException {
     throw new UnsupportedOperationException();
   }
 
   @Override
-  public void releaseMNodeAfterDropTrigger(IMNode imNode) throws MetadataException {
+  public void rollbackSchemaBlackListWithTemplate(IRollbackPreDeactivateTemplatePlan plan)
+      throws MetadataException {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public void deactivateTemplateInBlackList(IDeactivateTemplatePlan plan) throws MetadataException {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public long countPathsUsingTemplate(int templateId, PathPatternTree patternTree)
+      throws MetadataException {
     throw new UnsupportedOperationException();
   }
 
   @Override
   public String toString() {
-    return String.format("storage group:[%s]", storageGroupFullPath);
+    return String.format("database:[%s]", storageGroupFullPath);
   }
 
   @TestOnly

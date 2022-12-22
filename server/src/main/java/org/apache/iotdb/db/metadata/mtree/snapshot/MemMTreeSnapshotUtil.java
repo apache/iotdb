@@ -245,7 +245,7 @@ public class MemMTreeSnapshotUtil {
       try {
         ReadWriteIOUtils.write(STORAGE_GROUP_MNODE_TYPE, outputStream);
         serializeInternalBasicInfo(node, outputStream);
-        // storage group node in schemaRegion doesn't store any storage group schema
+        // database node in schemaRegion doesn't store any database schema
         return true;
       } catch (IOException e) {
         logger.error(SERIALIZE_ERROR_INFO, e);
@@ -260,7 +260,7 @@ public class MemMTreeSnapshotUtil {
         ReadWriteIOUtils.write(STORAGE_GROUP_ENTITY_MNODE_TYPE, outputStream);
         serializeInternalBasicInfo(node, outputStream);
         ReadWriteIOUtils.write(node.isAligned(), outputStream);
-        // storage group node in schemaRegion doesn't store any storage group schema
+        // database node in schemaRegion doesn't store any database schema
         return true;
       } catch (IOException e) {
         logger.error(SERIALIZE_ERROR_INFO, e);
@@ -301,7 +301,7 @@ public class MemMTreeSnapshotUtil {
         throws IOException {
       ReadWriteIOUtils.write(node.getChildren().size(), outputStream);
       ReadWriteIOUtils.write(node.getName(), outputStream);
-      ReadWriteIOUtils.write(-1, outputStream); // todo template id
+      ReadWriteIOUtils.write(node.getSchemaTemplateIdWithState(), outputStream);
       ReadWriteIOUtils.write(node.isUseTemplate(), outputStream);
     }
   }
@@ -354,7 +354,7 @@ public class MemMTreeSnapshotUtil {
 
     private void deserializeInternalBasicInfo(InternalMNode node, InputStream inputStream)
         throws IOException {
-      int templateId = ReadWriteIOUtils.readInt(inputStream);
+      node.setSchemaTemplateId(ReadWriteIOUtils.readInt(inputStream));
       node.setUseTemplate(ReadWriteIOUtils.readBool(inputStream));
     }
   }

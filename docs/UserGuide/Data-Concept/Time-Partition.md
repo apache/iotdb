@@ -23,35 +23,26 @@
 
 ## Features
 
-Time partition divides data according to time, and a time partition is used to save all data within a certain time range. The time partition number is represented by a natural number. Number 0 means January 1, 1970, it will increase by one every partition_interval seconds. Time partition number's calculation formula is timestamp / partition_interval. The main configuration items are as follows:
+Time partition divides data according to time, and a time partition is used to save all data within a certain time range. The time partition number is represented by a natural number. Number 0 means January 1, 1970, it will increase by one every partition_interval milliseconds. Time partition number's calculation formula is timestamp / partition_interval. The main configuration items are as follows:
 
-* enable\_partition
+* time\_partition\_interval
 
-|Name| enable\_partition |
-|:---:|:---|
-|Description| Whether enable time partition for data, if disabled, all data belongs to partition 0 (It's not recommend to open this function. If open, please calculate appropriate concurrent_writing_time_partition and wal_buffer_size)|
-|Type|Bool|
-|Default| false |
-|Effective|Only allowed to be modified in first start up|
-
-* time\_partition\_interval\_for\_storage
-
-|Name| time\_partition\_interval\_for\_storage                                                                |
-|:---:|:-------------------------------------------------------------------------------------------------------|
-|Description| Time range for dividing storage group, time series data will be divided into groups by this time range |
+|Name| time\_partition\_interval                                                              |
+ |:---:|:-------------------------------------------------------------------------------------------------------|
+|Description| Time range for dividing database, time series data will be divided into groups by this time range |
 |Type| Int64                                                                                                  |
-|Default| 86400                                                                                                  |
+|Default| 604800000                                                                                               |
 |Effective| Only allowed to be modified in first start up                                                          |
 
 ## Configuration example
 
-Enable time partition and set partition_interval to 86400 (one day), then the data distribution is shown as the following figure:
+Enable time partition and set partition_interval to 86400000 (one day), then the data distribution is shown as the following figure:
 
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Data%20Concept/Time-Partition/time_partition_example.png?raw=true" alt="time partition example">
 
-* Insert one datapoint with timestamp 0, calculate 0/86400 = 0, then this datapoint will be stored in TsFile under folder 0
+* Insert one datapoint with timestamp 0, calculate 0/86400000 = 0, then this datapoint will be stored in TsFile under folder 0
 
-* Insert one datapoint with timestamp 1609459200010, calculate 1609459200010/86400 = 18628, then this datapoint will be stored in TsFile under folder 18628
+* Insert one datapoint with timestamp 1609459200010, calculate 1609459200010/86400000 = 18628, then this datapoint will be stored in TsFile under folder 18628
 
 ## Suggestions
 

@@ -22,8 +22,7 @@
 
 # IoTDB
 [![Main Mac and Linux](https://github.com/apache/iotdb/actions/workflows/main-unix.yml/badge.svg)](https://github.com/apache/iotdb/actions/workflows/main-unix.yml)
-[![Main Win](https://github.com/apache/iotdb/actions/workflows/main-win.yml/badge.svg)](https://github.com/apache/iotdb/actions/workflows/main-win.yml)
-[![coveralls](https://coveralls.io/repos/github/apache/iotdb/badge.svg?branch=master)](https://coveralls.io/repos/github/apache/iotdb/badge.svg?branch=master)
+[![Main Win](https://github.com/apache/iotdb/actions/workflows/main-win.yml/badge.svg)](https://github.com/apache/iotdb/actions/workflows/main-win.yml)<!--[![coveralls](https://coveralls.io/repos/github/apache/iotdb/badge.svg?branch=master)](https://coveralls.io/repos/github/apache/iotdb/badge.svg?branch=master)-->
 [![GitHub release](https://img.shields.io/github/release/apache/iotdb.svg)](https://github.com/apache/iotdb/releases)
 [![License](https://img.shields.io/badge/license-Apache%202-4EB1BA.svg)](https://www.apache.org/licenses/LICENSE-2.0.html)
 ![](https://github-size-badge.herokuapp.com/apache/iotdb.svg)
@@ -149,24 +148,39 @@ git clone https://github.com/apache/iotdb.git
 The default dev branch is the master branch, If you want to use a released version x.x.x:
 
 ```
-git checkout release/x.x.x
-```
-
-From v0.11.3 on, the tag name format is change to: vx.x.x:
-
-```
 git checkout vx.x.x
 ```
+
+Or checkout to the branch of a big version, e.g., the branch of 1.0 is rel/1.0
+
+```
+git checkout rel/x.x
+```
+
+### Build IoTDB from source
 
 Under the root path of iotdb:
 
 ```
-> mvn clean package -DskipTests
+> mvn clean package -pl distribution -am -DskipTests
 ```
 
-Using `-P compile-cpp` for compiling cpp client (For more details, read client-cpp's Readme file.)
+After being built, the IoTDB distribution is located at the folder: "distribution/target".
 
-Then the binary version (including both server and cli) can be found at **distribution/target/apache-iotdb-{project.version}-all-bin.zip**
+
+### Only build cli
+
+Under the root path of iotdb:
+
+```
+> mvn clean package -pl cli -am -DskipTests
+```
+
+After being built, the IoTDB cli is located at the folder "cli/target".
+
+### Build Others
+
+Using `-P compile-cpp` for compiling cpp client (For more details, read client-cpp's Readme file.)
 
 **NOTE: Directories "`thrift/target/generated-sources/thrift`", "`thrift-sync/target/generated-sources/thrift`",
 "`thrift-cluster/target/generated-sources/thrift`", "`thrift-influxdb/target/generated-sources/thrift`" 
@@ -191,21 +205,15 @@ You can go through the following steps to test the installation. If there is no 
 
 ### Start IoTDB
 
-Users can start IoTDB by the start-server script under the sbin folder.
+Users can start 1C1D IoTDB by the start-standalone script under the sbin folder.
 
 ```
 # Unix/OS X
-> nohup sbin/start-server.sh >/dev/null 2>&1 &
-or
-> nohup sbin/start-server.sh -c <conf_path> >/dev/null 2>&1 &
+> sbin/start-standalone.sh
 
 # Windows
-> sbin\start-server.bat -c <conf_path>
+> sbin\start-standalone.bat
 ```
-
-- "-c" is optional.
-- option "-c" specifies the system configuration file directory.
-
 
 ### Use IoTDB
 
@@ -246,25 +254,25 @@ IoTDB>
 
 Now, let us introduce the way of creating timeseries, inserting data and querying data.
 
-The data in IoTDB is organized as timeseries. Each timeseries includes multiple data-time pairs, and is owned by a storage group. Before defining a timeseries, we should define a storage group using SET STORAGE GROUP first, and here is an example:
+The data in IoTDB is organized as timeseries. Each timeseries includes multiple data-time pairs, and is owned by a database. Before defining a timeseries, we should define a database using CREATE DATABASE first, and here is an example:
 
 ```
-IoTDB> SET STORAGE GROUP TO root.ln
+IoTDB> CREATE DATABSE root.ln
 ```
 
-We can also use SHOW STORAGE GROUP to check the storage group being created:
+We can also use SHOW DATABASES to check the database being created:
 
 ```
-IoTDB> SHOW STORAGE GROUP
+IoTDB> SHOW DATABASES
 +-------------+
-|storage group|
+|     Database|
 +-------------+
 |      root.ln|
 +-------------+
 Total line number = 1
 ```
 
-After the storage group is set, we can use CREATE TIMESERIES to create a new timeseries. When creating a timeseries, we should define its data type and the encoding scheme. Here We create two timeseries:
+After the database is set, we can use CREATE TIMESERIES to create a new timeseries. When creating a timeseries, we should define its data type and the encoding scheme. Here We create two timeseries:
 
 ```
 IoTDB> CREATE TIMESERIES root.ln.wf01.wt01.status WITH DATATYPE=BOOLEAN, ENCODING=PLAIN
@@ -278,7 +286,7 @@ In order to query the specific timeseries, we can use SHOW TIMESERIES <Path>. <P
 ```
 IoTDB> SHOW TIMESERIES
 +-----------------------------+-----+-------------+--------+--------+-----------+----+----------+
-|                   timeseries|alias|storage group|dataType|encoding|compression|tags|attributes|
+|                   Timeseries|Alias|Database|DataType|Encoding|Compression|Tags|Attributes|
 +-----------------------------+-----+-------------+--------+--------+-----------+----+----------+
 |root.ln.wf01.wt01.temperature| null|      root.ln|   FLOAT|     RLE|     SNAPPY|null|      null|
 |     root.ln.wf01.wt01.status| null|      root.ln| BOOLEAN|   PLAIN|     SNAPPY|null|      null|
@@ -291,7 +299,7 @@ Total line number = 2
 ```
 IoTDB> SHOW TIMESERIES root.ln.wf01.wt01.status
 +------------------------+-----+-------------+--------+--------+-----------+----+----------+
-|              timeseries|alias|storage group|dataType|encoding|compression|tags|attributes|
+|              timeseries|alias|database|dataType|encoding|compression|tags|attributes|
 +------------------------+-----+-------------+--------+--------+-----------+----+----------+
 |root.ln.wf01.wt01.status| null|      root.ln| BOOLEAN|   PLAIN|     SNAPPY|null|      null|
 +------------------------+-----+-------------+--------+--------+-----------+----+----------+
@@ -369,32 +377,11 @@ The server can be stopped with "ctrl-C" or the following script:
 
 ```
 # Unix/OS X
-> sbin/stop-server.sh
+> sbin/stop-standalone.sh
 
 # Windows
-> sbin\stop-server.bat
+> sbin\stop-standalone.bat
 ```
-
-## Only build server
-
-Under the root path of iotdb:
-
-```
-> mvn clean package -pl server -am -DskipTests
-```
-
-After being built, the IoTDB server is located at the folder: "server/target/iotdb-server-{project.version}".
-
-
-## Only build cli
-
-Under the root path of iotdb:
-
-```
-> mvn clean package -pl cli -am -DskipTests
-```
-
-After being built, the IoTDB cli is located at the folder "cli/target/iotdb-cli-{project.version}".
 
 # Usage of CSV Import and Export Tool
 

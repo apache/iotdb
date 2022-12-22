@@ -35,7 +35,7 @@ public class RatisConfig {
   private final Log log;
   private final LeaderLogAppender leaderLogAppender;
   private final Grpc grpc;
-  private final RatisConsensus ratisConsensus;
+  private final Impl impl;
 
   private RatisConfig(
       Rpc rpc,
@@ -45,7 +45,7 @@ public class RatisConfig {
       Log log,
       Grpc grpc,
       LeaderLogAppender leaderLogAppender,
-      RatisConsensus ratisConsensus) {
+      Impl impl) {
     this.rpc = rpc;
     this.leaderElection = leaderElection;
     this.snapshot = snapshot;
@@ -53,7 +53,7 @@ public class RatisConfig {
     this.log = log;
     this.leaderLogAppender = leaderLogAppender;
     this.grpc = grpc;
-    this.ratisConsensus = ratisConsensus;
+    this.impl = impl;
   }
 
   public Rpc getRpc() {
@@ -84,8 +84,8 @@ public class RatisConfig {
     return grpc;
   }
 
-  public RatisConsensus getRatisConsensus() {
-    return ratisConsensus;
+  public Impl getImpl() {
+    return impl;
   }
 
   public static Builder newBuilder() {
@@ -100,7 +100,7 @@ public class RatisConfig {
     private Log log;
     private LeaderLogAppender leaderLogAppender;
     private Grpc grpc;
-    private RatisConsensus ratisConsensus;
+    private Impl impl;
 
     public RatisConfig build() {
       return new RatisConfig(
@@ -111,7 +111,7 @@ public class RatisConfig {
           log != null ? log : Log.newBuilder().build(),
           grpc != null ? grpc : Grpc.newBuilder().build(),
           leaderLogAppender != null ? leaderLogAppender : LeaderLogAppender.newBuilder().build(),
-          ratisConsensus != null ? ratisConsensus : RatisConsensus.newBuilder().build());
+          impl != null ? impl : Impl.newBuilder().build());
     }
 
     public Builder setRpc(Rpc rpc) {
@@ -144,8 +144,8 @@ public class RatisConfig {
       return this;
     }
 
-    public Builder setRatisConsensus(RatisConsensus ratisConsensus) {
-      this.ratisConsensus = ratisConsensus;
+    public Builder setRatisConsensus(Impl impl) {
+      this.impl = impl;
       return this;
     }
 
@@ -162,18 +162,24 @@ public class RatisConfig {
     private final TimeDuration requestTimeout;
     private final TimeDuration sleepTime;
     private final TimeDuration slownessTimeout;
+    private final TimeDuration firstElectionTimeoutMin;
+    private final TimeDuration firstElectionTimeoutMax;
 
     private Rpc(
         TimeDuration timeoutMin,
         TimeDuration timeoutMax,
         TimeDuration requestTimeout,
         TimeDuration sleepTime,
-        TimeDuration slownessTimeout) {
+        TimeDuration slownessTimeout,
+        TimeDuration firstElectionTimeoutMin,
+        TimeDuration firstElectionTimeoutMax) {
       this.timeoutMin = timeoutMin;
       this.timeoutMax = timeoutMax;
       this.requestTimeout = requestTimeout;
       this.sleepTime = sleepTime;
       this.slownessTimeout = slownessTimeout;
+      this.firstElectionTimeoutMin = firstElectionTimeoutMin;
+      this.firstElectionTimeoutMax = firstElectionTimeoutMax;
     }
 
     public TimeDuration getTimeoutMin() {
@@ -196,6 +202,14 @@ public class RatisConfig {
       return slownessTimeout;
     }
 
+    public TimeDuration getFirstElectionTimeoutMin() {
+      return firstElectionTimeoutMin;
+    }
+
+    public TimeDuration getFirstElectionTimeoutMax() {
+      return firstElectionTimeoutMax;
+    }
+
     public static Rpc.Builder newBuilder() {
       return new Rpc.Builder();
     }
@@ -207,8 +221,21 @@ public class RatisConfig {
       private TimeDuration sleepTime = TimeDuration.valueOf(1, TimeUnit.SECONDS);
       private TimeDuration slownessTimeout = TimeDuration.valueOf(10, TimeUnit.MINUTES);
 
+      private TimeDuration firstElectionTimeoutMin =
+          TimeDuration.valueOf(50, TimeUnit.MILLISECONDS);
+
+      private TimeDuration firstElectionTimeoutMax =
+          TimeDuration.valueOf(150, TimeUnit.MILLISECONDS);
+
       public Rpc build() {
-        return new Rpc(timeoutMin, timeoutMax, requestTimeout, sleepTime, slownessTimeout);
+        return new Rpc(
+            timeoutMin,
+            timeoutMax,
+            requestTimeout,
+            sleepTime,
+            slownessTimeout,
+            firstElectionTimeoutMin,
+            firstElectionTimeoutMax);
       }
 
       public Rpc.Builder setTimeoutMin(TimeDuration timeoutMin) {
@@ -233,6 +260,16 @@ public class RatisConfig {
 
       public Rpc.Builder setSlownessTimeout(TimeDuration slownessTimeout) {
         this.slownessTimeout = slownessTimeout;
+        return this;
+      }
+
+      public Rpc.Builder setFirstElectionTimeoutMax(TimeDuration firstElectionTimeoutMax) {
+        this.firstElectionTimeoutMax = firstElectionTimeoutMax;
+        return this;
+      }
+
+      public Rpc.Builder setFirstElectionTimeoutMin(TimeDuration firstElectionTimeoutMin) {
+        this.firstElectionTimeoutMin = firstElectionTimeoutMin;
         return this;
       }
     }
@@ -454,6 +491,7 @@ public class RatisConfig {
     private final SizeInBytes queueByteLimit;
     private final int purgeGap;
     private final boolean purgeUptoSnapshotIndex;
+    private final long preserveNumsWhenPurge;
     private final SizeInBytes segmentSizeMax;
     private final int segmentCacheNumMax;
     private final SizeInBytes segmentCacheSizeMax;
@@ -468,6 +506,7 @@ public class RatisConfig {
         SizeInBytes queueByteLimit,
         int purgeGap,
         boolean purgeUptoSnapshotIndex,
+        long preserveNumsWhenPurge,
         SizeInBytes segmentSizeMax,
         int segmentCacheNumMax,
         SizeInBytes segmentCacheSizeMax,
@@ -480,6 +519,7 @@ public class RatisConfig {
       this.queueByteLimit = queueByteLimit;
       this.purgeGap = purgeGap;
       this.purgeUptoSnapshotIndex = purgeUptoSnapshotIndex;
+      this.preserveNumsWhenPurge = preserveNumsWhenPurge;
       this.segmentSizeMax = segmentSizeMax;
       this.segmentCacheNumMax = segmentCacheNumMax;
       this.segmentCacheSizeMax = segmentCacheSizeMax;
@@ -537,6 +577,10 @@ public class RatisConfig {
       return unsafeFlushEnabled;
     }
 
+    public long getPreserveNumsWhenPurge() {
+      return preserveNumsWhenPurge;
+    }
+
     public static Log.Builder newBuilder() {
       return new Log.Builder();
     }
@@ -547,6 +591,7 @@ public class RatisConfig {
       private SizeInBytes queueByteLimit = SizeInBytes.valueOf("64MB");
       private int purgeGap = 1024;
       private boolean purgeUptoSnapshotIndex = true;
+      private long preserveNumsWhenPurge = 1000;
       private SizeInBytes segmentSizeMax = SizeInBytes.valueOf("24MB");
       private int segmentCacheNumMax = 2;
       private SizeInBytes segmentCacheSizeMax = SizeInBytes.valueOf("200MB");
@@ -562,6 +607,7 @@ public class RatisConfig {
             queueByteLimit,
             purgeGap,
             purgeUptoSnapshotIndex,
+            preserveNumsWhenPurge,
             segmentSizeMax,
             segmentCacheNumMax,
             segmentCacheSizeMax,
@@ -593,6 +639,11 @@ public class RatisConfig {
 
       public Log.Builder setPurgeUptoSnapshotIndex(boolean purgeUptoSnapshotIndex) {
         this.purgeUptoSnapshotIndex = purgeUptoSnapshotIndex;
+        return this;
+      }
+
+      public Log.Builder setPreserveNumsWhenPurge(long preserveNumsWhenPurge) {
+        this.preserveNumsWhenPurge = preserveNumsWhenPurge;
         return this;
       }
 
@@ -721,13 +772,35 @@ public class RatisConfig {
     }
   }
 
-  public static class RatisConsensus {
+  public static class Impl {
     private final int retryTimesMax;
     private final long retryWaitMillis;
 
-    private RatisConsensus(int retryTimesMax, long retryWaitMillis) {
+    private final long clientRequestTimeoutMillis;
+    private final int clientMaxRetryAttempt;
+    private final long clientRetryInitialSleepTimeMs;
+    private final long clientRetryMaxSleepTimeMs;
+
+    private final long triggerSnapshotTime;
+    private final long triggerSnapshotFileSize;
+
+    private Impl(
+        int retryTimesMax,
+        long retryWaitMillis,
+        long clientRequestTimeoutMillis,
+        int clientMaxRetryAttempt,
+        long clientRetryInitialSleepTimeMs,
+        long clientRetryMaxSleepTimeMs,
+        long triggerSnapshotTime,
+        long triggerSnapshotFileSize) {
       this.retryTimesMax = retryTimesMax;
       this.retryWaitMillis = retryWaitMillis;
+      this.clientRequestTimeoutMillis = clientRequestTimeoutMillis;
+      this.clientMaxRetryAttempt = clientMaxRetryAttempt;
+      this.clientRetryInitialSleepTimeMs = clientRetryInitialSleepTimeMs;
+      this.clientRetryMaxSleepTimeMs = clientRetryMaxSleepTimeMs;
+      this.triggerSnapshotTime = triggerSnapshotTime;
+      this.triggerSnapshotFileSize = triggerSnapshotFileSize;
     }
 
     public int getRetryTimesMax() {
@@ -738,7 +811,31 @@ public class RatisConfig {
       return retryWaitMillis;
     }
 
-    public static RatisConsensus.Builder newBuilder() {
+    public long getClientRequestTimeoutMillis() {
+      return clientRequestTimeoutMillis;
+    }
+
+    public int getClientMaxRetryAttempt() {
+      return clientMaxRetryAttempt;
+    }
+
+    public long getClientRetryInitialSleepTimeMs() {
+      return clientRetryInitialSleepTimeMs;
+    }
+
+    public long getClientRetryMaxSleepTimeMs() {
+      return clientRetryMaxSleepTimeMs;
+    }
+
+    public long getTriggerSnapshotTime() {
+      return triggerSnapshotTime;
+    }
+
+    public long getTriggerSnapshotFileSize() {
+      return triggerSnapshotFileSize;
+    }
+
+    public static Impl.Builder newBuilder() {
       return new Builder();
     }
 
@@ -746,17 +843,65 @@ public class RatisConfig {
       private int retryTimesMax = 3;
       private long retryWaitMillis = 500;
 
-      public RatisConsensus build() {
-        return new RatisConsensus(retryTimesMax, retryWaitMillis);
+      private long clientRequestTimeoutMillis = 10000;
+      private int clientMaxRetryAttempt = 10;
+      private long clientRetryInitialSleepTimeMs = 100;
+      private long clientRetryMaxSleepTimeMs = 10000;
+
+      // 120s
+      private long triggerSnapshotTime = 120;
+      // 20GB
+      private long triggerSnapshotFileSize = 20L << 30;
+
+      public Impl build() {
+        return new Impl(
+            retryTimesMax,
+            retryWaitMillis,
+            clientRequestTimeoutMillis,
+            clientMaxRetryAttempt,
+            clientRetryInitialSleepTimeMs,
+            clientRetryMaxSleepTimeMs,
+            triggerSnapshotTime,
+            triggerSnapshotFileSize);
       }
 
-      public RatisConsensus.Builder setRetryTimesMax(int retryTimesMax) {
+      public Impl.Builder setRetryTimesMax(int retryTimesMax) {
         this.retryTimesMax = retryTimesMax;
         return this;
       }
 
-      public RatisConsensus.Builder setRetryWaitMillis(long retryWaitMillis) {
+      public Impl.Builder setRetryWaitMillis(long retryWaitMillis) {
         this.retryWaitMillis = retryWaitMillis;
+        return this;
+      }
+
+      public Impl.Builder setClientRequestTimeoutMillis(long clientRequestTimeoutMillis) {
+        this.clientRequestTimeoutMillis = clientRequestTimeoutMillis;
+        return this;
+      }
+
+      public Impl.Builder setClientMaxRetryAttempt(int clientMaxRetryAttempt) {
+        this.clientMaxRetryAttempt = clientMaxRetryAttempt;
+        return this;
+      }
+
+      public Impl.Builder setClientRetryInitialSleepTimeMs(long clientRetryInitialSleepTimeMs) {
+        this.clientRetryInitialSleepTimeMs = clientRetryInitialSleepTimeMs;
+        return this;
+      }
+
+      public Impl.Builder setClientRetryMaxSleepTimeMs(long clientRetryMaxSleepTimeMs) {
+        this.clientRetryMaxSleepTimeMs = clientRetryMaxSleepTimeMs;
+        return this;
+      }
+
+      public Impl.Builder setTriggerSnapshotTime(long triggerSnapshotTime) {
+        this.triggerSnapshotTime = triggerSnapshotTime;
+        return this;
+      }
+
+      public Impl.Builder setTriggerSnapshotFileSize(long triggerSnapshotFileSize) {
+        this.triggerSnapshotFileSize = triggerSnapshotFileSize;
         return this;
       }
     }

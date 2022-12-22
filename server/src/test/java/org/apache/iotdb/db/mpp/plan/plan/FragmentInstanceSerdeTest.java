@@ -24,10 +24,13 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.partition.QueryExecutor;
+import org.apache.iotdb.commons.partition.StorageExecutor;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
+import org.apache.iotdb.db.mpp.common.SessionInfo;
 import org.apache.iotdb.db.mpp.plan.analyze.QueryType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.mpp.plan.planner.plan.PlanFragment;
@@ -44,12 +47,15 @@ import com.google.common.collect.ImmutableList;
 import org.junit.Test;
 
 import java.nio.ByteBuffer;
+import java.time.ZoneId;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 
 public class FragmentInstanceSerdeTest {
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private static final SessionInfo sessionInfo =
+      new SessionInfo(1, "test", ZoneId.systemDefault().getId());
 
   @Test
   public void testSerializeAndDeserializeForTree1() throws IllegalPathException {
@@ -68,19 +74,28 @@ public class FragmentInstanceSerdeTest {
             planFragmentId.genFragmentInstanceId(),
             new GroupByFilter(1, 2, 3, 4),
             QueryType.READ,
-            config.getQueryTimeoutThreshold());
+            config.getQueryTimeoutThreshold(),
+            sessionInfo);
+    // test FI with StorageExecutor
     TRegionReplicaSet regionReplicaSet =
         new TRegionReplicaSet(
             new TConsensusGroupId(TConsensusGroupType.DataRegion, 1),
             ImmutableList.of(dataNodeLocation));
-    fragmentInstance.setDataRegionAndHost(regionReplicaSet);
-
+    fragmentInstance.setExecutorAndHost(new StorageExecutor(regionReplicaSet));
     ByteBuffer byteBuffer = fragmentInstance.serializeToByteBuffer();
     FragmentInstance deserializeFragmentInstance = FragmentInstance.deserializeFrom(byteBuffer);
-    assertNull(deserializeFragmentInstance.getRegionReplicaSet());
-    // Because the RegionReplicaSet won't be considered in serialization, we need to set it
+    assertNull(deserializeFragmentInstance.getExecutorType());
+    // Because the ExecutorType won't be considered in serialization, we need to set it
     // from original object before comparison.
-    deserializeFragmentInstance.setRegionReplicaSet(fragmentInstance.getRegionReplicaSet());
+    deserializeFragmentInstance.setExecutorType(fragmentInstance.getExecutorType());
+    assertEquals(deserializeFragmentInstance, fragmentInstance);
+
+    // test FI with QueryExecutor
+    fragmentInstance.setExecutorAndHost(new QueryExecutor(dataNodeLocation));
+    byteBuffer = fragmentInstance.serializeToByteBuffer();
+    deserializeFragmentInstance = FragmentInstance.deserializeFrom(byteBuffer);
+    assertNull(deserializeFragmentInstance.getExecutorType());
+    deserializeFragmentInstance.setExecutorType(fragmentInstance.getExecutorType());
     assertEquals(deserializeFragmentInstance, fragmentInstance);
   }
 
@@ -101,17 +116,18 @@ public class FragmentInstanceSerdeTest {
             planFragmentId.genFragmentInstanceId(),
             null,
             QueryType.READ,
-            config.getQueryTimeoutThreshold());
+            config.getQueryTimeoutThreshold(),
+            sessionInfo);
     TRegionReplicaSet regionReplicaSet =
         new TRegionReplicaSet(
             new TConsensusGroupId(TConsensusGroupType.DataRegion, 1),
             ImmutableList.of(dataNodeLocation));
-    fragmentInstance.setDataRegionAndHost(regionReplicaSet);
+    fragmentInstance.setExecutorAndHost(new StorageExecutor(regionReplicaSet));
 
     ByteBuffer byteBuffer = fragmentInstance.serializeToByteBuffer();
     FragmentInstance deserializeFragmentInstance = FragmentInstance.deserializeFrom(byteBuffer);
-    assertNull(deserializeFragmentInstance.getRegionReplicaSet());
-    deserializeFragmentInstance.setRegionReplicaSet(fragmentInstance.getRegionReplicaSet());
+    assertNull(deserializeFragmentInstance.getExecutorType());
+    deserializeFragmentInstance.setExecutorType(fragmentInstance.getExecutorType());
     assertEquals(deserializeFragmentInstance, fragmentInstance);
   }
 

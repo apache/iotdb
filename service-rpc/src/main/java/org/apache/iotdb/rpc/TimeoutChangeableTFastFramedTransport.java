@@ -28,7 +28,7 @@ import java.net.SocketException;
 public class TimeoutChangeableTFastFramedTransport extends TElasticFramedTransport
     implements TimeoutChangeableTransport {
 
-  private TSocket underlyingSocket;
+  private final TSocket underlyingSocket;
 
   public TimeoutChangeableTFastFramedTransport(
       TSocket underlying, int thriftDefaultBufferSize, int thriftMaxFrameSize) {
@@ -44,6 +44,12 @@ public class TimeoutChangeableTFastFramedTransport extends TElasticFramedTranspo
   @Override
   public int getTimeOut() throws SocketException {
     return underlyingSocket.getSocket().getSoTimeout();
+  }
+
+  @Override
+  public TTransport getSocket() {
+    // in fact, this should be the same with underlying...
+    return underlyingSocket;
   }
 
   public static class Factory extends TTransportFactory {

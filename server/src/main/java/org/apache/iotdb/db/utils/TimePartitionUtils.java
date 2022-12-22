@@ -25,34 +25,21 @@ import org.apache.iotdb.db.conf.ServerConfigConsistent;
 
 public class TimePartitionUtils {
   @ServerConfigConsistent
-  public static long timePartitionIntervalForRouting =
-      convertMilliWithPrecision(
-          IoTDBDescriptor.getInstance().getConfig().getTimePartitionIntervalForRouting() * 1000L);
+  public static long timePartitionInterval =
+      IoTDBDescriptor.getInstance().getConfig().getTimePartitionInterval();
 
-  public static TTimePartitionSlot getTimePartitionForRouting(long time) {
+  public static TTimePartitionSlot getTimePartition(long time) {
     TTimePartitionSlot timePartitionSlot = new TTimePartitionSlot();
-    timePartitionSlot.setStartTime(time - time % timePartitionIntervalForRouting);
+    timePartitionSlot.setStartTime(time - time % timePartitionInterval);
     return timePartitionSlot;
   }
 
-  public static long convertMilliWithPrecision(long milliTime) {
-    long result = milliTime;
-    String timePrecision = IoTDBDescriptor.getInstance().getConfig().getTimestampPrecision();
-    switch (timePrecision) {
-      case "ns":
-        result = milliTime * 1000_000L;
-        break;
-      case "us":
-        result = milliTime * 1000L;
-        break;
-      default:
-        break;
-    }
-    return result;
+  public static long getTimePartitionInterval() {
+    return timePartitionInterval;
   }
 
   @TestOnly
-  public static void setTimePartitionIntervalForRouting(long timePartitionIntervalForRouting) {
-    TimePartitionUtils.timePartitionIntervalForRouting = timePartitionIntervalForRouting;
+  public static void setTimePartitionInterval(long timePartitionInterval) {
+    TimePartitionUtils.timePartitionInterval = timePartitionInterval;
   }
 }

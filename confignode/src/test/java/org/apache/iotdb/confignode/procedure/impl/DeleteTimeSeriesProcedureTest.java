@@ -22,7 +22,8 @@ package org.apache.iotdb.confignode.procedure.impl;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
-import org.apache.iotdb.confignode.procedure.store.ProcedureFactory;
+import org.apache.iotdb.confignode.procedure.impl.schema.DeleteTimeSeriesProcedure;
+import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -52,7 +53,7 @@ public class DeleteTimeSeriesProcedureTest {
     ByteBuffer byteBuffer = ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
 
     Assert.assertEquals(
-        ProcedureFactory.ProcedureType.DELETE_TIMESERIES_PROCEDURE.ordinal(), byteBuffer.getInt());
+        ProcedureType.DELETE_TIMESERIES_PROCEDURE.getTypeCode(), byteBuffer.getShort());
 
     DeleteTimeSeriesProcedure deserializedProcedure = new DeleteTimeSeriesProcedure();
     deserializedProcedure.deserialize(byteBuffer);

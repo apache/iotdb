@@ -42,7 +42,7 @@ public class SetStorageGroupTask implements IConfigTask {
     return configTaskExecutor.setStorageGroup(setStorageGroupStatement);
   }
 
-  /** construct set storage group schema according to statement */
+  /** construct create database schema according to statement */
   public static TStorageGroupSchema constructStorageGroupSchema(
       SetStorageGroupStatement setStorageGroupStatement) {
     TStorageGroupSchema storageGroupSchema = new TStorageGroupSchema();

@@ -23,11 +23,9 @@ import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.query.filter.TsFileFilter;
 import org.apache.iotdb.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
-import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 import java.util.List;
 import java.util.Map;
@@ -79,9 +77,7 @@ public class QueryUtils {
               if (range.contains(metaData.getStartTime(), metaData.getEndTime())) {
                 return true;
               } else {
-                if (!metaData.isModified()
-                    && range.overlaps(
-                        new TimeRange(metaData.getStartTime(), metaData.getEndTime()))) {
+                if (range.overlaps(new TimeRange(metaData.getStartTime(), metaData.getEndTime()))) {
                   metaData.setModified(true);
                 }
               }
@@ -137,11 +133,9 @@ public class QueryUtils {
                   currentRemoved = true;
                   break;
                 } else {
-                  if (!valueChunkMetadata.isModified()
-                      && range.overlaps(
-                          new TimeRange(
-                              valueChunkMetadata.getStartTime(),
-                              valueChunkMetadata.getEndTime()))) {
+                  if (range.overlaps(
+                      new TimeRange(
+                          valueChunkMetadata.getStartTime(), valueChunkMetadata.getEndTime()))) {
                     valueChunkMetadata.setModified(true);
                     modified = true;
                   }
@@ -163,38 +157,6 @@ public class QueryUtils {
     if (modification instanceof Deletion) {
       Deletion deletion = (Deletion) modification;
       metaData.insertIntoSortedDeletions(deletion.getTimeRange());
-    }
-  }
-
-  // remove files that do not satisfy the filter
-  public static void filterQueryDataSource(
-      QueryDataSource queryDataSource, TsFileFilter fileFilter) {
-    if (fileFilter == null) {
-      return;
-    }
-    List<TsFileResource> seqResources = queryDataSource.getSeqResources();
-    List<TsFileResource> unseqResources = queryDataSource.getUnseqResources();
-    seqResources.removeIf(fileFilter::fileNotSatisfy);
-    unseqResources.removeIf(fileFilter::fileNotSatisfy);
-  }
-
-  public static ValueIterator generateValueIterator(Object[] values) {
-    if (values == null) {
-      return null;
-    }
-    // find the first element that is not NULL
-    int index = 0;
-    while (index < values.length && values[index] == null) {
-      index++;
-    }
-    if (index == values.length) {
-      // all elements are NULL
-      return null;
-    }
-    if (values[index] instanceof TsPrimitiveType[]) {
-      return new AlignedValueIterator(values);
-    } else {
-      return new ValueIterator(values);
     }
   }
 

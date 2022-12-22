@@ -34,6 +34,7 @@ public abstract class AbstractDriverThread extends Thread implements Closeable {
 
   private static final Logger logger = LoggerFactory.getLogger(AbstractDriverThread.class);
   private final IndexedBlockingQueue<DriverTask> queue;
+  private final ThreadProducer producer;
   protected final ITaskScheduler scheduler;
   private volatile boolean closed;
 
@@ -41,33 +42,57 @@ public abstract class AbstractDriverThread extends Thread implements Closeable {
       String workerId,
       ThreadGroup tg,
       IndexedBlockingQueue<DriverTask> queue,
-      ITaskScheduler scheduler) {
+      ITaskScheduler scheduler,
+      ThreadProducer producer) {
     super(tg, workerId);
     this.queue = queue;
     this.scheduler = scheduler;
     this.closed = false;
+    this.producer = producer;
   }
 
   @Override
   public void run() {
     DriverTask next;
-    while (!closed && !Thread.currentThread().isInterrupted()) {
-      try {
-        next = queue.poll();
-      } catch (InterruptedException e) {
-        logger.error("Executor " + this.getName() + "failed to poll driver task from queue");
-        Thread.currentThread().interrupt();
-        break;
-      }
-      try (SetThreadName fragmentInstanceName =
-          new SetThreadName(next.getFragmentInstance().getInfo().getFullId())) {
-        execute(next);
-      } catch (Throwable t) {
-        logger.error("[ExecuteFailed]", t);
-        if (next != null) {
-          next.setAbortCause(FragmentInstanceAbortedException.BY_INTERNAL_ERROR_SCHEDULED);
-          scheduler.toAborted(next);
+    try {
+      while (!closed && !Thread.currentThread().isInterrupted()) {
+        try {
+          next = queue.poll();
+        } catch (InterruptedException e) {
+          logger.warn("Executor " + this.getName() + " failed to poll driver task from queue");
+          Thread.currentThread().interrupt();
+          break;
         }
+
+        if (next == null) {
+          logger.error("DriverTask should never be null");
+          continue;
+        }
+
+        try (SetThreadName fragmentInstanceName =
+            new SetThreadName(next.getFragmentInstance().getInfo().getFullId())) {
+          execute(next);
+        } catch (Throwable t) {
+          // try-with-resource syntax will call close once after try block is done, so we need to
+          // reset the thread name here
+          try (SetThreadName fragmentInstanceName =
+              new SetThreadName(next.getFragmentInstance().getInfo().getFullId())) {
+            logger.warn("[ExecuteFailed]", t);
+            next.setAbortCause(FragmentInstanceAbortedException.BY_INTERNAL_ERROR_SCHEDULED);
+            scheduler.toAborted(next);
+          }
+        }
+      }
+    } finally {
+      // unless we have been closed, we need to replace this thread
+      if (!closed) {
+        logger.warn(
+            "Executor "
+                + this.getName()
+                + " exits because it's interrupted, and we will produce another thread to replace.");
+        producer.produce(getName(), getThreadGroup(), queue, producer);
+      } else {
+        logger.info("Executor " + this.getName() + " exits because it is closed.");
       }
     }
   }

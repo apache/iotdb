@@ -33,6 +33,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
+@Deprecated
 public class LocalDataPartitionTable {
   private static final Logger LOG = LoggerFactory.getLogger(LocalDataPartitionTable.class);
 
@@ -69,7 +70,7 @@ public class LocalDataPartitionTable {
   }
 
   /**
-   * Get all data region id of current storage group
+   * Get all data region id of current database
    *
    * @return data region id in list
    */
@@ -77,7 +78,7 @@ public class LocalDataPartitionTable {
     return Arrays.asList(regionIds);
   }
 
-  public DataRegionId getDataRegionWithAutoExtension(PartialPath path) {
+  public synchronized DataRegionId getDataRegionWithAutoExtension(PartialPath path) {
     int idx = Math.abs(path.hashCode() % regionNum);
     if (regionIds[idx] == null) {
       int nextId = DataRegionIdGenerator.getInstance().getNextId();

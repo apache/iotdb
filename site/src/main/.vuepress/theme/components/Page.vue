@@ -74,7 +74,15 @@
         </span>
       </p>
     </div>
-
+    
+    <p style="text-align: center; color: #909399; font-size: 16px; margin: 0 30px;">
+      <a
+        :href="editLink"
+        target="_blank"
+        rel="noopener noreferrer"
+      >{{ editLinkText }}</a>
+      <OutboundLink />
+    </p>
     <p style="text-align: center; color: #909399; font-size: 12px; margin: 0 30px;">Copyright © 2022 The Apache Software Foundation.<br>
       Apache and the Apache feather logo are trademarks of The Apache Software Foundation</p>
     <p style="text-align: center; margin-top: 10px; color: #909399; font-size: 12px; margin: 0 30px;">
@@ -167,6 +175,28 @@ export default {
   },
 
   methods: {
+    getBranch(branch='master', path) {
+      if(path.indexOf('UserGuide/Master') > -1 || path.indexOf('UserGuide') === -1) {
+        return branch;
+      }
+      const branchRex = /UserGuide\/V(\d+\.\d+\.x)/;
+      if(branchRex.test(path)){
+        const tag = branchRex.exec(path)[1];
+        return `rel/${tag.replace('.x','')}`;
+      }
+      return branch;
+    },
+    getPath(path) {
+      if(path.indexOf('UserGuide/Master') > -1) {
+        return path.replace('UserGuide/Master', 'UserGuide');
+      }
+      const branchRex = /UserGuide\/V(\d+\.\d+\.x)/;
+      if(branchRex.test(path)){
+        const tag = branchRex.exec(path)[1];
+        return path.replace(`UserGuide/V${tag}`, 'UserGuide');
+      }
+      return path;
+    },
     createEditLink (repo, docsRepo, docsDir, docsBranch, path) {
       const bitbucket = /bitbucket.org/
       if (bitbucket.test(repo)) {
@@ -189,9 +219,9 @@ export default {
       return (
         base.replace(endingSlashRE, '')
         + `/edit`
-        + `/${docsBranch}/`
+        + `/${this.getBranch(docsBranch, path)}/`
         + (docsDir ? docsDir.replace(endingSlashRE, '') + '/' : '')
-        + path
+        + this.getPath(path)
       )
     }
   }

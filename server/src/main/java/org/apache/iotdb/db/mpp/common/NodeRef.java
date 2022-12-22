@@ -19,13 +19,11 @@
 
 package org.apache.iotdb.db.mpp.common;
 
-import org.apache.iotdb.db.mpp.plan.statement.StatementNode;
-
 import static java.lang.String.format;
 import static java.lang.System.identityHashCode;
 import static java.util.Objects.requireNonNull;
 
-public class NodeRef<T extends StatementNode> {
+public class NodeRef<T> {
 
   private final T node;
 
@@ -33,7 +31,7 @@ public class NodeRef<T extends StatementNode> {
     this.node = requireNonNull(node, "node is null");
   }
 
-  public static <T extends StatementNode> NodeRef<T> of(T node) {
+  public static <T> NodeRef<T> of(T node) {
     return new NodeRef<>(node);
   }
 

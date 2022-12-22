@@ -19,13 +19,16 @@
 package org.apache.iotdb.db.conf;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.ConfigurationException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.confignode.rpc.thrift.TGlobalConfig;
-import org.apache.iotdb.db.metadata.upgrade.MetadataUpgrader;
+import org.apache.iotdb.consensus.ConsensusFactory;
+import org.apache.iotdb.db.conf.directories.DirectoryChecker;
+import org.apache.iotdb.db.wal.utils.WALMode;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
@@ -44,6 +47,7 @@ import java.nio.file.Files;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Objects;
 import java.util.Properties;
 
 public class IoTDBStartCheck {
@@ -53,64 +57,64 @@ public class IoTDBStartCheck {
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
 
-  private FSFactory fsFactory = FSFactoryProducer.getFSFactory();
+  private final FSFactory fsFactory = FSFactoryProducer.getFSFactory();
 
   // this file is located in data/system/schema/system.properties
   // If user delete folder "data", system.properties can reset.
-  private static final String PROPERTIES_FILE_NAME = "system.properties";
+  public static final String PROPERTIES_FILE_NAME = "system.properties";
   private static final String SCHEMA_DIR = config.getSchemaDir();
   private static final String[] WAL_DIRS = commonConfig.getWalDirs();
 
   private File propertiesFile;
   private File tmpPropertiesFile;
 
-  private Properties properties = new Properties();
+  private final Properties properties = new Properties();
 
-  private Map<String, String> systemProperties = new HashMap<>();
+  private final Map<String, String> systemProperties = new HashMap<>();
 
   private static final String SYSTEM_PROPERTIES_STRING = "System properties:";
 
   private static final String TIMESTAMP_PRECISION_STRING = "timestamp_precision";
-  private static String timestampPrecision = config.getTimestampPrecision();
+  private static final String timestampPrecision = config.getTimestampPrecision();
 
-  private static final String PARTITION_INTERVAL_STRING = "partition_interval";
-  private static long partitionInterval = config.getPartitionInterval();
+  private static final String PARTITION_INTERVAL_STRING = "time_partition_interval";
+  private static final long timePartitionInterval = config.getTimePartitionInterval();
 
   private static final String TSFILE_FILE_SYSTEM_STRING = "tsfile_storage_fs";
-  private static String tsfileFileSystem = config.getTsFileStorageFs().toString();
-
-  private static final String ENABLE_PARTITION_STRING = "enable_partition";
-  private static boolean enablePartition = config.isEnablePartition();
+  private static final String tsfileFileSystem = config.getTsFileStorageFs().toString();
 
   private static final String TAG_ATTRIBUTE_SIZE_STRING = "tag_attribute_total_size";
-  private static String tagAttributeTotalSize = String.valueOf(config.getTagAttributeTotalSize());
+  private static final String tagAttributeTotalSize =
+      String.valueOf(config.getTagAttributeTotalSize());
 
   private static final String TAG_ATTRIBUTE_FLUSH_INTERVAL = "tag_attribute_flush_interval";
-  private static String tagAttributeFlushInterval =
+  private static final String tagAttributeFlushInterval =
       String.valueOf(config.getTagAttributeFlushInterval());
 
   private static final String MAX_DEGREE_OF_INDEX_STRING = "max_degree_of_index_node";
-  private static String maxDegreeOfIndexNode =
+  private static final String maxDegreeOfIndexNode =
       String.valueOf(TSFileDescriptor.getInstance().getConfig().getMaxDegreeOfIndexNode());
 
   private static final String DATA_REGION_NUM = "data_region_num";
   // for upgrading from old file
   private static final String VIRTUAL_STORAGE_GROUP_NUM = "virtual_storage_group_num";
-  private static String dataRegionNum = String.valueOf(config.getDataRegionNum());
+  private static final String dataRegionNum = String.valueOf(config.getDataRegionNum());
 
   private static final String ENABLE_ID_TABLE = "enable_id_table";
-  private static String enableIDTable = String.valueOf(config.isEnableIDTable());
+  private static final String enableIDTable = String.valueOf(config.isEnableIDTable());
 
   private static final String ENABLE_ID_TABLE_LOG_FILE = "enable_id_table_log_file";
-  private static String enableIdTableLogFile = String.valueOf(config.isEnableIDTableLogFile());
+  private static final String enableIdTableLogFile =
+      String.valueOf(config.isEnableIDTableLogFile());
 
   private static final String SCHEMA_ENGINE_MODE = "schema_engine_mode";
-  private static String schemaEngineMode = String.valueOf(config.getSchemaEngineMode());
+  private static final String schemaEngineMode = String.valueOf(config.getSchemaEngineMode());
 
   private static final String TIME_ENCODER_KEY = "time_encoder";
-  private static String timeEncoderValue =
+  private static final String timeEncoderValue =
       String.valueOf(TSFileDescriptor.getInstance().getConfig().getTimeEncoder());
 
+  private static final String CLUSTER_NAME = "CLUSTER_NAME";
   private static final String DATA_NODE_ID = "data_node_id";
 
   private static final String SCHEMA_REGION_CONSENSUS_PROTOCOL = "schema_region_consensus_protocol";
@@ -118,6 +122,29 @@ public class IoTDBStartCheck {
   private static final String DATA_REGION_CONSENSUS_PROTOCOL = "data_region_consensus_protocol";
 
   private static final String IOTDB_VERSION_STRING = "iotdb_version";
+
+  private static final String INTERNAL_ADDRESS = "dn_internal_address";
+  private static final String internalAddress = config.getInternalAddress();
+
+  private static final String INTERNAL_PORT = "dn_internal_port";
+  private static final String internalPort = String.valueOf(config.getInternalPort());
+
+  private static final String RPC_ADDRESS = "dn_rpc_address";
+  private static final String rpcAddress = config.getRpcAddress();
+
+  private static final String RPC_PORT = "dn_rpc_port";
+  private static final String rpcPort = String.valueOf(config.getRpcPort());
+
+  private static final String MPP_DATA_EXCHANGE_PORT = "dn_mpp_data_exchange_port";
+  private static final String mppDataExchangePort = String.valueOf(config.getMppDataExchangePort());
+
+  private static final String SCHEMA_REGION_CONSENSUS_PORT = "dn_schema_region_consensus_port";
+  private static final String schemaRegionConsensusPort =
+      String.valueOf(config.getSchemaRegionConsensusPort());
+
+  private static final String DATA_REGION_CONSENSUS_PORT = "dn_data_region_consensus_port";
+  private static final String dataRegionConsensusPort =
+      String.valueOf(config.getDataRegionConsensusPort());
 
   public static IoTDBStartCheck getInstance() {
     return IoTDBConfigCheckHolder.INSTANCE;
@@ -135,14 +162,14 @@ public class IoTDBStartCheck {
     File dir = SystemFileFactory.INSTANCE.getFile(SCHEMA_DIR);
     if (!dir.exists()) {
       if (!dir.mkdirs()) {
-        logger.error("can not create schema dir: {}", SCHEMA_DIR);
+        logger.error("Can not create schema dir: {}", SCHEMA_DIR);
         System.exit(-1);
       } else {
         logger.info(" {} dir has been created.", SCHEMA_DIR);
       }
     }
 
-    // check time stamp precision
+    // Check time stamp precision
     if (!("ms".equals(timestampPrecision)
         || "us".equals(timestampPrecision)
         || "ns".equals(timestampPrecision))) {
@@ -153,21 +180,10 @@ public class IoTDBStartCheck {
       System.exit(-1);
     }
 
-    if (!enablePartition) {
-      partitionInterval = Long.MAX_VALUE;
-    }
-
-    // check partition interval
-    if (partitionInterval <= 0) {
-      logger.error("Partition interval must larger than 0!");
-      System.exit(-1);
-    }
-
     systemProperties.put(IOTDB_VERSION_STRING, IoTDBConstant.VERSION);
     systemProperties.put(TIMESTAMP_PRECISION_STRING, timestampPrecision);
-    systemProperties.put(PARTITION_INTERVAL_STRING, String.valueOf(partitionInterval));
+    systemProperties.put(PARTITION_INTERVAL_STRING, String.valueOf(timePartitionInterval));
     systemProperties.put(TSFILE_FILE_SYSTEM_STRING, tsfileFileSystem);
-    systemProperties.put(ENABLE_PARTITION_STRING, String.valueOf(enablePartition));
     systemProperties.put(TAG_ATTRIBUTE_SIZE_STRING, tagAttributeTotalSize);
     systemProperties.put(TAG_ATTRIBUTE_FLUSH_INTERVAL, tagAttributeFlushInterval);
     systemProperties.put(MAX_DEGREE_OF_INDEX_STRING, maxDegreeOfIndexNode);
@@ -176,6 +192,51 @@ public class IoTDBStartCheck {
     systemProperties.put(ENABLE_ID_TABLE, enableIDTable);
     systemProperties.put(ENABLE_ID_TABLE_LOG_FILE, enableIdTableLogFile);
     systemProperties.put(SCHEMA_ENGINE_MODE, schemaEngineMode);
+    systemProperties.put(INTERNAL_ADDRESS, internalAddress);
+    systemProperties.put(INTERNAL_PORT, internalPort);
+    systemProperties.put(RPC_ADDRESS, rpcAddress);
+    systemProperties.put(RPC_PORT, rpcPort);
+    systemProperties.put(MPP_DATA_EXCHANGE_PORT, mppDataExchangePort);
+    systemProperties.put(SCHEMA_REGION_CONSENSUS_PORT, schemaRegionConsensusPort);
+    systemProperties.put(DATA_REGION_CONSENSUS_PORT, dataRegionConsensusPort);
+  }
+
+  /**
+   * check and create directory before start IoTDB.
+   *
+   * <p>(1) try to create directory, avoid the inability to create directory at runtime due to lack
+   * of permissions. (2) try to check if the directory is occupied, avoid multiple IoTDB processes
+   * accessing same director.
+   */
+  public void checkDirectory() throws ConfigurationException, IOException {
+
+    // check data dirs
+    for (String dataDir : config.getDataDirs()) {
+      DirectoryChecker.getInstance().registerDirectory(new File(dataDir));
+    }
+    if (config.isClusterMode()
+        && config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.RATIS_CONSENSUS)) {
+      if (DirectoryChecker.getInstance().isCrossDisk(config.getDataDirs())) {
+        throw new ConfigurationException(
+            "Configuring the data directories as cross-disk directories is not supported under RatisConsensus(it will be supported in a later version).");
+      }
+    }
+    // check system dir
+    DirectoryChecker.getInstance().registerDirectory(new File(config.getSystemDir()));
+    // check WAL dir
+    if (!(config.isClusterMode()
+            && config
+                .getDataRegionConsensusProtocolClass()
+                .equals(ConsensusFactory.RATIS_CONSENSUS))
+        && !config.getWalMode().equals(WALMode.DISABLE)) {
+      for (String walDir : commonConfig.getWalDirs()) {
+        DirectoryChecker.getInstance().registerDirectory(new File(walDir));
+      }
+    }
+    // in cluster mode, check consensus dir
+    if (config.isClusterMode()) {
+      DirectoryChecker.getInstance().registerDirectory(new File(config.getConsensusDir()));
+    }
   }
 
   /**
@@ -186,7 +247,7 @@ public class IoTDBStartCheck {
    * <p>When upgrading the system.properties: (1) create system.properties.tmp (2) delete
    * system.properties (3) rename system.properties.tmp to system.properties
    */
-  public void checkConfig() throws ConfigurationException, IOException {
+  public void checkSystemConfig() throws ConfigurationException, IOException {
     propertiesFile =
         SystemFileFactory.INSTANCE.getFile(
             IoTDBStartCheck.SCHEMA_DIR + File.separator + PROPERTIES_FILE_NAME);
@@ -206,7 +267,7 @@ public class IoTDBStartCheck {
 
       // write properties to system.properties
       try (FileOutputStream outputStream = new FileOutputStream(propertiesFile)) {
-        systemProperties.forEach((k, v) -> properties.setProperty(k, v));
+        systemProperties.forEach(properties::setProperty);
         properties.store(outputStream, SYSTEM_PROPERTIES_STRING);
       }
       return;
@@ -244,7 +305,6 @@ public class IoTDBStartCheck {
     } else if (versionString.startsWith("0.12") || versionString.startsWith("0.13")) {
       checkWALNotExists();
       upgradePropertiesFile();
-      MetadataUpgrader.upgrade();
     }
     checkProperties();
   }
@@ -256,7 +316,7 @@ public class IoTDBStartCheck {
         if (sgWALs != null) {
           for (File sgWAL : sgWALs) {
             // make sure wal directory of each sg is empty
-            if (sgWAL.isDirectory() && sgWAL.list().length != 0) {
+            if (sgWAL.isDirectory() && Objects.requireNonNull(sgWAL.list()).length != 0) {
               logger.error(
                   "WAL detected, please stop insertion and run 'SET SYSTEM TO READONLY', then run 'flush' on IoTDB {} before upgrading to {}.",
                   properties.getProperty(IOTDB_VERSION_STRING),
@@ -342,14 +402,6 @@ public class IoTDBStartCheck {
       throwException(TIMESTAMP_PRECISION_STRING, timestampPrecision);
     }
 
-    if (Boolean.parseBoolean(properties.getProperty(ENABLE_PARTITION_STRING)) != enablePartition) {
-      throwException(ENABLE_PARTITION_STRING, enablePartition);
-    }
-
-    if (Long.parseLong(properties.getProperty(PARTITION_INTERVAL_STRING)) != partitionInterval) {
-      throwException(PARTITION_INTERVAL_STRING, partitionInterval);
-    }
-
     if (!(properties.getProperty(TSFILE_FILE_SYSTEM_STRING).equals(tsfileFileSystem))) {
       throwException(TSFILE_FILE_SYSTEM_STRING, tsfileFileSystem);
     }
@@ -387,6 +439,9 @@ public class IoTDBStartCheck {
     }
 
     // load configuration from system properties only when start as Data node
+    if (properties.containsKey(CLUSTER_NAME)) {
+      config.setClusterName(properties.getProperty(CLUSTER_NAME));
+    }
     if (properties.containsKey(DATA_NODE_ID)) {
       config.setDataNodeId(Integer.parseInt(properties.getProperty(DATA_NODE_ID)));
     }
@@ -416,8 +471,9 @@ public class IoTDBStartCheck {
     }
   }
 
-  /** call this method to serialize DataNodeId */
-  public void serializeDataNodeId(int dataNodeId) throws IOException {
+  /** call this method to serialize ClusterName and DataNodeId */
+  public void serializeClusterNameAndDataNodeId(String clusterName, int dataNodeId)
+      throws IOException {
     // create an empty tmpPropertiesFile
     if (tmpPropertiesFile.createNewFile()) {
       logger.info("Create system.properties.tmp {}.", tmpPropertiesFile);
@@ -429,6 +485,7 @@ public class IoTDBStartCheck {
     reloadProperties();
 
     try (FileOutputStream tmpFOS = new FileOutputStream(tmpPropertiesFile.toString())) {
+      properties.setProperty(CLUSTER_NAME, clusterName);
       properties.setProperty(DATA_NODE_ID, String.valueOf(dataNodeId));
       properties.store(tmpFOS, SYSTEM_PROPERTIES_STRING);
       // serialize finished, delete old system.properties file
@@ -500,6 +557,30 @@ public class IoTDBStartCheck {
     FileUtils.moveFile(tmpPropertiesFile, propertiesFile);
   }
 
+  public void serializeNewDataNode(TDataNodeLocation dataNodeLocation) throws IOException {
+    reloadProperties();
+
+    try (FileOutputStream fileOutputStream = new FileOutputStream(propertiesFile)) {
+      properties.setProperty(INTERNAL_ADDRESS, dataNodeLocation.getInternalEndPoint().getIp());
+      properties.setProperty(
+          INTERNAL_PORT, String.valueOf(dataNodeLocation.getInternalEndPoint().getPort()));
+      properties.setProperty(
+          RPC_ADDRESS, String.valueOf(dataNodeLocation.getClientRpcEndPoint().getIp()));
+      properties.setProperty(
+          RPC_PORT, String.valueOf(dataNodeLocation.getClientRpcEndPoint().getPort()));
+      properties.setProperty(
+          MPP_DATA_EXCHANGE_PORT,
+          String.valueOf(dataNodeLocation.getMPPDataExchangeEndPoint().getPort()));
+      properties.setProperty(
+          SCHEMA_REGION_CONSENSUS_PORT,
+          String.valueOf(dataNodeLocation.getSchemaRegionConsensusEndPoint().getPort()));
+      properties.setProperty(
+          DATA_REGION_CONSENSUS_PORT,
+          String.valueOf(dataNodeLocation.getDataRegionConsensusEndPoint().getPort()));
+      properties.store(fileOutputStream, SYSTEM_PROPERTIES_STRING);
+    }
+  }
+
   public boolean checkConsensusProtocolExists(TConsensusGroupType type) {
     if (type == TConsensusGroupType.DataRegion) {
       return properties.containsKey(DATA_REGION_CONSENSUS_PROTOCOL);
@@ -508,6 +589,52 @@ public class IoTDBStartCheck {
     }
 
     logger.error("Unexpected consensus group type");
+    return false;
+  }
+
+  public boolean isIpPortUpdated() {
+    boolean isUpdated = false;
+    // check the modifiable parts of configuration
+    if (!(properties.getProperty(INTERNAL_PORT).equals(internalPort))) {
+      isUpdated = true;
+      logger.info(
+          "Internal port is updated from {} to {}",
+          properties.getProperty(INTERNAL_PORT),
+          internalPort);
+    }
+    if (!(properties.getProperty(RPC_ADDRESS).equals(rpcAddress))) {
+      isUpdated = true;
+      logger.info(
+          "RPC address is updated from {} to {}", properties.getProperty(RPC_ADDRESS), rpcAddress);
+    }
+    if (!(properties.getProperty(RPC_PORT).equals(rpcPort))) {
+      isUpdated = true;
+      logger.info("RPC port is updated from {} to {}", properties.getProperty(RPC_PORT), rpcPort);
+    }
+    if (!(properties.getProperty(MPP_DATA_EXCHANGE_PORT).equals(mppDataExchangePort))) {
+      isUpdated = true;
+      logger.info(
+          "MPP data exchange port is updated from {} to {}",
+          properties.getProperty(MPP_DATA_EXCHANGE_PORT),
+          mppDataExchangePort);
+    }
+    return isUpdated;
+  }
+
+  public boolean checkNonModifiableConfiguration() {
+    // check the non-modifiable parts of configuration
+    if (!(properties.getProperty(INTERNAL_ADDRESS).equals(internalAddress))) {
+      logger.error("Internal address is not allowed to be updated");
+      return true;
+    }
+    if (!(properties.getProperty(SCHEMA_REGION_CONSENSUS_PORT).equals(schemaRegionConsensusPort))) {
+      logger.error("Schema region consensus port is not allowed to be updated");
+      return true;
+    }
+    if (!(properties.getProperty(DATA_REGION_CONSENSUS_PORT).equals(dataRegionConsensusPort))) {
+      logger.error("Data region consensus port is not allowed to be updated");
+      return true;
+    }
     return false;
   }
 }
