@@ -77,18 +77,10 @@ import static org.apache.iotdb.db.mpp.plan.constant.DataNodeEndPoints.isSameNode
 public class MemoryDistributionCalculator
     extends PlanVisitor<Void, MemoryDistributionCalculator.MemoryDistributionContext> {
   /** This map is used to calculate the total split of memory */
-  private final Map<PlanNodeId, List<PlanNodeId>> exchangeMap;
-
-  public MemoryDistributionCalculator() {
-    this.exchangeMap = new HashMap<>();
-  }
+  private int exchangeNum;
 
   public long calculateTotalSplit() {
-    long res = 0;
-    for (List<PlanNodeId> l : exchangeMap.values()) {
-      res += l.size();
-    }
-    return res;
+    return exchangeNum;
   }
 
   @Override
@@ -124,29 +116,17 @@ public class MemoryDistributionCalculator
             });
   }
 
+  /**
+   * We do not distinguish LocalSourceHandle/SourceHandle by not letting LocalSinkHandle update
+   */
   @Override
   public Void visitExchange(ExchangeNode node, MemoryDistributionContext context) {
-    // we do not distinguish LocalSourceHandle/SourceHandle by not letting LocalSinkHandle update
-    // the map
-    if (context == null) {
-      // context == null means this ExchangeNode has no father
-      exchangeMap
-          .computeIfAbsent(node.getPlanNodeId(), x -> new ArrayList<>())
-          .add(node.getPlanNodeId());
-    } else {
-      if (context.memoryDistributionType.equals(
-          MemoryDistributionType.CONSUME_ALL_CHILDREN_AT_THE_SAME_TIME)) {
-        exchangeMap
-            .computeIfAbsent(context.planNodeId, x -> new ArrayList<>())
-            .add(node.getPlanNodeId());
-      } else if (context.memoryDistributionType.equals(
-              MemoryDistributionType.CONSUME_CHILDREN_ONE_BY_ONE)
-          && !exchangeMap.containsKey(context.planNodeId)) {
-        // All children share one split, thus only one node needs to be put into the map
-        exchangeMap
-            .computeIfAbsent(context.planNodeId, x -> new ArrayList<>())
-            .add(node.getPlanNodeId());
-      }
+    // context == null means this ExchangeNode doesn't have a father
+    if (context == null || context.memoryDistributionType.equals(MemoryDistributionType.CONSUME_ALL_CHILDREN_AT_THE_SAME_TIME)) {
+      exchangeNum++;
+    } else if (!context.exchangeAdded){
+      context.exchangeAdded = true;
+      exchangeNum++;
     }
     return null;
   }
@@ -156,10 +136,9 @@ public class MemoryDistributionCalculator
     // LocalSinkHandle and LocalSourceHandle are one-to-one mapped and only LocalSourceHandle do the
     // update
     if (!isSameNode(node.getDownStreamEndpoint())) {
-      exchangeMap
-          .computeIfAbsent(node.getDownStreamPlanNodeId(), x -> new ArrayList<>())
-          .add(node.getDownStreamPlanNodeId());
+      exchangeNum++;
     }
+    node.getChild().accept(this, context);
     return null;
   }
 
@@ -458,6 +437,7 @@ public class MemoryDistributionCalculator
 
   static class MemoryDistributionContext {
     final PlanNodeId planNodeId;
+    boolean exchangeAdded = false;
     final MemoryDistributionType memoryDistributionType;
 
     MemoryDistributionContext(
