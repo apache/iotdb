@@ -20,27 +20,32 @@ package org.apache.iotdb.commons.path.dfa.graph;
 
 import org.apache.iotdb.commons.path.fa.IFAState;
 
-import java.util.Objects;
-import java.util.Set;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
 public class Closure {
-  private Set<IFAState> stateSet;
+  private final byte[] bitmap;
+  private final List<IFAState> states = new ArrayList<>();
 
-  public Closure(Set<IFAState> stateSet) {
-    this.stateSet = stateSet;
+  public Closure(int capacity) {
+    this.bitmap = new byte[capacity];
   }
 
-  public Set<IFAState> getStateSet() {
-    return stateSet;
+  public void addState(IFAState state) {
+    if (bitmap[state.getIndex()] == 0) {
+      bitmap[state.getIndex()] = 1;
+      states.add(state);
+    }
   }
 
-  public void setStateSet(Set<IFAState> stateSet) {
-    this.stateSet = stateSet;
+  public List<IFAState> getStates() {
+    return states;
   }
 
   public boolean isFinal() {
     boolean res = false;
-    for (IFAState state : stateSet) {
+    for (IFAState state : states) {
       res |= state.isFinal();
     }
     return res;
@@ -51,11 +56,11 @@ public class Closure {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
     Closure closure = (Closure) o;
-    return Objects.equals(stateSet, closure.stateSet);
+    return Arrays.equals(bitmap, closure.bitmap);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(stateSet);
+    return Arrays.hashCode(bitmap);
   }
 }

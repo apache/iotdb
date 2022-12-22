@@ -24,56 +24,66 @@ import org.apache.iotdb.commons.path.dfa.DFAState;
 import org.apache.iotdb.commons.path.fa.IFAState;
 import org.apache.iotdb.commons.path.fa.IFATransition;
 
-import org.apache.commons.lang3.StringUtils;
-
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 public class NFAGraph {
   private final List<IFAState> nfaStateList = new ArrayList<>();
-  private final Map<IFATransition, List<List<IFAState>>> nfaTransitionTable = new HashMap<>();
+
+  // [transitionIndex][stateIndex]List<IFAState>
+  private final List<IFAState>[][] nfaTransitionTable;
+  //  private final Map<IFATransition, List<List<IFAState>>> nfaTransitionTable = new HashMap<>();
 
   public NFAGraph(
       PartialPath pathPattern, boolean isPrefix, Map<String, IFATransition> transitionMap) {
-    // init start state, index=0
-    int index = 0;
-    nfaStateList.add(new DFAState(index));
-    for (IFATransition transition : transitionMap.values()) {
-      nfaTransitionTable.put(transition, new ArrayList<>());
-      nfaTransitionTable.get(transition).add(new ArrayList<>());
+    nfaTransitionTable = new List[transitionMap.size()][pathPattern.getNodeLength() + 1];
+    // init start state, curNodeIndex=0
+    int curStateIndex = 0;
+    nfaStateList.add(new DFAState(curStateIndex));
+    //    for(IFATransition transition:transitionMap.values()){
+    //      nfaTransitionTable.put(transition,new ArrayList<>());
+    //      nfaTransitionTable.get(transition).add(new ArrayList<>());
+    //    }
+    for (int i = 0; i < transitionMap.size(); i++) {
+      nfaTransitionTable[i][0] = new ArrayList<>();
     }
     // traverse pathPattern and construct NFA
     for (int i = 0; i < pathPattern.getNodeLength(); i++) {
       String node = pathPattern.getNodes()[i];
-      int preIndex = index;
       // if it is tail node, transit to final state
       DFAState state =
           i == pathPattern.getNodeLength() - 1
-              ? new DFAState(++index, true)
-              : new DFAState(++index);
+              ? new DFAState(++curStateIndex, true)
+              : new DFAState(++curStateIndex);
       nfaStateList.add(state);
-      for (IFATransition transition : transitionMap.values()) {
-        nfaTransitionTable.get(transition).add(new ArrayList<>());
+      //      for(IFATransition transition:transitionMap.values()){
+      //        nfaTransitionTable.get(transition).add(new ArrayList<>());
+      //      }
+      for (int j = 0; j < transitionMap.size(); j++) {
+        nfaTransitionTable[j][curStateIndex] = new ArrayList<>();
       }
       // construct transition
       if (IoTDBConstant.ONE_LEVEL_PATH_WILDCARD.equals(node)) {
         for (IFATransition transition : transitionMap.values()) {
-          nfaTransitionTable.get(transition).get(preIndex).add(state);
+          //          nfaTransitionTable.get(transition).get(curStateIndex-1).add(state);
+          nfaTransitionTable[transition.getIndex()][curStateIndex - 1].add(state);
         }
       } else if (IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD.equals(node)) {
         for (IFATransition transition : transitionMap.values()) {
-          nfaTransitionTable.get(transition).get(preIndex).add(state);
-          nfaTransitionTable.get(transition).get(index).add(state);
+          //          nfaTransitionTable.get(transition).get(curStateIndex-1).add(state);
+          //          nfaTransitionTable.get(transition).get(curStateIndex).add(state);
+          nfaTransitionTable[transition.getIndex()][curStateIndex - 1].add(state);
+          nfaTransitionTable[transition.getIndex()][curStateIndex].add(state);
         }
       } else {
-        nfaTransitionTable.get(transitionMap.get(node)).get(preIndex).add(state);
+        //        nfaTransitionTable.get(transitionMap.get(node)).get(curStateIndex-1).add(state);
+        nfaTransitionTable[transitionMap.get(node).getIndex()][curStateIndex - 1].add(state);
       }
       if (isPrefix && i == pathPattern.getNodeLength() - 1) {
         for (IFATransition transition : transitionMap.values()) {
-          nfaTransitionTable.get(transition).get(index).add(state);
+          //          nfaTransitionTable.get(transition).get(curStateIndex).add(state);
+          nfaTransitionTable[transition.getIndex()][curStateIndex].add(state);
         }
       }
     }
@@ -96,21 +106,26 @@ public class NFAGraph {
       stringBuilder = new StringBuilder();
       stringBuilder.append(String.format("|%-15d|", i));
       for (IFATransition transition : transitionMap.values()) {
-        stringBuilder.append(
-            String.format(
-                "%-15s|",
-                StringUtils.join(
-                    nfaTransitionTable.get(transition).get(i).stream()
-                        .map(IFAState::getIndex)
-                        .collect(Collectors.toList()),
-                    ",")));
+        //        stringBuilder.append(
+        //            String.format(
+        //                "%-15s|",
+        //                StringUtils.join(
+        //                    nfaTransitionTable[transition.getIndex()][i].stream()
+        //                        .map(IFAState::getIndex)
+        //                        .collect(Collectors.toList()),
+        //                    ",")));
       }
       stringBuilder.append(String.format("%-15s|", nfaStateList.get(i).isFinal()));
       System.out.println(stringBuilder);
     }
   }
 
-  public List<List<IFAState>> getTransitionColumn(IFATransition transition) {
-    return nfaTransitionTable.get(transition);
+  public List<IFAState> getTransitions(IFATransition transition, IFAState state) {
+    return nfaTransitionTable[transition.getIndex()][state.getIndex()];
+    //    return nfaTransitionTable.get(transition).get(state.getIndex());
+  }
+
+  public int getStateSize() {
+    return nfaStateList.size();
   }
 }

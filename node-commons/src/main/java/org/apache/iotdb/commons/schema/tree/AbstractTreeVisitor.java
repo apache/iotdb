@@ -20,10 +20,10 @@
 package org.apache.iotdb.commons.schema.tree;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.dfa.PatternDFA;
 import org.apache.iotdb.commons.path.fa.IFAState;
 import org.apache.iotdb.commons.path.fa.IFATransition;
 import org.apache.iotdb.commons.path.fa.IPatternFA;
-import org.apache.iotdb.commons.path.fa.SimpleNFA;
 import org.apache.iotdb.commons.path.fa.match.IStateMatchInfo;
 import org.apache.iotdb.commons.path.fa.match.StateMultiMatchInfo;
 import org.apache.iotdb.commons.path.fa.match.StateSingleMatchInfo;
@@ -92,9 +92,8 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
   protected AbstractTreeVisitor(N root, PartialPath pathPattern, boolean isPrefixMatch) {
     this.root = root;
 
-    this.patternFA = new SimpleNFA(pathPattern, isPrefixMatch);
-    //    this.patternFA = new
-    // PatternDFA.Builder().pattern(pathPattern).isPrefix(isPrefixMatch).build();
+    //    this.patternFA = new SimpleNFA(pathPattern, isPrefixMatch);
+    this.patternFA = new PatternDFA.Builder().pattern(pathPattern).isPrefix(isPrefixMatch).build();
 
     initStack();
   }

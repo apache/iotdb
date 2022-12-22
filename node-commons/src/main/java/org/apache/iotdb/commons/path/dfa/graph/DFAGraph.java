@@ -24,30 +24,30 @@ import org.apache.iotdb.commons.path.fa.IFATransition;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.Stack;
 
 public class DFAGraph {
   private final List<IFAState> dfaStateList = new ArrayList<>();
-  private final Map<IFATransition, List<IFAState>> dfaTransitionTable = new HashMap<>();
+  private final List<IFAState>[] dfaTransitionTable;
 
-  public DFAGraph(NFAGraph nfaGraph, Map<String, IFATransition> transitionMap) {
+  public DFAGraph(NFAGraph nfaGraph, Collection<IFATransition> transitions) {
+    dfaTransitionTable = new List[transitions.size()];
+    int closureSize = nfaGraph.getStateSize();
     // init start state
     int index = 0;
     // Map NFAStateClosure to DFASate
     Map<Closure, DFAState> closureStateMap = new HashMap<>();
-    for (IFATransition transition : transitionMap.values()) {
-      dfaTransitionTable.put(transition, new ArrayList<>());
-      dfaTransitionTable.get(transition).add(null);
+    for (IFATransition transition : transitions) {
+      dfaTransitionTable[transition.getIndex()] = new ArrayList<>();
+      dfaTransitionTable[transition.getIndex()].add(null);
     }
     DFAState curState = new DFAState(index);
     dfaStateList.add(curState);
-    Closure curClosure = new Closure(new HashSet<>(Collections.singletonList(curState)));
+    Closure curClosure = new Closure(closureSize);
+    curClosure.addState(curState);
     closureStateMap.put(curClosure, curState);
     Stack<Closure> closureStack = new Stack<>();
     closureStack.push(curClosure);
@@ -55,25 +55,24 @@ public class DFAGraph {
     // construct DFA
     while (!closureStack.isEmpty()) {
       curClosure = closureStack.pop();
-      for (IFATransition transition : transitionMap.values()) {
-        Closure nextClosure = getNextClosure(nfaGraph, curClosure, transition);
-        if (!nextClosure.getStateSet().isEmpty()) {
+      for (IFATransition transition : transitions) {
+        Closure nextClosure = new Closure(closureSize);
+        boolean isEmpty = getNextClosure(nfaGraph, curClosure, nextClosure, transition);
+        if (!isEmpty) {
           if (closureStateMap.containsKey(nextClosure)) {
             // closure already exist
-            dfaTransitionTable
-                .get(transition)
-                .set(closureStateMap.get(curClosure).getIndex(), closureStateMap.get(nextClosure));
+            dfaTransitionTable[transition.getIndex()].set(
+                closureStateMap.get(curClosure).getIndex(), closureStateMap.get(nextClosure));
           } else {
             // new closure
             DFAState newState = new DFAState(++index, nextClosure.isFinal());
             dfaStateList.add(newState);
             closureStateMap.put(nextClosure, newState);
-            for (List<IFAState> column : dfaTransitionTable.values()) {
+            for (List<IFAState> column : dfaTransitionTable) {
               column.add(null);
             }
-            dfaTransitionTable
-                .get(transition)
-                .set(closureStateMap.get(curClosure).getIndex(), newState);
+            dfaTransitionTable[transition.getIndex()].set(
+                closureStateMap.get(curClosure).getIndex(), newState);
             closureStack.push(nextClosure);
           }
         }
@@ -99,7 +98,7 @@ public class DFAGraph {
       stringBuilder = new StringBuilder();
       stringBuilder.append(String.format("|%-15d|", i));
       for (IFATransition transition : transitionMap.values()) {
-        IFAState tmp = dfaTransitionTable.get(transition).get(i);
+        IFAState tmp = dfaTransitionTable[transition.getIndex()].get(i);
         stringBuilder.append(String.format("%-15s|", tmp == null ? "" : tmp.getIndex()));
       }
       stringBuilder.append(String.format("%-15s|", dfaStateList.get(i).isFinal()));
@@ -107,21 +106,34 @@ public class DFAGraph {
     }
   }
 
-  private Closure getNextClosure(NFAGraph nfaGraph, Closure curClosure, IFATransition transfer) {
-    Set<IFAState> nextStateSet = new HashSet<>();
-    List<List<IFAState>> transferColumn = nfaGraph.getTransitionColumn(transfer);
-    for (IFAState state : curClosure.getStateSet()) {
-      nextStateSet.addAll(transferColumn.get(state.getIndex()));
+  /**
+   * get next closure
+   *
+   * @param nfaGraph
+   * @param curClosure
+   * @param transfer
+   * @return if empty. return true
+   */
+  private boolean getNextClosure(
+      NFAGraph nfaGraph, Closure curClosure, Closure nextClosure, IFATransition transfer) {
+    boolean isEmpty = true;
+    for (IFAState state : curClosure.getStates()) {
+      if (state != null) {
+        for (IFAState nextState : nfaGraph.getTransitions(transfer, state)) {
+          nextClosure.addState(nextState);
+          isEmpty = false;
+        }
+      }
     }
-    return new Closure(nextStateSet);
+    return isEmpty;
   }
 
   public Map<String, IFATransition> getPreciseMatchTransition(
-      IFAState state, Map<String, IFATransition> transitionMap) {
+      IFAState state, Collection<IFATransition> transitions) {
     Map<String, IFATransition> res = new HashMap<>();
-    for (Map.Entry<String, IFATransition> transitionEntry : transitionMap.entrySet()) {
-      if (dfaTransitionTable.get(transitionEntry.getValue()).get(state.getIndex()) != null) {
-        res.put(transitionEntry.getKey(), transitionEntry.getValue());
+    for (IFATransition transition : transitions) {
+      if (dfaTransitionTable[transition.getIndex()].get(state.getIndex()) != null) {
+        res.put(transition.getValue(), transition);
       }
     }
     return res;
@@ -131,7 +143,7 @@ public class DFAGraph {
       IFAState state, Collection<IFATransition> transitionList) {
     List<IFATransition> res = new ArrayList<>();
     for (IFATransition transition : transitionList) {
-      if (dfaTransitionTable.get(transition).get(state.getIndex()) != null) {
+      if (dfaTransitionTable[transition.getIndex()].get(state.getIndex()) != null) {
         res.add(transition);
       }
     }
@@ -139,7 +151,7 @@ public class DFAGraph {
   }
 
   public IFAState getNextState(IFAState currentState, IFATransition transition) {
-    return dfaTransitionTable.get(transition).get(currentState.getIndex());
+    return dfaTransitionTable[transition.getIndex()].get(currentState.getIndex());
   }
 
   public IFAState getInitialState() {

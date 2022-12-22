@@ -25,17 +25,26 @@ import org.apache.commons.lang3.StringUtils;
 
 import java.util.List;
 import java.util.Objects;
+import java.util.regex.Pattern;
 
 public class DFATransition implements IFATransition {
 
   private final String acceptEvent;
   private List<String> rejectEventList;
+  /**
+   * A transition does not change after it has been created externally, the id is used as a unique
+   * identifier. It is necessary to ensure that the other properties of a transition with a
+   * different id are different.
+   */
+  private final int id; // only used for hash
 
-  public DFATransition(String acceptEvent) {
+  public DFATransition(int index, String acceptEvent) {
     this.acceptEvent = acceptEvent;
+    this.id = index;
   }
 
-  public DFATransition(String acceptEvent, List<String> rejectEventList) {
+  public DFATransition(int index, String acceptEvent, List<String> rejectEventList) {
+    this.id = index;
     this.acceptEvent = acceptEvent;
     this.rejectEventList = rejectEventList;
   }
@@ -56,13 +65,27 @@ public class DFATransition implements IFATransition {
   @Override
   public boolean isMatch(String event) {
     if (isBatch()) {
-      return !rejectEventList.contains(event);
+      if (isWildcard()) {
+        return !rejectEventList.contains(event);
+      } else {
+        return Pattern.matches(acceptEvent, event);
+      }
     } else {
       return acceptEvent.equals(event);
     }
   }
 
+  @Override
+  public int getIndex() {
+    return id;
+  }
+
   private boolean isBatch() {
+    return IoTDBConstant.ONE_LEVEL_PATH_WILDCARD.equals(acceptEvent)
+        || acceptEvent.contains(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD);
+  }
+
+  private boolean isWildcard() {
     return IoTDBConstant.ONE_LEVEL_PATH_WILDCARD.equals(acceptEvent);
   }
 
@@ -80,12 +103,11 @@ public class DFATransition implements IFATransition {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
     DFATransition that = (DFATransition) o;
-    return Objects.equals(acceptEvent, that.acceptEvent)
-        && Objects.equals(rejectEventList, that.rejectEventList);
+    return Objects.equals(id, that.id);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(acceptEvent, rejectEventList);
+    return Objects.hash(id);
   }
 }

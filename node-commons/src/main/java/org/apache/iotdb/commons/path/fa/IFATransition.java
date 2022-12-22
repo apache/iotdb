@@ -31,4 +31,6 @@ public interface IFATransition {
    * @return whether this transition can match the event
    */
   boolean isMatch(String event);
+
+  int getIndex();
 }

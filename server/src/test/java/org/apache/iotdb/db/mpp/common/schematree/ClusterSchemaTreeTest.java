@@ -44,29 +44,21 @@ import java.util.stream.Collectors;
 
 public class ClusterSchemaTreeTest {
 
+  private long calTime = 0;
+  private long initTime = 0;
+
   @Test
   public void benchmark() throws IllegalPathException {
+    long startTime = System.currentTimeMillis();
     int round = 20;
-    long[] times = new long[round];
-    long startTime;
     for (int i = 0; i < round; i++) {
-      startTime = System.currentTimeMillis();
-      for (int j = 0; j < 100; j++) {
+      for (int j = 0; j < 10000; j++) {
         testMultiWildcard();
       }
-      times[i] = System.currentTimeMillis() - startTime;
     }
-    long max = 0, min = Long.MAX_VALUE, sum = 0;
-    for (long t : times) {
-      sum += t;
-      if (t > max) {
-        max = t;
-      }
-      if (t < min) {
-        min = t;
-      }
-    }
-    System.out.println("Avg=" + (sum - max - min) / (round - 2));
+    initTime = (System.currentTimeMillis() - startTime - calTime);
+    System.out.println("CalculateTime=" + calTime / round);
+    System.out.println("InitialTime=" + initTime / round);
   }
 
   @Test
@@ -374,6 +366,7 @@ public class ClusterSchemaTreeTest {
       String[] expectedPath,
       String[] expectedAlias,
       boolean[] expectedAligned) {
+    long startTime = System.currentTimeMillis();
     List<MeasurementPath> result = visitor.getAllResult();
     Assert.assertEquals(expectedNum, result.size());
     for (int i = 0; i < expectedNum; i++) {
@@ -391,6 +384,7 @@ public class ClusterSchemaTreeTest {
         Assert.assertEquals(expectedAligned[i], result.get(i).isUnderAlignedEntity());
       }
     }
+    calTime += (System.currentTimeMillis() - startTime);
   }
 
   private void checkVisitorResult(

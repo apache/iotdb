@@ -50,10 +50,10 @@ public class PatternDFATest {
       "root.sg1.*.s1",
       "root.*.d1.*",
       "root.*.*.*",
-      //                "root.s*.d1.s1",
-      //                "root.*g1.d1.s1",
-      //                "root.s*.d1.*",
-      //                "root.s*.d*.s*",
+      "root.s*.d1.s1",
+      "root.*g1.d1.s1",
+      "root.s*.d1.*",
+      "root.s*.d*.s*",
       "root.**",
       "root.**.s1",
       "root.sg1.**",
@@ -67,11 +67,11 @@ public class PatternDFATest {
       "root2.sg1.d1.s1",
       "root.sg1.*.s2",
       "root.*.d2.s1",
-      //                "root.*.d*.s2",
-      //                "root.*.a*.s1",
+      "root.*.d*.s2",
+      "root.*.a*.s1",
       "root.*",
       "root.*.*",
-      //                "root.s*.d*.a*",
+      "root.s*.d*.a*",
       "root2.**",
       "root.**.s2",
       "root.**.d1",
@@ -90,8 +90,8 @@ public class PatternDFATest {
 
     Assert.assertFalse(
         new PartialPath("root.s*.d1.s1").matchFullPath(new PartialPath("root.sg1.d1.s1")));
-    //    Assert.assertFalse(
-    //        checkMatchUsingDFA(new PartialPath("root.*"), new PartialPath("root.sg1.d1.s1")));
+    Assert.assertFalse(
+        checkMatchUsingDFA(new PartialPath("root.*"), new PartialPath("root.sg1.d1.s1")));
   }
 
   private boolean checkMatchUsingDFA(PartialPath pattern, PartialPath fullPath) {

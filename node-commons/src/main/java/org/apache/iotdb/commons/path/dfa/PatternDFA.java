@@ -33,6 +33,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class PatternDFA implements IPatternFA {
 
@@ -52,15 +53,25 @@ public class PatternDFA implements IPatternFA {
 
     // 1. build transition
     boolean wildcard = false;
+    AtomicInteger transitionIndex = new AtomicInteger();
     for (String node : builder.pathPattern.getNodes()) {
       if (IoTDBConstant.ONE_LEVEL_PATH_WILDCARD.equals(node)
           || IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD.equals(node)) {
         wildcard = true;
-      } else {
-        DFATransition transition = new DFATransition(node);
+      } else if (node.contains("*")) {
         transitionMap.computeIfAbsent(
-            transition.getAcceptEvent(),
+            node,
             i -> {
+              DFATransition transition =
+                  new DFATransition(transitionIndex.getAndIncrement(), node.replace("*", ".*"));
+              batchMatchTransitionList.add(transition);
+              return transition;
+            });
+      } else {
+        transitionMap.computeIfAbsent(
+            node,
+            i -> {
+              DFATransition transition = new DFATransition(transitionIndex.getAndIncrement(), node);
               preciseMatchTransitionList.add(transition);
               return transition;
             });
@@ -69,7 +80,9 @@ public class PatternDFA implements IPatternFA {
     if (wildcard || builder.isPrefix) {
       DFATransition transition =
           new DFATransition(
-              IoTDBConstant.ONE_LEVEL_PATH_WILDCARD, new ArrayList<>(transitionMap.keySet()));
+              transitionIndex.getAndIncrement(),
+              IoTDBConstant.ONE_LEVEL_PATH_WILDCARD,
+              new ArrayList<>(transitionMap.keySet()));
       transitionMap.put(transition.getAcceptEvent(), transition);
       batchMatchTransitionList.add(transition);
     }
@@ -79,20 +92,21 @@ public class PatternDFA implements IPatternFA {
     //    nfaGraph.print(transitionMap);
 
     // 3. NFA to DFA
-    dfaGraph = new DFAGraph(nfaGraph, transitionMap);
+    dfaGraph = new DFAGraph(nfaGraph, transitionMap.values());
     //    dfaGraph.print(transitionMap);
   }
 
   @Override
   public Map<String, IFATransition> getPreciseMatchTransition(IFAState state) {
     return preciseMatchTransitionCached.computeIfAbsent(
-        state, i -> dfaGraph.getPreciseMatchTransition(state, transitionMap));
+        state, i -> dfaGraph.getPreciseMatchTransition(state, transitionMap.values()));
   }
 
   @Override
   public Iterator<IFATransition> getPreciseMatchTransitionIterator(IFAState state) {
     return preciseMatchTransitionCached
-        .computeIfAbsent(state, i -> dfaGraph.getPreciseMatchTransition(state, transitionMap))
+        .computeIfAbsent(
+            state, i -> dfaGraph.getPreciseMatchTransition(state, transitionMap.values()))
         .values()
         .iterator();
   }
