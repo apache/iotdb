@@ -186,6 +186,11 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
       TsFileResource unseqFile,
       List<TsFileResource> seqFiles,
       long memoryCost) {
+    // currently, we must allow at least one unseqFile be selected to handle the situation that
+    // an unseqFile has huge time range but few data points.
+    if (taskResource.getUnseqFiles().size() == 0) {
+      return true;
+    }
     long totalFileSize = unseqFile.getTsFileSize();
     for (TsFileResource f : seqFiles) {
       totalFileSize += f.getTsFileSize();
