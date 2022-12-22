@@ -16,34 +16,34 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.query.dataset;
+package org.apache.iotdb.db.metadata.plan.schemaregion.result;
 
-public class ShowResult implements Comparable<ShowResult> {
+public abstract class ShowSchemaResult implements Comparable<ShowSchemaResult> {
 
-  protected String name;
-  protected String sgName;
+  protected String path;
+  protected String database;
 
-  public ShowResult(String name, String sgName) {
-    this.name = name;
-    this.sgName = sgName;
+  public ShowSchemaResult(String path, String database) {
+    this.path = path;
+    this.database = database;
   }
 
-  public ShowResult(String name) {
-    this.name = name;
+  public ShowSchemaResult(String path) {
+    this.path = path;
   }
 
-  public ShowResult() {}
+  public ShowSchemaResult() {}
 
-  public String getName() {
-    return name;
+  public String getPath() {
+    return path;
   }
 
-  public String getSgName() {
-    return sgName;
+  public String getDatabase() {
+    return database;
   }
 
   @Override
-  public int compareTo(ShowResult o) {
-    return this.getName().compareTo(o.getName());
+  public int compareTo(ShowSchemaResult o) {
+    return this.getPath().compareTo(o.getPath());
   }
 }

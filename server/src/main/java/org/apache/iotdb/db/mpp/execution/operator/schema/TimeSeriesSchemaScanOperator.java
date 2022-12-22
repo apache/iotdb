@@ -21,13 +21,13 @@ package org.apache.iotdb.db.mpp.execution.operator.schema;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.metadata.plan.schemaregion.impl.read.SchemaRegionReadPlanFactory;
+import org.apache.iotdb.db.metadata.plan.schemaregion.result.ShowTimeSeriesResult;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.mpp.execution.driver.SchemaDriverContext;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
@@ -106,10 +106,10 @@ public class TimeSeriesSchemaScanOperator extends SchemaQueryScanOperator {
   }
 
   private void setColumns(ShowTimeSeriesResult series, TsBlockBuilder builder) {
-    builder.getTimeColumnBuilder().writeLong(series.getLastTime());
-    builder.writeNullableText(0, series.getName());
+    builder.getTimeColumnBuilder().writeLong(0);
+    builder.writeNullableText(0, series.getPath());
     builder.writeNullableText(1, series.getAlias());
-    builder.writeNullableText(2, series.getSgName());
+    builder.writeNullableText(2, series.getDatabase());
     builder.writeNullableText(3, series.getDataType().toString());
     builder.writeNullableText(4, series.getEncoding().toString());
     builder.writeNullableText(5, series.getCompressor().toString());

@@ -22,8 +22,8 @@ package org.apache.iotdb.db.metadata.schemaRegion;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.metadata.plan.schemaregion.impl.read.SchemaRegionReadPlanFactory;
+import org.apache.iotdb.db.metadata.plan.schemaregion.result.ShowTimeSeriesResult;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
-import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -149,7 +149,7 @@ public class SchemaRegionAliasAndTagTest extends AbstractSchemaRegionTest {
           schemaRegion.showTimeseries(
               SchemaRegionReadPlanFactory.getShowTimeSeriesPlan(new PartialPath(fullPath)));
       Assert.assertEquals(1, result.left.size());
-      Assert.assertEquals(fullPath, result.left.get(0).getName());
+      Assert.assertEquals(fullPath, result.left.get(0).getPath());
       Assert.assertEquals(alias, result.left.get(0).getAlias());
       Assert.assertEquals(tags, result.left.get(0).getTag());
       Assert.assertEquals(attributes, result.left.get(0).getAttribute());
@@ -165,7 +165,7 @@ public class SchemaRegionAliasAndTagTest extends AbstractSchemaRegionTest {
           schemaRegion.showTimeseries(
               SchemaRegionReadPlanFactory.getShowTimeSeriesPlan(new PartialPath(fullPath)));
       Assert.assertEquals(1, result.left.size());
-      Assert.assertEquals(fullPath, result.left.get(0).getName());
+      Assert.assertEquals(fullPath, result.left.get(0).getPath());
       Assert.assertEquals(attributes, result.left.get(0).getAttribute());
     } catch (Exception e) {
       e.printStackTrace();
@@ -179,7 +179,7 @@ public class SchemaRegionAliasAndTagTest extends AbstractSchemaRegionTest {
           schemaRegion.showTimeseries(
               SchemaRegionReadPlanFactory.getShowTimeSeriesPlan(new PartialPath(fullPath)));
       Assert.assertEquals(1, result.left.size());
-      Assert.assertEquals(fullPath, result.left.get(0).getName());
+      Assert.assertEquals(fullPath, result.left.get(0).getPath());
       Assert.assertEquals(tags, result.left.get(0).getTag());
     } catch (Exception e) {
       logger.error(e.getMessage(), e);

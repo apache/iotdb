@@ -52,10 +52,10 @@ import org.apache.iotdb.db.metadata.mtree.traverser.counter.MeasurementCounter;
 import org.apache.iotdb.db.metadata.mtree.traverser.counter.MeasurementGroupByLevelCounter;
 import org.apache.iotdb.db.metadata.plan.schemaregion.read.IShowDevicesPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.read.IShowTimeSeriesPlan;
+import org.apache.iotdb.db.metadata.plan.schemaregion.result.ShowDevicesResult;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.utils.MetaFormatUtils;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
-import org.apache.iotdb.db.query.dataset.ShowDevicesResult;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -849,16 +849,15 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
             IMeasurementSchema measurementSchema = node.getSchema();
             Pair<String, String> deadbandInfo =
                 MetaUtils.parseDeadbandInfo(measurementSchema.getProps());
-            String[] tsRow = new String[9];
+            String[] tsRow = new String[8];
             tsRow[0] = node.getAlias();
             tsRow[1] = getStorageGroupNodeInTraversePath(node).getFullPath();
             tsRow[2] = measurementSchema.getType().toString();
             tsRow[3] = measurementSchema.getEncodingType().toString();
             tsRow[4] = measurementSchema.getCompressor().toString();
             tsRow[5] = String.valueOf(node.getOffset());
-            tsRow[6] = null;
-            tsRow[7] = deadbandInfo.left;
-            tsRow[8] = deadbandInfo.right;
+            tsRow[6] = deadbandInfo.left;
+            tsRow[7] = deadbandInfo.right;
             Pair<PartialPath, String[]> temp = new Pair<>(getCurrentPartialPath(node), tsRow);
             resultSet.add(temp);
           }

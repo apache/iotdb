@@ -21,12 +21,12 @@ package org.apache.iotdb.db.mpp.execution.operator.schema;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.metadata.plan.schemaregion.impl.read.SchemaRegionReadPlanFactory;
+import org.apache.iotdb.db.metadata.plan.schemaregion.result.ShowDevicesResult;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.mpp.execution.driver.SchemaDriverContext;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.query.dataset.ShowDevicesResult;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
@@ -75,9 +75,9 @@ public class DevicesSchemaScanOperator extends SchemaQueryScanOperator {
 
   private void setColumns(ShowDevicesResult device, TsBlockBuilder builder) {
     builder.getTimeColumnBuilder().writeLong(0L);
-    builder.getColumnBuilder(0).writeBinary(new Binary(device.getName()));
+    builder.getColumnBuilder(0).writeBinary(new Binary(device.getPath()));
     if (hasSgCol) {
-      builder.getColumnBuilder(1).writeBinary(new Binary(device.getSgName()));
+      builder.getColumnBuilder(1).writeBinary(new Binary(device.getDatabase()));
       builder.getColumnBuilder(2).writeBinary(new Binary(String.valueOf(device.isAligned())));
     } else {
       builder.getColumnBuilder(1).writeBinary(new Binary(String.valueOf(device.isAligned())));

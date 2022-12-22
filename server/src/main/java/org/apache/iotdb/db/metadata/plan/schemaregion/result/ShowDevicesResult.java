@@ -16,16 +16,11 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.query.dataset;
+package org.apache.iotdb.db.metadata.plan.schemaregion.result;
 
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
-
-import java.io.IOException;
-import java.io.OutputStream;
-import java.nio.ByteBuffer;
 import java.util.Objects;
 
-public class ShowDevicesResult extends ShowResult {
+public class ShowDevicesResult extends ShowSchemaResult {
   private boolean isAligned;
 
   public ShowDevicesResult() {
@@ -42,20 +37,6 @@ public class ShowDevicesResult extends ShowResult {
     this.isAligned = isAligned;
   }
 
-  public void serialize(OutputStream outputStream) throws IOException {
-    ReadWriteIOUtils.write(name, outputStream);
-    ReadWriteIOUtils.write(isAligned, outputStream);
-    ReadWriteIOUtils.write(sgName, outputStream);
-  }
-
-  public static ShowDevicesResult deserialize(ByteBuffer buffer) {
-    ShowDevicesResult result = new ShowDevicesResult();
-    result.name = ReadWriteIOUtils.readString(buffer);
-    result.isAligned = ReadWriteIOUtils.readBool(buffer);
-    result.sgName = ReadWriteIOUtils.readString(buffer);
-    return result;
-  }
-
   public boolean isAligned() {
     return isAligned;
   }
@@ -64,12 +45,12 @@ public class ShowDevicesResult extends ShowResult {
   public String toString() {
     return "ShowDevicesResult{"
         + " name='"
-        + name
+        + path
         + '\''
         + ", isAligned = "
         + isAligned
         + ", sgName='"
-        + sgName
+        + database
         + '\''
         + "}";
   }
@@ -83,13 +64,13 @@ public class ShowDevicesResult extends ShowResult {
       return false;
     }
     ShowDevicesResult result = (ShowDevicesResult) o;
-    return Objects.equals(name, result.name)
+    return Objects.equals(path, result.path)
         && isAligned == result.isAligned
-        && Objects.equals(sgName, result.sgName);
+        && Objects.equals(database, result.database);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(name, isAligned, sgName);
+    return Objects.hash(path, isAligned, database);
   }
 }

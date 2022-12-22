@@ -28,9 +28,9 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.metadata.MetadataConstant;
 import org.apache.iotdb.db.metadata.plan.schemaregion.impl.read.SchemaRegionReadPlanFactory;
 import org.apache.iotdb.db.metadata.plan.schemaregion.impl.write.SchemaRegionWritePlanFactory;
+import org.apache.iotdb.db.metadata.plan.schemaregion.result.ShowTimeSeriesResult;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.metadata.template.Template;
-import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -101,7 +101,7 @@ public class SchemaRegionManagementTest extends AbstractSchemaRegionTest {
                   new PartialPath("root.sg.**"), false, "tag-key", "tag-value"));
 
       ShowTimeSeriesResult seriesResult = result.left.get(0);
-      Assert.assertEquals(new PartialPath("root.sg.d1.s1").getFullPath(), seriesResult.getName());
+      Assert.assertEquals(new PartialPath("root.sg.d1.s1").getFullPath(), seriesResult.getPath());
       Map<String, String> resultTagMap = seriesResult.getTag();
       Assert.assertEquals(1, resultTagMap.size());
       Assert.assertEquals("tag-value", resultTagMap.get("tag-key"));
@@ -116,7 +116,7 @@ public class SchemaRegionManagementTest extends AbstractSchemaRegionTest {
                   new PartialPath("root.sg.**"), false, "tag-key", "tag-value"));
 
       seriesResult = result.left.get(0);
-      Assert.assertEquals(new PartialPath("root.sg.d1.s1").getFullPath(), seriesResult.getName());
+      Assert.assertEquals(new PartialPath("root.sg.d1.s1").getFullPath(), seriesResult.getPath());
       resultTagMap = seriesResult.getTag();
       Assert.assertEquals(1, resultTagMap.size());
       Assert.assertEquals("tag-value", resultTagMap.get("tag-key"));
@@ -128,9 +128,9 @@ public class SchemaRegionManagementTest extends AbstractSchemaRegionTest {
                   Collections.singletonMap(template.getId(), template)));
       result.left.sort(ShowTimeSeriesResult::compareTo);
       Assert.assertEquals(
-          new PartialPath("root.sg.d1.s1").getFullPath(), result.left.get(0).getName());
+          new PartialPath("root.sg.d1.s1").getFullPath(), result.left.get(0).getPath());
       Assert.assertEquals(
-          new PartialPath("root.sg.d2.s1").getFullPath(), result.left.get(1).getName());
+          new PartialPath("root.sg.d2.s1").getFullPath(), result.left.get(1).getPath());
 
     } finally {
       config.setSchemaRegionConsensusProtocolClass(schemaRegionConsensusProtocolClass);
