@@ -78,10 +78,10 @@ public class TagSchemaDescriptor {
               properties.getProperty("out_buffer_size", String.valueOf(conf.getOutBufferSize()))));
       conf.setDegree(
           Integer.parseInt(properties.getProperty("degree", String.valueOf(conf.getDegree()))));
-      conf.setbPlusTreePageSize(
+      conf.setBPlusTreePageSize(
           Integer.parseInt(
               properties.getProperty(
-                  "b+tree_page_size", String.valueOf(conf.getbPlusTreePageSize()))));
+                  "b+tree_page_size", String.valueOf(conf.getBPlusTreePageSize()))));
       conf.setNumOfImmutableMemTable(
           Integer.parseInt(
               properties.getProperty(

@@ -80,11 +80,11 @@ public class TagSchemaConfig {
     this.degree = degree;
   }
 
-  public int getbPlusTreePageSize() {
+  public int getBPlusTreePageSize() {
     return bPlusTreePageSize;
   }
 
-  public void setbPlusTreePageSize(int bPlusTreePageSize) {
+  public void setBPlusTreePageSize(int bPlusTreePageSize) {
     this.bPlusTreePageSize = bPlusTreePageSize;
   }
 

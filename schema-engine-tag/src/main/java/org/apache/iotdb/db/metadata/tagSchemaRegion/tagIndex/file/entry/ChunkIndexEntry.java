@@ -46,6 +46,10 @@ public class ChunkIndexEntry implements IEntry {
     this.idMin = idMin;
   }
 
+  public boolean intersect(ChunkIndexEntry chunkIndexEntry) {
+    return chunkIndexEntry.idMax >= idMin && chunkIndexEntry.idMin <= idMax;
+  }
+
   public long getOffset() {
     return offset;
   }

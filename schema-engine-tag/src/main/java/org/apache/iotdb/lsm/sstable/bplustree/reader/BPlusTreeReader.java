@@ -50,6 +50,13 @@ public class BPlusTreeReader implements IBPlusTreeReader {
 
   private BPlusTreeHeader bPlusTreeHeader;
 
+  public BPlusTreeReader(IFileInput fileInput, long bPlusTreeStartOffset) throws IOException {
+    this.fileInput = fileInput;
+    this.bPlusTreeStartOffset = bPlusTreeStartOffset;
+    fileInput.position(bPlusTreeStartOffset);
+    index = 0;
+  }
+
   public BPlusTreeReader(File file, long bPlusTreeStartOffset) throws IOException {
     fileInput = new FileInput(file);
     this.bPlusTreeStartOffset = bPlusTreeStartOffset;

@@ -68,8 +68,8 @@ public class BPlusTreeReaderTest {
     degree = TagSchemaDescriptor.getInstance().getTagSchemaConfig().getDegree();
     TagSchemaDescriptor.getInstance().getTagSchemaConfig().setDegree(4);
     bPlusTreePageSize =
-        TagSchemaDescriptor.getInstance().getTagSchemaConfig().getbPlusTreePageSize();
-    TagSchemaDescriptor.getInstance().getTagSchemaConfig().setbPlusTreePageSize(50);
+        TagSchemaDescriptor.getInstance().getTagSchemaConfig().getBPlusTreePageSize();
+    TagSchemaDescriptor.getInstance().getTagSchemaConfig().setBPlusTreePageSize(50);
     orderedQueue = new ArrayDeque<>();
     orderedQueue.add(new BPlusTreeEntry("aaa", 0));
     orderedQueue.add(new BPlusTreeEntry("bbb", 1));
@@ -101,7 +101,7 @@ public class BPlusTreeReaderTest {
       bPlusTreeReader.close();
     }
     TagSchemaDescriptor.getInstance().getTagSchemaConfig().setDegree(degree);
-    TagSchemaDescriptor.getInstance().getTagSchemaConfig().setbPlusTreePageSize(bPlusTreePageSize);
+    TagSchemaDescriptor.getInstance().getTagSchemaConfig().setBPlusTreePageSize(bPlusTreePageSize);
     file.delete();
   }
 
@@ -135,7 +135,7 @@ public class BPlusTreeReaderTest {
     List<BPlusTreeNode> bPlusTreeNodes = new ArrayList<>();
 
     int i = 0;
-    while (i < 7) {
+    while (i < 8) {
       BPlusTreeNode bPlusTreeNode = new BPlusTreeNode();
       bPlusTreeNode.deserialize(buffer);
       bPlusTreeNodes.add(bPlusTreeNode);

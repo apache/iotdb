@@ -54,6 +54,17 @@ public class ChunkIndex implements IEntry {
     this.chunkIndexEntries = chunkIndexEntries;
   }
 
+  public int getAllCount() {
+    if (chunkIndexEntries == null || chunkIndexEntries.size() == 0) {
+      return 0;
+    }
+    int count = 0;
+    for (ChunkIndexEntry chunkIndexEntry : chunkIndexEntries) {
+      count += chunkIndexEntry.getCount();
+    }
+    return count;
+  }
+
   public ChunkIndexHeader getChunkIndexHeader() {
     return chunkIndexHeader;
   }

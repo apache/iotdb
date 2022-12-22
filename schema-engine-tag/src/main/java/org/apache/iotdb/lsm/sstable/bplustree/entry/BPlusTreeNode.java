@@ -23,6 +23,7 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.nio.BufferOverflowException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -171,6 +172,21 @@ public class BPlusTreeNode implements IEntry {
     count++;
   }
 
+  public boolean addAndSerialize(BPlusTreeEntry bPlusTreeEntry, ByteBuffer byteBuffer) {
+    int position = byteBuffer.position();
+    try {
+      bPlusTreeEntry.serialize(byteBuffer);
+    } catch (BufferOverflowException e) {
+      if (count <= 1) {
+        throw new RuntimeException("b+ tree page size is too small");
+      }
+      byteBuffer.position(position);
+      return false;
+    }
+    add(bPlusTreeEntry);
+    return true;
+  }
+
   public String getMin() {
     if (bPlusTreeEntries == null || bPlusTreeEntries.size() == 0) return null;
     return bPlusTreeEntries.get(0).getName();
@@ -204,8 +220,9 @@ public class BPlusTreeNode implements IEntry {
       return new ArrayList<>();
     }
     List<BPlusTreeEntry> bPlusTreeEntryList = new ArrayList<>();
-    for (BPlusTreeEntry bPlusTreeEntry : bPlusTreeEntries) {
-      if (names.contains(bPlusTreeEntry.getName())) {
+    for (String name : names) {
+      BPlusTreeEntry bPlusTreeEntry = binarySearch(name);
+      if (bPlusTreeEntry != null) {
         bPlusTreeEntryList.add(bPlusTreeEntry);
       }
     }
@@ -232,17 +249,28 @@ public class BPlusTreeNode implements IEntry {
     }
     Map<BPlusTreeEntry, Set<String>> map = new HashMap<>();
     for (String name : names) {
-      for (int i = bPlusTreeEntries.size() - 1; i >= 0; i--) {
-        BPlusTreeEntry bPlusTreeEntry = bPlusTreeEntries.get(i);
-        if (bPlusTreeEntry.getName().compareTo(name) <= 0) {
-          if (!map.containsKey(bPlusTreeEntry)) {
-            map.put(bPlusTreeEntry, new HashSet<>());
-          }
-          map.get(bPlusTreeEntry).add(name);
-          break;
+      BPlusTreeEntry bPlusTreeEntry = binarySearch(name);
+      if (bPlusTreeEntry != null) {
+        if (!map.containsKey(bPlusTreeEntry)) {
+          map.put(bPlusTreeEntry, new HashSet<>());
         }
+        map.get(bPlusTreeEntry).add(name);
       }
     }
     return map;
+  }
+
+  private BPlusTreeEntry binarySearch(String name) {
+    int l = 0;
+    int r = bPlusTreeEntries.size() - 1;
+    while (l < r) {
+      int mid = r - ((r - l) >> 1);
+      if (bPlusTreeEntries.get(mid).getName().compareTo(name) <= 0) {
+        l = mid;
+      } else {
+        r = mid - 1;
+      }
+    }
+    return bPlusTreeEntries.get(l).getName().compareTo(name) <= 0 ? bPlusTreeEntries.get(l) : null;
   }
 }
