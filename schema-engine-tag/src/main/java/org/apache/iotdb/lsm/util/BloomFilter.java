@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.entry;
+package org.apache.iotdb.lsm.util;
 
 import org.apache.iotdb.lsm.sstable.bplustree.entry.IEntry;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
@@ -33,7 +33,6 @@ import java.util.BitSet;
 import java.util.Objects;
 
 public class BloomFilter implements IEntry {
-  // TODO maybe use org.apache.iotdb.tsfile.utils.BloomFilter
 
   private static final int MINIMAL_SIZE = 256;
   private static final int MAXIMAL_HASH_FUNCTION_SIZE = 8;
@@ -134,10 +133,6 @@ public class BloomFilter implements IEntry {
     return res;
   }
 
-  public byte[] serialize() {
-    return bits.toByteArray();
-  }
-
   @Override
   public boolean equals(Object o) {
     if (this == o) {
@@ -196,28 +191,44 @@ public class BloomFilter implements IEntry {
   }
 
   @Override
-  public void serialize(DataOutputStream out) throws IOException {}
-
-  @Override
-  public void serialize(ByteBuffer byteBuffer) {}
-
-  @Override
-  public IEntry deserialize(DataInputStream input) throws IOException {
-    return null;
+  public void serialize(DataOutputStream out) throws IOException {
+    byte[] bytes = bits.toByteArray();
+    ReadWriteForEncodingUtils.writeUnsignedVarInt(bytes.length, out);
+    out.write(bytes);
+    ReadWriteForEncodingUtils.writeUnsignedVarInt(size, out);
+    ReadWriteForEncodingUtils.writeUnsignedVarInt(hashFunctionSize, out);
   }
 
   @Override
-  public IEntry deserialize(ByteBuffer byteBuffer) {
-    byte[] bytes = ReadWriteIOUtils.readByteBufferWithSelfDescriptionLength(byteBuffer);
-    int size = ReadWriteForEncodingUtils.readUnsignedVarInt(byteBuffer);
-    int hashFunctionSize = ReadWriteForEncodingUtils.readUnsignedVarInt(byteBuffer);
-    this.size = size;
-    this.hashFunctionSize = hashFunctionSize;
+  public void serialize(ByteBuffer byteBuffer) {
+    byte[] bytes = bits.toByteArray();
+    ReadWriteForEncodingUtils.writeUnsignedVarInt(bytes.length, byteBuffer);
+    byteBuffer.put(bytes);
+    ReadWriteForEncodingUtils.writeUnsignedVarInt(size, byteBuffer);
+    ReadWriteForEncodingUtils.writeUnsignedVarInt(hashFunctionSize, byteBuffer);
+  }
+
+  @Override
+  public IEntry deserialize(DataInputStream input) throws IOException {
+    int bytesLength = ReadWriteIOUtils.readInt(input);
+    bits = BitSet.valueOf(ReadWriteIOUtils.readBytes(input, bytesLength));
+    hashFunctionSize = ReadWriteForEncodingUtils.readUnsignedVarInt(input);
     func = new HashFunction[hashFunctionSize];
     for (int i = 0; i < hashFunctionSize; i++) {
       func[i] = new HashFunction(size, SEEDS[i]);
     }
-    bits = BitSet.valueOf(bytes);
+    return this;
+  }
+
+  @Override
+  public IEntry deserialize(ByteBuffer byteBuffer) {
+    bits = BitSet.valueOf(ReadWriteIOUtils.readByteBufferWithSelfDescriptionLength(byteBuffer));
+    size = ReadWriteForEncodingUtils.readUnsignedVarInt(byteBuffer);
+    hashFunctionSize = ReadWriteForEncodingUtils.readUnsignedVarInt(byteBuffer);
+    func = new HashFunction[hashFunctionSize];
+    for (int i = 0; i < hashFunctionSize; i++) {
+      func[i] = new HashFunction(size, SEEDS[i]);
+    }
     return this;
   }
 }

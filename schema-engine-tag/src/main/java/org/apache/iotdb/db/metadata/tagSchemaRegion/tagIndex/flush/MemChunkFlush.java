@@ -82,12 +82,17 @@ public class MemChunkFlush extends FlushLevelProcessor<MemChunk, Object, FlushRe
         roaringBitmaps.add(new RoaringBitmap());
       }
       int[] results = roaringBitmap.stream().toArray();
-      int currentIndex = 0;
-      for (int result : results) {
-        roaringBitmaps.get(currentIndex++).add(result);
-        if (currentIndex == sliceNum - 1) {
-          currentIndex = 0;
+      int quotient = results.length % sliceNum;
+      int count = results.length / sliceNum;
+      int index = 0;
+      for (int i = 0; i < results.length; i++) {
+        int gap = index < quotient ? count + 1 : count;
+        int start = i;
+        for (; start <= i + gap; start++) {
+          roaringBitmaps.get(index).add(results[start]);
         }
+        i = start;
+        index++;
       }
       return roaringBitmaps;
     }
