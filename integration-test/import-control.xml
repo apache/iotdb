@@ -109,5 +109,6 @@
   <subpackage name="tools">
     <allow class="org.apache.iotdb.cli.it.AbstractScript" />
     <allow class="org.apache.iotdb.session.ISession" />
+    <allow pkg="org\.apache\.iotdb\.isession.*" regex="true" />
   </subpackage>
 </import-control>
