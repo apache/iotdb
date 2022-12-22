@@ -21,11 +21,7 @@ package org.apache.iotdb.db.metadata.schemaRegion;
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
-import org.apache.iotdb.db.metadata.plan.schemaregion.impl.ActivateTemplateInClusterPlanImpl;
-import org.apache.iotdb.db.metadata.plan.schemaregion.impl.CreateTimeSeriesPlanImpl;
-import org.apache.iotdb.db.metadata.plan.schemaregion.impl.DeactivateTemplatePlanImpl;
-import org.apache.iotdb.db.metadata.plan.schemaregion.impl.PreDeactivateTemplatePlanImpl;
-import org.apache.iotdb.db.metadata.plan.schemaregion.impl.RollbackPreDeactivateTemplatePlanImpl;
+import org.apache.iotdb.db.metadata.plan.schemaregion.impl.write.SchemaRegionWritePlanFactory;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -54,7 +50,7 @@ public class SchemaRegionTemplateTest extends AbstractSchemaRegionTest {
   public void testActivateSchemaTemplate() throws Exception {
     ISchemaRegion schemaRegion = getSchemaRegion("root.sg", 0);
     schemaRegion.createTimeseries(
-        new CreateTimeSeriesPlanImpl(
+        SchemaRegionWritePlanFactory.getCreateTimeSeriesPlan(
             new PartialPath("root.sg.wf01.wt01.status"),
             TSDataType.BOOLEAN,
             TSEncoding.PLAIN,
@@ -80,10 +76,12 @@ public class SchemaRegionTemplateTest extends AbstractSchemaRegionTest {
                 Collections.singletonList(CompressionType.SNAPPY)));
     template.setId(templateId);
     schemaRegion.activateSchemaTemplate(
-        new ActivateTemplateInClusterPlanImpl(new PartialPath("root.sg.wf01.wt01"), 3, templateId),
+        SchemaRegionWritePlanFactory.getActivateTemplateInClusterPlan(
+            new PartialPath("root.sg.wf01.wt01"), 3, templateId),
         template);
     schemaRegion.activateSchemaTemplate(
-        new ActivateTemplateInClusterPlanImpl(new PartialPath("root.sg.wf02"), 2, templateId),
+        SchemaRegionWritePlanFactory.getActivateTemplateInClusterPlan(
+            new PartialPath("root.sg.wf02"), 2, templateId),
         template);
     Set<String> expectedPaths = new HashSet<>(Arrays.asList("root.sg.wf01.wt01", "root.sg.wf02"));
     Set<String> pathsUsingTemplate =
@@ -118,7 +116,7 @@ public class SchemaRegionTemplateTest extends AbstractSchemaRegionTest {
   public void testDeactivateTemplate() throws Exception {
     ISchemaRegion schemaRegion = getSchemaRegion("root.sg", 0);
     schemaRegion.createTimeseries(
-        new CreateTimeSeriesPlanImpl(
+        SchemaRegionWritePlanFactory.getCreateTimeSeriesPlan(
             new PartialPath("root.sg.wf01.wt01.status"),
             TSDataType.BOOLEAN,
             TSEncoding.PLAIN,
@@ -144,27 +142,29 @@ public class SchemaRegionTemplateTest extends AbstractSchemaRegionTest {
                 Collections.singletonList(CompressionType.SNAPPY)));
     template.setId(templateId);
     schemaRegion.activateSchemaTemplate(
-        new ActivateTemplateInClusterPlanImpl(new PartialPath("root.sg.wf01.wt01"), 3, templateId),
+        SchemaRegionWritePlanFactory.getActivateTemplateInClusterPlan(
+            new PartialPath("root.sg.wf01.wt01"), 3, templateId),
         template);
     schemaRegion.activateSchemaTemplate(
-        new ActivateTemplateInClusterPlanImpl(new PartialPath("root.sg.wf02"), 2, templateId),
+        SchemaRegionWritePlanFactory.getActivateTemplateInClusterPlan(
+            new PartialPath("root.sg.wf02"), 2, templateId),
         template);
 
     // construct schema blacklist with template on root.sg.wf01.wt01 and root.sg.wf02
     Map<PartialPath, List<Integer>> allDeviceTemplateMap = new HashMap<>();
     allDeviceTemplateMap.put(new PartialPath("root.**"), Collections.singletonList(templateId));
     schemaRegion.constructSchemaBlackListWithTemplate(
-        new PreDeactivateTemplatePlanImpl(allDeviceTemplateMap));
+        SchemaRegionWritePlanFactory.getPreDeactivateTemplatePlan(allDeviceTemplateMap));
 
     // rollback schema blacklist with template on root.sg.wf02
     Map<PartialPath, List<Integer>> wf02TemplateMap = new HashMap<>();
     wf02TemplateMap.put(new PartialPath("root.sg.wf02"), Collections.singletonList(templateId));
     schemaRegion.rollbackSchemaBlackListWithTemplate(
-        new RollbackPreDeactivateTemplatePlanImpl(wf02TemplateMap));
+        SchemaRegionWritePlanFactory.getRollbackPreDeactivateTemplatePlan(wf02TemplateMap));
 
     // deactivate schema blacklist with template on root.sg.wf01.wt01
     schemaRegion.deactivateTemplateInBlackList(
-        new DeactivateTemplatePlanImpl(allDeviceTemplateMap));
+        SchemaRegionWritePlanFactory.getDeactivateTemplatePlan(allDeviceTemplateMap));
 
     // check using getPathsUsingTemplate
     List<String> expectedPaths = Collections.singletonList("root.sg.wf02");

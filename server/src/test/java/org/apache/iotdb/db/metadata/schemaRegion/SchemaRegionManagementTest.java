@@ -26,12 +26,11 @@ import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.metadata.MetadataConstant;
-import org.apache.iotdb.db.metadata.plan.schemaregion.impl.SchemaRegionPlanFactory;
+import org.apache.iotdb.db.metadata.plan.schemaregion.impl.read.SchemaRegionReadPlanFactory;
+import org.apache.iotdb.db.metadata.plan.schemaregion.impl.write.SchemaRegionWritePlanFactory;
+import org.apache.iotdb.db.metadata.plan.schemaregion.result.ShowTimeSeriesResult;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.metadata.template.Template;
-import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
-import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
-import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -73,7 +72,7 @@ public class SchemaRegionManagementTest extends AbstractSchemaRegionTest {
       Map<String, String> tags = new HashMap<>();
       tags.put("tag-key", "tag-value");
       schemaRegion.createTimeseries(
-          new CreateTimeSeriesPlan(
+          SchemaRegionWritePlanFactory.getCreateTimeSeriesPlan(
               new PartialPath("root.sg.d1.s1"),
               TSDataType.INT32,
               TSEncoding.PLAIN,
@@ -86,7 +85,7 @@ public class SchemaRegionManagementTest extends AbstractSchemaRegionTest {
 
       Template template = generateTemplate();
       schemaRegion.activateSchemaTemplate(
-          SchemaRegionPlanFactory.getActivateTemplateInClusterPlan(
+          SchemaRegionWritePlanFactory.getActivateTemplateInClusterPlan(
               new PartialPath("root.sg.d2"), 1, template.getId()),
           template);
 
@@ -98,12 +97,11 @@ public class SchemaRegionManagementTest extends AbstractSchemaRegionTest {
 
       Pair<List<ShowTimeSeriesResult>, Integer> result =
           schemaRegion.showTimeseries(
-              new ShowTimeSeriesPlan(
-                  new PartialPath("root.sg.**"), false, "tag-key", "tag-value", 0, 0, false),
-              null);
+              SchemaRegionReadPlanFactory.getShowTimeSeriesPlan(
+                  new PartialPath("root.sg.**"), false, "tag-key", "tag-value"));
 
       ShowTimeSeriesResult seriesResult = result.left.get(0);
-      Assert.assertEquals(new PartialPath("root.sg.d1.s1").getFullPath(), seriesResult.getName());
+      Assert.assertEquals(new PartialPath("root.sg.d1.s1").getFullPath(), seriesResult.getPath());
       Map<String, String> resultTagMap = seriesResult.getTag();
       Assert.assertEquals(1, resultTagMap.size());
       Assert.assertEquals("tag-value", resultTagMap.get("tag-key"));
@@ -114,25 +112,25 @@ public class SchemaRegionManagementTest extends AbstractSchemaRegionTest {
       newSchemaRegion.loadSnapshot(snapshotDir);
       result =
           newSchemaRegion.showTimeseries(
-              new ShowTimeSeriesPlan(
-                  new PartialPath("root.sg.**"), false, "tag-key", "tag-value", 0, 0, false),
-              null);
+              SchemaRegionReadPlanFactory.getShowTimeSeriesPlan(
+                  new PartialPath("root.sg.**"), false, "tag-key", "tag-value"));
 
       seriesResult = result.left.get(0);
-      Assert.assertEquals(new PartialPath("root.sg.d1.s1").getFullPath(), seriesResult.getName());
+      Assert.assertEquals(new PartialPath("root.sg.d1.s1").getFullPath(), seriesResult.getPath());
       resultTagMap = seriesResult.getTag();
       Assert.assertEquals(1, resultTagMap.size());
       Assert.assertEquals("tag-value", resultTagMap.get("tag-key"));
 
-      ShowTimeSeriesPlan showTimeSeriesPlan =
-          new ShowTimeSeriesPlan(new PartialPath("root.sg.*.s1"), false, null, null, 0, 0, false);
-      showTimeSeriesPlan.setRelatedTemplate(Collections.singletonMap(template.getId(), template));
-      result = newSchemaRegion.showTimeseries(showTimeSeriesPlan, null);
+      result =
+          newSchemaRegion.showTimeseries(
+              SchemaRegionReadPlanFactory.getShowTimeSeriesPlan(
+                  new PartialPath("root.sg.*.s1"),
+                  Collections.singletonMap(template.getId(), template)));
       result.left.sort(ShowTimeSeriesResult::compareTo);
       Assert.assertEquals(
-          new PartialPath("root.sg.d1.s1").getFullPath(), result.left.get(0).getName());
+          new PartialPath("root.sg.d1.s1").getFullPath(), result.left.get(0).getPath());
       Assert.assertEquals(
-          new PartialPath("root.sg.d2.s1").getFullPath(), result.left.get(1).getName());
+          new PartialPath("root.sg.d2.s1").getFullPath(), result.left.get(1).getPath());
 
     } finally {
       config.setSchemaRegionConsensusProtocolClass(schemaRegionConsensusProtocolClass);
@@ -166,7 +164,7 @@ public class SchemaRegionManagementTest extends AbstractSchemaRegionTest {
       for (int i = 0; i < 1000; i++) {
         for (int j = 0; j < 1000; j++) {
           schemaRegion.createTimeseries(
-              new CreateTimeSeriesPlan(
+              SchemaRegionWritePlanFactory.getCreateTimeSeriesPlan(
                   new PartialPath("root.sg.d" + i + ".s" + j),
                   TSDataType.INT32,
                   TSEncoding.PLAIN,
