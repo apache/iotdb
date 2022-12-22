@@ -30,7 +30,6 @@ import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.SchemaDirCreationFailureException;
 import org.apache.iotdb.db.exception.metadata.SeriesNumberOverflowException;
 import org.apache.iotdb.db.exception.metadata.SeriesOverflowException;
@@ -120,9 +119,7 @@ import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARA
  *         <li>Interfaces for Entity/Device info Query
  *         <li>Interfaces for timeseries, measurement and schema info Query
  *       </ol>
- *   <li>Interfaces and methods for MNode query
  *   <li>Interfaces for alias and tag/attribute operations
- *   <li>Interfaces and Implementation for InsertPlan process
  *   <li>Interfaces and Implementation for Template operations
  * </ol>
  */
@@ -1014,18 +1011,6 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   }
 
   /**
-   * Return all measurement paths for given path if the path is abstract. Or return the path itself.
-   * Regular expression in this method is formed by the amalgamation of seriesPath and the character
-   * '*'.
-   *
-   * @param pathPattern can be a pattern or a full path of timeseries.
-   */
-  public List<MeasurementPath> getMeasurementPaths(PartialPath pathPattern)
-      throws MetadataException {
-    return getMeasurementPaths(pathPattern, false, false);
-  }
-
-  /**
    * Similar to method getMeasurementPaths(), but return Path with alias and filter the result by
    * limit and offset. If using prefix match, the path pattern is used to match prefix path. All
    * timeseries start with the matched prefix path will be collected.
@@ -1149,28 +1134,6 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     return new Pair<>(res, ans.right);
   }
   // endregion
-  // endregion
-
-  // region Interfaces and methods for MNode query
-
-  /**
-   * Invoked during insertPlan process. Get target MeasurementMNode from given EntityMNode. If the
-   * result is not null and is not MeasurementMNode, it means a timeseries with same path cannot be
-   * created thus throw PathAlreadyExistException.
-   */
-  protected IMeasurementMNode getMeasurementMNode(IMNode deviceMNode, String measurementName)
-      throws MetadataException {
-    IMNode result = deviceMNode.getChild(measurementName);
-    if (result == null) {
-      return null;
-    }
-    if (result.isMeasurement()) {
-      return result.getAsMeasurementMNode();
-    } else {
-      throw new PathAlreadyExistException(
-          deviceMNode.getFullPath() + PATH_SEPARATOR + measurementName);
-    }
-  }
   // endregion
 
   // region Interfaces for alias and tag/attribute operations

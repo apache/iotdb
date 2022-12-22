@@ -40,7 +40,6 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashSet;
@@ -131,26 +130,6 @@ public abstract class MTreeBelowSGTest {
   }
 
   @Test
-  public void testAddAndPathExist() throws MetadataException {
-    storageGroup = getStorageGroup(new PartialPath("root.laptop"));
-    assertFalse(storageGroup.isPathExist(new PartialPath("root.laptop.d1")));
-    try {
-      storageGroup.createTimeseries(
-          new PartialPath("root.laptop.d1.s1"),
-          TSDataType.INT32,
-          TSEncoding.RLE,
-          TSFileDescriptor.getInstance().getConfig().getCompressor(),
-          Collections.emptyMap(),
-          null);
-    } catch (MetadataException e1) {
-      fail(e1.getMessage());
-    }
-    assertTrue(storageGroup.isPathExist(new PartialPath("root.laptop.d1")));
-    assertTrue(storageGroup.isPathExist(new PartialPath("root.laptop")));
-    assertFalse(storageGroup.isPathExist(new PartialPath("root.laptop.d1.s2")));
-  }
-
-  @Test
   public void testAddAndQueryPath() {
     try {
       assertFalse(root.isStorageGroupAlreadySet(new PartialPath("root.a")));
@@ -202,13 +181,13 @@ public abstract class MTreeBelowSGTest {
     try {
       assertNotNull(storageGroup);
       List<MeasurementPath> result =
-          storageGroup.getMeasurementPaths(new PartialPath("root.a.*.s0"));
+          storageGroup.getMeasurementPaths(new PartialPath("root.a.*.s0"), false);
       result.sort(Comparator.comparing(MeasurementPath::getFullPath));
       assertEquals(2, result.size());
       assertEquals("root.a.d0.s0", result.get(0).getFullPath());
       assertEquals("root.a.d1.s0", result.get(1).getFullPath());
 
-      result = storageGroup.getMeasurementPaths(new PartialPath("root.a.*.*.s0"));
+      result = storageGroup.getMeasurementPaths(new PartialPath("root.a.*.*.s0"), false);
       assertEquals("root.a.b.d0.s0", result.get(0).getFullPath());
     } catch (MetadataException e) {
       e.printStackTrace();
@@ -269,13 +248,13 @@ public abstract class MTreeBelowSGTest {
       assertNotNull(storageGroup);
 
       List<MeasurementPath> result =
-          storageGroup.getMeasurementPaths(new PartialPath("root.a.*.s0"));
+          storageGroup.getMeasurementPaths(new PartialPath("root.a.*.s0"), false);
       result.sort(Comparator.comparing(MeasurementPath::getFullPath));
       assertEquals(2, result.size());
       assertEquals("root.a.d0.s0", result.get(0).getFullPath());
       assertEquals("root.a.d1.s0", result.get(1).getFullPath());
 
-      result = storageGroup.getMeasurementPaths(new PartialPath("root.a.*.temperature"));
+      result = storageGroup.getMeasurementPaths(new PartialPath("root.a.*.temperature"), false);
       result.sort(Comparator.comparing(MeasurementPath::getFullPath));
       assertEquals(2, result.size());
       assertEquals("root.a.d0.s0", result.get(0).getFullPath());
@@ -314,50 +293,6 @@ public abstract class MTreeBelowSGTest {
   }
 
   @Test
-  public void testGetAllChildNodeNamesByPath() {
-    try {
-      storageGroup = getStorageGroup(new PartialPath("root.a"));
-
-      storageGroup.createTimeseries(
-          new PartialPath("root.a.d0.s0"),
-          TSDataType.INT32,
-          TSEncoding.RLE,
-          TSFileDescriptor.getInstance().getConfig().getCompressor(),
-          Collections.emptyMap(),
-          null);
-      storageGroup.createTimeseries(
-          new PartialPath("root.a.d0.s1"),
-          TSDataType.INT32,
-          TSEncoding.RLE,
-          TSFileDescriptor.getInstance().getConfig().getCompressor(),
-          Collections.emptyMap(),
-          null);
-      storageGroup.createTimeseries(
-          new PartialPath("root.a.d5"),
-          TSDataType.INT32,
-          TSEncoding.RLE,
-          TSFileDescriptor.getInstance().getConfig().getCompressor(),
-          Collections.emptyMap(),
-          null);
-
-      // getChildNodeByPath
-      Set<String> result1 = storageGroup.getChildNodeNameInNextLevel(new PartialPath("root.a.d0"));
-      Set<String> result2 = storageGroup.getChildNodeNameInNextLevel(new PartialPath("root.a"));
-      assertEquals(new HashSet<>(Arrays.asList("s0", "s1")), result1);
-      assertEquals(new HashSet<>(Arrays.asList("d0", "d5")), result2);
-
-      // if child node is nll   will return  null HashSet
-      Set<String> result3 = storageGroup.getChildNodeNameInNextLevel(new PartialPath("root.a.d5"));
-      assertEquals(result3, new HashSet<>(Collections.emptyList()));
-
-      Set<String> result4 = storageGroup.getChildNodeNameInNextLevel(new PartialPath("root"));
-      assertEquals(new HashSet<>(Collections.singletonList("a")), result4);
-    } catch (MetadataException e1) {
-      e1.printStackTrace();
-    }
-  }
-
-  @Test
   public void testSetStorageGroup() throws MetadataException {
     try {
       storageGroup = getStorageGroup(new PartialPath("root.laptop.d1"));
@@ -371,7 +306,6 @@ public abstract class MTreeBelowSGTest {
           "root.laptop.d1",
           root.getBelongedStorageGroup(new PartialPath("root.laptop.d1.s1")).getFullPath());
 
-      assertFalse(storageGroup.isPathExist(new PartialPath("root.laptop.d1.s1")));
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -382,9 +316,6 @@ public abstract class MTreeBelowSGTest {
       Assert.assertEquals(
           "some children of root.laptop have already been created as database", e.getMessage());
     }
-    // check timeseries
-    assertFalse(storageGroup.isPathExist(new PartialPath("root.laptop.d1.s0")));
-    assertFalse(storageGroup.isPathExist(new PartialPath("root.laptop.d1.s1")));
 
     try {
       assertEquals(
@@ -417,7 +348,7 @@ public abstract class MTreeBelowSGTest {
       e.printStackTrace();
       fail(e.getMessage());
     }
-    assertFalse(storageGroup.isPathExist(new PartialPath("root.laptop.d1.s0")));
+
     try {
       root.deleteStorageGroup(new PartialPath("root.laptop.d1"));
     } catch (MetadataException e) {
@@ -427,69 +358,6 @@ public abstract class MTreeBelowSGTest {
     assertFalse(root.isStorageGroupAlreadySet(new PartialPath("root.laptop.d1.s1")));
     assertFalse(root.isStorageGroupAlreadySet(new PartialPath("root.laptop.d1")));
     assertFalse(root.isStorageGroupAlreadySet(new PartialPath("root.laptop")));
-  }
-
-  @Test
-  public void testGetAllTimeseriesCount() {
-    try {
-      storageGroup = getStorageGroup(new PartialPath("root.laptop"));
-      storageGroup.createTimeseries(
-          new PartialPath("root.laptop.d1.s1"),
-          TSDataType.INT32,
-          TSEncoding.PLAIN,
-          CompressionType.GZIP,
-          null,
-          null);
-      storageGroup.createTimeseries(
-          new PartialPath("root.laptop.d1.s2"),
-          TSDataType.INT32,
-          TSEncoding.PLAIN,
-          CompressionType.GZIP,
-          null,
-          null);
-      storageGroup.createTimeseries(
-          new PartialPath("root.laptop.d2.s1"),
-          TSDataType.INT32,
-          TSEncoding.PLAIN,
-          CompressionType.GZIP,
-          null,
-          null);
-      storageGroup.createTimeseries(
-          new PartialPath("root.laptop.d2.s2"),
-          TSDataType.INT32,
-          TSEncoding.PLAIN,
-          CompressionType.GZIP,
-          null,
-          null);
-
-      assertEquals(4, storageGroup.getAllTimeseriesCount(new PartialPath("root.laptop.**")));
-      assertEquals(2, storageGroup.getAllTimeseriesCount(new PartialPath("root.laptop.*.s1")));
-      assertEquals(0, storageGroup.getAllTimeseriesCount(new PartialPath("root.laptop.d1.s3")));
-
-      assertEquals(
-          1,
-          storageGroup.getNodesCountInGivenLevel(new PartialPath("root.laptop.**.s1"), 1, false));
-      assertEquals(
-          1, storageGroup.getNodesCountInGivenLevel(new PartialPath("root.laptop.*.*"), 1, false));
-      assertEquals(
-          2, storageGroup.getNodesCountInGivenLevel(new PartialPath("root.laptop.*.*"), 2, false));
-      assertEquals(
-          2, storageGroup.getNodesCountInGivenLevel(new PartialPath("root.laptop.*"), 2, false));
-      assertEquals(
-          4, storageGroup.getNodesCountInGivenLevel(new PartialPath("root.laptop.*.*"), 3, false));
-      assertEquals(
-          2, storageGroup.getNodesCountInGivenLevel(new PartialPath("root.laptop.**"), 2, false));
-      assertEquals(
-          4, storageGroup.getNodesCountInGivenLevel(new PartialPath("root.laptop.**"), 3, false));
-      assertEquals(
-          2, storageGroup.getNodesCountInGivenLevel(new PartialPath("root.laptop.d1.*"), 3, false));
-      assertEquals(
-          0,
-          storageGroup.getNodesCountInGivenLevel(new PartialPath("root.laptop.d1.**"), 4, false));
-    } catch (MetadataException e) {
-      e.printStackTrace();
-      fail(e.getMessage());
-    }
   }
 
   @Test
@@ -512,8 +380,6 @@ public abstract class MTreeBelowSGTest {
 
     assertEquals(2, storageGroup.getDevices(new PartialPath("root"), true).size());
     assertEquals(2, storageGroup.getDevices(new PartialPath("root.**"), false).size());
-    assertEquals(2, storageGroup.getAllTimeseriesCount(new PartialPath("root.**")));
-    assertEquals(2, storageGroup.getMeasurementPaths(new PartialPath("root.**")).size());
     assertEquals(
         2,
         storageGroup
@@ -621,22 +487,22 @@ public abstract class MTreeBelowSGTest {
         null,
         null);
 
-    Assert.assertEquals(0, storageGroup.getDevicesNum(new PartialPath("root")));
-    Assert.assertEquals(1, storageGroup.getDevicesNum(new PartialPath("root.laptop")));
-    Assert.assertEquals(0, storageGroup.getDevicesNum(new PartialPath("root.laptop.s1")));
-    Assert.assertEquals(1, storageGroup.getDevicesNum(new PartialPath("root.laptop.d1")));
-    Assert.assertEquals(2, storageGroup.getDevicesNum(new PartialPath("root.laptop.*")));
-    Assert.assertEquals(2, storageGroup.getDevicesNum(new PartialPath("root.laptop.*.*")));
-    Assert.assertEquals(0, storageGroup.getDevicesNum(new PartialPath("root.laptop.*.*.*")));
-    Assert.assertEquals(4, storageGroup.getDevicesNum(new PartialPath("root.laptop.**")));
-    Assert.assertEquals(5, storageGroup.getDevicesNum(new PartialPath("root.**")));
-    Assert.assertEquals(4, storageGroup.getDevicesNum(new PartialPath("root.**.*")));
-    Assert.assertEquals(4, storageGroup.getDevicesNum(new PartialPath("root.*.**")));
-    Assert.assertEquals(2, storageGroup.getDevicesNum(new PartialPath("root.**.d1")));
-    Assert.assertEquals(1, storageGroup.getDevicesNum(new PartialPath("root.laptop.*.d1")));
-    Assert.assertEquals(3, storageGroup.getDevicesNum(new PartialPath("root.**.d*")));
-    Assert.assertEquals(1, storageGroup.getDevicesNum(new PartialPath("root.laptop.**.s1")));
-    Assert.assertEquals(1, storageGroup.getDevicesNum(new PartialPath("root.*.d2.*")));
+    Assert.assertEquals(0, storageGroup.getDevicesNum(new PartialPath("root"), false));
+    Assert.assertEquals(1, storageGroup.getDevicesNum(new PartialPath("root.laptop"), false));
+    Assert.assertEquals(0, storageGroup.getDevicesNum(new PartialPath("root.laptop.s1"), false));
+    Assert.assertEquals(1, storageGroup.getDevicesNum(new PartialPath("root.laptop.d1"), false));
+    Assert.assertEquals(2, storageGroup.getDevicesNum(new PartialPath("root.laptop.*"), false));
+    Assert.assertEquals(2, storageGroup.getDevicesNum(new PartialPath("root.laptop.*.*"), false));
+    Assert.assertEquals(0, storageGroup.getDevicesNum(new PartialPath("root.laptop.*.*.*"), false));
+    Assert.assertEquals(4, storageGroup.getDevicesNum(new PartialPath("root.laptop.**"), false));
+    Assert.assertEquals(5, storageGroup.getDevicesNum(new PartialPath("root.**"), false));
+    Assert.assertEquals(4, storageGroup.getDevicesNum(new PartialPath("root.**.*"), false));
+    Assert.assertEquals(4, storageGroup.getDevicesNum(new PartialPath("root.*.**"), false));
+    Assert.assertEquals(2, storageGroup.getDevicesNum(new PartialPath("root.**.d1"), false));
+    Assert.assertEquals(1, storageGroup.getDevicesNum(new PartialPath("root.laptop.*.d1"), false));
+    Assert.assertEquals(3, storageGroup.getDevicesNum(new PartialPath("root.**.d*"), false));
+    Assert.assertEquals(1, storageGroup.getDevicesNum(new PartialPath("root.laptop.**.s1"), false));
+    Assert.assertEquals(1, storageGroup.getDevicesNum(new PartialPath("root.*.d2.*"), false));
   }
 
   @Test
@@ -693,46 +559,6 @@ public abstract class MTreeBelowSGTest {
         1, storageGroup.getNodesListInGivenLevel(new PartialPath("root.*.*"), 1, false).size());
     Assert.assertEquals(
         2, storageGroup.getNodesListInGivenLevel(new PartialPath("root.*.*.s1"), 2, false).size());
-  }
-
-  @Test
-  public void testGetDeviceForTimeseries() throws MetadataException {
-    storageGroup = getStorageGroup(new PartialPath("root.sg"));
-    storageGroup.createTimeseries(
-        new PartialPath("root.sg.a1.d1.s1"),
-        TSDataType.INT32,
-        TSEncoding.PLAIN,
-        CompressionType.GZIP,
-        null,
-        null);
-    storageGroup.createTimeseries(
-        new PartialPath("root.sg.a1.d1.s2"),
-        TSDataType.INT32,
-        TSEncoding.PLAIN,
-        CompressionType.GZIP,
-        null,
-        null);
-
-    storageGroup.createTimeseries(
-        new PartialPath("root.sg.a2.d2.s1"),
-        TSDataType.INT32,
-        TSEncoding.PLAIN,
-        CompressionType.GZIP,
-        null,
-        null);
-    storageGroup.createTimeseries(
-        new PartialPath("root.sg.a2.d2.s2"),
-        TSDataType.INT32,
-        TSEncoding.PLAIN,
-        CompressionType.GZIP,
-        null,
-        null);
-
-    Assert.assertEquals(2, storageGroup.getDevicesByTimeseries(new PartialPath("root.**")).size());
-    Assert.assertEquals(
-        1, storageGroup.getDevicesByTimeseries(new PartialPath("root.*.*.d1.*")).size());
-    Assert.assertEquals(
-        2, storageGroup.getDevicesByTimeseries(new PartialPath("root.*.*.d*.*")).size());
   }
 
   @Test
