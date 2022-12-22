@@ -37,6 +37,7 @@ import org.apache.spark.sql.catalyst.expressions.GenericRow
 import org.apache.spark.sql.execution.datasources.{FileFormat, OutputWriterFactory, PartitionedFile}
 import org.apache.spark.sql.sources.{DataSourceRegister, Filter}
 import org.apache.spark.sql.types._
+import org.apache.spark.util.TaskCompletionListener
 import org.slf4j.LoggerFactory
 
 import java.io._
@@ -109,7 +110,9 @@ private[tsfile] class DefaultSource extends FileFormat with DataSourceRegister {
       val readTsFile: TsFileReader = new TsFileReader(reader)
 
       Option(TaskContext.get()).foreach { taskContext => {
-        taskContext.addTaskCompletionListener { _ => readTsFile.close() }
+        taskContext.addTaskCompletionListener { new TaskCompletionListener {
+          override def onTaskCompletion(context: TaskContext): Unit = readTsFile.close()
+        } }
         log.info("task Id: " + taskContext.taskAttemptId() + " partition Id: " +
           taskContext.partitionId())
       }
