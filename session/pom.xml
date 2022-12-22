@@ -83,7 +83,7 @@
         </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
-            <artifactId>iotdb-isession</artifactId>
+            <artifactId>isession</artifactId>
             <version>${project.version}</version>
         </dependency>
     </dependencies>
