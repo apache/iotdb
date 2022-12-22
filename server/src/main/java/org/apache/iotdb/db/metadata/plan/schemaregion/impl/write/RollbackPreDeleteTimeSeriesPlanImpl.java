@@ -17,20 +17,19 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.metadata.plan.schemaregion.impl;
+package org.apache.iotdb.db.metadata.plan.schemaregion.impl.write;
 
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.metadata.plan.schemaregion.write.IChangeAliasPlan;
+import org.apache.iotdb.db.metadata.plan.schemaregion.write.IRollbackPreDeleteTimeSeriesPlan;
 
-public class ChangeAliasPlanImpl implements IChangeAliasPlan {
+public class RollbackPreDeleteTimeSeriesPlanImpl implements IRollbackPreDeleteTimeSeriesPlan {
+
   private PartialPath path;
-  private String alias;
 
-  public ChangeAliasPlanImpl() {}
+  RollbackPreDeleteTimeSeriesPlanImpl() {}
 
-  public ChangeAliasPlanImpl(PartialPath path, String alias) {
+  RollbackPreDeleteTimeSeriesPlanImpl(PartialPath path) {
     this.path = path;
-    this.alias = alias;
   }
 
   @Override
@@ -41,15 +40,5 @@ public class ChangeAliasPlanImpl implements IChangeAliasPlan {
   @Override
   public void setPath(PartialPath path) {
     this.path = path;
-  }
-
-  @Override
-  public String getAlias() {
-    return alias;
-  }
-
-  @Override
-  public void setAlias(String alias) {
-    this.alias = alias;
   }
 }

@@ -29,7 +29,7 @@ import org.apache.iotdb.db.exception.metadata.MeasurementAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.localconfignode.LocalConfigNode;
-import org.apache.iotdb.db.metadata.plan.schemaregion.impl.SchemaRegionPlanFactory;
+import org.apache.iotdb.db.metadata.plan.schemaregion.impl.write.SchemaRegionWritePlanFactory;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaEngine;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -153,7 +153,7 @@ public class LocalSchemaProcessor {
     try {
       getBelongedSchemaRegionWithAutoCreate(path)
           .createTimeseries(
-              SchemaRegionPlanFactory.getCreateTimeSeriesPlan(
+              SchemaRegionWritePlanFactory.getCreateTimeSeriesPlan(
                   path, dataType, encoding, compressor, props, null, null, null),
               -1);
     } catch (PathAlreadyExistException
@@ -177,7 +177,7 @@ public class LocalSchemaProcessor {
       throws MetadataException {
     getBelongedSchemaRegionWithAutoCreate(prefixPath)
         .createAlignedTimeSeries(
-            SchemaRegionPlanFactory.getCreateAlignedTimeSeriesPlan(
+            SchemaRegionWritePlanFactory.getCreateAlignedTimeSeriesPlan(
                 prefixPath, measurements, dataTypes, encodings, compressors, null, null, null));
   }
 

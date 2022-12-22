@@ -20,8 +20,7 @@ package org.apache.iotdb.db.metadata.schemaRegion;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.metadata.plan.schemaregion.impl.CreateAlignedTimeSeriesPlanImpl;
-import org.apache.iotdb.db.metadata.plan.schemaregion.impl.CreateTimeSeriesPlanImpl;
+import org.apache.iotdb.db.metadata.plan.schemaregion.impl.write.SchemaRegionWritePlanFactory;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -44,7 +43,7 @@ public class SchemaRegionTestUtil {
       String alias)
       throws MetadataException {
     schemaRegion.createTimeseries(
-        new CreateTimeSeriesPlanImpl(
+        SchemaRegionWritePlanFactory.getCreateTimeSeriesPlan(
             new PartialPath(fullPath),
             dataType,
             encoding,
@@ -69,7 +68,7 @@ public class SchemaRegionTestUtil {
       throws MetadataException {
     for (int i = 0; i < fullPaths.size(); i++) {
       schemaRegion.createTimeseries(
-          new CreateTimeSeriesPlanImpl(
+          SchemaRegionWritePlanFactory.getCreateTimeSeriesPlan(
               new PartialPath(fullPaths.get(i)),
               dataTypes.get(i),
               encodings.get(i),
@@ -94,7 +93,7 @@ public class SchemaRegionTestUtil {
       List<String> alias)
       throws MetadataException {
     schemaRegion.createAlignedTimeSeries(
-        new CreateAlignedTimeSeriesPlanImpl(
+        SchemaRegionWritePlanFactory.getCreateAlignedTimeSeriesPlan(
             new PartialPath(devicePath),
             measurements,
             dataTypes,

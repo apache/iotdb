@@ -48,8 +48,8 @@ import org.apache.iotdb.db.metadata.mtree.MTreeBelowSGMemoryImpl;
 import org.apache.iotdb.db.metadata.plan.schemaregion.ISchemaRegionPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.SchemaRegionPlanVisitor;
 import org.apache.iotdb.db.metadata.plan.schemaregion.impl.SchemaRegionPlanDeserializer;
-import org.apache.iotdb.db.metadata.plan.schemaregion.impl.SchemaRegionPlanFactory;
 import org.apache.iotdb.db.metadata.plan.schemaregion.impl.SchemaRegionPlanSerializer;
+import org.apache.iotdb.db.metadata.plan.schemaregion.impl.write.SchemaRegionWritePlanFactory;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IActivateTemplateInClusterPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IAutoCreateDeviceMNodePlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IChangeAliasPlan;
@@ -745,7 +745,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
         measurementMNode.setPreDeleted(true);
         try {
           writeToMLog(
-              SchemaRegionPlanFactory.getPreDeleteTimeSeriesPlan(
+              SchemaRegionWritePlanFactory.getPreDeleteTimeSeriesPlan(
                   measurementMNode.getPartialPath()));
         } catch (IOException e) {
           throw new MetadataException(e);
@@ -767,7 +767,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
         measurementMNode.setPreDeleted(false);
         try {
           writeToMLog(
-              SchemaRegionPlanFactory.getRollbackPreDeleteTimeSeriesPlan(
+              SchemaRegionWritePlanFactory.getRollbackPreDeleteTimeSeriesPlan(
                   measurementMNode.getPartialPath()));
         } catch (IOException e) {
           throw new MetadataException(e);
@@ -795,7 +795,8 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
         try {
           deleteSingleTimeseriesInBlackList(path);
           writeToMLog(
-              SchemaRegionPlanFactory.getDeleteTimeSeriesPlan(Collections.singletonList(path)));
+              SchemaRegionWritePlanFactory.getDeleteTimeSeriesPlan(
+                  Collections.singletonList(path)));
         } catch (IOException e) {
           throw new MetadataException(e);
         }
@@ -836,7 +837,8 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   private void deleteSingleTimeseriesInternal(PartialPath p) throws MetadataException, IOException {
     deleteOneTimeseriesUpdateStatistics(p);
     if (!isRecovering) {
-      writeToMLog(SchemaRegionPlanFactory.getDeleteTimeSeriesPlan(Collections.singletonList(p)));
+      writeToMLog(
+          SchemaRegionWritePlanFactory.getDeleteTimeSeriesPlan(Collections.singletonList(p)));
     }
   }
 
@@ -872,7 +874,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   private IMNode getDeviceNodeWithAutoCreate(PartialPath path)
       throws IOException, MetadataException {
     IMNode node = mtree.getDeviceNodeWithAutoCreating(path);
-    writeToMLog(SchemaRegionPlanFactory.getAutoCreateDeviceMNodePlan(node.getPartialPath()));
+    writeToMLog(SchemaRegionWritePlanFactory.getAutoCreateDeviceMNodePlan(node.getPartialPath()));
     return node;
   }
 
@@ -1229,7 +1231,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     mtree.setAlias(leafMNode, alias);
 
     try {
-      writeToMLog(SchemaRegionPlanFactory.getChangeAliasPlan(path, alias));
+      writeToMLog(SchemaRegionWritePlanFactory.getChangeAliasPlan(path, alias));
     } catch (IOException e) {
       throw new MetadataException(e);
     }
@@ -1264,7 +1266,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     // no tag or attribute, we need to add a new record in log
     if (leafMNode.getOffset() < 0) {
       long offset = tagManager.writeTagFile(tagsMap, attributesMap);
-      writeToMLog(SchemaRegionPlanFactory.getChangeTagOffsetPlan(fullPath, offset));
+      writeToMLog(SchemaRegionWritePlanFactory.getChangeTagOffsetPlan(fullPath, offset));
       leafMNode.setOffset(offset);
       // update inverted Index map
       if (tagsMap != null && !tagsMap.isEmpty()) {
@@ -1290,7 +1292,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
 
       mtree.setAlias(leafMNode, alias);
       // persist to WAL
-      writeToMLog(SchemaRegionPlanFactory.getChangeAliasPlan(fullPath, alias));
+      writeToMLog(SchemaRegionWritePlanFactory.getChangeAliasPlan(fullPath, alias));
     }
   }
 
@@ -1309,7 +1311,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     // no tag or attribute, we need to add a new record in log
     if (leafMNode.getOffset() < 0) {
       long offset = tagManager.writeTagFile(Collections.emptyMap(), attributesMap);
-      writeToMLog(SchemaRegionPlanFactory.getChangeTagOffsetPlan(fullPath, offset));
+      writeToMLog(SchemaRegionWritePlanFactory.getChangeTagOffsetPlan(fullPath, offset));
       leafMNode.setOffset(offset);
       return;
     }
@@ -1331,7 +1333,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     // no tag or attribute, we need to add a new record in log
     if (leafMNode.getOffset() < 0) {
       long offset = tagManager.writeTagFile(tagsMap, Collections.emptyMap());
-      writeToMLog(SchemaRegionPlanFactory.getChangeTagOffsetPlan(fullPath, offset));
+      writeToMLog(SchemaRegionWritePlanFactory.getChangeTagOffsetPlan(fullPath, offset));
       leafMNode.setOffset(offset);
       // update inverted Index map
       tagManager.addIndex(tagsMap, leafMNode);
@@ -1451,7 +1453,8 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
         entityMNode.preDeactivateTemplate();
         preDeactivateNum++;
         try {
-          writeToMLog(SchemaRegionPlanFactory.getPreDeactivateTemplatePlan(subTemplateSetInfo));
+          writeToMLog(
+              SchemaRegionWritePlanFactory.getPreDeactivateTemplatePlan(subTemplateSetInfo));
         } catch (IOException e) {
           throw new MetadataException(e);
         }
@@ -1477,7 +1480,8 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
         entityMNode.rollbackPreDeactivateTemplate();
         try {
           writeToMLog(
-              SchemaRegionPlanFactory.getRollbackPreDeactivateTemplatePlan(subTemplateSetInfo));
+              SchemaRegionWritePlanFactory.getRollbackPreDeactivateTemplatePlan(
+                  subTemplateSetInfo));
         } catch (IOException e) {
           throw new MetadataException(e);
         }
@@ -1498,7 +1502,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
         entityMNode.deactivateTemplate();
         mtree.deleteEmptyInternalMNodeAndReturnEmptyStorageGroup(entityMNode);
         try {
-          writeToMLog(SchemaRegionPlanFactory.getDeactivateTemplatePlan(subTemplateSetInfo));
+          writeToMLog(SchemaRegionWritePlanFactory.getDeactivateTemplatePlan(subTemplateSetInfo));
         } catch (IOException e) {
           throw new MetadataException(e);
         }

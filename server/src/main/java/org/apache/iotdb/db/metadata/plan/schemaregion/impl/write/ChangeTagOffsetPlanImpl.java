@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.metadata.plan.schemaregion.impl;
+package org.apache.iotdb.db.metadata.plan.schemaregion.impl.write;
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IChangeTagOffsetPlan;
@@ -26,9 +26,9 @@ public class ChangeTagOffsetPlanImpl implements IChangeTagOffsetPlan {
   private PartialPath path;
   private long offset;
 
-  public ChangeTagOffsetPlanImpl() {}
+  ChangeTagOffsetPlanImpl() {}
 
-  public ChangeTagOffsetPlanImpl(PartialPath partialPath, long offset) {
+  ChangeTagOffsetPlanImpl(PartialPath partialPath, long offset) {
     path = partialPath;
     this.offset = offset;
   }

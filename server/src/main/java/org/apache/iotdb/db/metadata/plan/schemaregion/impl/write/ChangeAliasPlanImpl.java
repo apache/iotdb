@@ -17,19 +17,20 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.metadata.plan.schemaregion.impl;
+package org.apache.iotdb.db.metadata.plan.schemaregion.impl.write;
 
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.metadata.plan.schemaregion.write.IAutoCreateDeviceMNodePlan;
+import org.apache.iotdb.db.metadata.plan.schemaregion.write.IChangeAliasPlan;
 
-public class AutoCreateDeviceMNodePlanImpl implements IAutoCreateDeviceMNodePlan {
-
+public class ChangeAliasPlanImpl implements IChangeAliasPlan {
   private PartialPath path;
+  private String alias;
 
-  public AutoCreateDeviceMNodePlanImpl() {}
+  ChangeAliasPlanImpl() {}
 
-  public AutoCreateDeviceMNodePlanImpl(PartialPath path) {
+  ChangeAliasPlanImpl(PartialPath path, String alias) {
     this.path = path;
+    this.alias = alias;
   }
 
   @Override
@@ -40,5 +41,15 @@ public class AutoCreateDeviceMNodePlanImpl implements IAutoCreateDeviceMNodePlan
   @Override
   public void setPath(PartialPath path) {
     this.path = path;
+  }
+
+  @Override
+  public String getAlias() {
+    return alias;
+  }
+
+  @Override
+  public void setAlias(String alias) {
+    this.alias = alias;
   }
 }

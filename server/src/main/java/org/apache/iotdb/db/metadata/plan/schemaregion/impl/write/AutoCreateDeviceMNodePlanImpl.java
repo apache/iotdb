@@ -17,18 +17,18 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.metadata.plan.schemaregion.impl;
+package org.apache.iotdb.db.metadata.plan.schemaregion.impl.write;
 
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.metadata.plan.schemaregion.write.IRollbackPreDeleteTimeSeriesPlan;
+import org.apache.iotdb.db.metadata.plan.schemaregion.write.IAutoCreateDeviceMNodePlan;
 
-public class RollbackPreDeleteTimeSeriesPlanImpl implements IRollbackPreDeleteTimeSeriesPlan {
+public class AutoCreateDeviceMNodePlanImpl implements IAutoCreateDeviceMNodePlan {
 
   private PartialPath path;
 
-  public RollbackPreDeleteTimeSeriesPlanImpl() {}
+  AutoCreateDeviceMNodePlanImpl() {}
 
-  public RollbackPreDeleteTimeSeriesPlanImpl(PartialPath path) {
+  AutoCreateDeviceMNodePlanImpl(PartialPath path) {
     this.path = path;
   }
 

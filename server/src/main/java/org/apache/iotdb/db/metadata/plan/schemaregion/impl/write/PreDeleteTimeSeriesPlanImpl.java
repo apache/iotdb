@@ -17,31 +17,28 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.metadata.plan.schemaregion.impl;
+package org.apache.iotdb.db.metadata.plan.schemaregion.impl.write;
 
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.metadata.plan.schemaregion.write.IDeactivateTemplatePlan;
+import org.apache.iotdb.db.metadata.plan.schemaregion.write.IPreDeleteTimeSeriesPlan;
 
-import java.util.List;
-import java.util.Map;
+public class PreDeleteTimeSeriesPlanImpl implements IPreDeleteTimeSeriesPlan {
 
-public class DeactivateTemplatePlanImpl implements IDeactivateTemplatePlan {
+  private PartialPath path;
 
-  private Map<PartialPath, List<Integer>> templateSetInfo;
+  PreDeleteTimeSeriesPlanImpl() {}
 
-  public DeactivateTemplatePlanImpl() {}
-
-  public DeactivateTemplatePlanImpl(Map<PartialPath, List<Integer>> templateSetInfo) {
-    this.templateSetInfo = templateSetInfo;
+  PreDeleteTimeSeriesPlanImpl(PartialPath path) {
+    this.path = path;
   }
 
   @Override
-  public Map<PartialPath, List<Integer>> getTemplateSetInfo() {
-    return templateSetInfo;
+  public PartialPath getPath() {
+    return path;
   }
 
   @Override
-  public void setTemplateSetInfo(Map<PartialPath, List<Integer>> templateSetInfo) {
-    this.templateSetInfo = templateSetInfo;
+  public void setPath(PartialPath path) {
+    this.path = path;
   }
 }

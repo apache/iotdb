@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.metadata.plan.schemaregion.impl;
+package org.apache.iotdb.db.metadata.plan.schemaregion.impl.write;
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.ICreateTimeSeriesPlan;
@@ -40,9 +40,9 @@ public class CreateTimeSeriesPlanImpl implements ICreateTimeSeriesPlan {
   private Map<String, String> attributes = null;
   private long tagOffset = -1;
 
-  public CreateTimeSeriesPlanImpl() {}
+  CreateTimeSeriesPlanImpl() {}
 
-  public CreateTimeSeriesPlanImpl(
+  CreateTimeSeriesPlanImpl(
       PartialPath path,
       TSDataType dataType,
       TSEncoding encoding,

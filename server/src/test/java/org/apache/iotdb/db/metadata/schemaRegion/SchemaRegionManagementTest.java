@@ -26,7 +26,7 @@ import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.metadata.MetadataConstant;
-import org.apache.iotdb.db.metadata.plan.schemaregion.impl.SchemaRegionPlanFactory;
+import org.apache.iotdb.db.metadata.plan.schemaregion.impl.write.SchemaRegionWritePlanFactory;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
@@ -72,7 +72,7 @@ public class SchemaRegionManagementTest extends AbstractSchemaRegionTest {
       Map<String, String> tags = new HashMap<>();
       tags.put("tag-key", "tag-value");
       schemaRegion.createTimeseries(
-          SchemaRegionPlanFactory.getCreateTimeSeriesPlan(
+          SchemaRegionWritePlanFactory.getCreateTimeSeriesPlan(
               new PartialPath("root.sg.d1.s1"),
               TSDataType.INT32,
               TSEncoding.PLAIN,
@@ -85,7 +85,7 @@ public class SchemaRegionManagementTest extends AbstractSchemaRegionTest {
 
       Template template = generateTemplate();
       schemaRegion.activateSchemaTemplate(
-          SchemaRegionPlanFactory.getActivateTemplateInClusterPlan(
+          SchemaRegionWritePlanFactory.getActivateTemplateInClusterPlan(
               new PartialPath("root.sg.d2"), 1, template.getId()),
           template);
 
@@ -165,7 +165,7 @@ public class SchemaRegionManagementTest extends AbstractSchemaRegionTest {
       for (int i = 0; i < 1000; i++) {
         for (int j = 0; j < 1000; j++) {
           schemaRegion.createTimeseries(
-              SchemaRegionPlanFactory.getCreateTimeSeriesPlan(
+              SchemaRegionWritePlanFactory.getCreateTimeSeriesPlan(
                   new PartialPath("root.sg.d" + i + ".s" + j),
                   TSDataType.INT32,
                   TSEncoding.PLAIN,

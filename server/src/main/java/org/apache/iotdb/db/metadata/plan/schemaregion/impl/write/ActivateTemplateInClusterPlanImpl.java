@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.metadata.plan.schemaregion.impl;
+package org.apache.iotdb.db.metadata.plan.schemaregion.impl.write;
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IActivateTemplateInClusterPlan;
@@ -29,9 +29,9 @@ public class ActivateTemplateInClusterPlanImpl implements IActivateTemplateInClu
   private int templateId;
   private boolean isAligned;
 
-  public ActivateTemplateInClusterPlanImpl() {}
+  ActivateTemplateInClusterPlanImpl() {}
 
-  public ActivateTemplateInClusterPlanImpl(
+  ActivateTemplateInClusterPlanImpl(
       PartialPath activatePath, int templateSetLevel, int templateId) {
     this.activatePath = activatePath;
     this.templateSetLevel = templateSetLevel;

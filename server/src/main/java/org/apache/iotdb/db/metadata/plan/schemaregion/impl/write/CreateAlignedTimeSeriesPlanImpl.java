@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.metadata.plan.schemaregion.impl;
+package org.apache.iotdb.db.metadata.plan.schemaregion.impl.write;
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.ICreateAlignedTimeSeriesPlan;
@@ -43,9 +43,9 @@ public class CreateAlignedTimeSeriesPlanImpl implements ICreateAlignedTimeSeries
   private List<Map<String, String>> attributesList;
   private List<Long> tagOffsets = null;
 
-  public CreateAlignedTimeSeriesPlanImpl() {}
+  CreateAlignedTimeSeriesPlanImpl() {}
 
-  public CreateAlignedTimeSeriesPlanImpl(
+  CreateAlignedTimeSeriesPlanImpl(
       PartialPath devicePath,
       List<String> measurements,
       List<TSDataType> dataTypes,

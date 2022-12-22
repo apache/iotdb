@@ -24,7 +24,7 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.metadata.MetadataConstant;
-import org.apache.iotdb.db.metadata.plan.schemaregion.impl.SchemaRegionPlanFactory;
+import org.apache.iotdb.db.metadata.plan.schemaregion.impl.write.SchemaRegionWritePlanFactory;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaEngine;
 import org.apache.iotdb.db.tools.schema.MLogParser;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -92,7 +92,7 @@ public class MLogParserTest {
             schemaEngine
                 .getSchemaRegion(new SchemaRegionId(schemaRegionIds[i]))
                 .createTimeseries(
-                    SchemaRegionPlanFactory.getCreateTimeSeriesPlan(
+                    SchemaRegionWritePlanFactory.getCreateTimeSeriesPlan(
                         new PartialPath("root.sg" + i + "." + "device" + j + "." + "s" + k),
                         TSDataType.INT32,
                         TSEncoding.PLAIN,

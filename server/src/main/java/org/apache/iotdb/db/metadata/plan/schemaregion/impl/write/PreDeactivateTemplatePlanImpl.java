@@ -17,21 +17,21 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.metadata.plan.schemaregion.impl;
+package org.apache.iotdb.db.metadata.plan.schemaregion.impl.write;
 
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.metadata.plan.schemaregion.write.IRollbackPreDeactivateTemplatePlan;
+import org.apache.iotdb.db.metadata.plan.schemaregion.write.IPreDeactivateTemplatePlan;
 
 import java.util.List;
 import java.util.Map;
 
-public class RollbackPreDeactivateTemplatePlanImpl implements IRollbackPreDeactivateTemplatePlan {
+public class PreDeactivateTemplatePlanImpl implements IPreDeactivateTemplatePlan {
 
   private Map<PartialPath, List<Integer>> templateSetInfo;
 
-  public RollbackPreDeactivateTemplatePlanImpl() {}
+  PreDeactivateTemplatePlanImpl() {}
 
-  public RollbackPreDeactivateTemplatePlanImpl(Map<PartialPath, List<Integer>> templateSetInfo) {
+  PreDeactivateTemplatePlanImpl(Map<PartialPath, List<Integer>> templateSetInfo) {
     this.templateSetInfo = templateSetInfo;
   }
 

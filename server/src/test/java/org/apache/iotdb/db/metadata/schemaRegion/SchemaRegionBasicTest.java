@@ -27,8 +27,7 @@ import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.MeasurementAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.metadata.mnode.MNodeType;
-import org.apache.iotdb.db.metadata.plan.schemaregion.impl.CreateAlignedTimeSeriesPlanImpl;
-import org.apache.iotdb.db.metadata.plan.schemaregion.impl.CreateTimeSeriesPlanImpl;
+import org.apache.iotdb.db.metadata.plan.schemaregion.impl.write.SchemaRegionWritePlanFactory;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
@@ -69,7 +68,7 @@ public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
     ISchemaRegion schemaRegion = getSchemaRegion("root.sg", 0);
 
     schemaRegion.createTimeseries(
-        new CreateTimeSeriesPlanImpl(
+        SchemaRegionWritePlanFactory.getCreateTimeSeriesPlan(
             new PartialPath("root.sg.wf01.wt01.status"),
             TSDataType.BOOLEAN,
             TSEncoding.PLAIN,
@@ -80,7 +79,7 @@ public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
             null),
         -1);
     schemaRegion.createTimeseries(
-        new CreateTimeSeriesPlanImpl(
+        SchemaRegionWritePlanFactory.getCreateTimeSeriesPlan(
             new PartialPath("root.sg.wf01.wt01.temperature"),
             TSDataType.FLOAT,
             TSEncoding.RLE,
@@ -143,7 +142,7 @@ public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
   public void testCreateAlignedTimeseries() throws Exception {
     ISchemaRegion schemaRegion = getSchemaRegion("root.sg", 0);
     schemaRegion.createAlignedTimeSeries(
-        new CreateAlignedTimeSeriesPlanImpl(
+        SchemaRegionWritePlanFactory.getCreateAlignedTimeSeriesPlan(
             new PartialPath("root.sg.wf02.wt01"),
             Arrays.asList("temperature", "status"),
             Arrays.asList(TSDataType.valueOf("FLOAT"), TSDataType.valueOf("INT32")),
@@ -164,7 +163,7 @@ public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
   public void testCheckMeasurementExistence() throws Exception {
     ISchemaRegion schemaRegion = getSchemaRegion("root.sg", 0);
     schemaRegion.createTimeseries(
-        new CreateTimeSeriesPlanImpl(
+        SchemaRegionWritePlanFactory.getCreateTimeSeriesPlan(
             new PartialPath("root.sg.wf01.wt01.status"),
             TSDataType.BOOLEAN,
             TSEncoding.PLAIN,
@@ -175,7 +174,7 @@ public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
             null),
         -1);
     schemaRegion.createTimeseries(
-        new CreateTimeSeriesPlanImpl(
+        SchemaRegionWritePlanFactory.getCreateTimeSeriesPlan(
             new PartialPath("root.sg.wf01.wt01.v1.s1"),
             TSDataType.BOOLEAN,
             TSEncoding.PLAIN,
@@ -186,7 +185,7 @@ public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
             null),
         -1);
     schemaRegion.createTimeseries(
-        new CreateTimeSeriesPlanImpl(
+        SchemaRegionWritePlanFactory.getCreateTimeSeriesPlan(
             new PartialPath("root.sg.wf01.wt01.temperature"),
             TSDataType.FLOAT,
             TSEncoding.RLE,
@@ -240,7 +239,7 @@ public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
   public void testDeleteTimeseries() throws Exception {
     ISchemaRegion schemaRegion = getSchemaRegion("root.sg", 0);
     schemaRegion.createTimeseries(
-        new CreateTimeSeriesPlanImpl(
+        SchemaRegionWritePlanFactory.getCreateTimeSeriesPlan(
             new PartialPath("root.sg.wf01.wt01.status"),
             TSDataType.BOOLEAN,
             TSEncoding.PLAIN,
@@ -251,7 +250,7 @@ public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
             null),
         -1);
     schemaRegion.createTimeseries(
-        new CreateTimeSeriesPlanImpl(
+        SchemaRegionWritePlanFactory.getCreateTimeSeriesPlan(
             new PartialPath("root.sg.wf01.wt02.status"),
             TSDataType.BOOLEAN,
             TSEncoding.PLAIN,
@@ -262,7 +261,7 @@ public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
             null),
         -1);
     schemaRegion.createTimeseries(
-        new CreateTimeSeriesPlanImpl(
+        SchemaRegionWritePlanFactory.getCreateTimeSeriesPlan(
             new PartialPath("root.sg.wf01.wt01.temperature"),
             TSDataType.FLOAT,
             TSEncoding.RLE,
@@ -273,7 +272,7 @@ public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
             null),
         -1);
     schemaRegion.createTimeseries(
-        new CreateTimeSeriesPlanImpl(
+        SchemaRegionWritePlanFactory.getCreateTimeSeriesPlan(
             new PartialPath("root.sg.wf02.wt01.temperature"),
             TSDataType.FLOAT,
             TSEncoding.RLE,

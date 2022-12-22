@@ -38,7 +38,7 @@ import org.apache.iotdb.db.metadata.idtable.entry.IDeviceID;
 import org.apache.iotdb.db.metadata.idtable.entry.SHA256DeviceID;
 import org.apache.iotdb.db.metadata.idtable.entry.SchemaEntry;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
-import org.apache.iotdb.db.metadata.plan.schemaregion.impl.SchemaRegionPlanFactory;
+import org.apache.iotdb.db.metadata.plan.schemaregion.impl.write.SchemaRegionWritePlanFactory;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IActivateTemplateInClusterPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.ICreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.ICreateTimeSeriesPlan;
@@ -204,7 +204,7 @@ public class TagSchemaRegion implements ISchemaRegion {
       Map<String, String> props)
       throws MetadataException {
     createTimeseries(
-        SchemaRegionPlanFactory.getCreateTimeSeriesPlan(
+        SchemaRegionWritePlanFactory.getCreateTimeSeriesPlan(
             path, dataType, encoding, compressor, props, null, null, null),
         0);
   }
@@ -217,7 +217,7 @@ public class TagSchemaRegion implements ISchemaRegion {
       List<CompressionType> compressors)
       throws MetadataException {
     createAlignedTimeSeries(
-        SchemaRegionPlanFactory.getCreateAlignedTimeSeriesPlan(
+        SchemaRegionWritePlanFactory.getCreateAlignedTimeSeriesPlan(
             prefixPath, measurements, dataTypes, encodings, compressors, null, null, null));
   }
 

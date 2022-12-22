@@ -16,30 +16,32 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.metadata.plan.schemaregion.impl;
+
+package org.apache.iotdb.db.metadata.plan.schemaregion.impl.write;
 
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.metadata.plan.schemaregion.write.IDeleteTimeSeriesPlan;
+import org.apache.iotdb.db.metadata.plan.schemaregion.write.IRollbackPreDeactivateTemplatePlan;
 
 import java.util.List;
+import java.util.Map;
 
-public class DeleteTimeSeriesPlanImpl implements IDeleteTimeSeriesPlan {
+public class RollbackPreDeactivateTemplatePlanImpl implements IRollbackPreDeactivateTemplatePlan {
 
-  private List<PartialPath> deletePathList;
+  private Map<PartialPath, List<Integer>> templateSetInfo;
 
-  public DeleteTimeSeriesPlanImpl() {}
+  RollbackPreDeactivateTemplatePlanImpl() {}
 
-  public DeleteTimeSeriesPlanImpl(List<PartialPath> deletePathList) {
-    this.deletePathList = deletePathList;
+  RollbackPreDeactivateTemplatePlanImpl(Map<PartialPath, List<Integer>> templateSetInfo) {
+    this.templateSetInfo = templateSetInfo;
   }
 
   @Override
-  public List<PartialPath> getDeletePathList() {
-    return deletePathList;
+  public Map<PartialPath, List<Integer>> getTemplateSetInfo() {
+    return templateSetInfo;
   }
 
   @Override
-  public void setDeletePathList(List<PartialPath> deletePathList) {
-    this.deletePathList = deletePathList;
+  public void setTemplateSetInfo(Map<PartialPath, List<Integer>> templateSetInfo) {
+    this.templateSetInfo = templateSetInfo;
   }
 }

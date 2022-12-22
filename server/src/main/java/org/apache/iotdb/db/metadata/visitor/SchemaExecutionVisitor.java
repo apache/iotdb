@@ -25,7 +25,7 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.metadata.MeasurementAlreadyExistException;
-import org.apache.iotdb.db.metadata.plan.schemaregion.impl.SchemaRegionPlanFactory;
+import org.apache.iotdb.db.metadata.plan.schemaregion.impl.write.SchemaRegionWritePlanFactory;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.ICreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.ICreateTimeSeriesPlan;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
@@ -119,7 +119,7 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
 
   private ICreateTimeSeriesPlan transformToCreateTimeSeriesPlan(
       PartialPath devicePath, MeasurementGroup measurementGroup, int index) {
-    return SchemaRegionPlanFactory.getCreateTimeSeriesPlan(
+    return SchemaRegionWritePlanFactory.getCreateTimeSeriesPlan(
         devicePath.concatNode(measurementGroup.getMeasurements().get(index)),
         measurementGroup.getDataTypes().get(index),
         measurementGroup.getEncodings().get(index),
@@ -198,7 +198,7 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
     List<TSEncoding> encodingList = measurementGroup.getEncodings();
     List<CompressionType> compressionTypeList = measurementGroup.getCompressors();
     ICreateAlignedTimeSeriesPlan createAlignedTimeSeriesPlan =
-        SchemaRegionPlanFactory.getCreateAlignedTimeSeriesPlan(
+        SchemaRegionWritePlanFactory.getCreateAlignedTimeSeriesPlan(
             devicePath,
             measurementList,
             dataTypeList,

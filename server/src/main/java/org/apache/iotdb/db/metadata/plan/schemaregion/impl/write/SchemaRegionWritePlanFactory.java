@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.metadata.plan.schemaregion.impl;
+package org.apache.iotdb.db.metadata.plan.schemaregion.impl.write;
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.metadata.plan.schemaregion.ISchemaRegionPlan;
@@ -41,9 +41,9 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import java.util.List;
 import java.util.Map;
 
-public class SchemaRegionPlanFactory {
+public class SchemaRegionWritePlanFactory {
 
-  private SchemaRegionPlanFactory() {}
+  private SchemaRegionWritePlanFactory() {}
 
   public static ISchemaRegionPlan getEmptyPlan(SchemaRegionPlanType planType) {
     switch (planType) {
