@@ -23,7 +23,6 @@ import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
@@ -177,24 +176,13 @@ public class CompactionUtils {
     logger.info("{} [Compaction] Compaction starts to delete real file ", storageGroupName);
     boolean result = true;
     for (TsFileResource mergeTsFile : mergeTsFiles) {
-      if (!deleteTsFile(mergeTsFile)) {
+      if (!mergeTsFile.remove()) {
         result = false;
       }
       logger.info(
           "{} [Compaction] delete TsFile {}", storageGroupName, mergeTsFile.getTsFilePath());
     }
     return result;
-  }
-
-  public static boolean deleteTsFile(TsFileResource seqFile) {
-    try {
-      FileReaderManager.getInstance().closeFileAndRemoveReader(seqFile.getTsFilePath());
-      seqFile.remove();
-    } catch (IOException e) {
-      logger.error(e.getMessage(), e);
-      return false;
-    }
-    return true;
   }
 
   /** Delete all modification files for source files */

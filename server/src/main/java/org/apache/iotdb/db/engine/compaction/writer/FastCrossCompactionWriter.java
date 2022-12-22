@@ -23,6 +23,7 @@ import org.apache.iotdb.tsfile.exception.write.PageException;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
+import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
@@ -32,13 +33,17 @@ import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
+import java.util.Map;
 
 public class FastCrossCompactionWriter extends AbstractCrossCompactionWriter {
 
   public FastCrossCompactionWriter(
-      List<TsFileResource> targetResources, List<TsFileResource> seqSourceResources)
+      List<TsFileResource> targetResources,
+      List<TsFileResource> seqSourceResources,
+      Map<TsFileResource, TsFileSequenceReader> readerMap)
       throws IOException {
     super(targetResources, seqSourceResources);
+    this.readerMap = readerMap;
   }
 
   @Override

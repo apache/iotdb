@@ -115,7 +115,7 @@ public class FastCompactionPerformer
             new MultiTsFileDeviceIterator(seqFiles, unseqFiles, readerCacheMap);
         AbstractCompactionWriter compactionWriter =
             isCrossCompaction
-                ? new FastCrossCompactionWriter(targetFiles, seqFiles)
+                ? new FastCrossCompactionWriter(targetFiles, seqFiles, readerCacheMap)
                 : new FastInnerCompactionWriter(targetFiles.get(0))) {
       while (deviceIterator.hasNextDevice()) {
         checkThreadInterrupted();

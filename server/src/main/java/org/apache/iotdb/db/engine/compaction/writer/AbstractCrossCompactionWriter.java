@@ -26,6 +26,7 @@ import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
+import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
@@ -61,6 +62,9 @@ public abstract class AbstractCrossCompactionWriter extends AbstractCompactionWr
   private int chunkGroupHeaderSize;
 
   protected List<TsFileResource> targetResources;
+
+  // Only used for fast compaction performer
+  protected Map<TsFileResource, TsFileSequenceReader> readerMap;
 
   public AbstractCrossCompactionWriter(
       List<TsFileResource> targetResources, List<TsFileResource> seqFileResources)
@@ -213,10 +217,14 @@ public abstract class AbstractCrossCompactionWriter extends AbstractCompactionWr
         currentDeviceEndTime[fileIndex] = seqTsFileResources.get(fileIndex).getEndTime(deviceId);
       } else {
         long endTime = Long.MIN_VALUE;
-        Map<String, TimeseriesMetadata> deviceMetadataMap =
-            FileReaderManager.getInstance()
-                .get(seqTsFileResources.get(fileIndex).getTsFilePath(), true)
-                .readDeviceMetadata(deviceId);
+        // Fast compaction get reader from cache map, while read point compaction get reader from
+        // FileReaderManager
+        TsFileSequenceReader reader =
+            readerMap != null
+                ? readerMap.get(seqTsFileResources.get(fileIndex))
+                : FileReaderManager.getInstance()
+                    .get(seqTsFileResources.get(fileIndex).getTsFilePath(), true);
+        Map<String, TimeseriesMetadata> deviceMetadataMap = reader.readDeviceMetadata(deviceId);
         for (Map.Entry<String, TimeseriesMetadata> entry : deviceMetadataMap.entrySet()) {
           long tmpStartTime = entry.getValue().getStatistics().getStartTime();
           long tmpEndTime = entry.getValue().getStatistics().getEndTime();
