@@ -22,7 +22,9 @@ package org.apache.iotdb.db.engine.compaction.cross.rewrite;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class CrossCompactionTaskResource {
   private List<TsFileResource> seqFiles;
@@ -42,6 +44,22 @@ public class CrossCompactionTaskResource {
 
   public List<TsFileResource> getSeqFiles() {
     return seqFiles;
+  }
+
+  // we need to unsure the files in seqFiles is ordered by the time range, that is, it should keep the
+  // order from candidates' seq file list.
+  public void sortSeqFiles(List<TsFileResource> seqFilesCandidates) {
+    Map<TsFileResource, Boolean> selectedFileMap = new HashMap<>();
+    for (TsFileResource selectedFile : this.seqFiles) {
+      selectedFileMap.put(selectedFile, true);
+    }
+    List<TsFileResource> sortedSeqFiles = new ArrayList<>();
+    for (TsFileResource file : seqFilesCandidates) {
+      if (selectedFileMap.containsKey(file)) {
+        sortedSeqFiles.add(file);
+      }
+    }
+    this.seqFiles = sortedSeqFiles;
   }
 
   public void putResources(

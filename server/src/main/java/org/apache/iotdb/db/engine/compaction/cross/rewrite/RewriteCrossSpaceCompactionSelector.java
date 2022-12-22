@@ -174,6 +174,7 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
           memoryCost,
           totalCost);
     }
+    taskResource.sortSeqFiles(candidate.getSeqFiles());
     return taskResource;
   }
 
