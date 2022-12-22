@@ -18,6 +18,8 @@
 
 package org.apache.iotdb.db.protocol.mqtt;
 
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+
 import java.util.List;
 
 /** Message describes the information sometime sent from the devices. */
@@ -25,6 +27,7 @@ public class Message {
   private String device;
   private Long timestamp;
   private List<String> measurements;
+  private List<TSDataType> dataTypes;
   private List<String> values;
 
   public String getDevice() {
@@ -49,6 +52,14 @@ public class Message {
 
   public void setMeasurements(List<String> measurements) {
     this.measurements = measurements;
+  }
+
+  public List<TSDataType> getDataTypes() {
+    return dataTypes;
+  }
+
+  public void setDataTypes(List<TSDataType> dataTypes) {
+    this.dataTypes = dataTypes;
   }
 
   public List<String> getValues() {

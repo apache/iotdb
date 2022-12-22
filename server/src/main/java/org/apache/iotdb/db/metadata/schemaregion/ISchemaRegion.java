@@ -91,10 +91,33 @@ public interface ISchemaRegion {
   // endregion
 
   // region Interfaces for Timeseries operation
+  /**
+   * Create timeseries.
+   *
+   * @param plan a plan describes how to create the timeseries.
+   * @param offset
+   * @throws MetadataException
+   */
   void createTimeseries(ICreateTimeSeriesPlan plan, long offset) throws MetadataException;
 
+  /**
+   * Create aligned timeseries.
+   *
+   * @param plan a plan describes how to create the timeseries.
+   * @throws MetadataException
+   */
   void createAlignedTimeSeries(ICreateAlignedTimeSeriesPlan plan) throws MetadataException;
 
+  /**
+   * Check whether measurement exists.
+   *
+   * @param devicePath the path of device that you want to check
+   * @param measurementList a list of measurements that you want to check
+   * @param aliasList a list of alias that you want to check
+   * @return returns a map contains index of the measurements or alias that threw the exception, and
+   *     exception details. The exceptions describe whether the measurement or alias exists. For
+   *     example, a MeasurementAlreadyExistException means this measurement exists.
+   */
   Map<Integer, MetadataException> checkMeasurementExistence(
       PartialPath devicePath, List<String> measurementList, List<String> aliasList);
 
@@ -150,6 +173,11 @@ public interface ISchemaRegion {
 
   // region Interfaces for metadata count
 
+  /**
+   * To calculate the count of timeseries matching given path. The path could be a pattern of a full
+   * path, may contain wildcard. If using prefix match, the path pattern is used to match prefix
+   * path. All timeseries start with the matched prefix path will be counted.
+   */
   long getAllTimeseriesCount(
       PartialPath pathPattern, Map<Integer, Template> templateMap, boolean isPrefixMatch)
       throws MetadataException;
@@ -158,7 +186,16 @@ public interface ISchemaRegion {
       PartialPath pathPattern, boolean isPrefixMatch, String key, String value, boolean isContains)
       throws MetadataException;
 
-  // The measurements will be grouped by the node in given level and then counted for each group.
+  /**
+   * The measurements will be grouped by the node in given level and then counted for each group. If
+   * no measurements found, but the path is contained in the group, then this path will also be
+   * returned with measurements count zero.
+   *
+   * @param pathPattern
+   * @param level the level you want to group by
+   * @param isPrefixMatch using pathPattern as prefix matched path if set true
+   * @return return a map from PartialPath to the count of matched measurements
+   */
   Map<PartialPath, Long> getMeasurementCountGroupByLevel(
       PartialPath pathPattern, int level, boolean isPrefixMatch) throws MetadataException;
 
@@ -175,12 +212,23 @@ public interface ISchemaRegion {
    * To calculate the count of devices for given path pattern. If using prefix match, the path
    * pattern is used to match prefix path. All timeseries start with the matched prefix path will be
    * counted.
+   *
+   * @param pathPattern
+   * @param isPrefixMatch
    */
   long getDevicesNum(PartialPath pathPattern, boolean isPrefixMatch) throws MetadataException;
   // endregion
 
   // region Interfaces for level Node info Query
-  // Get paths of nodes in given level and matching the pathPattern.
+  /**
+   * Get paths of nodes in given level and matching the pathPattern.
+   *
+   * @param pathPattern
+   * @param nodeLevel
+   * @param isPrefixMatch
+   * @throws MetadataException
+   * @return returns a list of PartialPath.
+   */
   List<PartialPath> getNodesListInGivenLevel(
       PartialPath pathPattern, int nodeLevel, boolean isPrefixMatch) throws MetadataException;
 
@@ -208,6 +256,7 @@ public interface ISchemaRegion {
    * @param isPrefixMatch if true, the path pattern is used to match prefix path.
    * @return A HashSet instance which stores devices paths matching the given path pattern.
    */
+  @Deprecated
   Set<PartialPath> getMatchedDevices(PartialPath pathPattern, boolean isPrefixMatch)
       throws MetadataException;
 
@@ -232,6 +281,7 @@ public interface ISchemaRegion {
    * @param isPrefixMatch if true, the path pattern is used to match prefix path
    * @param withTags whether returns tag kvs in the result list.
    */
+  @Deprecated
   List<MeasurementPath> getMeasurementPaths(
       PartialPath pathPattern, boolean isPrefixMatch, boolean withTags) throws MetadataException;
 
@@ -242,6 +292,7 @@ public interface ISchemaRegion {
    *
    * @param isPrefixMatch if true, the path pattern is used to match prefix path
    */
+  @Deprecated
   Pair<List<MeasurementPath>, Integer> getMeasurementPathsWithAlias(
       PartialPath pathPattern, int limit, int offset, boolean isPrefixMatch, boolean withTags)
       throws MetadataException;
@@ -250,6 +301,13 @@ public interface ISchemaRegion {
       PartialPath pathPattern, Map<Integer, Template> templateMap, boolean withTags)
       throws MetadataException;
 
+  /**
+   * Show timeseries.
+   *
+   * @param plan
+   * @param context
+   * @throws MetadataException
+   */
   Pair<List<ShowTimeSeriesResult>, Integer> showTimeseries(
       ShowTimeSeriesPlan plan, QueryContext context) throws MetadataException;
   // endregion

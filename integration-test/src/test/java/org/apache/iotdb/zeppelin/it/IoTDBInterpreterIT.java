@@ -16,63 +16,61 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.zeppelin.iotdb;
 
-import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.utils.EnvironmentUtils;
+package org.apache.iotdb.zeppelin.it;
+
+import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.it.framework.IoTDBTestRunner;
+import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 
 import org.apache.zeppelin.interpreter.InterpreterResult;
 import org.apache.zeppelin.interpreter.InterpreterResult.Code;
-import org.junit.After;
+import org.apache.zeppelin.iotdb.IoTDBInterpreter;
+import org.junit.AfterClass;
 import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Ignore;
+import org.junit.BeforeClass;
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
+import org.junit.runner.RunWith;
 
 import java.io.IOException;
 import java.util.Properties;
 
-import static org.apache.zeppelin.iotdb.IoTDBInterpreter.DEFAULT_ENABLE_RPC_COMPRESSION;
-import static org.apache.zeppelin.iotdb.IoTDBInterpreter.DEFAULT_FETCH_SIZE;
-import static org.apache.zeppelin.iotdb.IoTDBInterpreter.DEFAULT_HOST;
-import static org.apache.zeppelin.iotdb.IoTDBInterpreter.DEFAULT_PORT;
-import static org.apache.zeppelin.iotdb.IoTDBInterpreter.DEFAULT_TIME_DISPLAY_TYPE;
-import static org.apache.zeppelin.iotdb.IoTDBInterpreter.DEFAULT_ZONE_ID;
-import static org.apache.zeppelin.iotdb.IoTDBInterpreter.IOTDB_ENABLE_RPC_COMPRESSION;
-import static org.apache.zeppelin.iotdb.IoTDBInterpreter.IOTDB_FETCH_SIZE;
-import static org.apache.zeppelin.iotdb.IoTDBInterpreter.IOTDB_HOST;
-import static org.apache.zeppelin.iotdb.IoTDBInterpreter.IOTDB_PASSWORD;
-import static org.apache.zeppelin.iotdb.IoTDBInterpreter.IOTDB_PORT;
-import static org.apache.zeppelin.iotdb.IoTDBInterpreter.IOTDB_TIME_DISPLAY_TYPE;
-import static org.apache.zeppelin.iotdb.IoTDBInterpreter.IOTDB_USERNAME;
-import static org.apache.zeppelin.iotdb.IoTDBInterpreter.IOTDB_ZONE_ID;
-import static org.apache.zeppelin.iotdb.IoTDBInterpreter.SET_TIMESTAMP_DISPLAY;
+@RunWith(IoTDBTestRunner.class)
+@Category({LocalStandaloneIT.class})
+public class IoTDBInterpreterIT {
 
-// TODO remember to add it back after new standalone iotdb is finished
-@Ignore
-public class IoTDBInterpreterTest {
+  private static IoTDBInterpreter interpreter;
 
-  private IoTDBInterpreter interpreter;
+  static final String IOTDB_HOST = "iotdb.host";
+  static final String IOTDB_PORT = "iotdb.port";
+  static final String IOTDB_USERNAME = "iotdb.username";
+  static final String IOTDB_PASSWORD = "iotdb.password";
+  static final String IOTDB_FETCH_SIZE = "iotdb.fetchSize";
+  static final String IOTDB_ZONE_ID = "iotdb.zoneId";
+  static final String IOTDB_ENABLE_RPC_COMPRESSION = "iotdb.enable.rpc.compression";
+  static final String IOTDB_TIME_DISPLAY_TYPE = "iotdb.time.display.type";
 
-  @Before
-  public void open() {
-    EnvironmentUtils.envSetUp();
+  static final String SET_TIMESTAMP_DISPLAY = "set time_display_type";
+
+  @BeforeClass
+  public static void open() throws InterruptedException {
+    EnvFactory.getEnv().initBeforeClass();
     Properties properties = new Properties();
-    properties.put(IOTDB_HOST, DEFAULT_HOST);
-    properties.put(IOTDB_PORT, DEFAULT_PORT);
+    properties.put(IOTDB_HOST, EnvFactory.getEnv().getIP());
+    properties.put(IOTDB_PORT, EnvFactory.getEnv().getPort());
     properties.put(IOTDB_USERNAME, "root");
     properties.put(IOTDB_PASSWORD, "root");
-    properties.put(IOTDB_FETCH_SIZE, DEFAULT_FETCH_SIZE);
-    properties.put(IOTDB_ZONE_ID, DEFAULT_ZONE_ID);
-    properties.put(IOTDB_ENABLE_RPC_COMPRESSION, DEFAULT_ENABLE_RPC_COMPRESSION);
-    properties.put(IOTDB_TIME_DISPLAY_TYPE, DEFAULT_TIME_DISPLAY_TYPE);
+    properties.put(IOTDB_FETCH_SIZE, "10000");
+    properties.put(IOTDB_ZONE_ID, "UTC");
+    properties.put(IOTDB_ENABLE_RPC_COMPRESSION, "false");
+    properties.put(IOTDB_TIME_DISPLAY_TYPE, "long");
     interpreter = new IoTDBInterpreter(properties);
     interpreter.open();
     initInsert();
   }
 
-  private void initInsert() {
+  private static void initInsert() {
     interpreter.internalInterpret("CREATE DATABASE root.test.wf01", null);
     interpreter.internalInterpret(
         "INSERT INTO root.test.wf01.wt01 (timestamp, temperature, status, hardware) VALUES (1, 1.1, false, 11)",
@@ -99,10 +97,10 @@ public class IoTDBInterpreterTest {
         null);
   }
 
-  @After
-  public void close() throws IOException, StorageEngineException {
+  @AfterClass
+  public static void close() throws IOException {
     interpreter.close();
-    EnvironmentUtils.cleanEnv();
+    EnvFactory.getEnv().cleanAfterTest();
   }
 
   @Test
@@ -217,7 +215,7 @@ public class IoTDBInterpreterTest {
             .message()
             .get(0)
             .getData()
-            .contains("SQLException: 401: Error occurred while parsing SQL to physical plan"));
+            .contains("SQLException: 700: Error occurred while parsing SQL to physical plan"));
 
     wrongSql = "select * from a";
     actual = interpreter.internalInterpret(wrongSql, null);
@@ -228,7 +226,7 @@ public class IoTDBInterpreterTest {
             .message()
             .get(0)
             .getData()
-            .contains("SQLException: 401: Error occurred while parsing SQL to physical plan"));
+            .contains("SQLException: 700: Error occurred while parsing SQL to physical plan"));
 
     wrongSql = "select * from root a";
     actual = interpreter.internalInterpret(wrongSql, null);
@@ -239,7 +237,7 @@ public class IoTDBInterpreterTest {
             .message()
             .get(0)
             .getData()
-            .contains("SQLException: 401: Error occurred while parsing SQL to physical plan"));
+            .contains("SQLException: 700: Error occurred while parsing SQL to physical plan"));
   }
 
   @Test
@@ -306,27 +304,16 @@ public class IoTDBInterpreterTest {
   }
 
   @Test
-  public void testShowVersion() {
-    InterpreterResult actual = interpreter.internalInterpret("SHOW VERSION", null);
-    String gt =
-        String.format(
-            "version\tbuild info\n%s\t%s", IoTDBConstant.VERSION, IoTDBConstant.BUILD_INFO);
-    Assert.assertNotNull(actual);
-    Assert.assertEquals(Code.SUCCESS, actual.code());
-    Assert.assertEquals(gt, actual.message().get(0).getData());
-  }
-
-  @Test
   public void testShowTimeseries() {
     InterpreterResult actual = interpreter.internalInterpret("show timeseries", null);
     String gt =
-        "timeseries\talias\tdatabase\tdataType\tencoding\tcompression\ttags\tattributes\tdeadband\tdeadbandparameters\n"
-            + "root.test.wf02.wt02.temperature\tnull\troot.test.wf02\tFLOAT\tGORILLA\tSNAPPY\tnull\tnull\tnull\tnull\n"
-            + "root.test.wf02.wt02.status\tnull\troot.test.wf02\tBOOLEAN\tRLE\tSNAPPY\tnull\tnull\tnull\tnull\n"
-            + "root.test.wf02.wt02.hardware\tnull\troot.test.wf02\tFLOAT\tGORILLA\tSNAPPY\tnull\tnull\tnull\tnull\n"
+        "Timeseries\tAlias\tDatabase\tDataType\tEncoding\tCompression\tTags\tAttributes\tDeadband\tDeadbandParameters\n"
             + "root.test.wf01.wt01.temperature\tnull\troot.test.wf01\tFLOAT\tGORILLA\tSNAPPY\tnull\tnull\tnull\tnull\n"
             + "root.test.wf01.wt01.status\tnull\troot.test.wf01\tBOOLEAN\tRLE\tSNAPPY\tnull\tnull\tnull\tnull\n"
-            + "root.test.wf01.wt01.hardware\tnull\troot.test.wf01\tFLOAT\tGORILLA\tSNAPPY\tnull\tnull\tnull\tnull";
+            + "root.test.wf01.wt01.hardware\tnull\troot.test.wf01\tFLOAT\tGORILLA\tSNAPPY\tnull\tnull\tnull\tnull\n"
+            + "root.test.wf02.wt02.temperature\tnull\troot.test.wf02\tFLOAT\tGORILLA\tSNAPPY\tnull\tnull\tnull\tnull\n"
+            + "root.test.wf02.wt02.status\tnull\troot.test.wf02\tBOOLEAN\tRLE\tSNAPPY\tnull\tnull\tnull\tnull\n"
+            + "root.test.wf02.wt02.hardware\tnull\troot.test.wf02\tFLOAT\tGORILLA\tSNAPPY\tnull\tnull\tnull\tnull";
     Assert.assertNotNull(actual);
     Assert.assertEquals(Code.SUCCESS, actual.code());
     Assert.assertEquals(gt, actual.message().get(0).getData());
@@ -336,7 +323,7 @@ public class IoTDBInterpreterTest {
   public void testShowDevices() {
     InterpreterResult actual = interpreter.internalInterpret("show devices", null);
     String gt =
-        "devices\tisAligned\n" + "root.test.wf02.wt02\tfalse\n" + "root.test.wf01.wt01\tfalse";
+        "Device\tIsAligned\n" + "root.test.wf01.wt01\tfalse\n" + "root.test.wf02.wt02\tfalse";
     Assert.assertNotNull(actual);
     Assert.assertEquals(Code.SUCCESS, actual.code());
     Assert.assertEquals(gt, actual.message().get(0).getData());
@@ -346,12 +333,11 @@ public class IoTDBInterpreterTest {
   public void testShowDevicesWithSg() {
     InterpreterResult actual = interpreter.internalInterpret("show devices with database", null);
     String gt =
-        "devices\tdatabase\tisAligned\n"
-            + "root.test.wf02.wt02\troot.test.wf02\tfalse\n"
-            + "root.test.wf01.wt01\troot.test.wf01\tfalse";
+        "Device\tDatabase\tIsAligned\n"
+            + "root.test.wf01.wt01\troot.test.wf01\tfalse\n"
+            + "root.test.wf02.wt02\troot.test.wf02\tfalse";
     Assert.assertNotNull(actual);
     Assert.assertEquals(Code.SUCCESS, actual.code());
-    System.out.println(actual.message().get(0).getData());
     Assert.assertEquals(gt, actual.message().get(0).getData());
   }
 
@@ -359,7 +345,7 @@ public class IoTDBInterpreterTest {
   public void testShowAllTTL() {
     interpreter.internalInterpret("SET TTL TO root.test.wf01 12345", null);
     InterpreterResult actual = interpreter.internalInterpret("SHOW ALL TTL", null);
-    String gt = "database\tttl\n" + "root.test.wf02\tnull\n" + "root.test.wf01\t12345";
+    String gt = "Database\tTTL(ms)\n" + "root.test.wf02\tnull\n" + "root.test.wf01\t12345";
     Assert.assertNotNull(actual);
     Assert.assertEquals(Code.SUCCESS, actual.code());
     Assert.assertEquals(gt, actual.message().get(0).getData());
@@ -369,7 +355,7 @@ public class IoTDBInterpreterTest {
   public void testShowTTL() {
     interpreter.internalInterpret("SET TTL TO root.test.wf01 12345", null);
     InterpreterResult actual = interpreter.internalInterpret("SHOW TTL ON root.test.wf01", null);
-    String gt = "database\tttl\n" + "root.test.wf01\t12345";
+    String gt = "Database\tTTL(ms)\n" + "root.test.wf01\t12345";
     Assert.assertNotNull(actual);
     Assert.assertEquals(Code.SUCCESS, actual.code());
     Assert.assertEquals(gt, actual.message().get(0).getData());
@@ -378,7 +364,10 @@ public class IoTDBInterpreterTest {
   @Test
   public void testShowStorageGroup() {
     InterpreterResult actual = interpreter.internalInterpret("SHOW DATABASES", null);
-    String gt = "database\n" + "root.test.wf02\n" + "root.test.wf01";
+    String gt =
+        "Database\tTTL(ms)\tSchemaReplicationFactor\tDataReplicationFactor\tTimePartitionInterval\tSchemaRegionNum\tDataRegionNum\n"
+            + "root.test.wf02\tnull\t1\t1\t604800000\t1\t1\n"
+            + "root.test.wf01\tnull\t1\t1\t604800000\t1\t1";
     Assert.assertNotNull(actual);
     Assert.assertEquals(Code.SUCCESS, actual.code());
     Assert.assertEquals(gt, actual.message().get(0).getData());

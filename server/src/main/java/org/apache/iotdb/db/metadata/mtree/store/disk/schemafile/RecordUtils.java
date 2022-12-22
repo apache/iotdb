@@ -106,7 +106,7 @@ public class RecordUtils {
     ReadWriteIOUtils.write(INTERNAL_NODE_LENGTH, buffer);
     ReadWriteIOUtils.write(
         ICachedMNodeContainer.getCachedMNodeContainer(node).getSegmentAddress(), buffer);
-    ReadWriteIOUtils.write(node.getSchemaTemplateId(), buffer);
+    ReadWriteIOUtils.write(node.getSchemaTemplateIdWithState(), buffer);
 
     // encode bitwise flag
     byte useAndAligned = encodeInternalStatus(node.isUseTemplate(), isAligned);

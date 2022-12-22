@@ -71,6 +71,8 @@ public class ExportTsFile extends AbstractTsFileTool {
   private static String targetFile = DUMP_FILE_NAME_DEFAULT;
   private static String queryCommand;
 
+  private static long timeout = -1;
+
   /** main function of export tsFile tool. */
   public static void main(String[] args) {
     Options options = createOptions();
@@ -172,7 +174,10 @@ public class ExportTsFile extends AbstractTsFileTool {
     targetDirectory = checkRequiredArg(TARGET_DIR_ARGS, TARGET_DIR_NAME, commandLine);
     queryCommand = commandLine.getOptionValue(QUERY_COMMAND_ARGS);
     targetFile = commandLine.getOptionValue(TARGET_FILE_ARGS);
-
+    String timeoutString = commandLine.getOptionValue(TIMEOUT_ARGS);
+    if (timeoutString != null) {
+      timeout = Long.parseLong(timeoutString);
+    }
     if (targetFile == null) {
       targetFile = DUMP_FILE_NAME_DEFAULT;
     }
@@ -231,6 +236,13 @@ public class ExportTsFile extends AbstractTsFileTool {
             .build();
     options.addOption(opHelp);
 
+    Option opTimeout =
+        Option.builder(TIMEOUT_ARGS)
+            .longOpt(TIMEOUT_NAME)
+            .hasArg()
+            .desc("Timeout for session query")
+            .build();
+    options.addOption(opTimeout);
     return options;
   }
 
@@ -259,12 +271,12 @@ public class ExportTsFile extends AbstractTsFileTool {
   private static void dumpResult(String sql, int index) {
     final String path = targetDirectory + targetFile + index + ".tsfile";
     try {
-      SessionDataSet sessionDataSet = session.executeQueryStatement(sql, 10000);
+      SessionDataSet sessionDataSet = session.executeQueryStatement(sql, timeout);
       long start = System.currentTimeMillis();
       writeTsFileFile(sessionDataSet, path);
-      long end = System.currentTimeMillis();
       sessionDataSet.closeOperationHandle();
-      System.out.println("Export completely!cost:" + (end - start) + "ms.");
+      long end = System.currentTimeMillis();
+      System.out.println("Export completely!cost: " + (end - start) + " ms.");
     } catch (StatementExecutionException
         | IoTDBConnectionException
         | IOException
@@ -294,7 +306,7 @@ public class ExportTsFile extends AbstractTsFileTool {
         Path path = new Path(column, true);
         String deviceId = path.getDevice();
         List<Field> deviceList =
-            session.executeQueryStatement("show devices " + deviceId, 10000).next().getFields();
+            session.executeQueryStatement("show devices " + deviceId, timeout).next().getFields();
         if (deviceList.size() > 1 && "true".equals(deviceList.get(1).getStringValue())) {
           deviceFilterSet.add(deviceId);
         }

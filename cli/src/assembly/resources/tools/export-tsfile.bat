@@ -37,7 +37,7 @@ set JAVA_OPTS=-ea^
  -DIOTDB_HOME=%IOTDB_HOME%
 
 @REM ***** CLASSPATH library setting *****
-set CLASSPATH=%IOTDB_HOME%\lib\*
+set CLASSPATH=%CLASSPATH%;%IOTDB_HOME%\lib\*
 
 REM -----------------------------------------------------------------------------
 

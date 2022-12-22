@@ -28,7 +28,6 @@ import org.apache.iotdb.db.metadata.plan.schemaregion.impl.PreDeactivateTemplate
 import org.apache.iotdb.db.metadata.plan.schemaregion.impl.RollbackPreDeactivateTemplatePlanImpl;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.metadata.template.Template;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.template.CreateSchemaTemplateStatement;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -68,19 +67,17 @@ public class SchemaRegionTemplateTest extends AbstractSchemaRegionTest {
     int templateId = 1;
     Template template =
         new Template(
-            new CreateSchemaTemplateStatement(
-                "t1",
-                new String[][] {new String[] {"s1"}, new String[] {"s2"}},
-                new TSDataType[][] {
-                  new TSDataType[] {TSDataType.DOUBLE}, new TSDataType[] {TSDataType.INT32}
-                },
-                new TSEncoding[][] {
-                  new TSEncoding[] {TSEncoding.RLE}, new TSEncoding[] {TSEncoding.RLE}
-                },
-                new CompressionType[][] {
-                  new CompressionType[] {CompressionType.SNAPPY},
-                  new CompressionType[] {CompressionType.SNAPPY}
-                }));
+            "t1",
+            Arrays.asList(Collections.singletonList("s1"), Collections.singletonList("s2")),
+            Arrays.asList(
+                Collections.singletonList(TSDataType.DOUBLE),
+                Collections.singletonList(TSDataType.INT32)),
+            Arrays.asList(
+                Collections.singletonList(TSEncoding.RLE),
+                Collections.singletonList(TSEncoding.RLE)),
+            Arrays.asList(
+                Collections.singletonList(CompressionType.SNAPPY),
+                Collections.singletonList(CompressionType.SNAPPY)));
     template.setId(templateId);
     schemaRegion.activateSchemaTemplate(
         new ActivateTemplateInClusterPlanImpl(new PartialPath("root.sg.wf01.wt01"), 3, templateId),
@@ -134,19 +131,17 @@ public class SchemaRegionTemplateTest extends AbstractSchemaRegionTest {
     int templateId = 1;
     Template template =
         new Template(
-            new CreateSchemaTemplateStatement(
-                "t1",
-                new String[][] {new String[] {"s1"}, new String[] {"s2"}},
-                new TSDataType[][] {
-                  new TSDataType[] {TSDataType.DOUBLE}, new TSDataType[] {TSDataType.INT32}
-                },
-                new TSEncoding[][] {
-                  new TSEncoding[] {TSEncoding.RLE}, new TSEncoding[] {TSEncoding.RLE}
-                },
-                new CompressionType[][] {
-                  new CompressionType[] {CompressionType.SNAPPY},
-                  new CompressionType[] {CompressionType.SNAPPY}
-                }));
+            "t1",
+            Arrays.asList(Collections.singletonList("s1"), Collections.singletonList("s2")),
+            Arrays.asList(
+                Collections.singletonList(TSDataType.DOUBLE),
+                Collections.singletonList(TSDataType.INT32)),
+            Arrays.asList(
+                Collections.singletonList(TSEncoding.RLE),
+                Collections.singletonList(TSEncoding.RLE)),
+            Arrays.asList(
+                Collections.singletonList(CompressionType.SNAPPY),
+                Collections.singletonList(CompressionType.SNAPPY)));
     template.setId(templateId);
     schemaRegion.activateSchemaTemplate(
         new ActivateTemplateInClusterPlanImpl(new PartialPath("root.sg.wf01.wt01"), 3, templateId),
