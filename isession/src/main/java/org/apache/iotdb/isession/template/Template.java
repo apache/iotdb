@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.session.template;
+package org.apache.iotdb.isession.template;
 
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;

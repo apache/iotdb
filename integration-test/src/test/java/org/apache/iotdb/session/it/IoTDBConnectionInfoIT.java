@@ -18,12 +18,12 @@
  */
 package org.apache.iotdb.session.it;
 
+import org.apache.iotdb.isession.ISession;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.service.rpc.thrift.TSConnectionInfoResp;
 import org.apache.iotdb.service.rpc.thrift.TSConnectionType;
-import org.apache.iotdb.session.ISession;
 
 import org.junit.After;
 import org.junit.Before;
