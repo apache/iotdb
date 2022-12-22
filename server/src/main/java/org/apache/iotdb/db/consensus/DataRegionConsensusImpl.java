@@ -82,6 +82,8 @@ public class DataRegionConsensusImpl {
                                       .setThriftServerAwaitTimeForStopService(
                                           conf.getThriftServerAwaitTimeForStopService())
                                       .setThriftMaxFrameSize(conf.getThriftMaxFrameSize())
+                                      .setMaxConnectionForInternalService(
+                                          conf.getMaxConnectionForInternalService())
                                       .build())
                               .setReplication(
                                   IoTConsensusConfig.Replication.newBuilder()
