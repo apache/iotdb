@@ -25,6 +25,8 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.db.metadata.plan.schemaregion.read.IShowDevicesPlan;
+import org.apache.iotdb.db.metadata.plan.schemaregion.read.IShowTimeSeriesPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IActivateTemplateInClusterPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.ICreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.ICreateTimeSeriesPlan;
@@ -32,9 +34,6 @@ import org.apache.iotdb.db.metadata.plan.schemaregion.write.IDeactivateTemplateP
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IPreDeactivateTemplatePlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IRollbackPreDeactivateTemplatePlan;
 import org.apache.iotdb.db.metadata.template.Template;
-import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
-import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
-import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.ShowDevicesResult;
 import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -266,7 +265,7 @@ public interface ISchemaRegion {
    * @param plan ShowDevicesPlan which contains the path pattern and restriction params.
    * @return ShowDevicesResult and the current offset of this region after traverse.
    */
-  Pair<List<ShowDevicesResult>, Integer> getMatchedDevices(ShowDevicesPlan plan)
+  Pair<List<ShowDevicesResult>, Integer> getMatchedDevices(IShowDevicesPlan plan)
       throws MetadataException;
   // endregion
 
@@ -305,11 +304,10 @@ public interface ISchemaRegion {
    * Show timeseries.
    *
    * @param plan
-   * @param context
    * @throws MetadataException
    */
-  Pair<List<ShowTimeSeriesResult>, Integer> showTimeseries(
-      ShowTimeSeriesPlan plan, QueryContext context) throws MetadataException;
+  Pair<List<ShowTimeSeriesResult>, Integer> showTimeseries(IShowTimeSeriesPlan plan)
+      throws MetadataException;
   // endregion
   // endregion
 

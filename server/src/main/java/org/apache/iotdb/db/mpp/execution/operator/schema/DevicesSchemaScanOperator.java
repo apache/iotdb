@@ -20,12 +20,12 @@ package org.apache.iotdb.db.mpp.execution.operator.schema;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.metadata.plan.schemaregion.impl.read.SchemaRegionReadPlanFactory;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.mpp.execution.driver.SchemaDriverContext;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
 import org.apache.iotdb.db.query.dataset.ShowDevicesResult;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
@@ -62,18 +62,15 @@ public class DevicesSchemaScanOperator extends SchemaQueryScanOperator {
       List<ShowDevicesResult> schemaRegionResult =
           ((SchemaDriverContext) operatorContext.getInstanceContext().getDriverContext())
               .getSchemaRegion()
-              .getMatchedDevices(convertToPhysicalPlan())
+              .getMatchedDevices(
+                  SchemaRegionReadPlanFactory.getShowDevicesPlan(
+                      partialPath, limit, offset, hasSgCol, false))
               .left;
       return SchemaTsBlockUtil.transferSchemaResultToTsBlockList(
           schemaRegionResult.iterator(), outputDataTypes, this::setColumns);
     } catch (MetadataException e) {
       throw new RuntimeException(e.getMessage(), e);
     }
-  }
-
-  // ToDo @xinzhongtianxia remove this temporary converter after mpp online
-  private ShowDevicesPlan convertToPhysicalPlan() {
-    return new ShowDevicesPlan(partialPath, limit, offset, hasSgCol);
   }
 
   private void setColumns(ShowDevicesResult device, TsBlockBuilder builder) {

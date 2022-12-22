@@ -15,41 +15,27 @@
  * KIND, either express or implied.  See the License for the
  * specific language governing permissions and limitations
  * under the License.
+ *
  */
-package org.apache.iotdb.db.qp.physical.sys;
+
+package org.apache.iotdb.db.metadata.plan.schemaregion.impl.read;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.metadata.plan.schemaregion.read.IShowDevicesPlan;
 
-import java.io.DataOutputStream;
-import java.io.IOException;
 import java.util.Objects;
 
-public class ShowDevicesPlan extends ShowPlan {
+public class ShowDevicesPlanImpl extends AbstractShowSchemaPlanImpl implements IShowDevicesPlan {
 
-  public ShowDevicesPlan() {
-    super(ShowContentType.DEVICES);
-  }
+  private final boolean hasSgCol;
 
-  private boolean hasSgCol;
-
-  public ShowDevicesPlan(PartialPath path) {
-    super(ShowContentType.DEVICES, path);
-  }
-
-  public ShowDevicesPlan(PartialPath path, int limit, int offset, boolean hasSgCol) {
-    super(ShowContentType.DEVICES, path, limit, offset);
+  ShowDevicesPlanImpl(
+      PartialPath path, int limit, int offset, boolean hasSgCol, boolean isPrefixMatch) {
+    super(path, limit, offset, isPrefixMatch);
     this.hasSgCol = hasSgCol;
   }
 
   @Override
-  public void serialize(DataOutputStream outputStream) throws IOException {
-    outputStream.write(PhysicalPlanType.SHOW_DEVICES.ordinal());
-    putString(outputStream, path.getFullPath());
-    outputStream.writeInt(limit);
-    outputStream.writeInt(offset);
-    outputStream.writeLong(index);
-  }
-
   public boolean hasSgCol() {
     return hasSgCol;
   }
@@ -58,12 +44,13 @@ public class ShowDevicesPlan extends ShowPlan {
   public boolean equals(Object o) {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
-    ShowDevicesPlan that = (ShowDevicesPlan) o;
+    if (!super.equals(o)) return false;
+    ShowDevicesPlanImpl that = (ShowDevicesPlanImpl) o;
     return hasSgCol == that.hasSgCol;
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(hasSgCol);
+    return Objects.hash(super.hashCode(), hasSgCol);
   }
 }

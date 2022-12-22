@@ -45,6 +45,8 @@ import org.apache.iotdb.db.metadata.idtable.IDTableManager;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.MNodeType;
+import org.apache.iotdb.db.metadata.plan.schemaregion.read.IShowDevicesPlan;
+import org.apache.iotdb.db.metadata.plan.schemaregion.read.IShowTimeSeriesPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IActivateTemplateInClusterPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.ICreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.ICreateTimeSeriesPlan;
@@ -59,9 +61,6 @@ import org.apache.iotdb.db.metadata.schemaregion.rocksdb.mnode.RMeasurementMNode
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.utils.MetaFormatUtils;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
-import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
-import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
-import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.ShowDevicesResult;
 import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
 import org.apache.iotdb.db.utils.SchemaUtils;
@@ -1040,7 +1039,7 @@ public class RSchemaRegion implements ISchemaRegion {
   }
 
   @Override
-  public Pair<List<ShowDevicesResult>, Integer> getMatchedDevices(ShowDevicesPlan plan)
+  public Pair<List<ShowDevicesResult>, Integer> getMatchedDevices(IShowDevicesPlan plan)
       throws MetadataException {
     List<ShowDevicesResult> res = Collections.synchronizedList(new ArrayList<>());
     BiFunction<byte[], byte[], Boolean> function =
@@ -1095,24 +1094,24 @@ public class RSchemaRegion implements ISchemaRegion {
   }
 
   @Override
-  public Pair<List<ShowTimeSeriesResult>, Integer> showTimeseries(
-      ShowTimeSeriesPlan plan, QueryContext context) throws MetadataException {
+  public Pair<List<ShowTimeSeriesResult>, Integer> showTimeseries(IShowTimeSeriesPlan plan)
+      throws MetadataException {
     if (plan.getKey() != null && plan.getValue() != null) {
-      return showTimeseriesWithIndex(plan, context);
+      return showTimeseriesWithIndex(plan);
     } else {
-      return showTimeseriesWithoutIndex(plan, context);
+      return showTimeseriesWithoutIndex(plan);
     }
   }
 
   private Pair<List<ShowTimeSeriesResult>, Integer> showTimeseriesWithIndex(
-      ShowTimeSeriesPlan plan, QueryContext context) {
+      IShowTimeSeriesPlan plan) {
     // temporarily unsupported
     throw new UnsupportedOperationException(
         formatNotSupportInfo(Thread.currentThread().getStackTrace()[1].getMethodName()));
   }
 
   private Pair<List<ShowTimeSeriesResult>, Integer> showTimeseriesWithoutIndex(
-      ShowTimeSeriesPlan plan, QueryContext context) throws MetadataException {
+      IShowTimeSeriesPlan plan) throws MetadataException {
 
     List<ShowTimeSeriesResult> res = new LinkedList<>();
     Map<MeasurementPath, Pair<Map<String, String>, Map<String, String>>> measurementPathsAndTags =

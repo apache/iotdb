@@ -21,6 +21,7 @@ package org.apache.iotdb.db.mpp.execution.operator.schema;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.metadata.plan.schemaregion.impl.read.SchemaRegionReadPlanFactory;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
@@ -31,8 +32,6 @@ import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceStateMachine;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
-import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.query.dataset.ShowDevicesResult;
 import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -82,7 +81,9 @@ public class SchemaQueryScanOperatorTest {
               1, planNodeId, SchemaQueryScanOperator.class.getSimpleName());
       PartialPath partialPath = new PartialPath(META_SCAN_OPERATOR_TEST_SG + ".device0");
       ISchemaRegion schemaRegion = Mockito.mock(ISchemaRegion.class);
-      Mockito.when(schemaRegion.getMatchedDevices(new ShowDevicesPlan(partialPath, 10, 0, true)))
+      Mockito.when(
+              schemaRegion.getMatchedDevices(
+                  SchemaRegionReadPlanFactory.getShowDevicesPlan(partialPath, 10, 0, true, false)))
           .thenReturn(
               new Pair<>(
                   Collections.singletonList(
@@ -157,8 +158,6 @@ public class SchemaQueryScanOperatorTest {
               1, planNodeId, SchemaQueryScanOperator.class.getSimpleName());
       PartialPath partialPath = new PartialPath(META_SCAN_OPERATOR_TEST_SG + ".device0.*");
 
-      ShowTimeSeriesPlan showTimeSeriesPlan =
-          new ShowTimeSeriesPlan(partialPath, false, null, null, 10, 0, false);
       List<ShowTimeSeriesResult> showTimeSeriesResults = new ArrayList<>();
       for (int i = 0; i < 10; i++) {
         showTimeSeriesResults.add(
@@ -177,10 +176,9 @@ public class SchemaQueryScanOperatorTest {
       }
 
       ISchemaRegion schemaRegion = Mockito.mock(ISchemaRegion.class);
-
-      showTimeSeriesPlan.setRelatedTemplate(Collections.emptyMap());
       Mockito.when(
-              schemaRegion.showTimeseries(showTimeSeriesPlan, operatorContext.getInstanceContext()))
+              schemaRegion.showTimeseries(
+                  SchemaRegionReadPlanFactory.getShowTimeSeriesPlan(partialPath, 10, 0)))
           .thenReturn(new Pair<>(showTimeSeriesResults, 0));
 
       operatorContext

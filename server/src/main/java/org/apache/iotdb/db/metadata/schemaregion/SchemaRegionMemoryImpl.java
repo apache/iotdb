@@ -50,6 +50,8 @@ import org.apache.iotdb.db.metadata.plan.schemaregion.SchemaRegionPlanVisitor;
 import org.apache.iotdb.db.metadata.plan.schemaregion.impl.SchemaRegionPlanDeserializer;
 import org.apache.iotdb.db.metadata.plan.schemaregion.impl.SchemaRegionPlanSerializer;
 import org.apache.iotdb.db.metadata.plan.schemaregion.impl.write.SchemaRegionWritePlanFactory;
+import org.apache.iotdb.db.metadata.plan.schemaregion.read.IShowDevicesPlan;
+import org.apache.iotdb.db.metadata.plan.schemaregion.read.IShowTimeSeriesPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IActivateTemplateInClusterPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IAutoCreateDeviceMNodePlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IChangeAliasPlan;
@@ -67,9 +69,6 @@ import org.apache.iotdb.db.metadata.rescon.SchemaStatisticsManager;
 import org.apache.iotdb.db.metadata.tag.TagManager;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
-import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
-import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
-import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.ShowDevicesResult;
 import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
 import org.apache.iotdb.db.utils.SchemaUtils;
@@ -87,16 +86,13 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.stream.Stream;
 
-import static java.util.stream.Collectors.toList;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 
 /**
@@ -994,7 +990,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
    * @return ShowDevicesResult and the current offset of this region after traverse.
    */
   @Override
-  public Pair<List<ShowDevicesResult>, Integer> getMatchedDevices(ShowDevicesPlan plan)
+  public Pair<List<ShowDevicesResult>, Integer> getMatchedDevices(IShowDevicesPlan plan)
       throws MetadataException {
     return mtree.getDevices(plan);
   }
@@ -1051,29 +1047,28 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   }
 
   @Override
-  public Pair<List<ShowTimeSeriesResult>, Integer> showTimeseries(
-      ShowTimeSeriesPlan plan, QueryContext context) throws MetadataException {
+  public Pair<List<ShowTimeSeriesResult>, Integer> showTimeseries(IShowTimeSeriesPlan plan)
+      throws MetadataException {
     // show timeseries with index
     if (plan.getKey() != null && plan.getValue() != null) {
-      return showTimeseriesWithIndex(plan, context);
+      return showTimeseriesWithIndex(plan);
     } else {
-      return showTimeseriesWithoutIndex(plan, context);
+      return showTimeseriesWithoutIndex(plan);
     }
   }
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private Pair<List<ShowTimeSeriesResult>, Integer> showTimeseriesWithIndex(
-      ShowTimeSeriesPlan plan, QueryContext context) throws MetadataException {
+      IShowTimeSeriesPlan plan) throws MetadataException {
 
-    List<IMeasurementMNode> allMatchedNodes = tagManager.getMatchedTimeseriesInIndex(plan, context);
+    List<IMeasurementMNode> allMatchedNodes = tagManager.getMatchedTimeseriesInIndex(plan);
 
     List<ShowTimeSeriesResult> res = new LinkedList<>();
     PartialPath pathPattern = plan.getPath();
-    boolean needLast = plan.isOrderByHeat();
     int curOffset = -1;
     int count = 0;
-    int limit = needLast ? 0 : plan.getLimit();
-    int offset = needLast ? 0 : plan.getOffset();
+    int limit = plan.getLimit();
+    int offset = plan.getOffset();
 
     for (IMeasurementMNode leaf : allMatchedNodes) {
       if (plan.isPrefixMatch()
@@ -1114,25 +1109,6 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       }
     }
 
-    if (needLast) {
-      Stream<ShowTimeSeriesResult> stream = res.stream();
-
-      limit = plan.getLimit();
-      offset = plan.getOffset();
-
-      stream =
-          stream.sorted(
-              Comparator.comparingLong(ShowTimeSeriesResult::getLastTime)
-                  .reversed()
-                  .thenComparing(ShowTimeSeriesResult::getName));
-
-      if (limit != 0) {
-        stream = stream.skip(offset).limit(limit);
-      }
-
-      res = stream.collect(toList());
-    }
-
     return new Pair<>(res, curOffset + 1);
   }
 
@@ -1142,9 +1118,8 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
    * @param plan show time series query plan
    */
   private Pair<List<ShowTimeSeriesResult>, Integer> showTimeseriesWithoutIndex(
-      ShowTimeSeriesPlan plan, QueryContext context) throws MetadataException {
-    Pair<List<Pair<PartialPath, String[]>>, Integer> ans =
-        mtree.getAllMeasurementSchema(plan, context);
+      IShowTimeSeriesPlan plan) throws MetadataException {
+    Pair<List<Pair<PartialPath, String[]>>, Integer> ans = mtree.getAllMeasurementSchema(plan);
     List<ShowTimeSeriesResult> res = new LinkedList<>();
     for (Pair<PartialPath, String[]> ansString : ans.left) {
       long tagFileOffset = Long.parseLong(ansString.right[5]);

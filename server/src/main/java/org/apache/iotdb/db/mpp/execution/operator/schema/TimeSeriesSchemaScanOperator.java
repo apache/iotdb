@@ -20,13 +20,13 @@ package org.apache.iotdb.db.mpp.execution.operator.schema;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.metadata.plan.schemaregion.impl.read.SchemaRegionReadPlanFactory;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.mpp.execution.driver.SchemaDriverContext;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
@@ -94,21 +94,15 @@ public class TimeSeriesSchemaScanOperator extends SchemaQueryScanOperator {
       List<ShowTimeSeriesResult> schemaRegionResult =
           ((SchemaDriverContext) operatorContext.getInstanceContext().getDriverContext())
               .getSchemaRegion()
-              .showTimeseries(convertToPhysicalPlan(), operatorContext.getInstanceContext())
+              .showTimeseries(
+                  SchemaRegionReadPlanFactory.getShowTimeSeriesPlan(
+                      partialPath, templateMap, isContains, key, value, limit, offset, false))
               .left;
       return SchemaTsBlockUtil.transferSchemaResultToTsBlockList(
           schemaRegionResult.iterator(), outputDataTypes, this::setColumns);
     } catch (MetadataException e) {
       throw new RuntimeException(e.getMessage(), e);
     }
-  }
-
-  // ToDo @xinzhongtianxia remove this temporary converter after mpp online
-  private ShowTimeSeriesPlan convertToPhysicalPlan() {
-    ShowTimeSeriesPlan plan =
-        new ShowTimeSeriesPlan(partialPath, isContains, key, value, limit, offset, false);
-    plan.setRelatedTemplate(templateMap);
-    return plan;
   }
 
   private void setColumns(ShowTimeSeriesResult series, TsBlockBuilder builder) {

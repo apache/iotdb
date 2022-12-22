@@ -43,7 +43,10 @@ public enum SchemaRegionPlanType {
 
   PRE_DEACTIVATE_TEMPLATE((byte) 0),
   ROLLBACK_PRE_DEACTIVATE_TEMPLATE((byte) 1),
-  DEACTIVATE_TEMPLATE((byte) 2);
+  DEACTIVATE_TEMPLATE((byte) 2),
+
+  // query plan doesn't need any ser/deSer, thus use one type to represent all
+  READ_SCHEMA((byte) 127);
 
   public static final int MAX_NUM = Byte.MAX_VALUE;
   private static final SchemaRegionPlanType[] PLAN_TYPE_TABLE = new SchemaRegionPlanType[MAX_NUM];

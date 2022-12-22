@@ -50,12 +50,11 @@ import org.apache.iotdb.db.metadata.mtree.traverser.counter.EntityCounter;
 import org.apache.iotdb.db.metadata.mtree.traverser.counter.MNodeLevelCounter;
 import org.apache.iotdb.db.metadata.mtree.traverser.counter.MeasurementCounter;
 import org.apache.iotdb.db.metadata.mtree.traverser.counter.MeasurementGroupByLevelCounter;
+import org.apache.iotdb.db.metadata.plan.schemaregion.read.IShowDevicesPlan;
+import org.apache.iotdb.db.metadata.plan.schemaregion.read.IShowTimeSeriesPlan;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.utils.MetaFormatUtils;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
-import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
-import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
-import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.ShowDevicesResult;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -68,7 +67,6 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
@@ -79,9 +77,7 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.function.Consumer;
 import java.util.function.Function;
-import java.util.stream.Stream;
 
-import static java.util.stream.Collectors.toList;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
 
 /**
@@ -638,7 +634,7 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
   }
 
   @Override
-  public Pair<List<ShowDevicesResult>, Integer> getDevices(ShowDevicesPlan plan)
+  public Pair<List<ShowDevicesResult>, Integer> getDevices(IShowDevicesPlan plan)
       throws MetadataException {
     List<ShowDevicesResult> res = new ArrayList<>();
     EntityCollector<List<ShowDevicesResult>> collector =
@@ -777,19 +773,9 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
    */
   @Override
   public Pair<List<Pair<PartialPath, String[]>>, Integer> getAllMeasurementSchema(
-      ShowTimeSeriesPlan plan, QueryContext queryContext) throws MetadataException {
-    /*
-     There are two conditions and 4 cases.
-     1. isOrderByHeat = false && limit = 0 : just collect all results from each database
-     2. isOrderByHeat = false && limit != 0 : the offset and limit should be updated by each sg after traverse, thus the final result will satisfy the constraints of limit and offset
-     3. isOrderByHeat = true && limit = 0 : collect all result from each database and then sort
-     4. isOrderByHeat = true && limit != 0 : collect top limit result from each sg and then sort them and collect the top limit results start from offset.
-     The offset must be 0, since each sg should collect top limit results. The current limit is the sum of origin limit and offset when passed into metadata module
-    */
-
-    boolean needLast = plan.isOrderByHeat();
-    int limit = needLast ? 0 : plan.getLimit();
-    int offset = needLast ? 0 : plan.getOffset();
+      IShowTimeSeriesPlan plan) throws MetadataException {
+    int limit = plan.getLimit();
+    int offset = plan.getOffset();
 
     MeasurementCollector<List<Pair<PartialPath, String[]>>> collector =
         new MeasurementCollector<List<Pair<PartialPath, String[]>>>(
@@ -819,26 +805,6 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
     collector.traverse();
 
     List<Pair<PartialPath, String[]>> result = collector.getResult();
-
-    if (needLast) {
-      Stream<Pair<PartialPath, String[]>> stream = result.stream();
-
-      limit = plan.getLimit();
-      offset = plan.getOffset();
-
-      stream =
-          stream.sorted(
-              Comparator.comparingLong(
-                      (Pair<PartialPath, String[]> p) -> Long.parseLong(p.right[6]))
-                  .reversed()
-                  .thenComparing((Pair<PartialPath, String[]> p) -> p.left));
-
-      if (limit != 0) {
-        stream = stream.skip(offset).limit(limit);
-      }
-
-      result = stream.collect(toList());
-    }
 
     return new Pair<>(result, collector.getCurOffset() + 1);
   }

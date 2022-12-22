@@ -25,10 +25,9 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
+import org.apache.iotdb.db.metadata.plan.schemaregion.read.IShowDevicesPlan;
+import org.apache.iotdb.db.metadata.plan.schemaregion.read.IShowTimeSeriesPlan;
 import org.apache.iotdb.db.metadata.template.Template;
-import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
-import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
-import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.ShowDevicesResult;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -149,7 +148,7 @@ public interface IMTreeBelowSG {
   Set<PartialPath> getDevices(PartialPath pathPattern, boolean isPrefixMatch)
       throws MetadataException;
 
-  Pair<List<ShowDevicesResult>, Integer> getDevices(ShowDevicesPlan plan) throws MetadataException;
+  Pair<List<ShowDevicesResult>, Integer> getDevices(IShowDevicesPlan plan) throws MetadataException;
 
   Set<PartialPath> getDevicesByTimeseries(PartialPath timeseries) throws MetadataException;
 
@@ -206,8 +205,8 @@ public interface IMTreeBelowSG {
    * <p>result: [name, alias, database, dataType, encoding, compression, offset] and the current
    * offset
    */
-  Pair<List<Pair<PartialPath, String[]>>, Integer> getAllMeasurementSchema(
-      ShowTimeSeriesPlan plan, QueryContext queryContext) throws MetadataException;
+  Pair<List<Pair<PartialPath, String[]>>, Integer> getAllMeasurementSchema(IShowTimeSeriesPlan plan)
+      throws MetadataException;
 
   /**
    * Get child node path in the next level of the given path pattern.

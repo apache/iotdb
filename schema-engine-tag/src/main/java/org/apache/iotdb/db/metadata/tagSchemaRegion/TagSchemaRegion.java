@@ -39,6 +39,8 @@ import org.apache.iotdb.db.metadata.idtable.entry.SHA256DeviceID;
 import org.apache.iotdb.db.metadata.idtable.entry.SchemaEntry;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.plan.schemaregion.impl.write.SchemaRegionWritePlanFactory;
+import org.apache.iotdb.db.metadata.plan.schemaregion.read.IShowDevicesPlan;
+import org.apache.iotdb.db.metadata.plan.schemaregion.read.IShowTimeSeriesPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IActivateTemplateInClusterPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.ICreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.ICreateTimeSeriesPlan;
@@ -53,9 +55,6 @@ import org.apache.iotdb.db.metadata.tagSchemaRegion.utils.MeasurementPathUtils;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.utils.PathTagConverterUtils;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.utils.ShowTimeSeriesResultUtils;
 import org.apache.iotdb.db.metadata.template.Template;
-import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
-import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
-import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.ShowDevicesResult;
 import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
 import org.apache.iotdb.external.api.ISeriesNumerMonitor;
@@ -479,7 +478,7 @@ public class TagSchemaRegion implements ISchemaRegion {
   }
 
   @Override
-  public Pair<List<ShowDevicesResult>, Integer> getMatchedDevices(ShowDevicesPlan plan)
+  public Pair<List<ShowDevicesResult>, Integer> getMatchedDevices(IShowDevicesPlan plan)
       throws MetadataException {
     throw new UnsupportedOperationException("getMatchedDevices");
   }
@@ -535,8 +534,8 @@ public class TagSchemaRegion implements ISchemaRegion {
   }
 
   @Override
-  public Pair<List<ShowTimeSeriesResult>, Integer> showTimeseries(
-      ShowTimeSeriesPlan plan, QueryContext context) throws MetadataException {
+  public Pair<List<ShowTimeSeriesResult>, Integer> showTimeseries(IShowTimeSeriesPlan plan)
+      throws MetadataException {
     List<ShowTimeSeriesResult> ShowTimeSeriesResults = new ArrayList<>();
     Pair<List<ShowTimeSeriesResult>, Integer> result = new Pair<>(ShowTimeSeriesResults, 0);
     String path = plan.getPath().getFullPath();

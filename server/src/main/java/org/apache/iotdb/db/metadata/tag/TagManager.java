@@ -26,8 +26,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.metadata.MetadataConstant;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
-import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
-import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.metadata.plan.schemaregion.read.IShowTimeSeriesPlan;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.apache.commons.io.FileUtils;
@@ -194,8 +193,8 @@ public class TagManager {
     return timeseries;
   }
 
-  public List<IMeasurementMNode> getMatchedTimeseriesInIndex(
-      ShowTimeSeriesPlan plan, QueryContext context) throws MetadataException {
+  public List<IMeasurementMNode> getMatchedTimeseriesInIndex(IShowTimeSeriesPlan plan)
+      throws MetadataException {
     if (!tagIndex.containsKey(plan.getKey())) {
       return Collections.emptyList();
     }
