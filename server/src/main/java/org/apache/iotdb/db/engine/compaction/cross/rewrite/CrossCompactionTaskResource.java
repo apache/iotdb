@@ -46,7 +46,8 @@ public class CrossCompactionTaskResource {
     return seqFiles;
   }
 
-  // we need to unsure the files in seqFiles is ordered by the time range, that is, it should keep the
+  // we need to unsure the files in seqFiles is ordered by the time range, that is, it should keep
+  // the
   // order from candidates' seq file list.
   public void sortSeqFiles(List<TsFileResource> seqFilesCandidates) {
     Map<TsFileResource, Boolean> selectedFileMap = new HashMap<>();

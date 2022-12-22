@@ -115,7 +115,7 @@ public class CrossSpaceCompactionCandidate {
     // TaskResource
     unseqFile.markAsSelected();
     nextSplit = new CrossCompactionTaskResourceSplit(unseqFile, ret);
-    nextUnseqFileIndex ++;
+    nextUnseqFileIndex++;
     return true;
   }
 
