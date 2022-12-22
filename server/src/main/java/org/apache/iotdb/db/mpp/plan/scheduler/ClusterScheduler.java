@@ -85,18 +85,18 @@ public class ClusterScheduler implements IScheduler {
             executor,
             writeOperationExecutor,
             internalServiceClientManager);
-    if (queryType == QueryType.READ) {
-      this.stateTracker =
-          new FixedRateFragInsStateTracker(
-              stateMachine, scheduledExecutor, instances, internalServiceClientManager);
-      this.queryTerminator =
-          new SimpleQueryTerminator(
-              scheduledExecutor,
-              queryContext,
-              instances,
-              internalServiceClientManager,
-              stateTracker);
-    }
+//    if (queryType == QueryType.READ) {
+//      this.stateTracker =
+//          new FixedRateFragInsStateTracker(
+//              stateMachine, scheduledExecutor, instances, internalServiceClientManager);
+//      this.queryTerminator =
+//          new SimpleQueryTerminator(
+//              scheduledExecutor,
+//              queryContext,
+//              instances,
+//              internalServiceClientManager,
+//              stateTracker);
+//    }
   }
 
   private boolean needRetry(TSStatus failureStatus) {
@@ -107,7 +107,7 @@ public class ClusterScheduler implements IScheduler {
 
   @Override
   public void start() {
-    stateMachine.transitionToDispatching();
+//    stateMachine.transitionToDispatching();
     long startTime = System.nanoTime();
     Future<FragInstanceDispatchResult> dispatchResultFuture = dispatcher.dispatch(instances);
 
@@ -142,10 +142,10 @@ public class ClusterScheduler implements IScheduler {
 
     // The FragmentInstances has been dispatched successfully to corresponding host, we mark the
     // QueryState to Running
-    stateMachine.transitionToRunning();
+//    stateMachine.transitionToRunning();
 
     // TODO: (xingtanzjr) start the stateFetcher/heartbeat for each fragment instance
-    this.stateTracker.start();
+//    this.stateTracker.start();
     logger.debug("state tracker starts");
   }
 
