@@ -506,6 +506,21 @@ public class DMatchIT {
       fail(throwable.getMessage());
     }
   }
+  
+  @Test
+  public void testDtw5() {
+    String sqlStr = "select dtw(d5.s1,d5.s2) from root.vehicle";
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      ResultSet resultSet = statement.executeQuery(sqlStr);
+      resultSet.next();
+      double result1 = resultSet.getDouble(2);
+      Assert.assertEquals(2.0, result1, 0.01);
+      Assert.assertFalse(resultSet.next());
+    } catch (SQLException throwable) {
+      fail(throwable.getMessage());
+    }
+  }
 
   @Test
   public void testPearson1() {
