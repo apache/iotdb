@@ -67,11 +67,6 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.LastQueryScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesAggregationScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesScanNode;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
 import static org.apache.iotdb.db.mpp.plan.constant.DataNodeEndPoints.isSameNode;
 
 public class MemoryDistributionCalculator
@@ -116,15 +111,15 @@ public class MemoryDistributionCalculator
             });
   }
 
-  /**
-   * We do not distinguish LocalSourceHandle/SourceHandle by not letting LocalSinkHandle update
-   */
+  /** We do not distinguish LocalSourceHandle/SourceHandle by not letting LocalSinkHandle update */
   @Override
   public Void visitExchange(ExchangeNode node, MemoryDistributionContext context) {
     // context == null means this ExchangeNode doesn't have a father
-    if (context == null || context.memoryDistributionType.equals(MemoryDistributionType.CONSUME_ALL_CHILDREN_AT_THE_SAME_TIME)) {
+    if (context == null
+        || context.memoryDistributionType.equals(
+            MemoryDistributionType.CONSUME_ALL_CHILDREN_AT_THE_SAME_TIME)) {
       exchangeNum++;
-    } else if (!context.exchangeAdded){
+    } else if (!context.exchangeAdded) {
       context.exchangeAdded = true;
       exchangeNum++;
     }
