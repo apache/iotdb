@@ -56,6 +56,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.SlidingWindowAggre
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.SortNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.TimeJoinNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.TransformNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.VerticallyConcatNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.last.LastQueryCollectNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.last.LastQueryMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.last.LastQueryNode;
@@ -399,6 +400,12 @@ public class MemoryDistributionCalculator
   @Override
   public Void visitRollbackSchemaBlackList(
       RollbackSchemaBlackListNode node, MemoryDistributionContext context) {
+    processConsumeAllChildrenAtTheSameTime(node);
+    return null;
+  }
+
+  @Override
+  public Void visitVerticallyConcat(VerticallyConcatNode node, MemoryDistributionContext context) {
     processConsumeAllChildrenAtTheSameTime(node);
     return null;
   }
