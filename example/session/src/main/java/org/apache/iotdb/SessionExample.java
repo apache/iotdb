@@ -58,7 +58,8 @@ public class SessionExample {
   private static final String ROOT_SG1_D1 = "root.sg1.d1";
   private static final String LOCAL_HOST = "127.0.0.1";
 
-  public static void main(String[] args) throws Exception {
+  public static void main(String[] args)
+      throws IoTDBConnectionException, StatementExecutionException {
     session =
         new Session.Builder()
             .host(LOCAL_HOST)

@@ -18,12 +18,12 @@
  */
 package org.apache.iotdb;
 
-import org.apache.iotdb.isession.ISessionDataSet;
 import org.apache.iotdb.isession.util.Version;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.session.Session;
+import org.apache.iotdb.session.SessionDataSet;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -93,7 +93,7 @@ public class SyntaxConventionRelatedExample {
 
     // createTimeSeries
     createTimeSeries();
-    ISessionDataSet dataSet = session.executeQueryStatement("show timeseries root.sg1.*");
+    SessionDataSet dataSet = session.executeQueryStatement("show timeseries root.sg1.*");
     // the expected paths would be:
     // [root.sg1.select, root.sg1.`111`, root.sg1.`a"b'c```, root.sg1.a]
     // You could see that time series in dataSet are exactly the same as
@@ -111,7 +111,7 @@ public class SyntaxConventionRelatedExample {
     long endTime = 100L;
     long timeOut = 60000;
 
-    try (ISessionDataSet dataSet1 =
+    try (SessionDataSet dataSet1 =
         session.executeRawDataQuery(paths, startTime, endTime, timeOut)) {
 
       System.out.println(dataSet1.getColumnNames());
@@ -119,8 +119,6 @@ public class SyntaxConventionRelatedExample {
       while (dataSet1.hasNext()) {
         System.out.println(dataSet1.next());
       }
-    } catch (Exception e) {
-      throw new RuntimeException(e);
     }
   }
 

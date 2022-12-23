@@ -25,10 +25,10 @@ import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.utils.DateTimeUtils;
 import org.apache.iotdb.exception.ArgsErrorException;
-import org.apache.iotdb.isession.ISessionDataSet;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Session;
+import org.apache.iotdb.session.SessionDataSet;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Field;
@@ -832,7 +832,7 @@ public class ImportCsv extends AbstractCsvTool {
     boolean hasResult = false;
     for (String deviceName : deviceNames) {
       String sql = "show timeseries " + deviceName + ".*";
-      ISessionDataSet sessionDataSet = null;
+      SessionDataSet sessionDataSet = null;
       try {
         sessionDataSet = session.executeQueryStatement(sql);
         int tsIndex = sessionDataSet.getColumnNames().indexOf(ColumnHeaderConstant.TIMESERIES);

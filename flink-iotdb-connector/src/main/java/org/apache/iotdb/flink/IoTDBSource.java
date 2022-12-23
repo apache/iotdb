@@ -19,10 +19,10 @@
 package org.apache.iotdb.flink;
 
 import org.apache.iotdb.flink.options.IoTDBSourceOptions;
-import org.apache.iotdb.isession.ISessionDataSet;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Session;
+import org.apache.iotdb.session.SessionDataSet;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 
 import org.apache.flink.configuration.Configuration;
@@ -37,7 +37,7 @@ public abstract class IoTDBSource<T> extends RichSourceFunction<T> {
   private IoTDBSourceOptions sourceOptions;
 
   private transient Session session;
-  private transient ISessionDataSet dataSet;
+  private transient SessionDataSet dataSet;
 
   protected IoTDBSource(IoTDBSourceOptions ioTDBSourceOptions) {
     this.sourceOptions = ioTDBSourceOptions;

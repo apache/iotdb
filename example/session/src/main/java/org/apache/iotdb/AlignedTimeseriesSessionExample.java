@@ -19,11 +19,11 @@
 
 package org.apache.iotdb;
 
-import org.apache.iotdb.isession.ISessionDataSet;
 import org.apache.iotdb.isession.template.Template;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Session;
+import org.apache.iotdb.session.SessionDataSet;
 import org.apache.iotdb.session.template.InternalNode;
 import org.apache.iotdb.session.template.MeasurementNode;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -112,7 +112,7 @@ public class AlignedTimeseriesSessionExample {
   }
 
   private static void selectTest() throws StatementExecutionException, IoTDBConnectionException {
-    ISessionDataSet dataSet = session.executeQueryStatement("select s1 from root.sg_1.d1");
+    SessionDataSet dataSet = session.executeQueryStatement("select s1 from root.sg_1.d1");
     System.out.println(dataSet.getColumnNames());
     while (dataSet.hasNext()) {
       System.out.println(dataSet.next());
@@ -130,7 +130,7 @@ public class AlignedTimeseriesSessionExample {
 
   private static void selectWithAlignByDeviceTest()
       throws StatementExecutionException, IoTDBConnectionException {
-    ISessionDataSet dataSet =
+    SessionDataSet dataSet =
         session.executeQueryStatement("select * from root.sg_1 align by device");
     System.out.println(dataSet.getColumnNames());
     while (dataSet.hasNext()) {
@@ -142,7 +142,7 @@ public class AlignedTimeseriesSessionExample {
 
   private static void selectWithValueFilterTest()
       throws StatementExecutionException, IoTDBConnectionException {
-    ISessionDataSet dataSet =
+    SessionDataSet dataSet =
         session.executeQueryStatement("select s1 from root.sg_1.d1 where s1 > 3 and time < 9");
     System.out.println(dataSet.getColumnNames());
     while (dataSet.hasNext()) {
@@ -163,7 +163,7 @@ public class AlignedTimeseriesSessionExample {
 
   private static void selectWithAggregationTest()
       throws StatementExecutionException, IoTDBConnectionException {
-    ISessionDataSet dataSet = session.executeQueryStatement("select count(s1) from root.sg_1.d1");
+    SessionDataSet dataSet = session.executeQueryStatement("select count(s1) from root.sg_1.d1");
     System.out.println(dataSet.getColumnNames());
     while (dataSet.hasNext()) {
       System.out.println(dataSet.next());
@@ -190,7 +190,7 @@ public class AlignedTimeseriesSessionExample {
 
   private static void selectWithGroupByTest()
       throws StatementExecutionException, IoTDBConnectionException {
-    ISessionDataSet dataSet =
+    SessionDataSet dataSet =
         session.executeQueryStatement(
             "select count(s1) from root.sg_1.d1.vector GROUP BY ([1, 100), 20ms)");
     System.out.println(dataSet.getColumnNames());
@@ -213,7 +213,7 @@ public class AlignedTimeseriesSessionExample {
 
   private static void selectWithLastTest()
       throws StatementExecutionException, IoTDBConnectionException {
-    ISessionDataSet dataSet = session.executeQueryStatement("select last s1 from root.sg_1.d1");
+    SessionDataSet dataSet = session.executeQueryStatement("select last s1 from root.sg_1.d1");
     System.out.println(dataSet.getColumnNames());
     while (dataSet.hasNext()) {
       System.out.println(dataSet.next());
@@ -231,7 +231,7 @@ public class AlignedTimeseriesSessionExample {
 
   private static void selectWithLastTestWithoutValueFilter()
       throws StatementExecutionException, IoTDBConnectionException {
-    ISessionDataSet dataSet =
+    SessionDataSet dataSet =
         session.executeQueryStatement("select last s1 from root.sg_1.d1 where time >= 5");
     System.out.println(dataSet.getColumnNames());
     while (dataSet.hasNext()) {

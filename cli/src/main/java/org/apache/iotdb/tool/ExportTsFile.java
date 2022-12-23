@@ -21,10 +21,10 @@ package org.apache.iotdb.tool;
 
 import org.apache.iotdb.cli.utils.JlineUtils;
 import org.apache.iotdb.exception.ArgsErrorException;
-import org.apache.iotdb.isession.ISessionDataSet;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Session;
+import org.apache.iotdb.session.SessionDataSet;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
@@ -271,7 +271,7 @@ public class ExportTsFile extends AbstractTsFileTool {
   private static void dumpResult(String sql, int index) {
     final String path = targetDirectory + targetFile + index + ".tsfile";
     try {
-      ISessionDataSet sessionDataSet = session.executeQueryStatement(sql, timeout);
+      SessionDataSet sessionDataSet = session.executeQueryStatement(sql, timeout);
       long start = System.currentTimeMillis();
       writeTsFileFile(sessionDataSet, path);
       long end = System.currentTimeMillis();
@@ -285,7 +285,7 @@ public class ExportTsFile extends AbstractTsFileTool {
     }
   }
 
-  public static void writeTsFileFile(ISessionDataSet sessionDataSet, String filePath)
+  public static void writeTsFileFile(SessionDataSet sessionDataSet, String filePath)
       throws IOException, IoTDBConnectionException, StatementExecutionException,
           WriteProcessException {
     List<String> columnNames = sessionDataSet.getColumnNames();
