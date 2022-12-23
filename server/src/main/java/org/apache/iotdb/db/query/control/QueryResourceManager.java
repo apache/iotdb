@@ -18,11 +18,8 @@
  */
 package org.apache.iotdb.db.query.control;
 
-import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.service.TemporaryQueryDataFileService;
 
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
