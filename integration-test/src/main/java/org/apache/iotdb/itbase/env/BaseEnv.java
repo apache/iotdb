@@ -23,8 +23,13 @@ import org.apache.iotdb.confignode.rpc.thrift.IConfigNodeRPCService;
 import org.apache.iotdb.isession.ISession;
 import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.isession.util.Version;
+<<<<<<< HEAD
 import org.apache.iotdb.it.env.cluster.ConfigNodeWrapper;
 import org.apache.iotdb.it.env.cluster.DataNodeWrapper;
+=======
+import org.apache.iotdb.it.env.ConfigNodeWrapper;
+import org.apache.iotdb.it.env.DataNodeWrapper;
+>>>>>>> 2444ca7668 ([To rel/1.0][IOTDB-5127] add some deprecated methods on ISession ISessionPool and rename package name (#8578))
 import org.apache.iotdb.jdbc.Constant;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.session.Session;

@@ -24,10 +24,15 @@ import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.confignode.rpc.thrift.IConfigNodeRPCService;
+<<<<<<< HEAD:integration-test/src/main/java/org/apache/iotdb/it/env/remote/RemoteServerEnv.java
 import org.apache.iotdb.isession.ISession;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.env.cluster.ConfigNodeWrapper;
 import org.apache.iotdb.it.env.cluster.DataNodeWrapper;
+=======
+import org.apache.iotdb.db.client.DataNodeClientPoolFactory;
+import org.apache.iotdb.isession.ISession;
+>>>>>>> 2444ca7668 ([To rel/1.0][IOTDB-5127] add some deprecated methods on ISession ISessionPool and rename package name (#8578)):integration-test/src/main/java/org/apache/iotdb/it/env/RemoteServerEnv.java
 import org.apache.iotdb.itbase.env.BaseEnv;
 import org.apache.iotdb.itbase.env.ClusterConfig;
 import org.apache.iotdb.jdbc.Config;
