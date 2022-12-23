@@ -393,7 +393,8 @@ public class DataNode implements DataNodeMBean {
     /* Send restart request */
     int retry = DEFAULT_RETRY;
     TDataNodeRestartReq req = new TDataNodeRestartReq();
-    req.setClusterName(config.getClusterName());
+    req.setClusterName(
+        config.getClusterName() == null ? "defaultCluster" : config.getClusterName());
     req.setDataNodeConfiguration(generateDataNodeConfiguration());
     TDataNodeRestartResp dataNodeRestartResp = null;
     while (retry > 0) {

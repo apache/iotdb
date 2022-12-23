@@ -21,11 +21,11 @@ package org.apache.iotdb.tool;
 
 import org.apache.iotdb.cli.utils.JlineUtils;
 import org.apache.iotdb.exception.ArgsErrorException;
+import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Session;
-import org.apache.iotdb.session.SessionDataSet;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 
@@ -90,6 +90,8 @@ public class ExportCsv extends AbstractCsvTool {
   private static int linesPerFile = 10000;
 
   private static final int EXPORT_PER_LINE_COUNT = 10000;
+
+  private static long timeout = -1;
 
   /** main function of export csv tool. */
   public static void main(String[] args) {
@@ -180,7 +182,10 @@ public class ExportCsv extends AbstractCsvTool {
     targetFile = commandLine.getOptionValue(TARGET_FILE_ARGS);
     needDataTypePrinted = Boolean.valueOf(commandLine.getOptionValue(DATA_TYPE_ARGS));
     queryCommand = commandLine.getOptionValue(QUERY_COMMAND_ARGS);
-
+    String timeoutString = commandLine.getOptionValue(TIMEOUT_ARGS);
+    if (timeoutString != null) {
+      timeout = Long.parseLong(timeoutString);
+    }
     if (needDataTypePrinted == null) {
       needDataTypePrinted = true;
     }
@@ -287,6 +292,13 @@ public class ExportCsv extends AbstractCsvTool {
             .build();
     options.addOption(opHelp);
 
+    Option opTimeout =
+        Option.builder(TIMEOUT_ARGS)
+            .longOpt(TIMEOUT_NAME)
+            .hasArg()
+            .desc("Timeout for session query")
+            .build();
+    options.addOption(opTimeout);
     return options;
   }
 
@@ -316,7 +328,7 @@ public class ExportCsv extends AbstractCsvTool {
   private static void dumpResult(String sql, int index) {
     final String path = targetDirectory + targetFile + index;
     try {
-      SessionDataSet sessionDataSet = session.executeQueryStatement(sql);
+      SessionDataSet sessionDataSet = session.executeQueryStatement(sql, timeout);
       List<Object> headers = new ArrayList<>();
       List<String> names = sessionDataSet.getColumnNames();
       List<String> types = sessionDataSet.getColumnTypes();

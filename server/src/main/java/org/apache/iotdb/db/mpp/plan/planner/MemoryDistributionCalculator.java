@@ -74,11 +74,10 @@ import static org.apache.iotdb.db.mpp.plan.constant.DataNodeEndPoints.isSameNode
 
 public class MemoryDistributionCalculator
     extends PlanVisitor<Void, MemoryDistributionCalculator.MemoryDistributionContext> {
-  private int exchangeNum = 0;
+  /** This map is used to calculate the total split of memory */
+  private int exchangeNum;
 
-  public MemoryDistributionCalculator() {}
-
-  public long calculateTotalSplit() {
+  public int calculateTotalSplit() {
     return exchangeNum;
   }
 
@@ -118,24 +117,17 @@ public class MemoryDistributionCalculator
     // child.accept(this, context);
   }
 
+  /** We do not distinguish LocalSourceHandle/SourceHandle by not letting LocalSinkHandle update */
   @Override
   public Void visitExchange(ExchangeNode node, MemoryDistributionContext context) {
-    // we do not distinguish LocalSourceHandle/SourceHandle by not letting LocalSinkHandle update
-    // the map
-    // TODO why use a map, just +1, +1, if(context.notAdded) +1
-    if (context == null) {
-      // context == null means this ExchangeNode has no father
-      exchangeNum += 1;
-    } else {
-      if (context.memoryDistributionType.equals(
-          MemoryDistributionType.CONSUME_ALL_CHILDREN_AT_THE_SAME_TIME)) {
-        exchangeNum += 1;
-      } else if (context.memoryDistributionType.equals(
-              MemoryDistributionType.CONSUME_CHILDREN_ONE_BY_ONE)
-          && !context.exchangeAdded) {
-        context.exchangeAdded = true;
-        exchangeNum += 1;
-      }
+    // context == null means this ExchangeNode doesn't have a father
+    if (context == null
+        || context.memoryDistributionType.equals(
+            MemoryDistributionType.CONSUME_ALL_CHILDREN_AT_THE_SAME_TIME)) {
+      exchangeNum++;
+    } else if (!context.exchangeAdded) {
+      context.exchangeAdded = true;
+      exchangeNum++;
     }
     return null;
   }
@@ -145,7 +137,7 @@ public class MemoryDistributionCalculator
     // LocalSinkHandle and LocalSourceHandle are one-to-one mapped and only LocalSourceHandle do the
     // update
     if (!isSameNode(node.getDownStreamEndpoint())) {
-      this.exchangeNum += 1;
+      exchangeNum++;
     }
     node.getChild().accept(this, context);
     return null;
@@ -471,7 +463,6 @@ public class MemoryDistributionCalculator
 
   static class MemoryDistributionContext {
     final PlanNodeId planNodeId;
-    // Indicating whether an exchange node has been added as a child
     boolean exchangeAdded = false;
     final MemoryDistributionType memoryDistributionType;
 

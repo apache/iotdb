@@ -151,7 +151,7 @@ public class TSFileConfig implements Serializable {
   /** The amount of data iterate each time */
   private int batchSize = 1000;
 
-  /** Maximum capacity of a TsBlock */
+  /** Maximum capacity of a TsBlock, allow up to two pages. */
   private int maxTsBlockSizeInBytes = 128 * 1024;
 
   /** Maximum number of lines in a single TsBlock */

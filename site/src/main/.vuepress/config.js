@@ -143,12 +143,12 @@ var config = {
 				  {
 					text: 'ASF',
 					items: [
-					  { text: 'Foundation', link: 'http://www.apache.org/'},
-					  { text: 'License', link: 'http://www.apache.org/licenses/'},
-					  { text: 'Security', link: 'http://www.apache.org/security/'},
-					  { text: 'Sponsorship', link: 'http://www.apache.org/foundation/sponsorship.html'},
-					  { text: 'Thanks', link: 'http://www.apache.org/foundation/thanks.html'},
-					  { text: 'Current Events', link: 'http://www.apache.org/events/current-event'},
+					  { text: 'Foundation', link: 'https://www.apache.org/'},
+					  { text: 'License', link: 'https://www.apache.org/licenses/'},
+					  { text: 'Security', link: 'https://www.apache.org/security/'},
+					  { text: 'Sponsorship', link: 'https://www.apache.org/foundation/sponsorship.html'},
+					  { text: 'Thanks', link: 'https://www.apache.org/foundation/thanks.html'},
+					  { text: 'Current Events', link: 'https://www.apache.org/events/current-event'},
 					]
 				  },
 			],
@@ -992,12 +992,11 @@ var config = {
 							['Maintenance-Tools/Log-Tool','Log Tool'],
 							['Maintenance-Tools/JMX-Tool','JMX Tool'],
 							['Maintenance-Tools/MLogParser-Tool','MLogParser Tool'],
-							['Maintenance-Tools/Load-Tsfile','Load TsFile'],
 							['Maintenance-Tools/IoTDB-Data-Dir-Overview-Tool','IoTDB Data Directory Overview Tool'],
 							['Maintenance-Tools/TsFile-Sketch-Tool','TsFile Sketch Tool'],
 							['Maintenance-Tools/TsFile-Resource-Sketch-Tool','TsFile Resource Sketch Tool'],
 							['Maintenance-Tools/TsFile-Split-Tool','TsFile Split Tool'],
-							['Maintenance-Tools/TsFile-Load-Export-Tool','TsFile Export Tool'],
+							['Maintenance-Tools/TsFile-Load-Export-Tool','TsFile Load Export Tool'],
 							['Maintenance-Tools/CSV-Tool','CSV Load Export Tool'],
 						]
 					},
@@ -1036,6 +1035,7 @@ var config = {
 						title: 'FAQ',
 						children: [
 							['FAQ/Frequently-asked-questions','Frequently asked questions'],
+							['FAQ/FAQ-for-cluster-setup','FAQ for cluster setup'],
 						]
 					},
 					{
@@ -1227,12 +1227,11 @@ var config = {
 							['Maintenance-Tools/Log-Tool','Log Tool'],
 							['Maintenance-Tools/JMX-Tool','JMX Tool'],
 							['Maintenance-Tools/MLogParser-Tool','MLogParser Tool'],
-							['Maintenance-Tools/Load-Tsfile','Load TsFile'],
 							['Maintenance-Tools/IoTDB-Data-Dir-Overview-Tool','IoTDB Data Directory Overview Tool'],
 							['Maintenance-Tools/TsFile-Sketch-Tool','TsFile Sketch Tool'],
 							['Maintenance-Tools/TsFile-Resource-Sketch-Tool','TsFile Resource Sketch Tool'],
 							['Maintenance-Tools/TsFile-Split-Tool','TsFile Split Tool'],
-							['Maintenance-Tools/TsFile-Load-Export-Tool','TsFile Export Tool'],
+							['Maintenance-Tools/TsFile-Load-Export-Tool','TsFile Load Export Tool'],
 							['Maintenance-Tools/CSV-Tool','CSV Load Export Tool'],
 						]
 					},
@@ -1271,6 +1270,7 @@ var config = {
 						title: 'FAQ',
 						children: [
 							['FAQ/Frequently-asked-questions','Frequently asked questions'],
+							['FAQ/FAQ-for-cluster-setup','FAQ for cluster setup'],
 						]
 					},
 					{
@@ -1353,12 +1353,12 @@ var config = {
 				  {
 					text: 'ASF',
 					items: [
-					  { text: '基金会', link: 'http://www.apache.org/'},
-					  { text: '许可证', link: 'http://www.apache.org/licenses/'},
-					  { text: '安全', link: 'http://www.apache.org/security/'},
-					  { text: '赞助', link: 'http://www.apache.org/foundation/sponsorship.html'},
-					  { text: '致谢', link: 'http://www.apache.org/foundation/thanks.html'},
-					  { text: '活动', link: 'http://www.apache.org/events/current-event'},
+					  { text: '基金会', link: 'https://www.apache.org/'},
+					  { text: '许可证', link: 'https://www.apache.org/licenses/'},
+					  { text: '安全', link: 'https://www.apache.org/security/'},
+					  { text: '赞助', link: 'https://www.apache.org/foundation/sponsorship.html'},
+					  { text: '致谢', link: 'https://www.apache.org/foundation/thanks.html'},
+					  { text: '活动', link: 'https://www.apache.org/events/current-event'},
 					]
 				  },
 			],
@@ -2190,12 +2190,11 @@ var config = {
 							['Maintenance-Tools/Log-Tool','日志工具'],
 							['Maintenance-Tools/JMX-Tool','JMX 工具'],
 							['Maintenance-Tools/MLogParser-Tool','Mlog解析工具'],
-							['Maintenance-Tools/Load-Tsfile','加载 TsFile'],
 							['Maintenance-Tools/IoTDB-Data-Dir-Overview-Tool','IoTDB数据文件夹概览工具'],
 							['Maintenance-Tools/TsFile-Sketch-Tool','TsFile概览工具'],
 							['Maintenance-Tools/TsFile-Resource-Sketch-Tool','TsFile Resource概览工具'],
 							['Maintenance-Tools/TsFile-Split-Tool','TsFile 拆分工具'],
-							['Maintenance-Tools/TsFile-Load-Export-Tool','TsFile 导出工具'],
+							['Maintenance-Tools/TsFile-Load-Export-Tool','TsFile 导入导出工具'],
 							['Maintenance-Tools/CSV-Tool','CSV 导入导出工具'],
 						]
 					},
@@ -2234,6 +2233,7 @@ var config = {
 						title: 'FAQ',
 						children: [
 							['FAQ/Frequently-asked-questions','常见问题'],
+							['FAQ/FAQ-for-cluster-setup','分布式部署FAQ'],
 						]
 					},
 					{
@@ -2425,12 +2425,11 @@ var config = {
 							['Maintenance-Tools/Log-Tool','日志工具'],
 							['Maintenance-Tools/JMX-Tool','JMX 工具'],
 							['Maintenance-Tools/MLogParser-Tool','Mlog解析工具'],
-							['Maintenance-Tools/Load-Tsfile','加载 TsFile'],
 							['Maintenance-Tools/IoTDB-Data-Dir-Overview-Tool','IoTDB数据文件夹概览工具'],
               ['Maintenance-Tools/TsFile-Sketch-Tool','TsFile概览工具'],
               ['Maintenance-Tools/TsFile-Resource-Sketch-Tool','TsFile Resource概览工具'],
 							['Maintenance-Tools/TsFile-Split-Tool','TsFile 拆分工具'],
-							['Maintenance-Tools/TsFile-Load-Export-Tool','TsFile 导出工具'],
+							['Maintenance-Tools/TsFile-Load-Export-Tool','TsFile 导入导出工具'],
 							['Maintenance-Tools/CSV-Tool','CSV 导入导出工具'],
 						]
 					},
@@ -2469,6 +2468,7 @@ var config = {
 						title: 'FAQ',
 						children: [
 							['FAQ/Frequently-asked-questions','常见问题'],
+							['FAQ/FAQ-for-cluster-setup','分布式部署FAQ'],
 						]
 					},
 					{
