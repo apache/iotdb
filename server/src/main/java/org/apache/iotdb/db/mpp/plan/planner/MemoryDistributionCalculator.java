@@ -70,7 +70,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.LastQueryScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesAggregationScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesScanNode;
 
-import static org.apache.iotdb.db.mpp.plan.constant.DataNodeEndPoints.isSameNode;
+import static org.apache.iotdb.db.mpp.common.DataNodeEndPoints.isSameNode;
 
 public class MemoryDistributionCalculator
     extends PlanVisitor<Void, MemoryDistributionCalculator.MemoryDistributionContext> {

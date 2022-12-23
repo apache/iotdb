@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.plan.constant;
+package org.apache.iotdb.db.mpp.plan.statement;
 
 /**
  * Type code of statement.
