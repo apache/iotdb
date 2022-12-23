@@ -25,11 +25,10 @@ import org.apache.iotdb.tsfile.utils.Pair;
 import com.google.common.util.concurrent.AbstractFuture;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
+import javax.annotation.Nullable;
 import org.apache.commons.lang3.Validate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import javax.annotation.Nullable;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -155,7 +154,7 @@ public class MemoryPool {
         "bytes should be greater than zero while less than or equal to max bytes per fragment instance: %d",
         bytesToReserve);
     if (bytesToReserve > maxBytesCanReserve) {
-      LOGGER.error(
+      LOGGER.warn(
           "Cannot reserve {} bytes memory from MemoryPool for planNodeId{}",
           bytesToReserve,
           planNodeId);
