@@ -17,6 +17,8 @@
 @REM under the License.
 @REM
 
+@echo off
+
 pushd %~dp0..
 if NOT DEFINED IOTDB_HOME set IOTDB_HOME=%cd%
 popd
@@ -38,3 +40,4 @@ IF EXIST "%IOTDB_HOME%\sbin\stop-datanode.bat" (
 start cmd /c %CONFIGNODE_STOP_PATH%
 TIMEOUT /T 3 /NOBREAK
 start cmd /c %DATANODE_STOP_PATH%
+exit 0

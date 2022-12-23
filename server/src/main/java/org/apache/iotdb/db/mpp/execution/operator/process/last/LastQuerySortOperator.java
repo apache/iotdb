@@ -41,7 +41,6 @@ import static org.apache.iotdb.tsfile.read.common.block.TsBlockBuilderStatus.DEF
 // collect all last query result in the same data region and sort them according to the
 // time-series's alphabetical order
 public class LastQuerySortOperator implements ProcessOperator {
-
   private static final int MAX_DETECT_COUNT =
       TSFileDescriptor.getInstance().getConfig().getMaxTsBlockLineNumber();
 
@@ -55,7 +54,7 @@ public class LastQuerySortOperator implements ProcessOperator {
   private int cachedTsBlockRowIndex;
 
   // we must make sure that Operator in children has already been sorted
-  private final List<UpdateLastCacheOperator> children;
+  private final List<AbstractUpdateLastCacheOperator> children;
 
   private final OperatorContext operatorContext;
 
@@ -70,10 +69,12 @@ public class LastQuerySortOperator implements ProcessOperator {
   // used to cache previous TsBlock get from children
   private TsBlock previousTsBlock;
 
+  private int previousTsBlockIndex = 0;
+
   public LastQuerySortOperator(
       OperatorContext operatorContext,
       TsBlock cachedTsBlock,
-      List<UpdateLastCacheOperator> children,
+      List<AbstractUpdateLastCacheOperator> children,
       Comparator<Binary> timeSeriesComparator) {
     this.cachedTsBlock = cachedTsBlock;
     this.cachedTsBlockSize = cachedTsBlock.getPositionCount();
@@ -113,12 +114,13 @@ public class LastQuerySortOperator implements ProcessOperator {
     // we have consumed up data from children Operator, just return all remaining cached data in
     // cachedTsBlock, tsBlockBuilder and previousTsBlock
     if (currentIndex >= inputOperatorsCount) {
-      while (previousTsBlock != null) {
-        if (canUseDataFromCachedTsBlock(previousTsBlock)) {
-          LastQueryUtil.appendLastValue(tsBlockBuilder, cachedTsBlock, cachedTsBlockRowIndex++);
-        } else {
-          LastQueryUtil.appendLastValue(tsBlockBuilder, previousTsBlock, 0);
-          previousTsBlock = null;
+      if (previousTsBlock != null) {
+        while (previousTsBlockIndex < previousTsBlock.getPositionCount()) {
+          if (canUseDataFromCachedTsBlock(previousTsBlock, previousTsBlockIndex)) {
+            LastQueryUtil.appendLastValue(tsBlockBuilder, cachedTsBlock, cachedTsBlockRowIndex++);
+          } else {
+            LastQueryUtil.appendLastValue(tsBlockBuilder, previousTsBlock, previousTsBlockIndex++);
+          }
         }
       }
       TsBlock res = cachedTsBlock.subTsBlock(cachedTsBlockRowIndex);
@@ -138,30 +140,26 @@ public class LastQuerySortOperator implements ProcessOperator {
     int endIndex = getEndIndex();
 
     while ((System.nanoTime() - start < maxRuntime)
-        && (currentIndex < endIndex || previousTsBlock != null)
+        && (currentIndex < endIndex
+            || (previousTsBlock != null
+                && previousTsBlockIndex < previousTsBlock.getPositionCount()))
         && !tsBlockBuilder.isFull()) {
-      if (previousTsBlock != null) {
-        if (canUseDataFromCachedTsBlock(previousTsBlock)) {
-          LastQueryUtil.appendLastValue(tsBlockBuilder, cachedTsBlock, cachedTsBlockRowIndex++);
-        } else {
-          LastQueryUtil.appendLastValue(tsBlockBuilder, previousTsBlock, 0);
-          previousTsBlock = null;
-        }
-      } else {
+      if (previousTsBlock == null || previousTsBlock.getPositionCount() <= previousTsBlockIndex) {
         if (children.get(currentIndex).hasNext()) {
-          TsBlock tsBlock = children.get(currentIndex).next();
-          if (tsBlock == null) {
+          previousTsBlock = children.get(currentIndex).next();
+          previousTsBlockIndex = 0;
+          if (previousTsBlock == null) {
             return null;
-          } else if (!tsBlock.isEmpty()) {
-            if (canUseDataFromCachedTsBlock(tsBlock)) {
-              LastQueryUtil.appendLastValue(tsBlockBuilder, cachedTsBlock, cachedTsBlockRowIndex++);
-              previousTsBlock = tsBlock;
-            } else {
-              LastQueryUtil.appendLastValue(tsBlockBuilder, tsBlock, 0);
-            }
           }
         }
         currentIndex++;
+      }
+      if (previousTsBlockIndex < previousTsBlock.getPositionCount()) {
+        if (canUseDataFromCachedTsBlock(previousTsBlock, previousTsBlockIndex)) {
+          LastQueryUtil.appendLastValue(tsBlockBuilder, cachedTsBlock, cachedTsBlockRowIndex++);
+        } else {
+          LastQueryUtil.appendLastValue(tsBlockBuilder, previousTsBlock, previousTsBlockIndex++);
+        }
       }
     }
 
@@ -175,7 +173,7 @@ public class LastQuerySortOperator implements ProcessOperator {
     return currentIndex < inputOperatorsCount
         || cachedTsBlockRowIndex < cachedTsBlockSize
         || !tsBlockBuilder.isEmpty()
-        || previousTsBlock != null;
+        || (previousTsBlock != null && previousTsBlockIndex < previousTsBlock.getPositionCount());
   }
 
   @Override
@@ -221,9 +219,10 @@ public class LastQuerySortOperator implements ProcessOperator {
     return currentIndex + Math.min(MAX_DETECT_COUNT, inputOperatorsCount - currentIndex);
   }
 
-  private boolean canUseDataFromCachedTsBlock(TsBlock tsBlock) {
+  private boolean canUseDataFromCachedTsBlock(TsBlock tsBlock, int index) {
     return cachedTsBlockRowIndex < cachedTsBlockSize
-        && compareTimeSeries(cachedTsBlock, cachedTsBlockRowIndex, tsBlock, 0, timeSeriesComparator)
+        && compareTimeSeries(
+                cachedTsBlock, cachedTsBlockRowIndex, tsBlock, index, timeSeriesComparator)
             < 0;
   }
 }

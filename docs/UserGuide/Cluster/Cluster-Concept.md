@@ -31,6 +31,8 @@ An illustration of the cluster architecture：
 
 ConfigNode is the control node of the cluster, which manages the cluster's node status, partition information, etc. All ConfigNodes in the cluster form a highly available group, which is fully replicated.
 
+Notice：The replication factor of ConfigNode is all ConfigNodes that has joined the Cluster. Over half of the ConfigNodes is Running could the cluster work.
+
 DataNode stores the data and schema of the cluster, which manages multiple data regions and schema regions. Data is a time-value pair, and schema is the path and data type of each time series.
 
 Client could only connect to the DataNode for operation.
@@ -109,4 +111,5 @@ Among multiple Regions of each RegionGroup, consistency is guaranteed through a 
 * Current supported consensus protocol
   * SimpleConsensus：Provide strong consistency, could only be used when replica is 1, which is the empty implementation of the consensus protocol.
   * IoTConsensus：Provide eventual consistency, could be used in any number of replicas, 2 replicas could avoid single point failure, only for DataRegion, writings can be applied on each replica and replicated asynchronously to other replicas.
-  * RatisConsensus：Provide Strong consistency, using raft consensus protocol, Could be used in any number of replicas, and could be used for any region groups。
+  * RatisConsensus：Provide Strong consistency, using raft consensus protocol, Could be used in any number of replicas, and could be used for any region groups. 
+  Currently, DataRegion uses RatisConsensus does not support multiple data directories. This feature is planned to be supported in future releases.

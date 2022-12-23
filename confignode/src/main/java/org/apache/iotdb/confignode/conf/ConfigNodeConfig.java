@@ -31,9 +31,10 @@ import java.io.File;
 
 public class ConfigNodeConfig {
 
-  /**
-   * the config node id for cluster mode, the default value -1 should be changed after join cluster
-   */
+  /** ClusterId, the default value "testCluster" will be changed after join cluster */
+  private volatile String clusterName = "testCluster";
+
+  /** ConfigNodeId, the default value -1 will be changed after join cluster */
   private volatile int configNodeId = -1;
 
   /** could set ip or hostname */
@@ -262,9 +263,9 @@ public class ConfigNodeConfig {
   private long ratisFirstElectionTimeoutMinMs = 50;
   private long ratisFirstElectionTimeoutMaxMs = 150;
 
-  private long configNodeRatisLogMaxMB = 2 * 1024;
-  private long schemaRegionRatisLogMaxMB = 2 * 1024;
-  private long dataRegionRatisLogMaxMB = 20 * 1024;
+  private long configNodeRatisLogMax = 2L * 1024 * 1024 * 1024; // 2G
+  private long schemaRegionRatisLogMax = 2L * 1024 * 1024 * 1024; // 2G
+  private long dataRegionRatisLogMax = 20L * 1024 * 1024 * 1024; // 20G
 
   public ConfigNodeConfig() {
     // empty constructor
@@ -294,6 +295,14 @@ public class ConfigNodeConfig {
       }
     }
     return dir;
+  }
+
+  public String getClusterName() {
+    return clusterName;
+  }
+
+  public void setClusterName(String clusterName) {
+    this.clusterName = clusterName;
   }
 
   public int getConfigNodeId() {
@@ -1024,27 +1033,27 @@ public class ConfigNodeConfig {
     this.ratisFirstElectionTimeoutMaxMs = ratisFirstElectionTimeoutMaxMs;
   }
 
-  public long getConfigNodeRatisLogMaxMB() {
-    return configNodeRatisLogMaxMB;
+  public long getConfigNodeRatisLogMax() {
+    return configNodeRatisLogMax;
   }
 
-  public void setConfigNodeRatisLogMaxMB(long configNodeRatisLogMaxMB) {
-    this.configNodeRatisLogMaxMB = configNodeRatisLogMaxMB;
+  public void setConfigNodeRatisLogMax(long configNodeRatisLogMax) {
+    this.configNodeRatisLogMax = configNodeRatisLogMax;
   }
 
-  public long getSchemaRegionRatisLogMaxMB() {
-    return schemaRegionRatisLogMaxMB;
+  public long getSchemaRegionRatisLogMax() {
+    return schemaRegionRatisLogMax;
   }
 
-  public void setSchemaRegionRatisLogMaxMB(long schemaRegionRatisLogMaxMB) {
-    this.schemaRegionRatisLogMaxMB = schemaRegionRatisLogMaxMB;
+  public void setSchemaRegionRatisLogMax(long schemaRegionRatisLogMax) {
+    this.schemaRegionRatisLogMax = schemaRegionRatisLogMax;
   }
 
-  public long getDataRegionRatisLogMaxMB() {
-    return dataRegionRatisLogMaxMB;
+  public long getDataRegionRatisLogMax() {
+    return dataRegionRatisLogMax;
   }
 
-  public void setDataRegionRatisLogMaxMB(long dataRegionRatisLogMaxMB) {
-    this.dataRegionRatisLogMaxMB = dataRegionRatisLogMaxMB;
+  public void setDataRegionRatisLogMax(long dataRegionRatisLogMax) {
+    this.dataRegionRatisLogMax = dataRegionRatisLogMax;
   }
 }

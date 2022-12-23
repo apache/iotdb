@@ -49,13 +49,13 @@ public class ClientManager<K, V> implements IClientManager<K, V> {
     try {
       client = pool.borrowObject(node);
     } catch (TTransportException e) {
-      // external needs to check transport related exception
+      // External needs to check transport related exception
       throw new IOException(e);
     } catch (IOException e) {
-      // external needs the IOException to check connection
+      // External needs the IOException to check connection
       throw e;
     } catch (Exception e) {
-      // external doesn't care of other exceptions
+      // External doesn't care of other exceptions
       String errorMessage =
           String.format(
               "Borrow client from pool for node %s failed, you need to increase dn_max_connection_for_internal_service.",

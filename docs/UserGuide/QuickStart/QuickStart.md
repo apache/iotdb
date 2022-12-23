@@ -35,7 +35,7 @@ To use IoTDB, you need to have:
 IoTDB provides you three installation methods, you can refer to the following suggestions, choose one of them:
 
 * Installation from source code. If you need to modify the code yourself, you can use this method.
-* Installation from binary files. Download the binary files from the official website. This is the recommended method, in which you will get a binary released package which is out-of-the-box.(Coming Soon...)
+* Installation from binary files. Download the binary files from the official website. This is the recommended method, in which you will get a binary released package which is out-of-the-box.
 * Using Docker：The path to the dockerfile is https://github.com/apache/iotdb/blob/master/docker/src/main
 
 
@@ -46,7 +46,7 @@ You can download the binary file from:
 
 ## Configurations
 
-configuration files are under "conf" folder
+Configuration files are under "conf" folder
 
   * environment config module (`datanode-env.bat`, `datanode-env.sh`), 
   * system config module (`iotdb-datanode.properties`)
@@ -219,6 +219,19 @@ The server can be stopped with ctrl-C or the following script:
 ```
 Note: In Linux, please add the "sudo" as far as possible, or else the stopping process may fail.
 More explanations are in Cluster/Cluster-setup.md.
+
+### Administration management
+
+There is a default user in IoTDB after the initial installation: root, and the default password is root. This user is an administrator user, who cannot be deleted and has all the privileges. Neither can new privileges be granted to the root user nor can privileges owned by the root user be deleted.
+
+You can alter the password of root using the following command：
+```
+ALTER USER <username> SET PASSWORD <password>;
+Example: IoTDB > ALTER USER root SET PASSWORD 'newpwd';
+```
+
+More about administration management：[Administration Management](https://iotdb.apache.org/UserGuide/V1.0.x/Administration-Management/Administration.html)
+
 
 ## Basic configuration
 

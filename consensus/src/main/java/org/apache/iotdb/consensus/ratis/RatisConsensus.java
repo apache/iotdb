@@ -191,8 +191,8 @@ class RatisConsensus implements IConsensus {
   private RaftClientReply writeWithRetry(CheckedSupplier<RaftClientReply, IOException> caller)
       throws IOException {
 
-    final int maxRetryTimes = config.getRatisConsensus().getRetryTimesMax();
-    final long waitMillis = config.getRatisConsensus().getRetryWaitMillis();
+    final int maxRetryTimes = config.getImpl().getRetryTimesMax();
+    final long waitMillis = config.getImpl().getRetryWaitMillis();
 
     int retry = 0;
     RaftClientReply reply = null;
@@ -341,9 +341,7 @@ class RatisConsensus implements IConsensus {
   public ConsensusGenericResponse createPeer(ConsensusGroupId groupId, List<Peer> peers) {
     RaftGroup group = buildRaftGroup(groupId, peers);
     // add RaftPeer myself to this RaftGroup
-    ConsensusGenericResponse reply = addNewGroupToServer(group, myself);
-
-    return ConsensusGenericResponse.newBuilder().setSuccess(reply.isSuccess()).build();
+    return addNewGroupToServer(group, myself);
   }
 
   private ConsensusGenericResponse addNewGroupToServer(RaftGroup group, RaftPeer server) {
@@ -476,7 +474,7 @@ class RatisConsensus implements IConsensus {
 
   @Override
   public ConsensusGenericResponse updatePeer(ConsensusGroupId groupId, Peer oldPeer, Peer newPeer) {
-    return ConsensusGenericResponse.newBuilder().setSuccess(true).build();
+    return ConsensusGenericResponse.newBuilder().setSuccess(false).build();
   }
 
   @Override
@@ -493,7 +491,7 @@ class RatisConsensus implements IConsensus {
     try {
       reply = sendReconfiguration(raftGroup);
     } catch (RatisRequestFailedException e) {
-      return failed(new RatisRequestFailedException(e));
+      return failed(e);
     }
     return ConsensusGenericResponse.newBuilder().setSuccess(reply.isSuccess()).build();
   }
@@ -676,6 +674,9 @@ class RatisConsensus implements IConsensus {
     RaftClientReply reply;
     try {
       reply = server.snapshotManagement(request);
+      if (!reply.isSuccess()) {
+        return failed(new RatisRequestFailedException(reply.getException()));
+      }
     } catch (IOException ioException) {
       return failed(new RatisRequestFailedException(ioException));
     }
@@ -700,7 +701,7 @@ class RatisConsensus implements IConsensus {
 
       final long currentDirLength =
           calcMap.computeIfAbsent(currentDir, MemorizedFileSizeCalc::new).getTotalFolderSize();
-      final long triggerSnapshotFileSize = config.getRatisConsensus().getTriggerSnapshotFileSize();
+      final long triggerSnapshotFileSize = config.getImpl().getTriggerSnapshotFileSize();
 
       if (currentDirLength >= triggerSnapshotFileSize) {
         ConsensusGenericResponse consensusGenericResponse =
@@ -715,7 +716,7 @@ class RatisConsensus implements IConsensus {
   }
 
   private void startSnapshotGuardian() {
-    final long delay = config.getRatisConsensus().getTriggerSnapshotTime();
+    final long delay = config.getImpl().getTriggerSnapshotTime();
     ScheduledExecutorUtil.safelyScheduleWithFixedDelay(
         diskGuardian, this::triggerSnapshotByCustomize, 0, delay, TimeUnit.SECONDS);
   }
@@ -816,7 +817,7 @@ class RatisConsensus implements IConsensus {
               new ClientFactoryProperty.Builder().build(),
               properties,
               clientRpc,
-              MemoizedSupplier.valueOf(() -> config.getRatisConsensus())),
+              MemoizedSupplier.valueOf(() -> config.getImpl())),
           new ClientPoolProperty.Builder<RatisClient>().build().getConfig());
     }
   }

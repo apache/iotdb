@@ -92,6 +92,12 @@ public class AlignedPath extends PartialPath {
     measurementList.add(subSensor);
   }
 
+  public AlignedPath(PartialPath vectorPath) {
+    super(vectorPath.getNodes());
+    measurementList = new ArrayList<>();
+    schemaList = new ArrayList<>();
+  }
+
   public AlignedPath(MeasurementPath path) {
     super(path.getDevicePath().getNodes());
     measurementList = new ArrayList<>();
@@ -155,6 +161,18 @@ public class AlignedPath extends PartialPath {
       schemaList = new ArrayList<>();
     }
     schemaList.add(measurementPath.getMeasurementSchema());
+  }
+
+  public void addMeasurement(String measurement, IMeasurementSchema measurementSchema) {
+    if (measurementList == null) {
+      measurementList = new ArrayList<>();
+    }
+    measurementList.add(measurement);
+
+    if (schemaList == null) {
+      schemaList = new ArrayList<>();
+    }
+    schemaList.add(measurementSchema);
   }
 
   /**

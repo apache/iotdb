@@ -95,8 +95,9 @@ public class IoTDBConfigNodeSnapshotIT {
     ConfigFactory.getConfig().setConfigNodeConsesusProtocolClass(ConsensusFactory.RATIS_CONSENSUS);
 
     originalRatisSnapshotTriggerThreshold =
-        ConfigFactory.getConfig().getRatisSnapshotTriggerThreshold();
-    ConfigFactory.getConfig().setRatisSnapshotTriggerThreshold(testRatisSnapshotTriggerThreshold);
+        ConfigFactory.getConfig().getConfigNodeRatisSnapshotTriggerThreshold();
+    ConfigFactory.getConfig()
+        .setConfigNodeRatisSnapshotTriggerThreshold(testRatisSnapshotTriggerThreshold);
 
     originalTimePartitionInterval = ConfigFactory.getConfig().getTimePartitionInterval();
     ConfigFactory.getConfig().setTimePartitionInterval(testTimePartitionInterval);
@@ -112,7 +113,7 @@ public class IoTDBConfigNodeSnapshotIT {
     ConfigFactory.getConfig()
         .setConfigNodeConsesusProtocolClass(originalConfigNodeConsensusProtocolClass);
     ConfigFactory.getConfig()
-        .setRatisSnapshotTriggerThreshold(originalRatisSnapshotTriggerThreshold);
+        .setConfigNodeRatisSnapshotTriggerThreshold(originalRatisSnapshotTriggerThreshold);
     ConfigFactory.getConfig().setTimePartitionInterval(originalTimePartitionInterval);
   }
 

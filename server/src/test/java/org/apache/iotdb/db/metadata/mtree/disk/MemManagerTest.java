@@ -32,7 +32,6 @@ import org.apache.iotdb.db.metadata.mtree.store.disk.memcontrol.IMemManager;
 import org.apache.iotdb.db.metadata.mtree.store.disk.memcontrol.MemManagerHolder;
 import org.apache.iotdb.db.metadata.rescon.MemoryStatistics;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaEngineMode;
-import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -70,7 +69,7 @@ public class MemManagerTest {
 
   @Test
   public void testNodeEstimatedSizeBasedMemControl() throws Exception {
-    LocalSchemaProcessor schemaProcessor = IoTDB.schemaProcessor;
+    LocalSchemaProcessor schemaProcessor = LocalSchemaProcessor.getInstance();
     schemaProcessor.createTimeseries(
         new PartialPath("root.laptop.d1.s1"),
         TSDataType.valueOf("INT32"),

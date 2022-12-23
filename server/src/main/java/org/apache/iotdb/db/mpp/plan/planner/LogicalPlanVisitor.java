@@ -41,6 +41,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationStep;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.OrderByParameter;
 import org.apache.iotdb.db.mpp.plan.statement.StatementNode;
 import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
+import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.db.mpp.plan.statement.crud.DeleteDataStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertMultiTabletsStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertRowStatement;
@@ -65,8 +66,10 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowDevicesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ActivateTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowPathsUsingTemplateStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.ShowQueriesStatement;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -104,7 +107,10 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
     }
 
     if (queryStatement.isAlignByDevice()) {
-      Map<String, PlanNode> deviceToSubPlanMap = new TreeMap<>();
+      Map<String, PlanNode> deviceToSubPlanMap =
+          queryStatement.getResultDeviceOrder() == Ordering.ASC
+              ? new TreeMap<>()
+              : new TreeMap<>(Collections.reverseOrder());
       for (String deviceName : analysis.getDeviceToSourceExpressions().keySet()) {
         LogicalPlanBuilder subPlanBuilder = new LogicalPlanBuilder(analysis, context);
         subPlanBuilder =
@@ -127,7 +133,7 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
               deviceToSubPlanMap,
               analysis.getDeviceViewOutputExpressions(),
               analysis.getDeviceViewInputIndexesMap(),
-              queryStatement.getResultTimeOrder());
+              queryStatement.getSortItemList());
     } else {
       planBuilder =
           planBuilder.withNewRoot(
@@ -699,6 +705,14 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
                 analysis.getSpecifiedTemplateRelatedPathPatternList(),
                 analysis.getTemplateSetInfo().left.getId())
             .planSchemaQueryMerge(false);
+    return planBuilder.getRoot();
+  }
+
+  @Override
+  public PlanNode visitShowQueries(
+      ShowQueriesStatement showQueriesStatement, MPPQueryContext context) {
+    LogicalPlanBuilder planBuilder = new LogicalPlanBuilder(analysis, context);
+    // TODO planBuilder = planBuilder.planShowQueries()
     return planBuilder.getRoot();
   }
 }

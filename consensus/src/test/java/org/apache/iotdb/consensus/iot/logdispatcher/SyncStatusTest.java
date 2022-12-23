@@ -19,6 +19,9 @@
 
 package org.apache.iotdb.consensus.iot.logdispatcher;
 
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.commons.consensus.DataRegionId;
+import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.config.IoTConsensusConfig;
 import org.apache.iotdb.consensus.iot.thrift.TLogBatch;
 
@@ -38,7 +41,9 @@ import java.util.concurrent.ExecutionException;
 public class SyncStatusTest {
 
   private static final File storageDir = new File("target" + java.io.File.separator + "test");
-  private static final String prefix = "version";
+
+  private static final Peer peer =
+      new Peer(new DataRegionId(1), 2, new TEndPoint("127.0.0.1", 6667));
   private static final IoTConsensusConfig config = new IoTConsensusConfig.Builder().build();
   private static final long CHECK_POINT_GAP = 500;
 
@@ -56,7 +61,7 @@ public class SyncStatusTest {
   @Test
   public void sequenceTest() throws InterruptedException {
     IndexController controller =
-        new IndexController(storageDir.getAbsolutePath(), prefix, 0, CHECK_POINT_GAP);
+        new IndexController(storageDir.getAbsolutePath(), peer, 0, CHECK_POINT_GAP);
     Assert.assertEquals(0, controller.getCurrentIndex());
 
     SyncStatus status = new SyncStatus(controller, config);
@@ -86,7 +91,7 @@ public class SyncStatusTest {
   @Test
   public void reverseTest() throws InterruptedException {
     IndexController controller =
-        new IndexController(storageDir.getAbsolutePath(), prefix, 0, CHECK_POINT_GAP);
+        new IndexController(storageDir.getAbsolutePath(), peer, 0, CHECK_POINT_GAP);
     Assert.assertEquals(0, controller.getCurrentIndex());
     Assert.assertEquals(0, controller.getLastFlushedIndex());
 
@@ -123,7 +128,7 @@ public class SyncStatusTest {
   @Test
   public void mixedTest() throws InterruptedException {
     IndexController controller =
-        new IndexController(storageDir.getAbsolutePath(), prefix, 0, CHECK_POINT_GAP);
+        new IndexController(storageDir.getAbsolutePath(), peer, 0, CHECK_POINT_GAP);
     Assert.assertEquals(0, controller.getCurrentIndex());
     Assert.assertEquals(0, controller.getLastFlushedIndex());
 
@@ -172,7 +177,7 @@ public class SyncStatusTest {
   @Test
   public void waitTest() throws InterruptedException, ExecutionException {
     IndexController controller =
-        new IndexController(storageDir.getAbsolutePath(), prefix, 0, CHECK_POINT_GAP);
+        new IndexController(storageDir.getAbsolutePath(), peer, 0, CHECK_POINT_GAP);
     Assert.assertEquals(0, controller.getCurrentIndex());
 
     SyncStatus status = new SyncStatus(controller, config);

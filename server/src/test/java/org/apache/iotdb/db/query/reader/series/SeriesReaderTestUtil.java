@@ -20,14 +20,12 @@
 package org.apache.iotdb.db.query.reader.series;
 
 import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
 import org.apache.iotdb.db.query.control.FileReaderManager;
-import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -42,7 +40,6 @@ import org.junit.Assert;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -74,7 +71,6 @@ public class SeriesReaderTestUtil {
       List<TsFileResource> unseqResources,
       String sgName)
       throws MetadataException, IOException, WriteProcessException {
-    IoTDB.configManager.init();
     prepareSeries(measurementSchemas, deviceIds, sgName);
     prepareFiles(seqResources, unseqResources, measurementSchemas, deviceIds, sgName);
   }
@@ -86,7 +82,6 @@ public class SeriesReaderTestUtil {
     unseqResources.clear();
     ChunkCache.getInstance().clear();
     TimeSeriesMetadataCache.getInstance().clear();
-    IoTDB.configManager.clear();
     EnvironmentUtils.cleanAllDir();
   }
 
@@ -177,8 +172,7 @@ public class SeriesReaderTestUtil {
   }
 
   private static void prepareSeries(
-      List<MeasurementSchema> measurementSchemas, List<String> deviceIds, String sgName)
-      throws MetadataException {
+      List<MeasurementSchema> measurementSchemas, List<String> deviceIds, String sgName) {
     for (int i = 0; i < measurementNum; i++) {
       measurementSchemas.add(
           new MeasurementSchema(
@@ -186,17 +180,6 @@ public class SeriesReaderTestUtil {
     }
     for (int i = 0; i < deviceNum; i++) {
       deviceIds.add(sgName + PATH_SEPARATOR + "device" + i);
-    }
-    IoTDB.schemaProcessor.setStorageGroup(new PartialPath(sgName));
-    for (String device : deviceIds) {
-      for (MeasurementSchema measurementSchema : measurementSchemas) {
-        IoTDB.schemaProcessor.createTimeseries(
-            new PartialPath(device + PATH_SEPARATOR + measurementSchema.getMeasurementId()),
-            measurementSchema.getType(),
-            measurementSchema.getEncodingType(),
-            measurementSchema.getCompressor(),
-            Collections.emptyMap());
-      }
     }
   }
 

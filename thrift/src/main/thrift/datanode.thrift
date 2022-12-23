@@ -99,7 +99,7 @@ struct TPlanNode {
 
 struct TSendFragmentInstanceReq {
   1: required TFragmentInstance fragmentInstance
-  2: required common.TConsensusGroupId consensusGroupId
+  2: optional common.TConsensusGroupId consensusGroupId
 }
 
 struct TSendFragmentInstanceResp {

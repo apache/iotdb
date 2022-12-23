@@ -84,6 +84,7 @@ public abstract class AbstractWALBuffer implements IWALBuffer {
     String currentName = currentFile.getName();
     currentWALFileWriter.close();
     WALManager.getInstance().addTotalDiskUsage(currentWALFileWriter.size());
+    WALManager.getInstance().addTotalFileNum(1);
     if (WALFileUtils.parseStatusCode(currentName) != fileStatus) {
       String targetName =
           WALFileUtils.getLogFileName(

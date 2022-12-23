@@ -31,6 +31,7 @@ import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
 import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
 import org.apache.iotdb.consensus.config.ConsensusConfig;
 import org.apache.iotdb.consensus.config.RatisConfig;
+import org.apache.iotdb.consensus.exception.RatisRequestFailedException;
 
 import org.apache.ratis.util.FileUtils;
 import org.junit.After;
@@ -76,7 +77,7 @@ public class RatisConsensusTest {
                       .setCreationGap(10)
                       .build())
               .setRatisConsensus(
-                  RatisConfig.RatisConsensus.newBuilder()
+                  RatisConfig.Impl.newBuilder()
                       .setTriggerSnapshotFileSize(1)
                       .setTriggerSnapshotTime(4)
                       .build())
@@ -147,6 +148,10 @@ public class RatisConsensusTest {
 
     servers.get(0).createPeer(group.getGroupId(), original);
     doConsensus(servers.get(0), group.getGroupId(), 10, 10);
+
+    ConsensusGenericResponse resp = servers.get(0).createPeer(group.getGroupId(), original);
+    Assert.assertFalse(resp.isSuccess());
+    Assert.assertTrue(resp.getException() instanceof RatisRequestFailedException);
 
     // add 2 members
     servers.get(1).createPeer(group.getGroupId(), Collections.emptyList());
@@ -231,6 +236,19 @@ public class RatisConsensusTest {
 
     int newLeaderIndex = servers.get(0).getLeader(group.getGroupId()).getNodeId() - 1;
     Assert.assertEquals((leaderIndex + 1) % 3, newLeaderIndex);
+  }
+
+  @Test
+  public void transferSnapshot() throws Exception {
+    servers.get(0).createPeer(gid, peers.subList(0, 1));
+
+    doConsensus(servers.get(0), gid, 10, 10);
+    Assert.assertTrue(servers.get(0).triggerSnapshot(gid).isSuccess());
+
+    servers.get(1).createPeer(gid, Collections.emptyList());
+    servers.get(0).addPeer(gid, peers.get(1));
+
+    doConsensus(servers.get(1), gid, 10, 20);
   }
 
   private void doConsensus(IConsensus consensus, ConsensusGroupId gid, int count, int target)

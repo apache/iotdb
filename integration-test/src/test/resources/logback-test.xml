@@ -48,7 +48,7 @@
     <logger name="org.apache.iotdb.db.engine.flush.FlushManager" level="INFO"/>
     <logger name="org.apache.iotdb.db.integration.IoTDBCompactionIT" level="INFO"/>
     <logger name="org.apache.iotdb.commons.service.RegisterManager" level="INFO"/>
-    <logger name="org.apache.iotdb.db.service.IoTDB" level="WARN"/>
+    <logger name="org.apache.iotdb.db.service.DataNode" level="WARN"/>
     <logger name="org.apache.iotdb.db.service.RPCService" level="INFO"/>
     <logger name="org.apache.iotdb.db.service.MQTTService" level="INFO"/>
     <logger name="DETAILED_FAILURE_QUERY_TRACE" level="ERROR"/>

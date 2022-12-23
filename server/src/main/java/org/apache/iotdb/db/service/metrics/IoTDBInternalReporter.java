@@ -30,8 +30,6 @@ import org.apache.iotdb.db.mpp.plan.analyze.ClusterPartitionFetcher;
 import org.apache.iotdb.db.mpp.plan.analyze.ClusterSchemaFetcher;
 import org.apache.iotdb.db.mpp.plan.analyze.IPartitionFetcher;
 import org.apache.iotdb.db.mpp.plan.analyze.ISchemaFetcher;
-import org.apache.iotdb.db.mpp.plan.analyze.StandalonePartitionFetcher;
-import org.apache.iotdb.db.mpp.plan.analyze.StandaloneSchemaFetcher;
 import org.apache.iotdb.db.mpp.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.mpp.plan.parser.StatementGenerator;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
@@ -71,13 +69,8 @@ public class IoTDBInternalReporter extends InternalIoTDBReporter {
   private final ScheduledExecutorService service = Executors.newSingleThreadScheduledExecutor();
 
   public IoTDBInternalReporter() {
-    if (config.isClusterMode()) {
-      PARTITION_FETCHER = ClusterPartitionFetcher.getInstance();
-      SCHEMA_FETCHER = ClusterSchemaFetcher.getInstance();
-    } else {
-      PARTITION_FETCHER = StandalonePartitionFetcher.getInstance();
-      SCHEMA_FETCHER = StandaloneSchemaFetcher.getInstance();
-    }
+    PARTITION_FETCHER = ClusterPartitionFetcher.getInstance();
+    SCHEMA_FETCHER = ClusterSchemaFetcher.getInstance();
     SESSION_INFO = new SessionInfo(0, "root", ZoneId.systemDefault().getId());
   }
 

@@ -18,12 +18,10 @@
  */
 package org.apache.iotdb.db.qp.physical.sys;
 
-import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
-import java.nio.ByteBuffer;
 
 public class ShowDevicesPlan extends ShowPlan {
 
@@ -49,14 +47,6 @@ public class ShowDevicesPlan extends ShowPlan {
     outputStream.writeInt(limit);
     outputStream.writeInt(offset);
     outputStream.writeLong(index);
-  }
-
-  @Override
-  public void deserialize(ByteBuffer buffer) throws IllegalPathException {
-    path = new PartialPath(readString(buffer));
-    limit = buffer.getInt();
-    offset = buffer.getInt();
-    this.index = buffer.getLong();
   }
 
   public boolean hasSgCol() {

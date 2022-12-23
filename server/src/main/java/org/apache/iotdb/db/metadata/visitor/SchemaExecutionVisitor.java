@@ -262,7 +262,7 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
           schemaRegion.addAttributes(node.getAlterMap(), node.getPath());
           break;
         case UPSERT:
-          schemaRegion.upsertTagsAndAttributes(
+          schemaRegion.upsertAliasAndTagsAndAttributes(
               node.getAlias(), node.getTagsMap(), node.getAttributesMap(), node.getPath());
           break;
       }

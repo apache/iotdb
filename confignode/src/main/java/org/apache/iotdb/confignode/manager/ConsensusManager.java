@@ -123,6 +123,8 @@ public class ConsensusManager {
                                       .setSegmentCacheSizeMax(
                                           SizeInBytes.valueOf(
                                               CONF.getConfigNodeRatisLogSegmentSizeMax()))
+                                      .setPreserveNumsWhenPurge(
+                                          CONF.getConfigNodeRatisPreserveLogsWhenPurge())
                                       .build())
                               .setGrpc(
                                   RatisConfig.Grpc.newBuilder()
@@ -156,7 +158,7 @@ public class ConsensusManager {
                                               TimeUnit.MILLISECONDS))
                                       .build())
                               .setRatisConsensus(
-                                  RatisConfig.RatisConsensus.newBuilder()
+                                  RatisConfig.Impl.newBuilder()
                                       .setClientRequestTimeoutMillis(
                                           CONF.getConfigNodeRatisRequestTimeoutMs())
                                       .setClientMaxRetryAttempt(
@@ -165,8 +167,7 @@ public class ConsensusManager {
                                           CONF.getConfigNodeRatisInitialSleepTimeMs())
                                       .setClientRetryMaxSleepTimeMs(
                                           CONF.getConfigNodeRatisMaxSleepTimeMs())
-                                      .setTriggerSnapshotFileSize(
-                                          CONF.getConfigNodeRatisLogMaxMB() * 1024 * 1024)
+                                      .setTriggerSnapshotFileSize(CONF.getConfigNodeRatisLogMax())
                                       .build())
                               .build())
                       .setStorageDir(CONF.getConsensusDir())
@@ -181,7 +182,7 @@ public class ConsensusManager {
     }
     consensusImpl.start();
     if (SystemPropertiesUtils.isRestarted()) {
-      // TODO: Check and notify if current ConfigNode's ip or port has changed
+      // TODO: @Itami-Sho Check and notify if current ConfigNode's ip or port has changed
 
       if (SIMPLE_CONSENSUS.equals(CONF.getConfigNodeConsensusProtocolClass())) {
         // Only SIMPLE_CONSENSUS need invoking `createPeerForConsensusGroup` when restarted,

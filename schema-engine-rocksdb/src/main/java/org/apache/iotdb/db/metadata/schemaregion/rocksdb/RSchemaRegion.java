@@ -1308,11 +1308,11 @@ public class RSchemaRegion implements ISchemaRegion {
 
   @Override
   public void changeAlias(PartialPath path, String alias) throws MetadataException, IOException {
-    upsertTagsAndAttributes(alias, null, null, path);
+    upsertAliasAndTagsAndAttributes(alias, null, null, path);
   }
 
   @Override
-  public void upsertTagsAndAttributes(
+  public void upsertAliasAndTagsAndAttributes(
       String alias,
       Map<String, String> tagsMap,
       Map<String, String> attributesMap,

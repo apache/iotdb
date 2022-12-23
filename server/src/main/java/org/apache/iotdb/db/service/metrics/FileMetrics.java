@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.service.metrics;
 
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
-import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.db.engine.TsFileMetricManager;
@@ -34,13 +33,10 @@ import org.apache.iotdb.metrics.utils.MetricType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
-import java.io.UncheckedIOException;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.Stream;
 
 public class FileMetrics implements IMetricSet {
   private static final Logger logger = LoggerFactory.getLogger(FileMetrics.class);
@@ -52,6 +48,13 @@ public class FileMetrics implements IMetricSet {
   private long sequenceFileTotalCount = 0L;
   private long unsequenceFileTotalSize = 0L;
   private long unsequenceFileTotalCount = 0L;
+
+  private long innerSeqCompactionTempFileSize = 0L;
+  private long innerUnseqCompactionTempFileSize = 0L;
+  private long crossCompactionTempFileSize = 0L;
+  private long innerSeqCompactionTempFileNum = 0L;
+  private long innerUnseqCompactionTempFileNum = 0L;
+  private long crossCompactionTempFileNum = 0L;
 
   @Override
   public void bindTo(AbstractMetricService metricService) {
@@ -97,6 +100,48 @@ public class FileMetrics implements IMetricSet {
         FileMetrics::getUnsequenceFileTotalCount,
         Tag.NAME.toString(),
         "unseq");
+    metricService.createAutoGauge(
+        Metric.FILE_COUNT.toString(),
+        MetricLevel.IMPORTANT,
+        this,
+        FileMetrics::getInnerSeqCompactionTempFileNum,
+        Tag.NAME.toString(),
+        "inner-seq-temp-num");
+    metricService.createAutoGauge(
+        Metric.FILE_COUNT.toString(),
+        MetricLevel.IMPORTANT,
+        this,
+        FileMetrics::getInnerUnseqCompactionTempFileNum,
+        Tag.NAME.toString(),
+        "inner-unseq-temp-num");
+    metricService.createAutoGauge(
+        Metric.FILE_COUNT.toString(),
+        MetricLevel.IMPORTANT,
+        this,
+        FileMetrics::getCrossCompactionTempFileNum,
+        Tag.NAME.toString(),
+        "cross-temp-num");
+    metricService.createAutoGauge(
+        Metric.FILE_SIZE.toString(),
+        MetricLevel.IMPORTANT,
+        this,
+        FileMetrics::getInnerSeqCompactionTempFileSize,
+        Tag.NAME.toString(),
+        "inner-seq-temp-size");
+    metricService.createAutoGauge(
+        Metric.FILE_SIZE.toString(),
+        MetricLevel.IMPORTANT,
+        this,
+        FileMetrics::getInnerUnseqCompactionTempFileSize,
+        Tag.NAME.toString(),
+        "inner-unseq-temp-size");
+    metricService.createAutoGauge(
+        Metric.FILE_SIZE.toString(),
+        MetricLevel.IMPORTANT,
+        this,
+        FileMetrics::getCrossCompactionTempFileSize,
+        Tag.NAME.toString(),
+        "cross-temp-size");
 
     // finally start to update the value of some metrics in async way
     if (null == currentServiceFuture) {
@@ -132,44 +177,37 @@ public class FileMetrics implements IMetricSet {
         MetricType.AUTO_GAUGE, Metric.FILE_COUNT.toString(), Tag.NAME.toString(), "seq");
     metricService.remove(
         MetricType.AUTO_GAUGE, Metric.FILE_COUNT.toString(), Tag.NAME.toString(), "unseq");
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.FILE_COUNT.toString(),
+        Tag.NAME.toString(),
+        "inner-seq-temp-num");
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.FILE_COUNT.toString(),
+        Tag.NAME.toString(),
+        "inner-unseq-temp-num");
+    metricService.remove(
+        MetricType.AUTO_GAUGE, Metric.FILE_COUNT.toString(), Tag.NAME.toString(), "cross-temp-num");
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.FILE_SIZE.toString(),
+        Tag.NAME.toString(),
+        "inner-seq-temp-size");
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.FILE_SIZE.toString(),
+        Tag.NAME.toString(),
+        "inner-unseq-temp-size");
+    metricService.remove(
+        MetricType.AUTO_GAUGE, Metric.FILE_SIZE.toString(), Tag.NAME.toString(), "cross-temp-size");
   }
 
   private void collect() {
-    String[] walDirs = CommonDescriptor.getInstance().getConfig().getWalDirs();
     walFileTotalSize = WALManager.getInstance().getTotalDiskUsage();
     sequenceFileTotalSize = TsFileMetricManager.getInstance().getFileSize(true);
     unsequenceFileTotalSize = TsFileMetricManager.getInstance().getFileSize(false);
-    walFileTotalCount =
-        Stream.of(walDirs)
-            .mapToLong(
-                dir -> {
-                  File walFolder = new File(dir);
-                  if (walFolder.exists()) {
-                    File[] walNodeFolders = walFolder.listFiles(File::isDirectory);
-                    long result = 0L;
-                    if (null != walNodeFolders) {
-                      for (File walNodeFolder : walNodeFolders) {
-                        if (walNodeFolder.exists() && walNodeFolder.isDirectory()) {
-                          try {
-                            result +=
-                                org.apache.commons.io.FileUtils.listFiles(walFolder, null, true)
-                                    .size();
-                          } catch (UncheckedIOException exception) {
-                            // do nothing
-                            logger.debug(
-                                "Failed when count wal folder {}: ",
-                                walNodeFolder.getName(),
-                                exception);
-                          }
-                        }
-                      }
-                    }
-                    return result;
-                  } else {
-                    return 0L;
-                  }
-                })
-            .sum();
+    walFileTotalCount = WALManager.getInstance().getTotalFileNum();
     sequenceFileTotalCount = TsFileMetricManager.getInstance().getFileNum(true);
     unsequenceFileTotalCount = TsFileMetricManager.getInstance().getFileNum(false);
   }
@@ -196,5 +234,29 @@ public class FileMetrics implements IMetricSet {
 
   public long getUnsequenceFileTotalCount() {
     return unsequenceFileTotalCount;
+  }
+
+  public long getInnerSeqCompactionTempFileSize() {
+    return innerSeqCompactionTempFileSize;
+  }
+
+  public long getInnerUnseqCompactionTempFileSize() {
+    return innerUnseqCompactionTempFileSize;
+  }
+
+  public long getCrossCompactionTempFileSize() {
+    return crossCompactionTempFileSize;
+  }
+
+  public long getInnerSeqCompactionTempFileNum() {
+    return innerSeqCompactionTempFileNum;
+  }
+
+  public long getInnerUnseqCompactionTempFileNum() {
+    return innerUnseqCompactionTempFileNum;
+  }
+
+  public long getCrossCompactionTempFileNum() {
+    return crossCompactionTempFileNum;
   }
 }

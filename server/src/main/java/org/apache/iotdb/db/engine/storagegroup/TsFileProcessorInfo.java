@@ -36,7 +36,7 @@ public class TsFileProcessorInfo {
       MetricService.getInstance()
           .addMetricSet(
               new TsFileProcessorInfoMetrics(
-                  dataRegionInfo.getDataRegion().getStorageGroupName(), memCost));
+                  dataRegionInfo.getDataRegion().getDatabaseName(), memCost));
     }
   }
 

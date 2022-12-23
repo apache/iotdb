@@ -34,7 +34,7 @@ public class DataRegionMetrics implements IMetricSet {
 
   public DataRegionMetrics(DataRegion dataRegion) {
     this.dataRegion = dataRegion;
-    this.storageGroupName = dataRegion.getStorageGroupName();
+    this.storageGroupName = dataRegion.getDatabaseName();
   }
 
   @Override

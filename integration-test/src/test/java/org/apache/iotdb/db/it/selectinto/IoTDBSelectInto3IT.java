@@ -40,7 +40,9 @@ public class IoTDBSelectInto3IT extends IoTDBSelectIntoIT {
   public static void setUp() throws Exception {
     selectIntoInsertTabletPlanRowLimit =
         ConfigFactory.getConfig().getSelectIntoInsertTabletPlanRowLimit();
+    queryThreadCount = ConfigFactory.getConfig().getQueryThreadCount();
     ConfigFactory.getConfig().setSelectIntoInsertTabletPlanRowLimit(5);
+    ConfigFactory.getConfig().setQueryThreadCount(1);
     EnvFactory.getEnv().initBeforeClass();
     prepareData(SQLs);
   }
@@ -50,5 +52,6 @@ public class IoTDBSelectInto3IT extends IoTDBSelectIntoIT {
     EnvFactory.getEnv().cleanAfterClass();
     ConfigFactory.getConfig()
         .setSelectIntoInsertTabletPlanRowLimit(selectIntoInsertTabletPlanRowLimit);
+    ConfigFactory.getConfig().setQueryThreadCount(queryThreadCount);
   }
 }

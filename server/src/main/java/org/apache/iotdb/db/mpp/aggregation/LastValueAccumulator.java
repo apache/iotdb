@@ -130,7 +130,32 @@ public class LastValueAccumulator implements Accumulator {
   @Override
   public void setFinal(Column finalResult) {
     reset();
-    lastValue.setObject(finalResult.getObject(0));
+    if (!finalResult.isNull(0)) {
+      initResult = true;
+      switch (seriesDataType) {
+        case INT32:
+          lastValue.setInt(finalResult.getInt(0));
+          break;
+        case INT64:
+          lastValue.setLong(finalResult.getLong(0));
+          break;
+        case FLOAT:
+          lastValue.setFloat(finalResult.getFloat(0));
+          break;
+        case DOUBLE:
+          lastValue.setDouble(finalResult.getDouble(0));
+          break;
+        case TEXT:
+          lastValue.setBinary(finalResult.getBinary(0));
+          break;
+        case BOOLEAN:
+          lastValue.setBoolean(finalResult.getBoolean(0));
+          break;
+        default:
+          throw new UnSupportedDataTypeException(
+              String.format("Unsupported data type in LastValue: %s", seriesDataType));
+      }
+    }
   }
 
   // columnBuilder should be double in LastValueAccumulator

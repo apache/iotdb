@@ -18,6 +18,7 @@
 
 var config = {
     plugins: [
+        '@vuepress/back-to-top',
         ['@vuepress/plugin-html-redirect', {
           countdown: 0,
         }],
@@ -67,12 +68,18 @@ var config = {
 
 		sidebarDepth: 0,
 
+    editLinks: true,
+
+    docsRepo: 'apache/iotdb',
+
+    docsDir: 'docs',
+
 		locales: {
 		  '/': {
 			selectText: 'Languages',
 			label: 'English',
 			ariaLabel: 'Languages',
-			editLinkText: 'Edit this page on GitHub',
+			editLinkText: 'Found Error, Edit this page on GitHub',
 			serviceWorker: {
 			  updatePopup: {
 				message: "New content is available.",
@@ -619,13 +626,6 @@ var config = {
 						]
 					},
 					{
-						title: 'Cluster Setup',
-						children: [
-							['Cluster/Cluster-Setup','Cluster Setup'],
-							//['Cluster/Cluster-Setup-Example','Cluster Setup Example']
-						]
-					},
-					{
 						title: 'FAQ',
 						children: [
 							['FAQ/Frequently-asked-questions','Frequently asked questions']
@@ -788,13 +788,6 @@ var config = {
 							['Ecosystem Integration/Flink IoTDB','Flink IoTDB'],
 							['Ecosystem Integration/Flink TsFile','Flink TsFile'],
 							['Ecosystem Integration/NiFi-IoTDB','NiFi IoTDB'],
-						]
-					},
-					{
-						title: 'Cluster Setup',
-						children: [
-							['Cluster/Cluster-Setup','Cluster Setup'],
-							['Cluster/Cluster-Setup-Example','Cluster Setup Example']
 						]
 					},
 					{
@@ -1035,7 +1028,8 @@ var config = {
 						children: [
 							['Cluster/Cluster-Concept','Cluster Concept'],
 							['Cluster/Cluster-Setup','Cluster Setup'],
-							['Cluster/Cluster-Maintenance','Cluster Maintenance']
+							['Cluster/Cluster-Maintenance','Cluster Maintenance'],
+							['Cluster/Deployment-Recommendation','Deployment Recommendation'],
 						]
 					},
 					{
@@ -1075,6 +1069,7 @@ var config = {
 						title: 'Quick Start',
 						children: [
 							['QuickStart/QuickStart','Quick Start'],
+							['QuickStart/ClusterQuickStart','Cluster Quick Start'],
 							['QuickStart/WayToGetIoTDB','Download and Setup'],
 							['QuickStart/Command-Line-Interface','Command Line Interface'],
 							['QuickStart/Files','Data storage']
@@ -1268,7 +1263,8 @@ var config = {
 						children: [
 							['Cluster/Cluster-Concept','Cluster Concept'],
 							['Cluster/Cluster-Setup','Cluster Setup'],
-							['Cluster/Cluster-Maintenance','Cluster Maintenance']
+							['Cluster/Cluster-Maintenance','Cluster Maintenance'],
+							['Cluster/Deployment-Recommendation','Deployment Recommendation'],
 						]
 					},
 					{
@@ -1297,7 +1293,7 @@ var config = {
 			// 该语言在下拉菜单中的标签
 			label: '简体中文',
 			// 编辑链接文字
-			editLinkText: '在 GitHub 上编辑此页',
+			editLinkText: '发现错误？在 GitHub 上编辑此页',
 			// Service Worker 的配置
 			serviceWorker: {
 			  updatePopup: {
@@ -1834,13 +1830,6 @@ var config = {
 						]
 					},
 					{
-						title: '集群搭建',
-						children: [
-							['Cluster/Cluster-Setup','集群搭建'],
-							//['Cluster/Cluster-Setup-Example','集群搭建示例']
-						]
-					},
-					{
 						title: '常见问题',
 						children: [
 							['FAQ/Frequently-asked-questions','常见问题']
@@ -1997,13 +1986,6 @@ var config = {
 							['Ecosystem Integration/Flink TsFile','Flink-TsFile'],
 							['Ecosystem Integration/Flink IoTDB','Flink-IoTDB'],
 							['Ecosystem Integration/NiFi-IoTDB','NiFi IoTDB']
-						]
-					},
-					{
-						title: '集群搭建',
-						children: [
-							['Cluster/Cluster-Setup','集群搭建'],
-							['Cluster/Cluster-Setup-Example','集群搭建示例']
 						]
 					},
 					{
@@ -2244,7 +2226,8 @@ var config = {
 						children: [
 							['Cluster/Cluster-Concept','基本概念'],
 							['Cluster/Cluster-Setup','分布式部署'],
-							['Cluster/Cluster-Maintenance','分布式运维命令']
+							['Cluster/Cluster-Maintenance','分布式运维命令'],
+							['Cluster/Deployment-Recommendation','部署推荐'],
 						]
 					},
 					{
@@ -2284,6 +2267,7 @@ var config = {
 						title: '快速上手',
 						children: [
 							['QuickStart/QuickStart','快速上手'],
+							['QuickStart/ClusterQuickStart', '集群快速上手'],
 							['QuickStart/WayToGetIoTDB','下载与安装'],
 							['QuickStart/Command-Line-Interface','SQL命令行终端(CLI)'],
 							['QuickStart/Files','数据文件存储']
@@ -2477,7 +2461,8 @@ var config = {
 						children: [
 							['Cluster/Cluster-Concept','基本概念'],
 							['Cluster/Cluster-Setup','分布式部署'],
-							['Cluster/Cluster-Maintenance','分布式运维命令']
+							['Cluster/Cluster-Maintenance','分布式运维命令'],
+							['Cluster/Deployment-Recommendation','部署推荐'],
 						]
 					},
 					{

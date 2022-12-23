@@ -21,7 +21,7 @@ package org.apache.iotdb.db.mpp.execution.fragment;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.storagegroup.DataRegion;
+import org.apache.iotdb.db.engine.storagegroup.IDataRegionForQuery;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.execution.driver.DataDriver;
@@ -68,6 +68,8 @@ public class FragmentInstanceManager {
   private static final long QUERY_TIMEOUT_MS =
       IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold();
 
+  private final ExecutorService intoOperationExecutor;
+
   public static FragmentInstanceManager getInstance() {
     return FragmentInstanceManager.InstanceHolder.INSTANCE;
   }
@@ -90,10 +92,15 @@ public class FragmentInstanceManager {
         200,
         200,
         TimeUnit.MILLISECONDS);
+
+    this.intoOperationExecutor =
+        IoTDBThreadPoolFactory.newFixedThreadPool(
+            IoTDBDescriptor.getInstance().getConfig().getIntoOperationExecutionThreadCount(),
+            "into-operation-executor");
   }
 
   public FragmentInstanceInfo execDataQueryFragmentInstance(
-      FragmentInstance instance, DataRegion dataRegion) {
+      FragmentInstance instance, IDataRegionForQuery dataRegion) {
 
     FragmentInstanceId instanceId = instance.getId();
     try (SetThreadName fragmentInstanceName = new SetThreadName(instanceId.getFullId())) {
@@ -109,7 +116,10 @@ public class FragmentInstanceManager {
                         instanceId,
                         fragmentInstanceId ->
                             createFragmentInstanceContext(
-                                fragmentInstanceId, stateMachine, instance.getSessionInfo()));
+                                fragmentInstanceId,
+                                stateMachine,
+                                instance.getSessionInfo(),
+                                intoOperationExecutor));
 
                 try {
                   DataDriver driver =
@@ -165,7 +175,10 @@ public class FragmentInstanceManager {
                       instanceId,
                       fragmentInstanceId ->
                           createFragmentInstanceContext(
-                              fragmentInstanceId, stateMachine, instance.getSessionInfo()));
+                              fragmentInstanceId,
+                              stateMachine,
+                              instance.getSessionInfo(),
+                              intoOperationExecutor));
 
               try {
                 SchemaDriver driver =

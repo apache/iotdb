@@ -342,6 +342,7 @@ public class TagManager {
    * add new attributes key-value for the timeseries
    *
    * @param attributesMap newly added attributes map
+   * @throws MetadataException tagLogFile write error or attributes already exist
    */
   public void addAttributes(
       Map<String, String> attributesMap, PartialPath fullPath, IMeasurementMNode leafMNode)
@@ -369,6 +370,7 @@ public class TagManager {
    *
    * @param tagsMap newly added tags map
    * @param fullPath timeseries
+   * @throws MetadataException tagLogFile write error or tag already exists
    */
   public void addTags(
       Map<String, String> tagsMap, PartialPath fullPath, IMeasurementMNode leafMNode)
@@ -395,7 +397,8 @@ public class TagManager {
   }
 
   /**
-   * drop tags or attributes of the timeseries
+   * Drop tags or attributes of the timeseries. It will not throw exception even if the key does not
+   * exist.
    *
    * @param keySet tags key or attributes key
    */
@@ -468,6 +471,7 @@ public class TagManager {
    * set/change the values of tags or attributes
    *
    * @param alterMap the new tags or attributes key-value
+   * @throws MetadataException tagLogFile write error or tags/attributes do not exist
    */
   public void setTagsOrAttributesValue(
       Map<String, String> alterMap, PartialPath fullPath, IMeasurementMNode leafMNode)
@@ -532,10 +536,12 @@ public class TagManager {
   }
 
   /**
-   * rename the tag or attribute's key of the timeseries
+   * Rename the tag or attribute's key of the timeseries
    *
    * @param oldKey old key of tag or attribute
    * @param newKey new key of tag or attribute
+   * @throws MetadataException tagLogFile write error or does not have tag/attribute or already has
+   *     a tag/attribute named newKey
    */
   public void renameTagOrAttributeKey(
       String oldKey, String newKey, PartialPath fullPath, IMeasurementMNode leafMNode)

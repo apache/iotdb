@@ -32,6 +32,7 @@ import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -39,6 +40,7 @@ import java.util.Vector;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.stream.Collectors;
 
 public class SchemaPartitionTable {
 
@@ -141,7 +143,9 @@ public class SchemaPartitionTable {
   }
 
   public List<TSeriesPartitionSlot> getSeriesSlotList() {
-    return new ArrayList<>(schemaPartitionMap.keySet());
+    return schemaPartitionMap.keySet().stream()
+        .sorted(Comparator.comparing(TSeriesPartitionSlot::getSlotId))
+        .collect(Collectors.toList());
   }
 
   public void serialize(OutputStream outputStream, TProtocol protocol)

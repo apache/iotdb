@@ -230,4 +230,13 @@ public abstract class AbstractCrossCompactionWriter extends AbstractCompactionWr
       fileIndex++;
     }
   }
+
+  @Override
+  public long getWriterSize() throws IOException {
+    long totalSize = 0;
+    for (TsFileIOWriter writer : targetFileWriters) {
+      totalSize += writer.getPos();
+    }
+    return totalSize;
+  }
 }

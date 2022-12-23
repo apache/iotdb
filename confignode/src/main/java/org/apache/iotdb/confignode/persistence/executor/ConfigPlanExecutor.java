@@ -171,11 +171,11 @@ public class ConfigPlanExecutor {
     this.authorInfo = authorInfo;
     this.snapshotProcessorList.add(authorInfo);
 
-    this.udfInfo = udfInfo;
-    this.snapshotProcessorList.add(udfInfo);
-
     this.triggerInfo = triggerInfo;
     this.snapshotProcessorList.add(triggerInfo);
+
+    this.udfInfo = udfInfo;
+    this.snapshotProcessorList.add(udfInfo);
 
     this.syncInfo = syncInfo;
     this.snapshotProcessorList.add(syncInfo);
@@ -397,15 +397,14 @@ public class ConfigPlanExecutor {
     }
 
     AtomicBoolean result = new AtomicBoolean(true);
-    snapshotProcessorList
-        .parallelStream()
+    snapshotProcessorList.stream()
         .forEach(
             x -> {
               boolean takeSnapshotResult = true;
               try {
                 takeSnapshotResult = x.processTakeSnapshot(snapshotDir);
               } catch (TException | IOException e) {
-                LOGGER.error(e.getMessage());
+                LOGGER.error("Take snapshot error: {}", e.getMessage());
                 takeSnapshotResult = false;
               } finally {
                 // If any snapshot fails, the whole fails
@@ -415,6 +414,9 @@ public class ConfigPlanExecutor {
                 }
               }
             });
+    if (result.get()) {
+      LOGGER.info("Task snapshot success, snapshotDir: {}", snapshotDir);
+    }
     return result.get();
   }
 
@@ -426,6 +428,7 @@ public class ConfigPlanExecutor {
       return;
     }
 
+    AtomicBoolean result = new AtomicBoolean(true);
     snapshotProcessorList
         .parallelStream()
         .forEach(
@@ -433,9 +436,13 @@ public class ConfigPlanExecutor {
               try {
                 x.processLoadSnapshot(latestSnapshotRootDir);
               } catch (TException | IOException e) {
-                LOGGER.error(e.getMessage());
+                result.set(false);
+                LOGGER.error("Load snapshot error: {}", e.getMessage());
               }
             });
+    if (result.get()) {
+      LOGGER.info("Load snapshot success, latestSnapshotRootDir: {}", latestSnapshotRootDir);
+    }
   }
 
   private DataSet getSchemaNodeManagementPartition(ConfigPhysicalPlan req) {

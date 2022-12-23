@@ -22,9 +22,9 @@ package org.apache.iotdb.db.tools;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
 import org.apache.iotdb.db.metadata.MetadataConstant;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
-import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.tools.schema.MLogParser;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -87,7 +87,7 @@ public class MLogParserTest {
             plan.setDataType(TSDataType.INT32);
             plan.setEncoding(TSEncoding.PLAIN);
             plan.setCompressor(CompressionType.GZIP);
-            IoTDB.schemaProcessor.createTimeseries(plan);
+            LocalSchemaProcessor.getInstance().createTimeseries(plan);
           } catch (MetadataException e) {
             e.printStackTrace();
           }
@@ -96,23 +96,24 @@ public class MLogParserTest {
     }
 
     try {
-      IoTDB.schemaProcessor.setStorageGroup(new PartialPath("root.ln.cc"));
-      IoTDB.schemaProcessor.setStorageGroup(new PartialPath("root.sgcc"));
-      IoTDB.schemaProcessor.setTTL(new PartialPath("root.sgcc"), 1234L);
-      IoTDB.schemaProcessor.deleteTimeseries(new PartialPath("root.sg1.device1.s1"));
+      LocalSchemaProcessor.getInstance().setStorageGroup(new PartialPath("root.ln.cc"));
+      LocalSchemaProcessor.getInstance().setStorageGroup(new PartialPath("root.sgcc"));
+      LocalSchemaProcessor.getInstance().setTTL(new PartialPath("root.sgcc"), 1234L);
+      LocalSchemaProcessor.getInstance().deleteTimeseries(new PartialPath("root.sg1.device1.s1"));
       List<PartialPath> paths = new ArrayList<>();
       paths.add(new PartialPath("root.ln.cc"));
-      IoTDB.schemaProcessor.deleteStorageGroups(paths);
+      LocalSchemaProcessor.getInstance().deleteStorageGroups(paths);
       Map<String, String> tags = new HashMap<String, String>();
       tags.put("tag1", "value1");
-      IoTDB.schemaProcessor.addTags(tags, new PartialPath("root.sg1.device1.s2"));
-      IoTDB.schemaProcessor.changeAlias(new PartialPath("root.sg1.device1.s3"), "hello");
+      LocalSchemaProcessor.getInstance().addTags(tags, new PartialPath("root.sg1.device1.s2"));
+      LocalSchemaProcessor.getInstance()
+          .changeAlias(new PartialPath("root.sg1.device1.s3"), "hello");
     } catch (MetadataException | IOException e) {
       e.printStackTrace();
     }
 
     try {
-      IoTDB.schemaProcessor.setStorageGroup(new PartialPath("root.sg"));
+      LocalSchemaProcessor.getInstance().setStorageGroup(new PartialPath("root.sg"));
     } catch (MetadataException e) {
       e.printStackTrace();
     }
@@ -123,7 +124,7 @@ public class MLogParserTest {
     prepareData();
     testNonExistingStorageGroupDir("root.ln.cc");
 
-    IoTDB.schemaProcessor.forceMlog();
+    LocalSchemaProcessor.getInstance().forceMlog();
 
     for (int i = 0; i < storageGroups.length; i++) {
       testParseMLog(storageGroups[i], storageGroupIndex[i], mlogLineNum[i]);

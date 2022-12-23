@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.engine.storagegroup.timeindex;
 
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.engine.StorageEngineV2;
+import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.PartitionViolationException;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
@@ -139,8 +139,8 @@ public class FileTimeIndex implements ITimeIndex {
   }
 
   private long getTimePartitionWithCheck() {
-    long startPartitionId = StorageEngineV2.getTimePartition(startTime);
-    long endPartitionId = StorageEngineV2.getTimePartition(endTime);
+    long startPartitionId = StorageEngine.getTimePartition(startTime);
+    long endPartitionId = StorageEngine.getTimePartition(endTime);
     if (startPartitionId == endPartitionId) {
       return startPartitionId;
     }

@@ -27,7 +27,7 @@ import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IoTConsensusRequest;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.StorageEngineV2;
+import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.flush.FlushStatus;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion;
@@ -285,11 +285,12 @@ public class WALNode implements IWALNode {
       }
       // delete files
       int deletedFilesNum = 0;
+      long deletedFilesSize = 0;
       for (int i = 0; i < endFileIndex; ++i) {
         long fileSize = filesToDelete[i].length();
         if (filesToDelete[i].delete()) {
           deletedFilesNum++;
-          WALManager.getInstance().subtractTotalDiskUsage(fileSize);
+          deletedFilesSize += fileSize;
         } else {
           logger.info(
               "Fail to delete outdated wal file {} of wal node-{}.", filesToDelete[i], identifier);
@@ -301,6 +302,8 @@ public class WALNode implements IWALNode {
           totalCostOfFlushedMemTables.addAndGet(-memTableRamCostSum);
         }
       }
+      WALManager.getInstance().subtractTotalDiskUsage(deletedFilesSize);
+      WALManager.getInstance().subtractTotalFileNum(deletedFilesNum);
       logger.debug(
           "Successfully delete {} outdated wal files for wal node-{}.",
           deletedFilesNum,
@@ -337,7 +340,7 @@ public class WALNode implements IWALNode {
       DataRegion dataRegion;
       try {
         dataRegion =
-            StorageEngineV2.getInstance()
+            StorageEngine.getInstance()
                 .getDataRegion(new DataRegionId(TsFileUtils.getDataRegionId(oldestTsFile)));
       } catch (Exception e) {
         logger.error("Fail to get data region processor for {}", oldestTsFile, e);

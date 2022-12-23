@@ -23,7 +23,6 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
-import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
@@ -55,7 +54,7 @@ public class SchemaImproveTest {
   @Before
   public void setUp() throws Exception {
     EnvironmentUtils.envSetUp();
-    schemaProcessor = IoTDB.schemaProcessor;
+    schemaProcessor = LocalSchemaProcessor.getInstance();
     schemaProcessor.setStorageGroup(new PartialPath("root.t1.v2"));
 
     for (int j = 0; j < DEVICE_NUM; j++) {
@@ -73,7 +72,7 @@ public class SchemaImproveTest {
 
   @Test
   public void checkSetUp() throws IllegalPathException {
-    schemaProcessor = IoTDB.schemaProcessor;
+    schemaProcessor = LocalSchemaProcessor.getInstance();
 
     assertTrue(schemaProcessor.isPathExist(new PartialPath("root.t1.v2.d3.s5")));
     assertFalse(schemaProcessor.isPathExist(new PartialPath("root.t1.v2.d9.s" + TIMESERIES_NUM)));
@@ -82,7 +81,7 @@ public class SchemaImproveTest {
 
   @Test
   public void analyseTimeCost() throws MetadataException {
-    schemaProcessor = IoTDB.schemaProcessor;
+    schemaProcessor = LocalSchemaProcessor.getInstance();
 
     long string_combine, path_exist, list_init, check_filelevel, get_seriestype;
     string_combine = path_exist = list_init = check_filelevel = get_seriestype = 0;
@@ -148,7 +147,7 @@ public class SchemaImproveTest {
 
   @Test
   public void improveTest() throws MetadataException {
-    schemaProcessor = IoTDB.schemaProcessor;
+    schemaProcessor = LocalSchemaProcessor.getInstance();
 
     String[] deviceIdList = new String[DEVICE_NUM];
     for (int i = 0; i < DEVICE_NUM; i++) {

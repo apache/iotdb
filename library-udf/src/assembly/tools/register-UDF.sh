@@ -84,7 +84,6 @@ pass=root
 
 # Frequency Domain
 ../sbin/start-cli.sh -h $host -p $rpcPort -u $user -pw $pass -e "create function fft as 'org.apache.iotdb.library.frequency.UDTFFFT'"
-../sbin/start-cli.sh -h $host -p $rpcPort -u $user -pw $pass -e "create function stft as 'org.apache.iotdb.library.frequency.UDTFSTFT'"
 ../sbin/start-cli.sh -h $host -p $rpcPort -u $user -pw $pass -e "create function conv as 'org.apache.iotdb.library.frequency.UDTFConv'"
 ../sbin/start-cli.sh -h $host -p $rpcPort -u $user -pw $pass -e "create function deconv as 'org.apache.iotdb.library.frequency.UDTFDeconv'"
 ../sbin/start-cli.sh -h $host -p $rpcPort -u $user -pw $pass -e "create function lowpass as 'org.apache.iotdb.library.frequency.UDTFLowPass'"

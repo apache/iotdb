@@ -21,6 +21,7 @@ package org.apache.iotdb.session;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
+import org.apache.iotdb.service.rpc.thrift.TSBackupConfigurationResp;
 import org.apache.iotdb.service.rpc.thrift.TSConnectionInfoResp;
 import org.apache.iotdb.session.template.Template;
 import org.apache.iotdb.session.util.Version;
@@ -147,7 +148,13 @@ public interface ISession extends AutoCloseable {
   SessionDataSet executeRawDataQuery(List<String> paths, long startTime, long endTime, long timeOut)
       throws StatementExecutionException, IoTDBConnectionException;
 
-  SessionDataSet executeLastDataQuery(List<String> paths, long LastTime, long timeOut)
+  SessionDataSet executeRawDataQuery(List<String> paths, long startTime, long endTime)
+      throws StatementExecutionException, IoTDBConnectionException;
+
+  SessionDataSet executeLastDataQuery(List<String> paths, long lastTime)
+      throws StatementExecutionException, IoTDBConnectionException;
+
+  SessionDataSet executeLastDataQuery(List<String> paths, long lastTime, long timeOut)
       throws StatementExecutionException, IoTDBConnectionException;
 
   SessionDataSet executeLastDataQuery(List<String> paths)
@@ -451,6 +458,9 @@ public interface ISession extends AutoCloseable {
   void setEnableRedirection(boolean enableRedirection);
 
   void sortTablet(Tablet tablet);
+
+  TSBackupConfigurationResp getBackupConfiguration()
+      throws IoTDBConnectionException, StatementExecutionException;
 
   TSConnectionInfoResp fetchAllConnections() throws IoTDBConnectionException;
 }
