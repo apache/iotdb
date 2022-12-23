@@ -19,7 +19,7 @@
 package org.apache.iotdb.session.it;
 
 import org.apache.iotdb.isession.ISession;
-import org.apache.iotdb.isession.SessionDataSet;
+import org.apache.iotdb.isession.ISessionDataSet;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
@@ -160,7 +160,7 @@ public class SessionIT {
         // ignore
       }
 
-      SessionDataSet dataSet = session.executeQueryStatement("select * from root.sg1.d1");
+      ISessionDataSet dataSet = session.executeQueryStatement("select * from root.sg1.d1");
       int i = 0;
       while (dataSet.hasNext()) {
         RowRecord record = dataSet.next();

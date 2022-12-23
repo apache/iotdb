@@ -16,23 +16,27 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.isession.pool;
+package org.apache.iotdb.session.pool;
 
+import org.apache.iotdb.isession.IDataIterator;
 import org.apache.iotdb.isession.ISession;
-import org.apache.iotdb.isession.SessionDataSet;
+import org.apache.iotdb.isession.ISessionDataSet;
+import org.apache.iotdb.isession.pool.ISessionDataSetWrapper;
+import org.apache.iotdb.isession.pool.ISessionPool;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 
 import java.util.List;
 
-public class SessionDataSetWrapper implements AutoCloseable {
+public class SessionDataSetWrapper implements ISessionDataSetWrapper {
 
-  SessionDataSet sessionDataSet;
+  ISessionDataSet sessionDataSet;
   ISession session;
   ISessionPool pool;
 
-  public SessionDataSetWrapper(SessionDataSet sessionDataSet, ISession session, ISessionPool pool) {
+  public SessionDataSetWrapper(
+      ISessionDataSet sessionDataSet, ISession session, ISessionPool pool) {
     this.sessionDataSet = sessionDataSet;
     this.session = session;
     this.pool = pool;
@@ -78,7 +82,7 @@ public class SessionDataSetWrapper implements AutoCloseable {
   }
 
   /** retrieve data set like jdbc */
-  public SessionDataSet.DataIterator iterator() {
+  public IDataIterator iterator() {
     return sessionDataSet.iterator();
   }
 
@@ -100,11 +104,11 @@ public class SessionDataSetWrapper implements AutoCloseable {
     this.session = session;
   }
 
-  public SessionDataSet getSessionDataSet() {
+  public ISessionDataSet getSessionDataSet() {
     return sessionDataSet;
   }
 
-  public void setSessionDataSet(SessionDataSet sessionDataSet) {
+  public void setSessionDataSet(ISessionDataSet sessionDataSet) {
     this.sessionDataSet = sessionDataSet;
   }
 }

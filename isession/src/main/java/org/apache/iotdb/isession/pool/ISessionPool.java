@@ -44,7 +44,7 @@ public interface ISessionPool {
 
   void close();
 
-  void closeResultSet(SessionDataSetWrapper wrapper);
+  void closeResultSet(ISessionDataSetWrapper wrapper);
 
   void insertTablet(Tablet tablet) throws IoTDBConnectionException, StatementExecutionException;
 
@@ -393,10 +393,10 @@ public interface ISessionPool {
   void dropSchemaTemplate(String templateName)
       throws StatementExecutionException, IoTDBConnectionException;
 
-  SessionDataSetWrapper executeQueryStatement(String sql)
+  ISessionDataSetWrapper executeQueryStatement(String sql)
       throws IoTDBConnectionException, StatementExecutionException;
 
-  SessionDataSetWrapper executeQueryStatement(String sql, long timeoutInMs)
+  ISessionDataSetWrapper executeQueryStatement(String sql, long timeoutInMs)
       throws IoTDBConnectionException, StatementExecutionException;
 
   /**
@@ -407,15 +407,14 @@ public interface ISessionPool {
   void executeNonQueryStatement(String sql)
       throws StatementExecutionException, IoTDBConnectionException;
 
-  @SuppressWarnings("squid:S2095") // Suppress wrapper not closed warning
-  SessionDataSetWrapper executeRawDataQuery(
+  ISessionDataSetWrapper executeRawDataQuery(
       List<String> paths, long startTime, long endTime, long timeOut)
       throws IoTDBConnectionException, StatementExecutionException;
 
-  SessionDataSetWrapper executeLastDataQuery(List<String> paths, long LastTime, long timeOut)
+  ISessionDataSetWrapper executeLastDataQuery(List<String> paths, long LastTime, long timeOut)
       throws StatementExecutionException, IoTDBConnectionException;
 
-  SessionDataSetWrapper executeLastDataQuery(List<String> paths)
+  ISessionDataSetWrapper executeLastDataQuery(List<String> paths)
       throws StatementExecutionException, IoTDBConnectionException;
 
   int getMaxSize();
@@ -472,7 +471,7 @@ public interface ISessionPool {
       throws IoTDBConnectionException, StatementExecutionException {}
 
   @Deprecated
-  default SessionDataSetWrapper executeRawDataQuery(
+  default ISessionDataSetWrapper executeRawDataQuery(
       List<String> paths, long startTime, long endTime)
       throws IoTDBConnectionException, StatementExecutionException {
     return null;
