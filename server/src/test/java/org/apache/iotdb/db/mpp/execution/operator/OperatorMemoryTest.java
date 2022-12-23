@@ -1262,9 +1262,7 @@ public class OperatorMemoryTest {
       assertEquals(
           expectedMaxReturnSize + expectedMaxRetainSize,
           seriesAggregationScanOperator4.calculateMaxPeekMemory());
-      assertEquals(
-          Math.min(DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES, expectedMaxReturnSize),
-          seriesAggregationScanOperator4.calculateMaxReturnSize());
+      assertEquals(expectedMaxReturnSize, seriesAggregationScanOperator4.calculateMaxReturnSize());
       assertEquals(
           expectedMaxRetainSize,
           seriesAggregationScanOperator4.calculateRetainedSizeAfterCallingNext());
