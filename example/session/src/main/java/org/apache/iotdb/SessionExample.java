@@ -19,15 +19,15 @@
 
 package org.apache.iotdb;
 
+import org.apache.iotdb.isession.SessionDataSet;
+import org.apache.iotdb.isession.SessionDataSet.DataIterator;
+import org.apache.iotdb.isession.template.Template;
+import org.apache.iotdb.isession.util.Version;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.session.Session;
-import org.apache.iotdb.session.SessionDataSet;
-import org.apache.iotdb.session.SessionDataSet.DataIterator;
 import org.apache.iotdb.session.template.MeasurementNode;
-import org.apache.iotdb.session.template.Template;
-import org.apache.iotdb.session.util.Version;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
