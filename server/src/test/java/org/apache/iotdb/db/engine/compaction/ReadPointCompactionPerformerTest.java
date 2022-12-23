@@ -1586,8 +1586,7 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
             new SeriesDataBlockReader(
                 path,
                 TSDataType.VECTOR,
-                FragmentInstanceContext.createFragmentInstanceContextForCompaction(
-                    EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
+                EnvironmentUtils.TEST_QUERY_FI_CONTEXT,
                 seqResources,
                 unseqResources,
                 true);
