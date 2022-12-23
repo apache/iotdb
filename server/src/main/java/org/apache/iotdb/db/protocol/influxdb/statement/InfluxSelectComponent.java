@@ -16,19 +16,17 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.protocol.influxdb.operator;
+package org.apache.iotdb.db.protocol.influxdb.statement;
 
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
-import org.apache.iotdb.db.mpp.plan.expression.ResultColumn;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.mpp.plan.expression.multi.FunctionExpression;
+import org.apache.iotdb.db.mpp.plan.statement.component.ResultColumn;
+import org.apache.iotdb.db.mpp.plan.statement.component.SelectComponent;
 import org.apache.iotdb.db.protocol.influxdb.constant.InfluxSQLConstant;
 
-import java.time.ZoneId;
-
 /** this class maintains information from select clause. */
-public final class InfluxSelectComponent
-    extends org.apache.iotdb.db.qp.logical.crud.SelectComponent {
+public final class InfluxSelectComponent extends SelectComponent {
 
   private boolean hasAggregationFunction = false;
   private boolean hasSelectorFunction = false;
@@ -39,7 +37,7 @@ public final class InfluxSelectComponent
   private boolean hasOnlyTraverseFunction = false;
 
   public InfluxSelectComponent() {
-    super((ZoneId) null);
+    super(null);
   }
 
   public void addResultColumn(ResultColumn resultColumn) {

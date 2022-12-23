@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.qp.logical.crud;
+package org.apache.iotdb.db.qp.logical.filter;
 
 import org.apache.iotdb.db.qp.constant.FilterConstant.FilterType;
 
@@ -28,7 +28,7 @@ import org.slf4j.LoggerFactory;
  * user. Function is used for bottom operator.<br>
  * FunctionOperator has a {@code seriesPath}, and other filter condition.
  */
-public class FunctionOperator extends FilterOperator {
+public class FunctionOperator extends org.apache.iotdb.db.qp.logical.filter.FilterOperator {
 
   private static final Logger logger = LoggerFactory.getLogger(FunctionOperator.class);
 

@@ -16,10 +16,10 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.protocol.influxdb.sql;
+package org.apache.iotdb.db.protocol.influxdb.parser;
 
 import org.apache.iotdb.db.mpp.plan.parser.SQLParseError;
-import org.apache.iotdb.db.qp.logical.Operator;
+import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.qp.sql.InfluxDBSqlParser;
 import org.apache.iotdb.db.qp.sql.SqlLexer;
 
@@ -30,12 +30,12 @@ import org.antlr.v4.runtime.atn.PredictionMode;
 import org.antlr.v4.runtime.misc.ParseCancellationException;
 import org.antlr.v4.runtime.tree.ParseTree;
 
-public class InfluxDBLogicalGenerator {
+public class InfluxDBStatementGenerator {
 
-  private InfluxDBLogicalGenerator() {}
+  private InfluxDBStatementGenerator() {}
 
-  public static Operator generate(String sql) throws ParseCancellationException {
-    InfluxDBSqlVisitor influxDBSqlVisitor = new InfluxDBSqlVisitor();
+  public static Statement generate(String sql) throws ParseCancellationException {
+    InfluxDBAstVisitor influxDBAstVisitor = new InfluxDBAstVisitor();
     CharStream charStream1 = CharStreams.fromString(sql);
     SqlLexer lexer1 = new SqlLexer(charStream1);
     lexer1.removeErrorListeners();
@@ -61,6 +61,6 @@ public class InfluxDBLogicalGenerator {
       tree = parser2.singleStatement(); // STAGE 2
       // if we parse ok, it's LL not SLL
     }
-    return influxDBSqlVisitor.visit(tree);
+    return influxDBAstVisitor.visit(tree);
   }
 }

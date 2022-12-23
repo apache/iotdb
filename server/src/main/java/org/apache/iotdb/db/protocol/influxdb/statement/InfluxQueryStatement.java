@@ -16,23 +16,38 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.protocol.influxdb.operator;
+package org.apache.iotdb.db.protocol.influxdb.statement;
 
-import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
+import org.apache.iotdb.db.mpp.plan.statement.component.SelectComponent;
+import org.apache.iotdb.db.mpp.plan.statement.component.WhereCondition;
+import org.apache.iotdb.db.mpp.plan.statement.crud.QueryStatement;
 
-public class InfluxQueryOperator extends QueryOperator {
+public class InfluxQueryStatement extends QueryStatement {
 
-  protected InfluxSelectComponent influxSelectComponent;
+  private InfluxSelectComponent influxSelectComponent;
+  private InfluxWhereCondition influxWhereCondition;
 
-  public InfluxQueryOperator() {
+  public InfluxQueryStatement() {
     super();
   }
 
+  @Override
   public InfluxSelectComponent getSelectComponent() {
     return influxSelectComponent;
   }
 
-  public void setSelectComponent(InfluxSelectComponent influxSelectComponent) {
-    this.influxSelectComponent = influxSelectComponent;
+  @Override
+  public void setSelectComponent(SelectComponent influxSelectComponent) {
+    this.influxSelectComponent = (InfluxSelectComponent) influxSelectComponent;
+  }
+
+  @Override
+  public WhereCondition getWhereCondition() {
+    return influxWhereCondition;
+  }
+
+  @Override
+  public void setWhereCondition(WhereCondition whereCondition) {
+    this.influxWhereCondition = (InfluxWhereCondition) whereCondition;
   }
 }

@@ -20,10 +20,11 @@ package org.apache.iotdb.db.protocol.influxdb.sql;
 
 import org.apache.iotdb.db.mpp.plan.expression.ResultColumn;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
-import org.apache.iotdb.db.protocol.influxdb.operator.InfluxQueryOperator;
-import org.apache.iotdb.db.qp.logical.crud.BasicFunctionOperator;
-import org.apache.iotdb.db.qp.logical.crud.FilterOperator;
-import org.apache.iotdb.db.qp.logical.crud.WhereComponent;
+import org.apache.iotdb.db.protocol.influxdb.parser.InfluxDBStatementGenerator;
+import org.apache.iotdb.db.protocol.influxdb.statement.InfluxQueryStatement;
+import org.apache.iotdb.db.protocol.influxdb.statement.InfluxWhereCondition;
+import org.apache.iotdb.db.qp.logical.filter.BasicFunctionOperator;
+import org.apache.iotdb.db.qp.logical.filter.FilterOperator;
 
 import org.junit.Test;
 
@@ -33,11 +34,11 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 
-public class InfluxDBLogicalGeneratorTest {
+public class InfluxDBStatementGeneratorTest {
   @Test
   public void testParserSql1() {
-    InfluxQueryOperator operator =
-        (InfluxQueryOperator) InfluxDBLogicalGenerator.generate("SELECT * FROM h2o_feet");
+    InfluxQueryStatement operator =
+        (InfluxQueryStatement) InfluxDBStatementGenerator.generate("SELECT * FROM h2o_feet");
     List<ResultColumn> resultColumnList = operator.getSelectComponent().getResultColumns();
     assertEquals(resultColumnList.size(), 1);
     TimeSeriesOperand timeSeriesOperand =
@@ -49,16 +50,16 @@ public class InfluxDBLogicalGeneratorTest {
 
   @Test
   public void testParserSql2() {
-    InfluxQueryOperator operator =
-        (InfluxQueryOperator)
-            InfluxDBLogicalGenerator.generate("SELECT a,b,c FROM h2o_feet where a>1 and b<1");
+    InfluxQueryStatement operator =
+        (InfluxQueryStatement)
+            InfluxDBStatementGenerator.generate("SELECT a,b,c FROM h2o_feet where a>1 and b<1");
     List<ResultColumn> resultColumnList = operator.getSelectComponent().getResultColumns();
     assertEquals(resultColumnList.size(), 3);
     TimeSeriesOperand timeSeriesOperand =
         (TimeSeriesOperand) resultColumnList.get(0).getExpression();
     assertEquals(timeSeriesOperand.getPath().getFullPath(), "a");
-    WhereComponent whereComponent = operator.getWhereComponent();
-    FilterOperator filterOperator = (FilterOperator) whereComponent.getFilterOperator();
+    InfluxWhereCondition influxWhereCondition = operator.getWhereComponent();
+    FilterOperator filterOperator = (FilterOperator) influxWhereCondition.getFilterOperator();
     assertEquals(filterOperator.getFilterType().toString(), "KW_AND");
     assertEquals(filterOperator.getChildren().size(), 2);
     BasicFunctionOperator basicFunctionOperator =

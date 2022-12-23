@@ -18,15 +18,18 @@
  *
  */
 
-package org.apache.iotdb.db.qp.logical.crud;
+package org.apache.iotdb.db.protocol.influxdb.statement;
 
-public class WhereComponent {
+import org.apache.iotdb.db.mpp.plan.statement.component.WhereCondition;
+import org.apache.iotdb.db.qp.logical.filter.FilterOperator;
+
+public class InfluxWhereCondition extends WhereCondition {
 
   private FilterOperator filterOperator;
 
-  public WhereComponent() {}
+  public InfluxWhereCondition() {}
 
-  public WhereComponent(FilterOperator filterOperator) {
+  public InfluxWhereCondition(FilterOperator filterOperator) {
     this.filterOperator = filterOperator;
   }
 

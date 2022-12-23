@@ -20,9 +20,10 @@ package org.apache.iotdb.db.protocol.influxdb.handler;
 
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
-import org.apache.iotdb.db.mpp.plan.expression.ResultColumn;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.mpp.plan.expression.multi.FunctionExpression;
+import org.apache.iotdb.db.mpp.plan.statement.Statement;
+import org.apache.iotdb.db.mpp.plan.statement.component.ResultColumn;
 import org.apache.iotdb.db.protocol.influxdb.constant.InfluxSQLConstant;
 import org.apache.iotdb.db.protocol.influxdb.function.InfluxFunction;
 import org.apache.iotdb.db.protocol.influxdb.function.InfluxFunctionFactory;
@@ -30,16 +31,16 @@ import org.apache.iotdb.db.protocol.influxdb.function.InfluxFunctionValue;
 import org.apache.iotdb.db.protocol.influxdb.function.aggregator.InfluxAggregator;
 import org.apache.iotdb.db.protocol.influxdb.function.selector.InfluxSelector;
 import org.apache.iotdb.db.protocol.influxdb.meta.InfluxDBMetaManagerFactory;
-import org.apache.iotdb.db.protocol.influxdb.operator.InfluxQueryOperator;
-import org.apache.iotdb.db.protocol.influxdb.operator.InfluxSelectComponent;
+import org.apache.iotdb.db.protocol.influxdb.statement.InfluxQueryStatement;
+import org.apache.iotdb.db.protocol.influxdb.statement.InfluxSelectComponent;
+import org.apache.iotdb.db.protocol.influxdb.statement.InfluxWhereCondition;
 import org.apache.iotdb.db.protocol.influxdb.util.FilterUtils;
 import org.apache.iotdb.db.protocol.influxdb.util.JacksonUtils;
 import org.apache.iotdb.db.protocol.influxdb.util.QueryResultUtils;
 import org.apache.iotdb.db.protocol.influxdb.util.StringUtils;
 import org.apache.iotdb.db.qp.constant.FilterConstant;
-import org.apache.iotdb.db.qp.logical.Operator;
-import org.apache.iotdb.db.qp.logical.crud.BasicFunctionOperator;
-import org.apache.iotdb.db.qp.logical.crud.FilterOperator;
+import org.apache.iotdb.db.qp.logical.filter.BasicFunctionOperator;
+import org.apache.iotdb.db.qp.logical.filter.FilterOperator;
 import org.apache.iotdb.protocol.influxdb.rpc.thrift.InfluxQueryResultRsp;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -93,8 +94,8 @@ public abstract class AbstractQueryHandler {
       throws AuthException;
 
   public final InfluxQueryResultRsp queryInfluxDB(
-      String database, InfluxQueryOperator queryOperator, long sessionId) {
-    String measurement = queryOperator.getFromComponent().getPrefixPaths().get(0).getFullPath();
+      String database, InfluxQueryStatement queryStatement, long sessionId) {
+    String measurement = queryStatement.getFromComponent().getPrefixPaths().get(0).getFullPath();
     // The list of fields under the current measurement and the order of the specified rules
     Map<String, Integer> fieldOrders =
         InfluxDBMetaManagerFactory.getInstance().getFieldOrders(database, measurement, sessionId);
@@ -102,27 +103,28 @@ public abstract class AbstractQueryHandler {
     InfluxQueryResultRsp tsQueryResultRsp = new InfluxQueryResultRsp();
     try {
       // contain filter condition or have common query the result of by traversal.
-      if (queryOperator.getWhereComponent() != null
-          || queryOperator.getSelectComponent().isHasCommonQuery()
-          || queryOperator.getSelectComponent().isHasOnlyTraverseFunction()) {
+      if (queryStatement.getWhereCondition() != null
+          || queryStatement.getSelectComponent().isHasCommonQuery()
+          || queryStatement.getSelectComponent().isHasOnlyTraverseFunction()) {
         // step1 : generate query results
         queryResult =
             queryExpr(
-                queryOperator.getWhereComponent() != null
-                    ? queryOperator.getWhereComponent().getFilterOperator()
+                queryStatement.getWhereCondition() != null
+                    ? ((InfluxWhereCondition) queryStatement.getWhereCondition())
+                        .getFilterOperator()
                     : null,
                 database,
                 measurement,
                 fieldOrders,
                 sessionId);
         // step2 : select filter
-        ProcessSelectComponent(queryResult, queryOperator.getSelectComponent());
+        ProcessSelectComponent(queryResult, queryStatement.getSelectComponent());
       }
       // don't contain filter condition and only have function use iotdb function.
       else {
         queryResult =
             queryFuncWithoutFilter(
-                queryOperator.getSelectComponent(), database, measurement, sessionId);
+                queryStatement.getSelectComponent(), database, measurement, sessionId);
       }
       return tsQueryResultRsp
           .setResultJsonString(JacksonUtils.bean2Json(queryResult))
@@ -493,11 +495,11 @@ public abstract class AbstractQueryHandler {
     }
   }
 
-  public void checkInfluxDBQueryOperator(Operator operator) {
-    if (!(operator instanceof InfluxQueryOperator)) {
+  public void checkInfluxDBQueryOperator(Statement statement) {
+    if (!(statement instanceof InfluxQueryStatement)) {
       throw new IllegalArgumentException("not query sql");
     }
-    InfluxSelectComponent selectComponent = ((InfluxQueryOperator) operator).getSelectComponent();
+    InfluxSelectComponent selectComponent = ((InfluxQueryStatement) statement).getSelectComponent();
     if (selectComponent.isHasMoreSelectorFunction() && selectComponent.isHasCommonQuery()) {
       throw new IllegalArgumentException(
           "ERR: mixing multiple selector functions with tags or fields is not supported");

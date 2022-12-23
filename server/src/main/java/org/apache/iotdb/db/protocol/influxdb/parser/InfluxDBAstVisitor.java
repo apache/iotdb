@@ -16,11 +16,11 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.protocol.influxdb.sql;
+package org.apache.iotdb.db.protocol.influxdb.parser;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.mpp.plan.analyze.ExpressionAnalyzer;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
-import org.apache.iotdb.db.mpp.plan.expression.ResultColumn;
 import org.apache.iotdb.db.mpp.plan.expression.binary.AdditionExpression;
 import org.apache.iotdb.db.mpp.plan.expression.binary.DivisionExpression;
 import org.apache.iotdb.db.mpp.plan.expression.binary.ModuloExpression;
@@ -29,61 +29,58 @@ import org.apache.iotdb.db.mpp.plan.expression.binary.SubtractionExpression;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.mpp.plan.expression.multi.FunctionExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.NegationExpression;
-import org.apache.iotdb.db.protocol.influxdb.operator.InfluxQueryOperator;
-import org.apache.iotdb.db.protocol.influxdb.operator.InfluxSelectComponent;
+import org.apache.iotdb.db.mpp.plan.statement.Statement;
+import org.apache.iotdb.db.mpp.plan.statement.component.FromComponent;
+import org.apache.iotdb.db.mpp.plan.statement.component.ResultColumn;
+import org.apache.iotdb.db.protocol.influxdb.statement.InfluxQueryStatement;
+import org.apache.iotdb.db.protocol.influxdb.statement.InfluxSelectComponent;
+import org.apache.iotdb.db.protocol.influxdb.statement.InfluxWhereCondition;
 import org.apache.iotdb.db.qp.constant.FilterConstant;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
-import org.apache.iotdb.db.qp.logical.Operator;
-import org.apache.iotdb.db.qp.logical.crud.BasicFunctionOperator;
-import org.apache.iotdb.db.qp.logical.crud.FilterOperator;
-import org.apache.iotdb.db.qp.logical.crud.FromComponent;
-import org.apache.iotdb.db.qp.logical.crud.WhereComponent;
+import org.apache.iotdb.db.qp.logical.filter.BasicFunctionOperator;
+import org.apache.iotdb.db.qp.logical.filter.FilterOperator;
 import org.apache.iotdb.db.qp.sql.InfluxDBSqlParser;
 import org.apache.iotdb.db.qp.sql.InfluxDBSqlParserBaseVisitor;
 import org.apache.iotdb.db.utils.DateTimeUtils;
 
-public class InfluxDBSqlVisitor extends InfluxDBSqlParserBaseVisitor<Operator> {
-
-  private InfluxQueryOperator queryOp;
+public class InfluxDBAstVisitor extends InfluxDBSqlParserBaseVisitor<Statement> {
 
   @Override
-  public Operator visitSingleStatement(InfluxDBSqlParser.SingleStatementContext ctx) {
+  public Statement visitSingleStatement(InfluxDBSqlParser.SingleStatementContext ctx) {
     return visit(ctx.statement());
   }
 
   @Override
-  public Operator visitSelectStatement(InfluxDBSqlParser.SelectStatementContext ctx) {
-    queryOp = new InfluxQueryOperator();
-    parseSelectClause(ctx.selectClause());
-    parseFromClause(ctx.fromClause());
+  public Statement visitSelectStatement(InfluxDBSqlParser.SelectStatementContext ctx) {
+    InfluxQueryStatement queryStatement = new InfluxQueryStatement();
+    queryStatement.setSelectComponent(parseSelectClause(ctx.selectClause()));
+    queryStatement.setFromComponent(parseFromClause(ctx.fromClause()));
     if (ctx.whereClause() != null) {
-      WhereComponent whereComponent = parseWhereClause(ctx.whereClause());
-      queryOp.setWhereComponent(whereComponent);
+      queryStatement.setWhereCondition(parseWhereClause(ctx.whereClause()));
     }
-    return queryOp;
+    return queryStatement;
   }
 
-  public void parseSelectClause(InfluxDBSqlParser.SelectClauseContext ctx) {
+  public InfluxSelectComponent parseSelectClause(InfluxDBSqlParser.SelectClauseContext ctx) {
     InfluxSelectComponent influxSelectComponent = new InfluxSelectComponent();
     for (InfluxDBSqlParser.ResultColumnContext resultColumnContext : ctx.resultColumn()) {
       influxSelectComponent.addResultColumn(parseResultColumn(resultColumnContext));
     }
-    queryOp.setSelectComponent(influxSelectComponent);
+    return influxSelectComponent;
   }
 
-  private void parseFromClause(InfluxDBSqlParser.FromClauseContext fromClause) {
+  private FromComponent parseFromClause(InfluxDBSqlParser.FromClauseContext fromClause) {
     FromComponent fromComponent = new FromComponent();
-
     for (InfluxDBSqlParser.NodeNameContext nodeName : fromClause.nodeName()) {
-      fromComponent.addPrefixTablePath(new PartialPath(nodeName.getText(), false));
+      fromComponent.addPrefixPath(new PartialPath(nodeName.getText(), false));
     }
-    queryOp.setFromComponent(fromComponent);
+    return fromComponent;
   }
 
-  private WhereComponent parseWhereClause(InfluxDBSqlParser.WhereClauseContext ctx) {
+  private InfluxWhereCondition parseWhereClause(InfluxDBSqlParser.WhereClauseContext ctx) {
     FilterOperator whereOp = new FilterOperator();
     whereOp.addChildOperator(parseOrExpression(ctx.orExpression()));
-    return new WhereComponent(whereOp.getChildren().get(0));
+    return new InfluxWhereCondition(whereOp.getChildren().get(0));
   }
 
   private FilterOperator parseOrExpression(InfluxDBSqlParser.OrExpressionContext ctx) {
@@ -153,11 +150,15 @@ public class InfluxDBSqlVisitor extends InfluxDBSqlParserBaseVisitor<Operator> {
     }
   }
 
-  private ResultColumn parseResultColumn(
-      InfluxDBSqlParser.ResultColumnContext resultColumnContext) {
-    return new ResultColumn(
-        parseExpression(resultColumnContext.expression()),
-        resultColumnContext.AS() == null ? null : resultColumnContext.identifier().getText());
+  private ResultColumn parseResultColumn(InfluxDBSqlParser.ResultColumnContext ctx) {
+    Expression selectExpression = parseExpression(ctx.expression());
+    ResultColumn.ColumnType columnType =
+        ExpressionAnalyzer.identifyOutputColumnType(selectExpression, true);
+    if (ctx.AS() != null) {
+      return new ResultColumn(selectExpression, ctx.identifier().getText(), columnType);
+    } else {
+      return new ResultColumn(selectExpression, columnType);
+    }
   }
 
   private Expression parseExpression(InfluxDBSqlParser.ExpressionContext context) {
