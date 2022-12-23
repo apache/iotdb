@@ -154,7 +154,11 @@ public class NewInfluxDBServiceImpl implements IInfluxDBServiceWithHandler {
   @Override
   public InfluxQueryResultRsp query(InfluxQueryReq req) throws TException {
     Statement queryStatement = InfluxDBStatementGenerator.generate(req.command);
-    queryHandler.checkInfluxDBQueryOperator(queryStatement);
+    if (!(queryStatement instanceof InfluxQueryStatement)) {
+      throw new IllegalArgumentException("not query sql");
+    }
+    ((InfluxQueryStatement) queryStatement).semanticCheck();
+
     return queryHandler.queryInfluxDB(
         req.database, (InfluxQueryStatement) queryStatement, req.sessionId);
   }

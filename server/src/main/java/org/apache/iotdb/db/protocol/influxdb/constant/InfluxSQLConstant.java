@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.protocol.influxdb.constant;
 
-import org.apache.iotdb.db.qp.constant.SQLConstant;
+import org.apache.iotdb.db.constant.SQLConstant;
 
 import java.util.Arrays;
 import java.util.HashSet;

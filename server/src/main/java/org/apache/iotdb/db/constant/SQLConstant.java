@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.qp.constant;
+package org.apache.iotdb.db.constant;
 
 import org.apache.iotdb.commons.path.PartialPath;
 
@@ -56,8 +56,6 @@ public class SQLConstant {
   public static final String SUM = "sum";
 
   public static final String LAST = "last";
-
-  public static final int TOK_QUERY = 27;
 
   public static String[] getSingleRootArray() {
     return SINGLE_ROOT_ARRAY;

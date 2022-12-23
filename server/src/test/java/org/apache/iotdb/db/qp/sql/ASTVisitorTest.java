@@ -20,9 +20,9 @@
 package org.apache.iotdb.db.qp.sql;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.constant.SQLConstant;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.mpp.plan.parser.ASTVisitor;
-import org.apache.iotdb.db.qp.constant.SQLConstant;
 
 import org.junit.After;
 import org.junit.Before;

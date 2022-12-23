@@ -18,20 +18,20 @@
  */
 package org.apache.iotdb.db.protocol.influxdb.sql;
 
+import org.apache.iotdb.db.mpp.plan.expression.Expression;
+import org.apache.iotdb.db.mpp.plan.expression.ExpressionType;
+import org.apache.iotdb.db.mpp.plan.expression.binary.BinaryExpression;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.mpp.plan.statement.component.ResultColumn;
+import org.apache.iotdb.db.mpp.plan.statement.component.WhereCondition;
 import org.apache.iotdb.db.protocol.influxdb.parser.InfluxDBStatementGenerator;
 import org.apache.iotdb.db.protocol.influxdb.statement.InfluxQueryStatement;
-import org.apache.iotdb.db.protocol.influxdb.statement.InfluxWhereCondition;
-import org.apache.iotdb.db.qp.logical.filter.BasicFunctionOperator;
-import org.apache.iotdb.db.qp.logical.filter.FilterOperator;
 
 import org.junit.Test;
 
 import java.util.List;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 
 public class InfluxDBStatementGeneratorTest {
@@ -58,15 +58,30 @@ public class InfluxDBStatementGeneratorTest {
     TimeSeriesOperand timeSeriesOperand =
         (TimeSeriesOperand) resultColumnList.get(0).getExpression();
     assertEquals(timeSeriesOperand.getPath().getFullPath(), "a");
-    InfluxWhereCondition influxWhereCondition =
-        (InfluxWhereCondition) statement.getWhereCondition();
-    FilterOperator filterOperator = (FilterOperator) influxWhereCondition.getFilterOperator();
-    assertEquals(filterOperator.getFilterType().toString(), "KW_AND");
-    assertEquals(filterOperator.getChildren().size(), 2);
-    BasicFunctionOperator basicFunctionOperator =
-        (BasicFunctionOperator) filterOperator.getChildren().get(0);
-    assertEquals(basicFunctionOperator.getValue(), "1");
-    assertEquals(basicFunctionOperator.getSinglePath().getFullPath(), "a");
-    assertNotNull(basicFunctionOperator.getFilterType());
+
+    WhereCondition whereCondition = statement.getWhereCondition();
+    Expression predicate = whereCondition.getPredicate();
+    assertEquals(predicate.getExpressionType(), ExpressionType.LOGIC_AND);
+
+    Expression leftPredicate = ((BinaryExpression) predicate).getLeftExpression();
+    Expression rightPredicate = ((BinaryExpression) predicate).getRightExpression();
+
+    assertEquals(leftPredicate.getExpressionType(), ExpressionType.GREATER_THAN);
+    assertEquals(
+        ((BinaryExpression) leftPredicate).getLeftExpression().getExpressionType(),
+        ExpressionType.TIMESERIES);
+    assertEquals(
+        ((BinaryExpression) leftPredicate).getRightExpression().getExpressionType(),
+        ExpressionType.CONSTANT);
+    assertEquals(leftPredicate.toString(), "a > 1");
+
+    assertEquals(rightPredicate.getExpressionType(), ExpressionType.LESS_THAN);
+    assertEquals(
+        ((BinaryExpression) rightPredicate).getLeftExpression().getExpressionType(),
+        ExpressionType.TIMESERIES);
+    assertEquals(
+        ((BinaryExpression) rightPredicate).getRightExpression().getExpressionType(),
+        ExpressionType.CONSTANT);
+    assertEquals(rightPredicate.toString(), "b < 1");
   }
 }

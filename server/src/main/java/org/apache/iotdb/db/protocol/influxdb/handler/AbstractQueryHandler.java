@@ -20,9 +20,13 @@ package org.apache.iotdb.db.protocol.influxdb.handler;
 
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
+import org.apache.iotdb.db.mpp.plan.expression.binary.CompareBinaryExpression;
+import org.apache.iotdb.db.mpp.plan.expression.binary.LogicAndExpression;
+import org.apache.iotdb.db.mpp.plan.expression.binary.LogicBinaryExpression;
+import org.apache.iotdb.db.mpp.plan.expression.binary.LogicOrExpression;
+import org.apache.iotdb.db.mpp.plan.expression.leaf.ConstantOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.mpp.plan.expression.multi.FunctionExpression;
-import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.mpp.plan.statement.component.ResultColumn;
 import org.apache.iotdb.db.protocol.influxdb.constant.InfluxSQLConstant;
 import org.apache.iotdb.db.protocol.influxdb.function.InfluxFunction;
@@ -33,14 +37,10 @@ import org.apache.iotdb.db.protocol.influxdb.function.selector.InfluxSelector;
 import org.apache.iotdb.db.protocol.influxdb.meta.InfluxDBMetaManagerFactory;
 import org.apache.iotdb.db.protocol.influxdb.statement.InfluxQueryStatement;
 import org.apache.iotdb.db.protocol.influxdb.statement.InfluxSelectComponent;
-import org.apache.iotdb.db.protocol.influxdb.statement.InfluxWhereCondition;
 import org.apache.iotdb.db.protocol.influxdb.util.FilterUtils;
 import org.apache.iotdb.db.protocol.influxdb.util.JacksonUtils;
 import org.apache.iotdb.db.protocol.influxdb.util.QueryResultUtils;
 import org.apache.iotdb.db.protocol.influxdb.util.StringUtils;
-import org.apache.iotdb.db.qp.constant.FilterConstant;
-import org.apache.iotdb.db.qp.logical.filter.BasicFunctionOperator;
-import org.apache.iotdb.db.qp.logical.filter.FilterOperator;
 import org.apache.iotdb.protocol.influxdb.rpc.thrift.InfluxQueryResultRsp;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -51,9 +51,12 @@ import org.influxdb.dto.QueryResult;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+import static com.google.common.base.Preconditions.checkState;
 
 /** Used to process influxdb query requests, this abstract class defines some template methods */
 public abstract class AbstractQueryHandler {
@@ -103,15 +106,14 @@ public abstract class AbstractQueryHandler {
     InfluxQueryResultRsp tsQueryResultRsp = new InfluxQueryResultRsp();
     try {
       // contain filter condition or have common query the result of by traversal.
-      if (queryStatement.getWhereCondition() != null
+      if (queryStatement.hasWhere()
           || queryStatement.getSelectComponent().isHasCommonQuery()
           || queryStatement.getSelectComponent().isHasOnlyTraverseFunction()) {
         // step1 : generate query results
         queryResult =
             queryExpr(
-                queryStatement.getWhereCondition() != null
-                    ? ((InfluxWhereCondition) queryStatement.getWhereCondition())
-                        .getFilterOperator()
+                queryStatement.hasWhere()
+                    ? queryStatement.getWhereCondition().getPredicate()
                     : null,
                 database,
                 measurement,
@@ -133,20 +135,6 @@ public abstract class AbstractQueryHandler {
       return tsQueryResultRsp.setStatus(
           RpcUtils.getInfluxDBStatus(e.getCode().getStatusCode(), e.getMessage()));
     }
-  }
-
-  /**
-   * conditions are generated from subtrees of unique conditions
-   *
-   * @param basicFunctionOperator subtree to generate condition
-   * @return corresponding conditions
-   */
-  public IExpression getIExpressionForBasicFunctionOperator(
-      BasicFunctionOperator basicFunctionOperator) {
-    return new SingleSeriesExpression(
-        basicFunctionOperator.getSinglePath(),
-        FilterUtils.filterTypeToFilter(
-            basicFunctionOperator.getFilterType(), basicFunctionOperator.getValue()));
   }
 
   /**
@@ -336,40 +324,55 @@ public abstract class AbstractQueryHandler {
   }
 
   public QueryResult queryExpr(
-      FilterOperator operator,
+      Expression predicate,
       String database,
       String measurement,
       Map<String, Integer> fieldOrders,
       Long sessionId)
       throws AuthException {
-    if (operator == null) {
-      List<IExpression> expressions = new ArrayList<>();
-      return queryByConditions(expressions, database, measurement, fieldOrders, sessionId);
-    } else if (operator instanceof BasicFunctionOperator) {
-      List<IExpression> iExpressions = new ArrayList<>();
-      iExpressions.add(getIExpressionForBasicFunctionOperator((BasicFunctionOperator) operator));
-      return queryByConditions(iExpressions, database, measurement, fieldOrders, sessionId);
-    } else {
-      FilterOperator leftOperator = operator.getChildren().get(0);
-      FilterOperator rightOperator = operator.getChildren().get(1);
-      if (operator.getFilterType() == FilterConstant.FilterType.KW_OR) {
-        return QueryResultUtils.orQueryResultProcess(
-            queryExpr(leftOperator, database, measurement, fieldOrders, sessionId),
-            queryExpr(rightOperator, database, measurement, fieldOrders, sessionId));
-      } else if (operator.getFilterType() == FilterConstant.FilterType.KW_AND) {
-        if (canMergeOperator(leftOperator) && canMergeOperator(rightOperator)) {
-          List<IExpression> iExpressions1 = getIExpressionByFilterOperatorOperator(leftOperator);
-          List<IExpression> iExpressions2 = getIExpressionByFilterOperatorOperator(rightOperator);
-          iExpressions1.addAll(iExpressions2);
-          return queryByConditions(iExpressions1, database, measurement, fieldOrders, sessionId);
-        } else {
-          return QueryResultUtils.andQueryResultProcess(
-              queryExpr(leftOperator, database, measurement, fieldOrders, sessionId),
-              queryExpr(rightOperator, database, measurement, fieldOrders, sessionId));
-        }
+    if (predicate == null) {
+      return queryByConditions(
+          Collections.emptyList(), database, measurement, fieldOrders, sessionId);
+    } else if (predicate instanceof CompareBinaryExpression) {
+      return queryByConditions(
+          convertToIExpressions(predicate), database, measurement, fieldOrders, sessionId);
+    } else if (predicate instanceof LogicOrExpression) {
+      return QueryResultUtils.orQueryResultProcess(
+          queryExpr(
+              ((LogicOrExpression) predicate).getLeftExpression(),
+              database,
+              measurement,
+              fieldOrders,
+              sessionId),
+          queryExpr(
+              ((LogicOrExpression) predicate).getRightExpression(),
+              database,
+              measurement,
+              fieldOrders,
+              sessionId));
+    } else if (predicate instanceof LogicAndExpression) {
+      if (canMergePredicate(predicate)) {
+        return queryByConditions(
+            convertToIExpressions(predicate), database, measurement, fieldOrders, sessionId);
+      } else {
+        return QueryResultUtils.andQueryResultProcess(
+            queryExpr(
+                ((LogicAndExpression) predicate).getLeftExpression(),
+                database,
+                measurement,
+                fieldOrders,
+                sessionId),
+            queryExpr(
+                ((LogicAndExpression) predicate).getRightExpression(),
+                database,
+                measurement,
+                fieldOrders,
+                sessionId));
       }
+    } else {
+      throw new IllegalArgumentException(
+          "unsupported expression type: " + predicate.getExpressionType());
     }
-    throw new IllegalArgumentException("unknown operator " + operator);
   }
 
   /**
@@ -454,23 +457,33 @@ public abstract class AbstractQueryHandler {
    * generate query conditions through the syntax tree (if you enter this function, it means that it
    * must be a syntax tree that can be merged, and there is no or)
    *
-   * @param filterOperator the syntax tree of query criteria needs to be generated
+   * @param predicate the syntax tree of query criteria needs to be generated
    * @return condition list
    */
-  public List<IExpression> getIExpressionByFilterOperatorOperator(FilterOperator filterOperator) {
-    if (filterOperator instanceof BasicFunctionOperator) {
-      // It must be a non-or situation
-      List<IExpression> expressions = new ArrayList<>();
-      expressions.add(
-          getIExpressionForBasicFunctionOperator((BasicFunctionOperator) filterOperator));
-      return expressions;
+  public List<IExpression> convertToIExpressions(Expression predicate) {
+    if (predicate instanceof CompareBinaryExpression) {
+      Expression leftExpression = ((CompareBinaryExpression) predicate).getLeftExpression();
+      Expression rightExpression = ((CompareBinaryExpression) predicate).getRightExpression();
+      checkState(
+          leftExpression instanceof TimeSeriesOperand
+              && rightExpression instanceof ConstantOperand);
+      SingleSeriesExpression singleSeriesExpression =
+          new SingleSeriesExpression(
+              ((TimeSeriesOperand) leftExpression).getPath(),
+              FilterUtils.expressionTypeToFilter(
+                  leftExpression.getExpressionType(),
+                  ((ConstantOperand) rightExpression).getValueString()));
+      return Collections.singletonList(singleSeriesExpression);
+    } else if (predicate instanceof LogicBinaryExpression) {
+      List<IExpression> iExpressions = new ArrayList<>();
+      iExpressions.addAll(
+          convertToIExpressions(((LogicBinaryExpression) predicate).getLeftExpression()));
+      iExpressions.addAll(
+          convertToIExpressions(((LogicBinaryExpression) predicate).getRightExpression()));
+      return iExpressions;
     } else {
-      FilterOperator leftOperator = filterOperator.getChildren().get(0);
-      FilterOperator rightOperator = filterOperator.getChildren().get(1);
-      List<IExpression> expressions1 = getIExpressionByFilterOperatorOperator(leftOperator);
-      List<IExpression> expressions2 = getIExpressionByFilterOperatorOperator(rightOperator);
-      expressions1.addAll(expressions2);
-      return expressions1;
+      throw new IllegalArgumentException(
+          "unsupported expression type: " + predicate.getExpressionType());
     }
   }
 
@@ -478,35 +491,20 @@ public abstract class AbstractQueryHandler {
    * judge whether the subtrees of the syntax tree have or operations. If not, the query can be
    * merged
    *
-   * @param operator subtree to judge
+   * @param predicate subtree to judge
    * @return can merge queries
    */
-  public boolean canMergeOperator(FilterOperator operator) {
-    if (operator instanceof BasicFunctionOperator) {
+  public boolean canMergePredicate(Expression predicate) {
+    if (predicate instanceof CompareBinaryExpression) {
       return true;
+    } else if (predicate instanceof LogicOrExpression) {
+      return false;
+    } else if (predicate instanceof LogicAndExpression) {
+      return canMergePredicate(((LogicAndExpression) predicate).getLeftExpression())
+          && canMergePredicate(((LogicAndExpression) predicate).getRightExpression());
     } else {
-      if (operator.getFilterType() == FilterConstant.FilterType.KW_OR) {
-        return false;
-      } else {
-        FilterOperator leftOperator = operator.getChildren().get(0);
-        FilterOperator rightOperator = operator.getChildren().get(1);
-        return canMergeOperator(leftOperator) && canMergeOperator(rightOperator);
-      }
-    }
-  }
-
-  public void checkInfluxDBQueryOperator(Statement statement) {
-    if (!(statement instanceof InfluxQueryStatement)) {
-      throw new IllegalArgumentException("not query sql");
-    }
-    InfluxSelectComponent selectComponent = ((InfluxQueryStatement) statement).getSelectComponent();
-    if (selectComponent.isHasMoreSelectorFunction() && selectComponent.isHasCommonQuery()) {
       throw new IllegalArgumentException(
-          "ERR: mixing multiple selector functions with tags or fields is not supported");
-    }
-    if (selectComponent.isHasAggregationFunction() && selectComponent.isHasCommonQuery()) {
-      throw new IllegalArgumentException(
-          "ERR: mixing aggregate and non-aggregate queries is not supported");
+          "unsupported expression type: " + predicate.getExpressionType());
     }
   }
 }

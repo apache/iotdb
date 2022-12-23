@@ -18,14 +18,13 @@
  */
 package org.apache.iotdb.db.protocol.influxdb.statement;
 
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.mpp.plan.statement.component.SelectComponent;
-import org.apache.iotdb.db.mpp.plan.statement.component.WhereCondition;
 import org.apache.iotdb.db.mpp.plan.statement.crud.QueryStatement;
 
 public class InfluxQueryStatement extends QueryStatement {
 
   private InfluxSelectComponent influxSelectComponent;
-  private InfluxWhereCondition influxWhereCondition;
 
   public InfluxQueryStatement() {
     super();
@@ -42,12 +41,16 @@ public class InfluxQueryStatement extends QueryStatement {
   }
 
   @Override
-  public WhereCondition getWhereCondition() {
-    return influxWhereCondition;
-  }
-
-  @Override
-  public void setWhereCondition(WhereCondition whereCondition) {
-    this.influxWhereCondition = (InfluxWhereCondition) whereCondition;
+  public void semanticCheck() {
+    if (influxSelectComponent.isHasMoreSelectorFunction()
+        && influxSelectComponent.isHasCommonQuery()) {
+      throw new SemanticException(
+          "ERR: mixing multiple selector functions with tags or fields is not supported");
+    }
+    if (influxSelectComponent.isHasAggregationFunction()
+        && influxSelectComponent.isHasCommonQuery()) {
+      throw new SemanticException(
+          "ERR: mixing aggregate and non-aggregate queries is not supported");
+    }
   }
 }
