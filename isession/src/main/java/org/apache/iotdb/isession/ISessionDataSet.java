@@ -16,40 +16,29 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.session.template;
+package org.apache.iotdb.isession;
 
+import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
+import org.apache.iotdb.tsfile.read.common.RowRecord;
 
-import java.io.IOException;
-import java.io.OutputStream;
-import java.util.Map;
+import java.util.List;
 
-public abstract class TemplateNode {
-  private String name;
+public interface ISessionDataSet extends AutoCloseable {
 
-  public TemplateNode(String name) {
-    this.name = name;
-  }
+  int getFetchSize();
 
-  public String getName() {
-    return this.name;
-  }
+  void setFetchSize(int fetchSize);
 
-  public Map<String, TemplateNode> getChildren() {
-    return null;
-  }
+  List<String> getColumnNames();
 
-  public void addChild(TemplateNode node) throws StatementExecutionException {}
+  List<String> getColumnTypes();
 
-  public void deleteChild(TemplateNode node) {}
+  boolean hasNext() throws StatementExecutionException, IoTDBConnectionException;
 
-  public boolean isMeasurement() {
-    return false;
-  }
+  RowRecord next() throws StatementExecutionException, IoTDBConnectionException;
 
-  public boolean isShareTime() {
-    return false;
-  }
+  void closeOperationHandle() throws StatementExecutionException, IoTDBConnectionException;
 
-  public void serialize(OutputStream buffer) throws IOException {}
+  IDataIterator iterator();
 }
