@@ -28,8 +28,8 @@ import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.rpc.BatchExecutionException;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
+import org.apache.iotdb.session.ISessionDataSet;
 import org.apache.iotdb.session.Session;
-import org.apache.iotdb.session.SessionDataSet;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -378,7 +378,7 @@ public class TemplateUT {
         Collections.singletonList(TSDataType.INT64),
         Collections.singletonList(12345L));
 
-    SessionDataSet res =
+    ISessionDataSet res =
         session.executeRawDataQuery(Collections.singletonList("root.sg.v1.*"), 0L, 999L);
     while (res.hasNext()) {
       RowRecord rec = res.next();
@@ -449,7 +449,7 @@ public class TemplateUT {
     session.createTimeseriesOfTemplateOnPath("root.sg.v1");
     session.insertAlignedRecord(
         "root.sg.v1", 11L, Collections.singletonList("x"), Collections.singletonList("1.1"));
-    SessionDataSet sds = session.executeQueryStatement("select * from root.sg.v1");
+    ISessionDataSet sds = session.executeQueryStatement("select * from root.sg.v1");
     int cnt = 0;
     while (sds.hasNext()) {
       cnt++;
@@ -715,7 +715,7 @@ public class TemplateUT {
       session = new Session("127.0.0.1", 6667, "root", "root", 16);
       session.open();
 
-      SessionDataSet res = session.executeQueryStatement("show devices");
+      ISessionDataSet res = session.executeQueryStatement("show devices");
       if (res.hasNext()) {
         Assert.assertEquals("true", res.next().getFields().get(1).toString());
       }

@@ -22,9 +22,9 @@ package org.apache.iotdb;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.session.IDataIterator;
+import org.apache.iotdb.session.ISessionDataSet;
 import org.apache.iotdb.session.Session;
-import org.apache.iotdb.session.SessionDataSet;
-import org.apache.iotdb.session.SessionDataSet.DataIterator;
 import org.apache.iotdb.session.template.MeasurementNode;
 import org.apache.iotdb.session.template.Template;
 import org.apache.iotdb.session.util.Version;
@@ -58,8 +58,7 @@ public class SessionExample {
   private static final String ROOT_SG1_D1 = "root.sg1.d1";
   private static final String LOCAL_HOST = "127.0.0.1";
 
-  public static void main(String[] args)
-      throws IoTDBConnectionException, StatementExecutionException {
+  public static void main(String[] args) throws Exception {
     session =
         new Session.Builder()
             .host(LOCAL_HOST)
@@ -605,7 +604,7 @@ public class SessionExample {
    * This example shows how to insert data of TSDataType.TEXT. You can use the session interface to
    * write data of String type or Binary type.
    */
-  private static void insertText() throws IoTDBConnectionException, StatementExecutionException {
+  private static void insertText() throws Exception {
     String device = "root.sg1.text_type";
     // the first data is String type and the second data is Binary type
     List<Object> datas = Arrays.asList("String", new Binary("Binary"));
@@ -631,7 +630,7 @@ public class SessionExample {
       tablet.addValue(schemaList.get(0).getMeasurementId(), rowIndex, datas.get(i));
     }
     session.insertTablet(tablet);
-    try (SessionDataSet dataSet = session.executeQueryStatement("select s1, s2 from " + device)) {
+    try (ISessionDataSet dataSet = session.executeQueryStatement("select s1, s2 from " + device)) {
       System.out.println(dataSet.getColumnNames());
       while (dataSet.hasNext()) {
         System.out.println(dataSet.next());
@@ -639,11 +638,11 @@ public class SessionExample {
     }
   }
 
-  private static void selectInto() throws IoTDBConnectionException, StatementExecutionException {
+  private static void selectInto() throws Exception {
     session.executeNonQueryStatement(
         "select s1, s2, s3 into into_s1, into_s2, into_s3 from root.sg1.d1");
 
-    try (SessionDataSet dataSet =
+    try (ISessionDataSet dataSet =
         session.executeQueryStatement("select into_s1, into_s2, into_s3 from root.sg1.d1")) {
       System.out.println(dataSet.getColumnNames());
       while (dataSet.hasNext()) {
@@ -667,8 +666,8 @@ public class SessionExample {
     session.deleteTimeseries(paths);
   }
 
-  private static void query() throws IoTDBConnectionException, StatementExecutionException {
-    try (SessionDataSet dataSet = session.executeQueryStatement("select * from root.sg1.d1")) {
+  private static void query() throws Exception {
+    try (ISessionDataSet dataSet = session.executeQueryStatement("select * from root.sg1.d1")) {
       System.out.println(dataSet.getColumnNames());
       dataSet.setFetchSize(1024); // default is 10000
       while (dataSet.hasNext()) {
@@ -677,11 +676,10 @@ public class SessionExample {
     }
   }
 
-  private static void query4Redirect()
-      throws IoTDBConnectionException, StatementExecutionException {
+  private static void query4Redirect() throws Exception {
     String selectPrefix = "select * from root.redirect";
     for (int i = 0; i < 6; i++) {
-      try (SessionDataSet dataSet =
+      try (ISessionDataSet dataSet =
           sessionEnableRedirect.executeQueryStatement(selectPrefix + i + ".d1")) {
 
         System.out.println(dataSet.getColumnNames());
@@ -693,7 +691,7 @@ public class SessionExample {
     }
 
     for (int i = 0; i < 6; i++) {
-      try (SessionDataSet dataSet =
+      try (ISessionDataSet dataSet =
           sessionEnableRedirect.executeQueryStatement(
               selectPrefix + i + ".d1 where time >= 1 and time < 10")) {
 
@@ -706,7 +704,7 @@ public class SessionExample {
     }
 
     for (int i = 0; i < 6; i++) {
-      try (SessionDataSet dataSet =
+      try (ISessionDataSet dataSet =
           sessionEnableRedirect.executeQueryStatement(
               selectPrefix + i + ".d1 where time >= 1 and time < 10 align by device")) {
 
@@ -719,7 +717,7 @@ public class SessionExample {
     }
 
     for (int i = 0; i < 6; i++) {
-      try (SessionDataSet dataSet =
+      try (ISessionDataSet dataSet =
           sessionEnableRedirect.executeQueryStatement(
               selectPrefix
                   + i
@@ -735,9 +733,8 @@ public class SessionExample {
     }
   }
 
-  private static void queryWithTimeout()
-      throws IoTDBConnectionException, StatementExecutionException {
-    try (SessionDataSet dataSet =
+  private static void queryWithTimeout() throws Exception {
+    try (ISessionDataSet dataSet =
         session.executeQueryStatement("select * from root.sg1.d1", 2000)) {
       System.out.println(dataSet.getColumnNames());
       dataSet.setFetchSize(1024); // default is 10000
@@ -747,7 +744,7 @@ public class SessionExample {
     }
   }
 
-  private static void rawDataQuery() throws IoTDBConnectionException, StatementExecutionException {
+  private static void rawDataQuery() throws Exception {
     List<String> paths = new ArrayList<>();
     paths.add(ROOT_SG1_D1_S1);
     paths.add(ROOT_SG1_D1_S2);
@@ -755,7 +752,7 @@ public class SessionExample {
     long startTime = 10L;
     long endTime = 200L;
 
-    try (SessionDataSet dataSet = session.executeRawDataQuery(paths, startTime, endTime)) {
+    try (ISessionDataSet dataSet = session.executeRawDataQuery(paths, startTime, endTime)) {
 
       System.out.println(dataSet.getColumnNames());
       dataSet.setFetchSize(1024);
@@ -765,12 +762,12 @@ public class SessionExample {
     }
   }
 
-  private static void lastDataQuery() throws IoTDBConnectionException, StatementExecutionException {
+  private static void lastDataQuery() throws Exception {
     List<String> paths = new ArrayList<>();
     paths.add(ROOT_SG1_D1_S1);
     paths.add(ROOT_SG1_D1_S2);
     paths.add(ROOT_SG1_D1_S3);
-    try (SessionDataSet sessionDataSet = session.executeLastDataQuery(paths, 3)) {
+    try (ISessionDataSet sessionDataSet = session.executeLastDataQuery(paths, 3)) {
       System.out.println(sessionDataSet.getColumnNames());
       sessionDataSet.setFetchSize(1024);
       while (sessionDataSet.hasNext()) {
@@ -779,11 +776,10 @@ public class SessionExample {
     }
   }
 
-  private static void queryByIterator()
-      throws IoTDBConnectionException, StatementExecutionException {
-    try (SessionDataSet dataSet = session.executeQueryStatement("select * from root.sg1.d1")) {
+  private static void queryByIterator() throws Exception {
+    try (ISessionDataSet dataSet = session.executeQueryStatement("select * from root.sg1.d1")) {
 
-      DataIterator iterator = dataSet.iterator();
+      IDataIterator iterator = dataSet.iterator();
       System.out.println(dataSet.getColumnNames());
       dataSet.setFetchSize(1024); // default is 10000
       while (iterator.next()) {

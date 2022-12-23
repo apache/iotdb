@@ -127,7 +127,7 @@ public class SessionPoolTest {
       service.submit(
           () -> {
             try {
-              SessionDataSetWrapper wrapper =
+              ISessionDataSetWrapper wrapper =
                   pool.executeQueryStatement("select * from root.sg1.d1 where time = " + no);
               // this is incorrect becasue wrapper is not closed.
               // so all other 7 queries will be blocked
@@ -172,7 +172,7 @@ public class SessionPoolTest {
       service.submit(
           () -> {
             try {
-              SessionDataSetWrapper wrapper;
+              ISessionDataSetWrapper wrapper;
               if (timeoutInMs == DEFAULT_QUERY_TIMEOUT) {
                 wrapper =
                     pool.executeQueryStatement("select * from root.sg1.d1 where time = " + no);
@@ -250,7 +250,7 @@ public class SessionPoolTest {
             false,
             Config.DEFAULT_CONNECTION_TIMEOUT_MS);
     write10Data(pool, true);
-    SessionDataSetWrapper wrapper = null;
+    ISessionDataSetWrapper wrapper = null;
     try {
       wrapper = pool.executeQueryStatement("select * from root.sg1.d1 where time > 1");
       EnvironmentUtils.stopDaemon();
@@ -341,7 +341,7 @@ public class SessionPoolTest {
             Config.DEFAULT_CONNECTION_TIMEOUT_MS);
     write10Data(pool, true);
     assertEquals(1, pool.currentAvailableSize());
-    SessionDataSetWrapper wrapper;
+    ISessionDataSetWrapper wrapper;
     try {
       wrapper = pool.executeQueryStatement("select * from root.sg1.d1 where time > 1");
       // user does not know what happens.

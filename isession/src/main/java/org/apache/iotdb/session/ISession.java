@@ -113,22 +113,22 @@ public interface ISession {
 
   long getQueryTimeout();
 
-  SessionDataSet executeQueryStatement(String sql)
+  ISessionDataSet executeQueryStatement(String sql)
       throws StatementExecutionException, IoTDBConnectionException;
 
-  SessionDataSet executeQueryStatement(String sql, long timeoutInMs)
+  ISessionDataSet executeQueryStatement(String sql, long timeoutInMs)
       throws StatementExecutionException, IoTDBConnectionException;
 
   void executeNonQueryStatement(String sql)
       throws IoTDBConnectionException, StatementExecutionException;
 
-  SessionDataSet executeRawDataQuery(List<String> paths, long startTime, long endTime)
+  ISessionDataSet executeRawDataQuery(List<String> paths, long startTime, long endTime)
       throws StatementExecutionException, IoTDBConnectionException;
 
-  SessionDataSet executeLastDataQuery(List<String> paths, long LastTime)
+  ISessionDataSet executeLastDataQuery(List<String> paths, long LastTime)
       throws StatementExecutionException, IoTDBConnectionException;
 
-  SessionDataSet executeLastDataQuery(List<String> paths)
+  ISessionDataSet executeLastDataQuery(List<String> paths)
       throws StatementExecutionException, IoTDBConnectionException;
 
   void insertRecord(

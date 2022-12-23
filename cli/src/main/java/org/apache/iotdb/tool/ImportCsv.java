@@ -22,8 +22,8 @@ package org.apache.iotdb.tool;
 import org.apache.iotdb.exception.ArgsErrorException;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
+import org.apache.iotdb.session.ISessionDataSet;
 import org.apache.iotdb.session.Session;
-import org.apache.iotdb.session.SessionDataSet;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import org.apache.commons.cli.CommandLine;
@@ -714,7 +714,7 @@ public class ImportCsv extends AbstractCsvTool {
       String deviceNames, HashMap<String, TSDataType> headerTypeMap, String alignedType)
       throws IoTDBConnectionException {
     String sql = "select * from " + deviceNames + " limit 1";
-    SessionDataSet sessionDataSet = null;
+    ISessionDataSet sessionDataSet = null;
     try {
       sessionDataSet = session.executeQueryStatement(sql);
     } catch (StatementExecutionException e) {
