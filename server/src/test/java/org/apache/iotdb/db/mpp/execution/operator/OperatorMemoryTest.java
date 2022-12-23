@@ -1251,16 +1251,20 @@ public class OperatorMemoryTest {
               typeProvider);
 
       expectedMaxReturnSize =
-          maxTsBlockLineNumber
-              * (TimeColumn.SIZE_IN_BYTES_PER_POSITION
-                  + 512 * Byte.BYTES
-                  + LongColumn.SIZE_IN_BYTES_PER_POSITION);
+          Math.min(
+              DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES,
+              maxTsBlockLineNumber
+                  * (TimeColumn.SIZE_IN_BYTES_PER_POSITION
+                      + 512 * Byte.BYTES
+                      + LongColumn.SIZE_IN_BYTES_PER_POSITION));
       expectedMaxRetainSize = 2L * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte();
 
       assertEquals(
           expectedMaxReturnSize + expectedMaxRetainSize,
           seriesAggregationScanOperator4.calculateMaxPeekMemory());
-      assertEquals(expectedMaxReturnSize, seriesAggregationScanOperator4.calculateMaxReturnSize());
+      assertEquals(
+          Math.min(DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES, expectedMaxReturnSize),
+          seriesAggregationScanOperator4.calculateMaxReturnSize());
       assertEquals(
           expectedMaxRetainSize,
           seriesAggregationScanOperator4.calculateRetainedSizeAfterCallingNext());
