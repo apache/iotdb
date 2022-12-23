@@ -18,10 +18,10 @@
  */
 package org.apache.iotdb;
 
-import org.apache.iotdb.isession.SessionDataSet.DataIterator;
-import org.apache.iotdb.isession.pool.SessionDataSetWrapper;
+import org.apache.iotdb.isession.IDataIterator;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
+import org.apache.iotdb.session.pool.SessionDataSetWrapper;
 import org.apache.iotdb.session.pool.SessionPool;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
@@ -126,7 +126,7 @@ public class SessionPoolExample {
             try {
               wrapper = sessionPool.executeQueryStatement("select * from root.sg1.d1");
               // get DataIterator like JDBC
-              DataIterator dataIterator = wrapper.iterator();
+              IDataIterator dataIterator = wrapper.iterator();
               System.out.println(wrapper.getColumnNames());
               System.out.println(wrapper.getColumnTypes());
               while (dataIterator.next()) {

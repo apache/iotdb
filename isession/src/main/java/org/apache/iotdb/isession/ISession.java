@@ -133,28 +133,29 @@ public interface ISession extends AutoCloseable {
   boolean checkTimeseriesExists(String path)
       throws IoTDBConnectionException, StatementExecutionException;
 
-  SessionDataSet executeQueryStatement(String sql)
+  ISessionDataSet executeQueryStatement(String sql)
       throws StatementExecutionException, IoTDBConnectionException;
 
-  SessionDataSet executeQueryStatement(String sql, long timeoutInMs)
+  ISessionDataSet executeQueryStatement(String sql, long timeoutInMs)
       throws StatementExecutionException, IoTDBConnectionException;
 
   void executeNonQueryStatement(String sql)
       throws IoTDBConnectionException, StatementExecutionException;
 
-  SessionDataSet executeRawDataQuery(List<String> paths, long startTime, long endTime, long timeOut)
+  ISessionDataSet executeRawDataQuery(
+      List<String> paths, long startTime, long endTime, long timeOut)
       throws StatementExecutionException, IoTDBConnectionException;
 
-  SessionDataSet executeRawDataQuery(List<String> paths, long startTime, long endTime)
+  ISessionDataSet executeRawDataQuery(List<String> paths, long startTime, long endTime)
       throws StatementExecutionException, IoTDBConnectionException;
 
-  SessionDataSet executeLastDataQuery(List<String> paths, long lastTime)
+  ISessionDataSet executeLastDataQuery(List<String> paths, long lastTime)
       throws StatementExecutionException, IoTDBConnectionException;
 
-  SessionDataSet executeLastDataQuery(List<String> paths, long lastTime, long timeOut)
+  ISessionDataSet executeLastDataQuery(List<String> paths, long lastTime, long timeOut)
       throws StatementExecutionException, IoTDBConnectionException;
 
-  SessionDataSet executeLastDataQuery(List<String> paths)
+  ISessionDataSet executeLastDataQuery(List<String> paths)
       throws StatementExecutionException, IoTDBConnectionException;
 
   void insertRecord(

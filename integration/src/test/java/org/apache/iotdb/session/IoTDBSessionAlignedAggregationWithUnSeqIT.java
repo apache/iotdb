@@ -22,7 +22,7 @@ package org.apache.iotdb.session;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
-import org.apache.iotdb.isession.SessionDataSet;
+import org.apache.iotdb.isession.ISessionDataSet;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -68,7 +68,7 @@ public class IoTDBSessionAlignedAggregationWithUnSeqIT {
   @Test
   public void vectorAggregationCountTest() {
     try {
-      SessionDataSet dataSet =
+      ISessionDataSet dataSet =
           session.executeQueryStatement("select count(s1), count(s2) from root.sg1.d1.vector1");
       assertEquals(2, dataSet.getColumnNames().size());
       assertEquals("count(" + ROOT_SG1_D1_VECTOR1 + ".s1)", dataSet.getColumnNames().get(0));
@@ -90,7 +90,7 @@ public class IoTDBSessionAlignedAggregationWithUnSeqIT {
   @Test
   public void vectorAggregationMinMaxTimeTest() {
     try {
-      SessionDataSet dataSet =
+      ISessionDataSet dataSet =
           session.executeQueryStatement(
               "select min_time(s1), max_time(s1), min_time(s2), max_time(s2) from root.sg1.d1.vector1");
       assertEquals(4, dataSet.getColumnNames().size());
@@ -117,7 +117,7 @@ public class IoTDBSessionAlignedAggregationWithUnSeqIT {
   @Test
   public void vectorAggregationMinMaxValueTest() {
     try {
-      SessionDataSet dataSet =
+      ISessionDataSet dataSet =
           session.executeQueryStatement(
               "select min_value(s1), min_value(s2), max_value(s1), max_value(s2) from root.sg1.d1.vector1");
       assertEquals(4, dataSet.getColumnNames().size());

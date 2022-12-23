@@ -21,7 +21,7 @@ package org.apache.iotdb.session;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
-import org.apache.iotdb.isession.SessionDataSet;
+import org.apache.iotdb.isession.ISessionDataSet;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -70,7 +70,7 @@ public class IoTDBSessionAlignedABDeviceIT {
   @Test
   public void subMeasurementAlignByDeviceTest() {
     try {
-      SessionDataSet dataSet =
+      ISessionDataSet dataSet =
           session.executeQueryStatement("select s1, s2 from root.sg1.d1 limit 1 align by device");
       assertEquals(4, dataSet.getColumnNames().size());
       assertEquals("Time", dataSet.getColumnNames().get(0));
@@ -96,7 +96,7 @@ public class IoTDBSessionAlignedABDeviceIT {
   @Test
   public void vectorAlignByDeviceTest() {
     try {
-      SessionDataSet dataSet =
+      ISessionDataSet dataSet =
           session.executeQueryStatement("select * from root.sg1.d1 limit 1 align by device");
       assertEquals(4, dataSet.getColumnNames().size());
       assertEquals("Time", dataSet.getColumnNames().get(0));
@@ -124,7 +124,7 @@ public class IoTDBSessionAlignedABDeviceIT {
   /* Ignore until the tablet interface. */
   public void vectorAlignByDeviceWithWildcardTest() {
     try {
-      SessionDataSet dataSet =
+      ISessionDataSet dataSet =
           session.executeQueryStatement("select * from root.sg1.* limit 1 align by device");
       assertEquals(5, dataSet.getColumnNames().size());
       assertEquals("Time", dataSet.getColumnNames().get(0));
@@ -156,7 +156,7 @@ public class IoTDBSessionAlignedABDeviceIT {
   @Test
   public void vectorAggregationAlignByDeviceTest() {
     try {
-      SessionDataSet dataSet =
+      ISessionDataSet dataSet =
           session.executeQueryStatement("select count(*) from root.sg1.d1 align by device");
       assertEquals(3, dataSet.getColumnNames().size());
       assertEquals("Device", dataSet.getColumnNames().get(0));
