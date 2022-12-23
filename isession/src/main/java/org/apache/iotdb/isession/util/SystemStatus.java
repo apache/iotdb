@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -16,10 +16,17 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.isession.util;
 
-package org.apache.iotdb.session.util;
-
-public enum Version {
-  V_0_12,
-  V_0_13
+/** Status of current system */
+public enum SystemStatus {
+  /** System can read and write normally */
+  NORMAL,
+  /** Only query statements are permitted */
+  READ_ONLY,
+  /**
+   * Unrecoverable errors occur, system will be read-only or exit according to the param
+   * allow_read_only_when_errors_occur
+   */
+  ERROR,
 }
