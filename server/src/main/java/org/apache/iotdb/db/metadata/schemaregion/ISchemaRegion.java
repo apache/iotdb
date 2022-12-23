@@ -25,8 +25,10 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
-import org.apache.iotdb.db.metadata.mnode.IMNode;
-import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
+import org.apache.iotdb.db.metadata.plan.schemaregion.read.IShowDevicesPlan;
+import org.apache.iotdb.db.metadata.plan.schemaregion.read.IShowTimeSeriesPlan;
+import org.apache.iotdb.db.metadata.plan.schemaregion.result.ShowDevicesResult;
+import org.apache.iotdb.db.metadata.plan.schemaregion.result.ShowTimeSeriesResult;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IActivateTemplateInClusterPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.ICreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.ICreateTimeSeriesPlan;
@@ -34,15 +36,6 @@ import org.apache.iotdb.db.metadata.plan.schemaregion.write.IDeactivateTemplateP
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IPreDeactivateTemplatePlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IRollbackPreDeactivateTemplatePlan;
 import org.apache.iotdb.db.metadata.template.Template;
-import org.apache.iotdb.db.mpp.common.schematree.DeviceSchemaInfo;
-import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
-import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
-import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.query.dataset.ShowDevicesResult;
-import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
-import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.io.File;
@@ -50,7 +43,6 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.Function;
 
 /**
  * This interface defines all interfaces and behaviours that one SchemaRegion should support and
@@ -69,9 +61,7 @@ import java.util.function.Function;
  *         <li>Interfaces for Entity/Device info Query
  *         <li>Interfaces for timeseries, measurement and schema info Query
  *       </ol>
- *   <li>Interfaces and methods for MNode query
  *   <li>Interfaces for alias and tag/attribute operations
- *   <li>Interfaces for InsertPlan process
  *   <li>Interfaces for Template operations
  * </ol>
  */
@@ -100,10 +90,33 @@ public interface ISchemaRegion {
   // endregion
 
   // region Interfaces for Timeseries operation
+  /**
+   * Create timeseries.
+   *
+   * @param plan a plan describes how to create the timeseries.
+   * @param offset
+   * @throws MetadataException
+   */
   void createTimeseries(ICreateTimeSeriesPlan plan, long offset) throws MetadataException;
 
+  /**
+   * Create aligned timeseries.
+   *
+   * @param plan a plan describes how to create the timeseries.
+   * @throws MetadataException
+   */
   void createAlignedTimeSeries(ICreateAlignedTimeSeriesPlan plan) throws MetadataException;
 
+  /**
+   * Check whether measurement exists.
+   *
+   * @param devicePath the path of device that you want to check
+   * @param measurementList a list of measurements that you want to check
+   * @param aliasList a list of alias that you want to check
+   * @return returns a map contains index of the measurements or alias that threw the exception, and
+   *     exception details. The exceptions describe whether the measurement or alias exists. For
+   *     example, a MeasurementAlreadyExistException means this measurement exists.
+   */
   Map<Integer, MetadataException> checkMeasurementExistence(
       PartialPath devicePath, List<String> measurementList, List<String> aliasList);
 
@@ -116,6 +129,7 @@ public interface ISchemaRegion {
    * @param isPrefixMatch if true, the path pattern is used to match prefix path
    * @return deletion failed Timeseries
    */
+  @Deprecated
   Pair<Integer, Set<String>> deleteTimeseries(PartialPath pathPattern, boolean isPrefixMatch)
       throws MetadataException;
 
@@ -124,6 +138,8 @@ public interface ISchemaRegion {
    *
    * @param patternTree
    * @throws MetadataException
+   * @return preDeletedNum. If there are intersections of patterns in the patternTree, there may be
+   *     more than are actually pre-deleted.
    */
   long constructSchemaBlackList(PathPatternTree patternTree) throws MetadataException;
 
@@ -135,6 +151,12 @@ public interface ISchemaRegion {
    */
   void rollbackSchemaBlackList(PathPatternTree patternTree) throws MetadataException;
 
+  /**
+   * Fetch schema black list (timeseries that has been pre deleted).
+   *
+   * @param patternTree
+   * @throws MetadataException
+   */
   Set<PartialPath> fetchSchemaBlackList(PathPatternTree patternTree) throws MetadataException;
 
   /**
@@ -147,22 +169,14 @@ public interface ISchemaRegion {
   // endregion
 
   // region Interfaces for metadata info Query
-  /**
-   * Check whether the path exists.
-   *
-   * @param path a full path or a prefix path
-   */
-  boolean isPathExist(PartialPath path) throws MetadataException;
 
   // region Interfaces for metadata count
+
   /**
    * To calculate the count of timeseries matching given path. The path could be a pattern of a full
    * path, may contain wildcard. If using prefix match, the path pattern is used to match prefix
    * path. All timeseries start with the matched prefix path will be counted.
    */
-  long getAllTimeseriesCount(PartialPath pathPattern, boolean isPrefixMatch)
-      throws MetadataException;
-
   long getAllTimeseriesCount(
       PartialPath pathPattern, Map<Integer, Template> templateMap, boolean isPrefixMatch)
       throws MetadataException;
@@ -171,7 +185,16 @@ public interface ISchemaRegion {
       PartialPath pathPattern, boolean isPrefixMatch, String key, String value, boolean isContains)
       throws MetadataException;
 
-  // The measurements will be grouped by the node in given level and then counted for each group.
+  /**
+   * The measurements will be grouped by the node in given level and then counted for each group. If
+   * no measurements found, but the path is contained in the group, then this path will also be
+   * returned with measurements count zero.
+   *
+   * @param pathPattern
+   * @param level the level you want to group by
+   * @param isPrefixMatch using pathPattern as prefix matched path if set true
+   * @return return a map from PartialPath to the count of matched measurements
+   */
   Map<PartialPath, Long> getMeasurementCountGroupByLevel(
       PartialPath pathPattern, int level, boolean isPrefixMatch) throws MetadataException;
 
@@ -188,12 +211,23 @@ public interface ISchemaRegion {
    * To calculate the count of devices for given path pattern. If using prefix match, the path
    * pattern is used to match prefix path. All timeseries start with the matched prefix path will be
    * counted.
+   *
+   * @param pathPattern
+   * @param isPrefixMatch
    */
   long getDevicesNum(PartialPath pathPattern, boolean isPrefixMatch) throws MetadataException;
   // endregion
 
   // region Interfaces for level Node info Query
-  // Get paths of nodes in given level and matching the pathPattern.
+  /**
+   * Get paths of nodes in given level and matching the pathPattern.
+   *
+   * @param pathPattern
+   * @param nodeLevel
+   * @param isPrefixMatch
+   * @throws MetadataException
+   * @return returns a list of PartialPath.
+   */
   List<PartialPath> getNodesListInGivenLevel(
       PartialPath pathPattern, int nodeLevel, boolean isPrefixMatch) throws MetadataException;
 
@@ -209,29 +243,9 @@ public interface ISchemaRegion {
    * @return All child nodes' seriesPath(s) of given seriesPath.
    */
   Set<TSchemaNode> getChildNodePathInNextLevel(PartialPath pathPattern) throws MetadataException;
-
-  /**
-   * Get child node in the next level of the given path pattern.
-   *
-   * <p>give pathPattern and the child nodes is those matching pathPattern.*
-   *
-   * <p>e.g., MTree has [root.sg1.d1.s1, root.sg1.d1.s2, root.sg1.d2.s1] given path = root.sg1,
-   * return [d1, d2] given path = root.sg.d1 return [s1,s2]
-   *
-   * @return All child nodes of given seriesPath.
-   */
-  Set<String> getChildNodeNameInNextLevel(PartialPath pathPattern) throws MetadataException;
   // endregion
 
   // region Interfaces for Entity/Device info Query
-  /**
-   * Get all devices that one of the timeseries, matching the given timeseries path pattern, belongs
-   * to.
-   *
-   * @param timeseries a path pattern of the target timeseries
-   * @return A HashSet instance which stores devices paths.
-   */
-  Set<PartialPath> getBelongedDevices(PartialPath timeseries) throws MetadataException;
 
   /**
    * Get all device paths matching the path pattern. If using prefix match, the path pattern is used
@@ -241,16 +255,17 @@ public interface ISchemaRegion {
    * @param isPrefixMatch if true, the path pattern is used to match prefix path.
    * @return A HashSet instance which stores devices paths matching the given path pattern.
    */
+  @Deprecated
   Set<PartialPath> getMatchedDevices(PartialPath pathPattern, boolean isPrefixMatch)
       throws MetadataException;
 
   /**
-   * Get all device paths and according database paths as ShowDevicesResult.
+   * Get all device paths and corresponding database paths as ShowDevicesResult.
    *
    * @param plan ShowDevicesPlan which contains the path pattern and restriction params.
    * @return ShowDevicesResult and the current offset of this region after traverse.
    */
-  Pair<List<ShowDevicesResult>, Integer> getMatchedDevices(ShowDevicesPlan plan)
+  Pair<List<ShowDevicesResult>, Integer> getMatchedDevices(IShowDevicesPlan plan)
       throws MetadataException;
   // endregion
 
@@ -265,6 +280,7 @@ public interface ISchemaRegion {
    * @param isPrefixMatch if true, the path pattern is used to match prefix path
    * @param withTags whether returns tag kvs in the result list.
    */
+  @Deprecated
   List<MeasurementPath> getMeasurementPaths(
       PartialPath pathPattern, boolean isPrefixMatch, boolean withTags) throws MetadataException;
 
@@ -275,6 +291,7 @@ public interface ISchemaRegion {
    *
    * @param isPrefixMatch if true, the path pattern is used to match prefix path
    */
+  @Deprecated
   Pair<List<MeasurementPath>, Integer> getMeasurementPathsWithAlias(
       PartialPath pathPattern, int limit, int offset, boolean isPrefixMatch, boolean withTags)
       throws MetadataException;
@@ -283,30 +300,29 @@ public interface ISchemaRegion {
       PartialPath pathPattern, Map<Integer, Template> templateMap, boolean withTags)
       throws MetadataException;
 
-  Pair<List<ShowTimeSeriesResult>, Integer> showTimeseries(
-      ShowTimeSeriesPlan plan, QueryContext context) throws MetadataException;
+  /**
+   * Show timeseries.
+   *
+   * @param plan
+   * @throws MetadataException
+   */
+  Pair<List<ShowTimeSeriesResult>, Integer> showTimeseries(IShowTimeSeriesPlan plan)
+      throws MetadataException;
   // endregion
-  // endregion
-
-  // region Interfaces and methods for MNode query
-  IMNode getDeviceNode(PartialPath path) throws MetadataException;
-
-  IMeasurementMNode getMeasurementMNode(PartialPath fullPath) throws MetadataException;
   // endregion
 
   // region Interfaces for alias and tag/attribute operations
-  void changeAlias(PartialPath path, String alias) throws MetadataException, IOException;
 
   /**
-   * upsert tags and attributes key-value for the timeseries if the key has existed, just use the
-   * new value to update it.
+   * Upsert alias, tags and attributes key-value for the timeseries if the key has existed, just use
+   * the new value to update it.
    *
    * @param alias newly added alias
    * @param tagsMap newly added tags map
    * @param attributesMap newly added attributes map
    * @param fullPath timeseries
    */
-  void upsertTagsAndAttributes(
+  void upsertAliasAndTagsAndAttributes(
       String alias,
       Map<String, String> tagsMap,
       Map<String, String> attributesMap,
@@ -314,25 +330,28 @@ public interface ISchemaRegion {
       throws MetadataException, IOException;
 
   /**
-   * add new attributes key-value for the timeseries
+   * Add new attributes key-value for the timeseries
    *
    * @param attributesMap newly added attributes map
    * @param fullPath timeseries
+   * @throws MetadataException tagLogFile write error or attributes already exist
    */
   void addAttributes(Map<String, String> attributesMap, PartialPath fullPath)
       throws MetadataException, IOException;
 
   /**
-   * add new tags key-value for the timeseries
+   * Add new tags key-value for the timeseries
    *
    * @param tagsMap newly added tags map
    * @param fullPath timeseries
+   * @throws MetadataException tagLogFile write error or tags already exist
    */
   void addTags(Map<String, String> tagsMap, PartialPath fullPath)
       throws MetadataException, IOException;
 
   /**
-   * drop tags or attributes of the timeseries
+   * Drop tags or attributes of the timeseries. It will not throw exception even if the key does not
+   * exist.
    *
    * @param keySet tags key or attributes key
    * @param fullPath timeseries path
@@ -341,35 +360,26 @@ public interface ISchemaRegion {
       throws MetadataException, IOException;
 
   /**
-   * set/change the values of tags or attributes
+   * Set/change the values of tags or attributes
    *
    * @param alterMap the new tags or attributes key-value
    * @param fullPath timeseries
+   * @throws MetadataException tagLogFile write error or tags/attributes do not exist
    */
   void setTagsOrAttributesValue(Map<String, String> alterMap, PartialPath fullPath)
       throws MetadataException, IOException;
 
   /**
-   * rename the tag or attribute's key of the timeseries
+   * Rename the tag or attribute's key of the timeseries
    *
    * @param oldKey old key of tag or attribute
    * @param newKey new key of tag or attribute
    * @param fullPath timeseries
+   * @throws MetadataException tagLogFile write error or does not have tag/attribute or already has
+   *     a tag/attribute named newKey
    */
   void renameTagOrAttributeKey(String oldKey, String newKey, PartialPath fullPath)
       throws MetadataException, IOException;
-  // endregion
-
-  // region Interfaces for InsertPlan process
-
-  DeviceSchemaInfo getDeviceSchemaInfoWithAutoCreate(
-      PartialPath devicePath,
-      String[] measurements,
-      Function<Integer, TSDataType> getDataType,
-      TSEncoding[] encodings,
-      CompressionType[] compressionTypes,
-      boolean aligned)
-      throws MetadataException;
   // endregion
 
   // region Interfaces for Template operations

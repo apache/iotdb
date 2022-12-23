@@ -20,56 +20,25 @@ package org.apache.iotdb.db.query.reader.series;
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.metadata.utils.ResourceByPathUtils;
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.query.filter.TsFileFilter;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 
 import java.io.IOException;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-public class SeriesRawDataBatchReader implements ManagedSeriesReader {
+public class SeriesRawDataBatchReader implements IBatchReader {
 
   private final SeriesReader seriesReader;
 
-  private boolean hasRemaining;
-  private boolean managedByQueryManager;
-
   private BatchData batchData;
   private boolean hasCachedBatchData = false;
-
-  public SeriesRawDataBatchReader(SeriesReader seriesReader) {
-    this.seriesReader = seriesReader;
-  }
-
-  public SeriesRawDataBatchReader(
-      PartialPath seriesPath,
-      Set<String> allSensors,
-      TSDataType dataType,
-      QueryContext context,
-      QueryDataSource dataSource,
-      Filter timeFilter,
-      Filter valueFilter,
-      TsFileFilter fileFilter,
-      boolean ascending) {
-    this.seriesReader =
-        ResourceByPathUtils.getResourceInstance(seriesPath)
-            .createSeriesReader(
-                allSensors,
-                dataType,
-                context,
-                dataSource,
-                timeFilter,
-                valueFilter,
-                fileFilter,
-                ascending);
-  }
 
   @TestOnly
   @SuppressWarnings("squid:S107")
@@ -100,7 +69,6 @@ public class SeriesRawDataBatchReader implements ManagedSeriesReader {
    * This method overrides the AbstractDataReader.hasNextOverlappedPage for pause reads, to achieve
    * a continuous read
    */
-  @Override
   public boolean hasNextBatch() throws IOException {
 
     if (hasCachedBatchData) {
@@ -135,7 +103,6 @@ public class SeriesRawDataBatchReader implements ManagedSeriesReader {
     return hasCachedBatchData;
   }
 
-  @Override
   public BatchData nextBatch() throws IOException {
     if (hasCachedBatchData || hasNextBatch()) {
       hasCachedBatchData = false;
@@ -144,29 +111,8 @@ public class SeriesRawDataBatchReader implements ManagedSeriesReader {
     throw new IOException("no next batch");
   }
 
-  @Override
   public void close() throws IOException {
     // no resources need to close
-  }
-
-  @Override
-  public boolean isManagedByQueryManager() {
-    return managedByQueryManager;
-  }
-
-  @Override
-  public void setManagedByQueryManager(boolean managedByQueryManager) {
-    this.managedByQueryManager = managedByQueryManager;
-  }
-
-  @Override
-  public boolean hasRemaining() {
-    return hasRemaining;
-  }
-
-  @Override
-  public void setHasRemaining(boolean hasRemaining) {
-    this.hasRemaining = hasRemaining;
   }
 
   private boolean readChunkData() throws IOException {
@@ -190,10 +136,5 @@ public class SeriesRawDataBatchReader implements ManagedSeriesReader {
 
   private boolean isEmpty(BatchData batchData) {
     return batchData == null || !batchData.hasCurrent();
-  }
-
-  @TestOnly
-  public SeriesReader getSeriesReader() {
-    return seriesReader;
   }
 }

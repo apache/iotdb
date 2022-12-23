@@ -28,12 +28,11 @@ import org.apache.iotdb.db.mpp.plan.analyze.ClusterPartitionFetcher;
 import org.apache.iotdb.db.mpp.plan.analyze.ClusterSchemaFetcher;
 import org.apache.iotdb.db.mpp.plan.analyze.IPartitionFetcher;
 import org.apache.iotdb.db.mpp.plan.analyze.ISchemaFetcher;
-import org.apache.iotdb.db.mpp.plan.analyze.StandalonePartitionFetcher;
-import org.apache.iotdb.db.mpp.plan.analyze.StandaloneSchemaFetcher;
 import org.apache.iotdb.db.mpp.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.query.control.SessionManager;
 import org.apache.iotdb.db.query.control.clientsession.MqttClientSession;
+import org.apache.iotdb.db.utils.CommonUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSProtocolVersion;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -68,13 +67,8 @@ public class MPPPublishHandler extends AbstractInterceptHandler {
 
   public MPPPublishHandler(IoTDBConfig config) {
     this.payloadFormat = PayloadFormatManager.getPayloadFormat(config.getMqttPayloadFormatter());
-    if (config.isClusterMode()) {
-      partitionFetcher = ClusterPartitionFetcher.getInstance();
-      schemaFetcher = ClusterSchemaFetcher.getInstance();
-    } else {
-      partitionFetcher = StandalonePartitionFetcher.getInstance();
-      schemaFetcher = StandaloneSchemaFetcher.getInstance();
-    }
+    partitionFetcher = ClusterPartitionFetcher.getInstance();
+    schemaFetcher = ClusterSchemaFetcher.getInstance();
   }
 
   @Override
@@ -145,9 +139,20 @@ public class MPPPublishHandler extends AbstractInterceptHandler {
         statement.setDevicePath(new PartialPath(event.getDevice()));
         statement.setTime(event.getTimestamp());
         statement.setMeasurements(event.getMeasurements().toArray(new String[0]));
-        statement.setDataTypes(new TSDataType[event.getMeasurements().size()]);
-        statement.setValues(event.getValues().toArray(new Object[0]));
-        statement.setNeedInferType(true);
+        if (event.getDataTypes() == null) {
+          statement.setDataTypes(new TSDataType[event.getMeasurements().size()]);
+          statement.setValues(event.getValues().toArray(new Object[0]));
+          statement.setNeedInferType(true);
+        } else {
+          List<TSDataType> dataTypes = event.getDataTypes();
+          List<String> values = event.getValues();
+          Object[] inferredValues = new Object[values.size()];
+          for (int i = 0; i < values.size(); ++i) {
+            inferredValues[i] = CommonUtils.parseValue(dataTypes.get(i), values.get(i));
+          }
+          statement.setDataTypes(dataTypes.toArray(new TSDataType[0]));
+          statement.setValues(inferredValues);
+        }
         statement.setAligned(false);
 
         tsStatus = AuthorityChecker.checkAuthority(statement, session);

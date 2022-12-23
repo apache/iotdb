@@ -19,17 +19,10 @@
 
 package org.apache.iotdb.db.mpp.plan.expression;
 
-import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
-import org.apache.iotdb.db.qp.utils.WildcardsRemover;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
 
 /**
  * {@code ResultColumn} is used to represent a result column of a query.
@@ -75,8 +68,6 @@ public class ResultColumn {
 
   private TSDataType dataType;
 
-  private List<PartialPath> allPathsInExpression;
-
   public ResultColumn(Expression expression, String alias) {
     this.expression = expression;
     this.alias = alias;
@@ -91,58 +82,6 @@ public class ResultColumn {
     expression = Expression.deserialize(byteBuffer);
     alias = ReadWriteIOUtils.readString(byteBuffer);
     dataType = TSDataType.deserializeFrom(byteBuffer);
-  }
-
-  /**
-   * @param prefixPaths prefix paths in the from clause
-   * @param resultColumns used to collect the result columns
-   * @param needAliasCheck used to skip illegal alias judgement here. Including !isGroupByLevel
-   *     because count(*) may be * unfolded to more than one expression, but it still can be
-   *     aggregated together later.
-   */
-  public void concat(
-      List<PartialPath> prefixPaths, List<ResultColumn> resultColumns, boolean needAliasCheck)
-      throws LogicalOptimizeException {
-    List<Expression> resultExpressions = new ArrayList<>();
-    expression.concat(prefixPaths, resultExpressions);
-    if (needAliasCheck && 1 < resultExpressions.size()) {
-      throw new LogicalOptimizeException(
-          String.format("alias '%s' can only be matched with one time series", alias));
-    }
-    for (Expression resultExpression : resultExpressions) {
-      resultColumns.add(new ResultColumn(resultExpression, alias));
-    }
-  }
-
-  /**
-   * @param wildcardsRemover used to remove wildcards from {@code expression} and apply slimit &
-   *     soffset control
-   * @param resultColumns used to collect the result columns
-   * @param needAliasCheck used to skip illegal alias judgement here. Including !isGroupByLevel
-   *     because count(*) may be * unfolded to more than one expression, but it still can be
-   *     aggregated together later.
-   */
-  public void removeWildcards(
-      WildcardsRemover wildcardsRemover, List<ResultColumn> resultColumns, boolean needAliasCheck)
-      throws LogicalOptimizeException {
-    List<Expression> resultExpressions = new ArrayList<>();
-    expression.removeWildcards(wildcardsRemover, resultExpressions);
-    if (needAliasCheck && 1 < resultExpressions.size()) {
-      throw new LogicalOptimizeException(
-          String.format("alias '%s' can only be matched with one time series", alias));
-    }
-    for (Expression resultExpression : resultExpressions) {
-      resultColumns.add(new ResultColumn(resultExpression, alias));
-    }
-  }
-
-  public List<PartialPath> collectPaths() {
-    if (allPathsInExpression == null) {
-      Set<PartialPath> pathSet = new HashSet<>();
-      expression.collectPaths(pathSet);
-      allPathsInExpression = new ArrayList<>(pathSet);
-    }
-    return allPathsInExpression;
   }
 
   public Expression getExpression() {

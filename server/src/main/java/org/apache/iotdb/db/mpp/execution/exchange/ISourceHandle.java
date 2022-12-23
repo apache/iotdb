@@ -82,4 +82,7 @@ public interface ISourceHandle {
    * <p>Should only be called in normal case
    */
   void close();
+
+  /** Set max bytes this handle can reserve from memory pool */
+  void setMaxBytesCanReserve(long maxBytesCanReserve);
 }

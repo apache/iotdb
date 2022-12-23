@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.mpp.plan.analyze;
 
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
@@ -29,6 +30,10 @@ import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.confignode.rpc.thrift.TGetDataNodeLocationsResp;
+import org.apache.iotdb.db.client.ConfigNodeClient;
+import org.apache.iotdb.db.client.ConfigNodeClientManager;
+import org.apache.iotdb.db.client.ConfigNodeInfo;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -42,6 +47,7 @@ import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
+import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
 import org.apache.iotdb.db.mpp.common.header.DatasetHeaderFactory;
 import org.apache.iotdb.db.mpp.common.schematree.DeviceSchemaInfo;
@@ -104,6 +110,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowPathSetTempl
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowPathsUsingTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ExplainStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.ShowQueriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ShowVersionStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.ShowPipeSinkTypeStatement;
 import org.apache.iotdb.db.query.control.SessionManager;
@@ -124,6 +131,7 @@ import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
+import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -2474,5 +2482,61 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     analysis.setRespDatasetHeader(DatasetHeaderFactory.getShowPipeSinkTypeHeader());
     analysis.setFinishQueryAfterAnalyze(true);
     return analysis;
+  }
+
+  @Override
+  public Analysis visitShowQueries(
+      ShowQueriesStatement showQueriesStatement, MPPQueryContext context) {
+    Analysis analysis = new Analysis();
+    analysis.setStatement(showQueriesStatement);
+    analysis.setRespDatasetHeader(DatasetHeaderFactory.getShowQueriesHeader());
+
+    List<TDataNodeLocation> allRunningDataNodeLocations = getRunningDataNodeLocations();
+    if (allRunningDataNodeLocations.isEmpty()) {
+      analysis.setFinishQueryAfterAnalyze(true);
+    }
+    // TODO Constant folding optimization for Where Predicate after True/False Constant introduced
+    analysis.setRunningDataNodeLocations(allRunningDataNodeLocations);
+
+    analyzeWhere(analysis, showQueriesStatement);
+
+    return analysis;
+  }
+
+  private List<TDataNodeLocation> getRunningDataNodeLocations() {
+    try (ConfigNodeClient client =
+        ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.configNodeRegionId)) {
+      TGetDataNodeLocationsResp showDataNodesResp = client.getRunningDataNodeLocations();
+      if (showDataNodesResp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        throw new StatementAnalyzeException(
+            "An error occurred when executing getRunningDataNodeLocations():"
+                + showDataNodesResp.getStatus().getMessage());
+      }
+      return showDataNodesResp.getDataNodeLocationList();
+    } catch (TException | IOException e) {
+      throw new StatementAnalyzeException(
+          "An error occurred when executing getRunningDataNodeLocations():" + e.getMessage());
+    }
+  }
+
+  private void analyzeWhere(Analysis analysis, ShowQueriesStatement showQueriesStatement) {
+    WhereCondition whereCondition = showQueriesStatement.getWhereCondition();
+    if (whereCondition == null) {
+      return;
+    }
+
+    Expression whereExpression =
+        ExpressionAnalyzer.bindTypeForTimeSeriesOperand(
+            whereCondition.getPredicate(), ColumnHeaderConstant.showQueriesColumnHeaders);
+
+    TSDataType outputType = analyzeExpression(analysis, whereExpression);
+    if (outputType != TSDataType.BOOLEAN) {
+      throw new SemanticException(
+          String.format(
+              "The output type of the expression in WHERE clause should be BOOLEAN, actual data type: %s.",
+              outputType));
+    }
+
+    analysis.setWhereExpression(whereExpression);
   }
 }

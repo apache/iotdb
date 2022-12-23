@@ -108,10 +108,14 @@ public class WALRecoverManagerTest {
   private TsFileResource tsFileWithWALResource;
   private TsFileResource tsFileWithoutWALResource;
 
+  private boolean isClusterMode;
+
   @Before
   public void setUp() throws Exception {
+    isClusterMode = config.isClusterMode();
     EnvironmentUtils.cleanDir(new File(FILE_WITH_WAL_NAME).getParent());
     EnvironmentUtils.envSetUp();
+    config.setClusterMode(true);
     prevMode = config.getWalMode();
     config.setWalMode(WALMode.SYNC);
     walBuffer = new WALBuffer(WAL_NODE_IDENTIFIER, WAL_NODE_FOLDER);
@@ -158,6 +162,7 @@ public class WALRecoverManagerTest {
     checkpointManager.close();
     walBuffer.close();
     config.setWalMode(prevMode);
+    config.setClusterMode(isClusterMode);
     EnvironmentUtils.cleanDir(new File(FILE_WITH_WAL_NAME).getParent());
     EnvironmentUtils.cleanDir(new File(FILE_WITHOUT_WAL_NAME).getParent());
     EnvironmentUtils.cleanEnv();

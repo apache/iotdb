@@ -16,6 +16,7 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+# syntax=docker/dockerfile:1
 
 FROM openjdk:11-jre-slim
 ARG version=1.0.0
@@ -27,7 +28,7 @@ RUN apt update \
   && apt purge --auto-remove -y \
   && apt clean -y
 
-COPY tmp/${target}.zip /
+COPY target/${target}.zip /
 RUN cd / && unzip ${target}.zip \
   && rm ${target}.zip \
   && mv ${target} iotdb

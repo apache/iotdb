@@ -35,6 +35,13 @@ public abstract class MeasurementCollector<T> extends CollectorTraverser<T> {
   }
 
   public MeasurementCollector(
+      IMNode startNode, PartialPath path, IMTreeStore store, boolean shouldTraverseTemplate)
+      throws MetadataException {
+    super(startNode, path, store);
+    this.shouldTraverseTemplate = shouldTraverseTemplate;
+  }
+
+  public MeasurementCollector(
       IMNode startNode, PartialPath path, IMTreeStore store, int limit, int offset)
       throws MetadataException {
     super(startNode, path, store, limit, offset);
