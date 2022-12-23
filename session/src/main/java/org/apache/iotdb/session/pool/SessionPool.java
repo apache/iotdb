@@ -2402,13 +2402,13 @@ public class SessionPool implements ISessionPool {
    */
   @SuppressWarnings("squid:S2095") // Suppress wrapper not closed warning
   @Override
-  public ISessionDataSetWrapper executeQueryStatement(String sql)
+  public SessionDataSetWrapper executeQueryStatement(String sql)
       throws IoTDBConnectionException, StatementExecutionException {
     for (int i = 0; i < RETRY; i++) {
       ISession session = getSession();
       try {
         ISessionDataSet resp = session.executeQueryStatement(sql);
-        ISessionDataSetWrapper wrapper = new SessionDataSetWrapper(resp, session, this);
+        SessionDataSetWrapper wrapper = new SessionDataSetWrapper(resp, session, this);
         occupy(session);
         return wrapper;
       } catch (IoTDBConnectionException e) {
@@ -2436,13 +2436,13 @@ public class SessionPool implements ISessionPool {
    */
   @SuppressWarnings("squid:S2095") // Suppress wrapper not closed warning
   @Override
-  public ISessionDataSetWrapper executeQueryStatement(String sql, long timeoutInMs)
+  public SessionDataSetWrapper executeQueryStatement(String sql, long timeoutInMs)
       throws IoTDBConnectionException, StatementExecutionException {
     for (int i = 0; i < RETRY; i++) {
       ISession session = getSession();
       try {
         ISessionDataSet resp = session.executeQueryStatement(sql, timeoutInMs);
-        ISessionDataSetWrapper wrapper = new SessionDataSetWrapper(resp, session, this);
+        SessionDataSetWrapper wrapper = new SessionDataSetWrapper(resp, session, this);
         occupy(session);
         return wrapper;
       } catch (IoTDBConnectionException e) {
@@ -2485,14 +2485,14 @@ public class SessionPool implements ISessionPool {
 
   @SuppressWarnings("squid:S2095") // Suppress wrapper not closed warning
   @Override
-  public ISessionDataSetWrapper executeRawDataQuery(
+  public SessionDataSetWrapper executeRawDataQuery(
       List<String> paths, long startTime, long endTime, long timeOut)
       throws IoTDBConnectionException, StatementExecutionException {
     for (int i = 0; i < RETRY; i++) {
       ISession session = getSession();
       try {
         ISessionDataSet resp = session.executeRawDataQuery(paths, startTime, endTime, timeOut);
-        ISessionDataSetWrapper wrapper = new SessionDataSetWrapper(resp, session, this);
+        SessionDataSetWrapper wrapper = new SessionDataSetWrapper(resp, session, this);
         occupy(session);
         return wrapper;
       } catch (IoTDBConnectionException e) {
@@ -2509,14 +2509,13 @@ public class SessionPool implements ISessionPool {
   }
 
   @Override
-  public ISessionDataSetWrapper executeLastDataQuery(
-      List<String> paths, long LastTime, long timeOut)
+  public SessionDataSetWrapper executeLastDataQuery(List<String> paths, long LastTime, long timeOut)
       throws StatementExecutionException, IoTDBConnectionException {
     for (int i = 0; i < RETRY; i++) {
       ISession session = getSession();
       try {
         ISessionDataSet resp = session.executeLastDataQuery(paths, LastTime, timeOut);
-        ISessionDataSetWrapper wrapper = new SessionDataSetWrapper(resp, session, this);
+        SessionDataSetWrapper wrapper = new SessionDataSetWrapper(resp, session, this);
         occupy(session);
         return wrapper;
       } catch (IoTDBConnectionException e) {
@@ -2533,13 +2532,13 @@ public class SessionPool implements ISessionPool {
   }
 
   @Override
-  public ISessionDataSetWrapper executeLastDataQuery(List<String> paths)
+  public SessionDataSetWrapper executeLastDataQuery(List<String> paths)
       throws StatementExecutionException, IoTDBConnectionException {
     for (int i = 0; i < RETRY; i++) {
       ISession session = getSession();
       try {
         ISessionDataSet resp = session.executeLastDataQuery(paths);
-        ISessionDataSetWrapper wrapper = new SessionDataSetWrapper(resp, session, this);
+        SessionDataSetWrapper wrapper = new SessionDataSetWrapper(resp, session, this);
         occupy(session);
         return wrapper;
       } catch (IoTDBConnectionException e) {

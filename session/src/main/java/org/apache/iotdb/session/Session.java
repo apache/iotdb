@@ -20,7 +20,6 @@ package org.apache.iotdb.session;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.isession.ISession;
-import org.apache.iotdb.isession.ISessionDataSet;
 import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.isession.template.Template;
 import org.apache.iotdb.isession.util.Version;
@@ -687,7 +686,7 @@ public class Session implements ISession {
    * @return result set
    */
   @Override
-  public ISessionDataSet executeQueryStatement(String sql)
+  public SessionDataSet executeQueryStatement(String sql)
       throws StatementExecutionException, IoTDBConnectionException {
     return executeStatementMayRedirect(sql, queryTimeoutInMs);
   }
@@ -700,7 +699,7 @@ public class Session implements ISession {
    * @return result set
    */
   @Override
-  public ISessionDataSet executeQueryStatement(String sql, long timeoutInMs)
+  public SessionDataSet executeQueryStatement(String sql, long timeoutInMs)
       throws StatementExecutionException, IoTDBConnectionException {
     return executeStatementMayRedirect(sql, timeoutInMs);
   }
@@ -714,7 +713,7 @@ public class Session implements ISession {
    * @throws StatementExecutionException statement is not right
    * @throws IoTDBConnectionException the network is not good
    */
-  private ISessionDataSet executeStatementMayRedirect(String sql, long timeoutInMs)
+  private SessionDataSet executeStatementMayRedirect(String sql, long timeoutInMs)
       throws StatementExecutionException, IoTDBConnectionException {
     try {
       logger.debug("{} execute sql {}", defaultSessionConnection.getEndPoint(), sql);
@@ -763,7 +762,7 @@ public class Session implements ISession {
    * @throws IoTDBConnectionException the network is not good
    */
   @Override
-  public ISessionDataSet executeRawDataQuery(
+  public SessionDataSet executeRawDataQuery(
       List<String> paths, long startTime, long endTime, long timeOut)
       throws StatementExecutionException, IoTDBConnectionException {
     try {
@@ -786,13 +785,13 @@ public class Session implements ISession {
   }
 
   @Override
-  public ISessionDataSet executeRawDataQuery(List<String> paths, long startTime, long endTime)
+  public SessionDataSet executeRawDataQuery(List<String> paths, long startTime, long endTime)
       throws StatementExecutionException, IoTDBConnectionException {
     return executeRawDataQuery(paths, startTime, endTime, queryTimeoutInMs);
   }
 
   @Override
-  public ISessionDataSet executeLastDataQuery(List<String> paths, long lastTime)
+  public SessionDataSet executeLastDataQuery(List<String> paths, long lastTime)
       throws StatementExecutionException, IoTDBConnectionException {
     return executeLastDataQuery(paths, lastTime, queryTimeoutInMs);
   }
@@ -805,7 +804,7 @@ public class Session implements ISession {
    *     1621326244168
    */
   @Override
-  public ISessionDataSet executeLastDataQuery(List<String> paths, long lastTime, long timeOut)
+  public SessionDataSet executeLastDataQuery(List<String> paths, long lastTime, long timeOut)
       throws StatementExecutionException, IoTDBConnectionException {
     try {
       return defaultSessionConnection.executeLastDataQuery(paths, lastTime, timeOut);
@@ -831,7 +830,7 @@ public class Session implements ISession {
    * @param paths timeSeries. eg.root.ln.d1.s1,root.ln.d1.s2
    */
   @Override
-  public ISessionDataSet executeLastDataQuery(List<String> paths)
+  public SessionDataSet executeLastDataQuery(List<String> paths)
       throws StatementExecutionException, IoTDBConnectionException {
     long time = 0L;
     return executeLastDataQuery(paths, time, queryTimeoutInMs);
