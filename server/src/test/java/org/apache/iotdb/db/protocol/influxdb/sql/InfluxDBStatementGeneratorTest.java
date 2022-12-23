@@ -18,8 +18,8 @@
  */
 package org.apache.iotdb.db.protocol.influxdb.sql;
 
-import org.apache.iotdb.db.mpp.plan.expression.ResultColumn;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
+import org.apache.iotdb.db.mpp.plan.statement.component.ResultColumn;
 import org.apache.iotdb.db.protocol.influxdb.parser.InfluxDBStatementGenerator;
 import org.apache.iotdb.db.protocol.influxdb.statement.InfluxQueryStatement;
 import org.apache.iotdb.db.protocol.influxdb.statement.InfluxWhereCondition;
@@ -37,28 +37,29 @@ import static org.junit.Assert.assertNull;
 public class InfluxDBStatementGeneratorTest {
   @Test
   public void testParserSql1() {
-    InfluxQueryStatement operator =
+    InfluxQueryStatement statement =
         (InfluxQueryStatement) InfluxDBStatementGenerator.generate("SELECT * FROM h2o_feet");
-    List<ResultColumn> resultColumnList = operator.getSelectComponent().getResultColumns();
+    List<ResultColumn> resultColumnList = statement.getSelectComponent().getResultColumns();
     assertEquals(resultColumnList.size(), 1);
     TimeSeriesOperand timeSeriesOperand =
         (TimeSeriesOperand) resultColumnList.get(0).getExpression();
     assertEquals(timeSeriesOperand.getPath().getFullPath(), "*");
-    assertEquals(operator.getFromComponent().getPrefixPaths().get(0).getFullPath(), "h2o_feet");
-    assertNull(operator.getWhereComponent());
+    assertEquals(statement.getFromComponent().getPrefixPaths().get(0).getFullPath(), "h2o_feet");
+    assertNull(statement.getWhereCondition());
   }
 
   @Test
   public void testParserSql2() {
-    InfluxQueryStatement operator =
+    InfluxQueryStatement statement =
         (InfluxQueryStatement)
             InfluxDBStatementGenerator.generate("SELECT a,b,c FROM h2o_feet where a>1 and b<1");
-    List<ResultColumn> resultColumnList = operator.getSelectComponent().getResultColumns();
+    List<ResultColumn> resultColumnList = statement.getSelectComponent().getResultColumns();
     assertEquals(resultColumnList.size(), 3);
     TimeSeriesOperand timeSeriesOperand =
         (TimeSeriesOperand) resultColumnList.get(0).getExpression();
     assertEquals(timeSeriesOperand.getPath().getFullPath(), "a");
-    InfluxWhereCondition influxWhereCondition = operator.getWhereComponent();
+    InfluxWhereCondition influxWhereCondition =
+        (InfluxWhereCondition) statement.getWhereCondition();
     FilterOperator filterOperator = (FilterOperator) influxWhereCondition.getFilterOperator();
     assertEquals(filterOperator.getFilterType().toString(), "KW_AND");
     assertEquals(filterOperator.getChildren().size(), 2);

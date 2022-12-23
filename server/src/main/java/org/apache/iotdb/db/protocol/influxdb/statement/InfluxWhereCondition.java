@@ -27,8 +27,6 @@ public class InfluxWhereCondition extends WhereCondition {
 
   private FilterOperator filterOperator;
 
-  public InfluxWhereCondition() {}
-
   public InfluxWhereCondition(FilterOperator filterOperator) {
     this.filterOperator = filterOperator;
   }
