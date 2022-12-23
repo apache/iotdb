@@ -21,7 +21,7 @@ package org.apache.iotdb;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.IDataIterator;
-import org.apache.iotdb.session.pool.ISessionDataSetWrapper;
+import org.apache.iotdb.session.pool.SessionDataSetWrapper;
 import org.apache.iotdb.session.pool.SessionPool;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -68,7 +68,7 @@ public class DataMigrationExample {
     readerPool = new SessionPool("127.0.0.1", 6667, "root", "root", concurrency);
     writerPool = new SessionPool("127.0.0.1", 6668, "root", "root", concurrency);
 
-    ISessionDataSetWrapper schemaDataSet =
+    SessionDataSetWrapper schemaDataSet =
         readerPool.executeQueryStatement("count timeseries " + path);
     IDataIterator schemaIter = schemaDataSet.iterator();
     int total;
@@ -129,7 +129,7 @@ public class DataMigrationExample {
       List<MeasurementSchema> schemaList = new ArrayList<>();
       schemaList.add(new MeasurementSchema(measurement, dataType));
       tablet = new Tablet(device, schemaList, 300000);
-      ISessionDataSetWrapper dataSet = null;
+      SessionDataSetWrapper dataSet = null;
 
       try {
 

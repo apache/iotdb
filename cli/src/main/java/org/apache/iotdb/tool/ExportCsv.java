@@ -24,8 +24,8 @@ import org.apache.iotdb.exception.ArgsErrorException;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
-import org.apache.iotdb.session.ISessionDataSet;
 import org.apache.iotdb.session.Session;
+import org.apache.iotdb.session.SessionDataSet;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 
@@ -304,7 +304,7 @@ public class ExportCsv extends AbstractCsvTool {
   private static void dumpResult(String sql, int index) {
     final String path = targetDirectory + targetFile + index + ".csv";
     try {
-      ISessionDataSet sessionDataSet = session.executeQueryStatement(sql);
+      SessionDataSet sessionDataSet = session.executeQueryStatement(sql);
       writeCsvFile(sessionDataSet, path);
       sessionDataSet.closeOperationHandle();
       System.out.println("Export completely!");
@@ -328,7 +328,7 @@ public class ExportCsv extends AbstractCsvTool {
     }
   }
 
-  public static Boolean writeCsvFile(ISessionDataSet sessionDataSet, String filePath)
+  public static Boolean writeCsvFile(SessionDataSet sessionDataSet, String filePath)
       throws IOException, IoTDBConnectionException, StatementExecutionException {
     CSVPrinter printer =
         CSVFormat.Builder.create(CSVFormat.DEFAULT)

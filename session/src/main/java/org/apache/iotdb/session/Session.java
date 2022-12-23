@@ -644,7 +644,7 @@ public class Session implements ISession {
    * @return result set
    */
   @Override
-  public ISessionDataSet executeQueryStatement(String sql)
+  public SessionDataSet executeQueryStatement(String sql)
       throws StatementExecutionException, IoTDBConnectionException {
     return executeStatementMayRedirect(sql, queryTimeoutInMs);
   }
@@ -657,7 +657,7 @@ public class Session implements ISession {
    * @return result set
    */
   @Override
-  public ISessionDataSet executeQueryStatement(String sql, long timeoutInMs)
+  public SessionDataSet executeQueryStatement(String sql, long timeoutInMs)
       throws StatementExecutionException, IoTDBConnectionException {
     return executeStatementMayRedirect(sql, timeoutInMs);
   }
@@ -720,7 +720,7 @@ public class Session implements ISession {
    * @throws IoTDBConnectionException the network is not good
    */
   @Override
-  public ISessionDataSet executeRawDataQuery(List<String> paths, long startTime, long endTime)
+  public SessionDataSet executeRawDataQuery(List<String> paths, long startTime, long endTime)
       throws StatementExecutionException, IoTDBConnectionException {
     try {
       return defaultSessionConnection.executeRawDataQuery(paths, startTime, endTime);
@@ -749,7 +749,7 @@ public class Session implements ISession {
    *     1621326244168
    */
   @Override
-  public ISessionDataSet executeLastDataQuery(List<String> paths, long LastTime)
+  public SessionDataSet executeLastDataQuery(List<String> paths, long LastTime)
       throws StatementExecutionException, IoTDBConnectionException {
     try {
       return defaultSessionConnection.executeLastDataQuery(paths, LastTime);
@@ -775,7 +775,7 @@ public class Session implements ISession {
    * @param paths timeSeries. eg.root.ln.d1.s1,root.ln.d1.s2
    */
   @Override
-  public ISessionDataSet executeLastDataQuery(List<String> paths)
+  public SessionDataSet executeLastDataQuery(List<String> paths)
       throws StatementExecutionException, IoTDBConnectionException {
     long time = 0L;
     return executeLastDataQuery(paths, time);

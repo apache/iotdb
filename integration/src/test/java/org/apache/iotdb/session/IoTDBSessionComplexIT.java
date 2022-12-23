@@ -147,7 +147,7 @@ public class IoTDBSessionComplexIT {
 
     insertTablet("root.sg1.d1");
 
-    ISessionDataSet sessionDataSet =
+    SessionDataSet sessionDataSet =
         session.executeQueryStatement("select s1 from root.sg1.d1 align by device");
     sessionDataSet.setFetchSize(1024);
     int count = 0;
@@ -269,7 +269,7 @@ public class IoTDBSessionComplexIT {
 
     session.testInsertRecords(deviceIds, timestamps, measurementsList, valuesList);
 
-    ISessionDataSet dataSet = session.executeQueryStatement("show timeseries root.sg1.**");
+    SessionDataSet dataSet = session.executeQueryStatement("show timeseries root.sg1.**");
     int count = 0;
     while (dataSet.hasNext()) {
       count++;
@@ -448,8 +448,7 @@ public class IoTDBSessionComplexIT {
 
     insertTablet("root.sg5.d1");
 
-    ISessionDataSet dataSet =
-        session.executeQueryStatement("select * from root.** group by device");
+    SessionDataSet dataSet = session.executeQueryStatement("select * from root.** group by device");
     int count = 0;
     while (dataSet.hasNext()) {
       count++;
@@ -522,7 +521,7 @@ public class IoTDBSessionComplexIT {
 
     session.insertTablet(tablet);
 
-    ISessionDataSet dataSet = session.executeQueryStatement("select * from root.sg1.d1");
+    SessionDataSet dataSet = session.executeQueryStatement("select * from root.sg1.d1");
     int count = 0;
     while (dataSet.hasNext()) {
       count++;
@@ -593,7 +592,7 @@ public class IoTDBSessionComplexIT {
     paths.add("root.sg1.d2.s1");
     paths.add("root.sg1.d2.s2");
 
-    ISessionDataSet sessionDataSet = session.executeRawDataQuery(paths, 450L, 600L);
+    SessionDataSet sessionDataSet = session.executeRawDataQuery(paths, 450L, 600L);
     sessionDataSet.setFetchSize(1024);
 
     int count = 0;
@@ -616,7 +615,7 @@ public class IoTDBSessionComplexIT {
     paths.add("root.sg1.d1.s1");
     paths.add("root.sg1.d2.s1");
 
-    ISessionDataSet sessionDataSet = session.executeLastDataQuery(paths);
+    SessionDataSet sessionDataSet = session.executeLastDataQuery(paths);
     sessionDataSet.setFetchSize(1024);
 
     int count = 0;
@@ -767,7 +766,7 @@ public class IoTDBSessionComplexIT {
 
   private void queryByDevice(String deviceId)
       throws IoTDBConnectionException, StatementExecutionException {
-    ISessionDataSet sessionDataSet = session.executeQueryStatement("select * from " + deviceId);
+    SessionDataSet sessionDataSet = session.executeQueryStatement("select * from " + deviceId);
     sessionDataSet.setFetchSize(1024);
     int count = 0;
     long expectedSum = 1 + 2 + 3;
