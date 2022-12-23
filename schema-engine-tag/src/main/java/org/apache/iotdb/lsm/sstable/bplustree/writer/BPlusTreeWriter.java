@@ -216,6 +216,10 @@ public class BPlusTreeWriter implements IBPlusTreeWriter {
     }
     currentBPlusTreeEntryQueue = upperLevelBPlusTreeEntryQueue;
     bPlushTreeHeader.setLeftNodeCount(count);
+    if (count == 1) {
+      bPlushTreeHeader.setRootNodeOffset(bPlushTreeHeader.getFirstLeftNodeOffset());
+      return bPlushTreeHeader;
+    }
     return writeInternalNode();
   }
 

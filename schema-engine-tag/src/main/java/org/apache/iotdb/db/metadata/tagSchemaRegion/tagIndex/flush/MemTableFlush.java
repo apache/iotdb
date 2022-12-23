@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.flush;
 
+import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.entry.TiFileHeader;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemChunk;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemChunkGroup;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemTable;
@@ -60,13 +61,15 @@ public class MemTableFlush extends FlushLevelProcessor<MemTable, MemChunkGroup, 
     }
     FileOutput fileOutput = context.getFileOutput();
     BPlusTreeWriter bPlusTreeWriter = new BPlusTreeWriter(fileOutput);
-    bPlusTreeWriter.write(tagKeyToOffset, false);
+    TiFileHeader tiFileHeader = new TiFileHeader();
+    tiFileHeader.setTagKeyIndexOffset(bPlusTreeWriter.write(tagKeyToOffset, false));
     List<String> tagKeyAndValues = getTagKeyAndValues(memNode);
     BloomFilter bloomFilter = BloomFilter.getEmptyBloomFilter(0.05, 3);
     for (String key : tagKeyAndValues) {
       bloomFilter.add(key);
     }
-    fileOutput.write(bloomFilter);
+    tiFileHeader.setBloomFilterOffset(fileOutput.write(bloomFilter));
+    fileOutput.write(tiFileHeader);
     fileOutput.flush();
   }
 

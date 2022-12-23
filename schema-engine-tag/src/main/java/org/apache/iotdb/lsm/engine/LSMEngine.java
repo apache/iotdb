@@ -19,7 +19,6 @@
 package org.apache.iotdb.lsm.engine;
 
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.response.QueryResponse;
 import org.apache.iotdb.lsm.context.requestcontext.DeleteRequestContext;
 import org.apache.iotdb.lsm.context.requestcontext.FlushRequestContext;
 import org.apache.iotdb.lsm.context.requestcontext.InsertRequestContext;
@@ -37,6 +36,7 @@ import org.apache.iotdb.lsm.request.IRequest;
 import org.apache.iotdb.lsm.request.ISingleQueryRequest;
 import org.apache.iotdb.lsm.request.QueryRequest;
 import org.apache.iotdb.lsm.response.BaseResponse;
+import org.apache.iotdb.lsm.response.IQueryResponse;
 
 import java.io.IOException;
 
@@ -93,7 +93,7 @@ public class LSMEngine<T extends IMemManager> implements ILSMEngine {
    * @param <R> type of response
    */
   @Override
-  public <K, R extends QueryResponse> R query(QueryRequest<K> queryRequest) {
+  public <K, R extends IQueryResponse> R query(QueryRequest<K> queryRequest) {
     return queryManager.process(queryRequest);
   }
 

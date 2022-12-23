@@ -29,16 +29,16 @@ import java.nio.ByteBuffer;
 import java.util.Objects;
 
 public class TiFileHeader implements IEntry {
-  private static final String VERSION = "tiFile-0.1";
 
   private int bPLusTreePageSize;
 
-  private String version;
+  private long tagKeyIndexOffset;
+
+  private long bloomFilterOffset;
 
   public TiFileHeader() {
     bPLusTreePageSize =
         TagSchemaDescriptor.getInstance().getTagSchemaConfig().getBPlusTreePageSize();
-    version = VERSION;
   }
 
   public int getbPLusTreePageSize() {
@@ -49,37 +49,53 @@ public class TiFileHeader implements IEntry {
     this.bPLusTreePageSize = bPLusTreePageSize;
   }
 
-  public String getVersion() {
-    return version;
+  public long getTagKeyIndexOffset() {
+    return tagKeyIndexOffset;
   }
 
-  public void setVersion(String version) {
-    this.version = version;
+  public void setTagKeyIndexOffset(long tagKeyIndexOffset) {
+    this.tagKeyIndexOffset = tagKeyIndexOffset;
+  }
+
+  public long getBloomFilterOffset() {
+    return bloomFilterOffset;
+  }
+
+  public void setBloomFilterOffset(long bloomFilterOffset) {
+    this.bloomFilterOffset = bloomFilterOffset;
+  }
+
+  public static int getSerializeSize() {
+    return 20;
   }
 
   @Override
   public void serialize(DataOutputStream out) throws IOException {
     ReadWriteIOUtils.write(bPLusTreePageSize, out);
-    ReadWriteIOUtils.write(version, out);
+    ReadWriteIOUtils.write(tagKeyIndexOffset, out);
+    ReadWriteIOUtils.write(bloomFilterOffset, out);
   }
 
   @Override
   public void serialize(ByteBuffer byteBuffer) {
     ReadWriteIOUtils.write(bPLusTreePageSize, byteBuffer);
-    ReadWriteIOUtils.write(version, byteBuffer);
+    ReadWriteIOUtils.write(tagKeyIndexOffset, byteBuffer);
+    ReadWriteIOUtils.write(bloomFilterOffset, byteBuffer);
   }
 
   @Override
   public IEntry deserialize(DataInputStream input) throws IOException {
     bPLusTreePageSize = ReadWriteIOUtils.readInt(input);
-    version = ReadWriteIOUtils.readString(input);
+    tagKeyIndexOffset = ReadWriteIOUtils.readLong(input);
+    bloomFilterOffset = ReadWriteIOUtils.readLong(input);
     return this;
   }
 
   @Override
   public IEntry deserialize(ByteBuffer byteBuffer) {
     bPLusTreePageSize = ReadWriteIOUtils.readInt(byteBuffer);
-    version = ReadWriteIOUtils.readString(byteBuffer);
+    tagKeyIndexOffset = ReadWriteIOUtils.readLong(byteBuffer);
+    bloomFilterOffset = ReadWriteIOUtils.readLong(byteBuffer);
     return this;
   }
 
@@ -88,12 +104,14 @@ public class TiFileHeader implements IEntry {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
     TiFileHeader that = (TiFileHeader) o;
-    return bPLusTreePageSize == that.bPLusTreePageSize && Objects.equals(version, that.version);
+    return bPLusTreePageSize == that.bPLusTreePageSize
+        && tagKeyIndexOffset == that.tagKeyIndexOffset
+        && bloomFilterOffset == that.bloomFilterOffset;
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(bPLusTreePageSize, version);
+    return Objects.hash(bPLusTreePageSize, tagKeyIndexOffset, bloomFilterOffset);
   }
 
   @Override
@@ -101,9 +119,10 @@ public class TiFileHeader implements IEntry {
     return "TiFileHeader{"
         + "bPLusTreePageSize="
         + bPLusTreePageSize
-        + ", version='"
-        + version
-        + '\''
+        + ", tagKeyIndexOffset="
+        + tagKeyIndexOffset
+        + ", bloomFilterOffset="
+        + bloomFilterOffset
         + '}';
   }
 }

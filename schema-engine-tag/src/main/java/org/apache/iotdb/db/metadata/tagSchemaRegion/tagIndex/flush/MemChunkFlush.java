@@ -55,6 +55,7 @@ public class MemChunkFlush extends FlushLevelProcessor<MemChunk, Object, FlushRe
     FileOutput fileOutput = context.getFileOutput();
     List<RoaringBitmap> roaringBitmaps = sliceMemChunk(memNode, request.getChunkMaxSize());
     ChunkIndex chunkIndex = new ChunkIndex();
+    int count = 0;
     for (RoaringBitmap roaringBitmap : roaringBitmaps) {
       Chunk chunk = ConvertUtils.getChunkFromRoaringBitMap(roaringBitmap);
       byte[] bytes = new byte[chunk.getChunkHeader().getSize()];
@@ -63,8 +64,10 @@ public class MemChunkFlush extends FlushLevelProcessor<MemChunk, Object, FlushRe
       ChunkIndexEntry chunkIndexEntry =
           ConvertUtils.getChunkIndexEntryFromRoaringBitMap(roaringBitmap);
       chunkIndexEntry.setOffset(fileOutput.write(chunk.getChunkHeader()));
+      chunkIndex.getChunkIndexEntries().add(chunkIndexEntry);
+      count++;
     }
-    chunkIndex.setChunkIndexHeader(new ChunkIndexHeader(roaringBitmaps.size()));
+    chunkIndex.setChunkIndexHeader(new ChunkIndexHeader(count));
     long offset = fileOutput.write(chunkIndex);
     FlushResponse response = context.getResponse();
     response.addChunkOffset(memNode, offset);

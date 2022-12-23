@@ -50,12 +50,13 @@ public class DiskQueryManager implements IDiskQueryManager {
   @Override
   public <K, R extends IQueryResponse> R process(QueryRequest<K> request) {
     QueryResponse queryResponse = null;
+    TiFileReader tiFileReader = null;
     try {
       String[] tiFiles = getAllTiFiles();
       Map<String, String> tags = generateMap((QueryRequest<String>) request);
       int i = 0;
       for (String tiFile : tiFiles) {
-        TiFileReader tiFileReader = new TiFileReader(new File(tiFile), tags);
+        tiFileReader = new TiFileReader(new File(flushDirPath + File.separator + tiFile), tags);
         QueryResponse response = getQueryResponse(tiFileReader);
         if (i == 0) {
           queryResponse = response;
@@ -63,9 +64,18 @@ public class DiskQueryManager implements IDiskQueryManager {
         } else {
           queryResponse.or(response);
         }
+        tiFileReader.close();
       }
     } catch (IOException e) {
       logger.error(e.getMessage());
+    } finally {
+      if (tiFileReader != null) {
+        try {
+          tiFileReader.close();
+        } catch (IOException e) {
+          logger.error(e.getMessage());
+        }
+      }
     }
 
     return (R) queryResponse;
@@ -76,8 +86,8 @@ public class DiskQueryManager implements IDiskQueryManager {
     return flushDir.list(
         (dir, name) -> {
           if (name.startsWith(flushFilePrefix) && !name.endsWith("tmp")) {
-            return false;
-          } else return true;
+            return true;
+          } else return false;
         });
   }
 

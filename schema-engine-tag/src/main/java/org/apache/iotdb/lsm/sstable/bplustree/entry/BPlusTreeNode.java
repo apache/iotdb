@@ -222,7 +222,7 @@ public class BPlusTreeNode implements IEntry {
     List<BPlusTreeEntry> bPlusTreeEntryList = new ArrayList<>();
     for (String name : names) {
       BPlusTreeEntry bPlusTreeEntry = binarySearch(name);
-      if (bPlusTreeEntry != null) {
+      if (bPlusTreeEntry != null && bPlusTreeEntry.getName().equals(name)) {
         bPlusTreeEntryList.add(bPlusTreeEntry);
       }
     }

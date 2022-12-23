@@ -174,5 +174,16 @@ public class BPlusTreeReaderTest {
     assertFalse(bPlusTreeEntrySet.contains(new BPlusTreeEntry("cccc", 10)));
     assertFalse(bPlusTreeEntrySet.contains(new BPlusTreeEntry("", -1)));
     assertFalse(bPlusTreeEntrySet.contains(new BPlusTreeEntry("sdsddfdsf", 13)));
+
+    names = new HashSet<>();
+    names.add("aaa");
+    bPlusTreeEntries = bPlusTreeReader.getBPlusTreeEntries(names);
+    bPlusTreeEntrySet = new HashSet<>(bPlusTreeEntries);
+    assertTrue(bPlusTreeEntrySet.contains(new BPlusTreeEntry("aaa", 0)));
+
+    names = new HashSet<>();
+    names.add("sajdlkasjdkl");
+    bPlusTreeEntries = bPlusTreeReader.getBPlusTreeEntries(names);
+    assertEquals(bPlusTreeEntries.size(), 0);
   }
 }

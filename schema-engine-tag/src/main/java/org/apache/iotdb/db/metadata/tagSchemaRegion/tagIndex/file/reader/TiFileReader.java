@@ -20,6 +20,7 @@ package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.reader;
 
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.entry.ChunkIndex;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.entry.ChunkIndexEntry;
+import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.entry.TiFileHeader;
 import org.apache.iotdb.lsm.sstable.bplustree.entry.BPlusTreeEntry;
 import org.apache.iotdb.lsm.sstable.bplustree.reader.BPlusTreeReader;
 import org.apache.iotdb.lsm.sstable.fileIO.FileInput;
@@ -45,6 +46,8 @@ public class TiFileReader implements IDiskIterator<Integer> {
 
   private final IFileInput tiFileInput;
 
+  private File file;
+
   private Iterator<Integer> oneChunkDeviceIDsIterator;
 
   private List<ChunkIndex> chunkIndices;
@@ -55,9 +58,12 @@ public class TiFileReader implements IDiskIterator<Integer> {
 
   private long tagKeyIndexOffset;
 
+  private TiFileHeader tiFileHeader;
+
   private Map<String, String> tags;
 
   public TiFileReader(File file, Map<String, String> tags) throws IOException {
+    this.file = file;
     this.tiFileInput = new FileInput(file);
     this.tags = tags;
   }
@@ -68,6 +74,15 @@ public class TiFileReader implements IDiskIterator<Integer> {
     tiFileInput.position(tagKeyIndexOffset);
     this.tagKeyIndexOffset = tagKeyIndexOffset;
     this.tags = tags;
+  }
+
+  public TiFileHeader readTiFileHeader() throws IOException {
+    long length = file.length();
+    long startOffset = length - TiFileHeader.getSerializeSize();
+    TiFileHeader tiFileHeader = new TiFileHeader();
+    tiFileInput.position(startOffset);
+    tiFileInput.read(tiFileHeader);
+    return tiFileHeader;
   }
 
   public RoaringBitmap readAllDeviceID(Map<String, String> tags, long tagKeyIndexOffset)
@@ -137,7 +152,7 @@ public class TiFileReader implements IDiskIterator<Integer> {
       return new ArrayList<>();
     }
     TreeMap<Long, String> tagValueAndOffsets = new TreeMap<>((o1, o2) -> Long.compare(o2, o1));
-    tagValueAndOffsets.forEach((key, value) -> tagValueAndOffsets.put(key, tags.get(value)));
+    tagValueIndexOffsets.forEach((key, value) -> tagValueAndOffsets.put(key, tags.get(value)));
     List<Long> chunkIndexOffsets = new ArrayList<>();
     for (Map.Entry<Long, String> entry : tagValueAndOffsets.entrySet()) {
       long offset = getChunkIndexOffset(entry.getValue(), entry.getKey());
@@ -175,8 +190,11 @@ public class TiFileReader implements IDiskIterator<Integer> {
     if (nextID != null) {
       return true;
     }
+    if (tiFileHeader == null) {
+      tiFileHeader = readTiFileHeader();
+    }
     if (chunkIndices == null) {
-      chunkIndices = getChunkIndices(tags, tagKeyIndexOffset);
+      chunkIndices = getChunkIndices(tags, tiFileHeader.getTagKeyIndexOffset());
       if (chunkIndices.size() == 0) {
         return false;
       }

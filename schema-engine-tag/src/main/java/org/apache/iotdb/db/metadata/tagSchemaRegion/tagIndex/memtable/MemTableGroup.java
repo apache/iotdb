@@ -22,9 +22,9 @@ import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.request.FlushReques
 import org.apache.iotdb.lsm.manager.IMemManager;
 import org.apache.iotdb.lsm.request.IFlushRequest;
 
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 /** used to manage working and immutableMemTables */
@@ -54,7 +54,7 @@ public class MemTableGroup implements IMemManager {
     this.numOfImmutableMemTable = numOfImmutableMemTable;
     this.maxChunkSize = maxChunkSize;
     workingMemTable = new MemTable(MemTable.WORKING);
-    immutableMemTables = new HashMap<>();
+    immutableMemTables = new ConcurrentHashMap<>();
     maxDeviceID = 0;
   }
 
