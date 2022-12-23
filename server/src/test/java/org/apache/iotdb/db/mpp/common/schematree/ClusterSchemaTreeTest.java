@@ -56,9 +56,11 @@ public class ClusterSchemaTreeTest {
         testMultiWildcard();
       }
     }
-    initTime = (System.currentTimeMillis() - startTime - calTime);
+    long endTime = System.currentTimeMillis();
+    initTime = (endTime - startTime - calTime);
     System.out.println("CalculateTime=" + calTime / round);
     System.out.println("InitialTime=" + initTime / round);
+    System.out.println("AllTime=" + (endTime - startTime) / round);
   }
 
   @Test
