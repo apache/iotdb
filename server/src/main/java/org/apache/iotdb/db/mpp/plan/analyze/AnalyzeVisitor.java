@@ -160,7 +160,6 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.ALLOWED_SCHEMA_PROPS;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.DEADBAND;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.LOSS;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
-import static org.apache.iotdb.db.metadata.MetadataConstant.ALL_RESULT_NODES;
 import static org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant.DEVICE;
 import static org.apache.iotdb.db.mpp.plan.analyze.SelectIntoUtils.constructTargetDevice;
 import static org.apache.iotdb.db.mpp.plan.analyze.SelectIntoUtils.constructTargetMeasurement;
@@ -2294,18 +2293,29 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
     Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap = new HashMap<>();
 
-    schemaTree
-        .getMatchedDevices(new PartialPath(ALL_RESULT_NODES))
-        .forEach(
-            deviceSchemaInfo -> {
-              PartialPath devicePath = deviceSchemaInfo.getDevicePath();
-              DataPartitionQueryParam queryParam = new DataPartitionQueryParam();
-              queryParam.setDevicePath(devicePath.getFullPath());
-              sgNameToQueryParamsMap
-                  .computeIfAbsent(
-                      schemaTree.getBelongedDatabase(devicePath), key -> new ArrayList<>())
-                  .add(queryParam);
-            });
+    Set<String> deduplicatedDevicePaths = new HashSet<>();
+
+    for (String devicePattern : patternTree.getAllDevicePatterns()) {
+      try {
+        schemaTree
+            .getMatchedDevices(new PartialPath(devicePattern))
+            .forEach(
+                deviceSchemaInfo -> {
+                  deduplicatedDevicePaths.add(deviceSchemaInfo.getDevicePath().getFullPath());
+                });
+      } catch (IllegalPathException ignored) {
+        // won't happen
+      }
+    }
+
+    deduplicatedDevicePaths.forEach(
+        devicePath -> {
+          DataPartitionQueryParam queryParam = new DataPartitionQueryParam();
+          queryParam.setDevicePath(devicePath);
+          sgNameToQueryParamsMap
+              .computeIfAbsent(schemaTree.getBelongedDatabase(devicePath), key -> new ArrayList<>())
+              .add(queryParam);
+        });
 
     DataPartition dataPartition = partitionFetcher.getDataPartition(sgNameToQueryParamsMap);
     analysis.setDataPartitionInfo(dataPartition);
