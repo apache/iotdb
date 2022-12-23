@@ -75,6 +75,7 @@ public class IoTConsensusConfig {
     private final int selectorNumOfClientManager;
     private final int connectionTimeoutInMs;
     private final int thriftMaxFrameSize;
+    private final int maxConnectionForInternalService;
 
     private RPC(
         int rpcSelectorThreadNum,
@@ -84,7 +85,8 @@ public class IoTConsensusConfig {
         boolean isRpcThriftCompressionEnabled,
         int selectorNumOfClientManager,
         int connectionTimeoutInMs,
-        int thriftMaxFrameSize) {
+        int thriftMaxFrameSize,
+        int maxConnectionForInternalService) {
       this.rpcSelectorThreadNum = rpcSelectorThreadNum;
       this.rpcMinConcurrentClientNum = rpcMinConcurrentClientNum;
       this.rpcMaxConcurrentClientNum = rpcMaxConcurrentClientNum;
@@ -93,6 +95,7 @@ public class IoTConsensusConfig {
       this.selectorNumOfClientManager = selectorNumOfClientManager;
       this.connectionTimeoutInMs = connectionTimeoutInMs;
       this.thriftMaxFrameSize = thriftMaxFrameSize;
+      this.maxConnectionForInternalService = maxConnectionForInternalService;
     }
 
     public int getRpcSelectorThreadNum() {
@@ -127,6 +130,10 @@ public class IoTConsensusConfig {
       return thriftMaxFrameSize;
     }
 
+    public int getMaxConnectionForInternalService() {
+      return maxConnectionForInternalService;
+    }
+
     public static RPC.Builder newBuilder() {
       return new RPC.Builder();
     }
@@ -141,6 +148,8 @@ public class IoTConsensusConfig {
       private int selectorNumOfClientManager = 1;
       private int connectionTimeoutInMs = (int) TimeUnit.SECONDS.toMillis(20);
       private int thriftMaxFrameSize = 536870912;
+
+      private int maxConnectionForInternalService = 100;
 
       public RPC.Builder setRpcSelectorThreadNum(int rpcSelectorThreadNum) {
         this.rpcSelectorThreadNum = rpcSelectorThreadNum;
@@ -183,6 +192,11 @@ public class IoTConsensusConfig {
         return this;
       }
 
+      public RPC.Builder setMaxConnectionForInternalService(int maxConnectionForInternalService) {
+        this.maxConnectionForInternalService = maxConnectionForInternalService;
+        return this;
+      }
+
       public RPC build() {
         return new RPC(
             rpcSelectorThreadNum,
@@ -192,7 +206,8 @@ public class IoTConsensusConfig {
             isRpcThriftCompressionEnabled,
             selectorNumOfClientManager,
             connectionTimeoutInMs,
-            thriftMaxFrameSize);
+            thriftMaxFrameSize,
+            maxConnectionForInternalService);
       }
     }
   }

@@ -98,6 +98,8 @@ public class ColumnHeaderConstant {
   public static final String DATA_NODE_ID = "DataNodeId";
   public static final String SERIES_SLOT_NUM = "SeriesSlotNum";
   public static final String TIME_SLOT_NUM = "TimeSlotNum";
+  public static final String SERIES_SLOT_ID = "SeriesSlotId";
+  public static final String TIME_SLOT_ID = "TimeSlotId";
   public static final String ROLE = "Role";
 
   // column names for show datanodes
@@ -324,10 +326,10 @@ public class ColumnHeaderConstant {
       ImmutableList.of(new ColumnHeader(REGION_ID, TSDataType.INT32));
 
   public static final List<ColumnHeader> getTimeSlotListColumnHeaders =
-      ImmutableList.of(new ColumnHeader(TIME_SLOT_NUM, TSDataType.INT64));
+      ImmutableList.of(new ColumnHeader(TIME_SLOT_ID, TSDataType.INT64));
 
   public static final List<ColumnHeader> getSeriesSlotListColumnHeaders =
-      ImmutableList.of(new ColumnHeader(SERIES_SLOT_NUM, TSDataType.INT32));
+      ImmutableList.of(new ColumnHeader(SERIES_SLOT_ID, TSDataType.INT32));
 
   public static final List<ColumnHeader> showContinuousQueriesColumnHeaders =
       ImmutableList.of(
