@@ -18,8 +18,6 @@
  */
 package org.apache.iotdb.db.qp.logical;
 
-import org.apache.iotdb.db.qp.constant.SQLConstant;
-
 /** This class is a superclass of all operator. */
 public abstract class Operator {
 
@@ -29,12 +27,6 @@ public abstract class Operator {
   protected boolean isDebug;
 
   protected OperatorType operatorType = OperatorType.NULL;
-
-  /**
-   * Since IoTDB v0.13, all DDL and DML use patternMatch as default. Before IoTDB v0.13, all DDL and
-   * DML use prefixMatch.
-   */
-  protected boolean isPrefixMatchPath = false;
 
   protected Operator(int tokenIntType) {
     this.tokenIntType = tokenIntType;
@@ -49,10 +41,6 @@ public abstract class Operator {
     return operatorType == OperatorType.QUERY;
   }
 
-  public int getTokenIntType() {
-    return tokenIntType;
-  }
-
   public void setOperatorType(OperatorType operatorType) {
     this.operatorType = operatorType;
   }
@@ -63,15 +51,6 @@ public abstract class Operator {
 
   public void setDebug(boolean debug) {
     isDebug = debug;
-  }
-
-  public boolean isPrefixMatchPath() {
-    return isPrefixMatchPath;
-  }
-
-  @Override
-  public String toString() {
-    return SQLConstant.tokenNames.get(tokenIntType);
   }
 
   /** If you want to add new OperatorType, you must add it in the last. */

@@ -18,10 +18,10 @@
  */
 package org.apache.iotdb.db.protocol.influxdb.sql;
 
+import org.apache.iotdb.db.mpp.plan.parser.SQLParseError;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.sql.InfluxDBSqlParser;
 import org.apache.iotdb.db.qp.sql.SqlLexer;
-import org.apache.iotdb.db.qp.strategy.SQLParseError;
 
 import org.antlr.v4.runtime.CharStream;
 import org.antlr.v4.runtime.CharStreams;

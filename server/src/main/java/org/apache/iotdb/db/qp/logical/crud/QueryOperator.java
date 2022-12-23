@@ -18,12 +18,10 @@
  */
 package org.apache.iotdb.db.qp.logical.crud;
 
-import org.apache.iotdb.db.index.common.IndexType;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.logical.Operator;
 
 import java.util.Map;
-import java.util.Set;
 
 public class QueryOperator extends Operator {
 
@@ -33,19 +31,10 @@ public class QueryOperator extends Operator {
   protected SpecialClauseComponent specialClauseComponent;
 
   protected Map<String, Object> props;
-  protected IndexType indexType;
-
-  protected boolean enableTracing;
-
-  Set<String> aliasSet;
 
   public QueryOperator() {
     super(SQLConstant.TOK_QUERY);
     operatorType = Operator.OperatorType.QUERY;
-  }
-
-  public Set<String> getAliasSet() {
-    return aliasSet;
   }
 
   public SelectComponent getSelectComponent() {
@@ -80,27 +69,7 @@ public class QueryOperator extends Operator {
     this.props = props;
   }
 
-  public IndexType getIndexType() {
-    return indexType;
-  }
-
-  public boolean isAlignByDevice() {
-    return specialClauseComponent != null && specialClauseComponent.isAlignByDevice();
-  }
-
-  public boolean isGroupByLevel() {
-    return specialClauseComponent != null && specialClauseComponent.getLevels() != null;
-  }
-
   public int[] getLevels() {
     return specialClauseComponent.getLevels();
-  }
-
-  /** Reset sLimit and sOffset to zero. */
-  public void resetSLimitOffset() {
-    if (specialClauseComponent != null) {
-      specialClauseComponent.setSeriesLimit(0);
-      specialClauseComponent.setSeriesOffset(0);
-    }
   }
 }

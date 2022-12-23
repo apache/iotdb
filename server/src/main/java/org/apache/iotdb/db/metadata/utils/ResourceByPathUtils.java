@@ -31,14 +31,12 @@ import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.querycontext.AlignedReadOnlyMemChunk;
-import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.idtable.entry.DeviceIDFactory;
 import org.apache.iotdb.db.metadata.idtable.entry.IDeviceID;
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.query.filter.TsFileFilter;
 import org.apache.iotdb.db.query.reader.series.AlignedSeriesReader;
 import org.apache.iotdb.db.query.reader.series.SeriesReader;
 import org.apache.iotdb.db.utils.QueryUtils;
@@ -83,16 +81,6 @@ public abstract class ResourceByPathUtils {
     throw new UnsupportedOperationException("Should call exact sub class!");
   }
 
-  public abstract SeriesReader createSeriesReader(
-      Set<String> allSensors,
-      TSDataType dataType,
-      QueryContext context,
-      QueryDataSource dataSource,
-      Filter timeFilter,
-      Filter valueFilter,
-      TsFileFilter fileFilter,
-      boolean ascending);
-
   @TestOnly
   public abstract SeriesReader createSeriesReader(
       Set<String> allSensors,
@@ -103,12 +91,6 @@ public abstract class ResourceByPathUtils {
       Filter timeFilter,
       Filter valueFilter,
       boolean ascending);
-
-  public abstract TsFileResource createTsFileResource(
-      List<ReadOnlyMemChunk> readOnlyMemChunk,
-      List<IChunkMetadata> chunkMetadataList,
-      TsFileResource originTsFileResource)
-      throws IOException;
 
   public abstract ITimeSeriesMetadata generateTimeSeriesMetadata(
       List<ReadOnlyMemChunk> readOnlyMemChunk, List<IChunkMetadata> chunkMetadataList)
@@ -145,28 +127,6 @@ class AlignedResourceByPathUtils extends ResourceByPathUtils {
   }
 
   @Override
-  public AlignedSeriesReader createSeriesReader(
-      Set<String> allSensors,
-      TSDataType dataType,
-      QueryContext context,
-      QueryDataSource dataSource,
-      Filter timeFilter,
-      Filter valueFilter,
-      TsFileFilter fileFilter,
-      boolean ascending) {
-    return new AlignedSeriesReader(
-        partialPath,
-        allSensors,
-        dataType,
-        context,
-        dataSource,
-        timeFilter,
-        valueFilter,
-        fileFilter,
-        ascending);
-  }
-
-  @Override
   @TestOnly
   public AlignedSeriesReader createSeriesReader(
       Set<String> allSensors,
@@ -187,19 +147,6 @@ class AlignedResourceByPathUtils extends ResourceByPathUtils {
         timeFilter,
         valueFilter,
         ascending);
-  }
-
-  @Override
-  public TsFileResource createTsFileResource(
-      List<ReadOnlyMemChunk> readOnlyMemChunk,
-      List<IChunkMetadata> chunkMetadataList,
-      TsFileResource originTsFileResource)
-      throws IOException {
-    TsFileResource tsFileResource =
-        new TsFileResource(partialPath, readOnlyMemChunk, chunkMetadataList, originTsFileResource);
-    tsFileResource.setTimeSeriesMetadata(
-        partialPath, generateTimeSeriesMetadata(readOnlyMemChunk, chunkMetadataList));
-    return tsFileResource;
   }
 
   /**
@@ -399,28 +346,6 @@ class MeasurementResourceByPathUtils extends ResourceByPathUtils {
   }
 
   @Override
-  public SeriesReader createSeriesReader(
-      Set<String> allSensors,
-      TSDataType dataType,
-      QueryContext context,
-      QueryDataSource dataSource,
-      Filter timeFilter,
-      Filter valueFilter,
-      TsFileFilter fileFilter,
-      boolean ascending) {
-    return new SeriesReader(
-        partialPath,
-        allSensors,
-        dataType,
-        context,
-        dataSource,
-        timeFilter,
-        valueFilter,
-        fileFilter,
-        ascending);
-  }
-
-  @Override
   @TestOnly
   public SeriesReader createSeriesReader(
       Set<String> allSensors,
@@ -442,19 +367,6 @@ class MeasurementResourceByPathUtils extends ResourceByPathUtils {
         timeFilter,
         valueFilter,
         ascending);
-  }
-
-  @Override
-  public TsFileResource createTsFileResource(
-      List<ReadOnlyMemChunk> readOnlyMemChunk,
-      List<IChunkMetadata> chunkMetadataList,
-      TsFileResource originTsFileResource)
-      throws IOException {
-    TsFileResource tsFileResource =
-        new TsFileResource(partialPath, readOnlyMemChunk, chunkMetadataList, originTsFileResource);
-    tsFileResource.setTimeSeriesMetadata(
-        partialPath, generateTimeSeriesMetadata(readOnlyMemChunk, chunkMetadataList));
-    return tsFileResource;
   }
 
   /**

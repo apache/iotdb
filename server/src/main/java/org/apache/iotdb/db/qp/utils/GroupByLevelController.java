@@ -22,11 +22,10 @@ package org.apache.iotdb.db.qp.utils;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
+import org.apache.iotdb.db.exception.query.LogicalOperatorException;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.ResultColumn;
 import org.apache.iotdb.db.mpp.plan.expression.multi.FunctionExpression;
-import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.nio.ByteBuffer;
@@ -34,7 +33,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -71,19 +69,6 @@ public class GroupByLevelController {
     this.levels = levels;
   }
 
-  public GroupByLevelController(QueryOperator operator) {
-    this.seriesLimit = operator.getSpecialClauseComponent().getSeriesLimit();
-    this.seriesOffset = operator.getSpecialClauseComponent().getSeriesOffset();
-    this.limitPaths = seriesLimit > 0 ? new HashSet<>() : null;
-    this.offsetPaths = seriesOffset > 0 ? new HashSet<>() : null;
-    this.groupedPathMap = new LinkedHashMap<>();
-    this.levels = operator.getLevels();
-  }
-
-  public String getGroupedPath(String rawPath) {
-    return groupedPathMap.get(rawPath);
-  }
-
   public String getAlias(String originName) {
     return columnToAliasMap != null && columnToAliasMap.get(originName) != null
         ? columnToAliasMap.get(originName)
@@ -91,7 +76,7 @@ public class GroupByLevelController {
   }
 
   public void control(ResultColumn rawColumn, List<ResultColumn> resultColumns)
-      throws LogicalOptimizeException {
+      throws LogicalOperatorException {
     Set<Integer> countWildcardIterIndices = getCountStarIndices(rawColumn);
 
     // `resultColumns` includes all result columns after removing wildcards, so we need to skip
@@ -147,7 +132,7 @@ public class GroupByLevelController {
         }
       }
       if (!hasAggregation) {
-        throw new LogicalOptimizeException(rootExpression + " can't be used in group by level.");
+        throw new LogicalOperatorException(rootExpression + " can't be used in group by level.");
       }
     }
     prevSize = resultColumns.size();
@@ -171,7 +156,7 @@ public class GroupByLevelController {
   }
 
   private void checkAliasAndUpdateAliasMap(ResultColumn rawColumn, String originName)
-      throws LogicalOptimizeException {
+      throws LogicalOperatorException {
     if (!rawColumn.hasAlias()) {
       return;
     } else if (columnToAliasMap == null) {
@@ -181,7 +166,7 @@ public class GroupByLevelController {
     // If an alias is corresponding to more than one result column, throw an exception
     if (columnToAliasMap.get(originName) == null) {
       if (aliasToColumnMap.get(rawColumn.getAlias()) != null) {
-        throw new LogicalOptimizeException(
+        throw new LogicalOperatorException(
             String.format(ALIAS_ERROR_MESSAGE1, rawColumn.getAlias()));
       } else {
         columnToAliasMap.put(originName, rawColumn.getAlias());
@@ -189,7 +174,7 @@ public class GroupByLevelController {
       }
       // If a result column is corresponding to more than one alias, throw an exception
     } else if (!columnToAliasMap.get(originName).equals(rawColumn.getAlias())) {
-      throw new LogicalOptimizeException(
+      throw new LogicalOperatorException(
           String.format(
               ALIAS_ERROR_MESSAGE2,
               originName,

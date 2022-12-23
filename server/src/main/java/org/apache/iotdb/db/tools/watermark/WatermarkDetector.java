@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.tools.watermark;
 
 import org.apache.iotdb.db.exception.query.LogicalOperatorException;
-import org.apache.iotdb.db.qp.utils.DateTimeUtils;
+import org.apache.iotdb.db.utils.DateTimeUtils;
 
 import org.apache.thrift.EncodingUtils;
 

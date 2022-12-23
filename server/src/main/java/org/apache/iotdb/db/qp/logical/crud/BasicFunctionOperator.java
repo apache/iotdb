@@ -21,7 +21,6 @@ package org.apache.iotdb.db.qp.logical.crud;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.query.LogicalOperatorException;
-import org.apache.iotdb.db.exception.sql.SQLParserException;
 import org.apache.iotdb.db.qp.constant.FilterConstant;
 import org.apache.iotdb.db.qp.constant.FilterConstant.FilterType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -51,8 +50,7 @@ public class BasicFunctionOperator extends FunctionOperator {
    * @param value value
    * @throws LogicalOperatorException Logical Operator Exception
    */
-  public BasicFunctionOperator(FilterType filterType, PartialPath path, String value)
-      throws SQLParserException {
+  public BasicFunctionOperator(FilterType filterType, PartialPath path, String value) {
     super(filterType);
     funcToken = BasicOperatorType.getBasicOpBySymbol(filterType);
     this.singlePath = path;
@@ -136,7 +134,7 @@ public class BasicFunctionOperator extends FunctionOperator {
     BasicFunctionOperator ret;
     try {
       ret = new BasicFunctionOperator(this.filterType, singlePath.clone(), value);
-    } catch (SQLParserException e) {
+    } catch (Exception e) {
       logger.error("error copy:", e);
       return null;
     }

@@ -24,7 +24,6 @@ import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.metadata.idtable.IDTable;
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.query.filter.TsFileFilter;
 import org.apache.iotdb.db.query.reader.universal.DescPriorityMergeReader;
 import org.apache.iotdb.db.query.reader.universal.PriorityMergeReader;
 import org.apache.iotdb.db.query.reader.universal.PriorityMergeReader.MergeReaderPriority;
@@ -77,7 +76,6 @@ public class SeriesReader {
    */
   protected final Filter timeFilter;
   protected final Filter valueFilter;
-  protected final TsFileFilter fileFilter;
 
   protected final QueryDataSource dataSource;
 
@@ -124,52 +122,7 @@ public class SeriesReader {
    *     measurementList.
    * @param allSensors For querying aligned series, allSensors are not used.
    */
-  public SeriesReader(
-      PartialPath seriesPath,
-      Set<String> allSensors,
-      TSDataType dataType,
-      QueryContext context,
-      QueryDataSource dataSource,
-      Filter timeFilter,
-      Filter valueFilter,
-      TsFileFilter fileFilter,
-      boolean ascending) {
-    this.seriesPath = IDTable.translateQueryPath(seriesPath);
-    this.allSensors = allSensors;
-    this.dataType = dataType;
-    this.context = context;
-    this.dataSource = dataSource;
-    this.timeFilter = timeFilter;
-    this.valueFilter = valueFilter;
-    this.fileFilter = fileFilter;
-    if (ascending) {
-      this.orderUtils = new AscTimeOrderUtils();
-      mergeReader = getPriorityMergeReader();
-      this.curSeqFileIndex = 0;
-      this.curUnseqFileIndex = 0;
-    } else {
-      this.orderUtils = new DescTimeOrderUtils();
-      mergeReader = getDescPriorityMergeReader();
-      this.curSeqFileIndex = dataSource.getSeqResourcesSize() - 1;
-      this.curUnseqFileIndex = 0;
-    }
-
-    unSeqTimeSeriesMetadata =
-        new PriorityQueue<>(
-            orderUtils.comparingLong(
-                timeSeriesMetadata -> orderUtils.getOrderTime(timeSeriesMetadata.getStatistics())));
-    cachedChunkMetadata =
-        new PriorityQueue<>(
-            orderUtils.comparingLong(
-                chunkMetadata -> orderUtils.getOrderTime(chunkMetadata.getStatistics())));
-    unSeqPageReaders =
-        new PriorityQueue<>(
-            orderUtils.comparingLong(
-                versionPageReader -> orderUtils.getOrderTime(versionPageReader.getStatistics())));
-  }
-
   @TestOnly
-  @SuppressWarnings("squid:S107")
   public SeriesReader(
       PartialPath seriesPath,
       Set<String> allSensors,
@@ -188,7 +141,7 @@ public class SeriesReader {
     QueryUtils.fillOrderIndexes(dataSource, seriesPath.getDevice(), ascending);
     this.timeFilter = timeFilter;
     this.valueFilter = valueFilter;
-    this.fileFilter = null;
+
     if (ascending) {
       this.orderUtils = new AscTimeOrderUtils();
       mergeReader = getPriorityMergeReader();
@@ -1265,7 +1218,7 @@ public class SeriesReader {
         TsFileResource tsFileResource = dataSource.getSeqResourceByIndex(curSeqFileIndex);
         if (tsFileResource != null
             && tsFileResource.isSatisfied(
-                seriesPath.getDevice(), timeFilter, fileFilter, true, context.isDebug())) {
+                seriesPath.getDevice(), timeFilter, true, context.isDebug())) {
           break;
         }
         curSeqFileIndex--;
@@ -1279,7 +1232,7 @@ public class SeriesReader {
         TsFileResource tsFileResource = dataSource.getUnseqResourceByIndex(curUnseqFileIndex);
         if (tsFileResource != null
             && tsFileResource.isSatisfied(
-                seriesPath.getDevice(), timeFilter, fileFilter, false, context.isDebug())) {
+                seriesPath.getDevice(), timeFilter, false, context.isDebug())) {
           break;
         }
         curUnseqFileIndex++;
@@ -1378,7 +1331,7 @@ public class SeriesReader {
         TsFileResource tsFileResource = dataSource.getSeqResourceByIndex(curSeqFileIndex);
         if (tsFileResource != null
             && tsFileResource.isSatisfied(
-                seriesPath.getDevice(), timeFilter, fileFilter, true, context.isDebug())) {
+                seriesPath.getDevice(), timeFilter, true, context.isDebug())) {
           break;
         }
         curSeqFileIndex++;
@@ -1392,7 +1345,7 @@ public class SeriesReader {
         TsFileResource tsFileResource = dataSource.getUnseqResourceByIndex(curUnseqFileIndex);
         if (tsFileResource != null
             && tsFileResource.isSatisfied(
-                seriesPath.getDevice(), timeFilter, fileFilter, false, context.isDebug())) {
+                seriesPath.getDevice(), timeFilter, false, context.isDebug())) {
           break;
         }
         curUnseqFileIndex++;

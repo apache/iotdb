@@ -28,12 +28,6 @@ public class LogicalOperatorException extends QueryProcessException {
 
   private static final long serialVersionUID = 7573857366601268706L;
 
-  public LogicalOperatorException() {
-    super(
-        "Error format in SQL statement, please check whether SQL statement is correct.",
-        TSStatusCode.LOGICAL_OPERATOR_ERROR.getStatusCode());
-  }
-
   public LogicalOperatorException(String message) {
     super(message, TSStatusCode.LOGICAL_OPERATOR_ERROR.getStatusCode());
   }

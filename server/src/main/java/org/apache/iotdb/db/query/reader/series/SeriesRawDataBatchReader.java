@@ -41,7 +41,6 @@ public class SeriesRawDataBatchReader implements IBatchReader {
   private boolean hasCachedBatchData = false;
 
   @TestOnly
-  @SuppressWarnings("squid:S107")
   public SeriesRawDataBatchReader(
       PartialPath seriesPath,
       TSDataType dataType,

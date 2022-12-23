@@ -40,7 +40,7 @@ import org.apache.iotdb.db.qp.logical.crud.FromComponent;
 import org.apache.iotdb.db.qp.logical.crud.WhereComponent;
 import org.apache.iotdb.db.qp.sql.InfluxDBSqlParser;
 import org.apache.iotdb.db.qp.sql.InfluxDBSqlParserBaseVisitor;
-import org.apache.iotdb.db.qp.utils.DateTimeUtils;
+import org.apache.iotdb.db.utils.DateTimeUtils;
 
 public class InfluxDBSqlVisitor extends InfluxDBSqlParserBaseVisitor<Operator> {
 

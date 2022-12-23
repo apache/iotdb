@@ -21,10 +21,8 @@ package org.apache.iotdb.db.query.reader.series;
 import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.query.filter.TsFileFilter;
 import org.apache.iotdb.db.query.reader.universal.AlignedDescPriorityMergeReader;
 import org.apache.iotdb.db.query.reader.universal.AlignedPriorityMergeReader;
 import org.apache.iotdb.db.query.reader.universal.DescPriorityMergeReader;
@@ -39,28 +37,6 @@ import java.util.List;
 import java.util.Set;
 
 public class AlignedSeriesReader extends SeriesReader {
-
-  public AlignedSeriesReader(
-      PartialPath seriesPath,
-      Set<String> allSensors,
-      TSDataType dataType,
-      QueryContext context,
-      QueryDataSource dataSource,
-      Filter timeFilter,
-      Filter valueFilter,
-      TsFileFilter fileFilter,
-      boolean ascending) {
-    super(
-        seriesPath,
-        allSensors,
-        dataType,
-        context,
-        dataSource,
-        timeFilter,
-        valueFilter,
-        fileFilter,
-        ascending);
-  }
 
   @TestOnly
   public AlignedSeriesReader(

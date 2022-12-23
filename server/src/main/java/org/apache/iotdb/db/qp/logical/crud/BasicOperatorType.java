@@ -19,7 +19,6 @@
 package org.apache.iotdb.db.qp.logical.crud;
 
 import org.apache.iotdb.db.exception.query.LogicalOperatorException;
-import org.apache.iotdb.db.exception.sql.SQLParserException;
 import org.apache.iotdb.db.qp.constant.FilterConstant;
 import org.apache.iotdb.db.qp.constant.FilterConstant.FilterType;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -162,8 +161,7 @@ public enum BasicOperatorType {
    * @return basic operator type
    * @throws LogicalOperatorException Logical Operator Exception
    */
-  public static BasicOperatorType getBasicOpBySymbol(FilterType filterType)
-      throws SQLParserException {
+  public static BasicOperatorType getBasicOpBySymbol(FilterType filterType) {
     switch (filterType) {
       case EQUAL:
         return EQ;
@@ -178,7 +176,7 @@ public enum BasicOperatorType {
       case NOTEQUAL:
         return NOTEQUAL;
       default:
-        throw new SQLParserException(
+        throw new IllegalArgumentException(
             "unsupported type:{}" + FilterConstant.filterNames.get(filterType));
     }
   }
