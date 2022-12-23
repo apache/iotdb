@@ -16,17 +16,29 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.session.util;
+package org.apache.iotdb.isession;
 
-/** Status of current system */
-public enum SystemStatus {
-  /** System can read and write normally */
-  NORMAL,
-  /** Only query statements are permitted */
-  READ_ONLY,
-  /**
-   * Unrecoverable errors occur, system will be read-only or exit according to the param
-   * allow_read_only_when_errors_occur
-   */
-  ERROR,
+import org.apache.iotdb.rpc.IoTDBConnectionException;
+import org.apache.iotdb.rpc.StatementExecutionException;
+import org.apache.iotdb.tsfile.read.common.RowRecord;
+
+import java.util.List;
+
+public interface ISessionDataSet extends AutoCloseable {
+
+  int getFetchSize();
+
+  void setFetchSize(int fetchSize);
+
+  List<String> getColumnNames();
+
+  List<String> getColumnTypes();
+
+  boolean hasNext() throws StatementExecutionException, IoTDBConnectionException;
+
+  RowRecord next() throws StatementExecutionException, IoTDBConnectionException;
+
+  void closeOperationHandle() throws StatementExecutionException, IoTDBConnectionException;
+
+  IDataIterator iterator();
 }

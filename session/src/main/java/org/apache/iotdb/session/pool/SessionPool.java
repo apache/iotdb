@@ -18,16 +18,18 @@
  */
 package org.apache.iotdb.session.pool;
 
+import org.apache.iotdb.isession.pool.ISessionDataSetWrapper;
+import org.apache.iotdb.isession.pool.ISessionPool;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.service.rpc.thrift.TSBackupConfigurationResp;
 import org.apache.iotdb.service.rpc.thrift.TSConnectionInfoResp;
-import org.apache.iotdb.session.Config;
-import org.apache.iotdb.session.ISession;
-import org.apache.iotdb.session.ISessionDataSet;
+import org.apache.iotdb.isession.Config;
+import org.apache.iotdb.isession.ISession;
+import org.apache.iotdb.isession.ISessionDataSet;
 import org.apache.iotdb.session.Session;
-import org.apache.iotdb.session.template.Template;
-import org.apache.iotdb.session.util.SystemStatus;
+import org.apache.iotdb.isession.template.Template;
+import org.apache.iotdb.isession.util.SystemStatus;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
