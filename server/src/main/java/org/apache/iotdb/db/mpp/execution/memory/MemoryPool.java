@@ -160,7 +160,7 @@ public class MemoryPool {
           bytesToReserve,
           planNodeId);
       throw new IllegalArgumentException(
-          "Query is aborted since it requests more memory than what can be allocated.");
+          "Query is aborted since it requests more memory than can be allocated.");
     }
 
     ListenableFuture<Void> result;
