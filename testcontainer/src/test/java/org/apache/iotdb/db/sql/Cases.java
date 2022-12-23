@@ -25,11 +25,11 @@ import org.apache.iotdb.db.qp.physical.sys.CreateFunctionPlan;
 import org.apache.iotdb.db.qp.physical.sys.DropFunctionPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowFunctionsPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
-import org.apache.iotdb.isession.ISessionDataSet;
 import org.apache.iotdb.rpc.BatchExecutionException;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Session;
+import org.apache.iotdb.session.SessionDataSet;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -313,7 +313,7 @@ public abstract class Cases {
     paths.add("root.sg1.d1.s1");
     paths.add("root.sg1.d2.s1");
 
-    ISessionDataSet sessionDataSet = session.executeLastDataQuery(paths);
+    SessionDataSet sessionDataSet = session.executeLastDataQuery(paths);
     sessionDataSet.setFetchSize(1024);
 
     int count = 0;
