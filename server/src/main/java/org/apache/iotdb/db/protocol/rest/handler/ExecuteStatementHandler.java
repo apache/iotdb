@@ -20,6 +20,7 @@ package org.apache.iotdb.db.protocol.rest.handler;
 import org.apache.iotdb.db.mpp.plan.constant.StatementType;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.QueryStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateContinuousQueryStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.DropSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.AuthorStatement;
@@ -28,25 +29,26 @@ public class ExecuteStatementHandler {
   private ExecuteStatementHandler() {}
 
   public static boolean validateStatement(Statement statement) {
-    return !(statement instanceof QueryStatement)
-        && !(statement instanceof ShowStatement
-            && !(statement instanceof DropSchemaTemplateStatement))
-        && !(statement instanceof AuthorStatement
-            && (((AuthorStatement) statement)
-                    .getAuthorType()
-                    .name()
-                    .equals(StatementType.LIST_USER.name())
-                || ((AuthorStatement) statement)
-                    .getAuthorType()
-                    .name()
-                    .equals(StatementType.LIST_ROLE.name())
-                || ((AuthorStatement) statement)
-                    .getAuthorType()
-                    .name()
-                    .equals(StatementType.LIST_USER_PRIVILEGE.name())
-                || ((AuthorStatement) statement)
-                    .getAuthorType()
-                    .name()
-                    .equals(StatementType.LIST_ROLE_PRIVILEGE.name())));
+    return (!(statement instanceof QueryStatement)
+            && !(statement instanceof ShowStatement
+                && !(statement instanceof DropSchemaTemplateStatement))
+            && !(statement instanceof AuthorStatement
+                && (((AuthorStatement) statement)
+                        .getAuthorType()
+                        .name()
+                        .equals(StatementType.LIST_USER.name())
+                    || ((AuthorStatement) statement)
+                        .getAuthorType()
+                        .name()
+                        .equals(StatementType.LIST_ROLE.name())
+                    || ((AuthorStatement) statement)
+                        .getAuthorType()
+                        .name()
+                        .equals(StatementType.LIST_USER_PRIVILEGE.name())
+                    || ((AuthorStatement) statement)
+                        .getAuthorType()
+                        .name()
+                        .equals(StatementType.LIST_ROLE_PRIVILEGE.name()))))
+        || (statement instanceof CreateContinuousQueryStatement);
   }
 }

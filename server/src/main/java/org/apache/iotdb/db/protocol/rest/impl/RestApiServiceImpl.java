@@ -17,9 +17,11 @@
 
 package org.apache.iotdb.db.protocol.rest.impl;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.rest.IoTDBRestServiceDescriptor;
+import org.apache.iotdb.db.mpp.common.SessionInfo;
 import org.apache.iotdb.db.mpp.plan.Coordinator;
 import org.apache.iotdb.db.mpp.plan.analyze.ClusterPartitionFetcher;
 import org.apache.iotdb.db.mpp.plan.analyze.ClusterSchemaFetcher;
@@ -32,6 +34,8 @@ import org.apache.iotdb.db.mpp.plan.execution.IQueryExecution;
 import org.apache.iotdb.db.mpp.plan.parser.StatementGenerator;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertTabletStatement;
+import org.apache.iotdb.db.mpp.plan.statement.crud.QueryStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateContinuousQueryStatement;
 import org.apache.iotdb.db.protocol.rest.RestApiService;
 import org.apache.iotdb.db.protocol.rest.handler.AuthorizationHandler;
 import org.apache.iotdb.db.protocol.rest.handler.ExceptionHandler;
@@ -43,6 +47,7 @@ import org.apache.iotdb.db.protocol.rest.model.ExecutionStatus;
 import org.apache.iotdb.db.protocol.rest.model.InsertTabletRequest;
 import org.apache.iotdb.db.protocol.rest.model.SQL;
 import org.apache.iotdb.db.query.control.SessionManager;
+import org.apache.iotdb.db.query.control.clientsession.RestClientSession;
 import org.apache.iotdb.db.utils.SetThreadName;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -81,6 +86,7 @@ public class RestApiServiceImpl extends RestApiService {
 
   @Override
   public Response executeNonQueryStatement(SQL sql, SecurityContext securityContext) {
+    SessionInfo sessionInfo = null;
     try {
       RequestValidationHandler.validateSQL(sql);
 
@@ -100,11 +106,26 @@ public class RestApiServiceImpl extends RestApiService {
       if (response != null) {
         return response;
       }
+
+      if (SESSION_MANAGER.getCurrSession() == null
+          && statement instanceof CreateContinuousQueryStatement) {
+        RestClientSession restClientSession = new RestClientSession("");
+        String username = securityContext.getUserPrincipal().getName();
+        restClientSession.setUsername(username);
+        SESSION_MANAGER.registerSession(restClientSession);
+        SESSION_MANAGER.supplySession(
+            SESSION_MANAGER.getCurrSession(),
+            username,
+            ZoneId.systemDefault().getId(),
+            IoTDBConstant.ClientVersion.V_0_13);
+        sessionInfo = SESSION_MANAGER.getSessionInfo(SESSION_MANAGER.getCurrSession());
+      }
+
       ExecutionResult result =
           COORDINATOR.execute(
               statement,
               SESSION_MANAGER.requestQueryId(),
-              null,
+              sessionInfo,
               sql.getSql(),
               PARTITION_FETCHER,
               SCHEMA_FETCHER,
@@ -123,11 +144,16 @@ public class RestApiServiceImpl extends RestApiService {
           .build();
     } catch (Exception e) {
       return Response.ok().entity(ExceptionHandler.tryCatchException(e)).build();
+    } finally {
+      if (sessionInfo != null) {
+        SESSION_MANAGER.removeCurrSession();
+      }
     }
   }
 
   @Override
   public Response executeQueryStatement(SQL sql, SecurityContext securityContext) {
+    SessionInfo sessionInfo = null;
     try {
       RequestValidationHandler.validateSQL(sql);
 
@@ -148,13 +174,28 @@ public class RestApiServiceImpl extends RestApiService {
         return response;
       }
 
+      if (SESSION_MANAGER.getCurrSession() == null
+          && (statement instanceof QueryStatement
+              && ((QueryStatement) statement).getIntoComponent() != null)) {
+        RestClientSession restClientSession = new RestClientSession("");
+        String username = securityContext.getUserPrincipal().getName();
+        restClientSession.setUsername(username);
+        SESSION_MANAGER.registerSession(restClientSession);
+        SESSION_MANAGER.supplySession(
+            SESSION_MANAGER.getCurrSession(),
+            username,
+            ZoneId.systemDefault().getId(),
+            IoTDBConstant.ClientVersion.V_0_13);
+        sessionInfo = SESSION_MANAGER.getSessionInfo(SESSION_MANAGER.getCurrSession());
+      }
+
       final long queryId = SESSION_MANAGER.requestQueryId();
       // create and cache dataset
       ExecutionResult result =
           COORDINATOR.execute(
               statement,
               queryId,
-              null,
+              sessionInfo,
               sql.getSql(),
               PARTITION_FETCHER,
               SCHEMA_FETCHER,
@@ -177,6 +218,10 @@ public class RestApiServiceImpl extends RestApiService {
       }
     } catch (Exception e) {
       return Response.ok().entity(ExceptionHandler.tryCatchException(e)).build();
+    } finally {
+      if (sessionInfo != null) {
+        SESSION_MANAGER.removeCurrSession();
+      }
     }
   }
 
