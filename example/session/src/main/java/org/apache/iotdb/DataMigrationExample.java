@@ -18,8 +18,8 @@
  */
 package org.apache.iotdb;
 
-import org.apache.iotdb.isession.SessionDataSet.DataIterator;
-import org.apache.iotdb.isession.pool.SessionDataSetWrapper;
+import org.apache.iotdb.isession.IDataIterator;
+import org.apache.iotdb.isession.pool.ISessionDataSetWrapper;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.pool.SessionPool;
@@ -68,9 +68,9 @@ public class DataMigrationExample {
     readerPool = new SessionPool("127.0.0.1", 6667, "root", "root", concurrency);
     writerPool = new SessionPool("127.0.0.1", 6668, "root", "root", concurrency);
 
-    SessionDataSetWrapper schemaDataSet =
+    ISessionDataSetWrapper schemaDataSet =
         readerPool.executeQueryStatement("count timeseries " + path);
-    DataIterator schemaIter = schemaDataSet.iterator();
+    IDataIterator schemaIter = schemaDataSet.iterator();
     int total;
     if (schemaIter.next()) {
       total = schemaIter.getInt(1);
@@ -129,7 +129,7 @@ public class DataMigrationExample {
       List<MeasurementSchema> schemaList = new ArrayList<>();
       schemaList.add(new MeasurementSchema(measurement, dataType));
       tablet = new Tablet(device, schemaList, 300000);
-      SessionDataSetWrapper dataSet = null;
+      ISessionDataSetWrapper dataSet = null;
 
       try {
 
@@ -137,7 +137,7 @@ public class DataMigrationExample {
             readerPool.executeQueryStatement(
                 String.format("select %s from %s", measurement, device));
 
-        DataIterator dataIter = dataSet.iterator();
+        IDataIterator dataIter = dataSet.iterator();
         while (dataIter.next()) {
           int row = tablet.rowSize++;
           tablet.timestamps[row] = dataIter.getLong(1);

@@ -21,7 +21,7 @@ package org.apache.iotdb.tool;
 
 import org.apache.iotdb.cli.utils.JlineUtils;
 import org.apache.iotdb.exception.ArgsErrorException;
-import org.apache.iotdb.isession.SessionDataSet;
+import org.apache.iotdb.isession.ISessionDataSet;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
@@ -328,7 +328,7 @@ public class ExportCsv extends AbstractCsvTool {
   private static void dumpResult(String sql, int index) {
     final String path = targetDirectory + targetFile + index;
     try {
-      SessionDataSet sessionDataSet = session.executeQueryStatement(sql, timeout);
+      ISessionDataSet sessionDataSet = session.executeQueryStatement(sql, timeout);
       List<Object> headers = new ArrayList<>();
       List<String> names = sessionDataSet.getColumnNames();
       List<String> types = sessionDataSet.getColumnTypes();
@@ -367,7 +367,7 @@ public class ExportCsv extends AbstractCsvTool {
   }
 
   public static void writeCsvFile(
-      SessionDataSet sessionDataSet, String filePath, List<Object> headers, int linesPerFile)
+      ISessionDataSet sessionDataSet, String filePath, List<Object> headers, int linesPerFile)
       throws IOException, IoTDBConnectionException, StatementExecutionException {
     int fileIndex = 0;
     boolean hasNext = true;

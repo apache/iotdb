@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.metrics.reporter.iotdb;
 
-import org.apache.iotdb.isession.pool.SessionDataSetWrapper;
+import org.apache.iotdb.isession.pool.ISessionDataSetWrapper;
 import org.apache.iotdb.metrics.AbstractMetricManager;
 import org.apache.iotdb.metrics.config.MetricConfig;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
@@ -65,7 +65,7 @@ public class SessionIoTDBReporter extends IoTDBReporter {
             ioTDBReporterConfig.getUsername(),
             ioTDBReporterConfig.getPassword(),
             ioTDBReporterConfig.getMaxConnectionNumber());
-    try (SessionDataSetWrapper result =
+    try (ISessionDataSetWrapper result =
         this.sessionPool.executeQueryStatement("SHOW DATABASES " + IoTDBMetricsUtils.DATABASE)) {
       if (!result.hasNext()) {
         this.sessionPool.createDatabase(IoTDBMetricsUtils.DATABASE);

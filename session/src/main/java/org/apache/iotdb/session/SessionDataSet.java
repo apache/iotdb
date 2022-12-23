@@ -16,8 +16,11 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.isession;
+package org.apache.iotdb.session;
 
+import org.apache.iotdb.isession.IDataIterator;
+import org.apache.iotdb.isession.ISessionDataSet;
+import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.IoTDBRpcDataSet;
 import org.apache.iotdb.rpc.StatementExecutionException;
