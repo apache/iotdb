@@ -154,6 +154,14 @@ public class MemoryPool {
         bytesToReserve > 0L && bytesToReserve <= maxBytesPerFragmentInstance,
         "bytes should be greater than zero while less than or equal to max bytes per fragment instance: %d",
         bytesToReserve);
+    if (bytesToReserve > maxBytesCanReserve) {
+      LOGGER.error(
+          "Cannot reserve {} bytes memory from MemoryPool for planNodeId{}",
+          bytesToReserve,
+          planNodeId);
+      throw new IllegalArgumentException(
+          "Query is aborted since it requests more memory than what can be allocated.");
+    }
 
     ListenableFuture<Void> result;
     synchronized (this) {
@@ -164,7 +172,11 @@ public class MemoryPool {
                       .getOrDefault(fragmentInstanceId, Collections.emptyMap())
                       .getOrDefault(planNodeId, 0L)
               < bytesToReserve) {
-        LOGGER.info("Cannot reserve {} bytes memory from MemoryPool", bytesToReserve);
+        LOGGER.debug(
+            "Blocked reserve request: {} bytes memory for planNodeId{}",
+            bytesToReserve,
+            planNodeId);
+
         result =
             MemoryReservationFuture.create(
                 queryId, fragmentInstanceId, planNodeId, bytesToReserve, maxBytesCanReserve);

@@ -1623,7 +1623,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
 
     // Set maxBytesCanReserve for each source handle
     long maxBytesOneHandleCanReserve = context.getMaxBytesOneHandleCanReserve();
-    LOGGER.info(
+    LOGGER.debug(
         "TimeJoinNode{}'s maxBytesOneHandleCanReserve is: {}, exchangeNum = {}",
         node.getPlanNodeId(),
         maxBytesOneHandleCanReserve,
