@@ -39,7 +39,7 @@ import java.util.Map;
 
 import static org.apache.iotdb.rpc.IoTDBRpcDataSet.START_INDEX;
 
-public class SessionDataSet implements AutoCloseable {
+public class SessionDataSet implements ISessionDataSet {
 
   private final IoTDBRpcDataSet ioTDBRpcDataSet;
 
@@ -98,22 +98,27 @@ public class SessionDataSet implements AutoCloseable {
             timeout);
   }
 
+  @Override
   public int getFetchSize() {
     return ioTDBRpcDataSet.fetchSize;
   }
 
+  @Override
   public void setFetchSize(int fetchSize) {
     ioTDBRpcDataSet.fetchSize = fetchSize;
   }
 
+  @Override
   public List<String> getColumnNames() {
     return new ArrayList<>(ioTDBRpcDataSet.columnNameList);
   }
 
+  @Override
   public List<String> getColumnTypes() {
     return new ArrayList<>(ioTDBRpcDataSet.columnTypeList);
   }
 
+  @Override
   public boolean hasNext() throws StatementExecutionException, IoTDBConnectionException {
     return ioTDBRpcDataSet.next();
   }
@@ -175,6 +180,7 @@ public class SessionDataSet implements AutoCloseable {
     return new RowRecord(BytesUtils.bytesToLong(ioTDBRpcDataSet.time), outFields);
   }
 
+  @Override
   public RowRecord next() throws StatementExecutionException, IoTDBConnectionException {
     if (!ioTDBRpcDataSet.hasCachedRecord && !hasNext()) {
       return null;
@@ -184,6 +190,7 @@ public class SessionDataSet implements AutoCloseable {
     return constructRowRecordFromValueArray();
   }
 
+  @Override
   public void closeOperationHandle() throws StatementExecutionException, IoTDBConnectionException {
     try {
       ioTDBRpcDataSet.close();
@@ -192,6 +199,7 @@ public class SessionDataSet implements AutoCloseable {
     }
   }
 
+  @Override
   public DataIterator iterator() {
     return new DataIterator();
   }
@@ -201,84 +209,104 @@ public class SessionDataSet implements AutoCloseable {
     closeOperationHandle();
   }
 
-  public class DataIterator {
+  public class DataIterator implements IDataIterator {
 
+    @Override
     public boolean next() throws StatementExecutionException, IoTDBConnectionException {
       return ioTDBRpcDataSet.next();
     }
 
+    @Override
     public boolean isNull(int columnIndex) throws StatementExecutionException {
       return ioTDBRpcDataSet.isNull(columnIndex);
     }
 
+    @Override
     public boolean isNull(String columnName) throws StatementExecutionException {
       return ioTDBRpcDataSet.isNull(columnName);
     }
 
+    @Override
     public boolean getBoolean(int columnIndex) throws StatementExecutionException {
       return ioTDBRpcDataSet.getBoolean(columnIndex);
     }
 
+    @Override
     public boolean getBoolean(String columnName) throws StatementExecutionException {
       return ioTDBRpcDataSet.getBoolean(columnName);
     }
 
+    @Override
     public double getDouble(int columnIndex) throws StatementExecutionException {
       return ioTDBRpcDataSet.getDouble(columnIndex);
     }
 
+    @Override
     public double getDouble(String columnName) throws StatementExecutionException {
       return ioTDBRpcDataSet.getDouble(columnName);
     }
 
+    @Override
     public float getFloat(int columnIndex) throws StatementExecutionException {
       return ioTDBRpcDataSet.getFloat(columnIndex);
     }
 
+    @Override
     public float getFloat(String columnName) throws StatementExecutionException {
       return ioTDBRpcDataSet.getFloat(columnName);
     }
 
+    @Override
     public int getInt(int columnIndex) throws StatementExecutionException {
       return ioTDBRpcDataSet.getInt(columnIndex);
     }
 
+    @Override
     public int getInt(String columnName) throws StatementExecutionException {
       return ioTDBRpcDataSet.getInt(columnName);
     }
 
+    @Override
     public long getLong(int columnIndex) throws StatementExecutionException {
       return ioTDBRpcDataSet.getLong(columnIndex);
     }
 
+    @Override
     public long getLong(String columnName) throws StatementExecutionException {
       return ioTDBRpcDataSet.getLong(columnName);
     }
 
+    @Override
     public Object getObject(int columnIndex) throws StatementExecutionException {
       return ioTDBRpcDataSet.getObject(columnIndex);
     }
 
+    @Override
     public Object getObject(String columnName) throws StatementExecutionException {
       return ioTDBRpcDataSet.getObject(columnName);
     }
 
+    @Override
     public String getString(int columnIndex) throws StatementExecutionException {
       return ioTDBRpcDataSet.getString(columnIndex);
     }
 
+    @Override
     public String getString(String columnName) throws StatementExecutionException {
       return ioTDBRpcDataSet.getString(columnName);
     }
 
+    @Override
     public Timestamp getTimestamp(int columnIndex) throws StatementExecutionException {
       return ioTDBRpcDataSet.getTimestamp(columnIndex);
     }
 
+    @Override
     public Timestamp getTimestamp(String columnName) throws StatementExecutionException {
       return ioTDBRpcDataSet.getTimestamp(columnName);
     }
 
+    @Override
     public int findColumn(String columnName) {
       return ioTDBRpcDataSet.findColumn(columnName);
     }
