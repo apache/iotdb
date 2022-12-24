@@ -24,11 +24,13 @@ import org.apache.iotdb.lsm.manager.IDiskQueryManager;
 import org.apache.iotdb.lsm.request.ISingleQueryRequest;
 import org.apache.iotdb.lsm.request.QueryRequest;
 import org.apache.iotdb.lsm.response.IQueryResponse;
+import org.apache.iotdb.lsm.sstable.fileIO.FileInput;
 
 import org.roaringbitmap.RoaringBitmap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.EOFException;
 import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;
@@ -53,11 +55,20 @@ public class DiskQueryManager implements IDiskQueryManager {
     TiFileReader tiFileReader = null;
     try {
       String[] tiFiles = getAllTiFiles();
+      if (tiFiles == null || tiFiles.length == 0) {
+        return (R) queryResponse;
+      }
       Map<String, String> tags = generateMap((QueryRequest<String>) request);
       int i = 0;
       for (String tiFile : tiFiles) {
         tiFileReader = new TiFileReader(new File(flushDirPath + File.separator + tiFile), tags);
         QueryResponse response = getQueryResponse(tiFileReader);
+        if (response != null) {
+          File deletionFile = new File(flushDirPath + File.separator + getDeletionFileName(tiFile));
+          if (deletionFile.exists()) {
+            deleteRecords(response, deletionFile);
+          }
+        }
         if (i == 0) {
           queryResponse = response;
           i = 1;
@@ -85,7 +96,9 @@ public class DiskQueryManager implements IDiskQueryManager {
     File flushDir = new File(flushDirPath);
     return flushDir.list(
         (dir, name) -> {
-          if (name.startsWith(flushFilePrefix) && !name.endsWith("tmp")) {
+          if (name.startsWith(flushFilePrefix)
+              && !name.endsWith("tmp")
+              && !name.contains("delete")) {
             return true;
           } else return false;
         });
@@ -107,5 +120,28 @@ public class DiskQueryManager implements IDiskQueryManager {
       roaringBitmap.add(tiFileReader.next());
     }
     return queryResponse;
+  }
+
+  private String getDeletionFileName(String tiFileName) {
+    String[] strings = tiFileName.split("-");
+    return strings[0] + "-delete-" + strings[1] + "-" + strings[2];
+  }
+
+  private void deleteRecords(QueryResponse queryResponse, File deletionFile) throws IOException {
+    FileInput fileInput = null;
+    if (queryResponse.getValue().isEmpty()) return;
+    try {
+      fileInput = new FileInput(deletionFile);
+      while (true) {
+        int id = fileInput.readInt();
+        queryResponse.getValue().remove(id);
+      }
+    } catch (EOFException e) {
+      logger.info("deletion file {} read end", deletionFile);
+    } finally {
+      if (fileInput != null) {
+        fileInput.close();
+      }
+    }
   }
 }

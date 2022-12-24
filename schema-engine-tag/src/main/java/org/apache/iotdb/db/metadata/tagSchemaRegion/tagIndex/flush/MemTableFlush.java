@@ -89,6 +89,7 @@ public class MemTableFlush extends FlushLevelProcessor<MemTable, MemChunkGroup, 
       fileOutput.write(deletion);
     }
     fileOutput.flush();
+    fileOutput.close();
   }
 
   private List<String> getTagKeyAndValues(MemTable memNode) {

@@ -26,6 +26,7 @@ import org.apache.iotdb.lsm.sstable.bplustree.reader.BPlusTreeReader;
 import org.apache.iotdb.lsm.sstable.fileIO.FileInput;
 import org.apache.iotdb.lsm.sstable.fileIO.IFileInput;
 import org.apache.iotdb.lsm.sstable.interator.IDiskIterator;
+import org.apache.iotdb.lsm.util.BloomFilter;
 
 import org.roaringbitmap.RoaringBitmap;
 
@@ -60,6 +61,8 @@ public class TiFileReader implements IDiskIterator<Integer> {
 
   private TiFileHeader tiFileHeader;
 
+  private BloomFilter bloomFilter;
+
   private Map<String, String> tags;
 
   public TiFileReader(File file, Map<String, String> tags) throws IOException {
@@ -83,6 +86,13 @@ public class TiFileReader implements IDiskIterator<Integer> {
     tiFileInput.position(startOffset);
     tiFileInput.read(tiFileHeader);
     return tiFileHeader;
+  }
+
+  public BloomFilter readBloomFilter(long bloomFilterOffset) throws IOException {
+    tiFileInput.position(bloomFilterOffset);
+    BloomFilter bloomFilter = new BloomFilter();
+    tiFileInput.read(bloomFilter);
+    return bloomFilter;
   }
 
   public RoaringBitmap readAllDeviceID(Map<String, String> tags, long tagKeyIndexOffset)
@@ -115,6 +125,9 @@ public class TiFileReader implements IDiskIterator<Integer> {
     ChunkReader chunkReader = new ChunkReader(tiFileInput);
     ChunkIndexEntry baseChunkIndexEntry = baseChunkIndex.getChunkIndexEntries().get(index);
     RoaringBitmap roaringBitmap = chunkReader.readRoaringBitmap(baseChunkIndexEntry.getOffset());
+    if (chunkIndices.size() == 1) {
+      return roaringBitmap;
+    }
     RoaringBitmap deviceIDs = new RoaringBitmap();
     for (int i = 1; i < chunkIndices.size(); i++) {
       List<ChunkIndexEntry> chunkIndexEntries = chunkIndices.get(i).getChunkIndexEntries();
@@ -185,6 +198,17 @@ public class TiFileReader implements IDiskIterator<Integer> {
     return bPlusTreeEntries.get(0).getOffset();
   }
 
+  private boolean bloomFilterHas(Map<String, String> tags) {
+    for (Map.Entry<String, String> tag : tags.entrySet()) {
+      if (bloomFilter.contains(tag.getKey() + tag.getValue())) {
+        continue;
+      } else {
+        return false;
+      }
+    }
+    return true;
+  }
+
   @Override
   public boolean hasNext() throws IOException {
     if (nextID != null) {
@@ -192,6 +216,12 @@ public class TiFileReader implements IDiskIterator<Integer> {
     }
     if (tiFileHeader == null) {
       tiFileHeader = readTiFileHeader();
+    }
+    if (bloomFilter == null) {
+      bloomFilter = readBloomFilter(tiFileHeader.getBloomFilterOffset());
+    }
+    if (!bloomFilterHas(tags)) {
+      return false;
     }
     if (chunkIndices == null) {
       chunkIndices = getChunkIndices(tags, tiFileHeader.getTagKeyIndexOffset());

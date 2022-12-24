@@ -58,8 +58,8 @@ public class FileOutput extends OutputStream implements IFileOutput {
 
   @Override
   public void write(int b) throws IOException {
-    outputStream.write(b);
-    position++;
+    dataOutputStream.writeInt(b);
+    position += 4;
   }
 
   @Override

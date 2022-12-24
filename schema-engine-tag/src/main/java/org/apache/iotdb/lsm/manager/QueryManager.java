@@ -32,9 +32,18 @@ public class QueryManager<T> {
   private T rootMemNode;
 
   public <K, R extends IQueryResponse> R process(QueryRequest<K> queryRequest) {
-    R queryResponse = processMem(queryRequest);
-    // todo queryResponse.or(processDisk(queryRequest));
-    return queryResponse;
+    synchronized (rootMemNode) {
+      R queryResponse = processMem(queryRequest);
+      R response = processDisk(queryRequest);
+      if (queryResponse == null) {
+        return response;
+      } else if (response == null) {
+        return queryResponse;
+      } else {
+        queryResponse.or(response);
+        return queryResponse;
+      }
+    }
   }
 
   private <K, R extends IQueryResponse> R processMem(QueryRequest<K> queryRequest) {

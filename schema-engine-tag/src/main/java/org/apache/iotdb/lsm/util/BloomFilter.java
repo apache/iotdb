@@ -43,6 +43,9 @@ public class BloomFilter implements IEntry {
   private HashFunction[] func;
 
   // do not try to initialize the filter by construction method
+  public BloomFilter() {}
+
+  // do not try to initialize the filter by construction method
   private BloomFilter(byte[] bytes, int size, int hashFunctionSize) {
     this.size = size;
     this.hashFunctionSize = hashFunctionSize;
@@ -210,8 +213,9 @@ public class BloomFilter implements IEntry {
 
   @Override
   public IEntry deserialize(DataInputStream input) throws IOException {
-    int bytesLength = ReadWriteIOUtils.readInt(input);
+    int bytesLength = ReadWriteForEncodingUtils.readUnsignedVarInt(input);
     bits = BitSet.valueOf(ReadWriteIOUtils.readBytes(input, bytesLength));
+    size = ReadWriteForEncodingUtils.readUnsignedVarInt(input);
     hashFunctionSize = ReadWriteForEncodingUtils.readUnsignedVarInt(input);
     func = new HashFunction[hashFunctionSize];
     for (int i = 0; i < hashFunctionSize; i++) {
