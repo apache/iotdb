@@ -98,7 +98,7 @@ public abstract class WALManager<T> {
   }
 
   public void deleteWalFile(int index) {
-    File file = new File(getWalFileName(index));
+    File file = new File(this.walDirPath, getWalFileName(index));
     file.delete();
   }
 
