@@ -24,9 +24,8 @@ import org.apache.iotdb.commons.path.PartialPath;
 /** this class contains several constants used in SQL. */
 public class SqlConstant {
 
-  private SqlConstant() throws InstantiationException {
+  protected SqlConstant() {
     // forbidding instantiation
-    throw new InstantiationException();
   }
 
   private static final String[] SINGLE_ROOT_ARRAY = {"root", "**"};

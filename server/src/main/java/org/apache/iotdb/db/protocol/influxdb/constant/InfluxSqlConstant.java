@@ -27,6 +27,12 @@ import java.util.Set;
 
 /** this class contains several constants used in SQL. */
 public class InfluxSqlConstant extends SqlConstant {
+
+  private InfluxSqlConstant() {
+    // forbidding instantiation
+    super();
+  }
+
   public static final String STAR = "*";
 
   public static final String MAX = "max";
@@ -44,11 +50,6 @@ public class InfluxSqlConstant extends SqlConstant {
       new HashSet<>(Arrays.asList(MIN, MAX, FIRST, LAST));
   private static final Set<String> ONLY_TRAVERSE_FUNCTION_NAMES =
       new HashSet<>(Arrays.asList(MEDIAN, MODE, SPREAD, STDDEV));
-
-  public InfluxSqlConstant() throws InstantiationException {
-    // forbidding instantiation
-    super();
-  }
 
   public static Set<String> getNativeFunctionNames() {
     return NATIVE_FUNCTION_NAMES;
