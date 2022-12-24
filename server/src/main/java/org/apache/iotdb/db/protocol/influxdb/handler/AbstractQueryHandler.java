@@ -471,7 +471,7 @@ public abstract class AbstractQueryHandler {
           new SingleSeriesExpression(
               ((TimeSeriesOperand) leftExpression).getPath(),
               FilterUtils.expressionTypeToFilter(
-                  leftExpression.getExpressionType(),
+                  predicate.getExpressionType(),
                   ((ConstantOperand) rightExpression).getValueString()));
       return Collections.singletonList(singleSeriesExpression);
     } else if (predicate instanceof LogicBinaryExpression) {
