@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.protocol.influxdb.handler;
 
 import org.apache.iotdb.commons.auth.AuthException;
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.binary.CompareBinaryExpression;
 import org.apache.iotdb.db.mpp.plan.expression.binary.LogicAndExpression;
@@ -28,7 +29,7 @@ import org.apache.iotdb.db.mpp.plan.expression.leaf.ConstantOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.mpp.plan.expression.multi.FunctionExpression;
 import org.apache.iotdb.db.mpp.plan.statement.component.ResultColumn;
-import org.apache.iotdb.db.protocol.influxdb.constant.InfluxSQLConstant;
+import org.apache.iotdb.db.protocol.influxdb.constant.InfluxSqlConstant;
 import org.apache.iotdb.db.protocol.influxdb.function.InfluxFunction;
 import org.apache.iotdb.db.protocol.influxdb.function.InfluxFunctionFactory;
 import org.apache.iotdb.db.protocol.influxdb.function.InfluxFunctionValue;
@@ -55,8 +56,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
-import static com.google.common.base.Preconditions.checkState;
 
 /** Used to process influxdb query requests, this abstract class defines some template methods */
 public abstract class AbstractQueryHandler {
@@ -156,7 +155,7 @@ public abstract class AbstractQueryHandler {
     List<List<Object>> values = queryResult.getResults().get(0).getSeries().get(0).getValues();
     // new columns
     List<String> newColumns = new ArrayList<>();
-    newColumns.add(InfluxSQLConstant.RESERVED_TIME);
+    newColumns.add(InfluxSqlConstant.RESERVED_TIME);
 
     // when have function
     if (selectComponent.isHasFunction()) {
@@ -170,7 +169,7 @@ public abstract class AbstractQueryHandler {
           newColumns.add(functionName);
         } else if (expression instanceof TimeSeriesOperand) {
           String columnName = ((TimeSeriesOperand) expression).getPath().getFullPath();
-          if (!columnName.equals(InfluxSQLConstant.STAR)) {
+          if (!columnName.equals(InfluxSqlConstant.STAR)) {
             newColumns.add(columnName);
           } else {
             newColumns.addAll(columns.subList(1, columns.size()));
@@ -213,7 +212,7 @@ public abstract class AbstractQueryHandler {
         InfluxSelector selector = (InfluxSelector) functions.get(0);
         List<Object> relatedValue = selector.getRelatedValues();
         for (String column : newColumns) {
-          if (InfluxSQLConstant.getNativeSelectorFunctionNames().contains(column)) {
+          if (InfluxSqlConstant.getNativeSelectorFunctionNames().contains(column)) {
             value.add(selector.calculateBruteForce().getValue());
           } else {
             if (relatedValue != null) {
@@ -247,7 +246,7 @@ public abstract class AbstractQueryHandler {
           if (!((TimeSeriesOperand) expression)
               .getPath()
               .getFullPath()
-              .equals(InfluxSQLConstant.STAR)) {
+              .equals(InfluxSqlConstant.STAR)) {
             newColumns.add(((TimeSeriesOperand) expression).getPath().getFullPath());
           } else {
             newColumns.addAll(columns.subList(1, columns.size()));
@@ -279,7 +278,7 @@ public abstract class AbstractQueryHandler {
       InfluxSelectComponent selectComponent, String database, String measurement, long sessionid) {
     // columns
     List<String> columns = new ArrayList<>();
-    columns.add(InfluxSQLConstant.RESERVED_TIME);
+    columns.add(InfluxSqlConstant.RESERVED_TIME);
 
     List<InfluxFunction> functions = new ArrayList<>();
 
@@ -464,9 +463,10 @@ public abstract class AbstractQueryHandler {
     if (predicate instanceof CompareBinaryExpression) {
       Expression leftExpression = ((CompareBinaryExpression) predicate).getLeftExpression();
       Expression rightExpression = ((CompareBinaryExpression) predicate).getRightExpression();
-      checkState(
-          leftExpression instanceof TimeSeriesOperand
-              && rightExpression instanceof ConstantOperand);
+      if (!(leftExpression instanceof TimeSeriesOperand
+          && rightExpression instanceof ConstantOperand)) {
+        throw new SemanticException("Unsupported predicate: " + predicate);
+      }
       SingleSeriesExpression singleSeriesExpression =
           new SingleSeriesExpression(
               ((TimeSeriesOperand) leftExpression).getPath(),

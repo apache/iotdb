@@ -19,14 +19,14 @@
 
 package org.apache.iotdb.db.protocol.influxdb.constant;
 
-import org.apache.iotdb.db.constant.SQLConstant;
+import org.apache.iotdb.db.constant.SqlConstant;
 
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 
 /** this class contains several constants used in SQL. */
-public class InfluxSQLConstant extends SQLConstant {
+public class InfluxSqlConstant extends SqlConstant {
   public static final String STAR = "*";
 
   public static final String MAX = "max";
@@ -45,7 +45,7 @@ public class InfluxSQLConstant extends SQLConstant {
   private static final Set<String> ONLY_TRAVERSE_FUNCTION_NAMES =
       new HashSet<>(Arrays.asList(MEDIAN, MODE, SPREAD, STDDEV));
 
-  public InfluxSQLConstant() throws InstantiationException {
+  public InfluxSqlConstant() throws InstantiationException {
     // forbidding instantiation
     super();
   }

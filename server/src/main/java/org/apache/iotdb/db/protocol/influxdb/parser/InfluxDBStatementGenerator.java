@@ -16,9 +16,10 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.protocol.influxdb.parser;
 
-import org.apache.iotdb.db.mpp.plan.parser.SQLParseError;
+import org.apache.iotdb.db.mpp.plan.parser.SqlParseError;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.qp.sql.InfluxDBSqlParser;
 import org.apache.iotdb.db.qp.sql.SqlLexer;
@@ -39,12 +40,12 @@ public class InfluxDBStatementGenerator {
     CharStream charStream1 = CharStreams.fromString(sql);
     SqlLexer lexer1 = new SqlLexer(charStream1);
     lexer1.removeErrorListeners();
-    lexer1.addErrorListener(SQLParseError.INSTANCE);
+    lexer1.addErrorListener(SqlParseError.INSTANCE);
     CommonTokenStream tokens1 = new CommonTokenStream(lexer1);
     InfluxDBSqlParser parser1 = new InfluxDBSqlParser(tokens1);
     parser1.getInterpreter().setPredictionMode(PredictionMode.SLL);
     parser1.removeErrorListeners();
-    parser1.addErrorListener(SQLParseError.INSTANCE);
+    parser1.addErrorListener(SqlParseError.INSTANCE);
     ParseTree tree;
     try {
       tree = parser1.singleStatement(); // STAGE 1
@@ -52,12 +53,12 @@ public class InfluxDBStatementGenerator {
       CharStream charStream2 = CharStreams.fromString(sql);
       SqlLexer lexer2 = new SqlLexer(charStream2);
       lexer2.removeErrorListeners();
-      lexer2.addErrorListener(SQLParseError.INSTANCE);
+      lexer2.addErrorListener(SqlParseError.INSTANCE);
       CommonTokenStream tokens2 = new CommonTokenStream(lexer2);
       InfluxDBSqlParser parser2 = new InfluxDBSqlParser(tokens2);
       parser2.getInterpreter().setPredictionMode(PredictionMode.LL);
       parser2.removeErrorListeners();
-      parser2.addErrorListener(SQLParseError.INSTANCE);
+      parser2.addErrorListener(SqlParseError.INSTANCE);
       tree = parser2.singleStatement(); // STAGE 2
       // if we parse ok, it's LL not SLL
     }

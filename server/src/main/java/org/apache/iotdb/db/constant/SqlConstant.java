@@ -16,15 +16,15 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.constant;
 
 import org.apache.iotdb.commons.path.PartialPath;
 
 /** this class contains several constants used in SQL. */
-// some fields are for future features
-public class SQLConstant {
+public class SqlConstant {
 
-  public SQLConstant() throws InstantiationException {
+  private SqlConstant() throws InstantiationException {
     // forbidding instantiation
     throw new InstantiationException();
   }

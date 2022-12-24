@@ -55,7 +55,6 @@ import java.util.Objects;
 import java.util.PriorityQueue;
 import java.util.Set;
 import java.util.function.ToLongFunction;
-import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
@@ -928,12 +927,6 @@ public class SeriesScanUtil {
       return cachedTsBlock;
     }
     throw new IOException("No more batch data");
-  }
-
-  private LinkedList<TsFileResource> sortUnSeqFileResources(List<TsFileResource> tsFileResources) {
-    return tsFileResources.stream()
-        .sorted(orderUtils.comparingLong(tsFileResource -> orderUtils.getOrderTime(tsFileResource)))
-        .collect(Collectors.toCollection(LinkedList::new));
   }
 
   /**

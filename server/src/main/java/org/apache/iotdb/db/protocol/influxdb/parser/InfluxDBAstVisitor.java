@@ -21,7 +21,7 @@ package org.apache.iotdb.db.protocol.influxdb.parser;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.constant.SQLConstant;
+import org.apache.iotdb.db.constant.SqlConstant;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.mpp.plan.analyze.ExpressionAnalyzer;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
@@ -219,7 +219,7 @@ public class InfluxDBAstVisitor extends InfluxDBSqlParserBaseVisitor<Statement> 
     }
 
     if (context.time != null) {
-      return new TimeSeriesOperand(SQLConstant.TIME_PATH);
+      return new TimeSeriesOperand(SqlConstant.TIME_PATH);
     }
 
     if (context.constant() != null) {
@@ -308,7 +308,7 @@ public class InfluxDBAstVisitor extends InfluxDBSqlParserBaseVisitor<Statement> 
     if (timestampStr == null || timestampStr.trim().equals("")) {
       throw new IllegalArgumentException("input timestamp cannot be empty");
     }
-    if (timestampStr.equalsIgnoreCase(SQLConstant.NOW_FUNC)) {
+    if (timestampStr.equalsIgnoreCase(SqlConstant.NOW_FUNC)) {
       return DateTimeUtils.currentTime();
     }
     throw new IllegalArgumentException(

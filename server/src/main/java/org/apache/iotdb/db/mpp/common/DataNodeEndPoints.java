@@ -23,6 +23,11 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 
 public class DataNodeEndPoints {
+
+  private DataNodeEndPoints() {
+    // forbidding instantiation
+  }
+
   public static final TEndPoint LOCAL_HOST_DATA_BLOCK_ENDPOINT =
       new TEndPoint(
           IoTDBDescriptor.getInstance().getConfig().getInternalAddress(),

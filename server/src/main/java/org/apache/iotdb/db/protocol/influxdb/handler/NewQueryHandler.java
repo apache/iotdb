@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.protocol.influxdb.handler;
 
-import org.apache.iotdb.db.protocol.influxdb.constant.InfluxSQLConstant;
+import org.apache.iotdb.db.protocol.influxdb.constant.InfluxSqlConstant;
 import org.apache.iotdb.db.protocol.influxdb.function.InfluxFunction;
 import org.apache.iotdb.db.protocol.influxdb.function.InfluxFunctionValue;
 import org.apache.iotdb.db.protocol.influxdb.util.QueryResultUtils;
@@ -46,7 +46,7 @@ public class NewQueryHandler extends AbstractQueryHandler {
   public final InfluxFunctionValue updateByIoTDBFunc(
       String path, InfluxFunction function, long sessionid) {
     switch (function.getFunctionName()) {
-      case InfluxSQLConstant.COUNT:
+      case InfluxSqlConstant.COUNT:
         {
           String functionSql =
               StringUtils.generateFunctionSql(
@@ -60,7 +60,7 @@ public class NewQueryHandler extends AbstractQueryHandler {
           }
           break;
         }
-      case InfluxSQLConstant.MEAN:
+      case InfluxSqlConstant.MEAN:
         {
           String functionSqlCount =
               StringUtils.generateFunctionSql("count", function.getParmaName(), path);
@@ -81,7 +81,7 @@ public class NewQueryHandler extends AbstractQueryHandler {
           }
           break;
         }
-      case InfluxSQLConstant.SUM:
+      case InfluxSqlConstant.SUM:
         {
           String functionSql =
               StringUtils.generateFunctionSql("sum", function.getParmaName(), path);
@@ -94,12 +94,12 @@ public class NewQueryHandler extends AbstractQueryHandler {
           }
           break;
         }
-      case InfluxSQLConstant.FIRST:
-      case InfluxSQLConstant.LAST:
+      case InfluxSqlConstant.FIRST:
+      case InfluxSqlConstant.LAST:
         {
           String functionSql;
           String functionName;
-          if (function.getFunctionName().equals(InfluxSQLConstant.FIRST)) {
+          if (function.getFunctionName().equals(InfluxSqlConstant.FIRST)) {
             functionSql =
                 StringUtils.generateFunctionSql("first_value", function.getParmaName(), path);
             functionName = "first_value";
@@ -128,11 +128,11 @@ public class NewQueryHandler extends AbstractQueryHandler {
           }
           break;
         }
-      case InfluxSQLConstant.MAX:
-      case InfluxSQLConstant.MIN:
+      case InfluxSqlConstant.MAX:
+      case InfluxSqlConstant.MIN:
         {
           String functionSql;
-          if (function.getFunctionName().equals(InfluxSQLConstant.MAX)) {
+          if (function.getFunctionName().equals(InfluxSqlConstant.MAX)) {
             functionSql =
                 StringUtils.generateFunctionSql("max_value", function.getParmaName(), path);
           } else {

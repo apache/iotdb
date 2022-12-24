@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.protocol.influxdb.statement;
 
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
@@ -23,7 +24,7 @@ import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.mpp.plan.expression.multi.FunctionExpression;
 import org.apache.iotdb.db.mpp.plan.statement.component.ResultColumn;
 import org.apache.iotdb.db.mpp.plan.statement.component.SelectComponent;
-import org.apache.iotdb.db.protocol.influxdb.constant.InfluxSQLConstant;
+import org.apache.iotdb.db.protocol.influxdb.constant.InfluxSqlConstant;
 
 /** this class maintains information from select clause. */
 public final class InfluxSelectComponent extends SelectComponent {
@@ -44,14 +45,14 @@ public final class InfluxSelectComponent extends SelectComponent {
     Expression expression = resultColumn.getExpression();
     if (expression instanceof FunctionExpression) {
       String functionName = ((FunctionExpression) expression).getFunctionName();
-      if (InfluxSQLConstant.getNativeFunctionNames().contains(functionName.toLowerCase())) {
+      if (InfluxSqlConstant.getNativeFunctionNames().contains(functionName.toLowerCase())) {
         if (hasFunction) {
           hasMoreFunction = true;
         } else {
           hasFunction = true;
         }
       }
-      if (InfluxSQLConstant.getNativeSelectorFunctionNames().contains(functionName.toLowerCase())) {
+      if (InfluxSqlConstant.getNativeSelectorFunctionNames().contains(functionName.toLowerCase())) {
         if (hasSelectorFunction) {
           hasMoreSelectorFunction = true;
         } else {
@@ -60,7 +61,7 @@ public final class InfluxSelectComponent extends SelectComponent {
       } else {
         hasAggregationFunction = true;
       }
-      if (InfluxSQLConstant.getOnlyTraverseFunctionNames().contains(functionName.toLowerCase())) {
+      if (InfluxSqlConstant.getOnlyTraverseFunctionNames().contains(functionName.toLowerCase())) {
         hasOnlyTraverseFunction = true;
       }
     }

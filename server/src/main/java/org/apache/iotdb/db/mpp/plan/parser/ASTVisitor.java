@@ -31,7 +31,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.constant.SQLConstant;
+import org.apache.iotdb.db.constant.SqlConstant;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.mpp.plan.analyze.ExpressionAnalyzer;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
@@ -263,16 +263,11 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     }
 
     Map<String, String> props = new HashMap<>();
-    if (ctx.dataType != null) {
-      if (ctx.attributeKey() != null) {
-        if (!parseAttributeKey(ctx.attributeKey())
-            .equalsIgnoreCase(IoTDBConstant.COLUMN_TIMESERIES_DATATYPE)) {
-          throw new SemanticException("expecting datatype");
-        }
-      }
+    TSDataType dataType = parseDataTypeAttribute(ctx);
+    if (dataType != null) {
       props.put(
           IoTDBConstant.COLUMN_TIMESERIES_DATATYPE.toLowerCase(),
-          parseAttributeValue(ctx.dataType).toLowerCase());
+          dataType.toString().toLowerCase());
     }
     List<IoTDBSqlParser.AttributePairContext> attributePairs = ctx.attributePair();
     if (ctx.attributePair(0) != null) {
@@ -363,22 +358,8 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       createAlignedTimeSeriesStatement.addAliasList(null);
     }
 
-    TSDataType dataType = null;
-    if (ctx.dataType != null) {
-      if (ctx.attributeKey() != null) {
-        if (!parseAttributeKey(ctx.attributeKey())
-            .equalsIgnoreCase(IoTDBConstant.COLUMN_TIMESERIES_DATATYPE)) {
-          throw new SemanticException("expecting datatype");
-        }
-      }
-      String dataTypeString = ctx.dataType.getText().toUpperCase();
-      try {
-        dataType = TSDataType.valueOf(dataTypeString);
-        createAlignedTimeSeriesStatement.addDataType(dataType);
-      } catch (Exception e) {
-        throw new SemanticException(String.format("unsupported datatype: %s", dataTypeString));
-      }
-    }
+    TSDataType dataType = parseDataTypeAttribute(ctx);
+    createAlignedTimeSeriesStatement.addDataType(dataType);
 
     Map<String, String> props = new HashMap<>();
     if (ctx.attributePair() != null) {
@@ -554,7 +535,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     } else {
       showTimeSeriesStatement =
           new ShowTimeSeriesStatement(
-              new PartialPath(SQLConstant.getSingleRootArray()), orderByHeat);
+              new PartialPath(SqlConstant.getSingleRootArray()), orderByHeat);
     }
     if (ctx.tagWhereClause() != null) {
       parseTagWhereClause(ctx.tagWhereClause(), showTimeSeriesStatement);
@@ -608,7 +589,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     if (ctx.prefixPath() != null) {
       return new ShowStorageGroupStatement(parsePrefixPath(ctx.prefixPath()));
     } else {
-      return new ShowStorageGroupStatement(new PartialPath(SQLConstant.getSingleRootArray()));
+      return new ShowStorageGroupStatement(new PartialPath(SqlConstant.getSingleRootArray()));
     }
   }
 
@@ -621,7 +602,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       showDevicesStatement = new ShowDevicesStatement(parsePrefixPath(ctx.prefixPath()));
     } else {
       showDevicesStatement =
-          new ShowDevicesStatement(new PartialPath(SQLConstant.getSingleRootArray()));
+          new ShowDevicesStatement(new PartialPath(SqlConstant.getSingleRootArray()));
     }
     if (ctx.rowPaginationClause() != null) {
       if (ctx.rowPaginationClause().limitClause() != null) {
@@ -646,7 +627,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     if (ctx.prefixPath() != null) {
       path = parsePrefixPath(ctx.prefixPath());
     } else {
-      path = new PartialPath(SQLConstant.getSingleRootArray());
+      path = new PartialPath(SqlConstant.getSingleRootArray());
     }
     return new CountDevicesStatement(path);
   }
@@ -659,7 +640,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     if (ctx.prefixPath() != null) {
       path = parsePrefixPath(ctx.prefixPath());
     } else {
-      path = new PartialPath(SQLConstant.getSingleRootArray());
+      path = new PartialPath(SqlConstant.getSingleRootArray());
     }
     if (ctx.INTEGER_LITERAL() != null) {
       int level = Integer.parseInt(ctx.INTEGER_LITERAL().getText());
@@ -680,7 +661,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     if (ctx.prefixPath() != null) {
       path = parsePrefixPath(ctx.prefixPath());
     } else {
-      path = new PartialPath(SQLConstant.getSingleRootArray());
+      path = new PartialPath(SqlConstant.getSingleRootArray());
     }
     int level = Integer.parseInt(ctx.INTEGER_LITERAL().getText());
     return new CountNodesStatement(path, level);
@@ -693,7 +674,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     if (ctx.prefixPath() != null) {
       path = parsePrefixPath(ctx.prefixPath());
     } else {
-      path = new PartialPath(SQLConstant.getSingleRootArray());
+      path = new PartialPath(SqlConstant.getSingleRootArray());
     }
     return new CountStorageGroupStatement(path);
   }
@@ -808,7 +789,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     if (ctx.prefixPath() != null) {
       return new ShowChildPathsStatement(parsePrefixPath(ctx.prefixPath()));
     } else {
-      return new ShowChildPathsStatement(new PartialPath(SQLConstant.getSingleRootArray()));
+      return new ShowChildPathsStatement(new PartialPath(SqlConstant.getSingleRootArray()));
     }
   }
 
@@ -818,7 +799,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     if (ctx.prefixPath() != null) {
       return new ShowChildNodesStatement(parsePrefixPath(ctx.prefixPath()));
     } else {
-      return new ShowChildNodesStatement(new PartialPath(SQLConstant.getSingleRootArray()));
+      return new ShowChildNodesStatement(new PartialPath(SqlConstant.getSingleRootArray()));
     }
   }
 
@@ -1256,7 +1237,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     } else if (constantContext.dateExpression() != null) {
       return new LongLiteral(parseDateExpression(constantContext.dateExpression()));
     } else {
-      throw new SemanticException("Unsupported constant operand: " + text);
+      throw new SemanticException("Unsupported constant value in FILL: " + text);
     }
   }
 
@@ -1380,7 +1361,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
         if (insertMultiValues.size() != 1) {
           throw new SemanticException("need timestamps when insert multi rows");
         }
-        timestamp = parseDateFormat(SQLConstant.NOW_FUNC);
+        timestamp = parseDateFormat(SqlConstant.NOW_FUNC);
       }
       timeArray[i] = timestamp;
 
@@ -1596,7 +1577,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     if (timestampStr == null || "".equals(timestampStr.trim())) {
       throw new SemanticException("input timestamp cannot be empty");
     }
-    if (timestampStr.equalsIgnoreCase(SQLConstant.NOW_FUNC)) {
+    if (timestampStr.equalsIgnoreCase(SqlConstant.NOW_FUNC)) {
       return DateTimeUtils.currentTime();
     }
     try {
@@ -1615,7 +1596,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     if (timestampStr == null || "".equals(timestampStr.trim())) {
       throw new SemanticException("input timestamp cannot be empty");
     }
-    if (timestampStr.equalsIgnoreCase(SQLConstant.NOW_FUNC)) {
+    if (timestampStr.equalsIgnoreCase(SqlConstant.NOW_FUNC)) {
       return currentTime;
     }
     try {
@@ -2305,7 +2286,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     } else if (constantContext.dateExpression() != null) {
       return String.valueOf(parseDateExpression(constantContext.dateExpression()));
     } else {
-      throw new IllegalArgumentException("Unsupported constant operand: " + text);
+      throw new IllegalArgumentException("Unsupported constant value: " + text);
     }
   }
 
@@ -2654,22 +2635,8 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       throw new SemanticException("schema template: alias is not supported yet.");
     }
 
-    TSDataType dataType = null;
-    if (ctx.dataType != null) {
-      if (ctx.attributeKey() != null) {
-        if (!parseAttributeKey(ctx.attributeKey())
-            .equalsIgnoreCase(IoTDBConstant.COLUMN_TIMESERIES_DATATYPE)) {
-          throw new SemanticException("expecting datatype");
-        }
-      }
-      String dataTypeString = ctx.dataType.getText().toUpperCase();
-      try {
-        dataType = TSDataType.valueOf(dataTypeString);
-        dataTypes.add(dataType);
-      } catch (Exception e) {
-        throw new SemanticException(String.format("unsupported datatype: %s", dataTypeString));
-      }
-    }
+    TSDataType dataType = parseDataTypeAttribute(ctx);
+    dataTypes.add(dataType);
 
     Map<String, String> props = new HashMap<>();
     if (ctx.attributePair() != null) {
@@ -2734,6 +2701,25 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     }
   }
 
+  private TSDataType parseDataTypeAttribute(IoTDBSqlParser.AttributeClausesContext ctx) {
+    TSDataType dataType = null;
+    if (ctx.dataType != null) {
+      if (ctx.attributeKey() != null) {
+        if (!parseAttributeKey(ctx.attributeKey())
+            .equalsIgnoreCase(IoTDBConstant.COLUMN_TIMESERIES_DATATYPE)) {
+          throw new SemanticException("expecting datatype");
+        }
+      }
+      String dataTypeString = ctx.dataType.getText().toUpperCase();
+      try {
+        dataType = TSDataType.valueOf(dataTypeString);
+      } catch (Exception e) {
+        throw new SemanticException(String.format("unsupported datatype: %s", dataTypeString));
+      }
+    }
+    return dataType;
+  }
+
   @Override
   public Statement visitShowSchemaTemplates(IoTDBSqlParser.ShowSchemaTemplatesContext ctx) {
     return new ShowSchemaTemplateStatement();
@@ -2772,7 +2758,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       IoTDBSqlParser.ShowPathsUsingSchemaTemplateContext ctx) {
     PartialPath pathPattern;
     if (ctx.prefixPath() == null) {
-      pathPattern = new PartialPath(SQLConstant.getSingleRootArray());
+      pathPattern = new PartialPath(SqlConstant.getSingleRootArray());
     } else {
       pathPattern = parsePrefixPath(ctx.prefixPath());
     }
@@ -2828,7 +2814,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     if (expression instanceof TimeSeriesOperand) {
       return ((TimeSeriesOperand) expression).getPath();
     } else if (expression instanceof TimestampOperand) {
-      return SQLConstant.TIME_PATH;
+      return SqlConstant.TIME_PATH;
     } else {
       throw new IllegalArgumentException(
           "Unsupported expression type: " + expression.getExpressionType());
@@ -2837,32 +2823,34 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   private void parseSelectStatementForPipe(
       IoTDBSqlParser.SelectStatementContext ctx, CreatePipeStatement statement) {
+    final String UNSUPPORTED_CLAUSE_IN_PIPE = "Not support for this sql in pipe.";
+
     if (ctx.intoClause() != null
         || ctx.groupByClause() != null
         || ctx.havingClause() != null
         || ctx.fillClause() != null
         || ctx.paginationClause() != null
         || ctx.alignByClause() != null) {
-      throw new SemanticException("Not support for this sql in pipe.");
+      throw new SemanticException(UNSUPPORTED_CLAUSE_IN_PIPE);
     }
 
     // parse select
     IoTDBSqlParser.SelectClauseContext selectCtx = ctx.selectClause();
     if (selectCtx.LAST() != null || selectCtx.resultColumn().size() != 1) {
-      throw new SemanticException("Not support for this sql in pipe.");
+      throw new SemanticException(UNSUPPORTED_CLAUSE_IN_PIPE);
     }
     IoTDBSqlParser.ResultColumnContext resultColumnCtx = selectCtx.resultColumn(0);
     if (resultColumnCtx.AS() != null
         || !IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD.equals(
             resultColumnCtx.expression().getText())) {
-      throw new SemanticException("Not support for this sql in pipe.");
+      throw new SemanticException(UNSUPPORTED_CLAUSE_IN_PIPE);
     }
 
     // parse from
     IoTDBSqlParser.FromClauseContext fromCtx = ctx.fromClause();
     if (fromCtx.prefixPath().size() != 1
         || !IoTDBConstant.PATH_ROOT.equals(fromCtx.prefixPath(0).getText())) {
-      throw new SemanticException("Not support for this sql in pipe.");
+      throw new SemanticException(UNSUPPORTED_CLAUSE_IN_PIPE);
     }
 
     // parse where
@@ -2872,19 +2860,19 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
           parseExpression(whereCtx.expression(), whereCtx.expression().OPERATOR_NOT() == null);
       if (!((predicate instanceof GreaterThanExpression)
           || (predicate instanceof GreaterEqualExpression))) {
-        throw new SemanticException("Not support for this sql in pipe.");
+        throw new SemanticException(UNSUPPORTED_CLAUSE_IN_PIPE);
       }
       Expression left = ((BinaryExpression) predicate).getLeftExpression();
       Expression right = ((BinaryExpression) predicate).getRightExpression();
 
-      if (!SQLConstant.isReservedPath(parsePathFromExpression(left))) {
-        throw new SemanticException("Not support for this sql in pipe.");
+      if (!SqlConstant.isReservedPath(parsePathFromExpression(left))) {
+        throw new SemanticException(UNSUPPORTED_CLAUSE_IN_PIPE);
       }
       if (!(right instanceof ConstantOperand)) {
-        throw new SemanticException("Not support for this sql in pipe.");
+        throw new SemanticException(UNSUPPORTED_CLAUSE_IN_PIPE);
       }
       if (((ConstantOperand) right).getDataType() != TSDataType.INT64) {
-        throw new SemanticException("Not support for this sql in pipe.");
+        throw new SemanticException(UNSUPPORTED_CLAUSE_IN_PIPE);
       }
       long startTime = Long.parseLong(((ConstantOperand) right).getValueString());
       statement.setStartTime(startTime);

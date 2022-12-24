@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.mpp.plan.parser;
 
 import org.antlr.v4.runtime.BaseErrorListener;
@@ -29,9 +30,9 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 
-public class SQLParseError extends BaseErrorListener {
+public class SqlParseError extends BaseErrorListener {
 
-  public static final SQLParseError INSTANCE = new SQLParseError();
+  public static final SqlParseError INSTANCE = new SqlParseError();
 
   @Override
   public void syntaxError(
