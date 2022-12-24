@@ -77,10 +77,10 @@ import org.apache.iotdb.db.metadata.storagegroup.IStorageGroupSchemaManager;
 import org.apache.iotdb.db.metadata.storagegroup.StorageGroupSchemaManager;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.mpp.plan.constant.DataNodeEndPoints;
+import org.apache.iotdb.db.mpp.plan.statement.AuthorType;
 import org.apache.iotdb.db.mpp.plan.statement.sys.AuthorStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeSinkStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeStatement;
-import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
 import org.apache.iotdb.db.rescon.MemTableManager;
 import org.apache.iotdb.db.sync.SyncService;
 import org.apache.iotdb.db.utils.sync.SyncPipeUtil;
@@ -110,6 +110,7 @@ import java.util.stream.Collectors;
  * This class simulates the behaviour of configNode to manage the configs locally. The schema
  * configs include database and schema region. The data config is dataRegion.
  */
+@Deprecated
 public class LocalConfigNode {
 
   private static final Logger logger = LoggerFactory.getLogger(LocalConfigNode.class);
@@ -796,8 +797,7 @@ public class LocalConfigNode {
 
   // author
   public void operatorPermission(AuthorStatement authorStatement) throws AuthException {
-    AuthorOperator.AuthorType authorType =
-        AuthorOperator.AuthorType.values()[authorStatement.getAuthorType().ordinal()];
+    AuthorType authorType = AuthorType.values()[authorStatement.getAuthorType().ordinal()];
     String userName = authorStatement.getUserName();
     String roleName = authorStatement.getRoleName();
     String password = authorStatement.getPassWord();
@@ -865,8 +865,7 @@ public class LocalConfigNode {
 
   public Map<String, List<String>> queryPermission(AuthorStatement authorStatement)
       throws AuthException {
-    AuthorOperator.AuthorType authorType =
-        AuthorOperator.AuthorType.values()[authorStatement.getAuthorType().ordinal()];
+    AuthorType authorType = AuthorType.values()[authorStatement.getAuthorType().ordinal()];
     switch (authorType) {
       case LIST_USER:
         return executeListRoleUsers(authorStatement);

@@ -99,6 +99,9 @@ public class StubSinkHandle implements ISinkHandle {
     tsBlocks.clear();
   }
 
+  @Override
+  public void setMaxBytesCanReserve(long maxBytesCanReserve) {}
+
   public List<TsBlock> getTsBlocks() {
     return tsBlocks;
   }

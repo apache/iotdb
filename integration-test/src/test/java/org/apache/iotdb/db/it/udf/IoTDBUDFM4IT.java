@@ -70,10 +70,42 @@ public class IoTDBUDFM4IT {
   }
 
   @Test
+  public void test_M4_firstWindowEmpty() {
+    String[] res = new String[] {"120,8.0"};
+
+    String sql =
+        String.format(
+            "select M4(s1, '%s'='%s','%s'='%s','%s'='%s','%s'='%s') from root.vehicle.d1",
+            TIME_INTERVAL_KEY,
+            25,
+            SLIDING_STEP_KEY,
+            25,
+            DISPLAY_WINDOW_BEGIN_KEY,
+            75,
+            DISPLAY_WINDOW_END_KEY,
+            150);
+
+    try (Connection conn = EnvFactory.getEnv().getConnection();
+        Statement statement = conn.createStatement()) {
+      ResultSet resultSet = statement.executeQuery(sql);
+      int count = 0;
+      while (resultSet.next()) {
+        String str = resultSet.getString(1) + "," + resultSet.getString(2);
+        Assert.assertEquals(res[count], str);
+        count++;
+      }
+      Assert.assertEquals(res.length, count);
+    } catch (SQLException throwable) {
+      fail(throwable.getMessage());
+    }
+  }
+
+  @Test
   public void test_M4_slidingTimeWindow() {
     String[] res =
         new String[] {
-          "1,5.0", "10,30.0", "20,20.0", "25,8.0", "30,40.0", "45,30.0", "52,8.0", "54,18.0"
+          "1,5.0", "10,30.0", "20,20.0", "25,8.0", "30,40.0", "45,30.0", "52,8.0", "54,18.0",
+          "120,8.0"
         };
 
     String sql =
@@ -86,7 +118,7 @@ public class IoTDBUDFM4IT {
             DISPLAY_WINDOW_BEGIN_KEY,
             0,
             DISPLAY_WINDOW_END_KEY,
-            100);
+            150);
 
     try (Connection conn = EnvFactory.getEnv().getConnection();
         Statement statement = conn.createStatement()) {
@@ -105,8 +137,7 @@ public class IoTDBUDFM4IT {
 
   @Test
   public void test_M4_slidingSizeWindow() {
-    String[] res =
-        new String[] {"1,5.0", "30,40.0", "33,9.0", "35,10.0", "45,30.0", "52,8.0", "54,18.0"};
+    String[] res = new String[] {"1,5.0", "30,40.0", "33,9.0", "35,10.0", "45,30.0", "120,8.0"};
 
     String sql =
         String.format(
@@ -168,7 +199,7 @@ public class IoTDBUDFM4IT {
   public void test_EQUAL_SIZE_BUCKET_M4_SAMPLE() {
     String[] res =
         new String[] {
-          "1,5.0", "8,8.0", "10,30.0", "27,20.0", "30,40.0", "45,30.0", "52,8.0", "54,18.0"
+          "1,5.0", "8,8.0", "10,30.0", "27,20.0", "30,40.0", "45,30.0", "52,8.0", "120,8.0"
         };
 
     String sql = "select EQUAL_SIZE_BUCKET_M4_SAMPLE(s1,'proportion'='0.5') from root.vehicle.d1";
@@ -240,7 +271,6 @@ public class IoTDBUDFM4IT {
   private static void generateData() {
     // data:
     // https://user-images.githubusercontent.com/33376433/151985070-73158010-8ba0-409d-a1c1-df69bad1aaee.png
-    // NOTE: The last point (120,8) is commented out, because bug#7738 has not been fixed
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
@@ -249,8 +279,7 @@ public class IoTDBUDFM4IT {
       statement.execute(String.format(Locale.ENGLISH, insertTemplate, "s1", 20, 1));
       statement.execute(String.format(Locale.ENGLISH, insertTemplate, "s1", 25, 8));
       statement.execute(String.format(Locale.ENGLISH, insertTemplate, "s1", 54, 3));
-      //      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 120, 8)); // TODO add
-      // back after fixing bug#7738
+      statement.execute(String.format(Locale.ENGLISH, insertTemplate, "s1", 120, 8));
       statement.execute("FLUSH");
 
       statement.execute(String.format(Locale.ENGLISH, insertTemplate, "s1", 5, 10));

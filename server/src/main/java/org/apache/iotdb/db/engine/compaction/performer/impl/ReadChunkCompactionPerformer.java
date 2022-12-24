@@ -22,6 +22,7 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.TsFileMetricManager;
 import org.apache.iotdb.db.engine.compaction.inner.utils.AlignedSeriesCompactionExecutor;
 import org.apache.iotdb.db.engine.compaction.inner.utils.MultiTsFileDeviceIterator;
 import org.apache.iotdb.db.engine.compaction.inner.utils.SingleSeriesCompactionExecutor;
@@ -49,6 +50,7 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
   private TsFileResource targetResource;
   private List<TsFileResource> seqFiles;
   private CompactionTaskSummary summary;
+  private long tempFileSize = 0L;
 
   public ReadChunkCompactionPerformer(List<TsFileResource> sourceFiles, TsFileResource targetFile) {
     this.seqFiles = sourceFiles;
@@ -70,6 +72,7 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
             (SystemInfo.getInstance().getMemorySizeForCompaction()
                 / IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount()
                 * IoTDBDescriptor.getInstance().getConfig().getChunkMetadataSizeProportion());
+    TsFileMetricManager.getInstance().addCompactionTempFileNum(true, true, 1);
     try (MultiTsFileDeviceIterator deviceIterator = new MultiTsFileDeviceIterator(seqFiles);
         TsFileIOWriter writer =
             new TsFileIOWriter(targetResource.getTsFile(), true, sizeForFileWriter)) {
@@ -83,6 +86,11 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
         } else {
           compactNotAlignedSeries(device, targetResource, writer, deviceIterator);
         }
+        // update temporal file metrics
+        long newTempFileSize = writer.getPos();
+        TsFileMetricManager.getInstance()
+            .addCompactionTempFileSize(true, true, newTempFileSize - tempFileSize);
+        tempFileSize = newTempFileSize;
       }
 
       for (TsFileResource tsFileResource : seqFiles) {
@@ -90,6 +98,9 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
       }
       writer.endFile();
       targetResource.close();
+    } finally {
+      TsFileMetricManager.getInstance().addCompactionTempFileSize(true, true, -tempFileSize);
+      TsFileMetricManager.getInstance().addCompactionTempFileNum(true, true, -1);
     }
   }
 

@@ -49,6 +49,13 @@ public class FileMetrics implements IMetricSet {
   private long unsequenceFileTotalSize = 0L;
   private long unsequenceFileTotalCount = 0L;
 
+  private long innerSeqCompactionTempFileSize = 0L;
+  private long innerUnseqCompactionTempFileSize = 0L;
+  private long crossCompactionTempFileSize = 0L;
+  private long innerSeqCompactionTempFileNum = 0L;
+  private long innerUnseqCompactionTempFileNum = 0L;
+  private long crossCompactionTempFileNum = 0L;
+
   @Override
   public void bindTo(AbstractMetricService metricService) {
     metricService.createAutoGauge(
@@ -93,6 +100,48 @@ public class FileMetrics implements IMetricSet {
         FileMetrics::getUnsequenceFileTotalCount,
         Tag.NAME.toString(),
         "unseq");
+    metricService.createAutoGauge(
+        Metric.FILE_COUNT.toString(),
+        MetricLevel.IMPORTANT,
+        this,
+        FileMetrics::getInnerSeqCompactionTempFileNum,
+        Tag.NAME.toString(),
+        "inner-seq-temp-num");
+    metricService.createAutoGauge(
+        Metric.FILE_COUNT.toString(),
+        MetricLevel.IMPORTANT,
+        this,
+        FileMetrics::getInnerUnseqCompactionTempFileNum,
+        Tag.NAME.toString(),
+        "inner-unseq-temp-num");
+    metricService.createAutoGauge(
+        Metric.FILE_COUNT.toString(),
+        MetricLevel.IMPORTANT,
+        this,
+        FileMetrics::getCrossCompactionTempFileNum,
+        Tag.NAME.toString(),
+        "cross-temp-num");
+    metricService.createAutoGauge(
+        Metric.FILE_SIZE.toString(),
+        MetricLevel.IMPORTANT,
+        this,
+        FileMetrics::getInnerSeqCompactionTempFileSize,
+        Tag.NAME.toString(),
+        "inner-seq-temp-size");
+    metricService.createAutoGauge(
+        Metric.FILE_SIZE.toString(),
+        MetricLevel.IMPORTANT,
+        this,
+        FileMetrics::getInnerUnseqCompactionTempFileSize,
+        Tag.NAME.toString(),
+        "inner-unseq-temp-size");
+    metricService.createAutoGauge(
+        Metric.FILE_SIZE.toString(),
+        MetricLevel.IMPORTANT,
+        this,
+        FileMetrics::getCrossCompactionTempFileSize,
+        Tag.NAME.toString(),
+        "cross-temp-size");
 
     // finally start to update the value of some metrics in async way
     if (null == currentServiceFuture) {
@@ -128,6 +177,30 @@ public class FileMetrics implements IMetricSet {
         MetricType.AUTO_GAUGE, Metric.FILE_COUNT.toString(), Tag.NAME.toString(), "seq");
     metricService.remove(
         MetricType.AUTO_GAUGE, Metric.FILE_COUNT.toString(), Tag.NAME.toString(), "unseq");
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.FILE_COUNT.toString(),
+        Tag.NAME.toString(),
+        "inner-seq-temp-num");
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.FILE_COUNT.toString(),
+        Tag.NAME.toString(),
+        "inner-unseq-temp-num");
+    metricService.remove(
+        MetricType.AUTO_GAUGE, Metric.FILE_COUNT.toString(), Tag.NAME.toString(), "cross-temp-num");
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.FILE_SIZE.toString(),
+        Tag.NAME.toString(),
+        "inner-seq-temp-size");
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.FILE_SIZE.toString(),
+        Tag.NAME.toString(),
+        "inner-unseq-temp-size");
+    metricService.remove(
+        MetricType.AUTO_GAUGE, Metric.FILE_SIZE.toString(), Tag.NAME.toString(), "cross-temp-size");
   }
 
   private void collect() {
@@ -161,5 +234,29 @@ public class FileMetrics implements IMetricSet {
 
   public long getUnsequenceFileTotalCount() {
     return unsequenceFileTotalCount;
+  }
+
+  public long getInnerSeqCompactionTempFileSize() {
+    return innerSeqCompactionTempFileSize;
+  }
+
+  public long getInnerUnseqCompactionTempFileSize() {
+    return innerUnseqCompactionTempFileSize;
+  }
+
+  public long getCrossCompactionTempFileSize() {
+    return crossCompactionTempFileSize;
+  }
+
+  public long getInnerSeqCompactionTempFileNum() {
+    return innerSeqCompactionTempFileNum;
+  }
+
+  public long getInnerUnseqCompactionTempFileNum() {
+    return innerUnseqCompactionTempFileNum;
+  }
+
+  public long getCrossCompactionTempFileNum() {
+    return crossCompactionTempFileNum;
   }
 }

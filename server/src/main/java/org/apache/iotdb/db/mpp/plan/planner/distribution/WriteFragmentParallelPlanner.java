@@ -65,7 +65,9 @@ public class WriteFragmentParallelPlanner implements IFragmentParallelPlaner {
               queryContext.getQueryType(),
               queryContext.getTimeOut(),
               queryContext.getSession());
-      instance.setExecutorAndHost(new StorageExecutor(split.getRegionReplicaSet()));
+      if (split.getRegionReplicaSet() != null) {
+        instance.setExecutorAndHost(new StorageExecutor(split.getRegionReplicaSet()));
+      }
       ret.add(instance);
     }
     return ret;

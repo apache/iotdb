@@ -19,15 +19,15 @@
 package org.apache.iotdb.itbase.env;
 
 import org.apache.iotdb.confignode.rpc.thrift.IConfigNodeRPCService;
+import org.apache.iotdb.isession.ISession;
+import org.apache.iotdb.isession.SessionConfig;
+import org.apache.iotdb.isession.util.Version;
 import org.apache.iotdb.it.env.ConfigNodeWrapper;
 import org.apache.iotdb.it.env.DataNodeWrapper;
 import org.apache.iotdb.jdbc.Constant;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
-import org.apache.iotdb.session.ISession;
 import org.apache.iotdb.session.Session;
-import org.apache.iotdb.session.SessionConfig;
 import org.apache.iotdb.session.pool.SessionPool;
-import org.apache.iotdb.session.util.Version;
 
 import java.io.IOException;
 import java.sql.Connection;
@@ -195,11 +195,29 @@ public interface BaseEnv {
   /** Shutdown an existed ConfigNode */
   void shutdownConfigNode(int index);
 
-  /** @return The TDataNodeLocation of the specified DataNode */
+  /** @return The ConfigNodeWrapper of the specified index */
+  ConfigNodeWrapper getConfigNodeWrapper(int index);
+
+  /** @return The DataNodeWrapper of the specified indexx */
   DataNodeWrapper getDataNodeWrapper(int index);
 
-  /** Register a new DataNode */
-  void registerNewDataNode();
+  /** @return A random available ConfigNodeWrapper */
+  ConfigNodeWrapper generateRandomConfigNodeWrapper();
+
+  /** @return A random available ConfigNodeWrapper */
+  DataNodeWrapper generateRandomDataNodeWrapper();
+
+  /** Register a new DataNode with random ports */
+  void registerNewDataNode(boolean isNeedVerify);
+
+  /** Register a new ConfigNode with random ports */
+  void registerNewConfigNode(boolean isNeedVerify);
+
+  /** Register a new DataNode with specified DataNodeWrapper */
+  void registerNewDataNode(DataNodeWrapper newDataNodeWrapper, boolean isNeedVerify);
+
+  /** Register a new DataNode with specified ConfigNodeWrapper */
+  void registerNewConfigNode(ConfigNodeWrapper newConfigNodeWrapper, boolean isNeedVerify);
 
   /** Start an existed DataNode */
   void startDataNode(int index);
@@ -208,4 +226,14 @@ public interface BaseEnv {
   void shutdownDataNode(int index);
 
   int getMqttPort();
+
+  String getIP();
+
+  String getPort();
+
+  String getSbinPath();
+
+  String getToolsPath();
+
+  String getLibPath();
 }

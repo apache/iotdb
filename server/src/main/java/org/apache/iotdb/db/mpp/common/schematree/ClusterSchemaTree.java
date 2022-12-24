@@ -90,7 +90,6 @@ public class ClusterSchemaTree implements ISchemaTree {
     return new Pair<>(visitor.getAllResult(), visitor.getNextOffset());
   }
 
-  @Override
   public List<MeasurementPath> getAllMeasurement() {
     return searchMeasurementPaths(ALL_MATCH_PATTERN, 0, 0, false).left;
   }

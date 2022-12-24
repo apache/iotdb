@@ -33,6 +33,7 @@ public interface IMPPDataExchangeManager {
    * @param remoteEndpoint Hostname and Port of the remote fragment instance where the data blocks
    *     should be sent to.
    * @param remotePlanNodeId The sink plan node ID of the remote fragment instance.
+   * @param remotePlanNodeId The plan node ID of the local fragment instance.
    * @param instanceContext The context of local fragment instance.
    */
   ISinkHandle createSinkHandle(
@@ -40,6 +41,7 @@ public interface IMPPDataExchangeManager {
       TEndPoint remoteEndpoint,
       TFragmentInstanceId remoteFragmentInstanceId,
       String remotePlanNodeId,
+      String localPlanNodeId,
       FragmentInstanceContext instanceContext);
 
   ISinkHandle createLocalSinkHandle(

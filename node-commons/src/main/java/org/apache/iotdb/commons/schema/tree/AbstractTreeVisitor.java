@@ -20,18 +20,21 @@
 package org.apache.iotdb.commons.schema.tree;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.fa.IFAState;
+import org.apache.iotdb.commons.path.fa.IFATransition;
+import org.apache.iotdb.commons.path.fa.IPatternFA;
+import org.apache.iotdb.commons.path.fa.SimpleNFA;
+import org.apache.iotdb.commons.path.fa.match.IStateMatchInfo;
+import org.apache.iotdb.commons.path.fa.match.StateMultiMatchInfo;
+import org.apache.iotdb.commons.path.fa.match.StateSingleMatchInfo;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Deque;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.NoSuchElementException;
-import java.util.regex.Pattern;
-
-import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
-import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
 
 /**
  * This class defines a dfs-based algorithm of tree-traversing with path pattern match, and support
@@ -63,47 +66,57 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
 
   // command parameters
   protected final N root;
-  protected final String[] nodes;
-  protected final boolean isPrefixMatch;
+
+  // finite automation constructed from given path pattern or pattern tree
+  protected final IPatternFA patternFA;
 
   // run time variables
-  protected final Deque<VisitorStackEntry<N>> visitorStack = new ArrayDeque<>();
-  protected final Deque<AncestorStackEntry<N>> ancestorStack = new ArrayDeque<>();
-  protected boolean shouldVisitSubtree;
+  // stack to store children iterator of visited ancestor
+  private final Deque<VisitorStackEntry> visitorStack = new ArrayDeque<>();
+  // stack to store ancestor nodes and their FA state match info
+  private final List<AncestorStackEntry> ancestorStack = new ArrayList<>();
+  // the FA match process can traceback since this ancestor in ancestor stack
+  // this field will be updated during iterating children in all subclass of
+  // AbstractChildrenIterator
+  private int firstAncestorOfTraceback = -1;
+  // the FA state match info of current node
+  // this field will be updated during iterating children in all subclass of
+  // AbstractChildrenIterator
+  private IStateMatchInfo currentStateMatchInfo;
+  // whether to visit the subtree of current node
+  private boolean shouldVisitSubtree;
 
-  // result variables
+  // cached result variables
   protected N nextMatchedNode;
-  protected int patternIndexOfMatchedNode;
-  protected int lastMultiLevelWildcardIndexOfMatchedNode;
 
   protected AbstractTreeVisitor(N root, PartialPath pathPattern, boolean isPrefixMatch) {
     this.root = root;
-    this.nodes = optimizePathPattern(pathPattern);
-    this.isPrefixMatch = isPrefixMatch;
 
-    visitorStack.push(
-        new VisitorStackEntry<>(Collections.singletonList(root).iterator(), 0, 0, -1));
+    this.patternFA = new SimpleNFA(pathPattern, isPrefixMatch);
+
+    initStack();
   }
 
-  /**
-   * Optimize the given path pattern. Currently, the node name used for one level match will be
-   * transformed into a regex. e.g. given pathPattern {"root", "sg", "d*", "s"} and the
-   * optimizedPathPattern is {"root", "sg", "d.*", "s"}.
-   */
-  private String[] optimizePathPattern(PartialPath pathPattern) {
-    String[] rawNodes = pathPattern.getNodes();
-    List<String> optimizedNodes = new ArrayList<>(rawNodes.length);
-    for (String rawNode : rawNodes) {
-      if (rawNode.equals(MULTI_LEVEL_PATH_WILDCARD)) {
-        optimizedNodes.add(MULTI_LEVEL_PATH_WILDCARD);
-      } else if (rawNode.contains(ONE_LEVEL_PATH_WILDCARD)) {
-        optimizedNodes.add(rawNode.replace("*", ".*"));
-      } else {
-        optimizedNodes.add(rawNode);
-      }
+  private void initStack() {
+    IFAState initialState = patternFA.getInitialState();
+    IFATransition transition =
+        patternFA.getPreciseMatchTransition(initialState).get(root.getName());
+    if (transition == null) {
+      // the visitor stack will be empty and the result of hasNext() will be false
+      return;
     }
+    IFAState rootState = patternFA.getNextState(initialState, transition);
+    currentStateMatchInfo = new StateSingleMatchInfo(patternFA, rootState);
+    visitorStack.push(new VisitorStackEntry(createChildrenIterator(root), 1));
+    ancestorStack.add(new AncestorStackEntry(root, currentStateMatchInfo));
+  }
 
-    return optimizedNodes.toArray(new String[0]);
+  public void reset() {
+    visitorStack.clear();
+    ancestorStack.clear();
+    nextMatchedNode = null;
+    firstAncestorOfTraceback = -1;
+    initStack();
   }
 
   @Override
@@ -119,52 +132,16 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
     if (!hasNext()) {
       throw new NoSuchElementException();
     }
-    return consumeNextMatchedNode();
-  }
-
-  private R consumeNextMatchedNode() {
     R result = generateResult();
-
-    // after the node be consumed, the subTree should be considered.
-    if (patternIndexOfMatchedNode == nodes.length) {
-      pushChildrenWhilePrefixMatch(
-          nextMatchedNode, patternIndexOfMatchedNode, lastMultiLevelWildcardIndexOfMatchedNode);
-    } else if (patternIndexOfMatchedNode == nodes.length - 1) {
-      pushChildrenWhileTail(
-          nextMatchedNode, patternIndexOfMatchedNode, lastMultiLevelWildcardIndexOfMatchedNode);
-    } else {
-      pushChildrenWhileInternal(
-          nextMatchedNode, patternIndexOfMatchedNode, lastMultiLevelWildcardIndexOfMatchedNode);
-    }
-
     nextMatchedNode = null;
     return result;
   }
 
-  /**
-   * Basically, the algorithm traverse the tree with dfs strategy. When it comes to push children
-   * into stack, the path pattern will be used to filter the children.
-   *
-   * <p>When there's MULTI_LEVEL_WILDCARD in given path pattern. There are the following notices:
-   *
-   * <ol>
-   *   <li>When it comes to push children into stack and there's MULTI_LEVEL_WILDCARD before the
-   *       current patternIndex, all the children will be pushed.
-   *   <li>When a node cannot match the target node name in the patternIndex place and there's
-   *       MULTI_LEVEL_WILDCARD before the current patternIndex, the node names between the current
-   *       patternIndex and lastMultiLevelWildcardIndex will be checked until the partial path end
-   *       with current node can match one. The children will be pushed with the matched index + 1.
-   * </ol>
-   *
-   * <p>Each node and fullPath of the tree will be traversed at most once.
-   */
   protected void getNext() {
     nextMatchedNode = null;
-    VisitorStackEntry<N> stackEntry;
-    int patternIndex;
+    VisitorStackEntry stackEntry;
     N node;
     Iterator<N> iterator;
-    int lastMultiLevelWildcardIndex;
     while (!visitorStack.isEmpty()) {
       stackEntry = visitorStack.peek();
       iterator = stackEntry.iterator;
@@ -175,135 +152,47 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
       }
 
       node = iterator.next();
-      patternIndex = stackEntry.patternIndex;
-      lastMultiLevelWildcardIndex = stackEntry.lastMultiLevelWildcardIndex;
 
-      // only prefixMatch
-      if (patternIndex == nodes.length) {
-
-        shouldVisitSubtree = processFullMatchedNode(node) && isInternalNode(node);
-
-        if (nextMatchedNode != null) {
-          saveNextMatchedNodeContext(patternIndex, lastMultiLevelWildcardIndex);
-          return;
-        }
-
-        if (shouldVisitSubtree) {
-          pushChildrenWhilePrefixMatch(node, patternIndex, lastMultiLevelWildcardIndex);
-        }
-
-        continue;
-      }
-
-      if (checkIsMatch(patternIndex, node)) {
-        if (patternIndex == nodes.length - 1) {
-          shouldVisitSubtree = processFullMatchedNode(node) && isInternalNode(node);
-
-          if (nextMatchedNode != null) {
-            saveNextMatchedNodeContext(patternIndex, lastMultiLevelWildcardIndex);
-            return;
-          }
-
-          if (shouldVisitSubtree) {
-            pushChildrenWhileTail(node, patternIndex, lastMultiLevelWildcardIndex);
-          }
-        } else {
-          shouldVisitSubtree = processInternalMatchedNode(node) && isInternalNode(node);
-
-          if (nextMatchedNode != null) {
-            saveNextMatchedNodeContext(patternIndex, lastMultiLevelWildcardIndex);
-            return;
-          }
-
-          if (shouldVisitSubtree) {
-            pushChildrenWhileInternal(node, patternIndex, lastMultiLevelWildcardIndex);
-          }
-        }
+      if (currentStateMatchInfo.hasFinalState()) {
+        shouldVisitSubtree = processFullMatchedNode(node);
       } else {
-        if (lastMultiLevelWildcardIndex == -1) {
-          continue;
-        }
+        shouldVisitSubtree = processInternalMatchedNode(node);
+      }
 
-        int lastMatchIndex = findLastMatch(node, patternIndex, lastMultiLevelWildcardIndex);
+      if (shouldVisitSubtree) {
+        pushChildren(node);
+      }
 
-        shouldVisitSubtree = processInternalMatchedNode(node) && isInternalNode(node);
-
-        if (nextMatchedNode != null) {
-          saveNextMatchedNodeContext(lastMatchIndex, lastMultiLevelWildcardIndex);
-          return;
-        }
-
-        if (shouldVisitSubtree) {
-          pushChildrenWhileInternal(node, lastMatchIndex, lastMultiLevelWildcardIndex);
-        }
+      if (nextMatchedNode != null) {
+        return;
       }
     }
   }
 
-  /**
-   * The context, mainly the matching info, of nextedMatchedNode should be saved. When the
-   * nextedMatchedNode is consumed, the saved info will be used to process its subtree.
-   */
-  private void saveNextMatchedNodeContext(
-      int patternIndexOfMatchedNode, int lastMultiLevelWildcardIndexOfMatchedNode) {
-    this.patternIndexOfMatchedNode = patternIndexOfMatchedNode;
-    this.lastMultiLevelWildcardIndexOfMatchedNode = lastMultiLevelWildcardIndexOfMatchedNode;
-  }
-
-  /**
-   * When current node cannot match the pattern node in nodes[patternIndex] and there is ** before
-   * current pattern node, the pattern nodes before current pattern node should be checked. For
-   * example, given path root.sg.d.s and path pattern root.**.s. A status, root.sg.d not match
-   * root.**.s, may be reached during traversing process, then it should be checked and found that
-   * root.sg.d could match root.**, after which the process could continue and find root.sg.d.s
-   * matches root.**.s.
-   */
-  private int findLastMatch(N node, int patternIndex, int lastMultiLevelWildcardIndex) {
-    for (int i = patternIndex - 1; i > lastMultiLevelWildcardIndex; i--) {
-      if (!checkIsMatch(i, node)) {
-        continue;
-      }
-
-      Iterator<AncestorStackEntry<N>> ancestors = ancestorStack.iterator();
-      boolean allMatch = true;
-      AncestorStackEntry<N> ancestor;
-      for (int j = i - 1; j > lastMultiLevelWildcardIndex; j--) {
-        ancestor = ancestors.next();
-        if (ancestor.isMatched(j)) {
-          break;
-        }
-
-        if (ancestor.hasBeenChecked(j) || !checkIsMatch(j, ancestor.node)) {
-          ancestors = ancestorStack.iterator();
-          for (int k = i - 1; k >= j; k--) {
-            ancestors.next().setNotMatched(k);
-          }
-          allMatch = false;
-          break;
-        }
-      }
-
-      if (allMatch) {
-        ancestors = ancestorStack.iterator();
-        for (int k = i - 1; k > lastMultiLevelWildcardIndex; k--) {
-          ancestor = ancestors.next();
-          if (ancestor.isMatched(k)) {
-            break;
-          }
-          ancestor.setMatched(k);
-        }
-        return i;
-      }
-    }
-    return lastMultiLevelWildcardIndex;
-  }
-
-  public void reset() {
-    visitorStack.clear();
-    ancestorStack.clear();
-    nextMatchedNode = null;
+  private void pushChildren(N parent) {
     visitorStack.push(
-        new VisitorStackEntry<>(Collections.singletonList(root).iterator(), 0, 0, -1));
+        new VisitorStackEntry(createChildrenIterator(parent), visitorStack.peek().level + 1));
+    ancestorStack.add(new AncestorStackEntry(parent, currentStateMatchInfo));
+  }
+
+  private Iterator<N> createChildrenIterator(N parent) {
+    if (firstAncestorOfTraceback > -1) {
+      // there may be traceback when try to find the matched state of node
+      return new TraceBackChildrenIterator(parent, currentStateMatchInfo);
+    } else if (currentStateMatchInfo.hasOnlyPreciseMatchTransition()) {
+      // the child can be got directly with the precise value of transition
+      return new PreciseMatchChildrenIterator(parent, currentStateMatchInfo.getOneMatchedState());
+    } else if (currentStateMatchInfo.hasNoPreciseMatchTransition()
+        && currentStateMatchInfo.isSingleFuzzyMatchTransition()) {
+      // only one transition which may match batch children, need to iterate and check all child
+      return new SingleFuzzyMatchChildrenIterator(
+          parent, currentStateMatchInfo.getOneMatchedState());
+    } else {
+      // child may be matched by multi transitions, precise match or fuzzy match,
+      // which results in one child match multi state; need to iterate and check all child
+      return new MultiMatchTransitionChildrenIterator(
+          parent, currentStateMatchInfo.getOneMatchedState());
+    }
   }
 
   private void popStack() {
@@ -311,151 +200,34 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
     // The ancestor pop operation with level check supports the children of one node pushed by
     // batch.
     if (!visitorStack.isEmpty() && visitorStack.peek().level < ancestorStack.size()) {
-      ancestorStack.pop();
-    }
-  }
-
-  /**
-   * This method is invoked to decide how to push children of given node. Invoked only when
-   * patternIndex == nodes.length.
-   *
-   * @param node the current processed node
-   * @param patternIndex the patternIndex for the given node
-   * @param lastMultiLevelWildcardIndex the lastMultiLevelWildcardIndex of the given node
-   */
-  private void pushChildrenWhilePrefixMatch(
-      N node, int patternIndex, int lastMultiLevelWildcardIndex) {
-    pushAllChildren(node, patternIndex, lastMultiLevelWildcardIndex);
-  }
-
-  /**
-   * This method is invoked to decide how to push children of given node. Invoked only when
-   * patternIndex == nodes.length - 1.
-   *
-   * @param node the current processed node
-   * @param patternIndex the patternIndex for the given node
-   * @param lastMultiLevelWildcardIndex the lastMultiLevelWildcardIndex of the given node
-   */
-  private void pushChildrenWhileTail(N node, int patternIndex, int lastMultiLevelWildcardIndex) {
-    if (nodes[patternIndex].equals(MULTI_LEVEL_PATH_WILDCARD)) {
-      pushAllChildren(node, patternIndex, patternIndex);
-    } else if (lastMultiLevelWildcardIndex != -1) {
-      pushAllChildren(
-          node,
-          findLastMatch(node, patternIndex, lastMultiLevelWildcardIndex) + 1,
-          lastMultiLevelWildcardIndex);
-    } else if (isPrefixMatch) {
-      pushAllChildren(node, patternIndex + 1, lastMultiLevelWildcardIndex);
-    }
-  }
-
-  /**
-   * This method is invoked to decide how to push children of given node. Invoked only when
-   * patternIndex < nodes.length - 1.
-   *
-   * @param node the current processed node
-   * @param patternIndex the patternIndex for the given node
-   * @param lastMultiLevelWildcardIndex the lastMultiLevelWildcardIndex of the given node
-   */
-  private void pushChildrenWhileInternal(
-      N node, int patternIndex, int lastMultiLevelWildcardIndex) {
-    if (nodes[patternIndex + 1].equals(MULTI_LEVEL_PATH_WILDCARD)) {
-      pushAllChildren(node, patternIndex + 1, patternIndex + 1);
-    } else {
-      if (lastMultiLevelWildcardIndex > -1) {
-        pushAllChildren(node, patternIndex + 1, lastMultiLevelWildcardIndex);
-      } else if (nodes[patternIndex + 1].contains(ONE_LEVEL_PATH_WILDCARD)) {
-        pushAllChildren(node, patternIndex + 1, lastMultiLevelWildcardIndex);
-      } else {
-        pushSingleChild(node, patternIndex + 1, lastMultiLevelWildcardIndex);
+      ancestorStack.remove(ancestorStack.size() - 1);
+      if (ancestorStack.size() <= firstAncestorOfTraceback) {
+        firstAncestorOfTraceback = -1;
       }
     }
   }
 
-  /**
-   * Push child for name match case.
-   *
-   * @param parent the parent node of target children
-   * @param patternIndex the patternIndex to match children
-   * @param lastMultiLevelWildcardIndex the lastMultiLevelWildcardIndex of child
-   */
-  protected void pushSingleChild(N parent, int patternIndex, int lastMultiLevelWildcardIndex) {
-    N child = getChild(parent, nodes[patternIndex]);
-    if (child != null) {
-      ancestorStack.push(
-          new AncestorStackEntry<>(
-              parent,
-              visitorStack.peek().patternIndex,
-              visitorStack.peek().lastMultiLevelWildcardIndex));
-      visitorStack.push(
-          new VisitorStackEntry<>(
-              Collections.singletonList(child).iterator(),
-              patternIndex,
-              ancestorStack.size(),
-              lastMultiLevelWildcardIndex));
-    }
-  }
-
-  /**
-   * Push children for the following cases:
-   *
-   * <ol>
-   *   <li>the pattern to match children is **, multiLevelWildcard
-   *   <li>the pattern to match children contains *, oneLevelWildcard
-   *   <li>there's ** before the patternIndex for children
-   * </ol>
-   *
-   * @param parent the parent node of target children
-   * @param patternIndex the patternIndex to match children
-   * @param lastMultiLevelWildcardIndex the lastMultiLevelWildcardIndex of child
-   */
-  protected void pushAllChildren(N parent, int patternIndex, int lastMultiLevelWildcardIndex) {
-    ancestorStack.push(
-        new AncestorStackEntry<>(
-            parent,
-            visitorStack.peek().patternIndex,
-            visitorStack.peek().lastMultiLevelWildcardIndex));
-    visitorStack.push(
-        new VisitorStackEntry<>(
-            getChildrenIterator(parent),
-            patternIndex,
-            ancestorStack.size(),
-            lastMultiLevelWildcardIndex));
-  }
-
-  protected boolean checkIsMatch(int patternIndex, N node) {
-    if (nodes[patternIndex].equals(MULTI_LEVEL_PATH_WILDCARD)) {
-      return true;
-    } else if (nodes[patternIndex].contains(ONE_LEVEL_PATH_WILDCARD)) {
-      return checkOneLevelWildcardMatch(nodes[patternIndex], node);
-    } else {
-      return checkNameMatch(nodes[patternIndex], node);
-    }
-  }
-
-  protected boolean checkOneLevelWildcardMatch(String regex, N node) {
-    return Pattern.matches(regex, node.getName());
-  }
-
-  protected boolean checkNameMatch(String targetName, N node) {
-    return targetName.equals(node.getName());
-  }
-
-  protected String[] generateFullPathNodes(N node) {
+  protected final String[] generateFullPathNodes() {
     List<String> nodeNames = new ArrayList<>();
-    Iterator<AncestorStackEntry<N>> iterator = ancestorStack.descendingIterator();
-    while (iterator.hasNext()) {
-      nodeNames.add(iterator.next().node.getName());
+    Iterator<AncestorStackEntry> iterator = ancestorStack.iterator();
+    for (int i = 0, size = shouldVisitSubtree ? ancestorStack.size() - 1 : ancestorStack.size();
+        i < size;
+        i++) {
+      if (iterator.hasNext()) {
+        nodeNames.add(iterator.next().node.getName());
+      }
     }
-    nodeNames.add(node.getName());
+    nodeNames.add(nextMatchedNode.getName());
     return nodeNames.toArray(new String[0]);
   }
 
-  /**
-   * Check whether the given node is an internal node of this tree. Return true if the given node is
-   * an internal node. Return false if the given node is a leaf node.
-   */
-  protected abstract boolean isInternalNode(N node);
+  protected final N getParentOfNextMatchedNode() {
+    if (shouldVisitSubtree) {
+      return ancestorStack.get(ancestorStack.size() - 2).node;
+    } else {
+      return ancestorStack.get(ancestorStack.size() - 1).node;
+    }
+  }
 
   // Get a child with the given childName.
   protected abstract N getChild(N parent, String childName);
@@ -487,54 +259,384 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
   /** The method used for generating the result based on the matched node. */
   protected abstract R generateResult();
 
-  protected static class VisitorStackEntry<N> {
+  private class VisitorStackEntry {
 
+    // children iterator
     private final Iterator<N> iterator;
-    private final int patternIndex;
-    private final int level;
-    private final int lastMultiLevelWildcardIndex;
 
-    VisitorStackEntry(
-        Iterator<N> iterator, int patternIndex, int level, int lastMultiLevelWildcardIndex) {
+    // level of children taken from iterator
+    private final int level;
+
+    VisitorStackEntry(Iterator<N> iterator, int level) {
       this.iterator = iterator;
-      this.patternIndex = patternIndex;
       this.level = level;
-      this.lastMultiLevelWildcardIndex = lastMultiLevelWildcardIndex;
     }
   }
 
-  protected static class AncestorStackEntry<N> {
+  private class AncestorStackEntry {
     private final N node;
-    private final int matchedIndex;
-    /** Record the check result to reduce repeating check. */
-    private final byte[] matchStatus;
 
-    AncestorStackEntry(N node, int matchedIndex, int lastMultiLevelWildcardIndex) {
+    private final IStateMatchInfo stateMatchInfo;
+
+    AncestorStackEntry(N node, IStateMatchInfo stateMatchInfo) {
       this.node = node;
-      this.matchedIndex = matchedIndex;
-      matchStatus = new byte[matchedIndex - lastMultiLevelWildcardIndex + 1];
-      matchStatus[0] = 1;
-      matchStatus[matchStatus.length - 1] = 1;
+      this.stateMatchInfo = stateMatchInfo;
+    }
+  }
+
+  // implement common iterating logic of different children iterator
+  private abstract class AbstractChildrenIterator implements Iterator<N> {
+
+    private N nextMatchedChild;
+
+    @Override
+    public boolean hasNext() {
+      if (nextMatchedChild == null) {
+        getNext();
+      }
+      return nextMatchedChild != null;
     }
 
-    public N getNode() {
-      return node;
+    @Override
+    public N next() {
+      if (!hasNext()) {
+        throw new NoSuchElementException();
+      }
+      N result = nextMatchedChild;
+      nextMatchedChild = null;
+      return result;
     }
 
-    boolean hasBeenChecked(int index) {
-      return matchStatus[matchedIndex - index] != 0;
+    protected final void saveResult(N child, IStateMatchInfo stateMatchInfo) {
+      nextMatchedChild = child;
+      currentStateMatchInfo = stateMatchInfo;
     }
 
-    boolean isMatched(int index) {
-      return matchStatus[matchedIndex - index] == 1;
+    protected abstract void getNext();
+  }
+
+  // the child can be got directly with the precise value of transition, there's no traceback
+  private class PreciseMatchChildrenIterator extends AbstractChildrenIterator {
+    private final N parent;
+    private final IFAState sourceState;
+
+    private final Iterator<IFATransition> transitionIterator;
+
+    private PreciseMatchChildrenIterator(N parent, IFAState sourceState) {
+      this.parent = parent;
+      this.sourceState = sourceState;
+      transitionIterator = patternFA.getPreciseMatchTransitionIterator(sourceState);
     }
 
-    void setMatched(int index) {
-      matchStatus[matchedIndex - index] = 1;
+    @Override
+    protected void getNext() {
+      N child;
+      IFATransition transition;
+      while (transitionIterator.hasNext()) {
+        transition = transitionIterator.next();
+        child = getChild(parent, transition.getValue());
+        if (child == null) {
+          continue;
+        }
+        saveResult(
+            child,
+            new StateSingleMatchInfo(patternFA, patternFA.getNextState(sourceState, transition)));
+        return;
+      }
+    }
+  }
+
+  // only one fuzzy transition which may match batch children, need to iterate and check all
+  // children,
+  // there's no traceback
+  private class SingleFuzzyMatchChildrenIterator extends AbstractChildrenIterator {
+
+    private final IFAState sourceState;
+
+    private final IFATransition transition;
+
+    private final StateSingleMatchInfo stateMatchInfo;
+
+    private final Iterator<N> childrenIterator;
+
+    private SingleFuzzyMatchChildrenIterator(N parent, IFAState sourceState) {
+      this.sourceState = sourceState;
+      this.transition = patternFA.getFuzzyMatchTransitionIterator(sourceState).next();
+      this.stateMatchInfo =
+          new StateSingleMatchInfo(patternFA, patternFA.getNextState(sourceState, transition));
+      this.childrenIterator = getChildrenIterator(parent);
     }
 
-    void setNotMatched(int index) {
-      matchStatus[matchedIndex - index] = -1;
+    @Override
+    protected void getNext() {
+      N child;
+      while (childrenIterator.hasNext()) {
+        child = childrenIterator.next();
+        if (tryGetNextState(child, sourceState, transition) == null) {
+          continue;
+        }
+        saveResult(child, stateMatchInfo);
+        return;
+      }
+    }
+  }
+
+  // child may be matched by multi transitions, precise match or fuzzy match,
+  // which results in one child match multi state; need to iterate and check all child.
+  // the iterating process will try to get the first matched state of a child, and if there are some
+  // rest transitions, there may be traceback when checking the descendents
+  private class MultiMatchTransitionChildrenIterator extends AbstractChildrenIterator {
+
+    private final IFAState sourceState;
+
+    private final Map<String, IFATransition> preciseMatchTransitionMap;
+
+    private final Iterator<N> iterator;
+
+    private MultiMatchTransitionChildrenIterator(N parent, IFAState sourceState) {
+      this.sourceState = sourceState;
+      this.iterator = getChildrenIterator(parent);
+      this.preciseMatchTransitionMap = patternFA.getPreciseMatchTransition(sourceState);
+    }
+
+    @Override
+    protected void getNext() {
+      N child;
+
+      IFAState matchedState = null;
+      Iterator<IFATransition> transitionIterator;
+      IStateMatchInfo stateMatchInfo;
+      while (iterator.hasNext()) {
+        child = iterator.next();
+
+        if (!preciseMatchTransitionMap.isEmpty()) {
+          matchedState = tryGetNextState(child, sourceState, preciseMatchTransitionMap);
+        }
+
+        transitionIterator = patternFA.getFuzzyMatchTransitionIterator(sourceState);
+        if (matchedState == null) {
+          while (transitionIterator.hasNext()) {
+            matchedState = tryGetNextState(child, sourceState, transitionIterator.next());
+            if (matchedState != null) {
+              break;
+            }
+          }
+          if (matchedState == null) {
+            continue;
+          }
+        }
+
+        if (transitionIterator.hasNext()) {
+          stateMatchInfo = new StateMultiMatchInfo(patternFA, matchedState, transitionIterator);
+          firstAncestorOfTraceback = ancestorStack.size();
+        } else {
+          stateMatchInfo = new StateSingleMatchInfo(patternFA, matchedState);
+        }
+        saveResult(child, stateMatchInfo);
+        return;
+      }
+    }
+  }
+
+  // there may be traceback when try to find the matched state of node;
+  // the iterating process will try to get the first matched state of a child.
+  private class TraceBackChildrenIterator extends AbstractChildrenIterator {
+
+    private final Iterator<N> iterator;
+
+    private final IStateMatchInfo sourceStateMatchInfo;
+
+    TraceBackChildrenIterator(N parent, IStateMatchInfo sourceStateMatchInfo) {
+      this.sourceStateMatchInfo = sourceStateMatchInfo;
+      this.iterator = getChildrenIterator(parent);
+    }
+
+    @Override
+    protected void getNext() {
+      N child;
+
+      IFAState sourceState;
+
+      IStateMatchInfo stateMatchInfo;
+      Iterator<IFATransition> transitionIterator;
+
+      while (iterator.hasNext()) {
+
+        child = iterator.next();
+
+        stateMatchInfo = new StateMultiMatchInfo(patternFA);
+        for (int i = 0; i < sourceStateMatchInfo.getMatchedStateSize(); i++) {
+          sourceState = sourceStateMatchInfo.getMatchedState(i);
+          transitionIterator = tryGetNextMatchedState(child, sourceState, stateMatchInfo);
+          if (stateMatchInfo.getMatchedStateSize() > 0) {
+            stateMatchInfo.setSourceStateOrdinal(i);
+            stateMatchInfo.setSourceTransitionIterator(transitionIterator);
+            break;
+          }
+        }
+
+        if (stateMatchInfo.getMatchedStateSize() == 0) {
+          traceback(child, stateMatchInfo, sourceStateMatchInfo.getMatchedStateSize() - 1);
+          if (stateMatchInfo.getMatchedStateSize() == 0) {
+            continue;
+          }
+        }
+
+        saveResult(child, stateMatchInfo);
+        return;
+      }
+    }
+
+    /**
+     * Try to get next matched state from sourceState and add it into currentStateMatchInfo
+     *
+     * @param child child node to match
+     * @param sourceState source state
+     * @param currentStateMatchInfo currentStateMatchInfo
+     * @return iterator of rest transitions
+     */
+    private Iterator<IFATransition> tryGetNextMatchedState(
+        N child, IFAState sourceState, IStateMatchInfo currentStateMatchInfo) {
+      Map<String, IFATransition> preciseMatchTransitionMap =
+          patternFA.getPreciseMatchTransition(sourceState);
+
+      IFAState matchedState;
+      if (!preciseMatchTransitionMap.isEmpty()) {
+        matchedState = tryGetNextState(child, sourceState, preciseMatchTransitionMap);
+        if (matchedState != null) {
+          currentStateMatchInfo.addMatchedState(matchedState);
+          return patternFA.getFuzzyMatchTransitionIterator(sourceState);
+        }
+      }
+
+      Iterator<IFATransition> transitionIterator =
+          patternFA.getFuzzyMatchTransitionIterator(sourceState);
+      while (transitionIterator.hasNext()) {
+        matchedState = tryGetNextState(child, sourceState, transitionIterator.next());
+        if (matchedState != null) {
+          currentStateMatchInfo.addMatchedState(matchedState);
+          return transitionIterator;
+        }
+      }
+      return transitionIterator;
+    }
+
+    private void traceback(N node, IStateMatchInfo stateMatchInfo, int checkedSourceStateOrdinal) {
+      IStateMatchInfo parentStateMatchInfo;
+
+      N currentNode;
+      IStateMatchInfo currentStateMatchInfo;
+
+      int sourceStateOrdinal;
+      IFAState sourceState;
+      Iterator<IFATransition> transitionIterator = null;
+
+      int matchedStateSize;
+      IFAState matchedState;
+
+      int currentNodeIndex;
+      for (int i = ancestorStack.size() - 1; i >= firstAncestorOfTraceback; i--) {
+        parentStateMatchInfo = ancestorStack.get(i - 1).stateMatchInfo;
+        currentStateMatchInfo = ancestorStack.get(i).stateMatchInfo;
+
+        // there's no state not further searched
+        if (currentStateMatchInfo.getSourceStateOrdinal()
+            == parentStateMatchInfo.getMatchedStateSize()) {
+          continue;
+        }
+
+        // there's some state not further searched, process them in order
+        currentNodeIndex = i;
+        while (currentNodeIndex >= i) {
+          parentStateMatchInfo = ancestorStack.get(currentNodeIndex - 1).stateMatchInfo;
+
+          if (currentNodeIndex == ancestorStack.size()) {
+            currentNode = node;
+            currentStateMatchInfo = stateMatchInfo;
+          } else {
+            currentNode = ancestorStack.get(currentNodeIndex).node;
+            currentStateMatchInfo = ancestorStack.get(currentNodeIndex).stateMatchInfo;
+          }
+
+          matchedState = null;
+          if (currentNode == node) {
+            sourceStateOrdinal = checkedSourceStateOrdinal;
+          } else {
+            sourceStateOrdinal = currentStateMatchInfo.getSourceStateOrdinal();
+            if (sourceStateOrdinal == parentStateMatchInfo.getMatchedStateSize()) {
+              currentNodeIndex--;
+              continue;
+            }
+            // there may be some states could be matched from transition of current source state
+            sourceState = parentStateMatchInfo.getMatchedState(sourceStateOrdinal);
+            transitionIterator = currentStateMatchInfo.getSourceTransitionIterator();
+            while (transitionIterator.hasNext()) {
+              matchedState = tryGetNextState(currentNode, sourceState, transitionIterator.next());
+              if (matchedState != null) {
+                break;
+              }
+            }
+          }
+
+          if (matchedState == null) {
+            while (++sourceStateOrdinal < parentStateMatchInfo.getMatchedStateSize()) {
+              sourceState = parentStateMatchInfo.getMatchedState(sourceStateOrdinal);
+              matchedStateSize = currentStateMatchInfo.getMatchedStateSize();
+              transitionIterator =
+                  tryGetNextMatchedState(currentNode, sourceState, currentStateMatchInfo);
+              // change of matchedStateSize means currentNode there is transition from sourceState
+              // matching currentNode
+              if (matchedStateSize != currentStateMatchInfo.getMatchedStateSize()) {
+                matchedState = currentStateMatchInfo.getMatchedState(matchedStateSize);
+                currentStateMatchInfo.setSourceStateOrdinal(sourceStateOrdinal);
+                currentStateMatchInfo.setSourceTransitionIterator(transitionIterator);
+                break;
+              }
+            }
+            if (matchedState == null) {
+              currentStateMatchInfo.setSourceStateOrdinal(sourceStateOrdinal - 1);
+              currentStateMatchInfo.setSourceTransitionIterator(transitionIterator);
+              currentNodeIndex--;
+              continue;
+            }
+          }
+
+          currentStateMatchInfo.addMatchedState(matchedState);
+
+          if (currentNode == node) {
+            return;
+          } else {
+            currentNodeIndex++;
+          }
+        }
+      }
+    }
+  }
+
+  // the match process of FA graph is a dfs on FA Graph
+
+  // a tmp way to process alias of measurement node, which may results in multi event when checking
+  // the transition;
+  // fortunately, the measurement node only match the final state, which means there won't be any
+  // multi transition and traceback judge
+  protected IFAState tryGetNextState(
+      N node, IFAState sourceState, Map<String, IFATransition> preciseMatchTransitionMap) {
+    IFATransition transition = preciseMatchTransitionMap.get(node.getName());
+    if (transition == null) {
+      return null;
+    }
+    return patternFA.getNextState(sourceState, transition);
+  }
+
+  // a tmp way to process alias of measurement node, which may results in multi event when checking
+  // the transition;
+  // fortunately, the measurement node only match the final state, which means there won't be any
+  // multi transition and traceback judge
+  protected IFAState tryGetNextState(N node, IFAState sourceState, IFATransition transition) {
+    if (transition.isMatch(node.getName())) {
+      return patternFA.getNextState(sourceState, transition);
+    } else {
+      return null;
     }
   }
 }

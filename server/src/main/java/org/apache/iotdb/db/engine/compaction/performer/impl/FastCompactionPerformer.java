@@ -22,6 +22,7 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.TsFileMetricManager;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.compaction.CompactionUtils;
 import org.apache.iotdb.db.engine.compaction.cross.rewrite.task.FastCompactionPerformerSubTask;
@@ -84,6 +85,8 @@ public class FastCompactionPerformer
 
   private boolean isCrossCompaction;
 
+  private long tempFileSize = 0L;
+
   public FastCompactionPerformer(
       List<TsFileResource> seqFiles,
       List<TsFileResource> unseqFiles,
@@ -106,6 +109,8 @@ public class FastCompactionPerformer
   @Override
   public void perform()
       throws IOException, MetadataException, StorageEngineException, InterruptedException {
+    TsFileMetricManager.getInstance()
+        .addCompactionTempFileNum(!isCrossCompaction, seqFiles.size() > 0, targetFiles.size());
     try (MultiTsFileDeviceIterator deviceIterator =
             new MultiTsFileDeviceIterator(seqFiles, unseqFiles, readerCacheMap);
         AbstractCompactionWriter compactionWriter =
@@ -117,7 +122,6 @@ public class FastCompactionPerformer
         Pair<String, Boolean> deviceInfo = deviceIterator.nextDevice();
         String device = deviceInfo.left;
         boolean isAligned = deviceInfo.right;
-
         // sort the resources by the start time of current device from old to new, and remove
         // resource that does not contain the current device. Notice: when the level of time index
         // is file, there will be a false positive judgment problem, that is, the device does not
@@ -138,6 +142,12 @@ public class FastCompactionPerformer
         compactionWriter.endChunkGroup();
         // check whether to flush chunk metadata or not
         compactionWriter.checkAndMayFlushChunkMetadata();
+        // Add temp file metrics
+        long currentTempFileSize = compactionWriter.getWriterSize();
+        TsFileMetricManager.getInstance()
+            .addCompactionTempFileSize(
+                !isCrossCompaction, seqFiles.size() > 0, currentTempFileSize - tempFileSize);
+        tempFileSize = currentTempFileSize;
         sortedSourceFiles.clear();
       }
       compactionWriter.endFile();
@@ -150,6 +160,10 @@ public class FastCompactionPerformer
       sortedSourceFiles = null;
       readerCacheMap = null;
       modificationCache = null;
+      TsFileMetricManager.getInstance()
+          .addCompactionTempFileNum(!isCrossCompaction, seqFiles.size() > 0, -targetFiles.size());
+      TsFileMetricManager.getInstance()
+          .addCompactionTempFileSize(!isCrossCompaction, seqFiles.size() > 0, -tempFileSize);
     }
   }
 

@@ -82,6 +82,8 @@ public class DataRegionConsensusImpl {
                                       .setThriftServerAwaitTimeForStopService(
                                           conf.getThriftServerAwaitTimeForStopService())
                                       .setThriftMaxFrameSize(conf.getThriftMaxFrameSize())
+                                      .setMaxConnectionForInternalService(
+                                          conf.getMaxConnectionForInternalService())
                                       .build())
                               .setReplication(
                                   IoTConsensusConfig.Replication.newBuilder()
@@ -148,7 +150,7 @@ public class DataRegionConsensusImpl {
                                           conf.getDataRatisConsensusLogAppenderBufferSizeMax())
                                       .build())
                               .setRatisConsensus(
-                                  RatisConfig.RatisConsensus.newBuilder()
+                                  RatisConfig.Impl.newBuilder()
                                       .setClientRequestTimeoutMillis(
                                           conf.getDataRatisConsensusRequestTimeoutMs())
                                       .setClientMaxRetryAttempt(

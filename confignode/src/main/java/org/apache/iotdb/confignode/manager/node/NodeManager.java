@@ -31,7 +31,6 @@ import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
-import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.confignode.client.async.AsyncConfigNodeHeartbeatClientPool;
 import org.apache.iotdb.confignode.client.async.AsyncDataNodeClientPool;
@@ -48,6 +47,7 @@ import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConf
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RegisterDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RemoveDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.UpdateDataNodePlan;
+import org.apache.iotdb.confignode.consensus.response.ConfigurationResp;
 import org.apache.iotdb.confignode.consensus.response.DataNodeConfigurationResp;
 import org.apache.iotdb.confignode.consensus.response.DataNodeRegisterResp;
 import org.apache.iotdb.confignode.consensus.response.DataNodeToStatusResp;
@@ -55,6 +55,8 @@ import org.apache.iotdb.confignode.manager.ClusterSchemaManager;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.ConsensusManager;
 import org.apache.iotdb.confignode.manager.IManager;
+import org.apache.iotdb.confignode.manager.TriggerManager;
+import org.apache.iotdb.confignode.manager.UDFManager;
 import org.apache.iotdb.confignode.manager.load.LoadManager;
 import org.apache.iotdb.confignode.manager.node.heartbeat.BaseNodeCache;
 import org.apache.iotdb.confignode.manager.node.heartbeat.ConfigNodeHeartbeatCache;
@@ -67,13 +69,16 @@ import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeInfo;
+import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRestartResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGlobalConfig;
 import org.apache.iotdb.confignode.rpc.thrift.TRatisConfig;
+import org.apache.iotdb.confignode.rpc.thrift.TRuntimeConfiguration;
 import org.apache.iotdb.confignode.rpc.thrift.TSetDataNodeStatusReq;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.response.ConsensusGenericResponse;
 import org.apache.iotdb.mpp.rpc.thrift.THeartbeatReq;
+import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
@@ -108,9 +113,6 @@ public class NodeManager {
   private static final long UNKNOWN_DATANODE_DETECT_INTERVAL =
       CONF.getUnknownDataNodeDetectInterval();
 
-  // when fail to register a new node, set node id to -1
-  private static final int ERROR_STATUS_NODE_ID = -1;
-
   private final IManager configManager;
   private final NodeInfo nodeInfo;
 
@@ -144,7 +146,21 @@ public class NodeManager {
     this.random = new Random(System.currentTimeMillis());
   }
 
-  private void setGlobalConfig(DataNodeRegisterResp dataSet) {
+  /**
+   * Get system configurations
+   *
+   * @return ConfigurationResp. The TSStatus will be set to SUCCESS_STATUS.
+   */
+  public DataSet getSystemConfiguration() {
+    ConfigurationResp dataSet = new ConfigurationResp();
+    dataSet.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
+    setGlobalConfig(dataSet);
+    setRatisConfig(dataSet);
+    setCQConfig(dataSet);
+    return dataSet;
+  }
+
+  private void setGlobalConfig(ConfigurationResp dataSet) {
     // Set TGlobalConfig
     final ConfigNodeConfig configNodeConfig = ConfigNodeDescriptor.getInstance().getConf();
     final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
@@ -162,7 +178,7 @@ public class NodeManager {
     dataSet.setGlobalConfig(globalConfig);
   }
 
-  private void setRatisConfig(DataNodeRegisterResp dataSet) {
+  private void setRatisConfig(ConfigurationResp dataSet) {
     final ConfigNodeConfig conf = ConfigNodeDescriptor.getInstance().getConf();
     TRatisConfig ratisConfig = new TRatisConfig();
 
@@ -215,12 +231,32 @@ public class NodeManager {
     dataSet.setRatisConfig(ratisConfig);
   }
 
-  private void setCQConfig(DataNodeRegisterResp dataSet) {
+  private void setCQConfig(ConfigurationResp dataSet) {
     final ConfigNodeConfig conf = ConfigNodeDescriptor.getInstance().getConf();
     TCQConfig cqConfig = new TCQConfig();
     cqConfig.setCqMinEveryIntervalInMs(conf.getCqMinEveryIntervalInMs());
 
     dataSet.setCqConfig(cqConfig);
+  }
+
+  private TRuntimeConfiguration getRuntimeConfiguration() {
+    getTriggerManager().getTriggerInfo().acquireTriggerTableLock();
+    getUDFManager().getUdfInfo().acquireUDFTableLock();
+
+    try {
+      TRuntimeConfiguration runtimeConfiguration = new TRuntimeConfiguration();
+      runtimeConfiguration.setTemplateInfo(getClusterSchemaManager().getAllTemplateSetInfo());
+      runtimeConfiguration.setAllTriggerInformation(
+          getTriggerManager().getTriggerTable(false).getAllTriggerInformation());
+      runtimeConfiguration.setAllUDFInformation(
+          getUDFManager().getUDFTable().getAllUDFInformation());
+      runtimeConfiguration.setAllTTLInformation(
+          DataNodeRegisterResp.convertAllTTLInformation(getClusterSchemaManager().getAllTTLInfo()));
+      return runtimeConfiguration;
+    } finally {
+      getTriggerManager().getTriggerInfo().releaseTriggerTableLock();
+      getUDFManager().getUdfInfo().releaseUDFTableLock();
+    }
   }
 
   /**
@@ -231,40 +267,34 @@ public class NodeManager {
    *     success, and DATANODE_ALREADY_REGISTERED when the DataNode is already exist.
    */
   public DataSet registerDataNode(RegisterDataNodePlan registerDataNodePlan) {
-    DataNodeRegisterResp dataSet = new DataNodeRegisterResp();
-    TSStatus status = new TSStatus();
+    DataNodeRegisterResp resp = new DataNodeRegisterResp();
 
-    if (nodeInfo.isRegisteredDataNode(
-        registerDataNodePlan.getDataNodeConfiguration().getLocation())) {
-      status.setCode(TSStatusCode.DATANODE_ALREADY_REGISTERED.getStatusCode());
-      status.setMessage("DataNode already registered.");
-    } else if (registerDataNodePlan.getDataNodeConfiguration().getLocation().getDataNodeId() < 0) {
-      // Generating a new dataNodeId only when current DataNode doesn't exist yet
-      registerDataNodePlan
-          .getDataNodeConfiguration()
-          .getLocation()
-          .setDataNodeId(nodeInfo.generateNextNodeId());
-      getConsensusManager().write(registerDataNodePlan);
+    // Register new DataNode
+    registerDataNodePlan
+        .getDataNodeConfiguration()
+        .getLocation()
+        .setDataNodeId(nodeInfo.generateNextNodeId());
+    getConsensusManager().write(registerDataNodePlan);
 
-      // Adjust the maximum RegionGroup number of each StorageGroup
-      getClusterSchemaManager().adjustMaxRegionGroupNum();
+    // Adjust the maximum RegionGroup number of each StorageGroup
+    getClusterSchemaManager().adjustMaxRegionGroupNum();
 
-      status.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-      status.setMessage("registerDataNode success.");
-    } else {
-      status.setCode(TSStatusCode.REGISTER_DATANODE_WITH_WRONG_ID.getStatusCode());
-      status.setMessage(
-          "Cannot register datanode with wrong id. Maybe it's already removed, or it has another datanode's run-time properties.");
-    }
-
-    dataSet.setStatus(status);
-    dataSet.setDataNodeId(
+    resp.setStatus(ClusterNodeStartUtils.ACCEPT_NODE_REGISTRATION);
+    resp.setConfigNodeList(getRegisteredConfigNodes());
+    resp.setClusterName(CONF.getClusterName());
+    resp.setDataNodeId(
         registerDataNodePlan.getDataNodeConfiguration().getLocation().getDataNodeId());
-    dataSet.setConfigNodeList(getRegisteredConfigNodes());
-    setGlobalConfig(dataSet);
-    setRatisConfig(dataSet);
-    setCQConfig(dataSet);
-    return dataSet;
+    resp.setRuntimeConfiguration(getRuntimeConfiguration());
+    return resp;
+  }
+
+  public TDataNodeRestartResp restartDataNode(TDataNodeLocation dataNodeLocation) {
+    // TODO: @Itami-Sho update peer if necessary
+    TDataNodeRestartResp resp = new TDataNodeRestartResp();
+    resp.setStatus(ClusterNodeStartUtils.ACCEPT_NODE_RESTART);
+    resp.setConfigNodeList(getRegisteredConfigNodes());
+    resp.setRuntimeConfiguration(getRuntimeConfiguration());
+    return resp;
   }
 
   /**
@@ -356,41 +386,22 @@ public class NodeManager {
     dataSet.setStatus(status);
     dataSet.setDataNodeId(updateDataNodePlan.getDataNodeLocation().getDataNodeId());
     dataSet.setConfigNodeList(getRegisteredConfigNodes());
-    setGlobalConfig(dataSet);
-    setRatisConfig(dataSet);
     return dataSet;
   }
 
   public TConfigNodeRegisterResp registerConfigNode(TConfigNodeRegisterReq req) {
-    if (configManager.getConsensusManager() == null) {
-      TSStatus errorStatus = new TSStatus(TSStatusCode.CONSENSUS_NOT_INITIALIZED.getStatusCode());
-      errorStatus.setMessage(
-          "ConsensusManager of target-ConfigNode is not initialized, "
-              + "please make sure the target-ConfigNode has been started successfully.");
-      return new TConfigNodeRegisterResp()
-          .setStatus(errorStatus)
-          .setConfigNodeId(ERROR_STATUS_NODE_ID);
-    }
+    int nodeId = nodeInfo.generateNextNodeId();
+    req.getConfigNodeLocation().setConfigNodeId(nodeId);
+    configManager.getProcedureManager().addConfigNode(req);
+    return new TConfigNodeRegisterResp()
+        .setStatus(ClusterNodeStartUtils.ACCEPT_NODE_REGISTRATION)
+        .setClusterName(CONF.getClusterName())
+        .setConfigNodeId(nodeId);
+  }
 
-    // Check global configuration
-    TSStatus status = configManager.getConsensusManager().confirmLeader();
-
-    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      TSStatus errorStatus = configManager.checkConfigNodeGlobalConfig(req);
-      if (errorStatus != null) {
-        return new TConfigNodeRegisterResp()
-            .setStatus(errorStatus)
-            .setConfigNodeId(ERROR_STATUS_NODE_ID);
-      }
-
-      int nodeId = nodeInfo.generateNextNodeId();
-      req.getConfigNodeLocation().setConfigNodeId(nodeId);
-
-      configManager.getProcedureManager().addConfigNode(req);
-      return new TConfigNodeRegisterResp().setStatus(StatusUtils.OK).setConfigNodeId(nodeId);
-    }
-
-    return new TConfigNodeRegisterResp().setStatus(status).setConfigNodeId(ERROR_STATUS_NODE_ID);
+  public TSStatus restartConfigNode(TConfigNodeLocation configNodeLocation) {
+    // TODO: @Itami-Sho, update peer if necessary
+    return ClusterNodeStartUtils.ACCEPT_NODE_RESTART;
   }
 
   /**
@@ -1028,5 +1039,13 @@ public class NodeManager {
 
   private LoadManager getLoadManager() {
     return configManager.getLoadManager();
+  }
+
+  private TriggerManager getTriggerManager() {
+    return configManager.getTriggerManager();
+  }
+
+  private UDFManager getUDFManager() {
+    return configManager.getUDFManager();
   }
 }

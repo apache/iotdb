@@ -191,8 +191,8 @@ class RatisConsensus implements IConsensus {
   private RaftClientReply writeWithRetry(CheckedSupplier<RaftClientReply, IOException> caller)
       throws IOException {
 
-    final int maxRetryTimes = config.getRatisConsensus().getRetryTimesMax();
-    final long waitMillis = config.getRatisConsensus().getRetryWaitMillis();
+    final int maxRetryTimes = config.getImpl().getRetryTimesMax();
+    final long waitMillis = config.getImpl().getRetryWaitMillis();
 
     int retry = 0;
     RaftClientReply reply = null;
@@ -701,7 +701,7 @@ class RatisConsensus implements IConsensus {
 
       final long currentDirLength =
           calcMap.computeIfAbsent(currentDir, MemorizedFileSizeCalc::new).getTotalFolderSize();
-      final long triggerSnapshotFileSize = config.getRatisConsensus().getTriggerSnapshotFileSize();
+      final long triggerSnapshotFileSize = config.getImpl().getTriggerSnapshotFileSize();
 
       if (currentDirLength >= triggerSnapshotFileSize) {
         ConsensusGenericResponse consensusGenericResponse =
@@ -716,7 +716,7 @@ class RatisConsensus implements IConsensus {
   }
 
   private void startSnapshotGuardian() {
-    final long delay = config.getRatisConsensus().getTriggerSnapshotTime();
+    final long delay = config.getImpl().getTriggerSnapshotTime();
     ScheduledExecutorUtil.safelyScheduleWithFixedDelay(
         diskGuardian, this::triggerSnapshotByCustomize, 0, delay, TimeUnit.SECONDS);
   }
@@ -817,7 +817,7 @@ class RatisConsensus implements IConsensus {
               new ClientFactoryProperty.Builder().build(),
               properties,
               clientRpc,
-              MemoizedSupplier.valueOf(() -> config.getRatisConsensus())),
+              MemoizedSupplier.valueOf(() -> config.getImpl())),
           new ClientPoolProperty.Builder<RatisClient>().build().getConfig());
     }
   }

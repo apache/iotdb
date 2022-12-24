@@ -19,7 +19,7 @@
 package org.apache.iotdb.db.metadata.tagSchemaRegion.utils;
 
 import org.apache.iotdb.db.metadata.idtable.entry.SchemaEntry;
-import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
+import org.apache.iotdb.db.metadata.plan.schemaregion.result.ShowTimeSeriesResult;
 
 import java.util.HashMap;
 
@@ -44,7 +44,6 @@ public class ShowTimeSeriesResultUtils {
         schemaEntry.getTSDataType(),
         schemaEntry.getTSEncoding(),
         schemaEntry.getCompressionType(),
-        Long.MAX_VALUE,
         new HashMap<>(),
         new HashMap<>(),
         null,
@@ -68,7 +67,6 @@ public class ShowTimeSeriesResultUtils {
         schemaEntry.getTSDataType(),
         schemaEntry.getTSEncoding(),
         schemaEntry.getCompressionType(),
-        Long.MAX_VALUE,
         new HashMap<>(),
         new HashMap<>(),
         null,
