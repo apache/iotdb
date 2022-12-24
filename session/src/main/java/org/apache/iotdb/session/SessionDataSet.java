@@ -18,6 +18,9 @@
  */
 package org.apache.iotdb.session;
 
+import org.apache.iotdb.isession.Config;
+import org.apache.iotdb.isession.IDataIterator;
+import org.apache.iotdb.isession.ISessionDataSet;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.IoTDBRpcDataSet;
 import org.apache.iotdb.rpc.StatementExecutionException;

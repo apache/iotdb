@@ -16,15 +16,15 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.session;
+package org.apache.iotdb.isession;
 
+import org.apache.iotdb.isession.template.Template;
+import org.apache.iotdb.isession.util.SystemStatus;
+import org.apache.iotdb.isession.util.Version;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.service.rpc.thrift.TSBackupConfigurationResp;
 import org.apache.iotdb.service.rpc.thrift.TSConnectionInfoResp;
-import org.apache.iotdb.session.template.Template;
-import org.apache.iotdb.session.util.SystemStatus;
-import org.apache.iotdb.session.util.Version;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -113,22 +113,22 @@ public interface ISession {
 
   long getQueryTimeout();
 
-  SessionDataSet executeQueryStatement(String sql)
+  ISessionDataSet executeQueryStatement(String sql)
       throws StatementExecutionException, IoTDBConnectionException;
 
-  SessionDataSet executeQueryStatement(String sql, long timeoutInMs)
+  ISessionDataSet executeQueryStatement(String sql, long timeoutInMs)
       throws StatementExecutionException, IoTDBConnectionException;
 
   void executeNonQueryStatement(String sql)
       throws IoTDBConnectionException, StatementExecutionException;
 
-  SessionDataSet executeRawDataQuery(List<String> paths, long startTime, long endTime)
+  ISessionDataSet executeRawDataQuery(List<String> paths, long startTime, long endTime)
       throws StatementExecutionException, IoTDBConnectionException;
 
-  SessionDataSet executeLastDataQuery(List<String> paths, long LastTime)
+  ISessionDataSet executeLastDataQuery(List<String> paths, long LastTime)
       throws StatementExecutionException, IoTDBConnectionException;
 
-  SessionDataSet executeLastDataQuery(List<String> paths)
+  ISessionDataSet executeLastDataQuery(List<String> paths)
       throws StatementExecutionException, IoTDBConnectionException;
 
   void insertRecord(

@@ -16,40 +16,36 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.session.template;
+package org.apache.iotdb.isession.pool;
 
+import org.apache.iotdb.isession.IDataIterator;
+import org.apache.iotdb.isession.ISession;
+import org.apache.iotdb.isession.ISessionDataSet;
+import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
+import org.apache.iotdb.tsfile.read.common.RowRecord;
 
-import java.io.IOException;
-import java.io.OutputStream;
-import java.util.Map;
+import java.util.List;
 
-public abstract class TemplateNode {
-  private String name;
+public interface ISessionDataSetWrapper extends AutoCloseable {
 
-  public TemplateNode(String name) {
-    this.name = name;
-  }
+  ISession getSession();
 
-  public String getName() {
-    return this.name;
-  }
+  int getBatchSize();
 
-  public Map<String, TemplateNode> getChildren() {
-    return null;
-  }
+  void setBatchSize(int batchSize);
 
-  public void addChild(TemplateNode node) throws StatementExecutionException {}
+  boolean hasNext() throws IoTDBConnectionException, StatementExecutionException;
 
-  public void deleteChild(TemplateNode node) {}
+  RowRecord next() throws IoTDBConnectionException, StatementExecutionException;
 
-  public boolean isMeasurement() {
-    return false;
-  }
+  IDataIterator iterator();
 
-  public boolean isShareTime() {
-    return false;
-  }
+  List<String> getColumnNames();
 
-  public void serialize(OutputStream buffer) throws IOException {}
+  List<String> getColumnTypes();
+
+  void close();
+
+  ISessionDataSet getSessionDataSet();
 }

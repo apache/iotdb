@@ -16,45 +16,40 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.session.template;
+package org.apache.iotdb.isession.template;
 
-import org.apache.iotdb.isession.template.TemplateNode;
 import org.apache.iotdb.rpc.StatementExecutionException;
 
-import java.util.HashMap;
+import java.io.IOException;
+import java.io.OutputStream;
 import java.util.Map;
 
-public class InternalNode extends TemplateNode {
-  private Map<String, TemplateNode> children;
-  private boolean shareTime;
+public abstract class TemplateNode {
+  private String name;
 
-  public InternalNode(String name, boolean shareTime) {
-    super(name);
-    this.children = new HashMap<>();
-    this.shareTime = shareTime;
+  public TemplateNode(String name) {
+    this.name = name;
   }
 
-  @Override
-  public void addChild(TemplateNode node) throws StatementExecutionException {
-    if (children.containsKey(node.getName())) {
-      throw new StatementExecutionException("Duplicated child of node in template.");
-    }
-    this.children.put(node.getName(), node);
-  }
-
-  @Override
-  public void deleteChild(TemplateNode node) {
-    if (children.containsKey(node.getName())) {
-      children.remove(node.getName());
-    }
+  public String getName() {
+    return this.name;
   }
 
   public Map<String, TemplateNode> getChildren() {
-    return children;
+    return null;
   }
 
-  @Override
-  public boolean isShareTime() {
-    return shareTime;
+  public void addChild(TemplateNode node) throws StatementExecutionException {}
+
+  public void deleteChild(TemplateNode node) {}
+
+  public boolean isMeasurement() {
+    return false;
   }
+
+  public boolean isShareTime() {
+    return false;
+  }
+
+  public void serialize(OutputStream buffer) throws IOException {}
 }

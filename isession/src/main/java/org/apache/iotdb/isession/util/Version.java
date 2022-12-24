@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -16,29 +16,10 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.session;
 
-import org.apache.iotdb.rpc.IoTDBConnectionException;
-import org.apache.iotdb.rpc.StatementExecutionException;
-import org.apache.iotdb.tsfile.read.common.RowRecord;
+package org.apache.iotdb.isession.util;
 
-import java.util.List;
-
-public interface ISessionDataSet extends AutoCloseable {
-
-  int getFetchSize();
-
-  void setFetchSize(int fetchSize);
-
-  List<String> getColumnNames();
-
-  List<String> getColumnTypes();
-
-  boolean hasNext() throws StatementExecutionException, IoTDBConnectionException;
-
-  RowRecord next() throws StatementExecutionException, IoTDBConnectionException;
-
-  void closeOperationHandle() throws StatementExecutionException, IoTDBConnectionException;
-
-  IDataIterator iterator();
+public enum Version {
+  V_0_12,
+  V_0_13
 }
