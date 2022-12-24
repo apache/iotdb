@@ -62,7 +62,7 @@ public class ConfigNode implements ConfigNodeMBean {
 
   private static final int STARTUP_RETRY_NUM = 10;
   private static final int SCHEDULE_WAITING_RETRY_NUM = 20;
-  private static final long STARTUP_RETRY_INTERVAL_IN_MS = TimeUnit.SECONDS.toMillis(3);
+  private static final long STARTUP_RETRY_INTERVAL_IN_MS = TimeUnit.SECONDS.toMillis(5);
 
   private static final int SEED_CONFIG_NODE_ID = 0;
 
