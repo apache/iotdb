@@ -19,6 +19,11 @@
 package org.apache.iotdb.session;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.isession.ISession;
+import org.apache.iotdb.isession.SessionConfig;
+import org.apache.iotdb.isession.SessionDataSet;
+import org.apache.iotdb.isession.template.Template;
+import org.apache.iotdb.isession.util.Version;
 import org.apache.iotdb.rpc.BatchExecutionException;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.NoValidValueException;
@@ -48,11 +53,9 @@ import org.apache.iotdb.service.rpc.thrift.TSQueryTemplateResp;
 import org.apache.iotdb.service.rpc.thrift.TSSetSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSUnsetSchemaTemplateReq;
 import org.apache.iotdb.session.template.MeasurementNode;
-import org.apache.iotdb.session.template.Template;
 import org.apache.iotdb.session.template.TemplateQueryType;
 import org.apache.iotdb.session.util.SessionUtils;
 import org.apache.iotdb.session.util.ThreadUtils;
-import org.apache.iotdb.session.util.Version;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -420,7 +423,6 @@ public class Session implements ISession {
     }
   }
 
-  @Override
   public SessionConnection constructSessionConnection(
       Session session, TEndPoint endpoint, ZoneId zoneId) throws IoTDBConnectionException {
     if (endpoint == null) {
@@ -668,10 +670,12 @@ public class Session implements ISession {
     return defaultSessionConnection.checkTimeseriesExists(path, queryTimeoutInMs);
   }
 
+  @Override
   public void setQueryTimeout(long timeoutInMs) {
     this.queryTimeoutInMs = timeoutInMs;
   }
 
+  @Override
   public long getQueryTimeout() {
     return queryTimeoutInMs;
   }
