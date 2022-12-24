@@ -52,7 +52,7 @@ import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.utils.EncodingInferenceUtils.getDefaultEncoding;
 
-public class AutoCreateSchemaExecutor {
+class AutoCreateSchemaExecutor {
 
   private final ITemplateManager templateManager;
   private final Function<Statement, ExecutionResult> statementExecutor;
