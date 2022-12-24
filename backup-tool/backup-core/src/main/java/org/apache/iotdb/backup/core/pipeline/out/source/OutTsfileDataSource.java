@@ -24,6 +24,7 @@ import org.apache.iotdb.backup.core.model.TimeseriesModel;
 import org.apache.iotdb.backup.core.pipeline.PipeSource;
 import org.apache.iotdb.backup.core.service.ExportPipelineService;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
+import org.apache.iotdb.tsfile.write.schema.Schema;
 
 import org.apache.commons.lang3.tuple.Pair;
 import org.slf4j.Logger;
@@ -50,6 +51,8 @@ public class OutTsfileDataSource
   private String name;
 
   private Scheduler scheduler;
+
+  private ConcurrentHashMap<String, Schema> SCHEMA_MAP = new ConcurrentHashMap<>();
 
   private ConcurrentHashMap<String, TsFileWriter> TSFILE_WRITER_MAP = new ConcurrentHashMap<>();
 
@@ -78,7 +81,7 @@ public class OutTsfileDataSource
                 signalType -> {
                   try {
                     for (String key : TSFILE_WRITER_MAP.keySet()) {
-                      TSFILE_WRITER_MAP.get(key).flushAllChunkGroups();
+                      // TSFILE_WRITER_MAP.get(key).flushAllChunkGroups();
                       TSFILE_WRITER_MAP.get(key).close();
                     }
                     scheduler.dispose();
@@ -91,6 +94,7 @@ public class OutTsfileDataSource
                   context = context.put("totalSize", totalSize);
                   context = context.put("tsfileWriterMap", TSFILE_WRITER_MAP);
                   context = context.put("deviceInfoMap", deviceInfoMap);
+                  context = context.put("schemaMap", SCHEMA_MAP);
                   return context;
                 });
   }

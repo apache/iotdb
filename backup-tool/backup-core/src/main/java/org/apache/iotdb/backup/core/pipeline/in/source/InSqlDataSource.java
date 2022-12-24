@@ -23,6 +23,7 @@ import org.apache.iotdb.backup.core.pipeline.context.PipelineContext;
 import org.apache.iotdb.backup.core.pipeline.context.model.ImportModel;
 import org.apache.iotdb.backup.core.service.ExportPipelineService;
 import org.apache.iotdb.backup.core.service.ImportPipelineService;
+import org.apache.iotdb.backup.core.utils.IotDBKeyWords;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -38,6 +39,7 @@ import java.io.InputStream;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
+import java.util.regex.Pattern;
 
 /** @Author: LL @Description: @Date: create in 2022/6/29 9:59 */
 public class InSqlDataSource
@@ -144,7 +146,7 @@ public class InSqlDataSource
                       result
                           .append(s1)
                           .append("(")
-                          .append(ExportPipelineService.formatPath(needFormat, version))
+                          .append(this.formatPath(needFormat, version))
                           .append(s3);
                       sql.delete(0, sql.length());
                       fluxSink.next(result.toString());
@@ -169,6 +171,90 @@ public class InSqlDataSource
                 }
               });
         });
+  }
+
+  public String formatPath(String sql, String version) {
+    if (!"13".equals(version)) {
+      return sql;
+    }
+    String regx = "^[\\w._:@#{}$\\u2E80-\\u9FFF\"\'*\\\\]+$";
+    String regxOnlyNum = "^[0-9]+$";
+    char[] arr = sql.toCharArray();
+    StringBuilder formatedSql = new StringBuilder();
+    StringBuilder buffer = new StringBuilder();
+    StringBuilder quoteCounter = new StringBuilder();
+    for (int i = 0; i < arr.length; i++) {
+      if ('\\' == arr[i] || '\"' == arr[i] || '\'' == arr[i]) {
+        if (quoteCounter.length() == 0) {
+          quoteCounter.append(arr[i]);
+        } else {
+          char quote = quoteCounter.charAt(quoteCounter.length() - 1);
+          if ("\\".equals(quote)) {
+            quoteCounter.deleteCharAt(quoteCounter.length() - 1);
+          }
+        }
+      } else {
+        if (quoteCounter.length() != 0) {
+          quoteCounter.delete(0, quoteCounter.length());
+        }
+      }
+
+      if (',' == arr[i] || i == arr.length - 1) {
+        if (buffer.length() != 0) {
+          // quote 引用处理
+          if ('\"' == buffer.charAt(0) || '\'' == buffer.charAt(0)) {
+            char pre = buffer.charAt(buffer.length() - 1);
+            buffer.append(arr[i]);
+            if (pre == buffer.charAt(0) && quoteCounter.length() == 0) {
+              formatedSql.append(buffer);
+              buffer.delete(0, buffer.length());
+            }
+          } else {
+            // 特殊字符处理 iotdb 系统关键字处理
+            if (i == arr.length - 1) {
+              buffer.append(arr[i]);
+            }
+            if (!Pattern.matches(regx, buffer.toString())
+                || IotDBKeyWords.validateKeyWords(buffer.toString().toUpperCase())
+                || Pattern.matches(regxOnlyNum, buffer.toString())) {
+              if (i == arr.length - 1) {
+                if (buffer.toString().startsWith("`") && buffer.toString().endsWith("`")) {
+                  formatedSql.append(buffer);
+                } else {
+                  formatedSql.append("`").append(buffer).append("`");
+                }
+              } else {
+                if (buffer.toString().startsWith("`") && buffer.toString().endsWith("`")) {
+                  formatedSql.append(buffer).append(",");
+                } else {
+                  formatedSql.append("`").append(buffer).append("`").append(",");
+                }
+              }
+            } else {
+              if (i != arr.length - 1) {
+                buffer.append(arr[i]);
+              }
+              formatedSql.append(buffer);
+            }
+
+            buffer.delete(0, buffer.length());
+          }
+        } else {
+          if (!Pattern.matches(regx, buffer.toString())
+              || IotDBKeyWords.validateKeyWords(buffer.toString().toUpperCase())) {
+            buffer.append("`").append(arr[i]).append("`");
+          } else if (Pattern.matches(regxOnlyNum, buffer.toString())) {
+            buffer.append("`").append(arr[i]).append("`");
+          } else {
+            buffer.append(arr[i]);
+          }
+        }
+      } else {
+        buffer.append(arr[i]);
+      }
+    }
+    formatedSql.append(buffer);
+    return formatedSql.toString();
   }
 
   public InSqlDataSource(String name) {

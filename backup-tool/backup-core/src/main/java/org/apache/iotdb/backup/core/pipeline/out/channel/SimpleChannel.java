@@ -24,6 +24,7 @@ import org.apache.iotdb.backup.core.pipeline.PipeChannel;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.ParallelFlux;
 
+import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.function.Function;
 
 /** @Author: LL @Description: @Date: create in 2022/7/19 11:20 */
@@ -39,6 +40,8 @@ public class SimpleChannel
     this.name = name;
   }
 
+  ConcurrentSkipListMap<String,Long> lasttime = new ConcurrentSkipListMap<>();
+
   @Override
   public Function<ParallelFlux<TimeSeriesRowModel>, ParallelFlux<TimeSeriesRowModel>> doExecute() {
     return flux ->
@@ -46,6 +49,12 @@ public class SimpleChannel
                 s -> {
                   // s.getIFieldList()
                   // .forEach(this::sqlFileTransformer);
+                    if(!s.getDeviceModel().getDeviceName().startsWith("finish")){
+                        if(lasttime.get(s.getDeviceModel().getDeviceName())!=null &&(lasttime.get(s.getDeviceModel().getDeviceName())>Long.parseLong(s.getTimestamp()))){
+                            System.out.println("reactor 错误");
+                        }
+                        lasttime.put(s.getDeviceModel().getDeviceName(),Long.parseLong(s.getTimestamp()));
+                    }
                   return ParallelFlux.from(Flux.just(s));
                 })
             .transform(doNext());

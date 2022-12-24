@@ -33,7 +33,7 @@
         <module>backup-command</module>
     </modules>
     <properties>
-        <iotdb.version>0.13.0</iotdb.version>
+        <iotdb.version>0.13.3</iotdb.version>
     </properties>
     <dependencyManagement>
         <dependencies>

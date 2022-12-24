@@ -54,6 +54,7 @@ import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 import java.util.regex.Pattern;
@@ -337,81 +338,78 @@ public class ExportPipelineService {
       }
       dataSetList.add(deviceDetials);
     }
-
-    ConcurrentHashMap<Long, List<IField>[]> sinkPoolMap = new ConcurrentHashMap<>();
     sink.onRequest(
         n -> {
-          Long mark = 0L; // 时间戳标志，sinkpoolMap根据此生成流,如果有小于此值得数据，sink.next会一次性添加多个stream流数据
-          Long stopMark = 0L; // 结束标志，当一个时间戳连续出现两次的时候，表示读取完毕,单组数据遍历完毕
-          int loopMark =
-              0; // 假设一个时间序列按列分为了2组，首先遍历第一组 loopMark=0，当第一组遍历完成后，第二组也许比第一组数据多一些，在遍历第二组 loopMark=1
-          boolean stopFlag = false;
-          if (dataSetList == null || dataSetList.size() == 0) {
-            stopFlag = true;
-          }
-          int j = 0;
-          try {
-            // 如果列数大于1000，拼接row数据
-            while (true) {
-              for (int i = 0; i < dataSetList.size(); i++) {
-                SessionDataSet set = dataSetList.get(i);
-                mark =
-                    recursionSessionData(
-                        i,
-                        loopMark,
-                        mark,
-                        dataSetList.size(),
-                        set,
-                        sinkPoolMap,
-                        deviceModel,
-                        timeseries);
-                if (i == dataSetList.size() - 1) {
-                  if (stopMark.equals(mark)) {
-                    if (loopMark == dataSetList.size() - 1) {
-                      stopFlag = true;
+          synchronized (dataSetList) {
+              Map<Long, List<IField>[]> sinkPoolMap = new TreeMap<>();
+            Long mark = 0L; // 时间戳标志，sinkpoolMap根据此生成流,如果有小于此值得数据，sink.next会一次性添加多个stream流数据
+            Long stopMark = 0L; // 结束标志，当一个时间戳连续出现两次的时候，表示读取完毕,单组数据遍历完毕
+            int loopMark =
+                0; // 假设一个时间序列按列分为了2组，首先遍历第一组 loopMark=0，当第一组遍历完成后，第二组也许比第一组数据多一些，在遍历第二组 loopMark=1
+            boolean stopFlag = false;
+            if (dataSetList == null || dataSetList.size() == 0) {
+              stopFlag = true;
+            }
+            int j = 0;
+            try {
+              // 如果列数大于1000，拼接row数据
+              while (true) {
+                for (int i = 0; i < dataSetList.size(); i++) {
+                  SessionDataSet set = dataSetList.get(i);
+                  mark =
+                      recursionSessionData(
+                          i,
+                          loopMark,
+                          mark,
+                          dataSetList.size(),
+                          set,
+                          sinkPoolMap,
+                          deviceModel,
+                          timeseries);
+                  if (i == dataSetList.size() - 1) {
+                    if (stopMark.equals(mark)) {
+                      if (loopMark == dataSetList.size() - 1) {
+                        stopFlag = true;
+                      }
+                      loopMark++;
                     }
-                    loopMark++;
-                  }
-                  stopMark = mark;
-                  for (Long key :
-                      sinkPoolMap.keySet().stream().sorted().collect(Collectors.toList())) {
-                    if (key <= mark) {
-                      try {
-                        if (sinkPoolMap.get(key) == null) {
-                          continue;
+                    stopMark = mark;
+                    for (Long key : sinkPoolMap.keySet()) {
+                      if (key <= mark) {
+                        try {
+                          TimeSeriesRowModel rowModel =
+                              conformToRowData(
+                                  sinkPoolMap.get(key), groupTimeseriesList, deviceModel, key);
+                          sinkPoolMap.remove(key);
+                          sink.next(rowModel);
+                          if (j == n) {
+                            return;
+                          }
+                          j++;
+                        } catch (Exception e) {
+                          log.error("异常信息:", e);
                         }
-                        TimeSeriesRowModel rowModel =
-                            conformToRowData(
-                                sinkPoolMap.get(key), groupTimeseriesList, deviceModel, key);
-                        sinkPoolMap.remove(key);
-                        sink.next(rowModel);
-                        if (j == n) {
-                          return;
-                        }
-                        j++;
-                      } catch (Exception e) {
-                        log.error("异常信息:", e);
                       }
                     }
                   }
                 }
+                if (stopFlag) {
+                  // 流结束标志
+                  TimeSeriesRowModel finishRowModel = new TimeSeriesRowModel();
+                  DeviceModel finishDeviceModel = new DeviceModel();
+                  StringBuilder builder = new StringBuilder();
+                  builder.append("finish,").append(deviceModel.getDeviceName());
+                  finishDeviceModel.setDeviceName(builder.toString());
+                  finishRowModel.setDeviceModel(finishDeviceModel);
+                  finishRowModel.setIFieldList(new ArrayList<>());
+                  sink.next(finishRowModel);
+                  sink.complete();
+                  break;
+                }
               }
-              if (stopFlag) {
-                // 流结束标志
-                TimeSeriesRowModel finishRowModel = new TimeSeriesRowModel();
-                DeviceModel finishDeviceModel = new DeviceModel();
-                StringBuilder builder = new StringBuilder();
-                builder.append("finish,").append(deviceModel.getDeviceName());
-                finishDeviceModel.setDeviceName(builder.toString());
-                finishRowModel.setDeviceModel(finishDeviceModel);
-                finishRowModel.setIFieldList(new ArrayList<>());
-                sink.next(finishRowModel);
-                sink.complete();
-                break;
-              }
+            } catch (StatementExecutionException | IoTDBConnectionException e) {
+              log.error("异常信息:", e);
             }
-          } catch (StatementExecutionException | IoTDBConnectionException e) {
-            log.error("异常信息:", e);
           }
         });
   }
@@ -485,7 +483,7 @@ public class ExportPipelineService {
       Long mark,
       int size,
       SessionDataSet set,
-      ConcurrentHashMap<Long, List<IField>[]> sinkPoolMap,
+      Map<Long, List<IField>[]> sinkPoolMap,
       DeviceModel deviceModel,
       List<TimeseriesModel> timeseries)
       throws StatementExecutionException, IoTDBConnectionException {
