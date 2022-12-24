@@ -33,16 +33,13 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
-import org.apache.iotdb.db.query.reader.series.SeriesRawDataBatchReader;
 import org.apache.iotdb.db.tools.validate.TsFileValidationTool;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.IBatchDataIterator;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
-import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 import org.apache.iotdb.tsfile.utils.TsFileGeneratorUtils;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
@@ -62,6 +59,7 @@ import java.util.List;
 import java.util.Map;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_SEPARATOR;
+import static org.apache.iotdb.db.utils.EnvironmentUtils.TEST_QUERY_JOB_ID;
 import static org.junit.Assert.assertEquals;
 
 public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
@@ -2450,30 +2448,32 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
                 COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i,
                 "s" + j,
                 new MeasurementSchema("s" + j, TSDataType.TEXT));
-        IBatchReader tsFilesReader =
-            new SeriesRawDataBatchReader(
+        IDataBlockReader tsFilesReader =
+            new SeriesDataBlockReader(
                 path,
                 TSDataType.VECTOR,
-                EnvironmentUtils.TEST_QUERY_CONTEXT,
+                FragmentInstanceContext.createFragmentInstanceContextForCompaction(
+                    TEST_QUERY_JOB_ID),
                 targetResources,
                 new ArrayList<>(),
-                null,
-                null,
                 true);
+
         int count = 0;
         while (tsFilesReader.hasNextBatch()) {
-          BatchData batchData = tsFilesReader.nextBatch();
-          while (batchData.hasCurrent()) {
+          TsBlock batchData = tsFilesReader.nextBatch();
+          for (int readIndex = 0, size = batchData.getPositionCount();
+              readIndex < size;
+              readIndex++) {
+            long currentTime = batchData.getTimeByIndex(readIndex);
             if (measurementMaxTime.get(
                     COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i + PATH_SEPARATOR + "s" + j)
-                >= batchData.currentTime()) {
+                >= currentTime) {
               Assert.fail();
             }
             measurementMaxTime.put(
                 COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i + PATH_SEPARATOR + "s" + j,
-                batchData.currentTime());
+                currentTime);
             count++;
-            batchData.next();
           }
         }
         tsFilesReader.close();
@@ -2585,30 +2585,33 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
                 COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i,
                 "s" + j,
                 new MeasurementSchema("s" + j, TSDataType.TEXT));
-        IBatchReader tsFilesReader =
-            new SeriesRawDataBatchReader(
+
+        IDataBlockReader tsFilesReader =
+            new SeriesDataBlockReader(
                 path,
                 TSDataType.VECTOR,
-                EnvironmentUtils.TEST_QUERY_CONTEXT,
+                FragmentInstanceContext.createFragmentInstanceContextForCompaction(
+                    TEST_QUERY_JOB_ID),
                 targetResources,
                 new ArrayList<>(),
-                null,
-                null,
                 true);
+
         int count = 0;
         while (tsFilesReader.hasNextBatch()) {
-          BatchData batchData = tsFilesReader.nextBatch();
-          while (batchData.hasCurrent()) {
+          TsBlock batchData = tsFilesReader.nextBatch();
+          for (int readIndex = 0, size = batchData.getPositionCount();
+              readIndex < size;
+              readIndex++) {
+            long currentTime = batchData.getTimeByIndex(readIndex);
             if (measurementMaxTime.get(
                     COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i + PATH_SEPARATOR + "s" + j)
-                >= batchData.currentTime()) {
+                >= currentTime) {
               Assert.fail();
             }
             measurementMaxTime.put(
                 COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i + PATH_SEPARATOR + "s" + j,
-                batchData.currentTime());
+                currentTime);
             count++;
-            batchData.next();
           }
         }
         tsFilesReader.close();
@@ -3515,20 +3518,23 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
                     + (TsFileGeneratorUtils.getAlignDeviceOffset() + i),
                 Collections.singletonList("s" + j),
                 schemas);
-        IBatchReader tsFilesReader =
-            new SeriesRawDataBatchReader(
+
+        IDataBlockReader tsFilesReader =
+            new SeriesDataBlockReader(
                 path,
                 TSDataType.VECTOR,
-                EnvironmentUtils.TEST_QUERY_CONTEXT,
+                FragmentInstanceContext.createFragmentInstanceContextForCompaction(
+                    EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 targetResources,
                 new ArrayList<>(),
-                null,
-                null,
                 true);
         int count = 0;
         while (tsFilesReader.hasNextBatch()) {
-          BatchData batchData = tsFilesReader.nextBatch();
-          while (batchData.hasCurrent()) {
+          TsBlock batchData = tsFilesReader.nextBatch();
+          for (int readIndex = 0, size = batchData.getPositionCount();
+              readIndex < size;
+              readIndex++) {
+            long currentTime = batchData.getTimeByIndex(readIndex);
             if (measurementMaxTime.get(
                     COMPACTION_TEST_SG
                         + PATH_SEPARATOR
@@ -3537,7 +3543,7 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
                         + PATH_SEPARATOR
                         + "s"
                         + j)
-                >= batchData.currentTime()) {
+                >= currentTime) {
               Assert.fail();
             }
             measurementMaxTime.put(
@@ -3548,9 +3554,8 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
                     + PATH_SEPARATOR
                     + "s"
                     + j,
-                batchData.currentTime());
+                currentTime);
             count++;
-            batchData.next();
           }
         }
         tsFilesReader.close();

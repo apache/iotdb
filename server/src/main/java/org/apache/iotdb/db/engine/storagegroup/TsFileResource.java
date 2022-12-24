@@ -35,9 +35,8 @@ import org.apache.iotdb.db.engine.storagegroup.timeindex.V012FileTimeIndex;
 import org.apache.iotdb.db.engine.upgrade.UpgradeTask;
 import org.apache.iotdb.db.exception.PartitionViolationException;
 import org.apache.iotdb.db.metadata.utils.ResourceByPathUtils;
-import org.apache.iotdb.db.qp.utils.DateTimeUtils;
-import org.apache.iotdb.db.query.filter.TsFileFilter;
 import org.apache.iotdb.db.service.UpgradeSevice;
+import org.apache.iotdb.db.utils.DateTimeUtils;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ITimeSeriesMetadata;
@@ -700,16 +699,7 @@ public class TsFileResource {
   }
 
   /** @return true if the device is contained in the TsFile */
-  public boolean isSatisfied(
-      String deviceId, Filter timeFilter, TsFileFilter fileFilter, boolean isSeq, boolean debug) {
-    if (fileFilter != null && fileFilter.fileNotSatisfy(this)) {
-      if (debug) {
-        DEBUG_LOGGER.info(
-            "Path: {} file {} is not satisfied because of fileFilter!", deviceId, file);
-      }
-      return false;
-    }
-
+  public boolean isSatisfied(String deviceId, Filter timeFilter, boolean isSeq, boolean debug) {
     if (!mayContainsDevice(deviceId)) {
       if (debug) {
         DEBUG_LOGGER.info(

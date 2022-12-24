@@ -20,9 +20,9 @@ package org.apache.iotdb.db.utils;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.constant.SqlConstant;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationType;
 import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
-import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 
@@ -119,17 +119,17 @@ public class SchemaUtils {
       return null;
     }
     switch (aggregation.toLowerCase()) {
-      case SQLConstant.MIN_TIME:
-      case SQLConstant.MAX_TIME:
-      case SQLConstant.COUNT:
+      case SqlConstant.MIN_TIME:
+      case SqlConstant.MAX_TIME:
+      case SqlConstant.COUNT:
         return TSDataType.INT64;
-      case SQLConstant.AVG:
-      case SQLConstant.SUM:
+      case SqlConstant.AVG:
+      case SqlConstant.SUM:
         return TSDataType.DOUBLE;
-      case SQLConstant.LAST_VALUE:
-      case SQLConstant.FIRST_VALUE:
-      case SQLConstant.MIN_VALUE:
-      case SQLConstant.MAX_VALUE:
+      case SqlConstant.LAST_VALUE:
+      case SqlConstant.FIRST_VALUE:
+      case SqlConstant.MIN_VALUE:
+      case SqlConstant.MAX_VALUE:
       default:
         return null;
     }
