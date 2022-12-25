@@ -16,13 +16,13 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.commons.path.dfa.graph;
+package org.apache.iotdb.commons.path.fa.dfa.graph;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.commons.path.dfa.DFAState;
 import org.apache.iotdb.commons.path.fa.IFAState;
 import org.apache.iotdb.commons.path.fa.IFATransition;
+import org.apache.iotdb.commons.path.fa.dfa.DFAState;
 
 import java.util.ArrayList;
 import java.util.List;

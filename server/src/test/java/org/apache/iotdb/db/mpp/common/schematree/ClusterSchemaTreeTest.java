@@ -48,12 +48,38 @@ public class ClusterSchemaTreeTest {
   private long initTime = 0;
 
   @Test
-  public void benchmark() throws IllegalPathException {
+  public void benchmark1() throws IllegalPathException {
     long startTime = System.currentTimeMillis();
     int round = 20;
     for (int i = 0; i < round; i++) {
       for (int j = 0; j < 10000; j++) {
         testMultiWildcard();
+      }
+    }
+    long endTime = System.currentTimeMillis();
+    initTime = (endTime - startTime - calTime);
+    System.out.println("CalculateTime=" + calTime / round);
+    System.out.println("InitialTime=" + initTime / round);
+    System.out.println("AllTime=" + (endTime - startTime) / round);
+  }
+
+  @Test
+  public void benchmark() throws IllegalPathException {
+    int deep = 5;
+    int width = 5;
+    SchemaNode root = generateSchemaTreeWithInternalRepeatedName1(deep, width);
+    PartialPath path = new PartialPath("root.**.d0.s");
+    long startTime = System.currentTimeMillis();
+    int round = 20;
+    for (int i = 0; i < round; i++) {
+      for (int j = 0; j < 1000; j++) {
+        SchemaTreeMeasurementVisitor visitor =
+            new SchemaTreeMeasurementVisitor(root, path, 0, 0, false);
+
+        long calStartTime = System.currentTimeMillis();
+        List<MeasurementPath> res = visitor.getAllResult();
+        Assert.assertEquals((int) (1 - Math.pow(width, deep)) / (1 - width) - 1, res.size());
+        calTime += (System.currentTimeMillis() - calStartTime);
       }
     }
     long endTime = System.currentTimeMillis();
@@ -357,6 +383,37 @@ public class ClusterSchemaTreeTest {
       c.addChild("s1", new SchemaMeasurementNode("s1", schema));
       parent.addChild("c", c);
       parent = c;
+    }
+
+    return root;
+  }
+
+  private SchemaNode generateSchemaTreeWithInternalRepeatedName1(int deep, int width) {
+    SchemaNode root = new SchemaInternalNode("root");
+
+    List<SchemaNode> nodes = new ArrayList<>();
+    MeasurementSchema schema = new MeasurementSchema("s", TSDataType.INT32);
+    for (int i = 0; i < width; i++) {
+      SchemaEntityNode entityNode = new SchemaEntityNode("d" + i);
+      nodes.add(entityNode);
+      root.addChild("d" + i, entityNode);
+    }
+    for (int i = 0; i < deep - 1; i++) {
+      List<SchemaNode> nextLevelNode = new ArrayList<>();
+      for (SchemaNode parent : nodes) {
+        SchemaMeasurementNode measurementNode = new SchemaMeasurementNode("s", schema);
+        parent.addChild("s", measurementNode);
+        for (int j = 0; j < width; j++) {
+          SchemaEntityNode entityNode = new SchemaEntityNode("d" + j);
+          parent.addChild("d" + j, entityNode);
+          nextLevelNode.add(entityNode);
+        }
+      }
+      nodes = nextLevelNode;
+    }
+    for (SchemaNode parent : nodes) {
+      SchemaMeasurementNode measurementNode = new SchemaMeasurementNode("s", schema);
+      parent.addChild("s", measurementNode);
     }
 
     return root;

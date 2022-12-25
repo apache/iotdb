@@ -19,9 +19,10 @@
 package org.apache.iotdb.commons.path;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.commons.path.dfa.PatternDFA;
 import org.apache.iotdb.commons.path.fa.IFAState;
 import org.apache.iotdb.commons.path.fa.IFATransition;
+import org.apache.iotdb.commons.path.fa.IPatternFA;
+import org.apache.iotdb.commons.path.fa.dfa.PatternDFA;
 
 import org.junit.Assert;
 import org.junit.Ignore;
@@ -95,7 +96,8 @@ public class PatternDFATest {
   }
 
   private boolean checkMatchUsingDFA(PartialPath pattern, PartialPath fullPath) {
-    PatternDFA patternDFA = new PatternDFA.Builder().pattern(pattern).build();
+    PatternDFA patternDFA =
+        (PatternDFA) new IPatternFA.Builder().pattern(pattern).isPrefixMatch(false).buildDFA();
     IFAState curState = patternDFA.getInitialState();
     for (String node : fullPath.getNodes()) {
       Iterator<IFATransition> preciseMatchTransitionIterator =

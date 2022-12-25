@@ -17,9 +17,12 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.path.fa;
+package org.apache.iotdb.commons.path.fa.nfa;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.fa.IFAState;
+import org.apache.iotdb.commons.path.fa.IFATransition;
+import org.apache.iotdb.commons.path.fa.IPatternFA;
 
 import java.util.Collections;
 import java.util.Iterator;
@@ -104,6 +107,11 @@ public class SimpleNFA implements IPatternFA {
   @Override
   public IFAState getState(int index) {
     return patternNodes[index];
+  }
+
+  @Override
+  public boolean mayTransitionOverlap() {
+    return true;
   }
 
   private SinglePathPatternNode getNextNode(SinglePathPatternNode currentNode) {

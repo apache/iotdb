@@ -23,7 +23,6 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.fa.IFAState;
 import org.apache.iotdb.commons.path.fa.IFATransition;
 import org.apache.iotdb.commons.path.fa.IPatternFA;
-import org.apache.iotdb.commons.path.fa.SimpleNFA;
 import org.apache.iotdb.commons.path.fa.match.IStateMatchInfo;
 import org.apache.iotdb.commons.path.fa.match.StateMultiMatchInfo;
 import org.apache.iotdb.commons.path.fa.match.StateSingleMatchInfo;
@@ -92,9 +91,11 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
   protected AbstractTreeVisitor(N root, PartialPath pathPattern, boolean isPrefixMatch) {
     this.root = root;
 
-    this.patternFA = new SimpleNFA(pathPattern, isPrefixMatch);
+    this.patternFA =
+        new IPatternFA.Builder().pattern(pathPattern).isPrefixMatch(isPrefixMatch).buildDFA();
     //    this.patternFA = new
-    // PatternDFA.Builder().pattern(pathPattern).isPrefix(isPrefixMatch).build();
+    // IPatternFA.Builder().pattern(pathPattern).isPrefixMatch(isPrefixMatch).buildNFA();
+    //    this.patternFA = FAFactory.constructNFA(pathPattern,isPrefixMatch);
 
     initStack();
   }
@@ -428,9 +429,13 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
           }
         }
 
-        if (transitionIterator.hasNext()) {
-          stateMatchInfo = new StateMultiMatchInfo(patternFA, matchedState, transitionIterator);
-          firstAncestorOfTraceback = ancestorStack.size();
+        if (patternFA.mayTransitionOverlap()) {
+          if (transitionIterator.hasNext()) {
+            stateMatchInfo = new StateMultiMatchInfo(patternFA, matchedState, transitionIterator);
+            firstAncestorOfTraceback = ancestorStack.size();
+          } else {
+            stateMatchInfo = new StateSingleMatchInfo(patternFA, matchedState);
+          }
         } else {
           stateMatchInfo = new StateSingleMatchInfo(patternFA, matchedState);
         }
