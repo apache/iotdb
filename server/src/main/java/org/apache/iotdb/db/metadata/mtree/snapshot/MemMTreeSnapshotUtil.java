@@ -57,6 +57,7 @@ import static org.apache.iotdb.db.metadata.MetadataConstant.INTERNAL_MNODE_TYPE;
 import static org.apache.iotdb.db.metadata.MetadataConstant.MEASUREMENT_MNODE_TYPE;
 import static org.apache.iotdb.db.metadata.MetadataConstant.STORAGE_GROUP_ENTITY_MNODE_TYPE;
 import static org.apache.iotdb.db.metadata.MetadataConstant.STORAGE_GROUP_MNODE_TYPE;
+import static org.apache.iotdb.db.metadata.MetadataConstant.isStorageGroupType;
 
 public class MemMTreeSnapshotUtil {
 
@@ -220,7 +221,8 @@ public class MemMTreeSnapshotUtil {
       ancestors.peek().addChild(node);
     }
 
-    if (childrenNum > 0) {
+    // Storage type means current node is root node, so it must be returned.
+    if (childrenNum > 0 || isStorageGroupType(type)) {
       ancestors.push(node);
       restChildrenNum.push(childrenNum);
     }
