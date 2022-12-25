@@ -481,16 +481,16 @@ public class StatementGenerator {
 
       CharStream charStream1 = CharStreams.fromString(sql);
 
-    SqlLexer lexer1 = new SqlLexer(charStream1);
-    lexer1.removeErrorListeners();
-    lexer1.addErrorListener(SqlParseError.INSTANCE);
+      SqlLexer lexer1 = new SqlLexer(charStream1);
+      lexer1.removeErrorListeners();
+      lexer1.addErrorListener(SqlParseError.INSTANCE);
 
       CommonTokenStream tokens1 = new CommonTokenStream(lexer1);
 
-    IoTDBSqlParser parser1 = new IoTDBSqlParser(tokens1);
-    parser1.getInterpreter().setPredictionMode(PredictionMode.SLL);
-    parser1.removeErrorListeners();
-    parser1.addErrorListener(SqlParseError.INSTANCE);
+      IoTDBSqlParser parser1 = new IoTDBSqlParser(tokens1);
+      parser1.getInterpreter().setPredictionMode(PredictionMode.SLL);
+      parser1.removeErrorListeners();
+      parser1.addErrorListener(SqlParseError.INSTANCE);
 
       ParseTree tree;
       try {
@@ -501,17 +501,17 @@ public class StatementGenerator {
       } catch (Exception ex) {
         CharStream charStream2 = CharStreams.fromString(sql);
 
-      SqlLexer lexer2 = new SqlLexer(charStream2);
-      lexer2.removeErrorListeners();
-      lexer2.addErrorListener(SqlParseError.INSTANCE);
+        SqlLexer lexer2 = new SqlLexer(charStream2);
+        lexer2.removeErrorListeners();
+        lexer2.addErrorListener(SqlParseError.INSTANCE);
 
         CommonTokenStream tokens2 = new CommonTokenStream(lexer2);
 
-      org.apache.iotdb.db.qp.sql.IoTDBSqlParser parser2 =
-          new org.apache.iotdb.db.qp.sql.IoTDBSqlParser(tokens2);
-      parser2.getInterpreter().setPredictionMode(PredictionMode.LL);
-      parser2.removeErrorListeners();
-      parser2.addErrorListener(SqlParseError.INSTANCE);
+        org.apache.iotdb.db.qp.sql.IoTDBSqlParser parser2 =
+            new org.apache.iotdb.db.qp.sql.IoTDBSqlParser(tokens2);
+        parser2.getInterpreter().setPredictionMode(PredictionMode.LL);
+        parser2.removeErrorListeners();
+        parser2.addErrorListener(SqlParseError.INSTANCE);
 
         // STAGE 2: parser with full LL(*)
         tree = parser2.singleStatement();
