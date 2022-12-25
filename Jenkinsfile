@@ -87,7 +87,7 @@ pipeline {
             }
             steps {
                 echo 'Building and Unit Test...'
-                sh "mvn -T 1C ${MVN_TEST_FAIL_IGNORE} clean install -pl '!integration-test' -DskipITs"
+                sh "mvn ${MVN_TEST_FAIL_IGNORE} clean install -pl '!integration-test' -DskipITs"
             }
             post {
                 always {
@@ -105,7 +105,7 @@ pipeline {
             }
             steps {
                 echo 'Integration Test...'
-                sh "mvn ${MVN_TEST_FAIL_IGNORE} verify -P ClusterIT -pl integration-test -am -DskipUTs -DintegrationTest.threadCount=5 -DintegrationTest.forkCount=5"
+                sh "mvn ${MVN_TEST_FAIL_IGNORE} verify -P ClusterIT -pl integration-test -am -DskipUTs -DintegrationTest.threadCount=3 -DintegrationTest.forkCount=3"
             }
             post {
                 always {
