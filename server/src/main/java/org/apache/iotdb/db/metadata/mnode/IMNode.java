@@ -67,7 +67,11 @@ public interface IMNode extends Serializable {
 
   void setUseTemplate(boolean useTemplate);
 
+  /** @return the logic id of template set or activated on this node, id>=-1 */
   int getSchemaTemplateId();
+
+  /** @return the template id with current state, may be negative since unset or deactivation */
+  int getSchemaTemplateIdWithState();
 
   void setSchemaTemplateId(int schemaTemplateId);
 

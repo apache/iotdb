@@ -35,6 +35,7 @@ public class IoTConsensusClientPool {
 
   public static class SyncIoTConsensusServiceClientPoolFactory
       implements IClientPoolFactory<TEndPoint, SyncIoTConsensusServiceClient> {
+
     private final IoTConsensusConfig config;
 
     public SyncIoTConsensusServiceClientPoolFactory(IoTConsensusConfig config) {
@@ -80,7 +81,11 @@ public class IoTConsensusClientPool {
                       config.getRpc().getSelectorNumOfClientManager())
                   .build(),
               IOT_CONSENSUS_CLIENT_POOL_THREAD_NAME),
-          new ClientPoolProperty.Builder<AsyncIoTConsensusServiceClient>().build().getConfig());
+          new ClientPoolProperty.Builder<AsyncIoTConsensusServiceClient>()
+              .setMaxIdleClientForEachNode(config.getRpc().getMaxConnectionForInternalService())
+              .setMaxTotalClientForEachNode(config.getRpc().getMaxConnectionForInternalService())
+              .build()
+              .getConfig());
     }
   }
 }

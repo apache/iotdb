@@ -36,7 +36,7 @@ public class SelectComponent extends StatementNode {
 
   private boolean hasBuiltInAggregationFunction = false;
 
-  private List<ResultColumn> resultColumns = new ArrayList<>();
+  protected List<ResultColumn> resultColumns = new ArrayList<>();
 
   private Map<String, Expression> aliasToColumnMap;
 

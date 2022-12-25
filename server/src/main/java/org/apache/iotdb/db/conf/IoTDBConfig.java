@@ -530,9 +530,6 @@ public class IoTDBConfig {
   private boolean enableMonitorSeriesWrite = false;
 
   /** Cache size of {@code checkAndGetDataTypeCache}. */
-  private int schemaRegionDeviceNodeCacheSize = 10000;
-
-  /** Cache size of {@code checkAndGetDataTypeCache}. */
   private int mRemoteSchemaCacheSize = 100000;
 
   /** Is external sort enable. */
@@ -571,7 +568,14 @@ public class IoTDBConfig {
   private boolean isClusterMode = false;
 
   /**
-   * the data node id for cluster mode, the default value -1 should be changed after join cluster
+   * The cluster name that this DataNode joined in the cluster mode. The default value
+   * "defaultCluster" will be changed after join cluster
+   */
+  private String clusterName = "defaultCluster";
+
+  /**
+   * The DataNodeId of this DataNode for cluster mode. The default value -1 will be changed after
+   * join cluster
    */
   private int dataNodeId = -1;
 
@@ -997,7 +1001,7 @@ public class IoTDBConfig {
   private long throttleThreshold = 50 * 1024 * 1024 * 1024L;
 
   /** Maximum wait time of write cache in IoTConsensus. Unit: ms */
-  private long cacheWindowTimeInMs = 60 * 1000;
+  private long cacheWindowTimeInMs = 10 * 1000;
 
   private long dataRatisConsensusLogAppenderBufferSizeMax = 4 * 1024 * 1024L;
   private long schemaRatisConsensusLogAppenderBufferSizeMax = 4 * 1024 * 1024L;
@@ -1567,14 +1571,6 @@ public class IoTDBConfig {
 
   void setRpcMaxConcurrentClientNum(int rpcMaxConcurrentClientNum) {
     this.rpcMaxConcurrentClientNum = rpcMaxConcurrentClientNum;
-  }
-
-  public int getSchemaRegionDeviceNodeCacheSize() {
-    return schemaRegionDeviceNodeCacheSize;
-  }
-
-  void setSchemaRegionDeviceNodeCacheSize(int schemaRegionDeviceNodeCacheSize) {
-    this.schemaRegionDeviceNodeCacheSize = schemaRegionDeviceNodeCacheSize;
   }
 
   public int getmRemoteSchemaCacheSize() {
@@ -3075,6 +3071,14 @@ public class IoTDBConfig {
   public void setClusterMode(boolean isClusterMode) {
     this.isClusterMode = isClusterMode;
     checkMultiDirStrategyClassName();
+  }
+
+  public String getClusterName() {
+    return clusterName;
+  }
+
+  public void setClusterName(String clusterName) {
+    this.clusterName = clusterName;
   }
 
   public int getDataNodeId() {

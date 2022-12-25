@@ -31,8 +31,8 @@ import org.apache.iotdb.consensus.config.IoTConsensusConfig;
 import org.apache.iotdb.consensus.iot.IoTConsensusServerImpl;
 import org.apache.iotdb.consensus.iot.client.AsyncIoTConsensusServiceClient;
 import org.apache.iotdb.consensus.iot.client.DispatchLogHandler;
-import org.apache.iotdb.consensus.iot.thrift.TLogBatch;
-import org.apache.iotdb.consensus.iot.thrift.TSyncLogReq;
+import org.apache.iotdb.consensus.iot.thrift.TLogEntry;
+import org.apache.iotdb.consensus.iot.thrift.TSyncLogEntriesReq;
 import org.apache.iotdb.consensus.iot.wal.ConsensusReqReader;
 import org.apache.iotdb.consensus.iot.wal.GetConsensusReqReaderPlan;
 import org.apache.iotdb.metrics.utils.MetricLevel;
@@ -160,7 +160,7 @@ public class LogDispatcher {
                 "{}->{}: Push a log to the queue, where the queue length is {}",
                 impl.getThisNode().getGroupId(),
                 thread.getPeer().getEndpoint().getIp(),
-                thread.getPendingRequestSize());
+                thread.getPendingEntriesSize());
             if (!thread.offer(request)) {
               logger.debug(
                   "{}: Log queue of {} is full, ignore the log to this node, searchIndex: {}",
@@ -179,12 +179,12 @@ public class LogDispatcher {
     private final IoTConsensusConfig config;
     private final Peer peer;
     private final IndexController controller;
-    // A sliding window class that manages asynchronously pendingBatches
+    // A sliding window class that manages asynchronous pendingBatches
     private final SyncStatus syncStatus;
     // A queue used to receive asynchronous replication requests
-    private final BlockingQueue<IndexedConsensusRequest> pendingRequest;
+    private final BlockingQueue<IndexedConsensusRequest> pendingEntries;
     // A container used to cache requests, whose size changes dynamically
-    private final List<IndexedConsensusRequest> bufferedRequest = new LinkedList<>();
+    private final List<IndexedConsensusRequest> bufferedEntries = new LinkedList<>();
     // A reader management class that gets requests from the DataRegion
     private final ConsensusReqReader reader =
         (ConsensusReqReader) impl.getStateMachine().read(new GetConsensusReqReaderPlan());
@@ -199,7 +199,7 @@ public class LogDispatcher {
     public LogDispatcherThread(Peer peer, IoTConsensusConfig config, long initialSyncIndex) {
       this.peer = peer;
       this.config = config;
-      this.pendingRequest = new LinkedBlockingQueue<>();
+      this.pendingEntries = new LinkedBlockingQueue<>();
       this.controller =
           new IndexController(
               impl.getStorageDir(),
@@ -227,12 +227,12 @@ public class LogDispatcher {
       return config;
     }
 
-    public int getPendingRequestSize() {
-      return pendingRequest.size();
+    public int getPendingEntriesSize() {
+      return pendingEntries.size();
     }
 
     public int getBufferRequestSize() {
-      return bufferedRequest.size();
+      return bufferedEntries.size();
     }
 
     /** try to offer a request into queue with memory control */
@@ -242,7 +242,7 @@ public class LogDispatcher {
       }
       boolean success;
       try {
-        success = pendingRequest.offer(indexedConsensusRequest);
+        success = pendingEntries.offer(indexedConsensusRequest);
       } catch (Throwable t) {
         // If exception occurs during request offer, the reserved memory should be released
         iotConsensusMemoryManager.free(indexedConsensusRequest.getSerializedSize());
@@ -263,13 +263,13 @@ public class LogDispatcher {
     public void stop() {
       stopped = true;
       long requestSize = 0;
-      for (IndexedConsensusRequest indexedConsensusRequest : pendingRequest) {
+      for (IndexedConsensusRequest indexedConsensusRequest : pendingEntries) {
         requestSize += indexedConsensusRequest.getSerializedSize();
       }
-      pendingRequest.clear();
+      pendingEntries.clear();
       iotConsensusMemoryManager.free(requestSize);
       requestSize = 0;
-      for (IndexedConsensusRequest indexedConsensusRequest : bufferedRequest) {
+      for (IndexedConsensusRequest indexedConsensusRequest : bufferedEntries) {
         requestSize += indexedConsensusRequest.getSerializedSize();
       }
       iotConsensusMemoryManager.free(requestSize);
@@ -290,17 +290,17 @@ public class LogDispatcher {
       logger.info("{}: Dispatcher for {} starts", impl.getThisNode(), peer);
       MetricService.getInstance().addMetricSet(metrics);
       try {
-        PendingBatch batch;
+        Batch batch;
         while (!Thread.interrupted() && !stopped) {
           long startTime = System.currentTimeMillis();
           while ((batch = getBatch()).isEmpty()) {
             // we may block here if there is no requests in the queue
             IndexedConsensusRequest request =
-                pendingRequest.poll(PENDING_REQUEST_TAKING_TIME_OUT_IN_SEC, TimeUnit.SECONDS);
+                pendingEntries.poll(PENDING_REQUEST_TAKING_TIME_OUT_IN_SEC, TimeUnit.SECONDS);
             if (request != null) {
-              bufferedRequest.add(request);
+              bufferedEntries.add(request);
               // If write pressure is low, we simply sleep a little to reduce the number of RPC
-              if (pendingRequest.size() <= config.getReplication().getMaxRequestNumPerBatch()) {
+              if (pendingEntries.size() <= config.getReplication().getMaxLogEntriesNumPerBatch()) {
                 Thread.sleep(config.getReplication().getMaxWaitingTimeForAccumulatingBatchInMs());
               }
             }
@@ -315,7 +315,7 @@ public class LogDispatcher {
                   "constructBatch",
                   Tag.REGION.toString(),
                   peer.getGroupId().toString())
-              .update((System.currentTimeMillis() - startTime) / batch.getBatches().size());
+              .update((System.currentTimeMillis() - startTime) / batch.getLogEntries().size());
           // we may block here if the synchronization pipeline is full
           syncStatus.addNextBatch(batch);
           // sends batch asynchronously and migrates the retry logic into the callback handler
@@ -341,25 +341,25 @@ public class LogDispatcher {
       }
     }
 
-    public PendingBatch getBatch() {
+    public Batch getBatch() {
       long startIndex = syncStatus.getNextSendingIndex();
       long maxIndex;
       synchronized (impl.getIndexObject()) {
         maxIndex = impl.getIndex() + 1;
         logger.debug(
-            "{}: startIndex: {}, maxIndex: {}, pendingRequest size: {}, bufferedRequest size: {}",
+            "{}: startIndex: {}, maxIndex: {}, pendingEntries size: {}, bufferedEntries size: {}",
             impl.getThisNode().getGroupId(),
             startIndex,
             maxIndex,
-            getPendingRequestSize(),
-            bufferedRequest.size());
+            getPendingEntriesSize(),
+            bufferedEntries.size());
         // Use drainTo instead of poll to reduce lock overhead
-        pendingRequest.drainTo(
-            bufferedRequest,
-            config.getReplication().getMaxRequestNumPerBatch() - bufferedRequest.size());
+        pendingEntries.drainTo(
+            bufferedEntries,
+            config.getReplication().getMaxLogEntriesNumPerBatch() - bufferedEntries.size());
       }
       // remove all request that searchIndex < startIndex
-      Iterator<IndexedConsensusRequest> iterator = bufferedRequest.iterator();
+      Iterator<IndexedConsensusRequest> iterator = bufferedEntries.iterator();
       while (iterator.hasNext()) {
         IndexedConsensusRequest request = iterator.next();
         if (request.getSearchIndex() < startIndex) {
@@ -370,20 +370,20 @@ public class LogDispatcher {
         }
       }
 
-      PendingBatch batches = new PendingBatch(config);
+      Batch batches = new Batch(config);
       // This condition will be executed in several scenarios:
       // 1. restart
-      // 2. The getBatch() is invoked immediately at the moment the PendingRequests are consumed
+      // 2. The getBatch() is invoked immediately at the moment the PendingEntries are consumed
       // up. To prevent inconsistency here, we use the synchronized logic when calculate value of
       // `maxIndex`
-      if (bufferedRequest.isEmpty()) {
+      if (bufferedEntries.isEmpty()) {
         constructBatchFromWAL(startIndex, maxIndex, batches);
         batches.buildIndex();
         logger.debug(
             "{} : accumulated a {} from wal when empty", impl.getThisNode().getGroupId(), batches);
       } else {
         // Notice that prev searchIndex >= startIndex
-        iterator = bufferedRequest.iterator();
+        iterator = bufferedEntries.iterator();
         IndexedConsensusRequest prev = iterator.next();
 
         // Prevents gap between logs. For example, some requests are not written into the queue when
@@ -425,9 +425,9 @@ public class LogDispatcher {
           }
           constructBatchIndexedFromConsensusRequest(current, batches);
           prev = current;
-          // We might not be able to remove all the elements in the bufferedRequest in the
+          // We might not be able to remove all the elements in the bufferedEntries in the
           // current function, but that's fine, we'll continue processing these elements in the
-          // bufferedRequest the next time we go into the function, they're never lost
+          // bufferedEntries the next time we go into the function, they're never lost
           iterator.remove();
           releaseReservedMemory(current);
         }
@@ -438,18 +438,18 @@ public class LogDispatcher {
       return batches;
     }
 
-    public void sendBatchAsync(PendingBatch batch, DispatchLogHandler handler) {
+    public void sendBatchAsync(Batch batch, DispatchLogHandler handler) {
       try {
         AsyncIoTConsensusServiceClient client = clientManager.borrowClient(peer.getEndpoint());
-        TSyncLogReq req =
-            new TSyncLogReq(
-                selfPeerId, peer.getGroupId().convertToTConsensusGroupId(), batch.getBatches());
+        TSyncLogEntriesReq req =
+            new TSyncLogEntriesReq(
+                selfPeerId, peer.getGroupId().convertToTConsensusGroupId(), batch.getLogEntries());
         logger.debug(
             "Send Batch[startIndex:{}, endIndex:{}] to ConsensusGroup:{}",
             batch.getStartIndex(),
             batch.getEndIndex(),
             peer.getGroupId().convertToTConsensusGroupId());
-        client.syncLog(req, handler);
+        client.syncLogEntries(req, handler);
       } catch (IOException | TException e) {
         logger.error("Can not sync logs to peer {} because", peer, e);
         handler.onError(e);
@@ -460,7 +460,7 @@ public class LogDispatcher {
       return syncStatus;
     }
 
-    private void constructBatchFromWAL(long currentIndex, long maxIndex, PendingBatch logBatches) {
+    private void constructBatchFromWAL(long currentIndex, long maxIndex, Batch logBatches) {
       logger.debug(
           String.format(
               "DataRegion[%s]->%s: currentIndex: %d, maxIndex: %d",
@@ -497,15 +497,15 @@ public class LogDispatcher {
         }
         targetIndex = data.getSearchIndex() + 1;
         // construct request from wal
-        logBatches.addTLogBatch(
-            new TLogBatch(data.getSerializedRequests(), data.getSearchIndex(), true));
+        logBatches.addTLogEntry(
+            new TLogEntry(data.getSerializedRequests(), data.getSearchIndex(), true));
       }
     }
 
     private void constructBatchIndexedFromConsensusRequest(
-        IndexedConsensusRequest request, PendingBatch logBatches) {
-      logBatches.addTLogBatch(
-          new TLogBatch(request.getSerializedRequests(), request.getSearchIndex(), false));
+        IndexedConsensusRequest request, Batch logBatches) {
+      logBatches.addTLogEntry(
+          new TLogEntry(request.getSerializedRequests(), request.getSearchIndex(), false));
     }
   }
 }

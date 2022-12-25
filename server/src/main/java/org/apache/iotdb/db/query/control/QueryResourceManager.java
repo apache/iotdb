@@ -18,11 +18,8 @@
  */
 package org.apache.iotdb.db.query.control;
 
-import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.service.TemporaryQueryDataFileService;
 
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
@@ -40,16 +37,8 @@ public class QueryResourceManager {
   private final AtomicLong queryIdAtom = new AtomicLong();
   private final QueryFileManager filePathsManager;
 
-  /**
-   * Record QueryDataSource used in queries
-   *
-   * <p>Key: query job id. Value: QueryDataSource corresponding to each data region.
-   */
-  private final Map<Long, Map<String, QueryDataSource>> cachedQueryDataSourcesMap;
-
   private QueryResourceManager() {
     filePathsManager = new QueryFileManager();
-    cachedQueryDataSourcesMap = new ConcurrentHashMap<>();
   }
 
   public static QueryResourceManager getInstance() {
@@ -86,9 +75,6 @@ public class QueryResourceManager {
 
     // close and delete UDF temp files
     TemporaryQueryDataFileService.getInstance().deregister(queryId);
-
-    // remove cached QueryDataSource
-    cachedQueryDataSourcesMap.remove(queryId);
   }
 
   public QueryFileManager getQueryFileManager() {

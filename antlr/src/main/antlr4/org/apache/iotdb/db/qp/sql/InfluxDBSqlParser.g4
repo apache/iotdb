@@ -51,20 +51,18 @@ expression
    ;
 
 whereClause
-    : WHERE orExpression
-    ;
-
-orExpression
-    : andExpression (OPERATOR_OR andExpression)*
-    ;
-
-andExpression
-    : predicate (OPERATOR_AND predicate)*
+    : WHERE predicate
     ;
 
 predicate
-    : (TIME | TIMESTAMP | nodeName ) comparisonOperator constant
-    | OPERATOR_NOT? LR_BRACKET orExpression RR_BRACKET
+    : LR_BRACKET predicateInBracket=predicate RR_BRACKET
+    | constant
+    | time=(TIME | TIMESTAMP)
+    | nodeName
+    | OPERATOR_NOT predicateAfterUnaryOperator=predicate
+    | leftPredicate=predicate (OPERATOR_GT | OPERATOR_GTE | OPERATOR_LT | OPERATOR_LTE | OPERATOR_SEQ | OPERATOR_NEQ) rightPredicate=predicate
+    | leftPredicate=predicate OPERATOR_AND rightPredicate=predicate
+    | leftPredicate=predicate OPERATOR_OR rightPredicate=predicate
     ;
 
 fromClause
@@ -94,15 +92,6 @@ constant
 
 functionAttribute
     : COMMA functionAttributeKey=STRING_LITERAL OPERATOR_SEQ functionAttributeValue=STRING_LITERAL
-    ;
-
-comparisonOperator
-    : type = OPERATOR_GT
-    | type = OPERATOR_GTE
-    | type = OPERATOR_LT
-    | type = OPERATOR_LTE
-    | type = OPERATOR_SEQ
-    | type = OPERATOR_NEQ
     ;
 
 // Expression & Predicate

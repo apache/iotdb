@@ -58,7 +58,6 @@ import java.util.Objects;
 import java.util.PriorityQueue;
 import java.util.Set;
 import java.util.function.ToLongFunction;
-import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static org.apache.iotdb.db.mpp.metric.SeriesScanCostMetricSet.BUILD_TSBLOCK_FROM_MERGE_READER_ALIGNED;
@@ -952,12 +951,6 @@ public class SeriesScanUtil {
     throw new IOException("No more batch data");
   }
 
-  private LinkedList<TsFileResource> sortUnSeqFileResources(List<TsFileResource> tsFileResources) {
-    return tsFileResources.stream()
-        .sorted(orderUtils.comparingLong(tsFileResource -> orderUtils.getOrderTime(tsFileResource)))
-        .collect(Collectors.toCollection(LinkedList::new));
-  }
-
   /**
    * unpack all overlapped seq/unseq files and find the first TimeSeriesMetadata
    *
@@ -1286,7 +1279,7 @@ public class SeriesScanUtil {
       while (dataSource.hasNextSeqResource(curSeqFileIndex, getAscending())) {
         TsFileResource tsFileResource = dataSource.getSeqResourceByIndex(curSeqFileIndex);
         if (tsFileResource != null
-            && tsFileResource.isSatisfied(seriesPath.getDevice(), timeFilter, null, true, false)) {
+            && tsFileResource.isSatisfied(seriesPath.getDevice(), timeFilter, true, false)) {
           break;
         }
         curSeqFileIndex--;
@@ -1299,7 +1292,7 @@ public class SeriesScanUtil {
       while (dataSource.hasNextUnseqResource(curUnseqFileIndex)) {
         TsFileResource tsFileResource = dataSource.getUnseqResourceByIndex(curUnseqFileIndex);
         if (tsFileResource != null
-            && tsFileResource.isSatisfied(seriesPath.getDevice(), timeFilter, null, false, false)) {
+            && tsFileResource.isSatisfied(seriesPath.getDevice(), timeFilter, false, false)) {
           break;
         }
         curUnseqFileIndex++;
@@ -1402,7 +1395,7 @@ public class SeriesScanUtil {
       while (dataSource.hasNextSeqResource(curSeqFileIndex, getAscending())) {
         TsFileResource tsFileResource = dataSource.getSeqResourceByIndex(curSeqFileIndex);
         if (tsFileResource != null
-            && tsFileResource.isSatisfied(seriesPath.getDevice(), timeFilter, null, true, false)) {
+            && tsFileResource.isSatisfied(seriesPath.getDevice(), timeFilter, true, false)) {
           break;
         }
         curSeqFileIndex++;
@@ -1415,7 +1408,7 @@ public class SeriesScanUtil {
       while (dataSource.hasNextUnseqResource(curUnseqFileIndex)) {
         TsFileResource tsFileResource = dataSource.getUnseqResourceByIndex(curUnseqFileIndex);
         if (tsFileResource != null
-            && tsFileResource.isSatisfied(seriesPath.getDevice(), timeFilter, null, false, false)) {
+            && tsFileResource.isSatisfied(seriesPath.getDevice(), timeFilter, false, false)) {
           break;
         }
         curUnseqFileIndex++;

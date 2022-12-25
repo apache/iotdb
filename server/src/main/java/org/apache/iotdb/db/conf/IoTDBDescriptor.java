@@ -37,9 +37,9 @@ import org.apache.iotdb.db.engine.compaction.constant.InnerSequenceCompactionSel
 import org.apache.iotdb.db.engine.compaction.constant.InnerUnseqCompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.constant.InnerUnsequenceCompactionSelector;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.qp.utils.DateTimeUtils;
 import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.db.service.metrics.IoTDBInternalReporter;
+import org.apache.iotdb.db.utils.DateTimeUtils;
 import org.apache.iotdb.db.utils.datastructure.TVListSortAlgorithm;
 import org.apache.iotdb.db.wal.WALManager;
 import org.apache.iotdb.db.wal.utils.WALMode;
@@ -188,7 +188,7 @@ public class IoTDBDescriptor {
         MetricConfigDescriptor.getInstance().loadProps(commonProperties);
         MetricConfigDescriptor.getInstance()
             .getMetricConfig()
-            .updateRpcInstance(conf.getRpcAddress(), conf.getRpcPort());
+            .updateRpcInstance(conf.getInternalAddress(), conf.getInternalPort());
       }
     } else {
       logger.warn(
@@ -565,14 +565,6 @@ public class IoTDBDescriptor {
                 "raw_query_blocking_queue_capacity",
                 Integer.toString(conf.getRawQueryBlockingQueueCapacity()))));
 
-    conf.setSchemaRegionDeviceNodeCacheSize(
-        Integer.parseInt(
-            properties
-                .getProperty(
-                    "schema_region_device_node_cache_size",
-                    Integer.toString(conf.getSchemaRegionDeviceNodeCacheSize()))
-                .trim()));
-
     conf.setmRemoteSchemaCacheSize(
         Integer.parseInt(
             properties
@@ -632,7 +624,7 @@ public class IoTDBDescriptor {
     conf.setChunkPointNumLowerBoundInCompaction(
         Long.parseLong(
             properties.getProperty(
-                "chunk_size_lower_bound_in_compaction",
+                "chunk_point_num_lower_bound_in_compaction",
                 Long.toString(conf.getChunkPointNumLowerBoundInCompaction()))));
     conf.setChunkSizeLowerBoundInCompaction(
         Long.parseLong(
@@ -1440,7 +1432,6 @@ public class IoTDBDescriptor {
               properties.getProperty(
                   "compaction_io_rate_per_sec",
                   Integer.toString(conf.getCompactionIORatePerSec()))));
-
       // update insert-tablet-plan's row limit for select-into
       conf.setSelectIntoInsertTabletPlanRowLimit(
           Integer.parseInt(

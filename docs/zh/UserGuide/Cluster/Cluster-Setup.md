@@ -401,4 +401,4 @@ kill -9 <pid>
 
 # 7. 常见问题
 
-请参考 [常见问题](https://iotdb.apache.org/zh/UserGuide/Master/FAQ/Frequently-asked-questions.html)
+请参考 [分布式部署FAQ](https://iotdb.apache.org/zh/UserGuide/Master/FAQ/FAQ-for-cluster-setup.html)
