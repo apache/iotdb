@@ -31,8 +31,11 @@ import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.junit.Assert;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.mockito.internal.util.collections.Sets;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -43,12 +46,11 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 public class ClusterSchemaTreeTest {
-
-  private long calTime = 0;
-  private long initTime = 0;
+  private static final Logger logger = LoggerFactory.getLogger(ClusterSchemaTreeTest.class);
 
   @Test
-  public void benchmark1() throws IllegalPathException {
+  @Ignore
+  public void testPerformanceOnSimpleTree() throws IllegalPathException {
     long startTime = System.currentTimeMillis();
     int round = 20;
     for (int i = 0; i < round; i++) {
@@ -57,19 +59,18 @@ public class ClusterSchemaTreeTest {
       }
     }
     long endTime = System.currentTimeMillis();
-    initTime = (endTime - startTime - calTime);
-    System.out.println("CalculateTime=" + calTime / round);
-    System.out.println("InitialTime=" + initTime / round);
-    System.out.println("AllTime=" + (endTime - startTime) / round);
+    logger.info("AllTime={}", (endTime - startTime) / round);
   }
 
   @Test
-  public void benchmark() throws IllegalPathException {
+  @Ignore
+  public void testPerformanceOnComplexTree() throws IllegalPathException {
     int deep = 5;
     int width = 5;
-    SchemaNode root = generateSchemaTreeWithInternalRepeatedName1(deep, width);
+    SchemaNode root = generateComplexSchemaTree(deep, width);
     PartialPath path = new PartialPath("root.**.d0.s");
     long startTime = System.currentTimeMillis();
+    long calTime = System.currentTimeMillis();
     int round = 20;
     for (int i = 0; i < round; i++) {
       for (int j = 0; j < 1000; j++) {
@@ -83,10 +84,9 @@ public class ClusterSchemaTreeTest {
       }
     }
     long endTime = System.currentTimeMillis();
-    initTime = (endTime - startTime - calTime);
-    System.out.println("CalculateTime=" + calTime / round);
-    System.out.println("InitialTime=" + initTime / round);
-    System.out.println("AllTime=" + (endTime - startTime) / round);
+    logger.info("CalculateTime={}", calTime / round);
+    logger.info("InitialTime={}", (endTime - startTime - calTime) / round);
+    logger.info("AllTime={}", (endTime - startTime) / round);
   }
 
   @Test
@@ -388,7 +388,17 @@ public class ClusterSchemaTreeTest {
     return root;
   }
 
-  private SchemaNode generateSchemaTreeWithInternalRepeatedName1(int deep, int width) {
+  /**
+   * Generate complex schema tree with specific deep and width. For example, if deep=2 and width=3,
+   * the schema tree contains timeseries: root.d0.s, root.d1.s, root.s2.s, root.d0.d0.s,
+   * root.d0.d1.s, root.d0.d2.s, root.d1.d0.s, root.d1.d1.s, root.d1.d2.s, root.d2.d0.s,
+   * root.d2.d1.s, root.d2.d2.s
+   *
+   * @param deep deep
+   * @param width width
+   * @return root node
+   */
+  private SchemaNode generateComplexSchemaTree(int deep, int width) {
     SchemaNode root = new SchemaInternalNode("root");
 
     List<SchemaNode> nodes = new ArrayList<>();
@@ -425,7 +435,6 @@ public class ClusterSchemaTreeTest {
       String[] expectedPath,
       String[] expectedAlias,
       boolean[] expectedAligned) {
-    long startTime = System.currentTimeMillis();
     List<MeasurementPath> result = visitor.getAllResult();
     Assert.assertEquals(expectedNum, result.size());
     for (int i = 0; i < expectedNum; i++) {
@@ -443,7 +452,6 @@ public class ClusterSchemaTreeTest {
         Assert.assertEquals(expectedAligned[i], result.get(i).isUnderAlignedEntity());
       }
     }
-    calTime += (System.currentTimeMillis() - startTime);
   }
 
   private void checkVisitorResult(

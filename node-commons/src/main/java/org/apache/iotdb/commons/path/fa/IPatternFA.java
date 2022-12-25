@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 
 import java.util.Iterator;
 import java.util.Map;
+import java.util.Objects;
 
 /**
  * This interface defines the behaviour of a FA(Finite Automation), generated from a path pattern or
@@ -113,6 +114,20 @@ public interface IPatternFA {
 
     public IPatternFA buildDFA() {
       return FAFactory.getInstance().constructDFA(this);
+    }
+
+    @Override
+    public boolean equals(Object o) {
+      if (this == o) return true;
+      if (o == null || getClass() != o.getClass()) return false;
+      Builder builder = (Builder) o;
+      return isPrefixMatch == builder.isPrefixMatch
+          && Objects.equals(pathPattern, builder.pathPattern);
+    }
+
+    @Override
+    public int hashCode() {
+      return Objects.hash(pathPattern, isPrefixMatch);
     }
   }
 }

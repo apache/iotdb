@@ -19,7 +19,6 @@
 package org.apache.iotdb.commons.path.fa.dfa;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.fa.IFAState;
 import org.apache.iotdb.commons.path.fa.IFATransition;
@@ -37,9 +36,9 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public class PatternDFA implements IPatternFA {
 
-  // TODO: maybe transitionMap can be represented as List
   private final List<IFATransition> preciseMatchTransitionList = new ArrayList<>();
   private final List<IFATransition> batchMatchTransitionList = new ArrayList<>();
+  // Map<AcceptEvent, IFATransition>
   private final Map<String, IFATransition> transitionMap = new HashMap<>();
   private final DFAGraph dfaGraph;
 
@@ -50,8 +49,6 @@ public class PatternDFA implements IPatternFA {
   private final List<IFATransition>[] batchMatchTransitionCached;
 
   public PatternDFA(PartialPath pathPattern, boolean isPrefix) {
-    //    System.out.println(builder.pathPattern);
-
     // 1. build transition
     boolean wildcard = false;
     AtomicInteger transitionIndex = new AtomicInteger();
@@ -91,13 +88,11 @@ public class PatternDFA implements IPatternFA {
 
     // 2. build NFA
     NFAGraph nfaGraph = new NFAGraph(pathPattern, isPrefix, transitionMap);
-    //    nfaGraph.print(transitionMap);
 
     // 3. NFA to DFA
     dfaGraph = new DFAGraph(nfaGraph, transitionMap.values());
     preciseMatchTransitionCached = new HashMap[dfaGraph.getStateSize()];
     batchMatchTransitionCached = new List[dfaGraph.getStateSize()];
-    //    dfaGraph.print(transitionMap);
   }
 
   @Override

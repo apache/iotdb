@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.schema.tree;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.fa.IFAState;
 import org.apache.iotdb.commons.path.fa.IFATransition;
@@ -91,10 +92,25 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
   protected AbstractTreeVisitor(N root, PartialPath pathPattern, boolean isPrefixMatch) {
     this.root = root;
 
+    boolean usingDFA = false;
+    // Use DFA if there are ** and no regex node in pathPattern
+    for (String pathNode : pathPattern.getNodes()) {
+      if (IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD.equals(pathNode)) {
+        // ** node
+        usingDFA = true;
+      } else if (pathNode.length() > 1
+          && pathNode.contains(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD)) {
+        // regex node
+        usingDFA = false;
+        break;
+      }
+    }
     this.patternFA =
-        new IPatternFA.Builder().pattern(pathPattern).isPrefixMatch(isPrefixMatch).buildDFA();
-    //    this.patternFA = new
-    // IPatternFA.Builder().pattern(pathPattern).isPrefixMatch(isPrefixMatch).buildNFA();
+        usingDFA
+            ? new IPatternFA.Builder().pattern(pathPattern).isPrefixMatch(isPrefixMatch).buildDFA()
+            : new IPatternFA.Builder().pattern(pathPattern).isPrefixMatch(isPrefixMatch).buildNFA();
+    //        this.patternFA = new
+    //     IPatternFA.Builder().pattern(pathPattern).isPrefixMatch(isPrefixMatch).buildNFA();
     //    this.patternFA = FAFactory.constructNFA(pathPattern,isPrefixMatch);
 
     initStack();

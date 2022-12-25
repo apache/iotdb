@@ -21,19 +21,28 @@ package org.apache.iotdb.commons.path.fa;
 import org.apache.iotdb.commons.path.fa.dfa.PatternDFA;
 import org.apache.iotdb.commons.path.fa.nfa.SimpleNFA;
 
+import com.github.benmanes.caffeine.cache.Caffeine;
+import com.github.benmanes.caffeine.cache.LoadingCache;
+
 public class FAFactory {
 
-  //    private LoadingCache<PartialPath, IMNode> mNodeCache;
+  private final LoadingCache<IPatternFA.Builder, PatternDFA> dfaCache;
+  private static final int DFA_CACHE_SIZE = 20;
 
   public IPatternFA constructDFA(IPatternFA.Builder builder) {
-    return new PatternDFA(builder.getPathPattern(), builder.isPrefixMatch());
+    return dfaCache.get(builder);
   }
 
   public IPatternFA constructNFA(IPatternFA.Builder builder) {
     return new SimpleNFA(builder.getPathPattern(), builder.isPrefixMatch());
   }
 
-  private FAFactory() {}
+  private FAFactory() {
+    dfaCache =
+        Caffeine.newBuilder()
+            .maximumSize(DFA_CACHE_SIZE)
+            .build(builder -> new PatternDFA(builder.getPathPattern(), builder.isPrefixMatch()));
+  }
 
   public static FAFactory getInstance() {
     return FAFactoryHolder.INSTANCE;

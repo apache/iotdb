@@ -21,6 +21,7 @@ package org.apache.iotdb.commons.path.fa.dfa.graph;
 import org.apache.iotdb.commons.path.fa.IFAState;
 import org.apache.iotdb.commons.path.fa.IFATransition;
 import org.apache.iotdb.commons.path.fa.dfa.DFAState;
+import org.apache.iotdb.commons.utils.TestOnly;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -80,8 +81,8 @@ public class DFAGraph {
     }
   }
 
+  @TestOnly
   public void print(Map<String, IFATransition> transitionMap) {
-    // print
     System.out.println();
     System.out.println();
     System.out.println("DFA:");
