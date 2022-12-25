@@ -185,6 +185,45 @@ public abstract class SchemaRegionBasicTest {
     }
   }
 
+  @Test
+  public void testEmptySnapshot() throws Exception {
+    if (config.getSchemaEngineMode().equals(SchemaEngineMode.Schema_File.name())) {
+      return;
+    }
+    String schemaRegionConsensusProtocolClass = config.getSchemaRegionConsensusProtocolClass();
+    config.setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS);
+    try {
+      PartialPath storageGroup = new PartialPath("root.sg");
+      SchemaRegionId schemaRegionId = new SchemaRegionId(0);
+      SchemaEngine.getInstance().createSchemaRegion(storageGroup, schemaRegionId);
+      ISchemaRegion schemaRegion = SchemaEngine.getInstance().getSchemaRegion(schemaRegionId);
+
+      File mLogFile =
+          SystemFileFactory.INSTANCE.getFile(
+              schemaRegion.getStorageGroupFullPath()
+                  + File.separator
+                  + schemaRegion.getSchemaRegionId().getId(),
+              MetadataConstant.METADATA_LOG);
+      Assert.assertFalse(mLogFile.exists());
+
+      File snapshotDir = new File(config.getSchemaDir() + File.separator + "snapshot");
+      snapshotDir.mkdir();
+      schemaRegion.createSnapshot(snapshotDir);
+
+      schemaRegion.loadSnapshot(snapshotDir);
+
+      Pair<List<ShowTimeSeriesResult>, Integer> result =
+          schemaRegion.showTimeseries(
+              new ShowTimeSeriesPlan(
+                  new PartialPath("root.sg.**"), false, "tag-key", "tag-value", 0, 0, false),
+              null);
+
+      Assert.assertEquals(0, result.left.size());
+    } finally {
+      config.setSchemaRegionConsensusProtocolClass(schemaRegionConsensusProtocolClass);
+    }
+  }
+
   private Template generateTemplate() throws IllegalPathException {
     Template template =
         new Template(
