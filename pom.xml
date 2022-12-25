@@ -86,6 +86,7 @@
         <module>thrift-confignode</module>
         <module>thrift-iot-consensus</module>
         <module>thrift-influxdb</module>
+        <module>thrift-mlnode</module>
         <module>service-rpc</module>
         <module>jdbc</module>
         <module>influxdb-protocol</module>

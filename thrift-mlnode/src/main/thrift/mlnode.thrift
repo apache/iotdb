@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 include "common.thrift"
 namespace py iotdb.thrift.mlnode
 
