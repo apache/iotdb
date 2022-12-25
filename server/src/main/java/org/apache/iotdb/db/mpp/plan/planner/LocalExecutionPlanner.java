@@ -126,7 +126,7 @@ public class LocalExecutionPlanner {
   private void setMemoryLimitForHandle(TFragmentInstanceId fragmentInstanceId, PlanNode plan) {
     MemoryDistributionCalculator visitor = new MemoryDistributionCalculator();
     plan.accept(visitor, null);
-    long totalSplit = visitor.calculateTotalSplit();
+    int totalSplit = visitor.calculateTotalSplit();
     if (totalSplit == 0) {
       return;
     }

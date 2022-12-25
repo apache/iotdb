@@ -213,10 +213,10 @@ import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static org.apache.iotdb.db.engine.querycontext.QueryDataSource.updateFilterUsingTTL;
+import static org.apache.iotdb.db.mpp.common.DataNodeEndPoints.isSameNode;
 import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.calculateMaxAggregationResultSize;
 import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.calculateMaxAggregationResultSizeForLastQuery;
 import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.initTimeRangeIterator;
-import static org.apache.iotdb.db.mpp.plan.constant.DataNodeEndPoints.isSameNode;
 
 /** This Visitor is responsible for transferring PlanNode Tree to Operator Tree */
 public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionPlanContext> {

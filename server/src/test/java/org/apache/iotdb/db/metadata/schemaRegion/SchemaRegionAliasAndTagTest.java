@@ -21,9 +21,9 @@ package org.apache.iotdb.db.metadata.schemaRegion;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.metadata.plan.schemaregion.impl.read.SchemaRegionReadPlanFactory;
+import org.apache.iotdb.db.metadata.plan.schemaregion.result.ShowTimeSeriesResult;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
-import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
-import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -31,7 +31,6 @@ import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.junit.Assert;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -148,10 +147,9 @@ public class SchemaRegionAliasAndTagTest extends AbstractSchemaRegionTest {
     try {
       Pair<List<ShowTimeSeriesResult>, Integer> result =
           schemaRegion.showTimeseries(
-              new ShowTimeSeriesPlan(new PartialPath(fullPath), false, null, null, 0, 0, false),
-              null);
+              SchemaRegionReadPlanFactory.getShowTimeSeriesPlan(new PartialPath(fullPath)));
       Assert.assertEquals(1, result.left.size());
-      Assert.assertEquals(fullPath, result.left.get(0).getName());
+      Assert.assertEquals(fullPath, result.left.get(0).getPath());
       Assert.assertEquals(alias, result.left.get(0).getAlias());
       Assert.assertEquals(tags, result.left.get(0).getTag());
       Assert.assertEquals(attributes, result.left.get(0).getAttribute());
@@ -165,10 +163,9 @@ public class SchemaRegionAliasAndTagTest extends AbstractSchemaRegionTest {
     try {
       Pair<List<ShowTimeSeriesResult>, Integer> result =
           schemaRegion.showTimeseries(
-              new ShowTimeSeriesPlan(new PartialPath(fullPath), false, null, null, 0, 0, false),
-              null);
+              SchemaRegionReadPlanFactory.getShowTimeSeriesPlan(new PartialPath(fullPath)));
       Assert.assertEquals(1, result.left.size());
-      Assert.assertEquals(fullPath, result.left.get(0).getName());
+      Assert.assertEquals(fullPath, result.left.get(0).getPath());
       Assert.assertEquals(attributes, result.left.get(0).getAttribute());
     } catch (Exception e) {
       e.printStackTrace();
@@ -180,10 +177,9 @@ public class SchemaRegionAliasAndTagTest extends AbstractSchemaRegionTest {
     try {
       Pair<List<ShowTimeSeriesResult>, Integer> result =
           schemaRegion.showTimeseries(
-              new ShowTimeSeriesPlan(new PartialPath(fullPath), false, null, null, 0, 0, false),
-              null);
+              SchemaRegionReadPlanFactory.getShowTimeSeriesPlan(new PartialPath(fullPath)));
       Assert.assertEquals(1, result.left.size());
-      Assert.assertEquals(fullPath, result.left.get(0).getName());
+      Assert.assertEquals(fullPath, result.left.get(0).getPath());
       Assert.assertEquals(tags, result.left.get(0).getTag());
     } catch (Exception e) {
       logger.error(e.getMessage(), e);
@@ -357,11 +353,32 @@ public class SchemaRegionAliasAndTagTest extends AbstractSchemaRegionTest {
   }
 
   @Test
-  @Ignore
   public void testDropTagsOrAttributes() {
     try {
+      // create timeseries with tags and attributes
       prepareTimeseries();
-      Set<String> keySet = new HashSet<>(Arrays.asList("tag1", "tag2", "attr1", "attr2"));
+      // add tags and attributes after create
+      Set<String> keySet =
+          new HashSet<>(Arrays.asList("tag1", "tag2", "tag3", "attr1", "attr2", "attr3"));
+      Map<String, String> newTags =
+          new HashMap<String, String>() {
+            {
+              put("tag2", "new2");
+              put("tag3", "new3");
+            }
+          };
+      schemaRegion.addTags(newTags, new PartialPath("root.sg.wf01.wt01.v1.s1"));
+      schemaRegion.addTags(newTags, new PartialPath("root.sg.wf01.aligned_device1.s1"));
+      Map<String, String> newAttributes =
+          new HashMap<String, String>() {
+            {
+              put("attr2", "new2");
+              put("attr3", "new3");
+            }
+          };
+      schemaRegion.addAttributes(newAttributes, new PartialPath("root.sg.wf01.wt01.v1.s1"));
+      schemaRegion.addAttributes(newAttributes, new PartialPath("root.sg.wf01.aligned_device1.s1"));
+      // drop all tags and attributes then check
       List<String> fullPaths =
           Arrays.asList(
               "root.sg.wf01.wt01.v1.s1",

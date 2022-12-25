@@ -19,7 +19,7 @@
 version: "3"
 services:
   iotdb-confignode:
-    image: apache/iotdb:1.0.1-SNAPSHOT-confignode
+    image: apache/iotdb:1.0.0-confignode
     container_name: iotdb-confignode
     ports:
       - "22277:22277"
@@ -37,7 +37,7 @@ services:
     network_mode: "host"
 
   iotdb-datanode:
-    image: apache/iotdb:1.0.1-SNAPSHOT-datanode
+    image: apache/iotdb:1.0.0-datanode
     container_name: iotdb-datanode
     ports:
       - "6667:6667"

@@ -27,9 +27,9 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.mpp.common.SessionInfo;
 import org.apache.iotdb.db.mpp.plan.Coordinator;
 import org.apache.iotdb.db.mpp.plan.analyze.ClusterPartitionFetcher;
-import org.apache.iotdb.db.mpp.plan.analyze.ClusterSchemaFetcher;
 import org.apache.iotdb.db.mpp.plan.analyze.IPartitionFetcher;
-import org.apache.iotdb.db.mpp.plan.analyze.ISchemaFetcher;
+import org.apache.iotdb.db.mpp.plan.analyze.schema.ClusterSchemaFetcher;
+import org.apache.iotdb.db.mpp.plan.analyze.schema.ISchemaFetcher;
 import org.apache.iotdb.db.mpp.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.mpp.plan.parser.StatementGenerator;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
@@ -81,19 +81,19 @@ public class IoTDBInternalReporter extends InternalIoTDBReporter {
 
   @Override
   public boolean start() {
-    if (currentServiceFuture == null) {
-      currentServiceFuture =
-          ScheduledExecutorUtil.safelyScheduleAtFixedRate(
-              service,
-              () -> {
-                writeMetricToIoTDB(autoGauges);
-              },
-              1,
-              MetricConfigDescriptor.getInstance()
-                  .getMetricConfig()
-                  .getAsyncCollectPeriodInSecond(),
-              TimeUnit.SECONDS);
+    if (currentServiceFuture != null) {
+      LOGGER.warn("IoTDB Internal Reporter already start");
+      return false;
     }
+    currentServiceFuture =
+        ScheduledExecutorUtil.safelyScheduleAtFixedRate(
+            service,
+            () -> {
+              writeMetricToIoTDB(autoGauges);
+            },
+            1,
+            MetricConfigDescriptor.getInstance().getMetricConfig().getAsyncCollectPeriodInSecond(),
+            TimeUnit.SECONDS);
     return true;
   }
 

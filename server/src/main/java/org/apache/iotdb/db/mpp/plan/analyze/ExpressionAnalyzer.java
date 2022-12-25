@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.db.constant.SqlConstant;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
 import org.apache.iotdb.db.mpp.common.schematree.ISchemaTree;
@@ -41,7 +42,6 @@ import org.apache.iotdb.db.mpp.plan.expression.ternary.TernaryExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.InExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.UnaryExpression;
 import org.apache.iotdb.db.mpp.plan.statement.component.ResultColumn;
-import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter;
@@ -274,7 +274,7 @@ public class ExpressionAnalyzer {
     } else if (expression instanceof TimeSeriesOperand) {
       PartialPath rawPath = ((TimeSeriesOperand) expression).getPath();
       List<PartialPath> actualPaths = new ArrayList<>();
-      if (rawPath.getFullPath().startsWith(SQLConstant.ROOT + TsFileConstant.PATH_SEPARATOR)) {
+      if (rawPath.getFullPath().startsWith(SqlConstant.ROOT + TsFileConstant.PATH_SEPARATOR)) {
         actualPaths.add(rawPath);
         patternTree.appendPathPattern(rawPath);
       } else {
@@ -343,7 +343,7 @@ public class ExpressionAnalyzer {
     } else if (expression instanceof TimeSeriesOperand) {
       PartialPath rawPath = ((TimeSeriesOperand) expression).getPath();
       List<PartialPath> actualPaths = new ArrayList<>();
-      if (rawPath.getFullPath().startsWith(SQLConstant.ROOT + TsFileConstant.PATH_SEPARATOR)) {
+      if (rawPath.getFullPath().startsWith(SqlConstant.ROOT + TsFileConstant.PATH_SEPARATOR)) {
         actualPaths.add(rawPath);
       } else {
         for (PartialPath prefixPath : prefixPaths) {
@@ -391,7 +391,7 @@ public class ExpressionAnalyzer {
       }
     } else if (predicate instanceof TimeSeriesOperand) {
       PartialPath rawPath = ((TimeSeriesOperand) predicate).getPath();
-      if (rawPath.getFullPath().startsWith(SQLConstant.ROOT + TsFileConstant.PATH_SEPARATOR)) {
+      if (rawPath.getFullPath().startsWith(SqlConstant.ROOT + TsFileConstant.PATH_SEPARATOR)) {
         patternTree.appendPathPattern(rawPath);
         return;
       }
@@ -549,7 +549,7 @@ public class ExpressionAnalyzer {
     } else if (predicate instanceof TimeSeriesOperand) {
       PartialPath filterPath = ((TimeSeriesOperand) predicate).getPath();
       List<PartialPath> concatPaths = new ArrayList<>();
-      if (!filterPath.getFirstNode().equals(SQLConstant.ROOT)) {
+      if (!filterPath.getFirstNode().equals(SqlConstant.ROOT)) {
         prefixPaths.forEach(prefix -> concatPaths.add(prefix.concatPath(filterPath)));
       } else {
         // do nothing in the case of "where root.d1.s1 > 5"
