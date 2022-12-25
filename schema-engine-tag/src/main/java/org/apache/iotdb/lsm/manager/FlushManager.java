@@ -72,6 +72,8 @@ public class FlushManager<T, R extends IFlushRequest>
       for (R flushRequest : flushRequests) {
         flushRequest.setFlushDirPath(flushDirPath);
         flushRequest.setFlushFileName(flushFilePrefix + "-0-" + flushRequest.getIndex());
+        flushRequest.setFlushDeleteFileName(
+            flushFilePrefix + "-delete" + "-0-" + flushRequest.getIndex());
         flush(flushRequest);
         memManager.removeMemData(flushRequest);
         updateWal(flushRequest);

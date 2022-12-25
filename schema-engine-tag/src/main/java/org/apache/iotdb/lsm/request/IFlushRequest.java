@@ -27,6 +27,8 @@ public class IFlushRequest<K, V, T> implements IRequest<K, V> {
   private String flushDirPath;
   private String flushFileName;
 
+  private String flushDeleteFileName;
+
   private int index;
 
   public T getMemNode() {
@@ -86,5 +88,13 @@ public class IFlushRequest<K, V, T> implements IRequest<K, V> {
   @Override
   public RequestType getRequestType() {
     return RequestType.FLUSH;
+  }
+
+  public String getFlushDeletionFileName() {
+    return flushDeleteFileName;
+  }
+
+  public void setFlushDeleteFileName(String flushDeleteFileName) {
+    this.flushDeleteFileName = flushDeleteFileName;
   }
 }

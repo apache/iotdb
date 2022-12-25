@@ -31,6 +31,7 @@ import org.apache.iotdb.lsm.sstable.bplustree.writer.BPlusTreeWriter;
 import org.apache.iotdb.lsm.sstable.fileIO.FileOutput;
 import org.apache.iotdb.lsm.util.BloomFilter;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -70,6 +71,23 @@ public class MemTableFlush extends FlushLevelProcessor<MemTable, MemChunkGroup, 
     }
     tiFileHeader.setBloomFilterOffset(fileOutput.write(bloomFilter));
     fileOutput.write(tiFileHeader);
+    fileOutput.flush();
+    if (memNode.getDeletionList() != null && memNode.getDeletionList().size() != 0) {
+      flushDeletionList(memNode, flushRequest, context);
+    }
+  }
+
+  private void flushDeletionList(
+      MemTable memNode, FlushRequest flushRequest, FlushRequestContext context) throws IOException {
+    File deletionFile =
+        new File(flushRequest.getFlushDirPath(), flushRequest.getFlushDeletionFileName());
+    if (!deletionFile.exists()) {
+      deletionFile.createNewFile();
+    }
+    FileOutput fileOutput = new FileOutput(deletionFile);
+    for (Integer deletion : memNode.getDeletionList()) {
+      fileOutput.write(deletion);
+    }
     fileOutput.flush();
   }
 
