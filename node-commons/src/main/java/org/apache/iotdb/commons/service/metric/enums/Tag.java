@@ -27,7 +27,8 @@ public enum Tag {
   DATABASE,
   STAGE,
   FROM,
-  OPERATION;
+  OPERATION,
+  INTERFACE;
 
   @Override
   public String toString() {

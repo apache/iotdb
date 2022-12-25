@@ -230,6 +230,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           finished = setResult.apply(resp, queryExecution, req.fetchSize);
           resp.setMoreData(!finished);
         } else {
+          finished = true;
           resp = RpcUtils.getTSExecuteStatementResp(result.status);
         }
         return resp;
@@ -239,7 +240,6 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       return RpcUtils.getTSExecuteStatementResp(
           onQueryException(e, "\"" + statement + "\". " + OperationType.EXECUTE_STATEMENT));
     } finally {
-      addOperationLatency(OperationType.EXECUTE_STATEMENT, startTime);
       COORDINATOR.recordExecutionTime(queryId, System.currentTimeMillis() - startTime);
       if (finished) {
         if (statementType != null) {
@@ -306,7 +306,6 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       return RpcUtils.getTSExecuteStatementResp(
           onQueryException(e, "\"" + req + "\". " + OperationType.EXECUTE_RAW_DATA_QUERY));
     } finally {
-      addOperationLatency(OperationType.EXECUTE_RAW_DATA_QUERY, startTime);
       COORDINATOR.recordExecutionTime(queryId, System.currentTimeMillis() - startTime);
       if (finished) {
         addStatementExecutionLatency(
@@ -371,7 +370,6 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       return RpcUtils.getTSExecuteStatementResp(
           onQueryException(e, "\"" + req + "\". " + OperationType.EXECUTE_LAST_DATA_QUERY));
     } finally {
-      addOperationLatency(OperationType.EXECUTE_LAST_DATA_QUERY, startTime);
       COORDINATOR.recordExecutionTime(queryId, System.currentTimeMillis() - startTime);
       if (finished) {
         addStatementExecutionLatency(
@@ -444,7 +442,6 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       finished = true;
       return RpcUtils.getTSFetchResultsResp(onQueryException(e, OperationType.FETCH_RESULTS));
     } finally {
-      addOperationLatency(OperationType.FETCH_RESULTS, startTime);
       COORDINATOR.recordExecutionTime(req.queryId, System.currentTimeMillis() - startTime);
       if (finished) {
         if (statementType != null) {
@@ -822,6 +819,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
     for (int i = 0; i < req.getStatements().size(); i++) {
       String statement = req.getStatements().get(i);
+      long t2 = System.currentTimeMillis();
+      StatementType type = null;
       try {
         Statement s =
             StatementGenerator.createStatement(
@@ -837,7 +836,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         }
 
         long queryId = SESSION_MANAGER.requestQueryId();
-        long t2 = System.currentTimeMillis();
+        type = s.getType();
         // create and cache dataset
         ExecutionResult result =
             COORDINATOR.execute(
@@ -848,7 +847,6 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
                 PARTITION_FETCHER,
                 SCHEMA_FETCHER,
                 config.getQueryTimeoutThreshold());
-        addOperationLatency(OperationType.EXECUTE_STATEMENT, t2);
         results.add(result.status);
       } catch (Exception e) {
         LOGGER.warn("Error occurred when executing executeBatchStatement: ", e);
@@ -858,9 +856,13 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           isAllSuccessful = false;
         }
         results.add(status);
+      } finally {
+        addStatementExecutionLatency(
+            OperationType.EXECUTE_STATEMENT, type, System.currentTimeMillis() - t2);
       }
     }
-    addOperationLatency(OperationType.EXECUTE_BATCH_STATEMENT, t1);
+    addStatementExecutionLatency(
+        OperationType.EXECUTE_BATCH_STATEMENT, StatementType.NULL, System.currentTimeMillis() - t1);
     return isAllSuccessful
         ? RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "Execute batch statements successfully")
         : RpcUtils.getStatus(results);
@@ -880,6 +882,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
   public TSFetchResultsResp fetchResults(TSFetchResultsReq req) {
     boolean finished = false;
     long startTime = System.currentTimeMillis();
+    StatementType statementType = null;
     try {
       if (!SESSION_MANAGER.checkLogin(SESSION_MANAGER.getCurrSession())) {
         return RpcUtils.getTSFetchResultsResp(getNotLoggedInStatus());
@@ -893,6 +896,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         resp.setMoreData(true);
         return resp;
       }
+      statementType = queryExecution.getStatement().getType();
 
       try (SetThreadName queryName = new SetThreadName(queryExecution.getQueryId())) {
         Pair<TSQueryDataSet, Boolean> pair =
@@ -910,8 +914,14 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       finished = true;
       return RpcUtils.getTSFetchResultsResp(onQueryException(e, OperationType.FETCH_RESULTS));
     } finally {
-      addOperationLatency(OperationType.FETCH_RESULTS, startTime);
+      COORDINATOR.recordExecutionTime(req.queryId, System.currentTimeMillis() - startTime);
       if (finished) {
+        if (statementType != null) {
+          addStatementExecutionLatency(
+              OperationType.FETCH_RESULTS,
+              statementType,
+              COORDINATOR.getTotalExecutionTime(req.queryId));
+        }
         COORDINATOR.cleanupQueryExecution(req.queryId);
       }
     }
@@ -961,7 +971,10 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       return onNPEOrUnexpectedException(
           e, OperationType.INSERT_RECORDS, TSStatusCode.EXECUTE_STATEMENT_ERROR);
     } finally {
-      addOperationLatency(OperationType.INSERT_RECORDS, t1);
+      addStatementExecutionLatency(
+          OperationType.INSERT_RECORDS,
+          StatementType.BATCH_INSERT_ROWS,
+          System.currentTimeMillis() - t1);
     }
   }
 
@@ -1010,7 +1023,10 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       return onNPEOrUnexpectedException(
           e, OperationType.INSERT_RECORDS_OF_ONE_DEVICE, TSStatusCode.EXECUTE_STATEMENT_ERROR);
     } finally {
-      addOperationLatency(OperationType.INSERT_RECORDS_OF_ONE_DEVICE, t1);
+      addStatementExecutionLatency(
+          OperationType.INSERT_RECORDS_OF_ONE_DEVICE,
+          StatementType.BATCH_INSERT_ONE_DEVICE,
+          System.currentTimeMillis() - t1);
     }
   }
 
@@ -1062,7 +1078,10 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           OperationType.INSERT_STRING_RECORDS_OF_ONE_DEVICE,
           TSStatusCode.EXECUTE_STATEMENT_ERROR);
     } finally {
-      addOperationLatency(OperationType.INSERT_STRING_RECORDS_OF_ONE_DEVICE, t1);
+      addStatementExecutionLatency(
+          OperationType.INSERT_STRING_RECORDS_OF_ONE_DEVICE,
+          StatementType.BATCH_INSERT_ONE_DEVICE,
+          System.currentTimeMillis() - t1);
     }
   }
 
@@ -1108,7 +1127,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       return onNPEOrUnexpectedException(
           e, OperationType.INSERT_RECORD, TSStatusCode.EXECUTE_STATEMENT_ERROR);
     } finally {
-      addOperationLatency(OperationType.INSERT_RECORD, t1);
+      addStatementExecutionLatency(
+          OperationType.INSERT_RECORD, StatementType.INSERT, System.currentTimeMillis() - t1);
     }
   }
 
@@ -1156,7 +1176,10 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       return onNPEOrUnexpectedException(
           e, OperationType.INSERT_TABLETS, TSStatusCode.EXECUTE_STATEMENT_ERROR);
     } finally {
-      addOperationLatency(OperationType.INSERT_TABLETS, t1);
+      addStatementExecutionLatency(
+          OperationType.INSERT_TABLETS,
+          StatementType.MULTI_BATCH_INSERT,
+          System.currentTimeMillis() - t1);
     }
   }
 
@@ -1203,7 +1226,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       return onNPEOrUnexpectedException(
           e, OperationType.INSERT_TABLET, TSStatusCode.EXECUTE_STATEMENT_ERROR);
     } finally {
-      addOperationLatency(OperationType.INSERT_TABLET, t1);
+      addStatementExecutionLatency(
+          OperationType.INSERT_TABLET, StatementType.BATCH_INSERT, System.currentTimeMillis() - t1);
     }
   }
 
@@ -1249,7 +1273,10 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       return onNPEOrUnexpectedException(
           e, OperationType.INSERT_STRING_RECORDS, TSStatusCode.EXECUTE_STATEMENT_ERROR);
     } finally {
-      addOperationLatency(OperationType.INSERT_STRING_RECORDS, t1);
+      addStatementExecutionLatency(
+          OperationType.INSERT_STRING_RECORDS,
+          StatementType.BATCH_INSERT_ROWS,
+          System.currentTimeMillis() - t1);
     }
   }
 
@@ -1492,7 +1519,10 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           onQueryException(e, "\"" + statement + "\". " + OperationType.EXECUTE_STATEMENT));
       return null;
     } finally {
-      addOperationLatency(OperationType.EXECUTE_STATEMENT, startTime);
+      addStatementExecutionLatency(
+          OperationType.EXECUTE_STATEMENT,
+          statement.getType(),
+          System.currentTimeMillis() - startTime);
     }
   }
 
@@ -1669,7 +1699,10 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       return onNPEOrUnexpectedException(
           e, OperationType.INSERT_STRING_RECORD, TSStatusCode.EXECUTE_STATEMENT_ERROR);
     } finally {
-      addOperationLatency(OperationType.INSERT_STRING_RECORD, t1);
+      addStatementExecutionLatency(
+          OperationType.INSERT_STRING_RECORD,
+          StatementType.INSERT,
+          System.currentTimeMillis() - t1);
     }
   }
 
@@ -1693,26 +1726,20 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
   }
 
   /** Add stat of operation into metrics */
-  private void addOperationLatency(OperationType operation, long startTime) {
-    MetricService.getInstance()
-        .histogram(
-            System.currentTimeMillis() - startTime,
-            Metric.OPERATION.toString(),
-            MetricLevel.IMPORTANT,
-            "name",
-            operation.getName());
-  }
-
   private void addStatementExecutionLatency(
       OperationType operation, StatementType statementType, long costTime) {
+    if (statementType == null) {
+      return;
+    }
+
     MetricService.getInstance()
         .timer(
             costTime,
             TimeUnit.MILLISECONDS,
-            Metric.OPERATION.toString(),
+            Metric.STATEMENT_EXECUTION.toString(),
             MetricLevel.IMPORTANT,
-            Tag.NAME.toString(),
-            operation.getName(),
+            Tag.INTERFACE.toString(),
+            operation.toString(),
             Tag.TYPE.toString(),
             statementType.name());
   }
