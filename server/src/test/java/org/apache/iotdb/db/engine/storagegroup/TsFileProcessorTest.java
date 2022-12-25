@@ -95,8 +95,10 @@ public class TsFileProcessorTest {
 
   @After
   public void tearDown() throws Exception {
+    logger.info("tear down...");
     EnvironmentUtils.cleanEnv();
     EnvironmentUtils.cleanDir(TestConstant.OUTPUT_DATA_DIR);
+    logger.info("tear down done.");
   }
 
   @Test
