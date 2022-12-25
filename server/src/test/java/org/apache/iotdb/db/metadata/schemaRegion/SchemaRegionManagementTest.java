@@ -172,9 +172,8 @@ public class SchemaRegionManagementTest extends AbstractSchemaRegionTest {
 
       Pair<List<ShowTimeSeriesResult>, Integer> result =
           schemaRegion.showTimeseries(
-              new ShowTimeSeriesPlan(
-                  new PartialPath("root.sg.**"), false, "tag-key", "tag-value", 0, 0, false),
-              null);
+              SchemaRegionReadPlanFactory.getShowTimeSeriesPlan(
+                  new PartialPath("root.sg.**"), false, "tag-key", "tag-value"));
 
       Assert.assertEquals(0, result.left.size());
 
@@ -184,9 +183,8 @@ public class SchemaRegionManagementTest extends AbstractSchemaRegionTest {
       newSchemaRegion.loadSnapshot(snapshotDir);
       result =
           newSchemaRegion.showTimeseries(
-              new ShowTimeSeriesPlan(
-                  new PartialPath("root.sg.**"), false, "tag-key", "tag-value", 0, 0, false),
-              null);
+              SchemaRegionReadPlanFactory.getShowTimeSeriesPlan(
+                  new PartialPath("root.sg.**"), false, "tag-key", "tag-value"));
 
       Assert.assertEquals(0, result.left.size());
     } finally {
