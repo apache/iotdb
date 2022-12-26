@@ -31,6 +31,7 @@ import org.apache.iotdb.db.engine.compaction.utils.CompactionFileGeneratorUtils;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -136,6 +137,7 @@ public class SizeTieredCompactionRecoverCompatibleTest extends AbstractCompactio
     performer.perform();
     CompactionUtils.moveTargetFile(
         Collections.singletonList(targetResource), true, COMPACTION_TEST_SG);
+    targetResource.setStatus(TsFileResourceStatus.CLOSED);
 
     // first source file does not exist
     seqResources.get(0).delete();
@@ -234,6 +236,7 @@ public class SizeTieredCompactionRecoverCompatibleTest extends AbstractCompactio
     performer.perform();
     CompactionUtils.moveTargetFile(
         Collections.singletonList(targetResource), true, "root.compactionTest");
+    targetResource.setStatus(TsFileResourceStatus.CLOSED);
 
     // first source file does not exist
     unseqResources.get(0).delete();

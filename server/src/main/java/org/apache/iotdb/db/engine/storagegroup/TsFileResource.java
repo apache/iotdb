@@ -447,6 +447,23 @@ public class TsFileResource {
     timeIndex.close();
   }
 
+  /** Used for compaction. */
+  public void closeWithoutSettingStatus() throws IOException {
+    if (modFile != null) {
+      modFile.close();
+      modFile = null;
+    }
+    if (compactionModFile != null) {
+      compactionModFile.close();
+      compactionModFile = null;
+    }
+    processor = null;
+    pathToChunkMetadataListMap = null;
+    pathToReadOnlyMemChunkMap = null;
+    pathToTimeSeriesMetadataMap = null;
+    timeIndex.close();
+  }
+
   TsFileProcessor getProcessor() {
     return processor;
   }
