@@ -452,10 +452,14 @@ public class DataRegion implements IDataRegionForQuery {
       List<WALRecoverListener> recoverListeners = new ArrayList<>();
       for (List<TsFileResource> value : partitionTmpSeqTsFiles.values()) {
         // tsFiles without resource file are unsealed
+        for (TsFileResource resource : value) {
+          if (resource.resourceFileExists()) {
+            TsFileMetricManager.getInstance().addFile(resource.getTsFile().length(), true);
+          }
+        }
         while (!value.isEmpty()) {
           TsFileResource tsFileResource = value.get(value.size() - 1);
           if (tsFileResource.resourceFileExists()) {
-            TsFileMetricManager.getInstance().addFile(tsFileResource.getTsFile().length(), true);
             break;
           } else {
             value.remove(value.size() - 1);
@@ -469,10 +473,14 @@ public class DataRegion implements IDataRegionForQuery {
       }
       for (List<TsFileResource> value : partitionTmpUnseqTsFiles.values()) {
         // tsFiles without resource file are unsealed
+        for (TsFileResource resource : value) {
+          if (resource.resourceFileExists()) {
+            TsFileMetricManager.getInstance().addFile(resource.getTsFile().length(), false);
+          }
+        }
         while (!value.isEmpty()) {
           TsFileResource tsFileResource = value.get(value.size() - 1);
           if (tsFileResource.resourceFileExists()) {
-            TsFileMetricManager.getInstance().addFile(tsFileResource.getTsFile().length(), false);
             break;
           } else {
             value.remove(value.size() - 1);
