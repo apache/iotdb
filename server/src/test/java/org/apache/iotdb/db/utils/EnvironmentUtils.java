@@ -147,13 +147,15 @@ public class EnvironmentUtils {
     // clean wal manager
     WALManager.getInstance().clear();
     WALRecoverManager.getInstance().clear();
-
+    logger.info("1...");
     StorageEngine.getInstance().stop();
-
+    logger.info("2...");
     SchemaEngine.getInstance().clear();
+    logger.info("3...");
     LocalConfigNode.getInstance().clear();
+    logger.info("4...");
     FlushManager.getInstance().stop();
-
+    logger.info("5...");
     CommonDescriptor.getInstance().getConfig().setNodeStatus(NodeStatus.Running);
     // We must disable MQTT service as it will cost a lot of time to be shutdown, which may slow our
     // unit tests.
