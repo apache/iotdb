@@ -55,6 +55,7 @@
     <logger name="org.apache.iotdb.db.engine.compaction.cross.rewrite.task" level="ERROR"/>
     <logger name="io.moquette.broker.metrics.MQTTMessageLogger" level="ERROR"/>
     <logger name="org.apache.iotdb.db.engine" level="INFO"/>
+    <logger name="org.apache.iotdb.db.engine.compaction.CompactionTaskManager" level="INFO"/>
     <logger name="DETAILED_FAILURE_QUERY_TRACE" level="ERROR"/>
     <root level="ERROR">
         <appender-ref ref="stdout"/>
