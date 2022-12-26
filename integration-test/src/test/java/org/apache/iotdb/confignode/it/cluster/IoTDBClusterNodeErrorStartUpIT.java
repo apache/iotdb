@@ -21,6 +21,7 @@ package org.apache.iotdb.confignode.it.cluster;
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.confignode.it.utils.ConfigNodeTestUtils;
@@ -86,7 +87,8 @@ public class IoTDBClusterNodeErrorStartUpIT {
   }
 
   @Test
-  public void testConflictNodeRegistration() throws IOException, InterruptedException, TException {
+  public void testConflictNodeRegistration()
+      throws ClientManagerException, InterruptedException, TException, IOException {
     /* Test ConfigNode conflict register */
 
     // Construct a ConfigNodeWrapper that conflicts in consensus port with an existed one.
@@ -142,7 +144,8 @@ public class IoTDBClusterNodeErrorStartUpIT {
   }
 
   @Test
-  public void testIllegalNodeRestart() throws IOException, InterruptedException, TException {
+  public void testIllegalNodeRestart()
+      throws ClientManagerException, IOException, InterruptedException, TException {
     ConfigNodeWrapper registeredConfigNodeWrapper = EnvFactory.getEnv().getConfigNodeWrapper(1);
     DataNodeWrapper registeredDataNodeWrapper = EnvFactory.getEnv().getDataNodeWrapper(0);
 
