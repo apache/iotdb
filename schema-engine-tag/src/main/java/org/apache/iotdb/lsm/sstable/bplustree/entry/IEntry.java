@@ -23,6 +23,13 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
+/**
+ * Represents a disk entry, which implements the disk data structure of this interface, and can be
+ * read and written using IFileIput and IFileOutput
+ *
+ * @see org.apache.iotdb.lsm.sstable.fileIO.IFileInput
+ * @see org.apache.iotdb.lsm.sstable.fileIO.IFileOutput
+ */
 public interface IEntry {
 
   void serialize(DataOutputStream out) throws IOException;

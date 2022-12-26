@@ -33,6 +33,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
+/** Represents a b+ tree node */
 public class BPlusTreeNode implements IEntry {
 
   // leaf node or internal node
@@ -96,7 +97,7 @@ public class BPlusTreeNode implements IEntry {
   @Override
   public void serialize(DataOutputStream out) throws IOException {
     bPlusTreeNodeType.serialize(out);
-    out.writeInt(count);
+    ReadWriteIOUtils.write(count, out);
     for (BPlusTreeEntry bPlusTreeEntry : bPlusTreeEntries) {
       bPlusTreeEntry.serialize(out);
     }
@@ -105,7 +106,7 @@ public class BPlusTreeNode implements IEntry {
   @Override
   public void serialize(ByteBuffer byteBuffer) {
     bPlusTreeNodeType.serialize(byteBuffer);
-    byteBuffer.putInt(count);
+    ReadWriteIOUtils.write(count, byteBuffer);
     for (BPlusTreeEntry bPlusTreeEntry : bPlusTreeEntries) {
       bPlusTreeEntry.serialize(byteBuffer);
     }
@@ -121,7 +122,7 @@ public class BPlusTreeNode implements IEntry {
     } else {
       bPlusTreeNodeType = BPlusTreeNodeType.LEAF_NODE;
     }
-    count = input.readInt();
+    count = ReadWriteIOUtils.readInt(input);
     bPlusTreeEntries = new ArrayList<>(count);
     for (int i = 0; i < count; i++) {
       BPlusTreeEntry bPlusTreeEntry = new BPlusTreeEntry();
@@ -140,7 +141,7 @@ public class BPlusTreeNode implements IEntry {
     } else {
       bPlusTreeNodeType = BPlusTreeNodeType.LEAF_NODE;
     }
-    count = byteBuffer.getInt();
+    count = ReadWriteIOUtils.readInt(byteBuffer);
     bPlusTreeEntries = new ArrayList<>(count);
     for (int i = 0; i < count; i++) {
       BPlusTreeEntry bPlusTreeEntry = new BPlusTreeEntry();

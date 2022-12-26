@@ -28,6 +28,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
+/** Represents the chunk index structure in tifile */
 public class ChunkIndex implements IEntry {
   private List<ChunkIndexEntry> chunkIndexEntries;
 

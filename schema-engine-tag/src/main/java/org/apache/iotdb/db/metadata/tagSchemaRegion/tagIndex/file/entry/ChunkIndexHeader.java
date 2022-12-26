@@ -27,7 +27,9 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
+/** Record additional information of chunk index */
 public class ChunkIndexHeader implements IEntry {
+  // How many chunk index entries are in the chunk index
   private int size;
 
   public ChunkIndexHeader() {}

@@ -60,6 +60,8 @@ public class MemTableGroupDeletion
       if (memTable != null) {
         memTables.add(memTable);
       } else {
+        // If the immutable memtable has been flushed, write the id to the corresponding deletion
+        // file
         File deletionFile =
             new File(
                 request.getFlushDirPath()
@@ -84,6 +86,13 @@ public class MemTableGroupDeletion
   public void delete(
       MemTableGroup memNode, DeletionRequest request, DeleteRequestContext context) {}
 
+  /**
+   * Write the id with deletion to the corresponding deletion file
+   *
+   * @param file deletion file
+   * @param id id to be deleted
+   * @param context delete request context
+   */
   private void writeDeleteFile(File file, int id, DeleteRequestContext context) {
     FileOutputStream fileOutputStream = null;
     DataOutputStream dataOutputStream = null;

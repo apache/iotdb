@@ -26,6 +26,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
+/** Represents a record in a b+ tree node */
 public class BPlusTreeEntry implements IEntry {
 
   String name;

@@ -26,34 +26,40 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
+/** Record some additional information about the b+ tree */
 public class BPlusTreeHeader implements IEntry {
 
+  // Maximum Records Saved
   String max;
 
+  // Minimum records Saved
   String min;
 
+  // offset of the root node
   long rootNodeOffset = -1;
 
+  // offset of the first leaf node
   long firstLeftNodeOffset = -1;
 
+  // The number of leaf nodes
   int leftNodeCount = -1;
 
   @Override
   public void serialize(DataOutputStream out) throws IOException {
     ReadWriteIOUtils.write(max, out);
     ReadWriteIOUtils.write(min, out);
-    out.writeLong(rootNodeOffset);
-    out.writeLong(firstLeftNodeOffset);
-    out.writeInt(leftNodeCount);
+    ReadWriteIOUtils.write(rootNodeOffset, out);
+    ReadWriteIOUtils.write(firstLeftNodeOffset, out);
+    ReadWriteIOUtils.write(leftNodeCount, out);
   }
 
   @Override
   public void serialize(ByteBuffer byteBuffer) {
     ReadWriteIOUtils.write(max, byteBuffer);
     ReadWriteIOUtils.write(min, byteBuffer);
-    byteBuffer.putLong(rootNodeOffset);
-    byteBuffer.putLong(firstLeftNodeOffset);
-    byteBuffer.putInt(leftNodeCount);
+    ReadWriteIOUtils.write(rootNodeOffset, byteBuffer);
+    ReadWriteIOUtils.write(firstLeftNodeOffset, byteBuffer);
+    ReadWriteIOUtils.write(leftNodeCount, byteBuffer);
   }
 
   @Override

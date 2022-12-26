@@ -29,9 +29,12 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
+/** Represents a chunk structure in the tiFile */
 public class Chunk implements IEntry {
+  // Describe some information about the chunk
   private ChunkHeader chunkHeader;
 
+  // save ids
   private RoaringBitmap roaringBitmap;
 
   @Override

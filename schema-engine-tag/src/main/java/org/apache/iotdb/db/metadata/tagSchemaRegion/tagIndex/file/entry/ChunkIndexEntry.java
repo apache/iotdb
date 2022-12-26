@@ -27,14 +27,20 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
+/** Used to record the index information of a chunk */
 public class ChunkIndexEntry implements IEntry {
 
+  // The offset of the corresponding chunk points to the first address of the chunk header in the
+  // file
   private long offset;
 
+  // How many ids are saved in this chunk
   private int count;
 
+  // The maximum id saved by the chunk
   private int idMax;
 
+  // The minimum id saved by the chunk
   private int idMin;
 
   public ChunkIndexEntry() {}

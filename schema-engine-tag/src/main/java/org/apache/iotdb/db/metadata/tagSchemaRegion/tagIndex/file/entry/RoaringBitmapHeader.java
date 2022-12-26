@@ -28,14 +28,21 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 
+/**
+ * A roaring bitmap header serialized in a chunk, saving the extra information of the roaring bitmap
+ */
 public class RoaringBitmapHeader implements IEntry {
 
+  // for format validation
   int cookie;
 
+  // number of containers
   int size;
 
+  // The upper 16 bits of each container
   char[] keys;
 
+  // The number of ids saved in each container
   int[] cardinalities;
 
   public int getCookie() {

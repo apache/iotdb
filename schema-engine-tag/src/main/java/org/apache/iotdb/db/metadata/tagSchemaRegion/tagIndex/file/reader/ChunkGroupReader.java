@@ -27,6 +27,10 @@ import org.roaringbitmap.RoaringBitmap;
 import java.io.IOException;
 import java.util.NoSuchElementException;
 
+/**
+ * It is used to read chunk group-related objects from TiFile, and supports iterative acquisition of
+ * deviceID
+ */
 public class ChunkGroupReader implements IChunkGroupReader {
 
   private final IFileInput tiFileInput;

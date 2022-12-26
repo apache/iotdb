@@ -43,6 +43,7 @@ import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.TreeMap;
 
+/** Used to read all tiFile-related structures, and supports iterative acquisition of ids */
 public class TiFileReader implements IDiskIterator<Integer> {
 
   private final IFileInput tiFileInput;
@@ -79,6 +80,13 @@ public class TiFileReader implements IDiskIterator<Integer> {
     this.tags = tags;
   }
 
+  /**
+   * Read the header of the tiFile
+   *
+   * @return a {@link org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.entry.TiFileHeader
+   *     tiFile header}
+   * @throws IOException Signals that an I/O exception has occurred.
+   */
   public TiFileHeader readTiFileHeader() throws IOException {
     long length = file.length();
     long startOffset = length - TiFileHeader.getSerializeSize();
@@ -88,6 +96,14 @@ public class TiFileReader implements IDiskIterator<Integer> {
     return tiFileHeader;
   }
 
+  /**
+   * Read bloom filter from the specified location in the file
+   *
+   * @param bloomFilterOffset a non-negative integer counting the number of bytes from the beginning
+   *     of the TiFile
+   * @return a {@link org.apache.iotdb.lsm.util.BloomFilter bloom filter}bloom filter instance
+   * @throws IOException Signals that an I/O exception has occurred.
+   */
   public BloomFilter readBloomFilter(long bloomFilterOffset) throws IOException {
     tiFileInput.position(bloomFilterOffset);
     BloomFilter bloomFilter = new BloomFilter();
@@ -95,6 +111,17 @@ public class TiFileReader implements IDiskIterator<Integer> {
     return bloomFilter;
   }
 
+  /**
+   * Read all ids according to tags, this method does not use iterators, you need to pay attention
+   * to memory
+   *
+   * @param tags Multiple pairs of tags, the returned result is the intersection of multiple pairs
+   *     of tags
+   * @param tagKeyIndexOffset a non-negative integer counting the number of bytes from the beginning
+   *     of the TiFile
+   * @return a {@link org.roaringbitmap.RoaringBitmap roaring bitmap} instance
+   * @throws IOException Signals that an I/O exception has occurred.
+   */
   public RoaringBitmap readAllDeviceID(Map<String, String> tags, long tagKeyIndexOffset)
       throws IOException {
     List<Long> chunkIndexOffsets = getChunkIndexOffsets(tags, tagKeyIndexOffset);
@@ -112,6 +139,15 @@ public class TiFileReader implements IDiskIterator<Integer> {
     return roaringBitmap;
   }
 
+  /**
+   * Only read the ids in a chunk that returns the tags condition, use an iterator, and the maximum
+   * memory usage does not exceed the maximum memory of a chunk
+   *
+   * @param chunkIndices The chunk index of all tags is saved
+   * @param index Which chunk index entry is currently read
+   * @return a {@link org.roaringbitmap.RoaringBitmap roaring bitmap} instance
+   * @throws IOException Signals that an I/O exception has occurred.
+   */
   public RoaringBitmap readOneChunkDeviceID(List<ChunkIndex> chunkIndices, int index)
       throws IOException {
     if (chunkIndices.size() == 0) {
@@ -146,6 +182,18 @@ public class TiFileReader implements IDiskIterator<Integer> {
     return deviceIDs;
   }
 
+  /**
+   * According to the tags and tag key index offset, read all the chunk indexes that meet the
+   * conditions, each tag corresponds to a chunk index, if some tags do not find the chunk index,
+   * return empty
+   *
+   * @param tags Multiple pairs of tags, the returned result is the intersection of multiple pairs
+   *     of tags
+   * @param tagKeyIndexOffset a non-negative integer counting the number of bytes from the beginning
+   *     of the TiFile
+   * @return A list saves all chunk indexes
+   * @throws IOException Signals that an I/O exception has occurred.
+   */
   public List<ChunkIndex> getChunkIndices(Map<String, String> tags, long tagKeyIndexOffset)
       throws IOException {
     List<Long> chunkIndexOffsets = getChunkIndexOffsets(tags, tagKeyIndexOffset);
@@ -157,6 +205,18 @@ public class TiFileReader implements IDiskIterator<Integer> {
     return chunkIndices;
   }
 
+  /**
+   * According to the tags and tag key index offset, read all the chunk indexes offset that meet the
+   * conditions, each tag corresponds to a chunk index, if some tags do not find the chunk index,
+   * return empty
+   *
+   * @param tags Multiple pairs of tags, the returned result is the intersection of multiple pairs
+   *     of tags
+   * @param tagKeyIndexOffset a non-negative integer counting the number of bytes from the beginning
+   *     of the TiFile
+   * @return A list saves all chunk indexes offset
+   * @throws IOException Signals that an I/O exception has occurred.
+   */
   public List<Long> getChunkIndexOffsets(Map<String, String> tags, long tagKeyIndexOffset)
       throws IOException {
     Map<Long, String> tagValueIndexOffsets =
@@ -177,6 +237,17 @@ public class TiFileReader implements IDiskIterator<Integer> {
     return chunkIndexOffsets;
   }
 
+  /**
+   * According to the tag key index offset, read the tag key index, and obtain the first address of
+   * the tag value index corresponding to each tag value
+   *
+   * @param tagKeys all tag keys
+   * @param tagKeyIndexOffset a non-negative integer counting the number of bytes from the beginning
+   *     of the TiFile
+   * @return A map, the key is the offset of the tag value index, and the value is the tag value to
+   *     be searched on the tag value index
+   * @throws IOException Signals that an I/O exception has occurred.
+   */
   private Map<Long, String> getTagValueIndexOffsets(Set<String> tagKeys, long tagKeyIndexOffset)
       throws IOException {
     BPlusTreeReader bPlusTreeReader = new BPlusTreeReader(tiFileInput, tagKeyIndexOffset);
@@ -187,6 +258,16 @@ public class TiFileReader implements IDiskIterator<Integer> {
     return offsets;
   }
 
+  /**
+   * According to the tag value index offset, find the offset of the corresponding chunk index on
+   * the tag value index according to the tag value
+   *
+   * @param tagValue tag value
+   * @param tagValueIndexOffset a non-negative integer counting the number of bytes from the
+   *     beginning of the TiFile
+   * @return The chunk index corresponding to the tag value
+   * @throws IOException Signals that an I/O exception has occurred.
+   */
   private long getChunkIndexOffset(String tagValue, long tagValueIndexOffset) throws IOException {
     BPlusTreeReader bPlusTreeReader = new BPlusTreeReader(tiFileInput, tagValueIndexOffset);
     Set<String> tagValues = new HashSet<>();
@@ -198,6 +279,12 @@ public class TiFileReader implements IDiskIterator<Integer> {
     return bPlusTreeEntries.get(0).getOffset();
   }
 
+  /**
+   * Determine whether all tags are included in the Bloom filter
+   *
+   * @param tags Multiple pairs of tags
+   * @return If there is any tag, the Bloom filter does not contain it, then return false
+   */
   private boolean bloomFilterHas(Map<String, String> tags) {
     for (Map.Entry<String, String> tag : tags.entrySet()) {
       if (bloomFilter.contains(tag.getKey() + tag.getValue())) {

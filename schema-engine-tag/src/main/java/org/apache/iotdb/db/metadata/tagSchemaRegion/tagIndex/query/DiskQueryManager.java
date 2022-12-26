@@ -37,6 +37,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+/** Handle queries for tiFile */
 public class DiskQueryManager implements IDiskQueryManager {
   private static final Logger logger = LoggerFactory.getLogger(DiskQueryManager.class);
 

@@ -27,9 +27,30 @@ import java.io.IOException;
 
 public interface IChunkGroupReader extends IDiskIterator<Integer> {
 
+  /**
+   * Read all ids from the specified location in the file
+   *
+   * @param offset a non-negative integer counting the number of bytes from the beginning of the
+   *     TiFile
+   * @return a RoaringBitmap instance
+   * @throws IOException Signals that an I/O exception has occurred.
+   */
   RoaringBitmap readAllDeviceID(long offset) throws IOException;
 
+  /**
+   * Read chunk index from the specified location in the file
+   *
+   * @param offset a non-negative integer counting the number of bytes from the beginning of the
+   *     TiFile
+   * @return a Chunk Index instance
+   * @throws IOException Signals that an I/O exception has occurred.
+   */
   ChunkIndex readChunkIndex(long offset) throws IOException;
 
+  /**
+   * Closes this reader and releases any system resources associated with the reader.
+   *
+   * @exception IOException if an I/O error occurs.
+   */
   void close() throws IOException;
 }

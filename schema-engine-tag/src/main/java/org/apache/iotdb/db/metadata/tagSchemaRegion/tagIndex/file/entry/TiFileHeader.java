@@ -28,12 +28,16 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
+/** Indicates additional information about a tiFile */
 public class TiFileHeader implements IEntry {
 
+  // The maximum page size of the b+ tree of tagkey index and tagValue index. (unit byte)
   private int bPLusTreePageSize;
 
+  // The address of the tag key index, pointing to the first address of the header of the b+ tree
   private long tagKeyIndexOffset;
 
+  // The first address of the bloom filter
   private long bloomFilterOffset;
 
   public TiFileHeader() {
