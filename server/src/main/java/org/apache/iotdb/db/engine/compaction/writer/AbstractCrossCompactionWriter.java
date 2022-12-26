@@ -22,7 +22,6 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.CompactionUtils;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
@@ -62,9 +61,6 @@ public abstract class AbstractCrossCompactionWriter extends AbstractCompactionWr
   private int chunkGroupHeaderSize;
 
   protected List<TsFileResource> targetResources;
-
-  // Only used for fast compaction performer
-  protected Map<TsFileResource, TsFileSequenceReader> readerMap;
 
   public AbstractCrossCompactionWriter(
       List<TsFileResource> targetResources, List<TsFileResource> seqFileResources)
@@ -219,12 +215,8 @@ public abstract class AbstractCrossCompactionWriter extends AbstractCompactionWr
         long endTime = Long.MIN_VALUE;
         // Fast compaction get reader from cache map, while read point compaction get reader from
         // FileReaderManager
-        TsFileSequenceReader reader =
-            readerMap != null
-                ? readerMap.get(seqTsFileResources.get(fileIndex))
-                : FileReaderManager.getInstance()
-                    .get(seqTsFileResources.get(fileIndex).getTsFilePath(), true);
-        Map<String, TimeseriesMetadata> deviceMetadataMap = reader.readDeviceMetadata(deviceId);
+        Map<String, TimeseriesMetadata> deviceMetadataMap =
+            getFileReader(seqTsFileResources.get(fileIndex)).readDeviceMetadata(deviceId);
         for (Map.Entry<String, TimeseriesMetadata> entry : deviceMetadataMap.entrySet()) {
           long tmpStartTime = entry.getValue().getStatistics().getStartTime();
           long tmpEndTime = entry.getValue().getStatistics().getEndTime();
@@ -247,4 +239,6 @@ public abstract class AbstractCrossCompactionWriter extends AbstractCompactionWr
     }
     return totalSize;
   }
+
+  protected abstract TsFileSequenceReader getFileReader(TsFileResource resource) throws IOException;
 }
