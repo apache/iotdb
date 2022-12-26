@@ -43,8 +43,6 @@ class DataFrameToolsTest extends FunSuite with BeforeAndAfterAll {
     System.setProperty("IOTDB_CONF", "src/test/resources/")
     super.beforeAll()
 
-//    daemon = NewIoTDB.getInstance
-//    daemon.active(false)
     EnvFactory.getEnv.initBeforeClass()
     jdbcUrlTemplate = jdbcUrlTemplate.format(EnvFactory.getEnv.getIP, EnvFactory.getEnv.getPort)
 
@@ -64,7 +62,6 @@ class DataFrameToolsTest extends FunSuite with BeforeAndAfterAll {
       spark.sparkContext.stop()
     }
 
-//    daemon.stop()
     session.close()
     EnvFactory.getEnv.cleanAfterTest()
     super.afterAll()
