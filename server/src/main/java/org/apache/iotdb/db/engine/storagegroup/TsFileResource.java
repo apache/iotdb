@@ -416,8 +416,12 @@ public class TsFileResource {
     try (InputStream inputStream =
         FSFactoryProducer.getFSFactory()
             .getBufferedInputStream(file.getPath() + TsFileResource.RESOURCE_SUFFIX)) {
-      DeviceTimeIndex deviceTimeIndex = new DeviceTimeIndex();
-      return deviceTimeIndex.deserialize(inputStream);
+      ReadWriteIOUtils.readByte(inputStream);
+      ITimeIndex timeIndexFromResourceFile = ITimeIndex.createTimeIndex(inputStream);
+      if (!(timeIndexFromResourceFile instanceof DeviceTimeIndex)) {
+        throw new IOException("cannot build DeviceTimeIndex from resource " + file.getPath());
+      }
+      return (DeviceTimeIndex) timeIndexFromResourceFile;
     } catch (Exception e) {
       throw new IOException(
           "Can't read file " + file.getPath() + TsFileResource.RESOURCE_SUFFIX + " from disk", e);
