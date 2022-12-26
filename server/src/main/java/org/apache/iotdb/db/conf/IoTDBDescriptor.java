@@ -188,7 +188,7 @@ public class IoTDBDescriptor {
         MetricConfigDescriptor.getInstance().loadProps(commonProperties);
         MetricConfigDescriptor.getInstance()
             .getMetricConfig()
-            .updateRpcInstance(conf.getRpcAddress(), conf.getRpcPort());
+            .updateRpcInstance(conf.getInternalAddress(), conf.getInternalPort());
       }
     } else {
       logger.warn(
@@ -632,7 +632,7 @@ public class IoTDBDescriptor {
     conf.setChunkPointNumLowerBoundInCompaction(
         Long.parseLong(
             properties.getProperty(
-                "chunk_size_lower_bound_in_compaction",
+                "chunk_point_num_lower_bound_in_compaction",
                 Long.toString(conf.getChunkPointNumLowerBoundInCompaction()))));
     conf.setChunkSizeLowerBoundInCompaction(
         Long.parseLong(
@@ -1276,7 +1276,7 @@ public class IoTDBDescriptor {
             (int)
                 Math.min(
                     TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes(),
-                    conf.getMaxBytesPerQuery()));
+                    conf.getMaxBytesPerFragmentInstance()));
 
     TSFileDescriptor.getInstance()
         .getConfig()

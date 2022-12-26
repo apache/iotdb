@@ -27,17 +27,21 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationDescriptor;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.OrderByParameter;
+import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.TreeMap;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.LOSS;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.SDT_PARAMETERS;
@@ -97,8 +101,25 @@ public class MetaUtils {
   }
 
   public static List<PartialPath> groupAlignedSeries(List<PartialPath> fullPaths) {
+    return groupAlignedSeries(fullPaths, new HashMap<>());
+  }
+
+  public static List<PartialPath> groupAlignedSeriesWithOrder(
+      List<PartialPath> fullPaths, OrderByParameter orderByParameter) {
+    fullPaths.sort(
+        orderByParameter.getSortItemList().get(0).getOrdering() == Ordering.ASC
+            ? Comparator.naturalOrder()
+            : Comparator.reverseOrder());
+    Map<String, AlignedPath> deviceToAlignedPathMap =
+        orderByParameter.getSortItemList().get(0).getOrdering() == Ordering.ASC
+            ? new TreeMap<>()
+            : new TreeMap<>(Collections.reverseOrder());
+    return groupAlignedSeries(fullPaths, deviceToAlignedPathMap);
+  }
+
+  private static List<PartialPath> groupAlignedSeries(
+      List<PartialPath> fullPaths, Map<String, AlignedPath> deviceToAlignedPathMap) {
     List<PartialPath> result = new ArrayList<>();
-    Map<String, AlignedPath> deviceToAlignedPathMap = new HashMap<>();
     for (PartialPath path : fullPaths) {
       MeasurementPath measurementPath = (MeasurementPath) path;
       if (!measurementPath.isUnderAlignedEntity()) {

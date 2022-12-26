@@ -16,40 +16,28 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.session.template;
+package org.apache.iotdb.commons.cluster;
 
-import org.apache.iotdb.rpc.StatementExecutionException;
+public enum NodeType {
+  ConfigNode("ConfigNode"),
+  DataNode("DataNode");
 
-import java.io.IOException;
-import java.io.OutputStream;
-import java.util.Map;
+  private final String nodeType;
 
-public abstract class TemplateNode {
-  private String name;
-
-  public TemplateNode(String name) {
-    this.name = name;
+  NodeType(String nodeType) {
+    this.nodeType = nodeType;
   }
 
-  public String getName() {
-    return this.name;
+  public String getNodeType() {
+    return nodeType;
   }
 
-  public Map<String, TemplateNode> getChildren() {
-    return null;
+  public static NodeType parse(String type) {
+    for (NodeType nodeType : NodeType.values()) {
+      if (nodeType.nodeType.equals(type)) {
+        return nodeType;
+      }
+    }
+    throw new RuntimeException(String.format("NodeType %s doesn't exist.", type));
   }
-
-  public void addChild(TemplateNode node) throws StatementExecutionException {}
-
-  public void deleteChild(TemplateNode node) {}
-
-  public boolean isMeasurement() {
-    return false;
-  }
-
-  public boolean isShareTime() {
-    return false;
-  }
-
-  public void serialize(OutputStream buffer) throws IOException {}
 }

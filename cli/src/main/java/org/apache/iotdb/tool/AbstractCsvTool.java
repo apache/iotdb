@@ -56,6 +56,9 @@ public abstract class AbstractCsvTool {
 
   protected static final String TIME_ZONE_ARGS = "tz";
   protected static final String TIME_ZONE_NAME = "timeZone";
+
+  protected static final String TIMEOUT_ARGS = "t";
+  protected static final String TIMEOUT_NAME = "timeout";
   protected static final int MAX_HELP_CONSOLE_WIDTH = 92;
   protected static final String[] TIME_FORMAT =
       new String[] {"default", "long", "number", "timestamp"};

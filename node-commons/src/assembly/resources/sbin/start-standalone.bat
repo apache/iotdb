@@ -17,6 +17,8 @@
 @REM under the License.
 @REM
 
+@echo off
+
 pushd %~dp0..
 if NOT DEFINED IOTDB_HOME set IOTDB_HOME=%cd%
 popd
@@ -40,3 +42,4 @@ TIMEOUT /T 5 /NOBREAK
 start cmd /c %DATANODE_START_PATH%
 
 echo "Execute start-standalone.sh finished, you can see more details in the logs of confignode and datanode"
+exit 0

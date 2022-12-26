@@ -196,7 +196,11 @@ public class LogicalPlanBuilder {
         sourceExpressions.stream()
             .map(expression -> ((TimeSeriesOperand) expression).getPath())
             .collect(Collectors.toList());
-    List<PartialPath> groupedPaths = MetaUtils.groupAlignedSeries(selectedPaths);
+
+    List<PartialPath> groupedPaths =
+        mergeOrderParameter.getSortItemList().isEmpty()
+            ? MetaUtils.groupAlignedSeries(selectedPaths)
+            : MetaUtils.groupAlignedSeriesWithOrder(selectedPaths, mergeOrderParameter);
     for (PartialPath path : groupedPaths) {
       if (path instanceof MeasurementPath) { // non-aligned series
         sourceNodeList.add(

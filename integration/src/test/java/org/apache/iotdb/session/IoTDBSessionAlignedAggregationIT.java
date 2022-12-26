@@ -22,6 +22,7 @@ package org.apache.iotdb.session;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.isession.ISessionDataSet;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -68,7 +69,7 @@ public class IoTDBSessionAlignedAggregationIT {
   @Test
   public void vectorAggregationCountTest() {
     try {
-      SessionDataSet dataSet =
+      ISessionDataSet dataSet =
           session.executeQueryStatement("select count(s1), count(s2) from root.sg1.d1.vector1");
       assertEquals(2, dataSet.getColumnNames().size());
       assertEquals("count(" + ROOT_SG1_D1_VECTOR1 + ".s1)", dataSet.getColumnNames().get(0));
@@ -90,7 +91,7 @@ public class IoTDBSessionAlignedAggregationIT {
   @Test
   public void vectorAggregationSumAvgTest() {
     try {
-      SessionDataSet dataSet =
+      ISessionDataSet dataSet =
           session.executeQueryStatement("select sum(s1), avg(s2) from root.sg1.d1.vector1");
       assertEquals(2, dataSet.getColumnNames().size());
       assertEquals("sum(" + ROOT_SG1_D1_VECTOR1 + ".s1)", dataSet.getColumnNames().get(0));
@@ -112,7 +113,7 @@ public class IoTDBSessionAlignedAggregationIT {
   @Test
   public void vectorAggregationMinMaxTimeTest() {
     try {
-      SessionDataSet dataSet =
+      ISessionDataSet dataSet =
           session.executeQueryStatement(
               "select min_time(s1), min_time(s2), max_time(s1), max_time(s2) from root.sg1.d1.vector1");
       assertEquals(4, dataSet.getColumnNames().size());
@@ -139,7 +140,7 @@ public class IoTDBSessionAlignedAggregationIT {
   @Test
   public void vectorAggregationMinMaxValueTest() {
     try {
-      SessionDataSet dataSet =
+      ISessionDataSet dataSet =
           session.executeQueryStatement(
               "select min_value(s1), max_value(s2) from root.sg1.d1.vector1");
       assertEquals(2, dataSet.getColumnNames().size());
@@ -162,7 +163,7 @@ public class IoTDBSessionAlignedAggregationIT {
   @Test
   public void vectorAggregationFirstLastValueTest() {
     try {
-      SessionDataSet dataSet =
+      ISessionDataSet dataSet =
           session.executeQueryStatement(
               "select first_value(s1), last_value(s2) from root.sg1.d1.vector1");
       assertEquals(2, dataSet.getColumnNames().size());
@@ -186,7 +187,7 @@ public class IoTDBSessionAlignedAggregationIT {
   @Test
   public void vectorComplexTest() {
     try {
-      SessionDataSet dataSet =
+      ISessionDataSet dataSet =
           session.executeQueryStatement(
               "select count(vector1.s1), max_value(s3), count(vector1.s2), min_time(s4) from root.sg1.d1");
       assertEquals(4, dataSet.getColumnNames().size());

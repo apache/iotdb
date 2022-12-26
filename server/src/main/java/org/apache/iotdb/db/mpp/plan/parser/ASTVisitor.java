@@ -858,7 +858,8 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   private void parseResampleClause(
       IoTDBSqlParser.ResampleClauseContext ctx, CreateContinuousQueryStatement statement) {
     if (ctx.FOR() != null) {
-      throw new SemanticException("CQ: The syntax of CREATE CQ statement has changed from v0.14");
+      throw new SemanticException(
+          "CQ: The syntax of CREATE CQ statement has changed in 1.0.x and later versions.");
     }
 
     if (ctx.EVERY() != null) {

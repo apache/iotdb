@@ -20,10 +20,11 @@ package org.apache.iotdb.session;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.isession.IDataIterator;
+import org.apache.iotdb.isession.ISessionDataSet;
 import org.apache.iotdb.itbase.category.LocalStandaloneTest;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
-import org.apache.iotdb.session.SessionDataSet.DataIterator;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -75,10 +76,10 @@ public class IoTDBSessionIteratorIT {
         };
 
     try {
-      SessionDataSet sessionDataSet =
+      ISessionDataSet sessionDataSet =
           session.executeQueryStatement("select s1,s2,s3,s4,s5,s6 from root.sg1.d1");
       sessionDataSet.setFetchSize(1024);
-      DataIterator iterator = sessionDataSet.iterator();
+      IDataIterator iterator = sessionDataSet.iterator();
       int count = 0;
       while (iterator.next()) {
         StringBuilder ans = new StringBuilder();
@@ -124,9 +125,9 @@ public class IoTDBSessionIteratorIT {
         };
 
     try {
-      SessionDataSet sessionDataSet = session.executeQueryStatement("select * from root.sg1.d1");
+      ISessionDataSet sessionDataSet = session.executeQueryStatement("select * from root.sg1.d1");
       sessionDataSet.setFetchSize(1024);
-      DataIterator iterator = sessionDataSet.iterator();
+      IDataIterator iterator = sessionDataSet.iterator();
       int count = 0;
       while (iterator.next()) {
         StringBuilder ans = new StringBuilder();
@@ -172,10 +173,10 @@ public class IoTDBSessionIteratorIT {
         };
 
     try {
-      SessionDataSet sessionDataSet =
+      ISessionDataSet sessionDataSet =
           session.executeQueryStatement("select s1,s2,s3,s4,s5,s6 from root.sg1.d1");
       sessionDataSet.setFetchSize(1024);
-      DataIterator iterator = sessionDataSet.iterator();
+      IDataIterator iterator = sessionDataSet.iterator();
       int count = 0;
       while (iterator.next()) {
         StringBuilder ans = new StringBuilder();
@@ -223,10 +224,10 @@ public class IoTDBSessionIteratorIT {
         };
 
     try {
-      SessionDataSet sessionDataSet =
+      ISessionDataSet sessionDataSet =
           session.executeQueryStatement("select last s1,s2,s3,s4,s5,s6 from root.sg1.d1");
       sessionDataSet.setFetchSize(1024);
-      DataIterator iterator = sessionDataSet.iterator();
+      IDataIterator iterator = sessionDataSet.iterator();
       int count = 0;
       while (iterator.next()) {
         String ans =
@@ -252,10 +253,10 @@ public class IoTDBSessionIteratorIT {
     String[] retArray = new String[] {"root.sg1.d1,false", "root.sg1.d2,false"};
 
     try {
-      SessionDataSet sessionDataSet = session.executeQueryStatement("show devices");
+      ISessionDataSet sessionDataSet = session.executeQueryStatement("show devices");
       sessionDataSet.setFetchSize(1024);
       assertEquals(2, sessionDataSet.getColumnNames().size());
-      DataIterator iterator = sessionDataSet.iterator();
+      IDataIterator iterator = sessionDataSet.iterator();
       int count = 0;
       while (iterator.next()) {
         String ans = String.format("%s,%s", iterator.getString(1), iterator.getString(2));
@@ -276,10 +277,10 @@ public class IoTDBSessionIteratorIT {
     String[] retArray = new String[] {"9,root.sg1.d1.s1,false,BOOLEAN"};
 
     try {
-      SessionDataSet sessionDataSet =
+      ISessionDataSet sessionDataSet =
           session.executeQueryStatement("select last s1 from root.sg1.d1", 2000);
       sessionDataSet.setFetchSize(1024);
-      DataIterator iterator = sessionDataSet.iterator();
+      IDataIterator iterator = sessionDataSet.iterator();
       int count = 0;
       while (iterator.next()) {
         String ans =
