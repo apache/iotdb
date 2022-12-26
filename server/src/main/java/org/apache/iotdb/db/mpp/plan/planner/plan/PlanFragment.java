@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.mpp.plan.planner.plan;
 
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
@@ -27,6 +28,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.IPartitionRelatedNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.VirtualSourceNode;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
@@ -98,6 +100,10 @@ public class PlanFragment {
     return getNodeRegion(planNodeTree);
   }
 
+  public TDataNodeLocation getTargetLocation() {
+    return getNodeLocation(planNodeTree);
+  }
+
   private TRegionReplicaSet getNodeRegion(PlanNode root) {
     if (root instanceof IPartitionRelatedNode) {
       return ((IPartitionRelatedNode) root).getRegionReplicaSet();
@@ -105,6 +111,19 @@ public class PlanFragment {
     for (PlanNode child : root.getChildren()) {
       TRegionReplicaSet result = getNodeRegion(child);
       if (result != null && result != DataPartition.NOT_ASSIGNED) {
+        return result;
+      }
+    }
+    return null;
+  }
+
+  private TDataNodeLocation getNodeLocation(PlanNode root) {
+    if (root instanceof VirtualSourceNode) {
+      return ((VirtualSourceNode) root).getDataNodeLocation();
+    }
+    for (PlanNode child : root.getChildren()) {
+      TDataNodeLocation result = getNodeLocation(child);
+      if (result != null) {
         return result;
       }
     }

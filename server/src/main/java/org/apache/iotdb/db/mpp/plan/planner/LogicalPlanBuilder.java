@@ -64,7 +64,6 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.IntoNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.LimitNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.MergeSortNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.OffsetNode;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.ShowQueriesNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.SingleDeviceViewNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.SlidingWindowAggregationNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.TimeJoinNode;
@@ -77,6 +76,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.LastQueryScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesAggregationScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesAggregationSourceNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesScanNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.ShowQueriesNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationStep;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.CrossSeriesAggregationDescriptor;
@@ -1133,7 +1133,15 @@ public class LogicalPlanBuilder {
   public LogicalPlanBuilder planShowQueries(Analysis analysis, ShowQueriesStatement statement) {
     List<TDataNodeLocation> dataNodeLocations = analysis.getRunningDataNodeLocations();
     if (dataNodeLocations.size() == 1) {
-      this.root = new ShowQueriesNode(context.getQueryId().genPlanNodeId());
+      this.root =
+          planSingleShowQueries(dataNodeLocations.get(0))
+              .planFilterAndTransform(
+                  analysis.getWhereExpression(),
+                  analysis.getSourceExpressions(),
+                  false,
+                  statement.getZoneId(),
+                  Ordering.ASC)
+              .getRoot();
     } else {
       HorizontallyConcatNode concatNode =
           new HorizontallyConcatNode(context.getQueryId().genPlanNodeId());
@@ -1141,7 +1149,7 @@ public class LogicalPlanBuilder {
           dataNodeLocation ->
               concatNode.addChild(
                   new LogicalPlanBuilder(analysis, context)
-                      .planSingleShowQueries()
+                      .planSingleShowQueries(dataNodeLocation)
                       .planFilterAndTransform(
                           analysis.getWhereExpression(),
                           analysis.getSourceExpressions(),
@@ -1160,8 +1168,8 @@ public class LogicalPlanBuilder {
     return this;
   }
 
-  public LogicalPlanBuilder planSingleShowQueries() {
-    this.root = new ShowQueriesNode(context.getQueryId().genPlanNodeId());
+  public LogicalPlanBuilder planSingleShowQueries(TDataNodeLocation dataNodeLocation) {
+    this.root = new ShowQueriesNode(context.getQueryId().genPlanNodeId(), dataNodeLocation);
     return this;
   }
 }

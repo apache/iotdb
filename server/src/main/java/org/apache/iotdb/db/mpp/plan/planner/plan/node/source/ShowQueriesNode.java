@@ -16,15 +16,14 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.mpp.plan.planner.plan.node.process;
+package org.apache.iotdb.db.mpp.plan.planner.plan.node.source;
 
-import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SourceNode;
 
 import com.google.common.collect.ImmutableList;
 
@@ -34,7 +33,7 @@ import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Objects;
 
-public class ShowQueriesNode extends SourceNode {
+public class ShowQueriesNode extends VirtualSourceNode {
 
   public static final List<String> SHOW_QUERIES_HEADER_COLUMNS =
       ImmutableList.of(
@@ -43,8 +42,8 @@ public class ShowQueriesNode extends SourceNode {
           ColumnHeaderConstant.ELAPSED_TIME,
           ColumnHeaderConstant.STATEMENT);
 
-  public ShowQueriesNode(PlanNodeId id) {
-    super(id);
+  public ShowQueriesNode(PlanNodeId id, TDataNodeLocation dataNodeLocation) {
+    super(id, dataNodeLocation);
   }
 
   @Override
@@ -59,7 +58,7 @@ public class ShowQueriesNode extends SourceNode {
 
   @Override
   public PlanNode clone() {
-    return new ShowQueriesNode(getPlanNodeId());
+    return new ShowQueriesNode(getPlanNodeId(), getDataNodeLocation());
   }
 
   @Override
@@ -77,6 +76,8 @@ public class ShowQueriesNode extends SourceNode {
     return visitor.visitShowQueries(this, context);
   }
 
+  // We only use DataNodeLocation when do distributionPlan, so DataNodeLocation is no need to
+  // serialize
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
     PlanNodeType.SHOW_QUERIES.serialize(byteBuffer);
@@ -89,7 +90,7 @@ public class ShowQueriesNode extends SourceNode {
 
   public static ShowQueriesNode deserialize(ByteBuffer byteBuffer) {
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
-    return new ShowQueriesNode(planNodeId);
+    return new ShowQueriesNode(planNodeId, null);
   }
 
   @Override
@@ -111,15 +112,5 @@ public class ShowQueriesNode extends SourceNode {
   public void open() throws Exception {}
 
   @Override
-  public void setRegionReplicaSet(TRegionReplicaSet regionReplicaSet) {
-    throw new UnsupportedOperationException("ShowSeriesNode not support RegionReplicaSet");
-  }
-
-  @Override
   public void close() throws Exception {}
-
-  @Override
-  public TRegionReplicaSet getRegionReplicaSet() {
-    return null;
-  }
 }

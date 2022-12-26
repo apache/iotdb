@@ -2519,6 +2519,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
     analyzeWhere(analysis, showQueriesStatement);
 
+    analysis.setMergeOrderParameter(new OrderByParameter(showQueriesStatement.getSortItemList()));
+
     return analysis;
   }
 

@@ -38,6 +38,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeUtil;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.ExchangeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.sink.FragmentSinkNode;
 import org.apache.iotdb.db.mpp.plan.statement.crud.QueryStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.ShowQueriesStatement;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 import org.slf4j.Logger;
@@ -114,21 +115,25 @@ public class SimpleFragmentParallelPlanner implements IFragmentParallelPlaner {
     // We need to store all the replica host in case of the scenario that the instance need to be
     // redirected
     // to another host when scheduling
-    if ((analysis.getDataPartitionInfo() == null || analysis.getDataPartitionInfo().isEmpty())
-        && (analysis.getStatement() instanceof QueryStatement
-            && ((QueryStatement) analysis.getStatement()).isAggregationQuery())) {
-      // AggregationQuery && no data region, we need to execute this FI on local
-      fragmentInstance.setExecutorAndHost(
-          new QueryExecutor(
-              new TDataNodeLocation()
-                  .setInternalEndPoint(DataNodeEndPoints.LOCAL_HOST_INTERNAL_ENDPOINT)
-                  .setMPPDataExchangeEndPoint(DataNodeEndPoints.LOCAL_HOST_DATA_BLOCK_ENDPOINT)));
+    if (regionReplicaSet == null || regionReplicaSet.getRegionId() == null) {
+      TDataNodeLocation dataNodeLocation = fragment.getTargetLocation();
+      if (dataNodeLocation != null) {
+        fragmentInstance.setExecutorAndHost(new QueryExecutor(dataNodeLocation));
+      } else {
+        // no data region && no dataNodeLocation, we need to execute this FI on local
+        fragmentInstance.setExecutorAndHost(
+            new QueryExecutor(
+                new TDataNodeLocation()
+                    .setInternalEndPoint(DataNodeEndPoints.LOCAL_HOST_INTERNAL_ENDPOINT)
+                    .setMPPDataExchangeEndPoint(DataNodeEndPoints.LOCAL_HOST_DATA_BLOCK_ENDPOINT)));
+      }
     } else {
       fragmentInstance.setExecutorAndHost(new StorageExecutor(regionReplicaSet));
       fragmentInstance.setHostDataNode(selectTargetDataNode(regionReplicaSet));
     }
 
-    if (analysis.getStatement() instanceof QueryStatement) {
+    if (analysis.getStatement() instanceof QueryStatement
+        || analysis.getStatement() instanceof ShowQueriesStatement) {
       fragmentInstance.getFragment().generateTypeProvider(queryContext.getTypeProvider());
     }
     instanceMap.putIfAbsent(fragment.getId(), fragmentInstance);

@@ -39,6 +39,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.AggregationNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.DeviceViewNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.GroupByLevelNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.GroupByTagNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.HorizontallyConcatNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.MergeSortNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.MultiChildProcessNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.SingleDeviceViewNode;
@@ -56,6 +57,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesAggregationSc
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesAggregationSourceNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesSourceNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.ShowQueriesNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SourceNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationStep;
@@ -796,6 +798,17 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
                 sourceGroup,
                 context)
             : groupSourcesForGroupByTag(root, sourceGroup, context));
+  }
+
+  @Override
+  public List<PlanNode> visitHorizontallyConcat(
+      HorizontallyConcatNode node, DistributionPlanContext context) {
+    return super.visitHorizontallyConcat(node, context);
+  }
+
+  @Override
+  public List<PlanNode> visitShowQueries(ShowQueriesNode node, DistributionPlanContext context) {
+    return super.visitShowQueries(node, context);
   }
 
   // If the Aggregation Query contains value filter, we need to use the naive query plan
