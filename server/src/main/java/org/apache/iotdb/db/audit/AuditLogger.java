@@ -44,7 +44,7 @@ public class AuditLogger {
   public static final String LOG = "log";
   public static final String USERNAME = "username";
   public static final String ADDRESS = "address";
-  public static final String AUDIT_LOG_DEVICE = "root.__system.audit.'%s'";
+  public static final String AUDIT_LOG_DEVICE = "root.__system.audit.'user=%s'";
 
   public static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
