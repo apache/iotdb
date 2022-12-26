@@ -146,6 +146,7 @@ public class CompactionTaskManager implements IService {
 
   @TestOnly
   public void waitAllCompactionFinish() {
+    logger.info("wait all compaction finish...");
     long sleepingStartTime = 0;
     if (taskExecutionPool != null) {
       WrappedThreadPoolExecutor tmpThreadPool = taskExecutionPool;
