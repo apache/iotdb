@@ -410,4 +410,4 @@ Run the remove-datanode script on an active DataNode:
 
 # 7. FAQ
 
-See [FAQ](https://iotdb.apache.org/UserGuide/Master/FAQ/Frequently-asked-questions.html)
+See [FAQ](https://iotdb.apache.org/UserGuide/Master/FAQ/FAQ-for-cluster-setup.html)

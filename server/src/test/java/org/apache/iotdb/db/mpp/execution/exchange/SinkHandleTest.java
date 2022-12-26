@@ -48,7 +48,7 @@ public class SinkHandleTest {
   @Test
   public void testOneTimeNotBlockedSend() {
     final String queryId = "q0";
-    final long mockTsBlockSize = 1024L * 1024L;
+    final long mockTsBlockSize = 128 * 1024L;
     final int numOfMockTsBlock = 1;
     final TEndPoint remoteEndpoint =
         new TEndPoint("remote", IoTDBDescriptor.getInstance().getConfig().getMppDataExchangePort());
@@ -186,7 +186,7 @@ public class SinkHandleTest {
   @Test
   public void testMultiTimesBlockedSend() {
     final String queryId = "q0";
-    final long mockTsBlockSize = 1024L * 1024L;
+    final long mockTsBlockSize = 128 * 1024L;
     final int numOfMockTsBlock = 1;
     final TEndPoint remoteEndpoint =
         new TEndPoint("remote", IoTDBDescriptor.getInstance().getConfig().getMppDataExchangePort());

@@ -57,6 +57,7 @@ import static org.apache.iotdb.db.metadata.MetadataConstant.INTERNAL_MNODE_TYPE;
 import static org.apache.iotdb.db.metadata.MetadataConstant.MEASUREMENT_MNODE_TYPE;
 import static org.apache.iotdb.db.metadata.MetadataConstant.STORAGE_GROUP_ENTITY_MNODE_TYPE;
 import static org.apache.iotdb.db.metadata.MetadataConstant.STORAGE_GROUP_MNODE_TYPE;
+import static org.apache.iotdb.db.metadata.MetadataConstant.isStorageGroupType;
 
 public class MemMTreeSnapshotUtil {
 
@@ -220,7 +221,8 @@ public class MemMTreeSnapshotUtil {
       ancestors.peek().addChild(node);
     }
 
-    if (childrenNum > 0) {
+    // Storage type means current node is root node, so it must be returned.
+    if (childrenNum > 0 || isStorageGroupType(type)) {
       ancestors.push(node);
       restChildrenNum.push(childrenNum);
     }
@@ -301,7 +303,7 @@ public class MemMTreeSnapshotUtil {
         throws IOException {
       ReadWriteIOUtils.write(node.getChildren().size(), outputStream);
       ReadWriteIOUtils.write(node.getName(), outputStream);
-      ReadWriteIOUtils.write(-1, outputStream); // todo template id
+      ReadWriteIOUtils.write(node.getSchemaTemplateIdWithState(), outputStream);
       ReadWriteIOUtils.write(node.isUseTemplate(), outputStream);
     }
   }
@@ -354,7 +356,7 @@ public class MemMTreeSnapshotUtil {
 
     private void deserializeInternalBasicInfo(InternalMNode node, InputStream inputStream)
         throws IOException {
-      int templateId = ReadWriteIOUtils.readInt(inputStream);
+      node.setSchemaTemplateId(ReadWriteIOUtils.readInt(inputStream));
       node.setUseTemplate(ReadWriteIOUtils.readBool(inputStream));
     }
   }

@@ -21,6 +21,7 @@ package org.apache.iotdb.influxdb.session;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.protocol.influxdb.util.JacksonUtils;
+import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.protocol.influxdb.rpc.thrift.InfluxCloseSessionReq;
 import org.apache.iotdb.protocol.influxdb.rpc.thrift.InfluxCreateDatabaseReq;
 import org.apache.iotdb.protocol.influxdb.rpc.thrift.InfluxDBService;
@@ -34,7 +35,6 @@ import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.RpcTransportFactory;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
-import org.apache.iotdb.session.SessionConfig;
 
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;

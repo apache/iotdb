@@ -23,11 +23,11 @@ import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.confignode.rpc.thrift.IConfigNodeRPCService;
 import org.apache.iotdb.db.client.DataNodeClientPoolFactory;
+import org.apache.iotdb.isession.ISession;
 import org.apache.iotdb.itbase.env.BaseEnv;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.jdbc.Constant;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
-import org.apache.iotdb.session.ISession;
 import org.apache.iotdb.session.Session;
 
 import java.io.IOException;
@@ -185,17 +185,42 @@ public class RemoteServerEnv implements BaseEnv {
   }
 
   @Override
+  public ConfigNodeWrapper generateRandomConfigNodeWrapper() {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public DataNodeWrapper generateRandomDataNodeWrapper() {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public ConfigNodeWrapper getConfigNodeWrapper(int index) {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
   public DataNodeWrapper getDataNodeWrapper(int index) {
     throw new UnsupportedOperationException();
   }
 
   @Override
-  public void registerNewDataNode() {
+  public void registerNewDataNode(boolean isNeedVerify) {
     throw new UnsupportedOperationException();
   }
 
   @Override
-  public void registerNewConfigNode() {
+  public void registerNewConfigNode(boolean isNeedVerify) {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public void registerNewDataNode(DataNodeWrapper newDataNodeWrapper, boolean isNeedVerify) {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public void registerNewConfigNode(ConfigNodeWrapper newConfigNodeWrapper, boolean isNeedVerify) {
     throw new UnsupportedOperationException();
   }
 
@@ -211,6 +236,31 @@ public class RemoteServerEnv implements BaseEnv {
 
   @Override
   public int getMqttPort() {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public String getIP() {
+    return ip_addr;
+  }
+
+  @Override
+  public String getPort() {
+    return port;
+  }
+
+  @Override
+  public String getSbinPath() {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public String getToolsPath() {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public String getLibPath() {
     throw new UnsupportedOperationException();
   }
 }

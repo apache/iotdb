@@ -36,8 +36,8 @@ import org.apache.iotdb.db.mpp.execution.exchange.MPPDataExchangeService;
 import org.apache.iotdb.db.mpp.plan.analyze.Analysis;
 import org.apache.iotdb.db.mpp.plan.analyze.Analyzer;
 import org.apache.iotdb.db.mpp.plan.analyze.IPartitionFetcher;
-import org.apache.iotdb.db.mpp.plan.analyze.ISchemaFetcher;
 import org.apache.iotdb.db.mpp.plan.analyze.QueryType;
+import org.apache.iotdb.db.mpp.plan.analyze.schema.ISchemaFetcher;
 import org.apache.iotdb.db.mpp.plan.execution.memory.MemorySourceHandle;
 import org.apache.iotdb.db.mpp.plan.execution.memory.StatementMemorySource;
 import org.apache.iotdb.db.mpp.plan.execution.memory.StatementMemorySourceContext;
@@ -51,7 +51,6 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeUtil;
 import org.apache.iotdb.db.mpp.plan.scheduler.ClusterScheduler;
 import org.apache.iotdb.db.mpp.plan.scheduler.IScheduler;
-import org.apache.iotdb.db.mpp.plan.scheduler.StandaloneScheduler;
 import org.apache.iotdb.db.mpp.plan.scheduler.load.LoadTsFileScheduler;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertBaseStatement;
@@ -81,7 +80,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Throwables.throwIfUnchecked;
-import static org.apache.iotdb.db.mpp.plan.constant.DataNodeEndPoints.isSameNode;
+import static org.apache.iotdb.db.mpp.common.DataNodeEndPoints.isSameNode;
 
 /**
  * QueryExecution stores all the status of a query which is being prepared or running inside the MPP
@@ -268,23 +267,15 @@ public class QueryExecution implements IQueryExecution {
     }
     // TODO: (xingtanzjr) initialize the query scheduler according to configuration
     this.scheduler =
-        config.isClusterMode()
-            ? new ClusterScheduler(
-                context,
-                stateMachine,
-                distributedPlan.getInstances(),
-                context.getQueryType(),
-                executor,
-                writeOperationExecutor,
-                scheduledExecutor,
-                internalServiceClientManager)
-            : new StandaloneScheduler(
-                context,
-                stateMachine,
-                distributedPlan.getInstances(),
-                context.getQueryType(),
-                scheduledExecutor,
-                internalServiceClientManager);
+        new ClusterScheduler(
+            context,
+            stateMachine,
+            distributedPlan.getInstances(),
+            context.getQueryType(),
+            executor,
+            writeOperationExecutor,
+            scheduledExecutor,
+            internalServiceClientManager);
     this.scheduler.start();
   }
 

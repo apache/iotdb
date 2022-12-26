@@ -28,7 +28,7 @@ From 0.12 on, we release two images: one is for a single node, and the other is 
 The format is: `apache/iotdb:0.<major>.<minor>-node` and `apache/iotdb:0.<major>.<minor>-cluster`.
 
 From 1.0.0, we split 3 kinds of images: datanode,confignode and all of them in one image called 1C1D. 
-The format is: `apache/iotdb:<version>-confignode`,`apache/iotdb:<version>-datanode` and `apache/iotdb:<version>-1c1d`.
+The format is: `apache/iotdb:<version>-confignode`,`apache/iotdb:<version>-datanode` and `apache/iotdb:<version>-standalone`.
 
 ## The definition of tag "latest"
 Before v0.12, the "latest" tag will forward to the largest `apache/iotdb:0.<major>.<minor>`.
@@ -48,13 +48,13 @@ docker build -t my-iotdb:<version> -f Dockerfile-<version>
 cd src/main/DockerCompose
 ./do-docker-build.sh -t <target> -v <version>
 e.g.
-./do-docker-build.sh -t confignode -v 1.0.0
+./do-docker-build.sh -t standalone -v 1.0.0
 ```
 Notice:
-Make directory of src/main/tmp and put the files you'd like to use in dockerfile if you don't want to build the source codes of IoTDB.
+Make directory of src/main/target and put the zip file downloading from the official download page. 
 e.g.
 ```shell
-$ ls -hl tmp/
+$ ls -hl target/
 total 215M
 -rw-r--r-- 1 root root 75M Nov 30 20:04 apache-iotdb-1.0.0-all-bin.zip
 -rw-r--r-- 1 root root 69M Dec  1 17:12 apache-iotdb-1.0.0-confignode-bin.zip

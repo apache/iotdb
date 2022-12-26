@@ -256,7 +256,7 @@ public class MemTableFlushTask {
           if (!storageGroup.startsWith(IoTDBMetricsUtils.DATABASE)
               && MetricLevel.higherOrEqual(
                   MetricConfigDescriptor.getInstance().getMetricConfig().getMetricLevel(),
-                  MetricLevel.IMPORTANT)) {
+                  MetricLevel.CORE)) {
             int lastIndex = storageGroup.lastIndexOf("-");
             if (lastIndex == -1) {
               lastIndex = storageGroup.length();
@@ -265,7 +265,7 @@ public class MemTableFlushTask {
                 .gaugeWithInternalReport(
                     memTable.getTotalPointsNum(),
                     Metric.POINTS.toString(),
-                    MetricLevel.IMPORTANT,
+                    MetricLevel.CORE,
                     Tag.DATABASE.toString(),
                     storageGroup.substring(0, lastIndex),
                     Tag.TYPE.toString(),

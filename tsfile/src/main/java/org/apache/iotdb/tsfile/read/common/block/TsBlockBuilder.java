@@ -259,7 +259,7 @@ public class TsBlockBuilder {
   }
 
   public boolean isFull() {
-    return declaredPositions == MAX_LINE_NUMBER || tsBlockBuilderStatus.isFull();
+    return declaredPositions >= MAX_LINE_NUMBER || tsBlockBuilderStatus.isFull();
   }
 
   public boolean isEmpty() {

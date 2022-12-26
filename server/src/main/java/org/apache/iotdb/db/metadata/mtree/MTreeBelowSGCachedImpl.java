@@ -47,16 +47,14 @@ import org.apache.iotdb.db.metadata.mtree.traverser.collector.MNodeCollector;
 import org.apache.iotdb.db.metadata.mtree.traverser.collector.MeasurementCollector;
 import org.apache.iotdb.db.metadata.mtree.traverser.counter.CounterTraverser;
 import org.apache.iotdb.db.metadata.mtree.traverser.counter.EntityCounter;
-import org.apache.iotdb.db.metadata.mtree.traverser.counter.MNodeLevelCounter;
 import org.apache.iotdb.db.metadata.mtree.traverser.counter.MeasurementCounter;
 import org.apache.iotdb.db.metadata.mtree.traverser.counter.MeasurementGroupByLevelCounter;
+import org.apache.iotdb.db.metadata.plan.schemaregion.read.IShowDevicesPlan;
+import org.apache.iotdb.db.metadata.plan.schemaregion.read.IShowTimeSeriesPlan;
+import org.apache.iotdb.db.metadata.plan.schemaregion.result.ShowDevicesResult;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.utils.MetaFormatUtils;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
-import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
-import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
-import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.query.dataset.ShowDevicesResult;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -68,7 +66,6 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
@@ -79,9 +76,7 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.function.Consumer;
 import java.util.function.Function;
-import java.util.stream.Stream;
 
-import static java.util.stream.Collectors.toList;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
 
 /**
@@ -160,7 +155,10 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
     // recover measurement
     MeasurementCollector<?> collector =
         new MeasurementCollector<Void>(
-            this.storageGroupMNode, new PartialPath(storageGroupMNode.getFullPath()), this.store) {
+            this.storageGroupMNode,
+            new PartialPath(storageGroupMNode.getFullPath()),
+            this.store,
+            false) {
           @Override
           protected void collectMeasurement(IMeasurementMNode node) {
             measurementProcess.accept(node);
@@ -655,50 +653,9 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
       unPinPath(cur);
     }
   }
-
-  @Override
-  public IEntityMNode setToEntity(IMNode node) throws MetadataException {
-    // synchronize check and replace, we need replaceChild become atomic operation
-    // only write on mtree will be synchronized
-    synchronized (this) {
-      IEntityMNode entityMNode = store.setToEntity(node);
-      if (entityMNode.isStorageGroup()) {
-        this.storageGroupMNode = entityMNode.getAsStorageGroupMNode();
-      }
-      return entityMNode;
-    }
-  }
   // endregion
 
   // region Interfaces and Implementation for metadata info Query
-  /**
-   * Check whether the given path exists.
-   *
-   * @param path a full path or a prefix path
-   */
-  @Override
-  public boolean isPathExist(PartialPath path) throws MetadataException {
-    String[] nodeNames = path.getNodes();
-    IMNode cur = storageGroupMNode;
-    IMNode child;
-    try {
-      for (int i = levelOfSG + 1; i < nodeNames.length; i++) {
-        child = store.getChild(cur, nodeNames[i]);
-        if (child == null) {
-          return false;
-        } else {
-          if (child.isMeasurement()) {
-            cur = child;
-            return i == nodeNames.length - 1;
-          }
-        }
-        cur = child;
-      }
-      return true;
-    } finally {
-      unPinPath(cur);
-    }
-  }
 
   // region Interfaces for Device info Query
   /**
@@ -724,7 +681,7 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
   }
 
   @Override
-  public Pair<List<ShowDevicesResult>, Integer> getDevices(ShowDevicesPlan plan)
+  public Pair<List<ShowDevicesResult>, Integer> getDevices(IShowDevicesPlan plan)
       throws MetadataException {
     List<ShowDevicesResult> res = new ArrayList<>();
     EntityCollector<List<ShowDevicesResult>> collector =
@@ -749,21 +706,6 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
 
     return new Pair<>(res, collector.getCurOffset() + 1);
   }
-
-  @Override
-  public Set<PartialPath> getDevicesByTimeseries(PartialPath timeseries) throws MetadataException {
-    Set<PartialPath> result = new HashSet<>();
-    MeasurementCollector<Set<PartialPath>> collector =
-        new MeasurementCollector<Set<PartialPath>>(storageGroupMNode, timeseries, store) {
-          @Override
-          protected void collectMeasurement(IMeasurementMNode node) {
-            result.add(getCurrentPartialPath(node).getDevicePath());
-          }
-        };
-    collector.traverse();
-    return result;
-  }
-
   // endregion
 
   // region Interfaces for timeseries, measurement and schema info Query
@@ -779,17 +721,6 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
   public List<MeasurementPath> getMeasurementPaths(PartialPath pathPattern, boolean isPrefixMatch)
       throws MetadataException {
     return getMeasurementPathsWithAlias(pathPattern, 0, 0, isPrefixMatch, false).left;
-  }
-
-  /**
-   * Get all measurement paths matching the given path pattern
-   *
-   * @param pathPattern a path pattern or a full path, may contain wildcard.
-   */
-  @Override
-  public List<MeasurementPath> getMeasurementPaths(PartialPath pathPattern)
-      throws MetadataException {
-    return getMeasurementPaths(pathPattern, false);
   }
 
   /**
@@ -837,19 +768,10 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
    */
   @Override
   public Pair<List<Pair<PartialPath, String[]>>, Integer> getAllMeasurementSchema(
-      ShowTimeSeriesPlan plan, QueryContext queryContext) throws MetadataException {
-    /*
-     There are two conditions and 4 cases.
-     1. isOrderByHeat = false && limit = 0 : just collect all results from each database
-     2. isOrderByHeat = false && limit != 0 : the offset and limit should be updated by each sg after traverse, thus the final result will satisfy the constraints of limit and offset
-     3. isOrderByHeat = true && limit = 0 : collect all result from each database and then sort
-     4. isOrderByHeat = true && limit != 0 : collect top limit result from each sg and then sort them and collect the top limit results start from offset.
-     The offset must be 0, since each sg should collect top limit results. The current limit is the sum of origin limit and offset when passed into metadata module
-    */
+      IShowTimeSeriesPlan plan) throws MetadataException {
 
-    boolean needLast = plan.isOrderByHeat();
-    int limit = needLast ? 0 : plan.getLimit();
-    int offset = needLast ? 0 : plan.getOffset();
+    int limit = plan.getLimit();
+    int offset = plan.getOffset();
 
     MeasurementCollector<List<Pair<PartialPath, String[]>>> collector =
         new MeasurementCollector<List<Pair<PartialPath, String[]>>>(
@@ -859,45 +781,25 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
             IMeasurementSchema measurementSchema = node.getSchema();
             Pair<String, String> deadbandInfo =
                 MetaUtils.parseDeadbandInfo(measurementSchema.getProps());
-            String[] tsRow = new String[9];
+            String[] tsRow = new String[8];
             tsRow[0] = node.getAlias();
             tsRow[1] = getStorageGroupNodeInTraversePath(node).getFullPath();
             tsRow[2] = measurementSchema.getType().toString();
             tsRow[3] = measurementSchema.getEncodingType().toString();
             tsRow[4] = measurementSchema.getCompressor().toString();
             tsRow[5] = String.valueOf(node.getOffset());
-            tsRow[6] = null;
-            tsRow[7] = deadbandInfo.left;
-            tsRow[8] = deadbandInfo.right;
+            tsRow[6] = deadbandInfo.left;
+            tsRow[7] = deadbandInfo.right;
             Pair<PartialPath, String[]> temp = new Pair<>(getCurrentPartialPath(node), tsRow);
             resultSet.add(temp);
           }
         };
     collector.setPrefixMatch(plan.isPrefixMatch());
+    collector.setTemplateMap(plan.getRelatedTemplate());
     collector.setResultSet(new LinkedList<>());
     collector.traverse();
 
     List<Pair<PartialPath, String[]>> result = collector.getResult();
-
-    if (needLast) {
-      Stream<Pair<PartialPath, String[]>> stream = result.stream();
-
-      limit = plan.getLimit();
-      offset = plan.getOffset();
-
-      stream =
-          stream.sorted(
-              Comparator.comparingLong(
-                      (Pair<PartialPath, String[]> p) -> Long.parseLong(p.right[6]))
-                  .reversed()
-                  .thenComparing((Pair<PartialPath, String[]> p) -> p.left));
-
-      if (limit != 0) {
-        stream = stream.skip(offset).limit(limit);
-      }
-
-      result = stream.collect(toList());
-    }
 
     return new Pair<>(result, collector.getCurOffset() + 1);
   }
@@ -929,37 +831,6 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
                   new TSchemaNode(
                       getCurrentPartialPath(node).getFullPath(),
                       node.getMNodeType(false).getNodeType()));
-            }
-          };
-      collector.setResultSet(new TreeSet<>());
-      collector.traverse();
-      return collector.getResult();
-    } catch (IllegalPathException e) {
-      throw new IllegalPathException(pathPattern.getFullPath());
-    }
-  }
-
-  /**
-   * Get child node in the next level of the given path.
-   *
-   * <p>e.g., MTree has [root.sg1.d1.s1, root.sg1.d1.s2, root.sg1.d2.s1] given path = root.sg1,
-   * return [d1, d2]
-   *
-   * <p>e.g., MTree has [root.sg1.d1.s1, root.sg1.d1.s2, root.sg1.d2.s1] given path = root.sg1.d1
-   * return [s1, s2]
-   *
-   * @param pathPattern Path
-   * @return All child nodes' seriesPath(s) of given seriesPath.
-   */
-  @Override
-  public Set<String> getChildNodeNameInNextLevel(PartialPath pathPattern) throws MetadataException {
-    try {
-      MNodeCollector<Set<String>> collector =
-          new MNodeCollector<Set<String>>(
-              storageGroupMNode, pathPattern.concatNode(ONE_LEVEL_PATH_WILDCARD), store) {
-            @Override
-            protected void transferToResult(IMNode node) {
-              resultSet.add(node.getName());
             }
           };
       collector.setResultSet(new TreeSet<>());
@@ -1015,16 +886,6 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
     return counter.getCount();
   }
 
-  /**
-   * Get the count of timeseries matching the given path.
-   *
-   * @param pathPattern a path pattern or a full path, may contain wildcard
-   */
-  @Override
-  public long getAllTimeseriesCount(PartialPath pathPattern) throws MetadataException {
-    return getAllTimeseriesCount(pathPattern, false);
-  }
-
   @Override
   public long getAllTimeseriesCount(
       PartialPath pathPattern, boolean isPrefixMatch, List<String> timeseries, boolean hasTag)
@@ -1047,30 +908,6 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
   public long getDevicesNum(PartialPath pathPattern, boolean isPrefixMatch)
       throws MetadataException {
     CounterTraverser counter = new EntityCounter(storageGroupMNode, pathPattern, store);
-    counter.setPrefixMatch(isPrefixMatch);
-    counter.traverse();
-    return counter.getCount();
-  }
-
-  /**
-   * Get the count of devices matching the given path.
-   *
-   * @param pathPattern a path pattern or a full path, may contain wildcard
-   */
-  @Override
-  public long getDevicesNum(PartialPath pathPattern) throws MetadataException {
-    return getDevicesNum(pathPattern, false);
-  }
-
-  /**
-   * Get the count of nodes in the given level matching the given path. If using prefix match, the
-   * path pattern is used to match prefix path. All timeseries start with the matched prefix path
-   * will be counted.
-   */
-  @Override
-  public long getNodesCountInGivenLevel(PartialPath pathPattern, int level, boolean isPrefixMatch)
-      throws MetadataException {
-    MNodeLevelCounter counter = new MNodeLevelCounter(storageGroupMNode, pathPattern, store, level);
     counter.setPrefixMatch(isPrefixMatch);
     counter.traverse();
     return counter.getCount();
@@ -1243,13 +1080,16 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
       throws MetadataException {
     String[] nodes = activatePath.getNodes();
     IMNode cur = storageGroupMNode;
-    List<IMNode> pinnedNodes = new ArrayList<>();
-    IEntityMNode entityMNode = null;
+    IMNode child;
+    IEntityMNode entityMNode;
 
     try {
       for (int i = levelOfSG + 1; i < nodes.length; i++) {
-        cur = store.getChild(cur, nodes[i]);
-        pinnedNodes.add(cur);
+        child = store.getChild(cur, nodes[i]);
+        if (child == null) {
+          throw new PathNotExistException(activatePath.getFullPath());
+        }
+        cur = child;
       }
       synchronized (this) {
         for (String measurement : template.getSchemaMap().keySet()) {
@@ -1278,13 +1118,10 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
       }
       entityMNode.setUseTemplate(true);
       entityMNode.setSchemaTemplateId(template.getId());
+
+      store.updateMNode(entityMNode);
     } finally {
-      if (entityMNode != null) {
-        store.updateMNode(entityMNode);
-      }
-      for (IMNode node : pinnedNodes) {
-        store.unPin(node);
-      }
+      unPinPath(cur);
     }
   }
 
@@ -1417,11 +1254,6 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
 
   public void updateMNode(IMNode node) throws MetadataException {
     store.updateMNode(node);
-  }
-
-  public IMNode getChildFromPinnedMNode(IMNode parent, String measurement)
-      throws MetadataException {
-    return store.getChild(parent, measurement);
   }
 
   // endregion
