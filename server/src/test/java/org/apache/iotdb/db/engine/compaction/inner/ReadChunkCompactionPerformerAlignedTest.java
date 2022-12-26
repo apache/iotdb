@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.engine.compaction.inner;
 
+import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.constant.TestConstant;
@@ -32,16 +33,15 @@ import org.apache.iotdb.db.engine.compaction.task.CompactionTaskSummary;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionCheckerUtils;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionConfigRestorer;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionFileGeneratorUtils;
+import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.service.IoTDB;
+import org.apache.iotdb.db.localconfignode.LocalConfigNode;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
-
-import org.apache.commons.io.FileUtils;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -73,14 +73,14 @@ public class ReadChunkCompactionPerformerAlignedTest {
     if (!dataDirectory.exists()) {
       Assert.assertTrue(dataDirectory.mkdirs());
     }
-    IoTDB.configManager.init();
+    LocalConfigNode.getInstance().init();
   }
 
   @After
   public void tearDown() throws Exception {
     new CompactionConfigRestorer().restoreCompactionConfig();
     FileUtils.forceDelete(dataDirectory);
-    IoTDB.configManager.clear();
+    LocalConfigNode.getInstance().clear();
     ChunkCache.getInstance().clear();
     TimeSeriesMetadataCache.getInstance().clear();
     EnvironmentUtils.cleanEnv();
@@ -123,7 +123,8 @@ public class ReadChunkCompactionPerformerAlignedTest {
           randomNull);
       resources.add(resource);
     }
-    TsFileResource targetResource = new TsFileResource(new File(dataDirectory, "1-1-1-0.tsfile"));
+    TsFileResource targetResource =
+        TsFileNameGenerator.getInnerCompactionTargetFileResource(resources, true);
     List<PartialPath> fullPaths = new ArrayList<>();
     List<IMeasurementSchema> iMeasurementSchemas = new ArrayList<>();
     List<String> measurementIds = new ArrayList<>();
@@ -196,7 +197,8 @@ public class ReadChunkCompactionPerformerAlignedTest {
       CompactionFileGeneratorUtils.generateMods(deletionMap, resource, false);
       resources.add(resource);
     }
-    TsFileResource targetResource = new TsFileResource(new File(dataDirectory, "1-1-1-0.tsfile"));
+    TsFileResource targetResource =
+        TsFileNameGenerator.getInnerCompactionTargetFileResource(resources, true);
     List<PartialPath> fullPaths = new ArrayList<>();
     List<IMeasurementSchema> iMeasurementSchemas = new ArrayList<>();
     List<String> measurementIds = new ArrayList<>();
@@ -262,7 +264,8 @@ public class ReadChunkCompactionPerformerAlignedTest {
           randomNull);
       resources.add(resource);
     }
-    TsFileResource targetResource = new TsFileResource(new File(dataDirectory, "1-1-1-0.tsfile"));
+    TsFileResource targetResource =
+        TsFileNameGenerator.getInnerCompactionTargetFileResource(resources, true);
     List<PartialPath> fullPaths = new ArrayList<>();
     List<IMeasurementSchema> iMeasurementSchemas = new ArrayList<>();
     List<String> measurementIds = new ArrayList<>();
@@ -331,7 +334,8 @@ public class ReadChunkCompactionPerformerAlignedTest {
           randomNull);
       resources.add(resource);
     }
-    TsFileResource targetResource = new TsFileResource(new File(dataDirectory, "1-1-1-0.tsfile"));
+    TsFileResource targetResource =
+        TsFileNameGenerator.getInnerCompactionTargetFileResource(resources, true);
     List<PartialPath> fullPaths = new ArrayList<>();
     List<IMeasurementSchema> iMeasurementSchemas = new ArrayList<>();
     List<String> measurementIds = new ArrayList<>();
@@ -398,7 +402,8 @@ public class ReadChunkCompactionPerformerAlignedTest {
           randomNull);
       resources.add(resource);
     }
-    TsFileResource targetResource = new TsFileResource(new File(dataDirectory, "1-1-1-0.tsfile"));
+    TsFileResource targetResource =
+        TsFileNameGenerator.getInnerCompactionTargetFileResource(resources, true);
     List<PartialPath> fullPaths = new ArrayList<>();
     List<IMeasurementSchema> iMeasurementSchemas = new ArrayList<>();
     List<String> measurementIds = new ArrayList<>();
@@ -467,7 +472,8 @@ public class ReadChunkCompactionPerformerAlignedTest {
           randomNull);
       resources.add(resource);
     }
-    TsFileResource targetResource = new TsFileResource(new File(dataDirectory, "1-1-1-0.tsfile"));
+    TsFileResource targetResource =
+        TsFileNameGenerator.getInnerCompactionTargetFileResource(resources, true);
     List<PartialPath> fullPaths = new ArrayList<>();
     List<IMeasurementSchema> iMeasurementSchemas = new ArrayList<>();
     List<String> measurementIds = new ArrayList<>();
@@ -537,7 +543,8 @@ public class ReadChunkCompactionPerformerAlignedTest {
           randomNull);
       resources.add(resource);
     }
-    TsFileResource targetResource = new TsFileResource(new File(dataDirectory, "1-1-1-0.tsfile"));
+    TsFileResource targetResource =
+        TsFileNameGenerator.getInnerCompactionTargetFileResource(resources, true);
     List<PartialPath> fullPaths = new ArrayList<>();
     List<IMeasurementSchema> iMeasurementSchemas = new ArrayList<>();
     List<String> measurementIds = new ArrayList<>();
@@ -618,7 +625,8 @@ public class ReadChunkCompactionPerformerAlignedTest {
         timeInterval * (30 + 1),
         randomNull);
     resources.add(resource);
-    TsFileResource targetResource = new TsFileResource(new File(dataDirectory, "1-1-1-0.tsfile"));
+    TsFileResource targetResource =
+        TsFileNameGenerator.getInnerCompactionTargetFileResource(resources, true);
     List<PartialPath> fullPaths = new ArrayList<>();
     List<IMeasurementSchema> iMeasurementSchemas = new ArrayList<>();
     List<String> measurementIds = new ArrayList<>();
