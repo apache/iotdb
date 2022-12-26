@@ -36,6 +36,8 @@ import java.util.List;
 import java.util.Map;
 
 public class FastCrossCompactionWriter extends AbstractCrossCompactionWriter {
+  // Only used for fast compaction performer
+  protected Map<TsFileResource, TsFileSequenceReader> readerMap;
 
   public FastCrossCompactionWriter(
       List<TsFileResource> targetResources,
@@ -50,6 +52,11 @@ public class FastCrossCompactionWriter extends AbstractCrossCompactionWriter {
   public void write(TimeColumn timestamps, Column[] columns, int subTaskId, int batchSize)
       throws IOException {
     throw new RuntimeException("Does not support this method in FastCrossCompactionWriter");
+  }
+
+  @Override
+  protected TsFileSequenceReader getFileReader(TsFileResource resource) {
+    return readerMap.get(resource);
   }
 
   /**
