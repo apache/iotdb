@@ -106,6 +106,8 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
       targetTsfileResourceList =
           TsFileNameGenerator.getCrossCompactionTargetFileResources(selectedSequenceFiles);
 
+      targetTsfileResourceList.forEach(x -> x.setStatus(TsFileResourceStatus.COMPACTING));
+
       if (targetTsfileResourceList.isEmpty()
           || selectedSequenceFiles.isEmpty()
           || selectedUnsequenceFiles.isEmpty()) {
@@ -198,6 +200,9 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
         }
 
         CompactionUtils.deleteCompactionModsFile(selectedSequenceFiles, selectedUnsequenceFiles);
+
+        // set target resources to CLOSED, so that they can be selected to compact
+        targetTsfileResourceList.forEach(x -> x.setStatus(TsFileResourceStatus.CLOSED));
 
         if (logFile.exists()) {
           FileUtils.delete(logFile);
