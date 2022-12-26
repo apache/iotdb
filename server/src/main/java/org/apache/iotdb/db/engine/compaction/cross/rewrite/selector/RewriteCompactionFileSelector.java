@@ -23,6 +23,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.cross.rewrite.manage.CrossSpaceCompactionResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
 import org.apache.iotdb.db.exception.MergeException;
 
 import org.slf4j.Logger;
@@ -256,9 +257,8 @@ public class RewriteCompactionFileSelector implements ICrossSpaceMergeFileSelect
    */
   private boolean checkIsSeqFilesValid() {
     for (Integer seqIdx : tmpSelectedSeqFiles) {
-      if (resource.getSeqFiles().get(seqIdx).isCompactionCandidate()
-          || resource.getSeqFiles().get(seqIdx).isCompacting()
-          || !resource.getSeqFiles().get(seqIdx).isClosed()) {
+      if (resource.getSeqFiles().get(seqIdx).getStatus() != TsFileResourceStatus.CLOSED
+          || !resource.getSeqFiles().get(seqIdx).getTsFile().exists()) {
         return false;
       }
     }
