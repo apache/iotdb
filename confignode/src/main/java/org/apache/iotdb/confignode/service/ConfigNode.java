@@ -161,7 +161,11 @@ public class ConfigNode implements ConfigNodeMBean {
 
       boolean isJoinedCluster = false;
       for (int retry = 0; retry < SCHEDULE_WAITING_RETRY_NUM; retry++) {
-        if (!configManager.getConsensusManager().getConsensusImpl().getAllConsensusGroupIds().isEmpty()) {
+        if (!configManager
+            .getConsensusManager()
+            .getConsensusImpl()
+            .getAllConsensusGroupIds()
+            .isEmpty()) {
           isJoinedCluster = true;
           break;
         }
