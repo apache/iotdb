@@ -38,6 +38,8 @@ public class TagSchemaConfig {
   // the maximum number of immutableMemTables, when this is reached, flush operation is required
   private int numOfImmutableMemTable = 5;
 
+  // the size of max chunk in disk, if current chunk overflow, a new chunk is created to continue
+  // store.(unit: byte)
   private long maxChunkSize = 1024 * 1024;
 
   public int getNumOfDeviceIdsInMemTable() {
@@ -88,6 +90,14 @@ public class TagSchemaConfig {
     this.bPlusTreePageSize = bPlusTreePageSize;
   }
 
+  public long getMaxChunkSize() {
+    return maxChunkSize;
+  }
+
+  public void setMaxChunkSize(long maxChunkSize) {
+    this.maxChunkSize = maxChunkSize;
+  }
+
   @Override
   public String toString() {
     return "TagSchemaConfig{"
@@ -104,13 +114,5 @@ public class TagSchemaConfig {
         + ", maxChunkSize="
         + maxChunkSize
         + '}';
-  }
-
-  public long getMaxChunkSize() {
-    return maxChunkSize;
-  }
-
-  public void setMaxChunkSize(long maxChunkSize) {
-    this.maxChunkSize = maxChunkSize;
   }
 }

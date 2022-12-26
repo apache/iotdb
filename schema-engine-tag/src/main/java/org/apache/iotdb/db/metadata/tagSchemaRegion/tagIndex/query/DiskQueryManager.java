@@ -63,7 +63,7 @@ public class DiskQueryManager implements IDiskQueryManager {
       for (String tiFile : tiFiles) {
         tiFileReader = new TiFileReader(new File(flushDirPath + File.separator + tiFile), tags);
         QueryResponse response = getQueryResponse(tiFileReader);
-        if (response != null) {
+        if (!response.getValue().isEmpty()) {
           File deletionFile = new File(flushDirPath + File.separator + getDeletionFileName(tiFile));
           if (deletionFile.exists()) {
             deleteRecords(response, deletionFile);
@@ -88,20 +88,14 @@ public class DiskQueryManager implements IDiskQueryManager {
         }
       }
     }
-
     return (R) queryResponse;
   }
 
   private String[] getAllTiFiles() {
     File flushDir = new File(flushDirPath);
     return flushDir.list(
-        (dir, name) -> {
-          if (name.startsWith(flushFilePrefix)
-              && !name.endsWith("tmp")
-              && !name.contains("delete")) {
-            return true;
-          } else return false;
-        });
+        (dir, name) ->
+            name.startsWith(flushFilePrefix) && !name.endsWith("tmp") && !name.contains("delete"));
   }
 
   private Map<String, String> generateMap(QueryRequest<String> request) {

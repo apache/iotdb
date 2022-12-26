@@ -23,9 +23,9 @@ import org.apache.iotdb.lsm.request.IFlushRequest;
 import java.util.List;
 
 public interface IMemManager<R extends IFlushRequest> {
-  public boolean isNeedFlush();
+  boolean isNeedFlush();
 
-  public List<R> getFlushRequests();
+  List<R> getFlushRequests();
 
-  public void removeMemData(R request);
+  void removeMemData(R request);
 }

@@ -32,15 +32,15 @@ public class QueryManager<T> {
   private T rootMemNode;
 
   public <K, R extends IQueryResponse> R process(QueryRequest<K> queryRequest) {
-    R queryResponse = processMem(queryRequest);
-    R response = processDisk(queryRequest);
-    if (queryResponse == null) {
-      return response;
-    } else if (response == null) {
-      return queryResponse;
+    R memResponse = processMem(queryRequest);
+    R diskResponse = processDisk(queryRequest);
+    if (memResponse == null) {
+      return diskResponse;
+    } else if (diskResponse == null) {
+      return memResponse;
     } else {
-      queryResponse.or(response);
-      return queryResponse;
+      memResponse.or(diskResponse);
+      return memResponse;
     }
   }
 
