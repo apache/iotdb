@@ -16,15 +16,28 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.commons.cluster;
 
-package org.apache.iotdb.confignode.client;
+public enum NodeType {
+  ConfigNode("ConfigNode"),
+  DataNode("DataNode");
 
-public enum ConfigNodeRequestType {
-  ADD_CONSENSUS_GROUP,
-  NOTIFY_REGISTER_SUCCESS,
-  REGISTER_CONFIG_NODE,
-  RESTART_CONFIG_NODE,
-  REMOVE_CONFIG_NODE,
-  DELETE_CONFIG_NODE_PEER,
-  STOP_CONFIG_NODE;
+  private final String nodeType;
+
+  NodeType(String nodeType) {
+    this.nodeType = nodeType;
+  }
+
+  public String getNodeType() {
+    return nodeType;
+  }
+
+  public static NodeType parse(String type) {
+    for (NodeType nodeType : NodeType.values()) {
+      if (nodeType.nodeType.equals(type)) {
+        return nodeType;
+      }
+    }
+    throw new RuntimeException(String.format("NodeType %s doesn't exist.", type));
+  }
 }

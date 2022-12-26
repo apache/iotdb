@@ -185,17 +185,42 @@ public class RemoteServerEnv implements BaseEnv {
   }
 
   @Override
+  public ConfigNodeWrapper generateRandomConfigNodeWrapper() {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public DataNodeWrapper generateRandomDataNodeWrapper() {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public ConfigNodeWrapper getConfigNodeWrapper(int index) {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
   public DataNodeWrapper getDataNodeWrapper(int index) {
     throw new UnsupportedOperationException();
   }
 
   @Override
-  public void registerNewDataNode() {
+  public void registerNewDataNode(boolean isNeedVerify) {
     throw new UnsupportedOperationException();
   }
 
   @Override
-  public void registerNewConfigNode() {
+  public void registerNewConfigNode(boolean isNeedVerify) {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public void registerNewDataNode(DataNodeWrapper newDataNodeWrapper, boolean isNeedVerify) {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public void registerNewConfigNode(ConfigNodeWrapper newConfigNodeWrapper, boolean isNeedVerify) {
     throw new UnsupportedOperationException();
   }
 

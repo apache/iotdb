@@ -274,6 +274,8 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
 
   protected abstract String getCommonConfigPath();
 
+  public abstract String getSystemPropertiesPath();
+
   protected abstract void updateConfig(Properties properties);
 
   protected abstract void addStartCmdParams(List<String> params);
