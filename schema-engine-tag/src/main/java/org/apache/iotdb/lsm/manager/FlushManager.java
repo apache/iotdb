@@ -44,7 +44,7 @@ public class FlushManager<T, R extends IFlushRequest>
 
   private String flushFilePrefix;
 
-  private final int flushIntervalMs = 1;
+  private final int flushIntervalMs = 1000;
 
   public FlushManager(
       WALManager walManager, T memManager, String flushDirPath, String flushFilePrefix) {
@@ -67,16 +67,18 @@ public class FlushManager<T, R extends IFlushRequest>
   }
 
   public void checkFlush() {
-    if (memManager.isNeedFlush()) {
-      List<R> flushRequests = memManager.getFlushRequests();
-      for (R flushRequest : flushRequests) {
-        flushRequest.setFlushDirPath(flushDirPath);
-        flushRequest.setFlushFileName(flushFilePrefix + "-0-" + flushRequest.getIndex());
-        flushRequest.setFlushDeleteFileName(
-            flushFilePrefix + "-delete" + "-0-" + flushRequest.getIndex());
-        flush(flushRequest);
-        memManager.removeMemData(flushRequest);
-        updateWal(flushRequest);
+    synchronized (memManager) {
+      if (memManager.isNeedFlush()) {
+        List<R> flushRequests = memManager.getFlushRequests();
+        for (R flushRequest : flushRequests) {
+          flushRequest.setFlushDirPath(flushDirPath);
+          flushRequest.setFlushFileName(flushFilePrefix + "-0-" + flushRequest.getIndex());
+          flushRequest.setFlushDeleteFileName(
+              flushFilePrefix + "-delete" + "-0-" + flushRequest.getIndex());
+          flush(flushRequest);
+          memManager.removeMemData(flushRequest);
+          updateWal(flushRequest);
+        }
       }
     }
   }

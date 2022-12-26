@@ -22,6 +22,7 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.config.TagSchemaConfig;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.config.TagSchemaDescriptor;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemTableGroup;
+import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.query.DiskQueryManager;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.request.DeletionRequest;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.request.InsertionRequest;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.request.SingleQueryRequest;
@@ -66,12 +67,15 @@ public class TagInvertedIndex implements ITagInvertedIndex {
   // index
   LSMEngine<MemTableGroup> lsmEngine;
 
+  private String schemaDirPath;
+
   /**
    * initialization method
    *
    * @param schemaDirPath schema dirPath
    */
   public TagInvertedIndex(String schemaDirPath) {
+    this.schemaDirPath = schemaDirPath;
     try {
       WALManager walManager =
           new WALManager(
@@ -87,6 +91,8 @@ public class TagInvertedIndex implements ITagInvertedIndex {
               tagSchemaConfig.getNumOfImmutableMemTable(),
               tagSchemaConfig.getMaxChunkSize());
 
+      DiskQueryManager diskQueryManager =
+          new DiskQueryManager(schemaDirPath + File.separator + FLUSH_DIR_PATH, FLUSH_FILE_PREFIX);
       // build lsm engine
       lsmEngine =
           new LSMEngineBuilder<MemTableGroup>()
@@ -96,7 +102,8 @@ public class TagInvertedIndex implements ITagInvertedIndex {
                   walManager,
                   memTableGroup,
                   schemaDirPath + File.separator + FLUSH_DIR_PATH,
-                  FLUSH_FILE_PREFIX)
+                  FLUSH_FILE_PREFIX,
+                  diskQueryManager)
               .build();
 
       // recover the lsm engine
@@ -133,6 +140,8 @@ public class TagInvertedIndex implements ITagInvertedIndex {
     for (Map.Entry<String, String> tag : tags.entrySet()) {
       DeletionRequest deletionRequest =
           new DeletionRequest(generateKeys(tag.getKey(), tag.getValue()), id);
+      deletionRequest.setFlushFilePrefix(FLUSH_FILE_PREFIX);
+      deletionRequest.setFlushDirPath(schemaDirPath + File.separator + FLUSH_DIR_PATH);
       lsmEngine.delete(deletionRequest);
     }
   }

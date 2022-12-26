@@ -37,7 +37,7 @@ import java.util.Map;
 
 import static org.junit.Assert.assertEquals;
 
-public class TagTagInvertedIndexTest {
+public class TagInvertedIndexTest {
   private String[][] record =
       new String[][] {
         {"tag1=q", "tag2=a", "1"},
@@ -99,7 +99,7 @@ public class TagTagInvertedIndexTest {
       tagInvertedIndex.addTags(pair.left, pair.right);
     }
     try {
-      Thread.sleep(1000);
+      Thread.sleep(3000);
     } catch (InterruptedException e) {
       throw new RuntimeException(e);
     }

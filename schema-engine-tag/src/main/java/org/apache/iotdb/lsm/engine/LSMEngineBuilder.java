@@ -29,6 +29,7 @@ import org.apache.iotdb.lsm.levelProcess.ILevelProcessor;
 import org.apache.iotdb.lsm.levelProcess.LevelProcessorChain;
 import org.apache.iotdb.lsm.manager.DeletionManager;
 import org.apache.iotdb.lsm.manager.FlushManager;
+import org.apache.iotdb.lsm.manager.IDiskQueryManager;
 import org.apache.iotdb.lsm.manager.IMemManager;
 import org.apache.iotdb.lsm.manager.InsertionManager;
 import org.apache.iotdb.lsm.manager.MemQueryManager;
@@ -187,6 +188,17 @@ public class LSMEngineBuilder<T extends IMemManager> {
     return this;
   }
 
+  /**
+   * build DiskQueryManager for lsmEngine
+   *
+   * @param diskQueryManager memQueryManager object
+   */
+  public LSMEngineBuilder<T> buildDiskQueryManager(IDiskQueryManager diskQueryManager) {
+    QueryManager<T> queryManager = lsmEngine.getQueryManager();
+    queryManager.setDiskQueryManager(diskQueryManager);
+    return this;
+  }
+
   /** build RecoverManager for lsmEngine */
   public LSMEngineBuilder<T> buildRecoverManager() {
     RecoverManager<LSMEngine<T>> recoverManager = new RecoverManager<>(lsmEngine.getWalManager());
@@ -258,11 +270,13 @@ public class LSMEngineBuilder<T extends IMemManager> {
       WALManager walManager,
       T memManager,
       String flushDirPath,
-      String flushFilePrefix) {
+      String flushFilePrefix,
+      IDiskQueryManager diskQueryManager) {
     try {
       buildWalManager(walManager)
           .buildLevelProcessors(applicationContext, memManager, flushDirPath, flushFilePrefix)
-          .buildRecoverManager();
+          .buildRecoverManager()
+          .buildDiskQueryManager(diskQueryManager);
     } catch (Exception e) {
       logger.error(e.getMessage());
     }
@@ -280,11 +294,13 @@ public class LSMEngineBuilder<T extends IMemManager> {
       WALManager walManager,
       T memManager,
       String flushDirPath,
-      String flushFilePrefix) {
+      String flushFilePrefix,
+      IDiskQueryManager diskQueryManager) {
     try {
       ApplicationContext property =
           ApplicationContextGenerator.GeneratePropertyWithAnnotation(packageName);
-      buildLSMManagers(property, walManager, memManager, flushDirPath, flushFilePrefix);
+      buildLSMManagers(
+          property, walManager, memManager, flushDirPath, flushFilePrefix, diskQueryManager);
     } catch (Exception e) {
       logger.error(e.getMessage());
     }

@@ -80,9 +80,11 @@ public class LSMEngine<T extends IMemManager> implements ILSMEngine {
    */
   @Override
   public <K, V, R extends BaseResponse> R insert(IInsertionRequest<K, V> insertionRequest) {
-    InsertRequestContext insertRequestContext = new InsertRequestContext();
-    insertionManager.process(rootMemNode, insertionRequest, insertRequestContext);
-    return insertRequestContext.getResponse();
+    synchronized (rootMemNode) {
+      InsertRequestContext insertRequestContext = new InsertRequestContext();
+      insertionManager.process(rootMemNode, insertionRequest, insertRequestContext);
+      return insertRequestContext.getResponse();
+    }
   }
 
   /**
@@ -94,7 +96,9 @@ public class LSMEngine<T extends IMemManager> implements ILSMEngine {
    */
   @Override
   public <K, R extends IQueryResponse> R query(QueryRequest<K> queryRequest) {
-    return queryManager.process(queryRequest);
+    synchronized (rootMemNode) {
+      return queryManager.process(queryRequest);
+    }
   }
 
   /**
@@ -107,9 +111,11 @@ public class LSMEngine<T extends IMemManager> implements ILSMEngine {
    */
   @Override
   public <K, V, R extends BaseResponse> R delete(IDeletionRequest<K, V> deletionRequest) {
-    DeleteRequestContext deleteRequestContext = new DeleteRequestContext();
-    deletionManager.process(rootMemNode, deletionRequest, deleteRequestContext);
-    return deleteRequestContext.getResponse();
+    synchronized (rootMemNode) {
+      DeleteRequestContext deleteRequestContext = new DeleteRequestContext();
+      deletionManager.process(rootMemNode, deletionRequest, deleteRequestContext);
+      return deleteRequestContext.getResponse();
+    }
   }
 
   /** recover the LSMEngine */
@@ -187,5 +193,9 @@ public class LSMEngine<T extends IMemManager> implements ILSMEngine {
 
   protected T getRootMemNode() {
     return rootMemNode;
+  }
+
+  protected QueryManager<T> getQueryManager() {
+    return queryManager;
   }
 }

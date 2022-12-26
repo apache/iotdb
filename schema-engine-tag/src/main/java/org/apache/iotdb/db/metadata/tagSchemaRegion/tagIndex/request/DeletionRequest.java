@@ -32,6 +32,10 @@ public class DeletionRequest implements IDeletionRequest<String, Integer> {
   // int32 id
   int value;
 
+  private String flushDirPath;
+
+  private String flushFilePrefix;
+
   public DeletionRequest(List<String> keys, int value) {
     super();
     this.keys = keys;
@@ -51,5 +55,21 @@ public class DeletionRequest implements IDeletionRequest<String, Integer> {
   @Override
   public Integer getValue() {
     return value;
+  }
+
+  public String getFlushDirPath() {
+    return flushDirPath;
+  }
+
+  public void setFlushDirPath(String flushDirPath) {
+    this.flushDirPath = flushDirPath;
+  }
+
+  public String getFlushFilePrefix() {
+    return flushFilePrefix;
+  }
+
+  public void setFlushFilePrefix(String flushFilePrefix) {
+    this.flushFilePrefix = flushFilePrefix;
   }
 }

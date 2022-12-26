@@ -149,9 +149,15 @@ public class WALManager extends org.apache.iotdb.lsm.manager.WALManager<MemTable
    */
   private void process(MemTableGroup memTableGroup, DeletionRequest request) throws IOException {
     WALEntry walEntry = new WALEntry(DELETE, request.getKeys(), request.getValue());
-    if (checkUpdateWalFile(memTableGroup, request)) {
-      updateFile(getWalFileName(currentFileID));
+    int id = request.getValue();
+    if (memTableGroup.inWorkingMemTable(id)
+        || memTableGroup
+            .getImmutableMemTables()
+            .containsKey(id / memTableGroup.getNumOfDeviceIdsInMemTable())) {
+      if (checkUpdateWalFile(memTableGroup, request)) {
+        updateFile(getWalFileName(currentFileID));
+      }
+      getWalWriter().write(walEntry);
     }
-    getWalWriter().write(walEntry);
   }
 }
