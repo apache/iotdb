@@ -42,7 +42,6 @@ import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import org.apache.thrift.TException;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -50,7 +49,6 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
-import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -100,7 +98,7 @@ public class IoTDBClusterNodeGetterIT {
   }
 
   @Test
-  public void showClusterAndNodesTest() throws IOException, InterruptedException, TException {
+  public void showClusterAndNodesTest() throws Exception {
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
 
@@ -181,7 +179,7 @@ public class IoTDBClusterNodeGetterIT {
   }
 
   @Test
-  public void removeAndStopConfigNodeTest() throws TException, IOException, InterruptedException {
+  public void removeAndStopConfigNodeTest() throws Exception {
     TShowClusterResp showClusterResp;
     TSStatus status;
 
@@ -217,7 +215,7 @@ public class IoTDBClusterNodeGetterIT {
   }
 
   @Test
-  public void queryAndRemoveDataNodeTest() throws TException, IOException, InterruptedException {
+  public void queryAndRemoveDataNodeTest() throws Exception {
 
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
