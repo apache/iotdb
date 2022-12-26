@@ -55,21 +55,6 @@ public class FileLoaderUtils {
 
   private FileLoaderUtils() {}
 
-  public static void loadOrGenerateResource(TsFileResource tsFileResource) throws IOException {
-    if (!tsFileResource.resourceFileExists()) {
-      // .resource file does not exist, read file metadata and recover tsfile resource
-      try (TsFileSequenceReader reader =
-          new TsFileSequenceReader(tsFileResource.getTsFile().getAbsolutePath())) {
-        updateTsFileResource(reader, tsFileResource);
-      }
-      // write .resource file
-      tsFileResource.serialize();
-    } else {
-      tsFileResource.deserialize();
-    }
-    tsFileResource.setStatus(TsFileResourceStatus.CLOSED);
-  }
-
   public static void updateTsFileResource(
       TsFileSequenceReader reader, TsFileResource tsFileResource) throws IOException {
     updateTsFileResource(reader.getAllTimeseriesMetadata(false), tsFileResource);

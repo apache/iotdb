@@ -28,6 +28,8 @@ import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
+import org.apache.iotdb.db.engine.compaction.reader.IDataBlockReader;
+import org.apache.iotdb.db.engine.compaction.reader.SeriesDataBlockReader;
 import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy.DirectFlushPolicy;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.exception.DataRegionException;
@@ -35,20 +37,19 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.query.OutOfTTLException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.mpp.plan.parser.StatementGenerator;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.UnSetTTLStatement;
-import org.apache.iotdb.db.query.reader.series.SeriesRawDataBatchReader;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.read.common.BatchData;
-import org.apache.iotdb.tsfile.read.reader.IBatchReader;
+import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.junit.After;
@@ -60,11 +61,10 @@ import java.io.IOException;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.db.utils.EnvironmentUtils.TEST_QUERY_JOB_ID;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
@@ -169,8 +169,7 @@ public class TTLTest {
 
   @Test
   public void testTTLRead()
-      throws IOException, WriteProcessException, StorageEngineException, QueryProcessException,
-          MetadataException {
+      throws IOException, WriteProcessException, QueryProcessException, MetadataException {
     prepareData();
 
     // files before ttl
@@ -199,26 +198,20 @@ public class TTLTest {
     assertTrue(seqResource.size() < 4);
     assertEquals(0, unseqResource.size());
     MeasurementPath path = mockMeasurementPath();
-    Set<String> allSensors = new HashSet<>();
-    allSensors.add(s1);
-    IBatchReader reader =
-        new SeriesRawDataBatchReader(
+
+    IDataBlockReader reader =
+        new SeriesDataBlockReader(
             path,
             TSDataType.INT64,
-            EnvironmentUtils.TEST_QUERY_CONTEXT,
+            FragmentInstanceContext.createFragmentInstanceContextForCompaction(TEST_QUERY_JOB_ID),
             seqResource,
             unseqResource,
-            null,
-            null,
             true);
 
     int cnt = 0;
     while (reader.hasNextBatch()) {
-      BatchData batchData = reader.nextBatch();
-      while (batchData.hasCurrent()) {
-        batchData.next();
-        cnt++;
-      }
+      TsBlock tsblock = reader.nextBatch();
+      cnt += tsblock.getPositionCount();
     }
     reader.close();
     // we cannot offer the exact number since when exactly ttl will be checked is unknown

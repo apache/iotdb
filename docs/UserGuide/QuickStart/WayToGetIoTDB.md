@@ -90,7 +90,7 @@ Add environments of docker to update the configurations of Apache IoTDB.
 #### Have a try
 ```shell
 # get IoTDB official image
-docker pull apache/iotdb:1.0.0-1c1d
+docker pull apache/iotdb:1.0.0-standalone
 # create docker bridge network
 docker network create --driver=bridge --subnet=172.18.0.0/16 --gateway=172.18.0.1 iotdb
 # create docker container
@@ -104,7 +104,7 @@ docker run -d --name iotdb-service \
               -e dn_rpc_address=iotdb-service \
               -e dn_internal_address=iotdb-service \
               -e dn_target_config_node_list=iotdb-service:22277 \
-              apache/iotdb:1.0.0-1c1d              
+              apache/iotdb:1.0.0-standalone              
 # execute SQL
 docker exec -ti iotdb-service /iotdb/sbin/start-cli.sh -h iotdb-service
 ```
@@ -119,7 +119,7 @@ Notice：The confignode service would fail when restarting this container if the
 version: "3"
 services:
   iotdb-service:
-    image: apache/iotdb:1.0.0-1c1d
+    image: apache/iotdb:1.0.0-standalone
     hostname: iotdb-service
     container_name: iotdb-service
     ports:

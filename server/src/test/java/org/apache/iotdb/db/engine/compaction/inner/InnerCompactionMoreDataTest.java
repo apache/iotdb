@@ -26,18 +26,17 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.compaction.CompactionScheduler;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
+import org.apache.iotdb.db.engine.compaction.reader.IDataBlockReader;
+import org.apache.iotdb.db.engine.compaction.reader.SeriesDataBlockReader;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.query.reader.series.SeriesRawDataBatchReader;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.read.reader.IBatchReader;
+import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
@@ -54,6 +53,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_SEPARATOR;
+import static org.apache.iotdb.db.utils.EnvironmentUtils.TEST_QUERY_FI_CONTEXT;
 import static org.junit.Assert.assertEquals;
 
 public class InnerCompactionMoreDataTest extends InnerCompactionTest {
@@ -156,29 +156,29 @@ public class InnerCompactionMoreDataTest extends InnerCompactionTest {
     CompactionScheduler.scheduleCompaction(tsFileManager, 0);
     try {
       Thread.sleep(500);
-    } catch (Exception e) {
+    } catch (Exception ignored) {
 
     }
     CompactionTaskManager.getInstance().waitAllCompactionFinish();
-    QueryContext context = new QueryContext();
+
     MeasurementPath path =
         new MeasurementPath(
             new PartialPath(deviceIds[0], measurementSchemas[2688].getMeasurementId()),
             measurementSchemas[2688].getType());
-    IBatchReader tsFilesReader =
-        new SeriesRawDataBatchReader(
+    IDataBlockReader tsFilesReader =
+        new SeriesDataBlockReader(
             path,
             measurementSchemas[2688].getType(),
-            context,
+            TEST_QUERY_FI_CONTEXT,
             tsFileManager.getTsFileList(true),
             new ArrayList<>(),
-            null,
-            null,
             true);
+
     while (tsFilesReader.hasNextBatch()) {
-      BatchData batchData = tsFilesReader.nextBatch();
-      for (int i = 0; i < batchData.length(); i++) {
-        assertEquals(batchData.getTimeByIndex(i) + 2688, batchData.getDoubleByIndex(i), 0.001);
+      TsBlock batchData = tsFilesReader.nextBatch();
+      for (int i = 0, size = batchData.getPositionCount(); i < size; i++) {
+        assertEquals(
+            batchData.getTimeByIndex(i) + 2688, batchData.getColumn(0).getDouble(i), 0.001);
       }
     }
   }

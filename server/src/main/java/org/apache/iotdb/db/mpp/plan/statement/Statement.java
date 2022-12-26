@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.mpp.plan.statement;
 
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.mpp.plan.constant.StatementType;
 import org.apache.iotdb.db.mpp.plan.parser.ASTVisitor;
 
 import java.util.List;

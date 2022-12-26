@@ -21,14 +21,14 @@ package org.apache.iotdb.tool;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.utils.PathUtils;
+import org.apache.iotdb.db.constant.SqlConstant;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
-import org.apache.iotdb.db.qp.constant.SQLConstant;
-import org.apache.iotdb.db.qp.utils.DateTimeUtils;
+import org.apache.iotdb.db.utils.DateTimeUtils;
 import org.apache.iotdb.exception.ArgsErrorException;
+import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Session;
-import org.apache.iotdb.session.SessionDataSet;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Field;
@@ -930,8 +930,8 @@ public class ImportCsv extends AbstractCsvTool {
   }
 
   private static boolean isBoolean(String s) {
-    return s.equalsIgnoreCase(SQLConstant.BOOLEAN_TRUE)
-        || s.equalsIgnoreCase(SQLConstant.BOOLEAN_FALSE);
+    return s.equalsIgnoreCase(SqlConstant.BOOLEAN_TRUE)
+        || s.equalsIgnoreCase(SqlConstant.BOOLEAN_FALSE);
   }
 
   private static boolean isConvertFloatPrecisionLack(String s) {

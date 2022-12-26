@@ -21,7 +21,7 @@
 package org.apache.iotdb.db.exception.query;
 
 import org.apache.iotdb.db.exception.WriteProcessException;
-import org.apache.iotdb.db.qp.utils.DateTimeUtils;
+import org.apache.iotdb.db.utils.DateTimeUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 public class OutOfTTLException extends WriteProcessException {

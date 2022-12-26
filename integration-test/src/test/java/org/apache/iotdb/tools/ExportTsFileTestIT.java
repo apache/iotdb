@@ -19,13 +19,13 @@
 package org.apache.iotdb.tools;
 
 import org.apache.iotdb.cli.it.AbstractScript;
+import org.apache.iotdb.isession.ISession;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
-import org.apache.iotdb.session.ISession;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
