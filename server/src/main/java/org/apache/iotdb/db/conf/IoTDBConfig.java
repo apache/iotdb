@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.conf;
 
+import org.apache.iotdb.db.audit.AuditLogOperation;
+import org.apache.iotdb.db.audit.AuditLogStorage;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.compaction.constant.CompactionPriority;
 import org.apache.iotdb.db.engine.compaction.cross.CrossCompactionStrategy;
@@ -27,7 +29,6 @@ import org.apache.iotdb.db.exception.LoadConfigurationException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.service.thrift.impl.InfluxDBServiceImpl;
 import org.apache.iotdb.db.service.thrift.impl.TSServiceImpl;
-import org.apache.iotdb.db.utils.AuditLogUtils;
 import org.apache.iotdb.rpc.RpcTransportFactory;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -40,6 +41,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Properties;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -874,11 +877,19 @@ public class IoTDBConfig {
   /** number of threads given to archiving tasks */
   private int archivingThreadNum = 2;
 
-  // determines whether audit logs are written to log files or IoTDB
-  private String auditLogStorage = AuditLogUtils.LOG_LEVEL_NONE;
+  /** whether to enable the audit log * */
+  private boolean enableAuditLog = false;
 
-  // determines whether audit logs record IoTDB write operation
-  private boolean enableAuditLogWrite = false;
+  /** Output location of audit logs * */
+  private List<AuditLogStorage> auditLogStorage =
+      Arrays.asList(AuditLogStorage.IOTDB, AuditLogStorage.LOGGER);
+
+  /** Indicates the category collection of audit logs * */
+  private List<AuditLogOperation> auditLogOperation =
+      Arrays.asList(AuditLogOperation.DML, AuditLogOperation.DDL, AuditLogOperation.QUERY);
+
+  /** whether the local write api records audit logs * */
+  private boolean enableAuditLogForNativeInsertApi = true;
 
   // customizedProperties, this should be empty by default.
   private Properties customizedProperties = new Properties();
@@ -2828,19 +2839,35 @@ public class IoTDBConfig {
     this.patternMatchingThreshold = patternMatchingThreshold;
   }
 
-  public String getAuditLogStorage() {
+  public boolean isEnableAuditLog() {
+    return enableAuditLog;
+  }
+
+  public void setEnableAuditLog(boolean enableAuditLog) {
+    this.enableAuditLog = enableAuditLog;
+  }
+
+  public List<AuditLogStorage> getAuditLogStorage() {
     return auditLogStorage;
   }
 
-  public void setAuditLogStorage(String auditLogStorage) {
+  public void setAuditLogStorage(List<AuditLogStorage> auditLogStorage) {
     this.auditLogStorage = auditLogStorage;
   }
 
-  public boolean isEnableAuditLogWrite() {
-    return enableAuditLogWrite;
+  public List<AuditLogOperation> getAuditLogOperation() {
+    return auditLogOperation;
   }
 
-  public void setEnableAuditLogWrite(boolean enableAuditLogWrite) {
-    this.enableAuditLogWrite = enableAuditLogWrite;
+  public void setAuditLogOperation(List<AuditLogOperation> auditLogOperation) {
+    this.auditLogOperation = auditLogOperation;
+  }
+
+  public boolean isEnableAuditLogForNativeInsertApi() {
+    return enableAuditLogForNativeInsertApi;
+  }
+
+  public void setEnableAuditLogForNativeInsertApi(boolean enableAuditLogForNativeInsertApi) {
+    this.enableAuditLogForNativeInsertApi = enableAuditLogForNativeInsertApi;
   }
 }

@@ -190,6 +190,7 @@ public class MManager {
 
   private final AtomicLong totalNormalSeriesNumber = new AtomicLong();
   private final AtomicLong totalTemplateSeriesNumber = new AtomicLong();
+  private final AtomicLong totalTemplateActivatedNumber = new AtomicLong();
 
   private final int mtreeSnapshotInterval;
   private final long mtreeSnapshotThresholdTime;
@@ -443,6 +444,7 @@ public class MManager {
       }
       this.totalNormalSeriesNumber.set(0);
       this.totalTemplateSeriesNumber.set(0);
+      this.totalTemplateActivatedNumber.set(0);
       this.templateManager.clear();
       if (logWriter != null) {
         logWriter.close();
@@ -559,7 +561,9 @@ public class MManager {
     if (!allowToCreateNewSeries) {
       throw new MetadataException(
           "IoTDB system load is too large to create timeseries, "
-              + "please increase MAX_HEAP_SIZE in iotdb-env.sh/bat and restart");
+              + "please increase MAX_HEAP_SIZE in iotdb-env.sh/bat and restart."
+              + "Current timeseries num is "
+              + totalNormalSeriesNumber.get());
     }
 
     if (seriesNumerMonitor != null && !seriesNumerMonitor.addTimeSeries(1)) {
@@ -685,7 +689,9 @@ public class MManager {
     if (!allowToCreateNewSeries) {
       throw new MetadataException(
           "IoTDB system load is too large to create timeseries, "
-              + "please increase MAX_HEAP_SIZE in iotdb-env.sh/bat and restart");
+              + "please increase MAX_HEAP_SIZE in iotdb-env.sh/bat and restart."
+              + "Current timeseries num is "
+              + totalNormalSeriesNumber.get());
     }
     int seriesCount = plan.getMeasurements().size();
 
@@ -1040,6 +1046,15 @@ public class MManager {
 
   public long getTotalTemplateSeriesNumber() {
     return totalTemplateSeriesNumber.get();
+  }
+
+  public long getTotalTemplateActivatedNumber() {
+    return totalTemplateActivatedNumber.get();
+  }
+
+  public long getTotalEstimatedMemoryUsage() {
+    return (totalNormalSeriesNumber.get() + totalTemplateActivatedNumber.get())
+        * config.getEstimatedSeriesSize();
   }
 
   /**
@@ -2587,6 +2602,7 @@ public class MManager {
 
       node.setUseTemplate(false);
       int seriesCount = node.getUpperTemplate().getMeasurementsCount();
+      totalTemplateActivatedNumber.addAndGet(-1);
       totalTemplateSeriesNumber.addAndGet(-seriesCount);
       if (seriesNumerMonitor != null) {
         seriesNumerMonitor.deleteTimeSeries(seriesCount);
@@ -2649,6 +2665,7 @@ public class MManager {
       throw t;
     }
 
+    totalTemplateActivatedNumber.addAndGet(1);
     totalTemplateSeriesNumber.addAndGet(template.getMeasurementsCount());
 
     if (node != mountedMNode) {

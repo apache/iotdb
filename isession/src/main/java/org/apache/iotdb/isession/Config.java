@@ -16,9 +16,9 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.session;
+package org.apache.iotdb.isession;
 
-import org.apache.iotdb.session.util.Version;
+import org.apache.iotdb.isession.util.Version;
 
 public class Config {
 
@@ -46,6 +46,4 @@ public class Config {
   public static final int DEFAULT_SESSION_POOL_MAX_SIZE = 5;
 
   public static final Version DEFAULT_VERSION = Version.V_0_13;
-
-  public static final boolean DEFAULT_ENABLE_AUDIT = true;
 }
