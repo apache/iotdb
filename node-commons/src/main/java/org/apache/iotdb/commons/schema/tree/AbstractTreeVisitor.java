@@ -109,9 +109,6 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
         usingDFA
             ? new IPatternFA.Builder().pattern(pathPattern).isPrefixMatch(isPrefixMatch).buildDFA()
             : new IPatternFA.Builder().pattern(pathPattern).isPrefixMatch(isPrefixMatch).buildNFA();
-    //        this.patternFA = new
-    //     IPatternFA.Builder().pattern(pathPattern).isPrefixMatch(isPrefixMatch).buildNFA();
-    //    this.patternFA = FAFactory.constructNFA(pathPattern,isPrefixMatch);
 
     initStack();
   }
