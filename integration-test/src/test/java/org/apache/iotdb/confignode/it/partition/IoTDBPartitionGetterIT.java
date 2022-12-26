@@ -24,7 +24,6 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
-import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.confignode.it.utils.ConfigNodeTestUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionReq;
@@ -54,7 +53,6 @@ import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.env.BaseConfig;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import org.apache.thrift.TException;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
@@ -64,7 +62,6 @@ import org.junit.runner.RunWith;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -137,8 +134,7 @@ public class IoTDBPartitionGetterIT {
     prepareData();
   }
 
-  private static void prepareData()
-      throws IOException, InterruptedException, TException, IllegalPathException {
+  private static void prepareData() throws Exception {
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
       /* Set StorageGroups */
@@ -242,8 +238,7 @@ public class IoTDBPartitionGetterIT {
   }
 
   @Test
-  public void testGetSchemaPartition()
-      throws TException, IOException, IllegalPathException, InterruptedException {
+  public void testGetSchemaPartition() throws Exception {
     final String sg = "root.sg";
     final String sg0 = "root.sg0";
     final String sg1 = "root.sg1";
@@ -306,7 +301,7 @@ public class IoTDBPartitionGetterIT {
   }
 
   @Test
-  public void testGetDataPartition() throws TException, IOException, InterruptedException {
+  public void testGetDataPartition() throws Exception {
     final int seriesPartitionBatchSize = 100;
     final int timePartitionBatchSize = 10;
 
@@ -384,8 +379,7 @@ public class IoTDBPartitionGetterIT {
   }
 
   @Test
-  public void testGetSlots()
-      throws TException, IOException, IllegalPathException, InterruptedException {
+  public void testGetSlots() throws Exception {
     final String sg0 = "root.sg0";
     final String sg1 = "root.sg1";
 
@@ -532,8 +526,7 @@ public class IoTDBPartitionGetterIT {
   }
 
   @Test
-  public void testGetSchemaNodeManagementPartition()
-      throws IOException, TException, IllegalPathException, InterruptedException {
+  public void testGetSchemaNodeManagementPartition() throws Exception {
 
     TSchemaNodeManagementReq nodeManagementReq;
     TSchemaNodeManagementResp nodeManagementResp;

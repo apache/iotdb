@@ -40,7 +40,6 @@ import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.env.BaseConfig;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import org.apache.thrift.TException;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
@@ -48,7 +47,6 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
-import java.io.IOException;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -112,7 +110,7 @@ public class IoTDBClusterRegionLeaderBalancingIT {
   }
 
   @Test
-  public void testGreedyLeaderDistribution() throws IOException, InterruptedException, TException {
+  public void testGreedyLeaderDistribution() throws Exception {
     final int testConfigNodeNum = 1;
     final int testDataNodeNum = 3;
     EnvFactory.getEnv().initClusterEnvironment(testConfigNodeNum, testDataNodeNum);
@@ -165,7 +163,7 @@ public class IoTDBClusterRegionLeaderBalancingIT {
   }
 
   @Test
-  public void testMCFLeaderDistribution() throws IOException, InterruptedException, TException {
+  public void testMCFLeaderDistribution() throws Exception {
     final int testConfigNodeNum = 1;
     final int testDataNodeNum = 3;
     final int retryNum = 50;
