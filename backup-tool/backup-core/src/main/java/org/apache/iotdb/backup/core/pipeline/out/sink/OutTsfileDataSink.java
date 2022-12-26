@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.backup.core.pipeline.out.sink;
 
-import org.apache.commons.lang3.tuple.Pair;
 import org.apache.iotdb.backup.core.model.DeviceModel;
 import org.apache.iotdb.backup.core.model.FieldCopy;
 import org.apache.iotdb.backup.core.model.TimeSeriesRowModel;
@@ -34,6 +33,8 @@ import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.Schema;
+
+import org.apache.commons.lang3.tuple.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
@@ -45,7 +46,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Function;
@@ -68,194 +68,178 @@ public class OutTsfileDataSink extends PipeSink<TimeSeriesRowModel, TimeSeriesRo
 
   List<TimeSeriesRowModel> allList = new ArrayList();
 
+  ConcurrentMap<String, TsFileWriter> tsfileWriterMap;
+  ConcurrentMap<String, Pair<DeviceModel, List<TimeseriesModel>>> deviceInfoMap;
+  ConcurrentMap<String, Schema> schemaMap;
+  Integer[] totalSize;
+  PipelineContext<ExportModel> pcontext;
+
   @Override
   public Function<ParallelFlux<TimeSeriesRowModel>, ParallelFlux<TimeSeriesRowModel>> doExecute() {
-    return sink->
-            sink.flatMap(s->{
-                synchronized (allList){
+    return sink ->
+        sink.flatMap(
+                s -> {
+                  synchronized (allList) {
                     allList.add(s);
-                }
-                return Flux.just(s);
-            }).flatMap(s -> {
-                return Flux.deferContextual(
-                        contextView -> {
-                            synchronized (allList){
-                                if(allList.size() >= 60000) {
-                                    ConcurrentMap<String, TsFileWriter> tsfileWriterMap =
-                                            contextView.get("tsfileWriterMap");
-                                    ConcurrentMap<String, Pair<DeviceModel, List<TimeseriesModel>>>
-                                            deviceInfoMap = contextView.get("deviceInfoMap");
-
-                                    ConcurrentMap<String, Schema> schemaMap =
-                                            contextView.get("schemaMap");
-                                    Integer[] totalSize = contextView.get("totalSize");
-                                    totalFileNum = totalSize[0];
-                                    PipelineContext<ExportModel> pcontext =
-                                            contextView.get("pipelineContext");
-                                    int virtualSGNum =
-                                            pcontext.getModel().getVirutalStorageGroupNum();
-                                    long partitionInterval =
-                                            pcontext.getModel().getPartitionInterval();
-//                                    List<TimeSeriesRowModel> allList = new ArrayList();
-//                                    allList.add(s);
-                                    Map<String, List<TimeSeriesRowModel>> groupByDeviceIdMap =
-                                            allList.stream()
-                                                    .collect(
-                                                            Collectors.toMap(
-                                                                    k -> k.getDeviceModel().getDeviceName(),
-                                                                    p -> {
-                                                                        List<TimeSeriesRowModel> result =
-                                                                                new ArrayList();
-                                                                        result.add(p);
-                                                                        return result;
-                                                                    },
-                                                                    (o, n) -> {
-                                                                        o.addAll(n);
-                                                                        return o;
-                                                                    }));
-                                    for (String deviceIdKey : groupByDeviceIdMap.keySet()) {
-                                        if (deviceIdKey.startsWith("finish")) {
-                                            finishedFileNum.incrementAndGet();
-                                            continue;
-                                        }
-                                        Map<String, List<TimeSeriesRowModel>>
-                                                groupByTsfileNameKeyMap =
-                                                groupByDeviceIdMap.get(deviceIdKey).stream()
-                                                        .collect(
-                                                                Collectors.toMap(
-                                                                        k ->
-                                                                                getTsfileName(
-                                                                                        k.getDeviceModel()
-                                                                                                .getDeviceName(),
-                                                                                        k.getTimestamp(),
-                                                                                        virtualSGNum,
-                                                                                        partitionInterval),
-                                                                        p -> {
-                                                                            List<TimeSeriesRowModel> result =
-                                                                                    new ArrayList();
-                                                                            result.add(p);
-                                                                            return result;
-                                                                        },
-                                                                        (o, n) -> {
-                                                                            o.addAll(n);
-                                                                            return o;
-                                                                        }));
-                                        for (String tsfileNameKey :
-                                                groupByTsfileNameKeyMap.keySet()) {
-
-                                            List<TimeSeriesRowModel> groupByTsfileNameKeyList =
-                                                    groupByTsfileNameKeyMap.get(tsfileNameKey);
-                                            // 需要 根据deviceName 来判断他属于那个tsfile
-                                            TsFileWriter tsFileWriter =
-                                                    getTsfileWriter(
-                                                            tsfileWriterMap,
-                                                            schemaMap,
-                                                            deviceIdKey,
-                                                            tsfileNameKey,
-                                                            pcontext.getModel().getFileFolder());
-                                            // TODO  有很多个tsfileWriter，如何保证每个tsfileWriter都能吧deviceId注册上
-                                            Schema schema = schemaMap.get(tsfileNameKey);
-                                            registDevice(
-                                                    tsFileWriter, schema, deviceInfoMap, deviceIdKey);
-                                            // 需要转化grouplist数据为tsfile可以写入的数据
-                                            TimeSeriesRowModel firstRow =
-                                                    groupByTsfileNameKeyList.get(0);
-                                            DeviceModel deviceModel = firstRow.getDeviceModel();
-                                            List<MeasurementSchema> measurementSchemaList =
-                                                    firstRow.getIFieldList().stream()
-                                                            .map(
-                                                                    iField -> {
-                                                                        String columnName =
-                                                                                iField
-                                                                                        .getColumnName()
-                                                                                        .substring(
-                                                                                                deviceModel
-                                                                                                        .getDeviceName()
-                                                                                                        .length()
-                                                                                                        + 1);
-                                                                        TSDataType tsDataType =
-                                                                                iField.getTsDataType();
-                                                                        MeasurementSchema measurementSchema =
-                                                                                new MeasurementSchema(
-                                                                                        columnName, tsDataType);
-                                                                        return measurementSchema;
-                                                                    })
-                                                            .collect(Collectors.toList());
-
-                                            Tablet tablet =
-                                                    new Tablet(
-                                                            deviceModel.getDeviceName(), measurementSchemaList);
-                                            tablet.initBitMaps();
-
-                                            groupByTsfileNameKeyList.stream()
-                                                    .forEach(
-                                                            model -> {
-                                                                List<FieldCopy> fields =
-                                                                        model.getIFieldList().stream()
-                                                                                .map(iField -> iField.getField())
-                                                                                .collect(Collectors.toList());
-                                                                int rowIndex = tablet.rowSize++;
-                                                                tablet.addTimestamp(
-                                                                        rowIndex,
-                                                                        Long.parseLong(model.getTimestamp()));
-                                                                for (int i = 0; i < fields.size(); ) {
-                                                                    List<MeasurementSchema> schemas =
-                                                                            tablet.getSchemas();
-                                                                    for (int j = 0; j < schemas.size(); j++) {
-                                                                        MeasurementSchema measurementSchema =
-                                                                                schemas.get(j);
-                                                                        Object value =
-                                                                                fields
-                                                                                        .get(i)
-                                                                                        .getObjectValue(
-                                                                                                measurementSchema.getType());
-                                                                        if (value == null) {
-                                                                            tablet.bitMaps[j].mark(rowIndex);
-                                                                        }
-                                                                        tablet.addValue(
-                                                                                measurementSchema.getMeasurementId(),
-                                                                                rowIndex,
-                                                                                value);
-                                                                        i++;
-                                                                    }
-                                                                }
-
-                                                                if (tablet.rowSize == tablet.getMaxRowNumber()) {
-                                                                    try {
-                                                                        exportPipelineService.syncWriteByTsfileWriter(
-                                                                                tsFileWriter,
-                                                                                tablet,
-                                                                                deviceModel.isAligned());
-                                                                        finishedRowNum.addAndGet(tablet.rowSize);
-                                                                        tablet.initBitMaps();
-                                                                        tablet.reset();
-                                                                    } catch (IOException
-                                                                            | WriteProcessException e) {
-                                                                        e.printStackTrace();
-                                                                    }
-                                                                }
-                                                            });
-
-                                            try {
-                                                if (tablet.rowSize != 0) {
-                                                    exportPipelineService.syncWriteByTsfileWriter(
-                                                            tsFileWriter, tablet, deviceModel.isAligned());
-                                                    finishedRowNum.addAndGet(tablet.rowSize);
-                                                }
-                                            } catch (IOException | WriteProcessException e) {
-                                                e.printStackTrace();
-                                            }
-                                        }
-                                    }
-                                    allList.clear();
-                                }
-                            }
-                            return Flux.just(s);
-                        });
-            });
+                  }
+                  return Flux.just(s);
+                })
+            .flatMap(
+                s -> {
+                  return Flux.deferContextual(
+                      contextView -> {
+                        tsfileWriterMap = contextView.get("tsfileWriterMap");
+                        deviceInfoMap = contextView.get("deviceInfoMap");
+                        schemaMap = contextView.get("schemaMap");
+                        totalSize = contextView.get("totalSize");
+                        pcontext = contextView.get("pipelineContext");
+                        synchronized (allList) {
+                          if (allList.size() >= 60000) {
+                            doSink(allList);
+                          }
+                        }
+                        return Flux.just(s);
+                      });
+                })
+            .sequential()
+            .doOnComplete(
+                () -> {
+                  synchronized (allList) {
+                      doSink(allList);
+                  }
+                })
+            .parallel();
   }
 
-  public String getTsfileName(
+  private void doSink(List<TimeSeriesRowModel> bufferList) {
+    totalFileNum = totalSize[0];
+    int virtualSGNum = pcontext.getModel().getVirutalStorageGroupNum();
+    long partitionInterval = pcontext.getModel().getPartitionInterval();
+
+    Map<String, List<TimeSeriesRowModel>> groupByDeviceIdMap =
+        bufferList.stream()
+            .collect(
+                Collectors.toMap(
+                    k -> k.getDeviceModel().getDeviceName(),
+                    p -> {
+                      List<TimeSeriesRowModel> result = new ArrayList();
+                      result.add(p);
+                      return result;
+                    },
+                    (o, n) -> {
+                      o.addAll(n);
+                      return o;
+                    }));
+    for (String deviceIdKey : groupByDeviceIdMap.keySet()) {
+      if (deviceIdKey.startsWith("finish")) {
+        finishedFileNum.incrementAndGet();
+        continue;
+      }
+      Map<String, List<TimeSeriesRowModel>> groupByTsfileNameKeyMap =
+          groupByDeviceIdMap.get(deviceIdKey).stream()
+              .collect(
+                  Collectors.toMap(
+                      k ->
+                          getTsfileName(
+                              k.getDeviceModel().getDeviceName(),
+                              k.getTimestamp(),
+                              virtualSGNum,
+                              partitionInterval),
+                      p -> {
+                        List<TimeSeriesRowModel> result = new ArrayList();
+                        result.add(p);
+                        return result;
+                      },
+                      (o, n) -> {
+                        o.addAll(n);
+                        return o;
+                      }));
+      for (String tsfileNameKey : groupByTsfileNameKeyMap.keySet()) {
+
+        List<TimeSeriesRowModel> groupByTsfileNameKeyList =
+            groupByTsfileNameKeyMap.get(tsfileNameKey);
+        // 需要 根据deviceName 来判断他属于那个tsfile
+        TsFileWriter tsFileWriter =
+            getTsfileWriter(
+                tsfileWriterMap,
+                schemaMap,
+                deviceIdKey,
+                tsfileNameKey,
+                pcontext.getModel().getFileFolder());
+        // TODO  有很多个tsfileWriter，如何保证每个tsfileWriter都能吧deviceId注册上
+        Schema schema = schemaMap.get(tsfileNameKey);
+        registDevice(tsFileWriter, schema, deviceInfoMap, deviceIdKey);
+        // 需要转化grouplist数据为tsfile可以写入的数据
+        TimeSeriesRowModel firstRow = groupByTsfileNameKeyList.get(0);
+        DeviceModel deviceModel = firstRow.getDeviceModel();
+        List<MeasurementSchema> measurementSchemaList =
+            firstRow.getIFieldList().stream()
+                .map(
+                    iField -> {
+                      String columnName =
+                          iField
+                              .getColumnName()
+                              .substring(deviceModel.getDeviceName().length() + 1);
+                      TSDataType tsDataType = iField.getTsDataType();
+                      MeasurementSchema measurementSchema =
+                          new MeasurementSchema(columnName, tsDataType);
+                      return measurementSchema;
+                    })
+                .collect(Collectors.toList());
+
+        Tablet tablet = new Tablet(deviceModel.getDeviceName(), measurementSchemaList);
+        tablet.initBitMaps();
+
+        groupByTsfileNameKeyList.stream()
+            .forEach(
+                model -> {
+                  List<FieldCopy> fields =
+                      model.getIFieldList().stream()
+                          .map(iField -> iField.getField())
+                          .collect(Collectors.toList());
+                  int rowIndex = tablet.rowSize++;
+                  tablet.addTimestamp(rowIndex, Long.parseLong(model.getTimestamp()));
+                  for (int i = 0; i < fields.size(); ) {
+                    List<MeasurementSchema> schemas = tablet.getSchemas();
+                    for (int j = 0; j < schemas.size(); j++) {
+                      MeasurementSchema measurementSchema = schemas.get(j);
+                      Object value = fields.get(i).getObjectValue(measurementSchema.getType());
+                      if (value == null) {
+                        tablet.bitMaps[j].mark(rowIndex);
+                      }
+                      tablet.addValue(measurementSchema.getMeasurementId(), rowIndex, value);
+                      i++;
+                    }
+                  }
+
+                  if (tablet.rowSize == tablet.getMaxRowNumber()) {
+                    try {
+                      exportPipelineService.syncWriteByTsfileWriter(
+                          tsFileWriter, tablet, deviceModel.isAligned());
+                      finishedRowNum.addAndGet(tablet.rowSize);
+                      tablet.initBitMaps();
+                      tablet.reset();
+                    } catch (IOException | WriteProcessException e) {
+                      e.printStackTrace();
+                    }
+                  }
+                });
+
+        try {
+          if (tablet.rowSize != 0) {
+            exportPipelineService.syncWriteByTsfileWriter(
+                tsFileWriter, tablet, deviceModel.isAligned());
+            finishedRowNum.addAndGet(tablet.rowSize);
+          }
+        } catch (IOException | WriteProcessException e) {
+          e.printStackTrace();
+        }
+      }
+    }
+    bufferList.clear();
+  }
+
+  private String getTsfileName(
       String deviceName, String timestamp, int virtualSGNum, long partitionInterval) {
     StringBuilder builder = new StringBuilder();
     if (virtualSGNum <= 1) {
@@ -277,7 +261,7 @@ public class OutTsfileDataSink extends PipeSink<TimeSeriesRowModel, TimeSeriesRo
     return builder.toString();
   }
 
-  public TsFileWriter getTsfileWriter(
+  private TsFileWriter getTsfileWriter(
       ConcurrentMap<String, TsFileWriter> tsfileWriterMap,
       ConcurrentMap<String, Schema> schemaMap,
       String deviceId,
@@ -302,7 +286,7 @@ public class OutTsfileDataSink extends PipeSink<TimeSeriesRowModel, TimeSeriesRo
     }
   }
 
-  public void registDevice(
+  private void registDevice(
       TsFileWriter tsFileWriter,
       Schema schema,
       ConcurrentMap<String, Pair<DeviceModel, List<TimeseriesModel>>> deviceInfoMap,
@@ -349,7 +333,7 @@ public class OutTsfileDataSink extends PipeSink<TimeSeriesRowModel, TimeSeriesRo
    * @param measurementSchemaList
    * @param isAligned
    */
-  public void syncRegisterTimeseries(
+  private void syncRegisterTimeseries(
       TsFileWriter tsFileWriter,
       Path path,
       List<MeasurementSchema> measurementSchemaList,

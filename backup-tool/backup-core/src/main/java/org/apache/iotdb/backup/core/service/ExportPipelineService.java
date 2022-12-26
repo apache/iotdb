@@ -341,7 +341,7 @@ public class ExportPipelineService {
     sink.onRequest(
         n -> {
           synchronized (dataSetList) {
-              Map<Long, List<IField>[]> sinkPoolMap = new TreeMap<>();
+            Map<Long, List<IField>[]> sinkPoolMap = new TreeMap<>();
             Long mark = 0L; // 时间戳标志，sinkpoolMap根据此生成流,如果有小于此值得数据，sink.next会一次性添加多个stream流数据
             Long stopMark = 0L; // 结束标志，当一个时间戳连续出现两次的时候，表示读取完毕,单组数据遍历完毕
             int loopMark =
