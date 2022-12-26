@@ -100,7 +100,7 @@ public class QueryMetricsManager {
   public void recordDataBlockNum(int num) {
     metricService.rate(
         num,
-        Metric.DATA_EXCHANGE.toString(),
+        Metric.DATA_EXCHANGE_COUNT.toString(),
         MetricLevel.IMPORTANT,
         Tag.NAME.toString(),
         GET_DATA_BLOCK_NUM);

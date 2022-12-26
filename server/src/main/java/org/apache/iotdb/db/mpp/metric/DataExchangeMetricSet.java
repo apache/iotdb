@@ -32,7 +32,7 @@ import java.util.Map;
 
 public class DataExchangeMetricSet implements IMetricSet {
 
-  private static final String metric = Metric.DATA_EXCHANGE.toString();
+  private static final String metric = Metric.DATA_EXCHANGE_COST.toString();
 
   public static final Map<String, MetricInfo> metricInfoMap = new HashMap<>();
 
@@ -179,7 +179,10 @@ public class DataExchangeMetricSet implements IMetricSet {
           metricInfo.getName(), MetricLevel.IMPORTANT, metricInfo.getTagsInArray());
     }
     metricService.getOrCreateRate(
-        metric, MetricLevel.IMPORTANT, Tag.NAME.toString(), GET_DATA_BLOCK_NUM);
+        Metric.DATA_EXCHANGE_COUNT.toString(),
+        MetricLevel.IMPORTANT,
+        Tag.NAME.toString(),
+        GET_DATA_BLOCK_NUM);
   }
 
   @Override

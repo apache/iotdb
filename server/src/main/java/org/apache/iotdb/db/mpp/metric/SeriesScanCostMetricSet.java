@@ -103,6 +103,8 @@ public class SeriesScanCostMetricSet implements IMetricSet {
             metric,
             Tag.STAGE.toString(),
             "read_timeseries_metadata",
+            Tag.TYPE.toString(),
+            "null",
             Tag.FROM.toString(),
             "cache"));
     metricInfoMap.put(
@@ -112,6 +114,8 @@ public class SeriesScanCostMetricSet implements IMetricSet {
             metric,
             Tag.STAGE.toString(),
             "read_timeseries_metadata",
+            Tag.TYPE.toString(),
+            "null",
             Tag.FROM.toString(),
             "file"));
   }
@@ -130,7 +134,9 @@ public class SeriesScanCostMetricSet implements IMetricSet {
             Tag.STAGE.toString(),
             "timeseries_metadata_modification",
             Tag.TYPE.toString(),
-            "aligned"));
+            "aligned",
+            Tag.FROM.toString(),
+            "null"));
     metricInfoMap.put(
         TIMESERIES_METADATA_MODIFICATION_NONALIGNED,
         new MetricInfo(
@@ -139,7 +145,9 @@ public class SeriesScanCostMetricSet implements IMetricSet {
             Tag.STAGE.toString(),
             "timeseries_metadata_modification",
             Tag.TYPE.toString(),
-            "non_aligned"));
+            "non_aligned",
+            Tag.FROM.toString(),
+            "null"));
   }
 
   public static final String LOAD_CHUNK_METADATA_LIST_ALIGNED_MEM =
@@ -377,6 +385,8 @@ public class SeriesScanCostMetricSet implements IMetricSet {
             metric,
             Tag.STAGE.toString(),
             "read_chunk",
+            Tag.TYPE.toString(),
+            "null",
             Tag.FROM.toString(),
             "all"));
     metricInfoMap.put(
@@ -386,6 +396,8 @@ public class SeriesScanCostMetricSet implements IMetricSet {
             metric,
             Tag.STAGE.toString(),
             "read_chunk",
+            Tag.TYPE.toString(),
+            "null",
             Tag.FROM.toString(),
             "file"));
   }
@@ -512,6 +524,8 @@ public class SeriesScanCostMetricSet implements IMetricSet {
             metric,
             Tag.STAGE.toString(),
             "build_tsblock_from_merge_reader",
+            Tag.FROM.toString(),
+            "null",
             Tag.TYPE.toString(),
             "aligned"));
     metricInfoMap.put(
@@ -521,6 +535,8 @@ public class SeriesScanCostMetricSet implements IMetricSet {
             metric,
             Tag.STAGE.toString(),
             "build_tsblock_from_merge_reader",
+            Tag.FROM.toString(),
+            "null",
             Tag.TYPE.toString(),
             "non_aligned"));
   }
