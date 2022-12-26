@@ -70,7 +70,7 @@ public class ClusterSchemaTreeTest {
     SchemaNode root = generateComplexSchemaTree(deep, width);
     PartialPath path = new PartialPath("root.**.d0.s");
     long startTime = System.currentTimeMillis();
-    long calTime = System.currentTimeMillis();
+    long calTime = 0;
     int round = 20;
     for (int i = 0; i < round; i++) {
       for (int j = 0; j < 1000; j++) {

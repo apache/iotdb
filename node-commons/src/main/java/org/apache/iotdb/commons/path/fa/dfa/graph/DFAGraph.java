@@ -134,7 +134,7 @@ public class DFAGraph {
     Map<String, IFATransition> res = new HashMap<>();
     for (IFATransition transition : transitions) {
       if (dfaTransitionTable[transition.getIndex()].get(state.getIndex()) != null) {
-        res.put(transition.getValue(), transition);
+        res.put(transition.getAcceptEvent(), transition);
       }
     }
     return res;

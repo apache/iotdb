@@ -353,7 +353,7 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
       IFATransition transition;
       while (transitionIterator.hasNext()) {
         transition = transitionIterator.next();
-        child = getChild(parent, transition.getValue());
+        child = getChild(parent, transition.getAcceptEvent());
         if (child == null) {
           continue;
         }

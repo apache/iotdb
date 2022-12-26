@@ -166,7 +166,7 @@ public class SimpleNFA implements IPatternFA {
     }
 
     @Override
-    public String getValue() {
+    public String getAcceptEvent() {
       return rawNodes[patternIndex];
     }
 

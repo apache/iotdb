@@ -25,6 +25,9 @@ import org.apache.iotdb.commons.path.fa.IFATransition;
 import org.apache.iotdb.commons.path.fa.IPatternFA;
 import org.apache.iotdb.commons.path.fa.dfa.graph.DFAGraph;
 import org.apache.iotdb.commons.path.fa.dfa.graph.NFAGraph;
+import org.apache.iotdb.commons.path.fa.dfa.transition.DFAPreciseTransition;
+import org.apache.iotdb.commons.path.fa.dfa.transition.DFARegexTransition;
+import org.apache.iotdb.commons.path.fa.dfa.transition.DFAWildcardTransition;
 import org.apache.iotdb.commons.utils.TestOnly;
 
 import java.util.ArrayList;
@@ -61,8 +64,9 @@ public class PatternDFA implements IPatternFA {
         transitionMap.computeIfAbsent(
             node,
             i -> {
-              DFATransition transition =
-                  new DFATransition(transitionIndex.getAndIncrement(), node.replace("*", ".*"));
+              IFATransition transition =
+                  new DFARegexTransition(
+                      transitionIndex.getAndIncrement(), node.replace("*", ".*"));
               batchMatchTransitionList.add(transition);
               return transition;
             });
@@ -70,18 +74,17 @@ public class PatternDFA implements IPatternFA {
         transitionMap.computeIfAbsent(
             node,
             i -> {
-              DFATransition transition = new DFATransition(transitionIndex.getAndIncrement(), node);
+              IFATransition transition =
+                  new DFAPreciseTransition(transitionIndex.getAndIncrement(), node);
               preciseMatchTransitionList.add(transition);
               return transition;
             });
       }
     }
     if (wildcard || isPrefix) {
-      DFATransition transition =
-          new DFATransition(
-              transitionIndex.getAndIncrement(),
-              IoTDBConstant.ONE_LEVEL_PATH_WILDCARD,
-              new ArrayList<>(transitionMap.keySet()));
+      IFATransition transition =
+          new DFAWildcardTransition(
+              transitionIndex.getAndIncrement(), new ArrayList<>(transitionMap.keySet()));
       transitionMap.put(transition.getAcceptEvent(), transition);
       batchMatchTransitionList.add(transition);
     }
