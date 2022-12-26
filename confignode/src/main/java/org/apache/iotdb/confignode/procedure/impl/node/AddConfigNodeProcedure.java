@@ -108,6 +108,8 @@ public class AddConfigNodeProcedure extends AbstractNodeProcedure<AddConfigNodeS
         env.removeConfigNodePeer(tConfigNodeLocation);
         LOG.info("Rollback ADD_PEER for: {}", tConfigNodeLocation);
         break;
+      default:
+        break;
     }
   }
 
@@ -117,8 +119,9 @@ public class AddConfigNodeProcedure extends AbstractNodeProcedure<AddConfigNodeS
       case CREATE_PEER:
       case ADD_PEER:
         return true;
+      default:
+        return false;
     }
-    return false;
   }
 
   @Override
