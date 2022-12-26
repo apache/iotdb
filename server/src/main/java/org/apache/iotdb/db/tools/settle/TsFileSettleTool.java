@@ -94,7 +94,7 @@ public class TsFileSettleTool {
         Option.builder(PORT_ARGS)
             .argName(PORT_NAME)
             .hasArg()
-            .desc("Port (optional, default 6667)")
+            .desc("Port (optional, default 9003)")
             .build();
     options.addOption(port);
 
@@ -103,7 +103,7 @@ public class TsFileSettleTool {
             .argName(FILE_PATH_NAME)
             .hasArgs()
             .valueSeparator(' ')
-            .desc("File Path (required)")
+            .desc("File Paths (required)")
             .required()
             .build();
     options.addOption(filePaths);
