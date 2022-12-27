@@ -160,6 +160,11 @@ public class SessionManager implements SessionManagerMBean {
    * @return true if releasing successfully, false otherwise (e.g., the session does not exist)
    */
   public boolean releaseSessionResource(IClientSession session) {
+
+    if (session == null) {
+      LOGGER.error("Error occurred while releasing session resource: session is null");
+      return false;
+    }
     Set<Long> statementIdSet = session.getStatementIds();
     if (statementIdSet != null) {
       for (Long statementId : statementIdSet) {
