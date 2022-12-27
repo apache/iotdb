@@ -21,6 +21,7 @@ package org.apache.iotdb.commons.client;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.async.AsyncDataNodeInternalServiceClient;
+import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.client.mock.MockInternalRPCService;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.exception.StartupException;
@@ -34,6 +35,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.io.IOException;
+import java.util.NoSuchElementException;
 import java.util.concurrent.TimeUnit;
 
 import static org.mockito.Mockito.mock;
@@ -251,14 +253,15 @@ public class ClientManagerTest {
 
     // get another sync client, should wait waitClientTimeoutMS ms, throw error
     SyncDataNodeInternalServiceClient syncClient2 = null;
-    long start = 0, end;
+    long start = 0;
     try {
       start = System.nanoTime();
       syncClient2 = syncClusterManager.borrowClient(endPoint);
-    } catch (IOException e) {
-      end = System.nanoTime();
+    } catch (ClientManagerException e) {
+      long end = System.nanoTime();
       Assert.assertTrue(end - start >= waitClientTimeoutMs * 1_000_000);
-      Assert.assertTrue(e.getMessage().startsWith("Borrow client from pool for node"));
+      Assert.assertTrue(e.getCause() instanceof NoSuchElementException);
+      Assert.assertTrue(e.getMessage().contains("Timeout waiting for idle object"));
     }
     Assert.assertNull(syncClient2);
 
@@ -322,14 +325,15 @@ public class ClientManagerTest {
     Assert.assertEquals(0, syncClusterManager.getPool().getNumIdle(endPoint));
 
     // get another sync client, should wait waitClientTimeoutMS ms, throw error
-    long start = 0, end;
+    long start = 0;
     try {
       start = System.nanoTime();
-      syncClusterManager.borrowClient(endPoint);
-    } catch (IOException e) {
-      end = System.nanoTime();
+      syncClient1 = syncClusterManager.borrowClient(endPoint);
+    } catch (ClientManagerException e) {
+      long end = System.nanoTime();
       Assert.assertTrue(end - start >= waitClientTimeoutMS * 1_000_000);
-      Assert.assertTrue(e.getMessage().startsWith("Borrow client from pool for node"));
+      Assert.assertTrue(e.getCause() instanceof NoSuchElementException);
+      Assert.assertTrue(e.getMessage().contains("Timeout waiting for idle object"));
     }
 
     // return one sync client

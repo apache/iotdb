@@ -55,7 +55,7 @@ public class ConfigNodeHeartbeatCache extends BaseNodeCache {
 
     long lastSendTime = 0;
     synchronized (slidingWindow) {
-      if (slidingWindow.size() > 0) {
+      if (!slidingWindow.isEmpty()) {
         lastSendTime = slidingWindow.getLast().getSendTimestamp();
       }
     }
