@@ -70,6 +70,7 @@ public class IoTDBClusterNodeErrorStartUpIT {
 
   private static final String TEST_CLUSTER_NAME = "defaultCluster";
   private static final String ERROR_CLUSTER_NAME = "errorCluster";
+  private static final int maxRetryTimes = 60;
 
   @Before
   public void setUp() throws Exception {
@@ -240,7 +241,8 @@ public class IoTDBClusterNodeErrorStartUpIT {
       // Shutdown and check
       EnvFactory.getEnv().shutdownConfigNode(1);
       EnvFactory.getEnv().shutdownDataNode(0);
-      while (true) {
+      int retryTimes;
+      for (retryTimes = 0; retryTimes < maxRetryTimes; retryTimes++) {
         AtomicInteger unknownCnt = new AtomicInteger(0);
         showClusterResp = client.showCluster();
         showClusterResp
@@ -256,6 +258,10 @@ public class IoTDBClusterNodeErrorStartUpIT {
           break;
         }
         TimeUnit.SECONDS.sleep(1);
+      }
+      if (retryTimes >= maxRetryTimes) {
+        Assert.fail(
+            "The running nodes are still insufficient after retrying " + maxRetryTimes + " times");
       }
 
       /* Restart and updatePeer */
@@ -286,7 +292,7 @@ public class IoTDBClusterNodeErrorStartUpIT {
       // Restart and check
       EnvFactory.getEnv().startConfigNode(1);
       EnvFactory.getEnv().startDataNode(0);
-      while (true) {
+      for (retryTimes = 0; retryTimes < maxRetryTimes; retryTimes++) {
         AtomicInteger runningCnt = new AtomicInteger(0);
         showClusterResp = client.showCluster();
         showClusterResp
@@ -302,6 +308,10 @@ public class IoTDBClusterNodeErrorStartUpIT {
           break;
         }
         TimeUnit.SECONDS.sleep(1);
+      }
+      if (retryTimes >= maxRetryTimes) {
+        Assert.fail(
+            "The running nodes are still insufficient after retrying " + maxRetryTimes + " times");
       }
     }
   }
