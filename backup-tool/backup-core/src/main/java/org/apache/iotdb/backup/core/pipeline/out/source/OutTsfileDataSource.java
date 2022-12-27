@@ -22,7 +22,13 @@ import org.apache.iotdb.backup.core.model.DeviceModel;
 import org.apache.iotdb.backup.core.model.TimeSeriesRowModel;
 import org.apache.iotdb.backup.core.model.TimeseriesModel;
 import org.apache.iotdb.backup.core.pipeline.PipeSource;
+import org.apache.iotdb.backup.core.pipeline.context.PipelineContext;
+import org.apache.iotdb.backup.core.pipeline.context.model.ExportModel;
 import org.apache.iotdb.backup.core.service.ExportPipelineService;
+import org.apache.iotdb.rpc.IoTDBConnectionException;
+import org.apache.iotdb.rpc.StatementExecutionException;
+import org.apache.iotdb.session.SessionDataSet;
+import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.schema.Schema;
 
@@ -68,7 +74,8 @@ public class OutTsfileDataSource
   @Override
   public Function<Flux<String>, Flux<TimeSeriesRowModel>> doExecute() {
     return flux ->
-        flux.flatMap(s -> exportPipelineService.countDeviceNum(s, totalSize))
+        flux.flatMap(s -> this.validateStorage(s))
+            .flatMap(s -> exportPipelineService.countDeviceNum(s, totalSize))
             .flatMap(s -> exportPipelineService.parseToDeviceModel())
             .parallel(parallelism)
             .runOn(scheduler)
@@ -99,7 +106,41 @@ public class OutTsfileDataSource
                 });
   }
 
-  public Flux<Pair<DeviceModel, List<TimeseriesModel>>> generateDeviceInfoMap(
+  private Flux<String> validateStorage(String s) {
+    return Flux.deferContextual(
+        context -> {
+          PipelineContext<ExportModel> pcontext = context.get("pipelineContext");
+          ExportModel exportModel = pcontext.getModel();
+          String version = context.get("VERSION");
+          StringBuilder sqlBuilder = new StringBuilder();
+          sqlBuilder
+              .append("count storage group ")
+              .append(ExportPipelineService.formatPath(exportModel.getIotdbPath(), version));
+          String sql = sqlBuilder.toString();
+          try {
+            SessionDataSet deviceData = exportModel.getSession().executeQueryStatement(sql);
+            if (deviceData.hasNext()) {
+              RowRecord rowRecord = deviceData.next();
+              Integer count =
+                  rowRecord
+                      .getFields()
+                      .get(deviceData.getColumnNames().indexOf("storage group"))
+                      .getIntV();
+              if (count > 1) {
+                throw new Exception("the path has more than one storage group");
+              }
+            }
+          } catch (StatementExecutionException | IoTDBConnectionException e) {
+            log.error("异常信息sql:{},e : {}", sql, e);
+          } catch (Exception e) {
+            log.error("异常信息sql:{},e : {}", sql, e);
+            return Flux.error(e);
+          }
+          return Flux.just(s);
+        });
+  }
+
+  private Flux<Pair<DeviceModel, List<TimeseriesModel>>> generateDeviceInfoMap(
       Pair<DeviceModel, List<TimeseriesModel>> pair,
       ConcurrentHashMap<String, Pair<DeviceModel, List<TimeseriesModel>>> deviceInfoMap) {
     return Flux.deferContextual(

@@ -40,7 +40,7 @@ public class SimpleChannel
     this.name = name;
   }
 
-  ConcurrentSkipListMap<String,Long> lasttime = new ConcurrentSkipListMap<>();
+  ConcurrentSkipListMap<String, Long> lasttime = new ConcurrentSkipListMap<>();
 
   @Override
   public Function<ParallelFlux<TimeSeriesRowModel>, ParallelFlux<TimeSeriesRowModel>> doExecute() {
@@ -49,12 +49,15 @@ public class SimpleChannel
                 s -> {
                   // s.getIFieldList()
                   // .forEach(this::sqlFileTransformer);
-                    if(!s.getDeviceModel().getDeviceName().startsWith("finish")){
-                        if(lasttime.get(s.getDeviceModel().getDeviceName())!=null &&(lasttime.get(s.getDeviceModel().getDeviceName())>Long.parseLong(s.getTimestamp()))){
-                            System.out.println("reactor 错误");
-                        }
-                        lasttime.put(s.getDeviceModel().getDeviceName(),Long.parseLong(s.getTimestamp()));
+                  if (!s.getDeviceModel().getDeviceName().startsWith("finish")) {
+                    if (lasttime.get(s.getDeviceModel().getDeviceName()) != null
+                        && (lasttime.get(s.getDeviceModel().getDeviceName())
+                            > Long.parseLong(s.getTimestamp()))) {
+                      System.out.println("reactor 错误");
                     }
+                    lasttime.put(
+                        s.getDeviceModel().getDeviceName(), Long.parseLong(s.getTimestamp()));
+                  }
                   return ParallelFlux.from(Flux.just(s));
                 })
             .transform(doNext());

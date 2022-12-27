@@ -105,7 +105,7 @@ public class OutTsfileDataSink extends PipeSink<TimeSeriesRowModel, TimeSeriesRo
             .doOnComplete(
                 () -> {
                   synchronized (allList) {
-                      doSink(allList);
+                    doSink(allList);
                   }
                 })
             .parallel();
@@ -166,7 +166,6 @@ public class OutTsfileDataSink extends PipeSink<TimeSeriesRowModel, TimeSeriesRo
                 deviceIdKey,
                 tsfileNameKey,
                 pcontext.getModel().getFileFolder());
-        // TODO  有很多个tsfileWriter，如何保证每个tsfileWriter都能吧deviceId注册上
         Schema schema = schemaMap.get(tsfileNameKey);
         registDevice(tsFileWriter, schema, deviceInfoMap, deviceIdKey);
         // 需要转化grouplist数据为tsfile可以写入的数据
@@ -231,6 +230,7 @@ public class OutTsfileDataSink extends PipeSink<TimeSeriesRowModel, TimeSeriesRo
                 tsFileWriter, tablet, deviceModel.isAligned());
             finishedRowNum.addAndGet(tablet.rowSize);
           }
+          tsFileWriter.flushAllChunkGroups();
         } catch (IOException | WriteProcessException e) {
           e.printStackTrace();
         }
@@ -254,7 +254,7 @@ public class OutTsfileDataSink extends PipeSink<TimeSeriesRowModel, TimeSeriesRo
       builder.append(partitionInterval);
     } else {
       Long time = Long.parseLong(timestamp);
-      long partitionPrefix = time / partitionInterval;
+      long partitionPrefix = time / (partitionInterval * 1000L);
       builder.append(partitionPrefix);
     }
     builder.append(".tsfile");
