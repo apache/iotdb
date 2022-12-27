@@ -49,35 +49,43 @@ import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
-public class FailedTasksRetryThread {
+/**
+ * The RetryFailedTasksThread executed periodically to retry failed tasks in Trigger, Sync, Template
+ * and CQ
+ */
+public class RetryFailedTasksThread {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(FailedTasksRetryThread.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(RetryFailedTasksThread.class);
 
   private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
   private static final long HEARTBEAT_INTERVAL = CONF.getHeartbeatIntervalInMs();
   private final IManager configManager;
   private final NodeManager nodeManager;
-  private final Set<TDataNodeLocation> oldUnknownNodes;
-  private final ScheduledExecutorService retryFailMissionsExecutor =
-      IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("Cluster-RetryFailMissions-Service");
+  private final ScheduledExecutorService retryFailTasksExecutor =
+      IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("Cluster-RetryFailedTasks-Service");
   private final Object scheduleMonitor = new Object();
-  private Future<?> currentLoadStatisticsFuture;
+  private Future<?> currentFailedTasksRetryThreadFuture;
+
+  /** Trigger */
+  private final Set<TDataNodeLocation> oldUnknownNodes;
+
+  /** Sync */
   private final Map<Integer, Queue<TOperatePipeOnDataNodeReq>> messageMap =
       new ConcurrentHashMap<>();
 
-  public FailedTasksRetryThread(IManager configManager) {
+  public RetryFailedTasksThread(IManager configManager) {
     this.configManager = configManager;
     this.nodeManager = configManager.getNodeManager();
     this.oldUnknownNodes = new HashSet<>();
   }
 
-  public void startRetryFailTasksService() {
+  public void startRetryFailedTasksService() {
     synchronized (scheduleMonitor) {
-      if (currentLoadStatisticsFuture == null) {
-        currentLoadStatisticsFuture =
+      if (currentFailedTasksRetryThreadFuture == null) {
+        currentFailedTasksRetryThreadFuture =
             ScheduledExecutorUtil.safelyScheduleWithFixedDelay(
-                retryFailMissionsExecutor,
-                this::retryFailMissions,
+                retryFailTasksExecutor,
+                this::retryFailedTasks,
                 0,
                 HEARTBEAT_INTERVAL,
                 TimeUnit.MILLISECONDS);
@@ -87,12 +95,57 @@ public class FailedTasksRetryThread {
   }
 
   /** Stop the retry fail missions service */
-  public void stopRetryFailTasksService() {
+  public void stopRetryFailedTasksService() {
     synchronized (scheduleMonitor) {
-      if (currentLoadStatisticsFuture != null) {
-        currentLoadStatisticsFuture.cancel(false);
-        currentLoadStatisticsFuture = null;
+      if (currentFailedTasksRetryThreadFuture != null) {
+        currentFailedTasksRetryThreadFuture.cancel(false);
+        currentFailedTasksRetryThreadFuture = null;
         LOGGER.info("RetryFailMissions service is stopped successfully.");
+      }
+    }
+  }
+
+  private void retryFailedTasks() {
+    // trigger
+    triggerDetectTask();
+
+    // sync
+    syncDetectTask();
+  }
+
+  /**
+   * The triggerDetectTask executed periodically to find newest UnknownDataNodes
+   *
+   * <p>1.If one DataNode is continuing Unknown, we shouldn't always activate Transfer of this Node.
+   *
+   * <p>2.The selected DataNodes may not truly need to transfer, so you should ensure safety of the
+   * Data when implement transferMethod in Manager.
+   */
+  private void triggerDetectTask() {
+    List<TDataNodeLocation> newUnknownNodes = new ArrayList<>();
+
+    nodeManager
+        .getRegisteredDataNodes()
+        .forEach(
+            DataNodeConfiguration -> {
+              TDataNodeLocation dataNodeLocation = DataNodeConfiguration.getLocation();
+              BaseNodeCache newestNodeInformation =
+                  nodeManager.getNodeCacheMap().get(dataNodeLocation.dataNodeId);
+              if (newestNodeInformation != null) {
+                if (newestNodeInformation.getNodeStatus() == NodeStatus.Running) {
+                  oldUnknownNodes.remove(dataNodeLocation);
+                } else if (!oldUnknownNodes.contains(dataNodeLocation)
+                    && newestNodeInformation.getNodeStatus() == NodeStatus.Unknown) {
+                  newUnknownNodes.add(dataNodeLocation);
+                }
+              }
+            });
+
+    if (!newUnknownNodes.isEmpty()) {
+      LOGGER.info("Find new UnknownDataNodes: {}", newUnknownNodes);
+      TSStatus transferResult = configManager.transfer(newUnknownNodes);
+      if (transferResult.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        oldUnknownNodes.addAll(newUnknownNodes);
       }
     }
   }
@@ -103,16 +156,10 @@ public class FailedTasksRetryThread {
     }
   }
 
-  private void retryFailMissions() {
-    // trigger
-    triggerDetectTask();
-
-    // sync
-    syncDetectTask();
-  }
-
+  /**
+   * The syncDetectTask executed periodically to roll back the failed requests in operating pipe.
+   */
   private void syncDetectTask() {
-    LOGGER.info("Scheduled OperatePipeProcedureRollbackProcessor.");
     for (Map.Entry<Integer, Queue<TOperatePipeOnDataNodeReq>> entry : messageMap.entrySet()) {
       int dataNodeId = entry.getKey();
       if (NodeStatus.Running.equals(nodeManager.getNodeStatusByNodeId(dataNodeId))) {
@@ -143,42 +190,6 @@ public class FailedTasksRetryThread {
             break;
           }
         }
-      }
-    }
-  }
-
-  /**
-   * The detectTask executed periodically to find newest UnknownDataNodes
-   *
-   * <p>1.If one DataNode is continuing Unknown, we shouldn't always activate Transfer of this Node.
-   *
-   * <p>2.The selected DataNodes may not truly need to transfer, so you should ensure safety of the
-   * Data when implement transferMethod in Manager.
-   */
-  private void triggerDetectTask() {
-    List<TDataNodeLocation> newUnknownNodes = new ArrayList<>();
-
-    nodeManager
-        .getRegisteredDataNodes()
-        .forEach(
-            DataNodeConfiguration -> {
-              TDataNodeLocation dataNodeLocation = DataNodeConfiguration.getLocation();
-              BaseNodeCache newestNodeInformation =
-                  nodeManager.getNodeCacheMap().get(dataNodeLocation.dataNodeId);
-              if (newestNodeInformation != null) {
-                if (newestNodeInformation.getNodeStatus() == NodeStatus.Running) {
-                  oldUnknownNodes.remove(dataNodeLocation);
-                } else if (!oldUnknownNodes.contains(dataNodeLocation)
-                    && newestNodeInformation.getNodeStatus() == NodeStatus.Unknown) {
-                  newUnknownNodes.add(dataNodeLocation);
-                }
-              }
-            });
-
-    if (!newUnknownNodes.isEmpty()) {
-      TSStatus transferResult = configManager.transfer(newUnknownNodes);
-      if (transferResult.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        oldUnknownNodes.addAll(newUnknownNodes);
       }
     }
   }

@@ -252,10 +252,7 @@ public class SyncManager {
         failedRollbackDataNodeId.add(responseEntry.getKey());
       }
     }
-    configManager
-        .getNodeManager()
-        .getFailedMissionRetryThread()
-        .retryRollbackReq(failedRollbackDataNodeId, request);
+    configManager.getRetryFailedTasksThread().retryRollbackReq(failedRollbackDataNodeId, request);
   }
 
   /**

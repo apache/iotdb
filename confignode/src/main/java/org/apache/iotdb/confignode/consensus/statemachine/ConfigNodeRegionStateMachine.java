@@ -196,7 +196,7 @@ public class ConfigNodeRegionStateMachine
       configManager.getProcedureManager().shiftExecutor(true);
       configManager.getLoadManager().startLoadStatisticsService();
       configManager.getLoadManager().getRouteBalancer().startRouteBalancingService();
-      configManager.getNodeManager().getFailedMissionRetryThread().startRetryFailTasksService();
+      configManager.getRetryFailedTasksThread().startRetryFailedTasksService();
       configManager.getNodeManager().startHeartbeatService();
       configManager.getPartitionManager().startRegionCleaner();
 
@@ -217,7 +217,7 @@ public class ConfigNodeRegionStateMachine
       configManager.getProcedureManager().shiftExecutor(false);
       configManager.getLoadManager().stopLoadStatisticsService();
       configManager.getLoadManager().getRouteBalancer().stopRouteBalancingService();
-      configManager.getNodeManager().getFailedMissionRetryThread().stopRetryFailTasksService();
+      configManager.getRetryFailedTasksThread().stopRetryFailedTasksService();
       configManager.getNodeManager().stopHeartbeatService();
       configManager.getPartitionManager().stopRegionCleaner();
       configManager.getCQManager().stopCQScheduler();

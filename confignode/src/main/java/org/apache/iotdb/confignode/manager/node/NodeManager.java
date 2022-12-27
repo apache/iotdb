@@ -54,7 +54,6 @@ import org.apache.iotdb.confignode.consensus.response.DataNodeToStatusResp;
 import org.apache.iotdb.confignode.manager.ClusterSchemaManager;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.ConsensusManager;
-import org.apache.iotdb.confignode.manager.FailedTasksRetryThread;
 import org.apache.iotdb.confignode.manager.IManager;
 import org.apache.iotdb.confignode.manager.TriggerManager;
 import org.apache.iotdb.confignode.manager.UDFManager;
@@ -110,8 +109,6 @@ public class NodeManager {
 
   private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
   public static final long HEARTBEAT_INTERVAL = CONF.getHeartbeatIntervalInMs();
-  private static final long UNKNOWN_DATANODE_DETECT_INTERVAL =
-      CONF.getUnknownDataNodeDetectInterval();
 
   private final IManager configManager;
   private final NodeInfo nodeInfo;
@@ -128,7 +125,6 @@ public class NodeManager {
   private final ScheduledExecutorService heartBeatExecutor =
       IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("Cluster-Heartbeat-Service");
 
-  private FailedTasksRetryThread failedMissionRetryThread;
   private final Random random;
 
   public NodeManager(IManager configManager, NodeInfo nodeInfo) {
@@ -137,7 +133,6 @@ public class NodeManager {
     this.removeConfigNodeLock = new ReentrantLock();
     this.nodeCacheMap = new ConcurrentHashMap<>();
     this.random = new Random(System.currentTimeMillis());
-    this.failedMissionRetryThread = new FailedTasksRetryThread(configManager);
   }
 
   /**
@@ -956,10 +951,6 @@ public class NodeManager {
                 nodeCacheMap.put(
                     dataNodeConfiguration.getLocation().getDataNodeId(),
                     new DataNodeHeartbeatCache()));
-  }
-
-  public FailedTasksRetryThread getFailedMissionRetryThread() {
-    return failedMissionRetryThread;
   }
 
   private ConsensusManager getConsensusManager() {
