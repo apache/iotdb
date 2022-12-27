@@ -48,6 +48,7 @@ import org.apache.iotdb.confignode.manager.load.balancer.RouteBalancer;
 import org.apache.iotdb.confignode.manager.load.balancer.router.RegionRouteMap;
 import org.apache.iotdb.confignode.manager.node.NodeManager;
 import org.apache.iotdb.confignode.manager.node.heartbeat.NodeStatistics;
+import org.apache.iotdb.confignode.manager.observer.NodeStatisticsEvent;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
 import org.apache.iotdb.confignode.manager.partition.heartbeat.RegionGroupStatistics;
 import org.apache.iotdb.confignode.manager.partition.heartbeat.RegionStatistics;
@@ -199,8 +200,8 @@ public class LoadManager {
     boolean isNeedBroadcast = false;
 
     // Update NodeStatistics:
-    // NodeStatistics[]:index 0 means the current NodeStatistics, index 1 means the previous
-    // NodeStatistics
+    // Pair<NodeStatistics, NodeStatistics>:left one means the current NodeStatistics, right one
+    // means the previous NodeStatistics
     Map<Integer, Pair<NodeStatistics, NodeStatistics>> differentNodeStatisticsMap =
         new ConcurrentHashMap<>();
     getNodeManager()
@@ -217,7 +218,7 @@ public class LoadManager {
     if (!differentNodeStatisticsMap.isEmpty()) {
       isNeedBroadcast = true;
       recordNodeStatistics(differentNodeStatisticsMap);
-      eventBus.post(differentNodeStatisticsMap);
+      eventBus.post(new NodeStatisticsEvent(differentNodeStatisticsMap));
     }
 
     // Update RegionGroupStatistics
