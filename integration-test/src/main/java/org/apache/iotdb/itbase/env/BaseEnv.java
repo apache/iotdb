@@ -18,16 +18,17 @@
  */
 package org.apache.iotdb.itbase.env;
 
+import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.confignode.rpc.thrift.IConfigNodeRPCService;
+import org.apache.iotdb.isession.ISession;
+import org.apache.iotdb.isession.SessionConfig;
+import org.apache.iotdb.isession.util.Version;
 import org.apache.iotdb.it.env.ConfigNodeWrapper;
 import org.apache.iotdb.it.env.DataNodeWrapper;
 import org.apache.iotdb.jdbc.Constant;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
-import org.apache.iotdb.session.ISession;
 import org.apache.iotdb.session.Session;
-import org.apache.iotdb.session.SessionConfig;
 import org.apache.iotdb.session.pool.SessionPool;
-import org.apache.iotdb.session.util.Version;
 
 import java.io.IOException;
 import java.sql.Connection;
@@ -73,7 +74,7 @@ public interface BaseEnv {
   void setDataNodeWrapperList(List<DataNodeWrapper> dataNodeWrapperList);
 
   IConfigNodeRPCService.Iface getLeaderConfigNodeConnection()
-      throws IOException, InterruptedException;
+      throws ClientManagerException, IOException, InterruptedException;
 
   default ISession getSessionConnection() throws IoTDBConnectionException {
     return getSessionConnection(
@@ -232,6 +233,8 @@ public interface BaseEnv {
   String getPort();
 
   String getSbinPath();
+
+  String getToolsPath();
 
   String getLibPath();
 }

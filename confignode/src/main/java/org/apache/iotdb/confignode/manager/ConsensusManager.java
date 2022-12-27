@@ -344,7 +344,7 @@ public class ConsensusManager {
   @TestOnly
   public void singleCopyMayWaitUntilLeaderReady() {
     long startTime = System.currentTimeMillis();
-    long maxWaitTime = 1000 * 60; // milliseconds, which is 60s
+    long maxWaitTime = 1000L * 60; // milliseconds, which is 60s
     try {
       while (!consensusImpl.isLeader(consensusGroupId)) {
         TimeUnit.MILLISECONDS.sleep(100);

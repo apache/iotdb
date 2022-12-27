@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.metrics.reporter.iotdb;
 
+import org.apache.iotdb.isession.pool.SessionDataSetWrapper;
 import org.apache.iotdb.metrics.AbstractMetricManager;
 import org.apache.iotdb.metrics.config.MetricConfig;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
@@ -28,7 +29,6 @@ import org.apache.iotdb.metrics.utils.MetricInfo;
 import org.apache.iotdb.metrics.utils.ReporterType;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
-import org.apache.iotdb.session.pool.SessionDataSetWrapper;
 import org.apache.iotdb.session.pool.SessionPool;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
@@ -80,30 +80,30 @@ public class SessionIoTDBReporter extends IoTDBReporter {
   @Override
   @SuppressWarnings("unsafeThreadSchedule")
   public boolean start() {
-    if (currentServiceFuture == null) {
-      currentServiceFuture =
-          service.scheduleAtFixedRate(
-              () -> {
-                try {
-                  Map<String, Map<String, Object>> values = new HashMap<>();
-                  for (Map.Entry<MetricInfo, IMetric> metricEntry :
-                      metricManager.getAllMetrics().entrySet()) {
-                    String prefix = IoTDBMetricsUtils.generatePath(metricEntry.getKey());
-                    Map<String, Object> value = new HashMap<>();
-                    metricEntry.getValue().constructValueMap(value);
-                    values.put(prefix, value);
-                  }
-                  writeMetricsToIoTDB(values, System.currentTimeMillis());
-                } catch (Throwable t) {
-                  LOGGER.error("Schedule task failed", t);
-                }
-              },
-              1,
-              MetricConfigDescriptor.getInstance()
-                  .getMetricConfig()
-                  .getAsyncCollectPeriodInSecond(),
-              TimeUnit.SECONDS);
+    if (currentServiceFuture != null) {
+      LOGGER.warn("IoTDB Session Reporter already start");
+      return false;
     }
+    currentServiceFuture =
+        service.scheduleAtFixedRate(
+            () -> {
+              try {
+                Map<String, Map<String, Object>> values = new HashMap<>();
+                for (Map.Entry<MetricInfo, IMetric> metricEntry :
+                    metricManager.getAllMetrics().entrySet()) {
+                  String prefix = IoTDBMetricsUtils.generatePath(metricEntry.getKey());
+                  Map<String, Object> value = new HashMap<>();
+                  metricEntry.getValue().constructValueMap(value);
+                  values.put(prefix, value);
+                }
+                writeMetricsToIoTDB(values, System.currentTimeMillis());
+              } catch (Throwable t) {
+                LOGGER.error("Schedule task failed", t);
+              }
+            },
+            1,
+            MetricConfigDescriptor.getInstance().getMetricConfig().getAsyncCollectPeriodInSecond(),
+            TimeUnit.SECONDS);
     return true;
   }
 

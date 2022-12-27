@@ -30,6 +30,8 @@ import org.apache.iotdb.db.engine.compaction.inner.AbstractInnerSpaceCompactionT
 import org.apache.iotdb.db.engine.compaction.log.CompactionLogger;
 import org.apache.iotdb.db.engine.compaction.performer.ICompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.performer.impl.FastCompactionPerformer;
+import org.apache.iotdb.db.engine.compaction.reader.IDataBlockReader;
+import org.apache.iotdb.db.engine.compaction.reader.SeriesDataBlockReader;
 import org.apache.iotdb.db.engine.compaction.task.CompactionRecoverTask;
 import org.apache.iotdb.db.engine.compaction.task.CompactionTaskSummary;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionConfigRestorer;
@@ -39,14 +41,12 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.query.control.FileReaderManager;
-import org.apache.iotdb.db.query.reader.series.SeriesRawDataBatchReader;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.utils.SchemaTestUtils;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
-import org.apache.iotdb.tsfile.read.common.BatchData;
-import org.apache.iotdb.tsfile.read.reader.IBatchReader;
+import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.writer.TsFileOutput;
 
@@ -99,21 +99,19 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
             deviceIds[0]
                 + TsFileConstant.PATH_SEPARATOR
                 + measurementSchemas[0].getMeasurementId());
-    IBatchReader tsFilesReader =
-        new SeriesRawDataBatchReader(
+    IDataBlockReader tsFilesReader =
+        new SeriesDataBlockReader(
             path,
             measurementSchemas[0].getType(),
-            EnvironmentUtils.TEST_QUERY_CONTEXT,
+            EnvironmentUtils.TEST_QUERY_FI_CONTEXT,
             tsFileManager.getTsFileList(true),
             new ArrayList<>(),
-            null,
-            null,
             true);
     int count = 0;
     while (tsFilesReader.hasNextBatch()) {
-      BatchData batchData = tsFilesReader.nextBatch();
-      for (int i = 0; i < batchData.length(); i++) {
-        assertEquals(batchData.getTimeByIndex(i), batchData.getDoubleByIndex(i), 0.001);
+      TsBlock batchData = tsFilesReader.nextBatch();
+      for (int i = 0, size = batchData.getPositionCount(); i < size; i++) {
+        assertEquals(batchData.getTimeByIndex(i), batchData.getColumn(0).getDouble(i), 0.001);
         count++;
       }
     }
@@ -189,20 +187,18 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
                 + TsFileConstant.PATH_SEPARATOR
                 + measurementSchemas[0].getMeasurementId());
     tsFilesReader =
-        new SeriesRawDataBatchReader(
+        new SeriesDataBlockReader(
             path,
             measurementSchemas[0].getType(),
-            EnvironmentUtils.TEST_QUERY_CONTEXT,
+            EnvironmentUtils.TEST_QUERY_FI_CONTEXT,
             tsFileManager.getTsFileList(true),
             new ArrayList<>(),
-            null,
-            null,
             true);
     count = 0;
     while (tsFilesReader.hasNextBatch()) {
-      BatchData batchData = tsFilesReader.nextBatch();
-      for (int i = 0; i < batchData.length(); i++) {
-        assertEquals(batchData.getTimeByIndex(i), batchData.getDoubleByIndex(i), 0.001);
+      TsBlock batchData = tsFilesReader.nextBatch();
+      for (int i = 0, size = batchData.getPositionCount(); i < size; i++) {
+        assertEquals(batchData.getTimeByIndex(i), batchData.getColumn(0).getDouble(i), 0.001);
         count++;
       }
     }
@@ -222,21 +218,19 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
             deviceIds[0]
                 + TsFileConstant.PATH_SEPARATOR
                 + measurementSchemas[0].getMeasurementId());
-    IBatchReader tsFilesReader =
-        new SeriesRawDataBatchReader(
+    IDataBlockReader tsFilesReader =
+        new SeriesDataBlockReader(
             path,
             measurementSchemas[0].getType(),
-            EnvironmentUtils.TEST_QUERY_CONTEXT,
+            EnvironmentUtils.TEST_QUERY_FI_CONTEXT,
             tsFileManager.getTsFileList(true),
             new ArrayList<>(),
-            null,
-            null,
             true);
     int count = 0;
     while (tsFilesReader.hasNextBatch()) {
-      BatchData batchData = tsFilesReader.nextBatch();
-      for (int i = 0; i < batchData.length(); i++) {
-        assertEquals(batchData.getTimeByIndex(i), batchData.getDoubleByIndex(i), 0.001);
+      TsBlock batchData = tsFilesReader.nextBatch();
+      for (int i = 0, size = batchData.getPositionCount(); i < size; i++) {
+        assertEquals(batchData.getTimeByIndex(i), batchData.getColumn(0).getDouble(i), 0.001);
         count++;
       }
     }
@@ -301,20 +295,18 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
                 + TsFileConstant.PATH_SEPARATOR
                 + measurementSchemas[0].getMeasurementId());
     tsFilesReader =
-        new SeriesRawDataBatchReader(
+        new SeriesDataBlockReader(
             path,
             measurementSchemas[0].getType(),
-            EnvironmentUtils.TEST_QUERY_CONTEXT,
+            EnvironmentUtils.TEST_QUERY_FI_CONTEXT,
             tsFileManager.getTsFileList(true),
             new ArrayList<>(),
-            null,
-            null,
             true);
     count = 0;
     while (tsFilesReader.hasNextBatch()) {
-      BatchData batchData = tsFilesReader.nextBatch();
-      for (int i = 0; i < batchData.length(); i++) {
-        assertEquals(batchData.getTimeByIndex(i), batchData.getDoubleByIndex(i), 0.001);
+      TsBlock batchData = tsFilesReader.nextBatch();
+      for (int i = 0, size = batchData.getPositionCount(); i < size; i++) {
+        assertEquals(batchData.getTimeByIndex(i), batchData.getColumn(0).getDouble(i), 0.001);
         count++;
       }
     }
@@ -334,21 +326,19 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
             deviceIds[0]
                 + TsFileConstant.PATH_SEPARATOR
                 + measurementSchemas[0].getMeasurementId());
-    IBatchReader tsFilesReader =
-        new SeriesRawDataBatchReader(
+    IDataBlockReader tsFilesReader =
+        new SeriesDataBlockReader(
             path,
             measurementSchemas[0].getType(),
-            EnvironmentUtils.TEST_QUERY_CONTEXT,
+            EnvironmentUtils.TEST_QUERY_FI_CONTEXT,
             tsFileManager.getTsFileList(true),
             new ArrayList<>(),
-            null,
-            null,
             true);
     int count = 0;
     while (tsFilesReader.hasNextBatch()) {
-      BatchData batchData = tsFilesReader.nextBatch();
-      for (int i = 0; i < batchData.length(); i++) {
-        assertEquals(batchData.getTimeByIndex(i), batchData.getDoubleByIndex(i), 0.001);
+      TsBlock batchData = tsFilesReader.nextBatch();
+      for (int i = 0, size = batchData.getPositionCount(); i < size; i++) {
+        assertEquals(batchData.getTimeByIndex(i), batchData.getColumn(0).getDouble(i), 0.001);
         count++;
       }
     }
@@ -415,20 +405,18 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
                 + TsFileConstant.PATH_SEPARATOR
                 + measurementSchemas[0].getMeasurementId());
     tsFilesReader =
-        new SeriesRawDataBatchReader(
+        new SeriesDataBlockReader(
             path,
             measurementSchemas[0].getType(),
-            EnvironmentUtils.TEST_QUERY_CONTEXT,
+            EnvironmentUtils.TEST_QUERY_FI_CONTEXT,
             tsFileManager.getTsFileList(true),
             new ArrayList<>(),
-            null,
-            null,
             true);
     count = 0;
     while (tsFilesReader.hasNextBatch()) {
-      BatchData batchData = tsFilesReader.nextBatch();
-      for (int i = 0; i < batchData.length(); i++) {
-        assertEquals(batchData.getTimeByIndex(i), batchData.getDoubleByIndex(i), 0.001);
+      TsBlock batchData = tsFilesReader.nextBatch();
+      for (int i = 0, size = batchData.getPositionCount(); i < size; i++) {
+        assertEquals(batchData.getTimeByIndex(i), batchData.getColumn(0).getDouble(i), 0.001);
         count++;
       }
     }
@@ -448,21 +436,19 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
             deviceIds[0]
                 + TsFileConstant.PATH_SEPARATOR
                 + measurementSchemas[0].getMeasurementId());
-    IBatchReader tsFilesReader =
-        new SeriesRawDataBatchReader(
+    IDataBlockReader tsFilesReader =
+        new SeriesDataBlockReader(
             path,
             measurementSchemas[0].getType(),
-            EnvironmentUtils.TEST_QUERY_CONTEXT,
+            EnvironmentUtils.TEST_QUERY_FI_CONTEXT,
             tsFileManager.getTsFileList(true),
             new ArrayList<>(),
-            null,
-            null,
             true);
     int count = 0;
     while (tsFilesReader.hasNextBatch()) {
-      BatchData batchData = tsFilesReader.nextBatch();
-      for (int i = 0; i < batchData.length(); i++) {
-        assertEquals(batchData.getTimeByIndex(i), batchData.getDoubleByIndex(i), 0.001);
+      TsBlock batchData = tsFilesReader.nextBatch();
+      for (int i = 0, size = batchData.getPositionCount(); i < size; i++) {
+        assertEquals(batchData.getTimeByIndex(i), batchData.getColumn(0).getDouble(i), 0.001);
         count++;
       }
     }
@@ -534,20 +520,18 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
                 + measurementSchemas[0].getMeasurementId());
 
     tsFilesReader =
-        new SeriesRawDataBatchReader(
+        new SeriesDataBlockReader(
             path,
             measurementSchemas[0].getType(),
-            EnvironmentUtils.TEST_QUERY_CONTEXT,
+            EnvironmentUtils.TEST_QUERY_FI_CONTEXT,
             tsFileManager.getTsFileList(true).subList(3, 6),
             new ArrayList<>(),
-            null,
-            null,
             true);
     count = 0;
     while (tsFilesReader.hasNextBatch()) {
-      BatchData batchData = tsFilesReader.nextBatch();
-      for (int i = 0; i < batchData.length(); i++) {
-        assertEquals(batchData.getTimeByIndex(i), batchData.getDoubleByIndex(i), 0.001);
+      TsBlock batchData = tsFilesReader.nextBatch();
+      for (int i = 0, size = batchData.getPositionCount(); i < size; i++) {
+        assertEquals(batchData.getTimeByIndex(i), batchData.getColumn(0).getDouble(i), 0.001);
         count++;
       }
     }
@@ -785,21 +769,19 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
             deviceIds[0]
                 + TsFileConstant.PATH_SEPARATOR
                 + measurementSchemas[0].getMeasurementId());
-    IBatchReader tsFilesReader =
-        new SeriesRawDataBatchReader(
+    IDataBlockReader tsFilesReader =
+        new SeriesDataBlockReader(
             path,
             measurementSchemas[0].getType(),
-            EnvironmentUtils.TEST_QUERY_CONTEXT,
+            EnvironmentUtils.TEST_QUERY_FI_CONTEXT,
             tsFileManager.getTsFileList(true),
             new ArrayList<>(),
-            null,
-            null,
             true);
     int count = 0;
     while (tsFilesReader.hasNextBatch()) {
-      BatchData batchData = tsFilesReader.nextBatch();
-      for (int i = 0; i < batchData.length(); i++) {
-        assertEquals(batchData.getTimeByIndex(i), batchData.getDoubleByIndex(i), 0.001);
+      TsBlock batchData = tsFilesReader.nextBatch();
+      for (int i = 0, size = batchData.getPositionCount(); i < size; i++) {
+        assertEquals(batchData.getTimeByIndex(i), batchData.getColumn(0).getDouble(i), 0.001);
         count++;
       }
     }
@@ -852,20 +834,18 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
     TimeSeriesMetadataCache.getInstance().clear();
     ChunkCache.getInstance().clear();
     tsFilesReader =
-        new SeriesRawDataBatchReader(
+        new SeriesDataBlockReader(
             path,
             measurementSchemas[0].getType(),
-            EnvironmentUtils.TEST_QUERY_CONTEXT,
+            EnvironmentUtils.TEST_QUERY_FI_CONTEXT,
             tsFileManager.getTsFileList(true).subList(0, 5),
             new ArrayList<>(),
-            null,
-            null,
             true);
     count = 0;
     while (tsFilesReader.hasNextBatch()) {
-      BatchData batchData = tsFilesReader.nextBatch();
-      for (int i = 0; i < batchData.length(); i++) {
-        assertEquals(batchData.getTimeByIndex(i), batchData.getDoubleByIndex(i), 0.001);
+      TsBlock batchData = tsFilesReader.nextBatch();
+      for (int i = 0, size = batchData.getPositionCount(); i < size; i++) {
+        assertEquals(batchData.getTimeByIndex(i), batchData.getColumn(0).getDouble(i), 0.001);
         count++;
       }
     }
@@ -885,21 +865,19 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
             deviceIds[0]
                 + TsFileConstant.PATH_SEPARATOR
                 + measurementSchemas[0].getMeasurementId());
-    IBatchReader tsFilesReader =
-        new SeriesRawDataBatchReader(
+    IDataBlockReader tsFilesReader =
+        new SeriesDataBlockReader(
             path,
             measurementSchemas[0].getType(),
-            EnvironmentUtils.TEST_QUERY_CONTEXT,
+            EnvironmentUtils.TEST_QUERY_FI_CONTEXT,
             tsFileManager.getTsFileList(true),
             new ArrayList<>(),
-            null,
-            null,
             true);
     int count = 0;
     while (tsFilesReader.hasNextBatch()) {
-      BatchData batchData = tsFilesReader.nextBatch();
-      for (int i = 0; i < batchData.length(); i++) {
-        assertEquals(batchData.getTimeByIndex(i), batchData.getDoubleByIndex(i), 0.001);
+      TsBlock batchData = tsFilesReader.nextBatch();
+      for (int i = 0, size = batchData.getPositionCount(); i < size; i++) {
+        assertEquals(batchData.getTimeByIndex(i), batchData.getColumn(0).getDouble(i), 0.001);
         count++;
       }
     }
@@ -954,20 +932,18 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
                 + TsFileConstant.PATH_SEPARATOR
                 + measurementSchemas[0].getMeasurementId());
     tsFilesReader =
-        new SeriesRawDataBatchReader(
+        new SeriesDataBlockReader(
             path,
             measurementSchemas[0].getType(),
-            EnvironmentUtils.TEST_QUERY_CONTEXT,
+            EnvironmentUtils.TEST_QUERY_FI_CONTEXT,
             tsFileManager.getTsFileList(true),
             new ArrayList<>(),
-            null,
-            null,
             true);
     count = 0;
     while (tsFilesReader.hasNextBatch()) {
-      BatchData batchData = tsFilesReader.nextBatch();
-      for (int i = 0; i < batchData.length(); i++) {
-        assertEquals(batchData.getTimeByIndex(i), batchData.getDoubleByIndex(i), 0.001);
+      TsBlock batchData = tsFilesReader.nextBatch();
+      for (int i = 0, size = batchData.getPositionCount(); i < size; i++) {
+        assertEquals(batchData.getTimeByIndex(i), batchData.getColumn(0).getDouble(i), 0.001);
         count++;
       }
     }
@@ -988,21 +964,19 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
             deviceIds[0]
                 + TsFileConstant.PATH_SEPARATOR
                 + measurementSchemas[0].getMeasurementId());
-    IBatchReader tsFilesReader =
-        new SeriesRawDataBatchReader(
+    IDataBlockReader tsFilesReader =
+        new SeriesDataBlockReader(
             path,
             measurementSchemas[0].getType(),
-            EnvironmentUtils.TEST_QUERY_CONTEXT,
+            EnvironmentUtils.TEST_QUERY_FI_CONTEXT,
             tsFileManager.getTsFileList(true),
             new ArrayList<>(),
-            null,
-            null,
             true);
     int count = 0;
     while (tsFilesReader.hasNextBatch()) {
-      BatchData batchData = tsFilesReader.nextBatch();
-      for (int i = 0; i < batchData.length(); i++) {
-        assertEquals(batchData.getTimeByIndex(i), batchData.getDoubleByIndex(i), 0.001);
+      TsBlock batchData = tsFilesReader.nextBatch();
+      for (int i = 0, size = batchData.getPositionCount(); i < size; i++) {
+        assertEquals(batchData.getTimeByIndex(i), batchData.getColumn(0).getDouble(i), 0.001);
         count++;
       }
     }
@@ -1059,20 +1033,18 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
                 + measurementSchemas[0].getMeasurementId());
     logger.warn("TsFiles in list is {}", tsFileManager.getTsFileList(true));
     tsFilesReader =
-        new SeriesRawDataBatchReader(
+        new SeriesDataBlockReader(
             path,
             measurementSchemas[0].getType(),
-            EnvironmentUtils.TEST_QUERY_CONTEXT,
+            EnvironmentUtils.TEST_QUERY_FI_CONTEXT,
             tsFileManager.getTsFileList(true),
             new ArrayList<>(),
-            null,
-            null,
             true);
     count = 0;
     while (tsFilesReader.hasNextBatch()) {
-      BatchData batchData = tsFilesReader.nextBatch();
-      for (int i = 0; i < batchData.length(); i++) {
-        assertEquals(batchData.getTimeByIndex(i), batchData.getDoubleByIndex(i), 0.001);
+      TsBlock batchData = tsFilesReader.nextBatch();
+      for (int i = 0, size = batchData.getPositionCount(); i < size; i++) {
+        assertEquals(batchData.getTimeByIndex(i), batchData.getColumn(0).getDouble(i), 0.001);
         count++;
       }
     }
@@ -1103,21 +1075,19 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
             deviceIds[0]
                 + TsFileConstant.PATH_SEPARATOR
                 + measurementSchemas[0].getMeasurementId());
-    IBatchReader tsFilesReader =
-        new SeriesRawDataBatchReader(
+    IDataBlockReader tsFilesReader =
+        new SeriesDataBlockReader(
             path,
             measurementSchemas[0].getType(),
-            EnvironmentUtils.TEST_QUERY_CONTEXT,
+            EnvironmentUtils.TEST_QUERY_FI_CONTEXT,
             tsFileManager.getTsFileList(true),
             new ArrayList<>(),
-            null,
-            null,
             true);
     int count = 0;
     while (tsFilesReader.hasNextBatch()) {
-      BatchData batchData = tsFilesReader.nextBatch();
-      for (int i = 0; i < batchData.length(); i++) {
-        assertEquals(batchData.getTimeByIndex(i), batchData.getDoubleByIndex(i), 0.001);
+      TsBlock batchData = tsFilesReader.nextBatch();
+      for (int i = 0, size = batchData.getPositionCount(); i < size; i++) {
+        assertEquals(batchData.getTimeByIndex(i), batchData.getColumn(0).getDouble(i), 0.001);
         count++;
       }
     }
@@ -1146,21 +1116,19 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
             deviceIds[0]
                 + TsFileConstant.PATH_SEPARATOR
                 + measurementSchemas[0].getMeasurementId());
-    IBatchReader tsFilesReader =
-        new SeriesRawDataBatchReader(
+    IDataBlockReader tsFilesReader =
+        new SeriesDataBlockReader(
             path,
             measurementSchemas[0].getType(),
-            EnvironmentUtils.TEST_QUERY_CONTEXT,
+            EnvironmentUtils.TEST_QUERY_FI_CONTEXT,
             tsFileManager.getTsFileList(true),
             new ArrayList<>(),
-            null,
-            null,
             true);
     int count = 0;
     while (tsFilesReader.hasNextBatch()) {
-      BatchData batchData = tsFilesReader.nextBatch();
-      for (int i = 0; i < batchData.length(); i++) {
-        assertEquals(batchData.getTimeByIndex(i), batchData.getDoubleByIndex(i), 0.001);
+      TsBlock batchData = tsFilesReader.nextBatch();
+      for (int i = 0, size = batchData.getPositionCount(); i < size; i++) {
+        assertEquals(batchData.getTimeByIndex(i), batchData.getColumn(0).getDouble(i), 0.001);
         count++;
       }
     }
@@ -1204,21 +1172,19 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
             deviceIds[0]
                 + TsFileConstant.PATH_SEPARATOR
                 + measurementSchemas[0].getMeasurementId());
-    IBatchReader tsFilesReader =
-        new SeriesRawDataBatchReader(
+    IDataBlockReader tsFilesReader =
+        new SeriesDataBlockReader(
             path,
             measurementSchemas[0].getType(),
-            EnvironmentUtils.TEST_QUERY_CONTEXT,
+            EnvironmentUtils.TEST_QUERY_FI_CONTEXT,
             tsFileManager.getTsFileList(true),
             new ArrayList<>(),
-            null,
-            null,
             true);
     int count = 0;
     while (tsFilesReader.hasNextBatch()) {
-      BatchData batchData = tsFilesReader.nextBatch();
-      for (int i = 0; i < batchData.length(); i++) {
-        assertEquals(batchData.getTimeByIndex(i), batchData.getDoubleByIndex(i), 0.001);
+      TsBlock batchData = tsFilesReader.nextBatch();
+      for (int i = 0, size = batchData.getPositionCount(); i < size; i++) {
+        assertEquals(batchData.getTimeByIndex(i), batchData.getColumn(0).getDouble(i), 0.001);
         count++;
       }
     }

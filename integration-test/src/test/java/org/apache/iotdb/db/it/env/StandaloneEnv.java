@@ -20,16 +20,16 @@ package org.apache.iotdb.db.it.env;
 
 import org.apache.iotdb.confignode.rpc.thrift.IConfigNodeRPCService;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.isession.ISession;
+import org.apache.iotdb.isession.SessionConfig;
+import org.apache.iotdb.isession.util.Version;
 import org.apache.iotdb.it.env.ConfigNodeWrapper;
 import org.apache.iotdb.it.env.DataNodeWrapper;
 import org.apache.iotdb.itbase.env.BaseEnv;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.jdbc.Constant;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
-import org.apache.iotdb.session.ISession;
 import org.apache.iotdb.session.Session;
-import org.apache.iotdb.session.SessionConfig;
-import org.apache.iotdb.session.util.Version;
 
 import java.io.IOException;
 import java.sql.Connection;
@@ -260,6 +260,11 @@ public class StandaloneEnv implements BaseEnv {
 
   @Override
   public String getSbinPath() {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public String getToolsPath() {
     throw new UnsupportedOperationException();
   }
 

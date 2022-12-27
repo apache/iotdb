@@ -115,7 +115,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
 import org.apache.iotdb.confignode.rpc.thrift.TTriggerState;
 import org.apache.iotdb.db.metadata.template.Template;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.template.CreateSchemaTemplateStatement;
 import org.apache.iotdb.trigger.api.enums.FailureStrategy;
 import org.apache.iotdb.trigger.api.enums.TriggerEvent;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -815,7 +814,7 @@ public class ConfigPhysicalPlanSerDeTest {
 
   @Test
   public void CreateSchemaTemplatePlanTest() throws IOException, IllegalPathException {
-    Template template = new Template(newCreateSchemaTemplateStatement("template_name"));
+    Template template = newSchemaTemplate("template_name");
     CreateSchemaTemplatePlan createSchemaTemplatePlan0 =
         new CreateSchemaTemplatePlan(template.serialize().array());
     CreateSchemaTemplatePlan createSchemaTemplatePlan1 =
@@ -824,7 +823,7 @@ public class ConfigPhysicalPlanSerDeTest {
     Assert.assertEquals(createSchemaTemplatePlan0, createSchemaTemplatePlan1);
   }
 
-  private CreateSchemaTemplateStatement newCreateSchemaTemplateStatement(String name) {
+  private Template newSchemaTemplate(String name) throws IllegalPathException {
     List<List<String>> measurements =
         Arrays.asList(
             Collections.singletonList(name + "_" + "temperature"),
@@ -840,7 +839,7 @@ public class ConfigPhysicalPlanSerDeTest {
         Arrays.asList(
             Collections.singletonList(CompressionType.SNAPPY),
             Collections.singletonList(CompressionType.SNAPPY));
-    return new CreateSchemaTemplateStatement(name, measurements, dataTypes, encodings, compressors);
+    return new Template(name, measurements, dataTypes, encodings, compressors);
   }
 
   @Test
