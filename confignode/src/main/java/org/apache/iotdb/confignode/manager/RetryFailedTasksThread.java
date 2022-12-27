@@ -142,7 +142,6 @@ public class RetryFailedTasksThread {
             });
 
     if (!newUnknownNodes.isEmpty()) {
-      LOGGER.info("Find new UnknownDataNodes: {}", newUnknownNodes);
       TSStatus transferResult = configManager.transfer(newUnknownNodes);
       if (transferResult.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         oldUnknownNodes.addAll(newUnknownNodes);
