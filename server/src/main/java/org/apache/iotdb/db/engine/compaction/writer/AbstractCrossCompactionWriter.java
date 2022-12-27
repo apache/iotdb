@@ -22,10 +22,10 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.CompactionUtils;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
+import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
@@ -213,10 +213,10 @@ public abstract class AbstractCrossCompactionWriter extends AbstractCompactionWr
         currentDeviceEndTime[fileIndex] = seqTsFileResources.get(fileIndex).getEndTime(deviceId);
       } else {
         long endTime = Long.MIN_VALUE;
+        // Fast compaction get reader from cache map, while read point compaction get reader from
+        // FileReaderManager
         Map<String, TimeseriesMetadata> deviceMetadataMap =
-            FileReaderManager.getInstance()
-                .get(seqTsFileResources.get(fileIndex).getTsFilePath(), true)
-                .readDeviceMetadata(deviceId);
+            getFileReader(seqTsFileResources.get(fileIndex)).readDeviceMetadata(deviceId);
         for (Map.Entry<String, TimeseriesMetadata> entry : deviceMetadataMap.entrySet()) {
           long tmpStartTime = entry.getValue().getStatistics().getStartTime();
           long tmpEndTime = entry.getValue().getStatistics().getEndTime();
@@ -239,4 +239,6 @@ public abstract class AbstractCrossCompactionWriter extends AbstractCompactionWr
     }
     return totalSize;
   }
+
+  protected abstract TsFileSequenceReader getFileReader(TsFileResource resource) throws IOException;
 }
