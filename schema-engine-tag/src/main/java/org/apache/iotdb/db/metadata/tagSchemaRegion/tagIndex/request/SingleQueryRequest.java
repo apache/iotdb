@@ -16,26 +16,31 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.flush;
+package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.request;
 
-import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemChunkGroup;
-import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemTagValueGroup;
-import org.apache.iotdb.lsm.annotation.FlushProcessor;
-import org.apache.iotdb.lsm.context.requestcontext.FlushRequestContext;
-import org.apache.iotdb.lsm.levelProcess.FlushLevelProcessor;
+import org.apache.iotdb.lsm.context.requestcontext.RequestContext;
+import org.apache.iotdb.lsm.request.ISingleQueryRequest;
 
 import java.util.List;
 
-/** flush for MemTagValueGroup */
-@FlushProcessor(level = 2)
-public class MemTagValueGroupFlush extends FlushLevelProcessor<MemTagValueGroup, MemChunkGroup> {
+/** Represents a query request */
+public class SingleQueryRequest implements ISingleQueryRequest<String> {
 
-  @Override
-  public List<MemChunkGroup> getChildren(
-      MemTagValueGroup memNode, Object request, FlushRequestContext context) {
-    return null;
+  // tags
+  List<String> keys;
+
+  public SingleQueryRequest(List<String> keys) {
+    super();
+    this.keys = keys;
   }
 
   @Override
-  public void flush(MemTagValueGroup memNode, FlushRequestContext context) {}
+  public String getKey(RequestContext context) {
+    return keys.get(context.getLevel() - 1);
+  }
+
+  @Override
+  public List<String> getKeys() {
+    return keys;
+  }
 }

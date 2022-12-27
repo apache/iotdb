@@ -16,41 +16,44 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable;
+package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.request;
 
-import java.util.HashMap;
-import java.util.Map;
+import org.apache.iotdb.lsm.context.requestcontext.RequestContext;
+import org.apache.iotdb.lsm.request.IInsertionRequest;
 
-/** used to manage tagValue -> MemChunk */
-public class MemTagValueGroup {
+import java.util.List;
 
-  // manage tagValue -> MemChunkGroup
-  private Map<String, MemChunkGroup> memChunkGroupMap;
+/** Represents a insertion request */
+public class InsertionRequest implements IInsertionRequest<String, Integer> {
 
-  public MemTagValueGroup() {
-    memChunkGroupMap = new HashMap<>();
+  // tags
+  List<String> keys;
+
+  // int32 id
+  int value;
+
+  public InsertionRequest() {
+    super();
   }
 
-  public void put(String tagValue) {
-    if (!memChunkGroupMap.containsKey(tagValue)) {
-      memChunkGroupMap.put(tagValue, new MemChunkGroup());
-    }
+  public InsertionRequest(List<String> keys, int value) {
+    super();
+    this.keys = keys;
+    this.value = value;
   }
 
   @Override
-  public String toString() {
-    return memChunkGroupMap.toString();
+  public String getKey(RequestContext context) {
+    return keys.get(context.getLevel() - 1);
   }
 
-  public MemChunkGroup get(String tagValue) {
-    return memChunkGroupMap.get(tagValue);
+  @Override
+  public List<String> getKeys() {
+    return keys;
   }
 
-  public void remove(String tagValue) {
-    memChunkGroupMap.remove(tagValue);
-  }
-
-  public boolean isEmpty() {
-    return memChunkGroupMap.isEmpty();
+  @Override
+  public Integer getValue() {
+    return value;
   }
 }

@@ -47,7 +47,7 @@ public class ApplicationContextGenerator {
             new ConfigurationBuilder()
                 .forPackage(packageName)
                 .filterInputsBy(new FilterBuilder().includePackage(packageName)));
-    ApplicationContext applicationContext = new ApplicationContext();
+    ApplicationContext applicationContext = ApplicationContext.getInstance();
     setDeletionLevelProcessor(applicationContext, reflections);
     setInsertionLevelProcessor(applicationContext, reflections);
     setQueryLevelProcessor(applicationContext, reflections);

@@ -18,23 +18,48 @@
  */
 package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.flush;
 
+import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemChunk;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemChunkGroup;
+import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.request.FlushRequest;
+import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.response.FlushResponse;
 import org.apache.iotdb.lsm.annotation.FlushProcessor;
 import org.apache.iotdb.lsm.context.requestcontext.FlushRequestContext;
 import org.apache.iotdb.lsm.levelProcess.FlushLevelProcessor;
+import org.apache.iotdb.lsm.sstable.bplustree.writer.BPlusTreeWriter;
+import org.apache.iotdb.lsm.sstable.fileIO.FileOutput;
 
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /** flush for MemChunkGroup */
-@FlushProcessor(level = 3)
-public class MemChunkGroupFlush extends FlushLevelProcessor<MemChunkGroup, Object> {
+@FlushProcessor(level = 1)
+public class MemChunkGroupFlush extends FlushLevelProcessor<MemChunkGroup, MemChunk, FlushRequest> {
 
   @Override
-  public List<Object> getChildren(
-      MemChunkGroup memNode, Object request, FlushRequestContext context) {
-    return null;
+  public List<MemChunk> getChildren(
+      MemChunkGroup memNode, FlushRequest request, FlushRequestContext context) {
+    return new ArrayList<>(memNode.getMemChunkMap().values());
   }
 
   @Override
-  public void flush(MemChunkGroup memNode, FlushRequestContext context) {}
+  public void flush(MemChunkGroup memNode, FlushRequest request, FlushRequestContext context)
+      throws IOException {
+    List<MemChunk> memChunks = getChildren(memNode, null, context);
+    Map<MemChunk, String> memChunkGroupMapReverse =
+        memNode.getMemChunkMap().entrySet().stream()
+            .collect(HashMap::new, (m, v) -> m.put(v.getValue(), v.getKey()), HashMap::putAll);
+    Map<String, Long> tagValueToOffset = new HashMap<>();
+    FlushResponse flushResponse = context.getResponse();
+    for (MemChunk memChunk : memChunks) {
+      tagValueToOffset.put(
+          memChunkGroupMapReverse.get(memChunk), flushResponse.getChunkOffset(memChunk));
+    }
+    FileOutput fileOutput = context.getFileOutput();
+    BPlusTreeWriter bPlusTreeWriter = new BPlusTreeWriter(fileOutput);
+    Long offset = bPlusTreeWriter.write(tagValueToOffset, false);
+    flushResponse.addTagKeyOffset(memNode, offset);
+  }
 }

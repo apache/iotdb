@@ -16,40 +16,27 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.Request;
+package org.apache.iotdb.lsm.request;
 
-import org.apache.iotdb.lsm.context.requestcontext.RequestContext;
-import org.apache.iotdb.lsm.request.IDeletionRequest;
-
+import java.util.ArrayList;
 import java.util.List;
 
-/** Represents a deletion request */
-public class DeletionRequest implements IDeletionRequest<String, Integer> {
+public class QueryRequest<K> {
+  List<ISingleQueryRequest<K>> singleQueryRequests;
 
-  // tags
-  List<String> keys;
-
-  // int32 id
-  int value;
-
-  public DeletionRequest(List<String> keys, int value) {
-    super();
-    this.keys = keys;
-    this.value = value;
+  public QueryRequest() {
+    singleQueryRequests = new ArrayList<>();
   }
 
-  @Override
-  public String getKey(RequestContext context) {
-    return keys.get(context.getLevel() - 1);
+  public List<ISingleQueryRequest<K>> getSingleQueryRequests() {
+    return singleQueryRequests;
   }
 
-  @Override
-  public List<String> getKeys() {
-    return keys;
+  public void setSingleQueryRequests(List<ISingleQueryRequest<K>> singleQueryRequests) {
+    this.singleQueryRequests = singleQueryRequests;
   }
 
-  @Override
-  public Integer getValue() {
-    return value;
+  public void add(ISingleQueryRequest<K> singleQueryRequest) {
+    singleQueryRequests.add(singleQueryRequest);
   }
 }

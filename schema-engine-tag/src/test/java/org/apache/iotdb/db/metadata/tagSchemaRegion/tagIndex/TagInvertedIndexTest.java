@@ -37,7 +37,7 @@ import java.util.Map;
 
 import static org.junit.Assert.assertEquals;
 
-public class TagTagInvertedIndexTest {
+public class TagInvertedIndexTest {
   private String[][] record =
       new String[][] {
         {"tag1=q", "tag2=a", "1"},
@@ -98,6 +98,11 @@ public class TagTagInvertedIndexTest {
     for (Pair<Map<String, String>, Integer> pair : records) {
       tagInvertedIndex.addTags(pair.left, pair.right);
     }
+    try {
+      Thread.sleep(3000);
+    } catch (InterruptedException e) {
+      throw new RuntimeException(e);
+    }
   }
 
   public void removeTags() {
@@ -121,12 +126,19 @@ public class TagTagInvertedIndexTest {
     tags2.put("tag1", "q");
     tags2.put("tag2", "a");
 
+    Map<String, String> tags3 = new HashMap<>();
+    tags3.put("xxxxxxxx", "xxxxxxxx");
+
     List<Integer> ids = tagInvertedIndex.getMatchedIDs(tags1);
     List<Integer> verify = Arrays.asList(1, 2, 3, 4, 5, 7, 12, 15, 16, 18);
     assertEquals(verify, ids);
 
     ids = tagInvertedIndex.getMatchedIDs(tags2);
     verify = Arrays.asList(1, 3, 12, 15, 16);
+    assertEquals(verify, ids);
+
+    ids = tagInvertedIndex.getMatchedIDs(tags3);
+    verify = Arrays.asList();
     assertEquals(verify, ids);
 
     removeTags();
@@ -137,6 +149,14 @@ public class TagTagInvertedIndexTest {
 
     ids = tagInvertedIndex.getMatchedIDs(tags2);
     verify = Arrays.asList(3, 15, 16);
+    assertEquals(verify, ids);
+
+    ids = tagInvertedIndex.getMatchedIDs(tags3);
+    verify = Arrays.asList();
+    assertEquals(verify, ids);
+
+    ids = tagInvertedIndex.getMatchedIDs(new HashMap<>());
+    verify = Arrays.asList();
     assertEquals(verify, ids);
   }
 

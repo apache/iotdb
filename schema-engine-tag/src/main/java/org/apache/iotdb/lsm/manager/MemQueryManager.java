@@ -16,26 +16,17 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.flush;
+package org.apache.iotdb.lsm.manager;
 
-import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemTable;
-import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemTableGroup;
-import org.apache.iotdb.lsm.annotation.FlushProcessor;
-import org.apache.iotdb.lsm.context.requestcontext.FlushRequestContext;
-import org.apache.iotdb.lsm.levelProcess.FlushLevelProcessor;
+import org.apache.iotdb.lsm.context.requestcontext.QueryRequestContext;
+import org.apache.iotdb.lsm.request.ISingleQueryRequest;
 
-import java.util.List;
-
-/** flush for MemTableGroup */
-@FlushProcessor(level = 0)
-public class MemTableGroupFlush extends FlushLevelProcessor<MemTableGroup, MemTable> {
+/** manage query to root memory node */
+public class MemQueryManager<T, R extends ISingleQueryRequest>
+    extends BasicLSMManager<T, R, QueryRequestContext> {
+  @Override
+  public void preProcess(T root, R request, QueryRequestContext context) {}
 
   @Override
-  public List<MemTable> getChildren(
-      MemTableGroup memNode, Object request, FlushRequestContext context) {
-    return null;
-  }
-
-  @Override
-  public void flush(MemTableGroup memNode, FlushRequestContext context) {}
+  public void postProcess(T root, R request, QueryRequestContext context) {}
 }

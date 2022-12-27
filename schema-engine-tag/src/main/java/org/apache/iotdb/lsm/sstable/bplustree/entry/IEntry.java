@@ -16,18 +16,27 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.lsm.request;
+package org.apache.iotdb.lsm.sstable.bplustree.entry;
 
-/** Represents a query request that can be processed by the lsm framework */
-public interface IQueryRequest<K> extends IRequest<K, Object> {
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
 
-  @Override
-  default Object getValue() {
-    return null;
-  }
+/**
+ * Represents a disk entry, which implements the disk data structure of this interface, and can be
+ * read and written using IFileIput and IFileOutput
+ *
+ * @see org.apache.iotdb.lsm.sstable.fileIO.IFileInput
+ * @see org.apache.iotdb.lsm.sstable.fileIO.IFileOutput
+ */
+public interface IEntry {
 
-  @Override
-  default RequestType getRequestType() {
-    return RequestType.QUERY;
-  }
+  void serialize(DataOutputStream out) throws IOException;
+
+  void serialize(ByteBuffer byteBuffer);
+
+  IEntry deserialize(DataInputStream input) throws IOException;
+
+  IEntry deserialize(ByteBuffer byteBuffer);
 }

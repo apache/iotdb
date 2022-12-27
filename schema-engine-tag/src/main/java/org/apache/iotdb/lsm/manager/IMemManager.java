@@ -18,6 +18,14 @@
  */
 package org.apache.iotdb.lsm.manager;
 
-public interface IMemManager {
-  public boolean isNeedFlush();
+import org.apache.iotdb.lsm.request.IFlushRequest;
+
+import java.util.List;
+
+public interface IMemManager<R extends IFlushRequest> {
+  boolean isNeedFlush();
+
+  List<R> getFlushRequests();
+
+  void removeMemData(R request);
 }

@@ -16,31 +16,11 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.Request;
+package org.apache.iotdb.lsm.response;
 
-import org.apache.iotdb.lsm.context.requestcontext.RequestContext;
-import org.apache.iotdb.lsm.request.IQueryRequest;
+public interface IQueryResponse<T> extends IResponse<T> {
 
-import java.util.List;
+  void or(IQueryResponse<T> queryResponse);
 
-/** Represents a query request */
-public class QueryRequest implements IQueryRequest<String> {
-
-  // tags
-  List<String> keys;
-
-  public QueryRequest(List<String> keys) {
-    super();
-    this.keys = keys;
-  }
-
-  @Override
-  public String getKey(RequestContext context) {
-    return keys.get(context.getLevel() - 1);
-  }
-
-  @Override
-  public List<String> getKeys() {
-    return keys;
-  }
+  void and(IQueryResponse<T> queryResponse);
 }

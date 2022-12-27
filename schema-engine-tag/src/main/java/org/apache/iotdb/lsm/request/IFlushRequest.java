@@ -23,7 +23,52 @@ import org.apache.iotdb.lsm.context.requestcontext.RequestContext;
 import java.util.List;
 
 /** Represents a flush request that can be processed by the lsm framework */
-public class IFlushRequest<K, V> implements IRequest<K, V> {
+public class IFlushRequest<K, V, T> implements IRequest<K, V> {
+  private String flushDirPath;
+  private String flushFileName;
+
+  private String flushDeleteFileName;
+
+  private int index;
+
+  public T getMemNode() {
+    return memNode;
+  }
+
+  public void setMemNode(T memNode) {
+    this.memNode = memNode;
+  }
+
+  private T memNode;
+
+  public int getIndex() {
+    return index;
+  }
+
+  public void setIndex(int index) {
+    this.index = index;
+  }
+
+  public IFlushRequest(int index, T memNode) {
+    this.index = index;
+    this.memNode = memNode;
+  }
+
+  public String getFlushDirPath() {
+    return flushDirPath;
+  }
+
+  public void setFlushDirPath(String flushDirPath) {
+    this.flushDirPath = flushDirPath;
+  }
+
+  public String getFlushFileName() {
+    return flushFileName;
+  }
+
+  public void setFlushFileName(String flushFileName) {
+    this.flushFileName = flushFileName;
+  }
 
   @Override
   public K getKey(RequestContext context) {
@@ -43,5 +88,13 @@ public class IFlushRequest<K, V> implements IRequest<K, V> {
   @Override
   public RequestType getRequestType() {
     return RequestType.FLUSH;
+  }
+
+  public String getFlushDeletionFileName() {
+    return flushDeleteFileName;
+  }
+
+  public void setFlushDeleteFileName(String flushDeleteFileName) {
+    this.flushDeleteFileName = flushDeleteFileName;
   }
 }

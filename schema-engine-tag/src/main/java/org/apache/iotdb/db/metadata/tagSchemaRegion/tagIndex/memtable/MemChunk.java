@@ -16,44 +16,39 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.Request;
+package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable;
 
-import org.apache.iotdb.lsm.context.requestcontext.RequestContext;
-import org.apache.iotdb.lsm.request.IInsertionRequest;
+import org.roaringbitmap.RoaringBitmap;
 
-import java.util.List;
+/** used to manage the device id collection */
+public class MemChunk {
 
-/** Represents a insertion request */
-public class InsertionRequest implements IInsertionRequest<String, Integer> {
+  // manage the device id collection, see: https://github.com/RoaringBitmap/RoaringBitmap
+  private RoaringBitmap roaringBitmap;
 
-  // tags
-  List<String> keys;
-
-  // int32 id
-  int value;
-
-  public InsertionRequest() {
-    super();
+  public MemChunk() {
+    roaringBitmap = new RoaringBitmap();
   }
 
-  public InsertionRequest(List<String> keys, int value) {
-    super();
-    this.keys = keys;
-    this.value = value;
+  public boolean isEmpty() {
+    if (roaringBitmap == null) return true;
+    return roaringBitmap.isEmpty();
   }
 
   @Override
-  public String getKey(RequestContext context) {
-    return keys.get(context.getLevel() - 1);
+  public String toString() {
+    return roaringBitmap.toString();
   }
 
-  @Override
-  public List<String> getKeys() {
-    return keys;
+  public void put(int id) {
+    roaringBitmap.add(id);
   }
 
-  @Override
-  public Integer getValue() {
-    return value;
+  public void remove(int id) {
+    roaringBitmap.remove(id);
+  }
+
+  public RoaringBitmap getRoaringBitmap() {
+    return this.roaringBitmap;
   }
 }

@@ -29,16 +29,18 @@ import org.apache.iotdb.lsm.levelProcess.ILevelProcessor;
 import org.apache.iotdb.lsm.levelProcess.LevelProcessorChain;
 import org.apache.iotdb.lsm.manager.DeletionManager;
 import org.apache.iotdb.lsm.manager.FlushManager;
+import org.apache.iotdb.lsm.manager.IDiskQueryManager;
 import org.apache.iotdb.lsm.manager.IMemManager;
 import org.apache.iotdb.lsm.manager.InsertionManager;
+import org.apache.iotdb.lsm.manager.MemQueryManager;
 import org.apache.iotdb.lsm.manager.QueryManager;
 import org.apache.iotdb.lsm.manager.RecoverManager;
 import org.apache.iotdb.lsm.manager.WALManager;
 import org.apache.iotdb.lsm.request.IDeletionRequest;
 import org.apache.iotdb.lsm.request.IFlushRequest;
 import org.apache.iotdb.lsm.request.IInsertionRequest;
-import org.apache.iotdb.lsm.request.IQueryRequest;
 import org.apache.iotdb.lsm.request.IRequest;
+import org.apache.iotdb.lsm.request.ISingleQueryRequest;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -131,10 +133,16 @@ public class LSMEngineBuilder<T extends IMemManager> {
    * @param levelProcessChain flush level processors chain
    * @param memManager
    */
-  public <R extends IFlushRequest> LSMEngineBuilder<T> buildFlushManager(
-      LevelProcessorChain<T, R, FlushRequestContext> levelProcessChain, T memManager) {
-    FlushManager<T, R> flushManager = new FlushManager<>(lsmEngine.getWalManager(), memManager);
-    flushManager.setLevelProcessorsChain(levelProcessChain);
+  public <R extends IFlushRequest, C extends FlushRequestContext>
+      LSMEngineBuilder<T> buildFlushManager(
+          LevelProcessorChain<T, R, C> levelProcessChain,
+          T memManager,
+          String flushDirPath,
+          String flushFilePrefix) {
+    FlushManager<T, R> flushManager =
+        new FlushManager<>(lsmEngine.getWalManager(), memManager, flushDirPath, flushFilePrefix);
+    flushManager.setLevelProcessorsChain(
+        (LevelProcessorChain<T, R, FlushRequestContext>) levelProcessChain);
     buildFlushManager(flushManager);
     return this;
   }
@@ -145,8 +153,8 @@ public class LSMEngineBuilder<T extends IMemManager> {
    * @param flushManager DeletionManager object
    * @param <R> extends IDeletionRequest
    */
-  public <R extends IFlushRequest> LSMEngineBuilder<T> buildFlushManager(
-      FlushManager<T, R> flushManager) {
+  public <R extends IFlushRequest, C extends FlushRequestContext>
+      LSMEngineBuilder<T> buildFlushManager(FlushManager<T, R> flushManager) {
     lsmEngine.setFlushManager(flushManager);
     return this;
   }
@@ -157,23 +165,37 @@ public class LSMEngineBuilder<T extends IMemManager> {
    * @param levelProcessChain query level processors chain
    * @param <R> extends IQueryRequest
    */
-  public <R extends IQueryRequest> LSMEngineBuilder<T> buildQueryManager(
+  public <R extends ISingleQueryRequest> LSMEngineBuilder<T> buildQueryManager(
       LevelProcessorChain<T, R, QueryRequestContext> levelProcessChain) {
-    QueryManager<T, R> queryManager = new QueryManager<>();
-    queryManager.setLevelProcessorsChain(levelProcessChain);
-    buildQueryManager(queryManager);
+    MemQueryManager<T, R> memQueryManager = new MemQueryManager<>();
+    memQueryManager.setLevelProcessorsChain(levelProcessChain);
+    buildQueryManager(memQueryManager);
     return this;
   }
 
   /**
    * build QueryManager for lsmEngine
    *
-   * @param queryManager QueryManager object
+   * @param memQueryManager memQueryManager object
    * @param <R> extends IQueryRequest
    */
-  public <R extends IQueryRequest> LSMEngineBuilder<T> buildQueryManager(
-      QueryManager<T, R> queryManager) {
+  public <R extends ISingleQueryRequest> LSMEngineBuilder<T> buildQueryManager(
+      MemQueryManager<T, R> memQueryManager) {
+    QueryManager<T> queryManager = new QueryManager<>();
+    queryManager.setRootMemNode(lsmEngine.getRootMemNode());
+    queryManager.setMemQueryManager((MemQueryManager<T, ISingleQueryRequest>) memQueryManager);
     lsmEngine.setQueryManager(queryManager);
+    return this;
+  }
+
+  /**
+   * build DiskQueryManager for lsmEngine
+   *
+   * @param diskQueryManager memQueryManager object
+   */
+  public LSMEngineBuilder<T> buildDiskQueryManager(IDiskQueryManager diskQueryManager) {
+    QueryManager<T> queryManager = lsmEngine.getQueryManager();
+    queryManager.setDiskQueryManager(diskQueryManager);
     return this;
   }
 
@@ -201,19 +223,22 @@ public class LSMEngineBuilder<T extends IMemManager> {
    * @param memManager
    */
   private LSMEngineBuilder<T> buildLevelProcessors(
-      ApplicationContext applicationContext, T memManager) {
+      ApplicationContext applicationContext,
+      T memManager,
+      String flushDirPath,
+      String flushFilePrefix) {
     LevelProcessorChain<T, IInsertionRequest, InsertRequestContext> insertionLevelProcessChain =
         generateLevelProcessorsChain(applicationContext.getInsertionLevelProcessClass());
     LevelProcessorChain<T, IDeletionRequest, DeleteRequestContext> deletionLevelProcessChain =
         generateLevelProcessorsChain(applicationContext.getDeletionLevelProcessClass());
-    LevelProcessorChain<T, IQueryRequest, QueryRequestContext> queryLevelProcessChain =
+    LevelProcessorChain<T, ISingleQueryRequest, QueryRequestContext> queryLevelProcessChain =
         generateLevelProcessorsChain(applicationContext.getQueryLevelProcessClass());
     LevelProcessorChain<T, IFlushRequest, FlushRequestContext> flushLevelProcessChain =
         generateLevelProcessorsChain(applicationContext.getFlushLevelProcessClass());
     return buildQueryManager(queryLevelProcessChain)
         .buildInsertionManager(insertionLevelProcessChain)
         .buildDeletionManager(deletionLevelProcessChain)
-        .buildFlushManager(flushLevelProcessChain, memManager);
+        .buildFlushManager(flushLevelProcessChain, memManager, flushDirPath, flushFilePrefix);
   }
 
   /**
@@ -221,11 +246,12 @@ public class LSMEngineBuilder<T extends IMemManager> {
    *
    * @param packageName package name
    */
-  private LSMEngineBuilder<T> buildLevelProcessors(String packageName, T memManager) {
+  private LSMEngineBuilder<T> buildLevelProcessors(
+      String packageName, T memManager, String flushDirPath, String flushFilePrefix) {
     try {
       ApplicationContext property =
           ApplicationContextGenerator.GeneratePropertyWithAnnotation(packageName);
-      buildLevelProcessors(property, memManager);
+      buildLevelProcessors(property, memManager, flushDirPath, flushFilePrefix);
     } catch (Exception e) {
       logger.error(e.getMessage());
     }
@@ -240,11 +266,17 @@ public class LSMEngineBuilder<T extends IMemManager> {
    * @param memManager
    */
   public LSMEngineBuilder<T> buildLSMManagers(
-      ApplicationContext applicationContext, WALManager walManager, T memManager) {
+      ApplicationContext applicationContext,
+      WALManager walManager,
+      T memManager,
+      String flushDirPath,
+      String flushFilePrefix,
+      IDiskQueryManager diskQueryManager) {
     try {
       buildWalManager(walManager)
-          .buildLevelProcessors(applicationContext, memManager)
-          .buildRecoverManager();
+          .buildLevelProcessors(applicationContext, memManager, flushDirPath, flushFilePrefix)
+          .buildRecoverManager()
+          .buildDiskQueryManager(diskQueryManager);
     } catch (Exception e) {
       logger.error(e.getMessage());
     }
@@ -258,11 +290,17 @@ public class LSMEngineBuilder<T extends IMemManager> {
    * @param walManager WalManager object
    */
   public LSMEngineBuilder<T> buildLSMManagers(
-      String packageName, WALManager walManager, T memManager) {
+      String packageName,
+      WALManager walManager,
+      T memManager,
+      String flushDirPath,
+      String flushFilePrefix,
+      IDiskQueryManager diskQueryManager) {
     try {
       ApplicationContext property =
           ApplicationContextGenerator.GeneratePropertyWithAnnotation(packageName);
-      buildLSMManagers(property, walManager, memManager);
+      buildLSMManagers(
+          property, walManager, memManager, flushDirPath, flushFilePrefix, diskQueryManager);
     } catch (Exception e) {
       logger.error(e.getMessage());
     }
