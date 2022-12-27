@@ -108,8 +108,6 @@ public class LoadManager {
 
     eventBus.register(configManager.getClusterSchemaManager());
     eventBus.register(configManager.getSyncManager());
-    eventBus.register(configManager.getTriggerManager());
-    eventBus.register(configManager.getCQManager());
 
     MetricService.getInstance().addMetricSet(new LoadManagerMetrics(configManager));
   }
