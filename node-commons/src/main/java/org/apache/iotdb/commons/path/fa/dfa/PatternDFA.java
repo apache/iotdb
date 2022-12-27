@@ -150,8 +150,4 @@ public class PatternDFA implements IPatternFA {
   public List<IFATransition> getTransition(IFAState state) {
     return dfaGraph.getTransition(state, transitionMap.values());
   }
-
-  public static void main(String[] args) throws IllegalPathException {
-    new PatternDFA(new PartialPath("root.**.d.s"), false);
-  }
 }
