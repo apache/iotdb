@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.mpp.plan.planner.plan.parameter;
 
+import org.apache.iotdb.db.constant.SqlConstant;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
-import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
@@ -125,16 +125,16 @@ public class AggregationDescriptor {
     if (isPartial) {
       switch (aggregationType) {
         case AVG:
-          outputAggregationNames.add(SQLConstant.COUNT);
-          outputAggregationNames.add(SQLConstant.SUM);
+          outputAggregationNames.add(SqlConstant.COUNT);
+          outputAggregationNames.add(SqlConstant.SUM);
           break;
         case FIRST_VALUE:
-          outputAggregationNames.add(SQLConstant.FIRST_VALUE);
-          outputAggregationNames.add(SQLConstant.MIN_TIME);
+          outputAggregationNames.add(SqlConstant.FIRST_VALUE);
+          outputAggregationNames.add(SqlConstant.MIN_TIME);
           break;
         case LAST_VALUE:
-          outputAggregationNames.add(SQLConstant.LAST_VALUE);
-          outputAggregationNames.add(SQLConstant.MAX_TIME);
+          outputAggregationNames.add(SqlConstant.LAST_VALUE);
+          outputAggregationNames.add(SqlConstant.MAX_TIME);
           break;
         default:
           outputAggregationNames.add(aggregationFuncName);
