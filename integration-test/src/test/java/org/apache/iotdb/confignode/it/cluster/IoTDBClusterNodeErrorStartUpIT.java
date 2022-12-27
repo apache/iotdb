@@ -70,7 +70,7 @@ public class IoTDBClusterNodeErrorStartUpIT {
 
   private static final String TEST_CLUSTER_NAME = "defaultCluster";
   private static final String ERROR_CLUSTER_NAME = "errorCluster";
-  private static final int maxRetryTimes = 60;
+  private static final int maxRetryTimes = 120;
 
   @Before
   public void setUp() throws Exception {
