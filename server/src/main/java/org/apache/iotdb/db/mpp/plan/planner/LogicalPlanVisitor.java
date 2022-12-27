@@ -718,8 +718,8 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
             .planShowQueries(analysis, showQueriesStatement) // push Filter down
             .planOneChildOrderBy(
                 analysis.getMergeOrderParameter(), ShowQueriesNode.SHOW_QUERIES_HEADER_COLUMNS)
-            .planLimit(showQueriesStatement.getRowLimit())
-            .planOffset(showQueriesStatement.getRowOffset());
+            .planOffset(showQueriesStatement.getRowOffset())
+            .planLimit(showQueriesStatement.getRowLimit());
     return planBuilder.getRoot();
   }
 }
