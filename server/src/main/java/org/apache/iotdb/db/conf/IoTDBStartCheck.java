@@ -180,6 +180,12 @@ public class IoTDBStartCheck {
       System.exit(-1);
     }
 
+    // check partition interval
+    if (timePartitionInterval <= 0) {
+      logger.error("Time partition interval must larger than 0!");
+      System.exit(-1);
+    }
+
     systemProperties.put(IOTDB_VERSION_STRING, IoTDBConstant.VERSION);
     systemProperties.put(TIMESTAMP_PRECISION_STRING, timestampPrecision);
     systemProperties.put(PARTITION_INTERVAL_STRING, String.valueOf(timePartitionInterval));
@@ -400,6 +406,11 @@ public class IoTDBStartCheck {
 
     if (!properties.getProperty(TIMESTAMP_PRECISION_STRING).equals(timestampPrecision)) {
       throwException(TIMESTAMP_PRECISION_STRING, timestampPrecision);
+    }
+
+    if (Long.parseLong(properties.getProperty(PARTITION_INTERVAL_STRING))
+        != timePartitionInterval) {
+      throwException(PARTITION_INTERVAL_STRING, timePartitionInterval);
     }
 
     if (!(properties.getProperty(TSFILE_FILE_SYSTEM_STRING).equals(tsfileFileSystem))) {
