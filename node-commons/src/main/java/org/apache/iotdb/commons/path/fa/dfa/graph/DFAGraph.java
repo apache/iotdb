@@ -30,6 +30,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Stack;
 
+/**
+ * DFA graph for given path pattern. State 0 is initial state. Run PatternDFATest#printFASketch for
+ * more detail.
+ */
 public class DFAGraph {
   private final List<IFAState> dfaStateList = new ArrayList<>();
   private final List<IFAState>[] dfaTransitionTable;

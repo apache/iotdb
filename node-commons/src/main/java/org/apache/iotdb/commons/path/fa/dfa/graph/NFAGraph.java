@@ -32,6 +32,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+/**
+ * NFA graph for given path pattern. State 0 is initial state. Run PatternDFATest#printFASketch for
+ * more detail.
+ */
 public class NFAGraph {
   private final List<IFAState> nfaStateList = new ArrayList<>();
 

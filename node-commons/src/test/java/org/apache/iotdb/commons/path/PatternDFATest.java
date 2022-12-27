@@ -18,19 +18,62 @@
  */
 package org.apache.iotdb.commons.path;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.fa.IFAState;
 import org.apache.iotdb.commons.path.fa.IFATransition;
 import org.apache.iotdb.commons.path.fa.IPatternFA;
 import org.apache.iotdb.commons.path.fa.dfa.PatternDFA;
+import org.apache.iotdb.commons.path.fa.dfa.graph.DFAGraph;
+import org.apache.iotdb.commons.path.fa.dfa.graph.NFAGraph;
+import org.apache.iotdb.commons.path.fa.dfa.transition.DFAPreciseTransition;
+import org.apache.iotdb.commons.path.fa.dfa.transition.DFAWildcardTransition;
 
 import org.junit.Assert;
+import org.junit.Ignore;
 import org.junit.Test;
 
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class PatternDFATest {
+
+  @Test
+  @Ignore
+  public void printFASketch() throws IllegalPathException {
+    // Map<AcceptEvent, IFATransition>
+    Map<String, IFATransition> transitionMap = new HashMap<>();
+    PartialPath pathPattern = new PartialPath("root.**.d.s1");
+    // 1. build transition
+    boolean wildcard = false;
+    AtomicInteger transitionIndex = new AtomicInteger();
+    for (String node : pathPattern.getNodes()) {
+      if (IoTDBConstant.ONE_LEVEL_PATH_WILDCARD.equals(node)
+          || IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD.equals(node)) {
+        wildcard = true;
+      } else {
+        transitionMap.computeIfAbsent(
+            node, i -> new DFAPreciseTransition(transitionIndex.getAndIncrement(), node));
+      }
+    }
+    if (wildcard) {
+      IFATransition transition =
+          new DFAWildcardTransition(
+              transitionIndex.getAndIncrement(), new ArrayList<>(transitionMap.keySet()));
+      transitionMap.put(transition.getAcceptEvent(), transition);
+    }
+    // 2. build NFA
+    NFAGraph nfaGraph = new NFAGraph(pathPattern, false, transitionMap);
+    nfaGraph.print(transitionMap);
+    // 3. NFA to DFA
+    DFAGraph dfaGraph = new DFAGraph(nfaGraph, transitionMap.values());
+    dfaGraph.print(transitionMap);
+  }
+
   @Test
   public void testMatchFullPath() throws IllegalPathException {
     PartialPath p1 = new PartialPath("root.sg1.d1.*");
