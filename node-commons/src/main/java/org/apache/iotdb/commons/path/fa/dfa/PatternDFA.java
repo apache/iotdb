@@ -19,6 +19,7 @@
 package org.apache.iotdb.commons.path.fa.dfa;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.fa.IFAState;
 import org.apache.iotdb.commons.path.fa.IFATransition;
@@ -26,7 +27,6 @@ import org.apache.iotdb.commons.path.fa.IPatternFA;
 import org.apache.iotdb.commons.path.fa.dfa.graph.DFAGraph;
 import org.apache.iotdb.commons.path.fa.dfa.graph.NFAGraph;
 import org.apache.iotdb.commons.path.fa.dfa.transition.DFAPreciseTransition;
-import org.apache.iotdb.commons.path.fa.dfa.transition.DFARegexTransition;
 import org.apache.iotdb.commons.path.fa.dfa.transition.DFAWildcardTransition;
 import org.apache.iotdb.commons.utils.TestOnly;
 
@@ -45,8 +45,6 @@ public class PatternDFA implements IPatternFA {
   private final Map<String, IFATransition> transitionMap = new HashMap<>();
   private final DFAGraph dfaGraph;
 
-  private boolean mayTransitionOverlap = false;
-
   // cached
   private final Map<String, IFATransition>[] preciseMatchTransitionCached;
   private final List<IFATransition>[] batchMatchTransitionCached;
@@ -59,17 +57,6 @@ public class PatternDFA implements IPatternFA {
       if (IoTDBConstant.ONE_LEVEL_PATH_WILDCARD.equals(node)
           || IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD.equals(node)) {
         wildcard = true;
-      } else if (node.contains("*")) {
-        mayTransitionOverlap = true;
-        transitionMap.computeIfAbsent(
-            node,
-            i -> {
-              IFATransition transition =
-                  new DFARegexTransition(
-                      transitionIndex.getAndIncrement(), node.replace("*", ".*"));
-              batchMatchTransitionList.add(transition);
-              return transition;
-            });
       } else {
         transitionMap.computeIfAbsent(
             node,
@@ -156,11 +143,15 @@ public class PatternDFA implements IPatternFA {
 
   @Override
   public boolean mayTransitionOverlap() {
-    return mayTransitionOverlap;
+    return false;
   }
 
   @TestOnly
   public List<IFATransition> getTransition(IFAState state) {
     return dfaGraph.getTransition(state, transitionMap.values());
+  }
+
+  public static void main(String[] args) throws IllegalPathException {
+    new PatternDFA(new PartialPath("root.**.d.s"), false);
   }
 }

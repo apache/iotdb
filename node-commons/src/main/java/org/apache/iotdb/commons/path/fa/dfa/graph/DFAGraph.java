@@ -53,7 +53,7 @@ public class DFAGraph {
     Stack<Closure> closureStack = new Stack<>();
     closureStack.push(curClosure);
 
-    // construct DFA
+    // construct DFA using subset construction
     while (!closureStack.isEmpty()) {
       curClosure = closureStack.pop();
       for (IFATransition transition : transitions) {
