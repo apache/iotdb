@@ -693,11 +693,19 @@ public class TSServiceImpl implements TSIService.Iface {
       Thread.currentThread().interrupt();
       return RpcUtils.getTSExecuteStatementResp(
           onQueryException(
-              e, "\"" + req.getStatement() + "\". " + OperationType.EXECUTE_QUERY_STATEMENT));
+              e,
+              "\""
+                  + (req == null ? null : req.getStatement())
+                  + "\". "
+                  + OperationType.EXECUTE_QUERY_STATEMENT));
     } catch (Exception e) {
       return RpcUtils.getTSExecuteStatementResp(
           onQueryException(
-              e, "\"" + req.getStatement() + "\". " + OperationType.EXECUTE_QUERY_STATEMENT));
+              e,
+              "\""
+                  + (req == null ? null : req.getStatement())
+                  + "\". "
+                  + OperationType.EXECUTE_QUERY_STATEMENT));
     }
   }
 
