@@ -24,7 +24,7 @@ import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.query.control.FileReaderManager;
-import org.apache.iotdb.db.utils.QueryUtils;
+import org.apache.iotdb.db.utils.ModificationUtils;
 import org.apache.iotdb.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
@@ -350,7 +350,8 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
       }
     }
 
-    QueryUtils.modifyAlignedChunkMetaData(alignedChunkMetadataList, modificationForCurDevice);
+    ModificationUtils.modifyAlignedChunkMetaData(
+        alignedChunkMetadataList, modificationForCurDevice);
   }
 
   @Override
@@ -513,7 +514,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
 
           // if there are modifications of current series, apply them to the chunk metadata
           if (modificationForCurrentSeries.size() != 0) {
-            QueryUtils.modifyChunkMetaData(
+            ModificationUtils.modifyChunkMetaData(
                 chunkMetadataListInThisResource, modificationForCurrentSeries);
           }
 

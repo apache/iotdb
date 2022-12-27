@@ -27,9 +27,9 @@ import org.apache.iotdb.tsfile.read.common.TimeRange;
 
 import java.util.List;
 
-public class QueryUtils {
+public class ModificationUtils {
 
-  private QueryUtils() {
+  private ModificationUtils() {
     // util class
   }
 
