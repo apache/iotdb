@@ -57,6 +57,7 @@
     <logger name="org.apache.iotdb.db.engine" level="INFO"/>
     <logger name="COMPACTION" level="INFO"/>
     <logger name="org.apache.iotdb.db.utils.EnvironmentUtils" level="INFO" />
+    <logger name="org.apache.iotdb.db.wal.recover.WALRecoverManager" level="INFO" />
     <logger name="DETAILED_FAILURE_QUERY_TRACE" level="ERROR"/>
     <root level="ERROR">
         <appender-ref ref="stdout"/>

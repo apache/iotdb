@@ -146,6 +146,7 @@ public class EnvironmentUtils {
     logger.info("begin to clean...");
     // clean wal manager
     WALManager.getInstance().clear();
+    logger.info("0...");
     WALRecoverManager.getInstance().clear();
     logger.info("1...");
     StorageEngine.getInstance().stop();

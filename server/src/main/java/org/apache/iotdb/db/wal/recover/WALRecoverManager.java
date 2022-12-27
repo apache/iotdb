@@ -209,11 +209,14 @@ public class WALRecoverManager {
   }
 
   public void stop() {
+    logger.info("start to clear wal recover...");
     absolutePath2RecoverPerformer.clear();
+    logger.info("start to shutdown wal recover...");
     if (recoverThreadPool != null) {
       recoverThreadPool.shutdown();
       recoverThreadPool = null;
     }
+    logger.info("done wal recover...");
   }
 
   @TestOnly
