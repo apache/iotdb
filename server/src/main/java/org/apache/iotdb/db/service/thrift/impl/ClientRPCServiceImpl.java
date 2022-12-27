@@ -244,10 +244,11 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       COORDINATOR.recordExecutionTime(queryId, System.currentTimeMillis() - startTime);
       if (finished) {
         if (statementType != null) {
+          long executionTime = COORDINATOR.getTotalExecutionTime(queryId);
           addStatementExecutionLatency(
               OperationType.EXECUTE_STATEMENT,
               statementType,
-              COORDINATOR.getTotalExecutionTime(queryId));
+              executionTime > 0 ? executionTime : System.currentTimeMillis() - startTime);
         }
         COORDINATOR.cleanupQueryExecution(queryId);
       }

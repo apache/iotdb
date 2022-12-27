@@ -73,25 +73,21 @@ public class AlignedChunkReader implements IChunkReader {
    */
   public AlignedChunkReader(Chunk timeChunk, List<Chunk> valueChunkList, Filter filter)
       throws IOException {
-    try {
-      this.filter = filter;
-      this.timeChunkDataBuffer = timeChunk.getData();
-      this.valueDeleteIntervalList = new ArrayList<>();
-      this.timeChunkHeader = timeChunk.getHeader();
-      this.unCompressor = IUnCompressor.getUnCompressor(timeChunkHeader.getCompressionType());
-      this.currentTimestamp = Long.MIN_VALUE;
-      List<Statistics> valueChunkStatisticsList = new ArrayList<>();
-      valueChunkList.forEach(
-          chunk -> {
-            valueChunkHeaderList.add(chunk == null ? null : chunk.getHeader());
-            valueChunkDataBufferList.add(chunk == null ? null : chunk.getData());
-            valueChunkStatisticsList.add(chunk == null ? null : chunk.getChunkStatistic());
-            valueDeleteIntervalList.add(chunk == null ? null : chunk.getDeleteIntervalList());
-          });
-      initAllPageReaders(timeChunk.getChunkStatistic(), valueChunkStatisticsList);
-    } finally {
-
-    }
+    this.filter = filter;
+    this.timeChunkDataBuffer = timeChunk.getData();
+    this.valueDeleteIntervalList = new ArrayList<>();
+    this.timeChunkHeader = timeChunk.getHeader();
+    this.unCompressor = IUnCompressor.getUnCompressor(timeChunkHeader.getCompressionType());
+    this.currentTimestamp = Long.MIN_VALUE;
+    List<Statistics> valueChunkStatisticsList = new ArrayList<>();
+    valueChunkList.forEach(
+        chunk -> {
+          valueChunkHeaderList.add(chunk == null ? null : chunk.getHeader());
+          valueChunkDataBufferList.add(chunk == null ? null : chunk.getData());
+          valueChunkStatisticsList.add(chunk == null ? null : chunk.getChunkStatistic());
+          valueDeleteIntervalList.add(chunk == null ? null : chunk.getDeleteIntervalList());
+        });
+    initAllPageReaders(timeChunk.getChunkStatistic(), valueChunkStatisticsList);
   }
 
   /**

@@ -229,6 +229,6 @@ public class Coordinator {
     if (queryExecution != null) {
       return queryExecution.getTotalExecutionTime();
     }
-    return 0L;
+    return -1L;
   }
 }
