@@ -368,7 +368,7 @@ public class ProcedureManager {
               + migrateRegionReq.getRegionId());
       return status;
     }
-    Set<Integer> DataNodesInRegion =
+    Set<Integer> dataNodesInRegion =
         regionReplicaMap.get(regionId.get()).getStatistics().getRegionStatisticsMap().keySet();
     if (originalDataNode == null) {
       LOGGER.warn(
