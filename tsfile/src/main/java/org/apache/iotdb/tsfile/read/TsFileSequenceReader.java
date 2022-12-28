@@ -134,6 +134,9 @@ public class TsFileSequenceReader implements AutoCloseable {
     }
     this.file = file;
     tsFileInput = FSFactoryProducer.getFileInputFactory().getTsFileInput(file);
+    if (tsFileInput == null) {
+      throw new IOException("Failed to get TsFile input of file: tsFileInput is null");
+    }
     try {
       if (loadMetadataSize) {
         loadMetadataSize();
