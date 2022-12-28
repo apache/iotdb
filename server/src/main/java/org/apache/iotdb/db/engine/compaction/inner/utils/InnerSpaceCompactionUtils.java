@@ -93,7 +93,6 @@ public class InnerSpaceCompactionUtils {
         targetResource.updatePlanIndexes(tsFileResource);
       }
       writer.endFile();
-      targetResource.close();
     }
   }
 
@@ -278,6 +277,6 @@ public class InnerSpaceCompactionUtils {
     // serialize xxx.tsfile.resource
     targetResource.setFile(newFile);
     targetResource.serialize();
-    targetResource.close();
+    targetResource.closeWithoutSettingStatus();
   }
 }
