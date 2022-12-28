@@ -39,11 +39,11 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.wal.WALManager;
-import org.apache.iotdb.db.wal.utils.WALMode;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
+
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -65,7 +65,8 @@ public class SettleRequestHandlerTest {
   private DataRegion dataRegion;
 
   @Before
-  public void setUp() throws DataRegionException, StartupException, IOException, StorageEngineException {
+  public void setUp()
+      throws DataRegionException, StartupException, IOException, StorageEngineException {
     EnvironmentUtils.cleanDir(TestConstant.OUTPUT_DATA_DIR);
     EnvironmentUtils.cleanEnv();
     EnvironmentUtils.envSetUp();
@@ -91,7 +92,8 @@ public class SettleRequestHandlerTest {
   }
 
   @Test
-  public void testHandleSettleRequest() throws IllegalPathException, IOException, WriteProcessException {
+  public void testHandleSettleRequest()
+      throws IllegalPathException, IOException, WriteProcessException {
     createTsFiles();
     Assert.assertEquals(3, paths.size());
 
@@ -135,7 +137,8 @@ public class SettleRequestHandlerTest {
       for (int j = 1; j <= 3; j++) {
         long timestamp = 3L * i + j;
         record = new TSRecord(timestamp, deviceId);
-        record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(timestamp)));
+        record.addTuple(
+            DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(timestamp)));
         dataRegion.insert(DataRegionTest.buildInsertRowNodeByTSRecord(record));
       }
       for (TsFileProcessor tsFileProcessor : dataRegion.getWorkSequenceTsFileProcessors()) {
@@ -144,7 +147,8 @@ public class SettleRequestHandlerTest {
       }
       dataRegion.syncCloseAllWorkingTsFileProcessors();
       if (i != 2) {
-        dataRegion.deleteByDevice(new PartialPath(deviceId, measurementId), 3L * i + 1, 3L * i + 1, -1, null);
+        dataRegion.deleteByDevice(
+            new PartialPath(deviceId, measurementId), 3L * i + 1, 3L * i + 1, -1, null);
       }
     }
   }
