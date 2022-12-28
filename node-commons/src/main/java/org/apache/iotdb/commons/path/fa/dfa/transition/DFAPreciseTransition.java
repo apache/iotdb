@@ -16,21 +16,29 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.commons.path.fa.dfa.transition;
 
-package org.apache.iotdb.commons.path.fa;
+public class DFAPreciseTransition extends AbstractDFATransition {
 
-/** This interface defines the behaviour of a FA(Finite Automation)'s transition. */
-public interface IFATransition {
+  private final String acceptEvent;
 
-  /** @return the value of this transition, which is used to match the events */
-  String getAcceptEvent();
+  public DFAPreciseTransition(int index, String acceptEvent) {
+    super(index);
+    this.acceptEvent = acceptEvent;
+  }
 
-  /**
-   * @param event event happened on one of the source state of this transition and is trying to find
-   *     the next state
-   * @return whether this transition can match the event
-   */
-  boolean isMatch(String event);
+  @Override
+  public String toString() {
+    return acceptEvent;
+  }
 
-  int getIndex();
+  @Override
+  public String getAcceptEvent() {
+    return acceptEvent;
+  }
+
+  @Override
+  public boolean isMatch(String event) {
+    return acceptEvent.equals(event);
+  }
 }
