@@ -94,14 +94,14 @@ IoTDB对外提供JMX和Prometheus格式的监控指标，对于JMX，可以通�
 | cost_task_seconds_count | name="compaction/flush"                                                       | important | 任务累计发生次数                | cost_task_seconds_count{name="flush",} 1.0                                                         |
 | cost_task_seconds_max   | name="compaction/flush"                                                       | important | 到目前为止任务耗时(s)最大的一次 | cost_task_seconds_max{name="flush",} 0.363                                                         |
 | cost_task_seconds_sum   | name="compaction/flush"                                                       | important | 任务累计耗时(s)                 | cost_task_seconds_sum{name="flush",} 0.363                                                         |
-| data_written            | name="compaction", <br />type="aligned/not-aligned/total"                     | important | 合并文件时写入量                | data_written{name="compaction",type="total",} 10240                                                |
-| data_read               | name="compaction"                                                             | important | 合并文件时的读取量              | data_read={name="compaction",} 10240                                                               |
+| data_written_total      | name="compaction", <br />type="aligned/not-aligned/total"                     | important | 合并文件时写入量                | data_written{name="compaction",type="total",} 10240                                                |
+| data_read_total         | name="compaction"                                                             | important | 合并文件时的读取量              | data_read={name="compaction",} 10240                                                               |
 
 #### 1.3.3.3. 内存占用
 
-| Metric | Tag                                     | level     | 说明                                               | 示例                              |
-| ------ | --------------------------------------- | --------- | -------------------------------------------------- | --------------------------------- |
-| mem    | name="chunkMetaData/storageGroup/mtree" | important | chunkMetaData/storageGroup/mtree占用的内存（byte） | mem{name="chunkMetaData",} 2050.0 |
+| Metric | Tag                                                           | level     | 说明                                                            | 示例                              |
+| ------ |---------------------------------------------------------------| --------- |---------------------------------------------------------------| --------------------------------- |
+| mem    | name="chunkMetaData/storageGroup/schemaUsage/schemaRemaining" | important | chunkMetaData 占用/storageGroup 占用/schema 占用/schema 剩余的内存（byte） | mem{name="chunkMetaData",} 2050.0 |
 
 #### 1.3.3.4. 缓存
 
@@ -111,9 +111,10 @@ IoTDB对外提供JMX和Prometheus格式的监控指标，对于JMX，可以通�
 
 #### 1.3.3.5. 业务数据
 
-| Metric   | Tag                                                                 | level     | 说明                                         | 示例                                          |
-| -------- | ------------------------------------------------------------------- | --------- | -------------------------------------------- | --------------------------------------------- |
-| quantity | name="timeSeries/storageGroup/device", type="total/normal/template" | important | 当前时间timeSeries/storageGroup/device的数量 | quantity{name="timeSeries",type="normal"} 1.0 |
+| Metric   | Tag                                                                                       | level     | 说明                                                 | 示例                                          |
+|----------|-------------------------------------------------------------------------------------------| --------- |----------------------------------------------------| --------------------------------------------- |
+| quantity | name="timeSeries/storageGroup/device/deviceUsingTemplate", type="total/normal/template/template" | important | 当前时间timeSeries/storageGroup/device/激活了模板的device的数量 | quantity{name="timeSeries",type="normal"} 1.0 |
+| points   | sg="{{storageGroup}}", type="flush"                                                       | core      | 最新一个刷盘的memtale的点数                                  | quantity{name="memtable",type="flush"} 1.0    |
 
 #### 1.3.3.6. 集群
 
@@ -257,6 +258,9 @@ predefinedMetrics:
 
 # Prometheus Reporter 使用的端口
 prometheusExporterPort: 9091
+
+# 是否将预设置的监控指标写回 IoTDB
+isStoreToLocal: false
 
 # IoTDB Reporter相关的配置
 ioTDBReporterConfig:

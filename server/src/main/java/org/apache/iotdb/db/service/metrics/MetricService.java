@@ -29,10 +29,11 @@ import org.apache.iotdb.db.service.metrics.predefined.ProcessMetrics;
 import org.apache.iotdb.db.service.metrics.predefined.SystemMetrics;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.config.ReloadLevel;
-import org.apache.iotdb.metrics.predefined.IMetricSet;
-import org.apache.iotdb.metrics.predefined.PredefinedMetric;
-import org.apache.iotdb.metrics.predefined.jvm.JvmMetrics;
-import org.apache.iotdb.metrics.predefined.logback.LogbackMetrics;
+import org.apache.iotdb.metrics.metricsets.IMetricSet;
+import org.apache.iotdb.metrics.metricsets.predefined.PredefinedMetric;
+import org.apache.iotdb.metrics.metricsets.predefined.jvm.JvmMetrics;
+import org.apache.iotdb.metrics.metricsets.predefined.logback.LogbackMetrics;
+import org.apache.iotdb.metrics.reporter.InternalIoTDBReporter;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -52,6 +53,7 @@ public class MetricService extends AbstractMetricService implements MetricServic
         logger.info("Start to start metric Service.");
         JMXService.registerMBean(getInstance(), mbeanName);
         startService();
+        internalReporter.start();
         logger.info("Finish start metric Service");
       }
     } catch (Exception e) {
@@ -60,20 +62,22 @@ public class MetricService extends AbstractMetricService implements MetricServic
     }
   }
 
+  public void restart() {
+    logger.info("Restart metric service.");
+    internalReporter.clear();
+    restartService();
+    logger.info("Finish restart metric service.");
+  }
+
   @Override
   public void stop() {
     if (isEnable()) {
       logger.info("Stop metric Service.");
+      internalReporter.stop();
       stopService();
       JMXService.deregisterMBean(mbeanName);
       logger.info("Finish stop metric Service");
     }
-  }
-
-  @Override
-  public void restartService() throws StartupException {
-    stopService();
-    startService();
   }
 
   @Override
@@ -99,7 +103,7 @@ public class MetricService extends AbstractMetricService implements MetricServic
         logger.error("Unknown predefined metrics: {}", metric);
         return;
     }
-    metricSet.bindTo(metricManager);
+    metricSet.bindTo(this);
   }
 
   @Override
@@ -117,14 +121,13 @@ public class MetricService extends AbstractMetricService implements MetricServic
             isEnableMetric = false;
             break;
           case RESTART_METRIC:
-            stop();
             isEnableMetric = true;
-            start();
+            restart();
             break;
           case RESTART_REPORTER:
-            compositeReporter.stopAll();
+            stopAllReporter();
             loadReporter();
-            compositeReporter.startAll();
+            startAllReporter();
             logger.info("Finish restart metric reporters.");
             break;
           case NOTHING:
@@ -137,6 +140,11 @@ public class MetricService extends AbstractMetricService implements MetricServic
         logger.error("Failed to start metric when reload properties");
       }
     }
+  }
+
+  @Override
+  public void reloadInternalReporter(InternalIoTDBReporter internalReporter) {
+    this.internalReporter = internalReporter;
   }
 
   @Override

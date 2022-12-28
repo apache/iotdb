@@ -28,18 +28,6 @@ public enum CompressionType {
   /** GZIP */
   GZIP(".gzip", (byte) 2),
 
-  /** LZO */
-  LZO(".lzo", (byte) 3),
-
-  /** SDT */
-  SDT(".sdt", (byte) 4),
-
-  /** PAA */
-  PAA(".paa", (byte) 5),
-
-  /** PLA */
-  PLA(".pla", (byte) 6),
-
   /** LZ4 */
   LZ4(".lz4", (byte) 7);
 
@@ -65,14 +53,6 @@ public enum CompressionType {
         return CompressionType.SNAPPY;
       case 2:
         return CompressionType.GZIP;
-      case 3:
-        return CompressionType.LZO;
-      case 4:
-        return CompressionType.SDT;
-      case 5:
-        return CompressionType.PAA;
-      case 6:
-        return CompressionType.PLA;
       case 7:
         return CompressionType.LZ4;
       default:

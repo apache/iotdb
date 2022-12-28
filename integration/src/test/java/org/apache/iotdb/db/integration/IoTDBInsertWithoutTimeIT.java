@@ -87,7 +87,7 @@ public class IoTDBInsertWithoutTimeIT {
   }
 
   @Test
-  public void testInsertWithoutTime() throws SQLException, InterruptedException {
+  public void testInsertWithoutTime1() throws SQLException, InterruptedException {
     Statement st0 = connection.createStatement();
     st0.execute("insert into root.t1.wf01.wt01(time, status, temperature) values (1, true, 11)");
     st0.execute(
@@ -103,6 +103,25 @@ public class IoTDBInsertWithoutTimeIT {
     Assert.assertEquals(countStatus, 5L);
 
     st1.close();
+  }
+
+  @Test
+  public void testInsertWithoutTime2() throws SQLException {
+    Statement st0 = connection.createStatement();
+    st0.execute("SET STORAGE GROUP TO root.t2");
+    st0.execute("CREATE TIMESERIES root.t2.wf01.wt01.status WITH DATATYPE=INT64, ENCODING=PLAIN");
+    st0.execute(
+        "CREATE TIMESERIES root.t2.wf01.wt01.temperature WITH DATATYPE=FLOAT, ENCODING=RLE");
+    st0.execute("insert into root.t2.wf01.wt01(status, temperature) values (1, 11)");
+
+    ResultSet rs1 = st0.executeQuery("select status, temperature from root.t2.wf01.wt01");
+    rs1.next();
+
+    long status = rs1.getLong("root.t2.wf01.wt01.status");
+    Assert.assertEquals(status, 1L);
+
+    double temperature = rs1.getFloat("root.t2.wf01.wt01.temperature");
+    Assert.assertEquals(temperature, 11.0, 0.00001);
   }
 
   @Test(expected = Exception.class)

@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.service.basic;
 
+import org.apache.iotdb.db.audit.AuditLogOperation;
+import org.apache.iotdb.db.audit.AuditLogger;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.auth.authorizer.BasicAuthorizer;
@@ -41,6 +43,7 @@ import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryTimeManager;
 import org.apache.iotdb.db.query.control.SessionManager;
 import org.apache.iotdb.db.query.control.SessionTimeoutManager;
+import org.apache.iotdb.db.query.control.clientsession.IClientSession;
 import org.apache.iotdb.db.query.control.tracing.TracingManager;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -58,11 +61,14 @@ import java.sql.SQLException;
 
 import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onNPEOrUnexpectedException;
 
+/**
+ * There is only one ServiceProvider instance for each IoTDB instance. Both client-thread model
+ * based services and message-thread model based services (e.g., mqtt) are using this service.
+ */
 public abstract class ServiceProvider {
 
   protected static final Logger LOGGER = LoggerFactory.getLogger(ServiceProvider.class);
-  public static final Logger AUDIT_LOGGER =
-      LoggerFactory.getLogger(IoTDBConstant.AUDIT_LOGGER_NAME);
+
   public static final Logger SLOW_SQL_LOGGER =
       LoggerFactory.getLogger(IoTDBConstant.SLOW_SQL_LOGGER_NAME);
 
@@ -77,6 +83,8 @@ public abstract class ServiceProvider {
       new QueryFrequencyRecorder(CONFIG);
 
   public static SessionManager SESSION_MANAGER = SessionManager.getInstance();
+
+  public static final boolean enableAuditLog = CONFIG.isEnableAuditLog();
 
   private final Planner planner;
   protected final IPlanExecutor executor;
@@ -101,18 +109,17 @@ public abstract class ServiceProvider {
       throws QueryProcessException, StorageGroupNotSetException, StorageEngineException;
 
   /**
-   * Check whether current user has logged in.
+   * Check whether current user has logged in. If login, the session's lifetime will be updated.
    *
    * @return true: If logged in; false: If not logged in
    */
-  public boolean checkLogin(long sessionId) {
-    Long currSessionId = SESSION_MANAGER.getCurrSessionId();
-    boolean isLoggedIn = currSessionId != null && currSessionId == sessionId;
+  public boolean checkLogin(IClientSession session) {
+    boolean isLoggedIn = session != null && session.isLogin();
     if (!isLoggedIn) {
       LOGGER.info("{}: Not login. ", IoTDBConstant.GLOBAL_DB_NAME);
       return false;
     } else {
-      SessionTimeoutManager.getInstance().refresh(sessionId);
+      SessionTimeoutManager.getInstance().refresh(session);
     }
     return isLoggedIn;
   }
@@ -120,11 +127,11 @@ public abstract class ServiceProvider {
   /**
    * Check whether current session is timeout.
    *
-   * @param sessionId Session id.
+   * @param session clientSession.
    * @return true: If session timeout; false: If not session timeout.
    */
-  public boolean checkSessionTimeout(long sessionId) {
-    if (!SessionTimeoutManager.getInstance().isSessionAlive(sessionId)) {
+  public boolean checkSessionTimeout(IClientSession session) {
+    if (!SessionTimeoutManager.getInstance().isSessionAlive(session)) {
       return true;
     }
     return false;
@@ -143,9 +150,9 @@ public abstract class ServiceProvider {
         username, plan.getAuthPaths(), plan.getOperatorType(), targetUser);
   }
 
-  public TSStatus checkAuthority(PhysicalPlan plan, long sessionId) {
+  public TSStatus checkAuthority(PhysicalPlan plan, IClientSession session) {
     try {
-      if (!checkAuthorization(plan, SESSION_MANAGER.getUsername(sessionId))) {
+      if (!checkAuthorization(plan, session.getUsername())) {
         return RpcUtils.getStatus(
             TSStatusCode.NO_PERMISSION_ERROR,
             "No permissions for this operation, please add privilege "
@@ -162,7 +169,8 @@ public abstract class ServiceProvider {
     return null;
   }
 
-  public BasicOpenSessionResp openSession(
+  public BasicOpenSessionResp login(
+      IClientSession session,
       String username,
       String password,
       String zoneId,
@@ -187,7 +195,6 @@ public abstract class ServiceProvider {
       loginMessage = e.getMessage();
     }
 
-    long sessionId = -1;
     if (status) {
       // check the version compatibility
       boolean compatible = checkCompatibility(tsProtocolVersion);
@@ -195,66 +202,64 @@ public abstract class ServiceProvider {
         openSessionResp.setCode(TSStatusCode.INCOMPATIBLE_VERSION.getStatusCode());
         openSessionResp.setMessage(
             "The version is incompatible, please upgrade to " + IoTDBConstant.VERSION);
-        return openSessionResp.sessionId(sessionId);
+        return openSessionResp.sessionId(-1);
       }
 
       openSessionResp.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
       openSessionResp.setMessage("Login successfully");
 
-      sessionId = SESSION_MANAGER.requestSessionId(username, zoneId, clientVersion);
+      SESSION_MANAGER.supplySession(session, username, zoneId, clientVersion);
+      if (enableAuditLog) {
+        AuditLogger.log(
+            String.format(
+                "%s: Login status: %s. User : %s, opens Session-%s",
+                IoTDBConstant.GLOBAL_DB_NAME, openSessionResp.getMessage(), username, session),
+            AuditLogOperation.QUERY);
+      }
 
-      LOGGER.info(
-          "{}: Login status: {}. User : {}, opens Session-{}",
-          IoTDBConstant.GLOBAL_DB_NAME,
-          openSessionResp.getMessage(),
-          username,
-          sessionId);
     } else {
       openSessionResp.setMessage(loginMessage != null ? loginMessage : "Authentication failed.");
       openSessionResp.setCode(TSStatusCode.WRONG_LOGIN_PASSWORD_ERROR.getStatusCode());
-
-      sessionId = SESSION_MANAGER.requestSessionId(username, zoneId, clientVersion);
-      AUDIT_LOGGER.info("User {} opens Session failed with an incorrect password", username);
+      session.setUsername(username);
+      if (enableAuditLog) {
+        AuditLogger.log(
+            String.format("User %s opens Session failed with an incorrect password", username),
+            AuditLogOperation.QUERY);
+      }
+      // TODO we should close this connection ASAP, otherwise there will be DDoS.
     }
-
-    SessionTimeoutManager.getInstance().register(sessionId);
-    return openSessionResp.sessionId(sessionId);
+    SessionTimeoutManager.getInstance().register(session);
+    return openSessionResp.sessionId(session == null ? -1 : session.getId());
   }
 
-  public BasicOpenSessionResp openSession(
-      String username, String password, String zoneId, TSProtocolVersion tsProtocolVersion)
+  public BasicOpenSessionResp login(
+      IClientSession session,
+      String username,
+      String password,
+      String zoneId,
+      TSProtocolVersion tsProtocolVersion)
       throws TException {
-    return openSession(
-        username, password, zoneId, tsProtocolVersion, IoTDBConstant.ClientVersion.V_0_12);
+    return login(
+        session, username, password, zoneId, tsProtocolVersion, IoTDBConstant.ClientVersion.V_0_12);
   }
 
-  public boolean closeSession(long sessionId) {
-    AUDIT_LOGGER.info("Session-{} is closing", sessionId);
-
-    SESSION_MANAGER.removeCurrSessionId();
-
-    return SessionTimeoutManager.getInstance().unregister(sessionId);
+  public boolean closeSession(IClientSession session) {
+    return SessionTimeoutManager.getInstance().unregister(session);
   }
 
   public TSStatus closeOperation(
-      long sessionId,
+      IClientSession session,
       long queryId,
       long statementId,
       boolean haveStatementId,
       boolean haveSetQueryId) {
-    if (!checkLogin(sessionId)) {
+    if (!checkLogin(session)) {
       return RpcUtils.getStatus(
           TSStatusCode.NOT_LOGIN_ERROR,
           "Log in failed. Either you are not authorized or the session has timed out.");
     }
-    if (checkSessionTimeout(sessionId)) {
+    if (checkSessionTimeout(session)) {
       return RpcUtils.getStatus(TSStatusCode.SESSION_TIMEOUT, "Session timeout");
-    }
-    if (AUDIT_LOGGER.isDebugEnabled()) {
-      AUDIT_LOGGER.debug(
-          "{}: receive close operation from Session {}",
-          IoTDBConstant.GLOBAL_DB_NAME,
-          SESSION_MANAGER.getCurrSessionId());
     }
 
     try {
@@ -262,7 +267,7 @@ public abstract class ServiceProvider {
         if (haveSetQueryId) {
           SESSION_MANAGER.closeDataset(statementId, queryId);
         } else {
-          SESSION_MANAGER.closeStatement(sessionId, statementId);
+          SESSION_MANAGER.closeStatement(session, statementId);
         }
         return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
       } else {

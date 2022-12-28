@@ -123,7 +123,7 @@ public class DeletionFileNodeTest {
 
   @Test
   public void testDeleteWithTimePartitionFilter()
-      throws StorageEngineException, QueryProcessException, IOException {
+      throws StorageEngineException, QueryProcessException, IOException, InterruptedException {
     boolean prevEnablePartition = StorageEngine.isEnablePartition();
     long prevPartitionInterval = StorageEngine.getTimePartitionInterval();
     int prevConcurrentTimePartition =
@@ -140,6 +140,8 @@ public class DeletionFileNodeTest {
         TSRecord record = new TSRecord(i * newPartitionInterval, processorName);
         record.addTuple(new DoubleDataPoint(measurements[0], i * 1.0));
         StorageEngine.getInstance().insert(new InsertRowPlan(record));
+        // make sure tsfiles have different timestamps
+        Thread.sleep(10);
       }
       // the filter only allows to delete the first 5 partitions
       StorageEngine.getInstance()

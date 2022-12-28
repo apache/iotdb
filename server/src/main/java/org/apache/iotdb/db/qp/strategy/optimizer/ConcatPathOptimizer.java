@@ -343,13 +343,15 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
               new LikeOperator(
                   operator.getFilterType(),
                   noStarPaths.get(i),
-                  ((LikeOperator) operator).getValue()));
+                  ((LikeOperator) operator).getValue(),
+                  ((LikeOperator) operator).isNot()));
         } else if (operator instanceof RegexpOperator) {
           currentNode.addChildOperator(
               new RegexpOperator(
                   operator.getFilterType(),
                   noStarPaths.get(i),
-                  ((RegexpOperator) operator).getValue()));
+                  ((RegexpOperator) operator).getValue(),
+                  ((RegexpOperator) operator).isNot()));
         } else {
           currentNode.addChildOperator(
               new BasicFunctionOperator(

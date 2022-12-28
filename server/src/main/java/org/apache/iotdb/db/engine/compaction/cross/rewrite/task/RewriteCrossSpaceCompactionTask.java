@@ -134,19 +134,27 @@ public class RewriteCrossSpaceCompactionTask extends AbstractCrossSpaceCompactio
       return;
     }
 
-    long totalSize = 0L;
+    double totalSize = 0;
+    double seqSize = 0;
+    double unseqSize = 0;
     for (TsFileResource resource : selectedSeqTsFileResourceList) {
       totalSize += resource.getTsFileSize();
     }
+    seqSize = totalSize;
     for (TsFileResource resource : selectedUnSeqTsFileResourceList) {
       totalSize += resource.getTsFileSize();
     }
+    unseqSize = totalSize - seqSize;
 
     logger.info(
-        "{} [Compaction] CrossSpaceCompactionTask start. Sequence files : {}, unsequence files : {}",
+        "{} [Compaction] CrossSpaceCompactionTask start. Sequence files : {}, unsequence files : {},"
+            + " seq files size is {} MB, unseq file size is {} MB, total size is {} MB",
         fullStorageGroupName,
         selectedSeqTsFileResourceList,
-        selectedUnSeqTsFileResourceList);
+        selectedUnSeqTsFileResourceList,
+        seqSize / 1024 / 1024,
+        unseqSize / 1024 / 1024,
+        totalSize / 1024 / 1024);
     logFile =
         new File(
             selectedSeqTsFileResourceList.get(0).getTsFile().getParent()

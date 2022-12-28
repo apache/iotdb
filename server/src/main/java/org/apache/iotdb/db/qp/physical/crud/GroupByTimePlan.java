@@ -128,7 +128,7 @@ public class GroupByTimePlan extends AggregationPlan {
               plan.getEndTime(),
               plan.isSlidingStepByMonth(),
               plan.isIntervalByMonth(),
-              SessionManager.getInstance().getCurrSessionTimeZone())));
+              SessionManager.getInstance().getSessionTimeZone())));
     } else {
       return new GlobalTimeExpression(
           new GroupByFilter(

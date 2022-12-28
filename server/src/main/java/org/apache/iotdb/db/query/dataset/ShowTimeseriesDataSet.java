@@ -35,6 +35,8 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_ATTRIBUTES;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_DEADBAND;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_DEADBAND_PARAMETERS;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_STORAGE_GROUP;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TAGS;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TIMESERIES;
@@ -55,9 +57,13 @@ public class ShowTimeseriesDataSet extends ShowDataSet {
     new PartialPath(COLUMN_TIMESERIES_ENCODING, false),
     new PartialPath(COLUMN_TIMESERIES_COMPRESSION, false),
     new PartialPath(COLUMN_TAGS, false),
-    new PartialPath(COLUMN_ATTRIBUTES, false)
+    new PartialPath(COLUMN_ATTRIBUTES, false),
+    new PartialPath(COLUMN_DEADBAND, false),
+    new PartialPath(COLUMN_DEADBAND_PARAMETERS, false)
   };
   private static final TSDataType[] resourceTypes = {
+    TSDataType.TEXT,
+    TSDataType.TEXT,
     TSDataType.TEXT,
     TSDataType.TEXT,
     TSDataType.TEXT,
@@ -92,6 +98,8 @@ public class ShowTimeseriesDataSet extends ShowDataSet {
       updateRecord(record, result.getCompressor().toString());
       updateRecord(record, result.getTag());
       updateRecord(record, result.getAttribute());
+      updateRecord(record, result.getDeadband());
+      updateRecord(record, result.getDeadbandParameters());
       records.add(record);
       putRecord(record);
     }

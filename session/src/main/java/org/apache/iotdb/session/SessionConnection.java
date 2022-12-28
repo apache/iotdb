@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.session;
 
+import org.apache.iotdb.isession.Config;
+import org.apache.iotdb.isession.util.SystemStatus;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.RedirectException;
 import org.apache.iotdb.rpc.RpcTransportFactory;
@@ -27,7 +29,9 @@ import org.apache.iotdb.rpc.SessionTimeoutException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.service.rpc.thrift.EndPoint;
 import org.apache.iotdb.service.rpc.thrift.TSAppendSchemaTemplateReq;
+import org.apache.iotdb.service.rpc.thrift.TSBackupConfigurationResp;
 import org.apache.iotdb.service.rpc.thrift.TSCloseSessionReq;
+import org.apache.iotdb.service.rpc.thrift.TSConnectionInfoResp;
 import org.apache.iotdb.service.rpc.thrift.TSCreateAlignedTimeseriesReq;
 import org.apache.iotdb.service.rpc.thrift.TSCreateMultiTimeseriesReq;
 import org.apache.iotdb.service.rpc.thrift.TSCreateSchemaTemplateReq;
@@ -60,7 +64,6 @@ import org.apache.iotdb.service.rpc.thrift.TSSetUsingTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.service.rpc.thrift.TSUnsetSchemaTemplateReq;
 import org.apache.iotdb.session.util.SessionUtils;
-import org.apache.iotdb.session.util.SystemStatus;
 
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
@@ -90,6 +93,7 @@ public class SessionConnection {
   private EndPoint endPoint;
   private List<EndPoint> endPointList = new ArrayList<>();
   private boolean enableRedirect = false;
+  public static final String VERSION = "version";
 
   // TestOnly
   public SessionConnection() {}
@@ -138,8 +142,7 @@ public class SessionConnection {
     openReq.setUsername(session.username);
     openReq.setPassword(session.password);
     openReq.setZoneId(zoneId.toString());
-    openReq.putToConfiguration("version", session.version.toString());
-
+    openReq.putToConfiguration(VERSION, session.version.toString());
     try {
       TSOpenSessionResp openResp = client.openSession(openReq);
 
@@ -1050,6 +1053,27 @@ public class SessionConnection {
     }
   }
 
+  protected TSBackupConfigurationResp getBackupConfiguration()
+      throws StatementExecutionException, IoTDBConnectionException {
+    TSBackupConfigurationResp execResp;
+    try {
+      execResp = client.getBackupConfiguration();
+      verifySuccessWrapper(execResp.getStatus());
+    } catch (TException e) {
+      if (reconnect()) {
+        try {
+          execResp = client.getBackupConfiguration();
+          verifySuccessWrapper(execResp.getStatus());
+        } catch (TException tException) {
+          throw new IoTDBConnectionException(tException);
+        }
+      } else {
+        throw new IoTDBConnectionException(logForReconnectionFailure());
+      }
+    }
+    return execResp;
+  }
+
   public boolean isEnableRedirect() {
     return enableRedirect;
   }
@@ -1079,6 +1103,22 @@ public class SessionConnection {
       urls.add(url.toString());
     }
     return MSG_RECONNECTION_FAIL.concat(urls.toString());
+  }
+
+  public TSConnectionInfoResp fetchAllConnections() throws IoTDBConnectionException {
+    try {
+      return client.fetchAllConnectionsInfo();
+    } catch (TException e) {
+      if (reconnect()) {
+        try {
+          return client.fetchAllConnectionsInfo();
+        } catch (TException tException) {
+          throw new IoTDBConnectionException(tException);
+        }
+      } else {
+        throw new IoTDBConnectionException(logForReconnectionFailure());
+      }
+    }
   }
 
   @Override

@@ -71,6 +71,8 @@ public enum ThreadName {
   CLUSTER_DATA_HEARTBEAT_RPC_SERVICE("ClusterDataHeartbeatRPC"),
   CLUSTER_DATA_HEARTBEAT_RPC_CLIENT("ClusterDataHeartbeatRPC-Client"),
   Cluster_Monitor("ClusterMonitor"),
+  ARCHIVING_CHECK("Archiving-Check"),
+  ARCHIVING_TASK("Archiving-Task"),
   ;
 
   private final String name;

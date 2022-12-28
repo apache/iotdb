@@ -29,6 +29,7 @@ import org.apache.iotdb.db.engine.compaction.constant.CompactionTaskStatus;
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
 import org.apache.iotdb.db.engine.compaction.task.CompactionTaskSummary;
 import org.apache.iotdb.db.service.IService;
+import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.service.ServiceType;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.db.utils.datastructure.FixedPriorityBlockingQueue;
@@ -82,7 +83,7 @@ public class CompactionTaskManager implements IService {
   private final long TASK_SUBMIT_INTERVAL =
       IoTDBDescriptor.getInstance().getConfig().getCompactionSubmissionIntervalInMs();
 
-  private final RateLimiter mergeWriteRateLimiter = RateLimiter.create(Double.MAX_VALUE);
+  private final RateLimiter compactionIORateLimiter = RateLimiter.create(Double.MAX_VALUE);
 
   public static CompactionTaskManager getInstance() {
     return INSTANCE;
@@ -133,6 +134,7 @@ public class CompactionTaskManager implements IService {
   @Override
   public void stop() {
     if (taskExecutionPool != null) {
+      subCompactionTaskExecutionPool.shutdownNow();
       taskExecutionPool.shutdownNow();
       compactionTaskSubmissionThreadPool.shutdownNow();
       logger.info("Waiting for task taskExecutionPool to shut down");
@@ -145,6 +147,7 @@ public class CompactionTaskManager implements IService {
   @Override
   public void waitAndStop(long milliseconds) {
     if (taskExecutionPool != null) {
+      awaitTermination(subCompactionTaskExecutionPool, milliseconds);
       awaitTermination(taskExecutionPool, milliseconds);
       awaitTermination(compactionTaskSubmissionThreadPool, milliseconds);
       logger.info("Waiting for task taskExecutionPool to shut down in {} ms", milliseconds);
@@ -183,7 +186,7 @@ public class CompactionTaskManager implements IService {
 
   private void waitTermination() {
     long startTime = System.currentTimeMillis();
-    while (!taskExecutionPool.isTerminated()) {
+    while (!subCompactionTaskExecutionPool.isTerminated() || !taskExecutionPool.isTerminated()) {
       int timeMillis = 0;
       try {
         Thread.sleep(200);
@@ -201,6 +204,7 @@ public class CompactionTaskManager implements IService {
       }
     }
     taskExecutionPool = null;
+    subCompactionTaskExecutionPool = null;
     storageGroupTasks.clear();
     logger.info("CompactionManager stopped");
   }
@@ -248,7 +252,8 @@ public class CompactionTaskManager implements IService {
    */
   public synchronized void submitTaskFromTaskQueue() {
     try {
-      while (currentTaskNum.get()
+      while (IoTDB.activated
+          && currentTaskNum.get()
               < IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread()
           && !candidateCompactionTaskQueue.isEmpty()) {
         AbstractCompactionTask task = candidateCompactionTaskQueue.take();
@@ -269,10 +274,9 @@ public class CompactionTaskManager implements IService {
     }
   }
 
-  public RateLimiter getMergeWriteRateLimiter() {
-    setWriteMergeRate(
-        IoTDBDescriptor.getInstance().getConfig().getCompactionWriteThroughputMbPerSec());
-    return mergeWriteRateLimiter;
+  public RateLimiter getCompactionIORateLimiter() {
+    setWriteMergeRate(IoTDBDescriptor.getInstance().getConfig().getCompactionIORatePerSec());
+    return compactionIORateLimiter;
   }
 
   private void setWriteMergeRate(final double throughoutMbPerSec) {
@@ -281,8 +285,8 @@ public class CompactionTaskManager implements IService {
     if (throughout == 0) {
       throughout = Double.MAX_VALUE;
     }
-    if (mergeWriteRateLimiter.getRate() != throughout) {
-      mergeWriteRateLimiter.setRate(throughout);
+    if (compactionIORateLimiter.getRate() != throughout) {
+      compactionIORateLimiter.setRate(throughout);
     }
   }
   /** wait by throughoutMbPerSec limit to avoid continuous Write Or Read */
@@ -367,6 +371,8 @@ public class CompactionTaskManager implements IService {
   public void restart() throws InterruptedException {
     if (IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread() > 0) {
       if (taskExecutionPool != null) {
+        subCompactionTaskExecutionPool.shutdownNow();
+        subCompactionTaskExecutionPool.awaitTermination(Long.MAX_VALUE, TimeUnit.MILLISECONDS);
         this.taskExecutionPool.shutdownNow();
         this.taskExecutionPool.awaitTermination(Long.MAX_VALUE, TimeUnit.MILLISECONDS);
       }
@@ -375,6 +381,11 @@ public class CompactionTaskManager implements IService {
               IoTDBThreadPoolFactory.newScheduledThreadPool(
                   IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread(),
                   ThreadName.COMPACTION_SERVICE.getName());
+      this.subCompactionTaskExecutionPool =
+          IoTDBThreadPoolFactory.newScheduledThreadPool(
+              IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread()
+                  * IoTDBDescriptor.getInstance().getConfig().getSubCompactionTaskNum(),
+              ThreadName.COMPACTION_SUB_SERVICE.getName());
       this.compactionTaskSubmissionThreadPool =
           IoTDBThreadPoolFactory.newScheduledThreadPool(1, ThreadName.COMPACTION_SERVICE.getName());
       candidateCompactionTaskQueue.regsitPollLastHook(

@@ -64,6 +64,6 @@ public class CompactionConfigRestorer {
     config.setConcurrentCompactionThread(concurrentCompactionThread);
     config.setCompactionScheduleIntervalInMs(compactionScheduleIntervalInMs);
     config.setCompactionSubmissionIntervalInMs(compactionSubmissionIntervalInMs);
-    config.setCompactionWriteThroughputMbPerSec(compactionWriteThroughputMbPerSec);
+    config.setCompactionIORatePerSec(compactionWriteThroughputMbPerSec);
   }
 }

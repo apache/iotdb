@@ -77,6 +77,13 @@ if %desired_yg_in_mb% GTR %max_sensible_yg_in_mb% (
 	set HEAP_NEWSIZE=%max_sensible_yg_in_mb%M
 ) else set HEAP_NEWSIZE=%desired_yg_in_mb%M
 
+@REM if the heap size is larger than 16GB, we will forbid writing the heap dump file
+if %desired_yg_in_mb% GTR 16384 (
+	set IOTDB_ALLOW_HEAP_DUMP="false"
+) else set IOTDB_ALLOW_HEAP_DUMP="true"
+
+
+
 @REM Maximum heap size
 @REM set MAX_HEAP_SIZE="2G"
 @REM Minimum heap size

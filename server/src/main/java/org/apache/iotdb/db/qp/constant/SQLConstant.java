@@ -199,6 +199,7 @@ public class SQLConstant {
   public static final int TOK_SCHEMA_TEMPLATE_SHOW_PATHS_USING = 122;
   public static final int TOK_SHOW_QUERY_RESOURCE = 123;
   public static final int TOK_SCHEMA_TEMPLATE_DEACTIVATE = 124;
+  public static final int TOK_EXPORT_SCHEMA = 125;
 
   public static final Map<Integer, String> tokenNames = new HashMap<>();
 

@@ -63,8 +63,11 @@ import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.utils.MetaFormatUtils;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.MNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.MeasurementMNodePlan;
+import org.apache.iotdb.db.qp.physical.sys.SetTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.StorageGroupMNodePlan;
@@ -83,6 +86,7 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -107,6 +111,7 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiConsumer;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toList;
@@ -226,6 +231,131 @@ public class MTree implements Serializable {
   public void serializeTo(String snapshotPath) throws IOException {
     try (MLogWriter mLogWriter = new MLogWriter(snapshotPath)) {
       root.serializeTo(mLogWriter);
+    }
+  }
+
+  public void exportSchema(MLogWriter mLogWriter) throws MetadataException, IOException {
+    PartialPath[] entityPath = new PartialPath[1];
+    List<IMeasurementSchema> alignedMeasurementSchemas = new ArrayList<>();
+    Traverser collector =
+        new Traverser(root, new PartialPath("root.**")) {
+          IEntityMNode entityNode;
+
+          @Override
+          protected boolean processInternalMatchedMNode(IMNode node, int idx, int level)
+              throws MetadataException {
+            extractTemplateIfSet(node);
+            return false;
+          }
+
+          @Override
+          protected boolean processFullMatchedMNode(IMNode node, int idx, int level)
+              throws MetadataException {
+            if (!node.isMeasurement()) {
+              extractTemplateIfSet(node);
+              return false;
+            }
+            collectMeasurement(node.getAsMeasurementMNode());
+            return true;
+          }
+
+          private void collectMeasurement(IMeasurementMNode node) throws MetadataException {
+            try {
+              IMeasurementSchema measurementSchema = node.getSchema();
+              IEntityMNode entityMNode = getParentEntityMNodeIfExist();
+              checkAndWriteCreateAlignedTimeseries(entityMNode);
+              if (!entityMNode.isAligned()) {
+                CreateTimeSeriesPlan createTimeSeriesPlan =
+                    new CreateTimeSeriesPlan(
+                        getCurrentPartialPath(node),
+                        measurementSchema.getType(),
+                        measurementSchema.getEncodingType(),
+                        measurementSchema.getCompressor(),
+                        measurementSchema.getProps(),
+                        null,
+                        null,
+                        node.getAlias());
+                createTimeSeriesPlan.setTagOffset(node.getOffset());
+                mLogWriter.createTimeseries(createTimeSeriesPlan);
+              } else {
+                alignedMeasurementSchemas.add(measurementSchema);
+              }
+            } catch (IOException e) {
+              e.printStackTrace();
+            }
+          }
+
+          private void checkAndWriteCreateAlignedTimeseries(IEntityMNode curEntityMNode)
+              throws IllegalPathException, IOException {
+            if (curEntityMNode != entityNode) {
+              if (!alignedMeasurementSchemas.isEmpty()) {
+                CreateAlignedTimeSeriesPlan createAlignedTimeSeriesPlan =
+                    new CreateAlignedTimeSeriesPlan(
+                        entityPath[0],
+                        alignedMeasurementSchemas.stream()
+                            .map(IMeasurementSchema::getMeasurementId)
+                            .collect(Collectors.toList()),
+                        alignedMeasurementSchemas.stream()
+                            .map(IMeasurementSchema::getType)
+                            .collect(Collectors.toList()),
+                        alignedMeasurementSchemas.stream()
+                            .map(IMeasurementSchema::getEncodingType)
+                            .collect(Collectors.toList()),
+                        alignedMeasurementSchemas.stream()
+                            .map(IMeasurementSchema::getCompressor)
+                            .collect(Collectors.toList()),
+                        null);
+                mLogWriter.createAlignedTimeseries(createAlignedTimeSeriesPlan);
+              }
+              if (curEntityMNode.isAligned()) {
+                entityPath[0] = getCurrentPartialPath(curEntityMNode);
+              }
+              // clear
+              entityNode = curEntityMNode;
+              alignedMeasurementSchemas.clear();
+            }
+          }
+
+          private IEntityMNode getParentEntityMNodeIfExist() {
+            return traverseContext.peek().getAsEntityMNode();
+          }
+
+          private void extractTemplateIfSet(IMNode node) {
+            if (node.getSchemaTemplate() != null) {
+              try {
+                mLogWriter.setSchemaTemplate(
+                    new SetTemplatePlan(
+                        node.getSchemaTemplate().getName(),
+                        getCurrentPartialPath(node).getFullPath()));
+                if (node.isUseTemplate()) {
+                  mLogWriter.setUsingSchemaTemplate(getCurrentPartialPath(node));
+                }
+              } catch (IOException | IllegalPathException e) {
+                logger.error(e.getMessage());
+              }
+            }
+          }
+        };
+    collector.setShouldTraverseTemplate(false);
+    collector.traverse();
+    if (!alignedMeasurementSchemas.isEmpty()) {
+      CreateAlignedTimeSeriesPlan createAlignedTimeSeriesPlan =
+          new CreateAlignedTimeSeriesPlan(
+              entityPath[0],
+              alignedMeasurementSchemas.stream()
+                  .map(IMeasurementSchema::getMeasurementId)
+                  .collect(Collectors.toList()),
+              alignedMeasurementSchemas.stream()
+                  .map(IMeasurementSchema::getType)
+                  .collect(Collectors.toList()),
+              alignedMeasurementSchemas.stream()
+                  .map(IMeasurementSchema::getEncodingType)
+                  .collect(Collectors.toList()),
+              alignedMeasurementSchemas.stream()
+                  .map(IMeasurementSchema::getCompressor)
+                  .collect(Collectors.toList()),
+              null);
+      mLogWriter.createAlignedTimeseries(createAlignedTimeSeriesPlan);
     }
   }
 
@@ -364,7 +494,7 @@ public class MTree implements Serializable {
         throw new PathAlreadyExistException(path.getFullPath());
       }
 
-      if (alias != null && cur.hasChild(alias)) {
+      if (!StringUtils.isEmpty(alias) && cur.hasChild(alias)) {
         throw new AliasAlreadyExistException(path.getFullPath(), alias);
       }
 
@@ -387,10 +517,10 @@ public class MTree implements Serializable {
               entityMNode,
               leafName,
               new MeasurementSchema(leafName, dataType, encoding, compressor, props),
-              alias);
+              StringUtils.isEmpty(alias) ? null : alias);
       entityMNode.addChild(leafName, measurementMNode);
       // link alias to LeafMNode
-      if (alias != null) {
+      if (!StringUtils.isEmpty(alias)) {
         entityMNode.addAlias(alias, measurementMNode);
       }
       return measurementMNode;
@@ -1080,7 +1210,9 @@ public class MTree implements Serializable {
           @Override
           protected void collectMeasurement(IMeasurementMNode node) throws MetadataException {
             IMeasurementSchema measurementSchema = node.getSchema();
-            String[] tsRow = new String[7];
+            Pair<String, String> deadbandInfo =
+                MetaUtils.parseDeadbandInfo(measurementSchema.getProps());
+            String[] tsRow = new String[9];
             tsRow[0] = node.getAlias();
             tsRow[1] = getStorageGroupNodeInTraversePath().getFullPath();
             tsRow[2] = measurementSchema.getType().toString();
@@ -1088,6 +1220,8 @@ public class MTree implements Serializable {
             tsRow[4] = measurementSchema.getCompressor().toString();
             tsRow[5] = String.valueOf(node.getOffset());
             tsRow[6] = needLast ? String.valueOf(getLastTimeStamp(node, queryContext)) : null;
+            tsRow[7] = deadbandInfo.left;
+            tsRow[8] = deadbandInfo.right;
             Pair<PartialPath, String[]> temp = new Pair<>(getCurrentPartialPath(node), tsRow);
             result.add(temp);
           }

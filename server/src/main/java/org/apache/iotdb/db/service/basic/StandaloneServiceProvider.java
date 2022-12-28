@@ -50,7 +50,6 @@ public class StandaloneServiceProvider extends ServiceProvider {
         && IoTDBDescriptor.getInstance().getConfig().isReadOnly()) {
       throw new StorageEngineReadonlyException();
     }
-
     return executor.processNonQuery(plan);
   }
 }

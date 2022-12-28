@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.conf;
 
+import org.apache.iotdb.db.audit.AuditLogOperation;
+import org.apache.iotdb.db.audit.AuditLogStorage;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.compaction.constant.CompactionPriority;
 import org.apache.iotdb.db.engine.compaction.cross.CrossCompactionStrategy;
@@ -39,6 +41,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Properties;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -127,6 +131,8 @@ public class IoTDBConfig {
 
   /** The proportion of write memory for write process */
   private double writeProportion = 0.8;
+
+  private double chunkMetadataSizeProportionInWrite = 0.1;
 
   /** The proportion of write memory for compaction */
   private double compactionProportion = 0.2;
@@ -302,11 +308,11 @@ public class IoTDBConfig {
   /**
    * If we enable the memory-control mechanism during index building , {@code indexBufferSize}
    * refers to the byte-size of memory buffer threshold. For each index processor, all indexes in
-   * one {@linkplain org.apache.iotdb.db.index.IndexFileProcessor IndexFileProcessor} share a total
-   * common buffer size. With the memory-control mechanism, the occupied memory of all raw data and
-   * index structures will be counted. If the memory buffer size reaches this threshold, the indexes
-   * will be flushed to the disk file. As a result, data in one series may be divided into more than
-   * one part and indexed separately. Unit: byte
+   * one {@linkplain org.apache.iotdb.db.index} share a total common buffer size. With the
+   * memory-control mechanism, the occupied memory of all raw data and index structures will be
+   * counted. If the memory buffer size reaches this threshold, the indexes will be flushed to the
+   * disk file. As a result, data in one series may be divided into more than one part and indexed
+   * separately. Unit: byte
    */
   private long indexBufferSize = 128 * 1024 * 1024L;
 
@@ -398,6 +404,8 @@ public class IoTDBConfig {
    */
   private CompactionPriority compactionPriority = CompactionPriority.BALANCE;
 
+  private double chunkMetadataMemorySizeProportion = 0.1;
+
   /** The target tsfile size in compaction, 1 GB by default */
   private long targetCompactionFileSize = 1073741824L;
 
@@ -430,6 +438,9 @@ public class IoTDBConfig {
 
   /** The max candidate file num in cross space compaction */
   private int maxCrossCompactionCandidateFileNum = 1000;
+
+  /** The max total size of candidate files in cross space compaction */
+  private long maxCrossCompactionCandidateFileSize = 1024 * 1024 * 1024 * 5L;
 
   /** The interval of compaction task schedulation in each virtual storage group. The unit is ms. */
   private long compactionScheduleIntervalInMs = 60_000L;
@@ -589,8 +600,8 @@ public class IoTDBConfig {
    */
   private long mergeIntervalSec = 0L;
 
-  /** The limit of compaction merge can reach per second */
-  private int compactionWriteThroughputMbPerSec = 16;
+  /** The limit of compaction io times can reach per second */
+  private int compactionIORatePerSec = 50;
 
   /**
    * How many thread will be set up to perform compaction, 10 by default. Set to 1 when less than or
@@ -785,6 +796,8 @@ public class IoTDBConfig {
   /** time cost(ms) threshold for slow query. Unit: millisecond */
   private long slowQueryThreshold = 5000;
 
+  private int patternMatchingThreshold = 1000000;
+
   /**
    * whether enable the rpc service. This parameter has no a corresponding field in the
    * iotdb-engine.properties
@@ -860,6 +873,23 @@ public class IoTDBConfig {
 
   // The max record num returned in one schema query.
   private int schemaQueryFetchSize = 10000000;
+
+  /** number of threads given to archiving tasks */
+  private int archivingThreadNum = 2;
+
+  /** whether to enable the audit log * */
+  private boolean enableAuditLog = false;
+
+  /** Output location of audit logs * */
+  private List<AuditLogStorage> auditLogStorage =
+      Arrays.asList(AuditLogStorage.IOTDB, AuditLogStorage.LOGGER);
+
+  /** Indicates the category collection of audit logs * */
+  private List<AuditLogOperation> auditLogOperation =
+      Arrays.asList(AuditLogOperation.DML, AuditLogOperation.DDL, AuditLogOperation.QUERY);
+
+  /** whether the local write api records audit logs * */
+  private boolean enableAuditLogForNativeInsertApi = true;
 
   // customizedProperties, this should be empty by default.
   private Properties customizedProperties = new Properties();
@@ -986,18 +1016,19 @@ public class IoTDBConfig {
     confirmMultiDirStrategy();
   }
 
-  /** if the folders are relative paths, add IOTDB_HOME as the path prefix */
+  /** if the folders are relative paths, add IOTDB_DATA_HOME as the path prefix */
   private void formulateFolders() {
-    systemDir = addHomeDir(systemDir);
-    schemaDir = addHomeDir(schemaDir);
-    syncDir = addHomeDir(syncDir);
-    tracingDir = addHomeDir(tracingDir);
-    walDir = addHomeDir(walDir);
-    indexRootFolder = addHomeDir(indexRootFolder);
-    extDir = addHomeDir(extDir);
-    udfDir = addHomeDir(udfDir);
-    triggerDir = addHomeDir(triggerDir);
-    operationSyncLogDir = addHomeDir(operationSyncLogDir);
+
+    systemDir = addDataHomeDir(systemDir);
+    schemaDir = addDataHomeDir(schemaDir);
+    syncDir = addDataHomeDir(syncDir);
+    tracingDir = addDataHomeDir(tracingDir);
+    walDir = addDataHomeDir(walDir);
+    indexRootFolder = addDataHomeDir(indexRootFolder);
+    extDir = addDataHomeDir(extDir);
+    udfDir = addDataHomeDir(udfDir);
+    triggerDir = addDataHomeDir(triggerDir);
+    operationSyncLogDir = addDataHomeDir(operationSyncLogDir);
 
     if (TSFileDescriptor.getInstance().getConfig().getTSFileStorageFs().equals(FSType.HDFS)) {
       String hdfsDir = getHdfsDir();
@@ -1006,9 +1037,9 @@ public class IoTDBConfig {
         dataDirs[i] = hdfsDir + File.separatorChar + dataDirs[i];
       }
     } else {
-      queryDir = addHomeDir(queryDir);
+      queryDir = addDataHomeDir(queryDir);
       for (int i = 0; i < dataDirs.length; i++) {
-        dataDirs[i] = addHomeDir(dataDirs[i]);
+        dataDirs[i] = addDataHomeDir(dataDirs[i]);
       }
     }
   }
@@ -1021,7 +1052,7 @@ public class IoTDBConfig {
       }
     } else {
       for (int i = 0; i < dataDirs.length; i++) {
-        dataDirs[i] = addHomeDir(dataDirs[i]);
+        dataDirs[i] = addDataHomeDir(dataDirs[i]);
       }
     }
     this.dataDirs = dataDirs;
@@ -1029,12 +1060,25 @@ public class IoTDBConfig {
   }
 
   private String addHomeDir(String dir) {
-    String homeDir = System.getProperty(IoTDBConstant.IOTDB_HOME, null);
-    if (!new File(dir).isAbsolute() && homeDir != null && homeDir.length() > 0) {
-      if (!homeDir.endsWith(File.separator)) {
-        dir = homeDir + File.separatorChar + dir;
+    return addDirPrefix(System.getProperty(IoTDBConstant.IOTDB_HOME, null), dir);
+  }
+
+  // if IOTDB_DATA_HOME is not set, then we keep dataHomeDir prefix being the same with IOTDB_HOME
+  // In this way, we can keep consistent with v0.13.0~2.
+  private String addDataHomeDir(String dir) {
+    String dataHomeDir = System.getProperty(IoTDBConstant.IOTDB_DATA_HOME, null);
+    if (dataHomeDir == null) {
+      dataHomeDir = System.getProperty(IoTDBConstant.IOTDB_HOME, null);
+    }
+    return addDirPrefix(dataHomeDir, dir);
+  }
+
+  private String addDirPrefix(String prefix, String dir) {
+    if (!new File(dir).isAbsolute() && prefix != null && prefix.length() > 0) {
+      if (!prefix.endsWith(File.separator)) {
+        dir = prefix + File.separatorChar + dir;
       } else {
-        dir = homeDir + dir;
+        dir = prefix + dir;
       }
     }
     return dir;
@@ -1438,7 +1482,7 @@ public class IoTDBConfig {
             new RuntimeException("System mode is set to ERROR"));
         System.exit(-1);
       }
-    } else {
+    } else if (status != newStatus) {
       logger.warn("Set system mode from {} to {}.", status, newStatus);
     }
     this.status = newStatus;
@@ -1674,12 +1718,12 @@ public class IoTDBConfig {
         insertMultiTabletEnableMultithreadingColumnThreshold;
   }
 
-  public int getCompactionWriteThroughputMbPerSec() {
-    return compactionWriteThroughputMbPerSec;
+  public int getCompactionIORatePerSec() {
+    return compactionIORatePerSec;
   }
 
-  public void setCompactionWriteThroughputMbPerSec(int compactionWriteThroughputMbPerSec) {
-    this.compactionWriteThroughputMbPerSec = compactionWriteThroughputMbPerSec;
+  public void setCompactionIORatePerSec(int compactionIORatePerSec) {
+    this.compactionIORatePerSec = compactionIORatePerSec;
   }
 
   public boolean isEnableMemControl() {
@@ -2571,6 +2615,14 @@ public class IoTDBConfig {
     this.maxCrossCompactionCandidateFileNum = maxCrossCompactionCandidateFileNum;
   }
 
+  public long getMaxCrossCompactionCandidateFileSize() {
+    return maxCrossCompactionCandidateFileSize;
+  }
+
+  public void setMaxCrossCompactionCandidateFileSize(long maxCrossCompactionCandidateFileSize) {
+    this.maxCrossCompactionCandidateFileSize = maxCrossCompactionCandidateFileSize;
+  }
+
   public long getCompactionSubmissionIntervalInMs() {
     return compactionSubmissionIntervalInMs;
   }
@@ -2739,6 +2791,14 @@ public class IoTDBConfig {
     this.schemaQueryFetchSize = schemaQueryFetchSize;
   }
 
+  public int getArchivingThreadNum() {
+    return archivingThreadNum;
+  }
+
+  public void setArchivingThreadNum(int archivingThreadNum) {
+    this.archivingThreadNum = archivingThreadNum;
+  }
+
   public double getWriteProportion() {
     return writeProportion;
   }
@@ -2761,5 +2821,53 @@ public class IoTDBConfig {
 
   public void setCustomizedProperties(Properties customizedProperties) {
     this.customizedProperties = customizedProperties;
+  }
+
+  public double getChunkMetadataMemorySizeProportion() {
+    return chunkMetadataMemorySizeProportion;
+  }
+
+  public void setChunkMetadataMemorySizeProportion(double chunkMetadataMemorySizeProportion) {
+    this.chunkMetadataMemorySizeProportion = chunkMetadataMemorySizeProportion;
+  }
+
+  public int getPatternMatchingThreshold() {
+    return patternMatchingThreshold;
+  }
+
+  public void setPatternMatchingThreshold(int patternMatchingThreshold) {
+    this.patternMatchingThreshold = patternMatchingThreshold;
+  }
+
+  public boolean isEnableAuditLog() {
+    return enableAuditLog;
+  }
+
+  public void setEnableAuditLog(boolean enableAuditLog) {
+    this.enableAuditLog = enableAuditLog;
+  }
+
+  public List<AuditLogStorage> getAuditLogStorage() {
+    return auditLogStorage;
+  }
+
+  public void setAuditLogStorage(List<AuditLogStorage> auditLogStorage) {
+    this.auditLogStorage = auditLogStorage;
+  }
+
+  public List<AuditLogOperation> getAuditLogOperation() {
+    return auditLogOperation;
+  }
+
+  public void setAuditLogOperation(List<AuditLogOperation> auditLogOperation) {
+    this.auditLogOperation = auditLogOperation;
+  }
+
+  public boolean isEnableAuditLogForNativeInsertApi() {
+    return enableAuditLogForNativeInsertApi;
+  }
+
+  public void setEnableAuditLogForNativeInsertApi(boolean enableAuditLogForNativeInsertApi) {
+    this.enableAuditLogForNativeInsertApi = enableAuditLogForNativeInsertApi;
   }
 }

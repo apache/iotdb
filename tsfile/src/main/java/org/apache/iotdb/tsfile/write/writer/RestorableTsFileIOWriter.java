@@ -30,6 +30,7 @@ import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
+import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -76,6 +77,21 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
    */
   public RestorableTsFileIOWriter(File file) throws IOException {
     this(file, true);
+  }
+
+  /**
+   * @param file a given tsfile path you want to (continue to) write
+   * @throws IOException if write failed, or the file is broken but autoRepair==false.
+   */
+  public RestorableTsFileIOWriter(File file, long maxMetadataSize) throws IOException {
+    this(file, true);
+    this.maxMetadataSize = maxMetadataSize;
+    this.enableMemoryControl = true;
+    this.chunkMetadataTempFile = new File(file.getAbsolutePath() + CHUNK_METADATA_TEMP_FILE_SUFFIX);
+    if (chunkMetadataTempFile.exists()) {
+      FileUtils.delete(chunkMetadataTempFile);
+    }
+    this.checkMetadataSizeAndMayFlush();
   }
 
   public RestorableTsFileIOWriter(File file, boolean truncate) throws IOException {

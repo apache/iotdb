@@ -972,7 +972,7 @@ public class MManagerBasicTest {
     encodingList.add(Arrays.asList(TSEncoding.RLE, TSEncoding.RLE));
 
     List<List<CompressionType>> compressionTypes = new ArrayList<>();
-    compressionTypes.add(Collections.singletonList(CompressionType.SDT));
+    compressionTypes.add(Collections.singletonList(CompressionType.SNAPPY));
     compressionTypes.add(Collections.singletonList(CompressionType.SNAPPY));
     compressionTypes.add(Arrays.asList(CompressionType.SNAPPY, CompressionType.SNAPPY));
 
@@ -1103,7 +1103,7 @@ public class MManagerBasicTest {
     encodingList.add(Arrays.asList(TSEncoding.RLE, TSEncoding.RLE));
 
     List<List<CompressionType>> compressionTypes = new ArrayList<>();
-    compressionTypes.add(Collections.singletonList(CompressionType.SDT));
+    compressionTypes.add(Collections.singletonList(CompressionType.SNAPPY));
     compressionTypes.add(Collections.singletonList(CompressionType.SNAPPY));
     compressionTypes.add(Arrays.asList(CompressionType.SNAPPY, CompressionType.SNAPPY));
 
@@ -2060,7 +2060,7 @@ public class MManagerBasicTest {
       fail();
     } catch (Exception e) {
       Assert.assertEquals(
-          "Timeseries under path [root.laptop.d1.aligned_device] is aligned , please set InsertPlan.isAligned() = true",
+          "timeseries under this device are aligned, please use aligned interface (Path: root.laptop.d1.aligned_device)",
           e.getMessage());
     }
   }
@@ -2166,7 +2166,7 @@ public class MManagerBasicTest {
       fail();
     } catch (Exception e) {
       Assert.assertEquals(
-          "Timeseries under path [root.laptop.d1.aligned_device] is not aligned , please set InsertPlan.isAligned() = false",
+          "timeseries under this device are not aligned, please use non-aligned interface (Path: root.laptop.d1.aligned_device)",
           e.getMessage());
     }
   }

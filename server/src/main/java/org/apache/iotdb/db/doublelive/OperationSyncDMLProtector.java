@@ -20,11 +20,15 @@ package org.apache.iotdb.db.doublelive;
 
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.rpc.BatchExecutionException;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
+import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.pool.SessionPool;
 
 import java.nio.ByteBuffer;
 import java.util.concurrent.TimeUnit;
+
+import static org.apache.iotdb.rpc.TSStatusCode.STORAGE_GROUP_NOT_READY;
 
 public class OperationSyncDMLProtector extends OperationSyncProtector {
 
@@ -51,6 +55,7 @@ public class OperationSyncDMLProtector extends OperationSyncProtector {
 
   @Override
   protected void transmitPhysicalPlan(ByteBuffer planBuffer, PhysicalPlan physicalPlan) {
+    long sleepTimeInSeconds = 1;
     while (true) {
       // transmit E-Plan until it's been received
       boolean transmitStatus = false;
@@ -61,10 +66,38 @@ public class OperationSyncDMLProtector extends OperationSyncProtector {
           transmitStatus = operationSyncSessionPool.operationSyncTransmit(planBuffer);
         } catch (IoTDBConnectionException connectionException) {
           // warn IoTDBConnectionException and retry
-          LOGGER.warn("OperationSyncDMLProtector can't transmit, retrying...", connectionException);
+          LOGGER.warn(
+              "OperationSyncDMLProtector can't transmit for connection error, retrying...",
+              connectionException);
+        } catch (BatchExecutionException batchExecutionException) {
+          if (batchExecutionException.getStatusList().stream()
+              .anyMatch(s -> s.getCode() == STORAGE_GROUP_NOT_READY.getStatusCode())) {
+            sleepTimeInSeconds = 10;
+            LOGGER.warn(
+                "OperationSyncDMLProtector can't transmit for STORAGE_GROUP_NOT_READY",
+                batchExecutionException);
+          } else {
+            LOGGER.warn(
+                "OperationSyncDMLProtector can't transmit for batchExecutionException, discard it",
+                batchExecutionException);
+            break;
+          }
+        } catch (StatementExecutionException statementExecutionException) {
+          if (statementExecutionException.getStatusCode()
+              == STORAGE_GROUP_NOT_READY.getStatusCode()) {
+            LOGGER.warn(
+                "OperationSyncDMLProtector can't transmit for STORAGE_GROUP_NOT_READY",
+                statementExecutionException);
+            sleepTimeInSeconds = 10;
+          } else {
+            LOGGER.warn(
+                "OperationSyncDMLProtector can't transmit for statementExecutionException, discard it",
+                statementExecutionException);
+            break;
+          }
         } catch (Exception e) {
           // error exception and break
-          LOGGER.error("OperationSyncDMLProtector can't transmit", e);
+          LOGGER.error("OperationSyncDMLProtector can't transmit, discard it", e);
           break;
         }
       } else {
@@ -78,7 +111,7 @@ public class OperationSyncDMLProtector extends OperationSyncProtector {
         break;
       } else {
         try {
-          TimeUnit.SECONDS.sleep(1);
+          TimeUnit.SECONDS.sleep(sleepTimeInSeconds);
         } catch (InterruptedException e) {
           LOGGER.warn("OperationSyncDMLProtector is interrupted", e);
         }

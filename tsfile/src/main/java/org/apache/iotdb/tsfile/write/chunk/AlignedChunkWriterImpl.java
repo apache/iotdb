@@ -236,4 +236,8 @@ public class AlignedChunkWriterImpl implements IChunkWriter {
   public TSDataType getCurrentValueChunkType() {
     return valueChunkWriterList.get(valueIndex).getDataType();
   }
+
+  public ValueChunkWriter getValueChunkWriterByIndex(int valueIndex) {
+    return valueChunkWriterList.get(valueIndex);
+  }
 }

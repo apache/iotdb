@@ -59,6 +59,8 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.Executor;
 
+import static org.apache.iotdb.jdbc.Config.VERSION;
+
 public class IoTDBConnection implements Connection {
 
   private static final Logger logger = LoggerFactory.getLogger(IoTDBConnection.class);
@@ -463,8 +465,7 @@ public class IoTDBConnection implements Connection {
     openReq.setUsername(params.getUsername());
     openReq.setPassword(params.getPassword());
     openReq.setZoneId(getTimeZone());
-    openReq.putToConfiguration("version", params.getVersion().toString());
-
+    openReq.putToConfiguration(VERSION, params.getVersion().toString());
     TSOpenSessionResp openResp = null;
     try {
       openResp = client.openSession(openReq);

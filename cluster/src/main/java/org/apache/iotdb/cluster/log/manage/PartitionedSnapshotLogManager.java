@@ -84,6 +84,7 @@ public abstract class PartitionedSnapshotLogManager<T extends Snapshot> extends 
     this.dataGroupMember = dataGroupMember;
 
     if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
+      // No need to move into IMetricSet because old cluster is removed in 0.14.0+
       MetricService.getInstance()
           .getOrCreateAutoGauge(
               Metric.CLUSTER_UNCOMMITTED_LOG.toString(),

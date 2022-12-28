@@ -26,7 +26,7 @@ import org.apache.iotdb.db.exception.query.UnSupportedFillTypeException;
 import org.apache.iotdb.db.metadata.path.AlignedPath;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.qp.utils.DatetimeUtils;
+import org.apache.iotdb.db.qp.utils.DateTimeUtils;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.aggregation.impl.FirstValueAggrResult;
 import org.apache.iotdb.db.query.aggregation.impl.MinTimeAggrResult;
@@ -63,8 +63,8 @@ public class LinearFill extends IFill {
   }
 
   public LinearFill(String beforeStr, String afterStr) {
-    this.beforeRange = DatetimeUtils.convertDurationStrToLong(beforeStr);
-    this.afterRange = DatetimeUtils.convertDurationStrToLong(afterStr);
+    this.beforeRange = DateTimeUtils.convertDurationStrToLong(beforeStr);
+    this.afterRange = DateTimeUtils.convertDurationStrToLong(afterStr);
     if (beforeStr.toLowerCase().contains("mo")) {
       this.isBeforeByMonth = true;
     }

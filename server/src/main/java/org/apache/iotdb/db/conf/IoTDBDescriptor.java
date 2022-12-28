@@ -18,13 +18,15 @@
  */
 package org.apache.iotdb.db.conf;
 
+import org.apache.iotdb.db.audit.AuditLogOperation;
+import org.apache.iotdb.db.audit.AuditLogStorage;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.compaction.constant.CompactionPriority;
 import org.apache.iotdb.db.engine.compaction.cross.CrossCompactionStrategy;
 import org.apache.iotdb.db.engine.compaction.inner.InnerCompactionStrategy;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.qp.utils.DatetimeUtils;
+import org.apache.iotdb.db.qp.utils.DateTimeUtils;
 import org.apache.iotdb.db.service.metrics.MetricService;
 import org.apache.iotdb.external.api.IPropertiesLoader;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
@@ -48,8 +50,10 @@ import java.net.InetAddress;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.UnknownHostException;
+import java.util.Arrays;
 import java.util.Properties;
 import java.util.ServiceLoader;
+import java.util.stream.Collectors;
 
 public class IoTDBDescriptor {
 
@@ -341,6 +345,11 @@ public class IoTDBDescriptor {
                 "max_waiting_time_when_insert_blocked",
                 Integer.toString(conf.getMaxWaitingTimeWhenInsertBlocked()))));
 
+    conf.setChunkMetadataMemorySizeProportion(
+        Double.parseDouble(
+            properties.getProperty(
+                "chunk_metadata_memory_size_proportion",
+                Double.toString(conf.getChunkMetadataMemorySizeProportion()))));
     conf.setEstimatedSeriesSize(
         Integer.parseInt(
             properties.getProperty(
@@ -481,6 +490,15 @@ public class IoTDBDescriptor {
       conf.setConcurrentSubRawQueryThread(Runtime.getRuntime().availableProcessors());
     }
 
+    conf.setArchivingThreadNum(
+        Integer.parseInt(
+            properties.getProperty(
+                "archiving_thread_num", Integer.toString(conf.getArchivingThreadNum()))));
+
+    if (conf.getArchivingThreadNum() <= 0) {
+      conf.setArchivingThreadNum(2);
+    }
+
     conf.setRawQueryBlockingQueueCapacity(
         Integer.parseInt(
             properties.getProperty(
@@ -549,7 +567,7 @@ public class IoTDBDescriptor {
     conf.setChunkPointNumLowerBoundInCompaction(
         Long.parseLong(
             properties.getProperty(
-                "chunk_size_lower_bound_in_compaction",
+                "chunk_point_num_lower_bound_in_compaction",
                 Long.toString(conf.getChunkPointNumLowerBoundInCompaction()))));
     conf.setChunkSizeLowerBoundInCompaction(
         Long.parseLong(
@@ -567,11 +585,17 @@ public class IoTDBDescriptor {
                 "max_cross_compaction_candidate_file_num",
                 Integer.toString(conf.getMaxCrossCompactionCandidateFileNum()))));
 
-    conf.setCompactionWriteThroughputMbPerSec(
+    conf.setMaxCrossCompactionCandidateFileSize(
+        Long.parseLong(
+            properties.getProperty(
+                "max_cross_compaction_candidate_file_size",
+                Long.toString(conf.getMaxCrossCompactionCandidateFileSize()))));
+
+    conf.setCompactionIORatePerSec(
         Integer.parseInt(
             properties.getProperty(
                 "compaction_write_throughput_mb_per_sec",
-                Integer.toString(conf.getCompactionWriteThroughputMbPerSec()))));
+                Integer.toString(conf.getCompactionIORatePerSec()))));
 
     conf.setEnablePartialInsert(
         Boolean.parseBoolean(
@@ -871,6 +895,30 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "schema_query_fetch_size", String.valueOf(conf.getSchemaQueryFetchSize()))));
 
+    conf.setEnableAuditLog(
+        Boolean.parseBoolean(
+            properties.getProperty("enable_audit_log", String.valueOf(conf.isEnableAuditLog()))));
+
+    if (properties.getProperty("audit_log_storage") != null) {
+      conf.setAuditLogStorage(
+          Arrays.stream(properties.getProperty("audit_log_storage").split(","))
+              .map(AuditLogStorage::valueOf)
+              .collect(Collectors.toList()));
+    }
+
+    if (properties.getProperty("audit_log_operation") != null) {
+      conf.setAuditLogOperation(
+          Arrays.stream(properties.getProperty("audit_log_operation").split(","))
+              .map(AuditLogOperation::valueOf)
+              .collect(Collectors.toList()));
+    }
+
+    conf.setEnableAuditLogForNativeInsertApi(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "enable_audit_log_for_native_insert_api",
+                String.valueOf(conf.isEnableAuditLogForNativeInsertApi()))));
+
     // At the same time, set TSFileConfig
     TSFileDescriptor.getInstance()
         .getConfig()
@@ -908,6 +956,13 @@ public class IoTDBDescriptor {
         .setDfsClientFailoverProxyProvider(
             properties.getProperty(
                 "dfs_client_failover_proxy_provider", conf.getDfsClientFailoverProxyProvider()));
+    TSFileDescriptor.getInstance()
+        .getConfig()
+        .setPatternMatchingThreshold(
+            Integer.parseInt(
+                properties.getProperty(
+                    "pattern_matching_threshold",
+                    String.valueOf(conf.getPatternMatchingThreshold()))));
     TSFileDescriptor.getInstance()
         .getConfig()
         .setUseKerberos(
@@ -1309,11 +1364,11 @@ public class IoTDBDescriptor {
               properties.getProperty(
                   "slow_query_threshold", Long.toString(conf.getSlowQueryThreshold()))));
       // update merge_write_throughput_mb_per_sec
-      conf.setCompactionWriteThroughputMbPerSec(
+      conf.setCompactionIORatePerSec(
           Integer.parseInt(
               properties.getProperty(
                   "merge_write_throughput_mb_per_sec",
-                  Integer.toString(conf.getCompactionWriteThroughputMbPerSec()))));
+                  Integer.toString(conf.getCompactionIORatePerSec()))));
 
       // update insert-tablet-plan's row limit for select-into
       conf.setSelectIntoInsertTabletPlanRowLimit(
@@ -1490,7 +1545,7 @@ public class IoTDBDescriptor {
     }
 
     conf.setContinuousQueryMinimumEveryInterval(
-        DatetimeUtils.convertDurationStrToLong(
+        DateTimeUtils.convertDurationStrToLong(
             properties.getProperty("continuous_query_minimum_every_interval", "1s"),
             conf.getTimestampPrecision()));
 

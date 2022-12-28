@@ -196,6 +196,12 @@ public abstract class Operator {
 
     SHOW_QUERY_RESOURCE,
 
-    DEACTIVATE_TEMPLATE
+    DEACTIVATE_TEMPLATE,
+
+    SET_ARCHIVING,
+    PAUSE_ARCHIVING,
+    SHOW_ARCHIVING,
+
+    EXPORT_SCHEMA
   }
 }

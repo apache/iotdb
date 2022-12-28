@@ -57,18 +57,33 @@ IoTDB 支持多种安装途径。用户可以使用三种方式对 IoTDB 进行�
 Linux 系统与 MacOS 系统启动命令如下：
 
 ```
-> nohup sbin/start-server.sh >/dev/null 2>&1 &
+> nohup sbin/start-server.sh -f >/dev/null 2>&1 &
 or
-> nohup sbin/start-server.sh -c <conf_path> >/dev/null 2>&1 &
+> nohup sbin/start-server.sh -b
 ```
-
+可选参数:
+- 默认不含任何参数时, iotdb 将在后台启动，并且不在控制台打印日志
+- "-v": 查看iotdb版本
+- "-f": 在控制台前台启动iotdb (v0.14前是默认设置)
+- "-b": 在后台启动iotdb，控制台不打印日志
+- "-p \<pidfile\>": 将pid保存到指定的文件中
+- "-h": 查看帮助
+- "printgc"(必须是最后一个参数): 打印GC日志 (从v0.14起，该参数将被-g取代)
+- "-g": 打印GC日志
+- "-c \<config folder\>": 设置IOTDB_CONF变量的值，从而修改配置文件所在文件夹
+- "-D <a=b>": 设置Java的系统环境变量或其他参数
+- "-H \<filePath\> 当OOM异常时存储堆快照到\<filePath\> (仅 Linux/Mac生效, 且要求iotdb内存小于16GB)"
+- "-E <\filePath\> save error file of JVM to \<filePath\> (仅 Linux/Mac生效)"
+- "-X \<command\> 等价于JVM中 -XX:\<command\>"
+- 
 Windows 系统启动命令如下：
 
 ```
-> sbin\start-server.bat -c <conf_path>
+> sbin\start-server.bat 
 ```
-- "-c"是可选的。
-- 选项 "-c" 指定了配置文件所在的文件夹。
+
+Windows 系统支持 -c, -v, -f, -b 四个参数。
+
 
 #### 使用 Cli 工具
 
@@ -251,6 +266,18 @@ Windows 系统停止命令如下：
 ```
 > $sbin\stop-server.bat
 ```
+
+#### IoTDB 的权限管理
+
+初始安装后的 IoTDB 中有一个默认用户：root，默认密码为 root。该用户为管理员用户，固定拥有所有权限，无法被赋予、撤销权限，也无法被删除。
+
+您可以通过以下命令修改其密码：
+```
+ALTER USER <username> SET PASSWORD <password>;
+Example: IoTDB > ALTER USER root SET PASSWORD 'newpwd';
+```
+
+权限管理的具体内容可以参考：[权限管理](https://iotdb.apache.org/zh/UserGuide/V0.13.x/Administration-Management/Administration.html)
 
 ### 基础配置
 

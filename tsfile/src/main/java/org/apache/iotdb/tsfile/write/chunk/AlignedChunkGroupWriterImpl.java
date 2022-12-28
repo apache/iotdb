@@ -70,7 +70,7 @@ public class AlignedChunkGroupWriterImpl implements IChunkGroupWriter {
   }
 
   @Override
-  public void tryToAddSeriesWriter(MeasurementSchema measurementSchema) {
+  public void tryToAddSeriesWriter(MeasurementSchema measurementSchema) throws IOException {
     if (!valueChunkWriterMap.containsKey(measurementSchema.getMeasurementId())) {
       ValueChunkWriter valueChunkWriter =
           new ValueChunkWriter(
@@ -85,7 +85,7 @@ public class AlignedChunkGroupWriterImpl implements IChunkGroupWriter {
   }
 
   @Override
-  public void tryToAddSeriesWriter(List<MeasurementSchema> measurementSchemas) {
+  public void tryToAddSeriesWriter(List<MeasurementSchema> measurementSchemas) throws IOException {
     for (MeasurementSchema schema : measurementSchemas) {
       if (!valueChunkWriterMap.containsKey(schema.getMeasurementId())) {
         ValueChunkWriter valueChunkWriter =
@@ -229,7 +229,7 @@ public class AlignedChunkGroupWriterImpl implements IChunkGroupWriter {
     return size;
   }
 
-  public void tryToAddEmptyPageAndData(ValueChunkWriter valueChunkWriter) {
+  public void tryToAddEmptyPageAndData(ValueChunkWriter valueChunkWriter) throws IOException {
     // add empty page
     for (int i = 0; i < timeChunkWriter.getNumOfPages(); i++) {
       valueChunkWriter.writeEmptyPageToPageBuffer();

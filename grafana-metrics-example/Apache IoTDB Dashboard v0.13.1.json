@@ -54,7 +54,7 @@
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
   "id": null,
-  "iteration": 1650335659041,
+  "iteration": 1664934244274,
   "links": [],
   "liveNow": false,
   "panels": [
@@ -145,7 +145,7 @@
           "exemplar": true,
           "expr": "quantity{instance=~\"$instance\"}",
           "interval": "",
-          "legendFormat": "{{name}} number",
+          "legendFormat": "{{type}} {{name}} number",
           "refId": "A"
         }
       ],
@@ -402,7 +402,7 @@
           "exemplar": true,
           "expr": "rate(entry_seconds_count{instance=~\"$instance\"}[1m])",
           "interval": "1m",
-          "legendFormat": "{{instance}}-{{name}}",
+          "legendFormat": "{{name}}",
           "refId": "A"
         }
       ],
@@ -486,9 +486,9 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "exemplar": true,
-          "expr": "avg(rate(entry_seconds_sum{}[1m])/rate(entry_seconds_count{}[1m])) by (name,instance)",
+          "expr": "avg(rate(entry_seconds_sum{instance=~\"$instance\"}[1m])/rate(entry_seconds_count{instance=~\"$instance\"}[1m])) by (name,instance)",
           "interval": "1m",
-          "legendFormat": "{{instance}}-{{name}}",
+          "legendFormat": "{{name}}",
           "refId": "A"
         }
       ],
@@ -750,7 +750,7 @@
           "exemplar": true,
           "expr": "rate(cost_task_seconds_sum{instance=~\"$instance\"}[10m])/rate(cost_task_seconds_count{instance=~\"$instance\"}[10m])",
           "interval": "1m",
-          "legendFormat": "{{instance}}-{{name}}",
+          "legendFormat": "{{name}}",
           "refId": "A"
         }
       ],
@@ -845,7 +845,7 @@
           "exemplar": true,
           "expr": "file_size{instance=~\"$instance\"}",
           "interval": "1m",
-          "legendFormat": "{{instance}}-{{name}}",
+          "legendFormat": "{{name}}",
           "refId": "A"
         },
         {
@@ -1522,6 +1522,6 @@
   "timezone": "browser",
   "title": "Apache IoTDB Dashboard",
   "uid": "TbEVYRw7k",
-  "version": 2,
+  "version": 3,
   "weekStart": ""
 }

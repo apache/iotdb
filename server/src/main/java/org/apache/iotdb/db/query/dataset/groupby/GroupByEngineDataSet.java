@@ -209,7 +209,7 @@ public abstract class GroupByEngineDataSet extends QueryDataSet {
    */
   public static long calcIntervalByMonth(long startTime, long numMonths) {
     Calendar calendar = Calendar.getInstance();
-    calendar.setTimeZone(SessionManager.getInstance().getCurrSessionTimeZone());
+    calendar.setTimeZone(SessionManager.getInstance().getSessionTimeZone());
     calendar.setTimeInMillis(startTime);
     boolean isLastDayOfMonth =
         calendar.get(Calendar.DAY_OF_MONTH) == calendar.getActualMaximum(Calendar.DAY_OF_MONTH);

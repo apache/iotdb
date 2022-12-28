@@ -19,6 +19,31 @@
 
 -->
 
+# Apache IoTDB 0.13.3
+
+## Improvements
+
+* [IOTDB-4525] Accelerate restart process
+* [IOTDB-3164] Add compaction memory control
+* [IOTDB-4364] Reduce read amplification in compaction
+* [IOTDB-4424] Specify error message when time value of insert sql can not be correctly parsed
+* [IOTDB-4492] Control total file size of cross space compaction task
+* [IOTDB-4542] Optimize schema validate error message
+* Optimize pattern matching in Regexp
+
+## Bug Fixes
+
+* [IOTDB-3988] Fix reload problem of metric module and refactor metric module
+* [IOTDB-4239] fix NPE to insert a null value into a TEXT timeseries
+* [IOTDB-4318] Fix RESTAPI data type conversion failed
+* [IOTDB-4320] Fix insert row with null cause recover throw NPE
+* [IOTDB-4343] Fix NPE when using MQTT protocol
+* [IOTDB-4357] fix start in windows, IOTDB_LOG_DIR_IS_UNDEFINED folder appears
+* [IOTDB-4585] Incorrect query result after deleting data for aligned timeseries
+* [IOTDB-4615] TTL adapts timestamp precision
+* [IOTDB-4636] IndexOutOfBoundsException when compacting aligned series
+* Fix PathAlreadyExistException during concurrent auto creating aligned timeseries
+
 # Apache IoTDB 0.13.2
 
 ## Improvements

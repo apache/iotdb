@@ -37,6 +37,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.fail;
 
 @Category({LocalStandaloneTest.class, ClusterTest.class})
@@ -62,6 +63,7 @@ public class IoTDBUDFWindowQueryIT {
       statement.execute("SET STORAGE GROUP TO root.vehicle");
       statement.execute("CREATE TIMESERIES root.vehicle.d1.s1 with datatype=INT32,encoding=PLAIN");
       statement.execute("CREATE TIMESERIES root.vehicle.d1.s2 with datatype=INT32,encoding=PLAIN");
+      statement.execute("CREATE TIMESERIES root.vehicle1.d1.s1 with datatype=INT32,encoding=PLAIN");
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -75,6 +77,8 @@ public class IoTDBUDFWindowQueryIT {
             (String.format(
                 "insert into root.vehicle.d1(timestamp,s1,s2) values(%d,%d,%d)", i, i, i)));
       }
+      // test empty window, details could be found at https://github.com/apache/iotdb/issues/7738
+      statement.execute("insert into root.vehicle1.d1(timestamp, s1) values (1,2),(2,3),(7,8)");
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -407,6 +411,33 @@ public class IoTDBUDFWindowQueryIT {
   }
 
   @Test
+  public void testSlidingTimeWindowWithEmptyWindow() {
+    String sql =
+        String.format(
+            "select time_window_tester(s1, '%s'='%s') from root.vehicle1.d1",
+            ExampleUDFConstant.TIME_INTERVAL_KEY, 3);
+    try (Connection conn = EnvFactory.getEnv().getConnection();
+        Statement statement = conn.createStatement();
+        ResultSet resultSet = statement.executeQuery(sql)) {
+      assertEquals(2, resultSet.getMetaData().getColumnCount());
+
+      int count = 0;
+      if (resultSet.next()) {
+        assertEquals(5, (int) (Double.parseDouble(resultSet.getString(2))));
+        ++count;
+      }
+      if (resultSet.next()) {
+        assertEquals(8, (int) (Double.parseDouble(resultSet.getString(2))));
+        ++count;
+      }
+      assertFalse(resultSet.next());
+      assertEquals(2, count);
+    } catch (SQLException throwable) {
+      fail();
+    }
+  }
+
+  @Test
   public void testSlidingTimeWindowWithTimeIntervalOnly1() {
     testSlidingTimeWindowWithTimeIntervalOnly(1);
   }
@@ -705,7 +736,7 @@ public class IoTDBUDFWindowQueryIT {
           time += 1000;
           value += 1000000;
         }
-        Assert.assertFalse(rs.next());
+        assertFalse(rs.next());
       }
 
       query =
@@ -720,7 +751,7 @@ public class IoTDBUDFWindowQueryIT {
           time += 1000;
           value += 1000000D;
         }
-        Assert.assertFalse(rs.next());
+        assertFalse(rs.next());
       }
     } catch (SQLException e) {
       e.printStackTrace();
@@ -750,7 +781,7 @@ public class IoTDBUDFWindowQueryIT {
           time += 1000;
           value += 1000000;
         }
-        Assert.assertFalse(rs.next());
+        assertFalse(rs.next());
       }
 
       query =
@@ -771,7 +802,7 @@ public class IoTDBUDFWindowQueryIT {
           time += 1000;
           value += 1000000D;
         }
-        Assert.assertFalse(rs.next());
+        assertFalse(rs.next());
       }
     } catch (SQLException e) {
       e.printStackTrace();

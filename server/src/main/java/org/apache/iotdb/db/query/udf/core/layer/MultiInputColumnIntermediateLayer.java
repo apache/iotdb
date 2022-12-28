@@ -351,13 +351,19 @@ public class MultiInputColumnIntermediateLayer extends IntermediateLayer
             break;
           }
         }
+
+        if ((nextIndexEnd == nextIndexBegin)
+            && nextWindowTimeEnd < rowRecordList.getTime(rowRecordList.size() - 1)) {
+          window.setEmptyWindow(nextWindowTimeBegin, nextWindowTimeEnd);
+          return true;
+        }
         window.seek(
             nextIndexBegin,
             nextIndexEnd,
             nextWindowTimeBegin,
             nextWindowTimeBegin + timeInterval - 1);
 
-        hasCached = nextIndexBegin != nextIndexEnd;
+        hasCached = !(nextIndexBegin == nextIndexEnd && nextIndexEnd == rowRecordList.size());
         return hasCached;
       }
 

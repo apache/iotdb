@@ -30,6 +30,8 @@ import org.apache.iotdb.db.doublelive.OperationSyncLogService;
 import org.apache.iotdb.db.doublelive.OperationSyncPlanTypeUtils;
 import org.apache.iotdb.db.doublelive.OperationSyncProducer;
 import org.apache.iotdb.db.doublelive.OperationSyncWriteTask;
+import org.apache.iotdb.db.engine.archiving.ArchivingManager;
+import org.apache.iotdb.db.engine.archiving.ArchivingOperate;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.flush.CloseFileListener;
 import org.apache.iotdb.db.engine.flush.FlushListener;
@@ -62,6 +64,7 @@ import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowsOfOneDevicePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
+import org.apache.iotdb.db.qp.utils.DateTimeUtils;
 import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.IoTDB;
@@ -72,6 +75,7 @@ import org.apache.iotdb.db.service.metrics.enums.Tag;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.db.utils.ThreadUtils;
 import org.apache.iotdb.db.utils.UpgradeUtils;
+import org.apache.iotdb.isession.util.SystemStatus;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
@@ -79,7 +83,6 @@ import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.session.pool.SessionPool;
-import org.apache.iotdb.session.util.SystemStatus;
 import org.apache.iotdb.tsfile.utils.FilePathUtils;
 import org.apache.iotdb.tsfile.utils.Pair;
 
@@ -169,6 +172,8 @@ public class StorageEngine implements IService {
   ArrayList<BlockingQueue<Pair<ByteBuffer, OperationSyncPlanTypeUtils.OperationSyncPlanType>>>
       arrayListBlockQueue;
 
+  private ArchivingManager archivingManager = ArchivingManager.getInstance();
+
   private StorageEngine() {
     if (isEnableOperationSync) {
       // Open OperationSync
@@ -250,7 +255,7 @@ public class StorageEngine implements IService {
 
   private static void initTimePartition() {
     timePartitionInterval =
-        convertMilliWithPrecision(
+        DateTimeUtils.convertMilliTimeWithPrecision(
             IoTDBDescriptor.getInstance().getConfig().getPartitionInterval() * 1000L);
   }
 
@@ -293,22 +298,6 @@ public class StorageEngine implements IService {
     }
   }
 
-  public static long convertMilliWithPrecision(long milliTime) {
-    long result = milliTime;
-    String timePrecision = IoTDBDescriptor.getInstance().getConfig().getTimestampPrecision();
-    switch (timePrecision) {
-      case "ns":
-        result = milliTime * 1000_000L;
-        break;
-      case "us":
-        result = milliTime * 1000L;
-        break;
-      default:
-        break;
-    }
-    return result;
-  }
-
   public static String getDeviceNameByPlan(PhysicalPlan plan) {
     if (plan instanceof InsertPlan) {
       InsertPlan physicalPlan = (InsertPlan) plan;
@@ -338,6 +327,9 @@ public class StorageEngine implements IService {
   @TestOnly
   public static void setTimePartitionInterval(long timePartitionInterval) {
     StorageEngine.timePartitionInterval = timePartitionInterval;
+    if (timePartitionInterval == -1) {
+      initTimePartition();
+    }
   }
 
   public static long getTimePartition(long time) {
@@ -587,6 +579,7 @@ public class StorageEngine implements IService {
     shutdownTimedService(tsFileTimedCloseCheckThread, "TsFileTimedCloseCheckThread");
     recoveryThreadPool.shutdownNow();
     processorMap.clear();
+    archivingManager.close();
   }
 
   private void shutdownTimedService(ScheduledExecutorService pool, String poolName) {
@@ -782,7 +775,7 @@ public class StorageEngine implements IService {
             virtualStorageGroupId,
             fileFlushPolicy,
             storageGroupMNode.getFullPath());
-    processor.setDataTTL(storageGroupMNode.getDataTTL());
+    processor.setDataTTLWithTimePrecisionCheck(storageGroupMNode.getDataTTL());
     processor.setCustomFlushListeners(customFlushListeners);
     processor.setCustomCloseFileListeners(customCloseFileListeners);
     return processor;
@@ -865,17 +858,8 @@ public class StorageEngine implements IService {
         throw new BatchProcessException(results);
       }
     }
-    VirtualStorageGroupProcessor virtualStorageGroupProcessor;
-    try {
-      virtualStorageGroupProcessor = getProcessor(insertTabletPlan.getDevicePath());
-    } catch (StorageEngineException e) {
-      throw new StorageEngineException(
-          String.format(
-              "Get StorageGroupProcessor of device %s " + "failed",
-              insertTabletPlan.getDevicePath()),
-          e);
-    }
-
+    VirtualStorageGroupProcessor virtualStorageGroupProcessor =
+        getProcessor(insertTabletPlan.getDevicePath());
     getSeriesSchemas(insertTabletPlan, virtualStorageGroupProcessor);
     virtualStorageGroupProcessor.insertTablet(insertTabletPlan);
   }
@@ -1329,6 +1313,27 @@ public class StorageEngine implements IService {
     } catch (IOException e) {
       throw new StorageEngineException(e);
     }
+  }
+
+  /** push the archiving info to archivingManager */
+  public boolean setArchiving(PartialPath storageGroup, File targetDir, long ttl, long startTime) {
+    return archivingManager.setArchiving(storageGroup, targetDir, ttl, startTime);
+  }
+
+  public boolean operateArchiving(
+      ArchivingOperate.ArchivingOperateType operateType, long taskId, PartialPath storageGroup) {
+    if (taskId >= 0) {
+      return archivingManager.operate(operateType, taskId);
+    } else if (storageGroup != null) {
+      return archivingManager.operate(operateType, storageGroup);
+    } else {
+      logger.error("{} archiving cannot recognize taskId or storage group", operateType.name());
+      return false;
+    }
+  }
+
+  public ArchivingManager getArchivingManager() {
+    return archivingManager;
   }
 
   static class InstanceHolder {

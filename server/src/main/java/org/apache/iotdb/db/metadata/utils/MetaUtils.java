@@ -27,14 +27,19 @@ import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Map.Entry;
+
+import static org.apache.iotdb.db.conf.IoTDBConstant.LOSS;
+import static org.apache.iotdb.db.conf.IoTDBConstant.SDT_PARAMETERS;
 
 public class MetaUtils {
 
@@ -259,5 +264,22 @@ public class MetaUtils {
       }
     }
     return alignedPathToAggrIndexesMap;
+  }
+
+  public static Pair<String, String> parseDeadbandInfo(Map<String, String> props) {
+    if (props == null) {
+      return new Pair<>(null, null);
+    }
+    String deadband = props.get(LOSS);
+    deadband = deadband == null ? null : deadband.toUpperCase(Locale.ROOT);
+    Map<String, String> deadbandParameters = new HashMap<>();
+    for (String k : SDT_PARAMETERS) {
+      if (props.containsKey(k)) {
+        deadbandParameters.put(k, props.get(k));
+      }
+    }
+
+    return new Pair<>(
+        deadband, deadbandParameters.isEmpty() ? null : String.format("%s", deadbandParameters));
   }
 }

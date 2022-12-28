@@ -22,6 +22,15 @@ echo ------------------------------------------
 echo Starting IoTDB Client Import Script
 echo ------------------------------------------
 
+
+
+if [ -z "${IOTDB_INCLUDE}" ]; then
+  #do nothing
+  :
+elif [ -r "$IOTDB_INCLUDE" ]; then
+    . "$IOTDB_INCLUDE"
+fi
+
 if [ -z "${IOTDB_HOME}" ]; then
     export IOTDB_HOME="$(cd "`dirname "$0"`"/..; pwd)"
 fi

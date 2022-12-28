@@ -51,7 +51,7 @@ Once a prefix path is set as a storage group, the storage group settings cannot 
 
 After a storage group is set, the ancestral layers, children and descendant layers of the corresponding prefix path are not allowed to be set up again (for example, after `root.ln` is set as the storage group, the root layer and `root.ln.wf01` are not allowed to be set as storage groups).
 
-The Layer Name of storage group can only consist of characters, numbers, underscores and hyphen, like `root.storagegroup_1-sg1`.
+The Layer Name of storage group can only consist of characters, numbers and underscores, like `root.storagegroup_1`.
 
 ### Path
 
@@ -82,7 +82,7 @@ The following are the constraints on the layer (`layer_name`):
 * Except for the beginning layer (`root`) of the time series, the characters supported in other layers are as follows:
 
   * Chinese characters:  `"\u2E80"` to `"\u9FFF"`
-  * `"_"，"@"，"#"，"$"`
+  * `_` `:` `@` `#` `$` `{` `}`
   * `"A"` to `"Z"`, `"a"` to `"z"`, `"0"` to `"9"`
 
 * In addition to the beginning layer (`root`) of the time series and the storage group layer, other layers also support the use of special strings referenced by \` or `" ` as its name. It should be noted that the quoted string cannot contain `.` characters. Here are some legal examples:

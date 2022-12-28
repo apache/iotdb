@@ -248,6 +248,7 @@ public class AlignedChunkReader implements IChunkReader {
         Decoder.getDecoderByType(chunkHeader.getEncodingType(), chunkHeader.getDataType());
     byte[] uncompressedPageData = new byte[pageHeader.getUncompressedSize()];
     try {
+      IUnCompressor unCompressor = IUnCompressor.getUnCompressor(chunkHeader.getCompressionType());
       unCompressor.uncompress(
           compressedPageBody, 0, compressedPageBodyLength, uncompressedPageData, 0);
     } catch (Exception e) {
