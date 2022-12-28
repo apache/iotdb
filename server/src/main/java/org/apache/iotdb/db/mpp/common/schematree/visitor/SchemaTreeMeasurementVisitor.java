@@ -21,80 +21,37 @@ package org.apache.iotdb.db.mpp.common.schematree.visitor;
 
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.commons.path.fa.IFAState;
-import org.apache.iotdb.commons.path.fa.IFATransition;
+import org.apache.iotdb.db.mpp.common.schematree.node.SchemaMeasurementNode;
 import org.apache.iotdb.db.mpp.common.schematree.node.SchemaNode;
 
-import java.util.Map;
+import java.util.regex.Pattern;
 
 public class SchemaTreeMeasurementVisitor extends SchemaTreeVisitor<MeasurementPath> {
-
-  private final String tailNode;
 
   public SchemaTreeMeasurementVisitor(
       SchemaNode root, PartialPath pathPattern, int slimit, int soffset, boolean isPrefixMatch) {
     super(root, pathPattern, slimit, soffset, isPrefixMatch);
-    tailNode = pathPattern.getTailNode();
   }
 
   @Override
-  protected IFAState tryGetNextState(
-      SchemaNode node, IFAState sourceState, Map<String, IFATransition> preciseMatchTransitionMap) {
-    IFATransition transition;
-    IFAState state;
-    if (node.isMeasurement()) {
-      String alias = node.getAsMeasurementNode().getAlias();
-      if (alias != null) {
-        transition = preciseMatchTransitionMap.get(alias);
-        if (transition != null) {
-          state = patternFA.getNextState(sourceState, transition);
-          if (state.isFinal()) {
-            return state;
-          }
-        }
-      }
-      transition = preciseMatchTransitionMap.get(node.getName());
-      if (transition != null) {
-        state = patternFA.getNextState(sourceState, transition);
-        if (state.isFinal()) {
-          return state;
-        }
-      }
-      return null;
+  protected boolean checkOneLevelWildcardMatch(String regex, SchemaNode node) {
+    if (!node.isMeasurement()) {
+      return Pattern.matches(regex, node.getName());
     }
 
-    transition = preciseMatchTransitionMap.get(node.getName());
-    if (transition == null) {
-      return null;
-    }
-    return patternFA.getNextState(sourceState, transition);
+    SchemaMeasurementNode measurementNode = node.getAsMeasurementNode();
+
+    return Pattern.matches(regex, measurementNode.getName())
+        || Pattern.matches(regex, measurementNode.getAlias());
   }
 
   @Override
-  protected IFAState tryGetNextState(
-      SchemaNode node, IFAState sourceState, IFATransition transition) {
-    IFAState state;
+  protected boolean checkNameMatch(String targetName, SchemaNode node) {
     if (node.isMeasurement()) {
-      String alias = node.getAsMeasurementNode().getAlias();
-      if (alias != null && transition.isMatch(alias)) {
-        state = patternFA.getNextState(sourceState, transition);
-        if (state.isFinal()) {
-          return state;
-        }
-      }
-      if (transition.isMatch(node.getName())) {
-        state = patternFA.getNextState(sourceState, transition);
-        if (state.isFinal()) {
-          return state;
-        }
-      }
-      return null;
+      return targetName.equals(node.getName())
+          || targetName.equals(node.getAsMeasurementNode().getAlias());
     }
-
-    if (transition.isMatch(node.getName())) {
-      return patternFA.getNextState(sourceState, transition);
-    }
-    return null;
+    return targetName.equals(node.getName());
   }
 
   @Override
@@ -115,11 +72,12 @@ public class SchemaTreeMeasurementVisitor extends SchemaTreeVisitor<MeasurementP
   protected MeasurementPath generateResult() {
     MeasurementPath result =
         new MeasurementPath(
-            generateFullPathNodes(), nextMatchedNode.getAsMeasurementNode().getSchema());
+            generateFullPathNodes(nextMatchedNode),
+            nextMatchedNode.getAsMeasurementNode().getSchema());
     result.setTagMap(nextMatchedNode.getAsMeasurementNode().getTagMap());
-    result.setUnderAlignedEntity(getParentOfNextMatchedNode().getAsEntityNode().isAligned());
+    result.setUnderAlignedEntity(ancestorStack.peek().getNode().getAsEntityNode().isAligned());
     String alias = nextMatchedNode.getAsMeasurementNode().getAlias();
-    if (tailNode.equals(alias)) {
+    if (nodes[nodes.length - 1].equals(alias)) {
       result.setMeasurementAlias(alias);
     }
 
