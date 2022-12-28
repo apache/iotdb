@@ -67,7 +67,7 @@ public class ConfigNodeInfo {
                 + PROPERTIES_FILE_NAME);
   }
 
-  /** Update ConfigNodeList both in memory and confignode-system.properties file */
+  /** Update ConfigNodeList both in memory and system.properties file */
   public void updateConfigNodeList(List<TEndPoint> latestConfigNodes) {
     // check whether the config nodes are latest or not
     configNodeInfoReadWriteLock.readLock().lock();
@@ -98,10 +98,8 @@ public class ConfigNodeInfo {
   /** call this method to store config node list */
   private void storeConfigNode() throws IOException {
     Properties properties = new Properties();
-    if (propertiesFile.exists()) {
-      try (FileInputStream inputStream = new FileInputStream(propertiesFile)) {
-        properties.load(inputStream);
-      }
+    try (FileInputStream inputStream = new FileInputStream(propertiesFile)) {
+      properties.load(inputStream);
     }
     properties.setProperty(
         CONFIG_NODE_LIST, NodeUrlUtils.convertTEndPointUrls(new ArrayList<>(onlineConfigNodes)));

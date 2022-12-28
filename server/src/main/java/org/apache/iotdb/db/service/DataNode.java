@@ -188,7 +188,7 @@ public class DataNode implements DataNodeMBean {
     config.setClusterMode(true);
 
     // Notice: Consider this DataNode as first start if the system.properties file doesn't exist
-    boolean isFirstStart = !SYSTEM_PROPERTIES.exists();
+    boolean isFirstStart = IoTDBStartCheck.getInstance().checkIsFirstStart();
 
     // Check target ConfigNodes
     for (TEndPoint endPoint : config.getTargetConfigNodeList()) {
