@@ -16,30 +16,35 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.it.env;
+package org.apache.iotdb.it.env.cluster;
 
-import org.apache.iotdb.it.framework.IoTDBTestLogger;
+import org.apache.iotdb.itbase.env.DataNodeConfig;
 
-import org.slf4j.Logger;
+import java.io.IOException;
 
-public class SimpleEnv extends AbstractEnv {
+public class MppDataNodeConfig extends MppBaseConfig implements DataNodeConfig {
 
-  private static final Logger logger = IoTDBTestLogger.logger;
+  public MppDataNodeConfig() {
+    super();
+  }
 
-  @Override
-  public void initBeforeClass() throws InterruptedException {
-    logger.debug("=======start init class=======");
-    super.initEnvironment(1, 1);
+  public MppDataNodeConfig(String filePath) throws IOException {
+    super(filePath);
   }
 
   @Override
-  public void initClusterEnvironment(int configNodesNum, int dataNodesNum) {
-    // Do nothing
+  public MppBaseConfig emptyClone() {
+    return new MppDataNodeConfig();
   }
 
   @Override
-  public void initBeforeTest() {
-    logger.debug("=======start init test=======");
-    initEnvironment(1, 1);
+  public void updateProperties(MppBaseConfig persistentConfig) {
+    if (persistentConfig instanceof MppDataNodeConfig) {
+      super.updateProperties(persistentConfig);
+    } else {
+      throw new UnsupportedOperationException(
+          "MppDataNodeConfig can't be override by an instance of "
+              + persistentConfig.getClass().getCanonicalName());
+    }
   }
 }

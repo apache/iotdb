@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.it.aggregation;
 
-import org.apache.iotdb.it.env.ConfigFactory;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
@@ -52,20 +51,17 @@ public class IoTDBAggregationDeleteIT {
         "flush",
         "delete from root.turbine.d1.s1 where time < 3"
       };
-  private long prevPartitionInterval;
 
   @Before
   public void setUp() throws Exception {
-    prevPartitionInterval = ConfigFactory.getConfig().getPartitionInterval();
-    ConfigFactory.getConfig().setPartitionInterval(1000);
-    EnvFactory.getEnv().initBeforeTest();
+    EnvFactory.getEnv().getConfig().getCommonConfig().setPartitionInterval(1000);
+    EnvFactory.getEnv().initClusterEnvironment();
     prepareData();
   }
 
   @After
   public void tearDown() throws Exception {
-    EnvFactory.getEnv().cleanAfterTest();
-    ConfigFactory.getConfig().setPartitionInterval(prevPartitionInterval);
+    EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
   @Test

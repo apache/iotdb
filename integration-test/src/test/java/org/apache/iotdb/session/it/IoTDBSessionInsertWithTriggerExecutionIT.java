@@ -80,7 +80,7 @@ public class IoTDBSessionInsertWithTriggerExecutionIT {
 
   @BeforeClass
   public static void setUp() throws Exception {
-    EnvFactory.getEnv().initBeforeClass();
+    EnvFactory.getEnv().initClusterEnvironment();
     createTimeSeries();
     createTriggers();
   }
@@ -88,7 +88,7 @@ public class IoTDBSessionInsertWithTriggerExecutionIT {
   @AfterClass
   public static void tearDown() throws Exception {
     dropTriggers();
-    EnvFactory.getEnv().cleanAfterClass();
+    EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
   private static void createTimeSeries() {
