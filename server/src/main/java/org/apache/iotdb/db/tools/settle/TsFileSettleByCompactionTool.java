@@ -28,6 +28,7 @@ import org.apache.commons.cli.DefaultParser;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
+import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TProtocol;
@@ -37,7 +38,7 @@ import org.apache.thrift.transport.layered.TFramedTransport;
 
 import java.util.Arrays;
 
-public class TsFileSettleTool {
+public class TsFileSettleByCompactionTool {
 
   private static final String HOST_ARGS = "h";
   private static final String HOST_NAME = "host";
@@ -77,7 +78,11 @@ public class TsFileSettleTool {
     TSettleReq tSettleReq = new TSettleReq();
     tSettleReq.setPaths(Arrays.asList(filePaths));
     TSStatus result = client.settle(tSettleReq);
-    System.out.println(result);
+    if (result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      System.out.println("Add Settle Compaction Task Successfully");
+    } else {
+      System.out.println("Add settle compaction task failed with status code: " + result);
+    }
   }
 
   private static Options createOptions() {

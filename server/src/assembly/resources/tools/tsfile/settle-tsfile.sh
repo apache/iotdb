@@ -18,9 +18,9 @@
 # under the License.
 #
 
-echo ---------------------
-echo Starting Settling the TsFile
-echo ---------------------
+echo -----------------------------------------------
+echo Starting Settling the TsFile By Compaction
+echo -----------------------------------------------
 
 if [ -z "${IOTDB_HOME}" ]; then
   export IOTDB_HOME="$(cd "`dirname "$0"`"/../..; pwd)"
@@ -42,7 +42,7 @@ for f in ${IOTDB_HOME}/lib/*.jar; do
   CLASSPATH=${CLASSPATH}":"$f
 done
 
-MAIN_CLASS=org.apache.iotdb.db.tools.settle.TsFileSettleTool
+MAIN_CLASS=org.apache.iotdb.db.tools.settle.TsFileSettleByCompactionTool
 
 "$JAVA" -cp "$CLASSPATH" "$MAIN_CLASS" "$@"
 exit $?

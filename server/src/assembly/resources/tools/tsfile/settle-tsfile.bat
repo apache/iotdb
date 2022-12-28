@@ -19,9 +19,9 @@
 
 
 @echo off
-echo ````````````````````````
-echo Starting Settling the TsFile
-echo ````````````````````````
+echo ````````````````````````````````````````````
+echo Starting Settling the TsFile By Compaction
+echo ````````````````````````````````````````````
 
 if "%OS%" == "Windows_NT" setlocal
 
@@ -29,7 +29,7 @@ pushd %~dp0..\..
 if NOT DEFINED IOTDB_HOME set IOTDB_HOME=%CD%
 popd
 
-if NOT DEFINED MAIN_CLASS set MAIN_CLASS=org.apache.iotdb.db.tools.settle.TsFileSettleTool
+if NOT DEFINED MAIN_CLASS set MAIN_CLASS=org.apache.iotdb.db.tools.settle.TsFileSettleByCompactionTool
 if NOT DEFINED JAVA_HOME goto :err
 
 @REM -----------------------------------------------------------------------------
