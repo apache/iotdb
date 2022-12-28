@@ -217,7 +217,7 @@ public class IExpressionOptimizerTest {
         new SingleSeriesExpression(new Path("d1", "s2", true), filter2);
 
     IExpression globalTimeFilter1 = new GlobalTimeExpression(TimeFilter.lt(14001234L));
-    IExpression globalTimeFilter2 = new GlobalTimeExpression(TimeFilter.gt(14001000L));
+    IExpression globalTimeFilter2 = new GlobalTimeExpression(TimeFilter.gt(11076000L));
     IExpression expression =
         BinaryExpression.or(
             BinaryExpression.or(singleSeriesExp1, singleSeriesExp2),
@@ -225,10 +225,10 @@ public class IExpressionOptimizerTest {
 
     try {
       String rightRet =
-          "[[[[d1.s1:(time < 14001234 && time > 14001000)] "
-              + "|| [d2.s1:((time < 14001234 && time > 14001000) || (value > 100 || value < 50))]] "
-              + "|| [d1.s2:((time < 14001234 && time > 14001000) || (value > 100.5 || value < 50.6))]] "
-              + "|| [d2.s2:(time < 14001234 && time > 14001000)]]";
+          "[[[[d1.s1:(time < 14001234 && time > 11076000)] "
+              + "|| [d2.s1:((time < 14001234 && time > 11076000) || (value > 100 || value < 50))]] "
+              + "|| [d1.s2:((time < 14001234 && time > 11076000) || (value > 100.5 || value < 50.6))]] "
+              + "|| [d2.s2:(time < 14001234 && time > 11076000)]]";
       IExpression regularFilter = expressionOptimizer.optimize(expression, selectedSeries);
       Assert.assertEquals(rightRet, regularFilter.toString());
     } catch (QueryFilterOptimizationException e) {
@@ -242,8 +242,8 @@ public class IExpressionOptimizerTest {
 
     try {
       String rightRet2 =
-          "[[d2.s1:((value > 100 || value < 50) && (time < 14001234 && time > 14001000))] || "
-              + "[d1.s2:((value > 100.5 || value < 50.6) && (time < 14001234 && time > 14001000))]]";
+          "[[d2.s1:((value > 100 || value < 50) && (time < 14001234 && time > 11076000))] || "
+              + "[d1.s2:((value > 100.5 || value < 50.6) && (time < 14001234 && time > 11076000))]]";
       IExpression regularFilter2 = expressionOptimizer.optimize(expression2, selectedSeries);
       Assert.assertEquals(rightRet2, regularFilter2.toString());
     } catch (QueryFilterOptimizationException e) {
