@@ -18,15 +18,56 @@
  */
 package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.request;
 
+import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemTable;
 import org.apache.iotdb.lsm.request.IFlushRequest;
 
-public class FlushRequest extends IFlushRequest {
+public class FlushRequest implements IFlushRequest<String, String, MemTable> {
+  private String flushDirPath;
+  private String flushFileName;
+
+  private String flushDeleteFileName;
 
   private long chunkMaxSize;
 
-  public FlushRequest(int index, Object memNode, long chunkMaxSize) {
-    super(index, memNode);
+  private int index;
+  private MemTable memNode;
+
+  public MemTable getMemNode() {
+    return memNode;
+  }
+
+  public void setMemNode(MemTable memNode) {
+    this.memNode = memNode;
+  }
+
+  public int getIndex() {
+    return index;
+  }
+
+  public void setIndex(int index) {
+    this.index = index;
+  }
+
+  public FlushRequest(int index, MemTable memNode, long chunkMaxSize) {
+    this.index = index;
+    this.memNode = memNode;
     this.chunkMaxSize = chunkMaxSize;
+  }
+
+  public String getFlushDirPath() {
+    return flushDirPath;
+  }
+
+  public void setFlushDirPath(String flushDirPath) {
+    this.flushDirPath = flushDirPath;
+  }
+
+  public String getFlushFileName() {
+    return flushFileName;
+  }
+
+  public void setFlushFileName(String flushFileName) {
+    this.flushFileName = flushFileName;
   }
 
   public long getChunkMaxSize() {
@@ -35,5 +76,13 @@ public class FlushRequest extends IFlushRequest {
 
   public void setChunkMaxSize(long chunkMaxSize) {
     this.chunkMaxSize = chunkMaxSize;
+  }
+
+  public String getFlushDeletionFileName() {
+    return flushDeleteFileName;
+  }
+
+  public void setFlushDeleteFileName(String flushDeleteFileName) {
+    this.flushDeleteFileName = flushDeleteFileName;
   }
 }

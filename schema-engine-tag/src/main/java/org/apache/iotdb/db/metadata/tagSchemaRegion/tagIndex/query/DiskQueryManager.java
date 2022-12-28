@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.query;
 
+import org.apache.iotdb.db.metadata.tagSchemaRegion.config.SchemaRegionConstant;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.reader.TiFileReader;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.response.QueryResponse;
 import org.apache.iotdb.lsm.manager.IDiskQueryManager;
@@ -96,7 +97,9 @@ public class DiskQueryManager implements IDiskQueryManager {
     File flushDir = new File(flushDirPath);
     return flushDir.list(
         (dir, name) ->
-            name.startsWith(flushFilePrefix) && !name.endsWith("tmp") && !name.contains("delete"));
+            name.startsWith(flushFilePrefix)
+                && !name.endsWith(SchemaRegionConstant.TMP)
+                && !name.contains(SchemaRegionConstant.DELETE));
   }
 
   private Map<String, String> generateMap(QueryRequest<String> request) {
@@ -119,7 +122,7 @@ public class DiskQueryManager implements IDiskQueryManager {
 
   private String getDeletionFileName(String tiFileName) {
     String[] strings = tiFileName.split("-");
-    return strings[0] + "-delete-" + strings[1] + "-" + strings[2];
+    return strings[0] + "-" + SchemaRegionConstant.DELETE + strings[1] + "-" + strings[2];
   }
 
   private void deleteRecords(QueryResponse queryResponse, File deletionFile) throws IOException {

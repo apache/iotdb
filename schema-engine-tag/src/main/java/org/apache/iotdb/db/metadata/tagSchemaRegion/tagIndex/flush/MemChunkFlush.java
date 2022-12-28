@@ -26,6 +26,7 @@ import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemChunk;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.request.FlushRequest;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.response.FlushResponse;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.utils.ConvertUtils;
+import org.apache.iotdb.db.metadata.tagSchemaRegion.utils.RoaringBitMapUtils;
 import org.apache.iotdb.lsm.annotation.FlushProcessor;
 import org.apache.iotdb.lsm.context.requestcontext.FlushRequestContext;
 import org.apache.iotdb.lsm.levelProcess.FlushLevelProcessor;
@@ -35,8 +36,6 @@ import org.roaringbitmap.RoaringBitmap;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 /** flush for MemChunk */
@@ -53,7 +52,9 @@ public class MemChunkFlush extends FlushLevelProcessor<MemChunk, Object, FlushRe
   public void flush(MemChunk memNode, FlushRequest request, FlushRequestContext context)
       throws IOException {
     FileOutput fileOutput = context.getFileOutput();
-    List<RoaringBitmap> roaringBitmaps = sliceMemChunk(memNode, request.getChunkMaxSize());
+    List<RoaringBitmap> roaringBitmaps =
+        RoaringBitMapUtils.sliceRoaringBitMap(
+            memNode.getRoaringBitmap(), request.getChunkMaxSize());
     ChunkIndex chunkIndex = new ChunkIndex();
     int count = 0;
     for (RoaringBitmap roaringBitmap : roaringBitmaps) {
@@ -71,33 +72,5 @@ public class MemChunkFlush extends FlushLevelProcessor<MemChunk, Object, FlushRe
     long offset = fileOutput.write(chunkIndex);
     FlushResponse response = context.getResponse();
     response.addChunkOffset(memNode, offset);
-  }
-
-  private List<RoaringBitmap> sliceMemChunk(MemChunk memNode, long chunkMaxSize) {
-    RoaringBitmap roaringBitmap = memNode.getRoaringBitmap();
-    int originalSize = roaringBitmap.serializedSizeInBytes();
-    int sliceNum = (int) (originalSize / chunkMaxSize) + 1;
-    if (sliceNum == 1) {
-      return Collections.singletonList(roaringBitmap);
-    } else {
-      List<RoaringBitmap> roaringBitmaps = new ArrayList<>();
-      for (int i = 0; i < sliceNum; i++) {
-        roaringBitmaps.add(new RoaringBitmap());
-      }
-      int[] results = roaringBitmap.stream().toArray();
-      int quotient = results.length % sliceNum;
-      int count = results.length / sliceNum;
-      int index = 0;
-      for (int i = 0; i < results.length; i++) {
-        int gap = index < quotient ? count + 1 : count;
-        int start = i;
-        for (; start <= i + gap; start++) {
-          roaringBitmaps.get(index).add(results[start]);
-        }
-        i = start;
-        index++;
-      }
-      return roaringBitmaps;
-    }
   }
 }

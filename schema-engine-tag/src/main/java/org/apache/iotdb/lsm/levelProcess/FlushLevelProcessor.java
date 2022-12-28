@@ -39,6 +39,13 @@ public abstract class FlushLevelProcessor<I, O, R>
     try {
       flush(memNode, request, context);
     } catch (IOException e) {
+      if (context.getFileOutput() != null) {
+        try {
+          context.getFileOutput().close();
+        } catch (IOException ex) {
+          throw new RuntimeException(ex);
+        }
+      }
       throw new RuntimeException(e);
     }
   }

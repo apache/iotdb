@@ -40,7 +40,7 @@ public class TagSchemaConfig {
 
   // the size of max chunk in disk, if current chunk overflow, a new chunk is created to continue
   // store.(unit: byte)
-  private long maxChunkSize = 1024 * 1024;
+  private long maxChunkSize = 16 * 1024;
 
   public int getNumOfDeviceIdsInMemTable() {
     return numOfDeviceIdsInMemTable;

@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.deletion;
 
+import org.apache.iotdb.db.metadata.tagSchemaRegion.config.SchemaRegionConstant;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemTable;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemTableGroup;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.request.DeletionRequest;
@@ -67,7 +68,9 @@ public class MemTableGroupDeletion
                 request.getFlushDirPath()
                     + File.separator
                     + request.getFlushFilePrefix()
-                    + "-delete-0-"
+                    + "-"
+                    + SchemaRegionConstant.DELETE
+                    + "-0-"
                     + num);
         writeDeleteFile(deletionFile, id, context);
         return new ArrayList<>();

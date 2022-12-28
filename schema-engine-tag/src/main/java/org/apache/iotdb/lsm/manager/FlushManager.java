@@ -20,6 +20,7 @@ package org.apache.iotdb.lsm.manager;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
+import org.apache.iotdb.db.metadata.tagSchemaRegion.config.SchemaRegionConstant;
 import org.apache.iotdb.lsm.context.requestcontext.FlushRequestContext;
 import org.apache.iotdb.lsm.request.IFlushRequest;
 import org.apache.iotdb.lsm.sstable.fileIO.FileOutput;
@@ -95,7 +96,7 @@ public class FlushManager<T, R extends IFlushRequest>
 
   @Override
   public void preProcess(T root, R request, FlushRequestContext context) {
-    String flushFileName = request.getFlushFileName() + "tmp";
+    String flushFileName = request.getFlushFileName() + SchemaRegionConstant.TMP;
     File flushFile = new File(this.flushDirPath, flushFileName);
     try {
       if (!flushFile.exists()) {
@@ -112,7 +113,7 @@ public class FlushManager<T, R extends IFlushRequest>
     FileOutput fileOutput = context.getFileOutput();
     try {
       fileOutput.close();
-      String flushFileName = request.getFlushFileName() + "tmp";
+      String flushFileName = request.getFlushFileName() + SchemaRegionConstant.TMP;
       File flushFile = new File(this.flushDirPath, flushFileName);
       File newFlushFile = new File(this.flushDirPath, request.getFlushFileName());
       flushFile.renameTo(newFlushFile);

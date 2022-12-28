@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.reader;
 
+import org.apache.iotdb.db.metadata.tagSchemaRegion.config.SchemaRegionConstant;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.entry.ChunkIndex;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.entry.ChunkIndexEntry;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.entry.TiFileHeader;
@@ -287,7 +288,7 @@ public class TiFileReader implements IDiskIterator<Integer> {
    */
   private boolean bloomFilterHas(Map<String, String> tags) {
     for (Map.Entry<String, String> tag : tags.entrySet()) {
-      if (bloomFilter.contains(tag.getKey() + tag.getValue())) {
+      if (bloomFilter.contains(tag.getKey() + SchemaRegionConstant.SEPARATOR + tag.getValue())) {
         continue;
       } else {
         return false;

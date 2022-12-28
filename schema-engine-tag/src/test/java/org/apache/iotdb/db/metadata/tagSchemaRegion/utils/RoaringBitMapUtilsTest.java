@@ -16,48 +16,29 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.lsm.request;
+package org.apache.iotdb.db.metadata.tagSchemaRegion.utils;
 
-import org.apache.iotdb.lsm.context.requestcontext.RequestContext;
+import org.junit.Test;
+import org.roaringbitmap.RoaringBitmap;
 
 import java.util.List;
 
-/** Represents a flush request that can be processed by the lsm framework */
-public interface IFlushRequest<K, V, T> extends IRequest<K, V> {
+import static org.junit.Assert.assertEquals;
 
-  T getMemNode();
+public class RoaringBitMapUtilsTest {
 
-  int getIndex();
-
-  String getFlushDirPath();
-
-  String getFlushFileName();
-
-  String getFlushDeletionFileName();
-
-  void setFlushDirPath(String dirPath);
-
-  void setFlushFileName(String flushFileName);
-
-  void setFlushDeleteFileName(String flushDeleteFileName);
-
-  @Override
-  default K getKey(RequestContext context) {
-    return null;
-  }
-
-  @Override
-  default List<K> getKeys() {
-    return null;
-  }
-
-  @Override
-  default V getValue() {
-    return null;
-  }
-
-  @Override
-  default RequestType getRequestType() {
-    return RequestType.FLUSH;
+  @Test
+  public void testSliceRoaringBitMap() {
+    int resultCount = 9;
+    int[] resultsLength = {5556, 5556, 5556, 5556, 5556, 5555, 5555, 5555, 5555};
+    RoaringBitmap roaringBitmap = new RoaringBitmap();
+    for (int i = 1; i <= 50000; i++) {
+      roaringBitmap.add(i);
+    }
+    List<RoaringBitmap> roaringBitmaps = RoaringBitMapUtils.sliceRoaringBitMap(roaringBitmap, 1000);
+    assertEquals(resultCount, roaringBitmaps.size());
+    for (int i = 0; i < resultCount; i++) {
+      assertEquals(resultsLength[i], roaringBitmaps.get(i).stream().toArray().length);
+    }
   }
 }
