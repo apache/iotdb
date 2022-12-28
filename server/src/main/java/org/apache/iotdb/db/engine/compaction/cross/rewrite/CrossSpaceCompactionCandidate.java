@@ -87,11 +87,15 @@ public class CrossSpaceCompactionCandidate {
           continue;
         }
         DeviceInfo seqDeviceInfo = seqFile.getDeviceInfoById(unseqDeviceInfo.deviceId);
-        if (!seqFile.isValidCandidate) {
-          // If the unclosed seqFile should be selected, the whole selection should be terminated
-          if (unseqDeviceInfo.endTime >= seqDeviceInfo.startTime) {
-            return false;
-          }
+        // If the seqFile should be selected but its invalid, the selection should be terminated.
+        if (!seqFile.isValidCandidate && unseqDeviceInfo.startTime <= seqDeviceInfo.endTime) {
+          return false;
+        }
+        // If the unsealed file is unclosed, the file should not be selected only when its startTime
+        // is
+        // larger than endTime of unseqFile. Or, the selection should be terminated.
+        if (seqFile.unsealed() && unseqDeviceInfo.endTime >= seqDeviceInfo.startTime) {
+          return false;
         }
         if (unseqDeviceInfo.endTime <= seqDeviceInfo.endTime) {
           // When scanning the target seqFiles for unseqFile, we traverse them one by one no matter
@@ -185,7 +189,18 @@ public class CrossSpaceCompactionCandidate {
       this.selected = false;
       // although we do the judgement here, the task should be validated before executing because
       // the status of file may be changed after the task is submitted to queue
-      this.isValidCandidate = tsFileResource.isClosed() && tsFileResource.getTsFile().exists();
+      this.isValidCandidate =
+          tsFileResource.getStatus() == TsFileResourceStatus.CLOSED
+              && tsFileResource.getTsFile().exists();
+    }
+
+    /**
+     * The TsFile is unsealed means there may be more data which will be inserted into this file
+     *
+     * @return Whether the TsFile is unsealed.
+     */
+    protected boolean unsealed() {
+      return resource.getStatus() == TsFileResourceStatus.UNCLOSED;
     }
 
     private void prepareDeviceInfos() throws IOException {
