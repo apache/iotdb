@@ -179,6 +179,14 @@ public class TsFileResource {
     this.timeIndex = CONFIG.getTimeIndexLevel().getTimeIndex();
   }
 
+  /** Used for compaction to create target files. */
+  public TsFileResource(File file, TsFileResourceStatus status) {
+    this.file = file;
+    this.version = FilePathUtils.splitAndGetTsFileVersion(this.file.getName());
+    this.timeIndex = CONFIG.getTimeIndexLevel().getTimeIndex();
+    this.status = status;
+  }
+
   /** unsealed TsFile, for writter */
   public TsFileResource(File file, TsFileProcessor processor) {
     this.file = file;

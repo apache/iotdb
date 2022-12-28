@@ -2130,7 +2130,6 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     CompactionUtils.combineModsInInnerCompaction(sourceFiles, targetResources.get(0));
     tsFileManager.replace(sourceFiles, Collections.emptyList(), targetResources, 0, true);
     CompactionUtils.deleteTsFilesInDisk(sourceFiles, COMPACTION_TEST_SG + "-" + "0");
-    targetResources.forEach(x -> x.setStatus(TsFileResourceStatus.CLOSED));
 
     // start selecting files and then start a cross space compaction task
     ICrossSpaceSelector selector =

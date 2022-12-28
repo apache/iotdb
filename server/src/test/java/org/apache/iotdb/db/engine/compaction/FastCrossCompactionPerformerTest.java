@@ -30,7 +30,6 @@ import org.apache.iotdb.db.engine.compaction.reader.SeriesDataBlockReader;
 import org.apache.iotdb.db.engine.compaction.task.CompactionTaskSummary;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionFileGeneratorUtils;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
@@ -143,7 +142,6 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
     performer.setSummary(new CompactionTaskSummary());
     performer.perform();
     CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
-    targetResources.forEach(x -> x.setStatus(TsFileResourceStatus.CLOSED));
 
     tsBlockReader =
         new SeriesDataBlockReader(
@@ -258,7 +256,6 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
     performer.setSummary(new CompactionTaskSummary());
     performer.perform();
     CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
-    targetResources.forEach(x -> x.setStatus(TsFileResourceStatus.CLOSED));
 
     List<String> deviceIdList = new ArrayList<>();
     deviceIdList.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d0");
@@ -454,7 +451,6 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
     performer.setSummary(new CompactionTaskSummary());
     performer.perform();
     CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
-    targetResources.forEach(x -> x.setStatus(TsFileResourceStatus.CLOSED));
 
     List<String> deviceIdList = new ArrayList<>();
     deviceIdList.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d0");
@@ -647,7 +643,6 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
     performer.setSummary(new CompactionTaskSummary());
     performer.perform();
     CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
-    targetResources.forEach(x -> x.setStatus(TsFileResourceStatus.CLOSED));
 
     List<String> deviceIdList = new ArrayList<>();
     deviceIdList.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d1");
@@ -830,9 +825,8 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
     performer.setSummary(new CompactionTaskSummary());
     performer.perform();
     CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
-    targetResources.removeIf(resource -> resource == null);
-    targetResources.forEach(x -> x.setStatus(TsFileResourceStatus.CLOSED));
 
+    targetResources.removeIf(resource -> resource == null);
     Assert.assertEquals(2, targetResources.size());
     List<String> deviceIdList = new ArrayList<>();
     deviceIdList.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3");
@@ -1006,7 +1000,6 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
     performer.setSummary(new CompactionTaskSummary());
     performer.perform();
     CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
-    targetResources.forEach(x -> x.setStatus(TsFileResourceStatus.CLOSED));
 
     Assert.assertEquals(4, targetResources.size());
     List<String> deviceIdList = new ArrayList<>();
@@ -1136,7 +1129,6 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
       performer.setSummary(new CompactionTaskSummary());
       performer.perform();
       CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
-      targetResources.forEach(x -> x.setStatus(TsFileResourceStatus.CLOSED));
 
       Assert.assertEquals(4, targetResources.size());
       List<String> deviceIdList = new ArrayList<>();
@@ -1212,7 +1204,6 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
       performer.setSummary(new CompactionTaskSummary());
       performer.perform();
       CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
-      targetResources.forEach(x -> x.setStatus(TsFileResourceStatus.CLOSED));
 
       Assert.assertEquals(2, targetResources.size());
       List<String> deviceIdList = new ArrayList<>();
@@ -1351,7 +1342,6 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
     performer.setSummary(new CompactionTaskSummary());
     performer.perform();
     CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
-    targetResources.forEach(x -> x.setStatus(TsFileResourceStatus.CLOSED));
 
     tsBlockReader =
         new SeriesDataBlockReader(
@@ -1480,7 +1470,6 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
     performer.setSummary(new CompactionTaskSummary());
     performer.perform();
     CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
-    targetResources.forEach(x -> x.setStatus(TsFileResourceStatus.CLOSED));
 
     for (int i = TsFileGeneratorUtils.getAlignDeviceOffset();
         i < TsFileGeneratorUtils.getAlignDeviceOffset() + 4;
@@ -1683,7 +1672,6 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
     performer.setSummary(new CompactionTaskSummary());
     performer.perform();
     CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
-    targetResources.forEach(x -> x.setStatus(TsFileResourceStatus.CLOSED));
 
     Assert.assertEquals(4, targetResources.size());
     List<String> deviceIdList = new ArrayList<>();
@@ -1922,7 +1910,6 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
     performer.perform();
     CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
     targetResources.removeIf(resource -> resource == null);
-    targetResources.forEach(x -> x.setStatus(TsFileResourceStatus.CLOSED));
 
     for (int i = TsFileGeneratorUtils.getAlignDeviceOffset();
         i < TsFileGeneratorUtils.getAlignDeviceOffset() + 4;
@@ -2038,7 +2025,6 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
     performer.perform();
     CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
     targetResources.removeIf(resource -> resource == null);
-    targetResources.forEach(x -> x.setStatus(TsFileResourceStatus.CLOSED));
     Assert.assertEquals(2, targetResources.size());
 
     List<String> deviceIdList = new ArrayList<>();
@@ -2164,7 +2150,6 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
     performer.setSummary(new CompactionTaskSummary());
     performer.perform();
     CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
-    targetResources.forEach(x -> x.setStatus(TsFileResourceStatus.CLOSED));
 
     List<String> deviceIdList = new ArrayList<>();
     deviceIdList.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d0");
@@ -2304,7 +2289,6 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
     performer.setSummary(new CompactionTaskSummary());
     performer.perform();
     CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
-    targetResources.forEach(x -> x.setStatus(TsFileResourceStatus.CLOSED));
 
     List<String> deviceIdList = new ArrayList<>();
     deviceIdList.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d0");
@@ -2423,7 +2407,6 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
     performer.setSummary(new CompactionTaskSummary());
     performer.perform();
     CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
-    targetResources.forEach(x -> x.setStatus(TsFileResourceStatus.CLOSED));
 
     List<String> deviceIdList = new ArrayList<>();
     deviceIdList.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d0");
@@ -2561,7 +2544,6 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
     performer.setSummary(new CompactionTaskSummary());
     performer.perform();
     CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
-    targetResources.forEach(x -> x.setStatus(TsFileResourceStatus.CLOSED));
 
     List<String> deviceIdList = new ArrayList<>();
     deviceIdList.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d0");
@@ -2723,7 +2705,6 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
     performer.perform();
     CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
     targetResources.removeIf(resource -> resource == null);
-    targetResources.forEach(x -> x.setStatus(TsFileResourceStatus.CLOSED));
     Assert.assertEquals(3, targetResources.size());
 
     List<String> deviceIdList = new ArrayList<>();
@@ -2966,7 +2947,6 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
     performer.setSummary(new CompactionTaskSummary());
     performer.perform();
     CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
-    targetResources.forEach(x -> x.setStatus(TsFileResourceStatus.CLOSED));
 
     List<String> deviceIdList = new ArrayList<>();
     deviceIdList.add(
@@ -3235,7 +3215,6 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
     performer.setSummary(new CompactionTaskSummary());
     performer.perform();
     CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
-    targetResources.forEach(x -> x.setStatus(TsFileResourceStatus.CLOSED));
 
     List<String> deviceIdList = new ArrayList<>();
     deviceIdList.add(
@@ -3426,7 +3405,6 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
     performer.setSummary(new CompactionTaskSummary());
     performer.perform();
     CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
-    targetResources.forEach(x -> x.setStatus(TsFileResourceStatus.CLOSED));
 
     List<String> deviceIdList = new ArrayList<>();
     deviceIdList.add(
@@ -3746,7 +3724,6 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
     performer.perform();
     CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
     targetResources.removeIf(resource -> resource == null);
-    targetResources.forEach(x -> x.setStatus(TsFileResourceStatus.CLOSED));
 
     for (int i = TsFileGeneratorUtils.getAlignDeviceOffset();
         i < TsFileGeneratorUtils.getAlignDeviceOffset() + 4;
