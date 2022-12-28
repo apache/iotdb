@@ -132,7 +132,7 @@ public class IoTDBStartCheck {
   // endregion
   // region params don't need checking, determined by the system
   private static final String IOTDB_VERSION_STRING = "iotdb_version";
-  private static final String CLUSTER_NAME = "CLUSTER_NAME";
+  private static final String CLUSTER_NAME = "cluster_name";
   private static final String DATA_NODE_ID = "data_node_id";
   private static final String SCHEMA_REGION_CONSENSUS_PROTOCOL = "schema_region_consensus_protocol";
   private static final String DATA_REGION_CONSENSUS_PROTOCOL = "data_region_consensus_protocol";
