@@ -51,6 +51,16 @@ public class SettleRequestHandler {
   private static final Logger logger = LoggerFactory.getLogger(SettleRequestHandler.class);
   private static final String MODS_FILE_SUFFIX = ".mods";
 
+  private boolean testMode = false;
+
+  public boolean isTestMode() {
+    return testMode;
+  }
+
+  public void setTestMode(boolean testMode) {
+    this.testMode = testMode;
+  }
+
   public static SettleRequestHandler getInstance() {
     return SettleRequestHandlerHolder.INSTANCE;
   }
@@ -152,6 +162,9 @@ public class SettleRequestHandler {
     }
     if (tsFileResources.size() > config.getMaxInnerCompactionCandidateFileNum()) {
       return RpcUtils.getStatus(TSStatusCode.UNSUPPORTED_OPERATION, "File nums is too much.");
+    }
+    if (testMode) {
+      return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
     }
 
     AbstractCompactionTask task = new InnerSpaceCompactionTask(timePartitionId,
