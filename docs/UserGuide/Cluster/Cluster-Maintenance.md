@@ -21,6 +21,36 @@
 
 # Cluster Information Query Command
 
+## Show Cluster Parameters
+
+Currently, IoTDB supports showing key parameters of the cluster:
+```
+SHOW CLUSTER PARAMETERS
+```
+
+Eg:
+```
+IoTDB> show cluster parameters
++----------------------------------+-----------------------------------------------------------------+
+|                 ClusterParameters|                                                            Value|
++----------------------------------+-----------------------------------------------------------------+
+|                       ClusterName|                                                   defaultCluster|
+|  ConfigNodeConsensusProtocolClass|                  org.apache.iotdb.consensus.ratis.RatisConsensus|
+|  DataRegionConsensusProtocolClass|                      org.apache.iotdb.consensus.iot.IoTConsensus|
+|SchemaRegionConsensusProtocolClass|                  org.apache.iotdb.consensus.ratis.RatisConsensus|
+|                     SeriesSlotNum|                                                            10000|
+|           SeriesSlotExecutorClass|org.apache.iotdb.commons.partition.executor.hash.BKDRHashExecutor|
+|                    DefaultTTL(ms)|                                              9223372036854775807|
+|             TimePartitionInterval|                                                        604800000|
+|             DataReplicationFactor|                                                                1|
+|           SchemaReplicationFactor|                                                                1|
++----------------------------------+-----------------------------------------------------------------+
+Total line number = 10
+It costs 0.237s
+```
+
+**Notice:** Ensure that all key parameters displayed in this SQL are consist on each node in the same cluster
+
 ## Show ConfigNode information
 
 Currently, IoTDB supports showing ConfigNode information by the following SQL:
