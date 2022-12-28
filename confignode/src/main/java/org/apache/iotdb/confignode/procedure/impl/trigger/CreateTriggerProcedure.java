@@ -48,7 +48,7 @@ import java.nio.ByteBuffer;
 /** create trigger procedure */
 public class CreateTriggerProcedure extends AbstractNodeProcedure<CreateTriggerState> {
   private static final Logger LOG = LoggerFactory.getLogger(CreateTriggerProcedure.class);
-  private static final int retryThreshold = 5;
+  private static final int RETRY_THRESHOLD = 5;
 
   private TriggerInformation triggerInformation;
   private Binary jarFile;
@@ -161,7 +161,7 @@ public class CreateTriggerProcedure extends AbstractNodeProcedure<CreateTriggerS
             triggerInformation.getTriggerName(),
             state,
             e);
-        if (getCycles() > retryThreshold) {
+        if (getCycles() > RETRY_THRESHOLD) {
           setFailure(
               new ProcedureException(
                   String.format(
