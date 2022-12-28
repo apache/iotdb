@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.conf;
 
+import org.apache.iotdb.db.audit.AuditLogOperation;
+import org.apache.iotdb.db.audit.AuditLogStorage;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.compaction.constant.CompactionPriority;
@@ -48,8 +50,10 @@ import java.net.InetAddress;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.UnknownHostException;
+import java.util.Arrays;
 import java.util.Properties;
 import java.util.ServiceLoader;
+import java.util.stream.Collectors;
 
 public class IoTDBDescriptor {
 
@@ -563,7 +567,7 @@ public class IoTDBDescriptor {
     conf.setChunkPointNumLowerBoundInCompaction(
         Long.parseLong(
             properties.getProperty(
-                "chunk_size_lower_bound_in_compaction",
+                "chunk_point_num_lower_bound_in_compaction",
                 Long.toString(conf.getChunkPointNumLowerBoundInCompaction()))));
     conf.setChunkSizeLowerBoundInCompaction(
         Long.parseLong(
@@ -587,11 +591,11 @@ public class IoTDBDescriptor {
                 "max_cross_compaction_candidate_file_size",
                 Long.toString(conf.getMaxCrossCompactionCandidateFileSize()))));
 
-    conf.setCompactionWriteThroughputMbPerSec(
+    conf.setCompactionIORatePerSec(
         Integer.parseInt(
             properties.getProperty(
                 "compaction_write_throughput_mb_per_sec",
-                Integer.toString(conf.getCompactionWriteThroughputMbPerSec()))));
+                Integer.toString(conf.getCompactionIORatePerSec()))));
 
     conf.setEnablePartialInsert(
         Boolean.parseBoolean(
@@ -891,12 +895,29 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "schema_query_fetch_size", String.valueOf(conf.getSchemaQueryFetchSize()))));
 
-    conf.setAuditLogStorage(properties.getProperty("audit_log_storage", conf.getAuditLogStorage()));
+    conf.setEnableAuditLog(
+        Boolean.parseBoolean(
+            properties.getProperty("enable_audit_log", String.valueOf(conf.isEnableAuditLog()))));
 
-    conf.setEnableAuditLogWrite(
+    if (properties.getProperty("audit_log_storage") != null) {
+      conf.setAuditLogStorage(
+          Arrays.stream(properties.getProperty("audit_log_storage").split(","))
+              .map(AuditLogStorage::valueOf)
+              .collect(Collectors.toList()));
+    }
+
+    if (properties.getProperty("audit_log_operation") != null) {
+      conf.setAuditLogOperation(
+          Arrays.stream(properties.getProperty("audit_log_operation").split(","))
+              .map(AuditLogOperation::valueOf)
+              .collect(Collectors.toList()));
+    }
+
+    conf.setEnableAuditLogForNativeInsertApi(
         Boolean.parseBoolean(
             properties.getProperty(
-                "enable_auditLog_write", String.valueOf(conf.isEnableAuditLogWrite()))));
+                "enable_audit_log_for_native_insert_api",
+                String.valueOf(conf.isEnableAuditLogForNativeInsertApi()))));
 
     // At the same time, set TSFileConfig
     TSFileDescriptor.getInstance()
@@ -1343,11 +1364,11 @@ public class IoTDBDescriptor {
               properties.getProperty(
                   "slow_query_threshold", Long.toString(conf.getSlowQueryThreshold()))));
       // update merge_write_throughput_mb_per_sec
-      conf.setCompactionWriteThroughputMbPerSec(
+      conf.setCompactionIORatePerSec(
           Integer.parseInt(
               properties.getProperty(
                   "merge_write_throughput_mb_per_sec",
-                  Integer.toString(conf.getCompactionWriteThroughputMbPerSec()))));
+                  Integer.toString(conf.getCompactionIORatePerSec()))));
 
       // update insert-tablet-plan's row limit for select-into
       conf.setSelectIntoInsertTabletPlanRowLimit(

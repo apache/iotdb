@@ -35,8 +35,6 @@ public class IoTDBConnectionParams {
   private int thriftDefaultBufferSize = RpcUtils.THRIFT_DEFAULT_BUF_CAPACITY;
   private int thriftMaxFrameSize = RpcUtils.THRIFT_FRAME_MAX_SIZE;
 
-  private boolean enableAudit = Config.DEFAULT_ENABLE_AUDIT;
-
   public IoTDBConnectionParams(String url) {
     this.jdbcUriString = url;
   }
@@ -111,13 +109,5 @@ public class IoTDBConnectionParams {
 
   public void setVersion(Constant.Version version) {
     this.version = version;
-  }
-
-  public boolean isEnableAudit() {
-    return enableAudit;
-  }
-
-  public void setEnableAudit(boolean enableAudit) {
-    this.enableAudit = enableAudit;
   }
 }

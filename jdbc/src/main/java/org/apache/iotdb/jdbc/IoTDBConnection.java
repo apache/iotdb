@@ -59,7 +59,6 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.Executor;
 
-import static org.apache.iotdb.jdbc.Config.AUTH_ENABLE_AUDIT;
 import static org.apache.iotdb.jdbc.Config.VERSION;
 
 public class IoTDBConnection implements Connection {
@@ -467,7 +466,6 @@ public class IoTDBConnection implements Connection {
     openReq.setPassword(params.getPassword());
     openReq.setZoneId(getTimeZone());
     openReq.putToConfiguration(VERSION, params.getVersion().toString());
-    openReq.putToConfiguration(AUTH_ENABLE_AUDIT, String.valueOf(params.isEnableAudit()));
     TSOpenSessionResp openResp = null;
     try {
       openResp = client.openSession(openReq);

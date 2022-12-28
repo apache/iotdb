@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.service.basic;
 
+import org.apache.iotdb.db.audit.AuditLogOperation;
+import org.apache.iotdb.db.audit.AuditLogger;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.auth.authorizer.BasicAuthorizer;
@@ -43,7 +45,6 @@ import org.apache.iotdb.db.query.control.SessionManager;
 import org.apache.iotdb.db.query.control.SessionTimeoutManager;
 import org.apache.iotdb.db.query.control.clientsession.IClientSession;
 import org.apache.iotdb.db.query.control.tracing.TracingManager;
-import org.apache.iotdb.db.utils.AuditLogUtils;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSProtocolVersion;
@@ -83,8 +84,7 @@ public abstract class ServiceProvider {
 
   public static SessionManager SESSION_MANAGER = SessionManager.getInstance();
 
-  private static final boolean enableAuditLog =
-      !AuditLogUtils.LOG_LEVEL_NONE.equals(CONFIG.getAuditLogStorage());
+  public static final boolean enableAuditLog = CONFIG.isEnableAuditLog();
 
   private final Planner planner;
   protected final IPlanExecutor executor;
@@ -175,8 +175,7 @@ public abstract class ServiceProvider {
       String password,
       String zoneId,
       TSProtocolVersion tsProtocolVersion,
-      IoTDBConstant.ClientVersion clientVersion,
-      boolean enableAudit)
+      IoTDBConstant.ClientVersion clientVersion)
       throws TException {
     BasicOpenSessionResp openSessionResp = new BasicOpenSessionResp();
 
@@ -209,12 +208,13 @@ public abstract class ServiceProvider {
       openSessionResp.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
       openSessionResp.setMessage("Login successfully");
 
-      SESSION_MANAGER.supplySession(session, username, zoneId, clientVersion, enableAudit);
+      SESSION_MANAGER.supplySession(session, username, zoneId, clientVersion);
       if (enableAuditLog) {
-        AuditLogUtils.writeAuditLog(
+        AuditLogger.log(
             String.format(
                 "%s: Login status: %s. User : %s, opens Session-%s",
-                IoTDBConstant.GLOBAL_DB_NAME, openSessionResp.getMessage(), username, session));
+                IoTDBConstant.GLOBAL_DB_NAME, openSessionResp.getMessage(), username, session),
+            AuditLogOperation.QUERY);
       }
 
     } else {
@@ -222,9 +222,9 @@ public abstract class ServiceProvider {
       openSessionResp.setCode(TSStatusCode.WRONG_LOGIN_PASSWORD_ERROR.getStatusCode());
       session.setUsername(username);
       if (enableAuditLog) {
-        AuditLogUtils.writeAuditLog(
+        AuditLogger.log(
             String.format("User %s opens Session failed with an incorrect password", username),
-            true);
+            AuditLogOperation.QUERY);
       }
       // TODO we should close this connection ASAP, otherwise there will be DDoS.
     }
@@ -240,19 +240,10 @@ public abstract class ServiceProvider {
       TSProtocolVersion tsProtocolVersion)
       throws TException {
     return login(
-        session,
-        username,
-        password,
-        zoneId,
-        tsProtocolVersion,
-        IoTDBConstant.ClientVersion.V_0_12,
-        false);
+        session, username, password, zoneId, tsProtocolVersion, IoTDBConstant.ClientVersion.V_0_12);
   }
 
   public boolean closeSession(IClientSession session) {
-    if (enableAuditLog) {
-      AuditLogUtils.writeAuditLog(String.format("Session-%s is closing", session));
-    }
     return SessionTimeoutManager.getInstance().unregister(session);
   }
 
@@ -270,12 +261,7 @@ public abstract class ServiceProvider {
     if (checkSessionTimeout(session)) {
       return RpcUtils.getStatus(TSStatusCode.SESSION_TIMEOUT, "Session timeout");
     }
-    if (enableAuditLog) {
-      AuditLogUtils.writeAuditLog(
-          String.format(
-              "%s: receive close operation from Session %s",
-              IoTDBConstant.GLOBAL_DB_NAME, session));
-    }
+
     try {
       if (haveStatementId) {
         if (haveSetQueryId) {

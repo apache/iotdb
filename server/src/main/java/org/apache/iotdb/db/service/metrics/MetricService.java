@@ -33,6 +33,7 @@ import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.metricsets.predefined.PredefinedMetric;
 import org.apache.iotdb.metrics.metricsets.predefined.jvm.JvmMetrics;
 import org.apache.iotdb.metrics.metricsets.predefined.logback.LogbackMetrics;
+import org.apache.iotdb.metrics.reporter.InternalIoTDBReporter;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -52,6 +53,7 @@ public class MetricService extends AbstractMetricService implements MetricServic
         logger.info("Start to start metric Service.");
         JMXService.registerMBean(getInstance(), mbeanName);
         startService();
+        internalReporter.start();
         logger.info("Finish start metric Service");
       }
     } catch (Exception e) {
@@ -62,6 +64,7 @@ public class MetricService extends AbstractMetricService implements MetricServic
 
   public void restart() {
     logger.info("Restart metric service.");
+    internalReporter.clear();
     restartService();
     logger.info("Finish restart metric service.");
   }
@@ -70,6 +73,7 @@ public class MetricService extends AbstractMetricService implements MetricServic
   public void stop() {
     if (isEnable()) {
       logger.info("Stop metric Service.");
+      internalReporter.stop();
       stopService();
       JMXService.deregisterMBean(mbeanName);
       logger.info("Finish stop metric Service");
@@ -136,6 +140,11 @@ public class MetricService extends AbstractMetricService implements MetricServic
         logger.error("Failed to start metric when reload properties");
       }
     }
+  }
+
+  @Override
+  public void reloadInternalReporter(InternalIoTDBReporter internalReporter) {
+    this.internalReporter = internalReporter;
   }
 
   @Override

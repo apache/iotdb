@@ -952,14 +952,14 @@ Server，客户端的使用方式详见 [SQL 命令行终端（CLI）](https://i
 |默认值| 60000 |
 |改后生效方式|重启服务生效|
 
-* compaction\_write\_throughput\_mb\_per\_sec
+* compaction\_io\_rate\_per\_sec
 
-|名字| compaction\_write\_throughput\_mb\_per\_sec |
-|:---:|:---|
-|描述| 每秒可达到的写入吞吐量合并限制。|
-|类型| Int32 |
-|默认值| 16 |
-|改后生效方式| 重启服务生效|
+|名字| compaction\_io\_rate\_per\_sec |
+|:---:|:-------------------------------|
+|描述| 合并每秒 IO 的次数                    |
+|类型| Int32                          |
+|默认值| 50                             |
+|改后生效方式| 重启服务生效                         |
 
 
 #### 插入配置

@@ -648,6 +648,10 @@ public class TsFileResource {
     return this.status == TsFileResourceStatus.COMPACTION_CANDIDATE;
   }
 
+  public TsFileResourceStatus getStatus() {
+    return this.status;
+  }
+
   public void setStatus(TsFileResourceStatus status) {
     switch (status) {
       case CLOSED:

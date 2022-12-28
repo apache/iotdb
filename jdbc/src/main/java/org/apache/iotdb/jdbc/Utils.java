@@ -74,9 +74,6 @@ public class Utils {
     if (info.containsKey(Config.VERSION)) {
       params.setVersion(Constant.Version.valueOf(info.getProperty(Config.VERSION)));
     }
-    if (info.containsKey(Config.AUTH_ENABLE_AUDIT)) {
-      params.setEnableAudit(Boolean.parseBoolean(info.getProperty(Config.AUTH_ENABLE_AUDIT)));
-    }
 
     return params;
   }

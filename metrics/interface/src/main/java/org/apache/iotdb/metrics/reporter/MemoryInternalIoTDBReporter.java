@@ -16,40 +16,43 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.session.template;
 
-import org.apache.iotdb.rpc.StatementExecutionException;
+package org.apache.iotdb.metrics.reporter;
 
-import java.io.IOException;
-import java.io.OutputStream;
+import org.apache.iotdb.metrics.AbstractMetricManager;
+import org.apache.iotdb.metrics.utils.ReporterType;
+
 import java.util.Map;
 
-public abstract class TemplateNode {
-  private String name;
+public class MemoryInternalIoTDBReporter extends InternalIoTDBReporter {
 
-  public TemplateNode(String name) {
-    this.name = name;
+  @Override
+  protected void writeMetricToIoTDB(Map<String, Object> valueMap, String prefix, long time) {
+    // do nothing
   }
 
-  public String getName() {
-    return this.name;
+  @Override
+  protected void writeMetricsToIoTDB(Map<String, Map<String, Object>> valueMap, long time) {
+    // do nothing
   }
 
-  public Map<String, TemplateNode> getChildren() {
-    return null;
-  }
-
-  public void addChild(TemplateNode node) throws StatementExecutionException {}
-
-  public void deleteChild(TemplateNode node) {}
-
-  public boolean isMeasurement() {
+  @Override
+  public boolean start() {
     return false;
   }
 
-  public boolean isShareTime() {
+  @Override
+  public boolean stop() {
     return false;
   }
 
-  public void serialize(OutputStream buffer) throws IOException {}
+  @Override
+  public ReporterType getReporterType() {
+    return ReporterType.IOTDB;
+  }
+
+  @Override
+  public void setMetricManager(AbstractMetricManager metricManager) {
+    // do nothing
+  }
 }

@@ -27,12 +27,48 @@ import java.util.Map;
 public class IoTDBMetricsUtils {
   private static final MetricConfig metricConfig =
       MetricConfigDescriptor.getInstance().getMetricConfig();
-  private static final String STORAGE_GROUP = "root.__system";
+  public static final String DATABASE = "root.__system";
 
-  public static String generatePath(String name, Map<String, String> labels) {
+  /** Generate the path of metric by metricInfo */
+  public static String generatePath(MetricInfo metricInfo) {
+    return generatePath(metricInfo.getName(), metricInfo.getTags());
+  }
+
+  /** Generate the path of metric with tags array */
+  public static String generatePath(String name, String... tags) {
+    StringBuilder stringBuilder = generateMetric(name);
+    for (int i = 0; i < tags.length; i += 2) {
+      stringBuilder
+          .append(".")
+          .append("\"")
+          .append(tags[i])
+          .append("=")
+          .append(tags[i + 1])
+          .append("\"");
+    }
+    return stringBuilder.toString();
+  }
+
+  /** Generate the path of metric with tags map */
+  public static String generatePath(String name, Map<String, String> tags) {
+    StringBuilder stringBuilder = generateMetric(name);
+    for (Map.Entry<String, String> entry : tags.entrySet()) {
+      stringBuilder
+          .append(".")
+          .append("\"")
+          .append(entry.getKey())
+          .append("=")
+          .append(entry.getValue())
+          .append("\"");
+    }
+    return stringBuilder.toString();
+  }
+
+  /** Generate the path of metric */
+  private static StringBuilder generateMetric(String name) {
     StringBuilder stringBuilder = new StringBuilder();
     stringBuilder
-        .append(STORAGE_GROUP)
+        .append(DATABASE)
         .append(".")
         .append(metricConfig.getIoTDBReporterConfig().getDatabase())
         .append(".\"")
@@ -44,15 +80,6 @@ public class IoTDBMetricsUtils {
         .append("\"")
         .append(name)
         .append("\"");
-    for (Map.Entry<String, String> entry : labels.entrySet()) {
-      stringBuilder
-          .append(".")
-          .append("\"")
-          .append(entry.getKey())
-          .append("=")
-          .append(entry.getValue())
-          .append("\"");
-    }
-    return stringBuilder.toString();
+    return stringBuilder;
   }
 }

@@ -31,6 +31,7 @@ import org.apache.iotdb.metrics.type.Timer;
 import org.apache.iotdb.metrics.utils.MetricInfo;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -251,9 +252,10 @@ public abstract class AbstractMetricManager {
    * @param metricLevel the level of name
    * @param tags string pairs, like sg="ln" will be "sg", "ln"
    */
-  public void count(long delta, String name, MetricLevel metricLevel, String... tags) {
+  public Counter count(long delta, String name, MetricLevel metricLevel, String... tags) {
     Counter counter = getOrCreateCounter(name, metricLevel, tags);
     counter.inc(delta);
+    return counter;
   }
 
   /**
@@ -264,9 +266,10 @@ public abstract class AbstractMetricManager {
    * @param metricLevel the level of name
    * @param tags string pairs, like sg="ln" will be "sg", "ln"
    */
-  public void gauge(long value, String name, MetricLevel metricLevel, String... tags) {
+  public Gauge gauge(long value, String name, MetricLevel metricLevel, String... tags) {
     Gauge gauge = getOrCreateGauge(name, metricLevel, tags);
     gauge.set(value);
+    return gauge;
   }
 
   /**
@@ -277,9 +280,10 @@ public abstract class AbstractMetricManager {
    * @param metricLevel the level of name
    * @param tags string pairs, like sg="ln" will be "sg", "ln"
    */
-  public void rate(long value, String name, MetricLevel metricLevel, String... tags) {
+  public Rate rate(long value, String name, MetricLevel metricLevel, String... tags) {
     Rate rate = getOrCreateRate(name, metricLevel, tags);
     rate.mark(value);
+    return rate;
   }
 
   /**
@@ -290,9 +294,10 @@ public abstract class AbstractMetricManager {
    * @param metricLevel the level of name
    * @param tags string pairs, like sg="ln" will be "sg", "ln"
    */
-  public void histogram(long value, String name, MetricLevel metricLevel, String... tags) {
+  public Histogram histogram(long value, String name, MetricLevel metricLevel, String... tags) {
     Histogram histogram = getOrCreateHistogram(name, metricLevel, tags);
     histogram.update(value);
+    return histogram;
   }
 
   /**
@@ -305,10 +310,11 @@ public abstract class AbstractMetricManager {
    * @param metricLevel the level of name
    * @param tags string pairs, like sg="ln" will be "sg", "ln"
    */
-  public void timer(
+  public Timer timer(
       long delta, TimeUnit timeUnit, String name, MetricLevel metricLevel, String... tags) {
     Timer timer = getOrCreateTimer(name, metricLevel, tags);
     timer.update(delta, timeUnit);
+    return timer;
   }
 
   // endregion
@@ -320,85 +326,21 @@ public abstract class AbstractMetricManager {
    *
    * @return [[name, tags...], ..., [name, tags...]]
    */
-  protected List<String[]> getAllMetricKeys() {
-    List<String[]> keys = new ArrayList<>(metrics.size());
+  protected List<Pair<String, String[]>> getAllMetricKeys() {
+    List<Pair<String, String[]>> keys = new ArrayList<>(metrics.size());
     metrics.keySet().forEach(k -> keys.add(k.toStringArray()));
     return keys;
   }
 
-  /**
-   * Get all counters
-   *
-   * @return [name, tags...] -> counter
-   */
-  protected Map<String[], Counter> getAllCounters() {
-    Map<String[], Counter> counterMap = new HashMap<>();
+  /** Get metric by type */
+  public Map<MetricInfo, IMetric> getMetricsByType(MetricType metricType) {
+    Map<MetricInfo, IMetric> metricInfoIMetricMap = new HashMap<>();
     for (Map.Entry<MetricInfo, IMetric> entry : metrics.entrySet()) {
-      if (entry.getValue() instanceof Counter) {
-        counterMap.put(entry.getKey().toStringArray(), (Counter) entry.getValue());
+      if (entry.getKey().getMetaInfo().getType() == metricType) {
+        metricInfoIMetricMap.put(entry.getKey(), entry.getValue());
       }
     }
-    return counterMap;
-  }
-
-  /**
-   * Get all gauges
-   *
-   * @return [name, tags...] -> gauge
-   */
-  protected Map<String[], Gauge> getAllGauges() {
-    Map<String[], Gauge> gaugeMap = new HashMap<>();
-    for (Map.Entry<MetricInfo, IMetric> entry : metrics.entrySet()) {
-      if (entry.getValue() instanceof Gauge) {
-        gaugeMap.put(entry.getKey().toStringArray(), (Gauge) entry.getValue());
-      }
-    }
-    return gaugeMap;
-  }
-
-  /**
-   * Get all rates
-   *
-   * @return [name, tags...] -> rate
-   */
-  protected Map<String[], Rate> getAllRates() {
-    Map<String[], Rate> rateMap = new HashMap<>();
-    for (Map.Entry<MetricInfo, IMetric> entry : metrics.entrySet()) {
-      if (entry.getValue() instanceof Rate) {
-        rateMap.put(entry.getKey().toStringArray(), (Rate) entry.getValue());
-      }
-    }
-    return rateMap;
-  }
-
-  /**
-   * Get all histograms
-   *
-   * @return [name, tags...] -> histogram
-   */
-  protected Map<String[], Histogram> getAllHistograms() {
-    Map<String[], Histogram> histogramMap = new HashMap<>();
-    for (Map.Entry<MetricInfo, IMetric> entry : metrics.entrySet()) {
-      if (entry.getValue() instanceof Histogram) {
-        histogramMap.put(entry.getKey().toStringArray(), (Histogram) entry.getValue());
-      }
-    }
-    return histogramMap;
-  }
-
-  /**
-   * Get all timers
-   *
-   * @return [name, tags...] -> timer
-   */
-  protected Map<String[], Timer> getAllTimers() {
-    Map<String[], Timer> timerMap = new HashMap<>();
-    for (Map.Entry<MetricInfo, IMetric> entry : metrics.entrySet()) {
-      if (entry.getValue() instanceof Timer) {
-        timerMap.put(entry.getKey().toStringArray(), (Timer) entry.getValue());
-      }
-    }
-    return timerMap;
+    return metricInfoIMetricMap;
   }
 
   // endregion

@@ -187,7 +187,8 @@ public class InsertTabletMultiPlanTest extends InsertTabletPlanTest {
     Assert.assertTrue(insertMultiTabletPlan.isEnableMultiThreading());
     executor.insertTablet(insertMultiTabletPlan);
 
-    QueryPlan queryPlan = (QueryPlan) processor.parseSQLToPhysicalPlan("select * from root.**");
+    QueryPlan queryPlan =
+        (QueryPlan) processor.parseSQLToPhysicalPlan("select * from root.multi*.**");
     QueryDataSet dataSet = executor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
     Assert.assertEquals(160, dataSet.getPaths().size());
     while (dataSet.hasNext()) {
