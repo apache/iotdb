@@ -289,6 +289,10 @@ public class SeriesScanUtil {
     return firstChunkMetadata != null;
   }
 
+  public int getAllSensorsSize() {
+    return allSensors.size();
+  }
+
   /** construct first chunk metadata */
   private void initFirstChunkMetadata() throws IOException {
     if (firstTimeSeriesMetadata != null) {

@@ -31,12 +31,16 @@ import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.IOException;
 import java.util.HashSet;
 import java.util.concurrent.TimeUnit;
 
 public class AlignedSeriesScanOperator implements DataSourceOperator {
 
+  private static final Logger LOGGER = LoggerFactory.getLogger(AlignedSeriesScanOperator.class);
   private final OperatorContext operatorContext;
   private final AlignedSeriesScanUtil seriesScanUtil;
   private final PlanNodeId sourceId;
@@ -45,6 +49,9 @@ public class AlignedSeriesScanOperator implements DataSourceOperator {
   private boolean finished = false;
 
   private final long maxReturnSize;
+
+  private TsBlock retainedTsBlock;
+  private int startOffset;
 
   public AlignedSeriesScanOperator(
       PlanNodeId sourceId,
@@ -77,13 +84,35 @@ public class AlignedSeriesScanOperator implements DataSourceOperator {
 
   @Override
   public TsBlock next() {
-    TsBlock block = builder.build();
+    if (retainedTsBlock != null) {
+      return getResultTsBlock();
+    }
+    retainedTsBlock = builder.build();
     builder.reset();
-    return block;
+    return getResultTsBlock();
+  }
+
+  private TsBlock getResultTsBlock() {
+    long maxSizePerTsBlock = TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
+    long length = maxSizePerTsBlock / (1 + seriesScanUtil.getAllSensorsSize());
+    TsBlock resultTsBlock;
+    if (retainedTsBlock.getPositionCount() - startOffset < length) {
+      resultTsBlock = retainedTsBlock.subTsBlock(startOffset);
+      retainedTsBlock = null;
+      startOffset = 0;
+    } else {
+      resultTsBlock = retainedTsBlock.getRegion(startOffset, (int) length);
+      startOffset += length;
+    }
+    LOGGER.debug("Current tsBlock size is : {}", resultTsBlock.getRetainedSizeInBytes());
+    return resultTsBlock;
   }
 
   @Override
   public boolean hasNext() {
+    if (retainedTsBlock != null) {
+      return true;
+    }
     try {
 
       // start stopwatch
