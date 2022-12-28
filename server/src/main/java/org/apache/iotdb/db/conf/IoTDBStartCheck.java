@@ -299,11 +299,11 @@ public class IoTDBStartCheck {
     // check whether upgrading from <=v0.9
     if (!properties.containsKey(IOTDB_VERSION_STRING)) {
       logger.error(
-          "DO NOT UPGRADE IoTDB from v0.9 or lower version to v0.12!"
+          "DO NOT UPGRADE IoTDB from v0.9 or lower version to v1.0!"
               + " Please upgrade to v0.10 first");
       System.exit(-1);
     }
-    // check whether upgrading from [v0.10, v.12]
+    // check whether upgrading from [v0.10, v.13]
     String versionString = properties.getProperty(IOTDB_VERSION_STRING);
     if (versionString.startsWith("0.10") || versionString.startsWith("0.11")) {
       logger.error("IoTDB version is too old, please upgrade to 0.12 firstly.");

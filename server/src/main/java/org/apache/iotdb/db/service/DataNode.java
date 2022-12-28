@@ -206,9 +206,6 @@ public class DataNode implements DataNodeMBean {
     StartupChecks checks = new StartupChecks(IoTDBConstant.DN_ROLE).withDefaultTest();
     checks.verify();
 
-    // Check system configurations
-    IoTDBStartCheck.getInstance().checkSystemConfig();
-
     return isFirstStart;
   }
 
@@ -280,6 +277,7 @@ public class DataNode implements DataNodeMBean {
 
     /* Check system configurations */
     try {
+      IoTDBStartCheck.getInstance().checkSystemConfig();
       IoTDBStartCheck.getInstance().checkDirectory();
       IoTDBStartCheck.getInstance().serializeGlobalConfig(configurationResp.globalConfig);
       IoTDBDescriptor.getInstance().initClusterSchemaMemoryAllocate();
