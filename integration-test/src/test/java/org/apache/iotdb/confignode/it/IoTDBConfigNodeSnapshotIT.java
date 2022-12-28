@@ -91,7 +91,7 @@ public class IoTDBConfigNodeSnapshotIT {
   @Before
   public void setUp() throws Exception {
     originalConfigNodeConsensusProtocolClass =
-        ConfigFactory.getConfig().getConfigNodeConsesusProtocolClass();
+        ConfigFactory.getConfig().getConfigNodeConsensusProtocolClass();
     ConfigFactory.getConfig().setConfigNodeConsesusProtocolClass(ConsensusFactory.RATIS_CONSENSUS);
 
     originalRatisSnapshotTriggerThreshold =

@@ -73,7 +73,7 @@ public class IoTDBClusterNodeErrorStartUpIT {
 
   @Before
   public void setUp() throws Exception {
-    originalConfigNodeConsensusProtocolClass = CONF.getConfigNodeConsesusProtocolClass();
+    originalConfigNodeConsensusProtocolClass = CONF.getConfigNodeConsensusProtocolClass();
     CONF.setConfigNodeConsesusProtocolClass(testConsensusProtocolClass);
 
     // Init 3C1D environment
@@ -103,6 +103,7 @@ public class IoTDBClusterNodeErrorStartUpIT {
         (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
       TConfigNodeRegisterReq req =
           ConfigNodeTestUtils.generateTConfigNodeRegisterReq(conflictConfigNodeWrapper);
+      req.getBasicParameters().setConfigNodeConsensusProtocolClass(testConsensusProtocolClass);
       TConfigNodeRegisterResp resp = client.registerConfigNode(req);
       Assert.assertEquals(
           TSStatusCode.REJECT_NODE_START.getStatusCode(), resp.getStatus().getCode());

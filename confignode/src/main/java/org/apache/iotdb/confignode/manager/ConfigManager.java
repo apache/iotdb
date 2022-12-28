@@ -94,6 +94,8 @@ import org.apache.iotdb.confignode.persistence.node.NodeInfo;
 import org.apache.iotdb.confignode.persistence.partition.PartitionInfo;
 import org.apache.iotdb.confignode.persistence.schema.ClusterSchemaInfo;
 import org.apache.iotdb.confignode.persistence.sync.ClusterSyncInfo;
+import org.apache.iotdb.confignode.rpc.thrift.TAdvancedClusterParameters;
+import org.apache.iotdb.confignode.rpc.thrift.TBasicClusterParameters;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRestartReq;
@@ -135,6 +137,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSetDataNodeStatusReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowCQResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowClusterParametersResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowConfigNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
@@ -174,6 +177,8 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCAR
 public class ConfigManager implements IManager {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ConfigManager.class);
+
+  private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
 
   /** Manage PartitionTable read/write requests through the ConsensusLayer */
   private volatile ConsensusManager consensusManager;
@@ -394,6 +399,36 @@ public class ConfigManager implements IManager {
     } else {
       return new TShowClusterResp(status, new ArrayList<>(), new ArrayList<>(), new HashMap<>());
     }
+  }
+
+  @Override
+  public TShowClusterParametersResp showClusterParameters() {
+    TSStatus status = confirmLeader();
+    TShowClusterParametersResp resp = new TShowClusterParametersResp();
+    resp.setStatus(status);
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      TBasicClusterParameters basicClusterParameters = new TBasicClusterParameters();
+      basicClusterParameters.setConfigNodeConsensusProtocolClass(
+          CONF.getConfigNodeConsensusProtocolClass());
+      basicClusterParameters.setDataRegionConsensusProtocolClass(
+          CONF.getDataRegionConsensusProtocolClass());
+      basicClusterParameters.setSchemaRegionConsensusProtocolClass(
+          CONF.getSchemaRegionConsensusProtocolClass());
+
+      basicClusterParameters.setSeriesPartitionSlotNum(CONF.getSeriesSlotNum());
+      basicClusterParameters.setSeriesPartitionExecutorClass(
+          CONF.getSeriesPartitionExecutorClass());
+
+      basicClusterParameters.setDefaultTTL(
+          CommonDescriptor.getInstance().getConfig().getDefaultTTLInMs());
+      basicClusterParameters.setTimePartitionInterval(CONF.getTimePartitionInterval());
+
+      basicClusterParameters.setDataReplicationFactor(CONF.getDataReplicationFactor());
+      basicClusterParameters.setSchemaReplicationFactor(CONF.getSchemaReplicationFactor());
+
+      resp.setBasicParameters(basicClusterParameters);
+    }
+    return resp;
   }
 
   @Override
@@ -822,52 +857,93 @@ public class ConfigManager implements IManager {
   }
 
   public TSStatus checkConfigNodeGlobalConfig(TConfigNodeRegisterReq req) {
+    TSStatus errorStatus = checkBasicParameters(req.getBasicParameters());
+    if (errorStatus != null) {
+      return errorStatus;
+    }
+    return checkAdvancedParameters(req.getAdvancedParameters());
+  }
+
+  private TSStatus checkBasicParameters(TBasicClusterParameters basicClusterParameters) {
     final String errorPrefix = "Reject register, please ensure that the parameter ";
     final String errorSuffix = " is consistent with the Seed-ConfigNode.";
-
-    ConfigNodeConfig conf = ConfigNodeDescriptor.getInstance().getConf();
     TSStatus errorStatus = new TSStatus(TSStatusCode.CONFIGURATION_ERROR.getStatusCode());
-    if (!req.getDataRegionConsensusProtocolClass()
-        .equals(conf.getDataRegionConsensusProtocolClass())) {
+
+    if (!basicClusterParameters
+        .getConfigNodeConsensusProtocolClass()
+        .equals(CONF.getConfigNodeConsensusProtocolClass())) {
+      return errorStatus.setMessage(
+          errorPrefix + "config_node_consensus_protocol_class" + errorSuffix);
+    }
+    if (!basicClusterParameters
+        .getDataRegionConsensusProtocolClass()
+        .equals(CONF.getDataRegionConsensusProtocolClass())) {
       return errorStatus.setMessage(
           errorPrefix + "data_region_consensus_protocol_class" + errorSuffix);
     }
-    if (!req.getSchemaRegionConsensusProtocolClass()
-        .equals(conf.getSchemaRegionConsensusProtocolClass())) {
+    if (!basicClusterParameters
+        .getSchemaRegionConsensusProtocolClass()
+        .equals(CONF.getSchemaRegionConsensusProtocolClass())) {
       return errorStatus.setMessage(
           errorPrefix + "schema_region_consensus_protocol_class" + errorSuffix);
     }
-    if (req.getSeriesPartitionSlotNum() != conf.getSeriesSlotNum()) {
+
+    if (basicClusterParameters.getSeriesPartitionSlotNum() != CONF.getSeriesSlotNum()) {
       return errorStatus.setMessage(errorPrefix + "series_partition_slot_num" + errorSuffix);
     }
-    if (!req.getSeriesPartitionExecutorClass().equals(conf.getSeriesPartitionExecutorClass())) {
+    if (!basicClusterParameters
+        .getSeriesPartitionExecutorClass()
+        .equals(CONF.getSeriesPartitionExecutorClass())) {
       return errorStatus.setMessage(errorPrefix + "series_partition_executor_class" + errorSuffix);
     }
-    if (req.getDefaultTTL() != CommonDescriptor.getInstance().getConfig().getDefaultTTLInMs()) {
+
+    if (basicClusterParameters.getDefaultTTL()
+        != CommonDescriptor.getInstance().getConfig().getDefaultTTLInMs()) {
       return errorStatus.setMessage(errorPrefix + "default_ttl" + errorSuffix);
     }
-    if (req.getTimePartitionInterval() != conf.getTimePartitionInterval()) {
+    if (basicClusterParameters.getTimePartitionInterval() != CONF.getTimePartitionInterval()) {
       return errorStatus.setMessage(errorPrefix + "time_partition_interval" + errorSuffix);
     }
-    if (req.getSchemaReplicationFactor() != conf.getSchemaReplicationFactor()) {
+
+    if (basicClusterParameters.getSchemaReplicationFactor() != CONF.getSchemaReplicationFactor()) {
       return errorStatus.setMessage(errorPrefix + "schema_replication_factor" + errorSuffix);
     }
-    if (req.getSchemaRegionPerDataNode() != conf.getSchemaRegionPerDataNode()) {
-      return errorStatus.setMessage(errorPrefix + "schema_region_per_data_node" + errorSuffix);
-    }
-    if (req.getDataReplicationFactor() != conf.getDataReplicationFactor()) {
+    if (basicClusterParameters.getDataReplicationFactor() != CONF.getDataReplicationFactor()) {
       return errorStatus.setMessage(errorPrefix + "data_replication_factor" + errorSuffix);
     }
-    if (req.getDataRegionPerProcessor() != conf.getDataRegionPerProcessor()) {
+
+    return null;
+  }
+
+  private TSStatus checkAdvancedParameters(TAdvancedClusterParameters advancedClusterParameters) {
+    final String errorPrefix = "Reject register, please ensure that the parameter ";
+    final String errorSuffix = " is consistent with the Seed-ConfigNode.";
+    TSStatus errorStatus = new TSStatus(TSStatusCode.CONFIGURATION_ERROR.getStatusCode());
+
+    if (advancedClusterParameters.getSchemaRegionPerDataNode()
+        != CONF.getSchemaRegionPerDataNode()) {
+      return errorStatus.setMessage(errorPrefix + "schema_region_per_data_node" + errorSuffix);
+    }
+    if (advancedClusterParameters.getDataRegionPerProcessor() != CONF.getDataRegionPerProcessor()) {
       return errorStatus.setMessage(errorPrefix + "data_region_per_processor" + errorSuffix);
     }
-    if (!req.getReadConsistencyLevel().equals(conf.getReadConsistencyLevel())) {
+
+    if (!advancedClusterParameters
+        .getReadConsistencyLevel()
+        .equals(CONF.getReadConsistencyLevel())) {
       return errorStatus.setMessage(errorPrefix + "read_consistency_level" + errorSuffix);
     }
-    if (req.getDiskSpaceWarningThreshold()
+
+    if (advancedClusterParameters.getDiskSpaceWarningThreshold()
         != CommonDescriptor.getInstance().getConfig().getDiskSpaceWarningThreshold()) {
       return errorStatus.setMessage(errorPrefix + "disk_space_warning_threshold" + errorSuffix);
     }
+
+    if (advancedClusterParameters.getLeastDataRegionGroupNum()
+        != CONF.getLeastDataRegionGroupNum()) {
+      return errorStatus.setMessage(errorPrefix + "least_data_region_group_num" + errorSuffix);
+    }
+
     return null;
   }
 
@@ -1512,16 +1588,6 @@ public class ConfigManager implements IManager {
       }
     }
     return filteredRegionReplicaSets;
-  }
-
-  public TConfigNodeLocation getConfigNodeLocation(int nodeId) {
-    List<TConfigNodeLocation> configNodeLocations = this.nodeManager.getRegisteredConfigNodes();
-    for (TConfigNodeLocation configNodeLocation : configNodeLocations) {
-      if (configNodeLocation.getConfigNodeId() == nodeId) {
-        return configNodeLocation;
-      }
-    }
-    return null;
   }
 
   public TSStatus transfer(List<TDataNodeLocation> newUnknownDataList) {

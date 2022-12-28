@@ -71,7 +71,7 @@ public class IoTDBConfigNodeSwitchLeaderIT {
   @Before
   public void setUp() throws Exception {
     originalConfigNodeConsensusProtocolClass =
-        ConfigFactory.getConfig().getConfigNodeConsesusProtocolClass();
+        ConfigFactory.getConfig().getConfigNodeConsensusProtocolClass();
     originalSchemaRegionConsensusProtocolClass =
         ConfigFactory.getConfig().getSchemaRegionConsensusProtocolClass();
     originalDataRegionConsensusProtocolClass =

@@ -202,7 +202,7 @@ public interface BaseConfig {
     return this;
   }
 
-  default String getConfigNodeConsesusProtocolClass() {
+  default String getConfigNodeConsensusProtocolClass() {
     return "org.apache.iotdb.consensus.simple.SimpleConsensus";
   }
 
@@ -285,6 +285,14 @@ public interface BaseConfig {
 
   default int getSeriesPartitionSlotNum() {
     return 10000;
+  }
+
+  default String getSeriesPartitionExecutorClass() {
+    return "org.apache.iotdb.commons.partition.executor.hash.BKDRHashExecutor";
+  }
+
+  default long getDefaultTTL() {
+    return Long.MAX_VALUE;
   }
 
   default BaseConfig setTimePartitionInterval(long timePartitionInterval) {
