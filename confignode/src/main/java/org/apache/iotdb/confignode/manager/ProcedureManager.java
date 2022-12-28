@@ -431,15 +431,15 @@ public class ProcedureManager {
               + migrateRegionReq.getRegionId()
               + " is unavailable.");
       return status;
-    } else if (!aliveDataNodes.contains(destDataNode)){
+    } else if (!aliveDataNodes.contains(migrateRegionReq.getToId())) {
       LOGGER.warn(
-              "Submit RegionMigrateProcedure failed, because the destDataNode {} is ReadOnly.",
-              migrateRegionReq.getToId());
+          "Submit RegionMigrateProcedure failed, because the destDataNode {} is ReadOnly.",
+          migrateRegionReq.getToId());
       TSStatus status = new TSStatus(TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode());
       status.setMessage(
-              "Submit RegionMigrateProcedure failed, because the destDataNode "
-                      + migrateRegionReq.getToId()
-                      + " is ReadOnly.");
+          "Submit RegionMigrateProcedure failed, because the destDataNode "
+              + migrateRegionReq.getToId()
+              + " is ReadOnly.");
       return status;
     }
     this.executor.submitProcedure(
