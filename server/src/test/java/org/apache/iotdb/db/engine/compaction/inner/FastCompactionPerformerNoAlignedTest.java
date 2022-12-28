@@ -37,7 +37,6 @@ import org.apache.iotdb.db.engine.compaction.utils.CompactionConfigRestorer;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionFileGeneratorUtils;
 import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -210,7 +209,6 @@ public class FastCompactionPerformerNoAlignedTest {
       performer.setSummary(new CompactionTaskSummary());
       performer.perform();
       CompactionUtils.moveTargetFile(Collections.singletonList(targetResource), true, storageGroup);
-      targetResource.setStatus(TsFileResourceStatus.CLOSED);
       Map<String, List<List<Long>>> chunkPagePointsNumMerged = new HashMap<>();
       long[] points = new long[fileNum];
       for (int i = 1; i <= fileNum; i++) {
@@ -304,7 +302,6 @@ public class FastCompactionPerformerNoAlignedTest {
       performer.setSummary(new CompactionTaskSummary());
       performer.perform();
       CompactionUtils.moveTargetFile(Collections.singletonList(targetResource), true, storageGroup);
-      targetResource.setStatus(TsFileResourceStatus.CLOSED);
       Map<String, List<List<Long>>> chunkPagePointsNumMerged = new HashMap<>();
       // outer list is a chunk, inner list is point num in each page
       for (String path : fullPathSet) {
@@ -400,7 +397,6 @@ public class FastCompactionPerformerNoAlignedTest {
       performer.setSummary(new CompactionTaskSummary());
       performer.perform();
       CompactionUtils.moveTargetFile(Collections.singletonList(targetResource), true, storageGroup);
-      targetResource.setStatus(TsFileResourceStatus.CLOSED);
       Map<String, List<List<Long>>> chunkPagePointsNumMerged = new HashMap<>();
       // outer list is a chunk, inner list is point num in each page
       for (String path : fullPathSet) {
@@ -483,7 +479,6 @@ public class FastCompactionPerformerNoAlignedTest {
       performer.setSummary(new CompactionTaskSummary());
       performer.perform();
       CompactionUtils.moveTargetFile(Collections.singletonList(targetResource), true, storageGroup);
-      targetResource.setStatus(TsFileResourceStatus.CLOSED);
       Map<String, List<List<Long>>> chunkPagePointsNumMerged = new HashMap<>();
       // outer list is a chunk, inner list is point num in each page
       List<List<Long>> chunkPointsArray = new ArrayList<>();
@@ -595,7 +590,6 @@ public class FastCompactionPerformerNoAlignedTest {
       performer.setSummary(new CompactionTaskSummary());
       performer.perform();
       CompactionUtils.moveTargetFile(Collections.singletonList(targetResource), true, storageGroup);
-      targetResource.setStatus(TsFileResourceStatus.CLOSED);
       Map<String, List<List<Long>>> chunkPagePointsNumMerged = new HashMap<>();
       // outer list is a chunk, inner list is point num in each page
       for (String path : fullPathSet) {
@@ -678,7 +672,6 @@ public class FastCompactionPerformerNoAlignedTest {
       performer.setSummary(new CompactionTaskSummary());
       performer.perform();
       CompactionUtils.moveTargetFile(Collections.singletonList(targetResource), true, storageGroup);
-      targetResource.setStatus(TsFileResourceStatus.CLOSED);
       Map<String, List<List<Long>>> chunkPagePointsNumMerged = new HashMap<>();
       // outer list is a chunk, inner list is point num in each page
       List<List<Long>> chunkPointsArray = new ArrayList<>();
@@ -764,7 +757,6 @@ public class FastCompactionPerformerNoAlignedTest {
       performer.setSummary(new CompactionTaskSummary());
       performer.perform();
       CompactionUtils.moveTargetFile(Collections.singletonList(targetResource), true, storageGroup);
-      targetResource.setStatus(TsFileResourceStatus.CLOSED);
       Map<String, List<List<Long>>> chunkPagePointsNumMerged = new HashMap<>();
       // outer list is a chunk, inner list is point num in each page
       List<List<Long>> chunkPointsArray = new ArrayList<>();
@@ -843,7 +835,6 @@ public class FastCompactionPerformerNoAlignedTest {
       performer.setSummary(new CompactionTaskSummary());
       performer.perform();
       CompactionUtils.moveTargetFile(Collections.singletonList(targetResource), true, storageGroup);
-      targetResource.setStatus(TsFileResourceStatus.CLOSED);
       Map<String, List<List<Long>>> chunkPagePointsNumMerged = new HashMap<>();
       // outer list is a chunk, inner list is point num in each page
       for (String path : fullPathSet) {
@@ -925,7 +916,6 @@ public class FastCompactionPerformerNoAlignedTest {
       performer.setSummary(new CompactionTaskSummary());
       performer.perform();
       CompactionUtils.moveTargetFile(Collections.singletonList(targetResource), true, storageGroup);
-      targetResource.setStatus(TsFileResourceStatus.CLOSED);
       Map<String, List<List<Long>>> chunkPagePointsNumMerged = new HashMap<>();
       // outer list is a chunk, inner list is point num in each page
       for (String path : fullPathSet) {

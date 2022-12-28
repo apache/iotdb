@@ -2197,7 +2197,10 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
 
   /**
    * Target files of first cross compaction task should not be selected to participate in other
-   * tasks util the first task is finished.
+   * tasks util the first task is finished.<br>
+   * Seq Files index : 1 ~ 10<br>
+   * Unseq Files index : 1 ~ 2<br>
+   * Unseq file 1 overlaps with seq file 4,5 and unseq file 2 overlaps with seq file 5,6
    */
   @Test
   public void testCompactionSchedule() throws Exception {
@@ -2256,5 +2259,26 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
             .getInnerSequenceCompactionSelector()
             .createInstance(COMPACTION_TEST_SG, "0", 0, tsFileManager);
     Assert.assertEquals(0, innerSelector.selectInnerSpaceTask(targetResources).size());
+
+    // first compaction task finishes successfully
+    targetResources.forEach(x -> x.setStatus(TsFileResourceStatus.CLOSED));
+
+    // target file of first compaction task can be selected to participate in another cross
+    // compaction task
+    List<Pair<List<TsFileResource>, List<TsFileResource>>> pairs =
+        crossSpaceCompactionSelector.selectCrossSpaceTask(
+            tsFileManager.getSequenceListByTimePartition(0),
+            tsFileManager.getUnsequenceListByTimePartition(0));
+    Assert.assertEquals(1, pairs.size());
+    Assert.assertEquals(2, pairs.get(0).left.size());
+    Assert.assertEquals(1, pairs.get(0).right.size());
+    Assert.assertEquals(tsFileManager.getTsFileList(true).get(4), pairs.get(0).left.get(0));
+    Assert.assertEquals(tsFileManager.getTsFileList(true).get(5), pairs.get(0).left.get(1));
+    Assert.assertEquals(tsFileManager.getTsFileList(false).get(0), pairs.get(0).right.get(0));
+
+    // target file of first compaction task can be selected to participate in another inner
+    // compaction task
+    List<List<TsFileResource>> innerPairs = innerSelector.selectInnerSpaceTask(targetResources);
+    Assert.assertEquals(1, innerPairs.size());
   }
 }
