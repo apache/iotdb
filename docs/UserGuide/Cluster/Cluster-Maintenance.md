@@ -113,9 +113,9 @@ IoTDB> show cluster
 |     0|ConfigNode|Running|      127.0.0.1|       10710|
 |     1|ConfigNode|Running|      127.0.0.1|       10711|
 |     2|ConfigNode|Running|      127.0.0.1|       10712|
-|     3|  DataNode|Running|      127.0.0.1|        10730|
-|     4|  DataNode|Running|      127.0.0.1|        10732|
-|     5|  DataNode|Running|      127.0.0.1|        9007|
+|     3|  DataNode|Running|      127.0.0.1|       10730|
+|     4|  DataNode|Running|      127.0.0.1|       10731|
+|     5|  DataNode|Running|      127.0.0.1|       10732|
 +------+----------+-------+---------------+------------+
 Total line number = 6
 It costs 0.011s
@@ -130,9 +130,9 @@ IoTDB> show cluster
 |     0|ConfigNode|Running|      127.0.0.1|       10710|
 |     1|ConfigNode|Unknown|      127.0.0.1|       10711|
 |     2|ConfigNode|Running|      127.0.0.1|       10712|
-|     3|  DataNode|Running|      127.0.0.1|        10730|
-|     4|  DataNode|Running|      127.0.0.1|        10732|
-|     5|  DataNode|Running|      127.0.0.1|        9007|
+|     3|  DataNode|Running|      127.0.0.1|       10730|
+|     4|  DataNode|Running|      127.0.0.1|       10731|
+|     5|  DataNode|Running|      127.0.0.1|       10732|
 +------+----------+-------+---------------+------------+
 Total line number = 6
 It costs 0.012s
@@ -146,16 +146,16 @@ SHOW CLUSTER DETAILS
 Eg:
 ```
 IoTDB> show cluster details
-+------+----------+-------+---------------+------------+-------------------+----------+-------+-----------------+-------------------+-------+
-|NodeID|  NodeType| Status|InternalAddress|InternalPort|ConfigConsensusPort|RpcAddress|RpcPort|DataConsensusPort|SchemaConsensusPort|MppPort|
-+------+----------+-------+---------------+------------+-------------------+----------+-------+-----------------+-------------------+-------+
-|     0|ConfigNode|Running|      127.0.0.1|       10710|              10720|          |       |                 |                   |       |
-|     1|ConfigNode|Running|      127.0.0.1|       10711|              10721|          |       |                 |                   |       |
-|     2|ConfigNode|Running|      127.0.0.1|       10712|              10722|          |       |                 |                   |       |
-|     3|  DataNode|Running|      127.0.0.1|        10730|                   | 127.0.0.1|   6667|            10760|              10750|   10740|
-|     4|  DataNode|Running|      127.0.0.1|        10731|                   | 127.0.0.1|   6668|            10761|              10751|   10741|
-|     5|  DataNode|Running|      127.0.0.1|        10732|                   | 127.0.0.1|   6669|            10762|              10752|   10742|
-+------+----------+-------+---------------+------------+-------------------+----------+-------+-----------------+-------------------+-------+
++------+----------+-------+---------------+------------+-------------------+----------+-------+-------+-------------------+-----------------+
+|NodeID|  NodeType| Status|InternalAddress|InternalPort|ConfigConsensusPort|RpcAddress|RpcPort|MppPort|SchemaConsensusPort|DataConsensusPort|
++------+----------+-------+---------------+------------+-------------------+----------+-------+-------+-------------------+-----------------+
+|     0|ConfigNode|Running|      127.0.0.1|       10710|              10720|          |       |       |                   |                 |
+|     1|ConfigNode|Running|      127.0.0.1|       10711|              10721|          |       |       |                   |                 |
+|     2|ConfigNode|Running|      127.0.0.1|       10712|              10722|          |       |       |                   |                 |
+|     3|  DataNode|Running|      127.0.0.1|       10730|                   | 127.0.0.1|   6667|  10740|              10750|            10760|
+|     4|  DataNode|Running|      127.0.0.1|       10731|                   | 127.0.0.1|   6668|  10741|              10751|            10761|
+|     5|  DataNode|Running|      127.0.0.1|       10732|                   | 127.0.0.1|   6669|  10742|              10752|            10762|
++------+----------+-------+---------------+------------+-------------------+----------+-------+-------+-------------------+-----------------+
 Total line number = 6
 It costs 0.340s
 ```

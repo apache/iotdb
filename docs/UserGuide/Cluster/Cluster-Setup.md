@@ -32,7 +32,7 @@ This document describes how to install and start IoTDB Cluster (1.0.0).
 and data/datanode directory has been cleared when starting DataNode for the first time
 5. Turn off the firewall of the server if the entire cluster is in a trusted environment.
 6. By default, IoTDB Cluster will use ports 10710, 10720 for the ConfigNode and 
-6667, 10740, 10730, 10760 and 10750 for the DataNode. 
+6667, 10730, 10740, 10750 and 10760 for the DataNode. 
 Please make sure those ports are not occupied, or you will modify the ports in configuration files. 
 
 # 3. Get the Installation Package
@@ -288,22 +288,22 @@ Please read the [Cli manual](https://iotdb.apache.org/UserGuide/Master/QuickStar
 
 Use a 3C3D(3 ConfigNodes and 3 DataNodes) as an example.
 Assumed that the IP addresses of the 3 ConfigNodes are 192.168.1.10, 192.168.1.11 and 192.168.1.12, and the default ports 10710 and 10720 are used.
-Assumed that the IP addresses of the 3 DataNodes are 192.168.1.20, 192.168.1.21 and 192.168.1.22, and the default ports 10730, 6667, 10760, 10750 and 10740 are used.
+Assumed that the IP addresses of the 3 DataNodes are 192.168.1.20, 192.168.1.21 and 192.168.1.22, and the default ports 6667, 10730, 10740, 10750 and 10760 are used.
 
 After starting the cluster successfully according to chapter 6.1, you can run the `show cluster details` command on the Cli, and you will see the following results:
 
 ```
 IoTDB> show cluster details
-+------+----------+-------+---------------+------------+-------------------+------------+-------+-----------------+-------------------+-------+
-|NodeID|  NodeType| Status|InternalAddress|InternalPort|ConfigConsensusPort|  RpcAddress|RpcPort|DataConsensusPort|SchemaConsensusPort|MppPort|
-+------+----------+-------+---------------+------------+-------------------+------------+-------+-----------------+-------------------+-------+
-|     0|ConfigNode|Running|   192.168.1.10|       10710|              10720|            |       |                 |                   |       |
-|     2|ConfigNode|Running|   192.168.1.11|       10710|              10720|            |       |                 |                   |       |
-|     3|ConfigNode|Running|   192.168.1.12|       10710|              10720|            |       |                 |                   |       |
-|     1|  DataNode|Running|   192.168.1.20|        10730|                   |192.168.1.20|   6667|            10760|              10750|   10740|
-|     4|  DataNode|Running|   192.168.1.21|        10730|                   |192.168.1.21|   6667|            10760|              10750|   10740|
-|     5|  DataNode|Running|   192.168.1.22|        10730|                   |192.168.1.22|   6667|            10760|              10750|   10740|
-+------+----------+-------+---------------+------------+-------------------+------------+-------+-----------------+-------------------+-------+
++------+----------+-------+---------------+------------+-------------------+------------+-------+-------+-------------------+-----------------+
+|NodeID|  NodeType| Status|InternalAddress|InternalPort|ConfigConsensusPort|  RpcAddress|RpcPort|MppPort|SchemaConsensusPort|DataConsensusPort|
++------+----------+-------+---------------+------------+-------------------+------------+-------+-------+-------------------+-----------------+
+|     0|ConfigNode|Running|   192.168.1.10|       10710|              10720|            |       |       |                   |                 |
+|     2|ConfigNode|Running|   192.168.1.11|       10710|              10720|            |       |       |                   |                 |
+|     3|ConfigNode|Running|   192.168.1.12|       10710|              10720|            |       |       |                   |                 |
+|     1|  DataNode|Running|   192.168.1.20|       10730|                   |192.168.1.20|   6667|  10740|              10750|            10760|
+|     4|  DataNode|Running|   192.168.1.21|       10730|                   |192.168.1.21|   6667|  10740|              10750|            10760|
+|     5|  DataNode|Running|   192.168.1.22|       10730|                   |192.168.1.22|   6667|  10740|              10750|            10760|
++------+----------+-------+---------------+------------+-------------------+------------+-------+-------+-------------------+-----------------+
 Total line number = 6
 It costs 0.012s
 ```

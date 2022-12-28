@@ -50,12 +50,12 @@ the default number of replicas is one.
   command on the Cli. The result is shown below:
 ```
 IoTDB> show cluster details
-+------+----------+-------+---------------+------------+-------------------+----------+-------+-----------------+-------------------+-------+
-|NodeID|  NodeType| Status|InternalAddress|InternalPort|ConfigConsensusPort|RpcAddress|RpcPort|DataConsensusPort|SchemaConsensusPort|MppPort|
-+------+----------+-------+---------------+------------+-------------------+----------+-------+-----------------+-------------------+-------+
-|     0|ConfigNode|Running|      127.0.0.1|       10710|              10720|          |       |                 |                   |       |
-|     1|  DataNode|Running|      127.0.0.1|        10730|                   | 127.0.0.1|   6667|            10760|              10750|   10740|
-+------+----------+-------+---------------+------------+-------------------+----------+-------+-----------------+-------------------+-------+
++------+----------+-------+---------------+------------+-------------------+----------+-------+--------+-------------------+-----------------+
+|NodeID|  NodeType| Status|InternalAddress|InternalPort|ConfigConsensusPort|RpcAddress|RpcPort|MppPort |SchemaConsensusPort|DataConsensusPort|
++------+----------+-------+---------------+------------+-------------------+----------+-------+--------+-------------------+-----------------+
+|     0|ConfigNode|Running|      127.0.0.1|       10710|              10720|          |       |        |                   |                 |
+|     1|  DataNode|Running|      127.0.0.1|       10730|                   | 127.0.0.1|   6667|   10740|              10750|            10760|
++------+----------+-------+---------------+------------+-------------------+----------+-------+--------+-------------------+-----------------+
 Total line number = 2
 It costs 0.242s
 ```
@@ -84,10 +84,10 @@ For folder cluster1:
 | dn\_rpc\_address                    | 127.0.0.1       |
 | dn\_rpc\_port                       | 6668            |
 | dn\_internal\_address               | 127.0.0.1       |
-| dn\_internal\_port                  | 10731            |
-| dn\_mpp\_data\_exchange\_port       | 10741            |
-| dn\_data\_region\_consensus\_port   | 10761           |
+| dn\_internal\_port                  | 10731           |
+| dn\_mpp\_data\_exchange\_port       | 10741           |
 | dn\_schema\_region\_consensus\_port | 10751           |
+| dn\_data\_region\_consensus\_port   | 10761           |
 | dn\_target\_config\_node\_list      | 127.0.0.1:10710 |
 
 For folder cluster2:
@@ -103,16 +103,16 @@ For folder cluster2:
 
 + Modify DataNode configurations:
 
-| **configuration item**              | **value**       |
-|-------------------------------------|-----------------|
-| dn\_rpc\_address                    | 127.0.0.1       |
-| dn\_rpc\_port                       | 6669            |
-| dn\_internal\_address               | 127.0.0.1       |
-| dn\_internal\_port                  | 10732            |
-| dn\_mpp\_data\_exchange\_port       | 10742            |
-| dn\_data\_region\_consensus\_port   | 10762           |
-| dn\_schema\_region\_consensus\_port | 10752           |
-| dn\_target\_config\_node\_list      | 127.0.0.1:10710 |
+| **configuration item**                 | **value**       |
+|----------------------------------------|-----------------|
+| dn\_rpc\_address                       | 127.0.0.1       |
+| dn\_rpc\_port                          | 6669            |
+| dn\_internal\_address                  | 127.0.0.1       |
+| dn\_internal\_port                     | 10732           |
+| dn\_mpp\_data\_exchange\_port          | 10742           |
+| dn\_schema\_region\_consensus\_port    | 10752           |
+| dn\_data\_region\_consensus\_port      | 10762           |
+| dn\_target\_config\_node\_list         | 127.0.0.1:10710 |
 
 ### 6. Expanding the Cluster
 
@@ -131,16 +131,16 @@ The following commands can be executed in arbitrary order.
 Execute the `show cluster details` command, then the result is shown below:
 ```
 IoTDB> show cluster details
-+------+----------+-------+---------------+------------+-------------------+----------+-------+-----------------+-------------------+-------+
-|NodeID|  NodeType| Status|InternalAddress|InternalPort|ConfigConsensusPort|RpcAddress|RpcPort|DataConsensusPort|SchemaConsensusPort|MppPort|
-+------+----------+-------+---------------+------------+-------------------+----------+-------+-----------------+-------------------+-------+
-|     0|ConfigNode|Running|      127.0.0.1|       10710|              10720|          |       |                 |                   |       |
-|     2|ConfigNode|Running|      127.0.0.1|       10711|              10721|          |       |                 |                   |       |
-|     3|ConfigNode|Running|      127.0.0.1|       10712|              10722|          |       |                 |                   |       |
-|     1|  DataNode|Running|      127.0.0.1|        10730|                   | 127.0.0.1|   6667|            10760|              10750|   10740|
-|     4|  DataNode|Running|      127.0.0.1|        10731|                   | 127.0.0.1|   6668|            10761|              10751|   10741|
-|     5|  DataNode|Running|      127.0.0.1|        10732|                   | 127.0.0.1|   6669|            10762|              10752|   10742|
-+------+----------+-------+---------------+------------+-------------------+----------+-------+-----------------+-------------------+-------+
++------+----------+-------+---------------+------------+-------------------+----------+-------+-------+-------------------+-----------------+
+|NodeID|  NodeType| Status|InternalAddress|InternalPort|ConfigConsensusPort|RpcAddress|RpcPort|MppPort|SchemaConsensusPort|DataConsensusPort|
++------+----------+-------+---------------+------------+-------------------+----------+-------+-------+-------------------+-----------------+
+|     0|ConfigNode|Running|      127.0.0.1|       10710|              10720|          |       |       |                   |                 |
+|     2|ConfigNode|Running|      127.0.0.1|       10711|              10721|          |       |       |                   |                 |
+|     3|ConfigNode|Running|      127.0.0.1|       10712|              10722|          |       |       |                   |                 |
+|     1|  DataNode|Running|      127.0.0.1|       10730|                   | 127.0.0.1|   6667|  10740|              10750|            10760|
+|     4|  DataNode|Running|      127.0.0.1|       10731|                   | 127.0.0.1|   6668|  10741|              10751|            10761|
+|     5|  DataNode|Running|      127.0.0.1|       10732|                   | 127.0.0.1|   6669|  10742|              10752|            10762|
++------+----------+-------+---------------+------------+-------------------+----------+-------+-------+-------------------+-----------------+
 Total line number = 6
 It costs 0.012s
 ```
@@ -170,14 +170,14 @@ It costs 0.012s
 Execute the `show cluster details` command, then the result is shown below:
 ```
 IoTDB> show cluster details
-+------+----------+-------+---------------+------------+-------------------+----------+-------+-----------------+-------------------+-------+
-|NodeID|  NodeType| Status|InternalAddress|InternalPort|ConfigConsensusPort|RpcAddress|RpcPort|DataConsensusPort|SchemaConsensusPort|MppPort|
-+------+----------+-------+---------------+------------+-------------------+----------+-------+-----------------+-------------------+-------+
-|     0|ConfigNode|Running|      127.0.0.1|       10710|              10720|          |       |                 |                   |       |
-|     3|ConfigNode|Running|      127.0.0.1|       10712|              10722|          |       |                 |                   |       |
-|     1|  DataNode|Running|      127.0.0.1|        10730|                   | 127.0.0.1|   6667|            10760|              10750|   10740|
-|     5|  DataNode|Running|      127.0.0.1|        10732|                   | 127.0.0.1|   6669|            10762|              10752|   10742|
-+------+----------+-------+---------------+------------+-------------------+----------+-------+-----------------+-------------------+-------+
++------+----------+-------+---------------+------------+-------------------+----------+-------+-------+-------------------+-----------------+
+|NodeID|  NodeType| Status|InternalAddress|InternalPort|ConfigConsensusPort|RpcAddress|RpcPort|MppPort|SchemaConsensusPort|DataConsensusPort|
++------+----------+-------+---------------+------------+-------------------+----------+-------+-------+-------------------+-----------------+
+|     0|ConfigNode|Running|      127.0.0.1|       10710|              10720|          |       |       |                   |                 |
+|     3|ConfigNode|Running|      127.0.0.1|       10712|              10722|          |       |       |                   |                 |
+|     1|  DataNode|Running|      127.0.0.1|       10730|                   | 127.0.0.1|   6667|  10740|              10750|            10760|
+|     5|  DataNode|Running|      127.0.0.1|       10732|                   | 127.0.0.1|   6669|  10742|              10752|            10762|
++------+----------+-------+---------------+------------+-------------------+----------+-------+-------+-------------------+-----------------+
 Total line number = 4
 It costs 0.005s
 ```
