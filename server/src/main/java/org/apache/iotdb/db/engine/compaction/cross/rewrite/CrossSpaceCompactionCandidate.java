@@ -92,8 +92,7 @@ public class CrossSpaceCompactionCandidate {
           return false;
         }
         // If the unsealed file is unclosed, the file should not be selected only when its startTime
-        // is
-        // larger than endTime of unseqFile. Or, the selection should be terminated.
+        // is larger than endTime of unseqFile. Or, the selection should be terminated.
         if (seqFile.unsealed() && unseqDeviceInfo.endTime >= seqDeviceInfo.startTime) {
           return false;
         }
