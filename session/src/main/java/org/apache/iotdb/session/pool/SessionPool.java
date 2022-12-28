@@ -24,6 +24,7 @@ import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.isession.pool.ISessionPool;
 import org.apache.iotdb.isession.pool.SessionDataSetWrapper;
 import org.apache.iotdb.isession.template.Template;
+import org.apache.iotdb.isession.util.Aggregation;
 import org.apache.iotdb.isession.util.Version;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
@@ -2551,6 +2552,39 @@ public class SessionPool implements ISessionPool {
       }
     }
     // never go here
+    return null;
+  }
+
+  @Override
+  public SessionDataSet executeAggregationQuery(
+      List<String> paths, List<Aggregation> aggregations) {
+    return null;
+  }
+
+  @Override
+  public SessionDataSet executeAggregationQuery(
+      List<String> paths, List<Aggregation> aggregations, long startTime, long endTime) {
+    return null;
+  }
+
+  @Override
+  public SessionDataSet executeAggregationQuery(
+      List<String> paths,
+      List<Aggregation> aggregations,
+      long startTime,
+      long endTime,
+      long interval) {
+    return null;
+  }
+
+  @Override
+  public SessionDataSet executeAggregationQuery(
+      List<String> paths,
+      List<Aggregation> aggregations,
+      long startTime,
+      long endTime,
+      long interval,
+      long slidingStep) {
     return null;
   }
 

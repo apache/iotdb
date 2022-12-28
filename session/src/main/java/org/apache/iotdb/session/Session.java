@@ -23,6 +23,7 @@ import org.apache.iotdb.isession.ISession;
 import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.isession.template.Template;
+import org.apache.iotdb.isession.util.Aggregation;
 import org.apache.iotdb.isession.util.Version;
 import org.apache.iotdb.rpc.BatchExecutionException;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
@@ -835,6 +836,39 @@ public class Session implements ISession {
       throws StatementExecutionException, IoTDBConnectionException {
     long time = 0L;
     return executeLastDataQuery(paths, time, queryTimeoutInMs);
+  }
+
+  @Override
+  public SessionDataSet executeAggregationQuery(
+      List<String> paths, List<Aggregation> aggregations) {
+    return null;
+  }
+
+  @Override
+  public SessionDataSet executeAggregationQuery(
+      List<String> paths, List<Aggregation> aggregations, long startTime, long endTime) {
+    return null;
+  }
+
+  @Override
+  public SessionDataSet executeAggregationQuery(
+      List<String> paths,
+      List<Aggregation> aggregations,
+      long startTime,
+      long endTime,
+      long interval) {
+    return null;
+  }
+
+  @Override
+  public SessionDataSet executeAggregationQuery(
+      List<String> paths,
+      List<Aggregation> aggregations,
+      long startTime,
+      long endTime,
+      long interval,
+      long slidingStep) {
+    return null;
   }
 
   /**

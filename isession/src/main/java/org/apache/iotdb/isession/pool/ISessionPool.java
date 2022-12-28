@@ -18,7 +18,9 @@
  */
 package org.apache.iotdb.isession.pool;
 
+import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.isession.template.Template;
+import org.apache.iotdb.isession.util.Aggregation;
 import org.apache.iotdb.isession.util.SystemStatus;
 import org.apache.iotdb.isession.util.Version;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
@@ -407,7 +409,6 @@ public interface ISessionPool {
   void executeNonQueryStatement(String sql)
       throws StatementExecutionException, IoTDBConnectionException;
 
-  @SuppressWarnings("squid:S2095") // Suppress wrapper not closed warning
   SessionDataSetWrapper executeRawDataQuery(
       List<String> paths, long startTime, long endTime, long timeOut)
       throws IoTDBConnectionException, StatementExecutionException;
@@ -417,6 +418,26 @@ public interface ISessionPool {
 
   SessionDataSetWrapper executeLastDataQuery(List<String> paths)
       throws StatementExecutionException, IoTDBConnectionException;
+
+  SessionDataSet executeAggregationQuery(List<String> paths, List<Aggregation> aggregations);
+
+  SessionDataSet executeAggregationQuery(
+      List<String> paths, List<Aggregation> aggregations, long startTime, long endTime);
+
+  SessionDataSet executeAggregationQuery(
+      List<String> paths,
+      List<Aggregation> aggregations,
+      long startTime,
+      long endTime,
+      long interval);
+
+  SessionDataSet executeAggregationQuery(
+      List<String> paths,
+      List<Aggregation> aggregations,
+      long startTime,
+      long endTime,
+      long interval,
+      long slidingStep);
 
   int getMaxSize();
 
