@@ -1510,9 +1510,9 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
             TSDataType.INT32,
             TSDataType.TEXT);
 
-    String sg = "";
-    if (catalog != null) sg = catalog;
-    else if (schema != null) sg = schema;
+    String database = "";
+    if (catalog != null) database = catalog;
+    else if (schema != null) database = schema;
 
     Field[] fields = new Field[6];
     fields[0] = new Field("", "TABLE_CAT", "TEXT");
@@ -1522,8 +1522,8 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
     fields[4] = new Field("", "KEY_SEQ", "INT32");
     fields[5] = new Field("", "PK_NAME", "TEXT");
 
-    List<Object> listValSub_1 = Arrays.asList(sg, "", table, "time", 1, "PRIMARY");
-    List<Object> listValSub_2 = Arrays.asList(sg, "", table, "deivce", 2, "PRIMARY");
+    List<Object> listValSub_1 = Arrays.asList(database, "", table, "time", 1, "PRIMARY");
+    List<Object> listValSub_2 = Arrays.asList(database, "", table, "deivce", 2, "PRIMARY");
     List<List<Object>> valuesList = Arrays.asList(listValSub_1, listValSub_2);
     for (int i = 0; i < fields.length; i++) {
       columnNameList.add(fields[i].getName());
@@ -2327,18 +2327,18 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
     Statement stmt = this.connection.createStatement();
 
     String sql = "SHOW devices";
-    String storageGroup = "";
+    String database = "";
     if (catalog != null && catalog.length() > 0) {
       if (catalog.contains("%")) {
         catalog = catalog.replace("%", "*");
       }
-      storageGroup = catalog;
+      database = catalog;
       sql = sql + " " + catalog;
     } else if (schemaPattern != null && schemaPattern.length() > 0) {
       if (schemaPattern.contains("%")) {
         schemaPattern = schemaPattern.replace("%", "*");
       }
-      storageGroup = schemaPattern;
+      database = schemaPattern;
       sql = sql + " " + schemaPattern;
     }
     if (((catalog != null && catalog.length() > 0)
@@ -2394,7 +2394,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         if (i < 2) {
           valueInRow.add("");
         } else if (i == 2) {
-          valueInRow.add(res.substring(storageGroup.length() + 1));
+          valueInRow.add(res.substring(database.length() + 1));
         } else if (i == 3) {
           valueInRow.add("TABLE");
         } else {
