@@ -113,7 +113,13 @@ public class FunctionExpression extends Expression {
   @Override
   public boolean isConstantOperandInternal() {
     if (isConstantOperandCache == null) {
-      isConstantOperandCache = expressions.stream().anyMatch(Expression::isConstantOperand);
+      isConstantOperandCache = true;
+      for (Expression inputExpression : expressions) {
+        if (!inputExpression.isConstantOperand()) {
+          isConstantOperandCache = false;
+          break;
+        }
+      }
     }
     return isConstantOperandCache;
   }

@@ -119,7 +119,7 @@ public class TypeInferenceUtils {
           "Aggregate functions [AVG, SUM, EXTREME, MIN_VALUE, MAX_VALUE] only support numeric data types [INT32, INT64, FLOAT, DOUBLE]");
     }
 
-    switch (aggrFuncName) {
+    switch (aggrFuncName.toLowerCase()) {
       case SqlConstant.MIN_TIME:
       case SqlConstant.MAX_TIME:
       case SqlConstant.COUNT:
@@ -140,7 +140,7 @@ public class TypeInferenceUtils {
 
   private static boolean verifyIsAggregationDataTypeMatched(
       String aggrFuncName, TSDataType dataType) {
-    switch (aggrFuncName) {
+    switch (aggrFuncName.toLowerCase()) {
       case SqlConstant.AVG:
       case SqlConstant.SUM:
       case SqlConstant.EXTREME:
