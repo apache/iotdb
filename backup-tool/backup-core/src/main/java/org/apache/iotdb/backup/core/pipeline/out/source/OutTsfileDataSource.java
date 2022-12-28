@@ -84,12 +84,13 @@ public class OutTsfileDataSource
             .flatMap(exportPipelineService::parseToRowModel)
             .transform(doNext())
             .sequential()
-            .doFinally(
-                signalType -> {
+            .doOnComplete(
+                () -> {
                   try {
                     for (String key : TSFILE_WRITER_MAP.keySet()) {
-                      // TSFILE_WRITER_MAP.get(key).flushAllChunkGroups();
+                      TSFILE_WRITER_MAP.get(key).flushAllChunkGroups();
                       TSFILE_WRITER_MAP.get(key).close();
+                      TSFILE_WRITER_MAP.remove(key);
                     }
                     scheduler.dispose();
                   } catch (IOException e) {

@@ -94,7 +94,7 @@ public class OutTsfileDataSink extends PipeSink<TimeSeriesRowModel, TimeSeriesRo
                         totalSize = contextView.get("totalSize");
                         pcontext = contextView.get("pipelineContext");
                         synchronized (allList) {
-                          if (allList.size() >= 60000) {
+                          if (allList.size() >= 100000) {
                             doSink(allList);
                           }
                         }
@@ -273,6 +273,10 @@ public class OutTsfileDataSink extends PipeSink<TimeSeriesRowModel, TimeSeriesRo
         try {
           File file = new File(fileFolder + File.separator + tsfileNameKey);
           Schema schema = new Schema();
+          //          TSFileConfig config = TSFileDescriptor.getInstance().getConfig();
+          //          config.setGroupSizeInByte(16 * 1024 * 1024);
+          //          tsfileWriterMap.putIfAbsent(tsfileNameKey, new TsFileWriter(file, schema,
+          // config));
           tsfileWriterMap.putIfAbsent(tsfileNameKey, new TsFileWriter(file, schema));
           schemaMap.putIfAbsent(tsfileNameKey, schema);
           tsFileWriter = tsfileWriterMap.get(tsfileNameKey);
