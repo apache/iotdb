@@ -320,8 +320,8 @@ struct TSRawDataQueryReq {
   4: required i64 startTime
   5: required i64 endTime
   6: required i64 statementId
-  7: optional bool enableRedirectQuery;
-  8: optional bool jdbcQuery;
+  7: optional bool enableRedirectQuery
+  8: optional bool jdbcQuery
   9: optional i64 timeout
 }
 
@@ -331,9 +331,22 @@ struct TSLastDataQueryReq {
   3: optional i32 fetchSize
   4: required i64 time
   5: required i64 statementId
-  6: optional bool enableRedirectQuery;
-  7: optional bool jdbcQuery;
+  6: optional bool enableRedirectQuery
+  7: optional bool jdbcQuery
   8: optional i64 timeout
+}
+
+struct TSAggregationQueryReq {
+  1: required i64 sessionId
+  2: required i64 statementId
+  3: required list<common.TPartialPath> paths
+  4: required list<string> aggregations
+  5: optional i64 startTime
+  6: optional i64 endTime
+  7: optional i64 interval
+  8: optional i64 slidingStep
+  9: optional i32 fetchSize
+  10: optional i64 timeout
 }
 
 struct TSCreateMultiTimeseriesReq {
@@ -468,6 +481,8 @@ service IClientRPCService {
   TSExecuteStatementResp executeRawDataQueryV2(1:TSRawDataQueryReq req);
 
   TSExecuteStatementResp executeLastDataQueryV2(1:TSLastDataQueryReq req);
+
+  TSExecuteStatementResp executeAggregationQuery(1:TSAggregationQueryReq req);
 
   TSFetchResultsResp fetchResultsV2(1:TSFetchResultsReq req);
 
