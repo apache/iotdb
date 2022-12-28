@@ -24,8 +24,6 @@ import org.apache.iotdb.db.metadata.mnode.container.IMNodeContainer;
 import org.apache.iotdb.db.metadata.mnode.visitor.MNodeVisitor;
 import org.apache.iotdb.db.metadata.mtree.store.disk.cache.CacheEntry;
 
-import java.io.Serializable;
-
 /** This interface defines a MNode's operation interfaces. */
 public interface IMNode extends ITreeNode {
 

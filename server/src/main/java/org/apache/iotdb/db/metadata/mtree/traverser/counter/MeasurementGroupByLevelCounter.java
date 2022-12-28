@@ -42,9 +42,13 @@ public class MeasurementGroupByLevelCounter extends Traverser {
   private PartialPath path;
 
   public MeasurementGroupByLevelCounter(
-      IMNode startNode, PartialPath path, IMTreeStore store, int groupByLevel)
+      IMNode startNode,
+      PartialPath path,
+      IMTreeStore store,
+      boolean isPrefixMatch,
+      int groupByLevel)
       throws MetadataException {
-    super(startNode, path, store);
+    super(startNode, path, store, isPrefixMatch);
     this.groupByLevel = groupByLevel;
     checkLevelAboveSG();
   }
@@ -53,11 +57,12 @@ public class MeasurementGroupByLevelCounter extends Traverser {
       IMNode startNode,
       PartialPath path,
       IMTreeStore store,
+      boolean isPrefixMatch,
       int groupByLevel,
       List<String> timeseries,
       boolean hasTag)
       throws MetadataException {
-    super(startNode, path, store);
+    super(startNode, path, store, isPrefixMatch);
     this.groupByLevel = groupByLevel;
     this.timeseries = timeseries;
     this.hasTag = hasTag;

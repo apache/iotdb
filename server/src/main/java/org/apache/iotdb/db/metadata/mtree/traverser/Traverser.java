@@ -51,7 +51,7 @@ import static org.apache.iotdb.db.metadata.MetadataConstant.NON_TEMPLATE;
  *   <li>collector: to collect customized results of the matched node or measurement
  * </ol>
  */
-public abstract class Traverser<R> extends AbstractTreeVisitor<IMNode,R> {
+public abstract class Traverser extends AbstractTreeVisitor<IMNode, IMNode> {
 
   protected IMTreeStore store;
 
@@ -83,8 +83,9 @@ public abstract class Traverser<R> extends AbstractTreeVisitor<IMNode,R> {
    * @param path use wildcard to specify which part to traverse
    * @throws MetadataException
    */
-  public Traverser(IMNode startNode, PartialPath path, IMTreeStore store, boolean isPrefixMatch) throws MetadataException {
-    super(startNode,path,isPrefixMatch);
+  public Traverser(IMNode startNode, PartialPath path, IMTreeStore store, boolean isPrefixMatch)
+      throws MetadataException {
+    super(startNode, path, isPrefixMatch);
     String[] nodes = path.getNodes();
     if (nodes.length == 0 || !nodes[0].equals(PATH_ROOT)) {
       throw new IllegalPathException(
@@ -95,17 +96,6 @@ public abstract class Traverser<R> extends AbstractTreeVisitor<IMNode,R> {
     this.store = store;
     this.traverseContext = new ArrayDeque<>();
     initStartIndexAndLevel(path);
-  }
-
-  /**
-   * To traverse subtree under root.sg, e.g., init Traverser(root, "root.sg.**")
-   *
-   * @param startNode denote which tree to traverse by passing its root
-   * @param path use wildcard to specify which part to traverse
-   * @throws MetadataException
-   */
-  public Traverser(IMNode startNode, PartialPath path, IMTreeStore store) throws MetadataException {
-    this(startNode,path,store,false);
   }
 
   /**
@@ -470,6 +460,33 @@ public abstract class Traverser<R> extends AbstractTreeVisitor<IMNode,R> {
     isInTemplate = false;
   }
 
+  @Override
+  protected boolean processFullMatchedNode(IMNode node) {
+    return false;
+  }
+
+  @Override
+  protected boolean processInternalMatchedNode(IMNode node) {
+    return false;
+  }
+
+  @Override
+  protected IMNode getChild(IMNode parent, String childName) {
+    // TODO
+    return null;
+  }
+
+  @Override
+  protected Iterator<IMNode> getChildrenIterator(IMNode parent) {
+    // TODO
+    return null;
+  }
+
+  @Override
+  protected IMNode generateResult() {
+    return nextMatchedNode;
+  }
+
   protected Template getActivatedSchemaTemplate(IMNode node) {
     // new cluster, the used template is directly recorded as template id in device mnode
     if (node.getSchemaTemplateId() != NON_TEMPLATE) {
@@ -487,10 +504,6 @@ public abstract class Traverser<R> extends AbstractTreeVisitor<IMNode,R> {
 
   public void setTemplateMap(Map<Integer, Template> templateMap) {
     this.templateMap = templateMap;
-  }
-
-  public void setPrefixMatch(boolean isPrefixMatch) {
-    this.isPrefixMatch = isPrefixMatch;
   }
 
   public void setShouldTraverseTemplate(boolean shouldTraverseTemplate) {

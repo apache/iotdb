@@ -33,7 +33,8 @@ public class MeasurementCounter extends CounterTraverser {
   private List<String> timeseries = new ArrayList<>();
   private boolean hasTag = false;
 
-  public MeasurementCounter(IMNode startNode, PartialPath path, IMTreeStore store, boolean isPrefixMatch)
+  public MeasurementCounter(
+      IMNode startNode, PartialPath path, IMTreeStore store, boolean isPrefixMatch)
       throws MetadataException {
     super(startNode, path, store, isPrefixMatch);
     shouldTraverseTemplate = true;

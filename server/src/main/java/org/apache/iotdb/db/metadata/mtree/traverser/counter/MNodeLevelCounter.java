@@ -41,9 +41,10 @@ public class MNodeLevelCounter extends CounterTraverser {
 
   private Set<IMNode> processedNodes = new HashSet<>();
 
-  public MNodeLevelCounter(IMNode startNode, PartialPath path, IMTreeStore store, boolean isPrefixMatch, int targetLevel)
+  public MNodeLevelCounter(
+      IMNode startNode, PartialPath path, IMTreeStore store, boolean isPrefixMatch, int targetLevel)
       throws MetadataException {
-    super(startNode, path, store,isPrefixMatch);
+    super(startNode, path, store, isPrefixMatch);
     this.targetLevel = targetLevel;
   }
 

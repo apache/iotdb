@@ -26,9 +26,9 @@ import org.apache.iotdb.db.metadata.mtree.store.IMTreeStore;
 // This class implements the entity count function.
 public class EntityCounter extends CounterTraverser {
 
-  public EntityCounter(IMNode startNode, PartialPath path, IMTreeStore store,boolean isPrefixMatch)
+  public EntityCounter(IMNode startNode, PartialPath path, IMTreeStore store, boolean isPrefixMatch)
       throws MetadataException {
-    super(startNode, path, store,isPrefixMatch);
+    super(startNode, path, store, isPrefixMatch);
   }
 
   @Override

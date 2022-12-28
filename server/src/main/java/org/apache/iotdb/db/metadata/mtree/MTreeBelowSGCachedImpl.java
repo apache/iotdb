@@ -158,13 +158,13 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
             this.storageGroupMNode,
             new PartialPath(storageGroupMNode.getFullPath()),
             this.store,
+            true,
             false) {
           @Override
           protected void collectMeasurement(IMeasurementMNode node) {
             measurementProcess.accept(node);
           }
         };
-    collector.setPrefixMatch(true);
     collector.traverse();
   }
 
@@ -588,7 +588,7 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
       throws MetadataException {
     List<PartialPath> result = new LinkedList<>();
     MeasurementCollector<List<PartialPath>> collector =
-        new MeasurementCollector<List<PartialPath>>(storageGroupMNode, pathPattern, store) {
+        new MeasurementCollector<List<PartialPath>>(storageGroupMNode, pathPattern, store, false) {
           @Override
           protected void collectMeasurement(IMeasurementMNode node) throws MetadataException {
             if (node.isPreDeleted()) {
@@ -607,7 +607,7 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
       throws MetadataException {
     Set<PartialPath> result = new HashSet<>();
     MeasurementCollector<List<PartialPath>> collector =
-        new MeasurementCollector<List<PartialPath>>(storageGroupMNode, pathPattern, store) {
+        new MeasurementCollector<List<PartialPath>>(storageGroupMNode, pathPattern, store, false) {
           @Override
           protected void collectMeasurement(IMeasurementMNode node) throws MetadataException {
             if (node.isPreDeleted()) {
@@ -669,13 +669,13 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
       throws MetadataException {
     Set<PartialPath> result = new TreeSet<>();
     EntityCollector<Set<PartialPath>> collector =
-        new EntityCollector<Set<PartialPath>>(storageGroupMNode, pathPattern, store) {
+        new EntityCollector<Set<PartialPath>>(
+            storageGroupMNode, pathPattern, store, isPrefixMatch) {
           @Override
           protected void collectEntity(IEntityMNode node) {
             result.add(getCurrentPartialPath(node));
           }
         };
-    collector.setPrefixMatch(isPrefixMatch);
     collector.traverse();
     return result;
   }
@@ -686,7 +686,12 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
     List<ShowDevicesResult> res = new ArrayList<>();
     EntityCollector<List<ShowDevicesResult>> collector =
         new EntityCollector<List<ShowDevicesResult>>(
-            storageGroupMNode, plan.getPath(), store, plan.getLimit(), plan.getOffset()) {
+            storageGroupMNode,
+            plan.getPath(),
+            store,
+            plan.isPrefixMatch(),
+            plan.getLimit(),
+            plan.getOffset()) {
           @Override
           protected void collectEntity(IEntityMNode node) {
             PartialPath device = getCurrentPartialPath(node);
@@ -701,7 +706,6 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
             }
           }
         };
-    collector.setPrefixMatch(plan.isPrefixMatch());
     collector.traverse();
 
     return new Pair<>(res, collector.getCurOffset() + 1);
@@ -740,7 +744,7 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
     List<MeasurementPath> result = new LinkedList<>();
     MeasurementCollector<List<PartialPath>> collector =
         new MeasurementCollector<List<PartialPath>>(
-            storageGroupMNode, pathPattern, store, limit, offset) {
+            storageGroupMNode, pathPattern, store, isPrefixMatch, limit, offset) {
           @Override
           protected void collectMeasurement(IMeasurementMNode node) {
             MeasurementPath path = getCurrentMeasurementPathInTraverse(node);
@@ -754,7 +758,6 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
             result.add(path);
           }
         };
-    collector.setPrefixMatch(isPrefixMatch);
     collector.traverse();
     offset = collector.getCurOffset() + 1;
     return new Pair<>(result, offset);
@@ -775,7 +778,7 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
 
     MeasurementCollector<List<Pair<PartialPath, String[]>>> collector =
         new MeasurementCollector<List<Pair<PartialPath, String[]>>>(
-            storageGroupMNode, plan.getPath(), store, limit, offset) {
+            storageGroupMNode, plan.getPath(), store, plan.isPrefixMatch(), limit, offset) {
           @Override
           protected void collectMeasurement(IMeasurementMNode node) {
             IMeasurementSchema measurementSchema = node.getSchema();
@@ -794,7 +797,6 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
             resultSet.add(temp);
           }
         };
-    collector.setPrefixMatch(plan.isPrefixMatch());
     collector.setTemplateMap(plan.getRelatedTemplate());
     collector.setResultSet(new LinkedList<>());
     collector.traverse();
@@ -824,7 +826,7 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
     try {
       MNodeCollector<Set<TSchemaNode>> collector =
           new MNodeCollector<Set<TSchemaNode>>(
-              storageGroupMNode, pathPattern.concatNode(ONE_LEVEL_PATH_WILDCARD), store) {
+              storageGroupMNode, pathPattern.concatNode(ONE_LEVEL_PATH_WILDCARD), store, false) {
             @Override
             protected void transferToResult(IMNode node) {
               resultSet.add(
@@ -846,7 +848,8 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
   public List<PartialPath> getNodesListInGivenLevel(
       PartialPath pathPattern, int nodeLevel, boolean isPrefixMatch) throws MetadataException {
     MNodeCollector<List<PartialPath>> collector =
-        new MNodeCollector<List<PartialPath>>(storageGroupMNode, pathPattern, store) {
+        new MNodeCollector<List<PartialPath>>(
+            storageGroupMNode, pathPattern, store, isPrefixMatch) {
           @Override
           protected void transferToResult(IMNode node) {
             resultSet.add(getCurrentPartialPath(node));
@@ -854,7 +857,6 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
         };
     collector.setResultSet(new LinkedList<>());
     collector.setTargetLevel(nodeLevel);
-    collector.setPrefixMatch(isPrefixMatch);
     collector.traverse();
     return collector.getResult();
   }
@@ -869,8 +871,8 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
   @Override
   public long getAllTimeseriesCount(PartialPath pathPattern, boolean isPrefixMatch)
       throws MetadataException {
-    CounterTraverser counter = new MeasurementCounter(storageGroupMNode, pathPattern, store);
-    counter.setPrefixMatch(isPrefixMatch);
+    CounterTraverser counter =
+        new MeasurementCounter(storageGroupMNode, pathPattern, store, isPrefixMatch);
     counter.traverse();
     return counter.getCount();
   }
@@ -879,8 +881,8 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
   public long getAllTimeseriesCount(
       PartialPath pathPattern, Map<Integer, Template> templateMap, boolean isPrefixMatch)
       throws MetadataException {
-    CounterTraverser counter = new MeasurementCounter(storageGroupMNode, pathPattern, store);
-    counter.setPrefixMatch(isPrefixMatch);
+    CounterTraverser counter =
+        new MeasurementCounter(storageGroupMNode, pathPattern, store, isPrefixMatch);
     counter.setTemplateMap(templateMap);
     counter.traverse();
     return counter.getCount();
@@ -891,8 +893,8 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
       PartialPath pathPattern, boolean isPrefixMatch, List<String> timeseries, boolean hasTag)
       throws MetadataException {
     CounterTraverser counter =
-        new MeasurementCounter(storageGroupMNode, pathPattern, store, timeseries, hasTag);
-    counter.setPrefixMatch(isPrefixMatch);
+        new MeasurementCounter(
+            storageGroupMNode, pathPattern, store, isPrefixMatch, timeseries, hasTag);
     counter.traverse();
     return counter.getCount();
   }
@@ -907,8 +909,8 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
   @Override
   public long getDevicesNum(PartialPath pathPattern, boolean isPrefixMatch)
       throws MetadataException {
-    CounterTraverser counter = new EntityCounter(storageGroupMNode, pathPattern, store);
-    counter.setPrefixMatch(isPrefixMatch);
+    CounterTraverser counter =
+        new EntityCounter(storageGroupMNode, pathPattern, store, isPrefixMatch);
     counter.traverse();
     return counter.getCount();
   }
@@ -917,8 +919,8 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
   public Map<PartialPath, Long> getMeasurementCountGroupByLevel(
       PartialPath pathPattern, int level, boolean isPrefixMatch) throws MetadataException {
     MeasurementGroupByLevelCounter counter =
-        new MeasurementGroupByLevelCounter(storageGroupMNode, pathPattern, store, level);
-    counter.setPrefixMatch(isPrefixMatch);
+        new MeasurementGroupByLevelCounter(
+            storageGroupMNode, pathPattern, store, isPrefixMatch, level);
     counter.traverse();
     return counter.getResult();
   }
@@ -933,8 +935,7 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
       throws MetadataException {
     MeasurementGroupByLevelCounter counter =
         new MeasurementGroupByLevelCounter(
-            storageGroupMNode, pathPattern, store, level, timeseries, hasTag);
-    counter.setPrefixMatch(isPrefixMatch);
+            storageGroupMNode, pathPattern, store, isPrefixMatch, level, timeseries, hasTag);
     counter.traverse();
     return counter.getResult();
   }
@@ -993,7 +994,7 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
       throws MetadataException {
     List<MeasurementPath> result = new LinkedList<>();
     MeasurementCollector<List<PartialPath>> collector =
-        new MeasurementCollector<List<PartialPath>>(storageGroupMNode, pathPattern, store) {
+        new MeasurementCollector<List<PartialPath>>(storageGroupMNode, pathPattern, store, false) {
           @Override
           protected void collectMeasurement(IMeasurementMNode node) {
             if (node.isPreDeleted()) {
@@ -1059,7 +1060,8 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
       throws MetadataException {
     List<IMeasurementMNode> result = new ArrayList<>();
     MeasurementCollector<List<IMeasurementMNode>> collector =
-        new MeasurementCollector<List<IMeasurementMNode>>(storageGroupMNode, pathPattern, store) {
+        new MeasurementCollector<List<IMeasurementMNode>>(
+            storageGroupMNode, pathPattern, store, false) {
           @Override
           protected void collectMeasurement(IMeasurementMNode node) throws MetadataException {
             pinMNode(node);
@@ -1131,7 +1133,7 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
     Set<String> result = new HashSet<>();
 
     EntityCollector<Set<String>> collector =
-        new EntityCollector<Set<String>>(storageGroupMNode, pathPattern, store) {
+        new EntityCollector<Set<String>>(storageGroupMNode, pathPattern, store, false) {
           @Override
           protected void collectEntity(IEntityMNode node) {
             if (node.getSchemaTemplateId() == templateId) {
@@ -1148,7 +1150,7 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
     Map<PartialPath, List<Integer>> resultTemplateSetInfo = new HashMap<>();
     for (Map.Entry<PartialPath, List<Integer>> entry : templateSetInfo.entrySet()) {
       EntityCollector<List<IEntityMNode>> collector =
-          new EntityCollector<List<IEntityMNode>>(storageGroupMNode, entry.getKey(), store) {
+          new EntityCollector<List<IEntityMNode>>(storageGroupMNode, entry.getKey(), store, false) {
             @Override
             protected void collectEntity(IEntityMNode node) throws MetadataException {
               if (entry.getValue().contains(node.getSchemaTemplateId())) {
@@ -1169,7 +1171,7 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
     Map<PartialPath, List<Integer>> resultTemplateSetInfo = new HashMap<>();
     for (Map.Entry<PartialPath, List<Integer>> entry : templateSetInfo.entrySet()) {
       EntityCollector<List<IEntityMNode>> collector =
-          new EntityCollector<List<IEntityMNode>>(storageGroupMNode, entry.getKey(), store) {
+          new EntityCollector<List<IEntityMNode>>(storageGroupMNode, entry.getKey(), store, false) {
             @Override
             protected void collectEntity(IEntityMNode node) throws MetadataException {
               if (entry.getValue().contains(node.getSchemaTemplateId())
@@ -1191,7 +1193,7 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
     Map<PartialPath, List<Integer>> resultTemplateSetInfo = new HashMap<>();
     for (Map.Entry<PartialPath, List<Integer>> entry : templateSetInfo.entrySet()) {
       EntityCollector<List<IEntityMNode>> collector =
-          new EntityCollector<List<IEntityMNode>>(storageGroupMNode, entry.getKey(), store) {
+          new EntityCollector<List<IEntityMNode>>(storageGroupMNode, entry.getKey(), store, false) {
             @Override
             protected void collectEntity(IEntityMNode node) throws MetadataException {
               if (entry.getValue().contains(node.getSchemaTemplateId())
@@ -1213,7 +1215,7 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
   public long countPathsUsingTemplate(PartialPath pathPattern, int templateId)
       throws MetadataException {
     CounterTraverser counterTraverser =
-        new CounterTraverser(storageGroupMNode, pathPattern, store) {
+        new CounterTraverser(storageGroupMNode, pathPattern, store, false) {
           @Override
           protected boolean processInternalMatchedMNode(IMNode node, int idx, int level) {
             return false;

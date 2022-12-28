@@ -31,7 +31,7 @@ public class MNodeAboveSGLevelCounter extends MNodeLevelCounter {
   protected Set<PartialPath> involvedStorageGroupMNodes = new HashSet<>();
 
   public MNodeAboveSGLevelCounter(
-      IMNode startNode, PartialPath path, IMTreeStore store, boolean isPrefixMatch,int targetLevel)
+      IMNode startNode, PartialPath path, IMTreeStore store, boolean isPrefixMatch, int targetLevel)
       throws MetadataException {
     super(startNode, path, store, isPrefixMatch, targetLevel);
   }
