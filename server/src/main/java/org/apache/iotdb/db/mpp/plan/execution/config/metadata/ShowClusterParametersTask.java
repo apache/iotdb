@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.mpp.plan.execution.config.metadata;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.confignode.rpc.thrift.TBasicClusterParameters;
 import org.apache.iotdb.confignode.rpc.thrift.TShowClusterParametersResp;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
@@ -45,6 +46,13 @@ public class ShowClusterParametersTask implements IConfigTask {
     // Empty constructor
   }
 
+  private static void buildTSBlock(TsBlockBuilder builder, Binary parameter, Binary value) {
+    builder.getTimeColumnBuilder().writeLong(0L);
+    builder.getColumnBuilder(0).writeBinary(parameter);
+    builder.getColumnBuilder(1).writeBinary(value);
+    builder.declarePosition();
+  }
+
   public static void buildTSBlock(
       TShowClusterParametersResp showClusterParametersResp,
       SettableFuture<ConfigTaskResult> future) {
@@ -53,29 +61,49 @@ public class ShowClusterParametersTask implements IConfigTask {
             .map(ColumnHeader::getColumnType)
             .collect(Collectors.toList());
     TsBlockBuilder builder = new TsBlockBuilder(outputDataTypes);
-    builder.getTimeColumnBuilder().writeLong(0L);
 
     TBasicClusterParameters basicClusterParameters = showClusterParametersResp.getBasicParameters();
-    builder.getColumnBuilder(0).writeBinary(new Binary(basicClusterParameters.getClusterName()));
-    builder
-        .getColumnBuilder(1)
-        .writeBinary(new Binary(basicClusterParameters.getConfigNodeConsensusProtocolClass()));
-    builder
-        .getColumnBuilder(2)
-        .writeBinary(new Binary(basicClusterParameters.getDataRegionConsensusProtocolClass()));
-    builder
-        .getColumnBuilder(3)
-        .writeBinary(new Binary(basicClusterParameters.getSchemaRegionConsensusProtocolClass()));
-    builder.getColumnBuilder(4).writeInt(basicClusterParameters.getSeriesPartitionSlotNum());
-    builder
-        .getColumnBuilder(5)
-        .writeBinary(new Binary(basicClusterParameters.getSeriesPartitionExecutorClass()));
-    builder.getColumnBuilder(6).writeLong(basicClusterParameters.getDefaultTTL());
-    builder.getColumnBuilder(7).writeLong(basicClusterParameters.getTimePartitionInterval());
-    builder.getColumnBuilder(8).writeInt(basicClusterParameters.getDataReplicationFactor());
-    builder.getColumnBuilder(9).writeInt(basicClusterParameters.getSchemaReplicationFactor());
+    buildTSBlock(
+        builder,
+        new Binary(IoTDBConstant.CLUSTER_NAME),
+        new Binary(basicClusterParameters.getClusterName()));
+    buildTSBlock(
+        builder,
+        new Binary(IoTDBConstant.CONFIG_NODE_CONSENSUS_PROTOCOL_CLASS),
+        new Binary(basicClusterParameters.getConfigNodeConsensusProtocolClass()));
+    buildTSBlock(
+        builder,
+        new Binary(IoTDBConstant.DATA_REGION_CONSENSUS_PROTOCOL_CLASS),
+        new Binary(basicClusterParameters.getDataRegionConsensusProtocolClass()));
+    buildTSBlock(
+        builder,
+        new Binary(IoTDBConstant.SCHEMA_REGION_CONSENSUS_PROTOCOL_CLASS),
+        new Binary(basicClusterParameters.getSchemaRegionConsensusProtocolClass()));
+    buildTSBlock(
+        builder,
+        new Binary(IoTDBConstant.SERIES_SLOT_NUM),
+        new Binary(String.valueOf(basicClusterParameters.getSeriesPartitionSlotNum())));
+    buildTSBlock(
+        builder,
+        new Binary(IoTDBConstant.SERIES_SLOT_EXECUTOR_CLASS),
+        new Binary(basicClusterParameters.getSeriesPartitionExecutorClass()));
+    buildTSBlock(
+        builder,
+        new Binary(IoTDBConstant.DEFAULT_TTL),
+        new Binary(String.valueOf(basicClusterParameters.getDefaultTTL())));
+    buildTSBlock(
+        builder,
+        new Binary(IoTDBConstant.TIME_PARTITION_INTERVAL),
+        new Binary(String.valueOf(basicClusterParameters.getTimePartitionInterval())));
+    buildTSBlock(
+        builder,
+        new Binary(IoTDBConstant.DATA_REPLICATION_FACTOR),
+        new Binary(String.valueOf(basicClusterParameters.getDataReplicationFactor())));
+    buildTSBlock(
+        builder,
+        new Binary(IoTDBConstant.SCHEMA_REPLICATION_FACTOR),
+        new Binary(String.valueOf(basicClusterParameters.getSchemaReplicationFactor())));
 
-    builder.declarePosition();
     DatasetHeader datasetHeader = DatasetHeaderFactory.getShowClusterParametersHeader();
     future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS, builder.build(), datasetHeader));
   }

@@ -36,13 +36,6 @@ public class ColumnHeaderConstant {
   public static final String DEVICE = "Device";
 
   // column names for schema statement
-  public static final String CLUSTER_NAME = "ClusterName";
-  public static final String CONFIG_NODE_CONSENSUS_PROTOCOL_CLASS =
-      "ConfigNodeConsensusProtocolClass";
-  public static final String DATA_REGION_CONSENSUS_PROTOCOL_CLASS =
-      "DataRegionConsensusProtocolClass";
-  public static final String SCHEMA_REGION_CONSENSUS_PROTOCOL_CLASS =
-      "SchemaRegionConsensusProtocolClass";
   public static final String DATABASE = "Database";
   public static final String TIMESERIES = "Timeseries";
   public static final String ALIAS = "Alias";
@@ -65,7 +58,7 @@ public class ColumnHeaderConstant {
   public static final String VERSION = "Version";
   public static final String BUILD_INFO = "BuildInfo";
   public static final String PATHS = "Paths";
-  public static final String SERIES_SLOT_EXECUTOR_CLASS = "SeriesSlotExecutorClass";
+  public static final String CLUSTER_PARAMETERS = "ClusterParameters";
 
   // column names for count statement
   public static final String COLUMN = "Column";
@@ -281,16 +274,8 @@ public class ColumnHeaderConstant {
 
   public static final List<ColumnHeader> showClusterParametersColumnHeaders =
       ImmutableList.of(
-          new ColumnHeader(CLUSTER_NAME, TSDataType.TEXT),
-          new ColumnHeader(CONFIG_NODE_CONSENSUS_PROTOCOL_CLASS, TSDataType.TEXT),
-          new ColumnHeader(DATA_REGION_CONSENSUS_PROTOCOL_CLASS, TSDataType.TEXT),
-          new ColumnHeader(SCHEMA_REGION_CONSENSUS_PROTOCOL_CLASS, TSDataType.TEXT),
-          new ColumnHeader(SERIES_SLOT_NUM, TSDataType.INT32),
-          new ColumnHeader(SERIES_SLOT_EXECUTOR_CLASS, TSDataType.TEXT),
-          new ColumnHeader(COLUMN_TTL, TSDataType.INT64),
-          new ColumnHeader(TIME_PARTITION_INTERVAL, TSDataType.INT64),
-          new ColumnHeader(DATA_REPLICATION_FACTOR, TSDataType.INT32),
-          new ColumnHeader(SCHEMA_REPLICATION_FACTOR, TSDataType.INT32));
+          new ColumnHeader(CLUSTER_PARAMETERS, TSDataType.TEXT),
+          new ColumnHeader(VALUE, TSDataType.TEXT));
 
   public static final List<ColumnHeader> showFunctionsColumnHeaders =
       ImmutableList.of(

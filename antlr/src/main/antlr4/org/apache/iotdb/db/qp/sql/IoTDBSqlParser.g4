@@ -42,7 +42,7 @@ ddlStatement
     | dropFunction | dropTrigger | dropContinuousQuery | dropSchemaTemplate
     | setTTL | unsetTTL | startTrigger | stopTrigger | setSchemaTemplate | unsetSchemaTemplate
     | showStorageGroup | showDevices | showTimeseries | showChildPaths | showChildNodes
-    | showFunctions | showTriggers | showContinuousQueries | showTTL | showAllTTL | showCluster | showClusterDetails | showClusterParameters | showRegion | showDataNodes | showConfigNodes
+    | showFunctions | showTriggers | showContinuousQueries | showTTL | showAllTTL | showCluster | showRegion | showDataNodes | showConfigNodes
     | showSchemaTemplates | showNodesInSchemaTemplate
     | showPathsUsingSchemaTemplate | showPathsSetSchemaTemplate
     | countStorageGroup | countDevices | countTimeseries | countNodes
@@ -341,17 +341,7 @@ showAllTTL
 
 // Show Cluster
 showCluster
-    : SHOW CLUSTER
-    ;
-
-// Show Cluster Details
-showClusterDetails
-    : SHOW CLUSTER DETAILS
-    ;
-
-// Show Cluster Parameters
-showClusterParameters
-    : SHOW CLUSTER PARAMETERS
+    : SHOW CLUSTER (DETAILS | PARAMETERS)?
     ;
 
 // Show Region
