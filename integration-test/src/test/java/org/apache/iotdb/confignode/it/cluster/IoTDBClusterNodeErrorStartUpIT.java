@@ -50,6 +50,8 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
@@ -60,16 +62,20 @@ import java.util.concurrent.atomic.AtomicInteger;
 @Category({ClusterIT.class})
 public class IoTDBClusterNodeErrorStartUpIT {
 
+  private static final Logger logger =
+      LoggerFactory.getLogger(IoTDBClusterNodeErrorStartUpIT.class);
   private static final BaseConfig CONF = ConfigFactory.getConfig();
 
   private static final int testConfigNodeNum = 3;
   private static final int testDataNodeNum = 1;
+  private static final int testNodeNum = testConfigNodeNum + testDataNodeNum;
 
   protected static String originalConfigNodeConsensusProtocolClass;
   private static final String testConsensusProtocolClass = ConsensusFactory.RATIS_CONSENSUS;
 
   private static final String TEST_CLUSTER_NAME = "defaultCluster";
   private static final String ERROR_CLUSTER_NAME = "errorCluster";
+  private static final int maxRetryTimes = 60;
 
   @Before
   public void setUp() throws Exception {
@@ -241,7 +247,8 @@ public class IoTDBClusterNodeErrorStartUpIT {
       // Shutdown and check
       EnvFactory.getEnv().shutdownConfigNode(1);
       EnvFactory.getEnv().shutdownDataNode(0);
-      while (true) {
+      int retryTimes;
+      for (retryTimes = 0; retryTimes < maxRetryTimes; retryTimes++) {
         AtomicInteger unknownCnt = new AtomicInteger(0);
         showClusterResp = client.showCluster();
         showClusterResp
@@ -253,10 +260,15 @@ public class IoTDBClusterNodeErrorStartUpIT {
                   }
                 });
 
-        if (unknownCnt.get() == 2) {
+        if (unknownCnt.get() == testNodeNum - 2) {
           break;
         }
         TimeUnit.SECONDS.sleep(1);
+      }
+      logger.info(showClusterStatus(showClusterResp));
+      if (retryTimes >= maxRetryTimes) {
+        Assert.fail(
+            "The running nodes are still insufficient after retrying " + maxRetryTimes + " times");
       }
 
       /* Restart and updatePeer */
@@ -287,7 +299,7 @@ public class IoTDBClusterNodeErrorStartUpIT {
       // Restart and check
       EnvFactory.getEnv().startConfigNode(1);
       EnvFactory.getEnv().startDataNode(0);
-      while (true) {
+      for (retryTimes = 0; retryTimes < maxRetryTimes; retryTimes++) {
         AtomicInteger runningCnt = new AtomicInteger(0);
         showClusterResp = client.showCluster();
         showClusterResp
@@ -299,11 +311,39 @@ public class IoTDBClusterNodeErrorStartUpIT {
                   }
                 });
 
-        if (runningCnt.get() == 3) {
+        if (runningCnt.get() == testNodeNum) {
           break;
         }
         TimeUnit.SECONDS.sleep(1);
       }
+      logger.info(showClusterStatus(showClusterResp));
+      if (retryTimes >= maxRetryTimes) {
+        Assert.fail(
+            "The running nodes are still insufficient after retrying " + maxRetryTimes + " times");
+      }
     }
+  }
+
+  private String showClusterStatus(TShowClusterResp showClusterResp) {
+    StringBuilder sb = new StringBuilder();
+    showClusterResp
+        .getConfigNodeList()
+        .forEach(
+            d ->
+                sb.append("ConfigNode")
+                    .append(d.getInternalEndPoint().getPort())
+                    .append(": ")
+                    .append(showClusterResp.getNodeStatus().get(d.getConfigNodeId()))
+                    .append("\n"));
+    showClusterResp
+        .getDataNodeList()
+        .forEach(
+            d ->
+                sb.append("DataNode")
+                    .append(d.getClientRpcEndPoint().getPort())
+                    .append(": ")
+                    .append(showClusterResp.getNodeStatus().get(d.getDataNodeId()))
+                    .append("\n"));
+    return sb.toString();
   }
 }
