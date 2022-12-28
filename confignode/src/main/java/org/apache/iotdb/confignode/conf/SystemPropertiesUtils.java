@@ -35,8 +35,8 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Properties;
 
+import static org.apache.iotdb.commons.conf.IoTDBConstant.CLUSTER_NAME;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.DEFAULT_CLUSTER_NAME;
-import static org.apache.iotdb.db.conf.IoTDBStartCheck.CLUSTER_NAME;
 
 public class SystemPropertiesUtils {
 
