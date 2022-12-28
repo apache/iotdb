@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.client.ClientManager;
 import org.apache.iotdb.commons.client.ClientPoolProperty;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.IClientPoolFactory;
+import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
@@ -73,7 +74,6 @@ import org.apache.ratis.server.RaftServer;
 import org.apache.ratis.server.RaftServerConfigKeys;
 import org.apache.ratis.util.MemoizedSupplier;
 import org.apache.ratis.util.function.CheckedSupplier;
-import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -243,7 +243,7 @@ class RatisConsensus implements IConsensus {
     if (isLeader(consensusGroupId) && CommonDescriptor.getInstance().getConfig().isReadOnly()) {
       try {
         forceStepDownLeader(raftGroup);
-      } catch (IOException e) {
+      } catch (Exception e) {
         logger.warn("leader {} read only, force step down failed due to {}", myself, e);
       }
       return failedWrite(new NodeReadOnlyException(myself));
@@ -284,7 +284,7 @@ class RatisConsensus implements IConsensus {
         return failedWrite(new RatisRequestFailedException(reply.getException()));
       }
       writeResult = Utils.deserializeFrom(reply.getMessage().getContent().asReadOnlyByteBuffer());
-    } catch (IOException | TException e) {
+    } catch (Exception e) {
       return failedWrite(new RatisRequestFailedException(e));
     } finally {
       if (client != null) {
@@ -357,7 +357,7 @@ class RatisConsensus implements IConsensus {
       if (!reply.isSuccess()) {
         return failed(new RatisRequestFailedException(reply.getException()));
       }
-    } catch (IOException e) {
+    } catch (Exception e) {
       return failed(new RatisRequestFailedException(e));
     } finally {
       if (client != null) {
@@ -550,7 +550,7 @@ class RatisConsensus implements IConsensus {
       if (!reply.isSuccess()) {
         return failed(new RatisRequestFailedException(reply.getException()));
       }
-    } catch (IOException e) {
+    } catch (Exception e) {
       return failed(new RatisRequestFailedException(e));
     } finally {
       if (client != null) {
@@ -560,13 +560,14 @@ class RatisConsensus implements IConsensus {
     return ConsensusGenericResponse.newBuilder().setSuccess(reply.isSuccess()).build();
   }
 
-  private void forceStepDownLeader(RaftGroup group) throws IOException {
+  private void forceStepDownLeader(RaftGroup group) throws ClientManagerException, IOException {
     // when newLeaderPeerId == null, ratis forces current leader to step down and raise new
     // election
     transferLeader(group, null);
   }
 
-  private RaftClientReply transferLeader(RaftGroup group, RaftPeer newLeader) throws IOException {
+  private RaftClientReply transferLeader(RaftGroup group, RaftPeer newLeader)
+      throws ClientManagerException, IOException {
     RatisClient client = null;
     try {
       client = getRaftClient(group);
@@ -770,10 +771,10 @@ class RatisConsensus implements IConsensus {
         Utils.fromPeersAndPriorityToRaftPeers(peers, DEFAULT_PRIORITY));
   }
 
-  private RatisClient getRaftClient(RaftGroup group) throws IOException {
+  private RatisClient getRaftClient(RaftGroup group) throws ClientManagerException {
     try {
       return clientManager.borrowClient(group);
-    } catch (IOException e) {
+    } catch (ClientManagerException e) {
       logger.error(String.format("Borrow client from pool for group %s failed.", group), e);
       // rethrow the exception
       throw e;
@@ -792,7 +793,7 @@ class RatisConsensus implements IConsensus {
       if (!reply.isSuccess()) {
         throw new RatisRequestFailedException(reply.getException());
       }
-    } catch (IOException e) {
+    } catch (Exception e) {
       throw new RatisRequestFailedException(e);
     } finally {
       if (client != null) {

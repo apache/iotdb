@@ -19,7 +19,7 @@
 package org.apache.iotdb.db.protocol.influxdb.function;
 
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
-import org.apache.iotdb.db.protocol.influxdb.constant.InfluxSQLConstant;
+import org.apache.iotdb.db.protocol.influxdb.constant.InfluxSqlConstant;
 import org.apache.iotdb.db.protocol.influxdb.function.aggregator.InfluxCountFunction;
 import org.apache.iotdb.db.protocol.influxdb.function.aggregator.InfluxMeanFunction;
 import org.apache.iotdb.db.protocol.influxdb.function.aggregator.InfluxMedianFunction;
@@ -39,27 +39,27 @@ public class InfluxFunctionFactory {
   public static InfluxFunction generateFunction(
       String functionName, List<Expression> expressionList) {
     switch (functionName) {
-      case InfluxSQLConstant.MAX:
+      case InfluxSqlConstant.MAX:
         return new InfluxMaxFunction(expressionList);
-      case InfluxSQLConstant.MIN:
+      case InfluxSqlConstant.MIN:
         return new InfluxMinFunction(expressionList);
-      case InfluxSQLConstant.LAST:
+      case InfluxSqlConstant.LAST:
         return new InfluxLastFunction(expressionList);
-      case InfluxSQLConstant.FIRST:
+      case InfluxSqlConstant.FIRST:
         return new InfluxFirstFunction(expressionList);
-      case InfluxSQLConstant.COUNT:
+      case InfluxSqlConstant.COUNT:
         return new InfluxCountFunction(expressionList);
-      case InfluxSQLConstant.MEAN:
+      case InfluxSqlConstant.MEAN:
         return new InfluxMeanFunction(expressionList);
-      case InfluxSQLConstant.MEDIAN:
+      case InfluxSqlConstant.MEDIAN:
         return new InfluxMedianFunction(expressionList);
-      case InfluxSQLConstant.MODE:
+      case InfluxSqlConstant.MODE:
         return new InfluxModeFunction(expressionList);
-      case InfluxSQLConstant.SPREAD:
+      case InfluxSqlConstant.SPREAD:
         return new InfluxSpreadFunction(expressionList);
-      case InfluxSQLConstant.STDDEV:
+      case InfluxSqlConstant.STDDEV:
         return new InfluxStddevFunction(expressionList);
-      case InfluxSQLConstant.SUM:
+      case InfluxSqlConstant.SUM:
         return new InfluxSumFunction(expressionList);
       default:
         throw new IllegalArgumentException("not support aggregation name:" + functionName);

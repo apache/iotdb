@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.qp.utils;
 
+import org.apache.iotdb.db.utils.DateTimeUtils;
+
 import org.junit.Assert;
 import org.junit.Test;
 

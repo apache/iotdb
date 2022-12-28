@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.protocol.influxdb.util;
 
-import org.apache.iotdb.db.qp.constant.FilterConstant;
+import org.apache.iotdb.db.mpp.plan.expression.ExpressionType;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.read.filter.ValueFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
@@ -62,22 +62,22 @@ public class FilterUtils {
     }
   }
 
-  public static Filter filterTypeToFilter(FilterConstant.FilterType filterType, String value) {
-    switch (filterType) {
-      case EQUAL:
+  public static Filter expressionTypeToFilter(ExpressionType expressionType, String value) {
+    switch (expressionType) {
+      case EQUAL_TO:
         return ValueFilter.eq(value);
-      case NOTEQUAL:
+      case NON_EQUAL:
         return ValueFilter.notEq(value);
-      case LESSTHANOREQUALTO:
+      case LESS_EQUAL:
         return ValueFilter.ltEq(value);
-      case LESSTHAN:
+      case LESS_THAN:
         return ValueFilter.lt(value);
-      case GREATERTHANOREQUALTO:
+      case GREATER_EQUAL:
         return ValueFilter.gtEq(value);
-      case GREATERTHAN:
+      case GREATER_THAN:
         return ValueFilter.gt(value);
       default:
-        throw new UnSupportedDataTypeException("Unsupported data type:" + filterType);
+        throw new IllegalArgumentException("Unsupported expression type:" + expressionType);
     }
   }
 }

@@ -21,12 +21,10 @@ package org.apache.iotdb.db.mpp.transformation.dag.udf;
 
 import org.apache.iotdb.commons.udf.service.UDFClassLoaderManager;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
-import org.apache.iotdb.db.mpp.plan.expression.ResultColumn;
 import org.apache.iotdb.db.mpp.plan.expression.multi.FunctionExpression;
 
 import java.time.ZoneId;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 public class UDTFContext {
@@ -37,12 +35,6 @@ public class UDTFContext {
 
   public UDTFContext(ZoneId zoneId) {
     this.zoneId = zoneId;
-  }
-
-  public void constructUdfExecutors(List<ResultColumn> resultColumns) {
-    for (ResultColumn resultColumn : resultColumns) {
-      resultColumn.getExpression().constructUdfExecutors(expressionName2Executor, zoneId);
-    }
   }
 
   public void constructUdfExecutors(Expression[] outputExpressions) {

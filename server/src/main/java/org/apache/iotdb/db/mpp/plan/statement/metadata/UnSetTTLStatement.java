@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.mpp.plan.statement.metadata;
 
-import org.apache.iotdb.db.mpp.plan.constant.StatementType;
+import org.apache.iotdb.db.mpp.plan.statement.StatementType;
 import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
 
 public class UnSetTTLStatement extends SetTTLStatement {

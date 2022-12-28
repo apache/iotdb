@@ -19,11 +19,11 @@
 
 package org.apache.iotdb.commons.schema.tree;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.fa.IFAState;
 import org.apache.iotdb.commons.path.fa.IFATransition;
 import org.apache.iotdb.commons.path.fa.IPatternFA;
-import org.apache.iotdb.commons.path.fa.SimpleNFA;
 import org.apache.iotdb.commons.path.fa.match.IStateMatchInfo;
 import org.apache.iotdb.commons.path.fa.match.StateMultiMatchInfo;
 import org.apache.iotdb.commons.path.fa.match.StateSingleMatchInfo;
@@ -92,7 +92,23 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
   protected AbstractTreeVisitor(N root, PartialPath pathPattern, boolean isPrefixMatch) {
     this.root = root;
 
-    this.patternFA = new SimpleNFA(pathPattern, isPrefixMatch);
+    boolean usingDFA = false;
+    // Use DFA if there are ** and no regex node in pathPattern
+    for (String pathNode : pathPattern.getNodes()) {
+      if (IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD.equals(pathNode)) {
+        // ** node
+        usingDFA = true;
+      } else if (pathNode.length() > 1
+          && pathNode.contains(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD)) {
+        // regex node
+        usingDFA = false;
+        break;
+      }
+    }
+    this.patternFA =
+        usingDFA
+            ? new IPatternFA.Builder().pattern(pathPattern).isPrefixMatch(isPrefixMatch).buildDFA()
+            : new IPatternFA.Builder().pattern(pathPattern).isPrefixMatch(isPrefixMatch).buildNFA();
 
     initStack();
   }
@@ -334,7 +350,7 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
       IFATransition transition;
       while (transitionIterator.hasNext()) {
         transition = transitionIterator.next();
-        child = getChild(parent, transition.getValue());
+        child = getChild(parent, transition.getAcceptEvent());
         if (child == null) {
           continue;
         }
@@ -426,9 +442,13 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
           }
         }
 
-        if (transitionIterator.hasNext()) {
-          stateMatchInfo = new StateMultiMatchInfo(patternFA, matchedState, transitionIterator);
-          firstAncestorOfTraceback = ancestorStack.size();
+        if (patternFA.mayTransitionOverlap()) {
+          if (transitionIterator.hasNext()) {
+            stateMatchInfo = new StateMultiMatchInfo(patternFA, matchedState, transitionIterator);
+            firstAncestorOfTraceback = ancestorStack.size();
+          } else {
+            stateMatchInfo = new StateSingleMatchInfo(patternFA, matchedState);
+          }
         } else {
           stateMatchInfo = new StateSingleMatchInfo(patternFA, matchedState);
         }
