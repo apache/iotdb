@@ -326,15 +326,16 @@ struct TCheckUserPrivilegesReq {
 
 // ConfigNode
 struct TBasicClusterParameters {
-  1: required string configNodeConsensusProtocolClass
-  2: required string dataRegionConsensusProtocolClass
-  3: required string schemaRegionConsensusProtocolClass
-  4: required i32 seriesPartitionSlotNum
-  5: required string seriesPartitionExecutorClass
-  6: required i64 defaultTTL
-  7: required i64 timePartitionInterval
-  8: required i32 schemaReplicationFactor
+  1: required string clusterName
+  2: required string configNodeConsensusProtocolClass
+  3: required string dataRegionConsensusProtocolClass
+  4: required string schemaRegionConsensusProtocolClass
+  5: required i32 seriesPartitionSlotNum
+  6: required string seriesPartitionExecutorClass
+  7: required i64 defaultTTL
+  8: required i64 timePartitionInterval
   9: required i32 dataReplicationFactor
+  10: required i32 schemaReplicationFactor
 }
 
 struct TAdvancedClusterParameters {

@@ -35,8 +35,6 @@ import org.apache.iotdb.confignode.conf.ConfigNodeConstant;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.conf.SystemPropertiesUtils;
 import org.apache.iotdb.confignode.manager.ConfigManager;
-import org.apache.iotdb.confignode.rpc.thrift.TAdvancedClusterParameters;
-import org.apache.iotdb.confignode.rpc.thrift.TBasicClusterParameters;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRestartReq;
@@ -240,8 +238,8 @@ public class ConfigNode implements ConfigNodeMBean {
                 INIT_NON_SEED_CONFIG_NODE_ID,
                 new TEndPoint(CONF.getInternalAddress(), CONF.getInternalPort()),
                 new TEndPoint(CONF.getInternalAddress(), CONF.getConsensusPort())),
-            getBasicClusterParameters(),
-            getAdvancedClusterParameters());
+            configManager.getBasicClusterParameters(),
+            configManager.getAdvancedClusterParameters());
 
     TEndPoint targetConfigNode = CONF.getTargetConfigNode();
     if (targetConfigNode == null) {
@@ -297,34 +295,6 @@ public class ConfigNode implements ConfigNodeMBean {
     LOGGER.error(
         "The current ConfigNode can't send register request to the ConfigNode-leader after all retries!");
     stop();
-  }
-
-  private TBasicClusterParameters getBasicClusterParameters() {
-    TBasicClusterParameters basicClusterParameters = new TBasicClusterParameters();
-    basicClusterParameters.setConfigNodeConsensusProtocolClass(
-        CONF.getConfigNodeConsensusProtocolClass());
-    basicClusterParameters.setDataRegionConsensusProtocolClass(
-        CONF.getDataRegionConsensusProtocolClass());
-    basicClusterParameters.setSchemaRegionConsensusProtocolClass(
-        CONF.getSchemaRegionConsensusProtocolClass());
-    basicClusterParameters.setSeriesPartitionSlotNum(CONF.getSeriesSlotNum());
-    basicClusterParameters.setSeriesPartitionExecutorClass(CONF.getSeriesPartitionExecutorClass());
-    basicClusterParameters.setDefaultTTL(COMMON_CONF.getDefaultTTLInMs());
-    basicClusterParameters.setTimePartitionInterval(CONF.getTimePartitionInterval());
-    basicClusterParameters.setDataReplicationFactor(CONF.getDataReplicationFactor());
-    basicClusterParameters.setSchemaReplicationFactor(CONF.getSchemaReplicationFactor());
-    return basicClusterParameters;
-  }
-
-  private TAdvancedClusterParameters getAdvancedClusterParameters() {
-    TAdvancedClusterParameters advancedClusterParameters = new TAdvancedClusterParameters();
-    advancedClusterParameters.setDataRegionPerProcessor(CONF.getDataRegionPerProcessor());
-    advancedClusterParameters.setSchemaRegionPerDataNode(CONF.getSchemaRegionPerDataNode());
-    advancedClusterParameters.setDiskSpaceWarningThreshold(
-        COMMON_CONF.getDiskSpaceWarningThreshold());
-    advancedClusterParameters.setReadConsistencyLevel(CONF.getReadConsistencyLevel());
-    advancedClusterParameters.setLeastDataRegionGroupNum(CONF.getLeastDataRegionGroupNum());
-    return advancedClusterParameters;
   }
 
   private void sendRestartConfigNodeRequest() throws IOException, StartupException {

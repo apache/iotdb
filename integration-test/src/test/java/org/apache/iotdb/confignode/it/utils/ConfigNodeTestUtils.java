@@ -224,6 +224,7 @@ public class ConfigNodeTestUtils {
 
   private static TBasicClusterParameters generateTBasicClusterParameters() {
     TBasicClusterParameters basicClusterParameters = new TBasicClusterParameters();
+    basicClusterParameters.setClusterName(CONF.getClusterName());
     basicClusterParameters.setConfigNodeConsensusProtocolClass(
         CONF.getConfigNodeConsensusProtocolClass());
     basicClusterParameters.setDataRegionConsensusProtocolClass(

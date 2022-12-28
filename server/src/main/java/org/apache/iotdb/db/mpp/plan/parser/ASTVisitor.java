@@ -1992,6 +1992,13 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   }
 
   @Override
+  public Statement visitShowClusterParameters(IoTDBSqlParser.ShowClusterParametersContext ctx) {
+    ShowClusterStatement showClusterStatement = new ShowClusterStatement();
+    showClusterStatement.setParameters(true);
+    return showClusterStatement;
+  }
+
+  @Override
   public Statement visitDeleteStorageGroup(IoTDBSqlParser.DeleteStorageGroupContext ctx) {
     DeleteStorageGroupStatement deleteStorageGroupStatement = new DeleteStorageGroupStatement();
     List<IoTDBSqlParser.PrefixPathContext> prefixPathContexts = ctx.prefixPath();

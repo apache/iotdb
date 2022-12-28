@@ -202,6 +202,10 @@ public interface BaseConfig {
     return this;
   }
 
+  default String getClusterName() {
+    return "defaultCluster";
+  }
+
   default String getConfigNodeConsensusProtocolClass() {
     return "org.apache.iotdb.consensus.simple.SimpleConsensus";
   }
