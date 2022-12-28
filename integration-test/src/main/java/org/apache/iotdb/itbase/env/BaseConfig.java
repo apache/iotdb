@@ -275,6 +275,22 @@ public interface BaseConfig {
     return 1;
   }
 
+  default double getDataRegionPerProcessor() {
+    return 1.0;
+  }
+
+  default double getSchemaRegionPerDataNode() {
+    return 1.0;
+  }
+
+  default double getDiskSpaceWarningThreshold() {
+    return 0.05;
+  }
+
+  default String getReadConsistencyLevel() {
+    return "strong";
+  }
+
   default BaseConfig setDataReplicationFactor(int dataReplicationFactor) {
     return this;
   }

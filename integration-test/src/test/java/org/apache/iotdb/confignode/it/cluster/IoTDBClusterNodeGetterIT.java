@@ -24,7 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
-import org.apache.iotdb.confignode.rpc.thrift.TBasicClusterParameters;
+import org.apache.iotdb.confignode.rpc.thrift.TClusterParameters;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeConfigurationResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeInfo;
@@ -147,27 +147,37 @@ public class IoTDBClusterNodeGetterIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(),
           showClusterParametersResp.getStatus().getCode());
-      TBasicClusterParameters basicClusterParameters =
-          showClusterParametersResp.getBasicParameters();
+      TClusterParameters clusterParameters = showClusterParametersResp.getClusterParameters();
       Assert.assertEquals(
-          testConsensusProtocolClass, basicClusterParameters.getConfigNodeConsensusProtocolClass());
+          testConsensusProtocolClass, clusterParameters.getConfigNodeConsensusProtocolClass());
       Assert.assertEquals(
-          testConsensusProtocolClass, basicClusterParameters.getDataRegionConsensusProtocolClass());
+          testConsensusProtocolClass, clusterParameters.getDataRegionConsensusProtocolClass());
       Assert.assertEquals(
-          testConsensusProtocolClass,
-          basicClusterParameters.getSchemaRegionConsensusProtocolClass());
+          testConsensusProtocolClass, clusterParameters.getSchemaRegionConsensusProtocolClass());
       Assert.assertEquals(
-          CONF.getSeriesPartitionSlotNum(), basicClusterParameters.getSeriesPartitionSlotNum());
+          CONF.getSeriesPartitionSlotNum(), clusterParameters.getSeriesPartitionSlotNum());
       Assert.assertEquals(
           CONF.getSeriesPartitionExecutorClass(),
-          basicClusterParameters.getSeriesPartitionExecutorClass());
-      Assert.assertEquals(CONF.getDefaultTTL(), basicClusterParameters.getDefaultTTL());
+          clusterParameters.getSeriesPartitionExecutorClass());
+      Assert.assertEquals(CONF.getDefaultTTL(), clusterParameters.getDefaultTTL());
       Assert.assertEquals(
-          CONF.getTimePartitionInterval(), basicClusterParameters.getTimePartitionInterval());
+          CONF.getTimePartitionInterval(), clusterParameters.getTimePartitionInterval());
       Assert.assertEquals(
-          CONF.getDataReplicationFactor(), basicClusterParameters.getDataReplicationFactor());
+          CONF.getDataReplicationFactor(), clusterParameters.getDataReplicationFactor());
       Assert.assertEquals(
-          CONF.getSchemaReplicationFactor(), basicClusterParameters.getSchemaReplicationFactor());
+          CONF.getSchemaReplicationFactor(), clusterParameters.getSchemaReplicationFactor());
+      Assert.assertEquals(
+          CONF.getDataRegionPerProcessor(), clusterParameters.getDataRegionPerProcessor(), 0.01);
+      Assert.assertEquals(
+          CONF.getSchemaRegionPerDataNode(), clusterParameters.getSchemaRegionPerDataNode(), 0.01);
+      Assert.assertEquals(
+          CONF.getDiskSpaceWarningThreshold(),
+          clusterParameters.getDiskSpaceWarningThreshold(),
+          0.01);
+      Assert.assertEquals(
+          CONF.getReadConsistencyLevel(), clusterParameters.getReadConsistencyLevel());
+      Assert.assertEquals(
+          CONF.getLeastDataRegionGroupNum(), clusterParameters.getLeastDataRegionGroupNum());
 
       /* Test showConfigNodes */
       TShowConfigNodesResp showConfigNodesResp = client.showConfigNodes();

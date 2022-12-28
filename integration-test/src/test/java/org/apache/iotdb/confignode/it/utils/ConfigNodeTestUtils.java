@@ -30,8 +30,7 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.confignode.rpc.thrift.IConfigNodeRPCService;
-import org.apache.iotdb.confignode.rpc.thrift.TAdvancedClusterParameters;
-import org.apache.iotdb.confignode.rpc.thrift.TBasicClusterParameters;
+import org.apache.iotdb.confignode.rpc.thrift.TClusterParameters;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRestartReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterReq;
@@ -218,36 +217,30 @@ public class ConfigNodeTestUtils {
       ConfigNodeWrapper configNodeWrapper) {
     return new TConfigNodeRegisterReq()
         .setConfigNodeLocation(generateTConfigNodeLocation(-1, configNodeWrapper))
-        .setBasicParameters(generateTBasicClusterParameters())
-        .setAdvancedParameters(generateTAdvancedClusterParameters());
+        .setClusterParameters(generateClusterParameters());
   }
 
-  private static TBasicClusterParameters generateTBasicClusterParameters() {
-    TBasicClusterParameters basicClusterParameters = new TBasicClusterParameters();
-    basicClusterParameters.setClusterName(CONF.getClusterName());
-    basicClusterParameters.setConfigNodeConsensusProtocolClass(
+  private static TClusterParameters generateClusterParameters() {
+    TClusterParameters clusterParameters = new TClusterParameters();
+    clusterParameters.setClusterName(CONF.getClusterName());
+    clusterParameters.setConfigNodeConsensusProtocolClass(
         CONF.getConfigNodeConsensusProtocolClass());
-    basicClusterParameters.setDataRegionConsensusProtocolClass(
+    clusterParameters.setDataRegionConsensusProtocolClass(
         CONF.getDataRegionConsensusProtocolClass());
-    basicClusterParameters.setSchemaRegionConsensusProtocolClass(
+    clusterParameters.setSchemaRegionConsensusProtocolClass(
         CONF.getSchemaRegionConsensusProtocolClass());
-    basicClusterParameters.setSeriesPartitionSlotNum(CONF.getSeriesPartitionSlotNum());
-    basicClusterParameters.setSeriesPartitionExecutorClass(CONF.getSeriesPartitionExecutorClass());
-    basicClusterParameters.setDefaultTTL(CONF.getDefaultTTL());
-    basicClusterParameters.setTimePartitionInterval(CONF.getTimePartitionInterval());
-    basicClusterParameters.setDataReplicationFactor(CONF.getDataReplicationFactor());
-    basicClusterParameters.setSchemaReplicationFactor(CONF.getSchemaReplicationFactor());
-    return basicClusterParameters;
-  }
-
-  private static TAdvancedClusterParameters generateTAdvancedClusterParameters() {
-    TAdvancedClusterParameters advancedClusterParameters = new TAdvancedClusterParameters();
-    advancedClusterParameters.setDataRegionPerProcessor(1.0);
-    advancedClusterParameters.setSchemaRegionPerDataNode(1.0);
-    advancedClusterParameters.setDiskSpaceWarningThreshold(0.05);
-    advancedClusterParameters.setReadConsistencyLevel("strong");
-    advancedClusterParameters.setLeastDataRegionGroupNum(CONF.getLeastDataRegionGroupNum());
-    return advancedClusterParameters;
+    clusterParameters.setSeriesPartitionSlotNum(CONF.getSeriesPartitionSlotNum());
+    clusterParameters.setSeriesPartitionExecutorClass(CONF.getSeriesPartitionExecutorClass());
+    clusterParameters.setDefaultTTL(CONF.getDefaultTTL());
+    clusterParameters.setTimePartitionInterval(CONF.getTimePartitionInterval());
+    clusterParameters.setDataReplicationFactor(CONF.getDataReplicationFactor());
+    clusterParameters.setSchemaReplicationFactor(CONF.getSchemaReplicationFactor());
+    clusterParameters.setDataRegionPerProcessor(CONF.getDataRegionPerProcessor());
+    clusterParameters.setSchemaRegionPerDataNode(CONF.getSchemaRegionPerDataNode());
+    clusterParameters.setDiskSpaceWarningThreshold(CONF.getDiskSpaceWarningThreshold());
+    clusterParameters.setReadConsistencyLevel(CONF.getReadConsistencyLevel());
+    clusterParameters.setLeastDataRegionGroupNum(CONF.getLeastDataRegionGroupNum());
+    return clusterParameters;
   }
 
   public static TConfigNodeRestartReq generateTConfigNodeRestartReq(

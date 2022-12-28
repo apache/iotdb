@@ -325,33 +325,31 @@ struct TCheckUserPrivilegesReq {
 }
 
 // ConfigNode
-struct TBasicClusterParameters {
-  1: required string clusterName
-  2: required string configNodeConsensusProtocolClass
-  3: required string dataRegionConsensusProtocolClass
-  4: required string schemaRegionConsensusProtocolClass
-  5: required i32 seriesPartitionSlotNum
-  6: required string seriesPartitionExecutorClass
-  7: required i64 defaultTTL
-  8: required i64 timePartitionInterval
-  9: required i32 dataReplicationFactor
-  10: required i32 schemaReplicationFactor
-}
 
-struct TAdvancedClusterParameters {
-  1: required double schemaRegionPerDataNode
-  2: required double dataRegionPerProcessor
-  3: required string readConsistencyLevel
-  4: required double diskSpaceWarningThreshold
-  5: required i32 leastDataRegionGroupNum
+/* These parameters should be consist within the cluster */
+struct TClusterParameters {
+  1: required string clusterName
+  2: required i32 dataReplicationFactor
+  3: required i32 schemaReplicationFactor
+  4: required string dataRegionConsensusProtocolClass
+  5: required string schemaRegionConsensusProtocolClass
+  6: required string configNodeConsensusProtocolClass
+  7: required i64 timePartitionInterval
+  8: required i64 defaultTTL
+  9: required string readConsistencyLevel
+  10: required double schemaRegionPerDataNode
+  11: required double dataRegionPerProcessor
+  12: required i32 leastDataRegionGroupNum
+  13: required i32 seriesPartitionSlotNum
+  14: required string seriesPartitionExecutorClass
+  15: required double diskSpaceWarningThreshold
 }
 
 struct TConfigNodeRegisterReq {
   1: required common.TConfigNodeLocation configNodeLocation
   // The Non-Seed-ConfigNode must ensure that the following
   // fields are consistent with the Seed-ConfigNode
-  2: required TBasicClusterParameters basicParameters
-  3: required TAdvancedClusterParameters advancedParameters
+  2: required TClusterParameters clusterParameters
 }
 
 struct TConfigNodeRegisterResp {
@@ -455,7 +453,7 @@ struct TShowClusterResp {
 
 struct TShowClusterParametersResp {
   1: required common.TSStatus status
-  2: optional TBasicClusterParameters basicParameters
+  2: optional TClusterParameters clusterParameters
 }
 
 // Show datanodes

@@ -109,7 +109,7 @@ public class IoTDBClusterNodeErrorStartUpIT {
         (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
       TConfigNodeRegisterReq req =
           ConfigNodeTestUtils.generateTConfigNodeRegisterReq(conflictConfigNodeWrapper);
-      req.getBasicParameters().setConfigNodeConsensusProtocolClass(testConsensusProtocolClass);
+      req.getClusterParameters().setConfigNodeConsensusProtocolClass(testConsensusProtocolClass);
       TConfigNodeRegisterResp resp = client.registerConfigNode(req);
       Assert.assertEquals(
           TSStatusCode.REJECT_NODE_START.getStatusCode(), resp.getStatus().getCode());

@@ -281,6 +281,11 @@ public class IoTDBConstant {
   public static final String TIME_PARTITION_INTERVAL = "TimePartitionInterval";
   public static final String DATA_REPLICATION_FACTOR = "DataReplicationFactor";
   public static final String SCHEMA_REPLICATION_FACTOR = "SchemaReplicationFactor";
+  public static final String SCHEMA_REGION_PER_DATA_NODE = "SchemaRegionPerDataNode";
+  public static final String DATA_REGION_PER_PROCESSOR = "DataRegionPerProcessor";
+  public static final String READ_CONSISTENCY_LEVEL = "ReadConsistencyLevel";
+  public static final String DISK_SPACE_WARNING_THRESHOLD = "DiskSpaceWarningThreshold";
+  public static final String LEAST_DATA_REGION_GROUP_NUM = "LeastDataRegionGroupNum";
 
   public static final String IOTDB_FOREGROUND = "iotdb-foreground";
   public static final String IOTDB_PIDFILE = "iotdb-pidfile";

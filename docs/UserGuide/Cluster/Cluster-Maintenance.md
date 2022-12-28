@@ -35,18 +35,23 @@ IoTDB> show cluster parameters
 |                 ClusterParameters|                                                            Value|
 +----------------------------------+-----------------------------------------------------------------+
 |                       ClusterName|                                                   defaultCluster|
-|  ConfigNodeConsensusProtocolClass|                  org.apache.iotdb.consensus.ratis.RatisConsensus|
-|  DataRegionConsensusProtocolClass|                      org.apache.iotdb.consensus.iot.IoTConsensus|
-|SchemaRegionConsensusProtocolClass|                  org.apache.iotdb.consensus.ratis.RatisConsensus|
-|                     SeriesSlotNum|                                                            10000|
-|           SeriesSlotExecutorClass|org.apache.iotdb.commons.partition.executor.hash.BKDRHashExecutor|
-|                    DefaultTTL(ms)|                                              9223372036854775807|
-|             TimePartitionInterval|                                                        604800000|
 |             DataReplicationFactor|                                                                1|
 |           SchemaReplicationFactor|                                                                1|
+|  DataRegionConsensusProtocolClass|                      org.apache.iotdb.consensus.iot.IoTConsensus|
+|SchemaRegionConsensusProtocolClass|                  org.apache.iotdb.consensus.ratis.RatisConsensus|
+|  ConfigNodeConsensusProtocolClass|                  org.apache.iotdb.consensus.ratis.RatisConsensus|
+|             TimePartitionInterval|                                                        604800000|
+|                    DefaultTTL(ms)|                                              9223372036854775807|
+|              ReadConsistencyLevel|                                                           strong|
+|           SchemaRegionPerDataNode|                                                              1.0|
+|            DataRegionPerProcessor|                                                              1.0|
+|           LeastDataRegionGroupNum|                                                                5|
+|                     SeriesSlotNum|                                                            10000|
+|           SeriesSlotExecutorClass|org.apache.iotdb.commons.partition.executor.hash.BKDRHashExecutor|
+|         DiskSpaceWarningThreshold|                                                             0.05|
 +----------------------------------+-----------------------------------------------------------------+
-Total line number = 10
-It costs 0.237s
+Total line number = 15
+It costs 0.242s
 ```
 
 **Notice:** Ensure that all key parameters displayed in this SQL are consist on each node in the same cluster
