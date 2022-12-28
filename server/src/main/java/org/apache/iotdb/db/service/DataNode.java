@@ -95,6 +95,8 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.db.conf.IoTDBStartCheck.DEFAULT_CLUSTER_NAME;
+
 public class DataNode implements DataNodeMBean {
   private static final Logger logger = LoggerFactory.getLogger(DataNode.class);
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
@@ -392,7 +394,7 @@ public class DataNode implements DataNodeMBean {
     int retry = DEFAULT_RETRY;
     TDataNodeRestartReq req = new TDataNodeRestartReq();
     req.setClusterName(
-        config.getClusterName() == null ? "defaultCluster" : config.getClusterName());
+        config.getClusterName() == null ? DEFAULT_CLUSTER_NAME : config.getClusterName());
     req.setDataNodeConfiguration(generateDataNodeConfiguration());
     TDataNodeRestartResp dataNodeRestartResp = null;
     while (retry > 0) {
