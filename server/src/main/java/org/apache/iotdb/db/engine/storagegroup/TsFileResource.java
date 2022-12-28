@@ -188,6 +188,7 @@ public class TsFileResource {
     this.file = file;
     this.version = FilePathUtils.splitAndGetTsFileVersion(this.file.getName());
     this.timeIndex = CONFIG.getTimeIndexLevel().getTimeIndex();
+    this.timeIndexType = (byte) CONFIG.getTimeIndexLevel().ordinal();
     this.status = status;
   }
 

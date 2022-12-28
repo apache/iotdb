@@ -2067,6 +2067,11 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
     // to get stuck.
     // Target file of the first task should not be selected to participate in other cross compaction
     // tasks.
+    crossSpaceCompactionSelector =
+        new RewriteCompactionFileSelector(
+            new CrossSpaceCompactionResource(
+                tsFileManager.getTsFileList(true), tsFileManager.getTsFileList(false)),
+            Long.MAX_VALUE);
     Assert.assertEquals(0, crossSpaceCompactionSelector.select().length);
 
     // first compaction task finishes successfully
@@ -2074,13 +2079,18 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
 
     // target file of first compaction task can be selected to participate in another cross
     // compaction task
+    crossSpaceCompactionSelector =
+        new RewriteCompactionFileSelector(
+            new CrossSpaceCompactionResource(
+                tsFileManager.getTsFileList(true), tsFileManager.getTsFileList(false)),
+            Long.MAX_VALUE);
     List[] pairs = crossSpaceCompactionSelector.select();
     Assert.assertEquals(2, pairs.length);
     Assert.assertEquals(2, pairs[0].size());
     Assert.assertEquals(1, pairs[1].size());
     Assert.assertEquals(tsFileManager.getTsFileList(true).get(4), pairs[0].get(0));
     Assert.assertEquals(tsFileManager.getTsFileList(true).get(5), pairs[0].get(1));
-    Assert.assertEquals(tsFileManager.getTsFileList(false).get(0), pairs[0].get(0));
+    Assert.assertEquals(tsFileManager.getTsFileList(false).get(0), pairs[1].get(0));
   }
 
   private void validateSeqFiles() {
