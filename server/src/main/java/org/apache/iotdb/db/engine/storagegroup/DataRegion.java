@@ -455,7 +455,6 @@ public class DataRegion implements IDataRegionForQuery {
           TsFileResource tsFileResource = value.get(value.size() - 1);
           if (tsFileResource.resourceFileExists()) {
             TsFileMetricManager.getInstance().addFile(tsFileResource.getTsFile().length(), true);
-            break;
           } else {
             value.remove(value.size() - 1);
             WALRecoverListener recoverListener =
@@ -472,7 +471,6 @@ public class DataRegion implements IDataRegionForQuery {
           TsFileResource tsFileResource = value.get(value.size() - 1);
           if (tsFileResource.resourceFileExists()) {
             TsFileMetricManager.getInstance().addFile(tsFileResource.getTsFile().length(), false);
-            break;
           } else {
             value.remove(value.size() - 1);
             WALRecoverListener recoverListener =
