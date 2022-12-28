@@ -29,9 +29,9 @@ public abstract class CounterTraverser extends Traverser {
 
   protected long count;
 
-  public CounterTraverser(IMNode startNode, PartialPath path, IMTreeStore store)
+  public CounterTraverser(IMNode startNode, PartialPath path, IMTreeStore store, boolean isPrefixMatch)
       throws MetadataException {
-    super(startNode, path, store);
+    super(startNode, path, store, isPrefixMatch);
   }
 
   public long getCount() {

@@ -21,6 +21,7 @@ package org.apache.iotdb.db.metadata.mtree.traverser;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.schema.tree.AbstractTreeVisitor;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.iterator.IMNodeIterator;
 import org.apache.iotdb.db.metadata.mtree.store.IMTreeStore;
@@ -50,7 +51,7 @@ import static org.apache.iotdb.db.metadata.MetadataConstant.NON_TEMPLATE;
  *   <li>collector: to collect customized results of the matched node or measurement
  * </ol>
  */
-public abstract class Traverser {
+public abstract class Traverser<R> extends AbstractTreeVisitor<IMNode,R> {
 
   protected IMTreeStore store;
 
@@ -82,7 +83,8 @@ public abstract class Traverser {
    * @param path use wildcard to specify which part to traverse
    * @throws MetadataException
    */
-  public Traverser(IMNode startNode, PartialPath path, IMTreeStore store) throws MetadataException {
+  public Traverser(IMNode startNode, PartialPath path, IMTreeStore store, boolean isPrefixMatch) throws MetadataException {
+    super(startNode,path,isPrefixMatch);
     String[] nodes = path.getNodes();
     if (nodes.length == 0 || !nodes[0].equals(PATH_ROOT)) {
       throw new IllegalPathException(
@@ -93,6 +95,17 @@ public abstract class Traverser {
     this.store = store;
     this.traverseContext = new ArrayDeque<>();
     initStartIndexAndLevel(path);
+  }
+
+  /**
+   * To traverse subtree under root.sg, e.g., init Traverser(root, "root.sg.**")
+   *
+   * @param startNode denote which tree to traverse by passing its root
+   * @param path use wildcard to specify which part to traverse
+   * @throws MetadataException
+   */
+  public Traverser(IMNode startNode, PartialPath path, IMTreeStore store) throws MetadataException {
+    this(startNode,path,store,false);
   }
 
   /**

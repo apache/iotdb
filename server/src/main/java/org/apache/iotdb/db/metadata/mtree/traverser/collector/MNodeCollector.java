@@ -41,9 +41,9 @@ public abstract class MNodeCollector<T> extends CollectorTraverser<T> {
 
   private Set<IMNode> processedNodes = new HashSet<>();
 
-  public MNodeCollector(IMNode startNode, PartialPath path, IMTreeStore store)
+  public MNodeCollector(IMNode startNode, PartialPath path, IMTreeStore store, boolean isPrefixMatch,)
       throws MetadataException {
-    super(startNode, path, store);
+    super(startNode, path, store,isPrefixMatch);
   }
 
   @Override

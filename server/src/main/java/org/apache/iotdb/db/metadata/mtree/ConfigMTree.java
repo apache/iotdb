@@ -256,7 +256,7 @@ public class ConfigMTree {
       throws MetadataException {
     List<PartialPath> result = new LinkedList<>();
     StorageGroupCollector<List<PartialPath>> collector =
-        new StorageGroupCollector<List<PartialPath>>(root, pathPattern, store) {
+        new StorageGroupCollector<List<PartialPath>>(root, pathPattern, store, isPrefixMatch) {
           @Override
           protected void collectStorageGroup(IStorageGroupMNode node) {
             result.add(node.getPartialPath());

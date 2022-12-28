@@ -29,9 +29,9 @@ public abstract class StorageGroupCollector<T> extends CollectorTraverser<T> {
 
   protected boolean collectInternal = false;
 
-  public StorageGroupCollector(IMNode startNode, PartialPath path, IMTreeStore store)
+  public StorageGroupCollector(IMNode startNode, PartialPath path, IMTreeStore store, boolean isPrefixMatch,)
       throws MetadataException {
-    super(startNode, path, store);
+    super(startNode, path, store,isPrefixMatch);
   }
 
   @Override

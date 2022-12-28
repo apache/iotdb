@@ -38,15 +38,15 @@ public abstract class CollectorTraverser<T> extends Traverser {
 
   protected T resultSet;
 
-  public CollectorTraverser(IMNode startNode, PartialPath path, IMTreeStore store)
+  public CollectorTraverser(IMNode startNode, PartialPath path, IMTreeStore store, boolean isPrefixMatch)
       throws MetadataException {
-    super(startNode, path, store);
+    super(startNode, path, store, isPrefixMatch);
   }
 
   public CollectorTraverser(
-      IMNode startNode, PartialPath path, IMTreeStore store, int limit, int offset)
+      IMNode startNode, PartialPath path, IMTreeStore store,boolean isPrefixMatch, int limit, int offset)
       throws MetadataException {
-    super(startNode, path, store);
+    super(startNode, path, store,isPrefixMatch);
     this.limit = limit;
     this.offset = offset;
     if (limit > 0 || offset > 0) {
