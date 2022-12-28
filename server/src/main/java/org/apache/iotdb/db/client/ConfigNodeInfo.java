@@ -98,8 +98,10 @@ public class ConfigNodeInfo {
   /** call this method to store config node list */
   private void storeConfigNode() throws IOException {
     Properties properties = new Properties();
-    try (FileInputStream inputStream = new FileInputStream(propertiesFile)) {
-      properties.load(inputStream);
+    if (propertiesFile.exists()) {
+      try (FileInputStream inputStream = new FileInputStream(propertiesFile)) {
+        properties.load(inputStream);
+      }
     }
     properties.setProperty(
         CONFIG_NODE_LIST, NodeUrlUtils.convertTEndPointUrls(new ArrayList<>(onlineConfigNodes)));
