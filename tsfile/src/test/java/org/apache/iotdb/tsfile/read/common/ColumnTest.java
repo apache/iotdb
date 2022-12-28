@@ -23,6 +23,7 @@ import org.apache.iotdb.tsfile.read.common.block.column.BinaryColumn;
 import org.apache.iotdb.tsfile.read.common.block.column.BinaryColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.BooleanColumn;
 import org.apache.iotdb.tsfile.read.common.block.column.BooleanColumnBuilder;
+import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.DoubleColumn;
 import org.apache.iotdb.tsfile.read.common.block.column.DoubleColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.FloatColumn;
@@ -31,6 +32,7 @@ import org.apache.iotdb.tsfile.read.common.block.column.IntColumn;
 import org.apache.iotdb.tsfile.read.common.block.column.IntColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.LongColumn;
 import org.apache.iotdb.tsfile.read.common.block.column.LongColumnBuilder;
+import org.apache.iotdb.tsfile.read.common.block.column.NullColumn;
 import org.apache.iotdb.tsfile.read.common.block.column.RunLengthEncodedColumn;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
@@ -166,6 +168,16 @@ public class ColumnTest {
     Assert.assertEquals(2, longColumn.getPositionCount());
     Assert.assertEquals(8, longColumn.getLong(0));
     Assert.assertEquals(9, longColumn.getLong(1));
+  }
+
+  @Test
+  public void nullColumnTest() {
+    NullColumn nullColumn = new NullColumn(10);
+    Column subRegion = nullColumn.getRegion(7, 2);
+    Column subColumn = subRegion.subColumn(1);
+
+    Assert.assertEquals(2, subRegion.getPositionCount());
+    Assert.assertEquals(1, subColumn.getPositionCount());
   }
 
   @Test
