@@ -32,6 +32,8 @@ import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
 
 import com.google.common.util.concurrent.ListenableFuture;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -41,6 +43,7 @@ import static com.google.common.util.concurrent.Futures.successfulAsList;
 
 public class TimeJoinOperator implements ProcessOperator {
 
+  private static final Logger LOGGER = LoggerFactory.getLogger(TimeJoinOperator.class);
   private final OperatorContext operatorContext;
 
   private final List<Operator> children;
@@ -80,6 +83,9 @@ public class TimeJoinOperator implements ProcessOperator {
   private boolean finished;
 
   private final TimeComparator comparator;
+
+  private TsBlock retainedTsBlock;
+  private int startOffset;
 
   public TimeJoinOperator(
       OperatorContext operatorContext,
@@ -127,6 +133,9 @@ public class TimeJoinOperator implements ProcessOperator {
 
   @Override
   public TsBlock next() {
+    if (retainedTsBlock != null) {
+      return getResultTsBlock();
+    }
     tsBlockBuilder.reset();
     // end time for returned TsBlock this time, it's the min/max end time among all the children
     // TsBlocks order by asc/desc
@@ -197,13 +206,34 @@ public class TimeJoinOperator implements ProcessOperator {
     // update inputIndex using shadowInputIndex
     System.arraycopy(shadowInputIndex, 0, inputIndex, 0, inputOperatorsCount);
 
-    return tsBlockBuilder.build();
+    retainedTsBlock = tsBlockBuilder.build();
+    LOGGER.debug("Current tsBlock size is : {}", retainedTsBlock.getRetainedSizeInBytes());
+    return getResultTsBlock();
+  }
+
+  private TsBlock getResultTsBlock() {
+    long maxSizePerTsBlock = TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
+    long maxLength = maxSizePerTsBlock / (1 + outputColumnCount);
+    TsBlock resultTsBlock;
+    if (retainedTsBlock.getPositionCount() - startOffset < maxLength) {
+      resultTsBlock = retainedTsBlock.subTsBlock(startOffset);
+      retainedTsBlock = null;
+      startOffset = 0;
+    } else {
+      resultTsBlock = retainedTsBlock.getRegion(startOffset, (int) maxLength);
+      startOffset += maxLength;
+    }
+    LOGGER.info("Current tsBlock size is : {}", resultTsBlock.getRetainedSizeInBytes());
+    return resultTsBlock;
   }
 
   @Override
   public boolean hasNext() {
     if (finished) {
       return false;
+    }
+    if (retainedTsBlock != null) {
+      return true;
     }
     for (int i = 0; i < inputOperatorsCount; i++) {
       if (!empty(i)) {
@@ -232,7 +262,9 @@ public class TimeJoinOperator implements ProcessOperator {
     if (finished) {
       return true;
     }
-    finished = true;
+    if (retainedTsBlock != null) {
+      return false;
+    }
 
     for (int i = 0; i < inputOperatorsCount; i++) {
       // has more tsBlock output from children[i] or has cached tsBlock in inputTsBlocks[i]
