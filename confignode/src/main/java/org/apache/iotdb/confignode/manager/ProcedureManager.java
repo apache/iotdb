@@ -388,7 +388,7 @@ public class ProcedureManager {
           "Submit RegionMigrateProcedure failed, because no target DataNode "
               + migrateRegionReq.getToId());
       return status;
-    } else if (!DataNodesInRegion.contains(migrateRegionReq.getFromId())) {
+    } else if (!dataNodesInRegion.contains(migrateRegionReq.getFromId())) {
       LOGGER.warn(
           "Submit RegionMigrateProcedure failed, because the original DataNode {} doesn't contain Region {}",
           migrateRegionReq.getFromId(),
@@ -400,7 +400,7 @@ public class ProcedureManager {
               + " doesn't contain Region "
               + migrateRegionReq.getRegionId());
       return status;
-    } else if (DataNodesInRegion.contains(migrateRegionReq.getToId())) {
+    } else if (dataNodesInRegion.contains(migrateRegionReq.getToId())) {
       LOGGER.warn(
           "Submit RegionMigrateProcedure failed, because the target DataNode {} already contains Region {}",
           migrateRegionReq.getToId(),
@@ -420,8 +420,8 @@ public class ProcedureManager {
             .map(TDataNodeConfiguration::getLocation)
             .map(TDataNodeLocation::getDataNodeId)
             .collect(Collectors.toSet());
-    DataNodesInRegion.retainAll(aliveDataNodes);
-    if (DataNodesInRegion.isEmpty()) {
+    dataNodesInRegion.retainAll(aliveDataNodes);
+    if (dataNodesInRegion.isEmpty()) {
       LOGGER.warn(
           "Submit RegionMigrateProcedure failed, because all of the DataNodes in Region Group {} is unavailable.",
           migrateRegionReq.getRegionId());
@@ -429,11 +429,11 @@ public class ProcedureManager {
       status.setMessage(
           "Submit RegionMigrateProcedure failed, because all of the DataNodes in Region Group "
               + migrateRegionReq.getRegionId()
-              + " is unavailable.");
+              + " are unavailable.");
       return status;
     } else if (!aliveDataNodes.contains(migrateRegionReq.getToId())) {
       LOGGER.warn(
-          "Submit RegionMigrateProcedure failed, because the destDataNode {} is ReadOnly.",
+          "Submit RegionMigrateProcedure failed, because the destDataNode {} is ReadOnly or Unknown.",
           migrateRegionReq.getToId());
       TSStatus status = new TSStatus(TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode());
       status.setMessage(
