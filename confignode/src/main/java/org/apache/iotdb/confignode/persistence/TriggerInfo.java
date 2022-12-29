@@ -80,7 +80,7 @@ public class TriggerInfo implements SnapshotProcessor {
 
   private final ReentrantLock triggerTableLock = new ReentrantLock();
 
-  private final String snapshotFileName = "trigger_info.bin";
+  private static final String snapshotFileName = "trigger_info.bin";
 
   public TriggerInfo() throws IOException {
     triggerTable = new TriggerTable();
