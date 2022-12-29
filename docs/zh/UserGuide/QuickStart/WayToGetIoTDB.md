@@ -103,10 +103,10 @@ docker run -d --name iotdb-service \
               --ip 172.18.0.6 \
               -p 6667:6667 \
               -e cn_internal_address=iotdb-service \
-              -e cn_target_config_node_list=iotdb-service:10710 \
+              -e cn_target_config_node_list=iotdb-service:22277 \
               -e dn_rpc_address=iotdb-service \
               -e dn_internal_address=iotdb-service \
-              -e dn_target_config_node_list=iotdb-service:10710 \
+              -e dn_target_config_node_list=iotdb-service:22277 \
               apache/iotdb:1.0.0-standalone              
 # 尝试使用命令行执行SQL
 docker exec -ti iotdb-service /iotdb/sbin/start-cli.sh -h iotdb-service
@@ -128,10 +128,10 @@ services:
       - "6667:6667"
     environment:
       - cn_internal_address=iotdb-service
-      - cn_target_config_node_list=iotdb-service:10710
+      - cn_target_config_node_list=iotdb-service:22277
       - dn_rpc_address=iotdb-service
       - dn_internal_address=iotdb-service
-      - dn_target_config_node_list=iotdb-service:10710
+      - dn_target_config_node_list=iotdb-service:22277
     volumes:
         - ./data:/iotdb/data
         - ./logs:/iotdb/logs
@@ -155,11 +155,11 @@ services:
     image: apache/iotdb:1.0.0-confignode
     container_name: iotdb-confignode
     ports:
-      - "10710:10710"
-      - "10720:10720"
+      - "22277:22277"
+      - "22278:22278"
     environment:
       - cn_internal_address=iotdb-2
-      - cn_target_config_node_list=iotdb-1:10710
+      - cn_target_config_node_list=iotdb-1:22277
       - schema_replication_factor=3
       - schema_region_consensus_protocol_class=org.apache.iotdb.consensus.ratis.RatisConsensus
       - config_node_consensus_protocol_class=org.apache.iotdb.consensus.ratis.RatisConsensus
@@ -176,14 +176,14 @@ services:
     container_name: iotdb-datanode
     ports:
       - "6667:6667"
-      - "10740:10740"
-      - "10730:10730"
-      - "10750:10750"
-      - "10760:10760"
+      - "8777:8777"
+      - "9003:9003"
+      - "50010:50010"
+      - "40010:40010"
     environment:
       - dn_rpc_address=iotdb-2
       - dn_internal_address=iotdb-2
-      - dn_target_config_node_list=iotdb-1:10710
+      - dn_target_config_node_list=iotdb-1:22277
       - data_replication_factor=3
       - data_region_consensus_protocol_class=org.apache.iotdb.consensus.iot.IoTConsensus
        - schema_replication_factor=3
