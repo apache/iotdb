@@ -24,12 +24,12 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.cross.CrossSpaceCompactionTask;
 import org.apache.iotdb.db.engine.compaction.cross.ICrossSpaceSelector;
+import org.apache.iotdb.db.engine.compaction.cross.rewrite.CrossCompactionTaskResource;
 import org.apache.iotdb.db.engine.compaction.inner.InnerSpaceCompactionTask;
 import org.apache.iotdb.db.engine.compaction.performer.ICompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.task.ICompactionSelector;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -145,7 +145,7 @@ public class CompactionScheduler {
         config
             .getCrossCompactionSelector()
             .createInstance(logicalStorageGroupName, dataRegionId, timePartition, tsFileManager);
-    List<Pair<List<TsFileResource>, List<TsFileResource>>> taskList =
+    List<CrossCompactionTaskResource> taskList =
         crossSpaceCompactionSelector.selectCrossSpaceTask(
             tsFileManager.getSequenceListByTimePartition(timePartition),
             tsFileManager.getUnsequenceListByTimePartition(timePartition));
@@ -156,8 +156,8 @@ public class CompactionScheduler {
               new CrossSpaceCompactionTask(
                   timePartition,
                   tsFileManager,
-                  taskList.get(i).left,
-                  taskList.get(i).right,
+                  taskList.get(i).getSeqFiles(),
+                  taskList.get(i).getUnseqFiles(),
                   IoTDBDescriptor.getInstance()
                       .getConfig()
                       .getCrossCompactionPerformer()
