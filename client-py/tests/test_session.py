@@ -266,7 +266,7 @@ def test_session():
             "root.sg_test_01.d_01", measurements_, data_types_, values_, [8, 9, 10, 11]
         )
         tablet_02 = Tablet(
-            "root.sg_test_01.d_01",
+            "root.sg_test_01.d_02",
             measurements_,
             data_types_,
             values_,
