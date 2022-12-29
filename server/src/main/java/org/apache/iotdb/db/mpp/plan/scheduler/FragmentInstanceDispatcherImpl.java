@@ -95,22 +95,20 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
   //  unsafe for current FragmentInstance scheduler framework. We need to implement the
   //  topological dispatch according to dependency relations between FragmentInstances
   private Future<FragInstanceDispatchResult> dispatchRead(List<FragmentInstance> instances) {
-    return executor.submit(
-        () -> {
-          for (FragmentInstance instance : instances) {
-            try (SetThreadName threadName = new SetThreadName(instance.getId().getFullId())) {
-              dispatchOneInstance(instance);
-            } catch (FragmentInstanceDispatchException e) {
-              return new FragInstanceDispatchResult(e.getFailureStatus());
-            } catch (Throwable t) {
-              logger.warn("[DispatchFailed]", t);
-              return new FragInstanceDispatchResult(
-                  RpcUtils.getStatus(
-                      TSStatusCode.INTERNAL_SERVER_ERROR, "Unexpected errors: " + t.getMessage()));
-            }
-          }
-          return new FragInstanceDispatchResult(true);
-        });
+    for (FragmentInstance instance : instances) {
+      try (SetThreadName threadName = new SetThreadName(instance.getId().getFullId())) {
+        dispatchOneInstance(instance);
+      } catch (FragmentInstanceDispatchException e) {
+        return immediateFuture(new FragInstanceDispatchResult(e.getFailureStatus()));
+      } catch (Throwable t) {
+        logger.warn("[DispatchFailed]", t);
+        return immediateFuture(
+            (new FragInstanceDispatchResult(
+                RpcUtils.getStatus(
+                    TSStatusCode.INTERNAL_SERVER_ERROR, "Unexpected errors: " + t.getMessage()))));
+      }
+    }
+    return immediateFuture(new FragInstanceDispatchResult(true));
   }
 
   private Future<FragInstanceDispatchResult> dispatchWriteSync(List<FragmentInstance> instances) {
