@@ -80,7 +80,7 @@ public class TriggerInfo implements SnapshotProcessor {
 
   private final ReentrantLock triggerTableLock = new ReentrantLock();
 
-  private final String snapshotFileName = "trigger_info.bin";
+  private final String SNAPSHOT_FILENAME = "trigger_info.bin";
 
   public TriggerInfo() throws IOException {
     triggerTable = new TriggerTable();
@@ -241,7 +241,7 @@ public class TriggerInfo implements SnapshotProcessor {
 
   @Override
   public boolean processTakeSnapshot(File snapshotDir) throws TException, IOException {
-    File snapshotFile = new File(snapshotDir, snapshotFileName);
+    File snapshotFile = new File(snapshotDir, SNAPSHOT_FILENAME);
     if (snapshotFile.exists() && snapshotFile.isFile()) {
       LOGGER.error(
           "Failed to take snapshot, because snapshot file [{}] is already exist.",
@@ -276,7 +276,7 @@ public class TriggerInfo implements SnapshotProcessor {
 
   @Override
   public void processLoadSnapshot(File snapshotDir) throws TException, IOException {
-    File snapshotFile = new File(snapshotDir, snapshotFileName);
+    File snapshotFile = new File(snapshotDir, SNAPSHOT_FILENAME);
     if (!snapshotFile.exists() || !snapshotFile.isFile()) {
       LOGGER.error(
           "Failed to load snapshot,snapshot file [{}] is not exist.",

@@ -95,7 +95,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
   private final ReentrantReadWriteLock storageGroupReadWriteLock;
   private final ConfigMTree mTree;
 
-  private final String snapshotFileName = "cluster_schema.bin";
+  private final String SNAPSHOT_FILENAME = "cluster_schema.bin";
 
   private final TemplateTable templateTable;
 
@@ -471,7 +471,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
   }
 
   public boolean processMtreeTakeSnapshot(File snapshotDir) throws IOException {
-    File snapshotFile = new File(snapshotDir, snapshotFileName);
+    File snapshotFile = new File(snapshotDir, SNAPSHOT_FILENAME);
     if (snapshotFile.exists() && snapshotFile.isFile()) {
       LOGGER.error(
           "Failed to take snapshot, because snapshot file [{}] is already exist.",
@@ -511,7 +511,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
   }
 
   public void processMtreeLoadSnapshot(File snapshotDir) throws IOException {
-    File snapshotFile = new File(snapshotDir, snapshotFileName);
+    File snapshotFile = new File(snapshotDir, SNAPSHOT_FILENAME);
     if (!snapshotFile.exists() || !snapshotFile.isFile()) {
       LOGGER.error(
           "Failed to load snapshot,snapshot file [{}] is not exist.",

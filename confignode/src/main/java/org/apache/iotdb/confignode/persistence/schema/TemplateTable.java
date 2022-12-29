@@ -57,7 +57,7 @@ public class TemplateTable {
   private final Map<String, Template> templateMap = new ConcurrentHashMap<>();
   private final Map<Integer, Template> templateIdMap = new ConcurrentHashMap<>();
 
-  private final String snapshotFileName = "template_info.bin";
+  private final String SNAPSHOT_FILENAME = "template_info.bin";
 
   public TemplateTable() {
     templateReadWriteLock = new ReentrantReadWriteLock();
@@ -166,7 +166,7 @@ public class TemplateTable {
   }
 
   public boolean processTakeSnapshot(File snapshotDir) throws IOException {
-    File snapshotFile = new File(snapshotDir, snapshotFileName);
+    File snapshotFile = new File(snapshotDir, SNAPSHOT_FILENAME);
     if (snapshotFile.exists() && snapshotFile.isFile()) {
       LOGGER.error(
           "template failed to take snapshot, because snapshot file [{}] is already exist.",
@@ -197,7 +197,7 @@ public class TemplateTable {
   }
 
   public void processLoadSnapshot(File snapshotDir) throws IOException {
-    File snapshotFile = new File(snapshotDir, snapshotFileName);
+    File snapshotFile = new File(snapshotDir, SNAPSHOT_FILENAME);
     if (!snapshotFile.exists() || !snapshotFile.isFile()) {
       LOGGER.error(
           "Failed to load snapshot,snapshot file [{}] is not exist.",
