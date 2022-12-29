@@ -38,10 +38,10 @@ public class DataExchangeMetricSet implements IMetricSet {
 
   public static final String SOURCE_HANDLE_GET_TSBLOCK_LOCAL = "source_handle_get_tsblock_local";
   public static final String SOURCE_HANDLE_GET_TSBLOCK_REMOTE = "source_handle_get_tsblock_remote";
-  public static final String SOURCE_HANDLE_SERIALIZE_TSBLOCK_LOCAL =
-      "source_handle_serialize_tsblock_local";
-  public static final String SOURCE_HANDLE_SERIALIZE_TSBLOCK_REMOTE =
-      "source_handle_serialize_tsblock_remote";
+  public static final String SOURCE_HANDLE_DESERIALIZE_TSBLOCK_LOCAL =
+      "source_handle_deserialize_tsblock_local";
+  public static final String SOURCE_HANDLE_DESERIALIZE_TSBLOCK_REMOTE =
+      "source_handle_deserialize_tsblock_remote";
   public static final String SINK_HANDLE_SEND_TSBLOCK_LOCAL = "sink_handle_send_tsblock_local";
   public static final String SINK_HANDLE_SEND_TSBLOCK_REMOTE = "sink_handle_send_tsblock_remote";
 
@@ -65,21 +65,21 @@ public class DataExchangeMetricSet implements IMetricSet {
             Tag.TYPE.toString(),
             "remote"));
     metricInfoMap.put(
-        SOURCE_HANDLE_SERIALIZE_TSBLOCK_LOCAL,
+        SOURCE_HANDLE_DESERIALIZE_TSBLOCK_LOCAL,
         new MetricInfo(
             MetricType.TIMER,
             metric,
             Tag.OPERATION.toString(),
-            "source_handle_serialize_tsblock",
+            "source_handle_deserialize_tsblock",
             Tag.TYPE.toString(),
             "local"));
     metricInfoMap.put(
-        SOURCE_HANDLE_SERIALIZE_TSBLOCK_REMOTE,
+        SOURCE_HANDLE_DESERIALIZE_TSBLOCK_REMOTE,
         new MetricInfo(
             MetricType.TIMER,
             metric,
             Tag.OPERATION.toString(),
-            "source_handle_serialize_tsblock",
+            "source_handle_deserialize_tsblock",
             Tag.TYPE.toString(),
             "remote"));
     metricInfoMap.put(

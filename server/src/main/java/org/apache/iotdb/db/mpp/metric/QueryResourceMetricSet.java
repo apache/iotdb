@@ -45,14 +45,14 @@ public class QueryResourceMetricSet implements IMetricSet {
   @Override
   public void bindTo(AbstractMetricService metricService) {
     for (String type : resourceTypes) {
-      metricService.getOrCreateRate(metric, MetricLevel.IMPORTANT, tagKey, type);
+      metricService.getOrCreateHistogram(metric, MetricLevel.IMPORTANT, tagKey, type);
     }
   }
 
   @Override
   public void unbindFrom(AbstractMetricService metricService) {
     for (String type : resourceTypes) {
-      metricService.remove(MetricType.RATE, metric, tagKey, type);
+      metricService.remove(MetricType.HISTOGRAM, metric, tagKey, type);
     }
   }
 }

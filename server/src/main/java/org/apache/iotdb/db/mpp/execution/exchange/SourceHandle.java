@@ -53,8 +53,8 @@ import static com.google.common.util.concurrent.Futures.nonCancellationPropagati
 import static org.apache.iotdb.db.mpp.execution.exchange.MPPDataExchangeManager.createFullIdFrom;
 import static org.apache.iotdb.db.mpp.metric.DataExchangeMetricSet.GET_DATA_BLOCK_TASK_CALLER;
 import static org.apache.iotdb.db.mpp.metric.DataExchangeMetricSet.ON_ACKNOWLEDGE_DATA_BLOCK_EVENT_TASK_CALLER;
+import static org.apache.iotdb.db.mpp.metric.DataExchangeMetricSet.SOURCE_HANDLE_DESERIALIZE_TSBLOCK_REMOTE;
 import static org.apache.iotdb.db.mpp.metric.DataExchangeMetricSet.SOURCE_HANDLE_GET_TSBLOCK_REMOTE;
-import static org.apache.iotdb.db.mpp.metric.DataExchangeMetricSet.SOURCE_HANDLE_SERIALIZE_TSBLOCK_REMOTE;
 
 public class SourceHandle implements ISourceHandle {
 
@@ -141,7 +141,7 @@ public class SourceHandle implements ISourceHandle {
         return serde.deserialize(tsBlock);
       } finally {
         QUERY_METRICS.recordDataExchangeCost(
-            SOURCE_HANDLE_SERIALIZE_TSBLOCK_REMOTE, System.nanoTime() - startTime);
+            SOURCE_HANDLE_DESERIALIZE_TSBLOCK_REMOTE, System.nanoTime() - startTime);
       }
     } else {
       return null;

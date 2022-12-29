@@ -17,10 +17,11 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.engine.cache;
+package org.apache.iotdb.db.mpp.metric;
 
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
+import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.utils.MetricLevel;
@@ -28,12 +29,12 @@ import org.apache.iotdb.metrics.utils.MetricType;
 
 import java.util.Objects;
 
-public class ChunkCacheMetrics implements IMetricSet {
+public class TimeSeriesMetadataCacheMetrics implements IMetricSet {
 
-  private final ChunkCache chunkCache;
+  private final TimeSeriesMetadataCache timeSeriesMetadataCache;
 
-  public ChunkCacheMetrics(ChunkCache chunkCache) {
-    this.chunkCache = chunkCache;
+  public TimeSeriesMetadataCacheMetrics(TimeSeriesMetadataCache timeSeriesMetadataCache) {
+    this.timeSeriesMetadataCache = timeSeriesMetadataCache;
   }
 
   @Override
@@ -41,28 +42,37 @@ public class ChunkCacheMetrics implements IMetricSet {
     metricService.createAutoGauge(
         Metric.CACHE_HIT.toString(),
         MetricLevel.IMPORTANT,
-        chunkCache,
-        o -> (long) o.getHitRate(),
+        timeSeriesMetadataCache,
+        l -> (long) timeSeriesMetadataCache.calculateTimeSeriesMetadataHitRatio(),
         Tag.NAME.toString(),
-        "chunk");
+        "timeSeriesMeta");
+    metricService.createAutoGauge(
+        Metric.CACHE_HIT.toString(),
+        MetricLevel.IMPORTANT,
+        timeSeriesMetadataCache,
+        TimeSeriesMetadataCache::calculateBloomFilterHitRatio,
+        Tag.NAME.toString(),
+        "bloomFilter");
   }
 
   @Override
   public void unbindFrom(AbstractMetricService metricService) {
     metricService.remove(
-        MetricType.AUTO_GAUGE, Metric.CACHE_HIT.toString(), Tag.NAME.toString(), "chunk");
+        MetricType.AUTO_GAUGE, Metric.CACHE_HIT.toString(), Tag.NAME.toString(), "timeSeriesMeta");
+    metricService.remove(
+        MetricType.AUTO_GAUGE, Metric.CACHE_HIT.toString(), Tag.NAME.toString(), "bloomFilter");
   }
 
   @Override
   public boolean equals(Object o) {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
-    ChunkCacheMetrics that = (ChunkCacheMetrics) o;
-    return Objects.equals(chunkCache, that.chunkCache);
+    TimeSeriesMetadataCacheMetrics that = (TimeSeriesMetadataCacheMetrics) o;
+    return Objects.equals(timeSeriesMetadataCache, that.timeSeriesMetadataCache);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(chunkCache);
+    return Objects.hash(timeSeriesMetadataCache);
   }
 }

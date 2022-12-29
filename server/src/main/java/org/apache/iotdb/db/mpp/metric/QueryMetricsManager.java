@@ -83,7 +83,7 @@ public class QueryMetricsManager {
   }
 
   public void recordQueryResourceNum(String type, int count) {
-    metricService.rate(
+    metricService.histogram(
         count, Metric.QUERY_RESOURCE.toString(), MetricLevel.IMPORTANT, Tag.TYPE.toString(), type);
   }
 
@@ -98,7 +98,7 @@ public class QueryMetricsManager {
   }
 
   public void recordDataBlockNum(int num) {
-    metricService.rate(
+    metricService.histogram(
         num,
         Metric.DATA_EXCHANGE_COUNT.toString(),
         MetricLevel.IMPORTANT,

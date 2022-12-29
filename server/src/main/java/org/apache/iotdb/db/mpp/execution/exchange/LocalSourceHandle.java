@@ -37,8 +37,8 @@ import java.nio.ByteBuffer;
 
 import static com.google.common.util.concurrent.Futures.nonCancellationPropagating;
 import static org.apache.iotdb.db.mpp.execution.exchange.MPPDataExchangeManager.createFullIdFrom;
+import static org.apache.iotdb.db.mpp.metric.DataExchangeMetricSet.SOURCE_HANDLE_DESERIALIZE_TSBLOCK_LOCAL;
 import static org.apache.iotdb.db.mpp.metric.DataExchangeMetricSet.SOURCE_HANDLE_GET_TSBLOCK_LOCAL;
-import static org.apache.iotdb.db.mpp.metric.DataExchangeMetricSet.SOURCE_HANDLE_SERIALIZE_TSBLOCK_LOCAL;
 
 public class LocalSourceHandle implements ISourceHandle {
 
@@ -129,7 +129,7 @@ public class LocalSourceHandle implements ISourceHandle {
         throw new IoTDBException(e, TSStatusCode.TSBLOCK_SERIALIZE_ERROR.getStatusCode());
       } finally {
         QUERY_METRICS.recordDataExchangeCost(
-            SOURCE_HANDLE_SERIALIZE_TSBLOCK_LOCAL, System.nanoTime() - startTime);
+            SOURCE_HANDLE_DESERIALIZE_TSBLOCK_LOCAL, System.nanoTime() - startTime);
       }
     } else {
       return null;
