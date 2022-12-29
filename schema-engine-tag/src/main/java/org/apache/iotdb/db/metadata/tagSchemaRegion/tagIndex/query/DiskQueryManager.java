@@ -122,7 +122,7 @@ public class DiskQueryManager implements IDiskQueryManager {
 
   private String getDeletionFileName(String tiFileName) {
     String[] strings = tiFileName.split("-");
-    return strings[0] + "-" + SchemaRegionConstant.DELETE + strings[1] + "-" + strings[2];
+    return strings[0] + "-" + SchemaRegionConstant.DELETE + "-" + strings[1] + "-" + strings[2];
   }
 
   private void deleteRecords(QueryResponse queryResponse, File deletionFile) throws IOException {

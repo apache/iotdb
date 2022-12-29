@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.flush;
 
+import org.apache.iotdb.db.metadata.tagSchemaRegion.config.SchemaRegionConstant;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.entry.TiFileHeader;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemChunk;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemChunkGroup;
@@ -99,7 +100,7 @@ public class MemTableFlush extends FlushLevelProcessor<MemTable, MemChunkGroup, 
       for (Map.Entry<String, MemChunk> tagValueEntry :
           entry.getValue().getMemChunkMap().entrySet()) {
         String tagValue = tagValueEntry.getKey();
-        tagKeyAndValues.add(tagKey + tagValue);
+        tagKeyAndValues.add(tagKey + SchemaRegionConstant.SEPARATOR + tagValue);
       }
     }
     return tagKeyAndValues;
