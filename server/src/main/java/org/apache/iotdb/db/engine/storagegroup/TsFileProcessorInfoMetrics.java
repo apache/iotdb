@@ -30,11 +30,12 @@ import java.util.Objects;
 
 public class TsFileProcessorInfoMetrics implements IMetricSet {
   private String storageGroupName;
-  private long memCost;
+  private TsFileProcessorInfo tsFileProcessorInfo;
 
-  public TsFileProcessorInfoMetrics(String storageGroupName, long memCost) {
+  public TsFileProcessorInfoMetrics(
+      String storageGroupName, TsFileProcessorInfo tsFileProcessorInfo) {
     this.storageGroupName = storageGroupName;
-    this.memCost = memCost;
+    this.tsFileProcessorInfo = tsFileProcessorInfo;
   }
 
   @Override
@@ -43,8 +44,8 @@ public class TsFileProcessorInfoMetrics implements IMetricSet {
         .createAutoGauge(
             Metric.MEM.toString(),
             MetricLevel.IMPORTANT,
-            memCost,
-            o -> o,
+            tsFileProcessorInfo,
+            TsFileProcessorInfo::getMemCost,
             Tag.NAME.toString(),
             "chunkMetaData_" + storageGroupName);
   }
@@ -64,11 +65,12 @@ public class TsFileProcessorInfoMetrics implements IMetricSet {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
     TsFileProcessorInfoMetrics that = (TsFileProcessorInfoMetrics) o;
-    return memCost == that.memCost && Objects.equals(storageGroupName, that.storageGroupName);
+    return Objects.equals(storageGroupName, that.storageGroupName)
+        && Objects.equals(tsFileProcessorInfo, that.tsFileProcessorInfo);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(storageGroupName, memCost);
+    return Objects.hash(storageGroupName, tsFileProcessorInfo);
   }
 }
