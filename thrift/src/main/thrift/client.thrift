@@ -482,7 +482,7 @@ service IClientRPCService {
 
   TSExecuteStatementResp executeLastDataQueryV2(1:TSLastDataQueryReq req);
 
-  TSExecuteStatementResp executeAggregationQuery(1:TSAggregationQueryReq req);
+  TSExecuteStatementResp executeAggregationQueryV2(1:TSAggregationQueryReq req);
 
   TSFetchResultsResp fetchResultsV2(1:TSFetchResultsReq req);
 
@@ -559,6 +559,8 @@ service IClientRPCService {
   TSExecuteStatementResp executeRawDataQuery(1:TSRawDataQueryReq req);
 
   TSExecuteStatementResp executeLastDataQuery(1:TSLastDataQueryReq req);
+
+  TSExecuteStatementResp executeAggregationQuery(1:TSAggregationQueryReq req);
 
   i64 requestStatementId(1:i64 sessionId);
 

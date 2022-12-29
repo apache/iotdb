@@ -364,34 +364,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     }
   }
 
-  @Override
-  public TSExecuteStatementResp executeQueryStatementV2(TSExecuteStatementReq req) {
-    return executeStatementV2(req);
-  }
-
-  @Override
-  public TSExecuteStatementResp executeUpdateStatementV2(TSExecuteStatementReq req) {
-    return executeStatementV2(req);
-  }
-
-  @Override
-  public TSExecuteStatementResp executeStatementV2(TSExecuteStatementReq req) {
-    return executeStatementInternal(req, SELECT_RESULT);
-  }
-
-  @Override
-  public TSExecuteStatementResp executeRawDataQueryV2(TSRawDataQueryReq req) {
-    return executeRawDataQueryInternal(req, SELECT_RESULT);
-  }
-
-  @Override
-  public TSExecuteStatementResp executeLastDataQueryV2(TSLastDataQueryReq req) {
-    return executeLastDataQueryInternal(req, SELECT_RESULT);
-  }
-
-  @Override
-  public TSExecuteStatementResp executeAggregationQuery(TSAggregationQueryReq req)
-      throws TException {
+  private TSExecuteStatementResp executeAggregationQueryInternal(
+      TSAggregationQueryReq req, SelectResult setResult) {
     boolean finished = false;
     long queryId = Long.MIN_VALUE;
     if (!SESSION_MANAGER.checkLogin(SESSION_MANAGER.getCurrSession())) {
@@ -430,7 +404,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         if (queryExecution.isQuery()) {
           resp = createResponse(queryExecution.getDatasetHeader(), queryId);
           resp.setStatus(result.status);
-          finished = SELECT_RESULT.apply(resp, queryExecution, req.fetchSize);
+          finished = setResult.apply(resp, queryExecution, req.fetchSize);
           resp.setMoreData(!finished);
         } else {
           resp = RpcUtils.getTSExecuteStatementResp(result.status);
@@ -448,6 +422,36 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         COORDINATOR.cleanupQueryExecution(queryId);
       }
     }
+  }
+
+  @Override
+  public TSExecuteStatementResp executeQueryStatementV2(TSExecuteStatementReq req) {
+    return executeStatementV2(req);
+  }
+
+  @Override
+  public TSExecuteStatementResp executeUpdateStatementV2(TSExecuteStatementReq req) {
+    return executeStatementV2(req);
+  }
+
+  @Override
+  public TSExecuteStatementResp executeStatementV2(TSExecuteStatementReq req) {
+    return executeStatementInternal(req, SELECT_RESULT);
+  }
+
+  @Override
+  public TSExecuteStatementResp executeRawDataQueryV2(TSRawDataQueryReq req) {
+    return executeRawDataQueryInternal(req, SELECT_RESULT);
+  }
+
+  @Override
+  public TSExecuteStatementResp executeLastDataQueryV2(TSLastDataQueryReq req) {
+    return executeLastDataQueryInternal(req, SELECT_RESULT);
+  }
+
+  @Override
+  public TSExecuteStatementResp executeAggregationQueryV2(TSAggregationQueryReq req) {
+    return executeAggregationQueryInternal(req, SELECT_RESULT);
   }
 
   @Override
@@ -1371,6 +1375,11 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
   @Override
   public TSExecuteStatementResp executeLastDataQuery(TSLastDataQueryReq req) {
     return executeLastDataQueryInternal(req, OLD_SELECT_RESULT);
+  }
+
+  @Override
+  public TSExecuteStatementResp executeAggregationQuery(TSAggregationQueryReq req) {
+    return executeAggregationQueryInternal(req, OLD_SELECT_RESULT);
   }
 
   @Override

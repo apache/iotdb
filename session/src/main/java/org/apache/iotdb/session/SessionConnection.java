@@ -543,7 +543,7 @@ public class SessionConnection {
       throws StatementExecutionException, IoTDBConnectionException, RedirectException {
     TSExecuteStatementResp tsExecuteStatementResp;
     try {
-      tsExecuteStatementResp = client.executeAggregationQuery(tsAggregationQueryReq);
+      tsExecuteStatementResp = client.executeAggregationQueryV2(tsAggregationQueryReq);
       RpcUtils.verifySuccessWithRedirection(tsExecuteStatementResp.getStatus());
     } catch (TException e) {
       if (reconnect()) {
