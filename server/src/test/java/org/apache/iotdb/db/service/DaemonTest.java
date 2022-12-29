@@ -24,14 +24,14 @@ public class DaemonTest {
 
   @Test
   public void testPid() {
-    IoTDB ioTDB = IoTDB.getInstance();
+    DataNode ioTDB = DataNode.getInstance();
     // no pid set, so there is nothing happens
     ioTDB.processPid();
   }
 
   @Test
   public void testSetPid() {
-    IoTDB ioTDB = IoTDB.getInstance();
+    DataNode ioTDB = DataNode.getInstance();
     System.setProperty("iotdb-pidfile", "./iotdb.pid");
     // no pid set, so there is nothing happens
     ioTDB.processPid();

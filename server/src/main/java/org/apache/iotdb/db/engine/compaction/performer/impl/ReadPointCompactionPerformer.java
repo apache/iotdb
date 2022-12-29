@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.TsFileMetricManager;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.compaction.CompactionUtils;
 import org.apache.iotdb.db.engine.compaction.cross.rewrite.task.ReadPointPerformerSubTask;
@@ -75,6 +76,7 @@ public class ReadPointCompactionPerformer
   private CompactionTaskSummary summary;
 
   private List<TsFileResource> targetFiles = Collections.emptyList();
+  private long tempFileSize = 0L;
 
   public ReadPointCompactionPerformer(
       List<TsFileResource> seqFiles,
@@ -102,6 +104,8 @@ public class ReadPointCompactionPerformer
     QueryResourceManager.getInstance()
         .getQueryFileManager()
         .addUsedFilesForQuery(queryId, queryDataSource);
+    TsFileMetricManager.getInstance()
+        .addCompactionTempFileNum(seqFiles.size() == 0, false, targetFiles.size());
     try (AbstractCompactionWriter compactionWriter =
         getCompactionWriter(seqFiles, unseqFiles, targetFiles)) {
       // Do not close device iterator, because tsfile reader is managed by FileReaderManager.
@@ -128,6 +132,10 @@ public class ReadPointCompactionPerformer
 
     } finally {
       QueryResourceManager.getInstance().endQuery(queryId);
+      TsFileMetricManager.getInstance()
+          .addCompactionTempFileNum(seqFiles.size() == 0, false, -targetFiles.size());
+      TsFileMetricManager.getInstance()
+          .addCompactionTempFileSize(seqFiles.size() == 0, false, tempFileSize);
     }
   }
 
@@ -177,6 +185,11 @@ public class ReadPointCompactionPerformer
       // check whether to flush chunk metadata or not
       compactionWriter.checkAndMayFlushChunkMetadata();
     }
+    // add temp file metrics
+    long currentWriterSize = compactionWriter.getWriterSize();
+    TsFileMetricManager.getInstance()
+        .addCompactionTempFileSize(seqFiles.size() == 0, false, currentWriterSize - tempFileSize);
+    tempFileSize = currentWriterSize;
   }
 
   private void compactNonAlignedSeries(
@@ -224,6 +237,12 @@ public class ReadPointCompactionPerformer
       // check whether to flush chunk metadata or not
       compactionWriter.checkAndMayFlushChunkMetadata();
     }
+
+    // add temp file metrics
+    long currentWriterSize = compactionWriter.getWriterSize();
+    TsFileMetricManager.getInstance()
+        .addCompactionTempFileSize(seqFiles.size() == 0, false, currentWriterSize - tempFileSize);
+    tempFileSize = currentWriterSize;
   }
 
   /**

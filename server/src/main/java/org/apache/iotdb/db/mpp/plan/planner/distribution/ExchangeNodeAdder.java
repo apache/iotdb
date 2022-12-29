@@ -230,7 +230,11 @@ public class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
     List<PlanNode> mergeSortNodeList = new ArrayList<>();
     for (List<PlanNode> group : childrenGroupMap.values()) {
       if (group.size() == 1) {
-        mergeSortNodeList.add(group.get(0));
+        PlanNode planNode = group.get(0);
+        if (planNode instanceof SingleDeviceViewNode) {
+          ((SingleDeviceViewNode) planNode).setCacheOutputColumnNames(true);
+        }
+        mergeSortNodeList.add(planNode);
         continue;
       }
       MergeSortNode mergeSortNode =

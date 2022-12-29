@@ -54,19 +54,29 @@ public class Utils {
   }
 
   public static MemoryPool createMockBlockedMemoryPool(
-      String queryId, int numOfMockTsBlock, long mockTsBlockSize) {
+      String queryId,
+      String fragmentInstanceId,
+      String planNodeId,
+      int numOfMockTsBlock,
+      long mockTsBlockSize) {
     long capacityInBytes = numOfMockTsBlock * mockTsBlockSize;
     MemoryPool mockMemoryPool = Mockito.mock(MemoryPool.class);
     AtomicReference<SettableFuture<Void>> settableFuture = new AtomicReference<>();
     settableFuture.set(SettableFuture.create());
     settableFuture.get().set(null);
     AtomicReference<Long> reservedBytes = new AtomicReference<>(0L);
-    Mockito.when(mockMemoryPool.reserve(Mockito.eq(queryId), Mockito.anyLong()))
+    Mockito.when(
+            mockMemoryPool.reserve(
+                Mockito.eq(queryId),
+                Mockito.eq(fragmentInstanceId),
+                Mockito.eq(planNodeId),
+                Mockito.anyLong(),
+                Mockito.anyLong()))
         .thenAnswer(
             invocation -> {
-              long bytesToReserve = invocation.getArgument(1);
+              long bytesToReserve = invocation.getArgument(3);
               if (reservedBytes.get() + bytesToReserve <= capacityInBytes) {
-                reservedBytes.updateAndGet(v -> v + (long) invocation.getArgument(1));
+                reservedBytes.updateAndGet(v -> v + (long) invocation.getArgument(3));
                 return new Pair<>(settableFuture.get(), true);
               } else {
                 settableFuture.set(SettableFuture.create());
@@ -76,7 +86,7 @@ public class Utils {
     Mockito.doAnswer(
             (Answer<Void>)
                 invocation -> {
-                  reservedBytes.updateAndGet(v -> v - (long) invocation.getArgument(1));
+                  reservedBytes.updateAndGet(v -> v - (long) invocation.getArgument(3));
                   if (reservedBytes.get() <= 0) {
                     settableFuture.get().set(null);
                     reservedBytes.updateAndGet(v -> v + mockTsBlockSize);
@@ -84,11 +94,21 @@ public class Utils {
                   return null;
                 })
         .when(mockMemoryPool)
-        .free(Mockito.eq(queryId), Mockito.anyLong());
-    Mockito.when(mockMemoryPool.tryReserve(Mockito.eq(queryId), Mockito.anyLong()))
+        .free(
+            Mockito.eq(queryId),
+            Mockito.eq(fragmentInstanceId),
+            Mockito.eq(planNodeId),
+            Mockito.anyLong());
+    Mockito.when(
+            mockMemoryPool.tryReserve(
+                Mockito.eq(queryId),
+                Mockito.eq(fragmentInstanceId),
+                Mockito.eq(planNodeId),
+                Mockito.anyLong(),
+                Mockito.anyLong()))
         .thenAnswer(
             invocation -> {
-              long bytesToReserve = invocation.getArgument(1);
+              long bytesToReserve = invocation.getArgument(3);
               if (reservedBytes.get() + bytesToReserve > capacityInBytes) {
                 return false;
               } else {
@@ -101,9 +121,21 @@ public class Utils {
 
   public static MemoryPool createMockNonBlockedMemoryPool() {
     MemoryPool mockMemoryPool = Mockito.mock(MemoryPool.class);
-    Mockito.when(mockMemoryPool.reserve(Mockito.anyString(), Mockito.anyLong()))
+    Mockito.when(
+            mockMemoryPool.reserve(
+                Mockito.anyString(),
+                Mockito.anyString(),
+                Mockito.anyString(),
+                Mockito.anyLong(),
+                Mockito.anyLong()))
         .thenReturn(new Pair<>(immediateFuture(null), true));
-    Mockito.when(mockMemoryPool.tryReserve(Mockito.anyString(), Mockito.anyLong()))
+    Mockito.when(
+            mockMemoryPool.tryReserve(
+                Mockito.anyString(),
+                Mockito.anyString(),
+                Mockito.anyString(),
+                Mockito.anyLong(),
+                Mockito.anyLong()))
         .thenReturn(true);
     return mockMemoryPool;
   }

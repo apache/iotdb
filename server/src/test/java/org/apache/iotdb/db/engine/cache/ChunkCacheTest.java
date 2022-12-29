@@ -20,13 +20,11 @@
 package org.apache.iotdb.db.engine.cache;
 
 import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.query.control.FileReaderManager;
-import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
@@ -51,7 +49,6 @@ import org.junit.Test;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_SEPARATOR;
@@ -83,7 +80,6 @@ public class ChunkCacheTest {
     if (!tempSGDir.exists()) {
       Assert.assertTrue(tempSGDir.mkdirs());
     }
-    IoTDB.configManager.init();
     prepareSeries();
     prepareFiles(seqFileNum, unseqFileNum);
   }
@@ -95,7 +91,6 @@ public class ChunkCacheTest {
     unseqResources.clear();
     chunkCache.clear();
     TimeSeriesMetadataCache.getInstance().clear();
-    IoTDB.configManager.clear();
     EnvironmentUtils.cleanAllDir();
   }
 
@@ -145,18 +140,6 @@ public class ChunkCacheTest {
     deviceIds = new String[deviceNum];
     for (int i = 0; i < deviceNum; i++) {
       deviceIds[i] = TEST_SG + PATH_SEPARATOR + "device" + i;
-    }
-    IoTDB.schemaProcessor.setStorageGroup(new PartialPath(TEST_SG));
-    for (String device : deviceIds) {
-      for (MeasurementSchema measurementSchema : measurementSchemas) {
-        PartialPath devicePath = new PartialPath(device);
-        IoTDB.schemaProcessor.createTimeseries(
-            devicePath.concatNode(measurementSchema.getMeasurementId()),
-            measurementSchema.getType(),
-            measurementSchema.getEncodingType(),
-            measurementSchema.getCompressor(),
-            Collections.emptyMap());
-      }
     }
   }
 

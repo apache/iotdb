@@ -27,7 +27,6 @@ import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.qp.Planner;
 import org.apache.iotdb.db.tools.settle.TsFileAndModSettleTool;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
@@ -65,7 +64,6 @@ public class TsFileAndModSettleToolTest {
   protected final String SENSOR1 = "sensor_1";
   protected final String SENSOR2 = "sensor_2";
   private final long VALUE_OFFSET = 1;
-  private final Planner processor = new Planner();
   private String path = null;
   private IoTDBConfig config;
   private long originPartitionInterval;

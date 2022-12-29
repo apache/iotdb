@@ -25,6 +25,7 @@ import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
 import org.apache.iotdb.commons.client.ClientPoolFactory;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.async.AsyncDataNodeInternalServiceClient;
+import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.confignode.client.async.handlers.AsyncClientHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.AsyncTSStatusRPCHandler;
@@ -59,8 +60,6 @@ import org.apache.iotdb.mpp.rpc.thrift.TUpdateTriggerLocationReq;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.IOException;
 
 /** Asynchronously send RPC requests to DataNodes. See mpp.thrift for more details. */
 public class AsyncDataNodeClientPool {
@@ -350,7 +349,7 @@ public class AsyncDataNodeClientPool {
   }
 
   public AsyncDataNodeInternalServiceClient getAsyncClient(TDataNodeLocation targetDataNode)
-      throws IOException {
+      throws ClientManagerException {
     return clientManager.borrowClient(targetDataNode.getInternalEndPoint());
   }
 

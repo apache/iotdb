@@ -19,8 +19,12 @@
 
 package org.apache.iotdb.confignode.manager;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.sync.PipeException;
@@ -35,6 +39,7 @@ import org.apache.iotdb.confignode.consensus.request.write.datanode.RemoveDataNo
 import org.apache.iotdb.confignode.consensus.request.write.procedure.UpdateProcedurePlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
+import org.apache.iotdb.confignode.manager.partition.heartbeat.RegionGroupCache;
 import org.apache.iotdb.confignode.persistence.ProcedureInfo;
 import org.apache.iotdb.confignode.procedure.Procedure;
 import org.apache.iotdb.confignode.procedure.ProcedureExecutor;
@@ -66,6 +71,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateCQReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteTimeSeriesReq;
+import org.apache.iotdb.confignode.rpc.thrift.TMigrateRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionMigrateResultReportReq;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.db.metadata.template.Template;
@@ -82,8 +88,11 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 public class ProcedureManager {
   private static final Logger LOGGER = LoggerFactory.getLogger(ProcedureManager.class);
@@ -329,6 +338,118 @@ public class ProcedureManager {
               LOGGER.info("Submit RemoveDataNodeProcedure successfully, {}", tDataNodeLocation);
             });
     return true;
+  }
+
+  public TSStatus migrateRegion(TMigrateRegionReq migrateRegionReq) {
+    // TODO: Whether to guarantee the check high consistency, i.e, use consensus read to check
+    Map<TConsensusGroupId, RegionGroupCache> regionReplicaMap =
+        configManager.getPartitionManager().getRegionGroupCacheMap();
+    Optional<TConsensusGroupId> regionId =
+        regionReplicaMap.keySet().stream()
+            .filter(id -> id.getId() == migrateRegionReq.getRegionId())
+            .findAny();
+    TDataNodeLocation originalDataNode =
+        configManager
+            .getNodeManager()
+            .getRegisteredDataNode(migrateRegionReq.getFromId())
+            .getLocation();
+    TDataNodeLocation destDataNode =
+        configManager
+            .getNodeManager()
+            .getRegisteredDataNode(migrateRegionReq.getToId())
+            .getLocation();
+    if (!regionId.isPresent()) {
+      LOGGER.warn(
+          "Submit RegionMigrateProcedure failed, because no Region {}",
+          migrateRegionReq.getRegionId());
+      TSStatus status = new TSStatus(TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode());
+      status.setMessage(
+          "Submit RegionMigrateProcedure failed, because no region Group "
+              + migrateRegionReq.getRegionId());
+      return status;
+    }
+    Set<Integer> dataNodesInRegion =
+        regionReplicaMap.get(regionId.get()).getStatistics().getRegionStatisticsMap().keySet();
+    if (originalDataNode == null) {
+      LOGGER.warn(
+          "Submit RegionMigrateProcedure failed, because no original DataNode {}",
+          migrateRegionReq.getFromId());
+      TSStatus status = new TSStatus(TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode());
+      status.setMessage(
+          "Submit RegionMigrateProcedure failed, because no original DataNode "
+              + migrateRegionReq.getFromId());
+      return status;
+    } else if (destDataNode == null) {
+      LOGGER.warn(
+          "Submit RegionMigrateProcedure failed, because no target DataNode {}",
+          migrateRegionReq.getToId());
+      TSStatus status = new TSStatus(TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode());
+      status.setMessage(
+          "Submit RegionMigrateProcedure failed, because no target DataNode "
+              + migrateRegionReq.getToId());
+      return status;
+    } else if (!dataNodesInRegion.contains(migrateRegionReq.getFromId())) {
+      LOGGER.warn(
+          "Submit RegionMigrateProcedure failed, because the original DataNode {} doesn't contain Region {}",
+          migrateRegionReq.getFromId(),
+          migrateRegionReq.getRegionId());
+      TSStatus status = new TSStatus(TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode());
+      status.setMessage(
+          "Submit RegionMigrateProcedure failed, because the original DataNode "
+              + migrateRegionReq.getFromId()
+              + " doesn't contain Region "
+              + migrateRegionReq.getRegionId());
+      return status;
+    } else if (dataNodesInRegion.contains(migrateRegionReq.getToId())) {
+      LOGGER.warn(
+          "Submit RegionMigrateProcedure failed, because the target DataNode {} already contains Region {}",
+          migrateRegionReq.getToId(),
+          migrateRegionReq.getRegionId());
+      TSStatus status = new TSStatus(TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode());
+      status.setMessage(
+          "Submit RegionMigrateProcedure failed, because the target DataNode "
+              + migrateRegionReq.getToId()
+              + " already contains Region "
+              + migrateRegionReq.getRegionId());
+      return status;
+    }
+    // Here we only check Running DataNode to implement migration, because removing nodes may not
+    // exist when add peer is performing
+    Set<Integer> aliveDataNodes =
+        configManager.getNodeManager().filterDataNodeThroughStatus(NodeStatus.Running).stream()
+            .map(TDataNodeConfiguration::getLocation)
+            .map(TDataNodeLocation::getDataNodeId)
+            .collect(Collectors.toSet());
+    dataNodesInRegion.retainAll(aliveDataNodes);
+    if (dataNodesInRegion.isEmpty()) {
+      LOGGER.warn(
+          "Submit RegionMigrateProcedure failed, because all of the DataNodes in Region Group {} is unavailable.",
+          migrateRegionReq.getRegionId());
+      TSStatus status = new TSStatus(TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode());
+      status.setMessage(
+          "Submit RegionMigrateProcedure failed, because all of the DataNodes in Region Group "
+              + migrateRegionReq.getRegionId()
+              + " are unavailable.");
+      return status;
+    } else if (!aliveDataNodes.contains(migrateRegionReq.getToId())) {
+      LOGGER.warn(
+          "Submit RegionMigrateProcedure failed, because the destDataNode {} is ReadOnly or Unknown.",
+          migrateRegionReq.getToId());
+      TSStatus status = new TSStatus(TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode());
+      status.setMessage(
+          "Submit RegionMigrateProcedure failed, because the destDataNode "
+              + migrateRegionReq.getToId()
+              + " is ReadOnly.");
+      return status;
+    }
+    this.executor.submitProcedure(
+        new RegionMigrateProcedure(regionId.get(), originalDataNode, destDataNode));
+    LOGGER.info(
+        "Submit RegionMigrateProcedure successfully, Region: {}, From: {}, To: {}",
+        migrateRegionReq.getRegionId(),
+        migrateRegionReq.getFromId(),
+        migrateRegionReq.getToId());
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
   /**

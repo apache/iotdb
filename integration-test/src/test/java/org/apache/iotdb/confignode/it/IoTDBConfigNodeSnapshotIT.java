@@ -91,12 +91,13 @@ public class IoTDBConfigNodeSnapshotIT {
   @Before
   public void setUp() throws Exception {
     originalConfigNodeConsensusProtocolClass =
-        ConfigFactory.getConfig().getConfigNodeConsesusProtocolClass();
+        ConfigFactory.getConfig().getConfigNodeConsensusProtocolClass();
     ConfigFactory.getConfig().setConfigNodeConsesusProtocolClass(ConsensusFactory.RATIS_CONSENSUS);
 
     originalRatisSnapshotTriggerThreshold =
-        ConfigFactory.getConfig().getRatisSnapshotTriggerThreshold();
-    ConfigFactory.getConfig().setRatisSnapshotTriggerThreshold(testRatisSnapshotTriggerThreshold);
+        ConfigFactory.getConfig().getConfigNodeRatisSnapshotTriggerThreshold();
+    ConfigFactory.getConfig()
+        .setConfigNodeRatisSnapshotTriggerThreshold(testRatisSnapshotTriggerThreshold);
 
     originalTimePartitionInterval = ConfigFactory.getConfig().getTimePartitionInterval();
     ConfigFactory.getConfig().setTimePartitionInterval(testTimePartitionInterval);
@@ -112,13 +113,12 @@ public class IoTDBConfigNodeSnapshotIT {
     ConfigFactory.getConfig()
         .setConfigNodeConsesusProtocolClass(originalConfigNodeConsensusProtocolClass);
     ConfigFactory.getConfig()
-        .setRatisSnapshotTriggerThreshold(originalRatisSnapshotTriggerThreshold);
+        .setConfigNodeRatisSnapshotTriggerThreshold(originalRatisSnapshotTriggerThreshold);
     ConfigFactory.getConfig().setTimePartitionInterval(originalTimePartitionInterval);
   }
 
   @Test
-  public void testPartitionInfoSnapshot()
-      throws IOException, IllegalPathException, TException, InterruptedException {
+  public void testPartitionInfoSnapshot() throws Exception {
     final String sg = "root.sg";
     final int storageGroupNum = 10;
     final int seriesPartitionSlotsNum = 10;

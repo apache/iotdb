@@ -30,7 +30,7 @@ public class RegionGroupCache {
 
   private final TConsensusGroupId consensusGroupId;
 
-  // Map<DataNodeId(where a RegionReplica resides), RegionCache>
+  // Map<DataNodeId(where a RegionReplica resides in), RegionCache>
   private final Map<Integer, RegionCache> regionCacheMap;
 
   // The previous RegionGroupStatistics, used for comparing with

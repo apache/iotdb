@@ -115,7 +115,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
 import org.apache.iotdb.confignode.rpc.thrift.TTriggerState;
 import org.apache.iotdb.db.metadata.template.Template;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.template.CreateSchemaTemplateStatement;
 import org.apache.iotdb.trigger.api.enums.FailureStrategy;
 import org.apache.iotdb.trigger.api.enums.TriggerEvent;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -149,10 +148,10 @@ public class ConfigPhysicalPlanSerDeTest {
     TDataNodeLocation dataNodeLocation = new TDataNodeLocation();
     dataNodeLocation.setDataNodeId(1);
     dataNodeLocation.setClientRpcEndPoint(new TEndPoint("0.0.0.0", 6667));
-    dataNodeLocation.setInternalEndPoint(new TEndPoint("0.0.0.0", 9003));
-    dataNodeLocation.setMPPDataExchangeEndPoint(new TEndPoint("0.0.0.0", 8777));
-    dataNodeLocation.setDataRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 40010));
-    dataNodeLocation.setSchemaRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 50010));
+    dataNodeLocation.setInternalEndPoint(new TEndPoint("0.0.0.0", 10730));
+    dataNodeLocation.setMPPDataExchangeEndPoint(new TEndPoint("0.0.0.0", 10740));
+    dataNodeLocation.setDataRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 10760));
+    dataNodeLocation.setSchemaRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 10750));
 
     TDataNodeConfiguration dataNodeConfiguration = new TDataNodeConfiguration();
     dataNodeConfiguration.setLocation(dataNodeLocation);
@@ -169,10 +168,10 @@ public class ConfigPhysicalPlanSerDeTest {
     TDataNodeLocation dataNodeLocation = new TDataNodeLocation();
     dataNodeLocation.setDataNodeId(1);
     dataNodeLocation.setClientRpcEndPoint(new TEndPoint("0.0.0.0", 6667));
-    dataNodeLocation.setInternalEndPoint(new TEndPoint("0.0.0.0", 9003));
-    dataNodeLocation.setMPPDataExchangeEndPoint(new TEndPoint("0.0.0.0", 8777));
-    dataNodeLocation.setDataRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 40010));
-    dataNodeLocation.setSchemaRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 50010));
+    dataNodeLocation.setInternalEndPoint(new TEndPoint("0.0.0.0", 10730));
+    dataNodeLocation.setMPPDataExchangeEndPoint(new TEndPoint("0.0.0.0", 10740));
+    dataNodeLocation.setDataRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 10760));
+    dataNodeLocation.setSchemaRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 10750));
 
     UpdateDataNodePlan plan0 = new UpdateDataNodePlan(dataNodeLocation);
     UpdateDataNodePlan plan1 =
@@ -281,10 +280,10 @@ public class ConfigPhysicalPlanSerDeTest {
     TDataNodeLocation dataNodeLocation = new TDataNodeLocation();
     dataNodeLocation.setDataNodeId(0);
     dataNodeLocation.setClientRpcEndPoint(new TEndPoint("0.0.0.0", 6667));
-    dataNodeLocation.setInternalEndPoint(new TEndPoint("0.0.0.0", 9003));
-    dataNodeLocation.setMPPDataExchangeEndPoint(new TEndPoint("0.0.0.0", 8777));
-    dataNodeLocation.setDataRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 40010));
-    dataNodeLocation.setSchemaRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 50010));
+    dataNodeLocation.setInternalEndPoint(new TEndPoint("0.0.0.0", 10730));
+    dataNodeLocation.setMPPDataExchangeEndPoint(new TEndPoint("0.0.0.0", 10740));
+    dataNodeLocation.setDataRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 10760));
+    dataNodeLocation.setSchemaRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 10750));
 
     CreateRegionGroupsPlan req0 = new CreateRegionGroupsPlan();
     TRegionReplicaSet dataRegionSet = new TRegionReplicaSet();
@@ -307,10 +306,10 @@ public class ConfigPhysicalPlanSerDeTest {
     TDataNodeLocation dataNodeLocation = new TDataNodeLocation();
     dataNodeLocation.setDataNodeId(0);
     dataNodeLocation.setClientRpcEndPoint(new TEndPoint("0.0.0.0", 6667));
-    dataNodeLocation.setInternalEndPoint(new TEndPoint("0.0.0.0", 9003));
-    dataNodeLocation.setMPPDataExchangeEndPoint(new TEndPoint("0.0.0.0", 8777));
-    dataNodeLocation.setDataRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 40010));
-    dataNodeLocation.setSchemaRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 50010));
+    dataNodeLocation.setInternalEndPoint(new TEndPoint("0.0.0.0", 10730));
+    dataNodeLocation.setMPPDataExchangeEndPoint(new TEndPoint("0.0.0.0", 10740));
+    dataNodeLocation.setDataRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 10760));
+    dataNodeLocation.setSchemaRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 10750));
 
     TRegionReplicaSet regionReplicaSet = new TRegionReplicaSet();
     regionReplicaSet.setRegionId(new TConsensusGroupId(TConsensusGroupType.DataRegion, 0));
@@ -345,10 +344,10 @@ public class ConfigPhysicalPlanSerDeTest {
     TDataNodeLocation dataNodeLocation = new TDataNodeLocation();
     dataNodeLocation.setDataNodeId(0);
     dataNodeLocation.setClientRpcEndPoint(new TEndPoint("0.0.0.0", 6667));
-    dataNodeLocation.setInternalEndPoint(new TEndPoint("0.0.0.0", 9003));
-    dataNodeLocation.setMPPDataExchangeEndPoint(new TEndPoint("0.0.0.0", 8777));
-    dataNodeLocation.setDataRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 40010));
-    dataNodeLocation.setSchemaRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 50010));
+    dataNodeLocation.setInternalEndPoint(new TEndPoint("0.0.0.0", 10730));
+    dataNodeLocation.setMPPDataExchangeEndPoint(new TEndPoint("0.0.0.0", 10740));
+    dataNodeLocation.setDataRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 10760));
+    dataNodeLocation.setSchemaRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 10750));
 
     String storageGroup = "root.sg0";
     TSeriesPartitionSlot seriesPartitionSlot = new TSeriesPartitionSlot(10);
@@ -400,10 +399,10 @@ public class ConfigPhysicalPlanSerDeTest {
     TDataNodeLocation dataNodeLocation = new TDataNodeLocation();
     dataNodeLocation.setDataNodeId(0);
     dataNodeLocation.setClientRpcEndPoint(new TEndPoint("0.0.0.0", 6667));
-    dataNodeLocation.setInternalEndPoint(new TEndPoint("0.0.0.0", 9003));
-    dataNodeLocation.setMPPDataExchangeEndPoint(new TEndPoint("0.0.0.0", 8777));
-    dataNodeLocation.setDataRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 40010));
-    dataNodeLocation.setSchemaRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 50010));
+    dataNodeLocation.setInternalEndPoint(new TEndPoint("0.0.0.0", 10730));
+    dataNodeLocation.setMPPDataExchangeEndPoint(new TEndPoint("0.0.0.0", 10740));
+    dataNodeLocation.setDataRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 10760));
+    dataNodeLocation.setSchemaRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 10750));
 
     String storageGroup = "root.sg0";
     TSeriesPartitionSlot seriesPartitionSlot = new TSeriesPartitionSlot(10);
@@ -745,10 +744,10 @@ public class ConfigPhysicalPlanSerDeTest {
     TDataNodeLocation dataNodeLocation0 = new TDataNodeLocation();
     dataNodeLocation0.setDataNodeId(5);
     dataNodeLocation0.setClientRpcEndPoint(new TEndPoint("0.0.0.0", 6667));
-    dataNodeLocation0.setInternalEndPoint(new TEndPoint("0.0.0.0", 9003));
-    dataNodeLocation0.setMPPDataExchangeEndPoint(new TEndPoint("0.0.0.0", 8777));
-    dataNodeLocation0.setDataRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 40010));
-    dataNodeLocation0.setSchemaRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 50010));
+    dataNodeLocation0.setInternalEndPoint(new TEndPoint("0.0.0.0", 10730));
+    dataNodeLocation0.setMPPDataExchangeEndPoint(new TEndPoint("0.0.0.0", 10740));
+    dataNodeLocation0.setDataRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 10760));
+    dataNodeLocation0.setSchemaRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 10750));
 
     TConsensusGroupId schemaRegionGroupId = new TConsensusGroupId(SchemaRegion, 1);
     TConsensusGroupId dataRegionGroupId = new TConsensusGroupId(DataRegion, 0);
@@ -815,7 +814,7 @@ public class ConfigPhysicalPlanSerDeTest {
 
   @Test
   public void CreateSchemaTemplatePlanTest() throws IOException, IllegalPathException {
-    Template template = new Template(newCreateSchemaTemplateStatement("template_name"));
+    Template template = newSchemaTemplate("template_name");
     CreateSchemaTemplatePlan createSchemaTemplatePlan0 =
         new CreateSchemaTemplatePlan(template.serialize().array());
     CreateSchemaTemplatePlan createSchemaTemplatePlan1 =
@@ -824,7 +823,7 @@ public class ConfigPhysicalPlanSerDeTest {
     Assert.assertEquals(createSchemaTemplatePlan0, createSchemaTemplatePlan1);
   }
 
-  private CreateSchemaTemplateStatement newCreateSchemaTemplateStatement(String name) {
+  private Template newSchemaTemplate(String name) throws IllegalPathException {
     List<List<String>> measurements =
         Arrays.asList(
             Collections.singletonList(name + "_" + "temperature"),
@@ -840,7 +839,7 @@ public class ConfigPhysicalPlanSerDeTest {
         Arrays.asList(
             Collections.singletonList(CompressionType.SNAPPY),
             Collections.singletonList(CompressionType.SNAPPY));
-    return new CreateSchemaTemplateStatement(name, measurements, dataTypes, encodings, compressors);
+    return new Template(name, measurements, dataTypes, encodings, compressors);
   }
 
   @Test

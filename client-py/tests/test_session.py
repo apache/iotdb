@@ -20,6 +20,7 @@
 import numpy as np
 
 from iotdb.Session import Session
+from iotdb.utils.BitMap import BitMap
 from iotdb.utils.IoTDBConstants import TSDataType, TSEncoding, Compressor
 from iotdb.utils.NumpyTablet import NumpyTablet
 from iotdb.utils.Tablet import Tablet
@@ -289,6 +290,31 @@ def test_session():
         if session.insert_tablet(tablet_) < 0:
             test_fail()
             print_message("insert tablet with empty cells failed")
+
+        # insert one numpy tablet with empty cells into the database.
+        np_values_ = [
+            np.array([False, True, False, True], np.dtype(">?")),
+            np.array([10, 0, 100, 0], np.dtype(">i4")),
+            np.array([11, 11111, 0, 0], np.dtype(">i8")),
+            np.array([1.1, 1.25, 188.1, 0], np.dtype(">f4")),
+            np.array([10011.1, 101.0, 688.25, 0], np.dtype(">f8")),
+            np.array(["test01", "test02", "test03", ""]),
+        ]
+        np_timestamps_ = np.array([30, 31, 32, 33], np.dtype(">i8"))
+        np_bitmaps_ = []
+        for i in range(len(measurements_)):
+            np_bitmaps_.append(BitMap(len(np_timestamps_)))
+        np_bitmaps_[0].mark(0)
+        np_bitmaps_[1].mark(1)
+        np_bitmaps_[2].mark(2)
+        np_bitmaps_[4].mark(3)
+        np_bitmaps_[5].mark(3)
+        np_tablet_ = NumpyTablet(
+            "root.sg_test_01.d_01", measurements_, data_types_, np_values_, np_timestamps_, np_bitmaps_
+        )
+        if session.insert_tablet(np_tablet_) < 0:
+            test_fail()
+            print_message("insert numpy tablet with empty cells failed")
 
         # insert records of one device
         time_list = [1, 2, 3]

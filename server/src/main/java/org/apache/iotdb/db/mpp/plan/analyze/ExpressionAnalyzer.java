@@ -20,10 +20,13 @@
 package org.apache.iotdb.db.mpp.plan.analyze;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.db.constant.SqlConstant;
 import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
 import org.apache.iotdb.db.mpp.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.ExpressionType;
@@ -39,7 +42,6 @@ import org.apache.iotdb.db.mpp.plan.expression.ternary.TernaryExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.InExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.UnaryExpression;
 import org.apache.iotdb.db.mpp.plan.statement.component.ResultColumn;
-import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter;
@@ -272,7 +274,7 @@ public class ExpressionAnalyzer {
     } else if (expression instanceof TimeSeriesOperand) {
       PartialPath rawPath = ((TimeSeriesOperand) expression).getPath();
       List<PartialPath> actualPaths = new ArrayList<>();
-      if (rawPath.getFullPath().startsWith(SQLConstant.ROOT + TsFileConstant.PATH_SEPARATOR)) {
+      if (rawPath.getFullPath().startsWith(SqlConstant.ROOT + TsFileConstant.PATH_SEPARATOR)) {
         actualPaths.add(rawPath);
         patternTree.appendPathPattern(rawPath);
       } else {
@@ -341,7 +343,7 @@ public class ExpressionAnalyzer {
     } else if (expression instanceof TimeSeriesOperand) {
       PartialPath rawPath = ((TimeSeriesOperand) expression).getPath();
       List<PartialPath> actualPaths = new ArrayList<>();
-      if (rawPath.getFullPath().startsWith(SQLConstant.ROOT + TsFileConstant.PATH_SEPARATOR)) {
+      if (rawPath.getFullPath().startsWith(SqlConstant.ROOT + TsFileConstant.PATH_SEPARATOR)) {
         actualPaths.add(rawPath);
       } else {
         for (PartialPath prefixPath : prefixPaths) {
@@ -389,7 +391,7 @@ public class ExpressionAnalyzer {
       }
     } else if (predicate instanceof TimeSeriesOperand) {
       PartialPath rawPath = ((TimeSeriesOperand) predicate).getPath();
-      if (rawPath.getFullPath().startsWith(SQLConstant.ROOT + TsFileConstant.PATH_SEPARATOR)) {
+      if (rawPath.getFullPath().startsWith(SqlConstant.ROOT + TsFileConstant.PATH_SEPARATOR)) {
         patternTree.appendPathPattern(rawPath);
         return;
       }
@@ -547,7 +549,7 @@ public class ExpressionAnalyzer {
     } else if (predicate instanceof TimeSeriesOperand) {
       PartialPath filterPath = ((TimeSeriesOperand) predicate).getPath();
       List<PartialPath> concatPaths = new ArrayList<>();
-      if (!filterPath.getFirstNode().equals(SQLConstant.ROOT)) {
+      if (!filterPath.getFirstNode().equals(SqlConstant.ROOT)) {
         prefixPaths.forEach(prefix -> concatPaths.add(prefix.concatPath(filterPath)));
       } else {
         // do nothing in the case of "where root.d1.s1 > 5"
@@ -1185,6 +1187,7 @@ public class ExpressionAnalyzer {
       if (rawPath.isMeasurementAliasExists()) {
         measurementWithSchema.setMeasurementAlias(rawPath.getMeasurementAlias());
       }
+      measurementWithSchema.setTagMap(rawPath.getTagMap());
       return new TimeSeriesOperand(measurementWithSchema);
     } else if (expression instanceof LeafOperand) {
       return expression;
@@ -1222,5 +1225,72 @@ public class ExpressionAnalyzer {
       }
     }
     return predicate;
+  }
+
+  /**
+   * Bind DataType for TimeSeriesOperand in Expression with according ColumnHeaderName. eg:
+   *
+   * <p>columnHeaders: [[QueryId, TEXT], [DataNodeId, INT32]...]
+   *
+   * <p>dataNodeID > 1 -> DataNodeId > 1, `DataNodeID` will be a MeasurementPath with INT32
+   *
+   * <p>errorInput > 1, no according ColumnHeaderName of `errorInput`, throw exception
+   */
+  public static Expression bindTypeForTimeSeriesOperand(
+      Expression predicate, List<ColumnHeader> columnHeaders) {
+    if (predicate instanceof TernaryExpression) {
+      Expression firstExpression =
+          bindTypeForTimeSeriesOperand(
+              ((TernaryExpression) predicate).getFirstExpression(), columnHeaders);
+      Expression secondExpression =
+          bindTypeForTimeSeriesOperand(
+              ((TernaryExpression) predicate).getSecondExpression(), columnHeaders);
+      Expression thirdExpression =
+          bindTypeForTimeSeriesOperand(
+              ((TernaryExpression) predicate).getThirdExpression(), columnHeaders);
+      return reconstructTernaryExpression(
+          predicate, firstExpression, secondExpression, thirdExpression);
+    } else if (predicate instanceof BinaryExpression) {
+      Expression leftExpression =
+          bindTypeForTimeSeriesOperand(
+              ((BinaryExpression) predicate).getLeftExpression(), columnHeaders);
+      Expression rightExpression =
+          bindTypeForTimeSeriesOperand(
+              ((BinaryExpression) predicate).getRightExpression(), columnHeaders);
+      return reconstructBinaryExpression(
+          predicate.getExpressionType(), leftExpression, rightExpression);
+    } else if (predicate instanceof UnaryExpression) {
+      Expression expression =
+          bindTypeForTimeSeriesOperand(
+              ((UnaryExpression) predicate).getExpression(), columnHeaders);
+      return reconstructUnaryExpression((UnaryExpression) predicate, expression);
+    } else if (predicate instanceof FunctionExpression) {
+      List<Expression> expressions = predicate.getExpressions();
+      List<Expression> childrenExpressions = new ArrayList<>();
+      for (Expression expression : expressions) {
+        childrenExpressions.add(bindTypeForTimeSeriesOperand(expression, columnHeaders));
+      }
+      return reconstructFunctionExpression((FunctionExpression) predicate, childrenExpressions);
+    } else if (predicate instanceof TimeSeriesOperand) {
+      String oldPathString = ((TimeSeriesOperand) predicate).getPath().getFullPath();
+      // There are not too many TimeSeriesOperand and columnHeaders in our case,
+      // so we use `for loop` instead of map to get the matched columnHeader for oldPath here.
+      for (ColumnHeader columnHeader : columnHeaders) {
+        if (oldPathString.equalsIgnoreCase(columnHeader.getColumnName())) {
+          try {
+            return reconstructTimeSeriesOperand(
+                new MeasurementPath(columnHeader.getColumnName(), columnHeader.getColumnType()));
+          } catch (IllegalPathException ignored) {
+          }
+        }
+      }
+      throw new SemanticException(
+          String.format("please ensure input[%s] is correct", oldPathString));
+    } else if (predicate instanceof LeafOperand) {
+      return predicate;
+    } else {
+      throw new IllegalArgumentException(
+          "unsupported expression type: " + predicate.getExpressionType());
+    }
   }
 }

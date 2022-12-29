@@ -21,6 +21,41 @@
 
 # 集群运维命令
 
+## 展示集群配置
+
+当前 IoTDB 支持使用如下 SQL 展示集群的关键参数：
+```
+SHOW CLUSTER PARAMETERS
+```
+
+示例：
+```
+IoTDB> show cluster parameters
++----------------------------------+-----------------------------------------------------------------+
+|                 ClusterParameters|                                                            Value|
++----------------------------------+-----------------------------------------------------------------+
+|                       ClusterName|                                                   defaultCluster|
+|             DataReplicationFactor|                                                                1|
+|           SchemaReplicationFactor|                                                                1|
+|  DataRegionConsensusProtocolClass|                      org.apache.iotdb.consensus.iot.IoTConsensus|
+|SchemaRegionConsensusProtocolClass|                  org.apache.iotdb.consensus.ratis.RatisConsensus|
+|  ConfigNodeConsensusProtocolClass|                  org.apache.iotdb.consensus.ratis.RatisConsensus|
+|             TimePartitionInterval|                                                        604800000|
+|                    DefaultTTL(ms)|                                              9223372036854775807|
+|              ReadConsistencyLevel|                                                           strong|
+|           SchemaRegionPerDataNode|                                                              1.0|
+|            DataRegionPerProcessor|                                                              1.0|
+|           LeastDataRegionGroupNum|                                                                5|
+|                     SeriesSlotNum|                                                            10000|
+|           SeriesSlotExecutorClass|org.apache.iotdb.commons.partition.executor.hash.BKDRHashExecutor|
+|         DiskSpaceWarningThreshold|                                                             0.05|
++----------------------------------+-----------------------------------------------------------------+
+Total line number = 15
+It costs 0.242s
+```
+
+**注意：** 必须保证该 SQL 展示的所有配置参数在同一集群各个节点完全一致
+
 ## 展示 ConfigNode 信息
 
 当前 IoTDB 支持使用如下 SQL 展示 ConfigNode 的信息：
@@ -34,9 +69,9 @@ IoTDB> show confignodes
 +------+-------+---------------+------------+--------+
 |NodeID| Status|InternalAddress|InternalPort|    Role|
 +------+-------+---------------+------------+--------+
-|     0|Running|      127.0.0.1|       22277|  Leader|
-|     1|Running|      127.0.0.1|       22279|Follower|
-|     2|Running|      127.0.0.1|       22281|Follower|
+|     0|Running|      127.0.0.1|       10710|  Leader|
+|     1|Running|      127.0.0.1|       10711|Follower|
+|     2|Running|      127.0.0.1|       10712|Follower|
 +------+-------+---------------+------------+--------+
 Total line number = 3
 It costs 0.030s
@@ -111,12 +146,12 @@ IoTDB> show cluster
 +------+----------+-------+---------------+------------+
 |NodeID|  NodeType| Status|InternalAddress|InternalPort|
 +------+----------+-------+---------------+------------+
-|     0|ConfigNode|Running|      127.0.0.1|       22277|
-|     1|ConfigNode|Running|      127.0.0.1|       22279|
-|     2|ConfigNode|Running|      127.0.0.1|       22281|
-|     3|  DataNode|Running|      127.0.0.1|        9003|
-|     4|  DataNode|Running|      127.0.0.1|        9005|
-|     5|  DataNode|Running|      127.0.0.1|        9007|
+|     0|ConfigNode|Running|      127.0.0.1|       10710|
+|     1|ConfigNode|Running|      127.0.0.1|       10711|
+|     2|ConfigNode|Running|      127.0.0.1|       10712|
+|     3|  DataNode|Running|      127.0.0.1|       10730|
+|     4|  DataNode|Running|      127.0.0.1|       10731|
+|     5|  DataNode|Running|      127.0.0.1|       10732|
 +------+----------+-------+---------------+------------+
 Total line number = 6
 It costs 0.011s
@@ -128,12 +163,12 @@ IoTDB> show cluster
 +------+----------+-------+---------------+------------+
 |NodeID|  NodeType| Status|InternalAddress|InternalPort|
 +------+----------+-------+---------------+------------+
-|     0|ConfigNode|Running|      127.0.0.1|       22277|
-|     1|ConfigNode|Unknown|      127.0.0.1|       22279|
-|     2|ConfigNode|Running|      127.0.0.1|       22281|
-|     3|  DataNode|Running|      127.0.0.1|        9003|
-|     4|  DataNode|Running|      127.0.0.1|        9005|
-|     5|  DataNode|Running|      127.0.0.1|        9007|
+|     0|ConfigNode|Running|      127.0.0.1|       10710|
+|     1|ConfigNode|Unknown|      127.0.0.1|       10711|
+|     2|ConfigNode|Running|      127.0.0.1|       10712|
+|     3|  DataNode|Running|      127.0.0.1|       10730|
+|     4|  DataNode|Running|      127.0.0.1|       10731|
+|     5|  DataNode|Running|      127.0.0.1|       10732|
 +------+----------+-------+---------------+------------+
 Total line number = 6
 It costs 0.012s
@@ -147,16 +182,16 @@ SHOW CLUSTER DETAILS
 示例：
 ```
 IoTDB> show cluster details
-+------+----------+-------+---------------+------------+-------------------+----------+-------+-----------------+-------------------+-------+
-|NodeID|  NodeType| Status|InternalAddress|InternalPort|ConfigConsensusPort|RpcAddress|RpcPort|DataConsensusPort|SchemaConsensusPort|MppPort|
-+------+----------+-------+---------------+------------+-------------------+----------+-------+-----------------+-------------------+-------+
-|     0|ConfigNode|Running|      127.0.0.1|       22277|              22278|          |       |                 |                   |       |
-|     1|ConfigNode|Running|      127.0.0.1|       22279|              22280|          |       |                 |                   |       |
-|     2|ConfigNode|Running|      127.0.0.1|       22281|              22282|          |       |                 |                   |       |
-|     3|  DataNode|Running|      127.0.0.1|        9003|                   | 127.0.0.1|   6667|            40010|              50010|   8777|
-|     4|  DataNode|Running|      127.0.0.1|        9004|                   | 127.0.0.1|   6668|            40011|              50011|   8778|
-|     5|  DataNode|Running|      127.0.0.1|        9005|                   | 127.0.0.1|   6669|            40012|              50012|   8779|
-+------+----------+-------+---------------+------------+-------------------+----------+-------+-----------------+-------------------+-------+
++------+----------+-------+---------------+------------+-------------------+----------+-------+-------+-------------------+-----------------+
+|NodeID|  NodeType| Status|InternalAddress|InternalPort|ConfigConsensusPort|RpcAddress|RpcPort|MppPort|SchemaConsensusPort|DataConsensusPort|
++------+----------+-------+---------------+------------+-------------------+----------+-------+-------+-------------------+-----------------+
+|     0|ConfigNode|Running|      127.0.0.1|       10710|              10720|          |       |       |                   |                 |
+|     1|ConfigNode|Running|      127.0.0.1|       10711|              10721|          |       |       |                   |                 |
+|     2|ConfigNode|Running|      127.0.0.1|       10712|              10722|          |       |       |                   |                 |
+|     3|  DataNode|Running|      127.0.0.1|       10730|                   | 127.0.0.1|   6667|  10740|              10750|            10760|
+|     4|  DataNode|Running|      127.0.0.1|       10731|                   | 127.0.0.1|   6668|  10741|              10751|            10761|
+|     5|  DataNode|Running|      127.0.0.1|       10732|                   | 127.0.0.1|   6669|  10742|              10752|            10762|
++------+----------+-------+---------------+------------+-------------------+----------+-------+-------+-------------------+-----------------+
 Total line number = 6
 It costs 0.340s
 ```
@@ -412,4 +447,67 @@ IoTDB> show seriesslotid of root.sg
 +------------+
 Total line number = 1
 It costs 0.006s
+```
+
+## 迁移 Region
+以下 SQL 语句可以被用于手动迁移一个 region， 可用于负载均衡或其他目的。
+```
+MIGRATE REGION <Region-id> FROM <original-DataNodeId> TO <dest-DataNodeId>
+```
+示例:
+```
+IoTDB> SHOW REGIONS
++--------+------------+-------+-------------+------------+----------+----------+----------+-------+--------+
+|RegionId|        Type| Status|     Database|SeriesSlotId|TimeSlotId|DataNodeId|RpcAddress|RpcPort|    Role|
++--------+------------+-------+-------------+------------+----------+----------+----------+-------+--------+
+|       0|SchemaRegion|Running|root.test.g_0|         500|         0|         3| 127.0.0.1|   6670|  Leader|
+|       0|SchemaRegion|Running|root.test.g_0|         500|         0|         4| 127.0.0.1|   6681|Follower|
+|       0|SchemaRegion|Running|root.test.g_0|         500|         0|         5| 127.0.0.1|   6668|Follower|
+|       1|  DataRegion|Running|root.test.g_0|         183|       200|         1| 127.0.0.1|   6667|Follower|
+|       1|  DataRegion|Running|root.test.g_0|         183|       200|         3| 127.0.0.1|   6670|Follower|
+|       1|  DataRegion|Running|root.test.g_0|         183|       200|         7| 127.0.0.1|   6669|  Leader|
+|       2|  DataRegion|Running|root.test.g_0|         181|       200|         3| 127.0.0.1|   6670|  Leader|
+|       2|  DataRegion|Running|root.test.g_0|         181|       200|         4| 127.0.0.1|   6681|Follower|
+|       2|  DataRegion|Running|root.test.g_0|         181|       200|         5| 127.0.0.1|   6668|Follower|
+|       3|  DataRegion|Running|root.test.g_0|         180|       200|         1| 127.0.0.1|   6667|Follower|
+|       3|  DataRegion|Running|root.test.g_0|         180|       200|         5| 127.0.0.1|   6668|  Leader|
+|       3|  DataRegion|Running|root.test.g_0|         180|       200|         7| 127.0.0.1|   6669|Follower|
+|       4|  DataRegion|Running|root.test.g_0|         179|       200|         3| 127.0.0.1|   6670|Follower|
+|       4|  DataRegion|Running|root.test.g_0|         179|       200|         4| 127.0.0.1|   6681|  Leader|
+|       4|  DataRegion|Running|root.test.g_0|         179|       200|         7| 127.0.0.1|   6669|Follower|
+|       5|  DataRegion|Running|root.test.g_0|         179|       200|         1| 127.0.0.1|   6667|  Leader|
+|       5|  DataRegion|Running|root.test.g_0|         179|       200|         4| 127.0.0.1|   6681|Follower|
+|       5|  DataRegion|Running|root.test.g_0|         179|       200|         5| 127.0.0.1|   6668|Follower|
++--------+------------+-------+-------------+------------+----------+----------+----------+-------+--------+
+Total line number = 18
+It costs 0.161s
+
+IoTDB> MIGRATE REGION 1 FROM 3 TO 4
+Msg: The statement is executed successfully.
+
+IoTDB> SHOW REGIONS
++--------+------------+-------+-------------+------------+----------+----------+----------+-------+--------+
+|RegionId|        Type| Status|     Database|SeriesSlotId|TimeSlotId|DataNodeId|RpcAddress|RpcPort|    Role|
++--------+------------+-------+-------------+------------+----------+----------+----------+-------+--------+
+|       0|SchemaRegion|Running|root.test.g_0|         500|         0|         3| 127.0.0.1|   6670|  Leader|
+|       0|SchemaRegion|Running|root.test.g_0|         500|         0|         4| 127.0.0.1|   6681|Follower|
+|       0|SchemaRegion|Running|root.test.g_0|         500|         0|         5| 127.0.0.1|   6668|Follower|
+|       1|  DataRegion|Running|root.test.g_0|         183|       200|         1| 127.0.0.1|   6667|Follower|
+|       1|  DataRegion|Running|root.test.g_0|         183|       200|         4| 127.0.0.1|   6681|Follower|
+|       1|  DataRegion|Running|root.test.g_0|         183|       200|         7| 127.0.0.1|   6669|  Leader|
+|       2|  DataRegion|Running|root.test.g_0|         181|       200|         3| 127.0.0.1|   6670|  Leader|
+|       2|  DataRegion|Running|root.test.g_0|         181|       200|         4| 127.0.0.1|   6681|Follower|
+|       2|  DataRegion|Running|root.test.g_0|         181|       200|         5| 127.0.0.1|   6668|Follower|
+|       3|  DataRegion|Running|root.test.g_0|         180|       200|         1| 127.0.0.1|   6667|Follower|
+|       3|  DataRegion|Running|root.test.g_0|         180|       200|         5| 127.0.0.1|   6668|  Leader|
+|       3|  DataRegion|Running|root.test.g_0|         180|       200|         7| 127.0.0.1|   6669|Follower|
+|       4|  DataRegion|Running|root.test.g_0|         179|       200|         3| 127.0.0.1|   6670|Follower|
+|       4|  DataRegion|Running|root.test.g_0|         179|       200|         4| 127.0.0.1|   6681|  Leader|
+|       4|  DataRegion|Running|root.test.g_0|         179|       200|         7| 127.0.0.1|   6669|Follower|
+|       5|  DataRegion|Running|root.test.g_0|         179|       200|         1| 127.0.0.1|   6667|  Leader|
+|       5|  DataRegion|Running|root.test.g_0|         179|       200|         4| 127.0.0.1|   6681|Follower|
+|       5|  DataRegion|Running|root.test.g_0|         179|       200|         5| 127.0.0.1|   6668|Follower|
++--------+------------+-------+-------------+------------+----------+----------+----------+-------+--------+
+Total line number = 18
+It costs 0.165s
 ```

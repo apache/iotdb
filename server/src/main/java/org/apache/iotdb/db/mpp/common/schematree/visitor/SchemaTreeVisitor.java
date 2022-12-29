@@ -44,11 +44,6 @@ public abstract class SchemaTreeVisitor<R>
   }
 
   @Override
-  protected boolean isInternalNode(SchemaNode node) {
-    return !node.isMeasurement();
-  }
-
-  @Override
   protected SchemaNode getChild(SchemaNode parent, String childName) {
     return parent.getChild(childName);
   }

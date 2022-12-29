@@ -42,11 +42,11 @@ ddlStatement
     | dropFunction | dropTrigger | dropContinuousQuery | dropSchemaTemplate
     | setTTL | unsetTTL | startTrigger | stopTrigger | setSchemaTemplate | unsetSchemaTemplate
     | showStorageGroup | showDevices | showTimeseries | showChildPaths | showChildNodes
-    | showFunctions | showTriggers | showContinuousQueries | showTTL | showAllTTL | showCluster | showClusterDetails | showRegion | showDataNodes | showConfigNodes
+    | showFunctions | showTriggers | showContinuousQueries | showTTL | showAllTTL | showCluster | showRegion | showDataNodes | showConfigNodes
     | showSchemaTemplates | showNodesInSchemaTemplate
     | showPathsUsingSchemaTemplate | showPathsSetSchemaTemplate
     | countStorageGroup | countDevices | countTimeseries | countNodes
-    | getRegionId | getTimeSlotList | getSeriesSlotList
+    | getRegionId | getTimeSlotList | getSeriesSlotList | migrateRegion
     ;
 
 dmlStatement
@@ -61,7 +61,7 @@ dclStatement
 utilityStatement
     : merge | fullMerge | flush | clearCache | settle | explain
     | setSystemStatus | showVersion | showFlushInfo | showLockInfo | showQueryResource
-    | showQueryProcesslist | killQuery | grantWatermarkEmbedding | revokeWatermarkEmbedding
+    | showQueries | killQuery | grantWatermarkEmbedding | revokeWatermarkEmbedding
     | loadConfiguration | loadTimeseries | loadFile | removeFile | unloadFile;
 
 syncStatement
@@ -164,7 +164,6 @@ createContinuousQuery
 resampleClause
     : RESAMPLE
         (EVERY everyInterval=DURATION_LITERAL)?
-        (FOR DURATION_LITERAL)?
         (BOUNDARY boundaryTime=timeValue)?
         (RANGE startTimeOffset=DURATION_LITERAL (COMMA endTimeOffset=DURATION_LITERAL)?)?
     ;
@@ -255,6 +254,11 @@ getSeriesSlotList
     : SHOW (DATA|SCHEMA)? SERIESSLOTID OF path=prefixPath
     ;
 
+// Migrate Region
+migrateRegion
+    : MIGRATE REGION regionId=INTEGER_LITERAL FROM fromId=INTEGER_LITERAL TO toId=INTEGER_LITERAL
+    ;
+
 // Set TTL
 setTTL
     : SET TTL TO path=prefixPath time=INTEGER_LITERAL
@@ -337,17 +341,12 @@ showAllTTL
 
 // Show Cluster
 showCluster
-    : SHOW CLUSTER
-    ;
-
-// Show Cluster Details
-showClusterDetails
-    : SHOW CLUSTER DETAILS
+    : SHOW CLUSTER (DETAILS | PARAMETERS)?
     ;
 
 // Show Region
 showRegion
-    : SHOW (SCHEMA | DATA)? REGIONS (OF STORAGE GROUP prefixPath? (COMMA prefixPath)*)?
+    : SHOW (SCHEMA | DATA)? REGIONS (OF (STORAGE GROUP | DATABASE) prefixPath? (COMMA prefixPath)*)?
     ;
 
 // Show Data Nodes
@@ -495,6 +494,10 @@ sortKey
     : TIME
     | TIMESERIES
     | DEVICE
+    | QUERYID
+    | DATANODEID
+    | ELAPSEDTIME
+    | STATEMENT
     ;
 
 // ---- Fill Clause
@@ -722,9 +725,12 @@ showQueryResource
     : SHOW QUERY RESOURCE
     ;
 
-// Show Query Processlist
-showQueryProcesslist
-    : SHOW QUERY PROCESSLIST
+// Show Queries / Show Query Processlist
+showQueries
+    : SHOW (QUERIES | QUERY PROCESSLIST)
+    whereClause?
+    orderByClause?
+    rowPaginationClause?
     ;
 
 // Kill Query

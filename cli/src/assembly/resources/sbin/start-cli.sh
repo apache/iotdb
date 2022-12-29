@@ -110,8 +110,6 @@ IOTDB_CLI_CONF=${IOTDB_HOME}/conf
 
 MAIN_CLASS=org.apache.iotdb.cli.Cli
 
-
-CLASSPATH=""
 for f in ${IOTDB_HOME}/lib/*.jar; do
   CLASSPATH=${CLASSPATH}":"$f
 done

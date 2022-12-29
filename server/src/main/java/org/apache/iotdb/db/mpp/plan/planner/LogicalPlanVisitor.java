@@ -66,6 +66,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowDevicesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ActivateTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowPathsUsingTemplateStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.ShowQueriesStatement;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -704,6 +705,14 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
                 analysis.getSpecifiedTemplateRelatedPathPatternList(),
                 analysis.getTemplateSetInfo().left.getId())
             .planSchemaQueryMerge(false);
+    return planBuilder.getRoot();
+  }
+
+  @Override
+  public PlanNode visitShowQueries(
+      ShowQueriesStatement showQueriesStatement, MPPQueryContext context) {
+    LogicalPlanBuilder planBuilder = new LogicalPlanBuilder(analysis, context);
+    // TODO planBuilder = planBuilder.planShowQueries()
     return planBuilder.getRoot();
   }
 }

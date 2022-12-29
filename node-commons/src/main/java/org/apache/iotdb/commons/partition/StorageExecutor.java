@@ -22,13 +22,15 @@ package org.apache.iotdb.commons.partition;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 
+import javax.annotation.Nonnull;
+
 import java.util.Objects;
 
 /** StorageExecutor indicates execution of this query need data from StorageEngine */
 public class StorageExecutor implements ExecutorType {
-  private TRegionReplicaSet regionReplicaSet;
+  private final TRegionReplicaSet regionReplicaSet;
 
-  public StorageExecutor(TRegionReplicaSet regionReplicaSet) {
+  public StorageExecutor(@Nonnull TRegionReplicaSet regionReplicaSet) {
     this.regionReplicaSet = regionReplicaSet;
   }
 
@@ -45,11 +47,6 @@ public class StorageExecutor implements ExecutorType {
   @Override
   public TRegionReplicaSet getRegionReplicaSet() {
     return regionReplicaSet;
-  }
-
-  @Override
-  public void setRegionReplicaSet(TRegionReplicaSet regionReplicaSet) {
-    this.regionReplicaSet = regionReplicaSet;
   }
 
   @Override

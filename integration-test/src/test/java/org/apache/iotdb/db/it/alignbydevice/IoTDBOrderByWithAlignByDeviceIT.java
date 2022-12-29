@@ -163,6 +163,11 @@ public class IoTDBOrderByWithAlignByDeviceIT {
         deviceToAvgTemperature.put(places[i], aT);
         deviceToAvgPrecipitation.put(places[i], aP);
       }
+
+      for (String sql : optimizedSQL) {
+        statement.execute(sql);
+      }
+
     } catch (Exception e) {
       e.printStackTrace();
     }
@@ -178,7 +183,7 @@ public class IoTDBOrderByWithAlignByDeviceIT {
   // ORDER BY DEVICE
   @Test
   public void orderByDeviceTest1() {
-    String sql = "SELECT * FROM root.** ORDER BY DEVICE ALIGN BY DEVICE";
+    String sql = "SELECT * FROM root.weather.** ORDER BY DEVICE ALIGN BY DEVICE";
     Object[] expectedDevice = Arrays.stream(places.clone()).sorted().toArray();
     int index = 0;
     try (Connection connection = EnvFactory.getEnv().getConnection();
@@ -219,7 +224,7 @@ public class IoTDBOrderByWithAlignByDeviceIT {
 
   @Test
   public void orderByDeviceTest2() {
-    String sql = "SELECT * FROM root.** ORDER BY DEVICE ASC ALIGN BY DEVICE";
+    String sql = "SELECT * FROM root.weather.** ORDER BY DEVICE ASC ALIGN BY DEVICE";
     Object[] expectedDevice = Arrays.stream(places.clone()).sorted().toArray();
     int index = 0;
     try (Connection connection = EnvFactory.getEnv().getConnection();
@@ -260,7 +265,7 @@ public class IoTDBOrderByWithAlignByDeviceIT {
 
   @Test
   public void orderByDeviceTest3() {
-    String sql = "SELECT * FROM root.** ORDER BY DEVICE DESC ALIGN BY DEVICE";
+    String sql = "SELECT * FROM root.weather.** ORDER BY DEVICE DESC ALIGN BY DEVICE";
     Object[] expectedDevice =
         Arrays.stream(places.clone()).sorted(Comparator.reverseOrder()).toArray();
     int index = 0;
@@ -304,7 +309,7 @@ public class IoTDBOrderByWithAlignByDeviceIT {
 
   @Test
   public void orderByTimeTest1() {
-    String sql = "SELECT * FROM root.** ORDER BY TIME ALIGN BY DEVICE";
+    String sql = "SELECT * FROM root.weather.** ORDER BY TIME ALIGN BY DEVICE";
     int total = 0;
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -342,7 +347,7 @@ public class IoTDBOrderByWithAlignByDeviceIT {
 
   @Test
   public void orderByTimeTest2() {
-    String sql = "SELECT * FROM root.** ORDER BY TIME ASC ALIGN BY DEVICE";
+    String sql = "SELECT * FROM root.weather.** ORDER BY TIME ASC ALIGN BY DEVICE";
     int total = 0;
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -380,7 +385,7 @@ public class IoTDBOrderByWithAlignByDeviceIT {
 
   @Test
   public void orderByTimeTest3() {
-    String sql = "SELECT * FROM root.** ORDER BY TIME DESC ALIGN BY DEVICE";
+    String sql = "SELECT * FROM root.weather.** ORDER BY TIME DESC ALIGN BY DEVICE";
     int total = 0;
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -420,7 +425,7 @@ public class IoTDBOrderByWithAlignByDeviceIT {
 
   @Test
   public void orderByDeviceTimeTest1() {
-    String sql = "SELECT * FROM root.** ORDER BY DEVICE ASC,TIME DESC ALIGN BY DEVICE";
+    String sql = "SELECT * FROM root.weather.** ORDER BY DEVICE ASC,TIME DESC ALIGN BY DEVICE";
     Object[] expectedDevice = Arrays.stream(places.clone()).sorted().toArray();
     int index = 0;
     try (Connection connection = EnvFactory.getEnv().getConnection();
@@ -463,7 +468,7 @@ public class IoTDBOrderByWithAlignByDeviceIT {
 
   @Test
   public void orderByDeviceTimeTest2() {
-    String sql = "SELECT * FROM root.** ORDER BY DEVICE ASC,TIME ASC ALIGN BY DEVICE";
+    String sql = "SELECT * FROM root.weather.** ORDER BY DEVICE ASC,TIME ASC ALIGN BY DEVICE";
     Object[] expectedDevice = Arrays.stream(places.clone()).sorted().toArray();
     int index = 0;
     try (Connection connection = EnvFactory.getEnv().getConnection();
@@ -504,7 +509,7 @@ public class IoTDBOrderByWithAlignByDeviceIT {
 
   @Test
   public void orderByDeviceTimeTest3() {
-    String sql = "SELECT * FROM root.** ORDER BY DEVICE DESC,TIME DESC ALIGN BY DEVICE";
+    String sql = "SELECT * FROM root.weather.** ORDER BY DEVICE DESC,TIME DESC ALIGN BY DEVICE";
     Object[] expectedDevice =
         Arrays.stream(places.clone()).sorted(Comparator.reverseOrder()).toArray();
     int index = 0;
@@ -548,7 +553,7 @@ public class IoTDBOrderByWithAlignByDeviceIT {
 
   @Test
   public void orderByDeviceTimeTest4() {
-    String sql = "SELECT * FROM root.** ORDER BY DEVICE DESC,TIME ASC ALIGN BY DEVICE";
+    String sql = "SELECT * FROM root.weather.** ORDER BY DEVICE DESC,TIME ASC ALIGN BY DEVICE";
     Object[] expectedDevice =
         Arrays.stream(places.clone()).sorted(Comparator.reverseOrder()).toArray();
     int index = 0;
@@ -592,7 +597,7 @@ public class IoTDBOrderByWithAlignByDeviceIT {
 
   @Test
   public void orderByTimeDeviceTest1() {
-    String sql = "SELECT * FROM root.** ORDER BY TIME ASC,DEVICE DESC ALIGN BY DEVICE";
+    String sql = "SELECT * FROM root.weather.** ORDER BY TIME ASC,DEVICE DESC ALIGN BY DEVICE";
     int total = 0;
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -630,7 +635,7 @@ public class IoTDBOrderByWithAlignByDeviceIT {
 
   @Test
   public void orderByTimeDeviceTest2() {
-    String sql = "SELECT * FROM root.** ORDER BY TIME ASC,DEVICE ASC ALIGN BY DEVICE";
+    String sql = "SELECT * FROM root.weather.** ORDER BY TIME ASC,DEVICE ASC ALIGN BY DEVICE";
     int total = 0;
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -668,7 +673,7 @@ public class IoTDBOrderByWithAlignByDeviceIT {
 
   @Test
   public void orderByTimeDeviceTest3() {
-    String sql = "SELECT * FROM root.** ORDER BY TIME DESC,DEVICE DESC ALIGN BY DEVICE";
+    String sql = "SELECT * FROM root.weather.** ORDER BY TIME DESC,DEVICE DESC ALIGN BY DEVICE";
     int total = 0;
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -706,7 +711,7 @@ public class IoTDBOrderByWithAlignByDeviceIT {
 
   @Test
   public void orderByTimeDeviceTest4() {
-    String sql = "SELECT * FROM root.** ORDER BY TIME DESC,DEVICE ASC ALIGN BY DEVICE";
+    String sql = "SELECT * FROM root.weather.** ORDER BY TIME DESC,DEVICE ASC ALIGN BY DEVICE";
     int total = 0;
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -1169,6 +1174,63 @@ public class IoTDBOrderByWithAlignByDeviceIT {
           if (index % 10 == 0) cnt--;
         }
         assertEquals(30, index);
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  // test the optimized plan
+  public static String[] optimizedSQL =
+      new String[] {
+        "insert into root.ln.wf01.wt01(timestamp,temperature,status) values(2017-11-01T00:00:00.000+08:00,25.96,true)",
+        "insert into root.ln.wf01.wt01(timestamp,temperature,status) values(2017-11-01T00:01:00.000+08:00,24.36,true)",
+        "insert into root.ln.wf02.wt02(timestamp,status,hardware) values(1970-01-01T08:00:00.001+08:00,true,'v1')",
+        "insert into root.ln.wf02.wt02(timestamp,status,hardware) values(1970-01-01T08:00:00.002+08:00,false,'v2')",
+        "insert into root.ln.wf02.wt02(timestamp,status,hardware) values(2017-11-01T00:00:00.000+08:00,true,'v2')",
+        "insert into root.ln.wf02.wt02(timestamp,status,hardware) values(2017-11-01T00:01:00.000+08:00,true,'v2')"
+      };
+
+  String[] res =
+      new String[] {
+        "v2,true,null",
+        "null,true,24.36",
+        "v2,true,null",
+        "null,true,25.96",
+        "v2,false,null",
+        "v1,true,null"
+      };
+
+  @Test
+  public void optimizedPlanTest() {
+    String sql = "SELECT * FROM root.ln.** ORDER BY TIME DESC,DEVICE DESC ALIGN BY DEVICE";
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+
+      try (ResultSet resultSet = statement.executeQuery(sql)) {
+        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+        checkHeader(resultSetMetaData, "Time,Device,hardware,status,temperature");
+        long lastTimeStamp = Long.MAX_VALUE;
+        String lastDevice = "";
+        int i = 0;
+        while (resultSet.next()) {
+          long actualTimeStamp = resultSet.getLong(1);
+          assertTrue(actualTimeStamp <= lastTimeStamp);
+          String actualDevice = resultSet.getString(2);
+          if (!lastDevice.equals("") && actualTimeStamp == lastTimeStamp) {
+            assertTrue(actualDevice.compareTo(lastDevice) <= 0);
+          }
+          lastDevice = actualDevice;
+          lastTimeStamp = actualTimeStamp;
+          String actualHardware = resultSet.getString(3);
+          String actualStatus = resultSet.getString(4);
+          String actualTemperature = resultSet.getString(5);
+          String stringBuilder = actualHardware + "," + actualStatus + "," + actualTemperature;
+          assertEquals(res[i], stringBuilder);
+          i++;
+        }
+        assertEquals(i, 6);
       }
     } catch (Exception e) {
       e.printStackTrace();

@@ -31,9 +31,11 @@ import org.apache.iotdb.db.mpp.plan.execution.config.metadata.DropTriggerTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.GetRegionIdTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.GetSeriesSlotListTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.GetTimeSlotListTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.metadata.MigrateRegionTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.SetStorageGroupTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.SetTTLTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.ShowClusterDetailsTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.metadata.ShowClusterParametersTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.ShowClusterTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.ShowConfigNodesTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.ShowContinuousQueriesTask;
@@ -81,6 +83,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.DropTriggerStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.GetRegionIdStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.GetSeriesSlotListStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.GetTimeSlotListStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.MigrateRegionStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowClusterStatement;
@@ -172,9 +175,13 @@ public class ConfigTaskVisitor
   @Override
   public IConfigTask visitShowCluster(
       ShowClusterStatement showClusterStatement, TaskContext context) {
-    return showClusterStatement.isDetails()
-        ? new ShowClusterDetailsTask(showClusterStatement)
-        : new ShowClusterTask(showClusterStatement);
+    if (showClusterStatement.isDetails()) {
+      return new ShowClusterDetailsTask(showClusterStatement);
+    } else if (showClusterStatement.isParameters()) {
+      return new ShowClusterParametersTask();
+    } else {
+      return new ShowClusterTask(showClusterStatement);
+    }
   }
 
   @Override
@@ -375,6 +382,12 @@ public class ConfigTaskVisitor
   public IConfigTask visitGetTimeSlotList(
       GetTimeSlotListStatement getTimeSlotListStatement, TaskContext context) {
     return new GetTimeSlotListTask(getTimeSlotListStatement);
+  }
+
+  @Override
+  public IConfigTask visitMigrateRegion(
+      MigrateRegionStatement migrateRegionStatement, TaskContext context) {
+    return new MigrateRegionTask(migrateRegionStatement);
   }
 
   @Override

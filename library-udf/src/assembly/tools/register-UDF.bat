@@ -82,7 +82,6 @@ call ../sbin/start-cli.bat -h %host% -p %rpcPort% -u %user% -pw %pass% -e "creat
 
 @REM Frequency Domain
 call ../sbin/start-cli.bat -h %host% -p %rpcPort% -u %user% -pw %pass% -e "create function fft as 'org.apache.iotdb.library.frequency.UDTFFFT'"
-call ../sbin/start-cli.bat -h %host% -p %rpcPort% -u %user% -pw %pass% -e "create function stft as 'org.apache.iotdb.library.frequency.UDTFSTFT'"
 call ../sbin/start-cli.bat -h %host% -p %rpcPort% -u %user% -pw %pass% -e "create function conv as 'org.apache.iotdb.library.frequency.UDTFConv'"
 call ../sbin/start-cli.bat -h %host% -p %rpcPort% -u %user% -pw %pass% -e "create function deconv as 'org.apache.iotdb.library.frequency.UDTFDeconv'"
 call ../sbin/start-cli.bat -h %host% -p %rpcPort% -u %user% -pw %pass% -e "create function lowpass as 'org.apache.iotdb.library.frequency.UDTFLowPass'"

@@ -37,9 +37,9 @@ import org.apache.iotdb.db.engine.compaction.constant.InnerSequenceCompactionSel
 import org.apache.iotdb.db.engine.compaction.constant.InnerUnseqCompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.constant.InnerUnsequenceCompactionSelector;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.qp.utils.DateTimeUtils;
 import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.db.service.metrics.IoTDBInternalReporter;
+import org.apache.iotdb.db.utils.DateTimeUtils;
 import org.apache.iotdb.db.utils.datastructure.TVListSortAlgorithm;
 import org.apache.iotdb.db.wal.WALManager;
 import org.apache.iotdb.db.wal.utils.WALMode;
@@ -188,7 +188,7 @@ public class IoTDBDescriptor {
         MetricConfigDescriptor.getInstance().loadProps(commonProperties);
         MetricConfigDescriptor.getInstance()
             .getMetricConfig()
-            .updateRpcInstance(conf.getRpcAddress(), conf.getRpcPort());
+            .updateRpcInstance(conf.getInternalAddress(), conf.getInternalPort());
       }
     } else {
       logger.warn(
@@ -565,14 +565,6 @@ public class IoTDBDescriptor {
                 "raw_query_blocking_queue_capacity",
                 Integer.toString(conf.getRawQueryBlockingQueueCapacity()))));
 
-    conf.setSchemaRegionDeviceNodeCacheSize(
-        Integer.parseInt(
-            properties
-                .getProperty(
-                    "schema_region_device_node_cache_size",
-                    Integer.toString(conf.getSchemaRegionDeviceNodeCacheSize()))
-                .trim()));
-
     conf.setmRemoteSchemaCacheSize(
         Integer.parseInt(
             properties
@@ -632,7 +624,7 @@ public class IoTDBDescriptor {
     conf.setChunkPointNumLowerBoundInCompaction(
         Long.parseLong(
             properties.getProperty(
-                "chunk_size_lower_bound_in_compaction",
+                "chunk_point_num_lower_bound_in_compaction",
                 Long.toString(conf.getChunkPointNumLowerBoundInCompaction()))));
     conf.setChunkSizeLowerBoundInCompaction(
         Long.parseLong(
@@ -655,11 +647,10 @@ public class IoTDBDescriptor {
                 "max_cross_compaction_candidate_file_size",
                 Long.toString(conf.getMaxCrossCompactionCandidateFileSize()))));
 
-    conf.setCompactionWriteThroughputMbPerSec(
+    conf.setCompactionIORatePerSec(
         Integer.parseInt(
             properties.getProperty(
-                "compaction_write_throughput_mb_per_sec",
-                Integer.toString(conf.getCompactionWriteThroughputMbPerSec()))));
+                "compaction_io_rate_per_sec", Integer.toString(conf.getCompactionIORatePerSec()))));
 
     conf.setEnableCompactionValidation(
         Boolean.parseBoolean(
@@ -1277,7 +1268,7 @@ public class IoTDBDescriptor {
             (int)
                 Math.min(
                     TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes(),
-                    conf.getMaxBytesPerQuery()));
+                    conf.getMaxBytesPerFragmentInstance()));
 
     TSFileDescriptor.getInstance()
         .getConfig()
@@ -1436,12 +1427,11 @@ public class IoTDBDescriptor {
               properties.getProperty(
                   "slow_query_threshold", Long.toString(conf.getSlowQueryThreshold()))));
       // update merge_write_throughput_mb_per_sec
-      conf.setCompactionWriteThroughputMbPerSec(
+      conf.setCompactionIORatePerSec(
           Integer.parseInt(
               properties.getProperty(
-                  "merge_write_throughput_mb_per_sec",
-                  Integer.toString(conf.getCompactionWriteThroughputMbPerSec()))));
-
+                  "compaction_io_rate_per_sec",
+                  Integer.toString(conf.getCompactionIORatePerSec()))));
       // update insert-tablet-plan's row limit for select-into
       conf.setSelectIntoInsertTabletPlanRowLimit(
           Integer.parseInt(
@@ -1815,7 +1805,7 @@ public class IoTDBDescriptor {
         conf.setTargetConfigNodeList(NodeUrlUtils.parseTEndPointUrls(configNodeUrls));
       } catch (BadNodeUrlException e) {
         logger.error(
-            "Config nodes are set in wrong format, please set them like 127.0.0.1:22277,127.0.0.1:22281");
+            "Config nodes are set in wrong format, please set them like 127.0.0.1:10710,127.0.0.1:10712");
       }
     }
 

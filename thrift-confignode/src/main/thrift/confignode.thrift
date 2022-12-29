@@ -22,24 +22,11 @@ namespace java org.apache.iotdb.confignode.rpc.thrift
 namespace py iotdb.thrift.confignode
 
 // DataNode
-struct TDataNodeRegisterReq {
-  1: required common.TDataNodeConfiguration dataNodeConfiguration
-  // Map<StorageGroupName, TStorageGroupSchema>
-  // DataNode can use statusMap to report its status to the ConfigNode when restart
-  2: optional map<string, TStorageGroupSchema> statusMap
-}
-
-struct TDataNodeRegisterResp {
+struct TSystemConfigurationResp {
   1: required common.TSStatus status
-  2: required list<common.TConfigNodeLocation> configNodeList
-  3: optional i32 dataNodeId
-  4: optional TGlobalConfig globalConfig
-  5: optional binary templateInfo
-  6: optional TRatisConfig ratisConfig
-  7: optional list<binary> allTriggerInformation
-  8: optional TCQConfig cqConfig
-  9: optional list<binary> allUDFInformation
-  10: optional binary allTTLInformation
+  2: optional TGlobalConfig globalConfig
+  3: optional TRatisConfig ratisConfig
+  4: optional TCQConfig cqConfig
 }
 
 struct TGlobalConfig {
@@ -98,7 +85,37 @@ struct TCQConfig {
   1: required i64 cqMinEveryIntervalInMs
 }
 
-struct TDataNodeUpdateReq{
+struct TRuntimeConfiguration {
+  1: required binary templateInfo
+  2: required list<binary> allTriggerInformation
+  3: required list<binary> allUDFInformation
+  4: required binary allTTLInformation
+}
+
+struct TDataNodeRegisterReq {
+  1: required common.TDataNodeConfiguration dataNodeConfiguration
+}
+
+struct TDataNodeRegisterResp {
+  1: required common.TSStatus status
+  2: required list<common.TConfigNodeLocation> configNodeList
+  3: optional string clusterName
+  4: optional i32 dataNodeId
+  5: optional TRuntimeConfiguration runtimeConfiguration
+}
+
+struct TDataNodeRestartReq {
+  1: required string clusterName
+  2: required common.TDataNodeConfiguration dataNodeConfiguration
+}
+
+struct TDataNodeRestartResp {
+  1: required common.TSStatus status
+  2: required list<common.TConfigNodeLocation> configNodeList
+  3: optional TRuntimeConfiguration runtimeConfiguration
+}
+
+struct TDataNodeUpdateReq {
   1: required common.TDataNodeLocation dataNodeLocation
 }
 
@@ -255,6 +272,12 @@ struct TGetSeriesSlotListResp {
     2: optional list<common.TSeriesPartitionSlot> seriesSlotList
 }
 
+struct TMigrateRegionReq {
+    1: required i32 regionId
+    2: required i32 fromId
+    3: required i32 toId
+}
+
 // Authorize
 struct TAuthorizerReq {
   1: required i32 authorType
@@ -302,28 +325,42 @@ struct TCheckUserPrivilegesReq {
 }
 
 // ConfigNode
+
+/* These parameters should be consist within the cluster */
+struct TClusterParameters {
+  1: required string clusterName
+  2: required i32 dataReplicationFactor
+  3: required i32 schemaReplicationFactor
+  4: required string dataRegionConsensusProtocolClass
+  5: required string schemaRegionConsensusProtocolClass
+  6: required string configNodeConsensusProtocolClass
+  7: required i64 timePartitionInterval
+  8: required i64 defaultTTL
+  9: required string readConsistencyLevel
+  10: required double schemaRegionPerDataNode
+  11: required double dataRegionPerProcessor
+  12: required i32 leastDataRegionGroupNum
+  13: required i32 seriesPartitionSlotNum
+  14: required string seriesPartitionExecutorClass
+  15: required double diskSpaceWarningThreshold
+}
+
 struct TConfigNodeRegisterReq {
   1: required common.TConfigNodeLocation configNodeLocation
   // The Non-Seed-ConfigNode must ensure that the following
   // fields are consistent with the Seed-ConfigNode
-  2: required string dataRegionConsensusProtocolClass
-  3: required string schemaRegionConsensusProtocolClass
-  4: required i32 seriesPartitionSlotNum
-  5: required string seriesPartitionExecutorClass
-  6: required i64 defaultTTL
-  7: required i64 timePartitionInterval
-  8: required i32 schemaReplicationFactor
-  9: required double schemaRegionPerDataNode
-  10: required i32 dataReplicationFactor
-  11: required double dataRegionPerProcessor
-  12: required string readConsistencyLevel
-  13: required double diskSpaceWarningThreshold
-  14: required i32 leastDataRegionGroupNum
+  2: required TClusterParameters clusterParameters
 }
 
 struct TConfigNodeRegisterResp {
   1: required common.TSStatus status
-  2: required i32 configNodeId
+  2: optional string clusterName
+  3: optional i32 configNodeId
+}
+
+struct TConfigNodeRestartReq {
+  1: required string clusterName
+  2: required common.TConfigNodeLocation configNodeLocation
 }
 
 struct TAddConsensusGroupReq {
@@ -401,12 +438,22 @@ struct TGetJarInListResp {
   2: required list<binary> jarList
 }
 
+struct TGetDataNodeLocationsResp {
+  1: required common.TSStatus status
+  2: required list<common.TDataNodeLocation> dataNodeLocationList
+}
+
 // Show cluster
 struct TShowClusterResp {
   1: required common.TSStatus status
   2: required list<common.TConfigNodeLocation> configNodeList
   3: required list<common.TDataNodeLocation> dataNodeList
   4: required map<i32, string> nodeStatus
+}
+
+struct TShowClusterParametersResp {
+  1: required common.TSStatus status
+  2: optional TClusterParameters clusterParameters
 }
 
 // Show datanodes
@@ -635,6 +682,18 @@ service IConfigNodeRPCService {
   TDataNodeRegisterResp registerDataNode(TDataNodeRegisterReq req)
 
   /**
+   * Restart a existed DataNode
+   *
+   * @return SUCCESS_STATUS if restart DataNode success
+   */
+  TDataNodeRestartResp restartDataNode(TDataNodeRestartReq req)
+
+  /**
+   * Get system configurations. i.e. configurations that is not associated with the DataNodeId
+   */
+  TSystemConfigurationResp getSystemConfiguration()
+
+  /**
    * Generate a set of DataNodeRemoveProcedure to remove some specific DataNodes from the cluster
    *
    * @return SUCCESS_STATUS if the DataNodeRemoveProcedure submitted successfully
@@ -739,8 +798,8 @@ service IConfigNodeRPCService {
   TSchemaPartitionTableResp getOrCreateSchemaPartitionTable(TSchemaPartitionReq req)
 
   // ======================================================
-    // Node Management
-    // ======================================================
+  // Node Management
+  // ======================================================
 
   /**
    * Get the partition info used for schema node query and get the node info in CluterSchemaInfo.
@@ -828,6 +887,8 @@ service IConfigNodeRPCService {
 
   /** The ConfigNode-leader will notify the Non-Seed-ConfigNode that the registration success */
   common.TSStatus notifyRegisterSuccess()
+
+  common.TSStatus restartConfigNode(TConfigNodeRestartReq req)
 
   /**
    * Remove the specific ConfigNode from the cluster
@@ -945,12 +1006,21 @@ service IConfigNodeRPCService {
   /** TestOnly. Set the target DataNode to the specified status */
   common.TSStatus setDataNodeStatus(TSetDataNodeStatusReq req)
 
+  /** Migrate a region replica from one dataNode to another */
+  common.TSStatus migrateRegion(TMigrateRegionReq req)
+
+  /** Get all DataNodeLocations of Running DataNodes */
+  TGetDataNodeLocationsResp getRunningDataNodeLocations()
+
   // ======================================================
   // Cluster Tools
   // ======================================================
 
   /** Show cluster ConfigNodes' and DataNodes' information */
   TShowClusterResp showCluster()
+
+  /** Show cluster parameters who should be consist in the same cluster */
+  TShowClusterParametersResp showClusterParameters()
 
   /** Show cluster DataNodes' information */
   TShowDataNodesResp showDataNodes()
@@ -1073,7 +1143,6 @@ service IConfigNodeRPCService {
 
   /** Get the given database's assigned SeriesSlots */
   TGetSeriesSlotListResp getSeriesSlotList(TGetSeriesSlotListReq req)
-
 
   // ====================================================
   // CQ

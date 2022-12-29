@@ -55,7 +55,8 @@ public enum PrivilegeType {
   UPDATE_TEMPLATE,
   READ_TEMPLATE,
   APPLY_TEMPLATE(true),
-  READ_TEMPLATE_APPLICATION;
+  READ_TEMPLATE_APPLICATION,
+  SHOW_CONTINUOUS_QUERIES;
 
   private static final int PRIVILEGE_COUNT = values().length;
 

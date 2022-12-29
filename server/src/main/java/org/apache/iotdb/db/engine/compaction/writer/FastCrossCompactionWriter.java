@@ -23,6 +23,7 @@ import org.apache.iotdb.tsfile.exception.write.PageException;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
+import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
@@ -32,19 +33,30 @@ import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
+import java.util.Map;
 
 public class FastCrossCompactionWriter extends AbstractCrossCompactionWriter {
+  // Only used for fast compaction performer
+  protected Map<TsFileResource, TsFileSequenceReader> readerMap;
 
   public FastCrossCompactionWriter(
-      List<TsFileResource> targetResources, List<TsFileResource> seqSourceResources)
+      List<TsFileResource> targetResources,
+      List<TsFileResource> seqSourceResources,
+      Map<TsFileResource, TsFileSequenceReader> readerMap)
       throws IOException {
     super(targetResources, seqSourceResources);
+    this.readerMap = readerMap;
   }
 
   @Override
   public void write(TimeColumn timestamps, Column[] columns, int subTaskId, int batchSize)
       throws IOException {
     throw new RuntimeException("Does not support this method in FastCrossCompactionWriter");
+  }
+
+  @Override
+  protected TsFileSequenceReader getFileReader(TsFileResource resource) {
+    return readerMap.get(resource);
   }
 
   /**

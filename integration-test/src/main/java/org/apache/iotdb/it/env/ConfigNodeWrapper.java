@@ -27,7 +27,7 @@ import java.util.Properties;
 
 public class ConfigNodeWrapper extends AbstractNodeWrapper {
 
-  private final int consensusPort;
+  private int consensusPort;
   private final String targetConfigNodes;
   private final boolean isSeed;
 
@@ -78,6 +78,11 @@ public class ConfigNodeWrapper extends AbstractNodeWrapper {
   }
 
   @Override
+  public String getSystemPropertiesPath() {
+    return workDirFilePath("data/confignode/system", "confignode-system.properties");
+  }
+
+  @Override
   public final String getId() {
     if (isSeed) {
       return "SeedConfigNode" + getPort();
@@ -119,6 +124,10 @@ public class ConfigNodeWrapper extends AbstractNodeWrapper {
                 + configNodeName
                 + portList[0]);
     oldNodeDir.renameTo(new File(getNodePath()));
+  }
+
+  public void setConsensusPort(int consensusPort) {
+    this.consensusPort = consensusPort;
   }
 
   public int getConsensusPort() {

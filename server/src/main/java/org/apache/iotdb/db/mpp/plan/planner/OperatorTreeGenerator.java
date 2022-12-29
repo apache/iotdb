@@ -213,10 +213,10 @@ import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static org.apache.iotdb.db.engine.querycontext.QueryDataSource.updateFilterUsingTTL;
+import static org.apache.iotdb.db.mpp.common.DataNodeEndPoints.isSameNode;
 import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.calculateMaxAggregationResultSize;
 import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.calculateMaxAggregationResultSizeForLastQuery;
 import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.initTimeRangeIterator;
-import static org.apache.iotdb.db.mpp.plan.constant.DataNodeEndPoints.isSameNode;
 
 /** This Visitor is responsible for transferring PlanNode Tree to Operator Tree */
 public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionPlanContext> {
@@ -663,7 +663,10 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                 SingleDeviceViewOperator.class.getSimpleName());
     Operator child = node.getChild().accept(this, context);
     List<Integer> deviceColumnIndex = node.getDeviceToMeasurementIndexes();
-    List<TSDataType> outputColumnTypes = context.getCachedDataTypes();
+    List<TSDataType> outputColumnTypes =
+        node.isCacheOutputColumnNames()
+            ? getOutputColumnTypes(node, context.getTypeProvider())
+            : context.getCachedDataTypes();
     if (outputColumnTypes == null || outputColumnTypes.size() == 0) {
       throw new IllegalStateException("OutputColumTypes should not be null/empty");
     }
@@ -1700,6 +1703,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                 downStreamEndPoint,
                 targetInstanceId.toThrift(),
                 node.getDownStreamPlanNodeId().getId(),
+                node.getPlanNodeId().getId(),
                 context.getInstanceContext());
     context.setSinkHandle(sinkHandle);
     return child;

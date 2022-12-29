@@ -54,6 +54,8 @@ public class IoTDBConstant {
   public static final String CN_ROLE = "confignode";
   public static final String DN_ROLE = "datanode";
 
+  public static final String DATA_NODE_CONF_FILE_NAME = "iotdb-datanode.properties";
+
   public static final String DN_RPC_ADDRESS = "dn_rpc_address";
   public static final String DN_RPC_PORT = "dn_rpc_port";
 
@@ -266,8 +268,24 @@ public class IoTDBConstant {
   // show cluster status
   public static final String NODE_TYPE_CONFIG_NODE = "ConfigNode";
   public static final String NODE_TYPE_DATA_NODE = "DataNode";
-  public static final String NODE_STATUS_RUNNING = "Running";
-  public static final String NODE_STATUS_Down = "Down";
+  public static final String CLUSTER_NAME = "ClusterName";
+  public static final String CONFIG_NODE_CONSENSUS_PROTOCOL_CLASS =
+      "ConfigNodeConsensusProtocolClass";
+  public static final String DATA_REGION_CONSENSUS_PROTOCOL_CLASS =
+      "DataRegionConsensusProtocolClass";
+  public static final String SCHEMA_REGION_CONSENSUS_PROTOCOL_CLASS =
+      "SchemaRegionConsensusProtocolClass";
+  public static final String SERIES_SLOT_NUM = "SeriesSlotNum";
+  public static final String SERIES_SLOT_EXECUTOR_CLASS = "SeriesSlotExecutorClass";
+  public static final String DEFAULT_TTL = "DefaultTTL(ms)";
+  public static final String TIME_PARTITION_INTERVAL = "TimePartitionInterval";
+  public static final String DATA_REPLICATION_FACTOR = "DataReplicationFactor";
+  public static final String SCHEMA_REPLICATION_FACTOR = "SchemaReplicationFactor";
+  public static final String SCHEMA_REGION_PER_DATA_NODE = "SchemaRegionPerDataNode";
+  public static final String DATA_REGION_PER_PROCESSOR = "DataRegionPerProcessor";
+  public static final String READ_CONSISTENCY_LEVEL = "ReadConsistencyLevel";
+  public static final String DISK_SPACE_WARNING_THRESHOLD = "DiskSpaceWarningThreshold";
+  public static final String LEAST_DATA_REGION_GROUP_NUM = "LeastDataRegionGroupNum";
 
   public static final String IOTDB_FOREGROUND = "iotdb-foreground";
   public static final String IOTDB_PIDFILE = "iotdb-pidfile";

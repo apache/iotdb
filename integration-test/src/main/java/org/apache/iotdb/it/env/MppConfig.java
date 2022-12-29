@@ -291,7 +291,7 @@ public class MppConfig implements BaseConfig {
   }
 
   @Override
-  public BaseConfig setRatisSnapshotTriggerThreshold(int ratisSnapshotTriggerThreshold) {
+  public BaseConfig setConfigNodeRatisSnapshotTriggerThreshold(int ratisSnapshotTriggerThreshold) {
     confignodeProperties.setProperty(
         "config_node_ratis_snapshot_trigger_threshold",
         String.valueOf(ratisSnapshotTriggerThreshold));
@@ -386,6 +386,13 @@ public class MppConfig implements BaseConfig {
       queryThreadCount = Runtime.getRuntime().availableProcessors();
     }
     confignodeProperties.setProperty("query_thread_count", String.valueOf(queryThreadCount));
+    return this;
+  }
+
+  @Override
+  public BaseConfig setDataRatisTriggerSnapshotThreshold(long threshold) {
+    confignodeProperties.setProperty(
+        "data_region_ratis_snapshot_trigger_threshold", String.valueOf(threshold));
     return this;
   }
 }

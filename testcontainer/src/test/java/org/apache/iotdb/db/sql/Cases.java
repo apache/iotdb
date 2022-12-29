@@ -18,18 +18,11 @@
  */
 package org.apache.iotdb.db.sql;
 
-import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.qp.Planner;
-import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.sys.CreateFunctionPlan;
-import org.apache.iotdb.db.qp.physical.sys.DropFunctionPlan;
-import org.apache.iotdb.db.qp.physical.sys.ShowFunctionsPlan;
-import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
+import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.rpc.BatchExecutionException;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Session;
-import org.apache.iotdb.session.SessionDataSet;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -64,7 +57,6 @@ public abstract class Cases {
   protected Statement[] readStatements;
   protected Connection[] readConnections;
   protected Session session;
-  private final Planner processor = new Planner();
 
   /** initialize the writeStatement,writeConnection, readStatements and the readConnections. */
   public abstract void init() throws Exception;
@@ -361,44 +353,6 @@ public abstract class Cases {
     }
 
     session.insertRecords(deviceIds, timestamps, measurementsList, typesList, valuesList);
-  }
-
-  @Test
-  public void testCreateFunctionPlan() {
-    try {
-      PhysicalPlan plan =
-          processor.parseSQLToPhysicalPlan(
-              "create function udf as 'org.apache.iotdb.db.query.udf.example.Adder'");
-      if (plan.isQuery() || !(plan instanceof CreateFunctionPlan)) {
-        Assert.fail();
-      }
-      CreateFunctionPlan createFunctionPlan = (CreateFunctionPlan) plan;
-      Assert.assertEquals("udf", createFunctionPlan.getUdfName());
-      Assert.assertEquals(
-          "org.apache.iotdb.db.query.udf.example.Adder", createFunctionPlan.getClassName());
-    } catch (QueryProcessException e) {
-      Assert.fail(e.toString());
-    }
-  }
-
-  @Test
-  public void testDropFunctionPlan() { // drop function
-    try {
-      DropFunctionPlan dropFunctionPlan =
-          (DropFunctionPlan) processor.parseSQLToPhysicalPlan("drop function udf");
-      Assert.assertEquals("udf", dropFunctionPlan.getUdfName());
-    } catch (QueryProcessException e) {
-      Assert.fail(e.toString());
-    }
-  }
-
-  @Test
-  public void testShowFunction() throws QueryProcessException {
-    String sql = "SHOW FUNCTIONS";
-
-    ShowFunctionsPlan plan = (ShowFunctionsPlan) processor.parseSQLToPhysicalPlan(sql);
-    Assert.assertTrue(plan.isQuery());
-    Assert.assertEquals(ShowPlan.ShowContentType.FUNCTIONS, plan.getShowContentType());
   }
 
   // test https://issues.apache.org/jira/browse/IOTDB-1407

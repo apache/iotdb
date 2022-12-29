@@ -134,9 +134,9 @@ public class ShowClusterDetailsTask implements IConfigTask {
                     e.getInternalEndPoint().getPort(),
                     e.getClientRpcEndPoint().getIp(),
                     e.getClientRpcEndPoint().getPort(),
-                    e.getDataRegionConsensusEndPoint().getPort(),
+                    e.getMPPDataExchangeEndPoint().getPort(),
                     e.getSchemaRegionConsensusEndPoint().getPort(),
-                    e.getMPPDataExchangeEndPoint().getPort()));
+                    e.getDataRegionConsensusEndPoint().getPort()));
 
     DatasetHeader datasetHeader = DatasetHeaderFactory.getShowClusterDetailsHeader();
     future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS, builder.build(), datasetHeader));

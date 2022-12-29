@@ -23,11 +23,11 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertTabletNode;
-import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.wal.buffer.WALEntry;
 import org.apache.iotdb.db.wal.buffer.WALInfoEntry;
@@ -83,31 +83,35 @@ public class UnsealedTsFileRecoverPerformerTest {
     EnvironmentUtils.envSetUp();
     isClusterMode = config.isClusterMode();
     config.setClusterMode(true);
-    IoTDB.schemaProcessor.setStorageGroup(new PartialPath(SG_NAME));
-    IoTDB.schemaProcessor.createTimeseries(
-        new PartialPath(DEVICE1_NAME.concat(".s1")),
-        TSDataType.INT32,
-        TSEncoding.RLE,
-        TSFileDescriptor.getInstance().getConfig().getCompressor(),
-        Collections.emptyMap());
-    IoTDB.schemaProcessor.createTimeseries(
-        new PartialPath(DEVICE1_NAME.concat(".s2")),
-        TSDataType.INT64,
-        TSEncoding.RLE,
-        TSFileDescriptor.getInstance().getConfig().getCompressor(),
-        Collections.emptyMap());
-    IoTDB.schemaProcessor.createTimeseries(
-        new PartialPath(DEVICE2_NAME.concat(".s1")),
-        TSDataType.FLOAT,
-        TSEncoding.RLE,
-        TSFileDescriptor.getInstance().getConfig().getCompressor(),
-        Collections.emptyMap());
-    IoTDB.schemaProcessor.createTimeseries(
-        new PartialPath(DEVICE2_NAME.concat(".s2")),
-        TSDataType.DOUBLE,
-        TSEncoding.RLE,
-        TSFileDescriptor.getInstance().getConfig().getCompressor(),
-        Collections.emptyMap());
+    LocalSchemaProcessor.getInstance().setStorageGroup(new PartialPath(SG_NAME));
+    LocalSchemaProcessor.getInstance()
+        .createTimeseries(
+            new PartialPath(DEVICE1_NAME.concat(".s1")),
+            TSDataType.INT32,
+            TSEncoding.RLE,
+            TSFileDescriptor.getInstance().getConfig().getCompressor(),
+            Collections.emptyMap());
+    LocalSchemaProcessor.getInstance()
+        .createTimeseries(
+            new PartialPath(DEVICE1_NAME.concat(".s2")),
+            TSDataType.INT64,
+            TSEncoding.RLE,
+            TSFileDescriptor.getInstance().getConfig().getCompressor(),
+            Collections.emptyMap());
+    LocalSchemaProcessor.getInstance()
+        .createTimeseries(
+            new PartialPath(DEVICE2_NAME.concat(".s1")),
+            TSDataType.FLOAT,
+            TSEncoding.RLE,
+            TSFileDescriptor.getInstance().getConfig().getCompressor(),
+            Collections.emptyMap());
+    LocalSchemaProcessor.getInstance()
+        .createTimeseries(
+            new PartialPath(DEVICE2_NAME.concat(".s2")),
+            TSDataType.DOUBLE,
+            TSEncoding.RLE,
+            TSFileDescriptor.getInstance().getConfig().getCompressor(),
+            Collections.emptyMap());
   }
 
   @After
