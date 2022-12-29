@@ -111,7 +111,7 @@ public class PartitionInfo implements SnapshotProcessor {
   // For RegionReplicas' asynchronous management
   private final List<RegionMaintainTask> regionMaintainTaskList;
 
-  private final String SNAPSHOT_FILENAME = "partition_info.bin";
+  private static final String SNAPSHOT_FILENAME = "partition_info.bin";
 
   public PartitionInfo() {
     this.nextRegionGroupId = new AtomicInteger(-1);

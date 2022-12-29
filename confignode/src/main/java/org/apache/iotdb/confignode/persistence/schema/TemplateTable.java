@@ -57,7 +57,7 @@ public class TemplateTable {
   private final Map<String, Template> templateMap = new ConcurrentHashMap<>();
   private final Map<Integer, Template> templateIdMap = new ConcurrentHashMap<>();
 
-  private final String SNAPSHOT_FILENAME = "template_info.bin";
+  private static final String SNAPSHOT_FILENAME = "template_info.bin";
 
   public TemplateTable() {
     templateReadWriteLock = new ReentrantReadWriteLock();
