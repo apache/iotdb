@@ -26,6 +26,7 @@ import org.apache.iotdb.isession.util.Aggregation;
 import org.apache.iotdb.isession.util.Version;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
+import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.session.Session;
 import org.apache.iotdb.session.template.MeasurementNode;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -73,57 +74,47 @@ public class SessionExample {
     // set session fetchSize
     session.setFetchSize(10000);
 
-    try (SessionDataSet dataSet =
-        session.executeAggregationQuery(
-            Collections.singletonList("root.sg1.d1.*"),
-            Collections.singletonList(Aggregation.COUNT))) {
-
-      System.out.println(dataSet.getColumnNames());
-      dataSet.setFetchSize(1024);
-      while (dataSet.hasNext()) {
-        System.out.println(dataSet.next());
+    try {
+      session.createDatabase("root.sg1");
+    } catch (StatementExecutionException e) {
+      if (e.getStatusCode() != TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode()) {
+        throw e;
       }
     }
 
-    //    try {
-    //      session.createDatabase("root.sg1");
-    //    } catch (StatementExecutionException e) {
-    //      if (e.getStatusCode() != TSStatusCode.PATH_ALREADY_EXIST.getStatusCode()) {
-    //        throw e;
-    //      }
-    //    }
-    //
-    //    //     createTemplate();
-    //    createTimeseries();
-    //    createMultiTimeseries();
-    //    insertRecord();
-    //    insertTablet();
-    //    //    insertTabletWithNullValues();
-    //    //    insertTablets();
-    //    //    insertRecords();
-    //    //    insertText();
-    //    //    selectInto();
-    //    //    createAndDropContinuousQueries();
-    //    //    nonQuery();
-    //    //    query();
-    //    //    queryWithTimeout();
-    //    //    rawDataQuery();
-    //    //    lastDataQuery();
-    //    //    queryByIterator();
-    //    //    deleteData();
-    //    //    deleteTimeseries();
-    //    //    setTimeout();
-    //
-    //    sessionEnableRedirect = new Session(LOCAL_HOST, 6667, "root", "root");
-    //    sessionEnableRedirect.setEnableQueryRedirection(true);
-    //    sessionEnableRedirect.open(false);
-    //
-    //    // set session fetchSize
-    //    sessionEnableRedirect.setFetchSize(10000);
-    //
-    //    insertRecord4Redirect();
-    //    query4Redirect();
-    //    sessionEnableRedirect.close();
+    //     createTemplate();
+    createTimeseries();
+    createMultiTimeseries();
+    insertRecord();
+    insertTablet();
+    //    insertTabletWithNullValues();
+    //    insertTablets();
+    //    insertRecords();
+    //    insertText();
+    //    selectInto();
+    //    createAndDropContinuousQueries();
+    //    nonQuery();
+    query();
+    //    queryWithTimeout();
+    rawDataQuery();
+    lastDataQuery();
+    aggregationQuery();
+    groupByQuery();
+    //    queryByIterator();
+    //    deleteData();
+    //    deleteTimeseries();
+    //    setTimeout();
+
+    sessionEnableRedirect = new Session(LOCAL_HOST, 6667, "root", "root");
+    sessionEnableRedirect.setEnableQueryRedirection(true);
+    sessionEnableRedirect.open(false);
+
+    // set session fetchSize
+    sessionEnableRedirect.setFetchSize(10000);
+
+    insertRecord4Redirect();
+    query4Redirect();
+    sessionEnableRedirect.close();
     session.close();
   }
 
@@ -784,6 +775,46 @@ public class SessionExample {
     paths.add(ROOT_SG1_D1_S2);
     paths.add(ROOT_SG1_D1_S3);
     try (SessionDataSet sessionDataSet = session.executeLastDataQuery(paths, 3, 60000)) {
+      System.out.println(sessionDataSet.getColumnNames());
+      sessionDataSet.setFetchSize(1024);
+      while (sessionDataSet.hasNext()) {
+        System.out.println(sessionDataSet.next());
+      }
+    }
+  }
+
+  private static void aggregationQuery()
+      throws IoTDBConnectionException, StatementExecutionException {
+    List<String> paths = new ArrayList<>();
+    paths.add(ROOT_SG1_D1_S1);
+    paths.add(ROOT_SG1_D1_S2);
+    paths.add(ROOT_SG1_D1_S3);
+
+    List<Aggregation> aggregations = new ArrayList<>();
+    aggregations.add(Aggregation.COUNT);
+    aggregations.add(Aggregation.SUM);
+    aggregations.add(Aggregation.MAX_VALUE);
+    try (SessionDataSet sessionDataSet = session.executeAggregationQuery(paths, aggregations)) {
+      System.out.println(sessionDataSet.getColumnNames());
+      sessionDataSet.setFetchSize(1024);
+      while (sessionDataSet.hasNext()) {
+        System.out.println(sessionDataSet.next());
+      }
+    }
+  }
+
+  private static void groupByQuery() throws IoTDBConnectionException, StatementExecutionException {
+    List<String> paths = new ArrayList<>();
+    paths.add(ROOT_SG1_D1_S1);
+    paths.add(ROOT_SG1_D1_S2);
+    paths.add(ROOT_SG1_D1_S3);
+
+    List<Aggregation> aggregations = new ArrayList<>();
+    aggregations.add(Aggregation.COUNT);
+    aggregations.add(Aggregation.SUM);
+    aggregations.add(Aggregation.MAX_VALUE);
+    try (SessionDataSet sessionDataSet =
+        session.executeAggregationQuery(paths, aggregations, 0, 100, 10, 20)) {
       System.out.println(sessionDataSet.getColumnNames());
       sessionDataSet.setFetchSize(1024);
       while (sessionDataSet.hasNext()) {
