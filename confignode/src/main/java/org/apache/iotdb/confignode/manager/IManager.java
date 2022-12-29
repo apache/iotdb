@@ -87,6 +87,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSetDataNodeStatusReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowCQResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowClusterParametersResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowConfigNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
@@ -227,7 +228,19 @@ public interface IManager {
    */
   DataSet getDataNodeConfiguration(GetDataNodeConfigurationPlan getDataNodeConfigurationPlan);
 
+  /**
+   * Get Cluster Nodes' information
+   *
+   * @return TShowClusterResp
+   */
   TShowClusterResp showCluster();
+
+  /**
+   * Get Cluster parameters
+   *
+   * @return TShowClusterParametersResp
+   */
+  TShowClusterParametersResp showClusterParameters();
 
   TSStatus setTTL(SetTTLPlan configRequest);
 

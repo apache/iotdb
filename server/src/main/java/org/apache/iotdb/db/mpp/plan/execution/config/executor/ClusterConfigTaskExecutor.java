@@ -60,6 +60,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetUDFTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TPipeSinkInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TSetStorageGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowCQResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowClusterParametersResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowConfigNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
@@ -86,6 +87,7 @@ import org.apache.iotdb.db.mpp.plan.execution.config.metadata.GetSeriesSlotListT
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.GetTimeSlotListTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.SetStorageGroupTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.ShowClusterDetailsTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.metadata.ShowClusterParametersTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.ShowClusterTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.ShowConfigNodesTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.ShowContinuousQueriesTask;
@@ -784,6 +786,23 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     } else {
       ShowClusterTask.buildTSBlock(showClusterResp, future);
     }
+
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> showClusterParameters() {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    TShowClusterParametersResp showClusterParametersResp = new TShowClusterParametersResp();
+    try (ConfigNodeClient client =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.configNodeRegionId)) {
+      showClusterParametersResp = client.showClusterParameters();
+    } catch (ClientManagerException | TException e) {
+      future.setException(e);
+    }
+
+    // build TSBlock
+    ShowClusterParametersTask.buildTSBlock(showClusterParametersResp, future);
 
     return future;
   }
