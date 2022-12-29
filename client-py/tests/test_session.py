@@ -214,7 +214,7 @@ def test_session():
             [True, 77, 88, 1.25, 8.125, "test_records02"],
         ]
         data_type_list_ = [data_types_, data_types_]
-        device_ids_ = ["root.sg_test_01.d_01", "root.sg_test_01.d_01"]
+        device_ids_ = ["root.sg_test_01.d_01", "root.sg_test_01.d_02"]
         if (
             session.insert_records(
                 device_ids_, [2, 3], measurements_list_, data_type_list_, values_list_
