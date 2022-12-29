@@ -325,23 +325,31 @@ struct TCheckUserPrivilegesReq {
 }
 
 // ConfigNode
+
+/* These parameters should be consist within the cluster */
+struct TClusterParameters {
+  1: required string clusterName
+  2: required i32 dataReplicationFactor
+  3: required i32 schemaReplicationFactor
+  4: required string dataRegionConsensusProtocolClass
+  5: required string schemaRegionConsensusProtocolClass
+  6: required string configNodeConsensusProtocolClass
+  7: required i64 timePartitionInterval
+  8: required i64 defaultTTL
+  9: required string readConsistencyLevel
+  10: required double schemaRegionPerDataNode
+  11: required double dataRegionPerProcessor
+  12: required i32 leastDataRegionGroupNum
+  13: required i32 seriesPartitionSlotNum
+  14: required string seriesPartitionExecutorClass
+  15: required double diskSpaceWarningThreshold
+}
+
 struct TConfigNodeRegisterReq {
   1: required common.TConfigNodeLocation configNodeLocation
   // The Non-Seed-ConfigNode must ensure that the following
   // fields are consistent with the Seed-ConfigNode
-  2: required string dataRegionConsensusProtocolClass
-  3: required string schemaRegionConsensusProtocolClass
-  4: required i32 seriesPartitionSlotNum
-  5: required string seriesPartitionExecutorClass
-  6: required i64 defaultTTL
-  7: required i64 timePartitionInterval
-  8: required i32 schemaReplicationFactor
-  9: required double schemaRegionPerDataNode
-  10: required i32 dataReplicationFactor
-  11: required double dataRegionPerProcessor
-  12: required string readConsistencyLevel
-  13: required double diskSpaceWarningThreshold
-  14: required i32 leastDataRegionGroupNum
+  2: required TClusterParameters clusterParameters
 }
 
 struct TConfigNodeRegisterResp {
@@ -441,6 +449,11 @@ struct TShowClusterResp {
   2: required list<common.TConfigNodeLocation> configNodeList
   3: required list<common.TDataNodeLocation> dataNodeList
   4: required map<i32, string> nodeStatus
+}
+
+struct TShowClusterParametersResp {
+  1: required common.TSStatus status
+  2: optional TClusterParameters clusterParameters
 }
 
 // Show datanodes
@@ -1062,6 +1075,9 @@ service IConfigNodeRPCService {
 
   /** Show cluster ConfigNodes' and DataNodes' information */
   TShowClusterResp showCluster()
+
+  /** Show cluster parameters who should be consist in the same cluster */
+  TShowClusterParametersResp showClusterParameters()
 
   /** Show cluster DataNodes' information */
   TShowDataNodesResp showDataNodes()

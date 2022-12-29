@@ -28,7 +28,7 @@ From 0.12 on, we release two images: one is for a single node, and the other is 
 The format is: `apache/iotdb:0.<major>.<minor>-node` and `apache/iotdb:0.<major>.<minor>-cluster`.
 
 From 1.0.0, we split 3 kinds of images: datanode,confignode and all of them in one image called 1C1D. 
-The format is: `apache/iotdb:<version>-confignode`,`apache/iotdb:<version>-datanode` and `apache/iotdb:<version>-1c1d`.
+The format is: `apache/iotdb:<version>-confignode`,`apache/iotdb:<version>-datanode` and `apache/iotdb:<version>-standalone`.
 
 ## The definition of tag "latest"
 Before v0.12, the "latest" tag will forward to the largest `apache/iotdb:0.<major>.<minor>`.
@@ -48,7 +48,7 @@ docker build -t my-iotdb:<version> -f Dockerfile-<version>
 cd src/main/DockerCompose
 ./do-docker-build.sh -t <target> -v <version>
 e.g.
-./do-docker-build.sh -t confignode -v 1.0.0
+./do-docker-build.sh -t standalone -v 1.0.0
 ```
 Notice:
 Make directory of src/main/target and put the zip file downloading from the official download page. 
@@ -72,7 +72,7 @@ docker run -d --name iotdb -p 6667:6667 -p 31999:31999 -p 8181:8181 -p 5555:5555
 ```
 
 ```shell
-docker run -d --name iotdb -p 6667:6667 -p 31999:31999 -p 8181:8181 -p 5555:5555 -p 9003:9003 -p 40010:40010 apache/iotdb:<version>
+docker run -d --name iotdb -p 6667:6667 -p 31999:31999 -p 8181:8181 -p 5555:5555 -p 10730:10730 -p 10760:10760 apache/iotdb:<version>
 ```
 Since 1.0.0, see [offical documents.](https://iotdb.apache.org/UserGuide/Master/QuickStart/WayToGetIoTDB.html)
 ## Port description
@@ -84,8 +84,8 @@ By default, the ports that IoTDB uses are:
 * 8086: InfluxDB Protocol port
 * 8181: Monitor port
 * 5555: Data sync port
-* 9003: internal metadata rpc port (for cluster)
-* 40010: internal data rpc port (for cluster)
+* 10730: internal metadata rpc port (for cluster)
+* 10760: internal data rpc port (for cluster)
 
 
 ## How to configure docker volumes

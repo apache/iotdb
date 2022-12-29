@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.itbase.env;
 
+import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.confignode.rpc.thrift.IConfigNodeRPCService;
 import org.apache.iotdb.isession.ISession;
 import org.apache.iotdb.isession.SessionConfig;
@@ -73,7 +74,7 @@ public interface BaseEnv {
   void setDataNodeWrapperList(List<DataNodeWrapper> dataNodeWrapperList);
 
   IConfigNodeRPCService.Iface getLeaderConfigNodeConnection()
-      throws IOException, InterruptedException;
+      throws ClientManagerException, IOException, InterruptedException;
 
   default ISession getSessionConnection() throws IoTDBConnectionException {
     return getSessionConnection(

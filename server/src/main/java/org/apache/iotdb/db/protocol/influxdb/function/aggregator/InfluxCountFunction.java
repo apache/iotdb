@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.protocol.influxdb.function.aggregator;
 
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
-import org.apache.iotdb.db.protocol.influxdb.constant.InfluxSQLConstant;
+import org.apache.iotdb.db.protocol.influxdb.constant.InfluxSqlConstant;
 import org.apache.iotdb.db.protocol.influxdb.function.InfluxFunctionValue;
 
 import java.util.List;
@@ -44,7 +44,7 @@ public class InfluxCountFunction extends InfluxAggregator {
 
   @Override
   public String getFunctionName() {
-    return InfluxSQLConstant.COUNT;
+    return InfluxSqlConstant.COUNT;
   }
 
   @Override

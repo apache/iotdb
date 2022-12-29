@@ -150,6 +150,49 @@ public class SchemaRegionManagementTest extends AbstractSchemaRegionTest {
   }
 
   @Test
+  public void testEmptySnapshot() throws Exception {
+    String schemaRegionConsensusProtocolClass = config.getSchemaRegionConsensusProtocolClass();
+    config.setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS);
+    try {
+      ISchemaRegion schemaRegion = getSchemaRegion("root.sg", 0);
+
+      File mLogFile =
+          SystemFileFactory.INSTANCE.getFile(
+              schemaRegion.getStorageGroupFullPath()
+                  + File.separator
+                  + schemaRegion.getSchemaRegionId().getId(),
+              MetadataConstant.METADATA_LOG);
+      Assert.assertFalse(mLogFile.exists());
+
+      File snapshotDir = new File(config.getSchemaDir() + File.separator + "snapshot");
+      snapshotDir.mkdir();
+      schemaRegion.createSnapshot(snapshotDir);
+
+      schemaRegion.loadSnapshot(snapshotDir);
+
+      Pair<List<ShowTimeSeriesResult>, Integer> result =
+          schemaRegion.showTimeseries(
+              SchemaRegionReadPlanFactory.getShowTimeSeriesPlan(
+                  new PartialPath("root.sg.**"), false, "tag-key", "tag-value"));
+
+      Assert.assertEquals(0, result.left.size());
+
+      simulateRestart();
+
+      ISchemaRegion newSchemaRegion = getSchemaRegion("root.sg", 0);
+      newSchemaRegion.loadSnapshot(snapshotDir);
+      result =
+          newSchemaRegion.showTimeseries(
+              SchemaRegionReadPlanFactory.getShowTimeSeriesPlan(
+                  new PartialPath("root.sg.**"), false, "tag-key", "tag-value"));
+
+      Assert.assertEquals(0, result.left.size());
+    } finally {
+      config.setSchemaRegionConsensusProtocolClass(schemaRegionConsensusProtocolClass);
+    }
+  }
+
+  @Test
   @Ignore
   public void testSnapshotPerformance() throws Exception {
     String schemaRegionConsensusProtocolClass = config.getSchemaRegionConsensusProtocolClass();

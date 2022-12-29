@@ -23,7 +23,7 @@
 current_path=$(cd $(dirname $0); pwd)
 iotdb_path=$(cd ${current_path}/../../../../; pwd)
 iotdb_zip_path=${current_path}/../target/
-options="confignode datanode 1c1d"
+options="confignode datanode standalone latest"
 nocache="true"
 do_build="false"
 docker_build="docker build "
@@ -76,8 +76,13 @@ set -ex
 
 function build_single(){
     echo "##### build docker image #####"
-    local dockerfile="Dockerfile-1.0.0-$1"
-    local image="${image_prefix}:${version}-$1"
+    if [[ "$1" == "latest" ]]; then
+        local dockerfile="Dockerfile-1.0.0-standalone"
+        local image="${image_prefix}:latest"
+    else
+        local dockerfile="Dockerfile-1.0.0-$1"
+        local image="${image_prefix}:${version}-$1"
+    fi
     cd ${current_path}/../
     ${docker_build} -f ${dockerfile} \
 	    --build-arg version=${version} \
@@ -146,7 +151,10 @@ function main() {
         datanode)
             process_single
             ;;
-        1c1d)
+        standalone)
+            process_single all
+            ;;
+        latest)
             process_single all
             ;;
         all)
@@ -155,7 +163,7 @@ function main() {
     	    for b in $options ; do
 	            build_single ${b}
 	        done
-            ;;
+          ;;
 	   *)
 	        echo "bad value  of -t ."
 	        print_usage ;;

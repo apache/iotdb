@@ -26,7 +26,6 @@ import org.apache.iotdb.db.exception.QueryInBatchStatementException;
 import org.apache.iotdb.db.exception.StorageGroupNotReadyException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.query.QueryTimeoutRuntimeException;
-import org.apache.iotdb.db.exception.sql.SQLParserException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -117,9 +116,6 @@ public class ErrorHandlingUtils {
     } else if (t instanceof ParseCancellationException) {
       return RpcUtils.getStatus(
           TSStatusCode.SQL_PARSE_ERROR, INFO_PARSING_SQL_ERROR + rootCause.getMessage());
-    } else if (t instanceof SQLParserException) {
-      return RpcUtils.getStatus(
-          TSStatusCode.METADATA_ERROR, INFO_CHECK_METADATA_ERROR + rootCause.getMessage());
     } else if (t instanceof QueryProcessException) {
       return RpcUtils.getStatus(
           TSStatusCode.QUERY_PROCESS_ERROR, INFO_QUERY_PROCESS_ERROR + rootCause.getMessage());

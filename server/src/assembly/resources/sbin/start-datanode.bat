@@ -139,10 +139,10 @@ IF EXIST "%IOTDB_CONF%\iotdb-datanode.properties" (
 ) ELSE (
   echo "Can't find iotdb-datanode.properties, check the default ports"
   set dn_rpc_port=6667
-  set dn_internal_port=9003
-  set dn_mpp_data_exchange_port=8777
-  set dn_schema_region_consensus_port=50010
-  set dn_data_region_consensus_port=40010
+  set dn_internal_port=10730
+  set dn_mpp_data_exchange_port=10740
+  set dn_schema_region_consensus_port=10750
+  set dn_data_region_consensus_port=10760
 )
 
 echo Check whether the ports are occupied....

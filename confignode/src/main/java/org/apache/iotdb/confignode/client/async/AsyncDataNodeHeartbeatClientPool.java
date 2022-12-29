@@ -44,12 +44,8 @@ public class AsyncDataNodeHeartbeatClientPool {
    */
   public void getDataNodeHeartBeat(
       TEndPoint endPoint, THeartbeatReq req, DataNodeHeartbeatHandler handler) {
-    AsyncDataNodeHeartbeatServiceClient client;
     try {
-      client = clientManager.purelyBorrowClient(endPoint);
-      if (client != null) {
-        client.getDataNodeHeartBeat(req, handler);
-      }
+      clientManager.borrowClient(endPoint).getDataNodeHeartBeat(req, handler);
     } catch (Exception ignore) {
       // Just ignore
     }

@@ -22,6 +22,7 @@ package org.apache.iotdb.db.mpp.plan.parser;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.constant.SqlConstant;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.template.TemplateQueryType;
 import org.apache.iotdb.db.metadata.utils.MetaFormatUtils;
@@ -57,10 +58,8 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowPathSetTempl
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowPathsUsingTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.UnsetSchemaTemplateStatement;
-import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser;
 import org.apache.iotdb.db.qp.sql.SqlLexer;
-import org.apache.iotdb.db.qp.strategy.SQLParseError;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
 import org.apache.iotdb.service.rpc.thrift.TSCreateAlignedTimeseriesReq;
 import org.apache.iotdb.service.rpc.thrift.TSCreateMultiTimeseriesReq;
@@ -479,14 +478,14 @@ public class StatementGenerator {
 
     SqlLexer lexer1 = new SqlLexer(charStream1);
     lexer1.removeErrorListeners();
-    lexer1.addErrorListener(SQLParseError.INSTANCE);
+    lexer1.addErrorListener(SqlParseError.INSTANCE);
 
     CommonTokenStream tokens1 = new CommonTokenStream(lexer1);
 
     IoTDBSqlParser parser1 = new IoTDBSqlParser(tokens1);
     parser1.getInterpreter().setPredictionMode(PredictionMode.SLL);
     parser1.removeErrorListeners();
-    parser1.addErrorListener(SQLParseError.INSTANCE);
+    parser1.addErrorListener(SqlParseError.INSTANCE);
 
     ParseTree tree;
     try {
@@ -499,7 +498,7 @@ public class StatementGenerator {
 
       SqlLexer lexer2 = new SqlLexer(charStream2);
       lexer2.removeErrorListeners();
-      lexer2.addErrorListener(SQLParseError.INSTANCE);
+      lexer2.addErrorListener(SqlParseError.INSTANCE);
 
       CommonTokenStream tokens2 = new CommonTokenStream(lexer2);
 
@@ -507,7 +506,7 @@ public class StatementGenerator {
           new org.apache.iotdb.db.qp.sql.IoTDBSqlParser(tokens2);
       parser2.getInterpreter().setPredictionMode(PredictionMode.LL);
       parser2.removeErrorListeners();
-      parser2.addErrorListener(SQLParseError.INSTANCE);
+      parser2.addErrorListener(SqlParseError.INSTANCE);
 
       // STAGE 2: parser with full LL(*)
       tree = parser2.singleStatement();
@@ -631,7 +630,7 @@ public class StatementGenerator {
         return new ShowPathSetTemplateStatement(req.getName());
       case SHOW_USING_TEMPLATES:
         return new ShowPathsUsingTemplateStatement(
-            new PartialPath(SQLConstant.getSingleRootArray()), req.getName());
+            new PartialPath(SqlConstant.getSingleRootArray()), req.getName());
       default:
         return null;
     }
