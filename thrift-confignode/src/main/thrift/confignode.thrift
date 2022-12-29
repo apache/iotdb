@@ -681,7 +681,7 @@ struct TDropModelReq {
 }
 
 struct TShowModelReq {
-  1: optional string queriedModelId
+  1: optional string modelId
 }
 
 struct TModelInfo {
@@ -708,15 +708,6 @@ struct TTrailInfo {
 struct TShowTrailResp {
   1: required common.TSStatus status
   2: required list<TTrailInfo> trailInfoList
-}
-
-struct TGetModelInfoReq {
-  1: required string modelId
-}
-
-struct TGetModelInfoResp {
-  1: required common.TSStatus status
-  2: required TModelInfo modelInfo
 }
 
 struct TUpdateModelInfoReq {
@@ -1245,17 +1236,12 @@ service IConfigNodeRPCService {
   /**
    * Return the model table
    */
-  TShowModelResp showModels(TShowModelReq req)
+  TShowModelResp showModel(TShowModelReq req)
 
   /**
    * Return the trail table
    */
   TShowTrailResp showTrail(TShowTrailReq req)
-
-  /**
-   * Return the model info by specific model id
-   */
-  TGetModelInfoResp getModelInfo(TGetModelInfoReq req)
 
   /**
    * Update the model info
