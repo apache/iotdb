@@ -18,6 +18,7 @@
  */
 include "common.thrift"
 namespace java org.apache.iotdb.mpp.rpc.thrift
+namespace py iotdb.thrift.datanode
 
 struct TCreateSchemaRegionReq {
   1: required common.TRegionReplicaSet regionReplicaSet
