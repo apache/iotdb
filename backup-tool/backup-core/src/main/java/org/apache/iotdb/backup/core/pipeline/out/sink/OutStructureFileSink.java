@@ -81,11 +81,11 @@ public class OutStructureFileSink extends PipeSink<TimeSeriesRowModel, TimeSerie
                                     finishedRowNum.addAndGet(allList.size());
                                     return Flux.fromIterable(allList);
                                   });
-                            }));
-    //            .doOnTerminate(
-    //                () -> {
-    //                  finishedFileNum.incrementAndGet();
-    //                });
+                            }))
+                .doOnTerminate(
+                    () -> {
+                      finishedFileNum.incrementAndGet();
+                    });
   }
 
   @Override

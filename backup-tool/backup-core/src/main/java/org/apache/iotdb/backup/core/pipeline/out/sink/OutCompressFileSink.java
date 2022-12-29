@@ -94,7 +94,7 @@ public class OutCompressFileSink extends PipeSink<TimeSeriesRowModel, TimeSeries
                                                         }));
                                         for (String groupKey : groupMap.keySet()) {
                                           if (groupKey.startsWith("finish")) {
-                                            // finishedFileNum.incrementAndGet();
+                                             finishedFileNum.incrementAndGet();
                                             continue;
                                           }
                                           // TODO: 压缩文本，outstream写入 exportModel.getcompressEnum

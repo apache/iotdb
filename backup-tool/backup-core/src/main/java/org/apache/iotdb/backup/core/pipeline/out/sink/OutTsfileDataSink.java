@@ -132,7 +132,7 @@ public class OutTsfileDataSink extends PipeSink<TimeSeriesRowModel, TimeSeriesRo
                     }));
     for (String deviceIdKey : groupByDeviceIdMap.keySet()) {
       if (deviceIdKey.startsWith("finish")) {
-        // finishedFileNum.incrementAndGet();
+         finishedFileNum.incrementAndGet();
         continue;
       }
       Map<String, List<TimeSeriesRowModel>> groupByTsfileNameKeyMap =
