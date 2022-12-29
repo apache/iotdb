@@ -20,23 +20,37 @@
 include "common.thrift"
 namespace py iotdb.thrift.mlnode
 
-struct TCreateTrainingTaskReq {}
+struct TCreateTrainingTaskReq {
+  1: required string modelId
+  3: required bool isAuto
+  4: required map<string, string> modelConfigs
+  5: required list<string> queryExpressions
+  6: optional string queryFilter
+}
 
-struct TDeleteModelReq {}
+struct TDeleteModelReq {
+  1: required string modelPath
+}
 
-struct TForecastReq {}
+struct TForecastReq {
+  1: required string modelPath
+  2: required list<binary> dataset
+}
 
-struct TForecastResp {}
+struct TForecastResp {
+  1: required common.TSStatus status
+  2: required binary forecastResult
+}
 
 service IMLNodeRPCService {
 
-    // -------------- For Config Node --------------
+  // -------------- For Config Node --------------
 
-    common.TSStatus createTrainingTask(TCreateTrainingTaskReq req)
+  common.TSStatus createTrainingTask(TCreateTrainingTaskReq req)
 
-    common.TSStatus deleteModel(TDeleteModelReq req)
+  common.TSStatus deleteModel(TDeleteModelReq req)
 
-    // -------------- For Data Node --------------
+  // -------------- For Data Node --------------
 
-    TForecastResp forecast(TForecastReq req)
+  TForecastResp forecast(TForecastReq req)
 }

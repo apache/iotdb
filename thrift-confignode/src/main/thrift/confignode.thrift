@@ -654,23 +654,62 @@ struct TUnsetSchemaTemplateReq{
   3: required string path
 }
 
-struct TCreateModelReq {}
+struct TCreateModelReq {
+  1: required string modelId
+  2: required byte modelTask
+  3: required bool isAuto
+  4: required map<string, string> modelConfigs
+  5: required list<string> queryExpressions
+  6: optional string queryFilter
+}
 
-struct TDropModelReq {}
+struct TDropModelReq {
+  1: required string modelId
+}
 
-struct TShowModelReq {}
+struct TShowModelReq {
+  1: optional string queriedModelId
+}
 
-struct TShowModelResp {}
+struct TModelInfo {
+  1: required string modelId
+  2: required map<string, string> modelInfo
+}
 
-struct TShowTrailReq {}
+struct TShowModelResp {
+  1: required common.TSStatus status
+  2: required list<TModelInfo> modelInfoList
+}
 
-struct TShowTrailResp {}
+struct TShowTrailReq {
+  1: required string modelId
+  2: optional string trailId
+}
 
-struct TGetModelInfoReq {}
+struct TTrailInfo {
+  1: required string modelId
+  2: required string trailId
+  3: required map<string, string> trailInfo
+}
 
-struct TGetModelInfoResp {}
+struct TShowTrailResp {
+  1: required common.TSStatus status
+  2: required list<TTrailInfo> trailInfoList
+}
 
-struct TUpdateModelInfoReq {}
+struct TGetModelInfoReq {
+  1: required string modelId
+}
+
+struct TGetModelInfoResp {
+  1: required common.TSStatus status
+  2: required TModelInfo modelInfo
+}
+
+struct TUpdateModelInfoReq {
+  1: required string modelId
+  2: required map<string, string> modelInfo
+}
 
 service IConfigNodeRPCService {
 
@@ -1190,7 +1229,7 @@ service IConfigNodeRPCService {
   /**
    * Return the model table
    */
-  TShowModelResp showModel(TShowModelReq req)
+  TShowModelResp showModels(TShowModelReq req)
 
   /**
    * Return the trail table
