@@ -36,6 +36,7 @@ import org.roaringbitmap.RoaringBitmap;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Collection;
 import java.util.List;
 
 /** flush for MemChunk */
@@ -43,7 +44,7 @@ import java.util.List;
 public class MemChunkFlush extends FlushLevelProcessor<MemChunk, Object, FlushRequest> {
 
   @Override
-  public List<Object> getChildren(
+  public Collection<Object> getChildren(
       MemChunk memNode, FlushRequest request, FlushRequestContext context) {
     return null;
   }

@@ -21,7 +21,7 @@ package org.apache.iotdb.lsm.strategy;
 import org.apache.iotdb.lsm.context.requestcontext.RequestContext;
 import org.apache.iotdb.lsm.levelProcess.BasicLevelProcessor;
 
-import java.util.List;
+import java.util.Collection;
 
 /** reverse breadth first traversal access strategy implementation class */
 public class RBFSAccessStrategy implements IAccessStrategy {
@@ -49,7 +49,7 @@ public class RBFSAccessStrategy implements IAccessStrategy {
       // if all the next level nodes of the root node have not been processed
       while (context.getLevelUpperBound() != currentLevel) {
         // process all pending next-level nodes
-        List<O> children = levelProcess.getChildren(memNode, request, context);
+        Collection<O> children = levelProcess.getChildren(memNode, request, context);
         for (O child : children) {
           context.setLevel(currentLevel + 1);
           // use the processing method of the next layer to process the next layer of nodes
@@ -75,7 +75,7 @@ public class RBFSAccessStrategy implements IAccessStrategy {
     }
 
     // process all pending next-level nodes
-    List<O> children = levelProcess.getChildren(memNode, request, context);
+    Collection<O> children = levelProcess.getChildren(memNode, request, context);
     for (O child : children) {
       context.setLevel(currentLevel + 1);
       levelProcess.getNext().process(child, request, context);

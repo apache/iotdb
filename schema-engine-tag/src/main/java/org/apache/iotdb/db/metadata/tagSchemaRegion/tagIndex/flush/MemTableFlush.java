@@ -35,6 +35,7 @@ import org.apache.iotdb.lsm.util.BloomFilter;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -43,15 +44,15 @@ import java.util.Map;
 @FlushProcessor(level = 0)
 public class MemTableFlush extends FlushLevelProcessor<MemTable, MemChunkGroup, FlushRequest> {
   @Override
-  public List<MemChunkGroup> getChildren(
+  public Collection<MemChunkGroup> getChildren(
       MemTable memNode, FlushRequest request, FlushRequestContext context) {
-    return new ArrayList<>(memNode.getMemChunkGroupMap().values());
+    return memNode.getMemChunkGroupMap().values();
   }
 
   @Override
   public void flush(MemTable memNode, FlushRequest flushRequest, FlushRequestContext context)
       throws IOException {
-    List<MemChunkGroup> memChunkGroups = getChildren(memNode, null, context);
+    Collection<MemChunkGroup> memChunkGroups = getChildren(memNode, null, context);
     Map<MemChunkGroup, String> memChunkGroupMapReverse =
         memNode.getMemChunkGroupMap().entrySet().stream()
             .collect(HashMap::new, (m, v) -> m.put(v.getValue(), v.getKey()), HashMap::putAll);

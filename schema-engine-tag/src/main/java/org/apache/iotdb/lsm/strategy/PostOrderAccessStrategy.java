@@ -21,7 +21,7 @@ package org.apache.iotdb.lsm.strategy;
 import org.apache.iotdb.lsm.context.requestcontext.RequestContext;
 import org.apache.iotdb.lsm.levelProcess.BasicLevelProcessor;
 
-import java.util.List;
+import java.util.Collection;
 
 /** post-order traversal access strategy implementation class */
 public class PostOrderAccessStrategy implements IAccessStrategy {
@@ -39,7 +39,7 @@ public class PostOrderAccessStrategy implements IAccessStrategy {
     int currentLevel = context.getLevel();
     IAccessStrategy accessStrategy = context.getAccessStrategy();
     // get all memory nodes to be processed in the next layer
-    List<O> children = levelProcess.getChildren(memNode, request, context);
+    Collection<O> children = levelProcess.getChildren(memNode, request, context);
     if (levelProcess.hasNext()) {
       context.setLevel(currentLevel + 1);
       for (O child : children) {

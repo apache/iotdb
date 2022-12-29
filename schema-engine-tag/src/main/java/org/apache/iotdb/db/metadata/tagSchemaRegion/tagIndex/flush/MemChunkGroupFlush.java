@@ -29,9 +29,8 @@ import org.apache.iotdb.lsm.sstable.bplustree.writer.BPlusTreeWriter;
 import org.apache.iotdb.lsm.sstable.fileIO.FileOutput;
 
 import java.io.IOException;
-import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 /** flush for MemChunkGroup */
@@ -39,15 +38,15 @@ import java.util.Map;
 public class MemChunkGroupFlush extends FlushLevelProcessor<MemChunkGroup, MemChunk, FlushRequest> {
 
   @Override
-  public List<MemChunk> getChildren(
+  public Collection<MemChunk> getChildren(
       MemChunkGroup memNode, FlushRequest request, FlushRequestContext context) {
-    return new ArrayList<>(memNode.getMemChunkMap().values());
+    return memNode.getMemChunkMap().values();
   }
 
   @Override
   public void flush(MemChunkGroup memNode, FlushRequest request, FlushRequestContext context)
       throws IOException {
-    List<MemChunk> memChunks = getChildren(memNode, null, context);
+    Collection<MemChunk> memChunks = getChildren(memNode, null, context);
     Map<MemChunk, String> memChunkGroupMapReverse =
         memNode.getMemChunkMap().entrySet().stream()
             .collect(HashMap::new, (m, v) -> m.put(v.getValue(), v.getKey()), HashMap::putAll);
