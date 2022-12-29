@@ -339,7 +339,7 @@ struct TSLastDataQueryReq {
 struct TSAggregationQueryReq {
   1: required i64 sessionId
   2: required i64 statementId
-  3: required list<common.TPartialPath> paths
+  3: required list<string> paths
   4: required list<string> aggregations
   5: optional i64 startTime
   6: optional i64 endTime

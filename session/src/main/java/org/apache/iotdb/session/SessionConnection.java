@@ -20,7 +20,6 @@
 package org.apache.iotdb.session;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
-import org.apache.iotdb.common.rpc.thrift.TPartialPath;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.isession.SessionDataSet;
@@ -63,7 +62,6 @@ import org.apache.iotdb.service.rpc.thrift.TSSetSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSSetTimeZoneReq;
 import org.apache.iotdb.service.rpc.thrift.TSUnsetSchemaTemplateReq;
 import org.apache.iotdb.session.util.SessionUtils;
-import org.apache.iotdb.tsfile.read.common.parser.PathNodesGenerator;
 
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
@@ -75,7 +73,6 @@ import org.slf4j.LoggerFactory;
 
 import java.time.ZoneId;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
 import java.util.StringJoiner;
@@ -574,22 +571,13 @@ public class SessionConnection {
         tsExecuteStatementResp.moreData);
   }
 
-  private List<TPartialPath> convertToPartialPaths(List<String> paths) {
-    List<TPartialPath> selectPaths = new ArrayList<>();
-    for (String pathStr : paths) {
-      selectPaths.add(
-          new TPartialPath(Arrays.asList(PathNodesGenerator.splitPathToNodes(pathStr))));
-    }
-    return selectPaths;
-  }
-
   private TSAggregationQueryReq createAggregationQueryReq(
       List<String> paths, List<Aggregation> aggregations) {
     TSAggregationQueryReq req =
         new TSAggregationQueryReq(
             sessionId,
             statementId,
-            convertToPartialPaths(paths),
+            paths,
             aggregations.stream().map(Enum::toString).collect(Collectors.toList()));
     req.setFetchSize(session.getFetchSize());
     req.setTimeout(session.getQueryTimeout());

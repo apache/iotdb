@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.mpp.plan.parser;
 
-import org.apache.iotdb.common.rpc.thrift.TPartialPath;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -179,7 +178,8 @@ public class StatementGenerator {
     return lastQueryStatement;
   }
 
-  public static Statement createStatement(TSAggregationQueryReq req, ZoneId zoneId) {
+  public static Statement createStatement(TSAggregationQueryReq req, ZoneId zoneId)
+      throws IllegalPathException {
     QueryStatement queryStatement = new QueryStatement();
 
     FromComponent fromComponent = new FromComponent();
@@ -188,8 +188,8 @@ public class StatementGenerator {
 
     SelectComponent selectComponent = new SelectComponent(zoneId);
     List<PartialPath> selectPaths = new ArrayList<>();
-    for (TPartialPath path : req.getPaths()) {
-      selectPaths.add(new PartialPath(path.getNodes().toArray(new String[0])));
+    for (String pathStr : req.getPaths()) {
+      selectPaths.add(new PartialPath(pathStr));
     }
     List<String> aggregations = req.getAggregations();
     for (int i = 0; i < aggregations.size(); i++) {

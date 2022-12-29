@@ -123,7 +123,3 @@ struct TFilesResp {
   1: required TSStatus status
   2: required list<TFile> files
 }
-
-struct TPartialPath {
-  1: required list<string> nodes;
-}
