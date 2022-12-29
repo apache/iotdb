@@ -54,6 +54,7 @@ import org.apache.iotdb.db.mpp.execution.operator.process.ProcessOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.RawDataAggregationOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.SingleDeviceViewOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.SlidingWindowAggregationOperator;
+import org.apache.iotdb.db.mpp.execution.operator.process.SortOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.TagAggregationOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.TransformOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.fill.IFill;
@@ -754,8 +755,43 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
 
     List<SortItem> sortItemList = node.getMergeOrderParameter().getSortItemList();
     context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
+
+    List<Integer> sortItemIndexList = new ArrayList<>(sortItemList.size());
+    List<TSDataType> sortItemDataTypeList = new ArrayList<>(sortItemList.size());
+    genSortInformation(
+        node.getOutputColumnNames(),
+        dataTypes,
+        sortItemList,
+        sortItemIndexList,
+        sortItemDataTypeList);
     return new MergeSortOperator(
-        operatorContext, children, dataTypes, MergeSortComparator.getComparator(sortItemList));
+        operatorContext,
+        children,
+        dataTypes,
+        MergeSortComparator.getComparator(sortItemList, sortItemIndexList, sortItemDataTypeList));
+  }
+
+  private void genSortInformation(
+      List<String> outputColumnNames,
+      List<TSDataType> dataTypes,
+      List<SortItem> sortItemList,
+      List<Integer> sortItemIndexList,
+      List<TSDataType> sortItemDataTypeList) {
+    sortItemList.forEach(
+        sortItem -> {
+          if (sortItem.getSortKey() == SortKey.TIME) {
+            sortItemIndexList.add(-1);
+            sortItemDataTypeList.add(TSDataType.INT64);
+          } else {
+            for (int i = 0; i < outputColumnNames.size(); i++) {
+              if (sortItem.getSortKey().toString().equalsIgnoreCase(outputColumnNames.get(i))) {
+                sortItemIndexList.add(i);
+                sortItemDataTypeList.add(dataTypes.get(i));
+                break;
+              }
+            }
+          }
+        });
   }
 
   @Override
@@ -1407,7 +1443,32 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
 
   @Override
   public Operator visitSort(SortNode node, LocalExecutionPlanContext context) {
-    return super.visitSort(node, context);
+    Operator child = node.getChild().accept(this, context);
+    OperatorContext operatorContext =
+        context
+            .getInstanceContext()
+            .addOperatorContext(
+                context.getNextOperatorId(),
+                node.getPlanNodeId(),
+                DeviceViewIntoOperator.class.getSimpleName());
+    List<TSDataType> dataTypes = getOutputColumnTypes(node, context.getTypeProvider());
+
+    List<SortItem> sortItemList = node.getOrderByParameter().getSortItemList();
+    context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
+
+    List<Integer> sortItemIndexList = new ArrayList<>(sortItemList.size());
+    List<TSDataType> sortItemDataTypeList = new ArrayList<>(sortItemList.size());
+    genSortInformation(
+        node.getOutputColumnNames(),
+        dataTypes,
+        sortItemList,
+        sortItemIndexList,
+        sortItemDataTypeList);
+    return new SortOperator(
+        operatorContext,
+        child,
+        dataTypes,
+        MergeSortComparator.getComparator(sortItemList, sortItemIndexList, sortItemDataTypeList));
   }
 
   @Override

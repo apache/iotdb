@@ -217,6 +217,9 @@ public class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
 
   @Override
   public PlanNode visitMergeSort(MergeSortNode node, NodeGroupContext context) {
+    if (analysis.isVirtualSource()) {
+      return processMultiChildNodeByLocation(node, context);
+    }
     // 1. Group children by dataRegion
     Map<TRegionReplicaSet, List<PlanNode>> childrenGroupMap = new HashMap<>();
     for (int i = 0; i < node.getChildren().size(); i++) {

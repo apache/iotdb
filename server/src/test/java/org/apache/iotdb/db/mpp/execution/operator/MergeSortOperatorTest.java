@@ -317,7 +317,9 @@ public class MergeSortOperatorTest {
           MergeSortComparator.getComparator(
               Arrays.asList(
                   new SortItem(SortKey.TIME, timeOrdering),
-                  new SortItem(SortKey.DEVICE, deviceOrdering))));
+                  new SortItem(SortKey.DEVICE, deviceOrdering)),
+              null,
+              null));
     } catch (IllegalPathException e) {
       e.printStackTrace();
       fail();
@@ -791,7 +793,9 @@ public class MergeSortOperatorTest {
               MergeSortComparator.getComparator(
                   Arrays.asList(
                       new SortItem(SortKey.TIME, timeOrdering),
-                      new SortItem(SortKey.DEVICE, deviceOrdering))));
+                      new SortItem(SortKey.DEVICE, deviceOrdering)),
+                  null,
+                  null));
       MergeSortOperator mergeSortOperator2 =
           new MergeSortOperator(
               fragmentInstanceContext.getOperatorContexts().get(15),
@@ -800,7 +804,9 @@ public class MergeSortOperatorTest {
               MergeSortComparator.getComparator(
                   Arrays.asList(
                       new SortItem(SortKey.TIME, timeOrdering),
-                      new SortItem(SortKey.DEVICE, deviceOrdering))));
+                      new SortItem(SortKey.DEVICE, deviceOrdering)),
+                  null,
+                  null));
 
       return new MergeSortOperator(
           fragmentInstanceContext.getOperatorContexts().get(16),
@@ -809,7 +815,9 @@ public class MergeSortOperatorTest {
           MergeSortComparator.getComparator(
               Arrays.asList(
                   new SortItem(SortKey.TIME, timeOrdering),
-                  new SortItem(SortKey.DEVICE, deviceOrdering))));
+                  new SortItem(SortKey.DEVICE, deviceOrdering)),
+              null,
+              null));
     } catch (IllegalPathException e) {
       e.printStackTrace();
       fail();
@@ -1257,7 +1265,9 @@ public class MergeSortOperatorTest {
           MergeSortComparator.getComparator(
               Arrays.asList(
                   new SortItem(SortKey.DEVICE, deviceOrdering),
-                  new SortItem(SortKey.TIME, timeOrdering))));
+                  new SortItem(SortKey.TIME, timeOrdering)),
+              null,
+              null));
     } catch (IllegalPathException e) {
       e.printStackTrace();
       fail();

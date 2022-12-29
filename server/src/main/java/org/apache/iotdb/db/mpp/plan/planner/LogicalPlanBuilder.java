@@ -1138,11 +1138,13 @@ public class LogicalPlanBuilder {
               .planSort(analysis.getMergeOrderParameter())
               .getRoot();
     } else {
+      List<String> outputColumns = new ArrayList<>();
       MergeSortNode mergeSortNode =
           new MergeSortNode(
               context.getQueryId().genPlanNodeId(),
               analysis.getMergeOrderParameter(),
-              ShowQueriesNode.SHOW_QUERIES_HEADER_COLUMNS);
+              outputColumns);
+
       dataNodeLocations.forEach(
           dataNodeLocation ->
               mergeSortNode.addChild(
@@ -1155,6 +1157,7 @@ public class LogicalPlanBuilder {
                           Ordering.ASC)
                       .planSort(analysis.getMergeOrderParameter())
                       .getRoot()));
+      outputColumns.addAll(mergeSortNode.getChildren().get(0).getOutputColumnNames());
       this.root = mergeSortNode;
     }
 
