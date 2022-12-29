@@ -21,6 +21,41 @@
 
 # 集群运维命令
 
+## 展示集群配置
+
+当前 IoTDB 支持使用如下 SQL 展示集群的关键参数：
+```
+SHOW CLUSTER PARAMETERS
+```
+
+示例：
+```
+IoTDB> show cluster parameters
++----------------------------------+-----------------------------------------------------------------+
+|                 ClusterParameters|                                                            Value|
++----------------------------------+-----------------------------------------------------------------+
+|                       ClusterName|                                                   defaultCluster|
+|             DataReplicationFactor|                                                                1|
+|           SchemaReplicationFactor|                                                                1|
+|  DataRegionConsensusProtocolClass|                      org.apache.iotdb.consensus.iot.IoTConsensus|
+|SchemaRegionConsensusProtocolClass|                  org.apache.iotdb.consensus.ratis.RatisConsensus|
+|  ConfigNodeConsensusProtocolClass|                  org.apache.iotdb.consensus.ratis.RatisConsensus|
+|             TimePartitionInterval|                                                        604800000|
+|                    DefaultTTL(ms)|                                              9223372036854775807|
+|              ReadConsistencyLevel|                                                           strong|
+|           SchemaRegionPerDataNode|                                                              1.0|
+|            DataRegionPerProcessor|                                                              1.0|
+|           LeastDataRegionGroupNum|                                                                5|
+|                     SeriesSlotNum|                                                            10000|
+|           SeriesSlotExecutorClass|org.apache.iotdb.commons.partition.executor.hash.BKDRHashExecutor|
+|         DiskSpaceWarningThreshold|                                                             0.05|
++----------------------------------+-----------------------------------------------------------------+
+Total line number = 15
+It costs 0.242s
+```
+
+**注意：** 必须保证该 SQL 展示的所有配置参数在同一集群各个节点完全一致
+
 ## 展示 ConfigNode 信息
 
 当前 IoTDB 支持使用如下 SQL 展示 ConfigNode 的信息：

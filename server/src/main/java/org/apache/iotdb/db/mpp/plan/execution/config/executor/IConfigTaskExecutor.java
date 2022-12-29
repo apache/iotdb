@@ -97,6 +97,8 @@ public interface IConfigTaskExecutor {
 
   SettableFuture<ConfigTaskResult> showCluster(ShowClusterStatement showClusterStatement);
 
+  SettableFuture<ConfigTaskResult> showClusterParameters();
+
   SettableFuture<ConfigTaskResult> showTTL(ShowTTLStatement showTTLStatement);
 
   SettableFuture<ConfigTaskResult> showRegion(ShowRegionStatement showRegionStatement);

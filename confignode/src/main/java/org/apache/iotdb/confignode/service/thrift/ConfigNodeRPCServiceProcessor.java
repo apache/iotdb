@@ -132,6 +132,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TSetSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetStorageGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetTimePartitionIntervalReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowCQResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowClusterParametersResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowConfigNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
@@ -258,6 +259,11 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   @Override
   public TShowClusterResp showCluster() {
     return configManager.showCluster();
+  }
+
+  @Override
+  public TShowClusterParametersResp showClusterParameters() throws TException {
+    return configManager.showClusterParameters();
   }
 
   @Override

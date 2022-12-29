@@ -30,6 +30,7 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.confignode.rpc.thrift.IConfigNodeRPCService;
+import org.apache.iotdb.confignode.rpc.thrift.TClusterParameters;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRestartReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterReq;
@@ -205,24 +206,41 @@ public class ConfigNodeTestUtils {
         new TEndPoint(configNodeWrapper.getIp(), configNodeWrapper.getConsensusPort()));
   }
 
+  /**
+   * Generate a ConfigNode register request with the given ConfigNodeLocation and default
+   * configurations
+   *
+   * @param configNodeWrapper The given ConfigNode
+   * @return TConfigNodeRegisterReq for the given ConfigNode
+   */
   public static TConfigNodeRegisterReq generateTConfigNodeRegisterReq(
       ConfigNodeWrapper configNodeWrapper) {
     return new TConfigNodeRegisterReq()
         .setConfigNodeLocation(generateTConfigNodeLocation(-1, configNodeWrapper))
-        .setDataRegionConsensusProtocolClass(CONF.getDataRegionConsensusProtocolClass())
-        .setSchemaRegionConsensusProtocolClass(CONF.getSchemaRegionConsensusProtocolClass())
-        .setSeriesPartitionSlotNum(CONF.getSeriesPartitionSlotNum())
-        .setSeriesPartitionExecutorClass(
-            "org.apache.iotdb.commons.partition.executor.hash.BKDRHashExecutor")
-        .setDefaultTTL(Long.MAX_VALUE)
-        .setTimePartitionInterval(CONF.getTimePartitionInterval())
-        .setSchemaReplicationFactor(CONF.getSchemaReplicationFactor())
-        .setDataReplicationFactor(CONF.getDataReplicationFactor())
-        .setSchemaRegionPerDataNode(1.0)
-        .setDataRegionPerProcessor(1.0)
-        .setReadConsistencyLevel("strong")
-        .setDiskSpaceWarningThreshold(0.05)
-        .setLeastDataRegionGroupNum(CONF.getLeastDataRegionGroupNum());
+        .setClusterParameters(generateClusterParameters());
+  }
+
+  private static TClusterParameters generateClusterParameters() {
+    TClusterParameters clusterParameters = new TClusterParameters();
+    clusterParameters.setClusterName(CONF.getClusterName());
+    clusterParameters.setConfigNodeConsensusProtocolClass(
+        CONF.getConfigNodeConsensusProtocolClass());
+    clusterParameters.setDataRegionConsensusProtocolClass(
+        CONF.getDataRegionConsensusProtocolClass());
+    clusterParameters.setSchemaRegionConsensusProtocolClass(
+        CONF.getSchemaRegionConsensusProtocolClass());
+    clusterParameters.setSeriesPartitionSlotNum(CONF.getSeriesPartitionSlotNum());
+    clusterParameters.setSeriesPartitionExecutorClass(CONF.getSeriesPartitionExecutorClass());
+    clusterParameters.setDefaultTTL(CONF.getDefaultTTL());
+    clusterParameters.setTimePartitionInterval(CONF.getTimePartitionInterval());
+    clusterParameters.setDataReplicationFactor(CONF.getDataReplicationFactor());
+    clusterParameters.setSchemaReplicationFactor(CONF.getSchemaReplicationFactor());
+    clusterParameters.setDataRegionPerProcessor(CONF.getDataRegionPerProcessor());
+    clusterParameters.setSchemaRegionPerDataNode(CONF.getSchemaRegionPerDataNode());
+    clusterParameters.setDiskSpaceWarningThreshold(CONF.getDiskSpaceWarningThreshold());
+    clusterParameters.setReadConsistencyLevel(CONF.getReadConsistencyLevel());
+    clusterParameters.setLeastDataRegionGroupNum(CONF.getLeastDataRegionGroupNum());
+    return clusterParameters;
   }
 
   public static TConfigNodeRestartReq generateTConfigNodeRestartReq(
