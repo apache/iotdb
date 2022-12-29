@@ -25,6 +25,7 @@ import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
 public class ShowClusterStatement extends ShowStatement implements IConfigStatement {
 
   private boolean isDetails = false;
+  private boolean isParameters = false;
 
   @Override
   public QueryType getQueryType() {
@@ -42,5 +43,13 @@ public class ShowClusterStatement extends ShowStatement implements IConfigStatem
 
   public void setDetails(boolean details) {
     isDetails = details;
+  }
+
+  public boolean isParameters() {
+    return isParameters;
+  }
+
+  public void setParameters(boolean parameters) {
+    isParameters = parameters;
   }
 }

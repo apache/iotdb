@@ -42,7 +42,7 @@ import static org.mockito.Mockito.mock;
 
 public class ClientManagerTest {
 
-  private final TEndPoint endPoint = new TEndPoint("localhost", 9003);
+  private final TEndPoint endPoint = new TEndPoint("localhost", 10730);
 
   private MockInternalRPCService service;
 

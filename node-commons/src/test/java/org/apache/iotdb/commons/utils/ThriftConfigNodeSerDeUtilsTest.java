@@ -57,7 +57,7 @@ public class ThriftConfigNodeSerDeUtilsTest {
   public void readWriteTConfigNodeLocationTest() {
     TConfigNodeLocation configNodeLocation0 =
         new TConfigNodeLocation(
-            0, new TEndPoint("0.0.0.0", 22277), new TEndPoint("0.0.0.0", 22278));
+            0, new TEndPoint("0.0.0.0", 10710), new TEndPoint("0.0.0.0", 10720));
 
     ThriftConfigNodeSerDeUtils.serializeTConfigNodeLocation(configNodeLocation0, buffer);
     buffer.flip();
