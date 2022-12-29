@@ -435,14 +435,14 @@ void deleteData(List<String> paths, long endTime)
   - 指定的查询时间范围为左闭右开区间，包含开始时间但不包含结束时间。
 
 ```java
-SessionDataSet executeRawDataQuery(List<String> paths, long startTime, long endTime)
+SessionDataSet executeRawDataQuery(List<String> paths, long startTime, long endTime);
 ```
 
 * 最新点查询：
   - 查询最后一条时间戳大于等于某个时间点的数据。
 
 ```java
-SessionDataSet executeLastDataQuery(List<String> paths, long lastTime)
+SessionDataSet executeLastDataQuery(List<String> paths, long lastTime);
 ```
 
 * 聚合查询：

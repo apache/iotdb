@@ -446,14 +446,14 @@ void deleteData(List<String> paths, long time)
   - The specified query time range is a left-closed right-open interval, including the start time but excluding the end time.
 
 ```java
-SessionDataSet executeRawDataQuery(List<String> paths, long startTime, long endTime)
+SessionDataSet executeRawDataQuery(List<String> paths, long startTime, long endTime);
 ```
 
 * Last query: 
   - Query the last data, whose timestamp is greater than or equal LastTime.
 
 ```java
-SessionDataSet executeLastDataQuery(List<String> paths, long LastTime)
+SessionDataSet executeLastDataQuery(List<String> paths, long LastTime);
 ```
 
 * Aggregation query:
