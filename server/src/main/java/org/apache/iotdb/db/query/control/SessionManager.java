@@ -20,7 +20,6 @@ package org.apache.iotdb.db.query.control;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.AuthException;
-import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.service.JMXService;
 import org.apache.iotdb.db.auth.AuthorityChecker;
@@ -53,7 +52,6 @@ import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onNPEOrUnexpectedException;
-import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onQueryException;
 
 public class SessionManager implements SessionManagerMBean {
   private static final Logger LOGGER = LoggerFactory.getLogger(SessionManager.class);
@@ -264,26 +262,6 @@ public class SessionManager implements SessionManagerMBean {
     }
     return AuthorityChecker.check(
         username, plan.getAuthPaths(), plan.getOperatorType(), targetUser);
-  }
-
-  /** Check whether specific Session has the authorization to given plan. */
-  public TSStatus checkAuthority(PhysicalPlan plan, IClientSession session) {
-    try {
-      if (!checkAuthorization(plan, session.getUsername())) {
-        return RpcUtils.getStatus(
-            TSStatusCode.NO_PERMISSION,
-            "No permissions for this operation, please add privilege "
-                + PrivilegeType.values()[
-                    AuthorityChecker.translateToPermissionId(plan.getOperatorType())]);
-      }
-    } catch (AuthException e) {
-      LOGGER.warn("meet error while checking authorization.", e);
-      return RpcUtils.getStatus(TSStatusCode.UNINITIALIZED_AUTH_ERROR, e.getMessage());
-    } catch (Exception e) {
-      return onQueryException(
-          e, OperationType.CHECK_AUTHORITY.getName(), TSStatusCode.EXECUTE_STATEMENT_ERROR);
-    }
-    return null;
   }
 
   /**
