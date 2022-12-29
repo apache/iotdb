@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.protocol.influxdb.function.aggregator;
 
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
-import org.apache.iotdb.db.protocol.influxdb.constant.InfluxSQLConstant;
+import org.apache.iotdb.db.protocol.influxdb.constant.InfluxSqlConstant;
 import org.apache.iotdb.db.protocol.influxdb.function.InfluxFunctionValue;
 import org.apache.iotdb.db.utils.MathUtils;
 
@@ -48,7 +48,7 @@ public class InfluxMeanFunction extends InfluxAggregator {
 
   @Override
   public String getFunctionName() {
-    return InfluxSQLConstant.MEAN;
+    return InfluxSqlConstant.MEAN;
   }
 
   @Override

@@ -26,7 +26,6 @@ import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.cluster.RegionStatus;
-import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.confignode.it.utils.ConfigNodeTestUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionReq;
@@ -50,7 +49,6 @@ import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import org.apache.thrift.TException;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -60,7 +58,6 @@ import org.junit.runner.RunWith;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -129,7 +126,7 @@ public class IoTDBPartitionDurableIT {
     setStorageGroup();
   }
 
-  private void setStorageGroup() throws IOException, InterruptedException, TException {
+  private void setStorageGroup() throws Exception {
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
       TSetStorageGroupReq setStorageGroupReq = new TSetStorageGroupReq(new TStorageGroupSchema(sg));
@@ -156,8 +153,7 @@ public class IoTDBPartitionDurableIT {
   }
 
   @Test
-  public void testRemovingDataNode()
-      throws IOException, InterruptedException, TException, IllegalPathException {
+  public void testRemovingDataNode() throws Exception {
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
 
@@ -229,7 +225,7 @@ public class IoTDBPartitionDurableIT {
           schemaPartitionTableResp.getStatus().getCode());
 
       /* Register a new DataNode */
-      EnvFactory.getEnv().registerNewDataNode();
+      EnvFactory.getEnv().registerNewDataNode(true);
 
       /* Test getOrCreateSchemaPartition, ConfigNode should create SchemaPartition and return */
       schemaPartitionReq =
@@ -283,7 +279,7 @@ public class IoTDBPartitionDurableIT {
   }
 
   @Test
-  public void testReadOnlyDataNode() throws IOException, InterruptedException, TException {
+  public void testReadOnlyDataNode() throws Exception {
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
 
@@ -370,7 +366,7 @@ public class IoTDBPartitionDurableIT {
           dataPartitionTableResp.getStatus().getCode());
 
       /* Register a new DataNode */
-      EnvFactory.getEnv().registerNewDataNode();
+      EnvFactory.getEnv().registerNewDataNode(true);
 
       /* Test getOrCreateDataPartition, ConfigNode should create DataPartition and return */
       partitionSlotsMap =
@@ -434,7 +430,7 @@ public class IoTDBPartitionDurableIT {
   }
 
   @Test
-  public void testUnknownDataNode() throws IOException, TException, InterruptedException {
+  public void testUnknownDataNode() throws Exception {
     // Shutdown a DataNode, the ConfigNode should still be able to create RegionGroup
     EnvFactory.getEnv().shutdownDataNode(testDataNodeId);
 

@@ -85,9 +85,10 @@ Core 级别的监控指标在系统运行中默认开启，每一个 Core 级别
 #### 4.1.1. 集群运行状态
 
 | Metric      | Tags                                            | Type      | Description                            |
-| ----------- | ----------------------------------------------- | --------- | -------------------------------------- |
+|-------------|-------------------------------------------------| --------- | -------------------------------------- |
 | config_node | name="total",status="Registered/Online/Unknown" | AutoGauge | 已注册/在线/离线 confignode 的节点数量 |
 | data_node   | name="total",status="Registered/Online/Unknown" | AutoGauge | 已注册/在线/离线 datanode 的节点数量   |
+| points      | database="{{database}}", type="flush"           | Gauge     | 最新一个刷盘的memtale的点数        |
 
 #### 4.1.2. IoTDB 进程运行状态
 | Metric            | Tags           | Type      | Description                         |
@@ -127,7 +128,6 @@ Core 级别的监控指标在系统运行中默认开启，每一个 Core 级别
 | quantity | name="database"                            | AutoGauge | 系统数据库数量                  |
 | quantity | name="timeSeries"                          | AutoGauge | 系统时间序列数量                 |
 | quantity | name="pointsIn"                            | Counter   | 系统累计写入点数                 |
-| points   | database="{{database}}", type="flush"      | Gauge     | 最新一个刷盘的memtale的点数        |
 | region   | name="total",type="SchemaRegion"           | AutoGauge | 分区表中 SchemaRegion 总数量    |
 | region   | name="total",type="DataRegion"             | AutoGauge | 分区表中 DataRegion 总数量      |
 | region   | name="{{ip}}:{{port}}",type="SchemaRegion" | Gauge     | 分区表中对应节点上 DataRegion 总数量 |
@@ -177,11 +177,13 @@ Core 级别的监控指标在系统运行中默认开启，每一个 Core 级别
 | thrift_active_threads | name="ClientRPC-Service"           | AutoGauge | Client 建立的活跃 Thrift 连接数     |
 
 #### 4.2.6. 内存统计
-| Metric | Tags                          | Type      | Description                                       |
-| ------ | ----------------------------- | --------- | ------------------------------------------------- |
-| mem    | name="database_{{name}}"      | AutoGauge | DataNode内对应DataRegion的内存占用，单位为byte    |
-| mem    | name="chunkMetaData_{{name}}" | AutoGauge | 写入TsFile时的ChunkMetaData的内存占用，单位为byte |
-| mem    | name="IoTConsensus"           | AutoGauge | IoT共识协议的内存占用，单位为byte                 |
+| Metric | Tags                                 | Type      | Description                                       |
+| ------ |--------------------------------------| --------- | ------------------------------------------------- |
+| mem    | name="database_{{name}}"             | AutoGauge | DataNode内对应DataRegion的内存占用，单位为byte    |
+| mem    | name="chunkMetaData_{{name}}"        | AutoGauge | 写入TsFile时的ChunkMetaData的内存占用，单位为byte |
+| mem    | name="IoTConsensus"                  | AutoGauge | IoT共识协议的内存占用，单位为byte                 |
+| mem    | name="schema_region_total_usage"           | AutoGauge | 所有SchemaRegion的总内存占用，单位为byte         |
+| mem    | name="schema_region_total_remaining" | AutoGauge | 所有SchemaRegion的总内存剩余，单位为byte         |
 
 #### 4.2.7. 任务统计
 | Metric    | Tags                                              | Type      | Description        |

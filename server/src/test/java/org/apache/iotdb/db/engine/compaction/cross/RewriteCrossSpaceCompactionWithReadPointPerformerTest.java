@@ -25,6 +25,8 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.AbstractCompactionTest;
 import org.apache.iotdb.db.engine.compaction.performer.impl.ReadPointCompactionPerformer;
+import org.apache.iotdb.db.engine.compaction.reader.IDataBlockReader;
+import org.apache.iotdb.db.engine.compaction.reader.SeriesDataBlockReader;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionFileGeneratorUtils;
 import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion;
@@ -33,18 +35,15 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.query.control.FileReaderManager;
-import org.apache.iotdb.db.query.reader.series.SeriesRawDataBatchReader;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.wal.recover.WALRecoverManager;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.BatchData;
-import org.apache.iotdb.tsfile.read.reader.IBatchReader;
+import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.TsFileGeneratorUtils;
-import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
@@ -159,40 +158,35 @@ public class RewriteCrossSpaceCompactionWithReadPointPerformerTest extends Abstr
                 COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i,
                 Collections.singletonList("s" + j),
                 schemas);
-        IBatchReader tsFilesReader =
-            new SeriesRawDataBatchReader(
+        IDataBlockReader tsFilesReader =
+            new SeriesDataBlockReader(
                 path,
                 TSDataType.VECTOR,
-                EnvironmentUtils.TEST_QUERY_CONTEXT,
+                EnvironmentUtils.TEST_QUERY_FI_CONTEXT,
                 seqResources,
                 unseqResources,
-                null,
-                null,
                 true);
         int count = 0;
         while (tsFilesReader.hasNextBatch()) {
-          BatchData batchData = tsFilesReader.nextBatch();
-          while (batchData.hasCurrent()) {
+          TsBlock batchData = tsFilesReader.nextBatch();
+          for (int readIndex = 0, size = batchData.getPositionCount();
+              readIndex < size;
+              readIndex++) {
+            long currentTime = batchData.getTimeByIndex(readIndex);
+            long currentValue = batchData.getColumn(0).getLong(readIndex);
             if (i == TsFileGeneratorUtils.getAlignDeviceOffset()
-                && ((450 <= batchData.currentTime() && batchData.currentTime() < 550)
-                    || (550 <= batchData.currentTime() && batchData.currentTime() < 650))) {
-              assertEquals(
-                  batchData.currentTime() + 20000,
-                  ((TsPrimitiveType[]) (batchData.currentValue()))[0].getValue());
+                && ((450 <= currentTime && currentTime < 550)
+                    || (550 <= currentTime && currentTime < 650))) {
+              assertEquals(currentTime + 20000, currentValue);
             } else if ((i < TsFileGeneratorUtils.getAlignDeviceOffset() + 3 && j < 4)
-                && ((20 <= batchData.currentTime() && batchData.currentTime() < 220)
-                    || (250 <= batchData.currentTime() && batchData.currentTime() < 450)
-                    || (480 <= batchData.currentTime() && batchData.currentTime() < 680))) {
-              assertEquals(
-                  batchData.currentTime() + 10000,
-                  ((TsPrimitiveType[]) (batchData.currentValue()))[0].getValue());
+                && ((20 <= currentTime && currentTime < 220)
+                    || (250 <= currentTime && currentTime < 450)
+                    || (480 <= currentTime && currentTime < 680))) {
+              assertEquals(currentTime + 10000, currentValue);
             } else {
-              assertEquals(
-                  batchData.currentTime(),
-                  ((TsPrimitiveType[]) (batchData.currentValue()))[0].getValue());
+              assertEquals(currentTime, currentValue);
             }
             count++;
-            batchData.next();
           }
         }
         tsFilesReader.close();
@@ -265,40 +259,35 @@ public class RewriteCrossSpaceCompactionWithReadPointPerformerTest extends Abstr
                 COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i,
                 Collections.singletonList("s" + j),
                 schemas);
-        IBatchReader tsFilesReader =
-            new SeriesRawDataBatchReader(
+        IDataBlockReader tsFilesReader =
+            new SeriesDataBlockReader(
                 path,
                 TSDataType.VECTOR,
-                EnvironmentUtils.TEST_QUERY_CONTEXT,
+                EnvironmentUtils.TEST_QUERY_FI_CONTEXT,
                 tsFileManager.getTsFileList(true),
                 new ArrayList<>(),
-                null,
-                null,
                 true);
         int count = 0;
         while (tsFilesReader.hasNextBatch()) {
-          BatchData batchData = tsFilesReader.nextBatch();
-          while (batchData.hasCurrent()) {
+          TsBlock batchData = tsFilesReader.nextBatch();
+          for (int readIndex = 0, size = batchData.getPositionCount();
+              readIndex < size;
+              readIndex++) {
+            long currentTime = batchData.getTimeByIndex(readIndex);
+            long currentValue = batchData.getColumn(0).getLong(readIndex);
             if (i == TsFileGeneratorUtils.getAlignDeviceOffset()
-                && ((450 <= batchData.currentTime() && batchData.currentTime() < 550)
-                    || (550 <= batchData.currentTime() && batchData.currentTime() < 650))) {
-              assertEquals(
-                  batchData.currentTime() + 20000,
-                  ((TsPrimitiveType[]) (batchData.currentValue()))[0].getValue());
+                && ((450 <= currentTime && currentTime < 550)
+                    || (550 <= currentTime && currentTime < 650))) {
+              assertEquals(currentTime + 20000, currentValue);
             } else if ((i < TsFileGeneratorUtils.getAlignDeviceOffset() + 3 && j < 4)
-                && ((20 <= batchData.currentTime() && batchData.currentTime() < 220)
-                    || (250 <= batchData.currentTime() && batchData.currentTime() < 450)
-                    || (480 <= batchData.currentTime() && batchData.currentTime() < 680))) {
-              assertEquals(
-                  batchData.currentTime() + 10000,
-                  ((TsPrimitiveType[]) (batchData.currentValue()))[0].getValue());
+                && ((20 <= currentTime && currentTime < 220)
+                    || (250 <= currentTime && currentTime < 450)
+                    || (480 <= currentTime && currentTime < 680))) {
+              assertEquals(currentTime + 10000, currentValue);
             } else {
-              assertEquals(
-                  batchData.currentTime(),
-                  ((TsPrimitiveType[]) (batchData.currentValue()))[0].getValue());
+              assertEquals(currentTime, currentValue);
             }
             count++;
-            batchData.next();
           }
         }
         tsFilesReader.close();
@@ -397,40 +386,35 @@ public class RewriteCrossSpaceCompactionWithReadPointPerformerTest extends Abstr
                 COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i,
                 Collections.singletonList("s" + j),
                 schemas);
-        IBatchReader tsFilesReader =
-            new SeriesRawDataBatchReader(
+        IDataBlockReader tsFilesReader =
+            new SeriesDataBlockReader(
                 path,
                 TSDataType.VECTOR,
-                EnvironmentUtils.TEST_QUERY_CONTEXT,
+                EnvironmentUtils.TEST_QUERY_FI_CONTEXT,
                 seqResources,
                 unseqResources,
-                null,
-                null,
                 true);
         int count = 0;
         while (tsFilesReader.hasNextBatch()) {
-          BatchData batchData = tsFilesReader.nextBatch();
-          while (batchData.hasCurrent()) {
+          TsBlock batchData = tsFilesReader.nextBatch();
+          for (int readIndex = 0, size = batchData.getPositionCount();
+              readIndex < size;
+              readIndex++) {
+            long currentTime = batchData.getTimeByIndex(readIndex);
+            long currentValue = batchData.getColumn(0).getLong(readIndex);
             if (i == TsFileGeneratorUtils.getAlignDeviceOffset()
-                && ((450 <= batchData.currentTime() && batchData.currentTime() < 550)
-                    || (550 <= batchData.currentTime() && batchData.currentTime() < 650))) {
-              assertEquals(
-                  batchData.currentTime() + 20000,
-                  ((TsPrimitiveType[]) (batchData.currentValue()))[0].getValue());
+                && ((450 <= currentTime && currentTime < 550)
+                    || (550 <= currentTime && currentTime < 650))) {
+              assertEquals(currentTime + 20000, currentValue);
             } else if ((i < TsFileGeneratorUtils.getAlignDeviceOffset() + 3 && j < 4)
-                && ((20 <= batchData.currentTime() && batchData.currentTime() < 220)
-                    || (250 <= batchData.currentTime() && batchData.currentTime() < 450)
-                    || (480 <= batchData.currentTime() && batchData.currentTime() < 680))) {
-              assertEquals(
-                  batchData.currentTime() + 10000,
-                  ((TsPrimitiveType[]) (batchData.currentValue()))[0].getValue());
+                && ((20 <= currentTime && currentTime < 220)
+                    || (250 <= currentTime && currentTime < 450)
+                    || (480 <= currentTime && currentTime < 680))) {
+              assertEquals(currentTime + 10000, currentValue);
             } else {
-              assertEquals(
-                  batchData.currentTime(),
-                  ((TsPrimitiveType[]) (batchData.currentValue()))[0].getValue());
+              assertEquals(currentTime, currentValue);
             }
             count++;
-            batchData.next();
           }
         }
         tsFilesReader.close();
@@ -504,40 +488,35 @@ public class RewriteCrossSpaceCompactionWithReadPointPerformerTest extends Abstr
                 COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i,
                 Collections.singletonList("s" + j),
                 schemas);
-        IBatchReader tsFilesReader =
-            new SeriesRawDataBatchReader(
+        IDataBlockReader tsFilesReader =
+            new SeriesDataBlockReader(
                 path,
                 TSDataType.VECTOR,
-                EnvironmentUtils.TEST_QUERY_CONTEXT,
+                EnvironmentUtils.TEST_QUERY_FI_CONTEXT,
                 tsFileManager.getTsFileList(true),
                 new ArrayList<>(),
-                null,
-                null,
                 true);
         int count = 0;
         while (tsFilesReader.hasNextBatch()) {
-          BatchData batchData = tsFilesReader.nextBatch();
-          while (batchData.hasCurrent()) {
+          TsBlock batchData = tsFilesReader.nextBatch();
+          for (int readIndex = 0, size = batchData.getPositionCount();
+              readIndex < size;
+              readIndex++) {
+            long currentTime = batchData.getTimeByIndex(readIndex);
+            long currentValue = batchData.getColumn(0).getLong(readIndex);
             if (i == TsFileGeneratorUtils.getAlignDeviceOffset()
-                && ((450 <= batchData.currentTime() && batchData.currentTime() < 550)
-                    || (550 <= batchData.currentTime() && batchData.currentTime() < 650))) {
-              assertEquals(
-                  batchData.currentTime() + 20000,
-                  ((TsPrimitiveType[]) (batchData.currentValue()))[0].getValue());
+                && ((450 <= currentTime && currentTime < 550)
+                    || (550 <= currentTime && currentTime < 650))) {
+              assertEquals(currentTime + 20000, currentValue);
             } else if ((i < TsFileGeneratorUtils.getAlignDeviceOffset() + 3 && j < 4)
-                && ((20 <= batchData.currentTime() && batchData.currentTime() < 220)
-                    || (250 <= batchData.currentTime() && batchData.currentTime() < 450)
-                    || (480 <= batchData.currentTime() && batchData.currentTime() < 680))) {
-              assertEquals(
-                  batchData.currentTime() + 10000,
-                  ((TsPrimitiveType[]) (batchData.currentValue()))[0].getValue());
+                && ((20 <= currentTime && currentTime < 220)
+                    || (250 <= currentTime && currentTime < 450)
+                    || (480 <= currentTime && currentTime < 680))) {
+              assertEquals(currentTime + 10000, currentValue);
             } else {
-              assertEquals(
-                  batchData.currentTime(),
-                  ((TsPrimitiveType[]) (batchData.currentValue()))[0].getValue());
+              assertEquals(currentTime, currentValue);
             }
             count++;
-            batchData.next();
           }
         }
         tsFilesReader.close();

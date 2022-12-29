@@ -31,7 +31,6 @@ import org.apache.iotdb.db.engine.compaction.constant.InnerUnseqCompactionPerfor
 import org.apache.iotdb.db.engine.compaction.constant.InnerUnsequenceCompactionSelector;
 import org.apache.iotdb.db.engine.storagegroup.timeindex.TimeIndexLevel;
 import org.apache.iotdb.db.exception.LoadConfigurationException;
-import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
 import org.apache.iotdb.db.service.thrift.impl.ClientRPCServiceImpl;
 import org.apache.iotdb.db.service.thrift.impl.NewInfluxDBServiceImpl;
 import org.apache.iotdb.db.utils.datastructure.TVListSortAlgorithm;
@@ -530,10 +529,7 @@ public class IoTDBConfig {
   /** Set true to enable writing monitor time series. */
   private boolean enableMonitorSeriesWrite = false;
 
-  /** Cache size of {@code checkAndGetDataTypeCache} in {@link LocalSchemaProcessor}. */
-  private int schemaRegionDeviceNodeCacheSize = 10000;
-
-  /** Cache size of {@code checkAndGetDataTypeCache} in {@link LocalSchemaProcessor}. */
+  /** Cache size of {@code checkAndGetDataTypeCache}. */
   private int mRemoteSchemaCacheSize = 100000;
 
   /** Is external sort enable. */
@@ -572,7 +568,14 @@ public class IoTDBConfig {
   private boolean isClusterMode = false;
 
   /**
-   * the data node id for cluster mode, the default value -1 should be changed after join cluster
+   * The cluster name that this DataNode joined in the cluster mode. The default value
+   * "defaultCluster" will be changed after join cluster
+   */
+  private String clusterName = "defaultCluster";
+
+  /**
+   * The DataNodeId of this DataNode for cluster mode. The default value -1 will be changed after
+   * join cluster
    */
   private int dataNodeId = -1;
 
@@ -860,17 +863,17 @@ public class IoTDBConfig {
   private String internalAddress = "127.0.0.1";
 
   /** Internal port for coordinator */
-  private int internalPort = 9003;
+  private int internalPort = 10730;
 
   /** Internal port for dataRegion consensus protocol */
-  private int dataRegionConsensusPort = 40010;
+  private int dataRegionConsensusPort = 10760;
 
   /** Internal port for schemaRegion consensus protocol */
-  private int schemaRegionConsensusPort = 50010;
+  private int schemaRegionConsensusPort = 10750;
 
   /** Ip and port of config nodes. */
   private List<TEndPoint> targetConfigNodeList =
-      Collections.singletonList(new TEndPoint("127.0.0.1", 22277));
+      Collections.singletonList(new TEndPoint("127.0.0.1", 10710));
 
   /** The time of data node waiting for the next retry to join into the cluster */
   private long joinClusterRetryIntervalMs = TimeUnit.SECONDS.toMillis(5);
@@ -901,7 +904,7 @@ public class IoTDBConfig {
   private int seriesPartitionSlotNum = 10000;
 
   /** Port that mpp data exchange thrift service listen to. */
-  private int mppDataExchangePort = 8777;
+  private int mppDataExchangePort = 10740;
 
   /** Core pool size of mpp data exchange. */
   private int mppDataExchangeCorePoolSize = 10;
@@ -998,7 +1001,7 @@ public class IoTDBConfig {
   private long throttleThreshold = 50 * 1024 * 1024 * 1024L;
 
   /** Maximum wait time of write cache in IoTConsensus. Unit: ms */
-  private long cacheWindowTimeInMs = 60 * 1000;
+  private long cacheWindowTimeInMs = 10 * 1000;
 
   private long dataRatisConsensusLogAppenderBufferSizeMax = 4 * 1024 * 1024L;
   private long schemaRatisConsensusLogAppenderBufferSizeMax = 4 * 1024 * 1024L;
@@ -1502,7 +1505,7 @@ public class IoTDBConfig {
     this.subRawQueryThreadCount = subRawQueryThreadCount;
   }
 
-  public long getMaxBytesPerQuery() {
+  public long getMaxBytesPerFragmentInstance() {
     return allocateMemoryForDataExchange / queryThreadCount;
   }
 
@@ -1568,14 +1571,6 @@ public class IoTDBConfig {
 
   void setRpcMaxConcurrentClientNum(int rpcMaxConcurrentClientNum) {
     this.rpcMaxConcurrentClientNum = rpcMaxConcurrentClientNum;
-  }
-
-  public int getSchemaRegionDeviceNodeCacheSize() {
-    return schemaRegionDeviceNodeCacheSize;
-  }
-
-  void setSchemaRegionDeviceNodeCacheSize(int schemaRegionDeviceNodeCacheSize) {
-    this.schemaRegionDeviceNodeCacheSize = schemaRegionDeviceNodeCacheSize;
   }
 
   public int getmRemoteSchemaCacheSize() {
@@ -3076,6 +3071,14 @@ public class IoTDBConfig {
   public void setClusterMode(boolean isClusterMode) {
     this.isClusterMode = isClusterMode;
     checkMultiDirStrategyClassName();
+  }
+
+  public String getClusterName() {
+    return clusterName;
+  }
+
+  public void setClusterName(String clusterName) {
+    this.clusterName = clusterName;
   }
 
   public int getDataNodeId() {

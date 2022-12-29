@@ -46,7 +46,6 @@ import org.apache.iotdb.confignode.consensus.response.PipeSinkResp;
 import org.apache.iotdb.confignode.manager.node.NodeManager;
 import org.apache.iotdb.confignode.manager.observer.NodeStatisticsEvent;
 import org.apache.iotdb.confignode.persistence.sync.ClusterSyncInfo;
-import org.apache.iotdb.confignode.procedure.impl.sync.OperatePipeProcedureRollbackProcessor;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllPipeInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPipeSinkResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
@@ -73,13 +72,9 @@ public class SyncManager {
   private final IManager configManager;
   private final ClusterSyncInfo clusterSyncInfo;
 
-  private final OperatePipeProcedureRollbackProcessor rollbackProcessor;
-
   public SyncManager(IManager configManager, ClusterSyncInfo clusterSyncInfo) {
     this.configManager = configManager;
     this.clusterSyncInfo = clusterSyncInfo;
-    this.rollbackProcessor =
-        new OperatePipeProcedureRollbackProcessor(configManager.getNodeManager());
   }
 
   public void lockSyncMetadata() {
@@ -260,7 +255,7 @@ public class SyncManager {
         failedRollbackDataNodeId.add(responseEntry.getKey());
       }
     }
-    rollbackProcessor.retryRollbackReq(failedRollbackDataNodeId, request);
+    configManager.getRetryFailedTasksThread().retryRollbackReq(failedRollbackDataNodeId, request);
   }
 
   /**

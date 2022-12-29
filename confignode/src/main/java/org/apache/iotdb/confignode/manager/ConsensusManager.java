@@ -182,7 +182,7 @@ public class ConsensusManager {
     }
     consensusImpl.start();
     if (SystemPropertiesUtils.isRestarted()) {
-      // TODO: Check and notify if current ConfigNode's ip or port has changed
+      // TODO: @Itami-Sho Check and notify if current ConfigNode's ip or port has changed
 
       if (SIMPLE_CONSENSUS.equals(CONF.getConfigNodeConsensusProtocolClass())) {
         // Only SIMPLE_CONSENSUS need invoking `createPeerForConsensusGroup` when restarted,
@@ -344,7 +344,7 @@ public class ConsensusManager {
   @TestOnly
   public void singleCopyMayWaitUntilLeaderReady() {
     long startTime = System.currentTimeMillis();
-    long maxWaitTime = 1000 * 60; // milliseconds, which is 60s
+    long maxWaitTime = 1000L * 60; // milliseconds, which is 60s
     try {
       while (!consensusImpl.isLeader(consensusGroupId)) {
         TimeUnit.MILLISECONDS.sleep(100);
