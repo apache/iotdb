@@ -45,12 +45,12 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 public class Utils {
-  private static final int tempBufferSize = 1024;
+  private static final int TEMP_BUFFER_SIZE = 1024;
   private static final byte PADDING_MAGIC = 0x47;
 
   private Utils() {}
 
-  public static String HostAddress(TEndPoint endpoint) {
+  public static String hostAddress(TEndPoint endpoint) {
     return String.format("%s:%d", endpoint.getIp(), endpoint.getPort());
   }
 
@@ -90,7 +90,7 @@ public class Utils {
       int nodeId, TEndPoint endpoint, int priority) {
     return RaftPeer.newBuilder()
         .setId(fromNodeIdToRaftPeerId(nodeId))
-        .setAddress(HostAddress(endpoint))
+        .setAddress(hostAddress(endpoint))
         .setPriority(priority)
         .build();
   }
@@ -147,7 +147,7 @@ public class Utils {
 
   public static ByteBuffer serializeTSStatus(TSStatus status) throws TException {
     AutoScalingBufferWriteTransport byteBuffer =
-        new AutoScalingBufferWriteTransport(tempBufferSize);
+        new AutoScalingBufferWriteTransport(TEMP_BUFFER_SIZE);
     TCompactProtocol protocol = new TCompactProtocol(byteBuffer);
     status.write(protocol);
     return ByteBuffer.wrap(byteBuffer.getBuffer());

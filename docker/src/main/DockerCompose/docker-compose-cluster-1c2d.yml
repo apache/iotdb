@@ -24,7 +24,7 @@ services:
     container_name: iotdb-confignode
     environment:
       - cn_internal_address=iotdb-confignode
-      - cn_target_config_node_list=iotdb-confignode:22277
+      - cn_target_config_node_list=iotdb-confignode:10710
     volumes:
         - ./data/confignode:/iotdb/data
         - ./logs/confignode:/iotdb/logs
@@ -41,7 +41,7 @@ services:
     environment:
       - dn_rpc_address=iotdb-datanode-1
       - dn_internal_address=iotdb-datanode-1
-      - dn_target_config_node_list=iotdb-confignode:22277
+      - dn_target_config_node_list=iotdb-confignode:10710
     volumes:
       - ./data/datanode1:/iotdb/data/
       - ./logs/datanode1:/iotdb/logs/
@@ -56,7 +56,7 @@ services:
     environment:
       - dn_rpc_address=iotdb-datanode-2
       - dn_internal_address=iotdb-datanode-2
-      - dn_target_config_node_list=iotdb-confignode:22277
+      - dn_target_config_node_list=iotdb-confignode:10710
     volumes:
       - ./data/datanode2:/iotdb/data/
       - ./logs/datanode2:/iotdb/logs/

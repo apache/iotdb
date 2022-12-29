@@ -27,7 +27,7 @@ public abstract class StoppableThread extends Thread {
   private static final int JOIN_TIMEOUT = 250;
   private static final Logger LOG = LoggerFactory.getLogger(StoppableThread.class);
 
-  public StoppableThread(ThreadGroup threadGroup, String name) {
+  protected StoppableThread(ThreadGroup threadGroup, String name) {
     super(threadGroup, name);
   }
 

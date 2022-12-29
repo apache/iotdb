@@ -71,7 +71,8 @@ logger = logging.getLogger("IoTDB")
 
 
 class Session(object):
-    SUCCESS_CODE = 200
+    SUCCESS_STATUS = 200
+    REDIRECTION_RECOMMEND = 400
     DEFAULT_FETCH_SIZE = 10000
     DEFAULT_USER = "root"
     DEFAULT_PASSWORD = "root"
@@ -1046,7 +1047,7 @@ class Session(object):
         verify success of operation
         :param status: execution result status
         """
-        if status.code == Session.SUCCESS_CODE:
+        if status.code == Session.SUCCESS_STATUS or status.code == Session.REDIRECTION_RECOMMEND:
             return 0
 
         logger.error("error status is %s", status)

@@ -1981,13 +1981,12 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   @Override
   public Statement visitShowCluster(IoTDBSqlParser.ShowClusterContext ctx) {
-    return new ShowClusterStatement();
-  }
-
-  @Override
-  public Statement visitShowClusterDetails(IoTDBSqlParser.ShowClusterDetailsContext ctx) {
     ShowClusterStatement showClusterStatement = new ShowClusterStatement();
-    showClusterStatement.setDetails(true);
+    if (ctx.DETAILS() != null) {
+      showClusterStatement.setDetails(true);
+    } else if (ctx.PARAMETERS() != null) {
+      showClusterStatement.setParameters(true);
+    }
     return showClusterStatement;
   }
 

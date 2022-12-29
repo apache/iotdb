@@ -100,10 +100,10 @@ docker run -d --name iotdb-service \
               --ip 172.18.0.6 \
               -p 6667:6667 \
               -e cn_internal_address=iotdb-service \
-              -e cn_target_config_node_list=iotdb-service:22277 \
+              -e cn_target_config_node_list=iotdb-service:10710 \
               -e dn_rpc_address=iotdb-service \
               -e dn_internal_address=iotdb-service \
-              -e dn_target_config_node_list=iotdb-service:22277 \
+              -e dn_target_config_node_list=iotdb-service:10710 \
               apache/iotdb:1.0.0-standalone              
 # execute SQL
 docker exec -ti iotdb-service /iotdb/sbin/start-cli.sh -h iotdb-service
@@ -126,10 +126,10 @@ services:
       - "6667:6667"
     environment:
       - cn_internal_address=iotdb-service
-      - cn_target_config_node_list=iotdb-service:22277
+      - cn_target_config_node_list=iotdb-service:10710
       - dn_rpc_address=iotdb-service
       - dn_internal_address=iotdb-service
-      - dn_target_config_node_list=iotdb-service:22277
+      - dn_target_config_node_list=iotdb-service:10710
     volumes:
         - ./data:/iotdb/data
         - ./logs:/iotdb/logs
@@ -154,11 +154,11 @@ services:
     image: apache/iotdb:1.0.0-confignode
     container_name: iotdb-confignode
     ports:
-      - "22277:22277"
-      - "22278:22278"
+      - "10710:10710"
+      - "10720:10720"
     environment:
       - cn_internal_address=iotdb-2
-      - cn_target_config_node_list=iotdb-1:22277
+      - cn_target_config_node_list=iotdb-1:10710
       - schema_replication_factor=3
       - schema_region_consensus_protocol_class=org.apache.iotdb.consensus.ratis.RatisConsensus
       - config_node_consensus_protocol_class=org.apache.iotdb.consensus.ratis.RatisConsensus
@@ -175,14 +175,14 @@ services:
     container_name: iotdb-datanode
     ports:
       - "6667:6667"
-      - "8777:8777"
-      - "9003:9003"
-      - "50010:50010"
-      - "40010:40010"
+      - "10740:10740"
+      - "10730:10730"
+      - "10750:10750"
+      - "10760:10760"
     environment:
       - dn_rpc_address=iotdb-2
       - dn_internal_address=iotdb-2
-      - dn_target_config_node_list=iotdb-1:22277
+      - dn_target_config_node_list=iotdb-1:10710
       - data_replication_factor=3
       - data_region_consensus_protocol_class=org.apache.iotdb.consensus.iot.IoTConsensus
        - schema_replication_factor=3
@@ -195,7 +195,7 @@ services:
     network_mode: "host"
 ```
 Notice：
-1. The `dn_target_config_node_list` of three nodes must the same and it is the first starting node of `iotdb-1` with the cn_internal_port of 22277。
+1. The `dn_target_config_node_list` of three nodes must the same and it is the first starting node of `iotdb-1` with the cn_internal_port of 10710。
 2. In this docker-compose file，`iotdb-2` should be replace with the real IP or hostname of each node to generate docker compose files in the other nodes.
 3. The services would talk with each other, so they need map the /etc/hosts file or add the `extra_hosts` to the docker compose file.
 4. We must start the IoTDB services of `iotdb-1` first at the first time of starting.
