@@ -267,9 +267,9 @@ public class ColumnHeaderConstant {
           new ColumnHeader(CONFIG_CONSENSUS_PORT, TSDataType.TEXT),
           new ColumnHeader(RPC_ADDRESS, TSDataType.TEXT),
           new ColumnHeader(RPC_PORT, TSDataType.TEXT),
-          new ColumnHeader(DATA_CONSENSUS_PORT, TSDataType.TEXT),
+          new ColumnHeader(MPP_PORT, TSDataType.TEXT),
           new ColumnHeader(SCHEMA_CONSENSUS_PORT, TSDataType.TEXT),
-          new ColumnHeader(MPP_PORT, TSDataType.TEXT));
+          new ColumnHeader(DATA_CONSENSUS_PORT, TSDataType.TEXT));
 
   public static final List<ColumnHeader> showFunctionsColumnHeaders =
       ImmutableList.of(
