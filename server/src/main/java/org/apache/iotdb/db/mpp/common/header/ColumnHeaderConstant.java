@@ -58,6 +58,7 @@ public class ColumnHeaderConstant {
   public static final String VERSION = "Version";
   public static final String BUILD_INFO = "BuildInfo";
   public static final String PATHS = "Paths";
+  public static final String CLUSTER_PARAMETERS = "ClusterParameters";
 
   // column names for count statement
   public static final String COLUMN = "Column";
@@ -270,6 +271,11 @@ public class ColumnHeaderConstant {
           new ColumnHeader(MPP_PORT, TSDataType.TEXT),
           new ColumnHeader(SCHEMA_CONSENSUS_PORT, TSDataType.TEXT),
           new ColumnHeader(DATA_CONSENSUS_PORT, TSDataType.TEXT));
+
+  public static final List<ColumnHeader> showClusterParametersColumnHeaders =
+      ImmutableList.of(
+          new ColumnHeader(CLUSTER_PARAMETERS, TSDataType.TEXT),
+          new ColumnHeader(VALUE, TSDataType.TEXT));
 
   public static final List<ColumnHeader> showFunctionsColumnHeaders =
       ImmutableList.of(
