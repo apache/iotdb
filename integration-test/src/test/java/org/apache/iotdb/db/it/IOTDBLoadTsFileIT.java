@@ -390,7 +390,6 @@ public class IOTDBLoadTsFileIT {
 
     File file1 = new File(tmpDir, "1-0-0-0.tsfile");
     File file2 = new File(tmpDir, "2-0-0-0.tsfile");
-    long writtenPoint1 = 0;
     // device 0, device 1, sg 0
     try (TsFileGenerator generator = new TsFileGenerator(file1)) {
       generator.registerTimeseries(
@@ -409,10 +408,8 @@ public class IOTDBLoadTsFileIT {
               SchemaConfig.MEASUREMENT_13));
       generator.generateData(SchemaConfig.DEVICE_0, 10000, PARTITION_INTERVAL / 10_000, false);
       generator.generateData(SchemaConfig.DEVICE_1, 10000, PARTITION_INTERVAL / 10_000, true);
-      writtenPoint1 = generator.getTotalNumber();
     }
 
-    long writtenPoint2 = 0;
     // device 2, device 3, device4, sg 1
     try (TsFileGenerator generator = new TsFileGenerator(file2)) {
       generator.registerTimeseries(
@@ -424,7 +421,6 @@ public class IOTDBLoadTsFileIT {
       generator.generateData(SchemaConfig.DEVICE_2, 10000, PARTITION_INTERVAL / 10_000, false);
       generator.generateData(SchemaConfig.DEVICE_3, 10000, PARTITION_INTERVAL / 10_000, false);
       generator.generateData(SchemaConfig.DEVICE_4, 10000, PARTITION_INTERVAL / 10_000, true);
-      writtenPoint2 = generator.getTotalNumber();
     }
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
@@ -436,7 +432,7 @@ public class IOTDBLoadTsFileIT {
           statement.executeQuery(String.format("select last %s from %s", measurement, device))) {
         if (resultSet.next()) {
           String lastTime = resultSet.getString(ColumnHeaderConstant.TIME);
-          Assert.assertEquals("10000", lastTime);
+          Assert.assertEquals(String.valueOf(PARTITION_INTERVAL), lastTime);
         } else {
           Assert.fail("This ResultSet is empty.");
         }
