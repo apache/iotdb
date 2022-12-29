@@ -92,7 +92,7 @@ public class OutCsvFileSink extends PipeSink<TimeSeriesRowModel, TimeSeriesRowMo
 
                                         for (String groupKey : groupMap.keySet()) {
                                           if (groupKey.startsWith("finish")) {
-                                             finishedFileNum.incrementAndGet();
+                                            finishedFileNum.incrementAndGet();
                                             continue;
                                           }
                                           List<TimeSeriesRowModel> groupList =
