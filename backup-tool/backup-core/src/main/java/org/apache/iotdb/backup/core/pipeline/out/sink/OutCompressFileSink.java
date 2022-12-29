@@ -53,7 +53,7 @@ public class OutCompressFileSink extends PipeSink<TimeSeriesRowModel, TimeSeries
   private AtomicInteger finishedFileNum = new AtomicInteger();
 
   private int totalFileNum;
-
+  // 数据条数
   private AtomicLong finishedRowNum = new AtomicLong();
 
   @Override
@@ -94,7 +94,7 @@ public class OutCompressFileSink extends PipeSink<TimeSeriesRowModel, TimeSeries
                                                         }));
                                         for (String groupKey : groupMap.keySet()) {
                                           if (groupKey.startsWith("finish")) {
-                                            finishedFileNum.incrementAndGet();
+                                            // finishedFileNum.incrementAndGet();
                                             continue;
                                           }
                                           // TODO: 压缩文本，outstream写入 exportModel.getcompressEnum

@@ -19,7 +19,7 @@
     <parent>
         <artifactId>backup-tool</artifactId>
         <groupId>org.apache.iotdb</groupId>
-        <version>0.13.3-SNAPSHOT</version>
+        <version>0.13.4-SNAPSHOT</version>
     </parent>
     <modelVersion>4.0.0</modelVersion>
     <artifactId>backup-command</artifactId>

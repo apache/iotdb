@@ -47,6 +47,7 @@ public class OutStructureFileSink extends PipeSink<TimeSeriesRowModel, TimeSerie
 
   private ExportPipelineService exportPipelineService;
 
+  // 数据条数
   private AtomicInteger finishedFileNum = new AtomicInteger();
 
   private AtomicLong finishedRowNum = new AtomicLong();
@@ -55,36 +56,36 @@ public class OutStructureFileSink extends PipeSink<TimeSeriesRowModel, TimeSerie
   public Function<ParallelFlux<TimeSeriesRowModel>, ParallelFlux<TimeSeriesRowModel>> doExecute() {
     return sink ->
         sink.transformGroups(
-                (Function<
-                        GroupedFlux<Integer, TimeSeriesRowModel>,
-                        Publisher<? extends TimeSeriesRowModel>>)
-                    integerTimeSeriesRowModelGroupedFlux ->
-                        integerTimeSeriesRowModelGroupedFlux
-                            .buffer(1000, 1000)
-                            .flatMap(
-                                allList -> {
-                                  return Flux.deferContextual(
-                                      contextView -> {
-                                        CSVPrinter[] csvPrinters = contextView.get("csvPrinters");
-                                        CSVPrinter printer = csvPrinters[0];
-                                        List<List<String>> list =
-                                            allList.stream()
-                                                .map(s -> generateCsvString(s))
-                                                .collect(Collectors.toList());
-                                        try {
-                                          exportPipelineService.syncPrintRecoreds(printer, list);
-                                          printer.flush();
-                                        } catch (IOException e) {
-                                          log.error("异常信息:", e);
-                                        }
-                                        finishedRowNum.addAndGet(allList.size());
-                                        return Flux.fromIterable(allList);
-                                      });
-                                }))
-            .doOnTerminate(
-                () -> {
-                  finishedFileNum.incrementAndGet();
-                });
+            (Function<
+                    GroupedFlux<Integer, TimeSeriesRowModel>,
+                    Publisher<? extends TimeSeriesRowModel>>)
+                integerTimeSeriesRowModelGroupedFlux ->
+                    integerTimeSeriesRowModelGroupedFlux
+                        .buffer(1000, 1000)
+                        .flatMap(
+                            allList -> {
+                              return Flux.deferContextual(
+                                  contextView -> {
+                                    CSVPrinter[] csvPrinters = contextView.get("csvPrinters");
+                                    CSVPrinter printer = csvPrinters[0];
+                                    List<List<String>> list =
+                                        allList.stream()
+                                            .map(s -> generateCsvString(s))
+                                            .collect(Collectors.toList());
+                                    try {
+                                      exportPipelineService.syncPrintRecoreds(printer, list);
+                                      printer.flush();
+                                    } catch (IOException e) {
+                                      log.error("异常信息:", e);
+                                    }
+                                    finishedRowNum.addAndGet(allList.size());
+                                    return Flux.fromIterable(allList);
+                                  });
+                            }));
+    //            .doOnTerminate(
+    //                () -> {
+    //                  finishedFileNum.incrementAndGet();
+    //                });
   }
 
   @Override

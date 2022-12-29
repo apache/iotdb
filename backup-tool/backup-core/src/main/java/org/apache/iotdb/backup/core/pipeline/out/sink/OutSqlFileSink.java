@@ -52,7 +52,7 @@ public class OutSqlFileSink extends PipeSink<TimeSeriesRowModel, TimeSeriesRowMo
   private AtomicInteger finishedFileNum = new AtomicInteger();
 
   private int totalFileNum;
-
+  // 数据条数
   private AtomicLong finishedRowNum = new AtomicLong();
 
   @Override
@@ -92,10 +92,7 @@ public class OutSqlFileSink extends PipeSink<TimeSeriesRowModel, TimeSeriesRowMo
                                                         }));
                                         for (String groupKey : groupMap.keySet()) {
                                           if (groupKey.startsWith("finish")) {
-                                            String deviceName =
-                                                groupKey.substring(
-                                                    groupKey.indexOf(",") + 1, groupKey.length());
-                                            finishedFileNum.incrementAndGet();
+                                            // finishedFileNum.incrementAndGet();
                                             continue;
                                           }
                                           List<TimeSeriesRowModel> groupList =
