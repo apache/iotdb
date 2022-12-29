@@ -81,8 +81,8 @@ public class IoTDBPartitionDurableIT {
   private static int originalDataReplicationFactor;
   private static final int testReplicationFactor = 3;
 
-  private static long originalTimePartitionInterval;
-  private static final long testTimePartitionInterval = 604800000;
+  private static final long testTimePartitionInterval =
+      ConfigFactory.getConfig().getTimePartitionInterval();
 
   private static final int testDataNodeId = 0;
   private static final String sg = "root.sg";
@@ -117,9 +117,6 @@ public class IoTDBPartitionDurableIT {
     ConfigFactory.getConfig().setSchemaReplicationFactor(testReplicationFactor);
     ConfigFactory.getConfig().setDataReplicationFactor(testReplicationFactor);
 
-    originalTimePartitionInterval = ConfigFactory.getConfig().getTimePartitionInterval();
-    ConfigFactory.getConfig().setTimePartitionInterval(testTimePartitionInterval);
-
     // Init 1C3D environment
     EnvFactory.getEnv().initClusterEnvironment(1, 3);
 
@@ -148,8 +145,6 @@ public class IoTDBPartitionDurableIT {
 
     ConfigFactory.getConfig().setSchemaReplicationFactor(originalSchemaReplicationFactor);
     ConfigFactory.getConfig().setDataReplicationFactor(originalDataReplicationFactor);
-
-    ConfigFactory.getConfig().setTimePartitionInterval(originalTimePartitionInterval);
   }
 
   @Test
