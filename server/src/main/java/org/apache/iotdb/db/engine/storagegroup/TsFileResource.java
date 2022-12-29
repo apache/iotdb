@@ -185,10 +185,7 @@ public class TsFileResource {
 
   /** Used for compaction to create target files. */
   public TsFileResource(File file, TsFileResourceStatus status) {
-    this.file = file;
-    this.version = FilePathUtils.splitAndGetTsFileVersion(this.file.getName());
-    this.timeIndex = CONFIG.getTimeIndexLevel().getTimeIndex();
-    this.timeIndexType = (byte) CONFIG.getTimeIndexLevel().ordinal();
+    this(file);
     this.status = status;
   }
 
@@ -443,19 +440,7 @@ public class TsFileResource {
 
   public void close() throws IOException {
     this.setStatus(TsFileResourceStatus.CLOSED);
-    if (modFile != null) {
-      modFile.close();
-      modFile = null;
-    }
-    if (compactionModFile != null) {
-      compactionModFile.close();
-      compactionModFile = null;
-    }
-    processor = null;
-    pathToChunkMetadataListMap = null;
-    pathToReadOnlyMemChunkMap = null;
-    pathToTimeSeriesMetadataMap = null;
-    timeIndex.close();
+    closeWithoutSettingStatus();
   }
 
   /** Used for compaction. */
