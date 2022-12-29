@@ -111,7 +111,7 @@ public class PartitionInfo implements SnapshotProcessor {
   // For RegionReplicas' asynchronous management
   private final List<RegionMaintainTask> regionMaintainTaskList;
 
-  private final String snapshotFileName = "partition_info.bin";
+  private static final String snapshotFileName = "partition_info.bin";
 
   public PartitionInfo() {
     this.nextRegionGroupId = new AtomicInteger(-1);
@@ -236,6 +236,8 @@ public class PartitionInfo implements SnapshotProcessor {
         break;
       case ROLLBACK:
         storageGroupPartitionTable.setPredeleted(false);
+        break;
+      default:
         break;
     }
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
