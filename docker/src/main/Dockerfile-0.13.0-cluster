@@ -32,7 +32,7 @@ RUN apt update \
   && apt purge --auto-remove -y \
   && apt clean -y \
   # modify the seeds in configuration file
-  && sed -i '/^seed_nodes/cseed_nodes=127.0.0.1:10730' /iotdb/conf/iotdb-cluster.properties \
+  && sed -i '/^seed_nodes/cseed_nodes=127.0.0.1:9003' /iotdb/conf/iotdb-cluster.properties \
   && sed -i '/^default_replica_num/cdefault_replica_num=1' /iotdb/conf/iotdb-cluster.properties
 
 # rpc port
@@ -44,9 +44,9 @@ EXPOSE 5555
 # monitor port
 EXPOSE 8181
 # internal meta port
-EXPOSE 10730
+EXPOSE 9003
 # internal data port
-EXPOSE 10760
+EXPOSE 40010
 VOLUME /iotdb/data
 VOLUME /iotdb/logs
 ENV PATH="/iotdb/sbin/:/iotdb/tools/:${PATH}"
