@@ -29,8 +29,9 @@ import org.apache.iotdb.db.engine.compaction.execute.task.CompactionTaskSummary;
 import org.apache.iotdb.db.engine.compaction.execute.task.CrossSpaceCompactionTask;
 import org.apache.iotdb.db.engine.compaction.execute.utils.CompactionUtils;
 import org.apache.iotdb.db.engine.compaction.selector.ICrossSpaceSelector;
+import org.apache.iotdb.db.engine.compaction.selector.impl.CrossCompactionTaskResource;
+import org.apache.iotdb.db.engine.compaction.selector.impl.CrossSpaceCompactionCandidate;
 import org.apache.iotdb.db.engine.compaction.selector.impl.RewriteCrossSpaceCompactionSelector;
-import org.apache.iotdb.db.engine.compaction.selector.utils.CrossSpaceCompactionResource;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionFileGeneratorUtils;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -41,7 +42,6 @@ import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.tools.validate.TsFileValidationTool;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
-import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -98,20 +98,20 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
 
     RewriteCrossSpaceCompactionSelector selector =
         new RewriteCrossSpaceCompactionSelector("", "", 0, null);
-    List<Pair<List<TsFileResource>, List<TsFileResource>>> selected =
+    List<CrossCompactionTaskResource> selected =
         selector.selectCrossSpaceTask(seqResources, unseqResources);
-    Assert.assertEquals(1, selected.get(0).left.size());
-    Assert.assertEquals(2, selected.get(0).right.size());
-    Assert.assertEquals(selected.get(0).left.get(0), seqResources.get(2));
+    Assert.assertEquals(1, selected.get(0).getSeqFiles().size());
+    Assert.assertEquals(2, selected.get(0).getUnseqFiles().size());
+    Assert.assertEquals(selected.get(0).getSeqFiles().get(0), seqResources.get(2));
 
-    Assert.assertEquals(selected.get(0).right.get(0), unseqResources.get(0));
-    Assert.assertEquals(selected.get(0).right.get(1), unseqResources.get(1));
+    Assert.assertEquals(selected.get(0).getUnseqFiles().get(0), unseqResources.get(0));
+    Assert.assertEquals(selected.get(0).getUnseqFiles().get(1), unseqResources.get(1));
 
     new CrossSpaceCompactionTask(
             0,
             tsFileManager,
-            selected.get(0).left,
-            selected.get(0).right,
+            selected.get(0).getSeqFiles(),
+            selected.get(0).getUnseqFiles(),
             performer,
             new AtomicInteger(0),
             0,
@@ -137,26 +137,26 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
 
-    CrossSpaceCompactionResource resource =
-        new CrossSpaceCompactionResource(seqResources, unseqResources);
+    CrossSpaceCompactionCandidate resource =
+        new CrossSpaceCompactionCandidate(seqResources, unseqResources);
     RewriteCrossSpaceCompactionSelector selector =
         new RewriteCrossSpaceCompactionSelector("", "", 0, null);
-    List<Pair<List<TsFileResource>, List<TsFileResource>>> selected =
+    List<CrossCompactionTaskResource> selected =
         selector.selectCrossSpaceTask(seqResources, unseqResources);
 
-    Assert.assertEquals(1, selected.get(0).left.size());
-    Assert.assertEquals(2, selected.get(0).right.size());
+    Assert.assertEquals(1, selected.get(0).getSeqFiles().size());
+    Assert.assertEquals(2, selected.get(0).getUnseqFiles().size());
 
-    Assert.assertEquals(selected.get(0).left.get(0), seqResources.get(2));
+    Assert.assertEquals(selected.get(0).getSeqFiles().get(0), seqResources.get(2));
 
-    Assert.assertEquals(selected.get(0).right.get(0), unseqResources.get(0));
-    Assert.assertEquals(selected.get(0).right.get(1), unseqResources.get(1));
+    Assert.assertEquals(selected.get(0).getUnseqFiles().get(0), unseqResources.get(0));
+    Assert.assertEquals(selected.get(0).getUnseqFiles().get(1), unseqResources.get(1));
 
     new CrossSpaceCompactionTask(
             0,
             tsFileManager,
-            selected.get(0).left,
-            selected.get(0).right,
+            selected.get(0).getSeqFiles(),
+            selected.get(0).getUnseqFiles(),
             performer,
             new AtomicInteger(0),
             0,
@@ -182,26 +182,26 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
 
-    CrossSpaceCompactionResource resource =
-        new CrossSpaceCompactionResource(seqResources, unseqResources);
+    CrossSpaceCompactionCandidate resource =
+        new CrossSpaceCompactionCandidate(seqResources, unseqResources);
     RewriteCrossSpaceCompactionSelector selector =
         new RewriteCrossSpaceCompactionSelector("", "", 0, null);
-    List<Pair<List<TsFileResource>, List<TsFileResource>>> selected =
+    List<CrossCompactionTaskResource> selected =
         selector.selectCrossSpaceTask(seqResources, unseqResources);
 
-    Assert.assertEquals(2, selected.get(0).left.size());
-    Assert.assertEquals(2, selected.get(0).right.size());
+    Assert.assertEquals(2, selected.get(0).getSeqFiles().size());
+    Assert.assertEquals(2, selected.get(0).getUnseqFiles().size());
 
-    Assert.assertEquals(selected.get(0).left.get(0), seqResources.get(1));
-    Assert.assertEquals(selected.get(0).left.get(1), seqResources.get(2));
-    Assert.assertEquals(selected.get(0).right.get(0), unseqResources.get(0));
-    Assert.assertEquals(selected.get(0).right.get(1), unseqResources.get(1));
+    Assert.assertEquals(selected.get(0).getSeqFiles().get(0), seqResources.get(1));
+    Assert.assertEquals(selected.get(0).getSeqFiles().get(1), seqResources.get(2));
+    Assert.assertEquals(selected.get(0).getUnseqFiles().get(0), unseqResources.get(0));
+    Assert.assertEquals(selected.get(0).getUnseqFiles().get(1), unseqResources.get(1));
 
     new CrossSpaceCompactionTask(
             0,
             tsFileManager,
-            selected.get(0).left,
-            selected.get(0).right,
+            selected.get(0).getSeqFiles(),
+            selected.get(0).getUnseqFiles(),
             performer,
             new AtomicInteger(0),
             0,
@@ -233,28 +233,28 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
 
-    CrossSpaceCompactionResource resource =
-        new CrossSpaceCompactionResource(seqResources, unseqResources);
+    CrossSpaceCompactionCandidate resource =
+        new CrossSpaceCompactionCandidate(seqResources, unseqResources);
     RewriteCrossSpaceCompactionSelector selector =
         new RewriteCrossSpaceCompactionSelector("", "", 0, null);
-    List<Pair<List<TsFileResource>, List<TsFileResource>>> selected =
+    List<CrossCompactionTaskResource> selected =
         selector.selectCrossSpaceTask(seqResources, unseqResources);
 
-    Assert.assertEquals(2, selected.get(0).left.size());
-    Assert.assertEquals(4, selected.get(0).right.size());
-    Assert.assertEquals(selected.get(0).left.get(0), seqResources.get(1));
-    Assert.assertEquals(selected.get(0).left.get(1), seqResources.get(2));
+    Assert.assertEquals(2, selected.get(0).getSeqFiles().size());
+    Assert.assertEquals(4, selected.get(0).getUnseqFiles().size());
+    Assert.assertEquals(selected.get(0).getSeqFiles().get(0), seqResources.get(1));
+    Assert.assertEquals(selected.get(0).getSeqFiles().get(1), seqResources.get(2));
 
-    Assert.assertEquals(selected.get(0).right.get(0), unseqResources.get(0));
-    Assert.assertEquals(selected.get(0).right.get(1), unseqResources.get(1));
-    Assert.assertEquals(selected.get(0).right.get(2), unseqResources.get(2));
-    Assert.assertEquals(selected.get(0).right.get(3), unseqResources.get(3));
+    Assert.assertEquals(selected.get(0).getUnseqFiles().get(0), unseqResources.get(0));
+    Assert.assertEquals(selected.get(0).getUnseqFiles().get(1), unseqResources.get(1));
+    Assert.assertEquals(selected.get(0).getUnseqFiles().get(2), unseqResources.get(2));
+    Assert.assertEquals(selected.get(0).getUnseqFiles().get(3), unseqResources.get(3));
 
     new CrossSpaceCompactionTask(
             0,
             tsFileManager,
-            selected.get(0).left,
-            selected.get(0).right,
+            selected.get(0).getSeqFiles(),
+            selected.get(0).getUnseqFiles(),
             performer,
             new AtomicInteger(0),
             0,
@@ -282,29 +282,29 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
 
-    CrossSpaceCompactionResource resource =
-        new CrossSpaceCompactionResource(seqResources, unseqResources);
+    CrossSpaceCompactionCandidate resource =
+        new CrossSpaceCompactionCandidate(seqResources, unseqResources);
     RewriteCrossSpaceCompactionSelector selector =
         new RewriteCrossSpaceCompactionSelector("", "", 0, null);
-    List<Pair<List<TsFileResource>, List<TsFileResource>>> selected =
+    List<CrossCompactionTaskResource> selected =
         selector.selectCrossSpaceTask(seqResources, unseqResources);
 
-    Assert.assertEquals(5, selected.get(0).left.size());
-    Assert.assertEquals(2, selected.get(0).right.size());
-    Assert.assertEquals(selected.get(0).left.get(0), seqResources.get(1));
-    Assert.assertEquals(selected.get(0).left.get(1), seqResources.get(2));
-    Assert.assertEquals(selected.get(0).left.get(2), seqResources.get(3));
-    Assert.assertEquals(selected.get(0).left.get(3), seqResources.get(4));
-    Assert.assertEquals(selected.get(0).left.get(4), seqResources.get(5));
+    Assert.assertEquals(5, selected.get(0).getSeqFiles().size());
+    Assert.assertEquals(2, selected.get(0).getUnseqFiles().size());
+    Assert.assertEquals(selected.get(0).getSeqFiles().get(0), seqResources.get(1));
+    Assert.assertEquals(selected.get(0).getSeqFiles().get(1), seqResources.get(2));
+    Assert.assertEquals(selected.get(0).getSeqFiles().get(2), seqResources.get(3));
+    Assert.assertEquals(selected.get(0).getSeqFiles().get(3), seqResources.get(4));
+    Assert.assertEquals(selected.get(0).getSeqFiles().get(4), seqResources.get(5));
 
-    Assert.assertEquals(selected.get(0).right.get(0), unseqResources.get(0));
-    Assert.assertEquals(selected.get(0).right.get(1), unseqResources.get(1));
+    Assert.assertEquals(selected.get(0).getUnseqFiles().get(0), unseqResources.get(0));
+    Assert.assertEquals(selected.get(0).getUnseqFiles().get(1), unseqResources.get(1));
 
     new CrossSpaceCompactionTask(
             0,
             tsFileManager,
-            selected.get(0).left,
-            selected.get(0).right,
+            selected.get(0).getSeqFiles(),
+            selected.get(0).getUnseqFiles(),
             performer,
             new AtomicInteger(0),
             0,
@@ -332,27 +332,27 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
 
-    CrossSpaceCompactionResource resource =
-        new CrossSpaceCompactionResource(seqResources, unseqResources);
+    CrossSpaceCompactionCandidate resource =
+        new CrossSpaceCompactionCandidate(seqResources, unseqResources);
     RewriteCrossSpaceCompactionSelector selector =
         new RewriteCrossSpaceCompactionSelector("", "", 0, null);
-    List<Pair<List<TsFileResource>, List<TsFileResource>>> selected =
+    List<CrossCompactionTaskResource> selected =
         selector.selectCrossSpaceTask(seqResources, unseqResources);
 
-    Assert.assertEquals(1, selected.get(0).left.size());
-    Assert.assertEquals(3, selected.get(0).right.size());
-    for (TsFileResource selectedResource : (List<TsFileResource>) selected.get(0).left) {
+    Assert.assertEquals(1, selected.get(0).getSeqFiles().size());
+    Assert.assertEquals(3, selected.get(0).getUnseqFiles().size());
+    for (TsFileResource selectedResource : (List<TsFileResource>) selected.get(0).getSeqFiles()) {
       Assert.assertEquals(selectedResource, seqResources.get(1));
     }
-    Assert.assertEquals(selected.get(0).right.get(0), unseqResources.get(0));
-    Assert.assertEquals(selected.get(0).right.get(1), unseqResources.get(1));
-    Assert.assertEquals(selected.get(0).right.get(2), unseqResources.get(2));
+    Assert.assertEquals(selected.get(0).getUnseqFiles().get(0), unseqResources.get(0));
+    Assert.assertEquals(selected.get(0).getUnseqFiles().get(1), unseqResources.get(1));
+    Assert.assertEquals(selected.get(0).getUnseqFiles().get(2), unseqResources.get(2));
 
     new CrossSpaceCompactionTask(
             0,
             tsFileManager,
-            selected.get(0).left,
-            selected.get(0).right,
+            selected.get(0).getSeqFiles(),
+            selected.get(0).getUnseqFiles(),
             performer,
             new AtomicInteger(0),
             0,
@@ -381,29 +381,29 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
 
-    CrossSpaceCompactionResource resource =
-        new CrossSpaceCompactionResource(seqResources, unseqResources);
+    CrossSpaceCompactionCandidate resource =
+        new CrossSpaceCompactionCandidate(seqResources, unseqResources);
     RewriteCrossSpaceCompactionSelector selector =
         new RewriteCrossSpaceCompactionSelector("", "", 0, null);
-    List<Pair<List<TsFileResource>, List<TsFileResource>>> selected =
+    List<CrossCompactionTaskResource> selected =
         selector.selectCrossSpaceTask(seqResources, unseqResources);
 
-    Assert.assertEquals(3, selected.get(0).left.size());
-    Assert.assertEquals(4, selected.get(0).right.size());
+    Assert.assertEquals(3, selected.get(0).getSeqFiles().size());
+    Assert.assertEquals(4, selected.get(0).getUnseqFiles().size());
 
-    Assert.assertEquals(selected.get(0).left.get(0), seqResources.get(1));
-    Assert.assertEquals(selected.get(0).left.get(1), seqResources.get(2));
-    Assert.assertEquals(selected.get(0).left.get(2), seqResources.get(3));
-    Assert.assertEquals(selected.get(0).right.get(0), unseqResources.get(0));
-    Assert.assertEquals(selected.get(0).right.get(1), unseqResources.get(1));
-    Assert.assertEquals(selected.get(0).right.get(2), unseqResources.get(2));
-    Assert.assertEquals(selected.get(0).right.get(3), unseqResources.get(3));
+    Assert.assertEquals(selected.get(0).getSeqFiles().get(0), seqResources.get(1));
+    Assert.assertEquals(selected.get(0).getSeqFiles().get(1), seqResources.get(2));
+    Assert.assertEquals(selected.get(0).getSeqFiles().get(2), seqResources.get(3));
+    Assert.assertEquals(selected.get(0).getUnseqFiles().get(0), unseqResources.get(0));
+    Assert.assertEquals(selected.get(0).getUnseqFiles().get(1), unseqResources.get(1));
+    Assert.assertEquals(selected.get(0).getUnseqFiles().get(2), unseqResources.get(2));
+    Assert.assertEquals(selected.get(0).getUnseqFiles().get(3), unseqResources.get(3));
 
     new CrossSpaceCompactionTask(
             0,
             tsFileManager,
-            selected.get(0).left,
-            selected.get(0).right,
+            selected.get(0).getSeqFiles(),
+            selected.get(0).getUnseqFiles(),
             performer,
             new AtomicInteger(0),
             0,
@@ -431,29 +431,29 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
 
-    CrossSpaceCompactionResource resource =
-        new CrossSpaceCompactionResource(seqResources, unseqResources);
+    CrossSpaceCompactionCandidate resource =
+        new CrossSpaceCompactionCandidate(seqResources, unseqResources);
     RewriteCrossSpaceCompactionSelector selector =
         new RewriteCrossSpaceCompactionSelector("", "", 0, null);
-    List<Pair<List<TsFileResource>, List<TsFileResource>>> selected =
+    List<CrossCompactionTaskResource> selected =
         selector.selectCrossSpaceTask(seqResources, unseqResources);
 
-    Assert.assertEquals(2, selected.get(0).left.size());
-    Assert.assertEquals(4, selected.get(0).right.size());
+    Assert.assertEquals(2, selected.get(0).getSeqFiles().size());
+    Assert.assertEquals(4, selected.get(0).getUnseqFiles().size());
 
-    Assert.assertEquals(selected.get(0).left.get(0), seqResources.get(1));
-    Assert.assertEquals(selected.get(0).left.get(1), seqResources.get(2));
+    Assert.assertEquals(selected.get(0).getSeqFiles().get(0), seqResources.get(1));
+    Assert.assertEquals(selected.get(0).getSeqFiles().get(1), seqResources.get(2));
 
-    Assert.assertEquals(selected.get(0).right.get(0), unseqResources.get(0));
-    Assert.assertEquals(selected.get(0).right.get(1), unseqResources.get(1));
-    Assert.assertEquals(selected.get(0).right.get(2), unseqResources.get(2));
-    Assert.assertEquals(selected.get(0).right.get(3), unseqResources.get(3));
+    Assert.assertEquals(selected.get(0).getUnseqFiles().get(0), unseqResources.get(0));
+    Assert.assertEquals(selected.get(0).getUnseqFiles().get(1), unseqResources.get(1));
+    Assert.assertEquals(selected.get(0).getUnseqFiles().get(2), unseqResources.get(2));
+    Assert.assertEquals(selected.get(0).getUnseqFiles().get(3), unseqResources.get(3));
 
     new CrossSpaceCompactionTask(
             0,
             tsFileManager,
-            selected.get(0).left,
-            selected.get(0).right,
+            selected.get(0).getSeqFiles(),
+            selected.get(0).getUnseqFiles(),
             performer,
             new AtomicInteger(0),
             0,
@@ -484,26 +484,26 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
 
-    CrossSpaceCompactionResource resource =
-        new CrossSpaceCompactionResource(seqResources, unseqResources);
+    CrossSpaceCompactionCandidate resource =
+        new CrossSpaceCompactionCandidate(seqResources, unseqResources);
     RewriteCrossSpaceCompactionSelector selector =
         new RewriteCrossSpaceCompactionSelector("", "", 0, null);
-    List<Pair<List<TsFileResource>, List<TsFileResource>>> selected =
+    List<CrossCompactionTaskResource> selected =
         selector.selectCrossSpaceTask(seqResources, unseqResources);
 
-    Assert.assertEquals(2, selected.get(0).left.size());
-    Assert.assertEquals(2, selected.get(0).right.size());
-    Assert.assertEquals(selected.get(0).left.get(0), seqResources.get(2));
-    Assert.assertEquals(selected.get(0).left.get(1), seqResources.get(3));
+    Assert.assertEquals(2, selected.get(0).getSeqFiles().size());
+    Assert.assertEquals(2, selected.get(0).getUnseqFiles().size());
+    Assert.assertEquals(selected.get(0).getSeqFiles().get(0), seqResources.get(2));
+    Assert.assertEquals(selected.get(0).getSeqFiles().get(1), seqResources.get(3));
 
-    Assert.assertEquals(selected.get(0).right.get(0), unseqResources.get(0));
-    Assert.assertEquals(selected.get(0).right.get(1), unseqResources.get(1));
+    Assert.assertEquals(selected.get(0).getUnseqFiles().get(0), unseqResources.get(0));
+    Assert.assertEquals(selected.get(0).getUnseqFiles().get(1), unseqResources.get(1));
 
     new CrossSpaceCompactionTask(
             0,
             tsFileManager,
-            selected.get(0).left,
-            selected.get(0).right,
+            selected.get(0).getSeqFiles(),
+            selected.get(0).getUnseqFiles(),
             performer,
             new AtomicInteger(0),
             0,
@@ -535,26 +535,26 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
 
-    CrossSpaceCompactionResource resource =
-        new CrossSpaceCompactionResource(seqResources, unseqResources);
+    CrossSpaceCompactionCandidate resource =
+        new CrossSpaceCompactionCandidate(seqResources, unseqResources);
     RewriteCrossSpaceCompactionSelector selector =
         new RewriteCrossSpaceCompactionSelector("", "", 0, null);
-    List<Pair<List<TsFileResource>, List<TsFileResource>>> selected =
+    List<CrossCompactionTaskResource> selected =
         selector.selectCrossSpaceTask(seqResources, unseqResources);
 
-    Assert.assertEquals(2, selected.get(0).left.size());
-    Assert.assertEquals(2, selected.get(0).right.size());
-    Assert.assertEquals(selected.get(0).left.get(0), seqResources.get(2));
-    Assert.assertEquals(selected.get(0).left.get(1), seqResources.get(3));
+    Assert.assertEquals(2, selected.get(0).getSeqFiles().size());
+    Assert.assertEquals(2, selected.get(0).getUnseqFiles().size());
+    Assert.assertEquals(selected.get(0).getSeqFiles().get(0), seqResources.get(2));
+    Assert.assertEquals(selected.get(0).getSeqFiles().get(1), seqResources.get(3));
 
-    Assert.assertEquals(selected.get(0).right.get(0), unseqResources.get(0));
-    Assert.assertEquals(selected.get(0).right.get(1), unseqResources.get(1));
+    Assert.assertEquals(selected.get(0).getUnseqFiles().get(0), unseqResources.get(0));
+    Assert.assertEquals(selected.get(0).getUnseqFiles().get(1), unseqResources.get(1));
 
     new CrossSpaceCompactionTask(
             0,
             tsFileManager,
-            selected.get(0).left,
-            selected.get(0).right,
+            selected.get(0).getSeqFiles(),
+            selected.get(0).getUnseqFiles(),
             performer,
             new AtomicInteger(0),
             0,
@@ -587,25 +587,25 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
 
-    CrossSpaceCompactionResource resource =
-        new CrossSpaceCompactionResource(seqResources, unseqResources);
+    CrossSpaceCompactionCandidate resource =
+        new CrossSpaceCompactionCandidate(seqResources, unseqResources);
     RewriteCrossSpaceCompactionSelector selector =
         new RewriteCrossSpaceCompactionSelector("", "", 0, null);
-    List<Pair<List<TsFileResource>, List<TsFileResource>>> selected =
+    List<CrossCompactionTaskResource> selected =
         selector.selectCrossSpaceTask(seqResources, unseqResources);
 
-    Assert.assertEquals(2, selected.get(0).left.size());
-    Assert.assertEquals(2, selected.get(0).right.size());
-    Assert.assertEquals(selected.get(0).left.get(0), seqResources.get(2));
-    Assert.assertEquals(selected.get(0).left.get(1), seqResources.get(4));
-    Assert.assertEquals(selected.get(0).right.get(0), unseqResources.get(0));
-    Assert.assertEquals(selected.get(0).right.get(1), unseqResources.get(1));
+    Assert.assertEquals(2, selected.get(0).getSeqFiles().size());
+    Assert.assertEquals(2, selected.get(0).getUnseqFiles().size());
+    Assert.assertEquals(selected.get(0).getSeqFiles().get(0), seqResources.get(2));
+    Assert.assertEquals(selected.get(0).getSeqFiles().get(1), seqResources.get(4));
+    Assert.assertEquals(selected.get(0).getUnseqFiles().get(0), unseqResources.get(0));
+    Assert.assertEquals(selected.get(0).getUnseqFiles().get(1), unseqResources.get(1));
 
     new CrossSpaceCompactionTask(
             0,
             tsFileManager,
-            selected.get(0).left,
-            selected.get(0).right,
+            selected.get(0).getSeqFiles(),
+            selected.get(0).getUnseqFiles(),
             performer,
             new AtomicInteger(0),
             0,
@@ -637,26 +637,26 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
 
-    CrossSpaceCompactionResource resource =
-        new CrossSpaceCompactionResource(seqResources, unseqResources);
+    CrossSpaceCompactionCandidate resource =
+        new CrossSpaceCompactionCandidate(seqResources, unseqResources);
     RewriteCrossSpaceCompactionSelector selector =
         new RewriteCrossSpaceCompactionSelector("", "", 0, null);
-    List<Pair<List<TsFileResource>, List<TsFileResource>>> selected =
+    List<CrossCompactionTaskResource> selected =
         selector.selectCrossSpaceTask(seqResources, unseqResources);
 
-    Assert.assertEquals(2, selected.get(0).left.size());
-    Assert.assertEquals(2, selected.get(0).right.size());
+    Assert.assertEquals(2, selected.get(0).getSeqFiles().size());
+    Assert.assertEquals(2, selected.get(0).getUnseqFiles().size());
 
-    Assert.assertEquals(selected.get(0).left.get(0), seqResources.get(2));
-    Assert.assertEquals(selected.get(0).left.get(1), seqResources.get(3));
-    Assert.assertEquals(selected.get(0).right.get(0), unseqResources.get(0));
-    Assert.assertEquals(selected.get(0).right.get(1), unseqResources.get(1));
+    Assert.assertEquals(selected.get(0).getSeqFiles().get(0), seqResources.get(2));
+    Assert.assertEquals(selected.get(0).getSeqFiles().get(1), seqResources.get(3));
+    Assert.assertEquals(selected.get(0).getUnseqFiles().get(0), unseqResources.get(0));
+    Assert.assertEquals(selected.get(0).getUnseqFiles().get(1), unseqResources.get(1));
 
     new CrossSpaceCompactionTask(
             0,
             tsFileManager,
-            selected.get(0).left,
-            selected.get(0).right,
+            selected.get(0).getSeqFiles(),
+            selected.get(0).getUnseqFiles(),
             performer,
             new AtomicInteger(0),
             0,
@@ -689,26 +689,26 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
 
-    CrossSpaceCompactionResource resource =
-        new CrossSpaceCompactionResource(seqResources, unseqResources);
+    CrossSpaceCompactionCandidate resource =
+        new CrossSpaceCompactionCandidate(seqResources, unseqResources);
     RewriteCrossSpaceCompactionSelector selector =
         new RewriteCrossSpaceCompactionSelector("", "", 0, null);
-    List<Pair<List<TsFileResource>, List<TsFileResource>>> selected =
+    List<CrossCompactionTaskResource> selected =
         selector.selectCrossSpaceTask(seqResources, unseqResources);
 
-    Assert.assertEquals(2, selected.get(0).left.size());
-    Assert.assertEquals(2, selected.get(0).right.size());
+    Assert.assertEquals(2, selected.get(0).getSeqFiles().size());
+    Assert.assertEquals(2, selected.get(0).getUnseqFiles().size());
 
-    Assert.assertEquals(selected.get(0).left.get(0), seqResources.get(2));
-    Assert.assertEquals(selected.get(0).left.get(1), seqResources.get(3));
-    Assert.assertEquals(selected.get(0).right.get(0), unseqResources.get(0));
-    Assert.assertEquals(selected.get(0).right.get(1), unseqResources.get(1));
+    Assert.assertEquals(selected.get(0).getSeqFiles().get(0), seqResources.get(2));
+    Assert.assertEquals(selected.get(0).getSeqFiles().get(1), seqResources.get(3));
+    Assert.assertEquals(selected.get(0).getUnseqFiles().get(0), unseqResources.get(0));
+    Assert.assertEquals(selected.get(0).getUnseqFiles().get(1), unseqResources.get(1));
 
     new CrossSpaceCompactionTask(
             0,
             tsFileManager,
-            selected.get(0).left,
-            selected.get(0).right,
+            selected.get(0).getSeqFiles(),
+            selected.get(0).getUnseqFiles(),
             performer,
             new AtomicInteger(0),
             0,
@@ -742,26 +742,26 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
 
-    CrossSpaceCompactionResource resource =
-        new CrossSpaceCompactionResource(seqResources, unseqResources);
+    CrossSpaceCompactionCandidate resource =
+        new CrossSpaceCompactionCandidate(seqResources, unseqResources);
     RewriteCrossSpaceCompactionSelector selector =
         new RewriteCrossSpaceCompactionSelector("", "", 0, null);
-    List<Pair<List<TsFileResource>, List<TsFileResource>>> selected =
+    List<CrossCompactionTaskResource> selected =
         selector.selectCrossSpaceTask(seqResources, unseqResources);
 
-    Assert.assertEquals(2, selected.get(0).left.size());
-    Assert.assertEquals(2, selected.get(0).right.size());
+    Assert.assertEquals(2, selected.get(0).getSeqFiles().size());
+    Assert.assertEquals(2, selected.get(0).getUnseqFiles().size());
 
-    Assert.assertEquals(selected.get(0).left.get(0), seqResources.get(2));
-    Assert.assertEquals(selected.get(0).left.get(1), seqResources.get(4));
-    Assert.assertEquals(selected.get(0).right.get(0), unseqResources.get(0));
-    Assert.assertEquals(selected.get(0).right.get(1), unseqResources.get(1));
+    Assert.assertEquals(selected.get(0).getSeqFiles().get(0), seqResources.get(2));
+    Assert.assertEquals(selected.get(0).getSeqFiles().get(1), seqResources.get(4));
+    Assert.assertEquals(selected.get(0).getUnseqFiles().get(0), unseqResources.get(0));
+    Assert.assertEquals(selected.get(0).getUnseqFiles().get(1), unseqResources.get(1));
 
     new CrossSpaceCompactionTask(
             0,
             tsFileManager,
-            selected.get(0).left,
-            selected.get(0).right,
+            selected.get(0).getSeqFiles(),
+            selected.get(0).getUnseqFiles(),
             performer,
             new AtomicInteger(0),
             0,
@@ -794,27 +794,27 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
 
-    CrossSpaceCompactionResource resource =
-        new CrossSpaceCompactionResource(seqResources, unseqResources);
+    CrossSpaceCompactionCandidate resource =
+        new CrossSpaceCompactionCandidate(seqResources, unseqResources);
     RewriteCrossSpaceCompactionSelector selector =
         new RewriteCrossSpaceCompactionSelector("", "", 0, null);
-    List<Pair<List<TsFileResource>, List<TsFileResource>>> selected =
+    List<CrossCompactionTaskResource> selected =
         selector.selectCrossSpaceTask(seqResources, unseqResources);
 
-    Assert.assertEquals(3, selected.get(0).left.size());
-    Assert.assertEquals(2, selected.get(0).right.size());
+    Assert.assertEquals(3, selected.get(0).getSeqFiles().size());
+    Assert.assertEquals(2, selected.get(0).getUnseqFiles().size());
 
-    Assert.assertEquals(selected.get(0).left.get(0), seqResources.get(1));
-    Assert.assertEquals(selected.get(0).left.get(1), seqResources.get(2));
-    Assert.assertEquals(selected.get(0).left.get(2), seqResources.get(3));
-    Assert.assertEquals(selected.get(0).right.get(0), unseqResources.get(0));
-    Assert.assertEquals(selected.get(0).right.get(1), unseqResources.get(1));
+    Assert.assertEquals(selected.get(0).getSeqFiles().get(0), seqResources.get(1));
+    Assert.assertEquals(selected.get(0).getSeqFiles().get(1), seqResources.get(2));
+    Assert.assertEquals(selected.get(0).getSeqFiles().get(2), seqResources.get(3));
+    Assert.assertEquals(selected.get(0).getUnseqFiles().get(0), unseqResources.get(0));
+    Assert.assertEquals(selected.get(0).getUnseqFiles().get(1), unseqResources.get(1));
 
     new CrossSpaceCompactionTask(
             0,
             tsFileManager,
-            selected.get(0).left,
-            selected.get(0).right,
+            selected.get(0).getSeqFiles(),
+            selected.get(0).getUnseqFiles(),
             performer,
             new AtomicInteger(0),
             0,
@@ -848,27 +848,27 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
 
-    CrossSpaceCompactionResource resource =
-        new CrossSpaceCompactionResource(seqResources, unseqResources);
+    CrossSpaceCompactionCandidate resource =
+        new CrossSpaceCompactionCandidate(seqResources, unseqResources);
     RewriteCrossSpaceCompactionSelector selector =
         new RewriteCrossSpaceCompactionSelector("", "", 0, null);
-    List<Pair<List<TsFileResource>, List<TsFileResource>>> selected =
+    List<CrossCompactionTaskResource> selected =
         selector.selectCrossSpaceTask(seqResources, unseqResources);
 
-    Assert.assertEquals(3, selected.get(0).left.size());
-    Assert.assertEquals(2, selected.get(0).right.size());
+    Assert.assertEquals(3, selected.get(0).getSeqFiles().size());
+    Assert.assertEquals(2, selected.get(0).getUnseqFiles().size());
 
-    Assert.assertEquals(selected.get(0).left.get(0), seqResources.get(1));
-    Assert.assertEquals(selected.get(0).left.get(1), seqResources.get(2));
-    Assert.assertEquals(selected.get(0).left.get(2), seqResources.get(3));
-    Assert.assertEquals(selected.get(0).right.get(0), unseqResources.get(0));
-    Assert.assertEquals(selected.get(0).right.get(1), unseqResources.get(1));
+    Assert.assertEquals(selected.get(0).getSeqFiles().get(0), seqResources.get(1));
+    Assert.assertEquals(selected.get(0).getSeqFiles().get(1), seqResources.get(2));
+    Assert.assertEquals(selected.get(0).getSeqFiles().get(2), seqResources.get(3));
+    Assert.assertEquals(selected.get(0).getUnseqFiles().get(0), unseqResources.get(0));
+    Assert.assertEquals(selected.get(0).getUnseqFiles().get(1), unseqResources.get(1));
 
     new CrossSpaceCompactionTask(
             0,
             tsFileManager,
-            selected.get(0).left,
-            selected.get(0).right,
+            selected.get(0).getSeqFiles(),
+            selected.get(0).getUnseqFiles(),
             performer,
             new AtomicInteger(0),
             0,
@@ -903,27 +903,27 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
 
-    CrossSpaceCompactionResource resource =
-        new CrossSpaceCompactionResource(seqResources, unseqResources);
+    CrossSpaceCompactionCandidate resource =
+        new CrossSpaceCompactionCandidate(seqResources, unseqResources);
     RewriteCrossSpaceCompactionSelector selector =
         new RewriteCrossSpaceCompactionSelector("", "", 0, null);
-    List<Pair<List<TsFileResource>, List<TsFileResource>>> selected =
+    List<CrossCompactionTaskResource> selected =
         selector.selectCrossSpaceTask(seqResources, unseqResources);
 
-    Assert.assertEquals(3, selected.get(0).left.size());
-    Assert.assertEquals(2, selected.get(0).right.size());
+    Assert.assertEquals(3, selected.get(0).getSeqFiles().size());
+    Assert.assertEquals(2, selected.get(0).getUnseqFiles().size());
 
-    Assert.assertEquals(selected.get(0).left.get(0), seqResources.get(1));
-    Assert.assertEquals(selected.get(0).left.get(1), seqResources.get(2));
-    Assert.assertEquals(selected.get(0).left.get(2), seqResources.get(4));
-    Assert.assertEquals(selected.get(0).right.get(0), unseqResources.get(0));
-    Assert.assertEquals(selected.get(0).right.get(1), unseqResources.get(1));
+    Assert.assertEquals(selected.get(0).getSeqFiles().get(0), seqResources.get(1));
+    Assert.assertEquals(selected.get(0).getSeqFiles().get(1), seqResources.get(2));
+    Assert.assertEquals(selected.get(0).getSeqFiles().get(2), seqResources.get(4));
+    Assert.assertEquals(selected.get(0).getUnseqFiles().get(0), unseqResources.get(0));
+    Assert.assertEquals(selected.get(0).getUnseqFiles().get(1), unseqResources.get(1));
 
     new CrossSpaceCompactionTask(
             0,
             tsFileManager,
-            selected.get(0).left,
-            selected.get(0).right,
+            selected.get(0).getSeqFiles(),
+            selected.get(0).getUnseqFiles(),
             performer,
             new AtomicInteger(0),
             0,
@@ -957,28 +957,28 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
 
-    CrossSpaceCompactionResource resource =
-        new CrossSpaceCompactionResource(seqResources, unseqResources);
+    CrossSpaceCompactionCandidate resource =
+        new CrossSpaceCompactionCandidate(seqResources, unseqResources);
     RewriteCrossSpaceCompactionSelector selector =
         new RewriteCrossSpaceCompactionSelector("", "", 0, null);
-    List<Pair<List<TsFileResource>, List<TsFileResource>>> selected =
+    List<CrossCompactionTaskResource> selected =
         selector.selectCrossSpaceTask(seqResources, unseqResources);
 
-    Assert.assertEquals(5, selected.get(0).left.size());
-    Assert.assertEquals(1, selected.get(0).right.size());
-    Assert.assertEquals(selected.get(0).left.get(0), seqResources.get(2));
-    Assert.assertEquals(selected.get(0).left.get(1), seqResources.get(3));
-    Assert.assertEquals(selected.get(0).left.get(2), seqResources.get(4));
-    Assert.assertEquals(selected.get(0).left.get(3), seqResources.get(5));
-    Assert.assertEquals(selected.get(0).left.get(4), seqResources.get(6));
+    Assert.assertEquals(5, selected.get(0).getSeqFiles().size());
+    Assert.assertEquals(1, selected.get(0).getUnseqFiles().size());
+    Assert.assertEquals(selected.get(0).getSeqFiles().get(0), seqResources.get(2));
+    Assert.assertEquals(selected.get(0).getSeqFiles().get(1), seqResources.get(3));
+    Assert.assertEquals(selected.get(0).getSeqFiles().get(2), seqResources.get(4));
+    Assert.assertEquals(selected.get(0).getSeqFiles().get(3), seqResources.get(5));
+    Assert.assertEquals(selected.get(0).getSeqFiles().get(4), seqResources.get(6));
 
-    Assert.assertEquals(selected.get(0).right.get(0), unseqResources.get(0));
+    Assert.assertEquals(selected.get(0).getUnseqFiles().get(0), unseqResources.get(0));
 
     new CrossSpaceCompactionTask(
             0,
             tsFileManager,
-            selected.get(0).left,
-            selected.get(0).right,
+            selected.get(0).getSeqFiles(),
+            selected.get(0).getUnseqFiles(),
             performer,
             new AtomicInteger(0),
             0,
@@ -1012,28 +1012,28 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
 
-    CrossSpaceCompactionResource resource =
-        new CrossSpaceCompactionResource(seqResources, unseqResources);
+    CrossSpaceCompactionCandidate resource =
+        new CrossSpaceCompactionCandidate(seqResources, unseqResources);
     RewriteCrossSpaceCompactionSelector selector =
         new RewriteCrossSpaceCompactionSelector("", "", 0, null);
-    List<Pair<List<TsFileResource>, List<TsFileResource>>> selected =
+    List<CrossCompactionTaskResource> selected =
         selector.selectCrossSpaceTask(seqResources, unseqResources);
 
-    Assert.assertEquals(5, selected.get(0).left.size());
-    Assert.assertEquals(1, selected.get(0).right.size());
-    Assert.assertEquals(selected.get(0).left.get(0), seqResources.get(2));
-    Assert.assertEquals(selected.get(0).left.get(1), seqResources.get(3));
-    Assert.assertEquals(selected.get(0).left.get(2), seqResources.get(4));
-    Assert.assertEquals(selected.get(0).left.get(3), seqResources.get(5));
-    Assert.assertEquals(selected.get(0).left.get(4), seqResources.get(6));
+    Assert.assertEquals(5, selected.get(0).getSeqFiles().size());
+    Assert.assertEquals(1, selected.get(0).getUnseqFiles().size());
+    Assert.assertEquals(selected.get(0).getSeqFiles().get(0), seqResources.get(2));
+    Assert.assertEquals(selected.get(0).getSeqFiles().get(1), seqResources.get(3));
+    Assert.assertEquals(selected.get(0).getSeqFiles().get(2), seqResources.get(4));
+    Assert.assertEquals(selected.get(0).getSeqFiles().get(3), seqResources.get(5));
+    Assert.assertEquals(selected.get(0).getSeqFiles().get(4), seqResources.get(6));
 
-    Assert.assertEquals(selected.get(0).right.get(0), unseqResources.get(0));
+    Assert.assertEquals(selected.get(0).getUnseqFiles().get(0), unseqResources.get(0));
 
     new CrossSpaceCompactionTask(
             0,
             tsFileManager,
-            selected.get(0).left,
-            selected.get(0).right,
+            selected.get(0).getSeqFiles(),
+            selected.get(0).getUnseqFiles(),
             performer,
             new AtomicInteger(0),
             0,
@@ -1067,28 +1067,28 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
 
-    CrossSpaceCompactionResource resource =
-        new CrossSpaceCompactionResource(seqResources, unseqResources);
+    CrossSpaceCompactionCandidate resource =
+        new CrossSpaceCompactionCandidate(seqResources, unseqResources);
     RewriteCrossSpaceCompactionSelector selector =
         new RewriteCrossSpaceCompactionSelector("", "", 0, null);
-    List<Pair<List<TsFileResource>, List<TsFileResource>>> selected =
+    List<CrossCompactionTaskResource> selected =
         selector.selectCrossSpaceTask(seqResources, unseqResources);
 
-    Assert.assertEquals(6, selected.get(0).left.size());
-    Assert.assertEquals(1, selected.get(0).right.size());
-    Assert.assertEquals(selected.get(0).left.get(0), seqResources.get(2));
-    Assert.assertEquals(selected.get(0).left.get(1), seqResources.get(3));
-    Assert.assertEquals(selected.get(0).left.get(2), seqResources.get(4));
-    Assert.assertEquals(selected.get(0).left.get(3), seqResources.get(5));
-    Assert.assertEquals(selected.get(0).left.get(4), seqResources.get(6));
-    Assert.assertEquals(selected.get(0).left.get(5), seqResources.get(7));
-    Assert.assertEquals(selected.get(0).right.get(0), unseqResources.get(0));
+    Assert.assertEquals(6, selected.get(0).getSeqFiles().size());
+    Assert.assertEquals(1, selected.get(0).getUnseqFiles().size());
+    Assert.assertEquals(selected.get(0).getSeqFiles().get(0), seqResources.get(2));
+    Assert.assertEquals(selected.get(0).getSeqFiles().get(1), seqResources.get(3));
+    Assert.assertEquals(selected.get(0).getSeqFiles().get(2), seqResources.get(4));
+    Assert.assertEquals(selected.get(0).getSeqFiles().get(3), seqResources.get(5));
+    Assert.assertEquals(selected.get(0).getSeqFiles().get(4), seqResources.get(6));
+    Assert.assertEquals(selected.get(0).getSeqFiles().get(5), seqResources.get(7));
+    Assert.assertEquals(selected.get(0).getUnseqFiles().get(0), unseqResources.get(0));
 
     new CrossSpaceCompactionTask(
             0,
             tsFileManager,
-            selected.get(0).left,
-            selected.get(0).right,
+            selected.get(0).getSeqFiles(),
+            selected.get(0).getUnseqFiles(),
             performer,
             new AtomicInteger(0),
             0,
@@ -1122,27 +1122,27 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
 
-    CrossSpaceCompactionResource resource =
-        new CrossSpaceCompactionResource(seqResources, unseqResources);
+    CrossSpaceCompactionCandidate resource =
+        new CrossSpaceCompactionCandidate(seqResources, unseqResources);
     RewriteCrossSpaceCompactionSelector selector =
         new RewriteCrossSpaceCompactionSelector("", "", 0, null);
-    List<Pair<List<TsFileResource>, List<TsFileResource>>> selected =
+    List<CrossCompactionTaskResource> selected =
         selector.selectCrossSpaceTask(seqResources, unseqResources);
 
-    Assert.assertEquals(5, selected.get(0).left.size());
-    Assert.assertEquals(1, selected.get(0).right.size());
-    Assert.assertEquals(selected.get(0).left.get(0), seqResources.get(2));
-    Assert.assertEquals(selected.get(0).left.get(1), seqResources.get(3));
-    Assert.assertEquals(selected.get(0).left.get(2), seqResources.get(4));
-    Assert.assertEquals(selected.get(0).left.get(3), seqResources.get(5));
-    Assert.assertEquals(selected.get(0).left.get(4), seqResources.get(7));
-    Assert.assertEquals(selected.get(0).right.get(0), unseqResources.get(0));
+    Assert.assertEquals(5, selected.get(0).getSeqFiles().size());
+    Assert.assertEquals(1, selected.get(0).getUnseqFiles().size());
+    Assert.assertEquals(selected.get(0).getSeqFiles().get(0), seqResources.get(2));
+    Assert.assertEquals(selected.get(0).getSeqFiles().get(1), seqResources.get(3));
+    Assert.assertEquals(selected.get(0).getSeqFiles().get(2), seqResources.get(4));
+    Assert.assertEquals(selected.get(0).getSeqFiles().get(3), seqResources.get(5));
+    Assert.assertEquals(selected.get(0).getSeqFiles().get(4), seqResources.get(7));
+    Assert.assertEquals(selected.get(0).getUnseqFiles().get(0), unseqResources.get(0));
 
     new CrossSpaceCompactionTask(
             0,
             tsFileManager,
-            selected.get(0).left,
-            selected.get(0).right,
+            selected.get(0).getSeqFiles(),
+            selected.get(0).getUnseqFiles(),
             performer,
             new AtomicInteger(0),
             0,
@@ -1173,26 +1173,26 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
 
-    CrossSpaceCompactionResource resource =
-        new CrossSpaceCompactionResource(seqResources, unseqResources);
+    CrossSpaceCompactionCandidate resource =
+        new CrossSpaceCompactionCandidate(seqResources, unseqResources);
     RewriteCrossSpaceCompactionSelector selector =
         new RewriteCrossSpaceCompactionSelector("", "", 0, null);
-    List<Pair<List<TsFileResource>, List<TsFileResource>>> selected =
+    List<CrossCompactionTaskResource> selected =
         selector.selectCrossSpaceTask(seqResources, unseqResources);
 
-    Assert.assertEquals(2, selected.get(0).left.size());
-    Assert.assertEquals(2, selected.get(0).right.size());
-    Assert.assertEquals(selected.get(0).left.get(0), seqResources.get(2));
-    Assert.assertEquals(selected.get(0).left.get(1), seqResources.get(3));
+    Assert.assertEquals(2, selected.get(0).getSeqFiles().size());
+    Assert.assertEquals(2, selected.get(0).getUnseqFiles().size());
+    Assert.assertEquals(selected.get(0).getSeqFiles().get(0), seqResources.get(2));
+    Assert.assertEquals(selected.get(0).getSeqFiles().get(1), seqResources.get(3));
 
-    Assert.assertEquals(selected.get(0).right.get(0), unseqResources.get(0));
-    Assert.assertEquals(selected.get(0).right.get(1), unseqResources.get(1));
+    Assert.assertEquals(selected.get(0).getUnseqFiles().get(0), unseqResources.get(0));
+    Assert.assertEquals(selected.get(0).getUnseqFiles().get(1), unseqResources.get(1));
 
     new CrossSpaceCompactionTask(
             0,
             tsFileManager,
-            selected.get(0).left,
-            selected.get(0).right,
+            selected.get(0).getSeqFiles(),
+            selected.get(0).getUnseqFiles(),
             performer,
             new AtomicInteger(0),
             0,
@@ -1224,26 +1224,26 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
 
-    CrossSpaceCompactionResource resource =
-        new CrossSpaceCompactionResource(seqResources, unseqResources);
+    CrossSpaceCompactionCandidate resource =
+        new CrossSpaceCompactionCandidate(seqResources, unseqResources);
     RewriteCrossSpaceCompactionSelector selector =
         new RewriteCrossSpaceCompactionSelector("", "", 0, null);
-    List<Pair<List<TsFileResource>, List<TsFileResource>>> selected =
+    List<CrossCompactionTaskResource> selected =
         selector.selectCrossSpaceTask(seqResources, unseqResources);
 
-    Assert.assertEquals(2, selected.get(0).left.size());
-    Assert.assertEquals(2, selected.get(0).right.size());
-    Assert.assertEquals(selected.get(0).left.get(0), seqResources.get(2));
-    Assert.assertEquals(selected.get(0).left.get(1), seqResources.get(3));
+    Assert.assertEquals(2, selected.get(0).getSeqFiles().size());
+    Assert.assertEquals(2, selected.get(0).getUnseqFiles().size());
+    Assert.assertEquals(selected.get(0).getSeqFiles().get(0), seqResources.get(2));
+    Assert.assertEquals(selected.get(0).getSeqFiles().get(1), seqResources.get(3));
 
-    Assert.assertEquals(selected.get(0).right.get(0), unseqResources.get(0));
-    Assert.assertEquals(selected.get(0).right.get(1), unseqResources.get(1));
+    Assert.assertEquals(selected.get(0).getUnseqFiles().get(0), unseqResources.get(0));
+    Assert.assertEquals(selected.get(0).getUnseqFiles().get(1), unseqResources.get(1));
 
     new CrossSpaceCompactionTask(
             0,
             tsFileManager,
-            selected.get(0).left,
-            selected.get(0).right,
+            selected.get(0).getSeqFiles(),
+            selected.get(0).getUnseqFiles(),
             performer,
             new AtomicInteger(0),
             0,
@@ -1276,25 +1276,25 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
 
-    CrossSpaceCompactionResource resource =
-        new CrossSpaceCompactionResource(seqResources, unseqResources);
+    CrossSpaceCompactionCandidate resource =
+        new CrossSpaceCompactionCandidate(seqResources, unseqResources);
     RewriteCrossSpaceCompactionSelector selector =
         new RewriteCrossSpaceCompactionSelector("", "", 0, null);
-    List<Pair<List<TsFileResource>, List<TsFileResource>>> selected =
+    List<CrossCompactionTaskResource> selected =
         selector.selectCrossSpaceTask(seqResources, unseqResources);
 
-    Assert.assertEquals(2, selected.get(0).left.size());
-    Assert.assertEquals(2, selected.get(0).right.size());
-    Assert.assertEquals(selected.get(0).left.get(0), seqResources.get(2));
-    Assert.assertEquals(selected.get(0).left.get(1), seqResources.get(4));
-    Assert.assertEquals(selected.get(0).right.get(0), unseqResources.get(0));
-    Assert.assertEquals(selected.get(0).right.get(1), unseqResources.get(1));
+    Assert.assertEquals(2, selected.get(0).getSeqFiles().size());
+    Assert.assertEquals(2, selected.get(0).getUnseqFiles().size());
+    Assert.assertEquals(selected.get(0).getSeqFiles().get(0), seqResources.get(2));
+    Assert.assertEquals(selected.get(0).getSeqFiles().get(1), seqResources.get(4));
+    Assert.assertEquals(selected.get(0).getUnseqFiles().get(0), unseqResources.get(0));
+    Assert.assertEquals(selected.get(0).getUnseqFiles().get(1), unseqResources.get(1));
 
     new CrossSpaceCompactionTask(
             0,
             tsFileManager,
-            selected.get(0).left,
-            selected.get(0).right,
+            selected.get(0).getSeqFiles(),
+            selected.get(0).getUnseqFiles(),
             performer,
             new AtomicInteger(0),
             0,
@@ -1326,26 +1326,26 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
 
-    CrossSpaceCompactionResource resource =
-        new CrossSpaceCompactionResource(seqResources, unseqResources);
+    CrossSpaceCompactionCandidate resource =
+        new CrossSpaceCompactionCandidate(seqResources, unseqResources);
     RewriteCrossSpaceCompactionSelector selector =
         new RewriteCrossSpaceCompactionSelector("", "", 0, null);
-    List<Pair<List<TsFileResource>, List<TsFileResource>>> selected =
+    List<CrossCompactionTaskResource> selected =
         selector.selectCrossSpaceTask(seqResources, unseqResources);
 
-    Assert.assertEquals(2, selected.get(0).left.size());
-    Assert.assertEquals(2, selected.get(0).right.size());
+    Assert.assertEquals(2, selected.get(0).getSeqFiles().size());
+    Assert.assertEquals(2, selected.get(0).getUnseqFiles().size());
 
-    Assert.assertEquals(selected.get(0).left.get(0), seqResources.get(2));
-    Assert.assertEquals(selected.get(0).left.get(1), seqResources.get(3));
-    Assert.assertEquals(selected.get(0).right.get(0), unseqResources.get(0));
-    Assert.assertEquals(selected.get(0).right.get(1), unseqResources.get(1));
+    Assert.assertEquals(selected.get(0).getSeqFiles().get(0), seqResources.get(2));
+    Assert.assertEquals(selected.get(0).getSeqFiles().get(1), seqResources.get(3));
+    Assert.assertEquals(selected.get(0).getUnseqFiles().get(0), unseqResources.get(0));
+    Assert.assertEquals(selected.get(0).getUnseqFiles().get(1), unseqResources.get(1));
 
     new CrossSpaceCompactionTask(
             0,
             tsFileManager,
-            selected.get(0).left,
-            selected.get(0).right,
+            selected.get(0).getSeqFiles(),
+            selected.get(0).getUnseqFiles(),
             performer,
             new AtomicInteger(0),
             0,
@@ -1378,26 +1378,26 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
 
-    CrossSpaceCompactionResource resource =
-        new CrossSpaceCompactionResource(seqResources, unseqResources);
+    CrossSpaceCompactionCandidate resource =
+        new CrossSpaceCompactionCandidate(seqResources, unseqResources);
     RewriteCrossSpaceCompactionSelector selector =
         new RewriteCrossSpaceCompactionSelector("", "", 0, null);
-    List<Pair<List<TsFileResource>, List<TsFileResource>>> selected =
+    List<CrossCompactionTaskResource> selected =
         selector.selectCrossSpaceTask(seqResources, unseqResources);
 
-    Assert.assertEquals(2, selected.get(0).left.size());
-    Assert.assertEquals(2, selected.get(0).right.size());
+    Assert.assertEquals(2, selected.get(0).getSeqFiles().size());
+    Assert.assertEquals(2, selected.get(0).getUnseqFiles().size());
 
-    Assert.assertEquals(selected.get(0).left.get(0), seqResources.get(2));
-    Assert.assertEquals(selected.get(0).left.get(1), seqResources.get(3));
-    Assert.assertEquals(selected.get(0).right.get(0), unseqResources.get(0));
-    Assert.assertEquals(selected.get(0).right.get(1), unseqResources.get(1));
+    Assert.assertEquals(selected.get(0).getSeqFiles().get(0), seqResources.get(2));
+    Assert.assertEquals(selected.get(0).getSeqFiles().get(1), seqResources.get(3));
+    Assert.assertEquals(selected.get(0).getUnseqFiles().get(0), unseqResources.get(0));
+    Assert.assertEquals(selected.get(0).getUnseqFiles().get(1), unseqResources.get(1));
 
     new CrossSpaceCompactionTask(
             0,
             tsFileManager,
-            selected.get(0).left,
-            selected.get(0).right,
+            selected.get(0).getSeqFiles(),
+            selected.get(0).getUnseqFiles(),
             performer,
             new AtomicInteger(0),
             0,
@@ -1431,26 +1431,26 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
 
-    CrossSpaceCompactionResource resource =
-        new CrossSpaceCompactionResource(seqResources, unseqResources);
+    CrossSpaceCompactionCandidate resource =
+        new CrossSpaceCompactionCandidate(seqResources, unseqResources);
     RewriteCrossSpaceCompactionSelector selector =
         new RewriteCrossSpaceCompactionSelector("", "", 0, null);
-    List<Pair<List<TsFileResource>, List<TsFileResource>>> selected =
+    List<CrossCompactionTaskResource> selected =
         selector.selectCrossSpaceTask(seqResources, unseqResources);
 
-    Assert.assertEquals(2, selected.get(0).left.size());
-    Assert.assertEquals(2, selected.get(0).right.size());
+    Assert.assertEquals(2, selected.get(0).getSeqFiles().size());
+    Assert.assertEquals(2, selected.get(0).getUnseqFiles().size());
 
-    Assert.assertEquals(selected.get(0).left.get(0), seqResources.get(2));
-    Assert.assertEquals(selected.get(0).left.get(1), seqResources.get(4));
-    Assert.assertEquals(selected.get(0).right.get(0), unseqResources.get(0));
-    Assert.assertEquals(selected.get(0).right.get(1), unseqResources.get(1));
+    Assert.assertEquals(selected.get(0).getSeqFiles().get(0), seqResources.get(2));
+    Assert.assertEquals(selected.get(0).getSeqFiles().get(1), seqResources.get(4));
+    Assert.assertEquals(selected.get(0).getUnseqFiles().get(0), unseqResources.get(0));
+    Assert.assertEquals(selected.get(0).getUnseqFiles().get(1), unseqResources.get(1));
 
     new CrossSpaceCompactionTask(
             0,
             tsFileManager,
-            selected.get(0).left,
-            selected.get(0).right,
+            selected.get(0).getSeqFiles(),
+            selected.get(0).getUnseqFiles(),
             performer,
             new AtomicInteger(0),
             0,
@@ -1483,27 +1483,27 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
 
-    CrossSpaceCompactionResource resource =
-        new CrossSpaceCompactionResource(seqResources, unseqResources);
+    CrossSpaceCompactionCandidate resource =
+        new CrossSpaceCompactionCandidate(seqResources, unseqResources);
     RewriteCrossSpaceCompactionSelector selector =
         new RewriteCrossSpaceCompactionSelector("", "", 0, null);
-    List<Pair<List<TsFileResource>, List<TsFileResource>>> selected =
+    List<CrossCompactionTaskResource> selected =
         selector.selectCrossSpaceTask(seqResources, unseqResources);
 
-    Assert.assertEquals(3, selected.get(0).left.size());
-    Assert.assertEquals(2, selected.get(0).right.size());
+    Assert.assertEquals(3, selected.get(0).getSeqFiles().size());
+    Assert.assertEquals(2, selected.get(0).getUnseqFiles().size());
 
-    Assert.assertEquals(selected.get(0).left.get(0), seqResources.get(1));
-    Assert.assertEquals(selected.get(0).left.get(1), seqResources.get(2));
-    Assert.assertEquals(selected.get(0).left.get(2), seqResources.get(3));
-    Assert.assertEquals(selected.get(0).right.get(0), unseqResources.get(0));
-    Assert.assertEquals(selected.get(0).right.get(1), unseqResources.get(1));
+    Assert.assertEquals(selected.get(0).getSeqFiles().get(0), seqResources.get(1));
+    Assert.assertEquals(selected.get(0).getSeqFiles().get(1), seqResources.get(2));
+    Assert.assertEquals(selected.get(0).getSeqFiles().get(2), seqResources.get(3));
+    Assert.assertEquals(selected.get(0).getUnseqFiles().get(0), unseqResources.get(0));
+    Assert.assertEquals(selected.get(0).getUnseqFiles().get(1), unseqResources.get(1));
 
     new CrossSpaceCompactionTask(
             0,
             tsFileManager,
-            selected.get(0).left,
-            selected.get(0).right,
+            selected.get(0).getSeqFiles(),
+            selected.get(0).getUnseqFiles(),
             performer,
             new AtomicInteger(0),
             0,
@@ -1537,27 +1537,27 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
 
-    CrossSpaceCompactionResource resource =
-        new CrossSpaceCompactionResource(seqResources, unseqResources);
+    CrossSpaceCompactionCandidate resource =
+        new CrossSpaceCompactionCandidate(seqResources, unseqResources);
     RewriteCrossSpaceCompactionSelector selector =
         new RewriteCrossSpaceCompactionSelector("", "", 0, null);
-    List<Pair<List<TsFileResource>, List<TsFileResource>>> selected =
+    List<CrossCompactionTaskResource> selected =
         selector.selectCrossSpaceTask(seqResources, unseqResources);
 
-    Assert.assertEquals(3, selected.get(0).left.size());
-    Assert.assertEquals(2, selected.get(0).right.size());
+    Assert.assertEquals(3, selected.get(0).getSeqFiles().size());
+    Assert.assertEquals(2, selected.get(0).getUnseqFiles().size());
 
-    Assert.assertEquals(selected.get(0).left.get(0), seqResources.get(1));
-    Assert.assertEquals(selected.get(0).left.get(1), seqResources.get(2));
-    Assert.assertEquals(selected.get(0).left.get(2), seqResources.get(3));
-    Assert.assertEquals(selected.get(0).right.get(0), unseqResources.get(0));
-    Assert.assertEquals(selected.get(0).right.get(1), unseqResources.get(1));
+    Assert.assertEquals(selected.get(0).getSeqFiles().get(0), seqResources.get(1));
+    Assert.assertEquals(selected.get(0).getSeqFiles().get(1), seqResources.get(2));
+    Assert.assertEquals(selected.get(0).getSeqFiles().get(2), seqResources.get(3));
+    Assert.assertEquals(selected.get(0).getUnseqFiles().get(0), unseqResources.get(0));
+    Assert.assertEquals(selected.get(0).getUnseqFiles().get(1), unseqResources.get(1));
 
     new CrossSpaceCompactionTask(
             0,
             tsFileManager,
-            selected.get(0).left,
-            selected.get(0).right,
+            selected.get(0).getSeqFiles(),
+            selected.get(0).getUnseqFiles(),
             performer,
             new AtomicInteger(0),
             0,
@@ -1592,27 +1592,27 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
 
-    CrossSpaceCompactionResource resource =
-        new CrossSpaceCompactionResource(seqResources, unseqResources);
+    CrossSpaceCompactionCandidate resource =
+        new CrossSpaceCompactionCandidate(seqResources, unseqResources);
     RewriteCrossSpaceCompactionSelector selector =
         new RewriteCrossSpaceCompactionSelector("", "", 0, null);
-    List<Pair<List<TsFileResource>, List<TsFileResource>>> selected =
+    List<CrossCompactionTaskResource> selected =
         selector.selectCrossSpaceTask(seqResources, unseqResources);
 
-    Assert.assertEquals(3, selected.get(0).left.size());
-    Assert.assertEquals(2, selected.get(0).right.size());
+    Assert.assertEquals(3, selected.get(0).getSeqFiles().size());
+    Assert.assertEquals(2, selected.get(0).getUnseqFiles().size());
 
-    Assert.assertEquals(selected.get(0).left.get(0), seqResources.get(1));
-    Assert.assertEquals(selected.get(0).left.get(1), seqResources.get(2));
-    Assert.assertEquals(selected.get(0).left.get(2), seqResources.get(4));
-    Assert.assertEquals(selected.get(0).right.get(0), unseqResources.get(0));
-    Assert.assertEquals(selected.get(0).right.get(1), unseqResources.get(1));
+    Assert.assertEquals(selected.get(0).getSeqFiles().get(0), seqResources.get(1));
+    Assert.assertEquals(selected.get(0).getSeqFiles().get(1), seqResources.get(2));
+    Assert.assertEquals(selected.get(0).getSeqFiles().get(2), seqResources.get(4));
+    Assert.assertEquals(selected.get(0).getUnseqFiles().get(0), unseqResources.get(0));
+    Assert.assertEquals(selected.get(0).getUnseqFiles().get(1), unseqResources.get(1));
 
     new CrossSpaceCompactionTask(
             0,
             tsFileManager,
-            selected.get(0).left,
-            selected.get(0).right,
+            selected.get(0).getSeqFiles(),
+            selected.get(0).getUnseqFiles(),
             performer,
             new AtomicInteger(0),
             0,
@@ -1646,28 +1646,28 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
 
-    CrossSpaceCompactionResource resource =
-        new CrossSpaceCompactionResource(seqResources, unseqResources);
+    CrossSpaceCompactionCandidate resource =
+        new CrossSpaceCompactionCandidate(seqResources, unseqResources);
     RewriteCrossSpaceCompactionSelector selector =
         new RewriteCrossSpaceCompactionSelector("", "", 0, null);
-    List<Pair<List<TsFileResource>, List<TsFileResource>>> selected =
+    List<CrossCompactionTaskResource> selected =
         selector.selectCrossSpaceTask(seqResources, unseqResources);
 
-    Assert.assertEquals(5, selected.get(0).left.size());
-    Assert.assertEquals(1, selected.get(0).right.size());
-    Assert.assertEquals(selected.get(0).left.get(0), seqResources.get(2));
-    Assert.assertEquals(selected.get(0).left.get(1), seqResources.get(3));
-    Assert.assertEquals(selected.get(0).left.get(2), seqResources.get(4));
-    Assert.assertEquals(selected.get(0).left.get(3), seqResources.get(5));
-    Assert.assertEquals(selected.get(0).left.get(4), seqResources.get(6));
+    Assert.assertEquals(5, selected.get(0).getSeqFiles().size());
+    Assert.assertEquals(1, selected.get(0).getUnseqFiles().size());
+    Assert.assertEquals(selected.get(0).getSeqFiles().get(0), seqResources.get(2));
+    Assert.assertEquals(selected.get(0).getSeqFiles().get(1), seqResources.get(3));
+    Assert.assertEquals(selected.get(0).getSeqFiles().get(2), seqResources.get(4));
+    Assert.assertEquals(selected.get(0).getSeqFiles().get(3), seqResources.get(5));
+    Assert.assertEquals(selected.get(0).getSeqFiles().get(4), seqResources.get(6));
 
-    Assert.assertEquals(selected.get(0).right.get(0), unseqResources.get(0));
+    Assert.assertEquals(selected.get(0).getUnseqFiles().get(0), unseqResources.get(0));
 
     new CrossSpaceCompactionTask(
             0,
             tsFileManager,
-            selected.get(0).left,
-            selected.get(0).right,
+            selected.get(0).getSeqFiles(),
+            selected.get(0).getUnseqFiles(),
             performer,
             new AtomicInteger(0),
             0,
@@ -1701,28 +1701,28 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
 
-    CrossSpaceCompactionResource resource =
-        new CrossSpaceCompactionResource(seqResources, unseqResources);
+    CrossSpaceCompactionCandidate resource =
+        new CrossSpaceCompactionCandidate(seqResources, unseqResources);
     RewriteCrossSpaceCompactionSelector selector =
         new RewriteCrossSpaceCompactionSelector("", "", 0, null);
-    List<Pair<List<TsFileResource>, List<TsFileResource>>> selected =
+    List<CrossCompactionTaskResource> selected =
         selector.selectCrossSpaceTask(seqResources, unseqResources);
 
-    Assert.assertEquals(5, selected.get(0).left.size());
-    Assert.assertEquals(1, selected.get(0).right.size());
-    Assert.assertEquals(selected.get(0).left.get(0), seqResources.get(2));
-    Assert.assertEquals(selected.get(0).left.get(1), seqResources.get(3));
-    Assert.assertEquals(selected.get(0).left.get(2), seqResources.get(4));
-    Assert.assertEquals(selected.get(0).left.get(3), seqResources.get(5));
-    Assert.assertEquals(selected.get(0).left.get(4), seqResources.get(6));
+    Assert.assertEquals(5, selected.get(0).getSeqFiles().size());
+    Assert.assertEquals(1, selected.get(0).getUnseqFiles().size());
+    Assert.assertEquals(selected.get(0).getSeqFiles().get(0), seqResources.get(2));
+    Assert.assertEquals(selected.get(0).getSeqFiles().get(1), seqResources.get(3));
+    Assert.assertEquals(selected.get(0).getSeqFiles().get(2), seqResources.get(4));
+    Assert.assertEquals(selected.get(0).getSeqFiles().get(3), seqResources.get(5));
+    Assert.assertEquals(selected.get(0).getSeqFiles().get(4), seqResources.get(6));
 
-    Assert.assertEquals(selected.get(0).right.get(0), unseqResources.get(0));
+    Assert.assertEquals(selected.get(0).getUnseqFiles().get(0), unseqResources.get(0));
 
     new CrossSpaceCompactionTask(
             0,
             tsFileManager,
-            selected.get(0).left,
-            selected.get(0).right,
+            selected.get(0).getSeqFiles(),
+            selected.get(0).getUnseqFiles(),
             performer,
             new AtomicInteger(0),
             0,
@@ -1756,28 +1756,28 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
 
-    CrossSpaceCompactionResource resource =
-        new CrossSpaceCompactionResource(seqResources, unseqResources);
+    CrossSpaceCompactionCandidate resource =
+        new CrossSpaceCompactionCandidate(seqResources, unseqResources);
     RewriteCrossSpaceCompactionSelector selector =
         new RewriteCrossSpaceCompactionSelector("", "", 0, null);
-    List<Pair<List<TsFileResource>, List<TsFileResource>>> selected =
+    List<CrossCompactionTaskResource> selected =
         selector.selectCrossSpaceTask(seqResources, unseqResources);
 
-    Assert.assertEquals(6, selected.get(0).left.size());
-    Assert.assertEquals(1, selected.get(0).right.size());
-    Assert.assertEquals(selected.get(0).left.get(0), seqResources.get(2));
-    Assert.assertEquals(selected.get(0).left.get(1), seqResources.get(3));
-    Assert.assertEquals(selected.get(0).left.get(2), seqResources.get(4));
-    Assert.assertEquals(selected.get(0).left.get(3), seqResources.get(5));
-    Assert.assertEquals(selected.get(0).left.get(4), seqResources.get(6));
-    Assert.assertEquals(selected.get(0).left.get(5), seqResources.get(7));
-    Assert.assertEquals(selected.get(0).right.get(0), unseqResources.get(0));
+    Assert.assertEquals(6, selected.get(0).getSeqFiles().size());
+    Assert.assertEquals(1, selected.get(0).getUnseqFiles().size());
+    Assert.assertEquals(selected.get(0).getSeqFiles().get(0), seqResources.get(2));
+    Assert.assertEquals(selected.get(0).getSeqFiles().get(1), seqResources.get(3));
+    Assert.assertEquals(selected.get(0).getSeqFiles().get(2), seqResources.get(4));
+    Assert.assertEquals(selected.get(0).getSeqFiles().get(3), seqResources.get(5));
+    Assert.assertEquals(selected.get(0).getSeqFiles().get(4), seqResources.get(6));
+    Assert.assertEquals(selected.get(0).getSeqFiles().get(5), seqResources.get(7));
+    Assert.assertEquals(selected.get(0).getUnseqFiles().get(0), unseqResources.get(0));
 
     new CrossSpaceCompactionTask(
             0,
             tsFileManager,
-            selected.get(0).left,
-            selected.get(0).right,
+            selected.get(0).getSeqFiles(),
+            selected.get(0).getUnseqFiles(),
             performer,
             new AtomicInteger(0),
             0,
@@ -1811,27 +1811,27 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
 
-    CrossSpaceCompactionResource resource =
-        new CrossSpaceCompactionResource(seqResources, unseqResources);
+    CrossSpaceCompactionCandidate resource =
+        new CrossSpaceCompactionCandidate(seqResources, unseqResources);
     RewriteCrossSpaceCompactionSelector selector =
         new RewriteCrossSpaceCompactionSelector("", "", 0, null);
-    List<Pair<List<TsFileResource>, List<TsFileResource>>> selected =
+    List<CrossCompactionTaskResource> selected =
         selector.selectCrossSpaceTask(seqResources, unseqResources);
 
-    Assert.assertEquals(5, selected.get(0).left.size());
-    Assert.assertEquals(1, selected.get(0).right.size());
-    Assert.assertEquals(selected.get(0).left.get(0), seqResources.get(2));
-    Assert.assertEquals(selected.get(0).left.get(1), seqResources.get(3));
-    Assert.assertEquals(selected.get(0).left.get(2), seqResources.get(4));
-    Assert.assertEquals(selected.get(0).left.get(3), seqResources.get(5));
-    Assert.assertEquals(selected.get(0).left.get(4), seqResources.get(7));
-    Assert.assertEquals(selected.get(0).right.get(0), unseqResources.get(0));
+    Assert.assertEquals(5, selected.get(0).getSeqFiles().size());
+    Assert.assertEquals(1, selected.get(0).getUnseqFiles().size());
+    Assert.assertEquals(selected.get(0).getSeqFiles().get(0), seqResources.get(2));
+    Assert.assertEquals(selected.get(0).getSeqFiles().get(1), seqResources.get(3));
+    Assert.assertEquals(selected.get(0).getSeqFiles().get(2), seqResources.get(4));
+    Assert.assertEquals(selected.get(0).getSeqFiles().get(3), seqResources.get(5));
+    Assert.assertEquals(selected.get(0).getSeqFiles().get(4), seqResources.get(7));
+    Assert.assertEquals(selected.get(0).getUnseqFiles().get(0), unseqResources.get(0));
 
     new CrossSpaceCompactionTask(
             0,
             tsFileManager,
-            selected.get(0).left,
-            selected.get(0).right,
+            selected.get(0).getSeqFiles(),
+            selected.get(0).getUnseqFiles(),
             performer,
             new AtomicInteger(0),
             0,
@@ -1866,24 +1866,24 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
 
-    CrossSpaceCompactionResource resource =
-        new CrossSpaceCompactionResource(seqResources, unseqResources);
+    CrossSpaceCompactionCandidate resource =
+        new CrossSpaceCompactionCandidate(seqResources, unseqResources);
     RewriteCrossSpaceCompactionSelector selector =
         new RewriteCrossSpaceCompactionSelector("", "", 0, null);
-    List<Pair<List<TsFileResource>, List<TsFileResource>>> selected =
+    List<CrossCompactionTaskResource> selected =
         selector.selectCrossSpaceTask(seqResources, unseqResources);
 
-    Assert.assertEquals(2, selected.get(0).left.size());
-    Assert.assertEquals(1, selected.get(0).right.size());
-    Assert.assertEquals(selected.get(0).left.get(0), seqResources.get(2));
-    Assert.assertEquals(selected.get(0).left.get(1), seqResources.get(3));
-    Assert.assertEquals(selected.get(0).right.get(0), unseqResources.get(0));
+    Assert.assertEquals(2, selected.get(0).getSeqFiles().size());
+    Assert.assertEquals(1, selected.get(0).getUnseqFiles().size());
+    Assert.assertEquals(selected.get(0).getSeqFiles().get(0), seqResources.get(2));
+    Assert.assertEquals(selected.get(0).getSeqFiles().get(1), seqResources.get(3));
+    Assert.assertEquals(selected.get(0).getUnseqFiles().get(0), unseqResources.get(0));
 
     new CrossSpaceCompactionTask(
             0,
             tsFileManager,
-            selected.get(0).left,
-            selected.get(0).right,
+            selected.get(0).getSeqFiles(),
+            selected.get(0).getUnseqFiles(),
             performer,
             new AtomicInteger(0),
             0,
@@ -1920,18 +1920,18 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
 
-    CrossSpaceCompactionResource resource =
-        new CrossSpaceCompactionResource(seqResources, unseqResources);
+    CrossSpaceCompactionCandidate resource =
+        new CrossSpaceCompactionCandidate(seqResources, unseqResources);
     RewriteCrossSpaceCompactionSelector selector =
         new RewriteCrossSpaceCompactionSelector("", "", 0, null);
-    List<Pair<List<TsFileResource>, List<TsFileResource>>> selected =
+    List<CrossCompactionTaskResource> selected =
         selector.selectCrossSpaceTask(seqResources, unseqResources);
     // Assert.assertEquals(0, result.length);
     new CrossSpaceCompactionTask(
             0,
             tsFileManager,
-            selected.get(0).left,
-            selected.get(0).right,
+            selected.get(0).getSeqFiles(),
+            selected.get(0).getUnseqFiles(),
             performer,
             new AtomicInteger(0),
             0,
@@ -1967,24 +1967,24 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
 
-    CrossSpaceCompactionResource resource =
-        new CrossSpaceCompactionResource(seqResources, unseqResources);
+    CrossSpaceCompactionCandidate resource =
+        new CrossSpaceCompactionCandidate(seqResources, unseqResources);
     RewriteCrossSpaceCompactionSelector selector =
         new RewriteCrossSpaceCompactionSelector("", "", 0, null);
-    List<Pair<List<TsFileResource>, List<TsFileResource>>> selected =
+    List<CrossCompactionTaskResource> selected =
         selector.selectCrossSpaceTask(seqResources, unseqResources);
 
-    Assert.assertEquals(2, selected.get(0).left.size());
-    Assert.assertEquals(1, selected.get(0).right.size());
-    Assert.assertEquals(selected.get(0).left.get(0), seqResources.get(2));
-    Assert.assertEquals(selected.get(0).left.get(1), seqResources.get(3));
-    Assert.assertEquals(selected.get(0).right.get(0), unseqResources.get(0));
+    Assert.assertEquals(2, selected.get(0).getSeqFiles().size());
+    Assert.assertEquals(1, selected.get(0).getUnseqFiles().size());
+    Assert.assertEquals(selected.get(0).getSeqFiles().get(0), seqResources.get(2));
+    Assert.assertEquals(selected.get(0).getSeqFiles().get(1), seqResources.get(3));
+    Assert.assertEquals(selected.get(0).getUnseqFiles().get(0), unseqResources.get(0));
 
     new CrossSpaceCompactionTask(
             0,
             tsFileManager,
-            selected.get(0).left,
-            selected.get(0).right,
+            selected.get(0).getSeqFiles(),
+            selected.get(0).getUnseqFiles(),
             performer,
             new AtomicInteger(0),
             0,
@@ -2020,25 +2020,25 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
 
-    CrossSpaceCompactionResource resource =
-        new CrossSpaceCompactionResource(seqResources, unseqResources);
+    CrossSpaceCompactionCandidate resource =
+        new CrossSpaceCompactionCandidate(seqResources, unseqResources);
     RewriteCrossSpaceCompactionSelector selector =
         new RewriteCrossSpaceCompactionSelector("", "", 0, null);
-    List<Pair<List<TsFileResource>, List<TsFileResource>>> selected =
+    List<CrossCompactionTaskResource> selected =
         selector.selectCrossSpaceTask(seqResources, unseqResources);
 
-    Assert.assertEquals(2, selected.get(0).left.size());
-    Assert.assertEquals(2, selected.get(0).right.size());
-    Assert.assertEquals(selected.get(0).left.get(0), seqResources.get(2));
-    Assert.assertEquals(selected.get(0).left.get(1), seqResources.get(3));
-    Assert.assertEquals(selected.get(0).right.get(0), unseqResources.get(0));
-    Assert.assertEquals(selected.get(0).right.get(1), unseqResources.get(1));
+    Assert.assertEquals(2, selected.get(0).getSeqFiles().size());
+    Assert.assertEquals(2, selected.get(0).getUnseqFiles().size());
+    Assert.assertEquals(selected.get(0).getSeqFiles().get(0), seqResources.get(2));
+    Assert.assertEquals(selected.get(0).getSeqFiles().get(1), seqResources.get(3));
+    Assert.assertEquals(selected.get(0).getUnseqFiles().get(0), unseqResources.get(0));
+    Assert.assertEquals(selected.get(0).getUnseqFiles().get(1), unseqResources.get(1));
 
     new CrossSpaceCompactionTask(
             0,
             tsFileManager,
-            selected.get(0).left,
-            selected.get(0).right,
+            selected.get(0).getSeqFiles(),
+            selected.get(0).getUnseqFiles(),
             performer,
             new AtomicInteger(0),
             0,
@@ -2075,24 +2075,24 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
 
-    CrossSpaceCompactionResource resource =
-        new CrossSpaceCompactionResource(seqResources, unseqResources);
+    CrossSpaceCompactionCandidate resource =
+        new CrossSpaceCompactionCandidate(seqResources, unseqResources);
     RewriteCrossSpaceCompactionSelector selector =
         new RewriteCrossSpaceCompactionSelector("", "", 0, null);
-    List<Pair<List<TsFileResource>, List<TsFileResource>>> selected =
+    List<CrossCompactionTaskResource> selected =
         selector.selectCrossSpaceTask(seqResources, unseqResources);
 
-    Assert.assertEquals(2, selected.get(0).left.size());
-    Assert.assertEquals(1, selected.get(0).right.size());
-    Assert.assertEquals(selected.get(0).left.get(0), seqResources.get(2));
-    Assert.assertEquals(selected.get(0).left.get(1), seqResources.get(3));
-    Assert.assertEquals(selected.get(0).right.get(0), unseqResources.get(0));
+    Assert.assertEquals(2, selected.get(0).getSeqFiles().size());
+    Assert.assertEquals(1, selected.get(0).getUnseqFiles().size());
+    Assert.assertEquals(selected.get(0).getSeqFiles().get(0), seqResources.get(2));
+    Assert.assertEquals(selected.get(0).getSeqFiles().get(1), seqResources.get(3));
+    Assert.assertEquals(selected.get(0).getUnseqFiles().get(0), unseqResources.get(0));
 
     new CrossSpaceCompactionTask(
             0,
             tsFileManager,
-            selected.get(0).left,
-            selected.get(0).right,
+            selected.get(0).getSeqFiles(),
+            selected.get(0).getUnseqFiles(),
             performer,
             new AtomicInteger(0),
             0,
@@ -2141,7 +2141,7 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
             .createInstance(COMPACTION_TEST_SG, "0", 0, tsFileManager);
     // In the process of getting the file list and starting to select files, the file list is
     // updated (the file is deleted or the status is updated)
-    List<Pair<List<TsFileResource>, List<TsFileResource>>> selected =
+    List<CrossCompactionTaskResource> selected =
         selector.selectCrossSpaceTask(seqResources, unseqResources);
 
     Assert.assertEquals(0, selected.size());
