@@ -165,9 +165,9 @@ public class IoTDBSessionQueryIT {
 
   @Test
   public void lastQueryWithLastTimeTest() throws IoTDBConnectionException {
-    String[] retArray = new String[] {"40,root.sg1.d1.s2,40,INT32"};
+    String[] retArray = new String[] {};
 
-    List<String> selectedPaths = Collections.singletonList("root.sg1.d1.s2");
+    List<String> selectedPaths = Collections.singletonList("root.sg1.d1.s1");
 
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
       try (SessionDataSet resultSet = session.executeLastDataQuery(selectedPaths, 30)) {
