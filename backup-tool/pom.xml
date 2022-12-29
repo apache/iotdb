@@ -19,13 +19,13 @@
     <parent>
         <groupId>org.apache.iotdb</groupId>
         <artifactId>iotdb-parent</artifactId>
-        <version>0.13.3-SNAPSHOT</version>
+        <version>0.13.4-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
     <modelVersion>4.0.0</modelVersion>
     <groupId>org.apache.iotdb</groupId>
     <artifactId>backup-tool</artifactId>
-    <version>0.13.3-SNAPSHOT</version>
+    <version>0.13.4-SNAPSHOT</version>
     <packaging>pom</packaging>
     <name>Data Backup Tool Base on Session</name>
     <modules>
