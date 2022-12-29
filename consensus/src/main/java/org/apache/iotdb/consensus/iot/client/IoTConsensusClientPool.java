@@ -20,10 +20,10 @@
 package org.apache.iotdb.consensus.iot.client;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
-import org.apache.iotdb.commons.client.ClientFactoryProperty;
 import org.apache.iotdb.commons.client.ClientManager;
-import org.apache.iotdb.commons.client.ClientPoolProperty;
 import org.apache.iotdb.commons.client.IClientPoolFactory;
+import org.apache.iotdb.commons.client.property.ClientPoolProperty;
+import org.apache.iotdb.commons.client.property.ThriftClientProperty;
 import org.apache.iotdb.consensus.config.IoTConsensusConfig;
 
 import org.apache.commons.pool2.KeyedObjectPool;
@@ -34,7 +34,7 @@ public class IoTConsensusClientPool {
   private IoTConsensusClientPool() {}
 
   public static class SyncIoTConsensusServiceClientPoolFactory
-      implements IClientPoolFactory<TEndPoint, SyncIoTConsensusServiceClient> {
+      implements IClientPoolFactory<TEndPoint, IoTConsensusServiceClient> {
 
     private final IoTConsensusConfig config;
 
@@ -43,18 +43,16 @@ public class IoTConsensusClientPool {
     }
 
     @Override
-    public KeyedObjectPool<TEndPoint, SyncIoTConsensusServiceClient> createClientPool(
-        ClientManager<TEndPoint, SyncIoTConsensusServiceClient> manager) {
+    public KeyedObjectPool<TEndPoint, IoTConsensusServiceClient> createClientPool(
+        ClientManager<TEndPoint, IoTConsensusServiceClient> manager) {
       return new GenericKeyedObjectPool<>(
-          new SyncIoTConsensusServiceClient.Factory(
+          new IoTConsensusServiceClient.Factory(
               manager,
-              new ClientFactoryProperty.Builder()
+              new ThriftClientProperty.Builder()
                   .setConnectionTimeoutMs(config.getRpc().getConnectionTimeoutInMs())
                   .setRpcThriftCompressionEnabled(config.getRpc().isRpcThriftCompressionEnabled())
-                  .setSelectorNumOfAsyncClientManager(
-                      config.getRpc().getSelectorNumOfClientManager())
                   .build()),
-          new ClientPoolProperty.Builder<SyncIoTConsensusServiceClient>().build().getConfig());
+          new ClientPoolProperty.Builder<IoTConsensusServiceClient>().build().getConfig());
     }
   }
 
@@ -74,7 +72,7 @@ public class IoTConsensusClientPool {
       return new GenericKeyedObjectPool<>(
           new AsyncIoTConsensusServiceClient.Factory(
               manager,
-              new ClientFactoryProperty.Builder()
+              new ThriftClientProperty.Builder()
                   .setConnectionTimeoutMs(config.getRpc().getConnectionTimeoutInMs())
                   .setRpcThriftCompressionEnabled(config.getRpc().isRpcThriftCompressionEnabled())
                   .setSelectorNumOfAsyncClientManager(

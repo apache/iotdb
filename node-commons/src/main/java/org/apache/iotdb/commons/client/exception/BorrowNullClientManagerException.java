@@ -16,16 +16,14 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.commons.client.sync;
 
-public interface SyncThriftClient {
+package org.apache.iotdb.commons.client.exception;
 
-  /** close the connection */
-  void invalidate();
+public class BorrowNullClientManagerException extends ClientManagerException {
 
-  /**
-   * Clears the specified pool, removing all pooled instances corresponding to current instance's
-   * endPoint.
-   */
-  void invalidateAll();
+  private static final String MESSAGE = "Can not borrow client for node null";
+
+  public BorrowNullClientManagerException() {
+    super(MESSAGE);
+  }
 }

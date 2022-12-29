@@ -19,11 +19,11 @@
 package org.apache.iotdb.it.env;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.commons.client.ClientPoolFactory;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.confignode.rpc.thrift.IConfigNodeRPCService;
-import org.apache.iotdb.db.client.DataNodeClientPoolFactory;
 import org.apache.iotdb.isession.ISession;
 import org.apache.iotdb.itbase.env.BaseEnv;
 import org.apache.iotdb.jdbc.Config;
@@ -61,8 +61,7 @@ public class RemoteServerEnv implements BaseEnv {
     }
     clientManager =
         new IClientManager.Factory<TEndPoint, SyncConfigNodeIServiceClient>()
-            .createClientManager(
-                new DataNodeClientPoolFactory.SyncConfigNodeIServiceClientPoolFactory());
+            .createClientManager(new ClientPoolFactory.SyncConfigNodeIServiceClientPoolFactory());
   }
 
   @Override

@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.client;
+package org.apache.iotdb.commons.client.property;
 
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TCompactProtocol;
@@ -25,13 +25,13 @@ import org.apache.thrift.protocol.TProtocolFactory;
 
 import java.util.concurrent.TimeUnit;
 
-public class ClientFactoryProperty {
+public class ThriftClientProperty {
 
   private final TProtocolFactory protocolFactory;
   private final int connectionTimeoutMs;
   private final int selectorNumOfAsyncClientPool;
 
-  public ClientFactoryProperty(
+  public ThriftClientProperty(
       TProtocolFactory protocolFactory, int connectionTimeoutMs, int selectorNumOfAsyncClientPool) {
     this.protocolFactory = protocolFactory;
     this.connectionTimeoutMs = connectionTimeoutMs;
@@ -75,8 +75,8 @@ public class ClientFactoryProperty {
       return this;
     }
 
-    public ClientFactoryProperty build() {
-      return new ClientFactoryProperty(
+    public ThriftClientProperty build() {
+      return new ThriftClientProperty(
           rpcThriftCompressionEnabled
               ? new TCompactProtocol.Factory()
               : new TBinaryProtocol.Factory(),
@@ -90,7 +90,7 @@ public class ClientFactoryProperty {
     private DefaultProperty() {}
 
     public static final boolean RPC_THRIFT_COMPRESSED_ENABLED = false;
-    public static final int CONNECTION_TIMEOUT_MS = (int) TimeUnit.SECONDS.toMillis(30);
+    public static final int CONNECTION_TIMEOUT_MS = (int) TimeUnit.SECONDS.toMillis(20);
     public static final int SELECTOR_NUM_OF_ASYNC_CLIENT_MANAGER = 1;
   }
 }

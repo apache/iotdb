@@ -24,11 +24,11 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
-import org.apache.iotdb.commons.client.BaseClientFactory;
-import org.apache.iotdb.commons.client.ClientFactoryProperty;
 import org.apache.iotdb.commons.client.ClientManager;
-import org.apache.iotdb.commons.client.ClientPoolProperty;
-import org.apache.iotdb.commons.client.sync.SyncThriftClient;
+import org.apache.iotdb.commons.client.ThriftClient;
+import org.apache.iotdb.commons.client.factory.ThriftClientFactory;
+import org.apache.iotdb.commons.client.property.ClientPoolProperty;
+import org.apache.iotdb.commons.client.property.ThriftClientProperty;
 import org.apache.iotdb.commons.client.sync.SyncThriftClientWithErrorHandler;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.ConfigNodeRegionId;
@@ -135,12 +135,12 @@ import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.lang.reflect.Constructor;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
-public class ConfigNodeClient
-    implements IConfigNodeRPCService.Iface, SyncThriftClient, AutoCloseable {
+public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClient, AutoCloseable {
+
   private static final Logger logger = LoggerFactory.getLogger(ConfigNodeClient.class);
 
   private static final int RETRY_NUM = 5;
@@ -176,7 +176,7 @@ public class ConfigNodeClient
     // Read config nodes from configuration
     configNodes = ConfigNodeInfo.getInstance().getLatestConfigNodes();
     protocolFactory =
-        CommonDescriptor.getInstance().getConfig().isCnRpcThriftCompressionEnabled()
+        CommonDescriptor.getInstance().getConfig().isRpcThriftCompressionEnabled()
             ? new TCompactProtocol.Factory()
             : new TBinaryProtocol.Factory();
 
@@ -292,7 +292,7 @@ public class ConfigNodeClient
 
   @Override
   public void invalidate() {
-    transport.close();
+    Optional.ofNullable(transport).ifPresent(TTransport::close);
   }
 
   @Override
@@ -1919,12 +1919,11 @@ public class ConfigNodeClient
     throw new TException(new UnsupportedOperationException().getCause());
   }
 
-  public static class Factory extends BaseClientFactory<ConfigNodeRegionId, ConfigNodeClient> {
-
+  public static class Factory extends ThriftClientFactory<ConfigNodeRegionId, ConfigNodeClient> {
     public Factory(
         ClientManager<ConfigNodeRegionId, ConfigNodeClient> clientManager,
-        ClientFactoryProperty clientFactoryProperty) {
-      super(clientManager, clientFactoryProperty);
+        ThriftClientProperty thriftClientProperty) {
+      super(clientManager, thriftClientProperty);
     }
 
     @Override
@@ -1936,15 +1935,13 @@ public class ConfigNodeClient
     @Override
     public PooledObject<ConfigNodeClient> makeObject(ConfigNodeRegionId configNodeRegionId)
         throws Exception {
-      Constructor<ConfigNodeClient> constructor =
-          ConfigNodeClient.class.getConstructor(
-              TProtocolFactory.class, long.class, clientManager.getClass());
       return new DefaultPooledObject<>(
           SyncThriftClientWithErrorHandler.newErrorHandler(
               ConfigNodeClient.class,
-              constructor,
-              clientFactoryProperty.getProtocolFactory(),
-              clientFactoryProperty.getConnectionTimeoutMs(),
+              ConfigNodeClient.class.getConstructor(
+                  TProtocolFactory.class, long.class, clientManager.getClass()),
+              thriftClientProperty.getProtocolFactory(),
+              thriftClientProperty.getConnectionTimeoutMs(),
               clientManager));
     }
 

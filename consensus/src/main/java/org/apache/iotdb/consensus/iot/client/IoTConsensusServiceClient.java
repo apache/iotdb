@@ -17,17 +17,17 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.client.sync;
+package org.apache.iotdb.consensus.iot.client;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.ClientManager;
 import org.apache.iotdb.commons.client.ThriftClient;
 import org.apache.iotdb.commons.client.factory.ThriftClientFactory;
 import org.apache.iotdb.commons.client.property.ThriftClientProperty;
-import org.apache.iotdb.confignode.rpc.thrift.IConfigNodeRPCService;
+import org.apache.iotdb.commons.client.sync.SyncThriftClientWithErrorHandler;
+import org.apache.iotdb.consensus.iot.thrift.IoTConsensusIService;
 import org.apache.iotdb.rpc.RpcTransportFactory;
 import org.apache.iotdb.rpc.TConfigurationConst;
-import org.apache.iotdb.rpc.TimeoutChangeableTransport;
 
 import org.apache.commons.pool2.PooledObject;
 import org.apache.commons.pool2.impl.DefaultPooledObject;
@@ -35,40 +35,29 @@ import org.apache.thrift.protocol.TProtocolFactory;
 import org.apache.thrift.transport.TSocket;
 import org.apache.thrift.transport.TTransportException;
 
-import java.net.SocketException;
-
-public class SyncConfigNodeIServiceClient extends IConfigNodeRPCService.Client
+public class IoTConsensusServiceClient extends IoTConsensusIService.Client
     implements ThriftClient, AutoCloseable {
 
   private final TEndPoint endpoint;
-  private final ClientManager<TEndPoint, SyncConfigNodeIServiceClient> clientManager;
+  private final ClientManager<TEndPoint, IoTConsensusServiceClient> clientManager;
 
-  public SyncConfigNodeIServiceClient(
+  public IoTConsensusServiceClient(
       TProtocolFactory protocolFactory,
       int connectionTimeout,
-      TEndPoint endPoint,
-      ClientManager<TEndPoint, SyncConfigNodeIServiceClient> clientManager)
+      TEndPoint endpoint,
+      ClientManager<TEndPoint, IoTConsensusServiceClient> clientManager)
       throws TTransportException {
     super(
         protocolFactory.getProtocol(
             RpcTransportFactory.INSTANCE.getTransport(
                 new TSocket(
                     TConfigurationConst.defaultTConfiguration,
-                    endPoint.getIp(),
-                    endPoint.getPort(),
+                    endpoint.getIp(),
+                    endpoint.getPort(),
                     connectionTimeout))));
-    this.endpoint = endPoint;
+    this.endpoint = endpoint;
     this.clientManager = clientManager;
     getInputProtocol().getTransport().open();
-  }
-
-  public int getTimeout() throws SocketException {
-    return ((TimeoutChangeableTransport) getInputProtocol().getTransport()).getTimeOut();
-  }
-
-  public void setTimeout(int timeout) {
-    // the same transport is used in both input and output
-    ((TimeoutChangeableTransport) (getInputProtocol().getTransport())).setTimeout(timeout);
   }
 
   @Override
@@ -88,30 +77,29 @@ public class SyncConfigNodeIServiceClient extends IConfigNodeRPCService.Client
 
   @Override
   public String toString() {
-    return String.format("SyncConfigNodeIServiceClient{%s}", endpoint);
+    return String.format("SyncIoTConsensusServiceClient{%s}", endpoint);
   }
 
-  public static class Factory extends ThriftClientFactory<TEndPoint, SyncConfigNodeIServiceClient> {
+  public static class Factory extends ThriftClientFactory<TEndPoint, IoTConsensusServiceClient> {
 
     public Factory(
-        ClientManager<TEndPoint, SyncConfigNodeIServiceClient> clientManager,
+        ClientManager<TEndPoint, IoTConsensusServiceClient> clientManager,
         ThriftClientProperty thriftClientProperty) {
       super(clientManager, thriftClientProperty);
     }
 
     @Override
     public void destroyObject(
-        TEndPoint endpoint, PooledObject<SyncConfigNodeIServiceClient> pooledObject) {
+        TEndPoint endpoint, PooledObject<IoTConsensusServiceClient> pooledObject) {
       pooledObject.getObject().invalidate();
     }
 
     @Override
-    public PooledObject<SyncConfigNodeIServiceClient> makeObject(TEndPoint endpoint)
-        throws Exception {
+    public PooledObject<IoTConsensusServiceClient> makeObject(TEndPoint endpoint) throws Exception {
       return new DefaultPooledObject<>(
           SyncThriftClientWithErrorHandler.newErrorHandler(
-              SyncConfigNodeIServiceClient.class,
-              SyncConfigNodeIServiceClient.class.getConstructor(
+              IoTConsensusServiceClient.class,
+              IoTConsensusServiceClient.class.getConstructor(
                   TProtocolFactory.class, int.class, endpoint.getClass(), clientManager.getClass()),
               thriftClientProperty.getProtocolFactory(),
               thriftClientProperty.getConnectionTimeoutMs(),
@@ -121,7 +109,7 @@ public class SyncConfigNodeIServiceClient extends IConfigNodeRPCService.Client
 
     @Override
     public boolean validateObject(
-        TEndPoint endpoint, PooledObject<SyncConfigNodeIServiceClient> pooledObject) {
+        TEndPoint endpoint, PooledObject<IoTConsensusServiceClient> pooledObject) {
       return pooledObject.getObject().getInputProtocol().getTransport().isOpen();
     }
   }
