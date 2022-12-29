@@ -869,17 +869,17 @@ public class IoTDBConfig {
   private String internalAddress = "127.0.0.1";
 
   /** Internal port for coordinator */
-  private int internalPort = 9003;
+  private int internalPort = 10730;
 
   /** Internal port for dataRegion consensus protocol */
-  private int dataRegionConsensusPort = 40010;
+  private int dataRegionConsensusPort = 10760;
 
   /** Internal port for schemaRegion consensus protocol */
-  private int schemaRegionConsensusPort = 50010;
+  private int schemaRegionConsensusPort = 10750;
 
   /** Ip and port of config nodes. */
   private List<TEndPoint> targetConfigNodeList =
-      Collections.singletonList(new TEndPoint("127.0.0.1", 22277));
+      Collections.singletonList(new TEndPoint("127.0.0.1", 10710));
 
   /** The time of data node waiting for the next retry to join into the cluster */
   private long joinClusterRetryIntervalMs = TimeUnit.SECONDS.toMillis(5);
@@ -910,7 +910,7 @@ public class IoTDBConfig {
   private int seriesPartitionSlotNum = 10000;
 
   /** Port that mpp data exchange thrift service listen to. */
-  private int mppDataExchangePort = 8777;
+  private int mppDataExchangePort = 10740;
 
   /** Core pool size of mpp data exchange. */
   private int mppDataExchangeCorePoolSize = 10;

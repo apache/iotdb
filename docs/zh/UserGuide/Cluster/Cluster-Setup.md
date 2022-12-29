@@ -26,8 +26,12 @@
 ## 安装环境
 
 1. JDK>=1.8 的运行环境，并配置好 JAVA_HOME 环境变量。
-
 2. 设置最大文件打开数为 65535。
+3. 关闭交换内存。
+4. 首次启动ConfigNode节点时，确保已清空ConfigNode节点的data/confignode目录；首次启动DataNode节点时，确保已清空DataNode节点的data/datanode目录。
+5. 如果整个集群处在可信环境下，可以关闭机器上的防火墙选项。
+6. 在集群默认配置中，ConfigNode 会占用端口 10710 和 10720，DataNode 会占用端口 6667、10730、10740、10750 和 10760，
+请确保这些端口未被占用，或者手动修改配置文件中的端口配置。
 
 3. 关闭交换内存。
 
@@ -53,11 +57,29 @@ git checkout v1.0.0
 
 在 IoTDB 根目录下:
 
-```
-mvn clean package -pl distribution -am -DskipTests
-```
+| **配置项**                        | **说明**                               | **默认**          | **用法**                                                                                                                                               |
+|--------------------------------|--------------------------------------|-----------------|------------------------------------------------------------------------------------------------------------------------------------------------------|
+| cn\_internal\_address          | ConfigNode 在集群内部通讯使用的地址              | 127.0.0.1       | 设置为服务器的 IPV4 地址或域名                                                                                                                                   |
+| cn\_internal\_port             | ConfigNode 在集群内部通讯使用的端口              | 10710           | 设置为任意未占用端口                                                                                                                                           |
+| cn\_consensus\_port            | ConfigNode 副本组共识协议通信使用的端口            | 10720           | 设置为任意未占用端口                                                                                                                                           |
+| cn\_target\_config\_node\_list | 节点注册加入集群时连接的 ConfigNode 的地址。注：只能配置一个 | 127.0.0.1:10710 | 对于 Seed-ConfigNode，设置为自己的 cn\_internal\_address:cn\_internal\_port；对于其它 ConfigNode，设置为另一个正在运行的 ConfigNode 的 cn\_internal\_address:cn\_internal\_port |
 
-集群的二进制版本在目录 **distribution/target** 下，其中，all-bin 包含 ConfigNode 和 DataNode，DataNode 内包含 Cli。
+**注意：上述配置项在节点启动后即不可更改，且务必保证所有端口均未被占用，否则节点无法启动。**
+
+### 5.2.3 DataNode 配置
+
+打开 DataNode 配置文件 ./conf/iotdb-datanode.properties，根据服务器/虚拟机的 IP 地址和可用端口，设置以下参数：
+
+| **配置项**                             | **说明**                    | **默认**          | **用法**                                                                            |
+|-------------------------------------|---------------------------|-----------------|-----------------------------------------------------------------------------------|
+| dn\_rpc\_address                    | 客户端 RPC 服务的地址             | 127.0.0.1       | 设置为服务器的 IPV4 地址或域名                                                                |
+| dn\_rpc\_port                       | 客户端 RPC 服务的端口             | 6667            | 设置为任意未占用端口                                                                        |
+| dn\_internal\_address               | DataNode 在集群内部接收控制流使用的地址  | 127.0.0.1       | 设置为服务器的 IPV4 地址或域名                                                                |
+| dn\_internal\_port                  | DataNode 在集群内部接收控制流使用的端口  | 10730            | 设置为任意未占用端口                                                                        |
+| dn\_mpp\_data\_exchange\_port       | DataNode 在集群内部接收数据流使用的端口  | 10740            | 设置为任意未占用端口                                                                        |
+| dn\_data\_region\_consensus\_port   | DataNode 的数据副本间共识协议通信的端口  | 10750           | 设置为任意未占用端口                                                                        |
+| dn\_schema\_region\_consensus\_port | DataNode 的元数据副本间共识协议通信的端口 | 10760           | 设置为任意未占用端口                                                                        |
+| dn\_target\_config\_node\_list      | 集群中正在运行的 ConfigNode 地址    | 127.0.0.1:10710 | 设置为任意正在运行的 ConfigNode 的 cn\_internal\_address:cn\_internal\_port，可设置多个，用逗号（","）隔开 |
 
 ## 安装包说明
 
@@ -225,17 +247,35 @@ sbin\start-cli.bat
 
 ## 集群缩容
 
-### 移除 ConfigNode
+以在6台服务器上启动的3C3D（3个ConfigNode 和 3个DataNode）集群为例，
+这里假设3个ConfigNode的IP地址依次为192.168.1.10、192.168.1.11、192.168.1.12，且3个ConfigNode启动时均使用了默认的端口10710与10720；
+3个DataNode的IP地址依次为192.168.1.20、192.168.1.21、192.168.1.22，且3个DataNode启动时均使用了默认的端口6667、10730、10740、10750与10760。
 
 需要在活跃的 ConfigNode 上执行 remove-confignode 脚本，且保证移除后集群中至少有一个活跃的 ConfigNode。
 
 Linux 移除方式：
 ```
+<<<<<<< HEAD
 # 根据 confignode_id 移除节点
 ./sbin/remove-confignode.sh <confignode_id>
 
 # 根据 ConfigNode 内部通讯地址和端口移除节点
 ./sbin/remove-confignode.sh <internal_address>:<internal_port>
+=======
+IoTDB> show cluster details
++------+----------+-------+---------------+------------+-------------------+------------+-------+-------+-------------------+-----------------+
+|NodeID|  NodeType| Status|InternalAddress|InternalPort|ConfigConsensusPort|  RpcAddress|RpcPort|MppPort|SchemaConsensusPort|DataConsensusPort|
++------+----------+-------+---------------+------------+-------------------+------------+-------+-------+-------------------+-----------------+
+|     0|ConfigNode|Running|   192.168.1.10|       10710|              10720|            |       |       |                   |                 |
+|     2|ConfigNode|Running|   192.168.1.11|       10710|              10720|            |       |       |                   |                 |
+|     3|ConfigNode|Running|   192.168.1.12|       10710|              10720|            |       |       |                   |                 |
+|     1|  DataNode|Running|   192.168.1.20|       10730|                   |192.168.1.20|   6667|  10740|              10750|            10760|
+|     4|  DataNode|Running|   192.168.1.21|       10730|                   |192.168.1.21|   6667|  10740|              10750|            10760|
+|     5|  DataNode|Running|   192.168.1.22|       10730|                   |192.168.1.22|   6667|  10740|              10750|            10760|
++------+----------+-------+---------------+------------+-------------------+------------+-------+-------+-------------------+-----------------+
+Total line number = 6
+It costs 0.012s
+>>>>>>> 905a356c8 ([IOTDB-5306] Change default port of ConfigNode and DataNode (#8635))
 ```
 
 Windows 移除方式：

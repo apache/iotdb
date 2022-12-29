@@ -54,7 +54,7 @@ docker run -d -p 6667:6667 -p 31999:31999 -p 8181:8181 -p 5555:5555 apache/iotdb
 ```
 
 ```shell
-docker run -d -p 6667:6667 -p 31999:31999 -p 8181:8181 -p 5555:5555 -p 9003:9003 -p 40010:40010 apache/iotdb:<version>
+docker run -d --name iotdb -p 6667:6667 -p 31999:31999 -p 8181:8181 -p 5555:5555 -p 10730:10730 -p 10760:10760 apache/iotdb:<version>
 ```
 
 ## Port description
@@ -66,8 +66,8 @@ By default, the ports that IoTDB uses are:
 * 8086: InfluxDB Protocol port
 * 8181: Monitor port
 * 5555: Data sync port
-* 9003: internal metadata rpc port (for cluster)
-* 40010: internal data rpc port (for cluster)
+* 10730: internal metadata rpc port (for cluster)
+* 10760: internal data rpc port (for cluster)
 
 
 ## How to configure docker volumes

@@ -52,18 +52,18 @@ public class CreateRegionGroupsProcedureTest {
     TDataNodeLocation dataNodeLocation0 = new TDataNodeLocation();
     dataNodeLocation0.setDataNodeId(5);
     dataNodeLocation0.setClientRpcEndPoint(new TEndPoint("0.0.0.0", 6667));
-    dataNodeLocation0.setInternalEndPoint(new TEndPoint("0.0.0.0", 9003));
-    dataNodeLocation0.setMPPDataExchangeEndPoint(new TEndPoint("0.0.0.0", 8777));
-    dataNodeLocation0.setDataRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 40010));
-    dataNodeLocation0.setSchemaRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 50010));
+    dataNodeLocation0.setInternalEndPoint(new TEndPoint("0.0.0.0", 10730));
+    dataNodeLocation0.setMPPDataExchangeEndPoint(new TEndPoint("0.0.0.0", 10740));
+    dataNodeLocation0.setDataRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 10760));
+    dataNodeLocation0.setSchemaRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 10750));
 
     TDataNodeLocation dataNodeLocation1 = new TDataNodeLocation();
     dataNodeLocation1.setDataNodeId(6);
     dataNodeLocation1.setClientRpcEndPoint(new TEndPoint("0.0.0.1", 6667));
-    dataNodeLocation1.setInternalEndPoint(new TEndPoint("0.0.0.1", 9003));
-    dataNodeLocation1.setMPPDataExchangeEndPoint(new TEndPoint("0.0.0.1", 8777));
-    dataNodeLocation1.setDataRegionConsensusEndPoint(new TEndPoint("0.0.0.1", 40010));
-    dataNodeLocation1.setSchemaRegionConsensusEndPoint(new TEndPoint("0.0.0.1", 50010));
+    dataNodeLocation1.setInternalEndPoint(new TEndPoint("0.0.0.1", 10730));
+    dataNodeLocation1.setMPPDataExchangeEndPoint(new TEndPoint("0.0.0.1", 10740));
+    dataNodeLocation1.setDataRegionConsensusEndPoint(new TEndPoint("0.0.0.1", 10760));
+    dataNodeLocation1.setSchemaRegionConsensusEndPoint(new TEndPoint("0.0.0.1", 10750));
 
     TConsensusGroupId schemaRegionGroupId = new TConsensusGroupId(SchemaRegion, 1);
     TConsensusGroupId dataRegionGroupId = new TConsensusGroupId(DataRegion, 0);

@@ -69,9 +69,9 @@ IoTDB> show confignodes
 +------+-------+---------------+------------+--------+
 |NodeID| Status|InternalAddress|InternalPort|    Role|
 +------+-------+---------------+------------+--------+
-|     0|Running|      127.0.0.1|       22277|  Leader|
-|     1|Running|      127.0.0.1|       22279|Follower|
-|     2|Running|      127.0.0.1|       22281|Follower|
+|     0|Running|      127.0.0.1|       10710|  Leader|
+|     1|Running|      127.0.0.1|       10711|Follower|
+|     2|Running|      127.0.0.1|       10712|Follower|
 +------+-------+---------------+------------+--------+
 Total line number = 3
 It costs 0.030s
@@ -146,12 +146,12 @@ IoTDB> show cluster
 +------+----------+-------+---------------+------------+
 |NodeID|  NodeType| Status|InternalAddress|InternalPort|
 +------+----------+-------+---------------+------------+
-|     0|ConfigNode|Running|      127.0.0.1|       22277|
-|     1|ConfigNode|Running|      127.0.0.1|       22279|
-|     2|ConfigNode|Running|      127.0.0.1|       22281|
-|     3|  DataNode|Running|      127.0.0.1|        9003|
-|     4|  DataNode|Running|      127.0.0.1|        9005|
-|     5|  DataNode|Running|      127.0.0.1|        9007|
+|     0|ConfigNode|Running|      127.0.0.1|       10710|
+|     1|ConfigNode|Running|      127.0.0.1|       10711|
+|     2|ConfigNode|Running|      127.0.0.1|       10712|
+|     3|  DataNode|Running|      127.0.0.1|       10730|
+|     4|  DataNode|Running|      127.0.0.1|       10731|
+|     5|  DataNode|Running|      127.0.0.1|       10732|
 +------+----------+-------+---------------+------------+
 Total line number = 6
 It costs 0.011s
@@ -163,12 +163,12 @@ IoTDB> show cluster
 +------+----------+-------+---------------+------------+
 |NodeID|  NodeType| Status|InternalAddress|InternalPort|
 +------+----------+-------+---------------+------------+
-|     0|ConfigNode|Running|      127.0.0.1|       22277|
-|     1|ConfigNode|Unknown|      127.0.0.1|       22279|
-|     2|ConfigNode|Running|      127.0.0.1|       22281|
-|     3|  DataNode|Running|      127.0.0.1|        9003|
-|     4|  DataNode|Running|      127.0.0.1|        9005|
-|     5|  DataNode|Running|      127.0.0.1|        9007|
+|     0|ConfigNode|Running|      127.0.0.1|       10710|
+|     1|ConfigNode|Unknown|      127.0.0.1|       10711|
+|     2|ConfigNode|Running|      127.0.0.1|       10712|
+|     3|  DataNode|Running|      127.0.0.1|       10730|
+|     4|  DataNode|Running|      127.0.0.1|       10731|
+|     5|  DataNode|Running|      127.0.0.1|       10732|
 +------+----------+-------+---------------+------------+
 Total line number = 6
 It costs 0.012s
@@ -182,16 +182,16 @@ SHOW CLUSTER DETAILS
 示例：
 ```
 IoTDB> show cluster details
-+------+----------+-------+---------------+------------+-------------------+----------+-------+-----------------+-------------------+-------+
-|NodeID|  NodeType| Status|InternalAddress|InternalPort|ConfigConsensusPort|RpcAddress|RpcPort|DataConsensusPort|SchemaConsensusPort|MppPort|
-+------+----------+-------+---------------+------------+-------------------+----------+-------+-----------------+-------------------+-------+
-|     0|ConfigNode|Running|      127.0.0.1|       22277|              22278|          |       |                 |                   |       |
-|     1|ConfigNode|Running|      127.0.0.1|       22279|              22280|          |       |                 |                   |       |
-|     2|ConfigNode|Running|      127.0.0.1|       22281|              22282|          |       |                 |                   |       |
-|     3|  DataNode|Running|      127.0.0.1|        9003|                   | 127.0.0.1|   6667|            40010|              50010|   8777|
-|     4|  DataNode|Running|      127.0.0.1|        9004|                   | 127.0.0.1|   6668|            40011|              50011|   8778|
-|     5|  DataNode|Running|      127.0.0.1|        9005|                   | 127.0.0.1|   6669|            40012|              50012|   8779|
-+------+----------+-------+---------------+------------+-------------------+----------+-------+-----------------+-------------------+-------+
++------+----------+-------+---------------+------------+-------------------+----------+-------+-------+-------------------+-----------------+
+|NodeID|  NodeType| Status|InternalAddress|InternalPort|ConfigConsensusPort|RpcAddress|RpcPort|MppPort|SchemaConsensusPort|DataConsensusPort|
++------+----------+-------+---------------+------------+-------------------+----------+-------+-------+-------------------+-----------------+
+|     0|ConfigNode|Running|      127.0.0.1|       10710|              10720|          |       |       |                   |                 |
+|     1|ConfigNode|Running|      127.0.0.1|       10711|              10721|          |       |       |                   |                 |
+|     2|ConfigNode|Running|      127.0.0.1|       10712|              10722|          |       |       |                   |                 |
+|     3|  DataNode|Running|      127.0.0.1|       10730|                   | 127.0.0.1|   6667|  10740|              10750|            10760|
+|     4|  DataNode|Running|      127.0.0.1|       10731|                   | 127.0.0.1|   6668|  10741|              10751|            10761|
+|     5|  DataNode|Running|      127.0.0.1|       10732|                   | 127.0.0.1|   6669|  10742|              10752|            10762|
++------+----------+-------+---------------+------------+-------------------+----------+-------+-------+-------------------+-----------------+
 Total line number = 6
 It costs 0.340s
 ```
