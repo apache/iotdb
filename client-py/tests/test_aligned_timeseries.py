@@ -38,6 +38,7 @@ def print_message(message):
     print("*********")
     print(message)
     print("*********")
+    assert False
 
 
 def test_aligned_timeseries():

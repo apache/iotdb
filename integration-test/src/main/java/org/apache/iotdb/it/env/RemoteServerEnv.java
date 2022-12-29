@@ -163,7 +163,7 @@ public class RemoteServerEnv implements BaseEnv {
 
   @Override
   public IConfigNodeRPCService.Iface getLeaderConfigNodeConnection() throws ClientManagerException {
-    return clientManager.borrowClient(new TEndPoint(ip_addr, 22277));
+    return clientManager.borrowClient(new TEndPoint(ip_addr, 10710));
   }
 
   @Override

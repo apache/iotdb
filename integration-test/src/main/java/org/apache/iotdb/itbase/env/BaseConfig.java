@@ -202,7 +202,11 @@ public interface BaseConfig {
     return this;
   }
 
-  default String getConfigNodeConsesusProtocolClass() {
+  default String getClusterName() {
+    return "defaultCluster";
+  }
+
+  default String getConfigNodeConsensusProtocolClass() {
     return "org.apache.iotdb.consensus.simple.SimpleConsensus";
   }
 
@@ -271,6 +275,22 @@ public interface BaseConfig {
     return 1;
   }
 
+  default double getDataRegionPerProcessor() {
+    return 1.0;
+  }
+
+  default double getSchemaRegionPerDataNode() {
+    return 1.0;
+  }
+
+  default double getDiskSpaceWarningThreshold() {
+    return 0.05;
+  }
+
+  default String getReadConsistencyLevel() {
+    return "strong";
+  }
+
   default BaseConfig setDataReplicationFactor(int dataReplicationFactor) {
     return this;
   }
@@ -285,6 +305,14 @@ public interface BaseConfig {
 
   default int getSeriesPartitionSlotNum() {
     return 10000;
+  }
+
+  default String getSeriesPartitionExecutorClass() {
+    return "org.apache.iotdb.commons.partition.executor.hash.BKDRHashExecutor";
+  }
+
+  default long getDefaultTTL() {
+    return Long.MAX_VALUE;
   }
 
   default BaseConfig setTimePartitionInterval(long timePartitionInterval) {

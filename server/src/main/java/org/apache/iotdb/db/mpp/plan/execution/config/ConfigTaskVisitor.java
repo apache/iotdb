@@ -35,6 +35,7 @@ import org.apache.iotdb.db.mpp.plan.execution.config.metadata.MigrateRegionTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.SetStorageGroupTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.SetTTLTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.ShowClusterDetailsTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.metadata.ShowClusterParametersTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.ShowClusterTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.ShowConfigNodesTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.ShowContinuousQueriesTask;
@@ -174,9 +175,13 @@ public class ConfigTaskVisitor
   @Override
   public IConfigTask visitShowCluster(
       ShowClusterStatement showClusterStatement, TaskContext context) {
-    return showClusterStatement.isDetails()
-        ? new ShowClusterDetailsTask(showClusterStatement)
-        : new ShowClusterTask(showClusterStatement);
+    if (showClusterStatement.isDetails()) {
+      return new ShowClusterDetailsTask(showClusterStatement);
+    } else if (showClusterStatement.isParameters()) {
+      return new ShowClusterParametersTask();
+    } else {
+      return new ShowClusterTask(showClusterStatement);
+    }
   }
 
   @Override

@@ -21,8 +21,6 @@ package org.apache.iotdb.confignode.service;
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.conf.CommonConfig;
-import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.service.JMXService;
 import org.apache.iotdb.commons.service.RegisterManager;
@@ -58,11 +56,10 @@ public class ConfigNode implements ConfigNodeMBean {
   private static final Logger LOGGER = LoggerFactory.getLogger(ConfigNode.class);
 
   private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
-  private static final CommonConfig COMMON_CONF = CommonDescriptor.getInstance().getConfig();
 
   private static final int STARTUP_RETRY_NUM = 10;
   private static final int SCHEDULE_WAITING_RETRY_NUM = 20;
-  private static final long STARTUP_RETRY_INTERVAL_IN_MS = TimeUnit.SECONDS.toMillis(30);
+  private static final long STARTUP_RETRY_INTERVAL_IN_MS = TimeUnit.SECONDS.toMillis(3);
 
   private static final int SEED_CONFIG_NODE_ID = 0;
 
@@ -238,19 +235,7 @@ public class ConfigNode implements ConfigNodeMBean {
                 INIT_NON_SEED_CONFIG_NODE_ID,
                 new TEndPoint(CONF.getInternalAddress(), CONF.getInternalPort()),
                 new TEndPoint(CONF.getInternalAddress(), CONF.getConsensusPort())),
-            CONF.getDataRegionConsensusProtocolClass(),
-            CONF.getSchemaRegionConsensusProtocolClass(),
-            CONF.getSeriesSlotNum(),
-            CONF.getSeriesPartitionExecutorClass(),
-            COMMON_CONF.getDefaultTTLInMs(),
-            CONF.getTimePartitionInterval(),
-            CONF.getSchemaReplicationFactor(),
-            CONF.getSchemaRegionPerDataNode(),
-            CONF.getDataReplicationFactor(),
-            CONF.getDataRegionPerProcessor(),
-            CONF.getReadConsistencyLevel(),
-            COMMON_CONF.getDiskSpaceWarningThreshold(),
-            CONF.getLeastDataRegionGroupNum());
+            configManager.getClusterParameters());
 
     TEndPoint targetConfigNode = CONF.getTargetConfigNode();
     if (targetConfigNode == null) {
