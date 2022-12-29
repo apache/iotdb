@@ -114,7 +114,7 @@ public class IoTDBStartCheck {
   private static final String MPP_DATA_EXCHANGE_PORT = "dn_mpp_data_exchange_port";
   private static final String SCHEMA_REGION_CONSENSUS_PORT = "dn_schema_region_consensus_port";
   private static final String DATA_REGION_CONSENSUS_PORT = "dn_data_region_consensus_port";
-  private static final Map<String, Supplier<String>> variableParamValueTable = new HashMap<>();;
+  private static final Map<String, Supplier<String>> variableParamValueTable = new HashMap<>();
 
   static {
     variableParamValueTable.put(
