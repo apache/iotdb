@@ -118,9 +118,11 @@ public class SimpleFragmentParallelPlanner implements IFragmentParallelPlaner {
     if (regionReplicaSet == null || regionReplicaSet.getRegionId() == null) {
       TDataNodeLocation dataNodeLocation = fragment.getTargetLocation();
       if (dataNodeLocation != null) {
+        // now only the case ShowQueries will enter here
         fragmentInstance.setExecutorAndHost(new QueryExecutor(dataNodeLocation));
       } else {
         // no data region && no dataNodeLocation, we need to execute this FI on local
+        // now only the case AggregationQuery has schema but no data region will enter here
         fragmentInstance.setExecutorAndHost(
             new QueryExecutor(
                 new TDataNodeLocation()

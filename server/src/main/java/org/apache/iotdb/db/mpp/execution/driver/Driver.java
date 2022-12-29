@@ -191,7 +191,7 @@ public abstract class Driver implements IDriver {
       }
       if (root.hasNext()) {
         TsBlock tsBlock = root.next();
-        if (tsBlock != null) {
+        if (tsBlock != null && !tsBlock.isEmpty()) {
           sinkHandle.send(tsBlock);
         }
       }

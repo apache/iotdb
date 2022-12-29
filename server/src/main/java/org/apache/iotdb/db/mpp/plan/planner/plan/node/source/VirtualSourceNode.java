@@ -22,7 +22,7 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 
-public abstract class VirtualSourceNode extends PlanNode implements AutoCloseable {
+public abstract class VirtualSourceNode extends PlanNode {
 
   private TDataNodeLocation dataNodeLocation;
 
@@ -30,8 +30,6 @@ public abstract class VirtualSourceNode extends PlanNode implements AutoCloseabl
     super(id);
     this.dataNodeLocation = dataNodeLocation;
   }
-
-  public abstract void open() throws Exception;
 
   public void setDataNodeLocation(TDataNodeLocation dataNodeLocation) {
     this.dataNodeLocation = dataNodeLocation;

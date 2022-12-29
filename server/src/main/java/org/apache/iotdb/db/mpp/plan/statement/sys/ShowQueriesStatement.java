@@ -21,7 +21,9 @@ package org.apache.iotdb.db.mpp.plan.statement.sys;
 
 import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.mpp.plan.statement.component.OrderByComponent;
+import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.db.mpp.plan.statement.component.SortItem;
+import org.apache.iotdb.db.mpp.plan.statement.component.SortKey;
 import org.apache.iotdb.db.mpp.plan.statement.component.WhereCondition;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStatement;
 
@@ -65,7 +67,8 @@ public class ShowQueriesStatement extends ShowStatement {
 
   public List<SortItem> getSortItemList() {
     if (orderByComponent == null) {
-      return Collections.emptyList();
+      // default order
+      return Collections.singletonList(new SortItem(SortKey.TIME, Ordering.ASC));
     }
     return orderByComponent.getSortItemList();
   }

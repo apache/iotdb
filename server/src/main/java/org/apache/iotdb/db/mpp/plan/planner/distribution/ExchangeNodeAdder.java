@@ -39,7 +39,6 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.ExchangeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.FilterNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.GroupByLevelNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.GroupByTagNode;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.HorizontallyConcatNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.MergeSortNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.MultiChildProcessNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.SingleDeviceViewNode;
@@ -57,7 +56,6 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.LastQueryScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesAggregationScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SourceNode;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.VirtualSourceNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.OrderByParameter;
 import org.apache.iotdb.db.mpp.plan.statement.crud.QueryStatement;
 
@@ -414,7 +412,7 @@ public class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
   }
 
   private PlanNode processMultiChildNode(MultiChildProcessNode node, NodeGroupContext context) {
-    if (hasVirtualSourceNode(node)) {
+    if (analysis.isVirtualSource()) {
       return processMultiChildNodeByLocation(node, context);
     }
 
@@ -461,20 +459,6 @@ public class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
     return newNode;
   }
 
-  private boolean hasVirtualSourceNode(PlanNode node) {
-    if (node instanceof VirtualSourceNode) {
-      return true;
-    }
-    if (node.getChildren().size() != 0) {
-      for (PlanNode child : node.getChildren()) {
-        if (hasVirtualSourceNode(child)) {
-          return true;
-        }
-      }
-    }
-    return false;
-  }
-
   private PlanNode processMultiChildNodeByLocation(
       MultiChildProcessNode node, NodeGroupContext context) {
     MultiChildProcessNode newNode = (MultiChildProcessNode) node.clone();
@@ -496,11 +480,6 @@ public class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
   public PlanNode visitSlidingWindowAggregation(
       SlidingWindowAggregationNode node, NodeGroupContext context) {
     return processOneChildNode(node, context);
-  }
-
-  @Override
-  public PlanNode visitHorizontallyConcat(HorizontallyConcatNode node, NodeGroupContext context) {
-    return processMultiChildNode(node, context);
   }
 
   private PlanNode processOneChildNode(PlanNode node, NodeGroupContext context) {

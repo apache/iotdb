@@ -48,7 +48,6 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.FillNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.FilterNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.GroupByLevelNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.GroupByTagNode;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.HorizontallyConcatNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.IntoNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.LimitNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.MergeSortNode;
@@ -429,12 +428,6 @@ public class MemoryDistributionCalculator
   @Override
   public Void visitShowQueries(ShowQueriesNode node, MemoryDistributionContext context) {
     // do nothing since VirtualSourceNode will not have Exchange/FragmentSink as child
-    return null;
-  }
-
-  public Void visitHorizontallyConcat(
-      HorizontallyConcatNode node, MemoryDistributionContext context) {
-    processConsumeAllChildrenAtTheSameTime(node);
     return null;
   }
 

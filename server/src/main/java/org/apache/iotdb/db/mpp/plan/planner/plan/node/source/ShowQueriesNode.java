@@ -107,10 +107,4 @@ public class ShowQueriesNode extends VirtualSourceNode {
   public String toString() {
     return "ShowQueriesNode-" + this.getPlanNodeId();
   }
-
-  @Override
-  public void open() throws Exception {}
-
-  @Override
-  public void close() throws Exception {}
 }

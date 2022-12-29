@@ -91,7 +91,7 @@ public class PlanFragment {
     return String.format("PlanFragment-%s", getId());
   }
 
-  // Every Fragment should only run in DataRegion.
+  // Every Fragment related with DataPartition should only run in one DataRegion.
   // But it can select any one of the Endpoint of the target DataRegion
   // In current version, one PlanFragment should contain at least one SourceNode,
   // and the DataRegions of all SourceNodes should be same in one PlanFragment.
@@ -100,6 +100,9 @@ public class PlanFragment {
     return getNodeRegion(planNodeTree);
   }
 
+  // If a Fragment is not related with DataPartition,
+  // it may be related with a specific DataNode.
+  // This method return the DataNodeLocation will offer execution of this Fragment.
   public TDataNodeLocation getTargetLocation() {
     return getNodeLocation(planNodeTree);
   }

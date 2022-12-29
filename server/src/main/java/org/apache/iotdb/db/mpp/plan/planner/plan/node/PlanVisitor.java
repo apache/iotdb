@@ -54,7 +54,6 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.FillNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.FilterNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.GroupByLevelNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.GroupByTagNode;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.HorizontallyConcatNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.IntoNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.LimitNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.MergeSortNode;
@@ -345,10 +344,6 @@ public abstract class PlanVisitor<R, C> {
   }
 
   public R visitShowQueries(ShowQueriesNode node, C context) {
-    return visitPlan(node, context);
-  }
-
-  public R visitHorizontallyConcat(HorizontallyConcatNode node, C context) {
     return visitPlan(node, context);
   }
 }
