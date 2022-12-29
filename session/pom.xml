@@ -87,6 +87,12 @@
             <version>${project.version}</version>
             <scope>compile</scope>
         </dependency>
+        <!-- antlr -->
+        <dependency>
+            <groupId>org.apache.iotdb</groupId>
+            <artifactId>iotdb-antlr</artifactId>
+            <version>${project.version}</version>
+        </dependency>
     </dependencies>
     <profiles>
         <profile>

@@ -30,4 +30,9 @@ public enum Aggregation {
   MAX_VALUE,
   MIN_VALUE,
   EXTREME;
+
+  @Override
+  public String toString() {
+    return name().toLowerCase();
+  }
 }

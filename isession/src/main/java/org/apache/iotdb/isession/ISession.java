@@ -158,17 +158,20 @@ public interface ISession extends AutoCloseable {
   SessionDataSet executeLastDataQuery(List<String> paths)
       throws StatementExecutionException, IoTDBConnectionException;
 
-  SessionDataSet executeAggregationQuery(List<String> paths, List<Aggregation> aggregations);
+  SessionDataSet executeAggregationQuery(List<String> paths, List<Aggregation> aggregations)
+      throws StatementExecutionException, IoTDBConnectionException;
 
   SessionDataSet executeAggregationQuery(
-      List<String> paths, List<Aggregation> aggregations, long startTime, long endTime);
+      List<String> paths, List<Aggregation> aggregations, long startTime, long endTime)
+      throws StatementExecutionException, IoTDBConnectionException;
 
   SessionDataSet executeAggregationQuery(
       List<String> paths,
       List<Aggregation> aggregations,
       long startTime,
       long endTime,
-      long interval);
+      long interval)
+      throws StatementExecutionException, IoTDBConnectionException;
 
   SessionDataSet executeAggregationQuery(
       List<String> paths,
@@ -176,7 +179,8 @@ public interface ISession extends AutoCloseable {
       long startTime,
       long endTime,
       long interval,
-      long slidingStep);
+      long slidingStep)
+      throws StatementExecutionException, IoTDBConnectionException;
 
   void insertRecord(
       String deviceId,
