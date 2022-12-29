@@ -208,6 +208,8 @@ public class ConfigManager implements IManager {
 
   private final ConfigNodeRegionStateMachine stateMachine;
 
+  private final RetryFailedTasksThread retryFailedTasksThread;
+
   public ConfigManager() throws IOException {
     // Build the persistence module
     NodeInfo nodeInfo = new NodeInfo();
@@ -245,6 +247,8 @@ public class ConfigManager implements IManager {
     this.loadManager = new LoadManager(this);
     this.syncManager = new SyncManager(this, syncInfo);
     this.cqManager = new CQManager(this);
+
+    this.retryFailedTasksThread = new RetryFailedTasksThread(this);
   }
 
   public void initConsensusManager() throws IOException {
@@ -1119,6 +1123,11 @@ public class ConfigManager implements IManager {
   @Override
   public CQManager getCQManager() {
     return cqManager;
+  }
+
+  @Override
+  public RetryFailedTasksThread getRetryFailedTasksThread() {
+    return retryFailedTasksThread;
   }
 
   /**

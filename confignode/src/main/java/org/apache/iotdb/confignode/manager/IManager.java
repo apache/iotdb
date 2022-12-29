@@ -177,6 +177,13 @@ public interface IManager {
   CQManager getCQManager();
 
   /**
+   * Get RetryFailedTasksThread
+   *
+   * @return RetryFailedTasksThread instance
+   */
+  RetryFailedTasksThread getRetryFailedTasksThread();
+
+  /**
    * Get system configurations that is not associated with the DataNodeId
    *
    * @return SystemConfigurationResp
