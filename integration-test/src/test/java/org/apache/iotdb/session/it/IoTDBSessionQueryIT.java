@@ -148,23 +148,10 @@ public class IoTDBSessionQueryIT {
       Arrays.asList("Time", "Timeseries", "Value", "DataType");
 
   @Test
-  public void lastQueryTest1() throws IoTDBConnectionException {
-    String[] retArray =
-        new String[] {
-          "23,root.sg1.d1.s1,230000.0,FLOAT",
-          "40,root.sg1.d1.s2,40,INT32",
-          "30,root.sg1.d1.s3,30,INT64",
-          "30,root.sg1.d1.s4,false,BOOLEAN",
-          "40,root.sg1.d1.s5,aligned_test40,TEXT"
-        };
+  public void lastQueryTest() throws IoTDBConnectionException {
+    String[] retArray = new String[] {"23,root.sg1.d1.s1,230000.0,FLOAT"};
 
-    List<String> selectedPaths =
-        Arrays.asList(
-            "root.sg1.d1.s1",
-            "root.sg1.d1.s2",
-            "root.sg1.d1.s3",
-            "root.sg1.d1.s4",
-            "root.sg1.d1.s5");
+    List<String> selectedPaths = Collections.singletonList("root.sg1.d1.s1");
 
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
       try (SessionDataSet resultSet = session.executeLastDataQuery(selectedPaths)) {
@@ -177,52 +164,10 @@ public class IoTDBSessionQueryIT {
   }
 
   @Test
-  public void lastQueryTest2() throws IoTDBConnectionException {
-    String[] retArray =
-        new String[] {
-          "23,root.sg1.d1.s1,230000.0,FLOAT",
-          "30,root.sg1.d1.s4,false,BOOLEAN",
-          "40,root.sg1.d1.s5,aligned_test40,TEXT"
-        };
+  public void lastQueryWithLastTimeTest() throws IoTDBConnectionException {
+    String[] retArray = new String[] {"40,root.sg1.d1.s2,40,INT32"};
 
-    List<String> selectedPaths =
-        Arrays.asList("root.sg1.d1.s1", "root.sg1.d1.s4", "root.sg1.d1.s5");
-
-    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
-      try (SessionDataSet resultSet = session.executeLastDataQuery(selectedPaths)) {
-        assertResultSetEqual(resultSet, lastQueryColumnNames, retArray, true);
-      }
-    } catch (StatementExecutionException e) {
-      e.printStackTrace();
-      fail(e.getMessage());
-    }
-  }
-
-  @Test
-  public void lastQueryWithLastTimeTest1() throws IoTDBConnectionException {
-    String[] retArray =
-        new String[] {"40,root.sg1.d1.s2,40,INT32", "40,root.sg1.d1.s5,aligned_test40,TEXT"};
-
-    List<String> selectedPaths = Arrays.asList("root.sg1.d1.s2", "root.sg1.d1.s5");
-
-    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
-      try (SessionDataSet resultSet = session.executeLastDataQuery(selectedPaths, 30)) {
-        assertResultSetEqual(resultSet, lastQueryColumnNames, retArray, true);
-      }
-    } catch (StatementExecutionException e) {
-      e.printStackTrace();
-      fail(e.getMessage());
-    }
-  }
-
-  @Test
-  public void lastQueryWithLastTimeTest2() throws IoTDBConnectionException {
-    String[] retArray =
-        new String[] {
-          "40,root.sg1.d1.s5,aligned_test40,TEXT", "40,root.sg1.d2.s5,non_aligned_test40,TEXT"
-        };
-
-    List<String> selectedPaths = Arrays.asList("root.sg1.d1.s5", "root.sg1.d2.s5");
+    List<String> selectedPaths = Collections.singletonList("root.sg1.d1.s2");
 
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
       try (SessionDataSet resultSet = session.executeLastDataQuery(selectedPaths, 30)) {
