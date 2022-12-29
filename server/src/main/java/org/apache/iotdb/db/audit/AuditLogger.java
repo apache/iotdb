@@ -35,14 +35,13 @@ import org.apache.iotdb.db.query.control.SessionManager;
 import org.apache.iotdb.db.query.control.clientsession.ClientSession;
 import org.apache.iotdb.db.query.control.clientsession.IClientSession;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
-import org.apache.iotdb.session.util.SessionUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.utils.Binary;
 
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
 import java.util.List;
 
 import static org.apache.iotdb.db.service.basic.ServiceProvider.SESSION_MANAGER;
@@ -75,16 +74,10 @@ public class AuditLogger {
     insertStatement.setTime(DateTimeUtils.currentTime());
     insertStatement.setMeasurements(new String[] {LOG, USERNAME, ADDRESS});
     insertStatement.setAligned(false);
-
-    List<TSDataType> types = new ArrayList<>();
-    types.add(TSDataType.TEXT);
-    types.add(TSDataType.TEXT);
-    types.add(TSDataType.TEXT);
-    List<Object> values = new ArrayList<>();
-    values.add(log);
-    values.add(username);
-    values.add(address);
-    insertStatement.fillValues(SessionUtils.getValueBuffer(types, values));
+    insertStatement.setValues(
+        new Object[] {new Binary(log), new Binary(username), new Binary(address)});
+    insertStatement.setDataTypes(
+        new TSDataType[] {TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT});
     return insertStatement;
   }
 
