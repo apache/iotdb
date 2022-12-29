@@ -29,19 +29,19 @@ import org.apache.commons.lang3.StringUtils;
 
 public class TypeInferenceUtils {
 
-  private static final TSDataType booleanStringInferType =
+  private static TSDataType booleanStringInferType =
       IoTDBDescriptor.getInstance().getConfig().getBooleanStringInferType();
 
-  private static final TSDataType integerStringInferType =
+  private static TSDataType integerStringInferType =
       IoTDBDescriptor.getInstance().getConfig().getIntegerStringInferType();
 
-  private static final TSDataType longStringInferType =
+  private static TSDataType longStringInferType =
       IoTDBDescriptor.getInstance().getConfig().getLongStringInferType();
 
-  private static final TSDataType floatingStringInferType =
+  private static TSDataType floatingStringInferType =
       IoTDBDescriptor.getInstance().getConfig().getFloatingStringInferType();
 
-  private static final TSDataType nanStringInferType =
+  private static TSDataType nanStringInferType =
       IoTDBDescriptor.getInstance().getConfig().getNanStringInferType();
 
   private TypeInferenceUtils() {}

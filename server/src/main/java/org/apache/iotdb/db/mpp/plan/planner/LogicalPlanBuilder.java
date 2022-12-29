@@ -724,7 +724,7 @@ public class LogicalPlanBuilder {
         }
         Expression next = iter.next();
         if (next.equals(groupByTagOutputExpression)) {
-          String functionName = ((FunctionExpression) next).getFunctionName().toUpperCase();
+          String functionName = ((FunctionExpression) next).getFunctionName();
           CrossSeriesAggregationDescriptor aggregationDescriptor =
               new CrossSeriesAggregationDescriptor(
                   functionName,
