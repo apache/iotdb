@@ -19,7 +19,6 @@
 package org.apache.iotdb.db.metadata.plan.schemaregion.result;
 
 import org.apache.iotdb.db.metadata.query.info.ITimeSeriesSchemaInfo;
-import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -87,14 +86,6 @@ public class ShowTimeSeriesResult extends ShowSchemaResult implements ITimeSerie
 
   public Map<String, String> getAttribute() {
     return attributes;
-  }
-
-  public String getDeadband() {
-    return MetaUtils.parseDeadbandInfo(measurementSchema.getProps()).left;
-  }
-
-  public String getDeadbandParameters() {
-    return MetaUtils.parseDeadbandInfo(measurementSchema.getProps()).right;
   }
 
   @Override

@@ -25,7 +25,6 @@ import org.apache.iotdb.db.metadata.query.info.ISchemaInfo;
 public abstract class ShowSchemaResult implements Comparable<ShowSchemaResult>, ISchemaInfo {
 
   protected String path;
-  protected String database;
 
   public ShowSchemaResult(String path) {
     this.path = path;

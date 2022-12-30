@@ -25,10 +25,6 @@ import java.util.Objects;
 public class ShowDevicesResult extends ShowSchemaResult implements IDeviceSchemaInfo {
   private boolean isAligned;
 
-  public ShowDevicesResult() {
-    super();
-  }
-
   public ShowDevicesResult(String name, boolean isAligned) {
     super(name);
     this.isAligned = isAligned;
@@ -46,8 +42,6 @@ public class ShowDevicesResult extends ShowSchemaResult implements IDeviceSchema
         + '\''
         + ", isAligned = "
         + isAligned
-        + ", sgName='"
-        + database
         + '\''
         + "}";
   }
@@ -61,13 +55,11 @@ public class ShowDevicesResult extends ShowSchemaResult implements IDeviceSchema
       return false;
     }
     ShowDevicesResult result = (ShowDevicesResult) o;
-    return Objects.equals(path, result.path)
-        && isAligned == result.isAligned
-        && Objects.equals(database, result.database);
+    return Objects.equals(path, result.path) && isAligned == result.isAligned;
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(path, isAligned, database);
+    return Objects.hash(path, isAligned);
   }
 }
