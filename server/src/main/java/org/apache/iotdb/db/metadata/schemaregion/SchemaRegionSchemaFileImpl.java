@@ -1090,7 +1090,7 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
   }
 
   @Override
-  public Pair<List<ShowTimeSeriesResult>, Integer> showTimeseries(IShowTimeSeriesPlan plan)
+  public List<ShowTimeSeriesResult> showTimeseries(IShowTimeSeriesPlan plan)
       throws MetadataException {
     // show timeseries with index
     if (plan.getKey() != null && plan.getValue() != null) {
@@ -1101,8 +1101,8 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
   }
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
-  private Pair<List<ShowTimeSeriesResult>, Integer> showTimeseriesWithIndex(
-      IShowTimeSeriesPlan plan) throws MetadataException {
+  private List<ShowTimeSeriesResult> showTimeseriesWithIndex(IShowTimeSeriesPlan plan)
+      throws MetadataException {
 
     List<IMeasurementMNode> allMatchedNodes = tagManager.getMatchedTimeseriesInIndex(plan);
 
@@ -1146,7 +1146,7 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
       }
     }
 
-    return new Pair<>(res, curOffset + 1);
+    return res;
   }
 
   /**
@@ -1154,20 +1154,18 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
    *
    * @param plan show time series query plan
    */
-  private Pair<List<ShowTimeSeriesResult>, Integer> showTimeseriesWithoutIndex(
-      IShowTimeSeriesPlan plan) throws MetadataException {
-    return new Pair<>(
-        mtree.getAllMeasurementSchema(
-            plan,
-            offset -> {
-              try {
-                return tagManager.readTagFile(offset);
-              } catch (IOException e) {
-                logger.error("Failed to read tag and attribute info because {}", e.getMessage(), e);
-                return new Pair<>(Collections.emptyMap(), Collections.emptyMap());
-              }
-            }),
-        -1);
+  private List<ShowTimeSeriesResult> showTimeseriesWithoutIndex(IShowTimeSeriesPlan plan)
+      throws MetadataException {
+    return mtree.getAllMeasurementSchema(
+        plan,
+        offset -> {
+          try {
+            return tagManager.readTagFile(offset);
+          } catch (IOException e) {
+            logger.error("Failed to read tag and attribute info because {}", e.getMessage(), e);
+            return new Pair<>(Collections.emptyMap(), Collections.emptyMap());
+          }
+        });
   }
   // endregion
   // endregion

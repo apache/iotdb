@@ -683,7 +683,7 @@ public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
             "root.laptop.d2.s2"));
 
     // case 01: all timeseries
-    Pair<List<ShowTimeSeriesResult>, Integer> result =
+    List<ShowTimeSeriesResult> result =
         schemaRegion.showTimeseries(
             SchemaRegionReadPlanFactory.getShowTimeSeriesPlan(new PartialPath("root.**")));
     HashSet<String> expectedPathList =
@@ -696,10 +696,10 @@ public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
                 "root.laptop.d2.s1",
                 "root.laptop.d2.s2"));
     int expectedSize = 6;
-    Assert.assertEquals(expectedSize, result.left.size());
+    Assert.assertEquals(expectedSize, result.size());
     HashSet<String> actualPathList = new HashSet<>();
     for (int index = 0; index < expectedSize; index++) {
-      actualPathList.add(result.left.get(index).getPath());
+      actualPathList.add(result.get(index).getPath());
     }
     Assert.assertEquals(expectedPathList, actualPathList);
 
@@ -715,10 +715,10 @@ public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
                 "root.laptop.d2.s1",
                 "root.laptop.d2.s2"));
     expectedSize = 4;
-    Assert.assertEquals(expectedSize, result.left.size());
+    Assert.assertEquals(expectedSize, result.size());
     actualPathList = new HashSet<>();
     for (int index = 0; index < expectedSize; index++) {
-      actualPathList.add(result.left.get(index).getPath());
+      actualPathList.add(result.get(index).getPath());
     }
     Assert.assertEquals(expectedPathList, actualPathList);
   }

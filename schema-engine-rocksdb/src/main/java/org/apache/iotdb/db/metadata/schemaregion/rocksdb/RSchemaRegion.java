@@ -1093,7 +1093,7 @@ public class RSchemaRegion implements ISchemaRegion {
   }
 
   @Override
-  public Pair<List<ShowTimeSeriesResult>, Integer> showTimeseries(IShowTimeSeriesPlan plan)
+  public List<ShowTimeSeriesResult> showTimeseries(IShowTimeSeriesPlan plan)
       throws MetadataException {
     if (plan.getKey() != null && plan.getValue() != null) {
       return showTimeseriesWithIndex(plan);
@@ -1102,15 +1102,14 @@ public class RSchemaRegion implements ISchemaRegion {
     }
   }
 
-  private Pair<List<ShowTimeSeriesResult>, Integer> showTimeseriesWithIndex(
-      IShowTimeSeriesPlan plan) {
+  private List<ShowTimeSeriesResult> showTimeseriesWithIndex(IShowTimeSeriesPlan plan) {
     // temporarily unsupported
     throw new UnsupportedOperationException(
         formatNotSupportInfo(Thread.currentThread().getStackTrace()[1].getMethodName()));
   }
 
-  private Pair<List<ShowTimeSeriesResult>, Integer> showTimeseriesWithoutIndex(
-      IShowTimeSeriesPlan plan) throws MetadataException {
+  private List<ShowTimeSeriesResult> showTimeseriesWithoutIndex(IShowTimeSeriesPlan plan)
+      throws MetadataException {
 
     List<ShowTimeSeriesResult> res = new LinkedList<>();
     Map<MeasurementPath, Pair<Map<String, String>, Map<String, String>>> measurementPathsAndTags =
@@ -1126,8 +1125,8 @@ public class RSchemaRegion implements ISchemaRegion {
               entry.getValue().left,
               entry.getValue().right));
     }
-    // todo Page query, record offset
-    return new Pair<>(res, 1);
+
+    return res;
   }
 
   @SuppressWarnings("unchecked")

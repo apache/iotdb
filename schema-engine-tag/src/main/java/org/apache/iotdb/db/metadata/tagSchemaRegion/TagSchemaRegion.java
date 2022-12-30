@@ -534,10 +534,9 @@ public class TagSchemaRegion implements ISchemaRegion {
   }
 
   @Override
-  public Pair<List<ShowTimeSeriesResult>, Integer> showTimeseries(IShowTimeSeriesPlan plan)
+  public List<ShowTimeSeriesResult> showTimeseries(IShowTimeSeriesPlan plan)
       throws MetadataException {
-    List<ShowTimeSeriesResult> ShowTimeSeriesResults = new ArrayList<>();
-    Pair<List<ShowTimeSeriesResult>, Integer> result = new Pair<>(ShowTimeSeriesResults, 0);
+    List<ShowTimeSeriesResult> showTimeSeriesResults = new ArrayList<>();
     String path = plan.getPath().getFullPath();
     // point query
     if (!path.endsWith(TAIL)) {
@@ -547,19 +546,19 @@ public class TagSchemaRegion implements ISchemaRegion {
         Map<String, SchemaEntry> measurementMap = deviceEntry.getMeasurementMap();
         for (String m : measurementMap.keySet()) {
           SchemaEntry schemaEntry = measurementMap.get(m);
-          ShowTimeSeriesResults.add(
+          showTimeSeriesResults.add(
               ShowTimeSeriesResultUtils.generateShowTimeSeriesResult(
                   storageGroupFullPath, path, m, schemaEntry));
         }
       }
-      return result;
+      return showTimeSeriesResults;
     }
     // batch query
     List<IDeviceID> deviceIDs = getDeviceIdFromInvertedIndex(plan.getPath());
     for (IDeviceID deviceID : deviceIDs) {
-      getTimeSeriesResultOfDeviceFromIDTable(ShowTimeSeriesResults, deviceID);
+      getTimeSeriesResultOfDeviceFromIDTable(showTimeSeriesResults, deviceID);
     }
-    return result;
+    return showTimeSeriesResults;
   }
 
   private void getTimeSeriesResultOfDeviceFromIDTable(

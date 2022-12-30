@@ -310,8 +310,7 @@ public interface ISchemaRegion {
    * @param plan
    * @throws MetadataException
    */
-  Pair<List<ShowTimeSeriesResult>, Integer> showTimeseries(IShowTimeSeriesPlan plan)
-      throws MetadataException;
+  List<ShowTimeSeriesResult> showTimeseries(IShowTimeSeriesPlan plan) throws MetadataException;
   // endregion
   // endregion
 
@@ -430,7 +429,7 @@ public interface ISchemaRegion {
 
   default ISchemaReader<ITimeSeriesSchemaInfo> getTimeSeriesReader(
       IShowTimeSeriesPlan showTimeSeriesPlan) throws MetadataException {
-    List<ShowTimeSeriesResult> showTimeSeriesResultList = showTimeseries(showTimeSeriesPlan).left;
+    List<ShowTimeSeriesResult> showTimeSeriesResultList = showTimeseries(showTimeSeriesPlan);
     Iterator<ShowTimeSeriesResult> iterator = showTimeSeriesResultList.iterator();
     return new ISchemaReader<ITimeSeriesSchemaInfo>() {
       @Override
