@@ -17,61 +17,55 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.engine.cache;
+package org.apache.iotdb.db.mpp.metric;
 
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
+import org.apache.iotdb.db.mpp.execution.schedule.DriverScheduler;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
 
-import java.util.Objects;
+public class DriverSchedulerMetricSet implements IMetricSet {
 
-public class TimeSeriesMetadataCacheMetrics implements IMetricSet {
+  private static final String metric = Metric.DRIVER_SCHEDULER.toString();
 
-  private TimeSeriesMetadataCache timeSeriesMetadataCache;
+  public static final String READY_QUEUED_TIME = "ready_queued_time";
+  public static final String BLOCK_QUEUED_TIME = "block_queued_time";
 
-  public TimeSeriesMetadataCacheMetrics(TimeSeriesMetadataCache timeSeriesMetadataCache) {
-    this.timeSeriesMetadataCache = timeSeriesMetadataCache;
-  }
+  public static final String READY_QUEUE_TASK_COUNT = "ready_queue_task_count";
+  public static final String BLOCK_QUEUE_TASK_COUNT = "block_queue_task_count";
 
   @Override
   public void bindTo(AbstractMetricService metricService) {
+    metricService.getOrCreateTimer(
+        metric, MetricLevel.IMPORTANT, Tag.NAME.toString(), READY_QUEUED_TIME);
+    metricService.getOrCreateTimer(
+        metric, MetricLevel.IMPORTANT, Tag.NAME.toString(), BLOCK_QUEUED_TIME);
     metricService.createAutoGauge(
-        Metric.CACHE_HIT.toString(),
+        metric,
         MetricLevel.IMPORTANT,
-        timeSeriesMetadataCache,
-        l -> (long) timeSeriesMetadataCache.calculateTimeSeriesMetadataHitRatio(),
+        DriverScheduler.getInstance(),
+        DriverScheduler::getReadyQueueTaskCount,
         Tag.NAME.toString(),
-        "timeSeriesMeta");
+        READY_QUEUE_TASK_COUNT);
     metricService.createAutoGauge(
-        Metric.CACHE_HIT.toString(),
+        metric,
         MetricLevel.IMPORTANT,
-        timeSeriesMetadataCache,
-        TimeSeriesMetadataCache::calculateBloomFilterHitRatio,
+        DriverScheduler.getInstance(),
+        DriverScheduler::getBlockQueueTaskCount,
         Tag.NAME.toString(),
-        "bloomFilter");
+        BLOCK_QUEUE_TASK_COUNT);
   }
 
   @Override
   public void unbindFrom(AbstractMetricService metricService) {
+    metricService.remove(MetricType.TIMER, metric, Tag.NAME.toString(), READY_QUEUED_TIME);
+    metricService.remove(MetricType.TIMER, metric, Tag.NAME.toString(), BLOCK_QUEUED_TIME);
     metricService.remove(
-        MetricType.AUTO_GAUGE, Metric.CACHE_HIT.toString(), Tag.NAME.toString(), "timeSeriesMeta");
+        MetricType.AUTO_GAUGE, metric, Tag.NAME.toString(), READY_QUEUE_TASK_COUNT);
     metricService.remove(
-        MetricType.AUTO_GAUGE, Metric.CACHE_HIT.toString(), Tag.NAME.toString(), "bloomFilter");
-  }
-
-  @Override
-  public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
-    TimeSeriesMetadataCacheMetrics that = (TimeSeriesMetadataCacheMetrics) o;
-    return Objects.equals(timeSeriesMetadataCache, that.timeSeriesMetadataCache);
-  }
-
-  @Override
-  public int hashCode() {
-    return Objects.hash(timeSeriesMetadataCache);
+        MetricType.AUTO_GAUGE, metric, Tag.NAME.toString(), BLOCK_QUEUE_TASK_COUNT);
   }
 }

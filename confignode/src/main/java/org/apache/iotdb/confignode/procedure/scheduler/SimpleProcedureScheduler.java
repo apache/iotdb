@@ -59,7 +59,7 @@ public class SimpleProcedureScheduler extends AbstractProcedureScheduler {
 
   @Override
   public boolean queueHasRunnables() {
-    return runnables.size() > 0;
+    return !runnables.isEmpty();
   }
 
   @Override

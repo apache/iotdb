@@ -58,7 +58,7 @@ public class SyncStatus {
   public void removeBatch(Batch batch) {
     synchronized (this) {
       batch.setSynced(true);
-      if (pendingBatches.size() > 0 && pendingBatches.get(0).equals(batch)) {
+      if (!pendingBatches.isEmpty() && pendingBatches.get(0).equals(batch)) {
         Iterator<Batch> iterator = pendingBatches.iterator();
         Batch current = iterator.next();
         while (current.isSynced()) {

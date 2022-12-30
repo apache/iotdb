@@ -33,6 +33,7 @@ import org.apache.iotdb.db.mpp.execution.QueryState;
 import org.apache.iotdb.db.mpp.execution.QueryStateMachine;
 import org.apache.iotdb.db.mpp.execution.exchange.ISourceHandle;
 import org.apache.iotdb.db.mpp.execution.exchange.MPPDataExchangeService;
+import org.apache.iotdb.db.mpp.metric.QueryMetricsManager;
 import org.apache.iotdb.db.mpp.plan.analyze.Analysis;
 import org.apache.iotdb.db.mpp.plan.analyze.Analyzer;
 import org.apache.iotdb.db.mpp.plan.analyze.IPartitionFetcher;
@@ -81,6 +82,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Throwables.throwIfUnchecked;
 import static org.apache.iotdb.db.mpp.common.DataNodeEndPoints.isSameNode;
+import static org.apache.iotdb.db.mpp.metric.QueryExecutionMetricSet.SCHEDULE;
+import static org.apache.iotdb.db.mpp.metric.QueryExecutionMetricSet.WAIT_FOR_RESULT;
+import static org.apache.iotdb.db.mpp.metric.QueryPlanCostMetricSet.DISTRIBUTION_PLANNER;
 
 /**
  * QueryExecution stores all the status of a query which is being prepared or running inside the MPP
@@ -122,6 +126,10 @@ public class QueryExecution implements IQueryExecution {
       internalServiceClientManager;
 
   private AtomicBoolean stopped;
+
+  private long totalExecutionTime;
+
+  private static final QueryMetricsManager QUERY_METRICS = QueryMetricsManager.getInstance();
 
   public QueryExecution(
       Statement statement,
@@ -265,7 +273,9 @@ public class QueryExecution implements IQueryExecution {
       this.scheduler.start();
       return;
     }
+
     // TODO: (xingtanzjr) initialize the query scheduler according to configuration
+    long startTime = System.nanoTime();
     this.scheduler =
         new ClusterScheduler(
             context,
@@ -277,6 +287,9 @@ public class QueryExecution implements IQueryExecution {
             scheduledExecutor,
             internalServiceClientManager);
     this.scheduler.start();
+    if (rawStatement.isQuery()) {
+      QUERY_METRICS.recordExecutionCost(SCHEDULE, System.nanoTime() - startTime);
+    }
   }
 
   // Use LogicalPlanner to do the logical query plan and logical optimization
@@ -291,8 +304,13 @@ public class QueryExecution implements IQueryExecution {
 
   // Generate the distributed plan and split it into fragments
   public void doDistributedPlan() {
+    long startTime = System.nanoTime();
     DistributionPlanner planner = new DistributionPlanner(this.analysis, this.logicalPlan);
     this.distributedPlan = planner.planFragments();
+
+    if (rawStatement.isQuery()) {
+      QUERY_METRICS.recordPlanCost(DISTRIBUTION_PLANNER, System.nanoTime() - startTime);
+    }
     if (isQuery() && logger.isDebugEnabled()) {
       logger.debug(
           "distribution plan done. Fragment instance count is {}, details is: \n {}",
@@ -388,8 +406,14 @@ public class QueryExecution implements IQueryExecution {
           return Optional.empty();
         }
 
-        ListenableFuture<?> blocked = resultHandle.isBlocked();
-        blocked.get();
+        long startTime = System.nanoTime();
+        try {
+          ListenableFuture<?> blocked = resultHandle.isBlocked();
+          blocked.get();
+        } finally {
+          QUERY_METRICS.recordExecutionCost(WAIT_FOR_RESULT, System.nanoTime() - startTime);
+        }
+
         if (!resultHandle.isFinished()) {
           // use the getSerializedTsBlock instead of receive to get ByteBuffer result
           T res = dataSupplier.get();
@@ -606,13 +630,23 @@ public class QueryExecution implements IQueryExecution {
   }
 
   @Override
-  public long getStartExecutionTime() {
-    return context.getStartTime();
+  public void recordExecutionTime(long executionTime) {
+    totalExecutionTime += executionTime;
+  }
+
+  @Override
+  public long getTotalExecutionTime() {
+    return totalExecutionTime;
   }
 
   @Override
   public Optional<String> getExecuteSQL() {
     return Optional.ofNullable(context.getSql());
+  }
+
+  @Override
+  public Statement getStatement() {
+    return analysis.getStatement();
   }
 
   public String toString() {
