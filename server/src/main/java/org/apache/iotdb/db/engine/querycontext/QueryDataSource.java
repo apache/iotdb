@@ -25,6 +25,7 @@ import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.operator.AndFilter;
 
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.TreeMap;
@@ -127,17 +128,21 @@ public class QueryDataSource {
   }
 
   public void fillOrderIndexes(String deviceId, boolean ascending) {
-    TreeMap<Long, Integer> orderTimeToIndexMap =
+    TreeMap<Long, List<Integer>> orderTimeToIndexMap =
         ascending ? new TreeMap<>() : new TreeMap<>(descendingComparator);
     int index = 0;
     for (TsFileResource resource : unseqResources) {
-      orderTimeToIndexMap.put(resource.getOrderTime(deviceId, ascending), index++);
+      orderTimeToIndexMap
+          .computeIfAbsent(resource.getOrderTime(deviceId, ascending), key -> new ArrayList<>())
+          .add(index++);
     }
 
     index = 0;
     this.unSeqFileOrderIndex = new int[unseqResources.size()];
-    for (Integer orderIndex : orderTimeToIndexMap.values()) {
-      this.unSeqFileOrderIndex[index++] = orderIndex;
+    for (List<Integer> orderIndexes : orderTimeToIndexMap.values()) {
+      for (Integer orderIndex : orderIndexes) {
+        this.unSeqFileOrderIndex[index++] = orderIndex;
+      }
     }
   }
 }
