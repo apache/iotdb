@@ -1107,14 +1107,11 @@ public class ExpressionAnalyzer {
   /////////////////////////////////////////////////////////////////////////////////////////////////
 
   public static String getDeviceNameInSourceExpression(Expression expression) {
-    if (expression instanceof TimeSeriesOperand) {
-      return ((TimeSeriesOperand) expression).getPath().getDevice();
-    } else if (expression instanceof FunctionExpression) {
-      return ((TimeSeriesOperand) expression.getExpressions().get(0)).getPath().getDevice();
-    } else {
+    if (!(expression instanceof TimeSeriesOperand)) {
       throw new IllegalArgumentException(
-          "unsupported expression type: " + expression.getExpressionType());
+          "unsupported expression type for source expression: " + expression.getExpressionType());
     }
+    return ((TimeSeriesOperand) expression).getPath().getDevice();
   }
 
   public static Expression getMeasurementExpression(Expression expression) {
