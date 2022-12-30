@@ -138,11 +138,12 @@ public class QueryDataSource {
     }
 
     index = 0;
-    this.unSeqFileOrderIndex = new int[unseqResources.size()];
+    int[] unSeqFileOrderIndex = new int[unseqResources.size()];
     for (List<Integer> orderIndexes : orderTimeToIndexMap.values()) {
       for (Integer orderIndex : orderIndexes) {
-        this.unSeqFileOrderIndex[index++] = orderIndex;
+        unSeqFileOrderIndex[index++] = orderIndex;
       }
     }
+    this.unSeqFileOrderIndex = unSeqFileOrderIndex;
   }
 }
