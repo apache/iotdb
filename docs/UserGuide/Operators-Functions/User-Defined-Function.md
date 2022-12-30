@@ -413,7 +413,7 @@ The process of registering a UDF in IoTDB is as follows:
 CREATE FUNCTION <UDF-NAME> AS <UDF-CLASS-FULL-PATHNAME> (USING URI URI-STRING)?
 ```
 
-#### Example: register UDF named `example`, you can choose either of the following two registration methods
+### Example: register UDF named `example`, you can choose either of the following two registration methods
 
 #### No URI
 
