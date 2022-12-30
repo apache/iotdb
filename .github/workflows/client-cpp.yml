@@ -121,5 +121,5 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: cpp-IT-${{ runner.os }}
-          path: client-cpp/target/build/test/Tests
+          path: client-cpp/target/build/test/Testing
           retention-days: 1
