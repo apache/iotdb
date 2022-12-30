@@ -61,6 +61,9 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationDescriptor
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationStep;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.CrossSeriesAggregationDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.OrderByParameter;
+import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
+import org.apache.iotdb.db.mpp.plan.statement.component.SortItem;
+import org.apache.iotdb.db.mpp.plan.statement.component.SortKey;
 import org.apache.iotdb.db.mpp.plan.statement.crud.QueryStatement;
 
 import java.util.ArrayList;
@@ -525,10 +528,42 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
     PlanNode root = processRawMultiChildNode(node, context);
     if (context.queryMultiRegion) {
       PlanNode newRoot = genLastQueryRootNode(node, context);
+      // add sort op for each if we add LastQueryMergeNode as root
+      if (newRoot instanceof LastQueryMergeNode && node.getMergeOrderParameter().isEmpty()) {
+        OrderByParameter orderByParameter =
+            new OrderByParameter(
+                Collections.singletonList(new SortItem(SortKey.TIMESERIES, Ordering.ASC)));
+        addSortForEachLastQueryNode(root, orderByParameter);
+      }
       root.getChildren().forEach(newRoot::addChild);
       return Collections.singletonList(newRoot);
     } else {
       return Collections.singletonList(root);
+    }
+  }
+
+  private void addSortForEachLastQueryNode(PlanNode root, OrderByParameter orderByParameter) {
+    if (root instanceof LastQueryNode) {
+      LastQueryNode lastQueryNode = (LastQueryNode) root;
+      lastQueryNode.setMergeOrderParameter(orderByParameter);
+      lastQueryNode.setChildren(
+          lastQueryNode.getChildren().stream()
+              .sorted(
+                  Comparator.comparing(
+                      child -> {
+                        String device = "";
+                        if (child instanceof LastQueryScanNode) {
+                          device = ((LastQueryScanNode) child).getSeriesPath().getDevice();
+                        } else if (child instanceof AlignedLastQueryScanNode) {
+                          device = ((AlignedLastQueryScanNode) child).getSeriesPath().getDevice();
+                        }
+                        return device;
+                      }))
+              .collect(Collectors.toList()));
+    } else {
+      for (PlanNode child : root.getChildren()) {
+        addSortForEachLastQueryNode(child, orderByParameter);
+      }
     }
   }
 
