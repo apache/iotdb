@@ -112,7 +112,7 @@ public class WALFileUtils {
    * _2-5-1.wal: 6, 7, 8, 9, -1, -1, -1, 10, 11, -1, 12 <br>
    * _3-12-0.wal: -1, -1, -1, -1, -1 <br>
    * _4-12-1.wal: 12, 13, 14, 15, 16, -1 <br>
-   * searching [1, 5] will return 0, searching [6, 12] will return 1, search [13, infinity) will
+   * searching [1, 5] will return 0, searching [6, 12] will return 2, search [13, infinity) will
    * return 4， others will return -1
    *
    * @param files files to be searched
