@@ -176,55 +176,60 @@ namespace TSEncoding {
 namespace TSStatusCode {
     enum TSStatusCode {
         SUCCESS_STATUS = 200,
-     
-        // System level
-        INCOMPATIBLE_VERSION = 201,
-        CONFIGURATION_ERROR = 202,
-        START_UP_ERROR = 203,
-        SHUT_DOWN_ERROR = 204,
-     
-        // General Error
-        UNSUPPORTED_OPERATION = 300,
-        EXECUTE_STATEMENT_ERROR = 301,
-        MULTIPLE_ERROR = 302,
-        ILLEGAL_PARAMETER = 303,
-        OVERLAP_WITH_EXISTING_TASK = 304,
-        INTERNAL_SERVER_ERROR = 305,
-     
-        // Client,
-        REDIRECTION_RECOMMEND = 400,
-     
-        // Schema Engine
-        DATABASE_NOT_EXIST = 500,
-        DATABASE_ALREADY_EXISTS = 501,
-        SERIES_OVERFLOW = 502,
-        TIMESERIES_ALREADY_EXIST = 503,
-        TIMESERIES_IN_BLACK_LIST = 504,
-        ALIAS_ALREADY_EXIST = 505,
-        PATH_ALREADY_EXIST = 506,
-        METADATA_ERROR = 507,
-        PATH_NOT_EXIST = 508,
-        ILLEGAL_PATH = 509,
-        CREATE_TEMPLATE_ERROR = 510,
-        DUPLICATED_TEMPLATE = 511,
-        UNDEFINED_TEMPLATE = 512,
-        TEMPLATE_NOT_SET = 513,
-        DIFFERENT_TEMPLATE = 514,
-        TEMPLATE_IS_IN_USE = 515,
-        TEMPLATE_INCOMPATIBLE = 516,
-        SEGMENT_NOT_FOUND = 517,
-        PAGE_OUT_OF_SPACE = 518,
-        RECORD_DUPLICATED=519,
-        SEGMENT_OUT_OF_SPACE = 520,
-        SCHEMA_FILE_NOT_EXISTS = 521,
-        OVERSIZE_RECORD = 522,
-        SCHEMA_FILE_REDO_LOG_BROKEN = 523,
-        TEMPLATE_NOT_ACTIVATED = 524,
-     
-        // Storage Engine
-        SYSTEM_READ_ONLY = 600,
-        STORAGE_ENGINE_ERROR = 601,
-        STORAGE_ENGINE_NOT_READY = 602,
+        STILL_EXECUTING_STATUS = 201,
+        INVALID_HANDLE_STATUS = 202,
+
+        NODE_DELETE_FAILED_ERROR = 298,
+        ALIAS_ALREADY_EXIST_ERROR = 299,
+        PATH_ALREADY_EXIST_ERROR = 300,
+        PATH_NOT_EXIST_ERROR = 301,
+        UNSUPPORTED_FETCH_METADATA_OPERATION_ERROR = 302,
+        METADATA_ERROR = 303,
+        OUT_OF_TTL_ERROR = 305,
+        CONFIG_ADJUSTER = 306,
+        MERGE_ERROR = 307,
+        SYSTEM_CHECK_ERROR = 308,
+        SYNC_DEVICE_OWNER_CONFLICT_ERROR = 309,
+        SYNC_CONNECTION_EXCEPTION = 310,
+        STORAGE_GROUP_PROCESSOR_ERROR = 311,
+        STORAGE_GROUP_ERROR = 312,
+        STORAGE_ENGINE_ERROR = 313,
+        TSFILE_PROCESSOR_ERROR = 314,
+        PATH_ILLEGAL = 315,
+        LOAD_FILE_ERROR = 316,
+        STORAGE_GROUP_NOT_READY = 317,
+
+        EXECUTE_STATEMENT_ERROR = 400,
+        SQL_PARSE_ERROR = 401,
+        GENERATE_TIME_ZONE_ERROR = 402,
+        SET_TIME_ZONE_ERROR = 403,
+        NOT_STORAGE_GROUP_ERROR = 404,
+        QUERY_NOT_ALLOWED = 405,
+        AST_FORMAT_ERROR = 406,
+        LOGICAL_OPERATOR_ERROR = 407,
+        LOGICAL_OPTIMIZE_ERROR = 408,
+        UNSUPPORTED_FILL_TYPE_ERROR = 409,
+        PATH_ERROR = 410,
+        QUERY_PROCESS_ERROR = 411,
+        WRITE_PROCESS_ERROR = 412,
+
+        INTERNAL_SERVER_ERROR = 500,
+        CLOSE_OPERATION_ERROR = 501,
+        READ_ONLY_SYSTEM_ERROR = 502,
+        DISK_SPACE_INSUFFICIENT_ERROR = 503,
+        START_UP_ERROR = 504,
+        SHUT_DOWN_ERROR = 505,
+        MULTIPLE_ERROR = 506,
+        WRONG_LOGIN_PASSWORD_ERROR = 600,
+        NOT_LOGIN_ERROR = 601,
+        NO_PERMISSION_ERROR = 602,
+        UNINITIALIZED_AUTH_ERROR = 603,
+        PARTITION_NOT_READY = 700,
+        TIME_OUT = 701,
+        NO_LEADER = 702,
+        UNSUPPORTED_OPERATION = 703,
+        NODE_READ_ONLY = 704,
+        INCOMPATIBLE_VERSION = 203,
     };
 }
 
@@ -289,18 +294,7 @@ public:
     }
 
     int64_t getInt64() {
-#ifdef ARCH32
-        const char *buf_addr = getOrderedByte(8);
-        if (reinterpret_cast<uint32_t>(buf_addr) % 4 == 0) {
-            return *(int64_t *)buf_addr;
-        } else {
-            char tmp_buf[8];
-            memcpy(tmp_buf, buf_addr, 8); 
-            return *(int64_t*)tmp_buf;
-        }
-#else
         return *(int64_t *) getOrderedByte(8);
-#endif
     }
 
     float getFloat() {
@@ -308,18 +302,7 @@ public:
     }
 
     double getDouble() {
-#ifdef ARCH32
-        const char *buf_addr = getOrderedByte(8);
-        if (reinterpret_cast<uint32_t>(buf_addr) % 4 == 0) {
-            return  *(double*)buf_addr;
-        } else {
-            char tmp_buf[8];
-            memcpy(tmp_buf, buf_addr, 8);
-            return *(double*)tmp_buf;
-        }
-#else
         return *(double *) getOrderedByte(8);
-#endif
     }
 
     char getChar() {

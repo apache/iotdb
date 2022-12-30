@@ -19,7 +19,7 @@
 
 #define CATCH_CONFIG_MAIN
 
-#include <catch/catch.hpp>
+#include <catch.hpp>
 #include "Session.h"
 
 Session *session = new Session("127.0.0.1", 6667, "root", "root");

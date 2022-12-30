@@ -42,8 +42,7 @@ void RpcUtils::verifySuccess(const TSStatus &status) {
         verifySuccess(status.subStatus);
         return;
     }
-    if (status.code != TSStatusCode::SUCCESS_STATUS
-        && status.code != TSStatusCode::REDIRECTION_RECOMMEND) {
+    if (status.code != TSStatusCode::SUCCESS_STATUS) {
         throw ExecutionException(to_string(status.code) + ": " + status.message);
     }
 }
@@ -1992,7 +1991,7 @@ bool Session::checkTemplateExists(const string& template_name) {
         return isExisted;
     }
     catch (const exception &e) {
-        if ( strstr(e.what(), "get template info error") != NULL ) {
+        if ( strstr(e.what(), "Undefined template name:") != NULL ) {
             return false;
         }
         log_debug(e.what());
