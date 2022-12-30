@@ -45,9 +45,13 @@ public class ShowQueriesOperator implements SourceOperator {
   private TsBlock tsBlock;
   private boolean hasConsumed;
 
-  public ShowQueriesOperator(OperatorContext operatorContext, PlanNodeId sourceId) {
+  private final Coordinator coordinator;
+
+  public ShowQueriesOperator(
+      OperatorContext operatorContext, PlanNodeId sourceId, Coordinator coordinator) {
     this.operatorContext = operatorContext;
     this.sourceId = sourceId;
+    this.coordinator = coordinator;
   }
 
   @Override
@@ -111,7 +115,7 @@ public class ShowQueriesOperator implements SourceOperator {
     List<TSDataType> outputDataTypes =
         DatasetHeaderFactory.getShowQueriesHeader().getRespDataTypes();
     TsBlockBuilder builder = new TsBlockBuilder(outputDataTypes);
-    List<IQueryExecution> queryExecutions = Coordinator.getInstance().getAllQueryExecutions();
+    List<IQueryExecution> queryExecutions = coordinator.getAllQueryExecutions();
 
     if (!queryExecutions.isEmpty()) {
       TimeColumnBuilder timeColumnBuilder = builder.getTimeColumnBuilder();

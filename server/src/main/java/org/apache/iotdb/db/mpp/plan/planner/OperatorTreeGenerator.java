@@ -117,6 +117,7 @@ import org.apache.iotdb.db.mpp.execution.operator.source.ExchangeOperator;
 import org.apache.iotdb.db.mpp.execution.operator.source.SeriesAggregationScanOperator;
 import org.apache.iotdb.db.mpp.execution.operator.source.SeriesScanOperator;
 import org.apache.iotdb.db.mpp.execution.operator.source.ShowQueriesOperator;
+import org.apache.iotdb.db.mpp.plan.Coordinator;
 import org.apache.iotdb.db.mpp.plan.analyze.ExpressionTypeAnalyzer;
 import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
@@ -1696,7 +1697,8 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
 
     context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
 
-    return new ShowQueriesOperator(operatorContext, node.getPlanNodeId());
+    return new ShowQueriesOperator(
+        operatorContext, node.getPlanNodeId(), Coordinator.getInstance());
   }
 
   private List<OutputColumn> generateOutputColumnsFromChildren(MultiChildProcessNode node) {
