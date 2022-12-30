@@ -137,10 +137,13 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
 
     targetResources.addAll(
         CompactionFileGeneratorUtils.getCrossCompactionTargetTsFileResources(seqResources));
+    FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
     ICompactionPerformer performer =
         new FastCompactionPerformer(seqResources, unseqResources, targetResources);
     performer.setSummary(new CompactionTaskSummary());
     performer.perform();
+    Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
+    Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
     CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
 
     tsBlockReader =
@@ -251,10 +254,13 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
 
     targetResources.addAll(
         CompactionFileGeneratorUtils.getCrossCompactionTargetTsFileResources(seqResources));
+    FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
     ICompactionPerformer performer =
         new FastCompactionPerformer(seqResources, unseqResources, targetResources);
     performer.setSummary(new CompactionTaskSummary());
     performer.perform();
+    Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
+    Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
     CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
 
     List<String> deviceIdList = new ArrayList<>();
@@ -446,10 +452,13 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
 
     targetResources.addAll(
         CompactionFileGeneratorUtils.getCrossCompactionTargetTsFileResources(seqResources));
+    FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
     ICompactionPerformer performer =
         new FastCompactionPerformer(seqResources, unseqResources, targetResources);
     performer.setSummary(new CompactionTaskSummary());
     performer.perform();
+    Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
+    Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
     CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
 
     List<String> deviceIdList = new ArrayList<>();
@@ -638,10 +647,13 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
 
     targetResources.addAll(
         CompactionFileGeneratorUtils.getCrossCompactionTargetTsFileResources(seqResources));
+    FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
     ICompactionPerformer performer =
         new FastCompactionPerformer(seqResources, unseqResources, targetResources);
     performer.setSummary(new CompactionTaskSummary());
     performer.perform();
+    Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
+    Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
     CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
 
     List<String> deviceIdList = new ArrayList<>();
@@ -820,10 +832,13 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
 
     targetResources.addAll(
         CompactionFileGeneratorUtils.getCrossCompactionTargetTsFileResources(seqResources));
+    FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
     ICompactionPerformer performer =
         new FastCompactionPerformer(seqResources, unseqResources, targetResources);
     performer.setSummary(new CompactionTaskSummary());
     performer.perform();
+    Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
+    Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
     CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
 
     targetResources.removeIf(resource -> resource == null);
@@ -995,10 +1010,13 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
 
     targetResources.addAll(
         CompactionFileGeneratorUtils.getCrossCompactionTargetTsFileResources(seqResources));
+    FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
     ICompactionPerformer performer =
         new FastCompactionPerformer(seqResources, unseqResources, targetResources);
     performer.setSummary(new CompactionTaskSummary());
     performer.perform();
+    Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
+    Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
     CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
 
     Assert.assertEquals(4, targetResources.size());
@@ -1128,6 +1146,8 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
           new FastCompactionPerformer(seqResources, unseqResources, targetResources);
       performer.setSummary(new CompactionTaskSummary());
       performer.perform();
+      Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
+      Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
       CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
 
       Assert.assertEquals(4, targetResources.size());
@@ -1203,6 +1223,8 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
           new FastCompactionPerformer(seqResources, unseqResources, targetResources);
       performer.setSummary(new CompactionTaskSummary());
       performer.perform();
+      Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
+      Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
       CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
 
       Assert.assertEquals(2, targetResources.size());
@@ -1337,10 +1359,13 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
 
     targetResources.addAll(
         CompactionFileGeneratorUtils.getCrossCompactionTargetTsFileResources(seqResources));
+    FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
     ICompactionPerformer performer =
         new FastCompactionPerformer(seqResources, unseqResources, targetResources);
     performer.setSummary(new CompactionTaskSummary());
     performer.perform();
+    Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
+    Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
     CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
 
     tsBlockReader =
@@ -1465,10 +1490,13 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
 
     targetResources.addAll(
         CompactionFileGeneratorUtils.getCrossCompactionTargetTsFileResources(seqResources));
+    FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
     ICompactionPerformer performer =
         new FastCompactionPerformer(seqResources, unseqResources, targetResources);
     performer.setSummary(new CompactionTaskSummary());
     performer.perform();
+    Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
+    Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
     CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
 
     for (int i = TsFileGeneratorUtils.getAlignDeviceOffset();
@@ -1667,10 +1695,13 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
 
     targetResources.addAll(
         CompactionFileGeneratorUtils.getCrossCompactionTargetTsFileResources(seqResources));
+    FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
     ICompactionPerformer performer =
         new FastCompactionPerformer(seqResources, unseqResources, targetResources);
     performer.setSummary(new CompactionTaskSummary());
     performer.perform();
+    Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
+    Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
     CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
 
     Assert.assertEquals(4, targetResources.size());
@@ -1904,10 +1935,13 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
 
     targetResources.addAll(
         CompactionFileGeneratorUtils.getCrossCompactionTargetTsFileResources(seqResources));
+    FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
     ICompactionPerformer performer =
         new FastCompactionPerformer(seqResources, unseqResources, targetResources);
     performer.setSummary(new CompactionTaskSummary());
     performer.perform();
+    Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
+    Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
     CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
     targetResources.removeIf(resource -> resource == null);
 
@@ -2019,10 +2053,13 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
 
     targetResources.addAll(
         CompactionFileGeneratorUtils.getCrossCompactionTargetTsFileResources(seqResources));
+    FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
     ICompactionPerformer performer =
         new FastCompactionPerformer(seqResources, unseqResources, targetResources);
     performer.setSummary(new CompactionTaskSummary());
     performer.perform();
+    Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
+    Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
     CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
     targetResources.removeIf(resource -> resource == null);
     Assert.assertEquals(2, targetResources.size());
@@ -2145,10 +2182,13 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
 
     targetResources.addAll(
         CompactionFileGeneratorUtils.getCrossCompactionTargetTsFileResources(seqResources));
+    FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
     ICompactionPerformer performer =
         new FastCompactionPerformer(seqResources, unseqResources, targetResources);
     performer.setSummary(new CompactionTaskSummary());
     performer.perform();
+    Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
+    Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
     CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
 
     List<String> deviceIdList = new ArrayList<>();
@@ -2284,10 +2324,13 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
 
     targetResources.addAll(
         CompactionFileGeneratorUtils.getCrossCompactionTargetTsFileResources(seqResources));
+    FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
     ICompactionPerformer performer =
         new FastCompactionPerformer(seqResources, unseqResources, targetResources);
     performer.setSummary(new CompactionTaskSummary());
     performer.perform();
+    Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
+    Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
     CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
 
     List<String> deviceIdList = new ArrayList<>();
@@ -2402,10 +2445,13 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
 
     targetResources.addAll(
         CompactionFileGeneratorUtils.getCrossCompactionTargetTsFileResources(seqResources));
+    FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
     ICompactionPerformer performer =
         new FastCompactionPerformer(seqResources, unseqResources, targetResources);
     performer.setSummary(new CompactionTaskSummary());
     performer.perform();
+    Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
+    Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
     CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
 
     List<String> deviceIdList = new ArrayList<>();
@@ -2539,10 +2585,13 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
 
     targetResources.addAll(
         CompactionFileGeneratorUtils.getCrossCompactionTargetTsFileResources(seqResources));
+    FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
     ICompactionPerformer performer =
         new FastCompactionPerformer(seqResources, unseqResources, targetResources);
     performer.setSummary(new CompactionTaskSummary());
     performer.perform();
+    Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
+    Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
     CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
 
     List<String> deviceIdList = new ArrayList<>();
@@ -2699,10 +2748,13 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
 
     targetResources.addAll(
         CompactionFileGeneratorUtils.getCrossCompactionTargetTsFileResources(seqResources));
+    FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
     ICompactionPerformer performer =
         new FastCompactionPerformer(seqResources, unseqResources, targetResources);
     performer.setSummary(new CompactionTaskSummary());
     performer.perform();
+    Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
+    Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
     CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
     targetResources.removeIf(resource -> resource == null);
     Assert.assertEquals(3, targetResources.size());
@@ -2942,10 +2994,13 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
 
     targetResources.addAll(
         CompactionFileGeneratorUtils.getCrossCompactionTargetTsFileResources(seqResources));
+    FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
     ICompactionPerformer performer =
         new FastCompactionPerformer(seqResources, unseqResources, targetResources);
     performer.setSummary(new CompactionTaskSummary());
     performer.perform();
+    Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
+    Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
     CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
 
     List<String> deviceIdList = new ArrayList<>();
@@ -3210,10 +3265,13 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
 
     targetResources.addAll(
         CompactionFileGeneratorUtils.getCrossCompactionTargetTsFileResources(seqResources));
+    FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
     ICompactionPerformer performer =
         new FastCompactionPerformer(seqResources, unseqResources, targetResources);
     performer.setSummary(new CompactionTaskSummary());
     performer.perform();
+    Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
+    Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
     CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
 
     List<String> deviceIdList = new ArrayList<>();
@@ -3400,10 +3458,13 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
 
     targetResources.addAll(
         CompactionFileGeneratorUtils.getCrossCompactionTargetTsFileResources(seqResources));
+    FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
     ICompactionPerformer performer =
         new FastCompactionPerformer(seqResources, unseqResources, targetResources);
     performer.setSummary(new CompactionTaskSummary());
     performer.perform();
+    Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
+    Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
     CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
 
     List<String> deviceIdList = new ArrayList<>();
@@ -3716,12 +3777,16 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
       }
     }
 
+    FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
     targetResources.addAll(
         CompactionFileGeneratorUtils.getCrossCompactionTargetTsFileResources(seqResources));
+    FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
     ICompactionPerformer performer =
         new FastCompactionPerformer(seqResources, unseqResources, targetResources);
     performer.setSummary(new CompactionTaskSummary());
     performer.perform();
+    Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
+    Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
     CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
     targetResources.removeIf(resource -> resource == null);
 
@@ -3787,6 +3852,199 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
         } else if ((i == TsFileGeneratorUtils.getAlignDeviceOffset() + 1 && j == 4)) {
           assertEquals(600, count);
         } else if (i < TsFileGeneratorUtils.getAlignDeviceOffset() + 3 && j < 4) {
+          assertEquals(1200, count);
+        } else {
+          assertEquals(600, count);
+        }
+      }
+    }
+  }
+
+  /**
+   * Total 4 seq files and 5 unseq files, each file has different nonAligned timeseries.
+   *
+   * <p>Seq files<br>
+   * first and second file has d0 ~ d1 and s0 ~ s2, time range is 0 ~ 299 and 350 ~ 649, value range
+   * is 0 ~ 299 and 350 ~ 649.<br>
+   * third and forth file has d0 ~ d3 and s0 ~ S4,time range is 700 ~ 999 and 1050 ~ 1349, value
+   * range is 700 ~ 999 and 1050 ~ 1349.<br>
+   *
+   * <p>UnSeq files<br>
+   * first, second and third file has d0 ~ d2 and s0 ~ s3, time range is 20 ~ 219, 250 ~ 449 and 480
+   * ~ 679, value range is 10020 ~ 10219, 10250 ~ 10449 and 10480 ~ 10679.<br>
+   * forth and fifth file has d0 and s0 ~ s4, time range is 450 ~ 549 and 550 ~ 649, value range is
+   * 20450 ~ 20549 and 20550 ~ 20649.
+   */
+  @Test
+  public void testCrossSpaceCompactionWithFileTimeIndex() throws Exception {
+    TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(30);
+    registerTimeseriesInMManger(4, 5, false);
+    createFiles(2, 2, 3, 300, 0, 0, 50, 50, false, true);
+    createFiles(2, 4, 5, 300, 700, 700, 50, 50, false, true);
+    createFiles(3, 3, 4, 200, 20, 10020, 30, 30, false, false);
+    createFiles(2, 1, 5, 100, 450, 20450, 0, 0, false, false);
+
+    for (int i = 0; i < 4; i++) {
+      for (int j = 0; j < 5; j++) {
+        PartialPath path =
+            new MeasurementPath(
+                COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i,
+                "s" + j,
+                new MeasurementSchema("s" + j, TSDataType.INT64));
+        IDataBlockReader tsBlockReader =
+            new SeriesDataBlockReader(
+                path,
+                TSDataType.INT64,
+                FragmentInstanceContext.createFragmentInstanceContextForCompaction(
+                    EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
+                seqResources,
+                unseqResources,
+                true);
+        int count = 0;
+        while (tsBlockReader.hasNextBatch()) {
+          TsBlock block = tsBlockReader.nextBatch();
+          IBatchDataIterator iterator = block.getTsBlockSingleColumnIterator();
+          while (iterator.hasNext()) {
+            if (i == 0
+                && ((450 <= iterator.currentTime() && iterator.currentTime() < 550)
+                    || (550 <= iterator.currentTime() && iterator.currentTime() < 650))) {
+              assertEquals(iterator.currentTime() + 20000, iterator.currentValue());
+            } else if ((i < 3 && j < 4)
+                && ((20 <= iterator.currentTime() && iterator.currentTime() < 220)
+                    || (250 <= iterator.currentTime() && iterator.currentTime() < 450)
+                    || (480 <= iterator.currentTime() && iterator.currentTime() < 680))) {
+              assertEquals(iterator.currentTime() + 10000, iterator.currentValue());
+            } else {
+              assertEquals(iterator.currentTime(), iterator.currentValue());
+            }
+            count++;
+            iterator.next();
+          }
+        }
+        tsBlockReader.close();
+        if (i < 2 && j < 3) {
+          assertEquals(1280, count);
+        } else if (i < 1 && j < 4) {
+          assertEquals(1230, count);
+        } else if (i == 0) {
+          assertEquals(800, count);
+        } else if ((i == 1 && j == 4)) {
+          assertEquals(600, count);
+        } else if (i < 3 && j < 4) {
+          assertEquals(1200, count);
+        } else {
+          assertEquals(600, count);
+        }
+      }
+    }
+
+    // degrade time index
+    for (TsFileResource resource : seqResources) {
+      resource.degradeTimeIndex();
+    }
+    for (TsFileResource resource : unseqResources) {
+      resource.degradeTimeIndex();
+    }
+
+    targetResources.addAll(
+        CompactionFileGeneratorUtils.getCrossCompactionTargetTsFileResources(seqResources));
+    FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
+    ICompactionPerformer performer =
+        new FastCompactionPerformer(seqResources, unseqResources, targetResources);
+    performer.setSummary(new CompactionTaskSummary());
+    performer.perform();
+    Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
+    Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
+    CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
+
+    List<String> deviceIdList = new ArrayList<>();
+    deviceIdList.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d0");
+    deviceIdList.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d1");
+    for (int i = 0; i < 2; i++) {
+      Assert.assertTrue(
+          targetResources.get(i).isDeviceIdExist(COMPACTION_TEST_SG + PATH_SEPARATOR + "d0"));
+      Assert.assertTrue(
+          targetResources.get(i).isDeviceIdExist(COMPACTION_TEST_SG + PATH_SEPARATOR + "d1"));
+      Assert.assertFalse(
+          targetResources.get(i).isDeviceIdExist(COMPACTION_TEST_SG + PATH_SEPARATOR + "d2"));
+      Assert.assertFalse(
+          targetResources.get(i).isDeviceIdExist(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3"));
+      check(targetResources.get(i), deviceIdList);
+    }
+    deviceIdList.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d2");
+    deviceIdList.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3");
+    for (int i = 2; i < 4; i++) {
+      Assert.assertTrue(
+          targetResources.get(i).isDeviceIdExist(COMPACTION_TEST_SG + PATH_SEPARATOR + "d0"));
+      Assert.assertTrue(
+          targetResources.get(i).isDeviceIdExist(COMPACTION_TEST_SG + PATH_SEPARATOR + "d1"));
+      Assert.assertTrue(
+          targetResources.get(i).isDeviceIdExist(COMPACTION_TEST_SG + PATH_SEPARATOR + "d2"));
+      Assert.assertTrue(
+          targetResources.get(i).isDeviceIdExist(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3"));
+      check(targetResources.get(i), deviceIdList);
+    }
+
+    Map<String, Long> measurementMaxTime = new HashMap<>();
+
+    for (int i = 0; i < 4; i++) {
+      for (int j = 0; j < 5; j++) {
+        measurementMaxTime.putIfAbsent(
+            COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i + PATH_SEPARATOR + "s" + j,
+            Long.MIN_VALUE);
+        PartialPath path =
+            new MeasurementPath(
+                COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i,
+                "s" + j,
+                new MeasurementSchema("s" + j, TSDataType.INT64));
+        IDataBlockReader tsBlockReader =
+            new SeriesDataBlockReader(
+                path,
+                TSDataType.INT64,
+                FragmentInstanceContext.createFragmentInstanceContextForCompaction(
+                    EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
+                targetResources,
+                new ArrayList<>(),
+                true);
+        int count = 0;
+        while (tsBlockReader.hasNextBatch()) {
+          TsBlock block = tsBlockReader.nextBatch();
+          IBatchDataIterator iterator = block.getTsBlockSingleColumnIterator();
+          while (iterator.hasNext()) {
+            if (measurementMaxTime.get(
+                    COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i + PATH_SEPARATOR + "s" + j)
+                >= iterator.currentTime()) {
+              Assert.fail();
+            }
+            measurementMaxTime.put(
+                COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i + PATH_SEPARATOR + "s" + j,
+                iterator.currentTime());
+            if (i == 0
+                && ((450 <= iterator.currentTime() && iterator.currentTime() < 550)
+                    || (550 <= iterator.currentTime() && iterator.currentTime() < 650))) {
+              assertEquals(iterator.currentTime() + 20000, iterator.currentValue());
+            } else if ((i < 3 && j < 4)
+                && ((20 <= iterator.currentTime() && iterator.currentTime() < 220)
+                    || (250 <= iterator.currentTime() && iterator.currentTime() < 450)
+                    || (480 <= iterator.currentTime() && iterator.currentTime() < 680))) {
+              assertEquals(iterator.currentTime() + 10000, iterator.currentValue());
+            } else {
+              assertEquals(iterator.currentTime(), iterator.currentValue());
+            }
+            count++;
+            iterator.next();
+          }
+        }
+        tsBlockReader.close();
+        if (i < 2 && j < 3) {
+          assertEquals(1280, count);
+        } else if (i < 1 && j < 4) {
+          assertEquals(1230, count);
+        } else if (i == 0) {
+          assertEquals(800, count);
+        } else if ((i == 1 && j == 4)) {
+          assertEquals(600, count);
+        } else if (i < 3 && j < 4) {
           assertEquals(1200, count);
         } else {
           assertEquals(600, count);

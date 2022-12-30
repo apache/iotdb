@@ -21,6 +21,8 @@ package org.apache.iotdb.db.mpp.execution.driver;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.execution.exchange.ISinkHandle;
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
+import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
+import org.apache.iotdb.db.mpp.metric.QueryMetricsManager;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 
 import com.google.common.collect.ImmutableList;
@@ -45,6 +47,7 @@ import static com.google.common.base.Throwables.throwIfUnchecked;
 import static com.google.common.util.concurrent.MoreExecutors.directExecutor;
 import static java.lang.Boolean.TRUE;
 import static org.apache.iotdb.db.mpp.execution.operator.Operator.NOT_BLOCKED;
+import static org.apache.iotdb.db.mpp.metric.QueryExecutionMetricSet.DRIVER_INTERNAL_PROCESS;
 
 public abstract class Driver implements IDriver {
 
@@ -57,6 +60,8 @@ public abstract class Driver implements IDriver {
   protected final AtomicReference<State> state = new AtomicReference<>(State.ALIVE);
 
   protected final DriverLock exclusiveLock = new DriverLock();
+
+  protected final QueryMetricsManager QUERY_METRICS = QueryMetricsManager.getInstance();
 
   protected enum State {
     ALIVE,
@@ -180,6 +185,7 @@ public abstract class Driver implements IDriver {
   }
 
   private ListenableFuture<?> processInternal() {
+    long startTimeNanos = System.nanoTime();
     try {
       ListenableFuture<?> blocked = root.isBlocked();
       if (!blocked.isDone()) {
@@ -189,8 +195,8 @@ public abstract class Driver implements IDriver {
       if (!blocked.isDone()) {
         return blocked;
       }
-      if (root.hasNext()) {
-        TsBlock tsBlock = root.next();
+      if (root.hasNextWithTimer()) {
+        TsBlock tsBlock = root.nextWithTimer();
         if (tsBlock != null && !tsBlock.isEmpty()) {
           sinkHandle.send(tsBlock);
         }
@@ -212,6 +218,9 @@ public abstract class Driver implements IDriver {
       newException.addSuppressed(t);
       driverContext.failed(newException);
       throw newException;
+    } finally {
+      QUERY_METRICS.recordExecutionCost(
+          DRIVER_INTERNAL_PROCESS, System.nanoTime() - startTimeNanos);
     }
   }
 
@@ -339,6 +348,17 @@ public abstract class Driver implements IDriver {
     try {
       root.close();
       sinkHandle.setNoMoreTsBlocks();
+
+      // record operator execution statistics to metrics
+      List<OperatorContext> operatorContexts =
+          driverContext.getFragmentInstanceContext().getOperatorContexts();
+      for (OperatorContext operatorContext : operatorContexts) {
+        String operatorType = operatorContext.getOperatorType();
+        QUERY_METRICS.recordOperatorExecutionCost(
+            operatorType, operatorContext.getTotalExecutionTimeInNanos());
+        QUERY_METRICS.recordOperatorExecutionCount(
+            operatorType, operatorContext.getNextCalledCount());
+      }
     } catch (InterruptedException t) {
       // don't record the stack
       wasInterrupted = true;

@@ -168,7 +168,7 @@ public abstract class AbstractSeriesAggregationScanOperator implements DataSourc
 
   @Override
   public boolean isFinished() {
-    return finished || (finished = !hasNext());
+    return finished || (finished = !hasNextWithTimer());
   }
 
   protected void calculateNextAggregationResult() {

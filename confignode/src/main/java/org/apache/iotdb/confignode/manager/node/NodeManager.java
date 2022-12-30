@@ -88,7 +88,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -110,8 +109,6 @@ public class NodeManager {
 
   private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
   public static final long HEARTBEAT_INTERVAL = CONF.getHeartbeatIntervalInMs();
-  private static final long UNKNOWN_DATANODE_DETECT_INTERVAL =
-      CONF.getUnknownDataNodeDetectInterval();
 
   private final IManager configManager;
   private final NodeInfo nodeInfo;
@@ -128,13 +125,6 @@ public class NodeManager {
   private final ScheduledExecutorService heartBeatExecutor =
       IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("Cluster-Heartbeat-Service");
 
-  /** Unknown DataNode Detector */
-  private Future<?> currentUnknownDataNodeDetectFuture;
-
-  private final ScheduledExecutorService unknownDataNodeDetectExecutor =
-      IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("Unknown-DataNode-Detector");
-  private final Set<TDataNodeLocation> oldUnknownNodes;
-
   private final Random random;
 
   public NodeManager(IManager configManager, NodeInfo nodeInfo) {
@@ -142,7 +132,6 @@ public class NodeManager {
     this.nodeInfo = nodeInfo;
     this.removeConfigNodeLock = new ReentrantLock();
     this.nodeCacheMap = new ConcurrentHashMap<>();
-    this.oldUnknownNodes = new HashSet<>();
     this.random = new Random(System.currentTimeMillis());
   }
 
@@ -800,67 +789,6 @@ public class NodeManager {
 
   public Map<Integer, BaseNodeCache> getNodeCacheMap() {
     return nodeCacheMap;
-  }
-
-  /** Start unknownDataNodeDetector */
-  public void startUnknownDataNodeDetector() {
-    synchronized (scheduleMonitor) {
-      if (currentUnknownDataNodeDetectFuture == null) {
-        currentUnknownDataNodeDetectFuture =
-            ScheduledExecutorUtil.safelyScheduleWithFixedDelay(
-                unknownDataNodeDetectExecutor,
-                this::detectTask,
-                0,
-                UNKNOWN_DATANODE_DETECT_INTERVAL,
-                TimeUnit.MILLISECONDS);
-        LOGGER.info("Unknown-DataNode-Detector is started successfully.");
-      }
-    }
-  }
-
-  /**
-   * The detectTask executed periodically to find newest UnknownDataNodes
-   *
-   * <p>1.If one DataNode is continuing Unknown, we shouldn't always activate Transfer of this Node.
-   *
-   * <p>2.The selected DataNodes may not truly need to transfer, so you should ensure safety of the
-   * Data when implement transferMethod in Manager.
-   */
-  private void detectTask() {
-    List<TDataNodeLocation> newUnknownNodes = new ArrayList<>();
-
-    getRegisteredDataNodes()
-        .forEach(
-            DataNodeConfiguration -> {
-              TDataNodeLocation dataNodeLocation = DataNodeConfiguration.getLocation();
-              BaseNodeCache newestNodeInformation = nodeCacheMap.get(dataNodeLocation.dataNodeId);
-              if (newestNodeInformation != null) {
-                if (newestNodeInformation.getNodeStatus() == NodeStatus.Running) {
-                  oldUnknownNodes.remove(dataNodeLocation);
-                } else if (!oldUnknownNodes.contains(dataNodeLocation)
-                    && newestNodeInformation.getNodeStatus() == NodeStatus.Unknown) {
-                  newUnknownNodes.add(dataNodeLocation);
-                }
-              }
-            });
-
-    if (!newUnknownNodes.isEmpty()) {
-      TSStatus transferResult = configManager.transfer(newUnknownNodes);
-      if (transferResult.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        oldUnknownNodes.addAll(newUnknownNodes);
-      }
-    }
-  }
-
-  /** Stop the heartbeat service */
-  public void stopUnknownDataNodeDetector() {
-    synchronized (scheduleMonitor) {
-      if (currentUnknownDataNodeDetectFuture != null) {
-        currentUnknownDataNodeDetectFuture.cancel(false);
-        currentUnknownDataNodeDetectFuture = null;
-        LOGGER.info("Unknown-DataNode-Detector is stopped successfully.");
-      }
-    }
   }
 
   public void removeNodeCache(int nodeId) {

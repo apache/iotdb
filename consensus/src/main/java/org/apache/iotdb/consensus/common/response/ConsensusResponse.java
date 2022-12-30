@@ -24,7 +24,7 @@ import org.apache.iotdb.consensus.exception.ConsensusException;
 public abstract class ConsensusResponse {
   protected final ConsensusException exception;
 
-  public ConsensusResponse(ConsensusException exception) {
+  protected ConsensusResponse(ConsensusException exception) {
     this.exception = exception;
   }
 

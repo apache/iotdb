@@ -99,8 +99,8 @@ IF EXIST "%CONFIGNODE_CONF%\iotdb-confignode.properties" (
   )
 ) ELSE (
   echo "Can't find iotdb-confignode.properties, check the default ports"
-  set cn_internal_port=22277
-  set cn_consensus_port=22278
+  set cn_internal_port=10710
+  set cn_consensus_port=10720
 )
 
 echo Check whether the ports are occupied....

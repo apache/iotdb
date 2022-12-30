@@ -19,10 +19,10 @@
 package org.apache.iotdb.db.engine.compaction.task;
 
 import org.apache.iotdb.db.engine.compaction.constant.CrossCompactionPerformer;
+import org.apache.iotdb.db.engine.compaction.cross.rewrite.CrossCompactionTaskResource;
 import org.apache.iotdb.db.engine.compaction.cross.utils.AbstractCompactionEstimator;
 import org.apache.iotdb.db.engine.compaction.cross.utils.ReadPointCrossCompactionEstimator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.util.Collections;
 import java.util.List;
@@ -49,7 +49,7 @@ public interface ICompactionSelector {
    * list contains two list: the left one is the selected sequence files, the right one is the selected
    * unsequence files. Each pair is corresponding to a cross space compaction task.
    */
-  default List<Pair<List<TsFileResource>, List<TsFileResource>>> selectCrossSpaceTask(
+  default List<CrossCompactionTaskResource> selectCrossSpaceTask(
       List<TsFileResource> seqFiles, List<TsFileResource> unseqFiles) {
     {
       throw new RuntimeException("This kind of selector cannot be used to select cross space task");

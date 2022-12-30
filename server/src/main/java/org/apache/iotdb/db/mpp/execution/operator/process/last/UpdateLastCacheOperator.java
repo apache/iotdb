@@ -53,7 +53,7 @@ public class UpdateLastCacheOperator extends AbstractUpdateLastCacheOperator {
 
   @Override
   public TsBlock next() {
-    TsBlock res = child.next();
+    TsBlock res = child.nextWithTimer();
     if (res == null) {
       return null;
     }
