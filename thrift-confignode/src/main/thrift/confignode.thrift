@@ -667,6 +667,54 @@ struct TUnsetSchemaTemplateReq{
   3: required string path
 }
 
+struct TCreateModelReq {
+  1: required string modelId
+  2: required byte modelTask
+  3: required bool isAuto
+  4: required map<string, string> modelConfigs
+  5: required list<string> queryExpressions
+  6: optional string queryFilter
+}
+
+struct TDropModelReq {
+  1: required string modelId
+}
+
+struct TShowModelReq {
+  1: optional string modelId
+}
+
+struct TModelInfo {
+  1: required string modelId
+  2: required map<string, string> modelInfo
+}
+
+struct TShowModelResp {
+  1: required common.TSStatus status
+  2: required list<TModelInfo> modelInfoList
+}
+
+struct TShowTrailReq {
+  1: required string modelId
+  2: optional string trailId
+}
+
+struct TTrailInfo {
+  1: required string modelId
+  2: required string trailId
+  3: required map<string, string> trailInfo
+}
+
+struct TShowTrailResp {
+  1: required common.TSStatus status
+  2: required list<TTrailInfo> trailInfoList
+}
+
+struct TUpdateModelInfoReq {
+  1: required string modelId
+  2: required map<string, string> modelInfo
+}
+
 service IConfigNodeRPCService {
 
   // ======================================================
@@ -1151,7 +1199,7 @@ service IConfigNodeRPCService {
   /**
    * Create a CQ
    *
-   * @return SUCCESS_STATUS if the trigger was created successfully
+   * @return SUCCESS_STATUS if the cq was created successfully
    */
   common.TSStatus createCQ(TCreateCQReq req)
 
@@ -1163,8 +1211,43 @@ service IConfigNodeRPCService {
   common.TSStatus dropCQ(TDropCQReq req)
 
   /**
-   * Return the trigger table of config leader
+   * Return the cq table of config leader
    */
   TShowCQResp showCQ()
+
+  // ====================================================
+  // ML Model
+  // ====================================================
+
+  /**
+   * Create a model
+   *
+   * @return SUCCESS_STATUS if the model was created successfully
+   */
+  common.TSStatus createModel(TCreateModelReq req)
+
+  /**
+   * Drop a model
+   *
+   * @return SUCCESS_STATUS if the model was removed successfully
+   */
+  common.TSStatus dropModel(TDropModelReq req)
+
+  /**
+   * Return the model table
+   */
+  TShowModelResp showModel(TShowModelReq req)
+
+  /**
+   * Return the trail table
+   */
+  TShowTrailResp showTrail(TShowTrailReq req)
+
+  /**
+   * Update the model info
+   *
+   * @return SUCCESS_STATUS if the model was removed successfully
+   */
+  common.TSStatus updateModelInfo(TUpdateModelInfoReq req)
 }
 
