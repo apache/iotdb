@@ -123,6 +123,7 @@
         <module>external-api</module>
         <module>schema-engine-tag</module>
         <module>isession</module>
+        <module>mlnode</module>
     </modules>
     <!-- Properties Management -->
     <properties>
