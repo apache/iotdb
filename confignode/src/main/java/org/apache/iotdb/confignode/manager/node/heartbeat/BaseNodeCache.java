@@ -137,4 +137,8 @@ public abstract class BaseNodeCache {
   public NodeStatistics getStatistics() {
     return currentStatistics;
   }
+
+  public NodeStatistics getPreviousStatistics() {
+    return previousStatistics;
+  }
 }
