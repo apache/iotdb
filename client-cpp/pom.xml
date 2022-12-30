@@ -394,7 +394,7 @@
                                     <name>iotdb-server</name>
                                     <waitForInterrupt>false</waitForInterrupt>
                                     <!-- Maximum time in seconds to wait after launching IoTDB -->
-                                    <waitAfterLaunch>5</waitAfterLaunch>
+                                    <waitAfterLaunch>15</waitAfterLaunch>
                                     <!-- Redirect IoTDB server log to /dev/null -->
                                     <processLogFile>${project.build.directory}/build/test/test.log</processLogFile>
                                     <arguments>
