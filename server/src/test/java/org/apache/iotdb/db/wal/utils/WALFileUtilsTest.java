@@ -212,15 +212,16 @@ public class WALFileUtilsTest {
     int i = WALFileUtils.binarySearchFileBySearchIndex(files, 12);
     Assert.assertEquals(7, i);
   }
+
   @Test
   public void binarySearchFileBySearchIndex13() {
     File[] files =
         new File[] {
-            new File(WALFileUtils.getLogFileName(0, 0, WALFileStatus.CONTAINS_SEARCH_INDEX)),
-            new File(WALFileUtils.getLogFileName(1, 5, WALFileStatus.CONTAINS_NONE_SEARCH_INDEX)),
-            new File(WALFileUtils.getLogFileName(2, 5, WALFileStatus.CONTAINS_SEARCH_INDEX)),
-            new File(WALFileUtils.getLogFileName(3, 12, WALFileStatus.CONTAINS_NONE_SEARCH_INDEX)),
-            new File(WALFileUtils.getLogFileName(4, 12, WALFileStatus.CONTAINS_SEARCH_INDEX)),
+          new File(WALFileUtils.getLogFileName(0, 0, WALFileStatus.CONTAINS_SEARCH_INDEX)),
+          new File(WALFileUtils.getLogFileName(1, 5, WALFileStatus.CONTAINS_NONE_SEARCH_INDEX)),
+          new File(WALFileUtils.getLogFileName(2, 5, WALFileStatus.CONTAINS_SEARCH_INDEX)),
+          new File(WALFileUtils.getLogFileName(3, 12, WALFileStatus.CONTAINS_NONE_SEARCH_INDEX)),
+          new File(WALFileUtils.getLogFileName(4, 12, WALFileStatus.CONTAINS_SEARCH_INDEX)),
         };
     int i = WALFileUtils.binarySearchFileBySearchIndex(files, 5);
     Assert.assertEquals(0, i);
