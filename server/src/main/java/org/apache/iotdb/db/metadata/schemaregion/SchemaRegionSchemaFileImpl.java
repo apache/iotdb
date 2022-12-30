@@ -72,6 +72,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -1132,14 +1133,9 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
               new ShowTimeSeriesResult(
                   leaf.getFullPath(),
                   leaf.getAlias(),
-                  storageGroupFullPath,
-                  measurementSchema.getType(),
-                  measurementSchema.getEncodingType(),
-                  measurementSchema.getCompressor(),
+                  (MeasurementSchema) leaf.getSchema(),
                   tagAndAttributePair.left,
-                  tagAndAttributePair.right,
-                  deadbandInfo.left,
-                  deadbandInfo.right));
+                  tagAndAttributePair.right));
           if (limit != 0) {
             count++;
           }
@@ -1160,35 +1156,18 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
    */
   private Pair<List<ShowTimeSeriesResult>, Integer> showTimeseriesWithoutIndex(
       IShowTimeSeriesPlan plan) throws MetadataException {
-    Pair<List<Pair<PartialPath, String[]>>, Integer> ans = mtree.getAllMeasurementSchema(plan);
-    List<ShowTimeSeriesResult> res = new LinkedList<>();
-    for (Pair<PartialPath, String[]> ansString : ans.left) {
-      long tagFileOffset = Long.parseLong(ansString.right[5]);
-      try {
-        Pair<Map<String, String>, Map<String, String>> tagAndAttributePair =
-            new Pair<>(Collections.emptyMap(), Collections.emptyMap());
-        if (tagFileOffset >= 0) {
-          tagAndAttributePair = tagManager.readTagFile(tagFileOffset);
-        }
-        res.add(
-            new ShowTimeSeriesResult(
-                ansString.left.getFullPath(),
-                ansString.right[0],
-                ansString.right[1],
-                TSDataType.valueOf(ansString.right[2]),
-                TSEncoding.valueOf(ansString.right[3]),
-                CompressionType.valueOf(ansString.right[4]),
-                tagAndAttributePair.left,
-                tagAndAttributePair.right,
-                ansString.right[6],
-                ansString.right[7]));
-      } catch (IOException e) {
-        throw new MetadataException(
-            "Something went wrong while deserialize tag info of " + ansString.left.getFullPath(),
-            e);
-      }
-    }
-    return new Pair<>(res, ans.right);
+    return new Pair<>(
+        mtree.getAllMeasurementSchema(
+            plan,
+            offset -> {
+              try {
+                return tagManager.readTagFile(offset);
+              } catch (IOException e) {
+                logger.error("Failed to read tag and attribute info because {}", e.getMessage(), e);
+                return null;
+              }
+            }),
+        -1);
   }
   // endregion
   // endregion

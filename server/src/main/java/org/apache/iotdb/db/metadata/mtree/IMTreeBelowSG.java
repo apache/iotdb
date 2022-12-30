@@ -25,7 +25,6 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.plan.schemaregion.read.IShowDevicesPlan;
-import org.apache.iotdb.db.metadata.plan.schemaregion.read.IShowTimeSeriesPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.result.ShowDevicesResult;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -178,15 +177,6 @@ public interface IMTreeBelowSG {
    */
   List<MeasurementPath> fetchSchema(
       PartialPath pathPattern, Map<Integer, Template> templateMap, boolean withTags)
-      throws MetadataException;
-
-  /**
-   * Get all measurement schema matching the given path pattern
-   *
-   * <p>result: [name, alias, database, dataType, encoding, compression, offset] and the current
-   * offset
-   */
-  Pair<List<Pair<PartialPath, String[]>>, Integer> getAllMeasurementSchema(IShowTimeSeriesPlan plan)
       throws MetadataException;
 
   /**

@@ -35,11 +35,15 @@ import org.apache.iotdb.db.metadata.plan.schemaregion.write.ICreateTimeSeriesPla
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IDeactivateTemplatePlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IPreDeactivateTemplatePlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IRollbackPreDeactivateTemplatePlan;
+import org.apache.iotdb.db.metadata.query.info.IDeviceSchemaInfo;
+import org.apache.iotdb.db.metadata.query.info.ITimeSeriesSchemaInfo;
+import org.apache.iotdb.db.metadata.query.reader.ISchemaReader;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -399,6 +403,50 @@ public interface ISchemaRegion {
 
   long countPathsUsingTemplate(int templateId, PathPatternTree patternTree)
       throws MetadataException;
+
+  // endregion
+
+  // region Interfaces for SchemaReader
+
+  default ISchemaReader<IDeviceSchemaInfo> getDeviceReader(IShowDevicesPlan showDevicesPlan)
+      throws MetadataException {
+    List<ShowDevicesResult> showDevicesResultList = getMatchedDevices(showDevicesPlan).left;
+    Iterator<ShowDevicesResult> iterator = showDevicesResultList.iterator();
+    return new ISchemaReader<IDeviceSchemaInfo>() {
+      @Override
+      public void close() throws Exception {}
+
+      @Override
+      public boolean hasNext() {
+        return iterator.hasNext();
+      }
+
+      @Override
+      public IDeviceSchemaInfo next() {
+        return iterator.next();
+      }
+    };
+  }
+
+  default ISchemaReader<ITimeSeriesSchemaInfo> getTimeSeriesReader(
+      IShowTimeSeriesPlan showTimeSeriesPlan) throws MetadataException {
+    List<ShowTimeSeriesResult> showTimeSeriesResultList = showTimeseries(showTimeSeriesPlan).left;
+    Iterator<ShowTimeSeriesResult> iterator = showTimeSeriesResultList.iterator();
+    return new ISchemaReader<ITimeSeriesSchemaInfo>() {
+      @Override
+      public void close() throws Exception {}
+
+      @Override
+      public boolean hasNext() {
+        return iterator.hasNext();
+      }
+
+      @Override
+      public ITimeSeriesSchemaInfo next() {
+        return iterator.next();
+      }
+    };
+  }
 
   // endregion
 }

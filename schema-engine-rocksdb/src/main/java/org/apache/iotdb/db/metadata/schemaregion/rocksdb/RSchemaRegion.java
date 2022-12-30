@@ -62,7 +62,6 @@ import org.apache.iotdb.db.metadata.schemaregion.rocksdb.mnode.RMNodeValueType;
 import org.apache.iotdb.db.metadata.schemaregion.rocksdb.mnode.RMeasurementMNode;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.utils.MetaFormatUtils;
-import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -1045,7 +1044,7 @@ public class RSchemaRegion implements ISchemaRegion {
     BiFunction<byte[], byte[], Boolean> function =
         (a, b) -> {
           String fullPath = RSchemaUtils.getPathByInnerName(new String(a));
-          res.add(new ShowDevicesResult(fullPath, RSchemaUtils.isAligned(b), storageGroupFullPath));
+          res.add(new ShowDevicesResult(fullPath, RSchemaUtils.isAligned(b)));
           return true;
         };
     traverseOutcomeBasins(
@@ -1119,21 +1118,13 @@ public class RSchemaRegion implements ISchemaRegion {
     for (Entry<MeasurementPath, Pair<Map<String, String>, Map<String, String>>> entry :
         measurementPathsAndTags.entrySet()) {
       MeasurementPath measurementPath = entry.getKey();
-      Pair<String, String> deadbandInfo =
-          MetaUtils.parseDeadbandInfo(
-              ((MeasurementSchema) measurementPath.getMeasurementSchema()).getProps());
       res.add(
           new ShowTimeSeriesResult(
               measurementPath.getFullPath(),
               measurementPath.getMeasurementAlias(),
-              storageGroupFullPath,
-              measurementPath.getMeasurementSchema().getType(),
-              measurementPath.getMeasurementSchema().getEncodingType(),
-              measurementPath.getMeasurementSchema().getCompressor(),
+              (MeasurementSchema) measurementPath.getMeasurementSchema(),
               entry.getValue().left,
-              entry.getValue().right,
-              deadbandInfo.left,
-              deadbandInfo.right));
+              entry.getValue().right));
     }
     // todo Page query, record offset
     return new Pair<>(res, 1);

@@ -52,14 +52,13 @@ import org.apache.iotdb.db.metadata.mtree.traverser.counter.MeasurementGroupByLe
 import org.apache.iotdb.db.metadata.plan.schemaregion.read.IShowDevicesPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.read.IShowTimeSeriesPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.result.ShowDevicesResult;
+import org.apache.iotdb.db.metadata.plan.schemaregion.result.ShowTimeSeriesResult;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.utils.MetaFormatUtils;
-import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.Pair;
-import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import java.io.File;
@@ -691,11 +690,7 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
           protected void collectEntity(IEntityMNode node) {
             PartialPath device = getCurrentPartialPath(node);
             if (plan.hasSgCol()) {
-              res.add(
-                  new ShowDevicesResult(
-                      device.getFullPath(),
-                      node.isAligned(),
-                      getStorageGroupNodeInTraversePath(node).getFullPath()));
+              res.add(new ShowDevicesResult(device.getFullPath(), node.isAligned()));
             } else {
               res.add(new ShowDevicesResult(device.getFullPath(), node.isAligned()));
             }
@@ -760,38 +755,29 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
     return new Pair<>(result, offset);
   }
 
-  /**
-   * Get all measurement schema matching the given path pattern
-   *
-   * <p>result: [name, alias, database, dataType, encoding, compression, offset] and the current
-   * offset
-   */
-  @Override
-  public Pair<List<Pair<PartialPath, String[]>>, Integer> getAllMeasurementSchema(
-      IShowTimeSeriesPlan plan) throws MetadataException {
-
+  public List<ShowTimeSeriesResult> getAllMeasurementSchema(
+      IShowTimeSeriesPlan plan,
+      Function<Long, Pair<Map<String, String>, Map<String, String>>> tagAndAttributeProvider)
+      throws MetadataException {
     int limit = plan.getLimit();
     int offset = plan.getOffset();
 
-    MeasurementCollector<List<Pair<PartialPath, String[]>>> collector =
-        new MeasurementCollector<List<Pair<PartialPath, String[]>>>(
+    MeasurementCollector<List<ShowTimeSeriesResult>> collector =
+        new MeasurementCollector<List<ShowTimeSeriesResult>>(
             storageGroupMNode, plan.getPath(), store, limit, offset) {
           @Override
           protected void collectMeasurement(IMeasurementMNode node) {
-            IMeasurementSchema measurementSchema = node.getSchema();
-            Pair<String, String> deadbandInfo =
-                MetaUtils.parseDeadbandInfo(measurementSchema.getProps());
-            String[] tsRow = new String[8];
-            tsRow[0] = node.getAlias();
-            tsRow[1] = getStorageGroupNodeInTraversePath(node).getFullPath();
-            tsRow[2] = measurementSchema.getType().toString();
-            tsRow[3] = measurementSchema.getEncodingType().toString();
-            tsRow[4] = measurementSchema.getCompressor().toString();
-            tsRow[5] = String.valueOf(node.getOffset());
-            tsRow[6] = deadbandInfo.left;
-            tsRow[7] = deadbandInfo.right;
-            Pair<PartialPath, String[]> temp = new Pair<>(getCurrentPartialPath(node), tsRow);
-            resultSet.add(temp);
+            Pair<Map<String, String>, Map<String, String>> tagAndAttribute = null;
+            if (node.getOffset() != -1) {
+              tagAndAttribute = tagAndAttributeProvider.apply(node.getOffset());
+            }
+            resultSet.add(
+                new ShowTimeSeriesResult(
+                    getCurrentPartialPath(node).getFullPath(),
+                    node.getAlias(),
+                    (MeasurementSchema) node.getSchema(),
+                    tagAndAttribute == null ? null : tagAndAttribute.left,
+                    tagAndAttribute == null ? null : tagAndAttribute.right));
           }
         };
     collector.setPrefixMatch(plan.isPrefixMatch());
@@ -799,9 +785,7 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
     collector.setResultSet(new LinkedList<>());
     collector.traverse();
 
-    List<Pair<PartialPath, String[]>> result = collector.getResult();
-
-    return new Pair<>(result, collector.getCurOffset() + 1);
+    return collector.getResult();
   }
 
   // endregion

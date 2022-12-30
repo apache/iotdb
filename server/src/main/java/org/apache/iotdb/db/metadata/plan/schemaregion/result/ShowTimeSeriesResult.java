@@ -18,45 +18,37 @@
  */
 package org.apache.iotdb.db.metadata.plan.schemaregion.result;
 
+import org.apache.iotdb.db.metadata.query.info.ITimeSeriesSchemaInfo;
+import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import java.util.Map;
 import java.util.Objects;
 
-public class ShowTimeSeriesResult extends ShowSchemaResult {
+public class ShowTimeSeriesResult extends ShowSchemaResult implements ITimeSeriesSchemaInfo {
 
   private String alias;
-  private TSDataType dataType;
-  private TSEncoding encoding;
-  private CompressionType compressor;
+
+  private MeasurementSchema measurementSchema;
+
   private Map<String, String> tags;
   private Map<String, String> attributes;
-
-  private String deadband;
-  private String deadbandParameters;
 
   public ShowTimeSeriesResult(
       String name,
       String alias,
-      String sgName,
-      TSDataType dataType,
-      TSEncoding encoding,
-      CompressionType compressor,
+      MeasurementSchema measurementSchema,
       Map<String, String> tags,
-      Map<String, String> attributes,
-      String deadband,
-      String deadbandParameters) {
-    super(name, sgName);
+      Map<String, String> attributes) {
+    super(name);
     this.alias = alias;
-    this.dataType = dataType;
-    this.encoding = encoding;
-    this.compressor = compressor;
+    this.measurementSchema = measurementSchema;
     this.tags = tags;
     this.attributes = attributes;
-    this.deadband = deadband;
-    this.deadbandParameters = deadbandParameters;
   }
 
   public ShowTimeSeriesResult() {
@@ -67,16 +59,26 @@ public class ShowTimeSeriesResult extends ShowSchemaResult {
     return alias;
   }
 
+  @Override
+  public MeasurementSchema getSchema() {
+    return measurementSchema;
+  }
+
+  @Override
+  public Pair<Map<String, String>, Map<String, String>> getTagAndAttribute() {
+    return new Pair<>(tags, attributes);
+  }
+
   public TSDataType getDataType() {
-    return dataType;
+    return measurementSchema.getType();
   }
 
   public TSEncoding getEncoding() {
-    return encoding;
+    return measurementSchema.getEncodingType();
   }
 
   public CompressionType getCompressor() {
-    return compressor;
+    return measurementSchema.getCompressor();
   }
 
   public Map<String, String> getTag() {
@@ -88,11 +90,11 @@ public class ShowTimeSeriesResult extends ShowSchemaResult {
   }
 
   public String getDeadband() {
-    return deadband;
+    return MetaUtils.parseDeadbandInfo(measurementSchema.getProps()).left;
   }
 
   public String getDeadbandParameters() {
-    return deadbandParameters;
+    return MetaUtils.parseDeadbandInfo(measurementSchema.getProps()).right;
   }
 
   @Override

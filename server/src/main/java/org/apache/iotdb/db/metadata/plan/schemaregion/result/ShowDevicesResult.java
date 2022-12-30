@@ -18,18 +18,15 @@
  */
 package org.apache.iotdb.db.metadata.plan.schemaregion.result;
 
+import org.apache.iotdb.db.metadata.query.info.IDeviceSchemaInfo;
+
 import java.util.Objects;
 
-public class ShowDevicesResult extends ShowSchemaResult {
+public class ShowDevicesResult extends ShowSchemaResult implements IDeviceSchemaInfo {
   private boolean isAligned;
 
   public ShowDevicesResult() {
     super();
-  }
-
-  public ShowDevicesResult(String name, boolean isAligned, String sgName) {
-    super(name, sgName);
-    this.isAligned = isAligned;
   }
 
   public ShowDevicesResult(String name, boolean isAligned) {
