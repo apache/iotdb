@@ -54,7 +54,7 @@ docker run -d -p 6667:6667 -p 31999:31999 -p 8181:8181 -p 5555:5555 apache/iotdb
 ```
 
 ```shell
-docker run -d --name iotdb -p 6667:6667 -p 31999:31999 -p 8181:8181 -p 5555:5555 -p 9003:9003 -p 40010:40010 apache/iotdb:<version>
+docker run -d -p 6667:6667 -p 31999:31999 -p 8181:8181 -p 5555:5555 -p 9003:9003 -p 40010:40010 apache/iotdb:<version>
 ```
 
 ## Port description
