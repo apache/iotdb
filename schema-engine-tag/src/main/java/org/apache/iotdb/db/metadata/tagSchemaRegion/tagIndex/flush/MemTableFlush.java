@@ -18,9 +18,7 @@
  */
 package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.flush;
 
-import org.apache.iotdb.db.metadata.tagSchemaRegion.config.SchemaRegionConstant;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.entry.TiFileHeader;
-import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemChunk;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemChunkGroup;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemTable;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.request.FlushRequest;
@@ -34,10 +32,8 @@ import org.apache.iotdb.lsm.util.BloomFilter;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 /** flush for MemTable */
@@ -52,25 +48,17 @@ public class MemTableFlush extends FlushLevelProcessor<MemTable, MemChunkGroup, 
   @Override
   public void flush(MemTable memNode, FlushRequest flushRequest, FlushRequestContext context)
       throws IOException {
-    Collection<MemChunkGroup> memChunkGroups = getChildren(memNode, null, context);
-    Map<MemChunkGroup, String> memChunkGroupMapReverse =
-        memNode.getMemChunkGroupMap().entrySet().stream()
-            .collect(HashMap::new, (m, v) -> m.put(v.getValue(), v.getKey()), HashMap::putAll);
     Map<String, Long> tagKeyToOffset = new HashMap<>();
     FlushResponse flushResponse = context.getResponse();
-    for (MemChunkGroup memChunkGroup : memChunkGroups) {
-      tagKeyToOffset.put(
-          memChunkGroupMapReverse.get(memChunkGroup), flushResponse.getTagKeyOffset(memChunkGroup));
+    for (Map.Entry<String, MemChunkGroup> entry : memNode.getMemChunkGroupMap().entrySet()) {
+      tagKeyToOffset.put(entry.getKey(), flushResponse.getTagKeyOffset(entry.getValue()));
     }
     FileOutput fileOutput = context.getFileOutput();
     BPlusTreeWriter bPlusTreeWriter = new BPlusTreeWriter(fileOutput);
     TiFileHeader tiFileHeader = new TiFileHeader();
     tiFileHeader.setTagKeyIndexOffset(bPlusTreeWriter.write(tagKeyToOffset, false));
-    List<String> tagKeyAndValues = getTagKeyAndValues(memNode);
     BloomFilter bloomFilter = BloomFilter.getEmptyBloomFilter(0.05, 3);
-    for (String key : tagKeyAndValues) {
-      bloomFilter.add(key);
-    }
+    addToBloomFilter(bloomFilter, memNode);
     tiFileHeader.setBloomFilterOffset(fileOutput.write(bloomFilter));
     fileOutput.write(tiFileHeader);
     fileOutput.flush();
@@ -94,16 +82,11 @@ public class MemTableFlush extends FlushLevelProcessor<MemTable, MemChunkGroup, 
     fileOutput.close();
   }
 
-  private List<String> getTagKeyAndValues(MemTable memNode) {
-    List<String> tagKeyAndValues = new ArrayList<>();
+  private void addToBloomFilter(BloomFilter bloomFilter, MemTable memNode) {
     for (Map.Entry<String, MemChunkGroup> entry : memNode.getMemChunkGroupMap().entrySet()) {
       String tagKey = entry.getKey();
-      for (Map.Entry<String, MemChunk> tagValueEntry :
-          entry.getValue().getMemChunkMap().entrySet()) {
-        String tagValue = tagValueEntry.getKey();
-        tagKeyAndValues.add(tagKey + SchemaRegionConstant.SEPARATOR + tagValue);
-      }
+      Collection<String> tagValues = entry.getValue().getMemChunkMap().keySet();
+      bloomFilter.add(tagKey, tagValues);
     }
-    return tagKeyAndValues;
   }
 }

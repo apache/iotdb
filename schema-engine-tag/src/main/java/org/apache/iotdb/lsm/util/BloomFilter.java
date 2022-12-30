@@ -28,8 +28,11 @@ import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.BitSet;
+import java.util.Collection;
+import java.util.List;
 import java.util.Objects;
 
 public class BloomFilter implements IEntry {
@@ -114,6 +117,62 @@ public class BloomFilter implements IEntry {
     }
   }
 
+  public void add(String tagKey, Collection<String> tagValues) {
+    for (HashFunction f : func) {
+      int keyHash = f.hash(tagKey) * 31;
+      for (String value : tagValues) {
+        bits.set(keyHash + f.hash(value));
+      }
+    }
+  }
+
+  public boolean contains(String tagKey, String tagValue) {
+    if (tagKey == null || tagValue == null) {
+      return false;
+    }
+    boolean ret = true;
+    int index = 0;
+    while (ret && index < hashFunctionSize) {
+      ret = bits.get(func[index++].hash(tagKey, tagValue));
+    }
+    return ret;
+  }
+
+  public List<Boolean> contains(String tagKey, List<String> tagValues) {
+    List<Boolean> results = new ArrayList<>();
+    if (tagKey == null) {
+      results.add(false);
+      return results;
+    } else {
+      boolean allNull = true;
+      for (String tagValue : tagValues) {
+        if (tagValue == null) {
+          results.add(false);
+        } else {
+          results.add(true);
+          allNull = false;
+        }
+      }
+      if (allNull) {
+        return results;
+      }
+    }
+    int tagValueSize = tagValues.size();
+    for (int i = 0; i < hashFunctionSize; i++) {
+      int currentTagValueIndex = 0;
+      int keyHash = func[i].hash(tagKey) * 31;
+      while (currentTagValueIndex < tagValueSize) {
+        if (results.get(currentTagValueIndex)) {
+          results.set(
+              currentTagValueIndex,
+              bits.get(keyHash + func[i].hash(tagValues.get(currentTagValueIndex))));
+        }
+        currentTagValueIndex++;
+      }
+    }
+    return results;
+  }
+
   public boolean contains(String value) {
     if (value == null) {
       return false;
@@ -123,7 +182,6 @@ public class BloomFilter implements IEntry {
     while (ret && index < hashFunctionSize) {
       ret = bits.get(func[index++].hash(value));
     }
-
     return ret;
   }
 
@@ -173,6 +231,14 @@ public class BloomFilter implements IEntry {
       }
 
       return Math.abs(res) % cap;
+    }
+
+    public int hash(String... values) {
+      int res = 0;
+      for (String value : values) {
+        res = res * 31 + hash(value);
+      }
+      return res;
     }
 
     @Override

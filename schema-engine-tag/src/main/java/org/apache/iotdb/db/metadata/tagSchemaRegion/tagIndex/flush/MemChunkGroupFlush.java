@@ -46,15 +46,10 @@ public class MemChunkGroupFlush extends FlushLevelProcessor<MemChunkGroup, MemCh
   @Override
   public void flush(MemChunkGroup memNode, FlushRequest request, FlushRequestContext context)
       throws IOException {
-    Collection<MemChunk> memChunks = getChildren(memNode, null, context);
-    Map<MemChunk, String> memChunkGroupMapReverse =
-        memNode.getMemChunkMap().entrySet().stream()
-            .collect(HashMap::new, (m, v) -> m.put(v.getValue(), v.getKey()), HashMap::putAll);
     Map<String, Long> tagValueToOffset = new HashMap<>();
     FlushResponse flushResponse = context.getResponse();
-    for (MemChunk memChunk : memChunks) {
-      tagValueToOffset.put(
-          memChunkGroupMapReverse.get(memChunk), flushResponse.getChunkOffset(memChunk));
+    for (Map.Entry<String, MemChunk> entry : memNode.getMemChunkMap().entrySet()) {
+      tagValueToOffset.put(entry.getKey(), flushResponse.getChunkOffset(entry.getValue()));
     }
     FileOutput fileOutput = context.getFileOutput();
     BPlusTreeWriter bPlusTreeWriter = new BPlusTreeWriter(fileOutput);

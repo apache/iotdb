@@ -20,7 +20,6 @@ package org.apache.iotdb.db.metadata.tagSchemaRegion.config;
 
 public class SchemaRegionConstant {
 
-  public static final String SEPARATOR = ".";
   public static final String DELETE = "delete";
   public static final String TMP = "tmp";
 }
