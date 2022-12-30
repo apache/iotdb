@@ -104,7 +104,6 @@ void createSchemaTemplate() {
         temp.addToTemplate(mNodeS2);
 
         session->createSchemaTemplate(temp);
-        session->setStorageGroup("root.sg3.d1");
         session->setSchemaTemplate("template1", "root.sg3.d1");
     }
 }
@@ -316,7 +315,7 @@ void nonQuery() {
 }
 
 void query() {
-    unique_ptr<SessionDataSet> dataSet = session->executeQueryStatement("select s1, s2, s3 from root.** limit 50");
+    unique_ptr<SessionDataSet> dataSet = session->executeQueryStatement("select s1, s2, s3 from root.**");
     cout << "timestamp" << "  ";
     for (const string &name: dataSet->getColumnNames()) {
         cout << name << "  ";
@@ -324,7 +323,6 @@ void query() {
     cout << endl;
 
     dataSet->setBatchSize(1024);
-    int count = 0;
     while (dataSet->hasNext()) {
         cout << dataSet->next()->toString();
     }
@@ -383,17 +381,6 @@ int main() {
     session->open(false);
 
     cout << "setStorageGroup: root.sg1\n" << endl;
-    // delete if exists
-    try {
-        session->deleteStorageGroup("root.sg1");
-    }
-    catch (IoTDBException &e) {
-        // may not exists
-        string errorMessage(e.what());
-        if (errorMessage.find("does not exist") == string::npos) {
-            throw e;
-        }
-    }
     try {
         session->setStorageGroup("root.sg1");
     }
@@ -406,17 +393,6 @@ int main() {
     }
 
     cout << "setStorageGroup: root.sg2\n" << endl;
-    // delete if exists
-    try {
-        session->deleteStorageGroup("root.sg2");
-    }
-    catch (IoTDBException &e) {
-        // may not exists
-        string errorMessage(e.what());
-        if (errorMessage.find("does not exist") == string::npos) {
-            throw e;
-        }
-    }
     try {
         session->setStorageGroup("root.sg2");
     }
