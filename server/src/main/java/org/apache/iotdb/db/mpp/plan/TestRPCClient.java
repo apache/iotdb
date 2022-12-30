@@ -66,7 +66,7 @@ public class TestRPCClient {
 
   private void loadSnapshot() {
     try (SyncIoTConsensusServiceClient client =
-        syncClientManager.borrowClient(new TEndPoint("127.0.0.1", 40011))) {
+        syncClientManager.borrowClient(new TEndPoint("127.0.0.1", 10761))) {
       TTriggerSnapshotLoadRes res =
           client.triggerSnapshotLoad(
               new TTriggerSnapshotLoadReq(
@@ -79,7 +79,7 @@ public class TestRPCClient {
 
   private void testAddPeer() {
     try (SyncIoTConsensusServiceClient client =
-        syncClientManager.borrowClient(new TEndPoint("127.0.0.1", 40012))) {
+        syncClientManager.borrowClient(new TEndPoint("127.0.0.1", 10762))) {
       TInactivatePeerRes res =
           client.inactivatePeer(
               new TInactivatePeerReq(new DataRegionId(1).convertToTConsensusGroupId()));
@@ -91,7 +91,7 @@ public class TestRPCClient {
 
   private void removeRegionPeer() {
     try (SyncDataNodeInternalServiceClient client =
-        INTERNAL_SERVICE_CLIENT_MANAGER.borrowClient(new TEndPoint("127.0.0.1", 9003))) {
+        INTERNAL_SERVICE_CLIENT_MANAGER.borrowClient(new TEndPoint("127.0.0.1", 10730))) {
       client.removeRegionPeer(
           new TMaintainPeerReq(new DataRegionId(1).convertToTConsensusGroupId(), getLocation2(3)));
     } catch (Exception e) {
@@ -101,7 +101,7 @@ public class TestRPCClient {
 
   private void addPeer() {
     try (SyncDataNodeInternalServiceClient client =
-        INTERNAL_SERVICE_CLIENT_MANAGER.borrowClient(new TEndPoint("127.0.0.1", 9003))) {
+        INTERNAL_SERVICE_CLIENT_MANAGER.borrowClient(new TEndPoint("127.0.0.1", 10730))) {
       client.addRegionPeer(
           new TMaintainPeerReq(new DataRegionId(1).convertToTConsensusGroupId(), getLocation2(3)));
     } catch (Exception e) {
@@ -113,25 +113,25 @@ public class TestRPCClient {
     return new TDataNodeLocation(
         dataNodeId,
         new TEndPoint("127.0.0.1", 6669),
-        new TEndPoint("127.0.0.1", 9005),
-        new TEndPoint("127.0.0.1", 8779),
-        new TEndPoint("127.0.0.1", 40012),
-        new TEndPoint("127.0.0.1", 50012));
+        new TEndPoint("127.0.0.1", 10732),
+        new TEndPoint("127.0.0.1", 10742),
+        new TEndPoint("127.0.0.1", 10762),
+        new TEndPoint("127.0.0.1", 10752));
   }
 
   private TDataNodeLocation getLocation2(int dataNodeId) {
     return new TDataNodeLocation(
         dataNodeId,
         new TEndPoint("127.0.0.1", 6668),
-        new TEndPoint("127.0.0.1", 9004),
-        new TEndPoint("127.0.0.1", 8778),
-        new TEndPoint("127.0.0.1", 40011),
-        new TEndPoint("127.0.0.1", 50011));
+        new TEndPoint("127.0.0.1", 10731),
+        new TEndPoint("127.0.0.1", 10741),
+        new TEndPoint("127.0.0.1", 10761),
+        new TEndPoint("127.0.0.1", 10751));
   }
 
   private void createDataRegion() {
     try (SyncDataNodeInternalServiceClient client =
-        INTERNAL_SERVICE_CLIENT_MANAGER.borrowClient(new TEndPoint("127.0.0.1", 9005))) {
+        INTERNAL_SERVICE_CLIENT_MANAGER.borrowClient(new TEndPoint("127.0.0.1", 10732))) {
       TCreateDataRegionReq req = new TCreateDataRegionReq();
       req.setStorageGroup("root.test.g_0");
       TRegionReplicaSet regionReplicaSet = new TRegionReplicaSet();
@@ -141,26 +141,26 @@ public class TestRPCClient {
           new TDataNodeLocation(
               3,
               new TEndPoint("127.0.0.1", 6667),
-              new TEndPoint("127.0.0.1", 9003),
-              new TEndPoint("127.0.0.1", 8777),
-              new TEndPoint("127.0.0.1", 40010),
-              new TEndPoint("127.0.0.1", 50010)));
+              new TEndPoint("127.0.0.1", 10730),
+              new TEndPoint("127.0.0.1", 10740),
+              new TEndPoint("127.0.0.1", 10760),
+              new TEndPoint("127.0.0.1", 10750)));
       locationList.add(
           new TDataNodeLocation(
               4,
               new TEndPoint("127.0.0.1", 6668),
-              new TEndPoint("127.0.0.1", 9004),
-              new TEndPoint("127.0.0.1", 8778),
-              new TEndPoint("127.0.0.1", 40011),
-              new TEndPoint("127.0.0.1", 50011)));
+              new TEndPoint("127.0.0.1", 10731),
+              new TEndPoint("127.0.0.1", 10741),
+              new TEndPoint("127.0.0.1", 10761),
+              new TEndPoint("127.0.0.1", 10751)));
       locationList.add(
           new TDataNodeLocation(
               4,
               new TEndPoint("127.0.0.1", 6669),
-              new TEndPoint("127.0.0.1", 9005),
-              new TEndPoint("127.0.0.1", 8779),
-              new TEndPoint("127.0.0.1", 40012),
-              new TEndPoint("127.0.0.1", 50012)));
+              new TEndPoint("127.0.0.1", 10732),
+              new TEndPoint("127.0.0.1", 10742),
+              new TEndPoint("127.0.0.1", 10762),
+              new TEndPoint("127.0.0.1", 10752)));
       regionReplicaSet.setDataNodeLocations(locationList);
       req.setRegionReplicaSet(regionReplicaSet);
       TSStatus res = client.createDataRegion(req);
