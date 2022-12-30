@@ -39,7 +39,7 @@
         <!-- Default value of cmake root -->
         <cmake.root.dir>${project.build.directory}/dependency/cmake/</cmake.root.dir>
         <cmake.build.type>Release</cmake.build.type>
-        <catch2.url>https://github.com/catchorg/Catch2/releases/download/v2.13.0/catch.hpp</catch2.url>
+        <catch2.url>https://github.com/catchorg/Catch2/releases/download/v2.13.7/catch.hpp</catch2.url>
     </properties>
     <modules>
         <module>../example/client-cpp-example</module>
