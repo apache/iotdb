@@ -39,8 +39,6 @@ public class DevicesSchemaScanOperator extends SchemaQueryScanOperator {
   private final boolean hasSgCol;
   private final List<TSDataType> outputDataTypes;
 
-  private final String database;
-
   public DevicesSchemaScanOperator(
       PlanNodeId sourceId,
       OperatorContext operatorContext,
@@ -56,10 +54,6 @@ public class DevicesSchemaScanOperator extends SchemaQueryScanOperator {
                 ? ColumnHeaderConstant.showDevicesWithSgColumnHeaders
                 : ColumnHeaderConstant.showDevicesColumnHeaders)
             .stream().map(ColumnHeader::getColumnType).collect(Collectors.toList());
-    this.database =
-        ((SchemaDriverContext) operatorContext.getInstanceContext().getDriverContext())
-            .getSchemaRegion()
-            .getStorageGroupFullPath();
   }
 
   @Override
@@ -82,7 +76,7 @@ public class DevicesSchemaScanOperator extends SchemaQueryScanOperator {
     builder.getTimeColumnBuilder().writeLong(0L);
     builder.getColumnBuilder(0).writeBinary(new Binary(device.getFullPath()));
     if (hasSgCol) {
-      builder.getColumnBuilder(1).writeBinary(new Binary(database));
+      builder.getColumnBuilder(1).writeBinary(new Binary(getDatabase()));
       builder.getColumnBuilder(2).writeBinary(new Binary(String.valueOf(device.isAligned())));
     } else {
       builder.getColumnBuilder(1).writeBinary(new Binary(String.valueOf(device.isAligned())));

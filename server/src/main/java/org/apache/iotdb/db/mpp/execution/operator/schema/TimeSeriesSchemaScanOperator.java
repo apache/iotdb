@@ -50,8 +50,6 @@ public class TimeSeriesSchemaScanOperator extends SchemaQueryScanOperator {
 
   private final List<TSDataType> outputDataTypes;
 
-  private final String database;
-
   public TimeSeriesSchemaScanOperator(
       PlanNodeId planNodeId,
       OperatorContext operatorContext,
@@ -74,10 +72,6 @@ public class TimeSeriesSchemaScanOperator extends SchemaQueryScanOperator {
         ColumnHeaderConstant.showTimeSeriesColumnHeaders.stream()
             .map(ColumnHeader::getColumnType)
             .collect(Collectors.toList());
-    database =
-        ((SchemaDriverContext) operatorContext.getInstanceContext().getDriverContext())
-            .getSchemaRegion()
-            .getStorageGroupFullPath();
   }
 
   public String getKey() {
@@ -118,7 +112,7 @@ public class TimeSeriesSchemaScanOperator extends SchemaQueryScanOperator {
     builder.getTimeColumnBuilder().writeLong(0);
     builder.writeNullableText(0, series.getFullPath());
     builder.writeNullableText(1, series.getAlias());
-    builder.writeNullableText(2, database);
+    builder.writeNullableText(2, getDatabase());
     builder.writeNullableText(3, series.getSchema().getType().toString());
     builder.writeNullableText(4, series.getSchema().getEncodingType().toString());
     builder.writeNullableText(5, series.getSchema().getCompressor().toString());

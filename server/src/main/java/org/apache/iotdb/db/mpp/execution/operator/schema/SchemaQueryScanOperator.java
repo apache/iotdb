@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.mpp.execution.operator.schema;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.mpp.execution.driver.SchemaDriverContext;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.execution.operator.source.SourceOperator;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
@@ -41,6 +42,8 @@ public abstract class SchemaQueryScanOperator implements SourceOperator {
   protected boolean isPrefixPath;
 
   protected PlanNodeId sourceId;
+
+  private String database;
 
   protected SchemaQueryScanOperator(
       PlanNodeId sourceId,
@@ -128,5 +131,15 @@ public abstract class SchemaQueryScanOperator implements SourceOperator {
   @Override
   public long calculateRetainedSizeAfterCallingNext() {
     return 0L;
+  }
+
+  protected String getDatabase() {
+    if (database == null) {
+      database =
+          ((SchemaDriverContext) operatorContext.getInstanceContext().getDriverContext())
+              .getSchemaRegion()
+              .getStorageGroupFullPath();
+    }
+    return database;
   }
 }

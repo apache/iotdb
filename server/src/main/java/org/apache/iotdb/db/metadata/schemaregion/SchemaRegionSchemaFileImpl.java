@@ -1164,7 +1164,7 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
                 return tagManager.readTagFile(offset);
               } catch (IOException e) {
                 logger.error("Failed to read tag and attribute info because {}", e.getMessage(), e);
-                return null;
+                return new Pair<>(Collections.emptyMap(), Collections.emptyMap());
               }
             }),
         -1);

@@ -711,17 +711,15 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
             storageGroupMNode, plan.getPath(), store, limit, offset) {
           @Override
           protected void collectMeasurement(IMeasurementMNode node) {
-            Pair<Map<String, String>, Map<String, String>> tagAndAttribute = null;
-            if (node.getOffset() != -1) {
-              tagAndAttribute = tagAndAttributeProvider.apply(node.getOffset());
-            }
+            Pair<Map<String, String>, Map<String, String>> tagAndAttribute =
+                tagAndAttributeProvider.apply(node.getOffset());
             resultSet.add(
                 new ShowTimeSeriesResult(
                     getCurrentPartialPath(node).getFullPath(),
                     node.getAlias(),
                     (MeasurementSchema) node.getSchema(),
-                    tagAndAttribute == null ? null : tagAndAttribute.left,
-                    tagAndAttribute == null ? null : tagAndAttribute.right));
+                    tagAndAttribute.left,
+                    tagAndAttribute.right));
           }
         };
     collector.setPrefixMatch(plan.isPrefixMatch());
