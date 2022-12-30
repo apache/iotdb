@@ -66,6 +66,8 @@ jobs:
         run: mvn clean package -pl distribution -am -DskipTests
       - name: Test with Maven
         run: mvn clean verify -pl client-cpp -am -P compile-cpp -P cppTest
+      - name: cat
+        run: cat client-cpp/target/build/test/Testing/Temporary/LastTest_*.log
       - name: Upload Artifact
         if: failure()
         uses: actions/upload-artifact@v3
