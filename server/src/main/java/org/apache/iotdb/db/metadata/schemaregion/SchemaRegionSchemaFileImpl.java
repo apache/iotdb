@@ -1045,8 +1045,7 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
    * @return ShowDevicesResult and the current offset of this region after traverse.
    */
   @Override
-  public Pair<List<ShowDevicesResult>, Integer> getMatchedDevices(IShowDevicesPlan plan)
-      throws MetadataException {
+  public List<ShowDevicesResult> getMatchedDevices(IShowDevicesPlan plan) throws MetadataException {
     return mtree.getDevices(plan);
   }
   // endregion

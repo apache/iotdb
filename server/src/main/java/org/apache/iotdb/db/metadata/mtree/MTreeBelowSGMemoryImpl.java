@@ -598,8 +598,7 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
   }
 
   @Override
-  public Pair<List<ShowDevicesResult>, Integer> getDevices(IShowDevicesPlan plan)
-      throws MetadataException {
+  public List<ShowDevicesResult> getDevices(IShowDevicesPlan plan) throws MetadataException {
     List<ShowDevicesResult> res = new ArrayList<>();
     EntityCollector<List<ShowDevicesResult>> collector =
         new EntityCollector<List<ShowDevicesResult>>(
@@ -617,7 +616,7 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
     collector.setPrefixMatch(plan.isPrefixMatch());
     collector.traverse();
 
-    return new Pair<>(res, collector.getCurOffset() + 1);
+    return res;
   }
   // endregion
 

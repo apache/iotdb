@@ -137,7 +137,7 @@ public interface IMTreeBelowSG {
   Set<PartialPath> getDevices(PartialPath pathPattern, boolean isPrefixMatch)
       throws MetadataException;
 
-  Pair<List<ShowDevicesResult>, Integer> getDevices(IShowDevicesPlan plan) throws MetadataException;
+  List<ShowDevicesResult> getDevices(IShowDevicesPlan plan) throws MetadataException;
 
   /**
    * Get all measurement paths matching the given path pattern. If using prefix match, the path

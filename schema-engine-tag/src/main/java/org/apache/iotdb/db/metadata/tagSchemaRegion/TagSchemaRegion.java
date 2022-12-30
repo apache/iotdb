@@ -478,8 +478,7 @@ public class TagSchemaRegion implements ISchemaRegion {
   }
 
   @Override
-  public Pair<List<ShowDevicesResult>, Integer> getMatchedDevices(IShowDevicesPlan plan)
-      throws MetadataException {
+  public List<ShowDevicesResult> getMatchedDevices(IShowDevicesPlan plan) throws MetadataException {
     throw new UnsupportedOperationException("getMatchedDevices");
   }
 

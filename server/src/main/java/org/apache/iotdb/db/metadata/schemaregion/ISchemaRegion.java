@@ -269,8 +269,7 @@ public interface ISchemaRegion {
    * @param plan ShowDevicesPlan which contains the path pattern and restriction params.
    * @return ShowDevicesResult and the current offset of this region after traverse.
    */
-  Pair<List<ShowDevicesResult>, Integer> getMatchedDevices(IShowDevicesPlan plan)
-      throws MetadataException;
+  List<ShowDevicesResult> getMatchedDevices(IShowDevicesPlan plan) throws MetadataException;
   // endregion
 
   // region Interfaces for timeseries, measurement and schema info Query
@@ -409,7 +408,7 @@ public interface ISchemaRegion {
 
   default ISchemaReader<IDeviceSchemaInfo> getDeviceReader(IShowDevicesPlan showDevicesPlan)
       throws MetadataException {
-    List<ShowDevicesResult> showDevicesResultList = getMatchedDevices(showDevicesPlan).left;
+    List<ShowDevicesResult> showDevicesResultList = getMatchedDevices(showDevicesPlan);
     Iterator<ShowDevicesResult> iterator = showDevicesResultList.iterator();
     return new ISchemaReader<IDeviceSchemaInfo>() {
       @Override

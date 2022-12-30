@@ -1038,8 +1038,7 @@ public class RSchemaRegion implements ISchemaRegion {
   }
 
   @Override
-  public Pair<List<ShowDevicesResult>, Integer> getMatchedDevices(IShowDevicesPlan plan)
-      throws MetadataException {
+  public List<ShowDevicesResult> getMatchedDevices(IShowDevicesPlan plan) throws MetadataException {
     List<ShowDevicesResult> res = Collections.synchronizedList(new ArrayList<>());
     BiFunction<byte[], byte[], Boolean> function =
         (a, b) -> {
@@ -1050,8 +1049,7 @@ public class RSchemaRegion implements ISchemaRegion {
     traverseOutcomeBasins(
         plan.getPath().getNodes(), MAX_PATH_DEPTH, function, new Character[] {NODE_TYPE_ENTITY});
 
-    // todo Page query, record offset
-    return new Pair<>(res, 1);
+    return res;
   }
 
   @Override

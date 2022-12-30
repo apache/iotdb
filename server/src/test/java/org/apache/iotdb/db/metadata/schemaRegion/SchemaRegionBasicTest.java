@@ -35,7 +35,6 @@ import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.apache.commons.lang3.StringUtils;
 import org.junit.Assert;
@@ -617,23 +616,23 @@ public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
             "root.laptop.d2.s2"));
 
     Assert.assertEquals(
-        new Pair<>(Arrays.asList(), 0),
+        Collections.emptyList(),
         schemaRegion.getMatchedDevices(
             SchemaRegionReadPlanFactory.getShowDevicesPlan(new PartialPath("root.laptop.d0"))));
     Assert.assertEquals(
-        new Pair<>(Arrays.asList(new ShowDevicesResult("root.laptop.d1", false)), 0),
+        Collections.singletonList(new ShowDevicesResult("root.laptop.d1", false)),
         schemaRegion.getMatchedDevices(
             SchemaRegionReadPlanFactory.getShowDevicesPlan(new PartialPath("root.laptop.d1"))));
     Assert.assertEquals(
-        new Pair<>(Arrays.asList(new ShowDevicesResult("root.laptop.d2", false)), 0),
+        Collections.singletonList(new ShowDevicesResult("root.laptop.d2", false)),
         schemaRegion.getMatchedDevices(
             SchemaRegionReadPlanFactory.getShowDevicesPlan(new PartialPath("root.laptop.d2"))));
     Assert.assertEquals(
-        new Pair<>(Arrays.asList(new ShowDevicesResult("root.laptop", false)), 0),
+        Collections.singletonList(new ShowDevicesResult("root.laptop", false)),
         schemaRegion.getMatchedDevices(
             SchemaRegionReadPlanFactory.getShowDevicesPlan(new PartialPath("root.laptop"))));
     Assert.assertEquals(
-        new Pair<>(Arrays.asList(new ShowDevicesResult("root.laptop", false)), 0),
+        Collections.singletonList(new ShowDevicesResult("root.laptop", false)),
         schemaRegion.getMatchedDevices(
             SchemaRegionReadPlanFactory.getShowDevicesPlan(new PartialPath("root.*"))));
 
@@ -643,29 +642,27 @@ public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
             new ShowDevicesResult("root.laptop.d1", false),
             new ShowDevicesResult("root.laptop.d2", false),
             new ShowDevicesResult("root.laptop.d1.s2", false));
-    Integer expectedOffset = 0;
-    Pair<List<ShowDevicesResult>, Integer> actualResult =
+
+    List<ShowDevicesResult> actualResult =
         schemaRegion.getMatchedDevices(
             SchemaRegionReadPlanFactory.getShowDevicesPlan(new PartialPath("root.**")));
     // Compare hash sets because the order does not matter.
     HashSet<ShowDevicesResult> expectedHashset = new HashSet<>(expectedList);
-    HashSet<ShowDevicesResult> actualHashset = new HashSet<>(actualResult.left);
+    HashSet<ShowDevicesResult> actualHashset = new HashSet<>(actualResult);
     Assert.assertEquals(expectedHashset, actualHashset);
-    Assert.assertEquals(expectedOffset, actualResult.right);
 
     expectedList =
         Arrays.asList(
             new ShowDevicesResult("root.laptop.d1", false),
             new ShowDevicesResult("root.laptop.d2", false));
-    expectedOffset = 0;
+
     actualResult =
         schemaRegion.getMatchedDevices(
             SchemaRegionReadPlanFactory.getShowDevicesPlan(new PartialPath("root.**.d*")));
     // Compare hash sets because the order does not matter.
     expectedHashset = new HashSet<>(expectedList);
-    actualHashset = new HashSet<>(actualResult.left);
+    actualHashset = new HashSet<>(actualResult);
     Assert.assertEquals(expectedHashset, actualHashset);
-    Assert.assertEquals(expectedOffset, actualResult.right);
   }
 
   @Test
