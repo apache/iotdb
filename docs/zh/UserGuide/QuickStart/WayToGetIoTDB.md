@@ -75,7 +75,7 @@ Shell > unzip iotdb-<version>.zip
 +- tools/      <-- system tools
 ```
 
-如果您想要编译项目中的某个模块，您可以在源码文件夹中使用`mvn clean package -pl {module.name} -am -DskipTests`命令进行编译。如果您需要的是带依赖的 jar 包，您可以在编译命令后面加上`-P get-jar-with-dependencies`参数。比如您想编译带依赖的 jdbc jar 包，您就可以使用以下命令进行编译：  
+如果您想要编译项目中的某个模块，您可以在源码文件夹中使用`mvn clean package -pl {module.name} -am -DskipTests`命令进行编译。如果您需要的是带依赖的 jar 包，您可以在编译命令后面加上`-P get-jar-with-dependencies`参数。比如您想编译带依赖的 jdbc jar 包，您就可以使用以下命令进行编译：
 
 ```shell
 > mvn clean package -pl jdbc -am -DskipTests -P get-jar-with-dependencies
@@ -84,36 +84,12 @@ Shell > unzip iotdb-<version>.zip
 编译完成后就可以在`{module.name}/target`目录中找到需要的包了。
 
 
-### 通过 Docker 安装 (Dockerfile)
+### 通过 Docker 安装
 
-Apache IoTDB 的 Docker 镜像已经上传至 [https://hub.docker.com/r/apache/iotdb](https://hub.docker.com/r/apache/iotdb)，
+Apache IoTDB 的 Docker 镜像已经上传至 [https://hub.docker.com/r/apache/iotdb](https://hub.docker.com/r/apache/iotdb)。
+Apache IoTDB 的配置项以环境变量形式添加到容器内。
 
-1. **获取 IoTDB docker 镜像**
-
-   - **推荐**：执行 `docker pull apache/iotdb:latest` 即可获取最新的 docker 镜像。
-
-   - 用户也可以根据代码提供的 Dockerfile 文件来自己生成镜像。Dockerfile 存放在的 docker 工程下的 src/main/Dockerfile 中。
-
-     - 方法 1：```$ docker build -t iotdb:base git://github.com/apache/iotdb#master:docker```
-
-     - 方法 2：
-       ```shell
-       $ git clone https://github.com/apache/iotdb
-       $ cd iotdb
-       $ mvn package -DskipTests
-       $ cd docker
-       $ docker build -t iotdb:base .
-       ```
-
-   当 docker image 在本地构建完成的时候 （示例中的 tag 为 iotdb:base)，已经距完成只有一步之遥了！
-
-2. **创建数据文件和日志的 docker 挂载目录 (docker volume):**
-```
-$ docker volume create mydata
-$ docker volume create mylogs
-```
-3. **运行 docker 容器：**
-
+#### 简单尝试
 ```shell
 # 获取镜像
 docker pull apache/iotdb:1.0.0-standalone
@@ -157,8 +133,8 @@ services:
       - dn_internal_address=iotdb-service
       - dn_target_config_node_list=iotdb-service:22277
     volumes:
-        - ./data:/iotdb/data
-        - ./logs:/iotdb/logs
+      - ./data:/iotdb/data
+      - ./logs:/iotdb/logs
     networks:
       iotdb:
         ipv4_address: 172.18.0.6
@@ -210,7 +186,7 @@ services:
       - dn_target_config_node_list=iotdb-1:22277
       - data_replication_factor=3
       - data_region_consensus_protocol_class=org.apache.iotdb.consensus.iot.IoTConsensus
-       - schema_replication_factor=3
+        - schema_replication_factor=3
       - schema_region_consensus_protocol_class=org.apache.iotdb.consensus.ratis.RatisConsensus
       - config_node_consensus_protocol_class=org.apache.iotdb.consensus.ratis.RatisConsensus
     volumes:

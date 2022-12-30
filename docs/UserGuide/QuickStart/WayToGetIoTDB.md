@@ -73,7 +73,7 @@ If you would like to build the IoTDB server, you can run the following command u
 > mvn clean package -pl server -am -DskipTests
 ```
 
-After build, the IoTDB server will be at the folder "server/target/iotdb-server-{project.version}". 
+After build, the IoTDB server will be at the folder "server/target/iotdb-server-{project.version}".
 
 If you would like to build a module, you can execute command `mvn clean package -pl {module.name} -am -DskipTests` under the root path of IoTDB.
 If you need the jar with dependencies, you can add parameter `-P get-jar-with-dependencies` after the command. E.g., If you need the jar of jdbc with dependencies, you can execute this command:
@@ -84,26 +84,10 @@ If you need the jar with dependencies, you can add parameter `-P get-jar-with-de
 
 Then you can find it under the path `{module.name}/target`.
 
-### Installation by Docker (Dockerfile)
-
-Apache IoTDB' Docker image is released on [https://hub.docker.com/r/apache/iotdb](https://hub.docker.com/r/apache/iotdb),
-
-
-1. **Get IoTDB docker image**
-   - **Recommended:** Using `docker pull apache/iotdb:latest` can get the latest docker image.
-   - Users can also build a docker image themselves. Now a Dockerfile has been written at docker/src/main/Dockerfile.
-     - Way 1: `$ docker build -t iotdb:base git://github.com/apache/iotdb#master:docker`
-     - Way 2: 
-     ```shell
-      $ git clone https://github.com/apache/iotdb
-      $ cd iotdb
-      $ cd docker
-      $ docker build -t iotdb:base .
-		```
-
-Once the docker image has been built locally (the tag is iotdb:base in this example), you are almost done!
-
-2. **Create docker volume for data files and logs:**
+### Installation by Docker
+Apache IoTDB' Docker image is released on [https://hub.docker.com/r/apache/iotdb](https://hub.docker.com/r/apache/iotdb)
+Add environments of docker to update the configurations of Apache IoTDB.
+#### Have a try
 ```shell
 # get IoTDB official image
 docker pull apache/iotdb:1.0.0-standalone
@@ -147,8 +131,8 @@ services:
       - dn_internal_address=iotdb-service
       - dn_target_config_node_list=iotdb-service:22277
     volumes:
-        - ./data:/iotdb/data
-        - ./logs:/iotdb/logs
+      - ./data:/iotdb/data
+      - ./logs:/iotdb/logs
     networks:
       iotdb:
         ipv4_address: 172.18.0.6
@@ -201,7 +185,7 @@ services:
       - dn_target_config_node_list=iotdb-1:22277
       - data_replication_factor=3
       - data_region_consensus_protocol_class=org.apache.iotdb.consensus.iot.IoTConsensus
-       - schema_replication_factor=3
+        - schema_replication_factor=3
       - schema_region_consensus_protocol_class=org.apache.iotdb.consensus.ratis.RatisConsensus
       - config_node_consensus_protocol_class=org.apache.iotdb.consensus.ratis.RatisConsensus
     volumes:
