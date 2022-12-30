@@ -260,16 +260,6 @@ public class IoTDBNullOperandIT {
     retArray = new String[] {};
     resultSetEqualTest("select s1, s3, s4 from root.** where notExist>0", expectedHeader, retArray);
 
-    resultSetEqualTest(
-        "select s1, s3, s4 from root.** where diff(notExist)>0", expectedHeader, retArray);
-
-    retArray =
-        new String[] {
-          "1,1,true,false,", "2,2,true,null,", "3,3,null,false,",
-        };
-    resultSetEqualTest(
-        "select s1, s3, s4 from root.** where diff(notExist) is null", expectedHeader, retArray);
-
     // series in having not exist
     expectedHeader =
         new String[] {
