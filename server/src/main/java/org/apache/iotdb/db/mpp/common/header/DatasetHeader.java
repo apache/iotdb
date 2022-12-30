@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.mpp.common.header;
 
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+
 import com.google.common.primitives.Bytes;
 
 import java.util.ArrayList;
@@ -45,6 +47,7 @@ public class DatasetHeader {
 
   // cached field for create response
   private List<String> respColumns;
+  private List<TSDataType> respDataTypes;
   private List<String> respDataTypeList;
   private List<Byte> respAliasColumns;
   private Map<String, Integer> columnNameIndexMap;
@@ -53,6 +56,10 @@ public class DatasetHeader {
   public DatasetHeader(List<ColumnHeader> columnHeaders, boolean isIgnoreTimestamp) {
     this.columnHeaders = columnHeaders;
     this.isIgnoreTimestamp = isIgnoreTimestamp;
+  }
+
+  public List<ColumnHeader> getColumnHeaders() {
+    return columnHeaders;
   }
 
   public boolean isIgnoreTimestamp() {
@@ -74,6 +81,16 @@ public class DatasetHeader {
       }
     }
     return respColumns;
+  }
+
+  public List<TSDataType> getRespDataTypes() {
+    if (respDataTypes == null) {
+      respDataTypes = new ArrayList<>();
+      for (ColumnHeader columnHeader : columnHeaders) {
+        respDataTypes.add(columnHeader.getColumnType());
+      }
+    }
+    return respDataTypes;
   }
 
   public List<String> getRespDataTypeList() {

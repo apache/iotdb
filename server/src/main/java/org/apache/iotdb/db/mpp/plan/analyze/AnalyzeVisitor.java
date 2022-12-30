@@ -2525,19 +2525,12 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     }
     analysis.setRunningDataNodeLocations(allRunningDataNodeLocations);
 
-    Set<Expression> sourceExpressions =
-        analysis.getRespDatasetHeader().getColumnHeaders().stream()
-            .map(
-                columnHeader -> {
-                  try {
-                    return new TimeSeriesOperand(
-                        new MeasurementPath(
-                            columnHeader.getColumnName(), columnHeader.getColumnType()));
-                  } catch (IllegalPathException ignored) {
-                  }
-                  return null;
-                })
-            .collect(Collectors.toSet());
+    Set<Expression> sourceExpressions = new HashSet<>();
+    for (ColumnHeader columnHeader : analysis.getRespDatasetHeader().getColumnHeaders()) {
+      sourceExpressions.add(
+          TimeSeriesOperand.constructColumnHeaderExpression(
+              columnHeader.getColumnName(), columnHeader.getColumnType()));
+    }
     analysis.setSourceExpressions(sourceExpressions);
     sourceExpressions.forEach(expression -> analyzeExpression(analysis, expression));
 
