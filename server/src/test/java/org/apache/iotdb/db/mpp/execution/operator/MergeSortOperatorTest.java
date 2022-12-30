@@ -49,6 +49,7 @@ import org.apache.iotdb.db.mpp.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.mpp.plan.execution.IQueryExecution;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
+import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.db.mpp.plan.statement.component.SortItem;
 import org.apache.iotdb.db.mpp.plan.statement.component.SortKey;
@@ -1621,7 +1622,7 @@ public class MergeSortOperatorTest {
     }
   }
 
-  class FakeQueryExecution implements IQueryExecution {
+  static class FakeQueryExecution implements IQueryExecution {
     private final long startTime;
     private final String queryId;
     private final String sql;
@@ -1643,8 +1644,21 @@ public class MergeSortOperatorTest {
     }
 
     @Override
+    public void recordExecutionTime(long executionTime) {}
+
+    @Override
+    public long getTotalExecutionTime() {
+      return 0;
+    }
+
+    @Override
     public Optional<String> getExecuteSQL() {
       return Optional.of(sql);
+    }
+
+    @Override
+    public Statement getStatement() {
+      return null;
     }
 
     @Override

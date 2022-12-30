@@ -65,7 +65,7 @@ public class SortOperator implements ProcessOperator {
 
   @Override
   public TsBlock next() {
-    TsBlock tsBlock = inputOperator.next();
+    TsBlock tsBlock = inputOperator.nextWithTimer();
     if (tsBlock == null) {
       return null;
     }
@@ -74,7 +74,7 @@ public class SortOperator implements ProcessOperator {
       cachedData.add(new MergeSortKey(tsBlock, i));
     }
     // child has more data, can't calculate
-    if (inputOperator.hasNext()) {
+    if (inputOperator.hasNextWithTimer()) {
       return null;
     }
 
@@ -104,7 +104,7 @@ public class SortOperator implements ProcessOperator {
 
   @Override
   public boolean hasNext() {
-    return inputOperator.hasNext();
+    return inputOperator.hasNextWithTimer();
   }
 
   @Override
