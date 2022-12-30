@@ -81,8 +81,8 @@ public class DiskAlignedChunkMetadataLoader implements IChunkMetadataLoader {
         pathModifications.forEach(c -> DEBUG_LOGGER.info(c.toString()));
       }
 
-    // remove ChunkMetadata that have been deleted
-    ModificationUtils.modifyAlignedChunkMetaData(alignedChunkMetadataList, pathModifications);
+      // remove ChunkMetadata that have been deleted
+      ModificationUtils.modifyAlignedChunkMetaData(alignedChunkMetadataList, pathModifications);
 
       if (context.isDebug()) {
         DEBUG_LOGGER.info("After modification Chunk meta data list is: ");

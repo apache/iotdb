@@ -78,9 +78,9 @@ public class DiskChunkMetadataLoader implements IChunkMetadataLoader {
         pathModifications.forEach(c -> DEBUG_LOGGER.info(c.toString()));
       }
 
-    if (!pathModifications.isEmpty()) {
-      ModificationUtils.modifyChunkMetaData(chunkMetadataList, pathModifications);
-    }
+      if (!pathModifications.isEmpty()) {
+        ModificationUtils.modifyChunkMetaData(chunkMetadataList, pathModifications);
+      }
 
       if (context.isDebug()) {
         DEBUG_LOGGER.info("After modification Chunk meta data list is: ");
