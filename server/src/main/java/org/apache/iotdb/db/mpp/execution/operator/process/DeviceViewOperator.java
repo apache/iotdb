@@ -108,11 +108,11 @@ public class DeviceViewOperator implements ProcessOperator {
 
   @Override
   public TsBlock next() {
-    if (!getCurDeviceOperator().hasNext()) {
+    if (!getCurDeviceOperator().hasNextWithTimer()) {
       deviceIndex++;
       return null;
     }
-    TsBlock tsBlock = getCurDeviceOperator().next();
+    TsBlock tsBlock = getCurDeviceOperator().nextWithTimer();
     if (tsBlock == null) {
       return null;
     }
@@ -151,7 +151,7 @@ public class DeviceViewOperator implements ProcessOperator {
 
   @Override
   public boolean isFinished() {
-    return !this.hasNext();
+    return !this.hasNextWithTimer();
   }
 
   @Override
