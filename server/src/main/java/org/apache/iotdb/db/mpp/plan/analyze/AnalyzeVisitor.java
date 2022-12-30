@@ -2513,15 +2513,37 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     Analysis analysis = new Analysis();
     analysis.setStatement(showQueriesStatement);
     analysis.setRespDatasetHeader(DatasetHeaderFactory.getShowQueriesHeader());
+    analysis.setVirtualSource(true);
 
     List<TDataNodeLocation> allRunningDataNodeLocations = getRunningDataNodeLocations();
     if (allRunningDataNodeLocations.isEmpty()) {
       analysis.setFinishQueryAfterAnalyze(true);
     }
     // TODO Constant folding optimization for Where Predicate after True/False Constant introduced
+    if (allRunningDataNodeLocations.isEmpty()) {
+      throw new StatementAnalyzeException("no Running DataNodes");
+    }
     analysis.setRunningDataNodeLocations(allRunningDataNodeLocations);
 
+    Set<Expression> sourceExpressions =
+        analysis.getRespDatasetHeader().getColumnHeaders().stream()
+            .map(
+                columnHeader -> {
+                  try {
+                    return new TimeSeriesOperand(
+                        new MeasurementPath(
+                            columnHeader.getColumnName(), columnHeader.getColumnType()));
+                  } catch (IllegalPathException ignored) {
+                  }
+                  return null;
+                })
+            .collect(Collectors.toSet());
+    analysis.setSourceExpressions(sourceExpressions);
+    sourceExpressions.forEach(expression -> analyzeExpression(analysis, expression));
+
     analyzeWhere(analysis, showQueriesStatement);
+
+    analysis.setMergeOrderParameter(new OrderByParameter(showQueriesStatement.getSortItemList()));
 
     return analysis;
   }

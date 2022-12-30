@@ -69,6 +69,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedSeriesScanNo
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.LastQueryScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesAggregationScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesScanNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.ShowQueriesNode;
 
 import static org.apache.iotdb.db.mpp.common.DataNodeEndPoints.isSameNode;
 
@@ -421,6 +422,12 @@ public class MemoryDistributionCalculator
   @Override
   public Void visitMergeSort(MergeSortNode node, MemoryDistributionContext context) {
     processConsumeAllChildrenAtTheSameTime(node);
+    return null;
+  }
+
+  @Override
+  public Void visitShowQueries(ShowQueriesNode node, MemoryDistributionContext context) {
+    // do nothing since VirtualSourceNode will not have Exchange/FragmentSink as child
     return null;
   }
 

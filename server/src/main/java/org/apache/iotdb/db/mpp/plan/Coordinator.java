@@ -44,6 +44,8 @@ import org.apache.iotdb.db.utils.SetThreadName;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ScheduledExecutorService;
@@ -167,6 +169,10 @@ public class Coordinator {
 
   public IQueryExecution getQueryExecution(Long queryId) {
     return queryExecutionMap.get(queryId);
+  }
+
+  public List<IQueryExecution> getAllQueryExecutions() {
+    return new ArrayList<>(queryExecutionMap.values());
   }
 
   // TODO: (xingtanzjr) need to redo once we have a concrete policy for the threadPool management

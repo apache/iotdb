@@ -61,6 +61,7 @@ import org.apache.iotdb.confignode.consensus.response.TemplateInfoResp;
 import org.apache.iotdb.confignode.consensus.response.TemplateSetInfoResp;
 import org.apache.iotdb.confignode.exception.StorageGroupNotExistsException;
 import org.apache.iotdb.confignode.manager.node.NodeManager;
+import org.apache.iotdb.confignode.manager.observer.NodeStatisticsEvent;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
 import org.apache.iotdb.confignode.persistence.schema.ClusterSchemaInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllTemplatesResp;
@@ -78,6 +79,8 @@ import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.Pair;
 
+import com.google.common.eventbus.AllowConcurrentEvents;
+import com.google.common.eventbus.Subscribe;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -711,6 +714,18 @@ public class ClusterSchemaManager {
 
     // execute drop template
     return getConsensusManager().write(new DropSchemaTemplatePlan(templateName)).getStatus();
+  }
+
+  /**
+   * When some Nodes' states changed during a heartbeat loop, the eventbus in LoadManager will post
+   * the different NodeStatstics event to SyncManager and ClusterSchemaManager.
+   *
+   * @param nodeStatisticsEvent nodeStatistics that changed in a heartbeat loop
+   */
+  @Subscribe
+  @AllowConcurrentEvents
+  public void handleNodeStatistics(NodeStatisticsEvent nodeStatisticsEvent) {
+    // TODO
   }
 
   private NodeManager getNodeManager() {
