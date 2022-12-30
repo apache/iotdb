@@ -630,6 +630,11 @@ public class QueryExecution implements IQueryExecution {
   }
 
   @Override
+  public long getStartExecutionTime() {
+    return context.getStartTime();
+  }
+
+  @Override
   public void recordExecutionTime(long executionTime) {
     totalExecutionTime += executionTime;
   }

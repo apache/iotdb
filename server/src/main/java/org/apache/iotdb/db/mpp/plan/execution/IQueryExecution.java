@@ -51,6 +51,8 @@ public interface IQueryExecution {
 
   String getQueryId();
 
+  long getStartExecutionTime();
+
   void recordExecutionTime(long executionTime);
 
   long getTotalExecutionTime();
