@@ -317,6 +317,25 @@ public class TsFileResource {
     }
   }
 
+  public DeviceTimeIndex buildDeviceTimeIndex() throws IOException {
+    readLock();
+    try (InputStream inputStream =
+        FSFactoryProducer.getFSFactory()
+            .getBufferedInputStream(file.getPath() + TsFileResource.RESOURCE_SUFFIX)) {
+      ReadWriteIOUtils.readByte(inputStream);
+      ITimeIndex timeIndexFromResourceFile = ITimeIndex.createTimeIndex(inputStream);
+      if (!(timeIndexFromResourceFile instanceof DeviceTimeIndex)) {
+        throw new IOException("cannot build DeviceTimeIndex from resource " + file.getPath());
+      }
+      return (DeviceTimeIndex) timeIndexFromResourceFile;
+    } catch (Exception e) {
+      throw new IOException(
+          "Can't read file " + file.getPath() + TsFileResource.RESOURCE_SUFFIX + " from disk", e);
+    } finally {
+      readUnlock();
+    }
+  }
+
   public void updateStartTime(String device, long time) {
     timeIndex.updateStartTime(device, time);
   }
