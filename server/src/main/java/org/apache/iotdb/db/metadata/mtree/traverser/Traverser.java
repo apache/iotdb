@@ -469,7 +469,9 @@ public abstract class Traverser {
     // if the node is usingTemplate, the upperTemplate won't be null or the upperTemplateId won't be
     // NON_TEMPLATE.
     throw new IllegalStateException(
-        "There should not be no template mounted on any ancestor of a node usingTemplate.");
+        String.format(
+            "There should be a template mounted on any ancestor of the node [%s] usingTemplate.",
+            node.getFullPath()));
   }
 
   public void setTemplateMap(Map<Integer, Template> templateMap) {
