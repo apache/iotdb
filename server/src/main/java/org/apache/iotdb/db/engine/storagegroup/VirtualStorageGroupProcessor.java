@@ -2217,13 +2217,17 @@ public class VirtualStorageGroupProcessor {
   }
 
   private void executeCompaction() {
-    List<Long> timePartitions = new ArrayList<>(tsFileManager.getTimePartitions());
-    // sort the time partition from largest to smallest
-    timePartitions.sort((o1, o2) -> (int) (o2 - o1));
-    for (long timePartition : timePartitions) {
-      CompactionScheduler.scheduleCompaction(tsFileManager, timePartition);
+    try {
+      List<Long> timePartitions = new ArrayList<>(tsFileManager.getTimePartitions());
+      // sort the time partition from largest to smallest
+      timePartitions.sort((o1, o2) -> (int) (o2 - o1));
+      for (long timePartition : timePartitions) {
+        CompactionScheduler.scheduleCompaction(tsFileManager, timePartition);
+      }
+      CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
+    } catch (Throwable e) {
+      logger.error("Meet error in compaction schedule.", e);
     }
-    CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
   }
 
   /**
