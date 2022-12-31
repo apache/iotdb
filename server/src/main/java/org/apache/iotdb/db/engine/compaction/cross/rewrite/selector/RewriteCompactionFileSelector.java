@@ -79,7 +79,7 @@ public class RewriteCompactionFileSelector implements ICrossSpaceMergeFileSelect
   private AbstractCompactionEstimator compactionEstimator;
 
   // Cache the DeviceInfos for used seqFiles to avoid loading DeviceTimeIndex more than 1 times from
-  // disk for each seqFile because each seqFile may be scanned more than 1 time in each selector
+  // disk for each seqFile because each seqFile may be scanned more than 1 times in each selector
   private final TsFileDeviceInfoStore deviceInfoStore;
 
   public RewriteCompactionFileSelector(CrossSpaceCompactionResource resource, long memoryBudget) {
