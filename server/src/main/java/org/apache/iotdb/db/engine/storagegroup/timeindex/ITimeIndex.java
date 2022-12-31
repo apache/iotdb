@@ -21,6 +21,7 @@ package org.apache.iotdb.db.engine.storagegroup.timeindex;
 
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.PartitionViolationException;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -186,4 +187,12 @@ public interface ITimeIndex {
    * it may or may not contain this device
    */
   boolean mayContainsDevice(String device);
+
+  static ITimeIndex createTimeIndex(InputStream inputStream) throws IOException {
+    byte timeIndexType = ReadWriteIOUtils.readByte(inputStream);
+    if (timeIndexType == -1) {
+      throw new IOException("The end of stream has been reached");
+    }
+    return TimeIndexLevel.valueOf(timeIndexType).getTimeIndex().deserialize(inputStream);
+  }
 }
