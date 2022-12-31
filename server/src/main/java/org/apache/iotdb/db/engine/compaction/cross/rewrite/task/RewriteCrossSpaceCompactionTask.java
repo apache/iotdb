@@ -194,6 +194,9 @@ public class RewriteCrossSpaceCompactionTask extends AbstractCrossSpaceCompactio
       CompactionUtils.deleteCompactionModsFile(
           selectedSeqTsFileResourceList, selectedUnSeqTsFileResourceList);
 
+      // set target resources to CLOSED, so that they can be selected to compact
+      targetTsfileResourceList.forEach(x -> x.setStatus(TsFileResourceStatus.CLOSED));
+
       if (logFile.exists()) {
         FileUtils.delete(logFile);
       }

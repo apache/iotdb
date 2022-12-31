@@ -183,6 +183,12 @@ public class TsFileResource {
     this.timeIndexType = (byte) CONFIG.getTimeIndexLevel().ordinal();
   }
 
+  /** Used for compaction to create target files. */
+  public TsFileResource(File file, TsFileResourceStatus status) {
+    this(file);
+    this.status = status;
+  }
+
   /** unsealed TsFile, for writter */
   public TsFileResource(File file, TsFileProcessor processor) {
     this.file = file;
@@ -453,6 +459,11 @@ public class TsFileResource {
 
   public void close() throws IOException {
     this.setStatus(TsFileResourceStatus.CLOSED);
+    closeWithoutSettingStatus();
+  }
+
+  /** Used for compaction. */
+  public void closeWithoutSettingStatus() throws IOException {
     if (modFile != null) {
       modFile.close();
       modFile = null;

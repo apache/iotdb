@@ -21,11 +21,13 @@ package org.apache.iotdb.db.engine.compaction.cross;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.AbstractCompactionTest;
+import org.apache.iotdb.db.engine.compaction.CompactionUtils;
 import org.apache.iotdb.db.engine.compaction.cross.rewrite.manage.CrossSpaceCompactionResource;
 import org.apache.iotdb.db.engine.compaction.cross.rewrite.selector.ICrossSpaceMergeFileSelector;
 import org.apache.iotdb.db.engine.compaction.cross.rewrite.selector.RewriteCompactionFileSelector;
 import org.apache.iotdb.db.engine.compaction.cross.rewrite.task.RewriteCrossSpaceCompactionTask;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
+import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -2024,6 +2026,71 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
         .call();
 
     validateSeqFiles();
+  }
+
+  /**
+   * Target files of first cross compaction task should not be selected to participate in other
+   * tasks util the first task is finished.<br>
+   * Seq Files index : 1 ~ 10<br>
+   * Unseq Files index : 1 ~ 2<br>
+   * Unseq file 1 overlaps with seq file 4,5 and unseq file 2 overlaps with seq file 5,6
+   */
+  @Test
+  public void testCompactionSchedule() throws Exception {
+    IoTDBDescriptor.getInstance().getConfig().setMaxCrossCompactionCandidateFileNum(1);
+    IoTDBDescriptor.getInstance().getConfig().setMaxInnerCompactionCandidateFileNum(2);
+    createFiles(10, 10, 5, 1000, 0, 0, 100, 100, false, true);
+    createFiles(1, 5, 10, 1000, 4000, 4000, 0, 100, false, false);
+    createFiles(1, 5, 10, 1000, 5000, 5000, 0, 100, false, false);
+
+    tsFileManager.addAll(seqResources, true);
+    tsFileManager.addAll(unseqResources, false);
+
+    // first cross compaction task
+    CrossSpaceCompactionResource crossSpaceCompactionResource =
+        new CrossSpaceCompactionResource(seqResources, unseqResources);
+    RewriteCompactionFileSelector crossSpaceCompactionSelector =
+        new RewriteCompactionFileSelector(crossSpaceCompactionResource, Long.MAX_VALUE);
+    List[] sourceFiles = crossSpaceCompactionSelector.select();
+    Assert.assertEquals(2, sourceFiles[0].size());
+    Assert.assertEquals(1, sourceFiles[1].size());
+    List<TsFileResource> targetResources =
+        TsFileNameGenerator.getCrossCompactionTargetFileResources(sourceFiles[0]);
+
+    CompactionUtils.compact(sourceFiles[0], sourceFiles[1], targetResources);
+
+    CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG + "-" + "0");
+    CompactionUtils.combineModsInCompaction(sourceFiles[0], sourceFiles[1], targetResources);
+    tsFileManager.replace(sourceFiles[0], sourceFiles[1], targetResources, 0, true);
+
+    // Suppose the read lock of the source file is occupied by other threads, causing the first task
+    // to get stuck.
+    // Target file of the first task should not be selected to participate in other cross compaction
+    // tasks.
+    crossSpaceCompactionSelector =
+        new RewriteCompactionFileSelector(
+            new CrossSpaceCompactionResource(
+                tsFileManager.getTsFileList(true), tsFileManager.getTsFileList(false)),
+            Long.MAX_VALUE);
+    Assert.assertEquals(0, crossSpaceCompactionSelector.select().length);
+
+    // first compaction task finishes successfully
+    targetResources.forEach(x -> x.setStatus(TsFileResourceStatus.CLOSED));
+
+    // target file of first compaction task can be selected to participate in another cross
+    // compaction task
+    crossSpaceCompactionSelector =
+        new RewriteCompactionFileSelector(
+            new CrossSpaceCompactionResource(
+                tsFileManager.getTsFileList(true), tsFileManager.getTsFileList(false)),
+            Long.MAX_VALUE);
+    List[] pairs = crossSpaceCompactionSelector.select();
+    Assert.assertEquals(2, pairs.length);
+    Assert.assertEquals(2, pairs[0].size());
+    Assert.assertEquals(1, pairs[1].size());
+    Assert.assertEquals(tsFileManager.getTsFileList(true).get(4), pairs[0].get(0));
+    Assert.assertEquals(tsFileManager.getTsFileList(true).get(5), pairs[0].get(1));
+    Assert.assertEquals(tsFileManager.getTsFileList(false).get(0), pairs[1].get(0));
   }
 
   private void validateSeqFiles() {

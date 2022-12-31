@@ -192,6 +192,9 @@ public class SizeTieredCompactionTask extends AbstractInnerSpaceCompactionTask {
           costTime,
           ((double) selectedFileSize) / 1024.0d / 1024.0d / costTime);
 
+      // set target resource to CLOSED, so that it can be selected to compact
+      targetTsFileResource.setStatus(TsFileResourceStatus.CLOSED);
+
       if (logFile.exists()) {
         FileUtils.delete(logFile);
       }

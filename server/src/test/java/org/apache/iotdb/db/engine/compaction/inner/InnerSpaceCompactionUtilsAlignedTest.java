@@ -27,6 +27,7 @@ import org.apache.iotdb.db.engine.compaction.inner.utils.InnerSpaceCompactionUti
 import org.apache.iotdb.db.engine.compaction.utils.CompactionCheckerUtils;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionConfigRestorer;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionFileGeneratorUtils;
+import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.metadata.path.AlignedPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
@@ -118,7 +119,8 @@ public class InnerSpaceCompactionUtilsAlignedTest {
           randomNull);
       resources.add(resource);
     }
-    TsFileResource targetResource = new TsFileResource(new File(dataDirectory, "1-1-1-0.tsfile"));
+    TsFileResource targetResource =
+        TsFileNameGenerator.getInnerCompactionTargetFileResource(resources, true);
     List<PartialPath> fullPaths = new ArrayList<>();
     List<IMeasurementSchema> iMeasurementSchemas = new ArrayList<>();
     List<String> measurementIds = new ArrayList<>();
@@ -134,6 +136,7 @@ public class InnerSpaceCompactionUtilsAlignedTest {
         CompactionCheckerUtils.getDataByQuery(
             fullPaths, iMeasurementSchemas, resources, new ArrayList<>());
     InnerSpaceCompactionUtils.compact(targetResource, resources);
+    InnerSpaceCompactionUtils.moveTargetFile(targetResource, "");
     Map<PartialPath, List<TimeValuePair>> compactedData =
         CompactionCheckerUtils.getDataByQuery(
             fullPaths,
@@ -186,7 +189,8 @@ public class InnerSpaceCompactionUtilsAlignedTest {
       CompactionFileGeneratorUtils.generateMods(deletionMap, resource, false);
       resources.add(resource);
     }
-    TsFileResource targetResource = new TsFileResource(new File(dataDirectory, "1-1-1-0.tsfile"));
+    TsFileResource targetResource =
+        TsFileNameGenerator.getInnerCompactionTargetFileResource(resources, true);
     List<PartialPath> fullPaths = new ArrayList<>();
     List<IMeasurementSchema> iMeasurementSchemas = new ArrayList<>();
     List<String> measurementIds = new ArrayList<>();
@@ -202,6 +206,7 @@ public class InnerSpaceCompactionUtilsAlignedTest {
         CompactionCheckerUtils.getDataByQuery(
             fullPaths, iMeasurementSchemas, resources, new ArrayList<>());
     InnerSpaceCompactionUtils.compact(targetResource, resources);
+    InnerSpaceCompactionUtils.moveTargetFile(targetResource, "");
     Map<PartialPath, List<TimeValuePair>> compactedData =
         CompactionCheckerUtils.getDataByQuery(
             fullPaths,
@@ -248,7 +253,8 @@ public class InnerSpaceCompactionUtilsAlignedTest {
           randomNull);
       resources.add(resource);
     }
-    TsFileResource targetResource = new TsFileResource(new File(dataDirectory, "1-1-1-0.tsfile"));
+    TsFileResource targetResource =
+        TsFileNameGenerator.getInnerCompactionTargetFileResource(resources, true);
     List<PartialPath> fullPaths = new ArrayList<>();
     List<IMeasurementSchema> iMeasurementSchemas = new ArrayList<>();
     List<String> measurementIds = new ArrayList<>();
@@ -264,6 +270,7 @@ public class InnerSpaceCompactionUtilsAlignedTest {
         CompactionCheckerUtils.getDataByQuery(
             fullPaths, iMeasurementSchemas, resources, new ArrayList<>());
     InnerSpaceCompactionUtils.compact(targetResource, resources);
+    InnerSpaceCompactionUtils.moveTargetFile(targetResource, "");
     Map<PartialPath, List<TimeValuePair>> compactedData =
         CompactionCheckerUtils.getDataByQuery(
             fullPaths,
@@ -313,7 +320,8 @@ public class InnerSpaceCompactionUtilsAlignedTest {
           randomNull);
       resources.add(resource);
     }
-    TsFileResource targetResource = new TsFileResource(new File(dataDirectory, "1-1-1-0.tsfile"));
+    TsFileResource targetResource =
+        TsFileNameGenerator.getInnerCompactionTargetFileResource(resources, true);
     List<PartialPath> fullPaths = new ArrayList<>();
     List<IMeasurementSchema> iMeasurementSchemas = new ArrayList<>();
     List<String> measurementIds = new ArrayList<>();
@@ -329,6 +337,7 @@ public class InnerSpaceCompactionUtilsAlignedTest {
         CompactionCheckerUtils.getDataByQuery(
             fullPaths, iMeasurementSchemas, resources, new ArrayList<>());
     InnerSpaceCompactionUtils.compact(targetResource, resources);
+    InnerSpaceCompactionUtils.moveTargetFile(targetResource, "");
     Map<PartialPath, List<TimeValuePair>> compactedData =
         CompactionCheckerUtils.getDataByQuery(
             fullPaths,
@@ -376,7 +385,8 @@ public class InnerSpaceCompactionUtilsAlignedTest {
           randomNull);
       resources.add(resource);
     }
-    TsFileResource targetResource = new TsFileResource(new File(dataDirectory, "1-1-1-0.tsfile"));
+    TsFileResource targetResource =
+        TsFileNameGenerator.getInnerCompactionTargetFileResource(resources, true);
     List<PartialPath> fullPaths = new ArrayList<>();
     List<IMeasurementSchema> iMeasurementSchemas = new ArrayList<>();
     List<String> measurementIds = new ArrayList<>();
@@ -392,6 +402,7 @@ public class InnerSpaceCompactionUtilsAlignedTest {
         CompactionCheckerUtils.getDataByQuery(
             fullPaths, iMeasurementSchemas, resources, new ArrayList<>());
     InnerSpaceCompactionUtils.compact(targetResource, resources);
+    InnerSpaceCompactionUtils.moveTargetFile(targetResource, "");
     Map<PartialPath, List<TimeValuePair>> compactedData =
         CompactionCheckerUtils.getDataByQuery(
             fullPaths,
@@ -441,7 +452,8 @@ public class InnerSpaceCompactionUtilsAlignedTest {
           randomNull);
       resources.add(resource);
     }
-    TsFileResource targetResource = new TsFileResource(new File(dataDirectory, "1-1-1-0.tsfile"));
+    TsFileResource targetResource =
+        TsFileNameGenerator.getInnerCompactionTargetFileResource(resources, true);
     List<PartialPath> fullPaths = new ArrayList<>();
     List<IMeasurementSchema> iMeasurementSchemas = new ArrayList<>();
     List<String> measurementIds = new ArrayList<>();
@@ -457,6 +469,7 @@ public class InnerSpaceCompactionUtilsAlignedTest {
         CompactionCheckerUtils.getDataByQuery(
             fullPaths, iMeasurementSchemas, resources, new ArrayList<>());
     InnerSpaceCompactionUtils.compact(targetResource, resources);
+    InnerSpaceCompactionUtils.moveTargetFile(targetResource, "");
     Map<PartialPath, List<TimeValuePair>> compactedData =
         CompactionCheckerUtils.getDataByQuery(
             fullPaths,
@@ -507,7 +520,8 @@ public class InnerSpaceCompactionUtilsAlignedTest {
           randomNull);
       resources.add(resource);
     }
-    TsFileResource targetResource = new TsFileResource(new File(dataDirectory, "1-1-1-0.tsfile"));
+    TsFileResource targetResource =
+        TsFileNameGenerator.getInnerCompactionTargetFileResource(resources, true);
     List<PartialPath> fullPaths = new ArrayList<>();
     List<IMeasurementSchema> iMeasurementSchemas = new ArrayList<>();
     List<String> measurementIds = new ArrayList<>();
@@ -523,6 +537,7 @@ public class InnerSpaceCompactionUtilsAlignedTest {
         CompactionCheckerUtils.getDataByQuery(
             fullPaths, iMeasurementSchemas, resources, new ArrayList<>());
     InnerSpaceCompactionUtils.compact(targetResource, resources);
+    InnerSpaceCompactionUtils.moveTargetFile(targetResource, "");
     Map<PartialPath, List<TimeValuePair>> compactedData =
         CompactionCheckerUtils.getDataByQuery(
             fullPaths,
@@ -584,7 +599,8 @@ public class InnerSpaceCompactionUtilsAlignedTest {
         timeInterval * (30 + 1),
         randomNull);
     resources.add(resource);
-    TsFileResource targetResource = new TsFileResource(new File(dataDirectory, "1-1-1-0.tsfile"));
+    TsFileResource targetResource =
+        TsFileNameGenerator.getInnerCompactionTargetFileResource(resources, true);
     List<PartialPath> fullPaths = new ArrayList<>();
     List<IMeasurementSchema> iMeasurementSchemas = new ArrayList<>();
     List<String> measurementIds = new ArrayList<>();
@@ -600,6 +616,7 @@ public class InnerSpaceCompactionUtilsAlignedTest {
         CompactionCheckerUtils.getDataByQuery(
             fullPaths, iMeasurementSchemas, resources, new ArrayList<>());
     InnerSpaceCompactionUtils.compact(targetResource, resources);
+    InnerSpaceCompactionUtils.moveTargetFile(targetResource, "");
     Map<PartialPath, List<TimeValuePair>> compactedData =
         CompactionCheckerUtils.getDataByQuery(
             fullPaths,
