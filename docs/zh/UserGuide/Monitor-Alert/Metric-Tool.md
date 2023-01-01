@@ -384,8 +384,8 @@ static_configs:
 ##### 5.2.4.1. 如何获取 Apache IoTDB Dashboard？
 
 1. 您可以在 GitHub 上获取到Dashboard的json文件。
-   1. <a href = "https://github.com/apache/iotdb/tree/master/docs/UserGuide/Monitor-Alert/Apache IoTDB ConfigNode Dashboard.json">Apache IoTDB ConfigNode Dashboard</a>
-   2. <a href = "https://github.com/apache/iotdb/tree/master/docs/UserGuide/Monitor-Alert/Apache IoTDB DataNode Dashboard.json">Apache IoTDB DataNode Dashboard</a>
+   1. <a href = "https://github.com/apache/iotdb/tree/master/docs/UserGuide/Monitor-Alert/Apache-IoTDB-ConfigNode-Dashboard.json">Apache IoTDB ConfigNode Dashboard</a>
+   2. <a href = "https://github.com/apache/iotdb/tree/master/docs/UserGuide/Monitor-Alert/Apache-IoTDB-DataNode-Dashboard.json">Apache IoTDB DataNode Dashboard</a>
 2. 您可以访问[Grafana Dashboard官网](https://grafana.com/grafana/dashboards/)搜索`Apache IoTDB Dashboard`并使用
 
 在创建Grafana时，您可以选择Import刚刚下载的json文件，并为Apache IoTDB Dashboard选择对应目标数据源。
