@@ -87,7 +87,7 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R>
   // whether to visit the subtree of current node
   private boolean shouldVisitSubtree;
   // record exception if failed
-  private Exception exception;
+  private Throwable throwable;
 
   // cached result variables
   protected N nextMatchedNode;
@@ -131,11 +131,11 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R>
   }
 
   public boolean isSuccess() {
-    return exception != null;
+    return throwable != null;
   }
 
-  public Exception getException() {
-    return exception;
+  public Throwable getThrowable() {
+    return throwable;
   }
 
   public void reset() {
@@ -155,14 +155,14 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R>
 
   @Override
   public boolean hasNext() {
-    if (exception == null && nextMatchedNode == null) {
+    if (throwable == null && nextMatchedNode == null) {
       try {
         getNext();
-      } catch (Exception e) {
+      } catch (Throwable e) {
         setFailure(e);
       }
     }
-    return exception != null && nextMatchedNode != null;
+    return throwable != null && nextMatchedNode != null;
   }
 
   @Override
@@ -301,8 +301,8 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R>
    */
   protected abstract boolean processFullMatchedNode(N node) throws Exception;
 
-  protected void setFailure(Exception e) {
-    this.exception = e;
+  protected void setFailure(Throwable e) {
+    this.throwable = e;
   }
 
   /** The method used for generating the result based on the matched node. */
@@ -343,7 +343,7 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R>
       if (nextMatchedChild == null) {
         try {
           getNext();
-        } catch (Exception e) {
+        } catch (Throwable e) {
           setFailure(e);
           return false;
         }
