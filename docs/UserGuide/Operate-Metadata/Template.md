@@ -87,14 +87,14 @@ show timeseries root.sg1.**
 ````
 
 ```shell
-+-----------------------+-----+--------+--------+--------+-----------+----+----------+
-|             timeseries|alias|database|dataType|encoding|compression|tags|attributes|
-+-----------------------+-----+--------+--------+--------+-----------+----+----------+
-|root.sg1.d1.temperature| null|root.sg1|   FLOAT|     RLE|     SNAPPY|null|      null|
-|     root.sg1.d1.status| null|root.sg1| BOOLEAN|   PLAIN|     SNAPPY|null|      null|
-|        root.sg1.d2.lon| null|root.sg1|   FLOAT| GORILLA|     SNAPPY|null|      null|
-|        root.sg1.d2.lat| null|root.sg1|   FLOAT| GORILLA|     SNAPPY|null|      null|
-+-----------------------+-----+--------+--------+--------+-----------+----+----------+
++-----------------------+-----+-------------+--------+--------+-----------+----+----------+--------+-------------------+
+|             timeseries|alias|     database|dataType|encoding|compression|tags|attributes|deadband|deadband parameters|
++-----------------------+-----+-------------+--------+--------+-----------+----+----------+--------+-------------------+
+|root.sg1.d1.temperature| null|     root.sg1|   FLOAT|     RLE|     SNAPPY|null|      null|    null|               null|
+|     root.sg1.d1.status| null|     root.sg1| BOOLEAN|   PLAIN|     SNAPPY|null|      null|    null|               null|
+|        root.sg1.d2.lon| null|     root.sg1|   FLOAT| GORILLA|     SNAPPY|null|      null|    null|               null|
+|        root.sg1.d2.lat| null|     root.sg1|   FLOAT| GORILLA|     SNAPPY|null|      null|    null|               null|
++-----------------------+-----+-------------+--------+--------+-----------+----+----------+--------+-------------------+
 ```
 
 Show the devices:
