@@ -137,9 +137,9 @@ public class RowBasedTimeJoinOperator implements ProcessOperator {
     // among all the input TsBlock as the current output TsBlock's endTime.
     for (int i = 0; i < inputOperatorsCount; i++) {
       if (!noMoreTsBlocks[i] && empty(i)) {
-        if (children.get(i).hasNext()) {
+        if (children.get(i).hasNextWithTimer()) {
           inputIndex[i] = 0;
-          inputTsBlocks[i] = children.get(i).next();
+          inputTsBlocks[i] = children.get(i).nextWithTimer();
           if (!empty(i)) {
             updateTimeSelector(i);
           } else {
@@ -210,7 +210,7 @@ public class RowBasedTimeJoinOperator implements ProcessOperator {
       if (!empty(i)) {
         return true;
       } else if (!noMoreTsBlocks[i]) {
-        if (children.get(i).hasNext()) {
+        if (children.get(i).hasNextWithTimer()) {
           return true;
         } else {
           noMoreTsBlocks[i] = true;

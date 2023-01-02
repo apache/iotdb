@@ -47,7 +47,7 @@ public class SnapshotStorage implements StateMachineStorage {
   private final Logger logger = LoggerFactory.getLogger(SnapshotStorage.class);
   private final IStateMachine applicationStateMachine;
 
-  private final String TMP_PREFIX = ".tmp.";
+  private static final String TMP_PREFIX = ".tmp.";
   private File stateMachineDir;
   private final RaftGroupId groupId;
 

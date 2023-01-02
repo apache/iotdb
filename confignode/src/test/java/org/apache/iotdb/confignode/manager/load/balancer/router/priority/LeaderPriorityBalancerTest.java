@@ -51,10 +51,10 @@ public class LeaderPriorityBalancerTest {
           new TDataNodeLocation(
               i,
               new TEndPoint("0.0.0.0", 6667 + i),
-              new TEndPoint("0.0.0.0", 9003 + i),
-              new TEndPoint("0.0.0.0", 8777 + i),
-              new TEndPoint("0.0.0.0", 40010 + i),
-              new TEndPoint("0.0.0.0", 50010 + i)));
+              new TEndPoint("0.0.0.0", 10730 + i),
+              new TEndPoint("0.0.0.0", 10740 + i),
+              new TEndPoint("0.0.0.0", 10760 + i),
+              new TEndPoint("0.0.0.0", 10750 + i)));
     }
 
     // Build nodeCacheMap
@@ -126,10 +126,10 @@ public class LeaderPriorityBalancerTest {
           new TDataNodeLocation(
               i,
               new TEndPoint("0.0.0.0", 6667 + i),
-              new TEndPoint("0.0.0.0", 9003 + i),
-              new TEndPoint("0.0.0.0", 8777 + i),
-              new TEndPoint("0.0.0.0", 40010 + i),
-              new TEndPoint("0.0.0.0", 50010 + i)));
+              new TEndPoint("0.0.0.0", 10730 + i),
+              new TEndPoint("0.0.0.0", 10740 + i),
+              new TEndPoint("0.0.0.0", 10760 + i),
+              new TEndPoint("0.0.0.0", 10750 + i)));
     }
 
     // Build TRegionReplicaSet

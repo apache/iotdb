@@ -325,23 +325,31 @@ struct TCheckUserPrivilegesReq {
 }
 
 // ConfigNode
+
+/* These parameters should be consist within the cluster */
+struct TClusterParameters {
+  1: required string clusterName
+  2: required i32 dataReplicationFactor
+  3: required i32 schemaReplicationFactor
+  4: required string dataRegionConsensusProtocolClass
+  5: required string schemaRegionConsensusProtocolClass
+  6: required string configNodeConsensusProtocolClass
+  7: required i64 timePartitionInterval
+  8: required i64 defaultTTL
+  9: required string readConsistencyLevel
+  10: required double schemaRegionPerDataNode
+  11: required double dataRegionPerProcessor
+  12: required i32 leastDataRegionGroupNum
+  13: required i32 seriesPartitionSlotNum
+  14: required string seriesPartitionExecutorClass
+  15: required double diskSpaceWarningThreshold
+}
+
 struct TConfigNodeRegisterReq {
   1: required common.TConfigNodeLocation configNodeLocation
   // The Non-Seed-ConfigNode must ensure that the following
   // fields are consistent with the Seed-ConfigNode
-  2: required string dataRegionConsensusProtocolClass
-  3: required string schemaRegionConsensusProtocolClass
-  4: required i32 seriesPartitionSlotNum
-  5: required string seriesPartitionExecutorClass
-  6: required i64 defaultTTL
-  7: required i64 timePartitionInterval
-  8: required i32 schemaReplicationFactor
-  9: required double schemaRegionPerDataNode
-  10: required i32 dataReplicationFactor
-  11: required double dataRegionPerProcessor
-  12: required string readConsistencyLevel
-  13: required double diskSpaceWarningThreshold
-  14: required i32 leastDataRegionGroupNum
+  2: required TClusterParameters clusterParameters
 }
 
 struct TConfigNodeRegisterResp {
@@ -441,6 +449,11 @@ struct TShowClusterResp {
   2: required list<common.TConfigNodeLocation> configNodeList
   3: required list<common.TDataNodeLocation> dataNodeList
   4: required map<i32, string> nodeStatus
+}
+
+struct TShowClusterParametersResp {
+  1: required common.TSStatus status
+  2: optional TClusterParameters clusterParameters
 }
 
 // Show datanodes
@@ -652,6 +665,54 @@ struct TUnsetSchemaTemplateReq{
   1: required string queryId
   2: required string templateName
   3: required string path
+}
+
+struct TCreateModelReq {
+  1: required string modelId
+  2: required byte modelTask
+  3: required bool isAuto
+  4: required map<string, string> modelConfigs
+  5: required list<string> queryExpressions
+  6: optional string queryFilter
+}
+
+struct TDropModelReq {
+  1: required string modelId
+}
+
+struct TShowModelReq {
+  1: optional string modelId
+}
+
+struct TModelInfo {
+  1: required string modelId
+  2: required map<string, string> modelInfo
+}
+
+struct TShowModelResp {
+  1: required common.TSStatus status
+  2: required list<TModelInfo> modelInfoList
+}
+
+struct TShowTrailReq {
+  1: required string modelId
+  2: optional string trailId
+}
+
+struct TTrailInfo {
+  1: required string modelId
+  2: required string trailId
+  3: required map<string, string> trailInfo
+}
+
+struct TShowTrailResp {
+  1: required common.TSStatus status
+  2: required list<TTrailInfo> trailInfoList
+}
+
+struct TUpdateModelInfoReq {
+  1: required string modelId
+  2: required map<string, string> modelInfo
 }
 
 service IConfigNodeRPCService {
@@ -1006,6 +1067,9 @@ service IConfigNodeRPCService {
   /** Show cluster ConfigNodes' and DataNodes' information */
   TShowClusterResp showCluster()
 
+  /** Show cluster parameters who should be consist in the same cluster */
+  TShowClusterParametersResp showClusterParameters()
+
   /** Show cluster DataNodes' information */
   TShowDataNodesResp showDataNodes()
 
@@ -1135,7 +1199,7 @@ service IConfigNodeRPCService {
   /**
    * Create a CQ
    *
-   * @return SUCCESS_STATUS if the trigger was created successfully
+   * @return SUCCESS_STATUS if the cq was created successfully
    */
   common.TSStatus createCQ(TCreateCQReq req)
 
@@ -1147,8 +1211,43 @@ service IConfigNodeRPCService {
   common.TSStatus dropCQ(TDropCQReq req)
 
   /**
-   * Return the trigger table of config leader
+   * Return the cq table of config leader
    */
   TShowCQResp showCQ()
+
+  // ====================================================
+  // ML Model
+  // ====================================================
+
+  /**
+   * Create a model
+   *
+   * @return SUCCESS_STATUS if the model was created successfully
+   */
+  common.TSStatus createModel(TCreateModelReq req)
+
+  /**
+   * Drop a model
+   *
+   * @return SUCCESS_STATUS if the model was removed successfully
+   */
+  common.TSStatus dropModel(TDropModelReq req)
+
+  /**
+   * Return the model table
+   */
+  TShowModelResp showModel(TShowModelReq req)
+
+  /**
+   * Return the trail table
+   */
+  TShowTrailResp showTrail(TShowTrailReq req)
+
+  /**
+   * Update the model info
+   *
+   * @return SUCCESS_STATUS if the model was removed successfully
+   */
+  common.TSStatus updateModelInfo(TUpdateModelInfoReq req)
 }
 

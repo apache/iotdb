@@ -82,7 +82,7 @@ public abstract class AbstractUpdateLastCacheOperator implements ProcessOperator
 
   @Override
   public boolean hasNext() {
-    return child.hasNext();
+    return child.hasNextWithTimer();
   }
 
   @Override

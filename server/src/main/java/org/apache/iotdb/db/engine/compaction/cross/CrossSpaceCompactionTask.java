@@ -193,6 +193,9 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
         for (TsFileResource targetResource : targetTsfileResourceList) {
           if (targetResource != null) {
             TsFileMetricManager.getInstance().addFile(targetResource.getTsFileSize(), true);
+
+            // set target resources to CLOSED, so that they can be selected to compact
+            targetResource.setStatus(TsFileResourceStatus.CLOSED);
           }
         }
 

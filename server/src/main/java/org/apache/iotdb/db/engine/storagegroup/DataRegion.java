@@ -69,6 +69,7 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.cache.DataNodeSchemaCache;
 import org.apache.iotdb.db.metadata.idtable.IDTable;
 import org.apache.iotdb.db.metadata.idtable.IDTableManager;
+import org.apache.iotdb.db.mpp.metric.QueryMetricsManager;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertMultiTabletsNode;
@@ -134,6 +135,8 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
 import static org.apache.iotdb.db.engine.storagegroup.TsFileResource.TEMP_SUFFIX;
+import static org.apache.iotdb.db.mpp.metric.QueryResourceMetricSet.SEQUENCE_TSFILE;
+import static org.apache.iotdb.db.mpp.metric.QueryResourceMetricSet.UNSEQUENCE_TSFILE;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
 
 /**
@@ -267,6 +270,8 @@ public class DataRegion implements IDataRegionForQuery {
   public static final long COMPACTION_TASK_SUBMIT_DELAY = 20L * 1000L;
 
   private IDTable idTable;
+
+  private final QueryMetricsManager QUERY_METRICS = QueryMetricsManager.getInstance();
 
   /**
    * constrcut a database processor
@@ -1666,6 +1671,10 @@ public class DataRegion implements IDataRegionForQuery {
               context,
               timeFilter,
               false);
+
+      QUERY_METRICS.recordQueryResourceNum(SEQUENCE_TSFILE, seqResources.size());
+      QUERY_METRICS.recordQueryResourceNum(UNSEQUENCE_TSFILE, unseqResources.size());
+
       QueryDataSource dataSource = new QueryDataSource(seqResources, unseqResources);
       dataSource.setDataTTL(dataTTL);
       return dataSource;
@@ -2079,11 +2088,15 @@ public class DataRegion implements IDataRegionForQuery {
   }
 
   private void executeCompaction() {
-    List<Long> timePartitions = new ArrayList<>(tsFileManager.getTimePartitions());
-    // sort the time partition from largest to smallest
-    timePartitions.sort((o1, o2) -> (int) (o2 - o1));
-    for (long timePartition : timePartitions) {
-      CompactionScheduler.scheduleCompaction(tsFileManager, timePartition);
+    try {
+      List<Long> timePartitions = new ArrayList<>(tsFileManager.getTimePartitions());
+      // sort the time partition from largest to smallest
+      timePartitions.sort((o1, o2) -> (int) (o2 - o1));
+      for (long timePartition : timePartitions) {
+        CompactionScheduler.scheduleCompaction(tsFileManager, timePartition);
+      }
+    } catch (Throwable e) {
+      logger.error("Meet error in compaction schedule.", e);
     }
   }
 
