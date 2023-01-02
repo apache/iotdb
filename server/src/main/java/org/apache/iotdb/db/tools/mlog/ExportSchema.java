@@ -33,6 +33,9 @@ import org.apache.commons.cli.ParseException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.nio.file.Path;
+import java.nio.file.Paths;
+
 public class ExportSchema {
   private static final Logger logger = LoggerFactory.getLogger(ExportSchema.class);
 
@@ -68,7 +71,7 @@ public class ExportSchema {
             .required()
             .argName(TARGET_DIR_NAME)
             .hasArg()
-            .desc("Need to specify a target directory path on server（required)")
+            .desc("Need to specify a absolute target directory path on server（required)")
             .build();
     options.addOption(targetDir);
 
@@ -159,6 +162,11 @@ public class ExportSchema {
       password = "root";
     }
     String targetDir = commandLine.getOptionValue(TARGET_DIR_ARGS);
+    Path p = Paths.get(targetDir);
+    if (!p.isAbsolute()) {
+      logger.error("Target directory path should be absolute path.");
+      return;
+    }
 
     Session session =
         new Session.Builder()
