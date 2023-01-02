@@ -2219,25 +2219,27 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
             .getConfig()
             .getCrossCompactionSelector()
             .createInstance(COMPACTION_TEST_SG, "0", 0, tsFileManager);
-    Pair<List<TsFileResource>, List<TsFileResource>> sourceFiles =
+    CrossCompactionTaskResource sourceFiles =
         crossSpaceCompactionSelector
             .selectCrossSpaceTask(
                 tsFileManager.getSequenceListByTimePartition(0),
                 tsFileManager.getUnsequenceListByTimePartition(0))
             .get(0);
-    Assert.assertEquals(2, sourceFiles.left.size());
-    Assert.assertEquals(1, sourceFiles.right.size());
+    Assert.assertEquals(2, sourceFiles.getSeqFiles().size());
+    Assert.assertEquals(1, sourceFiles.getUnseqFiles().size());
     List<TsFileResource> targetResources =
-        CompactionFileGeneratorUtils.getCrossCompactionTargetTsFileResources(sourceFiles.left);
-    performer.setSourceFiles(sourceFiles.left, sourceFiles.right);
+        CompactionFileGeneratorUtils.getCrossCompactionTargetTsFileResources(
+            sourceFiles.getSeqFiles());
+    performer.setSourceFiles(sourceFiles.getSeqFiles(), sourceFiles.getUnseqFiles());
     performer.setTargetFiles(targetResources);
     performer.setSummary(new CompactionTaskSummary());
     performer.perform();
 
     CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG + "-" + "0");
     CompactionUtils.combineModsInCrossCompaction(
-        sourceFiles.left, sourceFiles.right, targetResources);
-    tsFileManager.replace(sourceFiles.left, sourceFiles.right, targetResources, 0, true);
+        sourceFiles.getSeqFiles(), sourceFiles.getUnseqFiles(), targetResources);
+    tsFileManager.replace(
+        sourceFiles.getSeqFiles(), sourceFiles.getUnseqFiles(), targetResources, 0, true);
 
     // Suppose the read lock of the source file is occupied by other threads, causing the first task
     // to get stuck.
@@ -2265,16 +2267,19 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
 
     // target file of first compaction task can be selected to participate in another cross
     // compaction task
-    List<Pair<List<TsFileResource>, List<TsFileResource>>> pairs =
+    List<CrossCompactionTaskResource> pairs =
         crossSpaceCompactionSelector.selectCrossSpaceTask(
             tsFileManager.getSequenceListByTimePartition(0),
             tsFileManager.getUnsequenceListByTimePartition(0));
     Assert.assertEquals(1, pairs.size());
-    Assert.assertEquals(2, pairs.get(0).left.size());
-    Assert.assertEquals(1, pairs.get(0).right.size());
-    Assert.assertEquals(tsFileManager.getTsFileList(true).get(4), pairs.get(0).left.get(0));
-    Assert.assertEquals(tsFileManager.getTsFileList(true).get(5), pairs.get(0).left.get(1));
-    Assert.assertEquals(tsFileManager.getTsFileList(false).get(0), pairs.get(0).right.get(0));
+    Assert.assertEquals(2, pairs.get(0).getSeqFiles().size());
+    Assert.assertEquals(1, pairs.get(0).getUnseqFiles().size());
+    Assert.assertEquals(
+        tsFileManager.getTsFileList(true).get(4), pairs.get(0).getSeqFiles().get(0));
+    Assert.assertEquals(
+        tsFileManager.getTsFileList(true).get(5), pairs.get(0).getSeqFiles().get(1));
+    Assert.assertEquals(
+        tsFileManager.getTsFileList(false).get(0), pairs.get(0).getUnseqFiles().get(0));
 
     // target file of first compaction task can be selected to participate in another inner
     // compaction task
