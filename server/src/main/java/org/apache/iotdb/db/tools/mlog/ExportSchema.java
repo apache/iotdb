@@ -171,6 +171,7 @@ public class ExportSchema {
     try {
       session.open(false);
       session.executeNonQueryStatement(String.format("EXPORT SCHEMA '%s'", targetDir));
+      logger.info("Export schema successfully.");
     } catch (IoTDBConnectionException | StatementExecutionException e) {
       logger.error(e.getMessage(), e);
     } finally {
