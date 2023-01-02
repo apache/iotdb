@@ -713,7 +713,8 @@ var config = {
 							['Operate-Metadata/Timeseries','Timeseries'],
 							['Operate-Metadata/Template','Schema Template'],
 							['Operate-Metadata/TTL','TTL'],
-							['Operate-Metadata/Auto-Create-MetaData','Auto Create Metadata']
+							['Operate-Metadata/Auto-Create-MetaData','Auto Create Metadata'],
+							['Operate-Metadata/Export-Schema','Export Schema'],
 						]
 					},
 					{
@@ -1911,7 +1912,8 @@ var config = {
 							['Operate-Metadata/Timeseries','时间序列操作'],
 							['Operate-Metadata/Template','元数据模板'],
 							['Operate-Metadata/TTL','TTL'],
-							['Operate-Metadata/Auto-Create-MetaData','自动创建元数据']
+							['Operate-Metadata/Auto-Create-MetaData','自动创建元数据'],
+							['Operate-Metadata/Export-Schema','元数据导出'],
 						]
 					},
 					{
