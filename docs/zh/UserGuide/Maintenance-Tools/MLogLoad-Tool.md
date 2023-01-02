@@ -27,7 +27,7 @@ MLogLoad 工具用于将重放 `mlog.bin` 中和 `tlog.txt`   中的元数据操
 与正在运行的 IoTDB 中的元数据存在冲突的待加载数据将会被跳过。
 
 若正在运行的 IoTDB 中已有元数据，为避免重放删除操作影响元数据，建议使用
-[导出元数据操作](https://iotdb.apache.org/zh/UserGuide/V0.13.x/Operate-Metadata/Export-Schema.html) 归档得到的 `mlog.bin` 和 `tlog.txt` 进行增量加载。
+[导出元数据操作](https://iotdb.apache.org/UserGuide/V0.13.x/Maintenance-Tools/Export-Schema-Tool.html) 归档得到的 `mlog.bin` 和 `tlog.txt` 进行增量加载。
 
 ### 使用方法
 
