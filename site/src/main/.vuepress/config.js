@@ -766,6 +766,7 @@ var config = {
 							['Maintenance-Tools/Log-Tool','Log Tool'],
 							['Maintenance-Tools/JMX-Tool','JMX Tool'],
 							['Maintenance-Tools/MLogParser-Tool','MLogParser Tool'],
+							['Maintenance-Tools/MLogLoad-Tool','MLogLoad Tool'],
 							['Maintenance-Tools/Export-Schema-Tool','Export Schema Tool'],
 							['Maintenance-Tools/NodeTool','Node Tool'],
 							['Maintenance-Tools/Watermark-Tool','Watermark Tool'],
