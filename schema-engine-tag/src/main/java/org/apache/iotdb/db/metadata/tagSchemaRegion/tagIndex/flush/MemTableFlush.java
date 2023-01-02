@@ -48,6 +48,9 @@ public class MemTableFlush extends FlushLevelProcessor<MemTable, MemChunkGroup, 
   @Override
   public void flush(MemTable memNode, FlushRequest flushRequest, FlushRequestContext context)
       throws IOException {
+    if (memNode.getDeletionList() != null && memNode.getDeletionList().size() != 0) {
+      flushDeletionList(memNode, flushRequest, context);
+    }
     Map<String, Long> tagKeyToOffset = new HashMap<>();
     FlushResponse flushResponse = context.getResponse();
     for (Map.Entry<String, MemChunkGroup> entry : memNode.getMemChunkGroupMap().entrySet()) {
@@ -62,9 +65,6 @@ public class MemTableFlush extends FlushLevelProcessor<MemTable, MemChunkGroup, 
     tiFileHeader.setBloomFilterOffset(fileOutput.write(bloomFilter));
     fileOutput.write(tiFileHeader);
     fileOutput.flush();
-    if (memNode.getDeletionList() != null && memNode.getDeletionList().size() != 0) {
-      flushDeletionList(memNode, flushRequest, context);
-    }
   }
 
   private void flushDeletionList(
