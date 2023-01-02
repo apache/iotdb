@@ -48,13 +48,14 @@ public abstract class MNodeCollector<T> extends CollectorTraverser<T> {
   }
 
   @Override
-  protected boolean processInternalMatchedMNode(IMNode node, int idx, int level) {
+  protected boolean processInternalMatchedNode(IMNode node) {
     return false;
   }
 
   @Override
-  protected boolean processFullMatchedMNode(IMNode node, int idx, int level) {
+  protected boolean processFullMatchedNode(IMNode node) {
     if (targetLevel >= 0) {
+      int level = getCurrentNodeLevel();
       // move the cursor the given level when matched
       if (level < targetLevel) {
         return false;

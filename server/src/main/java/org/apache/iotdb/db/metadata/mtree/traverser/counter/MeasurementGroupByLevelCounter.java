@@ -91,9 +91,8 @@ public class MeasurementGroupByLevelCounter extends Traverser {
   }
 
   @Override
-  protected boolean processInternalMatchedMNode(IMNode node, int idx, int level)
-      throws MetadataException {
-    if (level == groupByLevel) {
+  protected boolean processInternalMatchedNode(IMNode node) {
+    if (getCurrentNodeLevel() == groupByLevel) {
       path = node.getPartialPath();
       result.putIfAbsent(path, 0L);
     }
@@ -101,9 +100,8 @@ public class MeasurementGroupByLevelCounter extends Traverser {
   }
 
   @Override
-  protected boolean processFullMatchedMNode(IMNode node, int idx, int level)
-      throws MetadataException {
-    if (level == groupByLevel) {
+  protected boolean processFullMatchedNode(IMNode node) {
+    if (getCurrentNodeLevel() == groupByLevel) {
       path = node.getPartialPath();
       result.putIfAbsent(path, 0L);
     }
@@ -115,7 +113,7 @@ public class MeasurementGroupByLevelCounter extends Traverser {
         return true;
       }
     }
-    if (level >= groupByLevel) {
+    if (getCurrentNodeLevel() >= groupByLevel) {
       result.put(path, result.get(path) + 1);
     }
     return true;

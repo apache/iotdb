@@ -124,6 +124,7 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
     if (nextMatchedNode == null) {
       getNext();
     }
+    // if(failed) return false;
     return nextMatchedNode != null;
   }
 

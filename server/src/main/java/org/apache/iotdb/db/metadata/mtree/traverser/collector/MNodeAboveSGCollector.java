@@ -37,8 +37,8 @@ public abstract class MNodeAboveSGCollector<T> extends MNodeCollector<T> {
   }
 
   @Override
-  protected boolean processInternalMatchedMNode(IMNode node, int idx, int level) {
-    boolean shouldSkipSubtree = super.processInternalMatchedMNode(node, idx, level);
+  protected boolean processInternalMatchedNode(IMNode node) {
+    boolean shouldSkipSubtree = super.processInternalMatchedNode(node);
     if (node.isStorageGroup()) {
       involvedStorageGroupMNodes.add(node.getPartialPath());
       return true;
@@ -47,8 +47,8 @@ public abstract class MNodeAboveSGCollector<T> extends MNodeCollector<T> {
   }
 
   @Override
-  protected boolean processFullMatchedMNode(IMNode node, int idx, int level) {
-    boolean shouldSkipSubtree = super.processFullMatchedMNode(node, idx, level);
+  protected boolean processFullMatchedNode(IMNode node) {
+    boolean shouldSkipSubtree = super.processFullMatchedNode(node);
     if (node.isStorageGroup()) {
       involvedStorageGroupMNodes.add(node.getPartialPath());
       return true;

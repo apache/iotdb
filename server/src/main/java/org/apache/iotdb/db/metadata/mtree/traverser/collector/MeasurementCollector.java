@@ -59,14 +59,12 @@ public abstract class MeasurementCollector<T> extends CollectorTraverser<T> {
   }
 
   @Override
-  protected boolean processInternalMatchedMNode(IMNode node, int idx, int level)
-      throws MetadataException {
+  protected boolean processInternalMatchedNode(IMNode node) {
     return false;
   }
 
   @Override
-  protected boolean processFullMatchedMNode(IMNode node, int idx, int level)
-      throws MetadataException {
+  protected boolean processFullMatchedNode(IMNode node) {
     if (!node.isMeasurement()
         || (skipPreDeletedSchema && node.getAsMeasurementMNode().isPreDeleted())) {
       return false;

@@ -45,13 +45,12 @@ public abstract class EntityCollector<T> extends CollectorTraverser<T> {
   }
 
   @Override
-  protected boolean processInternalMatchedMNode(IMNode node, int idx, int level) {
+  protected boolean processInternalMatchedNode(IMNode node) {
     return false;
   }
 
   @Override
-  protected boolean processFullMatchedMNode(IMNode node, int idx, int level)
-      throws MetadataException {
+  protected boolean processFullMatchedNode(IMNode node) throws MetadataException {
     if (node.isEntity()) {
       if (hasLimit) {
         curOffset += 1;

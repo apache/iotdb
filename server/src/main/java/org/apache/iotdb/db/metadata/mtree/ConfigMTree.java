@@ -630,14 +630,13 @@ public class ConfigMTree {
     CollectorTraverser<Set<String>> setTemplatePaths =
         new CollectorTraverser<Set<String>>(root, new PartialPath(ALL_RESULT_NODES), store, false) {
           @Override
-          protected boolean processInternalMatchedMNode(IMNode node, int idx, int level) {
+          protected boolean processInternalMatchedNode(IMNode node) {
             // will never get here, implement for placeholder
             return false;
           }
 
           @Override
-          protected boolean processFullMatchedMNode(IMNode node, int idx, int level)
-              throws MetadataException {
+          protected boolean processFullMatchedNode(IMNode node) {
             // shall not traverse nodes inside template
             if (!node.getPartialPath().equals(getCurrentPartialPath())) {
               return true;
@@ -670,8 +669,7 @@ public class ConfigMTree {
     CollectorTraverser<List<Integer>> collector =
         new CollectorTraverser<List<Integer>>(root, pathPattern, store, false) {
           @Override
-          protected boolean processInternalMatchedMNode(IMNode node, int idx, int level)
-              throws MetadataException {
+          protected boolean processInternalMatchedNode(IMNode node) {
             if (node.getSchemaTemplateId() != NON_TEMPLATE) {
               // node set template
               result
@@ -684,8 +682,7 @@ public class ConfigMTree {
           }
 
           @Override
-          protected boolean processFullMatchedMNode(IMNode node, int idx, int level)
-              throws MetadataException {
+          protected boolean processFullMatchedNode(IMNode node) {
             if (node.getSchemaTemplateId() != NON_TEMPLATE) {
               // node set template
               result

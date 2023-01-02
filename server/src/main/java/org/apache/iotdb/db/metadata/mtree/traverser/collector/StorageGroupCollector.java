@@ -36,7 +36,7 @@ public abstract class StorageGroupCollector<T> extends CollectorTraverser<T> {
   }
 
   @Override
-  protected boolean processInternalMatchedMNode(IMNode node, int idx, int level) {
+  protected boolean processInternalMatchedNode(IMNode node) {
     if (node.isStorageGroup()) {
       if (collectInternal) {
         collectStorageGroup(node.getAsStorageGroupMNode());
@@ -47,7 +47,7 @@ public abstract class StorageGroupCollector<T> extends CollectorTraverser<T> {
   }
 
   @Override
-  protected boolean processFullMatchedMNode(IMNode node, int idx, int level) {
+  protected boolean processFullMatchedNode(IMNode node) {
     if (node.isStorageGroup()) {
       collectStorageGroup(node.getAsStorageGroupMNode());
       return true;

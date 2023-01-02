@@ -37,21 +37,21 @@ public class MNodeAboveSGLevelCounter extends MNodeLevelCounter {
   }
 
   @Override
-  protected boolean processInternalMatchedMNode(IMNode node, int idx, int level) {
+  protected boolean processInternalMatchedNode(IMNode node) {
     if (node.isStorageGroup()) {
       involvedStorageGroupMNodes.add(node.getPartialPath());
       return true;
     }
-    return super.processInternalMatchedMNode(node, idx, level);
+    return super.processInternalMatchedNode(node);
   }
 
   @Override
-  protected boolean processFullMatchedMNode(IMNode node, int idx, int level) {
+  protected boolean processFullMatchedNode(IMNode node) {
     if (node.isStorageGroup()) {
       involvedStorageGroupMNodes.add(node.getPartialPath());
       return true;
     }
-    return super.processFullMatchedMNode(node, idx, level);
+    return super.processFullMatchedNode(node);
   }
 
   public Set<PartialPath> getInvolvedStorageGroupMNodes() {

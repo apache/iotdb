@@ -33,12 +33,12 @@ public class StorageGroupCounter extends CounterTraverser {
   }
 
   @Override
-  protected boolean processInternalMatchedMNode(IMNode node, int idx, int level) {
+  protected boolean processInternalMatchedNode(IMNode node) {
     return node.isStorageGroup();
   }
 
   @Override
-  protected boolean processFullMatchedMNode(IMNode node, int idx, int level) {
+  protected boolean processFullMatchedNode(IMNode node) {
     if (node.isStorageGroup()) {
       count++;
       return true;

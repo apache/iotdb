@@ -590,7 +590,7 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
     MeasurementCollector<List<PartialPath>> collector =
         new MeasurementCollector<List<PartialPath>>(storageGroupMNode, pathPattern, store, false) {
           @Override
-          protected void collectMeasurement(IMeasurementMNode node) throws MetadataException {
+          protected void collectMeasurement(IMeasurementMNode node) {
             if (node.isPreDeleted()) {
               result.add(getCurrentPartialPath());
             }
@@ -609,7 +609,7 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
     MeasurementCollector<List<PartialPath>> collector =
         new MeasurementCollector<List<PartialPath>>(storageGroupMNode, pathPattern, store, false) {
           @Override
-          protected void collectMeasurement(IMeasurementMNode node) throws MetadataException {
+          protected void collectMeasurement(IMeasurementMNode node) {
             if (node.isPreDeleted()) {
               result.add(getCurrentPartialPath().getDevicePath());
             }
@@ -1217,12 +1217,12 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
     CounterTraverser counterTraverser =
         new CounterTraverser(storageGroupMNode, pathPattern, store, false) {
           @Override
-          protected boolean processInternalMatchedMNode(IMNode node, int idx, int level) {
+          protected boolean processInternalMatchedNode(IMNode node) {
             return false;
           }
 
           @Override
-          protected boolean processFullMatchedMNode(IMNode node, int idx, int level) {
+          protected boolean processFullMatchedNode(IMNode node) {
             if (node.isEntity() && node.getAsEntityMNode().getSchemaTemplateId() == templateId) {
               count++;
             }

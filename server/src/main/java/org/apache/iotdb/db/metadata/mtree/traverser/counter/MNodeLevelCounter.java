@@ -49,13 +49,13 @@ public class MNodeLevelCounter extends CounterTraverser {
   }
 
   @Override
-  protected boolean processInternalMatchedMNode(IMNode node, int idx, int level) {
+  protected boolean processInternalMatchedNode(IMNode node) {
     return false;
   }
 
   @Override
-  protected boolean processFullMatchedMNode(IMNode node, int idx, int level) {
-    return processLevelMatchedMNode(node, level);
+  protected boolean processFullMatchedNode(IMNode node) {
+    return processLevelMatchedMNode(node, getCurrentNodeLevel());
   }
 
   private boolean processLevelMatchedMNode(IMNode node, int level) {
