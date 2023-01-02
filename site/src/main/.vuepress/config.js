@@ -713,8 +713,7 @@ var config = {
 							['Operate-Metadata/Timeseries','Timeseries'],
 							['Operate-Metadata/Template','Schema Template'],
 							['Operate-Metadata/TTL','TTL'],
-							['Operate-Metadata/Auto-Create-MetaData','Auto Create Metadata'],
-							['Operate-Metadata/Export-Schema','Export Schema'],
+							['Operate-Metadata/Auto-Create-MetaData','Auto Create Metadata']
 						]
 					},
 					{
@@ -767,7 +766,7 @@ var config = {
 							['Maintenance-Tools/Log-Tool','Log Tool'],
 							['Maintenance-Tools/JMX-Tool','JMX Tool'],
 							['Maintenance-Tools/MLogParser-Tool','MLogParser Tool'],
-							['Maintenance-Tools/MLogLoad-Tool','MLogLoad Tool'],
+							['Maintenance-Tools/Export-Schema-Tool','Export Schema Tool'],
 							['Maintenance-Tools/NodeTool','Node Tool'],
 							['Maintenance-Tools/Watermark-Tool','Watermark Tool'],
 							['Maintenance-Tools/Metric-Tool','Metric Tool'],
@@ -1912,8 +1911,7 @@ var config = {
 							['Operate-Metadata/Timeseries','时间序列操作'],
 							['Operate-Metadata/Template','元数据模板'],
 							['Operate-Metadata/TTL','TTL'],
-							['Operate-Metadata/Auto-Create-MetaData','自动创建元数据'],
-							['Operate-Metadata/Export-Schema','元数据导出'],
+							['Operate-Metadata/Auto-Create-MetaData','自动创建元数据']
 						]
 					},
 					{
@@ -1967,6 +1965,7 @@ var config = {
 							['Maintenance-Tools/JMX-Tool','JMX 工具'],
 							['Maintenance-Tools/MLogParser-Tool','MLog 解析工具'],
 							['Maintenance-Tools/MLogLoad-Tool','MLog 加载工具'],
+							['Maintenance-Tools/Export-Schema-Tool','元数据导出工具'],
 							['Maintenance-Tools/NodeTool','节点工具'],
 							['Maintenance-Tools/Watermark-Tool','水印工具'],
 							['Maintenance-Tools/Metric-Tool','监控工具'],
