@@ -42,11 +42,20 @@ public class WALManager extends org.apache.iotdb.lsm.manager.WALManager<MemTable
   public WALManager(
       String walDirPath,
       String walFilePrefix,
+      String flushDirPath,
+      String flushFilePrefix,
       int walBufferSize,
       IWALRecord walRecord,
       boolean forceEachWrite)
       throws IOException {
-    super(walDirPath, walFilePrefix, walBufferSize, walRecord, forceEachWrite);
+    super(
+        walDirPath,
+        walFilePrefix,
+        flushDirPath,
+        flushFilePrefix,
+        walBufferSize,
+        walRecord,
+        forceEachWrite);
   }
 
   public WALManager(String walDirPath) {

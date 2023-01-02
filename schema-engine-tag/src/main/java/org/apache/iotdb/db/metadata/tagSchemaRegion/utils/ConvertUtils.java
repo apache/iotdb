@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.metadata.tagSchemaRegion.utils;
 
+import org.apache.iotdb.db.metadata.tagSchemaRegion.config.SchemaRegionConstant;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.entry.Chunk;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.entry.ChunkHeader;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.entry.ChunkIndexEntry;
@@ -47,5 +48,16 @@ public class ConvertUtils {
       chunkIndexEntry.setIdMin(results[0]);
     }
     return chunkIndexEntry;
+  }
+
+  public static String getFlushDeleteFileNameFromFlushFileName(String flushFileName) {
+    String[] split = flushFileName.split("-");
+    StringBuilder prefix = new StringBuilder();
+    for (int i = 0; i < split.length - 2; i++) {
+      prefix.append(split[i]);
+    }
+    StringBuilder suffix = new StringBuilder();
+    suffix.append(split[split.length - 2]).append("-").append(split[split.length - 1]);
+    return prefix + "-" + SchemaRegionConstant.DELETE + "-" + suffix;
   }
 }

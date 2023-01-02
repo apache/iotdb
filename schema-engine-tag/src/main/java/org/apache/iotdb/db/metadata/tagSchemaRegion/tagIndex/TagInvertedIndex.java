@@ -81,6 +81,8 @@ public class TagInvertedIndex implements ITagInvertedIndex {
           new WALManager(
               schemaDirPath + File.separator + WAL_DIR_PATH,
               WAL_FILE_PREFIX,
+              schemaDirPath + File.separator + FLUSH_DIR_PATH,
+              FLUSH_FILE_PREFIX,
               tagSchemaConfig.getWalBufferSize(),
               new WALEntry(),
               false);

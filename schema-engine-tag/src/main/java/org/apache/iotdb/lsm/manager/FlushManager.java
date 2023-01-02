@@ -77,8 +77,6 @@ public class FlushManager<T, R extends IFlushRequest>
           flushRequest.setFlushDeleteFileName(
               flushFilePrefix + "-delete" + "-0-" + flushRequest.getIndex());
           flush(flushRequest);
-          memManager.removeMemData(flushRequest);
-          updateWal(flushRequest);
         }
       }
     }
@@ -87,6 +85,19 @@ public class FlushManager<T, R extends IFlushRequest>
   private void updateWal(R request) {
     int index = request.getIndex();
     walManager.deleteWalFile(index);
+  }
+
+  private void renameFlushFile(T root, R request, FlushRequestContext context) {
+    FileOutput fileOutput = context.getFileOutput();
+    try {
+      fileOutput.close();
+      String flushFileName = request.getFlushFileName() + SchemaRegionConstant.TMP;
+      File flushFile = new File(this.flushDirPath, flushFileName);
+      File newFlushFile = new File(this.flushDirPath, request.getFlushFileName());
+      flushFile.renameTo(newFlushFile);
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    }
   }
 
   private void flush(R flushRequest) {
@@ -110,15 +121,8 @@ public class FlushManager<T, R extends IFlushRequest>
 
   @Override
   public void postProcess(T root, R request, FlushRequestContext context) {
-    FileOutput fileOutput = context.getFileOutput();
-    try {
-      fileOutput.close();
-      String flushFileName = request.getFlushFileName() + SchemaRegionConstant.TMP;
-      File flushFile = new File(this.flushDirPath, flushFileName);
-      File newFlushFile = new File(this.flushDirPath, request.getFlushFileName());
-      flushFile.renameTo(newFlushFile);
-    } catch (IOException e) {
-      throw new RuntimeException(e);
-    }
+    memManager.removeMemData(request);
+    updateWal(request);
+    renameFlushFile(root, request, context);
   }
 }
