@@ -366,9 +366,8 @@ public class ClusterSchemaManager {
                             // (createdStorageGroupNum * schemaReplicationFactor)
                             SCHEMA_REGION_PER_DATA_NODE
                                 * dataNodeNum
-                                / (double)
-                                    (storageGroupNum
-                                        * storageGroupSchema.getSchemaReplicationFactor())),
+                                / storageGroupNum
+                                * storageGroupSchema.getSchemaReplicationFactor()),
                     allocatedSchemaRegionGroupCount));
         LOGGER.info(
             "[AdjustRegionGroupNum] The maximum number of SchemaRegionGroups for Database: {} is adjusted to: {}",
@@ -397,9 +396,8 @@ public class ClusterSchemaManager {
                             // (createdStorageGroupNum * dataReplicationFactor)
                             DATA_REGION_PER_PROCESSOR
                                 * totalCpuCoreNum
-                                / (double)
-                                    (storageGroupNum
-                                        * storageGroupSchema.getDataReplicationFactor())),
+                                / storageGroupNum
+                                * storageGroupSchema.getDataReplicationFactor()),
                     allocatedDataRegionGroupCount));
         LOGGER.info(
             "[AdjustRegionGroupNum] The maximum number of DataRegionGroups for Database: {} is adjusted to: {}",
@@ -501,12 +499,11 @@ public class ClusterSchemaManager {
         (TemplateInfoResp) getConsensusManager().read(getAllSchemaTemplatePlan).getDataset();
     TGetAllTemplatesResp resp = new TGetAllTemplatesResp();
     resp.setStatus(templateResp.getStatus());
-    if (resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      if (templateResp.getTemplateList() != null) {
-        List<ByteBuffer> list = new ArrayList<>();
-        templateResp.getTemplateList().forEach(template -> list.add(template.serialize()));
-        resp.setTemplateList(list);
-      }
+    if (resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        && templateResp.getTemplateList() != null) {
+      List<ByteBuffer> list = new ArrayList<>();
+      templateResp.getTemplateList().forEach(template -> list.add(template.serialize()));
+      resp.setTemplateList(list);
     }
     return resp;
   }
@@ -517,11 +514,11 @@ public class ClusterSchemaManager {
     TemplateInfoResp templateResp =
         (TemplateInfoResp) getConsensusManager().read(getSchemaTemplatePlan).getDataset();
     TGetTemplateResp resp = new TGetTemplateResp();
-    if (templateResp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      if (templateResp.getTemplateList() != null && !templateResp.getTemplateList().isEmpty()) {
-        ByteBuffer byteBuffer = templateResp.getTemplateList().get(0).serialize();
-        resp.setTemplate(byteBuffer);
-      }
+    if (templateResp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        && templateResp.getTemplateList() != null
+        && !templateResp.getTemplateList().isEmpty()) {
+      ByteBuffer byteBuffer = templateResp.getTemplateList().get(0).serialize();
+      resp.setTemplate(byteBuffer);
     }
     resp.setStatus(templateResp.getStatus());
     return resp;
