@@ -267,8 +267,15 @@ Core 级别的监控指标在系统运行中默认开启，每一个 Core 级别
 | ----------------------- | --------------------------------------------- | --------- | ------------------ |
 | jvm_compilation_time_ms | {compiler="HotSpot 64-Bit Tiered Compilers",} | AutoGauge | 耗费在编译上的时间 |
 
+### 4.3. Normal 级别监控指标
 
-### 4.3. All 级别监控指标
+#### 4.3.1. 集群
+| Metric | Tags                                                           | Type      | Description                                                        |
+| ------ | -------------------------------------------------------------- | --------- | ------------------------------------------------------------------ |
+| region | name="{{DatabaseName}}",type="SchemaRegion/DataRegion"         | AutoGauge | 特定节点上不同 Database 的 DataRegion/SchemaRegion 个数 |
+| slot   | name="{{DatabaseName}}",type="schemaSlotNumber/dataSlotNumber" | AutoGauge | 特定节点上不同 Database 的 DataSlot/SchemaSlot 个数     |
+
+### 4.4. All 级别监控指标
 目前还没有All级别的监控指标，后续会持续添加。
 
 ## 5. 怎样获取这些系统监控？
