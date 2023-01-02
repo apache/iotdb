@@ -37,7 +37,7 @@ public class TsFileProcessorInfo {
           .addMetricSet(
               new TsFileProcessorInfoMetrics(
                   storageGroupInfo.getVirtualStorageGroupProcessor().getLogicalStorageGroupName(),
-                  memCost));
+                  this));
     }
   }
 
@@ -57,5 +57,10 @@ public class TsFileProcessorInfo {
   public void clear() {
     storageGroupInfo.releaseStorageGroupMemCost(memCost);
     memCost = 0L;
+  }
+
+  /** get memCost */
+  public long getMemCost() {
+    return memCost;
   }
 }
