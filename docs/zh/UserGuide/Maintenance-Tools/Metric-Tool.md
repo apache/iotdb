@@ -99,9 +99,9 @@ IoTDB对外提供JMX和Prometheus格式的监控指标，对于JMX，可以通�
 
 #### 1.3.3.3. 内存占用
 
-| Metric | Tag                                     | level     | 说明                                               | 示例                              |
-| ------ | --------------------------------------- | --------- | -------------------------------------------------- | --------------------------------- |
-| mem    | name="chunkMetaData/storageGroup/mtree" | important | chunkMetaData/storageGroup/mtree占用的内存（byte） | mem{name="chunkMetaData",} 2050.0 |
+| Metric | Tag                                                           | level     | 说明                                                            | 示例                              |
+| ------ |---------------------------------------------------------------| --------- |---------------------------------------------------------------| --------------------------------- |
+| mem    | name="chunkMetaData/storageGroup/schemaUsage/schemaRemaining" | important | chunkMetaData 占用/storageGroup 占用/schema 占用/schema 剩余的内存（byte） | mem{name="chunkMetaData",} 2050.0 |
 
 #### 1.3.3.4. 缓存
 
@@ -111,10 +111,10 @@ IoTDB对外提供JMX和Prometheus格式的监控指标，对于JMX，可以通�
 
 #### 1.3.3.5. 业务数据
 
-| Metric   | Tag                                                                 | level     | 说明                                    | 示例                                          |
-|----------|---------------------------------------------------------------------| --------- |---------------------------------------| --------------------------------------------- |
-| quantity | name="timeSeries/storageGroup/device", type="total/normal/template" | important | 当前时间timeSeries/storageGroup/device的数量 | quantity{name="timeSeries",type="normal"} 1.0 |
-| points   | sg="{{storageGroup}}", type="flush"                                 | core      | 最新一个刷盘的memtale的点数                     | quantity{name="memtable",type="flush"} 1.0    |
+| Metric   | Tag                                                                                       | level     | 说明                                                 | 示例                                          |
+|----------|-------------------------------------------------------------------------------------------| --------- |----------------------------------------------------| --------------------------------------------- |
+| quantity | name="timeSeries/storageGroup/device/deviceUsingTemplate", type="total/normal/template/template" | important | 当前时间timeSeries/storageGroup/device/激活了模板的device的数量 | quantity{name="timeSeries",type="normal"} 1.0 |
+| points   | sg="{{storageGroup}}", type="flush"                                                       | core      | 最新一个刷盘的memtale的点数                                  | quantity{name="memtable",type="flush"} 1.0    |
 
 #### 1.3.3.6. 集群
 

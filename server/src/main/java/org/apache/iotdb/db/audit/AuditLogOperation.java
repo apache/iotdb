@@ -16,40 +16,15 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.session.template;
+package org.apache.iotdb.db.audit;
 
-import org.apache.iotdb.rpc.StatementExecutionException;
+public enum AuditLogOperation {
+  DDL,
+  DML,
+  QUERY;
 
-import java.io.IOException;
-import java.io.OutputStream;
-import java.util.Map;
-
-public abstract class TemplateNode {
-  private String name;
-
-  public TemplateNode(String name) {
-    this.name = name;
+  @Override
+  public String toString() {
+    return name();
   }
-
-  public String getName() {
-    return this.name;
-  }
-
-  public Map<String, TemplateNode> getChildren() {
-    return null;
-  }
-
-  public void addChild(TemplateNode node) throws StatementExecutionException {}
-
-  public void deleteChild(TemplateNode node) {}
-
-  public boolean isMeasurement() {
-    return false;
-  }
-
-  public boolean isShareTime() {
-    return false;
-  }
-
-  public void serialize(OutputStream buffer) throws IOException {}
 }
