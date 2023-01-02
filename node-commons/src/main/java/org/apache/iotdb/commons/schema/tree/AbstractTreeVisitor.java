@@ -162,7 +162,7 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R>
         setFailure(e);
       }
     }
-    return throwable != null && nextMatchedNode != null;
+    return throwable == null && nextMatchedNode != null;
   }
 
   @Override
