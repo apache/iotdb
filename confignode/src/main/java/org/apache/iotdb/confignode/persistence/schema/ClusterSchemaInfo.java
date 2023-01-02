@@ -95,7 +95,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
   private final ReentrantReadWriteLock storageGroupReadWriteLock;
   private final ConfigMTree mTree;
 
-  private static final String snapshotFileName = "cluster_schema.bin";
+  private static final String SNAPSHOT_FILENAME = "cluster_schema.bin";
 
   private final String ERROR_NAME = "Error StorageGroup name";
 
