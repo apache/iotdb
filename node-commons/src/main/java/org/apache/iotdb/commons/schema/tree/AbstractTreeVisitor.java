@@ -275,10 +275,10 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R>
   protected abstract Iterator<N> getChildrenIterator(N parent) throws Exception;
 
   // Release a child with the given childName.
-  protected abstract void releaseChild(N child);
+  protected void releaseChild(N child) {}
 
   // Release an iterator of all children.
-  protected abstract void releaseChildrenIterator(Iterator<N> childrenIterator);
+  protected void releaseChildrenIterator(Iterator<N> childrenIterator) {}
 
   /**
    * Internal-match means the node matches an internal node name of the given path pattern. root.sg
