@@ -776,7 +776,7 @@ var config = {
 						]
 					},
 					{
-						title: 'Ecosystem Integration',
+						// title: 'Ecosystem Integration',
 						children: [
 							['Ecosystem Integration/Grafana Plugin','Grafana Plugin'],
 							['Ecosystem Integration/Grafana Connector','Grafana Connector (Not Recommended)'],
