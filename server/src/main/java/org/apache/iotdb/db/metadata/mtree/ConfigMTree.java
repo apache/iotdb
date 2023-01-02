@@ -491,7 +491,7 @@ public class ConfigMTree {
         new MNodeAboveSGCollector<List<PartialPath>>(root, pathPattern, store, isPrefixMatch) {
           @Override
           protected void transferToResult(IMNode node) {
-            resultSet.add(getCurrentPartialPath(node));
+            resultSet.add(getCurrentPartialPath());
           }
         };
     collector.setResultSet(new LinkedList<>());
@@ -524,7 +524,7 @@ public class ConfigMTree {
             protected void transferToResult(IMNode node) {
               resultSet.add(
                   new TSchemaNode(
-                      getCurrentPartialPath(node).getFullPath(),
+                      getCurrentPartialPath().getFullPath(),
                       node.getMNodeType(true).getNodeType()));
             }
           };
@@ -639,7 +639,7 @@ public class ConfigMTree {
           protected boolean processFullMatchedMNode(IMNode node, int idx, int level)
               throws MetadataException {
             // shall not traverse nodes inside template
-            if (!node.getPartialPath().equals(getCurrentPartialPath(node))) {
+            if (!node.getPartialPath().equals(getCurrentPartialPath())) {
               return true;
             }
 
@@ -676,7 +676,7 @@ public class ConfigMTree {
               // node set template
               result
                   .computeIfAbsent(node.getSchemaTemplateId(), k -> new HashSet<>())
-                  .add(getCurrentPartialPath(node));
+                  .add(getCurrentPartialPath());
               // descendants of the node cannot set another template, exit from this branch
               return true;
             }
@@ -690,7 +690,7 @@ public class ConfigMTree {
               // node set template
               result
                   .computeIfAbsent(node.getSchemaTemplateId(), k -> new HashSet<>())
-                  .add(getCurrentPartialPath(node));
+                  .add(getCurrentPartialPath());
               // descendants of the node cannot set another template, exit from this branch
               return true;
             }

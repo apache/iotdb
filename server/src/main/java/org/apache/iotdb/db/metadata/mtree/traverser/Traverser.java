@@ -28,11 +28,8 @@ import org.apache.iotdb.db.metadata.mtree.store.IMTreeStore;
 import org.apache.iotdb.db.metadata.template.Template;
 
 import java.util.ArrayDeque;
-import java.util.Arrays;
 import java.util.Deque;
 import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
 
@@ -144,10 +141,15 @@ public abstract class Traverser extends AbstractTreeVisitor<IMNode, IMNode> {
    * overriding or implement concerned methods.
    */
   public void traverse() throws MetadataException {
-    if (isPrefixStart && !isPrefixMatch) {
-      return;
+    while (hasNext()) {
+      next();
     }
-    traverse(startNode, startIndex, startLevel);
+    // TODO: 临时在这里判断失败，释放资源
+
+    //    if (isPrefixStart && !isPrefixMatch) {
+    //      return;
+    //    }
+    //    traverse(startNode, startIndex, startLevel);
   }
 
   /**
@@ -472,14 +474,24 @@ public abstract class Traverser extends AbstractTreeVisitor<IMNode, IMNode> {
 
   @Override
   protected IMNode getChild(IMNode parent, String childName) {
-    // TODO
-    return null;
+    try {
+      return store.getChild(parent, childName);
+    } catch (MetadataException e) {
+      e.printStackTrace();
+      return null;
+    }
+    // TODO: support template
   }
 
   @Override
   protected Iterator<IMNode> getChildrenIterator(IMNode parent) {
-    // TODO
-    return null;
+    try {
+      return store.getChildrenIterator(parent);
+    } catch (MetadataException e) {
+      e.printStackTrace();
+      return null;
+    }
+    // TODO: support template
   }
 
   @Override
@@ -514,28 +526,9 @@ public abstract class Traverser extends AbstractTreeVisitor<IMNode, IMNode> {
     this.skipPreDeletedSchema = skipPreDeletedSchema;
   }
 
-  /**
-   * @param currentNode the node need to get the full path of
-   * @return full path from traverse start node to the current node
-   */
-  protected PartialPath getCurrentPartialPath(IMNode currentNode) {
-    return new PartialPath(getCurrentPathNodes(currentNode));
-  }
-
-  protected String[] getCurrentPathNodes(IMNode currentNode) {
-    Iterator<IMNode> nodes = traverseContext.descendingIterator();
-    List<String> nodeNames = new LinkedList<>();
-    if (nodes.hasNext()) {
-      nodeNames.addAll(Arrays.asList(nodes.next().getPartialPath().getNodes()));
-    }
-
-    while (nodes.hasNext()) {
-      nodeNames.add(nodes.next().getName());
-    }
-
-    nodeNames.add(currentNode.getName());
-
-    return nodeNames.toArray(new String[0]);
+  /** @return full path from traverse start node to the current node */
+  protected PartialPath getCurrentPartialPath() {
+    return new PartialPath(generateFullPathNodes());
   }
 
   /** @return the database node in the traverse path */

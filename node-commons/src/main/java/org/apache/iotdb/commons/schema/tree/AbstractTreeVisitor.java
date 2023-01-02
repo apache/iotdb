@@ -229,6 +229,10 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
     }
   }
 
+  protected int getCurrentNodeLevel() {
+    return visitorStack.size();
+  }
+
   // Get a child with the given childName.
   protected abstract N getChild(N parent, String childName);
 

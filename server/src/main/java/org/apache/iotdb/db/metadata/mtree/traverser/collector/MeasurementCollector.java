@@ -99,8 +99,7 @@ public abstract class MeasurementCollector<T> extends CollectorTraverser<T> {
   protected MeasurementPath getCurrentMeasurementPathInTraverse(IMeasurementMNode currentNode) {
     IMNode par = traverseContext.peek();
     MeasurementPath retPath =
-        new MeasurementPath(
-            new PartialPath(getCurrentPathNodes(currentNode)), currentNode.getSchema());
+        new MeasurementPath(new PartialPath(generateFullPathNodes()), currentNode.getSchema());
     retPath.setUnderAlignedEntity(par.getAsEntityMNode().isAligned());
     return retPath;
   }

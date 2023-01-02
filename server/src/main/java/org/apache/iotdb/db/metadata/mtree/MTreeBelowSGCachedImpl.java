@@ -592,7 +592,7 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
           @Override
           protected void collectMeasurement(IMeasurementMNode node) throws MetadataException {
             if (node.isPreDeleted()) {
-              result.add(getCurrentPartialPath(node));
+              result.add(getCurrentPartialPath());
             }
           }
         };
@@ -611,7 +611,7 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
           @Override
           protected void collectMeasurement(IMeasurementMNode node) throws MetadataException {
             if (node.isPreDeleted()) {
-              result.add(getCurrentPartialPath(node).getDevicePath());
+              result.add(getCurrentPartialPath().getDevicePath());
             }
           }
         };
@@ -673,7 +673,7 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
             storageGroupMNode, pathPattern, store, isPrefixMatch) {
           @Override
           protected void collectEntity(IEntityMNode node) {
-            result.add(getCurrentPartialPath(node));
+            result.add(getCurrentPartialPath());
           }
         };
     collector.traverse();
@@ -694,7 +694,7 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
             plan.getOffset()) {
           @Override
           protected void collectEntity(IEntityMNode node) {
-            PartialPath device = getCurrentPartialPath(node);
+            PartialPath device = getCurrentPartialPath();
             if (plan.hasSgCol()) {
               res.add(
                   new ShowDevicesResult(
@@ -793,7 +793,7 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
             tsRow[5] = String.valueOf(node.getOffset());
             tsRow[6] = deadbandInfo.left;
             tsRow[7] = deadbandInfo.right;
-            Pair<PartialPath, String[]> temp = new Pair<>(getCurrentPartialPath(node), tsRow);
+            Pair<PartialPath, String[]> temp = new Pair<>(getCurrentPartialPath(), tsRow);
             resultSet.add(temp);
           }
         };
@@ -831,7 +831,7 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
             protected void transferToResult(IMNode node) {
               resultSet.add(
                   new TSchemaNode(
-                      getCurrentPartialPath(node).getFullPath(),
+                      getCurrentPartialPath().getFullPath(),
                       node.getMNodeType(false).getNodeType()));
             }
           };
@@ -852,7 +852,7 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
             storageGroupMNode, pathPattern, store, isPrefixMatch) {
           @Override
           protected void transferToResult(IMNode node) {
-            resultSet.add(getCurrentPartialPath(node));
+            resultSet.add(getCurrentPartialPath());
           }
         };
     collector.setResultSet(new LinkedList<>());
