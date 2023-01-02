@@ -42,7 +42,7 @@ Windows
 
 > ./exportSchema.bat -o /yourpath/targetDir -h 127.0.0.1 -p 6667 -u root -pw root
 
-使用脚本方式导出元数据时候，需要指定 IoTDB 元数据文件的导出目标目录（位于 IoTDB 服务器上）：
+使用脚本方式导出元数据时候，需要指定 IoTDB 元数据文件的导出目标目录（位于 IoTDB 服务器）。注意当使用相对路径时，导出目标目录位于相对于 IoTDB Server 的路径。
 ```
 usage: ExportSchema -o <target directory path> [-h <host address>] [-p <port>] [-u <user>] [-pw <password>] [-help]
  -o <target directory path>   Need to specify a target directory path on
