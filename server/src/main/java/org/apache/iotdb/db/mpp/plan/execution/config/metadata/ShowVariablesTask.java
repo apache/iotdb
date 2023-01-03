@@ -21,7 +21,7 @@ package org.apache.iotdb.db.mpp.plan.execution.config.metadata;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.confignode.rpc.thrift.TClusterParameters;
-import org.apache.iotdb.confignode.rpc.thrift.TShowClusterParametersResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowVariablesResp;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
@@ -40,9 +40,9 @@ import com.google.common.util.concurrent.SettableFuture;
 import java.util.List;
 import java.util.stream.Collectors;
 
-public class ShowClusterParametersTask implements IConfigTask {
+public class ShowVariablesTask implements IConfigTask {
 
-  public ShowClusterParametersTask() {
+  public ShowVariablesTask() {
     // Empty constructor
   }
 
@@ -54,15 +54,14 @@ public class ShowClusterParametersTask implements IConfigTask {
   }
 
   public static void buildTSBlock(
-      TShowClusterParametersResp showClusterParametersResp,
-      SettableFuture<ConfigTaskResult> future) {
+      TShowVariablesResp showVariablesResp, SettableFuture<ConfigTaskResult> future) {
     List<TSDataType> outputDataTypes =
         ColumnHeaderConstant.showClusterParametersColumnHeaders.stream()
             .map(ColumnHeader::getColumnType)
             .collect(Collectors.toList());
     TsBlockBuilder builder = new TsBlockBuilder(outputDataTypes);
 
-    TClusterParameters clusterParameters = showClusterParametersResp.getClusterParameters();
+    TClusterParameters clusterParameters = showVariablesResp.getClusterParameters();
     buildTSBlock(
         builder,
         new Binary(IoTDBConstant.CLUSTER_NAME),

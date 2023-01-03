@@ -21,16 +21,16 @@
 
 # Cluster Information Query Command
 
-## Show Cluster Parameters
+## Show Variables
 
 Currently, IoTDB supports showing key parameters of the cluster:
 ```
-SHOW CLUSTER PARAMETERS
+SHOW VARIABLES
 ```
 
 Eg:
 ```
-IoTDB> show cluster parameters
+IoTDB> show variables
 +----------------------------------+-----------------------------------------------------------------+
 |                 ClusterParameters|                                                            Value|
 +----------------------------------+-----------------------------------------------------------------+
