@@ -28,6 +28,7 @@ import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.compaction.inner.InnerSpaceCompactionTask;
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
+import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
@@ -50,7 +51,6 @@ import java.util.Set;
 
 public class SettleRequestHandler {
   private static final Logger logger = LoggerFactory.getLogger(SettleRequestHandler.class);
-  private static final String MODS_FILE_SUFFIX = ".mods";
 
   private boolean testMode = false;
 
@@ -83,7 +83,7 @@ public class SettleRequestHandler {
       if (!tsFile.exists()) {
         return RpcUtils.getStatus(TSStatusCode.PATH_NOT_EXIST, "file not exist.");
       }
-      File modsFile = new File(path + MODS_FILE_SUFFIX);
+      File modsFile = new File(path + ModificationFile.FILE_SUFFIX);
       hasModsFile |= modsFile.exists();
 
       int fileDataRegionId = TsFileUtils.getDataRegionId(tsFile);
