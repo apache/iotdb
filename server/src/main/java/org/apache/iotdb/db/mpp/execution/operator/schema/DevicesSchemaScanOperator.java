@@ -21,7 +21,7 @@ package org.apache.iotdb.db.mpp.execution.operator.schema;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.metadata.plan.schemaregion.impl.read.SchemaRegionReadPlanFactory;
-import org.apache.iotdb.db.metadata.plan.schemaregion.result.ShowDevicesResult;
+import org.apache.iotdb.db.metadata.query.info.IDeviceSchemaInfo;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.mpp.execution.driver.SchemaDriverContext;
@@ -59,25 +59,24 @@ public class DevicesSchemaScanOperator extends SchemaQueryScanOperator {
   @Override
   protected List<TsBlock> createTsBlockList() {
     try {
-      List<ShowDevicesResult> schemaRegionResult =
+      return SchemaTsBlockUtil.transferSchemaResultToTsBlockList(
           ((SchemaDriverContext) operatorContext.getInstanceContext().getDriverContext())
               .getSchemaRegion()
-              .getMatchedDevices(
+              .getDeviceReader(
                   SchemaRegionReadPlanFactory.getShowDevicesPlan(
-                      partialPath, limit, offset, hasSgCol, false))
-              .left;
-      return SchemaTsBlockUtil.transferSchemaResultToTsBlockList(
-          schemaRegionResult.iterator(), outputDataTypes, this::setColumns);
+                      partialPath, limit, offset, hasSgCol, false)),
+          outputDataTypes,
+          this::setColumns);
     } catch (MetadataException e) {
       throw new RuntimeException(e.getMessage(), e);
     }
   }
 
-  private void setColumns(ShowDevicesResult device, TsBlockBuilder builder) {
+  private void setColumns(IDeviceSchemaInfo device, TsBlockBuilder builder) {
     builder.getTimeColumnBuilder().writeLong(0L);
-    builder.getColumnBuilder(0).writeBinary(new Binary(device.getPath()));
+    builder.getColumnBuilder(0).writeBinary(new Binary(device.getFullPath()));
     if (hasSgCol) {
-      builder.getColumnBuilder(1).writeBinary(new Binary(device.getDatabase()));
+      builder.getColumnBuilder(1).writeBinary(new Binary(getDatabase()));
       builder.getColumnBuilder(2).writeBinary(new Binary(String.valueOf(device.isAligned())));
     } else {
       builder.getColumnBuilder(1).writeBinary(new Binary(String.valueOf(device.isAligned())));
