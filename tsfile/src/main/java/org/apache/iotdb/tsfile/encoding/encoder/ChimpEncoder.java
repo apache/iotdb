@@ -1,0 +1,218 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
+package org.apache.iotdb.tsfile.encoding.encoder;
+
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+
+import static org.apache.iotdb.tsfile.common.conf.TSFileConfig.LEADING_ZERO_BITS_LENGTH_64BIT;
+import static org.apache.iotdb.tsfile.common.conf.TSFileConfig.MEANINGFUL_XOR_BITS_LENGTH_64BIT;
+import static org.apache.iotdb.tsfile.common.conf.TSFileConfig.VALUE_BITS_LENGTH_64BIT;
+
+import java.io.ByteArrayOutputStream;
+
+/**
+ * This class includes code modified from Michael Burman's gorilla-tsc project.
+ *
+ * <p>Copyright: 2016-2018 Michael Burman and/or other contributors
+ *
+ * <p>Project page: https://github.com/burmanm/gorilla-tsc
+ *
+ * <p>License: http://www.apache.org/licenses/LICENSE-2.0
+ */
+public class ChimpEncoder extends Encoder {
+
+  protected boolean firstValueWasWritten = false;
+  protected int storedLeadingZeros = Integer.MAX_VALUE;
+
+  private byte buffer = 0;
+  private int bitsLeft = Byte.SIZE;
+  private long storedValue = 0;
+
+
+  public ChimpEncoder() {
+    super(TSEncoding.CHIMP);
+  }
+
+  @Override
+  public final long getMaxByteSize() {
+    return 0;
+  }
+  
+  private static final int ONE_ITEM_MAX_SIZE =
+	      (2
+	                  + LEADING_ZERO_BITS_LENGTH_64BIT
+	                  + MEANINGFUL_XOR_BITS_LENGTH_64BIT
+	                  + VALUE_BITS_LENGTH_64BIT)
+	              / Byte.SIZE
+	          + 1;
+  
+  public final static int THRESHOLD = 6;
+
+  public final static short[] leadingRepresentation = {0, 0, 0, 0, 0, 0, 0, 0,
+			1, 1, 1, 1, 2, 2, 2, 2,
+			3, 3, 4, 4, 5, 5, 6, 6,
+			7, 7, 7, 7, 7, 7, 7, 7,
+			7, 7, 7, 7, 7, 7, 7, 7,
+			7, 7, 7, 7, 7, 7, 7, 7,
+			7, 7, 7, 7, 7, 7, 7, 7,
+			7, 7, 7, 7, 7, 7, 7, 7
+		};
+
+  public final static short[] leadingRound = {0, 0, 0, 0, 0, 0, 0, 0,
+			8, 8, 8, 8, 12, 12, 12, 12,
+			16, 16, 18, 18, 20, 20, 22, 22,
+			24, 24, 24, 24, 24, 24, 24, 24,
+			24, 24, 24, 24, 24, 24, 24, 24,
+			24, 24, 24, 24, 24, 24, 24, 24,
+			24, 24, 24, 24, 24, 24, 24, 24,
+			24, 24, 24, 24, 24, 24, 24, 24
+		};
+  
+  @Override
+  public final int getOneItemMaxSize() {
+    return ONE_ITEM_MAX_SIZE;
+  }
+
+
+  protected void reset() {
+    firstValueWasWritten = false;
+    storedLeadingZeros = Integer.MAX_VALUE;
+
+    buffer = 0;
+    bitsLeft = Byte.SIZE;
+    storedValue = 0;
+  }
+
+  /** Stores a 0 and increases the count of bits by 1 */
+  protected void skipBit(ByteArrayOutputStream out) {
+    bitsLeft--;
+    flipByte(out);
+  }
+
+  /** Stores a 1 and increases the count of bits by 1 */
+  protected void writeBit(ByteArrayOutputStream out) {
+    buffer |= (1 << (bitsLeft - 1));
+    bitsLeft--;
+    flipByte(out);
+  }
+
+  /**
+   * Writes the given long value using the defined amount of least significant bits.
+   *
+   * @param value The long value to be written
+   * @param bits How many bits are stored to the stream
+   */
+  protected void writeBits(long value, int bits, ByteArrayOutputStream out) {
+    while (bits > 0) {
+      int shift = bits - bitsLeft;
+      if (shift >= 0) {
+        buffer |= (byte) ((value >> shift) & ((1 << bitsLeft) - 1));
+        bits -= bitsLeft;
+        bitsLeft = 0;
+      } else {
+        shift = bitsLeft - bits;
+        buffer |= (byte) (value << shift);
+        bitsLeft -= bits;
+        bits = 0;
+      }
+      flipByte(out);
+    }
+  }
+
+  protected void flipByte(ByteArrayOutputStream out) {
+    if (bitsLeft == 0) {
+      out.write(buffer);
+      buffer = 0;
+      bitsLeft = Byte.SIZE;
+    }
+  }
+  
+  
+  @Override
+  public void flush(ByteArrayOutputStream out) {
+    // ending stream
+    encode(Double.NaN, out);
+
+    // flip the byte no matter it is empty or not
+    // the empty ending byte is necessary when decoding
+    bitsLeft = 0;
+    flipByte(out);
+
+    // the encoder may be reused, so let us reset it
+    reset();
+  }
+  
+  @Override
+  public final void encode(double value, ByteArrayOutputStream out) {
+    encode(Double.doubleToRawLongBits(value), out);
+  }
+  
+  @Override
+  public final void encode(long value, ByteArrayOutputStream out) {
+    if (firstValueWasWritten) {
+      compressValue(value, out);
+    } else {
+      writeFirst(value, out);
+      firstValueWasWritten = true;
+    }
+  }
+  
+  private void writeFirst(long value, ByteArrayOutputStream out) {
+	    storedValue = value;
+	    writeBits(value, VALUE_BITS_LENGTH_64BIT, out);
+	  }
+
+  private void compressValue(long value, ByteArrayOutputStream out) {
+	  long xor = storedValue ^ value;
+      if(xor == 0) {
+          // Write 0
+    	  skipBit(out);
+    	  skipBit(out);
+//          size += 2;
+          storedLeadingZeros = 65;
+      } else {
+          int leadingZeros = leadingRound[Long.numberOfLeadingZeros(xor)];
+          int trailingZeros = Long.numberOfTrailingZeros(xor);
+
+          if (trailingZeros > THRESHOLD) {
+              int significantBits = 64 - leadingZeros - trailingZeros;
+              skipBit(out);
+              writeBit(out);
+              writeBits(leadingRepresentation[leadingZeros], 3, out);
+              writeBits(significantBits, 6, out);
+              writeBits(xor >>> trailingZeros, significantBits, out);
+              storedLeadingZeros = 65;
+  		} else if (leadingZeros == storedLeadingZeros) {
+  			writeBit(out);
+  			skipBit(out);
+  			int significantBits = 64 - leadingZeros;
+  			writeBits(xor, significantBits, out);
+  		} else {
+  			storedLeadingZeros = leadingZeros;
+  			int significantBits = 64 - leadingZeros;
+  			writeBit(out);
+  			writeBit(out);
+  			writeBits(leadingRepresentation[leadingZeros], 3, out);
+  			writeBits(xor, significantBits, out);
+  		}
+  	}
+      storedValue = value;
+  }
+}
