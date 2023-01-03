@@ -49,11 +49,6 @@ public class TimestampOperand extends LeafOperand {
   }
 
   @Override
-  public boolean isTimeSeriesGeneratingFunctionExpression() {
-    return true;
-  }
-
-  @Override
   public void bindInputLayerColumnIndexWithExpression(
       Map<String, List<InputLocation>> inputLocations) {
     // do nothing

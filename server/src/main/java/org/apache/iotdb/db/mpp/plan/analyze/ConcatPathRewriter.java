@@ -30,7 +30,6 @@ import org.apache.iotdb.db.mpp.plan.statement.crud.QueryStatement;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 
 /**
  * This rewriter:
@@ -53,12 +52,10 @@ public class ConcatPathRewriter {
     List<PartialPath> prefixPaths = queryStatement.getFromComponent().getPrefixPaths();
 
     if (queryStatement.isAlignByDevice()) {
-      queryStatement.getSelectComponent().getResultColumns().stream()
-          .map(ResultColumn::getExpression)
-          .forEach(
-              expression ->
-                  ExpressionAnalyzer.constructPatternTreeFromExpression(
-                      expression, prefixPaths, patternTree));
+      for (ResultColumn resultColumn : queryStatement.getSelectComponent().getResultColumns()) {
+        ExpressionAnalyzer.constructPatternTreeFromExpression(
+            resultColumn.getExpression(), prefixPaths, patternTree);
+      }
     } else {
       // concat SELECT with FROM
       List<ResultColumn> resultColumns =
@@ -101,13 +98,12 @@ public class ConcatPathRewriter {
             String.format(
                 "alias '%s' can only be matched with one time series", resultColumn.getAlias()));
       }
-      resultColumns.addAll(
-          resultExpressions.stream()
-              .map(
-                  expression ->
-                      new ResultColumn(
-                          expression, resultColumn.getAlias(), resultColumn.getColumnType()))
-              .collect(Collectors.toList()));
+
+      for (Expression resultExpression : resultExpressions) {
+        resultColumns.add(
+            new ResultColumn(
+                resultExpression, resultColumn.getAlias(), resultColumn.getColumnType()));
+      }
     }
     return resultColumns;
   }

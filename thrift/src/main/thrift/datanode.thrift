@@ -18,6 +18,7 @@
  */
 include "common.thrift"
 namespace java org.apache.iotdb.mpp.rpc.thrift
+namespace py iotdb.thrift.datanode
 
 struct TCreateSchemaRegionReq {
   1: required common.TRegionReplicaSet regionReplicaSet
@@ -351,6 +352,68 @@ struct TExecuteCQ {
   7: required string username
 }
 
+// ====================================================
+// ML Node
+// ====================================================
+struct TDeleteModelMetricsReq {
+  1: required string modelId
+}
+
+struct TFetchTimeseriesReq {
+  1: required i64 sessionId
+  2: required i64 statementId
+  3: required list<string> queryExpressions
+  4: optional string queryFilter
+  5: optional i32 fetchSize
+  6: optional i64 timeout
+}
+
+struct TFetchTimeseriesResp {
+  1: required common.TSStatus status
+  2: required i64 queryId
+  3: required list<string> columnNameList
+  4: required list<string> columnTypeList
+  5: required map<string, i32> columnNameIndexMap
+  6: required list<binary> tsDataset
+  7: required bool hasMoreData
+}
+
+struct TFetchWindowBatchReq {
+  1: required i64 sessionId
+  2: required i64 statementId
+  3: required list<string> queryExpressions
+  4: required TGroupByTimeParameter groupByTimeParameter
+  5: optional string queryFilter
+  6: optional i32 fetchSize
+  7: optional i64 timeout
+}
+
+struct TGroupByTimeParameter {
+  1: required i64 startTime
+  2: required i64 endTime
+  3: required i64 interval
+  4: required i64 slidingStep
+  5: optional list<i32> indexes
+}
+
+struct TFetchWindowBatchResp {
+  1: required common.TSStatus status
+  2: required i64 queryId
+  3: required list<string> columnNameList
+  4: required list<string> columnTypeList
+  5: required map<string, i32> columnNameIndexMap
+  6: required list<list<binary>> windowDataset
+  7: required bool hasMoreData
+}
+
+struct TRecordModelMetricsReq {
+  1: required string modelId
+  2: required string trialId
+  3: required list<string> metrics
+  4: required i64 timestamp
+  5: required list<double> values
+}
+
 service IDataNodeRPCService {
 
   // -----------------------------------For Data Node-----------------------------------------------
@@ -644,6 +707,28 @@ service IDataNodeRPCService {
   * Execute CQ on DataNode
   */
   common.TSStatus executeCQ(TExecuteCQ req)
+
+ /**
+  * Delete model training metrics on DataNode
+  */
+  common.TSStatus deleteModelMetrics(TDeleteModelMetricsReq req)
+
+  // ----------------------------------- For ML Node -----------------------------------------------
+
+ /**
+  * Fecth the data of the specified time series
+  */
+  TFetchTimeseriesResp fetchTimeseries(TFetchTimeseriesReq req)
+
+ /**
+  * Fecth window batches of the specified time series
+  */
+  TFetchWindowBatchResp fetchWindowBatch(TFetchWindowBatchReq req)
+
+ /**
+  * Record model training metrics on DataNode
+  */
+  common.TSStatus recordModelMetrics(TRecordModelMetricsReq req)
 }
 
 service MPPDataExchangeService {

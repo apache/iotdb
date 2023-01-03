@@ -26,7 +26,8 @@ import org.openjdk.jol.info.ClassLayout;
 import java.util.Arrays;
 import java.util.Optional;
 
-import static io.airlift.slice.SizeOf.sizeOf;
+import static io.airlift.slice.SizeOf.sizeOfBooleanArray;
+import static io.airlift.slice.SizeOf.sizeOfFloatArray;
 import static org.apache.iotdb.tsfile.read.common.block.column.ColumnUtil.checkValidRegion;
 
 public class FloatColumn implements Column {
@@ -65,7 +66,8 @@ public class FloatColumn implements Column {
     }
     this.valueIsNull = valueIsNull;
 
-    retainedSizeInBytes = (INSTANCE_SIZE + sizeOf(valueIsNull) + sizeOf(values));
+    retainedSizeInBytes =
+        INSTANCE_SIZE + sizeOfFloatArray(positionCount) + sizeOfBooleanArray(positionCount);
   }
 
   @Override

@@ -100,6 +100,37 @@ public class SessionDataSet implements AutoCloseable {
             timeout);
   }
 
+  public SessionDataSet(
+      String sql,
+      List<String> columnNameList,
+      List<String> columnTypeList,
+      Map<String, Integer> columnNameIndex,
+      long queryId,
+      long statementId,
+      IClientRPCService.Iface client,
+      long sessionId,
+      List<ByteBuffer> queryResult,
+      boolean ignoreTimeStamp,
+      long timeout,
+      boolean moreData,
+      int fetchSize) {
+    this.ioTDBRpcDataSet =
+        new IoTDBRpcDataSet(
+            sql,
+            columnNameList,
+            columnTypeList,
+            columnNameIndex,
+            ignoreTimeStamp,
+            moreData,
+            queryId,
+            statementId,
+            client,
+            sessionId,
+            queryResult,
+            fetchSize,
+            timeout);
+  }
+
   public int getFetchSize() {
     return ioTDBRpcDataSet.fetchSize;
   }
