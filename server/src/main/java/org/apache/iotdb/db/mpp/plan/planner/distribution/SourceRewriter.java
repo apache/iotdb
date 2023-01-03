@@ -79,7 +79,7 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDC
 
 public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanContext> {
 
-  private Analysis analysis;
+  private final Analysis analysis;
 
   public SourceRewriter(Analysis analysis) {
     this.analysis = analysis;

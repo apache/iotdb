@@ -133,6 +133,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TCreateSchemaRegionReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDeactivateTemplateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDeleteDataForDeleteSchemaReq;
+import org.apache.iotdb.mpp.rpc.thrift.TDeleteModelMetricsReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDeleteTimeSeriesReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDisableDataNodeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDropFunctionInstanceReq;
@@ -141,6 +142,10 @@ import org.apache.iotdb.mpp.rpc.thrift.TExecuteCQ;
 import org.apache.iotdb.mpp.rpc.thrift.TFetchFragmentInstanceInfoReq;
 import org.apache.iotdb.mpp.rpc.thrift.TFetchSchemaBlackListReq;
 import org.apache.iotdb.mpp.rpc.thrift.TFetchSchemaBlackListResp;
+import org.apache.iotdb.mpp.rpc.thrift.TFetchTimeseriesReq;
+import org.apache.iotdb.mpp.rpc.thrift.TFetchTimeseriesResp;
+import org.apache.iotdb.mpp.rpc.thrift.TFetchWindowBatchReq;
+import org.apache.iotdb.mpp.rpc.thrift.TFetchWindowBatchResp;
 import org.apache.iotdb.mpp.rpc.thrift.TFireTriggerReq;
 import org.apache.iotdb.mpp.rpc.thrift.TFireTriggerResp;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceInfoResp;
@@ -155,6 +160,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TLoadResp;
 import org.apache.iotdb.mpp.rpc.thrift.TLoadSample;
 import org.apache.iotdb.mpp.rpc.thrift.TMaintainPeerReq;
 import org.apache.iotdb.mpp.rpc.thrift.TOperatePipeOnDataNodeReq;
+import org.apache.iotdb.mpp.rpc.thrift.TRecordModelMetricsReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionLeaderChangeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRollbackSchemaBlackListReq;
@@ -896,6 +902,30 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       SESSION_MANAGER.closeSession(session, COORDINATOR::cleanupQueryExecution);
       SESSION_MANAGER.removeCurrSession();
     }
+  }
+
+  @Override
+  public TSStatus deleteModelMetrics(TDeleteModelMetricsReq req) throws TException {
+    // TODO
+    throw new TException(new UnsupportedOperationException().getCause());
+  }
+
+  @Override
+  public TFetchTimeseriesResp fetchTimeseries(TFetchTimeseriesReq req) throws TException {
+    // TODO
+    throw new TException(new UnsupportedOperationException().getCause());
+  }
+
+  @Override
+  public TFetchWindowBatchResp fetchWindowBatch(TFetchWindowBatchReq req) throws TException {
+    // TODO
+    throw new TException(new UnsupportedOperationException().getCause());
+  }
+
+  @Override
+  public TSStatus recordModelMetrics(TRecordModelMetricsReq req) throws TException {
+    // TODO
+    throw new TException(new UnsupportedOperationException().getCause());
   }
 
   private PathPatternTree filterPathPatternTree(PathPatternTree patternTree, String storageGroup) {

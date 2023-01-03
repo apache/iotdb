@@ -33,7 +33,9 @@ public class TemplateSetInfoResp implements DataSet {
   // <path pattern represents possible device paths, possible templates set on device>
   private Map<PartialPath, List<Template>> patternTemplateMap;
 
-  public TemplateSetInfoResp() {}
+  public TemplateSetInfoResp() {
+    // empty constructor
+  }
 
   public TSStatus getStatus() {
     return status;

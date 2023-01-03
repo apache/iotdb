@@ -85,4 +85,8 @@ public class MetadataConstant {
         throw new RuntimeException("Undefined MNode type " + type);
     }
   }
+
+  public static boolean isStorageGroupType(byte type) {
+    return type == STORAGE_GROUP_MNODE_TYPE || type == STORAGE_GROUP_ENTITY_MNODE_TYPE;
+  }
 }

@@ -372,31 +372,44 @@ UDTF 的结束方法，您可以在此方法中进行一些资源释放等的操
 
 1. 实现一个完整的 UDF 类，假定这个类的全类名为`org.apache.iotdb.udf.UDTFExample`
 2. 将项目打成 JAR 包，如果您使用 Maven 管理项目，可以参考上述 Maven 项目示例的写法
-3. 可选项。您可以提前将 JAR 包放置到目录 `iotdb-server-1.0.0-all-bin/ext/udf` 下。
-   **注意，在部署集群的时候，如果您想将 JAR 包提前放到指定目录下，需要保证每一个节点的 UDF JAR 包路径下都存在相应的 JAR 包。** 您也可以在注册 UDF 的 SQL 中指定要使用的 JAR 包的 URI，我们会尝试下载该 JAR 包并分发到集群中的每个节点，放置在 `iotdb-server-1.0.0-all-bin/ext/udf/install` 下。
-   
-    > 您可以通过修改配置文件中的`udf_root_dir`来指定 UDF 加载 Jar 的根路径。
-4. 使用 SQL 语句注册该 UDF，假定赋予该 UDF 的名字为`example`
-
-注册 UDF 的 SQL 语法如下：
-
+3. 进行注册前的准备工作，根据注册方式的不同需要做不同的准备，具体可参考以下例子
+4. 使用以下 SQL 语句注册 UDF
 ```sql
 CREATE FUNCTION <UDF-NAME> AS <UDF-CLASS-FULL-PATHNAME> (USING URI URI-STRING)?
 ```
 
-例子中注册 UDF 的 SQL 语句如下：
+### 示例：注册名为`example`的 UDF，以下两种注册方式任选其一即可
 
+#### 不指定URI
+
+准备工作：  
+使用该种方式注册时，您需要提前将 JAR 包放置到目录 `iotdb-server-1.0.0-all-bin/ext/udf`（该目录可配置） 下。  
+**注意，如果您使用的是集群，那么需要将 JAR 包放置到所有 DataNode 的该目录下**  
+
+注册语句：
+```sql
+CREATE FUNCTION example AS 'org.apache.iotdb.udf.UDTFExample'
+```
+
+#### 指定URI
+
+准备工作：  
+使用该种方式注册时，您需要提前将 JAR 包上传到 URI 服务器上并确保执行注册语句的 IoTDB 实例能够访问该 URI 服务器。  
+**注意，您无需手动放置 JAR 包，IoTDB 会下载 JAR 包并正确同步到整个集群**
+
+注册语句：
 ```sql
 CREATE FUNCTION example AS 'org.apache.iotdb.udf.UDTFExample' USING URI 'http://jar/example.jar'
 ```
 
+### 注意
 由于 IoTDB 的 UDF 是通过反射技术动态装载的，因此您在装载过程中无需启停服务器。
 
-注意：UDF 函数名称是大小写不敏感的。
+UDF 函数名称是大小写不敏感的。
 
-注意：请不要给 UDF 函数注册一个内置函数的名字。使用内置函数的名字给 UDF 注册会失败。
+请不要给 UDF 函数注册一个内置函数的名字。使用内置函数的名字给 UDF 注册会失败。
 
-注意：不同的 JAR 包中最好不要有全类名相同但实现功能逻辑不一样的类。例如 UDF(UDAF/UDTF)：`udf1`、`udf2`分别对应资源`udf1.jar`、`udf2.jar`。如果两个 JAR 包里都包含一个`org.apache.iotdb.udf.UDTFExample`类，当同一个 SQL 中同时使用到这两个 UDF 时，系统会随机加载其中一个类，导致 UDF 执行行为不一致。
+不同的 JAR 包中最好不要有全类名相同但实现功能逻辑不一样的类。例如 UDF(UDAF/UDTF)：`udf1`、`udf2`分别对应资源`udf1.jar`、`udf2.jar`。如果两个 JAR 包里都包含一个`org.apache.iotdb.udf.UDTFExample`类，当同一个 SQL 中同时使用到这两个 UDF 时，系统会随机加载其中一个类，导致 UDF 执行行为不一致。
 
 ## UDF 卸载
 
@@ -476,6 +489,7 @@ SHOW FUNCTIONS
 
 ## 配置项
 
+使用配置项 `trigger_lib_dir` 来配置 trigger 的存储目录.  
 在 SQL 语句中使用自定义函数时，可能提示内存不足。这种情况下，您可以通过更改配置文件`iotdb-datanode.properties`中的`udf_initial_byte_array_length_for_memory_control`，`udf_memory_budget_in_mb`和`udf_reader_transformer_collector_memory_proportion`并重启服务来解决此问题。
 
 ## 贡献 UDF

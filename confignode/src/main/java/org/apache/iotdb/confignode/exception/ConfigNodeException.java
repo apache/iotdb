@@ -20,7 +20,7 @@ package org.apache.iotdb.confignode.exception;
 
 public abstract class ConfigNodeException extends Exception {
 
-  public ConfigNodeException(String message) {
+  protected ConfigNodeException(String message) {
     super(message);
   }
 }

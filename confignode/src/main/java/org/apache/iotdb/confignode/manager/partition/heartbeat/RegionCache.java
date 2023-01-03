@@ -39,7 +39,7 @@ public class RegionCache {
     synchronized (slidingWindow) {
       // Only sequential HeartbeatSamples are accepted.
       // And un-sequential HeartbeatSamples will be discarded.
-      if (slidingWindow.size() == 0
+      if (slidingWindow.isEmpty()
           || getLastSample().getSendTimestamp() < newHeartbeatSample.getSendTimestamp()) {
         slidingWindow.add(newHeartbeatSample);
       }

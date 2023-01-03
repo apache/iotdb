@@ -79,7 +79,7 @@ public class NodeManageMemoryMergeOperator implements ProcessOperator {
       isReadingMemory = false;
       return transferToTsBlock(data);
     } else {
-      TsBlock block = child.next();
+      TsBlock block = child.nextWithTimer();
       if (block == null) {
         return null;
       }
@@ -126,7 +126,7 @@ public class NodeManageMemoryMergeOperator implements ProcessOperator {
 
   @Override
   public boolean hasNext() {
-    return isReadingMemory || child.hasNext();
+    return isReadingMemory || child.hasNextWithTimer();
   }
 
   @Override

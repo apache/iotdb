@@ -36,7 +36,6 @@ import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import org.apache.thrift.TException;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
@@ -46,7 +45,6 @@ import org.junit.runner.RunWith;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
@@ -68,8 +66,8 @@ public class IoTDBPartitionInheritPolicyIT {
 
   private static int originalSeriesPartitionSlotNum;
 
-  private static long originalTimePartitionInterval;
-  private static final long testTimePartitionInterval = 604800000;
+  private static final long testTimePartitionInterval =
+      ConfigFactory.getConfig().getTimePartitionInterval();
 
   private static final String sg = "root.sg";
   private static final int storageGroupNum = 2;
@@ -96,9 +94,6 @@ public class IoTDBPartitionInheritPolicyIT {
     originalSeriesPartitionSlotNum = ConfigFactory.getConfig().getSeriesPartitionSlotNum();
     ConfigFactory.getConfig().setSeriesPartitionSlotNum(testSeriesPartitionSlotNum * 10);
 
-    originalTimePartitionInterval = ConfigFactory.getConfig().getTimePartitionInterval();
-    ConfigFactory.getConfig().setTimePartitionInterval(testTimePartitionInterval);
-
     // Init 1C3D environment
     EnvFactory.getEnv().initClusterEnvironment(1, 3);
 
@@ -123,12 +118,10 @@ public class IoTDBPartitionInheritPolicyIT {
         .setEnableDataPartitionInheritPolicy(originalEnableDataPartitionInheritPolicy);
     ConfigFactory.getConfig().setDataReplicationFactor(originalDataReplicationFactor);
     ConfigFactory.getConfig().setSeriesPartitionSlotNum(originalSeriesPartitionSlotNum);
-    ConfigFactory.getConfig().setTimePartitionInterval(originalTimePartitionInterval);
   }
 
   @Test
-  public void testDataPartitionInheritPolicy()
-      throws TException, IOException, InterruptedException {
+  public void testDataPartitionInheritPolicy() throws Exception {
 
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {

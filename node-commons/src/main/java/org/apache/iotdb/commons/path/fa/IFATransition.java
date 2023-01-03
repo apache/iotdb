@@ -23,7 +23,7 @@ package org.apache.iotdb.commons.path.fa;
 public interface IFATransition {
 
   /** @return the value of this transition, which is used to match the events */
-  String getValue();
+  String getAcceptEvent();
 
   /**
    * @param event event happened on one of the source state of this transition and is trying to find
@@ -31,4 +31,6 @@ public interface IFATransition {
    * @return whether this transition can match the event
    */
   boolean isMatch(String event);
+
+  int getIndex();
 }

@@ -62,10 +62,10 @@ public class FragmentInstanceSerdeTest {
     TDataNodeLocation dataNodeLocation = new TDataNodeLocation();
     dataNodeLocation.setDataNodeId(0);
     dataNodeLocation.setClientRpcEndPoint(new TEndPoint("0.0.0.0", 6667));
-    dataNodeLocation.setInternalEndPoint(new TEndPoint("0.0.0.0", 9003));
-    dataNodeLocation.setMPPDataExchangeEndPoint(new TEndPoint("0.0.0.0", 8777));
-    dataNodeLocation.setDataRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 40010));
-    dataNodeLocation.setSchemaRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 50010));
+    dataNodeLocation.setInternalEndPoint(new TEndPoint("0.0.0.0", 10730));
+    dataNodeLocation.setMPPDataExchangeEndPoint(new TEndPoint("0.0.0.0", 10740));
+    dataNodeLocation.setDataRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 10760));
+    dataNodeLocation.setSchemaRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 10750));
 
     PlanFragmentId planFragmentId = new PlanFragmentId("test", -1);
     FragmentInstance fragmentInstance =
@@ -104,10 +104,10 @@ public class FragmentInstanceSerdeTest {
     TDataNodeLocation dataNodeLocation = new TDataNodeLocation();
     dataNodeLocation.setDataNodeId(0);
     dataNodeLocation.setClientRpcEndPoint(new TEndPoint("0.0.0.0", 6667));
-    dataNodeLocation.setInternalEndPoint(new TEndPoint("0.0.0.0", 9003));
-    dataNodeLocation.setMPPDataExchangeEndPoint(new TEndPoint("0.0.0.0", 8777));
-    dataNodeLocation.setDataRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 40010));
-    dataNodeLocation.setSchemaRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 50010));
+    dataNodeLocation.setInternalEndPoint(new TEndPoint("0.0.0.0", 10730));
+    dataNodeLocation.setMPPDataExchangeEndPoint(new TEndPoint("0.0.0.0", 10740));
+    dataNodeLocation.setDataRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 10760));
+    dataNodeLocation.setSchemaRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 10750));
 
     PlanFragmentId planFragmentId = new PlanFragmentId("test2", 1);
     FragmentInstance fragmentInstance =

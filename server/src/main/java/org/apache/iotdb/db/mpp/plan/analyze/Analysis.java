@@ -163,6 +163,9 @@ public class Analysis {
   // header of result dataset
   private DatasetHeader respDatasetHeader;
 
+  // indicate whether the Nodes produce source data are VirtualSourceNodes
+  private boolean isVirtualSource = false;
+
   /////////////////////////////////////////////////////////////////////////////////////////////////
   // SELECT INTO Analysis
   /////////////////////////////////////////////////////////////////////////////////////////////////
@@ -521,5 +524,13 @@ public class Analysis {
 
   public void setRunningDataNodeLocations(List<TDataNodeLocation> runningDataNodeLocations) {
     this.runningDataNodeLocations = runningDataNodeLocations;
+  }
+
+  public boolean isVirtualSource() {
+    return isVirtualSource;
+  }
+
+  public void setVirtualSource(boolean virtualSource) {
+    isVirtualSource = virtualSource;
   }
 }

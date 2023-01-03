@@ -68,11 +68,11 @@ public class ConfigNodeRegionStateMachine
   private int startIndex;
   private int endIndex;
 
-  private static final String currentFileDir =
+  private static final String CURRENT_FILE_DIR =
       CONF.getConsensusDir() + File.separator + "simple" + File.separator + "current";
-  private static final String progressFilePath =
-      currentFileDir + File.separator + "log_inprogress_";
-  private static final String filePath = currentFileDir + File.separator + "log_";
+  private static final String PROGRESS_FILE_PATH =
+      CURRENT_FILE_DIR + File.separator + "log_inprogress_";
+  private static final String FILE_PATH = CURRENT_FILE_DIR + File.separator + "log_";
   private static final long LOG_FILE_MAX_SIZE =
       CONF.getConfigNodeSimpleConsensusLogSegmentSizeMax();
   private final TEndPoint currentNodeTEndPoint;
@@ -196,8 +196,8 @@ public class ConfigNodeRegionStateMachine
       configManager.getProcedureManager().shiftExecutor(true);
       configManager.getLoadManager().startLoadStatisticsService();
       configManager.getLoadManager().getRouteBalancer().startRouteBalancingService();
+      configManager.getRetryFailedTasksThread().startRetryFailedTasksService();
       configManager.getNodeManager().startHeartbeatService();
-      configManager.getNodeManager().startUnknownDataNodeDetector();
       configManager.getPartitionManager().startRegionCleaner();
 
       // we do cq recovery async for two reasons:
@@ -217,8 +217,8 @@ public class ConfigNodeRegionStateMachine
       configManager.getProcedureManager().shiftExecutor(false);
       configManager.getLoadManager().stopLoadStatisticsService();
       configManager.getLoadManager().getRouteBalancer().stopRouteBalancingService();
+      configManager.getRetryFailedTasksThread().stopRetryFailedTasksService();
       configManager.getNodeManager().stopHeartbeatService();
-      configManager.getNodeManager().stopUnknownDataNodeDetector();
       configManager.getPartitionManager().stopRegionCleaner();
       configManager.getCQManager().stopCQScheduler();
     }
@@ -264,7 +264,7 @@ public class ConfigNodeRegionStateMachine
     if (logFile.length() > LOG_FILE_MAX_SIZE) {
       try {
         logWriter.force();
-        File completedFilePath = new File(filePath + startIndex + "_" + endIndex);
+        File completedFilePath = new File(FILE_PATH + startIndex + "_" + endIndex);
         Files.move(logFile.toPath(), completedFilePath.toPath(), StandardCopyOption.ATOMIC_MOVE);
       } catch (IOException e) {
         LOGGER.error("Can't force logWriter for ConfigNode SimpleConsensus mode", e);
@@ -298,7 +298,7 @@ public class ConfigNodeRegionStateMachine
       buffer.position(buffer.limit());
       logWriter.write(buffer);
       endIndex = endIndex + 1;
-      File tmpLogFile = new File(progressFilePath + endIndex);
+      File tmpLogFile = new File(PROGRESS_FILE_PATH + endIndex);
       Files.move(logFile.toPath(), tmpLogFile.toPath(), StandardCopyOption.ATOMIC_MOVE);
       logFile = tmpLogFile;
       logWriter = new LogWriter(logFile, false);
@@ -309,9 +309,9 @@ public class ConfigNodeRegionStateMachine
   }
 
   private void initStandAloneConfigNode() {
-    File dir = new File(currentFileDir);
+    File dir = new File(CURRENT_FILE_DIR);
     dir.mkdirs();
-    String[] list = new File(currentFileDir).list();
+    String[] list = new File(CURRENT_FILE_DIR).list();
     if (list != null && list.length != 0) {
       for (String logFileName : list) {
         int tmp = Integer.parseInt(logFileName.substring(logFileName.lastIndexOf("_") + 1));
@@ -323,7 +323,7 @@ public class ConfigNodeRegionStateMachine
           }
         }
         File logFile =
-            SystemFileFactory.INSTANCE.getFile(currentFileDir + File.separator + logFileName);
+            SystemFileFactory.INSTANCE.getFile(CURRENT_FILE_DIR + File.separator + logFileName);
         SingleFileLogReader logReader;
         try {
           logReader = new SingleFileLogReader(logFile);
@@ -354,7 +354,7 @@ public class ConfigNodeRegionStateMachine
   }
 
   private void createLogFile(int endIndex) {
-    logFile = SystemFileFactory.INSTANCE.getFile(progressFilePath + endIndex);
+    logFile = SystemFileFactory.INSTANCE.getFile(PROGRESS_FILE_PATH + endIndex);
     try {
       logFile.createNewFile();
       logWriter = new LogWriter(logFile, false);

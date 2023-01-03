@@ -22,7 +22,10 @@ package org.apache.iotdb.commons.client;
 import org.apache.commons.pool2.KeyedObjectPool;
 
 public interface IClientPoolFactory<K, V> {
-  // We can implement this interface in other modules and then set the corresponding expected
-  // parameters and client factory classes
+
+  /**
+   * We can implement this interface in other modules and then set the corresponding expected
+   * parameters and client factory classes.
+   */
   KeyedObjectPool<K, V> createClientPool(ClientManager<K, V> manager);
 }

@@ -43,7 +43,7 @@ import java.nio.ByteBuffer;
 /** drop trigger procedure */
 public class DropTriggerProcedure extends AbstractNodeProcedure<DropTriggerState> {
   private static final Logger LOG = LoggerFactory.getLogger(DropTriggerProcedure.class);
-  private static final int retryThreshold = 5;
+  private static final int RETRY_THRESHOLD = 5;
 
   private String triggerName;
 
@@ -110,7 +110,7 @@ public class DropTriggerProcedure extends AbstractNodeProcedure<DropTriggerState
       } else {
         LOG.error(
             "Retrievable error trying to drop trigger [{}], state [{}]", triggerName, state, e);
-        if (getCycles() > retryThreshold) {
+        if (getCycles() > RETRY_THRESHOLD) {
           setFailure(
               new ProcedureException(
                   String.format("Fail to drop trigger [%s] at STATE [%s]", triggerName, state)));

@@ -34,7 +34,6 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
-import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.rescon.SystemInfo;
 
 import org.apache.commons.io.FileUtils;
@@ -194,6 +193,9 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
         for (TsFileResource targetResource : targetTsfileResourceList) {
           if (targetResource != null) {
             TsFileMetricManager.getInstance().addFile(targetResource.getTsFileSize(), true);
+
+            // set target resources to CLOSED, so that they can be selected to compact
+            targetResource.setStatus(TsFileResourceStatus.CLOSED);
           }
         }
 
@@ -331,7 +333,6 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
   private long deleteOldFiles(List<TsFileResource> tsFileResourceList) throws IOException {
     long totalSize = 0;
     for (TsFileResource tsFileResource : tsFileResourceList) {
-      FileReaderManager.getInstance().closeFileAndRemoveReader(tsFileResource.getTsFilePath());
       totalSize += tsFileResource.getTsFileSize();
       tsFileResource.remove();
       LOGGER.info(

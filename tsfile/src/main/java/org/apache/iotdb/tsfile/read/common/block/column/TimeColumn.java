@@ -22,7 +22,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import org.openjdk.jol.info.ClassLayout;
 
-import static io.airlift.slice.SizeOf.sizeOf;
+import static io.airlift.slice.SizeOf.sizeOfLongArray;
 import static org.apache.iotdb.tsfile.read.common.block.column.ColumnUtil.checkValidRegion;
 
 public class TimeColumn implements Column {
@@ -56,7 +56,7 @@ public class TimeColumn implements Column {
     }
     this.values = values;
 
-    retainedSizeInBytes = INSTANCE_SIZE + sizeOf(values);
+    retainedSizeInBytes = INSTANCE_SIZE + sizeOfLongArray(positionCount);
   }
 
   @Override

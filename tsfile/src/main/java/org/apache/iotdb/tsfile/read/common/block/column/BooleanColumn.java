@@ -26,7 +26,7 @@ import org.openjdk.jol.info.ClassLayout;
 import java.util.Arrays;
 import java.util.Optional;
 
-import static io.airlift.slice.SizeOf.sizeOf;
+import static io.airlift.slice.SizeOf.sizeOfBooleanArray;
 import static org.apache.iotdb.tsfile.read.common.block.column.ColumnUtil.checkValidRegion;
 
 public class BooleanColumn implements Column {
@@ -66,7 +66,8 @@ public class BooleanColumn implements Column {
     }
     this.valueIsNull = valueIsNull;
 
-    retainedSizeInBytes = (INSTANCE_SIZE + sizeOf(valueIsNull) + sizeOf(values));
+    retainedSizeInBytes =
+        INSTANCE_SIZE + sizeOfBooleanArray(positionCount) + sizeOfBooleanArray(positionCount);
   }
 
   @Override
