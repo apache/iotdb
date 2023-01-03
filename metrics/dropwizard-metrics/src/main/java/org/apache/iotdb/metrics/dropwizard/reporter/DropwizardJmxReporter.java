@@ -47,9 +47,11 @@ public class DropwizardJmxReporter implements JmxReporter {
               .build();
       jmxReporter.start();
     } catch (Exception e) {
+      jmxReporter = null;
       LOGGER.warn("Dropwizard JmxReporter failed to start, because ", e);
       return false;
     }
+    LOGGER.info("Dropwizard JmxReporter start!");
     return true;
   }
 
@@ -64,6 +66,7 @@ public class DropwizardJmxReporter implements JmxReporter {
       LOGGER.warn("Dropwizard JmxReporter failed to stop, because ", e);
       return false;
     }
+    LOGGER.info("Dropwizard JmxReporter stop!");
     return true;
   }
 
