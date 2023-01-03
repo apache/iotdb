@@ -271,7 +271,7 @@ public class IoTDBConstant {
   // show cluster status
   public static final String NODE_TYPE_CONFIG_NODE = "ConfigNode";
   public static final String NODE_TYPE_DATA_NODE = "DataNode";
-  public static final String CLUSTER_NAME = "ClusterName";
+  //  public static final String CLUSTER_NAME = "ClusterName";
   public static final String CONFIG_NODE_CONSENSUS_PROTOCOL_CLASS =
       "ConfigNodeConsensusProtocolClass";
   public static final String DATA_REGION_CONSENSUS_PROTOCOL_CLASS =

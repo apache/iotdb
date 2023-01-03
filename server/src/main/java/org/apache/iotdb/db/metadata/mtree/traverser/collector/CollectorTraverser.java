@@ -61,13 +61,13 @@ public abstract class CollectorTraverser<T> extends Traverser {
   }
 
   /** extends traversal with limit restriction */
-  @Override
-  protected void traverse(IMNode node, int idx, int level) throws MetadataException {
-    if (hasLimit && count == limit) {
-      return;
-    }
-    super.traverse(node, idx, level);
-  }
+  //  @Override
+  //  protected void traverse(IMNode node, int idx, int level) throws MetadataException {
+  //    if (hasLimit && count == limit) {
+  //      return;
+  //    }
+  //    super.traverse(node, idx, level);
+  //  }
 
   /**
    * After invoke traverse(), this method could be invoked to get result

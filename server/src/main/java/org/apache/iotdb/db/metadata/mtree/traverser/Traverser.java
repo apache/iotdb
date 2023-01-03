@@ -151,24 +151,14 @@ public abstract class Traverser extends AbstractTreeVisitor<IMNode, IMNode> {
   }
 
   @Override
-  protected IMNode getChild(IMNode parent, String childName) {
-    try {
-      return store.getChild(parent, childName);
-    } catch (MetadataException e) {
-      e.printStackTrace();
-      return null;
-    }
+  protected IMNode getChild(IMNode parent, String childName) throws MetadataException {
+    return store.getChild(parent, childName);
     // TODO: support template
   }
 
   @Override
-  protected Iterator<IMNode> getChildrenIterator(IMNode parent) {
-    try {
-      return store.getChildrenIterator(parent);
-    } catch (MetadataException e) {
-      e.printStackTrace();
-      return null;
-    }
+  protected Iterator<IMNode> getChildrenIterator(IMNode parent) throws MetadataException {
+    return store.getChildrenIterator(parent);
     // TODO: support template
   }
 
