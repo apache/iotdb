@@ -98,7 +98,7 @@ public class DataPartition extends Partition {
         dataBasePartitionMap.get(seriesPartitionSlot);
     for (TTimePartitionSlot timePartitionSlot : timePartitionSlotList) {
       List<TRegionReplicaSet> targetRegionList = slotReplicaSetMap.get(timePartitionSlot);
-      if (targetRegionList == null || targetRegionList.size() == 0) {
+      if (targetRegionList == null || targetRegionList.isEmpty()) {
         throw new RuntimeException(
             String.format(
                 "targetRegionList is empty. device: %s, timeSlot: %s",

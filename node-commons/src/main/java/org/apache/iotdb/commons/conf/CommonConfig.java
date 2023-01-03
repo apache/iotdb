@@ -318,6 +318,8 @@ public class CommonConfig {
         logger.info(
             "Change system status to Removing! The current Node is being removed from cluster!");
         break;
+      default:
+        break;
     }
   }
 
