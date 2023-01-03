@@ -172,6 +172,11 @@ public class SegmentedPage extends SchemaPage implements ISegmentedPage {
   }
 
   @Override
+  public boolean isCapableForSegSize(short size) {
+    return spareSize >= size + SchemaFileConfig.SEG_OFF_DIG;
+  }
+
+  @Override
   public short getSegmentSize(short segId) throws SegmentNotFoundException {
     return getSegment(segId).size();
   }
@@ -201,7 +206,7 @@ public class SegmentedPage extends SchemaPage implements ISegmentedPage {
   @Override
   public long transplantSegment(ISegmentedPage srcPage, short segId, short newSegSize)
       throws MetadataException {
-    if (!isCapableForSize(newSegSize)) {
+    if (!isCapableForSegSize(newSegSize)) {
       throw new SchemaPageOverflowException(pageIndex);
     }
     if (maxAppendableSegmentSize() < newSegSize) {
@@ -408,7 +413,8 @@ public class SegmentedPage extends SchemaPage implements ISegmentedPage {
   }
 
   private short maxAppendableSegmentSize() {
-    return (short) (pageBuffer.limit() - 2 * (memberNum + 1) - spareOffset);
+    return (short)
+        (pageBuffer.limit() - SchemaFileConfig.SEG_OFF_DIG * (memberNum + 1) - spareOffset);
   }
 
   /**

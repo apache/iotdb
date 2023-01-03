@@ -60,7 +60,7 @@ public abstract class AbstractTreeVisitorWithLimitOffset<N extends ITreeNode, R>
   }
 
   @Override
-  protected void getNext() {
+  protected void getNext() throws Exception {
     if (hasLimit) {
       if (curOffset < offset) {
         while (curOffset < offset) {

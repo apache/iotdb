@@ -22,40 +22,36 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
-import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.OrderByParameter;
+
+import com.google.common.base.Objects;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
-import java.util.Objects;
 
-/**
- * In general, the parameter in sortNode should be pushed down to the upstream operators. In our
- * optimized logical query plan, the sortNode should not appear.
- */
 public class SortNode extends SingleChildProcessNode {
 
-  private final Ordering sortOrder;
+  private final OrderByParameter orderByParameter;
 
-  public SortNode(PlanNodeId id, Ordering sortOrder) {
-    super(id);
-    this.sortOrder = sortOrder;
-  }
-
-  public SortNode(PlanNodeId id, PlanNode child, Ordering sortOrder) {
+  public SortNode(PlanNodeId id, PlanNode child, OrderByParameter orderByParameter) {
     super(id, child);
-    this.sortOrder = sortOrder;
+    this.orderByParameter = orderByParameter;
   }
 
-  public Ordering getSortOrder() {
-    return sortOrder;
+  public SortNode(PlanNodeId id, OrderByParameter orderByParameter) {
+    super(id);
+    this.orderByParameter = orderByParameter;
+  }
+
+  public OrderByParameter getOrderByParameter() {
+    return orderByParameter;
   }
 
   @Override
   public PlanNode clone() {
-    return new SortNode(getPlanNodeId(), sortOrder);
+    return new SortNode(getPlanNodeId(), child, orderByParameter);
   }
 
   @Override
@@ -71,38 +67,32 @@ public class SortNode extends SingleChildProcessNode {
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
     PlanNodeType.SORT.serialize(byteBuffer);
-    ReadWriteIOUtils.write(sortOrder.ordinal(), byteBuffer);
+    orderByParameter.serializeAttributes(byteBuffer);
   }
 
   @Override
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
     PlanNodeType.SORT.serialize(stream);
-    ReadWriteIOUtils.write(sortOrder.ordinal(), stream);
+    orderByParameter.serializeAttributes(stream);
   }
 
   public static SortNode deserialize(ByteBuffer byteBuffer) {
-    Ordering orderBy = Ordering.values()[ReadWriteIOUtils.readInt(byteBuffer)];
+    OrderByParameter orderByParameter = OrderByParameter.deserialize(byteBuffer);
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
-    return new SortNode(planNodeId, orderBy);
+    return new SortNode(planNodeId, orderByParameter);
   }
 
   @Override
   public boolean equals(Object o) {
-    if (this == o) {
-      return true;
-    }
-    if (o == null || getClass() != o.getClass()) {
-      return false;
-    }
-    if (!super.equals(o)) {
-      return false;
-    }
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    if (!super.equals(o)) return false;
     SortNode sortNode = (SortNode) o;
-    return sortOrder == sortNode.sortOrder;
+    return Objects.equal(orderByParameter, sortNode.orderByParameter);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), sortOrder);
+    return Objects.hashCode(super.hashCode(), orderByParameter);
   }
 }

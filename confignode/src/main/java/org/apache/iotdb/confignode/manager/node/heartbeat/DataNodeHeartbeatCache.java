@@ -36,7 +36,7 @@ public class DataNodeHeartbeatCache extends BaseNodeCache {
   protected void updateCurrentStatistics() {
     NodeHeartbeatSample lastSample = null;
     synchronized (slidingWindow) {
-      if (slidingWindow.size() > 0) {
+      if (!slidingWindow.isEmpty()) {
         lastSample = slidingWindow.getLast();
       }
     }

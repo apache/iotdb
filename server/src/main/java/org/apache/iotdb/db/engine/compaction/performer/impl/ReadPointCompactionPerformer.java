@@ -42,7 +42,6 @@ import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
-import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
@@ -116,7 +115,7 @@ public class ReadPointCompactionPerformer
         Pair<String, Boolean> deviceInfo = deviceIterator.nextDevice();
         String device = deviceInfo.left;
         boolean isAligned = deviceInfo.right;
-        QueryUtils.fillOrderIndexes(queryDataSource, device, true);
+        queryDataSource.fillOrderIndexes(device, true);
 
         if (isAligned) {
           compactAlignedSeries(

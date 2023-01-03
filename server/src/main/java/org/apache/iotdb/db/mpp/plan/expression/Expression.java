@@ -85,14 +85,6 @@ public abstract class Expression extends StatementNode {
     return false;
   }
 
-  public boolean isUserDefinedAggregationFunctionExpression() {
-    return false;
-  }
-
-  public boolean isTimeSeriesGeneratingFunctionExpression() {
-    return false;
-  }
-
   public boolean isCompareBinaryExpression() {
     return false;
   }
@@ -192,11 +184,6 @@ public abstract class Expression extends StatementNode {
 
     return getExpressionString().equals(((Expression) o).getExpressionString());
   }
-
-  /**
-   * returns the DIRECT children expressions if it has any, otherwise an EMPTY list will be returned
-   */
-  public abstract List<Expression> getExpressions();
 
   /////////////////////////////////////////////////////////////////////////////////////////////////
   // serialize & deserialize
@@ -336,6 +323,11 @@ public abstract class Expression extends StatementNode {
   /////////////////////////////////////////////////////////////////////////////////////////////////
   // iterator: level-order traversal iterator
   /////////////////////////////////////////////////////////////////////////////////////////////////
+
+  /**
+   * returns the DIRECT children expressions if it has any, otherwise an EMPTY list will be returned
+   */
+  public abstract List<Expression> getExpressions();
 
   /** returns an iterator to traverse all the successor expressions in a level-order */
   public final Iterator<Expression> iterator() {

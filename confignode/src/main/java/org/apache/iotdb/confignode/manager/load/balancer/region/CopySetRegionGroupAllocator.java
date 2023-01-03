@@ -38,7 +38,7 @@ import java.util.Set;
  */
 public class CopySetRegionGroupAllocator implements IRegionGroupAllocator {
 
-  private static final int maximumRandomNum = 10;
+  private static final int MAXIMUM_RANDOM_NUM = 10;
 
   private int maxId = 0;
   private int intersectionSize = 0;
@@ -62,7 +62,7 @@ public class CopySetRegionGroupAllocator implements IRegionGroupAllocator {
 
     boolean accepted = false;
     while (true) {
-      for (int retry = 0; retry < maximumRandomNum; retry++) {
+      for (int retry = 0; retry < MAXIMUM_RANDOM_NUM; retry++) {
         result = genWeightedRandomRegion(replicationFactor);
         if (intersectionCheck(allocatedRegionGroups, result)) {
           accepted = true;

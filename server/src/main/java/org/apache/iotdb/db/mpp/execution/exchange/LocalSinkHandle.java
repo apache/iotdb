@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.mpp.execution.exchange;
 
 import org.apache.iotdb.db.mpp.execution.exchange.MPPDataExchangeManager.SinkHandleListener;
+import org.apache.iotdb.db.mpp.metric.QueryMetricsManager;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 
@@ -32,6 +33,7 @@ import java.util.List;
 import java.util.Optional;
 
 import static com.google.common.util.concurrent.Futures.nonCancellationPropagating;
+import static org.apache.iotdb.db.mpp.metric.DataExchangeMetricSet.SINK_HANDLE_SEND_TSBLOCK_LOCAL;
 
 public class LocalSinkHandle implements ISinkHandle {
 
@@ -46,6 +48,8 @@ public class LocalSinkHandle implements ISinkHandle {
   private volatile ListenableFuture<Void> blocked;
   private boolean aborted = false;
   private boolean closed = false;
+
+  private static final QueryMetricsManager QUERY_METRICS = QueryMetricsManager.getInstance();
 
   public LocalSinkHandle(
       TFragmentInstanceId remoteFragmentInstanceId,
@@ -103,22 +107,28 @@ public class LocalSinkHandle implements ISinkHandle {
 
   @Override
   public void send(TsBlock tsBlock) {
-    Validate.notNull(tsBlock, "tsBlocks is null");
-    synchronized (this) {
-      checkState();
-      if (!blocked.isDone()) {
-        throw new IllegalStateException("Sink handle is blocked.");
-      }
-    }
-
-    synchronized (queue) {
-      if (queue.hasNoMoreTsBlocks()) {
-        return;
-      }
-      logger.debug("[StartSendTsBlockOnLocal]");
+    long startTime = System.nanoTime();
+    try {
+      Validate.notNull(tsBlock, "tsBlocks is null");
       synchronized (this) {
-        blocked = queue.add(tsBlock);
+        checkState();
+        if (!blocked.isDone()) {
+          throw new IllegalStateException("Sink handle is blocked.");
+        }
       }
+
+      synchronized (queue) {
+        if (queue.hasNoMoreTsBlocks()) {
+          return;
+        }
+        logger.debug("[StartSendTsBlockOnLocal]");
+        synchronized (this) {
+          blocked = queue.add(tsBlock);
+        }
+      }
+    } finally {
+      QUERY_METRICS.recordDataExchangeCost(
+          SINK_HANDLE_SEND_TSBLOCK_LOCAL, System.nanoTime() - startTime);
     }
   }
 

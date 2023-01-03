@@ -26,10 +26,10 @@ import com.google.common.primitives.Bytes;
 import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.stream.Collectors;
 
 /** The header of query result dataset. */
 public class DatasetHeader {
@@ -44,6 +44,14 @@ public class DatasetHeader {
 
   // map from output column to output tsBlock index
   private Map<String, Integer> columnToTsBlockIndexMap;
+
+  // cached field for create response
+  private List<String> respColumns;
+  private List<TSDataType> respDataTypes;
+  private List<String> respDataTypeList;
+  private List<Byte> respAliasColumns;
+  private Map<String, Integer> columnNameIndexMap;
+  private Integer outputValueColumnCount;
 
   public DatasetHeader(List<ColumnHeader> columnHeaders, boolean isIgnoreTimestamp) {
     this.columnHeaders = columnHeaders;
@@ -66,34 +74,46 @@ public class DatasetHeader {
   }
 
   public List<String> getRespColumns() {
-    return columnHeaders.stream()
-        .map(ColumnHeader::getColumnNameWithAlias)
-        .collect(Collectors.toList());
-  }
-
-  public List<String> getColumnNameWithoutAlias() {
-    return columnHeaders.stream().map(ColumnHeader::getColumnName).collect(Collectors.toList());
-  }
-
-  public List<String> getRespDataTypeList() {
-    return columnHeaders.stream()
-        .map(ColumnHeader::getColumnType)
-        .map(Objects::toString)
-        .collect(Collectors.toList());
+    if (respColumns == null) {
+      respColumns = new ArrayList<>();
+      for (ColumnHeader columnHeader : columnHeaders) {
+        respColumns.add(columnHeader.getColumnNameWithAlias());
+      }
+    }
+    return respColumns;
   }
 
   public List<TSDataType> getRespDataTypes() {
-    return columnHeaders.stream().map(ColumnHeader::getColumnType).collect(Collectors.toList());
+    if (respDataTypes == null) {
+      respDataTypes = new ArrayList<>();
+      for (ColumnHeader columnHeader : columnHeaders) {
+        respDataTypes.add(columnHeader.getColumnType());
+      }
+    }
+    return respDataTypes;
+  }
+
+  public List<String> getRespDataTypeList() {
+    if (respDataTypeList == null) {
+      respDataTypeList = new ArrayList<>();
+      for (ColumnHeader columnHeader : columnHeaders) {
+        respDataTypeList.add(columnHeader.getColumnType().toString());
+      }
+    }
+    return respDataTypeList;
   }
 
   public List<Byte> getRespAliasColumns() {
-    BitSet aliasMap = new BitSet();
-    for (int i = 0; i < columnHeaders.size(); ++i) {
-      if (columnHeaders.get(i).hasAlias()) {
-        aliasMap.set(i);
+    if (respAliasColumns == null) {
+      BitSet aliasMap = new BitSet();
+      for (int i = 0; i < columnHeaders.size(); ++i) {
+        if (columnHeaders.get(i).hasAlias()) {
+          aliasMap.set(i);
+        }
       }
+      respAliasColumns = new ArrayList<>(Bytes.asList(aliasMap.toByteArray()));
     }
-    return new ArrayList<>(Bytes.asList(aliasMap.toByteArray()));
+    return respAliasColumns;
   }
 
   public Map<String, Integer> getColumnNameIndexMap() {
@@ -101,17 +121,26 @@ public class DatasetHeader {
       return columnToTsBlockIndexMap;
     }
 
-    Map<String, Integer> columnNameIndexMap = new HashMap<>();
-    for (ColumnHeader columnHeader : columnHeaders) {
-      columnNameIndexMap.put(
-          columnHeader.getColumnNameWithAlias(),
-          columnToTsBlockIndexMap.get(columnHeader.getColumnName()));
+    if (columnNameIndexMap == null) {
+      columnNameIndexMap = new HashMap<>();
+      for (ColumnHeader columnHeader : columnHeaders) {
+        columnNameIndexMap.put(
+            columnHeader.getColumnNameWithAlias(),
+            columnToTsBlockIndexMap.get(columnHeader.getColumnName()));
+      }
     }
     return columnNameIndexMap;
   }
 
   public int getOutputValueColumnCount() {
-    return (int) columnHeaders.stream().map(ColumnHeader::getColumnName).distinct().count();
+    if (outputValueColumnCount == null) {
+      HashSet<String> columnNameSet = new HashSet<>();
+      for (ColumnHeader columnHeader : columnHeaders) {
+        columnNameSet.add(columnHeader.getColumnName());
+      }
+      outputValueColumnCount = columnNameSet.size();
+    }
+    return outputValueColumnCount;
   }
 
   @Override

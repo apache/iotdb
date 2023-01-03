@@ -445,10 +445,21 @@ public class OperatorMemoryTest {
 
   @Test
   public void sortOperatorTest() {
-    SortOperator sortOperator = new SortOperator();
-    assertEquals(0, sortOperator.calculateMaxPeekMemory());
-    assertEquals(0, sortOperator.calculateMaxReturnSize());
-    assertEquals(0, sortOperator.calculateRetainedSizeAfterCallingNext());
+    Operator child = Mockito.mock(Operator.class);
+    Mockito.when(child.calculateMaxPeekMemory()).thenReturn(2048L);
+    Mockito.when(child.calculateMaxReturnSize()).thenReturn(1024L);
+    Mockito.when(child.calculateRetainedSizeAfterCallingNext()).thenReturn(512L);
+
+    SortOperator sortOperator =
+        new SortOperator(
+            Mockito.mock(OperatorContext.class),
+            child,
+            Collections.singletonList(TSDataType.INT32),
+            null);
+
+    assertEquals(2048 + 512, sortOperator.calculateMaxPeekMemory());
+    assertEquals(1024, sortOperator.calculateMaxReturnSize());
+    assertEquals(512, sortOperator.calculateRetainedSizeAfterCallingNext());
   }
 
   @Test

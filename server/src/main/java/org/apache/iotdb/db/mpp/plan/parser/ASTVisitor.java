@@ -2529,6 +2529,8 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
             parseOffsetClause(ctx.rowPaginationClause().offsetClause()));
       }
     }
+
+    showQueriesStatement.setZoneId(zoneId);
     return showQueriesStatement;
   }
 

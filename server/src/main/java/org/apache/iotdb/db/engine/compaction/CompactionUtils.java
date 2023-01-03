@@ -91,7 +91,7 @@ public class CompactionUtils {
     // serialize xxx.tsfile.resource
     targetResource.setFile(newFile);
     targetResource.serialize();
-    targetResource.close();
+    targetResource.closeWithoutSettingStatus();
   }
 
   /**

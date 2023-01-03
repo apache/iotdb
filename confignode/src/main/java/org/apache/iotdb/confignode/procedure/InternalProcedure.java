@@ -31,7 +31,7 @@ import java.nio.ByteBuffer;
  * @param <Env>
  */
 public abstract class InternalProcedure<Env> extends Procedure<Env> {
-  public InternalProcedure(long toMillis) {
+  protected InternalProcedure(long toMillis) {
     setTimeout(toMillis);
   }
 

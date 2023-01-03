@@ -22,23 +22,13 @@ package org.apache.iotdb.tsfile.fileSystem.fileInputFactory;
 import org.apache.iotdb.tsfile.read.reader.LocalTsFileInput;
 import org.apache.iotdb.tsfile.read.reader.TsFileInput;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.io.IOException;
 import java.nio.file.Paths;
 
 public class LocalFSInputFactory implements FileInputFactory {
 
-  private static final Logger logger = LoggerFactory.getLogger(LocalFSInputFactory.class);
-
   @Override
-  public TsFileInput getTsFileInput(String filePath) {
-    try {
-      return new LocalTsFileInput(Paths.get(filePath));
-    } catch (IOException e) {
-      logger.error("Failed to get TsFile input of file: {}, ", filePath, e);
-      return null;
-    }
+  public TsFileInput getTsFileInput(String filePath) throws IOException {
+    return new LocalTsFileInput(Paths.get(filePath));
   }
 }
