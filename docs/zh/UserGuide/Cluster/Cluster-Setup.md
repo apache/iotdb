@@ -125,6 +125,7 @@ mvn clean package -pl distribution -am -DskipTests
 
 | **配置项**                        | **说明**                               | **默认**          | **用法**                                                                                                                                               |
 |--------------------------------|--------------------------------------|-----------------|------------------------------------------------------------------------------------------------------------------------------------------------------|
+| cluster\_name                  | ConfigNode 所加入的集群的名称                 | defaultCluster  | 设置为希望加入的集群的名称                                                                                                                                        |
 | cn\_internal\_address          | ConfigNode 在集群内部通讯使用的地址              | 127.0.0.1       | 设置为服务器的 IPV4 地址或域名                                                                                                                                   |
 | cn\_internal\_port             | ConfigNode 在集群内部通讯使用的端口              | 10710           | 设置为任意未占用端口                                                                                                                                           |
 | cn\_consensus\_port            | ConfigNode 副本组共识协议通信使用的端口            | 10720           | 设置为任意未占用端口                                                                                                                                           |
@@ -138,11 +139,12 @@ mvn clean package -pl distribution -am -DskipTests
 
 | **配置项**                             | **说明**                    | **默认**          | **用法**                                                                            |
 |-------------------------------------|---------------------------|-----------------|-----------------------------------------------------------------------------------|
+| cluster\_name                       | DataNode 所加入的集群的名称        | defaultCluster  | 设置为希望加入的集群的名称                                                                     |
 | dn\_rpc\_address                    | 客户端 RPC 服务的地址             | 127.0.0.1       | 设置为服务器的 IPV4 地址或域名                                                                |
 | dn\_rpc\_port                       | 客户端 RPC 服务的端口             | 6667            | 设置为任意未占用端口                                                                        |
 | dn\_internal\_address               | DataNode 在集群内部接收控制流使用的地址  | 127.0.0.1       | 设置为服务器的 IPV4 地址或域名                                                                |
-| dn\_internal\_port                  | DataNode 在集群内部接收控制流使用的端口  | 10730            | 设置为任意未占用端口                                                                        |
-| dn\_mpp\_data\_exchange\_port       | DataNode 在集群内部接收数据流使用的端口  | 10740            | 设置为任意未占用端口                                                                        |
+| dn\_internal\_port                  | DataNode 在集群内部接收控制流使用的端口  | 10730           | 设置为任意未占用端口                                                                        |
+| dn\_mpp\_data\_exchange\_port       | DataNode 在集群内部接收数据流使用的端口  | 10740           | 设置为任意未占用端口                                                                        |
 | dn\_data\_region\_consensus\_port   | DataNode 的数据副本间共识协议通信的端口  | 10750           | 设置为任意未占用端口                                                                        |
 | dn\_schema\_region\_consensus\_port | DataNode 的元数据副本间共识协议通信的端口 | 10760           | 设置为任意未占用端口                                                                        |
 | dn\_target\_config\_node\_list      | 集群中正在运行的 ConfigNode 地址    | 127.0.0.1:10710 | 设置为任意正在运行的 ConfigNode 的 cn\_internal\_address:cn\_internal\_port，可设置多个，用逗号（","）隔开 |
@@ -171,6 +173,7 @@ mvn clean package -pl distribution -am -DskipTests
 
 | **配置项**                        | **检查**                                                   |
 |--------------------------------|----------------------------------------------------------|
+| cluster\_name                  | 已设置为期望的集群名称                                              |
 | cn\_internal\_address          | 已设置为服务器的 IPV4 地址或域名                                      |
 | cn\_internal\_port             | 该端口未被占用                                                  |
 | cn\_consensus\_port            | 该端口未被占用                                                  |
@@ -204,6 +207,7 @@ ConfigNode 的其它配置参数可参考
 
 | **配置项**                        | **检查**                                                       |
 |--------------------------------|--------------------------------------------------------------|
+| cluster\_name                  | 与 Seed-ConfigNode 的 cluster\_name 保持一致                       |
 | cn\_internal\_address          | 已设置为服务器的 IPV4 地址或域名                                          |
 | cn\_internal\_port             | 该端口未被占用                                                      |
 | cn\_consensus\_port            | 该端口未被占用                                                      |
@@ -234,6 +238,7 @@ ConfigNode 的其它配置参数可参考
 
 | **配置项**                             | **检查**                                                    |
 |-------------------------------------|-----------------------------------------------------------|
+| cluster\_name                       | 与 Seed-ConfigNode 的 cluster\_name 保持一致                    |
 | dn\_rpc\_address                    | 已设置为服务器的 IPV4 地址或域名                                       |
 | dn\_rpc\_port                       | 该端口未被占用                                                   |
 | dn\_internal\_address               | 已设置为服务器的 IPV4 地址或域名                                       |

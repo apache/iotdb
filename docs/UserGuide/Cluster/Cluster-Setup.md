@@ -128,6 +128,7 @@ and set the following parameters based on the IP address and available port of t
 
 | **Configuration**              | **Description**                                                                                                                          | **Default**     | **Usage**                                                                                                                                                                           |
 |--------------------------------|------------------------------------------------------------------------------------------------------------------------------------------|-----------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| cluster\_name                  | Cluster name for which the current ConfigNode to join in                                                                                 | defaultCluster  | Set to the cluster name the current ConfigNode is expected to join in                                                                                                               |
 | cn\_internal\_address          | Internal rpc service address of ConfigNode                                                                                               | 127.0.0.1       | Set to the IPV4 address or domain name of the server                                                                                                                                |
 | cn\_internal\_port             | Internal rpc service port of ConfigNode                                                                                                  | 10710           | Set to any unoccupied port                                                                                                                                                          |
 | cn\_consensus\_port            | ConfigNode replication consensus protocol communication port                                                                             | 10720           | Set to any unoccupied port                                                                                                                                                          |
@@ -140,16 +141,17 @@ and set the following parameters based on the IP address and available port of t
 Open the DataNode configuration file ./conf/iotdb-datanode.properties,
 and set the following parameters based on the IP address and available port of the server or VM:
 
-| **Configuration**                   | **Description**                                  | **Default**     | **Usage**                                                                                                                             |
-|-------------------------------------|--------------------------------------------------|-----------------|---------------------------------------------------------------------------------------------------------------------------------------|
-| dn\_rpc\_address                    | Client RPC Service address                       | 127.0.0.1       | Set to the IPV4 address or domain name of the server                                                                                  |
-| dn\_rpc\_port                       | Client RPC Service port                          | 6667            | Set to any unoccupied port                                                                                                            |
-| dn\_internal\_address               | Control flow address of DataNode inside cluster  | 127.0.0.1       | Set to the IPV4 address or domain name of the server                                                                                  |
-| dn\_internal\_port                  | Control flow port of DataNode inside cluster     | 10730            | Set to any unoccupied port                                                                                                            |
-| dn\_mpp\_data\_exchange\_port       | Data flow port of DataNode inside cluster        | 10740            | Set to any unoccupied port                                                                                                            |
-| dn\_data\_region\_consensus\_port   | Data replicas communication port for consensus   | 10750           | Set to any unoccupied port                                                                                                            |
-| dn\_schema\_region\_consensus\_port | Schema replicas communication port for consensus | 10760           | Set to any unoccupied port                                                                                                            |
-| dn\_target\_config\_node\_list      | Running ConfigNode of the Cluster                | 127.0.0.1:10710 | Set to any running ConfigNode's cn\_internal\_address:cn\_internal\_port. You can set multiple values, separate them with commas(",") |
+| **Configuration**                   | **Description**                                        | **Default**     | **Usage**                                                                                                                             |
+|-------------------------------------|--------------------------------------------------------|-----------------|---------------------------------------------------------------------------------------------------------------------------------------|
+| cluster\_name                       | Cluster name for which the current DataNode to join in | defaultCluster  | Set to the cluster name the current ConfigNode is expected to join in                                                                 |
+| dn\_rpc\_address                    | Client RPC Service address                             | 127.0.0.1       | Set to the IPV4 address or domain name of the server                                                                                  |
+| dn\_rpc\_port                       | Client RPC Service port                                | 6667            | Set to any unoccupied port                                                                                                            |
+| dn\_internal\_address               | Control flow address of DataNode inside cluster        | 127.0.0.1       | Set to the IPV4 address or domain name of the server                                                                                  |
+| dn\_internal\_port                  | Control flow port of DataNode inside cluster           | 10730           | Set to any unoccupied port                                                                                                            |
+| dn\_mpp\_data\_exchange\_port       | Data flow port of DataNode inside cluster              | 10740           | Set to any unoccupied port                                                                                                            |
+| dn\_data\_region\_consensus\_port   | Data replicas communication port for consensus         | 10750           | Set to any unoccupied port                                                                                                            |
+| dn\_schema\_region\_consensus\_port | Schema replicas communication port for consensus       | 10760           | Set to any unoccupied port                                                                                                            |
+| dn\_target\_config\_node\_list      | Running ConfigNode of the Cluster                      | 127.0.0.1:10710 | Set to any running ConfigNode's cn\_internal\_address:cn\_internal\_port. You can set multiple values, separate them with commas(",") |
 
 **Notice: The preceding configuration parameters cannot be changed after the node is started. Ensure that all ports are not occupied. Otherwise, the Node cannot be started.**
 
@@ -176,6 +178,7 @@ Before start the Seed-ConfigNode, please open its configuration file ./conf/iotd
 
 | **Configuration**              | **Check**                                                                                           |
 |--------------------------------|-----------------------------------------------------------------------------------------------------|
+| cluster\_name                  | Is set to the expected name                                                                         |
 | cn\_internal\_address          | Is set to the IPV4 address or domain name of the server                                             |
 | cn\_internal\_port             | The port isn't occupied                                                                             |
 | cn\_consensus\_port            | The port isn't occupied                                                                             |
@@ -211,6 +214,7 @@ Before start the new ConfigNode, please open its configuration file ./conf/iotdb
 
 | **Configuration**              | **Check**                                                                                                                                              |
 |--------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------|
+| cluster\_name                  | Is consistent with the Seed-ConfigNode's cluster\_name                                                                                                 |
 | cn\_internal\_address          | Is set to the IPV4 address or domain name of the server                                                                                                |
 | cn\_internal\_port             | The port isn't occupied                                                                                                                                |
 | cn\_consensus\_port            | The port isn't occupied                                                                                                                                |
@@ -242,6 +246,7 @@ open its configuration file ./conf/iotdb-datanode.properties and check the follo
 
 | **Configuration**                   | **Check**                                                                                                                                            |
 |-------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------|
+| cluster\_name                       | Is consistent with the Seed-ConfigNode's cluster\_name                                                                                               |
 | dn\_rpc\_address                    | Is set to the IPV4 address or domain name of the server                                                                                              |
 | dn\_rpc\_port                       | The port isn't occupied                                                                                                                              |
 | dn\_internal\_address               | Is set to the IPV4 address or domain name of the server                                                                                              |
