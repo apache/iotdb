@@ -66,7 +66,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.TreeMap;
 
-import static org.apache.iotdb.db.utils.QueryUtils.modifyChunkMetaData;
+import static org.apache.iotdb.db.utils.ModificationUtils.modifyChunkMetaData;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.fail;
