@@ -101,7 +101,7 @@ public abstract class AbstractThriftServiceThread extends Thread {
 
   /** for asynced ThriftService. */
   @SuppressWarnings("squid:S107")
-  public AbstractThriftServiceThread(
+  protected AbstractThriftServiceThread(
       TBaseAsyncProcessor processor,
       String serviceName,
       String threadsName,
@@ -155,7 +155,7 @@ public abstract class AbstractThriftServiceThread extends Thread {
 
   /** for synced ThriftServiceThread */
   @SuppressWarnings("squid:S107")
-  public AbstractThriftServiceThread(
+  protected AbstractThriftServiceThread(
       TProcessor processor,
       String serviceName,
       String threadsName,
