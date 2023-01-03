@@ -35,7 +35,6 @@ import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionInfoLi
 import org.apache.iotdb.confignode.consensus.request.read.storagegroup.CountStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.read.storagegroup.GetStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
-import org.apache.iotdb.confignode.consensus.request.write.datanode.RegisterDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RemoveDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.UpdateDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetDataReplicationFactorPlan;
@@ -57,6 +56,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TCreateFunctionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTriggerReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRestartReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRestartResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionTableResp;
@@ -187,7 +187,7 @@ public interface IManager {
    *
    * @return DataNodeConfigurationDataSet
    */
-  DataSet registerDataNode(RegisterDataNodePlan registerDataNodePlan);
+  DataSet registerDataNode(TDataNodeRegisterReq req);
 
   /**
    * Restart DataNode

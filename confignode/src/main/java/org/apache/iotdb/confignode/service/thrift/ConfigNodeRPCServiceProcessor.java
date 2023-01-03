@@ -46,7 +46,6 @@ import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionInfoLi
 import org.apache.iotdb.confignode.consensus.request.read.storagegroup.CountStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.read.storagegroup.GetStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
-import org.apache.iotdb.confignode.consensus.request.write.datanode.RegisterDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RemoveDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.UpdateDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetDataReplicationFactorPlan;
@@ -195,9 +194,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   @Override
   public TDataNodeRegisterResp registerDataNode(TDataNodeRegisterReq req) {
     TDataNodeRegisterResp resp =
-        ((DataNodeRegisterResp)
-                configManager.registerDataNode(
-                    new RegisterDataNodePlan(req.getDataNodeConfiguration())))
+        ((DataNodeRegisterResp) configManager.registerDataNode(req))
             .convertToRpcDataNodeRegisterResp();
 
     // Print log to record the ConfigNode that performs the RegisterDatanodeRequest
@@ -483,7 +480,9 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
 
     // The initial startup of Non-Seed-ConfigNode finished
     LOGGER.info(
-        "{} has successfully started and joined the cluster.", ConfigNodeConstant.GLOBAL_NAME);
+        "{} has successfully started and joined the cluster: {}.",
+        ConfigNodeConstant.GLOBAL_NAME,
+        ConfigNodeDescriptor.getInstance().getConf().getClusterName());
     return StatusUtils.OK;
   }
 
