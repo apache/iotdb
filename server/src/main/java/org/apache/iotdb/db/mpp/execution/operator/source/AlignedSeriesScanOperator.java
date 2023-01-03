@@ -21,6 +21,7 @@ package org.apache.iotdb.db.mpp.execution.operator.source;
 import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
@@ -36,6 +37,7 @@ import java.util.concurrent.TimeUnit;
 public class AlignedSeriesScanOperator extends AbstractDataSourceOperator {
 
   private final TsBlockBuilder builder;
+  private final int valueColumnCount;
   private boolean finished = false;
 
   public AlignedSeriesScanOperator(
@@ -57,11 +59,7 @@ public class AlignedSeriesScanOperator extends AbstractDataSourceOperator {
             ascending);
     // time + all value columns
     this.builder = new TsBlockBuilder(seriesScanUtil.getTsDataTypeList());
-  }
-
-  @Override
-  public OperatorContext getOperatorContext() {
-    return operatorContext;
+    this.valueColumnCount = seriesPath.getColumnNum();
   }
 
   @Override
@@ -126,7 +124,8 @@ public class AlignedSeriesScanOperator extends AbstractDataSourceOperator {
 
   @Override
   public long calculateMaxPeekMemory() {
-    return maxReturnSize;
+    return (1L + seriesScanUtil.getTsDataTypeList().size())
+        * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte();
   }
 
   @Override
@@ -136,8 +135,7 @@ public class AlignedSeriesScanOperator extends AbstractDataSourceOperator {
 
   @Override
   public long calculateRetainedSizeAfterCallingNext() {
-    // TODO how
-    return 0L;
+    return calculateMaxPeekMemory() - calculateMaxReturnSize();
   }
 
   private boolean readFileData() throws IOException {

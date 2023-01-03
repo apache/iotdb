@@ -25,15 +25,12 @@ import org.apache.iotdb.db.mpp.execution.operator.process.join.merge.ColumnMerge
 import org.apache.iotdb.db.mpp.execution.operator.process.join.merge.TimeComparator;
 import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.db.utils.datastructure.TimeSelector;
-import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
 
 import com.google.common.util.concurrent.ListenableFuture;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -41,9 +38,8 @@ import java.util.List;
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.util.concurrent.Futures.successfulAsList;
 
+@Deprecated
 public class TimeJoinOperator extends AbstractProcessOperator {
-
-  private static final Logger LOGGER = LoggerFactory.getLogger(TimeJoinOperator.class);
 
   private final List<Operator> children;
 
@@ -198,7 +194,7 @@ public class TimeJoinOperator extends AbstractProcessOperator {
     System.arraycopy(shadowInputIndex, 0, inputIndex, 0, inputOperatorsCount);
 
     resultTsBlock = tsBlockBuilder.build();
-    LOGGER.debug("Current tsBlock size is : {}", retainedTsBlock.getRetainedSizeInBytes());
+
     return checkTsBlockSizeAndGetResult();
   }
 
@@ -270,8 +266,7 @@ public class TimeJoinOperator extends AbstractProcessOperator {
   @Override
   public long calculateMaxReturnSize() {
     // time + all value columns
-    return (1L + outputColumnCount)
-        * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte();
+    return maxReturnSize;
   }
 
   @Override
