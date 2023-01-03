@@ -438,7 +438,7 @@ struct TShowClusterResp {
   4: required map<i32, string> nodeStatus
 }
 
-struct TShowClusterParametersResp {
+struct TShowVariablesResp {
   1: required common.TSStatus status
   2: optional TClusterParameters clusterParameters
 }
@@ -1000,8 +1000,8 @@ service IConfigNodeRPCService {
   /** Show cluster ConfigNodes' and DataNodes' information */
   TShowClusterResp showCluster()
 
-  /** Show cluster parameters who should be consist in the same cluster */
-  TShowClusterParametersResp showClusterParameters()
+  /** Show variables who should be consist in the same cluster */
+  TShowVariablesResp showVariables()
 
   /** Show cluster DataNodes' information */
   TShowDataNodesResp showDataNodes()

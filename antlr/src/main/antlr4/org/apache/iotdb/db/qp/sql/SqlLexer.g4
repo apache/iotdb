@@ -121,8 +121,8 @@ CLUSTER
     : C L U S T E R
     ;
 
-PARAMETERS
-    : P A R A M E T E R S
+VARIABLES
+    : V A R I A B L E S
     ;
 
 CONCAT

@@ -87,13 +87,13 @@ import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSetDataNodeStatusReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowCQResp;
-import org.apache.iotdb.confignode.rpc.thrift.TShowClusterParametersResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowConfigNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowStorageGroupResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowVariablesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsetSchemaTemplateReq;
 import org.apache.iotdb.consensus.common.DataSet;
 
@@ -236,11 +236,11 @@ public interface IManager {
   TShowClusterResp showCluster();
 
   /**
-   * Get Cluster parameters
+   * Get variables
    *
-   * @return TShowClusterParametersResp
+   * @return TShowVariablesResp
    */
-  TShowClusterParametersResp showClusterParameters();
+  TShowVariablesResp showVariables();
 
   TSStatus setTTL(SetTTLPlan configRequest);
 

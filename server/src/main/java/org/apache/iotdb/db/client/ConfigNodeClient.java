@@ -98,7 +98,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TSetSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetStorageGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetTimePartitionIntervalReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowCQResp;
-import org.apache.iotdb.confignode.rpc.thrift.TShowClusterParametersResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowConfigNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
@@ -480,10 +479,10 @@ public class ConfigNodeClient
   }
 
   @Override
-  public TShowClusterParametersResp showClusterParameters() throws TException {
+  public TShowVariablesResp showVariables() throws TException {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
-        TShowClusterParametersResp resp = client.showClusterParameters();
+        TShowVariablesResp resp = client.showVariables();
         if (!updateConfigNodeLeader(resp.status)) {
           return resp;
         }
