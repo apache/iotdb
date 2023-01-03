@@ -77,6 +77,9 @@ public class SeriesScanOperator extends AbstractDataSourceOperator {
 
   @Override
   public boolean hasNext() {
+    if (retainedTsBlock != null) {
+      return true;
+    }
     try {
 
       // start stopwatch

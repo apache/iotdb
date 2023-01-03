@@ -35,7 +35,7 @@ public abstract class AbstractOperator implements Operator {
   protected int maxTupleSizeOfTsBlock = -1;
   protected TsBlock resultTsBlock;
   protected TsBlock retainedTsBlock;
-  protected int startOffset;
+  protected int startOffset = 0;
 
   public void initializeMaxTsBlockLength(TsBlock tsBlock) {
     if (maxTupleSizeOfTsBlock != -1) {
@@ -46,6 +46,9 @@ public abstract class AbstractOperator implements Operator {
   }
 
   public TsBlock checkTsBlockSizeAndGetResult() {
+    if (resultTsBlock == null) {
+      throw new IllegalArgumentException("Result tsBlock cannot be null");
+    }
     if (maxTupleSizeOfTsBlock == -1) {
       initializeMaxTsBlockLength(resultTsBlock);
     }

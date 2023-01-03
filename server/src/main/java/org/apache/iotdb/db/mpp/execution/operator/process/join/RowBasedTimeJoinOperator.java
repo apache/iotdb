@@ -201,7 +201,6 @@ public class RowBasedTimeJoinOperator extends AbstractProcessOperator {
     } while (currentTime < currentEndTime && !timeSelector.isEmpty());
 
     resultTsBlock = tsBlockBuilder.build();
-    tsBlockBuilder.reset();
     return checkTsBlockSizeAndGetResult();
   }
 
