@@ -111,7 +111,7 @@ public class PartitionInfo implements SnapshotProcessor {
   // For RegionReplicas' asynchronous management
   private final List<RegionMaintainTask> regionMaintainTaskList;
 
-  private final String snapshotFileName = "partition_info.bin";
+  private static final String SNAPSHOT_FILENAME = "partition_info.bin";
 
   public PartitionInfo() {
     this.nextRegionGroupId = new AtomicInteger(-1);
@@ -236,6 +236,8 @@ public class PartitionInfo implements SnapshotProcessor {
         break;
       case ROLLBACK:
         storageGroupPartitionTable.setPredeleted(false);
+        break;
+      default:
         break;
     }
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
@@ -702,7 +704,7 @@ public class PartitionInfo implements SnapshotProcessor {
   @Override
   public boolean processTakeSnapshot(File snapshotDir) throws TException, IOException {
 
-    File snapshotFile = new File(snapshotDir, snapshotFileName);
+    File snapshotFile = new File(snapshotDir, SNAPSHOT_FILENAME);
     if (snapshotFile.exists() && snapshotFile.isFile()) {
       LOGGER.error(
           "Failed to take snapshot, because snapshot file [{}] is already exist.",
@@ -755,7 +757,7 @@ public class PartitionInfo implements SnapshotProcessor {
 
   public void processLoadSnapshot(File snapshotDir) throws TException, IOException {
 
-    File snapshotFile = new File(snapshotDir, snapshotFileName);
+    File snapshotFile = new File(snapshotDir, SNAPSHOT_FILENAME);
     if (!snapshotFile.exists() || !snapshotFile.isFile()) {
       LOGGER.error(
           "Failed to load snapshot,snapshot file [{}] is not exist.",

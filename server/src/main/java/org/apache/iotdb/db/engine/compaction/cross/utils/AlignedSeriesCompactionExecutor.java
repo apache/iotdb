@@ -26,7 +26,7 @@ import org.apache.iotdb.db.engine.compaction.writer.AbstractCompactionWriter;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.WriteProcessException;
-import org.apache.iotdb.db.utils.QueryUtils;
+import org.apache.iotdb.db.utils.ModificationUtils;
 import org.apache.iotdb.tsfile.exception.write.PageException;
 import org.apache.iotdb.tsfile.file.MetaMarker;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
@@ -179,7 +179,7 @@ public class AlignedSeriesCompactionExecutor extends SeriesCompactionExecutor {
                 });
 
         // modify aligned chunk metadatas
-        QueryUtils.modifyAlignedChunkMetaData(alignedChunkMetadataList, valueModifications);
+        ModificationUtils.modifyAlignedChunkMetaData(alignedChunkMetadataList, valueModifications);
       }
 
       if (alignedChunkMetadataList.size() == 0) {

@@ -115,8 +115,8 @@ public class DeviceMergeOperator implements ProcessOperator {
   public TsBlock next() {
     // get new input TsBlock
     for (int i = 0; i < inputOperatorsCount; i++) {
-      if (!noMoreTsBlocks[i] && isTsBlockEmpty(i) && deviceOperators.get(i).hasNext()) {
-        inputTsBlocks[i] = deviceOperators.get(i).next();
+      if (!noMoreTsBlocks[i] && isTsBlockEmpty(i) && deviceOperators.get(i).hasNextWithTimer()) {
+        inputTsBlocks[i] = deviceOperators.get(i).nextWithTimer();
         if (inputTsBlocks[i] == null || inputTsBlocks[i].isEmpty()) {
           return null;
         }
@@ -204,7 +204,7 @@ public class DeviceMergeOperator implements ProcessOperator {
       if (!isTsBlockEmpty(i)) {
         return true;
       } else if (!noMoreTsBlocks[i]) {
-        if (deviceOperators.get(i).hasNext()) {
+        if (deviceOperators.get(i).hasNextWithTimer()) {
           return true;
         } else {
           noMoreTsBlocks[i] = true;

@@ -234,6 +234,6 @@ OR, |, ||
 
 **该函数库中的函数不是内置函数，使用前要先加载到系统中。** 操作流程如下：
 1. 下载包含全部依赖的 jar 包和注册脚本 [【点击下载】](https://archive.apache.org/dist/iotdb/0.14.0-preview3/apache-iotdb-0.14.0-preview3-library-udf-bin.zip) ；
-2. 将 jar 包复制到 IoTDB 程序目录的 `ext\udf` 目录下；
+2. 将 jar 包复制到 IoTDB 程序目录的 `ext\udf` 目录下 (若您使用的是集群，请将jar包复制到所有DataNode的该目录下)；
 3. 启动 IoTDB；
 4. 将注册脚本复制到 IoTDB 的程序目录下（与`sbin`目录同级的根目录下），修改脚本中的参数（如果需要）并运行注册脚本以注册 UDF。

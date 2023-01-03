@@ -86,6 +86,7 @@
         <module>thrift-confignode</module>
         <module>thrift-iot-consensus</module>
         <module>thrift-influxdb</module>
+        <module>thrift-mlnode</module>
         <module>service-rpc</module>
         <module>jdbc</module>
         <module>influxdb-protocol</module>
@@ -122,6 +123,7 @@
         <module>external-api</module>
         <module>schema-engine-tag</module>
         <module>isession</module>
+        <module>mlnode</module>
     </modules>
     <!-- Properties Management -->
     <properties>
@@ -1352,7 +1354,7 @@
                                     <generator>py</generator>
                                     <thriftExecutable>${thrift.exec.absolute.path}</thriftExecutable>
                                     <thriftSourceRoot>${basedir}/src/main/thrift</thriftSourceRoot>
-                                    <includes>**/common.thrift,**/client.thrift</includes>
+                                    <includes>**/common.thrift,**/client.thrift,**/datanode.thrift,**/confignode.thrift,**/mlnode.thrift</includes>
                                     <outputDirectory>${project.build.directory}/generated-sources-python/</outputDirectory>
                                 </configuration>
                             </execution>

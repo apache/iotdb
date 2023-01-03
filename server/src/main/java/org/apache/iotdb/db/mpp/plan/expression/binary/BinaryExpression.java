@@ -77,19 +77,6 @@ public abstract class BinaryExpression extends Expression {
   }
 
   @Override
-  public boolean isTimeSeriesGeneratingFunctionExpression() {
-    return !isUserDefinedAggregationFunctionExpression();
-  }
-
-  @Override
-  public boolean isUserDefinedAggregationFunctionExpression() {
-    return leftExpression.isBuiltInAggregationFunctionExpression()
-        || rightExpression.isBuiltInAggregationFunctionExpression()
-        || leftExpression.isUserDefinedAggregationFunctionExpression()
-        || rightExpression.isUserDefinedAggregationFunctionExpression();
-  }
-
-  @Override
   public List<Expression> getExpressions() {
     return Arrays.asList(leftExpression, rightExpression);
   }
