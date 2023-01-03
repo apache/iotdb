@@ -32,6 +32,7 @@
                 <include>*:iotdb-server:zip:*</include>
                 <include>*:iotdb-cli:zip:*</include>
                 <include>*:iotdb-confignode:zip:*</include>
+                <include>*:rewrite-tsfile-tool:zip:*</include>
             </includes>
             <outputDirectory>${file.separator}</outputDirectory>
             <outputFileNameMapping>${artifact.artifactId}.${artifact.extension}</outputFileNameMapping>

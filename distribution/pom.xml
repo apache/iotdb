@@ -148,5 +148,11 @@
             <version>${project.version}</version>
             <type>jar</type>
         </dependency>
+        <dependency>
+            <groupId>org.apache.iotdb</groupId>
+            <artifactId>rewrite-tsfile-tool</artifactId>
+            <version>${project.version}</version>
+            <type>jar</type>
+        </dependency>
     </dependencies>
 </project>

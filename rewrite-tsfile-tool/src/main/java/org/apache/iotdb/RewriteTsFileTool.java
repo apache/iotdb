@@ -98,6 +98,9 @@ public class RewriteTsFileTool {
   private static String readMode = "s";
   private static boolean ignoreBrokenChunk = false;
 
+  private static boolean needUpgrade = false;
+  private static PathUpgradeCache upgradeCache;
+
   public static void main(String[] args) {
     Session session = null;
     try {
@@ -135,6 +138,7 @@ public class RewriteTsFileTool {
       filePath = getArgOrDefault(commandLine, "f", filePath);
       readMode = getArgOrDefault(commandLine, "rm", readMode);
       ignoreBrokenChunk = commandLine.hasOption("ig");
+      needUpgrade = commandLine.hasOption("ug");
     } catch (ParseException e) {
       System.out.printf("Parse Args Error. %s%n", e.getMessage());
       priHelp(options);
@@ -202,6 +206,8 @@ public class RewriteTsFileTool {
     options.addOption(readModeOpt);
 
     options.addOption("ig", "ignore-broken chunks");
+
+    options.addOption("ug", "upgrade for older version partial path");
     return options;
   }
 
@@ -253,6 +259,10 @@ public class RewriteTsFileTool {
   }
 
   private static void writeTsFileSequentially(List<File> files, Session session) {
+    if (needUpgrade) {
+      upgradeCache = new PathUpgradeCache(needUpgrade);
+    }
+
     int size = files.size();
     List<File> unloadTsFiles = new ArrayList<>();
     for (int i = 0; i < files.size(); i++) {
@@ -409,7 +419,11 @@ public class RewriteTsFileTool {
           case MetaMarker.CHUNK_GROUP_HEADER:
             // get the next chunk group
             if (isAlignedChunk) {
-              Tablet tablet = new Tablet(currentDevice, schemaForAlignedSeries, MAX_TABLET_LENGTH);
+              Tablet tablet =
+                  new Tablet(
+                      upgradeCache.getPath(currentDevice),
+                      schemaForAlignedSeries,
+                      MAX_TABLET_LENGTH);
               for (int i = 0; i < timeForAlignedSeries.size(); ++i) {
                 tablet.addTimestamp(tablet.rowSize, timeForAlignedSeries.get(i));
                 for (int j = 0; j < valueForAlignedSeries.size(); ++j) {
@@ -562,7 +576,7 @@ public class RewriteTsFileTool {
     if (!addSchema && header.getDataType() != TSDataType.VECTOR) {
       schemaForAlignedSeries.add(
           new MeasurementSchema(
-              header.getMeasurementID(),
+              upgradeCache.getPath(header.getMeasurementID()),
               header.getDataType(),
               header.getEncodingType(),
               header.getCompressionType()));
@@ -587,7 +601,7 @@ public class RewriteTsFileTool {
     if (!addSchema && header.getDataType() != TSDataType.VECTOR) {
       schemaForAlignedSeries.add(
           new MeasurementSchema(
-              header.getMeasurementID(),
+              upgradeCache.getPath(header.getMeasurementID()),
               header.getDataType(),
               header.getEncodingType(),
               header.getCompressionType()));
@@ -610,10 +624,10 @@ public class RewriteTsFileTool {
     String measurementId = header.getMeasurementID();
     Tablet tablet =
         new Tablet(
-            currentDevice,
+            upgradeCache.getPath(currentDevice),
             Collections.singletonList(
                 new MeasurementSchema(
-                    measurementId,
+                    upgradeCache.getPath(measurementId),
                     header.getDataType(),
                     header.getEncodingType(),
                     header.getCompressionType())),
