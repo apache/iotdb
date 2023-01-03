@@ -158,8 +158,7 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
             this.storageGroupMNode,
             new PartialPath(storageGroupMNode.getFullPath()),
             this.store,
-            true,
-            false) {
+            true) {
           @Override
           protected void collectMeasurement(IMeasurementMNode node) {
             measurementProcess.accept(node);
@@ -597,7 +596,6 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
           }
         };
     collector.setResultSet(result);
-    collector.setShouldTraverseTemplate(false);
     collector.traverse();
     return result;
   }
@@ -1068,7 +1066,6 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
             result.add(node);
           }
         };
-    collector.setShouldTraverseTemplate(false);
     collector.traverse();
     return result;
   }

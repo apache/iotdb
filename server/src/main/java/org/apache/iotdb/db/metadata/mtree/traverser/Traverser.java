@@ -23,18 +23,21 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.tree.AbstractTreeVisitor;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
+import org.apache.iotdb.db.metadata.mnode.iterator.IMNodeIterator;
 import org.apache.iotdb.db.metadata.mtree.store.IMTreeStore;
 import org.apache.iotdb.db.metadata.template.Template;
 
 import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Deque;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_ROOT;
-import static org.apache.iotdb.db.metadata.MetadataConstant.NON_TEMPLATE;
 
 /**
  * This class defines the main traversal framework and declares some methods for result process
@@ -45,6 +48,10 @@ import static org.apache.iotdb.db.metadata.MetadataConstant.NON_TEMPLATE;
  *   <li>counter: to count the node num or measurement num that matches the path pattern
  *   <li>collector: to collect customized results of the matched node or measurement
  * </ol>
+ *
+ * root.sg12.sg1 sg1 root->sg12->
+ *
+ * <p>root.sg22.sg1
  */
 public abstract class Traverser extends AbstractTreeVisitor<IMNode, IMNode> {
 
@@ -59,10 +66,7 @@ public abstract class Traverser extends AbstractTreeVisitor<IMNode, IMNode> {
   // to construct full path or find mounted node on MTree when traverse into template
   protected Deque<IMNode> traverseContext;
 
-  protected boolean isInTemplate = false;
-
-  // if true, measurement in template should be processed
-  protected boolean shouldTraverseTemplate = false;
+  // measurement in template should be processed only if templateMap is not null
   protected Map<Integer, Template> templateMap;
 
   // if true, the pre deleted measurement or pre deactivated template won't be processed
@@ -70,6 +74,8 @@ public abstract class Traverser extends AbstractTreeVisitor<IMNode, IMNode> {
 
   // default false means fullPath pattern match
   protected boolean isPrefixMatch = false;
+
+  private List<IMNode> aboveSGNodes = new ArrayList<>();
 
   /**
    * To traverse subtree under root.sg, e.g., init Traverser(root, "root.sg.**")
@@ -80,7 +86,7 @@ public abstract class Traverser extends AbstractTreeVisitor<IMNode, IMNode> {
    */
   public Traverser(IMNode startNode, PartialPath path, IMTreeStore store, boolean isPrefixMatch)
       throws MetadataException {
-    super(startNode, path, isPrefixMatch);
+    super(path, isPrefixMatch);
     String[] nodes = path.getNodes();
     if (nodes.length == 0 || !nodes[0].equals(PATH_ROOT)) {
       throw new IllegalPathException(
@@ -91,6 +97,12 @@ public abstract class Traverser extends AbstractTreeVisitor<IMNode, IMNode> {
     this.store = store;
     this.traverseContext = new ArrayDeque<>();
     initStartIndexAndLevel(path);
+    IMNode node = startNode.getParent();
+    while (node != null) {
+      aboveSGNodes.add(node);
+      node = node.getParent();
+    }
+    initStack(aboveSGNodes.get(aboveSGNodes.size() - 1));
   }
 
   /**
@@ -152,14 +164,40 @@ public abstract class Traverser extends AbstractTreeVisitor<IMNode, IMNode> {
 
   @Override
   protected IMNode getChild(IMNode parent, String childName) throws MetadataException {
-    return store.getChild(parent, childName);
+    if (aboveSGNodes.contains(parent)) {
+      int index = aboveSGNodes.indexOf(parent);
+      if (index == 0) {
+        return startNode;
+      } else {
+        return aboveSGNodes.get(index - 1);
+      }
+    } else {
+      return store.getChild(parent, childName);
+    }
     // TODO: support template
   }
 
   @Override
+  protected void releaseChild(IMNode child) {
+    store.unPin(child);
+  }
+
+  @Override
   protected Iterator<IMNode> getChildrenIterator(IMNode parent) throws MetadataException {
-    return store.getChildrenIterator(parent);
-    // TODO: support template
+    if (aboveSGNodes.contains(parent)) {
+      int index = aboveSGNodes.indexOf(parent);
+      if (index == 0) {
+        return Collections.singletonList(startNode).iterator();
+      } else {
+        return Collections.singletonList(aboveSGNodes.get(index - 1)).iterator();
+      }
+    }
+    return store.getTraverserIterator(parent, templateMap, skipPreDeletedSchema);
+  }
+
+  @Override
+  protected void releaseChildrenIterator(Iterator<IMNode> childrenIterator) {
+    ((IMNodeIterator) childrenIterator).close();
   }
 
   @Override
@@ -167,29 +205,8 @@ public abstract class Traverser extends AbstractTreeVisitor<IMNode, IMNode> {
     return nextMatchedNode;
   }
 
-  protected Template getActivatedSchemaTemplate(IMNode node) {
-    // new cluster, the used template is directly recorded as template id in device mnode
-    if (node.getSchemaTemplateId() != NON_TEMPLATE) {
-      if (skipPreDeletedSchema && node.getAsEntityMNode().isPreDeactivateTemplate()) {
-        // skip this pre deactivated template, the invoker will skip this
-        return null;
-      }
-      return templateMap.get(node.getSchemaTemplateId());
-    }
-    // if the node is usingTemplate, the upperTemplate won't be null or the upperTemplateId won't be
-    // NON_TEMPLATE.
-    throw new IllegalStateException(
-        String.format(
-            "There should be a template mounted on any ancestor of the node [%s] usingTemplate.",
-            node.getFullPath()));
-  }
-
   public void setTemplateMap(Map<Integer, Template> templateMap) {
     this.templateMap = templateMap;
-  }
-
-  public void setShouldTraverseTemplate(boolean shouldTraverseTemplate) {
-    this.shouldTraverseTemplate = shouldTraverseTemplate;
   }
 
   public void setSkipPreDeletedSchema(boolean skipPreDeletedSchema) {
@@ -206,9 +223,7 @@ public abstract class Traverser extends AbstractTreeVisitor<IMNode, IMNode> {
     if (currentNode.isStorageGroup()) {
       return currentNode;
     }
-    Iterator<IMNode> nodes = traverseContext.iterator();
-    while (nodes.hasNext()) {
-      IMNode node = nodes.next();
+    for (IMNode node : traverseContext) {
       if (node.isStorageGroup()) {
         return node;
       }

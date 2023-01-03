@@ -20,6 +20,7 @@ package org.apache.iotdb.db.metadata.mtree.store;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
@@ -29,13 +30,16 @@ import org.apache.iotdb.db.metadata.mnode.MNodeUtils;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.metadata.mnode.estimator.BasicMNodSizeEstimator;
 import org.apache.iotdb.db.metadata.mnode.estimator.IMNodeSizeEstimator;
+import org.apache.iotdb.db.metadata.mnode.iterator.AbstractTraverserIterator;
 import org.apache.iotdb.db.metadata.mnode.iterator.IMNodeIterator;
 import org.apache.iotdb.db.metadata.mnode.iterator.MNodeIterator;
 import org.apache.iotdb.db.metadata.mtree.snapshot.MemMTreeSnapshotUtil;
 import org.apache.iotdb.db.metadata.rescon.MemoryStatistics;
+import org.apache.iotdb.db.metadata.template.Template;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 
@@ -82,6 +86,16 @@ public class MemMTreeStore implements IMTreeStore {
   @Override
   public IMNodeIterator getChildrenIterator(IMNode parent) {
     return new MNodeIterator(parent.getChildren().values().iterator());
+  }
+
+  @Override
+  public IMNodeIterator getTraverserIterator(
+      IMNode parent, Map<Integer, Template> templateMap, boolean skipPreDeletedSchema)
+      throws MetadataException {
+    AbstractTraverserIterator iterator = new MemoryTraverserIterator(this, parent);
+    iterator.setTemplateMap(templateMap);
+    iterator.setSkipPreDeletedSchema(skipPreDeletedSchema);
+    return iterator;
   }
 
   @Override
@@ -184,5 +198,11 @@ public class MemMTreeStore implements IMTreeStore {
   private void releaseMemory(int size) {
     localMemoryUsage.getAndUpdate(v -> v -= size);
     memoryStatistics.releaseMemory(size);
+  }
+
+  private static class MemoryTraverserIterator extends AbstractTraverserIterator {
+    MemoryTraverserIterator(IMTreeStore store, IMNode parent) throws MetadataException {
+      super(store, parent);
+    }
   }
 }

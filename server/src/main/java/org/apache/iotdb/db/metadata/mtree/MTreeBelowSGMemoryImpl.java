@@ -520,7 +520,6 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
           }
         };
     collector.setResultSet(result);
-    collector.setShouldTraverseTemplate(false);
     collector.traverse();
     return result;
   }
@@ -960,7 +959,6 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
             result.add(node);
           }
         };
-    collector.setShouldTraverseTemplate(false);
     collector.traverse();
     return result;
   }

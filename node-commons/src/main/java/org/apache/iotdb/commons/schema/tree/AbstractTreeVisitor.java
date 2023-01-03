@@ -66,7 +66,7 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R>
     implements Iterator<R>, AutoCloseable {
 
   // command parameters
-  protected final N root;
+  protected N root;
 
   // finite automation constructed from given path pattern or pattern tree
   protected final IPatternFA patternFA;
@@ -114,6 +114,40 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R>
             : new IPatternFA.Builder().pattern(pathPattern).isPrefixMatch(isPrefixMatch).buildNFA();
 
     initStack();
+  }
+
+  protected AbstractTreeVisitor(PartialPath pathPattern, boolean isPrefixMatch) {
+    boolean usingDFA = false;
+    // Use DFA if there are ** and no regex node in pathPattern
+    for (String pathNode : pathPattern.getNodes()) {
+      if (IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD.equals(pathNode)) {
+        // ** node
+        usingDFA = true;
+      } else if (pathNode.length() > 1
+          && pathNode.contains(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD)) {
+        // regex node
+        usingDFA = false;
+        break;
+      }
+    }
+    this.patternFA =
+        usingDFA
+            ? new IPatternFA.Builder().pattern(pathPattern).isPrefixMatch(isPrefixMatch).buildDFA()
+            : new IPatternFA.Builder().pattern(pathPattern).isPrefixMatch(isPrefixMatch).buildNFA();
+  }
+
+  protected void initStack(N root) {
+    IFAState initialState = patternFA.getInitialState();
+    IFATransition transition =
+        patternFA.getPreciseMatchTransition(initialState).get(root.getName());
+    if (transition == null) {
+      // the visitor stack will be empty and the result of hasNext() will be false
+      return;
+    }
+    IFAState rootState = patternFA.getNextState(initialState, transition);
+    currentStateMatchInfo = new StateSingleMatchInfo(patternFA, rootState);
+    visitorStack.push(new VisitorStackEntry(createChildrenIterator(root), 1));
+    ancestorStack.add(new AncestorStackEntry(root, currentStateMatchInfo));
   }
 
   private void initStack() {

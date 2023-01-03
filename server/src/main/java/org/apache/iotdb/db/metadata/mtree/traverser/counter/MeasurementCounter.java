@@ -37,7 +37,6 @@ public class MeasurementCounter extends CounterTraverser {
       IMNode startNode, PartialPath path, IMTreeStore store, boolean isPrefixMatch)
       throws MetadataException {
     super(startNode, path, store, isPrefixMatch);
-    shouldTraverseTemplate = true;
   }
 
   public MeasurementCounter(
@@ -49,7 +48,6 @@ public class MeasurementCounter extends CounterTraverser {
       boolean hasTag)
       throws MetadataException {
     super(startNode, path, store, isPrefixMatch);
-    shouldTraverseTemplate = true;
     this.timeseries = timeseries;
     this.hasTag = hasTag;
   }
