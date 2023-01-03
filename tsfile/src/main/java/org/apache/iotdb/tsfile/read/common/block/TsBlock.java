@@ -479,6 +479,15 @@ public class TsBlock {
     return retainedSizeInBytes;
   }
 
+  public int getTotalInstanceSize() {
+    int totalInstanceSize = INSTANCE_SIZE;
+    totalInstanceSize += TimeColumn.INSTANCE_SIZE;
+    for (Column column : valueColumns) {
+      totalInstanceSize += column.getInstanceSize();
+    }
+    return totalInstanceSize;
+  }
+
   private static int determinePositionCount(Column... columns) {
     requireNonNull(columns, "columns is null");
     if (columns.length == 0) {
