@@ -26,9 +26,9 @@ import org.apache.iotdb.metrics.impl.DoNothingMetricManager;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.reporter.JmxReporter;
 import org.apache.iotdb.metrics.reporter.Reporter;
-import org.apache.iotdb.metrics.reporter.iotdb.InternalIoTDBReporter;
-import org.apache.iotdb.metrics.reporter.iotdb.MemoryInternalIoTDBReporter;
-import org.apache.iotdb.metrics.reporter.iotdb.SessionIoTDBReporter;
+import org.apache.iotdb.metrics.reporter.iotdb.IoTDBInternalReporter;
+import org.apache.iotdb.metrics.reporter.iotdb.IoTDBInternalMemoryReporter;
+import org.apache.iotdb.metrics.reporter.iotdb.IoTDBSessionReporter;
 import org.apache.iotdb.metrics.reporter.prometheus.PrometheusReporter;
 import org.apache.iotdb.metrics.type.AutoGauge;
 import org.apache.iotdb.metrics.type.Counter;
@@ -64,7 +64,7 @@ public abstract class AbstractMetricService {
   /** The metric reporter of metric service */
   protected CompositeReporter compositeReporter = new CompositeReporter();
   /** The internal reporter of metric service */
-  protected InternalIoTDBReporter internalReporter = new MemoryInternalIoTDBReporter();
+  protected IoTDBInternalReporter internalReporter = new IoTDBInternalMemoryReporter();
 
   /** The list of metric sets */
   protected List<IMetricSet> metricSets = new ArrayList<>();
@@ -159,7 +159,7 @@ public abstract class AbstractMetricService {
           reporter = new PrometheusReporter(metricManager);
           break;
         case IOTDB:
-          reporter = new SessionIoTDBReporter(metricManager);
+          reporter = new IoTDBSessionReporter(metricManager);
           break;
         default:
           continue;
@@ -177,7 +177,7 @@ public abstract class AbstractMetricService {
    *
    * @param internalReporter the new internal reporter
    */
-  public abstract void reloadInternalReporter(InternalIoTDBReporter internalReporter);
+  public abstract void reloadInternalReporter(IoTDBInternalReporter internalReporter);
 
   /**
    * Reload metric service

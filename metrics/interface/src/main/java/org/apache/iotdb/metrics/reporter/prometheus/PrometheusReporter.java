@@ -66,6 +66,7 @@ public class PrometheusReporter implements Reporter {
   @Override
   public boolean start() {
     if (httpServer != null) {
+      LOGGER.warn("PrometheusReporter already start!");
       return false;
     }
     try {
@@ -82,11 +83,11 @@ public class PrometheusReporter implements Reporter {
               .bindNow();
     } catch (Exception e) {
       httpServer = null;
-      LOGGER.error("Failed to start prometheus reporter", e);
+      LOGGER.warn("PrometheusReporter failed to start, because ", e);
       return false;
     }
     LOGGER.info(
-        "http server for metrics started, listen on {}", metricConfig.getPrometheusReporterPort());
+        "PrometheusReporter started, use port {}", metricConfig.getPrometheusReporterPort());
     return true;
   }
 
@@ -213,6 +214,7 @@ public class PrometheusReporter implements Reporter {
         return false;
       }
     }
+    LOGGER.info("PrometheusReporter stop!");
     return true;
   }
 

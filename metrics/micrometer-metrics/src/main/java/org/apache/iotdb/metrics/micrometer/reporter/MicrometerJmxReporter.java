@@ -52,6 +52,7 @@ public class MicrometerJmxReporter implements JmxReporter {
       LOGGER.warn("Micrometer JmxReporter failed to start, because ", e);
       return false;
     }
+    LOGGER.info("Micrometer JmxReporter start!");
     return true;
   }
 
@@ -73,6 +74,7 @@ public class MicrometerJmxReporter implements JmxReporter {
       LOGGER.warn("Micrometer JmxReporter failed to stop, because ", e);
       return false;
     }
+    LOGGER.info("Micrometer JmxReporter stop!");
     return true;
   }
 

@@ -28,7 +28,7 @@ import org.apache.iotdb.metrics.utils.MetricType;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-public abstract class InternalIoTDBReporter extends IoTDBReporter {
+public abstract class IoTDBInternalReporter extends IoTDBReporter {
   protected final Map<MetricInfo, IMetric> autoGauges = new ConcurrentHashMap<>();
 
   /**
