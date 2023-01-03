@@ -36,16 +36,8 @@ public class SchemaTreeDeviceVisitor extends SchemaTreeVisitor<DeviceSchemaInfo>
   }
 
   @Override
-  protected boolean processInternalMatchedNode(SchemaNode node) {
-    return true;
-  }
-
-  @Override
-  protected boolean processFullMatchedNode(SchemaNode node) {
-    if (node.isEntity()) {
-      nextMatchedNode = node;
-    }
-    return true;
+  protected boolean acceptNode(SchemaNode node) {
+    return node.isEntity();
   }
 
   @Override
