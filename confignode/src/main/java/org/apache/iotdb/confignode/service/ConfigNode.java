@@ -95,7 +95,7 @@ public class ConfigNode implements ConfigNodeMBean {
       if (SystemPropertiesUtils.isRestarted()) {
         LOGGER.info("{} is in restarting process...", ConfigNodeConstant.GLOBAL_NAME);
 
-        /* Always restore ClusterId and ConfigNodeId first */
+        /* Always restore ClusterName and ConfigNodeId first */
         CONF.setClusterName(SystemPropertiesUtils.loadClusterNameWhenRestarted());
         CONF.setConfigNodeId(SystemPropertiesUtils.loadConfigNodeIdWhenRestarted());
 
@@ -107,8 +107,9 @@ public class ConfigNode implements ConfigNodeMBean {
         configManager.initConsensusManager();
         setUpRPCService();
         LOGGER.info(
-            "{} has successfully restarted and joined the cluster.",
-            ConfigNodeConstant.GLOBAL_NAME);
+            "{} has successfully restarted and joined the cluster: {}.",
+            ConfigNodeConstant.GLOBAL_NAME,
+            CONF.getClusterName());
         return;
       }
 
@@ -140,7 +141,9 @@ public class ConfigNode implements ConfigNodeMBean {
         // The initial startup of Seed-ConfigNode finished
 
         LOGGER.info(
-            "{} has successfully started and joined the cluster.", ConfigNodeConstant.GLOBAL_NAME);
+            "{} has successfully started and joined the cluster: {}.",
+            ConfigNodeConstant.GLOBAL_NAME,
+            CONF.getClusterName());
         return;
       }
 
@@ -152,9 +155,10 @@ public class ConfigNode implements ConfigNodeMBean {
       // The initial startup of Non-Seed-ConfigNode is not yet finished,
       // we should wait for leader's scheduling
       LOGGER.info(
-          "{} {} has registered successfully. Waiting for the leader's scheduling to join the cluster.",
+          "{} {} has registered successfully. Waiting for the leader's scheduling to join the cluster: {}.",
           ConfigNodeConstant.GLOBAL_NAME,
-          CONF.getConfigNodeId());
+          CONF.getConfigNodeId(),
+          CONF.getClusterName());
 
       boolean isJoinedCluster = false;
       for (int retry = 0; retry < SCHEDULE_WAITING_RETRY_NUM; retry++) {
