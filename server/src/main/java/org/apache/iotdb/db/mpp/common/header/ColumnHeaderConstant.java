@@ -58,7 +58,7 @@ public class ColumnHeaderConstant {
   public static final String VERSION = "Version";
   public static final String BUILD_INFO = "BuildInfo";
   public static final String PATHS = "Paths";
-  public static final String VARIABLES = "Variables";
+  public static final String VARIABLES = "Variable";
 
   // column names for count statement
   public static final String COLUMN = "Column";
