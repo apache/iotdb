@@ -732,16 +732,13 @@ public class ClusterSchemaTreeTest {
     }
 
     @Override
-    protected void releaseNodeIterator(Iterator<SchemaNode> childrenIterator) {
-      super.releaseNodeIterator(childrenIterator);
+    protected void releaseNodeIterator(Iterator<SchemaNode> nodeIterator) {
+      super.releaseNodeIterator(nodeIterator);
     }
 
     public void check() {
-      for (Map.Entry<SchemaNode, Integer> entry : map.entrySet()) {
-        if (entry.getValue() != 0) {
-          System.out.println(entry.getKey().getName());
-        }
-        Assert.assertEquals(0, entry.getValue().intValue());
+      for (int cnt : map.values()) {
+        Assert.assertEquals(0, cnt);
       }
     }
 
