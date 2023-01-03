@@ -267,7 +267,7 @@ public interface ISchemaRegion {
    * Get all device paths and corresponding database paths as ShowDevicesResult.
    *
    * @param plan ShowDevicesPlan which contains the path pattern and restriction params.
-   * @return ShowDevicesResult and the current offset of this region after traverse.
+   * @return ShowDevicesResult
    */
   List<ShowDevicesResult> getMatchedDevices(IShowDevicesPlan plan) throws MetadataException;
   // endregion
