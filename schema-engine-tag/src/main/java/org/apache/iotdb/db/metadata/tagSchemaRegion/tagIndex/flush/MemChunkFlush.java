@@ -30,7 +30,7 @@ import org.apache.iotdb.db.metadata.tagSchemaRegion.utils.RoaringBitMapUtils;
 import org.apache.iotdb.lsm.annotation.FlushProcessor;
 import org.apache.iotdb.lsm.context.requestcontext.FlushRequestContext;
 import org.apache.iotdb.lsm.levelProcess.FlushLevelProcessor;
-import org.apache.iotdb.lsm.sstable.fileIO.FileOutput;
+import org.apache.iotdb.lsm.sstable.fileIO.TiFileOutputStream;
 
 import org.roaringbitmap.RoaringBitmap;
 
@@ -52,7 +52,7 @@ public class MemChunkFlush extends FlushLevelProcessor<MemChunk, Object, FlushRe
   @Override
   public void flush(MemChunk memNode, FlushRequest request, FlushRequestContext context)
       throws IOException {
-    FileOutput fileOutput = context.getFileOutput();
+    TiFileOutputStream fileOutput = context.getFileOutput();
     List<RoaringBitmap> roaringBitmaps =
         RoaringBitMapUtils.sliceRoaringBitMap(
             memNode.getRoaringBitmap(), request.getChunkMaxSize());

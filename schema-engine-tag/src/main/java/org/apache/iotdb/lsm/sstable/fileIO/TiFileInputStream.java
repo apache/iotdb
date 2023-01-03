@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.lsm.sstable.fileIO;
 
-import org.apache.iotdb.lsm.sstable.bplustree.entry.IEntry;
+import org.apache.iotdb.lsm.sstable.bplustree.entry.IDiskEntry;
 
 import java.io.DataInputStream;
 import java.io.File;
@@ -27,14 +27,14 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 
-public class FileInput implements IFileInput {
+public class TiFileInputStream implements ITiFileInputStream {
 
   private String filePath;
   private FileInputStream fileInputStream;
   private FileChannel channel;
   private DataInputStream dataInputStream;
 
-  public FileInput(File file) throws IOException {
+  public TiFileInputStream(File file) throws IOException {
     this.filePath = file.getAbsolutePath();
     fileInputStream = new FileInputStream(file);
     channel = fileInputStream.getChannel();
@@ -52,7 +52,7 @@ public class FileInput implements IFileInput {
   }
 
   @Override
-  public IFileInput position(long newPosition) throws IOException {
+  public ITiFileInputStream position(long newPosition) throws IOException {
     channel.position(newPosition);
     return this;
   }
@@ -78,13 +78,13 @@ public class FileInput implements IFileInput {
   }
 
   @Override
-  public void read(IEntry entry, long offset) throws IOException {
+  public void read(IDiskEntry entry, long offset) throws IOException {
     position(offset);
     entry.deserialize(dataInputStream);
   }
 
   @Override
-  public void read(IEntry entry) throws IOException {
+  public void read(IDiskEntry entry) throws IOException {
     entry.deserialize(dataInputStream);
   }
 

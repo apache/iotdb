@@ -67,20 +67,17 @@ public abstract class WALManager<T> {
       String walFilePrefix,
       String flushDirPath,
       String flushFilePrefix,
-      int walBufferSize,
-      IWALRecord walRecord,
-      boolean forceEachWrite)
+      IWALRecord walRecord)
       throws IOException {
     this.walDirPath = walDirPath;
     this.walFilePrefix = walFilePrefix;
     this.flushDirPath = flushDirPath;
     this.flushFilePrefix = flushFilePrefix;
-    initRecover(walBufferSize, walRecord, forceEachWrite);
+    initRecover(walRecord);
     recover = false;
   }
 
-  public void initRecover(int walBufferSize, IWALRecord walRecord, boolean forceEachWrite)
-      throws IOException {
+  public void initRecover(IWALRecord walRecord) throws IOException {
     checkPoint();
     File walDir = new File(walDirPath);
     walDir.mkdirs();
@@ -97,7 +94,7 @@ public abstract class WALManager<T> {
     } else {
       walFileName = walFileNames[currentFileIndex];
     }
-    initWalWriterAndReader(initFile(walFileName), walBufferSize, walRecord, forceEachWrite);
+    initWalWriterAndReader(initFile(walFileName), walRecord);
   }
 
   private void checkPoint() {
@@ -177,10 +174,8 @@ public abstract class WALManager<T> {
     return walFile;
   }
 
-  private void initWalWriterAndReader(
-      File walFile, int walBufferSize, IWALRecord walRecord, boolean forceEachWrite)
-      throws IOException {
-    walWriter = new WALWriter(walFile, walBufferSize, forceEachWrite);
+  private void initWalWriterAndReader(File walFile, IWALRecord walRecord) throws IOException {
+    walWriter = new WALWriter(walFile);
     walReader = new WALReader(walFile, walRecord);
   }
 

@@ -22,8 +22,8 @@ import org.apache.iotdb.lsm.wal.IWALRecord;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataInputStream;
+import java.io.DataOutputStream;
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -51,17 +51,18 @@ public class WALEntry implements IWALRecord<String, Integer> {
   }
 
   /**
-   * serialize the wal entry
+   * serialize via output stream
    *
-   * @param buffer byte buffer
+   * @param outputStream data output stream
+   * @throws IOException
    */
   @Override
-  public void serialize(ByteBuffer buffer) {
-    ReadWriteIOUtils.write(type, buffer);
-    ReadWriteIOUtils.write(deviceID, buffer);
-    ReadWriteIOUtils.write(keys.size(), buffer);
+  public void serialize(DataOutputStream outputStream) throws IOException {
+    ReadWriteIOUtils.write(type, outputStream);
+    ReadWriteIOUtils.write(deviceID, outputStream);
+    ReadWriteIOUtils.write(keys.size(), outputStream);
     for (String key : keys) {
-      ReadWriteIOUtils.write(key, buffer);
+      ReadWriteIOUtils.write(key, outputStream);
     }
   }
 

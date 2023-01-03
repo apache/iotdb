@@ -22,8 +22,8 @@ import org.apache.iotdb.lsm.sstable.bplustree.entry.BPlusTreeEntry;
 import org.apache.iotdb.lsm.sstable.bplustree.entry.BPlusTreeHeader;
 import org.apache.iotdb.lsm.sstable.bplustree.entry.BPlusTreeNode;
 import org.apache.iotdb.lsm.sstable.bplustree.entry.BPlusTreeNodeType;
-import org.apache.iotdb.lsm.sstable.fileIO.FileInput;
-import org.apache.iotdb.lsm.sstable.fileIO.IFileInput;
+import org.apache.iotdb.lsm.sstable.fileIO.ITiFileInputStream;
+import org.apache.iotdb.lsm.sstable.fileIO.TiFileInputStream;
 
 import org.apache.commons.lang3.tuple.MutableTriple;
 
@@ -40,7 +40,7 @@ import java.util.TreeMap;
 
 public class BPlusTreeReader implements IBPlusTreeReader {
 
-  private IFileInput fileInput;
+  private ITiFileInputStream fileInput;
 
   private BPlusTreeNode next;
 
@@ -50,7 +50,8 @@ public class BPlusTreeReader implements IBPlusTreeReader {
 
   private BPlusTreeHeader bPlusTreeHeader;
 
-  public BPlusTreeReader(IFileInput fileInput, long bPlusTreeStartOffset) throws IOException {
+  public BPlusTreeReader(ITiFileInputStream fileInput, long bPlusTreeStartOffset)
+      throws IOException {
     this.fileInput = fileInput;
     this.bPlusTreeStartOffset = bPlusTreeStartOffset;
     fileInput.position(bPlusTreeStartOffset);
@@ -58,7 +59,7 @@ public class BPlusTreeReader implements IBPlusTreeReader {
   }
 
   public BPlusTreeReader(File file, long bPlusTreeStartOffset) throws IOException {
-    fileInput = new FileInput(file);
+    fileInput = new TiFileInputStream(file);
     this.bPlusTreeStartOffset = bPlusTreeStartOffset;
     fileInput.position(bPlusTreeStartOffset);
     index = 0;

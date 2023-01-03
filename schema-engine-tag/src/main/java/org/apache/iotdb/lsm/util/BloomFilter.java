@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.lsm.util;
 
-import org.apache.iotdb.lsm.sstable.bplustree.entry.IEntry;
+import org.apache.iotdb.lsm.sstable.bplustree.entry.IDiskEntry;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.utils.Murmur128Hash;
 import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
@@ -27,7 +27,6 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.BitSet;
@@ -35,7 +34,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
 
-public class BloomFilter implements IEntry {
+public class BloomFilter implements IDiskEntry {
 
   private static final int MINIMAL_SIZE = 256;
   private static final int MAXIMAL_HASH_FUNCTION_SIZE = 8;
@@ -260,41 +259,23 @@ public class BloomFilter implements IEntry {
   }
 
   @Override
-  public void serialize(DataOutputStream out) throws IOException {
+  public int serialize(DataOutputStream out) throws IOException {
+    int len = 0;
     byte[] bytes = bits.toByteArray();
-    ReadWriteForEncodingUtils.writeUnsignedVarInt(bytes.length, out);
+    len = bytes.length;
+    len += ReadWriteForEncodingUtils.writeUnsignedVarInt(bytes.length, out);
     out.write(bytes);
-    ReadWriteForEncodingUtils.writeUnsignedVarInt(size, out);
-    ReadWriteForEncodingUtils.writeUnsignedVarInt(hashFunctionSize, out);
+    len += ReadWriteForEncodingUtils.writeUnsignedVarInt(size, out);
+    len += ReadWriteForEncodingUtils.writeUnsignedVarInt(hashFunctionSize, out);
+    return len;
   }
 
   @Override
-  public void serialize(ByteBuffer byteBuffer) {
-    byte[] bytes = bits.toByteArray();
-    ReadWriteForEncodingUtils.writeUnsignedVarInt(bytes.length, byteBuffer);
-    byteBuffer.put(bytes);
-    ReadWriteForEncodingUtils.writeUnsignedVarInt(size, byteBuffer);
-    ReadWriteForEncodingUtils.writeUnsignedVarInt(hashFunctionSize, byteBuffer);
-  }
-
-  @Override
-  public IEntry deserialize(DataInputStream input) throws IOException {
+  public IDiskEntry deserialize(DataInputStream input) throws IOException {
     int bytesLength = ReadWriteForEncodingUtils.readUnsignedVarInt(input);
     bits = BitSet.valueOf(ReadWriteIOUtils.readBytes(input, bytesLength));
     size = ReadWriteForEncodingUtils.readUnsignedVarInt(input);
     hashFunctionSize = ReadWriteForEncodingUtils.readUnsignedVarInt(input);
-    func = new HashFunction[hashFunctionSize];
-    for (int i = 0; i < hashFunctionSize; i++) {
-      func[i] = new HashFunction(size, SEEDS[i]);
-    }
-    return this;
-  }
-
-  @Override
-  public IEntry deserialize(ByteBuffer byteBuffer) {
-    bits = BitSet.valueOf(ReadWriteIOUtils.readByteBufferWithSelfDescriptionLength(byteBuffer));
-    size = ReadWriteForEncodingUtils.readUnsignedVarInt(byteBuffer);
-    hashFunctionSize = ReadWriteForEncodingUtils.readUnsignedVarInt(byteBuffer);
     func = new HashFunction[hashFunctionSize];
     for (int i = 0; i < hashFunctionSize; i++) {
       func[i] = new HashFunction(size, SEEDS[i]);

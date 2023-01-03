@@ -24,7 +24,7 @@ import org.apache.iotdb.lsm.sstable.bplustree.entry.BPlusTreeEntry;
 import org.apache.iotdb.lsm.sstable.bplustree.entry.BPlusTreeHeader;
 import org.apache.iotdb.lsm.sstable.bplustree.entry.BPlusTreeNode;
 import org.apache.iotdb.lsm.sstable.bplustree.entry.BPlusTreeNodeType;
-import org.apache.iotdb.lsm.sstable.fileIO.FileOutput;
+import org.apache.iotdb.lsm.sstable.fileIO.TiFileOutputStream;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -39,7 +39,7 @@ public class BPlusTreeWriter implements IBPlusTreeWriter {
 
   private Queue<BPlusTreeEntry> upperLevelBPlusTreeEntryQueue;
 
-  private FileOutput fileOutput;
+  private TiFileOutputStream fileOutput;
 
   private final TagSchemaConfig bPlushTreeConfig =
       TagSchemaDescriptor.getInstance().getTagSchemaConfig();
@@ -48,14 +48,14 @@ public class BPlusTreeWriter implements IBPlusTreeWriter {
 
   private ByteBuffer byteBuffer;
 
-  public BPlusTreeWriter(FileOutput fileOutput) {
+  public BPlusTreeWriter(TiFileOutputStream fileOutput) {
     this.fileOutput = fileOutput;
     this.currentBPlusTreeEntryQueue = new ArrayDeque<>();
     this.upperLevelBPlusTreeEntryQueue = new ArrayDeque<>();
     bPlushTreeHeader = new BPlusTreeHeader();
   }
 
-  public BPlusTreeWriter(Queue<BPlusTreeEntry> bPlusTreeEntryQueue, FileOutput fileOutput) {
+  public BPlusTreeWriter(Queue<BPlusTreeEntry> bPlusTreeEntryQueue, TiFileOutputStream fileOutput) {
     this.currentBPlusTreeEntryQueue = bPlusTreeEntryQueue;
     this.upperLevelBPlusTreeEntryQueue = new ArrayDeque<>();
     this.fileOutput = fileOutput;
@@ -312,11 +312,11 @@ public class BPlusTreeWriter implements IBPlusTreeWriter {
     return currentBPlusTreeEntryQueue;
   }
 
-  public FileOutput getFileOutput() {
+  public TiFileOutputStream getFileOutput() {
     return fileOutput;
   }
 
-  public void setFileOutput(FileOutput fileOutput) {
+  public void setFileOutput(TiFileOutputStream fileOutput) {
     this.fileOutput = fileOutput;
   }
 
@@ -329,7 +329,7 @@ public class BPlusTreeWriter implements IBPlusTreeWriter {
   }
 
   private long writeBPlusTreeNode(BPlusTreeNode bPlusTreeNode) throws IOException {
-    long startOffset = fileOutput.writeToOutStream(bPlusTreeNode);
+    long startOffset = fileOutput.write(bPlusTreeNode);
     upperLevelBPlusTreeEntryQueue.add(new BPlusTreeEntry(bPlusTreeNode.getMin(), startOffset));
     return startOffset;
   }
@@ -339,7 +339,7 @@ public class BPlusTreeWriter implements IBPlusTreeWriter {
     byteBuffer.putInt(1, bPlusTreeNode.getCount());
     byteBuffer.flip();
     long startOffset = fileOutput.getPosition();
-    fileOutput.write(byteBuffer);
+    fileOutput.write(byteBuffer.array(), 0, byteBuffer.limit());
     upperLevelBPlusTreeEntryQueue.add(new BPlusTreeEntry(bPlusTreeNode.getMin(), startOffset));
     byteBuffer.clear();
     byteBuffer.position(5);
@@ -395,8 +395,14 @@ public class BPlusTreeWriter implements IBPlusTreeWriter {
 
   @Override
   public void close() throws IOException {
-    currentBPlusTreeEntryQueue.clear();
-    upperLevelBPlusTreeEntryQueue.clear();
-    fileOutput.close();
+    if (currentBPlusTreeEntryQueue != null) {
+      currentBPlusTreeEntryQueue.clear();
+    }
+    if (upperLevelBPlusTreeEntryQueue != null) {
+      upperLevelBPlusTreeEntryQueue.clear();
+    }
+    if (fileOutput != null) {
+      fileOutput.close();
+    }
   }
 }

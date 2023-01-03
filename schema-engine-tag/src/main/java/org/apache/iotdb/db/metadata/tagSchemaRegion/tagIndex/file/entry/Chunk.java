@@ -18,19 +18,17 @@
  */
 package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.entry;
 
-import org.apache.iotdb.lsm.sstable.bplustree.entry.IEntry;
+import org.apache.iotdb.lsm.sstable.bplustree.entry.IDiskEntry;
 
-import org.roaringbitmap.InvalidRoaringFormat;
 import org.roaringbitmap.RoaringBitmap;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.Objects;
 
 /** Represents a chunk structure in the tiFile */
-public class Chunk implements IEntry {
+public class Chunk implements IDiskEntry {
   // Describe some information about the chunk
   private ChunkHeader chunkHeader;
 
@@ -38,36 +36,19 @@ public class Chunk implements IEntry {
   private RoaringBitmap roaringBitmap;
 
   @Override
-  public void serialize(DataOutputStream out) throws IOException {
+  public int serialize(DataOutputStream out) throws IOException {
+    int len = roaringBitmap.serializedSizeInBytes();
     roaringBitmap.serialize(out);
-    chunkHeader.serialize(out);
+    len += chunkHeader.serialize(out);
+    return len;
   }
 
   @Override
-  public void serialize(ByteBuffer byteBuffer) {
-    roaringBitmap.serialize(byteBuffer);
-    chunkHeader.serialize(byteBuffer);
-  }
-
-  @Override
-  public IEntry deserialize(DataInputStream input) throws IOException {
+  public IDiskEntry deserialize(DataInputStream input) throws IOException {
     roaringBitmap = new RoaringBitmap();
     roaringBitmap.deserialize(input);
     chunkHeader = new ChunkHeader();
     chunkHeader.deserialize(input);
-    return this;
-  }
-
-  @Override
-  public IEntry deserialize(ByteBuffer byteBuffer) {
-    roaringBitmap = new RoaringBitmap();
-    try {
-      roaringBitmap.deserialize(byteBuffer);
-    } catch (IOException e) {
-      throw new InvalidRoaringFormat(e.getMessage());
-    }
-    chunkHeader = new ChunkHeader();
-    chunkHeader.deserialize(byteBuffer);
     return this;
   }
 

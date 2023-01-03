@@ -18,17 +18,16 @@
  */
 package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.entry;
 
-import org.apache.iotdb.lsm.sstable.bplustree.entry.IEntry;
+import org.apache.iotdb.lsm.sstable.bplustree.entry.IDiskEntry;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.Objects;
 
 /** Record additional information of a chunk */
-public class ChunkHeader implements IEntry {
+public class ChunkHeader implements IDiskEntry {
 
   // The size of the chunk, excluding the header. (unit byte)
   private int size;
@@ -48,24 +47,13 @@ public class ChunkHeader implements IEntry {
   }
 
   @Override
-  public void serialize(DataOutputStream out) throws IOException {
-    ReadWriteIOUtils.write(size, out);
+  public int serialize(DataOutputStream out) throws IOException {
+    return ReadWriteIOUtils.write(size, out);
   }
 
   @Override
-  public void serialize(ByteBuffer byteBuffer) {
-    ReadWriteIOUtils.write(size, byteBuffer);
-  }
-
-  @Override
-  public IEntry deserialize(DataInputStream in) throws IOException {
+  public IDiskEntry deserialize(DataInputStream in) throws IOException {
     this.size = ReadWriteIOUtils.readInt(in);
-    return this;
-  }
-
-  @Override
-  public IEntry deserialize(ByteBuffer byteBuffer) {
-    this.size = ReadWriteIOUtils.readInt(byteBuffer);
     return this;
   }
 

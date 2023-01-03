@@ -26,7 +26,7 @@ import org.apache.iotdb.lsm.annotation.FlushProcessor;
 import org.apache.iotdb.lsm.context.requestcontext.FlushRequestContext;
 import org.apache.iotdb.lsm.levelProcess.FlushLevelProcessor;
 import org.apache.iotdb.lsm.sstable.bplustree.writer.BPlusTreeWriter;
-import org.apache.iotdb.lsm.sstable.fileIO.FileOutput;
+import org.apache.iotdb.lsm.sstable.fileIO.TiFileOutputStream;
 
 import java.io.IOException;
 import java.util.Collection;
@@ -51,7 +51,7 @@ public class MemChunkGroupFlush extends FlushLevelProcessor<MemChunkGroup, MemCh
     for (Map.Entry<String, MemChunk> entry : memNode.getMemChunkMap().entrySet()) {
       tagValueToOffset.put(entry.getKey(), flushResponse.getChunkOffset(entry.getValue()));
     }
-    FileOutput fileOutput = context.getFileOutput();
+    TiFileOutputStream fileOutput = context.getFileOutput();
     BPlusTreeWriter bPlusTreeWriter = new BPlusTreeWriter(fileOutput);
     Long offset = bPlusTreeWriter.write(tagValueToOffset, false);
     flushResponse.addTagKeyOffset(memNode, offset);

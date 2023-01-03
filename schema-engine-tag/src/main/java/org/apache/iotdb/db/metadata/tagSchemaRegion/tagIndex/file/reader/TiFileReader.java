@@ -23,8 +23,8 @@ import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.entry.ChunkInd
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.entry.TiFileHeader;
 import org.apache.iotdb.lsm.sstable.bplustree.entry.BPlusTreeEntry;
 import org.apache.iotdb.lsm.sstable.bplustree.reader.BPlusTreeReader;
-import org.apache.iotdb.lsm.sstable.fileIO.FileInput;
-import org.apache.iotdb.lsm.sstable.fileIO.IFileInput;
+import org.apache.iotdb.lsm.sstable.fileIO.ITiFileInputStream;
+import org.apache.iotdb.lsm.sstable.fileIO.TiFileInputStream;
 import org.apache.iotdb.lsm.sstable.interator.IDiskIterator;
 import org.apache.iotdb.lsm.util.BloomFilter;
 
@@ -46,7 +46,7 @@ import java.util.TreeMap;
 /** Used to read all tiFile-related structures, and supports iterative acquisition of ids */
 public class TiFileReader implements IDiskIterator<Integer> {
 
-  private final IFileInput tiFileInput;
+  private final ITiFileInputStream tiFileInput;
 
   private File file;
 
@@ -68,11 +68,12 @@ public class TiFileReader implements IDiskIterator<Integer> {
 
   public TiFileReader(File file, Map<String, String> tags) throws IOException {
     this.file = file;
-    this.tiFileInput = new FileInput(file);
+    this.tiFileInput = new TiFileInputStream(file);
     this.tags = tags;
   }
 
-  public TiFileReader(IFileInput tiFileInput, long tagKeyIndexOffset, Map<String, String> tags)
+  public TiFileReader(
+      ITiFileInputStream tiFileInput, long tagKeyIndexOffset, Map<String, String> tags)
       throws IOException {
     this.tiFileInput = tiFileInput;
     tiFileInput.position(tagKeyIndexOffset);

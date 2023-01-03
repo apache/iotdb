@@ -24,12 +24,6 @@ public class TagSchemaConfig {
   // the maximum number of device ids managed by a working memTable
   private int numOfDeviceIdsInMemTable = 65536;
 
-  // the size of wal buffer used to store a wal record.(unit: byte)
-  private int walBufferSize = 1024 * 1024;
-
-  // the size of buffer used to write a record.(unit: byte)
-  private int outBufferSize = 1024 * 1024;
-
   // degree of a b+ tree
   private int degree = 250;
 
@@ -56,22 +50,6 @@ public class TagSchemaConfig {
 
   public void setNumOfImmutableMemTable(int numOfImmutableMemTable) {
     this.numOfImmutableMemTable = numOfImmutableMemTable;
-  }
-
-  public int getWalBufferSize() {
-    return walBufferSize;
-  }
-
-  public void setWalBufferSize(int walBufferSize) {
-    this.walBufferSize = walBufferSize;
-  }
-
-  public int getOutBufferSize() {
-    return outBufferSize;
-  }
-
-  public void setOutBufferSize(int outBufferSize) {
-    this.outBufferSize = outBufferSize;
   }
 
   public int getDegree() {
@@ -103,12 +81,10 @@ public class TagSchemaConfig {
     return "TagSchemaConfig{"
         + "numOfDeviceIdsInMemTable="
         + numOfDeviceIdsInMemTable
-        + ", walBufferSize="
-        + walBufferSize
-        + ", outBufferSize="
-        + outBufferSize
         + ", degree="
         + degree
+        + ", bPlusTreePageSize="
+        + bPlusTreePageSize
         + ", numOfImmutableMemTable="
         + numOfImmutableMemTable
         + ", maxChunkSize="

@@ -27,7 +27,7 @@ import org.apache.iotdb.lsm.annotation.FlushProcessor;
 import org.apache.iotdb.lsm.context.requestcontext.FlushRequestContext;
 import org.apache.iotdb.lsm.levelProcess.FlushLevelProcessor;
 import org.apache.iotdb.lsm.sstable.bplustree.writer.BPlusTreeWriter;
-import org.apache.iotdb.lsm.sstable.fileIO.FileOutput;
+import org.apache.iotdb.lsm.sstable.fileIO.TiFileOutputStream;
 import org.apache.iotdb.lsm.util.BloomFilter;
 
 import java.io.File;
@@ -56,7 +56,7 @@ public class MemTableFlush extends FlushLevelProcessor<MemTable, MemChunkGroup, 
     for (Map.Entry<String, MemChunkGroup> entry : memNode.getMemChunkGroupMap().entrySet()) {
       tagKeyToOffset.put(entry.getKey(), flushResponse.getTagKeyOffset(entry.getValue()));
     }
-    FileOutput fileOutput = context.getFileOutput();
+    TiFileOutputStream fileOutput = context.getFileOutput();
     BPlusTreeWriter bPlusTreeWriter = new BPlusTreeWriter(fileOutput);
     TiFileHeader tiFileHeader = new TiFileHeader();
     tiFileHeader.setTagKeyIndexOffset(bPlusTreeWriter.write(tagKeyToOffset, false));
@@ -74,7 +74,7 @@ public class MemTableFlush extends FlushLevelProcessor<MemTable, MemChunkGroup, 
     if (!deletionFile.exists()) {
       deletionFile.createNewFile();
     }
-    FileOutput fileOutput = new FileOutput(deletionFile);
+    TiFileOutputStream fileOutput = new TiFileOutputStream(deletionFile);
     for (Integer deletion : memNode.getDeletionList()) {
       fileOutput.write(deletion);
     }

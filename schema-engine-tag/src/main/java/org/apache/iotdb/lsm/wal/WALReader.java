@@ -63,16 +63,12 @@ public class WALReader implements IWALReader {
       if (fileCorrupted) {
         return false;
       }
-      int logSize = logStream.readInt();
-      if (logSize <= 0) {
-        return false;
-      }
       // first clone the object through the prototype
       nextRecord = prototype.clone();
       // then perform deserialization and assign a value to the new object
       nextRecord.deserialize(logStream);
     } catch (EOFException e) {
-      logger.info(e.getMessage());
+      logger.info("read wal file: {} end", logFile);
       return false;
     } catch (IOException e) {
       logger.warn(e.getMessage());

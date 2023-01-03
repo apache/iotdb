@@ -19,17 +19,16 @@
 package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.entry;
 
 import org.apache.iotdb.db.metadata.tagSchemaRegion.config.TagSchemaDescriptor;
-import org.apache.iotdb.lsm.sstable.bplustree.entry.IEntry;
+import org.apache.iotdb.lsm.sstable.bplustree.entry.IDiskEntry;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.Objects;
 
 /** Indicates additional information about a tiFile */
-public class TiFileHeader implements IEntry {
+public class TiFileHeader implements IDiskEntry {
 
   // The maximum page size of the b+ tree of tagkey index and tagValue index. (unit byte)
   private int bPLusTreePageSize;
@@ -74,32 +73,19 @@ public class TiFileHeader implements IEntry {
   }
 
   @Override
-  public void serialize(DataOutputStream out) throws IOException {
-    ReadWriteIOUtils.write(bPLusTreePageSize, out);
-    ReadWriteIOUtils.write(tagKeyIndexOffset, out);
-    ReadWriteIOUtils.write(bloomFilterOffset, out);
+  public int serialize(DataOutputStream out) throws IOException {
+    int len = 0;
+    len += ReadWriteIOUtils.write(bPLusTreePageSize, out);
+    len += ReadWriteIOUtils.write(tagKeyIndexOffset, out);
+    len += ReadWriteIOUtils.write(bloomFilterOffset, out);
+    return len;
   }
 
   @Override
-  public void serialize(ByteBuffer byteBuffer) {
-    ReadWriteIOUtils.write(bPLusTreePageSize, byteBuffer);
-    ReadWriteIOUtils.write(tagKeyIndexOffset, byteBuffer);
-    ReadWriteIOUtils.write(bloomFilterOffset, byteBuffer);
-  }
-
-  @Override
-  public IEntry deserialize(DataInputStream input) throws IOException {
+  public IDiskEntry deserialize(DataInputStream input) throws IOException {
     bPLusTreePageSize = ReadWriteIOUtils.readInt(input);
     tagKeyIndexOffset = ReadWriteIOUtils.readLong(input);
     bloomFilterOffset = ReadWriteIOUtils.readLong(input);
-    return this;
-  }
-
-  @Override
-  public IEntry deserialize(ByteBuffer byteBuffer) {
-    bPLusTreePageSize = ReadWriteIOUtils.readInt(byteBuffer);
-    tagKeyIndexOffset = ReadWriteIOUtils.readLong(byteBuffer);
-    bloomFilterOffset = ReadWriteIOUtils.readLong(byteBuffer);
     return this;
   }
 

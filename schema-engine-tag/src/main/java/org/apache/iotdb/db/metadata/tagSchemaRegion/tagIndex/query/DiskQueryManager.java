@@ -25,7 +25,7 @@ import org.apache.iotdb.lsm.manager.IDiskQueryManager;
 import org.apache.iotdb.lsm.request.ISingleQueryRequest;
 import org.apache.iotdb.lsm.request.QueryRequest;
 import org.apache.iotdb.lsm.response.IQueryResponse;
-import org.apache.iotdb.lsm.sstable.fileIO.FileInput;
+import org.apache.iotdb.lsm.sstable.fileIO.TiFileInputStream;
 
 import org.roaringbitmap.RoaringBitmap;
 import org.slf4j.Logger;
@@ -126,10 +126,10 @@ public class DiskQueryManager implements IDiskQueryManager {
   }
 
   private void deleteRecords(QueryResponse queryResponse, File deletionFile) throws IOException {
-    FileInput fileInput = null;
+    TiFileInputStream fileInput = null;
     if (queryResponse.getValue().isEmpty()) return;
     try {
-      fileInput = new FileInput(deletionFile);
+      fileInput = new TiFileInputStream(deletionFile);
       while (true) {
         int id = fileInput.readInt();
         queryResponse.getValue().remove(id);

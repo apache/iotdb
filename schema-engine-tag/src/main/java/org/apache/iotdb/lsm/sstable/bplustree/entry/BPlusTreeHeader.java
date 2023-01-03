@@ -23,11 +23,10 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.Objects;
 
 /** Record some additional information about the b+ tree */
-public class BPlusTreeHeader implements IEntry {
+public class BPlusTreeHeader implements IDiskEntry {
 
   // Maximum Records Saved
   String max;
@@ -45,40 +44,23 @@ public class BPlusTreeHeader implements IEntry {
   int leftNodeCount = -1;
 
   @Override
-  public void serialize(DataOutputStream out) throws IOException {
-    ReadWriteIOUtils.write(max, out);
-    ReadWriteIOUtils.write(min, out);
-    ReadWriteIOUtils.write(rootNodeOffset, out);
-    ReadWriteIOUtils.write(firstLeftNodeOffset, out);
-    ReadWriteIOUtils.write(leftNodeCount, out);
+  public int serialize(DataOutputStream out) throws IOException {
+    int len = 0;
+    len += ReadWriteIOUtils.write(max, out);
+    len += ReadWriteIOUtils.write(min, out);
+    len += ReadWriteIOUtils.write(rootNodeOffset, out);
+    len += ReadWriteIOUtils.write(firstLeftNodeOffset, out);
+    len += ReadWriteIOUtils.write(leftNodeCount, out);
+    return len;
   }
 
   @Override
-  public void serialize(ByteBuffer byteBuffer) {
-    ReadWriteIOUtils.write(max, byteBuffer);
-    ReadWriteIOUtils.write(min, byteBuffer);
-    ReadWriteIOUtils.write(rootNodeOffset, byteBuffer);
-    ReadWriteIOUtils.write(firstLeftNodeOffset, byteBuffer);
-    ReadWriteIOUtils.write(leftNodeCount, byteBuffer);
-  }
-
-  @Override
-  public IEntry deserialize(DataInputStream input) throws IOException {
+  public IDiskEntry deserialize(DataInputStream input) throws IOException {
     max = ReadWriteIOUtils.readString(input);
     min = ReadWriteIOUtils.readString(input);
     rootNodeOffset = ReadWriteIOUtils.readLong(input);
     firstLeftNodeOffset = ReadWriteIOUtils.readLong(input);
     leftNodeCount = ReadWriteIOUtils.readInt(input);
-    return this;
-  }
-
-  @Override
-  public IEntry deserialize(ByteBuffer byteBuffer) {
-    max = ReadWriteIOUtils.readString(byteBuffer);
-    min = ReadWriteIOUtils.readString(byteBuffer);
-    rootNodeOffset = ReadWriteIOUtils.readLong(byteBuffer);
-    firstLeftNodeOffset = ReadWriteIOUtils.readLong(byteBuffer);
-    leftNodeCount = ReadWriteIOUtils.readInt(byteBuffer);
     return this;
   }
 

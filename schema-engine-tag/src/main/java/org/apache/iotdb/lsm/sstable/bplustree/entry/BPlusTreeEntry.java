@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.lsm.sstable.bplustree.entry;
 
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataInputStream;
@@ -27,7 +28,7 @@ import java.nio.ByteBuffer;
 import java.util.Objects;
 
 /** Represents a record in a b+ tree node */
-public class BPlusTreeEntry implements IEntry {
+public class BPlusTreeEntry implements IDiskEntry {
 
   String name;
 
@@ -41,26 +42,27 @@ public class BPlusTreeEntry implements IEntry {
   }
 
   @Override
-  public void serialize(DataOutputStream out) throws IOException {
-    ReadWriteIOUtils.write(name, out);
-    ReadWriteIOUtils.write(offset, out);
+  public int serialize(DataOutputStream out) throws IOException {
+    int len = 0;
+    len += ReadWriteIOUtils.write(name, out);
+    len += ReadWriteIOUtils.write(offset, out);
+    return len;
   }
 
-  @Override
   public void serialize(ByteBuffer byteBuffer) {
     ReadWriteIOUtils.write(name, byteBuffer);
     ReadWriteIOUtils.write(offset, byteBuffer);
   }
 
   @Override
-  public IEntry deserialize(DataInputStream input) throws IOException {
+  public IDiskEntry deserialize(DataInputStream input) throws IOException {
     name = ReadWriteIOUtils.readString(input);
     offset = ReadWriteIOUtils.readLong(input);
     return this;
   }
 
-  @Override
-  public IEntry deserialize(ByteBuffer byteBuffer) {
+  @TestOnly
+  public IDiskEntry deserialize(ByteBuffer byteBuffer) {
     name = ReadWriteIOUtils.readString(byteBuffer);
     offset = ReadWriteIOUtils.readLong(byteBuffer);
     return this;

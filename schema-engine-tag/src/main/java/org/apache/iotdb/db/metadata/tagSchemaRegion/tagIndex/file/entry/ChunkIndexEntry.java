@@ -18,17 +18,16 @@
  */
 package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.entry;
 
-import org.apache.iotdb.lsm.sstable.bplustree.entry.IEntry;
+import org.apache.iotdb.lsm.sstable.bplustree.entry.IDiskEntry;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.Objects;
 
 /** Used to record the index information of a chunk */
-public class ChunkIndexEntry implements IEntry {
+public class ChunkIndexEntry implements IDiskEntry {
 
   // The offset of the corresponding chunk points to the first address of the chunk header in the
   // file
@@ -103,36 +102,21 @@ public class ChunkIndexEntry implements IEntry {
   }
 
   @Override
-  public void serialize(DataOutputStream out) throws IOException {
-    ReadWriteIOUtils.write(offset, out);
-    ReadWriteIOUtils.write(count, out);
-    ReadWriteIOUtils.write(idMax, out);
-    ReadWriteIOUtils.write(idMin, out);
+  public int serialize(DataOutputStream out) throws IOException {
+    int len = 0;
+    len += ReadWriteIOUtils.write(offset, out);
+    len += ReadWriteIOUtils.write(count, out);
+    len += ReadWriteIOUtils.write(idMax, out);
+    len += ReadWriteIOUtils.write(idMin, out);
+    return len;
   }
 
   @Override
-  public void serialize(ByteBuffer byteBuffer) {
-    ReadWriteIOUtils.write(offset, byteBuffer);
-    ReadWriteIOUtils.write(count, byteBuffer);
-    ReadWriteIOUtils.write(idMax, byteBuffer);
-    ReadWriteIOUtils.write(idMin, byteBuffer);
-  }
-
-  @Override
-  public IEntry deserialize(DataInputStream input) throws IOException {
+  public IDiskEntry deserialize(DataInputStream input) throws IOException {
     offset = ReadWriteIOUtils.readLong(input);
     count = ReadWriteIOUtils.readInt(input);
     idMax = ReadWriteIOUtils.readInt(input);
     idMin = ReadWriteIOUtils.readInt(input);
-    return this;
-  }
-
-  @Override
-  public IEntry deserialize(ByteBuffer byteBuffer) {
-    offset = ReadWriteIOUtils.readLong(byteBuffer);
-    count = ReadWriteIOUtils.readInt(byteBuffer);
-    idMax = ReadWriteIOUtils.readInt(byteBuffer);
-    idMin = ReadWriteIOUtils.readInt(byteBuffer);
     return this;
   }
 

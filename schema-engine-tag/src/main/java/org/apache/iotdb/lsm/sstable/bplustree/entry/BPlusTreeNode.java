@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.lsm.sstable.bplustree.entry;
 
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataInputStream;
@@ -34,7 +35,7 @@ import java.util.Objects;
 import java.util.Set;
 
 /** Represents a b+ tree node */
-public class BPlusTreeNode implements IEntry {
+public class BPlusTreeNode implements IDiskEntry {
 
   // leaf node or internal node
   private BPlusTreeNodeType bPlusTreeNodeType;
@@ -95,25 +96,17 @@ public class BPlusTreeNode implements IEntry {
   }
 
   @Override
-  public void serialize(DataOutputStream out) throws IOException {
-    bPlusTreeNodeType.serialize(out);
-    ReadWriteIOUtils.write(count, out);
+  public int serialize(DataOutputStream out) throws IOException {
+    int len = bPlusTreeNodeType.serialize(out);
+    len += ReadWriteIOUtils.write(count, out);
     for (BPlusTreeEntry bPlusTreeEntry : bPlusTreeEntries) {
-      bPlusTreeEntry.serialize(out);
+      len += bPlusTreeEntry.serialize(out);
     }
+    return len;
   }
 
   @Override
-  public void serialize(ByteBuffer byteBuffer) {
-    bPlusTreeNodeType.serialize(byteBuffer);
-    ReadWriteIOUtils.write(count, byteBuffer);
-    for (BPlusTreeEntry bPlusTreeEntry : bPlusTreeEntries) {
-      bPlusTreeEntry.serialize(byteBuffer);
-    }
-  }
-
-  @Override
-  public IEntry deserialize(DataInputStream input) throws IOException {
+  public IDiskEntry deserialize(DataInputStream input) throws IOException {
     byte type = input.readByte();
     if (type == 0) {
       bPlusTreeNodeType = BPlusTreeNodeType.INVALID_NODE;
@@ -131,8 +124,8 @@ public class BPlusTreeNode implements IEntry {
     return this;
   }
 
-  @Override
-  public IEntry deserialize(ByteBuffer byteBuffer) {
+  @TestOnly
+  public IDiskEntry deserialize(ByteBuffer byteBuffer) {
     byte type = ReadWriteIOUtils.readByte(byteBuffer);
     if (type == 0) {
       bPlusTreeNodeType = BPlusTreeNodeType.INVALID_NODE;

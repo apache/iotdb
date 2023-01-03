@@ -19,7 +19,7 @@
 package org.apache.iotdb.lsm.context.requestcontext;
 
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.response.FlushResponse;
-import org.apache.iotdb.lsm.sstable.fileIO.FileOutput;
+import org.apache.iotdb.lsm.sstable.fileIO.TiFileOutputStream;
 import org.apache.iotdb.lsm.strategy.RBFSAccessStrategy;
 
 /**
@@ -28,13 +28,13 @@ import org.apache.iotdb.lsm.strategy.RBFSAccessStrategy;
  */
 public class FlushRequestContext extends RequestContext {
 
-  private FileOutput fileOutput;
+  private TiFileOutputStream fileOutput;
 
-  public FileOutput getFileOutput() {
+  public TiFileOutputStream getFileOutput() {
     return fileOutput;
   }
 
-  public void setFileOutput(FileOutput fileOutput) {
+  public void setFileOutput(TiFileOutputStream fileOutput) {
     this.fileOutput = fileOutput;
   }
 

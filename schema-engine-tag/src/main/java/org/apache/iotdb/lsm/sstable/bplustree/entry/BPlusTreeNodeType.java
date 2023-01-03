@@ -23,9 +23,8 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
-import java.nio.ByteBuffer;
 
-public enum BPlusTreeNodeType implements IEntry {
+public enum BPlusTreeNodeType implements IDiskEntry {
   INVALID_NODE((byte) 0),
 
   INTERNAL_NODE((byte) 1),
@@ -43,22 +42,12 @@ public enum BPlusTreeNodeType implements IEntry {
   }
 
   @Override
-  public void serialize(DataOutputStream out) throws IOException {
-    ReadWriteIOUtils.write(type, out);
+  public int serialize(DataOutputStream out) throws IOException {
+    return ReadWriteIOUtils.write(type, out);
   }
 
   @Override
-  public void serialize(ByteBuffer byteBuffer) {
-    ReadWriteIOUtils.write(type, byteBuffer);
-  }
-
-  @Override
-  public IEntry deserialize(DataInputStream input) throws IOException {
-    throw new UnsupportedOperationException("deserialize BPlusTreeNodeType");
-  }
-
-  @Override
-  public IEntry deserialize(ByteBuffer byteBuffer) {
+  public IDiskEntry deserialize(DataInputStream input) throws IOException {
     throw new UnsupportedOperationException("deserialize BPlusTreeNodeType");
   }
 

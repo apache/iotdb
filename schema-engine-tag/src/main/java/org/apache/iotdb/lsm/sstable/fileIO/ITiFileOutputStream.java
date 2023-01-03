@@ -18,40 +18,12 @@
  */
 package org.apache.iotdb.lsm.sstable.fileIO;
 
-import org.apache.iotdb.lsm.sstable.bplustree.entry.IEntry;
+import org.apache.iotdb.lsm.sstable.bplustree.entry.IDiskEntry;
 
-import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
-import java.nio.ByteBuffer;
 
-public interface IFileOutput {
-
-  /**
-   * Writes <code>b.length</code> bytes from the specified byte array to this output at the current
-   * position.
-   *
-   * @param b the data.
-   * @throws IOException if an I/O error occurs.
-   */
-  void write(byte[] b) throws IOException;
-
-  /**
-   * Writes 1 byte to this output at the current position.
-   *
-   * @param b the data.
-   * @throws IOException if an I/O error occurs.
-   */
-  void write(byte b) throws IOException;
-
-  /**
-   * Writes <code>b.remaining()</code> bytes from the specified byte array to this output at the
-   * current position.
-   *
-   * @param b the data.
-   * @throws IOException if an I/O error occurs.
-   */
-  void write(ByteBuffer b) throws IOException;
+public interface ITiFileOutputStream {
 
   /**
    * Write a IEntry to disk, use a byte buffer
@@ -60,7 +32,7 @@ public interface IFileOutput {
    * @return start offset of the entry
    * @throws IOException
    */
-  long write(IEntry entry) throws IOException;
+  long write(IDiskEntry entry) throws IOException;
 
   /**
    * Write a IEntry to disk, use a byte buffer
@@ -69,25 +41,8 @@ public interface IFileOutput {
    * @return byte size of the entry
    * @throws IOException
    */
-  int writeAndGetSize(IEntry entry) throws IOException;
+  int writeAndGetSize(IDiskEntry entry) throws IOException;
 
-  /**
-   * Write a IEntry to disk, using out stream
-   *
-   * @param entry entry
-   * @return start offset of the entry
-   * @throws IOException
-   */
-  long writeToOutStream(IEntry entry) throws IOException;
-
-  /**
-   * Write a IEntry to disk, using out stream
-   *
-   * @param entry entry
-   * @return byte size of the entry
-   * @throws IOException
-   */
-  int writeToOutStreamAndGetSize(IEntry entry) throws IOException;
   /**
    * gets the current position of the Output. This method is usually used for recording where the
    * data is. <br>
@@ -106,24 +61,9 @@ public interface IFileOutput {
   void close() throws IOException;
 
   /**
-   * convert this TsFileOutput as a outputstream.
-   *
-   * @return an output stream whose position is the same with this Output
-   * @throws IOException if an I/O error occurs.
-   */
-  DataOutputStream wrapAsStream() throws IOException;
-
-  /**
    * the same with {@link OutputStream#flush()}.
    *
    * @throws IOException if an I/O error occurs.
    */
   void flush() throws IOException;
-
-  /**
-   * The same with {@link java.nio.channels.FileChannel#truncate(long)}.
-   *
-   * @param size size The new size, a non-negative byte count
-   */
-  void truncate(long size) throws IOException;
 }

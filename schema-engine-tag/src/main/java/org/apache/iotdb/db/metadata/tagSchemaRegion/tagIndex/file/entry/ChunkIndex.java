@@ -18,18 +18,17 @@
  */
 package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.entry;
 
-import org.apache.iotdb.lsm.sstable.bplustree.entry.IEntry;
+import org.apache.iotdb.lsm.sstable.bplustree.entry.IDiskEntry;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
 /** Represents the chunk index structure in tifile */
-public class ChunkIndex implements IEntry {
+public class ChunkIndex implements IDiskEntry {
   private List<ChunkIndexEntry> chunkIndexEntries;
 
   private ChunkIndexHeader chunkIndexHeader;
@@ -85,42 +84,22 @@ public class ChunkIndex implements IEntry {
   }
 
   @Override
-  public void serialize(DataOutputStream out) throws IOException {
-    chunkIndexHeader.serialize(out);
+  public int serialize(DataOutputStream out) throws IOException {
+    int len = chunkIndexHeader.serialize(out);
     for (ChunkIndexEntry chunkIndexEntry : chunkIndexEntries) {
-      chunkIndexEntry.serialize(out);
+      len += chunkIndexEntry.serialize(out);
     }
+    return len;
   }
 
   @Override
-  public void serialize(ByteBuffer byteBuffer) {
-    chunkIndexHeader.serialize(byteBuffer);
-    for (ChunkIndexEntry chunkIndexEntry : chunkIndexEntries) {
-      chunkIndexEntry.serialize(byteBuffer);
-    }
-  }
-
-  @Override
-  public IEntry deserialize(DataInputStream input) throws IOException {
+  public IDiskEntry deserialize(DataInputStream input) throws IOException {
     chunkIndexHeader = new ChunkIndexHeader();
     chunkIndexHeader.deserialize(input);
     chunkIndexEntries = new ArrayList<>(chunkIndexHeader.getSize());
     for (int i = 0; i < chunkIndexHeader.getSize(); i++) {
       ChunkIndexEntry chunkIndexEntry = new ChunkIndexEntry();
       chunkIndexEntry.deserialize(input);
-      chunkIndexEntries.add(chunkIndexEntry);
-    }
-    return this;
-  }
-
-  @Override
-  public IEntry deserialize(ByteBuffer byteBuffer) {
-    chunkIndexHeader = new ChunkIndexHeader();
-    chunkIndexHeader.deserialize(byteBuffer);
-    chunkIndexEntries = new ArrayList<>(chunkIndexHeader.getSize());
-    for (int i = 0; i < chunkIndexHeader.getSize(); i++) {
-      ChunkIndexEntry chunkIndexEntry = new ChunkIndexEntry();
-      chunkIndexEntry.deserialize(byteBuffer);
       chunkIndexEntries.add(chunkIndexEntry);
     }
     return this;

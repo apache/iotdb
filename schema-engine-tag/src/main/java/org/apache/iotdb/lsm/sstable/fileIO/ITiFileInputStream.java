@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.lsm.sstable.fileIO;
 
-import org.apache.iotdb.lsm.sstable.bplustree.entry.IEntry;
+import org.apache.iotdb.lsm.sstable.bplustree.entry.IDiskEntry;
 
 import java.io.DataInputStream;
 import java.io.EOFException;
@@ -30,7 +30,7 @@ import java.nio.channels.ClosedChannelException;
 import java.nio.channels.FileChannel;
 import java.nio.channels.ReadableByteChannel;
 
-public interface IFileInput {
+public interface ITiFileInputStream {
   /**
    * Returns the current size of this input.
    *
@@ -64,7 +64,7 @@ public interface IFileInput {
    * @throws IllegalArgumentException If the new position is negative
    * @throws IOException If some other I/O error occurs
    */
-  IFileInput position(long newPosition) throws IOException;
+  ITiFileInputStream position(long newPosition) throws IOException;
 
   /**
    * Reads a sequence of bytes from this IFileInput into the given buffer.
@@ -121,7 +121,7 @@ public interface IFileInput {
    * @exception IOException the stream has been closed and the contained input stream does not
    *     support reading after close, or another I/O error occurs.
    */
-  void read(IEntry entry, long offset) throws IOException;
+  void read(IDiskEntry entry, long offset) throws IOException;
 
   /**
    * read an entry from the file offset
@@ -131,7 +131,7 @@ public interface IFileInput {
    * @exception IOException the stream has been closed and the contained input stream does not
    *     support reading after close, or another I/O error occurs.
    */
-  void read(IEntry entry) throws IOException;
+  void read(IDiskEntry entry) throws IOException;
 
   /**
    * Returns the unique {@link java.nio.channels.FileChannel FileChannel} object associated with

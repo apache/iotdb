@@ -22,7 +22,7 @@ import org.apache.iotdb.db.metadata.tagSchemaRegion.config.TagSchemaDescriptor;
 import org.apache.iotdb.lsm.sstable.bplustree.entry.BPlusTreeEntry;
 import org.apache.iotdb.lsm.sstable.bplustree.entry.BPlusTreeHeader;
 import org.apache.iotdb.lsm.sstable.bplustree.entry.BPlusTreeNode;
-import org.apache.iotdb.lsm.sstable.fileIO.FileOutput;
+import org.apache.iotdb.lsm.sstable.fileIO.TiFileOutputStream;
 
 import org.junit.After;
 import org.junit.Before;
@@ -113,7 +113,7 @@ public class BPlusTreeWriterTest {
   public void testWriteBPlusTree() throws IOException {
 
     FileOutputStream fileOutputStream = new FileOutputStream(file);
-    FileOutput fileOutput = new FileOutput(fileOutputStream, 1024 * 1024);
+    TiFileOutputStream fileOutput = new TiFileOutputStream(fileOutputStream);
     bPlusTreeWriter = new BPlusTreeWriter(fileOutput);
     orderedQueue.forEach(
         bPlusTreeEntry ->
@@ -128,7 +128,7 @@ public class BPlusTreeWriterTest {
   public void testSortAndWriteBPlusTree() throws IOException {
 
     FileOutputStream fileOutputStream = new FileOutputStream(file);
-    FileOutput fileOutput = new FileOutput(fileOutputStream, 1024 * 1024);
+    TiFileOutputStream fileOutput = new TiFileOutputStream(fileOutputStream);
     bPlusTreeWriter = new BPlusTreeWriter(fileOutput);
     unorderedQueue.forEach(
         bPlusTreeEntry ->
@@ -142,7 +142,7 @@ public class BPlusTreeWriterTest {
   public void testWriteBPlusTreeFromOrderedQueue() throws IOException {
 
     FileOutputStream fileOutputStream = new FileOutputStream(file);
-    FileOutput fileOutput = new FileOutput(fileOutputStream, 1024 * 1024);
+    TiFileOutputStream fileOutput = new TiFileOutputStream(fileOutputStream);
 
     bPlusTreeWriter = new BPlusTreeWriter(fileOutput);
 
@@ -155,7 +155,7 @@ public class BPlusTreeWriterTest {
   public void testWriteBPlusTreeFromUnOrderedQueue() throws IOException {
 
     FileOutputStream fileOutputStream = new FileOutputStream(file);
-    FileOutput fileOutput = new FileOutput(fileOutputStream, 1024 * 1024);
+    TiFileOutputStream fileOutput = new TiFileOutputStream(fileOutputStream);
 
     bPlusTreeWriter = new BPlusTreeWriter(fileOutput);
 
@@ -168,7 +168,7 @@ public class BPlusTreeWriterTest {
   public void testWriteBPlusTreeFromOrderedMap() throws IOException {
 
     FileOutputStream fileOutputStream = new FileOutputStream(file);
-    FileOutput fileOutput = new FileOutput(fileOutputStream, 1024 * 1024);
+    TiFileOutputStream fileOutput = new TiFileOutputStream(fileOutputStream);
 
     Map<String, Long> map = new TreeMap<>();
 
@@ -185,7 +185,7 @@ public class BPlusTreeWriterTest {
   public void testWriteBPlusTreeFromUnOrderedMap() throws IOException {
 
     FileOutputStream fileOutputStream = new FileOutputStream(file);
-    FileOutput fileOutput = new FileOutput(fileOutputStream, 1024 * 1024);
+    TiFileOutputStream fileOutput = new TiFileOutputStream(fileOutputStream);
 
     Map<String, Long> map = new HashMap<>();
 
@@ -200,6 +200,7 @@ public class BPlusTreeWriterTest {
 
   private void assertTest(BPlusTreeHeader bPlusTreeHeader) throws IOException {
 
+    bPlusTreeWriter.close();
     assertEquals(bPlusTreeHeader.getMax(), "zz");
     assertEquals(bPlusTreeHeader.getMin(), "aaa");
     assertEquals(bPlusTreeHeader.getFirstLeftNodeOffset(), 0);

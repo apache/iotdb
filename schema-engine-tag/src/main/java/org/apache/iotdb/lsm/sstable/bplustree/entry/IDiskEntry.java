@@ -18,25 +18,37 @@
  */
 package org.apache.iotdb.lsm.sstable.bplustree.entry;
 
+import org.apache.iotdb.lsm.sstable.fileIO.ITiFileInputStream;
+import org.apache.iotdb.lsm.sstable.fileIO.ITiFileOutputStream;
+
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
-import java.nio.ByteBuffer;
 
 /**
  * Represents a disk entry, which implements the disk data structure of this interface, and can be
- * read and written using IFileIput and IFileOutput
+ * read and written using ITiFileInputStream and ITiFileOutputStream
  *
- * @see org.apache.iotdb.lsm.sstable.fileIO.IFileInput
- * @see org.apache.iotdb.lsm.sstable.fileIO.IFileOutput
+ * @see ITiFileInputStream
+ * @see ITiFileOutputStream
  */
-public interface IEntry {
+public interface IDiskEntry {
 
-  void serialize(DataOutputStream out) throws IOException;
+  /**
+   * Serialize to output stream
+   *
+   * @param out data output stream
+   * @return serialized size
+   * @throws IOException if an I/O error occurs.
+   */
+  int serialize(DataOutputStream out) throws IOException;
 
-  void serialize(ByteBuffer byteBuffer);
-
-  IEntry deserialize(DataInputStream input) throws IOException;
-
-  IEntry deserialize(ByteBuffer byteBuffer);
+  /**
+   * Deserialize from input stream
+   *
+   * @param input data input stream
+   * @return disk entry
+   * @throws IOException if an I/O error occurs.
+   */
+  IDiskEntry deserialize(DataInputStream input) throws IOException;
 }

@@ -83,9 +83,7 @@ public class TagInvertedIndex implements ITagInvertedIndex {
               WAL_FILE_PREFIX,
               schemaDirPath + File.separator + FLUSH_DIR_PATH,
               FLUSH_FILE_PREFIX,
-              tagSchemaConfig.getWalBufferSize(),
-              new WALEntry(),
-              false);
+              new WALEntry());
       // root memory node, used to manage working and immutableMemTables
       MemTableGroup memTableGroup =
           new MemTableGroup(

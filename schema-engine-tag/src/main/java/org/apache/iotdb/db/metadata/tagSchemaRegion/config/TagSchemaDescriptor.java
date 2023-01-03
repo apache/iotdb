@@ -65,17 +65,11 @@ public class TagSchemaDescriptor {
     try (InputStream in = new BufferedInputStream(new FileInputStream(tagSchemaConfigPath))) {
       Properties properties = new Properties();
       properties.load(in);
-      conf.setWalBufferSize(
-          Integer.parseInt(
-              properties.getProperty("wal_buffer_size", String.valueOf(conf.getWalBufferSize()))));
       conf.setNumOfDeviceIdsInMemTable(
           Integer.parseInt(
               properties.getProperty(
                   "num_of_deviceIds_in_memTable",
                   String.valueOf(conf.getNumOfDeviceIdsInMemTable()))));
-      conf.setOutBufferSize(
-          Integer.parseInt(
-              properties.getProperty("out_buffer_size", String.valueOf(conf.getOutBufferSize()))));
       conf.setDegree(
           Integer.parseInt(properties.getProperty("degree", String.valueOf(conf.getDegree()))));
       conf.setBPlusTreePageSize(

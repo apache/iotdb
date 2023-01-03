@@ -24,7 +24,7 @@ import org.apache.iotdb.lsm.sstable.bplustree.entry.BPlusTreeHeader;
 import org.apache.iotdb.lsm.sstable.bplustree.entry.BPlusTreeNode;
 import org.apache.iotdb.lsm.sstable.bplustree.entry.BPlusTreeNodeType;
 import org.apache.iotdb.lsm.sstable.bplustree.writer.BPlusTreeWriter;
-import org.apache.iotdb.lsm.sstable.fileIO.FileOutput;
+import org.apache.iotdb.lsm.sstable.fileIO.TiFileOutputStream;
 
 import org.junit.After;
 import org.junit.Before;
@@ -84,11 +84,11 @@ public class BPlusTreeReaderTest {
     orderedQueue.add(new BPlusTreeEntry("zz", 10));
 
     FileOutputStream fileOutputStream = new FileOutputStream(file);
-    FileOutput fileOutput = new FileOutput(fileOutputStream, 1024 * 1024);
+    TiFileOutputStream fileOutput = new TiFileOutputStream(fileOutputStream);
 
     bPlusTreeWriter = new BPlusTreeWriter(fileOutput);
     offset = bPlusTreeWriter.write(orderedQueue, true);
-
+    bPlusTreeWriter.close();
     bPlusTreeReader = new BPlusTreeReader(file, offset);
   }
 

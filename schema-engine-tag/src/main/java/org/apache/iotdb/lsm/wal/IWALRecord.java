@@ -19,27 +19,28 @@
 package org.apache.iotdb.lsm.wal;
 
 import java.io.DataInputStream;
+import java.io.DataOutputStream;
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.List;
 
 /** represents a wal record, which can be extended to implement more complex wal records */
 public interface IWALRecord<K, V> extends Cloneable {
 
   /**
-   * serialize the wal record
+   * serialize via output stream
    *
-   * @param buffer byte buffer
+   * @param outputStream data output stream
+   * @throws IOException
    */
-  void serialize(ByteBuffer buffer);
+  void serialize(DataOutputStream outputStream) throws IOException;
 
   /**
    * deserialize via input stream
    *
-   * @param stream data input stream
+   * @param inputStream data input stream
    * @throws IOException
    */
-  void deserialize(DataInputStream stream) throws IOException;
+  void deserialize(DataInputStream inputStream) throws IOException;
 
   // generate wal record using prototyping pattern
   IWALRecord clone();

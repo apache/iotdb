@@ -20,7 +20,7 @@ package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.reader;
 
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.entry.ChunkIndex;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.entry.ChunkIndexEntry;
-import org.apache.iotdb.lsm.sstable.fileIO.IFileInput;
+import org.apache.iotdb.lsm.sstable.fileIO.ITiFileInputStream;
 
 import org.roaringbitmap.RoaringBitmap;
 
@@ -33,7 +33,7 @@ import java.util.NoSuchElementException;
  */
 public class ChunkGroupReader implements IChunkGroupReader {
 
-  private final IFileInput tiFileInput;
+  private final ITiFileInputStream tiFileInput;
 
   ChunkIndex chunkIndex;
 
@@ -44,11 +44,11 @@ public class ChunkGroupReader implements IChunkGroupReader {
 
   private ChunkReader chunkReader;
 
-  public ChunkGroupReader(IFileInput tiFileInput) {
+  public ChunkGroupReader(ITiFileInputStream tiFileInput) {
     this.tiFileInput = tiFileInput;
   }
 
-  public ChunkGroupReader(IFileInput tiFileInput, long offset) throws IOException {
+  public ChunkGroupReader(ITiFileInputStream tiFileInput, long offset) throws IOException {
     this.tiFileInput = tiFileInput;
     tiFileInput.position(offset);
   }
