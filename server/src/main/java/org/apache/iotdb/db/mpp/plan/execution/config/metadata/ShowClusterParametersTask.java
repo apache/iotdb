@@ -65,7 +65,7 @@ public class ShowClusterParametersTask implements IConfigTask {
     TClusterParameters clusterParameters = showClusterParametersResp.getClusterParameters();
     buildTSBlock(
         builder,
-        new Binary(IoTDBConstant.CLUSTER_NAME),
+        new Binary(IoTDBConstant.SHOW_CLUSTER_NAME),
         new Binary(clusterParameters.getClusterName()));
     buildTSBlock(
         builder,

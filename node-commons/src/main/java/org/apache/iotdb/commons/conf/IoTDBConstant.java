@@ -56,6 +56,8 @@ public class IoTDBConstant {
 
   public static final String DATA_NODE_CONF_FILE_NAME = "iotdb-datanode.properties";
 
+  public static final String CLUSTER_NAME = "cluster_name";
+
   public static final String DN_RPC_ADDRESS = "dn_rpc_address";
   public static final String DN_RPC_PORT = "dn_rpc_port";
 
@@ -268,7 +270,7 @@ public class IoTDBConstant {
   // show cluster status
   public static final String NODE_TYPE_CONFIG_NODE = "ConfigNode";
   public static final String NODE_TYPE_DATA_NODE = "DataNode";
-  public static final String CLUSTER_NAME = "ClusterName";
+  public static final String SHOW_CLUSTER_NAME = "ClusterName";
   public static final String CONFIG_NODE_CONSENSUS_PROTOCOL_CLASS =
       "ConfigNodeConsensusProtocolClass";
   public static final String DATA_REGION_CONSENSUS_PROTOCOL_CLASS =

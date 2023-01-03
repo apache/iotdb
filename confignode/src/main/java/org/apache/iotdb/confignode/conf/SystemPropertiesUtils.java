@@ -266,6 +266,7 @@ public class SystemPropertiesUtils {
       LOGGER.warn(
           "Lack cluster_name field in data/confignode/system/confignode-system.properties, set it as defaultCluster");
       systemProperties.setProperty(CLUSTER_NAME, DEFAULT_CLUSTER_NAME);
+      storeSystemProperties(systemProperties);
       return systemProperties.getProperty(CLUSTER_NAME, null);
     }
     return clusterName;

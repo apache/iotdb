@@ -104,6 +104,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TCreateFunctionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTriggerReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRestartReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRestartResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionTableResp;
@@ -291,16 +292,18 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public DataSet registerDataNode(RegisterDataNodePlan registerDataNodePlan) {
+  public DataSet registerDataNode(TDataNodeRegisterReq req) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       status =
           ClusterNodeStartUtils.confirmNodeRegistration(
               NodeType.DataNode,
-              registerDataNodePlan.getDataNodeConfiguration().getLocation(),
+              req.getClusterName(),
+              req.getDataNodeConfiguration().getLocation(),
               this);
       if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        return nodeManager.registerDataNode(registerDataNodePlan);
+        return nodeManager.registerDataNode(
+            new RegisterDataNodePlan(req.getDataNodeConfiguration()));
       }
     }
 
@@ -833,7 +836,10 @@ public class ConfigManager implements IManager {
       if (status == null) {
         status =
             ClusterNodeStartUtils.confirmNodeRegistration(
-                NodeType.ConfigNode, req.getConfigNodeLocation(), this);
+                NodeType.ConfigNode,
+                req.getClusterParameters().getClusterName(),
+                req.getConfigNodeLocation(),
+                this);
         if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
           return nodeManager.registerConfigNode(req);
         }
@@ -870,10 +876,6 @@ public class ConfigManager implements IManager {
     final String errorSuffix = " is consistent with the Seed-ConfigNode.";
     TSStatus errorStatus = new TSStatus(TSStatusCode.CONFIGURATION_ERROR.getStatusCode());
     TClusterParameters clusterParameters = req.getClusterParameters();
-
-    if (!clusterParameters.getClusterName().equals(CONF.getClusterName())) {
-      return errorStatus.setMessage(errorPrefix + "cluster_name" + errorSuffix);
-    }
 
     if (!clusterParameters
         .getConfigNodeConsensusProtocolClass()
