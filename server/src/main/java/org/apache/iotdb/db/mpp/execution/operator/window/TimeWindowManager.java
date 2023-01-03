@@ -39,6 +39,8 @@ public class TimeWindowManager implements IWindowManager {
 
   private boolean needSkip;
 
+  private long startTime;
+
   public TimeWindowManager(ITimeRangeIterator timeRangeIterator) {
     this.timeRangeIterator = timeRangeIterator;
     this.initialized = false;
@@ -69,6 +71,7 @@ public class TimeWindowManager implements IWindowManager {
     // belong to previous window have been consumed. If not, we need skip these points.
     this.needSkip = true;
     this.initialized = false;
+    this.startTime = this.timeRangeIterator.currentOutputTime();
     this.curWindow.update(this.timeRangeIterator.nextTimeRange());
   }
 
@@ -138,8 +141,7 @@ public class TimeWindowManager implements IWindowManager {
   @Override
   public void appendAggregationResult(
       TsBlockBuilder resultTsBlockBuilder, List<Aggregator> aggregators) {
-    AggregationUtil.appendAggregationResult(
-        resultTsBlockBuilder, aggregators, timeRangeIterator.currentOutputTime());
+    AggregationUtil.appendAggregationResult(resultTsBlockBuilder, aggregators, startTime);
   }
 
   @Override
