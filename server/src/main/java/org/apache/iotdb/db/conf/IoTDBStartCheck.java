@@ -132,7 +132,6 @@ public class IoTDBStartCheck {
   // endregion
   // region params don't need checking, determined by the system
   private static final String IOTDB_VERSION_STRING = "iotdb_version";
-  private static final String CLUSTER_NAME = "cluster_name";
   private static final String DATA_NODE_ID = "data_node_id";
   private static final String SCHEMA_REGION_CONSENSUS_PROTOCOL = "schema_region_consensus_protocol";
   private static final String DATA_REGION_CONSENSUS_PROTOCOL = "data_region_consensus_protocol";
@@ -408,8 +407,8 @@ public class IoTDBStartCheck {
     }
 
     // load configuration from system properties only when start as Data node
-    if (properties.containsKey(CLUSTER_NAME)) {
-      config.setClusterName(properties.getProperty(CLUSTER_NAME));
+    if (properties.containsKey(IoTDBConstant.CLUSTER_NAME)) {
+      config.setClusterName(properties.getProperty(IoTDBConstant.CLUSTER_NAME));
     }
     if (properties.containsKey(DATA_NODE_ID)) {
       config.setDataNodeId(Integer.parseInt(properties.getProperty(DATA_NODE_ID)));
@@ -454,7 +453,7 @@ public class IoTDBStartCheck {
     reloadProperties();
 
     try (FileOutputStream tmpFOS = new FileOutputStream(tmpPropertiesFile.toString())) {
-      properties.setProperty(CLUSTER_NAME, clusterName);
+      properties.setProperty(IoTDBConstant.CLUSTER_NAME, clusterName);
       properties.setProperty(DATA_NODE_ID, String.valueOf(dataNodeId));
       properties.store(tmpFOS, SYSTEM_PROPERTIES_STRING);
       // serialize finished, delete old system.properties file
