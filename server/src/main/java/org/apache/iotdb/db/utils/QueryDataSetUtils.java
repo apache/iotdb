@@ -20,15 +20,11 @@ package org.apache.iotdb.db.utils;
 
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.db.mpp.plan.execution.IQueryExecution;
-import org.apache.iotdb.db.tools.watermark.WatermarkEncoder;
 import org.apache.iotdb.service.rpc.thrift.TSQueryDataSet;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.Field;
-import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
-import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.BitMap;
 import org.apache.iotdb.tsfile.utils.BytesUtils;
@@ -50,135 +46,6 @@ public class QueryDataSetUtils {
   private static final int FLAG = 0x01;
 
   private QueryDataSetUtils() {}
-
-  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
-  public static TSQueryDataSet convertQueryDataSetByFetchSize(
-      QueryDataSet queryDataSet, int fetchSize, WatermarkEncoder watermarkEncoder)
-      throws IOException {
-    int columnNum = queryDataSet.getColumnNum();
-    TSQueryDataSet tsQueryDataSet = new TSQueryDataSet();
-    // one time column and each value column has a actual value buffer and a bitmap value to
-    // indicate whether it is a null
-    int columnNumWithTime = columnNum * 2 + 1;
-    DataOutputStream[] dataOutputStreams = new DataOutputStream[columnNumWithTime];
-    ByteArrayOutputStream[] byteArrayOutputStreams = new ByteArrayOutputStream[columnNumWithTime];
-    for (int i = 0; i < columnNumWithTime; i++) {
-      byteArrayOutputStreams[i] = new ByteArrayOutputStream();
-      dataOutputStreams[i] = new DataOutputStream(byteArrayOutputStreams[i]);
-    }
-
-    int rowCount = 0;
-    int[] valueOccupation = new int[columnNum];
-    // used to record a bitmap for every 8 row record
-    int[] bitmap = new int[columnNum];
-    for (int i = 0; i < fetchSize; i++) {
-      if (queryDataSet.hasNext()) {
-        RowRecord rowRecord = queryDataSet.next();
-        // filter rows whose columns are null according to the rule
-        if (queryDataSet.withoutNullFilter(rowRecord)) {
-          // if the current RowRecord doesn't satisfy, we should also decrease
-          // AlreadyReturnedRowNum
-          queryDataSet.decreaseAlreadyReturnedRowNum();
-          i--;
-          continue;
-        }
-
-        if (watermarkEncoder != null) {
-          rowRecord = watermarkEncoder.encodeRecord(rowRecord);
-        }
-        // use columnOutput to write byte array
-        dataOutputStreams[0].writeLong(rowRecord.getTimestamp());
-        List<Field> fields = rowRecord.getFields();
-        for (int k = 0; k < fields.size(); k++) {
-          Field field = fields.get(k);
-          DataOutputStream dataOutputStream = dataOutputStreams[2 * k + 1]; // DO NOT FORGET +1
-          if (field == null || field.getDataType() == null) {
-            bitmap[k] = (bitmap[k] << 1);
-          } else {
-            bitmap[k] = (bitmap[k] << 1) | FLAG;
-            TSDataType type = field.getDataType();
-            switch (type) {
-              case INT32:
-                dataOutputStream.writeInt(field.getIntV());
-                valueOccupation[k] += 4;
-                break;
-              case INT64:
-                dataOutputStream.writeLong(field.getLongV());
-                valueOccupation[k] += 8;
-                break;
-              case FLOAT:
-                dataOutputStream.writeFloat(field.getFloatV());
-                valueOccupation[k] += 4;
-                break;
-              case DOUBLE:
-                dataOutputStream.writeDouble(field.getDoubleV());
-                valueOccupation[k] += 8;
-                break;
-              case BOOLEAN:
-                dataOutputStream.writeBoolean(field.getBoolV());
-                valueOccupation[k] += 1;
-                break;
-              case TEXT:
-                dataOutputStream.writeInt(field.getBinaryV().getLength());
-                dataOutputStream.write(field.getBinaryV().getValues());
-                valueOccupation[k] = valueOccupation[k] + 4 + field.getBinaryV().getLength();
-                break;
-              default:
-                throw new UnSupportedDataTypeException(
-                    String.format("Data type %s is not supported.", type));
-            }
-          }
-        }
-        rowCount++;
-        if (rowCount % 8 == 0) {
-          for (int j = 0; j < bitmap.length; j++) {
-            DataOutputStream dataBitmapOutputStream = dataOutputStreams[2 * (j + 1)];
-            dataBitmapOutputStream.writeByte(bitmap[j]);
-            // we should clear the bitmap every 8 row record
-            bitmap[j] = 0;
-          }
-        }
-      } else {
-        break;
-      }
-    }
-
-    // feed the remaining bitmap
-    int remaining = rowCount % 8;
-    if (remaining != 0) {
-      for (int j = 0; j < bitmap.length; j++) {
-        DataOutputStream dataBitmapOutputStream = dataOutputStreams[2 * (j + 1)];
-        dataBitmapOutputStream.writeByte(bitmap[j] << (8 - remaining));
-      }
-    }
-
-    // calculate the time buffer size
-    int timeOccupation = rowCount * 8;
-    ByteBuffer timeBuffer = ByteBuffer.allocate(timeOccupation);
-    timeBuffer.put(byteArrayOutputStreams[0].toByteArray());
-    timeBuffer.flip();
-    tsQueryDataSet.setTime(timeBuffer);
-
-    // calculate the bitmap buffer size
-    int bitmapOccupation = rowCount / 8 + (rowCount % 8 == 0 ? 0 : 1);
-
-    List<ByteBuffer> bitmapList = new LinkedList<>();
-    List<ByteBuffer> valueList = new LinkedList<>();
-    for (int i = 1; i < byteArrayOutputStreams.length; i += 2) {
-      ByteBuffer valueBuffer = ByteBuffer.allocate(valueOccupation[(i - 1) / 2]);
-      valueBuffer.put(byteArrayOutputStreams[i].toByteArray());
-      valueBuffer.flip();
-      valueList.add(valueBuffer);
-
-      ByteBuffer bitmapBuffer = ByteBuffer.allocate(bitmapOccupation);
-      bitmapBuffer.put(byteArrayOutputStreams[i + 1].toByteArray());
-      bitmapBuffer.flip();
-      bitmapList.add(bitmapBuffer);
-    }
-    tsQueryDataSet.setBitmapList(bitmapList);
-    tsQueryDataSet.setValueList(valueList);
-    return tsQueryDataSet;
-  }
 
   public static Pair<TSQueryDataSet, Boolean> convertTsBlockByFetchSize(
       IQueryExecution queryExecution, int fetchSize) throws IOException, IoTDBException {

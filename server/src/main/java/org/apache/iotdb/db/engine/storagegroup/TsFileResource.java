@@ -35,9 +35,8 @@ import org.apache.iotdb.db.engine.storagegroup.timeindex.V012FileTimeIndex;
 import org.apache.iotdb.db.engine.upgrade.UpgradeTask;
 import org.apache.iotdb.db.exception.PartitionViolationException;
 import org.apache.iotdb.db.metadata.utils.ResourceByPathUtils;
-import org.apache.iotdb.db.qp.utils.DateTimeUtils;
-import org.apache.iotdb.db.query.filter.TsFileFilter;
 import org.apache.iotdb.db.service.UpgradeSevice;
+import org.apache.iotdb.db.utils.DateTimeUtils;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ITimeSeriesMetadata;
@@ -178,6 +177,12 @@ public class TsFileResource {
     this.file = file;
     this.version = FilePathUtils.splitAndGetTsFileVersion(this.file.getName());
     this.timeIndex = CONFIG.getTimeIndexLevel().getTimeIndex();
+  }
+
+  /** Used for compaction to create target files. */
+  public TsFileResource(File file, TsFileResourceStatus status) {
+    this(file);
+    this.status = status;
   }
 
   /** unsealed TsFile, for writter */
@@ -411,6 +416,25 @@ public class TsFileResource {
     return timeIndex.getDevices(file.getPath(), this);
   }
 
+  public DeviceTimeIndex buildDeviceTimeIndex() throws IOException {
+    readLock();
+    try (InputStream inputStream =
+        FSFactoryProducer.getFSFactory()
+            .getBufferedInputStream(file.getPath() + TsFileResource.RESOURCE_SUFFIX)) {
+      ReadWriteIOUtils.readByte(inputStream);
+      ITimeIndex timeIndexFromResourceFile = ITimeIndex.createTimeIndex(inputStream);
+      if (!(timeIndexFromResourceFile instanceof DeviceTimeIndex)) {
+        throw new IOException("cannot build DeviceTimeIndex from resource " + file.getPath());
+      }
+      return (DeviceTimeIndex) timeIndexFromResourceFile;
+    } catch (Exception e) {
+      throw new IOException(
+          "Can't read file " + file.getPath() + TsFileResource.RESOURCE_SUFFIX + " from disk", e);
+    } finally {
+      readUnlock();
+    }
+  }
+
   /**
    * Whether this TsFileResource contains this device, if false, it must not contain this device, if
    * true, it may or may not contain this device
@@ -433,6 +457,11 @@ public class TsFileResource {
 
   public void close() throws IOException {
     this.setStatus(TsFileResourceStatus.CLOSED);
+    closeWithoutSettingStatus();
+  }
+
+  /** Used for compaction. */
+  public void closeWithoutSettingStatus() throws IOException {
     if (modFile != null) {
       modFile.close();
       modFile = null;
@@ -700,16 +729,7 @@ public class TsFileResource {
   }
 
   /** @return true if the device is contained in the TsFile */
-  public boolean isSatisfied(
-      String deviceId, Filter timeFilter, TsFileFilter fileFilter, boolean isSeq, boolean debug) {
-    if (fileFilter != null && fileFilter.fileNotSatisfy(this)) {
-      if (debug) {
-        DEBUG_LOGGER.info(
-            "Path: {} file {} is not satisfied because of fileFilter!", deviceId, file);
-      }
-      return false;
-    }
-
+  public boolean isSatisfied(String deviceId, Filter timeFilter, boolean isSeq, boolean debug) {
     if (!mayContainsDevice(deviceId)) {
       if (debug) {
         DEBUG_LOGGER.info(

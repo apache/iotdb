@@ -21,7 +21,7 @@ package org.apache.iotdb.db.utils;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.service.IoTDB;
+import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
 
 import java.util.List;
 
@@ -32,7 +32,10 @@ public class SchemaTestUtils {
   public static MeasurementPath getMeasurementPath(String pathPatternString)
       throws MetadataException {
     PartialPath pathPattern = new PartialPath(pathPatternString);
-    List<MeasurementPath> measurementPaths = IoTDB.schemaProcessor.getMeasurementPaths(pathPattern);
+    List<MeasurementPath> measurementPaths =
+        LocalSchemaProcessor.getInstance()
+            .getMeasurementPathsWithAlias(pathPattern, 0, 0, false, false)
+            .left;
     assertFalse(measurementPaths.isEmpty());
     return measurementPaths.get(0);
   }

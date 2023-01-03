@@ -31,7 +31,6 @@ import org.apache.iotdb.db.mpp.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.mpp.plan.execution.IQueryExecution;
 import org.apache.iotdb.db.mpp.plan.execution.config.executor.ClusterConfigTaskExecutor;
 import org.apache.iotdb.db.mpp.plan.execution.config.executor.IConfigTaskExecutor;
-import org.apache.iotdb.db.mpp.plan.execution.config.executor.StandaloneConfigTaskExecutor;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
@@ -72,8 +71,12 @@ public class ConfigExecution implements IQueryExecution {
 
   private static final TsBlockSerde serde = new TsBlockSerde();
 
+  private Statement statement;
+  private long totalExecutionTime;
+
   public ConfigExecution(MPPQueryContext context, Statement statement, ExecutorService executor) {
     this.context = context;
+    this.statement = statement;
     this.executor = executor;
     this.stateMachine = new QueryStateMachine(context.getQueryId(), executor);
     this.taskFuture = SettableFuture.create();
@@ -85,11 +88,7 @@ public class ConfigExecution implements IQueryExecution {
                 context.getSql(),
                 context.getSession() == null ? null : context.getSession().getUserName()));
     this.resultSetConsumed = false;
-    if (config.isClusterMode()) {
-      configTaskExecutor = ClusterConfigTaskExecutor.getInstance();
-    } else {
-      configTaskExecutor = StandaloneConfigTaskExecutor.getInstance();
-    }
+    configTaskExecutor = ClusterConfigTaskExecutor.getInstance();
   }
 
   @TestOnly
@@ -226,7 +225,22 @@ public class ConfigExecution implements IQueryExecution {
   }
 
   @Override
+  public void recordExecutionTime(long executionTime) {
+    totalExecutionTime += executionTime;
+  }
+
+  @Override
+  public long getTotalExecutionTime() {
+    return totalExecutionTime;
+  }
+
+  @Override
   public Optional<String> getExecuteSQL() {
     return Optional.ofNullable(context.getSql());
+  }
+
+  @Override
+  public Statement getStatement() {
+    return statement;
   }
 }

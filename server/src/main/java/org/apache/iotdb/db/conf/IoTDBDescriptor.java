@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.conf;
 
-import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
@@ -37,11 +36,10 @@ import org.apache.iotdb.db.engine.compaction.constant.InnerSeqCompactionPerforme
 import org.apache.iotdb.db.engine.compaction.constant.InnerSequenceCompactionSelector;
 import org.apache.iotdb.db.engine.compaction.constant.InnerUnseqCompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.constant.InnerUnsequenceCompactionSelector;
-import org.apache.iotdb.db.exception.BadNodeUrlFormatException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.qp.utils.DateTimeUtils;
 import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.db.service.metrics.IoTDBInternalReporter;
+import org.apache.iotdb.db.utils.DateTimeUtils;
 import org.apache.iotdb.db.utils.datastructure.TVListSortAlgorithm;
 import org.apache.iotdb.db.wal.WALManager;
 import org.apache.iotdb.db.wal.utils.WALMode;
@@ -58,7 +56,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSType;
 import org.apache.iotdb.tsfile.utils.FilePathUtils;
 
-import com.google.common.net.InetAddresses;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -66,10 +63,8 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.InetAddress;
 import java.net.MalformedURLException;
 import java.net.URL;
-import java.net.UnknownHostException;
 import java.util.Properties;
 import java.util.ServiceLoader;
 
@@ -193,7 +188,7 @@ public class IoTDBDescriptor {
         MetricConfigDescriptor.getInstance().loadProps(commonProperties);
         MetricConfigDescriptor.getInstance()
             .getMetricConfig()
-            .updateRpcInstance(conf.getRpcAddress(), conf.getRpcPort());
+            .updateRpcInstance(conf.getInternalAddress(), conf.getInternalPort());
       }
     } else {
       logger.warn(
@@ -204,15 +199,11 @@ public class IoTDBDescriptor {
 
   public void loadProperties(Properties properties) {
 
+    conf.setClusterName(
+        properties.getProperty(IoTDBConstant.CLUSTER_NAME, conf.getClusterName()).trim());
+
     conf.setRpcAddress(
         properties.getProperty(IoTDBConstant.DN_RPC_ADDRESS, conf.getRpcAddress()).trim());
-
-    // TODO: Use FQDN  to identify our nodes afterwards
-    try {
-      replaceHostnameWithIP();
-    } catch (Exception e) {
-      logger.info(String.format("replace hostname with ip failed, %s", e.getMessage()));
-    }
 
     conf.setRpcThriftCompressionEnable(
         Boolean.parseBoolean(
@@ -577,14 +568,6 @@ public class IoTDBDescriptor {
                 "raw_query_blocking_queue_capacity",
                 Integer.toString(conf.getRawQueryBlockingQueueCapacity()))));
 
-    conf.setSchemaRegionDeviceNodeCacheSize(
-        Integer.parseInt(
-            properties
-                .getProperty(
-                    "schema_region_device_node_cache_size",
-                    Integer.toString(conf.getSchemaRegionDeviceNodeCacheSize()))
-                .trim()));
-
     conf.setmRemoteSchemaCacheSize(
         Integer.parseInt(
             properties
@@ -644,7 +627,7 @@ public class IoTDBDescriptor {
     conf.setChunkPointNumLowerBoundInCompaction(
         Long.parseLong(
             properties.getProperty(
-                "chunk_size_lower_bound_in_compaction",
+                "chunk_point_num_lower_bound_in_compaction",
                 Long.toString(conf.getChunkPointNumLowerBoundInCompaction()))));
     conf.setChunkSizeLowerBoundInCompaction(
         Long.parseLong(
@@ -667,11 +650,10 @@ public class IoTDBDescriptor {
                 "max_cross_compaction_candidate_file_size",
                 Long.toString(conf.getMaxCrossCompactionCandidateFileSize()))));
 
-    conf.setCompactionWriteThroughputMbPerSec(
+    conf.setCompactionIORatePerSec(
         Integer.parseInt(
             properties.getProperty(
-                "compaction_write_throughput_mb_per_sec",
-                Integer.toString(conf.getCompactionWriteThroughputMbPerSec()))));
+                "compaction_io_rate_per_sec", Integer.toString(conf.getCompactionIORatePerSec()))));
 
     conf.setEnableCompactionValidation(
         Boolean.parseBoolean(
@@ -903,6 +885,14 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "select_into_insert_tablet_plan_row_limit",
                 String.valueOf(conf.getSelectIntoInsertTabletPlanRowLimit()))));
+    conf.setIntoOperationExecutionThreadCount(
+        Integer.parseInt(
+            properties.getProperty(
+                "into_operation_execution_thread_count",
+                String.valueOf(conf.getIntoOperationExecutionThreadCount()))));
+    if (conf.getIntoOperationExecutionThreadCount() <= 0) {
+      conf.setIntoOperationExecutionThreadCount(2);
+    }
 
     conf.setExtPipeDir(properties.getProperty("ext_pipe_dir", conf.getExtPipeDir()).trim());
 
@@ -1021,33 +1011,6 @@ public class IoTDBDescriptor {
         Integer.parseInt(
             properties.getProperty(
                 "author_cache_expire_time", String.valueOf(conf.getAuthorCacheExpireTime()))));
-  }
-
-  // to keep consistent with the cluster module.
-  private void replaceHostnameWithIP() throws UnknownHostException, BadNodeUrlFormatException {
-    boolean isInvalidRpcIp = InetAddresses.isInetAddress(conf.getRpcAddress());
-    if (!isInvalidRpcIp) {
-      conf.setRpcAddress(InetAddress.getByName(conf.getRpcAddress()).getHostAddress());
-    }
-
-    boolean isInvalidInternalIp = InetAddresses.isInetAddress(conf.getInternalAddress());
-    if (!isInvalidInternalIp) {
-      conf.setInternalAddress(InetAddress.getByName(conf.getInternalAddress()).getHostAddress());
-    }
-
-    for (TEndPoint configNode : conf.getTargetConfigNodeList()) {
-      boolean isInvalidNodeIp = InetAddresses.isInetAddress(configNode.ip);
-      if (!isInvalidNodeIp) {
-        String newNodeIP = InetAddress.getByName(configNode.ip).getHostAddress();
-        configNode.setIp(newNodeIP);
-      }
-    }
-
-    logger.debug(
-        "after replace, the rpcIP={}, internalIP={}, configNodeUrls={}",
-        conf.getRpcAddress(),
-        conf.getInternalAddress(),
-        conf.getTargetConfigNodeList());
   }
 
   private void loadWALProps(Properties properties) {
@@ -1308,7 +1271,7 @@ public class IoTDBDescriptor {
             (int)
                 Math.min(
                     TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes(),
-                    conf.getMaxBytesPerQuery()));
+                    conf.getMaxBytesPerFragmentInstance()));
 
     TSFileDescriptor.getInstance()
         .getConfig()
@@ -1467,12 +1430,11 @@ public class IoTDBDescriptor {
               properties.getProperty(
                   "slow_query_threshold", Long.toString(conf.getSlowQueryThreshold()))));
       // update merge_write_throughput_mb_per_sec
-      conf.setCompactionWriteThroughputMbPerSec(
+      conf.setCompactionIORatePerSec(
           Integer.parseInt(
               properties.getProperty(
-                  "merge_write_throughput_mb_per_sec",
-                  Integer.toString(conf.getCompactionWriteThroughputMbPerSec()))));
-
+                  "compaction_io_rate_per_sec",
+                  Integer.toString(conf.getCompactionIORatePerSec()))));
       // update insert-tablet-plan's row limit for select-into
       conf.setSelectIntoInsertTabletPlanRowLimit(
           Integer.parseInt(
@@ -1846,7 +1808,7 @@ public class IoTDBDescriptor {
         conf.setTargetConfigNodeList(NodeUrlUtils.parseTEndPointUrls(configNodeUrls));
       } catch (BadNodeUrlException e) {
         logger.error(
-            "Config nodes are set in wrong format, please set them like 127.0.0.1:22277,127.0.0.1:22281");
+            "Config nodes are set in wrong format, please set them like 127.0.0.1:10710,127.0.0.1:10712");
       }
     }
 
@@ -1982,8 +1944,8 @@ public class IoTDBDescriptor {
     conf.setRatisFirstElectionTimeoutMinMs(ratisConfig.getFirstElectionTimeoutMin());
     conf.setRatisFirstElectionTimeoutMaxMs(ratisConfig.getFirstElectionTimeoutMax());
 
-    conf.setSchemaRatisLogMaxMB(ratisConfig.getSchemaRegionRatisLogMax());
-    conf.setDataRatisLogMaxMB(ratisConfig.getDataRegionRatisLogMax());
+    conf.setSchemaRatisLogMax(ratisConfig.getSchemaRegionRatisLogMax());
+    conf.setDataRatisLogMax(ratisConfig.getDataRegionRatisLogMax());
   }
 
   public void loadCQConfig(TCQConfig cqConfig) {

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.mpp.execution.exchange;
 
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.execution.memory.LocalMemoryManager;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
@@ -45,6 +46,8 @@ public class SharedTsBlockQueue {
   private static final Logger logger = LoggerFactory.getLogger(SharedTsBlockQueue.class);
 
   private final TFragmentInstanceId localFragmentInstanceId;
+
+  private final String localPlanNodeId;
   private final LocalMemoryManager localMemoryManager;
 
   private boolean noMoreTsBlocks = false;
@@ -55,6 +58,12 @@ public class SharedTsBlockQueue {
 
   private SettableFuture<Void> blocked = SettableFuture.create();
 
+  /**
+   * this is completed after calling isBlocked for the first time which indicates this queue needs
+   * to output data
+   */
+  private final SettableFuture<Void> canAddTsBlock = SettableFuture.create();
+
   private ListenableFuture<Void> blockedOnMemory;
 
   private boolean closed = false;
@@ -62,10 +71,16 @@ public class SharedTsBlockQueue {
   private LocalSourceHandle sourceHandle;
   private LocalSinkHandle sinkHandle;
 
+  private long maxBytesCanReserve =
+      IoTDBDescriptor.getInstance().getConfig().getMaxBytesPerFragmentInstance();
+
   public SharedTsBlockQueue(
-      TFragmentInstanceId fragmentInstanceId, LocalMemoryManager localMemoryManager) {
+      TFragmentInstanceId fragmentInstanceId,
+      String planNodeId,
+      LocalMemoryManager localMemoryManager) {
     this.localFragmentInstanceId =
         Validate.notNull(fragmentInstanceId, "fragment instance ID cannot be null");
+    this.localPlanNodeId = Validate.notNull(planNodeId, "PlanNode ID cannot be null");
     this.localMemoryManager =
         Validate.notNull(localMemoryManager, "local memory manager cannot be null");
   }
@@ -78,7 +93,18 @@ public class SharedTsBlockQueue {
     return bufferRetainedSizeInBytes;
   }
 
+  public SettableFuture<Void> getCanAddTsBlock() {
+    return canAddTsBlock;
+  }
+
+  public void setMaxBytesCanReserve(long maxBytesCanReserve) {
+    this.maxBytesCanReserve = maxBytesCanReserve;
+  }
+
   public ListenableFuture<Void> isBlocked() {
+    if (!canAddTsBlock.isDone()) {
+      canAddTsBlock.set(null);
+    }
     return blocked;
   }
 
@@ -126,7 +152,11 @@ public class SharedTsBlockQueue {
     }
     localMemoryManager
         .getQueryPool()
-        .free(localFragmentInstanceId.getQueryId(), tsBlock.getRetainedSizeInBytes());
+        .free(
+            localFragmentInstanceId.getQueryId(),
+            localFragmentInstanceId.getInstanceId(),
+            localPlanNodeId,
+            tsBlock.getRetainedSizeInBytes());
     bufferRetainedSizeInBytes -= tsBlock.getRetainedSizeInBytes();
     if (blocked.isDone() && queue.isEmpty() && !noMoreTsBlocks) {
       blocked = SettableFuture.create();
@@ -149,7 +179,12 @@ public class SharedTsBlockQueue {
     Pair<ListenableFuture<Void>, Boolean> pair =
         localMemoryManager
             .getQueryPool()
-            .reserve(localFragmentInstanceId.getQueryId(), tsBlock.getRetainedSizeInBytes());
+            .reserve(
+                localFragmentInstanceId.getQueryId(),
+                localFragmentInstanceId.getInstanceId(),
+                localPlanNodeId,
+                tsBlock.getRetainedSizeInBytes(),
+                maxBytesCanReserve);
     blockedOnMemory = pair.left;
     bufferRetainedSizeInBytes += tsBlock.getRetainedSizeInBytes();
 
@@ -191,7 +226,11 @@ public class SharedTsBlockQueue {
     if (bufferRetainedSizeInBytes > 0L) {
       localMemoryManager
           .getQueryPool()
-          .free(localFragmentInstanceId.getQueryId(), bufferRetainedSizeInBytes);
+          .free(
+              localFragmentInstanceId.getQueryId(),
+              localFragmentInstanceId.getInstanceId(),
+              localPlanNodeId,
+              bufferRetainedSizeInBytes);
       bufferRetainedSizeInBytes = 0;
     }
   }
@@ -212,7 +251,11 @@ public class SharedTsBlockQueue {
     if (bufferRetainedSizeInBytes > 0L) {
       localMemoryManager
           .getQueryPool()
-          .free(localFragmentInstanceId.getQueryId(), bufferRetainedSizeInBytes);
+          .free(
+              localFragmentInstanceId.getQueryId(),
+              localFragmentInstanceId.getInstanceId(),
+              localPlanNodeId,
+              bufferRetainedSizeInBytes);
       bufferRetainedSizeInBytes = 0;
     }
   }
@@ -233,7 +276,11 @@ public class SharedTsBlockQueue {
     if (bufferRetainedSizeInBytes > 0L) {
       localMemoryManager
           .getQueryPool()
-          .free(localFragmentInstanceId.getQueryId(), bufferRetainedSizeInBytes);
+          .free(
+              localFragmentInstanceId.getQueryId(),
+              localFragmentInstanceId.getInstanceId(),
+              localPlanNodeId,
+              bufferRetainedSizeInBytes);
       bufferRetainedSizeInBytes = 0;
     }
   }

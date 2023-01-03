@@ -19,7 +19,6 @@ package org.apache.iotdb.db.protocol.mqtt;
 
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.utils.FilesUtils;
 
 import com.google.common.base.Preconditions;
 import org.apache.commons.io.FileUtils;
@@ -31,6 +30,7 @@ import java.io.IOException;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.ServiceLoader;
 
@@ -86,7 +86,7 @@ public class PayloadFormatManager {
       logger.info("PayloadFormatManager(), find MQTT Payload Plugin {}.", pluginName);
     }
 
-    URL[] jarURLs = FilesUtils.getPluginJarURLs(mqttDir);
+    URL[] jarURLs = getPluginJarURLs(mqttDir);
     logger.debug("MQTT Plugin jarURLs: {}", jarURLs);
 
     for (URL jarUrl : jarURLs) {
@@ -110,5 +110,20 @@ public class PayloadFormatManager {
         logger.info("PayloadFormatManager(), find MQTT Payload Plugin {}.", pluginName);
       }
     }
+  }
+
+  /**
+   * get all jar files in the given folder
+   *
+   * @param folderPath
+   * @return all jar files' URL
+   * @throws IOException
+   */
+  private static URL[] getPluginJarURLs(String folderPath) throws IOException {
+    HashSet<File> fileSet =
+        new HashSet<>(
+            org.apache.commons.io.FileUtils.listFiles(
+                SystemFileFactory.INSTANCE.getFile(folderPath), new String[] {"jar"}, true));
+    return org.apache.commons.io.FileUtils.toURLs(fileSet.toArray(new File[0]));
   }
 }

@@ -81,6 +81,7 @@ import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationStep;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.db.mpp.transformation.dag.column.ColumnTransformer;
@@ -88,7 +89,6 @@ import org.apache.iotdb.db.mpp.transformation.dag.column.binary.ArithmeticAdditi
 import org.apache.iotdb.db.mpp.transformation.dag.column.binary.CompareLessEqualColumnTransformer;
 import org.apache.iotdb.db.mpp.transformation.dag.column.leaf.ConstantColumnTransformer;
 import org.apache.iotdb.db.mpp.transformation.dag.column.leaf.TimeColumnTransformer;
-import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.db.utils.datastructure.TimeSelector;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -448,10 +448,21 @@ public class OperatorMemoryTest {
 
   @Test
   public void sortOperatorTest() {
-    SortOperator sortOperator = new SortOperator();
-    assertEquals(0, sortOperator.calculateMaxPeekMemory());
-    assertEquals(0, sortOperator.calculateMaxReturnSize());
-    assertEquals(0, sortOperator.calculateRetainedSizeAfterCallingNext());
+    Operator child = Mockito.mock(Operator.class);
+    Mockito.when(child.calculateMaxPeekMemory()).thenReturn(2048L);
+    Mockito.when(child.calculateMaxReturnSize()).thenReturn(1024L);
+    Mockito.when(child.calculateRetainedSizeAfterCallingNext()).thenReturn(512L);
+
+    SortOperator sortOperator =
+        new SortOperator(
+            Mockito.mock(OperatorContext.class),
+            child,
+            Collections.singletonList(TSDataType.INT32),
+            null);
+
+    assertEquals(2048 + 512, sortOperator.calculateMaxPeekMemory());
+    assertEquals(1024, sortOperator.calculateMaxReturnSize());
+    assertEquals(512, sortOperator.calculateRetainedSizeAfterCallingNext());
   }
 
   @Test
@@ -1254,10 +1265,12 @@ public class OperatorMemoryTest {
               typeProvider);
 
       expectedMaxReturnSize =
-          maxTsBlockLineNumber
-              * (TimeColumn.SIZE_IN_BYTES_PER_POSITION
-                  + 512 * Byte.BYTES
-                  + LongColumn.SIZE_IN_BYTES_PER_POSITION);
+          Math.min(
+              DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES,
+              maxTsBlockLineNumber
+                  * (TimeColumn.SIZE_IN_BYTES_PER_POSITION
+                      + 512 * Byte.BYTES
+                      + LongColumn.SIZE_IN_BYTES_PER_POSITION));
       expectedMaxRetainSize = 2L * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte();
 
       assertEquals(

@@ -345,16 +345,16 @@ It costs 0.134s
 - 执行 `CREATE PIPE p to demo` 提示 `PIPE [p] is STOP, please retry after drop it.`
   - 原因：当前 Pipe 已存在
   - 解决方案：删除 Pipe 后重新创建
-- 执行 `CREATE PIPE p to demo`提示 `Fail to create PIPE [p] because Connection refused on DataNode: {id=2, internalEndPoint=TEndPoint(ip:127.0.0.1, port:9005)}.`
+- 执行 `CREATE PIPE p to demo`提示 `Fail to create PIPE [p] because Connection refused on DataNode: {id=2, internalEndPoint=TEndPoint(ip:127.0.0.1, port:10732)}.`
   - 原因：存在状态为 Running 的 DataNode 无法连通
   - 解决方案：执行 `SHOW DATANODES` 语句，检查无法连通的 DataNode 网络，或等待其状态变为 Unknown 后重新执行语句。
-- 执行 `START PIPE p` 提示 `Fail to start PIPE [p] because Connection refused on DataNode: {id=2, internalEndPoint=TEndPoint(ip:127.0.0.1, port:9005)}.`
+- 执行 `START PIPE p` 提示 `Fail to start PIPE [p] because Connection refused on DataNode: {id=2, internalEndPoint=TEndPoint(ip:127.0.0.1, port:10732)}.`
   - 原因：存在状态为 Running 的 DataNode 无法连通
   - 解决方案：执行 `SHOW DATANODES` 语句，检查无法连通的 DataNode 网络，或等待其状态变为 Unknown 后重新执行语句。
-- 执行 `STOP PIPE p` 提示 `Fail to stop PIPE [p] because Connection refused on DataNode: {id=2, internalEndPoint=TEndPoint(ip:127.0.0.1, port:9005)}.`
+- 执行 `STOP PIPE p` 提示 `Fail to stop PIPE [p] because Connection refused on DataNode: {id=2, internalEndPoint=TEndPoint(ip:127.0.0.1, port:10732)}.`
   - 原因：存在状态为 Running 的 DataNode 无法连通
   - 解决方案：执行 `SHOW DATANODES` 语句，检查无法连通的 DataNode 网络，或等待其状态变为 Unknown 后重新执行语句。
-- 执行 `DROP PIPE p` 提示 `Fail to DROP_PIPE because Fail to drop PIPE [p] because Connection refused on DataNode: {id=2, internalEndPoint=TEndPoint(ip:127.0.0.1, port:9005)}. Please execute [DROP PIPE p] later to retry.`
+- 执行 `DROP PIPE p` 提示 `Fail to DROP_PIPE because Fail to drop PIPE [p] because Connection refused on DataNode: {id=2, internalEndPoint=TEndPoint(ip:127.0.0.1, port:10732)}. Please execute [DROP PIPE p] later to retry.`
   - 原因：存在状态为 Running 的 DataNode 无法连通，Pipe 已在部分节点上被删除，状态被置为 ***DROP***。
   - 解决方案：执行 `SHOW DATANODES` 语句，检查无法连通的 DataNode 网络，或等待其状态变为 Unknown 后重新执行语句。
 - 运行时日志提示 `org.apache.iotdb.commons.exception.IoTDBException: root.** already been created as database`

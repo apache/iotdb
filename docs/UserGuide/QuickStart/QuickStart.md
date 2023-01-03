@@ -46,7 +46,7 @@ You can download the binary file from:
 
 ## Configurations
 
-configuration files are under "conf" folder
+Configuration files are under "conf" folder
 
   * environment config module (`datanode-env.bat`, `datanode-env.sh`), 
   * system config module (`iotdb-datanode.properties`)

@@ -407,34 +407,44 @@ The process of registering a UDF in IoTDB is as follows:
 
 1. Implement a complete UDF class, assuming the full class name of this class is `org.apache.iotdb.udf.ExampleUDTF`.
 2. Package your project into a JAR. If you use Maven to manage your project, you can refer to the Maven project example above.
-3. Optional. You can place the JAR package in the directory `iotdb-server-1.0.0-all-bin/ext/udf`.
-   **Note that if you choose to place the JAR in advance when deploying a cluster, you need to ensure that there is a corresponding JAR package in the UDF JAR package path of each node. **
-   The URI of the JAR package to use can also be specified in the SQL. We will try to download the JAR package and distribute it to each node in the cluster, placing it in the directory `iotdb-server-1.0.0-all-bin/ext/udf/install`.
-   
-    > You can specify the root path for the UDF to load the Jar by modifying the 'udf_root_dir' in the configuration file.
-4. Register the UDF with the SQL statement, assuming that the name given to the UDF is `example`.
-
-The following shows the SQL syntax of how to register a UDF.
-
+3. Make preparations for registration according to the registration mode. For details, see the following example.
+4. You can use following SQL to register UDF.
 ```sql
 CREATE FUNCTION <UDF-NAME> AS <UDF-CLASS-FULL-PATHNAME> (USING URI URI-STRING)?
 ```
 
-Here is an example:
+### Example: register UDF named `example`, you can choose either of the following two registration methods
 
+#### No URI
+
+Prepare:  
+When use this method to register，you should put JAR to directory `iotdb-server-1.0.0-all-bin/ext/udf`（directory can config）.  
+**Note，you should put JAR to this directory of all DataNodes if using Cluster**
+
+SQL:  
 ```sql
-CREATE FUNCTION example AS 'org.apache.iotdb.udf.ExampleUDTF' USING URI 'http://jar/example.jar'
+CREATE FUNCTION example AS 'org.apache.iotdb.udf.UDTFExample'
 ```
 
+#### Using URI
+
+Prepare:  
+When use this method to register，you need to upload the JAR to URI server and ensure the IoTDB instance executing this registration statement has access to the URI server.  
+**Note，you needn't place JAR manually，IoTDB will download the JAR and sync it.**
+
+SQL:
+```sql
+CREATE FUNCTION example AS 'org.apache.iotdb.udf.UDTFExample' USING URI 'http://jar/example.jar'
+```
+
+### Note
 Since UDF instances are dynamically loaded through reflection technology, you do not need to restart the server during the UDF registration process.
 
-Note: UDF function names are not case sensitive.
+UDF function names are not case-sensitive.
 
-Note: Please ensure that the function name given to the UDF is different from all built-in function names. A UDF with the same name as a built-in function cannot be registered.
+Please ensure that the function name given to the UDF is different from all built-in function names. A UDF with the same name as a built-in function cannot be registered.
 
-Note: We recommend that you do not use classes that have the same class name but different function logic in different JAR packages. For example, in `UDF(UDAF/UDTF): udf1, udf2`, the JAR package of udf1 is `udf1.jar` and the JAR package of udf2 is `udf2.jar`. Assume that both JAR packages contain the `org.apache.iotdb.udf.ExampleUDTF` class. If you use two UDFs in the same SQL statement at the same time, the system will randomly load either of them and may cause inconsistency in UDF execution behavior.
-
-
+We recommend that you do not use classes that have the same class name but different function logic in different JAR packages. For example, in `UDF(UDAF/UDTF): udf1, udf2`, the JAR package of udf1 is `udf1.jar` and the JAR package of udf2 is `udf2.jar`. Assume that both JAR packages contain the `org.apache.iotdb.udf.ExampleUDTF` class. If you use two UDFs in the same SQL statement at the same time, the system will randomly load either of them and may cause inconsistency in UDF execution behavior.
 
 ## UDF Deregistration
 
@@ -528,6 +538,7 @@ For more user permissions related content, please refer to [Account Management S
 
 ## Configurable Properties
 
+You can use `trigger_lib_dir` to config trigger lib directory.  
 When querying by a UDF, IoTDB may prompt that there is insufficient memory. You can resolve the issue by configuring `udf_initial_byte_array_length_for_memory_control`, `udf_memory_budget_in_mb` and `udf_reader_transformer_collector_memory_proportion` in `iotdb-datanode.properties` and restarting the server.
 
 
@@ -590,7 +601,7 @@ When you have prepared the UDF source code, test cases, and instructions, you ar
 
 ## Known Implementation UDF Libraries
 
-+ [IoTDB-Quality](https://iotdb.apache.org/UserGuide/Master/UDF-Library/Quick-Start.html ), a UDF library about data quality, including data profiling, data quality evalution and data repairing, etc.
++ [IoTDB-Quality](./Data-Profiling.md), a UDF library about data quality, including data profiling, data quality evalution and data repairing, etc.
 
 
 ## Q&A

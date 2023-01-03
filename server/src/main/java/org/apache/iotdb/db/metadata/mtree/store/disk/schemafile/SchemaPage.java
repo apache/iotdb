@@ -58,11 +58,6 @@ public abstract class SchemaPage implements ISchemaPage {
   }
 
   @Override
-  public boolean isCapableForSize(short size) {
-    return spareSize >= size;
-  }
-
-  @Override
   public void syncPageBuffer() {
     this.pageBuffer.limit(this.pageBuffer.capacity());
     this.pageBuffer.position(SchemaFileConfig.PAGE_HEADER_INDEX_OFFSET);

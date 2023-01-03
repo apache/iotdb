@@ -18,8 +18,11 @@
  */
 package org.apache.iotdb.db.metadata.tagSchemaRegion.utils;
 
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.metadata.idtable.entry.SchemaEntry;
-import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
+import org.apache.iotdb.db.metadata.plan.schemaregion.result.ShowTimeSeriesResult;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import java.util.HashMap;
 
@@ -40,15 +43,13 @@ public class ShowTimeSeriesResultUtils {
     return new ShowTimeSeriesResult(
         devicePath + "." + measurement,
         null,
-        sgName,
-        schemaEntry.getTSDataType(),
-        schemaEntry.getTSEncoding(),
-        schemaEntry.getCompressionType(),
-        Long.MAX_VALUE,
+        new MeasurementSchema(
+            measurement,
+            schemaEntry.getTSDataType(),
+            schemaEntry.getTSEncoding(),
+            schemaEntry.getCompressionType()),
         new HashMap<>(),
-        new HashMap<>(),
-        null,
-        null);
+        new HashMap<>());
   }
 
   /**
@@ -61,17 +62,19 @@ public class ShowTimeSeriesResultUtils {
    */
   public static ShowTimeSeriesResult generateShowTimeSeriesResult(
       String sgName, String timeSeriesPath, SchemaEntry schemaEntry) {
-    return new ShowTimeSeriesResult(
-        timeSeriesPath,
-        null,
-        sgName,
-        schemaEntry.getTSDataType(),
-        schemaEntry.getTSEncoding(),
-        schemaEntry.getCompressionType(),
-        Long.MAX_VALUE,
-        new HashMap<>(),
-        new HashMap<>(),
-        null,
-        null);
+    try {
+      return new ShowTimeSeriesResult(
+          timeSeriesPath,
+          null,
+          new MeasurementSchema(
+              new PartialPath(timeSeriesPath).getMeasurement(),
+              schemaEntry.getTSDataType(),
+              schemaEntry.getTSEncoding(),
+              schemaEntry.getCompressionType()),
+          new HashMap<>(),
+          new HashMap<>());
+    } catch (IllegalPathException e) {
+      throw new RuntimeException(e);
+    }
   }
 }

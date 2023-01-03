@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeMPPDataExchangeServiceClient;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.mpp.execution.memory.LocalMemoryManager;
+import org.apache.iotdb.db.mpp.metric.QueryMetricsManager;
 import org.apache.iotdb.db.utils.SetThreadName;
 import org.apache.iotdb.mpp.rpc.thrift.MPPDataExchangeService;
 import org.apache.iotdb.mpp.rpc.thrift.TAcknowledgeDataBlockEvent;
@@ -41,7 +42,9 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Optional;
@@ -50,6 +53,9 @@ import java.util.concurrent.ExecutorService;
 import java.util.function.Supplier;
 
 import static org.apache.iotdb.db.mpp.common.FragmentInstanceId.createFullId;
+import static org.apache.iotdb.db.mpp.metric.DataExchangeMetricSet.GET_DATA_BLOCK_TASK_SERVER;
+import static org.apache.iotdb.db.mpp.metric.DataExchangeMetricSet.ON_ACKNOWLEDGE_DATA_BLOCK_EVENT_TASK_SERVER;
+import static org.apache.iotdb.db.mpp.metric.DataExchangeMetricSet.SEND_NEW_DATA_BLOCK_EVENT_TASK_SERVER;
 
 public class MPPDataExchangeManager implements IMPPDataExchangeManager {
 
@@ -76,8 +82,11 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
   /** Handle thrift communications. */
   class MPPDataExchangeServiceImpl implements MPPDataExchangeService.Iface {
 
+    private final QueryMetricsManager QUERY_METRICS = QueryMetricsManager.getInstance();
+
     @Override
     public TGetDataBlockResponse getDataBlock(TGetDataBlockRequest req) throws TException {
+      long startTime = System.nanoTime();
       try (SetThreadName fragmentInstanceName =
           new SetThreadName(
               createFullId(
@@ -105,11 +114,15 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
           }
         }
         return resp;
+      } finally {
+        QUERY_METRICS.recordDataExchangeCost(
+            GET_DATA_BLOCK_TASK_SERVER, System.nanoTime() - startTime);
       }
     }
 
     @Override
     public void onAcknowledgeDataBlockEvent(TAcknowledgeDataBlockEvent e) {
+      long startTime = System.nanoTime();
       try (SetThreadName fragmentInstanceName =
           new SetThreadName(
               createFullId(
@@ -133,11 +146,15 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
         logger.warn(
             "ack TsBlock [{}, {}) failed.", e.getStartSequenceId(), e.getEndSequenceId(), t);
         throw t;
+      } finally {
+        QUERY_METRICS.recordDataExchangeCost(
+            ON_ACKNOWLEDGE_DATA_BLOCK_EVENT_TASK_SERVER, System.nanoTime() - startTime);
       }
     }
 
     @Override
     public void onNewDataBlockEvent(TNewDataBlockEvent e) throws TException {
+      long startTime = System.nanoTime();
       try (SetThreadName fragmentInstanceName =
           new SetThreadName(createFullIdFrom(e.targetFragmentInstanceId, e.targetPlanNodeId))) {
         logger.debug(
@@ -171,6 +188,9 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
             (SourceHandle)
                 sourceHandles.get(e.getTargetFragmentInstanceId()).get(e.getTargetPlanNodeId());
         sourceHandle.updatePendingDataBlockInfo(e.getStartSequenceId(), e.getBlockSizes());
+      } finally {
+        QUERY_METRICS.recordDataExchangeCost(
+            SEND_NEW_DATA_BLOCK_EVENT_TASK_SERVER, System.nanoTime() - startTime);
       }
     }
 
@@ -364,7 +384,8 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
               .getSharedTsBlockQueue();
     } else {
       logger.debug("Create shared tsblock queue");
-      queue = new SharedTsBlockQueue(remoteFragmentInstanceId, localMemoryManager);
+      queue =
+          new SharedTsBlockQueue(remoteFragmentInstanceId, remotePlanNodeId, localMemoryManager);
     }
 
     LocalSinkHandle localSinkHandle =
@@ -384,6 +405,7 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
       TEndPoint remoteEndpoint,
       TFragmentInstanceId remoteFragmentInstanceId,
       String remotePlanNodeId,
+      String localPlanNodeId,
       // TODO: replace with callbacks to decouple MPPDataExchangeManager from
       // FragmentInstanceContext
       FragmentInstanceContext instanceContext) {
@@ -402,6 +424,7 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
             remoteEndpoint,
             remoteFragmentInstanceId,
             remotePlanNodeId,
+            localPlanNodeId,
             localFragmentInstanceId,
             localMemoryManager,
             executorService,
@@ -439,7 +462,7 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
       queue = ((LocalSinkHandle) sinkHandles.get(remoteFragmentInstanceId)).getSharedTsBlockQueue();
     } else {
       logger.debug("Create shared tsblock queue");
-      queue = new SharedTsBlockQueue(localFragmentInstanceId, localMemoryManager);
+      queue = new SharedTsBlockQueue(localFragmentInstanceId, localPlanNodeId, localMemoryManager);
     }
     LocalSourceHandle localSourceHandle =
         new LocalSourceHandle(
@@ -526,5 +549,17 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
             fragmentInstanceId.instanceId)
         + "."
         + suffix;
+  }
+
+  public ISinkHandle getISinkHandle(TFragmentInstanceId fragmentInstanceId) {
+    return sinkHandles.get(fragmentInstanceId);
+  }
+
+  public List<ISourceHandle> getISourceHandle(TFragmentInstanceId fragmentInstanceId) {
+    if (sourceHandles.containsKey(fragmentInstanceId)) {
+      return new ArrayList<>(sourceHandles.get(fragmentInstanceId).values());
+    } else {
+      return new ArrayList<>();
+    }
   }
 }

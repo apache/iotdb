@@ -990,14 +990,14 @@ Different configuration parameters take effect in the following three ways:
 |   Default   | 60000                                    |
 |  Effective  | After restart system                     |
 
-* compaction\_write\_throughput\_mb\_per\_sec
+* compaction\_io\_rate\_per\_sec
 
-|Name| compaction\_write\_throughput\_mb\_per\_sec |
-|:---:|:---|
-|Description| The write rate of all compaction tasks in MB/s |
-|Type| int32 |
-|Default| 16 |
-|Effective|After restart system|
+|Name| compaction\_io\_rate\_per\_sec                 |
+|:---:|:-----------------------------------------------|
+|Description| The io rate of all compaction tasks per second |
+|Type| int32                                          |
+|Default| 50                                             |
+|Effective| After restart system                           |
 
 * sub\_compaction\_thread\_count
 
@@ -1383,6 +1383,15 @@ Different configuration parameters take effect in the following three ways:
 |    Type     | int32                                                        |
 |   Default   | 10000                                                        |
 |  Effective  | hot-load                                                      |
+
+* into\_operation\_execution\_thread\_count
+
+|    Name     | into\_operation\_execution\_thread\_count                     |
+| :---------: | :------------------------------------------------------------ |
+| Description | The number of threads in the thread pool that execute insert-tablet tasks |
+|    Type     | int32                                                         |
+|   Default   | 2                                                             |
+|  Effective  | After restarting system                                       |
 
 ### Continuous Query
 

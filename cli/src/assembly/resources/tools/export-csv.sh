@@ -49,7 +49,6 @@ if [ -z $JAVA ] ; then
     exit 1;
 fi
 
-CLASSPATH=""
 for f in ${IOTDB_HOME}/lib/*.jar; do
     CLASSPATH=${CLASSPATH}":"$f
 done

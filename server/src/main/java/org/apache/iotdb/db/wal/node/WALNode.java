@@ -285,11 +285,12 @@ public class WALNode implements IWALNode {
       }
       // delete files
       int deletedFilesNum = 0;
+      long deletedFilesSize = 0;
       for (int i = 0; i < endFileIndex; ++i) {
         long fileSize = filesToDelete[i].length();
         if (filesToDelete[i].delete()) {
           deletedFilesNum++;
-          WALManager.getInstance().subtractTotalDiskUsage(fileSize);
+          deletedFilesSize += fileSize;
         } else {
           logger.info(
               "Fail to delete outdated wal file {} of wal node-{}.", filesToDelete[i], identifier);
@@ -301,6 +302,8 @@ public class WALNode implements IWALNode {
           totalCostOfFlushedMemTables.addAndGet(-memTableRamCostSum);
         }
       }
+      WALManager.getInstance().subtractTotalDiskUsage(deletedFilesSize);
+      WALManager.getInstance().subtractTotalFileNum(deletedFilesNum);
       logger.debug(
           "Successfully delete {} outdated wal files for wal node-{}.",
           deletedFilesNum,

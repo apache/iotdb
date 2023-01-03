@@ -19,12 +19,18 @@
 package org.apache.iotdb.session;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.isession.ISession;
+import org.apache.iotdb.isession.SessionConfig;
+import org.apache.iotdb.isession.SessionDataSet;
+import org.apache.iotdb.isession.template.Template;
+import org.apache.iotdb.isession.util.Version;
 import org.apache.iotdb.rpc.BatchExecutionException;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.NoValidValueException;
 import org.apache.iotdb.rpc.RedirectException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.service.rpc.thrift.TSAppendSchemaTemplateReq;
+import org.apache.iotdb.service.rpc.thrift.TSBackupConfigurationResp;
 import org.apache.iotdb.service.rpc.thrift.TSConnectionInfoResp;
 import org.apache.iotdb.service.rpc.thrift.TSCreateAlignedTimeseriesReq;
 import org.apache.iotdb.service.rpc.thrift.TSCreateMultiTimeseriesReq;
@@ -47,11 +53,9 @@ import org.apache.iotdb.service.rpc.thrift.TSQueryTemplateResp;
 import org.apache.iotdb.service.rpc.thrift.TSSetSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSUnsetSchemaTemplateReq;
 import org.apache.iotdb.session.template.MeasurementNode;
-import org.apache.iotdb.session.template.Template;
 import org.apache.iotdb.session.template.TemplateQueryType;
 import org.apache.iotdb.session.util.SessionUtils;
 import org.apache.iotdb.session.util.ThreadUtils;
-import org.apache.iotdb.session.util.Version;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -419,7 +423,6 @@ public class Session implements ISession {
     }
   }
 
-  @Override
   public SessionConnection constructSessionConnection(
       Session session, TEndPoint endpoint, ZoneId zoneId) throws IoTDBConnectionException {
     if (endpoint == null) {
@@ -591,7 +594,7 @@ public class Session implements ISession {
     request.setDataTypes(dataTypes.stream().map(TSDataType::ordinal).collect(Collectors.toList()));
     request.setEncodings(encodings.stream().map(TSEncoding::ordinal).collect(Collectors.toList()));
     request.setCompressors(
-        compressors.stream().map(CompressionType::ordinal).collect(Collectors.toList()));
+        compressors.stream().map(i -> (int) i.serialize()).collect(Collectors.toList()));
     request.setMeasurementAlias(measurementAliasList);
     request.setTagsList(tagsList);
     request.setAttributesList(attributesList);
@@ -649,7 +652,7 @@ public class Session implements ISession {
 
     List<Integer> compressionOrdinals = new ArrayList<>(paths.size());
     for (CompressionType compression : compressors) {
-      compressionOrdinals.add(compression.ordinal());
+      compressionOrdinals.add((int) compression.serialize());
     }
     request.setCompressors(compressionOrdinals);
 
@@ -667,10 +670,12 @@ public class Session implements ISession {
     return defaultSessionConnection.checkTimeseriesExists(path, queryTimeoutInMs);
   }
 
+  @Override
   public void setQueryTimeout(long timeoutInMs) {
     this.queryTimeoutInMs = timeoutInMs;
   }
 
+  @Override
   public long getQueryTimeout() {
     return queryTimeoutInMs;
   }
@@ -780,24 +785,36 @@ public class Session implements ISession {
     }
   }
 
+  @Override
+  public SessionDataSet executeRawDataQuery(List<String> paths, long startTime, long endTime)
+      throws StatementExecutionException, IoTDBConnectionException {
+    return executeRawDataQuery(paths, startTime, endTime, queryTimeoutInMs);
+  }
+
+  @Override
+  public SessionDataSet executeLastDataQuery(List<String> paths, long lastTime)
+      throws StatementExecutionException, IoTDBConnectionException {
+    return executeLastDataQuery(paths, lastTime, queryTimeoutInMs);
+  }
+
   /**
    * query e.g. select last data from paths where time >= lastTime
    *
    * @param paths timeSeries eg. root.ln.d1.s1,root.ln.d1.s2
-   * @param LastTime get the last data, whose timestamp is greater than or equal LastTime e.g.
+   * @param lastTime get the last data, whose timestamp is greater than or equal lastTime e.g.
    *     1621326244168
    */
   @Override
-  public SessionDataSet executeLastDataQuery(List<String> paths, long LastTime, long timeOut)
+  public SessionDataSet executeLastDataQuery(List<String> paths, long lastTime, long timeOut)
       throws StatementExecutionException, IoTDBConnectionException {
     try {
-      return defaultSessionConnection.executeLastDataQuery(paths, LastTime, timeOut);
+      return defaultSessionConnection.executeLastDataQuery(paths, lastTime, timeOut);
     } catch (RedirectException e) {
       handleQueryRedirection(e.getEndPoint());
       if (enableQueryRedirection) {
         // retry
         try {
-          return defaultSessionConnection.executeLastDataQuery(paths, LastTime, timeOut);
+          return defaultSessionConnection.executeLastDataQuery(paths, lastTime, timeOut);
         } catch (RedirectException redirectException) {
           logger.error("redirect twice", redirectException);
           throw new StatementExecutionException("redirect twice, please try again.");
@@ -817,7 +834,7 @@ public class Session implements ISession {
   public SessionDataSet executeLastDataQuery(List<String> paths)
       throws StatementExecutionException, IoTDBConnectionException {
     long time = 0L;
-    return executeLastDataQuery(paths, time, 60000);
+    return executeLastDataQuery(paths, time, queryTimeoutInMs);
   }
 
   /**
@@ -2979,7 +2996,7 @@ public class Session implements ISession {
     req.setDataTypes(dataTypes.stream().map(TSDataType::ordinal).collect(Collectors.toList()));
     req.setEncodings(encodings.stream().map(TSEncoding::ordinal).collect(Collectors.toList()));
     req.setCompressors(
-        compressors.stream().map(CompressionType::ordinal).collect(Collectors.toList()));
+        compressors.stream().map(i -> (int) i.serialize()).collect(Collectors.toList()));
     req.setIsAligned(true);
     defaultSessionConnection.appendSchemaTemplate(req);
   }
@@ -3025,7 +3042,7 @@ public class Session implements ISession {
     req.setDataTypes(dataTypes.stream().map(TSDataType::ordinal).collect(Collectors.toList()));
     req.setEncodings(encodings.stream().map(TSEncoding::ordinal).collect(Collectors.toList()));
     req.setCompressors(
-        compressors.stream().map(CompressionType::ordinal).collect(Collectors.toList()));
+        compressors.stream().map(i -> (int) i.serialize()).collect(Collectors.toList()));
     req.setIsAligned(false);
     defaultSessionConnection.appendSchemaTemplate(req);
   }
@@ -3273,6 +3290,12 @@ public class Session implements ISession {
   @Override
   public void setEnableRedirection(boolean enableRedirection) {
     this.enableRedirection = enableRedirection;
+  }
+
+  @Override
+  public TSBackupConfigurationResp getBackupConfiguration()
+      throws IoTDBConnectionException, StatementExecutionException {
+    return defaultSessionConnection.getBackupConfiguration();
   }
 
   @Override

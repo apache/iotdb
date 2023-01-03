@@ -34,9 +34,9 @@ import java.io.BufferedOutputStream;
 import java.io.DataInputStream;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -58,15 +58,15 @@ public class LocalFileRoleAccessor implements IRoleAccessor {
   private static final String STRING_ENCODING = "utf-8";
   private static final String roleSnapshotFileName = "system" + File.separator + "roles";
 
-  private String roleDirPath;
+  private final String roleDirPath;
 
   /**
    * Reused buffer for primitive types encoding/decoding, which aim to reduce memory fragments. Use
    * ThreadLocal for thread safety.
    */
-  private ThreadLocal<ByteBuffer> encodingBufferLocal = new ThreadLocal<>();
+  private final ThreadLocal<ByteBuffer> encodingBufferLocal = new ThreadLocal<>();
 
-  private ThreadLocal<byte[]> strBufferLocal = new ThreadLocal<>();
+  private final ThreadLocal<byte[]> strBufferLocal = new ThreadLocal<>();
 
   public LocalFileRoleAccessor(String roleDirPath) {
     this.roleDirPath = roleDirPath;
@@ -120,10 +120,12 @@ public class LocalFileRoleAccessor implements IRoleAccessor {
                 + TEMP_SUFFIX);
     File roleDir = new File(roleDirPath);
     if (!roleDir.exists()) {
-      roleDir.mkdirs();
+      if (!roleDir.mkdirs()) {
+        logger.error("Failed to create role dir {}", roleDirPath);
+      }
     }
     try (BufferedOutputStream outputStream =
-        new BufferedOutputStream(new FileOutputStream(roleProfile))) {
+        new BufferedOutputStream(Files.newOutputStream(roleProfile.toPath()))) {
       try {
         IOUtils.writeString(outputStream, role.getName(), STRING_ENCODING, encodingBufferLocal);
 

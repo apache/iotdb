@@ -98,7 +98,7 @@ public abstract class SingleInputAggregationOperator implements ProcessOperator 
 
   @Override
   public boolean isFinished() {
-    return !this.hasNext();
+    return !this.hasNextWithTimer();
   }
 
   @Override

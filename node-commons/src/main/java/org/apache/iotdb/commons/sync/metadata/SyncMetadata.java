@@ -200,6 +200,7 @@ public class SyncMetadata implements SnapshotProcessor {
     }
     File tmpFile = new File(snapshotFile.getAbsolutePath() + "-" + UUID.randomUUID());
     try (SyncLogWriter writer = new SyncLogWriter(snapshotDir, tmpFile.getName())) {
+      writer.initOutputStream();
       for (PipeSink pipeSink : pipeSinks.values()) {
         writer.addPipeSink(pipeSink);
       }

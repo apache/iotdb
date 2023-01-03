@@ -20,17 +20,19 @@ package org.apache.iotdb.db.mpp.execution.operator.schema;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.metadata.plan.schemaregion.impl.read.SchemaRegionReadPlanFactory;
+import org.apache.iotdb.db.metadata.query.info.ITimeSeriesSchemaInfo;
 import org.apache.iotdb.db.metadata.template.Template;
+import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.mpp.execution.driver.SchemaDriverContext;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
-import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.util.List;
 import java.util.Map;
@@ -91,38 +93,33 @@ public class TimeSeriesSchemaScanOperator extends SchemaQueryScanOperator {
   @Override
   protected List<TsBlock> createTsBlockList() {
     try {
-      List<ShowTimeSeriesResult> schemaRegionResult =
+      return SchemaTsBlockUtil.transferSchemaResultToTsBlockList(
           ((SchemaDriverContext) operatorContext.getInstanceContext().getDriverContext())
               .getSchemaRegion()
-              .showTimeseries(convertToPhysicalPlan(), operatorContext.getInstanceContext())
-              .left;
-      return SchemaTsBlockUtil.transferSchemaResultToTsBlockList(
-          schemaRegionResult.iterator(), outputDataTypes, this::setColumns);
+              .getTimeSeriesReader(
+                  SchemaRegionReadPlanFactory.getShowTimeSeriesPlan(
+                      partialPath, templateMap, isContains, key, value, limit, offset, false)),
+          outputDataTypes,
+          this::setColumns);
     } catch (MetadataException e) {
       throw new RuntimeException(e.getMessage(), e);
     }
   }
 
-  // ToDo @xinzhongtianxia remove this temporary converter after mpp online
-  private ShowTimeSeriesPlan convertToPhysicalPlan() {
-    ShowTimeSeriesPlan plan =
-        new ShowTimeSeriesPlan(partialPath, isContains, key, value, limit, offset, false);
-    plan.setRelatedTemplate(templateMap);
-    return plan;
-  }
-
-  private void setColumns(ShowTimeSeriesResult series, TsBlockBuilder builder) {
-    builder.getTimeColumnBuilder().writeLong(series.getLastTime());
-    builder.writeNullableText(0, series.getName());
+  private void setColumns(ITimeSeriesSchemaInfo series, TsBlockBuilder builder) {
+    Pair<Map<String, String>, Map<String, String>> tagAndAttribute = series.getTagAndAttribute();
+    Pair<String, String> deadbandInfo = MetaUtils.parseDeadbandInfo(series.getSchema().getProps());
+    builder.getTimeColumnBuilder().writeLong(0);
+    builder.writeNullableText(0, series.getFullPath());
     builder.writeNullableText(1, series.getAlias());
-    builder.writeNullableText(2, series.getSgName());
-    builder.writeNullableText(3, series.getDataType().toString());
-    builder.writeNullableText(4, series.getEncoding().toString());
-    builder.writeNullableText(5, series.getCompressor().toString());
-    builder.writeNullableText(6, mapToString(series.getTag()));
-    builder.writeNullableText(7, mapToString(series.getAttribute()));
-    builder.writeNullableText(8, series.getDeadband());
-    builder.writeNullableText(9, series.getDeadbandParameters());
+    builder.writeNullableText(2, getDatabase());
+    builder.writeNullableText(3, series.getSchema().getType().toString());
+    builder.writeNullableText(4, series.getSchema().getEncodingType().toString());
+    builder.writeNullableText(5, series.getSchema().getCompressor().toString());
+    builder.writeNullableText(6, mapToString(tagAndAttribute.left));
+    builder.writeNullableText(7, mapToString(tagAndAttribute.right));
+    builder.writeNullableText(8, deadbandInfo.left);
+    builder.writeNullableText(9, deadbandInfo.right);
     builder.declarePosition();
   }
 

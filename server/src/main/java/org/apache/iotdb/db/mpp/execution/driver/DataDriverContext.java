@@ -19,7 +19,7 @@
 package org.apache.iotdb.db.mpp.execution.driver;
 
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.engine.storagegroup.DataRegion;
+import org.apache.iotdb.db.engine.storagegroup.IDataRegionForQuery;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.mpp.execution.operator.source.DataSourceOperator;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
@@ -30,14 +30,14 @@ import java.util.List;
 public class DataDriverContext extends DriverContext {
   private final List<PartialPath> paths;
   private final Filter timeFilter;
-  private final DataRegion dataRegion;
+  private final IDataRegionForQuery dataRegion;
   private final List<DataSourceOperator> sourceOperators;
 
   public DataDriverContext(
       FragmentInstanceContext fragmentInstanceContext,
       List<PartialPath> paths,
       Filter timeFilter,
-      DataRegion dataRegion,
+      IDataRegionForQuery dataRegion,
       List<DataSourceOperator> sourceOperators) {
     super(fragmentInstanceContext);
     this.paths = paths;
@@ -54,7 +54,7 @@ public class DataDriverContext extends DriverContext {
     return timeFilter;
   }
 
-  public DataRegion getDataRegion() {
+  public IDataRegionForQuery getDataRegion() {
     return dataRegion;
   }
 

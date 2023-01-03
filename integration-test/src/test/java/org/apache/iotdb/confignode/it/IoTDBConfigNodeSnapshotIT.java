@@ -85,21 +85,19 @@ public class IoTDBConfigNodeSnapshotIT {
   protected static int originalRatisSnapshotTriggerThreshold;
   private static final int testRatisSnapshotTriggerThreshold = 100;
 
-  protected static long originalTimePartitionInterval;
-  private static final long testTimePartitionInterval = 86400;
+  private static final long testTimePartitionInterval =
+      ConfigFactory.getConfig().getTimePartitionInterval();
 
   @Before
   public void setUp() throws Exception {
     originalConfigNodeConsensusProtocolClass =
-        ConfigFactory.getConfig().getConfigNodeConsesusProtocolClass();
+        ConfigFactory.getConfig().getConfigNodeConsensusProtocolClass();
     ConfigFactory.getConfig().setConfigNodeConsesusProtocolClass(ConsensusFactory.RATIS_CONSENSUS);
 
     originalRatisSnapshotTriggerThreshold =
-        ConfigFactory.getConfig().getRatisSnapshotTriggerThreshold();
-    ConfigFactory.getConfig().setRatisSnapshotTriggerThreshold(testRatisSnapshotTriggerThreshold);
-
-    originalTimePartitionInterval = ConfigFactory.getConfig().getTimePartitionInterval();
-    ConfigFactory.getConfig().setTimePartitionInterval(testTimePartitionInterval);
+        ConfigFactory.getConfig().getConfigNodeRatisSnapshotTriggerThreshold();
+    ConfigFactory.getConfig()
+        .setConfigNodeRatisSnapshotTriggerThreshold(testRatisSnapshotTriggerThreshold);
 
     // Init 2C2D cluster environment
     EnvFactory.getEnv().initClusterEnvironment(2, 2);
@@ -112,13 +110,11 @@ public class IoTDBConfigNodeSnapshotIT {
     ConfigFactory.getConfig()
         .setConfigNodeConsesusProtocolClass(originalConfigNodeConsensusProtocolClass);
     ConfigFactory.getConfig()
-        .setRatisSnapshotTriggerThreshold(originalRatisSnapshotTriggerThreshold);
-    ConfigFactory.getConfig().setTimePartitionInterval(originalTimePartitionInterval);
+        .setConfigNodeRatisSnapshotTriggerThreshold(originalRatisSnapshotTriggerThreshold);
   }
 
   @Test
-  public void testPartitionInfoSnapshot()
-      throws IOException, IllegalPathException, TException, InterruptedException {
+  public void testPartitionInfoSnapshot() throws Exception {
     final String sg = "root.sg";
     final int storageGroupNum = 10;
     final int seriesPartitionSlotsNum = 10;

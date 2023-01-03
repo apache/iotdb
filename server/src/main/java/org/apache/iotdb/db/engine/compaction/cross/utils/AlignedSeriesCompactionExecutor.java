@@ -20,12 +20,13 @@ package org.apache.iotdb.db.engine.compaction.cross.utils;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.compaction.task.SubCompactionTaskSummary;
 import org.apache.iotdb.db.engine.compaction.writer.AbstractCompactionWriter;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.WriteProcessException;
-import org.apache.iotdb.db.utils.QueryUtils;
+import org.apache.iotdb.db.utils.ModificationUtils;
 import org.apache.iotdb.tsfile.exception.write.PageException;
 import org.apache.iotdb.tsfile.file.MetaMarker;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
@@ -40,6 +41,8 @@ import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
+import com.google.common.util.concurrent.RateLimiter;
+
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -53,6 +56,9 @@ public class AlignedSeriesCompactionExecutor extends SeriesCompactionExecutor {
   private final Map<String, Map<TsFileResource, Pair<Long, Long>>> timeseriesMetadataOffsetMap;
 
   private final List<IMeasurementSchema> measurementSchemas;
+
+  private final RateLimiter rateLimiter =
+      CompactionTaskManager.getInstance().getCompactionIORateLimiter();
 
   public AlignedSeriesCompactionExecutor(
       AbstractCompactionWriter compactionWriter,
@@ -173,7 +179,7 @@ public class AlignedSeriesCompactionExecutor extends SeriesCompactionExecutor {
                 });
 
         // modify aligned chunk metadatas
-        QueryUtils.modifyAlignedChunkMetaData(alignedChunkMetadataList, valueModifications);
+        ModificationUtils.modifyAlignedChunkMetaData(alignedChunkMetadataList, valueModifications);
       }
 
       if (alignedChunkMetadataList.size() == 0) {
@@ -281,6 +287,7 @@ public class AlignedSeriesCompactionExecutor extends SeriesCompactionExecutor {
   void readChunk(ChunkMetadataElement chunkMetadataElement) throws IOException {
     AlignedChunkMetadata alignedChunkMetadata =
         (AlignedChunkMetadata) chunkMetadataElement.chunkMetadata;
+    rateLimiter.acquire(1);
     chunkMetadataElement.chunk =
         readerCacheMap
             .get(chunkMetadataElement.fileElement.resource)
@@ -292,6 +299,7 @@ public class AlignedSeriesCompactionExecutor extends SeriesCompactionExecutor {
         valueChunks.add(null);
         continue;
       }
+      rateLimiter.acquire(1);
       valueChunks.add(
           readerCacheMap
               .get(chunkMetadataElement.fileElement.resource)

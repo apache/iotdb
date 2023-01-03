@@ -25,7 +25,7 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
-import org.apache.iotdb.commons.service.metric.enums.Operation;
+import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -35,15 +35,14 @@ import org.apache.iotdb.db.metadata.template.TemplateQueryType;
 import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
 import org.apache.iotdb.db.mpp.plan.Coordinator;
 import org.apache.iotdb.db.mpp.plan.analyze.ClusterPartitionFetcher;
-import org.apache.iotdb.db.mpp.plan.analyze.ClusterSchemaFetcher;
 import org.apache.iotdb.db.mpp.plan.analyze.IPartitionFetcher;
-import org.apache.iotdb.db.mpp.plan.analyze.ISchemaFetcher;
-import org.apache.iotdb.db.mpp.plan.analyze.StandalonePartitionFetcher;
-import org.apache.iotdb.db.mpp.plan.analyze.StandaloneSchemaFetcher;
+import org.apache.iotdb.db.mpp.plan.analyze.schema.ClusterSchemaFetcher;
+import org.apache.iotdb.db.mpp.plan.analyze.schema.ISchemaFetcher;
 import org.apache.iotdb.db.mpp.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.mpp.plan.execution.IQueryExecution;
 import org.apache.iotdb.db.mpp.plan.parser.StatementGenerator;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
+import org.apache.iotdb.db.mpp.plan.statement.StatementType;
 import org.apache.iotdb.db.mpp.plan.statement.crud.DeleteDataStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertMultiTabletsStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertRowStatement;
@@ -71,6 +70,7 @@ import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.ServerProperties;
 import org.apache.iotdb.service.rpc.thrift.TSAppendSchemaTemplateReq;
+import org.apache.iotdb.service.rpc.thrift.TSBackupConfigurationResp;
 import org.apache.iotdb.service.rpc.thrift.TSCancelOperationReq;
 import org.apache.iotdb.service.rpc.thrift.TSCloseOperationReq;
 import org.apache.iotdb.service.rpc.thrift.TSCloseSessionReq;
@@ -100,6 +100,7 @@ import org.apache.iotdb.service.rpc.thrift.TSInsertTabletsReq;
 import org.apache.iotdb.service.rpc.thrift.TSLastDataQueryReq;
 import org.apache.iotdb.service.rpc.thrift.TSOpenSessionReq;
 import org.apache.iotdb.service.rpc.thrift.TSOpenSessionResp;
+import org.apache.iotdb.service.rpc.thrift.TSProtocolVersion;
 import org.apache.iotdb.service.rpc.thrift.TSPruneSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSQueryDataSet;
 import org.apache.iotdb.service.rpc.thrift.TSQueryTemplateReq;
@@ -122,14 +123,11 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.time.ZoneId;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.TimeUnit;
 
-import static org.apache.iotdb.db.service.basic.ServiceProvider.AUDIT_LOGGER;
-import static org.apache.iotdb.db.service.basic.ServiceProvider.CURRENT_RPC_VERSION;
-import static org.apache.iotdb.db.service.basic.ServiceProvider.QUERY_FREQUENCY_RECORDER;
 import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onIoTDBException;
 import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onNPEOrUnexpectedException;
 import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onQueryException;
@@ -143,6 +141,9 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
   private static final Coordinator COORDINATOR = Coordinator.getInstance();
 
   private static final SessionManager SESSION_MANAGER = SessionManager.getInstance();
+
+  private static final TSProtocolVersion CURRENT_RPC_VERSION =
+      TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V3;
 
   private final IPartitionFetcher PARTITION_FETCHER;
 
@@ -171,13 +172,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       };
 
   public ClientRPCServiceImpl() {
-    if (config.isClusterMode()) {
-      PARTITION_FETCHER = ClusterPartitionFetcher.getInstance();
-      SCHEMA_FETCHER = ClusterSchemaFetcher.getInstance();
-    } else {
-      PARTITION_FETCHER = StandalonePartitionFetcher.getInstance();
-      SCHEMA_FETCHER = StandaloneSchemaFetcher.getInstance();
-    }
+    PARTITION_FETCHER = ClusterPartitionFetcher.getInstance();
+    SCHEMA_FETCHER = ClusterSchemaFetcher.getInstance();
   }
 
   private TSExecuteStatementResp executeStatementInternal(
@@ -190,6 +186,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     }
 
     long startTime = System.currentTimeMillis();
+    StatementType statementType = null;
     try {
       Statement s =
           StatementGenerator.createStatement(
@@ -206,9 +203,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         return RpcUtils.getTSExecuteStatementResp(status);
       }
 
-      QUERY_FREQUENCY_RECORDER.incrementAndGet();
-      AUDIT_LOGGER.debug("Session {} execute Query: {}", req.sessionId, statement);
-
+      statementType = s.getType();
       queryId = SESSION_MANAGER.requestQueryId(SESSION_MANAGER.getCurrSession(), req.statementId);
       // create and cache dataset
       ExecutionResult result =
@@ -236,6 +231,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           finished = setResult.apply(resp, queryExecution, req.fetchSize);
           resp.setMoreData(!finished);
         } else {
+          finished = true;
           resp = RpcUtils.getTSExecuteStatementResp(result.status);
         }
         return resp;
@@ -245,8 +241,15 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       return RpcUtils.getTSExecuteStatementResp(
           onQueryException(e, "\"" + statement + "\". " + OperationType.EXECUTE_STATEMENT));
     } finally {
-      addOperationLatency(Operation.EXECUTE_QUERY, startTime);
+      COORDINATOR.recordExecutionTime(queryId, System.currentTimeMillis() - startTime);
       if (finished) {
+        if (statementType != null) {
+          long executionTime = COORDINATOR.getTotalExecutionTime(queryId);
+          addStatementExecutionLatency(
+              OperationType.EXECUTE_STATEMENT,
+              statementType,
+              executionTime > 0 ? executionTime : System.currentTimeMillis() - startTime);
+        }
         COORDINATOR.cleanupQueryExecution(queryId);
       }
     }
@@ -270,8 +273,6 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         return RpcUtils.getTSExecuteStatementResp(status);
       }
 
-      QUERY_FREQUENCY_RECORDER.incrementAndGet();
-      AUDIT_LOGGER.debug("Session {} execute Raw Data Query: {}", req.sessionId, req);
       queryId = SESSION_MANAGER.requestQueryId(SESSION_MANAGER.getCurrSession(), req.statementId);
       // create and cache dataset
       ExecutionResult result =
@@ -307,8 +308,12 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       return RpcUtils.getTSExecuteStatementResp(
           onQueryException(e, "\"" + req + "\". " + OperationType.EXECUTE_RAW_DATA_QUERY));
     } finally {
-      addOperationLatency(Operation.EXECUTE_QUERY, startTime);
+      COORDINATOR.recordExecutionTime(queryId, System.currentTimeMillis() - startTime);
       if (finished) {
+        addStatementExecutionLatency(
+            OperationType.EXECUTE_RAW_DATA_QUERY,
+            StatementType.QUERY,
+            COORDINATOR.getTotalExecutionTime(queryId));
         COORDINATOR.cleanupQueryExecution(queryId);
       }
     }
@@ -330,8 +335,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return RpcUtils.getTSExecuteStatementResp(status);
       }
-      QUERY_FREQUENCY_RECORDER.incrementAndGet();
-      AUDIT_LOGGER.debug("Session {} execute Last Data Query: {}", req.sessionId, req);
+
       queryId = SESSION_MANAGER.requestQueryId(SESSION_MANAGER.getCurrSession(), req.statementId);
       // create and cache dataset
       ExecutionResult result =
@@ -368,8 +372,12 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       return RpcUtils.getTSExecuteStatementResp(
           onQueryException(e, "\"" + req + "\". " + OperationType.EXECUTE_LAST_DATA_QUERY));
     } finally {
-      addOperationLatency(Operation.EXECUTE_QUERY, startTime);
+      COORDINATOR.recordExecutionTime(queryId, System.currentTimeMillis() - startTime);
       if (finished) {
+        addStatementExecutionLatency(
+            OperationType.EXECUTE_LAST_DATA_QUERY,
+            StatementType.QUERY,
+            COORDINATOR.getTotalExecutionTime(queryId));
         COORDINATOR.cleanupQueryExecution(queryId);
       }
     }
@@ -404,6 +412,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
   public TSFetchResultsResp fetchResultsV2(TSFetchResultsReq req) {
     long startTime = System.currentTimeMillis();
     boolean finished = false;
+    StatementType statementType = null;
     try {
       if (!SESSION_MANAGER.checkLogin(SESSION_MANAGER.getCurrSession())) {
         return RpcUtils.getTSFetchResultsResp(getNotLoggedInStatus());
@@ -417,6 +426,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         resp.setMoreData(false);
         return resp;
       }
+      statementType = queryExecution.getStatement().getType();
 
       try (SetThreadName queryName = new SetThreadName(queryExecution.getQueryId())) {
         Pair<List<ByteBuffer>, Boolean> pair =
@@ -434,8 +444,14 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       finished = true;
       return RpcUtils.getTSFetchResultsResp(onQueryException(e, OperationType.FETCH_RESULTS));
     } finally {
-      addOperationLatency(Operation.EXECUTE_QUERY, startTime);
+      COORDINATOR.recordExecutionTime(req.queryId, System.currentTimeMillis() - startTime);
       if (finished) {
+        if (statementType != null) {
+          addStatementExecutionLatency(
+              OperationType.FETCH_RESULTS,
+              statementType,
+              COORDINATOR.getTotalExecutionTime(req.queryId));
+        }
         COORDINATOR.cleanupQueryExecution(req.queryId);
       }
     }
@@ -551,11 +567,6 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         return getNotLoggedInStatus();
       }
 
-      if (AUDIT_LOGGER.isDebugEnabled()) {
-        AUDIT_LOGGER.debug(
-            "Session-{} create database {}", SESSION_MANAGER.getCurrSession(), storageGroup);
-      }
-
       // Step 1: Create SetStorageGroupStatement
       SetStorageGroupStatement statement =
           (SetStorageGroupStatement) StatementGenerator.createStatement(storageGroup);
@@ -593,13 +604,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         return getNotLoggedInStatus();
       }
 
-      if (AUDIT_LOGGER.isDebugEnabled()) {
-        AUDIT_LOGGER.debug(
-            "Session-{} create timeseries {}", SESSION_MANAGER.getCurrSession(), req.getPath());
-      }
-
       // measurementAlias is also a nodeName
-      PathUtils.isLegalSingleMeasurements(Collections.singletonList(req.getMeasurementAlias()));
+      req.setMeasurementAlias(PathUtils.checkAndReturnSingleMeasurement(req.getMeasurementAlias()));
       // Step 1: transfer from TSCreateTimeseriesReq to Statement
       CreateTimeSeriesStatement statement =
           (CreateTimeSeriesStatement) StatementGenerator.createStatement(req);
@@ -638,18 +644,11 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         return getNotLoggedInStatus();
       }
 
-      if (AUDIT_LOGGER.isDebugEnabled()) {
-        AUDIT_LOGGER.debug(
-            "Session-{} create aligned timeseries {}.{}",
-            SESSION_MANAGER.getCurrSession(),
-            req.getPrefixPath(),
-            req.getMeasurements());
-      }
-
       // check whether measurement is legal according to syntax convention
-      PathUtils.isLegalSingleMeasurements(req.getMeasurementAlias());
+      req.setMeasurementAlias(
+          PathUtils.checkIsLegalSingleMeasurementsAndUpdate(req.getMeasurementAlias()));
 
-      PathUtils.isLegalSingleMeasurements(req.getMeasurements());
+      req.setMeasurements(PathUtils.checkIsLegalSingleMeasurementsAndUpdate(req.getMeasurements()));
 
       // Step 1: transfer from CreateAlignedTimeSeriesReq to Statement
       CreateAlignedTimeSeriesStatement statement =
@@ -689,16 +688,9 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         return getNotLoggedInStatus();
       }
 
-      if (AUDIT_LOGGER.isDebugEnabled()) {
-        AUDIT_LOGGER.debug(
-            "Session-{} create {} timeseries, the first is {}",
-            SESSION_MANAGER.getCurrSession(),
-            req.getPaths().size(),
-            req.getPaths().get(0));
-      }
-
       // check whether measurement is legal according to syntax convention
-      PathUtils.isLegalSingleMeasurements(req.getMeasurementAliasList());
+      req.setMeasurementAliasList(
+          PathUtils.checkIsLegalSingleMeasurementsAndUpdate(req.getMeasurementAliasList()));
 
       // Step 1: transfer from CreateMultiTimeSeriesReq to Statement
       CreateMultiTimeSeriesStatement statement =
@@ -776,14 +768,6 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         return getNotLoggedInStatus();
       }
 
-      if (AUDIT_LOGGER.isDebugEnabled()) {
-        AUDIT_LOGGER.debug(
-            "Session-{} delete {} databases, the first is {}",
-            SESSION_MANAGER.getCurrSession(),
-            storageGroups.size(),
-            storageGroups.get(0));
-      }
-
       // Step 1: transfer from DeleteStorageGroupsReq to Statement
       DeleteStorageGroupStatement statement =
           (DeleteStorageGroupStatement) StatementGenerator.createStatement(storageGroups);
@@ -817,7 +801,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
   @Override
   public TSFetchMetadataResp fetchMetadata(TSFetchMetadataReq req) {
-    throw new UnsupportedOperationException();
+    return new TSFetchMetadataResp(
+        RpcUtils.getStatus(TSStatusCode.UNSUPPORTED_OPERATION, "Fetch Metadata is not supported."));
   }
 
   @Override
@@ -836,6 +821,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
     for (int i = 0; i < req.getStatements().size(); i++) {
       String statement = req.getStatements().get(i);
+      long t2 = System.currentTimeMillis();
+      StatementType type = null;
       try {
         Statement s =
             StatementGenerator.createStatement(
@@ -850,11 +837,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           return status;
         }
 
-        QUERY_FREQUENCY_RECORDER.incrementAndGet();
-        AUDIT_LOGGER.debug("Session {} execute Query: {}", req.sessionId, s);
-
         long queryId = SESSION_MANAGER.requestQueryId();
-        long t2 = System.currentTimeMillis();
+        type = s.getType();
         // create and cache dataset
         ExecutionResult result =
             COORDINATOR.execute(
@@ -865,7 +849,6 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
                 PARTITION_FETCHER,
                 SCHEMA_FETCHER,
                 config.getQueryTimeoutThreshold());
-        addOperationLatency(Operation.EXECUTE_ONE_SQL_IN_BATCH, t2);
         results.add(result.status);
       } catch (Exception e) {
         LOGGER.warn("Error occurred when executing executeBatchStatement: ", e);
@@ -875,9 +858,13 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           isAllSuccessful = false;
         }
         results.add(status);
+      } finally {
+        addStatementExecutionLatency(
+            OperationType.EXECUTE_STATEMENT, type, System.currentTimeMillis() - t2);
       }
     }
-    addOperationLatency(Operation.EXECUTE_JDBC_BATCH, t1);
+    addStatementExecutionLatency(
+        OperationType.EXECUTE_BATCH_STATEMENT, StatementType.NULL, System.currentTimeMillis() - t1);
     return isAllSuccessful
         ? RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "Execute batch statements successfully")
         : RpcUtils.getStatus(results);
@@ -897,6 +884,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
   public TSFetchResultsResp fetchResults(TSFetchResultsReq req) {
     boolean finished = false;
     long startTime = System.currentTimeMillis();
+    StatementType statementType = null;
     try {
       if (!SESSION_MANAGER.checkLogin(SESSION_MANAGER.getCurrSession())) {
         return RpcUtils.getTSFetchResultsResp(getNotLoggedInStatus());
@@ -910,6 +898,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         resp.setMoreData(true);
         return resp;
       }
+      statementType = queryExecution.getStatement().getType();
 
       try (SetThreadName queryName = new SetThreadName(queryExecution.getQueryId())) {
         Pair<TSQueryDataSet, Boolean> pair =
@@ -927,8 +916,14 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       finished = true;
       return RpcUtils.getTSFetchResultsResp(onQueryException(e, OperationType.FETCH_RESULTS));
     } finally {
-      addOperationLatency(Operation.EXECUTE_QUERY, startTime);
+      COORDINATOR.recordExecutionTime(req.queryId, System.currentTimeMillis() - startTime);
       if (finished) {
+        if (statementType != null) {
+          addStatementExecutionLatency(
+              OperationType.FETCH_RESULTS,
+              statementType,
+              COORDINATOR.getTotalExecutionTime(req.queryId));
+        }
         COORDINATOR.cleanupQueryExecution(req.queryId);
       }
     }
@@ -942,16 +937,9 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         return getNotLoggedInStatus();
       }
 
-      if (AUDIT_LOGGER.isDebugEnabled()) {
-        AUDIT_LOGGER.debug(
-            "Session {} insertRecords, first device {}, first time {}",
-            SESSION_MANAGER.getCurrSession(),
-            req.prefixPaths.get(0),
-            req.getTimestamps().get(0));
-      }
-
       // check whether measurement is legal according to syntax convention
-      PathUtils.isLegalSingleMeasurementLists(req.getMeasurementsList());
+      req.setMeasurementsList(
+          PathUtils.checkIsLegalSingleMeasurementListsAndUpdate(req.getMeasurementsList()));
 
       // Step 1:  transfer from TSInsertRecordsReq to Statement
       InsertRowsStatement statement = (InsertRowsStatement) StatementGenerator.createStatement(req);
@@ -985,7 +973,10 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       return onNPEOrUnexpectedException(
           e, OperationType.INSERT_RECORDS, TSStatusCode.EXECUTE_STATEMENT_ERROR);
     } finally {
-      addOperationLatency(Operation.EXECUTE_RPC_BATCH_INSERT, t1);
+      addStatementExecutionLatency(
+          OperationType.INSERT_RECORDS,
+          StatementType.BATCH_INSERT_ROWS,
+          System.currentTimeMillis() - t1);
     }
   }
 
@@ -997,16 +988,9 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         return getNotLoggedInStatus();
       }
 
-      if (AUDIT_LOGGER.isDebugEnabled()) {
-        AUDIT_LOGGER.debug(
-            "Session {} insertRecords, device {}, first time {}",
-            SESSION_MANAGER.getCurrSession(),
-            req.prefixPath,
-            req.getTimestamps().get(0));
-      }
-
       // check whether measurement is legal according to syntax convention
-      PathUtils.isLegalSingleMeasurementLists(req.getMeasurementsList());
+      req.setMeasurementsList(
+          PathUtils.checkIsLegalSingleMeasurementListsAndUpdate(req.getMeasurementsList()));
 
       // Step 1: transfer from TSInsertRecordsOfOneDeviceReq to Statement
       InsertRowsOfOneDeviceStatement statement =
@@ -1041,7 +1025,10 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       return onNPEOrUnexpectedException(
           e, OperationType.INSERT_RECORDS_OF_ONE_DEVICE, TSStatusCode.EXECUTE_STATEMENT_ERROR);
     } finally {
-      addOperationLatency(Operation.EXECUTE_RPC_BATCH_INSERT, t1);
+      addStatementExecutionLatency(
+          OperationType.INSERT_RECORDS_OF_ONE_DEVICE,
+          StatementType.BATCH_INSERT_ONE_DEVICE,
+          System.currentTimeMillis() - t1);
     }
   }
 
@@ -1053,16 +1040,9 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         return getNotLoggedInStatus();
       }
 
-      if (AUDIT_LOGGER.isDebugEnabled()) {
-        AUDIT_LOGGER.debug(
-            "Session {} insertRecords, device {}, first time {}",
-            SESSION_MANAGER.getCurrSession(),
-            req.prefixPath,
-            req.getTimestamps().get(0));
-      }
-
       // check whether measurement is legal according to syntax convention
-      PathUtils.isLegalSingleMeasurementLists(req.getMeasurementsList());
+      req.setMeasurementsList(
+          PathUtils.checkIsLegalSingleMeasurementListsAndUpdate(req.getMeasurementsList()));
 
       // Step 1: transfer from TSInsertStringRecordsOfOneDeviceReq to Statement
       InsertRowsOfOneDeviceStatement statement =
@@ -1100,7 +1080,10 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           OperationType.INSERT_STRING_RECORDS_OF_ONE_DEVICE,
           TSStatusCode.EXECUTE_STATEMENT_ERROR);
     } finally {
-      addOperationLatency(Operation.EXECUTE_RPC_BATCH_INSERT, t1);
+      addStatementExecutionLatency(
+          OperationType.INSERT_STRING_RECORDS_OF_ONE_DEVICE,
+          StatementType.BATCH_INSERT_ONE_DEVICE,
+          System.currentTimeMillis() - t1);
     }
   }
 
@@ -1112,14 +1095,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         return getNotLoggedInStatus();
       }
 
-      AUDIT_LOGGER.debug(
-          "Session {} insertRecord, device {}, time {}",
-          SESSION_MANAGER.getCurrSession(),
-          req.getPrefixPath(),
-          req.getTimestamp());
-
       // check whether measurement is legal according to syntax convention
-      PathUtils.isLegalSingleMeasurements(req.getMeasurements());
+      req.setMeasurements(PathUtils.checkIsLegalSingleMeasurementsAndUpdate(req.getMeasurements()));
 
       InsertRowStatement statement = (InsertRowStatement) StatementGenerator.createStatement(req);
       // return success when this statement is empty because server doesn't need to execute it
@@ -1152,7 +1129,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       return onNPEOrUnexpectedException(
           e, OperationType.INSERT_RECORD, TSStatusCode.EXECUTE_STATEMENT_ERROR);
     } finally {
-      addOperationLatency(Operation.EXECUTE_RPC_BATCH_INSERT, t1);
+      addStatementExecutionLatency(
+          OperationType.INSERT_RECORD, StatementType.INSERT, System.currentTimeMillis() - t1);
     }
   }
 
@@ -1164,7 +1142,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         return getNotLoggedInStatus();
       }
 
-      PathUtils.isLegalSingleMeasurementLists(req.getMeasurementsList());
+      req.setMeasurementsList(
+          PathUtils.checkIsLegalSingleMeasurementListsAndUpdate(req.getMeasurementsList()));
 
       // Step 1: transfer from TSInsertTabletsReq to Statement
       InsertMultiTabletsStatement statement =
@@ -1199,7 +1178,10 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       return onNPEOrUnexpectedException(
           e, OperationType.INSERT_TABLETS, TSStatusCode.EXECUTE_STATEMENT_ERROR);
     } finally {
-      addOperationLatency(Operation.EXECUTE_RPC_BATCH_INSERT, t1);
+      addStatementExecutionLatency(
+          OperationType.INSERT_TABLETS,
+          StatementType.MULTI_BATCH_INSERT,
+          System.currentTimeMillis() - t1);
     }
   }
 
@@ -1212,7 +1194,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       }
 
       // check whether measurement is legal according to syntax convention
-      PathUtils.isLegalSingleMeasurements(req.getMeasurements());
+      req.setMeasurements(PathUtils.checkIsLegalSingleMeasurementsAndUpdate(req.getMeasurements()));
       // Step 1: transfer from TSInsertTabletReq to Statement
       InsertTabletStatement statement =
           (InsertTabletStatement) StatementGenerator.createStatement(req);
@@ -1246,7 +1228,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       return onNPEOrUnexpectedException(
           e, OperationType.INSERT_TABLET, TSStatusCode.EXECUTE_STATEMENT_ERROR);
     } finally {
-      addOperationLatency(Operation.EXECUTE_RPC_BATCH_INSERT, t1);
+      addStatementExecutionLatency(
+          OperationType.INSERT_TABLET, StatementType.BATCH_INSERT, System.currentTimeMillis() - t1);
     }
   }
 
@@ -1258,16 +1241,9 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         return getNotLoggedInStatus();
       }
 
-      if (AUDIT_LOGGER.isDebugEnabled()) {
-        AUDIT_LOGGER.debug(
-            "Session {} insertRecords, first device {}, first time {}",
-            SESSION_MANAGER.getCurrSession(),
-            req.prefixPaths.get(0),
-            req.getTimestamps().get(0));
-      }
-
       // check whether measurement is legal according to syntax convention
-      PathUtils.isLegalSingleMeasurementLists(req.getMeasurementsList());
+      req.setMeasurementsList(
+          PathUtils.checkIsLegalSingleMeasurementListsAndUpdate(req.getMeasurementsList()));
 
       InsertRowsStatement statement = (InsertRowsStatement) StatementGenerator.createStatement(req);
       // return success when this statement is empty because server doesn't need to execute it
@@ -1299,7 +1275,10 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       return onNPEOrUnexpectedException(
           e, OperationType.INSERT_STRING_RECORDS, TSStatusCode.EXECUTE_STATEMENT_ERROR);
     } finally {
-      addOperationLatency(Operation.EXECUTE_RPC_BATCH_INSERT, t1);
+      addStatementExecutionLatency(
+          OperationType.INSERT_STRING_RECORDS,
+          StatementType.BATCH_INSERT_ROWS,
+          System.currentTimeMillis() - t1);
     }
   }
 
@@ -1402,13 +1381,6 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         return getNotLoggedInStatus();
       }
 
-      if (AUDIT_LOGGER.isDebugEnabled()) {
-        AUDIT_LOGGER.debug(
-            "Session-{} create schema template {}",
-            SESSION_MANAGER.getCurrSession(),
-            req.getName());
-      }
-
       // Step 1: transfer from TSCreateSchemaTemplateReq to Statement
       CreateSchemaTemplateStatement statement = StatementGenerator.createStatement(req);
 
@@ -1441,13 +1413,14 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
   @Override
   public TSStatus appendSchemaTemplate(TSAppendSchemaTemplateReq req) {
-    // todo: check measurement using isLegalSingleMeasurements()
-    throw new UnsupportedOperationException();
+    return RpcUtils.getStatus(
+        TSStatusCode.UNSUPPORTED_OPERATION, "Modify template has not been supported.");
   }
 
   @Override
   public TSStatus pruneSchemaTemplate(TSPruneSchemaTemplateReq req) {
-    throw new UnsupportedOperationException();
+    return RpcUtils.getStatus(
+        TSStatusCode.UNSUPPORTED_OPERATION, "Modify template has not been supported.");
   }
 
   @Override
@@ -1502,9 +1475,6 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         return resp;
       }
 
-      QUERY_FREQUENCY_RECORDER.incrementAndGet();
-      AUDIT_LOGGER.debug("Session {} execute Query: {}", req.sessionId, statement);
-
       long queryId = SESSION_MANAGER.requestQueryId();
       // create and cache dataset
       ExecutionResult executionResult =
@@ -1551,7 +1521,10 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           onQueryException(e, "\"" + statement + "\". " + OperationType.EXECUTE_STATEMENT));
       return null;
     } finally {
-      addOperationLatency(Operation.EXECUTE_QUERY, startTime);
+      addStatementExecutionLatency(
+          OperationType.EXECUTE_STATEMENT,
+          statement.getType(),
+          System.currentTimeMillis() - startTime);
     }
   }
 
@@ -1562,16 +1535,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         return getNotLoggedInStatus();
       }
 
-      if (AUDIT_LOGGER.isDebugEnabled()) {
-        AUDIT_LOGGER.debug(
-            "Session-{} set schema template {}.{}",
-            SESSION_MANAGER.getCurrSession(),
-            req.getTemplateName(),
-            req.getPrefixPath());
-      }
-
       // Step 1: transfer from TSCreateSchemaTemplateReq to Statement
-
       SetSchemaTemplateStatement statement = StatementGenerator.createStatement(req);
 
       // permission check
@@ -1608,16 +1572,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         return getNotLoggedInStatus();
       }
 
-      if (AUDIT_LOGGER.isDebugEnabled()) {
-        AUDIT_LOGGER.debug(
-            "Session-{} unset schema template {} from {}",
-            SESSION_MANAGER.getCurrSession(),
-            req.getTemplateName(),
-            req.getPrefixPath());
-      }
-
       // Step 1: transfer from TSCreateSchemaTemplateReq to Statement
-
       UnsetSchemaTemplateStatement statement = StatementGenerator.createStatement(req);
 
       // permission check
@@ -1654,15 +1609,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         return getNotLoggedInStatus();
       }
 
-      if (AUDIT_LOGGER.isDebugEnabled()) {
-        AUDIT_LOGGER.debug(
-            "Session-{} drop schema template {}",
-            SESSION_MANAGER.getCurrSession(),
-            req.getTemplateName());
-      }
-
       // Step 1: transfer from TSCreateSchemaTemplateReq to Statement
-
       DropSchemaTemplateStatement statement = StatementGenerator.createStatement(req);
 
       // permission check
@@ -1712,6 +1659,11 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
   }
 
   @Override
+  public TSBackupConfigurationResp getBackupConfiguration() {
+    return new TSBackupConfigurationResp(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
+  }
+
+  @Override
   public TSConnectionInfoResp fetchAllConnectionsInfo() throws TException {
     return SESSION_MANAGER.getAllConnectionInfo();
   }
@@ -1724,14 +1676,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         return getNotLoggedInStatus();
       }
 
-      AUDIT_LOGGER.debug(
-          "Session {} insertRecord, device {}, time {}",
-          SESSION_MANAGER.getCurrSession(),
-          req.getPrefixPath(),
-          req.getTimestamp());
-
       // check whether measurement is legal according to syntax convention
-      PathUtils.isLegalSingleMeasurements(req.getMeasurements());
+      req.setMeasurements(PathUtils.checkIsLegalSingleMeasurementsAndUpdate(req.getMeasurements()));
 
       InsertRowStatement statement = (InsertRowStatement) StatementGenerator.createStatement(req);
 
@@ -1760,7 +1706,10 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       return onNPEOrUnexpectedException(
           e, OperationType.INSERT_STRING_RECORD, TSStatusCode.EXECUTE_STATEMENT_ERROR);
     } finally {
-      addOperationLatency(Operation.EXECUTE_RPC_BATCH_INSERT, t1);
+      addStatementExecutionLatency(
+          OperationType.INSERT_STRING_RECORD,
+          StatementType.INSERT,
+          System.currentTimeMillis() - t1);
     }
   }
 
@@ -1784,14 +1733,22 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
   }
 
   /** Add stat of operation into metrics */
-  private void addOperationLatency(Operation operation, long startTime) {
+  private void addStatementExecutionLatency(
+      OperationType operation, StatementType statementType, long costTime) {
+    if (statementType == null) {
+      return;
+    }
+
     MetricService.getInstance()
-        .histogram(
-            System.currentTimeMillis() - startTime,
-            Metric.OPERATION.toString(),
+        .timer(
+            costTime,
+            TimeUnit.MILLISECONDS,
+            Metric.STATEMENT_EXECUTION.toString(),
             MetricLevel.IMPORTANT,
-            "name",
-            operation.getName());
+            Tag.INTERFACE.toString(),
+            operation.toString(),
+            Tag.TYPE.toString(),
+            statementType.name());
   }
 
   @Override

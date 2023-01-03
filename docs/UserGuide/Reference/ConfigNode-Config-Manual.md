@@ -82,7 +82,7 @@ The global configuration of cluster is in ConfigNode.
 |:---:|:---|
 |Description| ConfigNode internal service port|
 |Type| Short Int : [0,65535] |
-|Default| 22277 |
+|Default| 10710 |
 |Effective|After restarting system|
 
 ### Consensus
@@ -93,7 +93,7 @@ The global configuration of cluster is in ConfigNode.
 |:---:|:---|
 |Description| ConfigNode data Consensus Port  |
 |Type| Short Int : [0,65535] |
-|Default| 22278 |
+|Default| 10720 |
 |Effective|After restarting system|
 
 ### Target Config Nodes
@@ -104,7 +104,7 @@ The global configuration of cluster is in ConfigNode.
 |:---:|:----------------------------------------------------------------------|
 |Description| Target ConfigNode address, for current ConfigNode to join the cluster |
 |Type| String                                                                |
-|Default| 127.0.0.1:22277                                                       |
+|Default| 127.0.0.1:10710                                                       |
 |Effective| After restarting system                                               |
 
 ### Directory configuration

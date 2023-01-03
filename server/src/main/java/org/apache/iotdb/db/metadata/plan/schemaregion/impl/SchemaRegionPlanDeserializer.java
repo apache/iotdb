@@ -26,6 +26,7 @@ import org.apache.iotdb.db.metadata.logfile.IDeserializer;
 import org.apache.iotdb.db.metadata.plan.schemaregion.ISchemaRegionPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.SchemaRegionPlanType;
 import org.apache.iotdb.db.metadata.plan.schemaregion.SchemaRegionPlanVisitor;
+import org.apache.iotdb.db.metadata.plan.schemaregion.impl.write.SchemaRegionWritePlanFactory;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IActivateTemplateInClusterPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IAutoCreateDeviceMNodePlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IChangeAliasPlan;
@@ -64,7 +65,7 @@ public class SchemaRegionPlanDeserializer implements IDeserializer<ISchemaRegion
   @Override
   public ISchemaRegionPlan deserialize(ByteBuffer byteBuffer) {
     ISchemaRegionPlan schemaRegionPlan =
-        SchemaRegionPlanFactory.getEmptyPlan(SchemaRegionPlanType.deserialize(byteBuffer));
+        SchemaRegionWritePlanFactory.getEmptyPlan(SchemaRegionPlanType.deserialize(byteBuffer));
     return schemaRegionPlan.accept(new SchemaRegionPlanDeserializeVisitor(), byteBuffer);
   }
 

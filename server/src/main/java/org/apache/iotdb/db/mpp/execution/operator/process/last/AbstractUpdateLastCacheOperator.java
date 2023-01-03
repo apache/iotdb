@@ -75,14 +75,14 @@ public abstract class AbstractUpdateLastCacheOperator implements ProcessOperator
       databaseName =
           ((DataDriverContext) operatorContext.getInstanceContext().getDriverContext())
               .getDataRegion()
-              .getStorageGroupName();
+              .getDatabaseName();
     }
     return databaseName;
   }
 
   @Override
   public boolean hasNext() {
-    return child.hasNext();
+    return child.hasNextWithTimer();
   }
 
   @Override

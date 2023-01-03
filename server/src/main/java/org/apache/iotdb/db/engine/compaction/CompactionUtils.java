@@ -23,11 +23,11 @@ import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
+import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
 import org.slf4j.Logger;
@@ -91,7 +91,7 @@ public class CompactionUtils {
     // serialize xxx.tsfile.resource
     targetResource.setFile(newFile);
     targetResource.serialize();
-    targetResource.close();
+    targetResource.closeWithoutSettingStatus();
   }
 
   /**
@@ -176,24 +176,13 @@ public class CompactionUtils {
     logger.info("{} [Compaction] Compaction starts to delete real file ", storageGroupName);
     boolean result = true;
     for (TsFileResource mergeTsFile : mergeTsFiles) {
-      if (!deleteTsFile(mergeTsFile)) {
+      if (!mergeTsFile.remove()) {
         result = false;
       }
       logger.info(
           "{} [Compaction] delete TsFile {}", storageGroupName, mergeTsFile.getTsFilePath());
     }
     return result;
-  }
-
-  public static boolean deleteTsFile(TsFileResource seqFile) {
-    try {
-      FileReaderManager.getInstance().closeFileAndRemoveReader(seqFile.getTsFilePath());
-      seqFile.remove();
-    } catch (IOException e) {
-      logger.error(e.getMessage(), e);
-      return false;
-    }
-    return true;
   }
 
   /** Delete all modification files for source files */
@@ -269,30 +258,37 @@ public class CompactionUtils {
             Long.compareUnsigned(
                 Long.parseLong(f1.getTsFile().getName().split("-")[0]),
                 Long.parseLong(f2.getTsFile().getName().split("-")[0])));
-    Map<String, Long> lastEndTimeMap = new HashMap<>();
-    TsFileResource prevTsFileResource = null;
+    // deviceID -> <TsFileResource, last end time>
+    Map<String, Pair<TsFileResource, Long>> lastEndTimeMap = new HashMap<>();
     for (TsFileResource resource : resources) {
+      if (resource.getTimeIndexType() != 1) {
+        // if time index is not device time index, then skip it
+        continue;
+      }
       Set<String> devices = resource.getDevices();
       for (String device : devices) {
         long currentStartTime = resource.getStartTime(device);
         long currentEndTime = resource.getEndTime(device);
-        long lastEndTime = lastEndTimeMap.computeIfAbsent(device, x -> Long.MIN_VALUE);
+        Pair<TsFileResource, Long> lastDeviceInfo =
+            lastEndTimeMap.computeIfAbsent(device, x -> new Pair<>(null, Long.MIN_VALUE));
+        long lastEndTime = lastDeviceInfo.right;
         if (lastEndTime >= currentStartTime) {
           logger.error(
               "{} Device {} is overlapped between {} and {}, end time in {} is {}, start time in {} is {}",
               storageGroupName,
               device,
-              prevTsFileResource,
+              lastDeviceInfo.left,
               resource,
-              prevTsFileResource,
+              lastDeviceInfo.left,
               lastEndTime,
               resource,
               currentStartTime);
           return false;
         }
-        lastEndTimeMap.put(device, currentEndTime);
+        lastDeviceInfo.left = resource;
+        lastDeviceInfo.right = currentEndTime;
+        lastEndTimeMap.put(device, lastDeviceInfo);
       }
-      prevTsFileResource = resource;
     }
     return true;
   }

@@ -21,6 +21,7 @@ package org.apache.iotdb.db.mpp.plan.execution.config.metadata;
 
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTimeSlotListResp;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
@@ -56,7 +57,11 @@ public class GetTimeSlotListTask implements IConfigTask {
 
   public static void buildTsBlock(TsBlockBuilder builder, TTimePartitionSlot timePartitionSlot) {
     builder.getTimeColumnBuilder().writeLong(0L);
-    builder.getColumnBuilder(0).writeLong(timePartitionSlot.getStartTime());
+    builder
+        .getColumnBuilder(0)
+        .writeLong(
+            timePartitionSlot.getStartTime()
+                / IoTDBDescriptor.getInstance().getConfig().getTimePartitionInterval());
     builder.declarePosition();
   }
 
