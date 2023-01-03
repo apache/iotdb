@@ -25,6 +25,7 @@ import org.apache.iotdb.db.mpp.execution.operator.process.join.merge.ColumnMerge
 import org.apache.iotdb.db.mpp.execution.operator.process.join.merge.TimeComparator;
 import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.db.utils.datastructure.TimeSelector;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
@@ -101,6 +102,11 @@ public class RowBasedTimeJoinOperator extends AbstractProcessOperator {
     this.tsBlockBuilder = new TsBlockBuilder(dataTypes);
     this.mergers = mergers;
     this.comparator = comparator;
+    this.maxReturnSize =
+        Math.min(
+            maxReturnSize,
+            (1L + outputColumnCount)
+                * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte());
   }
 
   @Override
