@@ -93,11 +93,29 @@ public class ColumnHeaderConstant {
   public static final String PATH_PATTERN = "PathPattern";
   public static final String CLASS_NAME = "ClassName";
 
+  // show cluster status
+  public static final String NODE_TYPE_CONFIG_NODE = "ConfigNode";
+  public static final String NODE_TYPE_DATA_NODE = "DataNode";
+  public static final String COLUMN_CLUSTER_NAME = "ClusterName";
+  public static final String CONFIG_NODE_CONSENSUS_PROTOCOL_CLASS =
+      "ConfigNodeConsensusProtocolClass";
+  public static final String DATA_REGION_CONSENSUS_PROTOCOL_CLASS =
+      "DataRegionConsensusProtocolClass";
+  public static final String SCHEMA_REGION_CONSENSUS_PROTOCOL_CLASS =
+      "SchemaRegionConsensusProtocolClass";
+  public static final String SERIES_SLOT_NUM = "SeriesSlotNum";
+  public static final String SERIES_SLOT_EXECUTOR_CLASS = "SeriesSlotExecutorClass";
+  public static final String DEFAULT_TTL = "DefaultTTL(ms)";
+  public static final String SCHEMA_REGION_PER_DATA_NODE = "SchemaRegionPerDataNode";
+  public static final String DATA_REGION_PER_PROCESSOR = "DataRegionPerProcessor";
+  public static final String READ_CONSISTENCY_LEVEL = "ReadConsistencyLevel";
+  public static final String DISK_SPACE_WARNING_THRESHOLD = "DiskSpaceWarningThreshold";
+  public static final String LEAST_DATA_REGION_GROUP_NUM = "LeastDataRegionGroupNum";
+
   // column names for show region statement
   public static final String REGION_ID = "RegionId";
   public static final String TYPE = "Type";
   public static final String DATA_NODE_ID = "DataNodeId";
-  public static final String SERIES_SLOT_NUM = "SeriesSlotNum";
   public static final String TIME_SLOT_NUM = "TimeSlotNum";
   public static final String SERIES_SLOT_ID = "SeriesSlotId";
   public static final String TIME_SLOT_ID = "TimeSlotId";

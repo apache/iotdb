@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.mpp.plan.execution.config.metadata;
 
-import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.confignode.rpc.thrift.TClusterParameters;
 import org.apache.iotdb.confignode.rpc.thrift.TShowVariablesResp;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
@@ -64,63 +63,63 @@ public class ShowVariablesTask implements IConfigTask {
     TClusterParameters clusterParameters = showVariablesResp.getClusterParameters();
     buildTSBlock(
         builder,
-        new Binary(IoTDBConstant.CLUSTER_NAME),
+        new Binary(ColumnHeaderConstant.COLUMN_CLUSTER_NAME),
         new Binary(clusterParameters.getClusterName()));
     buildTSBlock(
         builder,
-        new Binary(IoTDBConstant.DATA_REPLICATION_FACTOR),
+        new Binary(ColumnHeaderConstant.DATA_REPLICATION_FACTOR),
         new Binary(String.valueOf(clusterParameters.getDataReplicationFactor())));
     buildTSBlock(
         builder,
-        new Binary(IoTDBConstant.SCHEMA_REPLICATION_FACTOR),
+        new Binary(ColumnHeaderConstant.SCHEMA_REPLICATION_FACTOR),
         new Binary(String.valueOf(clusterParameters.getSchemaReplicationFactor())));
     buildTSBlock(
         builder,
-        new Binary(IoTDBConstant.DATA_REGION_CONSENSUS_PROTOCOL_CLASS),
+        new Binary(ColumnHeaderConstant.DATA_REGION_CONSENSUS_PROTOCOL_CLASS),
         new Binary(clusterParameters.getDataRegionConsensusProtocolClass()));
     buildTSBlock(
         builder,
-        new Binary(IoTDBConstant.SCHEMA_REGION_CONSENSUS_PROTOCOL_CLASS),
+        new Binary(ColumnHeaderConstant.SCHEMA_REGION_CONSENSUS_PROTOCOL_CLASS),
         new Binary(clusterParameters.getSchemaRegionConsensusProtocolClass()));
     buildTSBlock(
         builder,
-        new Binary(IoTDBConstant.CONFIG_NODE_CONSENSUS_PROTOCOL_CLASS),
+        new Binary(ColumnHeaderConstant.CONFIG_NODE_CONSENSUS_PROTOCOL_CLASS),
         new Binary(clusterParameters.getConfigNodeConsensusProtocolClass()));
     buildTSBlock(
         builder,
-        new Binary(IoTDBConstant.TIME_PARTITION_INTERVAL),
+        new Binary(ColumnHeaderConstant.TIME_PARTITION_INTERVAL),
         new Binary(String.valueOf(clusterParameters.getTimePartitionInterval())));
     buildTSBlock(
         builder,
-        new Binary(IoTDBConstant.DEFAULT_TTL),
+        new Binary(ColumnHeaderConstant.DEFAULT_TTL),
         new Binary(String.valueOf(clusterParameters.getDefaultTTL())));
     buildTSBlock(
         builder,
-        new Binary(IoTDBConstant.READ_CONSISTENCY_LEVEL),
+        new Binary(ColumnHeaderConstant.READ_CONSISTENCY_LEVEL),
         new Binary(String.valueOf(clusterParameters.getReadConsistencyLevel())));
     buildTSBlock(
         builder,
-        new Binary(IoTDBConstant.SCHEMA_REGION_PER_DATA_NODE),
+        new Binary(ColumnHeaderConstant.SCHEMA_REGION_PER_DATA_NODE),
         new Binary(String.valueOf(clusterParameters.getSchemaRegionPerDataNode())));
     buildTSBlock(
         builder,
-        new Binary(IoTDBConstant.DATA_REGION_PER_PROCESSOR),
+        new Binary(ColumnHeaderConstant.DATA_REGION_PER_PROCESSOR),
         new Binary(String.valueOf(clusterParameters.getDataRegionPerProcessor())));
     buildTSBlock(
         builder,
-        new Binary(IoTDBConstant.LEAST_DATA_REGION_GROUP_NUM),
+        new Binary(ColumnHeaderConstant.LEAST_DATA_REGION_GROUP_NUM),
         new Binary(String.valueOf(clusterParameters.getLeastDataRegionGroupNum())));
     buildTSBlock(
         builder,
-        new Binary(IoTDBConstant.SERIES_SLOT_NUM),
+        new Binary(ColumnHeaderConstant.SERIES_SLOT_NUM),
         new Binary(String.valueOf(clusterParameters.getSeriesPartitionSlotNum())));
     buildTSBlock(
         builder,
-        new Binary(IoTDBConstant.SERIES_SLOT_EXECUTOR_CLASS),
+        new Binary(ColumnHeaderConstant.SERIES_SLOT_EXECUTOR_CLASS),
         new Binary(clusterParameters.getSeriesPartitionExecutorClass()));
     buildTSBlock(
         builder,
-        new Binary(IoTDBConstant.DISK_SPACE_WARNING_THRESHOLD),
+        new Binary(ColumnHeaderConstant.DISK_SPACE_WARNING_THRESHOLD),
         new Binary(String.valueOf(clusterParameters.getDiskSpaceWarningThreshold())));
 
     DatasetHeader datasetHeader = DatasetHeaderFactory.getShowClusterParametersHeader();

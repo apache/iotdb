@@ -292,10 +292,10 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         analyzeGroupByLevel(analysis, queryStatement, outputExpressionMap, outputExpressions);
         analyzeGroupByTag(analysis, queryStatement, outputExpressions);
 
-        Set<Expression> selectExpressions =
-            outputExpressions.stream()
-                .map(Pair::getLeft)
-                .collect(Collectors.toCollection(LinkedHashSet::new));
+        Set<Expression> selectExpressions = new LinkedHashSet<>();
+        for (Pair<Expression, String> outputExpressionAndAlias : outputExpressions) {
+          selectExpressions.add(outputExpressionAndAlias.left);
+        }
         analysis.setSelectExpressions(selectExpressions);
 
         analyzeAggregation(analysis, queryStatement);
@@ -1075,16 +1075,13 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     if (queryStatement.isAlignByDevice()) {
       columnHeaders.add(new ColumnHeader(DEVICE, TSDataType.TEXT, null));
     }
-    columnHeaders.addAll(
-        outputExpressions.stream()
-            .map(
-                expressionAliasPair -> {
-                  String columnName = expressionAliasPair.left.getExpressionString();
-                  String alias = expressionAliasPair.right;
-                  return new ColumnHeader(
-                      columnName, analysis.getType(expressionAliasPair.left), alias);
-                })
-            .collect(Collectors.toList()));
+    for (Pair<Expression, String> expressionAliasPair : outputExpressions) {
+      columnHeaders.add(
+          new ColumnHeader(
+              expressionAliasPair.left.getExpressionString(),
+              analysis.getType(expressionAliasPair.left),
+              expressionAliasPair.right));
+    }
     analysis.setRespDatasetHeader(new DatasetHeader(columnHeaders, isIgnoreTimestamp));
   }
 
@@ -2528,19 +2525,12 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     }
     analysis.setRunningDataNodeLocations(allRunningDataNodeLocations);
 
-    Set<Expression> sourceExpressions =
-        analysis.getRespDatasetHeader().getColumnHeaders().stream()
-            .map(
-                columnHeader -> {
-                  try {
-                    return new TimeSeriesOperand(
-                        new MeasurementPath(
-                            columnHeader.getColumnName(), columnHeader.getColumnType()));
-                  } catch (IllegalPathException ignored) {
-                  }
-                  return null;
-                })
-            .collect(Collectors.toSet());
+    Set<Expression> sourceExpressions = new HashSet<>();
+    for (ColumnHeader columnHeader : analysis.getRespDatasetHeader().getColumnHeaders()) {
+      sourceExpressions.add(
+          TimeSeriesOperand.constructColumnHeaderExpression(
+              columnHeader.getColumnName(), columnHeader.getColumnType()));
+    }
     analysis.setSourceExpressions(sourceExpressions);
     sourceExpressions.forEach(expression -> analyzeExpression(analysis, expression));
 
