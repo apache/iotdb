@@ -543,7 +543,9 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
   }
 
   private void addSortForEachLastQueryNode(PlanNode root, OrderByParameter orderByParameter) {
-    if (root instanceof LastQueryNode) {
+    if (root instanceof LastQueryNode
+        && (root.getChildren().get(0) instanceof LastQueryScanNode
+            || root.getChildren().get(0) instanceof AlignedLastQueryScanNode)) {
       LastQueryNode lastQueryNode = (LastQueryNode) root;
       lastQueryNode.setMergeOrderParameter(orderByParameter);
       // sort children node
