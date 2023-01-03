@@ -60,6 +60,11 @@ public class AlignedSeriesScanOperator extends AbstractDataSourceOperator {
     // time + all value columns
     this.builder = new TsBlockBuilder(seriesScanUtil.getTsDataTypeList());
     this.valueColumnCount = seriesPath.getColumnNum();
+    this.maxReturnSize =
+        Math.min(
+            maxReturnSize,
+            (1L + valueColumnCount)
+                * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte());
   }
 
   @Override
@@ -124,8 +129,10 @@ public class AlignedSeriesScanOperator extends AbstractDataSourceOperator {
 
   @Override
   public long calculateMaxPeekMemory() {
-    return (1L + seriesScanUtil.getTsDataTypeList().size())
-        * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte();
+    return Math.max(
+        maxReturnSize,
+        (1L + seriesScanUtil.getTsDataTypeList().size())
+            * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte());
   }
 
   @Override
