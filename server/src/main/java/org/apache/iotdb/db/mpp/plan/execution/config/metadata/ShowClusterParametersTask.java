@@ -64,7 +64,7 @@ public class ShowClusterParametersTask implements IConfigTask {
     TClusterParameters clusterParameters = showClusterParametersResp.getClusterParameters();
     buildTSBlock(
         builder,
-        new Binary(ColumnHeaderConstant.CLUSTER_NAME),
+        new Binary(ColumnHeaderConstant.COLUMN_CLUSTER_NAME),
         new Binary(clusterParameters.getClusterName()));
     buildTSBlock(
         builder,
