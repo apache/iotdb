@@ -24,7 +24,7 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.mpp.metric.QueryMetricsManager;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.reader.chunk.DiskChunkLoader;
-import org.apache.iotdb.db.utils.QueryUtils;
+import org.apache.iotdb.db.utils.ModificationUtils;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ITimeSeriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
@@ -79,7 +79,7 @@ public class DiskChunkMetadataLoader implements IChunkMetadataLoader {
       }
 
       if (!pathModifications.isEmpty()) {
-        QueryUtils.modifyChunkMetaData(chunkMetadataList, pathModifications);
+        ModificationUtils.modifyChunkMetaData(chunkMetadataList, pathModifications);
       }
 
       if (context.isDebug()) {

@@ -34,11 +34,11 @@ import com.google.common.util.concurrent.SettableFuture;
 
 import javax.annotation.concurrent.NotThreadSafe;
 
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.mpp.metric.QueryExecutionMetricSet.QUERY_RESOURCE_INIT;
 
@@ -132,17 +132,20 @@ public class DataDriver extends Driver {
     IDataRegionForQuery dataRegion = context.getDataRegion();
     dataRegion.readLock();
     try {
-      List<PartialPath> pathList =
-          context.getPaths().stream().map(IDTable::translateQueryPath).collect(Collectors.toList());
-      // when all the selected series are under the same device, the QueryDataSource will be
-      // filtered according to timeIndex
-      Set<String> selectedDeviceIdSet =
-          pathList.stream().map(PartialPath::getDevice).collect(Collectors.toSet());
+      List<PartialPath> pathList = new ArrayList<>();
+      Set<String> selectedDeviceIdSet = new HashSet<>();
+      for (PartialPath path : context.getPaths()) {
+        PartialPath translatedPath = IDTable.translateQueryPath(path);
+        pathList.add(translatedPath);
+        selectedDeviceIdSet.add(translatedPath.getDevice());
+      }
 
       Filter timeFilter = context.getTimeFilter();
       QueryDataSource dataSource =
           dataRegion.query(
               pathList,
+              // when all the selected series are under the same device, the QueryDataSource will be
+              // filtered according to timeIndex
               selectedDeviceIdSet.size() == 1 ? selectedDeviceIdSet.iterator().next() : null,
               driverContext.getFragmentInstanceContext(),
               timeFilter != null ? timeFilter.copy() : null);

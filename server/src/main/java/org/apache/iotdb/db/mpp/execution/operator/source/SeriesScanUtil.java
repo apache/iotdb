@@ -31,7 +31,6 @@ import org.apache.iotdb.db.query.reader.chunk.MemPageReader;
 import org.apache.iotdb.db.query.reader.universal.DescPriorityMergeReader;
 import org.apache.iotdb.db.query.reader.universal.PriorityMergeReader;
 import org.apache.iotdb.db.utils.FileLoaderUtils;
-import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ITimeSeriesMetadata;
@@ -170,7 +169,7 @@ public class SeriesScanUtil {
   }
 
   public void initQueryDataSource(QueryDataSource dataSource) {
-    QueryUtils.fillOrderIndexes(dataSource, seriesPath.getDevice(), orderUtils.getAscending());
+    dataSource.fillOrderIndexes(seriesPath.getDevice(), orderUtils.getAscending());
     this.dataSource = dataSource;
     this.timeFilter = dataSource.updateFilterUsingTTL(timeFilter);
     if (this.valueFilter != null) {
@@ -183,7 +182,7 @@ public class SeriesScanUtil {
   public void initQueryDataSource(
       List<TsFileResource> seqFileResource, List<TsFileResource> unseqFileResource) {
     dataSource = new QueryDataSource(seqFileResource, unseqFileResource);
-    QueryUtils.fillOrderIndexes(dataSource, seriesPath.getDevice(), orderUtils.getAscending());
+    dataSource.fillOrderIndexes(seriesPath.getDevice(), orderUtils.getAscending());
     orderUtils.setCurSeqFileIndex(dataSource);
   }
 
