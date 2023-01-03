@@ -237,6 +237,8 @@ public class PartitionInfo implements SnapshotProcessor {
       case ROLLBACK:
         storageGroupPartitionTable.setPredeleted(false);
         break;
+      default:
+        break;
     }
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }

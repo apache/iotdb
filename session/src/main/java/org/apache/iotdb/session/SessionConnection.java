@@ -380,7 +380,8 @@ public class SessionConnection {
         execResp.queryResult,
         execResp.isIgnoreTimeStamp(),
         timeout,
-        execResp.moreData);
+        execResp.moreData,
+        session.fetchSize);
   }
 
   protected void executeNonQueryStatement(String sql)

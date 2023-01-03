@@ -43,7 +43,7 @@ public class CQScheduleTask implements Runnable {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(CQScheduleTask.class);
 
-  private static final long DEFAULT_RETRY_WAIT_TIME_IN_MS = 20 * 1_000;
+  private static final long DEFAULT_RETRY_WAIT_TIME_IN_MS = 20L * 1_000;
 
   private final String cqId;
   private final long everyInterval;
@@ -190,18 +190,6 @@ public class CQScheduleTask implements Runnable {
     return configManager.getConsensusManager().isLeader() && !executor.isShutdown();
   }
 
-  private void updateExecutionTime() {
-    if (timeoutPolicy == TimeoutPolicy.BLOCKED) {
-      executionTime = executionTime + everyInterval;
-    } else if (timeoutPolicy == TimeoutPolicy.DISCARD) {
-      long now = System.currentTimeMillis();
-      executionTime =
-          executionTime + ((now - executionTime - 1) / everyInterval + 1) * everyInterval;
-    } else {
-      throw new IllegalArgumentException("Unknown TimeoutPolicy: " + timeoutPolicy);
-    }
-  }
-
   private void submitSelf(long delay, TimeUnit unit) {
     executor.schedule(this, delay, unit);
   }
@@ -214,6 +202,18 @@ public class CQScheduleTask implements Runnable {
     public AsyncExecuteCQCallback(long startTime, long endTime) {
       this.startTime = startTime;
       this.endTime = endTime;
+    }
+
+    private void updateExecutionTime() {
+      if (timeoutPolicy == TimeoutPolicy.BLOCKED) {
+        executionTime = executionTime + everyInterval;
+      } else if (timeoutPolicy == TimeoutPolicy.DISCARD) {
+        long now = System.currentTimeMillis();
+        executionTime =
+            executionTime + ((now - executionTime - 1) / everyInterval + 1) * everyInterval;
+      } else {
+        throw new IllegalArgumentException("Unknown TimeoutPolicy: " + timeoutPolicy);
+      }
     }
 
     @Override
