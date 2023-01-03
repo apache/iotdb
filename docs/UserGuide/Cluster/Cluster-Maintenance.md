@@ -32,7 +32,7 @@ Eg:
 ```
 IoTDB> show variables
 +----------------------------------+-----------------------------------------------------------------+
-|                 ClusterParameters|                                                            Value|
+|                         Variables|                                                            Value|
 +----------------------------------+-----------------------------------------------------------------+
 |                       ClusterName|                                                   defaultCluster|
 |             DataReplicationFactor|                                                                1|
@@ -51,7 +51,7 @@ IoTDB> show variables
 |         DiskSpaceWarningThreshold|                                                             0.05|
 +----------------------------------+-----------------------------------------------------------------+
 Total line number = 15
-It costs 0.242s
+It costs 0.225s
 ```
 
 **Notice:** Ensure that all key parameters displayed in this SQL are consist on each node in the same cluster

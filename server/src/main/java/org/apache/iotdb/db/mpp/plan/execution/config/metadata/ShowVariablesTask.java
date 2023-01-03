@@ -55,7 +55,7 @@ public class ShowVariablesTask implements IConfigTask {
   public static void buildTSBlock(
       TShowVariablesResp showVariablesResp, SettableFuture<ConfigTaskResult> future) {
     List<TSDataType> outputDataTypes =
-        ColumnHeaderConstant.showClusterParametersColumnHeaders.stream()
+        ColumnHeaderConstant.showVariablesColumnHeaders.stream()
             .map(ColumnHeader::getColumnType)
             .collect(Collectors.toList());
     TsBlockBuilder builder = new TsBlockBuilder(outputDataTypes);

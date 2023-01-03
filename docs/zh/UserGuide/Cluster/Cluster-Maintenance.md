@@ -32,7 +32,7 @@ SHOW VARIABLES
 ```
 IoTDB> show variables
 +----------------------------------+-----------------------------------------------------------------+
-|                 ClusterParameters|                                                            Value|
+|                         Variables|                                                            Value|
 +----------------------------------+-----------------------------------------------------------------+
 |                       ClusterName|                                                   defaultCluster|
 |             DataReplicationFactor|                                                                1|
@@ -51,7 +51,7 @@ IoTDB> show variables
 |         DiskSpaceWarningThreshold|                                                             0.05|
 +----------------------------------+-----------------------------------------------------------------+
 Total line number = 15
-It costs 0.242s
+It costs 0.225s
 ```
 
 **注意：** 必须保证该 SQL 展示的所有配置参数在同一集群各个节点完全一致
