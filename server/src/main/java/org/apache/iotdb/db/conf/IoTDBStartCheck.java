@@ -437,8 +437,8 @@ public class IoTDBStartCheck {
     }
 
     // load configuration from system properties only when start as Data node
-    if (properties.containsKey(CLUSTER_NAME)) {
-      config.setClusterName(properties.getProperty(CLUSTER_NAME));
+    if (properties.containsKey(IoTDBConstant.CLUSTER_NAME)) {
+      config.setClusterName(properties.getProperty(IoTDBConstant.CLUSTER_NAME));
     }
     if (properties.containsKey(DATA_NODE_ID)) {
       config.setDataNodeId(Integer.parseInt(properties.getProperty(DATA_NODE_ID)));
@@ -483,7 +483,7 @@ public class IoTDBStartCheck {
     reloadProperties();
 
     try (FileOutputStream tmpFOS = new FileOutputStream(tmpPropertiesFile.toString())) {
-      properties.setProperty(CLUSTER_NAME, clusterName);
+      properties.setProperty(IoTDBConstant.CLUSTER_NAME, clusterName);
       properties.setProperty(DATA_NODE_ID, String.valueOf(dataNodeId));
       properties.store(tmpFOS, SYSTEM_PROPERTIES_STRING);
       // serialize finished, delete old system.properties file
