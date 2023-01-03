@@ -28,6 +28,7 @@ import org.apache.iotdb.db.mpp.execution.driver.SchemaDriverContext;
 import org.apache.iotdb.db.mpp.execution.exchange.ISinkHandle;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
+import org.apache.iotdb.db.mpp.execution.operator.source.ExchangeOperator;
 import org.apache.iotdb.db.mpp.execution.timer.RuleBasedTimeSliceAllocator;
 import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -57,6 +58,7 @@ public class LocalExecutionPlanContext {
   // this is shared with all subContexts
   private AtomicInteger nextPipelineId;
   private List<PipelineDriverFactory> pipelineDriverFactories;
+  private List<ExchangeOperator> exchangeOperatorList = new ArrayList<>();
   private int exchangeSumNum = 0;
 
   private final long dataRegionTTL;
@@ -97,6 +99,8 @@ public class LocalExecutionPlanContext {
     this.nextPipelineId = parentContext.nextPipelineId;
     this.pipelineDriverFactories = parentContext.pipelineDriverFactories;
     this.exchangeSumNum = parentContext.exchangeSumNum;
+    this.exchangeOperatorList = parentContext.exchangeOperatorList;
+    this.cachedDataTypes = parentContext.cachedDataTypes;
     this.driverContext =
         parentContext.getDriverContext().createSubDriverContext(getNextPipelineId());
   }
@@ -166,6 +170,18 @@ public class LocalExecutionPlanContext {
 
   public void addExchangeSumNum(int addValue) {
     this.exchangeSumNum += addValue;
+  }
+
+  public void addExchangeOperator(ExchangeOperator exchangeOperator) {
+    this.exchangeOperatorList.add(exchangeOperator);
+  }
+
+  public void setMaxBytesOneHandleCanReserve() {
+    exchangeOperatorList.forEach(
+        exchangeOperator ->
+            exchangeOperator
+                .getSourceHandle()
+                .setMaxBytesCanReserve(getMaxBytesOneHandleCanReserve()));
   }
 
   public Set<String> getAllSensors(String deviceId, String sensorId) {
