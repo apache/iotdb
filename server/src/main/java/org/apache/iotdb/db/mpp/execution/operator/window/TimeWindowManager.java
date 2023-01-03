@@ -146,4 +146,9 @@ public class TimeWindowManager implements IWindowManager {
   public boolean notInitedLastTimeWindow() {
     return !this.initialized;
   }
+
+  @Override
+  public boolean needSkipInAdvance() {
+    return false;
+  }
 }

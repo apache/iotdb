@@ -46,6 +46,8 @@ public class RawDataAggregationOperator extends SingleInputAggregationOperator {
 
   private final IWindowManager windowManager;
 
+  private boolean isSkipping = false;
+
   public RawDataAggregationOperator(
       OperatorContext operatorContext,
       List<Aggregator> aggregators,
@@ -71,13 +73,16 @@ public class RawDataAggregationOperator extends SingleInputAggregationOperator {
 
   @Override
   protected boolean calculateNextAggregationResult() {
-    while (!calculateFromRawData()) {
+
+    // if isSkipping is true, just get the tsBlock directly.
+    while (isSkipping || !calculateFromRawData()) {
       inputTsBlock = null;
 
       // NOTE: child.next() can only be invoked once
       if (child.hasNext() && canCallNext) {
         inputTsBlock = child.next();
         canCallNext = false;
+        if (isSkipping) break;
       } else if (child.hasNext()) {
         // if child still has next but can't be invoked now
         return false;
@@ -91,9 +96,19 @@ public class RawDataAggregationOperator extends SingleInputAggregationOperator {
       }
     }
 
-    updateResultTsBlock();
     // Step into next window
-    windowManager.next();
+    // if isSkipping is true, don't need to enter next window again
+    if (!isSkipping) windowManager.next();
+
+    // When some windows without cached endTime trying to output endTime,
+    // they need to skip the points in lastWindow in advance to get endTime
+    if (windowManager.needSkipInAdvance()) {
+      isSkipping = true;
+      inputTsBlock = windowManager.skipPointsOutOfCurWindow(inputTsBlock);
+      if ((inputTsBlock == null || inputTsBlock.isEmpty()) && child.hasNext()) return canCallNext;
+      isSkipping = false;
+    }
+    updateResultTsBlock();
 
     return true;
   }

@@ -102,4 +102,13 @@ public interface IWindowManager {
   void appendAggregationResult(TsBlockBuilder resultTsBlockBuilder, List<Aggregator> aggregators);
 
   boolean notInitedLastTimeWindow();
+
+  /**
+   * When endTime is required in resultSet, operator should skip the points in last window directly
+   * instead of a default lazy way to get the endTime for constructing the result tsBlock.
+   *
+   * <p>For the windows like TimeWindow which has already cached endTime, this method always return
+   * false.
+   */
+  boolean needSkipInAdvance();
 }

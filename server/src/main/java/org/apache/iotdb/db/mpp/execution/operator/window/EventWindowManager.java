@@ -127,4 +127,9 @@ public abstract class EventWindowManager implements IWindowManager {
   public boolean notInitedLastTimeWindow() {
     return false;
   }
+
+  @Override
+  public boolean needSkipInAdvance() {
+    return windowParameter.isNeedOutputEndTime();
+  }
 }
