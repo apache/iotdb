@@ -20,7 +20,7 @@ package org.apache.iotdb.db.mpp.execution.operator.process.join;
 
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
-import org.apache.iotdb.db.mpp.execution.operator.process.ProcessOperator;
+import org.apache.iotdb.db.mpp.execution.operator.process.AbstractProcessOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.join.merge.ColumnMerger;
 import org.apache.iotdb.db.mpp.execution.operator.process.join.merge.TimeComparator;
 import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
@@ -41,10 +41,9 @@ import java.util.List;
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.util.concurrent.Futures.successfulAsList;
 
-public class RowBasedTimeJoinOperator implements ProcessOperator {
+public class RowBasedTimeJoinOperator extends AbstractProcessOperator {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(RowBasedTimeJoinOperator.class);
-  private final OperatorContext operatorContext;
 
   private final List<Operator> children;
 
@@ -113,11 +112,6 @@ public class RowBasedTimeJoinOperator implements ProcessOperator {
   }
 
   @Override
-  public OperatorContext getOperatorContext() {
-    return operatorContext;
-  }
-
-  @Override
   public ListenableFuture<?> isBlocked() {
     List<ListenableFuture<?>> listenableFutures = new ArrayList<>();
     for (int i = 0; i < inputOperatorsCount; i++) {
@@ -134,7 +128,7 @@ public class RowBasedTimeJoinOperator implements ProcessOperator {
   @Override
   public TsBlock next() {
     if (retainedTsBlock != null) {
-      return getResultTsBlock();
+      return getResultFromRetainedTsBlock();
     }
     tsBlockBuilder.reset();
     // end time for returned TsBlock this time, it's the min/max end time among all the children
@@ -207,25 +201,10 @@ public class RowBasedTimeJoinOperator implements ProcessOperator {
       }
       tsBlockBuilder.declarePosition();
     } while (currentTime < currentEndTime && !timeSelector.isEmpty());
-    retainedTsBlock = tsBlockBuilder.build();
-    LOGGER.info("Current tsBlock size is : {}", retainedTsBlock.getRetainedSizeInBytes());
-    return getResultTsBlock();
-  }
 
-  private TsBlock getResultTsBlock() {
-    long maxSizePerTsBlock = TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
-    long maxLength = maxSizePerTsBlock / (1 + outputColumnCount);
-    TsBlock resultTsBlock;
-    if (retainedTsBlock.getPositionCount() - retainedStartOffset < maxLength) {
-      resultTsBlock = retainedTsBlock.subTsBlock(retainedStartOffset);
-      retainedTsBlock = null;
-      retainedStartOffset = 0;
-    } else {
-      resultTsBlock = retainedTsBlock.getRegion(retainedStartOffset, (int) maxLength);
-      retainedStartOffset += maxLength;
-    }
-    LOGGER.debug("Current tsBlock size is : {}", resultTsBlock.getRetainedSizeInBytes());
-    return resultTsBlock;
+    resultTsBlock = tsBlockBuilder.build();
+    tsBlockBuilder.reset();
+    return checkTsBlockSizeAndGetResult();
   }
 
   @Override
@@ -266,8 +245,8 @@ public class RowBasedTimeJoinOperator implements ProcessOperator {
     if (retainedTsBlock != null) {
       return false;
     }
-    finished = true;
 
+    finished = true;
     for (int i = 0; i < inputOperatorsCount; i++) {
       // has more tsBlock output from children[i] or has cached tsBlock in inputTsBlocks[i]
       if (!noMoreTsBlocks[i] || !empty(i)) {
