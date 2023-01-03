@@ -43,11 +43,27 @@ public class ChimpEncoder extends Encoder {
 
   private byte buffer = 0;
   private int bitsLeft = Byte.SIZE;
-  private long storedValue = 0;
+  private int previousValues = 128;
+  private int previousValuesLog2;
+  private int threshold;
+  private long storedValues[];
+  private int setLsb;
+  private int[] indices;
+  private int index = 0;
+  private int current = 0;
+  private int flagOneSize;
+  private int flagZeroSize;
 
 
   public ChimpEncoder() {
     super(TSEncoding.CHIMP);
+    this.previousValuesLog2 =  (int)(Math.log(previousValues) / Math.log(2));
+    this.threshold = 6 + previousValuesLog2;
+    this.setLsb = (int) Math.pow(2, threshold + 1) - 1;
+    this.indices = new int[(int) Math.pow(2, threshold + 1)];
+    this.storedValues = new long[previousValues];
+    this.flagZeroSize = previousValuesLog2 + 2;
+    this.flagOneSize = previousValuesLog2 + 11;
   }
 
   @Override
@@ -97,7 +113,10 @@ public class ChimpEncoder extends Encoder {
 
     buffer = 0;
     bitsLeft = Byte.SIZE;
-    storedValue = 0;
+    this.current = 0;
+    this.indices = new int[(int) Math.pow(2, threshold + 1)];
+    this.storedValues = new long[previousValues];
+    
   }
 
   /** Stores a 0 and increases the count of bits by 1 */
@@ -175,44 +194,62 @@ public class ChimpEncoder extends Encoder {
   }
   
   private void writeFirst(long value, ByteArrayOutputStream out) {
-	    storedValue = value;
+	  storedValues[current] = value;
 	    writeBits(value, VALUE_BITS_LENGTH_64BIT, out);
+        indices[(int) value & setLsb] = index;
 	  }
 
   private void compressValue(long value, ByteArrayOutputStream out) {
-	  long xor = storedValue ^ value;
+	int key = (int) value & setLsb;
+  	long xor;
+  	int previousIndex;
+  	int trailingZeros = 0;
+  	int currIndex = indices[key];
+  	if ((index - currIndex) < previousValues) {
+  		long tempXor = value ^ storedValues[currIndex % previousValues];
+  		trailingZeros = Long.numberOfTrailingZeros(tempXor);
+  		if (trailingZeros > threshold) {
+  			previousIndex = currIndex % previousValues;
+  			xor = tempXor;
+  		} else {
+  			previousIndex =  index % previousValues;
+  			xor = storedValues[previousIndex] ^ value;
+  		}
+  	} else {
+  		previousIndex =  index % previousValues;
+  		xor = storedValues[previousIndex] ^ value;
+  	}
+
       if(xor == 0) {
-          // Write 0
-    	  skipBit(out);
-    	  skipBit(out);
-//          size += 2;
+//    	  System.out.println("CB: 00");
+    	  writeBits(previousIndex, this.flagZeroSize, out);
           storedLeadingZeros = 65;
       } else {
           int leadingZeros = leadingRound[Long.numberOfLeadingZeros(xor)];
-          int trailingZeros = Long.numberOfTrailingZeros(xor);
 
-          if (trailingZeros > THRESHOLD) {
-              int significantBits = 64 - leadingZeros - trailingZeros;
-              skipBit(out);
-              writeBit(out);
-              writeBits(leadingRepresentation[leadingZeros], 3, out);
-              writeBits(significantBits, 6, out);
-              writeBits(xor >>> trailingZeros, significantBits, out);
-              storedLeadingZeros = 65;
+          if (trailingZeros > threshold) {
+//        	  System.out.println("CB: 01");
+            int significantBits = 64 - leadingZeros - trailingZeros;
+            writeBits(512 * (previousValues + previousIndex) + 64 * leadingRepresentation[leadingZeros] + significantBits, this.flagOneSize, out);
+            writeBits(xor >>> trailingZeros, significantBits, out); // Store the meaningful bits of XOR
+  			storedLeadingZeros = 65;
   		} else if (leadingZeros == storedLeadingZeros) {
+//  			System.out.println("CB: 10");
   			writeBit(out);
   			skipBit(out);
   			int significantBits = 64 - leadingZeros;
   			writeBits(xor, significantBits, out);
   		} else {
+//  			System.out.println("CB: 11");
   			storedLeadingZeros = leadingZeros;
   			int significantBits = 64 - leadingZeros;
-  			writeBit(out);
-  			writeBit(out);
-  			writeBits(leadingRepresentation[leadingZeros], 3, out);
+  			writeBits(24 + leadingRepresentation[leadingZeros], 5, out);
   			writeBits(xor, significantBits, out);
   		}
   	}
-      storedValue = value;
+      current = (current + 1) % previousValues;
+      storedValues[current] = value;
+	  index++;
+	  indices[key] = index;
   }
 }

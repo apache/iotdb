@@ -47,12 +47,20 @@ public class ChimpDecoder extends Decoder {
 
   private byte buffer = 0;
   private int bitsLeft = 0;
-  protected long storedValue = 0;
+  private long storedValue = 0;
+  private long storedValues[];
+  private int current = 0;
+  private int previousValues = 128;
+  private int previousValuesLog2;
+  private int initialFill;
 
   public final static short[] leadingRepresentation = {0, 8, 12, 16, 18, 20, 22, 24};
 	
   public ChimpDecoder() {
     super(TSEncoding.CHIMP);
+    this.previousValuesLog2 =  (int)(Math.log(previousValues) / Math.log(2));
+    this.initialFill = previousValuesLog2 + 9;
+    this.storedValues = new long[previousValues];
   }
 
   @Override
@@ -69,7 +77,9 @@ public class ChimpDecoder extends Decoder {
 
     buffer = 0;
     bitsLeft = 0;
-    storedValue = 0;
+    this.current = 0;
+    this.storedValue = 0;
+    this.storedValues = new long[previousValues];
   }
 
   /**
@@ -95,6 +105,7 @@ public class ChimpDecoder extends Decoder {
     if (!firstValueWasRead) {
       flipByte(in);
       storedValue = readLong(VALUE_BITS_LENGTH_64BIT, in);
+      storedValues[current] = storedValue;
       firstValueWasRead = true;
       returnValue = storedValue;
     }
@@ -104,48 +115,58 @@ public class ChimpDecoder extends Decoder {
   
   protected long cacheNext(ByteBuffer in) {
     readNext(in);
-    if (storedValue == CHIMP_ENCODING_ENDING) {
+    if (storedValues[current] == CHIMP_ENCODING_ENDING) {
       hasNext = false;
     }
-    return storedValue;
+    return storedValues[current];
   }
   protected long readNext(ByteBuffer in) {
-	  int significantBits;
-	  long value;
-	  byte controlBits = readNextNBits(2, in);
-	  switch(controlBits) {
+	  
+	  
+	// Read value
+	byte controlBits = readNextNBits(2, in);
+  	long value;
+  	switch (controlBits) {
 		case 3:
-	      // New leading zeros
-	      storedLeadingZeros = leadingRepresentation[(int) readLong(3, in)];
-	      significantBits = 64 - storedLeadingZeros;
-	      if(significantBits == 0) {
-	          significantBits = 64;
-	      }
-	      value = readLong(64 - storedLeadingZeros, in);
-	      storedValue = storedValue ^ value;
-	      return storedValue;
+		  System.out.println("DB: 11");
+		  storedLeadingZeros = leadingRepresentation[(int) readLong(3, in)];
+          value = readLong(64 - storedLeadingZeros, in);
+          storedValue = storedValue ^ value;
+          current = (current + 1) % previousValues;
+  		  storedValues[current] = storedValue;
+		  return storedValue;
 		case 2:
-			significantBits = 64 - storedLeadingZeros;
-	      if(significantBits == 0) {
-	          significantBits = 64;
-	      }
-	      value = readLong(64 - storedLeadingZeros, in);
-	      storedValue = storedValue ^ value;
-	      return storedValue;
+			System.out.println("DB: 10 " + storedLeadingZeros);
+		  value = readLong(64 - storedLeadingZeros, in);
+		  storedValue = storedValue ^ value;
+          current = (current + 1) % previousValues;
+  		  storedValues[current] = storedValue;
+		  return storedValue;
 		case 1:
-			storedLeadingZeros = leadingRepresentation[(int) readLong(3, in)];
-	  	significantBits = (int) readLong(6, in);
-	  	if(significantBits == 0) {
-	          significantBits = 64;
-	      }
-	      storedTrailingZeros = 64 - significantBits - storedLeadingZeros;
-	      value = readLong(64 - storedLeadingZeros - storedTrailingZeros, in);
-	      value <<= storedTrailingZeros;
-	      storedValue = storedValue ^ value;
-	      return storedValue;
+			System.out.println("DB: 01");
+		int fill = this.initialFill;
+      	int temp = (int) readLong(fill, in);
+      	int index = temp >>> (fill -= previousValuesLog2) & (1 << previousValuesLog2) - 1;
+      	storedLeadingZeros = leadingRepresentation[temp >>> (fill -= 3) & (1 << 3) - 1];
+      	int significantBits = temp >>> (fill -= 6) & (1 << 6) - 1;
+      	storedValue = storedValues[index];
+      	if(significantBits == 0) {
+              significantBits = 64;
+          }
+          storedTrailingZeros = 64 - significantBits - storedLeadingZeros;
+          value = readLong(64 - storedLeadingZeros - storedTrailingZeros, in);
+          value <<= storedTrailingZeros;
+          storedValue = storedValue ^ value;
+  		  current = (current + 1) % previousValues;
+  		  storedValues[current] = storedValue;
+		  return storedValue;
 		default:
-	      return storedValue;
-	  }
+			System.out.println("DB: 00");
+          storedValue = storedValues[(int) readLong(previousValuesLog2, in)];
+          current = (current + 1) % previousValues;
+          storedValues[current] = storedValue;
+		  return storedValue;
+		}
 	}
   
   /**

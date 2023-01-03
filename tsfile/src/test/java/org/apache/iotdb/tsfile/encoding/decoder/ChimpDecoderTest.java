@@ -333,7 +333,8 @@ public class ChimpDecoderTest {
       Decoder decoder = new ChimpDecoder();
       for (int i = 0; i < num; i++) {
         if (decoder.hasNext(buffer)) {
-          assertEquals(value + 2 * i, decoder.readLong(buffer));
+        	long temp = decoder.readLong(buffer);
+          assertEquals(value + 2 * i, temp);
           continue;
         }
         fail();
@@ -548,6 +549,7 @@ public class ChimpDecoderTest {
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
     for (int i = 0; i < repeatCount; i++) {
       for (double value : ChimpDecoderTest.doubleList) {
+    	  System.out.println(value);
         encoder.encode(value, baos);
       }
       encoder.flush(baos);
