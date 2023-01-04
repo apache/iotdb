@@ -30,7 +30,7 @@ import java.util.List;
 public abstract class SchemaTreeVisitor<R>
     extends AbstractTreeVisitorWithLimitOffset<SchemaNode, R> {
 
-  public SchemaTreeVisitor(
+  protected SchemaTreeVisitor(
       SchemaNode root, PartialPath pathPattern, int limit, int offset, boolean isPrefixMatch) {
     super(root, pathPattern, limit, offset, isPrefixMatch);
   }

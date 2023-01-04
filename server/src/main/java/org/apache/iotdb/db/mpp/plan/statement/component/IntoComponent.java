@@ -142,10 +142,8 @@ public class IntoComponent extends StatementNode {
   public void validate(List<PartialPath> sourceDevices, List<Expression> sourceColumns) {
     boolean isAllRawSeriesQuery = checkIsAllRawSeriesQuery(sourceColumns);
 
-    if (!isAllRawSeriesQuery) {
-      if (isMeasurementsExistPlaceholder()) {
-        throw new SemanticException(FORBID_PLACEHOLDER_ERROR_MSG);
-      }
+    if (!isAllRawSeriesQuery && isMeasurementsExistPlaceholder()) {
+      throw new SemanticException(FORBID_PLACEHOLDER_ERROR_MSG);
     }
 
     if (isDeviceExistPlaceholder()) {
@@ -213,7 +211,7 @@ public class IntoComponent extends StatementNode {
     protected int deviceIndex;
     protected int measurementIndex;
 
-    public AbstractIntoIterator(
+    protected AbstractIntoIterator(
         List<IntoItem> intoItems,
         boolean isDeviceExistPlaceholder,
         boolean isMeasurementsExistPlaceholder) {

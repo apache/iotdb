@@ -1923,7 +1923,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   private void parseStorageGroupAttributesClause(
       SetStorageGroupStatement setStorageGroupStatement,
       IoTDBSqlParser.StorageGroupAttributesClauseContext ctx) {
-    if (ctx.storageGroupAttributeClause().size() != 0) {
+    if (!ctx.storageGroupAttributeClause().isEmpty()) {
       throw new RuntimeException(
           "Currently not support set ttl, schemaReplication factor, dataReplication factor, time partition interval to specific database.");
     }
@@ -2709,11 +2709,10 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   private TSDataType parseDataTypeAttribute(IoTDBSqlParser.AttributeClausesContext ctx) {
     TSDataType dataType = null;
     if (ctx.dataType != null) {
-      if (ctx.attributeKey() != null) {
-        if (!parseAttributeKey(ctx.attributeKey())
-            .equalsIgnoreCase(IoTDBConstant.COLUMN_TIMESERIES_DATATYPE)) {
-          throw new SemanticException("expecting datatype");
-        }
+      if (ctx.attributeKey() != null
+          && !parseAttributeKey(ctx.attributeKey())
+              .equalsIgnoreCase(IoTDBConstant.COLUMN_TIMESERIES_DATATYPE)) {
+        throw new SemanticException("expecting datatype");
       }
       String dataTypeString = ctx.dataType.getText().toUpperCase();
       try {

@@ -26,7 +26,7 @@ import org.apache.iotdb.tsfile.read.common.type.Type;
 import org.apache.iotdb.tsfile.read.common.type.TypeEnum;
 
 public abstract class CompareTernaryColumnTransformer extends TernaryColumnTransformer {
-  public CompareTernaryColumnTransformer(
+  protected CompareTernaryColumnTransformer(
       Type returnType,
       ColumnTransformer firstColumnTransformer,
       ColumnTransformer secondColumnTransformer,
@@ -61,7 +61,7 @@ public abstract class CompareTernaryColumnTransformer extends TernaryColumnTrans
     }
 
     throw new UnsupportedOperationException(
-        String.format("The Type of three subExpression should be all Numeric or Text"));
+        "The Type of three subExpression should be all Numeric or Text");
   }
 
   protected abstract void doTransform(

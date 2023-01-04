@@ -102,10 +102,12 @@ public class SeriesAggregationScanNode extends SeriesAggregationSourceNode {
     this.regionReplicaSet = dataRegionReplicaSet;
   }
 
+  @Override
   public Ordering getScanOrder() {
     return scanOrder;
   }
 
+  @Override
   @Nullable
   public Filter getTimeFilter() {
     return timeFilter;
@@ -115,6 +117,7 @@ public class SeriesAggregationScanNode extends SeriesAggregationSourceNode {
     this.timeFilter = timeFilter;
   }
 
+  @Override
   @Nullable
   public GroupByTimeParameter getGroupByTimeParameter() {
     return groupByTimeParameter;
