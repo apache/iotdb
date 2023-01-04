@@ -23,6 +23,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -49,7 +50,7 @@ public class BasicStructureSerDeUtil {
   public static List<String> readStringList(ByteBuffer buffer) {
     int size = readInt(buffer);
     if (size < 0) {
-      return null;
+      return Collections.emptyList();
     }
     List<String> stringList = new ArrayList<>();
     for (int i = 0; i < size; i++) {
@@ -116,7 +117,7 @@ public class BasicStructureSerDeUtil {
   }
 
   /**
-   * write a int n to byteBuffer.
+   * write an int n to byteBuffer.
    *
    * @return The number of bytes used to represent n.
    */
@@ -126,7 +127,7 @@ public class BasicStructureSerDeUtil {
   }
 
   /**
-   * write a int n to dataOutputStream.
+   * write an int n to dataOutputStream.
    *
    * @return The number of bytes used to represent n.
    */
@@ -197,7 +198,7 @@ public class BasicStructureSerDeUtil {
   public static Map<String, String> readMap(ByteBuffer buffer) {
     int length = readInt(buffer);
     if (length == -1) {
-      return null;
+      return Collections.emptyMap();
     }
     Map<String, String> map = new HashMap<>(length);
     for (int i = 0; i < length; i++) {
@@ -243,7 +244,7 @@ public class BasicStructureSerDeUtil {
   public static Map<String, List<String>> readStringMapLists(ByteBuffer buffer) {
     int length = readInt(buffer);
     if (length == -1) {
-      return null;
+      return Collections.emptyMap();
     }
     Map<String, List<String>> map = new HashMap<>(length);
     for (int i = 0; i < length; i++) {
@@ -285,7 +286,7 @@ public class BasicStructureSerDeUtil {
   public static Map<Integer, List<Integer>> readIntMapLists(ByteBuffer buffer) {
     int length = readInt(buffer);
     if (length == -1) {
-      return null;
+      return Collections.emptyMap();
     }
     Map<Integer, List<Integer>> map = new HashMap<>(length);
     for (int i = 0; i < length; i++) {
