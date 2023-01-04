@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -16,31 +16,19 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.mpp.plan.statement.metadata;
 
-import org.apache.iotdb.db.mpp.plan.analyze.QueryType;
-import org.apache.iotdb.db.mpp.plan.statement.IConfigStatement;
-import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
+package org.apache.iotdb.db.metadata.query.info;
 
-public class ShowClusterStatement extends ShowStatement implements IConfigStatement {
+import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
-  private boolean isDetails = false;
+import java.util.Map;
 
-  @Override
-  public QueryType getQueryType() {
-    return QueryType.READ;
-  }
+public interface ITimeSeriesSchemaInfo extends ISchemaInfo {
 
-  @Override
-  public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
-    return visitor.visitShowCluster(this, context);
-  }
+  String getAlias();
 
-  public boolean isDetails() {
-    return isDetails;
-  }
+  MeasurementSchema getSchema();
 
-  public void setDetails(boolean details) {
-    isDetails = details;
-  }
+  Pair<Map<String, String>, Map<String, String>> getTagAndAttribute();
 }

@@ -16,31 +16,10 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.mpp.plan.statement.metadata;
 
-import org.apache.iotdb.db.mpp.plan.analyze.QueryType;
-import org.apache.iotdb.db.mpp.plan.statement.IConfigStatement;
-import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
+package org.apache.iotdb.db.metadata.query.info;
 
-public class ShowClusterStatement extends ShowStatement implements IConfigStatement {
+public interface IDeviceSchemaInfo extends ISchemaInfo {
 
-  private boolean isDetails = false;
-
-  @Override
-  public QueryType getQueryType() {
-    return QueryType.READ;
-  }
-
-  @Override
-  public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
-    return visitor.visitShowCluster(this, context);
-  }
-
-  public boolean isDetails() {
-    return isDetails;
-  }
-
-  public void setDetails(boolean details) {
-    isDetails = details;
-  }
+  boolean isAligned();
 }

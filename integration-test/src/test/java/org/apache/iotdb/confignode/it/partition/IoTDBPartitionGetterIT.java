@@ -90,11 +90,11 @@ public class IoTDBPartitionGetterIT {
 
   private static int originalSeriesPartitionSlotNum;
 
-  private static long originalTimePartitionInterval;
-  private static final long testTimePartitionInterval = 604800000;
+  private static final long testTimePartitionInterval =
+      ConfigFactory.getConfig().getTimePartitionInterval();
 
   protected static int originalLeastDataRegionGroupNum;
-  private static final int testLeastDataRegionGroupNum = 3;
+  private static final int testLeastDataRegionGroupNum = 5;
 
   private static final String sg = "root.sg";
   private static final int storageGroupNum = 2;
@@ -122,9 +122,6 @@ public class IoTDBPartitionGetterIT {
 
     originalSeriesPartitionSlotNum = CONF.getSeriesPartitionSlotNum();
     CONF.setSeriesPartitionSlotNum(testSeriesPartitionSlotNum);
-
-    originalTimePartitionInterval = CONF.getTimePartitionInterval();
-    CONF.setTimePartitionInterval(testTimePartitionInterval);
 
     originalLeastDataRegionGroupNum = CONF.getLeastDataRegionGroupNum();
     CONF.setLeastDataRegionGroupNum(testLeastDataRegionGroupNum);
@@ -234,7 +231,6 @@ public class IoTDBPartitionGetterIT {
     CONF.setSchemaReplicationFactor(originalSchemaReplicationFactor);
     CONF.setDataReplicationFactor(originalDataReplicationFactor);
     CONF.setSeriesPartitionSlotNum(originalSeriesPartitionSlotNum);
-    CONF.setTimePartitionInterval(originalTimePartitionInterval);
   }
 
   @Test

@@ -178,7 +178,7 @@ public class DataExchangeMetricSet implements IMetricSet {
       metricService.getOrCreateTimer(
           metricInfo.getName(), MetricLevel.IMPORTANT, metricInfo.getTagsInArray());
     }
-    metricService.getOrCreateRate(
+    metricService.getOrCreateHistogram(
         Metric.DATA_EXCHANGE_COUNT.toString(),
         MetricLevel.IMPORTANT,
         Tag.NAME.toString(),
@@ -190,6 +190,6 @@ public class DataExchangeMetricSet implements IMetricSet {
     for (MetricInfo metricInfo : metricInfoMap.values()) {
       metricService.remove(MetricType.TIMER, metric, metricInfo.getTagsInArray());
     }
-    metricService.remove(MetricType.RATE, metric, Tag.NAME.toString(), GET_DATA_BLOCK_NUM);
+    metricService.remove(MetricType.HISTOGRAM, metric, Tag.NAME.toString(), GET_DATA_BLOCK_NUM);
   }
 }
