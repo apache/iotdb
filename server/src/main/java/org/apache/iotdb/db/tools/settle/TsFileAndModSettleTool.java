@@ -99,7 +99,7 @@ public class TsFileAndModSettleTool {
         if (arg.endsWith(TSFILE_SUFFIX)) { // it's a file
           File f = new File(arg);
           if (!f.exists()) {
-            logger.warn("Cannot find TsFile : " + arg);
+            logger.warn("Cannot find TsFile : {}", arg);
             continue;
           }
           files.add(f);
@@ -115,11 +115,11 @@ public class TsFileAndModSettleTool {
   private static List<File> getAllFilesInOneDirBySuffix(String dirPath, String suffix) {
     File dir = new File(dirPath);
     if (!dir.isDirectory()) {
-      logger.warn("It's not a directory path : " + dirPath);
+      logger.warn("It's not a directory path : {}", dirPath);
       return Collections.emptyList();
     }
     if (!dir.exists()) {
-      logger.warn("Cannot find Directory : " + dirPath);
+      logger.warn("Cannot find Directory : {}", dirPath);
       return Collections.emptyList();
     }
     List<File> tsFiles =

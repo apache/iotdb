@@ -130,7 +130,7 @@ public class TagQueryHandler extends NewQueryHandler {
     String realQuerySql;
 
     realQuerySql = "select * from " + curQueryPath;
-    if (!(realIotDBCondition.length() == 0)) {
+    if (realIotDBCondition.length() != 0) {
       realQuerySql += " where " + realIotDBCondition;
     }
     realQuerySql += " align by device";

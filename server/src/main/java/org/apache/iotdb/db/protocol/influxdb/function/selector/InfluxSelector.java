@@ -32,7 +32,7 @@ public abstract class InfluxSelector extends InfluxFunction {
 
   private List<Object> relatedValues;
 
-  public InfluxSelector(List<Expression> expressionList) {
+  protected InfluxSelector(List<Expression> expressionList) {
     super(expressionList);
   }
 
