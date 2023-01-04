@@ -111,8 +111,6 @@ public class IoTDBStartCheck {
   private static String timeEncoderValue =
       String.valueOf(TSFileDescriptor.getInstance().getConfig().getTimeEncoder());
 
-  public static final String CLUSTER_NAME = "cluster_name";
-  public static final String DEFAULT_CLUSTER_NAME = "defaultCluster";
   private static final String DATA_NODE_ID = "data_node_id";
 
   private static final String SCHEMA_REGION_CONSENSUS_PROTOCOL = "schema_region_consensus_protocol";
