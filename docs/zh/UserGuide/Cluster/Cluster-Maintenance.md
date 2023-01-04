@@ -210,6 +210,8 @@ It costs 0.340s
 - `SHOW SCHEMA REGIONS`: 展示所有 SchemaRegion 分布
 - `SHOW DATA REGIONS`: 展示所有 DataRegion 分布
 - `SHOW (DATA|SCHEMA)? REGIONS OF DATABASE <sg1,sg2,...>`: 展示指定数据库 <sg1,sg2,...> 对应的 Region 分布
+- `SHOW (DATA|SCHEMA)? REGIONS ON NODEID <id1,id2,...>`: 展示指定节点 <id1,id2,...> 对应的 Region 分布
+- `SHOW (DATA|SCHEMA)? REGIONS (OF DATABASE <sg1,sg2,...>)? (ON NODEID <id1,id2,...>)?`: 展示指定数据库 <sg1,sg2,...> 在指定节点 <id1,id2,...> 对应的 Region 分布
 
 展示所有 Region 的分布：
 ```
@@ -328,6 +330,62 @@ IoTDB> show schema regions of database root.sg1, root.sg2
 +--------+------------+-------+--------+-----------+---------+----------+----------+-------+--------+
 Total line number = 6
 It costs 0.009s
+```
+
+展示指定节点 <id1,id2,...> 对应的 Region 分布：
+```
+IoTDB> show regions on nodeid 1
++--------+------------+-------+--------+-----------+---------+----------+----------+-------+--------+
+|RegionId|        Type| Status|Database|SeriesSlots|TimeSlots|DataNodeId|RpcAddress|RpcPort|    Role|
++--------+------------+-------+--------+-----------+---------+----------+----------+-------+--------+
+|       0|  DataRegion|Running|root.sg1|          1|        1|         1| 127.0.0.1|   6667|Follower|
+|       1|SchemaRegion|Running|root.sg1|          1|        0|         1| 127.0.0.1|   6667|Follower|
+|       2|  DataRegion|Running|root.sg2|          1|        1|         1| 127.0.0.1|   6667|  Leader|
+|       3|SchemaRegion|Running|root.sg2|          1|        0|         1| 127.0.0.1|   6667|Follower|
++--------+------------+-------+--------+-----------+---------+----------+----------+-------+--------+
+Total line number = 4
+It costs 0.165s
+
+IoTDB> show regions on nodeid 1, 2
++--------+------------+-------+--------+-----------+---------+----------+----------+-------+--------+
+|RegionId|        Type| Status|Database|SeriesSlots|TimeSlots|DataNodeId|RpcAddress|RpcPort|    Role|
++--------+------------+-------+--------+-----------+---------+----------+----------+-------+--------+
+|       0|  DataRegion|Running|root.sg1|          1|        1|         1| 127.0.0.1|   6667|Follower|
+|       0|  DataRegion|Running|root.sg1|          1|        1|         2| 127.0.0.1|   6668|  Leader|
+|       1|SchemaRegion|Running|root.sg1|          1|        0|         1| 127.0.0.1|   6667|Follower|
+|       1|SchemaRegion|Running|root.sg1|          1|        0|         2| 127.0.0.1|   6668|Follower|
+|       2|  DataRegion|Running|root.sg2|          1|        1|         1| 127.0.0.1|   6667|  Leader|
+|       2|  DataRegion|Running|root.sg2|          1|        1|         2| 127.0.0.1|   6668|Follower|
+|       3|SchemaRegion|Running|root.sg2|          1|        0|         1| 127.0.0.1|   6667|Follower|
+|       3|SchemaRegion|Running|root.sg2|          1|        0|         2| 127.0.0.1|   6668|  Leader|
++--------+------------+-------+--------+-----------+---------+----------+----------+-------+--------+
+Total line number = 8
+It costs 0.165s
+```
+
+展示指定数据库 <sg1,sg2,...> 在指定节点 <id1,id2,...> 对应的 Region 分布：
+```
+IoTDB> show regions of database root.sg1 on nodeid 1
++--------+------------+-------+--------+-----------+---------+----------+----------+-------+--------+
+|RegionId|        Type| Status|Database|SeriesSlots|TimeSlots|DataNodeId|RpcAddress|RpcPort|    Role|
++--------+------------+-------+--------+-----------+---------+----------+----------+-------+--------+
+|       0|  DataRegion|Running|root.sg1|          1|        1|         1| 127.0.0.1|   6667|Follower|
+|       1|SchemaRegion|Running|root.sg1|          1|        0|         1| 127.0.0.1|   6667|Follower|
++--------+------------+-------+--------+-----------+---------+----------+----------+-------+--------+
+Total line number = 2
+It costs 0.165s
+
+IoTDB> show data regions of database root.sg1, root.sg2 on nodeid 1, 2 
++--------+------------+-------+--------+-----------+---------+----------+----------+-------+--------+
+|RegionId|        Type| Status|Database|SeriesSlots|TimeSlots|DataNodeId|RpcAddress|RpcPort|    Role|
++--------+------------+-------+--------+-----------+---------+----------+----------+-------+--------+
+|       0|  DataRegion|Running|root.sg1|          1|        1|         1| 127.0.0.1|   6667|Follower|
+|       0|  DataRegion|Running|root.sg1|          1|        1|         2| 127.0.0.1|   6668|  Leader|
+|       2|  DataRegion|Running|root.sg2|          1|        1|         1| 127.0.0.1|   6667|  Leader|
+|       2|  DataRegion|Running|root.sg2|          1|        1|         2| 127.0.0.1|   6668|Follower|
++--------+------------+-------+--------+-----------+---------+----------+----------+-------+--------+
+Total line number = 4
+It costs 0.165s
 ```
 
 ### Region 状态定义
