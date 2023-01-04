@@ -66,7 +66,7 @@ public class DevicesSchemaScanOperator extends SchemaQueryScanOperator<IDeviceSc
           .getDeviceReader(
               SchemaRegionReadPlanFactory.getShowDevicesPlan(partialPath, limit, offset, false));
     } catch (MetadataException e) {
-      throw new RuntimeException(e);
+      throw new RuntimeException(e.getMessage(), e);
     }
   }
 

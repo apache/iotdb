@@ -91,7 +91,7 @@ public class TimeSeriesSchemaScanOperator extends SchemaQueryScanOperator<ITimeS
               SchemaRegionReadPlanFactory.getShowTimeSeriesPlan(
                   partialPath, templateMap, isContains, key, value, limit, offset, false));
     } catch (MetadataException e) {
-      throw new RuntimeException(e);
+      throw new RuntimeException(e.getMessage(), e);
     }
   }
 

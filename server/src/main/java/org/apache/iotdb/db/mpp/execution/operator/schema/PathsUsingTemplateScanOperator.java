@@ -69,7 +69,7 @@ public class PathsUsingTemplateScanOperator extends SchemaQueryScanOperator<IDev
               SchemaRegionReadPlanFactory.getShowDevicesPlan(
                   partialPath, limit, offset, false, templateId));
     } catch (MetadataException e) {
-      throw new RuntimeException(e);
+      throw new RuntimeException(e.getMessage(), e);
     }
   }
 
