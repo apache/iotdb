@@ -152,7 +152,7 @@
             <groupId>org.apache.iotdb</groupId>
             <artifactId>rewrite-tsfile-tool</artifactId>
             <version>${project.version}</version>
-            <type>jar</type>
+            <type>zip</type>
         </dependency>
     </dependencies>
 </project>

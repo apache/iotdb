@@ -19,9 +19,10 @@
 
 package org.apache.iotdb;
 
-import org.apache.commons.lang.StringEscapeUtils;
 import org.apache.iotdb.db.qp.sql.OldIoTDBSqlParser;
 import org.apache.iotdb.db.qp.sql.OldIoTDBSqlParserBaseVisitor;
+
+import org.apache.commons.lang.StringEscapeUtils;
 
 import java.util.List;
 

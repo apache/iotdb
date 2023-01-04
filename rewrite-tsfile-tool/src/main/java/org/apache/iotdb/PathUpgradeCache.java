@@ -19,16 +19,15 @@
 
 package org.apache.iotdb;
 
+import org.apache.iotdb.db.qp.sql.OldIoTDBSqlLexer;
+import org.apache.iotdb.db.qp.sql.OldIoTDBSqlParser;
+import org.apache.iotdb.db.qp.strategy.SQLParseError;
+
 import org.antlr.v4.runtime.CharStream;
 import org.antlr.v4.runtime.CharStreams;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.atn.PredictionMode;
 import org.antlr.v4.runtime.tree.ParseTree;
-import org.apache.iotdb.db.qp.sql.IoTDBSqlParser;
-import org.apache.iotdb.db.qp.sql.OldIoTDBSqlLexer;
-import org.apache.iotdb.db.qp.sql.OldIoTDBSqlParser;
-import org.apache.iotdb.db.qp.sql.SqlLexer;
-import org.apache.iotdb.db.qp.strategy.SQLParseError;
 
 import java.util.HashMap;
 import java.util.Map;
