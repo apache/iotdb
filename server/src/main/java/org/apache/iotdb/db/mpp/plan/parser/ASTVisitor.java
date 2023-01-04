@@ -2571,9 +2571,9 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       for (TerminalNode nodeid : ctx.INTEGER_LITERAL()) {
         nodeIds.add(Integer.parseInt(nodeid.getText()));
       }
-      showRegionStatement.setNodeIdGroups(nodeIds);
+      showRegionStatement.setNodeIds(nodeIds);
     } else {
-      showRegionStatement.setNodeIdGroups(null);
+      showRegionStatement.setNodeIds(null);
     }
     return showRegionStatement;
   }

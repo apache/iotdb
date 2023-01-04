@@ -873,13 +873,13 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     }
 
     // filter the regions by nodeid
-    if (showRegionStatement.getNodeIdGroups() != null) {
+    if (showRegionStatement.getNodeIds() != null) {
       List<TRegionInfo> regionInfos = showRegionResp.getRegionInfoList();
       regionInfos =
           regionInfos.stream()
               .filter(
                   regionInfo ->
-                      showRegionStatement.getNodeIdGroups().contains(regionInfo.getDataNodeId()))
+                      showRegionStatement.getNodeIds().contains(regionInfo.getDataNodeId()))
               .collect(Collectors.toList());
       showRegionResp.setRegionInfoList(regionInfos);
     }

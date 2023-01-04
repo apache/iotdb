@@ -32,7 +32,7 @@ public class ShowRegionStatement extends ShowStatement implements IConfigStateme
   private TConsensusGroupType regionType;
   private List<PartialPath> storageGroups;
 
-  private List<Integer> nodeIdGroups;
+  private List<Integer> nodeIds;
 
   public ShowRegionStatement() {}
 
@@ -41,10 +41,10 @@ public class ShowRegionStatement extends ShowStatement implements IConfigStateme
   }
 
   public ShowRegionStatement(
-      TConsensusGroupType regionType, List<PartialPath> storageGroups, List<Integer> nodeIdGroups) {
+      TConsensusGroupType regionType, List<PartialPath> storageGroups, List<Integer> nodeIds) {
     this.regionType = regionType;
     this.storageGroups = storageGroups;
-    this.nodeIdGroups = nodeIdGroups;
+    this.nodeIds = nodeIds;
   }
 
   public List<PartialPath> getStorageGroups() {
@@ -63,12 +63,12 @@ public class ShowRegionStatement extends ShowStatement implements IConfigStateme
     this.regionType = regionType;
   }
 
-  public void setNodeIdGroups(List<Integer> nodeIdGroups) {
-    this.nodeIdGroups = nodeIdGroups;
+  public void setNodeIds(List<Integer> nodeIds) {
+    this.nodeIds = nodeIds;
   }
 
-  public List<Integer> getNodeIdGroups() {
-    return nodeIdGroups;
+  public List<Integer> getNodeIds() {
+    return nodeIds;
   }
 
   @Override
