@@ -199,6 +199,9 @@ public class IoTDBDescriptor {
 
   public void loadProperties(Properties properties) {
 
+    conf.setClusterName(
+        properties.getProperty(IoTDBConstant.CLUSTER_NAME, conf.getClusterName()).trim());
+
     conf.setRpcAddress(
         properties.getProperty(IoTDBConstant.DN_RPC_ADDRESS, conf.getRpcAddress()).trim());
 

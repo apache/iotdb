@@ -94,7 +94,7 @@ public class IoTDBPartitionGetterIT {
   private static final long testTimePartitionInterval = 604800000;
 
   protected static int originalLeastDataRegionGroupNum;
-  private static final int testLeastDataRegionGroupNum = 3;
+  private static final int testLeastDataRegionGroupNum = 5;
 
   private static final String sg = "root.sg";
   private static final int storageGroupNum = 2;

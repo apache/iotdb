@@ -58,7 +58,7 @@ public class ColumnHeaderConstant {
   public static final String VERSION = "Version";
   public static final String BUILD_INFO = "BuildInfo";
   public static final String PATHS = "Paths";
-  public static final String CLUSTER_PARAMETERS = "ClusterParameters";
+  public static final String VARIABLE = "Variable";
 
   // column names for count statement
   public static final String COLUMN = "Column";
@@ -92,6 +92,25 @@ public class ColumnHeaderConstant {
   public static final String STATE = "State";
   public static final String PATH_PATTERN = "PathPattern";
   public static final String CLASS_NAME = "ClassName";
+
+  // show cluster status
+  public static final String NODE_TYPE_CONFIG_NODE = "ConfigNode";
+  public static final String NODE_TYPE_DATA_NODE = "DataNode";
+  public static final String COLUMN_CLUSTER_NAME = "ClusterName";
+  public static final String CONFIG_NODE_CONSENSUS_PROTOCOL_CLASS =
+      "ConfigNodeConsensusProtocolClass";
+  public static final String DATA_REGION_CONSENSUS_PROTOCOL_CLASS =
+      "DataRegionConsensusProtocolClass";
+  public static final String SCHEMA_REGION_CONSENSUS_PROTOCOL_CLASS =
+      "SchemaRegionConsensusProtocolClass";
+  public static final String SERIES_SLOT_NUM = "SeriesSlotNum";
+  public static final String SERIES_SLOT_EXECUTOR_CLASS = "SeriesSlotExecutorClass";
+  public static final String DEFAULT_TTL = "DefaultTTL(ms)";
+  public static final String SCHEMA_REGION_PER_DATA_NODE = "SchemaRegionPerDataNode";
+  public static final String DATA_REGION_PER_PROCESSOR = "DataRegionPerProcessor";
+  public static final String READ_CONSISTENCY_LEVEL = "ReadConsistencyLevel";
+  public static final String DISK_SPACE_WARNING_THRESHOLD = "DiskSpaceWarningThreshold";
+  public static final String LEAST_DATA_REGION_GROUP_NUM = "LeastDataRegionGroupNum";
 
   // column names for show region statement
   public static final String REGION_ID = "RegionId";
@@ -267,10 +286,9 @@ public class ColumnHeaderConstant {
           new ColumnHeader(SCHEMA_CONSENSUS_PORT, TSDataType.TEXT),
           new ColumnHeader(DATA_CONSENSUS_PORT, TSDataType.TEXT));
 
-  public static final List<ColumnHeader> showClusterParametersColumnHeaders =
+  public static final List<ColumnHeader> showVariablesColumnHeaders =
       ImmutableList.of(
-          new ColumnHeader(CLUSTER_PARAMETERS, TSDataType.TEXT),
-          new ColumnHeader(VALUE, TSDataType.TEXT));
+          new ColumnHeader(VARIABLE, TSDataType.TEXT), new ColumnHeader(VALUE, TSDataType.TEXT));
 
   public static final List<ColumnHeader> showFunctionsColumnHeaders =
       ImmutableList.of(

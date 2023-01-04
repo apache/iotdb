@@ -94,14 +94,14 @@ struct TRuntimeConfiguration {
 
 struct TDataNodeRegisterReq {
   1: required common.TDataNodeConfiguration dataNodeConfiguration
+  2: required string clusterName
 }
 
 struct TDataNodeRegisterResp {
   1: required common.TSStatus status
   2: required list<common.TConfigNodeLocation> configNodeList
-  3: optional string clusterName
-  4: optional i32 dataNodeId
-  5: optional TRuntimeConfiguration runtimeConfiguration
+  3: optional i32 dataNodeId
+  4: optional TRuntimeConfiguration runtimeConfiguration
 }
 
 struct TDataNodeRestartReq {
@@ -346,8 +346,7 @@ struct TConfigNodeRegisterReq {
 
 struct TConfigNodeRegisterResp {
   1: required common.TSStatus status
-  2: optional string clusterName
-  3: optional i32 configNodeId
+  2: optional i32 configNodeId
 }
 
 struct TConfigNodeRestartReq {
@@ -438,7 +437,7 @@ struct TShowClusterResp {
   4: required map<i32, string> nodeStatus
 }
 
-struct TShowClusterParametersResp {
+struct TShowVariablesResp {
   1: required common.TSStatus status
   2: optional TClusterParameters clusterParameters
 }
@@ -664,14 +663,17 @@ service IConfigNodeRPCService {
    * Register a new DataNode into the cluster
    *
    * @return SUCCESS_STATUS if the new DataNode registered successfully
-   *         DATANODE_ALREADY_REGISTERED if the DataNode already registered
+   *         REJECT_NODE_START if the configuration chek of the DataNode to be registered fails,
+   *                           and a detailed error message will be returned.
    */
   TDataNodeRegisterResp registerDataNode(TDataNodeRegisterReq req)
 
   /**
-   * Restart a existed DataNode
+   * Restart an existed DataNode
    *
-   * @return SUCCESS_STATUS if restart DataNode success
+   * @return SUCCESS_STATUS if DataNode restart request is accepted
+   *         REJECT_NODE_START if the configuration chek of the DataNode to be restarted fails,
+   *                           and a detailed error message will be returned.
    */
   TDataNodeRestartResp restartDataNode(TDataNodeRestartReq req)
 
@@ -863,9 +865,9 @@ service IConfigNodeRPCService {
   /**
    * The Non-Seed-ConfigNode submit a registration request to the ConfigNode-leader when first startup
    *
-   * @return SUCCESS_STATUS if the AddConfigNodeProcedure submitted successfully
-   *         ERROR_GLOBAL_CONFIG if some global configurations in the Non-Seed-ConfigNode
-   *                             are inconsist with the ConfigNode-leader
+   * @return SUCCESS_STATUS if the AddConfigNodeProcedure submitted successfully.
+   *         REJECT_NODE_START if the configuration chek of the ConfigNode to be registered fails,
+   *                           and a detailed error message will be returned.
    */
   TConfigNodeRegisterResp registerConfigNode(TConfigNodeRegisterReq req)
 
@@ -875,6 +877,13 @@ service IConfigNodeRPCService {
   /** The ConfigNode-leader will notify the Non-Seed-ConfigNode that the registration success */
   common.TSStatus notifyRegisterSuccess()
 
+  /**
+   * Restart an existed ConfigNode
+   *
+   * @return SUCCESS_STATUS if ConfigNode restart request is accepted
+   *         REJECT_NODE_START if the configuration chek of the ConfigNode to be restarted fails,
+   *                           and a detailed error message will be returned.
+   */
   common.TSStatus restartConfigNode(TConfigNodeRestartReq req)
 
   /**
@@ -1000,8 +1009,8 @@ service IConfigNodeRPCService {
   /** Show cluster ConfigNodes' and DataNodes' information */
   TShowClusterResp showCluster()
 
-  /** Show cluster parameters who should be consist in the same cluster */
-  TShowClusterParametersResp showClusterParameters()
+  /** Show variables who should be consist in the same cluster */
+  TShowVariablesResp showVariables()
 
   /** Show cluster DataNodes' information */
   TShowDataNodesResp showDataNodes()

@@ -281,7 +281,6 @@ public class NodeManager {
 
     resp.setStatus(ClusterNodeStartUtils.ACCEPT_NODE_REGISTRATION);
     resp.setConfigNodeList(getRegisteredConfigNodes());
-    resp.setClusterName(CONF.getClusterName());
     resp.setDataNodeId(
         registerDataNodePlan.getDataNodeConfiguration().getLocation().getDataNodeId());
     resp.setRuntimeConfiguration(getRuntimeConfiguration());
@@ -396,7 +395,6 @@ public class NodeManager {
     configManager.getProcedureManager().addConfigNode(req);
     return new TConfigNodeRegisterResp()
         .setStatus(ClusterNodeStartUtils.ACCEPT_NODE_REGISTRATION)
-        .setClusterName(CONF.getClusterName())
         .setConfigNodeId(nodeId);
   }
 
