@@ -23,6 +23,8 @@ package org.apache.iotdb.db.metadata.plan.schemaregion.impl.read;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.metadata.plan.schemaregion.read.IShowDevicesPlan;
 
+import java.util.Objects;
+
 public class ShowDevicesPlanImpl extends AbstractShowSchemaPlanImpl implements IShowDevicesPlan {
 
   // templateId > -1 means the device should use template with given templateId
@@ -42,5 +44,19 @@ public class ShowDevicesPlanImpl extends AbstractShowSchemaPlanImpl implements I
   @Override
   public int getSchemaTemplateId() {
     return schemaTemplateId;
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    if (!super.equals(o)) return false;
+    ShowDevicesPlanImpl that = (ShowDevicesPlanImpl) o;
+    return schemaTemplateId == that.schemaTemplateId;
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(super.hashCode(), schemaTemplateId);
   }
 }
