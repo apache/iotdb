@@ -29,7 +29,7 @@ public abstract class StorageGroupCollector<T> extends CollectorTraverser<T> {
 
   protected boolean collectInternal = false;
 
-  public StorageGroupCollector(IMNode startNode, PartialPath path, IMTreeStore store)
+  protected StorageGroupCollector(IMNode startNode, PartialPath path, IMTreeStore store)
       throws MetadataException {
     super(startNode, path, store);
   }

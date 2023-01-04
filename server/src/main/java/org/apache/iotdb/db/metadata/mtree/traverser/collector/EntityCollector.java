@@ -27,12 +27,12 @@ import org.apache.iotdb.db.metadata.mtree.store.IMTreeStore;
 // This class defines EntityMNode as target node and defines the Entity process framework.
 public abstract class EntityCollector<T> extends CollectorTraverser<T> {
 
-  public EntityCollector(IMNode startNode, PartialPath path, IMTreeStore store)
+  protected EntityCollector(IMNode startNode, PartialPath path, IMTreeStore store)
       throws MetadataException {
     super(startNode, path, store);
   }
 
-  public EntityCollector(
+  protected EntityCollector(
       IMNode startNode, PartialPath path, IMTreeStore store, int limit, int offset)
       throws MetadataException {
     super(startNode, path, store, limit, offset);

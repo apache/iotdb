@@ -87,7 +87,6 @@ public class DataNodeSchemaCache {
 
   public void takeWriteLock() {
     readWriteLock.writeLock().lock();
-    ;
   }
 
   public void releaseWriteLock() {
