@@ -43,7 +43,7 @@ With Status Code, instead of writing codes like `if (e.getErrorMessage().contain
 Here is a list of Status Code and related message:
 
 | Status Code | Status Type                       | Meanings                                                                                  |
-|:------------| :-------------------------------- | :---------------------------------------------------------------------------------------- |
+|:------------|:----------------------------------|:------------------------------------------------------------------------------------------|
 | 200         | SUCCESS_STATUS                    |                                                                                           |
 | 201         | INCOMPATIBLE_VERSION              | Incompatible version                                                                      |
 | 202         | CONFIGURATION_ERROR               | Configuration error                                                                       |
@@ -55,7 +55,7 @@ Here is a list of Status Code and related message:
 | 303         | ILLEGAL_PARAMETER                 | Parameter is illegal                                                                      |
 | 304         | OVERLAP_WITH_EXISTING_TASK        | Current task has some conflict with existing tasks                                        |
 | 305         | INTERNAL_SERVER_ERROR             | Internal server error                                                                     |
-| 306         | SYNC_CONNECTION_ERROR             | Meet error while sync connecting                                                          |
+| 306         | DISPATCH_ERROR                    | Meet error while dispatching                                                              |
 | 400         | REDIRECTION_RECOMMEND             | Recommend Client redirection                                                              |
 | 500         | DATABASE_NOT_EXIST                | Database does not exist                                                                   |
 | 501         | DATABASE_ALREADY_EXISTS           | Database already exist                                                                    |
@@ -144,6 +144,7 @@ Here is a list of Status Code and related message:
 | 1101        | LOAD_PIECE_OF_TSFILE_ERROR        | Error when load a piece of TsFile when loading                                            |
 | 1102        | DESERIALIZE_PIECE_OF_TSFILE_ERROR | Error when deserialize a piece of TsFile                                                  |
 | 1104        | SYNC_FILE_REDIRECTION_ERROR       | Sync TsFile redirection error                                                             |
+| 1103        | SYNC_CONNECTION_ERROR             | Sync connection error                                                                     |
 | 1105        | SYNC_FILE_ERROR                   | Sync TsFile error                                                                         |
 | 1106        | CREATE_PIPE_SINK_ERROR            | Failed to create a PIPE sink                                                              |
 | 1107        | PIPE_ERROR                        | PIPE error                                                                                |
