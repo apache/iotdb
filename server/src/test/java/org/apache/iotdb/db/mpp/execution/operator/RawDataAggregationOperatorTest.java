@@ -70,6 +70,7 @@ import static org.apache.iotdb.db.mpp.execution.operator.AggregationOperatorTest
 import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.initTimeRangeIterator;
 import static org.apache.iotdb.tsfile.read.common.block.TsBlockBuilderStatus.DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 public class RawDataAggregationOperatorTest {
 
@@ -324,6 +325,137 @@ public class RawDataAggregationOperatorTest {
     assertEquals(4, count);
   }
 
+  /** Test by time interval with EndTime */
+  @Test
+  public void groupByTimeRawDataTest3() throws IllegalPathException {
+    int[][] result =
+        new int[][] {
+          {100, 100, 100, 99},
+          {2004950, 2014950, 624950, 834551},
+          {0, 100, 200, 300},
+          {99, 199, 299, 398},
+          {20099, 20199, 10259, 10379},
+          {20000, 20100, 260, 380},
+          {20000, 20100, 10200, 10300},
+          {20099, 20199, 299, 398}
+        };
+    List<AggregationType> aggregationTypes = new ArrayList<>();
+    List<List<InputLocation[]>> inputLocations = new ArrayList<>();
+    for (int i = 0; i < 2; i++) {
+      aggregationTypes.add(AggregationType.COUNT);
+      aggregationTypes.add(AggregationType.SUM);
+      aggregationTypes.add(AggregationType.MIN_TIME);
+      aggregationTypes.add(AggregationType.MAX_TIME);
+      aggregationTypes.add(AggregationType.MAX_VALUE);
+      aggregationTypes.add(AggregationType.MIN_VALUE);
+      aggregationTypes.add(AggregationType.FIRST_VALUE);
+      aggregationTypes.add(AggregationType.LAST_VALUE);
+      for (int j = 0; j < 8; j++) {
+        List<InputLocation[]> inputLocationForOneAggregator = new ArrayList<>();
+        inputLocationForOneAggregator.add(new InputLocation[] {new InputLocation(0, i)});
+        inputLocations.add(inputLocationForOneAggregator);
+      }
+    }
+    GroupByTimeParameter groupByTimeParameter = new GroupByTimeParameter(0, 399, 100, 100, true);
+
+    WindowParameter windowParameter =
+        new WindowParameter(
+            WindowType.TIME_WINDOW, TSDataType.INT64, CompareType.EQUAL, 0, false, true, 0);
+
+    RawDataAggregationOperator rawDataAggregationOperator =
+        initRawDataAggregationOperator(
+            aggregationTypes, groupByTimeParameter, inputLocations, windowParameter);
+    int count = 0;
+    while (rawDataAggregationOperator.hasNext()) {
+      TsBlock resultTsBlock = rawDataAggregationOperator.next();
+      if (resultTsBlock == null) {
+        continue;
+      }
+
+      for (int row = 0; row < resultTsBlock.getPositionCount(); row++, count++) {
+        assertEquals(100 * count, resultTsBlock.getTimeColumn().getLong(row));
+        // endTime
+        assertEquals(100L * count + 99, resultTsBlock.getColumn(0).getLong(row));
+        for (int i = 0; i < 2; i++) {
+          assertEquals(result[0][count], resultTsBlock.getColumn(8 * i + 1).getLong(row));
+          assertEquals(result[1][count], resultTsBlock.getColumn(8 * i + 2).getDouble(row), 0.0001);
+          assertEquals(result[2][count], resultTsBlock.getColumn(8 * i + 3).getLong(row));
+          assertEquals(result[3][count], resultTsBlock.getColumn(8 * i + 4).getLong(row));
+          assertEquals(result[4][count], resultTsBlock.getColumn(8 * i + 5).getInt(row));
+          assertEquals(result[5][count], resultTsBlock.getColumn(8 * i + 6).getInt(row));
+          assertEquals(result[6][count], resultTsBlock.getColumn(8 * i + 7).getInt(row));
+          assertEquals(result[7][count], resultTsBlock.getColumn(8 * i + 8).getInt(row));
+        }
+      }
+    }
+    assertEquals(4, count);
+  }
+
+  /** 0 - 99 100 - 199 200 - 299 300 - 399 400 - 499 500 - 599 */
+  @Test
+  public void groupByTimeRawDataTest4() throws IllegalPathException {
+    int[][] result =
+        new int[][] {
+          {100, 100, 100, 100, 100, 0},
+          {20099, 20199, 10259, 10379, 10499},
+          {20000, 20100, 260, 380, 10400},
+          {20000, 20100, 10200, 10300, 10400},
+          {20099, 20199, 299, 399, 10499}
+        };
+    List<AggregationType> aggregationTypes = new ArrayList<>();
+    List<List<InputLocation[]>> inputLocations = new ArrayList<>();
+    for (int i = 0; i < 2; i++) {
+      aggregationTypes.add(AggregationType.COUNT);
+      aggregationTypes.add(AggregationType.MAX_VALUE);
+      aggregationTypes.add(AggregationType.MIN_VALUE);
+      aggregationTypes.add(AggregationType.FIRST_VALUE);
+      aggregationTypes.add(AggregationType.LAST_VALUE);
+      for (int j = 0; j < 8; j++) {
+        List<InputLocation[]> inputLocationForOneAggregator = new ArrayList<>();
+        inputLocationForOneAggregator.add(new InputLocation[] {new InputLocation(0, i)});
+        inputLocations.add(inputLocationForOneAggregator);
+      }
+    }
+    GroupByTimeParameter groupByTimeParameter = new GroupByTimeParameter(0, 600, 100, 100, true);
+
+    WindowParameter windowParameter =
+        new WindowParameter(
+            WindowType.TIME_WINDOW, TSDataType.INT64, CompareType.EQUAL, 0, false, true, 0);
+
+    RawDataAggregationOperator rawDataAggregationOperator =
+        initRawDataAggregationOperator(
+            aggregationTypes, groupByTimeParameter, inputLocations, windowParameter);
+    int count = 0;
+    while (rawDataAggregationOperator.hasNext()) {
+      TsBlock resultTsBlock = rawDataAggregationOperator.next();
+      if (resultTsBlock == null) {
+        continue;
+      }
+      for (int row = 0; row < resultTsBlock.getPositionCount(); row++, count++) {
+        assertEquals(100 * count, resultTsBlock.getTimeColumn().getLong(row));
+        // endTime
+        assertEquals(100L * count + 99, resultTsBlock.getColumn(0).getLong(row));
+        for (int i = 0; i < 2; i++) {
+          if (count == 5) {
+            assertEquals(result[0][count], resultTsBlock.getColumn(5 * i + 1).getLong(row));
+            assertTrue(resultTsBlock.getColumn(5 * i + 2).isNull(row));
+            assertTrue(resultTsBlock.getColumn(5 * i + 3).isNull(row));
+            assertTrue(resultTsBlock.getColumn(5 * i + 4).isNull(row));
+            assertTrue(resultTsBlock.getColumn(5 * i + 5).isNull(row));
+            continue;
+          }
+          assertEquals(result[0][count], resultTsBlock.getColumn(5 * i + 1).getLong(row));
+          assertEquals(result[1][count], resultTsBlock.getColumn(5 * i + 2).getInt(row));
+          assertEquals(result[2][count], resultTsBlock.getColumn(5 * i + 3).getInt(row));
+          assertEquals(result[3][count], resultTsBlock.getColumn(5 * i + 4).getInt(row));
+          assertEquals(result[4][count], resultTsBlock.getColumn(5 * i + 5).getInt(row));
+        }
+      }
+    }
+    assertEquals(6, count);
+  }
+
+  /** 0 - 259 260 - 299 `300 - 499 */
   @Test
   public void groupByEventRawDataTest1() throws IllegalPathException {
     int[][] result =
@@ -404,6 +536,70 @@ public class RawDataAggregationOperatorTest {
           {200, 60, 40, 80, 20, 100},
           {20000, 10200, 260, 10300, 380, 10400}
         };
+    long[][] resultTime =
+        new long[][] {
+          {0, 200, 260, 300, 380, 400},
+          {199, 259, 299, 379, 399, 499}
+        };
+    List<AggregationType> aggregationTypes = new ArrayList<>();
+    List<List<InputLocation[]>> inputLocations = new ArrayList<>();
+    for (int i = 0; i < 2; i++) {
+      aggregationTypes.add(AggregationType.SUM);
+      List<InputLocation[]> inputLocationForOneAggregator = new ArrayList<>();
+      inputLocationForOneAggregator.add(new InputLocation[] {new InputLocation(0, i)});
+      inputLocations.add(inputLocationForOneAggregator);
+    }
+    for (int i = 0; i < 2; i++) {
+      aggregationTypes.add(AggregationType.COUNT);
+      List<InputLocation[]> inputLocationForOneAggregator = new ArrayList<>();
+      inputLocationForOneAggregator.add(new InputLocation[] {new InputLocation(0, i)});
+      inputLocations.add(inputLocationForOneAggregator);
+    }
+    for (int i = 0; i < 2; i++) {
+      aggregationTypes.add(AggregationType.FIRST_VALUE);
+      List<InputLocation[]> inputLocationForOneAggregator = new ArrayList<>();
+      inputLocationForOneAggregator.add(new InputLocation[] {new InputLocation(0, i)});
+      inputLocations.add(inputLocationForOneAggregator);
+    }
+
+    WindowParameter windowParameter =
+        new WindowParameter(
+            WindowType.EVENT_WINDOW, TSDataType.INT32, CompareType.VARIATION, 0, false, true, 5000);
+
+    RawDataAggregationOperator rawDataAggregationOperator =
+        initRawDataAggregationOperator(aggregationTypes, null, inputLocations, windowParameter);
+    int count = 0;
+    while (rawDataAggregationOperator.hasNext()) {
+      TsBlock resultTsBlock = rawDataAggregationOperator.next();
+      if (resultTsBlock == null) {
+        continue;
+      }
+      for (int row = 0; row < resultTsBlock.getPositionCount(); row++, count++) {
+        assertEquals(resultTime[0][count], resultTsBlock.getTimeByIndex(row));
+        assertEquals(resultTime[1][count], resultTsBlock.getColumn(0).getLong(row));
+        for (int i = 1; i <= 2; i++) {
+          assertEquals(result[0][count], resultTsBlock.getColumn(i).getDouble(row), 0.01);
+        }
+        for (int i = 3; i <= 4; i++) {
+          assertEquals(result[1][count], resultTsBlock.getColumn(i).getLong(row));
+        }
+        for (int i = 5; i <= 6; i++) {
+          assertEquals(result[2][count], resultTsBlock.getColumn(i).getInt(row));
+        }
+      }
+    }
+    assertEquals(6, count);
+  }
+
+  @Test
+  public void groupByEventRawDataTest3() throws IllegalPathException {
+    int[][] result =
+        new int[][] {
+          {4019900, 613770, 11180, 827160, 7790, 1044950},
+          {200, 60, 40, 80, 20, 100},
+          {20000, 10200, 260, 10300, 380, 10400}
+        };
+    long[] resultTime = new long[] {0, 200, 260, 300, 380, 400};
     List<AggregationType> aggregationTypes = new ArrayList<>();
     List<List<InputLocation[]>> inputLocations = new ArrayList<>();
     for (int i = 0; i < 2; i++) {
@@ -444,6 +640,7 @@ public class RawDataAggregationOperatorTest {
         continue;
       }
       for (int row = 0; row < resultTsBlock.getPositionCount(); row++, count++) {
+        assertEquals(resultTime[count], resultTsBlock.getTimeByIndex(row));
         for (int i = 0; i < 2; i++) {
           assertEquals(result[0][count], resultTsBlock.getColumn(i).getDouble(row), 0.01);
         }
@@ -452,6 +649,50 @@ public class RawDataAggregationOperatorTest {
         }
         for (int i = 4; i < 6; i++) {
           assertEquals(result[2][count], resultTsBlock.getColumn(i).getInt(row));
+        }
+      }
+    }
+    assertEquals(6, count);
+  }
+  /** 0 - 199 200 - 259 260 - 299 300 - 379 380 - 399 400 - 499 */
+  @Test
+  public void groupByEventRawDataTest4() throws IllegalPathException {
+    int[] result =
+        new int[] {
+          20000, 10200, 260, 10300, 380, 10400,
+        };
+    long[][] resultTime =
+        new long[][] {
+          {0, 200, 260, 300, 380, 400},
+          {199, 259, 299, 379, 399, 499}
+        };
+
+    List<AggregationType> aggregationTypes = new ArrayList<>();
+    List<List<InputLocation[]>> inputLocations = new ArrayList<>();
+    for (int i = 0; i < 2; i++) {
+      aggregationTypes.add(AggregationType.FIRST_VALUE);
+      List<InputLocation[]> inputLocationForOneAggregator = new ArrayList<>();
+      inputLocationForOneAggregator.add(new InputLocation[] {new InputLocation(0, i)});
+      inputLocations.add(inputLocationForOneAggregator);
+    }
+
+    WindowParameter windowParameter =
+        new WindowParameter(
+            WindowType.EVENT_WINDOW, TSDataType.INT32, CompareType.VARIATION, 0, false, true, 5000);
+
+    RawDataAggregationOperator rawDataAggregationOperator =
+        initRawDataAggregationOperator(aggregationTypes, null, inputLocations, windowParameter);
+    int count = 0;
+    while (rawDataAggregationOperator.hasNext()) {
+      TsBlock resultTsBlock = rawDataAggregationOperator.next();
+      if (resultTsBlock == null) {
+        continue;
+      }
+      for (int row = 0; row < resultTsBlock.getPositionCount(); row++, count++) {
+        assertEquals(resultTime[0][count], resultTsBlock.getTimeByIndex(row));
+        assertEquals(resultTime[1][count], resultTsBlock.getColumn(0).getLong(row));
+        for (int i = 1; i <= 2; i++) {
+          assertEquals(result[count], resultTsBlock.getColumn(i).getInt(row));
         }
       }
     }
