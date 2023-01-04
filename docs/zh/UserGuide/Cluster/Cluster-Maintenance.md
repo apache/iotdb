@@ -32,7 +32,7 @@ SHOW VARIABLES
 ```
 IoTDB> show variables
 +----------------------------------+-----------------------------------------------------------------+
-|                         Variables|                                                            Value|
+|                          Variable|                                                            Value|
 +----------------------------------+-----------------------------------------------------------------+
 |                       ClusterName|                                                   defaultCluster|
 |             DataReplicationFactor|                                                                1|
