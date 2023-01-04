@@ -139,6 +139,7 @@ public class InsertRowStatement extends InsertBaseStatement {
         regionReplicaSet.getDataNodeLocations().get(0).getClientRpcEndPoint());
   }
 
+  @Override
   public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
     return visitor.visitInsertRow(this, context);
   }

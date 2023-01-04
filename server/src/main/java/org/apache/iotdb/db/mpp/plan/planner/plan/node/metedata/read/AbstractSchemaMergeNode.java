@@ -31,7 +31,7 @@ public abstract class AbstractSchemaMergeNode extends ProcessNode {
 
   private final List<PlanNode> children;
 
-  public AbstractSchemaMergeNode(PlanNodeId id) {
+  protected AbstractSchemaMergeNode(PlanNodeId id) {
     super(id);
     children = new ArrayList<>();
   }
@@ -53,7 +53,7 @@ public abstract class AbstractSchemaMergeNode extends ProcessNode {
 
   @Override
   public List<String> getOutputColumnNames() {
-    if (children.size() > 0) {
+    if (!children.isEmpty()) {
       return children.get(0).getOutputColumnNames();
     }
     return Collections.emptyList();

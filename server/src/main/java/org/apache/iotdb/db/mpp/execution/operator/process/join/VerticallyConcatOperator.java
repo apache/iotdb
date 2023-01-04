@@ -61,7 +61,7 @@ public class VerticallyConcatOperator implements ProcessOperator {
   public VerticallyConcatOperator(
       OperatorContext operatorContext, List<Operator> children, List<TSDataType> dataTypes) {
     checkArgument(
-        children != null && children.size() > 0,
+        children != null && !children.isEmpty(),
         "child size of VerticallyConcatOperator should be larger than 0");
     this.operatorContext = operatorContext;
     this.children = children;

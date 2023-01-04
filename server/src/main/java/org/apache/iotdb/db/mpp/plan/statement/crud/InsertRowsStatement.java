@@ -86,6 +86,7 @@ public class InsertRowsStatement extends InsertBaseStatement {
     return insertRowStatementList.isEmpty();
   }
 
+  @Override
   public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
     return visitor.visitInsertRows(this, context);
   }
