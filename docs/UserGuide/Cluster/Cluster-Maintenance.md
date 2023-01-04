@@ -82,7 +82,7 @@ The ConfigNode statuses are defined as follows:
 
 - **Running**: The ConfigNode is running properly.
 - **Unknown**: The ConfigNode doesn't report heartbeat properly.
-  - Can't synchronize other ConfigNode's data
+  - Can't receive data synchronized from other ConfigNodes
   - Won't be selected as the cluster ConfigNode-leader
 
 ## Show DataNode information
@@ -136,6 +136,7 @@ The DataNode statuses are defined as follows:
   - The cluster is still readable and writable if some DataNodes are Removing
 - **ReadOnly**: The remaining disk space of DataNode is lower than disk_warning_threshold(default is 5%), the DataNode is readable but un-writable and cannot synchronize data.
   - The cluster is still readable and writable if some DataNodes are ReadOnly
+  - Schema, data and Database can be deleted in ReadOnly status
   - Schema and data cannot be written to the cluster when all DataNodes are ReadOnly, but new Databases can still be created
 
 ## Show all Node information

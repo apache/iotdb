@@ -82,7 +82,7 @@ It costs 0.030s
 
 - **Running**: ConfigNode 正常运行
 - **Unknown**: ConfigNode 未正常上报心跳
-  - 不能同步其它 ConfigNode 的数据
+  - 无法接收其它 ConfigNode 同步来的数据
   - 不会被选为集群的 ConfigNode-leader
 
 ## 展示 DataNode 信息
@@ -137,6 +137,7 @@ DataNode 的状态机如下图所示：
   - 少数 DataNode Removing 不影响集群读写 
 - **ReadOnly**: DataNode 磁盘剩余空间低于 disk_warning_threshold（默认 5%），DataNode 可读但不能写入，不能同步数据
   - 少数 DataNode ReadOnly 不影响集群读写
+  - ReadOnly 状态下可以删除元数据和数据，可以删除 Database
   - 所有 DataNode 处于 ReadOnly 状态时，集群不可写入元数据和数据，仍可以创建 Database
 
 ## 展示全部节点信息
