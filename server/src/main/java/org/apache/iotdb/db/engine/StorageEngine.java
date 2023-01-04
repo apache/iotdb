@@ -341,7 +341,7 @@ public class StorageEngine implements IService {
     if (config.isEnableTimedFlushSeqMemtable()) {
       seqMemtableTimedFlushCheckThread =
           IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
-              ThreadName.TIMED_FlUSH_SEQ_MEMTABLE.getName());
+              ThreadName.TIMED_FLUSH_SEQ_MEMTABLE.getName());
       ScheduledExecutorUtil.safelyScheduleAtFixedRate(
           seqMemtableTimedFlushCheckThread,
           this::timedFlushSeqMemTable,
@@ -354,7 +354,7 @@ public class StorageEngine implements IService {
     if (config.isEnableTimedFlushUnseqMemtable()) {
       unseqMemtableTimedFlushCheckThread =
           IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
-              ThreadName.TIMED_FlUSH_UNSEQ_MEMTABLE.getName());
+              ThreadName.TIMED_FLUSH_UNSEQ_MEMTABLE.getName());
       ScheduledExecutorUtil.safelyScheduleAtFixedRate(
           unseqMemtableTimedFlushCheckThread,
           this::timedFlushUnseqMemTable,
@@ -392,9 +392,9 @@ public class StorageEngine implements IService {
     syncCloseAllProcessor();
     ThreadUtils.stopThreadPool(ttlCheckThread, ThreadName.TTL_CHECK_SERVICE);
     ThreadUtils.stopThreadPool(
-        seqMemtableTimedFlushCheckThread, ThreadName.TIMED_FlUSH_SEQ_MEMTABLE);
+        seqMemtableTimedFlushCheckThread, ThreadName.TIMED_FLUSH_SEQ_MEMTABLE);
     ThreadUtils.stopThreadPool(
-        unseqMemtableTimedFlushCheckThread, ThreadName.TIMED_FlUSH_UNSEQ_MEMTABLE);
+        unseqMemtableTimedFlushCheckThread, ThreadName.TIMED_FLUSH_UNSEQ_MEMTABLE);
     if (cachedThreadPool != null) {
       cachedThreadPool.shutdownNow();
     }
