@@ -118,7 +118,6 @@ public class ColumnHeaderConstant {
   public static final String DATA_NODE_ID = "DataNodeId";
   public static final String SERIES_SLOT_ID = "SeriesSlotId";
   public static final String TIME_SLOT_ID = "TimeSlotId";
-  public static final String SERIES_SLOT_NUM = "SeriesSlotNum";
   public static final String TIME_SLOT_NUM = "TimeSlotNum";
   public static final String ROLE = "Role";
 
