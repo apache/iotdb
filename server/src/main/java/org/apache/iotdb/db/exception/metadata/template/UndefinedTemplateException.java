@@ -25,7 +25,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 public class UndefinedTemplateException extends MetadataException {
   public UndefinedTemplateException(String path) {
     super(
-        String.format("Undefined template name: " + path),
+        String.format("Undefined template name: %s", path),
         TSStatusCode.UNDEFINED_TEMPLATE.getStatusCode(),
         true);
   }

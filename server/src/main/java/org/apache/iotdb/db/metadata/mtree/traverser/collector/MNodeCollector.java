@@ -41,7 +41,7 @@ public abstract class MNodeCollector<T> extends CollectorTraverser<T> {
 
   private Set<IMNode> processedNodes = new HashSet<>();
 
-  public MNodeCollector(IMNode startNode, PartialPath path, IMTreeStore store)
+  protected MNodeCollector(IMNode startNode, PartialPath path, IMTreeStore store)
       throws MetadataException {
     super(startNode, path, store);
   }

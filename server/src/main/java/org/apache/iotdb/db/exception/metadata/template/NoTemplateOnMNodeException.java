@@ -27,7 +27,7 @@ public class NoTemplateOnMNodeException extends MetadataException {
 
   public NoTemplateOnMNodeException(String path) {
     super(
-        String.format("NO template on " + path),
+        String.format("NO template on %s", path),
         TSStatusCode.TEMPLATE_NOT_SET.getStatusCode(),
         true);
   }
