@@ -16,24 +16,31 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.mpp.common.schematree;
+package org.apache.iotdb.db.mpp.common.schematree.visitor;
 
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.schematree.node.SchemaNode;
-import org.apache.iotdb.db.mpp.common.schematree.visitor.SchemaTreeVisitorWithLimitOffsetWrapper;
 
-public class ClusterSchemaTreeTestWithRelease extends ClusterSchemaTreeTest {
+public class SchemaTreeVisitorFactory {
+  public static SchemaTreeDeviceVisitor createSchemaTreeDeviceVisitor(
+      SchemaNode root, PartialPath pathPattern, boolean isPrefixMatch) {
+    return new SchemaTreeDeviceVisitor(root, pathPattern, isPrefixMatch);
+  }
 
-  @Override
-  protected SchemaTreeVisitorWithLimitOffsetWrapper<MeasurementPath>
-      createSchemaTreeVisitorWithLimitOffsetWrapper(
+  public static SchemaTreeMeasurementVisitor createSchemaTreeMeasurementVisitor(
+      SchemaNode root, PartialPath pathPattern, boolean isPrefixMatch) {
+    return new SchemaTreeMeasurementVisitor(root, pathPattern, isPrefixMatch);
+  }
+
+  public static SchemaTreeVisitorWithLimitOffsetWrapper<MeasurementPath>
+      createSchemaTreeMeasurementVisitor(
           SchemaNode root,
           PartialPath pathPattern,
+          boolean isPrefixMatch,
           int slimit,
-          int soffset,
-          boolean isPrefixMatch) {
+          int soffset) {
     return new SchemaTreeVisitorWithLimitOffsetWrapper<>(
-        new MockSchemaTreeMeasurementVisitor(root, pathPattern, isPrefixMatch), slimit, soffset);
+        new SchemaTreeMeasurementVisitor(root, pathPattern, isPrefixMatch), slimit, soffset);
   }
 }

@@ -29,7 +29,8 @@ import org.apache.iotdb.db.mpp.common.schematree.node.SchemaInternalNode;
 import org.apache.iotdb.db.mpp.common.schematree.node.SchemaMeasurementNode;
 import org.apache.iotdb.db.mpp.common.schematree.node.SchemaNode;
 import org.apache.iotdb.db.mpp.common.schematree.visitor.SchemaTreeDeviceVisitor;
-import org.apache.iotdb.db.mpp.common.schematree.visitor.SchemaTreeMeasurementVisitor;
+import org.apache.iotdb.db.mpp.common.schematree.visitor.SchemaTreeVisitorFactory;
+import org.apache.iotdb.db.mpp.common.schematree.visitor.SchemaTreeVisitorWithLimitOffsetWrapper;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
@@ -73,20 +74,21 @@ public class ClusterSchemaTree implements ISchemaTree {
   @Override
   public Pair<List<MeasurementPath>, Integer> searchMeasurementPaths(
       PartialPath pathPattern, int slimit, int soffset, boolean isPrefixMatch) {
-    SchemaTreeMeasurementVisitor visitor =
-        new SchemaTreeMeasurementVisitor(root, pathPattern, slimit, soffset, isPrefixMatch);
+    SchemaTreeVisitorWithLimitOffsetWrapper<MeasurementPath> visitor =
+        SchemaTreeVisitorFactory.createSchemaTreeMeasurementVisitor(
+            root, pathPattern, isPrefixMatch, slimit, soffset);
     return new Pair<>(visitor.getAllResult(), visitor.getNextOffset());
   }
 
   @Override
   public Pair<List<MeasurementPath>, Integer> searchMeasurementPaths(PartialPath pathPattern) {
-    SchemaTreeMeasurementVisitor visitor =
-        new SchemaTreeMeasurementVisitor(
+    SchemaTreeVisitorWithLimitOffsetWrapper<MeasurementPath> visitor =
+        SchemaTreeVisitorFactory.createSchemaTreeMeasurementVisitor(
             root,
             pathPattern,
+            false,
             IoTDBDescriptor.getInstance().getConfig().getMaxQueryDeduplicatedPathNum() + 1,
-            0,
-            false);
+            0);
     return new Pair<>(visitor.getAllResult(), visitor.getNextOffset());
   }
 
@@ -102,13 +104,15 @@ public class ClusterSchemaTree implements ISchemaTree {
    */
   @Override
   public List<DeviceSchemaInfo> getMatchedDevices(PartialPath pathPattern, boolean isPrefixMatch) {
-    SchemaTreeDeviceVisitor visitor = new SchemaTreeDeviceVisitor(root, pathPattern, isPrefixMatch);
+    SchemaTreeDeviceVisitor visitor =
+        SchemaTreeVisitorFactory.createSchemaTreeDeviceVisitor(root, pathPattern, isPrefixMatch);
     return visitor.getAllResult();
   }
 
   @Override
   public List<DeviceSchemaInfo> getMatchedDevices(PartialPath pathPattern) {
-    SchemaTreeDeviceVisitor visitor = new SchemaTreeDeviceVisitor(root, pathPattern, false);
+    SchemaTreeDeviceVisitor visitor =
+        SchemaTreeVisitorFactory.createSchemaTreeDeviceVisitor(root, pathPattern, false);
     return visitor.getAllResult();
   }
 

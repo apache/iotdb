@@ -90,7 +90,13 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R>
   private Throwable throwable;
 
   // cached result variables
-  protected N nextMatchedNode;
+  private N nextMatchedNode;
+
+  // only used for wrapper
+  protected AbstractTreeVisitor() {
+    root = null;
+    patternFA = null;
+  }
 
   protected AbstractTreeVisitor(N root, PartialPath pathPattern, boolean isPrefixMatch) {
     this.root = root;
@@ -149,6 +155,10 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R>
 
   @Override
   public void close() {
+    if (nextMatchedNode != null && !shouldVisitSubtree) {
+      // release nextMatchedNode
+      releaseNode(nextMatchedNode);
+    }
     while (!visitorStack.isEmpty()) {
       popStack();
     }
@@ -172,11 +182,15 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R>
       throw new NoSuchElementException();
     }
     R result = generateResult(nextMatchedNode);
+    if (!shouldVisitSubtree) {
+      // release nextMatchedNode
+      releaseNode(nextMatchedNode);
+    }
     nextMatchedNode = null;
     return result;
   }
 
-  protected void getNext() throws Exception {
+  private void getNext() {
     nextMatchedNode = null;
     VisitorStackEntry stackEntry;
     Iterator<N> iterator;
@@ -206,10 +220,11 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R>
       if (shouldVisitSubtree) {
         pushChildren(nextTempNode);
         // After adding nextTempNode into ancestorStack, nextTempNode will be released finally.
-      } else {
-        // Otherwise, nextTempNode is useless. It needs to be released.
+      } else if (nextMatchedNode != nextTempNode) {
+        // Else if nextTempNode is not accepted, it needs to be released.
         releaseNode(nextTempNode);
       }
+      // Otherwise, it will be released when invoking next()
 
       if (nextMatchedNode != null) {
         return;

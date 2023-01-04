@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.mpp.common.schematree;
 
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.schematree.node.SchemaNode;
 import org.apache.iotdb.db.mpp.common.schematree.visitor.SchemaTreeMeasurementVisitor;
@@ -31,9 +32,15 @@ import java.util.Map;
 public class MockSchemaTreeMeasurementVisitor extends SchemaTreeMeasurementVisitor {
   Map<SchemaNode, Integer> map = new HashMap<>();
 
+  @Override
+  protected MeasurementPath generateResult(SchemaNode nextMatchedNode) {
+    Assert.assertTrue(map.get(nextMatchedNode) > 0);
+    return super.generateResult(nextMatchedNode);
+  }
+
   public MockSchemaTreeMeasurementVisitor(
-      SchemaNode root, PartialPath pathPattern, int slimit, int soffset, boolean isPrefixMatch) {
-    super(root, pathPattern, slimit, soffset, isPrefixMatch);
+      SchemaNode root, PartialPath pathPattern, boolean isPrefixMatch) {
+    super(root, pathPattern, isPrefixMatch);
   }
 
   @Override
@@ -64,7 +71,9 @@ public class MockSchemaTreeMeasurementVisitor extends SchemaTreeMeasurementVisit
     super.releaseNodeIterator(nodeIterator);
   }
 
-  public void check() {
+  @Override
+  public void close() {
+    super.close();
     for (int cnt : map.values()) {
       Assert.assertEquals(0, cnt);
     }
