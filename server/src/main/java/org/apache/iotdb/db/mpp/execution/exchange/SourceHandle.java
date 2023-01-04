@@ -504,6 +504,7 @@ public class SourceHandle implements ISourceHandle {
               Thread.currentThread().interrupt();
               // if interrupted during sleeping, fast fail and don't retry any more
               fail(e);
+              return;
             }
           } finally {
             QUERY_METRICS.recordDataExchangeCost(
