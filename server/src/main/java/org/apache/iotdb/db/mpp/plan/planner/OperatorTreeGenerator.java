@@ -2104,8 +2104,6 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
       PlanNode node, LocalExecutionPlanContext context) {
     // children after pipelining
     List<Operator> children = new ArrayList<>();
-    // children before pipelining
-    List<Operator> childOperationList = new ArrayList<>();
     int finalExchangeNum = context.getExchangeSumNum();
     for (PlanNode childSource : node.getChildren()) {
       // Create pipelines for children
@@ -2116,7 +2114,6 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         children.add(childOperation);
         finalExchangeNum += 1;
       } else {
-        childOperationList.add(childOperation);
         ISinkHandle localSinkHandle =
             MPP_DATA_EXCHANGE_MANAGER.createLocalSinkHandleForPipeline(
                 subContext.getDriverContext(), childSource.getPlanNodeId().getId());

@@ -37,6 +37,9 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.Pair;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -51,6 +54,7 @@ import static java.util.Objects.requireNonNull;
 // Attention: We should use thread-safe data structure for members that are shared by all pipelines
 public class LocalExecutionPlanContext {
 
+  private static final Logger LOGGER = LoggerFactory.getLogger(LocalExecutionPlanContext.class);
   private final DriverContext driverContext;
   private final AtomicInteger nextOperatorId;
   private final TypeProvider typeProvider;
@@ -177,11 +181,14 @@ public class LocalExecutionPlanContext {
   }
 
   public void setMaxBytesOneHandleCanReserve() {
+    long maxBytesOneHandleCanReserve = getMaxBytesOneHandleCanReserve();
+    LOGGER.debug(
+        "MaxBytesOneHandleCanReserve for ExchangeOperator is {}, exchangeSumNum is {}.",
+        maxBytesOneHandleCanReserve,
+        exchangeSumNum);
     exchangeOperatorList.forEach(
         exchangeOperator ->
-            exchangeOperator
-                .getSourceHandle()
-                .setMaxBytesCanReserve(getMaxBytesOneHandleCanReserve()));
+            exchangeOperator.getSourceHandle().setMaxBytesCanReserve(maxBytesOneHandleCanReserve));
   }
 
   public Set<String> getAllSensors(String deviceId, String sensorId) {
