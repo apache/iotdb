@@ -2153,6 +2153,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
       context.setExchangeSumNum(originExchangeNum);
       children.add(childOperation);
     }
+    context.setExchangeSumNum(finalExchangeNum);
     return children;
   }
 }
