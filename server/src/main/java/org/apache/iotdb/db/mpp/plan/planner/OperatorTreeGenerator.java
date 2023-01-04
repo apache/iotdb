@@ -1675,7 +1675,10 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                 context.getInstanceContext()::failed);
     context.addExchangeSumNum(1);
     sourceHandle.setMaxBytesCanReserve(context.getMaxBytesOneHandleCanReserve());
-    return new ExchangeOperator(operatorContext, sourceHandle, node.getUpstreamPlanNodeId());
+    ExchangeOperator exchangeOperator =
+        new ExchangeOperator(operatorContext, sourceHandle, node.getUpstreamPlanNodeId());
+    context.addExchangeOperator(exchangeOperator);
+    return exchangeOperator;
   }
 
   @Override
@@ -2134,20 +2137,11 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
             .getTimeSliceAllocator()
             .recordExecutionWeight(sourceOperator.getOperatorContext(), 1);
         children.add(sourceOperator);
+        context.addExchangeOperator(sourceOperator);
         finalExchangeNum += subContext.getExchangeSumNum() - context.getExchangeSumNum() + 1;
       }
     }
     context.setExchangeSumNum(finalExchangeNum);
-
-    for (Operator childSource : children) {
-      if (!(childSource instanceof ExchangeOperator)) {
-        throw new IllegalArgumentException(
-            String.format(
-                "After pipelining, the child of node[%s] is not an exchangeOperator.",
-                node.getPlanNodeId().toString()));
-      }
-      context.addExchangeOperator((ExchangeOperator) childSource);
-    }
     return children;
   }
 
