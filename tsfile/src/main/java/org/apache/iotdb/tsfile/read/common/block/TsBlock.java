@@ -481,7 +481,7 @@ public class TsBlock {
 
   public int getTotalInstanceSize() {
     int totalInstanceSize = INSTANCE_SIZE;
-    totalInstanceSize += TimeColumn.INSTANCE_SIZE;
+    totalInstanceSize += timeColumn.getInstanceSize();
     for (Column column : valueColumns) {
       totalInstanceSize += column.getInstanceSize();
     }
