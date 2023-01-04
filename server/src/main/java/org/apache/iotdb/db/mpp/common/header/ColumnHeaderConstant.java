@@ -58,7 +58,7 @@ public class ColumnHeaderConstant {
   public static final String VERSION = "Version";
   public static final String BUILD_INFO = "BuildInfo";
   public static final String PATHS = "Paths";
-  public static final String VARIABLES = "Variables";
+  public static final String VARIABLE = "Variable";
 
   // column names for count statement
   public static final String COLUMN = "Column";
@@ -286,7 +286,7 @@ public class ColumnHeaderConstant {
 
   public static final List<ColumnHeader> showVariablesColumnHeaders =
       ImmutableList.of(
-          new ColumnHeader(VARIABLES, TSDataType.TEXT), new ColumnHeader(VALUE, TSDataType.TEXT));
+          new ColumnHeader(VARIABLE, TSDataType.TEXT), new ColumnHeader(VALUE, TSDataType.TEXT));
 
   public static final List<ColumnHeader> showFunctionsColumnHeaders =
       ImmutableList.of(
