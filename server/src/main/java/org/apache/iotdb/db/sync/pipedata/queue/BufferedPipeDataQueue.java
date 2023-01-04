@@ -101,7 +101,7 @@ public class BufferedPipeDataQueue implements PipeDataQueue {
       if (file.getName().endsWith(SyncConstant.PIPE_LOG_NAME_SUFFIX) && file.length() > 0) {
         startNumbers.add(SyncPathUtil.getSerialNumberFromPipeLogName(file.getName()));
       }
-    if (startNumbers.size() != 0) {
+    if (!startNumbers.isEmpty()) {
       Collections.sort(startNumbers);
       for (Long startTime : startNumbers) {
         pipeLogStartNumber.offer(startTime);

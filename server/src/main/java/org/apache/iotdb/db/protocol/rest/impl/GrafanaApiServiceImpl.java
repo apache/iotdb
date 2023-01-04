@@ -223,7 +223,7 @@ public class GrafanaApiServiceImpl extends GrafanaApiService {
   public Response node(List<String> requestBody, SecurityContext securityContext)
       throws NotFoundException {
     try {
-      if (requestBody != null && requestBody.size() > 0) {
+      if (requestBody != null && !requestBody.isEmpty()) {
         PartialPath path = new PartialPath(Joiner.on(".").join(requestBody));
         String sql = "show child paths " + path;
         Statement statement = StatementGenerator.createStatement(sql, ZoneId.systemDefault());

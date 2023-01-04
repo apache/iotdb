@@ -182,7 +182,7 @@ public class ExtPipePlugin {
     }
 
     alive = true;
-    logger.info("External pipe " + extPipeTypeName + " begin to START");
+    logger.info("External pipe {} begin to START", extPipeTypeName);
 
     // == Launch pipe worker threads
     executorService =
@@ -201,7 +201,7 @@ public class ExtPipePlugin {
 
     writerInvocationFailures = new ConcurrentHashMap<>();
 
-    logger.info("External pipe " + extPipeTypeName + " finish START.");
+    logger.info("External pipe {} finish START.", extPipeTypeName);
   }
 
   /** Stop all working threads */

@@ -235,7 +235,7 @@ public abstract class AbstractQueryHandler {
       } else {
         // If there are no common queries, they are all function queries
         for (InfluxFunction function : functions) {
-          if (value.size() == 0) {
+          if (value.isEmpty()) {
             value.add(function.calculateBruteForce().getTimestamp());
           } else {
             value.set(0, function.calculateBruteForce().getTimestamp());
@@ -310,7 +310,7 @@ public abstract class AbstractQueryHandler {
       InfluxFunctionValue functionValue =
           updateByIoTDBFunc(database, measurement, function, sessionid);
       //      InfluxFunctionValue functionValue = function.calculateByIoTDBFunc();
-      if (value.size() == 0) {
+      if (value.isEmpty()) {
         value.add(functionValue.getTimestamp());
       } else {
         value.set(0, functionValue.getTimestamp());
@@ -442,7 +442,7 @@ public abstract class AbstractQueryHandler {
     String realQuerySql;
 
     realQuerySql = "select * from " + curQueryPath;
-    if (!(realIotDBCondition.length() == 0)) {
+    if (realIotDBCondition.length() != 0) {
       realQuerySql += " where " + realIotDBCondition;
     }
     realQuerySql += " align by device";

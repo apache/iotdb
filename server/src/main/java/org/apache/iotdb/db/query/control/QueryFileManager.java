@@ -139,9 +139,9 @@ public class QueryFileManager {
         sealedFilePathsMap.entrySet()) {
       long queryId = entry.getKey();
       Set<TsFileResource> tsFileResources = entry.getValue().keySet();
-      DEBUG_LOGGER.info(String.format("\t[queryId: %d]\n", queryId));
+      DEBUG_LOGGER.info("\t[queryId: {}]\n", queryId);
       for (TsFileResource tsFileResource : tsFileResources) {
-        DEBUG_LOGGER.info(String.format("\t\t%s\n", tsFileResource.getTsFile().getAbsolutePath()));
+        DEBUG_LOGGER.info("\t\t{}\n", tsFileResource.getTsFile().getAbsolutePath());
       }
     }
     DEBUG_LOGGER.info("[Query Unsealed File Info]\n");
@@ -149,9 +149,9 @@ public class QueryFileManager {
         unsealedFilePathsMap.entrySet()) {
       long queryId = entry.getKey();
       Set<TsFileResource> tsFileResources = entry.getValue().keySet();
-      DEBUG_LOGGER.info(String.format("\t[queryId: %d]\n", queryId));
+      DEBUG_LOGGER.info("\t[queryId: {}]\n", queryId);
       for (TsFileResource tsFileResource : tsFileResources) {
-        DEBUG_LOGGER.info(String.format("\t\t%s\n", tsFileResource.getTsFile().getAbsolutePath()));
+        DEBUG_LOGGER.info("\t\t{}\n", tsFileResource.getTsFile().getAbsolutePath());
       }
     }
   }
