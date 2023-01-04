@@ -23,9 +23,9 @@ import java.io.ByteArrayOutputStream;
 
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 
-import static org.apache.iotdb.tsfile.common.conf.TSFileConfig.LEADING_ZERO_BITS_LENGTH_64BIT;
-import static org.apache.iotdb.tsfile.common.conf.TSFileConfig.MEANINGFUL_XOR_BITS_LENGTH_64BIT;
-import static org.apache.iotdb.tsfile.common.conf.TSFileConfig.VALUE_BITS_LENGTH_64BIT;
+import static org.apache.iotdb.tsfile.common.conf.TSFileConfig.LEADING_ZERO_BITS_LENGTH_32BIT;
+import static org.apache.iotdb.tsfile.common.conf.TSFileConfig.MEANINGFUL_XOR_BITS_LENGTH_32BIT;
+import static org.apache.iotdb.tsfile.common.conf.TSFileConfig.VALUE_BITS_LENGTH_32BIT;
 
 /**
  * This class includes code modified from Michael Burman's gorilla-tsc project.
@@ -36,12 +36,12 @@ import static org.apache.iotdb.tsfile.common.conf.TSFileConfig.VALUE_BITS_LENGTH
  *
  * <p>License: http://www.apache.org/licenses/LICENSE-2.0
  */
-public class LongChimpEncoder extends GorillaEncoderV2 {
+public class IntChimpEncoder extends GorillaEncoderV2 {
 
-    private int previousValues = 128;
+    private int previousValues = 64;
     private int previousValuesLog2;
     private int threshold;
-    private long storedValues[];
+    private int storedValues[];
     private int setLsb;
     private int[] indices;
     private int index = 0;
@@ -49,49 +49,49 @@ public class LongChimpEncoder extends GorillaEncoderV2 {
     private int flagOneSize;
     private int flagZeroSize;
 
-    public LongChimpEncoder() {
+    public IntChimpEncoder() {
       this.setType(TSEncoding.CHIMP);
       this.previousValuesLog2 =  (int)(Math.log(previousValues) / Math.log(2));
       this.threshold = THRESHOLD + previousValuesLog2;
       this.setLsb = (int) Math.pow(2, threshold + 1) - 1;
       this.indices = new int[(int) Math.pow(2, threshold + 1)];
-      this.storedValues = new long[previousValues];
+      this.storedValues = new int[previousValues];
       this.flagZeroSize = previousValuesLog2 + 2;
-      this.flagOneSize = previousValuesLog2 + 11;
+      this.flagOneSize = previousValuesLog2 + 10;
     }
 
-    private static final long CHIMP_ENCODING_ENDING =
-            Double.doubleToRawLongBits(Double.NaN);
+    private static final int CHIMP_ENCODING_ENDING =
+            Float.floatToRawIntBits(Float.NaN);
 
     private static final int ONE_ITEM_MAX_SIZE =
             (2
-                        + LEADING_ZERO_BITS_LENGTH_64BIT
-                        + MEANINGFUL_XOR_BITS_LENGTH_64BIT
-                        + VALUE_BITS_LENGTH_64BIT)
+                        + LEADING_ZERO_BITS_LENGTH_32BIT
+                        + MEANINGFUL_XOR_BITS_LENGTH_32BIT
+                        + VALUE_BITS_LENGTH_32BIT)
                     / Byte.SIZE
                 + 1;
 
-    public final static int THRESHOLD = 6;
+    public final static int THRESHOLD = 5;
 
     public final static short[] leadingRepresentation = {0, 0, 0, 0, 0, 0, 0, 0,
-              1, 1, 1, 1, 2, 2, 2, 2,
-              3, 3, 4, 4, 5, 5, 6, 6,
-              7, 7, 7, 7, 7, 7, 7, 7,
-              7, 7, 7, 7, 7, 7, 7, 7,
-              7, 7, 7, 7, 7, 7, 7, 7,
-              7, 7, 7, 7, 7, 7, 7, 7,
-              7, 7, 7, 7, 7, 7, 7, 7
-          };
+            1, 1, 1, 1, 2, 2, 2, 2,
+            3, 3, 4, 4, 5, 5, 6, 6,
+            7, 7, 7, 7, 7, 7, 7, 7,
+            7, 7, 7, 7, 7, 7, 7, 7,
+            7, 7, 7, 7, 7, 7, 7, 7,
+            7, 7, 7, 7, 7, 7, 7, 7,
+            7, 7, 7, 7, 7, 7, 7, 7
+        };
 
     public final static short[] leadingRound = {0, 0, 0, 0, 0, 0, 0, 0,
-              8, 8, 8, 8, 12, 12, 12, 12,
-              16, 16, 18, 18, 20, 20, 22, 22,
-              24, 24, 24, 24, 24, 24, 24, 24,
-              24, 24, 24, 24, 24, 24, 24, 24,
-              24, 24, 24, 24, 24, 24, 24, 24,
-              24, 24, 24, 24, 24, 24, 24, 24,
-              24, 24, 24, 24, 24, 24, 24, 24
-          };
+            8, 8, 8, 8, 12, 12, 12, 12,
+            16, 16, 18, 18, 20, 20, 22, 22,
+            24, 24, 24, 24, 24, 24, 24, 24,
+            24, 24, 24, 24, 24, 24, 24, 24,
+            24, 24, 24, 24, 24, 24, 24, 24,
+            24, 24, 24, 24, 24, 24, 24, 24,
+            24, 24, 24, 24, 24, 24, 24, 24
+        };
 
     @Override
     public final int getOneItemMaxSize() {
@@ -103,7 +103,7 @@ public class LongChimpEncoder extends GorillaEncoderV2 {
       super.reset();
       this.current = 0;
       this.indices = new int[(int) Math.pow(2, threshold + 1)];
-      this.storedValues = new long[previousValues];
+      this.storedValues = new int[previousValues];
 
     }
 
@@ -122,7 +122,7 @@ public class LongChimpEncoder extends GorillaEncoderV2 {
     }
 
     @Override
-    public final void encode(long value, ByteArrayOutputStream out) {
+    public final void encode(int value, ByteArrayOutputStream out) {
       if (firstValueWasWritten) {
         compressValue(value, out);
       } else {
@@ -131,21 +131,21 @@ public class LongChimpEncoder extends GorillaEncoderV2 {
       }
     }
 
-    private void writeFirst(long value, ByteArrayOutputStream out) {
+    private void writeFirst(int value, ByteArrayOutputStream out) {
         storedValues[current] = value;
-          writeBits(value, VALUE_BITS_LENGTH_64BIT, out);
-          indices[(int) value & setLsb] = index;
+          writeBits(value, VALUE_BITS_LENGTH_32BIT, out);
+          indices[value & setLsb] = index;
         }
 
-    private void compressValue(long value, ByteArrayOutputStream out) {
-      int key = (int) value & setLsb;
-      long xor;
+    private void compressValue(int value, ByteArrayOutputStream out) {
+      int key = value & setLsb;
+      int xor;
       int previousIndex;
       int trailingZeros = 0;
       int currIndex = indices[key];
       if ((index - currIndex) < previousValues) {
-          long tempXor = value ^ storedValues[currIndex % previousValues];
-          trailingZeros = Long.numberOfTrailingZeros(tempXor);
+          int tempXor = value ^ storedValues[currIndex % previousValues];
+          trailingZeros = Integer.numberOfTrailingZeros(tempXor);
           if (trailingZeros > threshold) {
               previousIndex = currIndex % previousValues;
               xor = tempXor;
@@ -160,23 +160,23 @@ public class LongChimpEncoder extends GorillaEncoderV2 {
 
         if(xor == 0) {
             writeBits(previousIndex, this.flagZeroSize, out);
-            storedLeadingZeros = 65;
+            storedLeadingZeros = 33;
         } else {
-            int leadingZeros = leadingRound[Long.numberOfLeadingZeros(xor)];
+            int leadingZeros = leadingRound[Integer.numberOfLeadingZeros(xor)];
 
             if (trailingZeros > threshold) {
-              int significantBits = 64 - leadingZeros - trailingZeros;
-              writeBits(512 * (previousValues + previousIndex) + 64 * leadingRepresentation[leadingZeros] + significantBits, this.flagOneSize, out);
+              int significantBits = 32 - leadingZeros - trailingZeros;
+              writeBits(256 * (previousValues + previousIndex) + 32 * leadingRepresentation[leadingZeros] + significantBits, this.flagOneSize, out);
               writeBits(xor >>> trailingZeros, significantBits, out); // Store the meaningful bits of XOR
-              storedLeadingZeros = 65;
+              storedLeadingZeros = 33;
           } else if (leadingZeros == storedLeadingZeros) {
               writeBit(out);
               skipBit(out);
-              int significantBits = 64 - leadingZeros;
+              int significantBits = 32 - leadingZeros;
               writeBits(xor, significantBits, out);
           } else {
               storedLeadingZeros = leadingZeros;
-              int significantBits = 64 - leadingZeros;
+              int significantBits = 32 - leadingZeros;
               writeBits(24 + leadingRepresentation[leadingZeros], 5, out);
               writeBits(xor, significantBits, out);
           }

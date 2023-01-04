@@ -21,10 +21,9 @@ package org.apache.iotdb.tsfile.encoding.decoder;
 
 import org.apache.iotdb.tsfile.encoding.encoder.DoublePrecisionChimpEncoder;
 import org.apache.iotdb.tsfile.encoding.encoder.Encoder;
-import org.apache.iotdb.tsfile.encoding.encoder.IntGorillaEncoder;
+import org.apache.iotdb.tsfile.encoding.encoder.IntChimpEncoder;
 import org.apache.iotdb.tsfile.encoding.encoder.LongChimpEncoder;
-import org.apache.iotdb.tsfile.encoding.encoder.SinglePrecisionEncoderV2;
-
+import org.apache.iotdb.tsfile.encoding.encoder.SinglePrecisionChimpEncoder;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -82,14 +81,14 @@ public class ChimpDecoderTest {
 
   @Test
   public void testIntSingleValue() throws IOException {
-    Encoder encoder = new IntGorillaEncoder();
+    Encoder encoder = new IntChimpEncoder();
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
     encoder.encode(777, baos);
     encoder.flush(baos);
 
     ByteBuffer buffer = ByteBuffer.wrap(baos.toByteArray());
 
-    Decoder decoder = new IntGorillaDecoder();
+    Decoder decoder = new IntChimpDecoder();
     if (decoder.hasNext(buffer)) {
       assertEquals(777, decoder.readInt(buffer));
     }
@@ -100,14 +99,14 @@ public class ChimpDecoderTest {
 
   @Test
   public void testFloatSingleValue() throws IOException {
-    Encoder encoder = new SinglePrecisionEncoderV2();
+    Encoder encoder = new SinglePrecisionChimpEncoder();
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
     encoder.encode(Float.MAX_VALUE, baos);
     encoder.flush(baos);
 
     ByteBuffer buffer = ByteBuffer.wrap(baos.toByteArray());
 
-    Decoder decoder = new SinglePrecisionDecoderV2();
+    Decoder decoder = new SinglePrecisionChimpDecoder();
     if (decoder.hasNext(buffer)) {
       assertEquals(Float.MAX_VALUE, decoder.readFloat(buffer), DELTA);
     }
@@ -154,7 +153,7 @@ public class ChimpDecoderTest {
 
   @Test
   public void testIntZeroNumber() throws IOException {
-    Encoder encoder = new IntGorillaEncoder();
+    Encoder encoder = new IntChimpEncoder();
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
     int value = 0;
     encoder.encode(value, baos);
@@ -167,7 +166,7 @@ public class ChimpDecoderTest {
     encoder.flush(baos);
     ByteBuffer buffer = ByteBuffer.wrap(baos.toByteArray());
     for (int i = 0; i < 2; i++) {
-      Decoder decoder = new IntGorillaDecoder();
+      Decoder decoder = new IntChimpDecoder();
       if (decoder.hasNext(buffer)) {
         assertEquals(value, decoder.readInt(buffer), DELTA);
       }
@@ -182,7 +181,7 @@ public class ChimpDecoderTest {
 
   @Test
   public void testFloatZeroNumber() throws IOException {
-    Encoder encoder = new SinglePrecisionEncoderV2();
+    Encoder encoder = new SinglePrecisionChimpEncoder();
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
     float value = 0f;
     encoder.encode(value, baos);
@@ -195,7 +194,7 @@ public class ChimpDecoderTest {
     encoder.flush(baos);
     ByteBuffer buffer = ByteBuffer.wrap(baos.toByteArray());
     for (int i = 0; i < 2; i++) {
-      Decoder decoder = new SinglePrecisionDecoderV2();
+      Decoder decoder = new SinglePrecisionChimpDecoder();
       if (decoder.hasNext(buffer)) {
         assertEquals(value, decoder.readFloat(buffer), DELTA);
       }
@@ -267,7 +266,7 @@ public class ChimpDecoderTest {
   @Test
   public void testInteger() throws IOException {
     for (Integer num : iterations) {
-      Encoder encoder = new IntGorillaEncoder();
+      Encoder encoder = new IntChimpEncoder();
       ByteArrayOutputStream baos = new ByteArrayOutputStream();
       int value = 7;
       for (int i = 0; i < num; i++) {
@@ -277,7 +276,7 @@ public class ChimpDecoderTest {
 
       ByteBuffer buffer = ByteBuffer.wrap(baos.toByteArray());
 
-      Decoder decoder = new IntGorillaDecoder();
+      Decoder decoder = new IntChimpDecoder();
       for (int i = 0; i < num; i++) {
         if (decoder.hasNext(buffer)) {
           assertEquals(value + 2 * i, decoder.readInt(buffer));
@@ -294,7 +293,7 @@ public class ChimpDecoderTest {
   @Test
   public void testFloat() throws IOException {
     for (Integer num : iterations) {
-      Encoder encoder = new SinglePrecisionEncoderV2();
+      Encoder encoder = new SinglePrecisionChimpEncoder();
       ByteArrayOutputStream baos = new ByteArrayOutputStream();
       float value = 7.101f;
       for (int i = 0; i < num; i++) {
@@ -304,7 +303,7 @@ public class ChimpDecoderTest {
 
       ByteBuffer buffer = ByteBuffer.wrap(baos.toByteArray());
 
-      Decoder decoder = new SinglePrecisionDecoderV2();
+      Decoder decoder = new SinglePrecisionChimpDecoder();
       for (int i = 0; i < num; i++) {
         if (decoder.hasNext(buffer)) {
           assertEquals(value + 2 * i, decoder.readFloat(buffer), DELTA);
@@ -381,9 +380,9 @@ public class ChimpDecoderTest {
   }
 
   private void testInteger(int repeatCount) throws Exception {
-    Encoder encoder = new IntGorillaEncoder();
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
     for (int i = 0; i < repeatCount; i++) {
+      Encoder encoder = new IntChimpEncoder();
       for (int value : ChimpDecoderTest.intList) {
         encoder.encode(value, baos);
       }
@@ -393,7 +392,7 @@ public class ChimpDecoderTest {
     ByteBuffer buffer = ByteBuffer.wrap(baos.toByteArray());
 
     for (int i = 0; i < repeatCount; i++) {
-      Decoder decoder = new IntGorillaDecoder();
+      Decoder decoder = new IntChimpDecoder();
       for (int expected : ChimpDecoderTest.intList) {
         if (decoder.hasNext(buffer)) {
           int actual = decoder.readInt(buffer);
@@ -404,9 +403,9 @@ public class ChimpDecoderTest {
       }
     }
 
-    encoder = new IntGorillaEncoder();
     baos = new ByteArrayOutputStream();
     for (int i = 0; i < repeatCount; i++) {
+      Encoder encoder = new IntChimpEncoder();
       for (int value : ChimpDecoderTest.intList) {
         encoder.encode(-value, baos);
       }
@@ -416,7 +415,7 @@ public class ChimpDecoderTest {
     buffer = ByteBuffer.wrap(baos.toByteArray());
 
     for (int i = 0; i < repeatCount; i++) {
-      Decoder decoder = new IntGorillaDecoder();
+      Decoder decoder = new IntChimpDecoder();
       for (int expected : ChimpDecoderTest.intList) {
         if (decoder.hasNext(buffer)) {
           int actual = decoder.readInt(buffer);
@@ -436,9 +435,9 @@ public class ChimpDecoderTest {
   }
 
   private void testFloat(int repeatCount) throws Exception {
-    Encoder encoder = new SinglePrecisionEncoderV2();
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
     for (int i = 0; i < repeatCount; i++) {
+      Encoder encoder = new SinglePrecisionChimpEncoder();
       for (float value : ChimpDecoderTest.floatList) {
         encoder.encode(value, baos);
       }
@@ -448,7 +447,7 @@ public class ChimpDecoderTest {
     ByteBuffer buffer = ByteBuffer.wrap(baos.toByteArray());
 
     for (int i = 0; i < repeatCount; i++) {
-      Decoder decoder = new SinglePrecisionDecoderV2();
+      Decoder decoder = new SinglePrecisionChimpDecoder();
       for (float expected : ChimpDecoderTest.floatList) {
         if (decoder.hasNext(buffer)) {
           float actual = decoder.readFloat(buffer);
@@ -459,9 +458,9 @@ public class ChimpDecoderTest {
       }
     }
 
-    encoder = new SinglePrecisionEncoderV2();
     baos = new ByteArrayOutputStream();
     for (int i = 0; i < repeatCount; i++) {
+      Encoder encoder = new SinglePrecisionChimpEncoder();
       for (float value : ChimpDecoderTest.floatList) {
         encoder.encode(-value, baos);
       }
@@ -471,7 +470,7 @@ public class ChimpDecoderTest {
     buffer = ByteBuffer.wrap(baos.toByteArray());
 
     for (int i = 0; i < repeatCount; i++) {
-      Decoder decoder = new SinglePrecisionDecoderV2();
+      Decoder decoder = new SinglePrecisionChimpDecoder();
       for (float expected : ChimpDecoderTest.floatList) {
         if (decoder.hasNext(buffer)) {
           float actual = decoder.readFloat(buffer);
