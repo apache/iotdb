@@ -224,16 +224,6 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
           selectedTsFileResourceList, storageGroupName + "-" + dataRegionId);
       CompactionUtils.deleteModificationForSourceFile(
           selectedTsFileResourceList, storageGroupName + "-" + dataRegionId);
-      TsFileMetricManager.getInstance()
-          .deleteFile(totalSizeOfDeletedFile, sequence, selectedTsFileResourceList.size());
-      // inner space compaction task has only one target file
-      if (targetTsFileList.get(0) != null) {
-        TsFileMetricManager.getInstance()
-            .addFile(targetTsFileList.get(0).getTsFile().length(), sequence);
-
-        // set target resources to CLOSED, so that they can be selected to compact
-        targetTsFileList.get(0).setStatus(TsFileResourceStatus.CLOSED);
-      }
 
       if (performer instanceof FastCompactionPerformer) {
         SubCompactionTaskSummary subTaskSummary =
@@ -261,6 +251,20 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
 
       if (logFile.exists()) {
         FileUtils.delete(logFile);
+      }
+
+      // update metric
+      TsFileMetricManager.getInstance()
+          .deleteFile(totalSizeOfDeletedFile, sequence, selectedTsFileResourceList.size());
+      if (!targetTsFileResource.isDeleted()) {
+        TsFileMetricManager.getInstance()
+            .addFile(targetTsFileResource.getTsFile().length(), sequence);
+
+        // set target resource to CLOSED, so that it can be selected to compact
+        targetTsFileResource.setStatus(TsFileResourceStatus.CLOSED);
+      } else {
+        // target resource is empty after compaction, then delete it
+        targetTsFileResource.remove();
       }
     } catch (Throwable throwable) {
       // catch throwable to handle OOM errors
