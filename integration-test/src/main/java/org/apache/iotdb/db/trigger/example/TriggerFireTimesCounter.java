@@ -80,7 +80,7 @@ public class TriggerFireTimesCounter implements Trigger {
       while (fileLock == null) {
         fileLock = fileChannel.tryLock();
         if (fileLock == null) {
-          if (retryNum++ >= 10) {
+          if (retryNum++ >= LOCK_FILE_RETRY_TIME) {
             break;
           }
           Thread.sleep(100);
