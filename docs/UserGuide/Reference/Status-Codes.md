@@ -143,8 +143,8 @@ Here is a list of Status Code and related message:
 | 1100        | LOAD_FILE_ERROR                   | Meet error while loading file                                                             |
 | 1101        | LOAD_PIECE_OF_TSFILE_ERROR        | Error when load a piece of TsFile when loading                                            |
 | 1102        | DESERIALIZE_PIECE_OF_TSFILE_ERROR | Error when deserialize a piece of TsFile                                                  |
-| 1104        | SYNC_FILE_REDIRECTION_ERROR       | Sync TsFile redirection error                                                             |
 | 1103        | SYNC_CONNECTION_ERROR             | Sync connection error                                                                     |
+| 1104        | SYNC_FILE_REDIRECTION_ERROR       | Sync TsFile redirection error                                                             |
 | 1105        | SYNC_FILE_ERROR                   | Sync TsFile error                                                                         |
 | 1106        | CREATE_PIPE_SINK_ERROR            | Failed to create a PIPE sink                                                              |
 | 1107        | PIPE_ERROR                        | PIPE error                                                                                |
