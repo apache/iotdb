@@ -23,34 +23,24 @@ package org.apache.iotdb.db.metadata.plan.schemaregion.impl.read;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.metadata.plan.schemaregion.read.IShowDevicesPlan;
 
-import java.util.Objects;
-
 public class ShowDevicesPlanImpl extends AbstractShowSchemaPlanImpl implements IShowDevicesPlan {
 
-  private final boolean hasSgCol;
+  // templateId > -1 means the device should use template with given templateId
+  private final int schemaTemplateId;
 
   ShowDevicesPlanImpl(
-      PartialPath path, int limit, int offset, boolean hasSgCol, boolean isPrefixMatch) {
+      PartialPath path, int limit, int offset, boolean isPrefixMatch, int schemaTemplateId) {
     super(path, limit, offset, isPrefixMatch);
-    this.hasSgCol = hasSgCol;
+    this.schemaTemplateId = schemaTemplateId;
   }
 
   @Override
-  public boolean hasSgCol() {
-    return hasSgCol;
+  public boolean usingSchemaTemplate() {
+    return schemaTemplateId != -1;
   }
 
   @Override
-  public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
-    if (!super.equals(o)) return false;
-    ShowDevicesPlanImpl that = (ShowDevicesPlanImpl) o;
-    return hasSgCol == that.hasSgCol;
-  }
-
-  @Override
-  public int hashCode() {
-    return Objects.hash(super.hashCode(), hasSgCol);
+  public int getSchemaTemplateId() {
+    return schemaTemplateId;
   }
 }

@@ -22,22 +22,19 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.metadata.plan.schemaregion.impl.read.SchemaRegionReadPlanFactory;
 import org.apache.iotdb.db.metadata.query.info.IDeviceSchemaInfo;
+import org.apache.iotdb.db.metadata.query.reader.ISchemaReader;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.mpp.execution.driver.SchemaDriverContext;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.utils.Binary;
 
-import java.util.List;
 import java.util.stream.Collectors;
 
-public class DevicesSchemaScanOperator extends SchemaQueryScanOperator {
+public class DevicesSchemaScanOperator extends SchemaQueryScanOperator<IDeviceSchemaInfo> {
   private final boolean hasSgCol;
-  private final List<TSDataType> outputDataTypes;
 
   public DevicesSchemaScanOperator(
       PlanNodeId sourceId,
@@ -47,32 +44,34 @@ public class DevicesSchemaScanOperator extends SchemaQueryScanOperator {
       PartialPath partialPath,
       boolean isPrefixPath,
       boolean hasSgCol) {
-    super(sourceId, operatorContext, limit, offset, partialPath, isPrefixPath);
-    this.hasSgCol = hasSgCol;
-    this.outputDataTypes =
+    super(
+        sourceId,
+        operatorContext,
+        limit,
+        offset,
+        partialPath,
+        isPrefixPath,
         (hasSgCol
                 ? ColumnHeaderConstant.showDevicesWithSgColumnHeaders
                 : ColumnHeaderConstant.showDevicesColumnHeaders)
-            .stream().map(ColumnHeader::getColumnType).collect(Collectors.toList());
+            .stream().map(ColumnHeader::getColumnType).collect(Collectors.toList()));
+    this.hasSgCol = hasSgCol;
   }
 
   @Override
-  protected List<TsBlock> createTsBlockList() {
+  protected ISchemaReader<IDeviceSchemaInfo> createSchemaReader() {
     try {
-      return SchemaTsBlockUtil.transferSchemaResultToTsBlockList(
-          ((SchemaDriverContext) operatorContext.getInstanceContext().getDriverContext())
-              .getSchemaRegion()
-              .getDeviceReader(
-                  SchemaRegionReadPlanFactory.getShowDevicesPlan(
-                      partialPath, limit, offset, hasSgCol, false)),
-          outputDataTypes,
-          this::setColumns);
+      return ((SchemaDriverContext) operatorContext.getInstanceContext().getDriverContext())
+          .getSchemaRegion()
+          .getDeviceReader(
+              SchemaRegionReadPlanFactory.getShowDevicesPlan(partialPath, limit, offset, false));
     } catch (MetadataException e) {
-      throw new RuntimeException(e.getMessage(), e);
+      throw new RuntimeException(e);
     }
   }
 
-  private void setColumns(IDeviceSchemaInfo device, TsBlockBuilder builder) {
+  @Override
+  protected void setColumns(IDeviceSchemaInfo device, TsBlockBuilder builder) {
     builder.getTimeColumnBuilder().writeLong(0L);
     builder.getColumnBuilder(0).writeBinary(new Binary(device.getFullPath()));
     if (hasSgCol) {
