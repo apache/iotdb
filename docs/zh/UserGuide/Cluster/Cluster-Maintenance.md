@@ -140,6 +140,15 @@ DataNode 的状态机如下图所示：
   - ReadOnly 状态下可以删除元数据和数据，可以删除 Database
   - 所有 DataNode 处于 ReadOnly 状态时，集群不可写入元数据和数据，仍可以创建 Database
 
+**对于一个 DataNode**，不同状态数据查询、写入、删除的影响如下表所示：
+
+| DataNode 状态 | 可读  | 可写  | 可删除 |
+|-------------|-----|-----|-----|
+| Running     | 是   | 是   | 是   |
+| Unknown     | 否   | 否   | 否   |
+| Removing    | 否   | 否   | 否   |
+| ReadOnly    | 是   | 否   | 是   |
+
 ## 展示全部节点信息
 
 当前 IoTDB 支持使用如下 SQL 展示全部节点的信息：
@@ -344,6 +353,14 @@ Region 继承所在 DataNode 的状态，对 Region 各状态定义如下：
 - **Unknown**: Region 所在 DataNode 未正常上报心跳，ConfigNode 认为该 Region 不可读写
 - **Removing**: Region 所在 DataNode 正在被移出集群，Region 不可读写
 - **ReadOnly**: Region 所在 DataNode 的磁盘剩余空间低于 disk_warning_threshold（默认 5%），Region 可读，但不能写入，不能同步数据
+
+**单个 Region 的状态切换不会影响所属 RegionGroup 的运行**，
+在设置多副本集群时（即元数据副本数和数据副本数大于 1），
+同 RegionGroup 其它 Running 状态的 Region 能保证该 RegionGroup 的高可用性。 
+
+**对于一个 RegionGroup：**
+- 当且仅当严格多于一半的 Region 处于 Running 状态时， 该 RegionGroup 可进行数据的查询、写入和删除操作
+- 如果处于 Running 状态的 Region 少于一半，该 RegionGroup 不可进行数据的数据的查询、写入和删除操作
 
 ## 展示集群槽信息
 

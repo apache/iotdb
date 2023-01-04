@@ -139,6 +139,15 @@ The DataNode statuses are defined as follows:
   - Schema, data and Database can be deleted in ReadOnly status
   - Schema and data cannot be written to the cluster when all DataNodes are ReadOnly, but new Databases can still be created
 
+**For a DataNode**, the following table describes the impact of data read, write, and deletion in different status:
+
+| DataNode status | readable | writable | deletable |
+|-----------------|----------|----------|-----------|
+| Running         | yes      | yes      | yes       |
+| Unknown         | no       | no       | no        |
+| Removing        | no       | no       | no        |
+| ReadOnly        | yes      | no       | yes       |
+
 ## Show all Node information
 
 Currently, IoTDB supports show the information of all Nodes by the following SQL:
@@ -344,6 +353,14 @@ Region inherits the status of the DataNode where the Region resides. And Region 
 - **Unknown**: The DataNode where the Region resides doesn't report heartbeat properly, the ConfigNode considers the Region is unreadable and un-writable.
 - **Removing**: The DataNode where the Region resides is being removed from the cluster, the Region is unreadable and un-writable.
 - **ReadOnly**: The available disk space of the DataNode where the Region resides is lower than the disk_warning_threshold(5% by default). The Region is readable but un-writable and cannot synchronize data.
+
+**The status switchover of a Region doesn't affect the belonged RegionGroup**,
+when setting up a multi-replica cluster(i.e. the number of schema replica and data replica is greater than 1),
+other Running Regions of the same RegionGroup ensure the high availability of RegionGroup.
+
+**For a RegionGroup:**
+- It's readable, writable and deletable if and only if more than half of its Regions are Running 
+- It's unreadable, un-writable and un-deletable when the number of its Running Regions is less than half
 
 ## Show cluster slots information
 
