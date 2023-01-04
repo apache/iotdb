@@ -171,7 +171,7 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R>
     if (!hasNext()) {
       throw new NoSuchElementException();
     }
-    R result = generateResult();
+    R result = generateResult(nextMatchedNode);
     nextMatchedNode = null;
     return result;
   }
@@ -281,6 +281,10 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R>
     }
   }
 
+  protected void setFailure(Throwable e) {
+    this.throwable = e;
+  }
+
   // Get a child with the given childName.
   protected abstract N getChild(N parent, String childName) throws Exception;
 
@@ -321,12 +325,8 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R>
   /** Only accepted nodes will be considered for hasNext() and next() */
   protected abstract boolean acceptFullMatchedNode(N node);
 
-  protected void setFailure(Throwable e) {
-    this.throwable = e;
-  }
-
   /** The method used for generating the result based on the matched node. */
-  protected abstract R generateResult();
+  protected abstract R generateResult(N nextMatchedNode);
 
   private class VisitorStackEntry {
 

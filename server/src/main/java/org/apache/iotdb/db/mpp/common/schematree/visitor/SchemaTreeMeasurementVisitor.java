@@ -108,7 +108,7 @@ public class SchemaTreeMeasurementVisitor extends SchemaTreeVisitor<MeasurementP
   }
 
   @Override
-  protected MeasurementPath generateResult() {
+  protected MeasurementPath generateResult(SchemaNode nextMatchedNode) {
     MeasurementPath result =
         new MeasurementPath(
             generateFullPathNodes(), nextMatchedNode.getAsMeasurementNode().getSchema());
