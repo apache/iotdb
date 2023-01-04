@@ -99,6 +99,8 @@ public class ColumnHeaderConstant {
   public static final String DATA_NODE_ID = "DataNodeId";
   public static final String SERIES_SLOT_ID = "SeriesSlotId";
   public static final String TIME_SLOT_ID = "TimeSlotId";
+  public static final String SERIES_SLOT_NUM = "SeriesSlotNum";
+  public static final String TIME_SLOT_NUM = "TimeSlotNum";
   public static final String ROLE = "Role";
 
   // column names for show datanodes
@@ -219,8 +221,8 @@ public class ColumnHeaderConstant {
           new ColumnHeader(TYPE, TSDataType.TEXT),
           new ColumnHeader(STATUS, TSDataType.TEXT),
           new ColumnHeader(DATABASE, TSDataType.TEXT),
-          new ColumnHeader(SERIES_SLOT_ID, TSDataType.INT32),
-          new ColumnHeader(TIME_SLOT_ID, TSDataType.INT64),
+          new ColumnHeader(SERIES_SLOT_NUM, TSDataType.INT32),
+          new ColumnHeader(TIME_SLOT_NUM, TSDataType.INT64),
           new ColumnHeader(DATA_NODE_ID, TSDataType.INT32),
           new ColumnHeader(RPC_ADDRESS, TSDataType.TEXT),
           new ColumnHeader(RPC_PORT, TSDataType.INT32),
