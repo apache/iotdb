@@ -67,16 +67,16 @@ public class IoTDBSessionInsertWithTriggerExecutionIT {
   private final int rows = 10;
 
   private static final String STATELESS_TRIGGER_BEFORE_INSERTION_PREFIX =
-      "statelessTriggerBeforeInsertion_";
+      "statelessTriggerBeforeInsertionSession_";
 
   private static final String STATELESS_TRIGGER_AFTER_INSERTION_PREFIX =
-      "statelessTriggerAfterInsertion_";
+      "statelessTriggerAfterInsertionSession_";
 
   private static final String STATEFUL_TRIGGER_BEFORE_INSERTION_PREFIX =
-      "statefulTriggerBeforeInsertion_";
+      "statefulTriggerBeforeInsertionSession_";
 
   private static final String STATEFUL_TRIGGER_AFTER_INSERTION_PREFIX =
-      "statefulTriggerAfterInsertion_";
+      "statefulTriggerAfterInsertionSession_";
 
   @BeforeClass
   public static void setUp() throws Exception {
@@ -93,7 +93,7 @@ public class IoTDBSessionInsertWithTriggerExecutionIT {
 
   private static void createTimeSeries() {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
-      session.setStorageGroup("root.test");
+      session.createDatabase("root.test");
       session.createTimeseries(
           "root.test.stateless.a", TSDataType.INT32, TSEncoding.PLAIN, CompressionType.SNAPPY);
       session.createTimeseries(
