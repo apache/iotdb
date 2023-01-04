@@ -22,5 +22,7 @@ package org.apache.iotdb.db.metadata.plan.schemaregion.read;
 
 public interface IShowDevicesPlan extends IShowSchemaPlan {
 
-  boolean hasSgCol();
+  boolean usingSchemaTemplate();
+
+  int getSchemaTemplateId();
 }
