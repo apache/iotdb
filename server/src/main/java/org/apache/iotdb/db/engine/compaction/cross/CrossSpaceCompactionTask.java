@@ -185,25 +185,29 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
 
         long sequenceFileSize = deleteOldFiles(selectedSequenceFiles);
         long unsequenceFileSize = deleteOldFiles(selectedUnsequenceFiles);
-        TsFileMetricManager.getInstance()
-            .deleteFile(sequenceFileSize, true, selectedSequenceFiles.size());
-        TsFileMetricManager.getInstance()
-            .deleteFile(unsequenceFileSize, false, selectedUnsequenceFiles.size());
-
-        for (TsFileResource targetResource : targetTsfileResourceList) {
-          if (targetResource != null) {
-            TsFileMetricManager.getInstance().addFile(targetResource.getTsFileSize(), true);
-
-            // set target resources to CLOSED, so that they can be selected to compact
-            targetResource.setStatus(TsFileResourceStatus.CLOSED);
-          }
-        }
-
         CompactionUtils.deleteCompactionModsFile(selectedSequenceFiles, selectedUnsequenceFiles);
 
         if (logFile.exists()) {
           FileUtils.delete(logFile);
         }
+
+        // update metric
+        TsFileMetricManager.getInstance()
+            .deleteFile(sequenceFileSize, true, selectedSequenceFiles.size());
+        TsFileMetricManager.getInstance()
+            .deleteFile(unsequenceFileSize, false, selectedUnsequenceFiles.size());
+        for (TsFileResource targetResource : targetTsfileResourceList) {
+          if (!targetResource.isDeleted()) {
+            TsFileMetricManager.getInstance().addFile(targetResource.getTsFileSize(), true);
+
+            // set target resources to CLOSED, so that they can be selected to compact
+            targetResource.setStatus(TsFileResourceStatus.CLOSED);
+          } else {
+            // target resource is empty after compaction, then delete it
+            targetResource.remove();
+          }
+        }
+
         if (performer instanceof FastCompactionPerformer) {
           SubCompactionTaskSummary subTaskSummary =
               ((FastCompactionPerformer) performer).getSubTaskSummary();

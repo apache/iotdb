@@ -521,7 +521,7 @@ public class TsFileResource {
    * file physically.
    */
   public boolean remove() {
-    this.status = TsFileResourceStatus.DELETED;
+    setStatus(TsFileResourceStatus.DELETED);
     try {
       fsFactory.deleteIfExists(file);
       fsFactory.deleteIfExists(
@@ -607,6 +607,9 @@ public class TsFileResource {
         break;
       case UNCLOSED:
         this.status = TsFileResourceStatus.UNCLOSED;
+        break;
+      case DELETED:
+        this.status = TsFileResourceStatus.DELETED;
         break;
       case COMPACTING:
         if (this.status == TsFileResourceStatus.COMPACTION_CANDIDATE) {
@@ -874,7 +877,7 @@ public class TsFileResource {
               .getFile(file.toPath() + TsFileResource.RESOURCE_SUFFIX)
               .toPath());
     }
-    this.status = TsFileResourceStatus.DELETED;
+    setStatus(TsFileResourceStatus.DELETED);
   }
 
   public long getMaxPlanIndex() {

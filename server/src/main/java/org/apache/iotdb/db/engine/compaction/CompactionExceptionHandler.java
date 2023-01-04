@@ -232,7 +232,12 @@ public class CompactionExceptionHandler {
       String fullStorageGroupName)
       throws IOException {
     for (TsFileResource targetResource : targetResources) {
-      if (targetResource != null && !TsFileUtils.isTsFileComplete(targetResource.getTsFile())) {
+      if (targetResource.isDeleted()) {
+        // target resource is empty after compaction, then delete it
+        targetResource.remove();
+        continue;
+      }
+      if (!TsFileUtils.isTsFileComplete(targetResource.getTsFile())) {
         LOGGER.error(
             "{} [Compaction][ExceptionHandler] target file {} is not complete, and some source files {} is lost, do nothing. Set allowCompaction to false",
             fullStorageGroupName,
