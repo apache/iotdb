@@ -606,14 +606,13 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
           @Override
           protected void collectEntity(IEntityMNode node) {
             PartialPath device = getCurrentPartialPath(node);
-            if (plan.hasSgCol()) {
-              res.add(new ShowDevicesResult(device.getFullPath(), node.isAligned()));
-            } else {
-              res.add(new ShowDevicesResult(device.getFullPath(), node.isAligned()));
-            }
+            res.add(new ShowDevicesResult(device.getFullPath(), node.isAligned()));
           }
         };
     collector.setPrefixMatch(plan.isPrefixMatch());
+    if (plan.usingSchemaTemplate()) {
+      collector.setSchemaTemplateFilter(plan.getSchemaTemplateId());
+    }
     collector.traverse();
 
     return res;
@@ -1012,24 +1011,6 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
     }
     entityMNode.setUseTemplate(true);
     entityMNode.setSchemaTemplateId(templateId);
-  }
-
-  @Override
-  public List<String> getPathsUsingTemplate(PartialPath pathPattern, int templateId)
-      throws MetadataException {
-    Set<String> result = new HashSet<>();
-
-    EntityCollector<Set<String>> collector =
-        new EntityCollector<Set<String>>(storageGroupMNode, pathPattern, store) {
-          @Override
-          protected void collectEntity(IEntityMNode node) {
-            if (node.getSchemaTemplateId() == templateId) {
-              result.add(node.getFullPath());
-            }
-          }
-        };
-    collector.traverse();
-    return new ArrayList<>(result);
   }
 
   public List<IEntityMNode> getDeviceMNodeUsingTargetTemplate(

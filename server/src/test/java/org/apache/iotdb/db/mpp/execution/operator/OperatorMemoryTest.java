@@ -695,7 +695,6 @@ public class OperatorMemoryTest {
               null,
               false,
               false,
-              false,
               null);
 
       assertEquals(DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES, operator.calculateMaxPeekMemory());

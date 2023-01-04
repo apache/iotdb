@@ -32,12 +32,17 @@ public class SchemaRegionReadPlanFactory {
   private SchemaRegionReadPlanFactory() {}
 
   public static IShowDevicesPlan getShowDevicesPlan(PartialPath path) {
-    return new ShowDevicesPlanImpl(path, 0, 0, false, false);
+    return new ShowDevicesPlanImpl(path, 0, 0, false, -1);
   }
 
   public static IShowDevicesPlan getShowDevicesPlan(
-      PartialPath path, int limit, int offset, boolean hasSgCol, boolean isPrefixMatch) {
-    return new ShowDevicesPlanImpl(path, limit, offset, hasSgCol, isPrefixMatch);
+      PartialPath path, int limit, int offset, boolean isPrefixMatch) {
+    return new ShowDevicesPlanImpl(path, limit, offset, isPrefixMatch, -1);
+  }
+
+  public static IShowDevicesPlan getShowDevicesPlan(
+      PartialPath path, int limit, int offset, boolean isPrefixMatch, int templateId) {
+    return new ShowDevicesPlanImpl(path, limit, offset, isPrefixMatch, templateId);
   }
 
   public static IShowTimeSeriesPlan getShowTimeSeriesPlan(PartialPath path) {

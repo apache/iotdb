@@ -1339,12 +1339,6 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   }
 
   @Override
-  public List<String> getPathsUsingTemplate(PartialPath pathPattern, int templateId)
-      throws MetadataException {
-    return mtree.getPathsUsingTemplate(pathPattern, templateId);
-  }
-
-  @Override
   public long constructSchemaBlackListWithTemplate(IPreDeactivateTemplatePlan plan)
       throws MetadataException {
     long preDeactivateNum = 0;
