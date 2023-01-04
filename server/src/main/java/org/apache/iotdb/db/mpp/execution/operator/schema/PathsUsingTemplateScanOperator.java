@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.mpp.execution.operator.schema;
 
-import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.metadata.plan.schemaregion.impl.read.SchemaRegionReadPlanFactory;
 import org.apache.iotdb.db.metadata.query.info.IDeviceSchemaInfo;
@@ -32,6 +31,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.utils.Binary;
 
+import java.util.Iterator;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -62,15 +62,7 @@ public class PathsUsingTemplateScanOperator extends SchemaQueryScanOperator<IDev
 
   @Override
   protected ISchemaReader<IDeviceSchemaInfo> createSchemaReader() {
-    try {
-      return ((SchemaDriverContext) operatorContext.getInstanceContext().getDriverContext())
-          .getSchemaRegion()
-          .getDeviceReader(
-              SchemaRegionReadPlanFactory.getShowDevicesPlan(
-                  partialPath, limit, offset, false, templateId));
-    } catch (MetadataException e) {
-      throw new RuntimeException(e.getMessage(), e);
-    }
+    return new DevicesUsingTemplateReader(pathPatternList.iterator());
   }
 
   @Override
@@ -84,5 +76,58 @@ public class PathsUsingTemplateScanOperator extends SchemaQueryScanOperator<IDev
     builder.getTimeColumnBuilder().writeLong(0L);
     builder.getColumnBuilder(0).writeBinary(new Binary(path));
     builder.declarePosition();
+  }
+
+  private class DevicesUsingTemplateReader implements ISchemaReader<IDeviceSchemaInfo> {
+
+    final Iterator<PartialPath> pathPatternIterator;
+
+    ISchemaReader<IDeviceSchemaInfo> currentDeviceReader;
+
+    DevicesUsingTemplateReader(Iterator<PartialPath> pathPatternIterator) {
+      this.pathPatternIterator = pathPatternIterator;
+    }
+
+    @Override
+    public void close() throws Exception {
+      if (currentDeviceReader != null) {
+        currentDeviceReader.close();
+      }
+    }
+
+    @Override
+    public boolean hasNext() {
+      try {
+        if (currentDeviceReader != null) {
+          if (currentDeviceReader.hasNext()) {
+            return true;
+          } else {
+            currentDeviceReader.close();
+          }
+        }
+
+        while (pathPatternIterator.hasNext()) {
+          currentDeviceReader =
+              ((SchemaDriverContext) operatorContext.getInstanceContext().getDriverContext())
+                  .getSchemaRegion()
+                  .getDeviceReader(
+                      SchemaRegionReadPlanFactory.getShowDevicesPlan(
+                          pathPatternIterator.next(), limit, offset, false, templateId));
+          if (currentDeviceReader.hasNext()) {
+            return true;
+          } else {
+            currentDeviceReader.close();
+          }
+        }
+        return false;
+      } catch (Exception e) {
+        throw new RuntimeException(e.getMessage(), e);
+      }
+    }
+
+    @Override
+    public IDeviceSchemaInfo next() {
+      return currentDeviceReader.next();
+    }
   }
 }
