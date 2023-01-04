@@ -34,19 +34,11 @@ import static org.apache.iotdb.tsfile.common.conf.TSFileConfig.VALUE_BITS_LENGTH
  *
  * <p>License: http://www.apache.org/licenses/LICENSE-2.0
  */
-public class ChimpDecoder extends Decoder {
+public class LongChimpDecoder extends GorillaDecoderV2 {
 
   private static final long CHIMP_ENCODING_ENDING =
       Double.doubleToRawLongBits(Double.NaN);
 
-
-  protected boolean firstValueWasRead = false;
-  protected int storedLeadingZeros = Integer.MAX_VALUE;
-  protected int storedTrailingZeros = 0;
-  protected boolean hasNext = true;
-
-  private byte buffer = 0;
-  private int bitsLeft = 0;
   private int previousValues = 128;
   private long storedValue = 0;
   private long storedValues[] = new long[previousValues];
@@ -56,55 +48,26 @@ public class ChimpDecoder extends Decoder {
 
   public final static short[] leadingRepresentation = {0, 8, 12, 16, 18, 20, 22, 24};
 
-  public ChimpDecoder() {
-    super(TSEncoding.CHIMP);
+  public LongChimpDecoder() {
+    this.setType(TSEncoding.CHIMP);
     this.previousValuesLog2 =  (int)(Math.log(previousValues) / Math.log(2));
     this.initialFill = previousValuesLog2 + 9;
     this.hasNext = true;
-    buffer = 0;
-    bitsLeft = 0;
     firstValueWasRead = false;
     storedLeadingZeros = Integer.MAX_VALUE;
     storedTrailingZeros = 0;
     this.current = 0;
     this.storedValue = 0;
     this.storedValues = new long[previousValues];
-  }
-
-  @Override
-  public final boolean hasNext(ByteBuffer in) {
-    return hasNext;
   }
 
   @Override
   public void reset() {
-    firstValueWasRead = false;
-    storedLeadingZeros = Integer.MAX_VALUE;
-    storedTrailingZeros = 0;
-    hasNext = true;
+    super.reset();
 
-    buffer = 0;
-    bitsLeft = 0;
     this.current = 0;
     this.storedValue = 0;
     this.storedValues = new long[previousValues];
-  }
-
-  /**
-   * Reads the next bit and returns a boolean representing it.
-   *
-   * @return true if the next bit is 1, otherwise 0.
-   */
-  protected boolean readBit(ByteBuffer in) {
-    boolean bit = ((buffer >> (bitsLeft - 1)) & 1) == 1;
-    bitsLeft--;
-    flipByte(in);
-    return bit;
-  }
-
-  @Override
-  public final double readDouble(ByteBuffer in) {
-    return Double.longBitsToDouble(readLong(in));
   }
 
   @Override
@@ -128,9 +91,8 @@ public class ChimpDecoder extends Decoder {
     }
     return storedValues[current];
   }
+
   protected long readNext(ByteBuffer in) {
-
-
 	// Read value
 	byte controlBits = readNextNBits(2, in);
   	long value;
@@ -175,33 +137,6 @@ public class ChimpDecoder extends Decoder {
 		}
 	}
 
-  /**
-   * Reads a long from the next X bits that represent the least significant bits in the long value.
-   *
-   * @param bits How many next bits are read from the stream
-   * @return long value that was read from the stream
-   */
-  protected long readLong(int bits, ByteBuffer in) {
-    long value = 0;
-    while (bits > 0) {
-      if (bits > bitsLeft || bits == Byte.SIZE) {
-        // Take only the bitsLeft "least significant" bits
-        byte d = (byte) (buffer & ((1 << bitsLeft) - 1));
-        value = (value << bitsLeft) + (d & 0xFF);
-        bits -= bitsLeft;
-        bitsLeft = 0;
-      } else {
-        // Shift to correct position and take only least significant bits
-        byte d = (byte) ((buffer >>> (bitsLeft - bits)) & ((1 << bits) - 1));
-        value = (value << bits) + (d & 0xFF);
-        bitsLeft -= bits;
-        bits = 0;
-      }
-      flipByte(in);
-    }
-    return value;
-  }
-
   protected byte readNextNBits(int n, ByteBuffer in) {
     byte value = 0x00;
     for (int i = 0; i < n; i++) {
@@ -211,12 +146,5 @@ public class ChimpDecoder extends Decoder {
       }
     }
     return value;
-  }
-
-  protected void flipByte(ByteBuffer in) {
-    if (bitsLeft == 0) {
-      buffer = in.get();
-      bitsLeft = Byte.SIZE;
-    }
   }
 }

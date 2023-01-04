@@ -19,9 +19,10 @@
 
 package org.apache.iotdb.tsfile.encoding.decoder;
 
-import org.apache.iotdb.tsfile.encoding.encoder.ChimpEncoder;
+import org.apache.iotdb.tsfile.encoding.encoder.DoublePrecisionChimpEncoder;
 import org.apache.iotdb.tsfile.encoding.encoder.Encoder;
 import org.apache.iotdb.tsfile.encoding.encoder.IntGorillaEncoder;
+import org.apache.iotdb.tsfile.encoding.encoder.LongChimpEncoder;
 import org.apache.iotdb.tsfile.encoding.encoder.SinglePrecisionEncoderV2;
 
 import org.junit.BeforeClass;
@@ -117,14 +118,14 @@ public class ChimpDecoderTest {
 
   @Test
   public void testLongSingleValue() throws IOException {
-    Encoder encoder = new ChimpEncoder();
+    Encoder encoder = new LongChimpEncoder();
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
     encoder.encode((long) Integer.MAX_VALUE + 10, baos);
     encoder.flush(baos);
 
     ByteBuffer buffer = ByteBuffer.wrap(baos.toByteArray());
 
-    Decoder decoder = new ChimpDecoder();
+    Decoder decoder = new LongChimpDecoder();
     if (decoder.hasNext(buffer)) {
       assertEquals((long) Integer.MAX_VALUE + 10, decoder.readLong(buffer));
     }
@@ -135,14 +136,14 @@ public class ChimpDecoderTest {
 
   @Test
   public void testDoubleSingleValue() throws IOException {
-    Encoder encoder = new ChimpEncoder();
+    Encoder encoder = new DoublePrecisionChimpEncoder();
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
     encoder.encode(Double.MAX_VALUE, baos);
     encoder.flush(baos);
 
     ByteBuffer buffer = ByteBuffer.wrap(baos.toByteArray());
 
-    Decoder decoder = new ChimpDecoder();
+    Decoder decoder = new DoublePrecisionChimpDecoder();
     if (decoder.hasNext(buffer)) {
       assertEquals(Double.MAX_VALUE, decoder.readDouble(buffer), DELTA);
     }
@@ -209,7 +210,7 @@ public class ChimpDecoderTest {
 
   @Test
   public void testLongZeroNumber() throws IOException {
-    Encoder encoder = new ChimpEncoder();
+    Encoder encoder = new LongChimpEncoder();
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
     long value = 0;
     encoder.encode(value, baos);
@@ -222,7 +223,7 @@ public class ChimpDecoderTest {
     encoder.flush(baos);
     ByteBuffer buffer = ByteBuffer.wrap(baos.toByteArray());
     for (int i = 0; i < 2; i++) {
-      Decoder decoder = new ChimpDecoder();
+      Decoder decoder = new LongChimpDecoder();
       if (decoder.hasNext(buffer)) {
         assertEquals(value, decoder.readLong(buffer), DELTA);
       }
@@ -237,7 +238,7 @@ public class ChimpDecoderTest {
 
   @Test
   public void testDoubleZeroNumber() throws IOException {
-    Encoder encoder = new ChimpEncoder();
+    Encoder encoder = new DoublePrecisionChimpEncoder();
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
     double value = 0f;
     encoder.encode(value, baos);
@@ -250,7 +251,7 @@ public class ChimpDecoderTest {
     encoder.flush(baos);
     ByteBuffer buffer = ByteBuffer.wrap(baos.toByteArray());
     for (int i = 0; i < 2; i++) {
-      Decoder decoder = new ChimpDecoder();
+      Decoder decoder = new DoublePrecisionChimpDecoder();
       if (decoder.hasNext(buffer)) {
         assertEquals(value, decoder.readDouble(buffer), DELTA);
       }
@@ -320,7 +321,7 @@ public class ChimpDecoderTest {
   @Test
   public void testLong() throws IOException {
     for (Integer num : iterations) {
-      Encoder encoder = new ChimpEncoder();
+      Encoder encoder = new LongChimpEncoder();
       ByteArrayOutputStream baos = new ByteArrayOutputStream();
       long value = 7;
       for (int i = 0; i < num; i++) {
@@ -330,7 +331,7 @@ public class ChimpDecoderTest {
 
       ByteBuffer buffer = ByteBuffer.wrap(baos.toByteArray());
 
-      Decoder decoder = new ChimpDecoder();
+      Decoder decoder = new LongChimpDecoder();
       for (int i = 0; i < num; i++) {
         if (decoder.hasNext(buffer)) {
         	long temp = decoder.readLong(buffer);
@@ -348,7 +349,7 @@ public class ChimpDecoderTest {
   @Test
   public void testDouble() throws IOException {
     for (Integer num : iterations) {
-      Encoder encoder = new ChimpEncoder();
+      Encoder encoder = new DoublePrecisionChimpEncoder();
       ByteArrayOutputStream baos = new ByteArrayOutputStream();
       double value = 7.101f;
       for (int i = 0; i < num; i++) {
@@ -358,7 +359,7 @@ public class ChimpDecoderTest {
 
       ByteBuffer buffer = ByteBuffer.wrap(baos.toByteArray());
 
-      Decoder decoder = new ChimpDecoder();
+      Decoder decoder = new DoublePrecisionChimpDecoder();
       for (int i = 0; i < num; i++) {
         if (decoder.hasNext(buffer)) {
           assertEquals(value + 2 * i, decoder.readDouble(buffer), DELTA);
@@ -492,7 +493,7 @@ public class ChimpDecoderTest {
   private void testLong(int repeatCount) throws Exception {
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
     for (int i = 0; i < repeatCount; i++) {
-      Encoder encoder = new ChimpEncoder();
+      Encoder encoder = new LongChimpEncoder();
       for (long value : ChimpDecoderTest.longList) {
         encoder.encode(value, baos);
       }
@@ -502,7 +503,7 @@ public class ChimpDecoderTest {
     ByteBuffer buffer = ByteBuffer.wrap(baos.toByteArray());
 
     for (int i = 0; i < repeatCount; i++) {
-      Decoder decoder = new ChimpDecoder();
+      Decoder decoder = new LongChimpDecoder();
       for (long expected : ChimpDecoderTest.longList) {
         if (decoder.hasNext(buffer)) {
           long actual = decoder.readLong(buffer);
@@ -515,7 +516,7 @@ public class ChimpDecoderTest {
 
     baos = new ByteArrayOutputStream();
     for (int i = 0; i < repeatCount; i++) {
-      Encoder encoder = new ChimpEncoder();
+      Encoder encoder = new LongChimpEncoder();
       for (long value : ChimpDecoderTest.longList) {
         encoder.encode(-value, baos);
       }
@@ -525,7 +526,7 @@ public class ChimpDecoderTest {
     buffer = ByteBuffer.wrap(baos.toByteArray());
 
     for (int i = 0; i < repeatCount; i++) {
-      Decoder decoder = new ChimpDecoder();
+      Decoder decoder = new LongChimpDecoder();
       for (long expected : ChimpDecoderTest.longList) {
         if (decoder.hasNext(buffer)) {
           long actual = decoder.readLong(buffer);
@@ -547,7 +548,7 @@ public class ChimpDecoderTest {
   private void testDouble(int repeatCount) throws Exception {
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
     for (int i = 0; i < repeatCount; i++) {
-        Encoder encoder = new ChimpEncoder();
+        Encoder encoder = new DoublePrecisionChimpEncoder();
       for (double value : ChimpDecoderTest.doubleList) {
         encoder.encode(value, baos);
       }
@@ -557,7 +558,7 @@ public class ChimpDecoderTest {
     ByteBuffer buffer = ByteBuffer.wrap(baos.toByteArray());
 
     for (int i = 0; i < repeatCount; i++) {
-      Decoder decoder = new ChimpDecoder();
+      Decoder decoder = new DoublePrecisionChimpDecoder();
       for (double expected : ChimpDecoderTest.doubleList) {
         if (decoder.hasNext(buffer)) {
           double actual = decoder.readDouble(buffer);
@@ -569,7 +570,7 @@ public class ChimpDecoderTest {
     }
     baos = new ByteArrayOutputStream();
     for (int i = 0; i < repeatCount; i++) {
-        Encoder encoder = new ChimpEncoder();
+        Encoder encoder = new DoublePrecisionChimpEncoder();
       for (double value : ChimpDecoderTest.doubleList) {
         encoder.encode(-value, baos);
       }
@@ -579,7 +580,7 @@ public class ChimpDecoderTest {
     buffer = ByteBuffer.wrap(baos.toByteArray());
 
     for (int i = 0; i < repeatCount; i++) {
-      Decoder decoder = new ChimpDecoder();
+      Decoder decoder = new DoublePrecisionChimpDecoder();
       for (double expected : ChimpDecoderTest.doubleList) {
         if (decoder.hasNext(buffer)) {
           double actual = decoder.readDouble(buffer);
