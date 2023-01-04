@@ -974,4 +974,17 @@ public class NodeManager {
   private UDFManager getUDFManager() {
     return configManager.getUDFManager();
   }
+
+  /**
+   * Kill the specific query on DataNode
+   *
+   * @param queryId the id of query need to be killed, it will be NULL if kill all queries
+   * @param dataNodeId the DataNode obtains target query, -1 means we will kill all queries on all
+   *     DataNodes
+   * @return
+   */
+  public TSStatus killQuery(String queryId, int dataNodeId) {
+    LOGGER.info("-----success---");
+    return new TSStatus();
+  }
 }
