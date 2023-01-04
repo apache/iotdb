@@ -44,6 +44,16 @@ public abstract class SchemaTreeVisitor<R>
   }
 
   @Override
+  protected boolean shouldVisitSubtreeOfInternalMatchedNode(SchemaNode node) {
+    return !node.isMeasurement();
+  }
+
+  @Override
+  protected boolean shouldVisitSubtreeOfFullMatchedNode(SchemaNode node) {
+    return !node.isMeasurement();
+  }
+
+  @Override
   protected SchemaNode getChild(SchemaNode parent, String childName) {
     return parent.getChild(childName);
   }

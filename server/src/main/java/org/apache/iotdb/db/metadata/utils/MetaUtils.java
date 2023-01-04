@@ -41,7 +41,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.TreeMap;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.LOSS;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.SDT_PARAMETERS;
@@ -118,15 +117,12 @@ public class MetaUtils {
 
   public static List<PartialPath> groupAlignedSeriesWithOrder(
       List<PartialPath> fullPaths, OrderByParameter orderByParameter) {
-    fullPaths.sort(
+    List<PartialPath> res = groupAlignedSeries(fullPaths, new HashMap<>());
+    res.sort(
         orderByParameter.getSortItemList().get(0).getOrdering() == Ordering.ASC
             ? Comparator.naturalOrder()
             : Comparator.reverseOrder());
-    Map<String, AlignedPath> deviceToAlignedPathMap =
-        orderByParameter.getSortItemList().get(0).getOrdering() == Ordering.ASC
-            ? new TreeMap<>()
-            : new TreeMap<>(Collections.reverseOrder());
-    return groupAlignedSeries(fullPaths, deviceToAlignedPathMap);
+    return res;
   }
 
   private static List<PartialPath> groupAlignedSeries(
