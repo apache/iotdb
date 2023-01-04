@@ -47,13 +47,13 @@ import java.util.concurrent.TimeUnit;
 public class IoTDBSessionReporter extends IoTDBReporter {
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBSessionReporter.class);
   private static final MetricConfig.IoTDBReporterConfig ioTDBReporterConfig =
-      MetricConfigDescriptor.getInstance().getMetricConfig().getIoTDBReporterConfig();
+      MetricConfigDescriptor.getInstance().getMetricConfig().getIotdbReporterConfig();
   private Future<?> currentServiceFuture;
   private final ScheduledExecutorService service = Executors.newSingleThreadScheduledExecutor();
 
-  /** The manager of metrics */
+  /** The manager of metrics. */
   protected AbstractMetricManager metricManager;
-  /** The session pool to write metrics */
+  /** The session pool to write metrics. */
   protected SessionPool sessionPool;
 
   public IoTDBSessionReporter(AbstractMetricManager metricManager) {
@@ -71,7 +71,7 @@ public class IoTDBSessionReporter extends IoTDBReporter {
         this.sessionPool.createDatabase(IoTDBMetricsUtils.DATABASE);
       }
     } catch (IoTDBConnectionException e) {
-      LOGGER.error("IoTDBSessionReporter checkOrCreateStorageGroup failed because ", e);
+      LOGGER.warn("IoTDBSessionReporter checkOrCreateStorageGroup failed because ", e);
     } catch (StatementExecutionException e) {
       // do nothing
     }
@@ -104,7 +104,10 @@ public class IoTDBSessionReporter extends IoTDBReporter {
             1,
             MetricConfigDescriptor.getInstance().getMetricConfig().getAsyncCollectPeriodInSecond(),
             TimeUnit.SECONDS);
-    LOGGER.info("IoTDBSessionReporter start, write to {}:{}", ioTDBReporterConfig.getHost(), ioTDBReporterConfig.getPort());
+    LOGGER.info(
+        "IoTDBSessionReporter start, write to {}:{}",
+        ioTDBReporterConfig.getHost(),
+        ioTDBReporterConfig.getPort());
     return true;
   }
 

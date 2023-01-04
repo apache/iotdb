@@ -40,6 +40,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordReq;
 import org.apache.iotdb.session.util.SessionUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -145,7 +146,7 @@ public class IoTDBInternalLocalReporter extends IoTDBInternalReporter {
         LOGGER.error("Failed to update the value of metric with status {}", result.status);
       }
     } catch (IoTDBConnectionException e1) {
-      LOGGER.error("Failed to update the value of metric because of unknown type");
+      LOGGER.error("Failed to update the value of metric because of connection failure");
     } catch (IllegalPathException | QueryProcessException e2) {
       LOGGER.error("Failed to update the value of metric because of internal error");
     }
