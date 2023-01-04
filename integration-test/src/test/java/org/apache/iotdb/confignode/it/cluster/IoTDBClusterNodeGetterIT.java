@@ -30,10 +30,10 @@ import org.apache.iotdb.confignode.rpc.thrift.TDataNodeConfigurationResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRemoveReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRemoveResp;
-import org.apache.iotdb.confignode.rpc.thrift.TShowClusterParametersResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowConfigNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowVariablesResp;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.it.env.ConfigFactory;
 import org.apache.iotdb.it.env.ConfigNodeWrapper;
@@ -143,11 +143,10 @@ public class IoTDBClusterNodeGetterIT {
       }
 
       /* Tests showClusterParameters */
-      TShowClusterParametersResp showClusterParametersResp = client.showClusterParameters();
+      TShowVariablesResp showVariablesResp = client.showVariables();
       Assert.assertEquals(
-          TSStatusCode.SUCCESS_STATUS.getStatusCode(),
-          showClusterParametersResp.getStatus().getCode());
-      TClusterParameters clusterParameters = showClusterParametersResp.getClusterParameters();
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(), showVariablesResp.getStatus().getCode());
+      TClusterParameters clusterParameters = showVariablesResp.getClusterParameters();
       Assert.assertEquals(
           testConsensusProtocolClass, clusterParameters.getConfigNodeConsensusProtocolClass());
       Assert.assertEquals(

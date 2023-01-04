@@ -35,11 +35,15 @@ import org.apache.iotdb.db.metadata.plan.schemaregion.write.ICreateTimeSeriesPla
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IDeactivateTemplatePlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IPreDeactivateTemplatePlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IRollbackPreDeactivateTemplatePlan;
+import org.apache.iotdb.db.metadata.query.info.IDeviceSchemaInfo;
+import org.apache.iotdb.db.metadata.query.info.ITimeSeriesSchemaInfo;
+import org.apache.iotdb.db.metadata.query.reader.ISchemaReader;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -263,10 +267,9 @@ public interface ISchemaRegion {
    * Get all device paths and corresponding database paths as ShowDevicesResult.
    *
    * @param plan ShowDevicesPlan which contains the path pattern and restriction params.
-   * @return ShowDevicesResult and the current offset of this region after traverse.
+   * @return ShowDevicesResult
    */
-  Pair<List<ShowDevicesResult>, Integer> getMatchedDevices(IShowDevicesPlan plan)
-      throws MetadataException;
+  List<ShowDevicesResult> getMatchedDevices(IShowDevicesPlan plan) throws MetadataException;
   // endregion
 
   // region Interfaces for timeseries, measurement and schema info Query
@@ -306,8 +309,7 @@ public interface ISchemaRegion {
    * @param plan
    * @throws MetadataException
    */
-  Pair<List<ShowTimeSeriesResult>, Integer> showTimeseries(IShowTimeSeriesPlan plan)
-      throws MetadataException;
+  List<ShowTimeSeriesResult> showTimeseries(IShowTimeSeriesPlan plan) throws MetadataException;
   // endregion
   // endregion
 
@@ -399,6 +401,50 @@ public interface ISchemaRegion {
 
   long countPathsUsingTemplate(int templateId, PathPatternTree patternTree)
       throws MetadataException;
+
+  // endregion
+
+  // region Interfaces for SchemaReader
+
+  default ISchemaReader<IDeviceSchemaInfo> getDeviceReader(IShowDevicesPlan showDevicesPlan)
+      throws MetadataException {
+    List<ShowDevicesResult> showDevicesResultList = getMatchedDevices(showDevicesPlan);
+    Iterator<ShowDevicesResult> iterator = showDevicesResultList.iterator();
+    return new ISchemaReader<IDeviceSchemaInfo>() {
+      @Override
+      public void close() throws Exception {}
+
+      @Override
+      public boolean hasNext() {
+        return iterator.hasNext();
+      }
+
+      @Override
+      public IDeviceSchemaInfo next() {
+        return iterator.next();
+      }
+    };
+  }
+
+  default ISchemaReader<ITimeSeriesSchemaInfo> getTimeSeriesReader(
+      IShowTimeSeriesPlan showTimeSeriesPlan) throws MetadataException {
+    List<ShowTimeSeriesResult> showTimeSeriesResultList = showTimeseries(showTimeSeriesPlan);
+    Iterator<ShowTimeSeriesResult> iterator = showTimeSeriesResultList.iterator();
+    return new ISchemaReader<ITimeSeriesSchemaInfo>() {
+      @Override
+      public void close() throws Exception {}
+
+      @Override
+      public boolean hasNext() {
+        return iterator.hasNext();
+      }
+
+      @Override
+      public ITimeSeriesSchemaInfo next() {
+        return iterator.next();
+      }
+    };
+  }
 
   // endregion
 }

@@ -18,15 +18,13 @@
  */
 package org.apache.iotdb.db.metadata.plan.schemaregion.result;
 
-public abstract class ShowSchemaResult implements Comparable<ShowSchemaResult> {
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.metadata.query.info.ISchemaInfo;
+
+public abstract class ShowSchemaResult implements Comparable<ShowSchemaResult>, ISchemaInfo {
 
   protected String path;
-  protected String database;
-
-  public ShowSchemaResult(String path, String database) {
-    this.path = path;
-    this.database = database;
-  }
 
   public ShowSchemaResult(String path) {
     this.path = path;
@@ -38,8 +36,18 @@ public abstract class ShowSchemaResult implements Comparable<ShowSchemaResult> {
     return path;
   }
 
-  public String getDatabase() {
-    return database;
+  @Override
+  public String getFullPath() {
+    return path;
+  }
+
+  @Override
+  public PartialPath getPartialPath() {
+    try {
+      return new PartialPath(path);
+    } catch (IllegalPathException e) {
+      throw new RuntimeException(e);
+    }
   }
 
   @Override
