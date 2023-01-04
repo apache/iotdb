@@ -250,7 +250,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
           dataRegionId,
           targetTsFileResource.getTsFile().getName(),
           costTime,
-          ((double) selectedFileSize) / 1024.0d / 1024.0d / costTime);
+          selectedFileSize / 1024.0d / 1024.0d / costTime);
 
       // inner space compaction task has only one target file
       if (targetTsFileList.get(0) != null) {

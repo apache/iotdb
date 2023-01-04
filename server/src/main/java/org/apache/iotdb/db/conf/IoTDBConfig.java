@@ -197,10 +197,10 @@ public class IoTDBConfig {
   private int walBufferQueueCapacity = 50;
 
   /** Size threshold of each wal file. Unit: byte */
-  private volatile long walFileSizeThresholdInByte = 10 * 1024 * 1024;
+  private volatile long walFileSizeThresholdInByte = 10 * 1024L * 1024;
 
   /** Size threshold of each checkpoint file. Unit: byte */
-  private volatile long checkpointFileSizeThresholdInByte = 3 * 1024 * 1024;
+  private volatile long checkpointFileSizeThresholdInByte = 3 * 1024L * 1024;
 
   /** Minimum ratio of effective information in wal files */
   private volatile double walMinEffectiveInfoRatio = 0.1;
@@ -210,13 +210,13 @@ public class IoTDBConfig {
    * this, wal can flush this memtable to disk, otherwise wal will snapshot this memtable in wal.
    * Unit: byte
    */
-  private volatile long walMemTableSnapshotThreshold = 8 * 1024 * 1024;
+  private volatile long walMemTableSnapshotThreshold = 8 * 1024L * 1024;
 
   /** MemTable's max snapshot number in wal file */
   private volatile int maxWalMemTableSnapshotNum = 1;
 
   /** The period when outdated wal files are periodically deleted. Unit: millisecond */
-  private volatile long deleteWalFilesPeriodInMs = 20 * 1000;
+  private volatile long deleteWalFilesPeriodInMs = 20 * 1000L;
   // endregion
 
   /**
@@ -1013,7 +1013,7 @@ public class IoTDBConfig {
   private long throttleThreshold = 50 * 1024 * 1024 * 1024L;
 
   /** Maximum wait time of write cache in IoTConsensus. Unit: ms */
-  private long cacheWindowTimeInMs = 10 * 1000;
+  private long cacheWindowTimeInMs = 10 * 1000L;
 
   private long dataRatisConsensusLogAppenderBufferSizeMax = 4 * 1024 * 1024L;
   private long schemaRatisConsensusLogAppenderBufferSizeMax = 4 * 1024 * 1024L;
@@ -1320,8 +1320,8 @@ public class IoTDBConfig {
         || "us".equals(timestampPrecision)
         || "ns".equals(timestampPrecision))) {
       logger.error(
-          "Wrong timestamp precision, please set as: ms, us or ns ! Current is: "
-              + timestampPrecision);
+          "Wrong timestamp precision, please set as: ms, us or ns ! Current is: {}",
+          timestampPrecision);
       System.exit(-1);
     }
     this.timestampPrecision = timestampPrecision;

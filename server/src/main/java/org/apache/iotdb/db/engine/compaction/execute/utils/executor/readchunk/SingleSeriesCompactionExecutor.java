@@ -123,7 +123,8 @@ public class SingleSeriesCompactionExecutor {
           constructChunkWriterFromReadChunk(currentChunk);
         }
         CompactionMetricsRecorder.recordReadInfo(
-            currentChunk.getHeader().getSerializedSize() + currentChunk.getHeader().getDataSize());
+            (long) currentChunk.getHeader().getSerializedSize()
+                + currentChunk.getHeader().getDataSize());
 
         // if this chunk is modified, deserialize it into points
         if (chunkMetadata.getDeleteIntervalList() != null) {
@@ -169,7 +170,7 @@ public class SingleSeriesCompactionExecutor {
   }
 
   private long getChunkSize(Chunk chunk) {
-    return chunk.getHeader().getSerializedSize() + chunk.getHeader().getDataSize();
+    return (long) chunk.getHeader().getSerializedSize() + chunk.getHeader().getDataSize();
   }
 
   private void processModifiedChunk(Chunk chunk) throws IOException {

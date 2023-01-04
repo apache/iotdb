@@ -3196,7 +3196,7 @@ public class DataRegion implements IDataRegionForQuery {
       List<TsFileResource> seqResourcesToBeSettled,
       List<TsFileResource> unseqResourcesToBeSettled,
       List<String> tsFilePaths) {
-    if (tsFilePaths.size() == 0) {
+    if (tsFilePaths.isEmpty()) {
       for (TsFileResource resource : tsFileManager.getTsFileList(true)) {
         if (!resource.isClosed()) {
           continue;

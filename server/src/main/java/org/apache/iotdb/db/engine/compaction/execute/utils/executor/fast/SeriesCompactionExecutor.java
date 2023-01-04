@@ -87,7 +87,7 @@ public abstract class SeriesCompactionExecutor {
   // added into this list.
   private final List<PageElement> candidateOverlappedPages = new ArrayList<>();
 
-  public SeriesCompactionExecutor(
+  protected SeriesCompactionExecutor(
       AbstractCompactionWriter compactionWriter,
       Map<TsFileResource, TsFileSequenceReader> readerCacheMap,
       Map<TsFileResource, List<Modification>> modificationCacheMap,
@@ -379,11 +379,9 @@ public abstract class SeriesCompactionExecutor {
     List<PageElement> elements = new ArrayList<>();
     long endTime = page.pageHeader.getEndTime();
     for (PageElement element : pageQueue) {
-      if (element.startTime <= endTime) {
-        if (!element.isSelected) {
-          elements.add(element);
-          element.isSelected = true;
-        }
+      if (element.startTime <= endTime && !element.isSelected) {
+        elements.add(element);
+        element.isSelected = true;
       }
     }
     elements.sort(Comparator.comparingLong(o -> o.startTime));
@@ -400,11 +398,9 @@ public abstract class SeriesCompactionExecutor {
     List<ChunkMetadataElement> elements = new ArrayList<>();
     long endTime = chunkMetadataElement.chunkMetadata.getEndTime();
     for (ChunkMetadataElement element : chunkMetadataQueue) {
-      if (element.chunkMetadata.getStartTime() <= endTime) {
-        if (!element.isSelected) {
-          elements.add(element);
-          element.isSelected = true;
-        }
+      if (element.chunkMetadata.getStartTime() <= endTime && !element.isSelected) {
+        elements.add(element);
+        element.isSelected = true;
       }
     }
     elements.sort(Comparator.comparingLong(o -> o.startTime));
