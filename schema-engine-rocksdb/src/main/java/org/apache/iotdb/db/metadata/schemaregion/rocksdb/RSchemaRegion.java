@@ -1660,12 +1660,6 @@ public class RSchemaRegion implements ISchemaRegion {
   }
 
   @Override
-  public List<String> getPathsUsingTemplate(PartialPath pathPattern, int templateId)
-      throws MetadataException {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
   public long constructSchemaBlackListWithTemplate(IPreDeactivateTemplatePlan plan)
       throws MetadataException {
     throw new UnsupportedOperationException();

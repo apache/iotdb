@@ -20,12 +20,16 @@ package org.apache.iotdb.db.metadata.schemaRegion;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.metadata.plan.schemaregion.impl.read.SchemaRegionReadPlanFactory;
 import org.apache.iotdb.db.metadata.plan.schemaregion.impl.write.SchemaRegionWritePlanFactory;
+import org.apache.iotdb.db.metadata.query.info.IDeviceSchemaInfo;
+import org.apache.iotdb.db.metadata.query.reader.ISchemaReader;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -135,5 +139,22 @@ public class SchemaRegionTestUtil {
     for (String path : pathList) {
       SchemaRegionTestUtil.createSimpleTimeSeriesInt64(schemaRegion, path);
     }
+  }
+
+  public static List<String> getPathsUsingTemplate(
+      ISchemaRegion schemaRegion, PartialPath pathPattern, int templateId)
+      throws MetadataException {
+    List<String> result = new ArrayList<>();
+    try (ISchemaReader<IDeviceSchemaInfo> deviceReader =
+        schemaRegion.getDeviceReader(
+            SchemaRegionReadPlanFactory.getShowDevicesPlan(
+                pathPattern, 0, 0, false, templateId)); ) {
+      while (deviceReader.hasNext()) {
+        result.add(deviceReader.next().getFullPath());
+      }
+    } catch (Exception e) {
+      throw new RuntimeException(e);
+    }
+    return result;
   }
 }

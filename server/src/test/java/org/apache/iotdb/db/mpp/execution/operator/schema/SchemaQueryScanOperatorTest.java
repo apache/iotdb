@@ -92,7 +92,7 @@ public class SchemaQueryScanOperatorTest {
       Iterator<IDeviceSchemaInfo> iterator = Collections.singletonList(deviceSchemaInfo).iterator();
       Mockito.when(
               schemaRegion.getDeviceReader(
-                  SchemaRegionReadPlanFactory.getShowDevicesPlan(partialPath, 10, 0, true, false)))
+                  SchemaRegionReadPlanFactory.getShowDevicesPlan(partialPath, 10, 0, false)))
           .thenReturn(
               new ISchemaReader<IDeviceSchemaInfo>() {
                 @Override
@@ -222,7 +222,6 @@ public class SchemaQueryScanOperatorTest {
               partialPath,
               null,
               null,
-              false,
               false,
               false,
               Collections.emptyMap());
