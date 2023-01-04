@@ -47,19 +47,27 @@ public class ChimpDecoder extends Decoder {
 
   private byte buffer = 0;
   private int bitsLeft = 0;
-  private long storedValue = 0;
-  private long storedValues[];
-  private int current = 0;
   private int previousValues = 128;
+  private long storedValue = 0;
+  private long storedValues[] = new long[previousValues];
+  private int current = 0;
   private int previousValuesLog2;
   private int initialFill;
 
   public final static short[] leadingRepresentation = {0, 8, 12, 16, 18, 20, 22, 24};
-	
+
   public ChimpDecoder() {
     super(TSEncoding.CHIMP);
     this.previousValuesLog2 =  (int)(Math.log(previousValues) / Math.log(2));
     this.initialFill = previousValuesLog2 + 9;
+    this.hasNext = true;
+    buffer = 0;
+    bitsLeft = 0;
+    firstValueWasRead = false;
+    storedLeadingZeros = Integer.MAX_VALUE;
+    storedTrailingZeros = 0;
+    this.current = 0;
+    this.storedValue = 0;
     this.storedValues = new long[previousValues];
   }
 
@@ -93,7 +101,7 @@ public class ChimpDecoder extends Decoder {
     flipByte(in);
     return bit;
   }
-  
+
   @Override
   public final double readDouble(ByteBuffer in) {
     return Double.longBitsToDouble(readLong(in));
@@ -112,7 +120,7 @@ public class ChimpDecoder extends Decoder {
     cacheNext(in);
     return returnValue;
   }
-  
+
   protected long cacheNext(ByteBuffer in) {
     readNext(in);
     if (storedValues[current] == CHIMP_ENCODING_ENDING) {
@@ -121,14 +129,13 @@ public class ChimpDecoder extends Decoder {
     return storedValues[current];
   }
   protected long readNext(ByteBuffer in) {
-	  
-	  
+
+
 	// Read value
 	byte controlBits = readNextNBits(2, in);
   	long value;
   	switch (controlBits) {
 		case 3:
-		  System.out.println("DB: 11");
 		  storedLeadingZeros = leadingRepresentation[(int) readLong(3, in)];
           value = readLong(64 - storedLeadingZeros, in);
           storedValue = storedValue ^ value;
@@ -136,14 +143,13 @@ public class ChimpDecoder extends Decoder {
   		  storedValues[current] = storedValue;
 		  return storedValue;
 		case 2:
-			System.out.println("DB: 10 " + storedLeadingZeros);
 		  value = readLong(64 - storedLeadingZeros, in);
 		  storedValue = storedValue ^ value;
           current = (current + 1) % previousValues;
   		  storedValues[current] = storedValue;
 		  return storedValue;
 		case 1:
-			System.out.println("DB: 01");
+
 		int fill = this.initialFill;
       	int temp = (int) readLong(fill, in);
       	int index = temp >>> (fill -= previousValuesLog2) & (1 << previousValuesLog2) - 1;
@@ -161,14 +167,14 @@ public class ChimpDecoder extends Decoder {
   		  storedValues[current] = storedValue;
 		  return storedValue;
 		default:
-			System.out.println("DB: 00");
-          storedValue = storedValues[(int) readLong(previousValuesLog2, in)];
+		    int previousIndex = (int) readLong(previousValuesLog2, in);
+          storedValue = storedValues[previousIndex];
           current = (current + 1) % previousValues;
           storedValues[current] = storedValue;
 		  return storedValue;
 		}
 	}
-  
+
   /**
    * Reads a long from the next X bits that represent the least significant bits in the long value.
    *

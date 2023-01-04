@@ -70,7 +70,7 @@ public class ChimpEncoder extends Encoder {
   public final long getMaxByteSize() {
     return 0;
   }
-  
+
   private static final int ONE_ITEM_MAX_SIZE =
 	      (2
 	                  + LEADING_ZERO_BITS_LENGTH_64BIT
@@ -78,7 +78,7 @@ public class ChimpEncoder extends Encoder {
 	                  + VALUE_BITS_LENGTH_64BIT)
 	              / Byte.SIZE
 	          + 1;
-  
+
   public final static int THRESHOLD = 6;
 
   public final static short[] leadingRepresentation = {0, 0, 0, 0, 0, 0, 0, 0,
@@ -100,7 +100,7 @@ public class ChimpEncoder extends Encoder {
 			24, 24, 24, 24, 24, 24, 24, 24,
 			24, 24, 24, 24, 24, 24, 24, 24
 		};
-  
+
   @Override
   public final int getOneItemMaxSize() {
     return ONE_ITEM_MAX_SIZE;
@@ -116,7 +116,7 @@ public class ChimpEncoder extends Encoder {
     this.current = 0;
     this.indices = new int[(int) Math.pow(2, threshold + 1)];
     this.storedValues = new long[previousValues];
-    
+
   }
 
   /** Stores a 0 and increases the count of bits by 1 */
@@ -162,8 +162,8 @@ public class ChimpEncoder extends Encoder {
       bitsLeft = Byte.SIZE;
     }
   }
-  
-  
+
+
   @Override
   public void flush(ByteArrayOutputStream out) {
     // ending stream
@@ -177,12 +177,12 @@ public class ChimpEncoder extends Encoder {
     // the encoder may be reused, so let us reset it
     reset();
   }
-  
+
   @Override
   public final void encode(double value, ByteArrayOutputStream out) {
     encode(Double.doubleToRawLongBits(value), out);
   }
-  
+
   @Override
   public final void encode(long value, ByteArrayOutputStream out) {
     if (firstValueWasWritten) {
@@ -192,7 +192,7 @@ public class ChimpEncoder extends Encoder {
       firstValueWasWritten = true;
     }
   }
-  
+
   private void writeFirst(long value, ByteArrayOutputStream out) {
 	  storedValues[current] = value;
 	    writeBits(value, VALUE_BITS_LENGTH_64BIT, out);
@@ -221,26 +221,22 @@ public class ChimpEncoder extends Encoder {
   	}
 
       if(xor == 0) {
-//    	  System.out.println("CB: 00");
     	  writeBits(previousIndex, this.flagZeroSize, out);
           storedLeadingZeros = 65;
       } else {
           int leadingZeros = leadingRound[Long.numberOfLeadingZeros(xor)];
 
           if (trailingZeros > threshold) {
-//        	  System.out.println("CB: 01");
             int significantBits = 64 - leadingZeros - trailingZeros;
             writeBits(512 * (previousValues + previousIndex) + 64 * leadingRepresentation[leadingZeros] + significantBits, this.flagOneSize, out);
             writeBits(xor >>> trailingZeros, significantBits, out); // Store the meaningful bits of XOR
   			storedLeadingZeros = 65;
   		} else if (leadingZeros == storedLeadingZeros) {
-//  			System.out.println("CB: 10");
   			writeBit(out);
   			skipBit(out);
   			int significantBits = 64 - leadingZeros;
   			writeBits(xor, significantBits, out);
   		} else {
-//  			System.out.println("CB: 11");
   			storedLeadingZeros = leadingZeros;
   			int significantBits = 64 - leadingZeros;
   			writeBits(24 + leadingRepresentation[leadingZeros], 5, out);

@@ -490,9 +490,9 @@ public class ChimpDecoderTest {
   }
 
   private void testLong(int repeatCount) throws Exception {
-    Encoder encoder = new ChimpEncoder();
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
     for (int i = 0; i < repeatCount; i++) {
+      Encoder encoder = new ChimpEncoder();
       for (long value : ChimpDecoderTest.longList) {
         encoder.encode(value, baos);
       }
@@ -513,9 +513,9 @@ public class ChimpDecoderTest {
       }
     }
 
-    encoder = new ChimpEncoder();
     baos = new ByteArrayOutputStream();
     for (int i = 0; i < repeatCount; i++) {
+      Encoder encoder = new ChimpEncoder();
       for (long value : ChimpDecoderTest.longList) {
         encoder.encode(-value, baos);
       }
@@ -545,11 +545,10 @@ public class ChimpDecoderTest {
   }
 
   private void testDouble(int repeatCount) throws Exception {
-    Encoder encoder = new ChimpEncoder();
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
     for (int i = 0; i < repeatCount; i++) {
+        Encoder encoder = new ChimpEncoder();
       for (double value : ChimpDecoderTest.doubleList) {
-    	  System.out.println(value);
         encoder.encode(value, baos);
       }
       encoder.flush(baos);
@@ -568,10 +567,9 @@ public class ChimpDecoderTest {
         fail();
       }
     }
-
-    encoder = new ChimpEncoder();
     baos = new ByteArrayOutputStream();
     for (int i = 0; i < repeatCount; i++) {
+        Encoder encoder = new ChimpEncoder();
       for (double value : ChimpDecoderTest.doubleList) {
         encoder.encode(-value, baos);
       }
