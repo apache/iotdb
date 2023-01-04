@@ -18,6 +18,15 @@
  */
 package org.apache.iotdb.db.wal.recover.file;
 
+import static org.apache.iotdb.commons.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ExecutionException;
+import java.util.function.Consumer;
 import org.apache.iotdb.db.engine.flush.MemTableFlushTask;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.memtable.IWritableMemChunk;
@@ -37,17 +46,8 @@ import org.apache.iotdb.db.wal.utils.listener.WALRecoverListener;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ExecutionException;
-import java.util.function.Consumer;
 
 /**
  * This class is used to help recover all unsealed TsFiles at zero level. There are 3 main
@@ -225,11 +225,13 @@ public class UnsealedTsFileRecoverPerformer extends AbstractTsFileRecoverPerform
       // flush memTable
       try {
         if (!recoveryMemTable.isEmpty() && recoveryMemTable.getSeriesNumber() != 0) {
+          String dataRegionId =
+              tsFileResource.getTsFile().getParentFile().getParentFile().getName();
+          String databaseName =
+              tsFileResource.getTsFile().getParentFile().getParentFile().getParentFile().getName();
           MemTableFlushTask tableFlushTask =
               new MemTableFlushTask(
-                  recoveryMemTable,
-                  writer,
-                  tsFileResource.getTsFile().getParentFile().getParentFile().getName());
+                  recoveryMemTable, writer, databaseName + FILE_NAME_SEPARATOR + dataRegionId);
           tableFlushTask.syncFlushMemTable();
           tsFileResource.updatePlanIndexes(recoveryMemTable.getMinPlanIndex());
           tsFileResource.updatePlanIndexes(recoveryMemTable.getMaxPlanIndex());
