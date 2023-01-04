@@ -44,12 +44,12 @@ public abstract class SchemaTreeVisitor<R>
   }
 
   @Override
-  protected boolean processInternalMatchedNode(SchemaNode node) {
+  protected boolean shouldVisitSubtreeOfInternalMatchedNode(SchemaNode node) {
     return !node.isMeasurement();
   }
 
   @Override
-  protected boolean processFullMatchedNode(SchemaNode node) {
+  protected boolean shouldVisitSubtreeOfFullMatchedNode(SchemaNode node) {
     return !node.isMeasurement();
   }
 

@@ -92,7 +92,7 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R>
   // cached result variables
   protected N nextMatchedNode;
   // save temporary next node fetched from iterator
-  protected N nextTempNode;
+  private N nextTempNode;
 
   protected AbstractTreeVisitor(N root, PartialPath pathPattern, boolean isPrefixMatch) {
     this.root = root;
@@ -198,12 +198,15 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R>
       nextTempNode = iterator.next();
 
       if (currentStateMatchInfo.hasFinalState()) {
-        if (acceptNode(nextTempNode)) {
+        if (acceptFullMatchedNode(nextTempNode)) {
           nextMatchedNode = nextTempNode;
         }
-        shouldVisitSubtree = processFullMatchedNode(nextTempNode);
+        shouldVisitSubtree = shouldVisitSubtreeOfFullMatchedNode(nextTempNode);
       } else {
-        shouldVisitSubtree = processInternalMatchedNode(nextTempNode);
+        if (acceptInternalMatchedNode(nextTempNode)) {
+          nextMatchedNode = nextTempNode;
+        }
+        shouldVisitSubtree = shouldVisitSubtreeOfInternalMatchedNode(nextTempNode);
       }
 
       if (shouldVisitSubtree) {
@@ -308,7 +311,7 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R>
    * process will keep traversing the subtree. If return false, the traversing process will skip the
    * subtree of given node.
    */
-  protected abstract boolean processInternalMatchedNode(N node) throws Exception;
+  protected abstract boolean shouldVisitSubtreeOfInternalMatchedNode(N node) throws Exception;
 
   /**
    * Full-match means the node matches the last node name of the given path pattern. root.sg.d full
@@ -318,10 +321,13 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R>
    * process will keep traversing the subtree. If return false, the traversing process will skip the
    * subtree of given node.
    */
-  protected abstract boolean processFullMatchedNode(N node) throws Exception;
+  protected abstract boolean shouldVisitSubtreeOfFullMatchedNode(N node) throws Exception;
 
   /** Only accepted nodes will be considered for hasNext() and next() */
-  protected abstract boolean acceptNode(N node) throws Exception;
+  protected abstract boolean acceptInternalMatchedNode(N node) throws Exception;
+
+  /** Only accepted nodes will be considered for hasNext() and next() */
+  protected abstract boolean acceptFullMatchedNode(N node) throws Exception;
 
   protected void setFailure(Throwable e) {
     this.throwable = e;
@@ -390,7 +396,7 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R>
 
     protected abstract void getNext() throws Exception;
 
-    private void close() {
+    protected void close() {
       if (nextMatchedChild != null) {
         releaseNode(nextMatchedChild);
       }
@@ -462,6 +468,12 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R>
         return;
       }
     }
+
+    @Override
+    protected void close() {
+      super.close();
+      releaseNodeIterator(childrenIterator);
+    }
   }
 
   // child may be matched by multi transitions, precise match or fuzzy match,
@@ -526,6 +538,12 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R>
         saveResult(child, stateMatchInfo);
         return;
       }
+    }
+
+    @Override
+    protected void close() {
+      super.close();
+      releaseNodeIterator(iterator);
     }
   }
 
@@ -706,6 +724,12 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R>
           }
         }
       }
+    }
+
+    @Override
+    protected void close() {
+      super.close();
+      releaseNodeIterator(iterator);
     }
   }
 
