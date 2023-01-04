@@ -291,11 +291,16 @@ public class TsFileRecoverPerformer {
     try {
       if (!recoverMemTable.isEmpty() && recoverMemTable.getSeriesNumber() != 0) {
         // flush logs
+        String virtualStorageGroupId =
+            tsFileResource.getTsFile().getParentFile().getParentFile().getName();
+        String logicalStorageGroupName =
+            tsFileResource.getTsFile().getParentFile().getParentFile().getParentFile().getName();
+
         MemTableFlushTask tableFlushTask =
             new MemTableFlushTask(
                 recoverMemTable,
                 restorableTsFileIOWriter,
-                tsFileResource.getTsFile().getParentFile().getParentFile().getName());
+                logicalStorageGroupName + File.separator + virtualStorageGroupId);
         tableFlushTask.syncFlushMemTable();
         tsFileResource.updatePlanIndexes(recoverMemTable.getMinPlanIndex());
         tsFileResource.updatePlanIndexes(recoverMemTable.getMaxPlanIndex());
