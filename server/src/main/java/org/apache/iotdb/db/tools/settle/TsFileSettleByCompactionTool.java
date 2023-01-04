@@ -49,9 +49,10 @@ public class TsFileSettleByCompactionTool {
   private static final String FILE_PATH_ARGS = "f";
   private static final String FILE_PATH_NAME = "file paths";
 
+  private static final String DEFAULT_HOST_VALUE = "127.0.0.1";
+  private static final String DEFAULT_PORT_VALUE = "9003";
+
   public static void main(String[] args) throws TException {
-    String hostValue = "127.0.0.1";
-    String portValue = "9003";
     String[] filePaths;
 
     Options commandLineOptions = createOptions();
@@ -64,8 +65,8 @@ public class TsFileSettleByCompactionTool {
       return;
     }
 
-    hostValue = getArgOrDefault(commandLine, HOST_ARGS, hostValue);
-    portValue = getArgOrDefault(commandLine, PORT_ARGS, portValue);
+    String hostValue = getArgOrDefault(commandLine, HOST_ARGS, DEFAULT_HOST_VALUE);
+    String portValue = getArgOrDefault(commandLine, PORT_ARGS, DEFAULT_PORT_VALUE);
     int port = Integer.parseInt(portValue);
     filePaths = commandLine.getOptionValues(FILE_PATH_ARGS);
 

@@ -81,7 +81,7 @@ public class SettleRequestHandler {
     for (String path : paths) {
       File tsFile = new File(path);
       if (!tsFile.exists()) {
-        return RpcUtils.getStatus(TSStatusCode.PATH_NOT_EXIST, "file not exist.");
+        return RpcUtils.getStatus(TSStatusCode.PATH_NOT_EXIST, "The specified file does not exist in " + path);
       }
       File modsFile = new File(path + ModificationFile.FILE_SUFFIX);
       hasModsFile |= modsFile.exists();
@@ -141,7 +141,7 @@ public class SettleRequestHandler {
 
     if (!hasModsFile) {
       return RpcUtils.getStatus(
-          TSStatusCode.ILLEGAL_PARAMETER, "At least one mods file should be selected");
+          TSStatusCode.ILLEGAL_PARAMETER, "Every selected TsFile does not contains the mods file.");
     }
     if (dataRegion == null) {
       return RpcUtils.getStatus(TSStatusCode.ILLEGAL_PATH, "DataRegion not exist");
@@ -158,7 +158,7 @@ public class SettleRequestHandler {
             tsFileManager, timePartitionId, hasSeqFile, tsFileNames);
     if (tsFileResources.size() != tsFileNames.size()) {
       return RpcUtils.getStatus(
-          TSStatusCode.ILLEGAL_PARAMETER, "Could not find enough satisfied TsFile");
+          TSStatusCode.ILLEGAL_PARAMETER, "Selected TsFiles are not continuous.");
     }
 
     IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
@@ -170,8 +170,12 @@ public class SettleRequestHandler {
       return RpcUtils.getStatus(
           TSStatusCode.UNSUPPORTED_OPERATION, "Compaction in Unseq Space is not enabled");
     }
+    int maxInnerCompactionCandidateFileNum = config.getMaxInnerCompactionCandidateFileNum();
     if (tsFileResources.size() > config.getMaxInnerCompactionCandidateFileNum()) {
-      return RpcUtils.getStatus(TSStatusCode.UNSUPPORTED_OPERATION, "File nums is too much.");
+      return RpcUtils.getStatus(TSStatusCode.UNSUPPORTED_OPERATION,
+          "File nums is too much, the limited count of system config is " + maxInnerCompactionCandidateFileNum
+              + ", the input file count is " + tsFileResources.size()
+      );
     }
     if (testMode) {
       return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
@@ -190,7 +194,7 @@ public class SettleRequestHandler {
       CompactionTaskManager.getInstance().addTaskToWaitingQueue(task);
     } catch (InterruptedException e) {
       logger.error(
-          "meet error when adding task-{} to compaction waiting queue", task.getSerialId());
+          "meet error when adding task-{} to compaction waiting queue: {}", task.getSerialId(), e.getMessage());
       return RpcUtils.getStatus(
           TSStatusCode.COMPACTION_ERROR, "meet error when submit settle task.");
     }
