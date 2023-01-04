@@ -16,13 +16,13 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.lsm.sstable.bplustree.writer;
+package org.apache.iotdb.lsm.sstable.index.bplustree.writer;
 
 import org.apache.iotdb.db.metadata.tagSchemaRegion.config.TagSchemaDescriptor;
-import org.apache.iotdb.lsm.sstable.bplustree.entry.BPlusTreeEntry;
-import org.apache.iotdb.lsm.sstable.bplustree.entry.BPlusTreeHeader;
-import org.apache.iotdb.lsm.sstable.bplustree.entry.BPlusTreeNode;
 import org.apache.iotdb.lsm.sstable.fileIO.TiFileOutputStream;
+import org.apache.iotdb.lsm.sstable.index.bplustree.entry.BPlusTreeEntry;
+import org.apache.iotdb.lsm.sstable.index.bplustree.entry.BPlusTreeHeader;
+import org.apache.iotdb.lsm.sstable.index.bplustree.entry.BPlusTreeNode;
 
 import org.junit.After;
 import org.junit.Before;
@@ -107,61 +107,6 @@ public class BPlusTreeWriterTest {
     file.delete();
     orderedQueue = null;
     unorderedQueue = null;
-  }
-
-  @Test
-  public void testWriteBPlusTree() throws IOException {
-
-    FileOutputStream fileOutputStream = new FileOutputStream(file);
-    TiFileOutputStream fileOutput = new TiFileOutputStream(fileOutputStream);
-    bPlusTreeWriter = new BPlusTreeWriter(fileOutput);
-    orderedQueue.forEach(
-        bPlusTreeEntry ->
-            bPlusTreeWriter.collectRecord(bPlusTreeEntry.getName(), bPlusTreeEntry.getOffset()));
-
-    BPlusTreeHeader bPlusTreeHeader = bPlusTreeWriter.writeBPlusTree();
-
-    assertTest(bPlusTreeHeader);
-  }
-
-  @Test
-  public void testSortAndWriteBPlusTree() throws IOException {
-
-    FileOutputStream fileOutputStream = new FileOutputStream(file);
-    TiFileOutputStream fileOutput = new TiFileOutputStream(fileOutputStream);
-    bPlusTreeWriter = new BPlusTreeWriter(fileOutput);
-    unorderedQueue.forEach(
-        bPlusTreeEntry ->
-            bPlusTreeWriter.collectRecord(bPlusTreeEntry.getName(), bPlusTreeEntry.getOffset()));
-    BPlusTreeHeader bPlusTreeHeader = bPlusTreeWriter.sortAndWriteBPlusTree();
-
-    assertTest(bPlusTreeHeader);
-  }
-
-  @Test
-  public void testWriteBPlusTreeFromOrderedQueue() throws IOException {
-
-    FileOutputStream fileOutputStream = new FileOutputStream(file);
-    TiFileOutputStream fileOutput = new TiFileOutputStream(fileOutputStream);
-
-    bPlusTreeWriter = new BPlusTreeWriter(fileOutput);
-
-    BPlusTreeHeader bPlusTreeHeader = bPlusTreeWriter.writeBPlusTree(orderedQueue, true);
-
-    assertTest(bPlusTreeHeader);
-  }
-
-  @Test
-  public void testWriteBPlusTreeFromUnOrderedQueue() throws IOException {
-
-    FileOutputStream fileOutputStream = new FileOutputStream(file);
-    TiFileOutputStream fileOutput = new TiFileOutputStream(fileOutputStream);
-
-    bPlusTreeWriter = new BPlusTreeWriter(fileOutput);
-
-    BPlusTreeHeader bPlusTreeHeader = bPlusTreeWriter.writeBPlusTree(unorderedQueue, false);
-
-    assertTest(bPlusTreeHeader);
   }
 
   @Test

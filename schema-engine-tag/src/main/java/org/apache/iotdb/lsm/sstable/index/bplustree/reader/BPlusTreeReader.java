@@ -16,14 +16,14 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.lsm.sstable.bplustree.reader;
+package org.apache.iotdb.lsm.sstable.index.bplustree.reader;
 
-import org.apache.iotdb.lsm.sstable.bplustree.entry.BPlusTreeEntry;
-import org.apache.iotdb.lsm.sstable.bplustree.entry.BPlusTreeHeader;
-import org.apache.iotdb.lsm.sstable.bplustree.entry.BPlusTreeNode;
-import org.apache.iotdb.lsm.sstable.bplustree.entry.BPlusTreeNodeType;
 import org.apache.iotdb.lsm.sstable.fileIO.ITiFileInputStream;
 import org.apache.iotdb.lsm.sstable.fileIO.TiFileInputStream;
+import org.apache.iotdb.lsm.sstable.index.bplustree.entry.BPlusTreeEntry;
+import org.apache.iotdb.lsm.sstable.index.bplustree.entry.BPlusTreeHeader;
+import org.apache.iotdb.lsm.sstable.index.bplustree.entry.BPlusTreeNode;
+import org.apache.iotdb.lsm.sstable.index.bplustree.entry.BPlusTreeNodeType;
 
 import org.apache.commons.lang3.tuple.MutableTriple;
 
@@ -134,7 +134,7 @@ public class BPlusTreeReader implements IBPlusTreeReader {
   /**
    * Read the b+ tree once to get all matching b+ tree entries
    *
-   * @param rootNode {@link org.apache.iotdb.lsm.sstable.bplustree.entry.BPlusTreeNode
+   * @param rootNode {@link org.apache.iotdb.lsm.sstable.index.bplustree.entry.BPlusTreeNode
    *     BPlusTreeNode} of the b+ tree
    * @param names the name of all entries that need to be found
    */

@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.lsm.util;
 
-import org.apache.iotdb.lsm.sstable.bplustree.entry.IDiskEntry;
+import org.apache.iotdb.lsm.sstable.diskentry.IDiskEntry;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.utils.Murmur128Hash;
 import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;

@@ -16,15 +16,15 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.lsm.sstable.bplustree.reader;
+package org.apache.iotdb.lsm.sstable.index.bplustree.reader;
 
 import org.apache.iotdb.db.metadata.tagSchemaRegion.config.TagSchemaDescriptor;
-import org.apache.iotdb.lsm.sstable.bplustree.entry.BPlusTreeEntry;
-import org.apache.iotdb.lsm.sstable.bplustree.entry.BPlusTreeHeader;
-import org.apache.iotdb.lsm.sstable.bplustree.entry.BPlusTreeNode;
-import org.apache.iotdb.lsm.sstable.bplustree.entry.BPlusTreeNodeType;
-import org.apache.iotdb.lsm.sstable.bplustree.writer.BPlusTreeWriter;
 import org.apache.iotdb.lsm.sstable.fileIO.TiFileOutputStream;
+import org.apache.iotdb.lsm.sstable.index.bplustree.entry.BPlusTreeEntry;
+import org.apache.iotdb.lsm.sstable.index.bplustree.entry.BPlusTreeHeader;
+import org.apache.iotdb.lsm.sstable.index.bplustree.entry.BPlusTreeNode;
+import org.apache.iotdb.lsm.sstable.index.bplustree.entry.BPlusTreeNodeType;
+import org.apache.iotdb.lsm.sstable.index.bplustree.writer.BPlusTreeWriter;
 
 import org.junit.After;
 import org.junit.Before;
@@ -39,8 +39,10 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Queue;
 import java.util.Set;
+import java.util.TreeMap;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -83,11 +85,15 @@ public class BPlusTreeReaderTest {
     orderedQueue.add(new BPlusTreeEntry("yyyy", 9));
     orderedQueue.add(new BPlusTreeEntry("zz", 10));
 
+    Map<String, Long> map = new TreeMap<>();
+
+    orderedQueue.forEach(
+        bPlusTreeEntry -> map.put(bPlusTreeEntry.getName(), bPlusTreeEntry.getOffset()));
     FileOutputStream fileOutputStream = new FileOutputStream(file);
     TiFileOutputStream fileOutput = new TiFileOutputStream(fileOutputStream);
 
     bPlusTreeWriter = new BPlusTreeWriter(fileOutput);
-    offset = bPlusTreeWriter.write(orderedQueue, true);
+    offset = bPlusTreeWriter.write(map, true);
     bPlusTreeWriter.close();
     bPlusTreeReader = new BPlusTreeReader(file, offset);
   }

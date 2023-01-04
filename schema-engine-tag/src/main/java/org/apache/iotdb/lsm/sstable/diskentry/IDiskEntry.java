@@ -16,43 +16,39 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.lsm.sstable.bplustree.entry;
+package org.apache.iotdb.lsm.sstable.diskentry;
 
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+import org.apache.iotdb.lsm.sstable.fileIO.ITiFileInputStream;
+import org.apache.iotdb.lsm.sstable.fileIO.ITiFileOutputStream;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 
-public enum BPlusTreeNodeType implements IDiskEntry {
-  INVALID_NODE((byte) 0),
+/**
+ * Represents a disk entry, which implements the disk data structure of this interface, and can be
+ * read and written using ITiFileInputStream and ITiFileOutputStream
+ *
+ * @see ITiFileInputStream
+ * @see ITiFileOutputStream
+ */
+public interface IDiskEntry {
 
-  INTERNAL_NODE((byte) 1),
+  /**
+   * Serialize to output stream
+   *
+   * @param out data output stream
+   * @return serialized size
+   * @throws IOException if an I/O error occurs.
+   */
+  int serialize(DataOutputStream out) throws IOException;
 
-  LEAF_NODE((byte) 2);
-
-  private byte type;
-
-  BPlusTreeNodeType(byte type) {
-    this.type = type;
-  }
-
-  public byte getType() {
-    return type;
-  }
-
-  @Override
-  public int serialize(DataOutputStream out) throws IOException {
-    return ReadWriteIOUtils.write(type, out);
-  }
-
-  @Override
-  public IDiskEntry deserialize(DataInputStream input) throws IOException {
-    throw new UnsupportedOperationException("deserialize BPlusTreeNodeType");
-  }
-
-  @Override
-  public String toString() {
-    return "BPlusTreeNodeType{" + "type=" + type + '}';
-  }
+  /**
+   * Deserialize from input stream
+   *
+   * @param input data input stream
+   * @return disk entry
+   * @throws IOException if an I/O error occurs.
+   */
+  IDiskEntry deserialize(DataInputStream input) throws IOException;
 }

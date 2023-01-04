@@ -21,10 +21,10 @@ package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.reader;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.entry.ChunkIndex;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.entry.ChunkIndexEntry;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.entry.TiFileHeader;
-import org.apache.iotdb.lsm.sstable.bplustree.entry.BPlusTreeEntry;
-import org.apache.iotdb.lsm.sstable.bplustree.reader.BPlusTreeReader;
 import org.apache.iotdb.lsm.sstable.fileIO.ITiFileInputStream;
 import org.apache.iotdb.lsm.sstable.fileIO.TiFileInputStream;
+import org.apache.iotdb.lsm.sstable.index.bplustree.entry.BPlusTreeEntry;
+import org.apache.iotdb.lsm.sstable.index.bplustree.reader.BPlusTreeReader;
 import org.apache.iotdb.lsm.sstable.interator.IDiskIterator;
 import org.apache.iotdb.lsm.util.BloomFilter;
 

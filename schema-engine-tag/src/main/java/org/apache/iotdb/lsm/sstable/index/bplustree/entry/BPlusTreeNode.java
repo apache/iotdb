@@ -16,9 +16,10 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.lsm.sstable.bplustree.entry;
+package org.apache.iotdb.lsm.sstable.index.bplustree.entry;
 
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.lsm.sstable.diskentry.IDiskEntry;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataInputStream;

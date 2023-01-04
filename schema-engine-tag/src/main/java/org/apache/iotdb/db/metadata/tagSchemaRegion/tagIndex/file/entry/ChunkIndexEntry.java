@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.entry;
 
-import org.apache.iotdb.lsm.sstable.bplustree.entry.IDiskEntry;
+import org.apache.iotdb.lsm.sstable.diskentry.IDiskEntry;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataInputStream;

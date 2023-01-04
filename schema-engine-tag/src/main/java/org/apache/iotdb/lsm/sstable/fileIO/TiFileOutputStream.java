@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.lsm.sstable.fileIO;
 
-import org.apache.iotdb.lsm.sstable.bplustree.entry.IDiskEntry;
+import org.apache.iotdb.lsm.sstable.diskentry.IDiskEntry;
 
 import java.io.BufferedOutputStream;
 import java.io.DataOutputStream;
