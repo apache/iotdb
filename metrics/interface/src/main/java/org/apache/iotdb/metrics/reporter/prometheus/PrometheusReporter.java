@@ -54,9 +54,9 @@ import java.util.Map;
 
 public class PrometheusReporter implements Reporter {
   private static final Logger LOGGER = LoggerFactory.getLogger(PrometheusReporter.class);
-  private static final MetricConfig metricConfig =
+  private static final MetricConfig METRIC_CONFIG =
       MetricConfigDescriptor.getInstance().getMetricConfig();
-  private AbstractMetricManager metricManager;
+  private final AbstractMetricManager metricManager;
   private DisposableServer httpServer;
 
   public PrometheusReporter(AbstractMetricManager metricManager) {
@@ -74,7 +74,7 @@ public class PrometheusReporter implements Reporter {
           HttpServer.create()
               .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 2000)
               .channelGroup(new DefaultChannelGroup(GlobalEventExecutor.INSTANCE))
-              .port(metricConfig.getPrometheusReporterPort())
+              .port(METRIC_CONFIG.getPrometheusReporterPort())
               .route(
                   routes ->
                       routes.get(
@@ -87,7 +87,7 @@ public class PrometheusReporter implements Reporter {
       return false;
     }
     LOGGER.info(
-        "PrometheusReporter started, use port {}", metricConfig.getPrometheusReporterPort());
+        "PrometheusReporter started, use port {}", METRIC_CONFIG.getPrometheusReporterPort());
     return true;
   }
 
@@ -210,7 +210,7 @@ public class PrometheusReporter implements Reporter {
         httpServer.disposeNow(Duration.ofSeconds(10));
         httpServer = null;
       } catch (Exception e) {
-        LOGGER.error("failed to stop server", e);
+        LOGGER.error("Prometheus Reporter failed to stop, because ", e);
         return false;
       }
     }

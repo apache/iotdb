@@ -32,7 +32,7 @@ public abstract class IoTDBInternalReporter extends IoTDBReporter {
   protected final Map<MetricInfo, IMetric> autoGauges = new ConcurrentHashMap<>();
 
   /**
-   * Add autoGauge into internal reporter
+   * Add autoGauge into internal reporter.
    *
    * @param autoGauge autoGauge
    * @param name the name of autoGauge
@@ -44,7 +44,7 @@ public abstract class IoTDBInternalReporter extends IoTDBReporter {
   }
 
   /**
-   * Add autoGauges into internal reporter
+   * Add autoGauges into internal reporter.
    *
    * @param gauges the map of autoGauge
    */
@@ -52,16 +52,16 @@ public abstract class IoTDBInternalReporter extends IoTDBReporter {
     autoGauges.putAll(gauges);
   }
 
-  /** Get all autoGauges */
+  /** Get all autoGauges. */
   public Map<MetricInfo, IMetric> getAllAutoGauge() {
     return autoGauges;
   }
 
-  /** Clear all autoGauges */
+  /** Clear all autoGauges. */
   public void clear() {
     autoGauges.clear();
   }
 
-  /** Get the type of internal reporter */
+  /** Get the type of internal reporter. */
   public abstract InternalReporterType getType();
 }

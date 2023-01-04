@@ -41,6 +41,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordReq;
 import org.apache.iotdb.session.util.SessionUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -58,16 +59,16 @@ public class IoTDBInternalLocalReporter extends IoTDBInternalReporter {
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBInternalLocalReporter.class);
   private static final SessionManager SESSION_MANAGER = SessionManager.getInstance();
   private static final Coordinator COORDINATOR = Coordinator.getInstance();
-  private final SessionInfo SESSION_INFO;
-  private final IPartitionFetcher PARTITION_FETCHER;
-  private final ISchemaFetcher SCHEMA_FETCHER;
+  private final SessionInfo sessionInfo;
+  private final IPartitionFetcher partitionFetcher;
+  private final ISchemaFetcher schemaFetcher;
   private Future<?> currentServiceFuture;
   private final ScheduledExecutorService service = Executors.newSingleThreadScheduledExecutor();
 
   public IoTDBInternalLocalReporter() {
-    PARTITION_FETCHER = ClusterPartitionFetcher.getInstance();
-    SCHEMA_FETCHER = ClusterSchemaFetcher.getInstance();
-    SESSION_INFO = new SessionInfo(0, "root", ZoneId.systemDefault().getId());
+    partitionFetcher = ClusterPartitionFetcher.getInstance();
+    schemaFetcher = ClusterSchemaFetcher.getInstance();
+    sessionInfo = new SessionInfo(0, "root", ZoneId.systemDefault().getId());
   }
 
   @Override
@@ -135,12 +136,12 @@ public class IoTDBInternalLocalReporter extends IoTDBInternalReporter {
       Statement s = StatementGenerator.createStatement(request);
       final long queryId = SESSION_MANAGER.requestQueryId();
       ExecutionResult result =
-          COORDINATOR.execute(s, queryId, SESSION_INFO, "", PARTITION_FETCHER, SCHEMA_FETCHER);
+          COORDINATOR.execute(s, queryId, sessionInfo, "", partitionFetcher, schemaFetcher);
       if (result.status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         LOGGER.error("Failed to update the value of metric with status {}", result.status);
       }
     } catch (IoTDBConnectionException e1) {
-      LOGGER.error("Failed to update the value of metric because of unknown type");
+      LOGGER.error("Failed to update the value of metric because of connection failure");
     } catch (IllegalPathException | QueryProcessException e2) {
       LOGGER.error("Failed to update the value of metric because of internal error");
     }
