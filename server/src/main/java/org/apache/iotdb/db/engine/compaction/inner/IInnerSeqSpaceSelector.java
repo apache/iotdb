@@ -24,5 +24,6 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import java.util.List;
 
 public interface IInnerSeqSpaceSelector extends ICompactionSelector {
+  @Override
   List<List<TsFileResource>> selectInnerSpaceTask(List<TsFileResource> resources);
 }

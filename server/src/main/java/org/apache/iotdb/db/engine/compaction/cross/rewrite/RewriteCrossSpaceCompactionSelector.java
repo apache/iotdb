@@ -70,9 +70,8 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
     this.tsFileManager = tsFileManager;
     this.memoryBudget =
         (long)
-            ((double)
-                    (SystemInfo.getInstance().getMemorySizeForCompaction()
-                        / IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount())
+            ((double) SystemInfo.getInstance().getMemorySizeForCompaction()
+                / IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount()
                 * config.getUsableCompactionMemoryProportion());
     this.maxCrossCompactionFileNum =
         IoTDBDescriptor.getInstance().getConfig().getMaxCrossCompactionCandidateFileNum();
@@ -188,7 +187,7 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
       long memoryCost) {
     // currently, we must allow at least one unseqFile be selected to handle the situation that
     // an unseqFile has huge time range but few data points.
-    if (taskResource.getUnseqFiles().size() == 0) {
+    if (taskResource.getUnseqFiles().isEmpty()) {
       return true;
     }
     long totalFileSize = unseqFile.getTsFileSize();

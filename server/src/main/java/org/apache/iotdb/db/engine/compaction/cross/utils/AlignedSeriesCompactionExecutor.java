@@ -182,7 +182,7 @@ public class AlignedSeriesCompactionExecutor extends SeriesCompactionExecutor {
         ModificationUtils.modifyAlignedChunkMetaData(alignedChunkMetadataList, valueModifications);
       }
 
-      if (alignedChunkMetadataList.size() == 0) {
+      if (alignedChunkMetadataList.isEmpty()) {
         // all chunks has been deleted in this file or current file does not contain this aligned
         // device, just remove it
         removeFile(fileElement);

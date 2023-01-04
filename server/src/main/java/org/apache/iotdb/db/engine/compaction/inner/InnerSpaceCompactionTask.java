@@ -257,7 +257,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
           dataRegionId,
           targetTsFileResource.getTsFile().getName(),
           costTime,
-          ((double) selectedFileSize) / 1024.0d / 1024.0d / costTime);
+          selectedFileSize / 1024.0d / 1024.0d / costTime);
 
       if (logFile.exists()) {
         FileUtils.delete(logFile);

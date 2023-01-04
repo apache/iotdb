@@ -365,10 +365,7 @@ public class CompactionRecoverTask {
               tsFileManager.getStorageGroupDir()
                   + File.separator
                   + IoTDBConstant.COMPACTION_MODIFICATION_FILE_NAME_FROM_OLD);
-      if (!checkAndDeleteFile(compactionModsFileFromOld)) {
-        return false;
-      }
-      return true;
+      return checkAndDeleteFile(compactionModsFileFromOld);
     }
 
     /**
