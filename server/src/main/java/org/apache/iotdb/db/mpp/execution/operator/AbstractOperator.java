@@ -63,24 +63,28 @@ public abstract class AbstractOperator implements Operator {
     }
 
     if (resultTsBlock.getPositionCount() <= maxTupleSizeOfTsBlock) {
-      return resultTsBlock;
+      TsBlock res = resultTsBlock;
+      resultTsBlock = null;
+      return res;
     } else {
       retainedTsBlock = resultTsBlock;
+      resultTsBlock = null;
       return getResultFromRetainedTsBlock();
     }
   }
 
   public TsBlock getResultFromRetainedTsBlock() {
+    TsBlock res;
     if (retainedTsBlock.getPositionCount() - startOffset <= maxTupleSizeOfTsBlock) {
-      resultTsBlock = retainedTsBlock.subTsBlock(startOffset);
+      res = retainedTsBlock.subTsBlock(startOffset);
       retainedTsBlock = null;
       startOffset = 0;
     } else {
-      resultTsBlock = retainedTsBlock.getRegion(startOffset, maxTupleSizeOfTsBlock);
+      res = retainedTsBlock.getRegion(startOffset, maxTupleSizeOfTsBlock);
       startOffset += maxTupleSizeOfTsBlock;
     }
-    LOGGER.debug("Current tsBlock size is : {}", resultTsBlock.getRetainedSizeInBytes());
-    return resultTsBlock;
+    LOGGER.debug("Current tsBlock size is : {}", res.getRetainedSizeInBytes());
+    return res;
   }
 
   @Override
