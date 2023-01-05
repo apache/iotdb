@@ -23,9 +23,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 public class EventWindowParameter extends WindowParameter {
 
-  private CompareType compareType;
-
-  private boolean needOutputEvent;
+  private final boolean needOutputEvent;
 
   private double delta;
 
@@ -34,29 +32,15 @@ public class EventWindowParameter extends WindowParameter {
       int controlColumnIndex,
       boolean needOutputEndTime,
       boolean needOutputEvent,
-      CompareType compareType,
       double delta) {
     super(dataType, controlColumnIndex, needOutputEndTime);
     this.needOutputEvent = needOutputEvent;
-    this.compareType = compareType;
     this.delta = delta;
     this.windowType = WindowType.EVENT_WINDOW;
   }
 
-  public CompareType getCompareType() {
-    return compareType;
-  }
-
-  public void setCompareType(CompareType compareType) {
-    this.compareType = compareType;
-  }
-
   public boolean isNeedOutputEvent() {
     return needOutputEvent;
-  }
-
-  public void setNeedOutputEvent(boolean needOutputEvent) {
-    this.needOutputEvent = needOutputEvent;
   }
 
   public double getDelta() {

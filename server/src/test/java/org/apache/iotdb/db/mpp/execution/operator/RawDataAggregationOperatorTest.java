@@ -38,7 +38,6 @@ import org.apache.iotdb.db.mpp.execution.operator.process.join.TimeJoinOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.join.merge.AscTimeComparator;
 import org.apache.iotdb.db.mpp.execution.operator.process.join.merge.SingleColumnMerger;
 import org.apache.iotdb.db.mpp.execution.operator.source.SeriesScanOperator;
-import org.apache.iotdb.db.mpp.execution.operator.window.CompareType;
 import org.apache.iotdb.db.mpp.execution.operator.window.EventWindowParameter;
 import org.apache.iotdb.db.mpp.execution.operator.window.TimeWindowParameter;
 import org.apache.iotdb.db.mpp.execution.operator.window.WindowParameter;
@@ -486,7 +485,7 @@ public class RawDataAggregationOperatorTest {
     }
 
     WindowParameter windowParameter =
-        new EventWindowParameter(TSDataType.INT32, 0, false, false, CompareType.VARIATION, 10000);
+        new EventWindowParameter(TSDataType.INT32, 0, false, false, 10000);
 
     RawDataAggregationOperator rawDataAggregationOperator =
         initRawDataAggregationOperator(aggregationTypes, null, inputLocations, windowParameter);
@@ -549,7 +548,7 @@ public class RawDataAggregationOperatorTest {
     }
 
     WindowParameter windowParameter =
-        new EventWindowParameter(TSDataType.INT32, 0, true, false, CompareType.VARIATION, 5000);
+        new EventWindowParameter(TSDataType.INT32, 0, true, false, 5000);
 
     RawDataAggregationOperator rawDataAggregationOperator =
         initRawDataAggregationOperator(aggregationTypes, null, inputLocations, windowParameter);
@@ -607,7 +606,7 @@ public class RawDataAggregationOperatorTest {
     }
 
     WindowParameter windowParameter =
-        new EventWindowParameter(TSDataType.INT32, 0, false, false, CompareType.VARIATION, 5000);
+        new EventWindowParameter(TSDataType.INT32, 0, false, false, 5000);
 
     RawDataAggregationOperator rawDataAggregationOperator =
         initRawDataAggregationOperator(aggregationTypes, null, inputLocations, windowParameter);
@@ -655,7 +654,7 @@ public class RawDataAggregationOperatorTest {
     }
 
     WindowParameter windowParameter =
-        new EventWindowParameter(TSDataType.INT32, 0, true, false, CompareType.VARIATION, 5000);
+        new EventWindowParameter(TSDataType.INT32, 0, true, false, 5000);
 
     RawDataAggregationOperator rawDataAggregationOperator =
         initRawDataAggregationOperator(aggregationTypes, null, inputLocations, windowParameter);
@@ -679,14 +678,14 @@ public class RawDataAggregationOperatorTest {
   @Test
   public void onePointInOneEqualEventWindowTest() throws IllegalPathException {
     WindowParameter windowParameter =
-        new EventWindowParameter(TSDataType.INT32, 0, false, false, CompareType.EQUAL, 0);
+        new EventWindowParameter(TSDataType.INT32, 0, false, false, 0);
     onePointInOneWindowTest(windowParameter);
   }
 
   @Test
   public void onePointInOneVariationEventWindowTest() throws IllegalPathException {
     WindowParameter windowParameter =
-        new EventWindowParameter(TSDataType.INT32, 0, false, false, CompareType.VARIATION, 0.5);
+        new EventWindowParameter(TSDataType.INT32, 0, false, false, 0.5);
     onePointInOneWindowTest(windowParameter);
   }
 
@@ -727,7 +726,7 @@ public class RawDataAggregationOperatorTest {
           for (int j = 0; j < resultTsBlock.getColumn(i).getPositionCount(); j++) {
             assertEquals(++resultMinTime1, resultTsBlock.getColumn(i).getLong(j));
           }
-        } else if (i == 3) {
+        } else {
           for (int j = 0; j < resultTsBlock.getColumn(i).getPositionCount(); j++) {
             assertEquals(++resultMinTime2, resultTsBlock.getColumn(i).getLong(j));
           }

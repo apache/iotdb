@@ -30,22 +30,13 @@ public class WindowManagerFactory {
       case TIME_WINDOW:
         return new TimeWindowManager(timeRangeIterator, (TimeWindowParameter) windowParameter);
       case EVENT_WINDOW:
-        return genEventWindowManager(
-            (EventWindowParameter) windowParameter, timeRangeIterator.isAscending());
+        return ((EventWindowParameter) windowParameter).getDelta() == 0
+            ? genEqualEventWindowManager(
+                (EventWindowParameter) windowParameter, timeRangeIterator.isAscending())
+            : genVariationEventWindowManager(
+                (EventWindowParameter) windowParameter, timeRangeIterator.isAscending());
       default:
         throw new IllegalArgumentException("Not support this type of aggregation window.");
-    }
-  }
-
-  private static EventWindowManager genEventWindowManager(
-      EventWindowParameter eventWindowParameter, boolean ascending) {
-    switch (eventWindowParameter.getCompareType()) {
-      case EQUAL:
-        return genEqualEventWindowManager(eventWindowParameter, ascending);
-      case VARIATION:
-        return genVariationEventWindowManager(eventWindowParameter, ascending);
-      default:
-        throw new IllegalArgumentException("Not support this compare type in event window.");
     }
   }
 
