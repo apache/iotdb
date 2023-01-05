@@ -21,6 +21,7 @@ package org.apache.iotdb.confignode.persistence;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.model.ModelInformation;
+import org.apache.iotdb.commons.model.exception.ModelManagementException;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.confignode.consensus.request.read.model.ShowModelPlan;
 import org.apache.iotdb.confignode.consensus.request.read.model.ShowTrailPlan;
@@ -149,5 +150,13 @@ public class ModelInfo implements SnapshotProcessor {
       ModelInformation modelEntry = ModelInformation.deserialize(stream);
       modelInfoMap.put(modelEntry.getModelId(), modelEntry);
     }
+  }
+
+  public void validate(String modelId) {
+    if (modelInfoMap.containsKey(modelId)) {
+      return;
+    }
+    throw new ModelManagementException(
+        String.format("Failed to drop model [%s], this model has not been created", modelId));
   }
 }

@@ -792,6 +792,10 @@ public class ConfigManager implements IManager {
     return syncManager;
   }
 
+  public ModelManager getModelManager() {
+    return modelManager;
+  }
+
   @Override
   public TSStatus operatePermission(AuthorPlan authorPlan) {
     TSStatus status = confirmLeader();

@@ -17,12 +17,10 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.procedure.state.model;
+package org.apache.iotdb.commons.model.exception;
 
-public enum DropModelState {
-  INIT,
-  CONFIG_NODE_DROPPING,
-  DATA_NODE_DROPPED,
-  ML_NODE_DROPPED,
-  CONFIG_NODE_DROPPED
+public class ModelManagementException extends RuntimeException {
+  public ModelManagementException(String message) {
+    super(message);
+  }
 }
