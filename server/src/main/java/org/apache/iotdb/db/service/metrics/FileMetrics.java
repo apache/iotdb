@@ -290,7 +290,7 @@ public class FileMetrics implements IMetricSet {
             result.append(line);
           }
         }
-        openFileNumbers = Long.parseLong(result.toString());
+        openFileNumbers = Long.parseLong(result.toString().trim());
       }
     } catch (IOException e) {
       LOGGER.error("Failed to get open file number, because ", e);
