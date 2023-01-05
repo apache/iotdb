@@ -86,6 +86,7 @@ import org.apache.iotdb.confignode.manager.node.ClusterNodeStartUtils;
 import org.apache.iotdb.confignode.manager.node.NodeManager;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
 import org.apache.iotdb.confignode.persistence.AuthorInfo;
+import org.apache.iotdb.confignode.persistence.ModelInfo;
 import org.apache.iotdb.confignode.persistence.ProcedureInfo;
 import org.apache.iotdb.confignode.persistence.TriggerInfo;
 import org.apache.iotdb.confignode.persistence.UDFInfo;
@@ -213,6 +214,9 @@ public class ConfigManager implements IManager {
   /** CQ */
   private final CQManager cqManager;
 
+  /** ML Model */
+  private final ModelManager modelManager;
+
   private final ConfigNodeRegionStateMachine stateMachine;
 
   private final RetryFailedTasksThread retryFailedTasksThread;
@@ -228,6 +232,7 @@ public class ConfigManager implements IManager {
     TriggerInfo triggerInfo = new TriggerInfo();
     ClusterSyncInfo syncInfo = new ClusterSyncInfo();
     CQInfo cqInfo = new CQInfo();
+    ModelInfo modelInfo = new ModelInfo();
 
     // Build state machine and executor
     ConfigPlanExecutor executor =
@@ -240,7 +245,8 @@ public class ConfigManager implements IManager {
             udfInfo,
             triggerInfo,
             syncInfo,
-            cqInfo);
+            cqInfo,
+            modelInfo);
     this.stateMachine = new ConfigNodeRegionStateMachine(this, executor);
 
     // Build the manager module
@@ -254,6 +260,7 @@ public class ConfigManager implements IManager {
     this.syncManager = new SyncManager(this, syncInfo);
     this.cqManager = new CQManager(this);
     this.loadManager = new LoadManager(this);
+    this.modelManager = new ModelManager(this, modelInfo);
 
     this.retryFailedTasksThread = new RetryFailedTasksThread(this);
   }

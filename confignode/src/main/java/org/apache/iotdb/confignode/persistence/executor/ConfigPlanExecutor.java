@@ -92,6 +92,7 @@ import org.apache.iotdb.confignode.consensus.request.write.trigger.UpdateTrigger
 import org.apache.iotdb.confignode.consensus.response.SchemaNodeManagementResp;
 import org.apache.iotdb.confignode.exception.physical.UnknownPhysicalPlanTypeException;
 import org.apache.iotdb.confignode.persistence.AuthorInfo;
+import org.apache.iotdb.confignode.persistence.ModelInfo;
 import org.apache.iotdb.confignode.persistence.ProcedureInfo;
 import org.apache.iotdb.confignode.persistence.TriggerInfo;
 import org.apache.iotdb.confignode.persistence.UDFInfo;
@@ -146,6 +147,8 @@ public class ConfigPlanExecutor {
 
   private final CQInfo cqInfo;
 
+  private final ModelInfo modelInfo;
+
   public ConfigPlanExecutor(
       NodeInfo nodeInfo,
       ClusterSchemaInfo clusterSchemaInfo,
@@ -155,7 +158,8 @@ public class ConfigPlanExecutor {
       UDFInfo udfInfo,
       TriggerInfo triggerInfo,
       ClusterSyncInfo syncInfo,
-      CQInfo cqInfo) {
+      CQInfo cqInfo,
+      ModelInfo modelInfo) {
 
     this.snapshotProcessorList = new ArrayList<>();
 
@@ -182,6 +186,9 @@ public class ConfigPlanExecutor {
 
     this.cqInfo = cqInfo;
     this.snapshotProcessorList.add(cqInfo);
+
+    this.modelInfo = modelInfo;
+    this.snapshotProcessorList.add(modelInfo);
 
     this.procedureInfo = procedureInfo;
   }
