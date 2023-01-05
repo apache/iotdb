@@ -35,6 +35,8 @@ public class ModelInformation {
   private List<String> queryExpressions;
   private String queryFilter;
 
+  private boolean isAuto;
+
   private Map<String, TrailInformation> trailMap;
 
   private String bestTrailId;
@@ -42,6 +44,10 @@ public class ModelInformation {
 
   public String getModelId() {
     return modelId;
+  }
+
+  public boolean isAuto() {
+    return isAuto;
   }
 
   public void serialize(DataOutputStream stream) {}

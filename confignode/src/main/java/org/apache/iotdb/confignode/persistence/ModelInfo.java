@@ -152,6 +152,15 @@ public class ModelInfo implements SnapshotProcessor {
     }
   }
 
+  public void validate(ModelInformation modelInformation) {
+    String modelId = modelInformation.getModelId();
+    if (modelInfoMap.containsKey(modelId)) {
+      throw new ModelManagementException(
+          String.format(
+              "Failed to create model [%s], the same name model has been created", modelId));
+    }
+  }
+
   public void validate(String modelId) {
     if (modelInfoMap.containsKey(modelId)) {
       return;

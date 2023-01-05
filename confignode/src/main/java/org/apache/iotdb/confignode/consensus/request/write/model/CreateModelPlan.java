@@ -19,10 +19,9 @@
 
 package org.apache.iotdb.confignode.consensus.request.write.model;
 
-import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
+import org.apache.iotdb.commons.model.ModelInformation;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
-import org.apache.iotdb.confignode.rpc.thrift.TCreateModelReq;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -31,26 +30,26 @@ import java.util.Objects;
 
 public class CreateModelPlan extends ConfigPhysicalPlan {
 
-  private TCreateModelReq createModelReq;
+  private ModelInformation modelInformation;
 
   public CreateModelPlan() {
     super(ConfigPhysicalPlanType.CreateModel);
   }
 
-  public CreateModelPlan(TCreateModelReq createModelReq) {
+  public CreateModelPlan(ModelInformation modelInformation) {
     super(ConfigPhysicalPlanType.CreateModel);
-    this.createModelReq = createModelReq;
+    this.modelInformation = modelInformation;
   }
 
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
     stream.writeShort(getType().getPlanType());
-    ThriftCommonsSerDeUtils.serializeTCreateModelReq(createModelReq, stream);
+    modelInformation.serialize(stream);
   }
 
   @Override
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
-    createModelReq = ThriftCommonsSerDeUtils.deserializeTCreateModelReq(buffer);
+    modelInformation = ModelInformation.deserialize(buffer);
   }
 
   @Override
@@ -65,11 +64,11 @@ public class CreateModelPlan extends ConfigPhysicalPlan {
       return false;
     }
     CreateModelPlan that = (CreateModelPlan) o;
-    return Objects.equals(createModelReq, that.createModelReq);
+    return Objects.equals(modelInformation, that.modelInformation);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), createModelReq);
+    return Objects.hash(super.hashCode(), modelInformation);
   }
 }

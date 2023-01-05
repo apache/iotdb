@@ -28,7 +28,6 @@ import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.exception.runtime.ThriftSerDeException;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateCQReq;
-import org.apache.iotdb.confignode.rpc.thrift.TCreateModelReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowModelReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTrailReq;
 import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
@@ -262,25 +261,6 @@ public class ThriftCommonsSerDeUtils {
       throw new ThriftSerDeException("Read TSchemaNode failed: ", e);
     }
     return schemaNode;
-  }
-
-  public static void serializeTCreateModelReq(
-      TCreateModelReq createModelReq, DataOutputStream stream) {
-    try {
-      createModelReq.write(generateWriteProtocol(stream));
-    } catch (TException e) {
-      throw new ThriftSerDeException("Write TCreateModelReq failed: ", e);
-    }
-  }
-
-  public static TCreateModelReq deserializeTCreateModelReq(ByteBuffer buffer) {
-    TCreateModelReq createModelReq = new TCreateModelReq();
-    try {
-      createModelReq.read(generateReadProtocol(buffer));
-    } catch (TException e) {
-      throw new ThriftSerDeException("Read TCreateModelReq failed: ", e);
-    }
-    return createModelReq;
   }
 
   public static void serializeTUpdateModelInfoReq(

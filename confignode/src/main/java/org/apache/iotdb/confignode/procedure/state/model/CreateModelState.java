@@ -19,4 +19,10 @@
 
 package org.apache.iotdb.confignode.procedure.state.model;
 
-public enum CreateModelState {}
+public enum CreateModelState {
+  INIT,
+  VALIDATED,
+  CONFIG_NODE_INACTIVE,
+  ML_NODE_ACTIVE,
+  CONFIG_NODE_ACTIVE
+}
