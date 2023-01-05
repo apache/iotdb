@@ -35,9 +35,9 @@ import org.apache.iotdb.db.metadata.mnode.InternalMNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.metadata.mnode.iterator.IMNodeIterator;
 import org.apache.iotdb.db.metadata.mtree.store.MemMTreeStore;
-import org.apache.iotdb.db.metadata.mtree.traverser.collector.CollectorTraverser;
 import org.apache.iotdb.db.metadata.mtree.traverser.collector.DatabaseCollector;
 import org.apache.iotdb.db.metadata.mtree.traverser.collector.MNodeAboveSGCollector;
+import org.apache.iotdb.db.metadata.mtree.traverser.collector.MNodeCollector;
 import org.apache.iotdb.db.metadata.mtree.traverser.counter.CounterTraverser;
 import org.apache.iotdb.db.metadata.mtree.traverser.counter.StorageGroupCounter;
 import org.apache.iotdb.db.metadata.utils.MetaFormatUtils;
@@ -627,38 +627,44 @@ public class ConfigMTree {
   public List<String> getPathsSetOnTemplate(int templateId, boolean filterPreUnset)
       throws MetadataException {
     List<String> resSet = new ArrayList<>();
-    CollectorTraverser<Set<String>> setTemplatePaths =
-        new CollectorTraverser<Set<String>>(root, new PartialPath(ALL_RESULT_NODES), store, false) {
+    MNodeCollector<Set<String>> collector =
+        new MNodeCollector<Set<String>>(root, new PartialPath(ALL_RESULT_NODES), store, false) {
           @Override
-          protected boolean processInternalMatchedNode(IMNode node) {
-            // will never get here, implement for placeholder
+          protected boolean acceptFullMatchedNode(IMNode node) {
+            if (super.acceptFullMatchedNode(node)) {
+              // if node not set template, go on traversing
+              if (node.getSchemaTemplateId() != NON_TEMPLATE) {
+                if (filterPreUnset && node.isSchemaTemplatePreUnset()) {
+                  // filter the pre unset template
+                  return false;
+                }
+                // if set template, and equals to target or target for all, add to result
+                return templateId == ALL_TEMPLATE || templateId == node.getSchemaTemplateId();
+              }
+            }
             return false;
           }
 
           @Override
-          protected boolean processFullMatchedNode(IMNode node) {
-            // shall not traverse nodes inside template
-            if (!node.getPartialPath().equals(getCurrentPartialPath())) {
-              return true;
-            }
+          protected void transferToResult(IMNode node) {
+            resSet.add(node.getFullPath());
+          }
 
-            // if node not set template, go on traversing
-            if (node.getSchemaTemplateId() != NON_TEMPLATE) {
-              if (filterPreUnset && node.isSchemaTemplatePreUnset()) {
-                // filter the pre unset template
-                return true;
-              }
-              // if set template, and equals to target or target for all, add to result
-              if (templateId == ALL_TEMPLATE || templateId == node.getSchemaTemplateId()) {
-                resSet.add(node.getFullPath());
-              }
-              // descendants of the node cannot set another template, exit from this branch
-              return true;
-            }
-            return false;
+          @Override
+          protected boolean shouldVisitSubtreeOfFullMatchedNode(IMNode node) {
+            // descendants of the node cannot set another template, exit from this branch
+            return (node.getSchemaTemplateId() == NON_TEMPLATE)
+                && super.shouldVisitSubtreeOfFullMatchedNode(node);
+          }
+
+          @Override
+          protected boolean shouldVisitSubtreeOfInternalMatchedNode(IMNode node) {
+            // descendants of the node cannot set another template, exit from this branch
+            return (node.getSchemaTemplateId() == NON_TEMPLATE)
+                && super.shouldVisitSubtreeOfFullMatchedNode(node);
           }
         };
-    setTemplatePaths.traverse();
+    collector.traverse();
     return resSet;
   }
 
@@ -666,32 +672,39 @@ public class ConfigMTree {
   public Map<Integer, Set<PartialPath>> getTemplateSetInfo(PartialPath pathPattern)
       throws MetadataException {
     Map<Integer, Set<PartialPath>> result = new HashMap<>();
-    CollectorTraverser<List<Integer>> collector =
-        new CollectorTraverser<List<Integer>>(root, pathPattern, store, false) {
+    MNodeCollector<List<Integer>> collector =
+        new MNodeCollector<List<Integer>>(root, pathPattern, store, false) {
           @Override
-          protected boolean processInternalMatchedNode(IMNode node) {
-            if (node.getSchemaTemplateId() != NON_TEMPLATE) {
-              // node set template
-              result
-                  .computeIfAbsent(node.getSchemaTemplateId(), k -> new HashSet<>())
-                  .add(getCurrentPartialPath());
-              // descendants of the node cannot set another template, exit from this branch
-              return true;
-            }
-            return false;
+          protected boolean acceptFullMatchedNode(IMNode node) {
+            return (node.getSchemaTemplateId() != NON_TEMPLATE)
+                || super.acceptFullMatchedNode(node);
           }
 
           @Override
-          protected boolean processFullMatchedNode(IMNode node) {
-            if (node.getSchemaTemplateId() != NON_TEMPLATE) {
-              // node set template
-              result
-                  .computeIfAbsent(node.getSchemaTemplateId(), k -> new HashSet<>())
-                  .add(getCurrentPartialPath());
-              // descendants of the node cannot set another template, exit from this branch
-              return true;
-            }
-            return false;
+          protected boolean acceptInternalMatchedNode(IMNode node) {
+            return (node.getSchemaTemplateId() != NON_TEMPLATE)
+                || super.acceptInternalMatchedNode(node);
+          }
+
+          @Override
+          protected void transferToResult(IMNode node) {
+            result
+                .computeIfAbsent(node.getSchemaTemplateId(), k -> new HashSet<>())
+                .add(getCurrentPartialPath());
+          }
+
+          @Override
+          protected boolean shouldVisitSubtreeOfFullMatchedNode(IMNode node) {
+            // descendants of the node cannot set another template, exit from this branch
+            return (node.getSchemaTemplateId() == NON_TEMPLATE)
+                && super.shouldVisitSubtreeOfFullMatchedNode(node);
+          }
+
+          @Override
+          protected boolean shouldVisitSubtreeOfInternalMatchedNode(IMNode node) {
+            // descendants of the node cannot set another template, exit from this branch
+            return (node.getSchemaTemplateId() == NON_TEMPLATE)
+                && super.shouldVisitSubtreeOfFullMatchedNode(node);
           }
         };
     collector.traverse();
