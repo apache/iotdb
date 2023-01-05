@@ -132,10 +132,7 @@ public class SchemaQueryOrderByHeatOperator implements ProcessOperator {
         Object[] line = tsBlockRowIterator.next();
         String timeseries = line[0].toString();
         long time = timeseriesToLastTimestamp.getOrDefault(timeseries, 0L);
-        if (!lastTimestampToTsSchema.containsKey(time)) {
-          lastTimestampToTsSchema.put(time, new ArrayList<>());
-        }
-        lastTimestampToTsSchema.get(time).add(line);
+        lastTimestampToTsSchema.computeIfAbsent(time, key -> new ArrayList<>()).add(line);
       }
     }
 

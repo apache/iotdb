@@ -82,7 +82,8 @@ public abstract class Traverser {
    * @param path use wildcard to specify which part to traverse
    * @throws MetadataException
    */
-  public Traverser(IMNode startNode, PartialPath path, IMTreeStore store) throws MetadataException {
+  protected Traverser(IMNode startNode, PartialPath path, IMTreeStore store)
+      throws MetadataException {
     String[] nodes = path.getNodes();
     if (nodes.length == 0 || !nodes[0].equals(PATH_ROOT)) {
       throw new IllegalPathException(

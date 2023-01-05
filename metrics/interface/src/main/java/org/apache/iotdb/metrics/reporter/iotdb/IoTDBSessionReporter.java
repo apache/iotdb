@@ -44,19 +44,19 @@ import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
-public class SessionIoTDBReporter extends IoTDBReporter {
-  private static final Logger LOGGER = LoggerFactory.getLogger(SessionIoTDBReporter.class);
+public class IoTDBSessionReporter extends IoTDBReporter {
+  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBSessionReporter.class);
   private static final MetricConfig.IoTDBReporterConfig ioTDBReporterConfig =
-      MetricConfigDescriptor.getInstance().getMetricConfig().getIoTDBReporterConfig();
+      MetricConfigDescriptor.getInstance().getMetricConfig().getIotdbReporterConfig();
   private Future<?> currentServiceFuture;
   private final ScheduledExecutorService service = Executors.newSingleThreadScheduledExecutor();
 
-  /** The manager of metrics */
+  /** The manager of metrics. */
   protected AbstractMetricManager metricManager;
-  /** The session pool to write metrics */
+  /** The session pool to write metrics. */
   protected SessionPool sessionPool;
 
-  public SessionIoTDBReporter(AbstractMetricManager metricManager) {
+  public IoTDBSessionReporter(AbstractMetricManager metricManager) {
     this.metricManager = metricManager;
     this.sessionPool =
         new SessionPool(
@@ -71,7 +71,7 @@ public class SessionIoTDBReporter extends IoTDBReporter {
         this.sessionPool.createDatabase(IoTDBMetricsUtils.DATABASE);
       }
     } catch (IoTDBConnectionException e) {
-      LOGGER.error("CheckOrCreateStorageGroup failed because ", e);
+      LOGGER.warn("IoTDBSessionReporter checkOrCreateStorageGroup failed because ", e);
     } catch (StatementExecutionException e) {
       // do nothing
     }
@@ -81,7 +81,7 @@ public class SessionIoTDBReporter extends IoTDBReporter {
   @SuppressWarnings("unsafeThreadSchedule")
   public boolean start() {
     if (currentServiceFuture != null) {
-      LOGGER.warn("IoTDB Session Reporter already start");
+      LOGGER.warn("IoTDBSessionReporter already start!");
       return false;
     }
     currentServiceFuture =
@@ -98,12 +98,16 @@ public class SessionIoTDBReporter extends IoTDBReporter {
                 }
                 writeMetricsToIoTDB(values, System.currentTimeMillis());
               } catch (Throwable t) {
-                LOGGER.error("Schedule task failed", t);
+                LOGGER.error("IoTDBSessionReporter failed to start, because", t);
               }
             },
             1,
             MetricConfigDescriptor.getInstance().getMetricConfig().getAsyncCollectPeriodInSecond(),
             TimeUnit.SECONDS);
+    LOGGER.info(
+        "IoTDBSessionReporter start, write to {}:{}",
+        ioTDBReporterConfig.getHost(),
+        ioTDBReporterConfig.getPort());
     return true;
   }
 
@@ -116,6 +120,7 @@ public class SessionIoTDBReporter extends IoTDBReporter {
     if (sessionPool != null) {
       sessionPool.close();
     }
+    LOGGER.info("IoTDBSessionReporter stop!");
     return true;
   }
 
@@ -138,7 +143,7 @@ public class SessionIoTDBReporter extends IoTDBReporter {
     try {
       sessionPool.insertRecord(prefix, time, sensors, dataTypes, values);
     } catch (IoTDBConnectionException | StatementExecutionException e) {
-      LOGGER.warn("Failed to insert record");
+      LOGGER.warn("IoTDBSessionReporter failed to insert record, because ", e);
     }
   }
 
@@ -169,7 +174,7 @@ public class SessionIoTDBReporter extends IoTDBReporter {
     try {
       sessionPool.insertRecords(deviceIds, times, sensors, dataTypes, values);
     } catch (IoTDBConnectionException | StatementExecutionException e) {
-      LOGGER.warn("Failed to insert record");
+      LOGGER.warn("IoTDBSessionReporter failed to insert record, because ", e);
     }
   }
 }

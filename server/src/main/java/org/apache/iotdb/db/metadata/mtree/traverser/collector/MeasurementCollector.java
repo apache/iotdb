@@ -28,20 +28,20 @@ import org.apache.iotdb.db.metadata.mtree.store.IMTreeStore;
 // This class defines MeasurementMNode as target node and defines the measurement process framework.
 public abstract class MeasurementCollector<T> extends CollectorTraverser<T> {
 
-  public MeasurementCollector(IMNode startNode, PartialPath path, IMTreeStore store)
+  protected MeasurementCollector(IMNode startNode, PartialPath path, IMTreeStore store)
       throws MetadataException {
     super(startNode, path, store);
     shouldTraverseTemplate = true;
   }
 
-  public MeasurementCollector(
+  protected MeasurementCollector(
       IMNode startNode, PartialPath path, IMTreeStore store, boolean shouldTraverseTemplate)
       throws MetadataException {
     super(startNode, path, store);
     this.shouldTraverseTemplate = shouldTraverseTemplate;
   }
 
-  public MeasurementCollector(
+  protected MeasurementCollector(
       IMNode startNode, PartialPath path, IMTreeStore store, int limit, int offset)
       throws MetadataException {
     super(startNode, path, store, limit, offset);

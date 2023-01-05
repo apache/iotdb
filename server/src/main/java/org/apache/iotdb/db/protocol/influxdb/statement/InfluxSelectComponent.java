@@ -41,6 +41,7 @@ public final class InfluxSelectComponent extends SelectComponent {
     super(null);
   }
 
+  @Override
   public void addResultColumn(ResultColumn resultColumn) {
     Expression expression = resultColumn.getExpression();
     if (expression instanceof FunctionExpression) {
