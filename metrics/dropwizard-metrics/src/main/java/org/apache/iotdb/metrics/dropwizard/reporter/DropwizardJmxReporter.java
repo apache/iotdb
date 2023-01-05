@@ -62,7 +62,8 @@ public class DropwizardJmxReporter implements JmxReporter {
         jmxReporter.stop();
         jmxReporter = null;
       }
-    } catch (Exception e) {
+    } catch (RuntimeException e) {
+      // catch possible RuntimeException throw by stop method of jmxReporter
       LOGGER.warn("Dropwizard JmxReporter failed to stop, because ", e);
       return false;
     }
