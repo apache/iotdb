@@ -606,7 +606,7 @@ public class PartitionCache {
       for (Map.Entry<String, List<DataPartitionQueryParam>> entry :
           storageGroupToQueryParamsMap.entrySet()) {
         if (null == entry.getValue()
-            || 0 == entry.getValue().size()
+            || entry.getValue().isEmpty()
             || !getStorageGroupDataPartition(dataPartitionMap, entry.getKey(), entry.getValue())) {
           CacheMetricsRecorder.record(false, DATA_PARTITION_CACHE_NAME);
           return null;
@@ -689,7 +689,7 @@ public class PartitionCache {
     Map<TTimePartitionSlot, List<TRegionReplicaSet>> timePartitionSlotListMap =
         seriesSlotToTimePartitionMap.computeIfAbsent(seriesPartitionSlot, k -> new HashMap<>());
     // Notice: when query all time partition, then miss
-    if (0 == dataPartitionQueryParam.getTimePartitionSlotList().size()) {
+    if (dataPartitionQueryParam.getTimePartitionSlotList().isEmpty()) {
       return false;
     }
     // check cache for each time partition
@@ -717,7 +717,7 @@ public class PartitionCache {
       Map<TTimePartitionSlot, List<TConsensusGroupId>> cachedTimePartitionSlot) {
     List<TConsensusGroupId> cacheConsensusGroupId = cachedTimePartitionSlot.get(timePartitionSlot);
     if (null == cacheConsensusGroupId
-        || 0 == cacheConsensusGroupId.size()
+        || cacheConsensusGroupId.isEmpty()
         || null == timePartitionSlot) {
       logger.debug(
           "[{} Cache] miss when search time partition {}",

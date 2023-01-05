@@ -35,6 +35,7 @@ public class FirstValueDescAccumulator extends FirstValueAccumulator {
   }
 
   // Don't break in advance
+  @Override
   protected int addIntInput(Column[] column, IWindow curWindow) {
     int curPositionCount = column[0].getPositionCount();
 
@@ -54,6 +55,7 @@ public class FirstValueDescAccumulator extends FirstValueAccumulator {
     return curPositionCount;
   }
 
+  @Override
   protected int addLongInput(Column[] column, IWindow curWindow) {
     int curPositionCount = column[0].getPositionCount();
 
@@ -73,6 +75,7 @@ public class FirstValueDescAccumulator extends FirstValueAccumulator {
     return curPositionCount;
   }
 
+  @Override
   protected int addFloatInput(Column[] column, IWindow curWindow) {
     int curPositionCount = column[0].getPositionCount();
 
@@ -92,6 +95,7 @@ public class FirstValueDescAccumulator extends FirstValueAccumulator {
     return curPositionCount;
   }
 
+  @Override
   protected int addDoubleInput(Column[] column, IWindow curWindow) {
     int curPositionCount = column[0].getPositionCount();
 
@@ -111,6 +115,7 @@ public class FirstValueDescAccumulator extends FirstValueAccumulator {
     return curPositionCount;
   }
 
+  @Override
   protected int addBooleanInput(Column[] column, IWindow curWindow) {
     int curPositionCount = column[0].getPositionCount();
 
@@ -130,6 +135,7 @@ public class FirstValueDescAccumulator extends FirstValueAccumulator {
     return curPositionCount;
   }
 
+  @Override
   protected int addBinaryInput(Column[] column, IWindow curWindow) {
     int curPositionCount = column[0].getPositionCount();
 
