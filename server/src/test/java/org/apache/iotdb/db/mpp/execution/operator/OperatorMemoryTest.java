@@ -800,8 +800,8 @@ public class OperatorMemoryTest {
               false,
               Collections.emptyMap());
 
-      assertEquals(4L, operator.calculateMaxPeekMemory());
-      assertEquals(4L, operator.calculateMaxReturnSize());
+      assertEquals(8L, operator.calculateMaxPeekMemory());
+      assertEquals(8L, operator.calculateMaxReturnSize());
       assertEquals(0, operator.calculateRetainedSizeAfterCallingNext());
 
     } finally {
@@ -865,8 +865,8 @@ public class OperatorMemoryTest {
           new DevicesCountOperator(
               planNodeId, fragmentInstanceContext.getOperatorContexts().get(0), null, false);
 
-      assertEquals(4L, operator.calculateMaxPeekMemory());
-      assertEquals(4L, operator.calculateMaxReturnSize());
+      assertEquals(8L, operator.calculateMaxPeekMemory());
+      assertEquals(8L, operator.calculateMaxReturnSize());
       assertEquals(0, operator.calculateRetainedSizeAfterCallingNext());
 
     } finally {
