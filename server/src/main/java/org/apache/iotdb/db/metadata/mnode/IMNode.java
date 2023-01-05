@@ -82,6 +82,8 @@ public interface IMNode extends ITreeNode {
 
   void unsetSchemaTemplate();
 
+  boolean isAboveDatabase();
+
   boolean isStorageGroup();
 
   boolean isEntity();

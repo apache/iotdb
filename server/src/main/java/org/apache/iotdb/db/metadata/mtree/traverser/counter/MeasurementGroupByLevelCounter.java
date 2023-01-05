@@ -20,12 +20,14 @@ package org.apache.iotdb.db.metadata.mtree.traverser.counter;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.schema.tree.ITreeNode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mtree.store.IMTreeStore;
 import org.apache.iotdb.db.metadata.mtree.traverser.Traverser;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
@@ -90,40 +92,46 @@ public class MeasurementGroupByLevelCounter extends Traverser {
     }
   }
 
-  @Override
-  protected boolean processInternalMatchedNode(IMNode node) {
-    if (getCurrentNodeLevel() == groupByLevel) {
-      path = node.getPartialPath();
-      result.putIfAbsent(path, 0L);
-    }
-    return false;
-  }
-
-  @Override
-  protected boolean processFullMatchedNode(IMNode node) {
-    if (getCurrentNodeLevel() == groupByLevel) {
-      path = node.getPartialPath();
-      result.putIfAbsent(path, 0L);
-    }
-    if (!node.isMeasurement()) {
-      return false;
-    }
-    if (hasTag) {
-      if (!timeseries.contains(node.getFullPath())) {
-        return true;
-      }
-    }
-    if (getCurrentNodeLevel() >= groupByLevel) {
-      result.put(path, result.get(path) + 1);
-    }
-    return true;
-  }
-
   public Map<PartialPath, Long> getResult() {
     return result;
   }
 
   public void setResult(Map<PartialPath, Long> result) {
     this.result = result;
+  }
+
+  @Override
+  protected ITreeNode getChild(ITreeNode parent, String childName) throws Exception {
+    return null;
+  }
+
+  @Override
+  protected Iterator getChildrenIterator(ITreeNode parent) throws Exception {
+    return null;
+  }
+
+  @Override
+  protected boolean shouldVisitSubtreeOfInternalMatchedNode(ITreeNode node) {
+    return false;
+  }
+
+  @Override
+  protected boolean shouldVisitSubtreeOfFullMatchedNode(ITreeNode node) {
+    return false;
+  }
+
+  @Override
+  protected boolean acceptInternalMatchedNode(ITreeNode node) {
+    return false;
+  }
+
+  @Override
+  protected boolean acceptFullMatchedNode(ITreeNode node) {
+    return false;
+  }
+
+  @Override
+  protected Object generateResult(ITreeNode nextMatchedNode) {
+    return null;
   }
 }

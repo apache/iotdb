@@ -42,11 +42,6 @@ public abstract class MeasurementUpdater extends MeasurementTraverser<Void> impl
   }
 
   @Override
-  public boolean hasNext() {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
   public Void next() {
     throw new UnsupportedOperationException();
   }

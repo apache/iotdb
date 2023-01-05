@@ -122,40 +122,6 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R>
     initStack();
   }
 
-  protected AbstractTreeVisitor(PartialPath pathPattern, boolean isPrefixMatch) {
-    boolean usingDFA = false;
-    // Use DFA if there are ** and no regex node in pathPattern
-    for (String pathNode : pathPattern.getNodes()) {
-      if (IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD.equals(pathNode)) {
-        // ** node
-        usingDFA = true;
-      } else if (pathNode.length() > 1
-          && pathNode.contains(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD)) {
-        // regex node
-        usingDFA = false;
-        break;
-      }
-    }
-    this.patternFA =
-        usingDFA
-            ? new IPatternFA.Builder().pattern(pathPattern).isPrefixMatch(isPrefixMatch).buildDFA()
-            : new IPatternFA.Builder().pattern(pathPattern).isPrefixMatch(isPrefixMatch).buildNFA();
-  }
-
-  protected void initStack(N root) {
-    IFAState initialState = patternFA.getInitialState();
-    IFATransition transition =
-        patternFA.getPreciseMatchTransition(initialState).get(root.getName());
-    if (transition == null) {
-      // the visitor stack will be empty and the result of hasNext() will be false
-      return;
-    }
-    IFAState rootState = patternFA.getNextState(initialState, transition);
-    currentStateMatchInfo = new StateSingleMatchInfo(patternFA, rootState);
-    visitorStack.push(new VisitorStackEntry(createChildrenIterator(root), 1));
-    ancestorStack.add(new AncestorStackEntry(root, currentStateMatchInfo));
-  }
-
   private void initStack() {
     IFAState initialState = patternFA.getInitialState();
     IFATransition transition =
@@ -330,26 +296,30 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R>
     }
   }
 
-  protected void setFailure(Throwable e) {
-    this.throwable = e;
-  }
-
-  protected Throwable getFailure() {
-    return throwable;
-  }
-
   /**
    * Get level from root to current node. Level of root is 0. For example, root.sg.d1.s1,
    * currentNode is s1, then return 3.
    *
    * @return level from root to current node
    */
-  protected int getCurrentNodeLevel() {
+  protected final int getLevelOfNextMatchedNode() {
     if (shouldVisitSubtree) {
-      return visitorStack.size() - 1;
+      return ancestorStack.size() - 1;
     } else {
-      return visitorStack.size();
+      return ancestorStack.size();
     }
+  }
+
+  protected final int getSizeOfAncestor() {
+    return ancestorStack.size();
+  }
+
+  protected void setFailure(Throwable e) {
+    this.throwable = e;
+  }
+
+  protected Throwable getFailure() {
+    return throwable;
   }
 
   // Get a child with the given childName.

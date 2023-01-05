@@ -44,7 +44,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -631,23 +630,14 @@ public class CachedMTreeStore implements IMTreeStore {
   }
 
   private class CachedTraverserIterator extends AbstractTraverserIterator {
-    private final List<IMNode> nodeList = new ArrayList<>();
-
     CachedTraverserIterator(IMTreeStore store, IMNode parent) throws MetadataException {
       super(store, parent);
     }
 
     @Override
-    public IMNode next() {
-      IMNode node = super.next();
-      nodeList.add(node);
-      return node;
-    }
-
-    @Override
     public void close() {
-      for (IMNode node : nodeList) {
-        unPin(node);
+      if (nextMatchedNode != null && usingDirectChildrenIterator) {
+        unPin(nextMatchedNode);
       }
       super.close();
     }

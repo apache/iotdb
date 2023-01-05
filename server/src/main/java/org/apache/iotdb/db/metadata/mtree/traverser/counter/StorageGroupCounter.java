@@ -20,8 +20,11 @@ package org.apache.iotdb.db.metadata.mtree.traverser.counter;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.schema.tree.ITreeNode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mtree.store.IMTreeStore;
+
+import java.util.Iterator;
 
 // This class implements database count function.
 public class StorageGroupCounter extends CounterTraverser {
@@ -33,17 +36,37 @@ public class StorageGroupCounter extends CounterTraverser {
   }
 
   @Override
-  protected boolean processInternalMatchedNode(IMNode node) {
-    return node.isStorageGroup();
+  protected ITreeNode getChild(ITreeNode parent, String childName) throws Exception {
+    return null;
   }
 
   @Override
-  protected boolean processFullMatchedNode(IMNode node) {
-    if (node.isStorageGroup()) {
-      count++;
-      return true;
-    } else {
-      return false;
-    }
+  protected Iterator getChildrenIterator(ITreeNode parent) throws Exception {
+    return null;
+  }
+
+  @Override
+  protected boolean shouldVisitSubtreeOfInternalMatchedNode(ITreeNode node) {
+    return false;
+  }
+
+  @Override
+  protected boolean shouldVisitSubtreeOfFullMatchedNode(ITreeNode node) {
+    return false;
+  }
+
+  @Override
+  protected boolean acceptInternalMatchedNode(ITreeNode node) {
+    return false;
+  }
+
+  @Override
+  protected boolean acceptFullMatchedNode(ITreeNode node) {
+    return false;
+  }
+
+  @Override
+  protected Object generateResult(ITreeNode nextMatchedNode) {
+    return null;
   }
 }

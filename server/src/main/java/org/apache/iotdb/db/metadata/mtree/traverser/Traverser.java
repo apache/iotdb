@@ -27,16 +27,9 @@ import org.apache.iotdb.db.metadata.mnode.iterator.IMNodeIterator;
 import org.apache.iotdb.db.metadata.mtree.store.IMTreeStore;
 import org.apache.iotdb.db.metadata.template.Template;
 
-import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Deque;
 import java.util.Iterator;
-import java.util.List;
 import java.util.Map;
 
-import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
-import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_ROOT;
 
 /**
@@ -61,10 +54,6 @@ public abstract class Traverser<R> extends AbstractTreeVisitor<IMNode, R> {
   protected String[] nodes;
   protected int startIndex;
   protected int startLevel;
-  protected boolean isPrefixStart = false;
-
-  // to construct full path or find mounted node on MTree when traverse into template
-  protected Deque<IMNode> traverseContext;
 
   // measurement in template should be processed only if templateMap is not null
   protected Map<Integer, Template> templateMap;
@@ -74,8 +63,6 @@ public abstract class Traverser<R> extends AbstractTreeVisitor<IMNode, R> {
 
   // default false means fullPath pattern match
   protected boolean isPrefixMatch = false;
-
-  private List<IMNode> aboveSGNodes = new ArrayList<>();
 
   public Traverser() {}
 
@@ -88,7 +75,7 @@ public abstract class Traverser<R> extends AbstractTreeVisitor<IMNode, R> {
    */
   public Traverser(IMNode startNode, PartialPath path, IMTreeStore store, boolean isPrefixMatch)
       throws MetadataException {
-    super(path, isPrefixMatch);
+    super(startNode, path, isPrefixMatch);
     String[] nodes = path.getNodes();
     if (nodes.length == 0 || !nodes[0].equals(PATH_ROOT)) {
       throw new IllegalPathException(
@@ -97,55 +84,6 @@ public abstract class Traverser<R> extends AbstractTreeVisitor<IMNode, R> {
     this.startNode = startNode;
     this.nodes = nodes;
     this.store = store;
-    this.traverseContext = new ArrayDeque<>();
-    initStartIndexAndLevel(path);
-    IMNode node = startNode.getParent();
-    while (node != null) {
-      aboveSGNodes.add(node);
-      node = node.getParent();
-    }
-    initStack(aboveSGNodes.get(aboveSGNodes.size() - 1));
-  }
-
-  /**
-   * The traverser may start traversing from a storageGroupMNode, which is an InternalMNode of the
-   * whole MTree.
-   */
-  private void initStartIndexAndLevel(PartialPath path) throws MetadataException {
-    IMNode parent = startNode.getParent();
-    Deque<IMNode> ancestors = new ArrayDeque<>();
-    ancestors.push(startNode);
-
-    startLevel = 0;
-    while (parent != null) {
-      startLevel++;
-      traverseContext.addLast(parent);
-
-      ancestors.push(parent);
-      parent = parent.getParent();
-    }
-
-    IMNode cur;
-    // given root.a.sg, accept path starting with prefix like root.a.sg, root.*.*, root.**,
-    // root.a.**, which means the prefix matches the startNode's fullPath
-    for (startIndex = 0; startIndex <= startLevel && startIndex < nodes.length; startIndex++) {
-      cur = ancestors.pop();
-      if (nodes[startIndex].equals(MULTI_LEVEL_PATH_WILDCARD)) {
-        return;
-      } else if (!nodes[startIndex].equals(cur.getName())
-          && !nodes[startIndex].contains(ONE_LEVEL_PATH_WILDCARD)) {
-        throw new IllegalPathException(
-            path.getFullPath(), path.getFullPath() + " doesn't start with " + cur.getFullPath());
-      }
-    }
-
-    if (startIndex <= startLevel) {
-      if (!nodes[startIndex - 1].equals(MULTI_LEVEL_PATH_WILDCARD)) {
-        isPrefixStart = true;
-      }
-    } else {
-      startIndex--;
-    }
   }
 
   /**
@@ -166,13 +104,8 @@ public abstract class Traverser<R> extends AbstractTreeVisitor<IMNode, R> {
 
   @Override
   protected IMNode getChild(IMNode parent, String childName) throws MetadataException {
-    if (aboveSGNodes.contains(parent)) {
-      int index = aboveSGNodes.indexOf(parent);
-      if (index == 0) {
-        return startNode;
-      } else {
-        return aboveSGNodes.get(index - 1);
-      }
+    if (parent.isAboveDatabase()) {
+      return parent.getChild(childName);
     } else {
       return store.getChild(parent, childName);
     }
@@ -181,20 +114,19 @@ public abstract class Traverser<R> extends AbstractTreeVisitor<IMNode, R> {
 
   @Override
   protected void releaseNode(IMNode node) {
-    store.unPin(node);
+    if (!node.isAboveDatabase() && !node.isStorageGroup()) {
+      store.unPin(node);
+      // TODO: support template
+    }
   }
 
   @Override
   protected Iterator<IMNode> getChildrenIterator(IMNode parent) throws MetadataException {
-    if (aboveSGNodes.contains(parent)) {
-      int index = aboveSGNodes.indexOf(parent);
-      if (index == 0) {
-        return Collections.singletonList(startNode).iterator();
-      } else {
-        return Collections.singletonList(aboveSGNodes.get(index - 1)).iterator();
-      }
+    if (parent.isAboveDatabase()) {
+      return parent.getChildren().values().iterator();
+    } else {
+      return store.getTraverserIterator(parent, templateMap, skipPreDeletedSchema);
     }
-    return store.getTraverserIterator(parent, templateMap, skipPreDeletedSchema);
   }
 
   @Override
@@ -213,18 +145,5 @@ public abstract class Traverser<R> extends AbstractTreeVisitor<IMNode, R> {
   /** @return full path from traverse start node to the current node */
   protected PartialPath getCurrentPartialPath() {
     return new PartialPath(generateFullPathNodes());
-  }
-
-  /** @return the database node in the traverse path */
-  protected IMNode getStorageGroupNodeInTraversePath(IMNode currentNode) {
-    if (currentNode.isStorageGroup()) {
-      return currentNode;
-    }
-    for (IMNode node : traverseContext) {
-      if (node.isStorageGroup()) {
-        return node;
-      }
-    }
-    return null;
   }
 }

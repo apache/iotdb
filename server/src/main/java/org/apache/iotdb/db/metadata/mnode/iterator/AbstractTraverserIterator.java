@@ -36,7 +36,8 @@ import static org.apache.iotdb.db.metadata.MetadataConstant.NON_TEMPLATE;
 public abstract class AbstractTraverserIterator implements IMNodeIterator {
   private final IMNodeIterator directChildrenIterator;
   private Iterator<IMNode> templateChildrenIterator;
-  private IMNode nextMatchedNode;
+  protected IMNode nextMatchedNode;
+  protected boolean usingDirectChildrenIterator = true;
   // measurement in template should be processed only if templateMap is not null
   private Map<Integer, Template> templateMap;
   // if true, the pre deleted measurement or pre deactivated template won't be processed
@@ -79,23 +80,23 @@ public abstract class AbstractTraverserIterator implements IMNodeIterator {
 
   @Override
   public boolean hasNext() {
-    if (nextMatchedNode == null) {
-      while (true) {
-        if (directChildrenIterator.hasNext()) {
-          nextMatchedNode = directChildrenIterator.next();
-        } else if (templateChildrenIterator != null && templateChildrenIterator.hasNext()) {
-          nextMatchedNode = templateChildrenIterator.next();
-        } else {
-          break;
-        }
-        if (skipPreDeletedSchema
-            && nextMatchedNode.isMeasurement()
-            && nextMatchedNode.getAsMeasurementMNode().isPreDeleted()) {
-          nextMatchedNode = null;
-        }
+    while (nextMatchedNode == null) {
+      if (directChildrenIterator.hasNext()) {
+        nextMatchedNode = directChildrenIterator.next();
+        usingDirectChildrenIterator = true;
+      } else if (templateChildrenIterator != null && templateChildrenIterator.hasNext()) {
+        nextMatchedNode = templateChildrenIterator.next();
+        usingDirectChildrenIterator = false;
+      } else {
+        return false;
+      }
+      if (skipPreDeletedSchema
+          && nextMatchedNode.isMeasurement()
+          && nextMatchedNode.getAsMeasurementMNode().isPreDeleted()) {
+        nextMatchedNode = null;
       }
     }
-    return nextMatchedNode != null;
+    return true;
   }
 
   @Override

@@ -31,7 +31,8 @@ import org.apache.iotdb.db.metadata.mtree.traverser.Traverser;
  * will not be processed more than once. If a level is not given, the current node is processed.
  */
 public abstract class MNodeTraverser<R> extends Traverser<R> {
-  // level query option
+
+  // Level query option started from 0. For example, level of root.sg.d1.s1 is 3.
   protected int targetLevel = -1;
 
   /**
@@ -52,7 +53,7 @@ public abstract class MNodeTraverser<R> extends Traverser<R> {
   @Override
   protected boolean acceptFullMatchedNode(IMNode node) {
     if (targetLevel >= 0) {
-      return getCurrentNodeLevel() == targetLevel;
+      return getSizeOfAncestor() == targetLevel;
     } else {
       return true;
     }
@@ -65,20 +66,26 @@ public abstract class MNodeTraverser<R> extends Traverser<R> {
 
   @Override
   protected boolean shouldVisitSubtreeOfFullMatchedNode(IMNode node) {
-    if (targetLevel >= 0) {
-      return getCurrentNodeLevel() < targetLevel;
-    } else {
-      return !node.isMeasurement();
+    if (!node.isMeasurement()) {
+      if (targetLevel >= 0) {
+        return getSizeOfAncestor() < targetLevel;
+      } else {
+        return true;
+      }
     }
+    return false;
   }
 
   @Override
   protected boolean shouldVisitSubtreeOfInternalMatchedNode(IMNode node) {
-    if (targetLevel >= 0) {
-      return getCurrentNodeLevel() < targetLevel;
-    } else {
-      return !node.isMeasurement();
+    if (!node.isMeasurement()) {
+      if (targetLevel >= 0) {
+        return getSizeOfAncestor() < targetLevel;
+      } else {
+        return true;
+      }
     }
+    return false;
   }
 
   public void setTargetLevel(int targetLevel) {
