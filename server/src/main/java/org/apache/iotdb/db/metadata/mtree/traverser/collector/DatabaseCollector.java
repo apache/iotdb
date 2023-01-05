@@ -19,18 +19,15 @@
 package org.apache.iotdb.db.metadata.mtree.traverser.collector;
 
 import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
-import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
+import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.mtree.store.IMTreeStore;
-import org.apache.iotdb.db.metadata.mtree.traverser.basic.MeasurementTraverser;
+import org.apache.iotdb.db.metadata.mtree.traverser.basic.DatabaseTraverser;
 
-// This class defines MeasurementMNode as target node and defines the measurement process framework.
-// TODO: set R is ITimeseriesInfo
-public abstract class MeasurementCollector<R> extends MeasurementTraverser<R> {
-
-  public MeasurementCollector(
+// This class implements database path collection function.
+public abstract class DatabaseCollector<R> extends DatabaseTraverser<R> {
+  public DatabaseCollector(
       IMNode startNode, PartialPath path, IMTreeStore store, boolean isPrefixMatch)
       throws MetadataException {
     super(startNode, path, store, isPrefixMatch);
@@ -38,27 +35,9 @@ public abstract class MeasurementCollector<R> extends MeasurementTraverser<R> {
 
   @Override
   protected R generateResult(IMNode nextMatchedNode) {
-    collectMeasurement(nextMatchedNode.getAsMeasurementMNode());
+    collectStorageGroup(nextMatchedNode.getAsStorageGroupMNode());
     return null;
   }
 
-  /**
-   * collect the information of one measurement
-   *
-   * @param node MeasurementMNode holding the measurement schema
-   */
-  protected abstract void collectMeasurement(IMeasurementMNode node);
-
-  /**
-   * When traverse goes into a template, IMNode.getPartialPath may not work as nodes in template has
-   * no parent on MTree. So this methods will construct a path from root to node in template using a
-   * stack traverseContext.
-   */
-  protected MeasurementPath getCurrentMeasurementPathInTraverse(IMeasurementMNode currentNode) {
-    IMNode par = getParentOfNextMatchedNode();
-    MeasurementPath retPath =
-        new MeasurementPath(new PartialPath(generateFullPathNodes()), currentNode.getSchema());
-    retPath.setUnderAlignedEntity(par.getAsEntityMNode().isAligned());
-    return retPath;
-  }
+  protected abstract void collectStorageGroup(IStorageGroupMNode node);
 }

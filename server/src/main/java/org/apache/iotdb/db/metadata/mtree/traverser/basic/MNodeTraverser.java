@@ -16,33 +16,72 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.metadata.mtree.traverser.collector;
+package org.apache.iotdb.db.metadata.mtree.traverser.basic;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mtree.store.IMTreeStore;
-import org.apache.iotdb.db.metadata.mtree.traverser.basic.MNodeTraverser;
+import org.apache.iotdb.db.metadata.mtree.traverser.Traverser;
 
 /**
  * This class defines any node in MTree as potential target node. On finding a path matching the
  * given pattern, if a level is specified and the path is longer than the specified level,
- * MNodeLevelCounter finds the node of the specified level on the path and process it. The same node
+ * MNodeTraverser finds the node of the specified level on the path and process it. The same node
  * will not be processed more than once. If a level is not given, the current node is processed.
  */
-public abstract class MNodeCollector<R> extends MNodeTraverser<R> {
+public abstract class MNodeTraverser<R> extends Traverser<R> {
+  // level query option
+  protected int targetLevel = -1;
 
-  public MNodeCollector(
+  /**
+   * To traverse subtree under root.sg, e.g., init Traverser(root, "root.sg.**")
+   *
+   * @param startNode denote which tree to traverse by passing its root
+   * @param path use wildcard to specify which part to traverse
+   * @param store
+   * @param isPrefixMatch
+   * @throws MetadataException
+   */
+  public MNodeTraverser(
       IMNode startNode, PartialPath path, IMTreeStore store, boolean isPrefixMatch)
       throws MetadataException {
     super(startNode, path, store, isPrefixMatch);
   }
 
   @Override
-  protected R generateResult(IMNode nextMatchedNode) {
-    transferToResult(nextMatchedNode);
-    return null;
+  protected boolean acceptFullMatchedNode(IMNode node) {
+    if (targetLevel >= 0) {
+      return getCurrentNodeLevel() == targetLevel;
+    } else {
+      return true;
+    }
   }
 
-  protected abstract void transferToResult(IMNode node);
+  @Override
+  protected boolean acceptInternalMatchedNode(IMNode node) {
+    return false;
+  }
+
+  @Override
+  protected boolean shouldVisitSubtreeOfFullMatchedNode(IMNode node) {
+    if (targetLevel >= 0) {
+      return getCurrentNodeLevel() < targetLevel;
+    } else {
+      return !node.isMeasurement();
+    }
+  }
+
+  @Override
+  protected boolean shouldVisitSubtreeOfInternalMatchedNode(IMNode node) {
+    if (targetLevel >= 0) {
+      return getCurrentNodeLevel() < targetLevel;
+    } else {
+      return !node.isMeasurement();
+    }
+  }
+
+  public void setTargetLevel(int targetLevel) {
+    this.targetLevel = targetLevel;
+  }
 }

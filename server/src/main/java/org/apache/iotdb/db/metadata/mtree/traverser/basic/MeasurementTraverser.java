@@ -16,48 +16,48 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.metadata.mtree.traverser.collector;
+package org.apache.iotdb.db.metadata.mtree.traverser.basic;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
-import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.mtree.store.IMTreeStore;
+import org.apache.iotdb.db.metadata.mtree.traverser.Traverser;
 
-// This class implements database path collection function.
-public abstract class StorageGroupCollector<T> extends CollectorTraverser<T> {
+public abstract class MeasurementTraverser<R> extends Traverser<R> {
 
-  protected boolean collectInternal = false;
-
-  public StorageGroupCollector(
+  /**
+   * To traverse subtree under root.sg, e.g., init Traverser(root, "root.sg.**")
+   *
+   * @param startNode denote which tree to traverse by passing its root
+   * @param path use wildcard to specify which part to traverse
+   * @param store
+   * @param isPrefixMatch
+   * @throws MetadataException
+   */
+  public MeasurementTraverser(
       IMNode startNode, PartialPath path, IMTreeStore store, boolean isPrefixMatch)
       throws MetadataException {
     super(startNode, path, store, isPrefixMatch);
   }
 
   @Override
-  protected boolean processInternalMatchedNode(IMNode node) {
-    if (node.isStorageGroup()) {
-      if (collectInternal) {
-        collectStorageGroup(node.getAsStorageGroupMNode());
-      }
-      return true;
-    }
+  protected boolean acceptFullMatchedNode(IMNode node) {
+    return node.isMeasurement();
+  }
+
+  @Override
+  protected boolean acceptInternalMatchedNode(IMNode node) {
     return false;
   }
 
   @Override
-  protected boolean processFullMatchedNode(IMNode node) {
-    if (node.isStorageGroup()) {
-      collectStorageGroup(node.getAsStorageGroupMNode());
-      return true;
-    }
-    return false;
+  protected boolean shouldVisitSubtreeOfFullMatchedNode(IMNode node) {
+    return !node.isMeasurement();
   }
 
-  protected abstract void collectStorageGroup(IStorageGroupMNode node);
-
-  public void setCollectInternal(boolean collectInternal) {
-    this.collectInternal = collectInternal;
+  @Override
+  protected boolean shouldVisitSubtreeOfInternalMatchedNode(IMNode node) {
+    return !node.isMeasurement();
   }
 }

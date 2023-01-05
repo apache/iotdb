@@ -42,6 +42,7 @@ import org.apache.iotdb.db.metadata.mnode.InternalMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.iterator.IMNodeIterator;
 import org.apache.iotdb.db.metadata.mtree.store.MemMTreeStore;
+import org.apache.iotdb.db.metadata.mtree.traverser.TraverserWithLimitOffsetWrapper;
 import org.apache.iotdb.db.metadata.mtree.traverser.collector.EntityCollector;
 import org.apache.iotdb.db.metadata.mtree.traverser.collector.MNodeCollector;
 import org.apache.iotdb.db.metadata.mtree.traverser.collector.MeasurementCollector;
@@ -518,7 +519,6 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
             }
           }
         };
-    collector.setResultSet(result);
     collector.traverse();
     return result;
   }
@@ -601,12 +601,7 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
     List<ShowDevicesResult> res = new ArrayList<>();
     EntityCollector<List<ShowDevicesResult>> collector =
         new EntityCollector<List<ShowDevicesResult>>(
-            storageGroupMNode,
-            plan.getPath(),
-            store,
-            plan.isPrefixMatch(),
-            plan.getLimit(),
-            plan.getOffset()) {
+            storageGroupMNode, plan.getPath(), store, plan.isPrefixMatch()) {
           @Override
           protected void collectEntity(IEntityMNode node) {
             PartialPath device = getCurrentPartialPath();
@@ -616,7 +611,9 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
     if (plan.usingSchemaTemplate()) {
       collector.setSchemaTemplateFilter(plan.getSchemaTemplateId());
     }
-    collector.traverse();
+    TraverserWithLimitOffsetWrapper<?> traverser =
+        new TraverserWithLimitOffsetWrapper<>(collector, plan.getLimit(), plan.getOffset());
+    traverser.traverse();
 
     return res;
   }
@@ -654,7 +651,7 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
     List<MeasurementPath> result = new LinkedList<>();
     MeasurementCollector<List<PartialPath>> collector =
         new MeasurementCollector<List<PartialPath>>(
-            storageGroupMNode, pathPattern, store, isPrefixMatch, limit, offset) {
+            storageGroupMNode, pathPattern, store, isPrefixMatch) {
           @Override
           protected void collectMeasurement(IMeasurementMNode node) {
             MeasurementPath path = getCurrentMeasurementPathInTraverse(node);
@@ -668,9 +665,10 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
             result.add(path);
           }
         };
-    collector.traverse();
-    offset = collector.getCurOffset() + 1;
-    return new Pair<>(result, offset);
+    TraverserWithLimitOffsetWrapper<?> traverser =
+        new TraverserWithLimitOffsetWrapper<>(collector, limit, offset);
+    traverser.traverse();
+    return new Pair<>(result, traverser.getNextOffset());
   }
 
   @Override
@@ -703,17 +701,16 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
       IShowTimeSeriesPlan plan,
       Function<Long, Pair<Map<String, String>, Map<String, String>>> tagAndAttributeProvider)
       throws MetadataException {
-    int limit = plan.getLimit();
-    int offset = plan.getOffset();
+    List<ShowTimeSeriesResult> result = new LinkedList<>();
 
     MeasurementCollector<List<ShowTimeSeriesResult>> collector =
         new MeasurementCollector<List<ShowTimeSeriesResult>>(
-            storageGroupMNode, plan.getPath(), store, plan.isPrefixMatch(), limit, offset) {
+            storageGroupMNode, plan.getPath(), store, plan.isPrefixMatch()) {
           @Override
           protected void collectMeasurement(IMeasurementMNode node) {
             Pair<Map<String, String>, Map<String, String>> tagAndAttribute =
                 tagAndAttributeProvider.apply(node.getOffset());
-            resultSet.add(
+            result.add(
                 new ShowTimeSeriesResult(
                     getCurrentPartialPath().getFullPath(),
                     node.getAlias(),
@@ -723,10 +720,12 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
           }
         };
     collector.setTemplateMap(plan.getRelatedTemplate());
-    collector.setResultSet(new LinkedList<>());
-    collector.traverse();
+    TraverserWithLimitOffsetWrapper<?> traverser =
+        new TraverserWithLimitOffsetWrapper<>(collector, plan.getLimit(), plan.getOffset());
+    traverser.traverse();
+    ;
 
-    return collector.getResult();
+    return result;
   }
 
   // endregion
@@ -747,20 +746,20 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
   public Set<TSchemaNode> getChildNodePathInNextLevel(PartialPath pathPattern)
       throws MetadataException {
     try {
+      Set<TSchemaNode> result = new TreeSet<>();
       MNodeCollector<Set<TSchemaNode>> collector =
           new MNodeCollector<Set<TSchemaNode>>(
               storageGroupMNode, pathPattern.concatNode(ONE_LEVEL_PATH_WILDCARD), store, false) {
             @Override
             protected void transferToResult(IMNode node) {
-              resultSet.add(
+              result.add(
                   new TSchemaNode(
                       getCurrentPartialPath().getFullPath(),
                       node.getMNodeType(false).getNodeType()));
             }
           };
-      collector.setResultSet(new TreeSet<>());
       collector.traverse();
-      return collector.getResult();
+      return result;
     } catch (IllegalPathException e) {
       throw new IllegalPathException(pathPattern.getFullPath());
     }
@@ -770,18 +769,18 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
   @Override
   public List<PartialPath> getNodesListInGivenLevel(
       PartialPath pathPattern, int nodeLevel, boolean isPrefixMatch) throws MetadataException {
+    List<PartialPath> result = new LinkedList<>();
     MNodeCollector<List<PartialPath>> collector =
         new MNodeCollector<List<PartialPath>>(
             storageGroupMNode, pathPattern, store, isPrefixMatch) {
           @Override
           protected void transferToResult(IMNode node) {
-            resultSet.add(getCurrentPartialPath());
+            result.add(getCurrentPartialPath());
           }
         };
-    collector.setResultSet(new LinkedList<>());
     collector.setTargetLevel(nodeLevel);
     collector.traverse();
-    return collector.getResult();
+    return result;
   }
   // endregion
 

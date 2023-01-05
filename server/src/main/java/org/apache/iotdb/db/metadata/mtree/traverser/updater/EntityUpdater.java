@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.metadata.mtree.traverser.collector;
+package org.apache.iotdb.db.metadata.mtree.traverser.updater;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -25,29 +25,50 @@ import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mtree.store.IMTreeStore;
 import org.apache.iotdb.db.metadata.mtree.traverser.basic.EntityTraverser;
 
-// This class defines EntityMNode as target node and defines the Entity process framework.
-// TODO: set R is IDeviceSchemaInfo
-public abstract class EntityCollector<R> extends EntityTraverser<R> {
-
-  private boolean usingTemplate = false;
-  private int schemaTemplateId = -1;
-
-  public EntityCollector(
-      IMNode startNode, PartialPath path, IMTreeStore store, boolean isPrefixMatch)
+public abstract class EntityUpdater extends EntityTraverser<Void> implements Updater {
+  /**
+   * To traverse subtree under root.sg, e.g., init Traverser(root, "root.sg.**")
+   *
+   * @param startNode denote which tree to traverse by passing its root
+   * @param path use wildcard to specify which part to traverse
+   * @param store
+   * @param isPrefixMatch
+   * @throws MetadataException
+   */
+  public EntityUpdater(IMNode startNode, PartialPath path, IMTreeStore store, boolean isPrefixMatch)
       throws MetadataException {
     super(startNode, path, store, isPrefixMatch);
   }
 
   @Override
-  protected R generateResult(IMNode nextMatchedNode) {
-    collectEntity(nextMatchedNode.getAsEntityMNode());
+  public boolean hasNext() {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public Void next() {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  protected Void generateResult(IMNode nextMatchedNode) {
+    try {
+      updateEntity(nextMatchedNode.getAsEntityMNode());
+    } catch (MetadataException e) {
+      setFailure(e);
+    }
     return null;
   }
 
-  public void setSchemaTemplateFilter(int schemaTemplateId) {
-    this.usingTemplate = true;
-    this.schemaTemplateId = schemaTemplateId;
+  @Override
+  public void update() throws MetadataException {
+    while (super.hasNext()) {
+      super.next();
+    }
+    if (getFailure() != null) {
+      throw new MetadataException(getFailure());
+    }
   }
 
-  protected abstract void collectEntity(IEntityMNode node);
+  protected abstract void updateEntity(IEntityMNode node) throws MetadataException;
 }

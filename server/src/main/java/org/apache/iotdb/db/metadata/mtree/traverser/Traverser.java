@@ -53,7 +53,7 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_ROOT;
  *
  * <p>root.sg22.sg1
  */
-public abstract class Traverser extends AbstractTreeVisitor<IMNode, IMNode> {
+public abstract class Traverser<R> extends AbstractTreeVisitor<IMNode, R> {
 
   protected IMTreeStore store;
 
@@ -76,6 +76,8 @@ public abstract class Traverser extends AbstractTreeVisitor<IMNode, IMNode> {
   protected boolean isPrefixMatch = false;
 
   private List<IMNode> aboveSGNodes = new ArrayList<>();
+
+  public Traverser() {}
 
   /**
    * To traverse subtree under root.sg, e.g., init Traverser(root, "root.sg.**")
@@ -178,8 +180,8 @@ public abstract class Traverser extends AbstractTreeVisitor<IMNode, IMNode> {
   }
 
   @Override
-  protected void releaseChild(IMNode child) {
-    store.unPin(child);
+  protected void releaseNode(IMNode node) {
+    store.unPin(node);
   }
 
   @Override
@@ -196,13 +198,8 @@ public abstract class Traverser extends AbstractTreeVisitor<IMNode, IMNode> {
   }
 
   @Override
-  protected void releaseChildrenIterator(Iterator<IMNode> childrenIterator) {
-    ((IMNodeIterator) childrenIterator).close();
-  }
-
-  @Override
-  protected IMNode generateResult() {
-    return nextMatchedNode;
+  protected void releaseNodeIterator(Iterator<IMNode> nodeIterator) {
+    ((IMNodeIterator) nodeIterator).close();
   }
 
   public void setTemplateMap(Map<Integer, Template> templateMap) {

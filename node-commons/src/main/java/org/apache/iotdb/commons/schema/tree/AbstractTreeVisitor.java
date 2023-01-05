@@ -334,8 +334,22 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R>
     this.throwable = e;
   }
 
+  protected Throwable getFailure() {
+    return throwable;
+  }
+
+  /**
+   * Get level from root to current node. Level of root is 0. For example, root.sg.d1.s1,
+   * currentNode is s1, then return 3.
+   *
+   * @return level from root to current node
+   */
   protected int getCurrentNodeLevel() {
-    return visitorStack.size();
+    if (shouldVisitSubtree) {
+      return visitorStack.size() - 1;
+    } else {
+      return visitorStack.size();
+    }
   }
 
   // Get a child with the given childName.
