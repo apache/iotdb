@@ -3778,7 +3778,7 @@
               "refId": "A"
             }
           ],
-          "title": "The usage of Query Resource(50%)",
+          "title": "The usage of query resource(avg)",
           "type": "timeseries"
         },
         {
@@ -3864,7 +3864,7 @@
               "refId": "A"
             }
           ],
-          "title": "The usage of Query Resource(50%)",
+          "title": "The usage of query resource(50%)",
           "type": "timeseries"
         },
         {
@@ -3944,13 +3944,13 @@
                 "uid": "${DS_PROMETHEUS}"
               },
               "exemplar": true,
-              "expr": "query_resource{instance=~\"${instance}\", quantile=\"0.5\"}",
+              "expr": "query_resource{instance=~\"${instance}\", quantile=\"0.75\"}",
               "interval": "",
               "legendFormat": "{{type}}",
               "refId": "A"
             }
           ],
-          "title": "The usage of Query Resource(75%)",
+          "title": "The usage of query resource(75%)",
           "type": "timeseries"
         },
         {
@@ -4030,13 +4030,13 @@
                 "uid": "${DS_PROMETHEUS}"
               },
               "exemplar": true,
-              "expr": "query_resource{instance=~\"${instance}\", quantile=\"0.5\"}",
+              "expr": "query_resource{instance=~\"${instance}\", quantile=\"1.0\"}",
               "interval": "",
               "legendFormat": "{{type}}",
               "refId": "A"
             }
           ],
-          "title": "The usage of Query Resource(100%)",
+          "title": "The usage of query resource(100%)",
           "type": "timeseries"
         },
         {
@@ -4122,7 +4122,7 @@
               "refId": "A"
             }
           ],
-          "title": "The time consumed  of Query Data Exchange(avg)",
+          "title": "The time consumed  of query data exchange(avg)",
           "type": "timeseries"
         },
         {
@@ -4208,7 +4208,7 @@
               "refId": "A"
             }
           ],
-          "title": "The time consumed  of Query Data Exchange(50%)",
+          "title": "The time consumed  of query data exchange(50%)",
           "type": "timeseries"
         },
         {
@@ -4294,7 +4294,7 @@
               "refId": "A"
             }
           ],
-          "title": "The time consumed  of Query Data Exchange(75%)",
+          "title": "The time consumed  of query data exchange(75%)",
           "type": "timeseries"
         },
         {
@@ -4380,7 +4380,7 @@
               "refId": "A"
             }
           ],
-          "title": "The time consumed  of Query Data Exchange(100%)",
+          "title": "The time consumed  of query data exchange(100%)",
           "type": "timeseries"
         },
         {
@@ -5087,7 +5087,7 @@
               "refId": "A"
             }
           ],
-          "title": "The time consumed of Load Timeseries Metadata(avg)",
+          "title": "The time consumed of load timeseries metadata(avg)",
           "type": "timeseries"
         },
         {
@@ -5173,7 +5173,7 @@
               "refId": "A"
             }
           ],
-          "title": "The time consumed of Load Timeseries Metadata(50%)",
+          "title": "The time consumed of load timeseries metadata(50%)",
           "type": "timeseries"
         },
         {
@@ -5259,7 +5259,7 @@
               "refId": "A"
             }
           ],
-          "title": "The time consumed of Load Timeseries Metadata(75%)",
+          "title": "The time consumed of load timeseries metadata(75%)",
           "type": "timeseries"
         },
         {
@@ -5345,7 +5345,7 @@
               "refId": "A"
             }
           ],
-          "title": "The time consumed of Load Timeseries Metadata(100%)",
+          "title": "The time consumed of load timeseries metadata(100%)",
           "type": "timeseries"
         },
         {
@@ -5431,7 +5431,7 @@
               "refId": "A"
             }
           ],
-          "title": "The time consumed of Read_Timeseries_Metadata(avg)",
+          "title": "The time consumed of read timeseries metadata(avg)",
           "type": "timeseries"
         },
         {
@@ -5517,7 +5517,7 @@
               "refId": "A"
             }
           ],
-          "title": "The time consumed of Read Timeseries Metadata(50%)",
+          "title": "The time consumed of read timeseries metadata(50%)",
           "type": "timeseries"
         },
         {
@@ -5603,7 +5603,7 @@
               "refId": "A"
             }
           ],
-          "title": "The time consumed of Read Timeseries Metadata(75%)",
+          "title": "The time consumed of read timeseries metadata(75%)",
           "type": "timeseries"
         },
         {
@@ -5689,7 +5689,7 @@
               "refId": "A"
             }
           ],
-          "title": "The time consumed of Read Timeseries Metadata(50%)",
+          "title": "The time consumed of read timeseries metadata(100%)",
           "type": "timeseries"
         },
         {
@@ -5775,7 +5775,7 @@
               "refId": "A"
             }
           ],
-          "title": "The time consumed of Timeseries Metadata Modification(avg)",
+          "title": "The time consumed of timeseries metadata modification(avg)",
           "type": "timeseries"
         },
         {
@@ -5861,7 +5861,7 @@
               "refId": "A"
             }
           ],
-          "title": "The time consumed of Timeseries Metadata Modification(50%)",
+          "title": "The time consumed of timeseries metadata modification(50%)",
           "type": "timeseries"
         },
         {
@@ -5947,7 +5947,7 @@
               "refId": "A"
             }
           ],
-          "title": "The time consumed of Timeseries Metadata Modification(75%)",
+          "title": "The time consumed of timeseries metadata modification(75%)",
           "type": "timeseries"
         },
         {
@@ -6033,7 +6033,7 @@
               "refId": "A"
             }
           ],
-          "title": "The time consumed of Timeseries Metadata Modification(100%)",
+          "title": "The time consumed of timeseries metadata modification(100%)",
           "type": "timeseries"
         },
         {
@@ -6119,7 +6119,7 @@
               "refId": "A"
             }
           ],
-          "title": "The time consumed of Load Chunk Metadata List(avg)",
+          "title": "The time consumed of load chunk metadata list(avg)",
           "type": "timeseries"
         },
         {
@@ -6205,7 +6205,7 @@
               "refId": "A"
             }
           ],
-          "title": "The time consumed of Load Chunk Metadata List(50%)",
+          "title": "The time consumed of load chunk metadata list(50%)",
           "type": "timeseries"
         },
         {
@@ -6291,7 +6291,7 @@
               "refId": "A"
             }
           ],
-          "title": "The time consumed of Load Chunk Metadata List(75%)",
+          "title": "The time consumed of load chunk metadata list(75%)",
           "type": "timeseries"
         },
         {
@@ -6377,7 +6377,7 @@
               "refId": "A"
             }
           ],
-          "title": "The time consumed of Load Chunk Metadata List(100%)",
+          "title": "The time consumed of load chunk metadata list(100%)",
           "type": "timeseries"
         },
         {
@@ -6463,7 +6463,7 @@
               "refId": "A"
             }
           ],
-          "title": "The time consumed of Chunk Metadata Modification(avg)",
+          "title": "The time consumed of chunk metadata modification(avg)",
           "type": "timeseries"
         },
         {
@@ -6550,7 +6550,7 @@
               "refId": "A"
             }
           ],
-          "title": "The time consumed of Chunk Metadata Modification(50%)",
+          "title": "The time consumed of chunk metadata modification(50%)",
           "type": "timeseries"
         },
         {
@@ -6637,7 +6637,7 @@
               "refId": "A"
             }
           ],
-          "title": "The time consumed of Chunk Metadata Modification(75%)",
+          "title": "The time consumed of chunk metadata modification(75%)",
           "type": "timeseries"
         },
         {
@@ -6724,7 +6724,7 @@
               "refId": "A"
             }
           ],
-          "title": "The time consumed of Chunk Metadata Modification(100%)",
+          "title": "The time consumed of chunk metadata modification(100%)",
           "type": "timeseries"
         },
         {
@@ -6810,7 +6810,7 @@
               "refId": "A"
             }
           ],
-          "title": "The time consumed of Chunk Metadata Filter(avg)",
+          "title": "The time consumed of chunk metadata filter(avg)",
           "type": "timeseries"
         },
         {
@@ -6897,7 +6897,7 @@
               "refId": "A"
             }
           ],
-          "title": "The time consumed of Chunk Metadata Filter(50%)",
+          "title": "The time consumed of chunk metadata filter(50%)",
           "type": "timeseries"
         },
         {
@@ -6984,7 +6984,7 @@
               "refId": "A"
             }
           ],
-          "title": "The time consumed of Chunk Metadata Filter(75%)",
+          "title": "The time consumed of chunk metadata filter(75%)",
           "type": "timeseries"
         },
         {
@@ -7071,7 +7071,7 @@
               "refId": "A"
             }
           ],
-          "title": "The time consumed of Chunk Metadata Filter(100%)",
+          "title": "The time consumed of chunk metadata filter(100%)",
           "type": "timeseries"
         },
         {
@@ -7157,7 +7157,7 @@
               "refId": "A"
             }
           ],
-          "title": "The time consumed of Construct Chunk Reader(avg)",
+          "title": "The time consumed of construct chunk reader(avg)",
           "type": "timeseries"
         },
         {
@@ -7244,7 +7244,7 @@
               "refId": "A"
             }
           ],
-          "title": "The time consumed of Construct Chunk Reader(50%)",
+          "title": "The time consumed of construct chunk reader(50%)",
           "type": "timeseries"
         },
         {
@@ -7331,7 +7331,7 @@
               "refId": "A"
             }
           ],
-          "title": "The time consumed of Construct Chunk Reader(75%)",
+          "title": "The time consumed of construct chunk reader(75%)",
           "type": "timeseries"
         },
         {
@@ -7418,7 +7418,7 @@
               "refId": "A"
             }
           ],
-          "title": "The time consumed of Construct Chunk Reader(100%)",
+          "title": "The time consumed of construct chunk reader(100%)",
           "type": "timeseries"
         },
         {
@@ -7504,7 +7504,7 @@
               "refId": "A"
             }
           ],
-          "title": "The time consumed of Read Chunk(avg)",
+          "title": "The time consumed of read chunk(avg)",
           "type": "timeseries"
         },
         {
@@ -7591,7 +7591,7 @@
               "refId": "A"
             }
           ],
-          "title": "The time consumed of Read Chunk(50%)",
+          "title": "The time consumed of read chunk(50%)",
           "type": "timeseries"
         },
         {
@@ -7678,7 +7678,7 @@
               "refId": "A"
             }
           ],
-          "title": "The time consumed of Read Chunk(75%)",
+          "title": "The time consumed of read chunk(75%)",
           "type": "timeseries"
         },
         {
@@ -7765,7 +7765,7 @@
               "refId": "A"
             }
           ],
-          "title": "The time consumed of Read Chunk(100%)",
+          "title": "The time consumed of read chunk(100%)",
           "type": "timeseries"
         },
         {
@@ -7851,7 +7851,7 @@
               "refId": "A"
             }
           ],
-          "title": "The time consumed of Init Chunk Reader(avg)",
+          "title": "The time consumed of init chunk reader(avg)",
           "type": "timeseries"
         },
         {
@@ -7938,7 +7938,7 @@
               "refId": "A"
             }
           ],
-          "title": "The time consumed of Init Chunk Reader(50%)",
+          "title": "The time consumed of init chunk reader(50%)",
           "type": "timeseries"
         },
         {
@@ -8025,7 +8025,7 @@
               "refId": "A"
             }
           ],
-          "title": "The time consumed of Init Chunk Reader(75%)",
+          "title": "The time consumed of init chunk reader(75%)",
           "type": "timeseries"
         },
         {
@@ -8112,7 +8112,7 @@
               "refId": "A"
             }
           ],
-          "title": "The time consumed of Init Chunk Reader(100%)",
+          "title": "The time consumed of init chunk reader(100%)",
           "type": "timeseries"
         },
         {
@@ -8198,7 +8198,7 @@
               "refId": "A"
             }
           ],
-          "title": "The time consumed of Build Tsblock From Page Reader(avg)",
+          "title": "The time consumed of build tsblock from page reader(avg)",
           "type": "timeseries"
         },
         {
@@ -8285,7 +8285,7 @@
               "refId": "A"
             }
           ],
-          "title": "The time consumed of Build Tsblock From Page Reader(50%)",
+          "title": "The time consumed of build tsblock from page reader(50%)",
           "type": "timeseries"
         },
         {
@@ -8372,7 +8372,7 @@
               "refId": "A"
             }
           ],
-          "title": "The time consumed of Build Tsblock From Page Reader(75%)",
+          "title": "The time consumed of build tsblock from page reader(75%)",
           "type": "timeseries"
         },
         {
@@ -8459,7 +8459,7 @@
               "refId": "A"
             }
           ],
-          "title": "The time consumed of Build Tsblock From Page Reader(100%)",
+          "title": "The time consumed of build tsblock from page reader(100%)",
           "type": "timeseries"
         },
         {
@@ -8545,7 +8545,7 @@
               "refId": "A"
             }
           ],
-          "title": "The time consumed of Build Tsblock From Merge Reader(avg)",
+          "title": "The time consumed of build tsblock from merge reader(avg)",
           "type": "timeseries"
         },
         {
@@ -8632,7 +8632,7 @@
               "refId": "A"
             }
           ],
-          "title": "The time consumed of Build Tsblock From Merge Reader(50%)",
+          "title": "The time consumed of build tsblock from merge reader(50%)",
           "type": "timeseries"
         },
         {
@@ -8719,7 +8719,7 @@
               "refId": "A"
             }
           ],
-          "title": "The time consumed of Build Tsblock From Merge Reader(75%)",
+          "title": "The time consumed of build tsblock from merge reader(75%)",
           "type": "timeseries"
         },
         {
@@ -8806,7 +8806,7 @@
               "refId": "A"
             }
           ],
-          "title": "The time consumed of Build Tsblock From Merge Reader(100%)",
+          "title": "The time consumed of build tsblock from merge reader(100%)",
           "type": "timeseries"
         }
       ],
