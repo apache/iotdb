@@ -35,6 +35,10 @@ public class SchemaRegionReadPlanFactory {
     return new ShowDevicesPlanImpl(path, 0, 0, false, -1);
   }
 
+  public static IShowDevicesPlan getShowDevicesPlan(PartialPath path, boolean isPrefixMatch) {
+    return new ShowDevicesPlanImpl(path, 0, 0, isPrefixMatch, -1);
+  }
+
   public static IShowDevicesPlan getShowDevicesPlan(
       PartialPath path, int limit, int offset, boolean isPrefixMatch) {
     return new ShowDevicesPlanImpl(path, limit, offset, isPrefixMatch, -1);

@@ -804,21 +804,12 @@ public class RSchemaRegion implements ISchemaRegion {
     return index;
   }
 
-  @Override
   public long getAllTimeseriesCount(
       PartialPath pathPattern, Map<Integer, Template> templateMap, boolean isPrefixMatch)
       throws MetadataException {
     throw new UnsupportedOperationException();
   }
 
-  @Override
-  public long getAllTimeseriesCount(
-      PartialPath pathPattern, boolean isPrefixMatch, String key, String value, boolean isContains)
-      throws MetadataException {
-    return getMatchedMeasurementPathWithTags(pathPattern.getNodes()).size();
-  }
-
-  @Override
   public long getDevicesNum(PartialPath pathPattern, boolean isPrefixMatch)
       throws MetadataException {
     return getCountByNodeType(new Character[] {NODE_TYPE_ENTITY}, pathPattern.getNodes());

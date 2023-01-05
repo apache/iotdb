@@ -884,35 +884,6 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   // region Interfaces for metadata count
 
   @Override
-  public long getAllTimeseriesCount(
-      PartialPath pathPattern, Map<Integer, Template> templateMap, boolean isPrefixMatch)
-      throws MetadataException {
-    return mtree.getAllTimeseriesCount(pathPattern, templateMap, isPrefixMatch);
-  }
-
-  @Override
-  public long getAllTimeseriesCount(
-      PartialPath pathPattern, boolean isPrefixMatch, String key, String value, boolean isContains)
-      throws MetadataException {
-    return mtree.getAllTimeseriesCount(
-        pathPattern,
-        isPrefixMatch,
-        tagManager.getMatchedTimeseriesInIndex(key, value, isContains),
-        true);
-  }
-
-  /**
-   * To calculate the count of devices for given path pattern. If using prefix match, the path
-   * pattern is used to match prefix path. All timeseries start with the matched prefix path will be
-   * counted.
-   */
-  @Override
-  public long getDevicesNum(PartialPath pathPattern, boolean isPrefixMatch)
-      throws MetadataException {
-    return mtree.getDevicesNum(pathPattern, isPrefixMatch);
-  }
-
-  @Override
   public Map<PartialPath, Long> getMeasurementCountGroupByLevel(
       PartialPath pathPattern, int level, boolean isPrefixMatch) throws MetadataException {
     return mtree.getMeasurementCountGroupByLevel(pathPattern, level, isPrefixMatch);

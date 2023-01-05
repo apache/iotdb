@@ -102,7 +102,7 @@ public abstract class AbstractThriftServiceThread extends Thread {
   /** for asynced ThriftService. */
   @SuppressWarnings("squid:S107")
   public AbstractThriftServiceThread(
-      TBaseAsyncProcessor processor,
+      TBaseAsyncProcessor<?> processor,
       String serviceName,
       String threadsName,
       String bindAddress,
@@ -195,7 +195,7 @@ public abstract class AbstractThriftServiceThread extends Thread {
   }
 
   private TThreadedSelectorServer.Args initAsyncedSelectorPoolArgs(
-      TBaseAsyncProcessor processor,
+      TBaseAsyncProcessor<?> processor,
       String threadsName,
       int selectorThreads,
       int minWorkerThreads,
@@ -217,7 +217,7 @@ public abstract class AbstractThriftServiceThread extends Thread {
   }
 
   private THsHaServer.Args initAsyncedHshaPoolArgs(
-      TBaseAsyncProcessor processor,
+      TBaseAsyncProcessor<?> processor,
       String threadsName,
       int minWorkerThreads,
       int maxWorkerThreads,

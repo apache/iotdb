@@ -210,6 +210,8 @@ Currently, IoTDB supports show Region information by the following SQL:
 - `SHOW SCHEMA REGIONS`: Show distribution of all SchemaRegions.
 - `SHOW DATA REGIONS`: Show distribution of all DataRegions.
 - `SHOW (DATA|SCHEMA)? REGIONS OF DATABASE <sg1,sg2,...>`: Show Region distribution of specified StorageGroups.
+- `SHOW (DATA|SCHEMA)? REGIONS ON NODEID <id1,id2,...>`: Show Region distribution on specified Nodes.
+- `SHOW (DATA|SCHEMA)? REGIONS (OF DATABASE <sg1,sg2,...>)? (ON NODEID <id1,id2,...>)?`: Show Region distribution of specified StorageGroups on specified Nodes.
 
 Show distribution of all Regions:
 ```
@@ -329,6 +331,63 @@ IoTDB> show schema regions of database root.sg1, root.sg2
 Total line number = 6
 It costs 0.009s
 ```
+
+Show Region distribution on specified Nodes:
+```
+IoTDB> show regions on nodeid 1
++--------+------------+-------+--------+-----------+---------+----------+----------+-------+--------+
+|RegionId|        Type| Status|Database|SeriesSlots|TimeSlots|DataNodeId|RpcAddress|RpcPort|    Role|
++--------+------------+-------+--------+-----------+---------+----------+----------+-------+--------+
+|       0|  DataRegion|Running|root.sg1|          1|        1|         1| 127.0.0.1|   6667|Follower|
+|       1|SchemaRegion|Running|root.sg1|          1|        0|         1| 127.0.0.1|   6667|Follower|
+|       2|  DataRegion|Running|root.sg2|          1|        1|         1| 127.0.0.1|   6667|  Leader|
+|       3|SchemaRegion|Running|root.sg2|          1|        0|         1| 127.0.0.1|   6667|Follower|
++--------+------------+-------+--------+-----------+---------+----------+----------+-------+--------+
+Total line number = 4
+It costs 0.165s
+
+IoTDB> show regions on nodeid 1, 2
++--------+------------+-------+--------+-----------+---------+----------+----------+-------+--------+
+|RegionId|        Type| Status|Database|SeriesSlots|TimeSlots|DataNodeId|RpcAddress|RpcPort|    Role|
++--------+------------+-------+--------+-----------+---------+----------+----------+-------+--------+
+|       0|  DataRegion|Running|root.sg1|          1|        1|         1| 127.0.0.1|   6667|Follower|
+|       0|  DataRegion|Running|root.sg1|          1|        1|         2| 127.0.0.1|   6668|  Leader|
+|       1|SchemaRegion|Running|root.sg1|          1|        0|         1| 127.0.0.1|   6667|Follower|
+|       1|SchemaRegion|Running|root.sg1|          1|        0|         2| 127.0.0.1|   6668|Follower|
+|       2|  DataRegion|Running|root.sg2|          1|        1|         1| 127.0.0.1|   6667|  Leader|
+|       2|  DataRegion|Running|root.sg2|          1|        1|         2| 127.0.0.1|   6668|Follower|
+|       3|SchemaRegion|Running|root.sg2|          1|        0|         1| 127.0.0.1|   6667|Follower|
+|       3|SchemaRegion|Running|root.sg2|          1|        0|         2| 127.0.0.1|   6668|  Leader|
++--------+------------+-------+--------+-----------+---------+----------+----------+-------+--------+
+Total line number = 8
+It costs 0.165s
+```
+
+Show Region distribution of specified StorageGroups on specified Nodes：
+```
+IoTDB> show regions of database root.sg1 on nodeid 1
++--------+------------+-------+--------+-----------+---------+----------+----------+-------+--------+
+|RegionId|        Type| Status|Database|SeriesSlots|TimeSlots|DataNodeId|RpcAddress|RpcPort|    Role|
++--------+------------+-------+--------+-----------+---------+----------+----------+-------+--------+
+|       0|  DataRegion|Running|root.sg1|          1|        1|         1| 127.0.0.1|   6667|Follower|
+|       1|SchemaRegion|Running|root.sg1|          1|        0|         1| 127.0.0.1|   6667|Follower|
++--------+------------+-------+--------+-----------+---------+----------+----------+-------+--------+
+Total line number = 2
+It costs 0.165s
+
+IoTDB> show data regions of database root.sg1, root.sg2 on nodeid 1, 2 
++--------+------------+-------+--------+-----------+---------+----------+----------+-------+--------+
+|RegionId|        Type| Status|Database|SeriesSlots|TimeSlots|DataNodeId|RpcAddress|RpcPort|    Role|
++--------+------------+-------+--------+-----------+---------+----------+----------+-------+--------+
+|       0|  DataRegion|Running|root.sg1|          1|        1|         1| 127.0.0.1|   6667|Follower|
+|       0|  DataRegion|Running|root.sg1|          1|        1|         2| 127.0.0.1|   6668|  Leader|
+|       2|  DataRegion|Running|root.sg2|          1|        1|         1| 127.0.0.1|   6667|  Leader|
+|       2|  DataRegion|Running|root.sg2|          1|        1|         2| 127.0.0.1|   6668|Follower|
++--------+------------+-------+--------+-----------+---------+----------+----------+-------+--------+
+Total line number = 4
+It costs 0.165s
+```
+
 
 ### Region status definition
 Region inherits the status of the DataNode where the Region resides. And Region states are defined as follows:

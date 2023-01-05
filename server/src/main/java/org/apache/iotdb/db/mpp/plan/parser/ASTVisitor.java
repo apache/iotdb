@@ -179,6 +179,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 
 import com.google.common.collect.ImmutableSet;
+import org.antlr.v4.runtime.tree.TerminalNode;
 
 import java.io.FileNotFoundException;
 import java.net.URI;
@@ -2563,6 +2564,16 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       showRegionStatement.setStorageGroups(storageGroups);
     } else {
       showRegionStatement.setStorageGroups(null);
+    }
+
+    if (ctx.ON() != null) {
+      List<Integer> nodeIds = new ArrayList<>();
+      for (TerminalNode nodeid : ctx.INTEGER_LITERAL()) {
+        nodeIds.add(Integer.parseInt(nodeid.getText()));
+      }
+      showRegionStatement.setNodeIds(nodeIds);
+    } else {
+      showRegionStatement.setNodeIds(null);
     }
     return showRegionStatement;
   }

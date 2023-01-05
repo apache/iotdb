@@ -22,13 +22,13 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
-import org.apache.iotdb.db.engine.compaction.constant.CompactionPriority;
-import org.apache.iotdb.db.engine.compaction.constant.CrossCompactionPerformer;
-import org.apache.iotdb.db.engine.compaction.constant.CrossCompactionSelector;
-import org.apache.iotdb.db.engine.compaction.constant.InnerSeqCompactionPerformer;
-import org.apache.iotdb.db.engine.compaction.constant.InnerSequenceCompactionSelector;
-import org.apache.iotdb.db.engine.compaction.constant.InnerUnseqCompactionPerformer;
-import org.apache.iotdb.db.engine.compaction.constant.InnerUnsequenceCompactionSelector;
+import org.apache.iotdb.db.engine.compaction.execute.performer.constant.CrossCompactionPerformer;
+import org.apache.iotdb.db.engine.compaction.execute.performer.constant.InnerSeqCompactionPerformer;
+import org.apache.iotdb.db.engine.compaction.execute.performer.constant.InnerUnseqCompactionPerformer;
+import org.apache.iotdb.db.engine.compaction.schedule.constant.CompactionPriority;
+import org.apache.iotdb.db.engine.compaction.selector.constant.CrossCompactionSelector;
+import org.apache.iotdb.db.engine.compaction.selector.constant.InnerSequenceCompactionSelector;
+import org.apache.iotdb.db.engine.compaction.selector.constant.InnerUnsequenceCompactionSelector;
 import org.apache.iotdb.db.engine.storagegroup.timeindex.TimeIndexLevel;
 import org.apache.iotdb.db.exception.LoadConfigurationException;
 import org.apache.iotdb.db.service.thrift.impl.ClientRPCServiceImpl;
@@ -1261,6 +1261,7 @@ public class IoTDBConfig {
     // TODO(szywilliam): rewrite the logic here when ratis supports complete snapshot semantic
     setRatisDataRegionSnapshotDir(
         dataDirs[0] + File.separator + IoTDBConstant.SNAPSHOT_FOLDER_NAME);
+    setLoadTsFileDir(dataDirs[0] + File.separator + IoTDBConstant.LOAD_TSFILE_FOLDER_NAME);
   }
 
   public String getRpcAddress() {

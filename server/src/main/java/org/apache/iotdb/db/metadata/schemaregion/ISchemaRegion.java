@@ -177,19 +177,6 @@ public interface ISchemaRegion {
   // region Interfaces for metadata count
 
   /**
-   * To calculate the count of timeseries matching given path. The path could be a pattern of a full
-   * path, may contain wildcard. If using prefix match, the path pattern is used to match prefix
-   * path. All timeseries start with the matched prefix path will be counted.
-   */
-  long getAllTimeseriesCount(
-      PartialPath pathPattern, Map<Integer, Template> templateMap, boolean isPrefixMatch)
-      throws MetadataException;
-
-  long getAllTimeseriesCount(
-      PartialPath pathPattern, boolean isPrefixMatch, String key, String value, boolean isContains)
-      throws MetadataException;
-
-  /**
    * The measurements will be grouped by the node in given level and then counted for each group. If
    * no measurements found, but the path is contained in the group, then this path will also be
    * returned with measurements count zero.
@@ -210,16 +197,6 @@ public interface ISchemaRegion {
       String value,
       boolean isContains)
       throws MetadataException;
-
-  /**
-   * To calculate the count of devices for given path pattern. If using prefix match, the path
-   * pattern is used to match prefix path. All timeseries start with the matched prefix path will be
-   * counted.
-   *
-   * @param pathPattern
-   * @param isPrefixMatch
-   */
-  long getDevicesNum(PartialPath pathPattern, boolean isPrefixMatch) throws MetadataException;
   // endregion
 
   // region Interfaces for level Node info Query

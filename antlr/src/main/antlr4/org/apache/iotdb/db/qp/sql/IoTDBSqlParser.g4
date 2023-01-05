@@ -352,6 +352,7 @@ showCluster
 // Show Region
 showRegion
     : SHOW (SCHEMA | DATA)? REGIONS (OF (STORAGE GROUP | DATABASE) prefixPath? (COMMA prefixPath)*)?
+        (ON NODEID INTEGER_LITERAL (COMMA INTEGER_LITERAL)*)?
     ;
 
 // Show Data Nodes

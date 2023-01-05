@@ -378,6 +378,10 @@ MIGRATE
     : M I G R A T E
     ;
 
+NODEID
+    : N O D E I D
+    ;
+
 NODES
     : N O D E S
     ;
