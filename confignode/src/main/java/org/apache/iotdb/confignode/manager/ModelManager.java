@@ -19,7 +19,15 @@
 
 package org.apache.iotdb.confignode.manager;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.confignode.persistence.ModelInfo;
+import org.apache.iotdb.confignode.rpc.thrift.TCreateModelReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDropModelReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowModelReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowModelResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowTrailReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowTrailResp;
+import org.apache.iotdb.confignode.rpc.thrift.TUpdateModelInfoReq;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -34,5 +42,29 @@ public class ModelManager {
   public ModelManager(ConfigManager configManager, ModelInfo modelInfo) {
     this.configManager = configManager;
     this.modelInfo = modelInfo;
+  }
+
+  public ModelInfo getModelInfo() {
+    return modelInfo;
+  }
+
+  public TSStatus createModel(TCreateModelReq req) {
+    return null;
+  }
+
+  public TSStatus dropModel(TDropModelReq req) {
+    return null;
+  }
+
+  public TShowModelResp showModel(TShowModelReq req) {
+    return null;
+  }
+
+  public TShowTrailResp showTrail(TShowTrailReq req) {
+    return null;
+  }
+
+  public TSStatus updateModelInfo(TUpdateModelInfoReq req) {
+    return null;
   }
 }
