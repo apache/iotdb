@@ -102,9 +102,9 @@ public class IntChimpEncoder extends GorillaEncoderV2 {
     protected void reset() {
       super.reset();
       this.current = 0;
+      this.index = 0;
       this.indices = new int[(int) Math.pow(2, threshold + 1)];
       this.storedValues = new int[previousValues];
-
     }
 
     @Override

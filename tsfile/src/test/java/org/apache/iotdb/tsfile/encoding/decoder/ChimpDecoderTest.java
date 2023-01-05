@@ -381,8 +381,8 @@ public class ChimpDecoderTest {
 
   private void testInteger(int repeatCount) throws Exception {
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
+    Encoder encoder = new IntChimpEncoder();
     for (int i = 0; i < repeatCount; i++) {
-      Encoder encoder = new IntChimpEncoder();
       for (int value : ChimpDecoderTest.intList) {
         encoder.encode(value, baos);
       }
@@ -404,8 +404,8 @@ public class ChimpDecoderTest {
     }
 
     baos = new ByteArrayOutputStream();
+    encoder = new IntChimpEncoder();
     for (int i = 0; i < repeatCount; i++) {
-      Encoder encoder = new IntChimpEncoder();
       for (int value : ChimpDecoderTest.intList) {
         encoder.encode(-value, baos);
       }
@@ -436,8 +436,8 @@ public class ChimpDecoderTest {
 
   private void testFloat(int repeatCount) throws Exception {
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
+    Encoder encoder = new SinglePrecisionChimpEncoder();
     for (int i = 0; i < repeatCount; i++) {
-      Encoder encoder = new SinglePrecisionChimpEncoder();
       for (float value : ChimpDecoderTest.floatList) {
         encoder.encode(value, baos);
       }
@@ -459,8 +459,8 @@ public class ChimpDecoderTest {
     }
 
     baos = new ByteArrayOutputStream();
+    encoder = new SinglePrecisionChimpEncoder();
     for (int i = 0; i < repeatCount; i++) {
-      Encoder encoder = new SinglePrecisionChimpEncoder();
       for (float value : ChimpDecoderTest.floatList) {
         encoder.encode(-value, baos);
       }
@@ -491,8 +491,8 @@ public class ChimpDecoderTest {
 
   private void testLong(int repeatCount) throws Exception {
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
+    Encoder encoder = new LongChimpEncoder();
     for (int i = 0; i < repeatCount; i++) {
-      Encoder encoder = new LongChimpEncoder();
       for (long value : ChimpDecoderTest.longList) {
         encoder.encode(value, baos);
       }
@@ -515,7 +515,7 @@ public class ChimpDecoderTest {
 
     baos = new ByteArrayOutputStream();
     for (int i = 0; i < repeatCount; i++) {
-      Encoder encoder = new LongChimpEncoder();
+      encoder = new LongChimpEncoder();
       for (long value : ChimpDecoderTest.longList) {
         encoder.encode(-value, baos);
       }
@@ -546,8 +546,8 @@ public class ChimpDecoderTest {
 
   private void testDouble(int repeatCount) throws Exception {
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
+    Encoder encoder = new DoublePrecisionChimpEncoder();
     for (int i = 0; i < repeatCount; i++) {
-        Encoder encoder = new DoublePrecisionChimpEncoder();
       for (double value : ChimpDecoderTest.doubleList) {
         encoder.encode(value, baos);
       }
@@ -568,8 +568,8 @@ public class ChimpDecoderTest {
       }
     }
     baos = new ByteArrayOutputStream();
+    encoder = new DoublePrecisionChimpEncoder();
     for (int i = 0; i < repeatCount; i++) {
-        Encoder encoder = new DoublePrecisionChimpEncoder();
       for (double value : ChimpDecoderTest.doubleList) {
         encoder.encode(-value, baos);
       }
