@@ -24,6 +24,8 @@ import org.apache.iotdb.commons.model.ModelInformation;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.confignode.consensus.request.read.model.ShowModelPlan;
 import org.apache.iotdb.confignode.consensus.request.read.model.ShowTrailPlan;
+import org.apache.iotdb.confignode.consensus.request.write.model.CreateModelPlan;
+import org.apache.iotdb.confignode.consensus.request.write.model.DropModelPlan;
 import org.apache.iotdb.confignode.consensus.request.write.model.UpdateModelInfoPlan;
 import org.apache.iotdb.confignode.consensus.response.ModelTableResp;
 import org.apache.iotdb.confignode.consensus.response.TrailTableResp;
@@ -42,8 +44,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.locks.ReadWriteLock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.concurrent.locks.ReentrantLock;
 
 @ThreadSafe
 public class ModelInfo implements SnapshotProcessor {
@@ -54,11 +55,24 @@ public class ModelInfo implements SnapshotProcessor {
 
   private final Map<String, ModelInformation> modelInfoMap;
 
-  private final ReadWriteLock lock;
+  private final ReentrantLock modelTableLock = new ReentrantLock();
 
   public ModelInfo() {
     this.modelInfoMap = new HashMap<>();
-    this.lock = new ReentrantReadWriteLock();
+  }
+
+  public void acquireModelTableLock() {
+    LOGGER.info("acquire ModelTableLock");
+    modelTableLock.lock();
+  }
+
+  public void releaseModelTableLock() {
+    LOGGER.info("release ModelTableLock");
+    modelTableLock.unlock();
+  }
+
+  public TSStatus createModel(CreateModelPlan plan) {
+    return null;
   }
 
   public ModelTableResp showModel(ShowModelPlan plan) {
@@ -73,6 +87,10 @@ public class ModelInfo implements SnapshotProcessor {
     return null;
   }
 
+  public TSStatus dropModel(DropModelPlan plan) {
+    return null;
+  }
+
   @Override
   public boolean processTakeSnapshot(File snapshotDir) throws TException, IOException {
     File snapshotFile = new File(snapshotDir, SNAPSHOT_FILENAME);
@@ -83,13 +101,13 @@ public class ModelInfo implements SnapshotProcessor {
       return false;
     }
 
-    lock.readLock().lock();
+    acquireModelTableLock();
     try (FileOutputStream fileOutputStream = new FileOutputStream(snapshotFile)) {
 
       serialize(fileOutputStream);
       return true;
     } finally {
-      lock.readLock().unlock();
+      releaseModelTableLock();
     }
   }
 
@@ -109,7 +127,7 @@ public class ModelInfo implements SnapshotProcessor {
           snapshotFile.getAbsolutePath());
       return;
     }
-    lock.writeLock().lock();
+    acquireModelTableLock();
     try (FileInputStream fileInputStream = new FileInputStream(snapshotFile)) {
 
       clear();
@@ -117,7 +135,7 @@ public class ModelInfo implements SnapshotProcessor {
       deserialize(fileInputStream);
 
     } finally {
-      lock.writeLock().unlock();
+      releaseModelTableLock();
     }
   }
 
