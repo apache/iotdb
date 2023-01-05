@@ -42,7 +42,7 @@ public abstract class AbstractInnerCompactionWriter extends AbstractCompactionWr
   protected long targetPagePointNum =
       TSFileDescriptor.getInstance().getConfig().getMaxNumberOfPointsInPage();
 
-  public AbstractInnerCompactionWriter(TsFileResource targetFileResource) throws IOException {
+  protected AbstractInnerCompactionWriter(TsFileResource targetFileResource) throws IOException {
     long sizeForFileWriter =
         (long)
             (SystemInfo.getInstance().getMemorySizeForCompaction()
