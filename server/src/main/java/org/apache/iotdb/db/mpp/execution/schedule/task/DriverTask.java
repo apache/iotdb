@@ -30,9 +30,12 @@ import org.apache.iotdb.db.mpp.execution.schedule.queue.IDIndexedAccessible;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import io.airlift.units.Duration;
+import org.apache.iotdb.db.mpp.execution.schedule.queue.multilevelqueue.DriverTaskHandle;
+import org.apache.iotdb.db.mpp.execution.schedule.queue.multilevelqueue.Priority;
 
 import java.util.Comparator;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -51,6 +54,10 @@ public class DriverTask implements IDIndexedAccessible {
   private long cpuWallNano;
 
   private String abortCause;
+
+  private final AtomicReference<Priority> priority = new AtomicReference<>(new Priority(0, 0));
+
+  private DriverTaskHandle driverTaskHandle;
 
   /** Initialize a dummy instance for queryHolder */
   public DriverTask() {
@@ -142,6 +149,24 @@ public class DriverTask implements IDIndexedAccessible {
 
   public void setAbortCause(String abortCause) {
     this.abortCause = abortCause;
+  }
+
+  public Priority getPriority()
+  {
+    return priority.get();
+  }
+
+  /**
+   * Updates the (potentially stale) priority value cached in this object.
+   * This should be called when this object is outside the queue.
+   *
+   * @return true if the level changed.
+   */
+  public boolean updateLevelPriority()
+  {
+    Priority newPriority = taskHandle.getPriority();
+    Priority oldPriority = priority.getAndSet(newPriority);
+    return newPriority.getLevel() != oldPriority.getLevel();
   }
 
   /** a comparator of ddl, the less the ddl is, the low order it has. */
