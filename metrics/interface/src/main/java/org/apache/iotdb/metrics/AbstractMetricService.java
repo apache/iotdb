@@ -377,7 +377,7 @@ public abstract class AbstractMetricService {
     }
   }
 
-  /** Remove metrics.. */
+  /** Remove metrics.D */
   public void removeMetricSet(IMetricSet metricSet) {
     if (metricSets.contains(metricSet)) {
       metricSet.unbindFrom(this);
