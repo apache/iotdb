@@ -195,14 +195,20 @@ public class OperatorMemoryTest {
               null,
               true);
 
-      assertEquals(
-          4 * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte(),
-          seriesScanOperator.calculateMaxPeekMemory());
-      assertEquals(
-          4 * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte(),
-          seriesScanOperator.calculateMaxReturnSize());
+      long maxPeekMemory =
+          Math.max(
+              TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes(),
+              4 * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte());
+      long maxReturnMemory =
+          Math.min(
+              TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes(),
+              4 * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte());
+      assertEquals(maxPeekMemory, seriesScanOperator.calculateMaxPeekMemory());
+      assertEquals(maxReturnMemory, seriesScanOperator.calculateMaxReturnSize());
 
-      assertEquals(0, seriesScanOperator.calculateRetainedSizeAfterCallingNext());
+      assertEquals(
+          maxPeekMemory - maxReturnMemory,
+          seriesScanOperator.calculateRetainedSizeAfterCallingNext());
 
     } catch (IllegalPathException e) {
       e.printStackTrace();
@@ -416,7 +422,9 @@ public class OperatorMemoryTest {
     dataTypeList.add(TSDataType.INT32);
     dataTypeList.add(TSDataType.INT32);
     long expectedMaxReturnSize =
-        3L * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte();
+        Math.min(
+            TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes(),
+            3L * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte());
     long expectedMaxPeekMemory = 0;
     long childrenMaxPeekMemory = 0;
 
@@ -469,7 +477,9 @@ public class OperatorMemoryTest {
     dataTypeList.add(TSDataType.INT32);
     dataTypeList.add(TSDataType.INT32);
     long expectedMaxReturnSize =
-        3L * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte();
+        Math.min(
+            TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes(),
+            3L * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte());
     long expectedMaxPeekMemory = 0;
     long childrenMaxPeekMemory = 0;
 
