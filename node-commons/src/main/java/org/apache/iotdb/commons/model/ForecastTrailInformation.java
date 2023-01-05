@@ -19,4 +19,4 @@
 
 package org.apache.iotdb.commons.model;
 
-public class ForecastModelInformation extends AbstractModelInformation {}
+public class ForecastTrailInformation extends TrailInformation {}

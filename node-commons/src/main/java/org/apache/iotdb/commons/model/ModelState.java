@@ -19,4 +19,10 @@
 
 package org.apache.iotdb.commons.model;
 
-public class AbstractModelInformation {}
+public enum ModelState {
+  CREATED,
+  TRAINING,
+  FINISHED,
+  ERROR,
+  UNKNOWN
+}

@@ -19,8 +19,9 @@
 
 package org.apache.iotdb.confignode.persistence;
 
-import org.apache.iotdb.commons.model.AbstractModelInformation;
+import org.apache.iotdb.commons.model.ModelInformation;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
@@ -29,7 +30,10 @@ import org.slf4j.LoggerFactory;
 import javax.annotation.concurrent.ThreadSafe;
 
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.locks.ReadWriteLock;
@@ -42,7 +46,7 @@ public class ModelInfo implements SnapshotProcessor {
 
   private static final String SNAPSHOT_FILENAME = "model_info.snapshot";
 
-  private final Map<String, AbstractModelInformation> modelInfoMap;
+  private final Map<String, ModelInformation> modelInfoMap;
 
   private final ReadWriteLock lock;
 
@@ -53,9 +57,61 @@ public class ModelInfo implements SnapshotProcessor {
 
   @Override
   public boolean processTakeSnapshot(File snapshotDir) throws TException, IOException {
-    return false;
+    File snapshotFile = new File(snapshotDir, SNAPSHOT_FILENAME);
+    if (snapshotFile.exists() && snapshotFile.isFile()) {
+      LOGGER.error(
+          "Failed to take snapshot of ModelInfo, because snapshot file [{}] is already exist.",
+          snapshotFile.getAbsolutePath());
+      return false;
+    }
+
+    lock.readLock().lock();
+    try (FileOutputStream fileOutputStream = new FileOutputStream(snapshotFile)) {
+
+      serialize(fileOutputStream);
+      return true;
+    } finally {
+      lock.readLock().unlock();
+    }
+  }
+
+  private void serialize(FileOutputStream stream) throws IOException {
+    ReadWriteIOUtils.write(modelInfoMap.size(), stream);
+    for (ModelInformation entry : modelInfoMap.values()) {
+      entry.serialize(stream);
+    }
   }
 
   @Override
-  public void processLoadSnapshot(File snapshotDir) throws TException, IOException {}
+  public void processLoadSnapshot(File snapshotDir) throws TException, IOException {
+    File snapshotFile = new File(snapshotDir, SNAPSHOT_FILENAME);
+    if (!snapshotFile.exists() || !snapshotFile.isFile()) {
+      LOGGER.error(
+          "Failed to load snapshot of ModelInfo, snapshot file [{}] does not exist.",
+          snapshotFile.getAbsolutePath());
+      return;
+    }
+    lock.writeLock().lock();
+    try (FileInputStream fileInputStream = new FileInputStream(snapshotFile)) {
+
+      clear();
+
+      deserialize(fileInputStream);
+
+    } finally {
+      lock.writeLock().unlock();
+    }
+  }
+
+  private void clear() {
+    modelInfoMap.clear();
+  }
+
+  private void deserialize(InputStream stream) throws IOException {
+    int size = ReadWriteIOUtils.readInt(stream);
+    for (int i = 0; i < size; i++) {
+      ModelInformation modelEntry = ModelInformation.deserialize(stream);
+      modelInfoMap.put(modelEntry.getModelId(), modelEntry);
+    }
+  }
 }
