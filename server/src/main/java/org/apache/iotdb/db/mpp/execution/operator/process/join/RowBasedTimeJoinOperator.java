@@ -79,9 +79,6 @@ public class RowBasedTimeJoinOperator extends AbstractProcessOperator {
 
   private final TimeComparator comparator;
 
-  private TsBlock retainedTsBlock;
-  private int retainedStartOffset;
-
   public RowBasedTimeJoinOperator(
       OperatorContext operatorContext,
       List<Operator> children,

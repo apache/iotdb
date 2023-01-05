@@ -54,7 +54,6 @@ public class SeriesScanOperator extends AbstractDataSourceOperator {
     private boolean closed;
 
     public SeriesScanOperatorFactory(
-        OperatorContext operatorContext,
         int operatorId,
         PlanNodeId sourceId,
         PartialPath seriesPath,
