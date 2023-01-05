@@ -20,6 +20,12 @@
 package org.apache.iotdb.confignode.manager;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.model.ModelInformation;
+import org.apache.iotdb.confignode.consensus.request.read.model.ShowModelPlan;
+import org.apache.iotdb.confignode.consensus.request.read.model.ShowTrailPlan;
+import org.apache.iotdb.confignode.consensus.request.write.model.UpdateModelInfoPlan;
+import org.apache.iotdb.confignode.consensus.response.ModelTableResp;
+import org.apache.iotdb.confignode.consensus.response.TrailTableResp;
 import org.apache.iotdb.confignode.persistence.ModelInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateModelReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropModelReq;
@@ -28,9 +34,15 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowModelResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTrailReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTrailResp;
 import org.apache.iotdb.confignode.rpc.thrift.TUpdateModelInfoReq;
+import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
+import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.util.Collections;
 
 public class ModelManager {
 
@@ -49,22 +61,72 @@ public class ModelManager {
   }
 
   public TSStatus createModel(TCreateModelReq req) {
-    return null;
+    ModelInformation modelInformation = new ModelInformation();
+    return configManager.getProcedureManager().createModel(modelInformation);
   }
 
   public TSStatus dropModel(TDropModelReq req) {
-    return null;
-  }
-
-  public TShowModelResp showModel(TShowModelReq req) {
-    return null;
-  }
-
-  public TShowTrailResp showTrail(TShowTrailReq req) {
-    return null;
+    return configManager.getProcedureManager().dropModel(req.getModelId());
   }
 
   public TSStatus updateModelInfo(TUpdateModelInfoReq req) {
-    return null;
+    ConsensusWriteResponse response =
+        configManager.getConsensusManager().write(new UpdateModelInfoPlan(req));
+    if (response.getStatus() != null) {
+      return response.getStatus();
+    } else {
+      LOGGER.warn(
+          "Unexpected error happened while updating model {}: ",
+          req.getModelInfo(),
+          response.getException());
+      // consensus layer related errors
+      TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      res.setMessage(response.getErrorMessage());
+      return res;
+    }
+  }
+
+  public TShowModelResp showModel(TShowModelReq req) {
+    try {
+      ConsensusReadResponse response =
+          configManager.getConsensusManager().read(new ShowModelPlan(req));
+      if (response.getDataset() != null) {
+        return ((ModelTableResp) response.getDataset()).convertToThriftResponse();
+      } else {
+        LOGGER.warn("Unexpected error happened while showing model: ", response.getException());
+        // consensus layer related errors
+        TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+        res.setMessage(response.getException().toString());
+        return new TShowModelResp(res, Collections.emptyList());
+      }
+    } catch (IOException e) {
+      LOGGER.error("Fail to get ModelTable", e);
+      return new TShowModelResp(
+          new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
+              .setMessage(e.getMessage()),
+          Collections.emptyList());
+    }
+  }
+
+  public TShowTrailResp showTrail(TShowTrailReq req) {
+    try {
+      ConsensusReadResponse response =
+          configManager.getConsensusManager().read(new ShowTrailPlan(req));
+      if (response.getDataset() != null) {
+        return ((TrailTableResp) response.getDataset()).convertToThriftResponse();
+      } else {
+        LOGGER.warn("Unexpected error happened while showing trail: ", response.getException());
+        // consensus layer related errors
+        TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+        res.setMessage(response.getException().toString());
+        return new TShowTrailResp(res, Collections.emptyList());
+      }
+    } catch (IOException e) {
+      LOGGER.error("Fail to get TrailTable", e);
+      return new TShowTrailResp(
+          new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
+              .setMessage(e.getMessage()),
+          Collections.emptyList());
+    }
   }
 }

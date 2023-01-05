@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.sync.PipeException;
+import org.apache.iotdb.commons.model.ModelInformation;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.trigger.TriggerInformation;
@@ -530,6 +531,14 @@ public class ProcedureManager {
     List<TSStatus> statusList = new ArrayList<>();
     waitingProcedureFinished(Collections.singletonList(procedureId), statusList);
     return statusList.get(0);
+  }
+
+  public TSStatus createModel(ModelInformation modelInformation) {
+    return RpcUtils.SUCCESS_STATUS;
+  }
+
+  public TSStatus dropModel(String modelId) {
+    return RpcUtils.SUCCESS_STATUS;
   }
 
   public TSStatus createPipe(TCreatePipeReq req) {

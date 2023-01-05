@@ -31,45 +31,45 @@ import java.util.Objects;
 
 public class ShowTrailPlan extends ConfigPhysicalPlan {
 
-    private TShowTrailReq showTrailReq;
+  private TShowTrailReq showTrailReq;
 
-    public ShowTrailPlan() {
-        super(ConfigPhysicalPlanType.ShowTrail);
-    }
+  public ShowTrailPlan() {
+    super(ConfigPhysicalPlanType.ShowTrail);
+  }
 
-    public ShowTrailPlan(TShowTrailReq showTrailReq) {
-        super(ConfigPhysicalPlanType.ShowTrail);
-        this.showTrailReq = showTrailReq;
-    }
+  public ShowTrailPlan(TShowTrailReq showTrailReq) {
+    super(ConfigPhysicalPlanType.ShowTrail);
+    this.showTrailReq = showTrailReq;
+  }
 
-    @Override
-    protected void serializeImpl(DataOutputStream stream) throws IOException {
-        stream.writeShort(getType().getPlanType());
-        ThriftCommonsSerDeUtils.serializeTShowTrailReq(showTrailReq, stream);
-    }
+  @Override
+  protected void serializeImpl(DataOutputStream stream) throws IOException {
+    stream.writeShort(getType().getPlanType());
+    ThriftCommonsSerDeUtils.serializeTShowTrailReq(showTrailReq, stream);
+  }
 
-    @Override
-    protected void deserializeImpl(ByteBuffer buffer) throws IOException {
-        showTrailReq = ThriftCommonsSerDeUtils.deserializeTShowTrailReq(buffer);
-    }
+  @Override
+  protected void deserializeImpl(ByteBuffer buffer) throws IOException {
+    showTrailReq = ThriftCommonsSerDeUtils.deserializeTShowTrailReq(buffer);
+  }
 
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) {
-            return true;
-        }
-        if (o == null || getClass() != o.getClass()) {
-            return false;
-        }
-        if (!super.equals(o)) {
-            return false;
-        }
-        ShowTrailPlan that = (ShowTrailPlan) o;
-        return Objects.equals(showTrailReq, that.showTrailReq);
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
     }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    if (!super.equals(o)) {
+      return false;
+    }
+    ShowTrailPlan that = (ShowTrailPlan) o;
+    return Objects.equals(showTrailReq, that.showTrailReq);
+  }
 
-    @Override
-    public int hashCode() {
-        return Objects.hash(super.hashCode(), showTrailReq);
-    }
+  @Override
+  public int hashCode() {
+    return Objects.hash(super.hashCode(), showTrailReq);
+  }
 }

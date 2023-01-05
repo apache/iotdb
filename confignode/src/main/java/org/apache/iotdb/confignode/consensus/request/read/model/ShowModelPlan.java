@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.confignode.consensus.request.read.model;
 
-import org.apache.commons.lang3.Validate;
 import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
@@ -32,45 +31,45 @@ import java.util.Objects;
 
 public class ShowModelPlan extends ConfigPhysicalPlan {
 
-    private TShowModelReq showModelReq;
+  private TShowModelReq showModelReq;
 
-    public ShowModelPlan() {
-        super(ConfigPhysicalPlanType.ShowModel);
-    }
+  public ShowModelPlan() {
+    super(ConfigPhysicalPlanType.ShowModel);
+  }
 
-    public ShowModelPlan(TShowModelReq showModelReq) {
-        super(ConfigPhysicalPlanType.ShowModel);
-        this.showModelReq = showModelReq;
-    }
+  public ShowModelPlan(TShowModelReq showModelReq) {
+    super(ConfigPhysicalPlanType.ShowModel);
+    this.showModelReq = showModelReq;
+  }
 
-    @Override
-    protected void serializeImpl(DataOutputStream stream) throws IOException {
-        stream.writeShort(getType().getPlanType());
-        ThriftCommonsSerDeUtils.serializeTShowModelReq(showModelReq, stream);
-    }
+  @Override
+  protected void serializeImpl(DataOutputStream stream) throws IOException {
+    stream.writeShort(getType().getPlanType());
+    ThriftCommonsSerDeUtils.serializeTShowModelReq(showModelReq, stream);
+  }
 
-    @Override
-    protected void deserializeImpl(ByteBuffer buffer) throws IOException {
-        showModelReq = ThriftCommonsSerDeUtils.deserializeTShowModelReq(buffer);
-    }
+  @Override
+  protected void deserializeImpl(ByteBuffer buffer) throws IOException {
+    showModelReq = ThriftCommonsSerDeUtils.deserializeTShowModelReq(buffer);
+  }
 
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) {
-            return true;
-        }
-        if (o == null || getClass() != o.getClass()) {
-            return false;
-        }
-        if (!super.equals(o)) {
-            return false;
-        }
-        ShowModelPlan that = (ShowModelPlan) o;
-        return Objects.equals(showModelReq, that.showModelReq);
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
     }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    if (!super.equals(o)) {
+      return false;
+    }
+    ShowModelPlan that = (ShowModelPlan) o;
+    return Objects.equals(showModelReq, that.showModelReq);
+  }
 
-    @Override
-    public int hashCode() {
-        return Objects.hash(super.hashCode(), showModelReq);
-    }
+  @Override
+  public int hashCode() {
+    return Objects.hash(super.hashCode(), showModelReq);
+  }
 }

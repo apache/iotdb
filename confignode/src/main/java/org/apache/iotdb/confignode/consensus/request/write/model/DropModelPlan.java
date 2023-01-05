@@ -19,10 +19,11 @@
 
 package org.apache.iotdb.confignode.consensus.request.write.model;
 
-import org.apache.commons.lang3.Validate;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
+import org.apache.commons.lang3.Validate;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -31,46 +32,46 @@ import java.util.Objects;
 
 public class DropModelPlan extends ConfigPhysicalPlan {
 
-    private String modelId;
+  private String modelId;
 
-    public DropModelPlan() {
-        super(ConfigPhysicalPlanType.DropModel);
-    }
+  public DropModelPlan() {
+    super(ConfigPhysicalPlanType.DropModel);
+  }
 
-    public DropModelPlan(String modelId) {
-        super(ConfigPhysicalPlanType.DropModel);
-        Validate.notNull(modelId);
-        this.modelId = modelId;
-    }
+  public DropModelPlan(String modelId) {
+    super(ConfigPhysicalPlanType.DropModel);
+    Validate.notNull(modelId);
+    this.modelId = modelId;
+  }
 
-    @Override
-    protected void serializeImpl(DataOutputStream stream) throws IOException {
-        stream.writeShort(getType().getPlanType());
-        ReadWriteIOUtils.write(modelId, stream);
-    }
+  @Override
+  protected void serializeImpl(DataOutputStream stream) throws IOException {
+    stream.writeShort(getType().getPlanType());
+    ReadWriteIOUtils.write(modelId, stream);
+  }
 
-    @Override
-    protected void deserializeImpl(ByteBuffer buffer) throws IOException {
-        modelId = ReadWriteIOUtils.readString(buffer);
-    }
+  @Override
+  protected void deserializeImpl(ByteBuffer buffer) throws IOException {
+    modelId = ReadWriteIOUtils.readString(buffer);
+  }
 
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) {
-            return true;
-        }
-        if (o == null || getClass() != o.getClass()) {
-            return false;
-        }
-        if (!super.equals(o)) {
-            return false;
-        }
-        DropModelPlan that = (DropModelPlan) o;
-        return modelId.equals(that.modelId);
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
     }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    if (!super.equals(o)) {
+      return false;
+    }
+    DropModelPlan that = (DropModelPlan) o;
+    return modelId.equals(that.modelId);
+  }
 
-    @Override
-    public int hashCode() {
-        return Objects.hash(super.hashCode(), modelId);
-    }
+  @Override
+  public int hashCode() {
+    return Objects.hash(super.hashCode(), modelId);
+  }
 }
