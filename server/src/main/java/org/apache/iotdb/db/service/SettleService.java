@@ -123,9 +123,8 @@ public class SettleService implements IService {
       return;
     }
     logger.info(
-        "Totally find {}{} tsFiles to be settled.",
-        seqResourcesToBeSettled.size(),
-        unseqResourcesToBeSettled.size());
+        "Totally find {} tsFiles to be settled.",
+        seqResourcesToBeSettled.size() + unseqResourcesToBeSettled.size());
     // settle seqTsFile
     for (TsFileResource resource : seqResourcesToBeSettled) {
       resource.readLock();
