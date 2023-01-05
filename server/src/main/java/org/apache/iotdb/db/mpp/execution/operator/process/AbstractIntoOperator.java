@@ -78,7 +78,7 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
   private final long maxRetainedSize;
   private final long maxReturnSize;
 
-  public AbstractIntoOperator(
+  protected AbstractIntoOperator(
       OperatorContext operatorContext,
       Operator child,
       List<InsertTabletStatementGenerator> insertTabletStatementGenerators,
@@ -137,8 +137,8 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
     }
     cachedTsBlock = null;
 
-    if (child.hasNext()) {
-      TsBlock inputTsBlock = child.next();
+    if (child.hasNextWithTimer()) {
+      TsBlock inputTsBlock = child.nextWithTimer();
       processTsBlock(inputTsBlock);
 
       // call child.next only once
@@ -205,11 +205,13 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
       Map<String, Boolean> targetDeviceToAlignedMap) {
     List<InsertTabletStatementGenerator> insertTabletStatementGenerators =
         new ArrayList<>(targetPathToSourceInputLocationMap.size());
-    for (PartialPath targetDevice : targetPathToSourceInputLocationMap.keySet()) {
+    for (Map.Entry<PartialPath, Map<String, InputLocation>> entry :
+        targetPathToSourceInputLocationMap.entrySet()) {
+      PartialPath targetDevice = entry.getKey();
       InsertTabletStatementGenerator generator =
           new InsertTabletStatementGenerator(
               targetDevice,
-              targetPathToSourceInputLocationMap.get(targetDevice),
+              entry.getValue(),
               targetPathToDataTypeMap.get(targetDevice),
               targetDeviceToAlignedMap.get(targetDevice.toString()));
       insertTabletStatementGenerators.add(generator);

@@ -101,11 +101,86 @@ KILL QUERY <queryId>
 
 You can abort the specified query by specifying `queryId`. If `queryId` is not specified, all executing queries will be killed.
 
-To get the executing `queryId`，you can use the `show query processlist` command，which will show the list of all executing queries，with the following result set：
+To get the executing `queryId`，you can use the [show queries](#show-queries) command, which will show the list of all executing queries.
 
-| Time | queryId | statement |
-|------|---------|-----------|
-|      |         |           |
+## SHOW QUERIES
 
-The maximum display length of statement is 64 characters. For statements with more than 64 characters, the intercepted part will be displayed.
+This command is used to display all ongoing queries, here are usage scenarios：
+- When you want to kill a query, you need to get the queryId of it
+- Verify that a query has been killed after killing
+
+### Grammar
+
+```SQL
+SHOW QUERIES | (QUERY PROCESSLIST)
+[WHERE whereCondition]
+[ORDER BY sortKey {ASC | DESC}]
+[LIMIT rowLimit] [OFFSET rowOffset]
+```
+Note：
+- Compatibility with old syntax `show query processlist`
+- When using WHERE clause, ensure that target columns of filter are existed in the result set
+- When using ORDER BY clause, ensure that sortKeys are existed in the result set
+
+### ResultSet
+Time：Start time of query，DataType is `INT64`  
+QueryId：Cluster - level unique query identifier，DataType is `TEXT`  
+DataNodeId：DataNode which do execution of query，DataType is `INT32`  
+ElapsedTime：Execution time of query，`second` for unit，DataType is `FLOAT`  
+Statement：Origin string of query，DataType is `TEXT`
+
+```
++-----------------------------+-----------------------+----------+-----------+------------+
+|                         Time|                QueryId|DataNodeId|ElapsedTime|   Statement|
++-----------------------------+-----------------------+----------+-----------+------------+
+|2022-12-30T13:26:47.260+08:00|20221230_052647_00005_1|         1|      0.019|show queries|
++-----------------------------+-----------------------+----------+-----------+------------+
+```
+Note：
+- Result set is arranged in Time ASC as default, use ORDER BY clause if you want to sort it by other keys.
+
+### SQL Example
+#### Example1：Obtain all current queries whose execution time is longer than 30 seconds
+
+SQL string：
+```SQL
+SHOW QUERIES WHERE ElapsedTime > 30
+```
+
+SQL result：
+```
++-----------------------------+-----------------------+----------+-----------+-----------------------------+
+|                         Time|                QueryId|DataNodeId|ElapsedTime|                    Statement|
++-----------------------------+-----------------------+----------+-----------+-----------------------------+
+|2022-12-05T11:44:44.515+08:00|20221205_114444_00002_2|         2|     31.111|     select * from root.test1|
++-----------------------------+-----------------------+----------+-----------+-----------------------------+
+|2022-12-05T11:44:45.515+08:00|20221205_114445_00003_2|         2|     30.111|     select * from root.test2|
++-----------------------------+-----------------------+----------+-----------+-----------------------------+
+|2022-12-05T11:44:43.515+08:00|20221205_114443_00001_3|         3|     32.111|        select * from root.**|
++-----------------------------+-----------------------+----------+-----------+-----------------------------+
+```
+
+#### Example2：Obtain the Top5 queries in the current execution time
+
+SQL string：
+```SQL
+SHOW QUERIES ORDER BY Time DESC limit 5
+```
+
+SQL result：
+```
++-----------------------------+-----------------------+----------+-----------+-----------------------------+
+|                         Time|                QueryId|DataNodeId|ElapsedTime|                    Statement|
++-----------------------------+-----------------------+----------+-----------+-----------------------------+
+|2022-12-05T11:44:44.515+08:00|20221205_114444_00003_5|         5|     31.111|     select * from root.test1|
++-----------------------------+-----------------------+----------+-----------+-----------------------------+
+|2022-12-05T11:44:45.515+08:00|20221205_114445_00003_2|         2|     30.111|     select * from root.test2|
++-----------------------------+-----------------------+----------+-----------+-----------------------------+
+|2022-12-05T11:44:46.515+08:00|20221205_114446_00003_3|         3|     29.111|     select * from root.test3|
++-----------------------------+-----------------------+----------+-----------+-----------------------------+
+|2022-12-05T11:44:47.515+08:00|20221205_114447_00003_2|         2|     28.111|     select * from root.test4|
++-----------------------------+-----------------------+----------+-----------+-----------------------------+
+|2022-12-05T11:44:48.515+08:00|20221205_114448_00003_4|         4|     27.111|     select * from root.test5|
++-----------------------------+-----------------------+----------+-----------+-----------------------------+
+```
 

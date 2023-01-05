@@ -162,4 +162,9 @@ public class BinaryColumn implements Column {
       }
     }
   }
+
+  @Override
+  public int getInstanceSize() {
+    return INSTANCE_SIZE;
+  }
 }

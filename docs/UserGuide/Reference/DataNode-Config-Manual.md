@@ -139,7 +139,7 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |:---:|:-------------------------------|
 |Description| DataNode internal service port |
 |Type| int                            |
-|Default| 9003                           |
+|Default| 10730                           |
 |Effective| After restarting system        |
 
 * dn\_mpp\_data\_exchange\_port
@@ -148,7 +148,7 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |:---:|:---|
 |Description| MPP data exchange port |
 |Type| int |
-|Default| 8777 |
+|Default| 10740 |
 |Effective|After restarting system|
 
 * dn\_schema\_region\_consensus\_port
@@ -157,7 +157,7 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |:---:|:---|
 |Description| DataNode Schema replica communication port for consensus |
 |Type| int |
-|Default| 50010 |
+|Default| 10750 |
 |Effective|After restarting system|
 
 * dn\_data\_region\_consensus\_port
@@ -166,7 +166,7 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |:---:|:---|
 |Description| DataNode Data replica communication port for consensus |
 |Type| int |
-|Default| 40010 |
+|Default| 10760 |
 |Effective|After restarting system|
 
 * dn\_join\_cluster\_retry\_interval\_ms
@@ -186,7 +186,7 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |:---:|:------------------------------------------------|
 |Description| ConfigNode Address for DataNode to join cluster |
 |Type| String                                          |
-|Default| 127.0.0.1:22277                                 |
+|Default| 127.0.0.1:10710                                 |
 |Effective| After restarting system                         |
 
 ### Connection Configuration

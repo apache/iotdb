@@ -19,21 +19,26 @@
 package org.apache.iotdb.db.mpp.execution.operator.schema;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.metadata.query.info.ISchemaInfo;
+import org.apache.iotdb.db.metadata.query.reader.ISchemaReader;
+import org.apache.iotdb.db.mpp.execution.driver.SchemaDriverContext;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.execution.operator.source.SourceOperator;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
+import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 
 import java.util.List;
 import java.util.NoSuchElementException;
 
 import static org.apache.iotdb.tsfile.read.common.block.TsBlockBuilderStatus.DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
 
-public abstract class SchemaQueryScanOperator implements SourceOperator {
+public abstract class SchemaQueryScanOperator<T extends ISchemaInfo> implements SourceOperator {
+
+  private static final long MAX_SIZE = DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
 
   protected OperatorContext operatorContext;
-  protected List<TsBlock> tsBlockList;
-  protected int currentIndex = 0;
 
   protected int limit;
   protected int offset;
@@ -42,22 +47,32 @@ public abstract class SchemaQueryScanOperator implements SourceOperator {
 
   protected PlanNodeId sourceId;
 
+  private String database;
+
+  private final List<TSDataType> outputDataTypes;
+
+  private ISchemaReader<T> schemaReader;
+
   protected SchemaQueryScanOperator(
       PlanNodeId sourceId,
       OperatorContext operatorContext,
       int limit,
       int offset,
       PartialPath partialPath,
-      boolean isPrefixPath) {
+      boolean isPrefixPath,
+      List<TSDataType> outputDataTypes) {
     this.operatorContext = operatorContext;
     this.limit = limit;
     this.offset = offset;
     this.partialPath = partialPath;
     this.isPrefixPath = isPrefixPath;
     this.sourceId = sourceId;
+    this.outputDataTypes = outputDataTypes;
   }
 
-  protected abstract List<TsBlock> createTsBlockList();
+  protected abstract ISchemaReader<T> createSchemaReader();
+
+  protected abstract void setColumns(T element, TsBlockBuilder builder);
 
   public PartialPath getPartialPath() {
     return partialPath;
@@ -93,21 +108,29 @@ public abstract class SchemaQueryScanOperator implements SourceOperator {
     if (!hasNext()) {
       throw new NoSuchElementException();
     }
-    currentIndex++;
-    return tsBlockList.get(currentIndex - 1);
+    TsBlockBuilder tsBlockBuilder = new TsBlockBuilder(outputDataTypes);
+    T element;
+    while (schemaReader.hasNext()) {
+      element = schemaReader.next();
+      setColumns(element, tsBlockBuilder);
+      if (tsBlockBuilder.getRetainedSizeInBytes() >= MAX_SIZE) {
+        break;
+      }
+    }
+    return tsBlockBuilder.build();
   }
 
   @Override
   public boolean hasNext() {
-    if (tsBlockList == null) {
-      tsBlockList = createTsBlockList();
+    if (schemaReader == null) {
+      schemaReader = createSchemaReader();
     }
-    return currentIndex < tsBlockList.size();
+    return schemaReader.hasNext();
   }
 
   @Override
   public boolean isFinished() {
-    return !hasNext();
+    return !hasNextWithTimer();
   }
 
   @Override
@@ -128,5 +151,20 @@ public abstract class SchemaQueryScanOperator implements SourceOperator {
   @Override
   public long calculateRetainedSizeAfterCallingNext() {
     return 0L;
+  }
+
+  protected String getDatabase() {
+    if (database == null) {
+      database =
+          ((SchemaDriverContext) operatorContext.getDriverContext())
+              .getSchemaRegion()
+              .getStorageGroupFullPath();
+    }
+    return database;
+  }
+
+  @Override
+  public void close() throws Exception {
+    schemaReader.close();
   }
 }

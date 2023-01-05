@@ -44,6 +44,7 @@ import org.apache.iotdb.db.mpp.plan.execution.config.metadata.ShowRegionTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.ShowStorageGroupTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.ShowTTLTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.ShowTriggersTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.metadata.ShowVariablesTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.UnSetTTLTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.template.CreateSchemaTemplateTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.template.DeactivateSchemaTemplateTask;
@@ -94,6 +95,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowRegionStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTriggersStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowVariablesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.UnSetTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.CreateSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.DeactivateTemplateStatement;
@@ -172,11 +174,19 @@ public class ConfigTaskVisitor
   }
 
   @Override
+  public IConfigTask visitShowVariables(
+      ShowVariablesStatement showVariablesStatement, TaskContext context) {
+    return new ShowVariablesTask();
+  }
+
+  @Override
   public IConfigTask visitShowCluster(
       ShowClusterStatement showClusterStatement, TaskContext context) {
-    return showClusterStatement.isDetails()
-        ? new ShowClusterDetailsTask(showClusterStatement)
-        : new ShowClusterTask(showClusterStatement);
+    if (showClusterStatement.isDetails()) {
+      return new ShowClusterDetailsTask(showClusterStatement);
+    } else {
+      return new ShowClusterTask(showClusterStatement);
+    }
   }
 
   @Override

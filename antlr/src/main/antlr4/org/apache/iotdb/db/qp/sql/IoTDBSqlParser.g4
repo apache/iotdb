@@ -42,7 +42,7 @@ ddlStatement
     | dropFunction | dropTrigger | dropContinuousQuery | dropSchemaTemplate
     | setTTL | unsetTTL | startTrigger | stopTrigger | setSchemaTemplate | unsetSchemaTemplate
     | showStorageGroup | showDevices | showTimeseries | showChildPaths | showChildNodes
-    | showFunctions | showTriggers | showContinuousQueries | showTTL | showAllTTL | showCluster | showClusterDetails | showRegion | showDataNodes | showConfigNodes
+    | showFunctions | showTriggers | showContinuousQueries | showTTL | showAllTTL | showCluster | showVariables | showRegion | showDataNodes | showConfigNodes
     | showSchemaTemplates | showNodesInSchemaTemplate
     | showPathsUsingSchemaTemplate | showPathsSetSchemaTemplate
     | countStorageGroup | countDevices | countTimeseries | countNodes
@@ -339,19 +339,20 @@ showAllTTL
     : SHOW ALL TTL
     ;
 
-// Show Cluster
-showCluster
-    : SHOW CLUSTER
+// Show Variables
+showVariables
+    : SHOW VARIABLES
     ;
 
-// Show Cluster Details
-showClusterDetails
-    : SHOW CLUSTER DETAILS
+// Show Cluster
+showCluster
+    : SHOW CLUSTER (DETAILS)?
     ;
 
 // Show Region
 showRegion
     : SHOW (SCHEMA | DATA)? REGIONS (OF (STORAGE GROUP | DATABASE) prefixPath? (COMMA prefixPath)*)?
+        (ON NODEID INTEGER_LITERAL (COMMA INTEGER_LITERAL)*)?
     ;
 
 // Show Data Nodes

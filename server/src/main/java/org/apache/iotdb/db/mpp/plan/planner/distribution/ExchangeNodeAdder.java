@@ -217,6 +217,9 @@ public class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
 
   @Override
   public PlanNode visitMergeSort(MergeSortNode node, NodeGroupContext context) {
+    if (analysis.isVirtualSource()) {
+      return processMultiChildNodeByLocation(node, context);
+    }
     // 1. Group children by dataRegion
     Map<TRegionReplicaSet, List<PlanNode>> childrenGroupMap = new HashMap<>();
     for (int i = 0; i < node.getChildren().size(); i++) {
@@ -412,6 +415,10 @@ public class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
   }
 
   private PlanNode processMultiChildNode(MultiChildProcessNode node, NodeGroupContext context) {
+    if (analysis.isVirtualSource()) {
+      return processMultiChildNodeByLocation(node, context);
+    }
+
     MultiChildProcessNode newNode = (MultiChildProcessNode) node.clone();
     List<PlanNode> visitedChildren = new ArrayList<>();
     node.getChildren()
@@ -452,6 +459,23 @@ public class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
             newNode.addChild(child);
           }
         });
+    return newNode;
+  }
+
+  private PlanNode processMultiChildNodeByLocation(
+      MultiChildProcessNode node, NodeGroupContext context) {
+    MultiChildProcessNode newNode = (MultiChildProcessNode) node.clone();
+
+    List<PlanNode> children = node.getChildren();
+    newNode.addChild(children.get(0));
+    for (int i = 1; i < children.size(); i++) {
+      PlanNode child = children.get(i);
+      ExchangeNode exchangeNode =
+          new ExchangeNode(context.queryContext.getQueryId().genPlanNodeId());
+      exchangeNode.setChild(child);
+      exchangeNode.setOutputColumnNames(child.getOutputColumnNames());
+      newNode.addChild(exchangeNode);
+    }
     return newNode;
   }
 

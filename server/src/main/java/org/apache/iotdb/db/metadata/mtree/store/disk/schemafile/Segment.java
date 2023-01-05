@@ -422,7 +422,7 @@ public abstract class Segment<R> implements ISegment<ByteBuffer, R> {
    */
   protected static <T> int binaryInsertPairList(List<Pair<String, T>> list, String key)
       throws RecordDuplicatedException {
-    if (list.size() == 0) {
+    if (list.isEmpty()) {
       return 0;
     }
 

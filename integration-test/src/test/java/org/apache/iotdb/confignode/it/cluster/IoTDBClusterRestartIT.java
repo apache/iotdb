@@ -72,18 +72,16 @@ public class IoTDBClusterRestartIT {
   private static final int testConfigNodeNum = 2;
   private static final int testDataNodeNum = 2;
   private static final int testReplicationFactor = 2;
-  private static final long testTimePartitionInterval = 604800000;
   protected static String originalConfigNodeConsensusProtocolClass;
   protected static String originalSchemaRegionConsensusProtocolClass;
   protected static String originalDataRegionConsensusProtocolClass;
   protected static int originSchemaReplicationFactor;
   protected static int originalDataReplicationFactor;
-  protected static long originalTimePartitionInterval;
 
   @Before
   public void setUp() throws Exception {
     originalConfigNodeConsensusProtocolClass =
-        ConfigFactory.getConfig().getConfigNodeConsesusProtocolClass();
+        ConfigFactory.getConfig().getConfigNodeConsensusProtocolClass();
     originalSchemaRegionConsensusProtocolClass =
         ConfigFactory.getConfig().getSchemaRegionConsensusProtocolClass();
     originalDataRegionConsensusProtocolClass =
@@ -98,8 +96,6 @@ public class IoTDBClusterRestartIT {
     ConfigFactory.getConfig().setSchemaReplicationFactor(testReplicationFactor);
     ConfigFactory.getConfig().setDataReplicationFactor(testReplicationFactor);
 
-    originalTimePartitionInterval = ConfigFactory.getConfig().getTimePartitionInterval();
-    ConfigFactory.getConfig().setTimePartitionInterval(testTimePartitionInterval);
     // Init 2C2D cluster environment
     EnvFactory.getEnv().initClusterEnvironment(testConfigNodeNum, testDataNodeNum);
   }
@@ -113,7 +109,6 @@ public class IoTDBClusterRestartIT {
         .setSchemaRegionConsensusProtocolClass(originalSchemaRegionConsensusProtocolClass);
     ConfigFactory.getConfig()
         .setDataRegionConsensusProtocolClass(originalDataRegionConsensusProtocolClass);
-    ConfigFactory.getConfig().setTimePartitionInterval(originalTimePartitionInterval);
   }
 
   @Test

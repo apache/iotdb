@@ -35,7 +35,7 @@ public abstract class SchemaNode implements ITreeNode {
 
   protected final String name;
 
-  public SchemaNode(String name) {
+  protected SchemaNode(String name) {
     this.name = name;
   }
 

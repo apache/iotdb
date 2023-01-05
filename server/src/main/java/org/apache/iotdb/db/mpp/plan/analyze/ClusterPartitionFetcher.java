@@ -307,10 +307,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
       String devicePath = dataPartitionQueryParam.getDevicePath();
       if (deviceToStorageGroupMap.containsKey(devicePath)) {
         String storageGroup = deviceToStorageGroupMap.get(devicePath);
-        if (!result.containsKey(storageGroup)) {
-          result.put(storageGroup, new ArrayList<>());
-        }
-        result.get(storageGroup).add(dataPartitionQueryParam);
+        result.computeIfAbsent(storageGroup, key -> new ArrayList<>()).add(dataPartitionQueryParam);
       }
     }
     return result;

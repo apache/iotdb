@@ -380,7 +380,7 @@ public class AliasIndexPage extends SchemaPage implements ISegment<String, Strin
     StringBuilder builder =
         new StringBuilder(
             String.format(
-                "page_id:%d, total_seg:%d, spare_before:%d\n", pageIndex, 1, spareOffset));
+                "page_id:%d, total_seg:%d, spare_before:%d%n", pageIndex, 1, spareOffset));
     builder.append(
         String.format(
             "[AliasIndexSegment, total_alias: %d, spare_size:%d,", this.memberNum, this.spareSize));

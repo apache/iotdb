@@ -79,7 +79,7 @@ public class IoTDBClusterNodeErrorStartUpIT {
 
   @Before
   public void setUp() throws Exception {
-    originalConfigNodeConsensusProtocolClass = CONF.getConfigNodeConsesusProtocolClass();
+    originalConfigNodeConsensusProtocolClass = CONF.getConfigNodeConsensusProtocolClass();
     CONF.setConfigNodeConsesusProtocolClass(testConsensusProtocolClass);
 
     // Init 3C1D environment
@@ -90,6 +90,41 @@ public class IoTDBClusterNodeErrorStartUpIT {
   public void tearDown() {
     EnvFactory.getEnv().cleanAfterClass();
     CONF.setConfigNodeConsesusProtocolClass(originalConfigNodeConsensusProtocolClass);
+  }
+
+  @Test
+  public void testIllegalNodeRegistration()
+      throws ClientManagerException, IOException, InterruptedException, TException {
+    ConfigNodeWrapper configNodeWrapper = EnvFactory.getEnv().generateRandomConfigNodeWrapper();
+    DataNodeWrapper dataNodeWrapper = EnvFactory.getEnv().generateRandomDataNodeWrapper();
+
+    try (SyncConfigNodeIServiceClient client =
+        (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
+      /* Register with error cluster name */
+      TConfigNodeRegisterReq configNodeRegisterReq =
+          ConfigNodeTestUtils.generateTConfigNodeRegisterReq(configNodeWrapper);
+      configNodeRegisterReq.getClusterParameters().setClusterName(ERROR_CLUSTER_NAME);
+      configNodeRegisterReq
+          .getClusterParameters()
+          .setConfigNodeConsensusProtocolClass(testConsensusProtocolClass);
+      TConfigNodeRegisterResp configNodeRegisterResp =
+          client.registerConfigNode(configNodeRegisterReq);
+      Assert.assertEquals(
+          TSStatusCode.REJECT_NODE_START.getStatusCode(),
+          configNodeRegisterResp.getStatus().getCode());
+      Assert.assertTrue(
+          configNodeRegisterResp.getStatus().getMessage().contains("cluster are inconsistent"));
+
+      TDataNodeRegisterReq dataNodeRegisterReq =
+          ConfigNodeTestUtils.generateTDataNodeRegisterReq(dataNodeWrapper);
+      dataNodeRegisterReq.setClusterName(ERROR_CLUSTER_NAME);
+      TDataNodeRegisterResp dataNodeRegisterResp = client.registerDataNode(dataNodeRegisterReq);
+      Assert.assertEquals(
+          TSStatusCode.REJECT_NODE_START.getStatusCode(),
+          dataNodeRegisterResp.getStatus().getCode());
+      Assert.assertTrue(
+          dataNodeRegisterResp.getStatus().getMessage().contains("cluster are inconsistent"));
+    }
   }
 
   @Test
@@ -109,6 +144,7 @@ public class IoTDBClusterNodeErrorStartUpIT {
         (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
       TConfigNodeRegisterReq req =
           ConfigNodeTestUtils.generateTConfigNodeRegisterReq(conflictConfigNodeWrapper);
+      req.getClusterParameters().setConfigNodeConsensusProtocolClass(testConsensusProtocolClass);
       TConfigNodeRegisterResp resp = client.registerConfigNode(req);
       Assert.assertEquals(
           TSStatusCode.REJECT_NODE_START.getStatusCode(), resp.getStatus().getCode());

@@ -31,7 +31,7 @@ public abstract class AbstractShowSchemaPlanImpl implements IShowSchemaPlan {
   protected final int offset;
   protected final boolean isPrefixMatch;
 
-  public AbstractShowSchemaPlanImpl(PartialPath path) {
+  protected AbstractShowSchemaPlanImpl(PartialPath path) {
     this.path = path;
     this.limit = 0;
     this.offset = 0;

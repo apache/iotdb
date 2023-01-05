@@ -19,7 +19,6 @@
 package org.apache.iotdb.db.mpp.execution.operator.source;
 
 import org.apache.iotdb.commons.path.AlignedPath;
-import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -31,27 +30,15 @@ import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.io.IOException;
 import java.util.HashSet;
 import java.util.concurrent.TimeUnit;
 
-public class AlignedSeriesScanOperator implements DataSourceOperator {
-
-  private static final Logger LOGGER = LoggerFactory.getLogger(AlignedSeriesScanOperator.class);
-  private final OperatorContext operatorContext;
-  private final AlignedSeriesScanUtil seriesScanUtil;
-  private final PlanNodeId sourceId;
+public class AlignedSeriesScanOperator extends AbstractDataSourceOperator {
 
   private final TsBlockBuilder builder;
+  private final int valueColumnCount;
   private boolean finished = false;
-
-  private final long maxReturnSize;
-
-  private TsBlock retainedTsBlock;
-  private int startOffset;
 
   public AlignedSeriesScanOperator(
       PlanNodeId sourceId,
@@ -71,41 +58,23 @@ public class AlignedSeriesScanOperator implements DataSourceOperator {
             valueFilter,
             ascending);
     // time + all value columns
-    this.maxReturnSize =
-        (1L + seriesPath.getMeasurementList().size())
-            * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte();
     this.builder = new TsBlockBuilder(seriesScanUtil.getTsDataTypeList());
-  }
-
-  @Override
-  public OperatorContext getOperatorContext() {
-    return operatorContext;
+    this.valueColumnCount = seriesPath.getColumnNum();
+    this.maxReturnSize =
+        Math.min(
+            maxReturnSize,
+            (1L + valueColumnCount)
+                * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte());
   }
 
   @Override
   public TsBlock next() {
     if (retainedTsBlock != null) {
-      return getResultTsBlock();
+      return getResultFromRetainedTsBlock();
     }
-    retainedTsBlock = builder.build();
+    resultTsBlock = builder.build();
     builder.reset();
-    return getResultTsBlock();
-  }
-
-  private TsBlock getResultTsBlock() {
-    long maxSizePerTsBlock = TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
-    long length = maxSizePerTsBlock / (1 + seriesScanUtil.getAllSensorsSize());
-    TsBlock resultTsBlock;
-    if (retainedTsBlock.getPositionCount() - startOffset < length) {
-      resultTsBlock = retainedTsBlock.subTsBlock(startOffset);
-      retainedTsBlock = null;
-      startOffset = 0;
-    } else {
-      resultTsBlock = retainedTsBlock.getRegion(startOffset, (int) length);
-      startOffset += length;
-    }
-    LOGGER.debug("Current tsBlock size is : {}", resultTsBlock.getRetainedSizeInBytes());
-    return resultTsBlock;
+    return checkTsBlockSizeAndGetResult();
   }
 
   @Override
@@ -160,7 +129,9 @@ public class AlignedSeriesScanOperator implements DataSourceOperator {
 
   @Override
   public long calculateMaxPeekMemory() {
-    return maxReturnSize;
+    return Math.max(
+        maxReturnSize,
+        (1L + valueColumnCount) * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte());
   }
 
   @Override
@@ -170,7 +141,7 @@ public class AlignedSeriesScanOperator implements DataSourceOperator {
 
   @Override
   public long calculateRetainedSizeAfterCallingNext() {
-    return 0L;
+    return calculateMaxPeekMemory() - calculateMaxReturnSize();
   }
 
   private boolean readFileData() throws IOException {
@@ -233,15 +204,5 @@ public class AlignedSeriesScanOperator implements DataSourceOperator {
 
   private boolean isEmpty(TsBlock tsBlock) {
     return tsBlock == null || tsBlock.isEmpty();
-  }
-
-  @Override
-  public PlanNodeId getSourceId() {
-    return sourceId;
-  }
-
-  @Override
-  public void initQueryDataSource(QueryDataSource dataSource) {
-    seriesScanUtil.initQueryDataSource(dataSource);
   }
 }

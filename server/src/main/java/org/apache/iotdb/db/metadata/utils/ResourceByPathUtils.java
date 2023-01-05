@@ -36,7 +36,7 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.idtable.entry.DeviceIDFactory;
 import org.apache.iotdb.db.metadata.idtable.entry.IDeviceID;
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.utils.QueryUtils;
+import org.apache.iotdb.db.utils.ModificationUtils;
 import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.iotdb.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.AlignedTimeSeriesMetadata;
@@ -292,7 +292,7 @@ class AlignedResourceByPathUtils extends ResourceByPathUtils {
       }
     }
 
-    QueryUtils.modifyAlignedChunkMetaData(chunkMetadataList, modifications);
+    ModificationUtils.modifyAlignedChunkMetaData(chunkMetadataList, modifications);
     chunkMetadataList.removeIf(context::chunkNotSatisfy);
     return new ArrayList<>(chunkMetadataList);
   }
@@ -413,7 +413,7 @@ class MeasurementResourceByPathUtils extends ResourceByPathUtils {
                 partialPath.getMeasurement(),
                 partialPath.getSeriesType()));
 
-    QueryUtils.modifyChunkMetaData(chunkMetadataList, modifications);
+    ModificationUtils.modifyChunkMetaData(chunkMetadataList, modifications);
     chunkMetadataList.removeIf(context::chunkNotSatisfy);
     return chunkMetadataList;
   }

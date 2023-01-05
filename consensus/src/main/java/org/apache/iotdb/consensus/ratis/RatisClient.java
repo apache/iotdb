@@ -128,7 +128,7 @@ public class RatisClient {
   private static class RatisRetryPolicy implements RetryPolicy {
 
     private static final Logger logger = LoggerFactory.getLogger(RatisClient.class);
-    private static final int maxAttempts = 10;
+    private static final int MAX_ATTEMPTS = 10;
     RetryPolicy defaultPolicy;
 
     public RatisRetryPolicy(RatisConfig.Impl config) {
@@ -147,13 +147,10 @@ public class RatisClient {
     @Override
     public Action handleAttemptFailure(Event event) {
 
-      if (event.getCause() != null) {
-        if (event.getCause() instanceof IOException
-            && !(event.getCause() instanceof RaftException)) {
-          // unexpected. may be caused by statemachine.
-          logger.debug("raft client request failed and caught exception: ", event.getCause());
-          return NO_RETRY_ACTION;
-        }
+      if (event.getCause() instanceof IOException && !(event.getCause() instanceof RaftException)) {
+        // unexpected. may be caused by statemachine.
+        logger.debug("raft client request failed and caught exception: ", event.getCause());
+        return NO_RETRY_ACTION;
       }
 
       return defaultPolicy.handleAttemptFailure(event);

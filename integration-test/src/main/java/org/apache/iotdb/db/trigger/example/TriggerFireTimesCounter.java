@@ -41,6 +41,8 @@ public class TriggerFireTimesCounter implements Trigger {
   private static final Logger LOGGER = LoggerFactory.getLogger(TriggerFireTimesCounter.class);
   private String TXT_PATH;
 
+  private final int LOCK_FILE_RETRY_TIME = 10;
+
   @Override
   public void onCreate(TriggerAttributes attributes) throws Exception {
     String counterName = attributes.getString("name");
@@ -70,9 +72,20 @@ public class TriggerFireTimesCounter implements Trigger {
 
   @Override
   public boolean fire(Tablet tablet) throws Exception {
-    try (FileChannel fileChannel =
-            FileChannel.open(Paths.get(TXT_PATH), StandardOpenOption.APPEND);
-        FileLock fileLock = fileChannel.tryLock()) {
+    FileLock fileLock = null;
+    FileChannel fileChannel = null;
+    int retryNum = 0;
+    try {
+      fileChannel = FileChannel.open(Paths.get(TXT_PATH), StandardOpenOption.APPEND);
+      while (fileLock == null) {
+        fileLock = fileChannel.tryLock();
+        if (fileLock == null) {
+          if (retryNum++ >= LOCK_FILE_RETRY_TIME) {
+            break;
+          }
+          Thread.sleep(100);
+        }
+      }
       int rows = tablet.rowSize;
       if (fileLock != null && fileLock.isValid()) {
         String records = System.lineSeparator() + rows;
@@ -86,6 +99,13 @@ public class TriggerFireTimesCounter implements Trigger {
     } catch (Throwable t) {
       LOGGER.warn("TriggerFireTimesCounter error", t);
       return false;
+    } finally {
+      if (fileLock != null) {
+        fileLock.close();
+      }
+      if (fileChannel != null) {
+        fileChannel.close();
+      }
     }
     return true;
   }

@@ -47,7 +47,7 @@ public abstract class SeriesAggregationSourceNode extends SeriesSourceNode {
   // Its value will be null if there is no `group by time` clause,
   @Nullable protected GroupByTimeParameter groupByTimeParameter;
 
-  public SeriesAggregationSourceNode(
+  protected SeriesAggregationSourceNode(
       PlanNodeId id, List<AggregationDescriptor> aggregationDescriptorList) {
     super(id);
     this.aggregationDescriptorList = aggregationDescriptorList;

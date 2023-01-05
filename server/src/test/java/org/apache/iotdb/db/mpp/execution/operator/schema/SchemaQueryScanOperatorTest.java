@@ -22,8 +22,9 @@ import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.metadata.plan.schemaregion.impl.read.SchemaRegionReadPlanFactory;
-import org.apache.iotdb.db.metadata.plan.schemaregion.result.ShowDevicesResult;
-import org.apache.iotdb.db.metadata.plan.schemaregion.result.ShowTimeSeriesResult;
+import org.apache.iotdb.db.metadata.query.info.IDeviceSchemaInfo;
+import org.apache.iotdb.db.metadata.query.info.ITimeSeriesSchemaInfo;
+import org.apache.iotdb.db.metadata.query.reader.ISchemaReader;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
@@ -41,6 +42,7 @@ import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.column.BinaryColumn;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -49,6 +51,7 @@ import org.mockito.Mockito;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 
@@ -81,17 +84,30 @@ public class SchemaQueryScanOperatorTest {
               1, planNodeId, SchemaQueryScanOperator.class.getSimpleName());
       PartialPath partialPath = new PartialPath(META_SCAN_OPERATOR_TEST_SG + ".device0");
       ISchemaRegion schemaRegion = Mockito.mock(ISchemaRegion.class);
+      Mockito.when(schemaRegion.getStorageGroupFullPath()).thenReturn(META_SCAN_OPERATOR_TEST_SG);
+      IDeviceSchemaInfo deviceSchemaInfo = Mockito.mock(IDeviceSchemaInfo.class);
+      Mockito.when(deviceSchemaInfo.getFullPath())
+          .thenReturn(META_SCAN_OPERATOR_TEST_SG + ".device0");
+      Mockito.when(deviceSchemaInfo.isAligned()).thenReturn(false);
+      Iterator<IDeviceSchemaInfo> iterator = Collections.singletonList(deviceSchemaInfo).iterator();
       Mockito.when(
-              schemaRegion.getMatchedDevices(
-                  SchemaRegionReadPlanFactory.getShowDevicesPlan(partialPath, 10, 0, true, false)))
+              schemaRegion.getDeviceReader(
+                  SchemaRegionReadPlanFactory.getShowDevicesPlan(partialPath, 10, 0, false)))
           .thenReturn(
-              new Pair<>(
-                  Collections.singletonList(
-                      new ShowDevicesResult(
-                          META_SCAN_OPERATOR_TEST_SG + ".device0",
-                          false,
-                          META_SCAN_OPERATOR_TEST_SG)),
-                  0));
+              new ISchemaReader<IDeviceSchemaInfo>() {
+                @Override
+                public void close() throws Exception {}
+
+                @Override
+                public boolean hasNext() {
+                  return iterator.hasNext();
+                }
+
+                @Override
+                public IDeviceSchemaInfo next() {
+                  return iterator.next();
+                }
+              });
       operatorContext.setDriverContext(
           new SchemaDriverContext(fragmentInstanceContext, schemaRegion));
       List<String> columns = Arrays.asList(COLUMN_DEVICES, COLUMN_DATABASE, COLUMN_IS_ALIGNED);
@@ -157,27 +173,41 @@ public class SchemaQueryScanOperatorTest {
               1, planNodeId, SchemaQueryScanOperator.class.getSimpleName());
       PartialPath partialPath = new PartialPath(META_SCAN_OPERATOR_TEST_SG + ".device0.*");
 
-      List<ShowTimeSeriesResult> showTimeSeriesResults = new ArrayList<>();
+      List<ITimeSeriesSchemaInfo> showTimeSeriesResults = new ArrayList<>();
       for (int i = 0; i < 10; i++) {
-        showTimeSeriesResults.add(
-            new ShowTimeSeriesResult(
-                META_SCAN_OPERATOR_TEST_SG + ".device0" + "s" + i,
-                null,
-                META_SCAN_OPERATOR_TEST_SG,
-                TSDataType.INT32,
-                TSEncoding.PLAIN,
-                CompressionType.UNCOMPRESSED,
-                null,
-                null,
-                null,
-                null));
+        ITimeSeriesSchemaInfo timeSeriesSchemaInfo = Mockito.mock(ITimeSeriesSchemaInfo.class);
+        Mockito.when(timeSeriesSchemaInfo.getFullPath())
+            .thenReturn(META_SCAN_OPERATOR_TEST_SG + ".device0." + "s" + i);
+        Mockito.when(timeSeriesSchemaInfo.getAlias()).thenReturn(null);
+        Mockito.when(timeSeriesSchemaInfo.getSchema())
+            .thenReturn(
+                new MeasurementSchema(
+                    "s" + i, TSDataType.INT32, TSEncoding.PLAIN, CompressionType.UNCOMPRESSED));
+        Mockito.when(timeSeriesSchemaInfo.getTagAndAttribute()).thenReturn(new Pair<>(null, null));
+        showTimeSeriesResults.add(timeSeriesSchemaInfo);
       }
+      Iterator<ITimeSeriesSchemaInfo> iterator = showTimeSeriesResults.iterator();
 
       ISchemaRegion schemaRegion = Mockito.mock(ISchemaRegion.class);
+      Mockito.when(schemaRegion.getStorageGroupFullPath()).thenReturn(META_SCAN_OPERATOR_TEST_SG);
       Mockito.when(
-              schemaRegion.showTimeseries(
+              schemaRegion.getTimeSeriesReader(
                   SchemaRegionReadPlanFactory.getShowTimeSeriesPlan(partialPath, 10, 0)))
-          .thenReturn(new Pair<>(showTimeSeriesResults, 0));
+          .thenReturn(
+              new ISchemaReader<ITimeSeriesSchemaInfo>() {
+                @Override
+                public void close() throws Exception {}
+
+                @Override
+                public boolean hasNext() {
+                  return iterator.hasNext();
+                }
+
+                @Override
+                public ITimeSeriesSchemaInfo next() {
+                  return iterator.next();
+                }
+              });
 
       operatorContext.setDriverContext(
           new SchemaDriverContext(fragmentInstanceContext, schemaRegion));
@@ -190,7 +220,6 @@ public class SchemaQueryScanOperatorTest {
               partialPath,
               null,
               null,
-              false,
               false,
               false,
               Collections.emptyMap());

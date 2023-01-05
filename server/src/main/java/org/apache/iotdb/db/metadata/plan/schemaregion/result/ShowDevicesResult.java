@@ -18,19 +18,12 @@
  */
 package org.apache.iotdb.db.metadata.plan.schemaregion.result;
 
+import org.apache.iotdb.db.metadata.query.info.IDeviceSchemaInfo;
+
 import java.util.Objects;
 
-public class ShowDevicesResult extends ShowSchemaResult {
+public class ShowDevicesResult extends ShowSchemaResult implements IDeviceSchemaInfo {
   private boolean isAligned;
-
-  public ShowDevicesResult() {
-    super();
-  }
-
-  public ShowDevicesResult(String name, boolean isAligned, String sgName) {
-    super(name, sgName);
-    this.isAligned = isAligned;
-  }
 
   public ShowDevicesResult(String name, boolean isAligned) {
     super(name);
@@ -49,8 +42,6 @@ public class ShowDevicesResult extends ShowSchemaResult {
         + '\''
         + ", isAligned = "
         + isAligned
-        + ", sgName='"
-        + database
         + '\''
         + "}";
   }
@@ -64,13 +55,11 @@ public class ShowDevicesResult extends ShowSchemaResult {
       return false;
     }
     ShowDevicesResult result = (ShowDevicesResult) o;
-    return Objects.equals(path, result.path)
-        && isAligned == result.isAligned
-        && Objects.equals(database, result.database);
+    return Objects.equals(path, result.path) && isAligned == result.isAligned;
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(path, isAligned, database);
+    return Objects.hash(path, isAligned);
   }
 }

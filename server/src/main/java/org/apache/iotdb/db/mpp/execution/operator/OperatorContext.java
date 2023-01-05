@@ -42,6 +42,9 @@ public class OperatorContext {
   private DriverContext driverContext;
   private Duration maxRunTime;
 
+  private long totalExecutionTimeInNanos = 0L;
+  private long nextCalledCount = 0L;
+
   public OperatorContext(
       int operatorId, PlanNodeId planNodeId, String operatorType, DriverContext driverContext) {
     this.operatorId = operatorId;
@@ -92,6 +95,22 @@ public class OperatorContext {
 
   public SessionInfo getSessionInfo() {
     return getInstanceContext().getSessionInfo();
+  }
+
+  public void recordExecutionTime(long executionTimeInNanos) {
+    this.totalExecutionTimeInNanos += executionTimeInNanos;
+  }
+
+  public void recordNextCalled() {
+    this.nextCalledCount++;
+  }
+
+  public long getTotalExecutionTimeInNanos() {
+    return totalExecutionTimeInNanos;
+  }
+
+  public long getNextCalledCount() {
+    return nextCalledCount;
   }
 
   @Override

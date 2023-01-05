@@ -183,9 +183,7 @@ class RatisConsensus implements IConsensus {
 
   private boolean shouldRetry(RaftClientReply reply) {
     // currently, we only retry when ResourceUnavailableException is caught
-    return !reply.isSuccess()
-        && (reply.getException() != null
-            && reply.getException() instanceof ResourceUnavailableException);
+    return !reply.isSuccess() && (reply.getException() instanceof ResourceUnavailableException);
   }
   /** launch a consensus write with retry mechanism */
   private RaftClientReply writeWithRetry(CheckedSupplier<RaftClientReply, IOException> caller)
@@ -348,7 +346,7 @@ class RatisConsensus implements IConsensus {
     RaftClientReply reply;
     RatisClient client = null;
     try {
-      if (group.getPeers().size() == 0) {
+      if (group.getPeers().isEmpty()) {
         client = getRaftClient(RaftGroup.valueOf(group.getGroupId(), server));
       } else {
         client = getRaftClient(group);
@@ -708,9 +706,9 @@ class RatisConsensus implements IConsensus {
         ConsensusGenericResponse consensusGenericResponse =
             triggerSnapshot(Utils.fromRaftGroupIdToConsensusGroupId(raftGroupId));
         if (consensusGenericResponse.isSuccess()) {
-          logger.info("Raft group " + raftGroupId + " took snapshot successfully");
+          logger.info("Raft group {} took snapshot successfully", raftGroupId);
         } else {
-          logger.warn("Raft group " + raftGroupId + " failed to take snapshot");
+          logger.warn("Raft group {} failed to take snapshot", raftGroupId);
         }
       }
     }

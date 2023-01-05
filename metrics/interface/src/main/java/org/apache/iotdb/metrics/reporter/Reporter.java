@@ -22,12 +22,12 @@ package org.apache.iotdb.metrics.reporter;
 import org.apache.iotdb.metrics.utils.ReporterType;
 
 public interface Reporter {
-  /** Start reporter */
+  /** Start reporter. */
   boolean start();
 
-  /** Stop reporter */
+  /** Stop reporter. */
   boolean stop();
 
-  /** Get the type of reporter */
+  /** Get the type of reporter. */
   ReporterType getReporterType();
 }

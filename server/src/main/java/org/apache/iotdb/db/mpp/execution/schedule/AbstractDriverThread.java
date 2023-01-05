@@ -38,7 +38,7 @@ public abstract class AbstractDriverThread extends Thread implements Closeable {
   protected final ITaskScheduler scheduler;
   private volatile boolean closed;
 
-  public AbstractDriverThread(
+  protected AbstractDriverThread(
       String workerId,
       ThreadGroup tg,
       IndexedBlockingQueue<DriverTask> queue,
@@ -59,7 +59,7 @@ public abstract class AbstractDriverThread extends Thread implements Closeable {
         try {
           next = queue.poll();
         } catch (InterruptedException e) {
-          logger.warn("Executor " + this.getName() + " failed to poll driver task from queue");
+          logger.warn("Executor {} failed to poll driver task from queue", this.getName());
           Thread.currentThread().interrupt();
           break;
         }
@@ -86,12 +86,11 @@ public abstract class AbstractDriverThread extends Thread implements Closeable {
       // unless we have been closed, we need to replace this thread
       if (!closed) {
         logger.warn(
-            "Executor "
-                + this.getName()
-                + " exits because it's interrupted, and we will produce another thread to replace.");
+            "Executor {} exits because it's interrupted, and we will produce another thread to replace.",
+            this.getName());
         producer.produce(getName(), getThreadGroup(), queue, producer);
       } else {
-        logger.info("Executor " + this.getName() + " exits because it is closed.");
+        logger.info("Executor {} exits because it is closed.", this.getName());
       }
     }
   }

@@ -33,11 +33,13 @@ import com.google.common.util.concurrent.SettableFuture;
 
 import javax.annotation.concurrent.NotThreadSafe;
 
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
-import java.util.stream.Collectors;
+
+import static org.apache.iotdb.db.mpp.metric.QueryExecutionMetricSet.QUERY_RESOURCE_INIT;
 
 /**
  * One dataDriver is responsible for one FragmentInstance which is for data query, which may
@@ -96,23 +98,28 @@ public class DataDriver extends Driver {
    * we should change all the blocked lock operation into tryLock
    */
   private void initialize() throws QueryProcessException {
-    List<DataSourceOperator> sourceOperators =
-        ((DataDriverContext) driverContext).getSourceOperators();
-    if (sourceOperators != null && !sourceOperators.isEmpty()) {
-      QueryDataSource dataSource = initQueryDataSource();
-      sourceOperators.forEach(
-          sourceOperator -> {
-            // construct QueryDataSource for source operator
-            QueryDataSource queryDataSource =
-                new QueryDataSource(dataSource.getSeqResources(), dataSource.getUnseqResources());
+    long startTime = System.nanoTime();
+    try {
+      List<DataSourceOperator> sourceOperators =
+          ((DataDriverContext) driverContext).getSourceOperators();
+      if (sourceOperators != null && !sourceOperators.isEmpty()) {
+        QueryDataSource dataSource = initQueryDataSource();
+        sourceOperators.forEach(
+            sourceOperator -> {
+              // construct QueryDataSource for source operator
+              QueryDataSource queryDataSource =
+                  new QueryDataSource(dataSource.getSeqResources(), dataSource.getUnseqResources());
 
-            queryDataSource.setDataTTL(dataSource.getDataTTL());
+              queryDataSource.setDataTTL(dataSource.getDataTTL());
 
-            sourceOperator.initQueryDataSource(queryDataSource);
-          });
+              sourceOperator.initQueryDataSource(queryDataSource);
+            });
+      }
+
+      this.init = true;
+    } finally {
+      QUERY_METRICS.recordExecutionCost(QUERY_RESOURCE_INIT, System.nanoTime() - startTime);
     }
-
-    this.init = true;
   }
 
   /**
@@ -124,17 +131,20 @@ public class DataDriver extends Driver {
     IDataRegionForQuery dataRegion = context.getDataRegion();
     dataRegion.readLock();
     try {
-      List<PartialPath> pathList =
-          context.getPaths().stream().map(IDTable::translateQueryPath).collect(Collectors.toList());
-      // when all the selected series are under the same device, the QueryDataSource will be
-      // filtered according to timeIndex
-      Set<String> selectedDeviceIdSet =
-          pathList.stream().map(PartialPath::getDevice).collect(Collectors.toSet());
+      List<PartialPath> pathList = new ArrayList<>();
+      Set<String> selectedDeviceIdSet = new HashSet<>();
+      for (PartialPath path : context.getPaths()) {
+        PartialPath translatedPath = IDTable.translateQueryPath(path);
+        pathList.add(translatedPath);
+        selectedDeviceIdSet.add(translatedPath.getDevice());
+      }
 
       Filter timeFilter = context.getTimeFilter();
       QueryDataSource dataSource =
           dataRegion.query(
               pathList,
+              // when all the selected series are under the same device, the QueryDataSource will be
+              // filtered according to timeIndex
               selectedDeviceIdSet.size() == 1 ? selectedDeviceIdSet.iterator().next() : null,
               driverContext.getFragmentInstanceContext(),
               timeFilter != null ? timeFilter.copy() : null);

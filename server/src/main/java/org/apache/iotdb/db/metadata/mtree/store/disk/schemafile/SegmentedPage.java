@@ -172,6 +172,11 @@ public class SegmentedPage extends SchemaPage implements ISegmentedPage {
   }
 
   @Override
+  public boolean isCapableForSegSize(short size) {
+    return spareSize >= size + SchemaFileConfig.SEG_OFF_DIG;
+  }
+
+  @Override
   public short getSegmentSize(short segId) throws SegmentNotFoundException {
     return getSegment(segId).size();
   }
@@ -201,7 +206,7 @@ public class SegmentedPage extends SchemaPage implements ISegmentedPage {
   @Override
   public long transplantSegment(ISegmentedPage srcPage, short segId, short newSegSize)
       throws MetadataException {
-    if (!isCapableForSize(newSegSize)) {
+    if (!isCapableForSegSize(newSegSize)) {
       throw new SchemaPageOverflowException(pageIndex);
     }
     if (maxAppendableSegmentSize() < newSegSize) {
@@ -260,17 +265,17 @@ public class SegmentedPage extends SchemaPage implements ISegmentedPage {
     StringBuilder builder =
         new StringBuilder(
             String.format(
-                "page_id:%d, total_seg:%d, spare_from:%d, spare_size:%d\n",
+                "page_id:%d, total_seg:%d, spare_from:%d, spare_size:%d%n",
                 pageIndex, memberNum, spareOffset, spareSize));
     for (short idx = 0; idx < segOffsetLst.size(); idx++) {
       short offset = segOffsetLst.get(idx);
       if (offset < 0) {
-        builder.append(String.format("seg_id:%d deleted, offset:%d\n", idx, offset));
+        builder.append(String.format("seg_id:%d deleted, offset:%d%n", idx, offset));
       } else {
         ISegment<?, ?> seg = getSegment(idx);
         builder.append(
             String.format(
-                "seg_id:%d, offset:%d, address:%s, next_seg:%s, %s\n",
+                "seg_id:%d, offset:%d, address:%s, next_seg:%s, %s%n",
                 idx,
                 offset,
                 Long.toHexString(SchemaFile.getGlobalIndex(pageIndex, idx)),
@@ -408,7 +413,8 @@ public class SegmentedPage extends SchemaPage implements ISegmentedPage {
   }
 
   private short maxAppendableSegmentSize() {
-    return (short) (pageBuffer.limit() - 2 * (memberNum + 1) - spareOffset);
+    return (short)
+        (pageBuffer.limit() - SchemaFileConfig.SEG_OFF_DIG * (memberNum + 1) - spareOffset);
   }
 
   /**

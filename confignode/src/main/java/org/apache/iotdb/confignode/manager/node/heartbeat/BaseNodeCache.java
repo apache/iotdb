@@ -55,7 +55,7 @@ public abstract class BaseNodeCache {
     synchronized (slidingWindow) {
       // Only sequential heartbeats are accepted.
       // And un-sequential heartbeats will be discarded.
-      if (slidingWindow.size() == 0
+      if (slidingWindow.isEmpty()
           || slidingWindow.getLast().getSendTimestamp() < newHeartbeatSample.getSendTimestamp()) {
         slidingWindow.add(newHeartbeatSample);
       }
@@ -136,5 +136,9 @@ public abstract class BaseNodeCache {
 
   public NodeStatistics getStatistics() {
     return currentStatistics;
+  }
+
+  public NodeStatistics getPreviousStatistics() {
+    return previousStatistics;
   }
 }

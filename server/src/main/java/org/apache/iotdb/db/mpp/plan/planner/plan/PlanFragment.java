@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.mpp.plan.planner.plan;
 
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
@@ -27,6 +28,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.IPartitionRelatedNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.VirtualSourceNode;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
@@ -89,13 +91,20 @@ public class PlanFragment {
     return String.format("PlanFragment-%s", getId());
   }
 
-  // Every Fragment should only run in DataRegion.
+  // Every Fragment related with DataPartition should only run in one DataRegion.
   // But it can select any one of the Endpoint of the target DataRegion
   // In current version, one PlanFragment should contain at least one SourceNode,
   // and the DataRegions of all SourceNodes should be same in one PlanFragment.
   // So we can use the DataRegion of one SourceNode as the PlanFragment's DataRegion.
   public TRegionReplicaSet getTargetRegion() {
     return getNodeRegion(planNodeTree);
+  }
+
+  // If a Fragment is not related with DataPartition,
+  // it may be related with a specific DataNode.
+  // This method return the DataNodeLocation will offer execution of this Fragment.
+  public TDataNodeLocation getTargetLocation() {
+    return getNodeLocation(planNodeTree);
   }
 
   private TRegionReplicaSet getNodeRegion(PlanNode root) {
@@ -105,6 +114,19 @@ public class PlanFragment {
     for (PlanNode child : root.getChildren()) {
       TRegionReplicaSet result = getNodeRegion(child);
       if (result != null && result != DataPartition.NOT_ASSIGNED) {
+        return result;
+      }
+    }
+    return null;
+  }
+
+  private TDataNodeLocation getNodeLocation(PlanNode root) {
+    if (root instanceof VirtualSourceNode) {
+      return ((VirtualSourceNode) root).getDataNodeLocation();
+    }
+    for (PlanNode child : root.getChildren()) {
+      TDataNodeLocation result = getNodeLocation(child);
+      if (result != null) {
         return result;
       }
     }

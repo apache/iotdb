@@ -23,7 +23,11 @@ import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.db.mpp.plan.statement.component.SortItem;
 import org.apache.iotdb.db.mpp.plan.statement.component.SortKey;
 import org.apache.iotdb.db.utils.datastructure.MergeSortKey;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
+import org.apache.commons.collections4.comparators.ComparatorChain;
+
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 
@@ -123,23 +127,99 @@ public class MergeSortComparator {
             : deviceComparing;
       };
 
-  public static Comparator<MergeSortKey> getComparator(List<SortItem> sortItemList) {
-    if (sortItemList.get(0).getOrdering() == Ordering.ASC) {
-      if (sortItemList.get(1).getOrdering() == Ordering.ASC) {
-        if (sortItemList.get(0).getSortKey() == SortKey.TIME) return ASC_TIME_ASC_DEVICE;
-        else return ASC_DEVICE_ASC_TIME;
+  public static Comparator<MergeSortKey> getComparator(
+      List<SortItem> sortItemList, List<Integer> indexList, List<TSDataType> dataTypeList) {
+    // specified for order by time, device or order by device, time
+    if (sortItemList.size() == 2
+        && ((sortItemList.get(0).getSortKey() == SortKey.TIME
+                && sortItemList.get(1).getSortKey() == SortKey.DEVICE)
+            || (sortItemList.get(0).getSortKey() == SortKey.DEVICE
+                && sortItemList.get(1).getSortKey() == SortKey.TIME))) {
+      if (sortItemList.get(0).getOrdering() == Ordering.ASC) {
+        if (sortItemList.get(1).getOrdering() == Ordering.ASC) {
+          if (sortItemList.get(0).getSortKey() == SortKey.TIME) return ASC_TIME_ASC_DEVICE;
+          else return ASC_DEVICE_ASC_TIME;
+        } else {
+          if (sortItemList.get(0).getSortKey() == SortKey.TIME) return ASC_TIME_DESC_DEVICE;
+          else return ASC_DEVICE_DESC_TIME;
+        }
       } else {
-        if (sortItemList.get(0).getSortKey() == SortKey.TIME) return ASC_TIME_DESC_DEVICE;
-        else return ASC_DEVICE_DESC_TIME;
+        if (sortItemList.get(1).getOrdering() == Ordering.ASC) {
+          if (sortItemList.get(0).getSortKey() == SortKey.TIME) return DESC_TIME_ASC_DEVICE;
+          else return DESC_DEVICE_ASC_TIME;
+        } else {
+          if (sortItemList.get(0).getSortKey() == SortKey.TIME) return DESC_TIME_DESC_DEVICE;
+          else return DESC_DEVICE_DESC_TIME;
+        }
       }
-    } else {
-      if (sortItemList.get(1).getOrdering() == Ordering.ASC) {
-        if (sortItemList.get(0).getSortKey() == SortKey.TIME) return DESC_TIME_ASC_DEVICE;
-        else return DESC_DEVICE_ASC_TIME;
-      } else {
-        if (sortItemList.get(0).getSortKey() == SortKey.TIME) return DESC_TIME_DESC_DEVICE;
-        else return DESC_DEVICE_DESC_TIME;
-      }
+    } else { // generally order by
+      // use code-gen compile this comparator
+
+      // currently only show queries use merge sort and will only contain TIME, QUERYID, DATANODEID,
+      // ELAPSEDTIME, STATEMENT
+      return genComparatorChain(sortItemList, indexList, dataTypeList);
     }
+  }
+
+  /** @param indexList -1 for time column */
+  private static ComparatorChain<MergeSortKey> genComparatorChain(
+      List<SortItem> sortItemList, List<Integer> indexList, List<TSDataType> dataTypeList) {
+    List<Comparator<MergeSortKey>> list = new ArrayList<>(indexList.size());
+    for (int i = 0; i < indexList.size(); i++) {
+      int index = indexList.get(i);
+      TSDataType dataType = dataTypeList.get(i);
+      boolean asc = sortItemList.get(i).getOrdering() == Ordering.ASC;
+      list.add(genSingleComparator(asc, index, dataType));
+    }
+    return new ComparatorChain<>(list);
+  }
+
+  private static Comparator<MergeSortKey> genSingleComparator(
+      boolean asc, int index, TSDataType dataType) {
+    Comparator<MergeSortKey> comparator;
+    switch (dataType) {
+      case INT32:
+        comparator =
+            Comparator.comparingInt(
+                (MergeSortKey sortKey) ->
+                    sortKey.tsBlock.getColumn(index).getInt(sortKey.rowIndex));
+        break;
+      case INT64:
+        if (index == -1) {
+          comparator =
+              Comparator.comparingLong(
+                  (MergeSortKey sortKey) -> sortKey.tsBlock.getTimeByIndex(sortKey.rowIndex));
+        } else {
+          comparator =
+              Comparator.comparingLong(
+                  (MergeSortKey sortKey) ->
+                      sortKey.tsBlock.getColumn(index).getLong(sortKey.rowIndex));
+        }
+        break;
+      case FLOAT:
+        comparator =
+            Comparator.comparingDouble(
+                (MergeSortKey sortKey) ->
+                    sortKey.tsBlock.getColumn(index).getFloat(sortKey.rowIndex));
+        break;
+      case DOUBLE:
+        comparator =
+            Comparator.comparingDouble(
+                (MergeSortKey sortKey) ->
+                    sortKey.tsBlock.getColumn(index).getDouble(sortKey.rowIndex));
+        break;
+      case TEXT:
+        comparator =
+            Comparator.comparing(
+                (MergeSortKey sortKey) ->
+                    sortKey.tsBlock.getColumn(index).getBinary(sortKey.rowIndex));
+        break;
+      default:
+        throw new IllegalArgumentException("Data type: " + dataType + " cannot be ordered");
+    }
+    if (!asc) {
+      comparator = comparator.reversed();
+    }
+    return comparator;
   }
 }
