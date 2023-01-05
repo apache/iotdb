@@ -19,8 +19,14 @@
 
 package org.apache.iotdb.confignode.persistence;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.model.ModelInformation;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
+import org.apache.iotdb.confignode.consensus.request.read.model.ShowModelPlan;
+import org.apache.iotdb.confignode.consensus.request.read.model.ShowTrailPlan;
+import org.apache.iotdb.confignode.consensus.request.write.model.UpdateModelInfoPlan;
+import org.apache.iotdb.confignode.consensus.response.ModelTableResp;
+import org.apache.iotdb.confignode.consensus.response.TrailTableResp;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.apache.thrift.TException;
@@ -53,6 +59,18 @@ public class ModelInfo implements SnapshotProcessor {
   public ModelInfo() {
     this.modelInfoMap = new HashMap<>();
     this.lock = new ReentrantReadWriteLock();
+  }
+
+  public ModelTableResp showModel(ShowModelPlan req) {
+    return null;
+  }
+
+  public TrailTableResp showTrail(ShowTrailPlan req) {
+    return null;
+  }
+
+  public TSStatus updateModelInfo(UpdateModelInfoPlan plan) {
+    return null;
   }
 
   @Override

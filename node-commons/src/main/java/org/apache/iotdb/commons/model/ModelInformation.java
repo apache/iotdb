@@ -19,8 +19,10 @@
 
 package org.apache.iotdb.commons.model;
 
+import java.io.DataOutputStream;
 import java.io.FileOutputStream;
 import java.io.InputStream;
+import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Map;
 
@@ -42,9 +44,15 @@ public class ModelInformation {
     return modelId;
   }
 
+  public void serialize(DataOutputStream stream) {}
+
   public void serialize(FileOutputStream stream) {}
 
   public static ModelInformation deserialize(InputStream stream) {
+    return null;
+  }
+
+  public static ModelInformation deserialize(ByteBuffer buffer) {
     return null;
   }
 }
