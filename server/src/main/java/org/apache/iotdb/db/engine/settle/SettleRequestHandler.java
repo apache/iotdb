@@ -37,6 +37,7 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.TsFileUtils;
 
 import org.slf4j.Logger;
@@ -44,10 +45,10 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 public class SettleRequestHandler {
   private static final Logger logger = LoggerFactory.getLogger(SettleRequestHandler.class);
@@ -69,161 +70,235 @@ public class SettleRequestHandler {
   public TSStatus handleSettleRequest(TSettleReq req) {
     List<String> paths = req.getPaths();
 
-    boolean hasSeqFile = false, hasUnSeqFile = false, hasModsFile = false;
-    Integer dataRegionId = null;
-    DataRegion dataRegion = null;
-    Integer level = null;
-    String storageGroupName = null;
-    Long timePartitionId = null;
-
-    Set<String> tsFileNames = new HashSet<>();
-
-    for (String path : paths) {
-      File tsFile = new File(path);
-      if (!tsFile.exists()) {
-        return RpcUtils.getStatus(TSStatusCode.PATH_NOT_EXIST, "The specified file does not exist in " + path);
-      }
-      File modsFile = new File(path + ModificationFile.FILE_SUFFIX);
-      hasModsFile |= modsFile.exists();
-
-      int fileDataRegionId = TsFileUtils.getDataRegionId(tsFile);
-      if (dataRegion == null) {
-        dataRegionId = fileDataRegionId;
-        dataRegion = StorageEngine.getInstance().getDataRegion(new DataRegionId(dataRegionId));
-      } else if (dataRegionId != fileDataRegionId) {
-        return RpcUtils.getStatus(
-            TSStatusCode.ILLEGAL_PATH, "DataRegion of files is not consistent.");
-      }
-
-      String sgOfFile = TsFileUtils.getStorageGroup(tsFile);
-      if (storageGroupName == null) {
-        storageGroupName = sgOfFile;
-      } else if (!storageGroupName.equals(sgOfFile)) {
-        return RpcUtils.getStatus(
-            TSStatusCode.ILLEGAL_PATH, "StorageGroup of files is not consistent.");
-      }
-
-      long timePartitionOfFile = TsFileUtils.getTimePartition(tsFile);
-      if (timePartitionId == null) {
-        timePartitionId = timePartitionOfFile;
-      } else if (timePartitionId != timePartitionOfFile) {
-        return RpcUtils.getStatus(
-            TSStatusCode.ILLEGAL_PATH, "TimePartition of files is not consistent.");
-      }
-
-      String fileName = tsFile.getName();
-      TsFileNameGenerator.TsFileName tsFileName;
-      try {
-        tsFileName = TsFileNameGenerator.getTsFileName(fileName);
-      } catch (IOException e) {
-        return RpcUtils.getStatus(TSStatusCode.ILLEGAL_PATH, "Meet error when parsing TsFileName.");
-      }
-
-      int levelOfFile = tsFileName.getInnerCompactionCnt();
-      if (level == null) {
-        level = levelOfFile;
-      } else if (level != levelOfFile) {
-        return RpcUtils.getStatus(
-            TSStatusCode.ILLEGAL_PARAMETER, "Level of files is not consistent.");
-      }
-
-      if (TsFileUtils.isSequence(tsFile)) {
-        hasSeqFile = true;
-      } else {
-        hasUnSeqFile = true;
-      }
-      tsFileNames.add(fileName);
-      if (hasSeqFile && hasUnSeqFile) {
-        return RpcUtils.getStatus(
-            TSStatusCode.UNSUPPORTED_OPERATION, "Settle by cross compaction is not allowed.");
-      }
-    }
-
-    if (!hasModsFile) {
-      return RpcUtils.getStatus(
-          TSStatusCode.ILLEGAL_PARAMETER, "Every selected TsFile does not contains the mods file.");
-    }
-    if (dataRegion == null) {
-      return RpcUtils.getStatus(TSStatusCode.ILLEGAL_PATH, "DataRegion not exist");
-    }
-    TsFileManager tsFileManager = dataRegion.getTsFileManager();
-    if (!tsFileManager.isAllowCompaction()) {
-      return RpcUtils.getStatus(
-          TSStatusCode.UNSUPPORTED_OPERATION, "Compaction in this DataRegion is not allowed.");
-    }
-
-    // try to get a continuous TsFileResource list with input TsFile names
-    List<TsFileResource> tsFileResources =
-        getContinuousTsFileResourcesByFileNames(
-            tsFileManager, timePartitionId, hasSeqFile, tsFileNames);
-    if (tsFileResources.size() != tsFileNames.size()) {
-      return RpcUtils.getStatus(
-          TSStatusCode.ILLEGAL_PARAMETER, "Selected TsFiles are not continuous.");
-    }
-
-    IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-    if (hasSeqFile && !config.isEnableSeqSpaceCompaction()) {
-      return RpcUtils.getStatus(
-          TSStatusCode.UNSUPPORTED_OPERATION, "Compaction in Seq Space is not enabled");
-    }
-    if (hasUnSeqFile && !config.isEnableUnseqSpaceCompaction()) {
-      return RpcUtils.getStatus(
-          TSStatusCode.UNSUPPORTED_OPERATION, "Compaction in Unseq Space is not enabled");
-    }
-    int maxInnerCompactionCandidateFileNum = config.getMaxInnerCompactionCandidateFileNum();
-    if (tsFileResources.size() > config.getMaxInnerCompactionCandidateFileNum()) {
-      return RpcUtils.getStatus(TSStatusCode.UNSUPPORTED_OPERATION,
-          "File nums is too much, the limited count of system config is " + maxInnerCompactionCandidateFileNum
-              + ", the input file count is " + tsFileResources.size()
-      );
+    SettleRequestContext context = new SettleRequestContext(paths);
+    TSStatus validationResult = context.validate();
+    if (validationResult.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return validationResult;
     }
     if (testMode) {
       return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
     }
-
-    AbstractCompactionTask task =
-        new InnerSpaceCompactionTask(
-            timePartitionId,
-            tsFileManager,
-            tsFileResources,
-            hasSeqFile,
-            config.getInnerSeqCompactionPerformer().createInstance(),
-            CompactionTaskManager.currentTaskNum,
-            tsFileManager.getNextCompactionTaskId());
-    try {
-      CompactionTaskManager.getInstance().addTaskToWaitingQueue(task);
-    } catch (InterruptedException e) {
-      logger.error(
-          "meet error when adding task-{} to compaction waiting queue: {}", task.getSerialId(), e.getMessage());
-      return RpcUtils.getStatus(
-          TSStatusCode.COMPACTION_ERROR, "meet error when submit settle task.");
-    }
-    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+    List<TsFileResource> selectedTsFileResources = context.getTsFileResourcesByFileNames();
+    return context.submitCompactionTask(selectedTsFileResources);
   }
 
-  private List<TsFileResource> getContinuousTsFileResourcesByFileNames(
-      TsFileManager tsFileManager, long timePartition, boolean isSeq, Set<String> fileNames) {
-    TsFileResourceList allTsFileResourceList;
-    if (isSeq) {
-      allTsFileResourceList = tsFileManager.getSequenceListByTimePartition(timePartition);
-    } else {
-      allTsFileResourceList = tsFileManager.getUnsequenceListByTimePartition(timePartition);
+  private static class SettleRequestContext {
+    private ConsistentSettleValues consistentSettleValues;
+
+    private boolean hasSeqFiles;
+    private boolean hasUnseqFiles;
+    private boolean hasModsFiles;
+    private List<String> paths;
+    private Set<String> tsFileNames;
+    private TsFileResourceList allTsFileResourceList;
+
+    private TsFileManager tsFileManager;
+    private IoTDBConfig config;
+
+    private SettleRequestContext(List<String> paths) {
+      this.paths = paths;
+      this.tsFileNames = new HashSet<>();
+      this.config = IoTDBDescriptor.getInstance().getConfig();
     }
 
-    boolean selected = false;
-    List<TsFileResource> selectedTsFileResources = new ArrayList<>();
-    for (TsFileResource tsFileResource : allTsFileResourceList) {
-      if (fileNames.contains(tsFileResource.getTsFile().getName())) {
-        if (tsFileResource.getStatus() != TsFileResourceStatus.CLOSED) {
+    private TSStatus validate() {
+      if (paths == null || paths.size() == 0) {
+        return RpcUtils.getStatus(TSStatusCode.ILLEGAL_PARAMETER, "The files to settle is not offered.");
+      }
+
+      int maxInnerCompactionCandidateFileNum = config.getMaxInnerCompactionCandidateFileNum();
+      if (paths.size() > maxInnerCompactionCandidateFileNum) {
+        return RpcUtils.getStatus(TSStatusCode.UNSUPPORTED_OPERATION,
+            "Too many files offered, the limited count of system config is "
+                + maxInnerCompactionCandidateFileNum
+                + ", the input file count is " + tsFileNames.size()
+        );
+      }
+
+      TSStatus validationResult;
+      Pair<ConsistentSettleValues, TSStatus> pair;
+
+      for (String path : paths) {
+        File currentTsFile = new File(path);
+        if (!currentTsFile.exists()) {
+          return RpcUtils.getStatus(TSStatusCode.PATH_NOT_EXIST, "The specified file does not exist in " + path);
+        }
+        File modsFile = new File(path + ModificationFile.FILE_SUFFIX);
+        hasModsFiles |= modsFile.exists();
+
+        pair = calculateConsistentValues(currentTsFile);
+        ConsistentSettleValues currentConsistentInfo = pair.left;
+        if (this.consistentSettleValues == null) {
+          this.consistentSettleValues = currentConsistentInfo;
+        }
+        validationResult = pair.right;
+        if (!isSuccess(validationResult)) {
+          return validationResult;
+        }
+
+        validationResult = consistentSettleValues.checkConsistency(currentConsistentInfo);
+        if (!isSuccess(validationResult)) {
+          return validationResult;
+        }
+
+        if (TsFileUtils.isSequence(currentTsFile)) {
+          hasSeqFiles = true;
+        } else {
+          hasUnseqFiles = true;
+        }
+        tsFileNames.add(currentTsFile.getName());
+        if (hasSeqFiles && hasUnseqFiles) {
+          return RpcUtils.getStatus(
+              TSStatusCode.UNSUPPORTED_OPERATION, "Settle by cross compaction is not allowed.");
+        }
+      }
+
+      if (!hasModsFiles) {
+        return RpcUtils.getStatus(
+            TSStatusCode.ILLEGAL_PARAMETER, "Every selected TsFile does not contains the mods file.");
+      }
+      DataRegion dataRegion = StorageEngine.getInstance().getDataRegion(new DataRegionId(consistentSettleValues.dataRegionId));
+      if (dataRegion == null) {
+        return RpcUtils.getStatus(TSStatusCode.ILLEGAL_PATH, "DataRegion not exist");
+      }
+      tsFileManager = dataRegion.getTsFileManager();
+
+      validationResult = checkCompactionConfigs();
+      if (!isSuccess(validationResult)) {
+        return validationResult;
+      }
+
+      if (hasSeqFiles) {
+        allTsFileResourceList = tsFileManager.getSequenceListByTimePartition(consistentSettleValues.timePartitionId);
+      } else {
+        allTsFileResourceList = tsFileManager.getUnsequenceListByTimePartition(consistentSettleValues.timePartitionId);
+      }
+
+      validationResult = validateTsFileResources();
+      if (!isSuccess(validationResult)) {
+        return validationResult;
+      }
+      return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+    }
+
+    private Pair<ConsistentSettleValues, TSStatus> calculateConsistentValues(File tsFile) {
+      ConsistentSettleValues values = new ConsistentSettleValues();
+      values.dataRegionId = TsFileUtils.getDataRegionId(tsFile);
+      values.storageGroupName = TsFileUtils.getStorageGroup(tsFile);
+      values.timePartitionId = TsFileUtils.getTimePartition(tsFile);
+
+      String fileNameStr = tsFile.getName();
+      TsFileNameGenerator.TsFileName tsFileName;
+      try {
+        tsFileName = TsFileNameGenerator.getTsFileName(fileNameStr);
+      } catch (IOException e) {
+        return new Pair<>(null,
+            RpcUtils.getStatus(
+                TSStatusCode.ILLEGAL_PATH,
+                "Meet error when parsing TsFileName. There may be a problem with file: " + tsFile.getName())
+        );
+      }
+      values.level = tsFileName.getInnerCompactionCnt();
+      return new Pair<>(values, RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
+    }
+
+    private boolean isSuccess(TSStatus status) {
+      return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode();
+    }
+
+    private TSStatus checkCompactionConfigs() {
+      if (!tsFileManager.isAllowCompaction()) {
+        return RpcUtils.getStatus(
+            TSStatusCode.UNSUPPORTED_OPERATION, "Compaction in this DataRegion is not allowed.");
+      }
+      if (hasSeqFiles && !config.isEnableSeqSpaceCompaction()) {
+        return RpcUtils.getStatus(
+            TSStatusCode.UNSUPPORTED_OPERATION, "Compaction in Seq Space is not enabled");
+      }
+      if (hasUnseqFiles && !config.isEnableUnseqSpaceCompaction()) {
+        return RpcUtils.getStatus(
+            TSStatusCode.UNSUPPORTED_OPERATION, "Compaction in Unseq Space is not enabled");
+      }
+      return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+    }
+
+    private TSStatus validateTsFileResources() {
+      int continuousCount = 0;
+      for (TsFileResource tsFileResource : allTsFileResourceList) {
+        File tsFile = tsFileResource.getTsFile();
+        if (tsFileNames.contains(tsFile.getName())) {
+          if (tsFileResource.getStatus() != TsFileResourceStatus.CLOSED) {
+            return RpcUtils.getStatus(
+                TSStatusCode.ILLEGAL_PARAMETER, "The TsFile is not valid: " + tsFile.getAbsolutePath()
+            );
+          }
+          continuousCount++;
+          continue;
+        }
+        if (continuousCount != 0) {
           break;
         }
-        selectedTsFileResources.add(tsFileResource);
-        selected = true;
-      } else if (selected) {
-        break;
       }
+      if (continuousCount != tsFileNames.size()) {
+        return RpcUtils.getStatus(
+            TSStatusCode.ILLEGAL_PARAMETER, "Selected TsFiles are not continuous.");
+      }
+      return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
     }
-    return selectedTsFileResources;
+
+    private List<TsFileResource> getTsFileResourcesByFileNames() {
+      return allTsFileResourceList.stream()
+          .filter(tsFileResource -> tsFileNames.contains(tsFileResource.getTsFile().getName()))
+          .collect(Collectors.toList());
+    }
+
+    private TSStatus submitCompactionTask(List<TsFileResource> tsFileResources) {
+      AbstractCompactionTask task =
+          new InnerSpaceCompactionTask(
+              consistentSettleValues.timePartitionId,
+              tsFileManager,
+              tsFileResources,
+              hasSeqFiles,
+              config.getInnerSeqCompactionPerformer().createInstance(),
+              CompactionTaskManager.currentTaskNum,
+              tsFileManager.getNextCompactionTaskId());
+      try {
+        CompactionTaskManager.getInstance().addTaskToWaitingQueue(task);
+      } catch (InterruptedException e) {
+        logger.error(
+            "meet error when adding task-{} to compaction waiting queue: {}", task.getSerialId(), e.getMessage());
+        return RpcUtils.getStatus(
+            TSStatusCode.COMPACTION_ERROR, "meet error when submit settle task.");
+      }
+      return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+    }
+  }
+
+  private static class ConsistentSettleValues {
+    private int dataRegionId;
+    private int level;
+    private String storageGroupName;
+    private long timePartitionId;
+
+    private TSStatus checkConsistency(ConsistentSettleValues other) {
+      if (this.dataRegionId != other.dataRegionId) {
+        return RpcUtils.getStatus(
+            TSStatusCode.ILLEGAL_PATH, "DataRegion of files is not consistent.");
+      }
+      if (!storageGroupName.equals(other.storageGroupName)) {
+        return RpcUtils.getStatus(
+            TSStatusCode.ILLEGAL_PATH, "StorageGroup of files is not consistent.");
+      }
+      if (this.timePartitionId != other.timePartitionId) {
+        return RpcUtils.getStatus(
+            TSStatusCode.ILLEGAL_PATH, "TimePartition of files is not consistent.");
+      }
+      if (level != other.level) {
+        return RpcUtils.getStatus(
+            TSStatusCode.ILLEGAL_PARAMETER, "Level of files is not consistent.");
+      }
+      return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+    }
   }
 
   private static class SettleRequestHandlerHolder {
