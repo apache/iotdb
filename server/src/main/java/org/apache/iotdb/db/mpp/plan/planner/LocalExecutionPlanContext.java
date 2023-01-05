@@ -28,6 +28,7 @@ import org.apache.iotdb.db.mpp.execution.driver.SchemaDriverContext;
 import org.apache.iotdb.db.mpp.execution.exchange.ISinkHandle;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
+import org.apache.iotdb.db.mpp.execution.operator.source.ExchangeOperator;
 import org.apache.iotdb.db.mpp.execution.timer.RuleBasedTimeSliceAllocator;
 import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -35,6 +36,9 @@ import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.Pair;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -50,6 +54,7 @@ import static java.util.Objects.requireNonNull;
 // Attention: We should use thread-safe data structure for members that are shared by all pipelines
 public class LocalExecutionPlanContext {
 
+  private static final Logger LOGGER = LoggerFactory.getLogger(LocalExecutionPlanContext.class);
   private final DriverContext driverContext;
   private final AtomicInteger nextOperatorId;
   private final TypeProvider typeProvider;
@@ -57,6 +62,7 @@ public class LocalExecutionPlanContext {
   // this is shared with all subContexts
   private AtomicInteger nextPipelineId;
   private List<PipelineDriverFactory> pipelineDriverFactories;
+  private List<ExchangeOperator> exchangeOperatorList = new ArrayList<>();
   private int exchangeSumNum = 0;
 
   private final long dataRegionTTL;
@@ -97,6 +103,8 @@ public class LocalExecutionPlanContext {
     this.nextPipelineId = parentContext.nextPipelineId;
     this.pipelineDriverFactories = parentContext.pipelineDriverFactories;
     this.exchangeSumNum = parentContext.exchangeSumNum;
+    this.exchangeOperatorList = parentContext.exchangeOperatorList;
+    this.cachedDataTypes = parentContext.cachedDataTypes;
     this.driverContext =
         parentContext.getDriverContext().createSubDriverContext(getNextPipelineId());
   }
@@ -166,6 +174,21 @@ public class LocalExecutionPlanContext {
 
   public void addExchangeSumNum(int addValue) {
     this.exchangeSumNum += addValue;
+  }
+
+  public void addExchangeOperator(ExchangeOperator exchangeOperator) {
+    this.exchangeOperatorList.add(exchangeOperator);
+  }
+
+  public void setMaxBytesOneHandleCanReserve() {
+    long maxBytesOneHandleCanReserve = getMaxBytesOneHandleCanReserve();
+    LOGGER.debug(
+        "MaxBytesOneHandleCanReserve for ExchangeOperator is {}, exchangeSumNum is {}.",
+        maxBytesOneHandleCanReserve,
+        exchangeSumNum);
+    exchangeOperatorList.forEach(
+        exchangeOperator ->
+            exchangeOperator.getSourceHandle().setMaxBytesCanReserve(maxBytesOneHandleCanReserve));
   }
 
   public Set<String> getAllSensors(String deviceId, String sensorId) {

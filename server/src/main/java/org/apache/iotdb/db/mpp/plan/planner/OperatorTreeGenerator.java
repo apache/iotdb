@@ -517,8 +517,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
   @Override
   public Operator visitSchemaQueryMerge(
       SchemaQueryMergeNode node, LocalExecutionPlanContext context) {
-    List<Operator> children =
-        node.getChildren().stream().map(n -> n.accept(this, context)).collect(Collectors.toList());
+    List<Operator> children = dealWithConsumeChildrenOneByOneNode(node, context);
     OperatorContext operatorContext =
         context
             .getDriverContext()
@@ -532,8 +531,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
 
   @Override
   public Operator visitCountMerge(CountSchemaMergeNode node, LocalExecutionPlanContext context) {
-    List<Operator> children =
-        node.getChildren().stream().map(n -> n.accept(this, context)).collect(Collectors.toList());
+    List<Operator> children = dealWithConsumeChildrenOneByOneNode(node, context);
     OperatorContext operatorContext =
         context
             .getDriverContext()
@@ -695,10 +693,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                 context.getNextOperatorId(),
                 node.getPlanNodeId(),
                 DeviceViewOperator.class.getSimpleName());
-    List<Operator> children =
-        node.getChildren().stream()
-            .map(child -> child.accept(this, context))
-            .collect(Collectors.toList());
+    List<Operator> children = dealWithConsumeChildrenOneByOneNode(node, context);
     List<List<Integer>> deviceColumnIndex =
         node.getDevices().stream()
             .map(deviceName -> node.getDeviceToMeasurementIndexesMap().get(deviceName))
@@ -756,11 +751,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                 MergeSortOperator.class.getSimpleName());
     List<TSDataType> dataTypes = getOutputColumnTypes(node, context.getTypeProvider());
     context.setCachedDataTypes(dataTypes);
-    List<Operator> children =
-        node.getChildren().stream()
-            .map(child -> child.accept(this, context))
-            .collect(Collectors.toList());
-
+    List<Operator> children = dealWithConsumeAllChildrenPipelineBreaker(node, context);
     List<SortItem> sortItemList = node.getMergeOrderParameter().getSortItemList();
     context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
     return new MergeSortOperator(
@@ -1321,10 +1312,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     checkArgument(
         node.getAggregationDescriptorList().size() >= 1,
         "Aggregation descriptorList cannot be empty");
-    List<Operator> children =
-        node.getChildren().stream()
-            .map(child -> child.accept(this, context))
-            .collect(Collectors.toList());
+    List<Operator> children = dealWithConsumeAllChildrenPipelineBreaker(node, context);
     boolean ascending = node.getScanOrder() == Ordering.ASC;
     List<Aggregator> aggregators = new ArrayList<>();
     Map<String, List<InputLocation>> layout = makeLayout(node);
@@ -1585,59 +1573,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
 
   @Override
   public Operator visitTimeJoin(TimeJoinNode node, LocalExecutionPlanContext context) {
-    List<Operator> children = new ArrayList<>();
-    int finalExchangeNum = context.getExchangeSumNum();
-    for (PlanNode childSource : node.getChildren()) {
-      // Create pipelines for children
-      LocalExecutionPlanContext subContext = context.createSubContext();
-      Operator childOperation = childSource.accept(this, subContext);
-      // If the child belongs to another fragment instance, we don't create pipeline for it
-      if (childOperation instanceof ExchangeOperator) {
-        children.add(childOperation);
-        finalExchangeNum += 1;
-      } else {
-        ISinkHandle localSinkHandle =
-            MPP_DATA_EXCHANGE_MANAGER.createLocalSinkHandleForPipeline(
-                subContext.getDriverContext(), childSource.getPlanNodeId().getId());
-        subContext.setSinkHandle(localSinkHandle);
-        subContext.addPipelineDriverFactory(childOperation, subContext.getDriverContext());
-
-        ExchangeOperator sourceOperator =
-            new ExchangeOperator(
-                context
-                    .getDriverContext()
-                    .addOperatorContext(
-                        context.getNextOperatorId(), null, ExchangeOperator.class.getSimpleName()),
-                MPP_DATA_EXCHANGE_MANAGER.createLocalSourceHandleForPipeline(
-                    ((LocalSinkHandle) localSinkHandle).getSharedTsBlockQueue(),
-                    context.getDriverContext()),
-                childSource.getPlanNodeId());
-        context
-            .getTimeSliceAllocator()
-            .recordExecutionWeight(sourceOperator.getOperatorContext(), 1);
-        children.add(sourceOperator);
-        finalExchangeNum += subContext.getExchangeSumNum() - context.getExchangeSumNum() + 1;
-      }
-    }
-    context.setExchangeSumNum(finalExchangeNum);
-
-    // Set maxBytesCanReserve for each source handle
-    long maxBytesOneHandleCanReserve = context.getMaxBytesOneHandleCanReserve();
-    LOGGER.debug(
-        "TimeJoinNode{}'s maxBytesOneHandleCanReserve is: {}, exchangeNum = {}",
-        node.getPlanNodeId(),
-        maxBytesOneHandleCanReserve,
-        context.getExchangeSumNum());
-    for (Operator childSource : children) {
-      if (!(childSource instanceof ExchangeOperator)) {
-        throw new IllegalArgumentException(
-            "After pipelining, the child of timeJoin is not an exchangeOperator.");
-      }
-      ((ExchangeOperator) childSource)
-          .getSourceHandle()
-          .setMaxBytesCanReserve(maxBytesOneHandleCanReserve);
-    }
-
+    List<Operator> children = dealWithConsumeAllChildrenPipelineBreaker(node, context);
     OperatorContext operatorContext =
         context
             .getDriverContext()
@@ -1739,7 +1675,10 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                 context.getInstanceContext()::failed);
     context.addExchangeSumNum(1);
     sourceHandle.setMaxBytesCanReserve(context.getMaxBytesOneHandleCanReserve());
-    return new ExchangeOperator(operatorContext, sourceHandle, node.getUpstreamPlanNodeId());
+    ExchangeOperator exchangeOperator =
+        new ExchangeOperator(operatorContext, sourceHandle, node.getUpstreamPlanNodeId());
+    context.addExchangeOperator(exchangeOperator);
+    return exchangeOperator;
   }
 
   @Override
@@ -1778,8 +1717,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
   @Override
   public Operator visitSchemaFetchMerge(
       SchemaFetchMergeNode node, LocalExecutionPlanContext context) {
-    List<Operator> children =
-        node.getChildren().stream().map(n -> n.accept(this, context)).collect(Collectors.toList());
+    List<Operator> children = dealWithConsumeChildrenOneByOneNode(node, context);
     OperatorContext operatorContext =
         context
             .getDriverContext()
@@ -2096,10 +2034,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
   @Override
   public Operator visitLastQueryCollect(
       LastQueryCollectNode node, LocalExecutionPlanContext context) {
-    List<Operator> children =
-        node.getChildren().stream()
-            .map(child -> child.accept(this, context))
-            .collect(Collectors.toList());
+    List<Operator> children = dealWithConsumeChildrenOneByOneNode(node, context);
     OperatorContext operatorContext =
         context
             .getDriverContext()
@@ -2163,5 +2098,62 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
     return new PathsUsingTemplateScanOperator(
         node.getPlanNodeId(), operatorContext, node.getPathPatternList(), node.getTemplateId());
+  }
+
+  private List<Operator> dealWithConsumeAllChildrenPipelineBreaker(
+      PlanNode node, LocalExecutionPlanContext context) {
+    // children after pipelining
+    List<Operator> children = new ArrayList<>();
+    int finalExchangeNum = context.getExchangeSumNum();
+    for (PlanNode childSource : node.getChildren()) {
+      // Create pipelines for children
+      LocalExecutionPlanContext subContext = context.createSubContext();
+      Operator childOperation = childSource.accept(this, subContext);
+      // If the child belongs to another fragment instance, we don't create pipeline for it
+      if (childOperation instanceof ExchangeOperator) {
+        children.add(childOperation);
+        finalExchangeNum += 1;
+      } else {
+        ISinkHandle localSinkHandle =
+            MPP_DATA_EXCHANGE_MANAGER.createLocalSinkHandleForPipeline(
+                subContext.getDriverContext(), childSource.getPlanNodeId().getId());
+        subContext.setSinkHandle(localSinkHandle);
+        subContext.addPipelineDriverFactory(childOperation, subContext.getDriverContext());
+
+        ExchangeOperator sourceOperator =
+            new ExchangeOperator(
+                context
+                    .getDriverContext()
+                    .addOperatorContext(
+                        context.getNextOperatorId(), null, ExchangeOperator.class.getSimpleName()),
+                MPP_DATA_EXCHANGE_MANAGER.createLocalSourceHandleForPipeline(
+                    ((LocalSinkHandle) localSinkHandle).getSharedTsBlockQueue(),
+                    context.getDriverContext()),
+                childSource.getPlanNodeId());
+        context
+            .getTimeSliceAllocator()
+            .recordExecutionWeight(sourceOperator.getOperatorContext(), 1);
+        children.add(sourceOperator);
+        context.addExchangeOperator(sourceOperator);
+        finalExchangeNum += subContext.getExchangeSumNum() - context.getExchangeSumNum() + 1;
+      }
+    }
+    context.setExchangeSumNum(finalExchangeNum);
+    return children;
+  }
+
+  private List<Operator> dealWithConsumeChildrenOneByOneNode(
+      PlanNode node, LocalExecutionPlanContext context) {
+    int originExchangeNum = context.getExchangeSumNum();
+    int finalExchangeNum = context.getExchangeSumNum();
+    List<Operator> children = new ArrayList<>();
+    for (PlanNode childSource : node.getChildren()) {
+      Operator childOperation = childSource.accept(this, context);
+      finalExchangeNum = Math.max(finalExchangeNum, context.getExchangeSumNum());
+      context.setExchangeSumNum(originExchangeNum);
+      children.add(childOperation);
+    }
+    context.setExchangeSumNum(finalExchangeNum);
+    return children;
   }
 }
