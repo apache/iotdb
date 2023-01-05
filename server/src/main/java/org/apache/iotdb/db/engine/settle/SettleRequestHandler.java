@@ -45,10 +45,10 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 public class SettleRequestHandler {
   private static final Logger logger = LoggerFactory.getLogger(SettleRequestHandler.class);
@@ -129,17 +129,17 @@ public class SettleRequestHandler {
         File modsFile = new File(path + ModificationFile.FILE_SUFFIX);
         hasModsFiles |= modsFile.exists();
 
-        consistentSettleInfoStatusPair = calculateConsistentValues(currentTsFile);
-        ConsistentSettleInfo currentConsistentInfo = consistentSettleInfoStatusPair.left;
+        consistentSettleInfoStatusPair = calculateConsistentInfo(currentTsFile);
+        ConsistentSettleInfo currentInfo = consistentSettleInfoStatusPair.left;
         if (this.consistentSettleInfo == null) {
-          this.consistentSettleInfo = currentConsistentInfo;
+          this.consistentSettleInfo = currentInfo;
         }
         validationResult = consistentSettleInfoStatusPair.right;
         if (!isSuccess(validationResult)) {
           return validationResult;
         }
 
-        validationResult = consistentSettleInfo.isConsistent(currentConsistentInfo);
+        validationResult = consistentSettleInfo.checkConsistency(currentInfo);
         if (!isSuccess(validationResult)) {
           return validationResult;
         }
@@ -185,7 +185,7 @@ public class SettleRequestHandler {
       return validateTsFileResources();
     }
 
-    private Pair<ConsistentSettleInfo, TSStatus> calculateConsistentValues(File tsFile) {
+    private Pair<ConsistentSettleInfo, TSStatus> calculateConsistentInfo(File tsFile) {
       ConsistentSettleInfo values = new ConsistentSettleInfo();
       values.dataRegionId = TsFileUtils.getDataRegionId(tsFile);
       values.storageGroupName = TsFileUtils.getStorageGroup(tsFile);
@@ -252,9 +252,16 @@ public class SettleRequestHandler {
     }
 
     private List<TsFileResource> getTsFileResourcesByFileNames() {
-      return allTsFileResourceList.stream()
-          .filter(tsFileResource -> tsFileNames.contains(tsFileResource.getTsFile().getName()))
-          .collect(Collectors.toList());
+      List<TsFileResource> selectedTsFileResources = new ArrayList<>(tsFileNames.size());
+      for (TsFileResource tsFileResource : allTsFileResourceList) {
+        if (tsFileNames.contains(tsFileResource.getTsFile().getName())) {
+          selectedTsFileResources.add(tsFileResource);
+        }
+        if (selectedTsFileResources.size() == tsFileNames.size()) {
+          break;
+        }
+      }
+      return selectedTsFileResources;
     }
 
     private TSStatus submitCompactionTask(List<TsFileResource> tsFileResources) {
@@ -287,7 +294,7 @@ public class SettleRequestHandler {
     private String storageGroupName;
     private long timePartitionId;
 
-    private TSStatus isConsistent(ConsistentSettleInfo other) {
+    private TSStatus checkConsistency(ConsistentSettleInfo other) {
       if (this.dataRegionId != other.dataRegionId) {
         return RpcUtils.getStatus(
             TSStatusCode.ILLEGAL_PATH, "DataRegion of files is not consistent.");
