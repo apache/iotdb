@@ -19,7 +19,11 @@
 
 package org.apache.iotdb.metrics.config;
 
-import org.apache.iotdb.metrics.utils.*;
+import org.apache.iotdb.metrics.utils.InternalReporterType;
+import org.apache.iotdb.metrics.utils.MetricFrameType;
+import org.apache.iotdb.metrics.utils.MetricLevel;
+import org.apache.iotdb.metrics.utils.ReporterType;
+import org.apache.iotdb.metrics.utils.SystemType;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
