@@ -998,7 +998,7 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
   @Override
   public long countPathsUsingTemplate(PartialPath pathPattern, int templateId)
       throws MetadataException {
-    // TODO: delete it
+    // TODO: replace fake counter
     final int[] count = {0};
     EntityCollector<Void> collector =
         new EntityCollector<Void>(rootNode, pathPattern, store, false) {

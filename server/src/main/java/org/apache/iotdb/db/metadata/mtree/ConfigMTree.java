@@ -38,8 +38,6 @@ import org.apache.iotdb.db.metadata.mtree.store.MemMTreeStore;
 import org.apache.iotdb.db.metadata.mtree.traverser.collector.DatabaseCollector;
 import org.apache.iotdb.db.metadata.mtree.traverser.collector.MNodeAboveSGCollector;
 import org.apache.iotdb.db.metadata.mtree.traverser.collector.MNodeCollector;
-import org.apache.iotdb.db.metadata.mtree.traverser.counter.CounterTraverser;
-import org.apache.iotdb.db.metadata.mtree.traverser.counter.StorageGroupCounter;
 import org.apache.iotdb.db.metadata.utils.MetaFormatUtils;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -319,9 +317,19 @@ public class ConfigMTree {
    */
   public int getStorageGroupNum(PartialPath pathPattern, boolean isPrefixMatch)
       throws MetadataException {
-    CounterTraverser counter = new StorageGroupCounter(root, pathPattern, store, isPrefixMatch);
-    counter.traverse();
-    return (int) counter.getCount();
+    // TODO: replace fake counter
+    final int[] count = {0};
+    try (DatabaseCollector<Void> collector =
+        new DatabaseCollector<Void>(root, pathPattern, store, isPrefixMatch) {
+          @Override
+          protected void collectStorageGroup(IStorageGroupMNode node) {
+            count[0] += 1;
+          }
+        }) {
+      collector.traverse();
+    }
+    ;
+    return count[0];
   }
 
   /**
