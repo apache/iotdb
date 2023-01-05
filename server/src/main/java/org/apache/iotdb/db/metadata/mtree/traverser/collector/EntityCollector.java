@@ -29,9 +29,6 @@ import org.apache.iotdb.db.metadata.mtree.traverser.basic.EntityTraverser;
 // TODO: set R is IDeviceSchemaInfo
 public abstract class EntityCollector<R> extends EntityTraverser<R> {
 
-  private boolean usingTemplate = false;
-  private int schemaTemplateId = -1;
-
   protected EntityCollector(
       IMNode startNode, PartialPath path, IMTreeStore store, boolean isPrefixMatch)
       throws MetadataException {
@@ -42,11 +39,6 @@ public abstract class EntityCollector<R> extends EntityTraverser<R> {
   protected R generateResult(IMNode nextMatchedNode) {
     collectEntity(nextMatchedNode.getAsEntityMNode());
     return null;
-  }
-
-  public void setSchemaTemplateFilter(int schemaTemplateId) {
-    this.usingTemplate = true;
-    this.schemaTemplateId = schemaTemplateId;
   }
 
   protected abstract void collectEntity(IEntityMNode node);

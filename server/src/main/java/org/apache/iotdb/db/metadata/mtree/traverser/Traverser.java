@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.tree.AbstractTreeVisitor;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.iterator.IMNodeIterator;
+import org.apache.iotdb.db.metadata.mnode.iterator.MNodeIterator;
 import org.apache.iotdb.db.metadata.mtree.store.IMTreeStore;
 import org.apache.iotdb.db.metadata.template.Template;
 
@@ -119,7 +120,7 @@ public abstract class Traverser<R> extends AbstractTreeVisitor<IMNode, R> {
   @Override
   protected Iterator<IMNode> getChildrenIterator(IMNode parent) throws MetadataException {
     if (parent.isAboveDatabase()) {
-      return parent.getChildren().values().iterator();
+      return new MNodeIterator(parent.getChildren().values().iterator());
     } else {
       return store.getTraverserIterator(parent, templateMap, skipPreDeletedSchema);
     }

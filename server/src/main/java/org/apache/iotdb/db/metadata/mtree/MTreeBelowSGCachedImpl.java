@@ -47,10 +47,8 @@ import org.apache.iotdb.db.metadata.mtree.traverser.TraverserWithLimitOffsetWrap
 import org.apache.iotdb.db.metadata.mtree.traverser.collector.EntityCollector;
 import org.apache.iotdb.db.metadata.mtree.traverser.collector.MNodeCollector;
 import org.apache.iotdb.db.metadata.mtree.traverser.collector.MeasurementCollector;
-import org.apache.iotdb.db.metadata.mtree.traverser.counter.MeasurementGroupByLevelCounter;
 import org.apache.iotdb.db.metadata.mtree.traverser.updater.EntityUpdater;
 import org.apache.iotdb.db.metadata.mtree.traverser.updater.MeasurementUpdater;
-import org.apache.iotdb.db.metadata.mtree.traverser.counter.CounterTraverser;
 import org.apache.iotdb.db.metadata.plan.schemaregion.read.IShowDevicesPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.read.IShowTimeSeriesPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.result.ShowDevicesResult;

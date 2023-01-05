@@ -41,16 +41,6 @@ public abstract class EntityUpdater extends EntityTraverser<Void> implements Upd
   }
 
   @Override
-  public boolean hasNext() {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
-  public Void next() {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
   protected Void generateResult(IMNode nextMatchedNode) {
     try {
       updateEntity(nextMatchedNode.getAsEntityMNode());
@@ -66,6 +56,7 @@ public abstract class EntityUpdater extends EntityTraverser<Void> implements Upd
       super.next();
     }
     if (getFailure() != null) {
+      getFailure().printStackTrace();
       throw new MetadataException(getFailure());
     }
   }

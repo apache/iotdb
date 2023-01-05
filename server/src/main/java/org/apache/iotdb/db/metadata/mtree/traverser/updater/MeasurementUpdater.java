@@ -42,11 +42,6 @@ public abstract class MeasurementUpdater extends MeasurementTraverser<Void> impl
   }
 
   @Override
-  public Void next() {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
   protected Void generateResult(IMNode nextMatchedNode) {
     try {
       updateMeasurement(nextMatchedNode.getAsMeasurementMNode());
