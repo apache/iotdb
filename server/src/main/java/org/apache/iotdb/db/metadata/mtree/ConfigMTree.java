@@ -255,15 +255,16 @@ public class ConfigMTree {
       PartialPath pathPattern, boolean isPrefixMatch, boolean collectInternal)
       throws MetadataException {
     List<PartialPath> result = new LinkedList<>();
-    DatabaseCollector<List<PartialPath>> collector =
+    try (DatabaseCollector<List<PartialPath>> collector =
         new DatabaseCollector<List<PartialPath>>(root, pathPattern, store, isPrefixMatch) {
           @Override
           protected void collectStorageGroup(IStorageGroupMNode node) {
             result.add(node.getPartialPath());
           }
-        };
-    collector.setCollectInternal(collectInternal);
-    collector.traverse();
+        }) {
+      collector.setCollectInternal(collectInternal);
+      collector.traverse();
+    }
     return result;
   }
 
@@ -295,16 +296,17 @@ public class ConfigMTree {
   public Map<String, List<PartialPath>> groupPathByStorageGroup(PartialPath path)
       throws MetadataException {
     Map<String, List<PartialPath>> result = new HashMap<>();
-    DatabaseCollector<Map<String, String>> collector =
+    try (DatabaseCollector<Map<String, String>> collector =
         new DatabaseCollector<Map<String, String>>(root, path, store, false) {
           @Override
           protected void collectStorageGroup(IStorageGroupMNode node) {
             PartialPath sgPath = node.getPartialPath();
             result.put(sgPath.getFullPath(), path.alterPrefixPath(sgPath));
           }
-        };
-    collector.setCollectInternal(true);
-    collector.traverse();
+        }) {
+      collector.setCollectInternal(true);
+      collector.traverse();
+    }
     return result;
   }
 
@@ -379,15 +381,16 @@ public class ConfigMTree {
   public List<PartialPath> getInvolvedStorageGroupNodes(
       PartialPath pathPattern, boolean isPrefixMatch) throws MetadataException {
     List<PartialPath> result = new ArrayList<>();
-    DatabaseCollector<List<PartialPath>> collector =
+    try (DatabaseCollector<List<PartialPath>> collector =
         new DatabaseCollector<List<PartialPath>>(root, pathPattern, store, isPrefixMatch) {
           @Override
           protected void collectStorageGroup(IStorageGroupMNode node) {
             result.add(node.getPartialPath());
           }
-        };
-    collector.setCollectInternal(true);
-    collector.traverse();
+        }) {
+      collector.setCollectInternal(true);
+      collector.traverse();
+    }
     return result;
   }
 
@@ -488,17 +491,18 @@ public class ConfigMTree {
   public Pair<List<PartialPath>, Set<PartialPath>> getNodesListInGivenLevel(
       PartialPath pathPattern, int nodeLevel, boolean isPrefixMatch) throws MetadataException {
     List<PartialPath> result = new LinkedList<>();
-    MNodeAboveSGCollector<List<PartialPath>> collector =
+    try (MNodeAboveSGCollector<List<PartialPath>> collector =
         new MNodeAboveSGCollector<List<PartialPath>>(root, pathPattern, store, isPrefixMatch) {
           @Override
           protected void transferToResult(IMNode node) {
             result.add(getCurrentPartialPath());
           }
-        };
-    collector.setTargetLevel(nodeLevel);
-    collector.traverse();
+        }) {
 
-    return new Pair<>(result, collector.getInvolvedStorageGroupMNodes());
+      collector.setTargetLevel(nodeLevel);
+      collector.traverse();
+      return new Pair<>(result, collector.getInvolvedStorageGroupMNodes());
+    }
   }
 
   /**
@@ -516,21 +520,18 @@ public class ConfigMTree {
    */
   public Pair<Set<TSchemaNode>, Set<PartialPath>> getChildNodePathInNextLevel(
       PartialPath pathPattern) throws MetadataException {
-    try {
-      Set<TSchemaNode> result = new TreeSet<>();
-      MNodeAboveSGCollector<Set<TSchemaNode>> collector =
-          new MNodeAboveSGCollector<Set<TSchemaNode>>(
-              root, pathPattern.concatNode(ONE_LEVEL_PATH_WILDCARD), store, false) {
-            @Override
-            protected void transferToResult(IMNode node) {
-              result.add(
-                  new TSchemaNode(
-                      getCurrentPartialPath().getFullPath(),
-                      node.getMNodeType(true).getNodeType()));
-            }
-          };
+    Set<TSchemaNode> result = new TreeSet<>();
+    try (MNodeAboveSGCollector<Set<TSchemaNode>> collector =
+        new MNodeAboveSGCollector<Set<TSchemaNode>>(
+            root, pathPattern.concatNode(ONE_LEVEL_PATH_WILDCARD), store, false) {
+          @Override
+          protected void transferToResult(IMNode node) {
+            result.add(
+                new TSchemaNode(
+                    getCurrentPartialPath().getFullPath(), node.getMNodeType(true).getNodeType()));
+          }
+        }) {
       collector.traverse();
-
       return new Pair<>(result, collector.getInvolvedStorageGroupMNodes());
     } catch (IllegalPathException e) {
       throw new IllegalPathException(pathPattern.getFullPath());
@@ -552,16 +553,15 @@ public class ConfigMTree {
    */
   public Pair<Set<String>, Set<PartialPath>> getChildNodeNameInNextLevel(PartialPath pathPattern)
       throws MetadataException {
-    try {
-      Set<String> result = new TreeSet<>();
-      MNodeAboveSGCollector<Set<String>> collector =
-          new MNodeAboveSGCollector<Set<String>>(
-              root, pathPattern.concatNode(ONE_LEVEL_PATH_WILDCARD), store, false) {
-            @Override
-            protected void transferToResult(IMNode node) {
-              result.add(node.getName());
-            }
-          };
+    Set<String> result = new TreeSet<>();
+    try (MNodeAboveSGCollector<Set<String>> collector =
+        new MNodeAboveSGCollector<Set<String>>(
+            root, pathPattern.concatNode(ONE_LEVEL_PATH_WILDCARD), store, false) {
+          @Override
+          protected void transferToResult(IMNode node) {
+            result.add(node.getName());
+          }
+        }) {
       collector.traverse();
 
       return new Pair<>(result, collector.getInvolvedStorageGroupMNodes());
@@ -627,7 +627,7 @@ public class ConfigMTree {
   public List<String> getPathsSetOnTemplate(int templateId, boolean filterPreUnset)
       throws MetadataException {
     List<String> resSet = new ArrayList<>();
-    MNodeCollector<Set<String>> collector =
+    try (MNodeCollector<Set<String>> collector =
         new MNodeCollector<Set<String>>(root, new PartialPath(ALL_RESULT_NODES), store, false) {
           @Override
           protected boolean acceptFullMatchedNode(IMNode node) {
@@ -663,8 +663,9 @@ public class ConfigMTree {
             return (node.getSchemaTemplateId() == NON_TEMPLATE)
                 && super.shouldVisitSubtreeOfFullMatchedNode(node);
           }
-        };
-    collector.traverse();
+        }) {
+      collector.traverse();
+    }
     return resSet;
   }
 
@@ -672,7 +673,7 @@ public class ConfigMTree {
   public Map<Integer, Set<PartialPath>> getTemplateSetInfo(PartialPath pathPattern)
       throws MetadataException {
     Map<Integer, Set<PartialPath>> result = new HashMap<>();
-    MNodeCollector<List<Integer>> collector =
+    try (MNodeCollector<List<Integer>> collector =
         new MNodeCollector<List<Integer>>(root, pathPattern, store, false) {
           @Override
           protected boolean acceptFullMatchedNode(IMNode node) {
@@ -706,8 +707,9 @@ public class ConfigMTree {
             return (node.getSchemaTemplateId() == NON_TEMPLATE)
                 && super.shouldVisitSubtreeOfFullMatchedNode(node);
           }
-        };
-    collector.traverse();
+        }) {
+      collector.traverse();
+    }
     return result;
   }
 
