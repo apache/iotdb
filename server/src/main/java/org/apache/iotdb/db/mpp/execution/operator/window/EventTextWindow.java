@@ -50,6 +50,8 @@ public abstract class EventTextWindow extends EventWindow {
     }
     // judge whether we need initialize eventValue
     if (!initializedEventValue) {
+      startTime = currentTime;
+      endTime = currentTime;
       eventValue = controlTimeAndValueColumn[0].getBinary(index);
       initializedEventValue = true;
     }

@@ -34,10 +34,6 @@ public abstract class EventFloatWindowManager extends EventWindowManager {
   @Override
   public void appendAggregationResult(
       TsBlockBuilder resultTsBlockBuilder, List<Aggregator> aggregators) {
-    // If we have appended aggregation result to resultTsBlockBuilder, we need return directly.
-    if (this.hasAppendedResult) {
-      return;
-    }
     // Append aggregation results to valueColumnBuilders.
     ColumnBuilder[] columnBuilders =
         appendOriginAggregationResult(resultTsBlockBuilder, aggregators);

@@ -36,8 +36,6 @@ public abstract class EventWindowManager implements IWindowManager {
 
   protected boolean needSkip;
 
-  protected boolean hasAppendedResult;
-
   protected EventWindowParameter eventWindowParameter;
 
   protected EventWindow eventWindow;
@@ -48,7 +46,6 @@ public abstract class EventWindowManager implements IWindowManager {
     this.ascending = ascending;
     // At beginning, we do not need to skip inputTsBlock
     this.needSkip = false;
-    this.hasAppendedResult = false;
   }
 
   @Override
@@ -59,7 +56,6 @@ public abstract class EventWindowManager implements IWindowManager {
   @Override
   public void initCurWindow(TsBlock tsBlock) {
     this.initialized = true;
-    this.hasAppendedResult = false;
     this.eventWindow.setInitializedEventValue(false);
   }
 
@@ -127,7 +123,6 @@ public abstract class EventWindowManager implements IWindowManager {
       aggregator.outputResult(columnBuilder);
     }
     resultTsBlockBuilder.declarePosition();
-    this.hasAppendedResult = true;
     return columnBuilders;
   }
 

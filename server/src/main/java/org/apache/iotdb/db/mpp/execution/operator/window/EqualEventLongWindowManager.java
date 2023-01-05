@@ -21,6 +21,7 @@ package org.apache.iotdb.db.mpp.execution.operator.window;
 
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
+import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
 
 public class EqualEventLongWindowManager extends EventLongWindowManager {
 
@@ -40,12 +41,17 @@ public class EqualEventLongWindowManager extends EventLongWindowManager {
     }
 
     Column controlColumn = inputTsBlock.getColumn(eventWindowParameter.getControlColumnIndex());
+    TimeColumn timeColumn = inputTsBlock.getTimeColumn();
     int i = 0, size = inputTsBlock.getPositionCount();
+    long previousEventValue = ((EqualEventLongWindow) eventWindow).getPreviousEventValue();
     for (; i < size; i++) {
-      if (!controlColumn.isNull(i)
-          && controlColumn.getLong(i)
-              != ((EqualEventLongWindow) eventWindow).getPreviousEventValue()) {
+      if (!controlColumn.isNull(i) && controlColumn.getLong(i) != previousEventValue) {
         break;
+      }
+      // judge whether we need update endTime
+      long currentTime = timeColumn.getLong(i);
+      if (eventWindow.getEndTime() < currentTime) {
+        eventWindow.setEndTime(currentTime);
       }
     }
     // we can create a new window beginning at index i of inputTsBlock

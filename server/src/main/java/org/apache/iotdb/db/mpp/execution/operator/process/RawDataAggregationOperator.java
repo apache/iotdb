@@ -62,7 +62,7 @@ public class RawDataAggregationOperator extends SingleInputAggregationOperator {
   }
 
   private boolean hasMoreData() {
-    return inputTsBlock != null || child.hasNextWithTimer();
+    return !(inputTsBlock == null || inputTsBlock.isEmpty()) || child.hasNextWithTimer();
   }
 
   @Override

@@ -351,7 +351,7 @@ public class RawDataAggregationOperatorTest {
     }
     GroupByTimeParameter groupByTimeParameter = new GroupByTimeParameter(0, 399, 100, 100, true);
 
-    WindowParameter windowParameter = new TimeWindowParameter(TSDataType.INT64, 0, false);
+    WindowParameter windowParameter = new TimeWindowParameter(TSDataType.INT64, 0, true);
 
     RawDataAggregationOperator rawDataAggregationOperator =
         initRawDataAggregationOperator(
@@ -366,7 +366,11 @@ public class RawDataAggregationOperatorTest {
       for (int row = 0; row < resultTsBlock.getPositionCount(); row++, count++) {
         assertEquals(100 * count, resultTsBlock.getTimeColumn().getLong(row));
         // endTime
-        assertEquals(100L * count + 99, resultTsBlock.getColumn(0).getLong(row));
+        long endTime = 100L * count + 99;
+        if (count == 3) {
+          endTime = 398;
+        }
+        assertEquals(endTime, resultTsBlock.getColumn(0).getLong(row));
         for (int i = 0; i < 2; i++) {
           assertEquals(result[0][count], resultTsBlock.getColumn(8 * i + 1).getLong(row));
           assertEquals(result[1][count], resultTsBlock.getColumn(8 * i + 2).getDouble(row), 0.0001);
@@ -409,7 +413,7 @@ public class RawDataAggregationOperatorTest {
     }
     GroupByTimeParameter groupByTimeParameter = new GroupByTimeParameter(0, 600, 100, 100, true);
 
-    WindowParameter windowParameter = new TimeWindowParameter(TSDataType.INT64, 0, false);
+    WindowParameter windowParameter = new TimeWindowParameter(TSDataType.INT64, 0, true);
 
     RawDataAggregationOperator rawDataAggregationOperator =
         initRawDataAggregationOperator(

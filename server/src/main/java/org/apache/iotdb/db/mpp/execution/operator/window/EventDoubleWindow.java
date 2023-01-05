@@ -49,6 +49,8 @@ public abstract class EventDoubleWindow extends EventWindow {
     }
     // judge whether we need initialize eventValue
     if (!initializedEventValue) {
+      startTime = currentTime;
+      endTime = currentTime;
       eventValue = controlTimeAndValueColumn[0].getDouble(index);
       initializedEventValue = true;
     }

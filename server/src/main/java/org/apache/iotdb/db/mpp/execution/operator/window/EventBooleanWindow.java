@@ -49,6 +49,8 @@ public abstract class EventBooleanWindow extends EventWindow {
     }
     // judge whether we need initialize eventValue
     if (!initializedEventValue) {
+      startTime = currentTime;
+      endTime = currentTime;
       eventValue = controlTimeAndValueColumn[0].getBoolean(index);
       initializedEventValue = true;
     }

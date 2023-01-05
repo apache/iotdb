@@ -44,6 +44,10 @@ public class TimeWindowManager implements IWindowManager {
 
   private TimeWindowParameter timeWindowParameter;
 
+  private long startTime;
+
+  private long endTime;
+
   public TimeWindowManager(
       ITimeRangeIterator timeRangeIterator, TimeWindowParameter timeWindowParameter) {
     this.timeRangeIterator = timeRangeIterator;
@@ -76,6 +80,8 @@ public class TimeWindowManager implements IWindowManager {
     // belong to previous window have been consumed. If not, we need skip these points.
     this.needSkip = true;
     this.initialized = false;
+    this.startTime = this.curWindow.getCurMinTime();
+    this.endTime = this.curWindow.getCurMaxTime();
     this.curWindow.update(this.timeRangeIterator.nextTimeRange());
   }
 
@@ -144,7 +150,7 @@ public class TimeWindowManager implements IWindowManager {
     if (timeWindowParameter.isNeedOutputEndTime()) {
       dataTypes.add(0, TSDataType.INT64);
     }
-    return new TsBlockBuilder(getResultDataTypes(aggregators));
+    return new TsBlockBuilder(dataTypes);
   }
 
   @Override
@@ -152,11 +158,11 @@ public class TimeWindowManager implements IWindowManager {
       TsBlockBuilder resultTsBlockBuilder, List<Aggregator> aggregators) {
     TimeColumnBuilder timeColumnBuilder = resultTsBlockBuilder.getTimeColumnBuilder();
     // Use start time of current time range as time column
-    timeColumnBuilder.writeLong(this.curWindow.getCurMinTime());
+    timeColumnBuilder.writeLong(startTime);
     ColumnBuilder[] columnBuilders = resultTsBlockBuilder.getValueColumnBuilders();
     int columnIndex = 0;
     if (timeWindowParameter.isNeedOutputEndTime()) {
-      columnBuilders[0].writeLong(this.curWindow.getCurMaxTime());
+      columnBuilders[0].writeLong(endTime);
       columnIndex = 1;
     }
     for (Aggregator aggregator : aggregators) {

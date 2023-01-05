@@ -21,6 +21,7 @@ package org.apache.iotdb.db.mpp.execution.operator.window;
 
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
+import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
 
 public class VariationEventIntWindowManager extends EventIntWindowManager {
 
@@ -41,14 +42,19 @@ public class VariationEventIntWindowManager extends EventIntWindowManager {
     }
 
     Column controlColumn = inputTsBlock.getColumn(eventWindowParameter.getControlColumnIndex());
+    TimeColumn timeColumn = inputTsBlock.getTimeColumn();
     int i = 0, size = inputTsBlock.getPositionCount();
+    int previousEventValue = ((VariationEventIntWindow) eventWindow).getPreviousEventValue();
     for (; i < size; i++) {
       if (!controlColumn.isNull(i)
-          && Math.abs(
-                  controlColumn.getInt(i)
-                      - ((VariationEventIntWindow) eventWindow).getPreviousEventValue())
+          && Math.abs(controlColumn.getInt(i) - previousEventValue)
               > eventWindowParameter.getDelta()) {
         break;
+      }
+      // judge whether we need update endTime
+      long currentTime = timeColumn.getLong(i);
+      if (eventWindow.getEndTime() < currentTime) {
+        eventWindow.setEndTime(currentTime);
       }
     }
     // we can create a new window beginning at index i of inputTsBlock
