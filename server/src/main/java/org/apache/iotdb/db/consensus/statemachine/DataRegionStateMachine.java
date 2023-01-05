@@ -55,7 +55,6 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.PriorityQueue;
@@ -326,7 +325,7 @@ public class DataRegionStateMachine extends BaseStateMachine {
           region.getDatabaseName(),
           region.getDataRegionId(),
           e);
-      return Collections.emptyList();
+      return null;
     }
   }
 

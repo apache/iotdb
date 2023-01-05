@@ -197,10 +197,10 @@ public class IoTDBConfig {
   private int walBufferQueueCapacity = 50;
 
   /** Size threshold of each wal file. Unit: byte */
-  private volatile long walFileSizeThresholdInByte = 10 * 1024L * 1024;
+  private volatile long walFileSizeThresholdInByte = 10 * 1024 * 1024L;
 
   /** Size threshold of each checkpoint file. Unit: byte */
-  private volatile long checkpointFileSizeThresholdInByte = 3 * 1024L * 1024;
+  private volatile long checkpointFileSizeThresholdInByte = 3 * 1024 * 1024L;
 
   /** Minimum ratio of effective information in wal files */
   private volatile double walMinEffectiveInfoRatio = 0.1;
@@ -210,7 +210,7 @@ public class IoTDBConfig {
    * this, wal can flush this memtable to disk, otherwise wal will snapshot this memtable in wal.
    * Unit: byte
    */
-  private volatile long walMemTableSnapshotThreshold = 8 * 1024L * 1024;
+  private volatile long walMemTableSnapshotThreshold = 8 * 1024 * 1024L;
 
   /** MemTable's max snapshot number in wal file */
   private volatile int maxWalMemTableSnapshotNum = 1;
