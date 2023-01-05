@@ -180,6 +180,7 @@ public class DriverScheduler implements IDriverScheduler, IService {
         }
         timeoutQueue.push(task);
         readyQueue.push(task);
+        task.setLastEnterReadyQueueTime(System.nanoTime());
       } finally {
         task.unlock();
       }
