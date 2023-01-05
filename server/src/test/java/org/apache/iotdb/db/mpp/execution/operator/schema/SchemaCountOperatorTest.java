@@ -77,16 +77,17 @@ public class SchemaCountOperatorTest {
       ISchemaRegion schemaRegion = Mockito.mock(ISchemaRegion.class);
 
       List<IDeviceSchemaInfo> deviceSchemaInfoList = new ArrayList<>(10);
-      for (int i = 0; i < 10; i++){
+      for (int i = 0; i < 10; i++) {
         deviceSchemaInfoList.add(Mockito.mock(IDeviceSchemaInfo.class));
       }
       Iterator<IDeviceSchemaInfo> iterator = deviceSchemaInfoList.iterator();
-      Mockito.when(schemaRegion.getDeviceReader(SchemaRegionReadPlanFactory.getShowDevicesPlan(partialPath, true))).thenReturn(
+      Mockito.when(
+              schemaRegion.getDeviceReader(
+                  SchemaRegionReadPlanFactory.getShowDevicesPlan(partialPath, true)))
+          .thenReturn(
               new ISchemaReader<IDeviceSchemaInfo>() {
                 @Override
-                public void close() throws Exception {
-
-                }
+                public void close() throws Exception {}
 
                 @Override
                 public boolean hasNext() {
@@ -97,8 +98,7 @@ public class SchemaCountOperatorTest {
                 public IDeviceSchemaInfo next() {
                   return iterator.next();
                 }
-              }
-      );
+              });
 
       operatorContext
           .getInstanceContext()
@@ -138,7 +138,11 @@ public class SchemaCountOperatorTest {
               1, planNodeId, TimeSeriesCountOperator.class.getSimpleName());
       PartialPath partialPath = new PartialPath(SCHEMA_COUNT_OPERATOR_TEST_SG);
       ISchemaRegion schemaRegion = Mockito.mock(ISchemaRegion.class);
-      Mockito.when(schemaRegion.getTimeSeriesReader(SchemaRegionReadPlanFactory.getShowTimeSeriesPlan(partialPath, Collections.emptyMap(), false, null, null, 0, 0, true))).thenReturn(mockTimeSeriesReader(100));
+      Mockito.when(
+              schemaRegion.getTimeSeriesReader(
+                  SchemaRegionReadPlanFactory.getShowTimeSeriesPlan(
+                      partialPath, Collections.emptyMap(), false, null, null, 0, 0, true)))
+          .thenReturn(mockTimeSeriesReader(100));
       operatorContext
           .getInstanceContext()
           .setDriverContext(new SchemaDriverContext(fragmentInstanceContext, schemaRegion));
@@ -159,7 +163,18 @@ public class SchemaCountOperatorTest {
       assertNotNull(tsBlock);
       assertEquals(100, tsBlock.getColumn(0).getLong(0));
 
-      Mockito.when(schemaRegion.getTimeSeriesReader(SchemaRegionReadPlanFactory.getShowTimeSeriesPlan(new PartialPath(SCHEMA_COUNT_OPERATOR_TEST_SG + ".device1.*"), Collections.emptyMap(), false, null, null, 0, 0, false))).thenReturn(mockTimeSeriesReader(10));
+      Mockito.when(
+              schemaRegion.getTimeSeriesReader(
+                  SchemaRegionReadPlanFactory.getShowTimeSeriesPlan(
+                      new PartialPath(SCHEMA_COUNT_OPERATOR_TEST_SG + ".device1.*"),
+                      Collections.emptyMap(),
+                      false,
+                      null,
+                      null,
+                      0,
+                      0,
+                      false)))
+          .thenReturn(mockTimeSeriesReader(10));
       TimeSeriesCountOperator timeSeriesCountOperator2 =
           new TimeSeriesCountOperator(
               planNodeId,
@@ -182,17 +197,15 @@ public class SchemaCountOperatorTest {
     }
   }
 
-  private ISchemaReader<ITimeSeriesSchemaInfo> mockTimeSeriesReader(int expectedCount){
+  private ISchemaReader<ITimeSeriesSchemaInfo> mockTimeSeriesReader(int expectedCount) {
     List<ITimeSeriesSchemaInfo> timeSeriesSchemaInfoList = new ArrayList<>(expectedCount);
-    for (int i = 0; i < expectedCount; i++){
+    for (int i = 0; i < expectedCount; i++) {
       timeSeriesSchemaInfoList.add(Mockito.mock(ITimeSeriesSchemaInfo.class));
     }
     Iterator<ITimeSeriesSchemaInfo> iterator = timeSeriesSchemaInfoList.iterator();
     return new ISchemaReader<ITimeSeriesSchemaInfo>() {
       @Override
-      public void close() throws Exception {
-
-      }
+      public void close() throws Exception {}
 
       @Override
       public boolean hasNext() {

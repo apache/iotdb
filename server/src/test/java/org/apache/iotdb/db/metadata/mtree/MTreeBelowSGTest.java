@@ -449,63 +449,6 @@ public abstract class MTreeBelowSGTest {
   }
 
   @Test
-  public void testCountEntity() throws MetadataException {
-    storageGroup = getStorageGroup(new PartialPath("root.laptop"));
-    storageGroup.createTimeseries(
-        new PartialPath("root.laptop.s1"),
-        TSDataType.INT32,
-        TSEncoding.PLAIN,
-        CompressionType.GZIP,
-        null,
-        null);
-    storageGroup.createTimeseries(
-        new PartialPath("root.laptop.d1.s1"),
-        TSDataType.INT32,
-        TSEncoding.PLAIN,
-        CompressionType.GZIP,
-        null,
-        null);
-    storageGroup.createTimeseries(
-        new PartialPath("root.laptop.d2.s1.t1"),
-        TSDataType.INT32,
-        TSEncoding.PLAIN,
-        CompressionType.GZIP,
-        null,
-        null);
-    storageGroup.createTimeseries(
-        new PartialPath("root.laptop.d2.s2"),
-        TSDataType.INT32,
-        TSEncoding.PLAIN,
-        CompressionType.GZIP,
-        null,
-        null);
-    storageGroup.createTimeseries(
-        new PartialPath("root.laptop.a.d1.s1"),
-        TSDataType.INT32,
-        TSEncoding.PLAIN,
-        CompressionType.GZIP,
-        null,
-        null);
-
-    Assert.assertEquals(0, storageGroup.getDevicesNum(new PartialPath("root"), false));
-    Assert.assertEquals(1, storageGroup.getDevicesNum(new PartialPath("root.laptop"), false));
-    Assert.assertEquals(0, storageGroup.getDevicesNum(new PartialPath("root.laptop.s1"), false));
-    Assert.assertEquals(1, storageGroup.getDevicesNum(new PartialPath("root.laptop.d1"), false));
-    Assert.assertEquals(2, storageGroup.getDevicesNum(new PartialPath("root.laptop.*"), false));
-    Assert.assertEquals(2, storageGroup.getDevicesNum(new PartialPath("root.laptop.*.*"), false));
-    Assert.assertEquals(0, storageGroup.getDevicesNum(new PartialPath("root.laptop.*.*.*"), false));
-    Assert.assertEquals(4, storageGroup.getDevicesNum(new PartialPath("root.laptop.**"), false));
-    Assert.assertEquals(5, storageGroup.getDevicesNum(new PartialPath("root.**"), false));
-    Assert.assertEquals(4, storageGroup.getDevicesNum(new PartialPath("root.**.*"), false));
-    Assert.assertEquals(4, storageGroup.getDevicesNum(new PartialPath("root.*.**"), false));
-    Assert.assertEquals(2, storageGroup.getDevicesNum(new PartialPath("root.**.d1"), false));
-    Assert.assertEquals(1, storageGroup.getDevicesNum(new PartialPath("root.laptop.*.d1"), false));
-    Assert.assertEquals(3, storageGroup.getDevicesNum(new PartialPath("root.**.d*"), false));
-    Assert.assertEquals(1, storageGroup.getDevicesNum(new PartialPath("root.laptop.**.s1"), false));
-    Assert.assertEquals(1, storageGroup.getDevicesNum(new PartialPath("root.*.d2.*"), false));
-  }
-
-  @Test
   public void testGetNodeListInLevel() throws MetadataException {
 
     storageGroup = getStorageGroup(new PartialPath("root.sg1"));
