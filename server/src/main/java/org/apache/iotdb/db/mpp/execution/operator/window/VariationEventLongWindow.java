@@ -23,8 +23,8 @@ import org.apache.iotdb.tsfile.read.common.block.column.Column;
 
 public class VariationEventLongWindow extends EventLongWindow {
 
-  public VariationEventLongWindow(WindowParameter windowParameter) {
-    super(windowParameter);
+  public VariationEventLongWindow(EventWindowParameter eventWindowParameter) {
+    super(eventWindowParameter);
   }
 
   @Override
@@ -32,6 +32,6 @@ public class VariationEventLongWindow extends EventLongWindow {
     if (!initializedEventValue) {
       return true;
     }
-    return Math.abs(column.getLong(index) - eventValue) <= windowParameter.getDelta();
+    return Math.abs(column.getLong(index) - eventValue) <= eventWindowParameter.getDelta();
   }
 }

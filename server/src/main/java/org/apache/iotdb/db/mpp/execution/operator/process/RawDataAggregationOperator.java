@@ -25,12 +25,12 @@ import org.apache.iotdb.db.mpp.execution.operator.Operator;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.execution.operator.window.IWindow;
 import org.apache.iotdb.db.mpp.execution.operator.window.IWindowManager;
-import org.apache.iotdb.db.mpp.execution.operator.window.WindowManagerFactory;
 import org.apache.iotdb.db.mpp.execution.operator.window.WindowParameter;
 
 import java.util.List;
 
 import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.isAllAggregatorsHasFinalResult;
+import static org.apache.iotdb.db.mpp.execution.operator.window.WindowManagerFactory.genWindowManager;
 
 /**
  * RawDataAggregationOperator is used to process raw data tsBlock input calculating using value
@@ -57,8 +57,7 @@ public class RawDataAggregationOperator extends SingleInputAggregationOperator {
       long maxReturnSize,
       WindowParameter windowParameter) {
     super(operatorContext, aggregators, child, ascending, maxReturnSize);
-    this.windowManager =
-        new WindowManagerFactory().genWindowManager(windowParameter, timeRangeIterator);
+    this.windowManager = genWindowManager(windowParameter, timeRangeIterator);
     this.resultTsBlockBuilder = windowManager.createResultTsBlockBuilder(aggregators);
   }
 

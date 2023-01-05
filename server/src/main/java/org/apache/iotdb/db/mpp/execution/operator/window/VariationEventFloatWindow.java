@@ -23,8 +23,8 @@ import org.apache.iotdb.tsfile.read.common.block.column.Column;
 
 public class VariationEventFloatWindow extends EventFloatWindow {
 
-  public VariationEventFloatWindow(WindowParameter windowParameter) {
-    super(windowParameter);
+  public VariationEventFloatWindow(EventWindowParameter eventWindowParameter) {
+    super(eventWindowParameter);
   }
 
   @Override
@@ -32,6 +32,6 @@ public class VariationEventFloatWindow extends EventFloatWindow {
     if (!initializedEventValue) {
       return true;
     }
-    return Math.abs(column.getFloat(index) - eventValue) <= windowParameter.getDelta();
+    return Math.abs(column.getFloat(index) - eventValue) <= eventWindowParameter.getDelta();
   }
 }

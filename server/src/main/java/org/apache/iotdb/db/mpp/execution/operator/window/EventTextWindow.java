@@ -28,8 +28,8 @@ public abstract class EventTextWindow extends EventWindow {
 
   private Binary previousEventValue;
 
-  public EventTextWindow(WindowParameter windowParameter) {
-    super(windowParameter);
+  public EventTextWindow(EventWindowParameter eventWindowParameter) {
+    super(eventWindowParameter);
   }
 
   @Override
@@ -41,8 +41,12 @@ public abstract class EventTextWindow extends EventWindow {
   public void mergeOnePoint(Column[] controlTimeAndValueColumn, int index) {
     long currentTime = controlTimeAndValueColumn[1].getLong(index);
     // judge whether we need update startTime
-    if (startTime < currentTime) {
+    if (startTime > currentTime) {
       startTime = currentTime;
+    }
+    // judge whether we need update endTime
+    if (endTime < currentTime) {
+      endTime = currentTime;
     }
     // judge whether we need initialize eventValue
     if (!initializedEventValue) {

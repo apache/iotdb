@@ -23,8 +23,8 @@ import org.apache.iotdb.tsfile.read.common.block.column.Column;
 
 public class EqualEventIntWindow extends EventIntWindow {
 
-  public EqualEventIntWindow(WindowParameter windowParameter) {
-    super(windowParameter);
+  public EqualEventIntWindow(EventWindowParameter eventWindowParameter) {
+    super(eventWindowParameter);
   }
 
   @Override

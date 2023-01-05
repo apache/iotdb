@@ -24,9 +24,10 @@ import org.apache.iotdb.tsfile.read.common.block.column.Column;
 
 public class VariationEventIntWindowManager extends EventIntWindowManager {
 
-  public VariationEventIntWindowManager(WindowParameter windowParameter, boolean ascending) {
-    super(windowParameter, ascending);
-    eventWindow = new VariationEventIntWindow(windowParameter);
+  public VariationEventIntWindowManager(
+      EventWindowParameter eventWindowParameter, boolean ascending) {
+    super(eventWindowParameter, ascending);
+    eventWindow = new VariationEventIntWindow(eventWindowParameter);
   }
 
   @Override
@@ -39,14 +40,14 @@ public class VariationEventIntWindowManager extends EventIntWindowManager {
       return inputTsBlock;
     }
 
-    Column controlColumn = inputTsBlock.getColumn(windowParameter.getControlColumnIndex());
+    Column controlColumn = inputTsBlock.getColumn(eventWindowParameter.getControlColumnIndex());
     int i = 0, size = inputTsBlock.getPositionCount();
     for (; i < size; i++) {
       if (!controlColumn.isNull(i)
           && Math.abs(
                   controlColumn.getInt(i)
                       - ((VariationEventIntWindow) eventWindow).getPreviousEventValue())
-              > windowParameter.getDelta()) {
+              > eventWindowParameter.getDelta()) {
         break;
       }
     }

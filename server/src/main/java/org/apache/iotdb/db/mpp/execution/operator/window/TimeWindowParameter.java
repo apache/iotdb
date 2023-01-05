@@ -17,13 +17,15 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.execution.operator.exception;
+package org.apache.iotdb.db.mpp.execution.operator.window;
 
-import org.apache.iotdb.db.mpp.execution.operator.window.WindowType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
-public class UnSupportedEventAggregationWindowTypeException extends RuntimeException {
+public class TimeWindowParameter extends WindowParameter {
 
-  public UnSupportedEventAggregationWindowTypeException(WindowType windowType) {
-    super(String.format("Unsupported window type in event aggregation: %s", windowType));
+  public TimeWindowParameter(
+      TSDataType dataType, int controlColumnIndex, boolean needOutputEndTime) {
+    super(dataType, controlColumnIndex, needOutputEndTime);
+    this.windowType = WindowType.TIME_WINDOW;
   }
 }

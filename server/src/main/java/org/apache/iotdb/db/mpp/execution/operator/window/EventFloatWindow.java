@@ -27,8 +27,8 @@ public abstract class EventFloatWindow extends EventWindow {
 
   private float previousEventValue;
 
-  public EventFloatWindow(WindowParameter windowParameter) {
-    super(windowParameter);
+  public EventFloatWindow(EventWindowParameter eventWindowParameter) {
+    super(eventWindowParameter);
   }
 
   @Override
@@ -40,8 +40,12 @@ public abstract class EventFloatWindow extends EventWindow {
   public void mergeOnePoint(Column[] controlTimeAndValueColumn, int index) {
     long currentTime = controlTimeAndValueColumn[1].getLong(index);
     // judge whether we need update startTime
-    if (startTime < currentTime) {
+    if (startTime > currentTime) {
       startTime = currentTime;
+    }
+    // judge whether we need update endTime
+    if (endTime < currentTime) {
+      endTime = currentTime;
     }
     // judge whether we need initialize eventValue
     if (!initializedEventValue) {

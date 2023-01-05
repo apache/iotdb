@@ -27,8 +27,8 @@ import java.util.List;
 
 public abstract class EventLongWindowManager extends EventWindowManager {
 
-  public EventLongWindowManager(WindowParameter windowParameter, boolean ascending) {
-    super(windowParameter, ascending);
+  public EventLongWindowManager(EventWindowParameter eventWindowParameter, boolean ascending) {
+    super(eventWindowParameter, ascending);
   }
 
   @Override
@@ -42,7 +42,7 @@ public abstract class EventLongWindowManager extends EventWindowManager {
     ColumnBuilder[] columnBuilders =
         appendOriginAggregationResult(resultTsBlockBuilder, aggregators);
     // Judge whether we need output event column.
-    if (windowParameter.isNeedOutputEvent()) {
+    if (eventWindowParameter.isNeedOutputEvent()) {
       columnBuilders[columnBuilders.length - 1].writeLong(
           ((EventLongWindow) eventWindow).getEventValue());
     }

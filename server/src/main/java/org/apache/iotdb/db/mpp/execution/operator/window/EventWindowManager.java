@@ -38,12 +38,12 @@ public abstract class EventWindowManager implements IWindowManager {
 
   protected boolean hasAppendedResult;
 
-  protected WindowParameter windowParameter;
+  protected EventWindowParameter eventWindowParameter;
 
   protected EventWindow eventWindow;
 
-  protected EventWindowManager(WindowParameter windowParameter, boolean ascending) {
-    this.windowParameter = windowParameter;
+  protected EventWindowManager(EventWindowParameter eventWindowParameter, boolean ascending) {
+    this.eventWindowParameter = eventWindowParameter;
     this.initialized = false;
     this.ascending = ascending;
     // At beginning, we do not need to skip inputTsBlock
@@ -95,9 +95,13 @@ public abstract class EventWindowManager implements IWindowManager {
   @Override
   public TsBlockBuilder createResultTsBlockBuilder(List<Aggregator> aggregators) {
     List<TSDataType> dataTypes = getResultDataTypes(aggregators);
+    // Judge whether we need output endTime column.
+    if (eventWindowParameter.isNeedOutputEndTime()) {
+      dataTypes.add(0, TSDataType.INT64);
+    }
     // Judge whether we need output event column.
-    if (windowParameter.isNeedOutputEvent()) {
-      dataTypes.add(windowParameter.getDataType());
+    if (eventWindowParameter.isNeedOutputEvent()) {
+      dataTypes.add(eventWindowParameter.getDataType());
     }
     return new TsBlockBuilder(dataTypes);
   }
@@ -110,6 +114,10 @@ public abstract class EventWindowManager implements IWindowManager {
 
     ColumnBuilder[] columnBuilders = resultTsBlockBuilder.getValueColumnBuilders();
     int columnIndex = 0;
+    if (eventWindowParameter.isNeedOutputEndTime()) {
+      columnBuilders[0].writeLong(eventWindow.getEndTime());
+      columnIndex = 1;
+    }
     for (Aggregator aggregator : aggregators) {
       ColumnBuilder[] columnBuilder = new ColumnBuilder[aggregator.getOutputType().length];
       columnBuilder[0] = columnBuilders[columnIndex++];
@@ -130,6 +138,6 @@ public abstract class EventWindowManager implements IWindowManager {
 
   @Override
   public boolean needSkipInAdvance() {
-    return windowParameter.isNeedOutputEndTime();
+    return eventWindowParameter.isNeedOutputEndTime();
   }
 }

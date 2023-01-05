@@ -21,44 +21,24 @@ package org.apache.iotdb.db.mpp.execution.operator.window;
 
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
-public class WindowParameter {
-  private WindowType windowType;
+public abstract class WindowParameter {
+
+  protected WindowType windowType;
 
   private TSDataType dataType;
 
-  private CompareType compareType;
-
   private int controlColumnIndex;
-
-  private boolean needOutputEvent;
 
   private boolean needOutputEndTime;
 
-  private double delta;
-
-  public WindowParameter(
-      WindowType windowType,
-      TSDataType dataType,
-      CompareType compareType,
-      int controlColumnIndex,
-      boolean needOutputEvent,
-      boolean needOutputEndTime,
-      double delta) {
-    this.windowType = windowType;
+  public WindowParameter(TSDataType dataType, int controlColumnIndex, boolean needOutputEndTime) {
     this.dataType = dataType;
-    this.compareType = compareType;
     this.controlColumnIndex = controlColumnIndex;
-    this.needOutputEvent = needOutputEvent;
     this.needOutputEndTime = needOutputEndTime;
-    this.delta = delta;
   }
 
   public WindowType getWindowType() {
     return windowType;
-  }
-
-  public void setWindowType(WindowType windowType) {
-    this.windowType = windowType;
   }
 
   public TSDataType getDataType() {
@@ -69,14 +49,6 @@ public class WindowParameter {
     this.dataType = dataType;
   }
 
-  public CompareType getCompareType() {
-    return compareType;
-  }
-
-  public void setCompareType(CompareType compareType) {
-    this.compareType = compareType;
-  }
-
   public int getControlColumnIndex() {
     return controlColumnIndex;
   }
@@ -85,27 +57,11 @@ public class WindowParameter {
     this.controlColumnIndex = controlColumnIndex;
   }
 
-  public boolean isNeedOutputEvent() {
-    return needOutputEvent;
-  }
-
-  public void setNeedOutputEvent(boolean needOutputEvent) {
-    this.needOutputEvent = needOutputEvent;
-  }
-
   public boolean isNeedOutputEndTime() {
     return needOutputEndTime;
   }
 
   public void setNeedOutputEndTime(boolean needOutputEndTime) {
     this.needOutputEndTime = needOutputEndTime;
-  }
-
-  public double getDelta() {
-    return delta;
-  }
-
-  public void setDelta(double delta) {
-    this.delta = delta;
   }
 }

@@ -25,19 +25,21 @@ import org.apache.iotdb.tsfile.read.common.block.column.Column;
 
 public abstract class EventWindow implements IWindow {
 
-  protected WindowParameter windowParameter;
+  protected EventWindowParameter eventWindowParameter;
 
   protected long startTime;
 
+  protected long endTime;
+
   protected boolean initializedEventValue;
 
-  protected EventWindow(WindowParameter windowParameter) {
-    this.windowParameter = windowParameter;
+  protected EventWindow(EventWindowParameter eventWindowParameter) {
+    this.eventWindowParameter = eventWindowParameter;
   }
 
   @Override
   public Column getControlColumn(TsBlock tsBlock) {
-    return tsBlock.getColumn(windowParameter.getControlColumnIndex());
+    return tsBlock.getColumn(eventWindowParameter.getControlColumnIndex());
   }
 
   @Override
@@ -59,6 +61,14 @@ public abstract class EventWindow implements IWindow {
 
   public void setStartTime(long startTime) {
     this.startTime = startTime;
+  }
+
+  public long getEndTime() {
+    return endTime;
+  }
+
+  public void setEndTime(long endTime) {
+    this.endTime = endTime;
   }
 
   public void setInitializedEventValue(boolean initializedEventValue) {

@@ -23,8 +23,8 @@ import org.apache.iotdb.tsfile.read.common.block.column.Column;
 
 public class EqualEventDoubleWindow extends EventDoubleWindow {
 
-  public EqualEventDoubleWindow(WindowParameter windowParameter) {
-    super(windowParameter);
+  public EqualEventDoubleWindow(EventWindowParameter eventWindowParameter) {
+    super(eventWindowParameter);
   }
 
   @Override

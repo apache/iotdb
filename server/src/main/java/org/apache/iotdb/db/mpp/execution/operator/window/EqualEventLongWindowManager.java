@@ -24,9 +24,9 @@ import org.apache.iotdb.tsfile.read.common.block.column.Column;
 
 public class EqualEventLongWindowManager extends EventLongWindowManager {
 
-  public EqualEventLongWindowManager(WindowParameter windowParameter, boolean ascending) {
-    super(windowParameter, ascending);
-    eventWindow = new EqualEventLongWindow(windowParameter);
+  public EqualEventLongWindowManager(EventWindowParameter eventWindowParameter, boolean ascending) {
+    super(eventWindowParameter, ascending);
+    eventWindow = new EqualEventLongWindow(eventWindowParameter);
   }
 
   @Override
@@ -39,7 +39,7 @@ public class EqualEventLongWindowManager extends EventLongWindowManager {
       return inputTsBlock;
     }
 
-    Column controlColumn = inputTsBlock.getColumn(windowParameter.getControlColumnIndex());
+    Column controlColumn = inputTsBlock.getColumn(eventWindowParameter.getControlColumnIndex());
     int i = 0, size = inputTsBlock.getPositionCount();
     for (; i < size; i++) {
       if (!controlColumn.isNull(i)
