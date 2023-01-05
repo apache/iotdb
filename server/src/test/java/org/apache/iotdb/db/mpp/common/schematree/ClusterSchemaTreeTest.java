@@ -25,7 +25,8 @@ import org.apache.iotdb.db.mpp.common.schematree.node.SchemaEntityNode;
 import org.apache.iotdb.db.mpp.common.schematree.node.SchemaInternalNode;
 import org.apache.iotdb.db.mpp.common.schematree.node.SchemaMeasurementNode;
 import org.apache.iotdb.db.mpp.common.schematree.node.SchemaNode;
-import org.apache.iotdb.db.mpp.common.schematree.visitor.SchemaTreeMeasurementVisitor;
+import org.apache.iotdb.db.mpp.common.schematree.visitor.SchemaTreeVisitorFactory;
+import org.apache.iotdb.db.mpp.common.schematree.visitor.SchemaTreeVisitorWithLimitOffsetWrapper;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
@@ -74,8 +75,8 @@ public class ClusterSchemaTreeTest {
     int round = 20;
     for (int i = 0; i < round; i++) {
       for (int j = 0; j < 1000; j++) {
-        SchemaTreeMeasurementVisitor visitor =
-            new MockSchemaTreeMeasurementVisitor(root, path, 0, 0, false);
+        SchemaTreeVisitorWithLimitOffsetWrapper<MeasurementPath> visitor =
+            createSchemaTreeVisitorWithLimitOffsetWrapper(root, path, 0, 0, false);
 
         long calStartTime = System.currentTimeMillis();
         List<MeasurementPath> res = visitor.getAllResult();
@@ -101,8 +102,9 @@ public class ClusterSchemaTreeTest {
   public void testMultiWildcard() throws IllegalPathException {
     SchemaNode root = generateSchemaTreeWithInternalRepeatedName();
 
-    MockSchemaTreeMeasurementVisitor visitor =
-        new MockSchemaTreeMeasurementVisitor(root, new PartialPath("root.**.**.s"), 0, 0, false);
+    SchemaTreeVisitorWithLimitOffsetWrapper<MeasurementPath> visitor =
+        createSchemaTreeVisitorWithLimitOffsetWrapper(
+            root, new PartialPath("root.**.**.s"), 0, 0, false);
     checkVisitorResult(
         visitor,
         4,
@@ -111,7 +113,8 @@ public class ClusterSchemaTreeTest {
         new boolean[] {false, false, false, false});
 
     visitor =
-        new MockSchemaTreeMeasurementVisitor(root, new PartialPath("root.*.**.s"), 0, 0, false);
+        createSchemaTreeVisitorWithLimitOffsetWrapper(
+            root, new PartialPath("root.*.**.s"), 0, 0, false);
     checkVisitorResult(
         visitor,
         4,
@@ -120,7 +123,8 @@ public class ClusterSchemaTreeTest {
         new boolean[] {false, false, false, false});
 
     visitor =
-        new MockSchemaTreeMeasurementVisitor(root, new PartialPath("root.**.a.**.s"), 0, 0, false);
+        createSchemaTreeVisitorWithLimitOffsetWrapper(
+            root, new PartialPath("root.**.a.**.s"), 0, 0, false);
     checkVisitorResult(
         visitor,
         3,
@@ -129,7 +133,7 @@ public class ClusterSchemaTreeTest {
         new boolean[] {false, false, false});
 
     visitor =
-        new MockSchemaTreeMeasurementVisitor(
+        createSchemaTreeVisitorWithLimitOffsetWrapper(
             root, new PartialPath("root.**.a.**.*.s"), 0, 0, false);
     checkVisitorResult(
         visitor,
@@ -139,7 +143,8 @@ public class ClusterSchemaTreeTest {
         new boolean[] {false, false, false});
 
     visitor =
-        new MockSchemaTreeMeasurementVisitor(root, new PartialPath("root.a.**.a.*.s"), 0, 0, false);
+        createSchemaTreeVisitorWithLimitOffsetWrapper(
+            root, new PartialPath("root.a.**.a.*.s"), 0, 0, false);
     checkVisitorResult(
         visitor,
         2,
@@ -148,7 +153,8 @@ public class ClusterSchemaTreeTest {
         new boolean[] {false, false, false});
 
     visitor =
-        new MockSchemaTreeMeasurementVisitor(root, new PartialPath("root.**.c.s1"), 0, 0, false);
+        createSchemaTreeVisitorWithLimitOffsetWrapper(
+            root, new PartialPath("root.**.c.s1"), 0, 0, false);
     checkVisitorResult(
         visitor,
         2,
@@ -157,34 +163,37 @@ public class ClusterSchemaTreeTest {
         new boolean[] {false, false});
 
     visitor =
-        new MockSchemaTreeMeasurementVisitor(
+        createSchemaTreeVisitorWithLimitOffsetWrapper(
             root, new PartialPath("root.**.c.d.c.s1"), 0, 0, false);
     checkVisitorResult(visitor, 1, new String[] {"root.c.c.c.d.c.s1"}, null, new boolean[] {false});
 
     visitor =
-        new MockSchemaTreeMeasurementVisitor(
+        createSchemaTreeVisitorWithLimitOffsetWrapper(
             root, new PartialPath("root.**.d.**.c.s1"), 0, 0, false);
     checkVisitorResult(
         visitor, 1, new String[] {"root.c.c.c.d.c.c.s1"}, null, new boolean[] {false});
 
     visitor =
-        new MockSchemaTreeMeasurementVisitor(root, new PartialPath("root.**.d.*.*"), 0, 0, false);
+        createSchemaTreeVisitorWithLimitOffsetWrapper(
+            root, new PartialPath("root.**.d.*.*"), 0, 0, false);
     checkVisitorResult(visitor, 1, new String[] {"root.c.c.c.d.c.s1"}, null, new boolean[] {false});
   }
 
   private void testSchemaTree(SchemaNode root) throws Exception {
 
-    MockSchemaTreeMeasurementVisitor visitor =
-        new MockSchemaTreeMeasurementVisitor(root, new PartialPath("root.sg.d2.a.s1"), 0, 0, false);
+    SchemaTreeVisitorWithLimitOffsetWrapper<MeasurementPath> visitor =
+        createSchemaTreeVisitorWithLimitOffsetWrapper(
+            root, new PartialPath("root.sg.d2.a.s1"), 0, 0, false);
     checkVisitorResult(visitor, 1, new String[] {"root.sg.d2.a.s1"}, null, new boolean[] {true});
 
     visitor =
-        new MockSchemaTreeMeasurementVisitor(root, new PartialPath("root.sg.*.s2"), 0, 0, false);
+        createSchemaTreeVisitorWithLimitOffsetWrapper(
+            root, new PartialPath("root.sg.*.s2"), 0, 0, false);
     checkVisitorResult(
         visitor, 2, new String[] {"root.sg.d1.s2", "root.sg.d2.s2"}, new String[] {"", ""}, null);
 
     visitor =
-        new MockSchemaTreeMeasurementVisitor(
+        createSchemaTreeVisitorWithLimitOffsetWrapper(
             root, new PartialPath("root.sg.*.status"), 0, 0, false);
     checkVisitorResult(
         visitor,
@@ -194,7 +203,8 @@ public class ClusterSchemaTreeTest {
         null);
 
     visitor =
-        new MockSchemaTreeMeasurementVisitor(root, new PartialPath("root.sg.d2.*.*"), 0, 0, false);
+        createSchemaTreeVisitorWithLimitOffsetWrapper(
+            root, new PartialPath("root.sg.d2.*.*"), 0, 0, false);
     checkVisitorResult(
         visitor,
         2,
@@ -202,7 +212,9 @@ public class ClusterSchemaTreeTest {
         new String[] {"", ""},
         new boolean[] {true, true});
 
-    visitor = new MockSchemaTreeMeasurementVisitor(root, new PartialPath("root.sg.d1"), 0, 0, true);
+    visitor =
+        createSchemaTreeVisitorWithLimitOffsetWrapper(
+            root, new PartialPath("root.sg.d1"), 0, 0, true);
     checkVisitorResult(
         visitor,
         2,
@@ -211,7 +223,8 @@ public class ClusterSchemaTreeTest {
         new boolean[] {false, false});
 
     visitor =
-        new MockSchemaTreeMeasurementVisitor(root, new PartialPath("root.sg.*.a"), 0, 0, true);
+        createSchemaTreeVisitorWithLimitOffsetWrapper(
+            root, new PartialPath("root.sg.*.a"), 0, 0, true);
     checkVisitorResult(
         visitor,
         2,
@@ -221,7 +234,8 @@ public class ClusterSchemaTreeTest {
         new int[] {0, 0});
 
     visitor =
-        new MockSchemaTreeMeasurementVisitor(root, new PartialPath("root.sg.*.*"), 2, 2, false);
+        createSchemaTreeVisitorWithLimitOffsetWrapper(
+            root, new PartialPath("root.sg.*.*"), 2, 2, false);
     checkVisitorResult(
         visitor,
         2,
@@ -230,7 +244,9 @@ public class ClusterSchemaTreeTest {
         new boolean[] {false, false},
         new int[] {3, 4});
 
-    visitor = new MockSchemaTreeMeasurementVisitor(root, new PartialPath("root.sg.*"), 2, 3, true);
+    visitor =
+        createSchemaTreeVisitorWithLimitOffsetWrapper(
+            root, new PartialPath("root.sg.*"), 2, 3, true);
     checkVisitorResult(
         visitor,
         2,
@@ -240,7 +256,8 @@ public class ClusterSchemaTreeTest {
         new int[] {4, 5});
 
     visitor =
-        new MockSchemaTreeMeasurementVisitor(root, new PartialPath("root.sg.d1.**"), 0, 0, false);
+        createSchemaTreeVisitorWithLimitOffsetWrapper(
+            root, new PartialPath("root.sg.d1.**"), 0, 0, false);
     checkVisitorResult(
         visitor,
         2,
@@ -249,7 +266,8 @@ public class ClusterSchemaTreeTest {
         new boolean[] {false, false});
 
     visitor =
-        new MockSchemaTreeMeasurementVisitor(root, new PartialPath("root.sg.d2.**"), 3, 1, true);
+        createSchemaTreeVisitorWithLimitOffsetWrapper(
+            root, new PartialPath("root.sg.d2.**"), 3, 1, true);
     checkVisitorResult(
         visitor,
         3,
@@ -259,7 +277,7 @@ public class ClusterSchemaTreeTest {
         new int[] {2, 3, 4});
 
     visitor =
-        new MockSchemaTreeMeasurementVisitor(
+        createSchemaTreeVisitorWithLimitOffsetWrapper(
             root, new PartialPath("root.sg.**.status"), 2, 1, true);
     checkVisitorResult(
         visitor,
@@ -270,7 +288,8 @@ public class ClusterSchemaTreeTest {
         new int[] {2, 3});
 
     visitor =
-        new MockSchemaTreeMeasurementVisitor(root, new PartialPath("root.**.*"), 10, 0, false);
+        createSchemaTreeVisitorWithLimitOffsetWrapper(
+            root, new PartialPath("root.**.*"), 10, 0, false);
     checkVisitorResult(
         visitor,
         6,
@@ -287,7 +306,8 @@ public class ClusterSchemaTreeTest {
         new int[] {1, 2, 3, 4, 5, 6});
 
     visitor =
-        new MockSchemaTreeMeasurementVisitor(root, new PartialPath("root.**.*.**"), 10, 0, false);
+        createSchemaTreeVisitorWithLimitOffsetWrapper(
+            root, new PartialPath("root.**.*.**"), 10, 0, false);
     checkVisitorResult(
         visitor,
         6,
@@ -304,7 +324,8 @@ public class ClusterSchemaTreeTest {
         new int[] {1, 2, 3, 4, 5, 6});
 
     visitor =
-        new MockSchemaTreeMeasurementVisitor(root, new PartialPath("root.*.**.**"), 10, 0, false);
+        createSchemaTreeVisitorWithLimitOffsetWrapper(
+            root, new PartialPath("root.*.**.**"), 10, 0, false);
     checkVisitorResult(
         visitor,
         6,
@@ -446,7 +467,7 @@ public class ClusterSchemaTreeTest {
   }
 
   private void checkVisitorResult(
-      MockSchemaTreeMeasurementVisitor visitor,
+      SchemaTreeVisitorWithLimitOffsetWrapper<MeasurementPath> visitor,
       int expectedNum,
       String[] expectedPath,
       String[] expectedAlias,
@@ -468,10 +489,11 @@ public class ClusterSchemaTreeTest {
         Assert.assertEquals(expectedAligned[i], result.get(i).isUnderAlignedEntity());
       }
     }
+    visitor.close();
   }
 
   private void checkVisitorResult(
-      MockSchemaTreeMeasurementVisitor visitor,
+      SchemaTreeVisitorWithLimitOffsetWrapper<MeasurementPath> visitor,
       int expectedNum,
       String[] expectedPath,
       String[] expectedAlias,
@@ -492,7 +514,6 @@ public class ClusterSchemaTreeTest {
     }
     Assert.assertEquals(expectedNum, i);
     visitor.close();
-    visitor.check();
   }
 
   @Test
@@ -695,5 +716,16 @@ public class ClusterSchemaTreeTest {
         schemaTree
             .searchDeviceSchemaInfo(new PartialPath("root.sg.d1"), Collections.singletonList("s1"))
             .isAligned());
+  }
+
+  protected SchemaTreeVisitorWithLimitOffsetWrapper<MeasurementPath>
+      createSchemaTreeVisitorWithLimitOffsetWrapper(
+          SchemaNode root,
+          PartialPath pathPattern,
+          int slimit,
+          int soffset,
+          boolean isPrefixMatch) {
+    return SchemaTreeVisitorFactory.createSchemaTreeMeasurementVisitor(
+        root, pathPattern, isPrefixMatch, slimit, soffset);
   }
 }

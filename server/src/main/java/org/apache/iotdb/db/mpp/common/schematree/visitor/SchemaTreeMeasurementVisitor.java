@@ -32,8 +32,8 @@ public class SchemaTreeMeasurementVisitor extends SchemaTreeVisitor<MeasurementP
   private final String tailNode;
 
   public SchemaTreeMeasurementVisitor(
-      SchemaNode root, PartialPath pathPattern, int slimit, int soffset, boolean isPrefixMatch) {
-    super(root, pathPattern, slimit, soffset, isPrefixMatch);
+      SchemaNode root, PartialPath pathPattern, boolean isPrefixMatch) {
+    super(root, pathPattern, isPrefixMatch);
     tailNode = pathPattern.getTailNode();
   }
 
@@ -108,7 +108,7 @@ public class SchemaTreeMeasurementVisitor extends SchemaTreeVisitor<MeasurementP
   }
 
   @Override
-  protected MeasurementPath generateResult() {
+  protected MeasurementPath generateResult(SchemaNode nextMatchedNode) {
     MeasurementPath result =
         new MeasurementPath(
             generateFullPathNodes(), nextMatchedNode.getAsMeasurementNode().getSchema());

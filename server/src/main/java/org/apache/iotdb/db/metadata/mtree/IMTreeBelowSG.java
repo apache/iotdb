@@ -267,8 +267,5 @@ public interface IMTreeBelowSG {
 
   void activateTemplate(PartialPath activatePath, Template template) throws MetadataException;
 
-  List<String> getPathsUsingTemplate(PartialPath pathPattern, int templateId)
-      throws MetadataException;
-
   long countPathsUsingTemplate(PartialPath pathPattern, int templateId) throws MetadataException;
 }

@@ -691,13 +691,12 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
           @Override
           protected void collectEntity(IEntityMNode node) {
             PartialPath device = getCurrentPartialPath();
-            if (plan.hasSgCol()) {
-              res.add(new ShowDevicesResult(device.getFullPath(), node.isAligned()));
-            } else {
-              res.add(new ShowDevicesResult(device.getFullPath(), node.isAligned()));
-            }
+            res.add(new ShowDevicesResult(device.getFullPath(), node.isAligned()));
           }
         };
+    if (plan.usingSchemaTemplate()) {
+      collector.setSchemaTemplateFilter(plan.getSchemaTemplateId());
+    }
     collector.traverse();
 
     return res;
@@ -1103,24 +1102,6 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
     } finally {
       unPinPath(cur);
     }
-  }
-
-  @Override
-  public List<String> getPathsUsingTemplate(PartialPath pathPattern, int templateId)
-      throws MetadataException {
-    Set<String> result = new HashSet<>();
-
-    EntityCollector<Set<String>> collector =
-        new EntityCollector<Set<String>>(storageGroupMNode, pathPattern, store, false) {
-          @Override
-          protected void collectEntity(IEntityMNode node) {
-            if (node.getSchemaTemplateId() == templateId) {
-              result.add(node.getFullPath());
-            }
-          }
-        };
-    collector.traverse();
-    return new ArrayList<>(result);
   }
 
   public Map<PartialPath, List<Integer>> constructSchemaBlackListWithTemplate(

@@ -388,9 +388,6 @@ public interface ISchemaRegion {
   void activateSchemaTemplate(IActivateTemplateInClusterPlan plan, Template template)
       throws MetadataException;
 
-  List<String> getPathsUsingTemplate(PartialPath pathPattern, int templateId)
-      throws MetadataException;
-
   long constructSchemaBlackListWithTemplate(IPreDeactivateTemplatePlan plan)
       throws MetadataException;
 

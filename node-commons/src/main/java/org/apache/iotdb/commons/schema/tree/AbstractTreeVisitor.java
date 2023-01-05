@@ -90,9 +90,13 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R>
   private Throwable throwable;
 
   // cached result variables
-  protected N nextMatchedNode;
-  // save temporary next node fetched from iterator
-  private N nextTempNode;
+  private N nextMatchedNode;
+
+  // only used for wrapper
+  protected AbstractTreeVisitor() {
+    root = null;
+    patternFA = null;
+  }
 
   protected AbstractTreeVisitor(N root, PartialPath pathPattern, boolean isPrefixMatch) {
     this.root = root;
@@ -179,15 +183,15 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R>
     visitorStack.clear();
     ancestorStack.clear();
     nextMatchedNode = null;
-    nextTempNode = null;
     firstAncestorOfTraceback = -1;
     initStack();
   }
 
   @Override
   public void close() {
-    if (nextTempNode != null) {
-      releaseNode(nextTempNode);
+    if (nextMatchedNode != null && !shouldVisitSubtree) {
+      // release nextMatchedNode
+      releaseNode(nextMatchedNode);
     }
     while (!visitorStack.isEmpty()) {
       popStack();
@@ -211,12 +215,16 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R>
     if (!hasNext()) {
       throw new NoSuchElementException();
     }
-    R result = generateResult();
+    R result = generateResult(nextMatchedNode);
+    if (!shouldVisitSubtree) {
+      // release nextMatchedNode
+      releaseNode(nextMatchedNode);
+    }
     nextMatchedNode = null;
     return result;
   }
 
-  protected void getNext() throws Exception {
+  private void getNext() {
     nextMatchedNode = null;
     VisitorStackEntry stackEntry;
     Iterator<N> iterator;
@@ -229,7 +237,7 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R>
         continue;
       }
 
-      nextTempNode = iterator.next();
+      N nextTempNode = iterator.next();
 
       if (currentStateMatchInfo.hasFinalState()) {
         if (acceptFullMatchedNode(nextTempNode)) {
@@ -246,12 +254,11 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R>
       if (shouldVisitSubtree) {
         pushChildren(nextTempNode);
         // After adding nextTempNode into ancestorStack, nextTempNode will be released finally.
-      } else {
-        // Otherwise, nextTempNode is useless. It needs to be released.
+      } else if (nextMatchedNode != nextTempNode) {
+        // Else if nextTempNode is not accepted, it needs to be released.
         releaseNode(nextTempNode);
       }
-      // nextTempNode can be set to null now.
-      nextTempNode = null;
+      // Otherwise, it will be released when invoking next()
 
       if (nextMatchedNode != null) {
         return;
@@ -323,6 +330,10 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R>
     }
   }
 
+  protected void setFailure(Throwable e) {
+    this.throwable = e;
+  }
+
   protected int getCurrentNodeLevel() {
     return visitorStack.size();
   }
@@ -349,7 +360,7 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R>
    * process will keep traversing the subtree. If return false, the traversing process will skip the
    * subtree of given node.
    */
-  protected abstract boolean shouldVisitSubtreeOfInternalMatchedNode(N node) throws Exception;
+  protected abstract boolean shouldVisitSubtreeOfInternalMatchedNode(N node);
 
   /**
    * Full-match means the node matches the last node name of the given path pattern. root.sg.d full
@@ -359,20 +370,16 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R>
    * process will keep traversing the subtree. If return false, the traversing process will skip the
    * subtree of given node.
    */
-  protected abstract boolean shouldVisitSubtreeOfFullMatchedNode(N node) throws Exception;
+  protected abstract boolean shouldVisitSubtreeOfFullMatchedNode(N node);
 
   /** Only accepted nodes will be considered for hasNext() and next() */
-  protected abstract boolean acceptInternalMatchedNode(N node) throws Exception;
+  protected abstract boolean acceptInternalMatchedNode(N node);
 
   /** Only accepted nodes will be considered for hasNext() and next() */
-  protected abstract boolean acceptFullMatchedNode(N node) throws Exception;
-
-  protected void setFailure(Throwable e) {
-    this.throwable = e;
-  }
+  protected abstract boolean acceptFullMatchedNode(N node);
 
   /** The method used for generating the result based on the matched node. */
-  protected abstract R generateResult();
+  protected abstract R generateResult(N nextMatchedNode);
 
   private class VisitorStackEntry {
 
