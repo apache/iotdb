@@ -71,7 +71,7 @@ public class MetricConfig {
     try {
       pid = ManagementFactory.getRuntimeMXBean().getName().split("@")[0];
     } catch (Exception e) {
-      LOGGER.error("Failed to get pid, because ", e);
+      LOGGER.warn("Failed to get pid, because ", e);
     }
   }
 

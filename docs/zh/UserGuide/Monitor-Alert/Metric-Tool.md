@@ -205,21 +205,21 @@ Core 级别的监控指标在系统运行中默认开启，每一个 Core 级别
 
 #### 4.2.9. 文件统计信息
 
-| Metric     | Tags                    | Type      | Description                              |
-| ---------- | ----------------------- | --------- | ---------------------------------------- |
-| file_size  | name="wal"              | AutoGauge | 写前日志总大小，单位为byte               |
-| file_size  | name="seq"              | AutoGauge | 顺序TsFile总大小，单位为byte             |
-| file_size  | name="unseq"            | AutoGauge | 乱序TsFile总大小，单位为byte             |
-| file_size  | name="inner-seq-temp"   | AutoGauge | 顺序空间内合并临时文件大小，单位为byte   |
-| file_size  | name="inner-unseq-temp" | AutoGauge | 乱序空间内合并临时文件大小，单位为byte   |
-| file_size  | name="cross-temp"       | AutoGauge | 跨空间合并临时文件大小，单位为byte       |
-| file_count | name="wal"              | AutoGauge | 写前日志文件个数                         |
-| file_count | name="seq"              | AutoGauge | 顺序TsFile文件个数                       |
-| file_count | name="unseq"            | AutoGauge | 乱序TsFile文件个数                       |
-| file_count | name="inner-seq-temp"   | AutoGauge | 顺序空间内合并临时文件个数               |
-| file_count | name="inner-unseq-temp" | AutoGauge | 乱序空间内合并临时文件个数               |
-| file_count | name="cross-temp"       | AutoGauge | 跨空间合并临时文件个数                   |
-| file_count | name="open"             | AutoGauge | IoTDB 进程打开文件数，仅支持Linux和MacOS |
+| Metric     | Tags                      | Type      | Description                              |
+| ---------- |---------------------------| --------- | ---------------------------------------- |
+| file_size  | name="wal"                | AutoGauge | 写前日志总大小，单位为byte               |
+| file_size  | name="seq"                | AutoGauge | 顺序TsFile总大小，单位为byte             |
+| file_size  | name="unseq"              | AutoGauge | 乱序TsFile总大小，单位为byte             |
+| file_size  | name="inner-seq-temp"     | AutoGauge | 顺序空间内合并临时文件大小，单位为byte   |
+| file_size  | name="inner-unseq-temp"   | AutoGauge | 乱序空间内合并临时文件大小，单位为byte   |
+| file_size  | name="cross-temp"         | AutoGauge | 跨空间合并临时文件大小，单位为byte       |
+| file_count | name="wal"                | AutoGauge | 写前日志文件个数                         |
+| file_count | name="seq"                | AutoGauge | 顺序TsFile文件个数                       |
+| file_count | name="unseq"              | AutoGauge | 乱序TsFile文件个数                       |
+| file_count | name="inner-seq-temp"     | AutoGauge | 顺序空间内合并临时文件个数               |
+| file_count | name="inner-unseq-temp"   | AutoGauge | 乱序空间内合并临时文件个数               |
+| file_count | name="cross-temp"         | AutoGauge | 跨空间合并临时文件个数                   |
+| file_count | name="open_file_handlers" | AutoGauge | IoTDB 进程打开文件数，仅支持Linux和MacOS |
 
 #### 4.2.10. IoTDB 进程统计
 | Metric                | Tags           | Type      | Description                          |
