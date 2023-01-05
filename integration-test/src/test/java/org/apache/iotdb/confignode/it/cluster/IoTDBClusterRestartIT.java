@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.it;
+package org.apache.iotdb.confignode.it.cluster;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
@@ -83,7 +83,7 @@ public class IoTDBClusterRestartIT {
   @Before
   public void setUp() throws Exception {
     originalConfigNodeConsensusProtocolClass =
-        ConfigFactory.getConfig().getConfigNodeConsesusProtocolClass();
+        ConfigFactory.getConfig().getConfigNodeConsensusProtocolClass();
     originalSchemaRegionConsensusProtocolClass =
         ConfigFactory.getConfig().getSchemaRegionConsensusProtocolClass();
     originalDataRegionConsensusProtocolClass =

@@ -208,7 +208,7 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
 
   @Override
   public void waitingToShutDown() {
-    while (this.instance.isAlive()) {
+    while (this.instance != null && this.instance.isAlive()) {
       try {
         Thread.sleep(100);
       } catch (InterruptedException e) {
@@ -273,6 +273,8 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
   protected abstract String getConfigPath();
 
   protected abstract String getCommonConfigPath();
+
+  public abstract String getSystemPropertiesPath();
 
   protected abstract void updateConfig(Properties properties);
 

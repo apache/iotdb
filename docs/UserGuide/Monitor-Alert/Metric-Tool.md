@@ -83,9 +83,10 @@ Core-level metrics are enabled by default during system operation. The addition 
 
 #### 4.1.1. Cluster
 | Metric      | Tags                                            | Type      | Description                                         |
-| ----------- | ----------------------------------------------- | --------- | --------------------------------------------------- |
+|-------------|-------------------------------------------------| --------- | --------------------------------------------------- |
 | config_node | name="total",status="Registered/Online/Unknown" | AutoGauge | The number of registered/online/unknown confignodes |
 | data_node   | name="total",status="Registered/Online/Unknown" | AutoGauge | The number of registered/online/unknown datanodes   |
+| points      | database="{{database}}", type="flush"           | Gauge     | The point number of last flushed memtable                     |
 
 #### 4.1.2. IoTDB process
 | Metric            | Tags           | Type      | Description                                            |
@@ -123,7 +124,6 @@ Core-level metrics are enabled by default during system operation. The addition 
 | quantity | name="database"                            | AutoGauge | The number of database                                        |
 | quantity | name="timeSeries"                          | AutoGauge | The number of timeseries                                      |
 | quantity | name="pointsIn"                            | Counter   | The number of write points                                    |
-| points   | database="{{database}}", type="flush"      | Gauge     | The point number of last flushed memtable                     |
 | region   | name="total",type="SchemaRegion"           | AutoGauge | The total number of SchemaRegion in PartitionTable            |
 | region   | name="total",type="DataRegion"             | AutoGauge | The total number of DataRegion in PartitionTable              |
 | region   | name="{{ip}}:{{port}}",type="SchemaRegion" | Gauge     | The number of SchemaRegion in PartitionTable of specific node |
@@ -173,11 +173,13 @@ Core-level metrics are enabled by default during system operation. The addition 
 | thrift_active_threads | name="ClientRPC-Service"           | AutoGauge | The number of thrift active connections of client              |
 
 #### 4.2.6. Memory
-| Metric | Tags                          | Type      | Description                                                        |
-| ------ | ----------------------------- | --------- | ------------------------------------------------------------------ |
-| mem    | name="database_{{name}}"      | AutoGauge | The memory usage of DataRegion in DataNode, Unit: byte             |
-| mem    | name="chunkMetaData_{{name}}" | AutoGauge | The memory usage of chunkMetaData when writting TsFile, Unit: byte |
-| mem    | name="IoTConsensus"           | AutoGauge | The memory usage of IoTConsensus, Unit: byte                       |
+| Metric | Tags                           | Type      | Description                                                        |
+| ------ |--------------------------------| --------- |--------------------------------------------------------------------|
+| mem    | name="database_{{name}}"       | AutoGauge | The memory usage of DataRegion in DataNode, Unit: byte             |
+| mem    | name="chunkMetaData_{{name}}"  | AutoGauge | The memory usage of chunkMetaData when writting TsFile, Unit: byte |
+| mem    | name="IoTConsensus"            | AutoGauge | The memory usage of IoTConsensus, Unit: byte                       |
+| mem    | name="schema_region_total_usage"    | AutoGauge | The memory usage of all SchemaRegion, Unit: byte                   |
+| mem    | name="schema_region_total_remaining" | AutoGauge | The memory remaining for all SchemaRegion, Unit: byte              |
 
 #### 4.2.7. Task
 | Metric    | Tags                                              | Type      | Description                           |
@@ -381,8 +383,11 @@ We provide the Apache IoTDB Dashboard, and the rendering shown in Grafana is as 
 
 ##### 5.2.4.1. How to get Apache IoTDB Dashboard
 
-1. You can obtain the json files of Dashboards corresponding to different iotdb versions in the grafana-metrics-example folder.
-2. You can visit [Grafana Dashboard official website](https://grafana.com/grafana/dashboards/), search for `Apache IoTDB Dashboard` and use
+1. You can obtain the json files of Dashboards by GitHub:
+   1. <a href = "https://github.com/apache/iotdb/tree/rel/1.0/docs/UserGuide/Monitor-Alert/Apache-IoTDB-ConfigNode-Dashboard.json">Apache IoTDB ConfigNode Dashboard</a>
+   2. <a href = "https://github.com/apache/iotdb/tree/rel/1.0/docs/UserGuide/Monitor-Alert/Apache-IoTDB-DataNode-Dashboard.json">Apache IoTDB DataNode Dashboard</a>
+2. You can visit [Grafana Dashboard official website](https://grafana.com/grafana/dashboards/), search
+   for `Apache IoTDB Dashboard` and use
 
 When creating Grafana, you can select the json file you just downloaded to `Import` and select the corresponding target data source for Apache IoTDB Dashboard.
 

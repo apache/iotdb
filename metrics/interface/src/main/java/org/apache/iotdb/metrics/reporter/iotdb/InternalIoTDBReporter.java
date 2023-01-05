@@ -34,7 +34,7 @@ public abstract class InternalIoTDBReporter extends IoTDBReporter {
   /**
    * Add autoGauge into internal reporter
    *
-   * @param gauge autoGauge
+   * @param autoGauge autoGauge
    * @param name the name of autoGauge
    * @param tags the tags of autoGauge
    */

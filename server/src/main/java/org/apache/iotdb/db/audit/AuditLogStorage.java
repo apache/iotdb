@@ -16,23 +16,14 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.trigger;
+package org.apache.iotdb.db.audit;
 
-import org.apache.iotdb.trigger.api.Trigger;
-import org.apache.iotdb.tsfile.write.record.Tablet;
-
-import java.util.Arrays;
-
-public class SimpleTrigger implements Trigger {
+public enum AuditLogStorage {
+  IOTDB,
+  LOGGER;
 
   @Override
-  public boolean fire(Tablet tablet) {
-    System.out.println("receive a tablet, device name is " + tablet.deviceId);
-    System.out.println("measurements are: ");
-    tablet
-        .getSchemas()
-        .forEach(measurementSchema -> System.out.println(measurementSchema.getMeasurementId()));
-    System.out.println("time are: " + Arrays.toString(tablet.timestamps));
-    return true;
+  public String toString() {
+    return name();
   }
 }

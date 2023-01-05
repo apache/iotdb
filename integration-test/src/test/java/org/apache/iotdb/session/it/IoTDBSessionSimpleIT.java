@@ -21,6 +21,8 @@ package org.apache.iotdb.session.it;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.OperationType;
+import org.apache.iotdb.isession.ISession;
+import org.apache.iotdb.isession.ISessionDataSet;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
@@ -29,8 +31,6 @@ import org.apache.iotdb.rpc.BatchExecutionException;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.session.ISession;
-import org.apache.iotdb.session.SessionDataSet;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -116,7 +116,7 @@ public class IoTDBSessionSimpleIT {
         tablet.reset();
       }
 
-      SessionDataSet dataSet = session.executeQueryStatement("select count(*) from root");
+      ISessionDataSet dataSet = session.executeQueryStatement("select count(*) from root");
       while (dataSet.hasNext()) {
         RowRecord rowRecord = dataSet.next();
         assertEquals(15L, rowRecord.getFields().get(0).getLongV());
@@ -154,7 +154,7 @@ public class IoTDBSessionSimpleIT {
       expected.add(TSDataType.TEXT.name());
 
       Set<String> actual = new HashSet<>();
-      SessionDataSet dataSet = session.executeQueryStatement("show timeseries root.**");
+      ISessionDataSet dataSet = session.executeQueryStatement("show timeseries root.**");
       while (dataSet.hasNext()) {
         actual.add(dataSet.next().getFields().get(3).getStringValue());
       }
@@ -188,7 +188,7 @@ public class IoTDBSessionSimpleIT {
         LOGGER.error("", e);
       }
 
-      SessionDataSet dataSet = session.executeQueryStatement("show timeseries root");
+      ISessionDataSet dataSet = session.executeQueryStatement("show timeseries root");
       assertFalse(dataSet.hasNext());
 
     } catch (Exception e) {
@@ -219,7 +219,7 @@ public class IoTDBSessionSimpleIT {
         LOGGER.error("", e);
       }
 
-      SessionDataSet dataSet = session.executeQueryStatement("show timeseries root");
+      ISessionDataSet dataSet = session.executeQueryStatement("show timeseries root");
       assertFalse(dataSet.hasNext());
 
     } catch (Exception e) {
@@ -259,7 +259,7 @@ public class IoTDBSessionSimpleIT {
       expected.add(TSDataType.TEXT.name());
 
       Set<String> actual = new HashSet<>();
-      SessionDataSet dataSet = session.executeQueryStatement("show timeseries root.**");
+      ISessionDataSet dataSet = session.executeQueryStatement("show timeseries root.**");
       while (dataSet.hasNext()) {
         actual.add(dataSet.next().getFields().get(3).getStringValue());
       }
@@ -342,7 +342,7 @@ public class IoTDBSessionSimpleIT {
         }
       }
 
-      SessionDataSet dataSet = session.executeQueryStatement("select * from root.存储组1.*");
+      ISessionDataSet dataSet = session.executeQueryStatement("select * from root.存储组1.*");
       int count = 0;
       while (dataSet.hasNext()) {
         count++;
@@ -383,7 +383,7 @@ public class IoTDBSessionSimpleIT {
         tablet.reset();
       }
 
-      SessionDataSet dataSet = session.executeQueryStatement("select count(*) from root");
+      ISessionDataSet dataSet = session.executeQueryStatement("select count(*) from root");
       while (dataSet.hasNext()) {
         RowRecord rowRecord = dataSet.next();
         assertEquals(10L, rowRecord.getFields().get(0).getLongV());
@@ -436,7 +436,7 @@ public class IoTDBSessionSimpleIT {
         tablet.reset();
       }
 
-      SessionDataSet dataSet = session.executeQueryStatement("select count(*) from root");
+      ISessionDataSet dataSet = session.executeQueryStatement("select count(*) from root");
       while (dataSet.hasNext()) {
         RowRecord rowRecord = dataSet.next();
         assertEquals(6L, rowRecord.getFields().size());
@@ -482,7 +482,7 @@ public class IoTDBSessionSimpleIT {
         tablet.reset();
       }
 
-      SessionDataSet dataSet = session.executeQueryStatement("select * from root.sg1.d1");
+      ISessionDataSet dataSet = session.executeQueryStatement("select * from root.sg1.d1");
       while (dataSet.hasNext()) {
         RowRecord rowRecord = dataSet.next();
         List<Field> fields = rowRecord.getFields();
@@ -512,7 +512,7 @@ public class IoTDBSessionSimpleIT {
           TSEncoding.RLE,
           CompressionType.SNAPPY);
 
-      final SessionDataSet dataSet = session.executeQueryStatement("SHOW TIMESERIES");
+      final ISessionDataSet dataSet = session.executeQueryStatement("SHOW TIMESERIES");
       assertTrue(dataSet.hasNext());
 
       session.deleteStorageGroup(storageGroup);
@@ -547,7 +547,7 @@ public class IoTDBSessionSimpleIT {
         LOGGER.error("", e);
       }
 
-      final SessionDataSet dataSet = session.executeQueryStatement("SHOW TIMESERIES");
+      final ISessionDataSet dataSet = session.executeQueryStatement("SHOW TIMESERIES");
       assertFalse(dataSet.hasNext());
 
       session.deleteStorageGroup(storageGroup);
@@ -660,7 +660,7 @@ public class IoTDBSessionSimpleIT {
 
   private void checkResult(ISession session)
       throws StatementExecutionException, IoTDBConnectionException {
-    SessionDataSet dataSet = session.executeQueryStatement("select * from root.sg.d1");
+    ISessionDataSet dataSet = session.executeQueryStatement("select * from root.sg.d1");
     dataSet.getColumnNames();
     assertArrayEquals(
         dataSet.getColumnNames().toArray(new String[0]),
@@ -847,7 +847,7 @@ public class IoTDBSessionSimpleIT {
 
   private void checkResultForInsertStringRecordsOfOneDevice(ISession session)
       throws StatementExecutionException, IoTDBConnectionException {
-    SessionDataSet dataSet = session.executeQueryStatement("select * from root.sg.d1");
+    ISessionDataSet dataSet = session.executeQueryStatement("select * from root.sg.d1");
     dataSet.getColumnNames();
     assertArrayEquals(
         dataSet.getColumnNames().toArray(new String[0]),
@@ -1303,7 +1303,7 @@ public class IoTDBSessionSimpleIT {
       buffer.append(StringUtils.join(casts, ","));
       buffer.append(" from root.sg.d1");
       String sql = buffer.toString();
-      SessionDataSet sessionDataSet = session.executeQueryStatement(sql);
+      ISessionDataSet sessionDataSet = session.executeQueryStatement(sql);
 
       // compare types
       List<String> columnTypes = sessionDataSet.getColumnTypes();
@@ -1378,7 +1378,7 @@ public class IoTDBSessionSimpleIT {
         tablet.reset();
       }
 
-      SessionDataSet dataSet =
+      ISessionDataSet dataSet =
           session.executeQueryStatement("select count(s1), count(s2), count(s3) from root.sg.d");
       while (dataSet.hasNext()) {
         RowRecord rowRecord = dataSet.next();
@@ -1429,7 +1429,7 @@ public class IoTDBSessionSimpleIT {
       }
       session.insertTablet(tablet);
       // check result
-      SessionDataSet dataSet = session.executeQueryStatement("select ** from root.sg1.d1");
+      ISessionDataSet dataSet = session.executeQueryStatement("select ** from root.sg1.d1");
       assertArrayEquals(
           dataSet.getColumnNames().toArray(new String[0]),
           new String[] {"Time", "root.sg1.d1.s0", "root.sg1.d1.s1"});
@@ -1471,7 +1471,7 @@ public class IoTDBSessionSimpleIT {
 
       session.deleteDatabase("root.db");
 
-      final SessionDataSet dataSet = session.executeQueryStatement("SHOW DATABASES");
+      final ISessionDataSet dataSet = session.executeQueryStatement("SHOW DATABASES");
       assertFalse(dataSet.hasNext());
 
     } catch (Exception e) {

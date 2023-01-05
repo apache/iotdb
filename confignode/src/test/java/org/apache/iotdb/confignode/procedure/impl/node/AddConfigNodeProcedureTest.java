@@ -37,7 +37,7 @@ public class AddConfigNodeProcedureTest {
     AddConfigNodeProcedure procedure0 =
         new AddConfigNodeProcedure(
             new TConfigNodeLocation(
-                0, new TEndPoint("127.0.0.1", 22277), new TEndPoint("0.0.0.0", 22278)));
+                0, new TEndPoint("127.0.0.1", 10710), new TEndPoint("0.0.0.0", 10720)));
 
     try (PublicBAOS byteArrayOutputStream = new PublicBAOS();
         DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {

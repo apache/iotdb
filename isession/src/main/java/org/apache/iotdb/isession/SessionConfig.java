@@ -16,9 +16,9 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.session;
+package org.apache.iotdb.isession;
 
-import org.apache.iotdb.session.util.Version;
+import org.apache.iotdb.isession.util.Version;
 
 public class SessionConfig {
 

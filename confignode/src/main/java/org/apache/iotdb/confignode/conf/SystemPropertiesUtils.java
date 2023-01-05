@@ -35,6 +35,9 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Properties;
 
+import static org.apache.iotdb.commons.conf.IoTDBConstant.CLUSTER_NAME;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.DEFAULT_CLUSTER_NAME;
+
 public class SystemPropertiesUtils {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SystemPropertiesUtils.class);
@@ -68,6 +71,11 @@ public class SystemPropertiesUtils {
     boolean needReWrite = false;
 
     // Startup configuration
+    String clusterName = systemProperties.getProperty(CLUSTER_NAME, null);
+    if (clusterName != null && !clusterName.equals(conf.getClusterName())) {
+      throw new ConfigurationException(CLUSTER_NAME, conf.getClusterName(), clusterName);
+    }
+
     String internalAddress = systemProperties.getProperty("cn_internal_address", null);
     if (internalAddress == null) {
       needReWrite = true;
@@ -196,7 +204,12 @@ public class SystemPropertiesUtils {
   public static void storeSystemParameters() throws IOException {
     Properties systemProperties = getSystemProperties();
 
+    // Cluster configuration
+    systemProperties.setProperty("cluster_name", conf.getClusterName());
     systemProperties.setProperty("config_node_id", String.valueOf(conf.getConfigNodeId()));
+    systemProperties.setProperty(
+        "is_seed_config_node",
+        String.valueOf(ConfigNodeDescriptor.getInstance().isSeedConfigNode()));
 
     // Startup configuration
     systemProperties.setProperty("cn_internal_address", String.valueOf(conf.getInternalAddress()));
@@ -245,6 +258,25 @@ public class SystemPropertiesUtils {
   }
 
   /**
+   * Load the cluster_name in confignode-system.properties file. We only invoke this interface when
+   * restarted.
+   *
+   * @return The property of cluster_name in confignode-system.properties file
+   * @throws IOException When load confignode-system.properties file failed
+   */
+  public static String loadClusterNameWhenRestarted() throws IOException {
+    Properties systemProperties = getSystemProperties();
+    String clusterName = systemProperties.getProperty(CLUSTER_NAME, null);
+    if (clusterName == null) {
+      LOGGER.warn(
+          "Lack cluster_name field in data/confignode/system/confignode-system.properties, set it as defaultCluster");
+      systemProperties.setProperty(CLUSTER_NAME, DEFAULT_CLUSTER_NAME);
+      return systemProperties.getProperty(CLUSTER_NAME, null);
+    }
+    return clusterName;
+  }
+
+  /**
    * Load the config_node_id in confignode-system.properties file. We only invoke this interface
    * when restarted.
    *
@@ -257,7 +289,31 @@ public class SystemPropertiesUtils {
       return Integer.parseInt(systemProperties.getProperty("config_node_id", null));
     } catch (NumberFormatException e) {
       throw new IOException(
-          "The parameter config_node_id doesn't exist in confignode-system.properties");
+          "The parameter config_node_id doesn't exist in data/confignode/system/confignode-system.properties. "
+              + "Please delete data dir data/confignode and restart again.");
+    }
+  }
+
+  /**
+   * Check if the current ConfigNode is SeedConfigNode.
+   *
+   * <p>Notice: Only invoke this interface when restarted.
+   *
+   * @return True if the is_seed_config_node is set to True in iotdb-confignode.properties file or
+   *     getInternalAddress().equals(conf.getTargetConfigNode())
+   */
+  public static boolean isSeedConfigNode() {
+    try {
+      Properties systemProperties = getSystemProperties();
+      boolean isSeedConfigNode =
+          Boolean.parseBoolean(systemProperties.getProperty("is_seed_config_node", null));
+      if (isSeedConfigNode) {
+        return true;
+      } else {
+        return ConfigNodeDescriptor.getInstance().isSeedConfigNode();
+      }
+    } catch (IOException ignore) {
+      return false;
     }
   }
 

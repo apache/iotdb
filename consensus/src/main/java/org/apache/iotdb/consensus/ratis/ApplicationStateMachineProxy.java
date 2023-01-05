@@ -242,7 +242,7 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
     // statemachine is supposed to clear snapshotDir on failure
     boolean isEmpty = snapshotDir.delete();
     if (!isEmpty) {
-      logger.info("Snapshot directory is incomplete, deleting " + snapshotDir.getAbsolutePath());
+      logger.info("Snapshot directory is incomplete, deleting {}", snapshotDir.getAbsolutePath());
       FileUtils.deleteFully(snapshotDir);
     }
   }

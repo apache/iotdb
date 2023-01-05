@@ -379,6 +379,16 @@ public class StandaloneConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   @Override
+  public SettableFuture<ConfigTaskResult> showClusterParameters() {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    future.setException(
+        new IoTDBException(
+            "Executing show cluster parameters in standalone mode is not supported",
+            TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()));
+    return future;
+  }
+
+  @Override
   public SettableFuture<ConfigTaskResult> showTTL(ShowTTLStatement showTTLStatement) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     List<PartialPath> storageGroupPaths = showTTLStatement.getPaths();

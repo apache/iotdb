@@ -19,6 +19,8 @@
 package org.apache.iotdb.session.it;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.isession.ISession;
+import org.apache.iotdb.isession.ISessionDataSet;
 import org.apache.iotdb.it.env.ConfigFactory;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
@@ -26,8 +28,6 @@ import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
-import org.apache.iotdb.session.ISession;
-import org.apache.iotdb.session.SessionDataSet;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.write.record.Tablet;
@@ -75,7 +75,7 @@ public class IoTDBSessionAlignedInsertIT {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
       insertTabletWithAlignedTimeseriesMethod(session);
       session.executeNonQueryStatement("flush");
-      SessionDataSet dataSet = session.executeQueryStatement("select * from root.sg_1.d1.vector");
+      ISessionDataSet dataSet = session.executeQueryStatement("select * from root.sg_1.d1.vector");
       assertEquals(dataSet.getColumnNames().size(), 3);
       assertEquals(dataSet.getColumnNames().get(0), "Time");
       assertEquals(dataSet.getColumnNames().get(1), ROOT_SG1_D1_VECTOR1 + ".s1");
@@ -124,7 +124,7 @@ public class IoTDBSessionAlignedInsertIT {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
       insertAlignedRecord(session, ROOT_SG1_D1_VECTOR1);
       session.executeNonQueryStatement("flush");
-      SessionDataSet dataSet = session.executeQueryStatement("select s2 from root.sg_1.d1.vector");
+      ISessionDataSet dataSet = session.executeQueryStatement("select s2 from root.sg_1.d1.vector");
       assertEquals(2, dataSet.getColumnNames().size());
       assertEquals("Time", dataSet.getColumnNames().get(0));
       assertEquals(dataSet.getColumnNames().get(1), ROOT_SG1_D1_VECTOR1 + ".s2");
@@ -148,7 +148,7 @@ public class IoTDBSessionAlignedInsertIT {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
       insertAlignedStringRecord(session, ROOT_SG1_D1_VECTOR1);
       session.executeNonQueryStatement("flush");
-      SessionDataSet dataSet = session.executeQueryStatement("select s2 from root.sg_1.d1.vector");
+      ISessionDataSet dataSet = session.executeQueryStatement("select s2 from root.sg_1.d1.vector");
       assertEquals(2, dataSet.getColumnNames().size());
       assertEquals("Time", dataSet.getColumnNames().get(0));
       assertEquals(ROOT_SG1_D1_VECTOR1 + ".s2", dataSet.getColumnNames().get(1));
@@ -172,7 +172,7 @@ public class IoTDBSessionAlignedInsertIT {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
       insertAlignedStringRecords(session, ROOT_SG1_D1_VECTOR1);
       session.executeNonQueryStatement("flush");
-      SessionDataSet dataSet = session.executeQueryStatement("select s2 from root.sg_1.d1.vector");
+      ISessionDataSet dataSet = session.executeQueryStatement("select s2 from root.sg_1.d1.vector");
       assertEquals(2, dataSet.getColumnNames().size());
       assertEquals("Time", dataSet.getColumnNames().get(0));
       assertEquals(dataSet.getColumnNames().get(1), ROOT_SG1_D1_VECTOR1 + ".s2");
@@ -196,7 +196,7 @@ public class IoTDBSessionAlignedInsertIT {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
       insertAlignedRecords(session, ROOT_SG1_D1_VECTOR1);
       session.executeNonQueryStatement("flush");
-      SessionDataSet dataSet = session.executeQueryStatement("select s2 from root.sg_1.d1.vector");
+      ISessionDataSet dataSet = session.executeQueryStatement("select s2 from root.sg_1.d1.vector");
       assertEquals(2, dataSet.getColumnNames().size());
       assertEquals("Time", dataSet.getColumnNames().get(0));
       assertEquals(dataSet.getColumnNames().get(1), ROOT_SG1_D1_VECTOR1 + ".s2");
@@ -220,7 +220,7 @@ public class IoTDBSessionAlignedInsertIT {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
       insertAlignedRecordsOfOneDevice(session, ROOT_SG1_D1_VECTOR1);
       session.executeNonQueryStatement("flush");
-      SessionDataSet dataSet = session.executeQueryStatement("select s2 from root.sg_1.d1.vector");
+      ISessionDataSet dataSet = session.executeQueryStatement("select s2 from root.sg_1.d1.vector");
       assertEquals(2, dataSet.getColumnNames().size());
       assertEquals("Time", dataSet.getColumnNames().get(0));
       assertEquals(dataSet.getColumnNames().get(1), ROOT_SG1_D1_VECTOR1 + ".s2");
@@ -246,7 +246,7 @@ public class IoTDBSessionAlignedInsertIT {
       insertTabletWithAlignedTimeseriesMethod(session);
       insertNonAlignedRecord(session, ROOT_SG1_D2);
       session.executeNonQueryStatement("flush");
-      SessionDataSet dataSet = session.executeQueryStatement("select s2 from root.sg_1.d1.vector");
+      ISessionDataSet dataSet = session.executeQueryStatement("select s2 from root.sg_1.d1.vector");
       assertEquals(2, dataSet.getColumnNames().size());
       assertEquals("Time", dataSet.getColumnNames().get(0));
       assertEquals(dataSet.getColumnNames().get(1), ROOT_SG1_D1_VECTOR1 + ".s2");
@@ -272,7 +272,7 @@ public class IoTDBSessionAlignedInsertIT {
       insertTabletWithAlignedTimeseriesMethod(session);
       insertNonAlignedRecord(session, ROOT_SG1_D2);
       session.executeNonQueryStatement("flush");
-      SessionDataSet dataSet = session.executeQueryStatement("select * from root.sg_1.d1.vector");
+      ISessionDataSet dataSet = session.executeQueryStatement("select * from root.sg_1.d1.vector");
       assertEquals(3, dataSet.getColumnNames().size());
       assertEquals("Time", dataSet.getColumnNames().get(0));
       assertEquals(ROOT_SG1_D1_VECTOR1 + ".s1", dataSet.getColumnNames().get(1));

@@ -19,14 +19,14 @@
 package org.apache.iotdb.session.it;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.isession.ISession;
+import org.apache.iotdb.isession.ISessionDataSet;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
-import org.apache.iotdb.session.ISession;
-import org.apache.iotdb.session.SessionDataSet;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -87,7 +87,7 @@ public class IoTDBSessionInsertNullIT {
 
   private long queryCountRecords(ISession session, String sql)
       throws StatementExecutionException, IoTDBConnectionException {
-    SessionDataSet dataSetWrapper = session.executeQueryStatement(sql, 60_000);
+    ISessionDataSet dataSetWrapper = session.executeQueryStatement(sql, 60_000);
     long count = 0;
     while (dataSetWrapper.hasNext()) {
       RowRecord record = dataSetWrapper.next();

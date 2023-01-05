@@ -202,7 +202,11 @@ public interface BaseConfig {
     return this;
   }
 
-  default String getConfigNodeConsesusProtocolClass() {
+  default String getClusterName() {
+    return "defaultCluster";
+  }
+
+  default String getConfigNodeConsensusProtocolClass() {
     return "org.apache.iotdb.consensus.simple.SimpleConsensus";
   }
 
@@ -271,6 +275,22 @@ public interface BaseConfig {
     return 1;
   }
 
+  default double getDataRegionPerProcessor() {
+    return 1.0;
+  }
+
+  default double getSchemaRegionPerDataNode() {
+    return 1.0;
+  }
+
+  default double getDiskSpaceWarningThreshold() {
+    return 0.05;
+  }
+
+  default String getReadConsistencyLevel() {
+    return "strong";
+  }
+
   default BaseConfig setDataReplicationFactor(int dataReplicationFactor) {
     return this;
   }
@@ -287,12 +307,20 @@ public interface BaseConfig {
     return 10000;
   }
 
+  default String getSeriesPartitionExecutorClass() {
+    return "org.apache.iotdb.commons.partition.executor.hash.BKDRHashExecutor";
+  }
+
+  default long getDefaultTTL() {
+    return Long.MAX_VALUE;
+  }
+
   default BaseConfig setTimePartitionInterval(long timePartitionInterval) {
     return this;
   }
 
   default long getTimePartitionInterval() {
-    return 86400;
+    return 604800000;
   }
 
   default BaseConfig setRatisSnapshotTriggerThreshold(int ratisSnapshotTriggerThreshold) {
@@ -411,5 +439,13 @@ public interface BaseConfig {
 
   default int getQueryThreadCount() {
     return Runtime.getRuntime().availableProcessors();
+  }
+
+  default BaseConfig setDataRatisTriggerSnapshotThreshold(long threshold) {
+    return this;
+  }
+
+  default BaseConfig setConfigNodeRatisSnapshotTriggerThreshold(long threshold) {
+    return this;
   }
 }

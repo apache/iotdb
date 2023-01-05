@@ -16,25 +16,24 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.it;
+package org.apache.iotdb.confignode.it.cluster;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
-import org.apache.iotdb.common.rpc.thrift.TNodeResource;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
+import org.apache.iotdb.confignode.rpc.thrift.TClusterParameters;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeConfigurationResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeInfo;
-import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterReq;
-import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRemoveReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRemoveResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowConfigNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowVariablesResp;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.it.env.ConfigFactory;
 import org.apache.iotdb.it.env.ConfigNodeWrapper;
@@ -42,9 +41,9 @@ import org.apache.iotdb.it.env.DataNodeWrapper;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
+import org.apache.iotdb.itbase.env.BaseConfig;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import org.apache.thrift.TException;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -52,7 +51,6 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
-import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -64,7 +62,9 @@ import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({ClusterIT.class})
-public class IoTDBClusterNodeIT {
+public class IoTDBClusterNodeGetterIT {
+
+  private static final BaseConfig CONF = ConfigFactory.getConfig();
 
   private static final int testConfigNodeNum = 2;
   private static final int testDataNodeNum = 2;
@@ -76,15 +76,12 @@ public class IoTDBClusterNodeIT {
 
   @Before
   public void setUp() throws Exception {
-    originalConfigNodeConsensusProtocolClass =
-        ConfigFactory.getConfig().getConfigNodeConsesusProtocolClass();
-    ConfigFactory.getConfig().setConfigNodeConsesusProtocolClass(testConsensusProtocolClass);
-    originalSchemaRegionConsensusProtocolClass =
-        ConfigFactory.getConfig().getSchemaRegionConsensusProtocolClass();
-    ConfigFactory.getConfig().setSchemaRegionConsensusProtocolClass(testConsensusProtocolClass);
-    originalDataRegionConsensusProtocolClass =
-        ConfigFactory.getConfig().getDataRegionConsensusProtocolClass();
-    ConfigFactory.getConfig().setDataRegionConsensusProtocolClass(testConsensusProtocolClass);
+    originalConfigNodeConsensusProtocolClass = CONF.getConfigNodeConsensusProtocolClass();
+    CONF.setConfigNodeConsesusProtocolClass(testConsensusProtocolClass);
+    originalSchemaRegionConsensusProtocolClass = CONF.getSchemaRegionConsensusProtocolClass();
+    CONF.setSchemaRegionConsensusProtocolClass(testConsensusProtocolClass);
+    originalDataRegionConsensusProtocolClass = CONF.getDataRegionConsensusProtocolClass();
+    CONF.setDataRegionConsensusProtocolClass(testConsensusProtocolClass);
 
     // Init 2C2D environment
     EnvFactory.getEnv().initClusterEnvironment(testConfigNodeNum, testDataNodeNum);
@@ -93,16 +90,13 @@ public class IoTDBClusterNodeIT {
   @After
   public void tearDown() {
     EnvFactory.getEnv().cleanAfterClass();
-    ConfigFactory.getConfig()
-        .setConfigNodeConsesusProtocolClass(originalConfigNodeConsensusProtocolClass);
-    ConfigFactory.getConfig()
-        .setSchemaRegionConsensusProtocolClass(originalSchemaRegionConsensusProtocolClass);
-    ConfigFactory.getConfig()
-        .setDataRegionConsensusProtocolClass(originalDataRegionConsensusProtocolClass);
+    CONF.setConfigNodeConsesusProtocolClass(originalConfigNodeConsensusProtocolClass);
+    CONF.setSchemaRegionConsensusProtocolClass(originalSchemaRegionConsensusProtocolClass);
+    CONF.setDataRegionConsensusProtocolClass(originalDataRegionConsensusProtocolClass);
   }
 
   @Test
-  public void showClusterAndNodesTest() throws IOException, InterruptedException, TException {
+  public void showClusterAndNodesTest() throws Exception {
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
 
@@ -148,6 +142,42 @@ public class IoTDBClusterNodeIT {
         assertTrue(found);
       }
 
+      /* Tests showClusterParameters */
+      TShowVariablesResp showVariablesResp = client.showVariables();
+      Assert.assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(), showVariablesResp.getStatus().getCode());
+      TClusterParameters clusterParameters = showVariablesResp.getClusterParameters();
+      Assert.assertEquals(
+          testConsensusProtocolClass, clusterParameters.getConfigNodeConsensusProtocolClass());
+      Assert.assertEquals(
+          testConsensusProtocolClass, clusterParameters.getDataRegionConsensusProtocolClass());
+      Assert.assertEquals(
+          testConsensusProtocolClass, clusterParameters.getSchemaRegionConsensusProtocolClass());
+      Assert.assertEquals(
+          CONF.getSeriesPartitionSlotNum(), clusterParameters.getSeriesPartitionSlotNum());
+      Assert.assertEquals(
+          CONF.getSeriesPartitionExecutorClass(),
+          clusterParameters.getSeriesPartitionExecutorClass());
+      Assert.assertEquals(CONF.getDefaultTTL(), clusterParameters.getDefaultTTL());
+      Assert.assertEquals(
+          CONF.getTimePartitionInterval(), clusterParameters.getTimePartitionInterval());
+      Assert.assertEquals(
+          CONF.getDataReplicationFactor(), clusterParameters.getDataReplicationFactor());
+      Assert.assertEquals(
+          CONF.getSchemaReplicationFactor(), clusterParameters.getSchemaReplicationFactor());
+      Assert.assertEquals(
+          CONF.getDataRegionPerProcessor(), clusterParameters.getDataRegionPerProcessor(), 0.01);
+      Assert.assertEquals(
+          CONF.getSchemaRegionPerDataNode(), clusterParameters.getSchemaRegionPerDataNode(), 0.01);
+      Assert.assertEquals(
+          CONF.getDiskSpaceWarningThreshold(),
+          clusterParameters.getDiskSpaceWarningThreshold(),
+          0.01);
+      Assert.assertEquals(
+          CONF.getReadConsistencyLevel(), clusterParameters.getReadConsistencyLevel());
+      Assert.assertEquals(
+          CONF.getLeastDataRegionGroupNum(), clusterParameters.getLeastDataRegionGroupNum());
+
       /* Test showConfigNodes */
       TShowConfigNodesResp showConfigNodesResp = client.showConfigNodes();
       // Check ConfigNodeInfo
@@ -183,7 +213,7 @@ public class IoTDBClusterNodeIT {
   }
 
   @Test
-  public void removeAndStopConfigNodeTest() throws TException, IOException, InterruptedException {
+  public void removeAndStopConfigNodeTest() throws Exception {
     TShowClusterResp showClusterResp;
     TSStatus status;
 
@@ -219,17 +249,13 @@ public class IoTDBClusterNodeIT {
   }
 
   @Test
-  public void queryAndRemoveDataNodeTest() throws TException, IOException, InterruptedException {
+  public void queryAndRemoveDataNodeTest() throws Exception {
 
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
 
-      /* Test success re-register */
-      TDataNodeRegisterReq dataNodeRegisterReq = new TDataNodeRegisterReq();
-      TDataNodeConfiguration dataNodeConfiguration = new TDataNodeConfiguration();
-      TDataNodeLocation dataNodeLocation = new TDataNodeLocation();
-
       // Pick a registered DataNode
+      TDataNodeLocation dataNodeLocation = new TDataNodeLocation();
       TShowDataNodesResp showDataNodesResp = client.showDataNodes();
       TDataNodeInfo dataNodeInfo = showDataNodesResp.getDataNodesInfoList().get(0);
 
@@ -244,15 +270,6 @@ public class IoTDBClusterNodeIT {
           new TEndPoint(dataNodeInfo.getRpcAddresss(), dataNodeInfo.getRpcPort() + 3));
       dataNodeLocation.setSchemaRegionConsensusEndPoint(
           new TEndPoint(dataNodeInfo.getRpcAddresss(), dataNodeInfo.getRpcPort() + 4));
-
-      // Re-register DataNode
-      dataNodeConfiguration.setLocation(dataNodeLocation);
-      dataNodeConfiguration.setResource(new TNodeResource(8, 1024 * 1024));
-      dataNodeRegisterReq.setDataNodeConfiguration(dataNodeConfiguration);
-      TDataNodeRegisterResp dataNodeRegisterResp = client.registerDataNode(dataNodeRegisterReq);
-      assertEquals(
-          TSStatusCode.DATANODE_ALREADY_REGISTERED.getStatusCode(),
-          dataNodeRegisterResp.getStatus().getCode());
 
       /* Test query one DataNodeInfo */
       TDataNodeConfigurationResp dataNodeConfigurationResp =

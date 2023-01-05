@@ -360,6 +360,8 @@ public class AuthorityChecker {
       case SHOW_PATH_SET_SCHEMA_TEMPLATE:
       case SHOW_PATH_USING_SCHEMA_TEMPLATE:
         return PrivilegeType.READ_TEMPLATE_APPLICATION.ordinal();
+      case SHOW_CONTINUOUS_QUERIES:
+        return PrivilegeType.SHOW_CONTINUOUS_QUERIES.ordinal();
       default:
         logger.error("Unrecognizable operator type ({}) for AuthorityChecker.", type);
         return -1;

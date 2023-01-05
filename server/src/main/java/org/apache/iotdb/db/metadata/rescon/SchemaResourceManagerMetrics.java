@@ -28,11 +28,15 @@ import org.apache.iotdb.metrics.utils.MetricType;
 
 import java.util.Objects;
 
-public class SchemaStatisticsManagerMetrics implements IMetricSet {
-  private SchemaStatisticsManager schemaStatisticsManager;
+public class SchemaResourceManagerMetrics implements IMetricSet {
+  private final SchemaStatisticsManager schemaStatisticsManager;
 
-  public SchemaStatisticsManagerMetrics(SchemaStatisticsManager schemaStatisticsManager) {
+  private final MemoryStatistics memoryStatistics;
+
+  public SchemaResourceManagerMetrics(
+      SchemaStatisticsManager schemaStatisticsManager, MemoryStatistics memoryStatistics) {
     this.schemaStatisticsManager = schemaStatisticsManager;
+    this.memoryStatistics = memoryStatistics;
   }
 
   @Override
@@ -44,19 +48,48 @@ public class SchemaStatisticsManagerMetrics implements IMetricSet {
         SchemaStatisticsManager::getTotalSeriesNumber,
         Tag.NAME.toString(),
         "timeSeries");
+
+    metricService.createAutoGauge(
+        Metric.MEM.toString(),
+        MetricLevel.IMPORTANT,
+        memoryStatistics,
+        MemoryStatistics::getMemoryUsage,
+        Tag.NAME.toString(),
+        "schema_region_total_usage");
+
+    metricService.createAutoGauge(
+        Metric.MEM.toString(),
+        MetricLevel.IMPORTANT,
+        memoryStatistics,
+        memoryStatistics ->
+            memoryStatistics.getMemoryCapacity() - memoryStatistics.getMemoryUsage(),
+        Tag.NAME.toString(),
+        "schema_region_total_remaining");
   }
 
   @Override
   public void unbindFrom(AbstractMetricService metricService) {
     metricService.remove(
         MetricType.AUTO_GAUGE, Metric.QUANTITY.toString(), Tag.NAME.toString(), "timeSeries");
+
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.MEM.toString(),
+        Tag.NAME.toString(),
+        "schema_region_total_usage");
+
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.MEM.toString(),
+        Tag.NAME.toString(),
+        "schema_region_total_remaining");
   }
 
   @Override
   public boolean equals(Object o) {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
-    SchemaStatisticsManagerMetrics that = (SchemaStatisticsManagerMetrics) o;
+    SchemaResourceManagerMetrics that = (SchemaResourceManagerMetrics) o;
     return Objects.equals(schemaStatisticsManager, that.schemaStatisticsManager);
   }
 

@@ -31,22 +31,23 @@ import java.io.File;
 
 public class ConfigNodeConfig {
 
-  /**
-   * the config node id for cluster mode, the default value -1 should be changed after join cluster
-   */
+  /** ClusterId, the default value "defaultCluster" will be changed after join cluster */
+  private volatile String clusterName = "defaultCluster";
+
+  /** ConfigNodeId, the default value -1 will be changed after join cluster */
   private volatile int configNodeId = -1;
 
   /** could set ip or hostname */
   private String internalAddress = "127.0.0.1";
 
   /** used for communication between data node and config node */
-  private int internalPort = 22277;
+  private int internalPort = 10710;
 
   /** used for communication between config node and config node */
-  private int consensusPort = 22278;
+  private int consensusPort = 10720;
 
   /** Used for connecting to the ConfigNodeGroup */
-  private TEndPoint targetConfigNode = new TEndPoint("127.0.0.1", 22277);
+  private TEndPoint targetConfigNode = new TEndPoint("127.0.0.1", 10710);
 
   // TODO: Read from iotdb-confignode.properties
   private int configNodeRegionId = 0;
@@ -294,6 +295,14 @@ public class ConfigNodeConfig {
       }
     }
     return dir;
+  }
+
+  public String getClusterName() {
+    return clusterName;
+  }
+
+  public void setClusterName(String clusterName) {
+    this.clusterName = clusterName;
   }
 
   public int getConfigNodeId() {

@@ -130,9 +130,7 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
 
   @Override
   public TsBlock next() {
-    if (!checkLastWriteOperation()) {
-      return null;
-    }
+    checkLastWriteOperation();
 
     if (!processTsBlock(cachedTsBlock)) {
       return null;
@@ -153,12 +151,10 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
   /**
    * Check whether the last write operation was executed successfully, and throw an exception if the
    * execution failed, otherwise continue to execute the operator.
-   *
-   * @return true if the last write operation has been executed successfully.
    */
-  private boolean checkLastWriteOperation() {
+  private void checkLastWriteOperation() {
     if (writeOperationFuture == null) {
-      return true;
+      return;
     }
 
     try {
@@ -182,7 +178,6 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
       }
 
       writeOperationFuture = null;
-      return true;
     } catch (InterruptedException e) {
       LOGGER.warn(
           "{}: interrupted when processing write operation future with exception {}", this, e);

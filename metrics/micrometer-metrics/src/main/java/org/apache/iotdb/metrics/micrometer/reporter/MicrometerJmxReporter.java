@@ -43,9 +43,11 @@ public class MicrometerJmxReporter implements JmxReporter {
           Metrics.globalRegistry.getRegistries().stream()
               .filter(reporter -> reporter instanceof JmxMeterRegistry)
               .collect(Collectors.toSet());
-      if (meterRegistrySet.size() == 0) {
-        Metrics.addRegistry(new JmxMeterRegistry(JmxConfig.DEFAULT, Clock.SYSTEM));
+      if (meterRegistrySet.size() != 0) {
+        LOGGER.warn("Jmx Reporter already start");
+        return false;
       }
+      Metrics.addRegistry(new JmxMeterRegistry(JmxConfig.DEFAULT, Clock.SYSTEM));
     } catch (Exception e) {
       LOGGER.error("Failed to start Micrometer JmxReporter, because {}", e.getMessage());
       return false;
