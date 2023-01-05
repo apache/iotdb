@@ -25,16 +25,16 @@ import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import java.util.Map;
 
 public class IoTDBMetricsUtils {
-  private static final MetricConfig metricConfig =
+  private static final MetricConfig METRIC_CONFIG =
       MetricConfigDescriptor.getInstance().getMetricConfig();
   public static final String DATABASE = "root.__system";
 
-  /** Generate the path of metric by metricInfo */
+  /** Generate the path of metric by metricInfo. */
   public static String generatePath(MetricInfo metricInfo) {
     return generatePath(metricInfo.getName(), metricInfo.getTags());
   }
 
-  /** Generate the path of metric with tags array */
+  /** Generate the path of metric with tags array. */
   public static String generatePath(String name, String... tags) {
     StringBuilder stringBuilder = generateMetric(name);
     for (int i = 0; i < tags.length; i += 2) {
@@ -49,7 +49,7 @@ public class IoTDBMetricsUtils {
     return stringBuilder.toString();
   }
 
-  /** Generate the path of metric with tags map */
+  /** Generate the path of metric with tags map. */
   public static String generatePath(String name, Map<String, String> tags) {
     StringBuilder stringBuilder = generateMetric(name);
     for (Map.Entry<String, String> entry : tags.entrySet()) {
@@ -64,17 +64,17 @@ public class IoTDBMetricsUtils {
     return stringBuilder.toString();
   }
 
-  /** Generate the path of metric */
+  /** Generate the path of metric. */
   private static StringBuilder generateMetric(String name) {
     StringBuilder stringBuilder = new StringBuilder();
     stringBuilder
         .append(DATABASE)
         .append(".")
-        .append(metricConfig.getIoTDBReporterConfig().getLocation())
+        .append(METRIC_CONFIG.getIotdbReporterConfig().getLocation())
         .append(".`")
-        .append(metricConfig.getRpcAddress())
+        .append(METRIC_CONFIG.getRpcAddress())
         .append(":")
-        .append(metricConfig.getRpcPort())
+        .append(METRIC_CONFIG.getRpcPort())
         .append("`")
         .append(".")
         .append("`")

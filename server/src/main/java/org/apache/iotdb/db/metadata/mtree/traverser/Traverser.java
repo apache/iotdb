@@ -41,10 +41,6 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_ROOT;
  *   <li>counter: to count the node num or measurement num that matches the path pattern
  *   <li>collector: to collect customized results of the matched node or measurement
  * </ol>
- *
- * root.sg12.sg1 sg1 root->sg12->
- *
- * <p>root.sg22.sg1
  */
 public abstract class Traverser<R> extends AbstractTreeVisitor<IMNode, R> {
 
@@ -64,7 +60,7 @@ public abstract class Traverser<R> extends AbstractTreeVisitor<IMNode, R> {
   // default false means fullPath pattern match
   protected boolean isPrefixMatch = false;
 
-  public Traverser() {}
+  protected Traverser() {}
 
   /**
    * To traverse subtree under root.sg, e.g., init Traverser(root, "root.sg.**")
@@ -73,7 +69,7 @@ public abstract class Traverser<R> extends AbstractTreeVisitor<IMNode, R> {
    * @param path use wildcard to specify which part to traverse
    * @throws MetadataException
    */
-  public Traverser(IMNode startNode, PartialPath path, IMTreeStore store, boolean isPrefixMatch)
+  protected Traverser(IMNode startNode, PartialPath path, IMTreeStore store, boolean isPrefixMatch)
       throws MetadataException {
     super(startNode, path, isPrefixMatch);
     String[] nodes = path.getNodes();

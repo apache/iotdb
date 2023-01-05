@@ -422,10 +422,8 @@ public class CachedMTreeStore implements IMTreeStore {
   }
 
   private void ensureMemoryStatus() {
-    if (memManager.isExceedFlushThreshold()) {
-      if (!hasReleaseTask) {
-        registerReleaseTask();
-      }
+    if (memManager.isExceedFlushThreshold() && !hasReleaseTask) {
+      registerReleaseTask();
     }
   }
 
@@ -451,10 +449,8 @@ public class CachedMTreeStore implements IMTreeStore {
     } finally {
       readLock.unlock();
     }
-    if (memManager.isExceedFlushThreshold()) {
-      if (!hasFlushTask) {
-        registerFlushTask();
-      }
+    if (memManager.isExceedFlushThreshold() && !hasFlushTask) {
+      registerFlushTask();
     }
   }
 
@@ -557,10 +553,8 @@ public class CachedMTreeStore implements IMTreeStore {
     // must invoke hasNext() first
     @Override
     public IMNode next() {
-      if (nextNode == null) {
-        if (!hasNext()) {
-          throw new NoSuchElementException();
-        }
+      if (nextNode == null && !hasNext()) {
+        throw new NoSuchElementException();
       }
       IMNode result = nextNode;
       nextNode = null;

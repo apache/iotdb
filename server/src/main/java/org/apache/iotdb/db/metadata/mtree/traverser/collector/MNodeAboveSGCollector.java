@@ -30,7 +30,7 @@ public abstract class MNodeAboveSGCollector<T> extends MNodeCollector<T> {
 
   protected Set<PartialPath> involvedStorageGroupMNodes = new HashSet<>();
 
-  public MNodeAboveSGCollector(
+  protected MNodeAboveSGCollector(
       IMNode startNode, PartialPath path, IMTreeStore store, boolean isPrefixMatch)
       throws MetadataException {
     super(startNode, path, store, isPrefixMatch);

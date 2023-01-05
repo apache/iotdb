@@ -64,6 +64,8 @@ public class WALFakeNode implements IWALNode {
       case FAILURE:
         walFlushListener.fail(cause);
         break;
+      default:
+        break;
     }
     return walFlushListener;
   }

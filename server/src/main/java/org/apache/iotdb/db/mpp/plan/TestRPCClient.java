@@ -57,7 +57,7 @@ public class TestRPCClient {
                     new IoTConsensusConfig.Builder().build()));
   }
 
-  public static void main(String args[]) {
+  public static void main(String[] args) {
     TestRPCClient client = new TestRPCClient();
     //    client.removeRegionPeer();
     client.addPeer();

@@ -30,7 +30,7 @@ import org.apache.iotdb.db.metadata.mtree.traverser.basic.MeasurementTraverser;
 // TODO: set R is ITimeseriesInfo
 public abstract class MeasurementCollector<R> extends MeasurementTraverser<R> {
 
-  public MeasurementCollector(
+  protected MeasurementCollector(
       IMNode startNode, PartialPath path, IMTreeStore store, boolean isPrefixMatch)
       throws MetadataException {
     super(startNode, path, store, isPrefixMatch);

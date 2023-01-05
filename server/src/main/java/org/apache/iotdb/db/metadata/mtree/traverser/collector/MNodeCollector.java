@@ -32,7 +32,7 @@ import org.apache.iotdb.db.metadata.mtree.traverser.basic.MNodeTraverser;
  */
 public abstract class MNodeCollector<R> extends MNodeTraverser<R> {
 
-  public MNodeCollector(
+  protected MNodeCollector(
       IMNode startNode, PartialPath path, IMTreeStore store, boolean isPrefixMatch)
       throws MetadataException {
     super(startNode, path, store, isPrefixMatch);

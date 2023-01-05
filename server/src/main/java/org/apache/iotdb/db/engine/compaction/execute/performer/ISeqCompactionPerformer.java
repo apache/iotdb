@@ -23,5 +23,6 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import java.util.List;
 
 public interface ISeqCompactionPerformer extends ICompactionPerformer {
+  @Override
   void setSourceFiles(List<TsFileResource> seqFiles);
 }

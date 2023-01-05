@@ -32,7 +32,7 @@ public abstract class EntityCollector<R> extends EntityTraverser<R> {
   private boolean usingTemplate = false;
   private int schemaTemplateId = -1;
 
-  public EntityCollector(
+  protected EntityCollector(
       IMNode startNode, PartialPath path, IMTreeStore store, boolean isPrefixMatch)
       throws MetadataException {
     super(startNode, path, store, isPrefixMatch);

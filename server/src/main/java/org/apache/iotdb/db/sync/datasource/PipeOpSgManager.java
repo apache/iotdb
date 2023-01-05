@@ -122,11 +122,7 @@ public class PipeOpSgManager {
       return true;
     }
 
-    if (opBlockBeginIndex > currentOpBlockBeginIndex) {
-      return true;
-    }
-
-    return false;
+    return opBlockBeginIndex > currentOpBlockBeginIndex;
   }
 
   /**

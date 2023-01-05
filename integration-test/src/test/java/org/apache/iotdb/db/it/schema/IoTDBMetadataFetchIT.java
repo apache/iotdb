@@ -509,31 +509,10 @@ public class IoTDBMetadataFetchIT {
           };
       Set<String>[] standards =
           new Set[] {
-            new HashSet<>(
-                Arrays.asList(
-                    "root.ln,0,", "root.ln1,0,", "root.ln2,0,", "root.sg,1,", "root.sg1,1,")),
-            new HashSet<>(
-                Arrays.asList(
-                    "root.ln.wf01.wt01,0,",
-                    "root.ln.wf01.wt02,0,",
-                    "root.ln1.wf01.wt01,0,",
-                    "root.ln2.wf01.wt01,0,",
-                    "root.sg.d.status,1,",
-                    "root.sg1.d.status,0,")),
-            new HashSet<>(
-                Arrays.asList(
-                    "root.ln.wf01,0,",
-                    "root.ln1.wf01,0,",
-                    "root.ln2.wf01,0,",
-                    "root.sg.d,1,",
-                    "root.sg1.d,1,")),
-            new HashSet<>(
-                Arrays.asList(
-                    "root.ln.wf01,0,",
-                    "root.ln1.wf01,0,",
-                    "root.ln2.wf01,0,",
-                    "root.sg.d,0,",
-                    "root.sg1.d,0,")),
+            new HashSet<>(Arrays.asList("root.sg,1,", "root.sg1,1,")),
+            new HashSet<>(Collections.singletonList("root.sg.d.status,1,")),
+            new HashSet<>(Arrays.asList("root.sg.d,1,", "root.sg1.d,1,")),
+            Collections.emptySet(),
           };
       for (int n = 0; n < sqls.length; n++) {
         String sql = sqls[n];

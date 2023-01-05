@@ -33,9 +33,7 @@ public class MessageDigestEncrypt implements AsymmetricEncrypt {
   private static final String STRING_ENCODING = "utf-8";
 
   @Override
-  public void init(String providerParameters) {
-    return;
-  }
+  public void init(String providerParameters) {}
 
   @Override
   public String encrypt(String originPassword) {

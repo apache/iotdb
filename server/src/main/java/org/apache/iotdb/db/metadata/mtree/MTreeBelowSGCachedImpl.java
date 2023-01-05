@@ -50,6 +50,7 @@ import org.apache.iotdb.db.metadata.mtree.traverser.collector.MeasurementCollect
 import org.apache.iotdb.db.metadata.mtree.traverser.counter.MeasurementGroupByLevelCounter;
 import org.apache.iotdb.db.metadata.mtree.traverser.updater.EntityUpdater;
 import org.apache.iotdb.db.metadata.mtree.traverser.updater.MeasurementUpdater;
+import org.apache.iotdb.db.metadata.mtree.traverser.counter.CounterTraverser;
 import org.apache.iotdb.db.metadata.plan.schemaregion.read.IShowDevicesPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.read.IShowTimeSeriesPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.result.ShowDevicesResult;
@@ -98,7 +99,6 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCAR
  *         <li>Interfaces for Device info Query
  *         <li>Interfaces for timeseries, measurement and schema info Query
  *         <li>Interfaces for Level Node info Query
- *         <li>Interfaces and Implementation for metadata count
  *       </ol>
  *   <li>Interfaces and Implementation for MNode Query
  *   <li>Interfaces and Implementation for Template check
@@ -887,34 +887,6 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
     }
     return result;
   }
-  // endregion
-
-  // region Interfaces and Implementation for metadata count
-
-  @Override
-  public Map<PartialPath, Long> getMeasurementCountGroupByLevel(
-      PartialPath pathPattern, int level, boolean isPrefixMatch) throws MetadataException {
-    MeasurementGroupByLevelCounter counter =
-        new MeasurementGroupByLevelCounter(rootNode, pathPattern, store, isPrefixMatch, level);
-    counter.traverse();
-    return counter.getResult();
-  }
-
-  @Override
-  public Map<PartialPath, Long> getMeasurementCountGroupByLevel(
-      PartialPath pathPattern,
-      int level,
-      boolean isPrefixMatch,
-      List<String> timeseries,
-      boolean hasTag)
-      throws MetadataException {
-    MeasurementGroupByLevelCounter counter =
-        new MeasurementGroupByLevelCounter(
-            rootNode, pathPattern, store, isPrefixMatch, level, timeseries, hasTag);
-    counter.traverse();
-    return counter.getResult();
-  }
-
   // endregion
 
   // endregion

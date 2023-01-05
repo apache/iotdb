@@ -110,7 +110,7 @@ public class FastCompactionPerformer
   public void perform()
       throws IOException, MetadataException, StorageEngineException, InterruptedException {
     TsFileMetricManager.getInstance()
-        .addCompactionTempFileNum(!isCrossCompaction, seqFiles.size() > 0, targetFiles.size());
+        .addCompactionTempFileNum(!isCrossCompaction, !seqFiles.isEmpty(), targetFiles.size());
     try (MultiTsFileDeviceIterator deviceIterator =
             new MultiTsFileDeviceIterator(seqFiles, unseqFiles, readerCacheMap);
         AbstractCompactionWriter compactionWriter =
@@ -146,7 +146,7 @@ public class FastCompactionPerformer
         long currentTempFileSize = compactionWriter.getWriterSize();
         TsFileMetricManager.getInstance()
             .addCompactionTempFileSize(
-                !isCrossCompaction, seqFiles.size() > 0, currentTempFileSize - tempFileSize);
+                !isCrossCompaction, !seqFiles.isEmpty(), currentTempFileSize - tempFileSize);
         tempFileSize = currentTempFileSize;
         sortedSourceFiles.clear();
       }
@@ -161,9 +161,9 @@ public class FastCompactionPerformer
       readerCacheMap = null;
       modificationCache = null;
       TsFileMetricManager.getInstance()
-          .addCompactionTempFileNum(!isCrossCompaction, seqFiles.size() > 0, -targetFiles.size());
+          .addCompactionTempFileNum(!isCrossCompaction, !seqFiles.isEmpty(), -targetFiles.size());
       TsFileMetricManager.getInstance()
-          .addCompactionTempFileSize(!isCrossCompaction, seqFiles.size() > 0, -tempFileSize);
+          .addCompactionTempFileSize(!isCrossCompaction, !seqFiles.isEmpty(), -tempFileSize);
     }
   }
 

@@ -124,6 +124,7 @@ public class LastQueryMergeNode extends MultiChildProcessNode {
     return new LastQueryMergeNode(planNodeId, mergeOrderParameter);
   }
 
+  @Override
   public void setChildren(List<PlanNode> children) {
     this.children = children;
   }
