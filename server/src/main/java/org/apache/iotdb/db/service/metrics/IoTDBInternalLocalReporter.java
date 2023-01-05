@@ -141,9 +141,10 @@ public class IoTDBInternalLocalReporter extends IoTDBInternalReporter {
         LOGGER.error("Failed to update the value of metric with status {}", result.status);
       }
     } catch (IoTDBConnectionException e1) {
-      LOGGER.error("Failed to update the value of metric because of connection failure");
+      LOGGER.error(
+          "Failed to update the value of metric because of connection failure, because ", e1);
     } catch (IllegalPathException | QueryProcessException e2) {
-      LOGGER.error("Failed to update the value of metric because of internal error");
+      LOGGER.error("Failed to update the value of metric because of internal error, because ", e2);
     }
   }
 

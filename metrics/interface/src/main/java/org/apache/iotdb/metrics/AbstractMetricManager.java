@@ -66,7 +66,7 @@ public abstract class AbstractMetricManager {
    * @throws IllegalArgumentException when there has different type metric with same name
    */
   public Counter getOrCreateCounter(String name, MetricLevel metricLevel, String... tags) {
-    if (inValid(metricLevel, name, tags)) {
+    if (invalid(metricLevel, name, tags)) {
       return DoNothingMetricManager.doNothingCounter;
     }
     MetricInfo metricInfo = new MetricInfo(MetricType.COUNTER, name, tags);
@@ -101,7 +101,7 @@ public abstract class AbstractMetricManager {
    */
   public <T> AutoGauge createAutoGauge(
       String name, MetricLevel metricLevel, T obj, ToLongFunction<T> mapper, String... tags) {
-    if (inValid(metricLevel, name, tags)) {
+    if (invalid(metricLevel, name, tags)) {
       return DoNothingMetricManager.doNothingAutoGauge;
     }
     MetricInfo metricInfo = new MetricInfo(MetricType.AUTO_GAUGE, name, tags);
@@ -129,7 +129,7 @@ public abstract class AbstractMetricManager {
    * @throws IllegalArgumentException when there has different type metric with same name
    */
   public AutoGauge getAutoGauge(String name, MetricLevel metricLevel, String... tags) {
-    if (inValid(metricLevel, name, tags)) {
+    if (invalid(metricLevel, name, tags)) {
       return DoNothingMetricManager.doNothingAutoGauge;
     }
     MetricInfo metricInfo = new MetricInfo(MetricType.AUTO_GAUGE, name, tags);
@@ -152,7 +152,7 @@ public abstract class AbstractMetricManager {
    * @throws IllegalArgumentException when there has different type metric with same name
    */
   public Gauge getOrCreateGauge(String name, MetricLevel metricLevel, String... tags) {
-    if (inValid(metricLevel, name, tags)) {
+    if (invalid(metricLevel, name, tags)) {
       return DoNothingMetricManager.doNothingGauge;
     }
     MetricInfo metricInfo = new MetricInfo(MetricType.GAUGE, name, tags);
@@ -187,7 +187,7 @@ public abstract class AbstractMetricManager {
    * @throws IllegalArgumentException when there has different type metric with same name
    */
   public Rate getOrCreateRate(String name, MetricLevel metricLevel, String... tags) {
-    if (inValid(metricLevel, name, tags)) {
+    if (invalid(metricLevel, name, tags)) {
       return DoNothingMetricManager.doNothingRate;
     }
     MetricInfo metricInfo = new MetricInfo(MetricType.RATE, name, tags);
@@ -222,7 +222,7 @@ public abstract class AbstractMetricManager {
    * @throws IllegalArgumentException when there has different type metric with same name
    */
   public Histogram getOrCreateHistogram(String name, MetricLevel metricLevel, String... tags) {
-    if (inValid(metricLevel, name, tags)) {
+    if (invalid(metricLevel, name, tags)) {
       return DoNothingMetricManager.doNothingHistogram;
     }
     MetricInfo metricInfo = new MetricInfo(MetricType.HISTOGRAM, name, tags);
@@ -257,7 +257,7 @@ public abstract class AbstractMetricManager {
    * @throws IllegalArgumentException when there has different type metric with same name
    */
   public Timer getOrCreateTimer(String name, MetricLevel metricLevel, String... tags) {
-    if (inValid(metricLevel, name, tags)) {
+    if (invalid(metricLevel, name, tags)) {
       return DoNothingMetricManager.doNothingTimer;
     }
     MetricInfo metricInfo = new MetricInfo(MetricType.TIMER, name, tags);
@@ -443,7 +443,7 @@ public abstract class AbstractMetricManager {
 
   protected abstract boolean stopFramework();
 
-  private boolean inValid(MetricLevel metricLevel, String name, String... tags) {
+  private boolean invalid(MetricLevel metricLevel, String name, String... tags) {
     if (!isEnableMetricInGivenLevel(metricLevel)) {
       return true;
     }

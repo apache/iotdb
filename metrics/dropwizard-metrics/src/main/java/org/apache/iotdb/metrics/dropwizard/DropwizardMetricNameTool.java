@@ -29,7 +29,7 @@ public class DropwizardMetricNameTool {
   private static final String TAG_SEPARATOR = ".";
 
   /**
-   * Transform flat string and metric type to metricInfo
+   * Transform flat string and metric type to metricInfo.
    *
    * @param metricType the type of metric
    * @param flatString the flat string of metricInfo
@@ -55,7 +55,7 @@ public class DropwizardMetricNameTool {
   }
 
   /**
-   * Transform metricInfo to flat string
+   * Transform metricInfo to flat string.
    *
    * @param metricInfo the info of metric
    */
