@@ -61,11 +61,11 @@ public class ModelInfo implements SnapshotProcessor {
     this.lock = new ReentrantReadWriteLock();
   }
 
-  public ModelTableResp showModel(ShowModelPlan req) {
+  public ModelTableResp showModel(ShowModelPlan plan) {
     return null;
   }
 
-  public TrailTableResp showTrail(ShowTrailPlan req) {
+  public TrailTableResp showTrail(ShowTrailPlan plan) {
     return null;
   }
 
