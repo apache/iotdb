@@ -25,6 +25,7 @@ import org.apache.iotdb.db.mpp.execution.operator.process.ProcessOperator;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
+import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.utils.Binary;
 
 import com.google.common.util.concurrent.ListenableFuture;
@@ -137,6 +138,11 @@ public class CountGroupByLevelMergeOperator implements ProcessOperator {
               tsBlockBuilder.getColumnBuilder(1).writeLong(entry.getValue());
               tsBlockBuilder.declarePosition();
             });
+    if (resultTsBlockList.isEmpty()) {
+      TsBlockBuilder tsBlockBuilder =
+          new TsBlockBuilder(Arrays.asList(TSDataType.TEXT, TSDataType.INT64));
+      resultTsBlockList.add(tsBlockBuilder.build());
+    }
   }
 
   @Override
