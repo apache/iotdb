@@ -24,20 +24,12 @@ import org.apache.iotdb.db.mpp.execution.driver.Driver;
 import org.apache.iotdb.db.mpp.execution.driver.DriverContext;
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
 
-import javax.annotation.concurrent.GuardedBy;
-
-import static com.google.common.base.Preconditions.checkState;
 import static java.util.Objects.requireNonNull;
 
 public class PipelineDriverFactory {
 
   private final DriverContext driverContext;
   private final Operator operation;
-  // 控制 Instance 的数量 = 并行度
-  // private final OptionalInt driverInstances;
-
-  @GuardedBy("this")
-  private boolean noMoreDrivers;
 
   public PipelineDriverFactory(Operator operation, DriverContext driverContext) {
     this.operation = requireNonNull(operation, "rootOperator is null");
@@ -48,9 +40,7 @@ public class PipelineDriverFactory {
     return driverContext;
   }
 
-  // thinking: why synchronized
-  public synchronized Driver createDriver() {
-    checkState(!noMoreDrivers, "noMoreDrivers is already set");
+  public Driver createDriver() {
     requireNonNull(driverContext, "driverContext is null");
     try {
       return new DataDriver(operation, driverContext);
@@ -64,20 +54,5 @@ public class PipelineDriverFactory {
       }
       throw failure;
     }
-  }
-
-  //    public synchronized void noMoreDrivers()
-  //    {
-  //        if (noMoreDrivers) {
-  //            return;
-  //        }
-  //        noMoreDrivers = true;
-  //        for (OperatorFactory operatorFactory : operatorFactories) {
-  //            operatorFactory.noMoreOperators();
-  //        }
-  //    }
-
-  public synchronized boolean isNoMoreDrivers() {
-    return noMoreDrivers;
   }
 }

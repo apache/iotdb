@@ -79,9 +79,6 @@ public class TimeJoinOperator extends AbstractProcessOperator {
 
   private final TimeComparator comparator;
 
-  private TsBlock retainedTsBlock;
-  private int startOffset;
-
   public TimeJoinOperator(
       OperatorContext operatorContext,
       List<Operator> children,
