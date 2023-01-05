@@ -336,20 +336,6 @@ public class TagSchemaRegion implements ISchemaRegion {
   }
 
   @Override
-  public long getAllTimeseriesCount(
-      PartialPath pathPattern, Map<Integer, Template> templateMap, boolean isPrefixMatch)
-      throws MetadataException {
-    throw new UnsupportedOperationException("getAllTimeseriesCount");
-  }
-
-  @Override
-  public long getAllTimeseriesCount(
-      PartialPath pathPattern, boolean isPrefixMatch, String key, String value, boolean isContains)
-      throws MetadataException {
-    throw new UnsupportedOperationException("getAllTimeseriesCount");
-  }
-
-  @Override
   public Map<PartialPath, Long> getMeasurementCountGroupByLevel(
       PartialPath pathPattern, int level, boolean isPrefixMatch) throws MetadataException {
     throw new UnsupportedOperationException("getMeasurementCountGroupByLevel");
@@ -365,18 +351,6 @@ public class TagSchemaRegion implements ISchemaRegion {
       boolean isContains)
       throws MetadataException {
     throw new UnsupportedOperationException("getMeasurementCountGroupByLevel");
-  }
-
-  @Override
-  public long getDevicesNum(PartialPath pathPattern, boolean isPrefixMatch)
-      throws MetadataException {
-    synchronized (idTableWithDeviceIDList) {
-      if (pathPattern.getFullPath().length() <= storageGroupFullPath.length()) {
-        return idTableWithDeviceIDList.size();
-      } else {
-        return getDeviceIDsFromInvertedIndex(pathPattern).size();
-      }
-    }
   }
 
   @Override
@@ -478,8 +452,7 @@ public class TagSchemaRegion implements ISchemaRegion {
   }
 
   @Override
-  public Pair<List<ShowDevicesResult>, Integer> getMatchedDevices(IShowDevicesPlan plan)
-      throws MetadataException {
+  public List<ShowDevicesResult> getMatchedDevices(IShowDevicesPlan plan) throws MetadataException {
     throw new UnsupportedOperationException("getMatchedDevices");
   }
 
@@ -534,10 +507,9 @@ public class TagSchemaRegion implements ISchemaRegion {
   }
 
   @Override
-  public Pair<List<ShowTimeSeriesResult>, Integer> showTimeseries(IShowTimeSeriesPlan plan)
+  public List<ShowTimeSeriesResult> showTimeseries(IShowTimeSeriesPlan plan)
       throws MetadataException {
-    List<ShowTimeSeriesResult> ShowTimeSeriesResults = new ArrayList<>();
-    Pair<List<ShowTimeSeriesResult>, Integer> result = new Pair<>(ShowTimeSeriesResults, 0);
+    List<ShowTimeSeriesResult> showTimeSeriesResults = new ArrayList<>();
     String path = plan.getPath().getFullPath();
     // point query
     if (!path.endsWith(TAIL)) {
@@ -547,19 +519,19 @@ public class TagSchemaRegion implements ISchemaRegion {
         Map<String, SchemaEntry> measurementMap = deviceEntry.getMeasurementMap();
         for (String m : measurementMap.keySet()) {
           SchemaEntry schemaEntry = measurementMap.get(m);
-          ShowTimeSeriesResults.add(
+          showTimeSeriesResults.add(
               ShowTimeSeriesResultUtils.generateShowTimeSeriesResult(
                   storageGroupFullPath, path, m, schemaEntry));
         }
       }
-      return result;
+      return showTimeSeriesResults;
     }
     // batch query
     List<IDeviceID> deviceIDs = getDeviceIdFromInvertedIndex(plan.getPath());
     for (IDeviceID deviceID : deviceIDs) {
-      getTimeSeriesResultOfDeviceFromIDTable(ShowTimeSeriesResults, deviceID);
+      getTimeSeriesResultOfDeviceFromIDTable(showTimeSeriesResults, deviceID);
     }
-    return result;
+    return showTimeSeriesResults;
   }
 
   private void getTimeSeriesResultOfDeviceFromIDTable(
@@ -655,12 +627,6 @@ public class TagSchemaRegion implements ISchemaRegion {
   public void activateSchemaTemplate(IActivateTemplateInClusterPlan plan, Template template)
       throws MetadataException {
     throw new UnsupportedOperationException("activateSchemaTemplate");
-  }
-
-  @Override
-  public List<String> getPathsUsingTemplate(PartialPath pathPattern, int templateId)
-      throws MetadataException {
-    throw new UnsupportedOperationException("getPathsUsingTemplate");
   }
 
   @Override

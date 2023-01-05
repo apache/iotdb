@@ -62,7 +62,6 @@ import org.apache.iotdb.db.metadata.schemaregion.rocksdb.mnode.RMNodeValueType;
 import org.apache.iotdb.db.metadata.schemaregion.rocksdb.mnode.RMeasurementMNode;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.utils.MetaFormatUtils;
-import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -805,21 +804,12 @@ public class RSchemaRegion implements ISchemaRegion {
     return index;
   }
 
-  @Override
   public long getAllTimeseriesCount(
       PartialPath pathPattern, Map<Integer, Template> templateMap, boolean isPrefixMatch)
       throws MetadataException {
     throw new UnsupportedOperationException();
   }
 
-  @Override
-  public long getAllTimeseriesCount(
-      PartialPath pathPattern, boolean isPrefixMatch, String key, String value, boolean isContains)
-      throws MetadataException {
-    return getMatchedMeasurementPathWithTags(pathPattern.getNodes()).size();
-  }
-
-  @Override
   public long getDevicesNum(PartialPath pathPattern, boolean isPrefixMatch)
       throws MetadataException {
     return getCountByNodeType(new Character[] {NODE_TYPE_ENTITY}, pathPattern.getNodes());
@@ -1039,20 +1029,18 @@ public class RSchemaRegion implements ISchemaRegion {
   }
 
   @Override
-  public Pair<List<ShowDevicesResult>, Integer> getMatchedDevices(IShowDevicesPlan plan)
-      throws MetadataException {
+  public List<ShowDevicesResult> getMatchedDevices(IShowDevicesPlan plan) throws MetadataException {
     List<ShowDevicesResult> res = Collections.synchronizedList(new ArrayList<>());
     BiFunction<byte[], byte[], Boolean> function =
         (a, b) -> {
           String fullPath = RSchemaUtils.getPathByInnerName(new String(a));
-          res.add(new ShowDevicesResult(fullPath, RSchemaUtils.isAligned(b), storageGroupFullPath));
+          res.add(new ShowDevicesResult(fullPath, RSchemaUtils.isAligned(b)));
           return true;
         };
     traverseOutcomeBasins(
         plan.getPath().getNodes(), MAX_PATH_DEPTH, function, new Character[] {NODE_TYPE_ENTITY});
 
-    // todo Page query, record offset
-    return new Pair<>(res, 1);
+    return res;
   }
 
   @Override
@@ -1094,7 +1082,7 @@ public class RSchemaRegion implements ISchemaRegion {
   }
 
   @Override
-  public Pair<List<ShowTimeSeriesResult>, Integer> showTimeseries(IShowTimeSeriesPlan plan)
+  public List<ShowTimeSeriesResult> showTimeseries(IShowTimeSeriesPlan plan)
       throws MetadataException {
     if (plan.getKey() != null && plan.getValue() != null) {
       return showTimeseriesWithIndex(plan);
@@ -1103,15 +1091,14 @@ public class RSchemaRegion implements ISchemaRegion {
     }
   }
 
-  private Pair<List<ShowTimeSeriesResult>, Integer> showTimeseriesWithIndex(
-      IShowTimeSeriesPlan plan) {
+  private List<ShowTimeSeriesResult> showTimeseriesWithIndex(IShowTimeSeriesPlan plan) {
     // temporarily unsupported
     throw new UnsupportedOperationException(
         formatNotSupportInfo(Thread.currentThread().getStackTrace()[1].getMethodName()));
   }
 
-  private Pair<List<ShowTimeSeriesResult>, Integer> showTimeseriesWithoutIndex(
-      IShowTimeSeriesPlan plan) throws MetadataException {
+  private List<ShowTimeSeriesResult> showTimeseriesWithoutIndex(IShowTimeSeriesPlan plan)
+      throws MetadataException {
 
     List<ShowTimeSeriesResult> res = new LinkedList<>();
     Map<MeasurementPath, Pair<Map<String, String>, Map<String, String>>> measurementPathsAndTags =
@@ -1119,24 +1106,16 @@ public class RSchemaRegion implements ISchemaRegion {
     for (Entry<MeasurementPath, Pair<Map<String, String>, Map<String, String>>> entry :
         measurementPathsAndTags.entrySet()) {
       MeasurementPath measurementPath = entry.getKey();
-      Pair<String, String> deadbandInfo =
-          MetaUtils.parseDeadbandInfo(
-              ((MeasurementSchema) measurementPath.getMeasurementSchema()).getProps());
       res.add(
           new ShowTimeSeriesResult(
               measurementPath.getFullPath(),
               measurementPath.getMeasurementAlias(),
-              storageGroupFullPath,
-              measurementPath.getMeasurementSchema().getType(),
-              measurementPath.getMeasurementSchema().getEncodingType(),
-              measurementPath.getMeasurementSchema().getCompressor(),
+              (MeasurementSchema) measurementPath.getMeasurementSchema(),
               entry.getValue().left,
-              entry.getValue().right,
-              deadbandInfo.left,
-              deadbandInfo.right));
+              entry.getValue().right));
     }
-    // todo Page query, record offset
-    return new Pair<>(res, 1);
+
+    return res;
   }
 
   @SuppressWarnings("unchecked")
@@ -1667,12 +1646,6 @@ public class RSchemaRegion implements ISchemaRegion {
 
   @Override
   public void activateSchemaTemplate(IActivateTemplateInClusterPlan plan, Template template)
-      throws MetadataException {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
-  public List<String> getPathsUsingTemplate(PartialPath pathPattern, int templateId)
       throws MetadataException {
     throw new UnsupportedOperationException();
   }

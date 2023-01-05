@@ -201,7 +201,7 @@ public class Template implements Serializable {
         prefix = joinBySeparator(Arrays.copyOf(pathNodes, pathNodes.length - 1));
       }
 
-      if (checkSet.size() == 0) {
+      if (checkSet.isEmpty()) {
         checkSet.add(prefix);
       }
       if (!checkSet.contains(prefix)) {

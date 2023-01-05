@@ -43,6 +43,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRestartReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCountStorageGroupResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateCQReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateFunctionReq;
+import org.apache.iotdb.confignode.rpc.thrift.TCreateModelReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTriggerReq;
@@ -62,6 +63,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDeleteStorageGroupsReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteTimeSeriesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropCQReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropFunctionReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDropModelReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropPipeSinkReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllPipeInfoResp;
@@ -103,14 +105,20 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowCQResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowConfigNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowModelReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowModelResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowStorageGroupResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowTrailReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowTrailResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowVariablesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchemaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSystemConfigurationResp;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsetSchemaTemplateReq;
+import org.apache.iotdb.confignode.rpc.thrift.TUpdateModelInfoReq;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.rpc.RpcTransportFactory;
@@ -140,7 +148,7 @@ public class ConfigNodeClient
   public static final String MSG_RECONNECTION_FAIL =
       "Fail to connect to any config node. Please check status of ConfigNodes";
 
-  private static final int retryIntervalMs = 1000;
+  private static final int RETRY_INTERVAL_MS = 1000;
 
   private long connectionTimeout = ClientPoolProperty.DefaultProperty.WAIT_CLIENT_TIMEOUT_MS;
 
@@ -218,7 +226,7 @@ public class ConfigNodeClient
   private void waitAndReconnect() throws TException {
     try {
       // wait to start the next try
-      Thread.sleep(retryIntervalMs);
+      Thread.sleep(RETRY_INTERVAL_MS);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       throw new TException(
@@ -464,6 +472,27 @@ public class ConfigNodeClient
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
         TShowClusterResp resp = client.showCluster();
+        if (!updateConfigNodeLeader(resp.status)) {
+          return resp;
+        }
+      } catch (TException e) {
+        logger.warn(
+            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            configNode,
+            config.getAddressAndPort(),
+            Thread.currentThread().getStackTrace()[1].getMethodName());
+        configLeader = null;
+      }
+      waitAndReconnect();
+    }
+    throw new TException(MSG_RECONNECTION_FAIL);
+  }
+
+  @Override
+  public TShowVariablesResp showVariables() throws TException {
+    for (int i = 0; i < RETRY_NUM; i++) {
+      try {
+        TShowVariablesResp resp = client.showVariables();
         if (!updateConfigNodeLeader(resp.status)) {
           return resp;
         }
@@ -1858,6 +1887,36 @@ public class ConfigNodeClient
       waitAndReconnect();
     }
     throw new TException(MSG_RECONNECTION_FAIL);
+  }
+
+  @Override
+  public TSStatus createModel(TCreateModelReq req) throws TException {
+    // TODO
+    throw new TException(new UnsupportedOperationException().getCause());
+  }
+
+  @Override
+  public TSStatus dropModel(TDropModelReq req) throws TException {
+    // TODO
+    throw new TException(new UnsupportedOperationException().getCause());
+  }
+
+  @Override
+  public TShowModelResp showModel(TShowModelReq req) throws TException {
+    // TODO
+    throw new TException(new UnsupportedOperationException().getCause());
+  }
+
+  @Override
+  public TShowTrailResp showTrail(TShowTrailReq req) throws TException {
+    // TODO
+    throw new TException(new UnsupportedOperationException().getCause());
+  }
+
+  @Override
+  public TSStatus updateModelInfo(TUpdateModelInfoReq req) throws TException {
+    // TODO
+    throw new TException(new UnsupportedOperationException().getCause());
   }
 
   public static class Factory extends BaseClientFactory<ConfigNodeRegionId, ConfigNodeClient> {

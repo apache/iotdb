@@ -48,11 +48,11 @@ public class MinCostFlowLeaderBalancer implements ILeaderBalancer {
 
   /** Graph nodes */
   // Super source node
-  private static final int sNode = 0;
+  private static final int S_NODE = 0;
   // Super terminal node
-  private static final int tNode = 1;
+  private static final int T_NODE = 1;
   // Maximum index of graph nodes
-  private int maxNode = tNode + 1;
+  private int maxNode = T_NODE + 1;
   // Map<RegionGroupId, rNode>
   private final Map<TConsensusGroupId, Integer> rNodeMap;
   // Map<DataNodeId, dNode>
@@ -124,7 +124,7 @@ public class MinCostFlowLeaderBalancer implements ILeaderBalancer {
     this.isNodeVisited = null;
     this.nodeMinimumCost = null;
 
-    this.maxNode = tNode + 1;
+    this.maxNode = T_NODE + 1;
     this.maxEdge = 0;
   }
 
@@ -154,7 +154,7 @@ public class MinCostFlowLeaderBalancer implements ILeaderBalancer {
     /* Construct edges: sNode -> rNodes */
     for (int rNode : rNodeMap.values()) {
       // Cost: 0
-      addAdjacentEdges(sNode, rNode, 1, 0);
+      addAdjacentEdges(S_NODE, rNode, 1, 0);
     }
 
     /* Construct edges: rNodes -> dNodes */
@@ -203,7 +203,7 @@ public class MinCostFlowLeaderBalancer implements ILeaderBalancer {
       for (int extraEdge = 1; extraEdge <= maxLeaderCount; extraEdge++) {
         // Cost: x^2 for the x-th edge at the current dNode.
         // Thus, the leader distribution will be as balance as possible.
-        addAdjacentEdges(dNode, tNode, 1, extraEdge * extraEdge);
+        addAdjacentEdges(dNode, T_NODE, 1, extraEdge * extraEdge);
       }
     }
   }
@@ -232,9 +232,9 @@ public class MinCostFlowLeaderBalancer implements ILeaderBalancer {
     Arrays.fill(nodeMinimumCost, INFINITY);
 
     Queue<Integer> queue = new LinkedList<>();
-    nodeMinimumCost[sNode] = 0;
-    isNodeVisited[sNode] = true;
-    queue.offer(sNode);
+    nodeMinimumCost[S_NODE] = 0;
+    isNodeVisited[S_NODE] = true;
+    queue.offer(S_NODE);
     while (!queue.isEmpty()) {
       int currentNode = queue.poll();
       isNodeVisited[currentNode] = false;
@@ -253,12 +253,12 @@ public class MinCostFlowLeaderBalancer implements ILeaderBalancer {
       }
     }
 
-    return nodeMinimumCost[tNode] < INFINITY;
+    return nodeMinimumCost[T_NODE] < INFINITY;
   }
 
   /** Do augmentation by dfs algorithm */
   private int dfsAugmentation(int currentNode, int inputFlow) {
-    if (currentNode == tNode || inputFlow == 0) {
+    if (currentNode == T_NODE || inputFlow == 0) {
       return inputFlow;
     }
 
@@ -300,7 +300,7 @@ public class MinCostFlowLeaderBalancer implements ILeaderBalancer {
     while (bellmanFordCheck()) {
       int currentFlow;
       System.arraycopy(nodeHeadEdge, 0, nodeCurrentEdge, 0, maxNode);
-      while ((currentFlow = dfsAugmentation(sNode, INFINITY)) > 0) {
+      while ((currentFlow = dfsAugmentation(S_NODE, INFINITY)) > 0) {
         maximumFlow += currentFlow;
       }
     }
@@ -317,7 +317,7 @@ public class MinCostFlowLeaderBalancer implements ILeaderBalancer {
               currentEdge >= 0;
               currentEdge = minCostFlowEdges.get(currentEdge).nextEdge) {
             MinCostFlowEdge edge = minCostFlowEdges.get(currentEdge);
-            if (edge.destNode != sNode && edge.capacity == 0) {
+            if (edge.destNode != S_NODE && edge.capacity == 0) {
               matchLeader = true;
               result.put(regionGroupId, dNodeReflect.get(edge.destNode));
             }

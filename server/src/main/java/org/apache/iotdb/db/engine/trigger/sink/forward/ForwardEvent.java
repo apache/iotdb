@@ -64,6 +64,7 @@ public class ForwardEvent implements Event {
     return value;
   }
 
+  @Override
   public PartialPath getFullPath() {
     return fullPath;
   }

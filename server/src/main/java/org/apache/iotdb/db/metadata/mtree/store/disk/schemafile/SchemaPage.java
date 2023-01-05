@@ -58,11 +58,6 @@ public abstract class SchemaPage implements ISchemaPage {
   }
 
   @Override
-  public boolean isCapableForSize(short size) {
-    return spareSize >= size;
-  }
-
-  @Override
   public void syncPageBuffer() {
     this.pageBuffer.limit(this.pageBuffer.capacity());
     this.pageBuffer.position(SchemaFileConfig.PAGE_HEADER_INDEX_OFFSET);
@@ -70,7 +65,7 @@ public abstract class SchemaPage implements ISchemaPage {
     ReadWriteIOUtils.write(spareOffset, pageBuffer);
     ReadWriteIOUtils.write(spareSize, pageBuffer);
     ReadWriteIOUtils.write(memberNum, pageBuffer);
-  };
+  }
 
   @Override
   public void flushPageToChannel(FileChannel channel) throws IOException {
@@ -148,7 +143,7 @@ public abstract class SchemaPage implements ISchemaPage {
   @TestOnly
   public WrappedSegment getSegmentOnTest(short idx) throws SegmentNotFoundException {
     return null;
-  };
+  }
 
   @Override
   @TestOnly

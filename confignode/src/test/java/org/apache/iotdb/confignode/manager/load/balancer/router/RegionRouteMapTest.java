@@ -55,10 +55,10 @@ public class RegionRouteMapTest {
             new TDataNodeLocation(
                 j,
                 new TEndPoint("0.0.0.0", 6667 + j),
-                new TEndPoint("0.0.0.0", 9003 + j),
-                new TEndPoint("0.0.0.0", 8777 + j),
-                new TEndPoint("0.0.0.0", 40010 + j),
-                new TEndPoint("0.0.0.0", 50010 + j)));
+                new TEndPoint("0.0.0.0", 10730 + j),
+                new TEndPoint("0.0.0.0", 10740 + j),
+                new TEndPoint("0.0.0.0", 10760 + j),
+                new TEndPoint("0.0.0.0", 10750 + j)));
       }
       regionLeaderMap.put(regionGroupId, i % 3);
       regionPriorityMap.put(regionGroupId, regionReplicaSet);

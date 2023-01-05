@@ -27,11 +27,11 @@ import org.apache.iotdb.db.mpp.execution.schedule.DriverTaskThread;
 import org.apache.iotdb.db.mpp.execution.schedule.ExecutionContext;
 import org.apache.iotdb.db.mpp.execution.schedule.queue.ID;
 import org.apache.iotdb.db.mpp.execution.schedule.queue.IDIndexedAccessible;
+import org.apache.iotdb.db.mpp.execution.schedule.queue.multilevelqueue.DriverTaskHandle;
+import org.apache.iotdb.db.mpp.execution.schedule.queue.multilevelqueue.Priority;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import io.airlift.units.Duration;
-import org.apache.iotdb.db.mpp.execution.schedule.queue.multilevelqueue.DriverTaskHandle;
-import org.apache.iotdb.db.mpp.execution.schedule.queue.multilevelqueue.Priority;
 
 import java.util.Comparator;
 import java.util.concurrent.TimeUnit;
@@ -58,6 +58,8 @@ public class DriverTask implements IDIndexedAccessible {
   private final AtomicReference<Priority> priority = new AtomicReference<>(new Priority(0, 0));
 
   private DriverTaskHandle driverTaskHandle;
+  private long lastEnterReadyQueueTime;
+  private long lastEnterBlockQueueTime;
 
   /** Initialize a dummy instance for queryHolder */
   public DriverTask() {
@@ -151,22 +153,36 @@ public class DriverTask implements IDIndexedAccessible {
     this.abortCause = abortCause;
   }
 
-  public Priority getPriority()
-  {
+  public Priority getPriority() {
     return priority.get();
   }
 
   /**
-   * Updates the (potentially stale) priority value cached in this object.
-   * This should be called when this object is outside the queue.
+   * Updates the (potentially stale) priority value cached in this object. This should be called
+   * when this object is outside the queue.
    *
    * @return true if the level changed.
    */
-  public boolean updateLevelPriority()
-  {
+  public boolean updateLevelPriority() {
     Priority newPriority = taskHandle.getPriority();
     Priority oldPriority = priority.getAndSet(newPriority);
     return newPriority.getLevel() != oldPriority.getLevel();
+  }
+
+  public long getLastEnterReadyQueueTime() {
+    return lastEnterReadyQueueTime;
+  }
+
+  public void setLastEnterReadyQueueTime(long lastEnterReadyQueueTime) {
+    this.lastEnterReadyQueueTime = lastEnterReadyQueueTime;
+  }
+
+  public long getLastEnterBlockQueueTime() {
+    return lastEnterBlockQueueTime;
+  }
+
+  public void setLastEnterBlockQueueTime(long lastEnterBlockQueueTime) {
+    this.lastEnterBlockQueueTime = lastEnterBlockQueueTime;
   }
 
   /** a comparator of ddl, the less the ddl is, the low order it has. */

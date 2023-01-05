@@ -137,8 +137,9 @@ public class StartPipeProcedure extends AbstractOperatePipeProcedure {
       case PRE_OPERATE_PIPE_CONFIGNODE:
       case OPERATE_PIPE_DATANODE:
         return true;
+      default:
+        return false;
     }
-    return false;
   }
 
   @Override

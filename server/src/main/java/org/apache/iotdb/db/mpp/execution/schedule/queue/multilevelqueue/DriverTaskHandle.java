@@ -19,5 +19,4 @@
 
 package org.apache.iotdb.db.mpp.execution.schedule.queue.multilevelqueue;
 
-public class DriverTaskHandle {
-}
+public class DriverTaskHandle {}

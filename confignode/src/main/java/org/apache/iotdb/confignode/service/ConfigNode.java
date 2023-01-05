@@ -21,8 +21,6 @@ package org.apache.iotdb.confignode.service;
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.conf.CommonConfig;
-import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.service.JMXService;
 import org.apache.iotdb.commons.service.RegisterManager;
@@ -58,11 +56,10 @@ public class ConfigNode implements ConfigNodeMBean {
   private static final Logger LOGGER = LoggerFactory.getLogger(ConfigNode.class);
 
   private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
-  private static final CommonConfig COMMON_CONF = CommonDescriptor.getInstance().getConfig();
 
   private static final int STARTUP_RETRY_NUM = 10;
   private static final int SCHEDULE_WAITING_RETRY_NUM = 20;
-  private static final long STARTUP_RETRY_INTERVAL_IN_MS = TimeUnit.SECONDS.toMillis(30);
+  private static final long STARTUP_RETRY_INTERVAL_IN_MS = TimeUnit.SECONDS.toMillis(3);
 
   private static final int SEED_CONFIG_NODE_ID = 0;
 
@@ -98,7 +95,7 @@ public class ConfigNode implements ConfigNodeMBean {
       if (SystemPropertiesUtils.isRestarted()) {
         LOGGER.info("{} is in restarting process...", ConfigNodeConstant.GLOBAL_NAME);
 
-        /* Always restore ClusterId and ConfigNodeId first */
+        /* Always restore ClusterName and ConfigNodeId first */
         CONF.setClusterName(SystemPropertiesUtils.loadClusterNameWhenRestarted());
         CONF.setConfigNodeId(SystemPropertiesUtils.loadConfigNodeIdWhenRestarted());
 
@@ -110,8 +107,9 @@ public class ConfigNode implements ConfigNodeMBean {
         configManager.initConsensusManager();
         setUpRPCService();
         LOGGER.info(
-            "{} has successfully restarted and joined the cluster.",
-            ConfigNodeConstant.GLOBAL_NAME);
+            "{} has successfully restarted and joined the cluster: {}.",
+            ConfigNodeConstant.GLOBAL_NAME,
+            CONF.getClusterName());
         return;
       }
 
@@ -143,7 +141,9 @@ public class ConfigNode implements ConfigNodeMBean {
         // The initial startup of Seed-ConfigNode finished
 
         LOGGER.info(
-            "{} has successfully started and joined the cluster.", ConfigNodeConstant.GLOBAL_NAME);
+            "{} has successfully started and joined the cluster: {}.",
+            ConfigNodeConstant.GLOBAL_NAME,
+            CONF.getClusterName());
         return;
       }
 
@@ -155,14 +155,18 @@ public class ConfigNode implements ConfigNodeMBean {
       // The initial startup of Non-Seed-ConfigNode is not yet finished,
       // we should wait for leader's scheduling
       LOGGER.info(
-          "{} {} has registered successfully. Waiting for the leader's scheduling to join the cluster.",
+          "{} {} has registered successfully. Waiting for the leader's scheduling to join the cluster: {}.",
           ConfigNodeConstant.GLOBAL_NAME,
-          CONF.getConfigNodeId());
+          CONF.getConfigNodeId(),
+          CONF.getClusterName());
 
       boolean isJoinedCluster = false;
       for (int retry = 0; retry < SCHEDULE_WAITING_RETRY_NUM; retry++) {
-        if (configManager.getConsensusManager().getConsensusImpl().getAllConsensusGroupIds().size()
-            > 0) {
+        if (!configManager
+            .getConsensusManager()
+            .getConsensusImpl()
+            .getAllConsensusGroupIds()
+            .isEmpty()) {
           isJoinedCluster = true;
           break;
         }
@@ -235,19 +239,7 @@ public class ConfigNode implements ConfigNodeMBean {
                 INIT_NON_SEED_CONFIG_NODE_ID,
                 new TEndPoint(CONF.getInternalAddress(), CONF.getInternalPort()),
                 new TEndPoint(CONF.getInternalAddress(), CONF.getConsensusPort())),
-            CONF.getDataRegionConsensusProtocolClass(),
-            CONF.getSchemaRegionConsensusProtocolClass(),
-            CONF.getSeriesSlotNum(),
-            CONF.getSeriesPartitionExecutorClass(),
-            COMMON_CONF.getDefaultTTLInMs(),
-            CONF.getTimePartitionInterval(),
-            CONF.getSchemaReplicationFactor(),
-            CONF.getSchemaRegionPerDataNode(),
-            CONF.getDataReplicationFactor(),
-            CONF.getDataRegionPerProcessor(),
-            CONF.getReadConsistencyLevel(),
-            COMMON_CONF.getDiskSpaceWarningThreshold(),
-            CONF.getLeastDataRegionGroupNum());
+            configManager.getClusterParameters());
 
     TEndPoint targetConfigNode = CONF.getTargetConfigNode();
     if (targetConfigNode == null) {
@@ -283,14 +275,8 @@ public class ConfigNode implements ConfigNodeMBean {
       } else if (status.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
         targetConfigNode = status.getRedirectNode();
         LOGGER.info("ConfigNode need redirect to  {}.", targetConfigNode);
-      } else if (status.getCode() == TSStatusCode.CONFIGURATION_ERROR.getStatusCode()) {
-        LOGGER.error(status.getMessage());
-        throw new StartupException("Configuration are not consistent!");
-      } else if (status.getCode() == TSStatusCode.CONSENSUS_NOT_INITIALIZED.getStatusCode()) {
-        LOGGER.error(status.getMessage());
-        throw new StartupException(
-            "The target ConfigNode is not started successfully, "
-                + "please check the cn_target_config_node_list config!");
+      } else {
+        throw new StartupException(status.getMessage());
       }
 
       try {

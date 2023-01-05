@@ -94,14 +94,14 @@ struct TRuntimeConfiguration {
 
 struct TDataNodeRegisterReq {
   1: required common.TDataNodeConfiguration dataNodeConfiguration
+  2: required string clusterName
 }
 
 struct TDataNodeRegisterResp {
   1: required common.TSStatus status
   2: required list<common.TConfigNodeLocation> configNodeList
-  3: optional string clusterName
-  4: optional i32 dataNodeId
-  5: optional TRuntimeConfiguration runtimeConfiguration
+  3: optional i32 dataNodeId
+  4: optional TRuntimeConfiguration runtimeConfiguration
 }
 
 struct TDataNodeRestartReq {
@@ -325,29 +325,36 @@ struct TCheckUserPrivilegesReq {
 }
 
 // ConfigNode
+
+/* These parameters should be consist within the cluster */
+struct TClusterParameters {
+  1: required string clusterName
+  2: required i32 dataReplicationFactor
+  3: required i32 schemaReplicationFactor
+  4: required string dataRegionConsensusProtocolClass
+  5: required string schemaRegionConsensusProtocolClass
+  6: required string configNodeConsensusProtocolClass
+  7: required i64 timePartitionInterval
+  8: required i64 defaultTTL
+  9: required string readConsistencyLevel
+  10: required double schemaRegionPerDataNode
+  11: required double dataRegionPerProcessor
+  12: required i32 leastDataRegionGroupNum
+  13: required i32 seriesPartitionSlotNum
+  14: required string seriesPartitionExecutorClass
+  15: required double diskSpaceWarningThreshold
+}
+
 struct TConfigNodeRegisterReq {
   1: required common.TConfigNodeLocation configNodeLocation
   // The Non-Seed-ConfigNode must ensure that the following
   // fields are consistent with the Seed-ConfigNode
-  2: required string dataRegionConsensusProtocolClass
-  3: required string schemaRegionConsensusProtocolClass
-  4: required i32 seriesPartitionSlotNum
-  5: required string seriesPartitionExecutorClass
-  6: required i64 defaultTTL
-  7: required i64 timePartitionInterval
-  8: required i32 schemaReplicationFactor
-  9: required double schemaRegionPerDataNode
-  10: required i32 dataReplicationFactor
-  11: required double dataRegionPerProcessor
-  12: required string readConsistencyLevel
-  13: required double diskSpaceWarningThreshold
-  14: required i32 leastDataRegionGroupNum
+  2: required TClusterParameters clusterParameters
 }
 
 struct TConfigNodeRegisterResp {
   1: required common.TSStatus status
-  2: optional string clusterName
-  3: optional i32 configNodeId
+  2: optional i32 configNodeId
 }
 
 struct TConfigNodeRestartReq {
@@ -441,6 +448,11 @@ struct TShowClusterResp {
   2: required list<common.TConfigNodeLocation> configNodeList
   3: required list<common.TDataNodeLocation> dataNodeList
   4: required map<i32, string> nodeStatus
+}
+
+struct TShowVariablesResp {
+  1: required common.TSStatus status
+  2: optional TClusterParameters clusterParameters
 }
 
 // Show datanodes
@@ -654,6 +666,54 @@ struct TUnsetSchemaTemplateReq{
   3: required string path
 }
 
+struct TCreateModelReq {
+  1: required string modelId
+  2: required byte modelTask
+  3: required bool isAuto
+  4: required map<string, string> modelConfigs
+  5: required list<string> queryExpressions
+  6: optional string queryFilter
+}
+
+struct TDropModelReq {
+  1: required string modelId
+}
+
+struct TShowModelReq {
+  1: optional string modelId
+}
+
+struct TModelInfo {
+  1: required string modelId
+  2: required map<string, string> modelInfo
+}
+
+struct TShowModelResp {
+  1: required common.TSStatus status
+  2: required list<TModelInfo> modelInfoList
+}
+
+struct TShowTrailReq {
+  1: required string modelId
+  2: optional string trailId
+}
+
+struct TTrailInfo {
+  1: required string modelId
+  2: required string trailId
+  3: required map<string, string> trailInfo
+}
+
+struct TShowTrailResp {
+  1: required common.TSStatus status
+  2: required list<TTrailInfo> trailInfoList
+}
+
+struct TUpdateModelInfoReq {
+  1: required string modelId
+  2: required map<string, string> modelInfo
+}
+
 service IConfigNodeRPCService {
 
   // ======================================================
@@ -664,14 +724,17 @@ service IConfigNodeRPCService {
    * Register a new DataNode into the cluster
    *
    * @return SUCCESS_STATUS if the new DataNode registered successfully
-   *         DATANODE_ALREADY_REGISTERED if the DataNode already registered
+   *         REJECT_NODE_START if the configuration chek of the DataNode to be registered fails,
+   *                           and a detailed error message will be returned.
    */
   TDataNodeRegisterResp registerDataNode(TDataNodeRegisterReq req)
 
   /**
-   * Restart a existed DataNode
+   * Restart an existed DataNode
    *
-   * @return SUCCESS_STATUS if restart DataNode success
+   * @return SUCCESS_STATUS if DataNode restart request is accepted
+   *         REJECT_NODE_START if the configuration chek of the DataNode to be restarted fails,
+   *                           and a detailed error message will be returned.
    */
   TDataNodeRestartResp restartDataNode(TDataNodeRestartReq req)
 
@@ -863,9 +926,9 @@ service IConfigNodeRPCService {
   /**
    * The Non-Seed-ConfigNode submit a registration request to the ConfigNode-leader when first startup
    *
-   * @return SUCCESS_STATUS if the AddConfigNodeProcedure submitted successfully
-   *         ERROR_GLOBAL_CONFIG if some global configurations in the Non-Seed-ConfigNode
-   *                             are inconsist with the ConfigNode-leader
+   * @return SUCCESS_STATUS if the AddConfigNodeProcedure submitted successfully.
+   *         REJECT_NODE_START if the configuration chek of the ConfigNode to be registered fails,
+   *                           and a detailed error message will be returned.
    */
   TConfigNodeRegisterResp registerConfigNode(TConfigNodeRegisterReq req)
 
@@ -875,6 +938,13 @@ service IConfigNodeRPCService {
   /** The ConfigNode-leader will notify the Non-Seed-ConfigNode that the registration success */
   common.TSStatus notifyRegisterSuccess()
 
+  /**
+   * Restart an existed ConfigNode
+   *
+   * @return SUCCESS_STATUS if ConfigNode restart request is accepted
+   *         REJECT_NODE_START if the configuration chek of the ConfigNode to be restarted fails,
+   *                           and a detailed error message will be returned.
+   */
   common.TSStatus restartConfigNode(TConfigNodeRestartReq req)
 
   /**
@@ -1006,6 +1076,9 @@ service IConfigNodeRPCService {
   /** Show cluster ConfigNodes' and DataNodes' information */
   TShowClusterResp showCluster()
 
+  /** Show variables who should be consist in the same cluster */
+  TShowVariablesResp showVariables()
+
   /** Show cluster DataNodes' information */
   TShowDataNodesResp showDataNodes()
 
@@ -1135,7 +1208,7 @@ service IConfigNodeRPCService {
   /**
    * Create a CQ
    *
-   * @return SUCCESS_STATUS if the trigger was created successfully
+   * @return SUCCESS_STATUS if the cq was created successfully
    */
   common.TSStatus createCQ(TCreateCQReq req)
 
@@ -1147,8 +1220,43 @@ service IConfigNodeRPCService {
   common.TSStatus dropCQ(TDropCQReq req)
 
   /**
-   * Return the trigger table of config leader
+   * Return the cq table of config leader
    */
   TShowCQResp showCQ()
+
+  // ====================================================
+  // ML Model
+  // ====================================================
+
+  /**
+   * Create a model
+   *
+   * @return SUCCESS_STATUS if the model was created successfully
+   */
+  common.TSStatus createModel(TCreateModelReq req)
+
+  /**
+   * Drop a model
+   *
+   * @return SUCCESS_STATUS if the model was removed successfully
+   */
+  common.TSStatus dropModel(TDropModelReq req)
+
+  /**
+   * Return the model table
+   */
+  TShowModelResp showModel(TShowModelReq req)
+
+  /**
+   * Return the trail table
+   */
+  TShowTrailResp showTrail(TShowTrailReq req)
+
+  /**
+   * Update the model info
+   *
+   * @return SUCCESS_STATUS if the model was removed successfully
+   */
+  common.TSStatus updateModelInfo(TUpdateModelInfoReq req)
 }
 

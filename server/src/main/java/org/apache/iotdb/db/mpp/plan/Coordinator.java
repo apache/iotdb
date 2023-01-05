@@ -26,13 +26,13 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.client.DataNodeClientPoolFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.mpp.common.DataNodeEndPoints;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.common.QueryId;
 import org.apache.iotdb.db.mpp.common.SessionInfo;
 import org.apache.iotdb.db.mpp.execution.QueryIdGenerator;
 import org.apache.iotdb.db.mpp.plan.analyze.IPartitionFetcher;
-import org.apache.iotdb.db.mpp.plan.analyze.ISchemaFetcher;
-import org.apache.iotdb.db.mpp.plan.constant.DataNodeEndPoints;
+import org.apache.iotdb.db.mpp.plan.analyze.schema.ISchemaFetcher;
 import org.apache.iotdb.db.mpp.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.mpp.plan.execution.IQueryExecution;
 import org.apache.iotdb.db.mpp.plan.execution.QueryExecution;
@@ -44,6 +44,8 @@ import org.apache.iotdb.db.utils.SetThreadName;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ScheduledExecutorService;
@@ -169,6 +171,10 @@ public class Coordinator {
     return queryExecutionMap.get(queryId);
   }
 
+  public List<IQueryExecution> getAllQueryExecutions() {
+    return new ArrayList<>(queryExecutionMap.values());
+  }
+
   // TODO: (xingtanzjr) need to redo once we have a concrete policy for the threadPool management
   private ExecutorService getQueryExecutor() {
     int coordinatorReadExecutorSize =
@@ -201,7 +207,7 @@ public class Coordinator {
         queryExecution.stopAndCleanup();
         queryExecutionMap.remove(queryId);
         if (queryExecution.isQuery()) {
-          long costTime = System.currentTimeMillis() - queryExecution.getStartExecutionTime();
+          long costTime = queryExecution.getTotalExecutionTime();
           if (costTime >= CONFIG.getSlowQueryThreshold()) {
             SLOW_SQL_LOGGER.info(
                 "Cost: {} ms, sql is {}",
@@ -215,5 +221,20 @@ public class Coordinator {
 
   public static Coordinator getInstance() {
     return INSTANCE;
+  }
+
+  public void recordExecutionTime(long queryId, long executionTime) {
+    IQueryExecution queryExecution = getQueryExecution(queryId);
+    if (queryExecution != null) {
+      queryExecution.recordExecutionTime(executionTime);
+    }
+  }
+
+  public long getTotalExecutionTime(long queryId) {
+    IQueryExecution queryExecution = getQueryExecution(queryId);
+    if (queryExecution != null) {
+      return queryExecution.getTotalExecutionTime();
+    }
+    return -1L;
   }
 }

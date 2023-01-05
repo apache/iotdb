@@ -22,13 +22,13 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
-import org.apache.iotdb.db.engine.compaction.constant.CompactionPriority;
-import org.apache.iotdb.db.engine.compaction.constant.CrossCompactionPerformer;
-import org.apache.iotdb.db.engine.compaction.constant.CrossCompactionSelector;
-import org.apache.iotdb.db.engine.compaction.constant.InnerSeqCompactionPerformer;
-import org.apache.iotdb.db.engine.compaction.constant.InnerSequenceCompactionSelector;
-import org.apache.iotdb.db.engine.compaction.constant.InnerUnseqCompactionPerformer;
-import org.apache.iotdb.db.engine.compaction.constant.InnerUnsequenceCompactionSelector;
+import org.apache.iotdb.db.engine.compaction.execute.performer.constant.CrossCompactionPerformer;
+import org.apache.iotdb.db.engine.compaction.execute.performer.constant.InnerSeqCompactionPerformer;
+import org.apache.iotdb.db.engine.compaction.execute.performer.constant.InnerUnseqCompactionPerformer;
+import org.apache.iotdb.db.engine.compaction.schedule.constant.CompactionPriority;
+import org.apache.iotdb.db.engine.compaction.selector.constant.CrossCompactionSelector;
+import org.apache.iotdb.db.engine.compaction.selector.constant.InnerSequenceCompactionSelector;
+import org.apache.iotdb.db.engine.compaction.selector.constant.InnerUnsequenceCompactionSelector;
 import org.apache.iotdb.db.engine.storagegroup.timeindex.TimeIndexLevel;
 import org.apache.iotdb.db.exception.LoadConfigurationException;
 import org.apache.iotdb.db.service.thrift.impl.ClientRPCServiceImpl;
@@ -193,10 +193,10 @@ public class IoTDBConfig {
   private int walBufferQueueCapacity = 50;
 
   /** Size threshold of each wal file. Unit: byte */
-  private volatile long walFileSizeThresholdInByte = 10 * 1024 * 1024;
+  private volatile long walFileSizeThresholdInByte = 10 * 1024 * 1024L;
 
   /** Size threshold of each checkpoint file. Unit: byte */
-  private volatile long checkpointFileSizeThresholdInByte = 3 * 1024 * 1024;
+  private volatile long checkpointFileSizeThresholdInByte = 3 * 1024 * 1024L;
 
   /** Minimum ratio of effective information in wal files */
   private volatile double walMinEffectiveInfoRatio = 0.1;
@@ -206,13 +206,13 @@ public class IoTDBConfig {
    * this, wal can flush this memtable to disk, otherwise wal will snapshot this memtable in wal.
    * Unit: byte
    */
-  private volatile long walMemTableSnapshotThreshold = 8 * 1024 * 1024;
+  private volatile long walMemTableSnapshotThreshold = 8 * 1024 * 1024L;
 
   /** MemTable's max snapshot number in wal file */
   private volatile int maxWalMemTableSnapshotNum = 1;
 
   /** The period when outdated wal files are periodically deleted. Unit: millisecond */
-  private volatile long deleteWalFilesPeriodInMs = 20 * 1000;
+  private volatile long deleteWalFilesPeriodInMs = 20 * 1000L;
   // endregion
 
   /**
@@ -396,13 +396,13 @@ public class IoTDBConfig {
   private int avgSeriesPointNumberThreshold = 100000;
 
   /** Enable inner space compaction for sequence files */
-  private boolean enableSeqSpaceCompaction = false;
+  private boolean enableSeqSpaceCompaction = true;
 
   /** Enable inner space compaction for unsequence files */
-  private boolean enableUnseqSpaceCompaction = false;
+  private boolean enableUnseqSpaceCompaction = true;
 
   /** Compact the unsequence files into the overlapped sequence files */
-  private boolean enableCrossSpaceCompaction = false;
+  private boolean enableCrossSpaceCompaction = true;
 
   /**
    * The strategy of inner space compaction task. There are just one inner space compaction strategy
@@ -489,7 +489,7 @@ public class IoTDBConfig {
   private boolean enableCompactionValidation = true;
 
   /** whether to cache meta data(ChunkMetaData and TsFileMetaData) or not. */
-  private boolean metaDataCacheEnable = false;
+  private boolean metaDataCacheEnable = true;
 
   /** Memory allocated for bloomFilter cache in read process */
   private long allocateMemoryForBloomFilterCache = allocateMemoryForRead / 1001;
@@ -863,17 +863,17 @@ public class IoTDBConfig {
   private String internalAddress = "127.0.0.1";
 
   /** Internal port for coordinator */
-  private int internalPort = 9003;
+  private int internalPort = 10730;
 
   /** Internal port for dataRegion consensus protocol */
-  private int dataRegionConsensusPort = 40010;
+  private int dataRegionConsensusPort = 10760;
 
   /** Internal port for schemaRegion consensus protocol */
-  private int schemaRegionConsensusPort = 50010;
+  private int schemaRegionConsensusPort = 10750;
 
   /** Ip and port of config nodes. */
   private List<TEndPoint> targetConfigNodeList =
-      Collections.singletonList(new TEndPoint("127.0.0.1", 22277));
+      Collections.singletonList(new TEndPoint("127.0.0.1", 10710));
 
   /** The time of data node waiting for the next retry to join into the cluster */
   private long joinClusterRetryIntervalMs = TimeUnit.SECONDS.toMillis(5);
@@ -904,7 +904,7 @@ public class IoTDBConfig {
   private int seriesPartitionSlotNum = 10000;
 
   /** Port that mpp data exchange thrift service listen to. */
-  private int mppDataExchangePort = 8777;
+  private int mppDataExchangePort = 10740;
 
   /** Core pool size of mpp data exchange. */
   private int mppDataExchangeCorePoolSize = 10;
@@ -1001,7 +1001,7 @@ public class IoTDBConfig {
   private long throttleThreshold = 50 * 1024 * 1024 * 1024L;
 
   /** Maximum wait time of write cache in IoTConsensus. Unit: ms */
-  private long cacheWindowTimeInMs = 10 * 1000;
+  private long cacheWindowTimeInMs = 10 * 1000L;
 
   private long dataRatisConsensusLogAppenderBufferSizeMax = 4 * 1024 * 1024L;
   private long schemaRatisConsensusLogAppenderBufferSizeMax = 4 * 1024 * 1024L;
@@ -1261,6 +1261,7 @@ public class IoTDBConfig {
     // TODO(szywilliam): rewrite the logic here when ratis supports complete snapshot semantic
     setRatisDataRegionSnapshotDir(
         dataDirs[0] + File.separator + IoTDBConstant.SNAPSHOT_FOLDER_NAME);
+    setLoadTsFileDir(dataDirs[0] + File.separator + IoTDBConstant.LOAD_TSFILE_FOLDER_NAME);
   }
 
   public String getRpcAddress() {
@@ -1296,8 +1297,8 @@ public class IoTDBConfig {
         || "us".equals(timestampPrecision)
         || "ns".equals(timestampPrecision))) {
       logger.error(
-          "Wrong timestamp precision, please set as: ms, us or ns ! Current is: "
-              + timestampPrecision);
+          "Wrong timestamp precision, please set as: ms, us or ns ! Current is: {}",
+          timestampPrecision);
       System.exit(-1);
     }
     this.timestampPrecision = timestampPrecision;

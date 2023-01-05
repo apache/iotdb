@@ -35,8 +35,6 @@ public class DataNodeRegisterResp implements DataSet {
 
   private TSStatus status;
   private List<TConfigNodeLocation> configNodeList;
-
-  private String clusterName;
   private Integer dataNodeId;
 
   private TRuntimeConfiguration runtimeConfiguration;
@@ -55,10 +53,6 @@ public class DataNodeRegisterResp implements DataSet {
 
   public void setConfigNodeList(List<TConfigNodeLocation> configNodeList) {
     this.configNodeList = configNodeList;
-  }
-
-  public void setClusterName(String clusterName) {
-    this.clusterName = clusterName;
   }
 
   public void setDataNodeId(Integer dataNodeId) {
@@ -89,7 +83,6 @@ public class DataNodeRegisterResp implements DataSet {
     resp.setConfigNodeList(configNodeList);
 
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      resp.setClusterName(clusterName);
       resp.setDataNodeId(dataNodeId);
       resp.setRuntimeConfiguration(runtimeConfiguration);
     }

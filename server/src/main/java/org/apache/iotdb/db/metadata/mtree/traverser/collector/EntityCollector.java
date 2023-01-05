@@ -27,12 +27,15 @@ import org.apache.iotdb.db.metadata.mtree.store.IMTreeStore;
 // This class defines EntityMNode as target node and defines the Entity process framework.
 public abstract class EntityCollector<T> extends CollectorTraverser<T> {
 
-  public EntityCollector(IMNode startNode, PartialPath path, IMTreeStore store)
+  private boolean usingTemplate = false;
+  private int schemaTemplateId = -1;
+
+  protected EntityCollector(IMNode startNode, PartialPath path, IMTreeStore store)
       throws MetadataException {
     super(startNode, path, store);
   }
 
-  public EntityCollector(
+  protected EntityCollector(
       IMNode startNode, PartialPath path, IMTreeStore store, int limit, int offset)
       throws MetadataException {
     super(startNode, path, store, limit, offset);
@@ -47,6 +50,9 @@ public abstract class EntityCollector<T> extends CollectorTraverser<T> {
   protected boolean processFullMatchedMNode(IMNode node, int idx, int level)
       throws MetadataException {
     if (node.isEntity()) {
+      if (usingTemplate && schemaTemplateId != node.getSchemaTemplateId()) {
+        return false;
+      }
       if (hasLimit) {
         curOffset += 1;
         if (curOffset < offset) {
@@ -59,6 +65,11 @@ public abstract class EntityCollector<T> extends CollectorTraverser<T> {
       }
     }
     return false;
+  }
+
+  public void setSchemaTemplateFilter(int schemaTemplateId) {
+    this.usingTemplate = true;
+    this.schemaTemplateId = schemaTemplateId;
   }
 
   protected abstract void collectEntity(IEntityMNode node) throws MetadataException;

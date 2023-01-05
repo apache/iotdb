@@ -57,6 +57,7 @@ import org.apache.iotdb.db.mpp.execution.operator.process.ProcessOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.RawDataAggregationOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.SingleDeviceViewOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.SlidingWindowAggregationOperator;
+import org.apache.iotdb.db.mpp.execution.operator.process.SortOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.TagAggregationOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.TransformOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.fill.IFill;
@@ -118,6 +119,8 @@ import org.apache.iotdb.db.mpp.execution.operator.source.AlignedSeriesScanOperat
 import org.apache.iotdb.db.mpp.execution.operator.source.ExchangeOperator;
 import org.apache.iotdb.db.mpp.execution.operator.source.SeriesAggregationScanOperator;
 import org.apache.iotdb.db.mpp.execution.operator.source.SeriesScanOperator;
+import org.apache.iotdb.db.mpp.execution.operator.source.ShowQueriesOperator;
+import org.apache.iotdb.db.mpp.plan.Coordinator;
 import org.apache.iotdb.db.mpp.plan.analyze.ExpressionTypeAnalyzer;
 import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
@@ -171,6 +174,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedSeriesScanNo
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.LastQueryScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesAggregationScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesScanNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.ShowQueriesNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.CrossSeriesAggregationDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.DeviceViewIntoPathDescriptor;
@@ -218,10 +222,10 @@ import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static org.apache.iotdb.db.engine.querycontext.QueryDataSource.updateFilterUsingTTL;
+import static org.apache.iotdb.db.mpp.common.DataNodeEndPoints.isSameNode;
 import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.calculateMaxAggregationResultSize;
 import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.calculateMaxAggregationResultSizeForLastQuery;
 import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.initTimeRangeIterator;
-import static org.apache.iotdb.db.mpp.plan.constant.DataNodeEndPoints.isSameNode;
 
 /** This Visitor is responsible for transferring PlanNode Tree to Operator Tree */
 public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionPlanContext> {
@@ -489,7 +493,6 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         node.getValue(),
         node.isContains(),
         node.isOrderByHeat(),
-        node.isPrefixPath(),
         node.getTemplateMap());
   }
 
@@ -676,7 +679,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         node.isCacheOutputColumnNames()
             ? getOutputColumnTypes(node, context.getTypeProvider())
             : context.getCachedDataTypes();
-    if (outputColumnTypes == null || outputColumnTypes.size() == 0) {
+    if (outputColumnTypes == null || outputColumnTypes.isEmpty()) {
       throw new IllegalStateException("OutputColumTypes should not be null/empty");
     }
     context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
@@ -754,8 +757,43 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     List<Operator> children = dealWithConsumeAllChildrenPipelineBreaker(node, context);
     List<SortItem> sortItemList = node.getMergeOrderParameter().getSortItemList();
     context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
+
+    List<Integer> sortItemIndexList = new ArrayList<>(sortItemList.size());
+    List<TSDataType> sortItemDataTypeList = new ArrayList<>(sortItemList.size());
+    genSortInformation(
+        node.getOutputColumnNames(),
+        dataTypes,
+        sortItemList,
+        sortItemIndexList,
+        sortItemDataTypeList);
     return new MergeSortOperator(
-        operatorContext, children, dataTypes, MergeSortComparator.getComparator(sortItemList));
+        operatorContext,
+        children,
+        dataTypes,
+        MergeSortComparator.getComparator(sortItemList, sortItemIndexList, sortItemDataTypeList));
+  }
+
+  private void genSortInformation(
+      List<String> outputColumnNames,
+      List<TSDataType> dataTypes,
+      List<SortItem> sortItemList,
+      List<Integer> sortItemIndexList,
+      List<TSDataType> sortItemDataTypeList) {
+    sortItemList.forEach(
+        sortItem -> {
+          if (sortItem.getSortKey() == SortKey.TIME) {
+            sortItemIndexList.add(-1);
+            sortItemDataTypeList.add(TSDataType.INT64);
+          } else {
+            for (int i = 0; i < outputColumnNames.size(); i++) {
+              if (sortItem.getSortKey().toString().equalsIgnoreCase(outputColumnNames.get(i))) {
+                sortItemIndexList.add(i);
+                sortItemDataTypeList.add(dataTypes.get(i));
+                break;
+              }
+            }
+          }
+        });
   }
 
   @Override
@@ -1119,7 +1157,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
   @Override
   public Operator visitGroupByLevel(GroupByLevelNode node, LocalExecutionPlanContext context) {
     checkArgument(
-        node.getGroupByLevelDescriptors().size() >= 1,
+        !node.getGroupByLevelDescriptors().isEmpty(),
         "GroupByLevel descriptorList cannot be empty");
     List<Operator> children =
         node.getChildren().stream()
@@ -1166,7 +1204,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
 
   @Override
   public Operator visitGroupByTag(GroupByTagNode node, LocalExecutionPlanContext context) {
-    checkArgument(node.getTagKeys().size() >= 1, "GroupByTag tag keys cannot be empty");
+    checkArgument(!node.getTagKeys().isEmpty(), "GroupByTag tag keys cannot be empty");
     checkArgument(
         node.getTagValuesToAggregationDescriptors().size() >= 1,
         "GroupByTag aggregation descriptors cannot be empty");
@@ -1231,7 +1269,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
   public Operator visitSlidingWindowAggregation(
       SlidingWindowAggregationNode node, LocalExecutionPlanContext context) {
     checkArgument(
-        node.getAggregationDescriptorList().size() >= 1,
+        !node.getAggregationDescriptorList().isEmpty(),
         "Aggregation descriptorList cannot be empty");
     OperatorContext operatorContext =
         context
@@ -1310,7 +1348,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
   @Override
   public Operator visitAggregation(AggregationNode node, LocalExecutionPlanContext context) {
     checkArgument(
-        node.getAggregationDescriptorList().size() >= 1,
+        !node.getAggregationDescriptorList().isEmpty(),
         "Aggregation descriptorList cannot be empty");
     List<Operator> children = dealWithConsumeAllChildrenPipelineBreaker(node, context);
     boolean ascending = node.getScanOrder() == Ordering.ASC;
@@ -1404,7 +1442,32 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
 
   @Override
   public Operator visitSort(SortNode node, LocalExecutionPlanContext context) {
-    return super.visitSort(node, context);
+    Operator child = node.getChild().accept(this, context);
+    OperatorContext operatorContext =
+        context
+            .getInstanceContext()
+            .addOperatorContext(
+                context.getNextOperatorId(),
+                node.getPlanNodeId(),
+                DeviceViewIntoOperator.class.getSimpleName());
+    List<TSDataType> dataTypes = getOutputColumnTypes(node, context.getTypeProvider());
+
+    List<SortItem> sortItemList = node.getOrderByParameter().getSortItemList();
+    context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
+
+    List<Integer> sortItemIndexList = new ArrayList<>(sortItemList.size());
+    List<TSDataType> sortItemDataTypeList = new ArrayList<>(sortItemList.size());
+    genSortInformation(
+        node.getOutputColumnNames(),
+        dataTypes,
+        sortItemList,
+        sortItemIndexList,
+        sortItemDataTypeList);
+    return new SortOperator(
+        operatorContext,
+        child,
+        dataTypes,
+        MergeSortComparator.getComparator(sortItemList, sortItemIndexList, sortItemDataTypeList));
   }
 
   @Override
@@ -1615,6 +1678,22 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
 
     context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
     return new VerticallyConcatOperator(operatorContext, children, outputColumnTypes);
+  }
+
+  @Override
+  public Operator visitShowQueries(ShowQueriesNode node, LocalExecutionPlanContext context) {
+    OperatorContext operatorContext =
+        context
+            .getInstanceContext()
+            .addOperatorContext(
+                context.getNextOperatorId(),
+                node.getPlanNodeId(),
+                ShowQueriesOperator.class.getSimpleName());
+
+    context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
+
+    return new ShowQueriesOperator(
+        operatorContext, node.getPlanNodeId(), Coordinator.getInstance());
   }
 
   private List<OutputColumn> generateOutputColumnsFromChildren(MultiChildProcessNode node) {
@@ -2019,7 +2098,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
             .addOperatorContext(
                 context.getNextOperatorId(),
                 node.getPlanNodeId(),
-                TimeJoinOperator.class.getSimpleName());
+                LastQueryMergeOperator.class.getSimpleName());
 
     List<SortItem> items = node.getMergeOrderParameter().getSortItemList();
     Comparator<Binary> comparator =
@@ -2041,7 +2120,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
             .addOperatorContext(
                 context.getNextOperatorId(),
                 node.getPlanNodeId(),
-                TimeJoinOperator.class.getSimpleName());
+                LastQueryCollectOperator.class.getSimpleName());
 
     context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
     return new LastQueryCollectOperator(operatorContext, children);

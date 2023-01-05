@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.db.constant.SqlConstant;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
 import org.apache.iotdb.db.mpp.common.schematree.ISchemaTree;
@@ -41,7 +42,6 @@ import org.apache.iotdb.db.mpp.plan.expression.ternary.TernaryExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.InExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.UnaryExpression;
 import org.apache.iotdb.db.mpp.plan.statement.component.ResultColumn;
-import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter;
@@ -274,7 +274,7 @@ public class ExpressionAnalyzer {
     } else if (expression instanceof TimeSeriesOperand) {
       PartialPath rawPath = ((TimeSeriesOperand) expression).getPath();
       List<PartialPath> actualPaths = new ArrayList<>();
-      if (rawPath.getFullPath().startsWith(SQLConstant.ROOT + TsFileConstant.PATH_SEPARATOR)) {
+      if (rawPath.getFullPath().startsWith(SqlConstant.ROOT + TsFileConstant.PATH_SEPARATOR)) {
         actualPaths.add(rawPath);
         patternTree.appendPathPattern(rawPath);
       } else {
@@ -343,7 +343,7 @@ public class ExpressionAnalyzer {
     } else if (expression instanceof TimeSeriesOperand) {
       PartialPath rawPath = ((TimeSeriesOperand) expression).getPath();
       List<PartialPath> actualPaths = new ArrayList<>();
-      if (rawPath.getFullPath().startsWith(SQLConstant.ROOT + TsFileConstant.PATH_SEPARATOR)) {
+      if (rawPath.getFullPath().startsWith(SqlConstant.ROOT + TsFileConstant.PATH_SEPARATOR)) {
         actualPaths.add(rawPath);
       } else {
         for (PartialPath prefixPath : prefixPaths) {
@@ -391,7 +391,7 @@ public class ExpressionAnalyzer {
       }
     } else if (predicate instanceof TimeSeriesOperand) {
       PartialPath rawPath = ((TimeSeriesOperand) predicate).getPath();
-      if (rawPath.getFullPath().startsWith(SQLConstant.ROOT + TsFileConstant.PATH_SEPARATOR)) {
+      if (rawPath.getFullPath().startsWith(SqlConstant.ROOT + TsFileConstant.PATH_SEPARATOR)) {
         patternTree.appendPathPattern(rawPath);
         return;
       }
@@ -549,7 +549,7 @@ public class ExpressionAnalyzer {
     } else if (predicate instanceof TimeSeriesOperand) {
       PartialPath filterPath = ((TimeSeriesOperand) predicate).getPath();
       List<PartialPath> concatPaths = new ArrayList<>();
-      if (!filterPath.getFirstNode().equals(SQLConstant.ROOT)) {
+      if (!filterPath.getFirstNode().equals(SqlConstant.ROOT)) {
         prefixPaths.forEach(prefix -> concatPaths.add(prefix.concatPath(filterPath)));
       } else {
         // do nothing in the case of "where root.d1.s1 > 5"
@@ -559,7 +559,7 @@ public class ExpressionAnalyzer {
       List<PartialPath> noStarPaths = new ArrayList<>();
       for (PartialPath concatPath : concatPaths) {
         List<MeasurementPath> actualPaths = schemaTree.searchMeasurementPaths(concatPath).left;
-        if (actualPaths.size() == 0) {
+        if (actualPaths.isEmpty()) {
           return Collections.singletonList(new NullOperand());
         }
         noStarPaths.addAll(actualPaths);
@@ -663,7 +663,7 @@ public class ExpressionAnalyzer {
       for (Expression suffixExpression : expression.getExpressions()) {
         List<Expression> concatedExpression =
             concatDeviceAndRemoveWildcard(suffixExpression, devicePath, schemaTree);
-        if (concatedExpression != null && concatedExpression.size() != 0) {
+        if (concatedExpression != null && !concatedExpression.isEmpty()) {
           extendedExpressions.add(concatedExpression);
         }
       }
@@ -756,7 +756,7 @@ public class ExpressionAnalyzer {
       PartialPath concatPath = devicePath.concatPath(measurement);
 
       List<MeasurementPath> noStarPaths = schemaTree.searchMeasurementPaths(concatPath).left;
-      if (noStarPaths.size() == 0) {
+      if (noStarPaths.isEmpty()) {
         return Collections.singletonList(new NullOperand());
       }
       return reconstructTimeSeriesOperands(noStarPaths);
@@ -1107,37 +1107,11 @@ public class ExpressionAnalyzer {
   /////////////////////////////////////////////////////////////////////////////////////////////////
 
   public static String getDeviceNameInSourceExpression(Expression expression) {
-    if (expression instanceof TernaryExpression) {
-      String DeviceName =
-          getDeviceNameInSourceExpression(((TernaryExpression) expression).getFirstExpression());
-      if (DeviceName == null) {
-        DeviceName =
-            getDeviceNameInSourceExpression(((TernaryExpression) expression).getSecondExpression());
-      }
-      if (DeviceName == null) {
-        DeviceName =
-            getDeviceNameInSourceExpression(((TernaryExpression) expression).getThirdExpression());
-      }
-      return DeviceName;
-    } else if (expression instanceof BinaryExpression) {
-      String leftDeviceName =
-          getDeviceNameInSourceExpression(((BinaryExpression) expression).getLeftExpression());
-      if (leftDeviceName != null) {
-        return leftDeviceName;
-      }
-      return getDeviceNameInSourceExpression(((BinaryExpression) expression).getRightExpression());
-    } else if (expression instanceof UnaryExpression) {
-      return getDeviceNameInSourceExpression(((UnaryExpression) expression).getExpression());
-    } else if (expression instanceof TimeSeriesOperand) {
-      return ((TimeSeriesOperand) expression).getPath().getDevice();
-    } else if (expression instanceof FunctionExpression) {
-      return getDeviceNameInSourceExpression(expression.getExpressions().get(0));
-    } else if (expression instanceof ConstantOperand || expression instanceof TimestampOperand) {
-      return null;
-    } else {
+    if (!(expression instanceof TimeSeriesOperand)) {
       throw new IllegalArgumentException(
-          "unsupported expression type: " + expression.getExpressionType());
+          "unsupported expression type for source expression: " + expression.getExpressionType());
     }
+    return ((TimeSeriesOperand) expression).getPath().getDevice();
   }
 
   public static Expression getMeasurementExpression(Expression expression) {

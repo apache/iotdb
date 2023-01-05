@@ -46,7 +46,7 @@ public abstract class AbstractWALBuffer implements IWALBuffer {
   /** current wal file log writer */
   protected volatile WALWriter currentWALFileWriter;
 
-  public AbstractWALBuffer(
+  protected AbstractWALBuffer(
       String identifier, String logDirectory, long startFileVersion, long startSearchIndex)
       throws FileNotFoundException {
     this.identifier = identifier;

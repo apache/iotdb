@@ -50,6 +50,16 @@ public class OrderByParameter {
     return sortItemList.isEmpty();
   }
 
+  @Override
+  public String toString() {
+    StringBuilder sortInfo = new StringBuilder("OrderBy:");
+    for (SortItem sortItem : sortItemList) {
+      sortInfo.append(" ");
+      sortInfo.append(sortItem.toSQLString());
+    }
+    return sortInfo.toString();
+  }
+
   public void serializeAttributes(ByteBuffer byteBuffer) {
     ReadWriteIOUtils.write(sortItemList.size(), byteBuffer);
     for (SortItem sortItem : sortItemList) {

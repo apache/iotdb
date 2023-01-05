@@ -116,6 +116,7 @@ node3/
 
 # Exclude copied license
 /client-py/LICENSE
+/mlnode/LICENSE
 
 # ANTLR
 antlr/gen/

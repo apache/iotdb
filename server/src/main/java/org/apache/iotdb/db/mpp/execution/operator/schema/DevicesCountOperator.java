@@ -21,97 +21,45 @@ package org.apache.iotdb.db.mpp.execution.operator.schema;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.metadata.plan.schemaregion.impl.read.SchemaRegionReadPlanFactory;
+import org.apache.iotdb.db.metadata.query.info.IDeviceSchemaInfo;
+import org.apache.iotdb.db.metadata.query.reader.ISchemaReader;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
-import org.apache.iotdb.db.mpp.execution.driver.SchemaDriverContext;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
-import org.apache.iotdb.db.mpp.execution.operator.source.SourceOperator;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.block.TsBlock;
-import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 
-import java.util.List;
 import java.util.stream.Collectors;
 
-public class DevicesCountOperator implements SourceOperator {
-  private final PlanNodeId sourceId;
-  private final OperatorContext operatorContext;
+public class DevicesCountOperator extends SchemaCountOperator<IDeviceSchemaInfo> {
+
   private final PartialPath partialPath;
   private final boolean isPrefixPath;
-
-  private boolean isFinished;
-
-  private final List<TSDataType> outputDataTypes;
-
-  @Override
-  public PlanNodeId getSourceId() {
-    return sourceId;
-  }
 
   public DevicesCountOperator(
       PlanNodeId sourceId,
       OperatorContext operatorContext,
       PartialPath partialPath,
       boolean isPrefixPath) {
-    this.sourceId = sourceId;
-    this.operatorContext = operatorContext;
-    this.partialPath = partialPath;
-    this.isPrefixPath = isPrefixPath;
-    this.outputDataTypes =
+    super(
+        sourceId,
+        operatorContext,
         ColumnHeaderConstant.countDevicesColumnHeaders.stream()
             .map(ColumnHeader::getColumnType)
-            .collect(Collectors.toList());
+            .collect(Collectors.toList()));
+
+    this.partialPath = partialPath;
+    this.isPrefixPath = isPrefixPath;
   }
 
   @Override
-  public OperatorContext getOperatorContext() {
-    return operatorContext;
-  }
-
-  @Override
-  public TsBlock next() {
-    isFinished = true;
-    TsBlockBuilder tsBlockBuilder = new TsBlockBuilder(outputDataTypes);
-    long count = 0;
+  protected ISchemaReader<IDeviceSchemaInfo> createSchemaReader() {
     try {
-      count =
-          ((SchemaDriverContext) operatorContext.getDriverContext())
-              .getSchemaRegion()
-              .getDevicesNum(partialPath, isPrefixPath);
+      return getSchemaRegion()
+          .getDeviceReader(
+              SchemaRegionReadPlanFactory.getShowDevicesPlan(partialPath, isPrefixPath));
     } catch (MetadataException e) {
       throw new RuntimeException(e.getMessage(), e);
     }
-    tsBlockBuilder.getTimeColumnBuilder().writeLong(0L);
-    tsBlockBuilder.getColumnBuilder(0).writeLong(count);
-    tsBlockBuilder.declarePosition();
-    return tsBlockBuilder.build();
-  }
-
-  @Override
-  public boolean hasNext() {
-    return !isFinished;
-  }
-
-  @Override
-  public boolean isFinished() {
-    return isFinished;
-  }
-
-  @Override
-  public long calculateMaxPeekMemory() {
-    // the integer used for count
-    return 4L;
-  }
-
-  @Override
-  public long calculateMaxReturnSize() {
-    // the integer used for count
-    return 4L;
-  }
-
-  @Override
-  public long calculateRetainedSizeAfterCallingNext() {
-    return 0L;
   }
 }

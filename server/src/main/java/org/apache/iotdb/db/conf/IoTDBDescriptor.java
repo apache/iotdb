@@ -29,25 +29,25 @@ import org.apache.iotdb.confignode.rpc.thrift.TGlobalConfig;
 import org.apache.iotdb.confignode.rpc.thrift.TRatisConfig;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.StorageEngine;
-import org.apache.iotdb.db.engine.compaction.constant.CompactionPriority;
-import org.apache.iotdb.db.engine.compaction.constant.CrossCompactionPerformer;
-import org.apache.iotdb.db.engine.compaction.constant.CrossCompactionSelector;
-import org.apache.iotdb.db.engine.compaction.constant.InnerSeqCompactionPerformer;
-import org.apache.iotdb.db.engine.compaction.constant.InnerSequenceCompactionSelector;
-import org.apache.iotdb.db.engine.compaction.constant.InnerUnseqCompactionPerformer;
-import org.apache.iotdb.db.engine.compaction.constant.InnerUnsequenceCompactionSelector;
+import org.apache.iotdb.db.engine.compaction.execute.performer.constant.CrossCompactionPerformer;
+import org.apache.iotdb.db.engine.compaction.execute.performer.constant.InnerSeqCompactionPerformer;
+import org.apache.iotdb.db.engine.compaction.execute.performer.constant.InnerUnseqCompactionPerformer;
+import org.apache.iotdb.db.engine.compaction.schedule.constant.CompactionPriority;
+import org.apache.iotdb.db.engine.compaction.selector.constant.CrossCompactionSelector;
+import org.apache.iotdb.db.engine.compaction.selector.constant.InnerSequenceCompactionSelector;
+import org.apache.iotdb.db.engine.compaction.selector.constant.InnerUnsequenceCompactionSelector;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.qp.utils.DateTimeUtils;
 import org.apache.iotdb.db.rescon.SystemInfo;
-import org.apache.iotdb.db.service.metrics.IoTDBInternalReporter;
+import org.apache.iotdb.db.service.metrics.IoTDBInternalLocalReporter;
+import org.apache.iotdb.db.utils.DateTimeUtils;
 import org.apache.iotdb.db.utils.datastructure.TVListSortAlgorithm;
 import org.apache.iotdb.db.wal.WALManager;
 import org.apache.iotdb.db.wal.utils.WALMode;
 import org.apache.iotdb.external.api.IPropertiesLoader;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.config.ReloadLevel;
-import org.apache.iotdb.metrics.reporter.iotdb.InternalIoTDBReporter;
-import org.apache.iotdb.metrics.reporter.iotdb.MemoryInternalIoTDBReporter;
+import org.apache.iotdb.metrics.reporter.iotdb.IoTDBInternalMemoryReporter;
+import org.apache.iotdb.metrics.reporter.iotdb.IoTDBInternalReporter;
 import org.apache.iotdb.metrics.utils.InternalReporterType;
 import org.apache.iotdb.rpc.RpcTransportFactory;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -198,6 +198,9 @@ public class IoTDBDescriptor {
   }
 
   public void loadProperties(Properties properties) {
+
+    conf.setClusterName(
+        properties.getProperty(IoTDBConstant.CLUSTER_NAME, conf.getClusterName()).trim());
 
     conf.setRpcAddress(
         properties.getProperty(IoTDBConstant.DN_RPC_ADDRESS, conf.getRpcAddress()).trim());
@@ -1503,12 +1506,12 @@ public class IoTDBDescriptor {
     ReloadLevel reloadLevel = MetricConfigDescriptor.getInstance().loadHotProps(commonProperties);
     logger.info("Reload metric service in level {}", reloadLevel);
     if (reloadLevel == ReloadLevel.RESTART_INTERNAL_REPORTER) {
-      InternalIoTDBReporter internalReporter;
+      IoTDBInternalReporter internalReporter;
       if (MetricConfigDescriptor.getInstance().getMetricConfig().getInternalReportType()
           == InternalReporterType.IOTDB) {
-        internalReporter = new IoTDBInternalReporter();
+        internalReporter = new IoTDBInternalLocalReporter();
       } else {
-        internalReporter = new MemoryInternalIoTDBReporter();
+        internalReporter = new IoTDBInternalMemoryReporter();
       }
       MetricService.getInstance().reloadInternalReporter(internalReporter);
     } else {
@@ -1805,7 +1808,7 @@ public class IoTDBDescriptor {
         conf.setTargetConfigNodeList(NodeUrlUtils.parseTEndPointUrls(configNodeUrls));
       } catch (BadNodeUrlException e) {
         logger.error(
-            "Config nodes are set in wrong format, please set them like 127.0.0.1:22277,127.0.0.1:22281");
+            "Config nodes are set in wrong format, please set them like 127.0.0.1:10710,127.0.0.1:10712");
       }
     }
 

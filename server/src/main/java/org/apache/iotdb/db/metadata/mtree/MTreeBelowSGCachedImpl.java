@@ -46,20 +46,17 @@ import org.apache.iotdb.db.metadata.mtree.traverser.collector.EntityCollector;
 import org.apache.iotdb.db.metadata.mtree.traverser.collector.MNodeCollector;
 import org.apache.iotdb.db.metadata.mtree.traverser.collector.MeasurementCollector;
 import org.apache.iotdb.db.metadata.mtree.traverser.counter.CounterTraverser;
-import org.apache.iotdb.db.metadata.mtree.traverser.counter.EntityCounter;
-import org.apache.iotdb.db.metadata.mtree.traverser.counter.MeasurementCounter;
 import org.apache.iotdb.db.metadata.mtree.traverser.counter.MeasurementGroupByLevelCounter;
 import org.apache.iotdb.db.metadata.plan.schemaregion.read.IShowDevicesPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.read.IShowTimeSeriesPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.result.ShowDevicesResult;
+import org.apache.iotdb.db.metadata.plan.schemaregion.result.ShowTimeSeriesResult;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.utils.MetaFormatUtils;
-import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.Pair;
-import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import java.io.File;
@@ -681,8 +678,7 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
   }
 
   @Override
-  public Pair<List<ShowDevicesResult>, Integer> getDevices(IShowDevicesPlan plan)
-      throws MetadataException {
+  public List<ShowDevicesResult> getDevices(IShowDevicesPlan plan) throws MetadataException {
     List<ShowDevicesResult> res = new ArrayList<>();
     EntityCollector<List<ShowDevicesResult>> collector =
         new EntityCollector<List<ShowDevicesResult>>(
@@ -690,21 +686,16 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
           @Override
           protected void collectEntity(IEntityMNode node) {
             PartialPath device = getCurrentPartialPath(node);
-            if (plan.hasSgCol()) {
-              res.add(
-                  new ShowDevicesResult(
-                      device.getFullPath(),
-                      node.isAligned(),
-                      getStorageGroupNodeInTraversePath(node).getFullPath()));
-            } else {
-              res.add(new ShowDevicesResult(device.getFullPath(), node.isAligned()));
-            }
+            res.add(new ShowDevicesResult(device.getFullPath(), node.isAligned()));
           }
         };
     collector.setPrefixMatch(plan.isPrefixMatch());
+    if (plan.usingSchemaTemplate()) {
+      collector.setSchemaTemplateFilter(plan.getSchemaTemplateId());
+    }
     collector.traverse();
 
-    return new Pair<>(res, collector.getCurOffset() + 1);
+    return res;
   }
   // endregion
 
@@ -760,38 +751,27 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
     return new Pair<>(result, offset);
   }
 
-  /**
-   * Get all measurement schema matching the given path pattern
-   *
-   * <p>result: [name, alias, database, dataType, encoding, compression, offset] and the current
-   * offset
-   */
-  @Override
-  public Pair<List<Pair<PartialPath, String[]>>, Integer> getAllMeasurementSchema(
-      IShowTimeSeriesPlan plan) throws MetadataException {
-
+  public List<ShowTimeSeriesResult> getAllMeasurementSchema(
+      IShowTimeSeriesPlan plan,
+      Function<Long, Pair<Map<String, String>, Map<String, String>>> tagAndAttributeProvider)
+      throws MetadataException {
     int limit = plan.getLimit();
     int offset = plan.getOffset();
 
-    MeasurementCollector<List<Pair<PartialPath, String[]>>> collector =
-        new MeasurementCollector<List<Pair<PartialPath, String[]>>>(
+    MeasurementCollector<List<ShowTimeSeriesResult>> collector =
+        new MeasurementCollector<List<ShowTimeSeriesResult>>(
             storageGroupMNode, plan.getPath(), store, limit, offset) {
           @Override
           protected void collectMeasurement(IMeasurementMNode node) {
-            IMeasurementSchema measurementSchema = node.getSchema();
-            Pair<String, String> deadbandInfo =
-                MetaUtils.parseDeadbandInfo(measurementSchema.getProps());
-            String[] tsRow = new String[8];
-            tsRow[0] = node.getAlias();
-            tsRow[1] = getStorageGroupNodeInTraversePath(node).getFullPath();
-            tsRow[2] = measurementSchema.getType().toString();
-            tsRow[3] = measurementSchema.getEncodingType().toString();
-            tsRow[4] = measurementSchema.getCompressor().toString();
-            tsRow[5] = String.valueOf(node.getOffset());
-            tsRow[6] = deadbandInfo.left;
-            tsRow[7] = deadbandInfo.right;
-            Pair<PartialPath, String[]> temp = new Pair<>(getCurrentPartialPath(node), tsRow);
-            resultSet.add(temp);
+            Pair<Map<String, String>, Map<String, String>> tagAndAttribute =
+                tagAndAttributeProvider.apply(node.getOffset());
+            resultSet.add(
+                new ShowTimeSeriesResult(
+                    getCurrentPartialPath(node).getFullPath(),
+                    node.getAlias(),
+                    (MeasurementSchema) node.getSchema(),
+                    tagAndAttribute.left,
+                    tagAndAttribute.right));
           }
         };
     collector.setPrefixMatch(plan.isPrefixMatch());
@@ -799,9 +779,7 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
     collector.setResultSet(new LinkedList<>());
     collector.traverse();
 
-    List<Pair<PartialPath, String[]>> result = collector.getResult();
-
-    return new Pair<>(result, collector.getCurOffset() + 1);
+    return collector.getResult();
   }
 
   // endregion
@@ -861,57 +839,6 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
   // endregion
 
   // region Interfaces and Implementation for metadata count
-  /**
-   * Get the count of timeseries matching the given path.
-   *
-   * @param pathPattern a path pattern or a full path, may contain wildcard
-   */
-  @Override
-  public long getAllTimeseriesCount(PartialPath pathPattern, boolean isPrefixMatch)
-      throws MetadataException {
-    CounterTraverser counter = new MeasurementCounter(storageGroupMNode, pathPattern, store);
-    counter.setPrefixMatch(isPrefixMatch);
-    counter.traverse();
-    return counter.getCount();
-  }
-
-  @Override
-  public long getAllTimeseriesCount(
-      PartialPath pathPattern, Map<Integer, Template> templateMap, boolean isPrefixMatch)
-      throws MetadataException {
-    CounterTraverser counter = new MeasurementCounter(storageGroupMNode, pathPattern, store);
-    counter.setPrefixMatch(isPrefixMatch);
-    counter.setTemplateMap(templateMap);
-    counter.traverse();
-    return counter.getCount();
-  }
-
-  @Override
-  public long getAllTimeseriesCount(
-      PartialPath pathPattern, boolean isPrefixMatch, List<String> timeseries, boolean hasTag)
-      throws MetadataException {
-    CounterTraverser counter =
-        new MeasurementCounter(storageGroupMNode, pathPattern, store, timeseries, hasTag);
-    counter.setPrefixMatch(isPrefixMatch);
-    counter.traverse();
-    return counter.getCount();
-  }
-
-  /**
-   * Get the count of devices matching the given path. If using prefix match, the path pattern is
-   * used to match prefix path. All timeseries start with the matched prefix path will be counted.
-   *
-   * @param pathPattern a path pattern or a full path, may contain wildcard
-   * @param isPrefixMatch if true, the path pattern is used to match prefix path
-   */
-  @Override
-  public long getDevicesNum(PartialPath pathPattern, boolean isPrefixMatch)
-      throws MetadataException {
-    CounterTraverser counter = new EntityCounter(storageGroupMNode, pathPattern, store);
-    counter.setPrefixMatch(isPrefixMatch);
-    counter.traverse();
-    return counter.getCount();
-  }
 
   @Override
   public Map<PartialPath, Long> getMeasurementCountGroupByLevel(
@@ -1123,24 +1050,6 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
     } finally {
       unPinPath(cur);
     }
-  }
-
-  @Override
-  public List<String> getPathsUsingTemplate(PartialPath pathPattern, int templateId)
-      throws MetadataException {
-    Set<String> result = new HashSet<>();
-
-    EntityCollector<Set<String>> collector =
-        new EntityCollector<Set<String>>(storageGroupMNode, pathPattern, store) {
-          @Override
-          protected void collectEntity(IEntityMNode node) {
-            if (node.getSchemaTemplateId() == templateId) {
-              result.add(node.getFullPath());
-            }
-          }
-        };
-    collector.traverse();
-    return new ArrayList<>(result);
   }
 
   public Map<PartialPath, List<Integer>> constructSchemaBlackListWithTemplate(

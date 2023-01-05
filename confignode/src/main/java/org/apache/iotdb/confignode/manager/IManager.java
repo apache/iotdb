@@ -34,7 +34,6 @@ import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionInfoLi
 import org.apache.iotdb.confignode.consensus.request.read.storagegroup.CountStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.read.storagegroup.GetStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
-import org.apache.iotdb.confignode.consensus.request.write.datanode.RegisterDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RemoveDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.UpdateDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetDataReplicationFactorPlan;
@@ -56,6 +55,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TCreateFunctionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTriggerReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRestartReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRestartResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionTableResp;
@@ -95,6 +95,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowStorageGroupResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowVariablesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsetSchemaTemplateReq;
 import org.apache.iotdb.consensus.common.DataSet;
 
@@ -177,6 +178,13 @@ public interface IManager {
   CQManager getCQManager();
 
   /**
+   * Get RetryFailedTasksThread
+   *
+   * @return RetryFailedTasksThread instance
+   */
+  RetryFailedTasksThread getRetryFailedTasksThread();
+
+  /**
    * Get system configurations that is not associated with the DataNodeId
    *
    * @return SystemConfigurationResp
@@ -188,7 +196,7 @@ public interface IManager {
    *
    * @return DataNodeConfigurationDataSet
    */
-  DataSet registerDataNode(RegisterDataNodePlan registerDataNodePlan);
+  DataSet registerDataNode(TDataNodeRegisterReq req);
 
   /**
    * Restart DataNode
@@ -229,7 +237,19 @@ public interface IManager {
    */
   DataSet getDataNodeConfiguration(GetDataNodeConfigurationPlan getDataNodeConfigurationPlan);
 
+  /**
+   * Get Cluster Nodes' information
+   *
+   * @return TShowClusterResp
+   */
   TShowClusterResp showCluster();
+
+  /**
+   * Get variables
+   *
+   * @return TShowVariablesResp
+   */
+  TShowVariablesResp showVariables();
 
   TSStatus setTTL(SetTTLPlan configRequest);
 

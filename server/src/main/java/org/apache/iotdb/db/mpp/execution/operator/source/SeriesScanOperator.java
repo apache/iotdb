@@ -19,7 +19,6 @@
 package org.apache.iotdb.db.mpp.execution.operator.source;
 
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.mpp.execution.driver.DriverContext;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.execution.operator.factory.SourceOperatorFactory;
@@ -41,7 +40,7 @@ import java.util.concurrent.TimeUnit;
 import static com.google.common.base.Preconditions.checkState;
 import static java.util.Objects.requireNonNull;
 
-public class SeriesScanOperator implements DataSourceOperator {
+public class SeriesScanOperator extends AbstractDataSourceOperator {
 
   public static class SeriesScanOperatorFactory implements SourceOperatorFactory {
     private final int operatorId;
@@ -113,14 +112,8 @@ public class SeriesScanOperator implements DataSourceOperator {
     }
   }
 
-  private final OperatorContext operatorContext;
-  private final SeriesScanUtil seriesScanUtil;
-  private final PlanNodeId sourceId;
   private final TsBlockBuilder builder;
-
   private boolean finished = false;
-
-  private final long maxReturnSize;
 
   public SeriesScanOperator(
       OperatorContext context,
@@ -142,24 +135,26 @@ public class SeriesScanOperator implements DataSourceOperator {
             timeFilter,
             valueFilter,
             ascending);
-    this.maxReturnSize = TSFileDescriptor.getInstance().getConfig().getPageSizeInByte();
+    this.maxReturnSize =
+        Math.min(maxReturnSize, TSFileDescriptor.getInstance().getConfig().getPageSizeInByte());
     this.builder = new TsBlockBuilder(seriesScanUtil.getTsDataTypeList());
   }
 
   @Override
-  public OperatorContext getOperatorContext() {
-    return operatorContext;
-  }
-
-  @Override
   public TsBlock next() {
-    TsBlock block = builder.build();
+    if (retainedTsBlock != null) {
+      return getResultFromRetainedTsBlock();
+    }
+    resultTsBlock = builder.build();
     builder.reset();
-    return block;
+    return checkTsBlockSizeAndGetResult();
   }
 
   @Override
   public boolean hasNext() {
+    if (retainedTsBlock != null) {
+      return true;
+    }
     try {
 
       // start stopwatch
@@ -207,7 +202,7 @@ public class SeriesScanOperator implements DataSourceOperator {
 
   @Override
   public long calculateMaxPeekMemory() {
-    return maxReturnSize;
+    return Math.max(maxReturnSize, TSFileDescriptor.getInstance().getConfig().getPageSizeInByte());
   }
 
   @Override
@@ -217,7 +212,7 @@ public class SeriesScanOperator implements DataSourceOperator {
 
   @Override
   public long calculateRetainedSizeAfterCallingNext() {
-    return 0L;
+    return calculateMaxPeekMemory() - calculateMaxReturnSize();
   }
 
   private boolean readFileData() throws IOException {
@@ -277,15 +272,5 @@ public class SeriesScanOperator implements DataSourceOperator {
 
   private boolean isEmpty(TsBlock tsBlock) {
     return tsBlock == null || tsBlock.isEmpty();
-  }
-
-  @Override
-  public PlanNodeId getSourceId() {
-    return sourceId;
-  }
-
-  @Override
-  public void initQueryDataSource(QueryDataSource dataSource) {
-    seriesScanUtil.initQueryDataSource(dataSource);
   }
 }
