@@ -148,7 +148,7 @@ public class ConfigNodeClient
   public static final String MSG_RECONNECTION_FAIL =
       "Fail to connect to any config node. Please check status of ConfigNodes";
 
-  private static final int retryIntervalMs = 1000;
+  private static final int RETRY_INTERVAL_MS = 1000;
 
   private long connectionTimeout = ClientPoolProperty.DefaultProperty.WAIT_CLIENT_TIMEOUT_MS;
 
@@ -226,7 +226,7 @@ public class ConfigNodeClient
   private void waitAndReconnect() throws TException {
     try {
       // wait to start the next try
-      Thread.sleep(retryIntervalMs);
+      Thread.sleep(RETRY_INTERVAL_MS);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       throw new TException(
