@@ -32,6 +32,8 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -174,6 +176,34 @@ public class SchemaRegionTestUtil {
         count++;
       }
       return count;
+    } catch (Exception e) {
+      throw new RuntimeException(e);
+    }
+  }
+
+  public static Map<PartialPath, Long> getMeasurementCountGroupByLevel(
+      ISchemaRegion schemaRegion, PartialPath pathPattern, int level, boolean isPrefixMatch) {
+    try (ISchemaReader<ITimeSeriesSchemaInfo> timeSeriesReader =
+        schemaRegion.getTimeSeriesReader(
+            SchemaRegionReadPlanFactory.getShowTimeSeriesPlan(
+                pathPattern, null, false, null, null, 0, 0, isPrefixMatch)); ) {
+      Map<PartialPath, Long> countMap = new HashMap<>();
+      while (timeSeriesReader.hasNext()) {
+        ITimeSeriesSchemaInfo timeSeriesSchemaInfo = timeSeriesReader.next();
+        PartialPath path = timeSeriesSchemaInfo.getPartialPath();
+        if (path.getNodeLength() < level) {
+          continue;
+        }
+        countMap.compute(
+            new PartialPath(Arrays.copyOf(path.getNodes(), level + 1)),
+            (k, v) -> {
+              if (v == null) {
+                return 1L;
+              }
+              return v + 1;
+            });
+      }
+      return countMap;
     } catch (Exception e) {
       throw new RuntimeException(e);
     }

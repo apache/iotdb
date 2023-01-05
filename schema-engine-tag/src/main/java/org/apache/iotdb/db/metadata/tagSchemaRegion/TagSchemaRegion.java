@@ -336,24 +336,6 @@ public class TagSchemaRegion implements ISchemaRegion {
   }
 
   @Override
-  public Map<PartialPath, Long> getMeasurementCountGroupByLevel(
-      PartialPath pathPattern, int level, boolean isPrefixMatch) throws MetadataException {
-    throw new UnsupportedOperationException("getMeasurementCountGroupByLevel");
-  }
-
-  @Override
-  public Map<PartialPath, Long> getMeasurementCountGroupByLevel(
-      PartialPath pathPattern,
-      int level,
-      boolean isPrefixMatch,
-      String key,
-      String value,
-      boolean isContains)
-      throws MetadataException {
-    throw new UnsupportedOperationException("getMeasurementCountGroupByLevel");
-  }
-
-  @Override
   public List<PartialPath> getNodesListInGivenLevel(
       PartialPath pathPattern, int nodeLevel, boolean isPrefixMatch) throws MetadataException {
     throw new UnsupportedOperationException("getNodesListInGivenLevel");
