@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.mpp.execution.operator.schema;
 
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
@@ -24,35 +25,42 @@ import org.apache.iotdb.db.mpp.execution.operator.process.ProcessOperator;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
-import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
+import org.apache.iotdb.tsfile.utils.Binary;
 
 import com.google.common.util.concurrent.ListenableFuture;
 
 import java.util.ArrayList;
-import java.util.Collections;
+import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.NoSuchElementException;
 
 import static com.google.common.util.concurrent.Futures.successfulAsList;
 
-public class CountMergeOperator implements ProcessOperator {
+public class CountGroupByLevelMergeOperator implements ProcessOperator {
+
   private final PlanNodeId planNodeId;
   private final OperatorContext operatorContext;
 
-  private final TsBlock[] childrenTsBlocks;
-
-  private List<TsBlock> resultTsBlockList;
-  private int currentIndex = 0;
-
   private final List<Operator> children;
 
-  public CountMergeOperator(
+  private final boolean[] childrenHasNext;
+
+  private final Map<String, Long> countMap = new HashMap<>();
+
+  private List<TsBlock> resultTsBlockList;
+
+  private int currentIndex = 0;
+
+  public CountGroupByLevelMergeOperator(
       PlanNodeId planNodeId, OperatorContext operatorContext, List<Operator> children) {
     this.planNodeId = planNodeId;
     this.operatorContext = operatorContext;
     this.children = children;
 
-    childrenTsBlocks = new TsBlock[children.size()];
+    childrenHasNext = new boolean[children.size()];
+    Arrays.fill(childrenHasNext, true);
   }
 
   @Override
@@ -64,7 +72,7 @@ public class CountMergeOperator implements ProcessOperator {
   public ListenableFuture<?> isBlocked() {
     List<ListenableFuture<?>> listenableFutureList = new ArrayList<>(children.size());
     for (int i = 0; i < children.size(); i++) {
-      if (childrenTsBlocks[i] == null) {
+      if (childrenHasNext[i]) {
         ListenableFuture<?> blocked = children.get(i).isBlocked();
         if (!blocked.isDone()) {
           listenableFutureList.add(blocked);
@@ -84,22 +92,24 @@ public class CountMergeOperator implements ProcessOperator {
       currentIndex++;
       return resultTsBlockList.get(currentIndex - 1);
     }
-    boolean allChildrenReady = true;
+
+    boolean allChildrenConsumed = true;
     for (int i = 0; i < children.size(); i++) {
-      if (childrenTsBlocks[i] == null) {
-        // when this operator is not blocked, it means all children that have not return TsBlock is
+      if (childrenHasNext[i]) {
+        // when this operator is not blocked, it means all children that have remaining TsBlock is
         // not blocked.
         if (children.get(i).hasNextWithTimer()) {
+          allChildrenConsumed = false;
           TsBlock tsBlock = children.get(i).nextWithTimer();
-          if (tsBlock == null || tsBlock.isEmpty()) {
-            allChildrenReady = false;
-          } else {
-            childrenTsBlocks[i] = tsBlock;
+          if (tsBlock != null && !tsBlock.isEmpty()) {
+            consumeChildrenTsBlock(tsBlock);
           }
+        } else {
+          childrenHasNext[i] = false;
         }
       }
     }
-    if (allChildrenReady) {
+    if (allChildrenConsumed) {
       generateResultTsBlockList();
       currentIndex++;
       return resultTsBlockList.get(currentIndex - 1);
@@ -108,17 +118,25 @@ public class CountMergeOperator implements ProcessOperator {
     }
   }
 
-  private void generateResultTsBlockList() {
-    long totalCount = 0;
-    for (TsBlock tsBlock : childrenTsBlocks) {
-      long count = tsBlock.getColumn(0).getLong(0);
-      totalCount += count;
+  private void consumeChildrenTsBlock(TsBlock tsBlock) {
+    for (int i = 0; i < tsBlock.getPositionCount(); i++) {
+      String columnName = tsBlock.getColumn(0).getBinary(i).getStringValue();
+      long count = tsBlock.getColumn(1).getLong(i);
+      countMap.put(columnName, countMap.getOrDefault(columnName, 0L) + count);
     }
-    TsBlockBuilder tsBlockBuilder = new TsBlockBuilder(Collections.singletonList(TSDataType.INT64));
-    tsBlockBuilder.getTimeColumnBuilder().writeLong(0L);
-    tsBlockBuilder.getColumnBuilder(0).writeLong(totalCount);
-    tsBlockBuilder.declarePosition();
-    this.resultTsBlockList = Collections.singletonList(tsBlockBuilder.build());
+  }
+
+  private void generateResultTsBlockList() {
+    this.resultTsBlockList =
+        SchemaTsBlockUtil.transferSchemaResultToTsBlockList(
+            countMap.entrySet().iterator(),
+            Arrays.asList(TSDataType.TEXT, TSDataType.INT64),
+            (entry, tsBlockBuilder) -> {
+              tsBlockBuilder.getTimeColumnBuilder().writeLong(0L);
+              tsBlockBuilder.getColumnBuilder(0).writeBinary(new Binary(entry.getKey()));
+              tsBlockBuilder.getColumnBuilder(1).writeLong(entry.getValue());
+              tsBlockBuilder.declarePosition();
+            });
   }
 
   @Override
