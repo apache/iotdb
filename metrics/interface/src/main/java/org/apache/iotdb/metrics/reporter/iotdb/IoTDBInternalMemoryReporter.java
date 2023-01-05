@@ -24,7 +24,7 @@ import org.apache.iotdb.metrics.utils.ReporterType;
 
 import java.util.Map;
 
-public class MemoryInternalIoTDBReporter extends InternalIoTDBReporter {
+public class IoTDBInternalMemoryReporter extends IoTDBInternalReporter {
   @Override
   public InternalReporterType getType() {
     return InternalReporterType.MEMORY;

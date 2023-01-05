@@ -39,15 +39,15 @@ import org.apache.iotdb.db.engine.compaction.constant.InnerUnsequenceCompactionS
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.utils.DateTimeUtils;
 import org.apache.iotdb.db.rescon.SystemInfo;
-import org.apache.iotdb.db.service.metrics.IoTDBInternalReporter;
+import org.apache.iotdb.db.service.metrics.IoTDBInternalLocalReporter;
 import org.apache.iotdb.db.utils.datastructure.TVListSortAlgorithm;
 import org.apache.iotdb.db.wal.WALManager;
 import org.apache.iotdb.db.wal.utils.WALMode;
 import org.apache.iotdb.external.api.IPropertiesLoader;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.config.ReloadLevel;
-import org.apache.iotdb.metrics.reporter.iotdb.InternalIoTDBReporter;
-import org.apache.iotdb.metrics.reporter.iotdb.MemoryInternalIoTDBReporter;
+import org.apache.iotdb.metrics.reporter.iotdb.IoTDBInternalMemoryReporter;
+import org.apache.iotdb.metrics.reporter.iotdb.IoTDBInternalReporter;
 import org.apache.iotdb.metrics.utils.InternalReporterType;
 import org.apache.iotdb.rpc.RpcTransportFactory;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -1515,12 +1515,12 @@ public class IoTDBDescriptor {
     ReloadLevel reloadLevel = MetricConfigDescriptor.getInstance().loadHotProps(commonProperties);
     logger.info("Reload metric service in level {}", reloadLevel);
     if (reloadLevel == ReloadLevel.RESTART_INTERNAL_REPORTER) {
-      InternalIoTDBReporter internalReporter;
+      IoTDBInternalReporter internalReporter;
       if (MetricConfigDescriptor.getInstance().getMetricConfig().getInternalReportType()
           == InternalReporterType.IOTDB) {
-        internalReporter = new IoTDBInternalReporter();
+        internalReporter = new IoTDBInternalLocalReporter();
       } else {
-        internalReporter = new MemoryInternalIoTDBReporter();
+        internalReporter = new IoTDBInternalMemoryReporter();
       }
       MetricService.getInstance().reloadInternalReporter(internalReporter);
     } else {

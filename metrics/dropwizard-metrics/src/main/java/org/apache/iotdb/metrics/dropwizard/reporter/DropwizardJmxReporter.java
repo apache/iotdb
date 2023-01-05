@@ -47,18 +47,27 @@ public class DropwizardJmxReporter implements JmxReporter {
               .build();
       jmxReporter.start();
     } catch (Exception e) {
-      LOGGER.error("Failed to start Dropwizard JmxReporter, because {}", e.getMessage());
+      jmxReporter = null;
+      LOGGER.warn("Dropwizard JmxReporter failed to start, because ", e);
       return false;
     }
+    LOGGER.info("Dropwizard JmxReporter start!");
     return true;
   }
 
   @Override
   public boolean stop() {
-    if (jmxReporter != null) {
-      jmxReporter.stop();
-      jmxReporter = null;
+    try {
+      if (jmxReporter != null) {
+        jmxReporter.stop();
+        jmxReporter = null;
+      }
+    } catch (RuntimeException e) {
+      // catch possible RuntimeException throwed by stop method of jmxReporter
+      LOGGER.warn("Dropwizard JmxReporter failed to stop, because ", e);
+      return false;
     }
+    LOGGER.info("Dropwizard JmxReporter stop!");
     return true;
   }
 
