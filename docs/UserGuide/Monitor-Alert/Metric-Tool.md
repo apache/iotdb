@@ -209,21 +209,21 @@ Core-level metrics are enabled by default during system operation. The addition 
 
 #### 4.2.9. File
 
-| Metric     | Tags                      | Type      | Description                                                        |
-| ---------- |---------------------------| --------- | ------------------------------------------------------------------ |
-| file_size  | name="wal"                | AutoGauge | The size of WAL file, Unit: byte                                   |
-| file_size  | name="seq"                | AutoGauge | The size of sequence TsFile, Unit: byte                            |
-| file_size  | name="unseq"              | AutoGauge | The size of unsequence TsFile, Unit: byte                          |
-| file_size  | name="inner-seq-temp"     | AutoGauge | The size of inner sequence space compaction temporal file          |
-| file_size  | name="inner-unseq-temp"   | AutoGauge | The size of inner unsequence space compaction temporal file        |
-| file_size  | name="cross-temp"         | AutoGauge | The size of cross space compaction temoporal file                  |
-| file_count | name="wal"                | AutoGauge | The count of WAL file                                              |
-| file_count | name="seq"                | AutoGauge | The count of sequence TsFile                                       |
-| file_count | name="unseq"              | AutoGauge | The count of unsequence TsFile                                     |
-| file_count | name="inner-seq-temp"     | AutoGauge | The count of inner sequence space compaction temporal file         |
-| file_count | name="inner-unseq-temp"   | AutoGauge | The count of inner unsequence space compaction temporal file       |
-| file_count | name="cross-temp"         | AutoGauge | The count of cross space compaction temporal file                  |
-| file_count | name="open_file_handlers" | AutoGauge | The count of iotdb process open file, only support linux and macos |
+| Metric     | Tags                      | Type      | Description                                                                 |
+| ---------- |---------------------------| --------- |-----------------------------------------------------------------------------|
+| file_size  | name="wal"                | AutoGauge | The size of WAL file, Unit: byte                                            |
+| file_size  | name="seq"                | AutoGauge | The size of sequence TsFile, Unit: byte                                     |
+| file_size  | name="unseq"              | AutoGauge | The size of unsequence TsFile, Unit: byte                                   |
+| file_size  | name="inner-seq-temp"     | AutoGauge | The size of inner sequence space compaction temporal file                   |
+| file_size  | name="inner-unseq-temp"   | AutoGauge | The size of inner unsequence space compaction temporal file                 |
+| file_size  | name="cross-temp"         | AutoGauge | The size of cross space compaction temoporal file                           |
+| file_count | name="wal"                | AutoGauge | The count of WAL file                                                       |
+| file_count | name="seq"                | AutoGauge | The count of sequence TsFile                                                |
+| file_count | name="unseq"              | AutoGauge | The count of unsequence TsFile                                              |
+| file_count | name="inner-seq-temp"     | AutoGauge | The count of inner sequence space compaction temporal file                  |
+| file_count | name="inner-unseq-temp"   | AutoGauge | The count of inner unsequence space compaction temporal file                |
+| file_count | name="cross-temp"         | AutoGauge | The count of cross space compaction temporal file                           |
+| file_count | name="open_file_handlers" | AutoGauge | The count of open files of the IoTDB process, only supports Linux and MacOS |
 
 #### 4.2.10. IoTDB Process
 
