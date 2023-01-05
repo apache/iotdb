@@ -26,7 +26,6 @@ import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -355,9 +354,6 @@ public class IoTDBMetadataFetchIT {
   }
 
   @Test
-  @Ignore(
-      value =
-          "Old IoTDB service not support 'count timeseries by tag',Waiting for the old IoTDB to be removed.")
   public void showCountTimeSeriesWithTag() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -497,9 +493,6 @@ public class IoTDBMetadataFetchIT {
   }
 
   @Test
-  @Ignore(
-      value =
-          "Old IoTDB service not support 'count timeseries by tag',Waiting for the old IoTDB to be removed.")
   public void showCountTimeSeriesGroupByWithTag() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {

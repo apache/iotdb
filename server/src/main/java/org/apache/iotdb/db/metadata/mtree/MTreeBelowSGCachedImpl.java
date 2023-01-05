@@ -47,8 +47,6 @@ import org.apache.iotdb.db.metadata.mtree.traverser.collector.EntityCollector;
 import org.apache.iotdb.db.metadata.mtree.traverser.collector.MNodeCollector;
 import org.apache.iotdb.db.metadata.mtree.traverser.collector.MeasurementCollector;
 import org.apache.iotdb.db.metadata.mtree.traverser.counter.CounterTraverser;
-import org.apache.iotdb.db.metadata.mtree.traverser.counter.EntityCounter;
-import org.apache.iotdb.db.metadata.mtree.traverser.counter.MeasurementCounter;
 import org.apache.iotdb.db.metadata.mtree.traverser.counter.MeasurementGroupByLevelCounter;
 import org.apache.iotdb.db.metadata.mtree.traverser.updater.EntityUpdater;
 import org.apache.iotdb.db.metadata.mtree.traverser.updater.MeasurementUpdater;
@@ -877,57 +875,6 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
   // endregion
 
   // region Interfaces and Implementation for metadata count
-  /**
-   * Get the count of timeseries matching the given path.
-   *
-   * @param pathPattern a path pattern or a full path, may contain wildcard
-   */
-  @Override
-  public long getAllTimeseriesCount(PartialPath pathPattern, boolean isPrefixMatch)
-      throws MetadataException {
-    CounterTraverser counter =
-        new MeasurementCounter(storageGroupMNode, pathPattern, store, isPrefixMatch);
-    counter.traverse();
-    return counter.getCount();
-  }
-
-  @Override
-  public long getAllTimeseriesCount(
-      PartialPath pathPattern, Map<Integer, Template> templateMap, boolean isPrefixMatch)
-      throws MetadataException {
-    CounterTraverser counter =
-        new MeasurementCounter(storageGroupMNode, pathPattern, store, isPrefixMatch);
-    counter.setTemplateMap(templateMap);
-    counter.traverse();
-    return counter.getCount();
-  }
-
-  @Override
-  public long getAllTimeseriesCount(
-      PartialPath pathPattern, boolean isPrefixMatch, List<String> timeseries, boolean hasTag)
-      throws MetadataException {
-    CounterTraverser counter =
-        new MeasurementCounter(
-            storageGroupMNode, pathPattern, store, isPrefixMatch, timeseries, hasTag);
-    counter.traverse();
-    return counter.getCount();
-  }
-
-  /**
-   * Get the count of devices matching the given path. If using prefix match, the path pattern is
-   * used to match prefix path. All timeseries start with the matched prefix path will be counted.
-   *
-   * @param pathPattern a path pattern or a full path, may contain wildcard
-   * @param isPrefixMatch if true, the path pattern is used to match prefix path
-   */
-  @Override
-  public long getDevicesNum(PartialPath pathPattern, boolean isPrefixMatch)
-      throws MetadataException {
-    CounterTraverser counter =
-        new EntityCounter(storageGroupMNode, pathPattern, store, isPrefixMatch);
-    counter.traverse();
-    return counter.getCount();
-  }
 
   @Override
   public Map<PartialPath, Long> getMeasurementCountGroupByLevel(

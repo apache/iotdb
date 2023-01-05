@@ -21,6 +21,10 @@ package org.apache.iotdb.db.mpp.execution.operator.schema;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.metadata.plan.schemaregion.impl.read.SchemaRegionReadPlanFactory;
+import org.apache.iotdb.db.metadata.query.info.IDeviceSchemaInfo;
+import org.apache.iotdb.db.metadata.query.info.ITimeSeriesSchemaInfo;
+import org.apache.iotdb.db.metadata.query.reader.ISchemaReader;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
@@ -35,8 +39,11 @@ import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.junit.Test;
 import org.mockito.Mockito;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 
@@ -68,7 +75,31 @@ public class SchemaCountOperatorTest {
               1, planNodeId, DevicesCountOperator.class.getSimpleName());
       PartialPath partialPath = new PartialPath(SCHEMA_COUNT_OPERATOR_TEST_SG);
       ISchemaRegion schemaRegion = Mockito.mock(ISchemaRegion.class);
-      Mockito.when(schemaRegion.getDevicesNum(partialPath, true)).thenReturn(10L);
+
+      List<IDeviceSchemaInfo> deviceSchemaInfoList = new ArrayList<>(10);
+      for (int i = 0; i < 10; i++) {
+        deviceSchemaInfoList.add(Mockito.mock(IDeviceSchemaInfo.class));
+      }
+      Iterator<IDeviceSchemaInfo> iterator = deviceSchemaInfoList.iterator();
+      Mockito.when(
+              schemaRegion.getDeviceReader(
+                  SchemaRegionReadPlanFactory.getShowDevicesPlan(partialPath, true)))
+          .thenReturn(
+              new ISchemaReader<IDeviceSchemaInfo>() {
+                @Override
+                public void close() throws Exception {}
+
+                @Override
+                public boolean hasNext() {
+                  return iterator.hasNext();
+                }
+
+                @Override
+                public IDeviceSchemaInfo next() {
+                  return iterator.next();
+                }
+              });
+
       operatorContext
           .getInstanceContext()
           .setDriverContext(new SchemaDriverContext(fragmentInstanceContext, schemaRegion));
@@ -107,14 +138,11 @@ public class SchemaCountOperatorTest {
               1, planNodeId, TimeSeriesCountOperator.class.getSimpleName());
       PartialPath partialPath = new PartialPath(SCHEMA_COUNT_OPERATOR_TEST_SG);
       ISchemaRegion schemaRegion = Mockito.mock(ISchemaRegion.class);
-      Mockito.when(schemaRegion.getAllTimeseriesCount(partialPath, Collections.emptyMap(), true))
-          .thenReturn(100L);
       Mockito.when(
-              schemaRegion.getAllTimeseriesCount(
-                  new PartialPath(SCHEMA_COUNT_OPERATOR_TEST_SG + ".device1.*"),
-                  Collections.emptyMap(),
-                  false))
-          .thenReturn(10L);
+              schemaRegion.getTimeSeriesReader(
+                  SchemaRegionReadPlanFactory.getShowTimeSeriesPlan(
+                      partialPath, Collections.emptyMap(), false, null, null, 0, 0, true)))
+          .thenReturn(mockTimeSeriesReader(100));
       operatorContext
           .getInstanceContext()
           .setDriverContext(new SchemaDriverContext(fragmentInstanceContext, schemaRegion));
@@ -134,6 +162,19 @@ public class SchemaCountOperatorTest {
       }
       assertNotNull(tsBlock);
       assertEquals(100, tsBlock.getColumn(0).getLong(0));
+
+      Mockito.when(
+              schemaRegion.getTimeSeriesReader(
+                  SchemaRegionReadPlanFactory.getShowTimeSeriesPlan(
+                      new PartialPath(SCHEMA_COUNT_OPERATOR_TEST_SG + ".device1.*"),
+                      Collections.emptyMap(),
+                      false,
+                      null,
+                      null,
+                      0,
+                      0,
+                      false)))
+          .thenReturn(mockTimeSeriesReader(10));
       TimeSeriesCountOperator timeSeriesCountOperator2 =
           new TimeSeriesCountOperator(
               planNodeId,
@@ -154,6 +195,28 @@ public class SchemaCountOperatorTest {
     } finally {
       instanceNotificationExecutor.shutdown();
     }
+  }
+
+  private ISchemaReader<ITimeSeriesSchemaInfo> mockTimeSeriesReader(int expectedCount) {
+    List<ITimeSeriesSchemaInfo> timeSeriesSchemaInfoList = new ArrayList<>(expectedCount);
+    for (int i = 0; i < expectedCount; i++) {
+      timeSeriesSchemaInfoList.add(Mockito.mock(ITimeSeriesSchemaInfo.class));
+    }
+    Iterator<ITimeSeriesSchemaInfo> iterator = timeSeriesSchemaInfoList.iterator();
+    return new ISchemaReader<ITimeSeriesSchemaInfo>() {
+      @Override
+      public void close() throws Exception {}
+
+      @Override
+      public boolean hasNext() {
+        return iterator.hasNext();
+      }
+
+      @Override
+      public ITimeSeriesSchemaInfo next() {
+        return iterator.next();
+      }
+    };
   }
 
   @Test

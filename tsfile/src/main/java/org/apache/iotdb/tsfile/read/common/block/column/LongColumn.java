@@ -159,4 +159,9 @@ public class LongColumn implements Column {
       }
     }
   }
+
+  @Override
+  public int getInstanceSize() {
+    return INSTANCE_SIZE;
+  }
 }

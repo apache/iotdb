@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.mpp.execution.operator.source;
 
-import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.mpp.aggregation.Aggregator;
 import org.apache.iotdb.db.mpp.aggregation.timerangeiterator.ITimeRangeIterator;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
@@ -43,14 +42,11 @@ import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.appendA
 import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.calculateAggregationFromRawData;
 import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.isAllAggregatorsHasFinalResult;
 
-public abstract class AbstractSeriesAggregationScanOperator implements DataSourceOperator {
+public abstract class AbstractSeriesAggregationScanOperator extends AbstractDataSourceOperator {
 
-  protected final PlanNodeId sourceId;
-  protected final OperatorContext operatorContext;
   protected final boolean ascending;
   protected final boolean isGroupByQuery;
 
-  protected SeriesScanUtil seriesScanUtil;
   protected int subSensorSize;
 
   protected TsBlock inputTsBlock;
@@ -99,21 +95,6 @@ public abstract class AbstractSeriesAggregationScanOperator implements DataSourc
     this.maxRetainedSize =
         (1L + subSensorSize) * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte();
     this.maxReturnSize = maxReturnSize;
-  }
-
-  @Override
-  public PlanNodeId getSourceId() {
-    return sourceId;
-  }
-
-  @Override
-  public OperatorContext getOperatorContext() {
-    return operatorContext;
-  }
-
-  @Override
-  public void initQueryDataSource(QueryDataSource dataSource) {
-    seriesScanUtil.initQueryDataSource(dataSource);
   }
 
   @Override
