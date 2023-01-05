@@ -25,25 +25,25 @@ import java.util.Map;
 /** Used by timer and histogram. */
 public interface HistogramSnapshot extends IMetric {
 
-  /** Get value by quantile */
+  /** Get value by quantile. */
   double getValue(double quantile);
 
-  /** Get values in snapshot */
+  /** Get values in snapshot. */
   long[] getValues();
 
-  /** Get the size of values in snapshot */
+  /** Get the size of values in snapshot. */
   int size();
 
-  /** Get min value in values */
+  /** Get min value in values. */
   long getMin();
 
-  /** Get median value in values */
+  /** Get median value in values. */
   double getMedian();
 
-  /** Get mean value in values */
+  /** Get mean value in values. */
   double getMean();
 
-  /** Get max value in values */
+  /** Get max value in values. */
   long getMax();
 
   @Override

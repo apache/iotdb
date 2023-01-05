@@ -21,8 +21,6 @@ package org.apache.iotdb.db.service.metrics;
 
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.mpp.common.SessionInfo;
 import org.apache.iotdb.db.mpp.plan.Coordinator;
@@ -35,7 +33,7 @@ import org.apache.iotdb.db.mpp.plan.parser.StatementGenerator;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.query.control.SessionManager;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
-import org.apache.iotdb.metrics.reporter.iotdb.InternalIoTDBReporter;
+import org.apache.iotdb.metrics.reporter.iotdb.IoTDBInternalReporter;
 import org.apache.iotdb.metrics.utils.InternalReporterType;
 import org.apache.iotdb.metrics.utils.ReporterType;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
@@ -57,21 +55,20 @@ import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
-public class IoTDBInternalReporter extends InternalIoTDBReporter {
-  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBInternalReporter.class);
-  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+public class IoTDBInternalLocalReporter extends IoTDBInternalReporter {
+  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBInternalLocalReporter.class);
   private static final SessionManager SESSION_MANAGER = SessionManager.getInstance();
   private static final Coordinator COORDINATOR = Coordinator.getInstance();
-  private final SessionInfo SESSION_INFO;
-  private final IPartitionFetcher PARTITION_FETCHER;
-  private final ISchemaFetcher SCHEMA_FETCHER;
+  private final SessionInfo sessionInfo;
+  private final IPartitionFetcher partitionFetcher;
+  private final ISchemaFetcher schemaFetcher;
   private Future<?> currentServiceFuture;
   private final ScheduledExecutorService service = Executors.newSingleThreadScheduledExecutor();
 
-  public IoTDBInternalReporter() {
-    PARTITION_FETCHER = ClusterPartitionFetcher.getInstance();
-    SCHEMA_FETCHER = ClusterSchemaFetcher.getInstance();
-    SESSION_INFO = new SessionInfo(0, "root", ZoneId.systemDefault().getId());
+  public IoTDBInternalLocalReporter() {
+    partitionFetcher = ClusterPartitionFetcher.getInstance();
+    schemaFetcher = ClusterSchemaFetcher.getInstance();
+    sessionInfo = new SessionInfo(0, "root", ZoneId.systemDefault().getId());
   }
 
   @Override
@@ -94,6 +91,7 @@ public class IoTDBInternalReporter extends InternalIoTDBReporter {
             1,
             MetricConfigDescriptor.getInstance().getMetricConfig().getAsyncCollectPeriodInSecond(),
             TimeUnit.SECONDS);
+    LOGGER.info("IoTDBInternalReporter start!");
     return true;
   }
 
@@ -104,6 +102,7 @@ public class IoTDBInternalReporter extends InternalIoTDBReporter {
       currentServiceFuture = null;
     }
     clear();
+    LOGGER.info("IoTDBInternalReporter stop!");
     return true;
   }
 
@@ -137,14 +136,15 @@ public class IoTDBInternalReporter extends InternalIoTDBReporter {
       Statement s = StatementGenerator.createStatement(request);
       final long queryId = SESSION_MANAGER.requestQueryId();
       ExecutionResult result =
-          COORDINATOR.execute(s, queryId, SESSION_INFO, "", PARTITION_FETCHER, SCHEMA_FETCHER);
+          COORDINATOR.execute(s, queryId, sessionInfo, "", partitionFetcher, schemaFetcher);
       if (result.status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         LOGGER.error("Failed to update the value of metric with status {}", result.status);
       }
     } catch (IoTDBConnectionException e1) {
-      LOGGER.error("Failed to update the value of metric because of unknown type");
+      LOGGER.error(
+          "Failed to update the value of metric because of connection failure, because ", e1);
     } catch (IllegalPathException | QueryProcessException e2) {
-      LOGGER.error("Failed to update the value of metric because of internal error");
+      LOGGER.error("Failed to update the value of metric because of internal error, because ", e2);
     }
   }
 
