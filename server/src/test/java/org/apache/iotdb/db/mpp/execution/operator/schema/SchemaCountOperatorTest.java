@@ -243,11 +243,12 @@ public class SchemaCountOperatorTest {
         result.put(new PartialPath(SCHEMA_COUNT_OPERATOR_TEST_SG + ".device" + i), 10L);
       }
 
-      Mockito.when(schemaRegion.getMeasurementCountGroupByLevel(partialPath, 2, true))
-          .thenReturn(result);
-      Mockito.when(schemaRegion.getMeasurementCountGroupByLevel(partialPath, 1, true))
-          .thenReturn(
-              Collections.singletonMap(new PartialPath(SCHEMA_COUNT_OPERATOR_TEST_SG), 100L));
+      //      Mockito.when(schemaRegion.getMeasurementCountGroupByLevel(partialPath, 2, true))
+      //          .thenReturn(result);
+      //      Mockito.when(schemaRegion.getMeasurementCountGroupByLevel(partialPath, 1, true))
+      //          .thenReturn(
+      //              Collections.singletonMap(new PartialPath(SCHEMA_COUNT_OPERATOR_TEST_SG),
+      // 100L));
 
       operatorContext
           .getInstanceContext()

@@ -196,17 +196,6 @@ public interface IMTreeBelowSG {
   List<PartialPath> getNodesListInGivenLevel(
       PartialPath pathPattern, int nodeLevel, boolean isPrefixMatch) throws MetadataException;
 
-  Map<PartialPath, Long> getMeasurementCountGroupByLevel(
-      PartialPath pathPattern, int level, boolean isPrefixMatch) throws MetadataException;
-
-  Map<PartialPath, Long> getMeasurementCountGroupByLevel(
-      PartialPath pathPattern,
-      int level,
-      boolean isPrefixMatch,
-      List<String> timeseries,
-      boolean hasTag)
-      throws MetadataException;
-
   /**
    * Get node by the path
    *

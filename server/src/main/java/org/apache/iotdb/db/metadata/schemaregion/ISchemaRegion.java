@@ -60,7 +60,6 @@ import java.util.Set;
  *   <li>Interfaces for Timeseries operation
  *   <li>Interfaces for metadata info Query
  *       <ol>
- *         <li>Interfaces for metadata count
  *         <li>Interfaces for level Node info Query
  *         <li>Interfaces for Entity/Device info Query
  *         <li>Interfaces for timeseries, measurement and schema info Query
@@ -173,31 +172,6 @@ public interface ISchemaRegion {
   // endregion
 
   // region Interfaces for metadata info Query
-
-  // region Interfaces for metadata count
-
-  /**
-   * The measurements will be grouped by the node in given level and then counted for each group. If
-   * no measurements found, but the path is contained in the group, then this path will also be
-   * returned with measurements count zero.
-   *
-   * @param pathPattern
-   * @param level the level you want to group by
-   * @param isPrefixMatch using pathPattern as prefix matched path if set true
-   * @return return a map from PartialPath to the count of matched measurements
-   */
-  Map<PartialPath, Long> getMeasurementCountGroupByLevel(
-      PartialPath pathPattern, int level, boolean isPrefixMatch) throws MetadataException;
-
-  Map<PartialPath, Long> getMeasurementCountGroupByLevel(
-      PartialPath pathPattern,
-      int level,
-      boolean isPrefixMatch,
-      String key,
-      String value,
-      boolean isContains)
-      throws MetadataException;
-  // endregion
 
   // region Interfaces for level Node info Query
   /**
