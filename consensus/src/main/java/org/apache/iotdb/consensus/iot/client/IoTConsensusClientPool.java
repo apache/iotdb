@@ -34,7 +34,7 @@ public class IoTConsensusClientPool {
   private IoTConsensusClientPool() {}
 
   public static class SyncIoTConsensusServiceClientPoolFactory
-      implements IClientPoolFactory<TEndPoint, IoTConsensusServiceClient> {
+      implements IClientPoolFactory<TEndPoint, SyncIoTConsensusServiceClient> {
 
     private final IoTConsensusConfig config;
 
@@ -43,16 +43,16 @@ public class IoTConsensusClientPool {
     }
 
     @Override
-    public KeyedObjectPool<TEndPoint, IoTConsensusServiceClient> createClientPool(
-        ClientManager<TEndPoint, IoTConsensusServiceClient> manager) {
+    public KeyedObjectPool<TEndPoint, SyncIoTConsensusServiceClient> createClientPool(
+        ClientManager<TEndPoint, SyncIoTConsensusServiceClient> manager) {
       return new GenericKeyedObjectPool<>(
-          new IoTConsensusServiceClient.Factory(
+          new SyncIoTConsensusServiceClient.Factory(
               manager,
               new ThriftClientProperty.Builder()
                   .setConnectionTimeoutMs(config.getRpc().getConnectionTimeoutInMs())
                   .setRpcThriftCompressionEnabled(config.getRpc().isRpcThriftCompressionEnabled())
                   .build()),
-          new ClientPoolProperty.Builder<IoTConsensusServiceClient>().build().getConfig());
+          new ClientPoolProperty.Builder<SyncIoTConsensusServiceClient>().build().getConfig());
     }
   }
 

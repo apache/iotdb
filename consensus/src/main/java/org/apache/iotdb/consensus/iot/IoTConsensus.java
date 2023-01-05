@@ -45,7 +45,7 @@ import org.apache.iotdb.consensus.exception.IllegalPeerNumException;
 import org.apache.iotdb.consensus.iot.client.AsyncIoTConsensusServiceClient;
 import org.apache.iotdb.consensus.iot.client.IoTConsensusClientPool.AsyncIoTConsensusServiceClientPoolFactory;
 import org.apache.iotdb.consensus.iot.client.IoTConsensusClientPool.SyncIoTConsensusServiceClientPoolFactory;
-import org.apache.iotdb.consensus.iot.client.IoTConsensusServiceClient;
+import org.apache.iotdb.consensus.iot.client.SyncIoTConsensusServiceClient;
 import org.apache.iotdb.consensus.iot.logdispatcher.IoTConsensusMemoryManager;
 import org.apache.iotdb.consensus.iot.service.IoTConsensusRPCService;
 import org.apache.iotdb.consensus.iot.service.IoTConsensusRPCServiceProcessor;
@@ -80,7 +80,7 @@ public class IoTConsensus implements IConsensus {
   private final RegisterManager registerManager = new RegisterManager();
   private final IoTConsensusConfig config;
   private final IClientManager<TEndPoint, AsyncIoTConsensusServiceClient> clientManager;
-  private final IClientManager<TEndPoint, IoTConsensusServiceClient> syncClientManager;
+  private final IClientManager<TEndPoint, SyncIoTConsensusServiceClient> syncClientManager;
 
   public IoTConsensus(ConsensusConfig config, Registry registry) {
     this.thisNode = config.getThisNodeEndPoint();
@@ -94,7 +94,7 @@ public class IoTConsensus implements IConsensus {
             .createClientManager(
                 new AsyncIoTConsensusServiceClientPoolFactory(config.getIoTConsensusConfig()));
     this.syncClientManager =
-        new IClientManager.Factory<TEndPoint, IoTConsensusServiceClient>()
+        new IClientManager.Factory<TEndPoint, SyncIoTConsensusServiceClient>()
             .createClientManager(
                 new SyncIoTConsensusServiceClientPoolFactory(config.getIoTConsensusConfig()));
     // init IoTConsensus memory manager

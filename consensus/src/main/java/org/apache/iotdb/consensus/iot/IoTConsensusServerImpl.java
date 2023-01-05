@@ -34,7 +34,7 @@ import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
 import org.apache.iotdb.consensus.config.IoTConsensusConfig;
 import org.apache.iotdb.consensus.exception.ConsensusGroupModifyPeerException;
 import org.apache.iotdb.consensus.iot.client.AsyncIoTConsensusServiceClient;
-import org.apache.iotdb.consensus.iot.client.IoTConsensusServiceClient;
+import org.apache.iotdb.consensus.iot.client.SyncIoTConsensusServiceClient;
 import org.apache.iotdb.consensus.iot.logdispatcher.LogDispatcher;
 import org.apache.iotdb.consensus.iot.snapshot.SnapshotFragmentReader;
 import org.apache.iotdb.consensus.iot.thrift.TActivatePeerReq;
@@ -104,7 +104,7 @@ public class IoTConsensusServerImpl {
   private final ConsensusReqReader reader;
   private volatile boolean active;
   private String latestSnapshotId;
-  private final IClientManager<TEndPoint, IoTConsensusServiceClient> syncClientManager;
+  private final IClientManager<TEndPoint, SyncIoTConsensusServiceClient> syncClientManager;
   private final IoTConsensusServerMetrics metrics;
 
   private final String consensusGroupId;
@@ -115,7 +115,7 @@ public class IoTConsensusServerImpl {
       List<Peer> configuration,
       IStateMachine stateMachine,
       IClientManager<TEndPoint, AsyncIoTConsensusServiceClient> clientManager,
-      IClientManager<TEndPoint, IoTConsensusServiceClient> syncClientManager,
+      IClientManager<TEndPoint, SyncIoTConsensusServiceClient> syncClientManager,
       IoTConsensusConfig config) {
     this.active = true;
     this.storageDir = storageDir;
@@ -315,7 +315,7 @@ public class IoTConsensusServerImpl {
     File snapshotDir = new File(storageDir, latestSnapshotId);
     List<Path> snapshotPaths = stateMachine.getSnapshotFiles(snapshotDir);
     logger.info("transit snapshots: {}", snapshotPaths);
-    try (IoTConsensusServiceClient client =
+    try (SyncIoTConsensusServiceClient client =
         syncClientManager.borrowClient(targetPeer.getEndpoint())) {
       for (Path path : snapshotPaths) {
         SnapshotFragmentReader reader = new SnapshotFragmentReader(latestSnapshotId, path);
@@ -395,7 +395,8 @@ public class IoTConsensusServerImpl {
   }
 
   public void inactivePeer(Peer peer) throws ConsensusGroupModifyPeerException {
-    try (IoTConsensusServiceClient client = syncClientManager.borrowClient(peer.getEndpoint())) {
+    try (SyncIoTConsensusServiceClient client =
+        syncClientManager.borrowClient(peer.getEndpoint())) {
       TInactivatePeerRes res =
           client.inactivatePeer(
               new TInactivatePeerReq(peer.getGroupId().convertToTConsensusGroupId()));
@@ -410,7 +411,8 @@ public class IoTConsensusServerImpl {
   }
 
   public void triggerSnapshotLoad(Peer peer) throws ConsensusGroupModifyPeerException {
-    try (IoTConsensusServiceClient client = syncClientManager.borrowClient(peer.getEndpoint())) {
+    try (SyncIoTConsensusServiceClient client =
+        syncClientManager.borrowClient(peer.getEndpoint())) {
       TTriggerSnapshotLoadRes res =
           client.triggerSnapshotLoad(
               new TTriggerSnapshotLoadReq(
@@ -426,7 +428,8 @@ public class IoTConsensusServerImpl {
   }
 
   public void activePeer(Peer peer) throws ConsensusGroupModifyPeerException {
-    try (IoTConsensusServiceClient client = syncClientManager.borrowClient(peer.getEndpoint())) {
+    try (SyncIoTConsensusServiceClient client =
+        syncClientManager.borrowClient(peer.getEndpoint())) {
       TActivatePeerRes res =
           client.activatePeer(new TActivatePeerReq(peer.getGroupId().convertToTConsensusGroupId()));
       if (!isSuccess(res.status)) {
@@ -456,7 +459,7 @@ public class IoTConsensusServerImpl {
         buildSyncLogChannel(targetPeer, index.get());
       } else {
         // use RPC to tell other peers to build sync log channel to target peer
-        try (IoTConsensusServiceClient client =
+        try (SyncIoTConsensusServiceClient client =
             syncClientManager.borrowClient(peer.getEndpoint())) {
           TBuildSyncLogChannelRes res =
               client.buildSyncLogChannel(
@@ -499,7 +502,7 @@ public class IoTConsensusServerImpl {
         removeSyncLogChannel(targetPeer);
       } else {
         // use RPC to tell other peers to build sync log channel to target peer
-        try (IoTConsensusServiceClient client =
+        try (SyncIoTConsensusServiceClient client =
             syncClientManager.borrowClient(peer.getEndpoint())) {
           TRemoveSyncLogChannelRes res =
               client.removeSyncLogChannel(
@@ -522,7 +525,7 @@ public class IoTConsensusServerImpl {
   public void waitTargetPeerUntilSyncLogCompleted(Peer targetPeer)
       throws ConsensusGroupModifyPeerException {
     long checkIntervalInMs = 10_000L;
-    try (IoTConsensusServiceClient client =
+    try (SyncIoTConsensusServiceClient client =
         syncClientManager.borrowClient(targetPeer.getEndpoint())) {
       while (true) {
         TWaitSyncLogCompleteRes res =
@@ -737,7 +740,7 @@ public class IoTConsensusServerImpl {
   }
 
   public void cleanupRemoteSnapshot(Peer targetPeer) throws ConsensusGroupModifyPeerException {
-    try (IoTConsensusServiceClient client =
+    try (SyncIoTConsensusServiceClient client =
         syncClientManager.borrowClient(targetPeer.getEndpoint())) {
       TCleanupTransferredSnapshotReq req =
           new TCleanupTransferredSnapshotReq(

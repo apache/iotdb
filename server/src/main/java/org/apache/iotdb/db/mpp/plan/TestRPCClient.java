@@ -29,7 +29,7 @@ import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.consensus.config.IoTConsensusConfig;
 import org.apache.iotdb.consensus.iot.client.IoTConsensusClientPool;
-import org.apache.iotdb.consensus.iot.client.IoTConsensusServiceClient;
+import org.apache.iotdb.consensus.iot.client.SyncIoTConsensusServiceClient;
 import org.apache.iotdb.consensus.iot.thrift.TInactivatePeerReq;
 import org.apache.iotdb.consensus.iot.thrift.TInactivatePeerRes;
 import org.apache.iotdb.consensus.iot.thrift.TTriggerSnapshotLoadReq;
@@ -47,11 +47,11 @@ public class TestRPCClient {
               .createClientManager(
                   new ClientPoolFactory.SyncDataNodeInternalServiceClientPoolFactory());
 
-  private final IClientManager<TEndPoint, IoTConsensusServiceClient> syncClientManager;
+  private final IClientManager<TEndPoint, SyncIoTConsensusServiceClient> syncClientManager;
 
   public TestRPCClient() {
     syncClientManager =
-        new IClientManager.Factory<TEndPoint, IoTConsensusServiceClient>()
+        new IClientManager.Factory<TEndPoint, SyncIoTConsensusServiceClient>()
             .createClientManager(
                 new IoTConsensusClientPool.SyncIoTConsensusServiceClientPoolFactory(
                     new IoTConsensusConfig.Builder().build()));
@@ -65,7 +65,7 @@ public class TestRPCClient {
   }
 
   private void loadSnapshot() {
-    try (IoTConsensusServiceClient client =
+    try (SyncIoTConsensusServiceClient client =
         syncClientManager.borrowClient(new TEndPoint("127.0.0.1", 40011))) {
       TTriggerSnapshotLoadRes res =
           client.triggerSnapshotLoad(
@@ -78,7 +78,7 @@ public class TestRPCClient {
   }
 
   private void testAddPeer() {
-    try (IoTConsensusServiceClient client =
+    try (SyncIoTConsensusServiceClient client =
         syncClientManager.borrowClient(new TEndPoint("127.0.0.1", 40012))) {
       TInactivatePeerRes res =
           client.inactivatePeer(

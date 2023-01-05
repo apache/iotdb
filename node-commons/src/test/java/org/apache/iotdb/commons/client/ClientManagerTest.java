@@ -21,6 +21,7 @@ package org.apache.iotdb.commons.client;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.async.AsyncDataNodeInternalServiceClient;
+import org.apache.iotdb.commons.client.exception.BorrowNullClientManagerException;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.client.mock.MockInternalRPCService;
 import org.apache.iotdb.commons.client.property.ClientPoolProperty;
@@ -450,6 +451,7 @@ public class ClientManagerTest {
       asyncClusterManager.borrowClient(null);
       Assert.fail();
     } catch (ClientManagerException e) {
+      Assert.assertTrue(e instanceof BorrowNullClientManagerException);
       Assert.assertTrue(e.getMessage().contains("Can not borrow client for node null"));
     }
 
