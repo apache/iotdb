@@ -50,6 +50,7 @@ import org.apache.iotdb.db.metadata.mtree.traverser.counter.CounterTraverser;
 import org.apache.iotdb.db.metadata.mtree.traverser.counter.EntityCounter;
 import org.apache.iotdb.db.metadata.mtree.traverser.counter.MeasurementCounter;
 import org.apache.iotdb.db.metadata.mtree.traverser.counter.MeasurementGroupByLevelCounter;
+import org.apache.iotdb.db.metadata.mtree.traverser.updater.MeasurementUpdater;
 import org.apache.iotdb.db.metadata.plan.schemaregion.read.IShowDevicesPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.read.IShowTimeSeriesPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.result.ShowDevicesResult;
@@ -507,6 +508,38 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
   }
 
   @Override
+  public List<PartialPath> constructSchemaBlackList(PartialPath pathPattern)
+      throws MetadataException {
+    List<PartialPath> result = new ArrayList<>();
+    MeasurementUpdater updater =
+        new MeasurementUpdater(storageGroupMNode, pathPattern, store, false) {
+          @Override
+          protected void updateMeasurement(IMeasurementMNode node) {
+            node.setPreDeleted(true);
+            result.add(getCurrentPartialPath());
+          }
+        };
+    updater.update();
+    return result;
+  }
+
+  @Override
+  public List<PartialPath> rollbackSchemaBlackList(PartialPath pathPattern)
+      throws MetadataException {
+    List<PartialPath> result = new ArrayList<>();
+    MeasurementUpdater updater =
+        new MeasurementUpdater(storageGroupMNode, pathPattern, store, false) {
+          @Override
+          protected void updateMeasurement(IMeasurementMNode node) {
+            node.setPreDeleted(false);
+            result.add(getCurrentPartialPath());
+          }
+        };
+    updater.update();
+    return result;
+  }
+
+  @Override
   public List<PartialPath> getPreDeletedTimeseries(PartialPath pathPattern)
       throws MetadataException {
     List<PartialPath> result = new LinkedList<>();
@@ -925,22 +958,6 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
       }
     }
     return leafMNodes;
-  }
-
-  @Override
-  public List<IMeasurementMNode> getMatchedMeasurementMNode(PartialPath pathPattern)
-      throws MetadataException {
-    List<IMeasurementMNode> result = new ArrayList<>();
-    MeasurementCollector<List<IMeasurementMNode>> collector =
-        new MeasurementCollector<List<IMeasurementMNode>>(
-            storageGroupMNode, pathPattern, store, false) {
-          @Override
-          protected void collectMeasurement(IMeasurementMNode node) {
-            result.add(node);
-          }
-        };
-    collector.traverse();
-    return result;
   }
 
   // endregion

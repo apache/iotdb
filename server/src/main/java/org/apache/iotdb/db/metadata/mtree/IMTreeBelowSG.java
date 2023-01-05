@@ -99,6 +99,24 @@ public interface IMTreeBelowSG {
   boolean isEmptyInternalMNode(IMNode node) throws MetadataException;
 
   /**
+   * Construct schema black list via setting matched timeseries to pre deleted.
+   *
+   * @param pathPattern
+   * @throws MetadataException
+   * @return PartialPath of timeseries that has been set to pre deleted
+   */
+  List<PartialPath> constructSchemaBlackList(PartialPath pathPattern) throws MetadataException;
+
+  /**
+   * Rollback schema black list via setting matched timeseries to not pre deleted.
+   *
+   * @param pathPattern
+   * @throws MetadataException
+   * @return PartialPath of timeseries that has been set to not pre deleted
+   */
+  List<PartialPath> rollbackSchemaBlackList(PartialPath pathPattern) throws MetadataException;
+
+  /**
    * Get all pre-deleted timeseries matched by given pathPattern. For example, given path pattern
    * root.sg.*.s1 and pre-deleted timeseries root.sg.d1.s1, root.sg.d2.s1, then the result set is
    * {root.sg.d1.s1, root.sg.d2.s1}.
@@ -255,15 +273,6 @@ public interface IMTreeBelowSG {
   IMeasurementMNode getMeasurementMNode(PartialPath path) throws MetadataException;
 
   List<IMeasurementMNode> getAllMeasurementMNode() throws MetadataException;
-
-  /**
-   * Get IMeasurementMNode by path pattern
-   *
-   * @param pathPattern full path or path pattern with wildcard
-   * @return list of IMeasurementMNode
-   */
-  List<IMeasurementMNode> getMatchedMeasurementMNode(PartialPath pathPattern)
-      throws MetadataException;
 
   void activateTemplate(PartialPath activatePath, Template template) throws MetadataException;
 
