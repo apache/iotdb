@@ -1278,6 +1278,7 @@ public class IoTDBConfig {
 
   public void setDataDirs(String[] dataDirs) {
     this.dataDirs = dataDirs;
+    setLoadTsFileDir(dataDirs[0] + File.separator + IoTDBConstant.LOAD_TSFILE_FOLDER_NAME);
   }
 
   public String getRpcAddress() {
