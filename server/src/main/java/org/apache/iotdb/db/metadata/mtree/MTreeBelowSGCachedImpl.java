@@ -143,6 +143,7 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
       cur = child;
     }
     storageGroupMNode.setParent(cur);
+    cur.addChild(storageGroupMNode);
     return root;
   }
 
