@@ -83,7 +83,7 @@ public class SettleRequestHandler {
   }
 
   private static class SettleRequestContext {
-    private ConsistentSettleValues consistentSettleValues;
+    private ConsistentSettleInfo consistentSettleInfo;
 
     private boolean hasSeqFiles;
     private boolean hasUnseqFiles;
@@ -103,40 +103,43 @@ public class SettleRequestHandler {
 
     private TSStatus validate() {
       if (paths == null || paths.size() == 0) {
-        return RpcUtils.getStatus(TSStatusCode.ILLEGAL_PARAMETER, "The files to settle is not offered.");
+        return RpcUtils.getStatus(
+            TSStatusCode.ILLEGAL_PARAMETER, "The files to settle is not offered.");
       }
 
       int maxInnerCompactionCandidateFileNum = config.getMaxInnerCompactionCandidateFileNum();
       if (paths.size() > maxInnerCompactionCandidateFileNum) {
-        return RpcUtils.getStatus(TSStatusCode.UNSUPPORTED_OPERATION,
+        return RpcUtils.getStatus(
+            TSStatusCode.UNSUPPORTED_OPERATION,
             "Too many files offered, the limited count of system config is "
                 + maxInnerCompactionCandidateFileNum
-                + ", the input file count is " + tsFileNames.size()
-        );
+                + ", the input file count is "
+                + tsFileNames.size());
       }
 
       TSStatus validationResult;
-      Pair<ConsistentSettleValues, TSStatus> pair;
+      Pair<ConsistentSettleInfo, TSStatus> consistentSettleInfoStatusPair;
 
       for (String path : paths) {
         File currentTsFile = new File(path);
         if (!currentTsFile.exists()) {
-          return RpcUtils.getStatus(TSStatusCode.PATH_NOT_EXIST, "The specified file does not exist in " + path);
+          return RpcUtils.getStatus(
+              TSStatusCode.PATH_NOT_EXIST, "The specified file does not exist in " + path);
         }
         File modsFile = new File(path + ModificationFile.FILE_SUFFIX);
         hasModsFiles |= modsFile.exists();
 
-        pair = calculateConsistentValues(currentTsFile);
-        ConsistentSettleValues currentConsistentInfo = pair.left;
-        if (this.consistentSettleValues == null) {
-          this.consistentSettleValues = currentConsistentInfo;
+        consistentSettleInfoStatusPair = calculateConsistentValues(currentTsFile);
+        ConsistentSettleInfo currentConsistentInfo = consistentSettleInfoStatusPair.left;
+        if (this.consistentSettleInfo == null) {
+          this.consistentSettleInfo = currentConsistentInfo;
         }
-        validationResult = pair.right;
+        validationResult = consistentSettleInfoStatusPair.right;
         if (!isSuccess(validationResult)) {
           return validationResult;
         }
 
-        validationResult = consistentSettleValues.checkConsistency(currentConsistentInfo);
+        validationResult = consistentSettleInfo.isConsistent(currentConsistentInfo);
         if (!isSuccess(validationResult)) {
           return validationResult;
         }
@@ -155,9 +158,12 @@ public class SettleRequestHandler {
 
       if (!hasModsFiles) {
         return RpcUtils.getStatus(
-            TSStatusCode.ILLEGAL_PARAMETER, "Every selected TsFile does not contains the mods file.");
+            TSStatusCode.ILLEGAL_PARAMETER,
+            "Every selected TsFile does not contains the mods file.");
       }
-      DataRegion dataRegion = StorageEngine.getInstance().getDataRegion(new DataRegionId(consistentSettleValues.dataRegionId));
+      DataRegion dataRegion =
+          StorageEngine.getInstance()
+              .getDataRegion(new DataRegionId(consistentSettleInfo.dataRegionId));
       if (dataRegion == null) {
         return RpcUtils.getStatus(TSStatusCode.ILLEGAL_PATH, "DataRegion not exist");
       }
@@ -169,20 +175,18 @@ public class SettleRequestHandler {
       }
 
       if (hasSeqFiles) {
-        allTsFileResourceList = tsFileManager.getSequenceListByTimePartition(consistentSettleValues.timePartitionId);
+        allTsFileResourceList =
+            tsFileManager.getSequenceListByTimePartition(consistentSettleInfo.timePartitionId);
       } else {
-        allTsFileResourceList = tsFileManager.getUnsequenceListByTimePartition(consistentSettleValues.timePartitionId);
+        allTsFileResourceList =
+            tsFileManager.getUnsequenceListByTimePartition(consistentSettleInfo.timePartitionId);
       }
 
-      validationResult = validateTsFileResources();
-      if (!isSuccess(validationResult)) {
-        return validationResult;
-      }
-      return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+      return validateTsFileResources();
     }
 
-    private Pair<ConsistentSettleValues, TSStatus> calculateConsistentValues(File tsFile) {
-      ConsistentSettleValues values = new ConsistentSettleValues();
+    private Pair<ConsistentSettleInfo, TSStatus> calculateConsistentValues(File tsFile) {
+      ConsistentSettleInfo values = new ConsistentSettleInfo();
       values.dataRegionId = TsFileUtils.getDataRegionId(tsFile);
       values.storageGroupName = TsFileUtils.getStorageGroup(tsFile);
       values.timePartitionId = TsFileUtils.getTimePartition(tsFile);
@@ -192,11 +196,12 @@ public class SettleRequestHandler {
       try {
         tsFileName = TsFileNameGenerator.getTsFileName(fileNameStr);
       } catch (IOException e) {
-        return new Pair<>(null,
+        return new Pair<>(
+            null,
             RpcUtils.getStatus(
                 TSStatusCode.ILLEGAL_PATH,
-                "Meet error when parsing TsFileName. There may be a problem with file: " + tsFile.getName())
-        );
+                "Meet error when parsing TsFileName. There may be a problem with file: "
+                    + tsFile.getName()));
       }
       values.level = tsFileName.getInnerCompactionCnt();
       return new Pair<>(values, RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
@@ -229,8 +234,8 @@ public class SettleRequestHandler {
         if (tsFileNames.contains(tsFile.getName())) {
           if (tsFileResource.getStatus() != TsFileResourceStatus.CLOSED) {
             return RpcUtils.getStatus(
-                TSStatusCode.ILLEGAL_PARAMETER, "The TsFile is not valid: " + tsFile.getAbsolutePath()
-            );
+                TSStatusCode.ILLEGAL_PARAMETER,
+                "The TsFile is not valid: " + tsFile.getAbsolutePath());
           }
           continuousCount++;
           continue;
@@ -255,7 +260,7 @@ public class SettleRequestHandler {
     private TSStatus submitCompactionTask(List<TsFileResource> tsFileResources) {
       AbstractCompactionTask task =
           new InnerSpaceCompactionTask(
-              consistentSettleValues.timePartitionId,
+              consistentSettleInfo.timePartitionId,
               tsFileManager,
               tsFileResources,
               hasSeqFiles,
@@ -266,7 +271,9 @@ public class SettleRequestHandler {
         CompactionTaskManager.getInstance().addTaskToWaitingQueue(task);
       } catch (InterruptedException e) {
         logger.error(
-            "meet error when adding task-{} to compaction waiting queue: {}", task.getSerialId(), e.getMessage());
+            "meet error when adding task-{} to compaction waiting queue: {}",
+            task.getSerialId(),
+            e.getMessage());
         return RpcUtils.getStatus(
             TSStatusCode.COMPACTION_ERROR, "meet error when submit settle task.");
       }
@@ -274,18 +281,18 @@ public class SettleRequestHandler {
     }
   }
 
-  private static class ConsistentSettleValues {
+  private static class ConsistentSettleInfo {
     private int dataRegionId;
     private int level;
     private String storageGroupName;
     private long timePartitionId;
 
-    private TSStatus checkConsistency(ConsistentSettleValues other) {
+    private TSStatus isConsistent(ConsistentSettleInfo other) {
       if (this.dataRegionId != other.dataRegionId) {
         return RpcUtils.getStatus(
             TSStatusCode.ILLEGAL_PATH, "DataRegion of files is not consistent.");
       }
-      if (!storageGroupName.equals(other.storageGroupName)) {
+      if (!this.storageGroupName.equals(other.storageGroupName)) {
         return RpcUtils.getStatus(
             TSStatusCode.ILLEGAL_PATH, "StorageGroup of files is not consistent.");
       }
@@ -293,7 +300,7 @@ public class SettleRequestHandler {
         return RpcUtils.getStatus(
             TSStatusCode.ILLEGAL_PATH, "TimePartition of files is not consistent.");
       }
-      if (level != other.level) {
+      if (this.level != other.level) {
         return RpcUtils.getStatus(
             TSStatusCode.ILLEGAL_PARAMETER, "Level of files is not consistent.");
       }
