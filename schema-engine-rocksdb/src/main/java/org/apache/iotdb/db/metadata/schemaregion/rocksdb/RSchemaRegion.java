@@ -935,7 +935,7 @@ public class RSchemaRegion implements ISchemaRegion {
 
   @Override
   public List<PartialPath> getNodesListInGivenLevel(
-      PartialPath pathPattern, int nodeLevel, boolean isPrefixMatch) throws MetadataException {
+      PartialPath pathPattern, int nodeLevel, boolean isPrefixMatch) {
     if (pathPattern.getFullPath().contains(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD)) {
       throw new UnsupportedOperationException(
           formatNotSupportInfo(Thread.currentThread().getStackTrace()[1].getMethodName()));

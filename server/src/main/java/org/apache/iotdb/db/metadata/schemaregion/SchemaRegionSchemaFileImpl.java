@@ -87,6 +87,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_ROOT;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 
 /**
@@ -957,6 +958,9 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
   @Override
   public List<PartialPath> getNodesListInGivenLevel(
       PartialPath pathPattern, int nodeLevel, boolean isPrefixMatch) throws MetadataException {
+    if (nodeLevel == 0) {
+      return Collections.singletonList(new PartialPath(PATH_ROOT));
+    }
     return mtree.getNodesListInGivenLevel(pathPattern, nodeLevel, isPrefixMatch);
   }
 

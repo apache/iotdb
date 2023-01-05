@@ -517,15 +517,14 @@ public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
             "root.laptop.d2.s1",
             "root.laptop.d2.s2"));
 
-    // TODO: judge level = 0
-    //        Assert.assertEquals(
-    //            new LinkedList<>(Arrays.asList(new PartialPath("root"))),
-    //            schemaRegion.getNodesListInGivenLevel(new PartialPath("root.**"), 0, false));
     Assert.assertEquals(
-        new LinkedList<>(Arrays.asList(new PartialPath("root.laptop"))),
+        new LinkedList<>(Collections.singletonList(new PartialPath("root"))),
+        schemaRegion.getNodesListInGivenLevel(new PartialPath("root.**"), 0, false));
+    Assert.assertEquals(
+        new LinkedList<>(Collections.singletonList(new PartialPath("root.laptop"))),
         schemaRegion.getNodesListInGivenLevel(new PartialPath("root.**"), 1, false));
     Assert.assertEquals(
-        new LinkedList<>(Arrays.asList(new PartialPath("root.laptop"))),
+        new LinkedList<>(Collections.singletonList(new PartialPath("root.laptop"))),
         schemaRegion.getNodesListInGivenLevel(new PartialPath("root.laptop"), 1, false));
     Assert.assertEquals(
         new HashSet<>(
@@ -553,7 +552,7 @@ public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
             schemaRegion.getNodesListInGivenLevel(new PartialPath("root.laptop.*.s1"), 3, false)));
     // Empty return
     Assert.assertEquals(
-        new HashSet<>(Arrays.asList()),
+        new HashSet<>(Collections.emptyList()),
         new HashSet<>(
             schemaRegion.getNodesListInGivenLevel(
                 new PartialPath("root.laptop.notExists"), 1, false)));
@@ -574,7 +573,7 @@ public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
             "root.laptop.d2.s2"));
 
     Assert.assertEquals(
-        new HashSet<>(Arrays.asList()),
+        new HashSet<>(Collections.emptyList()),
         schemaRegion.getChildNodePathInNextLevel(new PartialPath("root.laptop.d0")));
 
     Assert.assertEquals(
@@ -602,7 +601,7 @@ public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
 
     Assert.assertEquals(
         new HashSet<>(
-            Arrays.asList(
+            Collections.singletonList(
                 new TSchemaNode("root.laptop.d1.s2.t1", MNodeType.MEASUREMENT.getNodeType()))),
         schemaRegion.getChildNodePathInNextLevel(new PartialPath("root.**.s2")));
   }
