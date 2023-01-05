@@ -674,6 +674,44 @@ public class NodeManager {
             DataNodeRequestType.SET_SYSTEM_STATUS);
   }
 
+  /**
+   * Kill query on DataNode
+   *
+   * @param queryId the id of specific query need to be killed, it will be NULL if kill all queries
+   * @param dataNodeId the DataNode obtains target query, -1 means we will kill all queries on all
+   *     DataNodes
+   */
+  public TSStatus killQuery(String queryId, int dataNodeId) {
+    if (dataNodeId < 0) {
+      return killAllQueries();
+    } else {
+      return killSpecificQuery(queryId, getRegisteredDataNodeLocations().get(dataNodeId));
+    }
+  }
+
+  private TSStatus killAllQueries() {
+    Map<Integer, TDataNodeLocation> dataNodeLocationMap =
+        configManager.getNodeManager().getRegisteredDataNodeLocations();
+    AsyncClientHandler<String, TSStatus> clientHandler =
+        new AsyncClientHandler<>(DataNodeRequestType.KILL_QUERY_INSTANCE, dataNodeLocationMap);
+    AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
+    return RpcUtils.squashResponseStatusList(clientHandler.getResponseList());
+  }
+
+  private TSStatus killSpecificQuery(String queryId, TDataNodeLocation dataNodeLocation) {
+    if (dataNodeLocation == null) {
+      return new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode())
+          .setMessage(
+              "The target DataNode is not existed, please ensure your input <queryId> is correct");
+    } else {
+      return SyncDataNodeClientPool.getInstance()
+          .sendSyncRequestToDataNodeWithRetry(
+              dataNodeLocation.getInternalEndPoint(),
+              queryId,
+              DataNodeRequestType.KILL_QUERY_INSTANCE);
+    }
+  }
+
   /** Start the heartbeat service */
   public void startHeartbeatService() {
     synchronized (scheduleMonitor) {
@@ -973,18 +1011,5 @@ public class NodeManager {
 
   private UDFManager getUDFManager() {
     return configManager.getUDFManager();
-  }
-
-  /**
-   * Kill the specific query on DataNode
-   *
-   * @param queryId the id of query need to be killed, it will be NULL if kill all queries
-   * @param dataNodeId the DataNode obtains target query, -1 means we will kill all queries on all
-   *     DataNodes
-   * @return
-   */
-  public TSStatus killQuery(String queryId, int dataNodeId) {
-    LOGGER.info("-----success---");
-    return new TSStatus();
   }
 }
