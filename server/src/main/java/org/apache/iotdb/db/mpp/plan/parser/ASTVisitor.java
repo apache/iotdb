@@ -126,6 +126,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStorageGroupStatement
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTriggersStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowVariablesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.UnSetTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ActivateTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.CreateSchemaTemplateStatement;
@@ -178,6 +179,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 
 import com.google.common.collect.ImmutableSet;
+import org.antlr.v4.runtime.tree.TerminalNode;
 
 import java.io.FileNotFoundException;
 import java.net.URI;
@@ -1980,12 +1982,15 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   }
 
   @Override
+  public Statement visitShowVariables(IoTDBSqlParser.ShowVariablesContext ctx) {
+    return new ShowVariablesStatement();
+  }
+
+  @Override
   public Statement visitShowCluster(IoTDBSqlParser.ShowClusterContext ctx) {
     ShowClusterStatement showClusterStatement = new ShowClusterStatement();
     if (ctx.DETAILS() != null) {
       showClusterStatement.setDetails(true);
-    } else if (ctx.PARAMETERS() != null) {
-      showClusterStatement.setParameters(true);
     }
     return showClusterStatement;
   }
@@ -2559,6 +2564,16 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       showRegionStatement.setStorageGroups(storageGroups);
     } else {
       showRegionStatement.setStorageGroups(null);
+    }
+
+    if (ctx.ON() != null) {
+      List<Integer> nodeIds = new ArrayList<>();
+      for (TerminalNode nodeid : ctx.INTEGER_LITERAL()) {
+        nodeIds.add(Integer.parseInt(nodeid.getText()));
+      }
+      showRegionStatement.setNodeIds(nodeIds);
+    } else {
+      showRegionStatement.setNodeIds(null);
     }
     return showRegionStatement;
   }

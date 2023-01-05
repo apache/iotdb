@@ -66,6 +66,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStorageGroupStatement
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTriggersStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowVariablesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.UnSetTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ActivateTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.CreateSchemaTemplateStatement;
@@ -170,6 +171,10 @@ public abstract class StatementVisitor<R, C> {
 
   public R visitShowTTL(ShowTTLStatement showTTLStatement, C context) {
     return visitStatement(showTTLStatement, context);
+  }
+
+  public R visitShowVariables(ShowVariablesStatement showVariablesStatement, C context) {
+    return visitStatement(showVariablesStatement, context);
   }
 
   public R visitShowCluster(ShowClusterStatement showClusterStatement, C context) {

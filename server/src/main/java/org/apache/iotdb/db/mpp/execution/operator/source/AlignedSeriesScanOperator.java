@@ -19,7 +19,6 @@
 package org.apache.iotdb.db.mpp.execution.operator.source;
 
 import org.apache.iotdb.commons.path.AlignedPath;
-import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -35,16 +34,11 @@ import java.io.IOException;
 import java.util.HashSet;
 import java.util.concurrent.TimeUnit;
 
-public class AlignedSeriesScanOperator implements DataSourceOperator {
-
-  private final OperatorContext operatorContext;
-  private final AlignedSeriesScanUtil seriesScanUtil;
-  private final PlanNodeId sourceId;
+public class AlignedSeriesScanOperator extends AbstractDataSourceOperator {
 
   private final TsBlockBuilder builder;
+  private final int valueColumnCount;
   private boolean finished = false;
-
-  private final long maxReturnSize;
 
   public AlignedSeriesScanOperator(
       PlanNodeId sourceId,
@@ -64,26 +58,30 @@ public class AlignedSeriesScanOperator implements DataSourceOperator {
             valueFilter,
             ascending);
     // time + all value columns
-    this.maxReturnSize =
-        (1L + seriesPath.getMeasurementList().size())
-            * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte();
     this.builder = new TsBlockBuilder(seriesScanUtil.getTsDataTypeList());
-  }
-
-  @Override
-  public OperatorContext getOperatorContext() {
-    return operatorContext;
+    this.valueColumnCount = seriesPath.getColumnNum();
+    this.maxReturnSize =
+        Math.min(
+            maxReturnSize,
+            (1L + valueColumnCount)
+                * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte());
   }
 
   @Override
   public TsBlock next() {
-    TsBlock block = builder.build();
+    if (retainedTsBlock != null) {
+      return getResultFromRetainedTsBlock();
+    }
+    resultTsBlock = builder.build();
     builder.reset();
-    return block;
+    return checkTsBlockSizeAndGetResult();
   }
 
   @Override
   public boolean hasNext() {
+    if (retainedTsBlock != null) {
+      return true;
+    }
     try {
 
       // start stopwatch
@@ -131,7 +129,9 @@ public class AlignedSeriesScanOperator implements DataSourceOperator {
 
   @Override
   public long calculateMaxPeekMemory() {
-    return maxReturnSize;
+    return Math.max(
+        maxReturnSize,
+        (1L + valueColumnCount) * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte());
   }
 
   @Override
@@ -141,7 +141,7 @@ public class AlignedSeriesScanOperator implements DataSourceOperator {
 
   @Override
   public long calculateRetainedSizeAfterCallingNext() {
-    return 0L;
+    return calculateMaxPeekMemory() - calculateMaxReturnSize();
   }
 
   private boolean readFileData() throws IOException {
@@ -204,15 +204,5 @@ public class AlignedSeriesScanOperator implements DataSourceOperator {
 
   private boolean isEmpty(TsBlock tsBlock) {
     return tsBlock == null || tsBlock.isEmpty();
-  }
-
-  @Override
-  public PlanNodeId getSourceId() {
-    return sourceId;
-  }
-
-  @Override
-  public void initQueryDataSource(QueryDataSource dataSource) {
-    seriesScanUtil.initQueryDataSource(dataSource);
   }
 }

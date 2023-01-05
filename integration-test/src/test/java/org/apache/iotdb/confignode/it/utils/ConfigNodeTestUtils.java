@@ -276,7 +276,8 @@ public class ConfigNodeTestUtils {
   }
 
   public static TDataNodeRegisterReq generateTDataNodeRegisterReq(DataNodeWrapper dataNodeWrapper) {
-    return new TDataNodeRegisterReq(generateTDataNodeConfiguration(-1, dataNodeWrapper));
+    return new TDataNodeRegisterReq(
+        generateTDataNodeConfiguration(-1, dataNodeWrapper), CONF.getClusterName());
   }
 
   public static TDataNodeRestartReq generateTDataNodeRestartReq(
