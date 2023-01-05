@@ -391,8 +391,9 @@ public class LoadTsFileScheduler implements IScheduler {
       for (Map.Entry<TRegionReplicaSet, LoadTsFilePieceNode> entry : replicaSet2Piece.entrySet()) {
         if (!scheduler.dispatchOnePieceNode(entry.getValue(), entry.getKey())) {
           logger.warn(
-              "Dispatch piece node %s of TsFile {} error.",
-              entry.getValue(), singleTsFileNode.getTsFileResource().getTsFile());
+              "Dispatch piece node {} of TsFile {} error.",
+              entry.getValue(),
+              singleTsFileNode.getTsFileResource().getTsFile());
           return false;
         }
       }
