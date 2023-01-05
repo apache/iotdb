@@ -42,7 +42,7 @@ public abstract class AbstractOpBlock implements Comparable<AbstractOpBlock> {
   // data number of this OpBlock
   protected long dataCount = -1;
 
-  public AbstractOpBlock(String storageGroupName, long pipeDataSerialNumber, long beginIndex) {
+  protected AbstractOpBlock(String storageGroupName, long pipeDataSerialNumber, long beginIndex) {
     this.storageGroup = storageGroupName;
     this.pipeDataSerialNumber = pipeDataSerialNumber;
     this.beginIndex = beginIndex;
