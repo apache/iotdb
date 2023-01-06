@@ -397,7 +397,7 @@ public class ConfigMTree {
         new MNodeAboveSGCollector<List<PartialPath>>(root, pathPattern, store, isPrefixMatch) {
           @Override
           protected void collectMNode(IMNode node) {
-            result.add(getNextMatchedNodePartialPath());
+            result.add(getPartialPathFromRootToNode(node));
           }
         }) {
 
@@ -430,7 +430,7 @@ public class ConfigMTree {
           protected void collectMNode(IMNode node) {
             result.add(
                 new TSchemaNode(
-                    getNextMatchedNodePartialPath().getFullPath(),
+                    getPartialPathFromRootToNode(node).getFullPath(),
                     node.getMNodeType(true).getNodeType()));
           }
         }) {
@@ -594,7 +594,7 @@ public class ConfigMTree {
           protected void collectMNode(IMNode node) {
             result
                 .computeIfAbsent(node.getSchemaTemplateId(), k -> new HashSet<>())
-                .add(getNextMatchedNodePartialPath());
+                .add(getPartialPathFromRootToNode(node));
           }
 
           @Override

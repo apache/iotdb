@@ -283,39 +283,7 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R>
    *
    * @return full path from traverse start node to the parent of current node
    */
-  protected final String[] getFullPathOfAncestors() {
-    List<String> nodeNames = new ArrayList<>();
-    Iterator<AncestorStackEntry> iterator = ancestorStack.iterator();
-    for (int i = 0, size = shouldVisitSubtree ? ancestorStack.size() - 1 : ancestorStack.size();
-        i < size;
-        i++) {
-      if (iterator.hasNext()) {
-        nodeNames.add(iterator.next().node.getName());
-      }
-    }
-    return nodeNames.toArray(new String[0]);
-  }
-
-  /**
-   * Get full path of parent of current node. This method should be used in {@linkplain
-   * AbstractTreeVisitor#acceptInternalMatchedNode}, {@linkplain
-   * AbstractTreeVisitor#acceptFullMatchedNode},{@linkplain
-   * AbstractTreeVisitor#shouldVisitSubtreeOfInternalMatchedNode} or {@linkplain
-   * AbstractTreeVisitor#shouldVisitSubtreeOfFullMatchedNode}.
-   *
-   * @return full path from traverse start node to the parent of current node
-   */
   protected PartialPath getAncestorPartialPath() {
-    return new PartialPath(getFullPathOfAncestors());
-  }
-
-  /**
-   * Get full path of nextMatchedNode. This method should be used in {@linkplain
-   * AbstractTreeVisitor#generateResult}.
-   *
-   * @return full path from traverse start node to the NextMatchedNode
-   */
-  protected final String[] getFullPathOfNextMatchedNode() {
     List<String> nodeNames = new ArrayList<>();
     Iterator<AncestorStackEntry> iterator = ancestorStack.iterator();
     for (int i = 0, size = shouldVisitSubtree ? ancestorStack.size() - 1 : ancestorStack.size();
@@ -325,18 +293,35 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R>
         nodeNames.add(iterator.next().node.getName());
       }
     }
-    nodeNames.add(nextMatchedNode.getName());
-    return nodeNames.toArray(new String[0]);
+    return new PartialPath(nodeNames.toArray(new String[0]));
   }
 
   /**
-   * Get full path of nextMatchedNode. This method should be used in {@linkplain
-   * AbstractTreeVisitor#generateResult}.
+   * Get partial path from root to node.
    *
-   * @return full path from traverse start node to the NextMatchedNode
+   * @param node node must be concluded in ancestorStack or nextMatchedNode
+   * @return partial path from traverse start node to the specified node
    */
-  protected PartialPath getNextMatchedNodePartialPath() {
-    return new PartialPath(getFullPathOfNextMatchedNode());
+  protected final PartialPath getPartialPathFromRootToNode(N node) {
+    return new PartialPath(getFullPathFromRootToNode(node));
+  }
+
+  /**
+   * Get full path from root to node.
+   *
+   * @param node node must be concluded in ancestorStack or nextMatchedNode
+   * @return full path from traverse start node to the specified node
+   */
+  protected final String[] getFullPathFromRootToNode(N node) {
+    List<String> nodeNames = new ArrayList<>();
+    for (AncestorStackEntry entry : ancestorStack) {
+      nodeNames.add(entry.node.getName());
+      if (entry.node == node) {
+        return nodeNames.toArray(new String[0]);
+      }
+    }
+    nodeNames.add(node.getName());
+    return nodeNames.toArray(new String[0]);
   }
 
   protected final N getAncestorNodeByLevel(int level) {

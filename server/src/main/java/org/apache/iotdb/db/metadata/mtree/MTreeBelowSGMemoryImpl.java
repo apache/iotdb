@@ -528,7 +528,7 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
           @Override
           protected void updateMeasurement(IMeasurementMNode node) {
             node.setPreDeleted(true);
-            result.add(getNextMatchedNodePartialPath());
+            result.add(getPartialPathFromRootToNode(node));
           }
         }) {
       updater.update();
@@ -545,7 +545,7 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
           @Override
           protected void updateMeasurement(IMeasurementMNode node) {
             node.setPreDeleted(false);
-            result.add(getNextMatchedNodePartialPath());
+            result.add(getPartialPathFromRootToNode(node));
           }
         }) {
       updater.update();
@@ -562,7 +562,7 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
           @Override
           protected Void collectMeasurement(IMeasurementMNode node) {
             if (node.isPreDeleted()) {
-              result.add(getNextMatchedNodePartialPath());
+              result.add(getPartialPathFromRootToNode(node));
             }
             return null;
           }
@@ -581,7 +581,7 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
           @Override
           protected Void collectMeasurement(IMeasurementMNode node) {
             if (node.isPreDeleted()) {
-              result.add(getNextMatchedNodePartialPath().getDevicePath());
+              result.add(getPartialPathFromRootToNode(node).getDevicePath());
             }
             return null;
           }
@@ -634,7 +634,7 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
             rootNode, plan.getPath(), store, plan.isPrefixMatch()) {
           @Override
           protected ShowDevicesResult collectEntity(IEntityMNode node) {
-            PartialPath device = getNextMatchedNodePartialPath();
+            PartialPath device = getPartialPathFromRootToNode(node);
             return new ShowDevicesResult(device.getFullPath(), node.isAligned());
           }
         }) {
@@ -694,7 +694,7 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
             Pair<Map<String, String>, Map<String, String>> tagAndAttribute =
                 tagAndAttributeProvider.apply(node.getOffset());
             return new ShowTimeSeriesResult(
-                getNextMatchedNodePartialPath().getFullPath(),
+                getPartialPathFromRootToNode(node).getFullPath(),
                 node.getAlias(),
                 (MeasurementSchema) node.getSchema(),
                 tagAndAttribute.left,
@@ -737,7 +737,7 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
           protected void collectMNode(IMNode node) {
             result.add(
                 new TSchemaNode(
-                    getNextMatchedNodePartialPath().getFullPath(),
+                    getPartialPathFromRootToNode(node).getFullPath(),
                     node.getMNodeType(false).getNodeType()));
           }
         }) {
@@ -757,7 +757,7 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
         new MNodeCollector<List<PartialPath>>(rootNode, pathPattern, store, isPrefixMatch) {
           @Override
           protected void collectMNode(IMNode node) {
-            result.add(getNextMatchedNodePartialPath());
+            result.add(getPartialPathFromRootToNode(node));
           }
         }) {
       collector.setTargetLevel(nodeLevel);
