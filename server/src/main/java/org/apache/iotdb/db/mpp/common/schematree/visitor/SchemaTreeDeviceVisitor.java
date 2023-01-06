@@ -47,7 +47,7 @@ public class SchemaTreeDeviceVisitor extends SchemaTreeVisitor<DeviceSchemaInfo>
 
   @Override
   protected DeviceSchemaInfo generateResult(SchemaNode nextMatchedNode) {
-    PartialPath path = new PartialPath(generateFullPathNodes());
+    PartialPath path = new PartialPath(getFullPathOfNextMatchedNode());
     List<MeasurementSchemaInfo> measurementSchemaInfoList = new ArrayList<>();
     Iterator<SchemaNode> iterator = getChildrenIterator(nextMatchedNode);
     SchemaNode node;

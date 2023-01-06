@@ -91,6 +91,9 @@ public abstract class Traverser<R> extends AbstractTreeVisitor<IMNode, R> {
     while (hasNext()) {
       next();
     }
+    if (getFailure() != null) {
+      throw new MetadataException(getFailure());
+    }
     // TODO: 临时在这里判断失败，释放资源
 
     //    if (isPrefixStart && !isPrefixMatch) {
@@ -137,10 +140,5 @@ public abstract class Traverser<R> extends AbstractTreeVisitor<IMNode, R> {
 
   public void setSkipPreDeletedSchema(boolean skipPreDeletedSchema) {
     this.skipPreDeletedSchema = skipPreDeletedSchema;
-  }
-
-  /** @return full path from traverse start node to the current node */
-  protected PartialPath getCurrentPartialPath() {
-    return new PartialPath(generateFullPathNodes());
   }
 }

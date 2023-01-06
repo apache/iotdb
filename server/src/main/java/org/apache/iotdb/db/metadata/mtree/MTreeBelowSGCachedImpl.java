@@ -604,7 +604,7 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
           protected void updateMeasurement(IMeasurementMNode node) throws MetadataException {
             node.setPreDeleted(true);
             updateMNode(node);
-            result.add(getCurrentPartialPath());
+            result.add(getNextMatchedNodePartialPath());
           }
         }) {
       updater.update();
@@ -622,7 +622,7 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
           protected void updateMeasurement(IMeasurementMNode node) throws MetadataException {
             node.setPreDeleted(false);
             updateMNode(node);
-            result.add(getCurrentPartialPath());
+            result.add(getNextMatchedNodePartialPath());
           }
         }) {
       updater.update();
@@ -639,7 +639,7 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
           @Override
           protected void collectMeasurement(IMeasurementMNode node) {
             if (node.isPreDeleted()) {
-              result.add(getCurrentPartialPath());
+              result.add(getNextMatchedNodePartialPath());
             }
           }
         }) {
@@ -657,7 +657,7 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
           @Override
           protected void collectMeasurement(IMeasurementMNode node) {
             if (node.isPreDeleted()) {
-              result.add(getCurrentPartialPath().getDevicePath());
+              result.add(getNextMatchedNodePartialPath().getDevicePath());
             }
           }
         }) {
@@ -720,7 +720,7 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
         new EntityCollector<Set<PartialPath>>(rootNode, pathPattern, store, isPrefixMatch) {
           @Override
           protected void collectEntity(IEntityMNode node) {
-            result.add(getCurrentPartialPath());
+            result.add(getNextMatchedNodePartialPath());
           }
         }) {
       collector.traverse();
@@ -736,7 +736,7 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
             rootNode, plan.getPath(), store, plan.isPrefixMatch()) {
           @Override
           protected void collectEntity(IEntityMNode node) {
-            PartialPath device = getCurrentPartialPath();
+            PartialPath device = getNextMatchedNodePartialPath();
             res.add(new ShowDevicesResult(device.getFullPath(), node.isAligned()));
           }
         }) {
@@ -818,7 +818,7 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
                 tagAndAttributeProvider.apply(node.getOffset());
             result.add(
                 new ShowTimeSeriesResult(
-                    getCurrentPartialPath().getFullPath(),
+                    getNextMatchedNodePartialPath().getFullPath(),
                     node.getAlias(),
                     (MeasurementSchema) node.getSchema(),
                     tagAndAttribute.left,
@@ -858,7 +858,8 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
           protected void transferToResult(IMNode node) {
             result.add(
                 new TSchemaNode(
-                    getCurrentPartialPath().getFullPath(), node.getMNodeType(false).getNodeType()));
+                    getNextMatchedNodePartialPath().getFullPath(),
+                    node.getMNodeType(false).getNodeType()));
           }
         }) {
       collector.traverse();
@@ -877,7 +878,7 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
         new MNodeCollector<List<PartialPath>>(rootNode, pathPattern, store, isPrefixMatch) {
           @Override
           protected void transferToResult(IMNode node) {
-            result.add(getCurrentPartialPath());
+            result.add(getNextMatchedNodePartialPath());
           }
         }) {
       collector.setTargetLevel(nodeLevel);

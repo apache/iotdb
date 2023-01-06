@@ -57,7 +57,8 @@ public abstract class MeasurementCollector<R> extends MeasurementTraverser<R> {
   protected MeasurementPath getCurrentMeasurementPathInTraverse(IMeasurementMNode currentNode) {
     IMNode par = getParentOfNextMatchedNode();
     MeasurementPath retPath =
-        new MeasurementPath(new PartialPath(generateFullPathNodes()), currentNode.getSchema());
+        new MeasurementPath(
+            new PartialPath(getFullPathOfNextMatchedNode()), currentNode.getSchema());
     retPath.setUnderAlignedEntity(par.getAsEntityMNode().isAligned());
     return retPath;
   }

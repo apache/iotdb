@@ -39,6 +39,7 @@ public abstract class MNodeAboveSGCollector<T> extends MNodeCollector<T> {
   @Override
   protected boolean shouldVisitSubtreeOfFullMatchedNode(IMNode node) {
     if (node.isStorageGroup()) {
+      involvedStorageGroupMNodes.add(getAncestorPartialPath().concatNode(node.getName()));
       return false;
     } else {
       return super.shouldVisitSubtreeOfFullMatchedNode(node);
@@ -48,18 +49,11 @@ public abstract class MNodeAboveSGCollector<T> extends MNodeCollector<T> {
   @Override
   protected boolean shouldVisitSubtreeOfInternalMatchedNode(IMNode node) {
     if (node.isStorageGroup()) {
+      involvedStorageGroupMNodes.add(getAncestorPartialPath().concatNode(node.getName()));
       return false;
     } else {
       return super.shouldVisitSubtreeOfInternalMatchedNode(node);
     }
-  }
-
-  @Override
-  protected T generateResult(IMNode nextMatchedNode) {
-    if (nextMatchedNode.isStorageGroup()) {
-      involvedStorageGroupMNodes.add(getCurrentPartialPath());
-    }
-    return super.generateResult(nextMatchedNode);
   }
 
   public Set<PartialPath> getInvolvedStorageGroupMNodes() {

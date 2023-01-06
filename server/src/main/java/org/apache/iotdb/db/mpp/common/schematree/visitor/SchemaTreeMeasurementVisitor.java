@@ -111,7 +111,7 @@ public class SchemaTreeMeasurementVisitor extends SchemaTreeVisitor<MeasurementP
   protected MeasurementPath generateResult(SchemaNode nextMatchedNode) {
     MeasurementPath result =
         new MeasurementPath(
-            generateFullPathNodes(), nextMatchedNode.getAsMeasurementNode().getSchema());
+            getFullPathOfNextMatchedNode(), nextMatchedNode.getAsMeasurementNode().getSchema());
     result.setTagMap(nextMatchedNode.getAsMeasurementNode().getTagMap());
     result.setUnderAlignedEntity(getParentOfNextMatchedNode().getAsEntityNode().isAligned());
     String alias = nextMatchedNode.getAsMeasurementNode().getAlias();
