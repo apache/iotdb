@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.metadata.mtree.traverser.counter;
 
+import org.apache.iotdb.commons.exception.MetadataException;
+
 public interface Counter {
-  long getCount();
+  long count() throws MetadataException;
 }
