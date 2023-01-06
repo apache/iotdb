@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.client;
+package org.apache.iotdb.commons.client.property;
 
 import org.apache.commons.pool2.impl.GenericKeyedObjectPoolConfig;
 
@@ -84,7 +84,7 @@ public class ClientPoolProperty<V> {
     private DefaultProperty() {}
 
     public static final long WAIT_CLIENT_TIMEOUT_MS = TimeUnit.SECONDS.toMillis(10);
-    public static final int MAX_TOTAL_CLIENT_FOR_EACH_NODE = 100;
-    public static final int MAX_IDLE_CLIENT_FOR_EACH_NODE = 100;
+    public static final int MAX_TOTAL_CLIENT_FOR_EACH_NODE = 300;
+    public static final int MAX_IDLE_CLIENT_FOR_EACH_NODE = 200;
   }
 }
