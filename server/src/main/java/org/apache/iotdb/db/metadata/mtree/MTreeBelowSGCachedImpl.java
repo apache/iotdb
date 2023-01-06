@@ -162,10 +162,7 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
     // recover measurement
     try (MeasurementCollector<?> collector =
         new MeasurementCollector<Void>(
-            this.storageGroupMNode,
-            new PartialPath(storageGroupMNode.getFullPath()),
-            this.store,
-            true) {
+            this.rootNode, new PartialPath(storageGroupMNode.getFullPath()), this.store, true) {
           @Override
           protected void collectMeasurement(IMeasurementMNode node) {
             measurementProcess.accept(node);

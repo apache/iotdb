@@ -32,6 +32,7 @@ import java.util.Iterator;
 import java.util.Map;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_ROOT;
+import static org.apache.iotdb.db.metadata.MetadataConstant.NON_TEMPLATE;
 
 /**
  * This class defines the main traversal framework and declares some methods for result process
@@ -104,12 +105,20 @@ public abstract class Traverser<R> extends AbstractTreeVisitor<IMNode, R> {
 
   @Override
   protected IMNode getChild(IMNode parent, String childName) throws MetadataException {
+    IMNode child = null;
     if (parent.isAboveDatabase()) {
-      return parent.getChild(childName);
+      child = parent.getChild(childName);
     } else {
-      return store.getChild(parent, childName);
+      if (parent.getSchemaTemplateId() != NON_TEMPLATE) {
+        if (!skipPreDeletedSchema || !parent.getAsEntityMNode().isPreDeactivateTemplate()) {
+          child = templateMap.get(parent.getSchemaTemplateId()).getDirectNode(childName);
+        }
+      }
     }
-    // TODO: support template
+    if (child == null) {
+      child = store.getChild(parent, childName);
+    }
+    return child;
   }
 
   @Override
