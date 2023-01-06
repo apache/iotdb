@@ -101,8 +101,7 @@ public interface IMTreeBelowSG {
   /**
    * Construct schema black list via setting matched timeseries to pre deleted.
    *
-   * @param pathPattern
-   * @throws MetadataException
+   * @param pathPattern path pattern
    * @return PartialPath of timeseries that has been set to pre deleted
    */
   List<PartialPath> constructSchemaBlackList(PartialPath pathPattern) throws MetadataException;
@@ -110,8 +109,7 @@ public interface IMTreeBelowSG {
   /**
    * Rollback schema black list via setting matched timeseries to not pre deleted.
    *
-   * @param pathPattern
-   * @throws MetadataException
+   * @param pathPattern path pattern
    * @return PartialPath of timeseries that has been set to not pre deleted
    */
   List<PartialPath> rollbackSchemaBlackList(PartialPath pathPattern) throws MetadataException;
@@ -189,6 +187,33 @@ public interface IMTreeBelowSG {
   List<IMeasurementMNode> getAllMeasurementMNode() throws MetadataException;
 
   void activateTemplate(PartialPath activatePath, Template template) throws MetadataException;
+
+  /**
+   * constructSchemaBlackListWithTemplate
+   *
+   * @param templateSetInfo PathPattern and templateId to pre-deactivate
+   * @return Actual full path and templateId that has been pre-deactivated
+   */
+  Map<PartialPath, List<Integer>> constructSchemaBlackListWithTemplate(
+      Map<PartialPath, List<Integer>> templateSetInfo) throws MetadataException;
+
+  /**
+   * rollbackSchemaBlackListWithTemplate
+   *
+   * @param templateSetInfo PathPattern and templateId to rollback pre-deactivate
+   * @return Actual full path and templateId that has been rolled back
+   */
+  Map<PartialPath, List<Integer>> rollbackSchemaBlackListWithTemplate(
+      Map<PartialPath, List<Integer>> templateSetInfo) throws MetadataException;
+
+  /**
+   * deactivateTemplateInBlackList
+   *
+   * @param templateSetInfo PathPattern and templateId to rollback deactivate
+   * @return Actual full path and templateId that has been deactivated
+   */
+  Map<PartialPath, List<Integer>> deactivateTemplateInBlackList(
+      Map<PartialPath, List<Integer>> templateSetInfo) throws MetadataException;
 
   long countPathsUsingTemplate(PartialPath pathPattern, int templateId) throws MetadataException;
 }

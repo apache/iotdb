@@ -556,7 +556,9 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R>
     @Override
     protected void close() {
       super.close();
-      releaseNodeIterator(childrenIterator);
+      if (childrenIterator != null) {
+        releaseNodeIterator(childrenIterator);
+      }
     }
   }
 
@@ -627,7 +629,9 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R>
     @Override
     protected void close() {
       super.close();
-      releaseNodeIterator(iterator);
+      if (iterator != null) {
+        releaseNodeIterator(iterator);
+      }
     }
   }
 
@@ -813,7 +817,9 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R>
     @Override
     protected void close() {
       super.close();
-      releaseNodeIterator(iterator);
+      if (iterator != null) {
+        releaseNodeIterator(iterator);
+      }
     }
   }
 

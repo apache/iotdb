@@ -37,10 +37,8 @@ public abstract class EntityCollector<R> extends EntityTraverser<R> {
 
   @Override
   protected R generateResult(IMNode nextMatchedNode) {
-    collectEntity(nextMatchedNode.getAsEntityMNode());
-    return null;
+    return collectEntity(nextMatchedNode.getAsEntityMNode());
   }
 
-  // TODO: make collectStorageGroup return R
-  protected abstract void collectEntity(IEntityMNode node);
+  protected abstract R collectEntity(IEntityMNode node);
 }

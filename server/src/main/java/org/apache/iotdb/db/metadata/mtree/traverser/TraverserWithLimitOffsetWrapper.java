@@ -70,7 +70,7 @@ public class TraverserWithLimitOffsetWrapper<R> extends Traverser<R> {
 
   @Override
   public void traverse() throws MetadataException {
-    traverser.traverse();
+    throw new UnsupportedOperationException();
   }
 
   @Override

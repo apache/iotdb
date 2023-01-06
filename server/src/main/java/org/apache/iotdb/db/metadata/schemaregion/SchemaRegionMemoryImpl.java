@@ -40,7 +40,6 @@ import org.apache.iotdb.db.metadata.logfile.FakeCRC32Deserializer;
 import org.apache.iotdb.db.metadata.logfile.FakeCRC32Serializer;
 import org.apache.iotdb.db.metadata.logfile.SchemaLogReader;
 import org.apache.iotdb.db.metadata.logfile.SchemaLogWriter;
-import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mtree.MTreeBelowSGMemoryImpl;
@@ -83,7 +82,6 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
@@ -288,7 +286,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     long time = System.currentTimeMillis();
     // init the metadata from the operation log
     if (logFile.exists()) {
-      int idx = 0;
+      int idx;
       try (SchemaLogReader<ISchemaRegionPlan> mLogReader =
           new SchemaLogReader<>(
               schemaRegionDirPath,
@@ -408,7 +406,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     long startTime = System.currentTimeMillis();
 
     long mtreeSnapshotStartTime = System.currentTimeMillis();
-    isSuccess = isSuccess && mtree.createSnapshot(snapshotDir);
+    isSuccess = mtree.createSnapshot(snapshotDir);
     logger.info(
         "MTree snapshot creation of schemaRegion {} costs {}ms.",
         schemaRegionId,
@@ -726,7 +724,6 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   public void rollbackSchemaBlackList(PathPatternTree patternTree) throws MetadataException {
     for (PartialPath pathPattern : patternTree.getAllPathPatterns()) {
       List<PartialPath> paths = mtree.rollbackSchemaBlackList(pathPattern);
-      ;
       for (PartialPath path : paths) {
         try {
           writeToMLog(SchemaRegionWritePlanFactory.getRollbackPreDeleteTimeSeriesPlan(path));
@@ -1205,72 +1202,37 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   @Override
   public long constructSchemaBlackListWithTemplate(IPreDeactivateTemplatePlan plan)
       throws MetadataException {
-    long preDeactivateNum = 0;
-    Map<PartialPath, List<Integer>> templateSetInfo = plan.getTemplateSetInfo();
-    for (Map.Entry<PartialPath, List<Integer>> entry : templateSetInfo.entrySet()) {
-      for (IEntityMNode entityMNode :
-          mtree.getDeviceMNodeUsingTargetTemplate(entry.getKey(), entry.getValue())) {
-        Map<PartialPath, List<Integer>> subTemplateSetInfo = new HashMap<>();
-        subTemplateSetInfo.put(
-            entityMNode.getPartialPath(),
-            Collections.singletonList(entityMNode.getSchemaTemplateId()));
-        entityMNode.preDeactivateTemplate();
-        preDeactivateNum++;
-        try {
-          writeToMLog(
-              SchemaRegionWritePlanFactory.getPreDeactivateTemplatePlan(subTemplateSetInfo));
-        } catch (IOException e) {
-          throw new MetadataException(e);
-        }
-      }
+    Map<PartialPath, List<Integer>> resultTemplateSetInfo =
+        mtree.constructSchemaBlackListWithTemplate(plan.getTemplateSetInfo());
+    try {
+      writeToMLog(SchemaRegionWritePlanFactory.getPreDeactivateTemplatePlan(resultTemplateSetInfo));
+    } catch (IOException e) {
+      throw new MetadataException(e);
     }
-    return preDeactivateNum;
+    return resultTemplateSetInfo.size();
   }
 
   @Override
   public void rollbackSchemaBlackListWithTemplate(IRollbackPreDeactivateTemplatePlan plan)
       throws MetadataException {
-    Map<PartialPath, List<Integer>> templateSetInfo = plan.getTemplateSetInfo();
-    for (Map.Entry<PartialPath, List<Integer>> entry : templateSetInfo.entrySet()) {
-      for (IEntityMNode entityMNode :
-          mtree.getPreDeactivatedDeviceMNode(entry.getKey(), entry.getValue())) {
-        if (!entityMNode.isPreDeactivateTemplate()) {
-          continue;
-        }
-        Map<PartialPath, List<Integer>> subTemplateSetInfo = new HashMap<>();
-        subTemplateSetInfo.put(
-            entityMNode.getPartialPath(),
-            Collections.singletonList(entityMNode.getSchemaTemplateId()));
-        entityMNode.rollbackPreDeactivateTemplate();
-        try {
-          writeToMLog(
-              SchemaRegionWritePlanFactory.getRollbackPreDeactivateTemplatePlan(
-                  subTemplateSetInfo));
-        } catch (IOException e) {
-          throw new MetadataException(e);
-        }
-      }
+    Map<PartialPath, List<Integer>> resultTemplateSetInfo =
+        mtree.rollbackSchemaBlackListWithTemplate(plan.getTemplateSetInfo());
+    try {
+      writeToMLog(
+          SchemaRegionWritePlanFactory.getRollbackPreDeactivateTemplatePlan(resultTemplateSetInfo));
+    } catch (IOException e) {
+      throw new MetadataException(e);
     }
   }
 
   @Override
   public void deactivateTemplateInBlackList(IDeactivateTemplatePlan plan) throws MetadataException {
-    Map<PartialPath, List<Integer>> templateSetInfo = plan.getTemplateSetInfo();
-    for (Map.Entry<PartialPath, List<Integer>> entry : templateSetInfo.entrySet()) {
-      for (IEntityMNode entityMNode :
-          mtree.getPreDeactivatedDeviceMNode(entry.getKey(), entry.getValue())) {
-        Map<PartialPath, List<Integer>> subTemplateSetInfo = new HashMap<>();
-        subTemplateSetInfo.put(
-            entityMNode.getPartialPath(),
-            Collections.singletonList(entityMNode.getSchemaTemplateId()));
-        entityMNode.deactivateTemplate();
-        mtree.deleteEmptyInternalMNodeAndReturnEmptyStorageGroup(entityMNode);
-        try {
-          writeToMLog(SchemaRegionWritePlanFactory.getDeactivateTemplatePlan(subTemplateSetInfo));
-        } catch (IOException e) {
-          throw new MetadataException(e);
-        }
-      }
+    Map<PartialPath, List<Integer>> resultTemplateSetInfo =
+        mtree.deactivateTemplateInBlackList(plan.getTemplateSetInfo());
+    try {
+      writeToMLog(SchemaRegionWritePlanFactory.getDeactivateTemplatePlan(resultTemplateSetInfo));
+    } catch (IOException e) {
+      throw new MetadataException(e);
     }
   }
 

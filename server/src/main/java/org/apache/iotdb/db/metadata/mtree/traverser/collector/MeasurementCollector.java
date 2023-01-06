@@ -38,8 +38,7 @@ public abstract class MeasurementCollector<R> extends MeasurementTraverser<R> {
 
   @Override
   protected R generateResult(IMNode nextMatchedNode) {
-    collectMeasurement(nextMatchedNode.getAsMeasurementMNode());
-    return null;
+    return collectMeasurement(nextMatchedNode.getAsMeasurementMNode());
   }
 
   /**
@@ -47,7 +46,7 @@ public abstract class MeasurementCollector<R> extends MeasurementTraverser<R> {
    *
    * @param node MeasurementMNode holding the measurement schema
    */
-  protected abstract void collectMeasurement(IMeasurementMNode node);
+  protected abstract R collectMeasurement(IMeasurementMNode node);
 
   /**
    * When traverse goes into a template, IMNode.getPartialPath may not work as nodes in template has
