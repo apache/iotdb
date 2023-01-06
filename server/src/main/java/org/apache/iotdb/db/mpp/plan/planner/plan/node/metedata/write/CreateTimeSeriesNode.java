@@ -345,6 +345,7 @@ public class CreateTimeSeriesNode extends WritePlanNode implements ICreateTimeSe
     return visitor.visitCreateTimeSeries(this, schemaRegion);
   }
 
+  @Override
   public boolean equals(Object o) {
     if (this == o) {
       return true;

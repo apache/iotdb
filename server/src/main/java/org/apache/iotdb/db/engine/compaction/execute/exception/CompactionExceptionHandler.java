@@ -121,7 +121,7 @@ public class CompactionExceptionHandler {
         lostFiles.add(tsFileResource);
       }
     }
-    return lostFiles.size() == 0;
+    return lostFiles.isEmpty();
   }
 
   /**

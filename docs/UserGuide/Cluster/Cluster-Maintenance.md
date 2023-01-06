@@ -82,6 +82,8 @@ The ConfigNode statuses are defined as follows:
 
 - **Running**: The ConfigNode is running properly.
 - **Unknown**: The ConfigNode doesn't report heartbeat properly.
+  - Can't receive data synchronized from other ConfigNodes
+  - Won't be selected as the cluster ConfigNode-leader
 
 ## Show DataNode information
 
@@ -129,8 +131,22 @@ The DataNode statuses are defined as follows:
 
 - **Running**: The DataNode is running properly and is readable and writable.
 - **Unknown**: The DataNode doesn't report heartbeat properly, the ConfigNode considers the DataNode as unreadable and un-writable.
+  - The cluster is still readable and writable if some DataNodes are Unknown
 - **Removing**: The DataNode is being removed from the cluster and is unreadable and un-writable.
+  - The cluster is still readable and writable if some DataNodes are Removing
 - **ReadOnly**: The remaining disk space of DataNode is lower than disk_warning_threshold(default is 5%), the DataNode is readable but un-writable and cannot synchronize data.
+  - The cluster is still readable and writable if some DataNodes are ReadOnly
+  - Schema, data and Database can be deleted in ReadOnly status
+  - Schema and data cannot be written to the cluster when all DataNodes are ReadOnly, but new Databases can still be created
+
+**For a DataNode**, the following table describes the impact of data read, write, and deletion in different status:
+
+| DataNode status | readable | writable | deletable |
+|-----------------|----------|----------|-----------|
+| Running         | yes      | yes      | yes       |
+| Unknown         | no       | no       | no        |
+| Removing        | no       | no       | no        |
+| ReadOnly        | yes      | no       | yes       |
 
 ## Show all Node information
 
@@ -210,6 +226,8 @@ Currently, IoTDB supports show Region information by the following SQL:
 - `SHOW SCHEMA REGIONS`: Show distribution of all SchemaRegions.
 - `SHOW DATA REGIONS`: Show distribution of all DataRegions.
 - `SHOW (DATA|SCHEMA)? REGIONS OF DATABASE <sg1,sg2,...>`: Show Region distribution of specified StorageGroups.
+- `SHOW (DATA|SCHEMA)? REGIONS ON NODEID <id1,id2,...>`: Show Region distribution on specified Nodes.
+- `SHOW (DATA|SCHEMA)? REGIONS (OF DATABASE <sg1,sg2,...>)? (ON NODEID <id1,id2,...>)?`: Show Region distribution of specified StorageGroups on specified Nodes.
 
 Show distribution of all Regions:
 ```
@@ -330,6 +348,63 @@ Total line number = 6
 It costs 0.009s
 ```
 
+Show Region distribution on specified Nodes:
+```
+IoTDB> show regions on nodeid 1
++--------+------------+-------+--------+-----------+---------+----------+----------+-------+--------+
+|RegionId|        Type| Status|Database|SeriesSlots|TimeSlots|DataNodeId|RpcAddress|RpcPort|    Role|
++--------+------------+-------+--------+-----------+---------+----------+----------+-------+--------+
+|       0|  DataRegion|Running|root.sg1|          1|        1|         1| 127.0.0.1|   6667|Follower|
+|       1|SchemaRegion|Running|root.sg1|          1|        0|         1| 127.0.0.1|   6667|Follower|
+|       2|  DataRegion|Running|root.sg2|          1|        1|         1| 127.0.0.1|   6667|  Leader|
+|       3|SchemaRegion|Running|root.sg2|          1|        0|         1| 127.0.0.1|   6667|Follower|
++--------+------------+-------+--------+-----------+---------+----------+----------+-------+--------+
+Total line number = 4
+It costs 0.165s
+
+IoTDB> show regions on nodeid 1, 2
++--------+------------+-------+--------+-----------+---------+----------+----------+-------+--------+
+|RegionId|        Type| Status|Database|SeriesSlots|TimeSlots|DataNodeId|RpcAddress|RpcPort|    Role|
++--------+------------+-------+--------+-----------+---------+----------+----------+-------+--------+
+|       0|  DataRegion|Running|root.sg1|          1|        1|         1| 127.0.0.1|   6667|Follower|
+|       0|  DataRegion|Running|root.sg1|          1|        1|         2| 127.0.0.1|   6668|  Leader|
+|       1|SchemaRegion|Running|root.sg1|          1|        0|         1| 127.0.0.1|   6667|Follower|
+|       1|SchemaRegion|Running|root.sg1|          1|        0|         2| 127.0.0.1|   6668|Follower|
+|       2|  DataRegion|Running|root.sg2|          1|        1|         1| 127.0.0.1|   6667|  Leader|
+|       2|  DataRegion|Running|root.sg2|          1|        1|         2| 127.0.0.1|   6668|Follower|
+|       3|SchemaRegion|Running|root.sg2|          1|        0|         1| 127.0.0.1|   6667|Follower|
+|       3|SchemaRegion|Running|root.sg2|          1|        0|         2| 127.0.0.1|   6668|  Leader|
++--------+------------+-------+--------+-----------+---------+----------+----------+-------+--------+
+Total line number = 8
+It costs 0.165s
+```
+
+Show Region distribution of specified StorageGroups on specified Nodes：
+```
+IoTDB> show regions of database root.sg1 on nodeid 1
++--------+------------+-------+--------+-----------+---------+----------+----------+-------+--------+
+|RegionId|        Type| Status|Database|SeriesSlots|TimeSlots|DataNodeId|RpcAddress|RpcPort|    Role|
++--------+------------+-------+--------+-----------+---------+----------+----------+-------+--------+
+|       0|  DataRegion|Running|root.sg1|          1|        1|         1| 127.0.0.1|   6667|Follower|
+|       1|SchemaRegion|Running|root.sg1|          1|        0|         1| 127.0.0.1|   6667|Follower|
++--------+------------+-------+--------+-----------+---------+----------+----------+-------+--------+
+Total line number = 2
+It costs 0.165s
+
+IoTDB> show data regions of database root.sg1, root.sg2 on nodeid 1, 2 
++--------+------------+-------+--------+-----------+---------+----------+----------+-------+--------+
+|RegionId|        Type| Status|Database|SeriesSlots|TimeSlots|DataNodeId|RpcAddress|RpcPort|    Role|
++--------+------------+-------+--------+-----------+---------+----------+----------+-------+--------+
+|       0|  DataRegion|Running|root.sg1|          1|        1|         1| 127.0.0.1|   6667|Follower|
+|       0|  DataRegion|Running|root.sg1|          1|        1|         2| 127.0.0.1|   6668|  Leader|
+|       2|  DataRegion|Running|root.sg2|          1|        1|         1| 127.0.0.1|   6667|  Leader|
+|       2|  DataRegion|Running|root.sg2|          1|        1|         2| 127.0.0.1|   6668|Follower|
++--------+------------+-------+--------+-----------+---------+----------+----------+-------+--------+
+Total line number = 4
+It costs 0.165s
+```
+
+
 ### Region status definition
 Region inherits the status of the DataNode where the Region resides. And Region states are defined as follows:
 
@@ -337,6 +412,14 @@ Region inherits the status of the DataNode where the Region resides. And Region 
 - **Unknown**: The DataNode where the Region resides doesn't report heartbeat properly, the ConfigNode considers the Region is unreadable and un-writable.
 - **Removing**: The DataNode where the Region resides is being removed from the cluster, the Region is unreadable and un-writable.
 - **ReadOnly**: The available disk space of the DataNode where the Region resides is lower than the disk_warning_threshold(5% by default). The Region is readable but un-writable and cannot synchronize data.
+
+**The status switchover of a Region doesn't affect the belonged RegionGroup**,
+when setting up a multi-replica cluster(i.e. the number of schema replica and data replica is greater than 1),
+other Running Regions of the same RegionGroup ensure the high availability of RegionGroup.
+
+**For a RegionGroup:**
+- It's readable, writable and deletable if and only if more than half of its Regions are Running 
+- It's unreadable, un-writable and un-deletable when the number of its Running Regions is less than half
 
 ## Show cluster slots information
 

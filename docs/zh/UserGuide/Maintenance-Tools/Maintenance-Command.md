@@ -91,15 +91,25 @@ session.executeQueryStatement(String sql, long timeout)
 
 ### 查询终止
 
-除了被动地等待查询超时外，IoTDB 还支持主动地终止查询，命令为：
+除了被动地等待查询超时外，IoTDB 还支持主动地终止查询：
+
+#### 终止指定查询
 
 ```sql
 KILL QUERY <queryId>
 ```
 
-通过指定 `queryId` 可以中止指定的查询，而如果不指定 `queryId`，将中止所有正在执行的查询。
+通过指定 `queryId` 可以中止指定的查询。
 
 为了获取正在执行的查询 id，用户可以使用 [show queries](#show-queries) 命令，该命令将显示所有正在执行的查询列表。
+
+#### 终止所有查询
+
+```sql
+KILL ALL QUERIES
+```
+
+终止所有DataNode上的所有查询。
 
 ## SHOW QUERIES
 
@@ -162,7 +172,7 @@ SHOW QUERIES WHERE ElapsedTime > 30
 
 SQL 语句为：
 ```SQL
-SHOW QUERIES ORDER BY Time DESC limit 5
+SHOW QUERIES limit 5
 ```
 
 该 SQL 语句的执行结果如下：

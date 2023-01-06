@@ -65,7 +65,7 @@ public abstract class SchemaPage implements ISchemaPage {
     ReadWriteIOUtils.write(spareOffset, pageBuffer);
     ReadWriteIOUtils.write(spareSize, pageBuffer);
     ReadWriteIOUtils.write(memberNum, pageBuffer);
-  };
+  }
 
   @Override
   public void flushPageToChannel(FileChannel channel) throws IOException {
@@ -143,7 +143,7 @@ public abstract class SchemaPage implements ISchemaPage {
   @TestOnly
   public WrappedSegment getSegmentOnTest(short idx) throws SegmentNotFoundException {
     return null;
-  };
+  }
 
   @Override
   @TestOnly

@@ -16,7 +16,10 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.it.env;
+package org.apache.iotdb.it.env.cluster;
+
+import org.apache.iotdb.it.framework.IoTDBTestLogger;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.apache.commons.lang3.SystemUtils;
 
@@ -29,28 +32,36 @@ import java.util.stream.IntStream;
 public class EnvUtils {
   private static final String lockFilePath =
       System.getProperty("user.dir") + File.separator + "target" + File.separator + "lock-";
+  private static final String sysVarDefaultConfigNodeNum = "DefaultConfigNodeNum";
+  private static final String sysVarDefaultDataNodeNum = "DefaultDataNodeNum";
 
   public static int[] searchAvailablePorts() {
-    do {
+    while (true) {
       int randomPortStart = 1000 + (int) (Math.random() * (1999 - 1000));
       randomPortStart = randomPortStart * 10 + 1;
-      File lockFile = new File(getLockFilePath(randomPortStart));
-      if (lockFile.exists()) {
-        continue;
-      }
-
-      List<Integer> requiredPorts =
-          IntStream.rangeClosed(randomPortStart, randomPortStart + 9)
-              .boxed()
-              .collect(Collectors.toList());
+      String lockFilePath = getLockFilePath(randomPortStart);
+      File lockFile = new File(lockFilePath);
       try {
-        if (checkPortsAvailable(requiredPorts) && lockFile.createNewFile()) {
+        // Lock the ports first to avoid to be occupied by other ForkedBooters during ports
+        // available detecting
+        if (!lockFile.createNewFile()) {
+          continue;
+        }
+        List<Integer> requiredPorts =
+            IntStream.rangeClosed(randomPortStart, randomPortStart + 9)
+                .boxed()
+                .collect(Collectors.toList());
+        if (checkPortsAvailable(requiredPorts)) {
           return requiredPorts.stream().mapToInt(Integer::intValue).toArray();
         }
       } catch (IOException e) {
         // ignore
       }
-    } while (true);
+      // Delete the lock file if the ports can't be used or some error happens
+      if (lockFile.exists() && !lockFile.delete()) {
+        IoTDBTestLogger.logger.error("Delete lockfile {} failed", lockFilePath);
+      }
+    }
   }
 
   private static boolean checkPortsAvailable(List<Integer> ports) {
@@ -86,5 +97,29 @@ public class EnvUtils {
 
   public static String getLockFilePath(int port) {
     return lockFilePath + port;
+  }
+
+  public static Pair<Integer, Integer> getNodeNum() {
+    int configNodeNum = 0;
+    int dataNodeNum = 0;
+    try {
+      configNodeNum = Integer.parseInt(System.getProperty(sysVarDefaultConfigNodeNum, "1"));
+    } catch (NumberFormatException e) {
+      throw new RuntimeException("Invalid config node number: " + configNodeNum);
+    }
+    try {
+      dataNodeNum = Integer.parseInt(System.getProperty(sysVarDefaultDataNodeNum, "3"));
+    } catch (NumberFormatException e) {
+      throw new RuntimeException("Invalid data node number: " + dataNodeNum);
+    }
+    return new Pair<>(configNodeNum, dataNodeNum);
+  }
+
+  public static String getFilePathFromSysVar(String key) {
+    String value = System.getProperty(key);
+    if (value == null) {
+      return null;
+    }
+    return System.getProperty("user.dir") + File.separator + value;
   }
 }

@@ -69,7 +69,7 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
     // size for file writer is 5% of per compaction task memory budget
     long sizeForFileWriter =
         (long)
-            (SystemInfo.getInstance().getMemorySizeForCompaction()
+            ((double) SystemInfo.getInstance().getMemorySizeForCompaction()
                 / IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount()
                 * IoTDBDescriptor.getInstance().getConfig().getChunkMetadataSizeProportion());
     TsFileMetricManager.getInstance().addCompactionTempFileNum(true, true, 1);

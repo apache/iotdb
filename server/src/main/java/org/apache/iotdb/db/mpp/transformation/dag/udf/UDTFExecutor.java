@@ -149,10 +149,13 @@ public class UDTFExecutor {
   }
 
   private void onError(String methodName, Exception e) {
-    LOGGER.warn("Error occurred during executing UDTF", e);
+    LOGGER.warn(
+        "Error occurred during executing UDTF, perhaps need to check whether the implementation of UDF is correct according to the udf-api description.",
+        e);
     throw new RuntimeException(
         String.format(
-                "Error occurred during executing UDTF#%s: %s", methodName, System.lineSeparator())
+                "Error occurred during executing UDTF#%s: %s, perhaps need to check whether the implementation of UDF is correct according to the udf-api description.",
+                methodName, System.lineSeparator())
             + e);
   }
 

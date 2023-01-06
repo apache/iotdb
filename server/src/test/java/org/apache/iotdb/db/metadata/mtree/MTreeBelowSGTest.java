@@ -44,7 +44,6 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 import static org.junit.Assert.assertEquals;
@@ -449,63 +448,6 @@ public abstract class MTreeBelowSGTest {
   }
 
   @Test
-  public void testCountEntity() throws MetadataException {
-    storageGroup = getStorageGroup(new PartialPath("root.laptop"));
-    storageGroup.createTimeseries(
-        new PartialPath("root.laptop.s1"),
-        TSDataType.INT32,
-        TSEncoding.PLAIN,
-        CompressionType.GZIP,
-        null,
-        null);
-    storageGroup.createTimeseries(
-        new PartialPath("root.laptop.d1.s1"),
-        TSDataType.INT32,
-        TSEncoding.PLAIN,
-        CompressionType.GZIP,
-        null,
-        null);
-    storageGroup.createTimeseries(
-        new PartialPath("root.laptop.d2.s1.t1"),
-        TSDataType.INT32,
-        TSEncoding.PLAIN,
-        CompressionType.GZIP,
-        null,
-        null);
-    storageGroup.createTimeseries(
-        new PartialPath("root.laptop.d2.s2"),
-        TSDataType.INT32,
-        TSEncoding.PLAIN,
-        CompressionType.GZIP,
-        null,
-        null);
-    storageGroup.createTimeseries(
-        new PartialPath("root.laptop.a.d1.s1"),
-        TSDataType.INT32,
-        TSEncoding.PLAIN,
-        CompressionType.GZIP,
-        null,
-        null);
-
-    Assert.assertEquals(0, storageGroup.getDevicesNum(new PartialPath("root"), false));
-    Assert.assertEquals(1, storageGroup.getDevicesNum(new PartialPath("root.laptop"), false));
-    Assert.assertEquals(0, storageGroup.getDevicesNum(new PartialPath("root.laptop.s1"), false));
-    Assert.assertEquals(1, storageGroup.getDevicesNum(new PartialPath("root.laptop.d1"), false));
-    Assert.assertEquals(2, storageGroup.getDevicesNum(new PartialPath("root.laptop.*"), false));
-    Assert.assertEquals(2, storageGroup.getDevicesNum(new PartialPath("root.laptop.*.*"), false));
-    Assert.assertEquals(0, storageGroup.getDevicesNum(new PartialPath("root.laptop.*.*.*"), false));
-    Assert.assertEquals(4, storageGroup.getDevicesNum(new PartialPath("root.laptop.**"), false));
-    Assert.assertEquals(5, storageGroup.getDevicesNum(new PartialPath("root.**"), false));
-    Assert.assertEquals(4, storageGroup.getDevicesNum(new PartialPath("root.**.*"), false));
-    Assert.assertEquals(4, storageGroup.getDevicesNum(new PartialPath("root.*.**"), false));
-    Assert.assertEquals(2, storageGroup.getDevicesNum(new PartialPath("root.**.d1"), false));
-    Assert.assertEquals(1, storageGroup.getDevicesNum(new PartialPath("root.laptop.*.d1"), false));
-    Assert.assertEquals(3, storageGroup.getDevicesNum(new PartialPath("root.**.d*"), false));
-    Assert.assertEquals(1, storageGroup.getDevicesNum(new PartialPath("root.laptop.**.s1"), false));
-    Assert.assertEquals(1, storageGroup.getDevicesNum(new PartialPath("root.*.d2.*"), false));
-  }
-
-  @Test
   public void testGetNodeListInLevel() throws MetadataException {
 
     storageGroup = getStorageGroup(new PartialPath("root.sg1"));
@@ -559,75 +501,5 @@ public abstract class MTreeBelowSGTest {
         1, storageGroup.getNodesListInGivenLevel(new PartialPath("root.*.*"), 1, false).size());
     Assert.assertEquals(
         2, storageGroup.getNodesListInGivenLevel(new PartialPath("root.*.*.s1"), 2, false).size());
-  }
-
-  @Test
-  public void testGetMeasurementCountGroupByLevel() throws Exception {
-    storageGroup = getStorageGroup(new PartialPath("root.sg"));
-    storageGroup.createTimeseries(
-        new PartialPath("root.sg.a1.s1"),
-        TSDataType.INT32,
-        TSEncoding.PLAIN,
-        CompressionType.GZIP,
-        null,
-        null);
-    storageGroup.createTimeseries(
-        new PartialPath("root.sg.a1.d1.s1"),
-        TSDataType.INT32,
-        TSEncoding.PLAIN,
-        CompressionType.GZIP,
-        null,
-        null);
-    storageGroup.createTimeseries(
-        new PartialPath("root.sg.a1.d1.s2"),
-        TSDataType.INT32,
-        TSEncoding.PLAIN,
-        CompressionType.GZIP,
-        null,
-        null);
-
-    storageGroup.createTimeseries(
-        new PartialPath("root.sg.a2.s1"),
-        TSDataType.INT32,
-        TSEncoding.PLAIN,
-        CompressionType.GZIP,
-        null,
-        null);
-    storageGroup.createTimeseries(
-        new PartialPath("root.sg.a2.d1.s1"),
-        TSDataType.INT32,
-        TSEncoding.PLAIN,
-        CompressionType.GZIP,
-        null,
-        null);
-
-    PartialPath pattern = new PartialPath("root.sg.**");
-    Map<PartialPath, Long> result = storageGroup.getMeasurementCountGroupByLevel(pattern, 2, false);
-    assertEquals(2, result.size());
-    assertEquals(3, (long) result.get(new PartialPath("root.sg.a1")));
-    assertEquals(2, (long) result.get(new PartialPath("root.sg.a2")));
-
-    result = storageGroup.getMeasurementCountGroupByLevel(pattern, 3, false);
-    assertEquals(4, result.size());
-    assertEquals(1, (long) result.get(new PartialPath("root.sg.a1.s1")));
-    assertEquals(2, (long) result.get(new PartialPath("root.sg.a1.d1")));
-    assertEquals(1, (long) result.get(new PartialPath("root.sg.a2.s1")));
-    assertEquals(1, (long) result.get(new PartialPath("root.sg.a2.d1")));
-
-    result = storageGroup.getMeasurementCountGroupByLevel(pattern, 5, false);
-    assertEquals(0, result.size());
-
-    pattern = new PartialPath("root.**.s1");
-    result = storageGroup.getMeasurementCountGroupByLevel(pattern, 2, false);
-    assertEquals(2, result.size());
-    assertEquals(2, (long) result.get(new PartialPath("root.sg.a1")));
-    assertEquals(2, (long) result.get(new PartialPath("root.sg.a2")));
-
-    result = storageGroup.getMeasurementCountGroupByLevel(pattern, 3, false);
-    assertEquals(4, result.size());
-    assertEquals(1, (long) result.get(new PartialPath("root.sg.a1.s1")));
-    assertEquals(1, (long) result.get(new PartialPath("root.sg.a1.d1")));
-    assertEquals(1, (long) result.get(new PartialPath("root.sg.a2.s1")));
-    assertEquals(1, (long) result.get(new PartialPath("root.sg.a2.d1")));
   }
 }

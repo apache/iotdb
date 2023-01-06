@@ -33,11 +33,9 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
 import org.apache.iotdb.consensus.ConsensusFactory;
-import org.apache.iotdb.it.env.ConfigFactory;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
-import org.apache.iotdb.itbase.env.BaseConfig;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.After;
@@ -57,56 +55,32 @@ import static org.apache.iotdb.confignode.it.utils.ConfigNodeTestUtils.generateP
 @Category({ClusterIT.class})
 public class IoTDBCustomRegionGroupExtensionIT {
 
-  private static final BaseConfig CONF = ConfigFactory.getConfig();
-
-  private static String originalSchemaRegionGroupExtensionPolicy;
   private static final String testSchemaRegionGroupExtensionPolicy = "CUSTOM";
-  private static String originalDataRegionGroupExtensionPolicy;
   private static final String testDataRegionGroupExtensionPolicy = "CUSTOM";
-
-  private static String originalSchemaRegionConsensusProtocolClass;
-  private static String originalDataRegionConsensusProtocolClass;
   private static final String testConsensusProtocolClass = ConsensusFactory.RATIS_CONSENSUS;
-
-  private static int originalSchemaRegionGroupPerDatabase;
   private static final int testSchemaRegionGroupPerDatabase = 2;
-  private static int originalDataRegionGroupPerDatabase;
   private static final int testDataRegionGroupPerDatabase = 3;
-
-  private static int originalSchemaReplicationFactor;
-  private static int originalDataReplicationFactor;
   private static final int testReplicationFactor = 3;
-
-  private static long originalTimePartitionInterval;
+  private static final long testTimePartitionInterval = 604800000;
 
   private static final String sg = "root.sg";
   private static final int testSgNum = 2;
 
   @Before
   public void setUp() throws Exception {
-    originalSchemaRegionConsensusProtocolClass = CONF.getSchemaRegionConsensusProtocolClass();
-    originalDataRegionConsensusProtocolClass = CONF.getDataRegionConsensusProtocolClass();
-    CONF.setSchemaRegionConsensusProtocolClass(testConsensusProtocolClass);
-    CONF.setDataRegionConsensusProtocolClass(testConsensusProtocolClass);
 
-    originalSchemaReplicationFactor = CONF.getSchemaReplicationFactor();
-    originalDataReplicationFactor = CONF.getDataReplicationFactor();
-    CONF.setSchemaReplicationFactor(testReplicationFactor);
-    CONF.setDataReplicationFactor(testReplicationFactor);
-
-    originalTimePartitionInterval = CONF.getTimePartitionInterval();
-
-    originalSchemaRegionGroupExtensionPolicy = CONF.getSchemaRegionGroupExtensionPolicy();
-    CONF.setSchemaRegionGroupExtensionPolicy(testSchemaRegionGroupExtensionPolicy);
-
-    originalSchemaRegionGroupPerDatabase = CONF.getSchemaRegionGroupPerDatabase();
-    CONF.setSchemaRegionGroupPerDatabase(testSchemaRegionGroupPerDatabase);
-
-    originalDataRegionGroupExtensionPolicy = CONF.getDataRegionGroupExtensionPolicy();
-    CONF.setDataRegionGroupExtensionPolicy(testDataRegionGroupExtensionPolicy);
-
-    originalDataRegionGroupPerDatabase = CONF.getDataRegionGroupPerDatabase();
-    CONF.setDataRegionGroupPerDatabase(testDataRegionGroupPerDatabase);
+    EnvFactory.getEnv()
+        .getConfig()
+        .getCommonConfig()
+        .setSchemaRegionConsensusProtocolClass(testConsensusProtocolClass)
+        .setDataRegionConsensusProtocolClass(testConsensusProtocolClass)
+        .setSchemaReplicationFactor(testReplicationFactor)
+        .setDataReplicationFactor(testReplicationFactor)
+        .setSchemaRegionGroupExtensionPolicy(testSchemaRegionGroupExtensionPolicy)
+        .setSchemaRegionGroupPerDatabase(testSchemaRegionGroupPerDatabase)
+        .setDataRegionGroupExtensionPolicy(testDataRegionGroupExtensionPolicy)
+        .setDataRegionGroupPerDatabase(testDataRegionGroupPerDatabase)
+        .setTimePartitionInterval(testTimePartitionInterval);
 
     // Init 1C3D environment
     EnvFactory.getEnv().initClusterEnvironment(1, 3);
@@ -114,17 +88,7 @@ public class IoTDBCustomRegionGroupExtensionIT {
 
   @After
   public void tearDown() {
-    EnvFactory.getEnv().cleanAfterClass();
-
-    CONF.setSchemaRegionConsensusProtocolClass(originalSchemaRegionConsensusProtocolClass);
-    CONF.setDataRegionConsensusProtocolClass(originalDataRegionConsensusProtocolClass);
-    CONF.setSchemaReplicationFactor(originalSchemaReplicationFactor);
-    CONF.setDataReplicationFactor(originalDataReplicationFactor);
-
-    CONF.setSchemaRegionGroupExtensionPolicy(originalSchemaRegionGroupExtensionPolicy);
-    CONF.setSchemaRegionGroupPerDatabase(originalSchemaRegionGroupPerDatabase);
-    CONF.setDataRegionGroupExtensionPolicy(originalDataRegionGroupExtensionPolicy);
-    CONF.setDataRegionGroupPerDatabase(originalDataRegionGroupPerDatabase);
+    EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
   @Test
@@ -143,7 +107,7 @@ public class IoTDBCustomRegionGroupExtensionIT {
         /* Insert a DataPartition to create DataRegionGroups */
         Map<String, Map<TSeriesPartitionSlot, TTimeSlotList>> partitionSlotsMap =
             ConfigNodeTestUtils.constructPartitionSlotsMap(
-                curSg, 0, 10, 0, 10, originalTimePartitionInterval);
+                curSg, 0, 10, 0, 10, testTimePartitionInterval);
         TDataPartitionTableResp dataPartitionTableResp =
             client.getOrCreateDataPartitionTable(new TDataPartitionReq(partitionSlotsMap));
         Assert.assertEquals(

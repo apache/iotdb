@@ -142,4 +142,9 @@ public class TimeColumn implements Column {
   public long[] getTimes() {
     return values;
   }
+
+  @Override
+  public int getInstanceSize() {
+    return INSTANCE_SIZE;
+  }
 }

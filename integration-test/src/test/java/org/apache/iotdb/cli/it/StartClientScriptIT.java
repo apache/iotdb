@@ -46,7 +46,7 @@ public class StartClientScriptIT extends AbstractScript {
 
   @BeforeClass
   public static void setUp() throws Exception {
-    EnvFactory.getEnv().initBeforeClass();
+    EnvFactory.getEnv().initClusterEnvironment();
     ip = EnvFactory.getEnv().getIP();
     port = EnvFactory.getEnv().getPort();
     sbinPath = EnvFactory.getEnv().getSbinPath();
@@ -55,7 +55,7 @@ public class StartClientScriptIT extends AbstractScript {
 
   @AfterClass
   public static void tearDown() throws Exception {
-    EnvFactory.getEnv().cleanAfterClass();
+    EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
   @Test

@@ -192,7 +192,7 @@ public class ClusterTemplateManager implements ITemplateManager {
 
   @Override
   public List<PartialPath> getPathsSetTemplate(String name) {
-    List<PartialPath> listPath = new ArrayList<PartialPath>();
+    List<PartialPath> listPath = new ArrayList<>();
     try (ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.configNodeRegionId)) {
       TGetPathsSetTemplatesResp resp = configNodeClient.getPathsSetTemplate(name);

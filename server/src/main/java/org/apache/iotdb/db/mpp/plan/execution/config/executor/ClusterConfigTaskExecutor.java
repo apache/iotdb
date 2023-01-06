@@ -58,6 +58,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetUDFTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TMigrateRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TPipeSinkInfo;
+import org.apache.iotdb.confignode.rpc.thrift.TRegionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TSetStorageGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowCQResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
@@ -77,6 +78,7 @@ import org.apache.iotdb.db.client.ConfigNodeClient;
 import org.apache.iotdb.db.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.client.ConfigNodeInfo;
 import org.apache.iotdb.db.client.DataNodeClientPoolFactory;
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.localconfignode.LocalConfigNode;
 import org.apache.iotdb.db.metadata.template.ClusterTemplateManager;
 import org.apache.iotdb.db.metadata.template.Template;
@@ -128,6 +130,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowNodesInSchem
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowPathSetTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.UnsetSchemaTemplateStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.KillQueryStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeSinkStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.DropPipeSinkStatement;
@@ -768,6 +771,38 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   @Override
+  public SettableFuture<ConfigTaskResult> killQuery(KillQueryStatement killQueryStatement) {
+    int dataNodeId = -1;
+    String queryId = killQueryStatement.getQueryId();
+    if (!killQueryStatement.isKillAll()) {
+      String[] splits = queryId.split("_");
+      try {
+        // We just judge the input queryId has three '_' and the DataNodeId from it is non-negative
+        // here
+        if (splits.length != 4 || ((dataNodeId = Integer.parseInt(splits[3])) < 0)) {
+          throw new SemanticException("Please ensure your input <queryId> is correct");
+        }
+      } catch (NumberFormatException e) {
+        throw new SemanticException("Please ensure your input <queryId> is correct");
+      }
+    }
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    try (ConfigNodeClient client =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.configNodeRegionId)) {
+      final TSStatus executionStatus = client.killQuery(queryId, dataNodeId);
+      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != executionStatus.getCode()) {
+        LOGGER.warn("Failed to kill query [{}], because {}", queryId, executionStatus.message);
+        future.setException(new IoTDBException(executionStatus.message, executionStatus.code));
+      } else {
+        future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+      }
+    } catch (ClientManagerException | TException e) {
+      future.setException(e);
+    }
+    return future;
+  }
+
+  @Override
   public SettableFuture<ConfigTaskResult> showCluster(ShowClusterStatement showClusterStatement) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     TShowClusterResp showClusterResp = new TShowClusterResp();
@@ -871,6 +906,19 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     } catch (ClientManagerException | TException e) {
       future.setException(e);
     }
+
+    // filter the regions by nodeid
+    if (showRegionStatement.getNodeIds() != null) {
+      List<TRegionInfo> regionInfos = showRegionResp.getRegionInfoList();
+      regionInfos =
+          regionInfos.stream()
+              .filter(
+                  regionInfo ->
+                      showRegionStatement.getNodeIds().contains(regionInfo.getDataNodeId()))
+              .collect(Collectors.toList());
+      showRegionResp.setRegionInfoList(regionInfos);
+    }
+
     // build TSBlock
     ShowRegionTask.buildTSBlock(showRegionResp, future);
     return future;

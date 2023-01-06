@@ -15,31 +15,20 @@
  * KIND, either express or implied.  See the License for the
  * specific language governing permissions and limitations
  * under the License.
+ *
  */
-package org.apache.iotdb.it.env;
 
-import org.apache.iotdb.it.framework.IoTDBTestLogger;
+package org.apache.iotdb.db.exception.query;
 
-import org.slf4j.Logger;
+import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.rpc.TSStatusCode;
 
-public class SimpleEnv extends AbstractEnv {
+public class KilledByOthersException extends IoTDBException {
+  private static final long serialVersionUID = -6027957067833327712L;
 
-  private static final Logger logger = IoTDBTestLogger.logger;
+  public static final String MESSAGE = "Query was killed by others";
 
-  @Override
-  public void initBeforeClass() throws InterruptedException {
-    logger.debug("=======start init class=======");
-    super.initEnvironment(1, 1);
-  }
-
-  @Override
-  public void initClusterEnvironment(int configNodesNum, int dataNodesNum) {
-    // Do nothing
-  }
-
-  @Override
-  public void initBeforeTest() {
-    logger.debug("=======start init test=======");
-    initEnvironment(1, 1);
+  public KilledByOthersException() {
+    super(MESSAGE, TSStatusCode.QUERY_WAS_KILLED.getStatusCode(), true);
   }
 }

@@ -16,31 +16,27 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.metadata.mtree.traverser.counter;
 
-import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.metadata.mnode.IMNode;
-import org.apache.iotdb.db.metadata.mtree.store.IMTreeStore;
+package org.apache.iotdb.db.mpp.plan.execution.config.sys;
 
-// This class implements the entity count function.
-public class EntityCounter extends CounterTraverser {
+import org.apache.iotdb.db.mpp.plan.execution.config.ConfigTaskResult;
+import org.apache.iotdb.db.mpp.plan.execution.config.IConfigTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.executor.IConfigTaskExecutor;
+import org.apache.iotdb.db.mpp.plan.statement.sys.KillQueryStatement;
 
-  public EntityCounter(IMNode startNode, PartialPath path, IMTreeStore store)
-      throws MetadataException {
-    super(startNode, path, store);
+import com.google.common.util.concurrent.ListenableFuture;
+
+public class KillQueryTask implements IConfigTask {
+
+  private final KillQueryStatement killQueryStatement;
+
+  public KillQueryTask(KillQueryStatement killQueryStatement) {
+    this.killQueryStatement = killQueryStatement;
   }
 
   @Override
-  protected boolean processInternalMatchedMNode(IMNode node, int idx, int level) {
-    return false;
-  }
-
-  @Override
-  protected boolean processFullMatchedMNode(IMNode node, int idx, int level) {
-    if (node.isEntity()) {
-      count++;
-    }
-    return false;
+  public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskExecutor)
+      throws InterruptedException {
+    return configTaskExecutor.killQuery(killQueryStatement);
   }
 }

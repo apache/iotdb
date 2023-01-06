@@ -142,6 +142,7 @@ import org.apache.iotdb.db.mpp.plan.statement.sys.AuthorStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ClearCacheStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ExplainStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.FlushStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.KillQueryStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.LoadConfigurationStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.MergeStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.SetSystemStatusStatement;
@@ -179,6 +180,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 
 import com.google.common.collect.ImmutableSet;
+import org.antlr.v4.runtime.tree.TerminalNode;
 
 import java.io.FileNotFoundException;
 import java.net.URI;
@@ -1923,7 +1925,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   private void parseStorageGroupAttributesClause(
       SetStorageGroupStatement setStorageGroupStatement,
       IoTDBSqlParser.StorageGroupAttributesClauseContext ctx) {
-    if (ctx.storageGroupAttributeClause().size() != 0) {
+    if (!ctx.storageGroupAttributeClause().isEmpty()) {
       throw new RuntimeException(
           "Currently not support set ttl, schemaReplication factor, dataReplication factor, time partition interval to specific database.");
     }
@@ -2500,6 +2502,15 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     return setSystemStatusStatement;
   }
 
+  // Kill Query
+  @Override
+  public Statement visitKillQuery(IoTDBSqlParser.KillQueryContext ctx) {
+    if (ctx.queryId != null) {
+      return new KillQueryStatement(parseStringLiteral(ctx.queryId.getText()));
+    }
+    return new KillQueryStatement();
+  }
+
   // show query processlist
 
   @Override
@@ -2563,6 +2574,16 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       showRegionStatement.setStorageGroups(storageGroups);
     } else {
       showRegionStatement.setStorageGroups(null);
+    }
+
+    if (ctx.ON() != null) {
+      List<Integer> nodeIds = new ArrayList<>();
+      for (TerminalNode nodeid : ctx.INTEGER_LITERAL()) {
+        nodeIds.add(Integer.parseInt(nodeid.getText()));
+      }
+      showRegionStatement.setNodeIds(nodeIds);
+    } else {
+      showRegionStatement.setNodeIds(null);
     }
     return showRegionStatement;
   }
@@ -2709,11 +2730,10 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   private TSDataType parseDataTypeAttribute(IoTDBSqlParser.AttributeClausesContext ctx) {
     TSDataType dataType = null;
     if (ctx.dataType != null) {
-      if (ctx.attributeKey() != null) {
-        if (!parseAttributeKey(ctx.attributeKey())
-            .equalsIgnoreCase(IoTDBConstant.COLUMN_TIMESERIES_DATATYPE)) {
-          throw new SemanticException("expecting datatype");
-        }
+      if (ctx.attributeKey() != null
+          && !parseAttributeKey(ctx.attributeKey())
+              .equalsIgnoreCase(IoTDBConstant.COLUMN_TIMESERIES_DATATYPE)) {
+        throw new SemanticException("expecting datatype");
       }
       String dataTypeString = ctx.dataType.getText().toUpperCase();
       try {

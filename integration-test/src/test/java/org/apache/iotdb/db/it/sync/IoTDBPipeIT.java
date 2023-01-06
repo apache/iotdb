@@ -56,7 +56,7 @@ public class IoTDBPipeIT {
 
   @BeforeClass
   public static void setUp() throws Exception {
-    EnvFactory.getEnv().initBeforeClass();
+    EnvFactory.getEnv().initClusterEnvironment();
     if (EnvFactory.getEnv().getDataNodeWrapperList() != null
         && EnvFactory.getEnv().getDataNodeWrapperList().size() > 0) {
       ip = EnvFactory.getEnv().getDataNodeWrapperList().get(0).getIp();
@@ -69,7 +69,7 @@ public class IoTDBPipeIT {
 
   @AfterClass
   public static void tearDown() throws Exception {
-    EnvFactory.getEnv().cleanAfterClass();
+    EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
   @Test

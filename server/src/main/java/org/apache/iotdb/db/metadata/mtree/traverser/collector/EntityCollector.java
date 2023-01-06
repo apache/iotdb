@@ -30,12 +30,12 @@ public abstract class EntityCollector<T> extends CollectorTraverser<T> {
   private boolean usingTemplate = false;
   private int schemaTemplateId = -1;
 
-  public EntityCollector(IMNode startNode, PartialPath path, IMTreeStore store)
+  protected EntityCollector(IMNode startNode, PartialPath path, IMTreeStore store)
       throws MetadataException {
     super(startNode, path, store);
   }
 
-  public EntityCollector(
+  protected EntityCollector(
       IMNode startNode, PartialPath path, IMTreeStore store, int limit, int offset)
       throws MetadataException {
     super(startNode, path, store, limit, offset);

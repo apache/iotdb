@@ -60,6 +60,7 @@ public class UDTFEqualSizeBucketRandomSample extends UDTFEqualSizeBucketSample {
         break;
       case DOUBLE:
         collector.putDouble(row.getTime(), row.getDouble(0));
+        break;
       default:
         // This will not happen
         throw new UDFInputSeriesDataTypeNotValidException(

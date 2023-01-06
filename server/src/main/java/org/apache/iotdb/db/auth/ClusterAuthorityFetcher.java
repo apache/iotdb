@@ -256,9 +256,9 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
     List<PathPrivilege> pathPrivilegeList = new ArrayList<>();
     user.setName(tPermissionInfoResp.getUserInfo().getUsername());
     user.setPassword(tPermissionInfoResp.getUserInfo().getPassword());
-    for (int i = 0; i < privilegeList.size(); i++) {
+    for (int i = 0; i < privilegeList.size(); i += 2) {
       String path = privilegeList.get(i);
-      String privilege = privilegeList.get(++i);
+      String privilege = privilegeList.get(i + 1);
       pathPrivilegeList.add(toPathPrivilege(path, privilege));
     }
     user.setOpenIdUser(tPermissionInfoResp.getUserInfo().isIsOpenIdUser());
@@ -276,9 +276,9 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
     List<String> privilegeList = tPermissionInfoResp.getRoleInfo().get(roleName).getPrivilegeList();
     List<PathPrivilege> pathPrivilegeList = new ArrayList<>();
     role.setName(tPermissionInfoResp.getRoleInfo().get(roleName).getRoleName());
-    for (int i = 0; i < privilegeList.size(); i++) {
+    for (int i = 0; i < privilegeList.size(); i += 2) {
       String path = privilegeList.get(i);
-      String privilege = privilegeList.get(++i);
+      String privilege = privilegeList.get(i + 1);
       pathPrivilegeList.add(toPathPrivilege(path, privilege));
     }
     role.setPrivilegeList(pathPrivilegeList);

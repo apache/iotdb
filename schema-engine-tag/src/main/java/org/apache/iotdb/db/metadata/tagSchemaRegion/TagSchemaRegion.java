@@ -336,50 +336,6 @@ public class TagSchemaRegion implements ISchemaRegion {
   }
 
   @Override
-  public long getAllTimeseriesCount(
-      PartialPath pathPattern, Map<Integer, Template> templateMap, boolean isPrefixMatch)
-      throws MetadataException {
-    throw new UnsupportedOperationException("getAllTimeseriesCount");
-  }
-
-  @Override
-  public long getAllTimeseriesCount(
-      PartialPath pathPattern, boolean isPrefixMatch, String key, String value, boolean isContains)
-      throws MetadataException {
-    throw new UnsupportedOperationException("getAllTimeseriesCount");
-  }
-
-  @Override
-  public Map<PartialPath, Long> getMeasurementCountGroupByLevel(
-      PartialPath pathPattern, int level, boolean isPrefixMatch) throws MetadataException {
-    throw new UnsupportedOperationException("getMeasurementCountGroupByLevel");
-  }
-
-  @Override
-  public Map<PartialPath, Long> getMeasurementCountGroupByLevel(
-      PartialPath pathPattern,
-      int level,
-      boolean isPrefixMatch,
-      String key,
-      String value,
-      boolean isContains)
-      throws MetadataException {
-    throw new UnsupportedOperationException("getMeasurementCountGroupByLevel");
-  }
-
-  @Override
-  public long getDevicesNum(PartialPath pathPattern, boolean isPrefixMatch)
-      throws MetadataException {
-    synchronized (idTableWithDeviceIDList) {
-      if (pathPattern.getFullPath().length() <= storageGroupFullPath.length()) {
-        return idTableWithDeviceIDList.size();
-      } else {
-        return getDeviceIDsFromInvertedIndex(pathPattern).size();
-      }
-    }
-  }
-
-  @Override
   public List<PartialPath> getNodesListInGivenLevel(
       PartialPath pathPattern, int nodeLevel, boolean isPrefixMatch) throws MetadataException {
     throw new UnsupportedOperationException("getNodesListInGivenLevel");

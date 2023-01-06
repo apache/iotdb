@@ -148,7 +148,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   public static final String MSG_RECONNECTION_FAIL =
       "Fail to connect to any config node. Please check status of ConfigNodes";
 
-  private static final int retryIntervalMs = 1000;
+  private static final int RETRY_INTERVAL_MS = 1000;
 
   private long connectionTimeout = ClientPoolProperty.DefaultProperty.WAIT_CLIENT_TIMEOUT_MS;
 
@@ -226,7 +226,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   private void waitAndReconnect() throws TException {
     try {
       // wait to start the next try
-      Thread.sleep(retryIntervalMs);
+      Thread.sleep(RETRY_INTERVAL_MS);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       throw new TException(
@@ -1037,6 +1037,27 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   @Override
   public TSStatus setDataNodeStatus(TSetDataNodeStatusReq req) throws TException {
     throw new TException("DataNode to ConfigNode client doesn't support setDataNodeStatus.");
+  }
+
+  @Override
+  public TSStatus killQuery(String queryId, int dataNodeId) throws TException {
+    for (int i = 0; i < RETRY_NUM; i++) {
+      try {
+        TSStatus status = client.killQuery(queryId, dataNodeId);
+        if (!updateConfigNodeLeader(status)) {
+          return status;
+        }
+      } catch (TException e) {
+        logger.warn(
+            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            configNode,
+            config.getAddressAndPort(),
+            Thread.currentThread().getStackTrace()[1].getMethodName());
+        configLeader = null;
+      }
+      waitAndReconnect();
+    }
+    throw new TException(MSG_RECONNECTION_FAIL);
   }
 
   @Override

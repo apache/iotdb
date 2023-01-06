@@ -94,10 +94,12 @@ public class AlignedSeriesAggregationScanNode extends SeriesAggregationSourceNod
     return alignedPath;
   }
 
+  @Override
   public Ordering getScanOrder() {
     return scanOrder;
   }
 
+  @Override
   @Nullable
   public Filter getTimeFilter() {
     return timeFilter;
@@ -107,6 +109,7 @@ public class AlignedSeriesAggregationScanNode extends SeriesAggregationSourceNod
     this.timeFilter = timeFilter;
   }
 
+  @Override
   @Nullable
   public GroupByTimeParameter getGroupByTimeParameter() {
     return groupByTimeParameter;

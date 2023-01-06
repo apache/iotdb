@@ -439,7 +439,7 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
   @Override
   public boolean processTakeSnapshot(File snapshotDir) throws TException, IOException {
     return userManager.processTakeSnapshot(snapshotDir)
-        & roleManager.processTakeSnapshot(snapshotDir);
+        && roleManager.processTakeSnapshot(snapshotDir);
   }
 
   @Override

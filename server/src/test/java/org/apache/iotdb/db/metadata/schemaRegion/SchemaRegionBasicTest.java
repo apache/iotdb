@@ -50,6 +50,10 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
+import static org.apache.iotdb.db.metadata.schemaRegion.SchemaRegionTestUtil.getAllTimeseriesCount;
+import static org.apache.iotdb.db.metadata.schemaRegion.SchemaRegionTestUtil.getDevicesNum;
+import static org.apache.iotdb.db.metadata.schemaRegion.SchemaRegionTestUtil.getMeasurementCountGroupByLevel;
+
 /**
  * This class define test cases for {@link ISchemaRegion}. All test cases will be run in both Memory
  * and Schema_File modes. In Schema_File mode, there are three kinds of test environment: full
@@ -328,38 +332,39 @@ public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
 
     // for Non prefix matched path
     Assert.assertEquals(
-        6, schemaRegion.getAllTimeseriesCount(new PartialPath("root.**"), null, false));
+        6, getAllTimeseriesCount(schemaRegion, new PartialPath("root.**"), null, false));
     Assert.assertEquals(
-        6, schemaRegion.getAllTimeseriesCount(new PartialPath("root.laptop.**"), null, false));
+        6, getAllTimeseriesCount(schemaRegion, new PartialPath("root.laptop.**"), null, false));
     Assert.assertEquals(
-        1, schemaRegion.getAllTimeseriesCount(new PartialPath("root.laptop.*"), null, false));
+        1, getAllTimeseriesCount(schemaRegion, new PartialPath("root.laptop.*"), null, false));
     Assert.assertEquals(
-        4, schemaRegion.getAllTimeseriesCount(new PartialPath("root.laptop.*.*"), null, false));
+        4, getAllTimeseriesCount(schemaRegion, new PartialPath("root.laptop.*.*"), null, false));
     Assert.assertEquals(
-        5, schemaRegion.getAllTimeseriesCount(new PartialPath("root.laptop.*.**"), null, false));
+        5, getAllTimeseriesCount(schemaRegion, new PartialPath("root.laptop.*.**"), null, false));
     Assert.assertEquals(
-        1, schemaRegion.getAllTimeseriesCount(new PartialPath("root.laptop.*.*.t1"), null, false));
+        1, getAllTimeseriesCount(schemaRegion, new PartialPath("root.laptop.*.*.t1"), null, false));
     Assert.assertEquals(
-        2, schemaRegion.getAllTimeseriesCount(new PartialPath("root.laptop.*.s1"), null, false));
+        2, getAllTimeseriesCount(schemaRegion, new PartialPath("root.laptop.*.s1"), null, false));
     Assert.assertEquals(
-        3, schemaRegion.getAllTimeseriesCount(new PartialPath("root.laptop.d1.**"), null, false));
+        3, getAllTimeseriesCount(schemaRegion, new PartialPath("root.laptop.d1.**"), null, false));
     Assert.assertEquals(
-        2, schemaRegion.getAllTimeseriesCount(new PartialPath("root.laptop.d1.*"), null, false));
+        2, getAllTimeseriesCount(schemaRegion, new PartialPath("root.laptop.d1.*"), null, false));
     Assert.assertEquals(
-        1, schemaRegion.getAllTimeseriesCount(new PartialPath("root.laptop.d2.s1"), null, false));
+        1, getAllTimeseriesCount(schemaRegion, new PartialPath("root.laptop.d2.s1"), null, false));
     Assert.assertEquals(
-        2, schemaRegion.getAllTimeseriesCount(new PartialPath("root.laptop.d2.**"), null, false));
+        2, getAllTimeseriesCount(schemaRegion, new PartialPath("root.laptop.d2.**"), null, false));
     Assert.assertEquals(
-        0, schemaRegion.getAllTimeseriesCount(new PartialPath("root.laptop"), null, false));
+        0, getAllTimeseriesCount(schemaRegion, new PartialPath("root.laptop"), null, false));
     Assert.assertEquals(
-        0, schemaRegion.getAllTimeseriesCount(new PartialPath("root.laptop.d3.s1"), null, false));
+        0, getAllTimeseriesCount(schemaRegion, new PartialPath("root.laptop.d3.s1"), null, false));
 
     // for prefix matched path
-    Assert.assertEquals(6, schemaRegion.getAllTimeseriesCount(new PartialPath("root"), null, true));
     Assert.assertEquals(
-        6, schemaRegion.getAllTimeseriesCount(new PartialPath("root.laptop"), null, true));
+        6, getAllTimeseriesCount(schemaRegion, new PartialPath("root"), null, true));
     Assert.assertEquals(
-        2, schemaRegion.getAllTimeseriesCount(new PartialPath("root.laptop.d2"), null, true));
+        6, getAllTimeseriesCount(schemaRegion, new PartialPath("root.laptop"), null, true));
+    Assert.assertEquals(
+        2, getAllTimeseriesCount(schemaRegion, new PartialPath("root.laptop.d2"), null, true));
   }
 
   @Test
@@ -380,89 +385,82 @@ public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
     expected.put(new PartialPath("root"), (long) 6);
     Assert.assertEquals(
         expected,
-        schemaRegion.getMeasurementCountGroupByLevel(new PartialPath("root.**"), 0, false));
+        getMeasurementCountGroupByLevel(schemaRegion, new PartialPath("root.**"), 0, false));
     expected.clear();
 
     expected.put(new PartialPath("root.laptop"), (long) 1);
     Assert.assertEquals(
         expected,
-        schemaRegion.getMeasurementCountGroupByLevel(new PartialPath("root.laptop.*"), 1, false));
+        getMeasurementCountGroupByLevel(schemaRegion, new PartialPath("root.laptop.*"), 1, false));
     expected.clear();
 
     expected.put(new PartialPath("root.laptop.d0"), (long) 1);
     Assert.assertEquals(
         expected,
-        schemaRegion.getMeasurementCountGroupByLevel(new PartialPath("root.laptop.d0"), 2, false));
-    expected.clear();
-
-    expected.put(new PartialPath("root.laptop.d1"), (long) 0);
-    Assert.assertEquals(
-        expected,
-        schemaRegion.getMeasurementCountGroupByLevel(new PartialPath("root.laptop.d1"), 2, false));
+        getMeasurementCountGroupByLevel(schemaRegion, new PartialPath("root.laptop.d0"), 2, false));
     expected.clear();
 
     expected.put(new PartialPath("root.laptop.d1"), (long) 2);
     Assert.assertEquals(
         expected,
-        schemaRegion.getMeasurementCountGroupByLevel(
-            new PartialPath("root.laptop.d1.*"), 2, false));
+        getMeasurementCountGroupByLevel(
+            schemaRegion, new PartialPath("root.laptop.d1.*"), 2, false));
     expected.clear();
 
     expected.put(new PartialPath("root.laptop.d1"), (long) 3);
     Assert.assertEquals(
         expected,
-        schemaRegion.getMeasurementCountGroupByLevel(
-            new PartialPath("root.laptop.d1.**"), 2, false));
+        getMeasurementCountGroupByLevel(
+            schemaRegion, new PartialPath("root.laptop.d1.**"), 2, false));
     expected.clear();
 
     expected.put(new PartialPath("root.laptop.d2"), (long) 2);
     Assert.assertEquals(
         expected,
-        schemaRegion.getMeasurementCountGroupByLevel(
-            new PartialPath("root.laptop.d2.*"), 2, false));
+        getMeasurementCountGroupByLevel(
+            schemaRegion, new PartialPath("root.laptop.d2.*"), 2, false));
     expected.clear();
 
     expected.put(new PartialPath("root.laptop"), (long) 2);
     Assert.assertEquals(
         expected,
-        schemaRegion.getMeasurementCountGroupByLevel(
-            new PartialPath("root.laptop.*.s1"), 1, false));
+        getMeasurementCountGroupByLevel(
+            schemaRegion, new PartialPath("root.laptop.*.s1"), 1, false));
     expected.clear();
 
-    expected.put(new PartialPath("root.laptop.d0"), (long) 0);
     expected.put(new PartialPath("root.laptop.d1"), (long) 1);
     expected.put(new PartialPath("root.laptop.d2"), (long) 1);
     Assert.assertEquals(
         expected,
-        schemaRegion.getMeasurementCountGroupByLevel(
-            new PartialPath("root.laptop.*.s1"), 2, false));
+        getMeasurementCountGroupByLevel(
+            schemaRegion, new PartialPath("root.laptop.*.s1"), 2, false));
     expected.clear();
 
     expected.put(new PartialPath("root.laptop"), (long) 1);
     Assert.assertEquals(
         expected,
-        schemaRegion.getMeasurementCountGroupByLevel(
-            new PartialPath("root.laptop.*.s2"), 1, false));
+        getMeasurementCountGroupByLevel(
+            schemaRegion, new PartialPath("root.laptop.*.s2"), 1, false));
     expected.clear();
 
-    expected.put(new PartialPath("root.laptop.d0"), (long) 0);
     expected.put(new PartialPath("root.laptop.d1"), (long) 2);
     expected.put(new PartialPath("root.laptop.d2"), (long) 2);
     Assert.assertEquals(
         expected,
-        schemaRegion.getMeasurementCountGroupByLevel(new PartialPath("root.laptop.*.*"), 2, false));
+        getMeasurementCountGroupByLevel(
+            schemaRegion, new PartialPath("root.laptop.*.*"), 2, false));
     expected.clear();
 
     // for prefix matched path
     expected.put(new PartialPath("root"), (long) 6);
     Assert.assertEquals(
-        expected, schemaRegion.getMeasurementCountGroupByLevel(new PartialPath("root"), 0, true));
+        expected, getMeasurementCountGroupByLevel(schemaRegion, new PartialPath("root"), 0, true));
     expected.clear();
 
     expected.put(new PartialPath("root.laptop.d1"), (long) 3);
     Assert.assertEquals(
         expected,
-        schemaRegion.getMeasurementCountGroupByLevel(new PartialPath("root.laptop.d1"), 2, true));
+        getMeasurementCountGroupByLevel(schemaRegion, new PartialPath("root.laptop.d1"), 2, true));
     expected.clear();
   }
 
@@ -480,22 +478,23 @@ public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
             "root.laptop.d2.s1",
             "root.laptop.d2.s2"));
 
-    Assert.assertEquals(4, schemaRegion.getDevicesNum(new PartialPath("root.**"), false));
-    Assert.assertEquals(1, schemaRegion.getDevicesNum(new PartialPath("root.laptop"), false));
-    Assert.assertEquals(2, schemaRegion.getDevicesNum(new PartialPath("root.laptop.*"), false));
-    Assert.assertEquals(0, schemaRegion.getDevicesNum(new PartialPath("root.laptop.d0"), false));
-    Assert.assertEquals(1, schemaRegion.getDevicesNum(new PartialPath("root.laptop.d1"), false));
-    Assert.assertEquals(1, schemaRegion.getDevicesNum(new PartialPath("root.laptop.d1.s2"), false));
-    Assert.assertEquals(1, schemaRegion.getDevicesNum(new PartialPath("root.laptop.d2"), false));
-    Assert.assertEquals(2, schemaRegion.getDevicesNum(new PartialPath("root.laptop.d*"), false));
-    Assert.assertEquals(2, schemaRegion.getDevicesNum(new PartialPath("root.*.d*"), false));
-    Assert.assertEquals(1, schemaRegion.getDevicesNum(new PartialPath("root.**.s2"), false));
+    Assert.assertEquals(4, getDevicesNum(schemaRegion, new PartialPath("root.**"), false));
+    Assert.assertEquals(1, getDevicesNum(schemaRegion, new PartialPath("root.laptop"), false));
+    Assert.assertEquals(2, getDevicesNum(schemaRegion, new PartialPath("root.laptop.*"), false));
+    Assert.assertEquals(0, getDevicesNum(schemaRegion, new PartialPath("root.laptop.d0"), false));
+    Assert.assertEquals(1, getDevicesNum(schemaRegion, new PartialPath("root.laptop.d1"), false));
+    Assert.assertEquals(
+        1, getDevicesNum(schemaRegion, new PartialPath("root.laptop.d1.s2"), false));
+    Assert.assertEquals(1, getDevicesNum(schemaRegion, new PartialPath("root.laptop.d2"), false));
+    Assert.assertEquals(2, getDevicesNum(schemaRegion, new PartialPath("root.laptop.d*"), false));
+    Assert.assertEquals(2, getDevicesNum(schemaRegion, new PartialPath("root.*.d*"), false));
+    Assert.assertEquals(1, getDevicesNum(schemaRegion, new PartialPath("root.**.s2"), false));
 
     // for prefix matched path
-    Assert.assertEquals(4, schemaRegion.getDevicesNum(new PartialPath("root"), true));
-    Assert.assertEquals(4, schemaRegion.getDevicesNum(new PartialPath("root.laptop"), true));
-    Assert.assertEquals(3, schemaRegion.getDevicesNum(new PartialPath("root.laptop.d*"), true));
-    Assert.assertEquals(1, schemaRegion.getDevicesNum(new PartialPath("root.laptop.d1.*"), true));
+    Assert.assertEquals(4, getDevicesNum(schemaRegion, new PartialPath("root"), true));
+    Assert.assertEquals(4, getDevicesNum(schemaRegion, new PartialPath("root.laptop"), true));
+    Assert.assertEquals(3, getDevicesNum(schemaRegion, new PartialPath("root.laptop.d*"), true));
+    Assert.assertEquals(1, getDevicesNum(schemaRegion, new PartialPath("root.laptop.d1.*"), true));
   }
 
   @Test

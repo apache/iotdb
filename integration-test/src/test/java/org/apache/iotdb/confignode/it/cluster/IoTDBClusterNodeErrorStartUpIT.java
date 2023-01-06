@@ -34,13 +34,13 @@ import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRestartReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRestartResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
 import org.apache.iotdb.consensus.ConsensusFactory;
-import org.apache.iotdb.it.env.ConfigFactory;
-import org.apache.iotdb.it.env.ConfigNodeWrapper;
-import org.apache.iotdb.it.env.DataNodeWrapper;
 import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.it.env.cluster.ConfigNodeWrapper;
+import org.apache.iotdb.it.env.cluster.DataNodeWrapper;
+import org.apache.iotdb.it.env.cluster.MppBaseConfig;
+import org.apache.iotdb.it.env.cluster.MppCommonConfig;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
-import org.apache.iotdb.itbase.env.BaseConfig;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.thrift.TException;
@@ -64,13 +64,10 @@ public class IoTDBClusterNodeErrorStartUpIT {
 
   private static final Logger logger =
       LoggerFactory.getLogger(IoTDBClusterNodeErrorStartUpIT.class);
-  private static final BaseConfig CONF = ConfigFactory.getConfig();
 
   private static final int testConfigNodeNum = 3;
   private static final int testDataNodeNum = 1;
   private static final int testNodeNum = testConfigNodeNum + testDataNodeNum;
-
-  protected static String originalConfigNodeConsensusProtocolClass;
   private static final String testConsensusProtocolClass = ConsensusFactory.RATIS_CONSENSUS;
 
   private static final String TEST_CLUSTER_NAME = "defaultCluster";
@@ -79,8 +76,10 @@ public class IoTDBClusterNodeErrorStartUpIT {
 
   @Before
   public void setUp() throws Exception {
-    originalConfigNodeConsensusProtocolClass = CONF.getConfigNodeConsensusProtocolClass();
-    CONF.setConfigNodeConsesusProtocolClass(testConsensusProtocolClass);
+    EnvFactory.getEnv()
+        .getConfig()
+        .getCommonConfig()
+        .setConfigNodeConsensusProtocolClass(testConsensusProtocolClass);
 
     // Init 3C1D environment
     EnvFactory.getEnv().initClusterEnvironment(testConfigNodeNum, testDataNodeNum);
@@ -88,8 +87,7 @@ public class IoTDBClusterNodeErrorStartUpIT {
 
   @After
   public void tearDown() {
-    EnvFactory.getEnv().cleanAfterClass();
-    CONF.setConfigNodeConsesusProtocolClass(originalConfigNodeConsensusProtocolClass);
+    EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
   @Test
@@ -102,8 +100,7 @@ public class IoTDBClusterNodeErrorStartUpIT {
         (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
       /* Register with error cluster name */
       TConfigNodeRegisterReq configNodeRegisterReq =
-          ConfigNodeTestUtils.generateTConfigNodeRegisterReq(configNodeWrapper);
-      configNodeRegisterReq.getClusterParameters().setClusterName(ERROR_CLUSTER_NAME);
+          ConfigNodeTestUtils.generateTConfigNodeRegisterReq(ERROR_CLUSTER_NAME, configNodeWrapper);
       configNodeRegisterReq
           .getClusterParameters()
           .setConfigNodeConsensusProtocolClass(testConsensusProtocolClass);
@@ -116,8 +113,7 @@ public class IoTDBClusterNodeErrorStartUpIT {
           configNodeRegisterResp.getStatus().getMessage().contains("cluster are inconsistent"));
 
       TDataNodeRegisterReq dataNodeRegisterReq =
-          ConfigNodeTestUtils.generateTDataNodeRegisterReq(dataNodeWrapper);
-      dataNodeRegisterReq.setClusterName(ERROR_CLUSTER_NAME);
+          ConfigNodeTestUtils.generateTDataNodeRegisterReq(ERROR_CLUSTER_NAME, dataNodeWrapper);
       TDataNodeRegisterResp dataNodeRegisterResp = client.registerDataNode(dataNodeRegisterReq);
       Assert.assertEquals(
           TSStatusCode.REJECT_NODE_START.getStatusCode(),
@@ -137,13 +133,16 @@ public class IoTDBClusterNodeErrorStartUpIT {
         EnvFactory.getEnv().generateRandomConfigNodeWrapper();
     conflictConfigNodeWrapper.setConsensusPort(
         EnvFactory.getEnv().getConfigNodeWrapper(1).getConsensusPort());
-    conflictConfigNodeWrapper.changeConfig(ConfigFactory.getConfig().getConfignodeProperties());
+    conflictConfigNodeWrapper.changeConfig(
+        (MppBaseConfig) EnvFactory.getEnv().getConfig().getConfigNodeConfig(),
+        (MppCommonConfig) EnvFactory.getEnv().getConfig().getConfigNodeCommonConfig());
 
     // The registration request should be rejected since there exists conflict port
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
       TConfigNodeRegisterReq req =
-          ConfigNodeTestUtils.generateTConfigNodeRegisterReq(conflictConfigNodeWrapper);
+          ConfigNodeTestUtils.generateTConfigNodeRegisterReq(
+              TEST_CLUSTER_NAME, conflictConfigNodeWrapper);
       req.getClusterParameters().setConfigNodeConsensusProtocolClass(testConsensusProtocolClass);
       TConfigNodeRegisterResp resp = client.registerConfigNode(req);
       Assert.assertEquals(
@@ -164,13 +163,16 @@ public class IoTDBClusterNodeErrorStartUpIT {
     DataNodeWrapper conflictDataNodeWrapper = EnvFactory.getEnv().generateRandomDataNodeWrapper();
     conflictDataNodeWrapper.setInternalPort(
         EnvFactory.getEnv().getDataNodeWrapper(0).getInternalPort());
-    conflictDataNodeWrapper.changeConfig(ConfigFactory.getConfig().getEngineProperties());
+    conflictDataNodeWrapper.changeConfig(
+        (MppBaseConfig) EnvFactory.getEnv().getConfig().getDataNodeConfig(),
+        (MppCommonConfig) EnvFactory.getEnv().getConfig().getDataNodeCommonConfig());
 
     // The registration request should be rejected since there exists conflict port
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
       TDataNodeRegisterReq req =
-          ConfigNodeTestUtils.generateTDataNodeRegisterReq(conflictDataNodeWrapper);
+          ConfigNodeTestUtils.generateTDataNodeRegisterReq(
+              TEST_CLUSTER_NAME, conflictDataNodeWrapper);
       TDataNodeRegisterResp resp = client.registerDataNode(req);
       Assert.assertEquals(
           TSStatusCode.REJECT_NODE_START.getStatusCode(), resp.getStatus().getCode());

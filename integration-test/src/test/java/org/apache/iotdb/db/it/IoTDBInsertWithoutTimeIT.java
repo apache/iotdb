@@ -53,13 +53,13 @@ public class IoTDBInsertWithoutTimeIT {
 
   @Before
   public void setUp() throws Exception {
-    EnvFactory.getEnv().initBeforeTest();
+    EnvFactory.getEnv().initClusterEnvironment();
     createTimeseries();
   }
 
   @After
   public void tearDown() throws Exception {
-    EnvFactory.getEnv().cleanAfterTest();
+    EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
   private void createTimeseries() {

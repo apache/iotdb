@@ -16,42 +16,35 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.it.env.cluster;
 
-package org.apache.iotdb.metrics.reporter.iotdb;
+import org.apache.iotdb.itbase.env.DataNodeConfig;
 
-import org.apache.iotdb.metrics.utils.InternalReporterType;
-import org.apache.iotdb.metrics.utils.ReporterType;
+import java.io.IOException;
 
-import java.util.Map;
+public class MppDataNodeConfig extends MppBaseConfig implements DataNodeConfig {
 
-public class MemoryInternalIoTDBReporter extends InternalIoTDBReporter {
-  @Override
-  public InternalReporterType getType() {
-    return InternalReporterType.MEMORY;
+  public MppDataNodeConfig() {
+    super();
+  }
+
+  public MppDataNodeConfig(String filePath) throws IOException {
+    super(filePath);
   }
 
   @Override
-  protected void writeMetricToIoTDB(Map<String, Object> valueMap, String prefix, long time) {
-    // do nothing
+  public MppBaseConfig emptyClone() {
+    return new MppDataNodeConfig();
   }
 
   @Override
-  protected void writeMetricsToIoTDB(Map<String, Map<String, Object>> valueMap, long time) {
-    // do nothing
-  }
-
-  @Override
-  public boolean start() {
-    return true;
-  }
-
-  @Override
-  public boolean stop() {
-    return true;
-  }
-
-  @Override
-  public ReporterType getReporterType() {
-    return ReporterType.IOTDB;
+  public void updateProperties(MppBaseConfig persistentConfig) {
+    if (persistentConfig instanceof MppDataNodeConfig) {
+      super.updateProperties(persistentConfig);
+    } else {
+      throw new UnsupportedOperationException(
+          "MppDataNodeConfig can't be override by an instance of "
+              + persistentConfig.getClass().getCanonicalName());
+    }
   }
 }

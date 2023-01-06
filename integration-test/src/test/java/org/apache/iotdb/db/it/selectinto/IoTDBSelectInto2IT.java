@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.it.selectinto;
 
-import org.apache.iotdb.it.env.ConfigFactory;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
@@ -38,23 +37,18 @@ public class IoTDBSelectInto2IT extends IoTDBSelectIntoIT {
 
   @BeforeClass
   public static void setUp() throws Exception {
-    selectIntoInsertTabletPlanRowLimit =
-        ConfigFactory.getConfig().getSelectIntoInsertTabletPlanRowLimit();
-    numOfPointsPerPage = ConfigFactory.getConfig().getMaxNumberOfPointsInPage();
-    queryThreadCount = ConfigFactory.getConfig().getQueryThreadCount();
-    ConfigFactory.getConfig().setSelectIntoInsertTabletPlanRowLimit(8);
-    ConfigFactory.getConfig().setMaxNumberOfPointsInPage(5);
-    ConfigFactory.getConfig().setQueryThreadCount(1);
-    EnvFactory.getEnv().initBeforeClass();
+    EnvFactory.getEnv()
+        .getConfig()
+        .getCommonConfig()
+        .setSelectIntoInsertTabletPlanRowLimit(8)
+        .setMaxNumberOfPointsInPage(5)
+        .setQueryThreadCount(1);
+    EnvFactory.getEnv().initClusterEnvironment();
     prepareData(SQLs);
   }
 
   @AfterClass
   public static void tearDown() throws Exception {
-    EnvFactory.getEnv().cleanAfterClass();
-    ConfigFactory.getConfig()
-        .setSelectIntoInsertTabletPlanRowLimit(selectIntoInsertTabletPlanRowLimit);
-    ConfigFactory.getConfig().setMaxNumberOfPointsInPage(numOfPointsPerPage);
-    ConfigFactory.getConfig().setQueryThreadCount(queryThreadCount);
+    EnvFactory.getEnv().cleanClusterEnvironment();
   }
 }

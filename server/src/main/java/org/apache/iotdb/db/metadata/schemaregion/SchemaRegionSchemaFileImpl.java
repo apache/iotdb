@@ -109,7 +109,6 @@ import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARA
  *   <li>Interfaces for auto create device
  *   <li>Interfaces for metadata info Query
  *       <ol>
- *         <li>Interfaces for metadata count
  *         <li>Interfaces for level Node info Query
  *         <li>Interfaces for Entity/Device info Query
  *         <li>Interfaces for timeseries, measurement and schema info Query
@@ -522,8 +521,7 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public void createTimeseries(ICreateTimeSeriesPlan plan, long offset) throws MetadataException {
     if (!memoryStatistics.isAllowToCreateNewSeries()) {
-      logger.error(
-          String.format("Series overflow when creating: [%s]", plan.getPath().getFullPath()));
+      logger.error("Series overflow when creating: [{}]", plan.getPath().getFullPath());
       throw new SeriesOverflowException();
     }
 
@@ -940,62 +938,6 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
   // endregion
 
   // region Interfaces for metadata info Query
-
-  // region Interfaces for metadata count
-
-  @Override
-  public long getAllTimeseriesCount(
-      PartialPath pathPattern, Map<Integer, Template> templateMap, boolean isPrefixMatch)
-      throws MetadataException {
-    return mtree.getAllTimeseriesCount(pathPattern, templateMap, isPrefixMatch);
-  }
-
-  @Override
-  public long getAllTimeseriesCount(
-      PartialPath pathPattern, boolean isPrefixMatch, String key, String value, boolean isContains)
-      throws MetadataException {
-    return mtree.getAllTimeseriesCount(
-        pathPattern,
-        isPrefixMatch,
-        tagManager.getMatchedTimeseriesInIndex(key, value, isContains),
-        true);
-  }
-
-  /**
-   * To calculate the count of devices for given path pattern. If using prefix match, the path
-   * pattern is used to match prefix path. All timeseries start with the matched prefix path will be
-   * counted.
-   */
-  @Override
-  public long getDevicesNum(PartialPath pathPattern, boolean isPrefixMatch)
-      throws MetadataException {
-    return mtree.getDevicesNum(pathPattern, isPrefixMatch);
-  }
-
-  @Override
-  public Map<PartialPath, Long> getMeasurementCountGroupByLevel(
-      PartialPath pathPattern, int level, boolean isPrefixMatch) throws MetadataException {
-    return mtree.getMeasurementCountGroupByLevel(pathPattern, level, isPrefixMatch);
-  }
-
-  @Override
-  public Map<PartialPath, Long> getMeasurementCountGroupByLevel(
-      PartialPath pathPattern,
-      int level,
-      boolean isPrefixMatch,
-      String key,
-      String value,
-      boolean isContains)
-      throws MetadataException {
-    return mtree.getMeasurementCountGroupByLevel(
-        pathPattern,
-        level,
-        isPrefixMatch,
-        tagManager.getMatchedTimeseriesInIndex(key, value, isContains),
-        true);
-  }
-
-  // endregion
 
   // region Interfaces for level Node info Query
   @Override

@@ -84,7 +84,7 @@ public class TimeSeriesMetadataCache {
   private TimeSeriesMetadataCache() {
     if (CACHE_ENABLE) {
       logger.info(
-          "TimeseriesMetadataCache size = " + MEMORY_THRESHOLD_IN_TIME_SERIES_METADATA_CACHE);
+          "TimeseriesMetadataCache size = {}", MEMORY_THRESHOLD_IN_TIME_SERIES_METADATA_CACHE);
     }
     lruCache =
         Caffeine.newBuilder()

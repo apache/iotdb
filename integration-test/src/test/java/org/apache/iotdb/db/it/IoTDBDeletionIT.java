@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.it;
 
-import org.apache.iotdb.it.env.ConfigFactory;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
@@ -61,26 +60,24 @@ public class IoTDBDeletionIT {
   private String insertTemplate =
       "INSERT INTO root.vehicle.d0(timestamp,s0,s1,s2,s3,s4" + ") VALUES(%d,%d,%d,%f,%s,%b)";
   private String deleteAllTemplate = "DELETE FROM root.vehicle.d0.* WHERE time <= 10000";
-  private long prevPartitionInterval;
-  private long size;
 
   @Before
   public void setUp() throws Exception {
     Locale.setDefault(Locale.ENGLISH);
-    prevPartitionInterval = ConfigFactory.getConfig().getPartitionInterval();
-    ConfigFactory.getConfig().setPartitionInterval(1000);
-    size = ConfigFactory.getConfig().getMemtableSizeThreshold();
+
+    EnvFactory.getEnv()
+        .getConfig()
+        .getCommonConfig()
+        .setPartitionInterval(1000)
+        .setMemtableSizeThreshold(10000);
     // Adjust memstable threshold size to make it flush automatically
-    ConfigFactory.getConfig().setMemtableSizeThreshold(10000);
-    EnvFactory.getEnv().initBeforeTest();
+    EnvFactory.getEnv().initClusterEnvironment();
     prepareSeries();
   }
 
   @After
   public void tearDown() throws Exception {
-    EnvFactory.getEnv().cleanAfterTest();
-    ConfigFactory.getConfig().setPartitionInterval(prevPartitionInterval);
-    ConfigFactory.getConfig().setMemtableSizeThreshold(size);
+    EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
   /**

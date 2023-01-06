@@ -74,6 +74,8 @@ import java.util.Set;
  *   <li>Interfaces for alias and tag/attribute operations
  *   <li>TestOnly Interfaces
  * </ol>
+ *
+ * @deprecated
  */
 @SuppressWarnings("java:S1135") // ignore todos
 // Now it's only used for test and isn't able to recover after restarting
