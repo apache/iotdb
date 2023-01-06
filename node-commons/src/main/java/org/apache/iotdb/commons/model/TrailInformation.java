@@ -19,8 +19,12 @@
 
 package org.apache.iotdb.commons.model;
 
+import java.nio.ByteBuffer;
+
 public abstract class TrailInformation {
 
   private String trailId;
   private TrailState trailState;
+
+  public abstract ByteBuffer serializeShowTrailResult();
 }

@@ -68,7 +68,12 @@ public class CreateModelProcedure extends AbstractNodeProcedure<CreateModelState
 
           ModelInfo modelInfo = env.getConfigManager().getModelManager().getModelInfo();
           modelInfo.acquireModelTableLock();
-          modelInfo.validate(modelInformation);
+          String modelId = modelInformation.getModelId();
+          if (modelInfo.isModelExist(modelId)) {
+            throw new ModelManagementException(
+                String.format(
+                    "Failed to create model [%s], the same name model has been created", modelId));
+          }
           setNextState(CreateModelState.VALIDATED);
           break;
 

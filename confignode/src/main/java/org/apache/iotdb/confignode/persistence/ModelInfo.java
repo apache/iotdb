@@ -21,7 +21,8 @@ package org.apache.iotdb.confignode.persistence;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.model.ModelInformation;
-import org.apache.iotdb.commons.model.exception.ModelManagementException;
+import org.apache.iotdb.commons.model.ModelTable;
+import org.apache.iotdb.commons.model.TrailInformation;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.confignode.consensus.request.read.model.ShowModelPlan;
 import org.apache.iotdb.confignode.consensus.request.read.model.ShowTrailPlan;
@@ -30,7 +31,7 @@ import org.apache.iotdb.confignode.consensus.request.write.model.DropModelPlan;
 import org.apache.iotdb.confignode.consensus.request.write.model.UpdateModelInfoPlan;
 import org.apache.iotdb.confignode.consensus.response.ModelTableResp;
 import org.apache.iotdb.confignode.consensus.response.TrailTableResp;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
@@ -42,9 +43,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.Collections;
 import java.util.concurrent.locks.ReentrantLock;
 
 @ThreadSafe
@@ -54,12 +53,12 @@ public class ModelInfo implements SnapshotProcessor {
 
   private static final String SNAPSHOT_FILENAME = "model_info.snapshot";
 
-  private final Map<String, ModelInformation> modelInfoMap;
+  private ModelTable modelTable;
 
   private final ReentrantLock modelTableLock = new ReentrantLock();
 
   public ModelInfo() {
-    this.modelInfoMap = new HashMap<>();
+    this.modelTable = new ModelTable();
   }
 
   public void acquireModelTableLock() {
@@ -73,23 +72,82 @@ public class ModelInfo implements SnapshotProcessor {
   }
 
   public TSStatus createModel(CreateModelPlan plan) {
-    return null;
-  }
-
-  public ModelTableResp showModel(ShowModelPlan plan) {
-    return null;
-  }
-
-  public TrailTableResp showTrail(ShowTrailPlan plan) {
-    return null;
-  }
-
-  public TSStatus updateModelInfo(UpdateModelInfoPlan plan) {
+    try {
+      ModelInformation modelInformation = plan.getModelInformation();
+      modelTable.addModel(modelInformation);
+    } catch (Exception e) {
+      final String errorMessage =
+          String.format(
+              "Failed to add model [%s] in ModelTable on Config Nodes, because of %s",
+              plan.getModelInformation().getModelId(), e);
+      LOGGER.warn(errorMessage, e);
+      return new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
+          .setMessage(errorMessage);
+    }
     return null;
   }
 
   public TSStatus dropModel(DropModelPlan plan) {
-    return null;
+    String modelId = plan.getModelId();
+    if (modelTable.containsModel(modelId)) {
+      modelTable.removeModel(modelId);
+    }
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+  }
+
+  public ModelTableResp showModel(ShowModelPlan plan) {
+    acquireModelTableLock();
+    try {
+      if (plan.isSetModelId()) {
+        ModelInformation modelInformation = modelTable.getModelInformationById(plan.getModelId());
+        return new ModelTableResp(
+            new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()),
+            modelInformation != null
+                ? Collections.singletonList(modelInformation)
+                : Collections.emptyList());
+      } else {
+        return new ModelTableResp(
+            new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()),
+            modelTable.getAllModelInformation());
+      }
+    } finally {
+      releaseModelTableLock();
+    }
+  }
+
+  public TrailTableResp showTrail(ShowTrailPlan plan) {
+    acquireModelTableLock();
+    try {
+      ModelInformation modelInformation = modelTable.getModelInformationById(plan.getModelId());
+      if (plan.isSetTrailId()) {
+        TrailInformation trailInformation =
+            modelInformation.getTrailInformationById(plan.getTrailId());
+        return new TrailTableResp(
+            new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()),
+            trailInformation != null
+                ? Collections.singletonList(trailInformation)
+                : Collections.emptyList());
+      } else {
+        return new TrailTableResp(
+            new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()),
+            modelInformation.getAllTrailInformation());
+      }
+    } finally {
+      releaseModelTableLock();
+    }
+  }
+
+  public TSStatus updateModelInfo(UpdateModelInfoPlan plan) {
+    acquireModelTableLock();
+    try {
+      String modelId = plan.getModelId();
+      if (modelTable.containsModel(modelId)) {
+        modelTable.updateModel(modelId, plan.getModelInfo());
+      }
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    } finally {
+      releaseModelTableLock();
+    }
   }
 
   @Override
@@ -104,18 +162,10 @@ public class ModelInfo implements SnapshotProcessor {
 
     acquireModelTableLock();
     try (FileOutputStream fileOutputStream = new FileOutputStream(snapshotFile)) {
-
-      serialize(fileOutputStream);
+      modelTable.serialize(fileOutputStream);
       return true;
     } finally {
       releaseModelTableLock();
-    }
-  }
-
-  private void serialize(FileOutputStream stream) throws IOException {
-    ReadWriteIOUtils.write(modelInfoMap.size(), stream);
-    for (ModelInformation entry : modelInfoMap.values()) {
-      entry.serialize(stream);
     }
   }
 
@@ -130,42 +180,14 @@ public class ModelInfo implements SnapshotProcessor {
     }
     acquireModelTableLock();
     try (FileInputStream fileInputStream = new FileInputStream(snapshotFile)) {
-
-      clear();
-
-      deserialize(fileInputStream);
-
+      modelTable.clear();
+      modelTable = ModelTable.deserialize(fileInputStream);
     } finally {
       releaseModelTableLock();
     }
   }
 
-  private void clear() {
-    modelInfoMap.clear();
-  }
-
-  private void deserialize(InputStream stream) throws IOException {
-    int size = ReadWriteIOUtils.readInt(stream);
-    for (int i = 0; i < size; i++) {
-      ModelInformation modelEntry = ModelInformation.deserialize(stream);
-      modelInfoMap.put(modelEntry.getModelId(), modelEntry);
-    }
-  }
-
-  public void validate(ModelInformation modelInformation) {
-    String modelId = modelInformation.getModelId();
-    if (modelInfoMap.containsKey(modelId)) {
-      throw new ModelManagementException(
-          String.format(
-              "Failed to create model [%s], the same name model has been created", modelId));
-    }
-  }
-
-  public void validate(String modelId) {
-    if (modelInfoMap.containsKey(modelId)) {
-      return;
-    }
-    throw new ModelManagementException(
-        String.format("Failed to drop model [%s], this model has not been created", modelId));
+  public boolean isModelExist(String modelId) {
+    return modelTable.containsModel(modelId);
   }
 }

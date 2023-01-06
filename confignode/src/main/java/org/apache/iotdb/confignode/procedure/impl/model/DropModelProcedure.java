@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.confignode.procedure.impl.model;
 
+import org.apache.iotdb.commons.model.exception.ModelManagementException;
 import org.apache.iotdb.confignode.consensus.request.write.model.DropModelPlan;
 import org.apache.iotdb.confignode.consensus.request.write.model.UpdateModelInfoPlan;
 import org.apache.iotdb.confignode.persistence.ModelInfo;
@@ -65,7 +66,11 @@ public class DropModelProcedure extends AbstractNodeProcedure<DropModelState> {
 
           ModelInfo modelInfo = env.getConfigManager().getModelManager().getModelInfo();
           modelInfo.acquireModelTableLock();
-          modelInfo.validate(modelId);
+          if (!modelInfo.isModelExist(modelId)) {
+            throw new ModelManagementException(
+                String.format(
+                    "Failed to drop model [%s], this model has not been created", modelId));
+          }
 
           env.getConfigManager()
               .getConsensusManager()

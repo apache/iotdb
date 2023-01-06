@@ -683,14 +683,9 @@ struct TShowModelReq {
   1: optional string modelId
 }
 
-struct TModelInfo {
-  1: required string modelId
-  2: required map<string, string> modelInfo
-}
-
 struct TShowModelResp {
   1: required common.TSStatus status
-  2: required list<TModelInfo> modelInfoList
+  2: required list<binary> modelInfoList
 }
 
 struct TShowTrailReq {
@@ -698,15 +693,9 @@ struct TShowTrailReq {
   2: optional string trailId
 }
 
-struct TTrailInfo {
-  1: required string modelId
-  2: required string trailId
-  3: required map<string, string> trailInfo
-}
-
 struct TShowTrailResp {
   1: required common.TSStatus status
-  2: required list<TTrailInfo> trailInfoList
+  2: required list<binary> trailInfoList
 }
 
 struct TUpdateModelInfoReq {

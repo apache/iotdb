@@ -19,10 +19,10 @@
 
 package org.apache.iotdb.confignode.consensus.request.read.model;
 
-import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.confignode.rpc.thrift.TShowModelReq;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -31,7 +31,7 @@ import java.util.Objects;
 
 public class ShowModelPlan extends ConfigPhysicalPlan {
 
-  private TShowModelReq showModelReq;
+  private String modelId;
 
   public ShowModelPlan() {
     super(ConfigPhysicalPlanType.ShowModel);
@@ -39,18 +39,32 @@ public class ShowModelPlan extends ConfigPhysicalPlan {
 
   public ShowModelPlan(TShowModelReq showModelReq) {
     super(ConfigPhysicalPlanType.ShowModel);
-    this.showModelReq = showModelReq;
+    if (showModelReq.isSetModelId()) {
+      this.modelId = showModelReq.getModelId();
+    }
+  }
+
+  public boolean isSetModelId() {
+    return modelId != null;
+  }
+
+  public String getModelId() {
+    return modelId;
   }
 
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
     stream.writeShort(getType().getPlanType());
-    ThriftCommonsSerDeUtils.serializeTShowModelReq(showModelReq, stream);
+    ReadWriteIOUtils.write(modelId != null, stream);
+    ReadWriteIOUtils.write(modelId, stream);
   }
 
   @Override
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
-    showModelReq = ThriftCommonsSerDeUtils.deserializeTShowModelReq(buffer);
+    boolean isSetModelId = ReadWriteIOUtils.readBool(buffer);
+    if (isSetModelId) {
+      this.modelId = ReadWriteIOUtils.readString(buffer);
+    }
   }
 
   @Override
@@ -65,11 +79,11 @@ public class ShowModelPlan extends ConfigPhysicalPlan {
       return false;
     }
     ShowModelPlan that = (ShowModelPlan) o;
-    return Objects.equals(showModelReq, that.showModelReq);
+    return Objects.equals(modelId, that.modelId);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), showModelReq);
+    return Objects.hash(super.hashCode(), modelId);
   }
 }

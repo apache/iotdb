@@ -19,19 +19,21 @@
 
 package org.apache.iotdb.confignode.consensus.request.write.model;
 
-import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.confignode.rpc.thrift.TUpdateModelInfoReq;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Map;
 import java.util.Objects;
 
 public class UpdateModelInfoPlan extends ConfigPhysicalPlan {
 
-  private TUpdateModelInfoReq updateModelInfoReq;
+  private String modelId;
+  private Map<String, String> modelInfo;
 
   public UpdateModelInfoPlan() {
     super(ConfigPhysicalPlanType.UpdateModelInfo);
@@ -39,18 +41,29 @@ public class UpdateModelInfoPlan extends ConfigPhysicalPlan {
 
   public UpdateModelInfoPlan(TUpdateModelInfoReq updateModelInfoReq) {
     super(ConfigPhysicalPlanType.UpdateModelInfo);
-    this.updateModelInfoReq = updateModelInfoReq;
+    this.modelId = updateModelInfoReq.getModelId();
+    this.modelInfo = updateModelInfoReq.getModelInfo();
+  }
+
+  public String getModelId() {
+    return modelId;
+  }
+
+  public Map<String, String> getModelInfo() {
+    return modelInfo;
   }
 
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
     stream.writeShort(getType().getPlanType());
-    ThriftCommonsSerDeUtils.serializeTUpdateModelInfoReq(updateModelInfoReq, stream);
+    ReadWriteIOUtils.write(modelId, stream);
+    ReadWriteIOUtils.write(modelInfo, stream);
   }
 
   @Override
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
-    updateModelInfoReq = ThriftCommonsSerDeUtils.deserializeTUpdateModelInfoReq(buffer);
+    this.modelId = ReadWriteIOUtils.readString(buffer);
+    this.modelInfo = ReadWriteIOUtils.readMap(buffer);
   }
 
   @Override
@@ -65,11 +78,11 @@ public class UpdateModelInfoPlan extends ConfigPhysicalPlan {
       return false;
     }
     UpdateModelInfoPlan that = (UpdateModelInfoPlan) o;
-    return Objects.equals(updateModelInfoReq, that.updateModelInfoReq);
+    return modelId.equals(that.modelId) && modelInfo.equals(that.modelInfo);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), updateModelInfoReq);
+    return Objects.hash(super.hashCode(), modelId, modelInfo);
   }
 }

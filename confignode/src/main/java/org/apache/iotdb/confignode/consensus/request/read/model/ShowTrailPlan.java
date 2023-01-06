@@ -19,10 +19,10 @@
 
 package org.apache.iotdb.confignode.consensus.request.read.model;
 
-import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTrailReq;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -31,7 +31,8 @@ import java.util.Objects;
 
 public class ShowTrailPlan extends ConfigPhysicalPlan {
 
-  private TShowTrailReq showTrailReq;
+  private String modelId;
+  private String trailId;
 
   public ShowTrailPlan() {
     super(ConfigPhysicalPlanType.ShowTrail);
@@ -39,18 +40,39 @@ public class ShowTrailPlan extends ConfigPhysicalPlan {
 
   public ShowTrailPlan(TShowTrailReq showTrailReq) {
     super(ConfigPhysicalPlanType.ShowTrail);
-    this.showTrailReq = showTrailReq;
+    this.modelId = showTrailReq.getModelId();
+    if (showTrailReq.isSetTrailId()) {
+      this.trailId = showTrailReq.getTrailId();
+    }
+  }
+
+  public String getModelId() {
+    return modelId;
+  }
+
+  public boolean isSetTrailId() {
+    return trailId != null;
+  }
+
+  public String getTrailId() {
+    return trailId;
   }
 
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
     stream.writeShort(getType().getPlanType());
-    ThriftCommonsSerDeUtils.serializeTShowTrailReq(showTrailReq, stream);
+    ReadWriteIOUtils.write(modelId, stream);
+    ReadWriteIOUtils.write(trailId != null, stream);
+    ReadWriteIOUtils.write(trailId, stream);
   }
 
   @Override
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
-    showTrailReq = ThriftCommonsSerDeUtils.deserializeTShowTrailReq(buffer);
+    this.modelId = ReadWriteIOUtils.readString(buffer);
+    boolean isSetTrailId = ReadWriteIOUtils.readBool(buffer);
+    if (isSetTrailId) {
+      this.trailId = ReadWriteIOUtils.readString(buffer);
+    }
   }
 
   @Override
@@ -65,11 +87,11 @@ public class ShowTrailPlan extends ConfigPhysicalPlan {
       return false;
     }
     ShowTrailPlan that = (ShowTrailPlan) o;
-    return Objects.equals(showTrailReq, that.showTrailReq);
+    return modelId.equals(that.modelId) && Objects.equals(trailId, that.trailId);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), showTrailReq);
+    return Objects.hash(super.hashCode(), modelId, trailId);
   }
 }

@@ -41,6 +41,10 @@ public class CreateModelPlan extends ConfigPhysicalPlan {
     this.modelInformation = modelInformation;
   }
 
+  public ModelInformation getModelInformation() {
+    return modelInformation;
+  }
+
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
     stream.writeShort(getType().getPlanType());

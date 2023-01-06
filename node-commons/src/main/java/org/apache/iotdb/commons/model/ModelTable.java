@@ -19,4 +19,68 @@
 
 package org.apache.iotdb.commons.model;
 
-public class ModelTable {}
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+
+public class ModelTable {
+
+  private final Map<String, ModelInformation> modelInfoMap;
+
+  public ModelTable() {
+    this.modelInfoMap = new ConcurrentHashMap<>();
+  }
+
+  public boolean containsModel(String modelId) {
+    return modelInfoMap.containsKey(modelId);
+  }
+
+  public void addModel(ModelInformation modelInformation) {
+    modelInfoMap.put(modelInformation.getModelId(), modelInformation);
+  }
+
+  public void removeModel(String modelId) {
+    modelInfoMap.remove(modelId);
+  }
+
+  public List<ModelInformation> getAllModelInformation() {
+    return new ArrayList<>(modelInfoMap.values());
+  }
+
+  public ModelInformation getModelInformationById(String modelId) {
+    if (modelInfoMap.containsKey(modelId)) {
+      modelInfoMap.get(modelId);
+    }
+    return null;
+  }
+
+  public void updateModel(String modelId, Map<String, String> modelInfo) {
+    modelInfoMap.get(modelId).update(modelInfo);
+  }
+
+  public void clear() {
+    modelInfoMap.clear();
+  }
+
+  public void serialize(FileOutputStream stream) throws IOException {
+    ReadWriteIOUtils.write(modelInfoMap.size(), stream);
+    for (ModelInformation entry : modelInfoMap.values()) {
+      entry.serialize(stream);
+    }
+  }
+
+  public static ModelTable deserialize(InputStream stream) throws IOException {
+    ModelTable modelTable = new ModelTable();
+    int size = ReadWriteIOUtils.readInt(stream);
+    for (int i = 0; i < size; i++) {
+      modelTable.addModel(ModelInformation.deserialize(stream));
+    }
+    return modelTable;
+  }
+}

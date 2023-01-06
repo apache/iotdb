@@ -19,13 +19,30 @@
 
 package org.apache.iotdb.confignode.consensus.response;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.model.TrailInformation;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTrailResp;
 import org.apache.iotdb.consensus.common.DataSet;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.List;
 
 public class TrailTableResp implements DataSet {
+
+  private final TSStatus status;
+  private final List<ByteBuffer> serializedAllTrailInformation;
+
+  public TrailTableResp(TSStatus status, List<TrailInformation> allTrailInformation) {
+    this.status = status;
+    this.serializedAllTrailInformation = new ArrayList<>();
+    for (TrailInformation trailInformation : allTrailInformation) {
+      this.serializedAllTrailInformation.add(trailInformation.serializeShowTrailResult());
+    }
+  }
+
   public TShowTrailResp convertToThriftResponse() throws IOException {
-    return null;
+    return new TShowTrailResp(status, serializedAllTrailInformation);
   }
 }

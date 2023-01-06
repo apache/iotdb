@@ -19,10 +19,13 @@
 
 package org.apache.iotdb.commons.model;
 
+import org.apache.iotdb.tsfile.utils.PublicBAOS;
+
 import java.io.DataOutputStream;
 import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -50,6 +53,19 @@ public class ModelInformation {
     return isAuto;
   }
 
+  public TrailInformation getTrailInformationById(String trailId) {
+    if (trailMap.containsKey(trailId)) {
+      return trailMap.get(trailId);
+    }
+    return null;
+  }
+
+  public List<TrailInformation> getAllTrailInformation() {
+    return new ArrayList<>(trailMap.values());
+  }
+
+  public void update(Map<String, String> modelInfo) {}
+
   public void serialize(DataOutputStream stream) {}
 
   public void serialize(FileOutputStream stream) {}
@@ -60,5 +76,12 @@ public class ModelInformation {
 
   public static ModelInformation deserialize(ByteBuffer buffer) {
     return null;
+  }
+
+  public ByteBuffer serializeShowModelResult() {
+    PublicBAOS buffer = new PublicBAOS();
+    DataOutputStream stream = new DataOutputStream(buffer);
+
+    return ByteBuffer.wrap(buffer.getBuf(), 0, buffer.size());
   }
 }

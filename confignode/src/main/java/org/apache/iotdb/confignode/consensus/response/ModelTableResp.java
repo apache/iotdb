@@ -19,13 +19,30 @@
 
 package org.apache.iotdb.confignode.consensus.response;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.model.ModelInformation;
 import org.apache.iotdb.confignode.rpc.thrift.TShowModelResp;
 import org.apache.iotdb.consensus.common.DataSet;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.List;
 
 public class ModelTableResp implements DataSet {
+
+  private final TSStatus status;
+  private final List<ByteBuffer> serializedAllModelInformation;
+
+  public ModelTableResp(TSStatus status, List<ModelInformation> allModelInformation) {
+    this.status = status;
+    this.serializedAllModelInformation = new ArrayList<>();
+    for (ModelInformation modelInformation : allModelInformation) {
+      this.serializedAllModelInformation.add(modelInformation.serializeShowModelResult());
+    }
+  }
+
   public TShowModelResp convertToThriftResponse() throws IOException {
-    return null;
+    return new TShowModelResp(status, serializedAllModelInformation);
   }
 }

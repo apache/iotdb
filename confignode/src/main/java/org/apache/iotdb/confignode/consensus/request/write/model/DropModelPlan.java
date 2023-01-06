@@ -44,6 +44,10 @@ public class DropModelPlan extends ConfigPhysicalPlan {
     this.modelId = modelId;
   }
 
+  public String getModelId() {
+    return modelId;
+  }
+
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
     stream.writeShort(getType().getPlanType());
