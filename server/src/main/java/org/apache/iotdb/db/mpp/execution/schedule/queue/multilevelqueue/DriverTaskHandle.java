@@ -21,6 +21,7 @@ package org.apache.iotdb.db.mpp.execution.schedule.queue.multilevelqueue;
 
 import javax.annotation.concurrent.GuardedBy;
 
+import java.util.Objects;
 import java.util.OptionalInt;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -76,5 +77,20 @@ public class DriverTaskHandle {
 
   public int getDriverTaskHandleId() {
     return driverTaskHandleId;
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    DriverTaskHandle that = (DriverTaskHandle) o;
+    return driverTaskHandleId == that.driverTaskHandleId;
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(driverTaskHandleId);
   }
 }

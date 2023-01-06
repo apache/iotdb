@@ -363,6 +363,7 @@ public class DriverScheduler implements IDriverScheduler, IService {
         QUERY_METRICS.recordTaskQueueTime(
             BLOCK_QUEUED_TIME, System.nanoTime() - task.getLastEnterBlockQueueTime());
         task.setLastEnterReadyQueueTime(System.nanoTime());
+        task.resetLevelPriority();
         readyQueue.push(task);
         blockedTasks.remove(task);
       } finally {

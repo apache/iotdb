@@ -22,12 +22,8 @@ package org.apache.iotdb.db.mpp.execution.schedule.queue.multilevelqueue;
 import org.apache.iotdb.db.mpp.execution.schedule.queue.IndexedBlockingQueue;
 import org.apache.iotdb.db.mpp.execution.schedule.task.DriverTask;
 
-import javax.annotation.concurrent.GuardedBy;
-
 import java.util.PriorityQueue;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.concurrent.locks.Condition;
-import java.util.concurrent.locks.ReentrantLock;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkState;
@@ -44,15 +40,11 @@ public class MultilevelPriorityQueue extends IndexedBlockingQueue<DriverTask> {
 
   static final long LEVEL_CONTRIBUTION_CAP = SECONDS.toNanos(30);
 
-  @GuardedBy("lock")
   private final PriorityQueue<DriverTask>[] levelWaitingSplits;
 
   private final AtomicLong[] levelScheduledTime;
 
   private final AtomicLong[] levelMinPriority;
-  private final ReentrantLock lock = new ReentrantLock();
-
-  private final Condition notEmpty = lock.newCondition();
 
   /**
    * Expected schedule time of level0-level4 is: levelTimeMultiplier^4 : levelTimeMultiplier^3 :
@@ -102,14 +94,6 @@ public class MultilevelPriorityQueue extends IndexedBlockingQueue<DriverTask> {
     levelWaitingSplits[level].offer(task);
   }
 
-  /**
-   * We attempt to give each level a target amount of scheduled time, which is configurable using
-   * levelTimeMultiplier.
-   *
-   * <p>This function selects the level that has the lowest ratio of actual to the target time with
-   * the objective of minimizing deviation from the target scheduled time. From this level, we pick
-   * the DriverTask with the lowest priority.
-   */
   protected DriverTask pollFirst() {
     DriverTask result;
     while (true) {
@@ -128,6 +112,14 @@ public class MultilevelPriorityQueue extends IndexedBlockingQueue<DriverTask> {
     }
   }
 
+  /**
+   * We attempt to give each level a target amount of scheduled time, which is configurable using
+   * levelTimeMultiplier.
+   *
+   * <p>This function selects the level that has the lowest ratio of actual to the target time with
+   * the objective of minimizing deviation from the target scheduled time. From this level, we pick
+   * the DriverTask with the lowest priority.
+   */
   private DriverTask chooseLevelAndTask() {
     long targetScheduledTime = getLevel0TargetTime();
     double worstRatio = 1;
