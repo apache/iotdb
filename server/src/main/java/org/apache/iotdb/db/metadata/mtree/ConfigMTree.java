@@ -21,7 +21,6 @@ package org.apache.iotdb.db.metadata.mtree;
 
 import org.apache.iotdb.common.rpc.thrift.TSchemaNode;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
-import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -158,48 +157,6 @@ public class ConfigMTree {
   }
 
   /**
-   * Check whether path is database or not
-   *
-   * <p>e.g., path = root.a.b.sg. if nor a and b is StorageGroupMNode and sg is a StorageGroupMNode
-   * path is a database
-   *
-   * @param path path
-   * @apiNote :for cluster
-   */
-  public boolean isStorageGroup(PartialPath path) {
-    String[] nodeNames = path.getNodes();
-    if (nodeNames.length <= 1 || !nodeNames[0].equals(IoTDBConstant.PATH_ROOT)) {
-      return false;
-    }
-    IMNode cur = root;
-    int i = 1;
-    while (i < nodeNames.length - 1) {
-      cur = cur.getChild(nodeNames[i]);
-      if (cur == null || cur.isStorageGroup()) {
-        return false;
-      }
-      i++;
-    }
-    cur = cur.getChild(nodeNames[i]);
-    return cur != null && cur.isStorageGroup();
-  }
-
-  /** Check whether the given path contains a database */
-  public boolean checkStorageGroupByPath(PartialPath path) {
-    String[] nodes = path.getNodes();
-    IMNode cur = root;
-    for (int i = 1; i < nodes.length; i++) {
-      cur = cur.getChild(nodes[i]);
-      if (cur == null) {
-        return false;
-      } else if (cur.isStorageGroup()) {
-        return true;
-      }
-    }
-    return false;
-  }
-
-  /**
    * Get database path by path
    *
    * <p>e.g., root.sg1 is database, path is root.sg1.d1, return root.sg1
@@ -287,28 +244,6 @@ public class ConfigMTree {
   }
 
   /**
-   * Resolve the path or path pattern into StorageGroupName-FullPath pairs. Try determining the
-   * database using the children of a mNode. If one child is a database node, put a
-   * storageGroupName-fullPath pair into paths.
-   */
-  public Map<String, List<PartialPath>> groupPathByStorageGroup(PartialPath path)
-      throws MetadataException {
-    Map<String, List<PartialPath>> result = new HashMap<>();
-    try (DatabaseCollector<Map<String, String>> collector =
-        new DatabaseCollector<Map<String, String>>(root, path, store, false) {
-          @Override
-          protected void collectStorageGroup(IStorageGroupMNode node) {
-            PartialPath sgPath = node.getPartialPath();
-            result.put(sgPath.getFullPath(), path.alterPrefixPath(sgPath));
-          }
-        }) {
-      collector.setCollectInternal(true);
-      collector.traverse();
-    }
-    return result;
-  }
-
-  /**
    * Get the count of database matching the given path. If using prefix match, the path pattern is
    * used to match prefix path. All timeseries start with the matched prefix path will be counted.
    *
@@ -384,38 +319,6 @@ public class ConfigMTree {
       }
     }
     throw new StorageGroupNotSetException(path.getFullPath());
-  }
-
-  public List<PartialPath> getInvolvedStorageGroupNodes(
-      PartialPath pathPattern, boolean isPrefixMatch) throws MetadataException {
-    List<PartialPath> result = new ArrayList<>();
-    try (DatabaseCollector<List<PartialPath>> collector =
-        new DatabaseCollector<List<PartialPath>>(root, pathPattern, store, isPrefixMatch) {
-          @Override
-          protected void collectStorageGroup(IStorageGroupMNode node) {
-            result.add(node.getPartialPath());
-          }
-        }) {
-      collector.setCollectInternal(true);
-      collector.traverse();
-    }
-    return result;
-  }
-
-  /** Get all database MNodes */
-  public List<IStorageGroupMNode> getAllStorageGroupNodes() {
-    List<IStorageGroupMNode> ret = new ArrayList<>();
-    Deque<IMNode> nodeStack = new ArrayDeque<>();
-    nodeStack.add(root);
-    while (!nodeStack.isEmpty()) {
-      IMNode current = nodeStack.pop();
-      if (current.isStorageGroup()) {
-        ret.add(current.getAsStorageGroupMNode());
-      } else {
-        nodeStack.addAll(current.getChildren().values());
-      }
-    }
-    return ret;
   }
 
   /**

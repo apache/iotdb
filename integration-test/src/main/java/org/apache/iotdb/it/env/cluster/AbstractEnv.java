@@ -16,11 +16,10 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.it.env;
+package org.apache.iotdb.it.env.cluster;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.IClientManager;
-import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.confignode.rpc.thrift.IConfigNodeRPCService;
@@ -30,6 +29,7 @@ import org.apache.iotdb.isession.ISession;
 import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.it.framework.IoTDBTestLogger;
 import org.apache.iotdb.itbase.env.BaseEnv;
+import org.apache.iotdb.itbase.env.ClusterConfig;
 import org.apache.iotdb.itbase.runtime.ClusterTestConnection;
 import org.apache.iotdb.itbase.runtime.NodeConnection;
 import org.apache.iotdb.itbase.runtime.ParallelRequestDelegate;
@@ -43,7 +43,6 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.session.Session;
 import org.apache.iotdb.session.pool.SessionPool;
 
-import org.apache.thrift.TException;
 import org.slf4j.Logger;
 
 import java.io.File;
@@ -60,7 +59,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static org.apache.iotdb.it.env.AbstractNodeWrapper.templateNodeLibPath;
+import static org.apache.iotdb.it.env.cluster.AbstractNodeWrapper.templateNodeLibPath;
 import static org.apache.iotdb.jdbc.Config.VERSION;
 import static org.junit.Assert.fail;
 
@@ -78,6 +77,21 @@ public abstract class AbstractEnv implements BaseEnv {
 
   private IClientManager<TEndPoint, SyncConfigNodeIServiceClient> clientManager;
 
+  /**
+   * This config object stores the properties set by developers during the test. It will be cleared
+   * after each call of cleanupEnvironment.
+   */
+  private MppClusterConfig clusterConfig;
+
+  public AbstractEnv() {
+    clusterConfig = new MppClusterConfig();
+  }
+
+  @Override
+  public ClusterConfig getConfig() {
+    return clusterConfig;
+  }
+
   protected void initEnvironment(int configNodesNum, int dataNodesNum) {
     this.configNodeWrapperList = new ArrayList<>();
     this.dataNodeWrapperList = new ArrayList<>();
@@ -94,7 +108,9 @@ public abstract class AbstractEnv implements BaseEnv {
         new ConfigNodeWrapper(
             true, "", testClassName, testMethodName, EnvUtils.searchAvailablePorts());
     seedConfigNodeWrapper.createDir();
-    seedConfigNodeWrapper.changeConfig(ConfigFactory.getConfig().getConfignodeProperties());
+    seedConfigNodeWrapper.changeConfig(
+        (MppConfigNodeConfig) clusterConfig.getConfigNodeConfig(),
+        (MppCommonConfig) clusterConfig.getConfigNodeCommonConfig());
     seedConfigNodeWrapper.start();
     String targetConfigNode = seedConfigNodeWrapper.getIpAndPortString();
     this.configNodeWrapperList.add(seedConfigNodeWrapper);
@@ -121,7 +137,9 @@ public abstract class AbstractEnv implements BaseEnv {
       this.configNodeWrapperList.add(configNodeWrapper);
       configNodeEndpoints.add(configNodeWrapper.getIpAndPortString());
       configNodeWrapper.createDir();
-      configNodeWrapper.changeConfig(ConfigFactory.getConfig().getConfignodeProperties());
+      configNodeWrapper.changeConfig(
+          (MppConfigNodeConfig) clusterConfig.getConfigNodeConfig(),
+          (MppCommonConfig) clusterConfig.getConfigNodeCommonConfig());
       configNodesDelegate.addRequest(
           () -> {
             configNodeWrapper.start();
@@ -145,7 +163,9 @@ public abstract class AbstractEnv implements BaseEnv {
       this.dataNodeWrapperList.add(dataNodeWrapper);
       dataNodeEndpoints.add(dataNodeWrapper.getIpAndPortString());
       dataNodeWrapper.createDir();
-      dataNodeWrapper.changeConfig(ConfigFactory.getConfig().getEngineProperties());
+      dataNodeWrapper.changeConfig(
+          (MppDataNodeConfig) clusterConfig.getDataNodeConfig(),
+          (MppCommonConfig) clusterConfig.getDataNodeCommonConfig());
       dataNodesDelegate.addRequest(
           () -> {
             dataNodeWrapper.start();
@@ -161,22 +181,6 @@ public abstract class AbstractEnv implements BaseEnv {
     }
 
     testWorking();
-  }
-
-  private void cleanupEnvironment() {
-    for (AbstractNodeWrapper nodeWrapper :
-        Stream.concat(this.dataNodeWrapperList.stream(), this.configNodeWrapperList.stream())
-            .collect(Collectors.toList())) {
-      nodeWrapper.stop();
-      nodeWrapper.waitingToShutDown();
-      nodeWrapper.destroyDir();
-      String lockPath = EnvUtils.getLockFilePath(nodeWrapper.getPort());
-      if (!new File(lockPath).delete()) {
-        logger.error("Delete lock file {} failed", lockPath);
-      }
-    }
-    clientManager.close();
-    testMethodName = null;
   }
 
   public String getTestClassName() {
@@ -277,13 +281,21 @@ public abstract class AbstractEnv implements BaseEnv {
   }
 
   @Override
-  public void cleanAfterClass() {
-    cleanupEnvironment();
-  }
-
-  @Override
-  public void cleanAfterTest() {
-    cleanupEnvironment();
+  public void cleanClusterEnvironment() {
+    for (AbstractNodeWrapper nodeWrapper :
+        Stream.concat(this.dataNodeWrapperList.stream(), this.configNodeWrapperList.stream())
+            .collect(Collectors.toList())) {
+      nodeWrapper.stop();
+      nodeWrapper.waitingToShutDown();
+      nodeWrapper.destroyDir();
+      String lockPath = EnvUtils.getLockFilePath(nodeWrapper.getPort());
+      if (!new File(lockPath).delete()) {
+        logger.error("Delete lock file {} failed", lockPath);
+      }
+    }
+    clientManager.close();
+    testMethodName = null;
+    clusterConfig = new MppClusterConfig();
   }
 
   @Override
@@ -419,18 +431,8 @@ public abstract class AbstractEnv implements BaseEnv {
   }
 
   @Override
-  public void setConfigNodeWrapperList(List<ConfigNodeWrapper> configNodeWrapperList) {
-    this.configNodeWrapperList = configNodeWrapperList;
-  }
-
-  @Override
   public List<DataNodeWrapper> getDataNodeWrapperList() {
     return dataNodeWrapperList;
-  }
-
-  @Override
-  public void setDataNodeWrapperList(List<DataNodeWrapper> dataNodeWrapperList) {
-    this.dataNodeWrapperList = dataNodeWrapperList;
   }
 
   /**
@@ -444,10 +446,12 @@ public abstract class AbstractEnv implements BaseEnv {
   @Override
   public IConfigNodeRPCService.Iface getLeaderConfigNodeConnection()
       throws IOException, InterruptedException {
-
+    Exception lastException = null;
+    ConfigNodeWrapper lastErrorNode = null;
     for (int i = 0; i < 30; i++) {
       for (ConfigNodeWrapper configNodeWrapper : configNodeWrapperList) {
         try {
+          lastErrorNode = configNodeWrapper;
           SyncConfigNodeIServiceClient client =
               clientManager.borrowClient(
                   new TEndPoint(configNodeWrapper.getIp(), configNodeWrapper.getPort()));
@@ -463,27 +467,38 @@ public abstract class AbstractEnv implements BaseEnv {
           } else {
             // Return client otherwise
             client.close();
+            throw new Exception(
+                "Bad status: "
+                    + resp.getStatus().getCode()
+                    + " message: "
+                    + resp.getStatus().getMessage());
           }
         } catch (Exception e) {
-          logger.error(
-              String.format(
-                  "Borrow ConfigNodeClient from ConfigNode: %s failed, retrying...",
-                  configNodeWrapper.getIpAndPortString()),
-              e);
+          lastException = e;
         }
 
         // Sleep 1s before next retry
         TimeUnit.SECONDS.sleep(1);
       }
     }
-    throw new IOException("Failed to get connection to ConfigNode-Leader");
+    if (lastErrorNode != null) {
+      throw new IOException(
+          "Failed to get connection to ConfigNode-Leader. Last error configNode: "
+              + lastErrorNode.getIpAndPortString(),
+          lastException);
+    } else {
+      throw new IOException("Empty configNode set");
+    }
   }
 
   @Override
   public int getLeaderConfigNodeIndex() throws IOException, InterruptedException {
+    Exception lastException = null;
+    ConfigNodeWrapper lastErrorNode = null;
     for (int retry = 0; retry < 30; retry++) {
       for (int configNodeId = 0; configNodeId < configNodeWrapperList.size(); configNodeId++) {
         ConfigNodeWrapper configNodeWrapper = configNodeWrapperList.get(configNodeId);
+        lastErrorNode = configNodeWrapper;
         try (SyncConfigNodeIServiceClient client =
             clientManager.borrowClient(
                 new TEndPoint(configNodeWrapper.getIp(), configNodeWrapper.getPort()))) {
@@ -492,12 +507,15 @@ public abstract class AbstractEnv implements BaseEnv {
           // will respond the SUCCESS_STATUS
           if (resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
             return configNodeId;
+          } else {
+            throw new Exception(
+                "Bad status: "
+                    + resp.getStatus().getCode()
+                    + " message: "
+                    + resp.getStatus().getMessage());
           }
-        } catch (ClientManagerException | TException e) {
-          logger.error(
-              "Borrow ConfigNodeClient from ConfigNode: {} failed because: {}, retrying...",
-              configNodeWrapper.getIp(),
-              e);
+        } catch (Exception e) {
+          lastException = e;
         }
 
         // Sleep 1s before next retry
@@ -505,7 +523,14 @@ public abstract class AbstractEnv implements BaseEnv {
       }
     }
 
-    throw new IOException("Failed to get the index of ConfigNode-Leader");
+    if (lastErrorNode != null) {
+      throw new IOException(
+          "Failed to get the index of ConfigNode-Leader. Last error configNode: "
+              + lastErrorNode.getIpAndPortString(),
+          lastException);
+    } else {
+      throw new IOException("Empty configNode set");
+    }
   }
 
   @Override
@@ -539,7 +564,9 @@ public abstract class AbstractEnv implements BaseEnv {
             EnvUtils.searchAvailablePorts());
     configNodeWrapperList.add(newConfigNodeWrapper);
     newConfigNodeWrapper.createDir();
-    newConfigNodeWrapper.changeConfig(ConfigFactory.getConfig().getConfignodeProperties());
+    newConfigNodeWrapper.changeConfig(
+        (MppConfigNodeConfig) clusterConfig.getConfigNodeConfig(),
+        (MppCommonConfig) clusterConfig.getConfigNodeCommonConfig());
     return newConfigNodeWrapper;
   }
 
@@ -553,7 +580,9 @@ public abstract class AbstractEnv implements BaseEnv {
             EnvUtils.searchAvailablePorts());
     dataNodeWrapperList.add(newDataNodeWrapper);
     newDataNodeWrapper.createDir();
-    newDataNodeWrapper.changeConfig(ConfigFactory.getConfig().getEngineProperties());
+    newDataNodeWrapper.changeConfig(
+        (MppDataNodeConfig) clusterConfig.getDataNodeConfig(),
+        (MppCommonConfig) clusterConfig.getDataNodeCommonConfig());
     return newDataNodeWrapper;
   }
 

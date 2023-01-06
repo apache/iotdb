@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.it.env;
+package org.apache.iotdb.it.env.remote;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.IClientManager;
@@ -25,13 +25,16 @@ import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.confignode.rpc.thrift.IConfigNodeRPCService;
 import org.apache.iotdb.db.client.DataNodeClientPoolFactory;
 import org.apache.iotdb.isession.ISession;
+import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.it.env.cluster.ConfigNodeWrapper;
+import org.apache.iotdb.it.env.cluster.DataNodeWrapper;
 import org.apache.iotdb.itbase.env.BaseEnv;
+import org.apache.iotdb.itbase.env.ClusterConfig;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.jdbc.Constant;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.session.Session;
 
-import java.io.IOException;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
@@ -48,9 +51,10 @@ public class RemoteServerEnv implements BaseEnv {
   private final String user = System.getProperty("RemoteUser", "root");
   private final String password = System.getProperty("RemotePassword", "root");
   private IClientManager<TEndPoint, SyncConfigNodeIServiceClient> clientManager;
+  private RemoteClusterConfig clusterConfig = new RemoteClusterConfig();
 
   @Override
-  public void initBeforeClass() {
+  public void initClusterEnvironment() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute("CREATE DATABASE root.init;");
@@ -67,29 +71,18 @@ public class RemoteServerEnv implements BaseEnv {
 
   @Override
   public void initClusterEnvironment(int configNodesNum, int dataNodesNum) {
-    // Do nothing
+    initClusterEnvironment();
   }
 
   @Override
-  public void cleanAfterClass() {
+  public void cleanClusterEnvironment() {
     clientManager.close();
+    clusterConfig = new RemoteClusterConfig();
   }
 
   @Override
-  public void initBeforeTest() {
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-      statement.execute("CREATE DATABASE root.init;");
-      statement.execute("DELETE DATABASE root;");
-    } catch (Exception e) {
-      e.printStackTrace();
-      fail(e.getMessage());
-    }
-  }
-
-  @Override
-  public void cleanAfterTest() {
-    clientManager.close();
+  public ClusterConfig getConfig() {
+    return clusterConfig;
   }
 
   @Override
@@ -147,18 +140,8 @@ public class RemoteServerEnv implements BaseEnv {
   }
 
   @Override
-  public void setConfigNodeWrapperList(List<ConfigNodeWrapper> configNodeWrapperList) {
-    // Do nothing
-  }
-
-  @Override
   public List<DataNodeWrapper> getDataNodeWrapperList() {
     return null;
-  }
-
-  @Override
-  public void setDataNodeWrapperList(List<DataNodeWrapper> dataNodeWrapperList) {
-    // Do nothing
   }
 
   @Override
@@ -174,7 +157,7 @@ public class RemoteServerEnv implements BaseEnv {
   }
 
   @Override
-  public int getLeaderConfigNodeIndex() throws IOException {
+  public int getLeaderConfigNodeIndex() {
     return -1;
   }
 

@@ -16,30 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.it.env;
+package org.apache.iotdb.itbase.env;
 
-import org.apache.iotdb.itbase.env.BaseConfig;
-
-public class ConfigFactory {
-  private static BaseConfig config;
-
-  public static BaseConfig getConfig() {
-    if (config == null) {
-      EnvType env = EnvType.getSystemEnvType();
-      switch (env) {
-        case Simple:
-        case Cluster1:
-          config = new MppConfig();
-          break;
-        case Remote:
-          config = new RemoteServerConfig();
-          break;
-        default:
-          System.out.println("Unknown env type: " + env);
-          System.exit(-1);
-          break;
-      }
-    }
-    return config;
-  }
-}
+/** This interface is used to handle properties in iotdb-datanode.properties. */
+public interface DataNodeConfig {}

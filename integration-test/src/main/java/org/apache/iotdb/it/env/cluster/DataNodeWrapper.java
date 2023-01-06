@@ -16,18 +16,15 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.it.env;
+package org.apache.iotdb.it.env.cluster;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 
 import java.io.File;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Properties;
 
 public class DataNodeWrapper extends AbstractNodeWrapper {
-
-  private final String targetConfigNode;
   private int mppDataExchangePort;
   private int internalPort;
   private final String internalAddress;
@@ -35,48 +32,85 @@ public class DataNodeWrapper extends AbstractNodeWrapper {
   private final int schemaRegionConsensusPort;
   private final int mqttPort;
 
+  private final String defaultNodePropertiesFile =
+      EnvUtils.getFilePathFromSysVar("DefaultDataNodeProperties");
+  private final String defaultCommonPropertiesFile =
+      EnvUtils.getFilePathFromSysVar("DefaultDataNodeCommonProperties");
+
   public DataNodeWrapper(
       String targetConfigNode, String testClassName, String testMethodName, int[] portList) {
     super(testClassName, testMethodName, portList);
-    this.targetConfigNode = targetConfigNode;
     this.internalAddress = super.getIp();
     this.mppDataExchangePort = portList[1];
     this.internalPort = portList[2];
     this.dataRegionConsensusPort = portList[3];
     this.schemaRegionConsensusPort = portList[4];
     this.mqttPort = portList[5];
-  }
 
-  @Override
-  protected void updateConfig(Properties properties) {
-    properties.setProperty(IoTDBConstant.DN_RPC_ADDRESS, super.getIp());
-    properties.setProperty(IoTDBConstant.DN_RPC_PORT, String.valueOf(super.getPort()));
-    properties.setProperty(IoTDBConstant.DN_INTERNAL_ADDRESS, this.internalAddress);
-    properties.setProperty(IoTDBConstant.DN_INTERNAL_PORT, String.valueOf(this.internalPort));
-    properties.setProperty("dn_mpp_data_exchange_port", String.valueOf(this.mppDataExchangePort));
-    properties.setProperty(
+    // initialize mutable properties
+    mutableCommonProperties.setProperty(
+        propertyKeyConfigNodeConsensusProtocolClass,
+        "org.apache.iotdb.consensus.simple.SimpleConsensus");
+    mutableCommonProperties.setProperty(
+        propertyKeySchemaRegionConsensusProtocolClass,
+        "org.apache.iotdb.consensus.simple.SimpleConsensus");
+    mutableCommonProperties.setProperty(
+        propertyKeyDataRegionConsensusProtocolClass,
+        "org.apache.iotdb.consensus.simple.SimpleConsensus");
+    mutableCommonProperties.setProperty(propertyKeySchemaReplicationFactor, "1");
+    mutableCommonProperties.setProperty(propertyKeyDataReplicationFactor, "1");
+    mutableCommonProperties.put("max_tsblock_size_in_bytes", "1024");
+    mutableCommonProperties.put("page_size_in_byte", "1024");
+
+    mutableNodeProperties.put("dn_join_cluster_retry_interval_ms", "1000");
+    mutableNodeProperties.put("dn_connection_timeout_ms", "30000");
+
+    // initialize immutable properties
+    // Override mqtt properties of super class
+    immutableCommonProperties.setProperty("mqtt_host", super.getIp());
+    immutableCommonProperties.setProperty("mqtt_port", String.valueOf(this.mqttPort));
+
+    immutableNodeProperties.setProperty(IoTDBConstant.DN_RPC_ADDRESS, super.getIp());
+    immutableNodeProperties.setProperty(IoTDBConstant.DN_RPC_PORT, String.valueOf(super.getPort()));
+    immutableNodeProperties.setProperty(IoTDBConstant.DN_INTERNAL_ADDRESS, this.internalAddress);
+    immutableNodeProperties.setProperty(
+        IoTDBConstant.DN_INTERNAL_PORT, String.valueOf(this.internalPort));
+    immutableNodeProperties.setProperty(
+        "dn_mpp_data_exchange_port", String.valueOf(this.mppDataExchangePort));
+    immutableNodeProperties.setProperty(
         "dn_data_region_consensus_port", String.valueOf(this.dataRegionConsensusPort));
-    properties.setProperty(
+    immutableNodeProperties.setProperty(
         "dn_schema_region_consensus_port", String.valueOf(this.schemaRegionConsensusPort));
-    properties.setProperty("dn_join_cluster_retry_interval_ms", "1000");
-    properties.setProperty("mqtt_host", super.getIp());
-    properties.setProperty("mqtt_port", String.valueOf(this.mqttPort));
-    properties.setProperty("dn_connection_timeout_ms", "30000");
-    if (this.targetConfigNode != null) {
-      properties.setProperty(IoTDBConstant.DN_TARGET_CONFIG_NODE_LIST, this.targetConfigNode);
-    }
-    properties.setProperty("max_tsblock_size_in_bytes", "1024");
-    properties.setProperty("page_size_in_byte", "1024");
+    immutableNodeProperties.setProperty(IoTDBConstant.DN_TARGET_CONFIG_NODE_LIST, targetConfigNode);
+    immutableNodeProperties.setProperty("dn_system_dir", MppBaseConfig.NULL_VALUE);
+    immutableNodeProperties.setProperty("dn_data_dirs", MppBaseConfig.NULL_VALUE);
+    immutableNodeProperties.setProperty("dn_consensus_dir", MppBaseConfig.NULL_VALUE);
+    immutableNodeProperties.setProperty("dn_wal_dirs", MppBaseConfig.NULL_VALUE);
+    immutableNodeProperties.setProperty("dn_tracing_dir", MppBaseConfig.NULL_VALUE);
+    immutableNodeProperties.setProperty("dn_sync_dir", MppBaseConfig.NULL_VALUE);
+    immutableNodeProperties.setProperty("dn_metric_iotdb_reporter_host", MppBaseConfig.NULL_VALUE);
+    immutableNodeProperties.setProperty(
+        "dn_metric_prometheus_reporter_port", MppBaseConfig.NULL_VALUE);
   }
 
   @Override
-  protected String getConfigPath() {
+  protected String getTargetNodeConfigPath() {
     return workDirFilePath("conf", "iotdb-datanode.properties");
   }
 
   @Override
-  protected String getCommonConfigPath() {
+  protected String getTargetCommonConfigPath() {
     return workDirFilePath("conf", "iotdb-common.properties");
+  }
+
+  @Override
+  protected String getDefaultNodeConfigPath() {
+    return defaultNodePropertiesFile;
+  }
+
+  @Override
+  protected String getDefaultCommonConfigPath() {
+    return defaultCommonPropertiesFile;
   }
 
   @Override

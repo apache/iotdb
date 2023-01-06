@@ -55,7 +55,7 @@ public class IoTDBInsertMultiRowIT {
 
   @BeforeClass
   public static void setUp() throws Exception {
-    EnvFactory.getEnv().initBeforeClass();
+    EnvFactory.getEnv().initClusterEnvironment();
     initCreateSQLStatement();
     insertData();
   }
@@ -63,7 +63,7 @@ public class IoTDBInsertMultiRowIT {
   @AfterClass
   public static void tearDown() throws Exception {
     close();
-    EnvFactory.getEnv().cleanAfterClass();
+    EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
   private static void close() {

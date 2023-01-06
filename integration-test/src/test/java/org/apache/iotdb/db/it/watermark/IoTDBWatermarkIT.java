@@ -19,7 +19,6 @@
 package org.apache.iotdb.db.it.watermark;
 
 import org.apache.iotdb.db.tools.watermark.WatermarkDetector;
-import org.apache.iotdb.it.env.ConfigFactory;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
@@ -57,32 +56,20 @@ public class IoTDBWatermarkIT {
   private static int embed_row_cycle = 5;
   private static int embed_lsb_num = 5;
 
-  private boolean originEnableWatermark;
-
-  private String originWatermarkSecretKey;
-
-  private String originWatermarkBitString;
-
-  private String originWatermarkMethod;
-
   @Before
   public void setUp() throws Exception {
-
-    originEnableWatermark = ConfigFactory.getConfig().isEnableWatermark();
-    originWatermarkSecretKey = ConfigFactory.getConfig().getWatermarkSecretKey();
-    originWatermarkBitString = ConfigFactory.getConfig().getWatermarkBitString();
-    originWatermarkMethod = ConfigFactory.getConfig().getWatermarkMethod();
-
-    ConfigFactory.getConfig().setEnableWatermark(true);
-    ConfigFactory.getConfig().setWatermarkSecretKey(secretKey);
-    ConfigFactory.getConfig().setWatermarkBitString(watermarkBitString);
-    ConfigFactory.getConfig()
+    EnvFactory.getEnv()
+        .getConfig()
+        .getCommonConfig()
+        .setEnableWatermark(true)
+        .setWatermarkSecretKey(secretKey)
+        .setWatermarkBitString(watermarkBitString)
         .setWatermarkMethod(
             String.format(
                 "GroupBasedLSBMethod" + "(embed_row_cycle=%d,embed_lsb_num=%d)",
                 embed_row_cycle, embed_lsb_num));
 
-    EnvFactory.getEnv().initBeforeTest();
+    EnvFactory.getEnv().initClusterEnvironment();
 
     insertData();
 
@@ -111,12 +98,7 @@ public class IoTDBWatermarkIT {
     if (file2.exists()) {
       file2.delete();
     }
-    EnvFactory.getEnv().cleanAfterTest();
-
-    ConfigFactory.getConfig().setEnableWatermark(originEnableWatermark);
-    ConfigFactory.getConfig().setWatermarkSecretKey(originWatermarkSecretKey);
-    ConfigFactory.getConfig().setWatermarkBitString(originWatermarkBitString);
-    ConfigFactory.getConfig().setWatermarkMethod(originWatermarkMethod);
+    EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
   private static void insertData() {

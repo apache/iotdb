@@ -1040,6 +1040,27 @@ public class ConfigNodeClient
   }
 
   @Override
+  public TSStatus killQuery(String queryId, int dataNodeId) throws TException {
+    for (int i = 0; i < RETRY_NUM; i++) {
+      try {
+        TSStatus status = client.killQuery(queryId, dataNodeId);
+        if (!updateConfigNodeLeader(status)) {
+          return status;
+        }
+      } catch (TException e) {
+        logger.warn(
+            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            configNode,
+            config.getAddressAndPort(),
+            Thread.currentThread().getStackTrace()[1].getMethodName());
+        configLeader = null;
+      }
+      waitAndReconnect();
+    }
+    throw new TException(MSG_RECONNECTION_FAIL);
+  }
+
+  @Override
   public TGetDataNodeLocationsResp getRunningDataNodeLocations() throws TException {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
