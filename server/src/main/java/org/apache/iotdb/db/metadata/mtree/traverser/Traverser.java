@@ -50,8 +50,6 @@ public abstract class Traverser<R> extends AbstractTreeVisitor<IMNode, R> {
 
   protected IMNode startNode;
   protected String[] nodes;
-  protected int startIndex;
-  protected int startLevel;
 
   // measurement in template should be processed only if templateMap is not null
   protected Map<Integer, Template> templateMap;
@@ -95,12 +93,6 @@ public abstract class Traverser<R> extends AbstractTreeVisitor<IMNode, R> {
     if (getFailure() != null) {
       throw new MetadataException(getFailure());
     }
-    // TODO: 临时在这里判断失败，释放资源
-
-    //    if (isPrefixStart && !isPrefixMatch) {
-    //      return;
-    //    }
-    //    traverse(startNode, startIndex, startLevel);
   }
 
   @Override

@@ -339,6 +339,10 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R>
     return new PartialPath(getFullPathOfNextMatchedNode());
   }
 
+  protected final N getAncestorNodeByLevel(int level) {
+    return ancestorStack.get(level).node;
+  }
+
   protected final N getParentOfNextMatchedNode() {
     if (shouldVisitSubtree) {
       return ancestorStack.get(ancestorStack.size() - 2).node;

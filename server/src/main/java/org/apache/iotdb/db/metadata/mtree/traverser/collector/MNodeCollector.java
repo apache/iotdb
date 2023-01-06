@@ -38,11 +38,10 @@ public abstract class MNodeCollector<R> extends MNodeTraverser<R> {
     super(startNode, path, store, isPrefixMatch);
   }
 
-  @Override
-  protected R generateResult(IMNode nextMatchedNode) {
-    transferToResult(nextMatchedNode);
+  protected final R transferToResult(IMNode node) {
+    collectMNode(node);
     return null;
   }
 
-  protected abstract void transferToResult(IMNode node);
+  protected abstract void collectMNode(IMNode node);
 }

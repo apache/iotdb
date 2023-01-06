@@ -727,7 +727,7 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
         new MNodeCollector<Set<TSchemaNode>>(
             rootNode, pathPattern.concatNode(ONE_LEVEL_PATH_WILDCARD), store, false) {
           @Override
-          protected void transferToResult(IMNode node) {
+          protected void collectMNode(IMNode node) {
             result.add(
                 new TSchemaNode(
                     getNextMatchedNodePartialPath().getFullPath(),
@@ -749,7 +749,7 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
     try (MNodeCollector<List<PartialPath>> collector =
         new MNodeCollector<List<PartialPath>>(rootNode, pathPattern, store, isPrefixMatch) {
           @Override
-          protected void transferToResult(IMNode node) {
+          protected void collectMNode(IMNode node) {
             result.add(getNextMatchedNodePartialPath());
           }
         }) {

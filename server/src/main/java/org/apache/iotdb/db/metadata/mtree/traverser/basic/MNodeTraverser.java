@@ -34,6 +34,7 @@ public abstract class MNodeTraverser<R> extends Traverser<R> {
 
   // Level query option started from 0. For example, level of root.sg.d1.s1 is 3.
   protected int targetLevel = -1;
+  protected IMNode lastVisitNode = null;
 
   /**
    * To traverse subtree under root.sg, e.g., init Traverser(root, "root.sg.**")
@@ -53,7 +54,13 @@ public abstract class MNodeTraverser<R> extends Traverser<R> {
   @Override
   protected boolean acceptFullMatchedNode(IMNode node) {
     if (targetLevel >= 0) {
-      return getSizeOfAncestor() == targetLevel;
+      if (getSizeOfAncestor() > targetLevel) {
+        return getAncestorNodeByLevel(targetLevel) != lastVisitNode;
+      } else if (getSizeOfAncestor() == targetLevel) {
+        return node != lastVisitNode;
+      } else {
+        return false;
+      }
     } else {
       return true;
     }
@@ -66,29 +73,31 @@ public abstract class MNodeTraverser<R> extends Traverser<R> {
 
   @Override
   protected boolean shouldVisitSubtreeOfFullMatchedNode(IMNode node) {
-    if (!node.isMeasurement()) {
-      if (targetLevel >= 0) {
-        return getSizeOfAncestor() < targetLevel;
-      } else {
-        return true;
-      }
-    }
-    return false;
+    return !node.isMeasurement();
   }
 
   @Override
   protected boolean shouldVisitSubtreeOfInternalMatchedNode(IMNode node) {
-    if (!node.isMeasurement()) {
-      if (targetLevel >= 0) {
-        return getSizeOfAncestor() < targetLevel;
-      } else {
-        return true;
-      }
-    }
-    return false;
+    return !node.isMeasurement();
   }
 
   public void setTargetLevel(int targetLevel) {
     this.targetLevel = targetLevel;
   }
+
+  @Override
+  protected final R generateResult(IMNode nextMatchedNode) {
+    if (targetLevel >= 0) {
+      if (getLevelOfNextMatchedNode() == targetLevel) {
+        lastVisitNode = nextMatchedNode;
+      } else {
+        lastVisitNode = getAncestorNodeByLevel(targetLevel);
+      }
+      return transferToResult(lastVisitNode);
+    } else {
+      return transferToResult(nextMatchedNode);
+    }
+  }
+
+  protected abstract R transferToResult(IMNode node);
 }
