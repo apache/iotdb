@@ -28,7 +28,7 @@ import java.nio.ByteBuffer;
  *
  * <p>Project page: https://github.com/panagiotisl/chimp
  *
- * <p>License: https://github.com/panagiotisl/chimp/blob/main/LICENCE.md
+ * <p>License: http://www.apache.org/licenses/LICENSE-2.0
  */
 public class SinglePrecisionChimpDecoder extends IntChimpDecoder {
 

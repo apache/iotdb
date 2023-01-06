@@ -28,7 +28,7 @@ import java.io.ByteArrayOutputStream;
  *
  * <p>Project page: https://github.com/panagiotisl/chimp
  *
- * <p>License: https://github.com/panagiotisl/chimp/blob/main/LICENCE.md
+ * <p>License: http://www.apache.org/licenses/LICENSE-2.0
  */
 public class SinglePrecisionChimpEncoder extends IntChimpEncoder {
 

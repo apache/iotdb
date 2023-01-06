@@ -34,7 +34,7 @@ import static org.apache.iotdb.tsfile.common.conf.TSFileConfig.VALUE_BITS_LENGTH
  *
  * <p>Project page: https://github.com/panagiotisl/chimp
  *
- * <p>License: https://github.com/panagiotisl/chimp/blob/main/LICENCE.md
+ * <p>License: http://www.apache.org/licenses/LICENSE-2.0
  */
 public class IntChimpEncoder extends GorillaEncoderV2 {
 
