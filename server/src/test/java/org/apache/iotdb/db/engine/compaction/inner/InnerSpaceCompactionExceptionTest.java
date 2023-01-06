@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.engine.compaction.inner;
 
+import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.db.engine.compaction.CompactionUtils;
 import org.apache.iotdb.db.engine.compaction.inner.utils.InnerSpaceCompactionUtils;
 import org.apache.iotdb.db.engine.compaction.task.CompactionExceptionHandler;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionFileGeneratorUtils;
@@ -26,21 +28,48 @@ import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
+import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.h2.store.fs.FileUtils;
+import org.junit.After;
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
 
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.IOException;
 import java.nio.channels.FileChannel;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
+import static org.apache.iotdb.db.engine.compaction.utils.log.CompactionLogger.STR_SOURCE_FILES;
+import static org.apache.iotdb.db.engine.compaction.utils.log.CompactionLogger.STR_TARGET_FILES;
+import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
+
 public class InnerSpaceCompactionExceptionTest extends AbstractInnerSpaceCompactionTest {
+
+  private final String oldThreadName = Thread.currentThread().getName();
+
+  @Before
+  public void setUp() throws IOException, WriteProcessException, MetadataException {
+    super.setUp();
+    Thread.currentThread().setName("pool-1-IoTDB-Compaction-1");
+  }
+
+  @After
+  public void tearDown() throws IOException, StorageEngineException {
+    super.tearDown();
+    Thread.currentThread().setName(oldThreadName);
+  }
 
   /**
    * Test when all source files exist, and target file is not complete. System should delete target
@@ -434,5 +463,170 @@ public class InnerSpaceCompactionExceptionTest extends AbstractInnerSpaceCompact
     }
 
     Assert.assertTrue(tsFileManager.isAllowCompaction());
+  }
+
+  @Test
+  public void testWhenTargetFileIsDeletedAfterCompactionAndSomeSourceFilesLost() throws Exception {
+    tsFileManager.addAll(seqResources, true);
+    tsFileManager.addAll(unseqResources, false);
+
+    // generate mods file, the target file should be deleted after compaction
+    for (int device = 0; device < deviceNum; device++) {
+      for (int measurement = 0; measurement < measurementNum; measurement++) {
+        Map<String, Pair<Long, Long>> deleteMap = new HashMap<>();
+        deleteMap.put(
+            COMPACTION_TEST_SG
+                + PATH_SEPARATOR
+                + "device"
+                + device
+                + PATH_SEPARATOR
+                + "sensor"
+                + measurement,
+            new Pair(Long.MIN_VALUE, Long.MAX_VALUE));
+        seqResources.forEach(
+            x -> {
+              try {
+                CompactionFileGeneratorUtils.generateMods(deleteMap, x, false);
+              } catch (IllegalPathException | IOException e) {
+                throw new RuntimeException(e);
+              }
+            });
+      }
+    }
+
+    List<TsFileResource> targetResources =
+        CompactionFileGeneratorUtils.getInnerCompactionTargetTsFileResources(seqResources, true);
+    File compactionLogFile =
+        new File(
+            SEQ_DIRS,
+            targetResources.get(0).getTsFile().getName()
+                + CompactionLogger.CROSS_COMPACTION_LOG_NAME_SUFFIX);
+    CompactionLogger compactionLogger = new CompactionLogger(compactionLogFile);
+    compactionLogger.logFiles(targetResources, STR_TARGET_FILES);
+    compactionLogger.logFiles(seqResources, STR_SOURCE_FILES);
+    compactionLogger.close();
+    CompactionUtils.compact(seqResources, Collections.emptyList(), targetResources);
+    CompactionUtils.moveTargetFile(targetResources, true, COMPACTION_TEST_SG);
+    CompactionUtils.combineModsInCompaction(seqResources, Collections.emptyList(), targetResources);
+    seqResources.get(0).remove();
+
+    // meet errors and handle exception
+    CompactionExceptionHandler.handleException(
+        COMPACTION_TEST_SG,
+        compactionLogFile,
+        targetResources,
+        seqResources,
+        Collections.emptyList(),
+        tsFileManager,
+        0,
+        true,
+        true);
+
+    Assert.assertTrue(tsFileManager.isAllowCompaction());
+
+    // all source file should not exist
+    for (TsFileResource resource : seqResources) {
+      Assert.assertFalse(resource.getTsFile().exists());
+      Assert.assertFalse(
+          new File(resource.getTsFilePath() + TsFileResource.RESOURCE_SUFFIX).exists());
+      Assert.assertFalse(resource.getModFile().exists());
+      Assert.assertFalse(resource.getCompactionModFile().exists());
+    }
+    // the target file should be deleted after compaction
+    Assert.assertFalse(targetResources.get(0).getTsFile().exists());
+    Assert.assertFalse(targetResources.get(0).resourceFileExists());
+  }
+
+  @Test
+  public void testWhenTargetFileIsDeletedAfterCompactionAndAllSourceFilesExisted()
+      throws Exception {
+    tsFileManager.addAll(seqResources, true);
+    tsFileManager.addAll(unseqResources, false);
+
+    // generate mods file, the target file should be deleted after compaction
+    for (int device = 0; device < deviceNum; device++) {
+      for (int measurement = 0; measurement < measurementNum; measurement++) {
+        Map<String, Pair<Long, Long>> deleteMap = new HashMap<>();
+        deleteMap.put(
+            COMPACTION_TEST_SG
+                + PATH_SEPARATOR
+                + "device"
+                + device
+                + PATH_SEPARATOR
+                + "sensor"
+                + measurement,
+            new Pair(Long.MIN_VALUE, Long.MAX_VALUE));
+        seqResources.forEach(
+            x -> {
+              try {
+                CompactionFileGeneratorUtils.generateMods(deleteMap, x, false);
+              } catch (IllegalPathException | IOException e) {
+                throw new RuntimeException(e);
+              }
+            });
+      }
+    }
+
+    List<TsFileResource> targetResources =
+        CompactionFileGeneratorUtils.getInnerCompactionTargetTsFileResources(seqResources, true);
+    File compactionLogFile =
+        new File(
+            SEQ_DIRS,
+            targetResources.get(0).getTsFile().getName()
+                + CompactionLogger.CROSS_COMPACTION_LOG_NAME_SUFFIX);
+    CompactionLogger compactionLogger = new CompactionLogger(compactionLogFile);
+    compactionLogger.logFiles(targetResources, STR_TARGET_FILES);
+    compactionLogger.logFiles(seqResources, STR_SOURCE_FILES);
+    compactionLogger.close();
+    CompactionUtils.compact(seqResources, Collections.emptyList(), targetResources);
+    CompactionUtils.moveTargetFile(targetResources, true, COMPACTION_TEST_SG);
+    CompactionUtils.combineModsInCompaction(seqResources, Collections.emptyList(), targetResources);
+
+    // meet errors and handle exception
+    CompactionExceptionHandler.handleException(
+        COMPACTION_TEST_SG,
+        compactionLogFile,
+        targetResources,
+        seqResources,
+        Collections.emptyList(),
+        tsFileManager,
+        0,
+        true,
+        true);
+
+    Assert.assertTrue(tsFileManager.isAllowCompaction());
+
+    // all source file should exist
+    for (TsFileResource resource : seqResources) {
+      Assert.assertTrue(resource.getTsFile().exists());
+      Assert.assertTrue(
+          new File(resource.getTsFilePath() + TsFileResource.RESOURCE_SUFFIX).exists());
+      Assert.assertTrue(resource.getModFile().exists());
+      Assert.assertFalse(resource.getCompactionModFile().exists());
+    }
+    // tmp target file, target file and target resource file should be deleted after compaction
+    for (TsFileResource resource : targetResources) {
+      if (resource == null) {
+        continue;
+      }
+      Assert.assertFalse(resource.getTsFile().exists());
+      Assert.assertFalse(
+          new File(
+                  resource
+                      .getTsFilePath()
+                      .replace(
+                          IoTDBConstant.INNER_COMPACTION_TMP_FILE_SUFFIX,
+                          TsFileConstant.TSFILE_SUFFIX))
+              .exists());
+      Assert.assertFalse(
+          new File(
+                  resource
+                          .getTsFilePath()
+                          .replace(
+                              IoTDBConstant.INNER_COMPACTION_TMP_FILE_SUFFIX,
+                              TsFileConstant.TSFILE_SUFFIX)
+                      + TsFileResource.RESOURCE_SUFFIX)
+              .exists());
+    }
   }
 }

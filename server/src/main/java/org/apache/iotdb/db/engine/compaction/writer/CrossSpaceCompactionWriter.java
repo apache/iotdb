@@ -20,6 +20,7 @@ package org.apache.iotdb.db.engine.compaction.writer;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
@@ -156,9 +157,9 @@ public class CrossSpaceCompactionWriter extends AbstractCompactionWriter {
   public void endFile() throws IOException {
     for (int i = 0; i < isEmptyFile.length; i++) {
       fileWriterList.get(i).endFile();
-      // delete empty target file
+      // set empty target file to DELETED
       if (isEmptyFile[i]) {
-        fileWriterList.get(i).getFile().delete();
+        targetTsFileResources.get(i).setStatus(TsFileResourceStatus.DELETED);
       }
     }
   }

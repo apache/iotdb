@@ -28,7 +28,6 @@ import org.apache.iotdb.db.engine.compaction.writer.InnerSpaceCompactionWriter;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
-import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
@@ -57,7 +56,7 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -277,11 +276,6 @@ public class CompactionUtils {
     // in the new file
     for (int i = 0; i < targetResources.size(); i++) {
       TsFileResource targetResource = targetResources.get(i);
-      // remove the target file that has been deleted from list
-      if (!targetResource.getTsFile().exists()) {
-        targetResources.remove(i--);
-        continue;
-      }
       for (TsFileResource unseqResource : unseqResources) {
         targetResource.updatePlanIndexes(unseqResource);
       }
@@ -342,40 +336,38 @@ public class CompactionUtils {
       List<TsFileResource> unseqResources,
       List<TsFileResource> targetResources)
       throws IOException {
-    // target file may less than source seq files, so we should find each target file with its
-    // corresponding source seq file.
-    Map<String, TsFileResource> seqFileInfoMap = new HashMap<>();
-    for (TsFileResource tsFileResource : seqResources) {
-      seqFileInfoMap.put(
-          TsFileNameGenerator.increaseCrossCompactionCnt(tsFileResource.getTsFile()).getName(),
-          tsFileResource);
+    Set<Modification> modifications = new HashSet<>();
+    // get compaction mods from all source unseq files
+    for (TsFileResource unseqFile : unseqResources) {
+      modifications.addAll(ModificationFile.getCompactionMods(unseqFile).getModifications());
     }
-    // update each target mods file.
-    for (TsFileResource tsFileResource : targetResources) {
-      updateOneTargetMods(
-          tsFileResource, seqFileInfoMap.get(tsFileResource.getTsFile().getName()), unseqResources);
+
+    // write target mods file
+    for (int i = 0; i < targetResources.size(); i++) {
+      TsFileResource targetResource = targetResources.get(i);
+      if (targetResource == null) {
+        continue;
+      }
+      Set<Modification> seqModifications =
+          new HashSet<>(ModificationFile.getCompactionMods(seqResources.get(i)).getModifications());
+      modifications.addAll(seqModifications);
+      updateOneTargetMods(targetResource, modifications);
+      modifications.removeAll(seqModifications);
     }
   }
 
   private static void updateOneTargetMods(
-      TsFileResource targetFile, TsFileResource seqFile, List<TsFileResource> unseqFiles)
-      throws IOException {
-    // write mods in the seq file
-    if (seqFile != null) {
-      ModificationFile seqCompactionModificationFile = ModificationFile.getCompactionMods(seqFile);
-      for (Modification modification : seqCompactionModificationFile.getModifications()) {
-        targetFile.getModFile().write(modification);
+      TsFileResource targetFile, Set<Modification> modifications) throws IOException {
+    if (!modifications.isEmpty()) {
+      try (ModificationFile modificationFile = ModificationFile.getNormalMods(targetFile)) {
+        for (Modification modification : modifications) {
+          // we have to set modification offset to MAX_VALUE, as the offset of source chunk may
+          // change after compaction
+          modification.setFileOffset(Long.MAX_VALUE);
+          modificationFile.write(modification);
+        }
       }
     }
-    // write mods in all unseq files
-    for (TsFileResource unseqFile : unseqFiles) {
-      ModificationFile compactionUnseqModificationFile =
-          ModificationFile.getCompactionMods(unseqFile);
-      for (Modification modification : compactionUnseqModificationFile.getModifications()) {
-        targetFile.getModFile().write(modification);
-      }
-    }
-    targetFile.getModFile().close();
   }
 
   public static void deleteCompactionModsFile(
