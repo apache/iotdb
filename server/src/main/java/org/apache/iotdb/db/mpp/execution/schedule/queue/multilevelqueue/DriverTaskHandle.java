@@ -19,4 +19,62 @@
 
 package org.apache.iotdb.db.mpp.execution.schedule.queue.multilevelqueue;
 
-public class DriverTaskHandle {}
+import javax.annotation.concurrent.GuardedBy;
+
+import java.util.OptionalInt;
+import java.util.concurrent.atomic.AtomicReference;
+
+import static java.util.Objects.requireNonNull;
+
+public class DriverTaskHandle {
+
+  private final int driverTaskHandleId;
+
+  @GuardedBy("this")
+  private long scheduledTimeInNanos;
+
+  private final MultilevelPriorityQueue driverTaskQueue;
+
+  /** It is not used for now but can be used to limit the driverNum per Task in the future. */
+  private final OptionalInt maxDriversPerTask;
+
+  private final AtomicReference<Priority> priority = new AtomicReference<>(new Priority(0, 0));
+
+  public DriverTaskHandle(
+      int driverTaskHandleId,
+      MultilevelPriorityQueue driverTaskQueue,
+      OptionalInt maxDriversPerTask) {
+    this.driverTaskHandleId = driverTaskHandleId;
+    this.driverTaskQueue = requireNonNull(driverTaskQueue, "driverTaskQueue is null");
+    this.maxDriversPerTask = requireNonNull(maxDriversPerTask, "maxDriversPerTask is null");
+  }
+
+  public synchronized Priority addScheduledTimeInNanos(long durationNanos) {
+    scheduledTimeInNanos += durationNanos;
+    Priority newPriority =
+        driverTaskQueue.updatePriority(priority.get(), durationNanos, scheduledTimeInNanos);
+
+    priority.set(newPriority);
+    return newPriority;
+  }
+
+  public synchronized Priority resetLevelPriority() {
+    long levelMinPriority =
+        driverTaskQueue.getLevelMinPriority(priority.get().getLevel(), scheduledTimeInNanos);
+    if (priority.get().getLevelPriority() < levelMinPriority) {
+      Priority newPriority = new Priority(priority.get().getLevel(), levelMinPriority);
+      priority.set(newPriority);
+      return newPriority;
+    }
+
+    return priority.get();
+  }
+
+  public Priority getPriority() {
+    return priority.get();
+  }
+
+  public int getDriverTaskHandleId() {
+    return driverTaskHandleId;
+  }
+}

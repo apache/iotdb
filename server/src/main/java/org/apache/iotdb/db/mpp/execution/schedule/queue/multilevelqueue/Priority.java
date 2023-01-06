@@ -43,6 +43,11 @@ import static com.google.common.base.MoreObjects.toStringHelper;
 @Immutable
 public final class Priority {
   private final int level;
+
+  /**
+   * levelPriority increases as the schedule time accumulates. The higher this value is, the later
+   * the task with this Priority will be polled out by a PriorityQueue
+   */
   private final long levelPriority;
 
   public Priority(int level, long levelPriority) {

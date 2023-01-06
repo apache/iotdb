@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.mpp.execution.schedule.queue.multilevelqueue;
 
+import org.apache.iotdb.db.mpp.execution.schedule.queue.IndexedBlockingQueue;
 import org.apache.iotdb.db.mpp.execution.schedule.task.DriverTask;
 
 import javax.annotation.concurrent.GuardedBy;
@@ -30,13 +31,14 @@ import java.util.concurrent.locks.ReentrantLock;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkState;
+import static java.util.concurrent.TimeUnit.NANOSECONDS;
 import static java.util.concurrent.TimeUnit.SECONDS;
 
 /**
  * This class is inspired by Trino <a
  * href="https://github.com/trinodb/trino/blob/master/core/trino-main/src/main/java/io/trino/execution/executor/MultilevelSplitQueue.java">...</a>
  */
-public class MultilevelPriorityQueue {
+public class MultilevelPriorityQueue extends IndexedBlockingQueue<DriverTask> {
   /** Scheduled time threshold of each level */
   static final int[] LEVEL_THRESHOLD_SECONDS = {0, 1, 10, 60, 300};
 
@@ -53,25 +55,23 @@ public class MultilevelPriorityQueue {
   private final Condition notEmpty = lock.newCondition();
 
   /**
-   * Expected scheduled time of level0-level4 is: levelTimeMultiplier^4 : levelTimeMultiplier^3 :
+   * Expected schedule time of level0-level4 is: levelTimeMultiplier^4 : levelTimeMultiplier^3 :
    * levelTimeMultiplier^2 : levelTimeMultiplier : 1
    */
   private final double levelTimeMultiplier;
 
-  public MultilevelPriorityQueue(double levelTimeMultiplier) {
+  public MultilevelPriorityQueue(
+      double levelTimeMultiplier, int maxCapacity, DriverTask queryHolder) {
+    super(maxCapacity, queryHolder);
     this.levelScheduledTime = new AtomicLong[LEVEL_THRESHOLD_SECONDS.length];
     this.levelMinPriority = new AtomicLong[LEVEL_THRESHOLD_SECONDS.length];
     this.levelWaitingSplits = new PriorityQueue[LEVEL_THRESHOLD_SECONDS.length];
     for (int level = 0; level < LEVEL_THRESHOLD_SECONDS.length; level++) {
       levelScheduledTime[level] = new AtomicLong();
       levelMinPriority[level] = new AtomicLong(-1);
-      levelWaitingSplits[level] = new PriorityQueue<>();
+      levelWaitingSplits[level] = new PriorityQueue<>(new DriverTask.SchedulePriorityComparator());
     }
     this.levelTimeMultiplier = levelTimeMultiplier;
-  }
-
-  private void addLevelTime(int level, long nanos) {
-    levelScheduledTime[level].addAndGet(nanos);
   }
 
   /**
@@ -84,65 +84,51 @@ public class MultilevelPriorityQueue {
    * <p>To prevent this we set the scheduled time for levels which were empty to the expected
    * scheduled time.
    */
-  public void push(DriverTask task) {
+  @Override
+  public synchronized void pushToQueue(DriverTask task) {
     checkArgument(task != null, "DriverTask to be pushed is null");
 
     int level = task.getPriority().getLevel();
-    lock.lock();
-    try {
-      if (levelWaitingSplits[level].isEmpty()) {
-        // Accesses to levelScheduledTime are not synchronized, so we have a data race
-        // here - our level time math will be off. However, the staleness is bounded by
-        // the fact that only running splits that complete during this computation
-        // can update the level time. Therefore, this is benign.
-        long level0Time = getLevel0TargetTime();
-        long levelExpectedTime = (long) (level0Time / Math.pow(levelTimeMultiplier, level));
-        long delta = levelExpectedTime - levelScheduledTime[level].get();
-        levelScheduledTime[level].addAndGet(delta);
-      }
-
-      levelWaitingSplits[level].offer(task);
-      notEmpty.signal();
-    } finally {
-      lock.unlock();
+    if (levelWaitingSplits[level].isEmpty()) {
+      // Accesses to levelScheduledTime are not synchronized, so we have a data race
+      // here - our level time math will be off. However, the staleness is bounded by
+      // the fact that only running splits that complete during this computation
+      // can update the level time. Therefore, this is benign.
+      long level0Time = getLevel0TargetTime();
+      long levelExpectedTime = (long) (level0Time / Math.pow(levelTimeMultiplier, level));
+      long delta = levelExpectedTime - levelScheduledTime[level].get();
+      levelScheduledTime[level].addAndGet(delta);
     }
-  }
-
-  /** Return the element that should be scheduled first among all the levels */
-  public DriverTask poll() throws InterruptedException {
-    while (true) {
-      lock.lockInterruptibly();
-      try {
-        DriverTask result;
-        while ((result = pollFirst()) == null) {
-          notEmpty.await();
-        }
-
-        if (result.updateLevelPriority()) {
-          // todo: add annotation here
-          push(result);
-          continue;
-        }
-
-        int selectedLevel = result.getPriority().getLevel();
-        levelMinPriority[selectedLevel].set(result.getPriority().getLevelPriority());
-        return result;
-      } finally {
-        lock.unlock();
-      }
-    }
+    levelWaitingSplits[level].offer(task);
   }
 
   /**
-   * This queue attempts to give each level a target amount of scheduled time, which is configurable
-   * using levelTimeMultiplier.
+   * We attempt to give each level a target amount of scheduled time, which is configurable using
+   * levelTimeMultiplier.
    *
    * <p>This function selects the level that has the lowest ratio of actual to the target time with
    * the objective of minimizing deviation from the target scheduled time. From this level, we pick
    * the DriverTask with the lowest priority.
    */
-  @GuardedBy("lock")
-  private DriverTask pollFirst() {
+  protected DriverTask pollFirst() {
+    DriverTask result;
+    while (true) {
+      result = chooseLevelAndTask();
+      if (result.updateLevelPriority()) {
+        // result.updateLevelPriority() returns true means that the Priority of DriverTaskHandle the
+        // result belongs to has changed.
+        // All the DriverTasks of one DriverTaskHandle should be in the same level.
+        // We push the result into the queue and choose another DriverTask.
+        pushToQueue(result);
+        continue;
+      }
+      int selectedLevel = result.getPriority().getLevel();
+      levelMinPriority[selectedLevel].set(result.getPriority().getLevelPriority());
+      return result;
+    }
+  }
+
+  private DriverTask chooseLevelAndTask() {
     long targetScheduledTime = getLevel0TargetTime();
     double worstRatio = 1;
     int selectedLevel = -1;
@@ -159,23 +145,62 @@ public class MultilevelPriorityQueue {
       targetScheduledTime /= levelTimeMultiplier;
     }
 
-    if (selectedLevel == -1) {
-      return null;
-    }
-
+    // selected level == -1 means that the queue is empty and this method is only called when the
+    // queue is not empty.
+    checkState(selectedLevel != -1, "selected level can not equal to -1");
     DriverTask result = levelWaitingSplits[selectedLevel].poll();
-    checkState(result != null, "pollFirst cannot return null");
-
+    checkState(result != null, "result driverTask cannot be null");
     return result;
   }
 
-  /**
-   * level0TargetTime
-   *
-   * @return corrected value of level0TargetTime
-   */
-  @GuardedBy("lock")
-  private long getLevel0TargetTime() {
+  @Override
+  protected DriverTask remove(DriverTask driverTask) {
+    checkArgument(driverTask != null, "driverTask is null");
+    for (PriorityQueue<DriverTask> level : levelWaitingSplits) {
+      if (level.remove(driverTask)) {
+        break;
+      }
+    }
+    return driverTask;
+  }
+
+  @Override
+  protected boolean isEmpty() {
+    for (PriorityQueue<DriverTask> level : levelWaitingSplits) {
+      if (!level.isEmpty()) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  @Override
+  protected boolean contains(DriverTask driverTask) {
+    for (PriorityQueue<DriverTask> level : levelWaitingSplits) {
+      if (level.contains(driverTask)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  @Override
+  protected DriverTask get(DriverTask driverTask) {
+    // We do not support get() for MultilevelPriorityQueue since it is inefficient and not
+    // necessary.
+    throw new UnsupportedOperationException(
+        "MultilevelPriorityQueue does not support access element by get.");
+  }
+
+  @Override
+  protected void clearAllElements() {
+    for (PriorityQueue<DriverTask> level : levelWaitingSplits) {
+      level.clear();
+    }
+  }
+
+  /** @return corrected value of level0TargetTime */
+  private synchronized long getLevel0TargetTime() {
     long level0TargetTime = levelScheduledTime[0].get();
     double currentMultiplier = levelTimeMultiplier;
 
@@ -186,5 +211,71 @@ public class MultilevelPriorityQueue {
     }
 
     return level0TargetTime;
+  }
+
+  private void addLevelTime(int level, long nanos) {
+    levelScheduledTime[level].addAndGet(nanos);
+  }
+
+  /**
+   * MultilevelPriorityQueue charges the quanta run time to the task and the level it belongs to in
+   * an effort to maintain the target thread utilization ratios between levels and to maintain
+   * fairness within a level.
+   *
+   * <p>Consider an example DriverTask where a read hung for several minutes. This is either a bug
+   * or a failing dependency. In either case we do not want to charge the task too much, and we
+   * especially do not want to charge the level too much - i.e. cause other queries in this level to
+   * starve.
+   *
+   * @return the new priority for the task
+   */
+  public Priority updatePriority(Priority oldPriority, long quantaNanos, long scheduledNanos) {
+    int oldLevel = oldPriority.getLevel();
+    int newLevel = computeLevel(scheduledNanos);
+
+    long levelContribution = Math.min(quantaNanos, LEVEL_CONTRIBUTION_CAP);
+
+    if (oldLevel == newLevel) {
+      addLevelTime(oldLevel, levelContribution);
+      return new Priority(oldLevel, oldPriority.getLevelPriority() + quantaNanos);
+    }
+
+    long remainingLevelContribution = levelContribution;
+    long remainingTaskTime = quantaNanos;
+
+    // a task normally slowly accrues scheduled time in a level and then moves to the next, but
+    // if the task had a particularly long quanta, accrue time to each level as if it had run
+    // in that level up to the level limit.
+    for (int currentLevel = oldLevel; currentLevel < newLevel; currentLevel++) {
+      long timeAccruedToLevel =
+          Math.min(
+              SECONDS.toNanos(
+                  LEVEL_THRESHOLD_SECONDS[currentLevel + 1]
+                      - LEVEL_THRESHOLD_SECONDS[currentLevel]),
+              remainingLevelContribution);
+      addLevelTime(currentLevel, timeAccruedToLevel);
+      remainingLevelContribution -= timeAccruedToLevel;
+      remainingTaskTime -= timeAccruedToLevel;
+    }
+
+    addLevelTime(newLevel, remainingLevelContribution);
+    long newLevelMinPriority = getLevelMinPriority(newLevel, scheduledNanos);
+    return new Priority(newLevel, newLevelMinPriority + remainingTaskTime);
+  }
+
+  public long getLevelMinPriority(int level, long taskThreadUsageNanos) {
+    levelMinPriority[level].compareAndSet(-1, taskThreadUsageNanos);
+    return levelMinPriority[level].get();
+  }
+
+  public static int computeLevel(long threadUsageNanos) {
+    long seconds = NANOSECONDS.toSeconds(threadUsageNanos);
+    for (int level = 0; level < (LEVEL_THRESHOLD_SECONDS.length - 1); level++) {
+      if (seconds < LEVEL_THRESHOLD_SECONDS[level + 1]) {
+        return level;
+      }
+    }
+
+    return LEVEL_THRESHOLD_SECONDS.length - 1;
   }
 }
