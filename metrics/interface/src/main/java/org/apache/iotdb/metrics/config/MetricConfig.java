@@ -23,13 +23,19 @@ import org.apache.iotdb.metrics.utils.InternalReporterType;
 import org.apache.iotdb.metrics.utils.MetricFrameType;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.ReporterType;
+import org.apache.iotdb.metrics.utils.SystemType;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.lang.management.ManagementFactory;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
 public class MetricConfig {
+  private static final Logger LOGGER = LoggerFactory.getLogger(MetricConfig.class);
   /** The type of the implementation of metric framework. */
   private MetricFrameType metricFrameType = MetricFrameType.MICROMETER;
 
@@ -55,6 +61,19 @@ public class MetricConfig {
   private String rpcAddress = "0.0.0.0";
   /** The port of iotdb instance that is monitored. */
   private Integer rpcPort = 6667;
+  /** The pid of iotdb instance. */
+  private String pid = "";
+  /** The running system of iotdb instance */
+  private final SystemType systemType = SystemType.getSystemType();
+
+  public MetricConfig() {
+    // try to get pid of iotdb instance
+    try {
+      pid = ManagementFactory.getRuntimeMXBean().getName().split("@")[0];
+    } catch (Exception e) {
+      LOGGER.warn("Failed to get pid, because ", e);
+    }
+  }
 
   public MetricFrameType getMetricFrameType() {
     return metricFrameType;
@@ -119,6 +138,14 @@ public class MetricConfig {
 
   public Integer getRpcPort() {
     return rpcPort;
+  }
+
+  public String getPid() {
+    return pid;
+  }
+
+  public SystemType getSystemType() {
+    return systemType;
   }
 
   /** Update rpc address and rpc port of monitored node. */
