@@ -128,15 +128,6 @@ public interface IMTreeBelowSG {
    */
   IMNode getDeviceNodeWithAutoCreating(PartialPath deviceId) throws MetadataException;
 
-  /**
-   * Get all devices matching the given path pattern. If isPrefixMatch, then the devices under the
-   * paths matching given path pattern will be collected too.
-   *
-   * @return a list contains all distinct devices names
-   */
-  Set<PartialPath> getDevices(PartialPath pathPattern, boolean isPrefixMatch)
-      throws MetadataException;
-
   List<ShowDevicesResult> getDevices(IShowDevicesPlan plan) throws MetadataException;
 
   /**

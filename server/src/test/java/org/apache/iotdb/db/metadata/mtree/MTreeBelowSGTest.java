@@ -361,8 +361,6 @@ public abstract class MTreeBelowSGTest {
         Collections.emptyMap(),
         null);
 
-    assertEquals(2, storageGroup.getDevices(new PartialPath("root"), true).size());
-    assertEquals(2, storageGroup.getDevices(new PartialPath("root.**"), false).size());
     assertEquals(2, storageGroup.getMeasurementPaths(new PartialPath("root.**"), false).size());
   }
 

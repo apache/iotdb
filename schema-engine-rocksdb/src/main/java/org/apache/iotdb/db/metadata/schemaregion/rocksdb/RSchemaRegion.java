@@ -946,14 +946,6 @@ public class RSchemaRegion implements ISchemaRegion {
     return result;
   }
 
-  @Override
-  public Set<PartialPath> getMatchedDevices(PartialPath pathPattern, boolean isPrefixMatch)
-      throws MetadataException {
-    Set<PartialPath> allPath = new HashSet<>();
-    getMatchedPathByNodeType(pathPattern.getNodes(), new Character[] {NODE_TYPE_ENTITY}, allPath);
-    return allPath;
-  }
-
   private void getMatchedPathByNodeType(
       String[] nodes, Character[] nodetype, Collection<PartialPath> collection)
       throws IllegalPathException {

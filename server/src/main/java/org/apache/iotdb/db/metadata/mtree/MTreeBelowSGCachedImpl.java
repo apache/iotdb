@@ -653,27 +653,6 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
   // region Interfaces and Implementation for metadata info Query
 
   // region Interfaces for Device info Query
-  /**
-   * Get all devices matching the given path pattern. If isPrefixMatch, then the devices under the
-   * paths matching given path pattern will be collected too.
-   *
-   * @return a list contains all distinct devices names
-   */
-  @Override
-  public Set<PartialPath> getDevices(PartialPath pathPattern, boolean isPrefixMatch)
-      throws MetadataException {
-    Set<PartialPath> result = new TreeSet<>();
-    EntityCollector<Set<PartialPath>> collector =
-        new EntityCollector<Set<PartialPath>>(storageGroupMNode, pathPattern, store) {
-          @Override
-          protected void collectEntity(IEntityMNode node) {
-            result.add(getCurrentPartialPath(node));
-          }
-        };
-    collector.setPrefixMatch(isPrefixMatch);
-    collector.traverse();
-    return result;
-  }
 
   @Override
   public List<ShowDevicesResult> getDevices(IShowDevicesPlan plan) throws MetadataException {

@@ -69,7 +69,6 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -345,27 +344,6 @@ public class TagSchemaRegion implements ISchemaRegion {
   public Set<TSchemaNode> getChildNodePathInNextLevel(PartialPath pathPattern)
       throws MetadataException {
     throw new UnsupportedOperationException("getChildNodePathInNextLevel");
-  }
-
-  @Override
-  public Set<PartialPath> getMatchedDevices(PartialPath pathPattern, boolean isPrefixMatch)
-      throws MetadataException {
-    List<IDeviceID> deviceIDs = getDeviceIdFromInvertedIndex(pathPattern);
-    Set<PartialPath> matchedDevices = new HashSet<>();
-    String devicePath = pathPattern.getFullPath();
-    // exact query
-    if (!devicePath.endsWith(TAIL) && !devicePath.equals(storageGroupFullPath)) {
-      DeviceEntry deviceEntry = idTableWithDeviceIDList.getDeviceEntry(devicePath);
-      if (deviceEntry != null) {
-        matchedDevices.add(pathPattern);
-      }
-      return matchedDevices;
-    }
-    List<String> devicePaths = getDevicePaths(deviceIDs);
-    for (String path : devicePaths) {
-      matchedDevices.add(new PartialPath(path));
-    }
-    return matchedDevices;
   }
 
   private List<String> getDevicePaths(List<IDeviceID> deviceIDS) {

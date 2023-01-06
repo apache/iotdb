@@ -203,18 +203,6 @@ public interface ISchemaRegion {
   // region Interfaces for Entity/Device info Query
 
   /**
-   * Get all device paths matching the path pattern. If using prefix match, the path pattern is used
-   * to match prefix path. All timeseries start with the matched prefix path will be collected.
-   *
-   * @param pathPattern the pattern of the target devices.
-   * @param isPrefixMatch if true, the path pattern is used to match prefix path.
-   * @return A HashSet instance which stores devices paths matching the given path pattern.
-   */
-  @Deprecated
-  Set<PartialPath> getMatchedDevices(PartialPath pathPattern, boolean isPrefixMatch)
-      throws MetadataException;
-
-  /**
    * Get all device paths and corresponding database paths as ShowDevicesResult.
    *
    * @param plan ShowDevicesPlan which contains the path pattern and restriction params.
