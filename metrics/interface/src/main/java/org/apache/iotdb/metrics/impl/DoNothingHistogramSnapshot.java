@@ -28,8 +28,8 @@ public class DoNothingHistogramSnapshot implements HistogramSnapshot, DoNothingM
   }
 
   @Override
-  public long[] getValues() {
-    return new long[0];
+  public double[] getValues() {
+    return new double[0];
   }
 
   @Override
@@ -43,8 +43,8 @@ public class DoNothingHistogramSnapshot implements HistogramSnapshot, DoNothingM
   }
 
   @Override
-  public long getMax() {
-    return 0;
+  public double getMax() {
+    return 0.0D;
   }
 
   @Override
@@ -53,7 +53,7 @@ public class DoNothingHistogramSnapshot implements HistogramSnapshot, DoNothingM
   }
 
   @Override
-  public long getMin() {
-    return 0;
+  public double getMin() {
+    return 0.0D;
   }
 }
