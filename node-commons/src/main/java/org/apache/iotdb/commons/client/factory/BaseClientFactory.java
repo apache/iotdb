@@ -17,15 +17,24 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.client.exception;
+package org.apache.iotdb.commons.client.factory;
 
-public class ClientManagerException extends Exception {
+import org.apache.iotdb.commons.client.ClientManager;
 
-  public ClientManagerException(Exception exception) {
-    super(exception);
+import org.apache.commons.pool2.KeyedPooledObjectFactory;
+import org.apache.commons.pool2.PooledObject;
+
+public abstract class BaseClientFactory<K, V> implements KeyedPooledObjectFactory<K, V> {
+
+  protected ClientManager<K, V> clientManager;
+
+  protected BaseClientFactory(ClientManager<K, V> clientManager) {
+    this.clientManager = clientManager;
   }
 
-  public ClientManagerException(String message) {
-    super(message);
-  }
+  @Override
+  public void activateObject(K node, PooledObject<V> pooledObject) {}
+
+  @Override
+  public void passivateObject(K node, PooledObject<V> pooledObject) {}
 }

@@ -20,9 +20,10 @@
 package org.apache.iotdb.commons.client.sync;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
-import org.apache.iotdb.commons.client.BaseClientFactory;
-import org.apache.iotdb.commons.client.ClientFactoryProperty;
 import org.apache.iotdb.commons.client.ClientManager;
+import org.apache.iotdb.commons.client.ThriftClient;
+import org.apache.iotdb.commons.client.factory.ThriftClientFactory;
+import org.apache.iotdb.commons.client.property.ThriftClientProperty;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.mpp.rpc.thrift.IDataNodeRPCService;
 import org.apache.iotdb.rpc.RpcTransportFactory;
@@ -35,19 +36,18 @@ import org.apache.thrift.protocol.TProtocolFactory;
 import org.apache.thrift.transport.TSocket;
 import org.apache.thrift.transport.TTransportException;
 
-import java.lang.reflect.Constructor;
 import java.net.SocketException;
 
 public class SyncDataNodeInternalServiceClient extends IDataNodeRPCService.Client
-    implements SyncThriftClient, AutoCloseable {
+    implements ThriftClient, AutoCloseable {
 
-  private final TEndPoint endPoint;
+  private final TEndPoint endpoint;
   private final ClientManager<TEndPoint, SyncDataNodeInternalServiceClient> clientManager;
 
   public SyncDataNodeInternalServiceClient(
       TProtocolFactory protocolFactory,
       int connectionTimeout,
-      TEndPoint endPoint,
+      TEndPoint endpoint,
       ClientManager<TEndPoint, SyncDataNodeInternalServiceClient> clientManager)
       throws TTransportException {
     super(
@@ -55,28 +55,16 @@ public class SyncDataNodeInternalServiceClient extends IDataNodeRPCService.Clien
             RpcTransportFactory.INSTANCE.getTransport(
                 new TSocket(
                     TConfigurationConst.defaultTConfiguration,
-                    endPoint.getIp(),
-                    endPoint.getPort(),
+                    endpoint.getIp(),
+                    endpoint.getPort(),
                     connectionTimeout))));
-    this.endPoint = endPoint;
+    this.endpoint = endpoint;
     this.clientManager = clientManager;
     getInputProtocol().getTransport().open();
   }
 
-  @TestOnly
-  public TEndPoint getTEndpoint() {
-    return endPoint;
-  }
-
-  @TestOnly
-  public ClientManager<TEndPoint, SyncDataNodeInternalServiceClient> getClientManager() {
-    return clientManager;
-  }
-
-  public void close() {
-    if (clientManager != null) {
-      clientManager.returnClient(endPoint, this);
-    }
+  public int getTimeout() throws SocketException {
+    return ((TimeoutChangeableTransport) getInputProtocol().getTransport()).getTimeOut();
   }
 
   public void setTimeout(int timeout) {
@@ -84,31 +72,43 @@ public class SyncDataNodeInternalServiceClient extends IDataNodeRPCService.Clien
     ((TimeoutChangeableTransport) (getInputProtocol().getTransport())).setTimeout(timeout);
   }
 
+  @TestOnly
+  public TEndPoint getTEndpoint() {
+    return endpoint;
+  }
+
+  @TestOnly
+  public ClientManager<TEndPoint, SyncDataNodeInternalServiceClient> getClientManager() {
+    return clientManager;
+  }
+
+  @Override
+  public void close() {
+    clientManager.returnClient(endpoint, this);
+  }
+
+  @Override
   public void invalidate() {
     getInputProtocol().getTransport().close();
   }
 
   @Override
   public void invalidateAll() {
-    clientManager.clear(endPoint);
-  }
-
-  public int getTimeout() throws SocketException {
-    return ((TimeoutChangeableTransport) getInputProtocol().getTransport()).getTimeOut();
+    clientManager.clear(endpoint);
   }
 
   @Override
   public String toString() {
-    return String.format("SyncDataNodeInternalServiceClient{%s}", endPoint);
+    return String.format("SyncDataNodeInternalServiceClient{%s}", endpoint);
   }
 
   public static class Factory
-      extends BaseClientFactory<TEndPoint, SyncDataNodeInternalServiceClient> {
+      extends ThriftClientFactory<TEndPoint, SyncDataNodeInternalServiceClient> {
 
     public Factory(
         ClientManager<TEndPoint, SyncDataNodeInternalServiceClient> clientManager,
-        ClientFactoryProperty clientFactoryProperty) {
-      super(clientManager, clientFactoryProperty);
+        ThriftClientProperty thriftClientProperty) {
+      super(clientManager, thriftClientProperty);
     }
 
     @Override
@@ -120,15 +120,13 @@ public class SyncDataNodeInternalServiceClient extends IDataNodeRPCService.Clien
     @Override
     public PooledObject<SyncDataNodeInternalServiceClient> makeObject(TEndPoint endpoint)
         throws Exception {
-      Constructor<SyncDataNodeInternalServiceClient> constructor =
-          SyncDataNodeInternalServiceClient.class.getConstructor(
-              TProtocolFactory.class, int.class, endpoint.getClass(), clientManager.getClass());
       return new DefaultPooledObject<>(
           SyncThriftClientWithErrorHandler.newErrorHandler(
               SyncDataNodeInternalServiceClient.class,
-              constructor,
-              clientFactoryProperty.getProtocolFactory(),
-              clientFactoryProperty.getConnectionTimeoutMs(),
+              SyncDataNodeInternalServiceClient.class.getConstructor(
+                  TProtocolFactory.class, int.class, endpoint.getClass(), clientManager.getClass()),
+              thriftClientProperty.getProtocolFactory(),
+              thriftClientProperty.getConnectionTimeoutMs(),
               endpoint,
               clientManager));
     }
@@ -136,8 +134,7 @@ public class SyncDataNodeInternalServiceClient extends IDataNodeRPCService.Clien
     @Override
     public boolean validateObject(
         TEndPoint endpoint, PooledObject<SyncDataNodeInternalServiceClient> pooledObject) {
-      return pooledObject.getObject() != null
-          && pooledObject.getObject().getInputProtocol().getTransport().isOpen();
+      return pooledObject.getObject().getInputProtocol().getTransport().isOpen();
     }
   }
 }

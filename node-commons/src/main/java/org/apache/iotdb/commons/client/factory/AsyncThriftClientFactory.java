@@ -17,41 +17,41 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.client;
+package org.apache.iotdb.commons.client.factory;
+
+import org.apache.iotdb.commons.client.ClientManager;
+import org.apache.iotdb.commons.client.exception.CreateTAsyncClientManagerException;
+import org.apache.iotdb.commons.client.property.ThriftClientProperty;
 
 import org.apache.thrift.async.TAsyncClientManager;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
-public abstract class AsyncBaseClientFactory<K, V> extends BaseClientFactory<K, V> {
+public abstract class AsyncThriftClientFactory<K, V> extends ThriftClientFactory<K, V> {
 
-  private static final Logger logger = LoggerFactory.getLogger(AsyncBaseClientFactory.class);
-  protected TAsyncClientManager[] tManagers;
-  protected AtomicInteger clientCnt = new AtomicInteger();
+  protected final TAsyncClientManager[] tManagers;
+  protected final AtomicInteger clientCnt = new AtomicInteger();
   private static final String THRIFT_THREAD_NAME = "TAsyncClientManager#SelectorThread";
 
-  protected AsyncBaseClientFactory(
+  protected AsyncThriftClientFactory(
       ClientManager<K, V> clientManager,
-      ClientFactoryProperty clientFactoryProperty,
+      ThriftClientProperty thriftClientProperty,
       String threadName) {
-    super(clientManager, clientFactoryProperty);
-    synchronized (this) {
-      tManagers = new TAsyncClientManager[clientFactoryProperty.getSelectorNumOfAsyncClientPool()];
+    super(clientManager, thriftClientProperty);
+    try {
+      tManagers = new TAsyncClientManager[thriftClientProperty.getSelectorNumOfAsyncClientPool()];
       for (int i = 0; i < tManagers.length; i++) {
-        try {
-          tManagers[i] = new TAsyncClientManager();
-        } catch (IOException e) {
-          logger.error("Cannot create Async client factory", e);
-        }
+        tManagers[i] = new TAsyncClientManager();
       }
-      Thread.getAllStackTraces().keySet().stream()
-          .filter(thread -> thread.getName().contains(THRIFT_THREAD_NAME))
-          .collect(Collectors.toList())
-          .forEach(thread -> thread.setName(threadName + "-selector" + "-" + thread.getId()));
+    } catch (IOException e) {
+      throw new CreateTAsyncClientManagerException(
+          String.format("Cannot create Async thrift client factory %s", threadName), e);
     }
+    Thread.getAllStackTraces().keySet().stream()
+        .filter(thread -> thread.getName().contains(THRIFT_THREAD_NAME))
+        .collect(Collectors.toList())
+        .forEach(thread -> thread.setName(threadName + "-selector-" + thread.getId()));
   }
 }
