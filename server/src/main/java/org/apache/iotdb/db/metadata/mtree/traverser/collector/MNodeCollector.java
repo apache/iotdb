@@ -30,6 +30,7 @@ import org.apache.iotdb.db.metadata.mtree.traverser.basic.MNodeTraverser;
  * MNodeLevelCounter finds the node of the specified level on the path and process it. The same node
  * will not be processed more than once. If a level is not given, the current node is processed.
  */
+// TODO: set R to IMNodeInfo
 public abstract class MNodeCollector<R> extends MNodeTraverser<R> {
 
   protected MNodeCollector(
@@ -43,5 +44,6 @@ public abstract class MNodeCollector<R> extends MNodeTraverser<R> {
     return null;
   }
 
+  // TODO: make collectMNode return R
   protected abstract void collectMNode(IMNode node);
 }

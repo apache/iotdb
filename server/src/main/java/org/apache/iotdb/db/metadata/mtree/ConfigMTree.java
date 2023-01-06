@@ -214,7 +214,7 @@ public class ConfigMTree {
     try (DatabaseCollector<List<PartialPath>> collector =
         new DatabaseCollector<List<PartialPath>>(root, pathPattern, store, isPrefixMatch) {
           @Override
-          protected void collectStorageGroup(IStorageGroupMNode node) {
+          protected void collectDatabase(IStorageGroupMNode node) {
             result.add(node.getPartialPath());
           }
         }) {

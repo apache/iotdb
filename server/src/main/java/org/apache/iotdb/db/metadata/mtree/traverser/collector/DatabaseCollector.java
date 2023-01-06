@@ -35,9 +35,10 @@ public abstract class DatabaseCollector<R> extends DatabaseTraverser<R> {
 
   @Override
   protected R generateResult(IMNode nextMatchedNode) {
-    collectStorageGroup(nextMatchedNode.getAsStorageGroupMNode());
+    collectDatabase(nextMatchedNode.getAsStorageGroupMNode());
     return null;
   }
 
-  protected abstract void collectStorageGroup(IStorageGroupMNode node);
+  // TODO: make collectDatabase return R
+  protected abstract void collectDatabase(IStorageGroupMNode node);
 }

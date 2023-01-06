@@ -38,30 +38,26 @@ public abstract class AbstractTraverserIterator implements IMNodeIterator {
   private Iterator<IMNode> templateChildrenIterator;
   protected IMNode nextMatchedNode;
   protected boolean usingDirectChildrenIterator = true;
-  // measurement in template should be processed only if templateMap is not null
-  private Map<Integer, Template> templateMap;
   // if true, the pre deleted measurement or pre deactivated template won't be processed
   private boolean skipPreDeletedSchema = false;
 
-  protected AbstractTraverserIterator(IMTreeStore store, IMNode parent) throws MetadataException {
-    directChildrenIterator = store.getChildrenIterator(parent);
+  protected AbstractTraverserIterator(
+      IMTreeStore store, IMNode parent, Map<Integer, Template> templateMap)
+      throws MetadataException {
+    this.directChildrenIterator = store.getChildrenIterator(parent);
     if (templateMap != null && parent.isEntity() && parent.isUseTemplate()) {
-      Template template = getActivatedSchemaTemplate(parent);
+      Template template = getActivatedSchemaTemplate(parent, templateMap);
       if (template != null) {
         templateChildrenIterator = template.getDirectNodes().iterator();
       }
     }
   }
 
-  public void setTemplateMap(Map<Integer, Template> templateMap) {
-    this.templateMap = templateMap;
-  }
-
   public void setSkipPreDeletedSchema(boolean skipPreDeletedSchema) {
     this.skipPreDeletedSchema = skipPreDeletedSchema;
   }
 
-  private Template getActivatedSchemaTemplate(IMNode node) {
+  private Template getActivatedSchemaTemplate(IMNode node, Map<Integer, Template> templateMap) {
     // new cluster, the used template is directly recorded as template id in device mnode
     if (node.getSchemaTemplateId() != NON_TEMPLATE) {
       if (skipPreDeletedSchema && node.getAsEntityMNode().isPreDeactivateTemplate()) {

@@ -200,8 +200,7 @@ public class CachedMTreeStore implements IMTreeStore {
   public IMNodeIterator getTraverserIterator(
       IMNode parent, Map<Integer, Template> templateMap, boolean skipPreDeletedSchema)
       throws MetadataException {
-    AbstractTraverserIterator iterator = new CachedTraverserIterator(this, parent);
-    iterator.setTemplateMap(templateMap);
+    AbstractTraverserIterator iterator = new CachedTraverserIterator(this, parent, templateMap);
     iterator.setSkipPreDeletedSchema(skipPreDeletedSchema);
     return iterator;
   }
@@ -624,8 +623,9 @@ public class CachedMTreeStore implements IMTreeStore {
   }
 
   private class CachedTraverserIterator extends AbstractTraverserIterator {
-    CachedTraverserIterator(IMTreeStore store, IMNode parent) throws MetadataException {
-      super(store, parent);
+    CachedTraverserIterator(IMTreeStore store, IMNode parent, Map<Integer, Template> templateMap)
+        throws MetadataException {
+      super(store, parent, templateMap);
     }
 
     @Override
