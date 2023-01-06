@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -16,22 +16,24 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.iotdb.metrics.micrometer.type;
 
 import org.apache.iotdb.metrics.type.HistogramSnapshot;
 
-import io.micrometer.core.instrument.distribution.ValueAtPercentile;
-
 import java.util.Arrays;
+import java.util.concurrent.TimeUnit;
 
-public class MicrometerHistogramSnapshot implements HistogramSnapshot {
+/** This implementation is just for a timer as it needs the TimeUnit to convert from nanoseconds. */
+public class MicrometerTimerHistogramSnapshot implements HistogramSnapshot {
 
   io.micrometer.core.instrument.distribution.HistogramSnapshot histogramSnapshot;
+  private final TimeUnit baseTimeUnit;
 
-  public MicrometerHistogramSnapshot(
-      io.micrometer.core.instrument.distribution.HistogramSnapshot histogramSnapshot) {
+  public MicrometerTimerHistogramSnapshot(
+      io.micrometer.core.instrument.distribution.HistogramSnapshot histogramSnapshot,
+      TimeUnit baseTimeUnit) {
     this.histogramSnapshot = histogramSnapshot;
+    this.baseTimeUnit = baseTimeUnit;
   }
 
   @Override
@@ -47,13 +49,13 @@ public class MicrometerHistogramSnapshot implements HistogramSnapshot {
       }
     }
 
-    return this.histogramSnapshot.percentileValues()[prevIndex].value();
+    return this.histogramSnapshot.percentileValues()[prevIndex].value(baseTimeUnit);
   }
 
   @Override
   public double[] getValues() {
     return Arrays.stream(this.histogramSnapshot.percentileValues())
-        .mapToDouble(ValueAtPercentile::value)
+        .mapToDouble(k -> k.value(baseTimeUnit))
         .toArray();
   }
 
@@ -69,12 +71,12 @@ public class MicrometerHistogramSnapshot implements HistogramSnapshot {
 
   @Override
   public double getMax() {
-    return this.histogramSnapshot.max();
+    return this.histogramSnapshot.max(baseTimeUnit);
   }
 
   @Override
   public double getMean() {
-    return this.histogramSnapshot.mean();
+    return this.histogramSnapshot.mean(baseTimeUnit);
   }
 
   @Override
