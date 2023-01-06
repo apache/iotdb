@@ -23,20 +23,98 @@ import org.apache.iotdb.lsm.response.IQueryResponse;
 
 import org.roaringbitmap.RoaringBitmap;
 
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
+import java.util.NoSuchElementException;
+
 public class QueryResponse extends BaseResponse<RoaringBitmap>
-    implements IQueryResponse<RoaringBitmap> {
+    implements IQueryResponse<RoaringBitmap, Integer> {
+
+  private final DeviceIDIterator deviceIDIterator;
 
   public QueryResponse() {
     super(new RoaringBitmap());
+    deviceIDIterator = new DeviceIDIterator();
   }
 
   @Override
-  public void or(IQueryResponse<RoaringBitmap> queryResponse) {
+  public void or(IQueryResponse<RoaringBitmap, Integer> queryResponse) {
     getValue().or(queryResponse.getValue());
   }
 
   @Override
-  public void and(IQueryResponse<RoaringBitmap> queryResponse) {
+  public void and(IQueryResponse<RoaringBitmap, Integer> queryResponse) {
     getValue().and(queryResponse.getValue());
+  }
+
+  @Override
+  public Iterator<Integer> getIterator() {
+    if (getValue() != null && !getValue().isEmpty()) {
+      deviceIDIterator.addIterator(getValue().iterator());
+    }
+    return deviceIDIterator;
+  }
+
+  @Override
+  public void addIterator(Iterator<Integer> iterator) {
+    deviceIDIterator.addIterator(iterator);
+  }
+
+  private class DeviceIDIterator implements Iterator<Integer> {
+
+    private List<Iterator<Integer>> iterators;
+
+    private Integer next;
+
+    private int index;
+
+    public DeviceIDIterator() {
+      iterators = new ArrayList<>();
+      next = null;
+      index = 0;
+    }
+
+    /**
+     * Returns {@code true} if the iteration has more elements. (In other words, returns {@code
+     * true} if {@link #next} would return an element rather than throwing an exception.)
+     *
+     * @return {@code true} if the iteration has more elements
+     */
+    @Override
+    public boolean hasNext() {
+      if (next != null) {
+        return true;
+      }
+      while (index < iterators.size()) {
+        Iterator<Integer> iterator = iterators.get(index);
+        if (iterator.hasNext()) {
+          next = iterator.next();
+          return true;
+        }
+        index++;
+      }
+      return false;
+    }
+
+    /**
+     * Returns the next element in the iteration.
+     *
+     * @return the next element in the iteration
+     * @throws NoSuchElementException if the iteration has no more elements
+     */
+    @Override
+    public Integer next() {
+      if (next == null) {
+        throw new NoSuchElementException();
+      }
+      int now = next;
+      next = null;
+      return now;
+    }
+
+    public void addIterator(Iterator<Integer> iterator) {
+      iterators.add(iterator);
+    }
   }
 }

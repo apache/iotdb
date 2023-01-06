@@ -64,7 +64,7 @@ public class ChunkGroupReader implements IChunkGroupReader {
   @Override
   public RoaringBitmap readAllDeviceID(long offset) throws IOException {
     if (chunkIndex == null) {
-      chunkIndex = readChunkIndex(tiFileInput.position());
+      chunkIndex = readChunkIndex(offset);
       if (chunkIndex.getChunkIndexEntries().size() == 0) {
         return new RoaringBitmap();
       }

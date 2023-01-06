@@ -112,6 +112,19 @@ public class TiFileReader implements IDiskIterator<Integer> {
     return bloomFilter;
   }
 
+  public RoaringBitmap readAllDeviceID() throws IOException {
+    if (tiFileHeader == null) {
+      tiFileHeader = readTiFileHeader();
+    }
+    if (bloomFilter == null) {
+      bloomFilter = readBloomFilter(tiFileHeader.getBloomFilterOffset());
+    }
+    if (!bloomFilterHas(tags)) {
+      return new RoaringBitmap();
+    }
+    return readAllDeviceID(tags, tiFileHeader.getTagKeyIndexOffset());
+  }
+
   /**
    * Read all ids according to tags, this method does not use iterators, you need to pay attention
    * to memory

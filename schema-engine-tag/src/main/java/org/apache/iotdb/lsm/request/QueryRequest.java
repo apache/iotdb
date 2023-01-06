@@ -22,6 +22,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class QueryRequest<K> {
+  boolean iterativeQuery;
+
   List<ISingleQueryRequest<K>> singleQueryRequests;
 
   public QueryRequest() {
@@ -38,5 +40,13 @@ public class QueryRequest<K> {
 
   public void add(ISingleQueryRequest<K> singleQueryRequest) {
     singleQueryRequests.add(singleQueryRequest);
+  }
+
+  public boolean isIterativeQuery() {
+    return iterativeQuery;
+  }
+
+  public void setIterativeQuery(boolean iterativeQuery) {
+    this.iterativeQuery = iterativeQuery;
   }
 }

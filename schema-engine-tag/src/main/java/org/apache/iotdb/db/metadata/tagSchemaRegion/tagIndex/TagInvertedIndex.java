@@ -41,6 +41,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -153,14 +154,29 @@ public class TagInvertedIndex implements ITagInvertedIndex {
    * @return ids
    */
   @Override
-  public synchronized List<Integer> getMatchedIDs(Map<String, String> tags) {
+  public synchronized List<Integer> getAllMatchedIDs(Map<String, String> tags) {
     QueryRequest<String> queryRequest = generateQueryRequest(tags);
+    queryRequest.setIterativeQuery(false);
     QueryResponse queryResponse = lsmEngine.query(queryRequest);
     if (queryResponse == null) {
       return new ArrayList<>();
     }
     RoaringBitmap roaringBitmap = queryResponse.getValue();
     return Arrays.stream(roaringBitmap.toArray()).boxed().collect(Collectors.toList());
+  }
+
+  /**
+   * get matching device ids iteratively
+   *
+   * @param tags tags like: <tagKey,tagValue>
+   * @return a device id iterator
+   */
+  @Override
+  public synchronized Iterator<Integer> getMatchedIDsIteratively(Map<String, String> tags) {
+    QueryRequest<String> queryRequest = generateQueryRequest(tags);
+    queryRequest.setIterativeQuery(true);
+    QueryResponse queryResponse = lsmEngine.query(queryRequest);
+    return queryResponse.getIterator();
   }
 
   /**

@@ -192,7 +192,7 @@ public class TagSchemaRegion implements ISchemaRegion {
   private List<Integer> getDeviceIDsFromInvertedIndex(PartialPath path) {
     Map<String, String> tags =
         PathTagConverterUtils.pathToTags(storageGroupFullPath, path.getFullPath());
-    return tagInvertedIndex.getMatchedIDs(tags);
+    return tagInvertedIndex.getAllMatchedIDs(tags);
   }
 
   private void createTimeseries(

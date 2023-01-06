@@ -18,9 +18,15 @@
  */
 package org.apache.iotdb.lsm.response;
 
-public interface IQueryResponse<T> extends IResponse<T> {
+import java.util.Iterator;
 
-  void or(IQueryResponse<T> queryResponse);
+public interface IQueryResponse<T, A> extends IResponse<T> {
 
-  void and(IQueryResponse<T> queryResponse);
+  void or(IQueryResponse<T, A> queryResponse);
+
+  void and(IQueryResponse<T, A> queryResponse);
+
+  Iterator<A> getIterator();
+
+  void addIterator(Iterator<A> iterator);
 }

@@ -32,6 +32,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
@@ -117,7 +118,7 @@ public class TagInvertedIndexTest {
   }
 
   @Test
-  public void getMatchedIDs() {
+  public void getAllMatchedIDs() {
     addTags();
     Map<String, String> tags1 = new HashMap<>();
     tags1.put("tag1", "q");
@@ -129,33 +130,91 @@ public class TagInvertedIndexTest {
     Map<String, String> tags3 = new HashMap<>();
     tags3.put("xxxxxxxx", "xxxxxxxx");
 
-    List<Integer> ids = tagInvertedIndex.getMatchedIDs(tags1);
+    List<Integer> ids = tagInvertedIndex.getAllMatchedIDs(tags1);
     List<Integer> verify = Arrays.asList(1, 2, 3, 4, 5, 7, 12, 15, 16, 18);
     assertEquals(verify, ids);
 
-    ids = tagInvertedIndex.getMatchedIDs(tags2);
+    ids = tagInvertedIndex.getAllMatchedIDs(tags2);
     verify = Arrays.asList(1, 3, 12, 15, 16);
     assertEquals(verify, ids);
 
-    ids = tagInvertedIndex.getMatchedIDs(tags3);
+    ids = tagInvertedIndex.getAllMatchedIDs(tags3);
     verify = Arrays.asList();
     assertEquals(verify, ids);
 
     removeTags();
 
-    ids = tagInvertedIndex.getMatchedIDs(tags1);
+    ids = tagInvertedIndex.getAllMatchedIDs(tags1);
     verify = Arrays.asList(3, 5, 7, 15, 16, 18);
     assertEquals(verify, ids);
 
-    ids = tagInvertedIndex.getMatchedIDs(tags2);
+    ids = tagInvertedIndex.getAllMatchedIDs(tags2);
     verify = Arrays.asList(3, 15, 16);
     assertEquals(verify, ids);
 
-    ids = tagInvertedIndex.getMatchedIDs(tags3);
+    ids = tagInvertedIndex.getAllMatchedIDs(tags3);
     verify = Arrays.asList();
     assertEquals(verify, ids);
 
-    ids = tagInvertedIndex.getMatchedIDs(new HashMap<>());
+    ids = tagInvertedIndex.getAllMatchedIDs(new HashMap<>());
+    verify = Arrays.asList();
+    assertEquals(verify, ids);
+  }
+
+  @Test
+  public void testGetMatchedIDsIteratively() {
+    addTags();
+    Map<String, String> tags1 = new HashMap<>();
+    tags1.put("tag1", "q");
+
+    Map<String, String> tags2 = new HashMap<>();
+    tags2.put("tag1", "q");
+    tags2.put("tag2", "a");
+
+    Map<String, String> tags3 = new HashMap<>();
+    tags3.put("xxxxxxxx", "xxxxxxxx");
+
+    List<Integer> ids = new ArrayList<>();
+    Iterator<Integer> iterator = tagInvertedIndex.getMatchedIDsIteratively(tags1);
+    setIDs(ids, iterator);
+    List<Integer> verify = Arrays.asList(1, 2, 3, 4, 5, 7, 12, 15, 16, 18);
+    assertEquals(verify, ids);
+
+    ids = new ArrayList<>();
+    iterator = tagInvertedIndex.getMatchedIDsIteratively(tags2);
+    setIDs(ids, iterator);
+    verify = Arrays.asList(1, 3, 12, 15, 16);
+    assertEquals(verify, ids);
+
+    ids = new ArrayList<>();
+    iterator = tagInvertedIndex.getMatchedIDsIteratively(tags3);
+    setIDs(ids, iterator);
+    verify = Arrays.asList();
+    assertEquals(verify, ids);
+
+    removeTags();
+
+    ids = new ArrayList<>();
+    iterator = tagInvertedIndex.getMatchedIDsIteratively(tags1);
+    setIDs(ids, iterator);
+    verify = Arrays.asList(3, 5, 7, 15, 16, 18);
+    assertEquals(verify, ids);
+
+    ids = new ArrayList<>();
+    iterator = tagInvertedIndex.getMatchedIDsIteratively(tags2);
+    setIDs(ids, iterator);
+    verify = Arrays.asList(3, 15, 16);
+    assertEquals(verify, ids);
+
+    ids = new ArrayList<>();
+    iterator = tagInvertedIndex.getMatchedIDsIteratively(tags3);
+    setIDs(ids, iterator);
+    verify = Arrays.asList();
+    assertEquals(verify, ids);
+
+    ids = new ArrayList<>();
+    iterator = tagInvertedIndex.getMatchedIDsIteratively(new HashMap<>());
+    setIDs(ids, iterator);
     verify = Arrays.asList();
     assertEquals(verify, ids);
   }
@@ -174,11 +233,11 @@ public class TagInvertedIndexTest {
     tagInvertedIndex.clear();
     tagInvertedIndex = new TagInvertedIndex(schemaRegionDirPath);
 
-    List<Integer> ids = tagInvertedIndex.getMatchedIDs(tags1);
+    List<Integer> ids = tagInvertedIndex.getAllMatchedIDs(tags1);
     List<Integer> verify = Arrays.asList(3, 5, 7, 15, 16, 18);
     assertEquals(verify, ids);
 
-    ids = tagInvertedIndex.getMatchedIDs(tags2);
+    ids = tagInvertedIndex.getAllMatchedIDs(tags2);
     verify = Arrays.asList(3, 15, 16);
     assertEquals(verify, ids);
   }
@@ -200,5 +259,11 @@ public class TagInvertedIndexTest {
     }
     Pair<Map<String, String>, Integer> pair = new Pair<>(tags, Integer.valueOf(strings[i]));
     return pair;
+  }
+
+  private void setIDs(List<Integer> ids, Iterator<Integer> iterator) {
+    while (iterator.hasNext()) {
+      ids.add(iterator.next());
+    }
   }
 }

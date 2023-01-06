@@ -39,8 +39,13 @@ public class QueryManager<T> {
     } else if (diskResponse == null) {
       return memResponse;
     } else {
-      memResponse.or(diskResponse);
-      return memResponse;
+      if (queryRequest.isIterativeQuery()) {
+        memResponse.addIterator(diskResponse.getIterator());
+        return memResponse;
+      } else {
+        memResponse.or(diskResponse);
+        return memResponse;
+      }
     }
   }
 
