@@ -19,10 +19,12 @@
 
 package org.apache.iotdb.db.mpp.execution.operator.schema;
 
-import org.apache.iotdb.common.rpc.thrift.TSchemaNode;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.metadata.mnode.MNodeType;
+import org.apache.iotdb.db.metadata.plan.schemaregion.impl.read.SchemaRegionReadPlanFactory;
+import org.apache.iotdb.db.metadata.plan.schemaregion.read.IShowNodesPlan;
+import org.apache.iotdb.db.metadata.query.info.INodeSchemaInfo;
+import org.apache.iotdb.db.metadata.query.reader.ISchemaReader;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.mpp.execution.driver.SchemaDriverContext;
@@ -35,9 +37,9 @@ import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.utils.Binary;
 
 import java.util.List;
-import java.util.Set;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
 import static org.apache.iotdb.tsfile.read.common.block.TsBlockBuilderStatus.DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
 
 public class NodePathsSchemaScanOperator implements SourceOperator {
@@ -75,39 +77,27 @@ public class NodePathsSchemaScanOperator implements SourceOperator {
     isFinished = true;
     TsBlockBuilder tsBlockBuilder = new TsBlockBuilder(outputDataTypes);
     try {
+      IShowNodesPlan showNodesPlan;
       if (-1 == level) {
-        // show child paths and show child nodes
-        Set<TSchemaNode> nodePaths =
-            ((SchemaDriverContext) operatorContext.getInstanceContext().getDriverContext())
-                .getSchemaRegion()
-                .getChildNodePathInNextLevel(partialPath);
-        nodePaths.forEach(
-            node -> {
-              tsBlockBuilder.getTimeColumnBuilder().writeLong(0L);
-              tsBlockBuilder.getColumnBuilder(0).writeBinary(new Binary(node.getNodeName()));
-              tsBlockBuilder
-                  .getColumnBuilder(1)
-                  .writeBinary(new Binary(String.valueOf(node.getNodeType())));
-              tsBlockBuilder.declarePosition();
-            });
+        showNodesPlan =
+            SchemaRegionReadPlanFactory.getShowNodesPlan(
+                partialPath.concatNode(ONE_LEVEL_PATH_WILDCARD));
       } else {
-        // show nodes with level
-        Set<String> childNodes;
-        childNodes =
-            ((SchemaDriverContext) operatorContext.getInstanceContext().getDriverContext())
-                .getSchemaRegion().getNodesListInGivenLevel(partialPath, level, false).stream()
-                    .map(PartialPath::getFullPath)
-                    .collect(Collectors.toSet());
-
-        childNodes.forEach(
-            (path) -> {
-              tsBlockBuilder.getTimeColumnBuilder().writeLong(0L);
-              tsBlockBuilder.getColumnBuilder(0).writeBinary(new Binary(path));
-              tsBlockBuilder
-                  .getColumnBuilder(1)
-                  .writeBinary(new Binary(String.valueOf(MNodeType.UNIMPLEMENT.getNodeType())));
-              tsBlockBuilder.declarePosition();
-            });
+        showNodesPlan = SchemaRegionReadPlanFactory.getShowNodesPlan(partialPath, level, false);
+      }
+      ISchemaReader<INodeSchemaInfo> nodeReader =
+          ((SchemaDriverContext) operatorContext.getInstanceContext().getDriverContext())
+              .getSchemaRegion()
+              .getNodeReader(showNodesPlan);
+      INodeSchemaInfo nodeSchemaInfo;
+      while (nodeReader.hasNext()) {
+        nodeSchemaInfo = nodeReader.next();
+        tsBlockBuilder.getTimeColumnBuilder().writeLong(0L);
+        tsBlockBuilder.getColumnBuilder(0).writeBinary(new Binary(nodeSchemaInfo.getFullPath()));
+        tsBlockBuilder
+            .getColumnBuilder(1)
+            .writeBinary(new Binary(String.valueOf(nodeSchemaInfo.getNodeType().getNodeType())));
+        tsBlockBuilder.declarePosition();
       }
     } catch (MetadataException e) {
       throw new RuntimeException(e.getMessage(), e);

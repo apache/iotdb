@@ -47,9 +47,13 @@ import org.apache.iotdb.db.metadata.mtree.traverser.collector.MNodeCollector;
 import org.apache.iotdb.db.metadata.mtree.traverser.collector.MeasurementCollector;
 import org.apache.iotdb.db.metadata.mtree.traverser.counter.CounterTraverser;
 import org.apache.iotdb.db.metadata.plan.schemaregion.read.IShowDevicesPlan;
+import org.apache.iotdb.db.metadata.plan.schemaregion.read.IShowNodesPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.read.IShowTimeSeriesPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.result.ShowDevicesResult;
+import org.apache.iotdb.db.metadata.plan.schemaregion.result.ShowNodesResult;
 import org.apache.iotdb.db.metadata.plan.schemaregion.result.ShowTimeSeriesResult;
+import org.apache.iotdb.db.metadata.query.info.INodeSchemaInfo;
+import org.apache.iotdb.db.metadata.query.reader.ISchemaReader;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.utils.MetaFormatUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -64,6 +68,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -915,5 +920,41 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
     return counterTraverser.getCount();
   }
 
+  // endregion
+
+  // region Interfaces for schema reader
+  public ISchemaReader<INodeSchemaInfo> getNodeReader(IShowNodesPlan showNodesPlan)
+      throws MetadataException {
+    MNodeCollector<Set<INodeSchemaInfo>> collector =
+        new MNodeCollector<Set<INodeSchemaInfo>>(
+            storageGroupMNode, showNodesPlan.getPath(), store) {
+          @Override
+          protected void transferToResult(IMNode node) {
+            resultSet.add(
+                new ShowNodesResult(
+                    getCurrentPartialPath(node).getFullPath(), node.getMNodeType(false)));
+          }
+        };
+    collector.setResultSet(new HashSet<>());
+    collector.setTargetLevel(showNodesPlan.getLevel());
+    collector.setPrefixMatch(showNodesPlan.isPrefixMatch());
+    collector.traverse();
+
+    Iterator<INodeSchemaInfo> iterator = collector.getResult().iterator();
+    return new ISchemaReader<INodeSchemaInfo>() {
+      @Override
+      public void close() throws Exception {}
+
+      @Override
+      public boolean hasNext() {
+        return iterator.hasNext();
+      }
+
+      @Override
+      public INodeSchemaInfo next() {
+        return iterator.next();
+      }
+    };
+  }
   // endregion
 }
