@@ -19,9 +19,9 @@
 
 package org.apache.iotdb.tsfile.encoding.encoder;
 
-import java.io.ByteArrayOutputStream;
-
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+
+import java.io.ByteArrayOutputStream;
 
 import static org.apache.iotdb.tsfile.common.conf.TSFileConfig.LEADING_ZERO_BITS_LENGTH_64BIT;
 import static org.apache.iotdb.tsfile.common.conf.TSFileConfig.MEANINGFUL_XOR_BITS_LENGTH_64BIT;
@@ -38,165 +38,151 @@ import static org.apache.iotdb.tsfile.common.conf.TSFileConfig.VALUE_BITS_LENGTH
  */
 public class LongChimpEncoder extends GorillaEncoderV2 {
 
-    private final static int PREVIOUS_VALUES = 128;
-    private final static int PREVIOUS_VALUES_LOG2 = (int)(Math.log(PREVIOUS_VALUES) / Math.log(2));
-    private final static int THRESHOLD = 6 + PREVIOUS_VALUES_LOG2;
-    private final static int SET_LSB = (int) Math.pow(2, THRESHOLD + 1) - 1;
-    private final static int FLAG_ONE_SIZE = PREVIOUS_VALUES_LOG2 + 11;
-    private final static int FLAG_ZERO_SIZE = PREVIOUS_VALUES_LOG2 + 2;
-    public final static short[] LEADING_REPRESENTATION = {0, 0, 0, 0, 0, 0, 0, 0,
-            1, 1, 1, 1, 2, 2, 2, 2,
-            3, 3, 4, 4, 5, 5, 6, 6,
-            7, 7, 7, 7, 7, 7, 7, 7,
-            7, 7, 7, 7, 7, 7, 7, 7,
-            7, 7, 7, 7, 7, 7, 7, 7,
-            7, 7, 7, 7, 7, 7, 7, 7,
-            7, 7, 7, 7, 7, 7, 7, 7
-        };
+  private static final int PREVIOUS_VALUES = 128;
+  private static final int PREVIOUS_VALUES_LOG2 = (int) (Math.log(PREVIOUS_VALUES) / Math.log(2));
+  private static final int THRESHOLD = 6 + PREVIOUS_VALUES_LOG2;
+  private static final int SET_LSB = (int) Math.pow(2, THRESHOLD + 1) - 1;
+  private static final int FLAG_ONE_SIZE = PREVIOUS_VALUES_LOG2 + 11;
+  private static final int FLAG_ZERO_SIZE = PREVIOUS_VALUES_LOG2 + 2;
+  public static final short[] LEADING_REPRESENTATION = {
+    0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 7, 7, 7, 7, 7, 7,
+    7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7
+  };
 
-    public final static short[] LEADING_ROUND = {0, 0, 0, 0, 0, 0, 0, 0,
-            8, 8, 8, 8, 12, 12, 12, 12,
-            16, 16, 18, 18, 20, 20, 22, 22,
-            24, 24, 24, 24, 24, 24, 24, 24,
-            24, 24, 24, 24, 24, 24, 24, 24,
-            24, 24, 24, 24, 24, 24, 24, 24,
-            24, 24, 24, 24, 24, 24, 24, 24,
-            24, 24, 24, 24, 24, 24, 24, 24
-        };
+  public static final short[] LEADING_ROUND = {
+    0, 0, 0, 0, 0, 0, 0, 0, 8, 8, 8, 8, 12, 12, 12, 12, 16, 16, 18, 18, 20, 20, 22, 22, 24, 24, 24,
+    24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24,
+    24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24
+  };
 
-    private long storedValues[];
-    private int[] indices;
-    private int index = 0;
-    private int current = 0;
+  private long storedValues[];
+  private int[] indices;
+  private int index = 0;
+  private int current = 0;
 
-    public LongChimpEncoder() {
-      this.setType(TSEncoding.CHIMP);
-      this.indices = new int[(int) Math.pow(2, THRESHOLD + 1)];
-      this.storedValues = new long[PREVIOUS_VALUES];
+  public LongChimpEncoder() {
+    this.setType(TSEncoding.CHIMP);
+    this.indices = new int[(int) Math.pow(2, THRESHOLD + 1)];
+    this.storedValues = new long[PREVIOUS_VALUES];
+  }
+
+  private static final long CHIMP_ENCODING_ENDING = Double.doubleToRawLongBits(Double.NaN);
+
+  private static final int ONE_ITEM_MAX_SIZE =
+      (2
+                  + LEADING_ZERO_BITS_LENGTH_64BIT
+                  + MEANINGFUL_XOR_BITS_LENGTH_64BIT
+                  + VALUE_BITS_LENGTH_64BIT)
+              / Byte.SIZE
+          + 1;
+
+  public static final short[] leadingRepresentation = {
+    0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 7, 7, 7, 7, 7, 7,
+    7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7
+  };
+
+  public static final short[] leadingRound = {
+    0, 0, 0, 0, 0, 0, 0, 0, 8, 8, 8, 8, 12, 12, 12, 12, 16, 16, 18, 18, 20, 20, 22, 22, 24, 24, 24,
+    24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24,
+    24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24
+  };
+
+  @Override
+  public final int getOneItemMaxSize() {
+    return ONE_ITEM_MAX_SIZE;
+  }
+
+  @Override
+  protected void reset() {
+    super.reset();
+    this.current = 0;
+    this.index = 0;
+    this.indices = new int[(int) Math.pow(2, THRESHOLD + 1)];
+    this.storedValues = new long[PREVIOUS_VALUES];
+  }
+
+  @Override
+  public void flush(ByteArrayOutputStream out) {
+    // ending stream
+    encode(CHIMP_ENCODING_ENDING, out);
+
+    // flip the byte no matter it is empty or not
+    // the empty ending byte is necessary when decoding
+    bitsLeft = 0;
+    flipByte(out);
+
+    // the encoder may be reused, so let us reset it
+    reset();
+  }
+
+  @Override
+  public final void encode(long value, ByteArrayOutputStream out) {
+    if (firstValueWasWritten) {
+      compressValue(value, out);
+    } else {
+      writeFirst(value, out);
+      firstValueWasWritten = true;
     }
+  }
 
-    private static final long CHIMP_ENCODING_ENDING =
-            Double.doubleToRawLongBits(Double.NaN);
+  private void writeFirst(long value, ByteArrayOutputStream out) {
+    storedValues[current] = value;
+    writeBits(value, VALUE_BITS_LENGTH_64BIT, out);
+    indices[(int) value & SET_LSB] = index;
+  }
 
-    private static final int ONE_ITEM_MAX_SIZE =
-            (2
-                        + LEADING_ZERO_BITS_LENGTH_64BIT
-                        + MEANINGFUL_XOR_BITS_LENGTH_64BIT
-                        + VALUE_BITS_LENGTH_64BIT)
-                    / Byte.SIZE
-                + 1;
-
-    public final static short[] leadingRepresentation = {0, 0, 0, 0, 0, 0, 0, 0,
-              1, 1, 1, 1, 2, 2, 2, 2,
-              3, 3, 4, 4, 5, 5, 6, 6,
-              7, 7, 7, 7, 7, 7, 7, 7,
-              7, 7, 7, 7, 7, 7, 7, 7,
-              7, 7, 7, 7, 7, 7, 7, 7,
-              7, 7, 7, 7, 7, 7, 7, 7,
-              7, 7, 7, 7, 7, 7, 7, 7
-          };
-
-    public final static short[] leadingRound = {0, 0, 0, 0, 0, 0, 0, 0,
-              8, 8, 8, 8, 12, 12, 12, 12,
-              16, 16, 18, 18, 20, 20, 22, 22,
-              24, 24, 24, 24, 24, 24, 24, 24,
-              24, 24, 24, 24, 24, 24, 24, 24,
-              24, 24, 24, 24, 24, 24, 24, 24,
-              24, 24, 24, 24, 24, 24, 24, 24,
-              24, 24, 24, 24, 24, 24, 24, 24
-          };
-
-    @Override
-    public final int getOneItemMaxSize() {
-      return ONE_ITEM_MAX_SIZE;
-    }
-
-    @Override
-    protected void reset() {
-      super.reset();
-      this.current = 0;
-      this.index = 0;
-      this.indices = new int[(int) Math.pow(2, THRESHOLD + 1)];
-      this.storedValues = new long[PREVIOUS_VALUES];
-    }
-
-    @Override
-    public void flush(ByteArrayOutputStream out) {
-      // ending stream
-      encode(CHIMP_ENCODING_ENDING, out);
-
-      // flip the byte no matter it is empty or not
-      // the empty ending byte is necessary when decoding
-      bitsLeft = 0;
-      flipByte(out);
-
-      // the encoder may be reused, so let us reset it
-      reset();
-    }
-
-    @Override
-    public final void encode(long value, ByteArrayOutputStream out) {
-      if (firstValueWasWritten) {
-        compressValue(value, out);
+  private void compressValue(long value, ByteArrayOutputStream out) {
+    int key = (int) value & SET_LSB;
+    long xor;
+    int previousIndex;
+    int trailingZeros = 0;
+    int currIndex = indices[key];
+    if ((index - currIndex) < PREVIOUS_VALUES) {
+      long tempXor = value ^ storedValues[currIndex % PREVIOUS_VALUES];
+      trailingZeros = Long.numberOfTrailingZeros(tempXor);
+      if (trailingZeros > THRESHOLD) {
+        previousIndex = currIndex % PREVIOUS_VALUES;
+        xor = tempXor;
       } else {
-        writeFirst(value, out);
-        firstValueWasWritten = true;
+        previousIndex = index % PREVIOUS_VALUES;
+        xor = storedValues[previousIndex] ^ value;
       }
+    } else {
+      previousIndex = index % PREVIOUS_VALUES;
+      xor = storedValues[previousIndex] ^ value;
     }
 
-    private void writeFirst(long value, ByteArrayOutputStream out) {
-        storedValues[current] = value;
-          writeBits(value, VALUE_BITS_LENGTH_64BIT, out);
-          indices[(int) value & SET_LSB] = index;
-        }
+    if (xor == 0) {
+      writeBits(previousIndex, FLAG_ZERO_SIZE, out);
+      storedLeadingZeros = VALUE_BITS_LENGTH_64BIT + 1;
+    } else {
+      int leadingZeros = leadingRound[Long.numberOfLeadingZeros(xor)];
 
-    private void compressValue(long value, ByteArrayOutputStream out) {
-      int key = (int) value & SET_LSB;
-      long xor;
-      int previousIndex;
-      int trailingZeros = 0;
-      int currIndex = indices[key];
-      if ((index - currIndex) < PREVIOUS_VALUES) {
-          long tempXor = value ^ storedValues[currIndex % PREVIOUS_VALUES];
-          trailingZeros = Long.numberOfTrailingZeros(tempXor);
-          if (trailingZeros > THRESHOLD) {
-              previousIndex = currIndex % PREVIOUS_VALUES;
-              xor = tempXor;
-          } else {
-              previousIndex =  index % PREVIOUS_VALUES;
-              xor = storedValues[previousIndex] ^ value;
-          }
+      if (trailingZeros > THRESHOLD) {
+        int significantBits = VALUE_BITS_LENGTH_64BIT - leadingZeros - trailingZeros;
+        writeBits(
+            512 * (PREVIOUS_VALUES + previousIndex)
+                + 64 * leadingRepresentation[leadingZeros]
+                + significantBits,
+            FLAG_ONE_SIZE,
+            out);
+        writeBits(xor >>> trailingZeros, significantBits, out); // Store the meaningful bits of XOR
+        storedLeadingZeros = VALUE_BITS_LENGTH_64BIT + 1;
+      } else if (leadingZeros == storedLeadingZeros) {
+        writeBit(out);
+        skipBit(out);
+        int significantBits = VALUE_BITS_LENGTH_64BIT - leadingZeros;
+        writeBits(xor, significantBits, out);
       } else {
-          previousIndex =  index % PREVIOUS_VALUES;
-          xor = storedValues[previousIndex] ^ value;
+        storedLeadingZeros = leadingZeros;
+        int significantBits = VALUE_BITS_LENGTH_64BIT - leadingZeros;
+        writeBits(24 + leadingRepresentation[leadingZeros], 5, out);
+        writeBits(xor, significantBits, out);
       }
-
-        if(xor == 0) {
-            writeBits(previousIndex, FLAG_ZERO_SIZE, out);
-            storedLeadingZeros = VALUE_BITS_LENGTH_64BIT + 1;
-        } else {
-            int leadingZeros = leadingRound[Long.numberOfLeadingZeros(xor)];
-
-            if (trailingZeros > THRESHOLD) {
-              int significantBits = VALUE_BITS_LENGTH_64BIT - leadingZeros - trailingZeros;
-              writeBits(512 * (PREVIOUS_VALUES + previousIndex) + 64 * leadingRepresentation[leadingZeros] + significantBits, FLAG_ONE_SIZE, out);
-              writeBits(xor >>> trailingZeros, significantBits, out); // Store the meaningful bits of XOR
-              storedLeadingZeros = VALUE_BITS_LENGTH_64BIT + 1;
-          } else if (leadingZeros == storedLeadingZeros) {
-              writeBit(out);
-              skipBit(out);
-              int significantBits = VALUE_BITS_LENGTH_64BIT - leadingZeros;
-              writeBits(xor, significantBits, out);
-          } else {
-              storedLeadingZeros = leadingZeros;
-              int significantBits = VALUE_BITS_LENGTH_64BIT - leadingZeros;
-              writeBits(24 + leadingRepresentation[leadingZeros], 5, out);
-              writeBits(xor, significantBits, out);
-          }
-      }
-        current = (current + 1) % PREVIOUS_VALUES;
-        storedValues[current] = value;
-        index++;
-        indices[key] = index;
     }
+    current = (current + 1) % PREVIOUS_VALUES;
+    storedValues[current] = value;
+    index++;
+    indices[key] = index;
+  }
 }

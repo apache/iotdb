@@ -36,5 +36,4 @@ public class DoublePrecisionChimpEncoder extends LongChimpEncoder {
   public final void encode(double value, ByteArrayOutputStream out) {
     encode(Double.doubleToRawLongBits(value), out);
   }
-
 }

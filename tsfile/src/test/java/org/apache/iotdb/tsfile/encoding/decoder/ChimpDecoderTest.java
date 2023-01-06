@@ -24,6 +24,7 @@ import org.apache.iotdb.tsfile.encoding.encoder.Encoder;
 import org.apache.iotdb.tsfile.encoding.encoder.IntChimpEncoder;
 import org.apache.iotdb.tsfile.encoding.encoder.LongChimpEncoder;
 import org.apache.iotdb.tsfile.encoding.encoder.SinglePrecisionChimpEncoder;
+
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -333,7 +334,7 @@ public class ChimpDecoderTest {
       Decoder decoder = new LongChimpDecoder();
       for (int i = 0; i < num; i++) {
         if (decoder.hasNext(buffer)) {
-        	long temp = decoder.readLong(buffer);
+          long temp = decoder.readLong(buffer);
           assertEquals(value + 2 * i, temp);
           continue;
         }

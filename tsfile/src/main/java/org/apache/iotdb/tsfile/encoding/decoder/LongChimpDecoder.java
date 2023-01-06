@@ -19,9 +19,9 @@
 
 package org.apache.iotdb.tsfile.encoding.decoder;
 
-import java.nio.ByteBuffer;
-
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+
+import java.nio.ByteBuffer;
 
 import static org.apache.iotdb.tsfile.common.conf.TSFileConfig.VALUE_BITS_LENGTH_64BIT;
 
@@ -36,8 +36,7 @@ import static org.apache.iotdb.tsfile.common.conf.TSFileConfig.VALUE_BITS_LENGTH
  */
 public class LongChimpDecoder extends GorillaDecoderV2 {
 
-  private static final long CHIMP_ENCODING_ENDING =
-      Double.doubleToRawLongBits(Double.NaN);
+  private static final long CHIMP_ENCODING_ENDING = Double.doubleToRawLongBits(Double.NaN);
 
   private int previousValues = 128;
   private long storedValue = 0;
@@ -46,11 +45,11 @@ public class LongChimpDecoder extends GorillaDecoderV2 {
   private int previousValuesLog2;
   private int initialFill;
 
-  public final static short[] leadingRepresentation = {0, 8, 12, 16, 18, 20, 22, 24};
+  public static final short[] leadingRepresentation = {0, 8, 12, 16, 18, 20, 22, 24};
 
   public LongChimpDecoder() {
     this.setType(TSEncoding.CHIMP);
-    this.previousValuesLog2 =  (int)(Math.log(previousValues) / Math.log(2));
+    this.previousValuesLog2 = (int) (Math.log(previousValues) / Math.log(2));
     this.initialFill = previousValuesLog2 + 9;
     this.hasNext = true;
     firstValueWasRead = false;
@@ -93,49 +92,48 @@ public class LongChimpDecoder extends GorillaDecoderV2 {
   }
 
   protected long readNext(ByteBuffer in) {
-	// Read value
-	byte controlBits = readNextNBits(2, in);
-  	long value;
-  	switch (controlBits) {
-		case 3:
-		  storedLeadingZeros = leadingRepresentation[(int) readLong(3, in)];
-          value = readLong(64 - storedLeadingZeros, in);
-          storedValue = storedValue ^ value;
-          current = (current + 1) % previousValues;
-  		  storedValues[current] = storedValue;
-		  return storedValue;
-		case 2:
-		  value = readLong(64 - storedLeadingZeros, in);
-		  storedValue = storedValue ^ value;
-          current = (current + 1) % previousValues;
-  		  storedValues[current] = storedValue;
-		  return storedValue;
-		case 1:
-
-		int fill = this.initialFill;
-      	int temp = (int) readLong(fill, in);
-      	int index = temp >>> (fill -= previousValuesLog2) & (1 << previousValuesLog2) - 1;
-      	storedLeadingZeros = leadingRepresentation[temp >>> (fill -= 3) & (1 << 3) - 1];
-      	int significantBits = temp >>> (fill -= 6) & (1 << 6) - 1;
-      	storedValue = storedValues[index];
-      	if(significantBits == 0) {
-              significantBits = 64;
-          }
-          storedTrailingZeros = 64 - significantBits - storedLeadingZeros;
-          value = readLong(64 - storedLeadingZeros - storedTrailingZeros, in);
-          value <<= storedTrailingZeros;
-          storedValue = storedValue ^ value;
-  		  current = (current + 1) % previousValues;
-  		  storedValues[current] = storedValue;
-		  return storedValue;
-		default:
-		    int previousIndex = (int) readLong(previousValuesLog2, in);
-          storedValue = storedValues[previousIndex];
-          current = (current + 1) % previousValues;
-          storedValues[current] = storedValue;
-		  return storedValue;
-		}
-	}
+    // Read value
+    byte controlBits = readNextNBits(2, in);
+    long value;
+    switch (controlBits) {
+      case 3:
+        storedLeadingZeros = leadingRepresentation[(int) readLong(3, in)];
+        value = readLong(64 - storedLeadingZeros, in);
+        storedValue = storedValue ^ value;
+        current = (current + 1) % previousValues;
+        storedValues[current] = storedValue;
+        return storedValue;
+      case 2:
+        value = readLong(64 - storedLeadingZeros, in);
+        storedValue = storedValue ^ value;
+        current = (current + 1) % previousValues;
+        storedValues[current] = storedValue;
+        return storedValue;
+      case 1:
+        int fill = this.initialFill;
+        int temp = (int) readLong(fill, in);
+        int index = temp >>> (fill -= previousValuesLog2) & (1 << previousValuesLog2) - 1;
+        storedLeadingZeros = leadingRepresentation[temp >>> (fill -= 3) & (1 << 3) - 1];
+        int significantBits = temp >>> (fill -= 6) & (1 << 6) - 1;
+        storedValue = storedValues[index];
+        if (significantBits == 0) {
+          significantBits = 64;
+        }
+        storedTrailingZeros = 64 - significantBits - storedLeadingZeros;
+        value = readLong(64 - storedLeadingZeros - storedTrailingZeros, in);
+        value <<= storedTrailingZeros;
+        storedValue = storedValue ^ value;
+        current = (current + 1) % previousValues;
+        storedValues[current] = storedValue;
+        return storedValue;
+      default:
+        int previousIndex = (int) readLong(previousValuesLog2, in);
+        storedValue = storedValues[previousIndex];
+        current = (current + 1) % previousValues;
+        storedValues[current] = storedValue;
+        return storedValue;
+    }
+  }
 
   protected byte readNextNBits(int n, ByteBuffer in) {
     byte value = 0x00;
