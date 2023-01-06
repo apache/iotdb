@@ -643,7 +643,7 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
                     (MeasurementSchema) node.getSchema(),
                     tagAndAttribute.left,
                     tagAndAttribute.right,
-                    node.getParent().isAligned()));
+                    getCurrentNodeParent().getAsEntityMNode().isAligned()));
           }
         };
     collector.setPrefixMatch(plan.isPrefixMatch());
