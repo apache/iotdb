@@ -43,6 +43,9 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCAR
 import static org.apache.iotdb.tsfile.read.common.block.TsBlockBuilderStatus.DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
 
 public class NodePathsSchemaScanOperator implements SourceOperator {
+
+  private static final long MAX_SIZE = DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
+
   private final PlanNodeId sourceId;
 
   private final OperatorContext operatorContext;
@@ -54,6 +57,8 @@ public class NodePathsSchemaScanOperator implements SourceOperator {
   private boolean isFinished;
 
   private final List<TSDataType> outputDataTypes;
+
+  private ISchemaReader<INodeSchemaInfo> nodeReader;
 
   public NodePathsSchemaScanOperator(
       PlanNodeId sourceId, OperatorContext operatorContext, PartialPath partialPath, int level) {
@@ -76,43 +81,52 @@ public class NodePathsSchemaScanOperator implements SourceOperator {
   public TsBlock next() {
     isFinished = true;
     TsBlockBuilder tsBlockBuilder = new TsBlockBuilder(outputDataTypes);
-    try {
-      IShowNodesPlan showNodesPlan;
-      if (-1 == level) {
-        showNodesPlan =
-            SchemaRegionReadPlanFactory.getShowNodesPlan(
-                partialPath.concatNode(ONE_LEVEL_PATH_WILDCARD));
-      } else {
-        showNodesPlan = SchemaRegionReadPlanFactory.getShowNodesPlan(partialPath, level, false);
+    INodeSchemaInfo nodeSchemaInfo;
+    while (nodeReader.hasNext()) {
+      nodeSchemaInfo = nodeReader.next();
+      tsBlockBuilder.getTimeColumnBuilder().writeLong(0L);
+      tsBlockBuilder.getColumnBuilder(0).writeBinary(new Binary(nodeSchemaInfo.getFullPath()));
+      tsBlockBuilder
+          .getColumnBuilder(1)
+          .writeBinary(new Binary(String.valueOf(nodeSchemaInfo.getNodeType().getNodeType())));
+      tsBlockBuilder.declarePosition();
+      if (tsBlockBuilder.getRetainedSizeInBytes() >= MAX_SIZE) {
+        break;
       }
-      ISchemaReader<INodeSchemaInfo> nodeReader =
-          ((SchemaDriverContext) operatorContext.getInstanceContext().getDriverContext())
-              .getSchemaRegion()
-              .getNodeReader(showNodesPlan);
-      INodeSchemaInfo nodeSchemaInfo;
-      while (nodeReader.hasNext()) {
-        nodeSchemaInfo = nodeReader.next();
-        tsBlockBuilder.getTimeColumnBuilder().writeLong(0L);
-        tsBlockBuilder.getColumnBuilder(0).writeBinary(new Binary(nodeSchemaInfo.getFullPath()));
-        tsBlockBuilder
-            .getColumnBuilder(1)
-            .writeBinary(new Binary(String.valueOf(nodeSchemaInfo.getNodeType().getNodeType())));
-        tsBlockBuilder.declarePosition();
-      }
-    } catch (MetadataException e) {
-      throw new RuntimeException(e.getMessage(), e);
     }
     return tsBlockBuilder.build();
   }
 
   @Override
   public boolean hasNext() {
-    return !isFinished;
+    if (nodeReader == null) {
+      nodeReader = createReader();
+    }
+    return nodeReader.hasNext();
+  }
+
+  private ISchemaReader<INodeSchemaInfo> createReader() {
+    IShowNodesPlan showNodesPlan;
+    if (-1 == level) {
+      showNodesPlan =
+          SchemaRegionReadPlanFactory.getShowNodesPlan(
+              partialPath.concatNode(ONE_LEVEL_PATH_WILDCARD));
+    } else {
+      showNodesPlan = SchemaRegionReadPlanFactory.getShowNodesPlan(partialPath, level, false);
+    }
+    try {
+      return nodeReader =
+          ((SchemaDriverContext) operatorContext.getInstanceContext().getDriverContext())
+              .getSchemaRegion()
+              .getNodeReader(showNodesPlan);
+    } catch (MetadataException e) {
+      throw new RuntimeException(e.getMessage(), e);
+    }
   }
 
   @Override
   public boolean isFinished() {
-    return isFinished;
+    return !hasNextWithTimer();
   }
 
   @Override
