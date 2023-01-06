@@ -515,18 +515,7 @@ public abstract class Traverser {
     return nodeNames.toArray(new String[0]);
   }
 
-  /** @return the database node in the traverse path */
-  protected IMNode getStorageGroupNodeInTraversePath(IMNode currentNode) {
-    if (currentNode.isStorageGroup()) {
-      return currentNode;
-    }
-    Iterator<IMNode> nodes = traverseContext.iterator();
-    while (nodes.hasNext()) {
-      IMNode node = nodes.next();
-      if (node.isStorageGroup()) {
-        return node;
-      }
-    }
-    return null;
+  protected IMNode getCurrentNodeParent() {
+    return traverseContext.peek();
   }
 }

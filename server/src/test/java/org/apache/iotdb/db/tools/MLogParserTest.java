@@ -22,6 +22,7 @@ package org.apache.iotdb.db.tools;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.metadata.MetadataConstant;
 import org.apache.iotdb.db.metadata.plan.schemaregion.impl.write.SchemaRegionWritePlanFactory;
@@ -60,7 +61,7 @@ public class MLogParserTest {
    * There' still 1 CreateTemplatePlan in template_log.bin
    *
    * */
-  private int[] mlogLineNum = new int[] {50, 53, 0};
+  private int[] mlogLineNum = new int[] {50, 54, 0};
 
   @Before
   public void setUp() {
@@ -110,9 +111,11 @@ public class MLogParserTest {
     }
 
     try {
-      schemaEngine
-          .getSchemaRegion(new SchemaRegionId(1))
-          .deleteTimeseries(new PartialPath("root.sg1.device1.s1"), false);
+      PathPatternTree patternTree = new PathPatternTree();
+      patternTree.appendPathPattern(new PartialPath("root.sg1.device1.s1"));
+      patternTree.constructTree();
+      schemaEngine.getSchemaRegion(new SchemaRegionId(1)).constructSchemaBlackList(patternTree);
+      schemaEngine.getSchemaRegion(new SchemaRegionId(1)).deleteTimeseriesInBlackList(patternTree);
       Map<String, String> tags = new HashMap<String, String>();
       tags.put("tag1", "value1");
       schemaEngine

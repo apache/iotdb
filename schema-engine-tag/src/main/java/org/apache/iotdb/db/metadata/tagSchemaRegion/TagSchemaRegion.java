@@ -61,7 +61,6 @@ import org.apache.iotdb.external.api.ISeriesNumerMonitor;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -69,7 +68,6 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -309,12 +307,6 @@ public class TagSchemaRegion implements ISchemaRegion {
   }
 
   @Override
-  public Pair<Integer, Set<String>> deleteTimeseries(PartialPath pathPattern, boolean isPrefixMatch)
-      throws MetadataException {
-    throw new UnsupportedOperationException("deleteTimeseries");
-  }
-
-  @Override
   public long constructSchemaBlackList(PathPatternTree patternTree) throws MetadataException {
     throw new UnsupportedOperationException("constructSchemaBlackList");
   }
@@ -345,27 +337,6 @@ public class TagSchemaRegion implements ISchemaRegion {
   public Set<TSchemaNode> getChildNodePathInNextLevel(PartialPath pathPattern)
       throws MetadataException {
     throw new UnsupportedOperationException("getChildNodePathInNextLevel");
-  }
-
-  @Override
-  public Set<PartialPath> getMatchedDevices(PartialPath pathPattern, boolean isPrefixMatch)
-      throws MetadataException {
-    List<IDeviceID> deviceIDs = getDeviceIdFromInvertedIndex(pathPattern);
-    Set<PartialPath> matchedDevices = new HashSet<>();
-    String devicePath = pathPattern.getFullPath();
-    // exact query
-    if (!devicePath.endsWith(TAIL) && !devicePath.equals(storageGroupFullPath)) {
-      DeviceEntry deviceEntry = idTableWithDeviceIDList.getDeviceEntry(devicePath);
-      if (deviceEntry != null) {
-        matchedDevices.add(pathPattern);
-      }
-      return matchedDevices;
-    }
-    List<String> devicePaths = getDevicePaths(deviceIDs);
-    for (String path : devicePaths) {
-      matchedDevices.add(new PartialPath(path));
-    }
-    return matchedDevices;
   }
 
   private List<String> getDevicePaths(List<IDeviceID> deviceIDS) {
@@ -438,7 +409,6 @@ public class TagSchemaRegion implements ISchemaRegion {
     throw new UnsupportedOperationException("getMatchedDevices");
   }
 
-  @Override
   public List<MeasurementPath> getMeasurementPaths(
       PartialPath pathPattern, boolean isPrefixMatch, boolean withTags) throws MetadataException {
     PartialPath devicePath = pathPattern.getDevicePath();
@@ -447,15 +417,6 @@ public class TagSchemaRegion implements ISchemaRegion {
     } else {
       return getMeasurementPathsWithPointQuery(devicePath, isPrefixMatch);
     }
-  }
-
-  @Override
-  public Pair<List<MeasurementPath>, Integer> getMeasurementPathsWithAlias(
-      PartialPath pathPattern, int limit, int offset, boolean isPrefixMatch, boolean withTags)
-      throws MetadataException {
-    List<MeasurementPath> res = getMeasurementPaths(pathPattern, isPrefixMatch, false);
-    Pair<List<MeasurementPath>, Integer> result = new Pair<>(res, 0);
-    return result;
   }
 
   @Override

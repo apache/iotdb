@@ -653,27 +653,6 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
   // region Interfaces and Implementation for metadata info Query
 
   // region Interfaces for Device info Query
-  /**
-   * Get all devices matching the given path pattern. If isPrefixMatch, then the devices under the
-   * paths matching given path pattern will be collected too.
-   *
-   * @return a list contains all distinct devices names
-   */
-  @Override
-  public Set<PartialPath> getDevices(PartialPath pathPattern, boolean isPrefixMatch)
-      throws MetadataException {
-    Set<PartialPath> result = new TreeSet<>();
-    EntityCollector<Set<PartialPath>> collector =
-        new EntityCollector<Set<PartialPath>>(storageGroupMNode, pathPattern, store) {
-          @Override
-          protected void collectEntity(IEntityMNode node) {
-            result.add(getCurrentPartialPath(node));
-          }
-        };
-    collector.setPrefixMatch(isPrefixMatch);
-    collector.traverse();
-    return result;
-  }
 
   @Override
   public List<ShowDevicesResult> getDevices(IShowDevicesPlan plan) throws MetadataException {
@@ -698,56 +677,6 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
   // endregion
 
   // region Interfaces for timeseries, measurement and schema info Query
-  /**
-   * Get all measurement paths matching the given path pattern. If using prefix match, the path
-   * pattern is used to match prefix path. All timeseries start with the matched prefix path will be
-   * collected and return.
-   *
-   * @param pathPattern a path pattern or a full path, may contain wildcard.
-   * @param isPrefixMatch if true, the path pattern is used to match prefix path
-   */
-  @Override
-  public List<MeasurementPath> getMeasurementPaths(PartialPath pathPattern, boolean isPrefixMatch)
-      throws MetadataException {
-    return getMeasurementPathsWithAlias(pathPattern, 0, 0, isPrefixMatch, false).left;
-  }
-
-  /**
-   * Get all measurement paths matching the given path pattern If using prefix match, the path
-   * pattern is used to match prefix path. All timeseries start with the matched prefix path will be
-   * collected and return.
-   *
-   * @param pathPattern a path pattern or a full path, may contain wildcard
-   * @param isPrefixMatch if true, the path pattern is used to match prefix path
-   * @return Pair.left contains all the satisfied paths Pair.right means the current offset or zero
-   *     if we don't set offset.
-   */
-  @Override
-  public Pair<List<MeasurementPath>, Integer> getMeasurementPathsWithAlias(
-      PartialPath pathPattern, int limit, int offset, boolean isPrefixMatch, boolean withTags)
-      throws MetadataException {
-    List<MeasurementPath> result = new LinkedList<>();
-    MeasurementCollector<List<PartialPath>> collector =
-        new MeasurementCollector<List<PartialPath>>(
-            storageGroupMNode, pathPattern, store, limit, offset) {
-          @Override
-          protected void collectMeasurement(IMeasurementMNode node) {
-            MeasurementPath path = getCurrentMeasurementPathInTraverse(node);
-            if (nodes[nodes.length - 1].equals(node.getAlias())) {
-              // only when user query with alias, the alias in path will be set
-              path.setMeasurementAlias(node.getAlias());
-            }
-            if (withTags) {
-              path.setTagMap(tagGetter.apply(node));
-            }
-            result.add(path);
-          }
-        };
-    collector.setPrefixMatch(isPrefixMatch);
-    collector.traverse();
-    offset = collector.getCurOffset() + 1;
-    return new Pair<>(result, offset);
-  }
 
   public List<ShowTimeSeriesResult> getAllMeasurementSchema(
       IShowTimeSeriesPlan plan,
@@ -769,7 +698,8 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
                     node.getAlias(),
                     (MeasurementSchema) node.getSchema(),
                     tagAndAttribute.left,
-                    tagAndAttribute.right));
+                    tagAndAttribute.right,
+                    getCurrentNodeParent().getAsEntityMNode().isAligned()));
           }
         };
     collector.setPrefixMatch(plan.isPrefixMatch());
