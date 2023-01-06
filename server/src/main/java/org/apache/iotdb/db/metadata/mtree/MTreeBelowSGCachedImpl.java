@@ -47,6 +47,7 @@ import org.apache.iotdb.db.metadata.mtree.traverser.TraverserWithLimitOffsetWrap
 import org.apache.iotdb.db.metadata.mtree.traverser.collector.EntityCollector;
 import org.apache.iotdb.db.metadata.mtree.traverser.collector.MNodeCollector;
 import org.apache.iotdb.db.metadata.mtree.traverser.collector.MeasurementCollector;
+import org.apache.iotdb.db.metadata.mtree.traverser.counter.EntityCounter;
 import org.apache.iotdb.db.metadata.mtree.traverser.updater.EntityUpdater;
 import org.apache.iotdb.db.metadata.mtree.traverser.updater.MeasurementUpdater;
 import org.apache.iotdb.db.metadata.plan.schemaregion.read.IShowDevicesPlan;
@@ -1057,19 +1058,10 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
   @Override
   public long countPathsUsingTemplate(PartialPath pathPattern, int templateId)
       throws MetadataException {
-    // TODO: replace fake counter
-    final int[] count = {0};
-    EntityCollector<Void> collector =
-        new EntityCollector<Void>(rootNode, pathPattern, store, false) {
-          @Override
-          protected void collectEntity(IEntityMNode node) {
-            if (node.isEntity() && node.getAsEntityMNode().getSchemaTemplateId() == templateId) {
-              count[0]++;
-            }
-          }
-        };
-    collector.traverse();
-    return count[0];
+    try (EntityCounter counter = new EntityCounter(rootNode, pathPattern, store, false)) {
+      counter.setSchemaTemplateFilter(templateId);
+      return counter.count();
+    }
   }
 
   // endregion
