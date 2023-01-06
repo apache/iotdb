@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.metadata.plan.schemaregion.impl.read.SchemaRegionReadPlanFactory;
 import org.apache.iotdb.db.metadata.plan.schemaregion.impl.write.SchemaRegionWritePlanFactory;
 import org.apache.iotdb.db.metadata.query.info.IDeviceSchemaInfo;
+import org.apache.iotdb.db.metadata.query.info.INodeSchemaInfo;
 import org.apache.iotdb.db.metadata.query.info.ITimeSeriesSchemaInfo;
 import org.apache.iotdb.db.metadata.query.reader.ISchemaReader;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
@@ -34,8 +35,12 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+
+import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
 
 public class SchemaRegionTestUtil {
 
@@ -219,6 +224,38 @@ public class SchemaRegionTestUtil {
                 pathPattern, 0, 0, false, templateId)); ) {
       while (deviceReader.hasNext()) {
         result.add(deviceReader.next().getFullPath());
+      }
+    } catch (Exception e) {
+      throw new RuntimeException(e);
+    }
+    return result;
+  }
+
+  public static List<PartialPath> getNodesListInGivenLevel(
+      ISchemaRegion schemaRegion, PartialPath pathPattern, int nodeLevel, boolean isPrefixMatch)
+      throws MetadataException {
+    List<PartialPath> result = new ArrayList<>();
+    try (ISchemaReader<INodeSchemaInfo> nodeReader =
+        schemaRegion.getNodeReader(
+            SchemaRegionReadPlanFactory.getShowNodesPlan(pathPattern, nodeLevel, isPrefixMatch))) {
+      while (nodeReader.hasNext()) {
+        result.add(nodeReader.next().getPartialPath());
+      }
+    } catch (Exception e) {
+      throw new RuntimeException(e);
+    }
+    return result;
+  }
+
+  public static Set<INodeSchemaInfo> getChildNodePathInNextLevel(
+      ISchemaRegion schemaRegion, PartialPath pathPattern) throws MetadataException {
+    Set<INodeSchemaInfo> result = new HashSet<>();
+    try (ISchemaReader<INodeSchemaInfo> nodeReader =
+        schemaRegion.getNodeReader(
+            SchemaRegionReadPlanFactory.getShowNodesPlan(
+                pathPattern.concatNode(ONE_LEVEL_PATH_WILDCARD)))) {
+      while (nodeReader.hasNext()) {
+        result.add(nodeReader.next());
       }
     } catch (Exception e) {
       throw new RuntimeException(e);
