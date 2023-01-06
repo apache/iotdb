@@ -124,12 +124,10 @@ public class ConfigMTreeTest {
     try {
       root.setStorageGroup(new PartialPath("root.laptop.d1"));
       assertTrue(root.isStorageGroupAlreadySet(new PartialPath("root.laptop.d1")));
-      assertTrue(root.checkStorageGroupByPath(new PartialPath("root.laptop.d1")));
       assertEquals(
           "root.laptop.d1",
           root.getBelongedStorageGroup(new PartialPath("root.laptop.d1")).getFullPath());
       assertTrue(root.isStorageGroupAlreadySet(new PartialPath("root.laptop.d1.s1")));
-      assertTrue(root.checkStorageGroupByPath(new PartialPath("root.laptop.d1.s1")));
       assertEquals(
           "root.laptop.d1",
           root.getBelongedStorageGroup(new PartialPath("root.laptop.d1.s1")).getFullPath());
@@ -158,31 +156,6 @@ public class ConfigMTreeTest {
     assertFalse(root.isStorageGroupAlreadySet(new PartialPath("root.laptop.d1")));
     assertTrue(root.isStorageGroupAlreadySet(new PartialPath("root.laptop")));
     assertTrue(root.isStorageGroupAlreadySet(new PartialPath("root.laptop.d2")));
-  }
-
-  @Test
-  public void testCheckStorageGroup() {
-    try {
-      assertFalse(root.isStorageGroup(new PartialPath("root")));
-      assertFalse(root.isStorageGroup(new PartialPath("root1.laptop.d2")));
-
-      root.setStorageGroup(new PartialPath("root.laptop.d1"));
-      assertTrue(root.isStorageGroup(new PartialPath("root.laptop.d1")));
-      assertFalse(root.isStorageGroup(new PartialPath("root.laptop.d2")));
-      assertFalse(root.isStorageGroup(new PartialPath("root.laptop")));
-      assertFalse(root.isStorageGroup(new PartialPath("root.laptop.d1.s1")));
-
-      root.setStorageGroup(new PartialPath("root.laptop.d2"));
-      assertTrue(root.isStorageGroup(new PartialPath("root.laptop.d1")));
-      assertTrue(root.isStorageGroup(new PartialPath("root.laptop.d2")));
-      assertFalse(root.isStorageGroup(new PartialPath("root.laptop.d3")));
-
-      root.setStorageGroup(new PartialPath("root.`1`"));
-      assertTrue(root.isStorageGroup(new PartialPath("root.`1`")));
-    } catch (MetadataException e) {
-      e.printStackTrace();
-      fail(e.getMessage());
-    }
   }
 
   @Test
@@ -315,7 +288,6 @@ public class ConfigMTreeTest {
     newTree.deserialize(inputStream);
 
     for (int i = 0; i < pathList.length; i++) {
-      newTree.isStorageGroup(pathList[i]);
       TStorageGroupSchema storageGroupSchema =
           newTree.getStorageGroupNodeByStorageGroupPath(pathList[i]).getStorageGroupSchema();
       Assert.assertEquals(i, storageGroupSchema.getTTL());

@@ -438,7 +438,6 @@ public class TagSchemaRegion implements ISchemaRegion {
     throw new UnsupportedOperationException("getMatchedDevices");
   }
 
-  @Override
   public List<MeasurementPath> getMeasurementPaths(
       PartialPath pathPattern, boolean isPrefixMatch, boolean withTags) throws MetadataException {
     PartialPath devicePath = pathPattern.getDevicePath();
@@ -447,15 +446,6 @@ public class TagSchemaRegion implements ISchemaRegion {
     } else {
       return getMeasurementPathsWithPointQuery(devicePath, isPrefixMatch);
     }
-  }
-
-  @Override
-  public Pair<List<MeasurementPath>, Integer> getMeasurementPathsWithAlias(
-      PartialPath pathPattern, int limit, int offset, boolean isPrefixMatch, boolean withTags)
-      throws MetadataException {
-    List<MeasurementPath> res = getMeasurementPaths(pathPattern, isPrefixMatch, false);
-    Pair<List<MeasurementPath>, Integer> result = new Pair<>(res, 0);
-    return result;
   }
 
   @Override

@@ -985,7 +985,6 @@ public class RSchemaRegion implements ISchemaRegion {
     return res;
   }
 
-  @Override
   public List<MeasurementPath> getMeasurementPaths(
       PartialPath pathPattern, boolean isPrefixMath, boolean withTags) throws MetadataException {
     if (withTags) {
@@ -1006,14 +1005,6 @@ public class RSchemaRegion implements ISchemaRegion {
         pathPattern.getNodes(), MAX_PATH_DEPTH, function, new Character[] {NODE_TYPE_MEASUREMENT});
 
     return allResult;
-  }
-
-  @Override
-  public Pair<List<MeasurementPath>, Integer> getMeasurementPathsWithAlias(
-      PartialPath pathPattern, int limit, int offset, boolean isPrefixMatch, boolean withTags)
-      throws MetadataException {
-    // todo page query
-    return new Pair<>(getMeasurementPaths(pathPattern, false, withTags), offset + limit);
   }
 
   @Override
@@ -1054,7 +1045,8 @@ public class RSchemaRegion implements ISchemaRegion {
               measurementPath.getMeasurementAlias(),
               (MeasurementSchema) measurementPath.getMeasurementSchema(),
               entry.getValue().left,
-              entry.getValue().right));
+              entry.getValue().right,
+              measurementPath.isUnderAlignedEntity()));
     }
 
     return res;

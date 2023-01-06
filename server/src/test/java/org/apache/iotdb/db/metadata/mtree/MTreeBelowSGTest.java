@@ -32,7 +32,6 @@ import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -132,7 +131,6 @@ public abstract class MTreeBelowSGTest {
   public void testAddAndQueryPath() {
     try {
       assertFalse(root.isStorageGroupAlreadySet(new PartialPath("root.a")));
-      assertFalse(root.checkStorageGroupByPath(new PartialPath("root.a")));
       storageGroup = getStorageGroup(new PartialPath("root.a"));
 
       storageGroup.createTimeseries(
@@ -198,7 +196,6 @@ public abstract class MTreeBelowSGTest {
   public void testAddAndQueryPathWithAlias() {
     try {
       assertFalse(root.isStorageGroupAlreadySet(new PartialPath("root.a")));
-      assertFalse(root.checkStorageGroupByPath(new PartialPath("root.a")));
       storageGroup = getStorageGroup(new PartialPath("root.a"));
 
       storageGroup.createTimeseries(
@@ -260,9 +257,7 @@ public abstract class MTreeBelowSGTest {
       assertEquals("root.a.d1.s0", result.get(1).getFullPath());
 
       List<MeasurementPath> result2 =
-          storageGroup.getMeasurementPathsWithAlias(
-                  new PartialPath("root.a.*.s0"), 0, 0, false, false)
-              .left;
+          storageGroup.getMeasurementPaths(new PartialPath("root.a.*.s0"), false);
       result2.sort(Comparator.comparing(MeasurementPath::getFullPath));
       assertEquals(2, result2.size());
       assertEquals("root.a.d0.s0", result2.get(0).getFullPath());
@@ -270,20 +265,11 @@ public abstract class MTreeBelowSGTest {
       assertEquals("root.a.d1.s0", result2.get(1).getFullPath());
       assertFalse(result2.get(1).isMeasurementAliasExists());
 
-      result2 =
-          storageGroup.getMeasurementPathsWithAlias(
-                  new PartialPath("root.a.*.temperature"), 0, 0, false, false)
-              .left;
+      result2 = storageGroup.getMeasurementPaths(new PartialPath("root.a.*.temperature"), false);
       result2.sort(Comparator.comparing(MeasurementPath::getFullPath));
       assertEquals(2, result2.size());
       assertEquals("root.a.d0.temperature", result2.get(0).getFullPathWithAlias());
       assertEquals("root.a.d1.temperature", result2.get(1).getFullPathWithAlias());
-
-      Pair<List<MeasurementPath>, Integer> result3 =
-          storageGroup.getMeasurementPathsWithAlias(
-              new PartialPath("root.a.**"), 2, 0, false, false);
-      assertEquals(2, result3.left.size());
-      assertEquals(2, result3.right.intValue());
 
     } catch (MetadataException e) {
       e.printStackTrace();
@@ -296,11 +282,9 @@ public abstract class MTreeBelowSGTest {
     try {
       storageGroup = getStorageGroup(new PartialPath("root.laptop.d1"));
       assertTrue(root.isStorageGroupAlreadySet(new PartialPath("root.laptop.d1")));
-      assertTrue(root.checkStorageGroupByPath(new PartialPath("root.laptop.d1")));
       assertEquals(
           "root.laptop.d1",
           root.getBelongedStorageGroup(new PartialPath("root.laptop.d1")).getFullPath());
-      assertTrue(root.checkStorageGroupByPath(new PartialPath("root.laptop.d1.s1")));
       assertEquals(
           "root.laptop.d1",
           root.getBelongedStorageGroup(new PartialPath("root.laptop.d1.s1")).getFullPath());
@@ -379,12 +363,7 @@ public abstract class MTreeBelowSGTest {
 
     assertEquals(2, storageGroup.getDevices(new PartialPath("root"), true).size());
     assertEquals(2, storageGroup.getDevices(new PartialPath("root.**"), false).size());
-    assertEquals(
-        2,
-        storageGroup
-            .getMeasurementPathsWithAlias(new PartialPath("root.**"), 0, 0, false, false)
-            .left
-            .size());
+    assertEquals(2, storageGroup.getMeasurementPaths(new PartialPath("root.**"), false).size());
   }
 
   @Test
