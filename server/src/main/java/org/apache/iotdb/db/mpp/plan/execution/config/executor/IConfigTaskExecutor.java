@@ -47,6 +47,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowNodesInSchem
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowPathSetTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.UnsetSchemaTemplateStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.KillQueryStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeSinkStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.DropPipeSinkStatement;
@@ -95,6 +96,8 @@ public interface IConfigTaskExecutor {
   SettableFuture<ConfigTaskResult> loadConfiguration(boolean onCluster);
 
   SettableFuture<ConfigTaskResult> setSystemStatus(boolean onCluster, NodeStatus status);
+
+  SettableFuture<ConfigTaskResult> killQuery(KillQueryStatement killQueryStatement);
 
   SettableFuture<ConfigTaskResult> showCluster(ShowClusterStatement showClusterStatement);
 

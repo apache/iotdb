@@ -411,6 +411,8 @@ public interface IManager {
   /** TestOnly. Set the target DataNode to the specified status */
   TSStatus setDataNodeStatus(TSetDataNodeStatusReq req);
 
+  TSStatus killQuery(String queryId, int dataNodeId);
+
   TGetDataNodeLocationsResp getRunningDataNodeLocations();
 
   /**
