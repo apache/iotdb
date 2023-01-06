@@ -26,38 +26,35 @@ import java.nio.ByteBuffer;
 import static org.apache.iotdb.tsfile.common.conf.TSFileConfig.VALUE_BITS_LENGTH_64BIT;
 
 /**
- * This class includes code modified from Michael Burman's gorilla-tsc project.
+ * This class includes code modified from Panagiotis Liakos chimp project.
  *
- * <p>Copyright: 2016-2018 Michael Burman and/or other contributors
+ * <p>Copyright: 2022- Panagiotis Liakos, Katia Papakonstantinopoulou and Yannis Kotidis
  *
- * <p>Project page: https://github.com/burmanm/gorilla-tsc
+ * <p>Project page: https://github.com/panagiotisl/chimp
  *
- * <p>License: http://www.apache.org/licenses/LICENSE-2.0
+ * <p>License: https://github.com/panagiotisl/chimp/blob/main/LICENCE.md
  */
 public class LongChimpDecoder extends GorillaDecoderV2 {
 
   private static final long CHIMP_ENCODING_ENDING = Double.doubleToRawLongBits(Double.NaN);
+  private static final short[] LEADING_REPRESENTATION = {0, 8, 12, 16, 18, 20, 22, 24};
+  private static final int PREVIOUS_VALUES = 128;
+  private static final int PREVIOUS_VALUES_LOG2 = (int) (Math.log(PREVIOUS_VALUES) / Math.log(2));
+  private static final int INITIAL_FILL = PREVIOUS_VALUES_LOG2 + 9;
 
-  private int previousValues = 128;
   private long storedValue = 0;
-  private long storedValues[] = new long[previousValues];
+  private long storedValues[] = new long[PREVIOUS_VALUES];
   private int current = 0;
-  private int previousValuesLog2;
-  private int initialFill;
-
-  public static final short[] leadingRepresentation = {0, 8, 12, 16, 18, 20, 22, 24};
 
   public LongChimpDecoder() {
     this.setType(TSEncoding.CHIMP);
-    this.previousValuesLog2 = (int) (Math.log(previousValues) / Math.log(2));
-    this.initialFill = previousValuesLog2 + 9;
     this.hasNext = true;
     firstValueWasRead = false;
     storedLeadingZeros = Integer.MAX_VALUE;
     storedTrailingZeros = 0;
     this.current = 0;
     this.storedValue = 0;
-    this.storedValues = new long[previousValues];
+    this.storedValues = new long[PREVIOUS_VALUES];
   }
 
   @Override
@@ -66,7 +63,7 @@ public class LongChimpDecoder extends GorillaDecoderV2 {
 
     this.current = 0;
     this.storedValue = 0;
-    this.storedValues = new long[previousValues];
+    this.storedValues = new long[PREVIOUS_VALUES];
   }
 
   @Override
@@ -92,44 +89,55 @@ public class LongChimpDecoder extends GorillaDecoderV2 {
   }
 
   protected long readNext(ByteBuffer in) {
-    // Read value
+    // read the two control bits
     byte controlBits = readNextNBits(2, in);
     long value;
     switch (controlBits) {
+        // case 11: read the length of the number of leading
+        // zeros in the next 3 bits, then read the
+        // meaningful bits of the XORed value.
       case 3:
-        storedLeadingZeros = leadingRepresentation[(int) readLong(3, in)];
-        value = readLong(64 - storedLeadingZeros, in);
+        storedLeadingZeros = LEADING_REPRESENTATION[(int) readLong(3, in)];
+        value = readLong(VALUE_BITS_LENGTH_64BIT - storedLeadingZeros, in);
         storedValue = storedValue ^ value;
-        current = (current + 1) % previousValues;
+        current = (current + 1) % PREVIOUS_VALUES;
         storedValues[current] = storedValue;
         return storedValue;
+        // case 10: use the previous leading zeros and
+        // and just read the meaningful XORed value.
       case 2:
-        value = readLong(64 - storedLeadingZeros, in);
+        value = readLong(VALUE_BITS_LENGTH_64BIT - storedLeadingZeros, in);
         storedValue = storedValue ^ value;
-        current = (current + 1) % previousValues;
+        current = (current + 1) % PREVIOUS_VALUES;
         storedValues[current] = storedValue;
         return storedValue;
+        // case 01:  read the index of the previous value, the length of
+        // the number of leading zeros in the next 3 bits, then read
+        // the length of the meaningful XORed value in the next 6
+        // bits. Finally read the meaningful bits of the XORed value.
       case 1:
-        int fill = this.initialFill;
+        int fill = INITIAL_FILL;
         int temp = (int) readLong(fill, in);
-        int index = temp >>> (fill -= previousValuesLog2) & (1 << previousValuesLog2) - 1;
-        storedLeadingZeros = leadingRepresentation[temp >>> (fill -= 3) & (1 << 3) - 1];
+        int index = temp >>> (fill -= PREVIOUS_VALUES_LOG2) & (1 << PREVIOUS_VALUES_LOG2) - 1;
+        storedLeadingZeros = LEADING_REPRESENTATION[temp >>> (fill -= 3) & (1 << 3) - 1];
         int significantBits = temp >>> (fill -= 6) & (1 << 6) - 1;
         storedValue = storedValues[index];
         if (significantBits == 0) {
-          significantBits = 64;
+          significantBits = VALUE_BITS_LENGTH_64BIT;
         }
-        storedTrailingZeros = 64 - significantBits - storedLeadingZeros;
-        value = readLong(64 - storedLeadingZeros - storedTrailingZeros, in);
+        storedTrailingZeros = VALUE_BITS_LENGTH_64BIT - significantBits - storedLeadingZeros;
+        value = readLong(VALUE_BITS_LENGTH_64BIT - storedLeadingZeros - storedTrailingZeros, in);
         value <<= storedTrailingZeros;
         storedValue = storedValue ^ value;
-        current = (current + 1) % previousValues;
+        current = (current + 1) % PREVIOUS_VALUES;
         storedValues[current] = storedValue;
         return storedValue;
+        // case 00: the values are identical, just read
+        // the index of the previous value
       default:
-        int previousIndex = (int) readLong(previousValuesLog2, in);
+        int previousIndex = (int) readLong(PREVIOUS_VALUES_LOG2, in);
         storedValue = storedValues[previousIndex];
-        current = (current + 1) % previousValues;
+        current = (current + 1) % PREVIOUS_VALUES;
         storedValues[current] = storedValue;
         return storedValue;
     }

@@ -22,13 +22,13 @@ package org.apache.iotdb.tsfile.encoding.decoder;
 import java.nio.ByteBuffer;
 
 /**
- * This class includes code modified from Michael Burman's gorilla-tsc project.
+ * This class includes code modified from Panagiotis Liakos chimp project.
  *
- * <p>Copyright: 2016-2018 Michael Burman and/or other contributors
+ * <p>Copyright: 2022- Panagiotis Liakos, Katia Papakonstantinopoulou and Yannis Kotidis
  *
- * <p>Project page: https://github.com/burmanm/gorilla-tsc
+ * <p>Project page: https://github.com/panagiotisl/chimp
  *
- * <p>License: http://www.apache.org/licenses/LICENSE-2.0
+ * <p>License: https://github.com/panagiotisl/chimp/blob/main/LICENCE.md
  */
 public class DoublePrecisionChimpDecoder extends LongChimpDecoder {
 

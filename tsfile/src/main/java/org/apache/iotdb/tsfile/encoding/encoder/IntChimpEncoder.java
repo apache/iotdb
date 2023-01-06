@@ -114,6 +114,7 @@ public class IntChimpEncoder extends GorillaEncoderV2 {
     }
   }
 
+  // the first value is stored with no compression
   private void writeFirst(int value, ByteArrayOutputStream out) {
     storedValues[current] = value;
     writeBits(value, VALUE_BITS_LENGTH_32BIT, out);
@@ -121,6 +122,7 @@ public class IntChimpEncoder extends GorillaEncoderV2 {
   }
 
   private void compressValue(int value, ByteArrayOutputStream out) {
+    // find the best previous value
     int key = value & SET_LSB;
     int xor;
     int previousIndex;
@@ -141,12 +143,17 @@ public class IntChimpEncoder extends GorillaEncoderV2 {
       xor = storedValues[previousIndex] ^ value;
     }
 
+    // case 00: the values are identical, write 00 control bits
+    // and the index of the previous value
     if (xor == 0) {
       writeBits(previousIndex, FLAG_ZERO_SIZE, out);
       storedLeadingZeros = VALUE_BITS_LENGTH_32BIT + 1;
     } else {
       int leadingZeros = LEADING_ROUND[Integer.numberOfLeadingZeros(xor)];
-
+      // case 01:  store the index, the length of
+      // the number of leading zeros in the next 3 bits, then store
+      // the length of the meaningful XORed value in the next 5
+      // bits. Finally store the meaningful bits of the XORed value.
       if (trailingZeros > THRESHOLD) {
         int significantBits = VALUE_BITS_LENGTH_32BIT - leadingZeros - trailingZeros;
         writeBits(
@@ -157,11 +164,17 @@ public class IntChimpEncoder extends GorillaEncoderV2 {
             out);
         writeBits(xor >>> trailingZeros, significantBits, out); // Store the meaningful bits of XOR
         storedLeadingZeros = VALUE_BITS_LENGTH_32BIT + 1;
+        // case 10: If the number of leading zeros is exactly
+        // equal to the previous leading zeros, use that information
+        // and just store 01 control bits and the meaningful XORed value.
       } else if (leadingZeros == storedLeadingZeros) {
         writeBit(out);
         skipBit(out);
         int significantBits = VALUE_BITS_LENGTH_32BIT - leadingZeros;
         writeBits(xor, significantBits, out);
+        // case 11: store 11 control bits, the length of the number of leading
+        // zeros in the next 3 bits, then store the
+        // meaningful bits of the XORed value.
       } else {
         storedLeadingZeros = leadingZeros;
         int significantBits = VALUE_BITS_LENGTH_32BIT - leadingZeros;
