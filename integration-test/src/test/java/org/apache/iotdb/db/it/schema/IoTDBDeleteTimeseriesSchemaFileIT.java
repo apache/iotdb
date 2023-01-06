@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.it.schema;
 
-import org.apache.iotdb.it.env.ConfigFactory;
+import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
@@ -32,18 +32,14 @@ import org.junit.runner.RunWith;
 @Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBDeleteTimeseriesSchemaFileIT extends IoTDBDeleteTimeseriesIT {
 
-  protected static String schemaEngineMode;
-
   @Before
   public void setUp() throws Exception {
-    schemaEngineMode = ConfigFactory.getConfig().getSchemaEngineMode();
-    ConfigFactory.getConfig().setSchemaEngineMode("Schema_File");
+    EnvFactory.getEnv().getConfig().getCommonConfig().setSchemaEngineMode("Schema_File");
     super.setUp();
   }
 
   @After
   public void tearDown() throws Exception {
     super.tearDown();
-    ConfigFactory.getConfig().setSchemaEngineMode(schemaEngineMode);
   }
 }

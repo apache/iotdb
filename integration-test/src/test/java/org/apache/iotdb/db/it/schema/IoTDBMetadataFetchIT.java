@@ -84,14 +84,14 @@ public class IoTDBMetadataFetchIT {
 
   @Before
   public void setUp() throws Exception {
-    EnvFactory.getEnv().initBeforeTest();
+    EnvFactory.getEnv().initClusterEnvironment();
 
     insertSQL();
   }
 
   @After
   public void tearDown() throws Exception {
-    EnvFactory.getEnv().cleanAfterTest();
+    EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
   @Test

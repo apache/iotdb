@@ -16,30 +16,8 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.it.env;
+package org.apache.iotdb.it.env.remote;
 
-import org.apache.iotdb.it.framework.IoTDBTestLogger;
+import org.apache.iotdb.itbase.env.DataNodeConfig;
 
-import org.slf4j.Logger;
-
-public class Cluster1Env extends AbstractEnv {
-  private static final Logger logger = IoTDBTestLogger.logger;
-
-  @Override
-  public void initBeforeClass() throws InterruptedException {
-    logger.debug("=======start init class=======");
-    super.initEnvironment(1, 3);
-  }
-
-  @Override
-  public void initClusterEnvironment(int configNodesNum, int dataNodesNum) {
-    logger.debug("=======start init cluster environment=======");
-    super.initEnvironment(configNodesNum, dataNodesNum);
-  }
-
-  @Override
-  public void initBeforeTest() throws InterruptedException {
-    logger.debug("=======start init test=======");
-    super.initEnvironment(1, 3);
-  }
-}
+public class RemoteDataNodeConfig implements DataNodeConfig {}

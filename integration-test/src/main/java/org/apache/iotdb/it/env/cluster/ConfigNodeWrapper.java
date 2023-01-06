@@ -16,20 +16,23 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.it.env;
+package org.apache.iotdb.it.env.cluster;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 
 import java.io.File;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Properties;
 
 public class ConfigNodeWrapper extends AbstractNodeWrapper {
 
   private int consensusPort;
   private final String targetConfigNodes;
   private final boolean isSeed;
+  private final String defaultNodePropertiesFile =
+      EnvUtils.getFilePathFromSysVar("DefaultConfigNodeProperties");
+  private final String defaultCommonPropertiesFile =
+      EnvUtils.getFilePathFromSysVar("DefaultConfigNodeCommonProperties");
 
   public ConfigNodeWrapper(
       boolean isSeed,
@@ -45,36 +48,55 @@ public class ConfigNodeWrapper extends AbstractNodeWrapper {
     } else {
       this.targetConfigNodes = targetConfigNodes;
     }
+
+    // initialize mutable properties
+    mutableCommonProperties.setProperty(
+        propertyKeyConfigNodeConsensusProtocolClass,
+        "org.apache.iotdb.consensus.simple.SimpleConsensus");
+    mutableCommonProperties.setProperty(
+        propertyKeySchemaRegionConsensusProtocolClass,
+        "org.apache.iotdb.consensus.simple.SimpleConsensus");
+    mutableCommonProperties.setProperty(
+        propertyKeyDataRegionConsensusProtocolClass,
+        "org.apache.iotdb.consensus.simple.SimpleConsensus");
+    mutableCommonProperties.setProperty(propertyKeySchemaReplicationFactor, "1");
+    mutableCommonProperties.setProperty(propertyKeyDataReplicationFactor, "1");
+
+    mutableNodeProperties.put("cn_connection_timeout_ms", "30000");
+
+    // initialize immutable properties
+    immutableNodeProperties.setProperty(IoTDBConstant.CN_INTERNAL_ADDRESS, super.getIp());
+    immutableNodeProperties.setProperty(IoTDBConstant.CN_INTERNAL_PORT, String.valueOf(getPort()));
+    immutableNodeProperties.setProperty(
+        IoTDBConstant.CN_CONSENSUS_PORT, String.valueOf(this.consensusPort));
+    immutableNodeProperties.setProperty(
+        IoTDBConstant.CN_TARGET_CONFIG_NODE_LIST, this.targetConfigNodes);
+    immutableNodeProperties.setProperty("cn_system_dir", MppBaseConfig.NULL_VALUE);
+    immutableNodeProperties.setProperty("cn_consensus_dir", MppBaseConfig.NULL_VALUE);
+    immutableNodeProperties.setProperty(
+        "cn_metric_prometheus_reporter_port", MppBaseConfig.NULL_VALUE);
+    immutableNodeProperties.setProperty("cn_metric_iotdb_reporter_host", MppBaseConfig.NULL_VALUE);
+    immutableNodeProperties.setProperty("cn_metric_iotdb_reporter_port", MppBaseConfig.NULL_VALUE);
   }
 
   @Override
-  protected void updateConfig(Properties properties) {
-    properties.setProperty(IoTDBConstant.CN_INTERNAL_ADDRESS, super.getIp());
-    properties.setProperty(IoTDBConstant.CN_INTERNAL_PORT, String.valueOf(getPort()));
-    properties.setProperty(IoTDBConstant.CN_CONSENSUS_PORT, String.valueOf(this.consensusPort));
-    properties.setProperty(IoTDBConstant.CN_TARGET_CONFIG_NODE_LIST, this.targetConfigNodes);
-    properties.setProperty(
-        "config_node_consensus_protocol_class",
-        "org.apache.iotdb.consensus.simple.SimpleConsensus");
-    properties.setProperty(
-        "schema_region_consensus_protocol_class",
-        "org.apache.iotdb.consensus.simple.SimpleConsensus");
-    properties.setProperty(
-        "data_region_consensus_protocol_class",
-        "org.apache.iotdb.consensus.simple.SimpleConsensus");
-    properties.setProperty("schema_replication_factor", "1");
-    properties.setProperty("data_replication_factor", "1");
-    properties.setProperty("cn_connection_timeout_ms", "30000");
-  }
-
-  @Override
-  protected String getConfigPath() {
+  protected String getTargetNodeConfigPath() {
     return workDirFilePath("conf", "iotdb-confignode.properties");
   }
 
   @Override
-  protected String getCommonConfigPath() {
+  protected String getTargetCommonConfigPath() {
     return workDirFilePath("conf", "iotdb-common.properties");
+  }
+
+  @Override
+  protected String getDefaultNodeConfigPath() {
+    return defaultNodePropertiesFile;
+  }
+
+  @Override
+  protected String getDefaultCommonConfigPath() {
+    return defaultCommonPropertiesFile;
   }
 
   @Override
