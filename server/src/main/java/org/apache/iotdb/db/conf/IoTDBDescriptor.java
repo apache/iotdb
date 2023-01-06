@@ -39,15 +39,15 @@ import org.apache.iotdb.db.engine.compaction.selector.constant.InnerUnsequenceCo
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.utils.DateTimeUtils;
 import org.apache.iotdb.db.rescon.SystemInfo;
-import org.apache.iotdb.db.service.metrics.IoTDBInternalReporter;
+import org.apache.iotdb.db.service.metrics.IoTDBInternalLocalReporter;
 import org.apache.iotdb.db.utils.datastructure.TVListSortAlgorithm;
 import org.apache.iotdb.db.wal.WALManager;
 import org.apache.iotdb.db.wal.utils.WALMode;
 import org.apache.iotdb.external.api.IPropertiesLoader;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.config.ReloadLevel;
-import org.apache.iotdb.metrics.reporter.iotdb.InternalIoTDBReporter;
-import org.apache.iotdb.metrics.reporter.iotdb.MemoryInternalIoTDBReporter;
+import org.apache.iotdb.metrics.reporter.iotdb.IoTDBInternalMemoryReporter;
+import org.apache.iotdb.metrics.reporter.iotdb.IoTDBInternalReporter;
 import org.apache.iotdb.metrics.utils.InternalReporterType;
 import org.apache.iotdb.rpc.RpcTransportFactory;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -198,6 +198,9 @@ public class IoTDBDescriptor {
   }
 
   public void loadProperties(Properties properties) {
+
+    conf.setClusterName(
+        properties.getProperty(IoTDBConstant.CLUSTER_NAME, conf.getClusterName()).trim());
 
     conf.setRpcAddress(
         properties.getProperty(IoTDBConstant.DN_RPC_ADDRESS, conf.getRpcAddress()).trim());
@@ -655,11 +658,10 @@ public class IoTDBDescriptor {
                 "max_cross_compaction_candidate_file_size",
                 Long.toString(conf.getMaxCrossCompactionCandidateFileSize()))));
 
-    conf.setCompactionWriteThroughputMbPerSec(
+    conf.setCompactionIORatePerSec(
         Integer.parseInt(
             properties.getProperty(
-                "compaction_write_throughput_mb_per_sec",
-                Integer.toString(conf.getCompactionWriteThroughputMbPerSec()))));
+                "compaction_io_rate_per_sec", Integer.toString(conf.getCompactionIORatePerSec()))));
 
     conf.setEnableCompactionValidation(
         Boolean.parseBoolean(
@@ -1436,11 +1438,11 @@ public class IoTDBDescriptor {
               properties.getProperty(
                   "slow_query_threshold", Long.toString(conf.getSlowQueryThreshold()))));
       // update merge_write_throughput_mb_per_sec
-      conf.setCompactionWriteThroughputMbPerSec(
+      conf.setCompactionIORatePerSec(
           Integer.parseInt(
               properties.getProperty(
-                  "merge_write_throughput_mb_per_sec",
-                  Integer.toString(conf.getCompactionWriteThroughputMbPerSec()))));
+                  "compaction_io_rate_per_sec",
+                  Integer.toString(conf.getCompactionIORatePerSec()))));
 
       // update insert-tablet-plan's row limit for select-into
       conf.setSelectIntoInsertTabletPlanRowLimit(
@@ -1513,12 +1515,12 @@ public class IoTDBDescriptor {
     ReloadLevel reloadLevel = MetricConfigDescriptor.getInstance().loadHotProps(commonProperties);
     logger.info("Reload metric service in level {}", reloadLevel);
     if (reloadLevel == ReloadLevel.RESTART_INTERNAL_REPORTER) {
-      InternalIoTDBReporter internalReporter;
+      IoTDBInternalReporter internalReporter;
       if (MetricConfigDescriptor.getInstance().getMetricConfig().getInternalReportType()
           == InternalReporterType.IOTDB) {
-        internalReporter = new IoTDBInternalReporter();
+        internalReporter = new IoTDBInternalLocalReporter();
       } else {
-        internalReporter = new MemoryInternalIoTDBReporter();
+        internalReporter = new IoTDBInternalMemoryReporter();
       }
       MetricService.getInstance().reloadInternalReporter(internalReporter);
     } else {
@@ -1815,7 +1817,7 @@ public class IoTDBDescriptor {
         conf.setTargetConfigNodeList(NodeUrlUtils.parseTEndPointUrls(configNodeUrls));
       } catch (BadNodeUrlException e) {
         logger.error(
-            "Config nodes are set in wrong format, please set them like 127.0.0.1:22277,127.0.0.1:22281");
+            "Config nodes are set in wrong format, please set them like 127.0.0.1:10710,127.0.0.1:10712");
       }
     }
 

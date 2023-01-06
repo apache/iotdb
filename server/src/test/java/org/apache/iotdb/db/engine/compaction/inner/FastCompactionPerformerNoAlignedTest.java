@@ -195,15 +195,7 @@ public class FastCompactionPerformerNoAlignedTest {
       TsFileNameGenerator.TsFileName tsFileName =
           TsFileNameGenerator.getTsFileName(sourceFiles.get(0).getTsFile().getName());
       TsFileResource targetResource =
-          new TsFileResource(
-              new File(
-                  SEQ_DIRS,
-                  String.format(
-                      "%d-%d-%d-%d.tsfile",
-                      tsFileName.getTime(),
-                      tsFileName.getVersion(),
-                      tsFileName.getInnerCompactionCnt() + 1,
-                      tsFileName.getCrossCompactionCnt())));
+          TsFileNameGenerator.getInnerCompactionTargetFileResource(sourceFiles, true);
       performer.setSourceFiles(sourceFiles);
       performer.setTargetFiles(Collections.singletonList(targetResource));
       performer.setSummary(new CompactionTaskSummary());
@@ -288,15 +280,7 @@ public class FastCompactionPerformerNoAlignedTest {
       TsFileNameGenerator.TsFileName tsFileName =
           TsFileNameGenerator.getTsFileName(sourceFiles.get(0).getTsFile().getName());
       TsFileResource targetResource =
-          new TsFileResource(
-              new File(
-                  SEQ_DIRS,
-                  String.format(
-                      "%d-%d-%d-%d.tsfile",
-                      tsFileName.getTime(),
-                      tsFileName.getVersion(),
-                      tsFileName.getInnerCompactionCnt() + 1,
-                      tsFileName.getCrossCompactionCnt())));
+          TsFileNameGenerator.getInnerCompactionTargetFileResource(sourceFiles, true);
       performer.setSourceFiles(sourceFiles);
       performer.setTargetFiles(Collections.singletonList(targetResource));
       performer.setSummary(new CompactionTaskSummary());
@@ -383,15 +367,7 @@ public class FastCompactionPerformerNoAlignedTest {
       TsFileNameGenerator.TsFileName tsFileName =
           TsFileNameGenerator.getTsFileName(sourceFiles.get(0).getTsFile().getName());
       TsFileResource targetResource =
-          new TsFileResource(
-              new File(
-                  SEQ_DIRS,
-                  String.format(
-                      "%d-%d-%d-%d.tsfile",
-                      tsFileName.getTime(),
-                      tsFileName.getVersion(),
-                      tsFileName.getInnerCompactionCnt() + 1,
-                      tsFileName.getCrossCompactionCnt())));
+          TsFileNameGenerator.getInnerCompactionTargetFileResource(sourceFiles, true);
       performer.setSourceFiles(sourceFiles);
       performer.setTargetFiles(Collections.singletonList(targetResource));
       performer.setSummary(new CompactionTaskSummary());
@@ -465,15 +441,7 @@ public class FastCompactionPerformerNoAlignedTest {
       TsFileNameGenerator.TsFileName tsFileName =
           TsFileNameGenerator.getTsFileName(sourceFiles.get(0).getTsFile().getName());
       TsFileResource targetResource =
-          new TsFileResource(
-              new File(
-                  SEQ_DIRS,
-                  String.format(
-                      "%d-%d-%d-%d.tsfile",
-                      tsFileName.getTime(),
-                      tsFileName.getVersion(),
-                      tsFileName.getInnerCompactionCnt() + 1,
-                      tsFileName.getCrossCompactionCnt())));
+          TsFileNameGenerator.getInnerCompactionTargetFileResource(sourceFiles, true);
       performer.setSourceFiles(sourceFiles);
       performer.setTargetFiles(Collections.singletonList(targetResource));
       performer.setSummary(new CompactionTaskSummary());
@@ -576,15 +544,7 @@ public class FastCompactionPerformerNoAlignedTest {
       TsFileNameGenerator.TsFileName tsFileName =
           TsFileNameGenerator.getTsFileName(sourceFiles.get(0).getTsFile().getName());
       TsFileResource targetResource =
-          new TsFileResource(
-              new File(
-                  SEQ_DIRS,
-                  String.format(
-                      "%d-%d-%d-%d.tsfile",
-                      tsFileName.getTime(),
-                      tsFileName.getVersion(),
-                      tsFileName.getInnerCompactionCnt() + 1,
-                      tsFileName.getCrossCompactionCnt())));
+          TsFileNameGenerator.getInnerCompactionTargetFileResource(sourceFiles, true);
       performer.setSourceFiles(sourceFiles);
       performer.setTargetFiles(Collections.singletonList(targetResource));
       performer.setSummary(new CompactionTaskSummary());
@@ -658,15 +618,7 @@ public class FastCompactionPerformerNoAlignedTest {
       TsFileNameGenerator.TsFileName tsFileName =
           TsFileNameGenerator.getTsFileName(sourceFiles.get(0).getTsFile().getName());
       TsFileResource targetResource =
-          new TsFileResource(
-              new File(
-                  SEQ_DIRS,
-                  String.format(
-                      "%d-%d-%d-%d.tsfile",
-                      tsFileName.getTime(),
-                      tsFileName.getVersion(),
-                      tsFileName.getInnerCompactionCnt() + 1,
-                      tsFileName.getCrossCompactionCnt())));
+          TsFileNameGenerator.getInnerCompactionTargetFileResource(sourceFiles, true);
       performer.setSourceFiles(sourceFiles);
       performer.setTargetFiles(Collections.singletonList(targetResource));
       performer.setSummary(new CompactionTaskSummary());
@@ -743,15 +695,7 @@ public class FastCompactionPerformerNoAlignedTest {
       TsFileNameGenerator.TsFileName tsFileName =
           TsFileNameGenerator.getTsFileName(sourceFiles.get(0).getTsFile().getName());
       TsFileResource targetResource =
-          new TsFileResource(
-              new File(
-                  SEQ_DIRS,
-                  String.format(
-                      "%d-%d-%d-%d.tsfile",
-                      tsFileName.getTime(),
-                      tsFileName.getVersion(),
-                      tsFileName.getInnerCompactionCnt() + 1,
-                      tsFileName.getCrossCompactionCnt())));
+          TsFileNameGenerator.getInnerCompactionTargetFileResource(sourceFiles, true);
       performer.setSourceFiles(sourceFiles);
       performer.setTargetFiles(Collections.singletonList(targetResource));
       performer.setSummary(new CompactionTaskSummary());
@@ -821,15 +765,7 @@ public class FastCompactionPerformerNoAlignedTest {
       TsFileNameGenerator.TsFileName tsFileName =
           TsFileNameGenerator.getTsFileName(sourceFiles.get(0).getTsFile().getName());
       TsFileResource targetResource =
-          new TsFileResource(
-              new File(
-                  SEQ_DIRS,
-                  String.format(
-                      "%d-%d-%d-%d.tsfile",
-                      tsFileName.getTime(),
-                      tsFileName.getVersion(),
-                      tsFileName.getInnerCompactionCnt() + 1,
-                      tsFileName.getCrossCompactionCnt())));
+          TsFileNameGenerator.getInnerCompactionTargetFileResource(sourceFiles, true);
       performer.setSourceFiles(sourceFiles);
       performer.setTargetFiles(Collections.singletonList(targetResource));
       performer.setSummary(new CompactionTaskSummary());
@@ -902,15 +838,7 @@ public class FastCompactionPerformerNoAlignedTest {
       TsFileNameGenerator.TsFileName tsFileName =
           TsFileNameGenerator.getTsFileName(sourceFiles.get(0).getTsFile().getName());
       TsFileResource targetResource =
-          new TsFileResource(
-              new File(
-                  SEQ_DIRS,
-                  String.format(
-                      "%d-%d-%d-%d.tsfile",
-                      tsFileName.getTime(),
-                      tsFileName.getVersion(),
-                      tsFileName.getInnerCompactionCnt() + 1,
-                      tsFileName.getCrossCompactionCnt())));
+          TsFileNameGenerator.getInnerCompactionTargetFileResource(sourceFiles, true);
       performer.setSourceFiles(sourceFiles);
       performer.setTargetFiles(Collections.singletonList(targetResource));
       performer.setSummary(new CompactionTaskSummary());

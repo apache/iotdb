@@ -69,7 +69,7 @@ public class UDFInfo implements SnapshotProcessor {
 
   private final ReentrantLock udfTableLock = new ReentrantLock();
 
-  private final String snapshotFileName = "udf_info.bin";
+  private static final String snapshotFileName = "udf_info.bin";
 
   public UDFInfo() throws IOException {
     udfTable = new UDFTable();

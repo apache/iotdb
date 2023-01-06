@@ -19,15 +19,15 @@
 
 package org.apache.iotdb;
 
+import org.apache.iotdb.isession.IDataIterator;
+import org.apache.iotdb.isession.template.Template;
+import org.apache.iotdb.isession.util.Version;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.session.Session;
 import org.apache.iotdb.session.SessionDataSet;
-import org.apache.iotdb.session.SessionDataSet.DataIterator;
 import org.apache.iotdb.session.template.MeasurementNode;
-import org.apache.iotdb.session.template.Template;
-import org.apache.iotdb.session.util.Version;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -784,7 +784,7 @@ public class SessionExample {
       throws IoTDBConnectionException, StatementExecutionException {
     try (SessionDataSet dataSet = session.executeQueryStatement("select * from root.sg1.d1")) {
 
-      DataIterator iterator = dataSet.iterator();
+      IDataIterator iterator = dataSet.iterator();
       System.out.println(dataSet.getColumnNames());
       dataSet.setFetchSize(1024); // default is 10000
       while (iterator.next()) {

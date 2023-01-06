@@ -26,7 +26,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class JvmMetrics implements IMetricSet {
-  private List<IMetricSet> metricSets = new ArrayList<>();
+  private final List<IMetricSet> metricSets = new ArrayList<>();
 
   public JvmMetrics() {
     metricSets.add(new JvmClassLoaderMetrics());

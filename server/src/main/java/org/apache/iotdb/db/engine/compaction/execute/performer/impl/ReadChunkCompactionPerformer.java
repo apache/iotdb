@@ -97,7 +97,6 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
         targetResource.updatePlanIndexes(tsFileResource);
       }
       writer.endFile();
-      targetResource.close();
     } finally {
       TsFileMetricManager.getInstance().addCompactionTempFileSize(true, true, -tempFileSize);
       TsFileMetricManager.getInstance().addCompactionTempFileNum(true, true, -1);

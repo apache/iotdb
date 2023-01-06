@@ -25,6 +25,7 @@ import org.apache.iotdb.db.engine.compaction.execute.utils.executor.fast.element
 import org.apache.iotdb.db.engine.compaction.execute.utils.executor.fast.element.FileElement;
 import org.apache.iotdb.db.engine.compaction.execute.utils.executor.fast.element.PageElement;
 import org.apache.iotdb.db.engine.compaction.execute.utils.writer.AbstractCompactionWriter;
+import org.apache.iotdb.db.engine.compaction.schedule.CompactionTaskManager;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.WriteProcessException;
@@ -174,6 +175,7 @@ public class NonAlignedSeriesCompactionExecutor extends SeriesCompactionExecutor
 
   @Override
   void readChunk(ChunkMetadataElement chunkMetadataElement) throws IOException {
+    CompactionTaskManager.getInstance().getCompactionIORateLimiter().acquire(1);
     chunkMetadataElement.chunk =
         readerCacheMap
             .get(chunkMetadataElement.fileElement.resource)

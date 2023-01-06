@@ -18,16 +18,18 @@
  */
 package org.apache.iotdb.session.pool;
 
+import org.apache.iotdb.isession.ISession;
+import org.apache.iotdb.isession.ISessionDataSet;
+import org.apache.iotdb.isession.SessionConfig;
+import org.apache.iotdb.isession.pool.ISessionDataSetWrapper;
+import org.apache.iotdb.isession.pool.ISessionPool;
+import org.apache.iotdb.isession.template.Template;
+import org.apache.iotdb.isession.util.Version;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.service.rpc.thrift.TSBackupConfigurationResp;
 import org.apache.iotdb.service.rpc.thrift.TSConnectionInfoResp;
-import org.apache.iotdb.session.ISession;
 import org.apache.iotdb.session.Session;
-import org.apache.iotdb.session.SessionConfig;
-import org.apache.iotdb.session.SessionDataSet;
-import org.apache.iotdb.session.template.Template;
-import org.apache.iotdb.session.util.Version;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -527,17 +529,17 @@ public class SessionPool implements ISessionPool {
   }
 
   @Override
-  public void closeResultSet(SessionDataSetWrapper wrapper) {
+  public void closeResultSet(ISessionDataSetWrapper wrapper) {
     boolean putback = true;
     try {
-      wrapper.sessionDataSet.closeOperationHandle();
+      wrapper.getSessionDataSet().closeOperationHandle();
     } catch (IoTDBConnectionException | StatementExecutionException e) {
       tryConstructNewSession();
       putback = false;
     } finally {
-      ISession session = occupied.remove(wrapper.session);
+      ISession session = occupied.remove(wrapper.getSession());
       if (putback && session != null) {
-        putBack(wrapper.session);
+        putBack(wrapper.getSession());
       }
     }
   }
@@ -2405,7 +2407,7 @@ public class SessionPool implements ISessionPool {
     for (int i = 0; i < RETRY; i++) {
       ISession session = getSession();
       try {
-        SessionDataSet resp = session.executeQueryStatement(sql);
+        ISessionDataSet resp = session.executeQueryStatement(sql);
         SessionDataSetWrapper wrapper = new SessionDataSetWrapper(resp, session, this);
         occupy(session);
         return wrapper;
@@ -2439,7 +2441,7 @@ public class SessionPool implements ISessionPool {
     for (int i = 0; i < RETRY; i++) {
       ISession session = getSession();
       try {
-        SessionDataSet resp = session.executeQueryStatement(sql, timeoutInMs);
+        ISessionDataSet resp = session.executeQueryStatement(sql, timeoutInMs);
         SessionDataSetWrapper wrapper = new SessionDataSetWrapper(resp, session, this);
         occupy(session);
         return wrapper;
@@ -2489,7 +2491,7 @@ public class SessionPool implements ISessionPool {
     for (int i = 0; i < RETRY; i++) {
       ISession session = getSession();
       try {
-        SessionDataSet resp = session.executeRawDataQuery(paths, startTime, endTime, timeOut);
+        ISessionDataSet resp = session.executeRawDataQuery(paths, startTime, endTime, timeOut);
         SessionDataSetWrapper wrapper = new SessionDataSetWrapper(resp, session, this);
         occupy(session);
         return wrapper;
@@ -2512,7 +2514,7 @@ public class SessionPool implements ISessionPool {
     for (int i = 0; i < RETRY; i++) {
       ISession session = getSession();
       try {
-        SessionDataSet resp = session.executeLastDataQuery(paths, LastTime, timeOut);
+        ISessionDataSet resp = session.executeLastDataQuery(paths, LastTime, timeOut);
         SessionDataSetWrapper wrapper = new SessionDataSetWrapper(resp, session, this);
         occupy(session);
         return wrapper;
@@ -2535,7 +2537,7 @@ public class SessionPool implements ISessionPool {
     for (int i = 0; i < RETRY; i++) {
       ISession session = getSession();
       try {
-        SessionDataSet resp = session.executeLastDataQuery(paths);
+        ISessionDataSet resp = session.executeLastDataQuery(paths);
         SessionDataSetWrapper wrapper = new SessionDataSetWrapper(resp, session, this);
         occupy(session);
         return wrapper;

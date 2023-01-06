@@ -63,7 +63,7 @@ public class AlignedSeriesCompactionExecutor {
   private final List<IMeasurementSchema> schemaList;
   private long remainingPointInChunkWriter = 0L;
   private final RateLimiter rateLimiter =
-      CompactionTaskManager.getInstance().getMergeWriteRateLimiter();
+      CompactionTaskManager.getInstance().getCompactionIORateLimiter();
 
   private final long chunkSizeThreshold =
       IoTDBDescriptor.getInstance().getConfig().getTargetChunkSize();
@@ -139,13 +139,13 @@ public class AlignedSeriesCompactionExecutor {
       while (readerIterator.hasNext()) {
         Pair<AlignedChunkReader, Long> chunkReaderAndChunkSize = readerIterator.nextReader();
         CompactionMetricsRecorder.recordReadInfo(chunkReaderAndChunkSize.right);
+        rateLimiter.acquire(schemaList.size() + 1);
         compactOneAlignedChunk(chunkReaderAndChunkSize.left);
       }
     }
 
     if (remainingPointInChunkWriter != 0L) {
-      CompactionTaskManager.mergeRateLimiterAcquire(
-          rateLimiter, chunkWriter.estimateMaxSeriesMemSize());
+      rateLimiter.acquire(chunkWriter.getValueChunkWriterList().size() + 1);
       CompactionMetricsRecorder.recordWriteInfo(
           CompactionType.INNER_SEQ_COMPACTION,
           ProcessChunkType.DESERIALIZE_CHUNK,
@@ -187,8 +187,7 @@ public class AlignedSeriesCompactionExecutor {
   private void flushChunkWriterIfLargeEnough() throws IOException {
     if (remainingPointInChunkWriter >= chunkPointNumThreshold
         || chunkWriter.estimateMaxSeriesMemSize() >= chunkSizeThreshold * schemaList.size()) {
-      CompactionTaskManager.mergeRateLimiterAcquire(
-          rateLimiter, chunkWriter.estimateMaxSeriesMemSize());
+      rateLimiter.acquire(chunkWriter.getValueChunkWriterList().size() + 1);
       CompactionMetricsRecorder.recordWriteInfo(
           CompactionType.INNER_SEQ_COMPACTION,
           ProcessChunkType.DESERIALIZE_CHUNK,

@@ -19,14 +19,14 @@
 package org.apache.iotdb.session.it;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.isession.ISession;
+import org.apache.iotdb.isession.ISessionDataSet;
 import org.apache.iotdb.it.env.ConfigFactory;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 import org.apache.iotdb.rpc.StatementExecutionException;
-import org.apache.iotdb.session.ISession;
-import org.apache.iotdb.session.SessionDataSet;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -128,7 +128,7 @@ public class IoTDBSessionDisableMemControlIT {
         tablet.reset();
       }
 
-      SessionDataSet dataSet =
+      ISessionDataSet dataSet =
           session.executeQueryStatement("select count(s1), count(s2), count(s3) from root.sg.d");
       while (dataSet.hasNext()) {
         RowRecord rowRecord = dataSet.next();
@@ -207,7 +207,7 @@ public class IoTDBSessionDisableMemControlIT {
         tablet.reset();
       }
 
-      SessionDataSet dataSet = session.executeQueryStatement("select s1, s2, s3 from root.sg.d");
+      ISessionDataSet dataSet = session.executeQueryStatement("select s1, s2, s3 from root.sg.d");
       while (dataSet.hasNext()) {
         RowRecord rowRecord = dataSet.next();
         assertEquals(1, rowRecord.getFields().get(0).getLongV());

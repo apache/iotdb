@@ -19,14 +19,14 @@
 package org.apache.iotdb.session.it.pool;
 
 import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.isession.SessionConfig;
+import org.apache.iotdb.isession.pool.ISessionDataSetWrapper;
+import org.apache.iotdb.isession.util.Version;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
-import org.apache.iotdb.session.SessionConfig;
-import org.apache.iotdb.session.pool.SessionDataSetWrapper;
 import org.apache.iotdb.session.pool.SessionPool;
-import org.apache.iotdb.session.util.Version;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import org.junit.After;
@@ -133,7 +133,7 @@ public class SessionPoolIT {
       service.submit(
           () -> {
             try {
-              SessionDataSetWrapper wrapper =
+              ISessionDataSetWrapper wrapper =
                   pool.executeQueryStatement("select * from root.sg1.d1 where time = " + no);
               // this is incorrect because wrapper is not closed.
               // so all other 7 queries will be blocked
@@ -178,7 +178,7 @@ public class SessionPoolIT {
       service.submit(
           () -> {
             try {
-              SessionDataSetWrapper wrapper;
+              ISessionDataSetWrapper wrapper;
               if (timeoutInMs == DEFAULT_QUERY_TIMEOUT) {
                 wrapper =
                     pool.executeQueryStatement("select * from root.sg1.d1 where time = " + no);
@@ -217,7 +217,8 @@ public class SessionPoolIT {
       service.submit(
           () -> {
             try {
-              SessionDataSetWrapper wrapper = pool.executeRawDataQuery(pathList, no, no + 1, 60000);
+              ISessionDataSetWrapper wrapper =
+                  pool.executeRawDataQuery(pathList, no, no + 1, 60000);
               if (wrapper.hasNext()) {
                 assertEquals(no, wrapper.next().getTimestamp());
               }
@@ -260,7 +261,7 @@ public class SessionPoolIT {
             SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
             SessionConfig.DEFAULT_MAX_FRAME_SIZE);
     write10Data(pool, true);
-    SessionDataSetWrapper wrapper = null;
+    ISessionDataSetWrapper wrapper = null;
     try {
       wrapper = pool.executeQueryStatement("select * from root.sg1.d1 where time > 1");
       // TODO: replace stopDaemon() and restartDaemon() with new methods in Env.
@@ -362,7 +363,7 @@ public class SessionPoolIT {
             SessionConfig.DEFAULT_MAX_FRAME_SIZE);
     write10Data(pool, true);
     assertEquals(1, pool.currentAvailableSize());
-    SessionDataSetWrapper wrapper;
+    ISessionDataSetWrapper wrapper;
     try {
       wrapper = pool.executeQueryStatement("select * from root.sg1.d1 where time > 1");
       // user does not know what happens.

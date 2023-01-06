@@ -20,9 +20,9 @@ package org.apache.iotdb.confignode.consensus.response;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.confignode.rpc.thrift.TCQConfig;
-import org.apache.iotdb.confignode.rpc.thrift.TConfigurationResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGlobalConfig;
 import org.apache.iotdb.confignode.rpc.thrift.TRatisConfig;
+import org.apache.iotdb.confignode.rpc.thrift.TSystemConfigurationResp;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -53,8 +53,8 @@ public class ConfigurationResp implements DataSet {
     this.cqConfig = cqConfig;
   }
 
-  public TConfigurationResp convertToRpcDataNodeRegisterResp() {
-    TConfigurationResp resp = new TConfigurationResp();
+  public TSystemConfigurationResp convertToRpcSystemConfigurationResp() {
+    TSystemConfigurationResp resp = new TSystemConfigurationResp();
     resp.setStatus(status);
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       resp.setGlobalConfig(globalConfig);

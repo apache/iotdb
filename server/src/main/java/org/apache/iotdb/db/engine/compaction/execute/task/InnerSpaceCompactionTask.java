@@ -229,6 +229,9 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
       if (targetTsFileList.get(0) != null) {
         TsFileMetricManager.getInstance()
             .addFile(targetTsFileList.get(0).getTsFile().length(), sequence);
+
+        // set target resources to CLOSED, so that they can be selected to compact
+        targetTsFileList.get(0).setStatus(TsFileResourceStatus.CLOSED);
       }
 
       if (performer instanceof FastCompactionPerformer) {

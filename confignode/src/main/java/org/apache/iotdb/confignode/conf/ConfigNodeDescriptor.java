@@ -143,6 +143,9 @@ public class ConfigNodeDescriptor {
   }
 
   private void loadProperties(Properties properties) throws BadNodeUrlException, IOException {
+    conf.setClusterName(
+        properties.getProperty(IoTDBConstant.CLUSTER_NAME, conf.getClusterName()).trim());
+
     conf.setInternalAddress(
         properties
             .getProperty(IoTDBConstant.CN_INTERNAL_ADDRESS, conf.getInternalAddress())
@@ -779,6 +782,8 @@ public class ConfigNodeDescriptor {
 
   /**
    * Check if the current ConfigNode is SeedConfigNode.
+   *
+   * <p>Notice: Only invoke this interface when first startup.
    *
    * @return True if the target_config_node_list points to itself
    */

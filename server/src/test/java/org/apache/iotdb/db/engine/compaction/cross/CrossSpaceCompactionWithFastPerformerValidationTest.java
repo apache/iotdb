@@ -28,6 +28,7 @@ import org.apache.iotdb.db.engine.compaction.execute.task.CompactionTaskSummary;
 import org.apache.iotdb.db.engine.compaction.execute.task.CrossSpaceCompactionTask;
 import org.apache.iotdb.db.engine.compaction.execute.task.InnerSpaceCompactionTask;
 import org.apache.iotdb.db.engine.compaction.execute.utils.CompactionUtils;
+import org.apache.iotdb.db.engine.compaction.selector.ICompactionSelector;
 import org.apache.iotdb.db.engine.compaction.selector.ICrossSpaceSelector;
 import org.apache.iotdb.db.engine.compaction.selector.impl.RewriteCrossSpaceCompactionSelector;
 import org.apache.iotdb.db.engine.compaction.selector.utils.CrossSpaceCompactionResource;
@@ -2134,6 +2135,7 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
     CompactionUtils.combineModsInInnerCompaction(sourceFiles, targetResources.get(0));
     tsFileManager.replace(sourceFiles, Collections.emptyList(), targetResources, 0, true);
     CompactionUtils.deleteTsFilesInDisk(sourceFiles, COMPACTION_TEST_SG + "-" + "0");
+    targetResources.forEach(x -> x.setStatus(TsFileResourceStatus.CLOSED));
 
     // start selecting files and then start a cross space compaction task
     ICrossSpaceSelector selector =
@@ -2193,5 +2195,92 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
     }
     innerSpaceCompactionTask.start();
     validateSeqFiles(true);
+  }
+
+  /**
+   * Target files of first cross compaction task should not be selected to participate in other
+   * tasks util the first task is finished.<br>
+   * Seq Files index : 1 ~ 10<br>
+   * Unseq Files index : 1 ~ 2<br>
+   * Unseq file 1 overlaps with seq file 4,5 and unseq file 2 overlaps with seq file 5,6
+   */
+  @Test
+  public void testCompactionSchedule() throws Exception {
+    IoTDBDescriptor.getInstance().getConfig().setMaxCrossCompactionCandidateFileNum(1);
+    IoTDBDescriptor.getInstance().getConfig().setMaxInnerCompactionCandidateFileNum(2);
+    createFiles(10, 10, 5, 1000, 0, 0, 100, 100, false, true);
+    createFiles(1, 5, 10, 1000, 4000, 4000, 0, 100, false, false);
+    createFiles(1, 5, 10, 1000, 5000, 5000, 0, 100, false, false);
+
+    tsFileManager.addAll(seqResources, true);
+    tsFileManager.addAll(unseqResources, false);
+
+    // first cross compaction task
+    ICrossSpaceSelector crossSpaceCompactionSelector =
+        IoTDBDescriptor.getInstance()
+            .getConfig()
+            .getCrossCompactionSelector()
+            .createInstance(COMPACTION_TEST_SG, "0", 0, tsFileManager);
+    Pair<List<TsFileResource>, List<TsFileResource>> sourceFiles =
+        crossSpaceCompactionSelector
+            .selectCrossSpaceTask(
+                tsFileManager.getSequenceListByTimePartition(0),
+                tsFileManager.getUnsequenceListByTimePartition(0))
+            .get(0);
+    Assert.assertEquals(2, sourceFiles.left.size());
+    Assert.assertEquals(1, sourceFiles.right.size());
+    List<TsFileResource> targetResources =
+        CompactionFileGeneratorUtils.getCrossCompactionTargetTsFileResources(sourceFiles.left);
+    performer.setSourceFiles(sourceFiles.left, sourceFiles.right);
+    performer.setTargetFiles(targetResources);
+    performer.setSummary(new CompactionTaskSummary());
+    performer.perform();
+
+    CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG + "-" + "0");
+    CompactionUtils.combineModsInCrossCompaction(
+        sourceFiles.left, sourceFiles.right, targetResources);
+    tsFileManager.replace(sourceFiles.left, sourceFiles.right, targetResources, 0, true);
+
+    // Suppose the read lock of the source file is occupied by other threads, causing the first task
+    // to get stuck.
+    // Target file of the first task should not be selected to participate in other cross compaction
+    // tasks.
+    Assert.assertEquals(
+        0,
+        crossSpaceCompactionSelector
+            .selectCrossSpaceTask(
+                tsFileManager.getSequenceListByTimePartition(0),
+                tsFileManager.getUnsequenceListByTimePartition(0))
+            .size());
+
+    // Target file of the first task should not be selected to participate in other inner compaction
+    // tasks.
+    ICompactionSelector innerSelector =
+        IoTDBDescriptor.getInstance()
+            .getConfig()
+            .getInnerSequenceCompactionSelector()
+            .createInstance(COMPACTION_TEST_SG, "0", 0, tsFileManager);
+    Assert.assertEquals(0, innerSelector.selectInnerSpaceTask(targetResources).size());
+
+    // first compaction task finishes successfully
+    targetResources.forEach(x -> x.setStatus(TsFileResourceStatus.CLOSED));
+
+    // target file of first compaction task can be selected to participate in another cross
+    // compaction task
+    List<Pair<List<TsFileResource>, List<TsFileResource>>> pairs =
+        crossSpaceCompactionSelector.selectCrossSpaceTask(
+            tsFileManager.getSequenceListByTimePartition(0),
+            tsFileManager.getUnsequenceListByTimePartition(0));
+    Assert.assertEquals(1, pairs.size());
+    Assert.assertEquals(2, pairs.get(0).left.size());
+    Assert.assertEquals(1, pairs.get(0).right.size());
+    Assert.assertEquals(tsFileManager.getTsFileList(true).get(4), pairs.get(0).left.get(0));
+    Assert.assertEquals(tsFileManager.getTsFileList(true).get(5), pairs.get(0).left.get(1));
+    Assert.assertEquals(tsFileManager.getTsFileList(false).get(0), pairs.get(0).right.get(0));
+
+    // target file of first compaction task can be selected to participate in another inner
+    // compaction task
+    List<List<TsFileResource>> innerPairs = innerSelector.selectInnerSpaceTask(targetResources);
+    Assert.assertEquals(1, innerPairs.size());
   }
 }

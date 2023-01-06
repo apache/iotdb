@@ -60,7 +60,7 @@ public class IoTDBStartCheck {
 
   // this file is located in data/system/schema/system.properties
   // If user delete folder "data", system.properties can reset.
-  private static final String PROPERTIES_FILE_NAME = "system.properties";
+  public static final String PROPERTIES_FILE_NAME = "system.properties";
   private static final String SCHEMA_DIR = config.getSchemaDir();
   private static final String[] WAL_DIRS = commonConfig.getWalDirs();
 
@@ -243,7 +243,7 @@ public class IoTDBStartCheck {
    * <p>When upgrading the system.properties: (1) create system.properties.tmp (2) delete
    * system.properties (3) rename system.properties.tmp to system.properties
    */
-  public void checkConfig() throws ConfigurationException, IOException {
+  public void checkSystemConfig() throws ConfigurationException, IOException {
     propertiesFile =
         SystemFileFactory.INSTANCE.getFile(
             IoTDBStartCheck.SCHEMA_DIR + File.separator + PROPERTIES_FILE_NAME);
@@ -435,6 +435,9 @@ public class IoTDBStartCheck {
     }
 
     // load configuration from system properties only when start as Data node
+    if (properties.containsKey(IoTDBConstant.CLUSTER_NAME)) {
+      config.setClusterName(properties.getProperty(IoTDBConstant.CLUSTER_NAME));
+    }
     if (properties.containsKey(DATA_NODE_ID)) {
       config.setDataNodeId(Integer.parseInt(properties.getProperty(DATA_NODE_ID)));
     }
@@ -464,8 +467,9 @@ public class IoTDBStartCheck {
     }
   }
 
-  /** call this method to serialize DataNodeId */
-  public void serializeDataNodeId(int dataNodeId) throws IOException {
+  /** call this method to serialize ClusterName and DataNodeId */
+  public void serializeClusterNameAndDataNodeId(String clusterName, int dataNodeId)
+      throws IOException {
     // create an empty tmpPropertiesFile
     if (tmpPropertiesFile.createNewFile()) {
       logger.info("Create system.properties.tmp {}.", tmpPropertiesFile);
@@ -477,6 +481,7 @@ public class IoTDBStartCheck {
     reloadProperties();
 
     try (FileOutputStream tmpFOS = new FileOutputStream(tmpPropertiesFile.toString())) {
+      properties.setProperty(IoTDBConstant.CLUSTER_NAME, clusterName);
       properties.setProperty(DATA_NODE_ID, String.valueOf(dataNodeId));
       properties.store(tmpFOS, SYSTEM_PROPERTIES_STRING);
       // serialize finished, delete old system.properties file

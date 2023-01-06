@@ -269,6 +269,7 @@ public class WALBuffer extends AbstractWALBuffer {
           if (dataExists) {
             fsyncWorkingBuffer(currentSearchIndex, currentFileStatus, info);
           }
+          isClosed = true;
           return dataExists;
         default:
           return false;
@@ -511,7 +512,6 @@ public class WALBuffer extends AbstractWALBuffer {
 
   @Override
   public void close() {
-    isClosed = true;
     // first waiting serialize and sync tasks finished, then release all resources
     if (serializeThread != null) {
       // add close signal WALEntry to notify serializeThread
@@ -520,6 +520,7 @@ public class WALBuffer extends AbstractWALBuffer {
       } catch (InterruptedException e) {
         logger.error("Fail to put CLOSE_SIGNAL to walEntries.", e);
       }
+      isClosed = true;
       shutdownThread(serializeThread, ThreadName.WAL_SERIALIZE);
     }
     if (syncBufferThread != null) {

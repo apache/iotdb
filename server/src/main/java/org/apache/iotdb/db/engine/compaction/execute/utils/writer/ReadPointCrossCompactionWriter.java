@@ -19,9 +19,11 @@
 package org.apache.iotdb.db.engine.compaction.execute.utils.writer;
 
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
+import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
@@ -59,6 +61,11 @@ public class ReadPointCrossCompactionWriter extends AbstractCrossCompactionWrite
     isDeviceExistedInTargetFiles[seqFileIndexArray[subTaskId]] = true;
     isEmptyFile[seqFileIndexArray[subTaskId]] = false;
     lastTime[subTaskId] = timestamps.getEndTime();
+  }
+
+  @Override
+  protected TsFileSequenceReader getFileReader(TsFileResource resource) throws IOException {
+    return FileReaderManager.getInstance().get(resource.getTsFilePath(), true);
   }
 
   @Override

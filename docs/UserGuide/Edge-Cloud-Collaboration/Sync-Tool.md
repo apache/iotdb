@@ -358,16 +358,16 @@ It costs 0.134s
 - Execute `CREATE PIPE p to demo`  get message  `PIPE [p] is STOP, please retry after drop it.`
   - Cause by: Current Pipe already exists
   - Solution: Execute `DROP PIPE p` to drop Pipe and recreate it.
-- Execute `CREATE PIPE p to demo` get message  `Fail to create PIPE [p] because Connection refused on DataNode: {id=2, internalEndPoint=TEndPoint(ip:127.0.0.1, port:9005)}.`
+- Execute `CREATE PIPE p to demo` get message  `Fail to create PIPE [p] because Connection refused on DataNode: {id=2, internalEndPoint=TEndPoint(ip:127.0.0.1, port:10732)}.`
   - Cause by: There are some DataNodes with the status Running cannot be connected.
   - Solution: Execute `SHOW DATANODES`, and check for unreachable DataNode networks, or wait for their status to change to Unknown and re-execute the statement.
-- Execute `START PIPE p`  get message  `Fail to start PIPE [p] because Connection refused on DataNode: {id=2, internalEndPoint=TEndPoint(ip:127.0.0.1, port:9005)}.`
+- Execute `START PIPE p`  get message  `Fail to start PIPE [p] because Connection refused on DataNode: {id=2, internalEndPoint=TEndPoint(ip:127.0.0.1, port:10732)}.`
   - Cause by: There are some DataNodes with the status Running cannot be connected.
   - Solution: Execute `SHOW DATANODES`, and check for unreachable DataNode networks, or wait for their status to change to Unknown and re-execute the statement.
-- Execute `STOP PIPE p`  get message  `Fail to stop PIPE [p] because Connection refused on DataNode: {id=2, internalEndPoint=TEndPoint(ip:127.0.0.1, port:9005)}.`
+- Execute `STOP PIPE p`  get message  `Fail to stop PIPE [p] because Connection refused on DataNode: {id=2, internalEndPoint=TEndPoint(ip:127.0.0.1, port:10732)}.`
   - Cause by: There are some DataNodes with the status Running cannot be connected.
   - Solution: Execute `SHOW DATANODES`, and check for unreachable DataNode networks, or wait for their status to change to Unknown and re-execute the statement.
-- Execute `DROP PIPE p`  get message  `Fail to DROP_PIPE because Fail to drop PIPE [p] because Connection refused on DataNode: {id=2, internalEndPoint=TEndPoint(ip:127.0.0.1, port:9005)}. Please execute [DROP PIPE p] later to retry.`
+- Execute `DROP PIPE p`  get message  `Fail to DROP_PIPE because Fail to drop PIPE [p] because Connection refused on DataNode: {id=2, internalEndPoint=TEndPoint(ip:127.0.0.1, port:10732)}. Please execute [DROP PIPE p] later to retry.`
   - Cause by: There are some DataNodes with the status Running cannot be connected. Pipe has been deleted on some nodes and the status has been set to ***DROP***.
   - Solution: Execute `SHOW DATANODES`, and check for unreachable DataNode networks, or wait for their status to change to Unknown and re-execute the statement.
 - Sync.log prompts `org.apache.iotdb.commons.exception.IoTDBException: root.** already been created as database`

@@ -45,6 +45,7 @@ import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -116,6 +117,7 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
     assertEquals(500, count);
 
     // start compacting
+    FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
     InnerSpaceCompactionTask task =
@@ -128,6 +130,8 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
             new AtomicInteger(0),
             0);
     task.start();
+    Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
+    Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
 
     validateSeqFiles(true);
 
@@ -213,6 +217,7 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
     }
 
     // start compacting
+    FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
     InnerSpaceCompactionTask task =
@@ -225,6 +230,151 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
             new AtomicInteger(0),
             0);
     task.start();
+    Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
+    Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
+    List<TsFileResource> targetResources = tsFileManager.getTsFileList(true);
+    validateSeqFiles(true);
+
+    assertEquals(
+        0, targetResources.get(0).getStartTime(COMPACTION_TEST_SG + PATH_SEPARATOR + "d0"));
+    assertEquals(
+        0, targetResources.get(0).getStartTime(COMPACTION_TEST_SG + PATH_SEPARATOR + "d1"));
+    assertEquals(
+        250, targetResources.get(0).getStartTime(COMPACTION_TEST_SG + PATH_SEPARATOR + "d2"));
+    assertEquals(
+        600, targetResources.get(0).getStartTime(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3"));
+    assertEquals(
+        600, targetResources.get(0).getStartTime(COMPACTION_TEST_SG + PATH_SEPARATOR + "d4"));
+    for (int i = 0; i < 5; i++) {
+      assertEquals(
+          749, targetResources.get(0).getEndTime(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i));
+    }
+
+    for (int i = 0; i < 5; i++) {
+      for (int j = 0; j < 5; j++) {
+        List<IMeasurementSchema> schemas = new ArrayList<>();
+        schemas.add(new MeasurementSchema("s" + j, TSDataType.INT64));
+        PartialPath path =
+            new MeasurementPath(
+                COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i,
+                "s" + j,
+                new MeasurementSchema("s" + j, TSDataType.INT64));
+        IDataBlockReader tsBlockReader =
+            new SeriesDataBlockReader(
+                path,
+                TSDataType.INT64,
+                FragmentInstanceContext.createFragmentInstanceContextForCompaction(
+                    EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
+                tsFileManager.getTsFileList(true),
+                tsFileManager.getTsFileList(false),
+                true);
+        int count = 0;
+        while (tsBlockReader.hasNextBatch()) {
+          TsBlock block = tsBlockReader.nextBatch();
+          IBatchDataIterator iterator = block.getTsBlockSingleColumnIterator();
+
+          while (iterator.hasNext()) {
+            if (iterator.currentTime() >= 600) {
+              assertEquals(iterator.currentTime() + 200, iterator.currentValue());
+            } else {
+              assertEquals(iterator.currentTime(), iterator.currentValue());
+            }
+            count++;
+            iterator.next();
+          }
+        }
+        tsBlockReader.close();
+        if (i < 2 && j < 3) {
+          assertEquals(400, count);
+        } else if (i < 3 && j < 5) {
+          assertEquals(200, count);
+        } else if (i < 5 && j < 5) {
+          assertEquals(100, count);
+        }
+      }
+    }
+  }
+
+  /*
+  Total 6 seq files, each file has different nonAligned timeseries.
+  First and Second file: d0 ~ d1 and s0 ~ s2, time range is 0 ~ 99 and 150 ~ 249, value range is  0 ~ 99 and 150 ~ 249.
+  Third and Forth file: d0 ~ d2 and s0 ~ s4, time range is 250 ~ 299 and 350 ~ 399, value range is 250 ~ 299 and 350 ~ 399.
+  Fifth and Sixth file: d0 ~ d4 and s0 ~ s5, time range is 600 ~ 649 and 700 ~ 749, value range is 800 ~ 849 and 900 ~ 949.
+  Timeseries d[0-4].s5 are deleted before compaction.
+  */
+  @Test
+  public void testSeqInnerSpaceCompactionWithFileTimeIndex() throws Exception {
+    registerTimeseriesInMManger(5, 5, false);
+    createFiles(2, 2, 3, 100, 0, 0, 50, 50, false, true);
+    createFiles(2, 3, 5, 50, 250, 250, 50, 50, false, true);
+    createFiles(2, 5, 6, 50, 600, 800, 50, 50, false, true);
+
+    for (int i = 0; i < 5; i++) {
+      for (int j = 0; j < 5; j++) {
+        PartialPath path =
+            new MeasurementPath(
+                COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i,
+                "s" + j,
+                new MeasurementSchema("s" + j, TSDataType.INT64));
+        IDataBlockReader tsBlockReader =
+            new SeriesDataBlockReader(
+                path,
+                TSDataType.INT64,
+                FragmentInstanceContext.createFragmentInstanceContextForCompaction(
+                    EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
+                seqResources,
+                unseqResources,
+                true);
+        int count = 0;
+        while (tsBlockReader.hasNextBatch()) {
+          TsBlock block = tsBlockReader.nextBatch();
+          IBatchDataIterator iterator = block.getTsBlockSingleColumnIterator();
+          while (iterator.hasNext()) {
+            if (iterator.currentTime() >= 600) {
+              assertEquals(iterator.currentTime() + 200, iterator.currentValue());
+            } else {
+              assertEquals(iterator.currentTime(), iterator.currentValue());
+            }
+            count++;
+            iterator.next();
+          }
+        }
+
+        tsBlockReader.close();
+        if (i < 2 && j < 3) {
+          assertEquals(400, count);
+        } else if (i < 3) {
+          assertEquals(200, count);
+        } else {
+          assertEquals(100, count);
+        }
+      }
+    }
+
+    // degrade time index
+    for (TsFileResource resource : seqResources) {
+      resource.degradeTimeIndex();
+    }
+    for (TsFileResource resource : unseqResources) {
+      resource.degradeTimeIndex();
+    }
+
+    // start compacting
+    FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
+    tsFileManager.addAll(seqResources, true);
+    tsFileManager.addAll(unseqResources, false);
+    InnerSpaceCompactionTask task =
+        new InnerSpaceCompactionTask(
+            0,
+            tsFileManager,
+            seqResources,
+            true,
+            new FastCompactionPerformer(false),
+            new AtomicInteger(0),
+            0);
+    task.start();
+    Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
+    Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
     List<TsFileResource> targetResources = tsFileManager.getTsFileList(true);
     validateSeqFiles(true);
 
@@ -326,6 +476,7 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
     }
 
     // start compacting
+    FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
     InnerSpaceCompactionTask task =
@@ -338,6 +489,8 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
             new AtomicInteger(0),
             0);
     task.start();
+    Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
+    Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
     List<TsFileResource> targetResources = tsFileManager.getTsFileList(false);
     validateSeqFiles(false);
 
@@ -440,6 +593,7 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
     }
 
     // start compacting
+    FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
     InnerSpaceCompactionTask task =
@@ -452,6 +606,8 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
             new AtomicInteger(0),
             0);
     task.start();
+    Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
+    Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
     validateSeqFiles(true);
 
     for (int i = 0; i < 9; i++) {
@@ -585,6 +741,7 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
     }
 
     // start compacting
+    FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
     InnerSpaceCompactionTask task =
@@ -597,6 +754,8 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
             new AtomicInteger(0),
             0);
     task.start();
+    Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
+    Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
     validateSeqFiles(false);
 
     for (int i = 0; i < 5; i++) {
@@ -719,6 +878,7 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
     }
 
     // start compacting
+    FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
     InnerSpaceCompactionTask task =
@@ -731,6 +891,8 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
             new AtomicInteger(0),
             0);
     task.start();
+    Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
+    Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
     validateSeqFiles(false);
 
     for (int i = 0; i < 5; i++) {
@@ -839,6 +1001,7 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
     }
 
     // start compacting
+    FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
     InnerSpaceCompactionTask task =
@@ -851,6 +1014,8 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
             new AtomicInteger(0),
             0);
     task.start();
+    Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
+    Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
     validateSeqFiles(true);
 
     for (int i = 0; i < 5; i++) {
@@ -929,6 +1094,7 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
     }
 
     // start compacting
+    FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
     InnerSpaceCompactionTask task =
@@ -941,6 +1107,8 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
             new AtomicInteger(0),
             0);
     task.start();
+    Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
+    Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
     List<TsFileResource> targetResources = tsFileManager.getTsFileList(true);
     validateSeqFiles(true);
 
@@ -1048,6 +1216,7 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
     }
 
     // start compacting
+    FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
     InnerSpaceCompactionTask task =
@@ -1060,6 +1229,8 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
             new AtomicInteger(0),
             0);
     task.start();
+    Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
+    Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
     validateSeqFiles(true);
 
     for (int i = TsFileGeneratorUtils.getAlignDeviceOffset();
@@ -1176,6 +1347,7 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
     }
 
     // start compacting
+    FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
     InnerSpaceCompactionTask task =
@@ -1188,6 +1360,8 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
             new AtomicInteger(0),
             0);
     task.start();
+    Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
+    Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
     validateSeqFiles(true);
 
     for (int i = TsFileGeneratorUtils.getAlignDeviceOffset();
@@ -1309,6 +1483,7 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
     }
 
     // start compacting
+    FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
     InnerSpaceCompactionTask task =
@@ -1321,6 +1496,8 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
             new AtomicInteger(0),
             0);
     task.start();
+    Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
+    Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
     validateSeqFiles(false);
 
     for (int i = TsFileGeneratorUtils.getAlignDeviceOffset();
@@ -1492,6 +1669,7 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
     }
 
     // start compacting
+    FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
     InnerSpaceCompactionTask task =
@@ -1504,6 +1682,8 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
             new AtomicInteger(0),
             0);
     task.start();
+    Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
+    Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
     validateSeqFiles(false);
 
     for (int i = TsFileGeneratorUtils.getAlignDeviceOffset();
@@ -1655,6 +1835,7 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
     }
 
     // start compacting
+    FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
     InnerSpaceCompactionTask task =
@@ -1667,6 +1848,8 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
             new AtomicInteger(0),
             0);
     task.start();
+    Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
+    Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
     validateSeqFiles(false);
 
     for (int i = TsFileGeneratorUtils.getAlignDeviceOffset();
@@ -1770,6 +1953,7 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
     }
 
     // start compacting
+    FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
     InnerSpaceCompactionTask task =
@@ -1782,6 +1966,8 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
             new AtomicInteger(0),
             0);
     task.start();
+    Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
+    Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
     validateSeqFiles(false);
 
     for (int i = TsFileGeneratorUtils.getAlignDeviceOffset();

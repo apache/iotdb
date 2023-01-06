@@ -267,8 +267,15 @@ Core 级别的监控指标在系统运行中默认开启，每一个 Core 级别
 | ----------------------- | --------------------------------------------- | --------- | ------------------ |
 | jvm_compilation_time_ms | {compiler="HotSpot 64-Bit Tiered Compilers",} | AutoGauge | 耗费在编译上的时间 |
 
+### 4.3. Normal 级别监控指标
 
-### 4.3. All 级别监控指标
+#### 4.3.1. 集群
+| Metric | Tags                                                           | Type      | Description                                                        |
+| ------ | -------------------------------------------------------------- | --------- | ------------------------------------------------------------------ |
+| region | name="{{DatabaseName}}",type="SchemaRegion/DataRegion"         | AutoGauge | 特定节点上不同 Database 的 DataRegion/SchemaRegion 个数 |
+| slot   | name="{{DatabaseName}}",type="schemaSlotNumber/dataSlotNumber" | AutoGauge | 特定节点上不同 Database 的 DataSlot/SchemaSlot 个数     |
+
+### 4.4. All 级别监控指标
 目前还没有All级别的监控指标，后续会持续添加。
 
 ## 5. 怎样获取这些系统监控？
@@ -376,7 +383,9 @@ static_configs:
 
 ##### 5.2.4.1. 如何获取 Apache IoTDB Dashboard？
 
-1. 您可以在 grafana-metrics-example 文件夹下获取到对应不同iotdb版本的Dashboard的json文件。
+1. 您可以在 GitHub 上获取到Dashboard的json文件。
+   1. <a href = "https://github.com/apache/iotdb/tree/rel/1.0/docs/UserGuide/Monitor-Alert/Apache-IoTDB-ConfigNode-Dashboard.json">Apache IoTDB ConfigNode Dashboard</a>
+   2. <a href = "https://github.com/apache/iotdb/tree/rel/1.0/docs/UserGuide/Monitor-Alert/Apache-IoTDB-DataNode-Dashboard.json">Apache IoTDB DataNode Dashboard</a>
 2. 您可以访问[Grafana Dashboard官网](https://grafana.com/grafana/dashboards/)搜索`Apache IoTDB Dashboard`并使用
 
 在创建Grafana时，您可以选择Import刚刚下载的json文件，并为Apache IoTDB Dashboard选择对应目标数据源。

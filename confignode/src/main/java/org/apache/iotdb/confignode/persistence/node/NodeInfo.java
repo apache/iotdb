@@ -20,7 +20,6 @@ package org.apache.iotdb.confignode.persistence.node;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
-import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
@@ -70,7 +69,7 @@ public class NodeInfo implements SnapshotProcessor {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(NodeInfo.class);
 
-  private static final int minimumDataNode =
+  private static final int MINIMUM_DATANODE =
       Math.max(
           ConfigNodeDescriptor.getInstance().getConf().getSchemaReplicationFactor(),
           ConfigNodeDescriptor.getInstance().getConf().getDataReplicationFactor());
@@ -84,7 +83,7 @@ public class NodeInfo implements SnapshotProcessor {
   private final AtomicInteger nextNodeId = new AtomicInteger(-1);
   private final Map<Integer, TDataNodeConfiguration> registeredDataNodes;
 
-  private final String snapshotFileName = "node_info.bin";
+  private static final String SNAPSHOT_FILENAME = "node_info.bin";
 
   public NodeInfo() {
     this.configNodeInfoReadWriteLock = new ReentrantReadWriteLock();
@@ -92,32 +91,6 @@ public class NodeInfo implements SnapshotProcessor {
 
     this.dataNodeInfoReadWriteLock = new ReentrantReadWriteLock();
     this.registeredDataNodes = new ConcurrentHashMap<>();
-  }
-
-  /**
-   * Only leader use this interface
-   *
-   * @return True if the specific DataNode already registered, false otherwise
-   */
-  public boolean isRegisteredDataNode(TDataNodeLocation dataNodeLocation) {
-    boolean result = false;
-    int originalDataNodeId = dataNodeLocation.getDataNodeId();
-
-    dataNodeInfoReadWriteLock.readLock().lock();
-    try {
-      for (Map.Entry<Integer, TDataNodeConfiguration> entry : registeredDataNodes.entrySet()) {
-        dataNodeLocation.setDataNodeId(entry.getKey());
-        if (entry.getValue().getLocation().equals(dataNodeLocation)) {
-          result = true;
-          break;
-        }
-      }
-    } finally {
-      dataNodeInfoReadWriteLock.readLock().unlock();
-    }
-
-    dataNodeLocation.setDataNodeId(originalDataNodeId);
-    return result;
   }
 
   /**
@@ -143,12 +116,12 @@ public class NodeInfo implements SnapshotProcessor {
       registeredDataNodes.put(info.getLocation().getDataNodeId(), info);
 
       result = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-      if (nextNodeId.get() < minimumDataNode) {
+      if (nextNodeId.get() < MINIMUM_DATANODE) {
         result.setMessage(
             String.format(
                 "To enable IoTDB-Cluster's data service, please register %d more IoTDB-DataNode",
-                minimumDataNode - nextNodeId.get()));
-      } else if (nextNodeId.get() == minimumDataNode) {
+                MINIMUM_DATANODE - nextNodeId.get()));
+      } else if (nextNodeId.get() == MINIMUM_DATANODE) {
         result.setMessage("IoTDB-Cluster could provide data service, now enjoy yourself!");
       }
     } finally {
@@ -380,7 +353,7 @@ public class NodeInfo implements SnapshotProcessor {
 
   @Override
   public boolean processTakeSnapshot(File snapshotDir) throws IOException, TException {
-    File snapshotFile = new File(snapshotDir, snapshotFileName);
+    File snapshotFile = new File(snapshotDir, SNAPSHOT_FILENAME);
     if (snapshotFile.exists() && snapshotFile.isFile()) {
       LOGGER.error(
           "Failed to take snapshot, because snapshot file [{}] is already exist.",
@@ -443,7 +416,7 @@ public class NodeInfo implements SnapshotProcessor {
   @Override
   public void processLoadSnapshot(File snapshotDir) throws IOException, TException {
 
-    File snapshotFile = new File(snapshotDir, snapshotFileName);
+    File snapshotFile = new File(snapshotDir, SNAPSHOT_FILENAME);
     if (!snapshotFile.exists() || !snapshotFile.isFile()) {
       LOGGER.error(
           "Failed to load snapshot,snapshot file [{}] is not exist.",
@@ -497,7 +470,7 @@ public class NodeInfo implements SnapshotProcessor {
   }
 
   public static int getMinimumDataNode() {
-    return minimumDataNode;
+    return MINIMUM_DATANODE;
   }
 
   public void clear() {

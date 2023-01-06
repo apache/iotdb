@@ -19,12 +19,12 @@
 
 package org.apache.iotdb.session.it;
 
+import org.apache.iotdb.isession.ISession;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
-import org.apache.iotdb.session.ISession;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -67,16 +67,16 @@ public class IoTDBSessionInsertWithTriggerExecutionIT {
   private final int rows = 10;
 
   private static final String STATELESS_TRIGGER_BEFORE_INSERTION_PREFIX =
-      "statelessTriggerBeforeInsertion_";
+      "statelessTriggerBeforeInsertionSession_";
 
   private static final String STATELESS_TRIGGER_AFTER_INSERTION_PREFIX =
-      "statelessTriggerAfterInsertion_";
+      "statelessTriggerAfterInsertionSession_";
 
   private static final String STATEFUL_TRIGGER_BEFORE_INSERTION_PREFIX =
-      "statefulTriggerBeforeInsertion_";
+      "statefulTriggerBeforeInsertionSession_";
 
   private static final String STATEFUL_TRIGGER_AFTER_INSERTION_PREFIX =
-      "statefulTriggerAfterInsertion_";
+      "statefulTriggerAfterInsertionSession_";
 
   @BeforeClass
   public static void setUp() throws Exception {
@@ -93,7 +93,7 @@ public class IoTDBSessionInsertWithTriggerExecutionIT {
 
   private static void createTimeSeries() {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
-      session.setStorageGroup("root.test");
+      session.createDatabase("root.test");
       session.createTimeseries(
           "root.test.stateless.a", TSDataType.INT32, TSEncoding.PLAIN, CompressionType.SNAPPY);
       session.createTimeseries(

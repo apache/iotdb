@@ -95,7 +95,8 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
   private final ReentrantReadWriteLock storageGroupReadWriteLock;
   private final ConfigMTree mTree;
 
-  private final String snapshotFileName = "cluster_schema.bin";
+  private static final String SNAPSHOT_FILENAME = "cluster_schema.bin";
+  private static final String ERROR_NAME = "Error StorageGroup name";
 
   private final TemplateTable templateTable;
 
@@ -138,7 +139,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
 
       result.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (MetadataException e) {
-      LOGGER.error("Error StorageGroup name", e);
+      LOGGER.error(ERROR_NAME, e);
       result.setCode(e.getErrorCode()).setMessage(e.getMessage());
     } finally {
       storageGroupReadWriteLock.writeLock().unlock();
@@ -182,10 +183,10 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       result.setCount(mTree.getStorageGroupNum(patternPath, false));
       result.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
     } catch (MetadataException e) {
-      LOGGER.error("Error StorageGroup name", e);
+      LOGGER.error(ERROR_NAME, e);
       result.setStatus(
           new TSStatus(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode())
-              .setMessage("Error StorageGroup name: " + e.getMessage()));
+              .setMessage(ERROR_NAME + ": " + e.getMessage()));
     } finally {
       storageGroupReadWriteLock.readLock().unlock();
     }
@@ -208,10 +209,10 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       result.setSchemaMap(schemaMap);
       result.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
     } catch (MetadataException e) {
-      LOGGER.error("Error StorageGroup name", e);
+      LOGGER.error(ERROR_NAME, e);
       result.setStatus(
           new TSStatus(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode())
-              .setMessage("Error StorageGroup name: " + e.getMessage()));
+              .setMessage(ERROR_NAME + ": " + e.getMessage()));
     } finally {
       storageGroupReadWriteLock.readLock().unlock();
     }
@@ -224,7 +225,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     try {
       PartialPath patternPath = new PartialPath(plan.getStorageGroupPathPattern());
       List<PartialPath> matchedPaths = mTree.getBelongedStorageGroups(patternPath);
-      if (matchedPaths.size() != 0) {
+      if (!matchedPaths.isEmpty()) {
         for (PartialPath path : matchedPaths) {
           mTree
               .getStorageGroupNodeByStorageGroupPath(path)
@@ -237,10 +238,8 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
         result.setMessage("StorageGroup does not exist");
       }
     } catch (MetadataException e) {
-      LOGGER.error("Error StorageGroup name", e);
-      result
-          .setCode(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode())
-          .setMessage("Error StorageGroupName");
+      LOGGER.error(ERROR_NAME, e);
+      result.setCode(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode()).setMessage(ERROR_NAME);
     } finally {
       storageGroupReadWriteLock.writeLock().unlock();
     }
@@ -262,10 +261,8 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
         result.setCode(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode());
       }
     } catch (MetadataException e) {
-      LOGGER.error("Error StorageGroup name", e);
-      result
-          .setCode(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode())
-          .setMessage("Error StorageGroupName");
+      LOGGER.error(ERROR_NAME, e);
+      result.setCode(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode()).setMessage(ERROR_NAME);
     } finally {
       storageGroupReadWriteLock.writeLock().unlock();
     }
@@ -287,10 +284,8 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
         result.setCode(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode());
       }
     } catch (MetadataException e) {
-      LOGGER.error("Error StorageGroup name", e);
-      result
-          .setCode(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode())
-          .setMessage("Error StorageGroupName");
+      LOGGER.error(ERROR_NAME, e);
+      result.setCode(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode()).setMessage(ERROR_NAME);
     } finally {
       storageGroupReadWriteLock.writeLock().unlock();
     }
@@ -312,10 +307,8 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
         result.setCode(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode());
       }
     } catch (MetadataException e) {
-      LOGGER.error("Error StorageGroup name", e);
-      result
-          .setCode(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode())
-          .setMessage("Error StorageGroupName");
+      LOGGER.error(ERROR_NAME, e);
+      result.setCode(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode()).setMessage(ERROR_NAME);
     } finally {
       storageGroupReadWriteLock.writeLock().unlock();
     }
@@ -342,7 +335,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       }
       result.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (MetadataException e) {
-      LOGGER.error("Error StorageGroup name", e);
+      LOGGER.error(ERROR_NAME, e);
       result.setCode(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode());
     } finally {
       storageGroupReadWriteLock.writeLock().unlock();
@@ -429,7 +422,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
         }
       }
     } catch (MetadataException e) {
-      LOGGER.warn("Error StorageGroup name", e);
+      LOGGER.warn(ERROR_NAME, e);
     } finally {
       storageGroupReadWriteLock.readLock().unlock();
     }
@@ -457,7 +450,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
           return storageGroupSchema.getMaxDataRegionGroupNum();
       }
     } catch (MetadataException e) {
-      LOGGER.warn("Error StorageGroup name", e);
+      LOGGER.warn(ERROR_NAME, e);
       return -1;
     } finally {
       storageGroupReadWriteLock.readLock().unlock();
@@ -471,7 +464,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
   }
 
   public boolean processMtreeTakeSnapshot(File snapshotDir) throws IOException {
-    File snapshotFile = new File(snapshotDir, snapshotFileName);
+    File snapshotFile = new File(snapshotDir, SNAPSHOT_FILENAME);
     if (snapshotFile.exists() && snapshotFile.isFile()) {
       LOGGER.error(
           "Failed to take snapshot, because snapshot file [{}] is already exist.",
@@ -511,7 +504,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
   }
 
   public void processMtreeLoadSnapshot(File snapshotDir) throws IOException {
-    File snapshotFile = new File(snapshotDir, snapshotFileName);
+    File snapshotFile = new File(snapshotDir, SNAPSHOT_FILENAME);
     if (!snapshotFile.exists() || !snapshotFile.isFile()) {
       LOGGER.error(
           "Failed to load snapshot,snapshot file [{}] is not exist.",
@@ -800,7 +793,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
             path.getFullPath(), mTree.getStorageGroupNodeByPath(path).getStorageGroupSchema());
       }
     } catch (MetadataException e) {
-      LOGGER.warn("Error StorageGroup name", e);
+      LOGGER.warn(ERROR_NAME, e);
     } finally {
       storageGroupReadWriteLock.readLock().unlock();
     }

@@ -20,6 +20,8 @@ package org.apache.iotdb.session.it;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.isession.ISession;
+import org.apache.iotdb.isession.ISessionDataSet;
 import org.apache.iotdb.it.env.DataNodeWrapper;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
@@ -27,8 +29,6 @@ import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
-import org.apache.iotdb.session.ISession;
-import org.apache.iotdb.session.SessionDataSet;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -131,7 +131,7 @@ public class IoTDBSessionComplexIT {
 
   private void queryByDevice(ISession session, String deviceId)
       throws IoTDBConnectionException, StatementExecutionException {
-    SessionDataSet sessionDataSet = session.executeQueryStatement("select * from " + deviceId);
+    ISessionDataSet sessionDataSet = session.executeQueryStatement("select * from " + deviceId);
     sessionDataSet.setFetchSize(1024);
     int count = 0;
     long expectedSum = 1 + 2 + 3;
@@ -193,7 +193,7 @@ public class IoTDBSessionComplexIT {
       session.setStorageGroup("root.sg1");
       createTimeseries(session);
       insertTablet(session, "root.sg1.d1");
-      SessionDataSet sessionDataSet =
+      ISessionDataSet sessionDataSet =
           session.executeQueryStatement("select s1 from root.sg1.d1 align by device");
       sessionDataSet.setFetchSize(1024);
       int count = 0;

@@ -29,10 +29,10 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import java.util.HashMap;
 import java.util.Map;
 
-/** The reporter to IoTDB */
+/** The reporter to IoTDB. */
 public abstract class IoTDBReporter implements Reporter {
   /**
-   * Write metric into IoTDB
+   * Write metric into IoTDB.
    *
    * @param metric the target metric
    * @param name the name of metric
@@ -48,7 +48,7 @@ public abstract class IoTDBReporter implements Reporter {
   }
 
   /**
-   * Write metric into IoTDB
+   * Write metric into IoTDB.
    *
    * @param valueMap sensor -> value
    * @param prefix device
@@ -58,7 +58,7 @@ public abstract class IoTDBReporter implements Reporter {
       Map<String, Object> valueMap, String prefix, long time);
 
   /**
-   * Write metrics into IoTDB
+   * Write metrics into IoTDB.
    *
    * @param metricMap metricInfo -> IMetric
    */
@@ -77,14 +77,14 @@ public abstract class IoTDBReporter implements Reporter {
   }
 
   /**
-   * Write metrics into IoTDB
+   * Write metrics into IoTDB.
    *
    * @param valueMap device -> sensor -> value
    * @param time write time
    */
   protected abstract void writeMetricsToIoTDB(Map<String, Map<String, Object>> valueMap, long time);
 
-  /** Infer type from object */
+  /** Infer type from object. */
   protected TSDataType inferType(Object value) {
     TSDataType dataType;
     if (value instanceof Boolean) {
