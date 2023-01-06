@@ -131,17 +131,6 @@ public interface IMTreeBelowSG {
   List<ShowDevicesResult> getDevices(IShowDevicesPlan plan) throws MetadataException;
 
   /**
-   * Get all measurement paths matching the given path pattern. If using prefix match, the path
-   * pattern is used to match prefix path. All timeseries start with the matched prefix path will be
-   * collected and return.
-   *
-   * @param pathPattern a path pattern or a full path, may contain wildcard.
-   * @param isPrefixMatch if true, the path pattern is used to match prefix path
-   */
-  List<MeasurementPath> getMeasurementPaths(PartialPath pathPattern, boolean isPrefixMatch)
-      throws MetadataException;
-
-  /**
    * Fetch all measurement path
    *
    * @param pathPattern a path pattern or a full path, may contain wildcard

@@ -574,7 +574,6 @@ public class RSchemaRegion implements ISchemaRegion {
     }
   }
 
-  @Override
   public Pair<Integer, Set<String>> deleteTimeseries(PartialPath pathPattern, boolean isPrefixMatch)
       throws MetadataException {
     try {

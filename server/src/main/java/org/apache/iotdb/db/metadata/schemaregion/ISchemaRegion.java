@@ -39,7 +39,6 @@ import org.apache.iotdb.db.metadata.query.info.IDeviceSchemaInfo;
 import org.apache.iotdb.db.metadata.query.info.ITimeSeriesSchemaInfo;
 import org.apache.iotdb.db.metadata.query.reader.ISchemaReader;
 import org.apache.iotdb.db.metadata.template.Template;
-import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.io.File;
 import java.io.IOException;
@@ -122,19 +121,6 @@ public interface ISchemaRegion {
    */
   Map<Integer, MetadataException> checkMeasurementExistence(
       PartialPath devicePath, List<String> measurementList, List<String> aliasList);
-
-  /**
-   * Delete all timeseries matching the given path pattern. If using prefix match, the path pattern
-   * is used to match prefix path. All timeseries start with the matched prefix path will be
-   * deleted.
-   *
-   * @param pathPattern path to be deleted
-   * @param isPrefixMatch if true, the path pattern is used to match prefix path
-   * @return deletion failed Timeseries
-   */
-  @Deprecated
-  Pair<Integer, Set<String>> deleteTimeseries(PartialPath pathPattern, boolean isPrefixMatch)
-      throws MetadataException;
 
   /**
    * Construct schema black list via setting matched timeseries to pre deleted.

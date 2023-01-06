@@ -752,33 +752,6 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
     return mtree.checkMeasurementExistence(devicePath, measurementList, aliasList);
   }
 
-  /**
-   * Delete all timeseries matching the given path pattern. If using prefix match, the path pattern
-   * is used to match prefix path. All timeseries start with the matched prefix path will be
-   * deleted.
-   *
-   * @param pathPattern path to be deleted
-   * @param isPrefixMatch if true, the path pattern is used to match prefix path
-   * @return deletion failed Timeseries
-   */
-  @Override
-  public synchronized Pair<Integer, Set<String>> deleteTimeseries(
-      PartialPath pathPattern, boolean isPrefixMatch) throws MetadataException {
-    try {
-      List<MeasurementPath> allTimeseries = mtree.getMeasurementPaths(pathPattern, isPrefixMatch);
-
-      Set<String> failedNames = new HashSet<>();
-      int deletedNum = 0;
-      for (PartialPath p : allTimeseries) {
-        deleteSingleTimeseriesInternal(p);
-        deletedNum++;
-      }
-      return new Pair<>(deletedNum, failedNames);
-    } catch (IOException e) {
-      throw new MetadataException(e.getMessage());
-    }
-  }
-
   @Override
   public long constructSchemaBlackList(PathPatternTree patternTree) throws MetadataException {
     long preDeletedNum = 0;
@@ -869,17 +842,6 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
     if (seriesNumerMonitor != null) {
       seriesNumerMonitor.deleteTimeSeries(1);
     }
-  }
-
-  /**
-   * Delete all timeseries matching the given path pattern
-   *
-   * @param pathPattern path to be deleted
-   * @return deletion failed Timeseries
-   */
-  public Pair<Integer, Set<String>> deleteTimeseries(PartialPath pathPattern)
-      throws MetadataException {
-    return deleteTimeseries(pathPattern, false);
   }
 
   private void deleteSingleTimeseriesInternal(PartialPath p) throws MetadataException, IOException {

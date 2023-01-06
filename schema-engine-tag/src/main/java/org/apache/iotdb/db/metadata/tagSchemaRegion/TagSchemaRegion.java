@@ -61,7 +61,6 @@ import org.apache.iotdb.external.api.ISeriesNumerMonitor;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -305,12 +304,6 @@ public class TagSchemaRegion implements ISchemaRegion {
     plan.setDataTypes(tmpDataTypes);
     plan.setEncodings(tmpEncodings);
     plan.setCompressors(tmpCompressors);
-  }
-
-  @Override
-  public Pair<Integer, Set<String>> deleteTimeseries(PartialPath pathPattern, boolean isPrefixMatch)
-      throws MetadataException {
-    throw new UnsupportedOperationException("deleteTimeseries");
   }
 
   @Override

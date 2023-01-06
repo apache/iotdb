@@ -595,35 +595,6 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
   // endregion
 
   // region Interfaces for timeseries, measurement and schema info Query
-  /**
-   * Get all measurement paths matching the given path pattern. If using prefix match, the path
-   * pattern is used to match prefix path. All timeseries start with the matched prefix path will be
-   * collected and return.
-   *
-   * @param pathPattern a path pattern or a full path, may contain wildcard.
-   * @param isPrefixMatch if true, the path pattern is used to match prefix path
-   */
-  @Override
-  public List<MeasurementPath> getMeasurementPaths(PartialPath pathPattern, boolean isPrefixMatch)
-      throws MetadataException {
-    List<MeasurementPath> result = new LinkedList<>();
-    MeasurementCollector<List<PartialPath>> collector =
-        new MeasurementCollector<List<PartialPath>>(storageGroupMNode, pathPattern, store) {
-          @Override
-          protected void collectMeasurement(IMeasurementMNode node) {
-            MeasurementPath path = getCurrentMeasurementPathInTraverse(node);
-            if (nodes[nodes.length - 1].equals(node.getAlias())) {
-              // only when user query with alias, the alias in path will be set
-              path.setMeasurementAlias(node.getAlias());
-            }
-
-            result.add(path);
-          }
-        };
-    collector.setPrefixMatch(isPrefixMatch);
-    collector.traverse();
-    return result;
-  }
 
   @Override
   public List<MeasurementPath> fetchSchema(

@@ -22,6 +22,7 @@ import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
@@ -38,17 +39,14 @@ import org.apache.iotdb.db.metadata.schemaregion.SchemaEngine;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 /**
  * This class takes the responsibility of serialization of all the metadata info and persistent it
@@ -189,9 +187,8 @@ public class LocalSchemaProcessor {
    * Delete all timeseries matching the given path pattern, may cross different database
    *
    * @param pathPattern path to be deleted
-   * @return deletion failed Timeseries
    */
-  public String deleteTimeseries(PartialPath pathPattern) throws MetadataException {
+  public void deleteTimeseries(PartialPath pathPattern) throws MetadataException {
     List<ISchemaRegion> schemaRegions = getInvolvedSchemaRegions(pathPattern);
     if (schemaRegions.isEmpty()) {
       // In the cluster mode, the deletion of a timeseries will be forwarded to all the nodes. For
@@ -199,23 +196,14 @@ public class LocalSchemaProcessor {
       // PathNotExistException.
       throw new PathNotExistException(pathPattern.getFullPath());
     }
-    Set<String> failedNames = new HashSet<>();
-    int deletedNum = 0;
-    Pair<Integer, Set<String>> sgDeletionResult;
+
+    PathPatternTree patternTree = new PathPatternTree();
+    patternTree.appendPathPattern(pathPattern);
+    patternTree.constructTree();
     for (ISchemaRegion schemaRegion : schemaRegions) {
-      sgDeletionResult = schemaRegion.deleteTimeseries(pathPattern, false);
-      deletedNum += sgDeletionResult.left;
-      failedNames.addAll(sgDeletionResult.right);
+      schemaRegion.constructSchemaBlackList(patternTree);
+      schemaRegion.deleteTimeseriesInBlackList(patternTree);
     }
-
-    if (deletedNum == 0 && failedNames.isEmpty()) {
-      // In the cluster mode, the deletion of a timeseries will be forwarded to all the nodes. For
-      // nodes that do not have the metadata of the timeseries, the coordinator expects a
-      // PathNotExistException.
-      throw new PathNotExistException(pathPattern.getFullPath());
-    }
-
-    return failedNames.isEmpty() ? null : String.join(",", failedNames);
   }
   // endregion
 

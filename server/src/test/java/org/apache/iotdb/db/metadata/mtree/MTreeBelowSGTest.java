@@ -19,7 +19,6 @@
 package org.apache.iotdb.db.metadata.mtree;
 
 import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
@@ -40,14 +39,11 @@ import org.junit.Test;
 
 import java.io.IOException;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -128,156 +124,6 @@ public abstract class MTreeBelowSGTest {
   }
 
   @Test
-  public void testAddAndQueryPath() {
-    try {
-      assertFalse(root.isStorageGroupAlreadySet(new PartialPath("root.a")));
-      storageGroup = getStorageGroup(new PartialPath("root.a"));
-
-      storageGroup.createTimeseries(
-          new PartialPath("root.a.d0.s0"),
-          TSDataType.INT32,
-          TSEncoding.RLE,
-          TSFileDescriptor.getInstance().getConfig().getCompressor(),
-          Collections.emptyMap(),
-          null);
-      storageGroup.createTimeseries(
-          new PartialPath("root.a.d0.s1"),
-          TSDataType.INT32,
-          TSEncoding.RLE,
-          TSFileDescriptor.getInstance().getConfig().getCompressor(),
-          Collections.emptyMap(),
-          null);
-
-      storageGroup.createTimeseries(
-          new PartialPath("root.a.d1.s0"),
-          TSDataType.INT32,
-          TSEncoding.RLE,
-          TSFileDescriptor.getInstance().getConfig().getCompressor(),
-          Collections.emptyMap(),
-          null);
-      storageGroup.createTimeseries(
-          new PartialPath("root.a.d1.s1"),
-          TSDataType.INT32,
-          TSEncoding.RLE,
-          TSFileDescriptor.getInstance().getConfig().getCompressor(),
-          Collections.emptyMap(),
-          null);
-
-      storageGroup.createTimeseries(
-          new PartialPath("root.a.b.d0.s0"),
-          TSDataType.INT32,
-          TSEncoding.RLE,
-          TSFileDescriptor.getInstance().getConfig().getCompressor(),
-          Collections.emptyMap(),
-          null);
-
-    } catch (MetadataException e1) {
-      e1.printStackTrace();
-    }
-
-    try {
-      assertNotNull(storageGroup);
-      List<MeasurementPath> result =
-          storageGroup.getMeasurementPaths(new PartialPath("root.a.*.s0"), false);
-      result.sort(Comparator.comparing(MeasurementPath::getFullPath));
-      assertEquals(2, result.size());
-      assertEquals("root.a.d0.s0", result.get(0).getFullPath());
-      assertEquals("root.a.d1.s0", result.get(1).getFullPath());
-
-      result = storageGroup.getMeasurementPaths(new PartialPath("root.a.*.*.s0"), false);
-      assertEquals("root.a.b.d0.s0", result.get(0).getFullPath());
-    } catch (MetadataException e) {
-      e.printStackTrace();
-      fail(e.getMessage());
-    }
-  }
-
-  @Test
-  public void testAddAndQueryPathWithAlias() {
-    try {
-      assertFalse(root.isStorageGroupAlreadySet(new PartialPath("root.a")));
-      storageGroup = getStorageGroup(new PartialPath("root.a"));
-
-      storageGroup.createTimeseries(
-          new PartialPath("root.a.d0.s0"),
-          TSDataType.INT32,
-          TSEncoding.RLE,
-          TSFileDescriptor.getInstance().getConfig().getCompressor(),
-          Collections.emptyMap(),
-          "temperature");
-      storageGroup.createTimeseries(
-          new PartialPath("root.a.d0.s1"),
-          TSDataType.INT32,
-          TSEncoding.RLE,
-          TSFileDescriptor.getInstance().getConfig().getCompressor(),
-          Collections.emptyMap(),
-          "status");
-
-      storageGroup.createTimeseries(
-          new PartialPath("root.a.d1.s0"),
-          TSDataType.INT32,
-          TSEncoding.RLE,
-          TSFileDescriptor.getInstance().getConfig().getCompressor(),
-          Collections.emptyMap(),
-          "temperature");
-      storageGroup.createTimeseries(
-          new PartialPath("root.a.d1.s1"),
-          TSDataType.INT32,
-          TSEncoding.RLE,
-          TSFileDescriptor.getInstance().getConfig().getCompressor(),
-          Collections.emptyMap(),
-          null);
-
-      storageGroup.createTimeseries(
-          new PartialPath("root.a.b.d0.s0"),
-          TSDataType.INT32,
-          TSEncoding.RLE,
-          TSFileDescriptor.getInstance().getConfig().getCompressor(),
-          Collections.emptyMap(),
-          null);
-
-    } catch (MetadataException e1) {
-      e1.printStackTrace();
-    }
-
-    try {
-      assertNotNull(storageGroup);
-
-      List<MeasurementPath> result =
-          storageGroup.getMeasurementPaths(new PartialPath("root.a.*.s0"), false);
-      result.sort(Comparator.comparing(MeasurementPath::getFullPath));
-      assertEquals(2, result.size());
-      assertEquals("root.a.d0.s0", result.get(0).getFullPath());
-      assertEquals("root.a.d1.s0", result.get(1).getFullPath());
-
-      result = storageGroup.getMeasurementPaths(new PartialPath("root.a.*.temperature"), false);
-      result.sort(Comparator.comparing(MeasurementPath::getFullPath));
-      assertEquals(2, result.size());
-      assertEquals("root.a.d0.s0", result.get(0).getFullPath());
-      assertEquals("root.a.d1.s0", result.get(1).getFullPath());
-
-      List<MeasurementPath> result2 =
-          storageGroup.getMeasurementPaths(new PartialPath("root.a.*.s0"), false);
-      result2.sort(Comparator.comparing(MeasurementPath::getFullPath));
-      assertEquals(2, result2.size());
-      assertEquals("root.a.d0.s0", result2.get(0).getFullPath());
-      assertFalse(result2.get(0).isMeasurementAliasExists());
-      assertEquals("root.a.d1.s0", result2.get(1).getFullPath());
-      assertFalse(result2.get(1).isMeasurementAliasExists());
-
-      result2 = storageGroup.getMeasurementPaths(new PartialPath("root.a.*.temperature"), false);
-      result2.sort(Comparator.comparing(MeasurementPath::getFullPath));
-      assertEquals(2, result2.size());
-      assertEquals("root.a.d0.temperature", result2.get(0).getFullPathWithAlias());
-      assertEquals("root.a.d1.temperature", result2.get(1).getFullPathWithAlias());
-
-    } catch (MetadataException e) {
-      e.printStackTrace();
-      fail(e.getMessage());
-    }
-  }
-
-  @Test
   public void testSetStorageGroup() throws MetadataException {
     try {
       storageGroup = getStorageGroup(new PartialPath("root.laptop.d1"));
@@ -341,27 +187,6 @@ public abstract class MTreeBelowSGTest {
     assertFalse(root.isStorageGroupAlreadySet(new PartialPath("root.laptop.d1.s1")));
     assertFalse(root.isStorageGroupAlreadySet(new PartialPath("root.laptop.d1")));
     assertFalse(root.isStorageGroupAlreadySet(new PartialPath("root.laptop")));
-  }
-
-  @Test
-  public void testAddSubDevice() throws MetadataException {
-    storageGroup = getStorageGroup(new PartialPath("root.laptop"));
-    storageGroup.createTimeseries(
-        new PartialPath("root.laptop.d1.s1"),
-        TSDataType.INT32,
-        TSEncoding.RLE,
-        TSFileDescriptor.getInstance().getConfig().getCompressor(),
-        Collections.emptyMap(),
-        null);
-    storageGroup.createTimeseries(
-        new PartialPath("root.laptop.d1.s2.b"),
-        TSDataType.INT32,
-        TSEncoding.RLE,
-        TSFileDescriptor.getInstance().getConfig().getCompressor(),
-        Collections.emptyMap(),
-        null);
-
-    assertEquals(2, storageGroup.getMeasurementPaths(new PartialPath("root.**"), false).size());
   }
 
   @Test
