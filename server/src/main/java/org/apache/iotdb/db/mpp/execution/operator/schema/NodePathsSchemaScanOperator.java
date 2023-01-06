@@ -148,4 +148,12 @@ public class NodePathsSchemaScanOperator implements SourceOperator {
   public long calculateRetainedSizeAfterCallingNext() {
     return 0L;
   }
+
+  @Override
+  public void close() throws Exception {
+    if (nodeReader != null) {
+      nodeReader.close();
+      nodeReader = null;
+    }
+  }
 }
