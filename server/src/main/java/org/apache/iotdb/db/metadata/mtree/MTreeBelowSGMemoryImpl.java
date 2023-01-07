@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.metadata.mtree;
 
-import org.apache.iotdb.common.rpc.thrift.TSchemaNode;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
@@ -51,9 +50,13 @@ import org.apache.iotdb.db.metadata.mtree.traverser.counter.EntityCounter;
 import org.apache.iotdb.db.metadata.mtree.traverser.updater.EntityUpdater;
 import org.apache.iotdb.db.metadata.mtree.traverser.updater.MeasurementUpdater;
 import org.apache.iotdb.db.metadata.plan.schemaregion.read.IShowDevicesPlan;
+import org.apache.iotdb.db.metadata.plan.schemaregion.read.IShowNodesPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.read.IShowTimeSeriesPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.result.ShowDevicesResult;
+import org.apache.iotdb.db.metadata.plan.schemaregion.result.ShowNodesResult;
 import org.apache.iotdb.db.metadata.plan.schemaregion.result.ShowTimeSeriesResult;
+import org.apache.iotdb.db.metadata.query.info.INodeSchemaInfo;
+import org.apache.iotdb.db.metadata.query.reader.ISchemaReader;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.utils.MetaFormatUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -73,11 +76,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Queue;
 import java.util.Set;
-import java.util.TreeSet;
 import java.util.function.Consumer;
 import java.util.function.Function;
-
-import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
 
 /**
  * The hierarchical struct of the Metadata Tree is implemented in this class.
@@ -97,7 +97,6 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCAR
  *       <ol>
  *         <li>Interfaces for Device info Query
  *         <li>Interfaces for timeseries, measurement and schema info Query
- *         <li>Interfaces for Level Node info Query
  *       </ol>
  *   <li>Interfaces and Implementation for MNode Query
  *   <li>Interfaces and Implementation for Template check
@@ -714,59 +713,6 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
 
   // endregion
 
-  // region Interfaces for Level Node info Query
-  /**
-   * Get child node path in the next level of the given path pattern.
-   *
-   * <p>give pathPattern and the child nodes is those matching pathPattern.*.
-   *
-   * <p>e.g., MTree has [root.sg1.d1.s1, root.sg1.d1.s2, root.sg1.d2.s1] given path = root.sg1,
-   * return [root.sg1.d1, root.sg1.d2]
-   *
-   * @param pathPattern The given path
-   * @return All child nodes' seriesPath(s) of given seriesPath.
-   */
-  @Override
-  public Set<TSchemaNode> getChildNodePathInNextLevel(PartialPath pathPattern)
-      throws MetadataException {
-    Set<TSchemaNode> result = new TreeSet<>();
-    try (MNodeCollector<Set<TSchemaNode>> collector =
-        new MNodeCollector<Set<TSchemaNode>>(
-            rootNode, pathPattern.concatNode(ONE_LEVEL_PATH_WILDCARD), store, false) {
-          @Override
-          protected void collectMNode(IMNode node) {
-            result.add(
-                new TSchemaNode(
-                    getPartialPathFromRootToNode(node).getFullPath(),
-                    node.getMNodeType(false).getNodeType()));
-          }
-        }) {
-      collector.traverse();
-    } catch (IllegalPathException e) {
-      throw new IllegalPathException(pathPattern.getFullPath());
-    }
-    return result;
-  }
-
-  /** Get all paths from root to the given level */
-  @Override
-  public List<PartialPath> getNodesListInGivenLevel(
-      PartialPath pathPattern, int nodeLevel, boolean isPrefixMatch) throws MetadataException {
-    List<PartialPath> result = new LinkedList<>();
-    try (MNodeCollector<List<PartialPath>> collector =
-        new MNodeCollector<List<PartialPath>>(rootNode, pathPattern, store, isPrefixMatch) {
-          @Override
-          protected void collectMNode(IMNode node) {
-            result.add(getPartialPathFromRootToNode(node));
-          }
-        }) {
-      collector.setTargetLevel(nodeLevel);
-      collector.traverse();
-    }
-    return result;
-  }
-  // endregion
-
   // endregion
 
   // region Interfaces and Implementation for MNode Query
@@ -978,5 +924,38 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
     }
   }
 
+  // endregion
+
+  // region Interfaces for schema reader
+  public ISchemaReader<INodeSchemaInfo> getNodeReader(IShowNodesPlan showNodesPlan)
+      throws MetadataException {
+    MNodeCollector<INodeSchemaInfo> collector =
+        new MNodeCollector<INodeSchemaInfo>(
+            rootNode, showNodesPlan.getPath(), store, showNodesPlan.isPrefixMatch()) {
+          @Override
+          protected INodeSchemaInfo collectMNode(IMNode node) {
+            return new ShowNodesResult(
+                getPartialPathFromRootToNode(node).getFullPath(), node.getMNodeType(false));
+          }
+        };
+    collector.setTargetLevel(showNodesPlan.getLevel());
+
+    return new ISchemaReader<INodeSchemaInfo>() {
+      @Override
+      public void close() {
+        collector.close();
+      }
+
+      @Override
+      public boolean hasNext() {
+        return collector.hasNext();
+      }
+
+      @Override
+      public INodeSchemaInfo next() {
+        return collector.next();
+      }
+    };
+  }
   // endregion
 }

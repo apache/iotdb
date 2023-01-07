@@ -17,43 +17,37 @@
  * under the License.
  */
 
-package org.apache.iotdb.metrics.impl;
+package org.apache.iotdb.db.metadata.plan.schemaregion.result;
 
-import org.apache.iotdb.metrics.type.HistogramSnapshot;
+import org.apache.iotdb.db.metadata.mnode.MNodeType;
+import org.apache.iotdb.db.metadata.query.info.INodeSchemaInfo;
 
-public class DoNothingHistogramSnapshot implements HistogramSnapshot, DoNothingMetric {
-  @Override
-  public double getValue(double quantile) {
-    return 0;
+import java.util.Objects;
+
+public class ShowNodesResult extends ShowSchemaResult implements INodeSchemaInfo {
+
+  private final MNodeType nodeType;
+
+  public ShowNodesResult(String path, MNodeType nodeType) {
+    super(path);
+    this.nodeType = nodeType;
   }
 
   @Override
-  public double[] getValues() {
-    return new double[0];
+  public MNodeType getNodeType() {
+    return nodeType;
   }
 
   @Override
-  public int size() {
-    return 0;
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    ShowNodesResult that = (ShowNodesResult) o;
+    return Objects.equals(path, that.path);
   }
 
   @Override
-  public double getMedian() {
-    return 0;
-  }
-
-  @Override
-  public double getMax() {
-    return 0.0D;
-  }
-
-  @Override
-  public double getMean() {
-    return 0;
-  }
-
-  @Override
-  public double getMin() {
-    return 0.0D;
+  public int hashCode() {
+    return Objects.hash(path);
   }
 }

@@ -40,10 +40,8 @@ public abstract class MNodeCollector<R> extends MNodeTraverser<R> {
   }
 
   protected final R transferToResult(IMNode node) {
-    collectMNode(node);
-    return null;
+    return collectMNode(node);
   }
 
-  // TODO: make collectMNode return R
-  protected abstract void collectMNode(IMNode node);
+  protected abstract R collectMNode(IMNode node);
 }

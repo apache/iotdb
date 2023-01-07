@@ -21,12 +21,11 @@ package org.apache.iotdb.consensus.ratis;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.client.ClientFactoryProperty;
 import org.apache.iotdb.commons.client.ClientManager;
-import org.apache.iotdb.commons.client.ClientPoolProperty;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.IClientPoolFactory;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
+import org.apache.iotdb.commons.client.property.ClientPoolProperty;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
@@ -106,9 +105,7 @@ class RatisConsensus implements IConsensus {
   private final RaftProperties properties = new RaftProperties();
   private final RaftClientRpc clientRpc;
 
-  private final IClientManager<RaftGroup, RatisClient> clientManager =
-      new IClientManager.Factory<RaftGroup, RatisClient>()
-          .createClientManager(new RatisClientPoolFactory());
+  private final IClientManager<RaftGroup, RatisClient> clientManager;
 
   private final Map<RaftGroupId, RaftGroup> lastSeen = new ConcurrentHashMap<>();
 
@@ -144,6 +141,10 @@ class RatisConsensus implements IConsensus {
 
     Utils.initRatisConfig(properties, config.getRatisConfig());
     this.config = config.getRatisConfig();
+
+    clientManager =
+        new IClientManager.Factory<RaftGroup, RatisClient>()
+            .createClientManager(new RatisClientPoolFactory());
 
     clientRpc = new GrpcFactory(new Parameters()).newRaftClientRpc(ClientId.randomId(), properties);
 
@@ -812,11 +813,7 @@ class RatisConsensus implements IConsensus {
         ClientManager<RaftGroup, RatisClient> manager) {
       return new GenericKeyedObjectPool<>(
           new RatisClient.Factory(
-              manager,
-              new ClientFactoryProperty.Builder().build(),
-              properties,
-              clientRpc,
-              MemoizedSupplier.valueOf(() -> config.getImpl())),
+              manager, properties, clientRpc, MemoizedSupplier.valueOf(config::getImpl)),
           new ClientPoolProperty.Builder<RatisClient>().build().getConfig());
     }
   }

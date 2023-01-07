@@ -15,17 +15,12 @@
  * KIND, either express or implied.  See the License for the
  * specific language governing permissions and limitations
  * under the License.
+ *
  */
 
-package org.apache.iotdb.commons.client.exception;
+package org.apache.iotdb.db.metadata.plan.schemaregion.read;
 
-public class ClientManagerException extends Exception {
+public interface IShowNodesPlan extends IShowSchemaPlan {
 
-  public ClientManagerException(Exception exception) {
-    super(exception);
-  }
-
-  public ClientManagerException(String message) {
-    super(message);
-  }
+  int getLevel();
 }

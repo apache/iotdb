@@ -15,17 +15,25 @@
  * KIND, either express or implied.  See the License for the
  * specific language governing permissions and limitations
  * under the License.
+ *
  */
 
-package org.apache.iotdb.commons.client.exception;
+package org.apache.iotdb.db.metadata.plan.schemaregion.impl.read;
 
-public class ClientManagerException extends Exception {
+import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.metadata.plan.schemaregion.read.IShowNodesPlan;
 
-  public ClientManagerException(Exception exception) {
-    super(exception);
+public class ShowNodesPlanImpl extends AbstractShowSchemaPlanImpl implements IShowNodesPlan {
+
+  private final int level;
+
+  ShowNodesPlanImpl(PartialPath pathPattern, int level, boolean isPrefixMatch) {
+    super(pathPattern, 0, 0, isPrefixMatch);
+    this.level = level;
   }
 
-  public ClientManagerException(String message) {
-    super(message);
+  @Override
+  public int getLevel() {
+    return level;
   }
 }

@@ -17,25 +17,11 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.client;
+package org.apache.iotdb.commons.client.exception;
 
-import org.apache.commons.pool2.KeyedPooledObjectFactory;
-import org.apache.commons.pool2.PooledObject;
+public class CreateTAsyncClientManagerException extends RuntimeException {
 
-public abstract class BaseClientFactory<K, V> implements KeyedPooledObjectFactory<K, V> {
-
-  protected ClientManager<K, V> clientManager;
-  protected ClientFactoryProperty clientFactoryProperty;
-
-  protected BaseClientFactory(
-      ClientManager<K, V> clientManager, ClientFactoryProperty clientFactoryProperty) {
-    this.clientManager = clientManager;
-    this.clientFactoryProperty = clientFactoryProperty;
+  public CreateTAsyncClientManagerException(String message, Throwable cause) {
+    super(message, cause);
   }
-
-  @Override
-  public void activateObject(K node, PooledObject<V> pooledObject) {}
-
-  @Override
-  public void passivateObject(K node, PooledObject<V> pooledObject) {}
 }

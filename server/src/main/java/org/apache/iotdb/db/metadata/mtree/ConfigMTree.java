@@ -393,11 +393,12 @@ public class ConfigMTree {
   public Pair<List<PartialPath>, Set<PartialPath>> getNodesListInGivenLevel(
       PartialPath pathPattern, int nodeLevel, boolean isPrefixMatch) throws MetadataException {
     List<PartialPath> result = new LinkedList<>();
-    try (MNodeAboveSGCollector<List<PartialPath>> collector =
-        new MNodeAboveSGCollector<List<PartialPath>>(root, pathPattern, store, isPrefixMatch) {
+    try (MNodeAboveSGCollector<?> collector =
+        new MNodeAboveSGCollector<Void>(root, pathPattern, store, isPrefixMatch) {
           @Override
-          protected void collectMNode(IMNode node) {
+          protected Void collectMNode(IMNode node) {
             result.add(getPartialPathFromRootToNode(node));
+            return null;
           }
         }) {
 
@@ -423,15 +424,16 @@ public class ConfigMTree {
   public Pair<Set<TSchemaNode>, Set<PartialPath>> getChildNodePathInNextLevel(
       PartialPath pathPattern) throws MetadataException {
     Set<TSchemaNode> result = new TreeSet<>();
-    try (MNodeAboveSGCollector<Set<TSchemaNode>> collector =
-        new MNodeAboveSGCollector<Set<TSchemaNode>>(
+    try (MNodeAboveSGCollector<?> collector =
+        new MNodeAboveSGCollector<Void>(
             root, pathPattern.concatNode(ONE_LEVEL_PATH_WILDCARD), store, false) {
           @Override
-          protected void collectMNode(IMNode node) {
+          protected Void collectMNode(IMNode node) {
             result.add(
                 new TSchemaNode(
                     getPartialPathFromRootToNode(node).getFullPath(),
                     node.getMNodeType(true).getNodeType()));
+            return null;
           }
         }) {
       collector.traverse();
@@ -457,12 +459,13 @@ public class ConfigMTree {
   public Pair<Set<String>, Set<PartialPath>> getChildNodeNameInNextLevel(PartialPath pathPattern)
       throws MetadataException {
     Set<String> result = new TreeSet<>();
-    try (MNodeAboveSGCollector<Set<String>> collector =
-        new MNodeAboveSGCollector<Set<String>>(
+    try (MNodeAboveSGCollector<?> collector =
+        new MNodeAboveSGCollector<Void>(
             root, pathPattern.concatNode(ONE_LEVEL_PATH_WILDCARD), store, false) {
           @Override
-          protected void collectMNode(IMNode node) {
+          protected Void collectMNode(IMNode node) {
             result.add(node.getName());
+            return null;
           }
         }) {
       collector.traverse();
@@ -530,8 +533,8 @@ public class ConfigMTree {
   public List<String> getPathsSetOnTemplate(int templateId, boolean filterPreUnset)
       throws MetadataException {
     List<String> resSet = new ArrayList<>();
-    try (MNodeCollector<Set<String>> collector =
-        new MNodeCollector<Set<String>>(root, new PartialPath(ALL_RESULT_NODES), store, false) {
+    try (MNodeCollector<?> collector =
+        new MNodeCollector<Void>(root, new PartialPath(ALL_RESULT_NODES), store, false) {
           @Override
           protected boolean acceptFullMatchedNode(IMNode node) {
             if (super.acceptFullMatchedNode(node)) {
@@ -549,8 +552,9 @@ public class ConfigMTree {
           }
 
           @Override
-          protected void collectMNode(IMNode node) {
+          protected Void collectMNode(IMNode node) {
             resSet.add(node.getFullPath());
+            return null;
           }
 
           @Override
@@ -576,8 +580,8 @@ public class ConfigMTree {
   public Map<Integer, Set<PartialPath>> getTemplateSetInfo(PartialPath pathPattern)
       throws MetadataException {
     Map<Integer, Set<PartialPath>> result = new HashMap<>();
-    try (MNodeCollector<List<Integer>> collector =
-        new MNodeCollector<List<Integer>>(root, pathPattern, store, false) {
+    try (MNodeCollector<?> collector =
+        new MNodeCollector<Void>(root, pathPattern, store, false) {
           @Override
           protected boolean acceptFullMatchedNode(IMNode node) {
             return (node.getSchemaTemplateId() != NON_TEMPLATE)
@@ -591,10 +595,11 @@ public class ConfigMTree {
           }
 
           @Override
-          protected void collectMNode(IMNode node) {
+          protected Void collectMNode(IMNode node) {
             result
                 .computeIfAbsent(node.getSchemaTemplateId(), k -> new HashSet<>())
                 .add(getPartialPathFromRootToNode(node));
+            return null;
           }
 
           @Override

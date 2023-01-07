@@ -17,15 +17,11 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.client.exception;
+package org.apache.iotdb.db.metadata.query.info;
 
-public class ClientManagerException extends Exception {
+import org.apache.iotdb.db.metadata.mnode.MNodeType;
 
-  public ClientManagerException(Exception exception) {
-    super(exception);
-  }
+public interface INodeSchemaInfo extends ISchemaInfo {
 
-  public ClientManagerException(String message) {
-    super(message);
-  }
+  MNodeType getNodeType();
 }
