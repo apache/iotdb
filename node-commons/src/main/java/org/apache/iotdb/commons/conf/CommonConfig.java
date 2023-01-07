@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.commons.conf;
 
+import org.apache.iotdb.commons.client.property.ClientPoolProperty.DefaultProperty;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.enums.HandleSystemErrorStrategy;
 import org.apache.iotdb.tsfile.fileSystem.FSType;
@@ -104,9 +105,8 @@ public class CommonConfig {
   /** whether to use thrift compression. */
   private boolean isRpcThriftCompressionEnabled = false;
 
-  private int maxTotalClientForEachNode = 300;
-
-  private int maxIdleClientForEachNode = 200;
+  private int coreClientNumForEachNode = DefaultProperty.CORE_CLIENT_NUM_FOR_EACH_NODE;
+  private int maxClientNumForEachNode = DefaultProperty.MAX_CLIENT_NUM_FOR_EACH_NODE;
 
   /** What will the system do when unrecoverable error occurs. */
   private HandleSystemErrorStrategy handleSystemErrorStrategy =
@@ -271,20 +271,20 @@ public class CommonConfig {
     isRpcThriftCompressionEnabled = rpcThriftCompressionEnabled;
   }
 
-  public int getMaxTotalClientForEachNode() {
-    return maxTotalClientForEachNode;
+  public int getMaxClientNumForEachNode() {
+    return maxClientNumForEachNode;
   }
 
-  public void setMaxTotalClientForEachNode(int maxTotalClientForEachNode) {
-    this.maxTotalClientForEachNode = maxTotalClientForEachNode;
+  public void setMaxClientNumForEachNode(int maxClientNumForEachNode) {
+    this.maxClientNumForEachNode = maxClientNumForEachNode;
   }
 
-  public int getMaxIdleClientForEachNode() {
-    return maxIdleClientForEachNode;
+  public int getCoreClientNumForEachNode() {
+    return coreClientNumForEachNode;
   }
 
-  public void setMaxIdleClientForEachNode(int maxIdleClientForEachNode) {
-    this.maxIdleClientForEachNode = maxIdleClientForEachNode;
+  public void setCoreClientNumForEachNode(int coreClientNumForEachNode) {
+    this.coreClientNumForEachNode = coreClientNumForEachNode;
   }
 
   HandleSystemErrorStrategy getHandleSystemErrorStrategy() {

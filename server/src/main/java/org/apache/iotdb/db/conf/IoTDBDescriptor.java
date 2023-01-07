@@ -228,20 +228,20 @@ public class IoTDBDescriptor {
                     "dn_connection_timeout_ms", String.valueOf(conf.getConnectionTimeoutInMS()))
                 .trim()));
 
-    conf.setMaxConnectionForInternalService(
+    conf.setCoreClientNumForEachNode(
         Integer.parseInt(
             properties
                 .getProperty(
-                    "dn_max_connection_for_internal_service",
-                    String.valueOf(conf.getMaxConnectionForInternalService()))
+                    "dn_core_client_count_for_each_node_in_client_manager",
+                    String.valueOf(conf.getCoreClientNumForEachNode()))
                 .trim()));
 
-    conf.setCoreConnectionForInternalService(
+    conf.setMaxClientNumForEachNode(
         Integer.parseInt(
             properties
                 .getProperty(
-                    "dn_core_connection_for_internal_service",
-                    String.valueOf(conf.getCoreConnectionForInternalService()))
+                    "dn_max_client_count_for_each_node_in_client_manager",
+                    String.valueOf(conf.getMaxClientNumForEachNode()))
                 .trim()));
 
     conf.setSelectorNumOfClientManager(
