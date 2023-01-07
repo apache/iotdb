@@ -270,7 +270,6 @@ public class NodeManager {
 
     resp.setStatus(ClusterNodeStartUtils.ACCEPT_NODE_REGISTRATION);
     resp.setConfigNodeList(getRegisteredConfigNodes());
-    resp.setClusterName(CONF.getClusterName());
     resp.setDataNodeId(
         registerDataNodePlan.getDataNodeConfiguration().getLocation().getDataNodeId());
     resp.setRuntimeConfiguration(getRuntimeConfiguration());
@@ -384,7 +383,6 @@ public class NodeManager {
     configManager.getProcedureManager().addConfigNode(req);
     return new TConfigNodeRegisterResp()
         .setStatus(ClusterNodeStartUtils.ACCEPT_NODE_REGISTRATION)
-        .setClusterName(CONF.getClusterName())
         .setConfigNodeId(nodeId);
   }
 
@@ -674,6 +672,44 @@ public class NodeManager {
             setDataNodeStatusReq.getTargetDataNode().getInternalEndPoint(),
             setDataNodeStatusReq.getStatus(),
             DataNodeRequestType.SET_SYSTEM_STATUS);
+  }
+
+  /**
+   * Kill query on DataNode
+   *
+   * @param queryId the id of specific query need to be killed, it will be NULL if kill all queries
+   * @param dataNodeId the DataNode obtains target query, -1 means we will kill all queries on all
+   *     DataNodes
+   */
+  public TSStatus killQuery(String queryId, int dataNodeId) {
+    if (dataNodeId < 0) {
+      return killAllQueries();
+    } else {
+      return killSpecificQuery(queryId, getRegisteredDataNodeLocations().get(dataNodeId));
+    }
+  }
+
+  private TSStatus killAllQueries() {
+    Map<Integer, TDataNodeLocation> dataNodeLocationMap =
+        configManager.getNodeManager().getRegisteredDataNodeLocations();
+    AsyncClientHandler<String, TSStatus> clientHandler =
+        new AsyncClientHandler<>(DataNodeRequestType.KILL_QUERY_INSTANCE, dataNodeLocationMap);
+    AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
+    return RpcUtils.squashResponseStatusList(clientHandler.getResponseList());
+  }
+
+  private TSStatus killSpecificQuery(String queryId, TDataNodeLocation dataNodeLocation) {
+    if (dataNodeLocation == null) {
+      return new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode())
+          .setMessage(
+              "The target DataNode is not existed, please ensure your input <queryId> is correct");
+    } else {
+      return SyncDataNodeClientPool.getInstance()
+          .sendSyncRequestToDataNodeWithRetry(
+              dataNodeLocation.getInternalEndPoint(),
+              queryId,
+              DataNodeRequestType.KILL_QUERY_INSTANCE);
+    }
   }
 
   /** Start the heartbeat service */

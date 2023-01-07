@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.metadata.mtree;
 
-import org.apache.iotdb.common.rpc.thrift.TSchemaNode;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
@@ -46,13 +45,14 @@ import org.apache.iotdb.db.metadata.mtree.traverser.collector.EntityCollector;
 import org.apache.iotdb.db.metadata.mtree.traverser.collector.MNodeCollector;
 import org.apache.iotdb.db.metadata.mtree.traverser.collector.MeasurementCollector;
 import org.apache.iotdb.db.metadata.mtree.traverser.counter.CounterTraverser;
-import org.apache.iotdb.db.metadata.mtree.traverser.counter.EntityCounter;
-import org.apache.iotdb.db.metadata.mtree.traverser.counter.MeasurementCounter;
-import org.apache.iotdb.db.metadata.mtree.traverser.counter.MeasurementGroupByLevelCounter;
 import org.apache.iotdb.db.metadata.plan.schemaregion.read.IShowDevicesPlan;
+import org.apache.iotdb.db.metadata.plan.schemaregion.read.IShowNodesPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.read.IShowTimeSeriesPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.result.ShowDevicesResult;
+import org.apache.iotdb.db.metadata.plan.schemaregion.result.ShowNodesResult;
 import org.apache.iotdb.db.metadata.plan.schemaregion.result.ShowTimeSeriesResult;
+import org.apache.iotdb.db.metadata.query.info.INodeSchemaInfo;
+import org.apache.iotdb.db.metadata.query.reader.ISchemaReader;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.utils.MetaFormatUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -67,16 +67,14 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
 import java.util.Set;
-import java.util.TreeSet;
 import java.util.function.Consumer;
 import java.util.function.Function;
-
-import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
 
 /**
  * The hierarchical struct of the Metadata Tree is implemented in this class.
@@ -96,8 +94,6 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCAR
  *       <ol>
  *         <li>Interfaces for Device info Query
  *         <li>Interfaces for timeseries, measurement and schema info Query
- *         <li>Interfaces for Level Node info Query
- *         <li>Interfaces and Implementation for metadata count
  *       </ol>
  *   <li>Interfaces and Implementation for MNode Query
  *   <li>Interfaces and Implementation for Template check
@@ -575,27 +571,6 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
   // region Interfaces and Implementation for metadata info Query
 
   // region Interfaces for Device info Query
-  /**
-   * Get all devices matching the given path pattern. If isPrefixMatch, then the devices under the
-   * paths matching given path pattern will be collected too.
-   *
-   * @return a list contains all distinct devices names
-   */
-  @Override
-  public Set<PartialPath> getDevices(PartialPath pathPattern, boolean isPrefixMatch)
-      throws MetadataException {
-    Set<PartialPath> result = new TreeSet<>();
-    EntityCollector<Set<PartialPath>> collector =
-        new EntityCollector<Set<PartialPath>>(storageGroupMNode, pathPattern, store) {
-          @Override
-          protected void collectEntity(IEntityMNode node) {
-            result.add(getCurrentPartialPath(node));
-          }
-        };
-    collector.setPrefixMatch(isPrefixMatch);
-    collector.traverse();
-    return result;
-  }
 
   @Override
   public List<ShowDevicesResult> getDevices(IShowDevicesPlan plan) throws MetadataException {
@@ -606,14 +581,13 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
           @Override
           protected void collectEntity(IEntityMNode node) {
             PartialPath device = getCurrentPartialPath(node);
-            if (plan.hasSgCol()) {
-              res.add(new ShowDevicesResult(device.getFullPath(), node.isAligned()));
-            } else {
-              res.add(new ShowDevicesResult(device.getFullPath(), node.isAligned()));
-            }
+            res.add(new ShowDevicesResult(device.getFullPath(), node.isAligned()));
           }
         };
     collector.setPrefixMatch(plan.isPrefixMatch());
+    if (plan.usingSchemaTemplate()) {
+      collector.setSchemaTemplateFilter(plan.getSchemaTemplateId());
+    }
     collector.traverse();
 
     return res;
@@ -621,56 +595,6 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
   // endregion
 
   // region Interfaces for timeseries, measurement and schema info Query
-  /**
-   * Get all measurement paths matching the given path pattern. If using prefix match, the path
-   * pattern is used to match prefix path. All timeseries start with the matched prefix path will be
-   * collected and return.
-   *
-   * @param pathPattern a path pattern or a full path, may contain wildcard.
-   * @param isPrefixMatch if true, the path pattern is used to match prefix path
-   */
-  @Override
-  public List<MeasurementPath> getMeasurementPaths(PartialPath pathPattern, boolean isPrefixMatch)
-      throws MetadataException {
-    return getMeasurementPathsWithAlias(pathPattern, 0, 0, isPrefixMatch, false).left;
-  }
-
-  /**
-   * Get all measurement paths matching the given path pattern If using prefix match, the path
-   * pattern is used to match prefix path. All timeseries start with the matched prefix path will be
-   * collected and return.
-   *
-   * @param pathPattern a path pattern or a full path, may contain wildcard
-   * @param isPrefixMatch if true, the path pattern is used to match prefix path
-   * @return Pair.left contains all the satisfied paths Pair.right means the current offset or zero
-   *     if we don't set offset.
-   */
-  @Override
-  public Pair<List<MeasurementPath>, Integer> getMeasurementPathsWithAlias(
-      PartialPath pathPattern, int limit, int offset, boolean isPrefixMatch, boolean withTags)
-      throws MetadataException {
-    List<MeasurementPath> result = new LinkedList<>();
-    MeasurementCollector<List<PartialPath>> collector =
-        new MeasurementCollector<List<PartialPath>>(
-            storageGroupMNode, pathPattern, store, limit, offset) {
-          @Override
-          protected void collectMeasurement(IMeasurementMNode node) {
-            MeasurementPath path = getCurrentMeasurementPathInTraverse(node);
-            if (nodes[nodes.length - 1].equals(node.getAlias())) {
-              // only when user query with alias, the alias in path will be set
-              path.setMeasurementAlias(node.getAlias());
-            }
-            if (withTags) {
-              path.setTagMap(tagGetter.apply(node));
-            }
-            result.add(path);
-          }
-        };
-    collector.setPrefixMatch(isPrefixMatch);
-    collector.traverse();
-    offset = collector.getCurOffset() + 1;
-    return new Pair<>(result, offset);
-  }
 
   @Override
   public List<MeasurementPath> fetchSchema(
@@ -718,7 +642,8 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
                     node.getAlias(),
                     (MeasurementSchema) node.getSchema(),
                     tagAndAttribute.left,
-                    tagAndAttribute.right));
+                    tagAndAttribute.right,
+                    getCurrentNodeParent().getAsEntityMNode().isAligned()));
           }
         };
     collector.setPrefixMatch(plan.isPrefixMatch());
@@ -727,141 +652,6 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
     collector.traverse();
 
     return collector.getResult();
-  }
-
-  // endregion
-
-  // region Interfaces for Level Node info Query
-  /**
-   * Get child node path in the next level of the given path pattern.
-   *
-   * <p>give pathPattern and the child nodes is those matching pathPattern.*.
-   *
-   * <p>e.g., MTree has [root.sg1.d1.s1, root.sg1.d1.s2, root.sg1.d2.s1] given path = root.sg1,
-   * return [root.sg1.d1, root.sg1.d2]
-   *
-   * @param pathPattern The given path
-   * @return All child nodes' seriesPath(s) of given seriesPath.
-   */
-  @Override
-  public Set<TSchemaNode> getChildNodePathInNextLevel(PartialPath pathPattern)
-      throws MetadataException {
-    try {
-      MNodeCollector<Set<TSchemaNode>> collector =
-          new MNodeCollector<Set<TSchemaNode>>(
-              storageGroupMNode, pathPattern.concatNode(ONE_LEVEL_PATH_WILDCARD), store) {
-            @Override
-            protected void transferToResult(IMNode node) {
-              resultSet.add(
-                  new TSchemaNode(
-                      getCurrentPartialPath(node).getFullPath(),
-                      node.getMNodeType(false).getNodeType()));
-            }
-          };
-      collector.setResultSet(new TreeSet<>());
-      collector.traverse();
-      return collector.getResult();
-    } catch (IllegalPathException e) {
-      throw new IllegalPathException(pathPattern.getFullPath());
-    }
-  }
-
-  /** Get all paths from root to the given level */
-  @Override
-  public List<PartialPath> getNodesListInGivenLevel(
-      PartialPath pathPattern, int nodeLevel, boolean isPrefixMatch) throws MetadataException {
-    MNodeCollector<List<PartialPath>> collector =
-        new MNodeCollector<List<PartialPath>>(storageGroupMNode, pathPattern, store) {
-          @Override
-          protected void transferToResult(IMNode node) {
-            resultSet.add(getCurrentPartialPath(node));
-          }
-        };
-    collector.setResultSet(new LinkedList<>());
-    collector.setTargetLevel(nodeLevel);
-    collector.setPrefixMatch(isPrefixMatch);
-    collector.traverse();
-    return collector.getResult();
-  }
-  // endregion
-
-  // region Interfaces and Implementation for metadata count
-  /**
-   * Get the count of timeseries matching the given path.
-   *
-   * @param pathPattern a path pattern or a full path, may contain wildcard
-   */
-  @Override
-  public long getAllTimeseriesCount(PartialPath pathPattern, boolean isPrefixMatch)
-      throws MetadataException {
-    CounterTraverser counter = new MeasurementCounter(storageGroupMNode, pathPattern, store);
-    counter.setPrefixMatch(isPrefixMatch);
-    counter.traverse();
-    return counter.getCount();
-  }
-
-  @Override
-  public long getAllTimeseriesCount(
-      PartialPath pathPattern, Map<Integer, Template> templateMap, boolean isPrefixMatch)
-      throws MetadataException {
-    CounterTraverser counter = new MeasurementCounter(storageGroupMNode, pathPattern, store);
-    counter.setPrefixMatch(isPrefixMatch);
-    counter.setTemplateMap(templateMap);
-    counter.traverse();
-    return counter.getCount();
-  }
-
-  @Override
-  public long getAllTimeseriesCount(
-      PartialPath pathPattern, boolean isPrefixMatch, List<String> timeseries, boolean hasTag)
-      throws MetadataException {
-    CounterTraverser counter =
-        new MeasurementCounter(storageGroupMNode, pathPattern, store, timeseries, hasTag);
-    counter.setPrefixMatch(isPrefixMatch);
-    counter.traverse();
-    return counter.getCount();
-  }
-
-  /**
-   * Get the count of devices matching the given path. If using prefix match, the path pattern is
-   * used to match prefix path. All timeseries start with the matched prefix path will be counted.
-   *
-   * @param pathPattern a path pattern or a full path, may contain wildcard
-   * @param isPrefixMatch if true, the path pattern is used to match prefix path
-   */
-  @Override
-  public long getDevicesNum(PartialPath pathPattern, boolean isPrefixMatch)
-      throws MetadataException {
-    CounterTraverser counter = new EntityCounter(storageGroupMNode, pathPattern, store);
-    counter.setPrefixMatch(isPrefixMatch);
-    counter.traverse();
-    return counter.getCount();
-  }
-
-  @Override
-  public Map<PartialPath, Long> getMeasurementCountGroupByLevel(
-      PartialPath pathPattern, int level, boolean isPrefixMatch) throws MetadataException {
-    MeasurementGroupByLevelCounter counter =
-        new MeasurementGroupByLevelCounter(storageGroupMNode, pathPattern, store, level);
-    counter.setPrefixMatch(isPrefixMatch);
-    counter.traverse();
-    return counter.getResult();
-  }
-
-  @Override
-  public Map<PartialPath, Long> getMeasurementCountGroupByLevel(
-      PartialPath pathPattern,
-      int level,
-      boolean isPrefixMatch,
-      List<String> timeseries,
-      boolean hasTag)
-      throws MetadataException {
-    MeasurementGroupByLevelCounter counter =
-        new MeasurementGroupByLevelCounter(
-            storageGroupMNode, pathPattern, store, level, timeseries, hasTag);
-    counter.setPrefixMatch(isPrefixMatch);
-    counter.traverse();
-    return counter.getResult();
   }
 
   // endregion
@@ -1014,24 +804,6 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
     entityMNode.setSchemaTemplateId(templateId);
   }
 
-  @Override
-  public List<String> getPathsUsingTemplate(PartialPath pathPattern, int templateId)
-      throws MetadataException {
-    Set<String> result = new HashSet<>();
-
-    EntityCollector<Set<String>> collector =
-        new EntityCollector<Set<String>>(storageGroupMNode, pathPattern, store) {
-          @Override
-          protected void collectEntity(IEntityMNode node) {
-            if (node.getSchemaTemplateId() == templateId) {
-              result.add(node.getFullPath());
-            }
-          }
-        };
-    collector.traverse();
-    return new ArrayList<>(result);
-  }
-
   public List<IEntityMNode> getDeviceMNodeUsingTargetTemplate(
       PartialPath pathPattern, List<Integer> templateIdList) throws MetadataException {
     List<IEntityMNode> result = new ArrayList<>();
@@ -1089,5 +861,41 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
     return counterTraverser.getCount();
   }
 
+  // endregion
+
+  // region Interfaces for schema reader
+  public ISchemaReader<INodeSchemaInfo> getNodeReader(IShowNodesPlan showNodesPlan)
+      throws MetadataException {
+    MNodeCollector<Set<INodeSchemaInfo>> collector =
+        new MNodeCollector<Set<INodeSchemaInfo>>(
+            storageGroupMNode, showNodesPlan.getPath(), store) {
+          @Override
+          protected void transferToResult(IMNode node) {
+            resultSet.add(
+                new ShowNodesResult(
+                    getCurrentPartialPath(node).getFullPath(), node.getMNodeType(false)));
+          }
+        };
+    collector.setResultSet(new HashSet<>());
+    collector.setTargetLevel(showNodesPlan.getLevel());
+    collector.setPrefixMatch(showNodesPlan.isPrefixMatch());
+    collector.traverse();
+
+    Iterator<INodeSchemaInfo> iterator = collector.getResult().iterator();
+    return new ISchemaReader<INodeSchemaInfo>() {
+      @Override
+      public void close() throws Exception {}
+
+      @Override
+      public boolean hasNext() {
+        return iterator.hasNext();
+      }
+
+      @Override
+      public INodeSchemaInfo next() {
+        return iterator.next();
+      }
+    };
+  }
   // endregion
 }

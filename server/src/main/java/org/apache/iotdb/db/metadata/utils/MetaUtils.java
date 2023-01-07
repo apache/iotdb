@@ -78,6 +78,7 @@ public class MetaUtils {
    *     of one device has already been placed contiguously.
    * @return Size of partial path list could NOT equal to the input list size. For example, the
    *     vector1 (s1,s2) would be returned once.
+   * @deprecated
    */
   @Deprecated
   public static List<PartialPath> groupAlignedPaths(List<PartialPath> fullPaths) {

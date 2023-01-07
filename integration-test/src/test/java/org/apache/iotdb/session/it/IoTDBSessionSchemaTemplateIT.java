@@ -58,7 +58,7 @@ public class IoTDBSessionSchemaTemplateIT {
   @Before
   public void setUp() throws Exception {
     System.setProperty(IoTDBConstant.IOTDB_CONF, "src/test/resources/");
-    EnvFactory.getEnv().initBeforeTest();
+    EnvFactory.getEnv().initClusterEnvironment();
     session = EnvFactory.getEnv().getSessionConnection();
   }
 
@@ -67,7 +67,7 @@ public class IoTDBSessionSchemaTemplateIT {
     if (session != null) {
       session.close();
     }
-    EnvFactory.getEnv().cleanAfterTest();
+    EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
   @Test

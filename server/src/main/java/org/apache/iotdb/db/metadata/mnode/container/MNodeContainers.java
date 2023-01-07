@@ -60,31 +60,38 @@ public class MNodeContainers {
   private static class EmptyContainer extends AbstractMap<String, IMNode>
       implements IMNodeContainer {
 
+    @Override
     public int size() {
       return 0;
     }
 
+    @Override
     public boolean isEmpty() {
       return true;
     }
 
+    @Override
     public boolean containsKey(Object key) {
       return false;
     }
 
+    @Override
     public boolean containsValue(Object value) {
       return false;
     }
 
+    @Override
     public IMNode get(Object key) {
       return null;
     }
 
+    @Override
     @NotNull
     public Set<String> keySet() {
       return emptySet();
     }
 
+    @Override
     @NotNull
     public Collection<IMNode> values() {
       return emptySet();

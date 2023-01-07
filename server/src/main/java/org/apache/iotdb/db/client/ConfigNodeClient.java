@@ -24,11 +24,11 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
-import org.apache.iotdb.commons.client.BaseClientFactory;
-import org.apache.iotdb.commons.client.ClientFactoryProperty;
 import org.apache.iotdb.commons.client.ClientManager;
-import org.apache.iotdb.commons.client.ClientPoolProperty;
-import org.apache.iotdb.commons.client.sync.SyncThriftClient;
+import org.apache.iotdb.commons.client.ThriftClient;
+import org.apache.iotdb.commons.client.factory.ThriftClientFactory;
+import org.apache.iotdb.commons.client.property.ClientPoolProperty;
+import org.apache.iotdb.commons.client.property.ThriftClientProperty;
 import org.apache.iotdb.commons.client.sync.SyncThriftClientWithErrorHandler;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.ConfigNodeRegionId;
@@ -102,7 +102,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TSetSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetStorageGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetTimePartitionIntervalReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowCQResp;
-import org.apache.iotdb.confignode.rpc.thrift.TShowClusterParametersResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowConfigNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
@@ -115,6 +114,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowStorageGroupResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTrailReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTrailResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowVariablesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchemaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSystemConfigurationResp;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsetSchemaTemplateReq;
@@ -135,12 +135,12 @@ import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.lang.reflect.Constructor;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
-public class ConfigNodeClient
-    implements IConfigNodeRPCService.Iface, SyncThriftClient, AutoCloseable {
+public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClient, AutoCloseable {
+
   private static final Logger logger = LoggerFactory.getLogger(ConfigNodeClient.class);
 
   private static final int RETRY_NUM = 5;
@@ -148,7 +148,7 @@ public class ConfigNodeClient
   public static final String MSG_RECONNECTION_FAIL =
       "Fail to connect to any config node. Please check status of ConfigNodes";
 
-  private static final int retryIntervalMs = 1000;
+  private static final int RETRY_INTERVAL_MS = 1000;
 
   private long connectionTimeout = ClientPoolProperty.DefaultProperty.WAIT_CLIENT_TIMEOUT_MS;
 
@@ -176,7 +176,7 @@ public class ConfigNodeClient
     // Read config nodes from configuration
     configNodes = ConfigNodeInfo.getInstance().getLatestConfigNodes();
     protocolFactory =
-        CommonDescriptor.getInstance().getConfig().isCnRpcThriftCompressionEnabled()
+        CommonDescriptor.getInstance().getConfig().isRpcThriftCompressionEnabled()
             ? new TCompactProtocol.Factory()
             : new TBinaryProtocol.Factory();
 
@@ -226,7 +226,7 @@ public class ConfigNodeClient
   private void waitAndReconnect() throws TException {
     try {
       // wait to start the next try
-      Thread.sleep(retryIntervalMs);
+      Thread.sleep(RETRY_INTERVAL_MS);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       throw new TException(
@@ -292,7 +292,7 @@ public class ConfigNodeClient
 
   @Override
   public void invalidate() {
-    transport.close();
+    Optional.ofNullable(transport).ifPresent(TTransport::close);
   }
 
   @Override
@@ -489,10 +489,10 @@ public class ConfigNodeClient
   }
 
   @Override
-  public TShowClusterParametersResp showClusterParameters() throws TException {
+  public TShowVariablesResp showVariables() throws TException {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
-        TShowClusterParametersResp resp = client.showClusterParameters();
+        TShowVariablesResp resp = client.showVariables();
         if (!updateConfigNodeLeader(resp.status)) {
           return resp;
         }
@@ -1037,6 +1037,27 @@ public class ConfigNodeClient
   @Override
   public TSStatus setDataNodeStatus(TSetDataNodeStatusReq req) throws TException {
     throw new TException("DataNode to ConfigNode client doesn't support setDataNodeStatus.");
+  }
+
+  @Override
+  public TSStatus killQuery(String queryId, int dataNodeId) throws TException {
+    for (int i = 0; i < RETRY_NUM; i++) {
+      try {
+        TSStatus status = client.killQuery(queryId, dataNodeId);
+        if (!updateConfigNodeLeader(status)) {
+          return status;
+        }
+      } catch (TException e) {
+        logger.warn(
+            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            configNode,
+            config.getAddressAndPort(),
+            Thread.currentThread().getStackTrace()[1].getMethodName());
+        configLeader = null;
+      }
+      waitAndReconnect();
+    }
+    throw new TException(MSG_RECONNECTION_FAIL);
   }
 
   @Override
@@ -1919,12 +1940,11 @@ public class ConfigNodeClient
     throw new TException(new UnsupportedOperationException().getCause());
   }
 
-  public static class Factory extends BaseClientFactory<ConfigNodeRegionId, ConfigNodeClient> {
-
+  public static class Factory extends ThriftClientFactory<ConfigNodeRegionId, ConfigNodeClient> {
     public Factory(
         ClientManager<ConfigNodeRegionId, ConfigNodeClient> clientManager,
-        ClientFactoryProperty clientFactoryProperty) {
-      super(clientManager, clientFactoryProperty);
+        ThriftClientProperty thriftClientProperty) {
+      super(clientManager, thriftClientProperty);
     }
 
     @Override
@@ -1936,15 +1956,13 @@ public class ConfigNodeClient
     @Override
     public PooledObject<ConfigNodeClient> makeObject(ConfigNodeRegionId configNodeRegionId)
         throws Exception {
-      Constructor<ConfigNodeClient> constructor =
-          ConfigNodeClient.class.getConstructor(
-              TProtocolFactory.class, long.class, clientManager.getClass());
       return new DefaultPooledObject<>(
           SyncThriftClientWithErrorHandler.newErrorHandler(
               ConfigNodeClient.class,
-              constructor,
-              clientFactoryProperty.getProtocolFactory(),
-              clientFactoryProperty.getConnectionTimeoutMs(),
+              ConfigNodeClient.class.getConstructor(
+                  TProtocolFactory.class, long.class, clientManager.getClass()),
+              thriftClientProperty.getProtocolFactory(),
+              thriftClientProperty.getConnectionTimeoutMs(),
               clientManager));
     }
 

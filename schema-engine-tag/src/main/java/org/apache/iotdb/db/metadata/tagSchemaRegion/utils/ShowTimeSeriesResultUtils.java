@@ -49,7 +49,8 @@ public class ShowTimeSeriesResultUtils {
             schemaEntry.getTSEncoding(),
             schemaEntry.getCompressionType()),
         new HashMap<>(),
-        new HashMap<>());
+        new HashMap<>(),
+        false);
   }
 
   /**
@@ -72,7 +73,8 @@ public class ShowTimeSeriesResultUtils {
               schemaEntry.getTSEncoding(),
               schemaEntry.getCompressionType()),
           new HashMap<>(),
-          new HashMap<>());
+          new HashMap<>(),
+          false);
     } catch (IllegalPathException e) {
       throw new RuntimeException(e);
     }

@@ -19,7 +19,6 @@
 package org.apache.iotdb.db.it.aligned;
 
 import org.apache.iotdb.db.it.utils.AlignedWriteUtil;
-import org.apache.iotdb.it.env.ConfigFactory;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
@@ -49,25 +48,18 @@ import static org.apache.iotdb.db.constant.TestConstant.minValue;
 @Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBGroupByQueryWithoutValueFilterWithDeletionIT {
 
-  protected static boolean enableSeqSpaceCompaction;
-  protected static boolean enableUnseqSpaceCompaction;
-  protected static boolean enableCrossSpaceCompaction;
-  protected static long prevPartitionInterval;
-  protected static int maxTsBlockLineNumber;
-
   private static final String TIMESTAMP_STR = "Time";
 
   @BeforeClass
   public static void setUp() throws Exception {
-    enableSeqSpaceCompaction = ConfigFactory.getConfig().isEnableSeqSpaceCompaction();
-    enableUnseqSpaceCompaction = ConfigFactory.getConfig().isEnableUnseqSpaceCompaction();
-    enableCrossSpaceCompaction = ConfigFactory.getConfig().isEnableCrossSpaceCompaction();
-    maxTsBlockLineNumber = ConfigFactory.getConfig().getMaxTsBlockLineNumber();
-    ConfigFactory.getConfig().setEnableSeqSpaceCompaction(false);
-    ConfigFactory.getConfig().setEnableUnseqSpaceCompaction(false);
-    ConfigFactory.getConfig().setEnableCrossSpaceCompaction(false);
-    ConfigFactory.getConfig().setMaxTsBlockLineNumber(3);
-    EnvFactory.getEnv().initBeforeClass();
+    EnvFactory.getEnv()
+        .getConfig()
+        .getCommonConfig()
+        .setEnableSeqSpaceCompaction(false)
+        .setEnableUnseqSpaceCompaction(false)
+        .setEnableCrossSpaceCompaction(false)
+        .setMaxTsBlockLineNumber(3);
+    EnvFactory.getEnv().initClusterEnvironment();
     AlignedWriteUtil.insertData();
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
@@ -82,12 +74,7 @@ public class IoTDBGroupByQueryWithoutValueFilterWithDeletionIT {
 
   @AfterClass
   public static void tearDown() throws Exception {
-    ConfigFactory.getConfig().setEnableSeqSpaceCompaction(enableSeqSpaceCompaction);
-    ConfigFactory.getConfig().setEnableUnseqSpaceCompaction(enableUnseqSpaceCompaction);
-    ConfigFactory.getConfig().setEnableCrossSpaceCompaction(enableCrossSpaceCompaction);
-    ConfigFactory.getConfig().setPartitionInterval(prevPartitionInterval);
-    ConfigFactory.getConfig().setMaxTsBlockLineNumber(maxTsBlockLineNumber);
-    EnvFactory.getEnv().cleanAfterClass();
+    EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
   @Test

@@ -27,7 +27,7 @@ import org.apache.iotdb.tsfile.read.common.type.Type;
 public abstract class UnaryColumnTransformer extends ColumnTransformer {
   protected ColumnTransformer childColumnTransformer;
 
-  public UnaryColumnTransformer(Type returnType, ColumnTransformer childColumnTransformer) {
+  protected UnaryColumnTransformer(Type returnType, ColumnTransformer childColumnTransformer) {
     super(returnType);
     this.childColumnTransformer = childColumnTransformer;
     checkType();

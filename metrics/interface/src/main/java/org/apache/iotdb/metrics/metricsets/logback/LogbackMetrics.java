@@ -98,7 +98,7 @@ public class LogbackMetrics implements IMetricSet {
         metricService.remove(MetricType.COUNTER, "logback_events", "level", "trace");
       }
     } catch (Exception e) {
-      logger.error("Failed to remove LogBackMetrics.");
+      logger.warn("Failed to remove logBackMetrics, because ", e);
     }
   }
 }

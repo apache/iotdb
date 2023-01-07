@@ -21,34 +21,26 @@ package org.apache.iotdb.db.mpp.execution.operator.schema;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.metadata.plan.schemaregion.impl.read.SchemaRegionReadPlanFactory;
+import org.apache.iotdb.db.metadata.query.info.ITimeSeriesSchemaInfo;
+import org.apache.iotdb.db.metadata.query.reader.ISchemaReader;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
-import org.apache.iotdb.db.mpp.execution.driver.SchemaDriverContext;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
-import org.apache.iotdb.db.mpp.execution.operator.source.SourceOperator;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.block.TsBlock;
-import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 
-import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-public class TimeSeriesCountOperator implements SourceOperator {
-  private final PlanNodeId sourceId;
-  private final OperatorContext operatorContext;
+public class TimeSeriesCountOperator extends SchemaCountOperator<ITimeSeriesSchemaInfo> {
+
   private final PartialPath partialPath;
-  private final boolean isPrefixPath;
+  private final boolean isPrefixMatch;
   private final String key;
   private final String value;
   private final boolean isContains;
   private final Map<Integer, Template> templateMap;
-
-  private boolean isFinished;
-
-  private final List<TSDataType> outputDataTypes;
 
   @Override
   public PlanNodeId getSourceId() {
@@ -59,80 +51,35 @@ public class TimeSeriesCountOperator implements SourceOperator {
       PlanNodeId sourceId,
       OperatorContext operatorContext,
       PartialPath partialPath,
-      boolean isPrefixPath,
+      boolean isPrefixMatch,
       String key,
       String value,
       boolean isContains,
       Map<Integer, Template> templateMap) {
-    this.sourceId = sourceId;
-    this.operatorContext = operatorContext;
+    super(
+        sourceId,
+        operatorContext,
+        ColumnHeaderConstant.countTimeSeriesColumnHeaders.stream()
+            .map(ColumnHeader::getColumnType)
+            .collect(Collectors.toList()));
+
     this.partialPath = partialPath;
-    this.isPrefixPath = isPrefixPath;
+    this.isPrefixMatch = isPrefixMatch;
     this.key = key;
     this.value = value;
     this.isContains = isContains;
     this.templateMap = templateMap;
-    this.outputDataTypes =
-        ColumnHeaderConstant.countTimeSeriesColumnHeaders.stream()
-            .map(ColumnHeader::getColumnType)
-            .collect(Collectors.toList());
   }
 
   @Override
-  public OperatorContext getOperatorContext() {
-    return operatorContext;
-  }
-
-  @Override
-  public TsBlock next() {
-    isFinished = true;
-    TsBlockBuilder tsBlockBuilder = new TsBlockBuilder(outputDataTypes);
-    long count = 0;
+  protected ISchemaReader<ITimeSeriesSchemaInfo> createSchemaReader() {
     try {
-      if (key != null && value != null) {
-        count =
-            ((SchemaDriverContext) operatorContext.getInstanceContext().getDriverContext())
-                .getSchemaRegion()
-                .getAllTimeseriesCount(partialPath, isPrefixPath, key, value, isContains);
-      } else {
-        count =
-            ((SchemaDriverContext) operatorContext.getInstanceContext().getDriverContext())
-                .getSchemaRegion()
-                .getAllTimeseriesCount(partialPath, templateMap, isPrefixPath);
-      }
+      return getSchemaRegion()
+          .getTimeSeriesReader(
+              SchemaRegionReadPlanFactory.getShowTimeSeriesPlan(
+                  partialPath, templateMap, isContains, key, value, 0, 0, isPrefixMatch));
     } catch (MetadataException e) {
       throw new RuntimeException(e.getMessage(), e);
     }
-    tsBlockBuilder.getTimeColumnBuilder().writeLong(0L);
-    tsBlockBuilder.getColumnBuilder(0).writeLong(count);
-    tsBlockBuilder.declarePosition();
-    return tsBlockBuilder.build();
-  }
-
-  @Override
-  public boolean hasNext() {
-    return !isFinished;
-  }
-
-  @Override
-  public boolean isFinished() {
-    return isFinished;
-  }
-
-  @Override
-  public long calculateMaxPeekMemory() {
-    // the integer used for count
-    return 4L;
-  }
-
-  @Override
-  public long calculateMaxReturnSize() {
-    // the integer used for count
-    return 4L;
-  }
-
-  @Override
-  public long calculateRetainedSizeAfterCallingNext() {
-    return 0L;
   }
 }

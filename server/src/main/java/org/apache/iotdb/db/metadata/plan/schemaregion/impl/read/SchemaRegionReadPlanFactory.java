@@ -21,6 +21,7 @@ package org.apache.iotdb.db.metadata.plan.schemaregion.impl.read;
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.metadata.plan.schemaregion.read.IShowDevicesPlan;
+import org.apache.iotdb.db.metadata.plan.schemaregion.read.IShowNodesPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.read.IShowTimeSeriesPlan;
 import org.apache.iotdb.db.metadata.template.Template;
 
@@ -32,12 +33,21 @@ public class SchemaRegionReadPlanFactory {
   private SchemaRegionReadPlanFactory() {}
 
   public static IShowDevicesPlan getShowDevicesPlan(PartialPath path) {
-    return new ShowDevicesPlanImpl(path, 0, 0, false, false);
+    return new ShowDevicesPlanImpl(path, 0, 0, false, -1);
+  }
+
+  public static IShowDevicesPlan getShowDevicesPlan(PartialPath path, boolean isPrefixMatch) {
+    return new ShowDevicesPlanImpl(path, 0, 0, isPrefixMatch, -1);
   }
 
   public static IShowDevicesPlan getShowDevicesPlan(
-      PartialPath path, int limit, int offset, boolean hasSgCol, boolean isPrefixMatch) {
-    return new ShowDevicesPlanImpl(path, limit, offset, hasSgCol, isPrefixMatch);
+      PartialPath path, int limit, int offset, boolean isPrefixMatch) {
+    return new ShowDevicesPlanImpl(path, limit, offset, isPrefixMatch, -1);
+  }
+
+  public static IShowDevicesPlan getShowDevicesPlan(
+      PartialPath path, int limit, int offset, boolean isPrefixMatch, int templateId) {
+    return new ShowDevicesPlanImpl(path, limit, offset, isPrefixMatch, templateId);
   }
 
   public static IShowTimeSeriesPlan getShowTimeSeriesPlan(PartialPath path) {
@@ -71,5 +81,14 @@ public class SchemaRegionReadPlanFactory {
       boolean isPrefixMatch) {
     return new ShowTimeSeriesPlanImpl(
         path, relatedTemplate, isContains, key, value, limit, offset, isPrefixMatch);
+  }
+
+  public static IShowNodesPlan getShowNodesPlan(PartialPath path) {
+    return new ShowNodesPlanImpl(path, -1, false);
+  }
+
+  public static IShowNodesPlan getShowNodesPlan(
+      PartialPath path, int level, boolean isPrefixMatch) {
+    return new ShowNodesPlanImpl(path, level, isPrefixMatch);
   }
 }

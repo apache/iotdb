@@ -48,7 +48,7 @@ public abstract class AbstractUpdateLastCacheOperator implements ProcessOperator
 
   protected String databaseName;
 
-  public AbstractUpdateLastCacheOperator(
+  protected AbstractUpdateLastCacheOperator(
       OperatorContext operatorContext,
       Operator child,
       DataNodeSchemaCache dataNodeSchemaCache,

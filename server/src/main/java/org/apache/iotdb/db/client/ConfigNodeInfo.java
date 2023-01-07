@@ -44,7 +44,7 @@ public class ConfigNodeInfo {
 
   private static final Logger logger = LoggerFactory.getLogger(ConfigNodeInfo.class);
 
-  private final String CONFIG_NODE_LIST = "config_node_list";
+  private static final String CONFIG_NODE_LIST = "config_node_list";
 
   private static final String PROPERTIES_FILE_NAME = "system.properties";
 

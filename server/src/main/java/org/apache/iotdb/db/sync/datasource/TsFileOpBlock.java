@@ -281,7 +281,6 @@ public class TsFileOpBlock extends AbstractOpBlock {
             timeChunkOffset = entry.getKey();
             timeChunkPointCount = chunkInfo.pointCount;
             iter.remove();
-            continue;
           } else {
             chunkInfo.isTimeAligned = true;
             chunkInfo.timeChunkOffsetInFile = timeChunkOffset;
@@ -577,9 +576,9 @@ public class TsFileOpBlock extends AbstractOpBlock {
         new PageReader(pageData, chunkHeader.getDataType(), valueDecoder, timeDecoder, null);
     BatchData batchData = pageReader.getAllSatisfiedPageData();
     if (chunkHeader.getChunkType() == MetaMarker.CHUNK_HEADER) {
-      logger.debug("points in the page(by pageHeader): " + pageHeader.getNumOfValues());
+      logger.debug("points in the page(by pageHeader): {}", pageHeader.getNumOfValues());
     } else {
-      logger.debug("points in the page(by batchData): " + batchData.length());
+      logger.debug("points in the page(by batchData): {}", batchData.length());
     }
 
     if (batchData.isEmpty()) {
@@ -1008,7 +1007,7 @@ public class TsFileOpBlock extends AbstractOpBlock {
       long lengthInChunk = min(chunkPointCount - indexInChunk, remain);
 
       if (!sensorFullPath.equals(lastSensorFullPath)) {
-        if ((tvPairList != null) && (tvPairList.size() > 0)) {
+        if ((tvPairList != null) && (!tvPairList.isEmpty())) {
           insertToDataList(dataList, lastSensorFullPath, tvPairList);
           tvPairList = null;
         }
@@ -1037,7 +1036,7 @@ public class TsFileOpBlock extends AbstractOpBlock {
       }
     }
 
-    if ((tvPairList != null) && (tvPairList.size() > 0)) {
+    if ((tvPairList != null) && (!tvPairList.isEmpty())) {
       insertToDataList(dataList, lastSensorFullPath, tvPairList);
     }
 
@@ -1174,6 +1173,7 @@ public class TsFileOpBlock extends AbstractOpBlock {
      * @return
      * @throws IOException
      */
+    @Override
     public TsFileMetadata readFileMetadata() throws IOException {
       if (tsFileMetaData != null) {
         return tsFileMetaData;
