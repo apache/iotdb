@@ -24,7 +24,7 @@ import org.apache.iotdb.tsfile.read.common.type.Type;
 import org.apache.iotdb.tsfile.read.common.type.TypeEnum;
 
 public abstract class LogicBinaryColumnTransformer extends BinaryColumnTransformer {
-  public LogicBinaryColumnTransformer(
+  protected LogicBinaryColumnTransformer(
       Type returnType, ColumnTransformer leftTransformer, ColumnTransformer rightTransformer) {
     super(returnType, leftTransformer, rightTransformer);
   }

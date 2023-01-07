@@ -121,6 +121,8 @@ public class SyncDataNodeClientPool {
         return client.stopDataNode();
       case SET_SYSTEM_STATUS:
         return client.setSystemStatus((String) req);
+      case KILL_QUERY_INSTANCE:
+        return client.killQueryInstance((String) req);
       case UPDATE_TEMPLATE:
         return client.updateTemplate((TUpdateTemplateReq) req);
       case CREATE_NEW_REGION_PEER:

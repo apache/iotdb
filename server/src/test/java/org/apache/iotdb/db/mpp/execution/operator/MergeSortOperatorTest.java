@@ -20,30 +20,41 @@ package org.apache.iotdb.db.mpp.execution.operator;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.MeasurementPath;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.common.QueryId;
+import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
+import org.apache.iotdb.db.mpp.common.header.DatasetHeaderFactory;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceStateMachine;
 import org.apache.iotdb.db.mpp.execution.operator.process.DeviceViewOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.MergeSortOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.SingleDeviceViewOperator;
+import org.apache.iotdb.db.mpp.execution.operator.process.SortOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.join.TimeJoinOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.join.merge.AscTimeComparator;
 import org.apache.iotdb.db.mpp.execution.operator.process.join.merge.DescTimeComparator;
 import org.apache.iotdb.db.mpp.execution.operator.process.join.merge.MergeSortComparator;
 import org.apache.iotdb.db.mpp.execution.operator.process.join.merge.SingleColumnMerger;
 import org.apache.iotdb.db.mpp.execution.operator.source.SeriesScanOperator;
+import org.apache.iotdb.db.mpp.execution.operator.source.ShowQueriesOperator;
+import org.apache.iotdb.db.mpp.plan.Coordinator;
+import org.apache.iotdb.db.mpp.plan.execution.ExecutionResult;
+import org.apache.iotdb.db.mpp.plan.execution.IQueryExecution;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
+import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.db.mpp.plan.statement.component.SortItem;
 import org.apache.iotdb.db.mpp.plan.statement.component.SortKey;
 import org.apache.iotdb.db.query.reader.series.SeriesReaderTestUtil;
+import org.apache.iotdb.db.utils.datastructure.MergeSortKey;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
@@ -53,14 +64,19 @@ import io.airlift.units.Duration;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.mockito.Mockito;
+import org.testcontainers.shaded.com.google.common.collect.ImmutableList;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 
@@ -83,8 +99,12 @@ public class MergeSortOperatorTest {
   private static final String DEVICE2 = MERGE_SORT_OPERATOR_TEST_SG + ".device2";
   private static final String DEVICE3 = MERGE_SORT_OPERATOR_TEST_SG + ".device3";
 
+  private int dataNodeId;
+
   @Before
   public void setUp() throws MetadataException, IOException, WriteProcessException {
+    dataNodeId = IoTDBDescriptor.getInstance().getConfig().getDataNodeId();
+    IoTDBDescriptor.getInstance().getConfig().setDataNodeId(0);
     SeriesReaderTestUtil.setUp(
         measurementSchemas, deviceIds, seqResources, unSeqResources, MERGE_SORT_OPERATOR_TEST_SG);
   }
@@ -92,6 +112,7 @@ public class MergeSortOperatorTest {
   @After
   public void tearDown() throws IOException {
     SeriesReaderTestUtil.tearDown(seqResources, unSeqResources);
+    IoTDBDescriptor.getInstance().getConfig().setDataNodeId(dataNodeId);
   }
 
   long getValue(long expectedTime) {
@@ -317,7 +338,9 @@ public class MergeSortOperatorTest {
           MergeSortComparator.getComparator(
               Arrays.asList(
                   new SortItem(SortKey.TIME, timeOrdering),
-                  new SortItem(SortKey.DEVICE, deviceOrdering))));
+                  new SortItem(SortKey.DEVICE, deviceOrdering)),
+              null,
+              null));
     } catch (IllegalPathException e) {
       e.printStackTrace();
       fail();
@@ -791,7 +814,9 @@ public class MergeSortOperatorTest {
               MergeSortComparator.getComparator(
                   Arrays.asList(
                       new SortItem(SortKey.TIME, timeOrdering),
-                      new SortItem(SortKey.DEVICE, deviceOrdering))));
+                      new SortItem(SortKey.DEVICE, deviceOrdering)),
+                  null,
+                  null));
       MergeSortOperator mergeSortOperator2 =
           new MergeSortOperator(
               fragmentInstanceContext.getOperatorContexts().get(15),
@@ -800,7 +825,9 @@ public class MergeSortOperatorTest {
               MergeSortComparator.getComparator(
                   Arrays.asList(
                       new SortItem(SortKey.TIME, timeOrdering),
-                      new SortItem(SortKey.DEVICE, deviceOrdering))));
+                      new SortItem(SortKey.DEVICE, deviceOrdering)),
+                  null,
+                  null));
 
       return new MergeSortOperator(
           fragmentInstanceContext.getOperatorContexts().get(16),
@@ -809,7 +836,9 @@ public class MergeSortOperatorTest {
           MergeSortComparator.getComparator(
               Arrays.asList(
                   new SortItem(SortKey.TIME, timeOrdering),
-                  new SortItem(SortKey.DEVICE, deviceOrdering))));
+                  new SortItem(SortKey.DEVICE, deviceOrdering)),
+              null,
+              null));
     } catch (IllegalPathException e) {
       e.printStackTrace();
       fail();
@@ -1257,7 +1286,9 @@ public class MergeSortOperatorTest {
           MergeSortComparator.getComparator(
               Arrays.asList(
                   new SortItem(SortKey.DEVICE, deviceOrdering),
-                  new SortItem(SortKey.TIME, timeOrdering))));
+                  new SortItem(SortKey.TIME, timeOrdering)),
+              null,
+              null));
     } catch (IllegalPathException e) {
       e.printStackTrace();
       fail();
@@ -1471,5 +1502,210 @@ public class MergeSortOperatorTest {
       }
     }
     assertEquals(count, 2000);
+  }
+
+  // ------------------------------------------------------------------------------------------------
+  //                                   order by Time, DataNodeID
+  // ------------------------------------------------------------------------------------------------
+  //
+  //                                     MergeSortOperator
+  //                                  ___________|__________
+  //                                 /                      \
+  //                           SortOperator             SortOperator
+  //                                |                        |
+  //                        ShowQueriesOperator      ShowQueriesOperator
+  // ------------------------------------------------------------------------------------------------
+  @Test
+  public void mergeSortWithSortOperatorTest() {
+    ExecutorService instanceNotificationExecutor =
+        IoTDBThreadPoolFactory.newFixedThreadPool(1, "test-instance-notification");
+
+    try {
+      // Construct operator tree
+      QueryId queryId = new QueryId("stub_query");
+
+      FragmentInstanceId instanceId =
+          new FragmentInstanceId(new PlanFragmentId(queryId, 0), "stub-instance");
+      FragmentInstanceStateMachine stateMachine =
+          new FragmentInstanceStateMachine(instanceId, instanceNotificationExecutor);
+      FragmentInstanceContext fragmentInstanceContext =
+          createFragmentInstanceContext(instanceId, stateMachine);
+      PlanNodeId planNodeId0 = new PlanNodeId("0");
+      fragmentInstanceContext.addOperatorContext(
+          0, planNodeId0, ShowQueriesOperator.class.getSimpleName());
+      PlanNodeId planNodeId1 = new PlanNodeId("1");
+      fragmentInstanceContext.addOperatorContext(
+          1, planNodeId1, ShowQueriesOperator.class.getSimpleName());
+      PlanNodeId planNodeId2 = new PlanNodeId("2");
+      fragmentInstanceContext.addOperatorContext(
+          2, planNodeId2, SortOperator.class.getSimpleName());
+      PlanNodeId planNodeId3 = new PlanNodeId("3");
+      fragmentInstanceContext.addOperatorContext(
+          3, planNodeId3, SortOperator.class.getSimpleName());
+      PlanNodeId planNodeId4 = new PlanNodeId("4");
+      fragmentInstanceContext.addOperatorContext(
+          4, planNodeId4, MergeSortOperator.class.getSimpleName());
+
+      List<OperatorContext> operatorContexts = fragmentInstanceContext.getOperatorContexts();
+      List<TSDataType> dataTypes = DatasetHeaderFactory.getShowQueriesHeader().getRespDataTypes();
+      Comparator<MergeSortKey> comparator =
+          MergeSortComparator.getComparator(
+              Arrays.asList(
+                  new SortItem(SortKey.TIME, Ordering.ASC),
+                  new SortItem(SortKey.DATANODEID, Ordering.DESC)),
+              ImmutableList.of(-1, 1),
+              ImmutableList.of(TSDataType.INT64, TSDataType.INT32));
+
+      Coordinator coordinator1 = Mockito.mock(Coordinator.class);
+      Mockito.when(coordinator1.getAllQueryExecutions())
+          .thenReturn(
+              ImmutableList.of(
+                  new FakeQueryExecution(3, "20221229_000000_00003_1", "sql3_node1"),
+                  new FakeQueryExecution(1, "20221229_000000_00001_1", "sql1_node1"),
+                  new FakeQueryExecution(2, "20221229_000000_00002_1", "sql2_node1")));
+      Coordinator coordinator2 = Mockito.mock(Coordinator.class);
+      Mockito.when(coordinator2.getAllQueryExecutions())
+          .thenReturn(
+              ImmutableList.of(
+                  new FakeQueryExecution(3, "20221229_000000_00003_2", "sql3_node2"),
+                  new FakeQueryExecution(2, "20221229_000000_00002_2", "sql2_node2"),
+                  new FakeQueryExecution(1, "20221229_000000_00001_2", "sql1_node2")));
+
+      ShowQueriesOperator showQueriesOperator1 =
+          new ShowQueriesOperator(operatorContexts.get(0), planNodeId0, coordinator1);
+      ShowQueriesOperator showQueriesOperator2 =
+          new ShowQueriesOperator(operatorContexts.get(1), planNodeId1, coordinator2);
+      SortOperator sortOperator1 =
+          new SortOperator(operatorContexts.get(2), showQueriesOperator1, dataTypes, comparator);
+      SortOperator sortOperator2 =
+          new SortOperator(operatorContexts.get(3), showQueriesOperator2, dataTypes, comparator);
+      Operator root =
+          new MergeSortOperator(
+              operatorContexts.get(4),
+              ImmutableList.of(sortOperator1, sortOperator2),
+              dataTypes,
+              comparator);
+
+      int index = 0;
+      // Time ASC
+      long[] expectedTime = new long[] {1, 1, 2, 2, 3, 3};
+      // DataNodeId DESC if Times are equal
+      String[] expectedQueryId =
+          new String[] {
+            "20221229_000000_00001_2",
+            "20221229_000000_00001_1",
+            "20221229_000000_00002_2",
+            "20221229_000000_00002_1",
+            "20221229_000000_00003_2",
+            "20221229_000000_00003_1"
+          };
+      int[] expectedDataNodeId = new int[] {2, 1, 2, 1, 2, 1};
+      String[] expectedStatement =
+          new String[] {
+            "sql1_node2", "sql1_node1", "sql2_node2", "sql2_node1", "sql3_node2", "sql3_node1"
+          };
+      while (root.hasNext()) {
+        TsBlock result = root.next();
+        if (result == null) {
+          continue;
+        }
+
+        for (int i = 0; i < result.getPositionCount(); i++, index++) {
+          assertEquals(expectedTime[index], result.getTimeColumn().getLong(i));
+          assertEquals(expectedQueryId[index], result.getColumn(0).getBinary(i).toString());
+          assertEquals(expectedDataNodeId[index], result.getColumn(1).getInt(i));
+          assertEquals(expectedStatement[index], result.getColumn(3).getBinary(i).toString());
+        }
+      }
+    } finally {
+      instanceNotificationExecutor.shutdown();
+    }
+  }
+
+  static class FakeQueryExecution implements IQueryExecution {
+    private final long startTime;
+    private final String queryId;
+    private final String sql;
+
+    FakeQueryExecution(long startTime, String queryId, String sql) {
+      this.startTime = startTime;
+      this.queryId = queryId;
+      this.sql = sql;
+    }
+
+    @Override
+    public String getQueryId() {
+      return queryId;
+    }
+
+    @Override
+    public long getStartExecutionTime() {
+      return startTime;
+    }
+
+    @Override
+    public void recordExecutionTime(long executionTime) {}
+
+    @Override
+    public long getTotalExecutionTime() {
+      return 0;
+    }
+
+    @Override
+    public Optional<String> getExecuteSQL() {
+      return Optional.of(sql);
+    }
+
+    @Override
+    public Statement getStatement() {
+      return null;
+    }
+
+    @Override
+    public void start() {}
+
+    @Override
+    public void stop() {}
+
+    @Override
+    public void stopAndCleanup() {}
+
+    @Override
+    public void cancel() {}
+
+    @Override
+    public ExecutionResult getStatus() {
+      return null;
+    }
+
+    @Override
+    public Optional<TsBlock> getBatchResult() throws IoTDBException {
+      return Optional.empty();
+    }
+
+    @Override
+    public Optional<ByteBuffer> getByteBufferBatchResult() throws IoTDBException {
+      return Optional.empty();
+    }
+
+    @Override
+    public boolean hasNextResult() {
+      return false;
+    }
+
+    @Override
+    public int getOutputValueColumnCount() {
+      return 0;
+    }
+
+    @Override
+    public DatasetHeader getDatasetHeader() {
+      return null;
+    }
+
+    @Override
+    public boolean isQuery() {
+      return false;
+    }
   }
 }

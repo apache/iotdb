@@ -130,7 +130,7 @@ public abstract class PageManager implements IPageManager {
     reader.close();
 
     // complete log file
-    if (res.size() != 0) {
+    if (!res.isEmpty()) {
       FileOutputStream outputStream = new FileOutputStream(logPath, true);
       outputStream.write(new byte[] {SchemaFileConfig.SF_COMMIT_MARK});
       long length = outputStream.getChannel().size();
@@ -493,14 +493,14 @@ public abstract class PageManager implements IPageManager {
   protected ISegmentedPage getMinApplSegmentedPageInMem(short size) {
     for (Map.Entry<Integer, ISchemaPage> entry : dirtyPages.entrySet()) {
       if (entry.getValue().getAsSegmentedPage() != null
-          && entry.getValue().isCapableForSize(size)) {
+          && entry.getValue().getAsSegmentedPage().isCapableForSegSize(size)) {
         return dirtyPages.get(entry.getKey()).getAsSegmentedPage();
       }
     }
 
     for (Map.Entry<Integer, ISchemaPage> entry : pageInstCache.entrySet()) {
       if (entry.getValue().getAsSegmentedPage() != null
-          && entry.getValue().isCapableForSize(size)) {
+          && entry.getValue().getAsSegmentedPage().isCapableForSegSize(size)) {
         markDirty(entry.getValue());
         return pageInstCache.get(entry.getKey()).getAsSegmentedPage();
       }

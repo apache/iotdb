@@ -46,11 +46,9 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowStorageGroupResp;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
 import org.apache.iotdb.consensus.ConsensusFactory;
-import org.apache.iotdb.it.env.ConfigFactory;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
-import org.apache.iotdb.itbase.env.BaseConfig;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.AfterClass;
@@ -76,25 +74,10 @@ import static org.apache.iotdb.confignode.it.utils.ConfigNodeTestUtils.generateP
 public class IoTDBPartitionGetterIT {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBPartitionGetterIT.class);
-
-  private static final BaseConfig CONF = ConfigFactory.getConfig();
-
-  private static String originalConfigNodeConsensusProtocolClass;
-  private static String originalSchemaRegionConsensusProtocolClass;
-  private static String originalDataRegionConsensusProtocolClass;
   private static final String testConsensusProtocolClass = ConsensusFactory.RATIS_CONSENSUS;
-
-  private static int originalSchemaReplicationFactor;
-  private static int originalDataReplicationFactor;
   private static final int testReplicationFactor = 3;
-
-  private static int originalSeriesPartitionSlotNum;
-
-  private static long originalTimePartitionInterval;
   private static final long testTimePartitionInterval = 604800000;
-
-  protected static int originalLeastDataRegionGroupNum;
-  private static final int testLeastDataRegionGroupNum = 3;
+  private static final int testLeastDataRegionGroupNum = 5;
 
   private static final String sg = "root.sg";
   private static final int storageGroupNum = 2;
@@ -105,33 +88,25 @@ public class IoTDBPartitionGetterIT {
 
   @BeforeClass
   public static void setUp() throws Exception {
-    originalConfigNodeConsensusProtocolClass =
-        ConfigFactory.getConfig().getConfigNodeConsensusProtocolClass();
-    originalSchemaRegionConsensusProtocolClass =
-        ConfigFactory.getConfig().getSchemaRegionConsensusProtocolClass();
-    originalDataRegionConsensusProtocolClass =
-        ConfigFactory.getConfig().getDataRegionConsensusProtocolClass();
-    CONF.setConfigNodeConsesusProtocolClass(testConsensusProtocolClass);
-    CONF.setSchemaRegionConsensusProtocolClass(testConsensusProtocolClass);
-    CONF.setDataRegionConsensusProtocolClass(testConsensusProtocolClass);
-
-    originalSchemaReplicationFactor = CONF.getSchemaReplicationFactor();
-    originalDataReplicationFactor = CONF.getDataReplicationFactor();
-    CONF.setSchemaReplicationFactor(testReplicationFactor);
-    CONF.setDataReplicationFactor(testReplicationFactor);
-
-    originalSeriesPartitionSlotNum = CONF.getSeriesPartitionSlotNum();
-    CONF.setSeriesPartitionSlotNum(testSeriesPartitionSlotNum);
-
-    originalTimePartitionInterval = CONF.getTimePartitionInterval();
-    CONF.setTimePartitionInterval(testTimePartitionInterval);
-
-    originalLeastDataRegionGroupNum = CONF.getLeastDataRegionGroupNum();
-    CONF.setLeastDataRegionGroupNum(testLeastDataRegionGroupNum);
-
+    EnvFactory.getEnv()
+        .getConfig()
+        .getCommonConfig()
+        .setConfigNodeConsensusProtocolClass(testConsensusProtocolClass)
+        .setSchemaRegionConsensusProtocolClass(testConsensusProtocolClass)
+        .setDataRegionConsensusProtocolClass(testConsensusProtocolClass)
+        .setSchemaReplicationFactor(testReplicationFactor)
+        .setDataReplicationFactor(testReplicationFactor)
+        .setTimePartitionInterval(testTimePartitionInterval)
+        .setLeastDataRegionGroupNum(testLeastDataRegionGroupNum);
+    // .setSeriesSlotNum(testSeriesPartitionSlotNum);
     // Init 1C3D environment
     EnvFactory.getEnv().initClusterEnvironment(1, 3);
     prepareData();
+  }
+
+  @AfterClass
+  public static void tearDown() {
+    EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
   private static void prepareData() throws Exception {
@@ -221,20 +196,6 @@ public class IoTDBPartitionGetterIT {
         }
       }
     }
-  }
-
-  @AfterClass
-  public static void tearDown() {
-    EnvFactory.getEnv().cleanAfterClass();
-
-    CONF.setConfigNodeConsesusProtocolClass(originalConfigNodeConsensusProtocolClass);
-    CONF.setSchemaRegionConsensusProtocolClass(originalSchemaRegionConsensusProtocolClass);
-    CONF.setDataRegionConsensusProtocolClass(originalDataRegionConsensusProtocolClass);
-
-    CONF.setSchemaReplicationFactor(originalSchemaReplicationFactor);
-    CONF.setDataReplicationFactor(originalDataReplicationFactor);
-    CONF.setSeriesPartitionSlotNum(originalSeriesPartitionSlotNum);
-    CONF.setTimePartitionInterval(originalTimePartitionInterval);
   }
 
   @Test

@@ -27,17 +27,23 @@ import java.util.Objects;
 
 public class ShowDevicesPlanImpl extends AbstractShowSchemaPlanImpl implements IShowDevicesPlan {
 
-  private final boolean hasSgCol;
+  // templateId > -1 means the device should use template with given templateId
+  private final int schemaTemplateId;
 
   ShowDevicesPlanImpl(
-      PartialPath path, int limit, int offset, boolean hasSgCol, boolean isPrefixMatch) {
+      PartialPath path, int limit, int offset, boolean isPrefixMatch, int schemaTemplateId) {
     super(path, limit, offset, isPrefixMatch);
-    this.hasSgCol = hasSgCol;
+    this.schemaTemplateId = schemaTemplateId;
   }
 
   @Override
-  public boolean hasSgCol() {
-    return hasSgCol;
+  public boolean usingSchemaTemplate() {
+    return schemaTemplateId != -1;
+  }
+
+  @Override
+  public int getSchemaTemplateId() {
+    return schemaTemplateId;
   }
 
   @Override
@@ -46,11 +52,11 @@ public class ShowDevicesPlanImpl extends AbstractShowSchemaPlanImpl implements I
     if (o == null || getClass() != o.getClass()) return false;
     if (!super.equals(o)) return false;
     ShowDevicesPlanImpl that = (ShowDevicesPlanImpl) o;
-    return hasSgCol == that.hasSgCol;
+    return schemaTemplateId == that.schemaTemplateId;
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), hasSgCol);
+    return Objects.hash(super.hashCode(), schemaTemplateId);
   }
 }

@@ -111,8 +111,9 @@ public class NewQueryHandler extends AbstractQueryHandler {
           TSExecuteStatementResp tsExecuteStatementResp =
               NewInfluxDBServiceImpl.executeStatement(functionSql, sessionid);
           Map<String, Object> map = QueryResultUtils.getColumnNameAndValue(tsExecuteStatementResp);
-          for (String colume : map.keySet()) {
-            Object o = map.get(colume);
+          for (Map.Entry<String, Object> entry : map.entrySet()) {
+            String colume = entry.getKey();
+            Object o = entry.getValue();
             String fullPath = colume.substring(functionName.length() + 1, colume.length() - 1);
             String devicePath = StringUtils.getDeviceByPath(fullPath);
             String specificSql =

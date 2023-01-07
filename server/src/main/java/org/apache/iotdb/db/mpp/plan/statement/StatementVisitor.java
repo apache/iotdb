@@ -66,6 +66,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStorageGroupStatement
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTriggersStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowVariablesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.UnSetTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ActivateTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.CreateSchemaTemplateStatement;
@@ -81,6 +82,7 @@ import org.apache.iotdb.db.mpp.plan.statement.sys.AuthorStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ClearCacheStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ExplainStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.FlushStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.KillQueryStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.LoadConfigurationStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.MergeStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.SetSystemStatusStatement;
@@ -170,6 +172,10 @@ public abstract class StatementVisitor<R, C> {
 
   public R visitShowTTL(ShowTTLStatement showTTLStatement, C context) {
     return visitStatement(showTTLStatement, context);
+  }
+
+  public R visitShowVariables(ShowVariablesStatement showVariablesStatement, C context) {
+    return visitStatement(showVariablesStatement, context);
   }
 
   public R visitShowCluster(ShowClusterStatement showClusterStatement, C context) {
@@ -317,6 +323,10 @@ public abstract class StatementVisitor<R, C> {
 
   public R visitSetSystemStatus(SetSystemStatusStatement setSystemStatusStatement, C context) {
     return visitStatement(setSystemStatusStatement, context);
+  }
+
+  public R visitKillQuery(KillQueryStatement killQueryStatement, C context) {
+    return visitStatement(killQueryStatement, context);
   }
 
   public R visitShowQueries(ShowQueriesStatement showQueriesStatement, C context) {

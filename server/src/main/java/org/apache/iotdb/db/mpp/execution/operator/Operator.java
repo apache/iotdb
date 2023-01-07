@@ -38,8 +38,31 @@ public interface Operator extends AutoCloseable {
     return NOT_BLOCKED;
   }
 
+  default TsBlock nextWithTimer() {
+    OperatorContext context = getOperatorContext();
+    long startTime = System.nanoTime();
+
+    try {
+      return next();
+    } finally {
+      context.recordExecutionTime(System.nanoTime() - startTime);
+      context.recordNextCalled();
+    }
+  }
+
   /** Gets next tsBlock from this operator. If no data is currently available, return null. */
   TsBlock next();
+
+  default boolean hasNextWithTimer() {
+    OperatorContext context = getOperatorContext();
+    long startTime = System.nanoTime();
+
+    try {
+      return hasNext();
+    } finally {
+      context.recordExecutionTime(System.nanoTime() - startTime);
+    }
+  }
 
   /** @return true if the operator has more data, otherwise false */
   boolean hasNext();

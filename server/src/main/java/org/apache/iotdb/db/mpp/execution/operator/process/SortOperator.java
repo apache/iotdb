@@ -18,55 +18,120 @@
  */
 package org.apache.iotdb.db.mpp.execution.operator.process;
 
+import org.apache.iotdb.db.mpp.execution.operator.Operator;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
+import org.apache.iotdb.db.utils.datastructure.MergeSortKey;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
+import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
+import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
+import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
 
 import com.google.common.util.concurrent.ListenableFuture;
 
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+
 public class SortOperator implements ProcessOperator {
+  private final OperatorContext operatorContext;
+  private final Operator inputOperator;
+  private final TsBlockBuilder tsBlockBuilder;
+
+  private List<MergeSortKey> cachedData;
+  private final Comparator<MergeSortKey> comparator;
+
+  public SortOperator(
+      OperatorContext operatorContext,
+      Operator inputOperator,
+      List<TSDataType> dataTypes,
+      Comparator<MergeSortKey> comparator) {
+    this.operatorContext = operatorContext;
+    this.inputOperator = inputOperator;
+    this.tsBlockBuilder = new TsBlockBuilder(dataTypes);
+    this.cachedData = new ArrayList<>();
+    this.comparator = comparator;
+  }
 
   @Override
   public OperatorContext getOperatorContext() {
-    return null;
+    return operatorContext;
   }
 
   @Override
   public ListenableFuture<?> isBlocked() {
-    return ProcessOperator.super.isBlocked();
+    return inputOperator.isBlocked();
   }
 
   @Override
   public TsBlock next() {
-    return null;
+    TsBlock tsBlock = inputOperator.nextWithTimer();
+    if (tsBlock == null) {
+      return null;
+    }
+    // add data of each TsBlock from child into list
+    for (int i = 0; i < tsBlock.getPositionCount(); i++) {
+      cachedData.add(new MergeSortKey(tsBlock, i));
+    }
+    // child has more data, can't calculate
+    if (inputOperator.hasNextWithTimer()) {
+      return null;
+    }
+
+    if (cachedData.size() > 1) {
+      cachedData.sort(comparator);
+    }
+    TsBlock result = buildTsBlock();
+    cachedData = null;
+    return result;
+  }
+
+  private TsBlock buildTsBlock() {
+    TimeColumnBuilder timeColumnBuilder = tsBlockBuilder.getTimeColumnBuilder();
+    ColumnBuilder[] valueColumnBuilders = tsBlockBuilder.getValueColumnBuilders();
+    cachedData.forEach(
+        mergeSortKey -> {
+          TsBlock tsBlock = mergeSortKey.tsBlock;
+          int row = mergeSortKey.rowIndex;
+          timeColumnBuilder.writeLong(tsBlock.getTimeByIndex(row));
+          for (int i = 0; i < valueColumnBuilders.length; i++) {
+            valueColumnBuilders[i].write(tsBlock.getColumn(i), row);
+          }
+          tsBlockBuilder.declarePosition();
+        });
+    return tsBlockBuilder.build();
   }
 
   @Override
   public boolean hasNext() {
-    return false;
+    return inputOperator.hasNextWithTimer();
   }
 
   @Override
   public void close() throws Exception {
-    ProcessOperator.super.close();
+    inputOperator.close();
   }
 
   @Override
   public boolean isFinished() {
-    return false;
+    return cachedData == null;
   }
 
   @Override
   public long calculateMaxPeekMemory() {
-    return 0;
+    // In fact, we need to cache all data from input.
+    // Now the child of this Operator only will be ShowQueries, it only returns one Block.
+    return inputOperator.calculateMaxPeekMemory()
+        + inputOperator.calculateRetainedSizeAfterCallingNext();
   }
 
   @Override
   public long calculateMaxReturnSize() {
-    return 0;
+    return inputOperator.calculateMaxReturnSize();
   }
 
   @Override
   public long calculateRetainedSizeAfterCallingNext() {
-    return 0;
+    return inputOperator.calculateRetainedSizeAfterCallingNext();
   }
 }

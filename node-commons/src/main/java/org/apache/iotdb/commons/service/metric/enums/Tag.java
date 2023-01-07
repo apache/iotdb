@@ -24,7 +24,11 @@ public enum Tag {
   NAME,
   REGION,
   STATUS,
-  DATABASE;
+  DATABASE,
+  FROM,
+  STAGE,
+  OPERATION,
+  INTERFACE;
 
   @Override
   public String toString() {

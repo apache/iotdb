@@ -36,7 +36,7 @@ public abstract class RegionMaintainTask {
   protected final RegionMaintainType type;
   protected TDataNodeLocation targetDataNode;
 
-  public RegionMaintainTask(RegionMaintainType type) {
+  protected RegionMaintainTask(RegionMaintainType type) {
     this.type = type;
   }
 

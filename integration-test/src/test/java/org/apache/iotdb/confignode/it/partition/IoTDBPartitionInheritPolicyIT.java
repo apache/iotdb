@@ -30,7 +30,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
 import org.apache.iotdb.consensus.ConsensusFactory;
-import org.apache.iotdb.it.env.ConfigFactory;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
@@ -53,20 +52,10 @@ import java.util.concurrent.TimeUnit;
 public class IoTDBPartitionInheritPolicyIT {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBPartitionInheritPolicyIT.class);
-
-  private static boolean originalEnableDataPartitionInheritPolicy;
   private static final boolean testEnableDataPartitionInheritPolicy = true;
-
-  private static String originalDataRegionConsensusProtocolClass;
   private static final String testDataRegionConsensusProtocolClass =
       ConsensusFactory.RATIS_CONSENSUS;
-
-  private static int originalDataReplicationFactor;
   private static final int testReplicationFactor = 3;
-
-  private static int originalSeriesPartitionSlotNum;
-
-  private static long originalTimePartitionInterval;
   private static final long testTimePartitionInterval = 604800000;
 
   private static final String sg = "root.sg";
@@ -78,24 +67,14 @@ public class IoTDBPartitionInheritPolicyIT {
 
   @BeforeClass
   public static void setUp() throws Exception {
-    originalDataRegionConsensusProtocolClass =
-        ConfigFactory.getConfig().getDataRegionConsensusProtocolClass();
-    ConfigFactory.getConfig()
-        .setDataRegionConsensusProtocolClass(testDataRegionConsensusProtocolClass);
-
-    originalEnableDataPartitionInheritPolicy =
-        ConfigFactory.getConfig().isEnableDataPartitionInheritPolicy();
-    ConfigFactory.getConfig()
-        .setEnableDataPartitionInheritPolicy(testEnableDataPartitionInheritPolicy);
-
-    originalDataReplicationFactor = ConfigFactory.getConfig().getDataReplicationFactor();
-    ConfigFactory.getConfig().setDataReplicationFactor(testReplicationFactor);
-
-    originalSeriesPartitionSlotNum = ConfigFactory.getConfig().getSeriesPartitionSlotNum();
-    ConfigFactory.getConfig().setSeriesPartitionSlotNum(testSeriesPartitionSlotNum * 10);
-
-    originalTimePartitionInterval = ConfigFactory.getConfig().getTimePartitionInterval();
-    ConfigFactory.getConfig().setTimePartitionInterval(testTimePartitionInterval);
+    EnvFactory.getEnv()
+        .getConfig()
+        .getCommonConfig()
+        .setDataRegionConsensusProtocolClass(testDataRegionConsensusProtocolClass)
+        .setEnableDataPartitionInheritPolicy(testEnableDataPartitionInheritPolicy)
+        .setDataReplicationFactor(testReplicationFactor)
+        .setTimePartitionInterval(testTimePartitionInterval)
+        .setSeriesSlotNum(testSeriesPartitionSlotNum * 10);
 
     // Init 1C3D environment
     EnvFactory.getEnv().initClusterEnvironment(1, 3);
@@ -113,15 +92,7 @@ public class IoTDBPartitionInheritPolicyIT {
 
   @AfterClass
   public static void tearDown() {
-    EnvFactory.getEnv().cleanAfterClass();
-
-    ConfigFactory.getConfig()
-        .setDataRegionConsensusProtocolClass(originalDataRegionConsensusProtocolClass);
-    ConfigFactory.getConfig()
-        .setEnableDataPartitionInheritPolicy(originalEnableDataPartitionInheritPolicy);
-    ConfigFactory.getConfig().setDataReplicationFactor(originalDataReplicationFactor);
-    ConfigFactory.getConfig().setSeriesPartitionSlotNum(originalSeriesPartitionSlotNum);
-    ConfigFactory.getConfig().setTimePartitionInterval(originalTimePartitionInterval);
+    EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
   @Test

@@ -69,6 +69,9 @@ public class IoTDBConstant {
   public static final String CN_TARGET_CONFIG_NODE_LIST = "cn_target_config_node_list";
   public static final String DN_TARGET_CONFIG_NODE_LIST = "dn_target_config_node_list";
 
+  public static final String CLUSTER_NAME = "cluster_name";
+  public static final String DEFAULT_CLUSTER_NAME = "defaultCluster";
+
   // when running the program in IDE, we can not get the version info using
   // getImplementationVersion()
   public static final String VERSION =
@@ -110,14 +113,13 @@ public class IoTDBConstant {
   public static final String MIN_TIME = "min_time";
   public static final String LAST_VALUE = "last_value";
   public static final int MIN_SUPPORTED_JDK_VERSION = 8;
-  public static final Set<String> reservedWords =
-      new HashSet<String>() {
-        {
-          add("TIME");
-          add("TIMESTAMP");
-          add("ROOT");
-        }
-      };
+  public static final Set<String> reservedWords = new HashSet<>();
+
+  static {
+    reservedWords.add("TIME");
+    reservedWords.add("TIMESTAMP");
+    reservedWords.add("ROOT");
+  }
 
   // show info
   public static final String COLUMN_ITEM = "                             item";
@@ -201,7 +203,7 @@ public class IoTDBConstant {
               MAX_STRING_LENGTH));
 
   // default base dir, stores all IoTDB runtime files
-  public static final String DEFAULT_BASE_DIR = "data" + File.separator + "datanode";
+  public static final String DEFAULT_BASE_DIR = "data" + File.separator + DN_ROLE;
 
   // data folder name
   public static final String DATA_FOLDER_NAME = "data";
@@ -264,28 +266,6 @@ public class IoTDBConstant {
   public static final String WAL_VERSION_ID = "versionId";
   public static final String WAL_START_SEARCH_INDEX = "startSearchIndex";
   public static final String WAL_STATUS_CODE = "statusCode";
-
-  // show cluster status
-  public static final String NODE_TYPE_CONFIG_NODE = "ConfigNode";
-  public static final String NODE_TYPE_DATA_NODE = "DataNode";
-  public static final String CLUSTER_NAME = "ClusterName";
-  public static final String CONFIG_NODE_CONSENSUS_PROTOCOL_CLASS =
-      "ConfigNodeConsensusProtocolClass";
-  public static final String DATA_REGION_CONSENSUS_PROTOCOL_CLASS =
-      "DataRegionConsensusProtocolClass";
-  public static final String SCHEMA_REGION_CONSENSUS_PROTOCOL_CLASS =
-      "SchemaRegionConsensusProtocolClass";
-  public static final String SERIES_SLOT_NUM = "SeriesSlotNum";
-  public static final String SERIES_SLOT_EXECUTOR_CLASS = "SeriesSlotExecutorClass";
-  public static final String DEFAULT_TTL = "DefaultTTL(ms)";
-  public static final String TIME_PARTITION_INTERVAL = "TimePartitionInterval";
-  public static final String DATA_REPLICATION_FACTOR = "DataReplicationFactor";
-  public static final String SCHEMA_REPLICATION_FACTOR = "SchemaReplicationFactor";
-  public static final String SCHEMA_REGION_PER_DATA_NODE = "SchemaRegionPerDataNode";
-  public static final String DATA_REGION_PER_PROCESSOR = "DataRegionPerProcessor";
-  public static final String READ_CONSISTENCY_LEVEL = "ReadConsistencyLevel";
-  public static final String DISK_SPACE_WARNING_THRESHOLD = "DiskSpaceWarningThreshold";
-  public static final String LEAST_DATA_REGION_GROUP_NUM = "LeastDataRegionGroupNum";
 
   public static final String IOTDB_FOREGROUND = "iotdb-foreground";
   public static final String IOTDB_PIDFILE = "iotdb-pidfile";

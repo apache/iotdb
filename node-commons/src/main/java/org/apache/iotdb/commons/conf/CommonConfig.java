@@ -99,13 +99,14 @@ public class CommonConfig {
    * ClientManager will have so many selector threads (TAsyncClientManager) to distribute to its
    * clients.
    */
-  private int selectorNumOfClientManager =
-      Runtime.getRuntime().availableProcessors() / 4 > 0
-          ? Runtime.getRuntime().availableProcessors() / 4
-          : 1;
+  private int selectorNumOfClientManager = 1;
 
   /** whether to use thrift compression. */
-  private boolean isCnRpcThriftCompressionEnabled = false;
+  private boolean isRpcThriftCompressionEnabled = false;
+
+  private int maxTotalClientForEachNode = 300;
+
+  private int maxIdleClientForEachNode = 200;
 
   /** What will the system do when unrecoverable error occurs. */
   private HandleSystemErrorStrategy handleSystemErrorStrategy =
@@ -246,28 +247,44 @@ public class CommonConfig {
     this.defaultTTLInMs = defaultTTLInMs;
   }
 
-  public int getCnConnectionTimeoutInMS() {
+  public int getConnectionTimeoutInMS() {
     return connectionTimeoutInMS;
   }
 
-  public void setCnConnectionTimeoutInMS(int connectionTimeoutInMS) {
+  public void setConnectionTimeoutInMS(int connectionTimeoutInMS) {
     this.connectionTimeoutInMS = connectionTimeoutInMS;
   }
 
-  public int getCnSelectorNumOfClientManager() {
+  public int getSelectorNumOfClientManager() {
     return selectorNumOfClientManager;
   }
 
-  public void setCnSelectorNumOfClientManager(int selectorNumOfClientManager) {
+  public void setSelectorNumOfClientManager(int selectorNumOfClientManager) {
     this.selectorNumOfClientManager = selectorNumOfClientManager;
   }
 
-  public boolean isCnRpcThriftCompressionEnabled() {
-    return isCnRpcThriftCompressionEnabled;
+  public boolean isRpcThriftCompressionEnabled() {
+    return isRpcThriftCompressionEnabled;
   }
 
-  public void setCnRpcThriftCompressionEnabled(boolean cnRpcThriftCompressionEnabled) {
-    isCnRpcThriftCompressionEnabled = cnRpcThriftCompressionEnabled;
+  public void setRpcThriftCompressionEnabled(boolean rpcThriftCompressionEnabled) {
+    isRpcThriftCompressionEnabled = rpcThriftCompressionEnabled;
+  }
+
+  public int getMaxTotalClientForEachNode() {
+    return maxTotalClientForEachNode;
+  }
+
+  public void setMaxTotalClientForEachNode(int maxTotalClientForEachNode) {
+    this.maxTotalClientForEachNode = maxTotalClientForEachNode;
+  }
+
+  public int getMaxIdleClientForEachNode() {
+    return maxIdleClientForEachNode;
+  }
+
+  public void setMaxIdleClientForEachNode(int maxIdleClientForEachNode) {
+    this.maxIdleClientForEachNode = maxIdleClientForEachNode;
   }
 
   HandleSystemErrorStrategy getHandleSystemErrorStrategy() {
@@ -317,6 +334,8 @@ public class CommonConfig {
       case Removing:
         logger.info(
             "Change system status to Removing! The current Node is being removed from cluster!");
+        break;
+      default:
         break;
     }
   }

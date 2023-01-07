@@ -87,8 +87,8 @@ public class SchemaQueryOrderByHeatOperator implements ProcessOperator {
         if (operator.isFinished()) {
           noMoreTsBlocks[i] = true;
         } else {
-          if (operator.hasNext()) {
-            TsBlock tsBlock = operator.next();
+          if (operator.hasNextWithTimer()) {
+            TsBlock tsBlock = operator.nextWithTimer();
             if (null != tsBlock && !tsBlock.isEmpty()) {
               if (isShowTimeSeriesBlock(tsBlock)) {
                 showTimeSeriesResult.add(tsBlock);
@@ -132,10 +132,7 @@ public class SchemaQueryOrderByHeatOperator implements ProcessOperator {
         Object[] line = tsBlockRowIterator.next();
         String timeseries = line[0].toString();
         long time = timeseriesToLastTimestamp.getOrDefault(timeseries, 0L);
-        if (!lastTimestampToTsSchema.containsKey(time)) {
-          lastTimestampToTsSchema.put(time, new ArrayList<>());
-        }
-        lastTimestampToTsSchema.get(time).add(line);
+        lastTimestampToTsSchema.computeIfAbsent(time, key -> new ArrayList<>()).add(line);
       }
     }
 
@@ -203,7 +200,7 @@ public class SchemaQueryOrderByHeatOperator implements ProcessOperator {
 
   @Override
   public boolean isFinished() {
-    return !hasNext();
+    return !hasNextWithTimer();
   }
 
   @Override

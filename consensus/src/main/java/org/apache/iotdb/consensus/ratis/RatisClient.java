@@ -18,9 +18,8 @@
  */
 package org.apache.iotdb.consensus.ratis;
 
-import org.apache.iotdb.commons.client.BaseClientFactory;
-import org.apache.iotdb.commons.client.ClientFactoryProperty;
 import org.apache.iotdb.commons.client.ClientManager;
+import org.apache.iotdb.commons.client.factory.BaseClientFactory;
 import org.apache.iotdb.consensus.config.RatisConfig;
 
 import org.apache.commons.pool2.PooledObject;
@@ -41,6 +40,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 
 public class RatisClient {
+
   private final Logger logger = LoggerFactory.getLogger(RatisClient.class);
   private final RaftGroup serveGroup;
   private final RaftClient raftClient;
@@ -59,7 +59,7 @@ public class RatisClient {
     return raftClient;
   }
 
-  public void close() {
+  private void close() {
     try {
       raftClient.close();
     } catch (IOException e) {
@@ -68,9 +68,7 @@ public class RatisClient {
   }
 
   public void returnSelf() {
-    if (clientManager != null) {
-      clientManager.returnClient(serveGroup, this);
-    }
+    clientManager.returnClient(serveGroup, this);
   }
 
   public static class Factory extends BaseClientFactory<RaftGroup, RatisClient> {
@@ -81,11 +79,10 @@ public class RatisClient {
 
     public Factory(
         ClientManager<RaftGroup, RatisClient> clientManager,
-        ClientFactoryProperty clientPoolProperty,
         RaftProperties raftProperties,
         RaftClientRpc clientRpc,
         Supplier<RatisConfig.Impl> config) {
-      super(clientManager, clientPoolProperty);
+      super(clientManager);
       this.raftProperties = raftProperties;
       this.clientRpc = clientRpc;
       this.config = config;
@@ -97,7 +94,7 @@ public class RatisClient {
     }
 
     @Override
-    public PooledObject<RatisClient> makeObject(RaftGroup group) throws Exception {
+    public PooledObject<RatisClient> makeObject(RaftGroup group) {
       return new DefaultPooledObject<>(
           new RatisClient(
               group,
@@ -128,7 +125,7 @@ public class RatisClient {
   private static class RatisRetryPolicy implements RetryPolicy {
 
     private static final Logger logger = LoggerFactory.getLogger(RatisClient.class);
-    private static final int maxAttempts = 10;
+    private static final int MAX_ATTEMPTS = 10;
     RetryPolicy defaultPolicy;
 
     public RatisRetryPolicy(RatisConfig.Impl config) {
@@ -147,13 +144,10 @@ public class RatisClient {
     @Override
     public Action handleAttemptFailure(Event event) {
 
-      if (event.getCause() != null) {
-        if (event.getCause() instanceof IOException
-            && !(event.getCause() instanceof RaftException)) {
-          // unexpected. may be caused by statemachine.
-          logger.debug("raft client request failed and caught exception: ", event.getCause());
-          return NO_RETRY_ACTION;
-        }
+      if (event.getCause() instanceof IOException && !(event.getCause() instanceof RaftException)) {
+        // unexpected. may be caused by statemachine.
+        logger.debug("raft client request failed and caught exception: ", event.getCause());
+        return NO_RETRY_ACTION;
       }
 
       return defaultPolicy.handleAttemptFailure(event);

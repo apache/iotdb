@@ -66,13 +66,13 @@ public class IoTDBGroupByNaturalMonthIT {
   @BeforeClass
   public static void setUp() throws Exception {
     df.setTimeZone(TimeZone.getTimeZone("GMT+00:00"));
-    EnvFactory.getEnv().initBeforeClass();
+    EnvFactory.getEnv().initClusterEnvironment();
     prepareData(dataSet.toArray(new String[0]));
   }
 
   @AfterClass
   public static void tearDown() throws Exception {
-    EnvFactory.getEnv().cleanAfterClass();
+    EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
   /**

@@ -52,7 +52,7 @@ public abstract class AbstractFragInsStateTracker implements IFragInstanceStateT
   private final IClientManager<TEndPoint, SyncDataNodeInternalServiceClient>
       internalServiceClientManager;
 
-  public AbstractFragInsStateTracker(
+  protected AbstractFragInsStateTracker(
       QueryStateMachine stateMachine,
       ScheduledExecutorService scheduledExecutor,
       List<FragmentInstance> instances,

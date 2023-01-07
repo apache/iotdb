@@ -62,7 +62,8 @@ import java.util.NoSuchElementException;
  * @param <N> The node consisting the tree.
  * @param <R> The result extracted from the tree.
  */
-public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Iterator<R> {
+public abstract class AbstractTreeVisitor<N extends ITreeNode, R>
+    implements Iterator<R>, AutoCloseable {
 
   // command parameters
   protected final N root;
@@ -85,9 +86,17 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
   private IStateMatchInfo currentStateMatchInfo;
   // whether to visit the subtree of current node
   private boolean shouldVisitSubtree;
+  // record exception if failed
+  private Throwable throwable;
 
   // cached result variables
-  protected N nextMatchedNode;
+  private N nextMatchedNode;
+
+  // only used for wrapper
+  protected AbstractTreeVisitor() {
+    root = null;
+    patternFA = null;
+  }
 
   protected AbstractTreeVisitor(N root, PartialPath pathPattern, boolean isPrefixMatch) {
     this.root = root;
@@ -127,7 +136,16 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
     ancestorStack.add(new AncestorStackEntry(root, currentStateMatchInfo));
   }
 
+  public boolean isSuccess() {
+    return throwable != null;
+  }
+
+  public Throwable getThrowable() {
+    return throwable;
+  }
+
   public void reset() {
+    close();
     visitorStack.clear();
     ancestorStack.clear();
     nextMatchedNode = null;
@@ -136,11 +154,26 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
   }
 
   @Override
-  public boolean hasNext() {
-    if (nextMatchedNode == null) {
-      getNext();
+  public void close() {
+    if (nextMatchedNode != null && !shouldVisitSubtree) {
+      // release nextMatchedNode
+      releaseNode(nextMatchedNode);
     }
-    return nextMatchedNode != null;
+    while (!visitorStack.isEmpty()) {
+      popStack();
+    }
+  }
+
+  @Override
+  public boolean hasNext() {
+    if (throwable == null && nextMatchedNode == null) {
+      try {
+        getNext();
+      } catch (Throwable e) {
+        setFailure(e);
+      }
+    }
+    return throwable == null && nextMatchedNode != null;
   }
 
   @Override
@@ -148,15 +181,18 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
     if (!hasNext()) {
       throw new NoSuchElementException();
     }
-    R result = generateResult();
+    R result = generateResult(nextMatchedNode);
+    if (!shouldVisitSubtree) {
+      // release nextMatchedNode
+      releaseNode(nextMatchedNode);
+    }
     nextMatchedNode = null;
     return result;
   }
 
-  protected void getNext() {
+  private void getNext() {
     nextMatchedNode = null;
     VisitorStackEntry stackEntry;
-    N node;
     Iterator<N> iterator;
     while (!visitorStack.isEmpty()) {
       stackEntry = visitorStack.peek();
@@ -167,17 +203,28 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
         continue;
       }
 
-      node = iterator.next();
+      N nextTempNode = iterator.next();
 
       if (currentStateMatchInfo.hasFinalState()) {
-        shouldVisitSubtree = processFullMatchedNode(node);
+        if (acceptFullMatchedNode(nextTempNode)) {
+          nextMatchedNode = nextTempNode;
+        }
+        shouldVisitSubtree = shouldVisitSubtreeOfFullMatchedNode(nextTempNode);
       } else {
-        shouldVisitSubtree = processInternalMatchedNode(node);
+        if (acceptInternalMatchedNode(nextTempNode)) {
+          nextMatchedNode = nextTempNode;
+        }
+        shouldVisitSubtree = shouldVisitSubtreeOfInternalMatchedNode(nextTempNode);
       }
 
       if (shouldVisitSubtree) {
-        pushChildren(node);
+        pushChildren(nextTempNode);
+        // After adding nextTempNode into ancestorStack, nextTempNode will be released finally.
+      } else if (nextMatchedNode != nextTempNode) {
+        // Else if nextTempNode is not accepted, it needs to be released.
+        releaseNode(nextTempNode);
       }
+      // Otherwise, it will be released when invoking next()
 
       if (nextMatchedNode != null) {
         return;
@@ -187,11 +234,13 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
 
   private void pushChildren(N parent) {
     visitorStack.push(
-        new VisitorStackEntry(createChildrenIterator(parent), visitorStack.peek().level + 1));
+        new VisitorStackEntry(
+            createChildrenIterator(parent),
+            visitorStack.isEmpty() ? 1 : visitorStack.peek().level + 1));
     ancestorStack.add(new AncestorStackEntry(parent, currentStateMatchInfo));
   }
 
-  private Iterator<N> createChildrenIterator(N parent) {
+  private AbstractChildrenIterator createChildrenIterator(N parent) {
     if (firstAncestorOfTraceback > -1) {
       // there may be traceback when try to find the matched state of node
       return new TraceBackChildrenIterator(parent, currentStateMatchInfo);
@@ -212,11 +261,13 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
   }
 
   private void popStack() {
-    visitorStack.pop();
+    VisitorStackEntry stackEntry = visitorStack.pop();
+    stackEntry.iterator.close();
     // The ancestor pop operation with level check supports the children of one node pushed by
     // batch.
     if (!visitorStack.isEmpty() && visitorStack.peek().level < ancestorStack.size()) {
-      ancestorStack.remove(ancestorStack.size() - 1);
+      AncestorStackEntry ancestorStackEntry = ancestorStack.remove(ancestorStack.size() - 1);
+      releaseNode(ancestorStackEntry.node);
       if (ancestorStack.size() <= firstAncestorOfTraceback) {
         firstAncestorOfTraceback = -1;
       }
@@ -245,11 +296,22 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
     }
   }
 
-  // Get a child with the given childName.
-  protected abstract N getChild(N parent, String childName);
+  protected void setFailure(Throwable e) {
+    this.throwable = e;
+  }
 
-  // Get a iterator of all children.
-  protected abstract Iterator<N> getChildrenIterator(N parent);
+  // Get a child with the given childName.
+  protected abstract N getChild(N parent, String childName) throws Exception;
+
+  // Get an iterator of all children.
+  protected abstract Iterator<N> getChildrenIterator(N parent) throws Exception;
+
+  // Release a child node.
+  protected void releaseNode(N node) {}
+
+  // Release an iterator. It is not necessary to deal with all the elements in the iterator.
+  // Only the elements that have been fetched but not returned by next() need to be released.
+  protected void releaseNodeIterator(Iterator<N> nodeIterator) {}
 
   /**
    * Internal-match means the node matches an internal node name of the given path pattern. root.sg
@@ -260,7 +322,7 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
    * process will keep traversing the subtree. If return false, the traversing process will skip the
    * subtree of given node.
    */
-  protected abstract boolean processInternalMatchedNode(N node);
+  protected abstract boolean shouldVisitSubtreeOfInternalMatchedNode(N node);
 
   /**
    * Full-match means the node matches the last node name of the given path pattern. root.sg.d full
@@ -270,20 +332,26 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
    * process will keep traversing the subtree. If return false, the traversing process will skip the
    * subtree of given node.
    */
-  protected abstract boolean processFullMatchedNode(N node);
+  protected abstract boolean shouldVisitSubtreeOfFullMatchedNode(N node);
+
+  /** Only accepted nodes will be considered for hasNext() and next() */
+  protected abstract boolean acceptInternalMatchedNode(N node);
+
+  /** Only accepted nodes will be considered for hasNext() and next() */
+  protected abstract boolean acceptFullMatchedNode(N node);
 
   /** The method used for generating the result based on the matched node. */
-  protected abstract R generateResult();
+  protected abstract R generateResult(N nextMatchedNode);
 
   private class VisitorStackEntry {
 
     // children iterator
-    private final Iterator<N> iterator;
+    private final AbstractChildrenIterator iterator;
 
-    // level of children taken from iterator
+    // level of children taken from iterator, start from 1
     private final int level;
 
-    VisitorStackEntry(Iterator<N> iterator, int level) {
+    VisitorStackEntry(AbstractChildrenIterator iterator, int level) {
       this.iterator = iterator;
       this.level = level;
     }
@@ -308,7 +376,12 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
     @Override
     public boolean hasNext() {
       if (nextMatchedChild == null) {
-        getNext();
+        try {
+          getNext();
+        } catch (Throwable e) {
+          setFailure(e);
+          return false;
+        }
       }
       return nextMatchedChild != null;
     }
@@ -328,14 +401,19 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
       currentStateMatchInfo = stateMatchInfo;
     }
 
-    protected abstract void getNext();
+    protected abstract void getNext() throws Exception;
+
+    protected void close() {
+      if (nextMatchedChild != null) {
+        releaseNode(nextMatchedChild);
+      }
+    }
   }
 
   // the child can be got directly with the precise value of transition, there's no traceback
   private class PreciseMatchChildrenIterator extends AbstractChildrenIterator {
     private final N parent;
     private final IFAState sourceState;
-
     private final Iterator<IFATransition> transitionIterator;
 
     private PreciseMatchChildrenIterator(N parent, IFAState sourceState) {
@@ -345,12 +423,11 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
     }
 
     @Override
-    protected void getNext() {
-      N child;
+    protected void getNext() throws Exception {
       IFATransition transition;
       while (transitionIterator.hasNext()) {
         transition = transitionIterator.next();
-        child = getChild(parent, transition.getAcceptEvent());
+        N child = getChild(parent, transition.getAcceptEvent());
         if (child == null) {
           continue;
         }
@@ -368,32 +445,41 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
   private class SingleFuzzyMatchChildrenIterator extends AbstractChildrenIterator {
 
     private final IFAState sourceState;
-
     private final IFATransition transition;
-
     private final StateSingleMatchInfo stateMatchInfo;
+    private final N parent;
 
-    private final Iterator<N> childrenIterator;
+    private Iterator<N> childrenIterator;
 
     private SingleFuzzyMatchChildrenIterator(N parent, IFAState sourceState) {
       this.sourceState = sourceState;
       this.transition = patternFA.getFuzzyMatchTransitionIterator(sourceState).next();
       this.stateMatchInfo =
           new StateSingleMatchInfo(patternFA, patternFA.getNextState(sourceState, transition));
-      this.childrenIterator = getChildrenIterator(parent);
+      this.parent = parent;
     }
 
     @Override
-    protected void getNext() {
+    protected void getNext() throws Exception {
+      if (childrenIterator == null) {
+        this.childrenIterator = getChildrenIterator(parent);
+      }
       N child;
       while (childrenIterator.hasNext()) {
         child = childrenIterator.next();
         if (tryGetNextState(child, sourceState, transition) == null) {
+          releaseNode(child);
           continue;
         }
         saveResult(child, stateMatchInfo);
         return;
       }
+    }
+
+    @Override
+    protected void close() {
+      super.close();
+      releaseNodeIterator(childrenIterator);
     }
   }
 
@@ -404,19 +490,22 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
   private class MultiMatchTransitionChildrenIterator extends AbstractChildrenIterator {
 
     private final IFAState sourceState;
-
     private final Map<String, IFATransition> preciseMatchTransitionMap;
+    private final N parent;
 
-    private final Iterator<N> iterator;
+    private Iterator<N> iterator;
 
     private MultiMatchTransitionChildrenIterator(N parent, IFAState sourceState) {
       this.sourceState = sourceState;
-      this.iterator = getChildrenIterator(parent);
       this.preciseMatchTransitionMap = patternFA.getPreciseMatchTransition(sourceState);
+      this.parent = parent;
     }
 
     @Override
-    protected void getNext() {
+    protected void getNext() throws Exception {
+      if (iterator == null) {
+        this.iterator = getChildrenIterator(parent);
+      }
       N child;
 
       IFAState matchedState = null;
@@ -438,6 +527,7 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
             }
           }
           if (matchedState == null) {
+            releaseNode(child);
             continue;
           }
         }
@@ -456,23 +546,33 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
         return;
       }
     }
+
+    @Override
+    protected void close() {
+      super.close();
+      releaseNodeIterator(iterator);
+    }
   }
 
   // there may be traceback when try to find the matched state of node;
   // the iterating process will try to get the first matched state of a child.
   private class TraceBackChildrenIterator extends AbstractChildrenIterator {
 
-    private final Iterator<N> iterator;
-
+    private final N parent;
     private final IStateMatchInfo sourceStateMatchInfo;
+
+    private Iterator<N> iterator;
 
     TraceBackChildrenIterator(N parent, IStateMatchInfo sourceStateMatchInfo) {
       this.sourceStateMatchInfo = sourceStateMatchInfo;
-      this.iterator = getChildrenIterator(parent);
+      this.parent = parent;
     }
 
     @Override
-    protected void getNext() {
+    protected void getNext() throws Exception {
+      if (iterator == null) {
+        iterator = getChildrenIterator(parent);
+      }
       N child;
 
       IFAState sourceState;
@@ -498,6 +598,7 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
         if (stateMatchInfo.getMatchedStateSize() == 0) {
           traceback(child, stateMatchInfo, sourceStateMatchInfo.getMatchedStateSize() - 1);
           if (stateMatchInfo.getMatchedStateSize() == 0) {
+            releaseNode(child);
             continue;
           }
         }
@@ -630,6 +731,12 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
           }
         }
       }
+    }
+
+    @Override
+    protected void close() {
+      super.close();
+      releaseNodeIterator(iterator);
     }
   }
 

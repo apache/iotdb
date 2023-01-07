@@ -437,8 +437,8 @@ public class ReceiverManager {
                   IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold());
       if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()
           && result.status.code != TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode()) {
-        logger.error(String.format("Create Database error, statement: %s.", statement));
-        logger.error(String.format("Create database result status : %s.", result.status));
+        logger.error("Create Database error, statement: {}.", statement);
+        logger.error("Create database result status : {}.", result.status);
         return false;
       }
     } catch (IllegalPathException e) {

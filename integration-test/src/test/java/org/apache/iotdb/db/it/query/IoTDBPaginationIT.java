@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.it.query;
 
-import org.apache.iotdb.it.env.ConfigFactory;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
@@ -81,20 +80,16 @@ public class IoTDBPaginationIT {
         "insert into root.vehicle.d0(timestamp,s1) values(2000-01-01T08:00:00+08:00, 100)"
       };
 
-  private static int maxQueryDeduplicatedPathNum;
-
   @BeforeClass
   public static void setUp() throws InterruptedException {
-    maxQueryDeduplicatedPathNum = ConfigFactory.getConfig().getMaxQueryDeduplicatedPathNum();
-    ConfigFactory.getConfig().setMaxQueryDeduplicatedPathNum(2);
-    EnvFactory.getEnv().initBeforeClass();
+    EnvFactory.getEnv().getConfig().getCommonConfig().setMaxQueryDeduplicatedPathNum(2);
+    EnvFactory.getEnv().initClusterEnvironment();
     prepareData(SQLs);
   }
 
   @AfterClass
   public static void tearDown() throws Exception {
-    EnvFactory.getEnv().cleanAfterClass();
-    ConfigFactory.getConfig().setMaxQueryDeduplicatedPathNum(maxQueryDeduplicatedPathNum);
+    EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
   @Test

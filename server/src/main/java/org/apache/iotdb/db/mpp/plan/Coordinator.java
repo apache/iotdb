@@ -19,11 +19,11 @@
 package org.apache.iotdb.db.mpp.plan;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.commons.client.ClientPoolFactory;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.db.client.DataNodeClientPoolFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.common.DataNodeEndPoints;
@@ -44,6 +44,8 @@ import org.apache.iotdb.db.utils.SetThreadName;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ScheduledExecutorService;
@@ -54,6 +56,7 @@ import java.util.concurrent.ScheduledExecutorService;
  * QueryExecution.
  */
 public class Coordinator {
+
   private static final Logger LOGGER = LoggerFactory.getLogger(Coordinator.class);
 
   private static final String COORDINATOR_EXECUTOR_NAME = "MPPCoordinator";
@@ -69,7 +72,7 @@ public class Coordinator {
       INTERNAL_SERVICE_CLIENT_MANAGER =
           new IClientManager.Factory<TEndPoint, SyncDataNodeInternalServiceClient>()
               .createClientManager(
-                  new DataNodeClientPoolFactory.SyncDataNodeInternalServiceClientPoolFactory());
+                  new ClientPoolFactory.SyncDataNodeInternalServiceClientPoolFactory());
 
   private final ExecutorService executor;
   private final ExecutorService writeOperationExecutor;
@@ -169,6 +172,10 @@ public class Coordinator {
     return queryExecutionMap.get(queryId);
   }
 
+  public List<IQueryExecution> getAllQueryExecutions() {
+    return new ArrayList<>(queryExecutionMap.values());
+  }
+
   // TODO: (xingtanzjr) need to redo once we have a concrete policy for the threadPool management
   private ExecutorService getQueryExecutor() {
     int coordinatorReadExecutorSize =
@@ -201,7 +208,7 @@ public class Coordinator {
         queryExecution.stopAndCleanup();
         queryExecutionMap.remove(queryId);
         if (queryExecution.isQuery()) {
-          long costTime = System.currentTimeMillis() - queryExecution.getStartExecutionTime();
+          long costTime = queryExecution.getTotalExecutionTime();
           if (costTime >= CONFIG.getSlowQueryThreshold()) {
             SLOW_SQL_LOGGER.info(
                 "Cost: {} ms, sql is {}",
@@ -213,7 +220,27 @@ public class Coordinator {
     }
   }
 
+  public IClientManager<TEndPoint, SyncDataNodeInternalServiceClient>
+      getInternalServiceClientManager() {
+    return INTERNAL_SERVICE_CLIENT_MANAGER;
+  }
+
   public static Coordinator getInstance() {
     return INSTANCE;
+  }
+
+  public void recordExecutionTime(long queryId, long executionTime) {
+    IQueryExecution queryExecution = getQueryExecution(queryId);
+    if (queryExecution != null) {
+      queryExecution.recordExecutionTime(executionTime);
+    }
+  }
+
+  public long getTotalExecutionTime(long queryId) {
+    IQueryExecution queryExecution = getQueryExecution(queryId);
+    if (queryExecution != null) {
+      return queryExecution.getTotalExecutionTime();
+    }
+    return -1L;
   }
 }

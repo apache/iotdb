@@ -71,8 +71,12 @@ public class ConfigExecution implements IQueryExecution {
 
   private static final TsBlockSerde serde = new TsBlockSerde();
 
+  private Statement statement;
+  private long totalExecutionTime;
+
   public ConfigExecution(MPPQueryContext context, Statement statement, ExecutorService executor) {
     this.context = context;
+    this.statement = statement;
     this.executor = executor;
     this.stateMachine = new QueryStateMachine(context.getQueryId(), executor);
     this.taskFuture = SettableFuture.create();
@@ -145,6 +149,11 @@ public class ConfigExecution implements IQueryExecution {
 
   @Override
   public void stopAndCleanup() {}
+
+  @Override
+  public void cancel() {
+    throw new UnsupportedOperationException(getClass().getName());
+  }
 
   @Override
   public ExecutionResult getStatus() {
@@ -221,7 +230,22 @@ public class ConfigExecution implements IQueryExecution {
   }
 
   @Override
+  public void recordExecutionTime(long executionTime) {
+    totalExecutionTime += executionTime;
+  }
+
+  @Override
+  public long getTotalExecutionTime() {
+    return totalExecutionTime;
+  }
+
+  @Override
   public Optional<String> getExecuteSQL() {
     return Optional.ofNullable(context.getSql());
+  }
+
+  @Override
+  public Statement getStatement() {
+    return statement;
   }
 }
