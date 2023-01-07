@@ -49,7 +49,7 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
   protected int subTaskNum = IoTDBDescriptor.getInstance().getConfig().getSubCompactionTaskNum();
 
   private RateLimiter compactionRateLimiter =
-      CompactionTaskManager.getInstance().getCompactionIORateLimiter();
+      CompactionTaskManager.getInstance().getMergeWriteRateLimiter();
 
   // check if there is unseq error point during writing
   protected long[] lastTime = new long[subTaskNum];
@@ -164,7 +164,8 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
 
   protected void sealChunk(TsFileIOWriter targetWriter, IChunkWriter iChunkWriter, int subTaskId)
       throws IOException {
-    compactionRateLimiter.acquire(1);
+    CompactionTaskManager.mergeRateLimiterAcquire(
+        compactionRateLimiter, iChunkWriter.estimateMaxSeriesMemSize());
     synchronized (targetWriter) {
       iChunkWriter.writeToFileWriter(targetWriter);
     }
@@ -185,11 +186,11 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
   protected void flushNonAlignedChunkToFileWriter(
       TsFileIOWriter targetWriter, Chunk chunk, ChunkMetadata chunkMetadata, int subTaskId)
       throws IOException {
+    CompactionTaskManager.mergeRateLimiterAcquire(compactionRateLimiter, getChunkSize(chunk));
     synchronized (targetWriter) {
       // seal last chunk to file writer
       chunkWriters[subTaskId].writeToFileWriter(targetWriter);
       chunkPointNumArray[subTaskId] = 0;
-      compactionRateLimiter.acquire(1);
       targetWriter.writeChunk(chunk, chunkMetadata);
     }
   }
@@ -209,7 +210,7 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
       chunkPointNumArray[subTaskId] = 0;
 
       // flush time chunk
-      compactionRateLimiter.acquire(1);
+      CompactionTaskManager.mergeRateLimiterAcquire(compactionRateLimiter, getChunkSize(timeChunk));
       targetWriter.writeChunk(timeChunk, (ChunkMetadata) timeChunkMetadata);
 
       // flush value chunks
@@ -226,7 +227,8 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
               valueChunkWriter.getStatistics());
           continue;
         }
-        compactionRateLimiter.acquire(1);
+        CompactionTaskManager.mergeRateLimiterAcquire(
+            compactionRateLimiter, getChunkSize(valueChunk));
         targetWriter.writeChunk(valueChunk, (ChunkMetadata) valueChunkMetadatas.get(i));
       }
     }
