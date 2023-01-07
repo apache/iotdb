@@ -21,7 +21,7 @@ from thrift.protocol import TBinaryProtocol
 from thrift.server import TServer
 from thrift.transport import TSocket, TTransport
 
-from iotdb.thrift.mlnode.IMLNodeRPCService import (
+from src.iotdb.thrift.mlnode.IMLNodeRPCService import (
     Processor,
 )
 

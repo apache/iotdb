@@ -16,14 +16,4 @@
 # under the License.
 #
 
-
-ML_HOST = '127.0.0.1'
-ML_PORT = 9000
-
-DB_HOST = '127.0.0.1'
-DB_PORT = 6667
-USERNAME = 'root'
-PASSWORD = 'root'
-
-SUCCESS_STATUS = 200
-
+from .config import

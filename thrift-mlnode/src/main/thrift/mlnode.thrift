@@ -19,7 +19,7 @@
 
 include "common.thrift"
 namespace java org.apache.iotdb.mlnode.rpc.thrift
-namespace py iotdbml.thrift.mlnode
+namespace py iotdb.thrift.mlnode
 
 struct TCreateTrainingTaskReq {
   1: required string modelId

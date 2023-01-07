@@ -20,13 +20,13 @@
 from thrift.protocol import TBinaryProtocol
 from thrift.transport import TSocket, TTransport
 
-from iotdb.thrift.mlnode.ttypes import (
+from src.iotdb.thrift import (
     TDeleteModelReq,
     TCreateTrainingTaskReq,
     TForecastReq,
 )
 
-from iotdb.thrift.mlnode.IMLNodeRPCService import (
+from src.iotdb.thrift.mlnode.IMLNodeRPCService import (
     Client
 )
 

@@ -19,10 +19,10 @@
 
 from iotdb.conf.config import *
 
-from iotdb.thrift.common.ttypes import (
+from src.iotdb.thrift.common.ttypes import (
     TSStatus,
 )
-from iotdb.thrift.mlnode.ttypes import (
+from src.iotdb.thrift.mlnode.ttypes import (
     TDeleteModelReq,
     TCreateTrainingTaskReq,
     TForecastReq,

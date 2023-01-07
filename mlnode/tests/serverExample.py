@@ -15,3 +15,10 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+
+from src.iotdb.mlnode.service.server import MLNodeServer
+
+
+if __name__ == "__main__":
+    server = MLNodeServer()
+    server.serve()
