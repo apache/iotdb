@@ -60,15 +60,7 @@ public abstract class EventLongWindow extends EventWindow {
     return eventValue;
   }
 
-  public void setEventValue(long eventValue) {
-    this.eventValue = eventValue;
-  }
-
   public long getPreviousEventValue() {
     return previousEventValue;
-  }
-
-  public void setPreviousEventValue(long previousEventValue) {
-    this.previousEventValue = previousEventValue;
   }
 }

@@ -60,15 +60,7 @@ public abstract class EventFloatWindow extends EventWindow {
     return eventValue;
   }
 
-  public void setEventValue(float eventValue) {
-    this.eventValue = eventValue;
-  }
-
   public float getPreviousEventValue() {
     return previousEventValue;
-  }
-
-  public void setPreviousEventValue(float previousEventValue) {
-    this.previousEventValue = previousEventValue;
   }
 }

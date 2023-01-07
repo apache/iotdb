@@ -60,15 +60,7 @@ public abstract class EventDoubleWindow extends EventWindow {
     return eventValue;
   }
 
-  public void setEventValue(double eventValue) {
-    this.eventValue = eventValue;
-  }
-
   public double getPreviousEventValue() {
     return previousEventValue;
-  }
-
-  public void setPreviousEventValue(double previousEventValue) {
-    this.previousEventValue = previousEventValue;
   }
 }

@@ -61,15 +61,7 @@ public abstract class EventTextWindow extends EventWindow {
     return eventValue;
   }
 
-  public void setEventValue(Binary eventValue) {
-    this.eventValue = eventValue;
-  }
-
   public Binary getPreviousEventValue() {
     return previousEventValue;
-  }
-
-  public void setPreviousEventValue(Binary previousEventValue) {
-    this.previousEventValue = previousEventValue;
   }
 }

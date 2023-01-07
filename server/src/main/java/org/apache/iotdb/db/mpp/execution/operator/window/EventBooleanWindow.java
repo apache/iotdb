@@ -60,15 +60,7 @@ public abstract class EventBooleanWindow extends EventWindow {
     return eventValue;
   }
 
-  public void setEventValue(boolean eventValue) {
-    this.eventValue = eventValue;
-  }
-
   public boolean getPreviousEventValue() {
     return previousEventValue;
-  }
-
-  public void setPreviousEventValue(boolean previousEventValue) {
-    this.previousEventValue = previousEventValue;
   }
 }
