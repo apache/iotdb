@@ -33,19 +33,13 @@ import java.util.List;
 
 public class TimeWindowManager implements IWindowManager {
 
-  private TimeWindow curWindow;
+  private final TimeWindow curWindow;
+  private final boolean ascending;
+  private final ITimeRangeIterator timeRangeIterator;
+  private final boolean needOutputEndTime;
   private boolean initialized;
-
-  private boolean ascending;
-
-  private ITimeRangeIterator timeRangeIterator;
-
   private boolean needSkip;
-
-  private TimeWindowParameter timeWindowParameter;
-
   private long startTime;
-
   private long endTime;
 
   public TimeWindowManager(
@@ -53,7 +47,7 @@ public class TimeWindowManager implements IWindowManager {
     this.timeRangeIterator = timeRangeIterator;
     this.initialized = false;
     this.curWindow = new TimeWindow(this.timeRangeIterator.nextTimeRange());
-    this.timeWindowParameter = timeWindowParameter;
+    this.needOutputEndTime = timeWindowParameter.isNeedOutputEndTime();
     this.ascending = timeRangeIterator.isAscending();
     // At beginning, we do not need to skip inputTsBlock
     this.needSkip = false;
@@ -80,7 +74,7 @@ public class TimeWindowManager implements IWindowManager {
     // belong to previous window have been consumed. If not, we need skip these points.
     this.needSkip = true;
     this.initialized = false;
-    this.startTime = this.curWindow.getCurMinTime();
+    this.startTime = this.timeRangeIterator.currentOutputTime();
     this.endTime = this.curWindow.getCurMaxTime();
     this.curWindow.update(this.timeRangeIterator.nextTimeRange());
   }
@@ -147,7 +141,7 @@ public class TimeWindowManager implements IWindowManager {
   public TsBlockBuilder createResultTsBlockBuilder(List<Aggregator> aggregators) {
     List<TSDataType> dataTypes = getResultDataTypes(aggregators);
     // Judge whether we need output endTime column.
-    if (timeWindowParameter.isNeedOutputEndTime()) {
+    if (this.needOutputEndTime) {
       dataTypes.add(0, TSDataType.INT64);
     }
     return new TsBlockBuilder(dataTypes);
@@ -161,7 +155,7 @@ public class TimeWindowManager implements IWindowManager {
     timeColumnBuilder.writeLong(startTime);
     ColumnBuilder[] columnBuilders = resultTsBlockBuilder.getValueColumnBuilders();
     int columnIndex = 0;
-    if (timeWindowParameter.isNeedOutputEndTime()) {
+    if (this.needOutputEndTime) {
       columnBuilders[0].writeLong(endTime);
       columnIndex = 1;
     }

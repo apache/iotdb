@@ -46,7 +46,11 @@ public class RawDataAggregationOperator extends SingleInputAggregationOperator {
 
   private final IWindowManager windowManager;
 
-  private boolean isSkipping = false;
+  // needSkip is the signal to determine whether to skip the points out of current window to get
+  // endTime when the resultSet needs to output endTime.
+  // If the resultSet needs endTime, needSkip will be set to true when the operator is skipping the
+  // points out of current window.
+  private boolean needSkip = false;
 
   public RawDataAggregationOperator(
       OperatorContext operatorContext,
@@ -73,15 +77,15 @@ public class RawDataAggregationOperator extends SingleInputAggregationOperator {
   @Override
   protected boolean calculateNextAggregationResult() {
 
-    // if isSkipping is true, just get the tsBlock directly.
-    while (isSkipping || !calculateFromRawData()) {
+    // if needSkip is true, just get the tsBlock directly.
+    while (needSkip || !calculateFromRawData()) {
       inputTsBlock = null;
 
       // NOTE: child.next() can only be invoked once
       if (child.hasNextWithTimer() && canCallNext) {
         inputTsBlock = child.nextWithTimer();
         canCallNext = false;
-        if (isSkipping) {
+        if (needSkip) {
           break;
         }
       } else if (child.hasNextWithTimer()) {
@@ -98,19 +102,19 @@ public class RawDataAggregationOperator extends SingleInputAggregationOperator {
     }
 
     // Step into next window
-    // if isSkipping is true, don't need to enter next window again
-    if (!isSkipping) {
+    // if needSkip is true, don't need to enter next window again
+    if (!needSkip) {
       windowManager.next();
     }
     // When some windows without cached endTime trying to output endTime,
     // they need to skip the points in lastWindow in advance to get endTime
     if (windowManager.needSkipInAdvance()) {
-      isSkipping = true;
+      needSkip = true;
       inputTsBlock = windowManager.skipPointsOutOfCurWindow(inputTsBlock);
       if ((inputTsBlock == null || inputTsBlock.isEmpty()) && child.hasNextWithTimer()) {
         return canCallNext;
       }
-      isSkipping = false;
+      needSkip = false;
     }
 
     updateResultTsBlock();

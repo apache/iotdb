@@ -1393,7 +1393,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
           calculateMaxAggregationResultSize(
               aggregationDescriptors, timeRangeIterator, context.getTypeProvider());
 
-      WindowParameter windowParameter = new TimeWindowParameter(TSDataType.INT64, 0, false);
+      WindowParameter windowParameter = new TimeWindowParameter(false);
 
       return new RawDataAggregationOperator(
           operatorContext,

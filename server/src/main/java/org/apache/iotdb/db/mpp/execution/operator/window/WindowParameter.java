@@ -19,21 +19,13 @@
 
 package org.apache.iotdb.db.mpp.execution.operator.window;
 
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-
 public abstract class WindowParameter {
 
   protected WindowType windowType;
 
-  private TSDataType dataType;
+  private final boolean needOutputEndTime;
 
-  private int controlColumnIndex;
-
-  private boolean needOutputEndTime;
-
-  public WindowParameter(TSDataType dataType, int controlColumnIndex, boolean needOutputEndTime) {
-    this.dataType = dataType;
-    this.controlColumnIndex = controlColumnIndex;
+  public WindowParameter(boolean needOutputEndTime) {
     this.needOutputEndTime = needOutputEndTime;
   }
 
@@ -41,27 +33,7 @@ public abstract class WindowParameter {
     return windowType;
   }
 
-  public TSDataType getDataType() {
-    return dataType;
-  }
-
-  public void setDataType(TSDataType dataType) {
-    this.dataType = dataType;
-  }
-
-  public int getControlColumnIndex() {
-    return controlColumnIndex;
-  }
-
-  public void setControlColumnIndex(int controlColumnIndex) {
-    this.controlColumnIndex = controlColumnIndex;
-  }
-
   public boolean isNeedOutputEndTime() {
     return needOutputEndTime;
-  }
-
-  public void setNeedOutputEndTime(boolean needOutputEndTime) {
-    this.needOutputEndTime = needOutputEndTime;
   }
 }

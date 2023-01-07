@@ -1407,7 +1407,7 @@ public class OperatorMemoryTest {
         AggregationUtil.calculateMaxAggregationResultSize(
             aggregationDescriptors, timeRangeIterator, typeProvider);
 
-    WindowParameter windowParameter = new TimeWindowParameter(TSDataType.INT64, 0, false);
+    WindowParameter windowParameter = new TimeWindowParameter(false);
 
     RawDataAggregationOperator rawDataAggregationOperator =
         new RawDataAggregationOperator(

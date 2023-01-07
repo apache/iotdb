@@ -24,8 +24,10 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 public class EventWindowParameter extends WindowParameter {
 
   private final boolean needOutputEvent;
+  private final double delta;
+  private final TSDataType dataType;
 
-  private double delta;
+  private final int controlColumnIndex;
 
   public EventWindowParameter(
       TSDataType dataType,
@@ -33,7 +35,9 @@ public class EventWindowParameter extends WindowParameter {
       boolean needOutputEndTime,
       boolean needOutputEvent,
       double delta) {
-    super(dataType, controlColumnIndex, needOutputEndTime);
+    super(needOutputEndTime);
+    this.controlColumnIndex = controlColumnIndex;
+    this.dataType = dataType;
     this.needOutputEvent = needOutputEvent;
     this.delta = delta;
     this.windowType = WindowType.EVENT_WINDOW;
@@ -47,7 +51,11 @@ public class EventWindowParameter extends WindowParameter {
     return delta;
   }
 
-  public void setDelta(double delta) {
-    this.delta = delta;
+  public TSDataType getDataType() {
+    return dataType;
+  }
+
+  public int getControlColumnIndex() {
+    return controlColumnIndex;
   }
 }

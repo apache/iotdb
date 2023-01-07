@@ -19,13 +19,10 @@
 
 package org.apache.iotdb.db.mpp.execution.operator.window;
 
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-
 public class TimeWindowParameter extends WindowParameter {
 
-  public TimeWindowParameter(
-      TSDataType dataType, int controlColumnIndex, boolean needOutputEndTime) {
-    super(dataType, controlColumnIndex, needOutputEndTime);
+  public TimeWindowParameter(boolean needOutputEndTime) {
+    super(needOutputEndTime);
     this.windowType = WindowType.TIME_WINDOW;
   }
 }
