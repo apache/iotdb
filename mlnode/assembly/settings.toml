@@ -17,5 +17,36 @@
 # under the License.
 #
 
-MN_RPC_ADDRESS="127.0.0.1"
-MN_RPC_PORT="6667"
+####################
+### Ml Node RPC Configuration
+####################
+
+# Used for connection of DataNode/ConfigNode clients
+# Could set 127.0.0.1(for local test) or ipv4 address
+# Datatype: String
+mn_rpc_address = "127.0.0.1"
+
+# Used for connection of DataNode/ConfigNode clients
+# Bind with MN_RPC_ADDRESS
+# Datatype: int
+mn_rpc_port = 10810
+
+####################
+### Target Config Nodes
+####################
+
+# For the first ConfigNode to start, cn_target_config_node_list points to its own cn_internal_address:cn_internal_port.
+# For other ConfigNodes that to join the cluster, target_config_node_list points to any running ConfigNode's cn_internal_address:cn_internal_port.
+# Format: address:port(,address:port)*   e.g. 127.0.0.1:10710,127.0.0.1:10711
+# Datatype: String
+mn_target_config_node_list = "127.0.0.1:10710"
+
+####################
+### Target Data Nodes
+####################
+
+# For the first ConfigNode to start, cn_target_config_node_list points to its own cn_internal_address:cn_internal_port.
+# For other ConfigNodes that to join the cluster, target_config_node_list points to any running ConfigNode's cn_internal_address:cn_internal_port.
+# Format: address:port(,address:port)*   e.g. 127.0.0.1:10710,127.0.0.1:10711
+# Datatype: String
+mn_target_data_node_list = "127.0.0.1:10730"

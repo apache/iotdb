@@ -22,7 +22,7 @@ from thrift.transport import TSocket, TTransport
 from iotdb.thrift.mlnode import IMLNodeRPCService
 from iotdb.thrift.mlnode.ttypes import TDeleteModelReq
 
-from iotdb.mlnode.config import settings
+from iotdb.mlnode.config import config
 from iotdb.mlnode.log import logger
 
 
@@ -50,5 +50,5 @@ class MLNodeClient(object):
 
 if __name__ == "__main__":
     # test rpc service
-    client = MLNodeClient(settings.MN_RPC_ADDRESS, settings.MN_RPC_PORT)
+    client = MLNodeClient(host=config.get_mn_rpc_address(), port=config.get_mn_rpc_port())
     print(client.delete_model("test_model_path"))

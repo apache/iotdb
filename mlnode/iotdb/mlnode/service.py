@@ -26,15 +26,15 @@ from thrift.transport import TSocket, TTransport
 from iotdb.thrift.mlnode import IMLNodeRPCService
 
 from iotdb.mlnode.handler import MLNodeRPCServiceHandler
-from iotdb.mlnode.config import settings
+from iotdb.mlnode.config import config
 from iotdb.mlnode.log import logger
 
 
 class RPCService(threading.Thread):
     def __init__(self):
         super().__init__()
-        processor = IMLNodeRPCService.Processor(MLNodeRPCServiceHandler())
-        transport = TSocket.TServerSocket(settings.MN_RPC_ADDRESS, settings.MN_RPC_PORT)
+        processor = IMLNodeRPCService.Processor(handler=MLNodeRPCServiceHandler())
+        transport = TSocket.TServerSocket(host=config.get_mn_rpc_address(), port=config.get_mn_rpc_port())
         transport_factory = TTransport.TBufferedTransportFactory()
         protocol_factory = TCompactProtocol.TCompactProtocolFactory()
 
@@ -51,6 +51,8 @@ class MLNode(object):
 
     def start(self) -> None:
         self.__rpc_service.start()
+
+        # sleep 100ms for waiting the rpc server start.
         time.sleep(0.1)
         logger.info('IoTDB-MLNode has successfully started.')
 
