@@ -116,8 +116,9 @@ public abstract class Traverser<R> extends AbstractTreeVisitor<IMNode, R> {
   @Override
   protected void releaseNode(IMNode node) {
     if (!node.isAboveDatabase() && !node.isStorageGroup()) {
+      // In any case we can call store#inpin directly because the unpin method will not do anything
+      // if it is an IMNode in template or in memory mode.
       store.unPin(node);
-      // TODO: support template
     }
   }
 
