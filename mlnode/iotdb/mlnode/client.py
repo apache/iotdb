@@ -16,3 +16,38 @@
 # under the License.
 #
 
+from thrift.protocol import TBinaryProtocol
+from thrift.transport import TSocket, TTransport
+
+from iotdb.thrift.mlnode import IMLNodeRPCService
+from iotdb.thrift.mlnode.ttypes import TDeleteModelReq
+
+from iotdb.mlnode.config import settings
+from iotdb.mlnode.log import logger
+
+
+class MLNodeClient(object):
+    def __init__(self, host, port):
+        self.__host = host
+        self.__port = port
+
+        transport = TTransport.TFramedTransport(
+            TSocket.TSocket(self.__host, self.__port)
+        )
+        if not transport.isOpen():
+            try:
+                transport.open()
+            except TTransport.TTransportException as e:
+                logger.exception("TTransportException!", exc_info=e)
+
+        self.__client = IMLNodeRPCService.Client(TBinaryProtocol.TBinaryProtocol(transport))
+
+    def delete_model(self, model_path: str):
+        req = TDeleteModelReq(model_path)
+        return self.__client.deleteModel(req)
+
+
+if __name__ == "__main__":
+    # test rpc service
+    client = MLNodeClient(settings.MN_RPC_ADDRESS, settings.MN_RPC_PORT)
+    print(client.delete_model("test_model_path"))

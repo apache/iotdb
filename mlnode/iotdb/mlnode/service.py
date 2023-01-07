@@ -37,19 +37,19 @@ class RPCService(threading.Thread):
         transport_factory = TTransport.TBufferedTransportFactory()
         protocol_factory = TBinaryProtocol.TBinaryProtocolFactory()
 
-        self.pool_server = TServer.TThreadPoolServer(processor, transport, transport_factory, protocol_factory)
+        self.__pool_server = TServer.TThreadPoolServer(processor, transport, transport_factory, protocol_factory)
 
     def run(self) -> None:
         logger.info("The RPC service thread begin to run...")
-        self.pool_server.serve()
+        self.__pool_server.serve()
 
 
 class MLNode(object):
     def __init__(self):
-        self.rpc_service = RPCService()
+        self.__rpc_service = RPCService()
 
     def start(self) -> None:
-        self.rpc_service.start()
+        self.__rpc_service.start()
         logger.info('IoTDB-MLNode has successfully started.')
 
 
