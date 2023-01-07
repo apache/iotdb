@@ -49,7 +49,7 @@ class MlNodeDescriptor(object):
         self.__load_config_from_file()
 
     def __load_config_from_file(self) -> None:
-        url = '../../assembly/settings.toml'
+        url = '../../resources/conf/iotdb-mlnode.toml'
         logger.info("Start to read config file '{}'".format(url))
         file_configs = Dynaconf(
             envvar_prefix="DYNACONF",
