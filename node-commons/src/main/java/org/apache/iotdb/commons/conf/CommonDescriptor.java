@@ -93,27 +93,66 @@ public class CommonDescriptor {
             .trim()
             .split(","));
 
-    config.setCnRpcThriftCompressionEnabled(
+    config.setRpcThriftCompressionEnabled(
         Boolean.parseBoolean(
             properties
                 .getProperty(
                     "cn_rpc_thrift_compression_enable",
-                    String.valueOf(config.isCnRpcThriftCompressionEnabled()))
+                    String.valueOf(config.isRpcThriftCompressionEnabled()))
                 .trim()));
 
-    config.setCnConnectionTimeoutInMS(
+    config.setConnectionTimeoutInMS(
         Integer.parseInt(
             properties
                 .getProperty(
-                    "cn_connection_timeout_ms", String.valueOf(config.getCnConnectionTimeoutInMS()))
+                    "cn_connection_timeout_ms", String.valueOf(config.getConnectionTimeoutInMS()))
                 .trim()));
 
-    config.setCnSelectorNumOfClientManager(
+    config.setSelectorNumOfClientManager(
         Integer.parseInt(
             properties
                 .getProperty(
                     "cn_selector_thread_nums_of_client_manager",
-                    String.valueOf(config.getCnSelectorNumOfClientManager()))
+                    String.valueOf(config.getSelectorNumOfClientManager()))
+                .trim()));
+
+    config.setConnectionTimeoutInMS(
+        Integer.parseInt(
+            properties
+                .getProperty(
+                    "dn_connection_timeout_ms", String.valueOf(config.getConnectionTimeoutInMS()))
+                .trim()));
+
+    config.setRpcThriftCompressionEnabled(
+        Boolean.parseBoolean(
+            properties
+                .getProperty(
+                    "dn_rpc_thrift_compression_enable",
+                    String.valueOf(config.isRpcThriftCompressionEnabled()))
+                .trim()));
+
+    config.setSelectorNumOfClientManager(
+        Integer.parseInt(
+            properties
+                .getProperty(
+                    "dn_selector_thread_nums_of_client_manager",
+                    String.valueOf(config.getSelectorNumOfClientManager()))
+                .trim()));
+
+    config.setMaxTotalClientForEachNode(
+        Integer.parseInt(
+            properties
+                .getProperty(
+                    "dn_max_connection_for_internal_service",
+                    String.valueOf(config.getMaxTotalClientForEachNode()))
+                .trim()));
+
+    config.setMaxIdleClientForEachNode(
+        Integer.parseInt(
+            properties
+                .getProperty(
+                    "dn_core_connection_for_internal_service",
+                    String.valueOf(config.getMaxIdleClientForEachNode()))
                 .trim()));
 
     config.setHandleSystemErrorStrategy(
