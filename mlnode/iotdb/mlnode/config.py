@@ -16,4 +16,9 @@
 # under the License.
 #
 
-from .config import
+from dynaconf import Dynaconf
+
+settings = Dynaconf(
+    envvar_prefix="DYNACONF",
+    settings_files=['../../assembly/settings.toml'],
+)

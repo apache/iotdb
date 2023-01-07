@@ -16,12 +16,9 @@
 # under the License.
 #
 
-from dynaconf import Dynaconf
+import logging
+from logging.config import fileConfig
 
-settings = Dynaconf(
-    envvar_prefix="DYNACONF",
-    settings_files=['settings.toml'],
-)
+fileConfig('../../assembly/logging_config.ini')
 
-# `envvar_prefix` = export envvars with `export DYNACONF_FOO=bar`.
-# `settings_files` = Load these files in the order.
+logger = logging.getLogger()

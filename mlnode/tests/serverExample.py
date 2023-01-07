@@ -16,9 +16,8 @@
 # under the License.
 #
 
-from src.iotdb.mlnode.service.server import MLNodeServer
-
+from iotdb.mlnode.service import MLNode
 
 if __name__ == "__main__":
-    server = MLNodeServer()
+    server = MLNode()
     server.serve()
