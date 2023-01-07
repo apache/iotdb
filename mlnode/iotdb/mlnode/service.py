@@ -17,8 +17,9 @@
 #
 
 import threading
+import time
 
-from thrift.protocol import TBinaryProtocol
+from thrift.protocol import TCompactProtocol
 from thrift.server import TServer
 from thrift.transport import TSocket, TTransport
 
@@ -35,7 +36,7 @@ class RPCService(threading.Thread):
         processor = IMLNodeRPCService.Processor(MLNodeRPCServiceHandler())
         transport = TSocket.TServerSocket(settings.MN_RPC_ADDRESS, settings.MN_RPC_PORT)
         transport_factory = TTransport.TBufferedTransportFactory()
-        protocol_factory = TBinaryProtocol.TBinaryProtocolFactory()
+        protocol_factory = TCompactProtocol.TCompactProtocolFactory()
 
         self.__pool_server = TServer.TThreadPoolServer(processor, transport, transport_factory, protocol_factory)
 
@@ -50,6 +51,7 @@ class MLNode(object):
 
     def start(self) -> None:
         self.__rpc_service.start()
+        time.sleep(0.1)
         logger.info('IoTDB-MLNode has successfully started.')
 
 

@@ -26,18 +26,27 @@ from iotdb.thrift.mlnode.ttypes import TDeleteModelReq, TCreateTrainingTaskReq, 
 class TSStatusCode(Enum):
     SUCCESS_STATUS = 200
 
+    def get_status_code(self) -> int:
+        return self.value
+
+
+def get_status(status_code: TSStatusCode, message: str) -> TSStatus:
+    status = TSStatus(status_code.get_status_code())
+    status.message = message
+    return status
+
 
 class MLNodeRPCServiceHandler(IMLNodeRPCService.Iface):
     def __init__(self):
         pass
 
     def deleteModel(self, req: TDeleteModelReq):
-        return TSStatus(code=TSStatusCode.SUCCESS_STATUS)
+        return get_status(TSStatusCode.SUCCESS_STATUS, "")
 
     def createTrainingTask(self, req: TCreateTrainingTaskReq):
-        return TSStatus(code=TSStatusCode.SUCCESS_STATUS)
+        return get_status(TSStatusCode.SUCCESS_STATUS, "")
 
     def forecast(self, req: TForecastReq):
-        status = TSStatus(code=TSStatusCode.SUCCESS_STATUS)
+        status = get_status(TSStatusCode.SUCCESS_STATUS, "")
         forecast_result = b'forecast result'
         return TForecastResp(status, forecast_result)
