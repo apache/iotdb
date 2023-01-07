@@ -17,13 +17,22 @@
 #
 
 
-ML_HOST = '127.0.0.1'
-ML_PORT = 9000
+import argparse
 
-DB_HOST = '127.0.0.1'
-DB_PORT = 6667
-USERNAME = 'root'
-PASSWORD = 'root'
 
-SUCCESS_STATUS = 200
+def parseModelConfig(modelConfig):
+    modelType = modelConfig.model_type
+    if modelType == 'DLinear':
+        config = argparse.Namespace(
+            model_type = modelConfig.model_type,
+            seq_len=int(modelConfig.input_length),
+            pred_len=int(modelConfig.output_length),
+            enc_in=int(modelConfig.num_series),
+            individual=modelConfig.individual == str(True),
+        )
+        # default config
+        config.kernel_size = 25
+    else:
+        raise NotImplementedError
 
+    return config

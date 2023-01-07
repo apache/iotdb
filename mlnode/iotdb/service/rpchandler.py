@@ -1,4 +1,20 @@
-import argparse
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+#
 
 
 from iotdb.conf.config import *
@@ -13,14 +29,11 @@ from iotdb.thrift.mlnode.ttypes import (
     TForecastResp,
 )
 
-from iotdb.algorithm.forecast.models import *
 
+from .process.task import BasicTask
 
 class IMLNodeRPCServiceHandler(object):
     def __init__(self):
-        # self.session = Session(DB_HOST, DB_PORT, USERNAME, PASSWORD, fetch_size=1024, zone_id='UTC+8')
-        # self.session.open(False)
-        # print(self.session)
         pass
 
     def deleteModel(self, deleteModelReq: TDeleteModelReq):
@@ -32,12 +45,15 @@ class IMLNodeRPCServiceHandler(object):
     def createTrainingTask(self, createTrainingTaskReq: TCreateTrainingTaskReq):
         modelId = createTrainingTaskReq.modelId
         isAuto = createTrainingTaskReq.isAuto
-        modelConfigs = createTrainingTaskReq.modelConfigs
+        config = createTrainingTaskReq.modelConfigs
         queryExpressions = createTrainingTaskReq.queryExpressions
         queryFilter = createTrainingTaskReq.queryFilter
-        modelType = modelConfigs['type']
-        model = eval(modelType)(self.__parseModelConfigs(modelType, modelConfigs))
-        print(model)
+
+
+        task = BasicTask(config)
+        print(task.model)
+        print(task.data)
+
         return TSStatus(code=SUCCESS_STATUS)
 
 
@@ -50,15 +66,3 @@ class IMLNodeRPCServiceHandler(object):
         forecastResult = b'forecast result'
         return TForecastResp(status, forecastResult)
 
-
-    def __parseModelConfigs(self, modelType, modelConfigs):
-        if modelType == 'DLinear':
-            configs = argparse.Namespace(
-                seq_len=int(modelConfigs['input_length']),
-                pred_len=int(modelConfigs['output_length']),
-                enc_in=int(modelConfigs['num_series']),
-                individual=modelConfigs['individual'] == str(True),
-            )
-        else:
-            raise NotImplementedError
-        return configs
