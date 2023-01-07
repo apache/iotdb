@@ -19,7 +19,7 @@
 package org.apache.iotdb.lsm.sstable.index.bplustree.reader;
 
 import org.apache.iotdb.db.metadata.tagSchemaRegion.config.TagSchemaDescriptor;
-import org.apache.iotdb.lsm.sstable.fileIO.TiFileOutputStream;
+import org.apache.iotdb.lsm.sstable.fileIO.SSTableOutputStream;
 import org.apache.iotdb.lsm.sstable.index.bplustree.entry.BPlusTreeEntry;
 import org.apache.iotdb.lsm.sstable.index.bplustree.entry.BPlusTreeHeader;
 import org.apache.iotdb.lsm.sstable.index.bplustree.entry.BPlusTreeNode;
@@ -90,7 +90,7 @@ public class BPlusTreeReaderTest {
     orderedQueue.forEach(
         bPlusTreeEntry -> map.put(bPlusTreeEntry.getName(), bPlusTreeEntry.getOffset()));
     FileOutputStream fileOutputStream = new FileOutputStream(file);
-    TiFileOutputStream fileOutput = new TiFileOutputStream(fileOutputStream);
+    SSTableOutputStream fileOutput = new SSTableOutputStream(fileOutputStream);
 
     bPlusTreeWriter = new BPlusTreeWriter(fileOutput);
     offset = bPlusTreeWriter.write(map, true);

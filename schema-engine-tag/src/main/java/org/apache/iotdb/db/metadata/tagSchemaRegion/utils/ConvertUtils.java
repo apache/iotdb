@@ -21,7 +21,7 @@ package org.apache.iotdb.db.metadata.tagSchemaRegion.utils;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.config.SchemaRegionConstant;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.entry.Chunk;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.entry.ChunkHeader;
-import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.entry.ChunkIndexEntry;
+import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.entry.ChunkMetaEntry;
 
 import org.roaringbitmap.RoaringBitmap;
 
@@ -39,15 +39,15 @@ public class ConvertUtils {
     return chunkHeader;
   }
 
-  public static ChunkIndexEntry getChunkIndexEntryFromRoaringBitMap(RoaringBitmap roaringBitmap) {
-    ChunkIndexEntry chunkIndexEntry = new ChunkIndexEntry();
+  public static ChunkMetaEntry getChunkIndexEntryFromRoaringBitMap(RoaringBitmap roaringBitmap) {
+    ChunkMetaEntry chunkMetaEntry = new ChunkMetaEntry();
     int[] results = roaringBitmap.stream().toArray();
-    chunkIndexEntry.setCount(results.length);
+    chunkMetaEntry.setCount(results.length);
     if (results.length != 0) {
-      chunkIndexEntry.setIdMax(results[results.length - 1]);
-      chunkIndexEntry.setIdMin(results[0]);
+      chunkMetaEntry.setIdMax(results[results.length - 1]);
+      chunkMetaEntry.setIdMin(results[0]);
     }
-    return chunkIndexEntry;
+    return chunkMetaEntry;
   }
 
   public static String getFlushDeleteFileNameFromFlushFileName(String flushFileName) {

@@ -20,6 +20,12 @@ package org.apache.iotdb.lsm.response;
 
 import java.util.List;
 
+/**
+ * Indicates the response after the lsm framework processes the request, encapsulating the response
+ * value and exception information.
+ *
+ * @param <T> type of the response result
+ */
 public interface IResponse<T> {
 
   void setValue(T value);

@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.reader;
 
-import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.entry.ChunkIndex;
+import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.entry.ChunkMeta;
 import org.apache.iotdb.lsm.sstable.interator.IDiskIterator;
 
 import org.roaringbitmap.RoaringBitmap;
@@ -45,7 +45,7 @@ public interface IChunkGroupReader extends IDiskIterator<Integer> {
    * @return a Chunk Index instance
    * @throws IOException Signals that an I/O exception has occurred.
    */
-  ChunkIndex readChunkIndex(long offset) throws IOException;
+  ChunkMeta readChunkIndex(long offset) throws IOException;
 
   /**
    * Closes this reader and releases any system resources associated with the reader.

@@ -18,14 +18,14 @@
  */
 package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.reader;
 
-import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.entry.ChunkHeader;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.entry.RoaringBitmapHeader;
-import org.apache.iotdb.lsm.sstable.fileIO.ITiFileInputStream;
+import org.apache.iotdb.lsm.sstable.fileIO.ISSTableInputStream;
 import org.apache.iotdb.lsm.sstable.interator.IDiskIterator;
 
 import org.roaringbitmap.RoaringBitmap;
 
+import java.io.EOFException;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -38,7 +38,7 @@ import java.util.NoSuchElementException;
  */
 public class ChunkReader implements IChunkReader {
 
-  private final ITiFileInputStream tiFileInput;
+  private final ISSTableInputStream tiFileInput;
 
   // The deviceID output by the next iteration
   private Integer nextID;
@@ -55,15 +55,23 @@ public class ChunkReader implements IChunkReader {
   // Iteratively read data from the RoaringBitmap container
   private IDiskIterator<Integer> containerIterator;
 
-  public ChunkReader(ITiFileInputStream tiFileInput) throws IOException {
+  public ChunkReader(ISSTableInputStream tiFileInput) throws IOException {
     this.tiFileInput = tiFileInput;
   }
 
-  public ChunkReader(ITiFileInputStream tiFileInput, long chunkHeaderOffset) throws IOException {
+  public ChunkReader(ISSTableInputStream tiFileInput, long chunkHeaderOffset) throws IOException {
     this.tiFileInput = tiFileInput;
     tiFileInput.position(chunkHeaderOffset);
   }
 
+  /**
+   * Read the {@link org.roaringbitmap.RoaringBitmap RoaringBitmap} from the given position
+   *
+   * @param offset a non-negative integer counting the number of bytes from the beginning of the
+   *     TiFile
+   * @return a RoaringBitmap instance
+   * @throws IOException Signals that an I/O exception has occurred.
+   */
   @Override
   public RoaringBitmap readRoaringBitmap(long offset) throws IOException {
     ChunkHeader chunkHeader = readChunkHeader(offset);
@@ -73,6 +81,15 @@ public class ChunkReader implements IChunkReader {
     return roaringBitmap;
   }
 
+  /**
+   * Read the {@link org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.entry.ChunkHeader
+   * ChunkHeader} from the given position
+   *
+   * @param offset a non-negative integer counting the number of bytes from the beginning of the
+   *     TiFile
+   * @return a ChunkHeader instance
+   * @throws IOException Signals that an I/O exception has occurred.
+   */
   @Override
   public ChunkHeader readChunkHeader(long offset) throws IOException {
     ChunkHeader chunkHeader = new ChunkHeader();
@@ -80,7 +97,11 @@ public class ChunkReader implements IChunkReader {
     return chunkHeader;
   }
 
-  @TestOnly
+  /**
+   * Closes this reader and releases any system resources associated with the reader.
+   *
+   * @exception IOException if an I/O error occurs.
+   */
   @Override
   public void close() throws IOException {
     tiFileInput.close();
@@ -89,6 +110,16 @@ public class ChunkReader implements IChunkReader {
     }
   }
 
+  /**
+   * Returns {@code true} if the iteration has more elements. (In other words, returns {@code true}
+   * if {@link #next} would return an element rather than throwing an exception.)
+   *
+   * @return {@code true} if the iteration has more elements
+   * @exception EOFException Signals that an end of file or end of stream has been reached
+   *     unexpectedly during input.
+   * @exception IOException Signals that an I/O exception of some sort has occurred. This class is
+   *     the general class of exceptions produced by failed or interrupted I/O operations.
+   */
   @Override
   public boolean hasNext() throws IOException {
     if (nextID != null) {
@@ -142,8 +173,14 @@ public class ChunkReader implements IChunkReader {
     return false;
   }
 
+  /**
+   * Returns the next element in the iteration.
+   *
+   * @return the next element in the iteration
+   * @throws NoSuchElementException if the iteration has no more elements
+   */
   @Override
-  public Integer next() throws IOException {
+  public Integer next() {
     if (nextID == null) {
       throw new NoSuchElementException();
     }
@@ -173,6 +210,16 @@ public class ChunkReader implements IChunkReader {
       this.count = 0;
     }
 
+    /**
+     * Returns {@code true} if the iteration has more elements. (In other words, returns {@code
+     * true} if {@link #next} would return an element rather than throwing an exception.)
+     *
+     * @return {@code true} if the iteration has more elements
+     * @exception EOFException Signals that an end of file or end of stream has been reached
+     *     unexpectedly during input.
+     * @exception IOException Signals that an I/O exception of some sort has occurred. This class is
+     *     the general class of exceptions produced by failed or interrupted I/O operations.
+     */
     @Override
     public boolean hasNext() throws IOException {
       if (next != null) {
@@ -206,8 +253,14 @@ public class ChunkReader implements IChunkReader {
       return false;
     }
 
+    /**
+     * Returns the next element in the iteration.
+     *
+     * @return the next element in the iteration
+     * @throws NoSuchElementException if the iteration has no more elements
+     */
     @Override
-    public Integer next() throws IOException {
+    public Integer next() {
       if (next == null) {
         throw new NoSuchElementException();
       }
@@ -245,6 +298,16 @@ public class ChunkReader implements IChunkReader {
       this.containerLength = containerLength;
     }
 
+    /**
+     * Returns {@code true} if the iteration has more elements. (In other words, returns {@code
+     * true} if {@link #next} would return an element rather than throwing an exception.)
+     *
+     * @return {@code true} if the iteration has more elements
+     * @exception EOFException Signals that an end of file or end of stream has been reached
+     *     unexpectedly during input.
+     * @exception IOException Signals that an I/O exception of some sort has occurred. This class is
+     *     the general class of exceptions produced by failed or interrupted I/O operations.
+     */
     @Override
     public boolean hasNext() throws IOException {
       if (next != null) {
@@ -258,8 +321,14 @@ public class ChunkReader implements IChunkReader {
       return false;
     }
 
+    /**
+     * Returns the next element in the iteration.
+     *
+     * @return the next element in the iteration
+     * @throws NoSuchElementException if the iteration has no more elements
+     */
     @Override
-    public Integer next() throws IOException {
+    public Integer next() {
       if (next == null) {
         throw new NoSuchElementException();
       }

@@ -19,7 +19,7 @@
 package org.apache.iotdb.lsm.sstable.index.bplustree.writer;
 
 import org.apache.iotdb.db.metadata.tagSchemaRegion.config.TagSchemaDescriptor;
-import org.apache.iotdb.lsm.sstable.fileIO.TiFileOutputStream;
+import org.apache.iotdb.lsm.sstable.fileIO.SSTableOutputStream;
 import org.apache.iotdb.lsm.sstable.index.bplustree.entry.BPlusTreeEntry;
 import org.apache.iotdb.lsm.sstable.index.bplustree.entry.BPlusTreeHeader;
 import org.apache.iotdb.lsm.sstable.index.bplustree.entry.BPlusTreeNode;
@@ -113,7 +113,7 @@ public class BPlusTreeWriterTest {
   public void testWriteBPlusTreeFromOrderedMap() throws IOException {
 
     FileOutputStream fileOutputStream = new FileOutputStream(file);
-    TiFileOutputStream fileOutput = new TiFileOutputStream(fileOutputStream);
+    SSTableOutputStream fileOutput = new SSTableOutputStream(fileOutputStream);
 
     Map<String, Long> map = new TreeMap<>();
 
@@ -130,7 +130,7 @@ public class BPlusTreeWriterTest {
   public void testWriteBPlusTreeFromUnOrderedMap() throws IOException {
 
     FileOutputStream fileOutputStream = new FileOutputStream(file);
-    TiFileOutputStream fileOutput = new TiFileOutputStream(fileOutputStream);
+    SSTableOutputStream fileOutput = new SSTableOutputStream(fileOutputStream);
 
     Map<String, Long> map = new HashMap<>();
 

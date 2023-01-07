@@ -19,7 +19,7 @@
 package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.reader;
 
 import org.apache.iotdb.db.metadata.tagSchemaRegion.utils.ConvertUtils;
-import org.apache.iotdb.lsm.sstable.fileIO.TiFileInputStream;
+import org.apache.iotdb.lsm.sstable.fileIO.SSTableInputStream;
 
 import org.roaringbitmap.RoaringBitmap;
 import org.slf4j.Logger;
@@ -44,20 +44,32 @@ public class DiskDeviceIDReader implements Iterator<Integer> {
 
   private String flushDirPath;
 
+  // In the process of each iteration, it is necessary to check whether the records obtained by next
+  // in the deletionFile have been deleted, and the performance of reading the deletionFile once in
+  // each iteration is poor. Considering that there are fewer deletion operations, the deletionFile
+  // contains fewer records, which can be read into the set at one time, and the deleted records can
+  // be saved in this set.
   private Set<Integer> deletionIDs;
 
+  // If the tifiles to be processed are read iteratively, in order to ensure that the obtained
+  // records are in order, the tifiles can be sorted by number of the file name to read
   private final String[] tiFiles;
 
+  /** The result that the {@link #next} function will get. */
   private Integer next;
 
   private TiFileReader tiFileReader;
 
   private final Map<String, String> tags;
 
+  // In the process of iteratively obtaining records, the subscript identifying the tifile being
+  // read
   private int index;
 
   public DiskDeviceIDReader(String[] tiFiles, Map<String, String> tags, String flushDirPath) {
     this.tiFiles = tiFiles;
+    // in order to ensure that the obtained records are in order, the tifiles can be sorted by
+    // number of the file name to read
     Arrays.sort(tiFiles);
     this.tags = tags;
     this.flushDirPath = flushDirPath;
@@ -82,6 +94,8 @@ public class DiskDeviceIDReader implements Iterator<Integer> {
         return false;
       }
       if (tiFileReader != null) {
+        // If tiFileReader exists, if a record that has not been deleted can be read from this
+        // tiFileReader, then return true. Otherwise, the tiFileReader needs to be closed
         while (tiFileReader.hasNext()) {
           next = tiFileReader.next();
           if (!deletionIDs.contains(next)) {
@@ -187,12 +201,12 @@ public class DiskDeviceIDReader implements Iterator<Integer> {
   }
 
   private void setDeletionIDs(File deletionFile) throws IOException {
-    TiFileInputStream fileInput = null;
+    SSTableInputStream fileInput = null;
     try {
       if (!deletionFile.exists()) {
         return;
       }
-      fileInput = new TiFileInputStream(deletionFile);
+      fileInput = new SSTableInputStream(deletionFile);
       while (true) {
         int id = fileInput.readInt();
         deletionIDs.add(id);
@@ -207,10 +221,10 @@ public class DiskDeviceIDReader implements Iterator<Integer> {
   }
 
   private void deleteRecords(RoaringBitmap roaringBitmap, File deletionFile) throws IOException {
-    TiFileInputStream fileInput = null;
+    SSTableInputStream fileInput = null;
     if (roaringBitmap.isEmpty()) return;
     try {
-      fileInput = new TiFileInputStream(deletionFile);
+      fileInput = new SSTableInputStream(deletionFile);
       while (true) {
         int id = fileInput.readInt();
         roaringBitmap.remove(id);

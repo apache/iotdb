@@ -19,11 +19,11 @@
 package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.reader;
 
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.entry.ChunkHeader;
-import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.entry.ChunkIndex;
-import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.entry.ChunkIndexEntry;
-import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.entry.ChunkIndexHeader;
-import org.apache.iotdb.lsm.sstable.fileIO.TiFileInputStream;
-import org.apache.iotdb.lsm.sstable.fileIO.TiFileOutputStream;
+import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.entry.ChunkMeta;
+import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.entry.ChunkMetaEntry;
+import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.entry.ChunkMetaHeader;
+import org.apache.iotdb.lsm.sstable.fileIO.SSTableInputStream;
+import org.apache.iotdb.lsm.sstable.fileIO.SSTableOutputStream;
 
 import org.junit.After;
 import org.junit.Before;
@@ -50,7 +50,7 @@ public class ChunkGroupReaderTest {
   public void setUp() throws Exception {
     file = new File("ChunkGroupReaderTest");
     serializeChunkGroup();
-    TiFileInputStream dataInput = new TiFileInputStream(file);
+    SSTableInputStream dataInput = new SSTableInputStream(file);
     chunkGroupReader = new ChunkGroupReader(dataInput, chunkIndexOffset);
   }
 
@@ -62,8 +62,8 @@ public class ChunkGroupReaderTest {
 
   @Test
   public void testReadChunkIndex() throws IOException {
-    ChunkIndex chunkIndex = chunkGroupReader.readChunkIndex(chunkIndexOffset);
-    assertEquals(chunkIndex.getChunkIndexHeader().getSize(), 2);
+    ChunkMeta chunkMeta = chunkGroupReader.readChunkIndex(chunkIndexOffset);
+    assertEquals(chunkMeta.getChunkIndexHeader().getSize(), 2);
   }
 
   @Test
@@ -100,18 +100,18 @@ public class ChunkGroupReaderTest {
   }
 
   private void serializeChunkGroup() throws IOException {
-    TiFileOutputStream fileOutput = new TiFileOutputStream(file);
-    List<ChunkIndexEntry> chunkIndexEntries = new ArrayList<>();
+    SSTableOutputStream fileOutput = new SSTableOutputStream(file);
+    List<ChunkMetaEntry> chunkIndexEntries = new ArrayList<>();
     chunkIndexEntries.add(serializeChunk1(fileOutput));
     chunkIndexEntries.add(serializeChunk2(fileOutput));
 
-    ChunkIndexHeader chunkIndexHeader = new ChunkIndexHeader(2);
-    ChunkIndex chunkIndex = new ChunkIndex(chunkIndexEntries, chunkIndexHeader);
-    chunkIndexOffset = fileOutput.write(chunkIndex);
+    ChunkMetaHeader chunkMetaHeader = new ChunkMetaHeader(2);
+    ChunkMeta chunkMeta = new ChunkMeta(chunkIndexEntries, chunkMetaHeader);
+    chunkIndexOffset = fileOutput.write(chunkMeta);
     fileOutput.close();
   }
 
-  private ChunkIndexEntry serializeChunk1(TiFileOutputStream output) throws IOException {
+  private ChunkMetaEntry serializeChunk1(SSTableOutputStream output) throws IOException {
     RoaringBitmap a = new RoaringBitmap();
     for (int i = 0; i < 4097; i++) {
       a.add(i * 6);
@@ -126,10 +126,10 @@ public class ChunkGroupReaderTest {
     output.write(buffer.array(), 0, buffer.limit());
     ChunkHeader chunkHeader = new ChunkHeader(size);
     long offset = output.write(chunkHeader);
-    return new ChunkIndexEntry(offset, 4098, 100000, 0);
+    return new ChunkMetaEntry(offset, 4098, 100000, 0);
   }
 
-  private ChunkIndexEntry serializeChunk2(TiFileOutputStream output) throws IOException {
+  private ChunkMetaEntry serializeChunk2(SSTableOutputStream output) throws IOException {
     RoaringBitmap a = new RoaringBitmap();
 
     a.add(50000000);
@@ -144,6 +144,6 @@ public class ChunkGroupReaderTest {
     output.write(buffer.array(), 0, buffer.limit());
     ChunkHeader chunkHeader = new ChunkHeader(size);
     long offset = output.write(chunkHeader);
-    return new ChunkIndexEntry(offset, 3, 50000000, 0);
+    return new ChunkMetaEntry(offset, 3, 50000000, 0);
   }
 }

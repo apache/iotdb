@@ -27,13 +27,13 @@ import java.io.IOException;
 import java.util.Objects;
 
 /** Record additional information of chunk index */
-public class ChunkIndexHeader implements IDiskEntry {
+public class ChunkMetaHeader implements IDiskEntry {
   // How many chunk index entries are in the chunk index
   private int size;
 
-  public ChunkIndexHeader() {}
+  public ChunkMetaHeader() {}
 
-  public ChunkIndexHeader(int size) {
+  public ChunkMetaHeader(int size) {
     this.size = size;
   }
 
@@ -47,7 +47,7 @@ public class ChunkIndexHeader implements IDiskEntry {
 
   @Override
   public String toString() {
-    return "ChunkIndexHeader{" + "size=" + size + '}';
+    return "ChunkMetaHeader{" + "size=" + size + '}';
   }
 
   @Override
@@ -65,7 +65,7 @@ public class ChunkIndexHeader implements IDiskEntry {
   public boolean equals(Object o) {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
-    ChunkIndexHeader that = (ChunkIndexHeader) o;
+    ChunkMetaHeader that = (ChunkMetaHeader) o;
     return size == that.size;
   }
 

@@ -20,7 +20,8 @@ package org.apache.iotdb.lsm.sstable.index.bplustree.writer;
 
 import org.apache.iotdb.db.metadata.tagSchemaRegion.config.TagSchemaConfig;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.config.TagSchemaDescriptor;
-import org.apache.iotdb.lsm.sstable.fileIO.TiFileOutputStream;
+import org.apache.iotdb.lsm.sstable.fileIO.ISSTableOutputStream;
+import org.apache.iotdb.lsm.sstable.fileIO.SSTableOutputStream;
 import org.apache.iotdb.lsm.sstable.index.bplustree.entry.BPlusTreeEntry;
 import org.apache.iotdb.lsm.sstable.index.bplustree.entry.BPlusTreeHeader;
 import org.apache.iotdb.lsm.sstable.index.bplustree.entry.BPlusTreeNode;
@@ -38,7 +39,7 @@ public class BPlusTreeWriter implements IBPlusTreeWriter {
 
   private Queue<BPlusTreeEntry> upperLevelBPlusTreeEntryQueue;
 
-  private TiFileOutputStream fileOutput;
+  private ISSTableOutputStream fileOutput;
 
   private final TagSchemaConfig bPlushTreeConfig =
       TagSchemaDescriptor.getInstance().getTagSchemaConfig();
@@ -47,14 +48,15 @@ public class BPlusTreeWriter implements IBPlusTreeWriter {
 
   private ByteBuffer byteBuffer;
 
-  public BPlusTreeWriter(TiFileOutputStream fileOutput) {
+  public BPlusTreeWriter(ISSTableOutputStream fileOutput) {
     this.fileOutput = fileOutput;
     this.currentBPlusTreeEntryQueue = new ArrayDeque<>();
     this.upperLevelBPlusTreeEntryQueue = new ArrayDeque<>();
     bPlushTreeHeader = new BPlusTreeHeader();
   }
 
-  public BPlusTreeWriter(Queue<BPlusTreeEntry> bPlusTreeEntryQueue, TiFileOutputStream fileOutput) {
+  public BPlusTreeWriter(
+      Queue<BPlusTreeEntry> bPlusTreeEntryQueue, ISSTableOutputStream fileOutput) {
     this.currentBPlusTreeEntryQueue = bPlusTreeEntryQueue;
     this.upperLevelBPlusTreeEntryQueue = new ArrayDeque<>();
     this.fileOutput = fileOutput;
@@ -168,15 +170,15 @@ public class BPlusTreeWriter implements IBPlusTreeWriter {
     return currentBPlusTreeEntryQueue;
   }
 
-  public TiFileOutputStream getFileOutput() {
+  public ISSTableOutputStream getFileOutput() {
     return fileOutput;
   }
 
-  public void setFileOutput(TiFileOutputStream fileOutput) {
+  public void setFileOutput(SSTableOutputStream fileOutput) {
     this.fileOutput = fileOutput;
   }
 
-  private void setBPlushTreeHeader() {
+  private void setBPlushTreeHeader() throws IOException {
     if (!currentBPlusTreeEntryQueue.isEmpty()) {
       bPlushTreeHeader.setMax(currentBPlusTreeEntryQueue.peek().getName());
       bPlushTreeHeader.setMin(currentBPlusTreeEntryQueue.peek().getName());

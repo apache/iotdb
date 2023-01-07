@@ -18,8 +18,8 @@
  */
 package org.apache.iotdb.lsm.sstable.diskentry;
 
-import org.apache.iotdb.lsm.sstable.fileIO.ITiFileInputStream;
-import org.apache.iotdb.lsm.sstable.fileIO.ITiFileOutputStream;
+import org.apache.iotdb.lsm.sstable.fileIO.ISSTableInputStream;
+import org.apache.iotdb.lsm.sstable.fileIO.ISSTableOutputStream;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
@@ -27,10 +27,10 @@ import java.io.IOException;
 
 /**
  * Represents a disk entry, which implements the disk data structure of this interface, and can be
- * read and written using ITiFileInputStream and ITiFileOutputStream
+ * read and written using ISSTableInputStream and ISSTableOutputStream
  *
- * @see ITiFileInputStream
- * @see ITiFileOutputStream
+ * @see ISSTableInputStream
+ * @see ISSTableOutputStream
  */
 public interface IDiskEntry {
 

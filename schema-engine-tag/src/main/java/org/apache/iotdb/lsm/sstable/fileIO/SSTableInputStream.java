@@ -27,14 +27,14 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 
-public class TiFileInputStream implements ITiFileInputStream {
+public class SSTableInputStream implements ISSTableInputStream {
 
   private String filePath;
   private FileInputStream fileInputStream;
   private FileChannel channel;
   private DataInputStream dataInputStream;
 
-  public TiFileInputStream(File file) throws IOException {
+  public SSTableInputStream(File file) throws IOException {
     this.filePath = file.getAbsolutePath();
     fileInputStream = new FileInputStream(file);
     channel = fileInputStream.getChannel();
@@ -52,7 +52,7 @@ public class TiFileInputStream implements ITiFileInputStream {
   }
 
   @Override
-  public ITiFileInputStream position(long newPosition) throws IOException {
+  public ISSTableInputStream position(long newPosition) throws IOException {
     channel.position(newPosition);
     return this;
   }

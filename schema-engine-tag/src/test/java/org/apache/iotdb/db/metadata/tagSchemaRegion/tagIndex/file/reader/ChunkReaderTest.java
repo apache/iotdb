@@ -19,7 +19,7 @@
 package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.reader;
 
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.entry.ChunkHeader;
-import org.apache.iotdb.lsm.sstable.fileIO.TiFileInputStream;
+import org.apache.iotdb.lsm.sstable.fileIO.SSTableInputStream;
 
 import org.junit.After;
 import org.junit.Before;
@@ -47,7 +47,7 @@ public class ChunkReaderTest {
   public void setUp() throws Exception {
     file = new File("testReadRoaringBitmap");
     serializeChunk(file);
-    TiFileInputStream dataInput = new TiFileInputStream(file);
+    SSTableInputStream dataInput = new SSTableInputStream(file);
     chunkReader = new ChunkReader(dataInput, chunkHeaderOffset);
   }
 

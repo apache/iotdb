@@ -32,24 +32,30 @@ import java.io.OutputStream;
  * a FileOutput implementation with FileOutputStream. If the file is not existed, it will be
  * created. Otherwise the file will be written from position 0.
  */
-public class TiFileOutputStream extends OutputStream implements ITiFileOutputStream {
+public class SSTableOutputStream extends OutputStream implements ISSTableOutputStream {
 
   private final DataOutputStream dataOutputStream;
   private long position;
 
-  public TiFileOutputStream(File file) throws FileNotFoundException {
+  public SSTableOutputStream(File file) throws FileNotFoundException {
     this(new FileOutputStream(file, true));
   }
 
-  public TiFileOutputStream(FileOutputStream outputStream) {
+  public SSTableOutputStream(FileOutputStream outputStream) {
     dataOutputStream = new DataOutputStream(new BufferedOutputStream(outputStream));
     position = 0;
   }
 
   @Override
-  public void write(int b) throws IOException {
-    dataOutputStream.writeInt(b);
+  public void writeInt(int v) throws IOException {
+    dataOutputStream.writeInt(v);
     position += 4;
+  }
+
+  @Override
+  public void write(int b) throws IOException {
+    dataOutputStream.write(b);
+    position += 1;
   }
 
   @Override

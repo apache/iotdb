@@ -19,9 +19,9 @@
 package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.flush;
 
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.entry.Chunk;
-import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.entry.ChunkIndex;
-import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.entry.ChunkIndexEntry;
-import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.entry.ChunkIndexHeader;
+import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.entry.ChunkMeta;
+import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.entry.ChunkMetaEntry;
+import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.entry.ChunkMetaHeader;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemChunk;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.request.FlushRequest;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.response.FlushResponse;
@@ -30,7 +30,7 @@ import org.apache.iotdb.db.metadata.tagSchemaRegion.utils.RoaringBitMapUtils;
 import org.apache.iotdb.lsm.annotation.FlushProcessor;
 import org.apache.iotdb.lsm.context.requestcontext.FlushRequestContext;
 import org.apache.iotdb.lsm.levelProcess.FlushLevelProcessor;
-import org.apache.iotdb.lsm.sstable.fileIO.TiFileOutputStream;
+import org.apache.iotdb.lsm.sstable.fileIO.SSTableOutputStream;
 
 import org.roaringbitmap.RoaringBitmap;
 
@@ -52,25 +52,25 @@ public class MemChunkFlush extends FlushLevelProcessor<MemChunk, Object, FlushRe
   @Override
   public void flush(MemChunk memNode, FlushRequest request, FlushRequestContext context)
       throws IOException {
-    TiFileOutputStream fileOutput = context.getFileOutput();
+    SSTableOutputStream fileOutput = context.getFileOutput();
     List<RoaringBitmap> roaringBitmaps =
         RoaringBitMapUtils.sliceRoaringBitMap(
             memNode.getRoaringBitmap(), request.getChunkMaxSize());
-    ChunkIndex chunkIndex = new ChunkIndex();
+    ChunkMeta chunkMeta = new ChunkMeta();
     int count = 0;
     for (RoaringBitmap roaringBitmap : roaringBitmaps) {
       Chunk chunk = ConvertUtils.getChunkFromRoaringBitMap(roaringBitmap);
       byte[] bytes = new byte[chunk.getChunkHeader().getSize()];
       roaringBitmap.serialize(ByteBuffer.wrap(bytes));
       fileOutput.write(bytes);
-      ChunkIndexEntry chunkIndexEntry =
+      ChunkMetaEntry chunkMetaEntry =
           ConvertUtils.getChunkIndexEntryFromRoaringBitMap(roaringBitmap);
-      chunkIndexEntry.setOffset(fileOutput.write(chunk.getChunkHeader()));
-      chunkIndex.getChunkIndexEntries().add(chunkIndexEntry);
+      chunkMetaEntry.setOffset(fileOutput.write(chunk.getChunkHeader()));
+      chunkMeta.getChunkMetaEntries().add(chunkMetaEntry);
       count++;
     }
-    chunkIndex.setChunkIndexHeader(new ChunkIndexHeader(count));
-    long offset = fileOutput.write(chunkIndex);
+    chunkMeta.setChunkIndexHeader(new ChunkMetaHeader(count));
+    long offset = fileOutput.write(chunkMeta);
     FlushResponse response = context.getResponse();
     response.addChunkOffset(memNode, offset);
   }

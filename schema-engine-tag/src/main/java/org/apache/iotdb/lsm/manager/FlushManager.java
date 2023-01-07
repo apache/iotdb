@@ -23,7 +23,7 @@ import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.config.SchemaRegionConstant;
 import org.apache.iotdb.lsm.context.requestcontext.FlushRequestContext;
 import org.apache.iotdb.lsm.request.IFlushRequest;
-import org.apache.iotdb.lsm.sstable.fileIO.TiFileOutputStream;
+import org.apache.iotdb.lsm.sstable.fileIO.SSTableOutputStream;
 
 import java.io.File;
 import java.io.IOException;
@@ -88,7 +88,7 @@ public class FlushManager<T, R extends IFlushRequest>
   }
 
   private void renameFlushFile(T root, R request, FlushRequestContext context) {
-    TiFileOutputStream fileOutput = context.getFileOutput();
+    SSTableOutputStream fileOutput = context.getFileOutput();
     try {
       fileOutput.close();
       String flushFileName = request.getFlushFileName() + SchemaRegionConstant.TMP;
@@ -113,7 +113,7 @@ public class FlushManager<T, R extends IFlushRequest>
       if (!flushFile.exists()) {
         flushFile.createNewFile();
       }
-      context.setFileOutput(new TiFileOutputStream(flushFile));
+      context.setFileOutput(new SSTableOutputStream(flushFile));
     } catch (IOException e) {
       throw new RuntimeException(e);
     }

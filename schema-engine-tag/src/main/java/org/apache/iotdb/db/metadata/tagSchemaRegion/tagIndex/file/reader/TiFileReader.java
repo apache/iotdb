@@ -18,11 +18,11 @@
  */
 package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.reader;
 
-import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.entry.ChunkIndex;
-import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.entry.ChunkIndexEntry;
+import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.entry.ChunkMeta;
+import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.entry.ChunkMetaEntry;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.entry.TiFileHeader;
-import org.apache.iotdb.lsm.sstable.fileIO.ITiFileInputStream;
-import org.apache.iotdb.lsm.sstable.fileIO.TiFileInputStream;
+import org.apache.iotdb.lsm.sstable.fileIO.ISSTableInputStream;
+import org.apache.iotdb.lsm.sstable.fileIO.SSTableInputStream;
 import org.apache.iotdb.lsm.sstable.index.bplustree.entry.BPlusTreeEntry;
 import org.apache.iotdb.lsm.sstable.index.bplustree.reader.BPlusTreeReader;
 import org.apache.iotdb.lsm.sstable.interator.IDiskIterator;
@@ -30,6 +30,7 @@ import org.apache.iotdb.lsm.util.BloomFilter;
 
 import org.roaringbitmap.RoaringBitmap;
 
+import java.io.EOFException;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -46,13 +47,13 @@ import java.util.TreeMap;
 /** Used to read all tiFile-related structures, and supports iterative acquisition of ids */
 public class TiFileReader implements IDiskIterator<Integer> {
 
-  private final ITiFileInputStream tiFileInput;
+  private final ISSTableInputStream tiFileInput;
 
   private File file;
 
   private Iterator<Integer> oneChunkDeviceIDsIterator;
 
-  private List<ChunkIndex> chunkIndices;
+  private List<ChunkMeta> chunkIndices;
 
   private Integer nextID;
 
@@ -68,12 +69,12 @@ public class TiFileReader implements IDiskIterator<Integer> {
 
   public TiFileReader(File file, Map<String, String> tags) throws IOException {
     this.file = file;
-    this.tiFileInput = new TiFileInputStream(file);
+    this.tiFileInput = new SSTableInputStream(file);
     this.tags = tags;
   }
 
   public TiFileReader(
-      ITiFileInputStream tiFileInput, long tagKeyIndexOffset, Map<String, String> tags)
+      ISSTableInputStream tiFileInput, long tagKeyIndexOffset, Map<String, String> tags)
       throws IOException {
     this.tiFileInput = tiFileInput;
     tiFileInput.position(tagKeyIndexOffset);
@@ -162,28 +163,28 @@ public class TiFileReader implements IDiskIterator<Integer> {
    * @return a {@link org.roaringbitmap.RoaringBitmap roaring bitmap} instance
    * @throws IOException Signals that an I/O exception has occurred.
    */
-  public RoaringBitmap readOneChunkDeviceID(List<ChunkIndex> chunkIndices, int index)
+  public RoaringBitmap readOneChunkDeviceID(List<ChunkMeta> chunkIndices, int index)
       throws IOException {
     if (chunkIndices.size() == 0) {
       return new RoaringBitmap();
     }
-    chunkIndices.sort(Comparator.comparingInt(ChunkIndex::getAllCount));
-    ChunkIndex baseChunkIndex = chunkIndices.get(0);
-    if (index >= baseChunkIndex.getChunkIndexEntries().size()) {
+    chunkIndices.sort(Comparator.comparingInt(ChunkMeta::getAllCount));
+    ChunkMeta baseChunkMeta = chunkIndices.get(0);
+    if (index >= baseChunkMeta.getChunkMetaEntries().size()) {
       return new RoaringBitmap();
     }
     ChunkReader chunkReader = new ChunkReader(tiFileInput);
-    ChunkIndexEntry baseChunkIndexEntry = baseChunkIndex.getChunkIndexEntries().get(index);
-    RoaringBitmap roaringBitmap = chunkReader.readRoaringBitmap(baseChunkIndexEntry.getOffset());
+    ChunkMetaEntry baseChunkMetaEntry = baseChunkMeta.getChunkMetaEntries().get(index);
+    RoaringBitmap roaringBitmap = chunkReader.readRoaringBitmap(baseChunkMetaEntry.getOffset());
     if (chunkIndices.size() == 1) {
       return roaringBitmap;
     }
     RoaringBitmap deviceIDs = new RoaringBitmap();
     for (int i = 1; i < chunkIndices.size(); i++) {
-      List<ChunkIndexEntry> chunkIndexEntries = chunkIndices.get(i).getChunkIndexEntries();
-      for (ChunkIndexEntry chunkIndexEntry : chunkIndexEntries) {
-        if (chunkIndexEntry.intersect(baseChunkIndexEntry)) {
-          chunkReader = new ChunkReader(tiFileInput, chunkIndexEntry.getOffset());
+      List<ChunkMetaEntry> chunkIndexEntries = chunkIndices.get(i).getChunkMetaEntries();
+      for (ChunkMetaEntry chunkMetaEntry : chunkIndexEntries) {
+        if (chunkMetaEntry.intersect(baseChunkMetaEntry)) {
+          chunkReader = new ChunkReader(tiFileInput, chunkMetaEntry.getOffset());
           while (chunkReader.hasNext()) {
             int deviceID = chunkReader.next();
             if (roaringBitmap.contains(deviceID)) {
@@ -208,10 +209,10 @@ public class TiFileReader implements IDiskIterator<Integer> {
    * @return A list saves all chunk indexes
    * @throws IOException Signals that an I/O exception has occurred.
    */
-  public List<ChunkIndex> getChunkIndices(Map<String, String> tags, long tagKeyIndexOffset)
+  public List<ChunkMeta> getChunkIndices(Map<String, String> tags, long tagKeyIndexOffset)
       throws IOException {
     List<Long> chunkIndexOffsets = getChunkIndexOffsets(tags, tagKeyIndexOffset);
-    List<ChunkIndex> chunkIndices = new ArrayList<>();
+    List<ChunkMeta> chunkIndices = new ArrayList<>();
     for (long chunkIndexOffset : chunkIndexOffsets) {
       ChunkGroupReader chunkGroupReader = new ChunkGroupReader(tiFileInput);
       chunkIndices.add(chunkGroupReader.readChunkIndex(chunkIndexOffset));
@@ -310,6 +311,16 @@ public class TiFileReader implements IDiskIterator<Integer> {
     return true;
   }
 
+  /**
+   * Returns {@code true} if the iteration has more elements. (In other words, returns {@code true}
+   * if {@link #next} would return an element rather than throwing an exception.)
+   *
+   * @return {@code true} if the iteration has more elements
+   * @exception EOFException Signals that an end of file or end of stream has been reached
+   *     unexpectedly during input.
+   * @exception IOException Signals that an I/O exception of some sort has occurred. This class is
+   *     the general class of exceptions produced by failed or interrupted I/O operations.
+   */
   @Override
   public boolean hasNext() throws IOException {
     if (nextID != null) {
@@ -329,7 +340,7 @@ public class TiFileReader implements IDiskIterator<Integer> {
       if (chunkIndices.size() == 0) {
         return false;
       }
-      chunkIndices.sort(Comparator.comparingInt(ChunkIndex::getAllCount));
+      chunkIndices.sort(Comparator.comparingInt(ChunkMeta::getAllCount));
     }
     if (oneChunkDeviceIDsIterator != null) {
       if (oneChunkDeviceIDsIterator.hasNext()) {
@@ -340,7 +351,7 @@ public class TiFileReader implements IDiskIterator<Integer> {
         index++;
       }
     }
-    while (index < chunkIndices.get(0).getChunkIndexEntries().size()) {
+    while (index < chunkIndices.get(0).getChunkMetaEntries().size()) {
       RoaringBitmap deviceIDs = readOneChunkDeviceID(chunkIndices, index);
       oneChunkDeviceIDsIterator = deviceIDs.iterator();
       if (oneChunkDeviceIDsIterator.hasNext()) {
@@ -352,8 +363,14 @@ public class TiFileReader implements IDiskIterator<Integer> {
     return false;
   }
 
+  /**
+   * Returns the next element in the iteration.
+   *
+   * @return the next element in the iteration
+   * @throws NoSuchElementException if the iteration has no more elements
+   */
   @Override
-  public Integer next() throws IOException {
+  public Integer next() {
     if (nextID == null) {
       throw new NoSuchElementException();
     }

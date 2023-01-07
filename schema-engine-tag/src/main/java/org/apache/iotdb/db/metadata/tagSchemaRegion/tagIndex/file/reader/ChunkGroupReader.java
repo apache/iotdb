@@ -18,12 +18,13 @@
  */
 package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.reader;
 
-import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.entry.ChunkIndex;
-import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.entry.ChunkIndexEntry;
-import org.apache.iotdb.lsm.sstable.fileIO.ITiFileInputStream;
+import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.entry.ChunkMeta;
+import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.entry.ChunkMetaEntry;
+import org.apache.iotdb.lsm.sstable.fileIO.ISSTableInputStream;
 
 import org.roaringbitmap.RoaringBitmap;
 
+import java.io.EOFException;
 import java.io.IOException;
 import java.util.NoSuchElementException;
 
@@ -33,9 +34,9 @@ import java.util.NoSuchElementException;
  */
 public class ChunkGroupReader implements IChunkGroupReader {
 
-  private final ITiFileInputStream tiFileInput;
+  private final ISSTableInputStream tiFileInput;
 
-  ChunkIndex chunkIndex;
+  ChunkMeta chunkMeta;
 
   // The deviceID output by the next iteration
   private Integer nextID;
@@ -44,47 +45,73 @@ public class ChunkGroupReader implements IChunkGroupReader {
 
   private ChunkReader chunkReader;
 
-  public ChunkGroupReader(ITiFileInputStream tiFileInput) {
+  public ChunkGroupReader(ISSTableInputStream tiFileInput) {
     this.tiFileInput = tiFileInput;
   }
 
-  public ChunkGroupReader(ITiFileInputStream tiFileInput, long offset) throws IOException {
+  public ChunkGroupReader(ISSTableInputStream tiFileInput, long offset) throws IOException {
     this.tiFileInput = tiFileInput;
     tiFileInput.position(offset);
   }
 
+  /**
+   * Read chunk index from the specified location in the file
+   *
+   * @param offset a non-negative integer counting the number of bytes from the beginning of the
+   *     TiFile
+   * @return a Chunk Index instance
+   * @throws IOException Signals that an I/O exception has occurred.
+   */
   @Override
-  public ChunkIndex readChunkIndex(long offset) throws IOException {
+  public ChunkMeta readChunkIndex(long offset) throws IOException {
     tiFileInput.position(offset);
-    ChunkIndex chunkIndex = new ChunkIndex();
-    tiFileInput.read(chunkIndex);
-    return chunkIndex;
+    ChunkMeta chunkMeta = new ChunkMeta();
+    tiFileInput.read(chunkMeta);
+    return chunkMeta;
   }
 
+  /**
+   * Read all ids from the specified location in the file
+   *
+   * @param offset a non-negative integer counting the number of bytes from the beginning of the
+   *     TiFile
+   * @return a {@link org.roaringbitmap.RoaringBitmap RoaringBitmap} instance
+   * @throws IOException Signals that an I/O exception has occurred.
+   */
   @Override
   public RoaringBitmap readAllDeviceID(long offset) throws IOException {
-    if (chunkIndex == null) {
-      chunkIndex = readChunkIndex(offset);
-      if (chunkIndex.getChunkIndexEntries().size() == 0) {
+    if (chunkMeta == null) {
+      chunkMeta = readChunkIndex(offset);
+      if (chunkMeta.getChunkMetaEntries().size() == 0) {
         return new RoaringBitmap();
       }
     }
     RoaringBitmap roaringBitmap = new RoaringBitmap();
-    for (ChunkIndexEntry chunkIndexEntry : chunkIndex.getChunkIndexEntries()) {
+    for (ChunkMetaEntry chunkMetaEntry : chunkMeta.getChunkMetaEntries()) {
       ChunkReader chunkReader = new ChunkReader(tiFileInput);
-      roaringBitmap.or(chunkReader.readRoaringBitmap(chunkIndexEntry.getOffset()));
+      roaringBitmap.or(chunkReader.readRoaringBitmap(chunkMetaEntry.getOffset()));
     }
     return roaringBitmap;
   }
 
+  /**
+   * Returns {@code true} if the iteration has more elements. (In other words, returns {@code true}
+   * if {@link #next} would return an element rather than throwing an exception.)
+   *
+   * @return {@code true} if the iteration has more elements
+   * @exception EOFException Signals that an end of file or end of stream has been reached
+   *     unexpectedly during input.
+   * @exception IOException Signals that an I/O exception of some sort has occurred. This class is
+   *     the general class of exceptions produced by failed or interrupted I/O operations.
+   */
   @Override
   public boolean hasNext() throws IOException {
     if (nextID != null) {
       return true;
     }
-    if (chunkIndex == null) {
-      chunkIndex = readChunkIndex(tiFileInput.position());
-      if (chunkIndex.getChunkIndexEntries().size() == 0) {
+    if (chunkMeta == null) {
+      chunkMeta = readChunkIndex(tiFileInput.position());
+      if (chunkMeta.getChunkMetaEntries().size() == 0) {
         return false;
       }
     }
@@ -97,9 +124,9 @@ public class ChunkGroupReader implements IChunkGroupReader {
         index++;
       }
     }
-    while (index < chunkIndex.getChunkIndexEntries().size()) {
+    while (index < chunkMeta.getChunkMetaEntries().size()) {
       chunkReader =
-          new ChunkReader(tiFileInput, chunkIndex.getChunkIndexEntries().get(index).getOffset());
+          new ChunkReader(tiFileInput, chunkMeta.getChunkMetaEntries().get(index).getOffset());
       if (chunkReader.hasNext()) {
         nextID = chunkReader.next();
         return true;
@@ -109,8 +136,14 @@ public class ChunkGroupReader implements IChunkGroupReader {
     return false;
   }
 
+  /**
+   * Returns the next element in the iteration.
+   *
+   * @return the next element in the iteration
+   * @throws NoSuchElementException if the iteration has no more elements
+   */
   @Override
-  public Integer next() throws IOException {
+  public Integer next() {
     if (nextID == null) {
       throw new NoSuchElementException();
     }
@@ -119,6 +152,11 @@ public class ChunkGroupReader implements IChunkGroupReader {
     return nowId;
   }
 
+  /**
+   * Closes this reader and releases any system resources associated with the reader.
+   *
+   * @exception IOException if an I/O error occurs.
+   */
   @Override
   public void close() throws IOException {
     if (chunkReader != null) {

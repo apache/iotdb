@@ -18,17 +18,18 @@
  */
 package org.apache.iotdb.lsm.sstable.index;
 
+import org.apache.iotdb.lsm.sstable.fileIO.ISSTableOutputStream;
+
 import java.io.IOException;
-import java.io.OutputStream;
 
 public interface IDiskIndex {
 
   /**
    * Serialize to output stream
    *
-   * @param out data output stream
+   * @param out SSTable output stream
    * @return serialized offset
    * @throws IOException if an I/O error occurs.
    */
-  long serialize(OutputStream out) throws IOException;
+  long serialize(ISSTableOutputStream out) throws IOException;
 }

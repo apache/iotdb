@@ -30,7 +30,7 @@ import java.nio.channels.ClosedChannelException;
 import java.nio.channels.FileChannel;
 import java.nio.channels.ReadableByteChannel;
 
-public interface ITiFileInputStream {
+public interface ISSTableInputStream {
   /**
    * Returns the current size of this input.
    *
@@ -64,7 +64,7 @@ public interface ITiFileInputStream {
    * @throws IllegalArgumentException If the new position is negative
    * @throws IOException If some other I/O error occurs
    */
-  ITiFileInputStream position(long newPosition) throws IOException;
+  ISSTableInputStream position(long newPosition) throws IOException;
 
   /**
    * Reads a sequence of bytes from this IFileInput into the given buffer.

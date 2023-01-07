@@ -27,7 +27,7 @@ import java.io.IOException;
 import java.util.Objects;
 
 /** Used to record the index information of a chunk */
-public class ChunkIndexEntry implements IDiskEntry {
+public class ChunkMetaEntry implements IDiskEntry {
 
   // The offset of the corresponding chunk points to the first address of the chunk header in the
   // file
@@ -42,17 +42,17 @@ public class ChunkIndexEntry implements IDiskEntry {
   // The minimum id saved by the chunk
   private int idMin;
 
-  public ChunkIndexEntry() {}
+  public ChunkMetaEntry() {}
 
-  public ChunkIndexEntry(long offset, int count, int idMax, int idMin) {
+  public ChunkMetaEntry(long offset, int count, int idMax, int idMin) {
     this.offset = offset;
     this.count = count;
     this.idMax = idMax;
     this.idMin = idMin;
   }
 
-  public boolean intersect(ChunkIndexEntry chunkIndexEntry) {
-    return chunkIndexEntry.idMax >= idMin && chunkIndexEntry.idMin <= idMax;
+  public boolean intersect(ChunkMetaEntry chunkMetaEntry) {
+    return chunkMetaEntry.idMax >= idMin && chunkMetaEntry.idMin <= idMax;
   }
 
   public long getOffset() {
@@ -89,7 +89,7 @@ public class ChunkIndexEntry implements IDiskEntry {
 
   @Override
   public String toString() {
-    return "ChunkIndexEntry{"
+    return "ChunkMetaEntry{"
         + "offset="
         + offset
         + ", count="
@@ -124,7 +124,7 @@ public class ChunkIndexEntry implements IDiskEntry {
   public boolean equals(Object o) {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
-    ChunkIndexEntry that = (ChunkIndexEntry) o;
+    ChunkMetaEntry that = (ChunkMetaEntry) o;
     return offset == that.offset
         && count == that.count
         && idMax == that.idMax

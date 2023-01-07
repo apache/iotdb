@@ -61,6 +61,7 @@ public class QueryResponse extends BaseResponse<RoaringBitmap>
     deviceIDIterator.addIterator(iterator);
   }
 
+  /** Support for iterative access to results */
   private class DeviceIDIterator implements Iterator<Integer> {
 
     private List<Iterator<Integer>> iterators;

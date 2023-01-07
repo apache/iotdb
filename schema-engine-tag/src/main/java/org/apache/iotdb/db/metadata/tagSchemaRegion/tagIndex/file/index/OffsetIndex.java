@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.index;
 
-import org.apache.iotdb.lsm.sstable.fileIO.TiFileOutputStream;
+import org.apache.iotdb.lsm.sstable.fileIO.ISSTableOutputStream;
 import org.apache.iotdb.lsm.sstable.index.IDiskIndex;
 import org.apache.iotdb.lsm.sstable.index.IDiskIndexWriter;
 import org.apache.iotdb.lsm.sstable.index.IndexType;
@@ -26,7 +26,6 @@ import org.apache.iotdb.lsm.sstable.index.bplustree.writer.BPlusTreeWriter;
 
 import java.io.IOException;
 import java.io.InvalidObjectException;
-import java.io.OutputStream;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -45,18 +44,11 @@ public class OffsetIndex implements IDiskIndex {
   }
 
   @Override
-  public long serialize(OutputStream out) throws IOException {
+  public long serialize(ISSTableOutputStream out) throws IOException {
     switch (indexType) {
       case BPlusTree:
-        {
-          if (out instanceof TiFileOutputStream) {
-            IDiskIndexWriter diskIndexWriter = new BPlusTreeWriter((TiFileOutputStream) out);
-            return diskIndexWriter.write(index, false);
-          } else {
-            throw new InvalidObjectException(
-                "only support TiFileOutputStream to serialize BPlusTree indexType");
-          }
-        }
+        IDiskIndexWriter diskIndexWriter = new BPlusTreeWriter(out);
+        return diskIndexWriter.write(index, false);
       default:
         throw new InvalidObjectException("not support indexType");
     }
