@@ -61,7 +61,11 @@ public class DefaultDriverSchedulerTest {
     manager.setBlockManager(mockMPPDataExchangeManager);
     ITaskScheduler defaultScheduler = manager.getScheduler();
     IDriver mockDriver = Mockito.mock(IDriver.class);
-    DriverTaskHandle driverTaskHandle = Mockito.mock(DriverTaskHandle.class);
+    DriverTaskHandle driverTaskHandle =
+        new DriverTaskHandle(
+            1,
+            (MultilevelPriorityQueue) manager.getReadyQueue(),
+            OptionalInt.of(Integer.MAX_VALUE));
     QueryId queryId = new QueryId("test");
     FragmentInstanceId instanceId =
         new FragmentInstanceId(new PlanFragmentId(queryId, 0), "inst-0");
@@ -117,7 +121,11 @@ public class DefaultDriverSchedulerTest {
     manager.setBlockManager(mockMPPDataExchangeManager);
     ITaskScheduler defaultScheduler = manager.getScheduler();
     IDriver mockDriver = Mockito.mock(IDriver.class);
-    DriverTaskHandle driverTaskHandle = Mockito.mock(DriverTaskHandle.class);
+    DriverTaskHandle driverTaskHandle =
+        new DriverTaskHandle(
+            1,
+            (MultilevelPriorityQueue) manager.getReadyQueue(),
+            OptionalInt.of(Integer.MAX_VALUE));
 
     QueryId queryId = new QueryId("test");
     FragmentInstanceId instanceId =
@@ -234,7 +242,11 @@ public class DefaultDriverSchedulerTest {
     manager.setBlockManager(mockMPPDataExchangeManager);
     ITaskScheduler defaultScheduler = manager.getScheduler();
     IDriver mockDriver = Mockito.mock(IDriver.class);
-    DriverTaskHandle driverTaskHandle = Mockito.mock(DriverTaskHandle.class);
+    DriverTaskHandle driverTaskHandle =
+        new DriverTaskHandle(
+            1,
+            (MultilevelPriorityQueue) manager.getReadyQueue(),
+            OptionalInt.of(Integer.MAX_VALUE));
     QueryId queryId = new QueryId("test");
     FragmentInstanceId instanceId =
         new FragmentInstanceId(new PlanFragmentId(queryId, 0), "inst-0");
@@ -292,7 +304,11 @@ public class DefaultDriverSchedulerTest {
     manager.setBlockManager(mockMPPDataExchangeManager);
     ITaskScheduler defaultScheduler = manager.getScheduler();
     IDriver mockDriver = Mockito.mock(IDriver.class);
-    DriverTaskHandle driverTaskHandle = Mockito.mock(DriverTaskHandle.class);
+    DriverTaskHandle driverTaskHandle =
+        new DriverTaskHandle(
+            1,
+            (MultilevelPriorityQueue) manager.getReadyQueue(),
+            OptionalInt.of(Integer.MAX_VALUE));
     QueryId queryId = new QueryId("test");
     FragmentInstanceId instanceId =
         new FragmentInstanceId(new PlanFragmentId(queryId, 0), "inst-0");
@@ -349,7 +365,11 @@ public class DefaultDriverSchedulerTest {
     manager.setBlockManager(mockMPPDataExchangeManager);
     IDataNodeRPCService.Client mockMppServiceClient =
         Mockito.mock(IDataNodeRPCService.Client.class);
-    DriverTaskHandle driverTaskHandle = Mockito.mock(DriverTaskHandle.class);
+    DriverTaskHandle driverTaskHandle =
+        new DriverTaskHandle(
+            1,
+            (MultilevelPriorityQueue) manager.getReadyQueue(),
+            OptionalInt.of(Integer.MAX_VALUE));
     ITaskScheduler defaultScheduler = manager.getScheduler();
     QueryId queryId = new QueryId("test");
     FragmentInstanceId instanceId1 =
