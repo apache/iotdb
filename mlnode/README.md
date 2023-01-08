@@ -26,6 +26,11 @@ For developers, you can start an ML Node through the following steps.
 - Step 1: build project
 
 ```shell
+mvn clean package -DskipUTs -pl mlnode -am
+```
+
+```shell
+cd mlnode
 poetry build
 ```
 
