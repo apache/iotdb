@@ -15,3 +15,19 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+[flake8]
+ignore =
+    E203,
+    W503
+max-line-length=200
+exclude =
+    .git,
+    tests/*,
+    iotdb/thrift/**/*
+extend-exclude =
+    dist,
+    build,
+    venv
+show-source = True
+statistics = True
+format = %(path)s:%(row)d,%(col)d:%(code)s:%(text)s:https://lintlyci.github.io/Flake8Rules/rules/%(code)s.html

@@ -18,11 +18,10 @@
 from thrift.protocol import TCompactProtocol
 from thrift.transport import TSocket, TTransport
 
-from iotdb.thrift.mlnode import IMLNodeRPCService
-from iotdb.thrift.mlnode.ttypes import TDeleteModelReq
-
 from iotdb.mlnode.config import config
 from iotdb.mlnode.log import logger
+from iotdb.thrift.mlnode import IMLNodeRPCService
+from iotdb.thrift.mlnode.ttypes import TDeleteModelReq
 
 
 class MLNodeClient(object):

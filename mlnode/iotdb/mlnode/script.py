@@ -15,3 +15,16 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+import os
+import sys
+
+from iotdb.mlnode.service import MLNode
+
+
+def main():
+    print("Hello world!")
+    print(os.getcwd())
+    print(sys.argv)
+    server = MLNode()
+    server.start()
+

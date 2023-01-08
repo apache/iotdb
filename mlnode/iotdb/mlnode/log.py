@@ -18,6 +18,6 @@
 import logging
 from logging.config import fileConfig
 
-fileConfig('../../resources/conf/logging_config.ini')
+# fileConfig('../../resources/conf/logging_config.ini')
 
 logger = logging.getLogger()

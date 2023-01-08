@@ -15,11 +15,12 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+import os
+
 from dynaconf import Dynaconf
 
-from iotdb.thrift.common.ttypes import TEndPoint
-
 from iotdb.mlnode.log import logger
+from iotdb.thrift.common.ttypes import TEndPoint
 
 
 class MlNodeConfig(object):
@@ -48,6 +49,7 @@ class MlNodeDescriptor(object):
         self.__load_config_from_file()
 
     def __load_config_from_file(self) -> None:
+        print(os.getcwd())
         url = '../../resources/conf/iotdb-mlnode.toml'
         logger.info("Start to read config file '{}'".format(url))
         file_configs = Dynaconf(

@@ -19,7 +19,9 @@ from enum import Enum
 
 from iotdb.thrift.common.ttypes import TSStatus
 from iotdb.thrift.mlnode import IMLNodeRPCService
-from iotdb.thrift.mlnode.ttypes import TDeleteModelReq, TCreateTrainingTaskReq, TForecastReq, TForecastResp
+from iotdb.thrift.mlnode.ttypes import (TCreateTrainingTaskReq,
+                                        TDeleteModelReq, TForecastReq,
+                                        TForecastResp)
 
 
 class TSStatusCode(Enum):

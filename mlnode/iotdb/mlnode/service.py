@@ -22,11 +22,10 @@ from thrift.protocol import TCompactProtocol
 from thrift.server import TServer
 from thrift.transport import TSocket, TTransport
 
-from iotdb.thrift.mlnode import IMLNodeRPCService
-
-from iotdb.mlnode.handler import MLNodeRPCServiceHandler
 from iotdb.mlnode.config import config
+from iotdb.mlnode.handler import MLNodeRPCServiceHandler
 from iotdb.mlnode.log import logger
+from iotdb.thrift.mlnode import IMLNodeRPCService
 
 
 class RPCService(threading.Thread):
