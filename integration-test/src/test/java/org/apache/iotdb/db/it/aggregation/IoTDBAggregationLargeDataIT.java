@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.it.aggregation;
 
-import org.apache.iotdb.it.env.ConfigFactory;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
@@ -115,19 +114,15 @@ public class IoTDBAggregationLargeDataIT {
         "insert into root.vehicle.d0(timestamp,s4) values(100, true)",
       };
 
-  private static long prevPartitionInterval;
-
   @BeforeClass
   public static void setUp() throws Exception {
-    prevPartitionInterval = ConfigFactory.getConfig().getPartitionInterval();
-    EnvFactory.getEnv().initBeforeClass();
+    EnvFactory.getEnv().initClusterEnvironment();
     insertSQL();
   }
 
   @AfterClass
   public static void tearDown() throws Exception {
-    EnvFactory.getEnv().cleanAfterClass();
-    ConfigFactory.getConfig().setPartitionInterval(prevPartitionInterval);
+    EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
   @Test

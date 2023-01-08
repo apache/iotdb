@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.client;
 
+import org.apache.iotdb.commons.client.exception.BorrowNullClientManagerException;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.utils.TestOnly;
 
@@ -45,6 +46,9 @@ public class ClientManager<K, V> implements IClientManager<K, V> {
 
   @Override
   public V borrowClient(K node) throws ClientManagerException {
+    if (node == null) {
+      throw new BorrowNullClientManagerException();
+    }
     try {
       return pool.borrowObject(node);
     } catch (Exception e) {

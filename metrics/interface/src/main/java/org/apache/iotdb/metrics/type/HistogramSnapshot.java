@@ -29,13 +29,13 @@ public interface HistogramSnapshot extends IMetric {
   double getValue(double quantile);
 
   /** Get values in snapshot. */
-  long[] getValues();
+  double[] getValues();
 
   /** Get the size of values in snapshot. */
   int size();
 
   /** Get min value in values. */
-  long getMin();
+  double getMin();
 
   /** Get median value in values. */
   double getMedian();
@@ -44,7 +44,7 @@ public interface HistogramSnapshot extends IMetric {
   double getMean();
 
   /** Get max value in values. */
-  long getMax();
+  double getMax();
 
   @Override
   default void constructValueMap(Map<String, Object> result) {

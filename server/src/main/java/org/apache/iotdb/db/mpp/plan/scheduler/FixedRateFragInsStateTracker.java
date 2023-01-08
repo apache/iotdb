@@ -48,7 +48,7 @@ public class FixedRateFragInsStateTracker extends AbstractFragInsStateTracker {
 
   private static final Logger logger = LoggerFactory.getLogger(FixedRateFragInsStateTracker.class);
 
-  private static final long SAME_STATE_PRINT_RATE_IN_MS = 10 * 60 * 1000;
+  private static final long SAME_STATE_PRINT_RATE_IN_MS = 10L * 60 * 1000;
 
   // TODO: (xingtanzjr) consider how much Interval is OK for state tracker
   private static final long STATE_FETCH_INTERVAL_IN_MS = 500;
@@ -141,7 +141,7 @@ public class FixedRateFragInsStateTracker extends AbstractFragInsStateTracker {
   private void updateQueryState(FragmentInstanceId instanceId, FragmentInstanceInfo instanceInfo) {
     if (instanceInfo.getState().isFailed()) {
       if (instanceInfo.getFailureInfoList() == null
-          || instanceInfo.getFailureInfoList().size() == 0) {
+          || instanceInfo.getFailureInfoList().isEmpty()) {
         stateMachine.transitionToFailed(
             new RuntimeException(String.format("FragmentInstance[%s] is failed.", instanceId)));
       } else {

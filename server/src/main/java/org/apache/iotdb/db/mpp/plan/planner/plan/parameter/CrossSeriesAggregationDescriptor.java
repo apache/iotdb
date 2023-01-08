@@ -66,6 +66,7 @@ public class CrossSeriesAggregationDescriptor extends AggregationDescriptor {
     return inputColumnNameToExpressionMap;
   }
 
+  @Override
   public CrossSeriesAggregationDescriptor deepClone() {
     return new CrossSeriesAggregationDescriptor(
         this.getAggregationFuncName(),

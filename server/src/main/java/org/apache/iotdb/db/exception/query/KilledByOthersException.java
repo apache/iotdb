@@ -15,17 +15,20 @@
  * KIND, either express or implied.  See the License for the
  * specific language governing permissions and limitations
  * under the License.
+ *
  */
-package org.apache.iotdb.commons.client.sync;
 
-public interface SyncThriftClient {
+package org.apache.iotdb.db.exception.query;
 
-  /** close the connection */
-  void invalidate();
+import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.rpc.TSStatusCode;
 
-  /**
-   * Clears the specified pool, removing all pooled instances corresponding to current instance's
-   * endPoint.
-   */
-  void invalidateAll();
+public class KilledByOthersException extends IoTDBException {
+  private static final long serialVersionUID = -6027957067833327712L;
+
+  public static final String MESSAGE = "Query was killed by others";
+
+  public KilledByOthersException() {
+    super(MESSAGE, TSStatusCode.QUERY_WAS_KILLED.getStatusCode(), true);
+  }
 }

@@ -151,6 +151,11 @@ public class ConfigExecution implements IQueryExecution {
   public void stopAndCleanup() {}
 
   @Override
+  public void cancel() {
+    throw new UnsupportedOperationException(getClass().getName());
+  }
+
+  @Override
   public ExecutionResult getStatus() {
     try {
       ConfigTaskResult taskResult = taskFuture.get();

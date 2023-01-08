@@ -63,7 +63,7 @@ public abstract class TVList implements WALEntryValue {
   protected AtomicInteger referenceCount;
   private long version;
 
-  public TVList() {
+  protected TVList() {
     timestamps = new ArrayList<>();
     rowCount = 0;
     maxTime = Long.MIN_VALUE;

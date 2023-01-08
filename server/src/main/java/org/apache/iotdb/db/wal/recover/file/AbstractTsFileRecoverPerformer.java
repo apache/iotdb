@@ -46,7 +46,7 @@ public abstract class AbstractTsFileRecoverPerformer implements Closeable {
   /** this writer will be open when .resource file doesn't exist */
   protected RestorableTsFileIOWriter writer;
 
-  public AbstractTsFileRecoverPerformer(TsFileResource tsFileResource) {
+  protected AbstractTsFileRecoverPerformer(TsFileResource tsFileResource) {
     this.tsFileResource = tsFileResource;
   }
 

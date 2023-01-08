@@ -265,17 +265,17 @@ public class SegmentedPage extends SchemaPage implements ISegmentedPage {
     StringBuilder builder =
         new StringBuilder(
             String.format(
-                "page_id:%d, total_seg:%d, spare_from:%d, spare_size:%d\n",
+                "page_id:%d, total_seg:%d, spare_from:%d, spare_size:%d%n",
                 pageIndex, memberNum, spareOffset, spareSize));
     for (short idx = 0; idx < segOffsetLst.size(); idx++) {
       short offset = segOffsetLst.get(idx);
       if (offset < 0) {
-        builder.append(String.format("seg_id:%d deleted, offset:%d\n", idx, offset));
+        builder.append(String.format("seg_id:%d deleted, offset:%d%n", idx, offset));
       } else {
         ISegment<?, ?> seg = getSegment(idx);
         builder.append(
             String.format(
-                "seg_id:%d, offset:%d, address:%s, next_seg:%s, %s\n",
+                "seg_id:%d, offset:%d, address:%s, next_seg:%s, %s%n",
                 idx,
                 offset,
                 Long.toHexString(SchemaFile.getGlobalIndex(pageIndex, idx)),

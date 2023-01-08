@@ -108,6 +108,8 @@ try {
 | 711    | TSBLOCK_SERIALIZE_ERROR           | TsBlock 序列化错误                        |
 | 712    | INTERNAL_REQUEST_TIME_OUT         | MPP 操作超时                              |
 | 713    | INTERNAL_REQUEST_RETRY_ERROR      | 内部操作重试失败                          |
+| 714    | NO_SUCH_QUERY                     | 查询不存在                               |
+| 715    | QUERY_WAS_KILLED                  | 查询执行时被终止                          |
 | 800    | UNINITIALIZED_AUTH_ERROR          | 授权模块未初始化                          |
 | 801    | WRONG_LOGIN_PASSWORD              | 用户名或密码错误                          |
 | 802    | NOT_LOGIN                         | 没有登录                                  |

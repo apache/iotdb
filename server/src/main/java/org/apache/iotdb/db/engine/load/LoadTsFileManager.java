@@ -145,7 +145,7 @@ public class LoadTsFileManager {
     uuid2Future.remove(uuid);
 
     if (loadDir.delete()) { // this method will check if there sub-dir in this dir.
-      logger.info(String.format("Delete load dir %s.", loadDir.getPath()));
+      logger.info("Delete load dir {}.", loadDir.getPath());
     }
   }
 
@@ -155,7 +155,7 @@ public class LoadTsFileManager {
     uuid2Future.remove(uuid);
 
     if (loadDir.delete()) { // this method will check if there sub-dir in this dir.
-      logger.info(String.format("Delete load dir %s.", loadDir.getPath()));
+      logger.info("Delete load dir {}.", loadDir.getPath());
     }
   }
 
@@ -179,7 +179,7 @@ public class LoadTsFileManager {
         FileUtils.deleteDirectory(dir);
       }
       if (dir.mkdirs()) {
-        logger.info(String.format("Load TsFile dir %s is created.", dir.getPath()));
+        logger.info("Load TsFile dir {} is created.", dir.getPath());
       }
     }
 
@@ -192,7 +192,7 @@ public class LoadTsFileManager {
             SystemFileFactory.INSTANCE.getFile(
                 taskDir, partitionInfo.toString() + TsFileConstant.TSFILE_SUFFIX);
         if (!newTsFile.createNewFile()) {
-          logger.error(String.format("Can not create TsFile %s for writing.", newTsFile.getPath()));
+          logger.error("Can not create TsFile {} for writing.", newTsFile.getPath());
           return;
         }
 
@@ -250,7 +250,7 @@ public class LoadTsFileManager {
               writer.close();
             }
             if (writer.getFile().exists() && !writer.getFile().delete()) {
-              logger.warn(String.format("Delete File %s error.", writer.getFile()));
+              logger.warn("Delete File {} error.", writer.getFile());
             }
           } catch (IOException e) {
             logger.warn(
@@ -261,7 +261,7 @@ public class LoadTsFileManager {
         }
       }
       if (!taskDir.delete()) {
-        logger.warn(String.format("Can not delete load dir %s.", taskDir.getPath()));
+        logger.warn("Can not delete load dir {}.", taskDir.getPath());
       }
       dataPartition2Writer = null;
       dataPartition2LastDevice = null;

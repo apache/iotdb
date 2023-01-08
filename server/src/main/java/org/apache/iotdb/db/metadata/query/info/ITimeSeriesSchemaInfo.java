@@ -31,4 +31,6 @@ public interface ITimeSeriesSchemaInfo extends ISchemaInfo {
   MeasurementSchema getSchema();
 
   Pair<Map<String, String>, Map<String, String>> getTagAndAttribute();
+
+  boolean isUnderAlignedDevice();
 }

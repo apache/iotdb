@@ -69,7 +69,7 @@ public abstract class Driver implements IDriver {
     DESTROYED
   }
 
-  public Driver(Operator root, ISinkHandle sinkHandle, DriverContext driverContext) {
+  protected Driver(Operator root, ISinkHandle sinkHandle, DriverContext driverContext) {
     checkNotNull(root, "root Operator should not be null");
     checkNotNull(sinkHandle, "SinkHandle should not be null");
     this.root = root;
