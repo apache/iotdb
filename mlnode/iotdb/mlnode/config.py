@@ -19,6 +19,8 @@ import os
 
 from dynaconf import Dynaconf
 
+from iotdb.mlnode.constant import (MLNODE_CONF_DIRECTORY_NAME,
+                                   MLNODE_CONF_FILE_NAME)
 from iotdb.mlnode.log import logger
 from iotdb.thrift.common.ttypes import TEndPoint
 
@@ -49,12 +51,15 @@ class MlNodeDescriptor(object):
         self.__load_config_from_file()
 
     def __load_config_from_file(self) -> None:
-        print(os.getcwd())
-        url = '../../resources/conf/iotdb-mlnode.toml'
-        logger.info("Start to read config file '{}'".format(url))
+        conf_file = os.path.join(os.getcwd(), MLNODE_CONF_DIRECTORY_NAME, MLNODE_CONF_FILE_NAME)
+        if not os.path.exists(conf_file):
+            logger.info("Cannot find config file '{}', use default configuration".format(conf_file))
+            return
+
+        logger.info("Start to read config file '{}'".format(conf_file))
         file_configs = Dynaconf(
             envvar_prefix="DYNACONF",
-            settings_files=[url],
+            settings_files=[conf_file],
         )
 
         if file_configs.mn_rpc_address is not None:

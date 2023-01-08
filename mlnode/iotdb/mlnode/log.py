@@ -16,8 +16,20 @@
 # under the License.
 #
 import logging
+import os
 from logging.config import fileConfig
 
-# fileConfig('../../resources/conf/logging_config.ini')
+from iotdb.mlnode.constant import (MLNODE_CONF_DIRECTORY_NAME,
+                                   MLNODE_LOG_CONF_FILE_NAME)
+
+log_conf_file = os.path.join(os.getcwd(), MLNODE_CONF_DIRECTORY_NAME, MLNODE_LOG_CONF_FILE_NAME)
+if os.path.exists(log_conf_file):
+    fileConfig(log_conf_file)
+else:
+    logging.basicConfig(
+        level=logging.DEBUG,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(module)s - %(process)d %(thread)d - %(pathname)s:'
+               '%(lineno)d %(message)s'
+    )
 
 logger = logging.getLogger()

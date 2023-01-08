@@ -33,6 +33,14 @@ classifiers = [
     "Topic :: Software Development :: Libraries",
     "Topic :: Software Development :: Libraries :: Python Modules",
 ]
+include = [
+    "iotdb/thrift/*",
+    "iotdb/thrift/common/*",
+    "iotdb/thrift/confignode/*",
+    "iotdb/thrift/datanode/*",
+    "iotdb/thrift/mlnode/*",
+    "resources/conf/*"
+]
 packages = [
     { include = "iotdb" }
 ]

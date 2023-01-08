@@ -15,9 +15,7 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-from iotdb.mlnode.service import MLNode
 
-
-def main():
-    server = MLNode()
-    server.start()
+MLNODE_CONF_DIRECTORY_NAME = "conf"
+MLNODE_CONF_FILE_NAME = "iotdb-mlnode.toml"
+MLNODE_LOG_CONF_FILE_NAME = "logging_config.ini"
