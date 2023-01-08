@@ -15,7 +15,6 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-
 from dynaconf import Dynaconf
 
 from iotdb.thrift.common.ttypes import TEndPoint

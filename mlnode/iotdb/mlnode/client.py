@@ -15,7 +15,6 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-
 from thrift.protocol import TCompactProtocol
 from thrift.transport import TSocket, TTransport
 
