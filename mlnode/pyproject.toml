@@ -22,7 +22,7 @@ build-backend = "poetry.core.masonry.api"
 [tool.poetry]
 name = "apache-iotdb-mlnode"
 version = "1.0.0"
-description = "Apache IoTDB MlNode"
+description = "Apache IoTDB MLNode"
 readme = "README.md"
 authors = ["Apache Software Foundation <dev@iotdb.apache.org>"]
 license = "Apache License, Version 2.0"
