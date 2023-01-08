@@ -46,7 +46,7 @@ public final class Priority {
 
   /**
    * levelPriority increases as the schedule time accumulates. The higher this value is, the later
-   * the task with this Priority will be polled out by a PriorityQueue
+   * the task with this Priority will be polled out by a PriorityQueue.
    */
   private final long levelPriority;
 
