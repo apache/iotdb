@@ -714,10 +714,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                 context.getNextOperatorId(),
                 node.getPlanNodeId(),
                 DeviceMergeOperator.class.getSimpleName());
-    List<Operator> children =
-        node.getChildren().stream()
-            .map(child -> child.accept(this, context))
-            .collect(Collectors.toList());
+    List<Operator> children = dealWithConsumeAllChildrenPipelineBreaker(node, context);
     List<TSDataType> dataTypes = getOutputColumnTypes(node, context.getTypeProvider());
     TimeSelector selector = null;
     TimeComparator timeComparator = null;
@@ -1156,10 +1153,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     checkArgument(
         !node.getGroupByLevelDescriptors().isEmpty(),
         "GroupByLevel descriptorList cannot be empty");
-    List<Operator> children =
-        node.getChildren().stream()
-            .map(child -> child.accept(this, context))
-            .collect(Collectors.toList());
+    List<Operator> children = dealWithConsumeAllChildrenPipelineBreaker(node, context);
     boolean ascending = node.getScanOrder() == Ordering.ASC;
     List<Aggregator> aggregators = new ArrayList<>();
     Map<String, List<InputLocation>> layout = makeLayout(node);
