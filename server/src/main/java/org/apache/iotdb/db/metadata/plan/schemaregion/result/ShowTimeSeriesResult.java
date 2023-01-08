@@ -37,17 +37,21 @@ public class ShowTimeSeriesResult extends ShowSchemaResult implements ITimeSerie
   private Map<String, String> tags;
   private Map<String, String> attributes;
 
+  private boolean isUnderAlignedDevice;
+
   public ShowTimeSeriesResult(
       String name,
       String alias,
       MeasurementSchema measurementSchema,
       Map<String, String> tags,
-      Map<String, String> attributes) {
+      Map<String, String> attributes,
+      boolean isUnderAlignedDevice) {
     super(name);
     this.alias = alias;
     this.measurementSchema = measurementSchema;
     this.tags = tags;
     this.attributes = attributes;
+    this.isUnderAlignedDevice = isUnderAlignedDevice;
   }
 
   public ShowTimeSeriesResult() {
@@ -66,6 +70,11 @@ public class ShowTimeSeriesResult extends ShowSchemaResult implements ITimeSerie
   @Override
   public Pair<Map<String, String>, Map<String, String>> getTagAndAttribute() {
     return new Pair<>(tags, attributes);
+  }
+
+  @Override
+  public boolean isUnderAlignedDevice() {
+    return isUnderAlignedDevice;
   }
 
   public TSDataType getDataType() {

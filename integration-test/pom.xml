@@ -266,7 +266,7 @@
                 <integrationTest.launchNodeInSameJVM>false</integrationTest.launchNodeInSameJVM>
                 <integrationTest.randomSelectWriteNode>false</integrationTest.randomSelectWriteNode>
                 <integrationTest.readAndVerifyWithMultiNode>false</integrationTest.readAndVerifyWithMultiNode>
-                <integrationTest.parallelMode>classes</integrationTest.parallelMode>
+                <integrationTest.parallelMode>suitesAndClasses</integrationTest.parallelMode>
             </properties>
             <activation>
                 <activeByDefault>true</activeByDefault>
@@ -293,7 +293,7 @@
                 <integrationTest.launchNodeInSameJVM>false</integrationTest.launchNodeInSameJVM>
                 <integrationTest.randomSelectWriteNode>true</integrationTest.randomSelectWriteNode>
                 <integrationTest.readAndVerifyWithMultiNode>true</integrationTest.readAndVerifyWithMultiNode>
-                <integrationTest.parallelMode>classes</integrationTest.parallelMode>
+                <integrationTest.parallelMode>suitesAndClasses</integrationTest.parallelMode>
             </properties>
             <activation>
                 <activeByDefault>false</activeByDefault>

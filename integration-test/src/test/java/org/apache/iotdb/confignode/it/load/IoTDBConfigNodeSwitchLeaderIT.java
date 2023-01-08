@@ -31,7 +31,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TSetStorageGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
 import org.apache.iotdb.consensus.ConsensusFactory;
-import org.apache.iotdb.it.env.ConfigFactory;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
@@ -54,40 +53,23 @@ import java.util.concurrent.TimeUnit;
 @RunWith(IoTDBTestRunner.class)
 @Category({ClusterIT.class})
 public class IoTDBConfigNodeSwitchLeaderIT {
-
-  protected static String originalConfigNodeConsensusProtocolClass;
-  protected static String originalSchemaRegionConsensusProtocolClass;
-  protected static String originalDataRegionConsensusProtocolClass;
-
-  protected static int originalSchemaReplicationFactor;
-  protected static int originalDataReplicationFactor;
   private static final int testReplicationFactor = 3;
 
   private static final int testConfigNodeNum = 3;
   private static final int testDataNodeNum = 3;
-
-  private static int configNodeRegionRatisRPCLeaderElectionTimeoutMaxMs;
+  private static final int testElectionTimeoutMaxMs = 4000;
 
   @Before
   public void setUp() throws Exception {
-    originalConfigNodeConsensusProtocolClass =
-        ConfigFactory.getConfig().getConfigNodeConsensusProtocolClass();
-    originalSchemaRegionConsensusProtocolClass =
-        ConfigFactory.getConfig().getSchemaRegionConsensusProtocolClass();
-    originalDataRegionConsensusProtocolClass =
-        ConfigFactory.getConfig().getDataRegionConsensusProtocolClass();
-    ConfigFactory.getConfig().setConfigNodeConsesusProtocolClass(ConsensusFactory.RATIS_CONSENSUS);
-    ConfigFactory.getConfig()
-        .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS);
-    ConfigFactory.getConfig().setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS);
-
-    originalSchemaReplicationFactor = ConfigFactory.getConfig().getSchemaReplicationFactor();
-    originalDataReplicationFactor = ConfigFactory.getConfig().getDataReplicationFactor();
-    ConfigFactory.getConfig().setSchemaReplicationFactor(testReplicationFactor);
-    ConfigFactory.getConfig().setDataReplicationFactor(testReplicationFactor);
-
-    configNodeRegionRatisRPCLeaderElectionTimeoutMaxMs =
-        ConfigFactory.getConfig().getConfigNodeRegionRatisRPCLeaderElectionTimeoutMaxMs();
+    EnvFactory.getEnv()
+        .getConfig()
+        .getCommonConfig()
+        .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
+        .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
+        .setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS)
+        .setSchemaReplicationFactor(testReplicationFactor)
+        .setDataReplicationFactor(testReplicationFactor)
+        .setConfigNodeRegionRatisRPCLeaderElectionTimeoutMaxMs(testElectionTimeoutMaxMs);
 
     // Init 3C3D cluster environment
     EnvFactory.getEnv().initClusterEnvironment(testConfigNodeNum, testDataNodeNum);
@@ -95,24 +77,14 @@ public class IoTDBConfigNodeSwitchLeaderIT {
 
   @After
   public void tearDown() {
-    EnvFactory.getEnv().cleanAfterClass();
-
-    ConfigFactory.getConfig()
-        .setConfigNodeConsesusProtocolClass(originalConfigNodeConsensusProtocolClass);
-    ConfigFactory.getConfig()
-        .setSchemaRegionConsensusProtocolClass(originalSchemaRegionConsensusProtocolClass);
-    ConfigFactory.getConfig()
-        .setDataRegionConsensusProtocolClass(originalDataRegionConsensusProtocolClass);
-
-    ConfigFactory.getConfig().setSchemaReplicationFactor(originalSchemaReplicationFactor);
-    ConfigFactory.getConfig().setDataReplicationFactor(originalDataReplicationFactor);
+    EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
   private void switchLeader() throws IOException, InterruptedException {
     // The ConfigNode-Group will elect a new leader after the current ConfigNode-Leader is shutdown
     EnvFactory.getEnv().shutdownConfigNode(EnvFactory.getEnv().getLeaderConfigNodeIndex());
     // Waiting for leader election
-    TimeUnit.MILLISECONDS.sleep(configNodeRegionRatisRPCLeaderElectionTimeoutMaxMs);
+    TimeUnit.MILLISECONDS.sleep(testElectionTimeoutMaxMs);
   }
 
   @Test

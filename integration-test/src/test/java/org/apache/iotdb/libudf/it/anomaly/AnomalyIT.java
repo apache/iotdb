@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.libudf.it.anomaly;
 
-import org.apache.iotdb.it.env.ConfigFactory;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
@@ -45,11 +44,8 @@ public class AnomalyIT {
 
   @BeforeClass
   public static void setUp() throws Exception {
-    ConfigFactory.getConfig()
-        .setUdfCollectorMemoryBudgetInMB(5)
-        .setUdfTransformerMemoryBudgetInMB(5)
-        .setUdfReaderMemoryBudgetInMB(5);
-    EnvFactory.getEnv().initBeforeClass();
+    EnvFactory.getEnv().getConfig().getCommonConfig().setUdfMemoryBudgetInMB(5);
+    EnvFactory.getEnv().initClusterEnvironment();
     createTimeSeries();
     generateData();
     registerUDF();
@@ -524,7 +520,7 @@ public class AnomalyIT {
 
   @AfterClass
   public static void tearDown() throws Exception {
-    EnvFactory.getEnv().cleanAfterClass();
+    EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
   @Test

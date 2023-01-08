@@ -49,14 +49,14 @@ public class IoTDBSettleIT {
   @BeforeClass
   public static void setUp() throws Exception {
     initCreateSQLStatement();
-    EnvFactory.getEnv().initBeforeTest();
+    EnvFactory.getEnv().initClusterEnvironment();
     executeSql();
   }
 
   @AfterClass
   public static void tearDown() throws Exception {
     close();
-    EnvFactory.getEnv().initBeforeTest();
+    EnvFactory.getEnv().initClusterEnvironment();
   }
 
   @Test

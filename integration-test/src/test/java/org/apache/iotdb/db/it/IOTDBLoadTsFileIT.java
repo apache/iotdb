@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.it;
 
 import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
-import org.apache.iotdb.it.env.ConfigFactory;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.it.utils.TsFileGenerator;
@@ -55,22 +54,21 @@ import java.util.Map;
 @Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IOTDBLoadTsFileIT {
   private static final Logger LOGGER = LoggerFactory.getLogger(IOTDBLoadTsFileIT.class);
-  private static final long PARTITION_INTERVAL =
-      ConfigFactory.getConfig().getTimePartitionInterval();
+  private static final long PARTITION_INTERVAL = 10 * 1000L;
 
   private File tmpDir;
 
   @Before
   public void setUp() throws Exception {
     tmpDir = new File(Files.createTempDirectory("load").toUri());
-    EnvFactory.getEnv().initBeforeTest();
+    EnvFactory.getEnv().getConfig().getCommonConfig().setTimePartitionInterval(PARTITION_INTERVAL);
+    EnvFactory.getEnv().initClusterEnvironment();
   }
 
   @After
   public void tearDown() throws Exception {
     deleteSG();
-
-    EnvFactory.getEnv().cleanAfterTest();
+    EnvFactory.getEnv().cleanClusterEnvironment();
 
     if (!deleteDir()) {
       LOGGER.error("Can not delete tmp dir for loading tsfile.");
