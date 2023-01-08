@@ -28,8 +28,7 @@ if os.path.exists(log_conf_file):
 else:
     logging.basicConfig(
         level=logging.DEBUG,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(module)s - %(process)d %(thread)d - %(pathname)s:'
-               '%(lineno)d %(message)s'
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
     )
 
 logger = logging.getLogger()
