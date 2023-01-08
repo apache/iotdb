@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.client.ClientManager;
 import org.apache.iotdb.commons.client.IClientPoolFactory;
 import org.apache.iotdb.commons.client.property.ClientPoolProperty;
 import org.apache.iotdb.commons.client.property.ThriftClientProperty;
+import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.consensus.config.IoTConsensusConfig;
 
 import org.apache.commons.pool2.KeyedObjectPool;
@@ -52,7 +53,11 @@ public class IoTConsensusClientPool {
                   .setConnectionTimeoutMs(config.getRpc().getConnectionTimeoutInMs())
                   .setRpcThriftCompressionEnabled(config.getRpc().isRpcThriftCompressionEnabled())
                   .build()),
-          new ClientPoolProperty.Builder<SyncIoTConsensusServiceClient>().build().getConfig());
+          new ClientPoolProperty.Builder<SyncIoTConsensusServiceClient>()
+              .setCoreClientNumForEachNode(config.getRpc().getCoreClientNumForEachNode())
+              .setMaxClientNumForEachNode(config.getRpc().getMaxClientNumForEachNode())
+              .build()
+              .getConfig());
     }
   }
 
@@ -60,7 +65,6 @@ public class IoTConsensusClientPool {
       implements IClientPoolFactory<TEndPoint, AsyncIoTConsensusServiceClient> {
 
     private final IoTConsensusConfig config;
-    private static final String IOT_CONSENSUS_CLIENT_POOL_THREAD_NAME = "IoTConsensusClientPool";
 
     public AsyncIoTConsensusServiceClientPoolFactory(IoTConsensusConfig config) {
       this.config = config;
@@ -78,10 +82,10 @@ public class IoTConsensusClientPool {
                   .setSelectorNumOfAsyncClientManager(
                       config.getRpc().getSelectorNumOfClientManager())
                   .build(),
-              IOT_CONSENSUS_CLIENT_POOL_THREAD_NAME),
+              ThreadName.ASYNC_DATANODE_IOT_CONSENSUS_CLIENT_POOL.getName()),
           new ClientPoolProperty.Builder<AsyncIoTConsensusServiceClient>()
-              .setMaxIdleClientForEachNode(config.getRpc().getMaxConnectionForInternalService())
-              .setMaxTotalClientForEachNode(config.getRpc().getMaxConnectionForInternalService())
+              .setCoreClientNumForEachNode(config.getRpc().getCoreClientNumForEachNode())
+              .setMaxClientNumForEachNode(config.getRpc().getMaxClientNumForEachNode())
               .build()
               .getConfig());
     }

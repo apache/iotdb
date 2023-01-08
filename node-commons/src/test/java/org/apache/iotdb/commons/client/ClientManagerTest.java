@@ -181,7 +181,7 @@ public class ClientManagerTest {
                             new SyncDataNodeInternalServiceClient.Factory(
                                 manager, new ThriftClientProperty.Builder().build()),
                             new ClientPoolProperty.Builder<SyncDataNodeInternalServiceClient>()
-                                .setMaxIdleClientForEachNode(maxIdleClientForEachNode)
+                                .setCoreClientNumForEachNode(maxIdleClientForEachNode)
                                 .build()
                                 .getConfig());
                       }
@@ -241,8 +241,8 @@ public class ClientManagerTest {
                             new SyncDataNodeInternalServiceClient.Factory(
                                 manager, new ThriftClientProperty.Builder().build()),
                             new ClientPoolProperty.Builder<SyncDataNodeInternalServiceClient>()
-                                .setMaxTotalClientForEachNode(maxTotalClientForEachNode)
-                                .setWaitClientTimeoutMS(waitClientTimeoutMs)
+                                .setMaxClientNumForEachNode(maxTotalClientForEachNode)
+                                .setWaitClientTimeoutMs(waitClientTimeoutMs)
                                 .build()
                                 .getConfig());
                       }
@@ -315,8 +315,8 @@ public class ClientManagerTest {
                             new SyncDataNodeInternalServiceClient.Factory(
                                 manager, new ThriftClientProperty.Builder().build()),
                             new ClientPoolProperty.Builder<SyncDataNodeInternalServiceClient>()
-                                .setWaitClientTimeoutMS(waitClientTimeoutMS)
-                                .setMaxTotalClientForEachNode(maxTotalClientForEachNode)
+                                .setWaitClientTimeoutMs(waitClientTimeoutMS)
+                                .setMaxClientNumForEachNode(maxTotalClientForEachNode)
                                 .build()
                                 .getConfig());
                       }
