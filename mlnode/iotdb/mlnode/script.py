@@ -15,9 +15,22 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+import sys
+
+from iotdb.mlnode.log import logger
 from iotdb.mlnode.service import MLNode
 
 
 def main():
-    server = MLNode()
-    server.start()
+    arguments = sys.argv
+    if len(arguments) == 1:
+        logger.info("Command line argument must be specified.")
+        return
+
+    argument = sys.argv[1]
+    # TODO: support more commands
+    if argument == 'start':
+        server = MLNode()
+        server.start()
+    else:
+        logger.info("Unknown argument: {}.".format(argument))
