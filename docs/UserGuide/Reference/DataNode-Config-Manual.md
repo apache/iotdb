@@ -255,6 +255,24 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Default| 1024 |
 |Effective|After restarting system|
 
+* dn\_core\_client\_count\_for\_each\_node\_in\_client\_manager
+
+|     Name     | dn\_core\_client\_count\_for\_each\_node\_in\_client\_manager |
+|:------------:|:--------------------------------------------------------------|
+| Description  | Number of core clients routed to each node in a ClientManager |
+|     Type     | int                                                           |
+|   Default    | 200                                                           |
+|  Effective   | After restarting system                                       |
+
+* dn\_max\_client\_count\_for\_each\_node\_in\_client\_manager
+
+|      Name      | dn\_max\_client\_count\_for\_each\_node\_in\_client\_manager |
+|:--------------:|:-------------------------------------------------------------|
+|  Description   | Number of max clients routed to each node in a ClientManager |
+|      Type      | int                                                          |
+|    Default     | 300                                                          |
+|   Effective    | After restarting system                                      |
+
 ### Dictionary Configuration
 
 * dn\_system\_dir

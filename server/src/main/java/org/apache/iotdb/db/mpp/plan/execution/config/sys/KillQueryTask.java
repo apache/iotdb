@@ -16,30 +16,27 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.it.env;
 
-import org.apache.iotdb.it.framework.IoTDBTestLogger;
+package org.apache.iotdb.db.mpp.plan.execution.config.sys;
 
-import org.slf4j.Logger;
+import org.apache.iotdb.db.mpp.plan.execution.config.ConfigTaskResult;
+import org.apache.iotdb.db.mpp.plan.execution.config.IConfigTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.executor.IConfigTaskExecutor;
+import org.apache.iotdb.db.mpp.plan.statement.sys.KillQueryStatement;
 
-public class Cluster1Env extends AbstractEnv {
-  private static final Logger logger = IoTDBTestLogger.logger;
+import com.google.common.util.concurrent.ListenableFuture;
 
-  @Override
-  public void initBeforeClass() throws InterruptedException {
-    logger.debug("=======start init class=======");
-    super.initEnvironment(1, 3);
+public class KillQueryTask implements IConfigTask {
+
+  private final KillQueryStatement killQueryStatement;
+
+  public KillQueryTask(KillQueryStatement killQueryStatement) {
+    this.killQueryStatement = killQueryStatement;
   }
 
   @Override
-  public void initClusterEnvironment(int configNodesNum, int dataNodesNum) {
-    logger.debug("=======start init cluster environment=======");
-    super.initEnvironment(configNodesNum, dataNodesNum);
-  }
-
-  @Override
-  public void initBeforeTest() throws InterruptedException {
-    logger.debug("=======start init test=======");
-    super.initEnvironment(1, 3);
+  public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskExecutor)
+      throws InterruptedException {
+    return configTaskExecutor.killQuery(killQueryStatement);
   }
 }

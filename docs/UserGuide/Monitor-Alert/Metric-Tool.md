@@ -91,10 +91,10 @@ Core-level metrics are enabled by default during system operation. The addition 
 
 #### 4.1.1. Cluster
 | Metric      | Tags                                            | Type      | Description                                         |
-|-------------|-------------------------------------------------| --------- | --------------------------------------------------- |
+| ----------- | ----------------------------------------------- | --------- | --------------------------------------------------- |
 | config_node | name="total",status="Registered/Online/Unknown" | AutoGauge | The number of registered/online/unknown confignodes |
 | data_node   | name="total",status="Registered/Online/Unknown" | AutoGauge | The number of registered/online/unknown datanodes   |
-| points      | database="{{database}}", type="flush"           | Gauge     | The point number of last flushed memtable                     |
+| points      | database="{{database}}", type="flush"           | Gauge     | The point number of last flushed memtable           |
 
 #### 4.1.2. IoTDB process
 | Metric            | Tags           | Type      | Description                                            |
@@ -128,7 +128,7 @@ Core-level metrics are enabled by default during system operation. The addition 
 
 #### 4.2.2. Node
 | Metric   | Tags                                       | Type      | Description                                                   |
-|----------|--------------------------------------------|-----------|---------------------------------------------------------------|
+| -------- | ------------------------------------------ | --------- | ------------------------------------------------------------- |
 | quantity | name="database"                            | AutoGauge | The number of database                                        |
 | quantity | name="timeSeries"                          | AutoGauge | The number of timeseries                                      |
 | quantity | name="pointsIn"                            | Counter   | The number of write points                                    |
@@ -182,11 +182,11 @@ Core-level metrics are enabled by default during system operation. The addition 
 
 #### 4.2.6. Memory
 | Metric | Tags                                 | Type      | Description                                                        |
-| ------ |--------------------------------------| --------- | ------------------------------------------------------------------ |
+| ------ | ------------------------------------ | --------- | ------------------------------------------------------------------ |
 | mem    | name="database_{{name}}"             | AutoGauge | The memory usage of DataRegion in DataNode, Unit: byte             |
 | mem    | name="chunkMetaData_{{name}}"        | AutoGauge | The memory usage of chunkMetaData when writting TsFile, Unit: byte |
 | mem    | name="IoTConsensus"                  | AutoGauge | The memory usage of IoTConsensus, Unit: byte                       |
-| mem    | name="schema_region_total_usage"           | AutoGauge | The memory usage of all SchemaRegion, Unit: byte                   |
+| mem    | name="schema_region_total_usage"     | AutoGauge | The memory usage of all SchemaRegion, Unit: byte                   |
 | mem    | name="schema_region_total_remaining" | AutoGauge | The memory remaining for all SchemaRegion, Unit: byte              |
 
 #### 4.2.7. Task
@@ -209,20 +209,21 @@ Core-level metrics are enabled by default during system operation. The addition 
 
 #### 4.2.9. File
 
-| Metric     | Tags         | Type      | Description                                                  |
-| ---------- | ------------ | --------- |--------------------------------------------------------------|
-| file_size  | name="wal"   | AutoGauge | The size of WAL file, Unit: byte                             |
-| file_size  | name="seq"   | AutoGauge | The size of sequence TsFile, Unit: byte                      |
-| file_size  | name="unseq" | AutoGauge | The size of unsequence TsFile, Unit: byte                    |
-| file_count | name="wal"   | AutoGauge | The count of WAL file                                        |
-| file_count | name="seq"   | AutoGauge | The count of sequence TsFile                                 |
-| file_count | name="unseq" | AutoGauge | The count of unsequence TsFile                               |
-| file_count| name="inner-seq-temp-num" | AutoGauge | The count of inner sequence space compaction temporal file   |
-| file_count | name="inner-unseq-temp-num"|AutoGauge| The count of inner unsequence space compaction temporal file |
-| file_count|name="cross-temp-num"|AutoGauge| The count of cross space compaction temporal file            |
-| file_size|name="inner-seq-temp-size" | AutoGauge| The size of inner sequence space compaction temporal file    |
-| file_size|name="inner-unseq-temp-size"|AutoGauge| The size of inner unsequence space compaction temporal file  |
-|file_size|name="cross-temp-size"|AutoGauge|The size of cross space compaction temoporal file|
+| Metric     | Tags                      | Type      | Description                                                                 |
+| ---------- |---------------------------| --------- |-----------------------------------------------------------------------------|
+| file_size  | name="wal"                | AutoGauge | The size of WAL file, Unit: byte                                            |
+| file_size  | name="seq"                | AutoGauge | The size of sequence TsFile, Unit: byte                                     |
+| file_size  | name="unseq"              | AutoGauge | The size of unsequence TsFile, Unit: byte                                   |
+| file_size  | name="inner-seq-temp"     | AutoGauge | The size of inner sequence space compaction temporal file                   |
+| file_size  | name="inner-unseq-temp"   | AutoGauge | The size of inner unsequence space compaction temporal file                 |
+| file_size  | name="cross-temp"         | AutoGauge | The size of cross space compaction temoporal file                           |
+| file_count | name="wal"                | AutoGauge | The count of WAL file                                                       |
+| file_count | name="seq"                | AutoGauge | The count of sequence TsFile                                                |
+| file_count | name="unseq"              | AutoGauge | The count of unsequence TsFile                                              |
+| file_count | name="inner-seq-temp"     | AutoGauge | The count of inner sequence space compaction temporal file                  |
+| file_count | name="inner-unseq-temp"   | AutoGauge | The count of inner unsequence space compaction temporal file                |
+| file_count | name="cross-temp"         | AutoGauge | The count of cross space compaction temporal file                           |
+| file_count | name="open_file_handlers" | AutoGauge | The count of open files of the IoTDB process, only supports Linux and MacOS |
 
 #### 4.2.10. IoTDB Process
 
@@ -515,12 +516,12 @@ data source for Apache IoTDB Dashboard.
 #### 5.3.1. IoTDB mapping relationship of metrics
 > For metrics whose Metric Name is name and Tags are K1=V1, ..., Kn=Vn, the mapping is as follows, taking root.__system.metric.`ip:port` as an example by default
 
-| Metric Type      | Mapping                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
-| ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Counter          | root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.value                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
-| AutoGauge、Gauge | root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.value                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
-| Histogram        | root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.count <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.max <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.sum <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.p0 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.p25 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.p50 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.p75 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.p100                                                                                                                                                                                                                      |
-| Rate             | root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.count <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.mean <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.m1 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.m5 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.m15                                                                                                                                                                                                                                                                                                                                                                                      |
+| Metric Type      | Mapping                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Counter          | root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.value                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| AutoGauge、Gauge | root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.value                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| Histogram        | root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.count <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.max <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.sum <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.p0 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.p25 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.p50 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.p75 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.p100                                                                                                                                                                                                                                                              |
+| Rate             | root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.count <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.mean <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.m1 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.m5 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.m15                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | Timer            | root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.count <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.max <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.mean <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.sum <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.p0 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.p25 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.p50 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.p75 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.p100   <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.m1 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.m5 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.m15 |
 
 #### 5.3.2. Obtain metrics

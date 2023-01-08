@@ -16,8 +16,9 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.it.env;
+package org.apache.iotdb.it.env.cluster;
 
+import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestLogger;
 import org.apache.iotdb.itbase.env.BaseNodeWrapper;
 
@@ -32,9 +33,7 @@ import javax.management.remote.JMXConnectorFactory;
 import javax.management.remote.JMXServiceURL;
 
 import java.io.File;
-import java.io.FileWriter;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.PrintWriter;
 import java.lang.management.ManagementFactory;
 import java.lang.management.MonitorInfo;
@@ -80,6 +79,16 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
           + "lib"
           + File.separator
           + "*";
+
+  protected static final String propertyKeyConfigNodeConsensusProtocolClass =
+      "config_node_consensus_protocol_class";
+  protected static final String propertyKeySchemaRegionConsensusProtocolClass =
+      "schema_region_consensus_protocol_class";
+  protected static final String propertyKeyDataRegionConsensusProtocolClass =
+      "data_region_consensus_protocol_class";
+  protected static final String propertyKeySchemaReplicationFactor = "schema_replication_factor";
+  protected static final String propertyKeyDataReplicationFactor = "data_replication_factor";
+
   protected final String testClassName;
   protected final String testMethodName;
   protected final int[] portList;
@@ -89,6 +98,22 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
   private String node_address;
   private int node_port;
 
+  /**
+   * Mutable properties are always hardcoded default values to make the cluster be set up
+   * successfully. Their lifecycles are the same with the whole test runner.
+   */
+  protected final Properties mutableNodeProperties = new Properties();
+
+  protected final Properties mutableCommonProperties = new Properties();
+
+  /**
+   * Immutable values are connection configurations, such as ip, ports which are generated randomly
+   * during cluster initialization. Their lifecycles are the same with this node wrapper instance.
+   */
+  protected final Properties immutableNodeProperties = new Properties();
+
+  protected final Properties immutableCommonProperties = new Properties();
+
   public AbstractNodeWrapper(String testClassName, String testMethodName, int[] portList) {
     this.testClassName = testClassName;
     this.testMethodName = testMethodName;
@@ -96,6 +121,13 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
     this.node_address = "127.0.0.1";
     this.node_port = portList[0];
     jmxPort = this.portList[portList.length - 1];
+    // these properties can't be mutated.
+    immutableCommonProperties.setProperty("udf_lib_dir", MppBaseConfig.NULL_VALUE);
+    immutableCommonProperties.setProperty("trigger_lib_dir", MppBaseConfig.NULL_VALUE);
+    immutableCommonProperties.setProperty("mqtt_host", MppBaseConfig.NULL_VALUE);
+    immutableCommonProperties.setProperty("mqtt_port", MppBaseConfig.NULL_VALUE);
+    immutableCommonProperties.setProperty("rest_service_port", MppBaseConfig.NULL_VALUE);
+    immutableCommonProperties.setProperty("influxdb_rpc_port", MppBaseConfig.NULL_VALUE);
   }
 
   @Override
@@ -153,6 +185,54 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
     }
     lastException.printStackTrace();
     fail("Delete node dir failed.");
+  }
+
+  /**
+   * Change the config of this node. Here's the order of applied config source. The latter one will
+   * override the former one if a key is duplicated.
+   *
+   * <ul>
+   *   <li>1. Reading directly from assembled property files of other modules.
+   *   <li>2. Default values which are hardcoded in mutable properties fields.
+   *   <li>3. Values read from the path specified by system variables.
+   *   <li>4. Values mutated by developers through {@link EnvFactory}.
+   *   <li>5. Make sure immutable properties are not changed.
+   * </ul>
+   *
+   * @param nodeConfig the values mutated through {@link EnvFactory}
+   * @param commonConfig the values mutated through {@link EnvFactory}.
+   */
+  public final void changeConfig(MppBaseConfig nodeConfig, MppCommonConfig commonConfig) {
+    try {
+      // 1. Read directly from assembled property files
+      // In a config-node, the files should be iotdb-confignode.properties and
+      // iotdb-common.properties.
+      MppBaseConfig outputCommonConfig = commonConfig.emptyClone();
+      MppBaseConfig outputNodeConfig = nodeConfig.emptyClone();
+
+      // 2. Override by values which are hardcoded in mutable properties fields.
+      outputCommonConfig.updateProperties(mutableCommonProperties);
+      outputNodeConfig.updateProperties(mutableNodeProperties);
+
+      // 3. Override by values read from the path specified by system variables. The path is a
+      // relative one to integration-test module dir.
+      outputCommonConfig.updateProperties(getDefaultCommonConfigPath());
+      outputNodeConfig.updateProperties(getDefaultNodeConfigPath());
+
+      // 4. Override by values mutated by developers
+      outputCommonConfig.updateProperties(commonConfig);
+      outputNodeConfig.updateProperties(nodeConfig);
+
+      // 5. Restore immutable properties
+      outputCommonConfig.updateProperties(immutableCommonProperties);
+      outputNodeConfig.updateProperties(immutableNodeProperties);
+
+      // Persistent
+      outputCommonConfig.persistent(getTargetCommonConfigPath());
+      outputNodeConfig.persistent(getTargetNodeConfigPath());
+    } catch (IOException ex) {
+      fail("Change the config of node failed. " + ex);
+    }
   }
 
   @Override
@@ -221,38 +301,8 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
   }
 
   @Override
-  public void changeConfig(Properties properties) {
-    try {
-      String commonConfigPath = getCommonConfigPath();
-      Properties commonConfigProperties = new Properties();
-      try (InputStream confInput = Files.newInputStream(Paths.get(commonConfigPath))) {
-        commonConfigProperties.load(confInput);
-      }
-      String configPath = getConfigPath();
-      Properties configProperties = new Properties();
-      try (InputStream confInput = Files.newInputStream(Paths.get(configPath))) {
-        configProperties.load(confInput);
-      }
-      commonConfigProperties.putAll(configProperties);
-      updateConfig(commonConfigProperties);
-      if (properties != null && !properties.isEmpty()) {
-        commonConfigProperties.putAll(properties);
-      }
-      try (FileWriter confOutput = new FileWriter(configPath)) {
-        commonConfigProperties.store(confOutput, null);
-      }
-    } catch (IOException ex) {
-      fail("Change the config of data node failed. " + ex);
-    }
-  }
-
-  @Override
   public final String getIp() {
     return this.node_address;
-  }
-
-  public void setIp(String ip) {
-    this.node_address = ip;
   }
 
   @Override
@@ -272,16 +322,6 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
   protected String workDirFilePath(String dirName, String fileName) {
     return getNodePath() + File.separator + dirName + File.separator + fileName;
   }
-
-  protected abstract String getConfigPath();
-
-  protected abstract String getCommonConfigPath();
-
-  public abstract String getSystemPropertiesPath();
-
-  protected abstract void updateConfig(Properties properties);
-
-  protected abstract void addStartCmdParams(List<String> params);
 
   private String getLogPath() {
     return getLogDirPath() + File.separator + getId() + ".log";
@@ -385,4 +425,18 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
   }
 
   protected abstract void renameFile();
+
+  protected abstract String getTargetNodeConfigPath();
+
+  protected abstract String getTargetCommonConfigPath();
+
+  /** Return the node config file path specified through system variable */
+  protected abstract String getDefaultNodeConfigPath();
+
+  /** Return the common config file path specified through system variable */
+  protected abstract String getDefaultCommonConfigPath();
+
+  protected abstract void addStartCmdParams(List<String> params);
+
+  public abstract String getSystemPropertiesPath();
 }

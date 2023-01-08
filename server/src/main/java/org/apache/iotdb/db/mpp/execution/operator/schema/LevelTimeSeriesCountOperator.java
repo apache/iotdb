@@ -21,6 +21,9 @@ package org.apache.iotdb.db.mpp.execution.operator.schema;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.metadata.plan.schemaregion.impl.read.SchemaRegionReadPlanFactory;
+import org.apache.iotdb.db.metadata.query.info.ITimeSeriesSchemaInfo;
+import org.apache.iotdb.db.metadata.query.reader.ISchemaReader;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.mpp.execution.driver.SchemaDriverContext;
@@ -29,8 +32,11 @@ import org.apache.iotdb.db.mpp.execution.operator.source.SourceOperator;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
+import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.utils.Binary;
 
+import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
@@ -39,19 +45,21 @@ import java.util.stream.Collectors;
 import static org.apache.iotdb.tsfile.read.common.block.TsBlockBuilderStatus.DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
 
 public class LevelTimeSeriesCountOperator implements SourceOperator {
+
+  private static final int DEFAULT_BATCH_SIZE = 1000;
+
   private final PlanNodeId sourceId;
   private final OperatorContext operatorContext;
+  private final List<TSDataType> outputDataTypes;
+
   private final PartialPath partialPath;
   private final boolean isPrefixPath;
-  private final int level;
   private final String key;
   private final String value;
   private final boolean isContains;
+  private final int level;
 
-  private List<TsBlock> tsBlockList;
-  private int currentIndex = 0;
-
-  private final List<TSDataType> outputDataTypes;
+  private ISchemaReader<ITimeSeriesSchemaInfo> timeSeriesReader;
 
   public LevelTimeSeriesCountOperator(
       PlanNodeId sourceId,
@@ -91,51 +99,63 @@ public class LevelTimeSeriesCountOperator implements SourceOperator {
     if (!hasNext()) {
       throw new NoSuchElementException();
     }
-    currentIndex++;
-    return tsBlockList.get(currentIndex - 1);
+    return generateResult();
   }
 
   @Override
   public boolean hasNext() {
-    if (tsBlockList == null) {
-      createTsBlockList();
+    if (timeSeriesReader == null) {
+      timeSeriesReader = createTimeSeriesReader();
     }
-
-    return currentIndex < tsBlockList.size();
+    return timeSeriesReader.hasNext();
   }
 
-  public void createTsBlockList() {
-    Map<PartialPath, Long> countMap;
+  public ISchemaReader<ITimeSeriesSchemaInfo> createTimeSeriesReader() {
     try {
-      if (key != null && value != null) {
-        countMap =
-            ((SchemaDriverContext) operatorContext.getDriverContext())
-                .getSchemaRegion()
-                .getMeasurementCountGroupByLevel(
-                    partialPath, level, isPrefixPath, key, value, isContains);
-      } else {
-        countMap =
-            ((SchemaDriverContext) operatorContext.getDriverContext())
-                .getSchemaRegion()
-                .getMeasurementCountGroupByLevel(partialPath, level, isPrefixPath);
-      }
-
+      return ((SchemaDriverContext) operatorContext.getDriverContext())
+          .getSchemaRegion()
+          .getTimeSeriesReader(
+              SchemaRegionReadPlanFactory.getShowTimeSeriesPlan(
+                  partialPath, null, isContains, key, value, 0, 0, isPrefixPath));
     } catch (MetadataException e) {
       throw new RuntimeException(e.getMessage(), e);
     }
+  }
 
-    tsBlockList =
-        SchemaTsBlockUtil.transferSchemaResultToTsBlockList(
-            countMap.entrySet().iterator(),
-            outputDataTypes,
-            (entry, tsBlockBuilder) -> {
-              tsBlockBuilder.getTimeColumnBuilder().writeLong(0L);
-              tsBlockBuilder
-                  .getColumnBuilder(0)
-                  .writeBinary(new Binary(entry.getKey().getFullPath()));
-              tsBlockBuilder.getColumnBuilder(1).writeLong(entry.getValue());
-              tsBlockBuilder.declarePosition();
-            });
+  private TsBlock generateResult() {
+    Map<PartialPath, Long> countMap = new HashMap<>();
+    ITimeSeriesSchemaInfo timeSeriesSchemaInfo;
+    PartialPath path;
+    PartialPath levelPath;
+    while (timeSeriesReader.hasNext()) {
+      timeSeriesSchemaInfo = timeSeriesReader.next();
+      path = timeSeriesSchemaInfo.getPartialPath();
+      if (path.getNodeLength() < level) {
+        continue;
+      }
+      levelPath = new PartialPath(Arrays.copyOf(path.getNodes(), level + 1));
+      countMap.compute(
+          levelPath,
+          (k, v) -> {
+            if (v == null) {
+              return 1L;
+            } else {
+              return v + 1;
+            }
+          });
+      if (countMap.size() == DEFAULT_BATCH_SIZE) {
+        break;
+      }
+    }
+
+    TsBlockBuilder tsBlockBuilder = new TsBlockBuilder(outputDataTypes);
+    for (Map.Entry<PartialPath, Long> entry : countMap.entrySet()) {
+      tsBlockBuilder.getTimeColumnBuilder().writeLong(0L);
+      tsBlockBuilder.getColumnBuilder(0).writeBinary(new Binary(entry.getKey().getFullPath()));
+      tsBlockBuilder.getColumnBuilder(1).writeLong(entry.getValue());
+      tsBlockBuilder.declarePosition();
+    }
+    return tsBlockBuilder.build();
   }
 
   @Override
@@ -156,5 +176,12 @@ public class LevelTimeSeriesCountOperator implements SourceOperator {
   @Override
   public long calculateRetainedSizeAfterCallingNext() {
     return 0L;
+  }
+
+  @Override
+  public void close() throws Exception {
+    if (timeSeriesReader != null) {
+      timeSeriesReader.close();
+    }
   }
 }

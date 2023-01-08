@@ -617,6 +617,8 @@ service IDataNodeRPCService {
 
   common.TSStatus setSystemStatus(string status)
 
+  common.TSStatus killQueryInstance(string queryId)
+
   /**
    * Config node will Set the TTL for the database on a list of data nodes.
    */
