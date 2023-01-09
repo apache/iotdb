@@ -28,6 +28,7 @@ import org.apache.iotdb.db.mpp.aggregation.timerangeiterator.ITimeRangeIterator;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.common.QueryId;
+import org.apache.iotdb.db.mpp.execution.driver.DriverContext;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceStateMachine;
 import org.apache.iotdb.db.mpp.execution.operator.process.AggregationOperator;
@@ -131,13 +132,13 @@ public class OperatorMemoryTest {
           new FragmentInstanceStateMachine(instanceId, instanceNotificationExecutor);
       FragmentInstanceContext fragmentInstanceContext =
           createFragmentInstanceContext(instanceId, stateMachine);
+      DriverContext driverContext = new DriverContext(fragmentInstanceContext, 0);
       PlanNodeId planNodeId = new PlanNodeId("1");
-      fragmentInstanceContext.addOperatorContext(
-          1, planNodeId, SeriesScanOperator.class.getSimpleName());
+      driverContext.addOperatorContext(1, planNodeId, SeriesScanOperator.class.getSimpleName());
 
       SeriesScanOperator seriesScanOperator =
           new SeriesScanOperator(
-              fragmentInstanceContext.getOperatorContexts().get(0),
+              driverContext.getOperatorContexts().get(0),
               planNodeId,
               measurementPath,
               allSensors,
@@ -178,15 +179,16 @@ public class OperatorMemoryTest {
           new FragmentInstanceStateMachine(instanceId, instanceNotificationExecutor);
       FragmentInstanceContext fragmentInstanceContext =
           createFragmentInstanceContext(instanceId, stateMachine);
+      DriverContext driverContext = new DriverContext(fragmentInstanceContext, 0);
       PlanNodeId planNodeId = new PlanNodeId("1");
-      fragmentInstanceContext.addOperatorContext(
+      driverContext.addOperatorContext(
           1, planNodeId, AlignedSeriesScanOperator.class.getSimpleName());
 
       AlignedSeriesScanOperator seriesScanOperator =
           new AlignedSeriesScanOperator(
               planNodeId,
               alignedPath,
-              fragmentInstanceContext.getOperatorContexts().get(0),
+              driverContext.getOperatorContexts().get(0),
               null,
               null,
               true);
@@ -686,14 +688,15 @@ public class OperatorMemoryTest {
           new FragmentInstanceStateMachine(instanceId, instanceNotificationExecutor);
       FragmentInstanceContext fragmentInstanceContext =
           createFragmentInstanceContext(instanceId, stateMachine);
+      DriverContext driverContext = new DriverContext(fragmentInstanceContext, 0);
       PlanNodeId planNodeId = new PlanNodeId("1");
-      fragmentInstanceContext.addOperatorContext(
+      driverContext.addOperatorContext(
           1, planNodeId, SchemaQueryScanOperator.class.getSimpleName());
 
       SchemaQueryScanOperator<?> operator =
           new SchemaQueryScanOperator<>(
               planNodeId,
-              fragmentInstanceContext.getOperatorContexts().get(0),
+              driverContext.getOperatorContexts().get(0),
               Mockito.mock(ISchemaSource.class));
 
       assertEquals(DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES, operator.calculateMaxPeekMemory());
@@ -717,14 +720,14 @@ public class OperatorMemoryTest {
           new FragmentInstanceStateMachine(instanceId, instanceNotificationExecutor);
       FragmentInstanceContext fragmentInstanceContext =
           createFragmentInstanceContext(instanceId, stateMachine);
+      DriverContext driverContext = new DriverContext(fragmentInstanceContext, 0);
       PlanNodeId planNodeId = new PlanNodeId("1");
-      fragmentInstanceContext.addOperatorContext(
-          1, planNodeId, SeriesScanOperator.class.getSimpleName());
+      driverContext.addOperatorContext(1, planNodeId, SeriesScanOperator.class.getSimpleName());
 
       CountGroupByLevelScanOperator<?> operator =
           new CountGroupByLevelScanOperator<>(
               planNodeId,
-              fragmentInstanceContext.getOperatorContexts().get(0),
+              driverContext.getOperatorContexts().get(0),
               4,
               Mockito.mock(ISchemaSource.class));
 
@@ -749,14 +752,14 @@ public class OperatorMemoryTest {
           new FragmentInstanceStateMachine(instanceId, instanceNotificationExecutor);
       FragmentInstanceContext fragmentInstanceContext =
           createFragmentInstanceContext(instanceId, stateMachine);
+      DriverContext driverContext = new DriverContext(fragmentInstanceContext, 0);
       PlanNodeId planNodeId = new PlanNodeId("1");
-      fragmentInstanceContext.addOperatorContext(
-          1, planNodeId, SchemaCountOperator.class.getSimpleName());
+      driverContext.addOperatorContext(1, planNodeId, SchemaCountOperator.class.getSimpleName());
 
       SchemaCountOperator<?> operator =
           new SchemaCountOperator<>(
               planNodeId,
-              fragmentInstanceContext.getOperatorContexts().get(0),
+              driverContext.getOperatorContexts().get(0),
               Mockito.mock(ISchemaSource.class));
 
       assertEquals(8L, operator.calculateMaxPeekMemory());
@@ -838,18 +841,13 @@ public class OperatorMemoryTest {
           new FragmentInstanceStateMachine(instanceId, instanceNotificationExecutor);
       FragmentInstanceContext fragmentInstanceContext =
           createFragmentInstanceContext(instanceId, stateMachine);
+      DriverContext driverContext = new DriverContext(fragmentInstanceContext, 0);
       PlanNodeId planNodeId = new PlanNodeId("1");
-      fragmentInstanceContext.addOperatorContext(
-          1, planNodeId, SeriesScanOperator.class.getSimpleName());
+      driverContext.addOperatorContext(1, planNodeId, SeriesScanOperator.class.getSimpleName());
 
       SchemaFetchScanOperator operator =
           new SchemaFetchScanOperator(
-              planNodeId,
-              fragmentInstanceContext.getOperatorContexts().get(0),
-              null,
-              null,
-              null,
-              false);
+              planNodeId, driverContext.getOperatorContexts().get(0), null, null, null, false);
 
       assertEquals(DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES, operator.calculateMaxPeekMemory());
       assertEquals(DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES, operator.calculateMaxReturnSize());
@@ -1200,9 +1198,9 @@ public class OperatorMemoryTest {
         new FragmentInstanceStateMachine(instanceId, instanceNotificationExecutor);
     FragmentInstanceContext fragmentInstanceContext =
         createFragmentInstanceContext(instanceId, stateMachine);
+    DriverContext driverContext = new DriverContext(fragmentInstanceContext, 0);
     PlanNodeId planNodeId = new PlanNodeId("1");
-    fragmentInstanceContext.addOperatorContext(
-        1, planNodeId, SeriesScanOperator.class.getSimpleName());
+    driverContext.addOperatorContext(1, planNodeId, SeriesScanOperator.class.getSimpleName());
 
     List<Aggregator> aggregators = new ArrayList<>();
     aggregationDescriptors.forEach(
@@ -1222,7 +1220,7 @@ public class OperatorMemoryTest {
         planNodeId,
         measurementPath,
         allSensors,
-        fragmentInstanceContext.getOperatorContexts().get(0),
+        driverContext.getOperatorContexts().get(0),
         aggregators,
         timeRangeIterator,
         null,

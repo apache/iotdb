@@ -31,6 +31,7 @@ import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.common.QueryId;
 import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
 import org.apache.iotdb.db.mpp.common.header.DatasetHeaderFactory;
+import org.apache.iotdb.db.mpp.execution.driver.DriverContext;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceStateMachine;
 import org.apache.iotdb.db.mpp.execution.operator.process.DeviceViewOperator;
@@ -152,32 +153,28 @@ public class MergeSortOperatorTest {
           new FragmentInstanceStateMachine(instanceId, instanceNotificationExecutor);
       FragmentInstanceContext fragmentInstanceContext =
           createFragmentInstanceContext(instanceId, stateMachine);
+      DriverContext driverContext = new DriverContext(fragmentInstanceContext, 0);
       PlanNodeId planNodeId1 = new PlanNodeId("1");
-      fragmentInstanceContext.addOperatorContext(
-          1, planNodeId1, SeriesScanOperator.class.getSimpleName());
+      driverContext.addOperatorContext(1, planNodeId1, SeriesScanOperator.class.getSimpleName());
       PlanNodeId planNodeId2 = new PlanNodeId("2");
-      fragmentInstanceContext.addOperatorContext(
-          2, planNodeId2, SeriesScanOperator.class.getSimpleName());
+      driverContext.addOperatorContext(2, planNodeId2, SeriesScanOperator.class.getSimpleName());
       PlanNodeId planNodeId3 = new PlanNodeId("3");
-      fragmentInstanceContext.addOperatorContext(
-          3, planNodeId3, SeriesScanOperator.class.getSimpleName());
+      driverContext.addOperatorContext(3, planNodeId3, SeriesScanOperator.class.getSimpleName());
       PlanNodeId planNodeId4 = new PlanNodeId("4");
-      fragmentInstanceContext.addOperatorContext(
-          4, planNodeId4, SeriesScanOperator.class.getSimpleName());
+      driverContext.addOperatorContext(4, planNodeId4, SeriesScanOperator.class.getSimpleName());
       PlanNodeId planNodeId5 = new PlanNodeId("5");
-      fragmentInstanceContext.addOperatorContext(
-          5, planNodeId5, SeriesScanOperator.class.getSimpleName());
-      fragmentInstanceContext.addOperatorContext(
+      driverContext.addOperatorContext(5, planNodeId5, SeriesScanOperator.class.getSimpleName());
+      driverContext.addOperatorContext(
           6, new PlanNodeId("6"), SingleDeviceViewOperator.class.getSimpleName());
-      fragmentInstanceContext.addOperatorContext(
+      driverContext.addOperatorContext(
           7, new PlanNodeId("7"), TimeJoinOperator.class.getSimpleName());
-      fragmentInstanceContext.addOperatorContext(
+      driverContext.addOperatorContext(
           8, new PlanNodeId("8"), SingleDeviceViewOperator.class.getSimpleName());
-      fragmentInstanceContext.addOperatorContext(
+      driverContext.addOperatorContext(
           9, new PlanNodeId("9"), TimeJoinOperator.class.getSimpleName());
-      fragmentInstanceContext.addOperatorContext(
+      driverContext.addOperatorContext(
           10, new PlanNodeId("10"), SingleDeviceViewOperator.class.getSimpleName());
-      fragmentInstanceContext.addOperatorContext(
+      driverContext.addOperatorContext(
           11, new PlanNodeId("11"), MergeSortOperator.class.getSimpleName());
 
       MeasurementPath measurementPath1 =
@@ -192,7 +189,7 @@ public class MergeSortOperatorTest {
           new MeasurementPath(MERGE_SORT_OPERATOR_TEST_SG + ".device2.sensor1", TSDataType.INT32);
       SeriesScanOperator seriesScanOperator1 =
           new SeriesScanOperator(
-              fragmentInstanceContext.getOperatorContexts().get(0),
+              driverContext.getOperatorContexts().get(0),
               planNodeId1,
               measurementPath1,
               Collections.singleton("sensor0"),
@@ -206,7 +203,7 @@ public class MergeSortOperatorTest {
           .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
       SeriesScanOperator seriesScanOperator2 =
           new SeriesScanOperator(
-              fragmentInstanceContext.getOperatorContexts().get(1),
+              driverContext.getOperatorContexts().get(1),
               planNodeId2,
               measurementPath2,
               Collections.singleton("sensor0"),
@@ -220,7 +217,7 @@ public class MergeSortOperatorTest {
           .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
       SeriesScanOperator seriesScanOperator3 =
           new SeriesScanOperator(
-              fragmentInstanceContext.getOperatorContexts().get(2),
+              driverContext.getOperatorContexts().get(2),
               planNodeId3,
               measurementPath3,
               Collections.singleton("sensor1"),
@@ -234,7 +231,7 @@ public class MergeSortOperatorTest {
           .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
       SeriesScanOperator seriesScanOperator4 =
           new SeriesScanOperator(
-              fragmentInstanceContext.getOperatorContexts().get(3),
+              driverContext.getOperatorContexts().get(3),
               planNodeId4,
               measurementPath4,
               Collections.singleton("sensor0"),
@@ -248,7 +245,7 @@ public class MergeSortOperatorTest {
           .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
       SeriesScanOperator seriesScanOperator5 =
           new SeriesScanOperator(
-              fragmentInstanceContext.getOperatorContexts().get(4),
+              driverContext.getOperatorContexts().get(4),
               planNodeId5,
               measurementPath5,
               Collections.singleton("sensor1"),
@@ -272,7 +269,7 @@ public class MergeSortOperatorTest {
                   TSDataType.INT32));
       SingleDeviceViewOperator singleDeviceViewOperator1 =
           new SingleDeviceViewOperator(
-              fragmentInstanceContext.getOperatorContexts().get(5),
+              driverContext.getOperatorContexts().get(5),
               DEVICE0,
               seriesScanOperator1,
               Collections.singletonList(1),
@@ -280,7 +277,7 @@ public class MergeSortOperatorTest {
 
       TimeJoinOperator timeJoinOperator1 =
           new TimeJoinOperator(
-              fragmentInstanceContext.getOperatorContexts().get(6),
+              driverContext.getOperatorContexts().get(6),
               Arrays.asList(seriesScanOperator2, seriesScanOperator3),
               timeOrdering,
               Arrays.asList(TSDataType.INT32, TSDataType.INT32),
@@ -298,7 +295,7 @@ public class MergeSortOperatorTest {
               timeOrdering == Ordering.ASC ? new AscTimeComparator() : new DescTimeComparator());
       SingleDeviceViewOperator singleDeviceViewOperator2 =
           new SingleDeviceViewOperator(
-              fragmentInstanceContext.getOperatorContexts().get(7),
+              driverContext.getOperatorContexts().get(7),
               DEVICE1,
               timeJoinOperator1,
               Arrays.asList(2, 3),
@@ -306,7 +303,7 @@ public class MergeSortOperatorTest {
 
       TimeJoinOperator timeJoinOperator2 =
           new TimeJoinOperator(
-              fragmentInstanceContext.getOperatorContexts().get(8),
+              driverContext.getOperatorContexts().get(8),
               Arrays.asList(seriesScanOperator4, seriesScanOperator5),
               timeOrdering,
               Arrays.asList(TSDataType.INT32, TSDataType.INT32),
@@ -324,14 +321,14 @@ public class MergeSortOperatorTest {
               timeOrdering == Ordering.ASC ? new AscTimeComparator() : new DescTimeComparator());
       SingleDeviceViewOperator singleDeviceViewOperator3 =
           new SingleDeviceViewOperator(
-              fragmentInstanceContext.getOperatorContexts().get(9),
+              driverContext.getOperatorContexts().get(9),
               DEVICE2,
               timeJoinOperator2,
               Arrays.asList(4, 5),
               tsDataTypes);
 
       return new MergeSortOperator(
-          fragmentInstanceContext.getOperatorContexts().get(10),
+          driverContext.getOperatorContexts().get(10),
           Arrays.asList(
               singleDeviceViewOperator1, singleDeviceViewOperator2, singleDeviceViewOperator3),
           tsDataTypes,
@@ -561,47 +558,41 @@ public class MergeSortOperatorTest {
           new FragmentInstanceStateMachine(instanceId, instanceNotificationExecutor);
       FragmentInstanceContext fragmentInstanceContext =
           createFragmentInstanceContext(instanceId, stateMachine);
+      DriverContext driverContext = new DriverContext(fragmentInstanceContext, 0);
       PlanNodeId planNodeId1 = new PlanNodeId("1");
-      fragmentInstanceContext.addOperatorContext(
-          1, planNodeId1, SeriesScanOperator.class.getSimpleName());
+      driverContext.addOperatorContext(1, planNodeId1, SeriesScanOperator.class.getSimpleName());
       PlanNodeId planNodeId2 = new PlanNodeId("2");
-      fragmentInstanceContext.addOperatorContext(
-          2, planNodeId2, SeriesScanOperator.class.getSimpleName());
+      driverContext.addOperatorContext(2, planNodeId2, SeriesScanOperator.class.getSimpleName());
       PlanNodeId planNodeId3 = new PlanNodeId("3");
-      fragmentInstanceContext.addOperatorContext(
-          3, planNodeId3, SeriesScanOperator.class.getSimpleName());
+      driverContext.addOperatorContext(3, planNodeId3, SeriesScanOperator.class.getSimpleName());
       PlanNodeId planNodeId4 = new PlanNodeId("4");
-      fragmentInstanceContext.addOperatorContext(
-          4, planNodeId4, SeriesScanOperator.class.getSimpleName());
+      driverContext.addOperatorContext(4, planNodeId4, SeriesScanOperator.class.getSimpleName());
       PlanNodeId planNodeId5 = new PlanNodeId("5");
-      fragmentInstanceContext.addOperatorContext(
-          5, planNodeId5, SeriesScanOperator.class.getSimpleName());
+      driverContext.addOperatorContext(5, planNodeId5, SeriesScanOperator.class.getSimpleName());
       PlanNodeId planNodeId6 = new PlanNodeId("6");
-      fragmentInstanceContext.addOperatorContext(
-          6, planNodeId6, SeriesScanOperator.class.getSimpleName());
+      driverContext.addOperatorContext(6, planNodeId6, SeriesScanOperator.class.getSimpleName());
       PlanNodeId planNodeId7 = new PlanNodeId("7");
-      fragmentInstanceContext.addOperatorContext(
-          7, planNodeId7, SeriesScanOperator.class.getSimpleName());
+      driverContext.addOperatorContext(7, planNodeId7, SeriesScanOperator.class.getSimpleName());
 
-      fragmentInstanceContext.addOperatorContext(
+      driverContext.addOperatorContext(
           8, new PlanNodeId("8"), TimeJoinOperator.class.getSimpleName());
-      fragmentInstanceContext.addOperatorContext(
+      driverContext.addOperatorContext(
           9, new PlanNodeId("9"), TimeJoinOperator.class.getSimpleName());
-      fragmentInstanceContext.addOperatorContext(
+      driverContext.addOperatorContext(
           10, new PlanNodeId("10"), TimeJoinOperator.class.getSimpleName());
-      fragmentInstanceContext.addOperatorContext(
+      driverContext.addOperatorContext(
           11, new PlanNodeId("11"), SingleDeviceViewOperator.class.getSimpleName());
-      fragmentInstanceContext.addOperatorContext(
+      driverContext.addOperatorContext(
           12, new PlanNodeId("12"), SingleDeviceViewOperator.class.getSimpleName());
-      fragmentInstanceContext.addOperatorContext(
+      driverContext.addOperatorContext(
           13, new PlanNodeId("13"), SingleDeviceViewOperator.class.getSimpleName());
-      fragmentInstanceContext.addOperatorContext(
+      driverContext.addOperatorContext(
           14, new PlanNodeId("14"), SingleDeviceViewOperator.class.getSimpleName());
-      fragmentInstanceContext.addOperatorContext(
+      driverContext.addOperatorContext(
           15, new PlanNodeId("15"), MergeSortOperator.class.getSimpleName());
-      fragmentInstanceContext.addOperatorContext(
+      driverContext.addOperatorContext(
           16, new PlanNodeId("16"), MergeSortOperator.class.getSimpleName());
-      fragmentInstanceContext.addOperatorContext(
+      driverContext.addOperatorContext(
           17, new PlanNodeId("17"), MergeSortOperator.class.getSimpleName());
 
       MeasurementPath measurementPath1 =
@@ -621,7 +612,7 @@ public class MergeSortOperatorTest {
 
       SeriesScanOperator seriesScanOperator1 =
           new SeriesScanOperator(
-              fragmentInstanceContext.getOperatorContexts().get(0),
+              driverContext.getOperatorContexts().get(0),
               planNodeId1,
               measurementPath1,
               Collections.singleton("sensor0"),
@@ -635,7 +626,7 @@ public class MergeSortOperatorTest {
           .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
       SeriesScanOperator seriesScanOperator2 =
           new SeriesScanOperator(
-              fragmentInstanceContext.getOperatorContexts().get(1),
+              driverContext.getOperatorContexts().get(1),
               planNodeId2,
               measurementPath2,
               Collections.singleton("sensor0"),
@@ -649,7 +640,7 @@ public class MergeSortOperatorTest {
           .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
       SeriesScanOperator seriesScanOperator3 =
           new SeriesScanOperator(
-              fragmentInstanceContext.getOperatorContexts().get(2),
+              driverContext.getOperatorContexts().get(2),
               planNodeId3,
               measurementPath3,
               Collections.singleton("sensor1"),
@@ -663,7 +654,7 @@ public class MergeSortOperatorTest {
           .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
       SeriesScanOperator seriesScanOperator4 =
           new SeriesScanOperator(
-              fragmentInstanceContext.getOperatorContexts().get(3),
+              driverContext.getOperatorContexts().get(3),
               planNodeId4,
               measurementPath4,
               Collections.singleton("sensor0"),
@@ -677,7 +668,7 @@ public class MergeSortOperatorTest {
           .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
       SeriesScanOperator seriesScanOperator5 =
           new SeriesScanOperator(
-              fragmentInstanceContext.getOperatorContexts().get(4),
+              driverContext.getOperatorContexts().get(4),
               planNodeId5,
               measurementPath5,
               Collections.singleton("sensor1"),
@@ -691,7 +682,7 @@ public class MergeSortOperatorTest {
           .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
       SeriesScanOperator seriesScanOperator6 =
           new SeriesScanOperator(
-              fragmentInstanceContext.getOperatorContexts().get(5),
+              driverContext.getOperatorContexts().get(5),
               planNodeId6,
               measurementPath6,
               Collections.singleton("sensor0"),
@@ -705,7 +696,7 @@ public class MergeSortOperatorTest {
           .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
       SeriesScanOperator seriesScanOperator7 =
           new SeriesScanOperator(
-              fragmentInstanceContext.getOperatorContexts().get(6),
+              driverContext.getOperatorContexts().get(6),
               planNodeId7,
               measurementPath7,
               Collections.singleton("sensor1"),
@@ -723,7 +714,7 @@ public class MergeSortOperatorTest {
 
       TimeJoinOperator timeJoinOperator1 =
           new TimeJoinOperator(
-              fragmentInstanceContext.getOperatorContexts().get(7),
+              driverContext.getOperatorContexts().get(7),
               Arrays.asList(seriesScanOperator2, seriesScanOperator3),
               timeOrdering,
               Arrays.asList(TSDataType.INT32, TSDataType.INT32),
@@ -742,7 +733,7 @@ public class MergeSortOperatorTest {
 
       TimeJoinOperator timeJoinOperator2 =
           new TimeJoinOperator(
-              fragmentInstanceContext.getOperatorContexts().get(8),
+              driverContext.getOperatorContexts().get(8),
               Arrays.asList(seriesScanOperator4, seriesScanOperator5),
               timeOrdering,
               Arrays.asList(TSDataType.INT32, TSDataType.INT32),
@@ -761,7 +752,7 @@ public class MergeSortOperatorTest {
 
       TimeJoinOperator timeJoinOperator3 =
           new TimeJoinOperator(
-              fragmentInstanceContext.getOperatorContexts().get(9),
+              driverContext.getOperatorContexts().get(9),
               Arrays.asList(seriesScanOperator6, seriesScanOperator7),
               timeOrdering,
               Arrays.asList(TSDataType.INT32, TSDataType.INT32),
@@ -779,28 +770,28 @@ public class MergeSortOperatorTest {
               timeOrdering == Ordering.ASC ? new AscTimeComparator() : new DescTimeComparator());
       SingleDeviceViewOperator singleDeviceViewOperator1 =
           new SingleDeviceViewOperator(
-              fragmentInstanceContext.getOperatorContexts().get(10),
+              driverContext.getOperatorContexts().get(10),
               DEVICE0,
               seriesScanOperator1,
               Collections.singletonList(1),
               tsDataTypes);
       SingleDeviceViewOperator singleDeviceViewOperator2 =
           new SingleDeviceViewOperator(
-              fragmentInstanceContext.getOperatorContexts().get(11),
+              driverContext.getOperatorContexts().get(11),
               DEVICE1,
               timeJoinOperator1,
               Arrays.asList(1, 2),
               tsDataTypes);
       SingleDeviceViewOperator singleDeviceViewOperator3 =
           new SingleDeviceViewOperator(
-              fragmentInstanceContext.getOperatorContexts().get(12),
+              driverContext.getOperatorContexts().get(12),
               DEVICE2,
               timeJoinOperator2,
               Arrays.asList(1, 2),
               tsDataTypes);
       SingleDeviceViewOperator singleDeviceViewOperator4 =
           new SingleDeviceViewOperator(
-              fragmentInstanceContext.getOperatorContexts().get(13),
+              driverContext.getOperatorContexts().get(13),
               DEVICE3,
               timeJoinOperator3,
               Arrays.asList(1, 2),
@@ -808,7 +799,7 @@ public class MergeSortOperatorTest {
 
       MergeSortOperator mergeSortOperator1 =
           new MergeSortOperator(
-              fragmentInstanceContext.getOperatorContexts().get(14),
+              driverContext.getOperatorContexts().get(14),
               Arrays.asList(singleDeviceViewOperator1, singleDeviceViewOperator2),
               tsDataTypes,
               MergeSortComparator.getComparator(
@@ -819,7 +810,7 @@ public class MergeSortOperatorTest {
                   null));
       MergeSortOperator mergeSortOperator2 =
           new MergeSortOperator(
-              fragmentInstanceContext.getOperatorContexts().get(15),
+              driverContext.getOperatorContexts().get(15),
               Arrays.asList(singleDeviceViewOperator3, singleDeviceViewOperator4),
               tsDataTypes,
               MergeSortComparator.getComparator(
@@ -830,7 +821,7 @@ public class MergeSortOperatorTest {
                   null));
 
       return new MergeSortOperator(
-          fragmentInstanceContext.getOperatorContexts().get(16),
+          driverContext.getOperatorContexts().get(16),
           Arrays.asList(mergeSortOperator1, mergeSortOperator2),
           tsDataTypes,
           MergeSortComparator.getComparator(
@@ -1039,39 +1030,33 @@ public class MergeSortOperatorTest {
           new FragmentInstanceStateMachine(instanceId, instanceNotificationExecutor);
       FragmentInstanceContext fragmentInstanceContext =
           createFragmentInstanceContext(instanceId, stateMachine);
+      DriverContext driverContext = new DriverContext(fragmentInstanceContext, 0);
       PlanNodeId planNodeId1 = new PlanNodeId("1");
-      fragmentInstanceContext.addOperatorContext(
-          1, planNodeId1, SeriesScanOperator.class.getSimpleName());
+      driverContext.addOperatorContext(1, planNodeId1, SeriesScanOperator.class.getSimpleName());
       PlanNodeId planNodeId2 = new PlanNodeId("2");
-      fragmentInstanceContext.addOperatorContext(
-          2, planNodeId2, SeriesScanOperator.class.getSimpleName());
+      driverContext.addOperatorContext(2, planNodeId2, SeriesScanOperator.class.getSimpleName());
       PlanNodeId planNodeId3 = new PlanNodeId("3");
-      fragmentInstanceContext.addOperatorContext(
-          3, planNodeId3, SeriesScanOperator.class.getSimpleName());
+      driverContext.addOperatorContext(3, planNodeId3, SeriesScanOperator.class.getSimpleName());
       PlanNodeId planNodeId4 = new PlanNodeId("4");
-      fragmentInstanceContext.addOperatorContext(
-          4, planNodeId4, SeriesScanOperator.class.getSimpleName());
+      driverContext.addOperatorContext(4, planNodeId4, SeriesScanOperator.class.getSimpleName());
       PlanNodeId planNodeId5 = new PlanNodeId("5");
-      fragmentInstanceContext.addOperatorContext(
-          5, planNodeId5, SeriesScanOperator.class.getSimpleName());
+      driverContext.addOperatorContext(5, planNodeId5, SeriesScanOperator.class.getSimpleName());
       PlanNodeId planNodeId6 = new PlanNodeId("6");
-      fragmentInstanceContext.addOperatorContext(
-          6, planNodeId6, SeriesScanOperator.class.getSimpleName());
+      driverContext.addOperatorContext(6, planNodeId6, SeriesScanOperator.class.getSimpleName());
       PlanNodeId planNodeId7 = new PlanNodeId("7");
-      fragmentInstanceContext.addOperatorContext(
-          7, planNodeId7, SeriesScanOperator.class.getSimpleName());
+      driverContext.addOperatorContext(7, planNodeId7, SeriesScanOperator.class.getSimpleName());
 
-      fragmentInstanceContext.addOperatorContext(
+      driverContext.addOperatorContext(
           8, new PlanNodeId("8"), TimeJoinOperator.class.getSimpleName());
-      fragmentInstanceContext.addOperatorContext(
+      driverContext.addOperatorContext(
           9, new PlanNodeId("9"), TimeJoinOperator.class.getSimpleName());
-      fragmentInstanceContext.addOperatorContext(
+      driverContext.addOperatorContext(
           10, new PlanNodeId("10"), TimeJoinOperator.class.getSimpleName());
-      fragmentInstanceContext.addOperatorContext(
+      driverContext.addOperatorContext(
           11, new PlanNodeId("11"), DeviceViewOperator.class.getSimpleName());
-      fragmentInstanceContext.addOperatorContext(
+      driverContext.addOperatorContext(
           12, new PlanNodeId("12"), DeviceViewOperator.class.getSimpleName());
-      fragmentInstanceContext.addOperatorContext(
+      driverContext.addOperatorContext(
           13, new PlanNodeId("13"), MergeSortOperator.class.getSimpleName());
 
       MeasurementPath measurementPath1 =
@@ -1091,7 +1076,7 @@ public class MergeSortOperatorTest {
 
       SeriesScanOperator seriesScanOperator1 =
           new SeriesScanOperator(
-              fragmentInstanceContext.getOperatorContexts().get(0),
+              driverContext.getOperatorContexts().get(0),
               planNodeId1,
               measurementPath1,
               Collections.singleton("sensor0"),
@@ -1105,7 +1090,7 @@ public class MergeSortOperatorTest {
           .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
       SeriesScanOperator seriesScanOperator2 =
           new SeriesScanOperator(
-              fragmentInstanceContext.getOperatorContexts().get(1),
+              driverContext.getOperatorContexts().get(1),
               planNodeId2,
               measurementPath2,
               Collections.singleton("sensor0"),
@@ -1119,7 +1104,7 @@ public class MergeSortOperatorTest {
           .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
       SeriesScanOperator seriesScanOperator3 =
           new SeriesScanOperator(
-              fragmentInstanceContext.getOperatorContexts().get(2),
+              driverContext.getOperatorContexts().get(2),
               planNodeId3,
               measurementPath3,
               Collections.singleton("sensor1"),
@@ -1133,7 +1118,7 @@ public class MergeSortOperatorTest {
           .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
       SeriesScanOperator seriesScanOperator4 =
           new SeriesScanOperator(
-              fragmentInstanceContext.getOperatorContexts().get(3),
+              driverContext.getOperatorContexts().get(3),
               planNodeId4,
               measurementPath4,
               Collections.singleton("sensor0"),
@@ -1147,7 +1132,7 @@ public class MergeSortOperatorTest {
           .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
       SeriesScanOperator seriesScanOperator5 =
           new SeriesScanOperator(
-              fragmentInstanceContext.getOperatorContexts().get(4),
+              driverContext.getOperatorContexts().get(4),
               planNodeId5,
               measurementPath5,
               Collections.singleton("sensor1"),
@@ -1161,7 +1146,7 @@ public class MergeSortOperatorTest {
           .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
       SeriesScanOperator seriesScanOperator6 =
           new SeriesScanOperator(
-              fragmentInstanceContext.getOperatorContexts().get(5),
+              driverContext.getOperatorContexts().get(5),
               planNodeId6,
               measurementPath6,
               Collections.singleton("sensor0"),
@@ -1175,7 +1160,7 @@ public class MergeSortOperatorTest {
           .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
       SeriesScanOperator seriesScanOperator7 =
           new SeriesScanOperator(
-              fragmentInstanceContext.getOperatorContexts().get(6),
+              driverContext.getOperatorContexts().get(6),
               planNodeId7,
               measurementPath7,
               Collections.singleton("sensor1"),
@@ -1193,7 +1178,7 @@ public class MergeSortOperatorTest {
 
       TimeJoinOperator timeJoinOperator1 =
           new TimeJoinOperator(
-              fragmentInstanceContext.getOperatorContexts().get(7),
+              driverContext.getOperatorContexts().get(7),
               Arrays.asList(seriesScanOperator2, seriesScanOperator3),
               timeOrdering,
               Arrays.asList(TSDataType.INT32, TSDataType.INT32),
@@ -1212,7 +1197,7 @@ public class MergeSortOperatorTest {
 
       TimeJoinOperator timeJoinOperator2 =
           new TimeJoinOperator(
-              fragmentInstanceContext.getOperatorContexts().get(8),
+              driverContext.getOperatorContexts().get(8),
               Arrays.asList(seriesScanOperator4, seriesScanOperator5),
               timeOrdering,
               Arrays.asList(TSDataType.INT32, TSDataType.INT32),
@@ -1231,7 +1216,7 @@ public class MergeSortOperatorTest {
 
       TimeJoinOperator timeJoinOperator3 =
           new TimeJoinOperator(
-              fragmentInstanceContext.getOperatorContexts().get(9),
+              driverContext.getOperatorContexts().get(9),
               Arrays.asList(seriesScanOperator6, seriesScanOperator7),
               timeOrdering,
               Arrays.asList(TSDataType.INT32, TSDataType.INT32),
@@ -1256,7 +1241,7 @@ public class MergeSortOperatorTest {
       if (deviceOrdering == Ordering.DESC) Collections.reverse(deviceColumnIndex);
       DeviceViewOperator deviceViewOperator1 =
           new DeviceViewOperator(
-              fragmentInstanceContext.getOperatorContexts().get(10),
+              driverContext.getOperatorContexts().get(10),
               deviceOrdering == Ordering.ASC
                   ? Arrays.asList(DEVICE0, DEVICE1)
                   : Arrays.asList(DEVICE1, DEVICE0),
@@ -1270,7 +1255,7 @@ public class MergeSortOperatorTest {
       deviceColumnIndex.add(Arrays.asList(1, 2));
       DeviceViewOperator deviceViewOperator2 =
           new DeviceViewOperator(
-              fragmentInstanceContext.getOperatorContexts().get(11),
+              driverContext.getOperatorContexts().get(11),
               deviceOrdering == Ordering.ASC
                   ? Arrays.asList(DEVICE2, DEVICE3)
                   : Arrays.asList(DEVICE3, DEVICE2),
@@ -1280,7 +1265,7 @@ public class MergeSortOperatorTest {
               deviceColumnIndex,
               tsDataTypes);
       return new MergeSortOperator(
-          fragmentInstanceContext.getOperatorContexts().get(12),
+          driverContext.getOperatorContexts().get(12),
           Arrays.asList(deviceViewOperator1, deviceViewOperator2),
           tsDataTypes,
           MergeSortComparator.getComparator(
@@ -1530,23 +1515,19 @@ public class MergeSortOperatorTest {
           new FragmentInstanceStateMachine(instanceId, instanceNotificationExecutor);
       FragmentInstanceContext fragmentInstanceContext =
           createFragmentInstanceContext(instanceId, stateMachine);
+      DriverContext driverContext = new DriverContext(fragmentInstanceContext, 0);
       PlanNodeId planNodeId0 = new PlanNodeId("0");
-      fragmentInstanceContext.addOperatorContext(
-          0, planNodeId0, ShowQueriesOperator.class.getSimpleName());
+      driverContext.addOperatorContext(0, planNodeId0, ShowQueriesOperator.class.getSimpleName());
       PlanNodeId planNodeId1 = new PlanNodeId("1");
-      fragmentInstanceContext.addOperatorContext(
-          1, planNodeId1, ShowQueriesOperator.class.getSimpleName());
+      driverContext.addOperatorContext(1, planNodeId1, ShowQueriesOperator.class.getSimpleName());
       PlanNodeId planNodeId2 = new PlanNodeId("2");
-      fragmentInstanceContext.addOperatorContext(
-          2, planNodeId2, SortOperator.class.getSimpleName());
+      driverContext.addOperatorContext(2, planNodeId2, SortOperator.class.getSimpleName());
       PlanNodeId planNodeId3 = new PlanNodeId("3");
-      fragmentInstanceContext.addOperatorContext(
-          3, planNodeId3, SortOperator.class.getSimpleName());
+      driverContext.addOperatorContext(3, planNodeId3, SortOperator.class.getSimpleName());
       PlanNodeId planNodeId4 = new PlanNodeId("4");
-      fragmentInstanceContext.addOperatorContext(
-          4, planNodeId4, MergeSortOperator.class.getSimpleName());
+      driverContext.addOperatorContext(4, planNodeId4, MergeSortOperator.class.getSimpleName());
 
-      List<OperatorContext> operatorContexts = fragmentInstanceContext.getOperatorContexts();
+      List<OperatorContext> operatorContexts = driverContext.getOperatorContexts();
       List<TSDataType> dataTypes = DatasetHeaderFactory.getShowQueriesHeader().getRespDataTypes();
       Comparator<MergeSortKey> comparator =
           MergeSortComparator.getComparator(

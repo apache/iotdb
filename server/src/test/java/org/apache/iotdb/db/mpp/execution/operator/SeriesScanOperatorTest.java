@@ -27,6 +27,7 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.common.QueryId;
+import org.apache.iotdb.db.mpp.execution.driver.DriverContext;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceStateMachine;
 import org.apache.iotdb.db.mpp.execution.operator.source.SeriesScanOperator;
@@ -91,13 +92,13 @@ public class SeriesScanOperatorTest {
           new FragmentInstanceStateMachine(instanceId, instanceNotificationExecutor);
       FragmentInstanceContext fragmentInstanceContext =
           createFragmentInstanceContext(instanceId, stateMachine);
+      DriverContext driverContext = new DriverContext(fragmentInstanceContext, 0);
       PlanNodeId planNodeId = new PlanNodeId("1");
-      fragmentInstanceContext.addOperatorContext(
-          1, planNodeId, SeriesScanOperator.class.getSimpleName());
+      driverContext.addOperatorContext(1, planNodeId, SeriesScanOperator.class.getSimpleName());
 
       SeriesScanOperator seriesScanOperator =
           new SeriesScanOperator(
-              fragmentInstanceContext.getOperatorContexts().get(0),
+              driverContext.getOperatorContexts().get(0),
               planNodeId,
               measurementPath,
               allSensors,

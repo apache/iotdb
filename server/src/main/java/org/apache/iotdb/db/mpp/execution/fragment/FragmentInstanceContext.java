@@ -21,31 +21,23 @@ package org.apache.iotdb.db.mpp.execution.fragment;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.common.SessionInfo;
-import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.query.context.QueryContext;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.ZoneId;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
-import static com.google.common.base.Preconditions.checkArgument;
-
 public class FragmentInstanceContext extends QueryContext {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(FragmentInstanceContext.class);
   private static final long END_TIME_INITIAL_VALUE = -1L;
   private final FragmentInstanceId id;
-
-  // TODO Remove this, just use operatorContexts in driverContext
-  private final List<OperatorContext> operatorContexts = new ArrayList<>();
 
   private final FragmentInstanceStateMachine stateMachine;
 
@@ -140,28 +132,6 @@ public class FragmentInstanceContext extends QueryContext {
       executionEndTime.compareAndSet(END_TIME_INITIAL_VALUE, now);
       endNanos.compareAndSet(0, System.nanoTime());
     }
-  }
-
-  @TestOnly
-  public OperatorContext addOperatorContext(
-      int operatorId, PlanNodeId planNodeId, String operatorType) {
-    checkArgument(operatorId >= 0, "operatorId is negative");
-
-    for (OperatorContext operatorContext : operatorContexts) {
-      checkArgument(
-          operatorId != operatorContext.getOperatorId(),
-          "A context already exists for operatorId %s",
-          operatorId);
-    }
-
-    OperatorContext operatorContext =
-        new OperatorContext(operatorId, planNodeId, operatorType, this);
-    operatorContexts.add(operatorContext);
-    return operatorContext;
-  }
-
-  public List<OperatorContext> getOperatorContexts() {
-    return operatorContexts;
   }
 
   public FragmentInstanceId getId() {

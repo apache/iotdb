@@ -22,7 +22,6 @@ import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.MeasurementPath;
-import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -52,7 +51,6 @@ import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.column.IntColumn;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
-import com.google.common.collect.ImmutableList;
 import com.google.common.util.concurrent.ListenableFuture;
 import io.airlift.units.Duration;
 import org.junit.After;
@@ -113,19 +111,19 @@ public class DataDriverTest {
           new FragmentInstanceStateMachine(instanceId, instanceNotificationExecutor);
       FragmentInstanceContext fragmentInstanceContext =
           createFragmentInstanceContext(instanceId, stateMachine);
+      DataRegion dataRegion = Mockito.mock(DataRegion.class);
+      DataDriverContext driverContext =
+          new DataDriverContext(fragmentInstanceContext, 0, null, dataRegion);
       PlanNodeId planNodeId1 = new PlanNodeId("1");
-      fragmentInstanceContext.addOperatorContext(
-          1, planNodeId1, SeriesScanOperator.class.getSimpleName());
+      driverContext.addOperatorContext(1, planNodeId1, SeriesScanOperator.class.getSimpleName());
       PlanNodeId planNodeId2 = new PlanNodeId("2");
-      fragmentInstanceContext.addOperatorContext(
-          2, planNodeId2, SeriesScanOperator.class.getSimpleName());
-      fragmentInstanceContext.addOperatorContext(
+      driverContext.addOperatorContext(2, planNodeId2, SeriesScanOperator.class.getSimpleName());
+      driverContext.addOperatorContext(
           3, new PlanNodeId("3"), TimeJoinOperator.class.getSimpleName());
-      fragmentInstanceContext.addOperatorContext(
-          4, new PlanNodeId("4"), LimitOperator.class.getSimpleName());
+      driverContext.addOperatorContext(4, new PlanNodeId("4"), LimitOperator.class.getSimpleName());
       SeriesScanOperator seriesScanOperator1 =
           new SeriesScanOperator(
-              fragmentInstanceContext.getOperatorContexts().get(0),
+              driverContext.getOperatorContexts().get(0),
               planNodeId1,
               measurementPath1,
               allSensors,
@@ -133,7 +131,8 @@ public class DataDriverTest {
               null,
               null,
               true);
-
+      driverContext.addSourceOperator(seriesScanOperator1);
+      driverContext.addPath(measurementPath1);
       seriesScanOperator1
           .getOperatorContext()
           .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
@@ -142,7 +141,7 @@ public class DataDriverTest {
           new MeasurementPath(DATA_DRIVER_TEST_SG + ".device0.sensor1", TSDataType.INT32);
       SeriesScanOperator seriesScanOperator2 =
           new SeriesScanOperator(
-              fragmentInstanceContext.getOperatorContexts().get(1),
+              driverContext.getOperatorContexts().get(1),
               planNodeId2,
               measurementPath2,
               allSensors,
@@ -150,6 +149,8 @@ public class DataDriverTest {
               null,
               null,
               true);
+      driverContext.addSourceOperator(seriesScanOperator2);
+      driverContext.addPath(measurementPath2);
 
       seriesScanOperator2
           .getOperatorContext()
@@ -157,7 +158,7 @@ public class DataDriverTest {
 
       TimeJoinOperator timeJoinOperator =
           new TimeJoinOperator(
-              fragmentInstanceContext.getOperatorContexts().get(2),
+              driverContext.getOperatorContexts().get(2),
               Arrays.asList(seriesScanOperator1, seriesScanOperator2),
               Ordering.ASC,
               Arrays.asList(TSDataType.INT32, TSDataType.INT32),
@@ -167,24 +168,12 @@ public class DataDriverTest {
               new AscTimeComparator());
 
       LimitOperator limitOperator =
-          new LimitOperator(
-              fragmentInstanceContext.getOperatorContexts().get(3), 250, timeJoinOperator);
+          new LimitOperator(driverContext.getOperatorContexts().get(3), 250, timeJoinOperator);
 
-      DataRegion dataRegion = Mockito.mock(DataRegion.class);
-
-      List<PartialPath> pathList = ImmutableList.of(measurementPath1, measurementPath2);
       String deviceId = DATA_DRIVER_TEST_SG + ".device0";
-
-      Mockito.when(dataRegion.query(pathList, deviceId, fragmentInstanceContext, null))
+      Mockito.when(
+              dataRegion.query(driverContext.getPaths(), deviceId, fragmentInstanceContext, null))
           .thenReturn(new QueryDataSource(seqResources, unSeqResources));
-
-      DataDriverContext driverContext =
-          new DataDriverContext(
-              fragmentInstanceContext,
-              pathList,
-              null,
-              dataRegion,
-              ImmutableList.of(seriesScanOperator1, seriesScanOperator2));
 
       StubSinkHandle sinkHandle = new StubSinkHandle(fragmentInstanceContext);
       driverContext.setSinkHandle(sinkHandle);
