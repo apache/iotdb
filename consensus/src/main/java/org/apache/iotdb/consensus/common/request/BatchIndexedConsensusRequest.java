@@ -23,7 +23,8 @@ import java.nio.ByteBuffer;
 import java.util.LinkedList;
 import java.util.List;
 
-public class BatchIndexedConsensusRequest implements IConsensusRequest {
+public class BatchIndexedConsensusRequest
+    implements IConsensusRequest, Comparable<BatchIndexedConsensusRequest> {
 
   private boolean isStartSyncIndexInitialized;
   private long startSyncIndex;
@@ -65,5 +66,10 @@ public class BatchIndexedConsensusRequest implements IConsensusRequest {
   @Override
   public ByteBuffer serializeToByteBuffer() {
     return null;
+  }
+
+  @Override
+  public int compareTo(BatchIndexedConsensusRequest o) {
+    return Long.compare(startSyncIndex, o.startSyncIndex);
   }
 }
