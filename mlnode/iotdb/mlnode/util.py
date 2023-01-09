@@ -1,4 +1,3 @@
-#
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
 # distributed with this work for additional information
@@ -16,35 +15,23 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+from iotdb.mlnode.exception import BadNodeUrlError
+from iotdb.mlnode.log import logger
 
-####################
-### Ml Node RPC Configuration
-####################
+from iotdb.thrift.common.ttypes import TEndPoint
 
-# Used for connection of DataNode/ConfigNode clients
-# Could set 127.0.0.1(for local test) or ipv4 address
-# Datatype: String
-mn_rpc_address = "127.0.0.1"
 
-# Used for connection of DataNode/ConfigNode clients
-# Bind with MN_RPC_ADDRESS
-# Datatype: int
-mn_rpc_port = 10810
+def parse_endpoint_url(endpoint_url: str) -> TEndPoint:
+    split = endpoint_url.split(":")
+    if len(split) != 2:
+        logger.warning("Illegal endpoint url format: {}".format(endpoint_url))
+        raise BadNodeUrlError(endpoint_url)
 
-####################
-### Target Config Node
-####################
-
-# Target ConfigNode to be connected by MLNode
-# Format: address:port
-# Datatype: String
-mn_target_config_node = "127.0.0.1:10710"
-
-####################
-### Target Data Node
-####################
-
-# Target DataNode to be connected by MLNode
-# Format: address:port
-# Datatype: String
-mn_target_data_node = "127.0.0.1:10730"
+    ip = split[0]
+    try:
+        port = int(split[1])
+        result = TEndPoint(ip, port)
+        return result
+    except ValueError as e:
+        logger.warning("Illegal endpoint url format: {} ({})".format(endpoint_url, e))
+        raise BadNodeUrlError(endpoint_url)

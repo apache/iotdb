@@ -1,4 +1,3 @@
-#
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
 # distributed with this work for additional information
@@ -17,34 +16,11 @@
 # under the License.
 #
 
-####################
-### Ml Node RPC Configuration
-####################
+class _BaseError(Exception):
+    """Base class for exceptions in this module."""
+    pass
 
-# Used for connection of DataNode/ConfigNode clients
-# Could set 127.0.0.1(for local test) or ipv4 address
-# Datatype: String
-mn_rpc_address = "127.0.0.1"
 
-# Used for connection of DataNode/ConfigNode clients
-# Bind with MN_RPC_ADDRESS
-# Datatype: int
-mn_rpc_port = 10810
-
-####################
-### Target Config Node
-####################
-
-# Target ConfigNode to be connected by MLNode
-# Format: address:port
-# Datatype: String
-mn_target_config_node = "127.0.0.1:10710"
-
-####################
-### Target Data Node
-####################
-
-# Target DataNode to be connected by MLNode
-# Format: address:port
-# Datatype: String
-mn_target_data_node = "127.0.0.1:10730"
+class BadNodeUrlError(_BaseError):
+    def __init__(self, node_url: str):
+        self.message = "Bad node url: {}".format(node_url)
