@@ -25,7 +25,7 @@ import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.type.Type;
 
 public abstract class ArithmeticBinaryColumnTransformer extends BinaryColumnTransformer {
-  public ArithmeticBinaryColumnTransformer(
+  protected ArithmeticBinaryColumnTransformer(
       Type returnType, ColumnTransformer leftTransformer, ColumnTransformer rightTransformer) {
     super(returnType, leftTransformer, rightTransformer);
   }

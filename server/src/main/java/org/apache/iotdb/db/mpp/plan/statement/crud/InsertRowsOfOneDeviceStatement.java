@@ -23,7 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.mpp.plan.constant.StatementType;
+import org.apache.iotdb.db.mpp.plan.statement.StatementType;
 import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.utils.TimePartitionUtils;
 
@@ -55,7 +55,7 @@ public class InsertRowsOfOneDeviceStatement extends InsertBaseStatement {
     this.insertRowStatementList = insertRowStatementList;
 
     // set device path, measurements, and data types
-    if (insertRowStatementList == null || insertRowStatementList.size() == 0) {
+    if (insertRowStatementList == null || insertRowStatementList.isEmpty()) {
       return;
     }
     devicePath = insertRowStatementList.get(0).getDevicePath();
@@ -89,6 +89,7 @@ public class InsertRowsOfOneDeviceStatement extends InsertBaseStatement {
         .collectRedirectInfo(dataPartition);
   }
 
+  @Override
   public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
     return visitor.visitInsertRowsOfOneDevice(this, context);
   }

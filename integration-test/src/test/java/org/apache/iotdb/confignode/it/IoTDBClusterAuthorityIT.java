@@ -61,7 +61,7 @@ public class IoTDBClusterAuthorityIT {
 
   @After
   public void tearDown() {
-    EnvFactory.getEnv().cleanAfterClass();
+    EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
   private void cleanUserAndRole(IConfigNodeRPCService.Iface client) throws TException {

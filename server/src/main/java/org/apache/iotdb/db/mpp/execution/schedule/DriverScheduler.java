@@ -34,6 +34,7 @@ import org.apache.iotdb.db.mpp.execution.schedule.queue.L2PriorityQueue;
 import org.apache.iotdb.db.mpp.execution.schedule.task.DriverTask;
 import org.apache.iotdb.db.mpp.execution.schedule.task.DriverTaskID;
 import org.apache.iotdb.db.mpp.execution.schedule.task.DriverTaskStatus;
+import org.apache.iotdb.db.mpp.metric.QueryMetricsManager;
 import org.apache.iotdb.db.utils.SetThreadName;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 
@@ -50,10 +51,14 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.db.mpp.metric.DriverSchedulerMetricSet.BLOCK_QUEUED_TIME;
+import static org.apache.iotdb.db.mpp.metric.DriverSchedulerMetricSet.READY_QUEUED_TIME;
+
 /** the manager of fragment instances scheduling */
 public class DriverScheduler implements IDriverScheduler, IService {
 
   private static final Logger logger = LoggerFactory.getLogger(DriverScheduler.class);
+  private static final QueryMetricsManager QUERY_METRICS = QueryMetricsManager.getInstance();
 
   public static DriverScheduler getInstance() {
     return InstanceHolder.instance;
@@ -175,6 +180,7 @@ public class DriverScheduler implements IDriverScheduler, IService {
         }
         timeoutQueue.push(task);
         readyQueue.push(task);
+        task.setLastEnterReadyQueueTime(System.nanoTime());
       } finally {
         task.unlock();
       }
@@ -266,6 +272,14 @@ public class DriverScheduler implements IDriverScheduler, IService {
     return scheduler;
   }
 
+  public long getReadyQueueTaskCount() {
+    return readyQueue.size();
+  }
+
+  public long getBlockQueueTaskCount() {
+    return blockedTasks.size();
+  }
+
   @TestOnly
   IndexedBlockingQueue<DriverTask> getReadyQueue() {
     return readyQueue;
@@ -306,7 +320,11 @@ public class DriverScheduler implements IDriverScheduler, IService {
         if (task.getStatus() != DriverTaskStatus.BLOCKED) {
           return;
         }
+
         task.setStatus(DriverTaskStatus.READY);
+        QUERY_METRICS.recordTaskQueueTime(
+            BLOCK_QUEUED_TIME, System.nanoTime() - task.getLastEnterBlockQueueTime());
+        task.setLastEnterReadyQueueTime(System.nanoTime());
         readyQueue.push(task);
         blockedTasks.remove(task);
       } finally {
@@ -321,7 +339,10 @@ public class DriverScheduler implements IDriverScheduler, IService {
         if (task.getStatus() != DriverTaskStatus.READY) {
           return false;
         }
+
         task.setStatus(DriverTaskStatus.RUNNING);
+        QUERY_METRICS.recordTaskQueueTime(
+            READY_QUEUED_TIME, System.nanoTime() - task.getLastEnterReadyQueueTime());
       } finally {
         task.unlock();
       }
@@ -337,6 +358,7 @@ public class DriverScheduler implements IDriverScheduler, IService {
         }
         task.updateSchedulePriority(context);
         task.setStatus(DriverTaskStatus.READY);
+        task.setLastEnterReadyQueueTime(System.nanoTime());
         readyQueue.push(task);
       } finally {
         task.unlock();
@@ -352,6 +374,7 @@ public class DriverScheduler implements IDriverScheduler, IService {
         }
         task.updateSchedulePriority(context);
         task.setStatus(DriverTaskStatus.BLOCKED);
+        task.setLastEnterBlockQueueTime(System.nanoTime());
         blockedTasks.add(task);
       } finally {
         task.unlock();
@@ -386,7 +409,7 @@ public class DriverScheduler implements IDriverScheduler, IService {
           }
           logger.warn(
               "The task {} is aborted. All other tasks in the same query will be cancelled",
-              task.getId().toString());
+              task.getId());
           clearDriverTask(task);
         } finally {
           task.unlock();

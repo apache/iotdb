@@ -30,10 +30,9 @@ public class SetThreadName implements Closeable {
     originalThreadName = Thread.currentThread().getName();
     int index = originalThreadName.indexOf("$");
     if (index < 0) {
-      Thread.currentThread().setName(String.format("%s$%s", originalThreadName, suffix));
+      Thread.currentThread().setName(originalThreadName + '$' + suffix);
     } else {
-      Thread.currentThread()
-          .setName(String.format("%s$%s", originalThreadName.substring(0, index), suffix));
+      Thread.currentThread().setName(originalThreadName.substring(0, index) + '$' + suffix);
     }
   }
 

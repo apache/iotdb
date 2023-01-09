@@ -208,4 +208,9 @@ public class RunLengthEncodedColumn implements Column {
   public void reverse() {
     // do nothing because the underlying column has only one value
   }
+
+  @Override
+  public int getInstanceSize() {
+    return INSTANCE_SIZE;
+  }
 }

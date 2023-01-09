@@ -89,7 +89,7 @@ public class IoTDBSelectCompareExpressionIT {
 
   @BeforeClass
   public static void setUp() throws Exception {
-    EnvFactory.getEnv().initBeforeClass();
+    EnvFactory.getEnv().initClusterEnvironment();
     createTimeSeries();
     generateData();
   }
@@ -123,7 +123,7 @@ public class IoTDBSelectCompareExpressionIT {
 
   @AfterClass
   public static void tearDown() throws Exception {
-    EnvFactory.getEnv().cleanAfterClass();
+    EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
   /*

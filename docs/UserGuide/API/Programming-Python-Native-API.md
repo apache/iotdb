@@ -153,6 +153,18 @@ tablet_ = Tablet(
     device_id, measurements_, data_types_, values_, timestamps_
 )
 session.insert_tablet(tablet_)
+
+values_ = [
+    [None, 10, 11, 1.1, 10011.1, "test01"],
+    [True, None, 11111, 1.25, 101.0, "test02"],
+    [False, 100, None, 188.1, 688.25, "test03"],
+    [True, 0, 0, 0, None, None],
+]
+timestamps_ = [16, 17, 18, 19]
+tablet_ = Tablet(
+    device_id, measurements_, data_types_, values_, timestamps_
+)
+session.insert_tablet(tablet_)
 ```
 * Numpy Tablet
 
@@ -180,13 +192,36 @@ np_values_ = [
     np.array([11, 11111, 1, 0], TSDataType.INT64.np_dtype()),
     np.array([1.1, 1.25, 188.1, 0], TSDataType.FLOAT.np_dtype()),
     np.array([10011.1, 101.0, 688.25, 6.25], TSDataType.DOUBLE.np_dtype()),
-    np.array(["test01", "test02", "test03", "test04"]),
+    np.array(["test01", "test02", "test03", "test04"], TSDataType.TEXT.np_dtype()),
 ]
 np_timestamps_ = np.array([1, 2, 3, 4], TSDataType.INT64.np_dtype())
 np_tablet_ = NumpyTablet(
-  "root.sg_test_01.d_02", measurements_, data_types_, np_values_, np_timestamps_
+  device_id, measurements_, data_types_, np_values_, np_timestamps_
 )
 session.insert_tablet(np_tablet_)
+
+# insert one numpy tablet with None into the database.
+np_values_ = [
+    np.array([False, True, False, True], TSDataType.BOOLEAN.np_dtype()),
+    np.array([10, 100, 100, 0], TSDataType.INT32.np_dtype()),
+    np.array([11, 11111, 1, 0], TSDataType.INT64.np_dtype()),
+    np.array([1.1, 1.25, 188.1, 0], TSDataType.FLOAT.np_dtype()),
+    np.array([10011.1, 101.0, 688.25, 6.25], TSDataType.DOUBLE.np_dtype()),
+    np.array(["test01", "test02", "test03", "test04"], TSDataType.TEXT.np_dtype()),
+]
+np_timestamps_ = np.array([98, 99, 100, 101], TSDataType.INT64.np_dtype())
+np_bitmaps_ = []
+for i in range(len(measurements_)):
+    np_bitmaps_.append(BitMap(len(np_timestamps_)))
+np_bitmaps_[0].mark(0)
+np_bitmaps_[1].mark(1)
+np_bitmaps_[2].mark(2)
+np_bitmaps_[4].mark(3)
+np_bitmaps_[5].mark(3)
+np_tablet_with_none = NumpyTablet(
+    device_id, measurements_, data_types_, np_values_, np_timestamps_, np_bitmaps_
+)
+session.insert_tablet(np_tablet_with_none)
 ```
 
 * Insert multiple Tablets

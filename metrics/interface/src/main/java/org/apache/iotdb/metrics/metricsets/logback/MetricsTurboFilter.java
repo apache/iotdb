@@ -30,11 +30,11 @@ import ch.qos.logback.core.spi.FilterReply;
 import org.slf4j.Marker;
 
 public class MetricsTurboFilter extends TurboFilter {
-  private Counter errorCounter;
-  private Counter warnCounter;
-  private Counter infoCounter;
-  private Counter debugCounter;
-  private Counter traceCounter;
+  private final Counter errorCounter;
+  private final Counter warnCounter;
+  private final Counter infoCounter;
+  private final Counter debugCounter;
+  private final Counter traceCounter;
 
   MetricsTurboFilter(AbstractMetricService metricService) {
     errorCounter =
@@ -89,6 +89,8 @@ public class MetricsTurboFilter extends TurboFilter {
           break;
         case Level.TRACE_INT:
           traceCounter.inc();
+          break;
+        default:
           break;
       }
     }

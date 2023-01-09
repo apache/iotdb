@@ -95,7 +95,7 @@ public class IoTDBRecoverUnclosedIT {
 
   @Before
   public void setUp() throws Exception {
-    EnvFactory.getEnv().initBeforeClass();
+    EnvFactory.getEnv().initClusterEnvironment();
     prevWALMode = config.getWalMode();
     config.setWalMode(WALMode.SYNC);
     prepareData();
@@ -104,7 +104,7 @@ public class IoTDBRecoverUnclosedIT {
   @After
   public void tearDown() throws Exception {
     config.setWalMode(prevWALMode);
-    EnvFactory.getEnv().cleanAfterClass();
+    EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
   @Test

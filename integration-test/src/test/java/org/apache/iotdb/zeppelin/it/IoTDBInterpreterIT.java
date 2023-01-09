@@ -55,7 +55,7 @@ public class IoTDBInterpreterIT {
 
   @BeforeClass
   public static void open() throws InterruptedException {
-    EnvFactory.getEnv().initBeforeClass();
+    EnvFactory.getEnv().initClusterEnvironment();
     Properties properties = new Properties();
     properties.put(IOTDB_HOST, EnvFactory.getEnv().getIP());
     properties.put(IOTDB_PORT, EnvFactory.getEnv().getPort());
@@ -100,7 +100,7 @@ public class IoTDBInterpreterIT {
   @AfterClass
   public static void close() throws IOException {
     interpreter.close();
-    EnvFactory.getEnv().cleanAfterTest();
+    EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
   @Test

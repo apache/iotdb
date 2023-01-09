@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.client.ClientPoolFactory;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.consensus.DataRegionId;
@@ -33,13 +34,9 @@ import org.apache.iotdb.consensus.iot.thrift.TInactivatePeerReq;
 import org.apache.iotdb.consensus.iot.thrift.TInactivatePeerRes;
 import org.apache.iotdb.consensus.iot.thrift.TTriggerSnapshotLoadReq;
 import org.apache.iotdb.consensus.iot.thrift.TTriggerSnapshotLoadRes;
-import org.apache.iotdb.db.client.DataNodeClientPoolFactory;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateDataRegionReq;
 import org.apache.iotdb.mpp.rpc.thrift.TMaintainPeerReq;
 
-import org.apache.thrift.TException;
-
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -48,7 +45,7 @@ public class TestRPCClient {
       INTERNAL_SERVICE_CLIENT_MANAGER =
           new IClientManager.Factory<TEndPoint, SyncDataNodeInternalServiceClient>()
               .createClientManager(
-                  new DataNodeClientPoolFactory.SyncDataNodeInternalServiceClientPoolFactory());
+                  new ClientPoolFactory.SyncDataNodeInternalServiceClientPoolFactory());
 
   private final IClientManager<TEndPoint, SyncIoTConsensusServiceClient> syncClientManager;
 
@@ -60,7 +57,7 @@ public class TestRPCClient {
                     new IoTConsensusConfig.Builder().build()));
   }
 
-  public static void main(String args[]) {
+  public static void main(String[] args) {
     TestRPCClient client = new TestRPCClient();
     //    client.removeRegionPeer();
     client.addPeer();
@@ -75,7 +72,7 @@ public class TestRPCClient {
               new TTriggerSnapshotLoadReq(
                   new DataRegionId(1).convertToTConsensusGroupId(), "snapshot_1_1662370255552"));
       System.out.println(res.status);
-    } catch (IOException | TException e) {
+    } catch (Exception e) {
       throw new RuntimeException(e);
     }
   }
@@ -87,7 +84,7 @@ public class TestRPCClient {
           client.inactivatePeer(
               new TInactivatePeerReq(new DataRegionId(1).convertToTConsensusGroupId()));
       System.out.println(res.status);
-    } catch (IOException | TException e) {
+    } catch (Exception e) {
       throw new RuntimeException(e);
     }
   }
@@ -97,7 +94,7 @@ public class TestRPCClient {
         INTERNAL_SERVICE_CLIENT_MANAGER.borrowClient(new TEndPoint("127.0.0.1", 9003))) {
       client.removeRegionPeer(
           new TMaintainPeerReq(new DataRegionId(1).convertToTConsensusGroupId(), getLocation2(3)));
-    } catch (IOException | TException e) {
+    } catch (Exception e) {
       throw new RuntimeException(e);
     }
   }
@@ -107,7 +104,7 @@ public class TestRPCClient {
         INTERNAL_SERVICE_CLIENT_MANAGER.borrowClient(new TEndPoint("127.0.0.1", 9003))) {
       client.addRegionPeer(
           new TMaintainPeerReq(new DataRegionId(1).convertToTConsensusGroupId(), getLocation2(3)));
-    } catch (IOException | TException e) {
+    } catch (Exception e) {
       throw new RuntimeException(e);
     }
   }
@@ -116,20 +113,20 @@ public class TestRPCClient {
     return new TDataNodeLocation(
         dataNodeId,
         new TEndPoint("127.0.0.1", 6669),
-        new TEndPoint("127.0.0.1", 9005),
-        new TEndPoint("127.0.0.1", 8779),
-        new TEndPoint("127.0.0.1", 40012),
-        new TEndPoint("127.0.0.1", 50012));
+        new TEndPoint("127.0.0.1", 10732),
+        new TEndPoint("127.0.0.1", 10742),
+        new TEndPoint("127.0.0.1", 10762),
+        new TEndPoint("127.0.0.1", 10752));
   }
 
   private TDataNodeLocation getLocation2(int dataNodeId) {
     return new TDataNodeLocation(
         dataNodeId,
         new TEndPoint("127.0.0.1", 6668),
-        new TEndPoint("127.0.0.1", 9004),
-        new TEndPoint("127.0.0.1", 8778),
-        new TEndPoint("127.0.0.1", 40011),
-        new TEndPoint("127.0.0.1", 50011));
+        new TEndPoint("127.0.0.1", 10731),
+        new TEndPoint("127.0.0.1", 10741),
+        new TEndPoint("127.0.0.1", 10761),
+        new TEndPoint("127.0.0.1", 10751));
   }
 
   private void createDataRegion() {
@@ -144,32 +141,32 @@ public class TestRPCClient {
           new TDataNodeLocation(
               3,
               new TEndPoint("127.0.0.1", 6667),
-              new TEndPoint("127.0.0.1", 9003),
-              new TEndPoint("127.0.0.1", 8777),
-              new TEndPoint("127.0.0.1", 40010),
-              new TEndPoint("127.0.0.1", 50010)));
+              new TEndPoint("127.0.0.1", 10730),
+              new TEndPoint("127.0.0.1", 10740),
+              new TEndPoint("127.0.0.1", 10760),
+              new TEndPoint("127.0.0.1", 10750)));
       locationList.add(
           new TDataNodeLocation(
               4,
               new TEndPoint("127.0.0.1", 6668),
-              new TEndPoint("127.0.0.1", 9004),
-              new TEndPoint("127.0.0.1", 8778),
-              new TEndPoint("127.0.0.1", 40011),
-              new TEndPoint("127.0.0.1", 50011)));
+              new TEndPoint("127.0.0.1", 10731),
+              new TEndPoint("127.0.0.1", 10741),
+              new TEndPoint("127.0.0.1", 10761),
+              new TEndPoint("127.0.0.1", 10751)));
       locationList.add(
           new TDataNodeLocation(
               4,
               new TEndPoint("127.0.0.1", 6669),
-              new TEndPoint("127.0.0.1", 9005),
-              new TEndPoint("127.0.0.1", 8779),
-              new TEndPoint("127.0.0.1", 40012),
-              new TEndPoint("127.0.0.1", 50012)));
+              new TEndPoint("127.0.0.1", 10732),
+              new TEndPoint("127.0.0.1", 10742),
+              new TEndPoint("127.0.0.1", 10762),
+              new TEndPoint("127.0.0.1", 10752)));
       regionReplicaSet.setDataNodeLocations(locationList);
       req.setRegionReplicaSet(regionReplicaSet);
       TSStatus res = client.createDataRegion(req);
       System.out.println(res.code + " " + res.message);
 
-    } catch (IOException | TException e) {
+    } catch (Exception e) {
       throw new RuntimeException(e);
     }
   }

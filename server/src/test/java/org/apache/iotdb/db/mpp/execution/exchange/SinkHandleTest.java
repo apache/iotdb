@@ -21,6 +21,7 @@ package org.apache.iotdb.db.mpp.execution.exchange;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.IClientManager;
+import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeMPPDataExchangeServiceClient;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.execution.exchange.MPPDataExchangeManager.SinkHandleListener;
@@ -48,7 +49,7 @@ public class SinkHandleTest {
   @Test
   public void testOneTimeNotBlockedSend() {
     final String queryId = "q0";
-    final long mockTsBlockSize = 1024L * 1024L;
+    final long mockTsBlockSize = 128 * 1024L;
     final int numOfMockTsBlock = 1;
     final TEndPoint remoteEndpoint =
         new TEndPoint("remote", IoTDBDescriptor.getInstance().getConfig().getMppDataExchangePort());
@@ -74,7 +75,7 @@ public class SinkHandleTest {
       Mockito.doNothing()
           .when(mockClient)
           .onNewDataBlockEvent(Mockito.any(TNewDataBlockEvent.class));
-    } catch (TException | IOException e) {
+    } catch (ClientManagerException | TException e) {
       e.printStackTrace();
       Assert.fail();
     }
@@ -186,7 +187,7 @@ public class SinkHandleTest {
   @Test
   public void testMultiTimesBlockedSend() {
     final String queryId = "q0";
-    final long mockTsBlockSize = 1024L * 1024L;
+    final long mockTsBlockSize = 128 * 1024L;
     final int numOfMockTsBlock = 1;
     final TEndPoint remoteEndpoint =
         new TEndPoint("remote", IoTDBDescriptor.getInstance().getConfig().getMppDataExchangePort());
@@ -223,7 +224,7 @@ public class SinkHandleTest {
       Mockito.doNothing()
           .when(mockClient)
           .onNewDataBlockEvent(Mockito.any(TNewDataBlockEvent.class));
-    } catch (TException | IOException e) {
+    } catch (ClientManagerException | TException e) {
       e.printStackTrace();
       Assert.fail();
     }
@@ -423,7 +424,7 @@ public class SinkHandleTest {
       Mockito.doThrow(mockException)
           .when(mockClient)
           .onNewDataBlockEvent(Mockito.any(TNewDataBlockEvent.class));
-    } catch (TException | IOException e) {
+    } catch (ClientManagerException | TException e) {
       e.printStackTrace();
       Assert.fail();
     }
@@ -532,7 +533,7 @@ public class SinkHandleTest {
       Mockito.doNothing()
           .when(mockClient)
           .onNewDataBlockEvent(Mockito.any(TNewDataBlockEvent.class));
-    } catch (TException | IOException e) {
+    } catch (ClientManagerException | TException e) {
       e.printStackTrace();
       Assert.fail();
     }

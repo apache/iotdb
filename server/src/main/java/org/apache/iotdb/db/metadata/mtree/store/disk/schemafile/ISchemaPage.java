@@ -109,8 +109,6 @@ public interface ISchemaPage {
     return new AliasIndexPage(buffer);
   }
 
-  boolean isCapableForSize(short size);
-
   void syncPageBuffer();
 
   void flushPageToChannel(FileChannel channel) throws IOException;

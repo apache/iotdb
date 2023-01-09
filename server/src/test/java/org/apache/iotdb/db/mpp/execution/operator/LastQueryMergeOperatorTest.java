@@ -99,7 +99,7 @@ public class LastQueryMergeOperatorTest {
 
           @Override
           public OperatorContext getOperatorContext() {
-            return null;
+            return fragmentInstanceContext.getOperatorContexts().get(0);
           }
 
           @Override
@@ -163,7 +163,7 @@ public class LastQueryMergeOperatorTest {
 
           @Override
           public OperatorContext getOperatorContext() {
-            return null;
+            return fragmentInstanceContext.getOperatorContexts().get(0);
           }
 
           @Override
@@ -295,7 +295,7 @@ public class LastQueryMergeOperatorTest {
 
           @Override
           public OperatorContext getOperatorContext() {
-            return null;
+            return fragmentInstanceContext.getOperatorContexts().get(0);
           }
 
           @Override
@@ -359,7 +359,7 @@ public class LastQueryMergeOperatorTest {
 
           @Override
           public OperatorContext getOperatorContext() {
-            return null;
+            return fragmentInstanceContext.getOperatorContexts().get(0);
           }
 
           @Override

@@ -34,7 +34,6 @@ import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.junit.Assert;
 import org.junit.Ignore;
@@ -95,12 +94,12 @@ public class SchemaRegionManagementTest extends AbstractSchemaRegionTest {
 
       schemaRegion.loadSnapshot(snapshotDir);
 
-      Pair<List<ShowTimeSeriesResult>, Integer> result =
+      List<ShowTimeSeriesResult> result =
           schemaRegion.showTimeseries(
               SchemaRegionReadPlanFactory.getShowTimeSeriesPlan(
                   new PartialPath("root.sg.**"), false, "tag-key", "tag-value"));
 
-      ShowTimeSeriesResult seriesResult = result.left.get(0);
+      ShowTimeSeriesResult seriesResult = result.get(0);
       Assert.assertEquals(new PartialPath("root.sg.d1.s1").getFullPath(), seriesResult.getPath());
       Map<String, String> resultTagMap = seriesResult.getTag();
       Assert.assertEquals(1, resultTagMap.size());
@@ -115,7 +114,7 @@ public class SchemaRegionManagementTest extends AbstractSchemaRegionTest {
               SchemaRegionReadPlanFactory.getShowTimeSeriesPlan(
                   new PartialPath("root.sg.**"), false, "tag-key", "tag-value"));
 
-      seriesResult = result.left.get(0);
+      seriesResult = result.get(0);
       Assert.assertEquals(new PartialPath("root.sg.d1.s1").getFullPath(), seriesResult.getPath());
       resultTagMap = seriesResult.getTag();
       Assert.assertEquals(1, resultTagMap.size());
@@ -126,11 +125,9 @@ public class SchemaRegionManagementTest extends AbstractSchemaRegionTest {
               SchemaRegionReadPlanFactory.getShowTimeSeriesPlan(
                   new PartialPath("root.sg.*.s1"),
                   Collections.singletonMap(template.getId(), template)));
-      result.left.sort(ShowTimeSeriesResult::compareTo);
-      Assert.assertEquals(
-          new PartialPath("root.sg.d1.s1").getFullPath(), result.left.get(0).getPath());
-      Assert.assertEquals(
-          new PartialPath("root.sg.d2.s1").getFullPath(), result.left.get(1).getPath());
+      result.sort(ShowTimeSeriesResult::compareTo);
+      Assert.assertEquals(new PartialPath("root.sg.d1.s1").getFullPath(), result.get(0).getPath());
+      Assert.assertEquals(new PartialPath("root.sg.d2.s1").getFullPath(), result.get(1).getPath());
 
     } finally {
       config.setSchemaRegionConsensusProtocolClass(schemaRegionConsensusProtocolClass);
@@ -147,6 +144,49 @@ public class SchemaRegionManagementTest extends AbstractSchemaRegionTest {
             Collections.singletonList(Collections.singletonList(CompressionType.GZIP)));
     template.setId(1);
     return template;
+  }
+
+  @Test
+  public void testEmptySnapshot() throws Exception {
+    String schemaRegionConsensusProtocolClass = config.getSchemaRegionConsensusProtocolClass();
+    config.setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS);
+    try {
+      ISchemaRegion schemaRegion = getSchemaRegion("root.sg", 0);
+
+      File mLogFile =
+          SystemFileFactory.INSTANCE.getFile(
+              schemaRegion.getStorageGroupFullPath()
+                  + File.separator
+                  + schemaRegion.getSchemaRegionId().getId(),
+              MetadataConstant.METADATA_LOG);
+      Assert.assertFalse(mLogFile.exists());
+
+      File snapshotDir = new File(config.getSchemaDir() + File.separator + "snapshot");
+      snapshotDir.mkdir();
+      schemaRegion.createSnapshot(snapshotDir);
+
+      schemaRegion.loadSnapshot(snapshotDir);
+
+      List<ShowTimeSeriesResult> result =
+          schemaRegion.showTimeseries(
+              SchemaRegionReadPlanFactory.getShowTimeSeriesPlan(
+                  new PartialPath("root.sg.**"), false, "tag-key", "tag-value"));
+
+      Assert.assertEquals(0, result.size());
+
+      simulateRestart();
+
+      ISchemaRegion newSchemaRegion = getSchemaRegion("root.sg", 0);
+      newSchemaRegion.loadSnapshot(snapshotDir);
+      result =
+          newSchemaRegion.showTimeseries(
+              SchemaRegionReadPlanFactory.getShowTimeSeriesPlan(
+                  new PartialPath("root.sg.**"), false, "tag-key", "tag-value"));
+
+      Assert.assertEquals(0, result.size());
+    } finally {
+      config.setSchemaRegionConsensusProtocolClass(schemaRegionConsensusProtocolClass);
+    }
   }
 
   @Test

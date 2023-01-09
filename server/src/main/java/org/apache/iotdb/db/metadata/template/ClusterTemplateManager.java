@@ -21,6 +21,7 @@ package org.apache.iotdb.db.metadata.template;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.IClientManager;
+import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.consensus.ConfigNodeRegionId;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.IoTDBException;
@@ -31,8 +32,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetPathsSetTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTemplateResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSetSchemaTemplateReq;
 import org.apache.iotdb.db.client.ConfigNodeClient;
+import org.apache.iotdb.db.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.client.ConfigNodeInfo;
-import org.apache.iotdb.db.client.DataNodeClientPoolFactory;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.CreateSchemaTemplateStatement;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -41,7 +42,6 @@ import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -79,9 +79,7 @@ public class ClusterTemplateManager implements ITemplateManager {
   }
 
   private static final IClientManager<ConfigNodeRegionId, ConfigNodeClient>
-      CONFIG_NODE_CLIENT_MANAGER =
-          new IClientManager.Factory<ConfigNodeRegionId, ConfigNodeClient>()
-              .createClientManager(new DataNodeClientPoolFactory.ConfigNodeClientPoolFactory());
+      CONFIG_NODE_CLIENT_MANAGER = ConfigNodeClientManager.getInstance();
 
   @Override
   public TSStatus createSchemaTemplate(CreateSchemaTemplateStatement statement) {
@@ -98,7 +96,7 @@ public class ClusterTemplateManager implements ITemplateManager {
             tsStatus);
       }
       return tsStatus;
-    } catch (TException | IOException e) {
+    } catch (ClientManagerException | TException e) {
       throw new RuntimeException(
           new IoTDBException(
               "create template error.", e, TSStatusCode.CREATE_TEMPLATE_ERROR.getStatusCode()));
@@ -147,7 +145,7 @@ public class ClusterTemplateManager implements ITemplateManager {
                 tGetAllTemplatesResp.getStatus().getMessage(),
                 tGetAllTemplatesResp.getStatus().getCode()));
       }
-    } catch (TException | IOException e) {
+    } catch (ClientManagerException | TException e) {
       throw new RuntimeException(
           new IoTDBException(
               "get all template error.", TSStatusCode.UNDEFINED_TEMPLATE.getStatusCode()));
@@ -194,7 +192,7 @@ public class ClusterTemplateManager implements ITemplateManager {
 
   @Override
   public List<PartialPath> getPathsSetTemplate(String name) {
-    List<PartialPath> listPath = new ArrayList<PartialPath>();
+    List<PartialPath> listPath = new ArrayList<>();
     try (ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.configNodeRegionId)) {
       TGetPathsSetTemplatesResp resp = configNodeClient.getPathsSetTemplate(name);

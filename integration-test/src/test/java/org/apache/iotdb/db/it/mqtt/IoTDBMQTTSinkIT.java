@@ -22,7 +22,6 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.engine.trigger.sink.mqtt.MQTTConfiguration;
 import org.apache.iotdb.db.engine.trigger.sink.mqtt.MQTTEvent;
 import org.apache.iotdb.db.engine.trigger.sink.mqtt.MQTTHandler;
-import org.apache.iotdb.it.env.ConfigFactory;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
@@ -51,20 +50,15 @@ import static org.junit.Assert.fail;
 @RunWith(IoTDBTestRunner.class)
 @Category({ClusterIT.class})
 public class IoTDBMQTTSinkIT {
-
-  private boolean enableMQTTService;
-
   @Before
   public void setUp() throws Exception {
-    enableMQTTService = ConfigFactory.getConfig().isEnableMQTTService();
-    ConfigFactory.getConfig().setEnableMQTTService(true);
-    EnvFactory.getEnv().initBeforeTest();
+    EnvFactory.getEnv().getConfig().getCommonConfig().setEnableMQTTService(true);
+    EnvFactory.getEnv().initClusterEnvironment();
   }
 
   @After
   public void tearDown() throws Exception {
-    EnvFactory.getEnv().cleanAfterTest();
-    ConfigFactory.getConfig().setEnableMQTTService(enableMQTTService);
+    EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
   @Test

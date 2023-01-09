@@ -52,13 +52,32 @@ public class ClusterNodeStartUtils {
       new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()).setMessage("Accept Node restart.");
 
   public static TSStatus confirmNodeRegistration(
-      NodeType nodeType, Object nodeLocation, ConfigManager configManager) {
+      NodeType nodeType, String clusterName, Object nodeLocation, ConfigManager configManager) {
 
     final String CONF_FILE_NAME =
         NodeType.ConfigNode.equals(nodeType)
             ? ConfigNodeConstant.CONF_FILE_NAME
             : IoTDBConstant.DATA_NODE_CONF_FILE_NAME;
     TSStatus status = new TSStatus();
+
+    /* Reject start if the cluster name is error */
+    if (!CLUSTER_NAME.equals(clusterName)) {
+      status.setCode(TSStatusCode.REJECT_NODE_START.getStatusCode());
+      status.setMessage(
+          String.format(
+              "Reject %s start. Because the ClusterName of the current %s and the target cluster are inconsistent. "
+                  + "ClusterName of the current Node: %s, ClusterName of the target cluster: %s."
+                  + POSSIBLE_SOLUTIONS
+                  + "\t1. Change the target_config_node_list parameter in %s to join the correct cluster."
+                  + "\n\t2. Change the cluster_name parameter in %s to match the target cluster",
+              nodeType.getNodeType(),
+              nodeType.getNodeType(),
+              clusterName,
+              CLUSTER_NAME,
+              CONF_FILE_NAME,
+              CONF_FILE_NAME));
+      return status;
+    }
 
     /* Check if there exist conflict TEndPoints */
     List<TEndPoint> conflictEndPoints;
@@ -119,11 +138,13 @@ public class ClusterNodeStartUtils {
               "Reject %s restart. Because the ClusterName of the current %s and the target cluster are inconsistent. "
                   + "ClusterName of the current Node: %s, ClusterName of the target cluster: %s."
                   + POSSIBLE_SOLUTIONS
-                  + "\t1. Change the target_config_node_list parameter in %s to join the correct cluster.",
+                  + "\t1. Change the target_config_node_list parameter in %s to join the correct cluster."
+                  + "\n\t2. Change the cluster_name parameter in %s to match the target cluster",
               nodeType.getNodeType(),
               nodeType.getNodeType(),
               clusterName,
               CLUSTER_NAME,
+              CONF_FILE_NAME,
               CONF_FILE_NAME));
       return status;
     }

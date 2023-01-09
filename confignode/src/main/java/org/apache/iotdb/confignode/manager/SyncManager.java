@@ -44,8 +44,8 @@ import org.apache.iotdb.confignode.consensus.request.write.sync.ShowPipePlan;
 import org.apache.iotdb.confignode.consensus.response.PipeResp;
 import org.apache.iotdb.confignode.consensus.response.PipeSinkResp;
 import org.apache.iotdb.confignode.manager.node.NodeManager;
+import org.apache.iotdb.confignode.manager.observer.NodeStatisticsEvent;
 import org.apache.iotdb.confignode.persistence.sync.ClusterSyncInfo;
-import org.apache.iotdb.confignode.procedure.impl.sync.OperatePipeProcedureRollbackProcessor;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllPipeInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPipeSinkResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
@@ -53,6 +53,8 @@ import org.apache.iotdb.mpp.rpc.thrift.TCreatePipeOnDataNodeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TOperatePipeOnDataNodeReq;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import com.google.common.eventbus.AllowConcurrentEvents;
+import com.google.common.eventbus.Subscribe;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -70,13 +72,9 @@ public class SyncManager {
   private final IManager configManager;
   private final ClusterSyncInfo clusterSyncInfo;
 
-  private final OperatePipeProcedureRollbackProcessor rollbackProcessor;
-
   public SyncManager(IManager configManager, ClusterSyncInfo clusterSyncInfo) {
     this.configManager = configManager;
     this.clusterSyncInfo = clusterSyncInfo;
-    this.rollbackProcessor =
-        new OperatePipeProcedureRollbackProcessor(configManager.getNodeManager());
   }
 
   public void lockSyncMetadata() {
@@ -257,7 +255,7 @@ public class SyncManager {
         failedRollbackDataNodeId.add(responseEntry.getKey());
       }
     }
-    rollbackProcessor.retryRollbackReq(failedRollbackDataNodeId, request);
+    configManager.getRetryFailedTasksThread().retryRollbackReq(failedRollbackDataNodeId, request);
   }
 
   /**
@@ -284,6 +282,18 @@ public class SyncManager {
     AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
 
     return clientHandler.getResponseMap();
+  }
+
+  /**
+   * When some Nodes' states changed during a heartbeat loop, the eventbus in LoadManager will post
+   * the different NodeStatstics event to SyncManager and ClusterSchemaManager.
+   *
+   * @param nodeStatisticsEvent nodeStatistics that changed in a heartbeat loop
+   */
+  @Subscribe
+  @AllowConcurrentEvents
+  public void handleNodeStatistics(NodeStatisticsEvent nodeStatisticsEvent) {
+    // TODO
   }
 
   // endregion
