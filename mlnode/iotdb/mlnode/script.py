@@ -28,7 +28,7 @@ def main():
         return
 
     argument = sys.argv[1]
-    # TODO: support more commands
+    # TODO(lmh): support more commands
     if argument == 'start':
         server = MLNode()
         server.start()

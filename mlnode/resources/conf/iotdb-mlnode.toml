@@ -36,7 +36,7 @@ mn_rpc_port = 10810
 ####################
 
 # Target ConfigNode to be connected by MLNode
-# Format: address:port
+# Format: ip:port
 # Datatype: String
 mn_target_config_node = "127.0.0.1:10710"
 
@@ -45,6 +45,6 @@ mn_target_config_node = "127.0.0.1:10710"
 ####################
 
 # Target DataNode to be connected by MLNode
-# Format: address:port
+# Format: ip:port
 # Datatype: String
 mn_target_data_node = "127.0.0.1:10730"

@@ -22,6 +22,17 @@ from iotdb.thrift.common.ttypes import TEndPoint
 
 
 def parse_endpoint_url(endpoint_url: str) -> TEndPoint:
+    """ Parse TEndPoint from a given endpoint url.
+
+    Args:
+        endpoint_url: an endpoint url, format: ip:port
+
+    Returns:
+        TEndPoint
+
+    Raises:
+        BadNodeUrlError
+    """
     split = endpoint_url.split(":")
     if len(split) != 2:
         logger.warning("Illegal endpoint url format: {}".format(endpoint_url))
