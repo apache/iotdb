@@ -31,8 +31,8 @@ import java.util.NoSuchElementException;
 import static org.apache.iotdb.db.metadata.MetadataConstant.NON_TEMPLATE;
 
 /**
- * ChildrenIterator for traverser. The iterator returns the filtered child nodes in the mtree and
- * the child nodes in the template.
+ * TraverserIterator for traversing device node. The iterator returns the filtered child nodes in
+ * the mtree and the child nodes in the template.
  */
 public abstract class AbstractTraverserIterator implements IMNodeIterator {
   private final IMNodeIterator directChildrenIterator;
@@ -43,11 +43,11 @@ public abstract class AbstractTraverserIterator implements IMNodeIterator {
   private boolean skipPreDeletedSchema = false;
 
   protected AbstractTraverserIterator(
-      IMTreeStore store, IMNode parent, Map<Integer, Template> templateMap)
+      IMTreeStore store, IEntityMNode parent, Map<Integer, Template> templateMap)
       throws MetadataException {
     this.directChildrenIterator = store.getChildrenIterator(parent);
-    if (templateMap != null && parent.isEntity() && parent.isUseTemplate()) {
-      Template template = getActivatedSchemaTemplate(parent.getAsEntityMNode(), templateMap);
+    if (templateMap != null && parent.isUseTemplate()) {
+      Template template = getActivatedSchemaTemplate(parent, templateMap);
       if (template != null) {
         templateChildrenIterator = template.getDirectNodes().iterator();
       }

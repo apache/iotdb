@@ -201,9 +201,14 @@ public class CachedMTreeStore implements IMTreeStore {
   public IMNodeIterator getTraverserIterator(
       IMNode parent, Map<Integer, Template> templateMap, boolean skipPreDeletedSchema)
       throws MetadataException {
-    AbstractTraverserIterator iterator = new CachedTraverserIterator(this, parent, templateMap);
-    iterator.setSkipPreDeletedSchema(skipPreDeletedSchema);
-    return iterator;
+    if (parent.isEntity()) {
+      AbstractTraverserIterator iterator =
+          new CachedTraverserIterator(this, parent.getAsEntityMNode(), templateMap);
+      iterator.setSkipPreDeletedSchema(skipPreDeletedSchema);
+      return iterator;
+    } else {
+      return getChildrenIterator(parent);
+    }
   }
 
   // must pin parent first

@@ -93,9 +93,14 @@ public class MemMTreeStore implements IMTreeStore {
   public IMNodeIterator getTraverserIterator(
       IMNode parent, Map<Integer, Template> templateMap, boolean skipPreDeletedSchema)
       throws MetadataException {
-    AbstractTraverserIterator iterator = new MemoryTraverserIterator(this, parent, templateMap);
-    iterator.setSkipPreDeletedSchema(skipPreDeletedSchema);
-    return iterator;
+    if (parent.isEntity()) {
+      AbstractTraverserIterator iterator =
+          new MemoryTraverserIterator(this, parent.getAsEntityMNode(), templateMap);
+      iterator.setSkipPreDeletedSchema(skipPreDeletedSchema);
+      return iterator;
+    } else {
+      return getChildrenIterator(parent);
+    }
   }
 
   @Override
