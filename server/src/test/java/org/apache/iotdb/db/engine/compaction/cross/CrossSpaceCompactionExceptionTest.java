@@ -35,6 +35,7 @@ import org.apache.iotdb.db.engine.compaction.utils.CompactionFileGeneratorUtils;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
@@ -599,6 +600,8 @@ public class CrossSpaceCompactionExceptionTest extends AbstractCompactionTest {
         false,
         true);
 
+    Assert.assertTrue(tsFileManager.isAllowCompaction());
+
     // all source file should not exist
     for (TsFileResource resource : seqResources) {
       Assert.assertFalse(resource.getTsFile().exists());
@@ -622,6 +625,7 @@ public class CrossSpaceCompactionExceptionTest extends AbstractCompactionTest {
       } else {
         Assert.assertTrue(resource.getTsFile().exists());
         Assert.assertTrue(resource.resourceFileExists());
+        Assert.assertEquals(TsFileResourceStatus.CLOSED, resource.getStatus());
       }
     }
   }
@@ -694,7 +698,9 @@ public class CrossSpaceCompactionExceptionTest extends AbstractCompactionTest {
         false,
         true);
 
-    // all source file should not exist
+    Assert.assertTrue(tsFileManager.isAllowCompaction());
+
+    // all source file should exist
     for (TsFileResource resource : seqResources) {
       Assert.assertTrue(resource.getTsFile().exists());
       Assert.assertTrue(

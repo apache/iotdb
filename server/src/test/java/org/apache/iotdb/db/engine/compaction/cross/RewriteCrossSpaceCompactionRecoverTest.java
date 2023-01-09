@@ -50,6 +50,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import static org.apache.iotdb.db.engine.compaction.log.CompactionLogger.STR_DELETED_TARGET_FILES;
 import static org.apache.iotdb.db.engine.compaction.log.CompactionLogger.STR_SOURCE_FILES;
 import static org.apache.iotdb.db.engine.compaction.log.CompactionLogger.STR_TARGET_FILES;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
@@ -658,6 +659,83 @@ public class RewriteCrossSpaceCompactionRecoverTest extends AbstractCompactionTe
   }
 
   @Test
+  public void testWhenTargetFileShouldBeDeletedAfterCompactionAndSomeSourceFilesLost()
+      throws Exception {
+    createFiles(2, 2, 3, 300, 0, 0, 50, 50, false, true);
+    createFiles(2, 4, 5, 300, 700, 700, 50, 50, false, true);
+    createFiles(3, 3, 4, 200, 20, 10020, 30, 30, false, false);
+    createFiles(2, 1, 5, 100, 450, 20450, 0, 0, false, false);
+    TsFileManager tsFileManager = new TsFileManager(COMPACTION_TEST_SG, "0", SEQ_DIRS.getPath());
+    tsFileManager.addAll(seqResources, true);
+    tsFileManager.addAll(unseqResources, false);
+
+    // generate mods file, the first target file should be deleted after compaction
+    for (int device = 0; device < 3; device++) {
+      for (int measurement = 0; measurement < 4; measurement++) {
+        Map<String, Pair<Long, Long>> deleteMap = new HashMap<>();
+        deleteMap.put(
+            COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + device + PATH_SEPARATOR + "s" + measurement,
+            new Pair(0L, 300L));
+        CompactionFileGeneratorUtils.generateMods(deleteMap, seqResources.get(0), false);
+        CompactionFileGeneratorUtils.generateMods(deleteMap, unseqResources.get(0), false);
+        CompactionFileGeneratorUtils.generateMods(deleteMap, unseqResources.get(1), false);
+      }
+    }
+
+    List<TsFileResource> targetResources =
+        CompactionFileGeneratorUtils.getCrossCompactionTargetTsFileResources(seqResources);
+    File compactionLogFile =
+        new File(
+            SEQ_DIRS,
+            targetResources.get(0).getTsFile().getName()
+                + CompactionLogger.CROSS_COMPACTION_LOG_NAME_SUFFIX);
+    CompactionLogger compactionLogger = new CompactionLogger(compactionLogFile);
+    compactionLogger.logFiles(targetResources, STR_TARGET_FILES);
+    compactionLogger.logFiles(seqResources, STR_SOURCE_FILES);
+    compactionLogger.logFiles(unseqResources, STR_SOURCE_FILES);
+    ICompactionPerformer performer =
+        new FastCompactionPerformer(seqResources, unseqResources, targetResources);
+    performer.setSummary(new CompactionTaskSummary());
+    performer.perform();
+    CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
+    CompactionUtils.combineModsInCrossCompaction(seqResources, unseqResources, targetResources);
+    compactionLogger.logFile(targetResources.get(0), STR_DELETED_TARGET_FILES);
+    compactionLogger.close();
+    seqResources.get(0).remove();
+
+    new CompactionRecoverTask(COMPACTION_TEST_SG, "0", tsFileManager, compactionLogFile, false)
+        .doCompaction();
+
+    Assert.assertTrue(tsFileManager.isAllowCompaction());
+
+    // all source file should not exist
+    for (TsFileResource resource : seqResources) {
+      Assert.assertFalse(resource.getTsFile().exists());
+      Assert.assertFalse(
+          new File(resource.getTsFilePath() + TsFileResource.RESOURCE_SUFFIX).exists());
+      Assert.assertFalse(resource.getModFile().exists());
+      Assert.assertFalse(resource.getCompactionModFile().exists());
+    }
+    for (TsFileResource resource : unseqResources) {
+      Assert.assertFalse(resource.getTsFile().exists());
+      Assert.assertFalse(
+          new File(resource.getTsFilePath() + TsFileResource.RESOURCE_SUFFIX).exists());
+      Assert.assertFalse(resource.getModFile().exists());
+      Assert.assertFalse(resource.getCompactionModFile().exists());
+    }
+    // the first target file should be deleted after recovery
+    for (TsFileResource resource : targetResources) {
+      if (resource.getVersion() == 0) {
+        Assert.assertFalse(resource.getTsFile().exists());
+        Assert.assertFalse(resource.resourceFileExists());
+      } else {
+        Assert.assertTrue(resource.getTsFile().exists());
+        Assert.assertTrue(resource.resourceFileExists());
+      }
+    }
+  }
+
+  @Test
   public void testWhenTargetFileIsDeletedAfterCompactionAndSomeSourceFilesLost() throws Exception {
     createFiles(2, 2, 3, 300, 0, 0, 50, 50, false, true);
     createFiles(2, 4, 5, 300, 700, 700, 50, 50, false, true);
@@ -691,17 +769,27 @@ public class RewriteCrossSpaceCompactionRecoverTest extends AbstractCompactionTe
     compactionLogger.logFiles(targetResources, STR_TARGET_FILES);
     compactionLogger.logFiles(seqResources, STR_SOURCE_FILES);
     compactionLogger.logFiles(unseqResources, STR_SOURCE_FILES);
-    compactionLogger.close();
     ICompactionPerformer performer =
         new FastCompactionPerformer(seqResources, unseqResources, targetResources);
     performer.setSummary(new CompactionTaskSummary());
     performer.perform();
     CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
     CompactionUtils.combineModsInCrossCompaction(seqResources, unseqResources, targetResources);
-    seqResources.get(0).remove();
+    compactionLogger.logFile(targetResources.get(0), STR_DELETED_TARGET_FILES);
+    compactionLogger.close();
+    CompactionUtils.deleteTsFilesInDisk(seqResources, COMPACTION_TEST_SG);
+    CompactionUtils.deleteModificationForSourceFile(seqResources, COMPACTION_TEST_SG);
+    CompactionUtils.deleteTsFilesInDisk(unseqResources, COMPACTION_TEST_SG);
+    CompactionUtils.deleteModificationForSourceFile(unseqResources, COMPACTION_TEST_SG);
+
+    if (targetResources.get(0).isDeleted()) {
+      targetResources.get(0).remove();
+    }
 
     new CompactionRecoverTask(COMPACTION_TEST_SG, "0", tsFileManager, compactionLogFile, false)
         .doCompaction();
+
+    Assert.assertTrue(tsFileManager.isAllowCompaction());
 
     // all source file should not exist
     for (TsFileResource resource : seqResources) {
@@ -718,10 +806,15 @@ public class RewriteCrossSpaceCompactionRecoverTest extends AbstractCompactionTe
       Assert.assertFalse(resource.getModFile().exists());
       Assert.assertFalse(resource.getCompactionModFile().exists());
     }
-    // although the first target file is empty after compaction, it will still exist after recovery.
+    // the first target file should be deleted after recovery
     for (TsFileResource resource : targetResources) {
-      Assert.assertTrue(resource.getTsFile().exists());
-      Assert.assertTrue(resource.resourceFileExists());
+      if (resource.getVersion() == 0) {
+        Assert.assertFalse(resource.getTsFile().exists());
+        Assert.assertFalse(resource.resourceFileExists());
+      } else {
+        Assert.assertTrue(resource.getTsFile().exists());
+        Assert.assertTrue(resource.resourceFileExists());
+      }
     }
   }
 
@@ -784,7 +877,9 @@ public class RewriteCrossSpaceCompactionRecoverTest extends AbstractCompactionTe
     new CompactionRecoverTask(COMPACTION_TEST_SG, "0", tsFileManager, compactionLogFile, false)
         .doCompaction();
 
-    // all source file should not exist
+    Assert.assertTrue(tsFileManager.isAllowCompaction());
+
+    // all source file should exist
     for (TsFileResource resource : seqResources) {
       Assert.assertTrue(resource.getTsFile().exists());
       Assert.assertTrue(

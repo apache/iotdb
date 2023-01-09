@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
 import org.apache.iotdb.db.rescon.TsFileResourceManager;
 import org.apache.iotdb.tsfile.utils.TsFileUtils;
 
@@ -236,6 +237,9 @@ public class CompactionExceptionHandler {
         // target resource is empty after compaction, then delete it
         targetResource.remove();
         continue;
+      } else {
+        // set target resources to CLOSED, so that they can be selected to compact
+        targetResource.setStatus(TsFileResourceStatus.CLOSED);
       }
       if (!TsFileUtils.isTsFileComplete(targetResource.getTsFile())) {
         LOGGER.error(

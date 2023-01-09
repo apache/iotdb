@@ -48,6 +48,8 @@ import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import static org.apache.iotdb.db.engine.compaction.log.CompactionLogger.STR_DELETED_TARGET_FILES;
+
 public class InnerSpaceCompactionTask extends AbstractCompactionTask {
   private static final Logger LOGGER =
       LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
@@ -130,9 +132,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
       targetTsFileList = new ArrayList<>(Collections.singletonList(targetTsFileResource));
       compactionLogger.logFiles(selectedTsFileResourceList, CompactionLogger.STR_SOURCE_FILES);
       compactionLogger.logFiles(targetTsFileList, CompactionLogger.STR_TARGET_FILES);
-      LOGGER.info(
-          "{}-{} [InnerSpaceCompactionTask] Close the logger", storageGroupName, dataRegionId);
-      compactionLogger.close();
+
       LOGGER.info(
           "{}-{} [Compaction] compaction with {}",
           storageGroupName,
@@ -176,6 +176,10 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
             targetTsFileList,
             timePartition,
             false);
+      }
+
+      if (targetTsFileResource.isDeleted()) {
+        compactionLogger.logFile(targetTsFileResource, STR_DELETED_TARGET_FILES);
       }
 
       if (IoTDBDescriptor.getInstance().getConfig().isEnableCompactionValidation()
@@ -225,6 +229,20 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
       CompactionUtils.deleteModificationForSourceFile(
           selectedTsFileResourceList, storageGroupName + "-" + dataRegionId);
 
+      // update metric
+      TsFileMetricManager.getInstance()
+          .deleteFile(totalSizeOfDeletedFile, sequence, selectedTsFileResourceList.size());
+      if (!targetTsFileResource.isDeleted()) {
+        TsFileMetricManager.getInstance()
+            .addFile(targetTsFileResource.getTsFile().length(), sequence);
+
+        // set target resource to CLOSED, so that it can be selected to compact
+        targetTsFileResource.setStatus(TsFileResourceStatus.CLOSED);
+      } else {
+        // target resource is empty after compaction, then delete it
+        targetTsFileResource.remove();
+      }
+
       if (performer instanceof FastCompactionPerformer) {
         SubCompactionTaskSummary subTaskSummary =
             ((FastCompactionPerformer) performer).getSubTaskSummary();
@@ -251,20 +269,6 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
 
       if (logFile.exists()) {
         FileUtils.delete(logFile);
-      }
-
-      // update metric
-      TsFileMetricManager.getInstance()
-          .deleteFile(totalSizeOfDeletedFile, sequence, selectedTsFileResourceList.size());
-      if (!targetTsFileResource.isDeleted()) {
-        TsFileMetricManager.getInstance()
-            .addFile(targetTsFileResource.getTsFile().length(), sequence);
-
-        // set target resource to CLOSED, so that it can be selected to compact
-        targetTsFileResource.setStatus(TsFileResourceStatus.CLOSED);
-      } else {
-        // target resource is empty after compaction, then delete it
-        targetTsFileResource.remove();
       }
     } catch (Throwable throwable) {
       // catch throwable to handle OOM errors
