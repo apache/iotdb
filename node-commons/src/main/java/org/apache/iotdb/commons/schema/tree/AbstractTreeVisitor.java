@@ -355,7 +355,7 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R>
   }
 
   public boolean isSuccess() {
-    return throwable != null;
+    return throwable == null;
   }
 
   // Get a child with the given childName.
