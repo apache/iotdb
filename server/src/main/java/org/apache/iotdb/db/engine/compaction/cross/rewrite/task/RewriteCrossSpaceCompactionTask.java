@@ -194,12 +194,21 @@ public class RewriteCrossSpaceCompactionTask extends AbstractCrossSpaceCompactio
       CompactionUtils.deleteCompactionModsFile(
           selectedSeqTsFileResourceList, selectedUnSeqTsFileResourceList);
 
-      // set target resources to CLOSED, so that they can be selected to compact
-      targetTsfileResourceList.forEach(x -> x.setStatus(TsFileResourceStatus.CLOSED));
-
       if (logFile.exists()) {
         FileUtils.delete(logFile);
       }
+
+      targetTsfileResourceList.forEach(
+          x -> {
+            if (x.isDeleted()) {
+              // target resource is empty after compaction, then delete it
+              x.remove();
+            } else {
+              // set target resources to CLOSED, so that they can be selected to compact
+              x.setStatus(TsFileResourceStatus.CLOSED);
+            }
+          });
+
       double costTime = (System.currentTimeMillis() - startTime) / 1000.0d;
       logger.info(
           "{} [Compaction] CrossSpaceCompactionTask Costs {} s, compaction speed is {} MB/s",
