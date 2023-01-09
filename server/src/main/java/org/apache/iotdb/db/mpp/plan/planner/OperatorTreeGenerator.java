@@ -98,20 +98,17 @@ import org.apache.iotdb.db.mpp.execution.operator.process.last.LastQueryUtil;
 import org.apache.iotdb.db.mpp.execution.operator.process.last.UpdateLastCacheOperator;
 import org.apache.iotdb.db.mpp.execution.operator.schema.CountGroupByLevelMergeOperator;
 import org.apache.iotdb.db.mpp.execution.operator.schema.CountMergeOperator;
-import org.apache.iotdb.db.mpp.execution.operator.schema.DevicesCountOperator;
-import org.apache.iotdb.db.mpp.execution.operator.schema.DevicesSchemaScanOperator;
 import org.apache.iotdb.db.mpp.execution.operator.schema.LevelTimeSeriesCountOperator;
 import org.apache.iotdb.db.mpp.execution.operator.schema.NodeManageMemoryMergeOperator;
 import org.apache.iotdb.db.mpp.execution.operator.schema.NodePathsConvertOperator;
 import org.apache.iotdb.db.mpp.execution.operator.schema.NodePathsCountOperator;
-import org.apache.iotdb.db.mpp.execution.operator.schema.NodePathsSchemaScanOperator;
-import org.apache.iotdb.db.mpp.execution.operator.schema.PathsUsingTemplateScanOperator;
+import org.apache.iotdb.db.mpp.execution.operator.schema.SchemaCountOperator;
 import org.apache.iotdb.db.mpp.execution.operator.schema.SchemaFetchMergeOperator;
 import org.apache.iotdb.db.mpp.execution.operator.schema.SchemaFetchScanOperator;
 import org.apache.iotdb.db.mpp.execution.operator.schema.SchemaQueryMergeOperator;
 import org.apache.iotdb.db.mpp.execution.operator.schema.SchemaQueryOrderByHeatOperator;
-import org.apache.iotdb.db.mpp.execution.operator.schema.TimeSeriesCountOperator;
-import org.apache.iotdb.db.mpp.execution.operator.schema.TimeSeriesSchemaScanOperator;
+import org.apache.iotdb.db.mpp.execution.operator.schema.SchemaQueryScanOperator;
+import org.apache.iotdb.db.mpp.execution.operator.schema.source.SchemaSourceFactory;
 import org.apache.iotdb.db.mpp.execution.operator.source.AlignedSeriesAggregationScanOperator;
 import org.apache.iotdb.db.mpp.execution.operator.source.AlignedSeriesScanOperator;
 import org.apache.iotdb.db.mpp.execution.operator.source.ExchangeOperator;
@@ -471,19 +468,20 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
             .addOperatorContext(
                 context.getNextOperatorId(),
                 node.getPlanNodeId(),
-                TimeSeriesSchemaScanOperator.class.getSimpleName());
+                SchemaQueryScanOperator.class.getSimpleName());
     context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
-    return new TimeSeriesSchemaScanOperator(
+    return new SchemaQueryScanOperator<>(
         node.getPlanNodeId(),
         operatorContext,
-        node.getLimit(),
-        node.getOffset(),
-        node.getPath(),
-        node.getKey(),
-        node.getValue(),
-        node.isContains(),
-        node.isOrderByHeat(),
-        node.getTemplateMap());
+        SchemaSourceFactory.getTimeSeriesSchemaSource(
+            node.getPath(),
+            node.isPrefixPath(),
+            node.getLimit(),
+            node.getOffset(),
+            node.getKey(),
+            node.getValue(),
+            node.isContains(),
+            node.getTemplateMap()));
   }
 
   @Override
@@ -495,16 +493,17 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
             .addOperatorContext(
                 context.getNextOperatorId(),
                 node.getPlanNodeId(),
-                DevicesSchemaScanOperator.class.getSimpleName());
+                SchemaQueryScanOperator.class.getSimpleName());
     context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
-    return new DevicesSchemaScanOperator(
+    return new SchemaQueryScanOperator<>(
         node.getPlanNodeId(),
         operatorContext,
-        node.getLimit(),
-        node.getOffset(),
-        node.getPath(),
-        node.isPrefixPath(),
-        node.isHasSgCol());
+        SchemaSourceFactory.getDeviceSchemaSource(
+            node.getPath(),
+            node.isPrefixPath(),
+            node.getLimit(),
+            node.getOffset(),
+            node.isHasSgCol()));
   }
 
   @Override
@@ -550,10 +549,12 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
             .addOperatorContext(
                 context.getNextOperatorId(),
                 node.getPlanNodeId(),
-                DevicesCountOperator.class.getSimpleName());
+                SchemaCountOperator.class.getSimpleName());
     context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
-    return new DevicesCountOperator(
-        node.getPlanNodeId(), operatorContext, node.getPath(), node.isPrefixPath());
+    return new SchemaCountOperator<>(
+        node.getPlanNodeId(),
+        operatorContext,
+        SchemaSourceFactory.getDeviceSchemaSource(node.getPath(), node.isPrefixPath()));
   }
 
   @Override
@@ -565,17 +566,18 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
             .addOperatorContext(
                 context.getNextOperatorId(),
                 node.getPlanNodeId(),
-                TimeSeriesCountOperator.class.getSimpleName());
+                SchemaCountOperator.class.getSimpleName());
     context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
-    return new TimeSeriesCountOperator(
+    return new SchemaCountOperator<>(
         node.getPlanNodeId(),
         operatorContext,
-        node.getPath(),
-        node.isPrefixPath(),
-        node.getKey(),
-        node.getValue(),
-        node.isContains(),
-        node.getTemplateMap());
+        SchemaSourceFactory.getTimeSeriesSchemaSource(
+            node.getPath(),
+            node.isPrefixPath(),
+            node.getKey(),
+            node.getValue(),
+            node.isContains(),
+            node.getTemplateMap()));
   }
 
   @Override
@@ -609,10 +611,12 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
             .addOperatorContext(
                 context.getNextOperatorId(),
                 node.getPlanNodeId(),
-                NodePathsSchemaScanOperator.class.getSimpleName());
+                SchemaQueryScanOperator.class.getSimpleName());
     context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
-    return new NodePathsSchemaScanOperator(
-        node.getPlanNodeId(), operatorContext, node.getPrefixPath(), node.getLevel());
+    return new SchemaQueryScanOperator<>(
+        node.getPlanNodeId(),
+        operatorContext,
+        SchemaSourceFactory.getNodeSchemaSource(node.getPrefixPath(), node.getLevel()));
   }
 
   @Override
@@ -2175,9 +2179,12 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
             .addOperatorContext(
                 context.getNextOperatorId(),
                 node.getPlanNodeId(),
-                PathsUsingTemplateScanNode.class.getSimpleName());
+                SchemaQueryScanOperator.class.getSimpleName());
     context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
-    return new PathsUsingTemplateScanOperator(
-        node.getPlanNodeId(), operatorContext, node.getPathPatternList(), node.getTemplateId());
+    return new SchemaQueryScanOperator<>(
+        node.getPlanNodeId(),
+        operatorContext,
+        SchemaSourceFactory.getPathsUsingTemplateSource(
+            node.getPathPatternList(), node.getTemplateId()));
   }
 }
