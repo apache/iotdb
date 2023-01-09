@@ -76,7 +76,7 @@ public class RatisConsensusTest {
                       .setAutoTriggerThreshold(100)
                       .setCreationGap(10)
                       .build())
-              .setRatisConsensus(
+              .setImpl(
                   RatisConfig.Impl.newBuilder()
                       .setTriggerSnapshotFileSize(1)
                       .setTriggerSnapshotTime(4)

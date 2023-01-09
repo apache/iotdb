@@ -25,7 +25,10 @@ import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.operator.AndFilter;
 
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
+import java.util.TreeMap;
 
 /**
  * The QueryDataSource contains all the seq and unseq TsFileResources for one timeseries in one
@@ -39,15 +42,17 @@ public class QueryDataSource {
    * <p>Note: Sequences under the same data region share two lists of TsFileResources (seq and
    * unseq).
    */
-  private List<TsFileResource> seqResources;
+  private final List<TsFileResource> seqResources;
 
-  private List<TsFileResource> unseqResources;
+  private final List<TsFileResource> unseqResources;
 
   /* The traversal order of unseqResources (different for each device) */
   private int[] unSeqFileOrderIndex;
 
   /** data older than currentTime - dataTTL should be ignored. */
   private long dataTTL = Long.MAX_VALUE;
+
+  private static final Comparator<Long> descendingComparator = (o1, o2) -> Long.compare(o2, o1);
 
   public QueryDataSource(List<TsFileResource> seqResources, List<TsFileResource> unseqResources) {
     this.seqResources = seqResources;
@@ -120,5 +125,25 @@ public class QueryDataSource {
 
   public int getUnseqResourcesSize() {
     return unseqResources.size();
+  }
+
+  public void fillOrderIndexes(String deviceId, boolean ascending) {
+    TreeMap<Long, List<Integer>> orderTimeToIndexMap =
+        ascending ? new TreeMap<>() : new TreeMap<>(descendingComparator);
+    int index = 0;
+    for (TsFileResource resource : unseqResources) {
+      orderTimeToIndexMap
+          .computeIfAbsent(resource.getOrderTime(deviceId, ascending), key -> new ArrayList<>())
+          .add(index++);
+    }
+
+    index = 0;
+    int[] unSeqFileOrderIndex = new int[unseqResources.size()];
+    for (List<Integer> orderIndexes : orderTimeToIndexMap.values()) {
+      for (Integer orderIndex : orderIndexes) {
+        unSeqFileOrderIndex[index++] = orderIndex;
+      }
+    }
+    this.unSeqFileOrderIndex = unSeqFileOrderIndex;
   }
 }

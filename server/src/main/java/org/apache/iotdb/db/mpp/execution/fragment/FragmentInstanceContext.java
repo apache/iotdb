@@ -228,6 +228,7 @@ public class FragmentInstanceContext extends QueryContext {
     return executionEndTime.get();
   }
 
+  @Override
   public long getStartTime() {
     return executionStartTime.get();
   }

@@ -53,7 +53,7 @@ public class IoTDBSchemaTemplateIT {
 
   @Before
   public void setUp() throws Exception {
-    EnvFactory.getEnv().initBeforeTest();
+    EnvFactory.getEnv().initClusterEnvironment();
     connection = EnvFactory.getEnv().getConnection();
     statement = connection.createStatement();
 
@@ -64,7 +64,7 @@ public class IoTDBSchemaTemplateIT {
   public void tearDown() throws Exception {
     statement.close();
     connection.close();
-    EnvFactory.getEnv().cleanAfterTest();
+    EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
   @Test

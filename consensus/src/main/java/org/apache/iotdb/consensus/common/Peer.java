@@ -35,7 +35,7 @@ import java.util.Objects;
 // TODO Use a mature IDL framework such as Protobuf to manage this structure
 public class Peer {
 
-  private final Logger LOGGER = LoggerFactory.getLogger(Peer.class);
+  private final Logger logger = LoggerFactory.getLogger(Peer.class);
   private final ConsensusGroupId groupId;
   private final TEndPoint endpoint;
   private final int nodeId;
@@ -65,7 +65,7 @@ public class Peer {
       BasicStructureSerDeUtil.write(nodeId, stream);
       ThriftCommonsSerDeUtils.serializeTEndPoint(endpoint, stream);
     } catch (IOException e) {
-      LOGGER.error("Failed to serialize Peer", e);
+      logger.error("Failed to serialize Peer", e);
     }
   }
 

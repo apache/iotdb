@@ -204,7 +204,7 @@ public class SchemaEngine {
         ISchemaRegion schemaRegion = future.get();
         schemaRegionMap.put(schemaRegion.getSchemaRegionId(), schemaRegion);
       } catch (ExecutionException | InterruptedException | RuntimeException e) {
-        logger.error("Something wrong happened during SchemaRegion recovery: " + e.getMessage());
+        logger.error("Something wrong happened during SchemaRegion recovery: {}", e.getMessage());
         e.printStackTrace();
       }
     }
@@ -277,9 +277,9 @@ public class SchemaEngine {
             createSchemaRegionWithoutExistenceCheck(storageGroup, schemaRegionId);
         timeRecord = System.currentTimeMillis() - timeRecord;
         logger.info(
-            String.format(
-                "Recover [%s] spend: %s ms",
-                storageGroup.concatNode(schemaRegionId.toString()), timeRecord));
+            "Recover [{}] spend: {} ms",
+            storageGroup.concatNode(schemaRegionId.toString()),
+            timeRecord);
         return schemaRegion;
       } catch (MetadataException e) {
         logger.error(

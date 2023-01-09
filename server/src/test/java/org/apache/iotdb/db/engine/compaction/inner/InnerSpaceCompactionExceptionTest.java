@@ -18,12 +18,12 @@
  */
 package org.apache.iotdb.db.engine.compaction.inner;
 
-import org.apache.iotdb.db.engine.compaction.CompactionExceptionHandler;
-import org.apache.iotdb.db.engine.compaction.CompactionUtils;
-import org.apache.iotdb.db.engine.compaction.log.CompactionLogger;
-import org.apache.iotdb.db.engine.compaction.performer.ICompactionPerformer;
-import org.apache.iotdb.db.engine.compaction.performer.impl.FastCompactionPerformer;
-import org.apache.iotdb.db.engine.compaction.task.CompactionTaskSummary;
+import org.apache.iotdb.db.engine.compaction.execute.exception.CompactionExceptionHandler;
+import org.apache.iotdb.db.engine.compaction.execute.performer.ICompactionPerformer;
+import org.apache.iotdb.db.engine.compaction.execute.performer.impl.FastCompactionPerformer;
+import org.apache.iotdb.db.engine.compaction.execute.task.CompactionTaskSummary;
+import org.apache.iotdb.db.engine.compaction.execute.utils.CompactionUtils;
+import org.apache.iotdb.db.engine.compaction.execute.utils.log.CompactionLogger;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionFileGeneratorUtils;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;

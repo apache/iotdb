@@ -18,12 +18,13 @@
  */
 package org.apache.iotdb.itbase.env;
 
+import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.confignode.rpc.thrift.IConfigNodeRPCService;
 import org.apache.iotdb.isession.ISession;
 import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.isession.util.Version;
-import org.apache.iotdb.it.env.ConfigNodeWrapper;
-import org.apache.iotdb.it.env.DataNodeWrapper;
+import org.apache.iotdb.it.env.cluster.ConfigNodeWrapper;
+import org.apache.iotdb.it.env.cluster.DataNodeWrapper;
 import org.apache.iotdb.jdbc.Constant;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.session.Session;
@@ -37,15 +38,22 @@ import java.util.List;
 
 public interface BaseEnv {
 
-  void initBeforeClass() throws InterruptedException;
+  /** Init a cluster with default number of ConfigNodes and DataNodes. */
+  void initClusterEnvironment();
 
+  /**
+   * Init a cluster with the specified number of ConfigNodes and DataNodes.
+   *
+   * @param configNodesNum the number of ConfigNodes.
+   * @param dataNodesNum the number of DataNodes.
+   */
   void initClusterEnvironment(int configNodesNum, int dataNodesNum);
 
-  void cleanAfterClass();
+  /** Destroy the cluster and all the configurations. */
+  void cleanClusterEnvironment();
 
-  void initBeforeTest() throws InterruptedException;
-
-  void cleanAfterTest();
+  /** Return the {@link ClusterConfig} for developers to set values before test. */
+  ClusterConfig getConfig();
 
   default Connection getConnection() throws SQLException {
     return getConnection("root", "root");
@@ -66,14 +74,10 @@ public interface BaseEnv {
 
   List<ConfigNodeWrapper> getConfigNodeWrapperList();
 
-  void setConfigNodeWrapperList(List<ConfigNodeWrapper> configNodeWrapperList);
-
   List<DataNodeWrapper> getDataNodeWrapperList();
 
-  void setDataNodeWrapperList(List<DataNodeWrapper> dataNodeWrapperList);
-
   IConfigNodeRPCService.Iface getLeaderConfigNodeConnection()
-      throws IOException, InterruptedException;
+      throws ClientManagerException, IOException, InterruptedException;
 
   default ISession getSessionConnection() throws IoTDBConnectionException {
     return getSessionConnection(
@@ -186,7 +190,11 @@ public interface BaseEnv {
     return pool;
   }
 
-  /** @return The index of ConfigNode-Leader in configNodeWrapperList */
+  /**
+   * Get the index of the ConfigNode leader.
+   *
+   * @return The index of ConfigNode-Leader in configNodeWrapperList
+   */
   int getLeaderConfigNodeIndex() throws IOException, InterruptedException;
 
   /** Start an existed ConfigNode */
@@ -195,16 +203,32 @@ public interface BaseEnv {
   /** Shutdown an existed ConfigNode */
   void shutdownConfigNode(int index);
 
-  /** @return The ConfigNodeWrapper of the specified index */
+  /**
+   * Get the {@link ConfigNodeWrapper} of the specified index.
+   *
+   * @return The ConfigNodeWrapper of the specified index
+   */
   ConfigNodeWrapper getConfigNodeWrapper(int index);
 
-  /** @return The DataNodeWrapper of the specified indexx */
+  /**
+   * Get the {@link DataNodeWrapper} of the specified index.
+   *
+   * @return The DataNodeWrapper of the specified indexx
+   */
   DataNodeWrapper getDataNodeWrapper(int index);
 
-  /** @return A random available ConfigNodeWrapper */
+  /**
+   * Get a {@link ConfigNodeWrapper} randomly.
+   *
+   * @return A random available ConfigNodeWrapper
+   */
   ConfigNodeWrapper generateRandomConfigNodeWrapper();
 
-  /** @return A random available ConfigNodeWrapper */
+  /**
+   * Get a {@link DataNodeWrapper} randomly.
+   *
+   * @return A random available ConfigNodeWrapper
+   */
   DataNodeWrapper generateRandomDataNodeWrapper();
 
   /** Register a new DataNode with random ports */

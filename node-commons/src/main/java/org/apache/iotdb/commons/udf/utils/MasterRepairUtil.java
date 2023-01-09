@@ -152,7 +152,7 @@ public class MasterRepairUtil {
 
   public ArrayList<ArrayList<Double>> calC(int i, ArrayList<Integer> Wi) {
     ArrayList<ArrayList<Double>> Ci = new ArrayList<>();
-    if (Wi.size() == 0) {
+    if (Wi.isEmpty()) {
       Ci.add(this.kdTreeUtil.query(this.td.get(i), std));
     } else {
       Ci.addAll(this.kdTreeUtil.queryKNN(this.td.get(i), k, std));

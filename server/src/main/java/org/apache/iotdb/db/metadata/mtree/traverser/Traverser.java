@@ -82,7 +82,8 @@ public abstract class Traverser {
    * @param path use wildcard to specify which part to traverse
    * @throws MetadataException
    */
-  public Traverser(IMNode startNode, PartialPath path, IMTreeStore store) throws MetadataException {
+  protected Traverser(IMNode startNode, PartialPath path, IMTreeStore store)
+      throws MetadataException {
     String[] nodes = path.getNodes();
     if (nodes.length == 0 || !nodes[0].equals(PATH_ROOT)) {
       throw new IllegalPathException(
@@ -469,7 +470,9 @@ public abstract class Traverser {
     // if the node is usingTemplate, the upperTemplate won't be null or the upperTemplateId won't be
     // NON_TEMPLATE.
     throw new IllegalStateException(
-        "There should not be no template mounted on any ancestor of a node usingTemplate.");
+        String.format(
+            "There should be a template mounted on any ancestor of the node [%s] usingTemplate.",
+            node.getFullPath()));
   }
 
   public void setTemplateMap(Map<Integer, Template> templateMap) {
@@ -512,18 +515,7 @@ public abstract class Traverser {
     return nodeNames.toArray(new String[0]);
   }
 
-  /** @return the database node in the traverse path */
-  protected IMNode getStorageGroupNodeInTraversePath(IMNode currentNode) {
-    if (currentNode.isStorageGroup()) {
-      return currentNode;
-    }
-    Iterator<IMNode> nodes = traverseContext.iterator();
-    while (nodes.hasNext()) {
-      IMNode node = nodes.next();
-      if (node.isStorageGroup()) {
-        return node;
-      }
-    }
-    return null;
+  protected IMNode getCurrentNodeParent() {
+    return traverseContext.peek();
   }
 }

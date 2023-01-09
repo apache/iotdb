@@ -58,7 +58,6 @@ IoTDB ConfigNode 配置文件均位于 IoTDB 安装目录：`conf`文件夹下�
 |默认值|默认与最大堆内存相等|
 |改后生效方式|重启服务生效|
 
-
 ## 系统配置项（iotdb-confignode.properties）
 
 IoTDB 集群的全局配置通过 ConfigNode 配置。
@@ -80,7 +79,7 @@ IoTDB 集群的全局配置通过 ConfigNode 配置。
 |:------:|:----------------------|
 |   描述   | ConfigNode 集群服务监听端口   |
 |   类型   | Short Int : [0,65535] |
-|  默认值   | 22277                  |
+|  默认值   | 10710                  |
 | 改后生效方式 | 重启服务生效                |
 
 ### 共识协议
@@ -91,7 +90,7 @@ IoTDB 集群的全局配置通过 ConfigNode 配置。
 |:------:|:----------------------|
 |   描述   | ConfigNode 的共识协议通信端口  |
 |   类型   | Short Int : [0,65535] |
-|  默认值   | 22278                 |
+|  默认值   | 10720                 |
 | 改后生效方式 | 重启服务生效                |
 
 ### 目标 Config Node 配置
@@ -102,9 +101,8 @@ IoTDB 集群的全局配置通过 ConfigNode 配置。
 |:------:|:--------------------------------------|
 |   描述   | 目标 ConfigNode 地址，ConfigNode 通过此地址加入集群 |
 |   类型   | String                                |
-|  默认值   | 127.0.0.1:22277                       |
+|  默认值   | 127.0.0.1:10710                       |
 | 改后生效方式 | 重启服务生效                                |
-
 
 ### 数据目录
 
@@ -190,5 +188,23 @@ IoTDB 集群的全局配置通过 ConfigNode 配置。
 |   类型   | int                                             |
 |  默认值   | 1                                               |
 | 改后生效方式 | 重启服务生效                                          |
+
+* cn\_core\_client\_count\_for\_each\_node\_in\_client\_manager
+
+|   名字   | cn\_core\_client\_count\_for\_each\_node\_in\_client\_manager |
+|:------:|:--------------------------------------------------------------|
+|   描述   | 单 ClientManager 中路由到每个节点的核心 Client 个数                         |
+|   类型   | int                                                           |
+|  默认值   | 200                                                           |
+| 改后生效方式 | 重启服务生效                                                        |
+
+* cn\_max\_client\_count\_for\_each\_node\_in\_client\_manager
+
+|   名字   | cn\_max\_client\_count\_for\_each\_node\_in\_client\_manager |
+|:------:|:-------------------------------------------------------------|
+|   描述   | 单 ClientManager 中路由到每个节点的最大 Client 个数                        |
+|   类型   | int                                                          |
+|  默认值   | 300                                                          |
+| 改后生效方式 | 重启服务生效                                                       |
 
 ### Metric 监控配置

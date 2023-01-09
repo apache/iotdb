@@ -49,6 +49,8 @@ import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.function.Consumer;
 
+import static org.apache.iotdb.commons.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
+
 /**
  * This class is used to help recover all unsealed TsFiles at zero level. There are 3 main
  * procedures: start recovery, redo logs, and end recovery, you must call them in order. Notice:
@@ -225,11 +227,13 @@ public class UnsealedTsFileRecoverPerformer extends AbstractTsFileRecoverPerform
       // flush memTable
       try {
         if (!recoveryMemTable.isEmpty() && recoveryMemTable.getSeriesNumber() != 0) {
+          String dataRegionId =
+              tsFileResource.getTsFile().getParentFile().getParentFile().getName();
+          String databaseName =
+              tsFileResource.getTsFile().getParentFile().getParentFile().getParentFile().getName();
           MemTableFlushTask tableFlushTask =
               new MemTableFlushTask(
-                  recoveryMemTable,
-                  writer,
-                  tsFileResource.getTsFile().getParentFile().getParentFile().getName());
+                  recoveryMemTable, writer, databaseName + FILE_NAME_SEPARATOR + dataRegionId);
           tableFlushTask.syncFlushMemTable();
           tsFileResource.updatePlanIndexes(recoveryMemTable.getMinPlanIndex());
           tsFileResource.updatePlanIndexes(recoveryMemTable.getMaxPlanIndex());

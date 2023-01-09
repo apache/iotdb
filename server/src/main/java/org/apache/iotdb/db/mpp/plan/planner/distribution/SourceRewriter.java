@@ -61,6 +61,9 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationDescriptor
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationStep;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.CrossSeriesAggregationDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.OrderByParameter;
+import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
+import org.apache.iotdb.db.mpp.plan.statement.component.SortItem;
+import org.apache.iotdb.db.mpp.plan.statement.component.SortKey;
 import org.apache.iotdb.db.mpp.plan.statement.crud.QueryStatement;
 
 import java.util.ArrayList;
@@ -79,7 +82,7 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDC
 
 public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanContext> {
 
-  private Analysis analysis;
+  private final Analysis analysis;
 
   public SourceRewriter(Analysis analysis) {
     this.analysis = analysis;
@@ -525,10 +528,45 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
     PlanNode root = processRawMultiChildNode(node, context);
     if (context.queryMultiRegion) {
       PlanNode newRoot = genLastQueryRootNode(node, context);
+      // add sort op for each if we add LastQueryMergeNode as root
+      if (newRoot instanceof LastQueryMergeNode && node.getMergeOrderParameter().isEmpty()) {
+        OrderByParameter orderByParameter =
+            new OrderByParameter(
+                Collections.singletonList(new SortItem(SortKey.TIMESERIES, Ordering.ASC)));
+        addSortForEachLastQueryNode(root, orderByParameter);
+      }
       root.getChildren().forEach(newRoot::addChild);
       return Collections.singletonList(newRoot);
     } else {
       return Collections.singletonList(root);
+    }
+  }
+
+  private void addSortForEachLastQueryNode(PlanNode root, OrderByParameter orderByParameter) {
+    if (root instanceof LastQueryNode
+        && (root.getChildren().get(0) instanceof LastQueryScanNode
+            || root.getChildren().get(0) instanceof AlignedLastQueryScanNode)) {
+      LastQueryNode lastQueryNode = (LastQueryNode) root;
+      lastQueryNode.setMergeOrderParameter(orderByParameter);
+      // sort children node
+      lastQueryNode.setChildren(
+          lastQueryNode.getChildren().stream()
+              .sorted(
+                  Comparator.comparing(
+                      child -> {
+                        String fullPath = "";
+                        if (child instanceof LastQueryScanNode) {
+                          fullPath = ((LastQueryScanNode) child).getSeriesPath().getFullPath();
+                        } else if (child instanceof AlignedLastQueryScanNode) {
+                          fullPath = ((AlignedLastQueryScanNode) child).getSeriesPath().getDevice();
+                        }
+                        return fullPath;
+                      }))
+              .collect(Collectors.toList()));
+    } else {
+      for (PlanNode child : root.getChildren()) {
+        addSortForEachLastQueryNode(child, orderByParameter);
+      }
     }
   }
 
@@ -928,7 +966,7 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
             }
           }
         }
-        if (descriptorExpressions.size() == 0) {
+        if (descriptorExpressions.isEmpty()) {
           continue;
         }
         CrossSeriesAggregationDescriptor descriptor = originalDescriptor.deepClone();

@@ -41,10 +41,10 @@ import org.apache.iotdb.db.engine.TsFileMetricManager;
 import org.apache.iotdb.db.engine.cache.BloomFilterCache;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
-import org.apache.iotdb.db.engine.compaction.CompactionRecoverManager;
-import org.apache.iotdb.db.engine.compaction.CompactionScheduler;
-import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
-import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
+import org.apache.iotdb.db.engine.compaction.execute.recover.CompactionRecoverManager;
+import org.apache.iotdb.db.engine.compaction.execute.task.AbstractCompactionTask;
+import org.apache.iotdb.db.engine.compaction.schedule.CompactionScheduler;
+import org.apache.iotdb.db.engine.compaction.schedule.CompactionTaskManager;
 import org.apache.iotdb.db.engine.flush.CloseFileListener;
 import org.apache.iotdb.db.engine.flush.FlushListener;
 import org.apache.iotdb.db.engine.flush.FlushStatus;
@@ -69,6 +69,7 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.cache.DataNodeSchemaCache;
 import org.apache.iotdb.db.metadata.idtable.IDTable;
 import org.apache.iotdb.db.metadata.idtable.IDTableManager;
+import org.apache.iotdb.db.mpp.metric.QueryMetricsManager;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertMultiTabletsNode;
@@ -134,6 +135,8 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
 import static org.apache.iotdb.db.engine.storagegroup.TsFileResource.TEMP_SUFFIX;
+import static org.apache.iotdb.db.mpp.metric.QueryResourceMetricSet.SEQUENCE_TSFILE;
+import static org.apache.iotdb.db.mpp.metric.QueryResourceMetricSet.UNSEQUENCE_TSFILE;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
 
 /**
@@ -267,6 +270,8 @@ public class DataRegion implements IDataRegionForQuery {
   public static final long COMPACTION_TASK_SUBMIT_DELAY = 20L * 1000L;
 
   private IDTable idTable;
+
+  private final QueryMetricsManager QUERY_METRICS = QueryMetricsManager.getInstance();
 
   /**
    * constrcut a database processor
@@ -452,10 +457,14 @@ public class DataRegion implements IDataRegionForQuery {
       List<WALRecoverListener> recoverListeners = new ArrayList<>();
       for (List<TsFileResource> value : partitionTmpSeqTsFiles.values()) {
         // tsFiles without resource file are unsealed
+        for (TsFileResource resource : value) {
+          if (resource.resourceFileExists()) {
+            TsFileMetricManager.getInstance().addFile(resource.getTsFile().length(), true);
+          }
+        }
         while (!value.isEmpty()) {
           TsFileResource tsFileResource = value.get(value.size() - 1);
           if (tsFileResource.resourceFileExists()) {
-            TsFileMetricManager.getInstance().addFile(tsFileResource.getTsFile().length(), true);
             break;
           } else {
             value.remove(value.size() - 1);
@@ -469,10 +478,14 @@ public class DataRegion implements IDataRegionForQuery {
       }
       for (List<TsFileResource> value : partitionTmpUnseqTsFiles.values()) {
         // tsFiles without resource file are unsealed
+        for (TsFileResource resource : value) {
+          if (resource.resourceFileExists()) {
+            TsFileMetricManager.getInstance().addFile(resource.getTsFile().length(), false);
+          }
+        }
         while (!value.isEmpty()) {
           TsFileResource tsFileResource = value.get(value.size() - 1);
           if (tsFileResource.resourceFileExists()) {
-            TsFileMetricManager.getInstance().addFile(tsFileResource.getTsFile().length(), false);
             break;
           } else {
             value.remove(value.size() - 1);
@@ -1666,6 +1679,10 @@ public class DataRegion implements IDataRegionForQuery {
               context,
               timeFilter,
               false);
+
+      QUERY_METRICS.recordQueryResourceNum(SEQUENCE_TSFILE, seqResources.size());
+      QUERY_METRICS.recordQueryResourceNum(UNSEQUENCE_TSFILE, unseqResources.size());
+
       QueryDataSource dataSource = new QueryDataSource(seqResources, unseqResources);
       dataSource.setDataTTL(dataTTL);
       return dataSource;
@@ -2079,11 +2096,15 @@ public class DataRegion implements IDataRegionForQuery {
   }
 
   private void executeCompaction() {
-    List<Long> timePartitions = new ArrayList<>(tsFileManager.getTimePartitions());
-    // sort the time partition from largest to smallest
-    timePartitions.sort((o1, o2) -> (int) (o2 - o1));
-    for (long timePartition : timePartitions) {
-      CompactionScheduler.scheduleCompaction(tsFileManager, timePartition);
+    try {
+      List<Long> timePartitions = new ArrayList<>(tsFileManager.getTimePartitions());
+      // sort the time partition from largest to smallest
+      timePartitions.sort((o1, o2) -> (int) (o2 - o1));
+      for (long timePartition : timePartitions) {
+        CompactionScheduler.scheduleCompaction(tsFileManager, timePartition);
+      }
+    } catch (Throwable e) {
+      logger.error("Meet error in compaction schedule.", e);
     }
   }
 
@@ -3148,7 +3169,7 @@ public class DataRegion implements IDataRegionForQuery {
       List<TsFileResource> seqResourcesToBeSettled,
       List<TsFileResource> unseqResourcesToBeSettled,
       List<String> tsFilePaths) {
-    if (tsFilePaths.size() == 0) {
+    if (tsFilePaths.isEmpty()) {
       for (TsFileResource resource : tsFileManager.getTsFileList(true)) {
         if (!resource.isClosed()) {
           continue;

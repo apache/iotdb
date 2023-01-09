@@ -60,7 +60,7 @@ import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.cache.CacheHitRatioMonitor;
-import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
+import org.apache.iotdb.db.engine.compaction.schedule.CompactionTaskManager;
 import org.apache.iotdb.db.engine.flush.FlushManager;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaEngine;
@@ -69,7 +69,7 @@ import org.apache.iotdb.db.mpp.execution.exchange.MPPDataExchangeService;
 import org.apache.iotdb.db.mpp.execution.schedule.DriverScheduler;
 import org.apache.iotdb.db.protocol.rest.RestService;
 import org.apache.iotdb.db.service.metrics.DataNodeMetricsHelper;
-import org.apache.iotdb.db.service.metrics.IoTDBInternalReporter;
+import org.apache.iotdb.db.service.metrics.IoTDBInternalLocalReporter;
 import org.apache.iotdb.db.service.thrift.impl.ClientRPCServiceImpl;
 import org.apache.iotdb.db.service.thrift.impl.DataNodeRegionManager;
 import org.apache.iotdb.db.sync.SyncService;
@@ -94,6 +94,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
+
+import static org.apache.iotdb.commons.conf.IoTDBConstant.DEFAULT_CLUSTER_NAME;
 
 public class DataNode implements DataNodeMBean {
   private static final Logger logger = LoggerFactory.getLogger(DataNode.class);
@@ -188,7 +190,7 @@ public class DataNode implements DataNodeMBean {
     config.setClusterMode(true);
 
     // Notice: Consider this DataNode as first start if the system.properties file doesn't exist
-    boolean isFirstStart = !SYSTEM_PROPERTIES.exists();
+    boolean isFirstStart = IoTDBStartCheck.getInstance().checkIsFirstStart();
 
     // Check target ConfigNodes
     for (TEndPoint endPoint : config.getTargetConfigNodeList()) {
@@ -205,9 +207,6 @@ public class DataNode implements DataNodeMBean {
     // Startup checks
     StartupChecks checks = new StartupChecks(IoTDBConstant.DN_ROLE).withDefaultTest();
     checks.verify();
-
-    // Check system configurations
-    IoTDBStartCheck.getInstance().checkSystemConfig();
 
     return isFirstStart;
   }
@@ -280,6 +279,7 @@ public class DataNode implements DataNodeMBean {
 
     /* Check system configurations */
     try {
+      IoTDBStartCheck.getInstance().checkSystemConfig();
       IoTDBStartCheck.getInstance().checkDirectory();
       IoTDBStartCheck.getInstance().serializeGlobalConfig(configurationResp.globalConfig);
       IoTDBDescriptor.getInstance().initClusterSchemaMemoryAllocate();
@@ -338,6 +338,7 @@ public class DataNode implements DataNodeMBean {
     int retry = DEFAULT_RETRY;
     TDataNodeRegisterReq req = new TDataNodeRegisterReq();
     req.setDataNodeConfiguration(generateDataNodeConfiguration());
+    req.setClusterName(config.getClusterName());
     TDataNodeRegisterResp dataNodeRegisterResp = null;
     while (retry > 0) {
       try (ConfigNodeClient configNodeClient = new ConfigNodeClient()) {
@@ -370,16 +371,15 @@ public class DataNode implements DataNodeMBean {
     if (dataNodeRegisterResp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
 
       /* Store runtime configurations when register success */
-      String clusterName = dataNodeRegisterResp.getClusterName();
-      config.setClusterName(dataNodeRegisterResp.getClusterName());
       int dataNodeID = dataNodeRegisterResp.getDataNodeId();
       config.setDataNodeId(dataNodeID);
-      IoTDBStartCheck.getInstance().serializeClusterNameAndDataNodeId(clusterName, dataNodeID);
+      IoTDBStartCheck.getInstance()
+          .serializeClusterNameAndDataNodeId(config.getClusterName(), dataNodeID);
 
       storeRuntimeConfigurations(
           dataNodeRegisterResp.getConfigNodeList(), dataNodeRegisterResp.getRuntimeConfiguration());
 
-      logger.info("Successfully register to the cluster");
+      logger.info("Successfully register to the cluster: {}", config.getClusterName());
     } else {
       /* Throw exception when register failed */
       logger.error(dataNodeRegisterResp.getStatus().getMessage());
@@ -394,7 +394,7 @@ public class DataNode implements DataNodeMBean {
     int retry = DEFAULT_RETRY;
     TDataNodeRestartReq req = new TDataNodeRestartReq();
     req.setClusterName(
-        config.getClusterName() == null ? "defaultCluster" : config.getClusterName());
+        config.getClusterName() == null ? DEFAULT_CLUSTER_NAME : config.getClusterName());
     req.setDataNodeConfiguration(generateDataNodeConfiguration());
     TDataNodeRestartResp dataNodeRestartResp = null;
     while (retry > 0) {
@@ -430,7 +430,7 @@ public class DataNode implements DataNodeMBean {
       /* Store runtime configurations when restart request is accepted */
       storeRuntimeConfigurations(
           dataNodeRestartResp.getConfigNodeList(), dataNodeRestartResp.getRuntimeConfiguration());
-      logger.info("Restart request is accepted.");
+      logger.info("Restart request to cluster: {} is accepted.", config.getClusterName());
     } else {
       /* Throw exception when restart is rejected */
       throw new StartupException(dataNodeRestartResp.getStatus().getMessage());
@@ -551,7 +551,7 @@ public class DataNode implements DataNodeMBean {
         .getMetricConfig()
         .getInternalReportType()
         .equals(InternalReporterType.IOTDB)) {
-      MetricService.getInstance().updateInternalReporter(new IoTDBInternalReporter());
+      MetricService.getInstance().updateInternalReporter(new IoTDBInternalLocalReporter());
     }
     MetricService.getInstance().startInternalReporter();
     // bind predefined metrics

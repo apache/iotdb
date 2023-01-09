@@ -24,6 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.IClientManager;
+import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
@@ -50,7 +51,6 @@ import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -135,7 +135,7 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
         logger.warn(loadResp.message);
         throw new FragmentInstanceDispatchException(loadResp.status);
       }
-    } catch (IOException | TException e) {
+    } catch (ClientManagerException | TException e) {
       logger.warn("can't connect to node {}", endPoint, e);
       TSStatus status = new TSStatus();
       status.setCode(TSStatusCode.SYNC_CONNECTION_ERROR.getStatusCode());
@@ -145,7 +145,7 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
   }
 
   public void dispatchLocally(FragmentInstance instance) throws FragmentInstanceDispatchException {
-    logger.info(String.format("Receive load node from uuid %s.", uuid));
+    logger.info("Receive load node from uuid {}.", uuid);
 
     ConsensusGroupId groupId =
         ConsensusGroupId.Factory.createFromTConsensusGroupId(
@@ -222,7 +222,7 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
         logger.warn(loadResp.message);
         throw new FragmentInstanceDispatchException(loadResp.status);
       }
-    } catch (IOException | TException e) {
+    } catch (ClientManagerException | TException e) {
       logger.warn("can't connect to node {}", endPoint, e);
       TSStatus status = new TSStatus();
       status.setCode(TSStatusCode.SYNC_CONNECTION_ERROR.getStatusCode());

@@ -30,7 +30,6 @@ import org.openjdk.jol.info.ClassLayout;
 import java.util.Arrays;
 import java.util.Iterator;
 
-import static io.airlift.slice.SizeOf.sizeOf;
 import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
 
@@ -471,13 +470,22 @@ public class TsBlock {
   }
 
   private long updateRetainedSize() {
-    long retainedSizeInBytes = INSTANCE_SIZE + sizeOf(valueColumns);
+    long retainedSizeInBytes = INSTANCE_SIZE;
     retainedSizeInBytes += timeColumn.getRetainedSizeInBytes();
     for (Column column : valueColumns) {
       retainedSizeInBytes += column.getRetainedSizeInBytes();
     }
     this.retainedSizeInBytes = retainedSizeInBytes;
     return retainedSizeInBytes;
+  }
+
+  public int getTotalInstanceSize() {
+    int totalInstanceSize = INSTANCE_SIZE;
+    totalInstanceSize += timeColumn.getInstanceSize();
+    for (Column column : valueColumns) {
+      totalInstanceSize += column.getInstanceSize();
+    }
+    return totalInstanceSize;
   }
 
   private static int determinePositionCount(Column... columns) {

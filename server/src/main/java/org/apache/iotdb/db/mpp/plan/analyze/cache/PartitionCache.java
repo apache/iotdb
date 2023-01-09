@@ -24,6 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.client.IClientManager;
+import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.consensus.ConfigNodeRegionId;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.MetadataException;
@@ -41,8 +42,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TSetStorageGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchemaResp;
 import org.apache.iotdb.db.client.ConfigNodeClient;
+import org.apache.iotdb.db.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.client.ConfigNodeInfo;
-import org.apache.iotdb.db.client.DataNodeClientPoolFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
@@ -56,7 +57,6 @@ import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -106,8 +106,7 @@ public class PartitionCache {
   private final ReentrantReadWriteLock regionReplicaSetLock = new ReentrantReadWriteLock();
 
   private final IClientManager<ConfigNodeRegionId, ConfigNodeClient> configNodeClientManager =
-      new IClientManager.Factory<ConfigNodeRegionId, ConfigNodeClient>()
-          .createClientManager(new DataNodeClientPoolFactory.ConfigNodeClientPoolFactory());
+      ConfigNodeClientManager.getInstance();
 
   public PartitionCache() {
     this.schemaPartitionCache = Caffeine.newBuilder().maximumSize(cacheSize).build();
@@ -184,7 +183,8 @@ public class PartitionCache {
    * @param devicePaths the devices that need to hit
    */
   private void fetchStorageGroupAndUpdateCache(
-      StorageGroupCacheResult<?> result, List<String> devicePaths) throws IOException, TException {
+      StorageGroupCacheResult<?> result, List<String> devicePaths)
+      throws ClientManagerException, TException {
     try (ConfigNodeClient client =
         configNodeClientManager.borrowClient(ConfigNodeInfo.configNodeRegionId)) {
       storageGroupCacheLock.writeLock().lock();
@@ -215,7 +215,7 @@ public class PartitionCache {
    */
   private void createStorageGroupAndUpdateCache(
       StorageGroupCacheResult<?> result, List<String> devicePaths)
-      throws IOException, MetadataException, TException {
+      throws ClientManagerException, MetadataException, TException {
     try (ConfigNodeClient client =
         configNodeClientManager.borrowClient(ConfigNodeInfo.configNodeRegionId)) {
       storageGroupCacheLock.writeLock().lock();
@@ -336,7 +336,7 @@ public class PartitionCache {
             throw new StatementAnalyzeException("Failed to get database Map in three attempts.");
           }
         }
-      } catch (TException | MetadataException | IOException e) {
+      } catch (TException | MetadataException | ClientManagerException e) {
         throw new StatementAnalyzeException(
             "An error occurred when executing getDeviceToStorageGroup():" + e.getMessage());
       }
@@ -421,7 +421,7 @@ public class PartitionCache {
               throw new RuntimeException(
                   "Failed to get replicaSet of consensus group[id= " + consensusGroupId + "]");
             }
-          } catch (IOException | TException e) {
+          } catch (ClientManagerException | TException e) {
             throw new StatementAnalyzeException(
                 "An error occurred when executing getRegionReplicaSet():" + e.getMessage());
           }
@@ -605,7 +605,7 @@ public class PartitionCache {
       for (Map.Entry<String, List<DataPartitionQueryParam>> entry :
           storageGroupToQueryParamsMap.entrySet()) {
         if (null == entry.getValue()
-            || 0 == entry.getValue().size()
+            || entry.getValue().isEmpty()
             || !getStorageGroupDataPartition(dataPartitionMap, entry.getKey(), entry.getValue())) {
           CacheMetricsRecorder.record(false, DATA_PARTITION_CACHE_NAME);
           return null;
@@ -688,7 +688,7 @@ public class PartitionCache {
     Map<TTimePartitionSlot, List<TRegionReplicaSet>> timePartitionSlotListMap =
         seriesSlotToTimePartitionMap.computeIfAbsent(seriesPartitionSlot, k -> new HashMap<>());
     // Notice: when query all time partition, then miss
-    if (0 == dataPartitionQueryParam.getTimePartitionSlotList().size()) {
+    if (dataPartitionQueryParam.getTimePartitionSlotList().isEmpty()) {
       return false;
     }
     // check cache for each time partition
@@ -716,7 +716,7 @@ public class PartitionCache {
       Map<TTimePartitionSlot, List<TConsensusGroupId>> cachedTimePartitionSlot) {
     List<TConsensusGroupId> cacheConsensusGroupId = cachedTimePartitionSlot.get(timePartitionSlot);
     if (null == cacheConsensusGroupId
-        || 0 == cacheConsensusGroupId.size()
+        || cacheConsensusGroupId.isEmpty()
         || null == timePartitionSlot) {
       logger.debug(
           "[{} Cache] miss when search time partition {}",

@@ -50,7 +50,7 @@ public abstract class SingleInputAggregationOperator implements ProcessOperator 
   protected final long maxRetainedSize;
   protected final long maxReturnSize;
 
-  public SingleInputAggregationOperator(
+  protected SingleInputAggregationOperator(
       OperatorContext operatorContext,
       List<Aggregator> aggregators,
       Operator child,
@@ -108,7 +108,7 @@ public abstract class SingleInputAggregationOperator implements ProcessOperator 
 
   @Override
   public boolean isFinished() {
-    return !this.hasNext();
+    return !this.hasNextWithTimer();
   }
 
   @Override

@@ -64,6 +64,8 @@ public interface ISegmentedPage extends ISchemaPage {
 
   short getSpareSize();
 
+  boolean isCapableForSegSize(short size);
+
   short getSegmentSize(short segId) throws SegmentNotFoundException;
 
   /**

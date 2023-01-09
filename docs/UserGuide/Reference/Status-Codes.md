@@ -107,6 +107,8 @@ Here is a list of Status Code and related message:
 | 711         | TSBLOCK_SERIALIZE_ERROR           | TsBlock serialization error                                                               |
 | 712         | INTERNAL_REQUEST_TIME_OUT         | MPP Operation timeout                                                                     |
 | 713         | INTERNAL_REQUEST_RETRY_ERROR      | Internal operation retry failed                                                           |
+| 714         | NO_SUCH_QUERY                     | Cannot find target query                                                                  |
+| 715         | QUERY_WAS_KILLED                  | Query was killed when execute                                                             |
 | 800         | UNINITIALIZED_AUTH_ERROR          | Failed to initialize auth module                                                          |
 | 801         | WRONG_LOGIN_PASSWORD              | Username or password is wrong                                                             |
 | 802         | NOT_LOGIN                         | Not login                                                                                 |

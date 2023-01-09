@@ -26,7 +26,6 @@ import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.cluster.RegionStatus;
-import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.confignode.it.utils.ConfigNodeTestUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionReq;
@@ -43,14 +42,12 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
 import org.apache.iotdb.consensus.ConsensusFactory;
-import org.apache.iotdb.it.env.ConfigFactory;
-import org.apache.iotdb.it.env.DataNodeWrapper;
 import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.it.env.cluster.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import org.apache.thrift.TException;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -60,7 +57,6 @@ import org.junit.runner.RunWith;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -74,19 +70,9 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class IoTDBPartitionDurableIT {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBPartitionDurableIT.class);
-
-  private static String originalConfigNodeConsensusProtocolClass;
-  private static String originalSchemaRegionConsensusProtocolClass;
-  private static String originalDataRegionConsensusProtocolClass;
   private static final String testConsensusProtocolClass = ConsensusFactory.RATIS_CONSENSUS;
-
-  private static int originalSchemaReplicationFactor;
-  private static int originalDataReplicationFactor;
   private static final int testReplicationFactor = 3;
-
-  private static long originalTimePartitionInterval;
   private static final long testTimePartitionInterval = 604800000;
-
   private static final int testDataNodeId = 0;
   private static final String sg = "root.sg";
   final String d0 = sg + ".d0.s";
@@ -105,23 +91,15 @@ public class IoTDBPartitionDurableIT {
 
   @Before
   public void setUp() throws Exception {
-    originalConfigNodeConsensusProtocolClass =
-        ConfigFactory.getConfig().getConfigNodeConsesusProtocolClass();
-    originalSchemaRegionConsensusProtocolClass =
-        ConfigFactory.getConfig().getSchemaRegionConsensusProtocolClass();
-    originalDataRegionConsensusProtocolClass =
-        ConfigFactory.getConfig().getDataRegionConsensusProtocolClass();
-    ConfigFactory.getConfig().setConfigNodeConsesusProtocolClass(testConsensusProtocolClass);
-    ConfigFactory.getConfig().setSchemaRegionConsensusProtocolClass(testConsensusProtocolClass);
-    ConfigFactory.getConfig().setDataRegionConsensusProtocolClass(testConsensusProtocolClass);
-
-    originalSchemaReplicationFactor = ConfigFactory.getConfig().getSchemaReplicationFactor();
-    originalDataReplicationFactor = ConfigFactory.getConfig().getDataReplicationFactor();
-    ConfigFactory.getConfig().setSchemaReplicationFactor(testReplicationFactor);
-    ConfigFactory.getConfig().setDataReplicationFactor(testReplicationFactor);
-
-    originalTimePartitionInterval = ConfigFactory.getConfig().getTimePartitionInterval();
-    ConfigFactory.getConfig().setTimePartitionInterval(testTimePartitionInterval);
+    EnvFactory.getEnv()
+        .getConfig()
+        .getCommonConfig()
+        .setConfigNodeConsensusProtocolClass(testConsensusProtocolClass)
+        .setSchemaRegionConsensusProtocolClass(testConsensusProtocolClass)
+        .setDataRegionConsensusProtocolClass(testConsensusProtocolClass)
+        .setSchemaReplicationFactor(testReplicationFactor)
+        .setDataReplicationFactor(testReplicationFactor)
+        .setTimePartitionInterval(testTimePartitionInterval);
 
     // Init 1C3D environment
     EnvFactory.getEnv().initClusterEnvironment(1, 3);
@@ -129,7 +107,7 @@ public class IoTDBPartitionDurableIT {
     setStorageGroup();
   }
 
-  private void setStorageGroup() throws IOException, InterruptedException, TException {
+  private void setStorageGroup() throws Exception {
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
       TSetStorageGroupReq setStorageGroupReq = new TSetStorageGroupReq(new TStorageGroupSchema(sg));
@@ -140,24 +118,11 @@ public class IoTDBPartitionDurableIT {
 
   @After
   public void tearDown() {
-    EnvFactory.getEnv().cleanAfterClass();
-
-    ConfigFactory.getConfig()
-        .setConfigNodeConsesusProtocolClass(originalConfigNodeConsensusProtocolClass);
-    ConfigFactory.getConfig()
-        .setSchemaRegionConsensusProtocolClass(originalSchemaRegionConsensusProtocolClass);
-    ConfigFactory.getConfig()
-        .setDataRegionConsensusProtocolClass(originalDataRegionConsensusProtocolClass);
-
-    ConfigFactory.getConfig().setSchemaReplicationFactor(originalSchemaReplicationFactor);
-    ConfigFactory.getConfig().setDataReplicationFactor(originalDataReplicationFactor);
-
-    ConfigFactory.getConfig().setTimePartitionInterval(originalTimePartitionInterval);
+    EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
   @Test
-  public void testRemovingDataNode()
-      throws IOException, InterruptedException, TException, IllegalPathException {
+  public void testRemovingDataNode() throws Exception {
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
 
@@ -283,7 +248,7 @@ public class IoTDBPartitionDurableIT {
   }
 
   @Test
-  public void testReadOnlyDataNode() throws IOException, InterruptedException, TException {
+  public void testReadOnlyDataNode() throws Exception {
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
 
@@ -434,7 +399,7 @@ public class IoTDBPartitionDurableIT {
   }
 
   @Test
-  public void testUnknownDataNode() throws IOException, TException, InterruptedException {
+  public void testUnknownDataNode() throws Exception {
     // Shutdown a DataNode, the ConfigNode should still be able to create RegionGroup
     EnvFactory.getEnv().shutdownDataNode(testDataNodeId);
 

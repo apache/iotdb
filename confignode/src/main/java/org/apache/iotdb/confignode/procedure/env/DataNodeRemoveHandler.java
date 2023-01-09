@@ -514,7 +514,7 @@ public class DataNodeRemoveHandler {
               "Failed to remove data node {} because it is not in running and the configuration of cluster is one replication",
               dataNodeLocation);
         }
-        if (removedDataNodes.size() == 0) {
+        if (removedDataNodes.isEmpty()) {
           status.setCode(TSStatusCode.NO_ENOUGH_DATANODE.getStatusCode());
           status.setMessage("Failed to remove all requested data nodes");
           return status;

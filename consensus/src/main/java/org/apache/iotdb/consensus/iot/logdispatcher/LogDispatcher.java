@@ -37,7 +37,6 @@ import org.apache.iotdb.consensus.iot.wal.ConsensusReqReader;
 import org.apache.iotdb.consensus.iot.wal.GetConsensusReqReaderPlan;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 
-import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -450,7 +449,7 @@ public class LogDispatcher {
             batch.getEndIndex(),
             peer.getGroupId().convertToTConsensusGroupId());
         client.syncLogEntries(req, handler);
-      } catch (IOException | TException e) {
+      } catch (Exception e) {
         logger.error("Can not sync logs to peer {} because", peer, e);
         handler.onError(e);
       }

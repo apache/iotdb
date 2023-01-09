@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.query.control;
 
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
@@ -245,12 +246,22 @@ public class FileReaderManager {
   public synchronized void writeFileReferenceInfo() {
     DEBUG_LOGGER.info("[closedReferenceMap]\n");
     for (Map.Entry<String, AtomicInteger> entry : closedReferenceMap.entrySet()) {
-      DEBUG_LOGGER.info(String.format("\t%s: %d\n", entry.getKey(), entry.getValue().get()));
+      DEBUG_LOGGER.info(String.format("\t%s: %d%n", entry.getKey(), entry.getValue().get()));
     }
     DEBUG_LOGGER.info("[unclosedReferenceMap]\n");
     for (Map.Entry<String, AtomicInteger> entry : unclosedReferenceMap.entrySet()) {
       DEBUG_LOGGER.info(String.format("\t%s: %d", entry.getKey(), entry.getValue().get()));
     }
+  }
+
+  @TestOnly
+  public Map<String, TsFileSequenceReader> getClosedFileReaderMap() {
+    return closedFileReaderMap;
+  }
+
+  @TestOnly
+  public Map<String, TsFileSequenceReader> getUnclosedFileReaderMap() {
+    return unclosedFileReaderMap;
   }
 
   private static class FileReaderManagerHelper {
