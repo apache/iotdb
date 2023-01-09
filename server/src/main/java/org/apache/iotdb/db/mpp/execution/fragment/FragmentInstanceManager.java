@@ -125,16 +125,18 @@ public class FragmentInstanceManager {
                         instanceId,
                         fragmentInstanceId ->
                             createFragmentInstanceContext(
-                                fragmentInstanceId, stateMachine, instance.getSessionInfo()));
+                                fragmentInstanceId,
+                                stateMachine,
+                                instance.getSessionInfo(),
+                                dataRegion,
+                                instance.getTimeFilter()));
 
                 try {
                   List<PipelineDriverFactory> driverFactories =
                       planner.plan(
                           instance.getFragment().getPlanNodeTree(),
                           instance.getFragment().getTypeProvider(),
-                          context,
-                          instance.getTimeFilter(),
-                          dataRegion);
+                          context);
 
                   List<IDriver> drivers = new ArrayList<>();
                   driverFactories.forEach(factory -> drivers.add(factory.createDriver()));

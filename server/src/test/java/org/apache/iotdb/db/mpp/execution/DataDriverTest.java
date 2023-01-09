@@ -109,11 +109,11 @@ public class DataDriverTest {
           new FragmentInstanceId(new PlanFragmentId(queryId, 0), "stub-instance");
       FragmentInstanceStateMachine stateMachine =
           new FragmentInstanceStateMachine(instanceId, instanceNotificationExecutor);
+      DataRegion dataRegion = Mockito.mock(DataRegion.class);
       FragmentInstanceContext fragmentInstanceContext =
           createFragmentInstanceContext(instanceId, stateMachine);
-      DataRegion dataRegion = Mockito.mock(DataRegion.class);
-      DataDriverContext driverContext =
-          new DataDriverContext(fragmentInstanceContext, 0, null, dataRegion);
+      fragmentInstanceContext.setDataRegion(dataRegion);
+      DataDriverContext driverContext = new DataDriverContext(fragmentInstanceContext, 0);
       PlanNodeId planNodeId1 = new PlanNodeId("1");
       driverContext.addOperatorContext(1, planNodeId1, SeriesScanOperator.class.getSimpleName());
       PlanNodeId planNodeId2 = new PlanNodeId("2");
@@ -174,6 +174,7 @@ public class DataDriverTest {
       Mockito.when(
               dataRegion.query(driverContext.getPaths(), deviceId, fragmentInstanceContext, null))
           .thenReturn(new QueryDataSource(seqResources, unSeqResources));
+      fragmentInstanceContext.initQueryDataSource(driverContext.getPaths());
 
       StubSinkHandle sinkHandle = new StubSinkHandle(fragmentInstanceContext);
       driverContext.setSinkHandle(sinkHandle);
