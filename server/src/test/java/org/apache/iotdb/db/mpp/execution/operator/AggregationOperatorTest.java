@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.mpp.execution.operator;
 
+import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
@@ -37,7 +38,6 @@ import org.apache.iotdb.db.mpp.execution.operator.process.AggregationOperator;
 import org.apache.iotdb.db.mpp.execution.operator.source.SeriesAggregationScanOperator;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationStep;
-import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.query.reader.series.SeriesReaderTestUtil;
@@ -96,13 +96,13 @@ public class AggregationOperatorTest {
   @Test
   public void testAggregateIntermediateResult1()
       throws IllegalPathException, ExecutionException, InterruptedException {
-    List<AggregationType> aggregationTypes = new ArrayList<>();
-    aggregationTypes.add(AggregationType.COUNT);
-    aggregationTypes.add(AggregationType.SUM);
-    aggregationTypes.add(AggregationType.MIN_TIME);
-    aggregationTypes.add(AggregationType.MAX_TIME);
-    aggregationTypes.add(AggregationType.MAX_VALUE);
-    aggregationTypes.add(AggregationType.MIN_VALUE);
+    List<TAggregationType> aggregationTypes = new ArrayList<>();
+    aggregationTypes.add(TAggregationType.COUNT);
+    aggregationTypes.add(TAggregationType.SUM);
+    aggregationTypes.add(TAggregationType.MIN_TIME);
+    aggregationTypes.add(TAggregationType.MAX_TIME);
+    aggregationTypes.add(TAggregationType.MAX_VALUE);
+    aggregationTypes.add(TAggregationType.MIN_VALUE);
     List<List<InputLocation[]>> inputLocations = new ArrayList<>();
     for (int i = 0; i < aggregationTypes.size(); i++) {
       List<InputLocation[]> inputLocationForOneAggregator = new ArrayList<>();
@@ -138,10 +138,10 @@ public class AggregationOperatorTest {
   @Test
   public void testAggregateIntermediateResult2()
       throws IllegalPathException, ExecutionException, InterruptedException {
-    List<AggregationType> aggregationTypes = new ArrayList<>();
-    aggregationTypes.add(AggregationType.AVG);
-    aggregationTypes.add(AggregationType.FIRST_VALUE);
-    aggregationTypes.add(AggregationType.LAST_VALUE);
+    List<TAggregationType> aggregationTypes = new ArrayList<>();
+    aggregationTypes.add(TAggregationType.AVG);
+    aggregationTypes.add(TAggregationType.FIRST_VALUE);
+    aggregationTypes.add(TAggregationType.LAST_VALUE);
     List<List<InputLocation[]>> inputLocations = new ArrayList<>();
     for (int i = 0; i < aggregationTypes.size(); i++) {
       List<InputLocation[]> inputLocationForOneAggregator = new ArrayList<>();
@@ -185,13 +185,13 @@ public class AggregationOperatorTest {
           {20000, 20100, 260, 380}
         };
     GroupByTimeParameter groupByTimeParameter = new GroupByTimeParameter(0, 399, 100, 100, true);
-    List<AggregationType> aggregationTypes = new ArrayList<>();
-    aggregationTypes.add(AggregationType.COUNT);
-    aggregationTypes.add(AggregationType.SUM);
-    aggregationTypes.add(AggregationType.MIN_TIME);
-    aggregationTypes.add(AggregationType.MAX_TIME);
-    aggregationTypes.add(AggregationType.MAX_VALUE);
-    aggregationTypes.add(AggregationType.MIN_VALUE);
+    List<TAggregationType> aggregationTypes = new ArrayList<>();
+    aggregationTypes.add(TAggregationType.COUNT);
+    aggregationTypes.add(TAggregationType.SUM);
+    aggregationTypes.add(TAggregationType.MIN_TIME);
+    aggregationTypes.add(TAggregationType.MAX_TIME);
+    aggregationTypes.add(TAggregationType.MAX_VALUE);
+    aggregationTypes.add(TAggregationType.MIN_VALUE);
     List<List<InputLocation[]>> inputLocations = new ArrayList<>();
     for (int i = 0; i < aggregationTypes.size(); i++) {
       List<InputLocation[]> inputLocationForOneAggregator = new ArrayList<>();
@@ -236,10 +236,10 @@ public class AggregationOperatorTest {
           {20000, 20100, 10200, 10300},
           {20099, 20199, 299, 398},
         };
-    List<AggregationType> aggregationTypes = new ArrayList<>();
-    aggregationTypes.add(AggregationType.AVG);
-    aggregationTypes.add(AggregationType.FIRST_VALUE);
-    aggregationTypes.add(AggregationType.LAST_VALUE);
+    List<TAggregationType> aggregationTypes = new ArrayList<>();
+    aggregationTypes.add(TAggregationType.AVG);
+    aggregationTypes.add(TAggregationType.FIRST_VALUE);
+    aggregationTypes.add(TAggregationType.LAST_VALUE);
     GroupByTimeParameter groupByTimeParameter = new GroupByTimeParameter(0, 399, 100, 100, true);
     List<List<InputLocation[]>> inputLocations = new ArrayList<>();
     for (int i = 0; i < aggregationTypes.size(); i++) {
@@ -281,7 +281,7 @@ public class AggregationOperatorTest {
    * @param inputLocations each inputLocation is used in one aggregator
    */
   private AggregationOperator initAggregationOperator(
-      List<AggregationType> aggregationTypes,
+      List<TAggregationType> aggregationTypes,
       GroupByTimeParameter groupByTimeParameter,
       List<List<InputLocation[]>> inputLocations)
       throws IllegalPathException {

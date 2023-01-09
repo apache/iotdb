@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.mpp.execution.operator;
 
+import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
@@ -40,7 +41,6 @@ import org.apache.iotdb.db.mpp.execution.operator.process.join.merge.SingleColum
 import org.apache.iotdb.db.mpp.execution.operator.source.SeriesScanOperator;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationStep;
-import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
@@ -104,15 +104,15 @@ public class RawDataAggregationOperatorTest {
    */
   @Test
   public void aggregateRawDataTest1() throws IllegalPathException {
-    List<AggregationType> aggregationTypes = new ArrayList<>();
+    List<TAggregationType> aggregationTypes = new ArrayList<>();
     List<List<InputLocation[]>> inputLocations = new ArrayList<>();
     for (int i = 0; i < 2; i++) {
-      aggregationTypes.add(AggregationType.COUNT);
-      aggregationTypes.add(AggregationType.SUM);
-      aggregationTypes.add(AggregationType.MIN_TIME);
-      aggregationTypes.add(AggregationType.MAX_TIME);
-      aggregationTypes.add(AggregationType.MAX_VALUE);
-      aggregationTypes.add(AggregationType.MIN_VALUE);
+      aggregationTypes.add(TAggregationType.COUNT);
+      aggregationTypes.add(TAggregationType.SUM);
+      aggregationTypes.add(TAggregationType.MIN_TIME);
+      aggregationTypes.add(TAggregationType.MAX_TIME);
+      aggregationTypes.add(TAggregationType.MAX_VALUE);
+      aggregationTypes.add(TAggregationType.MIN_VALUE);
       for (int j = 0; j < 6; j++) {
         List<InputLocation[]> inputLocationForOneAggregator = new ArrayList<>();
         inputLocationForOneAggregator.add(new InputLocation[] {new InputLocation(0, i)});
@@ -152,22 +152,22 @@ public class RawDataAggregationOperatorTest {
    */
   @Test
   public void aggregateRawDataTest2() throws IllegalPathException {
-    List<AggregationType> aggregationTypes = new ArrayList<>();
+    List<TAggregationType> aggregationTypes = new ArrayList<>();
     List<List<InputLocation[]>> inputLocations = new ArrayList<>();
     for (int i = 0; i < 2; i++) {
-      aggregationTypes.add(AggregationType.AVG);
+      aggregationTypes.add(TAggregationType.AVG);
       List<InputLocation[]> inputLocationForOneAggregator = new ArrayList<>();
       inputLocationForOneAggregator.add(new InputLocation[] {new InputLocation(0, i)});
       inputLocations.add(inputLocationForOneAggregator);
     }
     for (int i = 0; i < 2; i++) {
-      aggregationTypes.add(AggregationType.FIRST_VALUE);
+      aggregationTypes.add(TAggregationType.FIRST_VALUE);
       List<InputLocation[]> inputLocationForOneAggregator = new ArrayList<>();
       inputLocationForOneAggregator.add(new InputLocation[] {new InputLocation(0, i)});
       inputLocations.add(inputLocationForOneAggregator);
     }
     for (int i = 0; i < 2; i++) {
-      aggregationTypes.add(AggregationType.LAST_VALUE);
+      aggregationTypes.add(TAggregationType.LAST_VALUE);
       List<InputLocation[]> inputLocationForOneAggregator = new ArrayList<>();
       inputLocationForOneAggregator.add(new InputLocation[] {new InputLocation(0, i)});
       inputLocations.add(inputLocationForOneAggregator);
@@ -207,15 +207,15 @@ public class RawDataAggregationOperatorTest {
           {20099, 20199, 10259, 10379},
           {20000, 20100, 260, 380}
         };
-    List<AggregationType> aggregationTypes = new ArrayList<>();
+    List<TAggregationType> aggregationTypes = new ArrayList<>();
     List<List<InputLocation[]>> inputLocations = new ArrayList<>();
     for (int i = 0; i < 2; i++) {
-      aggregationTypes.add(AggregationType.COUNT);
-      aggregationTypes.add(AggregationType.SUM);
-      aggregationTypes.add(AggregationType.MIN_TIME);
-      aggregationTypes.add(AggregationType.MAX_TIME);
-      aggregationTypes.add(AggregationType.MAX_VALUE);
-      aggregationTypes.add(AggregationType.MIN_VALUE);
+      aggregationTypes.add(TAggregationType.COUNT);
+      aggregationTypes.add(TAggregationType.SUM);
+      aggregationTypes.add(TAggregationType.MIN_TIME);
+      aggregationTypes.add(TAggregationType.MAX_TIME);
+      aggregationTypes.add(TAggregationType.MAX_VALUE);
+      aggregationTypes.add(TAggregationType.MIN_VALUE);
       for (int j = 0; j < 6; j++) {
         List<InputLocation[]> inputLocationForOneAggregator = new ArrayList<>();
         inputLocationForOneAggregator.add(new InputLocation[] {new InputLocation(0, i)});
@@ -256,22 +256,22 @@ public class RawDataAggregationOperatorTest {
           {20000, 20100, 10200, 10300},
           {20099, 20199, 299, 398},
         };
-    List<AggregationType> aggregationTypes = new ArrayList<>();
+    List<TAggregationType> aggregationTypes = new ArrayList<>();
     List<List<InputLocation[]>> inputLocations = new ArrayList<>();
     for (int i = 0; i < 2; i++) {
-      aggregationTypes.add(AggregationType.AVG);
+      aggregationTypes.add(TAggregationType.AVG);
       List<InputLocation[]> inputLocationForOneAggregator = new ArrayList<>();
       inputLocationForOneAggregator.add(new InputLocation[] {new InputLocation(0, i)});
       inputLocations.add(inputLocationForOneAggregator);
     }
     for (int i = 0; i < 2; i++) {
-      aggregationTypes.add(AggregationType.FIRST_VALUE);
+      aggregationTypes.add(TAggregationType.FIRST_VALUE);
       List<InputLocation[]> inputLocationForOneAggregator = new ArrayList<>();
       inputLocationForOneAggregator.add(new InputLocation[] {new InputLocation(0, i)});
       inputLocations.add(inputLocationForOneAggregator);
     }
     for (int i = 0; i < 2; i++) {
-      aggregationTypes.add(AggregationType.LAST_VALUE);
+      aggregationTypes.add(TAggregationType.LAST_VALUE);
       List<InputLocation[]> inputLocationForOneAggregator = new ArrayList<>();
       inputLocationForOneAggregator.add(new InputLocation[] {new InputLocation(0, i)});
       inputLocations.add(inputLocationForOneAggregator);
@@ -303,7 +303,7 @@ public class RawDataAggregationOperatorTest {
   }
 
   private RawDataAggregationOperator initRawDataAggregationOperator(
-      List<AggregationType> aggregationTypes,
+      List<TAggregationType> aggregationTypes,
       GroupByTimeParameter groupByTimeParameter,
       List<List<InputLocation[]>> inputLocations)
       throws IllegalPathException {
