@@ -233,6 +233,11 @@ public class InternalMNode extends MNode {
   }
 
   @Override
+  public boolean isAboveDatabase() {
+    return false;
+  }
+
+  @Override
   public MNodeType getMNodeType(Boolean isConfig) {
     return isConfig ? MNodeType.SG_INTERNAL : MNodeType.INTERNAL;
   }

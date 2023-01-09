@@ -17,64 +17,47 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.execution.operator.schema;
+package org.apache.iotdb.db.mpp.execution.operator.schema.source;
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.metadata.plan.schemaregion.impl.read.SchemaRegionReadPlanFactory;
 import org.apache.iotdb.db.metadata.query.info.IDeviceSchemaInfo;
 import org.apache.iotdb.db.metadata.query.reader.ISchemaReader;
+import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
-import org.apache.iotdb.db.mpp.execution.driver.SchemaDriverContext;
-import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.utils.Binary;
 
 import java.util.Iterator;
 import java.util.List;
-import java.util.stream.Collectors;
 
-public class PathsUsingTemplateScanOperator extends SchemaQueryScanOperator<IDeviceSchemaInfo> {
+public class PathsUsingTemplateSource implements ISchemaSource<IDeviceSchemaInfo> {
 
   private final List<PartialPath> pathPatternList;
 
   private final int templateId;
 
-  public PathsUsingTemplateScanOperator(
-      PlanNodeId planNodeId,
-      OperatorContext context,
-      List<PartialPath> pathPatternList,
-      int templateId) {
-    super(
-        planNodeId,
-        context,
-        0,
-        0,
-        null,
-        false,
-        ColumnHeaderConstant.showPathsUsingTemplateHeaders.stream()
-            .map(ColumnHeader::getColumnType)
-            .collect(Collectors.toList()));
+  PathsUsingTemplateSource(List<PartialPath> pathPatternList, int templateId) {
     this.pathPatternList = pathPatternList;
     this.templateId = templateId;
   }
 
   @Override
-  protected ISchemaReader<IDeviceSchemaInfo> createSchemaReader() {
-    return new DevicesUsingTemplateReader(pathPatternList.iterator());
+  public ISchemaReader<IDeviceSchemaInfo> getSchemaReader(ISchemaRegion schemaRegion) {
+    return new DevicesUsingTemplateReader(pathPatternList.iterator(), schemaRegion);
   }
 
   @Override
-  protected void setColumns(IDeviceSchemaInfo device, TsBlockBuilder builder) {
-    builder.getTimeColumnBuilder().writeLong(0L);
-    builder.getColumnBuilder(0).writeBinary(new Binary(device.getFullPath()));
-    builder.declarePosition();
+  public List<ColumnHeader> getInfoQueryColumnHeaders() {
+    return ColumnHeaderConstant.showPathsUsingTemplateHeaders;
   }
 
-  private void setColumns(String path, TsBlockBuilder builder) {
+  @Override
+  public void transformToTsBlockColumns(
+      IDeviceSchemaInfo device, TsBlockBuilder builder, String database) {
     builder.getTimeColumnBuilder().writeLong(0L);
-    builder.getColumnBuilder(0).writeBinary(new Binary(path));
+    builder.getColumnBuilder(0).writeBinary(new Binary(device.getFullPath()));
     builder.declarePosition();
   }
 
@@ -82,10 +65,14 @@ public class PathsUsingTemplateScanOperator extends SchemaQueryScanOperator<IDev
 
     final Iterator<PartialPath> pathPatternIterator;
 
+    final ISchemaRegion schemaRegion;
+
     ISchemaReader<IDeviceSchemaInfo> currentDeviceReader;
 
-    DevicesUsingTemplateReader(Iterator<PartialPath> pathPatternIterator) {
+    DevicesUsingTemplateReader(
+        Iterator<PartialPath> pathPatternIterator, ISchemaRegion schemaRegion) {
       this.pathPatternIterator = pathPatternIterator;
+      this.schemaRegion = schemaRegion;
     }
 
     @Override
@@ -108,11 +95,9 @@ public class PathsUsingTemplateScanOperator extends SchemaQueryScanOperator<IDev
 
         while (pathPatternIterator.hasNext()) {
           currentDeviceReader =
-              ((SchemaDriverContext) operatorContext.getDriverContext())
-                  .getSchemaRegion()
-                  .getDeviceReader(
-                      SchemaRegionReadPlanFactory.getShowDevicesPlan(
-                          pathPatternIterator.next(), limit, offset, false, templateId));
+              schemaRegion.getDeviceReader(
+                  SchemaRegionReadPlanFactory.getShowDevicesPlan(
+                      pathPatternIterator.next(), 0, 0, false, templateId));
           if (currentDeviceReader.hasNext()) {
             return true;
           } else {

@@ -66,7 +66,7 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R>
     implements Iterator<R>, AutoCloseable {
 
   // command parameters
-  protected final N root;
+  protected N root;
 
   // finite automation constructed from given path pattern or pattern tree
   protected final IPatternFA patternFA;
@@ -134,14 +134,6 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R>
     currentStateMatchInfo = new StateSingleMatchInfo(patternFA, rootState);
     visitorStack.push(new VisitorStackEntry(createChildrenIterator(root), 1));
     ancestorStack.add(new AncestorStackEntry(root, currentStateMatchInfo));
-  }
-
-  public boolean isSuccess() {
-    return throwable != null;
-  }
-
-  public Throwable getThrowable() {
-    return throwable;
   }
 
   public void reset() {
@@ -274,7 +266,16 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R>
     }
   }
 
-  protected final String[] generateFullPathNodes() {
+  /**
+   * Get full path of parent of current node. This method should be used in {@linkplain
+   * AbstractTreeVisitor#acceptInternalMatchedNode}, {@linkplain
+   * AbstractTreeVisitor#acceptFullMatchedNode},{@linkplain
+   * AbstractTreeVisitor#shouldVisitSubtreeOfInternalMatchedNode} or {@linkplain
+   * AbstractTreeVisitor#shouldVisitSubtreeOfFullMatchedNode}.
+   *
+   * @return full path from traverse start node to the parent of current node
+   */
+  protected PartialPath getParentPartialPath() {
     List<String> nodeNames = new ArrayList<>();
     Iterator<AncestorStackEntry> iterator = ancestorStack.iterator();
     for (int i = 0, size = shouldVisitSubtree ? ancestorStack.size() - 1 : ancestorStack.size();
@@ -284,8 +285,39 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R>
         nodeNames.add(iterator.next().node.getName());
       }
     }
-    nodeNames.add(nextMatchedNode.getName());
+    return new PartialPath(nodeNames.toArray(new String[0]));
+  }
+
+  /**
+   * Get partial path from root to node.
+   *
+   * @param node node must be concluded in ancestorStack or nextMatchedNode
+   * @return partial path from traverse start node to the specified node
+   */
+  protected final PartialPath getPartialPathFromRootToNode(N node) {
+    return new PartialPath(getFullPathFromRootToNode(node));
+  }
+
+  /**
+   * Get full path from root to node.
+   *
+   * @param node node must be concluded in ancestorStack or nextMatchedNode
+   * @return full path from traverse start node to the specified node
+   */
+  protected final String[] getFullPathFromRootToNode(N node) {
+    List<String> nodeNames = new ArrayList<>();
+    for (AncestorStackEntry entry : ancestorStack) {
+      nodeNames.add(entry.node.getName());
+      if (entry.node == node) {
+        return nodeNames.toArray(new String[0]);
+      }
+    }
+    nodeNames.add(node.getName());
     return nodeNames.toArray(new String[0]);
+  }
+
+  protected final N getAncestorNodeByLevel(int level) {
+    return ancestorStack.get(level).node;
   }
 
   protected final N getParentOfNextMatchedNode() {
@@ -296,8 +328,34 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R>
     }
   }
 
+  /**
+   * Get level from root to NextMatchedNode. Level of root is 0. For example, root.sg.d1.s1,
+   * NextMatchedNode is s1, then return 3.
+   *
+   * @return level from root to NextMatchedNode
+   */
+  protected final int getLevelOfNextMatchedNode() {
+    if (shouldVisitSubtree) {
+      return ancestorStack.size() - 1;
+    } else {
+      return ancestorStack.size();
+    }
+  }
+
+  protected final int getSizeOfAncestor() {
+    return ancestorStack.size();
+  }
+
   protected void setFailure(Throwable e) {
     this.throwable = e;
+  }
+
+  protected Throwable getFailure() {
+    return throwable;
+  }
+
+  public boolean isSuccess() {
+    return throwable == null;
   }
 
   // Get a child with the given childName.
@@ -479,7 +537,9 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R>
     @Override
     protected void close() {
       super.close();
-      releaseNodeIterator(childrenIterator);
+      if (childrenIterator != null) {
+        releaseNodeIterator(childrenIterator);
+      }
     }
   }
 
@@ -550,7 +610,9 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R>
     @Override
     protected void close() {
       super.close();
-      releaseNodeIterator(iterator);
+      if (iterator != null) {
+        releaseNodeIterator(iterator);
+      }
     }
   }
 
@@ -736,7 +798,9 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R>
     @Override
     protected void close() {
       super.close();
-      releaseNodeIterator(iterator);
+      if (iterator != null) {
+        releaseNodeIterator(iterator);
+      }
     }
   }
 

@@ -206,6 +206,11 @@ public class InsertMeasurementMNode implements IMeasurementMNode {
   }
 
   @Override
+  public boolean isAboveDatabase() {
+    return false;
+  }
+
+  @Override
   public boolean isStorageGroup() {
     throw new UnsupportedOperationException("insert measurement mnode doesn't support this method");
   }

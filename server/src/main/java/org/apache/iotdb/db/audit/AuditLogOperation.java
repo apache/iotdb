@@ -16,25 +16,16 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.metadata.mtree.traverser.counter;
+package org.apache.iotdb.db.audit;
 
-import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.metadata.mnode.IMNode;
-import org.apache.iotdb.db.metadata.mtree.store.IMTreeStore;
-import org.apache.iotdb.db.metadata.mtree.traverser.Traverser;
+public enum AuditLogOperation {
+  DDL,
+  DML,
+  QUERY,
+  NULL;
 
-// This class define the count as traversal result.
-public abstract class CounterTraverser extends Traverser {
-
-  protected long count;
-
-  protected CounterTraverser(IMNode startNode, PartialPath path, IMTreeStore store)
-      throws MetadataException {
-    super(startNode, path, store);
-  }
-
-  public long getCount() {
-    return count;
+  @Override
+  public String toString() {
+    return name();
   }
 }
