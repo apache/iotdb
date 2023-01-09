@@ -66,10 +66,6 @@ public class DataRegionStateMachine extends BaseStateMachine {
 
   private DataRegion region;
 
-  private static final int MAX_REQUEST_CACHE_SIZE = 5;
-  private static final long CACHE_WINDOW_TIME_IN_MS =
-      IoTDBDescriptor.getInstance().getConfig().getCacheWindowTimeInMs();
-
   public DataRegionStateMachine(DataRegion region) {
     this.region = region;
   }
