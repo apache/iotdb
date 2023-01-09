@@ -39,6 +39,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import static org.apache.iotdb.db.metadata.schemaRegion.SchemaRegionTestUtil.getPathsUsingTemplate;
+
 public class SchemaRegionTemplateTest extends AbstractSchemaRegionTest {
 
   public SchemaRegionTemplateTest(SchemaRegionTestParams testParams) {
@@ -85,7 +87,7 @@ public class SchemaRegionTemplateTest extends AbstractSchemaRegionTest {
         template);
     Set<String> expectedPaths = new HashSet<>(Arrays.asList("root.sg.wf01.wt01", "root.sg.wf02"));
     Set<String> pathsUsingTemplate =
-        new HashSet<>(schemaRegion.getPathsUsingTemplate(new PartialPath("root.**"), templateId));
+        new HashSet<>(getPathsUsingTemplate(schemaRegion, new PartialPath("root.**"), templateId));
     Assert.assertEquals(expectedPaths, pathsUsingTemplate);
     PathPatternTree allPatternTree = new PathPatternTree();
     allPatternTree.appendPathPattern(new PartialPath("root.**"));
@@ -97,14 +99,14 @@ public class SchemaRegionTemplateTest extends AbstractSchemaRegionTest {
     Assert.assertEquals(1, schemaRegion.countPathsUsingTemplate(templateId, wf01PatternTree));
     Assert.assertEquals(
         "root.sg.wf01.wt01",
-        schemaRegion.getPathsUsingTemplate(new PartialPath("root.sg.wf01.*"), templateId).get(0));
+        getPathsUsingTemplate(schemaRegion, new PartialPath("root.sg.wf01.*"), templateId).get(0));
     PathPatternTree wf02PatternTree = new PathPatternTree();
     wf02PatternTree.appendPathPattern(new PartialPath("root.sg.wf02"));
     wf02PatternTree.constructTree();
     Assert.assertEquals(1, schemaRegion.countPathsUsingTemplate(templateId, wf02PatternTree));
     Assert.assertEquals(
         "root.sg.wf02",
-        schemaRegion.getPathsUsingTemplate(new PartialPath("root.sg.wf02"), templateId).get(0));
+        getPathsUsingTemplate(schemaRegion, new PartialPath("root.sg.wf02"), templateId).get(0));
   }
 
   /**
@@ -169,7 +171,7 @@ public class SchemaRegionTemplateTest extends AbstractSchemaRegionTest {
     // check using getPathsUsingTemplate
     List<String> expectedPaths = Collections.singletonList("root.sg.wf02");
     List<String> pathsUsingTemplate =
-        schemaRegion.getPathsUsingTemplate(new PartialPath("root.**"), templateId);
+        getPathsUsingTemplate(schemaRegion, new PartialPath("root.**"), templateId);
     Assert.assertEquals(expectedPaths, pathsUsingTemplate);
     // check using countPathsUsingTemplate
     PathPatternTree allPatternTree = new PathPatternTree();

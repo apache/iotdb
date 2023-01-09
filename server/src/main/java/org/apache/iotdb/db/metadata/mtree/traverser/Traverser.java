@@ -82,7 +82,8 @@ public abstract class Traverser {
    * @param path use wildcard to specify which part to traverse
    * @throws MetadataException
    */
-  public Traverser(IMNode startNode, PartialPath path, IMTreeStore store) throws MetadataException {
+  protected Traverser(IMNode startNode, PartialPath path, IMTreeStore store)
+      throws MetadataException {
     String[] nodes = path.getNodes();
     if (nodes.length == 0 || !nodes[0].equals(PATH_ROOT)) {
       throw new IllegalPathException(
@@ -514,18 +515,7 @@ public abstract class Traverser {
     return nodeNames.toArray(new String[0]);
   }
 
-  /** @return the database node in the traverse path */
-  protected IMNode getStorageGroupNodeInTraversePath(IMNode currentNode) {
-    if (currentNode.isStorageGroup()) {
-      return currentNode;
-    }
-    Iterator<IMNode> nodes = traverseContext.iterator();
-    while (nodes.hasNext()) {
-      IMNode node = nodes.next();
-      if (node.isStorageGroup()) {
-        return node;
-      }
-    }
-    return null;
+  protected IMNode getCurrentNodeParent() {
+    return traverseContext.peek();
   }
 }

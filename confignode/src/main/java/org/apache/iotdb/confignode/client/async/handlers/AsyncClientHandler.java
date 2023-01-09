@@ -215,6 +215,7 @@ public class AsyncClientHandler<Q, R> {
       case INVALIDATE_MATCHED_SCHEMA_CACHE:
       case UPDATE_TEMPLATE:
       case CHANGE_REGION_LEADER:
+      case KILL_QUERY_INSTANCE:
       default:
         return new AsyncTSStatusRPCHandler(
             requestType,

@@ -71,6 +71,11 @@ public class SystemPropertiesUtils {
     boolean needReWrite = false;
 
     // Startup configuration
+    String clusterName = systemProperties.getProperty(CLUSTER_NAME, null);
+    if (clusterName != null && !clusterName.equals(conf.getClusterName())) {
+      throw new ConfigurationException(CLUSTER_NAME, conf.getClusterName(), clusterName);
+    }
+
     String internalAddress = systemProperties.getProperty("cn_internal_address", null);
     if (internalAddress == null) {
       needReWrite = true;

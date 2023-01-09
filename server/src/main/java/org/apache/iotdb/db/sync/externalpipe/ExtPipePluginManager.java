@@ -123,7 +123,7 @@ public class ExtPipePluginManager {
     // == Start monitor Pipe data thread
     alive = true;
     ThreadPoolExecutor tpe = ((ThreadPoolExecutor) monitorService);
-    if ((tpe.getActiveCount() <= 0) && (tpe.getQueue().size() <= 0)) {
+    if ((tpe.getActiveCount() <= 0) && (tpe.getQueue().isEmpty())) {
       monitorService.submit(this::monitorPipeData);
     }
 
@@ -221,7 +221,7 @@ public class ExtPipePluginManager {
                     sgName, tsFileFullName, modsFileFullName, pipeDataSerialNumber);
                 lastPipeDataSerialNumber = pipeDataSerialNumber;
               } catch (IOException e) {
-                logger.error("monitorPipeData(), Can not append TsFile: {}" + tsFileFullName);
+                logger.error("monitorPipeData(), Can not append TsFile: {}", tsFileFullName);
               }
               continue;
             } else if (pipeData instanceof DeletionPipeData) {

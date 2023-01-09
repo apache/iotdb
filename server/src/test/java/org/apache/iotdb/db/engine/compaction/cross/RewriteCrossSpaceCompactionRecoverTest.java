@@ -23,13 +23,13 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.AbstractCompactionTest;
-import org.apache.iotdb.db.engine.compaction.CompactionUtils;
-import org.apache.iotdb.db.engine.compaction.log.CompactionLogger;
-import org.apache.iotdb.db.engine.compaction.performer.ICompactionPerformer;
-import org.apache.iotdb.db.engine.compaction.performer.impl.FastCompactionPerformer;
-import org.apache.iotdb.db.engine.compaction.performer.impl.ReadPointCompactionPerformer;
-import org.apache.iotdb.db.engine.compaction.task.CompactionRecoverTask;
-import org.apache.iotdb.db.engine.compaction.task.CompactionTaskSummary;
+import org.apache.iotdb.db.engine.compaction.execute.performer.ICompactionPerformer;
+import org.apache.iotdb.db.engine.compaction.execute.performer.impl.FastCompactionPerformer;
+import org.apache.iotdb.db.engine.compaction.execute.performer.impl.ReadPointCompactionPerformer;
+import org.apache.iotdb.db.engine.compaction.execute.recover.CompactionRecoverTask;
+import org.apache.iotdb.db.engine.compaction.execute.task.CompactionTaskSummary;
+import org.apache.iotdb.db.engine.compaction.execute.utils.CompactionUtils;
+import org.apache.iotdb.db.engine.compaction.execute.utils.log.CompactionLogger;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionFileGeneratorUtils;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
@@ -50,9 +50,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static org.apache.iotdb.db.engine.compaction.log.CompactionLogger.STR_DELETED_TARGET_FILES;
-import static org.apache.iotdb.db.engine.compaction.log.CompactionLogger.STR_SOURCE_FILES;
-import static org.apache.iotdb.db.engine.compaction.log.CompactionLogger.STR_TARGET_FILES;
+import static org.apache.iotdb.db.engine.compaction.execute.utils.log.CompactionLogger.STR_DELETED_TARGET_FILES;
+import static org.apache.iotdb.db.engine.compaction.execute.utils.log.CompactionLogger.STR_SOURCE_FILES;
+import static org.apache.iotdb.db.engine.compaction.execute.utils.log.CompactionLogger.STR_TARGET_FILES;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 
 public class RewriteCrossSpaceCompactionRecoverTest extends AbstractCompactionTest {
@@ -775,7 +775,7 @@ public class RewriteCrossSpaceCompactionRecoverTest extends AbstractCompactionTe
     performer.perform();
     CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
     CompactionUtils.combineModsInCrossCompaction(seqResources, unseqResources, targetResources);
-    compactionLogger.logFile(targetResources.get(0), STR_DELETED_TARGET_FILES);
+    compactionLogger.logFile(targetResources.get(0), CompactionLogger.STR_DELETED_TARGET_FILES);
     compactionLogger.close();
     CompactionUtils.deleteTsFilesInDisk(seqResources, COMPACTION_TEST_SG);
     CompactionUtils.deleteModificationForSourceFile(seqResources, COMPACTION_TEST_SG);

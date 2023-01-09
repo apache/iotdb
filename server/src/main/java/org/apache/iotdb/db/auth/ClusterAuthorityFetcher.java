@@ -38,8 +38,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TCheckUserPrivilegesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TLoginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 import org.apache.iotdb.db.client.ConfigNodeClient;
+import org.apache.iotdb.db.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.client.ConfigNodeInfo;
-import org.apache.iotdb.db.client.DataNodeClientPoolFactory;
 import org.apache.iotdb.db.mpp.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.mpp.plan.statement.AuthorType;
 import org.apache.iotdb.db.mpp.plan.statement.sys.AuthorStatement;
@@ -66,9 +66,7 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
   private IAuthorizer authorizer;
 
   private static final IClientManager<ConfigNodeRegionId, ConfigNodeClient>
-      CONFIG_NODE_CLIENT_MANAGER =
-          new IClientManager.Factory<ConfigNodeRegionId, ConfigNodeClient>()
-              .createClientManager(new DataNodeClientPoolFactory.ConfigNodeClientPoolFactory());
+      CONFIG_NODE_CLIENT_MANAGER = ConfigNodeClientManager.getInstance();
 
   public ClusterAuthorityFetcher(IAuthorCache iAuthorCache) {
     this.iAuthorCache = iAuthorCache;
@@ -258,9 +256,9 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
     List<PathPrivilege> pathPrivilegeList = new ArrayList<>();
     user.setName(tPermissionInfoResp.getUserInfo().getUsername());
     user.setPassword(tPermissionInfoResp.getUserInfo().getPassword());
-    for (int i = 0; i < privilegeList.size(); i++) {
+    for (int i = 0; i < privilegeList.size(); i += 2) {
       String path = privilegeList.get(i);
-      String privilege = privilegeList.get(++i);
+      String privilege = privilegeList.get(i + 1);
       pathPrivilegeList.add(toPathPrivilege(path, privilege));
     }
     user.setOpenIdUser(tPermissionInfoResp.getUserInfo().isIsOpenIdUser());
@@ -278,9 +276,9 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
     List<String> privilegeList = tPermissionInfoResp.getRoleInfo().get(roleName).getPrivilegeList();
     List<PathPrivilege> pathPrivilegeList = new ArrayList<>();
     role.setName(tPermissionInfoResp.getRoleInfo().get(roleName).getRoleName());
-    for (int i = 0; i < privilegeList.size(); i++) {
+    for (int i = 0; i < privilegeList.size(); i += 2) {
       String path = privilegeList.get(i);
-      String privilege = privilegeList.get(++i);
+      String privilege = privilegeList.get(i + 1);
       pathPrivilegeList.add(toPathPrivilege(path, privilege));
     }
     role.setPrivilegeList(pathPrivilegeList);

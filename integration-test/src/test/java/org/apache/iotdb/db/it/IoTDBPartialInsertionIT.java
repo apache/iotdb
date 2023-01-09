@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.it;
 
-import org.apache.iotdb.it.env.ConfigFactory;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
@@ -51,14 +50,13 @@ public class IoTDBPartialInsertionIT {
 
   @Before
   public void setUp() throws Exception {
-    ConfigFactory.getConfig().setAutoCreateSchemaEnabled(false);
-    EnvFactory.getEnv().initBeforeTest();
+    EnvFactory.getEnv().getConfig().getCommonConfig().setAutoCreateSchemaEnabled(false);
+    EnvFactory.getEnv().initClusterEnvironment();
   }
 
   @After
   public void tearDown() throws Exception {
-    EnvFactory.getEnv().cleanAfterTest();
-    ConfigFactory.getConfig().setAutoCreateSchemaEnabled(true);
+    EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
   @Test

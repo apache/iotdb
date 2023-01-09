@@ -341,7 +341,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   @Override
   public TLoadResp sendTsFilePieceNode(TTsFilePieceReq req) throws TException {
-    LOGGER.info(String.format("Receive load node from uuid %s.", req.uuid));
+    LOGGER.info("Receive load node from uuid {}.", req.uuid);
 
     ConsensusGroupId groupId =
         ConsensusGroupId.Factory.createFromTConsensusGroupId(req.consensusGroupId);
@@ -1130,6 +1130,25 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
     }
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+  }
+
+  @Override
+  public TSStatus killQueryInstance(String queryId) {
+    Coordinator coordinator = Coordinator.getInstance();
+    if (queryId == null) {
+      coordinator.getAllQueryExecutions().forEach(IQueryExecution::cancel);
+    } else {
+      Optional<IQueryExecution> queryExecution =
+          coordinator.getAllQueryExecutions().stream()
+              .filter(iQueryExecution -> iQueryExecution.getQueryId().equals(queryId))
+              .findAny();
+      if (queryExecution.isPresent()) {
+        queryExecution.get().cancel();
+      } else {
+        return new TSStatus(TSStatusCode.NO_SUCH_QUERY.getStatusCode()).setMessage("No such query");
+      }
+    }
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
   @Override

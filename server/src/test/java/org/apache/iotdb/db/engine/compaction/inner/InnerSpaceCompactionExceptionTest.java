@@ -20,12 +20,12 @@ package org.apache.iotdb.db.engine.compaction.inner;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.db.engine.compaction.CompactionExceptionHandler;
-import org.apache.iotdb.db.engine.compaction.CompactionUtils;
-import org.apache.iotdb.db.engine.compaction.log.CompactionLogger;
-import org.apache.iotdb.db.engine.compaction.performer.ICompactionPerformer;
-import org.apache.iotdb.db.engine.compaction.performer.impl.FastCompactionPerformer;
-import org.apache.iotdb.db.engine.compaction.task.CompactionTaskSummary;
+import org.apache.iotdb.db.engine.compaction.execute.exception.CompactionExceptionHandler;
+import org.apache.iotdb.db.engine.compaction.execute.performer.ICompactionPerformer;
+import org.apache.iotdb.db.engine.compaction.execute.performer.impl.FastCompactionPerformer;
+import org.apache.iotdb.db.engine.compaction.execute.task.CompactionTaskSummary;
+import org.apache.iotdb.db.engine.compaction.execute.utils.CompactionUtils;
+import org.apache.iotdb.db.engine.compaction.execute.utils.log.CompactionLogger;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionFileGeneratorUtils;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
@@ -48,8 +48,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static org.apache.iotdb.db.engine.compaction.log.CompactionLogger.STR_SOURCE_FILES;
-import static org.apache.iotdb.db.engine.compaction.log.CompactionLogger.STR_TARGET_FILES;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 
 public class InnerSpaceCompactionExceptionTest extends AbstractInnerSpaceCompactionTest {
@@ -501,7 +499,7 @@ public class InnerSpaceCompactionExceptionTest extends AbstractInnerSpaceCompact
             x -> {
               try {
                 CompactionFileGeneratorUtils.generateMods(deleteMap, x, false);
-              } catch (IllegalPathException | IOException e) {
+              } catch (IOException | IllegalPathException e) {
                 throw new RuntimeException(e);
               }
             });
@@ -516,8 +514,8 @@ public class InnerSpaceCompactionExceptionTest extends AbstractInnerSpaceCompact
             targetResources.get(0).getTsFile().getName()
                 + CompactionLogger.CROSS_COMPACTION_LOG_NAME_SUFFIX);
     CompactionLogger compactionLogger = new CompactionLogger(compactionLogFile);
-    compactionLogger.logFiles(targetResources, STR_TARGET_FILES);
-    compactionLogger.logFiles(seqResources, STR_SOURCE_FILES);
+    compactionLogger.logFiles(targetResources, CompactionLogger.STR_TARGET_FILES);
+    compactionLogger.logFiles(seqResources, CompactionLogger.STR_SOURCE_FILES);
     compactionLogger.close();
     ICompactionPerformer performer =
         new FastCompactionPerformer(seqResources, Collections.emptyList(), targetResources);
@@ -592,8 +590,8 @@ public class InnerSpaceCompactionExceptionTest extends AbstractInnerSpaceCompact
             targetResources.get(0).getTsFile().getName()
                 + CompactionLogger.CROSS_COMPACTION_LOG_NAME_SUFFIX);
     CompactionLogger compactionLogger = new CompactionLogger(compactionLogFile);
-    compactionLogger.logFiles(targetResources, STR_TARGET_FILES);
-    compactionLogger.logFiles(seqResources, STR_SOURCE_FILES);
+    compactionLogger.logFiles(targetResources, CompactionLogger.STR_TARGET_FILES);
+    compactionLogger.logFiles(seqResources, CompactionLogger.STR_SOURCE_FILES);
     compactionLogger.close();
     ICompactionPerformer performer =
         new FastCompactionPerformer(seqResources, Collections.emptyList(), targetResources);

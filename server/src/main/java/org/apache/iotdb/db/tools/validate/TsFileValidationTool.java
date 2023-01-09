@@ -556,7 +556,7 @@ public class TsFileValidationTool {
           }
         }
       }
-      if (seqDataDirList.size() == 0 && fileList.size() == 0) {
+      if (seqDataDirList.isEmpty() && fileList.isEmpty()) {
         System.out.println(
             "Please input correct param, which is [path of data dir] [-pd = print details or not] [-f = path of outFile]. Eg: xxx/iotdb/data/data -pd=true -f=xxx/TsFile_validation_view.txt");
         return false;

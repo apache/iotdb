@@ -36,9 +36,9 @@ public abstract class PipeData {
 
   protected long serialNumber;
 
-  public PipeData() {}
+  protected PipeData() {}
 
-  public PipeData(long serialNumber) {
+  protected PipeData(long serialNumber) {
     this.serialNumber = serialNumber;
   }
 

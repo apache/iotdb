@@ -31,7 +31,7 @@ public abstract class AbstractResultListener {
   protected volatile Status status;
   protected volatile Exception cause;
 
-  public AbstractResultListener(boolean wait) {
+  protected AbstractResultListener(boolean wait) {
     this.wait = wait;
     this.status = Status.RUNNING;
     this.cause = null;

@@ -20,9 +20,10 @@
 package org.apache.iotdb.commons.client.async;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
-import org.apache.iotdb.commons.client.AsyncBaseClientFactory;
-import org.apache.iotdb.commons.client.ClientFactoryProperty;
 import org.apache.iotdb.commons.client.ClientManager;
+import org.apache.iotdb.commons.client.ThriftClient;
+import org.apache.iotdb.commons.client.factory.AsyncThriftClientFactory;
+import org.apache.iotdb.commons.client.property.ThriftClientProperty;
 import org.apache.iotdb.mpp.rpc.thrift.MPPDataExchangeService;
 import org.apache.iotdb.rpc.TNonblockingSocketWrapper;
 
@@ -35,7 +36,8 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 
-public class AsyncDataNodeMPPDataExchangeServiceClient extends MPPDataExchangeService.AsyncClient {
+public class AsyncDataNodeMPPDataExchangeServiceClient extends MPPDataExchangeService.AsyncClient
+    implements ThriftClient {
 
   private static final Logger logger =
       LoggerFactory.getLogger(AsyncDataNodeMPPDataExchangeServiceClient.class);
@@ -58,47 +60,50 @@ public class AsyncDataNodeMPPDataExchangeServiceClient extends MPPDataExchangeSe
     this.clientManager = clientManager;
   }
 
-  public void close() {
-    ___transport.close();
-    ___currentMethod = null;
-  }
-
-  /**
-   * return self if clientManager is not null, the method doesn't need to call by user, it will
-   * trigger once client transport complete.
-   */
-  private void returnSelf() {
-    if (clientManager != null) {
-      clientManager.returnClient(endpoint, this);
-    }
-  }
-
-  /**
-   * This method will be automatically called by the thrift selector thread, and we'll just simulate
-   * the behavior in our test
-   */
   @Override
   public void onComplete() {
     super.onComplete();
     returnSelf();
   }
 
-  /**
-   * This method will be automatically called by the thrift selector thread, and we'll just simulate
-   * the behavior in our test
-   */
   @Override
   public void onError(Exception e) {
     super.onError(e);
+    ThriftClient.resolveException(e, this);
     returnSelf();
   }
 
-  public boolean isReady() {
+  @Override
+  public void invalidate() {
+    if (!hasError()) {
+      super.onError(new Exception("This client has been invalidated"));
+    }
+  }
+
+  @Override
+  public void invalidateAll() {
+    clientManager.clear(endpoint);
+  }
+
+  /**
+   * return self, the method doesn't need to be called by the user and will be triggered after the
+   * RPC is finished.
+   */
+  private void returnSelf() {
+    clientManager.returnClient(endpoint, this);
+  }
+
+  private void close() {
+    ___transport.close();
+    ___currentMethod = null;
+  }
+
+  private boolean isReady() {
     try {
       checkReady();
       return true;
     } catch (Exception e) {
-      logger.info("Unexpected exception occurs in {} :", this, e);
+      logger.error("Unexpected exception occurs in {} : {}", this, e.getMessage());
       return false;
     }
   }
@@ -109,13 +114,13 @@ public class AsyncDataNodeMPPDataExchangeServiceClient extends MPPDataExchangeSe
   }
 
   public static class Factory
-      extends AsyncBaseClientFactory<TEndPoint, AsyncDataNodeMPPDataExchangeServiceClient> {
+      extends AsyncThriftClientFactory<TEndPoint, AsyncDataNodeMPPDataExchangeServiceClient> {
 
     public Factory(
         ClientManager<TEndPoint, AsyncDataNodeMPPDataExchangeServiceClient> clientManager,
-        ClientFactoryProperty clientFactoryProperty,
+        ThriftClientProperty thriftClientProperty,
         String threadName) {
-      super(clientManager, clientFactoryProperty, threadName);
+      super(clientManager, thriftClientProperty, threadName);
     }
 
     @Override
@@ -127,21 +132,19 @@ public class AsyncDataNodeMPPDataExchangeServiceClient extends MPPDataExchangeSe
     @Override
     public PooledObject<AsyncDataNodeMPPDataExchangeServiceClient> makeObject(TEndPoint endPoint)
         throws Exception {
-      TAsyncClientManager tManager = tManagers[clientCnt.incrementAndGet() % tManagers.length];
-      tManager = tManager == null ? new TAsyncClientManager() : tManager;
       return new DefaultPooledObject<>(
           new AsyncDataNodeMPPDataExchangeServiceClient(
-              clientFactoryProperty.getProtocolFactory(),
-              clientFactoryProperty.getConnectionTimeoutMs(),
+              thriftClientProperty.getProtocolFactory(),
+              thriftClientProperty.getConnectionTimeoutMs(),
               endPoint,
-              tManager,
+              tManagers[clientCnt.incrementAndGet() % tManagers.length],
               clientManager));
     }
 
     @Override
     public boolean validateObject(
         TEndPoint endPoint, PooledObject<AsyncDataNodeMPPDataExchangeServiceClient> pooledObject) {
-      return pooledObject.getObject() != null && pooledObject.getObject().isReady();
+      return pooledObject.getObject().isReady();
     }
   }
 }

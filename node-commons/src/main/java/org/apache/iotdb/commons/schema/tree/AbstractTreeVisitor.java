@@ -90,7 +90,13 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R>
   private Throwable throwable;
 
   // cached result variables
-  protected N nextMatchedNode;
+  private N nextMatchedNode;
+
+  // only used for wrapper
+  protected AbstractTreeVisitor() {
+    root = null;
+    patternFA = null;
+  }
 
   protected AbstractTreeVisitor(N root, PartialPath pathPattern, boolean isPrefixMatch) {
     this.root = root;
@@ -139,6 +145,7 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R>
   }
 
   public void reset() {
+    close();
     visitorStack.clear();
     ancestorStack.clear();
     nextMatchedNode = null;
@@ -148,6 +155,10 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R>
 
   @Override
   public void close() {
+    if (nextMatchedNode != null && !shouldVisitSubtree) {
+      // release nextMatchedNode
+      releaseNode(nextMatchedNode);
+    }
     while (!visitorStack.isEmpty()) {
       popStack();
     }
@@ -170,15 +181,18 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R>
     if (!hasNext()) {
       throw new NoSuchElementException();
     }
-    R result = generateResult();
+    R result = generateResult(nextMatchedNode);
+    if (!shouldVisitSubtree) {
+      // release nextMatchedNode
+      releaseNode(nextMatchedNode);
+    }
     nextMatchedNode = null;
     return result;
   }
 
-  protected void getNext() throws Exception {
+  private void getNext() {
     nextMatchedNode = null;
     VisitorStackEntry stackEntry;
-    N node;
     Iterator<N> iterator;
     while (!visitorStack.isEmpty()) {
       stackEntry = visitorStack.peek();
@@ -189,17 +203,28 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R>
         continue;
       }
 
-      node = iterator.next();
+      N nextTempNode = iterator.next();
 
       if (currentStateMatchInfo.hasFinalState()) {
-        shouldVisitSubtree = processFullMatchedNode(node);
+        if (acceptFullMatchedNode(nextTempNode)) {
+          nextMatchedNode = nextTempNode;
+        }
+        shouldVisitSubtree = shouldVisitSubtreeOfFullMatchedNode(nextTempNode);
       } else {
-        shouldVisitSubtree = processInternalMatchedNode(node);
+        if (acceptInternalMatchedNode(nextTempNode)) {
+          nextMatchedNode = nextTempNode;
+        }
+        shouldVisitSubtree = shouldVisitSubtreeOfInternalMatchedNode(nextTempNode);
       }
 
       if (shouldVisitSubtree) {
-        pushChildren(node);
+        pushChildren(nextTempNode);
+        // After adding nextTempNode into ancestorStack, nextTempNode will be released finally.
+      } else if (nextMatchedNode != nextTempNode) {
+        // Else if nextTempNode is not accepted, it needs to be released.
+        releaseNode(nextTempNode);
       }
+      // Otherwise, it will be released when invoking next()
 
       if (nextMatchedNode != null) {
         return;
@@ -209,7 +234,9 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R>
 
   private void pushChildren(N parent) {
     visitorStack.push(
-        new VisitorStackEntry(createChildrenIterator(parent), visitorStack.peek().level + 1));
+        new VisitorStackEntry(
+            createChildrenIterator(parent),
+            visitorStack.isEmpty() ? 1 : visitorStack.peek().level + 1));
     ancestorStack.add(new AncestorStackEntry(parent, currentStateMatchInfo));
   }
 
@@ -239,7 +266,8 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R>
     // The ancestor pop operation with level check supports the children of one node pushed by
     // batch.
     if (!visitorStack.isEmpty() && visitorStack.peek().level < ancestorStack.size()) {
-      ancestorStack.remove(ancestorStack.size() - 1);
+      AncestorStackEntry ancestorStackEntry = ancestorStack.remove(ancestorStack.size() - 1);
+      releaseNode(ancestorStackEntry.node);
       if (ancestorStack.size() <= firstAncestorOfTraceback) {
         firstAncestorOfTraceback = -1;
       }
@@ -268,17 +296,22 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R>
     }
   }
 
+  protected void setFailure(Throwable e) {
+    this.throwable = e;
+  }
+
   // Get a child with the given childName.
   protected abstract N getChild(N parent, String childName) throws Exception;
 
   // Get an iterator of all children.
   protected abstract Iterator<N> getChildrenIterator(N parent) throws Exception;
 
-  // Release a child with the given childName.
-  protected void releaseChild(N child) {}
+  // Release a child node.
+  protected void releaseNode(N node) {}
 
-  // Release an iterator of all children.
-  protected void releaseChildrenIterator(Iterator<N> childrenIterator) {}
+  // Release an iterator. It is not necessary to deal with all the elements in the iterator.
+  // Only the elements that have been fetched but not returned by next() need to be released.
+  protected void releaseNodeIterator(Iterator<N> nodeIterator) {}
 
   /**
    * Internal-match means the node matches an internal node name of the given path pattern. root.sg
@@ -289,7 +322,7 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R>
    * process will keep traversing the subtree. If return false, the traversing process will skip the
    * subtree of given node.
    */
-  protected abstract boolean processInternalMatchedNode(N node) throws Exception;
+  protected abstract boolean shouldVisitSubtreeOfInternalMatchedNode(N node);
 
   /**
    * Full-match means the node matches the last node name of the given path pattern. root.sg.d full
@@ -299,21 +332,23 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R>
    * process will keep traversing the subtree. If return false, the traversing process will skip the
    * subtree of given node.
    */
-  protected abstract boolean processFullMatchedNode(N node) throws Exception;
+  protected abstract boolean shouldVisitSubtreeOfFullMatchedNode(N node);
 
-  protected void setFailure(Throwable e) {
-    this.throwable = e;
-  }
+  /** Only accepted nodes will be considered for hasNext() and next() */
+  protected abstract boolean acceptInternalMatchedNode(N node);
+
+  /** Only accepted nodes will be considered for hasNext() and next() */
+  protected abstract boolean acceptFullMatchedNode(N node);
 
   /** The method used for generating the result based on the matched node. */
-  protected abstract R generateResult();
+  protected abstract R generateResult(N nextMatchedNode);
 
   private class VisitorStackEntry {
 
     // children iterator
     private final AbstractChildrenIterator iterator;
 
-    // level of children taken from iterator
+    // level of children taken from iterator, start from 1
     private final int level;
 
     VisitorStackEntry(AbstractChildrenIterator iterator, int level) {
@@ -368,7 +403,11 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R>
 
     protected abstract void getNext() throws Exception;
 
-    protected abstract void close();
+    protected void close() {
+      if (nextMatchedChild != null) {
+        releaseNode(nextMatchedChild);
+      }
+    }
   }
 
   // the child can be got directly with the precise value of transition, there's no traceback
@@ -376,8 +415,6 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R>
     private final N parent;
     private final IFAState sourceState;
     private final Iterator<IFATransition> transitionIterator;
-
-    private N child;
 
     private PreciseMatchChildrenIterator(N parent, IFAState sourceState) {
       this.parent = parent;
@@ -390,7 +427,7 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R>
       IFATransition transition;
       while (transitionIterator.hasNext()) {
         transition = transitionIterator.next();
-        child = getChild(parent, transition.getAcceptEvent());
+        N child = getChild(parent, transition.getAcceptEvent());
         if (child == null) {
           continue;
         }
@@ -399,11 +436,6 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R>
             new StateSingleMatchInfo(patternFA, patternFA.getNextState(sourceState, transition)));
         return;
       }
-    }
-
-    @Override
-    protected void close() {
-      releaseChild(child);
     }
   }
 
@@ -436,6 +468,7 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R>
       while (childrenIterator.hasNext()) {
         child = childrenIterator.next();
         if (tryGetNextState(child, sourceState, transition) == null) {
+          releaseNode(child);
           continue;
         }
         saveResult(child, stateMatchInfo);
@@ -445,7 +478,8 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R>
 
     @Override
     protected void close() {
-      releaseChildrenIterator(childrenIterator);
+      super.close();
+      releaseNodeIterator(childrenIterator);
     }
   }
 
@@ -493,6 +527,7 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R>
             }
           }
           if (matchedState == null) {
+            releaseNode(child);
             continue;
           }
         }
@@ -514,7 +549,8 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R>
 
     @Override
     protected void close() {
-      releaseChildrenIterator(iterator);
+      super.close();
+      releaseNodeIterator(iterator);
     }
   }
 
@@ -562,6 +598,7 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R>
         if (stateMatchInfo.getMatchedStateSize() == 0) {
           traceback(child, stateMatchInfo, sourceStateMatchInfo.getMatchedStateSize() - 1);
           if (stateMatchInfo.getMatchedStateSize() == 0) {
+            releaseNode(child);
             continue;
           }
         }
@@ -569,11 +606,6 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R>
         saveResult(child, stateMatchInfo);
         return;
       }
-    }
-
-    @Override
-    protected void close() {
-      releaseChildrenIterator(iterator);
     }
 
     /**
@@ -699,6 +731,12 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R>
           }
         }
       }
+    }
+
+    @Override
+    protected void close() {
+      super.close();
+      releaseNodeIterator(iterator);
     }
   }
 
