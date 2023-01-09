@@ -142,6 +142,7 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
 
   protected void flushChunkToFileWriter(TsFileIOWriter targetWriter, int subTaskId)
       throws IOException {
+    writeRateLimit(chunkWriters[subTaskId].estimateMaxSeriesMemSize());
     synchronized (targetWriter) {
       chunkWriters[subTaskId].writeToFileWriter(targetWriter);
     }
@@ -172,7 +173,7 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
 
   protected void writeRateLimit(long bytesLength) {
     CompactionTaskManager.mergeRateLimiterAcquire(
-        CompactionTaskManager.getInstance().getCompactionIORateLimiter(), bytesLength);
+        CompactionTaskManager.getInstance().getMergeWriteRateLimiter(), bytesLength);
   }
 
   public abstract List<TsFileIOWriter> getFileIOWriter();
