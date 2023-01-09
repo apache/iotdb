@@ -267,8 +267,7 @@ public class RegionMigrateProcedure
               String.format("Region migration failed, regionId: %s", consensusGroupId));
         }
       } catch (InterruptedException e) {
-        LOG.error(
-            "{}, region migration {} interrupt", REGION_MIGRATE_PROCESS, consensusGroupId, e);
+        LOG.error("{}, region migration {} interrupt", REGION_MIGRATE_PROCESS, consensusGroupId, e);
         Thread.currentThread().interrupt();
         status.setCode(TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode());
         status.setMessage("Waiting for region migration interruption," + e.getMessage());
