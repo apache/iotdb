@@ -143,6 +143,9 @@ public class ConfigNodeDescriptor {
   }
 
   private void loadProperties(Properties properties) throws BadNodeUrlException, IOException {
+    conf.setClusterName(
+        properties.getProperty(IoTDBConstant.CLUSTER_NAME, conf.getClusterName()).trim());
+
     conf.setInternalAddress(
         properties
             .getProperty(IoTDBConstant.CN_INTERNAL_ADDRESS, conf.getInternalAddress())
@@ -303,6 +306,22 @@ public class ConfigNodeDescriptor {
             properties
                 .getProperty(
                     "cn_thrift_max_frame_size", String.valueOf(conf.getCnThriftMaxFrameSize()))
+                .trim()));
+
+    conf.setCoreClientNumForEachNode(
+        Integer.parseInt(
+            properties
+                .getProperty(
+                    "cn_core_client_count_for_each_node_in_client_manager",
+                    String.valueOf(conf.getCoreClientNumForEachNode()))
+                .trim()));
+
+    conf.setMaxClientNumForEachNode(
+        Integer.parseInt(
+            properties
+                .getProperty(
+                    "cn_max_client_count_for_each_node_in_client_manager",
+                    String.valueOf(conf.getMaxClientNumForEachNode()))
                 .trim()));
 
     conf.setSystemDir(properties.getProperty("cn_system_dir", conf.getSystemDir()).trim());

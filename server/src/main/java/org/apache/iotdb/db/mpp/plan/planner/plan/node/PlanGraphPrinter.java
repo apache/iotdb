@@ -56,7 +56,6 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationDescriptor
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.CrossSeriesAggregationDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.DeviceViewIntoPathDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.IntoPathDescriptor;
-import org.apache.iotdb.db.mpp.plan.statement.component.SortItem;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.apache.commons.lang3.Validate;
@@ -169,12 +168,7 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
     List<String> boxValue = new ArrayList<>();
     boxValue.add(String.format("MergeSort-%s", node.getPlanNodeId().getId()));
     boxValue.add(String.format("ChildrenCount: %d", node.getChildren().size()));
-    StringBuilder sortInfo = new StringBuilder("Order:");
-    for (SortItem sortItem : node.getMergeOrderParameter().getSortItemList()) {
-      sortInfo.append(" ");
-      sortInfo.append(sortItem.getSortKey()).append(" ").append(sortItem.getOrdering());
-    }
-    boxValue.add(sortInfo.toString());
+    boxValue.add(node.getMergeOrderParameter().toString());
     return render(node, boxValue, context);
   }
 
@@ -284,7 +278,7 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
   public List<String> visitSort(SortNode node, GraphContext context) {
     List<String> boxValue = new ArrayList<>();
     boxValue.add(String.format("Sort-%s", node.getPlanNodeId().getId()));
-    boxValue.add(String.format("OrderBy: %s", node.getSortOrder()));
+    boxValue.add(node.getOrderByParameter().toString());
     return render(node, boxValue, context);
   }
 
@@ -350,12 +344,11 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
     DeviceViewIntoPathDescriptor descriptor = node.getDeviceViewIntoPathDescriptor();
     Map<String, List<Pair<String, PartialPath>>> deviceToSourceTargetPathPairListMap =
         descriptor.getDeviceToSourceTargetPathPairListMap();
-    for (String deviceName : deviceToSourceTargetPathPairListMap.keySet()) {
+    for (Map.Entry<String, List<Pair<String, PartialPath>>> entry :
+        deviceToSourceTargetPathPairListMap.entrySet()) {
+      String deviceName = entry.getKey();
       boxValue.add(String.format("Device [%s]:", deviceName));
-      drawSourceTargetPath(
-          boxValue,
-          deviceToSourceTargetPathPairListMap.get(deviceName),
-          descriptor.getTargetDeviceToAlignedMap());
+      drawSourceTargetPath(boxValue, entry.getValue(), descriptor.getTargetDeviceToAlignedMap());
     }
     return render(node, boxValue, context);
   }
@@ -469,7 +462,7 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
     }
     box.lines.add(printBoxEdge(box, false));
 
-    if (children.size() == 0) {
+    if (children.isEmpty()) {
       return box.lines;
     }
 
@@ -623,7 +616,7 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
     public void calculateBoxParams(List<List<String>> childBoxStrings) {
       int childrenWidth = 0;
       for (List<String> childBoxString : childBoxStrings) {
-        Validate.isTrue(childBoxString.size() > 0, "Lines of box string should be greater than 0");
+        Validate.isTrue(!childBoxString.isEmpty(), "Lines of box string should be greater than 0");
         childrenWidth += childBoxString.get(0).length();
       }
       childrenWidth += childBoxStrings.size() > 1 ? (childBoxStrings.size() - 1) * BOX_MARGIN : 0;

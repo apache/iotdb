@@ -48,12 +48,12 @@
   指令，结果如下所示：
 ```
 IoTDB> show cluster details
-+------+----------+-------+---------------+------------+-------------------+----------+-------+-----------------+-------------------+-------+
-|NodeID|  NodeType| Status|InternalAddress|InternalPort|ConfigConsensusPort|RpcAddress|RpcPort|DataConsensusPort|SchemaConsensusPort|MppPort|
-+------+----------+-------+---------------+------------+-------------------+----------+-------+-----------------+-------------------+-------+
-|     0|ConfigNode|Running|      127.0.0.1|       22277|              22278|          |       |                 |                   |       |
-|     1|  DataNode|Running|      127.0.0.1|        9003|                   | 127.0.0.1|   6667|            40010|              50010|   8777|
-+------+----------+-------+---------------+------------+-------------------+----------+-------+-----------------+-------------------+-------+
++------+----------+-------+---------------+------------+-------------------+----------+-------+--------+-------------------+-----------------+
+|NodeID|  NodeType| Status|InternalAddress|InternalPort|ConfigConsensusPort|RpcAddress|RpcPort|MppPort |SchemaConsensusPort|DataConsensusPort|
++------+----------+-------+---------------+------------+-------------------+----------+-------+--------+-------------------+-----------------+
+|     0|ConfigNode|Running|      127.0.0.1|       10710|              10720|          |       |        |                   |                 |
+|     1|  DataNode|Running|      127.0.0.1|       10730|                   | 127.0.0.1|   6667|   10740|              10750|            10760|
++------+----------+-------+---------------+------------+-------------------+----------+-------+--------+-------------------+-----------------+
 Total line number = 2
 It costs 0.242s
 ```
@@ -71,22 +71,22 @@ It costs 0.242s
 | **配置项**                        | **值**           |
 |--------------------------------|-----------------|
 | cn\_internal\_address          | 127.0.0.1       |
-| cn\_internal\_port             | 22279           |
-| cn\_consensus\_port            | 22280           |
-| cn\_target\_config\_node\_list | 127.0.0.1:22277 |
+| cn\_internal\_port             | 10711           |
+| cn\_consensus\_port            | 10721           |
+| cn\_target\_config\_node\_list | 127.0.0.1:10710 |
 
 + 修改 DataNode 配置：
 
-| **配置项**                             | **值**           |
-|-------------------------------------|-----------------|
-| dn\_rpc\_address                    | 127.0.0.1       |
-| dn\_rpc\_port                       | 6668            |
-| dn\_internal\_address               | 127.0.0.1       |
-| dn\_internal\_port                  | 9004            |
-| dn\_mpp\_data\_exchange\_port       | 8778            |
-| dn\_data\_region\_consensus\_port   | 40011           |
-| dn\_schema\_region\_consensus\_port | 50011           |
-| dn\_target\_config\_node\_list      | 127.0.0.1:22277 |
+| **配置项**                                | **值**           |
+|----------------------------------------|-----------------|
+| dn\_rpc\_address                       | 127.0.0.1       |
+| dn\_rpc\_port                          | 6668            |
+| dn\_internal\_address                  | 127.0.0.1       |
+| dn\_internal\_port                     | 10731           |
+| dn\_mpp\_data\_exchange\_port          | 10741           |
+| dn\_schema\_region\_consensus\_port    | 10751           |
+| dn\_data\_region\_consensus\_port      | 10761           |
+| dn\_target\_config\_node\_list         | 127.0.0.1:10710 |
 
 对于 cluster2 目录：
 
@@ -95,22 +95,22 @@ It costs 0.242s
 | **配置项**                        | **值**           |
 |--------------------------------|-----------------|
 | cn\_internal\_address          | 127.0.0.1       |
-| cn\_internal\_port             | 22281           |
-| cn\_consensus\_port            | 22282           |
-| cn\_target\_config\_node\_list | 127.0.0.1:22277 |
+| cn\_internal\_port             | 10712           |
+| cn\_consensus\_port            | 10722           |
+| cn\_target\_config\_node\_list | 127.0.0.1:10710 |
 
 + 修改 DataNode 配置：
 
-| **配置项**                             | **值**           |
-|-------------------------------------|-----------------|
-| dn\_rpc\_address                    | 127.0.0.1       |
-| dn\_rpc\_port                       | 6669            |
-| dn\_internal\_address               | 127.0.0.1       |
-| dn\_internal\_port                  | 9005            |
-| dn\_mpp\_data\_exchange\_port       | 8779            |
-| dn\_data\_region\_consensus\_port   | 40012           |
-| dn\_schema\_region\_consensus\_port | 50012           |
-| dn\_target\_config\_node\_list      | 127.0.0.1:22277 |
+| **配置项**                              | **值**           |
+|--------------------------------------|-----------------|
+| dn\_rpc\_address                     | 127.0.0.1       |
+| dn\_rpc\_port                        | 6669            |
+| dn\_internal\_address                | 127.0.0.1       |
+| dn\_internal\_port                   | 10732           |
+| dn\_mpp\_data\_exchange\_port        | 10742           |
+| dn\_schema\_region\_consensus\_port  | 10752           |
+| dn\_data\_region\_consensus\_port    | 10762           |
+| dn\_target\_config\_node\_list       | 127.0.0.1:10710 |
 
 ## 6. 集群扩容
 
@@ -128,16 +128,16 @@ It costs 0.242s
 在 Cli 执行 `show cluster details`，结果如下：
 ```
 IoTDB> show cluster details
-+------+----------+-------+---------------+------------+-------------------+----------+-------+-----------------+-------------------+-------+
-|NodeID|  NodeType| Status|InternalAddress|InternalPort|ConfigConsensusPort|RpcAddress|RpcPort|DataConsensusPort|SchemaConsensusPort|MppPort|
-+------+----------+-------+---------------+------------+-------------------+----------+-------+-----------------+-------------------+-------+
-|     0|ConfigNode|Running|      127.0.0.1|       22277|              22278|          |       |                 |                   |       |
-|     2|ConfigNode|Running|      127.0.0.1|       22279|              22280|          |       |                 |                   |       |
-|     3|ConfigNode|Running|      127.0.0.1|       22281|              22282|          |       |                 |                   |       |
-|     1|  DataNode|Running|      127.0.0.1|        9003|                   | 127.0.0.1|   6667|            40010|              50010|   8777|
-|     4|  DataNode|Running|      127.0.0.1|        9004|                   | 127.0.0.1|   6668|            40011|              50011|   8778|
-|     5|  DataNode|Running|      127.0.0.1|        9005|                   | 127.0.0.1|   6669|            40012|              50012|   8779|
-+------+----------+-------+---------------+------------+-------------------+----------+-------+-----------------+-------------------+-------+
++------+----------+-------+---------------+------------+-------------------+----------+-------+-------+-------------------+-----------------+
+|NodeID|  NodeType| Status|InternalAddress|InternalPort|ConfigConsensusPort|RpcAddress|RpcPort|MppPort|SchemaConsensusPort|DataConsensusPort|
++------+----------+-------+---------------+------------+-------------------+----------+-------+-------+-------------------+-----------------+
+|     0|ConfigNode|Running|      127.0.0.1|       10710|              10720|          |       |       |                   |                 |
+|     2|ConfigNode|Running|      127.0.0.1|       10711|              10721|          |       |       |                   |                 |
+|     3|ConfigNode|Running|      127.0.0.1|       10712|              10722|          |       |       |                   |                 |
+|     1|  DataNode|Running|      127.0.0.1|       10730|                   | 127.0.0.1|   6667|  10740|              10750|            10760|
+|     4|  DataNode|Running|      127.0.0.1|       10731|                   | 127.0.0.1|   6668|  10741|              10751|            10761|
+|     5|  DataNode|Running|      127.0.0.1|       10732|                   | 127.0.0.1|   6669|  10742|              10752|            10762|
++------+----------+-------+---------------+------------+-------------------+----------+-------+-------+-------------------+-----------------+
 Total line number = 6
 It costs 0.012s
 ```
@@ -147,7 +147,7 @@ It costs 0.012s
 + 缩容一个 ConfigNode：
 ```
 # 使用 ip:port 移除
-./cluster0/sbin/remove-confignode.sh 127.0.0.1:22279
+./cluster0/sbin/remove-confignode.sh 127.0.0.1:10711
 
 # 使用节点编号移除
 ./cluster0/sbin/remove-confignode.sh 2
@@ -167,14 +167,14 @@ It costs 0.012s
 在 Cli 执行 `show cluster details`，结果如下：
 ```
 IoTDB> show cluster details
-+------+----------+-------+---------------+------------+-------------------+----------+-------+-----------------+-------------------+-------+
-|NodeID|  NodeType| Status|InternalAddress|InternalPort|ConfigConsensusPort|RpcAddress|RpcPort|DataConsensusPort|SchemaConsensusPort|MppPort|
-+------+----------+-------+---------------+------------+-------------------+----------+-------+-----------------+-------------------+-------+
-|     0|ConfigNode|Running|      127.0.0.1|       22277|              22278|          |       |                 |                   |       |
-|     3|ConfigNode|Running|      127.0.0.1|       22281|              22282|          |       |                 |                   |       |
-|     1|  DataNode|Running|      127.0.0.1|        9003|                   | 127.0.0.1|   6667|            40010|              50010|   8777|
-|     5|  DataNode|Running|      127.0.0.1|        9005|                   | 127.0.0.1|   6669|            40012|              50012|   8779|
-+------+----------+-------+---------------+------------+-------------------+----------+-------+-----------------+-------------------+-------+
++------+----------+-------+---------------+------------+-------------------+----------+-------+-------+-------------------+-----------------+
+|NodeID|  NodeType| Status|InternalAddress|InternalPort|ConfigConsensusPort|RpcAddress|RpcPort|MppPort|SchemaConsensusPort|DataConsensusPort|
++------+----------+-------+---------------+------------+-------------------+----------+-------+-------+-------------------+-----------------+
+|     0|ConfigNode|Running|      127.0.0.1|       10710|              10720|          |       |       |                   |                 |
+|     3|ConfigNode|Running|      127.0.0.1|       10712|              10722|          |       |       |                   |                 |
+|     1|  DataNode|Running|      127.0.0.1|       10730|                   | 127.0.0.1|   6667|  10740|              10750|            10760|
+|     5|  DataNode|Running|      127.0.0.1|       10732|                   | 127.0.0.1|   6669|  10742|              10752|            10762|
++------+----------+-------+---------------+------------+-------------------+----------+-------+-------+-------------------+-----------------+
 Total line number = 4
 It costs 0.005s
 ```

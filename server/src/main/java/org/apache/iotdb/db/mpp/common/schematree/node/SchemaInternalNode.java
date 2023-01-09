@@ -41,6 +41,7 @@ public class SchemaInternalNode extends SchemaNode {
     return children.get(name);
   }
 
+  @Override
   public void addChild(String name, SchemaNode child) {
     children.put(name, child);
   }

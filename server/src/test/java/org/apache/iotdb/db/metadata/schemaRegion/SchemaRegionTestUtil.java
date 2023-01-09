@@ -20,14 +20,27 @@ package org.apache.iotdb.db.metadata.schemaRegion;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.metadata.plan.schemaregion.impl.read.SchemaRegionReadPlanFactory;
 import org.apache.iotdb.db.metadata.plan.schemaregion.impl.write.SchemaRegionWritePlanFactory;
+import org.apache.iotdb.db.metadata.query.info.IDeviceSchemaInfo;
+import org.apache.iotdb.db.metadata.query.info.INodeSchemaInfo;
+import org.apache.iotdb.db.metadata.query.info.ITimeSeriesSchemaInfo;
+import org.apache.iotdb.db.metadata.query.reader.ISchemaReader;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
+import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+
+import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
 
 public class SchemaRegionTestUtil {
 
@@ -135,5 +148,118 @@ public class SchemaRegionTestUtil {
     for (String path : pathList) {
       SchemaRegionTestUtil.createSimpleTimeSeriesInt64(schemaRegion, path);
     }
+  }
+
+  public static long getAllTimeseriesCount(
+      ISchemaRegion schemaRegion,
+      PartialPath pathPattern,
+      Map<Integer, Template> templateMap,
+      boolean isPrefixMatch) {
+    try (ISchemaReader<ITimeSeriesSchemaInfo> timeSeriesReader =
+        schemaRegion.getTimeSeriesReader(
+            SchemaRegionReadPlanFactory.getShowTimeSeriesPlan(
+                pathPattern, templateMap, false, null, null, 0, 0, isPrefixMatch)); ) {
+      long count = 0;
+      while (timeSeriesReader.hasNext()) {
+        timeSeriesReader.next();
+        count++;
+      }
+      return count;
+    } catch (Exception e) {
+      throw new RuntimeException(e);
+    }
+  }
+
+  public static long getDevicesNum(
+      ISchemaRegion schemaRegion, PartialPath pathPattern, boolean isPrefixMatch) {
+    try (ISchemaReader<IDeviceSchemaInfo> deviceReader =
+        schemaRegion.getDeviceReader(
+            SchemaRegionReadPlanFactory.getShowDevicesPlan(pathPattern, isPrefixMatch))) {
+      long count = 0;
+      while (deviceReader.hasNext()) {
+        deviceReader.next();
+        count++;
+      }
+      return count;
+    } catch (Exception e) {
+      throw new RuntimeException(e);
+    }
+  }
+
+  public static Map<PartialPath, Long> getMeasurementCountGroupByLevel(
+      ISchemaRegion schemaRegion, PartialPath pathPattern, int level, boolean isPrefixMatch) {
+    try (ISchemaReader<ITimeSeriesSchemaInfo> timeSeriesReader =
+        schemaRegion.getTimeSeriesReader(
+            SchemaRegionReadPlanFactory.getShowTimeSeriesPlan(
+                pathPattern, null, false, null, null, 0, 0, isPrefixMatch)); ) {
+      Map<PartialPath, Long> countMap = new HashMap<>();
+      while (timeSeriesReader.hasNext()) {
+        ITimeSeriesSchemaInfo timeSeriesSchemaInfo = timeSeriesReader.next();
+        PartialPath path = timeSeriesSchemaInfo.getPartialPath();
+        if (path.getNodeLength() < level) {
+          continue;
+        }
+        countMap.compute(
+            new PartialPath(Arrays.copyOf(path.getNodes(), level + 1)),
+            (k, v) -> {
+              if (v == null) {
+                return 1L;
+              }
+              return v + 1;
+            });
+      }
+      return countMap;
+    } catch (Exception e) {
+      throw new RuntimeException(e);
+    }
+  }
+
+  public static List<String> getPathsUsingTemplate(
+      ISchemaRegion schemaRegion, PartialPath pathPattern, int templateId)
+      throws MetadataException {
+    List<String> result = new ArrayList<>();
+    try (ISchemaReader<IDeviceSchemaInfo> deviceReader =
+        schemaRegion.getDeviceReader(
+            SchemaRegionReadPlanFactory.getShowDevicesPlan(
+                pathPattern, 0, 0, false, templateId)); ) {
+      while (deviceReader.hasNext()) {
+        result.add(deviceReader.next().getFullPath());
+      }
+    } catch (Exception e) {
+      throw new RuntimeException(e);
+    }
+    return result;
+  }
+
+  public static List<PartialPath> getNodesListInGivenLevel(
+      ISchemaRegion schemaRegion, PartialPath pathPattern, int nodeLevel, boolean isPrefixMatch)
+      throws MetadataException {
+    List<PartialPath> result = new ArrayList<>();
+    try (ISchemaReader<INodeSchemaInfo> nodeReader =
+        schemaRegion.getNodeReader(
+            SchemaRegionReadPlanFactory.getShowNodesPlan(pathPattern, nodeLevel, isPrefixMatch))) {
+      while (nodeReader.hasNext()) {
+        result.add(nodeReader.next().getPartialPath());
+      }
+    } catch (Exception e) {
+      throw new RuntimeException(e);
+    }
+    return result;
+  }
+
+  public static Set<INodeSchemaInfo> getChildNodePathInNextLevel(
+      ISchemaRegion schemaRegion, PartialPath pathPattern) throws MetadataException {
+    Set<INodeSchemaInfo> result = new HashSet<>();
+    try (ISchemaReader<INodeSchemaInfo> nodeReader =
+        schemaRegion.getNodeReader(
+            SchemaRegionReadPlanFactory.getShowNodesPlan(
+                pathPattern.concatNode(ONE_LEVEL_PATH_WILDCARD)))) {
+      while (nodeReader.hasNext()) {
+        result.add(nodeReader.next());
+      }
+    } catch (Exception e) {
+      throw new RuntimeException(e);
+    }
+    return result;
   }
 }

@@ -87,7 +87,7 @@ public class TriggerExecutor {
       LOGGER.warn(
           "Trigger {} was fired with wrong event {}",
           triggerInformation.getTriggerName(),
-          triggerInformation.getEvent().toString());
+          triggerInformation.getEvent());
     }
     return true;
   }
@@ -100,7 +100,7 @@ public class TriggerExecutor {
       throws TriggerExecutionException {
     String errorMessage =
         String.format(
-                "Error occurred during executing Trigger(%s)#%s: %s",
+                "Error occurred during executing Trigger(%s)#%s: %s, perhaps need to check whether the implementation of Trigger is correct according to the trigger-api description.",
                 triggerInformation.getTriggerName(), methodName, System.lineSeparator())
             + t;
     LOGGER.warn(errorMessage);

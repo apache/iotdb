@@ -23,16 +23,16 @@ import java.util.Map;
 
 public interface Gauge extends IMetric {
 
-  /** Set value */
+  /** Set value. */
   void set(long value);
 
-  /** Get value stored in gauge */
+  /** Get value stored in gauge. */
   long value();
 
-  /** Increase the value stored in gauge */
+  /** Increase the value stored in gauge. */
   void incr(long value);
 
-  /** Decrease the value stored in gauge */
+  /** Decrease the value stored in gauge. */
   void decr(long value);
 
   @Override

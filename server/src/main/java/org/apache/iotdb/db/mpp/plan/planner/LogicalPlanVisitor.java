@@ -712,7 +712,11 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
   public PlanNode visitShowQueries(
       ShowQueriesStatement showQueriesStatement, MPPQueryContext context) {
     LogicalPlanBuilder planBuilder = new LogicalPlanBuilder(analysis, context);
-    // TODO planBuilder = planBuilder.planShowQueries()
+    planBuilder =
+        planBuilder
+            .planShowQueries(analysis, showQueriesStatement) // push Filter down
+            .planOffset(showQueriesStatement.getRowOffset())
+            .planLimit(showQueriesStatement.getRowLimit());
     return planBuilder.getRoot();
   }
 }

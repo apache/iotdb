@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.mpp.plan.planner;
 
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSchemaNode;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.AlignedPath;
@@ -64,6 +65,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.MergeSortNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.OffsetNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.SingleDeviceViewNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.SlidingWindowAggregationNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.SortNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.TimeJoinNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.TransformNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.last.LastQueryNode;
@@ -74,6 +76,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.LastQueryScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesAggregationScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesAggregationSourceNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesScanNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.ShowQueriesNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationStep;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationType;
@@ -86,6 +89,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.OrderByParameter;
 import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.db.mpp.plan.statement.component.SortItem;
 import org.apache.iotdb.db.mpp.plan.statement.component.SortKey;
+import org.apache.iotdb.db.mpp.plan.statement.sys.ShowQueriesStatement;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
@@ -724,7 +728,7 @@ public class LogicalPlanBuilder {
         }
         Expression next = iter.next();
         if (next.equals(groupByTagOutputExpression)) {
-          String functionName = ((FunctionExpression) next).getFunctionName().toUpperCase();
+          String functionName = ((FunctionExpression) next).getFunctionName();
           CrossSeriesAggregationDescriptor aggregationDescriptor =
               new CrossSeriesAggregationDescriptor(
                   functionName,
@@ -1109,6 +1113,64 @@ public class LogicalPlanBuilder {
     this.root =
         new PathsUsingTemplateScanNode(
             context.getQueryId().genPlanNodeId(), pathPatternList, templateId);
+    return this;
+  }
+
+  private LogicalPlanBuilder planSort(OrderByParameter orderByParameter) {
+    if (orderByParameter.isEmpty()) {
+      return this;
+    }
+    this.root = new SortNode(context.getQueryId().genPlanNodeId(), root, orderByParameter);
+    return this;
+  }
+
+  public LogicalPlanBuilder planShowQueries(Analysis analysis, ShowQueriesStatement statement) {
+    List<TDataNodeLocation> dataNodeLocations = analysis.getRunningDataNodeLocations();
+    if (dataNodeLocations.size() == 1) {
+      this.root =
+          planSingleShowQueries(dataNodeLocations.get(0))
+              .planFilterAndTransform(
+                  analysis.getWhereExpression(),
+                  analysis.getSourceExpressions(),
+                  false,
+                  statement.getZoneId(),
+                  Ordering.ASC)
+              .planSort(analysis.getMergeOrderParameter())
+              .getRoot();
+    } else {
+      List<String> outputColumns = new ArrayList<>();
+      MergeSortNode mergeSortNode =
+          new MergeSortNode(
+              context.getQueryId().genPlanNodeId(),
+              analysis.getMergeOrderParameter(),
+              outputColumns);
+
+      dataNodeLocations.forEach(
+          dataNodeLocation ->
+              mergeSortNode.addChild(
+                  this.planSingleShowQueries(dataNodeLocation)
+                      .planFilterAndTransform(
+                          analysis.getWhereExpression(),
+                          analysis.getSourceExpressions(),
+                          false,
+                          statement.getZoneId(),
+                          Ordering.ASC)
+                      .planSort(analysis.getMergeOrderParameter())
+                      .getRoot()));
+      outputColumns.addAll(mergeSortNode.getChildren().get(0).getOutputColumnNames());
+      this.root = mergeSortNode;
+    }
+
+    ColumnHeaderConstant.showQueriesColumnHeaders.forEach(
+        columnHeader ->
+            context
+                .getTypeProvider()
+                .setType(columnHeader.getColumnName(), columnHeader.getColumnType()));
+    return this;
+  }
+
+  private LogicalPlanBuilder planSingleShowQueries(TDataNodeLocation dataNodeLocation) {
+    this.root = new ShowQueriesNode(context.getQueryId().genPlanNodeId(), dataNodeLocation);
     return this;
   }
 }

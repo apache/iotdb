@@ -49,7 +49,7 @@ public class KDTreeUtil {
   }
 
   private void buildDetail(Node node, ArrayList<ArrayList<Double>> data, int dimensions) {
-    if (data.size() == 0) {
+    if (data.isEmpty()) {
       return;
     }
     if (data.size() == 1) {
@@ -90,7 +90,7 @@ public class KDTreeUtil {
     }
     for (ArrayList<Double> d : data) {
       if (d.get(node.partitionDimension) == node.partitionValue) {
-        if (left.size() == 0) {
+        if (left.isEmpty()) {
           left.add(d);
         } else {
           right.add(d);
@@ -129,7 +129,7 @@ public class KDTreeUtil {
     ArrayList<Double> nearest = null;
     Node node;
     double tdis;
-    while (stack.size() != 0) {
+    while (!stack.isEmpty()) {
       node = stack.pop();
       if (node.isLeaf) {
         tdis = UtilZ.distance(input, node.value, std);
@@ -165,7 +165,7 @@ public class KDTreeUtil {
     ArrayList<ArrayList<Double>> nearest = new ArrayList<>();
     Node node;
     double tdis;
-    while (stack.size() != 0) {
+    while (!stack.isEmpty()) {
       node = stack.pop();
       if (node.isLeaf) {
         tdis = UtilZ.distance(input, node.value, std);
@@ -230,7 +230,7 @@ public class KDTreeUtil {
     for (int i = 0; i < min(k, nearest.size()); i++) {
       kNearest.add(findNearest(input, nearest, std));
     }
-    if (kNearest.size() == 0) {
+    if (kNearest.isEmpty()) {
       kNearest.add(node.value);
     }
     for (ArrayList<Double> doubles : kNearest) {

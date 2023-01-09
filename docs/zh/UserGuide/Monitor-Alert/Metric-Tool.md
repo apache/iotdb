@@ -85,10 +85,10 @@ Core 级别的监控指标在系统运行中默认开启，每一个 Core 级别
 #### 4.1.1. 集群运行状态
 
 | Metric      | Tags                                            | Type      | Description                            |
-|-------------|-------------------------------------------------| --------- | -------------------------------------- |
+| ----------- | ----------------------------------------------- | --------- | -------------------------------------- |
 | config_node | name="total",status="Registered/Online/Unknown" | AutoGauge | 已注册/在线/离线 confignode 的节点数量 |
 | data_node   | name="total",status="Registered/Online/Unknown" | AutoGauge | 已注册/在线/离线 datanode 的节点数量   |
-| points      | database="{{database}}", type="flush"           | Gauge     | 最新一个刷盘的memtale的点数        |
+| points      | database="{{database}}", type="flush"           | Gauge     | 最新一个刷盘的memtale的点数            |
 
 #### 4.1.2. IoTDB 进程运行状态
 | Metric            | Tags           | Type      | Description                         |
@@ -123,13 +123,13 @@ Core 级别的监控指标在系统运行中默认开启，每一个 Core 级别
 | cluster_node_status       | name="{{ip}}:{{port}}",type="ConfigNode/DataNode" | Gauge | 节点的状态，0=Unkonwn 1=online |
 
 #### 4.2.2. 节点统计
-| Metric   | Tags                                       | Type      | Description              |
-| -------- | ------------------------------------------ | --------- |--------------------------|
-| quantity | name="database"                            | AutoGauge | 系统数据库数量                  |
-| quantity | name="timeSeries"                          | AutoGauge | 系统时间序列数量                 |
-| quantity | name="pointsIn"                            | Counter   | 系统累计写入点数                 |
-| region   | name="total",type="SchemaRegion"           | AutoGauge | 分区表中 SchemaRegion 总数量    |
-| region   | name="total",type="DataRegion"             | AutoGauge | 分区表中 DataRegion 总数量      |
+| Metric   | Tags                                       | Type      | Description                          |
+| -------- | ------------------------------------------ | --------- | ------------------------------------ |
+| quantity | name="database"                            | AutoGauge | 系统数据库数量                       |
+| quantity | name="timeSeries"                          | AutoGauge | 系统时间序列数量                     |
+| quantity | name="pointsIn"                            | Counter   | 系统累计写入点数                     |
+| region   | name="total",type="SchemaRegion"           | AutoGauge | 分区表中 SchemaRegion 总数量         |
+| region   | name="total",type="DataRegion"             | AutoGauge | 分区表中 DataRegion 总数量           |
 | region   | name="{{ip}}:{{port}}",type="SchemaRegion" | Gauge     | 分区表中对应节点上 DataRegion 总数量 |
 | region   | name="{{ip}}:{{port}}",type="DataRegion"   | Gauge     | 分区表中对应节点上 DataRegion 总数量 |
 
@@ -178,12 +178,12 @@ Core 级别的监控指标在系统运行中默认开启，每一个 Core 级别
 
 #### 4.2.6. 内存统计
 | Metric | Tags                                 | Type      | Description                                       |
-| ------ |--------------------------------------| --------- | ------------------------------------------------- |
+| ------ | ------------------------------------ | --------- | ------------------------------------------------- |
 | mem    | name="database_{{name}}"             | AutoGauge | DataNode内对应DataRegion的内存占用，单位为byte    |
 | mem    | name="chunkMetaData_{{name}}"        | AutoGauge | 写入TsFile时的ChunkMetaData的内存占用，单位为byte |
 | mem    | name="IoTConsensus"                  | AutoGauge | IoT共识协议的内存占用，单位为byte                 |
-| mem    | name="schema_region_total_usage"           | AutoGauge | 所有SchemaRegion的总内存占用，单位为byte         |
-| mem    | name="schema_region_total_remaining" | AutoGauge | 所有SchemaRegion的总内存剩余，单位为byte         |
+| mem    | name="schema_region_total_usage"     | AutoGauge | 所有SchemaRegion的总内存占用，单位为byte          |
+| mem    | name="schema_region_total_remaining" | AutoGauge | 所有SchemaRegion的总内存剩余，单位为byte          |
 
 #### 4.2.7. 任务统计
 | Metric    | Tags                                              | Type      | Description        |
@@ -205,20 +205,21 @@ Core 级别的监控指标在系统运行中默认开启，每一个 Core 级别
 
 #### 4.2.9. 文件统计信息
 
-| Metric     | Tags                         | Type      | Description          |
-| ---------- |------------------------------| --------- |----------------------|
-| file_size  | name="wal"                   | AutoGauge | 写前日志总大小，单位为byte      |
-| file_size  | name="seq"                   | AutoGauge | 顺序TsFile总大小，单位为byte  |
-| file_size  | name="unseq"                 | AutoGauge | 乱序TsFile总大小，单位为byte  |
-| file_count | name="wal"                   | AutoGauge | 写前日志文件个数             |
-| file_count | name="seq"                   | AutoGauge | 顺序TsFile文件个数         |
-| file_count | name="unseq"                 | AutoGauge | 乱序TsFile文件个数         |
-| file_count| name="inner-seq-file-num"    |AutoGauge| 顺序空间内合并临时文件个数        |
-| file_count| name="inner-unseq-file-num"  |AutoGauge| 乱序空间内合并临时文件个数        |
-| file_count| name="cross-file-num"        |AutoGauge| 跨空间合并临时文件个数          |
-| file_count| name="inner-seq-file-size"   |AutoGauge| 顺序空间内合并临时文件大小，单位为byte |
-| file_count| name="inner-unseq-file-size" |AutoGauge| 乱序空间内合并临时文件大小，单位为byte |
-| file_count| name="cross-file-size"       |AutoGauge| 跨空间合并临时文件大小，单位为byte  |
+| Metric     | Tags                      | Type      | Description                              |
+| ---------- |---------------------------| --------- | ---------------------------------------- |
+| file_size  | name="wal"                | AutoGauge | 写前日志总大小，单位为byte               |
+| file_size  | name="seq"                | AutoGauge | 顺序TsFile总大小，单位为byte             |
+| file_size  | name="unseq"              | AutoGauge | 乱序TsFile总大小，单位为byte             |
+| file_size  | name="inner-seq-temp"     | AutoGauge | 顺序空间内合并临时文件大小，单位为byte   |
+| file_size  | name="inner-unseq-temp"   | AutoGauge | 乱序空间内合并临时文件大小，单位为byte   |
+| file_size  | name="cross-temp"         | AutoGauge | 跨空间合并临时文件大小，单位为byte       |
+| file_count | name="wal"                | AutoGauge | 写前日志文件个数                         |
+| file_count | name="seq"                | AutoGauge | 顺序TsFile文件个数                       |
+| file_count | name="unseq"              | AutoGauge | 乱序TsFile文件个数                       |
+| file_count | name="inner-seq-temp"     | AutoGauge | 顺序空间内合并临时文件个数               |
+| file_count | name="inner-unseq-temp"   | AutoGauge | 乱序空间内合并临时文件个数               |
+| file_count | name="cross-temp"         | AutoGauge | 跨空间合并临时文件个数                   |
+| file_count | name="open_file_handlers" | AutoGauge | IoTDB 进程打开文件数，仅支持Linux和MacOS |
 
 #### 4.2.10. IoTDB 进程统计
 | Metric                | Tags           | Type      | Description                          |
@@ -275,7 +276,15 @@ Core 级别的监控指标在系统运行中默认开启，每一个 Core 级别
 | ----------------------- | --------------------------------------------- | --------- | ------------------ |
 | jvm_compilation_time_ms | {compiler="HotSpot 64-Bit Tiered Compilers",} | AutoGauge | 耗费在编译上的时间 |
 
-### 4.3. All 级别监控指标
+### 4.3. Normal 级别监控指标
+
+#### 4.3.1. 集群
+| Metric | Tags                                                           | Type      | Description                                             |
+| ------ | -------------------------------------------------------------- | --------- | ------------------------------------------------------- |
+| region | name="{{DatabaseName}}",type="SchemaRegion/DataRegion"         | AutoGauge | 特定节点上不同 Database 的 DataRegion/SchemaRegion 个数 |
+| slot   | name="{{DatabaseName}}",type="schemaSlotNumber/dataSlotNumber" | AutoGauge | 特定节点上不同 Database 的 DataSlot/SchemaSlot 个数     |
+
+### 4.4. All 级别监控指标
 目前还没有All级别的监控指标，后续会持续添加。
 
 ## 5. 怎样获取这些系统监控？
@@ -383,7 +392,9 @@ static_configs:
 
 ##### 5.2.4.1. 如何获取 Apache IoTDB Dashboard？
 
-1. 您可以在 grafana-metrics-example 文件夹下获取到对应不同iotdb版本的Dashboard的json文件。
+1. 您可以在 GitHub 上获取到Dashboard的json文件。
+   1. <a href = "https://github.com/apache/iotdb/tree/master/docs/UserGuide/Monitor-Alert/Apache-IoTDB-ConfigNode-Dashboard.json">Apache IoTDB ConfigNode Dashboard</a>
+   2. <a href = "https://github.com/apache/iotdb/tree/master/docs/UserGuide/Monitor-Alert/Apache-IoTDB-DataNode-Dashboard.json">Apache IoTDB DataNode Dashboard</a>
 2. 您可以访问[Grafana Dashboard官网](https://grafana.com/grafana/dashboards/)搜索`Apache IoTDB Dashboard`并使用
 
 在创建Grafana时，您可以选择Import刚刚下载的json文件，并为Apache IoTDB Dashboard选择对应目标数据源。
@@ -478,12 +489,12 @@ static_configs:
 #### 5.3.1. 监控指标的 IoTDB 映射关系
 > 对于 Metric Name 为 name, Tags 为 K1=V1, ..., Kn=Vn 的监控指标有如下映射，以默认写到 root.__system.metric.`ip:port` 为例
 
-| 监控指标类型     | 映射关系                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
-| ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Counter          | root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.value                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
-| AutoGauge、Gauge | root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.value                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
-| Histogram        | root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.count <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.max <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.sum <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.p0 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.p25 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.p50 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.p75 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.p100                                                                                                                                                                                                                      |
-| Rate             | root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.count <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.mean <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.m1 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.m5 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.m15                                                                                                                                                                                                                                                                                                                                                                                      |
+| 监控指标类型     | 映射关系                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Counter          | root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.value                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| AutoGauge、Gauge | root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.value                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| Histogram        | root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.count <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.max <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.sum <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.p0 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.p25 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.p50 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.p75 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.p100                                                                                                                                                                                                                                                              |
+| Rate             | root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.count <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.mean <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.m1 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.m5 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.m15                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | Timer            | root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.count <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.max <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.mean <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.sum <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.p0 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.p25 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.p50 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.p75 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.p100   <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.m1 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.m5 <br> root.__system.metric.`ip:port`.name.`K1=V1`...`Kn=Vn`.m15 |
 
 #### 5.3.2. 获取监控指标

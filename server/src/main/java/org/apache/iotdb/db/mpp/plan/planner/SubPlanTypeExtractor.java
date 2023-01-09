@@ -112,22 +112,27 @@ public class SubPlanTypeExtractor {
 
     // region PlanNode of last query
     // No need to deal with type of last query
+    @Override
     public Void visitLastQueryScan(LastQueryScanNode node, Void context) {
       return null;
     }
 
+    @Override
     public Void visitAlignedLastQueryScan(AlignedLastQueryScanNode node, Void context) {
       return null;
     }
 
+    @Override
     public Void visitLastQuery(LastQueryNode node, Void context) {
       return null;
     }
 
+    @Override
     public Void visitLastQueryMerge(LastQueryMergeNode node, Void context) {
       return null;
     }
 
+    @Override
     public Void visitLastQueryCollect(LastQueryCollectNode node, Void context) {
       return null;
     }

@@ -270,11 +270,7 @@ public class TransformOperator implements ProcessOperator {
       return true;
     }
 
-    if (reader.isCurrentNull()) {
-      return true;
-    } else {
-      return false;
-    }
+    return reader.isCurrentNull();
   }
 
   protected YieldableState collectDataPoint(
@@ -342,7 +338,7 @@ public class TransformOperator implements ProcessOperator {
   @Override
   public boolean isFinished() {
     // call hasNext first, or data of inputOperator could be missing
-    boolean flag = !hasNext();
+    boolean flag = !hasNextWithTimer();
     return timeHeap.isEmpty() && (flag || inputOperator.isFinished());
   }
 

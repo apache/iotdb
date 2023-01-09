@@ -27,10 +27,10 @@ import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.cache.BloomFilterCache;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
-import org.apache.iotdb.db.engine.compaction.CompactionUtils;
-import org.apache.iotdb.db.engine.compaction.performer.ICompactionPerformer;
-import org.apache.iotdb.db.engine.compaction.performer.impl.ReadChunkCompactionPerformer;
-import org.apache.iotdb.db.engine.compaction.task.CompactionTaskSummary;
+import org.apache.iotdb.db.engine.compaction.execute.performer.ICompactionPerformer;
+import org.apache.iotdb.db.engine.compaction.execute.performer.impl.ReadChunkCompactionPerformer;
+import org.apache.iotdb.db.engine.compaction.execute.task.CompactionTaskSummary;
+import org.apache.iotdb.db.engine.compaction.execute.utils.CompactionUtils;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionCheckerUtils;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionConfigRestorer;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionFileGeneratorUtils;
@@ -192,15 +192,7 @@ public class ReadChunkCompactionPerformerNoAlignedTest {
       TsFileNameGenerator.TsFileName tsFileName =
           TsFileNameGenerator.getTsFileName(sourceFiles.get(0).getTsFile().getName());
       TsFileResource targetResource =
-          new TsFileResource(
-              new File(
-                  SEQ_DIRS,
-                  String.format(
-                      "%d-%d-%d-%d.tsfile",
-                      tsFileName.getTime(),
-                      tsFileName.getVersion(),
-                      tsFileName.getInnerCompactionCnt() + 1,
-                      tsFileName.getCrossCompactionCnt())));
+          TsFileNameGenerator.getInnerCompactionTargetFileResource(sourceFiles, true);
       performer.setSourceFiles(sourceFiles);
       performer.setTargetFiles(Collections.singletonList(targetResource));
       performer.setSummary(new CompactionTaskSummary());
@@ -286,15 +278,7 @@ public class ReadChunkCompactionPerformerNoAlignedTest {
       TsFileNameGenerator.TsFileName tsFileName =
           TsFileNameGenerator.getTsFileName(sourceFiles.get(0).getTsFile().getName());
       TsFileResource targetResource =
-          new TsFileResource(
-              new File(
-                  SEQ_DIRS,
-                  String.format(
-                      "%d-%d-%d-%d.tsfile",
-                      tsFileName.getTime(),
-                      tsFileName.getVersion(),
-                      tsFileName.getInnerCompactionCnt() + 1,
-                      tsFileName.getCrossCompactionCnt())));
+          TsFileNameGenerator.getInnerCompactionTargetFileResource(sourceFiles, true);
       performer.setSourceFiles(sourceFiles);
       performer.setTargetFiles(Collections.singletonList(targetResource));
       performer.setSummary(new CompactionTaskSummary());
@@ -382,15 +366,7 @@ public class ReadChunkCompactionPerformerNoAlignedTest {
       TsFileNameGenerator.TsFileName tsFileName =
           TsFileNameGenerator.getTsFileName(sourceFiles.get(0).getTsFile().getName());
       TsFileResource targetResource =
-          new TsFileResource(
-              new File(
-                  SEQ_DIRS,
-                  String.format(
-                      "%d-%d-%d-%d.tsfile",
-                      tsFileName.getTime(),
-                      tsFileName.getVersion(),
-                      tsFileName.getInnerCompactionCnt() + 1,
-                      tsFileName.getCrossCompactionCnt())));
+          TsFileNameGenerator.getInnerCompactionTargetFileResource(sourceFiles, true);
       performer.setSourceFiles(sourceFiles);
       performer.setTargetFiles(Collections.singletonList(targetResource));
       performer.setSummary(new CompactionTaskSummary());
@@ -465,15 +441,7 @@ public class ReadChunkCompactionPerformerNoAlignedTest {
       TsFileNameGenerator.TsFileName tsFileName =
           TsFileNameGenerator.getTsFileName(sourceFiles.get(0).getTsFile().getName());
       TsFileResource targetResource =
-          new TsFileResource(
-              new File(
-                  SEQ_DIRS,
-                  String.format(
-                      "%d-%d-%d-%d.tsfile",
-                      tsFileName.getTime(),
-                      tsFileName.getVersion(),
-                      tsFileName.getInnerCompactionCnt() + 1,
-                      tsFileName.getCrossCompactionCnt())));
+          TsFileNameGenerator.getInnerCompactionTargetFileResource(sourceFiles, true);
       performer.setSourceFiles(sourceFiles);
       performer.setTargetFiles(Collections.singletonList(targetResource));
       performer.setSummary(new CompactionTaskSummary());
@@ -577,15 +545,7 @@ public class ReadChunkCompactionPerformerNoAlignedTest {
       TsFileNameGenerator.TsFileName tsFileName =
           TsFileNameGenerator.getTsFileName(sourceFiles.get(0).getTsFile().getName());
       TsFileResource targetResource =
-          new TsFileResource(
-              new File(
-                  SEQ_DIRS,
-                  String.format(
-                      "%d-%d-%d-%d.tsfile",
-                      tsFileName.getTime(),
-                      tsFileName.getVersion(),
-                      tsFileName.getInnerCompactionCnt() + 1,
-                      tsFileName.getCrossCompactionCnt())));
+          TsFileNameGenerator.getInnerCompactionTargetFileResource(sourceFiles, true);
       performer.setSourceFiles(sourceFiles);
       performer.setTargetFiles(Collections.singletonList(targetResource));
       performer.setSummary(new CompactionTaskSummary());
@@ -660,15 +620,7 @@ public class ReadChunkCompactionPerformerNoAlignedTest {
       TsFileNameGenerator.TsFileName tsFileName =
           TsFileNameGenerator.getTsFileName(sourceFiles.get(0).getTsFile().getName());
       TsFileResource targetResource =
-          new TsFileResource(
-              new File(
-                  SEQ_DIRS,
-                  String.format(
-                      "%d-%d-%d-%d.tsfile",
-                      tsFileName.getTime(),
-                      tsFileName.getVersion(),
-                      tsFileName.getInnerCompactionCnt() + 1,
-                      tsFileName.getCrossCompactionCnt())));
+          TsFileNameGenerator.getInnerCompactionTargetFileResource(sourceFiles, true);
       performer.setSourceFiles(sourceFiles);
       performer.setTargetFiles(Collections.singletonList(targetResource));
       performer.setSummary(new CompactionTaskSummary());
@@ -746,15 +698,7 @@ public class ReadChunkCompactionPerformerNoAlignedTest {
       TsFileNameGenerator.TsFileName tsFileName =
           TsFileNameGenerator.getTsFileName(sourceFiles.get(0).getTsFile().getName());
       TsFileResource targetResource =
-          new TsFileResource(
-              new File(
-                  SEQ_DIRS,
-                  String.format(
-                      "%d-%d-%d-%d.tsfile",
-                      tsFileName.getTime(),
-                      tsFileName.getVersion(),
-                      tsFileName.getInnerCompactionCnt() + 1,
-                      tsFileName.getCrossCompactionCnt())));
+          TsFileNameGenerator.getInnerCompactionTargetFileResource(sourceFiles, true);
       performer.setSourceFiles(sourceFiles);
       performer.setTargetFiles(Collections.singletonList(targetResource));
       performer.setSummary(new CompactionTaskSummary());
@@ -825,15 +769,7 @@ public class ReadChunkCompactionPerformerNoAlignedTest {
       TsFileNameGenerator.TsFileName tsFileName =
           TsFileNameGenerator.getTsFileName(sourceFiles.get(0).getTsFile().getName());
       TsFileResource targetResource =
-          new TsFileResource(
-              new File(
-                  SEQ_DIRS,
-                  String.format(
-                      "%d-%d-%d-%d.tsfile",
-                      tsFileName.getTime(),
-                      tsFileName.getVersion(),
-                      tsFileName.getInnerCompactionCnt() + 1,
-                      tsFileName.getCrossCompactionCnt())));
+          TsFileNameGenerator.getInnerCompactionTargetFileResource(sourceFiles, true);
       performer.setSourceFiles(sourceFiles);
       performer.setTargetFiles(Collections.singletonList(targetResource));
       performer.setSummary(new CompactionTaskSummary());
@@ -907,15 +843,7 @@ public class ReadChunkCompactionPerformerNoAlignedTest {
       TsFileNameGenerator.TsFileName tsFileName =
           TsFileNameGenerator.getTsFileName(sourceFiles.get(0).getTsFile().getName());
       TsFileResource targetResource =
-          new TsFileResource(
-              new File(
-                  SEQ_DIRS,
-                  String.format(
-                      "%d-%d-%d-%d.tsfile",
-                      tsFileName.getTime(),
-                      tsFileName.getVersion(),
-                      tsFileName.getInnerCompactionCnt() + 1,
-                      tsFileName.getCrossCompactionCnt())));
+          TsFileNameGenerator.getInnerCompactionTargetFileResource(sourceFiles, true);
       performer.setSourceFiles(sourceFiles);
       performer.setTargetFiles(Collections.singletonList(targetResource));
       performer.setSummary(new CompactionTaskSummary());

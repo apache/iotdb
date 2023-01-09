@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.it.withoutNull;
 
-import org.apache.iotdb.it.env.ConfigFactory;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
@@ -39,7 +38,6 @@ import java.sql.ResultSet;
 import java.sql.Statement;
 
 import static org.apache.iotdb.db.it.utils.TestUtils.resultSetEqualTest;
-import static org.apache.iotdb.itbase.constant.TestConstant.TIMESTAMP_STR;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
@@ -123,15 +121,14 @@ public class IoTDBWithoutNullAllFilterIT {
 
   @BeforeClass
   public static void setUp() throws Exception {
-    ConfigFactory.getConfig().setPartitionInterval(1000);
-    EnvFactory.getEnv().initBeforeTest();
+    EnvFactory.getEnv().getConfig().getCommonConfig().setPartitionInterval(1000);
+    EnvFactory.getEnv().initClusterEnvironment();
     prepareData();
   }
 
   @AfterClass
   public static void tearDown() throws Exception {
-    ConfigFactory.getConfig().setPartitionInterval(86400);
-    EnvFactory.getEnv().cleanAfterTest();
+    EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
   @Test

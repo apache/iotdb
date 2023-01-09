@@ -54,7 +54,7 @@ public class CreateCQProcedure extends AbstractNodeProcedure<CreateCQState> {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(CreateCQProcedure.class);
 
-  private static final int retryThreshold = 5;
+  private static final int RETRY_THRESHOLD = 5;
 
   private final ScheduledExecutorService executor;
 
@@ -158,7 +158,7 @@ public class CreateCQProcedure extends AbstractNodeProcedure<CreateCQState> {
       } else {
         LOGGER.error(
             "Retrievable error trying to create cq [{}], state [{}]", req.getCqId(), state, t);
-        if (getCycles() > retryThreshold) {
+        if (getCycles() > RETRY_THRESHOLD) {
           setFailure(
               new ProcedureException(
                   String.format(

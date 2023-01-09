@@ -21,32 +21,27 @@ package org.apache.iotdb.db.mpp.execution.operator.schema;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.metadata.plan.schemaregion.impl.read.SchemaRegionReadPlanFactory;
-import org.apache.iotdb.db.metadata.plan.schemaregion.result.ShowTimeSeriesResult;
+import org.apache.iotdb.db.metadata.query.info.ITimeSeriesSchemaInfo;
+import org.apache.iotdb.db.metadata.query.reader.ISchemaReader;
 import org.apache.iotdb.db.metadata.template.Template;
+import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.mpp.execution.driver.SchemaDriverContext;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
+import org.apache.iotdb.tsfile.utils.Pair;
 
-import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-public class TimeSeriesSchemaScanOperator extends SchemaQueryScanOperator {
+public class TimeSeriesSchemaScanOperator extends SchemaQueryScanOperator<ITimeSeriesSchemaInfo> {
   private final String key;
   private final String value;
   private final boolean isContains;
 
-  // if is true, the result will be sorted according to the inserting frequency of the timeseries
-  private final boolean orderByHeat;
-
   private final Map<Integer, Template> templateMap;
-
-  private final List<TSDataType> outputDataTypes;
 
   public TimeSeriesSchemaScanOperator(
       PlanNodeId planNodeId,
@@ -57,19 +52,22 @@ public class TimeSeriesSchemaScanOperator extends SchemaQueryScanOperator {
       String key,
       String value,
       boolean isContains,
-      boolean orderByHeat,
       boolean isPrefixPath,
       Map<Integer, Template> templateMap) {
-    super(planNodeId, operatorContext, limit, offset, partialPath, isPrefixPath);
+    super(
+        planNodeId,
+        operatorContext,
+        limit,
+        offset,
+        partialPath,
+        isPrefixPath,
+        ColumnHeaderConstant.showTimeSeriesColumnHeaders.stream()
+            .map(ColumnHeader::getColumnType)
+            .collect(Collectors.toList()));
     this.isContains = isContains;
     this.key = key;
     this.value = value;
-    this.orderByHeat = orderByHeat;
     this.templateMap = templateMap;
-    this.outputDataTypes =
-        ColumnHeaderConstant.showTimeSeriesColumnHeaders.stream()
-            .map(ColumnHeader::getColumnType)
-            .collect(Collectors.toList());
   }
 
   public String getKey() {
@@ -84,39 +82,34 @@ public class TimeSeriesSchemaScanOperator extends SchemaQueryScanOperator {
     return isContains;
   }
 
-  public boolean isOrderByHeat() {
-    return orderByHeat;
-  }
-
   @Override
-  protected List<TsBlock> createTsBlockList() {
+  protected ISchemaReader<ITimeSeriesSchemaInfo> createSchemaReader() {
     try {
-      List<ShowTimeSeriesResult> schemaRegionResult =
-          ((SchemaDriverContext) operatorContext.getInstanceContext().getDriverContext())
-              .getSchemaRegion()
-              .showTimeseries(
-                  SchemaRegionReadPlanFactory.getShowTimeSeriesPlan(
-                      partialPath, templateMap, isContains, key, value, limit, offset, false))
-              .left;
-      return SchemaTsBlockUtil.transferSchemaResultToTsBlockList(
-          schemaRegionResult.iterator(), outputDataTypes, this::setColumns);
+      return ((SchemaDriverContext) operatorContext.getInstanceContext().getDriverContext())
+          .getSchemaRegion()
+          .getTimeSeriesReader(
+              SchemaRegionReadPlanFactory.getShowTimeSeriesPlan(
+                  partialPath, templateMap, isContains, key, value, limit, offset, false));
     } catch (MetadataException e) {
       throw new RuntimeException(e.getMessage(), e);
     }
   }
 
-  private void setColumns(ShowTimeSeriesResult series, TsBlockBuilder builder) {
+  @Override
+  protected void setColumns(ITimeSeriesSchemaInfo series, TsBlockBuilder builder) {
+    Pair<Map<String, String>, Map<String, String>> tagAndAttribute = series.getTagAndAttribute();
+    Pair<String, String> deadbandInfo = MetaUtils.parseDeadbandInfo(series.getSchema().getProps());
     builder.getTimeColumnBuilder().writeLong(0);
-    builder.writeNullableText(0, series.getPath());
+    builder.writeNullableText(0, series.getFullPath());
     builder.writeNullableText(1, series.getAlias());
-    builder.writeNullableText(2, series.getDatabase());
-    builder.writeNullableText(3, series.getDataType().toString());
-    builder.writeNullableText(4, series.getEncoding().toString());
-    builder.writeNullableText(5, series.getCompressor().toString());
-    builder.writeNullableText(6, mapToString(series.getTag()));
-    builder.writeNullableText(7, mapToString(series.getAttribute()));
-    builder.writeNullableText(8, series.getDeadband());
-    builder.writeNullableText(9, series.getDeadbandParameters());
+    builder.writeNullableText(2, getDatabase());
+    builder.writeNullableText(3, series.getSchema().getType().toString());
+    builder.writeNullableText(4, series.getSchema().getEncodingType().toString());
+    builder.writeNullableText(5, series.getSchema().getCompressor().toString());
+    builder.writeNullableText(6, mapToString(tagAndAttribute.left));
+    builder.writeNullableText(7, mapToString(tagAndAttribute.right));
+    builder.writeNullableText(8, deadbandInfo.left);
+    builder.writeNullableText(9, deadbandInfo.right);
     builder.declarePosition();
   }
 

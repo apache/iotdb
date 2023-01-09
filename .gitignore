@@ -98,6 +98,7 @@ node_identifier
 
 ### temporary file of the distributed version ###
 remote/
+!integration-test/src/main/java/org/apache/iotdb/it/env/remote/
 
 # gitpod
 .theia/
@@ -116,6 +117,7 @@ node3/
 
 # Exclude copied license
 /client-py/LICENSE
+/mlnode/LICENSE
 
 # ANTLR
 antlr/gen/

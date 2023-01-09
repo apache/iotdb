@@ -44,7 +44,7 @@ public abstract class LogWriter implements ILogWriter {
   protected final FileChannel logChannel;
   protected long size;
 
-  public LogWriter(File logFile) throws FileNotFoundException {
+  protected LogWriter(File logFile) throws FileNotFoundException {
     this.logFile = logFile;
     this.logStream = new FileOutputStream(logFile, true);
     this.logChannel = this.logStream.getChannel();

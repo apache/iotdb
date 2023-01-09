@@ -27,8 +27,8 @@ import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.trigger.TriggerInformation;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerTableResp;
 import org.apache.iotdb.db.client.ConfigNodeClient;
+import org.apache.iotdb.db.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.client.ConfigNodeInfo;
-import org.apache.iotdb.db.client.DataNodeClientPoolFactory;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
@@ -45,9 +45,7 @@ public class TriggerInformationUpdater {
   private static final Logger LOGGER = LoggerFactory.getLogger(TriggerInformationUpdater.class);
 
   private static final IClientManager<ConfigNodeRegionId, ConfigNodeClient>
-      CONFIG_NODE_CLIENT_MANAGER =
-          new IClientManager.Factory<ConfigNodeRegionId, ConfigNodeClient>()
-              .createClientManager(new DataNodeClientPoolFactory.ConfigNodeClientPoolFactory());
+      CONFIG_NODE_CLIENT_MANAGER = ConfigNodeClientManager.getInstance();
 
   private final ScheduledExecutorService triggerInformationUpdateExecutor =
       IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
@@ -55,7 +53,7 @@ public class TriggerInformationUpdater {
 
   private Future<?> updateFuture;
 
-  private static final long UPDATE_INTERVAL = 1000 * 60;
+  private static final long UPDATE_INTERVAL = 1000L * 60;
 
   public void startTriggerInformationUpdater() {
     if (updateFuture == null) {

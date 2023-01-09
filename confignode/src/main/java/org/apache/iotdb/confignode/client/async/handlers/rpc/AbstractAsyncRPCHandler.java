@@ -60,7 +60,7 @@ public abstract class AbstractAsyncRPCHandler<T> implements AsyncMethodCallback<
 
   protected final String formattedTargetLocation;
 
-  public AbstractAsyncRPCHandler(
+  protected AbstractAsyncRPCHandler(
       DataNodeRequestType requestType,
       int requestId,
       TDataNodeLocation targetDataNode,

@@ -19,8 +19,11 @@
 
 package org.apache.iotdb.commons.path.fa;
 
+import org.apache.iotdb.commons.path.PartialPath;
+
 import java.util.Iterator;
 import java.util.Map;
+import java.util.Objects;
 
 /**
  * This interface defines the behaviour of a FA(Finite Automation), generated from a path pattern or
@@ -72,4 +75,59 @@ public interface IPatternFA {
    * @return the state identified by given index
    */
   IFAState getState(int index);
+
+  /**
+   * Determines if there is overlap between the state transfer events of this FA. If it returns
+   * true, then there may be overlap. If it returns false, there must be no overlap.
+   *
+   * @return may transition overlap
+   */
+  boolean mayTransitionOverlap();
+
+  final class Builder {
+    private PartialPath pathPattern;
+    private boolean isPrefixMatch = false;
+
+    public Builder() {}
+
+    public Builder pattern(PartialPath pattern) {
+      this.pathPattern = pattern;
+      return this;
+    }
+
+    public Builder isPrefixMatch(boolean isPrefixMatch) {
+      this.isPrefixMatch = isPrefixMatch;
+      return this;
+    }
+
+    public PartialPath getPathPattern() {
+      return pathPattern;
+    }
+
+    public boolean isPrefixMatch() {
+      return isPrefixMatch;
+    }
+
+    public IPatternFA buildNFA() {
+      return FAFactory.getInstance().constructNFA(this);
+    }
+
+    public IPatternFA buildDFA() {
+      return FAFactory.getInstance().constructDFA(this);
+    }
+
+    @Override
+    public boolean equals(Object o) {
+      if (this == o) return true;
+      if (o == null || getClass() != o.getClass()) return false;
+      Builder builder = (Builder) o;
+      return isPrefixMatch == builder.isPrefixMatch
+          && Objects.equals(pathPattern, builder.pathPattern);
+    }
+
+    @Override
+    public int hashCode() {
+      return Objects.hash(pathPattern, isPrefixMatch);
+    }
+  }
 }

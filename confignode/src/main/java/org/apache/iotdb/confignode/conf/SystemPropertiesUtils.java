@@ -35,8 +35,8 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Properties;
 
-import static org.apache.iotdb.db.conf.IoTDBStartCheck.CLUSTER_NAME;
-import static org.apache.iotdb.db.conf.IoTDBStartCheck.DEFAULT_CLUSTER_NAME;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.CLUSTER_NAME;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.DEFAULT_CLUSTER_NAME;
 
 public class SystemPropertiesUtils {
 
@@ -71,6 +71,11 @@ public class SystemPropertiesUtils {
     boolean needReWrite = false;
 
     // Startup configuration
+    String clusterName = systemProperties.getProperty(CLUSTER_NAME, null);
+    if (clusterName != null && !clusterName.equals(conf.getClusterName())) {
+      throw new ConfigurationException(CLUSTER_NAME, conf.getClusterName(), clusterName);
+    }
+
     String internalAddress = systemProperties.getProperty("cn_internal_address", null);
     if (internalAddress == null) {
       needReWrite = true;

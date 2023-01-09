@@ -35,9 +35,6 @@ import org.junit.Test;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -98,38 +95,14 @@ public class ConfigMTreeTest {
   }
 
   @Test
-  public void testGetAllChildNodeNamesByPath() {
-    try {
-      root.setStorageGroup(new PartialPath("root.a.d0"));
-      root.setStorageGroup(new PartialPath("root.a.d5"));
-
-      // getChildNodeByPath
-      Set<String> result1 = root.getChildNodeNameInNextLevel(new PartialPath("root.a.d0")).left;
-      Set<String> result2 = root.getChildNodeNameInNextLevel(new PartialPath("root.a")).left;
-      Set<String> result3 = root.getChildNodeNameInNextLevel(new PartialPath("root")).left;
-      assertEquals(new HashSet<>(), result1);
-      assertEquals(new HashSet<>(Arrays.asList("d0", "d5")), result2);
-      assertEquals(new HashSet<>(Collections.singletonList("a")), result3);
-
-      // if child node is nll   will return  null HashSet
-      Set<String> result4 = root.getChildNodeNameInNextLevel(new PartialPath("root.a.d5")).left;
-      assertEquals(result4, new HashSet<>(Collections.emptyList()));
-    } catch (MetadataException e1) {
-      e1.printStackTrace();
-    }
-  }
-
-  @Test
   public void testSetStorageGroup() throws IllegalPathException {
     try {
       root.setStorageGroup(new PartialPath("root.laptop.d1"));
       assertTrue(root.isStorageGroupAlreadySet(new PartialPath("root.laptop.d1")));
-      assertTrue(root.checkStorageGroupByPath(new PartialPath("root.laptop.d1")));
       assertEquals(
           "root.laptop.d1",
           root.getBelongedStorageGroup(new PartialPath("root.laptop.d1")).getFullPath());
       assertTrue(root.isStorageGroupAlreadySet(new PartialPath("root.laptop.d1.s1")));
-      assertTrue(root.checkStorageGroupByPath(new PartialPath("root.laptop.d1.s1")));
       assertEquals(
           "root.laptop.d1",
           root.getBelongedStorageGroup(new PartialPath("root.laptop.d1.s1")).getFullPath());
@@ -158,31 +131,6 @@ public class ConfigMTreeTest {
     assertFalse(root.isStorageGroupAlreadySet(new PartialPath("root.laptop.d1")));
     assertTrue(root.isStorageGroupAlreadySet(new PartialPath("root.laptop")));
     assertTrue(root.isStorageGroupAlreadySet(new PartialPath("root.laptop.d2")));
-  }
-
-  @Test
-  public void testCheckStorageGroup() {
-    try {
-      assertFalse(root.isStorageGroup(new PartialPath("root")));
-      assertFalse(root.isStorageGroup(new PartialPath("root1.laptop.d2")));
-
-      root.setStorageGroup(new PartialPath("root.laptop.d1"));
-      assertTrue(root.isStorageGroup(new PartialPath("root.laptop.d1")));
-      assertFalse(root.isStorageGroup(new PartialPath("root.laptop.d2")));
-      assertFalse(root.isStorageGroup(new PartialPath("root.laptop")));
-      assertFalse(root.isStorageGroup(new PartialPath("root.laptop.d1.s1")));
-
-      root.setStorageGroup(new PartialPath("root.laptop.d2"));
-      assertTrue(root.isStorageGroup(new PartialPath("root.laptop.d1")));
-      assertTrue(root.isStorageGroup(new PartialPath("root.laptop.d2")));
-      assertFalse(root.isStorageGroup(new PartialPath("root.laptop.d3")));
-
-      root.setStorageGroup(new PartialPath("root.`1`"));
-      assertTrue(root.isStorageGroup(new PartialPath("root.`1`")));
-    } catch (MetadataException e) {
-      e.printStackTrace();
-      fail(e.getMessage());
-    }
   }
 
   @Test
@@ -315,7 +263,6 @@ public class ConfigMTreeTest {
     newTree.deserialize(inputStream);
 
     for (int i = 0; i < pathList.length; i++) {
-      newTree.isStorageGroup(pathList[i]);
       TStorageGroupSchema storageGroupSchema =
           newTree.getStorageGroupNodeByStorageGroupPath(pathList[i]).getStorageGroupSchema();
       Assert.assertEquals(i, storageGroupSchema.getTTL());

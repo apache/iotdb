@@ -559,7 +559,7 @@ public class ExpressionAnalyzer {
       List<PartialPath> noStarPaths = new ArrayList<>();
       for (PartialPath concatPath : concatPaths) {
         List<MeasurementPath> actualPaths = schemaTree.searchMeasurementPaths(concatPath).left;
-        if (actualPaths.size() == 0) {
+        if (actualPaths.isEmpty()) {
           return Collections.singletonList(new NullOperand());
         }
         noStarPaths.addAll(actualPaths);
@@ -663,7 +663,7 @@ public class ExpressionAnalyzer {
       for (Expression suffixExpression : expression.getExpressions()) {
         List<Expression> concatedExpression =
             concatDeviceAndRemoveWildcard(suffixExpression, devicePath, schemaTree);
-        if (concatedExpression != null && concatedExpression.size() != 0) {
+        if (concatedExpression != null && !concatedExpression.isEmpty()) {
           extendedExpressions.add(concatedExpression);
         }
       }
@@ -756,7 +756,7 @@ public class ExpressionAnalyzer {
       PartialPath concatPath = devicePath.concatPath(measurement);
 
       List<MeasurementPath> noStarPaths = schemaTree.searchMeasurementPaths(concatPath).left;
-      if (noStarPaths.size() == 0) {
+      if (noStarPaths.isEmpty()) {
         return Collections.singletonList(new NullOperand());
       }
       return reconstructTimeSeriesOperands(noStarPaths);
@@ -1107,37 +1107,11 @@ public class ExpressionAnalyzer {
   /////////////////////////////////////////////////////////////////////////////////////////////////
 
   public static String getDeviceNameInSourceExpression(Expression expression) {
-    if (expression instanceof TernaryExpression) {
-      String DeviceName =
-          getDeviceNameInSourceExpression(((TernaryExpression) expression).getFirstExpression());
-      if (DeviceName == null) {
-        DeviceName =
-            getDeviceNameInSourceExpression(((TernaryExpression) expression).getSecondExpression());
-      }
-      if (DeviceName == null) {
-        DeviceName =
-            getDeviceNameInSourceExpression(((TernaryExpression) expression).getThirdExpression());
-      }
-      return DeviceName;
-    } else if (expression instanceof BinaryExpression) {
-      String leftDeviceName =
-          getDeviceNameInSourceExpression(((BinaryExpression) expression).getLeftExpression());
-      if (leftDeviceName != null) {
-        return leftDeviceName;
-      }
-      return getDeviceNameInSourceExpression(((BinaryExpression) expression).getRightExpression());
-    } else if (expression instanceof UnaryExpression) {
-      return getDeviceNameInSourceExpression(((UnaryExpression) expression).getExpression());
-    } else if (expression instanceof TimeSeriesOperand) {
-      return ((TimeSeriesOperand) expression).getPath().getDevice();
-    } else if (expression instanceof FunctionExpression) {
-      return getDeviceNameInSourceExpression(expression.getExpressions().get(0));
-    } else if (expression instanceof ConstantOperand || expression instanceof TimestampOperand) {
-      return null;
-    } else {
+    if (!(expression instanceof TimeSeriesOperand)) {
       throw new IllegalArgumentException(
-          "unsupported expression type: " + expression.getExpressionType());
+          "unsupported expression type for source expression: " + expression.getExpressionType());
     }
+    return ((TimeSeriesOperand) expression).getPath().getDevice();
   }
 
   public static Expression getMeasurementExpression(Expression expression) {
