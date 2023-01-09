@@ -32,7 +32,7 @@ import java.util.List;
 public class DataDriverContext extends DriverContext {
 
   private final List<PartialPath> paths;
-  private Filter timeFilter;
+  private final Filter timeFilter;
   private final IDataRegionForQuery dataRegion;
   private final List<DataSourceOperator> sourceOperators;
 
@@ -72,10 +72,6 @@ public class DataDriverContext extends DriverContext {
 
   public void addPath(PartialPath path) {
     this.paths.add(path);
-  }
-
-  public void setTimeFilter(Filter timeFilter) {
-    this.timeFilter = timeFilter;
   }
 
   public void addSourceOperator(DataSourceOperator sourceOperator) {

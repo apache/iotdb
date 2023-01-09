@@ -358,8 +358,7 @@ public abstract class Driver implements IDriver {
       sinkHandle.setNoMoreTsBlocks();
 
       // record operator execution statistics to metrics
-      List<OperatorContext> operatorContexts =
-          driverContext.getFragmentInstanceContext().getOperatorContexts();
+      List<OperatorContext> operatorContexts = driverContext.getOperatorContexts();
       for (OperatorContext operatorContext : operatorContexts) {
         String operatorType = operatorContext.getOperatorType();
         QUERY_METRICS.recordOperatorExecutionCost(

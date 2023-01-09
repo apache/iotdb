@@ -29,6 +29,7 @@ import static java.util.Objects.requireNonNull;
 public class PipelineDriverFactory {
 
   private final DriverContext driverContext;
+  // TODO Use OperatorFactory to replace operator to generate multiple drivers for on pipeline
   private final Operator operation;
 
   public PipelineDriverFactory(Operator operation, DriverContext driverContext) {

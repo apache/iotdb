@@ -676,7 +676,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
       SingleDeviceViewNode node, LocalExecutionPlanContext context) {
     OperatorContext operatorContext =
         context
-            .getInstanceContext()
+            .getDriverContext()
             .addOperatorContext(
                 context.getNextOperatorId(),
                 node.getPlanNodeId(),
@@ -752,7 +752,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
   public Operator visitMergeSort(MergeSortNode node, LocalExecutionPlanContext context) {
     OperatorContext operatorContext =
         context
-            .getInstanceContext()
+            .getDriverContext()
             .addOperatorContext(
                 context.getNextOperatorId(),
                 node.getPlanNodeId(),
@@ -1211,10 +1211,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         node.getTagValuesToAggregationDescriptors().size() >= 1,
         "GroupByTag aggregation descriptors cannot be empty");
 
-    List<Operator> children =
-        node.getChildren().stream()
-            .map(child -> child.accept(this, context))
-            .collect(Collectors.toList());
+    List<Operator> children = dealWithConsumeAllChildrenPipelineBreaker(node, context);
 
     boolean ascending = node.getScanOrder() == Ordering.ASC;
     Map<String, List<InputLocation>> layout = makeLayout(node);
@@ -1447,7 +1444,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     Operator child = node.getChild().accept(this, context);
     OperatorContext operatorContext =
         context
-            .getInstanceContext()
+            .getDriverContext()
             .addOperatorContext(
                 context.getNextOperatorId(),
                 node.getPlanNodeId(),
@@ -1665,10 +1662,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
   @Override
   public Operator visitVerticallyConcat(
       VerticallyConcatNode node, LocalExecutionPlanContext context) {
-    List<Operator> children =
-        node.getChildren().stream()
-            .map(child -> child.accept(this, context))
-            .collect(Collectors.toList());
+    List<Operator> children = dealWithConsumeAllChildrenPipelineBreaker(node, context);
     OperatorContext operatorContext =
         context
             .getDriverContext()
@@ -1686,7 +1680,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
   public Operator visitShowQueries(ShowQueriesNode node, LocalExecutionPlanContext context) {
     OperatorContext operatorContext =
         context
-            .getInstanceContext()
+            .getDriverContext()
             .addOperatorContext(
                 context.getNextOperatorId(),
                 node.getPlanNodeId(),

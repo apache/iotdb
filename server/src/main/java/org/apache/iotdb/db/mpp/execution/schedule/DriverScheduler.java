@@ -195,36 +195,38 @@ public class DriverScheduler implements IDriverScheduler, IService {
   @Override
   public void abortQuery(QueryId queryId) {
     Map<FragmentInstanceId, Set<DriverTask>> queryRelatedTasks = queryMap.remove(queryId);
-    for (Set<DriverTask> fragmentRelatedTasks : queryRelatedTasks.values()) {
-      if (fragmentRelatedTasks != null) {
-        for (DriverTask task : fragmentRelatedTasks) {
-          task.lock();
-          try {
-            task.setAbortCause(DriverTaskAbortedException.BY_QUERY_CASCADING_ABORTED);
-            clearDriverTask(task);
-          } finally {
-            task.unlock();
+    if (queryRelatedTasks != null) {
+      for (Set<DriverTask> fragmentRelatedTasks : queryRelatedTasks.values()) {
+        if (fragmentRelatedTasks != null) {
+          for (DriverTask task : fragmentRelatedTasks) {
+            task.lock();
+            try {
+              task.setAbortCause(DriverTaskAbortedException.BY_QUERY_CASCADING_ABORTED);
+              clearDriverTask(task);
+            } finally {
+              task.unlock();
+            }
           }
         }
       }
     }
-    // help for gc
-    queryRelatedTasks = null;
   }
 
   @Override
   public void abortFragmentInstance(FragmentInstanceId instanceId) {
     Set<DriverTask> instanceRelatedTasks = queryMap.get(instanceId.getQueryId()).remove(instanceId);
-    for (DriverTask task : instanceRelatedTasks) {
-      if (task == null) {
-        return;
-      }
-      task.lock();
-      try {
-        task.setAbortCause(DriverTaskAbortedException.BY_FRAGMENT_ABORT_CALLED);
-        clearDriverTask(task);
-      } finally {
-        task.unlock();
+    if (instanceRelatedTasks != null) {
+      for (DriverTask task : instanceRelatedTasks) {
+        if (task == null) {
+          return;
+        }
+        task.lock();
+        try {
+          task.setAbortCause(DriverTaskAbortedException.BY_FRAGMENT_ABORT_CALLED);
+          clearDriverTask(task);
+        } finally {
+          task.unlock();
+        }
       }
     }
   }

@@ -55,6 +55,7 @@ import static java.util.Objects.requireNonNull;
 public class LocalExecutionPlanContext {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(LocalExecutionPlanContext.class);
+  // Save operators in this pipeline, a new one will be created when creating another pipeline
   private final DriverContext driverContext;
   private final AtomicInteger nextOperatorId;
   private final TypeProvider typeProvider;
@@ -214,10 +215,6 @@ public class LocalExecutionPlanContext {
 
   public List<Pair<TimeValuePair, Binary>> getCachedLastValueAndPathList() {
     return cachedLastValueAndPathList;
-  }
-
-  public ISinkHandle getSinkHandle() {
-    return driverContext.getSinkHandle();
   }
 
   public void setSinkHandle(ISinkHandle sinkHandle) {

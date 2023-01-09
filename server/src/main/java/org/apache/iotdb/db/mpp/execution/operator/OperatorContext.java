@@ -81,6 +81,7 @@ public class OperatorContext {
     this.driverContext = driverContext;
   }
 
+  // TODO forbid get instance context from operator directly
   public FragmentInstanceContext getInstanceContext() {
     return driverContext.getFragmentInstanceContext();
   }
