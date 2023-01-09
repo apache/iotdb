@@ -71,10 +71,14 @@ public class DataRegionStateMachine extends BaseStateMachine {
   }
 
   @Override
-  public void start() {}
+  public void start() {
+    // do nothing
+  }
 
   @Override
-  public void stop() {}
+  public void stop() {
+    // do nothing
+  }
 
   @Override
   public boolean isReadOnly() {

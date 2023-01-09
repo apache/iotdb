@@ -98,7 +98,7 @@ public class IoTConsensusServerImpl {
 
   private final Peer thisNode;
   private final IStateMachine stateMachine;
-  private final ConcurrentHashMap<String, IoTConsensusSyncLogCache> cacheQueueMap;
+  private final ConcurrentHashMap<String, SyncLogCacheQueue> cacheQueueMap;
   private final Lock stateMachineLock = new ReentrantLock();
   private final Condition stateMachineCondition = stateMachineLock.newCondition();
   private final String storageDir;
@@ -293,9 +293,9 @@ public class IoTConsensusServerImpl {
    * @param request the request need to sync
    */
   public TSStatus syncLog(BatchIndexedConsensusRequest request) {
-    IoTConsensusSyncLogCache syncLogCacheQueue =
+    SyncLogCacheQueue syncLogCacheQueue =
         cacheQueueMap.computeIfAbsent(
-            request.getSourcePeerId(), k -> new IoTConsensusSyncLogCache(k));
+            request.getSourcePeerId(), k -> new SyncLogCacheQueue(k));
     try {
       syncLogCacheQueue.lock();
       syncLogCacheQueue.waitForWrite(request);
@@ -798,7 +798,7 @@ public class IoTConsensusServerImpl {
     }
   }
 
-  private class IoTConsensusSyncLogCache {
+  private class SyncLogCacheQueue {
     private final String sourcePeerId;
     private final Lock queueLock = new ReentrantLock();
     private final Condition queueSortCondition = queueLock.newCondition();
@@ -808,7 +808,7 @@ public class IoTConsensusServerImpl {
         config.getReplication().getMaxWaitingTimeForCacheBatchInMs();
     private long nextSyncIndex = -1;
 
-    public IoTConsensusSyncLogCache(String sourcePeerId) {
+    public SyncLogCacheQueue(String sourcePeerId) {
       this.sourcePeerId = sourcePeerId;
       this.requestCache = new PriorityQueue<>();
     }
