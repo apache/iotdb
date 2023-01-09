@@ -22,19 +22,32 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mtree.store.IMTreeStore;
-import org.apache.iotdb.db.metadata.mtree.traverser.Traverser;
+import org.apache.iotdb.db.metadata.mtree.traverser.basic.EntityTraverser;
 
-// This class define the count as traversal result.
-public abstract class CounterTraverser extends Traverser {
+// This class implement entity counter.
+public class EntityCounter extends EntityTraverser<Void> implements Counter {
+  private int count;
 
-  protected long count;
-
-  protected CounterTraverser(IMNode startNode, PartialPath path, IMTreeStore store)
+  public EntityCounter(IMNode startNode, PartialPath path, IMTreeStore store, boolean isPrefixMatch)
       throws MetadataException {
-    super(startNode, path, store);
+    super(startNode, path, store, isPrefixMatch);
   }
 
-  public long getCount() {
+  @Override
+  protected Void generateResult(IMNode nextMatchedNode) {
+    count++;
+    return null;
+  }
+
+  @Override
+  public long count() throws MetadataException {
+    while (hasNext()) {
+      next();
+    }
+    if (!isSuccess()) {
+      Throwable e = getFailure();
+      throw new MetadataException(e.getMessage(), e);
+    }
     return count;
   }
 }

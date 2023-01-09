@@ -16,47 +16,54 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.metadata.mtree.traverser.collector;
+package org.apache.iotdb.db.metadata.mtree.traverser.basic;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mtree.store.IMTreeStore;
+import org.apache.iotdb.db.metadata.mtree.traverser.Traverser;
 
-import java.util.HashSet;
-import java.util.Set;
+public abstract class DatabaseTraverser<R> extends Traverser<R> {
 
-public abstract class MNodeAboveSGCollector<T> extends MNodeCollector<T> {
+  protected boolean collectInternal = false;
 
-  protected Set<PartialPath> involvedStorageGroupMNodes = new HashSet<>();
-
-  protected MNodeAboveSGCollector(
+  /**
+   * To traverse subtree under root.sg, e.g., init Traverser(root, "root.sg.**")
+   *
+   * @param startNode denote which tree to traverse by passing its root
+   * @param path use wildcard to specify which part to traverse
+   * @param store
+   * @param isPrefixMatch
+   * @throws MetadataException
+   */
+  public DatabaseTraverser(
       IMNode startNode, PartialPath path, IMTreeStore store, boolean isPrefixMatch)
       throws MetadataException {
     super(startNode, path, store, isPrefixMatch);
   }
 
   @Override
+  protected boolean acceptFullMatchedNode(IMNode node) {
+    return node.isStorageGroup();
+  }
+
+  @Override
+  protected boolean acceptInternalMatchedNode(IMNode node) {
+    return collectInternal && node.isStorageGroup();
+  }
+
+  @Override
   protected boolean shouldVisitSubtreeOfFullMatchedNode(IMNode node) {
-    if (node.isStorageGroup()) {
-      involvedStorageGroupMNodes.add(getParentPartialPath().concatNode(node.getName()));
-      return false;
-    } else {
-      return super.shouldVisitSubtreeOfFullMatchedNode(node);
-    }
+    return !node.isStorageGroup();
   }
 
   @Override
   protected boolean shouldVisitSubtreeOfInternalMatchedNode(IMNode node) {
-    if (node.isStorageGroup()) {
-      involvedStorageGroupMNodes.add(getParentPartialPath().concatNode(node.getName()));
-      return false;
-    } else {
-      return super.shouldVisitSubtreeOfInternalMatchedNode(node);
-    }
+    return !node.isStorageGroup();
   }
 
-  public Set<PartialPath> getInvolvedStorageGroupMNodes() {
-    return involvedStorageGroupMNodes;
+  public void setCollectInternal(boolean collectInternal) {
+    this.collectInternal = collectInternal;
   }
 }

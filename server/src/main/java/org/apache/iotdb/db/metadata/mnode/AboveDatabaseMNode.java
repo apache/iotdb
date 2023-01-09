@@ -16,12 +16,22 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.db.metadata.mnode;
 
-package org.apache.iotdb.commons.schema.tree;
+/** Used to fill the link list of MNode above database in IMTreeBelowSG */
+public class AboveDatabaseMNode extends InternalMNode {
+  /**
+   * Constructor of MNode.
+   *
+   * @param parent
+   * @param name
+   */
+  public AboveDatabaseMNode(IMNode parent, String name) {
+    super(parent, name);
+  }
 
-import java.io.Serializable;
-
-public interface ITreeNode extends Serializable {
-
-  String getName();
+  @Override
+  public boolean isAboveDatabase() {
+    return true;
+  }
 }

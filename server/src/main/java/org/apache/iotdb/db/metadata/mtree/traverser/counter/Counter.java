@@ -16,12 +16,10 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.db.metadata.mtree.traverser.counter;
 
-package org.apache.iotdb.commons.schema.tree;
+import org.apache.iotdb.commons.exception.MetadataException;
 
-import java.io.Serializable;
-
-public interface ITreeNode extends Serializable {
-
-  String getName();
+public interface Counter {
+  long count() throws MetadataException;
 }

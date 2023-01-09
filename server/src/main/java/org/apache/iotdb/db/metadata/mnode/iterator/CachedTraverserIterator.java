@@ -16,29 +16,30 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.metadata.mtree.traverser.collector;
+package org.apache.iotdb.db.metadata.mnode.iterator;
 
 import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
-import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mtree.store.IMTreeStore;
-import org.apache.iotdb.db.metadata.mtree.traverser.basic.EntityTraverser;
+import org.apache.iotdb.db.metadata.template.Template;
 
-// This class defines EntityMNode as target node and defines the Entity process framework.
-// TODO: set R is IDeviceSchemaInfo
-public abstract class EntityCollector<R> extends EntityTraverser<R> {
+import java.util.Map;
 
-  protected EntityCollector(
-      IMNode startNode, PartialPath path, IMTreeStore store, boolean isPrefixMatch)
+public class CachedTraverserIterator extends AbstractTraverserIterator {
+  private final IMTreeStore store;
+
+  public CachedTraverserIterator(
+      IMTreeStore store, IEntityMNode parent, Map<Integer, Template> templateMap)
       throws MetadataException {
-    super(startNode, path, store, isPrefixMatch);
+    super(store, parent, templateMap);
+    this.store = store;
   }
 
   @Override
-  protected R generateResult(IMNode nextMatchedNode) {
-    return collectEntity(nextMatchedNode.getAsEntityMNode());
+  public void close() {
+    if (nextMatchedNode != null && usingDirectChildrenIterator) {
+      store.unPin(nextMatchedNode);
+    }
+    super.close();
   }
-
-  protected abstract R collectEntity(IEntityMNode node);
 }

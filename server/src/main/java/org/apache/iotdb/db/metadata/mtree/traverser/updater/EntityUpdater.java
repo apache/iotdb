@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.metadata.mtree.traverser.collector;
+package org.apache.iotdb.db.metadata.mtree.traverser.updater;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -25,20 +25,41 @@ import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mtree.store.IMTreeStore;
 import org.apache.iotdb.db.metadata.mtree.traverser.basic.EntityTraverser;
 
-// This class defines EntityMNode as target node and defines the Entity process framework.
-// TODO: set R is IDeviceSchemaInfo
-public abstract class EntityCollector<R> extends EntityTraverser<R> {
-
-  protected EntityCollector(
-      IMNode startNode, PartialPath path, IMTreeStore store, boolean isPrefixMatch)
+public abstract class EntityUpdater extends EntityTraverser<Void> implements Updater {
+  /**
+   * To traverse subtree under root.sg, e.g., init Traverser(root, "root.sg.**")
+   *
+   * @param startNode denote which tree to traverse by passing its root
+   * @param path use wildcard to specify which part to traverse
+   * @param store
+   * @param isPrefixMatch
+   * @throws MetadataException
+   */
+  public EntityUpdater(IMNode startNode, PartialPath path, IMTreeStore store, boolean isPrefixMatch)
       throws MetadataException {
     super(startNode, path, store, isPrefixMatch);
   }
 
   @Override
-  protected R generateResult(IMNode nextMatchedNode) {
-    return collectEntity(nextMatchedNode.getAsEntityMNode());
+  protected Void generateResult(IMNode nextMatchedNode) {
+    try {
+      updateEntity(nextMatchedNode.getAsEntityMNode());
+    } catch (MetadataException e) {
+      setFailure(e);
+    }
+    return null;
   }
 
-  protected abstract R collectEntity(IEntityMNode node);
+  @Override
+  public void update() throws MetadataException {
+    while (super.hasNext()) {
+      super.next();
+    }
+    if (!isSuccess()) {
+      Throwable e = getFailure();
+      throw new MetadataException(e.getMessage(), e);
+    }
+  }
+
+  protected abstract void updateEntity(IEntityMNode node) throws MetadataException;
 }

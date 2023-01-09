@@ -16,33 +16,48 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.metadata.mtree.traverser.counter;
+package org.apache.iotdb.db.metadata.mtree.traverser.basic;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mtree.store.IMTreeStore;
+import org.apache.iotdb.db.metadata.mtree.traverser.Traverser;
 
-// This class implements database count function.
-public class StorageGroupCounter extends CounterTraverser {
+public abstract class MeasurementTraverser<R> extends Traverser<R> {
 
-  public StorageGroupCounter(IMNode startNode, PartialPath path, IMTreeStore store)
+  /**
+   * To traverse subtree under root.sg, e.g., init Traverser(root, "root.sg.**")
+   *
+   * @param startNode denote which tree to traverse by passing its root
+   * @param path use wildcard to specify which part to traverse
+   * @param store
+   * @param isPrefixMatch
+   * @throws MetadataException
+   */
+  public MeasurementTraverser(
+      IMNode startNode, PartialPath path, IMTreeStore store, boolean isPrefixMatch)
       throws MetadataException {
-    super(startNode, path, store);
+    super(startNode, path, store, isPrefixMatch);
   }
 
   @Override
-  protected boolean processInternalMatchedMNode(IMNode node, int idx, int level) {
-    return node.isStorageGroup();
+  protected boolean acceptFullMatchedNode(IMNode node) {
+    return node.isMeasurement();
   }
 
   @Override
-  protected boolean processFullMatchedMNode(IMNode node, int idx, int level) {
-    if (node.isStorageGroup()) {
-      count++;
-      return true;
-    } else {
-      return false;
-    }
+  protected boolean acceptInternalMatchedNode(IMNode node) {
+    return false;
+  }
+
+  @Override
+  protected boolean shouldVisitSubtreeOfFullMatchedNode(IMNode node) {
+    return !node.isMeasurement();
+  }
+
+  @Override
+  protected boolean shouldVisitSubtreeOfInternalMatchedNode(IMNode node) {
+    return !node.isMeasurement();
   }
 }

@@ -553,20 +553,6 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     return matchedPathsInNextLevel;
   }
 
-  public Pair<Set<String>, Set<PartialPath>> getChildNodeNameInNextLevel(PartialPath partialPath) {
-    Pair<Set<String>, Set<PartialPath>> matchedNamesInNextLevel =
-        new Pair<>(new HashSet<>(), new HashSet<>());
-    storageGroupReadWriteLock.readLock().lock();
-    try {
-      matchedNamesInNextLevel = mTree.getChildNodeNameInNextLevel(partialPath);
-    } catch (MetadataException e) {
-      LOGGER.error("Error get matched names in next level.", e);
-    } finally {
-      storageGroupReadWriteLock.readLock().unlock();
-    }
-    return matchedNamesInNextLevel;
-  }
-
   public TSStatus createSchemaTemplate(CreateSchemaTemplatePlan createSchemaTemplatePlan) {
     try {
       Template template = createSchemaTemplatePlan.getTemplate();

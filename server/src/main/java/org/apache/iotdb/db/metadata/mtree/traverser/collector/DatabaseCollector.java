@@ -21,42 +21,24 @@ package org.apache.iotdb.db.metadata.mtree.traverser.collector;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
+import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.mtree.store.IMTreeStore;
+import org.apache.iotdb.db.metadata.mtree.traverser.basic.DatabaseTraverser;
 
-import java.util.HashSet;
-import java.util.Set;
-
-public abstract class MNodeAboveSGCollector<T> extends MNodeCollector<T> {
-
-  protected Set<PartialPath> involvedStorageGroupMNodes = new HashSet<>();
-
-  protected MNodeAboveSGCollector(
+// This class implements database path collection function.
+public abstract class DatabaseCollector<R> extends DatabaseTraverser<R> {
+  protected DatabaseCollector(
       IMNode startNode, PartialPath path, IMTreeStore store, boolean isPrefixMatch)
       throws MetadataException {
     super(startNode, path, store, isPrefixMatch);
   }
 
   @Override
-  protected boolean shouldVisitSubtreeOfFullMatchedNode(IMNode node) {
-    if (node.isStorageGroup()) {
-      involvedStorageGroupMNodes.add(getParentPartialPath().concatNode(node.getName()));
-      return false;
-    } else {
-      return super.shouldVisitSubtreeOfFullMatchedNode(node);
-    }
+  protected R generateResult(IMNode nextMatchedNode) {
+    collectDatabase(nextMatchedNode.getAsStorageGroupMNode());
+    return null;
   }
 
-  @Override
-  protected boolean shouldVisitSubtreeOfInternalMatchedNode(IMNode node) {
-    if (node.isStorageGroup()) {
-      involvedStorageGroupMNodes.add(getParentPartialPath().concatNode(node.getName()));
-      return false;
-    } else {
-      return super.shouldVisitSubtreeOfInternalMatchedNode(node);
-    }
-  }
-
-  public Set<PartialPath> getInvolvedStorageGroupMNodes() {
-    return involvedStorageGroupMNodes;
-  }
+  // TODO: make collectDatabase return R
+  protected abstract void collectDatabase(IStorageGroupMNode node);
 }

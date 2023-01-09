@@ -16,47 +16,51 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.metadata.mtree.traverser.collector;
+package org.apache.iotdb.db.metadata.mtree.traverser.updater;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
+import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mtree.store.IMTreeStore;
+import org.apache.iotdb.db.metadata.mtree.traverser.basic.MeasurementTraverser;
 
-import java.util.HashSet;
-import java.util.Set;
-
-public abstract class MNodeAboveSGCollector<T> extends MNodeCollector<T> {
-
-  protected Set<PartialPath> involvedStorageGroupMNodes = new HashSet<>();
-
-  protected MNodeAboveSGCollector(
+public abstract class MeasurementUpdater extends MeasurementTraverser<Void> implements Updater {
+  /**
+   * To traverse subtree under root.sg, e.g., init Traverser(root, "root.sg.**")
+   *
+   * @param startNode denote which tree to traverse by passing its root
+   * @param path use wildcard to specify which part to traverse
+   * @param store
+   * @param isPrefixMatch
+   * @throws MetadataException
+   */
+  public MeasurementUpdater(
       IMNode startNode, PartialPath path, IMTreeStore store, boolean isPrefixMatch)
       throws MetadataException {
     super(startNode, path, store, isPrefixMatch);
   }
 
   @Override
-  protected boolean shouldVisitSubtreeOfFullMatchedNode(IMNode node) {
-    if (node.isStorageGroup()) {
-      involvedStorageGroupMNodes.add(getParentPartialPath().concatNode(node.getName()));
-      return false;
-    } else {
-      return super.shouldVisitSubtreeOfFullMatchedNode(node);
+  protected Void generateResult(IMNode nextMatchedNode) {
+    try {
+      updateMeasurement(nextMatchedNode.getAsMeasurementMNode());
+    } catch (MetadataException e) {
+      setFailure(e);
     }
+    return null;
   }
 
   @Override
-  protected boolean shouldVisitSubtreeOfInternalMatchedNode(IMNode node) {
-    if (node.isStorageGroup()) {
-      involvedStorageGroupMNodes.add(getParentPartialPath().concatNode(node.getName()));
-      return false;
-    } else {
-      return super.shouldVisitSubtreeOfInternalMatchedNode(node);
+  public void update() throws MetadataException {
+    while (super.hasNext()) {
+      super.next();
+    }
+    if (!isSuccess()) {
+      Throwable e = getFailure();
+      throw new MetadataException(e.getMessage(), e);
     }
   }
 
-  public Set<PartialPath> getInvolvedStorageGroupMNodes() {
-    return involvedStorageGroupMNodes;
-  }
+  protected abstract void updateMeasurement(IMeasurementMNode node) throws MetadataException;
 }
