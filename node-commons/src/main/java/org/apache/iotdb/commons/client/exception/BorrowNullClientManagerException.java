@@ -19,13 +19,11 @@
 
 package org.apache.iotdb.commons.client.exception;
 
-public class ClientManagerException extends Exception {
+public class BorrowNullClientManagerException extends ClientManagerException {
 
-  public ClientManagerException(Exception exception) {
-    super(exception);
-  }
+  private static final String MESSAGE = "Can not borrow client for node null";
 
-  public ClientManagerException(String message) {
-    super(message);
+  public BorrowNullClientManagerException() {
+    super(MESSAGE);
   }
 }

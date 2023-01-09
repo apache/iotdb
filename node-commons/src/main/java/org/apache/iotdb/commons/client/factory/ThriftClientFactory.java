@@ -17,15 +17,18 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.client.exception;
+package org.apache.iotdb.commons.client.factory;
 
-public class ClientManagerException extends Exception {
+import org.apache.iotdb.commons.client.ClientManager;
+import org.apache.iotdb.commons.client.property.ThriftClientProperty;
 
-  public ClientManagerException(Exception exception) {
-    super(exception);
-  }
+public abstract class ThriftClientFactory<K, V> extends BaseClientFactory<K, V> {
 
-  public ClientManagerException(String message) {
-    super(message);
+  protected ThriftClientProperty thriftClientProperty;
+
+  protected ThriftClientFactory(
+      ClientManager<K, V> clientManager, ThriftClientProperty thriftClientProperty) {
+    super(clientManager);
+    this.thriftClientProperty = thriftClientProperty;
   }
 }

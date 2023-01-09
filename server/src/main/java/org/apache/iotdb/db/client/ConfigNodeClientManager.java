@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -16,16 +16,20 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.commons.client.sync;
 
-public interface SyncThriftClient {
+package org.apache.iotdb.db.client;
 
-  /** close the connection */
-  void invalidate();
+import org.apache.iotdb.commons.client.IClientManager;
+import org.apache.iotdb.commons.consensus.ConfigNodeRegionId;
 
-  /**
-   * Clears the specified pool, removing all pooled instances corresponding to current instance's
-   * endPoint.
-   */
-  void invalidateAll();
+public class ConfigNodeClientManager {
+  private static final class ConfigNodeClientManagerHolder {
+    private static final IClientManager<ConfigNodeRegionId, ConfigNodeClient> INSTANCE =
+        new IClientManager.Factory<ConfigNodeRegionId, ConfigNodeClient>()
+            .createClientManager(new DataNodeClientPoolFactory.ConfigNodeClientPoolFactory());
+  }
+
+  public static IClientManager<ConfigNodeRegionId, ConfigNodeClient> getInstance() {
+    return ConfigNodeClientManagerHolder.INSTANCE;
+  }
 }
