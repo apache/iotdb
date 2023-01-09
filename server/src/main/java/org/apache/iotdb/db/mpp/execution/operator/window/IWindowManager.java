@@ -89,6 +89,12 @@ public interface IWindowManager {
    */
   boolean isTsBlockOutOfBound(TsBlock inputTsBlock);
 
+  /**
+   * According to the Aggregator list, we could obtain all the aggregation result column type list.
+   *
+   * @param aggregators
+   * @return Aggregation result column type list.
+   */
   default List<TSDataType> getResultDataTypes(List<Aggregator> aggregators) {
     List<TSDataType> dataTypes = new ArrayList<>();
     for (Aggregator aggregator : aggregators) {
@@ -97,10 +103,35 @@ public interface IWindowManager {
     return dataTypes;
   }
 
+  /**
+   * Used to create the aggregation resultSet.
+   *
+   * <p>For the implementation, we should consider whether we need to add endTime column and event
+   * column in the resultSet besides the aggregation columns.
+   *
+   * @param aggregators
+   * @return TsBlockBuilder of resultSet
+   */
   TsBlockBuilder createResultTsBlockBuilder(List<Aggregator> aggregators);
 
+  /**
+   * Used to append a row of aggregation result into the resultSet.
+   *
+   * <p>For the implementation, similar to the method createResultTsBlockBuilder, we should consider
+   * whether we need to add endTime column and event column in the resultSet besides the aggregation
+   * columns.
+   *
+   * @param resultTsBlockBuilder
+   * @param aggregators
+   */
   void appendAggregationResult(TsBlockBuilder resultTsBlockBuilder, List<Aggregator> aggregators);
 
+  /**
+   * Especially for TimeWindow, if there are no points belong to last TimeWindow, the last
+   * TimeWindow will not initialize window and aggregators in the aggregation frame.
+   *
+   * @return whether the window is TimeWindow and the last TimeWindow has not been initialized
+   */
   boolean notInitedLastTimeWindow();
 
   /**
