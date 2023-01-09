@@ -200,7 +200,7 @@ public class StatementGenerator {
       selectComponent.addResultColumn(
           new ResultColumn(
               new FunctionExpression(
-                  aggregations.get(i).toString().toLowerCase(),
+                  aggregations.get(i).toString(),
                   new LinkedHashMap<>(),
                   Collections.singletonList(new TimeSeriesOperand(selectPaths.get(i)))),
               ResultColumn.ColumnType.AGGREGATION));
