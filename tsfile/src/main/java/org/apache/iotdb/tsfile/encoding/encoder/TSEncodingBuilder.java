@@ -402,7 +402,6 @@ public abstract class TSEncodingBuilder {
     }
   }
 
-
   /** for FLOAT, DOUBLE, INT, LONG. */
   public static class Chimp extends TSEncodingBuilder {
 

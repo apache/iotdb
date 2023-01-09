@@ -52,5 +52,4 @@ public class DoublePrecisionChimpEncoder extends LongChimpEncoder {
     // the encoder may be reused, so let us reset it
     reset();
   }
-
 }

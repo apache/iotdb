@@ -64,6 +64,12 @@ FREQ encoding is lossy. It transforms the time sequence to the frequency domain 
   
 ZIGZAG encoding maps signed integers to unsigned integers so that numbers with a small absolute value (for instance, -1) have a small variant encoded value too. It does this in a way that "zig-zags" back and forth through the positive and negative integers.
 
+* CHIMP
+
+CHIMP encoding is lossless. It is the state-of-the-art compression algorithm for streaming floating point data, providing impressive savings compared to earlier approaches. It is suitable for any numerical sequence with similar values and works best for sequence data without large fluctuations and/or random noise.
+
+Usage restrictions: When using CHIMP to encode INT32 data, you need to ensure that there is no data point with the value `Integer.MIN_VALUE` in the sequence. When using CHIMP to encode INT64 data, you need to ensure that there is no data point with the value `Long.MIN_VALUE` in the sequence.
+
 ## Correspondence between data type and encoding
 
 The five encodings described in the previous sections are applicable to different data types. If the correspondence is wrong, the time series cannot be created correctly. The correspondence between the data type and its supported encodings is summarized in the Table below.

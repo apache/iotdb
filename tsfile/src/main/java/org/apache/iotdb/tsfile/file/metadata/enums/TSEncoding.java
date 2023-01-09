@@ -73,7 +73,7 @@ public enum TSEncoding {
       case 10:
         return TSEncoding.FREQ;
       case 11:
-          return TSEncoding.CHIMP;
+        return TSEncoding.CHIMP;
       default:
         throw new IllegalArgumentException("Invalid input: " + encoding);
     }

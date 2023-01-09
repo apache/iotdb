@@ -41,10 +41,10 @@ public class SinglePrecisionChimpDecoder extends IntChimpDecoder {
 
   @Override
   protected int cacheNext(ByteBuffer in) {
-      readNext(in);
-      if (storedValues[current] == CHIMP_ENCODING_ENDING) {
-        hasNext = false;
-      }
-      return storedValues[current];
+    readNext(in);
+    if (storedValues[current] == CHIMP_ENCODING_ENDING) {
+      hasNext = false;
     }
+    return storedValues[current];
+  }
 }

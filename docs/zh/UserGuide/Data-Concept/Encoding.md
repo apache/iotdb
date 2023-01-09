@@ -63,6 +63,12 @@ GORILLA 编码是一种无损编码，它比较适合编码前后值比较接近
 
 ZigZag编码将有符号整型映射到无符号整型，适合比较小的整数。
 
+* CHIMP
+
+CHIMP encoding is lossless. It is the state-of-the-art compression algorithm for streaming floating point data, providing impressive savings compared to earlier approaches. It is suitable for any numerical sequence with similar values and works best for sequence data without large fluctuations and/or random noise.
+
+Usage restrictions: When using CHIMP to encode INT32 data, you need to ensure that there is no data point with the value `Integer.MIN_VALUE` in the sequence. When using CHIMP to encode INT64 data, you need to ensure that there is no data point with the value `Long.MIN_VALUE` in the sequence.
+
 ## 数据类型与编码的对应关系
 
 前文介绍的五种编码适用于不同的数据类型，若对应关系错误，则无法正确创建时间序列。数据类型与支持其编码的编码方式对应关系总结如表格 2-3。
