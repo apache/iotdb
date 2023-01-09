@@ -114,7 +114,7 @@ public class IoTConsensusRPCServiceProcessor implements IoTConsensusIService.Asy
                             : ByteBufferConsensusRequest::new)
                     .collect(Collectors.toList())));
       }
-      TSStatus writeStatus = impl.getStateMachine().write(logEntriesInThisBatch);
+      TSStatus writeStatus = impl.syncLog(logEntriesInThisBatch);
       logger.debug(
           "execute TSyncLogEntriesReq for {} with result {}",
           req.consensusGroupId,

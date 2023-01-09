@@ -92,6 +92,8 @@ public class DataRegionConsensusImpl {
                                       .setWalThrottleThreshold(conf.getThrottleThreshold())
                                       .setAllocateMemoryForConsensus(
                                           conf.getAllocateMemoryForConsensus())
+                                      .setMaxWaitingTimeForCacheBatchInMs(
+                                          conf.getCacheWindowTimeInMs())
                                       .build())
                               .build())
                       .setRatisConfig(

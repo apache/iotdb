@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.consensus.IStateMachine;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.Peer;
+import org.apache.iotdb.consensus.common.request.BatchIndexedConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
 import org.apache.iotdb.consensus.config.IoTConsensusConfig;
@@ -77,7 +78,10 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.LinkedList;
 import java.util.List;
+import java.util.PriorityQueue;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.Condition;
@@ -94,6 +98,7 @@ public class IoTConsensusServerImpl {
 
   private final Peer thisNode;
   private final IStateMachine stateMachine;
+  private final ConcurrentHashMap<String, IoTConsensusSyncLogCache> cacheQueueMap;
   private final Lock stateMachineLock = new ReentrantLock();
   private final Condition stateMachineCondition = stateMachineLock.newCondition();
   private final String storageDir;
@@ -139,6 +144,7 @@ public class IoTConsensusServerImpl {
     this.index = new AtomicLong(currentSearchIndex);
     this.consensusGroupId = thisNode.getGroupId().toString();
     this.metrics = new IoTConsensusServerMetrics(this);
+    this.cacheQueueMap = new ConcurrentHashMap<>();
   }
 
   public IStateMachine getStateMachine() {
@@ -278,6 +284,29 @@ public class IoTConsensusServerImpl {
       return result;
     } finally {
       stateMachineLock.unlock();
+    }
+  }
+
+  /**
+   * Sync log using cache
+   *
+   * @param request the request need to sync
+   */
+  public TSStatus syncLog(BatchIndexedConsensusRequest request) {
+    IoTConsensusSyncLogCache syncLogCacheQueue =
+        cacheQueueMap.computeIfAbsent(
+            request.getSourcePeerId(), k -> new IoTConsensusSyncLogCache(k));
+    try {
+      syncLogCacheQueue.lock();
+      syncLogCacheQueue.waitForWrite(request);
+      List<TSStatus> subStatus = new LinkedList<>();
+      for (IndexedConsensusRequest indexedConsensusRequest : request.getRequests()) {
+        subStatus.add(stateMachine.write(indexedConsensusRequest));
+      }
+      syncLogCacheQueue.signalAll();
+      return new TSStatus().setSubStatus(subStatus);
+    } finally {
+      syncLogCacheQueue.unlock();
     }
   }
 
@@ -766,6 +795,103 @@ public class IoTConsensusServerImpl {
       } catch (IOException e) {
         throw new ConsensusGroupModifyPeerException(e);
       }
+    }
+  }
+
+  private class IoTConsensusSyncLogCache {
+    private final String sourcePeerId;
+    private final Lock queueLock = new ReentrantLock();
+    private final Condition queueSortCondition = queueLock.newCondition();
+    private final PriorityQueue<BatchIndexedConsensusRequest> requestCache;
+    private final int maxRequestCacheSize = config.getReplication().getMaxPendingBatchesNum();
+    private final long cacheTimeWindowInMs =
+        config.getReplication().getMaxWaitingTimeForCacheBatchInMs();
+    private long nextSyncIndex = -1;
+
+    public IoTConsensusSyncLogCache(String sourcePeerId) {
+      this.sourcePeerId = sourcePeerId;
+      this.requestCache = new PriorityQueue<>();
+    }
+
+    /**
+     * This method is used to adjust the order of IoTConsensus SyncLog. By this method, we can keep
+     * write order in follower the same as the leader. And besides order insurance, we can make the
+     * deserialization of PlanNode to be concurrent
+     */
+    public void waitForWrite(BatchIndexedConsensusRequest request) {
+      requestCache.add(request);
+      // If the peek is not hold by current thread, it should notify the corresponding thread to
+      // process the peek when the queue is full
+      if (requestCache.size() == maxRequestCacheSize
+          && requestCache.peek() != null
+          && requestCache.peek().getStartSyncIndex() != request.getStartSyncIndex()) {
+        queueSortCondition.signalAll();
+      }
+      while (true) {
+        // If current InsertNode is the next target InsertNode, write it
+        if (request.getStartSyncIndex() == nextSyncIndex) {
+          requestCache.remove(request);
+          nextSyncIndex = request.getEndSyncIndex() + 1;
+          break;
+        }
+        // If all write thread doesn't hit nextSyncIndex and the heap is full, write
+        // the peek request. This is used to keep the whole write correct when nextSyncIndex
+        // is not set. We won't persist the value of nextSyncIndex to reduce the complexity.
+        // There are some cases that nextSyncIndex is not set:
+        //   1. When the system was just started
+        //   2. When some exception occurs during SyncLog
+        if (requestCache.size() == maxRequestCacheSize
+            && requestCache.peek() != null
+            && requestCache.peek().getStartSyncIndex() == request.getStartSyncIndex()) {
+          requestCache.remove();
+          nextSyncIndex = request.getEndSyncIndex() + 1;
+          break;
+        }
+        try {
+          boolean timeout = !queueSortCondition.await(cacheTimeWindowInMs, TimeUnit.MILLISECONDS);
+          if (timeout) {
+            // although the timeout is triggered, current thread cannot write its request
+            // if current thread does not hold the peek request. And there should be some
+            // other thread who hold the peek request. In this scenario, current thread
+            // should go into await again and wait until its request becoming peek request
+            if (requestCache.peek() != null
+                && requestCache.peek().getStartSyncIndex() == request.getStartSyncIndex()) {
+              // current thread hold the peek request thus it can write the peek immediately.
+              logger.info(
+                  "waiting target request timeout. current index: {}, target index: {}",
+                  request.getStartSyncIndex(),
+                  nextSyncIndex);
+              requestCache.remove(request);
+              break;
+            }
+          }
+        } catch (InterruptedException e) {
+          logger.warn(
+              "current waiting is interrupted. SyncIndex: {}. Exception: {}",
+              request.getStartSyncIndex(),
+              e);
+          Thread.currentThread().interrupt();
+        }
+      }
+      logger.debug(
+          "source = {}, region = {}, queue size {}, startSyncIndex = {}, endSyncIndex = {}",
+          sourcePeerId,
+          consensusGroupId,
+          requestCache.size(),
+          request.getStartSyncIndex(),
+          request.getEndSyncIndex());
+    }
+
+    public void lock() {
+      queueLock.lock();
+    }
+
+    public void unlock() {
+      queueLock.unlock();
+    }
+
+    public void signalAll() {
+      queueSortCondition.signalAll();
     }
   }
 }

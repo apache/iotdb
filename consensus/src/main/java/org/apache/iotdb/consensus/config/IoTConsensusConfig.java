@@ -235,6 +235,7 @@ public class IoTConsensusConfig {
     private final int maxLogEntriesNumPerBatch;
     private final int maxSizePerBatch;
     private final int maxPendingBatchesNum;
+    private final long maxWaitingTimeForCacheBatchInMs;
     private final int maxWaitingTimeForAccumulatingBatchInMs;
     private final long basicRetryWaitTimeMs;
     private final long maxRetryWaitTimeMs;
@@ -248,6 +249,7 @@ public class IoTConsensusConfig {
         int maxLogEntriesNumPerBatch,
         int maxSizePerBatch,
         int maxPendingBatchesNum,
+        long maxWaitingTimeForCacheBatchInMs,
         int maxWaitingTimeForAccumulatingBatchInMs,
         long basicRetryWaitTimeMs,
         long maxRetryWaitTimeMs,
@@ -259,6 +261,7 @@ public class IoTConsensusConfig {
       this.maxLogEntriesNumPerBatch = maxLogEntriesNumPerBatch;
       this.maxSizePerBatch = maxSizePerBatch;
       this.maxPendingBatchesNum = maxPendingBatchesNum;
+      this.maxWaitingTimeForCacheBatchInMs = maxWaitingTimeForCacheBatchInMs;
       this.maxWaitingTimeForAccumulatingBatchInMs = maxWaitingTimeForAccumulatingBatchInMs;
       this.basicRetryWaitTimeMs = basicRetryWaitTimeMs;
       this.maxRetryWaitTimeMs = maxRetryWaitTimeMs;
@@ -279,6 +282,10 @@ public class IoTConsensusConfig {
 
     public int getMaxPendingBatchesNum() {
       return maxPendingBatchesNum;
+    }
+
+    public long getMaxWaitingTimeForCacheBatchInMs() {
+      return maxWaitingTimeForCacheBatchInMs;
     }
 
     public int getMaxWaitingTimeForAccumulatingBatchInMs() {
@@ -324,6 +331,7 @@ public class IoTConsensusConfig {
       // (IMPORTANT) Value of this variable should be the same with MAX_REQUEST_CACHE_SIZE
       // in DataRegionStateMachine
       private int maxPendingBatchesNum = 5;
+      private long maxWaitingTimeForCacheBatchInMs = 10 * 1000L;
       private int maxWaitingTimeForAccumulatingBatchInMs = 500;
       private long basicRetryWaitTimeMs = TimeUnit.MILLISECONDS.toMillis(100);
       private long maxRetryWaitTimeMs = TimeUnit.SECONDS.toMillis(20);
@@ -345,6 +353,12 @@ public class IoTConsensusConfig {
 
       public Replication.Builder setMaxPendingBatchesNum(int maxPendingBatchesNum) {
         this.maxPendingBatchesNum = maxPendingBatchesNum;
+        return this;
+      }
+
+      public Replication.Builder setMaxWaitingTimeForCacheBatchInMs(
+          long maxWaitingTimeForCacheBatchInMs) {
+        this.maxWaitingTimeForCacheBatchInMs = maxWaitingTimeForCacheBatchInMs;
         return this;
       }
 
@@ -394,6 +408,7 @@ public class IoTConsensusConfig {
             maxLogEntriesNumPerBatch,
             maxSizePerBatch,
             maxPendingBatchesNum,
+            maxWaitingTimeForCacheBatchInMs,
             maxWaitingTimeForAccumulatingBatchInMs,
             basicRetryWaitTimeMs,
             maxRetryWaitTimeMs,
