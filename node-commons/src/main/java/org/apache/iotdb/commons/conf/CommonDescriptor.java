@@ -116,6 +116,22 @@ public class CommonDescriptor {
                     String.valueOf(config.getSelectorNumOfClientManager()))
                 .trim()));
 
+    config.setCoreClientNumForEachNode(
+        Integer.parseInt(
+            properties
+                .getProperty(
+                    "cn_core_client_count_for_each_node_in_client_manager",
+                    String.valueOf(config.getCoreClientNumForEachNode()))
+                .trim()));
+
+    config.setMaxClientNumForEachNode(
+        Integer.parseInt(
+            properties
+                .getProperty(
+                    "cn_max_client_count_for_each_node_in_client_manager",
+                    String.valueOf(config.getMaxClientNumForEachNode()))
+                .trim()));
+
     config.setConnectionTimeoutInMS(
         Integer.parseInt(
             properties
@@ -139,20 +155,20 @@ public class CommonDescriptor {
                     String.valueOf(config.getSelectorNumOfClientManager()))
                 .trim()));
 
-    config.setMaxTotalClientForEachNode(
+    config.setCoreClientNumForEachNode(
         Integer.parseInt(
             properties
                 .getProperty(
-                    "dn_max_connection_for_internal_service",
-                    String.valueOf(config.getMaxTotalClientForEachNode()))
+                    "dn_core_client_count_for_each_node_in_client_manager",
+                    String.valueOf(config.getCoreClientNumForEachNode()))
                 .trim()));
 
-    config.setMaxIdleClientForEachNode(
+    config.setMaxClientNumForEachNode(
         Integer.parseInt(
             properties
                 .getProperty(
-                    "dn_core_connection_for_internal_service",
-                    String.valueOf(config.getMaxIdleClientForEachNode()))
+                    "dn_max_client_count_for_each_node_in_client_manager",
+                    String.valueOf(config.getMaxClientNumForEachNode()))
                 .trim()));
 
     config.setHandleSystemErrorStrategy(
