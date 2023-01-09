@@ -22,7 +22,6 @@ import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.MeasurementPath;
-import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.mpp.aggregation.AccumulatorFactory;
 import org.apache.iotdb.db.mpp.aggregation.Aggregator;
 import org.apache.iotdb.db.mpp.aggregation.timerangeiterator.ITimeRangeIterator;
@@ -53,21 +52,18 @@ import org.apache.iotdb.db.mpp.execution.operator.process.last.LastQueryMergeOpe
 import org.apache.iotdb.db.mpp.execution.operator.process.last.LastQueryOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.last.LastQuerySortOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.last.UpdateLastCacheOperator;
+import org.apache.iotdb.db.mpp.execution.operator.schema.CountGroupByLevelScanOperator;
 import org.apache.iotdb.db.mpp.execution.operator.schema.CountMergeOperator;
-import org.apache.iotdb.db.mpp.execution.operator.schema.DevicesCountOperator;
-import org.apache.iotdb.db.mpp.execution.operator.schema.DevicesSchemaScanOperator;
-import org.apache.iotdb.db.mpp.execution.operator.schema.LevelTimeSeriesCountOperator;
 import org.apache.iotdb.db.mpp.execution.operator.schema.NodeManageMemoryMergeOperator;
 import org.apache.iotdb.db.mpp.execution.operator.schema.NodePathsConvertOperator;
 import org.apache.iotdb.db.mpp.execution.operator.schema.NodePathsCountOperator;
-import org.apache.iotdb.db.mpp.execution.operator.schema.NodePathsSchemaScanOperator;
-import org.apache.iotdb.db.mpp.execution.operator.schema.PathsUsingTemplateScanOperator;
+import org.apache.iotdb.db.mpp.execution.operator.schema.SchemaCountOperator;
 import org.apache.iotdb.db.mpp.execution.operator.schema.SchemaFetchMergeOperator;
 import org.apache.iotdb.db.mpp.execution.operator.schema.SchemaFetchScanOperator;
 import org.apache.iotdb.db.mpp.execution.operator.schema.SchemaQueryMergeOperator;
 import org.apache.iotdb.db.mpp.execution.operator.schema.SchemaQueryOrderByHeatOperator;
-import org.apache.iotdb.db.mpp.execution.operator.schema.TimeSeriesCountOperator;
-import org.apache.iotdb.db.mpp.execution.operator.schema.TimeSeriesSchemaScanOperator;
+import org.apache.iotdb.db.mpp.execution.operator.schema.SchemaQueryScanOperator;
+import org.apache.iotdb.db.mpp.execution.operator.schema.source.ISchemaSource;
 import org.apache.iotdb.db.mpp.execution.operator.source.AlignedSeriesScanOperator;
 import org.apache.iotdb.db.mpp.execution.operator.source.ExchangeOperator;
 import org.apache.iotdb.db.mpp.execution.operator.source.LastCacheScanOperator;
@@ -679,7 +675,7 @@ public class OperatorMemoryTest {
   }
 
   @Test
-  public void TimeSeriesSchemaScanOperatorTest() {
+  public void SchemaQueryScanOperatorTest() {
     ExecutorService instanceNotificationExecutor =
         IoTDBThreadPoolFactory.newFixedThreadPool(1, "test-instance-notification");
     try {
@@ -692,126 +688,16 @@ public class OperatorMemoryTest {
           createFragmentInstanceContext(instanceId, stateMachine);
       PlanNodeId planNodeId = new PlanNodeId("1");
       fragmentInstanceContext.addOperatorContext(
-          1, planNodeId, SeriesScanOperator.class.getSimpleName());
+          1, planNodeId, SchemaQueryScanOperator.class.getSimpleName());
 
-      TimeSeriesSchemaScanOperator operator =
-          new TimeSeriesSchemaScanOperator(
+      SchemaQueryScanOperator<?> operator =
+          new SchemaQueryScanOperator<>(
               planNodeId,
               fragmentInstanceContext.getOperatorContexts().get(0),
-              0,
-              0,
-              null,
-              null,
-              null,
-              false,
-              false,
-              null);
+              Mockito.mock(ISchemaSource.class));
 
       assertEquals(DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES, operator.calculateMaxPeekMemory());
       assertEquals(DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES, operator.calculateMaxReturnSize());
-      assertEquals(0, operator.calculateRetainedSizeAfterCallingNext());
-
-    } finally {
-      instanceNotificationExecutor.shutdown();
-    }
-  }
-
-  @Test
-  public void DeviceSchemaScanOperatorTest() {
-    ExecutorService instanceNotificationExecutor =
-        IoTDBThreadPoolFactory.newFixedThreadPool(1, "test-instance-notification");
-    try {
-      QueryId queryId = new QueryId("stub_query");
-      FragmentInstanceId instanceId =
-          new FragmentInstanceId(new PlanFragmentId(queryId, 0), "stub-instance");
-      FragmentInstanceStateMachine stateMachine =
-          new FragmentInstanceStateMachine(instanceId, instanceNotificationExecutor);
-      FragmentInstanceContext fragmentInstanceContext =
-          createFragmentInstanceContext(instanceId, stateMachine);
-      PlanNodeId planNodeId = new PlanNodeId("1");
-      fragmentInstanceContext.addOperatorContext(
-          1, planNodeId, SeriesScanOperator.class.getSimpleName());
-
-      DevicesSchemaScanOperator operator =
-          new DevicesSchemaScanOperator(
-              planNodeId,
-              fragmentInstanceContext.getOperatorContexts().get(0),
-              0,
-              0,
-              null,
-              false,
-              false);
-
-      assertEquals(DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES, operator.calculateMaxPeekMemory());
-      assertEquals(DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES, operator.calculateMaxReturnSize());
-      assertEquals(0, operator.calculateRetainedSizeAfterCallingNext());
-
-    } finally {
-      instanceNotificationExecutor.shutdown();
-    }
-  }
-
-  @Test
-  public void PathsUsingTemplateScanOperatorTest() {
-    ExecutorService instanceNotificationExecutor =
-        IoTDBThreadPoolFactory.newFixedThreadPool(1, "test-instance-notification");
-    try {
-      QueryId queryId = new QueryId("stub_query");
-      FragmentInstanceId instanceId =
-          new FragmentInstanceId(new PlanFragmentId(queryId, 0), "stub-instance");
-      FragmentInstanceStateMachine stateMachine =
-          new FragmentInstanceStateMachine(instanceId, instanceNotificationExecutor);
-      FragmentInstanceContext fragmentInstanceContext =
-          createFragmentInstanceContext(instanceId, stateMachine);
-      PlanNodeId planNodeId = new PlanNodeId("1");
-      fragmentInstanceContext.addOperatorContext(
-          1, planNodeId, SeriesScanOperator.class.getSimpleName());
-
-      PathsUsingTemplateScanOperator operator =
-          new PathsUsingTemplateScanOperator(
-              planNodeId,
-              fragmentInstanceContext.getOperatorContexts().get(0),
-              Collections.singletonList(new PartialPath(new String[] {"root", "**"})),
-              0);
-
-      assertEquals(DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES, operator.calculateMaxPeekMemory());
-      assertEquals(DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES, operator.calculateMaxReturnSize());
-      assertEquals(0, operator.calculateRetainedSizeAfterCallingNext());
-
-    } finally {
-      instanceNotificationExecutor.shutdown();
-    }
-  }
-
-  @Test
-  public void TimeSeriesCountOperatorTest() {
-    ExecutorService instanceNotificationExecutor =
-        IoTDBThreadPoolFactory.newFixedThreadPool(1, "test-instance-notification");
-    try {
-      QueryId queryId = new QueryId("stub_query");
-      FragmentInstanceId instanceId =
-          new FragmentInstanceId(new PlanFragmentId(queryId, 0), "stub-instance");
-      FragmentInstanceStateMachine stateMachine =
-          new FragmentInstanceStateMachine(instanceId, instanceNotificationExecutor);
-      FragmentInstanceContext fragmentInstanceContext =
-          createFragmentInstanceContext(instanceId, stateMachine);
-      PlanNodeId planNodeId = new PlanNodeId("1");
-      fragmentInstanceContext.addOperatorContext(
-          1, planNodeId, SeriesScanOperator.class.getSimpleName());
-
-      TimeSeriesCountOperator operator =
-          new TimeSeriesCountOperator(
-              planNodeId,
-              fragmentInstanceContext.getOperatorContexts().get(0),
-              null,
-              false,
-              null,
-              null,
-              false,
-              Collections.emptyMap());
-
-      assertEquals(8L, operator.calculateMaxPeekMemory());
-      assertEquals(8L, operator.calculateMaxReturnSize());
       assertEquals(0, operator.calculateRetainedSizeAfterCallingNext());
 
     } finally {
@@ -835,16 +721,12 @@ public class OperatorMemoryTest {
       fragmentInstanceContext.addOperatorContext(
           1, planNodeId, SeriesScanOperator.class.getSimpleName());
 
-      LevelTimeSeriesCountOperator operator =
-          new LevelTimeSeriesCountOperator(
+      CountGroupByLevelScanOperator<?> operator =
+          new CountGroupByLevelScanOperator<>(
               planNodeId,
               fragmentInstanceContext.getOperatorContexts().get(0),
-              null,
-              false,
               4,
-              null,
-              null,
-              false);
+              Mockito.mock(ISchemaSource.class));
 
       assertEquals(DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES, operator.calculateMaxPeekMemory());
       assertEquals(DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES, operator.calculateMaxReturnSize());
@@ -856,7 +738,7 @@ public class OperatorMemoryTest {
   }
 
   @Test
-  public void DevicesCountOperatorTest() {
+  public void SchemaCountOperatorTest() {
     ExecutorService instanceNotificationExecutor =
         IoTDBThreadPoolFactory.newFixedThreadPool(1, "test-instance-notification");
     try {
@@ -869,11 +751,13 @@ public class OperatorMemoryTest {
           createFragmentInstanceContext(instanceId, stateMachine);
       PlanNodeId planNodeId = new PlanNodeId("1");
       fragmentInstanceContext.addOperatorContext(
-          1, planNodeId, SeriesScanOperator.class.getSimpleName());
+          1, planNodeId, SchemaCountOperator.class.getSimpleName());
 
-      DevicesCountOperator operator =
-          new DevicesCountOperator(
-              planNodeId, fragmentInstanceContext.getOperatorContexts().get(0), null, false);
+      SchemaCountOperator<?> operator =
+          new SchemaCountOperator<>(
+              planNodeId,
+              fragmentInstanceContext.getOperatorContexts().get(0),
+              Mockito.mock(ISchemaSource.class));
 
       assertEquals(8L, operator.calculateMaxPeekMemory());
       assertEquals(8L, operator.calculateMaxReturnSize());
@@ -1029,35 +913,6 @@ public class OperatorMemoryTest {
     assertEquals(expectedMaxPeekMemory, operator.calculateMaxPeekMemory());
     assertEquals(expectedMaxReturnSize, operator.calculateMaxReturnSize());
     assertEquals(expectedRetainedSize, operator.calculateRetainedSizeAfterCallingNext());
-  }
-
-  @Test
-  public void NodePathsSchemaScanOperatorTest() {
-    ExecutorService instanceNotificationExecutor =
-        IoTDBThreadPoolFactory.newFixedThreadPool(1, "test-instance-notification");
-    try {
-      QueryId queryId = new QueryId("stub_query");
-      FragmentInstanceId instanceId =
-          new FragmentInstanceId(new PlanFragmentId(queryId, 0), "stub-instance");
-      FragmentInstanceStateMachine stateMachine =
-          new FragmentInstanceStateMachine(instanceId, instanceNotificationExecutor);
-      FragmentInstanceContext fragmentInstanceContext =
-          createFragmentInstanceContext(instanceId, stateMachine);
-      PlanNodeId planNodeId = new PlanNodeId("1");
-      fragmentInstanceContext.addOperatorContext(
-          1, planNodeId, SeriesScanOperator.class.getSimpleName());
-
-      NodePathsSchemaScanOperator operator =
-          new NodePathsSchemaScanOperator(
-              planNodeId, fragmentInstanceContext.getOperatorContexts().get(0), null, 4);
-
-      assertEquals(DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES, operator.calculateMaxPeekMemory());
-      assertEquals(DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES, operator.calculateMaxReturnSize());
-      assertEquals(0, operator.calculateRetainedSizeAfterCallingNext());
-
-    } finally {
-      instanceNotificationExecutor.shutdown();
-    }
   }
 
   @Test
