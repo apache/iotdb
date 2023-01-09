@@ -154,4 +154,8 @@ public class RegionGroupCache {
   public RegionGroupStatistics getStatistics() {
     return currentStatistics;
   }
+
+  public RegionCache getRegionCache(int dataNodeId) {
+    return regionCacheMap.get(dataNodeId);
+  }
 }

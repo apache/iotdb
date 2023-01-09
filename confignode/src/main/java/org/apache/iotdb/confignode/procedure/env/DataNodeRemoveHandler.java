@@ -74,6 +74,16 @@ public class DataNodeRemoveHandler {
         location.getDataNodeId(), location.getClientRpcEndPoint());
   }
 
+  public void markRegionAsMigrating(
+      TConsensusGroupId consensusGroupId, TDataNodeLocation originalDataNode) {
+    configManager
+        .getPartitionManager()
+        .getRegionGroupCacheMap()
+        .get(consensusGroupId)
+        .getRegionCache(originalDataNode.getDataNodeId())
+        .setIs_migrating(true);
+  }
+
   /**
    * Get all consensus group id in this node
    *
