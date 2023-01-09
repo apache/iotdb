@@ -42,8 +42,8 @@ public class LongChimpEncoder extends GorillaEncoderV2 {
   private static final int PREVIOUS_VALUES_LOG2 = (int) (Math.log(PREVIOUS_VALUES) / Math.log(2));
   private static final int THRESHOLD = 6 + PREVIOUS_VALUES_LOG2;
   private static final int SET_LSB = (int) Math.pow(2, THRESHOLD + 1) - 1;
-  private static final int FLAG_ONE_SIZE = PREVIOUS_VALUES_LOG2 + 11;
-  private static final int FLAG_ZERO_SIZE = PREVIOUS_VALUES_LOG2 + 2;
+  private static final int CASE_ZERO_METADATA_LENGTH = PREVIOUS_VALUES_LOG2 + 2;
+  private static final int CASE_ONE_METADATA_LENGTH = PREVIOUS_VALUES_LOG2 + 11;
   public static final short[] LEADING_REPRESENTATION = {
     0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 7, 7, 7, 7, 7, 7,
     7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7
@@ -65,8 +65,6 @@ public class LongChimpEncoder extends GorillaEncoderV2 {
     this.indices = new int[(int) Math.pow(2, THRESHOLD + 1)];
     this.storedValues = new long[PREVIOUS_VALUES];
   }
-
-  private static final long CHIMP_ENCODING_ENDING = Double.doubleToRawLongBits(Double.NaN);
 
   private static final int ONE_ITEM_MAX_SIZE =
       (2
@@ -104,7 +102,7 @@ public class LongChimpEncoder extends GorillaEncoderV2 {
   @Override
   public void flush(ByteArrayOutputStream out) {
     // ending stream
-    encode(CHIMP_ENCODING_ENDING, out);
+    encode(Long.MIN_VALUE, out);
 
     // flip the byte no matter it is empty or not
     // the empty ending byte is necessary when decoding
@@ -157,7 +155,7 @@ public class LongChimpEncoder extends GorillaEncoderV2 {
     // case 00: the values are identical, write 00 control bits
     // and the index of the previous value
     if (xor == 0) {
-      writeBits(previousIndex, FLAG_ZERO_SIZE, out);
+      writeBits(previousIndex, CASE_ZERO_METADATA_LENGTH, out);
       storedLeadingZeros = VALUE_BITS_LENGTH_64BIT + 1;
     } else {
       int leadingZeros = leadingRound[Long.numberOfLeadingZeros(xor)];
@@ -171,7 +169,7 @@ public class LongChimpEncoder extends GorillaEncoderV2 {
             512 * (PREVIOUS_VALUES + previousIndex)
                 + 64 * leadingRepresentation[leadingZeros]
                 + significantBits,
-            FLAG_ONE_SIZE,
+            CASE_ONE_METADATA_LENGTH,
             out);
         writeBits(xor >>> trailingZeros, significantBits, out); // Store the meaningful bits of XOR
         storedLeadingZeros = VALUE_BITS_LENGTH_64BIT + 1;

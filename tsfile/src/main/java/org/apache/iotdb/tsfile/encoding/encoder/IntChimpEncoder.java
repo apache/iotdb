@@ -42,8 +42,8 @@ public class IntChimpEncoder extends GorillaEncoderV2 {
   private static final int PREVIOUS_VALUES_LOG2 = (int) (Math.log(PREVIOUS_VALUES) / Math.log(2));
   private static final int THRESHOLD = 5 + PREVIOUS_VALUES_LOG2;
   private static final int SET_LSB = (int) Math.pow(2, THRESHOLD + 1) - 1;
-  private static final int FLAG_ONE_SIZE = PREVIOUS_VALUES_LOG2 + 10;
-  private static final int FLAG_ZERO_SIZE = PREVIOUS_VALUES_LOG2 + 2;
+  private static final int CASE_ZERO_METADATA_LENGTH = PREVIOUS_VALUES_LOG2 + 2;
+  private static final int CASE_ONE_METADATA_LENGTH = PREVIOUS_VALUES_LOG2 + 10;
   public static final short[] LEADING_REPRESENTATION = {
     0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 7, 7, 7, 7, 7, 7,
     7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7
@@ -65,8 +65,6 @@ public class IntChimpEncoder extends GorillaEncoderV2 {
     this.indices = new int[(int) Math.pow(2, THRESHOLD + 1)];
     this.storedValues = new int[PREVIOUS_VALUES];
   }
-
-  private static final int CHIMP_ENCODING_ENDING = Float.floatToRawIntBits(Float.NaN);
 
   private static final int ONE_ITEM_MAX_SIZE =
       (2
@@ -93,7 +91,7 @@ public class IntChimpEncoder extends GorillaEncoderV2 {
   @Override
   public void flush(ByteArrayOutputStream out) {
     // ending stream
-    encode(CHIMP_ENCODING_ENDING, out);
+    encode(Integer.MIN_VALUE, out);
 
     // flip the byte no matter it is empty or not
     // the empty ending byte is necessary when decoding
@@ -146,7 +144,7 @@ public class IntChimpEncoder extends GorillaEncoderV2 {
     // case 00: the values are identical, write 00 control bits
     // and the index of the previous value
     if (xor == 0) {
-      writeBits(previousIndex, FLAG_ZERO_SIZE, out);
+      writeBits(previousIndex, CASE_ZERO_METADATA_LENGTH, out);
       storedLeadingZeros = VALUE_BITS_LENGTH_32BIT + 1;
     } else {
       int leadingZeros = LEADING_ROUND[Integer.numberOfLeadingZeros(xor)];
@@ -160,7 +158,7 @@ public class IntChimpEncoder extends GorillaEncoderV2 {
             256 * (PREVIOUS_VALUES + previousIndex)
                 + 32 * LEADING_REPRESENTATION[leadingZeros]
                 + significantBits,
-            FLAG_ONE_SIZE,
+            CASE_ONE_METADATA_LENGTH,
             out);
         writeBits(xor >>> trailingZeros, significantBits, out); // Store the meaningful bits of XOR
         storedLeadingZeros = VALUE_BITS_LENGTH_32BIT + 1;

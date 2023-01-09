@@ -32,8 +32,19 @@ import java.nio.ByteBuffer;
  */
 public class SinglePrecisionChimpDecoder extends IntChimpDecoder {
 
+  private static final int CHIMP_ENCODING_ENDING = Float.floatToRawIntBits(Float.NaN);
+
   @Override
   public final float readFloat(ByteBuffer in) {
     return Float.intBitsToFloat(readInt(in));
   }
+
+  @Override
+  protected int cacheNext(ByteBuffer in) {
+      readNext(in);
+      if (storedValues[current] == CHIMP_ENCODING_ENDING) {
+        hasNext = false;
+      }
+      return storedValues[current];
+    }
 }

@@ -36,15 +36,14 @@ import static org.apache.iotdb.tsfile.common.conf.TSFileConfig.VALUE_BITS_LENGTH
  */
 public class LongChimpDecoder extends GorillaDecoderV2 {
 
-  private static final long CHIMP_ENCODING_ENDING = Double.doubleToRawLongBits(Double.NaN);
   private static final short[] LEADING_REPRESENTATION = {0, 8, 12, 16, 18, 20, 22, 24};
   private static final int PREVIOUS_VALUES = 128;
   private static final int PREVIOUS_VALUES_LOG2 = (int) (Math.log(PREVIOUS_VALUES) / Math.log(2));
-  private static final int INITIAL_FILL = PREVIOUS_VALUES_LOG2 + 9;
+  private static final int CASE_ONE_METADATA_LENGTH = PREVIOUS_VALUES_LOG2 + 9;
 
   private long storedValue = 0;
-  private long storedValues[] = new long[PREVIOUS_VALUES];
-  private int current = 0;
+  protected long storedValues[] = new long[PREVIOUS_VALUES];
+  protected int current = 0;
 
   public LongChimpDecoder() {
     this.setType(TSEncoding.CHIMP);
@@ -82,7 +81,7 @@ public class LongChimpDecoder extends GorillaDecoderV2 {
 
   protected long cacheNext(ByteBuffer in) {
     readNext(in);
-    if (storedValues[current] == CHIMP_ENCODING_ENDING) {
+    if (storedValues[current] == Long.MIN_VALUE) {
       hasNext = false;
     }
     return storedValues[current];
@@ -116,7 +115,7 @@ public class LongChimpDecoder extends GorillaDecoderV2 {
         // the length of the meaningful XORed value in the next 6
         // bits. Finally read the meaningful bits of the XORed value.
       case 1:
-        int fill = INITIAL_FILL;
+        int fill = CASE_ONE_METADATA_LENGTH;
         int temp = (int) readLong(fill, in);
         int index = temp >>> (fill -= PREVIOUS_VALUES_LOG2) & (1 << PREVIOUS_VALUES_LOG2) - 1;
         storedLeadingZeros = LEADING_REPRESENTATION[temp >>> (fill -= 3) & (1 << 3) - 1];
@@ -143,7 +142,7 @@ public class LongChimpDecoder extends GorillaDecoderV2 {
     }
   }
 
-  protected byte readNextNBits(int n, ByteBuffer in) {
+  private byte readNextNBits(int n, ByteBuffer in) {
     byte value = 0x00;
     for (int i = 0; i < n; i++) {
       value <<= 1;

@@ -32,8 +32,19 @@ import java.nio.ByteBuffer;
  */
 public class DoublePrecisionChimpDecoder extends LongChimpDecoder {
 
+  private static final long CHIMP_ENCODING_ENDING = Double.doubleToRawLongBits(Double.NaN);
+
   @Override
   public final double readDouble(ByteBuffer in) {
     return Double.longBitsToDouble(readLong(in));
+  }
+
+  @Override
+  protected long cacheNext(ByteBuffer in) {
+    readNext(in);
+    if (storedValues[current] == CHIMP_ENCODING_ENDING) {
+      hasNext = false;
+    }
+    return storedValues[current];
   }
 }
