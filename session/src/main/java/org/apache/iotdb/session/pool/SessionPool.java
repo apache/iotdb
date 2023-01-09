@@ -18,13 +18,13 @@
  */
 package org.apache.iotdb.session.pool;
 
+import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.isession.ISession;
 import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.isession.pool.ISessionPool;
 import org.apache.iotdb.isession.pool.SessionDataSetWrapper;
 import org.apache.iotdb.isession.template.Template;
-import org.apache.iotdb.isession.util.Aggregation;
 import org.apache.iotdb.isession.util.Version;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
@@ -2557,7 +2557,7 @@ public class SessionPool implements ISessionPool {
 
   @Override
   public SessionDataSetWrapper executeAggregationQuery(
-      List<String> paths, List<Aggregation> aggregations)
+      List<String> paths, List<TAggregationType> aggregations)
       throws StatementExecutionException, IoTDBConnectionException {
     for (int i = 0; i < RETRY; i++) {
       ISession session = getSession();
@@ -2581,7 +2581,7 @@ public class SessionPool implements ISessionPool {
 
   @Override
   public SessionDataSetWrapper executeAggregationQuery(
-      List<String> paths, List<Aggregation> aggregations, long startTime, long endTime)
+      List<String> paths, List<TAggregationType> aggregations, long startTime, long endTime)
       throws StatementExecutionException, IoTDBConnectionException {
     for (int i = 0; i < RETRY; i++) {
       ISession session = getSession();
@@ -2607,7 +2607,7 @@ public class SessionPool implements ISessionPool {
   @Override
   public SessionDataSetWrapper executeAggregationQuery(
       List<String> paths,
-      List<Aggregation> aggregations,
+      List<TAggregationType> aggregations,
       long startTime,
       long endTime,
       long interval)
@@ -2636,7 +2636,7 @@ public class SessionPool implements ISessionPool {
   @Override
   public SessionDataSetWrapper executeAggregationQuery(
       List<String> paths,
-      List<Aggregation> aggregations,
+      List<TAggregationType> aggregations,
       long startTime,
       long endTime,
       long interval,

@@ -19,11 +19,11 @@
 
 package org.apache.iotdb.session;
 
+import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.isession.SessionDataSet;
-import org.apache.iotdb.isession.util.Aggregation;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.RedirectException;
 import org.apache.iotdb.rpc.RpcTransportFactory;
@@ -76,7 +76,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 import java.util.StringJoiner;
-import java.util.stream.Collectors;
 
 public class SessionConnection {
 
@@ -492,14 +491,14 @@ public class SessionConnection {
   }
 
   protected SessionDataSet executeAggregationQuery(
-      List<String> paths, List<Aggregation> aggregations)
+      List<String> paths, List<TAggregationType> aggregations)
       throws StatementExecutionException, IoTDBConnectionException, RedirectException {
     TSAggregationQueryReq req = createAggregationQueryReq(paths, aggregations);
     return executeAggregationQuery(req);
   }
 
   protected SessionDataSet executeAggregationQuery(
-      List<String> paths, List<Aggregation> aggregations, long startTime, long endTime)
+      List<String> paths, List<TAggregationType> aggregations, long startTime, long endTime)
       throws StatementExecutionException, IoTDBConnectionException, RedirectException {
     TSAggregationQueryReq req = createAggregationQueryReq(paths, aggregations);
     req.setStartTime(startTime);
@@ -509,7 +508,7 @@ public class SessionConnection {
 
   protected SessionDataSet executeAggregationQuery(
       List<String> paths,
-      List<Aggregation> aggregations,
+      List<TAggregationType> aggregations,
       long startTime,
       long endTime,
       long interval)
@@ -523,7 +522,7 @@ public class SessionConnection {
 
   protected SessionDataSet executeAggregationQuery(
       List<String> paths,
-      List<Aggregation> aggregations,
+      List<TAggregationType> aggregations,
       long startTime,
       long endTime,
       long interval,
@@ -573,13 +572,9 @@ public class SessionConnection {
   }
 
   private TSAggregationQueryReq createAggregationQueryReq(
-      List<String> paths, List<Aggregation> aggregations) {
+      List<String> paths, List<TAggregationType> aggregations) {
     TSAggregationQueryReq req =
-        new TSAggregationQueryReq(
-            sessionId,
-            statementId,
-            paths,
-            aggregations.stream().map(Enum::toString).collect(Collectors.toList()));
+        new TSAggregationQueryReq(sessionId, statementId, paths, aggregations);
     req.setFetchSize(session.getFetchSize());
     req.setTimeout(session.getQueryTimeout());
     return req;

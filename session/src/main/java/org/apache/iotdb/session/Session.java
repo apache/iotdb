@@ -18,12 +18,12 @@
  */
 package org.apache.iotdb.session;
 
+import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.isession.ISession;
 import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.isession.template.Template;
-import org.apache.iotdb.isession.util.Aggregation;
 import org.apache.iotdb.isession.util.Version;
 import org.apache.iotdb.rpc.BatchExecutionException;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
@@ -839,7 +839,8 @@ public class Session implements ISession {
   }
 
   @Override
-  public SessionDataSet executeAggregationQuery(List<String> paths, List<Aggregation> aggregations)
+  public SessionDataSet executeAggregationQuery(
+      List<String> paths, List<TAggregationType> aggregations)
       throws StatementExecutionException, IoTDBConnectionException {
     try {
       return defaultSessionConnection.executeAggregationQuery(paths, aggregations);
@@ -861,7 +862,7 @@ public class Session implements ISession {
 
   @Override
   public SessionDataSet executeAggregationQuery(
-      List<String> paths, List<Aggregation> aggregations, long startTime, long endTime)
+      List<String> paths, List<TAggregationType> aggregations, long startTime, long endTime)
       throws StatementExecutionException, IoTDBConnectionException {
     try {
       return defaultSessionConnection.executeAggregationQuery(
@@ -886,7 +887,7 @@ public class Session implements ISession {
   @Override
   public SessionDataSet executeAggregationQuery(
       List<String> paths,
-      List<Aggregation> aggregations,
+      List<TAggregationType> aggregations,
       long startTime,
       long endTime,
       long interval)
@@ -914,7 +915,7 @@ public class Session implements ISession {
   @Override
   public SessionDataSet executeAggregationQuery(
       List<String> paths,
-      List<Aggregation> aggregations,
+      List<TAggregationType> aggregations,
       long startTime,
       long endTime,
       long interval,

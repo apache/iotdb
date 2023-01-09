@@ -437,8 +437,12 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       return RpcUtils.getTSExecuteStatementResp(
           onQueryException(e, "\"" + req + "\". " + OperationType.EXECUTE_LAST_DATA_QUERY));
     } finally {
-      addOperationLatency(Operation.EXECUTE_QUERY, startTime);
+      COORDINATOR.recordExecutionTime(queryId, System.currentTimeMillis() - startTime);
       if (finished) {
+        addStatementExecutionLatency(
+            OperationType.EXECUTE_LAST_DATA_QUERY,
+            StatementType.QUERY,
+            COORDINATOR.getTotalExecutionTime(queryId));
         COORDINATOR.cleanupQueryExecution(queryId);
       }
     }

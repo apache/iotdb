@@ -18,8 +18,8 @@
  */
 package org.apache.iotdb.isession.pool;
 
+import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.isession.template.Template;
-import org.apache.iotdb.isession.util.Aggregation;
 import org.apache.iotdb.isession.util.SystemStatus;
 import org.apache.iotdb.isession.util.Version;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
@@ -418,16 +418,17 @@ public interface ISessionPool {
   SessionDataSetWrapper executeLastDataQuery(List<String> paths)
       throws StatementExecutionException, IoTDBConnectionException;
 
-  SessionDataSetWrapper executeAggregationQuery(List<String> paths, List<Aggregation> aggregations)
+  SessionDataSetWrapper executeAggregationQuery(
+      List<String> paths, List<TAggregationType> aggregations)
       throws StatementExecutionException, IoTDBConnectionException;
 
   SessionDataSetWrapper executeAggregationQuery(
-      List<String> paths, List<Aggregation> aggregations, long startTime, long endTime)
+      List<String> paths, List<TAggregationType> aggregations, long startTime, long endTime)
       throws StatementExecutionException, IoTDBConnectionException;
 
   SessionDataSetWrapper executeAggregationQuery(
       List<String> paths,
-      List<Aggregation> aggregations,
+      List<TAggregationType> aggregations,
       long startTime,
       long endTime,
       long interval)
@@ -435,7 +436,7 @@ public interface ISessionPool {
 
   SessionDataSetWrapper executeAggregationQuery(
       List<String> paths,
-      List<Aggregation> aggregations,
+      List<TAggregationType> aggregations,
       long startTime,
       long endTime,
       long interval,

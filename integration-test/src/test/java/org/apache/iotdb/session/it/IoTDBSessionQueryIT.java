@@ -19,11 +19,11 @@
 
 package org.apache.iotdb.session.it;
 
+import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.it.utils.AlignedWriteUtil;
 import org.apache.iotdb.isession.ISession;
 import org.apache.iotdb.isession.SessionDataSet;
-import org.apache.iotdb.isession.util.Aggregation;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
@@ -52,13 +52,13 @@ public class IoTDBSessionQueryIT {
   @BeforeClass
   public static void setUp() throws Exception {
     System.setProperty(IoTDBConstant.IOTDB_CONF, "src/test/resources/");
-    EnvFactory.getEnv().initBeforeClass();
+    EnvFactory.getEnv().initClusterEnvironment();
     AlignedWriteUtil.insertDataWithSession();
   }
 
   @AfterClass
   public static void tearDown() throws Exception {
-    EnvFactory.getEnv().cleanAfterClass();
+    EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
   // ------------------------------ Raw Data Query ----------------------------------
@@ -190,7 +190,7 @@ public class IoTDBSessionQueryIT {
             "root.sg1.d1.s3",
             "root.sg1.d1.s4",
             "root.sg1.d1.s5");
-    List<Aggregation> aggregations = Collections.nCopies(paths.size(), Aggregation.COUNT);
+    List<TAggregationType> aggregations = Collections.nCopies(paths.size(), TAggregationType.COUNT);
 
     List<String> columnNames = new ArrayList<>();
     for (int i = 0; i < paths.size(); i++) {
@@ -217,7 +217,7 @@ public class IoTDBSessionQueryIT {
             "root.sg1.d1.s3",
             "root.sg1.d1.s4",
             "root.sg1.d1.s5");
-    List<Aggregation> aggregations = Collections.nCopies(paths.size(), Aggregation.COUNT);
+    List<TAggregationType> aggregations = Collections.nCopies(paths.size(), TAggregationType.COUNT);
 
     List<String> columnNames = new ArrayList<>();
     for (int i = 0; i < paths.size(); i++) {
@@ -240,8 +240,8 @@ public class IoTDBSessionQueryIT {
     String[] retArray =
         new String[] {"11,10,130142.0,13014.2", "21,1,null,230000.0", "31,0,355.0,null"};
     List<String> paths = Arrays.asList("root.sg1.d1.s1", "root.sg1.d1.s2", "root.sg1.d1.s1");
-    List<Aggregation> aggregations =
-        Arrays.asList(Aggregation.COUNT, Aggregation.SUM, Aggregation.AVG);
+    List<TAggregationType> aggregations =
+        Arrays.asList(TAggregationType.COUNT, TAggregationType.SUM, TAggregationType.AVG);
 
     List<String> columnNames = new ArrayList<>();
     columnNames.add("Time");
@@ -272,8 +272,8 @@ public class IoTDBSessionQueryIT {
           "37,0,154.0,null"
         };
     List<String> paths = Arrays.asList("root.sg1.d1.s1", "root.sg1.d1.s2", "root.sg1.d1.s1");
-    List<Aggregation> aggregations =
-        Arrays.asList(Aggregation.COUNT, Aggregation.SUM, Aggregation.AVG);
+    List<TAggregationType> aggregations =
+        Arrays.asList(TAggregationType.COUNT, TAggregationType.SUM, TAggregationType.AVG);
 
     List<String> columnNames = new ArrayList<>();
     columnNames.add("Time");
@@ -305,8 +305,8 @@ public class IoTDBSessionQueryIT {
           "36,0,190.0,null"
         };
     List<String> paths = Arrays.asList("root.sg1.d1.s1", "root.sg1.d1.s2", "root.sg1.d1.s1");
-    List<Aggregation> aggregations =
-        Arrays.asList(Aggregation.COUNT, Aggregation.SUM, Aggregation.AVG);
+    List<TAggregationType> aggregations =
+        Arrays.asList(TAggregationType.COUNT, TAggregationType.SUM, TAggregationType.AVG);
 
     List<String> columnNames = new ArrayList<>();
     columnNames.add("Time");

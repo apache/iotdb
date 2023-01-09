@@ -18,8 +18,8 @@
  */
 package org.apache.iotdb.isession;
 
+import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.isession.template.Template;
-import org.apache.iotdb.isession.util.Aggregation;
 import org.apache.iotdb.isession.util.SystemStatus;
 import org.apache.iotdb.isession.util.Version;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
@@ -158,16 +158,16 @@ public interface ISession extends AutoCloseable {
   SessionDataSet executeLastDataQuery(List<String> paths)
       throws StatementExecutionException, IoTDBConnectionException;
 
-  SessionDataSet executeAggregationQuery(List<String> paths, List<Aggregation> aggregations)
+  SessionDataSet executeAggregationQuery(List<String> paths, List<TAggregationType> aggregations)
       throws StatementExecutionException, IoTDBConnectionException;
 
   SessionDataSet executeAggregationQuery(
-      List<String> paths, List<Aggregation> aggregations, long startTime, long endTime)
+      List<String> paths, List<TAggregationType> aggregations, long startTime, long endTime)
       throws StatementExecutionException, IoTDBConnectionException;
 
   SessionDataSet executeAggregationQuery(
       List<String> paths,
-      List<Aggregation> aggregations,
+      List<TAggregationType> aggregations,
       long startTime,
       long endTime,
       long interval)
@@ -175,7 +175,7 @@ public interface ISession extends AutoCloseable {
 
   SessionDataSet executeAggregationQuery(
       List<String> paths,
-      List<Aggregation> aggregations,
+      List<TAggregationType> aggregations,
       long startTime,
       long endTime,
       long interval,

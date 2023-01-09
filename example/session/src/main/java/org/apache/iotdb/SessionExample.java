@@ -19,10 +19,10 @@
 
 package org.apache.iotdb;
 
+import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.isession.SessionDataSet.DataIterator;
 import org.apache.iotdb.isession.template.Template;
-import org.apache.iotdb.isession.util.Aggregation;
 import org.apache.iotdb.isession.util.Version;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
@@ -790,10 +790,10 @@ public class SessionExample {
     paths.add(ROOT_SG1_D1_S2);
     paths.add(ROOT_SG1_D1_S3);
 
-    List<Aggregation> aggregations = new ArrayList<>();
-    aggregations.add(Aggregation.COUNT);
-    aggregations.add(Aggregation.SUM);
-    aggregations.add(Aggregation.MAX_VALUE);
+    List<TAggregationType> aggregations = new ArrayList<>();
+    aggregations.add(TAggregationType.COUNT);
+    aggregations.add(TAggregationType.SUM);
+    aggregations.add(TAggregationType.MAX_VALUE);
     try (SessionDataSet sessionDataSet = session.executeAggregationQuery(paths, aggregations)) {
       System.out.println(sessionDataSet.getColumnNames());
       sessionDataSet.setFetchSize(1024);
@@ -809,10 +809,10 @@ public class SessionExample {
     paths.add(ROOT_SG1_D1_S2);
     paths.add(ROOT_SG1_D1_S3);
 
-    List<Aggregation> aggregations = new ArrayList<>();
-    aggregations.add(Aggregation.COUNT);
-    aggregations.add(Aggregation.SUM);
-    aggregations.add(Aggregation.MAX_VALUE);
+    List<TAggregationType> aggregations = new ArrayList<>();
+    aggregations.add(TAggregationType.COUNT);
+    aggregations.add(TAggregationType.SUM);
+    aggregations.add(TAggregationType.MAX_VALUE);
     try (SessionDataSet sessionDataSet =
         session.executeAggregationQuery(paths, aggregations, 0, 100, 10, 20)) {
       System.out.println(sessionDataSet.getColumnNames());

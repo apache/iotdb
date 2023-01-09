@@ -340,7 +340,7 @@ struct TSAggregationQueryReq {
   1: required i64 sessionId
   2: required i64 statementId
   3: required list<string> paths
-  4: required list<string> aggregations
+  4: required list<common.TAggregationType> aggregations
   5: optional i64 startTime
   6: optional i64 endTime
   7: optional i64 interval

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.mpp.plan.parser;
 
+import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -194,12 +195,12 @@ public class StatementGenerator {
     for (String pathStr : req.getPaths()) {
       selectPaths.add(new PartialPath(pathStr));
     }
-    List<String> aggregations = req.getAggregations();
+    List<TAggregationType> aggregations = req.getAggregations();
     for (int i = 0; i < aggregations.size(); i++) {
       selectComponent.addResultColumn(
           new ResultColumn(
               new FunctionExpression(
-                  aggregations.get(i),
+                  aggregations.get(i).toString().toLowerCase(),
                   new LinkedHashMap<>(),
                   Collections.singletonList(new TimeSeriesOperand(selectPaths.get(i)))),
               ResultColumn.ColumnType.AGGREGATION));

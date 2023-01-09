@@ -123,3 +123,16 @@ struct TFilesResp {
   1: required TSStatus status
   2: required list<TFile> files
 }
+
+enum TAggregationType {
+  COUNT,
+  AVG,
+  SUM,
+  FIRST_VALUE,
+  LAST_VALUE,
+  MAX_TIME,
+  MIN_TIME,
+  MAX_VALUE,
+  MIN_VALUE,
+  EXTREME
+}
