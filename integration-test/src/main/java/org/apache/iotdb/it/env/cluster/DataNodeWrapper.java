@@ -119,6 +119,15 @@ public class DataNodeWrapper extends AbstractNodeWrapper {
   }
 
   @Override
+  protected MppJVMConfig initVMConfig() {
+    return MppJVMConfig.builder()
+        .setInitHeapSize(EnvUtils.getIntFromSysVar("DataNodeInitHeapSize", 256))
+        .setMaxHeapSize(EnvUtils.getIntFromSysVar("DataNodeMaxHeapSize", 256))
+        .setMaxDirectMemorySize(EnvUtils.getIntFromSysVar("DataNodeMaxDirectMemorySize", 256))
+        .build();
+  }
+
+  @Override
   public final String getId() {
     return "DataNode" + getPort();
   }
