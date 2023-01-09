@@ -56,8 +56,9 @@ public abstract class MeasurementUpdater extends MeasurementTraverser<Void> impl
     while (super.hasNext()) {
       super.next();
     }
-    if (getFailure() != null) {
-      throw new MetadataException(getFailure());
+    if (!isSuccess()) {
+      Throwable e = getFailure();
+      throw new MetadataException(e.getMessage(), e);
     }
   }
 

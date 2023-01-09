@@ -1199,6 +1199,8 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
 
   @Override
   public void deactivateTemplateInBlackList(IDeactivateTemplatePlan plan) throws MetadataException {
+    // TODO: We can consider implement this as a consumer passed to MTree which takes responsibility
+    // of operating tree structure and concurrency control in future work.
     Map<PartialPath, List<Integer>> resultTemplateSetInfo =
         mtree.deactivateTemplateInBlackList(plan.getTemplateSetInfo());
     try {

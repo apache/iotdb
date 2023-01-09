@@ -21,6 +21,9 @@ package org.apache.iotdb.db.metadata.mtree.traverser.updater;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 
+// TODO: In schema file mode, since the updated node won't be cache evicted until it been flushed to
+// disk and currently the flush won't happen during traversing which takes the read lock, we need to
+// consider the concurrency of flush and traverse for better memory control in future work.
 public interface Updater {
   // TODO: rename to traverse()
   void update() throws MetadataException;

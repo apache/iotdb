@@ -46,8 +46,9 @@ public class DatabaseCounter extends DatabaseTraverser<Void> implements Counter 
     while (hasNext()) {
       next();
     }
-    if (getFailure() != null) {
-      throw new MetadataException(getFailure());
+    if (!isSuccess()) {
+      Throwable e = getFailure();
+      throw new MetadataException(e.getMessage(), e);
     }
     return count;
   }

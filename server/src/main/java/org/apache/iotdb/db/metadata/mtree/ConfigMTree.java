@@ -443,39 +443,6 @@ public class ConfigMTree {
     }
   }
 
-  /**
-   * Get child node path in the next level of the given path pattern. This method only count in
-   * nodes above database. Nodes below database, including database node will be counted by certain
-   * MTreeBelowSG.
-   *
-   * <p>give pathPattern and the child nodes is those matching pathPattern.*
-   *
-   * <p>e.g., MTree has [root.a.sg1.d1.s1, root.b.sg1.d1.s2, root.c.sg1.d2.s1] given path = root
-   * return [a, b]
-   *
-   * @param pathPattern The given path
-   * @return All child nodes' seriesPath(s) of given seriesPath.
-   */
-  public Pair<Set<String>, Set<PartialPath>> getChildNodeNameInNextLevel(PartialPath pathPattern)
-      throws MetadataException {
-    Set<String> result = new TreeSet<>();
-    try (MNodeAboveSGCollector<?> collector =
-        new MNodeAboveSGCollector<Void>(
-            root, pathPattern.concatNode(ONE_LEVEL_PATH_WILDCARD), store, false) {
-          @Override
-          protected Void collectMNode(IMNode node) {
-            result.add(node.getName());
-            return null;
-          }
-        }) {
-      collector.traverse();
-
-      return new Pair<>(result, collector.getInvolvedStorageGroupMNodes());
-    } catch (IllegalPathException e) {
-      throw new IllegalPathException(pathPattern.getFullPath());
-    }
-  }
-
   // endregion
 
   // region Template Management

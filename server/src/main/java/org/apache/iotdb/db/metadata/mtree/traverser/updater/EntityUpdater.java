@@ -55,9 +55,9 @@ public abstract class EntityUpdater extends EntityTraverser<Void> implements Upd
     while (super.hasNext()) {
       super.next();
     }
-    if (getFailure() != null) {
-      getFailure().printStackTrace();
-      throw new MetadataException(getFailure());
+    if (!isSuccess()) {
+      Throwable e = getFailure();
+      throw new MetadataException(e.getMessage(), e);
     }
   }
 

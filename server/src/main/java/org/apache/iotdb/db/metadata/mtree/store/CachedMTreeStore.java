@@ -27,6 +27,7 @@ import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.MNodeUtils;
 import org.apache.iotdb.db.metadata.mnode.estimator.IMNodeSizeEstimator;
 import org.apache.iotdb.db.metadata.mnode.iterator.AbstractTraverserIterator;
+import org.apache.iotdb.db.metadata.mnode.iterator.CachedTraverserIterator;
 import org.apache.iotdb.db.metadata.mnode.iterator.IMNodeIterator;
 import org.apache.iotdb.db.metadata.mtree.store.disk.ICachedMNodeContainer;
 import org.apache.iotdb.db.metadata.mtree.store.disk.MTreeFlushTaskManager;
@@ -619,21 +620,6 @@ public class CachedMTreeStore implements IMTreeStore {
       } finally {
         readLock.unlock();
       }
-    }
-  }
-
-  private class CachedTraverserIterator extends AbstractTraverserIterator {
-    CachedTraverserIterator(IMTreeStore store, IMNode parent, Map<Integer, Template> templateMap)
-        throws MetadataException {
-      super(store, parent, templateMap);
-    }
-
-    @Override
-    public void close() {
-      if (nextMatchedNode != null && usingDirectChildrenIterator) {
-        unPin(nextMatchedNode);
-      }
-      super.close();
     }
   }
 }

@@ -136,14 +136,6 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R>
     ancestorStack.add(new AncestorStackEntry(root, currentStateMatchInfo));
   }
 
-  public boolean isSuccess() {
-    return throwable != null;
-  }
-
-  public Throwable getThrowable() {
-    return throwable;
-  }
-
   public void reset() {
     close();
     visitorStack.clear();
@@ -283,7 +275,7 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R>
    *
    * @return full path from traverse start node to the parent of current node
    */
-  protected PartialPath getAncestorPartialPath() {
+  protected PartialPath getParentPartialPath() {
     List<String> nodeNames = new ArrayList<>();
     Iterator<AncestorStackEntry> iterator = ancestorStack.iterator();
     for (int i = 0, size = shouldVisitSubtree ? ancestorStack.size() - 1 : ancestorStack.size();
@@ -337,10 +329,10 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R>
   }
 
   /**
-   * Get level from root to current node. Level of root is 0. For example, root.sg.d1.s1,
-   * currentNode is s1, then return 3.
+   * Get level from root to NextMatchedNode. Level of root is 0. For example, root.sg.d1.s1,
+   * NextMatchedNode is s1, then return 3.
    *
-   * @return level from root to current node
+   * @return level from root to NextMatchedNode
    */
   protected final int getLevelOfNextMatchedNode() {
     if (shouldVisitSubtree) {
@@ -360,6 +352,10 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R>
 
   protected Throwable getFailure() {
     return throwable;
+  }
+
+  public boolean isSuccess() {
+    return throwable != null;
   }
 
   // Get a child with the given childName.

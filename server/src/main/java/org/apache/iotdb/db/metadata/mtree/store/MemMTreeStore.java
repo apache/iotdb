@@ -33,6 +33,7 @@ import org.apache.iotdb.db.metadata.mnode.estimator.IMNodeSizeEstimator;
 import org.apache.iotdb.db.metadata.mnode.iterator.AbstractTraverserIterator;
 import org.apache.iotdb.db.metadata.mnode.iterator.IMNodeIterator;
 import org.apache.iotdb.db.metadata.mnode.iterator.MNodeIterator;
+import org.apache.iotdb.db.metadata.mnode.iterator.MemoryTraverserIterator;
 import org.apache.iotdb.db.metadata.mtree.snapshot.MemMTreeSnapshotUtil;
 import org.apache.iotdb.db.metadata.rescon.MemoryStatistics;
 import org.apache.iotdb.db.metadata.template.Template;
@@ -197,12 +198,5 @@ public class MemMTreeStore implements IMTreeStore {
   private void releaseMemory(int size) {
     localMemoryUsage.getAndUpdate(v -> v -= size);
     memoryStatistics.releaseMemory(size);
-  }
-
-  private static class MemoryTraverserIterator extends AbstractTraverserIterator {
-    MemoryTraverserIterator(IMTreeStore store, IMNode parent, Map<Integer, Template> templateMap)
-        throws MetadataException {
-      super(store, parent, templateMap);
-    }
   }
 }

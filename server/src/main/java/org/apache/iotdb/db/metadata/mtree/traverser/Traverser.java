@@ -90,8 +90,9 @@ public abstract class Traverser<R> extends AbstractTreeVisitor<IMNode, R> {
     while (hasNext()) {
       next();
     }
-    if (getFailure() != null) {
-      throw new MetadataException(getFailure());
+    if (!isSuccess()) {
+      Throwable e = getFailure();
+      throw new MetadataException(e.getMessage(), e);
     }
   }
 

@@ -44,8 +44,9 @@ public class EntityCounter extends EntityTraverser<Void> implements Counter {
     while (hasNext()) {
       next();
     }
-    if (getFailure() != null) {
-      throw new MetadataException(getFailure());
+    if (!isSuccess()) {
+      Throwable e = getFailure();
+      throw new MetadataException(e.getMessage(), e);
     }
     return count;
   }

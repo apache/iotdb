@@ -35,9 +35,6 @@ import org.junit.Test;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -95,28 +92,6 @@ public class ConfigMTreeTest {
     assertTrue(root.isStorageGroupAlreadySet(new PartialPath(path1)));
     assertTrue(root.isStorageGroupAlreadySet(new PartialPath("root.laptop")));
     assertTrue(root.isStorageGroupAlreadySet(new PartialPath("root.laptop.d1")));
-  }
-
-  @Test
-  public void testGetAllChildNodeNamesByPath() {
-    try {
-      root.setStorageGroup(new PartialPath("root.a.d0"));
-      root.setStorageGroup(new PartialPath("root.a.d5"));
-
-      // getChildNodeByPath
-      Set<String> result1 = root.getChildNodeNameInNextLevel(new PartialPath("root.a.d0")).left;
-      Set<String> result2 = root.getChildNodeNameInNextLevel(new PartialPath("root.a")).left;
-      Set<String> result3 = root.getChildNodeNameInNextLevel(new PartialPath("root")).left;
-      assertEquals(new HashSet<>(), result1);
-      assertEquals(new HashSet<>(Arrays.asList("d0", "d5")), result2);
-      assertEquals(new HashSet<>(Collections.singletonList("a")), result3);
-
-      // if child node is nll   will return  null HashSet
-      Set<String> result4 = root.getChildNodeNameInNextLevel(new PartialPath("root.a.d5")).left;
-      assertEquals(result4, new HashSet<>(Collections.emptyList()));
-    } catch (MetadataException e1) {
-      e1.printStackTrace();
-    }
   }
 
   @Test
