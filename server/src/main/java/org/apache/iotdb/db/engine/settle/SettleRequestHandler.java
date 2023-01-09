@@ -37,7 +37,6 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.TsFileUtils;
 
 import org.slf4j.Logger;
@@ -83,7 +82,7 @@ public class SettleRequestHandler {
   }
 
   private static class SettleRequestContext {
-    private ConsistentSettleInfo consistentSettleInfo;
+    private ConsistentSettleInfo targetConsistentSettleInfo;
 
     private boolean hasSeqFiles;
     private boolean hasUnseqFiles;
@@ -118,7 +117,6 @@ public class SettleRequestHandler {
       }
 
       TSStatus validationResult;
-      Pair<ConsistentSettleInfo, TSStatus> consistentSettleInfoStatusPair;
 
       for (String path : paths) {
         File currentTsFile = new File(path);
@@ -129,17 +127,16 @@ public class SettleRequestHandler {
         File modsFile = new File(path + ModificationFile.FILE_SUFFIX);
         hasModsFiles |= modsFile.exists();
 
-        consistentSettleInfoStatusPair = calculateConsistentInfo(currentTsFile);
-        ConsistentSettleInfo currentInfo = consistentSettleInfoStatusPair.left;
-        if (this.consistentSettleInfo == null) {
-          this.consistentSettleInfo = currentInfo;
+        ConsistentSettleInfo currentInfo = calculateConsistentInfo(currentTsFile);
+        if (!currentInfo.isValid) {
+          return RpcUtils.getStatus(
+              TSStatusCode.ILLEGAL_PATH, "The File Name of the TsFile is not valid: " + path);
         }
-        validationResult = consistentSettleInfoStatusPair.right;
-        if (!isSuccess(validationResult)) {
-          return validationResult;
+        if (this.targetConsistentSettleInfo == null) {
+          this.targetConsistentSettleInfo = currentInfo;
         }
 
-        validationResult = consistentSettleInfo.checkConsistency(currentInfo);
+        validationResult = targetConsistentSettleInfo.checkConsistency(currentInfo);
         if (!isSuccess(validationResult)) {
           return validationResult;
         }
@@ -163,7 +160,7 @@ public class SettleRequestHandler {
       }
       DataRegion dataRegion =
           StorageEngine.getInstance()
-              .getDataRegion(new DataRegionId(consistentSettleInfo.dataRegionId));
+              .getDataRegion(new DataRegionId(targetConsistentSettleInfo.dataRegionId));
       if (dataRegion == null) {
         return RpcUtils.getStatus(TSStatusCode.ILLEGAL_PATH, "DataRegion not exist");
       }
@@ -176,35 +173,34 @@ public class SettleRequestHandler {
 
       if (hasSeqFiles) {
         allTsFileResourceList =
-            tsFileManager.getSequenceListByTimePartition(consistentSettleInfo.timePartitionId);
+            tsFileManager.getSequenceListByTimePartition(
+                targetConsistentSettleInfo.timePartitionId);
       } else {
         allTsFileResourceList =
-            tsFileManager.getUnsequenceListByTimePartition(consistentSettleInfo.timePartitionId);
+            tsFileManager.getUnsequenceListByTimePartition(
+                targetConsistentSettleInfo.timePartitionId);
       }
 
       return validateTsFileResources();
     }
 
-    private Pair<ConsistentSettleInfo, TSStatus> calculateConsistentInfo(File tsFile) {
+    private ConsistentSettleInfo calculateConsistentInfo(File tsFile) {
       ConsistentSettleInfo values = new ConsistentSettleInfo();
       values.dataRegionId = TsFileUtils.getDataRegionId(tsFile);
       values.storageGroupName = TsFileUtils.getStorageGroup(tsFile);
       values.timePartitionId = TsFileUtils.getTimePartition(tsFile);
+      values.isValid = true;
 
       String fileNameStr = tsFile.getName();
       TsFileNameGenerator.TsFileName tsFileName;
       try {
         tsFileName = TsFileNameGenerator.getTsFileName(fileNameStr);
       } catch (IOException e) {
-        return new Pair<>(
-            null,
-            RpcUtils.getStatus(
-                TSStatusCode.ILLEGAL_PATH,
-                "Meet error when parsing TsFileName. There may be a problem with file: "
-                    + tsFile.getName()));
+        values.isValid = false;
+        return values;
       }
       values.level = tsFileName.getInnerCompactionCnt();
-      return new Pair<>(values, RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
+      return values;
     }
 
     private boolean isSuccess(TSStatus status) {
@@ -267,7 +263,7 @@ public class SettleRequestHandler {
     private TSStatus submitCompactionTask(List<TsFileResource> tsFileResources) {
       AbstractCompactionTask task =
           new InnerSpaceCompactionTask(
-              consistentSettleInfo.timePartitionId,
+              targetConsistentSettleInfo.timePartitionId,
               tsFileManager,
               tsFileResources,
               hasSeqFiles,
@@ -293,6 +289,7 @@ public class SettleRequestHandler {
     private int level;
     private String storageGroupName;
     private long timePartitionId;
+    private boolean isValid;
 
     private TSStatus checkConsistency(ConsistentSettleInfo other) {
       if (this.dataRegionId != other.dataRegionId) {
