@@ -28,6 +28,12 @@ import java.util.stream.Collectors;
 public class DropwizardMetricNameTool {
   private static final String TAG_SEPARATOR = ".";
 
+  /**
+   * Transform flat string and metric type to metricInfo.
+   *
+   * @param metricType the type of metric
+   * @param flatString the flat string of metricInfo
+   */
   public static MetricInfo transformFromString(MetricType metricType, String flatString) {
     MetricInfo metricInfo;
     String name;
@@ -48,6 +54,11 @@ public class DropwizardMetricNameTool {
     return metricInfo;
   }
 
+  /**
+   * Transform metricInfo to flat string.
+   *
+   * @param metricInfo the info of metric
+   */
   public static String toFlatString(MetricInfo metricInfo) {
     String name = metricInfo.getName();
     Map<String, String> tags = metricInfo.getTags();

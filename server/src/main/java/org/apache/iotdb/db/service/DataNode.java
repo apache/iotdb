@@ -69,7 +69,7 @@ import org.apache.iotdb.db.mpp.execution.exchange.MPPDataExchangeService;
 import org.apache.iotdb.db.mpp.execution.schedule.DriverScheduler;
 import org.apache.iotdb.db.protocol.rest.RestService;
 import org.apache.iotdb.db.service.metrics.DataNodeMetricsHelper;
-import org.apache.iotdb.db.service.metrics.IoTDBInternalReporter;
+import org.apache.iotdb.db.service.metrics.IoTDBInternalLocalReporter;
 import org.apache.iotdb.db.service.thrift.impl.ClientRPCServiceImpl;
 import org.apache.iotdb.db.service.thrift.impl.DataNodeRegionManager;
 import org.apache.iotdb.db.sync.SyncService;
@@ -551,7 +551,7 @@ public class DataNode implements DataNodeMBean {
         .getMetricConfig()
         .getInternalReportType()
         .equals(InternalReporterType.IOTDB)) {
-      MetricService.getInstance().updateInternalReporter(new IoTDBInternalReporter());
+      MetricService.getInstance().updateInternalReporter(new IoTDBInternalLocalReporter());
     }
     MetricService.getInstance().startInternalReporter();
     // bind predefined metrics

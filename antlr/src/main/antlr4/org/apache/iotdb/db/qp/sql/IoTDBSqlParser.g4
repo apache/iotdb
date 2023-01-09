@@ -741,7 +741,7 @@ showQueries
 
 // Kill Query
 killQuery
-    : KILL QUERY INTEGER_LITERAL?
+    : KILL (QUERY queryId=STRING_LITERAL | ALL QUERIES)
     ;
 
 // Grant Watermark Embedding

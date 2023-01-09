@@ -247,6 +247,24 @@ IoTDB DataNode 与 Standalone 模式共用一套配置文件，均位于 IoTDB �
 |默认值| 1024 |
 |改后生效方式|重启服务生效|
 
+* dn\_core\_client\_count\_for\_each\_node\_in\_client\_manager
+
+|   名字   | dn\_core\_client\_count\_for\_each\_node\_in\_client\_manager |
+|:------:|:--------------------------------------------------------------|
+|   描述   | 单 ClientManager 中路由到每个节点的核心 Client 个数                         |
+|   类型   | int                                                           |
+|  默认值   | 200                                                           |
+| 改后生效方式 | 重启服务生效                                                        |
+
+* dn\_max\_client\_count\_for\_each\_node\_in\_client\_manager
+
+|   名字   | dn\_max\_client\_count\_for\_each\_node\_in\_client\_manager |
+|:------:|:-------------------------------------------------------------|
+|   描述   | 单 ClientManager 中路由到每个节点的最大 Client 个数                        |
+|   类型   | int                                                          |
+|  默认值   | 300                                                          |
+| 改后生效方式 | 重启服务生效                                                       |
+
 ### 目录配置
 
 * dn\_system\_dir

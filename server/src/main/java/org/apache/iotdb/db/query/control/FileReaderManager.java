@@ -246,7 +246,7 @@ public class FileReaderManager {
   public synchronized void writeFileReferenceInfo() {
     DEBUG_LOGGER.info("[closedReferenceMap]\n");
     for (Map.Entry<String, AtomicInteger> entry : closedReferenceMap.entrySet()) {
-      DEBUG_LOGGER.info(String.format("\t%s: %d\n", entry.getKey(), entry.getValue().get()));
+      DEBUG_LOGGER.info(String.format("\t%s: %d%n", entry.getKey(), entry.getValue().get()));
     }
     DEBUG_LOGGER.info("[unclosedReferenceMap]\n");
     for (Map.Entry<String, AtomicInteger> entry : unclosedReferenceMap.entrySet()) {

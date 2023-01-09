@@ -19,6 +19,9 @@
 
 package org.apache.iotdb.consensus.config;
 
+import org.apache.iotdb.commons.client.property.ClientPoolProperty.DefaultProperty;
+
+import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 
 public class IoTConsensusConfig {
@@ -50,8 +53,8 @@ public class IoTConsensusConfig {
 
     public IoTConsensusConfig build() {
       return new IoTConsensusConfig(
-          rpc != null ? rpc : new RPC.Builder().build(),
-          replication != null ? replication : new Replication.Builder().build());
+          Optional.ofNullable(rpc).orElseGet(() -> new RPC.Builder().build()),
+          Optional.ofNullable(replication).orElseGet(() -> new Replication.Builder().build()));
     }
 
     public Builder setRpc(RPC rpc) {
@@ -75,7 +78,8 @@ public class IoTConsensusConfig {
     private final int selectorNumOfClientManager;
     private final int connectionTimeoutInMs;
     private final int thriftMaxFrameSize;
-    private final int maxConnectionForInternalService;
+    private final int coreClientNumForEachNode;
+    private final int maxClientNumForEachNode;
 
     private RPC(
         int rpcSelectorThreadNum,
@@ -86,7 +90,8 @@ public class IoTConsensusConfig {
         int selectorNumOfClientManager,
         int connectionTimeoutInMs,
         int thriftMaxFrameSize,
-        int maxConnectionForInternalService) {
+        int coreClientNumForEachNode,
+        int maxClientNumForEachNode) {
       this.rpcSelectorThreadNum = rpcSelectorThreadNum;
       this.rpcMinConcurrentClientNum = rpcMinConcurrentClientNum;
       this.rpcMaxConcurrentClientNum = rpcMaxConcurrentClientNum;
@@ -95,7 +100,8 @@ public class IoTConsensusConfig {
       this.selectorNumOfClientManager = selectorNumOfClientManager;
       this.connectionTimeoutInMs = connectionTimeoutInMs;
       this.thriftMaxFrameSize = thriftMaxFrameSize;
-      this.maxConnectionForInternalService = maxConnectionForInternalService;
+      this.coreClientNumForEachNode = coreClientNumForEachNode;
+      this.maxClientNumForEachNode = maxClientNumForEachNode;
     }
 
     public int getRpcSelectorThreadNum() {
@@ -130,8 +136,12 @@ public class IoTConsensusConfig {
       return thriftMaxFrameSize;
     }
 
-    public int getMaxConnectionForInternalService() {
-      return maxConnectionForInternalService;
+    public int getCoreClientNumForEachNode() {
+      return coreClientNumForEachNode;
+    }
+
+    public int getMaxClientNumForEachNode() {
+      return maxClientNumForEachNode;
     }
 
     public static RPC.Builder newBuilder() {
@@ -149,7 +159,9 @@ public class IoTConsensusConfig {
       private int connectionTimeoutInMs = (int) TimeUnit.SECONDS.toMillis(20);
       private int thriftMaxFrameSize = 536870912;
 
-      private int maxConnectionForInternalService = 100;
+      private int coreClientNumForEachNode = DefaultProperty.CORE_CLIENT_NUM_FOR_EACH_NODE;
+
+      private int maxClientNumForEachNode = DefaultProperty.MAX_CLIENT_NUM_FOR_EACH_NODE;
 
       public RPC.Builder setRpcSelectorThreadNum(int rpcSelectorThreadNum) {
         this.rpcSelectorThreadNum = rpcSelectorThreadNum;
@@ -192,8 +204,13 @@ public class IoTConsensusConfig {
         return this;
       }
 
-      public RPC.Builder setMaxConnectionForInternalService(int maxConnectionForInternalService) {
-        this.maxConnectionForInternalService = maxConnectionForInternalService;
+      public RPC.Builder setCoreClientNumForEachNode(int coreClientNumForEachNode) {
+        this.coreClientNumForEachNode = coreClientNumForEachNode;
+        return this;
+      }
+
+      public Builder setMaxClientNumForEachNode(int maxClientNumForEachNode) {
+        this.maxClientNumForEachNode = maxClientNumForEachNode;
         return this;
       }
 
@@ -207,7 +224,8 @@ public class IoTConsensusConfig {
             selectorNumOfClientManager,
             connectionTimeoutInMs,
             thriftMaxFrameSize,
-            maxConnectionForInternalService);
+            coreClientNumForEachNode,
+            maxClientNumForEachNode);
       }
     }
   }

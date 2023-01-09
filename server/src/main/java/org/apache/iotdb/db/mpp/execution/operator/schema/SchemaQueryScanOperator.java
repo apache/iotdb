@@ -165,6 +165,9 @@ public abstract class SchemaQueryScanOperator<T extends ISchemaInfo> implements 
 
   @Override
   public void close() throws Exception {
-    schemaReader.close();
+    if (schemaReader != null) {
+      schemaReader.close();
+      schemaReader = null;
+    }
   }
 }

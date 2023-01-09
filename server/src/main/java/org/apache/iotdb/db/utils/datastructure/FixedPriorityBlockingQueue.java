@@ -72,7 +72,7 @@ public class FixedPriorityBlockingQueue<T> {
     final ReentrantLock lock = this.lock;
     lock.lockInterruptibly();
     try {
-      while (queue.size() == 0) {
+      while (queue.isEmpty()) {
         notEmpty.await();
       }
       return queue.pollFirst();
@@ -92,7 +92,7 @@ public class FixedPriorityBlockingQueue<T> {
     final ReentrantLock lock = this.lock;
     lock.lockInterruptibly();
     try {
-      while (queue.size() == 0) {
+      while (queue.isEmpty()) {
         notEmpty.await();
       }
       return queue.pollLast();

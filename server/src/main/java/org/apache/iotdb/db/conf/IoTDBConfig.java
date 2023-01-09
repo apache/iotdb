@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.conf;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.commons.client.property.ClientPoolProperty.DefaultProperty;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
@@ -193,10 +194,10 @@ public class IoTDBConfig {
   private int walBufferQueueCapacity = 50;
 
   /** Size threshold of each wal file. Unit: byte */
-  private volatile long walFileSizeThresholdInByte = 10 * 1024 * 1024;
+  private volatile long walFileSizeThresholdInByte = 10 * 1024 * 1024L;
 
   /** Size threshold of each checkpoint file. Unit: byte */
-  private volatile long checkpointFileSizeThresholdInByte = 3 * 1024 * 1024;
+  private volatile long checkpointFileSizeThresholdInByte = 3 * 1024 * 1024L;
 
   /** Minimum ratio of effective information in wal files */
   private volatile double walMinEffectiveInfoRatio = 0.1;
@@ -206,13 +207,13 @@ public class IoTDBConfig {
    * this, wal can flush this memtable to disk, otherwise wal will snapshot this memtable in wal.
    * Unit: byte
    */
-  private volatile long walMemTableSnapshotThreshold = 8 * 1024 * 1024;
+  private volatile long walMemTableSnapshotThreshold = 8 * 1024 * 1024L;
 
   /** MemTable's max snapshot number in wal file */
   private volatile int maxWalMemTableSnapshotNum = 1;
 
   /** The period when outdated wal files are periodically deleted. Unit: millisecond */
-  private volatile long deleteWalFilesPeriodInMs = 20 * 1000;
+  private volatile long deleteWalFilesPeriodInMs = 20 * 1000L;
   // endregion
 
   /**
@@ -661,8 +662,8 @@ public class IoTDBConfig {
    */
   private long mergeIntervalSec = 0L;
 
-  /** The limit of io rate can reach per second */
-  private int compactionIORatePerSec = 50;
+  /** The limit of compaction merge can reach per second */
+  private int compactionWriteThroughputMbPerSec = 16;
 
   /**
    * How many thread will be set up to perform compaction, 10 by default. Set to 1 when less than or
@@ -918,15 +919,6 @@ public class IoTDBConfig {
   /** Thrift socket and connection timeout between data node and config node. */
   private int connectionTimeoutInMS = (int) TimeUnit.SECONDS.toMillis(20);
 
-  /** the maximum number of clients that can be applied for a node's InternalService */
-  private int maxConnectionForInternalService = 100;
-
-  /**
-   * the maximum number of clients that can be idle for a node's InternalService. When the number of
-   * idle clients on a node exceeds this number, newly returned clients will be released
-   */
-  private int coreConnectionForInternalService = 100;
-
   /**
    * ClientManager will have so many selector threads (TAsyncClientManager) to distribute to its
    * clients.
@@ -935,6 +927,20 @@ public class IoTDBConfig {
       Runtime.getRuntime().availableProcessors() / 4 > 0
           ? Runtime.getRuntime().availableProcessors() / 4
           : 1;
+
+  /**
+   * The maximum number of clients that can be idle for a node in a clientManager. When the number
+   * of idle clients on a node exceeds this number, newly returned clients will be released
+   */
+  private int coreClientNumForEachNode = DefaultProperty.CORE_CLIENT_NUM_FOR_EACH_NODE;
+
+  /**
+   * The maximum number of clients that can be allocated for a node in a clientManager. When the
+   * number of the client to a single node exceeds this number, the thread for applying for a client
+   * will be blocked for a while, then ClientManager will throw ClientManagerException if there are
+   * no clients after the block time.
+   */
+  private int maxClientNumForEachNode = DefaultProperty.MAX_CLIENT_NUM_FOR_EACH_NODE;
 
   /**
    * Cache size of partition cache in {@link
@@ -1001,7 +1007,7 @@ public class IoTDBConfig {
   private long throttleThreshold = 50 * 1024 * 1024 * 1024L;
 
   /** Maximum wait time of write cache in IoTConsensus. Unit: ms */
-  private long cacheWindowTimeInMs = 10 * 1000;
+  private long cacheWindowTimeInMs = 10 * 1000L;
 
   private long dataRatisConsensusLogAppenderBufferSizeMax = 4 * 1024 * 1024L;
   private long schemaRatisConsensusLogAppenderBufferSizeMax = 4 * 1024 * 1024L;
@@ -1261,6 +1267,7 @@ public class IoTDBConfig {
     // TODO(szywilliam): rewrite the logic here when ratis supports complete snapshot semantic
     setRatisDataRegionSnapshotDir(
         dataDirs[0] + File.separator + IoTDBConstant.SNAPSHOT_FOLDER_NAME);
+    setLoadTsFileDir(dataDirs[0] + File.separator + IoTDBConstant.LOAD_TSFILE_FOLDER_NAME);
   }
 
   public String getRpcAddress() {
@@ -1296,8 +1303,8 @@ public class IoTDBConfig {
         || "us".equals(timestampPrecision)
         || "ns".equals(timestampPrecision))) {
       logger.error(
-          "Wrong timestamp precision, please set as: ms, us or ns ! Current is: "
-              + timestampPrecision);
+          "Wrong timestamp precision, please set as: ms, us or ns ! Current is: {}",
+          timestampPrecision);
       System.exit(-1);
     }
     this.timestampPrecision = timestampPrecision;
@@ -1915,12 +1922,12 @@ public class IoTDBConfig {
     this.intoOperationExecutionThreadCount = intoOperationExecutionThreadCount;
   }
 
-  public int getCompactionIORatePerSec() {
-    return compactionIORatePerSec;
+  public int getCompactionWriteThroughputMbPerSec() {
+    return compactionWriteThroughputMbPerSec;
   }
 
-  public void setCompactionIORatePerSec(int compactionIORatePerSec) {
-    this.compactionIORatePerSec = compactionIORatePerSec;
+  public void setCompactionWriteThroughputMbPerSec(int compactionWriteThroughputMbPerSec) {
+    this.compactionWriteThroughputMbPerSec = compactionWriteThroughputMbPerSec;
   }
 
   public boolean isEnableMemControl() {
@@ -3040,20 +3047,20 @@ public class IoTDBConfig {
     this.connectionTimeoutInMS = connectionTimeoutInMS;
   }
 
-  public int getMaxConnectionForInternalService() {
-    return maxConnectionForInternalService;
+  public int getMaxClientNumForEachNode() {
+    return maxClientNumForEachNode;
   }
 
-  public void setMaxConnectionForInternalService(int maxConnectionForInternalService) {
-    this.maxConnectionForInternalService = maxConnectionForInternalService;
+  public void setMaxClientNumForEachNode(int maxClientNumForEachNode) {
+    this.maxClientNumForEachNode = maxClientNumForEachNode;
   }
 
-  public int getCoreConnectionForInternalService() {
-    return coreConnectionForInternalService;
+  public int getCoreClientNumForEachNode() {
+    return coreClientNumForEachNode;
   }
 
-  public void setCoreConnectionForInternalService(int coreConnectionForInternalService) {
-    this.coreConnectionForInternalService = coreConnectionForInternalService;
+  public void setCoreClientNumForEachNode(int coreClientNumForEachNode) {
+    this.coreClientNumForEachNode = coreClientNumForEachNode;
   }
 
   public int getSelectorNumOfClientManager() {

@@ -56,7 +56,7 @@ public abstract class BasicUserManager implements IUserManager {
    * @param accessor user accessor
    * @throws AuthException Authentication Exception
    */
-  public BasicUserManager(IUserAccessor accessor) throws AuthException {
+  protected BasicUserManager(IUserAccessor accessor) throws AuthException {
     this.userMap = new HashMap<>();
     this.accessor = accessor;
     this.lock = new HashLock();

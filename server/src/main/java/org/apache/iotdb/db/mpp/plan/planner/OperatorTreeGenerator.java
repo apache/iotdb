@@ -96,6 +96,7 @@ import org.apache.iotdb.db.mpp.execution.operator.process.last.LastQueryOperator
 import org.apache.iotdb.db.mpp.execution.operator.process.last.LastQuerySortOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.last.LastQueryUtil;
 import org.apache.iotdb.db.mpp.execution.operator.process.last.UpdateLastCacheOperator;
+import org.apache.iotdb.db.mpp.execution.operator.schema.CountGroupByLevelMergeOperator;
 import org.apache.iotdb.db.mpp.execution.operator.schema.CountMergeOperator;
 import org.apache.iotdb.db.mpp.execution.operator.schema.DevicesCountOperator;
 import org.apache.iotdb.db.mpp.execution.operator.schema.DevicesSchemaScanOperator;
@@ -534,7 +535,11 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                 node.getPlanNodeId(),
                 CountMergeOperator.class.getSimpleName());
     context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
-    return new CountMergeOperator(node.getPlanNodeId(), operatorContext, children);
+    if (children.get(0) instanceof LevelTimeSeriesCountOperator) {
+      return new CountGroupByLevelMergeOperator(node.getPlanNodeId(), operatorContext, children);
+    } else {
+      return new CountMergeOperator(node.getPlanNodeId(), operatorContext, children);
+    }
   }
 
   @Override
@@ -670,7 +675,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         node.isCacheOutputColumnNames()
             ? getOutputColumnTypes(node, context.getTypeProvider())
             : context.getCachedDataTypes();
-    if (outputColumnTypes == null || outputColumnTypes.size() == 0) {
+    if (outputColumnTypes == null || outputColumnTypes.isEmpty()) {
       throw new IllegalStateException("OutputColumTypes should not be null/empty");
     }
     context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
@@ -1155,7 +1160,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
   @Override
   public Operator visitGroupByLevel(GroupByLevelNode node, LocalExecutionPlanContext context) {
     checkArgument(
-        node.getGroupByLevelDescriptors().size() >= 1,
+        !node.getGroupByLevelDescriptors().isEmpty(),
         "GroupByLevel descriptorList cannot be empty");
     List<Operator> children =
         node.getChildren().stream()
@@ -1202,7 +1207,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
 
   @Override
   public Operator visitGroupByTag(GroupByTagNode node, LocalExecutionPlanContext context) {
-    checkArgument(node.getTagKeys().size() >= 1, "GroupByTag tag keys cannot be empty");
+    checkArgument(!node.getTagKeys().isEmpty(), "GroupByTag tag keys cannot be empty");
     checkArgument(
         node.getTagValuesToAggregationDescriptors().size() >= 1,
         "GroupByTag aggregation descriptors cannot be empty");
@@ -1267,7 +1272,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
   public Operator visitSlidingWindowAggregation(
       SlidingWindowAggregationNode node, LocalExecutionPlanContext context) {
     checkArgument(
-        node.getAggregationDescriptorList().size() >= 1,
+        !node.getAggregationDescriptorList().isEmpty(),
         "Aggregation descriptorList cannot be empty");
     OperatorContext operatorContext =
         context
@@ -1346,7 +1351,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
   @Override
   public Operator visitAggregation(AggregationNode node, LocalExecutionPlanContext context) {
     checkArgument(
-        node.getAggregationDescriptorList().size() >= 1,
+        !node.getAggregationDescriptorList().isEmpty(),
         "Aggregation descriptorList cannot be empty");
     List<Operator> children =
         node.getChildren().stream()

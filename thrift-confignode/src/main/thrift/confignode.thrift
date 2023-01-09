@@ -1055,6 +1055,9 @@ service IConfigNodeRPCService {
   /** Migrate a region replica from one dataNode to another */
   common.TSStatus migrateRegion(TMigrateRegionReq req)
 
+  /** Kill query */
+  common.TSStatus killQuery(string queryId, i32 dataNodeId)
+
   /** Get all DataNodeLocations of Running DataNodes */
   TGetDataNodeLocationsResp getRunningDataNodeLocations()
 

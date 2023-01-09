@@ -44,7 +44,7 @@ public abstract class PipeInfo {
   // only used for serialization
   protected PipeInfo() {}
 
-  public PipeInfo(String pipeName, String pipeSinkName, long createTime) {
+  protected PipeInfo(String pipeName, String pipeSinkName, long createTime) {
     this.pipeName = pipeName;
     this.pipeSinkName = pipeSinkName;
     this.createTime = createTime;
@@ -52,7 +52,7 @@ public abstract class PipeInfo {
     this.messageType = PipeMessage.PipeMessageType.NORMAL;
   }
 
-  public PipeInfo(String pipeName, String pipeSinkName, PipeStatus status, long createTime) {
+  protected PipeInfo(String pipeName, String pipeSinkName, PipeStatus status, long createTime) {
     this.pipeName = pipeName;
     this.pipeSinkName = pipeSinkName;
     this.createTime = createTime;

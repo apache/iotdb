@@ -49,8 +49,8 @@ public enum ThreadName {
   INSERTION_SERVICE("MultithreadingInsertionPool"),
   WINDOW_EVALUATION_SERVICE("WindowEvaluationTaskPoolManager"),
   TTL_CHECK_SERVICE("TTL-CHECK"),
-  TIMED_FlUSH_SEQ_MEMTABLE("Timed-Flush-Seq-Memtable"),
-  TIMED_FlUSH_UNSEQ_MEMTABLE("Timed-Flush-Unseq-Memtable"),
+  TIMED_FLUSH_SEQ_MEMTABLE("Timed-Flush-Seq-Memtable"),
+  TIMED_FLUSH_UNSEQ_MEMTABLE("Timed-Flush-Unseq-Memtable"),
   SETTLE_SERVICE("Settle"),
   SYNC_SENDER_PIPE("Sync-Pipe"),
   SYNC_SENDER_HEARTBEAT("Sync-Heartbeat"),
@@ -61,7 +61,9 @@ public enum ThreadName {
   ASYNC_CONFIGNODE_HEARTBEAT_CLIENT_POOL("AsyncConfigNodeHeartbeatServiceClientPool"),
   ASYNC_DATANODE_HEARTBEAT_CLIENT_POOL("AsyncDataNodeHeartbeatServiceClientPool"),
   ASYNC_CONFIGNODE_CLIENT_POOL("AsyncConfigNodeIServiceClientPool"),
-  ASYNC_DATANODE_MPP_DATA_EXCHANGE_CLIENT_POOL("AsyncDataNodeMPPDataExchangeServiceClientPool");
+  ASYNC_DATANODE_MPP_DATA_EXCHANGE_CLIENT_POOL("AsyncDataNodeMPPDataExchangeServiceClientPool"),
+
+  ASYNC_DATANODE_IOT_CONSENSUS_CLIENT_POOL("AsyncDataNodeMPPDataExchangeServiceClientPool");
 
   private final String name;
 

@@ -1126,6 +1126,14 @@ public class ConfigManager implements IManager {
   }
 
   @Override
+  public TSStatus killQuery(String queryId, int dataNodeId) {
+    TSStatus status = confirmLeader();
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        ? nodeManager.killQuery(queryId, dataNodeId)
+        : status;
+  }
+
+  @Override
   public TGetDataNodeLocationsResp getRunningDataNodeLocations() {
     TSStatus status = confirmLeader();
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()

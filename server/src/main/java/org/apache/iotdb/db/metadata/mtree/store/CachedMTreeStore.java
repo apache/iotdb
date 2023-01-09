@@ -26,6 +26,8 @@ import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.MNodeUtils;
 import org.apache.iotdb.db.metadata.mnode.estimator.IMNodeSizeEstimator;
+import org.apache.iotdb.db.metadata.mnode.iterator.AbstractTraverserIterator;
+import org.apache.iotdb.db.metadata.mnode.iterator.CachedTraverserIterator;
 import org.apache.iotdb.db.metadata.mnode.iterator.IMNodeIterator;
 import org.apache.iotdb.db.metadata.mtree.store.disk.ICachedMNodeContainer;
 import org.apache.iotdb.db.metadata.mtree.store.disk.MTreeFlushTaskManager;
@@ -36,6 +38,7 @@ import org.apache.iotdb.db.metadata.mtree.store.disk.memcontrol.IMemManager;
 import org.apache.iotdb.db.metadata.mtree.store.disk.memcontrol.MemManagerHolder;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.ISchemaFile;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFile;
+import org.apache.iotdb.db.metadata.template.Template;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -44,6 +47,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
@@ -190,6 +194,20 @@ public class CachedMTreeStore implements IMTreeStore {
       return new CachedMNodeIterator(parent);
     } catch (IOException e) {
       throw new MetadataException(e);
+    }
+  }
+
+  @Override
+  public IMNodeIterator getTraverserIterator(
+      IMNode parent, Map<Integer, Template> templateMap, boolean skipPreDeletedSchema)
+      throws MetadataException {
+    if (parent.isEntity()) {
+      AbstractTraverserIterator iterator =
+          new CachedTraverserIterator(this, parent.getAsEntityMNode(), templateMap);
+      iterator.setSkipPreDeletedSchema(skipPreDeletedSchema);
+      return iterator;
+    } else {
+      return getChildrenIterator(parent);
     }
   }
 
@@ -409,10 +427,8 @@ public class CachedMTreeStore implements IMTreeStore {
   }
 
   private void ensureMemoryStatus() {
-    if (memManager.isExceedFlushThreshold()) {
-      if (!hasReleaseTask) {
-        registerReleaseTask();
-      }
+    if (memManager.isExceedFlushThreshold() && !hasReleaseTask) {
+      registerReleaseTask();
     }
   }
 
@@ -438,10 +454,8 @@ public class CachedMTreeStore implements IMTreeStore {
     } finally {
       readLock.unlock();
     }
-    if (memManager.isExceedFlushThreshold()) {
-      if (!hasFlushTask) {
-        registerFlushTask();
-      }
+    if (memManager.isExceedFlushThreshold() && !hasFlushTask) {
+      registerFlushTask();
     }
   }
 
@@ -544,10 +558,8 @@ public class CachedMTreeStore implements IMTreeStore {
     // must invoke hasNext() first
     @Override
     public IMNode next() {
-      if (nextNode == null) {
-        if (!hasNext()) {
-          throw new NoSuchElementException();
-        }
+      if (nextNode == null && !hasNext()) {
+        throw new NoSuchElementException();
       }
       IMNode result = nextNode;
       nextNode = null;

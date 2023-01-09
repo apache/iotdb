@@ -33,7 +33,7 @@ public abstract class UnaryTransformer extends Transformer {
   protected final TSDataType layerPointReaderDataType;
   protected final boolean isLayerPointReaderConstant;
 
-  public UnaryTransformer(LayerPointReader layerPointReader) {
+  protected UnaryTransformer(LayerPointReader layerPointReader) {
     this.layerPointReader = layerPointReader;
     layerPointReaderDataType = layerPointReader.getDataType();
     isLayerPointReaderConstant = layerPointReader.isConstantPointReader();

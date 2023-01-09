@@ -60,14 +60,14 @@ public class SessionPoolIT {
 
   @Before
   public void setUp() throws Exception {
-    EnvFactory.getEnv().initBeforeTest();
+    EnvFactory.getEnv().initClusterEnvironment();
     EnvironmentUtils.envSetUp();
   }
 
   @After
   public void tearDown() throws Exception {
     EnvironmentUtils.cleanEnv();
-    EnvFactory.getEnv().cleanAfterClass();
+    EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
   @Test

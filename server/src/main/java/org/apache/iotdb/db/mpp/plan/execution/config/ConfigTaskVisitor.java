@@ -57,6 +57,7 @@ import org.apache.iotdb.db.mpp.plan.execution.config.metadata.template.UnsetSche
 import org.apache.iotdb.db.mpp.plan.execution.config.sys.AuthorizerTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.sys.ClearCacheTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.sys.FlushTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.sys.KillQueryTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.sys.LoadConfigurationTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.sys.MergeTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.sys.SetSystemStatusTask;
@@ -108,6 +109,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.template.UnsetSchemaTempl
 import org.apache.iotdb.db.mpp.plan.statement.sys.AuthorStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ClearCacheStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.FlushStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.KillQueryStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.LoadConfigurationStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.MergeStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.SetSystemStatusStatement;
@@ -219,6 +221,11 @@ public class ConfigTaskVisitor
   public IConfigTask visitSetSystemStatus(
       SetSystemStatusStatement setSystemStatusStatement, TaskContext context) {
     return new SetSystemStatusTask(setSystemStatusStatement);
+  }
+
+  @Override
+  public IConfigTask visitKillQuery(KillQueryStatement killQueryStatement, TaskContext context) {
+    return new KillQueryTask(killQueryStatement);
   }
 
   @Override

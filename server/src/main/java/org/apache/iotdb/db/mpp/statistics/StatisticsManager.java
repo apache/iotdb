@@ -30,7 +30,7 @@ public class StatisticsManager {
   private final Map<PartialPath, TimeseriesStats> seriesToStatsMap = Maps.newConcurrentMap();
 
   public long getMaxBinarySizeInBytes(PartialPath path) {
-    return 512 * Byte.BYTES;
+    return 512L * Byte.BYTES;
   }
 
   public static StatisticsManager getInstance() {
