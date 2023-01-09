@@ -294,8 +294,7 @@ public class IoTConsensusServerImpl {
    */
   public TSStatus syncLog(BatchIndexedConsensusRequest request) {
     SyncLogCacheQueue syncLogCacheQueue =
-        cacheQueueMap.computeIfAbsent(
-            request.getSourcePeerId(), k -> new SyncLogCacheQueue(k));
+        cacheQueueMap.computeIfAbsent(request.getSourcePeerId(), k -> new SyncLogCacheQueue(k));
     try {
       syncLogCacheQueue.lock();
       syncLogCacheQueue.waitForWrite(request);
