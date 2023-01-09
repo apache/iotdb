@@ -52,8 +52,8 @@ import org.apache.iotdb.db.mpp.execution.operator.process.last.LastQueryMergeOpe
 import org.apache.iotdb.db.mpp.execution.operator.process.last.LastQueryOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.last.LastQuerySortOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.last.UpdateLastCacheOperator;
+import org.apache.iotdb.db.mpp.execution.operator.schema.CountGroupByLevelScanOperator;
 import org.apache.iotdb.db.mpp.execution.operator.schema.CountMergeOperator;
-import org.apache.iotdb.db.mpp.execution.operator.schema.LevelTimeSeriesCountOperator;
 import org.apache.iotdb.db.mpp.execution.operator.schema.NodeManageMemoryMergeOperator;
 import org.apache.iotdb.db.mpp.execution.operator.schema.NodePathsConvertOperator;
 import org.apache.iotdb.db.mpp.execution.operator.schema.NodePathsCountOperator;
@@ -721,16 +721,12 @@ public class OperatorMemoryTest {
       fragmentInstanceContext.addOperatorContext(
           1, planNodeId, SeriesScanOperator.class.getSimpleName());
 
-      LevelTimeSeriesCountOperator operator =
-          new LevelTimeSeriesCountOperator(
+      CountGroupByLevelScanOperator<?> operator =
+          new CountGroupByLevelScanOperator<>(
               planNodeId,
               fragmentInstanceContext.getOperatorContexts().get(0),
-              null,
-              false,
               4,
-              null,
-              null,
-              false);
+              Mockito.mock(ISchemaSource.class));
 
       assertEquals(DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES, operator.calculateMaxPeekMemory());
       assertEquals(DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES, operator.calculateMaxReturnSize());

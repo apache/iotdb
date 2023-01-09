@@ -21,7 +21,6 @@ package org.apache.iotdb.db.mpp.execution.operator.schema;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.metadata.plan.schemaregion.impl.read.SchemaRegionReadPlanFactory;
 import org.apache.iotdb.db.metadata.query.info.ISchemaInfo;
 import org.apache.iotdb.db.metadata.query.info.ITimeSeriesSchemaInfo;
 import org.apache.iotdb.db.metadata.query.reader.ISchemaReader;
@@ -128,23 +127,18 @@ public class SchemaCountOperatorTest {
       PlanNodeId planNodeId = queryId.genPlanNodeId();
       OperatorContext operatorContext =
           fragmentInstanceContext.addOperatorContext(
-              1, planNodeId, LevelTimeSeriesCountOperator.class.getSimpleName());
-      PartialPath partialPath = new PartialPath(SCHEMA_COUNT_OPERATOR_TEST_SG);
-      ISchemaRegion schemaRegion = mockSchemaRegion();
+              1, planNodeId, CountGroupByLevelScanOperator.class.getSimpleName());
+      ISchemaRegion schemaRegion = Mockito.mock(ISchemaRegion.class);
 
       operatorContext
           .getInstanceContext()
           .setDriverContext(new SchemaDriverContext(fragmentInstanceContext, schemaRegion));
-      LevelTimeSeriesCountOperator timeSeriesCountOperator =
-          new LevelTimeSeriesCountOperator(
+      CountGroupByLevelScanOperator<ITimeSeriesSchemaInfo> timeSeriesCountOperator =
+          new CountGroupByLevelScanOperator<>(
               planNodeId,
               fragmentInstanceContext.getOperatorContexts().get(0),
-              partialPath,
-              true,
               2,
-              null,
-              null,
-              false);
+              mockSchemaSource(schemaRegion));
       TsBlock tsBlock = null;
       List<TsBlock> tsBlockList = collectResult(timeSeriesCountOperator);
       assertEquals(1, tsBlockList.size());
@@ -156,16 +150,12 @@ public class SchemaCountOperatorTest {
         assertEquals(10, tsBlock.getColumn(1).getLong(i));
       }
 
-      LevelTimeSeriesCountOperator timeSeriesCountOperator2 =
-          new LevelTimeSeriesCountOperator(
+      CountGroupByLevelScanOperator<ITimeSeriesSchemaInfo> timeSeriesCountOperator2 =
+          new CountGroupByLevelScanOperator<>(
               planNodeId,
               fragmentInstanceContext.getOperatorContexts().get(0),
-              new PartialPath(SCHEMA_COUNT_OPERATOR_TEST_SG + ".**"),
-              false,
               1,
-              null,
-              null,
-              false);
+              mockSchemaSource(schemaRegion));
       tsBlockList = collectResult(timeSeriesCountOperator2);
       assertEquals(1, tsBlockList.size());
       tsBlock = tsBlockList.get(0);
@@ -179,7 +169,7 @@ public class SchemaCountOperatorTest {
     }
   }
 
-  private List<TsBlock> collectResult(LevelTimeSeriesCountOperator operator) {
+  private List<TsBlock> collectResult(CountGroupByLevelScanOperator<?> operator) {
     List<TsBlock> tsBlocks = new ArrayList<>();
     while (operator.hasNext()) {
       TsBlock tsBlock = operator.next();
@@ -191,35 +181,12 @@ public class SchemaCountOperatorTest {
     return tsBlocks;
   }
 
-  private ISchemaRegion mockSchemaRegion() throws Exception {
-    ISchemaRegion schemaRegion = Mockito.mock(ISchemaRegion.class);
+  private ISchemaSource<ITimeSeriesSchemaInfo> mockSchemaSource(ISchemaRegion schemaRegion)
+      throws Exception {
+    ISchemaSource<ITimeSeriesSchemaInfo> schemaSource = Mockito.mock(ISchemaSource.class);
     ISchemaReader<ITimeSeriesSchemaInfo> schemaReader = mockSchemaReader();
-    Mockito.when(
-            schemaRegion.getTimeSeriesReader(
-                SchemaRegionReadPlanFactory.getShowTimeSeriesPlan(
-                    new PartialPath(SCHEMA_COUNT_OPERATOR_TEST_SG),
-                    null,
-                    false,
-                    null,
-                    null,
-                    0,
-                    0,
-                    true)))
-        .thenReturn(schemaReader);
-    schemaReader = mockSchemaReader();
-    Mockito.when(
-            schemaRegion.getTimeSeriesReader(
-                SchemaRegionReadPlanFactory.getShowTimeSeriesPlan(
-                    new PartialPath(SCHEMA_COUNT_OPERATOR_TEST_SG + ".**"),
-                    null,
-                    false,
-                    null,
-                    null,
-                    0,
-                    0,
-                    false)))
-        .thenReturn(schemaReader);
-    return schemaRegion;
+    Mockito.when(schemaSource.getSchemaReader(schemaRegion)).thenReturn(schemaReader);
+    return schemaSource;
   }
 
   private ISchemaReader<ITimeSeriesSchemaInfo> mockSchemaReader() throws IllegalPathException {

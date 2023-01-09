@@ -97,8 +97,8 @@ import org.apache.iotdb.db.mpp.execution.operator.process.last.LastQuerySortOper
 import org.apache.iotdb.db.mpp.execution.operator.process.last.LastQueryUtil;
 import org.apache.iotdb.db.mpp.execution.operator.process.last.UpdateLastCacheOperator;
 import org.apache.iotdb.db.mpp.execution.operator.schema.CountGroupByLevelMergeOperator;
+import org.apache.iotdb.db.mpp.execution.operator.schema.CountGroupByLevelScanOperator;
 import org.apache.iotdb.db.mpp.execution.operator.schema.CountMergeOperator;
-import org.apache.iotdb.db.mpp.execution.operator.schema.LevelTimeSeriesCountOperator;
 import org.apache.iotdb.db.mpp.execution.operator.schema.NodeManageMemoryMergeOperator;
 import org.apache.iotdb.db.mpp.execution.operator.schema.NodePathsConvertOperator;
 import org.apache.iotdb.db.mpp.execution.operator.schema.NodePathsCountOperator;
@@ -534,7 +534,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                 node.getPlanNodeId(),
                 CountMergeOperator.class.getSimpleName());
     context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
-    if (children.get(0) instanceof LevelTimeSeriesCountOperator) {
+    if (children.get(0) instanceof CountGroupByLevelScanOperator) {
       return new CountGroupByLevelMergeOperator(node.getPlanNodeId(), operatorContext, children);
     } else {
       return new CountMergeOperator(node.getPlanNodeId(), operatorContext, children);
@@ -589,17 +589,19 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
             .addOperatorContext(
                 context.getNextOperatorId(),
                 node.getPlanNodeId(),
-                LevelTimeSeriesCountOperator.class.getSimpleName());
+                CountGroupByLevelScanOperator.class.getSimpleName());
     context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
-    return new LevelTimeSeriesCountOperator(
+    return new CountGroupByLevelScanOperator<>(
         node.getPlanNodeId(),
         operatorContext,
-        node.getPath(),
-        node.isPrefixPath(),
         node.getLevel(),
-        node.getKey(),
-        node.getValue(),
-        node.isContains());
+        SchemaSourceFactory.getTimeSeriesSchemaSource(
+            node.getPath(),
+            node.isPrefixPath(),
+            node.getKey(),
+            node.getValue(),
+            node.isContains(),
+            null));
   }
 
   @Override

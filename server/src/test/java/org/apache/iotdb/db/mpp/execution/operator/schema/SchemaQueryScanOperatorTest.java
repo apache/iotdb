@@ -21,7 +21,6 @@ package org.apache.iotdb.db.mpp.execution.operator.schema;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.metadata.plan.schemaregion.impl.read.SchemaRegionReadPlanFactory;
 import org.apache.iotdb.db.metadata.query.info.IDeviceSchemaInfo;
 import org.apache.iotdb.db.metadata.query.info.ITimeSeriesSchemaInfo;
 import org.apache.iotdb.db.metadata.query.reader.ISchemaReader;
@@ -89,9 +88,12 @@ public class SchemaQueryScanOperatorTest {
           .thenReturn(META_SCAN_OPERATOR_TEST_SG + ".device0");
       Mockito.when(deviceSchemaInfo.isAligned()).thenReturn(false);
       Iterator<IDeviceSchemaInfo> iterator = Collections.singletonList(deviceSchemaInfo).iterator();
-      Mockito.when(
-              schemaRegion.getDeviceReader(
-                  SchemaRegionReadPlanFactory.getShowDevicesPlan(partialPath, 10, 0, false)))
+      operatorContext
+          .getInstanceContext()
+          .setDriverContext(new SchemaDriverContext(fragmentInstanceContext, schemaRegion));
+      ISchemaSource<IDeviceSchemaInfo> deviceSchemaSource =
+          SchemaSourceFactory.getDeviceSchemaSource(partialPath, false, 10, 0, true);
+      Mockito.when(deviceSchemaSource.getSchemaReader(schemaRegion))
           .thenReturn(
               new ISchemaReader<IDeviceSchemaInfo>() {
                 @Override
@@ -107,11 +109,6 @@ public class SchemaQueryScanOperatorTest {
                   return iterator.next();
                 }
               });
-      operatorContext
-          .getInstanceContext()
-          .setDriverContext(new SchemaDriverContext(fragmentInstanceContext, schemaRegion));
-      ISchemaSource<IDeviceSchemaInfo> deviceSchemaSource =
-          SchemaSourceFactory.getDeviceSchemaSource(partialPath, false, 10, 0, true);
       List<ColumnHeader> columns = deviceSchemaSource.getInfoQueryColumnHeaders();
 
       SchemaQueryScanOperator<IDeviceSchemaInfo> devicesSchemaScanOperator =
@@ -188,9 +185,14 @@ public class SchemaQueryScanOperatorTest {
 
       ISchemaRegion schemaRegion = Mockito.mock(ISchemaRegion.class);
       Mockito.when(schemaRegion.getStorageGroupFullPath()).thenReturn(META_SCAN_OPERATOR_TEST_SG);
-      Mockito.when(
-              schemaRegion.getTimeSeriesReader(
-                  SchemaRegionReadPlanFactory.getShowTimeSeriesPlan(partialPath, 10, 0)))
+
+      operatorContext
+          .getInstanceContext()
+          .setDriverContext(new SchemaDriverContext(fragmentInstanceContext, schemaRegion));
+      ISchemaSource<ITimeSeriesSchemaInfo> timeSeriesSchemaSource =
+          SchemaSourceFactory.getTimeSeriesSchemaSource(
+              partialPath, false, 10, 0, null, null, false, Collections.emptyMap());
+      Mockito.when(timeSeriesSchemaSource.getSchemaReader(schemaRegion))
           .thenReturn(
               new ISchemaReader<ITimeSeriesSchemaInfo>() {
                 @Override
@@ -206,13 +208,6 @@ public class SchemaQueryScanOperatorTest {
                   return iterator.next();
                 }
               });
-
-      operatorContext
-          .getInstanceContext()
-          .setDriverContext(new SchemaDriverContext(fragmentInstanceContext, schemaRegion));
-      ISchemaSource<ITimeSeriesSchemaInfo> timeSeriesSchemaSource =
-          SchemaSourceFactory.getTimeSeriesSchemaSource(
-              partialPath, false, 10, 0, null, null, false, Collections.emptyMap());
       SchemaQueryScanOperator<ITimeSeriesSchemaInfo> timeSeriesMetaScanOperator =
           new SchemaQueryScanOperator<>(
               planNodeId,
