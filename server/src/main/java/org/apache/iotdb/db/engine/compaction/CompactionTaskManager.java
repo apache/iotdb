@@ -146,13 +146,11 @@ public class CompactionTaskManager implements IService {
 
   @TestOnly
   public void waitAllCompactionFinish() {
-    logger.info("wait all compaction finish...");
     long sleepingStartTime = 0;
     if (taskExecutionPool != null) {
       WrappedThreadPoolExecutor tmpThreadPool = taskExecutionPool;
       taskExecutionPool = null;
       candidateCompactionTaskQueue.clear();
-      int totalSleep = 0;
       while (true) {
         int totalSize = 0;
         for (Map<AbstractCompactionTask, Future<CompactionTaskSummary>> taskMap :
@@ -162,10 +160,6 @@ public class CompactionTaskManager implements IService {
         if (totalSize > 0) {
           try {
             Thread.sleep(100);
-            totalSleep++;
-            if (totalSleep % 100 == 0) {
-              logger.info("already waite {} seconds for all task finish", totalSleep / 10);
-            }
           } catch (InterruptedException e) {
             logger.error("Interrupted when waiting all task finish", e);
             break;

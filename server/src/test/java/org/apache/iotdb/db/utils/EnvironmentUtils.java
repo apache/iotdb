@@ -101,9 +101,7 @@ public class EnvironmentUtils {
 
   public static void cleanEnv() throws IOException, StorageEngineException {
     // wait all compaction finished
-    logger.info("start to clean Env...");
     CompactionTaskManager.getInstance().waitAllCompactionFinish();
-    logger.info("CompactionTaskManager finished...");
     // deregister all user defined classes
     try {
       if (UDFManagementService.getInstance() != null) {
@@ -115,25 +113,17 @@ public class EnvironmentUtils {
 
     logger.debug("EnvironmentUtil cleanEnv...");
 
-    logger.info("start to end query...");
     QueryResourceManager.getInstance().endQuery(TEST_QUERY_JOB_ID);
-    logger.info("start to closeAndRemoveAllOpenedReaders...");
     // clear opened file streams
     FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
 
-    logger.info("check whether ports are closed...");
     if (examinePorts) {
-      int total = 0;
       // TODO: this is just too slow, especially on Windows, consider a better way
       boolean closed = examinePorts();
       if (!closed) {
         // sleep 10 seconds
         try {
           TimeUnit.SECONDS.sleep(10);
-          total++;
-          if (total % 2 == 0) {
-            logger.info("has wait {} seconds for closing ports", total * 10);
-          }
         } catch (InterruptedException e) {
           // do nothing
         }
@@ -143,20 +133,13 @@ public class EnvironmentUtils {
         }
       }
     }
-    logger.info("begin to clean...");
     // clean wal manager
     WALManager.getInstance().clear();
-    logger.info("0...");
     WALRecoverManager.getInstance().clear();
-    logger.info("1...");
     StorageEngine.getInstance().stop();
-    logger.info("2...");
     SchemaEngine.getInstance().clear();
-    logger.info("3...");
     LocalConfigNode.getInstance().clear();
-    logger.info("4...");
     FlushManager.getInstance().stop();
-    logger.info("5...");
     CommonDescriptor.getInstance().getConfig().setNodeStatus(NodeStatus.Running);
     // We must disable MQTT service as it will cost a lot of time to be shutdown, which may slow our
     // unit tests.
@@ -169,7 +152,6 @@ public class EnvironmentUtils {
       BloomFilterCache.getInstance().clear();
     }
 
-    logger.info("begin to close other info...");
     // close array manager
     PrimitiveArrayManager.close();
 
@@ -195,7 +177,6 @@ public class EnvironmentUtils {
       throw new RuntimeException(e);
     }
 
-    logger.info("begin to clean all dirs...");
     // delete all directory
     cleanAllDir();
     config.setSeqTsFileSize(oldSeqTsFileSize);
