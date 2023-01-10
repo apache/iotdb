@@ -287,13 +287,11 @@ public class IoTConsensusServerImpl {
 
   public void takeSnapshot() throws ConsensusGroupModifyPeerException {
     try {
-      // TODO: We should use logic clock such as searchIndex rather than wall clock to mark the
-      // snapshot, otherwise there will be bugs in situations where the clock might fall back, such
-      // as CI
+      long latestSnapshotIndex = getLatestSnapshotIndex();
       latestSnapshotId =
           String.format(
               "%s_%s_%d",
-              SNAPSHOT_DIR_NAME, thisNode.getGroupId().getId(), System.currentTimeMillis());
+              SNAPSHOT_DIR_NAME, thisNode.getGroupId().getId(), latestSnapshotIndex);
       File snapshotDir = new File(storageDir, latestSnapshotId);
       if (snapshotDir.exists()) {
         FileUtils.deleteDirectory(snapshotDir);
@@ -370,6 +368,19 @@ public class IoTConsensusServerImpl {
     return originalFilePath.substring(originalFilePath.indexOf(snapshotId));
   }
 
+  private long getLatestSnapshotIndex() {
+    long snapShotIndex = 0;
+    File directory = new File(storageDir);
+    File[] versionFiles = directory.listFiles((dir, name) -> name.startsWith(SNAPSHOT_DIR_NAME));
+    if (versionFiles == null || versionFiles.length == 0) {
+      return snapShotIndex + 1;
+    }
+    for (File file : versionFiles) {
+      snapShotIndex = Long.max(snapShotIndex, Long.parseLong(file.getName().replaceAll(".*[^\\d](?=(\\d+))","")));
+    }
+    return snapShotIndex + 1;
+  }
+
   private void clearOldSnapshot() {
     File directory = new File(storageDir);
     File[] versionFiles = directory.listFiles((dir, name) -> name.startsWith(SNAPSHOT_DIR_NAME));
@@ -379,12 +390,13 @@ public class IoTConsensusServerImpl {
           thisNode.getGroupId());
       return;
     }
-    Arrays.sort(versionFiles, Comparator.comparing(File::getName));
-    for (int i = 0; i < versionFiles.length - 1; i++) {
-      try {
-        FileUtils.deleteDirectory(versionFiles[i]);
-      } catch (IOException e) {
-        logger.error("Delete old snapshot dir {} failed", versionFiles[i].getAbsolutePath(), e);
+    for (File file : versionFiles) {
+      if(!file.getName().equals(latestSnapshotId)) {
+        try {
+          FileUtils.deleteDirectory(file);
+        } catch (IOException e) {
+          logger.error("Delete old snapshot dir {} failed", file.getAbsolutePath(), e);
+        }
       }
     }
   }
