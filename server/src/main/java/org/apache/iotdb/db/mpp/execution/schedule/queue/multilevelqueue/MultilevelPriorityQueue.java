@@ -35,20 +35,26 @@ import static java.util.concurrent.TimeUnit.SECONDS;
  * href="https://github.com/trinodb/trino/blob/master/core/trino-main/src/main/java/io/trino/execution/executor/MultilevelSplitQueue.java">...</a>
  */
 public class MultilevelPriorityQueue extends IndexedBlockingQueue<DriverTask> {
-  /** Scheduled time threshold of each level */
+  /** Scheduled time threshold of TASK in each level */
   static final int[] LEVEL_THRESHOLD_SECONDS = {0, 1, 10, 60, 300};
 
+  /** the upper limit one Task can contribute to its level in one scheduled time */
   static final long LEVEL_CONTRIBUTION_CAP = SECONDS.toNanos(30);
 
   private final PriorityQueue<DriverTask>[] levelWaitingSplits;
 
-  /** Total amount of time each level has occupied. */
+  /**
+   * Total amount of time each LEVEL has occupied, which decides which level we will take task from.
+   */
   private final AtomicLong[] levelScheduledTime;
 
-  private final AtomicLong[] levelMinPriority;
+  /** The minimum scheduled time which current TASK in each level has. */
+  private final AtomicLong[] levelMinScheduledTime;
 
   /**
-   * Expected schedule time of level0-level4 is: levelTimeMultiplier^4 : levelTimeMultiplier^3 :
+   * Expected schedule time of each LEVEL.
+   *
+   * <p>The proportion of level0-level4 is: levelTimeMultiplier^4 : levelTimeMultiplier^3 :
    * levelTimeMultiplier^2 : levelTimeMultiplier : 1
    */
   private final double levelTimeMultiplier;
@@ -57,11 +63,11 @@ public class MultilevelPriorityQueue extends IndexedBlockingQueue<DriverTask> {
       double levelTimeMultiplier, int maxCapacity, DriverTask queryHolder) {
     super(maxCapacity, queryHolder);
     this.levelScheduledTime = new AtomicLong[LEVEL_THRESHOLD_SECONDS.length];
-    this.levelMinPriority = new AtomicLong[LEVEL_THRESHOLD_SECONDS.length];
+    this.levelMinScheduledTime = new AtomicLong[LEVEL_THRESHOLD_SECONDS.length];
     this.levelWaitingSplits = new PriorityQueue[LEVEL_THRESHOLD_SECONDS.length];
     for (int level = 0; level < LEVEL_THRESHOLD_SECONDS.length; level++) {
       levelScheduledTime[level] = new AtomicLong();
-      levelMinPriority[level] = new AtomicLong(-1);
+      levelMinScheduledTime[level] = new AtomicLong(-1);
       levelWaitingSplits[level] = new PriorityQueue<>(new DriverTask.SchedulePriorityComparator());
     }
     this.levelTimeMultiplier = levelTimeMultiplier;
@@ -108,7 +114,7 @@ public class MultilevelPriorityQueue extends IndexedBlockingQueue<DriverTask> {
         continue;
       }
       int selectedLevel = result.getPriority().getLevel();
-      levelMinPriority[selectedLevel].set(result.getPriority().getLevelScheduledTime());
+      levelMinScheduledTime[selectedLevel].set(result.getPriority().getLevelScheduledTime());
       return result;
     }
   }
@@ -119,7 +125,7 @@ public class MultilevelPriorityQueue extends IndexedBlockingQueue<DriverTask> {
    *
    * <p>This function selects the level that has the lowest ratio of actual to the target time with
    * the objective of minimizing deviation from the target scheduled time. From this level, we pick
-   * the DriverTask with the lowest priority.
+   * the DriverTask with the lowest scheduled time.
    */
   private DriverTask chooseLevelAndTask() {
     long targetScheduledTime = getLevel0TargetTime();
@@ -192,7 +198,16 @@ public class MultilevelPriorityQueue extends IndexedBlockingQueue<DriverTask> {
     }
   }
 
-  /** @return corrected value of level0TargetTime */
+  /**
+   * Get the expected scheduled time of LEVEL0 based on the maximum scheduled time of all levels
+   * after normalization.
+   *
+   * <p>For example, the levelTimeMultiplier is 2, which means the expected proportion of level0-1
+   * is 2 : 1. However, the actual proportion of levelScheduledTime of level0 and level1 is 3 : 2,
+   * in this situation the expected time of level0 will be Math.max(3, 2 * 2) = 4.
+   *
+   * @return the expected scheduled time of LEVEL0
+   */
   private synchronized long getLevel0TargetTime() {
     long level0TargetTime = levelScheduledTime[0].get();
     double currentMultiplier = levelTimeMultiplier;
@@ -252,13 +267,14 @@ public class MultilevelPriorityQueue extends IndexedBlockingQueue<DriverTask> {
     }
 
     addLevelTime(newLevel, remainingLevelContribution);
+    // TODO figure out why add newLevelMinPriority
     long newLevelMinPriority = getLevelMinPriority(newLevel, scheduledNanos);
     return new Priority(newLevel, newLevelMinPriority + remainingTaskTime);
   }
 
   public long getLevelMinPriority(int level, long taskThreadUsageNanos) {
-    levelMinPriority[level].compareAndSet(-1, taskThreadUsageNanos);
-    return levelMinPriority[level].get();
+    levelMinScheduledTime[level].compareAndSet(-1, taskThreadUsageNanos);
+    return levelMinScheduledTime[level].get();
   }
 
   public static int computeLevel(long threadUsageNanos) {
