@@ -19,13 +19,13 @@
 
 package org.apache.iotdb;
 
+import org.apache.iotdb.isession.SessionDataSet;
+import org.apache.iotdb.isession.template.Template;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Session;
-import org.apache.iotdb.session.SessionDataSet;
 import org.apache.iotdb.session.template.InternalNode;
 import org.apache.iotdb.session.template.MeasurementNode;
-import org.apache.iotdb.session.template.Template;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -66,7 +66,7 @@ public class AlignedTimeseriesSessionExample {
 
     insertAlignedRecord();
     //    insertAlignedRecords();
-    //    insertAlignedRecordsOfOneDevices();
+    //    insertAlignedRecordsOfOneDevice();
 
     //    insertAlignedStringRecord();
     //    insertAlignedStringRecords();
@@ -257,9 +257,9 @@ public class AlignedTimeseriesSessionExample {
 
   private static void createAlignedTimeseries()
       throws StatementExecutionException, IoTDBConnectionException {
-    List<String> multiMeasurementComponents = new ArrayList<>();
+    List<String> measurements = new ArrayList<>();
     for (int i = 1; i <= 2; i++) {
-      multiMeasurementComponents.add("s" + i);
+      measurements.add("s" + i);
     }
     List<TSDataType> dataTypes = new ArrayList<>();
     dataTypes.add(TSDataType.INT64);
@@ -271,14 +271,7 @@ public class AlignedTimeseriesSessionExample {
       compressors.add(CompressionType.SNAPPY);
     }
     session.createAlignedTimeseries(
-        ROOT_SG1_D1,
-        multiMeasurementComponents,
-        dataTypes,
-        encodings,
-        compressors,
-        null,
-        null,
-        null);
+        ROOT_SG1_D1, measurements, dataTypes, encodings, compressors, null, null, null);
   }
 
   // be sure template is coordinate with tablet
@@ -421,10 +414,10 @@ public class AlignedTimeseriesSessionExample {
   private static void insertAlignedRecord()
       throws IoTDBConnectionException, StatementExecutionException {
     // first file we have both sensots' data
-    List<String> multiMeasurementComponents = new ArrayList<>();
+    List<String> measurements = new ArrayList<>();
     List<TSDataType> types = new ArrayList<>();
-    multiMeasurementComponents.add("s1");
-    multiMeasurementComponents.add("s2");
+    measurements.add("s1");
+    measurements.add("s2");
     types.add(TSDataType.INT64);
     types.add(TSDataType.INT32);
 
@@ -432,47 +425,47 @@ public class AlignedTimeseriesSessionExample {
       List<Object> values = new ArrayList<>();
       values.add(time);
       values.add((int) time);
-      session.insertAlignedRecord(ROOT_SG1_D1, time, multiMeasurementComponents, types, values);
+      session.insertAlignedRecord(ROOT_SG1_D1, time, measurements, types, values);
     }
     session.executeNonQueryStatement("flush");
     // second file we only have s1's data
-    multiMeasurementComponents.clear();
+    measurements.clear();
     types.clear();
-    multiMeasurementComponents.add("s1");
+    measurements.add("s1");
     types.add(TSDataType.INT64);
     for (long time = 10; time < 20; time++) {
       List<Object> values = new ArrayList<>();
       values.add(time);
-      session.insertAlignedRecord(ROOT_SG1_D1, time, multiMeasurementComponents, types, values);
+      session.insertAlignedRecord(ROOT_SG1_D1, time, measurements, types, values);
     }
   }
 
   private static void insertAlignedStringRecord()
       throws IoTDBConnectionException, StatementExecutionException {
-    List<String> multiMeasurementComponents = new ArrayList<>();
-    multiMeasurementComponents.add("s1");
-    multiMeasurementComponents.add("s2");
+    List<String> measurements = new ArrayList<>();
+    measurements.add("s1");
+    measurements.add("s2");
 
     for (long time = 0; time < 1; time++) {
       List<String> values = new ArrayList<>();
       values.add("3");
       values.add("4");
-      session.insertAlignedRecord(ROOT_SG2_D1_VECTOR5, time, multiMeasurementComponents, values);
+      session.insertAlignedRecord(ROOT_SG2_D1_VECTOR5, time, measurements, values);
     }
   }
 
   private static void insertAlignedRecords()
       throws IoTDBConnectionException, StatementExecutionException {
-    List<String> multiSeriesIds = new ArrayList<>();
-    List<List<String>> multiMeasurementComponentsList = new ArrayList<>();
+    List<String> deviceIds = new ArrayList<>();
+    List<List<String>> measurementsList = new ArrayList<>();
     List<List<TSDataType>> typeList = new ArrayList<>();
     List<Long> times = new ArrayList<>();
     List<List<Object>> valueList = new ArrayList<>();
 
     for (long time = 1; time < 5; time++) {
-      List<String> multiMeasurementComponents = new ArrayList<>();
-      multiMeasurementComponents.add("s1");
-      multiMeasurementComponents.add("s2");
+      List<String> measurements = new ArrayList<>();
+      measurements.add("s1");
+      measurements.add("s2");
 
       List<TSDataType> types = new ArrayList<>();
       types.add(TSDataType.INT64);
@@ -482,51 +475,50 @@ public class AlignedTimeseriesSessionExample {
       values.add(1L);
       values.add(2);
 
-      multiSeriesIds.add(ROOT_SG2_D1_VECTOR4);
+      deviceIds.add(ROOT_SG2_D1_VECTOR4);
       times.add(time);
-      multiMeasurementComponentsList.add(multiMeasurementComponents);
+      measurementsList.add(measurements);
       typeList.add(types);
       valueList.add(values);
     }
-    session.insertAlignedRecords(
-        multiSeriesIds, times, multiMeasurementComponentsList, typeList, valueList);
+    session.insertAlignedRecords(deviceIds, times, measurementsList, typeList, valueList);
   }
 
   private static void insertAlignedStringRecords()
       throws IoTDBConnectionException, StatementExecutionException {
-    List<String> multiSeriesIds = new ArrayList<>();
-    List<List<String>> multiMeasurementComponentsList = new ArrayList<>();
+    List<String> deviceIds = new ArrayList<>();
+    List<List<String>> measurementsList = new ArrayList<>();
     List<Long> times = new ArrayList<>();
     List<List<String>> valueList = new ArrayList<>();
 
     for (long time = 1; time < 5; time++) {
-      List<String> multiMeasurementComponents = new ArrayList<>();
-      multiMeasurementComponents.add("s1");
-      multiMeasurementComponents.add("s2");
+      List<String> measurements = new ArrayList<>();
+      measurements.add("s1");
+      measurements.add("s2");
 
       List<String> values = new ArrayList<>();
       values.add("3");
       values.add("4");
 
-      multiSeriesIds.add(ROOT_SG2_D1_VECTOR5);
+      deviceIds.add(ROOT_SG2_D1_VECTOR5);
       times.add(time);
-      multiMeasurementComponentsList.add(multiMeasurementComponents);
+      measurementsList.add(measurements);
       valueList.add(values);
     }
-    session.insertAlignedRecords(multiSeriesIds, times, multiMeasurementComponentsList, valueList);
+    session.insertAlignedRecords(deviceIds, times, measurementsList, valueList);
   }
 
-  private static void insertAlignedRecordsOfOneDevices()
+  private static void insertAlignedRecordsOfOneDevice()
       throws IoTDBConnectionException, StatementExecutionException {
-    List<List<String>> multiMeasurementComponentsList = new ArrayList<>();
+    List<List<String>> measurementsList = new ArrayList<>();
     List<List<TSDataType>> typeList = new ArrayList<>();
     List<Long> times = new ArrayList<>();
     List<List<Object>> valueList = new ArrayList<>();
 
     for (long time = 10; time < 15; time++) {
-      List<String> multiMeasurementComponents = new ArrayList<>();
-      multiMeasurementComponents.add("s1");
-      multiMeasurementComponents.add("s2");
+      List<String> measurements = new ArrayList<>();
+      measurements.add("s1");
+      measurements.add("s2");
 
       List<TSDataType> types = new ArrayList<>();
       types.add(TSDataType.INT64);
@@ -537,12 +529,12 @@ public class AlignedTimeseriesSessionExample {
       values.add(2);
 
       times.add(time);
-      multiMeasurementComponentsList.add(multiMeasurementComponents);
+      measurementsList.add(measurements);
       typeList.add(types);
       valueList.add(values);
     }
     session.insertAlignedRecordsOfOneDevice(
-        ROOT_SG2_D1_VECTOR4, times, multiMeasurementComponentsList, typeList, valueList);
+        ROOT_SG2_D1_VECTOR4, times, measurementsList, typeList, valueList);
   }
 
   private static void insertTabletsWithAlignedTimeseries()

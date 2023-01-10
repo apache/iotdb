@@ -21,7 +21,7 @@ package org.apache.iotdb.db.engine.trigger.example;
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.engine.trigger.api.Trigger;
-import org.apache.iotdb.db.engine.trigger.api.TriggerAttributes;
+import org.apache.iotdb.trigger.api.TriggerAttributes;
 import org.apache.iotdb.tsfile.utils.Binary;
 
 public class Counter implements Trigger {

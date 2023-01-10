@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.wal.buffer;
 
 import org.apache.iotdb.commons.file.SystemFileFactory;
+import org.apache.iotdb.db.wal.WALManager;
 import org.apache.iotdb.db.wal.io.WALWriter;
 import org.apache.iotdb.db.wal.utils.WALFileStatus;
 import org.apache.iotdb.db.wal.utils.WALFileUtils;
@@ -45,7 +46,7 @@ public abstract class AbstractWALBuffer implements IWALBuffer {
   /** current wal file log writer */
   protected volatile WALWriter currentWALFileWriter;
 
-  public AbstractWALBuffer(
+  protected AbstractWALBuffer(
       String identifier, String logDirectory, long startFileVersion, long startSearchIndex)
       throws FileNotFoundException {
     this.identifier = identifier;
@@ -82,6 +83,8 @@ public abstract class AbstractWALBuffer implements IWALBuffer {
     File currentFile = currentWALFileWriter.getLogFile();
     String currentName = currentFile.getName();
     currentWALFileWriter.close();
+    WALManager.getInstance().addTotalDiskUsage(currentWALFileWriter.size());
+    WALManager.getInstance().addTotalFileNum(1);
     if (WALFileUtils.parseStatusCode(currentName) != fileStatus) {
       String targetName =
           WALFileUtils.getLogFileName(
@@ -102,5 +105,10 @@ public abstract class AbstractWALBuffer implements IWALBuffer {
                 WALFileStatus.CONTAINS_SEARCH_INDEX));
     currentWALFileWriter = new WALWriter(nextLogFile);
     logger.debug("Open new wal file {} for wal node-{}'s buffer.", nextLogFile, identifier);
+  }
+
+  @Override
+  public long getCurrentSearchIndex() {
+    return currentSearchIndex;
   }
 }

@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.mpp.execution.exchange;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.commons.client.ClientPoolFactory;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeMPPDataExchangeServiceClient;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
@@ -29,7 +30,7 @@ import org.apache.iotdb.commons.exception.runtime.RPCServiceException;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.service.ThriftService;
 import org.apache.iotdb.commons.service.ThriftServiceThread;
-import org.apache.iotdb.db.client.DataNodeClientPoolFactory;
+import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.execution.memory.LocalMemoryManager;
@@ -68,14 +69,12 @@ public class MPPDataExchangeService extends ThriftService implements MPPDataExch
             executorService,
             new IClientManager.Factory<TEndPoint, SyncDataNodeMPPDataExchangeServiceClient>()
                 .createClientManager(
-                    new DataNodeClientPoolFactory
-                        .SyncDataNodeMPPDataExchangeServiceClientPoolFactory()));
+                    new ClientPoolFactory.SyncDataNodeMPPDataExchangeServiceClientPoolFactory()));
     LOGGER.info("MPPDataExchangeManager init successfully");
   }
 
   @Override
-  public void initTProcessor()
-      throws ClassNotFoundException, IllegalAccessException, InstantiationException {
+  public void initTProcessor() {
     initSyncedServiceImpl(null);
     processor = new Processor<>(mppDataExchangeManager.getOrCreateMPPDataExchangeServiceImpl());
   }
@@ -85,15 +84,14 @@ public class MPPDataExchangeService extends ThriftService implements MPPDataExch
   }
 
   @Override
-  public void initThriftServiceThread()
-      throws IllegalAccessException, InstantiationException, ClassNotFoundException {
+  public void initThriftServiceThread() throws IllegalAccessException {
     try {
       IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
       thriftServiceThread =
           new ThriftServiceThread(
               processor,
               getID().getName(),
-              ThreadName.MPP_DATA_EXCHANGE_RPC_CLIENT.getName(),
+              ThreadName.MPP_DATA_EXCHANGE_RPC_PROCESSOR.getName(),
               getBindIP(),
               getBindPort(),
               config.getRpcMaxConcurrentClientNum(),
@@ -104,12 +102,14 @@ public class MPPDataExchangeService extends ThriftService implements MPPDataExch
     } catch (RPCServiceException e) {
       throw new IllegalAccessException(e.getMessage());
     }
-    thriftServiceThread.setName(ThreadName.MPP_DATA_EXCHANGE_RPC_SERVER.getName());
+    thriftServiceThread.setName(ThreadName.MPP_DATA_EXCHANGE_RPC_SERVICE.getName());
+    MetricService.getInstance()
+        .addMetricSet(new MPPDataExchangeServiceMetrics(thriftServiceThread));
   }
 
   @Override
   public String getBindIP() {
-    return IoTDBDescriptor.getInstance().getConfig().getRpcAddress();
+    return IoTDBDescriptor.getInstance().getConfig().getInternalAddress();
   }
 
   @Override

@@ -38,8 +38,31 @@ public interface Operator extends AutoCloseable {
     return NOT_BLOCKED;
   }
 
+  default TsBlock nextWithTimer() {
+    OperatorContext context = getOperatorContext();
+    long startTime = System.nanoTime();
+
+    try {
+      return next();
+    } finally {
+      context.recordExecutionTime(System.nanoTime() - startTime);
+      context.recordNextCalled();
+    }
+  }
+
   /** Gets next tsBlock from this operator. If no data is currently available, return null. */
   TsBlock next();
+
+  default boolean hasNextWithTimer() {
+    OperatorContext context = getOperatorContext();
+    long startTime = System.nanoTime();
+
+    try {
+      return hasNext();
+    } finally {
+      context.recordExecutionTime(System.nanoTime() - startTime);
+    }
+  }
 
   /** @return true if the operator has more data, otherwise false */
   boolean hasNext();
@@ -52,4 +75,26 @@ public interface Operator extends AutoCloseable {
    * Is this operator completely finished processing and no more output TsBlock will be produced.
    */
   boolean isFinished();
+
+  /**
+   * We should also consider the memory used by its children operator, so the calculation logic may
+   * be like: long estimatedOfCurrentOperator = XXXXX; return max(estimatedOfCurrentOperator,
+   * child1.calculateMaxPeekMemory(), child2.calculateMaxPeekMemory(), ....)
+   *
+   * <p>Each operator's MaxPeekMemory should also take retained size of each child operator into
+   * account.
+   *
+   * @return estimated max memory footprint that the Operator Tree(rooted from this operator) will
+   *     use while doing its own query processing
+   */
+  long calculateMaxPeekMemory();
+
+  /** @return estimated max memory footprint for returned TsBlock when calling operator.next() */
+  long calculateMaxReturnSize();
+
+  /**
+   * @return each operator's retained size(including all its children's retained size) after calling
+   *     its next() method
+   */
+  long calculateRetainedSizeAfterCallingNext();
 }

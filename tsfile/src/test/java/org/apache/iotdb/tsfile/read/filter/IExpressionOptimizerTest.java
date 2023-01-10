@@ -44,10 +44,10 @@ public class IExpressionOptimizerTest {
   @Before
   public void before() {
     selectedSeries = new ArrayList<>();
-    selectedSeries.add(new Path("d1", "s1"));
-    selectedSeries.add(new Path("d2", "s1"));
-    selectedSeries.add(new Path("d1", "s2"));
-    selectedSeries.add(new Path("d2", "s2"));
+    selectedSeries.add(new Path("d1", "s1", true));
+    selectedSeries.add(new Path("d2", "s1", true));
+    selectedSeries.add(new Path("d1", "s2", true));
+    selectedSeries.add(new Path("d2", "s2", true));
   }
 
   @After
@@ -80,20 +80,20 @@ public class IExpressionOptimizerTest {
           FilterFactory.and(
               FilterFactory.or(ValueFilter.gt(100L), ValueFilter.lt(50L)), TimeFilter.gt(1400L));
       SingleSeriesExpression singleSeriesExp1 =
-          new SingleSeriesExpression(new Path("d2", "s1"), filter1);
+          new SingleSeriesExpression(new Path("d2", "s1", true), filter1);
 
       Filter filter2 =
           FilterFactory.and(
               FilterFactory.or(ValueFilter.gt(100.5f), ValueFilter.lt(50.6f)),
               TimeFilter.gt(1400L));
       SingleSeriesExpression singleSeriesExp2 =
-          new SingleSeriesExpression(new Path("d1", "s2"), filter2);
+          new SingleSeriesExpression(new Path("d1", "s2", true), filter2);
 
       Filter filter3 =
           FilterFactory.or(
               FilterFactory.or(ValueFilter.gt(100.5), ValueFilter.lt(50.6)), TimeFilter.gt(1400L));
       SingleSeriesExpression singleSeriesExp3 =
-          new SingleSeriesExpression(new Path("d2", "s2"), filter3);
+          new SingleSeriesExpression(new Path("d2", "s2", true), filter3);
 
       IExpression expression =
           BinaryExpression.and(
@@ -111,11 +111,11 @@ public class IExpressionOptimizerTest {
   public void testOneTimeAndSeries() {
     Filter filter1 = FilterFactory.or(ValueFilter.gt(100L), ValueFilter.lt(50L));
     SingleSeriesExpression singleSeriesExp1 =
-        new SingleSeriesExpression(new Path("d2", "s1"), filter1);
+        new SingleSeriesExpression(new Path("d2", "s1", true), filter1);
 
     Filter filter2 = FilterFactory.or(ValueFilter.gt(100.5f), ValueFilter.lt(50.6f));
     SingleSeriesExpression singleSeriesExp2 =
-        new SingleSeriesExpression(new Path("d1", "s2"), filter2);
+        new SingleSeriesExpression(new Path("d1", "s2", true), filter2);
 
     Filter timeFilter = TimeFilter.lt(14001234L);
     IExpression globalTimeFilter = new GlobalTimeExpression(timeFilter);
@@ -136,7 +136,7 @@ public class IExpressionOptimizerTest {
   public void testSeriesAndGlobalOrGlobal() {
     Filter filter1 = FilterFactory.or(ValueFilter.gt(100L), ValueFilter.lt(50L));
     SingleSeriesExpression singleSeriesExp1 =
-        new SingleSeriesExpression(new Path("d2", "s1"), filter1);
+        new SingleSeriesExpression(new Path("d2", "s1", true), filter1);
 
     Filter timeFilter = TimeFilter.lt(14001234L);
     IExpression globalTimeFilter = new GlobalTimeExpression(timeFilter);
@@ -161,7 +161,7 @@ public class IExpressionOptimizerTest {
   public void testSeriesAndGlobal() {
     Filter filter1 = FilterFactory.or(ValueFilter.gt(100L), ValueFilter.lt(50L));
     SingleSeriesExpression singleSeriesExp1 =
-        new SingleSeriesExpression(new Path("d2", "s1"), filter1);
+        new SingleSeriesExpression(new Path("d2", "s1", true), filter1);
 
     Filter timeFilter = TimeFilter.lt(14001234L);
     IExpression globalTimeFilter = new GlobalTimeExpression(timeFilter);
@@ -181,11 +181,11 @@ public class IExpressionOptimizerTest {
   public void testOneTimeOrSeries() {
     Filter filter1 = FilterFactory.or(ValueFilter.gt(100L), ValueFilter.lt(50L));
     SingleSeriesExpression singleSeriesExp1 =
-        new SingleSeriesExpression(new Path("d2", "s1"), filter1);
+        new SingleSeriesExpression(new Path("d2", "s1", true), filter1);
 
     Filter filter2 = FilterFactory.or(ValueFilter.gt(100.5f), ValueFilter.lt(50.6f));
     SingleSeriesExpression singleSeriesExp2 =
-        new SingleSeriesExpression(new Path("d1", "s2"), filter2);
+        new SingleSeriesExpression(new Path("d1", "s2", true), filter2);
 
     Filter timeFilter = TimeFilter.lt(14001234L);
     IExpression globalTimeFilter = new GlobalTimeExpression(timeFilter);
@@ -210,11 +210,11 @@ public class IExpressionOptimizerTest {
   public void testTwoTimeCombine() {
     Filter filter1 = FilterFactory.or(ValueFilter.gt(100L), ValueFilter.lt(50L));
     SingleSeriesExpression singleSeriesExp1 =
-        new SingleSeriesExpression(new Path("d2", "s1"), filter1);
+        new SingleSeriesExpression(new Path("d2", "s1", true), filter1);
 
     Filter filter2 = FilterFactory.or(ValueFilter.gt(100.5f), ValueFilter.lt(50.6f));
     SingleSeriesExpression singleSeriesExp2 =
-        new SingleSeriesExpression(new Path("d1", "s2"), filter2);
+        new SingleSeriesExpression(new Path("d1", "s2", true), filter2);
 
     IExpression globalTimeFilter1 = new GlobalTimeExpression(TimeFilter.lt(14001234L));
     IExpression globalTimeFilter2 = new GlobalTimeExpression(TimeFilter.gt(14001000L));

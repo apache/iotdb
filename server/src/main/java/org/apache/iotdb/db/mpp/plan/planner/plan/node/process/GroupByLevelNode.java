@@ -23,9 +23,9 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationDescriptor;
-import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByLevelDescriptor;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.CrossSeriesAggregationDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
-import org.apache.iotdb.db.mpp.plan.statement.component.OrderBy;
+import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import javax.annotation.Nullable;
@@ -52,24 +52,24 @@ import java.util.stream.Collectors;
  * <p>If the group by level parameter is [0, 2], then these two columns will not belong to one
  * bucket. And the total buckets are `root.*.d1.s1` and `root.*.d2.s1`
  */
-public class GroupByLevelNode extends MultiChildNode {
+public class GroupByLevelNode extends MultiChildProcessNode {
 
   // The list of aggregate descriptors
   // each GroupByLevelDescriptor will be output as one or two column of result TsBlock
-  protected List<GroupByLevelDescriptor> groupByLevelDescriptors;
+  protected List<CrossSeriesAggregationDescriptor> groupByLevelDescriptors;
 
   // The parameter of `group by time`.
   // Its value will be null if there is no `group by time` clause.
   @Nullable protected GroupByTimeParameter groupByTimeParameter;
 
-  protected OrderBy scanOrder;
+  protected Ordering scanOrder;
 
   public GroupByLevelNode(
       PlanNodeId id,
       List<PlanNode> children,
-      List<GroupByLevelDescriptor> groupByLevelDescriptors,
+      List<CrossSeriesAggregationDescriptor> groupByLevelDescriptors,
       GroupByTimeParameter groupByTimeParameter,
-      OrderBy scanOrder) {
+      Ordering scanOrder) {
     super(id, children);
     this.groupByLevelDescriptors = groupByLevelDescriptors;
     this.groupByTimeParameter = groupByTimeParameter;
@@ -78,28 +78,13 @@ public class GroupByLevelNode extends MultiChildNode {
 
   public GroupByLevelNode(
       PlanNodeId id,
-      List<GroupByLevelDescriptor> groupByLevelDescriptors,
+      List<CrossSeriesAggregationDescriptor> groupByLevelDescriptors,
       GroupByTimeParameter groupByTimeParameter,
-      OrderBy scanOrder) {
+      Ordering scanOrder) {
     super(id);
     this.groupByLevelDescriptors = groupByLevelDescriptors;
     this.groupByTimeParameter = groupByTimeParameter;
     this.scanOrder = scanOrder;
-  }
-
-  @Override
-  public List<PlanNode> getChildren() {
-    return children;
-  }
-
-  @Override
-  public void addChild(PlanNode child) {
-    this.children.add(child);
-  }
-
-  @Override
-  public int allowedChildCount() {
-    return CHILD_COUNT_NO_LIMIT;
   }
 
   @Override
@@ -108,11 +93,12 @@ public class GroupByLevelNode extends MultiChildNode {
         getPlanNodeId(), getGroupByLevelDescriptors(), this.groupByTimeParameter, this.scanOrder);
   }
 
-  public List<GroupByLevelDescriptor> getGroupByLevelDescriptors() {
+  public List<CrossSeriesAggregationDescriptor> getGroupByLevelDescriptors() {
     return groupByLevelDescriptors;
   }
 
-  public void setGroupByLevelDescriptors(List<GroupByLevelDescriptor> groupByLevelDescriptors) {
+  public void setGroupByLevelDescriptors(
+      List<CrossSeriesAggregationDescriptor> groupByLevelDescriptors) {
     this.groupByLevelDescriptors = groupByLevelDescriptors;
   }
 
@@ -133,7 +119,7 @@ public class GroupByLevelNode extends MultiChildNode {
   protected void serializeAttributes(ByteBuffer byteBuffer) {
     PlanNodeType.GROUP_BY_LEVEL.serialize(byteBuffer);
     ReadWriteIOUtils.write(groupByLevelDescriptors.size(), byteBuffer);
-    for (GroupByLevelDescriptor groupByLevelDescriptor : groupByLevelDescriptors) {
+    for (CrossSeriesAggregationDescriptor groupByLevelDescriptor : groupByLevelDescriptors) {
       groupByLevelDescriptor.serialize(byteBuffer);
     }
     if (groupByTimeParameter == null) {
@@ -149,7 +135,7 @@ public class GroupByLevelNode extends MultiChildNode {
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
     PlanNodeType.GROUP_BY_LEVEL.serialize(stream);
     ReadWriteIOUtils.write(groupByLevelDescriptors.size(), stream);
-    for (GroupByLevelDescriptor groupByLevelDescriptor : groupByLevelDescriptors) {
+    for (CrossSeriesAggregationDescriptor groupByLevelDescriptor : groupByLevelDescriptors) {
       groupByLevelDescriptor.serialize(stream);
     }
     if (groupByTimeParameter == null) {
@@ -163,9 +149,9 @@ public class GroupByLevelNode extends MultiChildNode {
 
   public static GroupByLevelNode deserialize(ByteBuffer byteBuffer) {
     int descriptorSize = ReadWriteIOUtils.readInt(byteBuffer);
-    List<GroupByLevelDescriptor> groupByLevelDescriptors = new ArrayList<>();
+    List<CrossSeriesAggregationDescriptor> groupByLevelDescriptors = new ArrayList<>();
     while (descriptorSize > 0) {
-      groupByLevelDescriptors.add(GroupByLevelDescriptor.deserialize(byteBuffer));
+      groupByLevelDescriptors.add(CrossSeriesAggregationDescriptor.deserialize(byteBuffer));
       descriptorSize--;
     }
     byte isNull = ReadWriteIOUtils.readByte(byteBuffer);
@@ -173,7 +159,7 @@ public class GroupByLevelNode extends MultiChildNode {
     if (isNull == 1) {
       groupByTimeParameter = GroupByTimeParameter.deserialize(byteBuffer);
     }
-    OrderBy scanOrder = OrderBy.values()[ReadWriteIOUtils.readInt(byteBuffer)];
+    Ordering scanOrder = Ordering.values()[ReadWriteIOUtils.readInt(byteBuffer)];
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
     return new GroupByLevelNode(
         planNodeId, groupByLevelDescriptors, groupByTimeParameter, scanOrder);
@@ -184,15 +170,21 @@ public class GroupByLevelNode extends MultiChildNode {
     return groupByTimeParameter;
   }
 
-  public OrderBy getScanOrder() {
+  public Ordering getScanOrder() {
     return scanOrder;
   }
 
   @Override
   public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
-    if (!super.equals(o)) return false;
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    if (!super.equals(o)) {
+      return false;
+    }
     GroupByLevelNode that = (GroupByLevelNode) o;
     return Objects.equals(groupByLevelDescriptors, that.groupByLevelDescriptors)
         && Objects.equals(groupByTimeParameter, that.groupByTimeParameter)

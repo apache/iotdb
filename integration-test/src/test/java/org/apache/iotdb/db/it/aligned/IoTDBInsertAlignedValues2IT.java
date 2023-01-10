@@ -18,9 +18,8 @@
  */
 package org.apache.iotdb.db.it.aligned;
 
-import org.apache.iotdb.it.env.ConfigFactory;
 import org.apache.iotdb.it.env.EnvFactory;
-import org.apache.iotdb.it.env.IoTDBTestRunner;
+import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 
@@ -40,35 +39,31 @@ import static org.junit.Assert.assertEquals;
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBInsertAlignedValues2IT {
-  private int numOfPointsPerPage;
-  private boolean autoCreateSchemaEnabled;
 
   @Before
   public void setUp() throws Exception {
-    numOfPointsPerPage = ConfigFactory.getConfig().getMaxNumberOfPointsInPage();
-    autoCreateSchemaEnabled = ConfigFactory.getConfig().isAutoCreateSchemaEnabled();
-    ConfigFactory.getConfig().setAutoCreateSchemaEnabled(true);
-    ConfigFactory.getConfig().setMaxNumberOfPointsInPage(2);
-    EnvFactory.getEnv().initBeforeClass();
+    EnvFactory.getEnv()
+        .getConfig()
+        .getCommonConfig()
+        .setAutoCreateSchemaEnabled(true)
+        .setMaxNumberOfPointsInPage(2);
+    EnvFactory.getEnv().initClusterEnvironment();
   }
 
   @After
   public void tearDown() throws Exception {
-    EnvFactory.getEnv().cleanAfterClass();
-    ConfigFactory.getConfig().setAutoCreateSchemaEnabled(autoCreateSchemaEnabled);
-    ConfigFactory.getConfig().setMaxNumberOfPointsInPage(numOfPointsPerPage);
+    EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
   @Test
   public void testInsertAlignedWithEmptyPage() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      // TODO change it to executeBatch way when it's supported in new cluster
       statement.execute(
           "CREATE ALIGNED TIMESERIES root.lz.dev.GPS(S1 INT32 encoding=PLAIN compressor=SNAPPY, S2 INT32 encoding=PLAIN compressor=SNAPPY, S3 INT32 encoding=PLAIN compressor=SNAPPY) ");
       for (int i = 0; i < 100; i++) {
         if (i == 99) {
-          statement.execute(
+          statement.addBatch(
               "insert into root.lz.dev.GPS(time,S1,S3) aligned values("
                   + i
                   + ","
@@ -77,7 +72,7 @@ public class IoTDBInsertAlignedValues2IT {
                   + i
                   + ")");
         } else {
-          statement.execute(
+          statement.addBatch(
               "insert into root.lz.dev.GPS(time,S1,S2) aligned values("
                   + i
                   + ","
@@ -87,6 +82,7 @@ public class IoTDBInsertAlignedValues2IT {
                   + ")");
         }
       }
+      statement.executeBatch();
 
       statement.execute("flush");
       int rowCount = 0;

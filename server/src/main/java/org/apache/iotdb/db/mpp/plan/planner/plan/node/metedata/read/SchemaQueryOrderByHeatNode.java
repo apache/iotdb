@@ -18,19 +18,19 @@
  */
 package org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read;
 
-import org.apache.iotdb.db.mpp.common.header.HeaderConstant;
+import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.MultiChildNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.MultiChildProcessNode;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
 
-public class SchemaQueryOrderByHeatNode extends MultiChildNode {
+public class SchemaQueryOrderByHeatNode extends MultiChildProcessNode {
 
   public SchemaQueryOrderByHeatNode(PlanNodeId id) {
     super(id);
@@ -60,7 +60,7 @@ public class SchemaQueryOrderByHeatNode extends MultiChildNode {
   public List<String> getOutputColumnNames() {
     for (PlanNode child : children) {
       if (child.getOutputColumnNames().size()
-          == HeaderConstant.showTimeSeriesHeader.getOutputValueColumnCount() + 1) {
+          == ColumnHeaderConstant.showTimeSeriesColumnHeaders.size() + 1) {
         return child.getOutputColumnNames();
       }
     }

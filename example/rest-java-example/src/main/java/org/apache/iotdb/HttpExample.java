@@ -44,9 +44,9 @@ public class HttpExample {
 
   public static void main(String[] args) {
     HttpExample httpExample = new HttpExample();
-      httpExample.ping();
-      httpExample.insertTablet();
-      httpExample.query();
+    httpExample.ping();
+    httpExample.insertTablet();
+    httpExample.query();
   }
 
   public void ping() {
@@ -75,7 +75,6 @@ public class HttpExample {
       }
     }
   }
-
 
   private HttpPost getHttpPost(String url) {
     HttpPost httpPost = new HttpPost(url);

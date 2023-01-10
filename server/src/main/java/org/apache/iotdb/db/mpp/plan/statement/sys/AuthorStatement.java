@@ -20,31 +20,31 @@ package org.apache.iotdb.db.mpp.plan.statement.sys;
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.mpp.plan.analyze.QueryType;
-import org.apache.iotdb.db.mpp.plan.constant.StatementType;
+import org.apache.iotdb.db.mpp.plan.statement.AuthorType;
 import org.apache.iotdb.db.mpp.plan.statement.IConfigStatement;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
+import org.apache.iotdb.db.mpp.plan.statement.StatementType;
 import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
-import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
 
 import java.util.Collections;
 import java.util.List;
 
 public class AuthorStatement extends Statement implements IConfigStatement {
 
-  private final AuthorOperator.AuthorType authorType;
+  private final AuthorType authorType;
   private String userName;
   private String roleName;
   private String password;
   private String newPassword;
   private String[] privilegeList;
-  private PartialPath nodeName;
+  private List<PartialPath> nodeNameList;
 
   /**
-   * AuthorOperator Constructor with AuthorType.
+   * Constructor with AuthorType.
    *
    * @param type author type
    */
-  public AuthorStatement(AuthorOperator.AuthorType type) {
+  public AuthorStatement(AuthorType type) {
     super();
     authorType = type;
     switch (authorType) {
@@ -75,10 +75,10 @@ public class AuthorStatement extends Statement implements IConfigStatement {
       case UPDATE_USER:
         this.setType(StatementType.MODIFY_PASSWORD);
         break;
-      case GRANT_ROLE_TO_USER:
-        this.setType(StatementType.GRANT_ROLE_PRIVILEGE);
+      case GRANT_USER_ROLE:
+        this.setType(StatementType.GRANT_USER_ROLE);
         break;
-      case REVOKE_ROLE_FROM_USER:
+      case REVOKE_USER_ROLE:
         this.setType(StatementType.REVOKE_USER_ROLE);
         break;
       case LIST_USER_PRIVILEGE:
@@ -86,12 +86,6 @@ public class AuthorStatement extends Statement implements IConfigStatement {
         break;
       case LIST_ROLE_PRIVILEGE:
         this.setType(StatementType.LIST_ROLE_PRIVILEGE);
-        break;
-      case LIST_USER_ROLES:
-        this.setType(StatementType.LIST_USER_ROLES);
-        break;
-      case LIST_ROLE_USERS:
-        this.setType(StatementType.LIST_ROLE_USERS);
         break;
       case LIST_USER:
         this.setType(StatementType.LIST_USER);
@@ -104,7 +98,7 @@ public class AuthorStatement extends Statement implements IConfigStatement {
   }
 
   /**
-   * AuthorOperator Constructor with OperatorType.
+   * Constructor with OperatorType.
    *
    * @param type statement type
    */
@@ -114,7 +108,7 @@ public class AuthorStatement extends Statement implements IConfigStatement {
     statementType = type;
   }
 
-  public AuthorOperator.AuthorType getAuthorType() {
+  public AuthorType getAuthorType() {
     return authorType;
   }
 
@@ -158,12 +152,12 @@ public class AuthorStatement extends Statement implements IConfigStatement {
     this.privilegeList = privilegeList;
   }
 
-  public PartialPath getNodeName() {
-    return nodeName;
+  public List<PartialPath> getNodeNameList() {
+    return nodeNameList != null ? nodeNameList : Collections.emptyList();
   }
 
-  public void setNodeNameList(PartialPath nodePath) {
-    this.nodeName = nodePath;
+  public void setNodeNameList(List<PartialPath> nodeNameList) {
+    this.nodeNameList = nodeNameList;
   }
 
   @Override
@@ -181,10 +175,10 @@ public class AuthorStatement extends Statement implements IConfigStatement {
       case DROP_ROLE:
       case GRANT_ROLE:
       case GRANT_USER:
-      case GRANT_ROLE_TO_USER:
+      case GRANT_USER_ROLE:
       case REVOKE_USER:
       case REVOKE_ROLE:
-      case REVOKE_ROLE_FROM_USER:
+      case REVOKE_USER_ROLE:
       case UPDATE_USER:
         queryType = QueryType.WRITE;
         break;
@@ -192,8 +186,6 @@ public class AuthorStatement extends Statement implements IConfigStatement {
       case LIST_ROLE:
       case LIST_USER_PRIVILEGE:
       case LIST_ROLE_PRIVILEGE:
-      case LIST_USER_ROLES:
-      case LIST_ROLE_USERS:
         queryType = QueryType.READ;
         break;
       default:
@@ -204,6 +196,6 @@ public class AuthorStatement extends Statement implements IConfigStatement {
 
   @Override
   public List<PartialPath> getPaths() {
-    return nodeName != null ? Collections.singletonList(nodeName) : Collections.emptyList();
+    return nodeNameList != null ? nodeNameList : Collections.emptyList();
   }
 }

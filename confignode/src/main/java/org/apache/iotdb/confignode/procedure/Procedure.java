@@ -115,7 +115,8 @@ public abstract class Procedure<Env> implements Comparable<Procedure<Env>> {
    * @throws IOException temporary failure, the rollback will retry later
    * @throws InterruptedException the procedure will be added back to the queue and retried later
    */
-  protected abstract void rollback(Env env) throws IOException, InterruptedException;
+  protected abstract void rollback(Env env)
+      throws IOException, InterruptedException, ProcedureException;
 
   /**
    * The abort() call is asynchronous and each procedure must decide how to deal with it, if they
@@ -261,11 +262,11 @@ public abstract class Procedure<Env> implements Comparable<Procedure<Env>> {
     return clazz;
   }
 
-  public static Procedure newInstance(ByteBuffer byteBuffer) {
+  public static Procedure<?> newInstance(ByteBuffer byteBuffer) {
     Class<?> procedureClass = deserializeTypeInfo(byteBuffer);
-    Procedure procedure;
+    Procedure<?> procedure;
     try {
-      procedure = (Procedure) procedureClass.newInstance();
+      procedure = (Procedure<?>) procedureClass.newInstance();
     } catch (InstantiationException | IllegalAccessException e) {
       throw new RuntimeException("Instantiation failed", e);
     }
@@ -374,7 +375,7 @@ public abstract class Procedure<Env> implements Comparable<Procedure<Env>> {
    * @throws IOException ioe
    * @throws InterruptedException interrupted exception
    */
-  public void doRollback(Env env) throws IOException, InterruptedException {
+  public void doRollback(Env env) throws IOException, InterruptedException, ProcedureException {
     try {
       updateTimestamp();
       rollback(env);
@@ -731,7 +732,7 @@ public abstract class Procedure<Env> implements Comparable<Procedure<Env>> {
     return state;
   }
 
-  protected void setFailure(final String source, final Throwable cause) {
+  protected synchronized void setFailure(final String source, final Throwable cause) {
     setFailure(new ProcedureException(source, cause));
   }
 

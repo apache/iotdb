@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.protocol.influxdb.function.aggregator;
 
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
-import org.apache.iotdb.db.protocol.influxdb.constant.InfluxSQLConstant;
+import org.apache.iotdb.db.protocol.influxdb.constant.InfluxSqlConstant;
 import org.apache.iotdb.db.protocol.influxdb.function.InfluxFunctionValue;
 import org.apache.iotdb.db.utils.MathUtils;
 
@@ -29,7 +29,7 @@ import java.util.List;
 
 public class InfluxMeanFunction extends InfluxAggregator {
   private final List<Double> numbers = new ArrayList<>();
-  long sum = 0;
+  double sum = 0;
   long count = 0;
 
   public InfluxMeanFunction(List<Expression> expressionList) {
@@ -38,7 +38,7 @@ public class InfluxMeanFunction extends InfluxAggregator {
 
   @Override
   public InfluxFunctionValue calculateBruteForce() {
-    return new InfluxFunctionValue(numbers.size() == 0 ? numbers : MathUtils.mean(numbers), 0L);
+    return new InfluxFunctionValue(numbers.isEmpty() ? numbers : MathUtils.mean(numbers), 0L);
   }
 
   @Override
@@ -48,7 +48,7 @@ public class InfluxMeanFunction extends InfluxAggregator {
 
   @Override
   public String getFunctionName() {
-    return InfluxSQLConstant.MEAN;
+    return InfluxSqlConstant.MEAN;
   }
 
   @Override
@@ -66,7 +66,7 @@ public class InfluxMeanFunction extends InfluxAggregator {
     if (functionValues.length == 1) {
       count += (long) functionValues[0].getValue();
     } else if (functionValues.length == 2) {
-      sum += (long) functionValues[1].getValue();
+      sum += (double) functionValues[1].getValue();
     }
   }
 }

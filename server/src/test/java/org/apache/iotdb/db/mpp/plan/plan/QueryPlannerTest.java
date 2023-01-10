@@ -20,10 +20,10 @@
 package org.apache.iotdb.db.mpp.plan.plan;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.commons.client.ClientPoolFactory;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
-import org.apache.iotdb.db.client.DataNodeClientPoolFactory;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.common.QueryId;
 import org.apache.iotdb.db.mpp.common.SessionInfo;
@@ -52,7 +52,7 @@ public class QueryPlannerTest {
     internalServiceClientManager =
         new IClientManager.Factory<TEndPoint, SyncDataNodeInternalServiceClient>()
             .createClientManager(
-                new DataNodeClientPoolFactory.SyncDataNodeInternalServiceClientPoolFactory());
+                new ClientPoolFactory.SyncDataNodeInternalServiceClientPoolFactory());
   }
 
   @AfterClass
@@ -74,7 +74,7 @@ public class QueryPlannerTest {
             new MPPQueryContext(
                 querySql,
                 new QueryId("query1"),
-                new SessionInfo(),
+                new SessionInfo(1L, "fakeUsername", "fakeZoneId"),
                 new TEndPoint(),
                 new TEndPoint()),
             IoTDBThreadPoolFactory.newSingleThreadExecutor("test_query"),

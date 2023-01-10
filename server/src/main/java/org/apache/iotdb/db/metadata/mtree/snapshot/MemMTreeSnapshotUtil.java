@@ -57,6 +57,7 @@ import static org.apache.iotdb.db.metadata.MetadataConstant.INTERNAL_MNODE_TYPE;
 import static org.apache.iotdb.db.metadata.MetadataConstant.MEASUREMENT_MNODE_TYPE;
 import static org.apache.iotdb.db.metadata.MetadataConstant.STORAGE_GROUP_ENTITY_MNODE_TYPE;
 import static org.apache.iotdb.db.metadata.MetadataConstant.STORAGE_GROUP_MNODE_TYPE;
+import static org.apache.iotdb.db.metadata.MetadataConstant.isStorageGroupType;
 
 public class MemMTreeSnapshotUtil {
 
@@ -220,7 +221,8 @@ public class MemMTreeSnapshotUtil {
       ancestors.peek().addChild(node);
     }
 
-    if (childrenNum > 0) {
+    // Storage type means current node is root node, so it must be returned.
+    if (childrenNum > 0 || isStorageGroupType(type)) {
       ancestors.push(node);
       restChildrenNum.push(childrenNum);
     }
@@ -245,7 +247,7 @@ public class MemMTreeSnapshotUtil {
       try {
         ReadWriteIOUtils.write(STORAGE_GROUP_MNODE_TYPE, outputStream);
         serializeInternalBasicInfo(node, outputStream);
-        // storage group node in schemaRegion doesn't store any storage group schema
+        // database node in schemaRegion doesn't store any database schema
         return true;
       } catch (IOException e) {
         logger.error(SERIALIZE_ERROR_INFO, e);
@@ -260,7 +262,7 @@ public class MemMTreeSnapshotUtil {
         ReadWriteIOUtils.write(STORAGE_GROUP_ENTITY_MNODE_TYPE, outputStream);
         serializeInternalBasicInfo(node, outputStream);
         ReadWriteIOUtils.write(node.isAligned(), outputStream);
-        // storage group node in schemaRegion doesn't store any storage group schema
+        // database node in schemaRegion doesn't store any database schema
         return true;
       } catch (IOException e) {
         logger.error(SERIALIZE_ERROR_INFO, e);
@@ -289,6 +291,7 @@ public class MemMTreeSnapshotUtil {
         node.getSchema().serializeTo(outputStream);
         ReadWriteIOUtils.write(node.getAlias(), outputStream);
         ReadWriteIOUtils.write(node.getOffset(), outputStream);
+        ReadWriteIOUtils.write(node.isPreDeleted(), outputStream);
         return true;
       } catch (IOException e) {
         logger.error(SERIALIZE_ERROR_INFO, e);
@@ -300,7 +303,7 @@ public class MemMTreeSnapshotUtil {
         throws IOException {
       ReadWriteIOUtils.write(node.getChildren().size(), outputStream);
       ReadWriteIOUtils.write(node.getName(), outputStream);
-      ReadWriteIOUtils.write(-1, outputStream); // todo template id
+      ReadWriteIOUtils.write(node.getSchemaTemplateIdWithState(), outputStream);
       ReadWriteIOUtils.write(node.isUseTemplate(), outputStream);
     }
   }
@@ -347,12 +350,13 @@ public class MemMTreeSnapshotUtil {
       long tagOffset = ReadWriteIOUtils.readLong(inputStream);
       MeasurementMNode node = new MeasurementMNode(null, name, schema, alias);
       node.setOffset(tagOffset);
+      node.setPreDeleted(ReadWriteIOUtils.readBool(inputStream));
       return node;
     }
 
     private void deserializeInternalBasicInfo(InternalMNode node, InputStream inputStream)
         throws IOException {
-      int templateId = ReadWriteIOUtils.readInt(inputStream);
+      node.setSchemaTemplateId(ReadWriteIOUtils.readInt(inputStream));
       node.setUseTemplate(ReadWriteIOUtils.readBool(inputStream));
     }
   }

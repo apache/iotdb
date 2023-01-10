@@ -21,26 +21,26 @@
 
 # Background
 
-The storage group is specified by the user display.
-Use the statement "SET STORAGE GROUP TO" to specify the storage group.
-Each storage group has a corresponding StorageGroupProcessor.
+The database is specified by the user display.
+Use the statement "CREATE DATABASE" to create the database.
+Each database has a corresponding StorageGroupProcessor.
 
-To ensure eventually consistency, a insert lock (exclusive lock) is used to synchronize each insert request in each storage group.
-So the server side parallelism of data ingestion is equal to the number of storage group.
+To ensure eventually consistency, a insert lock (exclusive lock) is used to synchronize each insert request in each database.
+So the server side parallelism of data ingestion is equal to the number of database.
 
 # Problem
 
-From background, we can infer that the parallelism of data ingestion of IoTDB is max(num of client, server side parallelism), which equals to max(num of client, num of storage group)
+From background, we can infer that the parallelism of data ingestion of IoTDB is max(num of client, server side parallelism), which equals to max(num of client, num of database)
 
-The concept of storage group usually is related to real world entity such as factory, location, country and so on.
-The number of storage groups may be small which makes the parallelism of data ingestion of IoTDB insufficient. We can't jump out of this dilemma even we start hundreds of client for ingestion.
+The concept of database usually is related to real world entity such as factory, location, country and so on.
+The number of databases may be small which makes the parallelism of data ingestion of IoTDB insufficient. We can't jump out of this dilemma even we start hundreds of client for ingestion.
 
 # Solution
 
-Our idea is to group devices into buckets and change the granularity of synchronization from storage group level to device buckets level.
+Our idea is to group devices into buckets and change the granularity of synchronization from database level to device buckets level.
 
 In detail, we use hash to group different devices into buckets called data region. 
-For example, one device called "root.sg.d"(assume it's storage group is "root.sg") is belonged to data region "root.sg.[hash("root.sg.d") mod num_of_data_region]"
+For example, one device called "root.sg.d"(assume it's database is "root.sg") is belonged to data region "root.sg.[hash("root.sg.d") mod num_of_data_region]"
 
 # Usage
 
@@ -50,6 +50,6 @@ To use data region, you can set this config below:
 data_region_num
 ```
 
-Recommended value is [data region number] = [CPU core number] / [user-defined storage group number]
+Recommended value is [data region number] = [CPU core number] / [user-defined database number]
 
-For more information, you can refer to [this page](../Reference/Config-Manual.md).
+For more information, you can refer to [this page](../Reference/DataNode-Config-Manual.md).

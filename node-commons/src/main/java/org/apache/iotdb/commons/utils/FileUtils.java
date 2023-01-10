@@ -38,7 +38,7 @@ import java.util.Objects;
 public class FileUtils {
   private static final Logger logger = LoggerFactory.getLogger(FileUtils.class);
 
-  private static final int bufferSize = 1024;
+  private static final int BUFFER_SIZE = 1024;
 
   private FileUtils() {}
 
@@ -104,7 +104,7 @@ public class FileUtils {
         // copy file
         try (BufferedInputStream in = new BufferedInputStream(new FileInputStream(file));
             BufferedOutputStream out = new BufferedOutputStream(new FileOutputStream(targetFile))) {
-          byte[] bytes = new byte[bufferSize];
+          byte[] bytes = new byte[BUFFER_SIZE];
           int size = 0;
           while ((size = in.read(bytes)) > 0) {
             out.write(bytes, 0, size);
@@ -135,5 +135,22 @@ public class FileUtils {
       sum += file.length();
     }
     return sum;
+  }
+
+  public static void recursiveDeleteFolder(String path) throws IOException {
+    File file = new File(path);
+    if (file.isDirectory()) {
+      File[] files = file.listFiles();
+      if (files == null || files.length == 0) {
+        org.apache.commons.io.FileUtils.deleteDirectory(file);
+      } else {
+        for (File f : files) {
+          recursiveDeleteFolder(f.getAbsolutePath());
+        }
+        org.apache.commons.io.FileUtils.deleteDirectory(file);
+      }
+    } else {
+      org.apache.commons.io.FileUtils.delete(file);
+    }
   }
 }

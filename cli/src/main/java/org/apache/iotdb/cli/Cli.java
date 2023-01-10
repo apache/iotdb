@@ -40,6 +40,7 @@ import java.sql.DriverManager;
 import java.sql.SQLException;
 
 import static org.apache.iotdb.cli.utils.IoTPrinter.println;
+import static org.apache.iotdb.jdbc.Config.IOTDB_ERROR_PREFIX;
 
 /** args[]: -h 127.0.0.1 -p 6667 -u root -pw root */
 public class Cli extends AbstractCli {
@@ -81,10 +82,10 @@ public class Cli extends AbstractCli {
       port = checkRequiredArg(PORT_ARGS, PORT_NAME, commandLine, false, port);
       username = checkRequiredArg(USERNAME_ARGS, USERNAME_NAME, commandLine, true, null);
     } catch (ArgsErrorException e) {
-      println(IOTDB_CLI_PREFIX + "> input params error because" + e.getMessage());
+      println(IOTDB_ERROR_PREFIX + "Input params error because" + e.getMessage());
       System.exit(CODE_ERROR);
     } catch (Exception e) {
-      println(IOTDB_CLI_PREFIX + "> exit cli with error " + e.getMessage());
+      println(IOTDB_ERROR_PREFIX + "Exit cli with error " + e.getMessage());
       System.exit(CODE_ERROR);
     }
 
@@ -109,6 +110,9 @@ public class Cli extends AbstractCli {
       if (commandLine.hasOption(MAX_PRINT_ROW_COUNT_ARGS)) {
         setMaxDisplayNumber(commandLine.getOptionValue(MAX_PRINT_ROW_COUNT_ARGS));
       }
+      if (commandLine.hasOption(TIMEOUT_ARGS)) {
+        setQueryTimeout(commandLine.getOptionValue(TIMEOUT_ARGS));
+      }
     } catch (ParseException e) {
       println(
           "Require more params input, eg. ./start-cli.sh(start-cli.bat if Windows) "
@@ -118,8 +122,8 @@ public class Cli extends AbstractCli {
       return false;
     } catch (NumberFormatException e) {
       println(
-          IOTDB_CLI_PREFIX
-              + "> error format of max print row count, it should be an integer number");
+          IOTDB_ERROR_PREFIX
+              + ": error format of max print row count, it should be an integer number");
       return false;
     }
     return true;
@@ -133,13 +137,14 @@ public class Cli extends AbstractCli {
             (IoTDBConnection)
                 DriverManager.getConnection(
                     Config.IOTDB_URL_PREFIX + host + ":" + port + "/", username, password)) {
+          connection.setQueryTimeout(queryTimeout);
           properties = connection.getServerProperties();
           timestampPrecision = properties.getTimestampPrecision();
           AGGREGRATE_TIME_LIST.addAll(properties.getSupportedTimeAggregationOperations());
           processCommand(execute, connection);
           System.exit(lastProcessStatus);
         } catch (SQLException e) {
-          println(IOTDB_CLI_PREFIX + "> can't execute sql because" + e.getMessage());
+          println(IOTDB_ERROR_PREFIX + "Can't execute sql because" + e.getMessage());
           System.exit(CODE_ERROR);
         }
       }
@@ -148,7 +153,7 @@ public class Cli extends AbstractCli {
       }
       receiveCommands(lineReader);
     } catch (Exception e) {
-      println(IOTDB_CLI_PREFIX + "> exit cli with error " + e.getMessage());
+      println(IOTDB_ERROR_PREFIX + ": Exit cli with error: " + e.getMessage());
       System.exit(CODE_ERROR);
     }
   }
@@ -159,13 +164,14 @@ public class Cli extends AbstractCli {
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + host + ":" + port + "/", username, password)) {
       String s;
+      connection.setQueryTimeout(queryTimeout);
       properties = connection.getServerProperties();
       AGGREGRATE_TIME_LIST.addAll(properties.getSupportedTimeAggregationOperations());
       timestampPrecision = properties.getTimestampPrecision();
 
       echoStarting();
-      displayLogo(properties.getVersion());
-      println(IOTDB_CLI_PREFIX + "> login successfully");
+      displayLogo(properties.getVersion(), properties.getBuildInfo());
+      println(String.format("Successfully login at %s:%s", host, port));
       while (true) {
         try {
           s = reader.readLine(IOTDB_CLI_PREFIX + "> ", null);
@@ -188,7 +194,7 @@ public class Cli extends AbstractCli {
     } catch (SQLException e) {
       println(
           String.format(
-              "%s> %s Host is %s, port is %s.", IOTDB_CLI_PREFIX, e.getMessage(), host, port));
+              "%s: %s Host is %s, port is %s.", IOTDB_ERROR_PREFIX, e.getMessage(), host, port));
       System.exit(CODE_ERROR);
     }
   }

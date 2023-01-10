@@ -107,7 +107,11 @@ public class SessionUtils {
           break;
         case TEXT:
           res += Integer.BYTES;
-          res += ((String) values.get(i)).getBytes(TSFileConfig.STRING_CHARSET).length;
+          if (values.get(i) instanceof Binary) {
+            res += ((Binary) values.get(i)).getValues().length;
+          } else {
+            res += ((String) values.get(i)).getBytes(TSFileConfig.STRING_CHARSET).length;
+          }
           break;
         default:
           throw new IoTDBConnectionException(MSG_UNSUPPORTED_DATA_TYPE + types.get(i));
@@ -149,7 +153,12 @@ public class SessionUtils {
           ReadWriteIOUtils.write((Double) values.get(i), buffer);
           break;
         case TEXT:
-          byte[] bytes = ((String) values.get(i)).getBytes(TSFileConfig.STRING_CHARSET);
+          byte[] bytes;
+          if (values.get(i) instanceof Binary) {
+            bytes = ((Binary) values.get(i)).getValues();
+          } else {
+            bytes = ((String) values.get(i)).getBytes(TSFileConfig.STRING_CHARSET);
+          }
           ReadWriteIOUtils.write(bytes.length, buffer);
           buffer.put(bytes);
           break;

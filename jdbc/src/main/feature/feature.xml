@@ -18,7 +18,7 @@
 
 -->
 <features xmlns="http://karaf.apache.org/xmlns/features/v1.5.0" name="driver-s7-feature">
-    <feature name="iotdb-feature" description="iotdb-feature" version="0.10.0.SNAPSHOT">
+    <feature name="iotdb-feature" description="iotdb-feature" version="1.0.0">
         <details>Feature to install required Bundle to use IoTDB inside Karaf container</details>
         <feature prerequisite="true">wrap</feature>
         <feature>scr</feature>
@@ -28,7 +28,7 @@
         <bundle>mvn:org.apache.iotdb/iotdb-thrift/${project.version}</bundle>
         <bundle>mvn:org.apache.iotdb/hadoop-tsfile/${project.version}</bundle>
         <bundle>mvn:org.apache.thrift/libthrift/0.14.1</bundle>
-        <bundle>mvn:org.xerial.snappy/snappy-java/1.1.7.2</bundle>
+        <bundle>mvn:org.xerial.snappy/snappy-java/1.1.8.4</bundle>
         <bundle>mvn:commons-io/commons-io/2.5</bundle>
         <bundle>wrap:mvn:org.apache.hadoop/hadoop-core/1.2.1</bundle>
         <bundle>wrap:mvn:org.ops4j.pax.jdbc/pax-jdbc-common/1.4.5</bundle>

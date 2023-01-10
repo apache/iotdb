@@ -35,7 +35,7 @@ IoTDB 为您提供了两种安装方式，您可以参考下面的建议，任�
 
 1. Maven >= 3.6 的运行环境，具体安装方法可以参考以下链接：[https://maven.apache.org/install.html](https://maven.apache.org/install.html)。
 
-> 注： 也可以选择不安装，使用我们提供的'mvnw.sh' 或 'mvnw.cmd' 工具。使用时请用'mvnw.sh' 或 'mvnw.cmd'命令代替下文的'mvn'命令。
+> 注： 也可以选择不安装，使用我们提供的'mvnw' 或 'mvnw.cmd' 工具。使用时请用'mvnw' 或 'mvnw.cmd'命令代替下文的'mvn'命令。
 
 ### 从官网下载二进制可执行文件
 
@@ -44,7 +44,7 @@ IoTDB 为您提供了两种安装方式，您可以参考下面的建议，任�
 下载后，您可使用以下操作对 IoTDB 的压缩包进行解压：
 
 ```
-Shell > uzip iotdb-<version>.zip
+Shell > unzip iotdb-<version>.zip
 ```
 
 ### 使用源码编译
@@ -84,77 +84,120 @@ Shell > uzip iotdb-<version>.zip
 编译完成后就可以在`{module.name}/target`目录中找到需要的包了。
 
 
-### 通过 Docker 安装 (Dockerfile)
+### 通过 Docker 安装
 
-Apache IoTDB 的 Docker 镜像已经上传至 [https://hub.docker.com/r/apache/iotdb](https://hub.docker.com/r/apache/iotdb)，
+Apache IoTDB 的 Docker 镜像已经上传至 [https://hub.docker.com/r/apache/iotdb](https://hub.docker.com/r/apache/iotdb)。
+Apache IoTDB 的配置项以环境变量形式添加到容器内。
 
-1. **获取 IoTDB docker 镜像**
-
-   - **推荐**：执行 `docker pull apache/iotdb:latest` 即可获取最新的 docker 镜像。
-
-   - 用户也可以根据代码提供的 Dockerfile 文件来自己生成镜像。Dockerfile 存放在的 docker 工程下的 src/main/Dockerfile 中。
-
-     - 方法 1：```$ docker build -t iotdb:base git://github.com/apache/iotdb#master:docker```
-
-     - 方法 2：
-       ```shell
-       $ git clone https://github.com/apache/iotdb
-       $ cd iotdb
-       $ mvn package -DskipTests
-       $ cd docker
-       $ docker build -t iotdb:base .
-       ```
-
-   当 docker image 在本地构建完成的时候 （示例中的 tag 为 iotdb:base)，已经距完成只有一步之遥了！
-
-2. **创建数据文件和日志的 docker 挂载目录 (docker volume):**
-```
-$ docker volume create mydata
-$ docker volume create mylogs
-```
-3. **运行 docker 容器：**
-
+#### 简单尝试
 ```shell
-$ docker run -p 6667:6667 -v mydata:/iotdb/data -v mylogs:/iotdb/logs -d iotdb:base /iotdb/bin/start-server.sh
+# 获取镜像
+docker pull apache/iotdb:1.0.0-standalone
+# 创建 docker bridge 网络
+docker network create --driver=bridge --subnet=172.18.0.0/16 --gateway=172.18.0.1 iotdb
+# 创建 docker 容器
+# 注意：必须固定IP部署。IP改变会导致 confignode 启动失败。
+docker run -d --name iotdb-service \
+              --hostname iotdb-service \
+              --network iotdb \
+              --ip 172.18.0.6 \
+              -p 6667:6667 \
+              -e cn_internal_address=iotdb-service \
+              -e cn_target_config_node_list=iotdb-service:22277 \
+              -e dn_rpc_address=iotdb-service \
+              -e dn_internal_address=iotdb-service \
+              -e dn_target_config_node_list=iotdb-service:22277 \
+              apache/iotdb:1.0.0-standalone              
+# 尝试使用命令行执行SQL
+docker exec -ti iotdb-service /iotdb/sbin/start-cli.sh -h iotdb-service
 ```
-您可以使用`docker ps`来检查是否运行成功，当成功时控制台会输出下面的日志：
-```
-CONTAINER ID        IMAGE               COMMAND                  CREATED             STATUS              PORTS                               NAMES
-2a68b6944cb5        iotdb:base          "/iotdb/bin/start-se…"   4 minutes ago       Up 5 minutes        0.0.0.0:6667->6667/tcp              laughing_meitner
-```
-您可以使用下面的命令来获取 container 的 ID:
-
+外部连接：
 ```shell
-$ docker container ls
+# <主机IP/hostname> 是物理机的真实IP或域名。如果在同一台物理机，可以是127.0.0.1。
+$IOTDB_HOME/sbin/start-cli.sh -h <主机IP/hostname> -p 6667
 ```
-假设这个 ID 为 <C_ID>.
+```yaml
+# docker-compose-1c1d.yml
+version: "3"
+services:
+  iotdb-service:
+    image: apache/iotdb:1.0.0-standalone
+    hostname: iotdb-service
+    container_name: iotdb-service
+    ports:
+      - "6667:6667"
+    environment:
+      - cn_internal_address=iotdb-service
+      - cn_target_config_node_list=iotdb-service:22277
+      - dn_rpc_address=iotdb-service
+      - dn_internal_address=iotdb-service
+      - dn_target_config_node_list=iotdb-service:22277
+    volumes:
+        - ./data:/iotdb/data
+        - ./logs:/iotdb/logs
+    networks:
+      iotdb:
+        ipv4_address: 172.18.0.6
 
-然后使用下面的命令获取这个 ID 对应的 IP 地址，假设获取的 IP 为 <C_IP>:
-
-```shell
-$ docker inspect --format='{{.NetworkSettings.IPAddress}}' <C_ID>
+networks:
+  iotdb:
+    external: true
 ```
-现在 IoTDB 服务器已经启动成功了。
+#### 集群部署
+目前只支持 host 网络和 overlay 网络，不支持 bridge 网络。overlay 网络参照[1C2D](https://github.com/apache/iotdb/tree/master/docker/src/main/DockerCompose/docker-compose-cluster-1c2d.yml)的写法，host 网络如下。
 
-4. 如果您想尝试使用 iotdb-cli 命令行，您可以使用如下命令：
+假如有三台物理机，它们的hostname分别是iotdb-1、iotdb-2、iotdb-3。依次启动。
+以 iotdb-2 节点的docker-compose文件为例：
+```yaml
+version: "3"
+services:
+  iotdb-confignode:
+    image: apache/iotdb:1.0.0-confignode
+    container_name: iotdb-confignode
+    ports:
+      - "22277:22277"
+      - "22278:22278"
+    environment:
+      - cn_internal_address=iotdb-2
+      - cn_target_config_node_list=iotdb-1:22277
+      - schema_replication_factor=3
+      - schema_region_consensus_protocol_class=org.apache.iotdb.consensus.ratis.RatisConsensus
+      - config_node_consensus_protocol_class=org.apache.iotdb.consensus.ratis.RatisConsensus
+      - data_replication_factor=3
+      - data_region_consensus_protocol_class=org.apache.iotdb.consensus.iot.IoTConsensus
+    volumes:
+      - /etc/hosts:/etc/hosts:ro
+      - ./data/confignode:/iotdb/data
+      - ./logs/confignode:/iotdb/logs
+    network_mode: "host"
 
-```shell
-$ docker exec -it <C_ID> /bin/bash
-$ (now you have enter the container): /iotdb/sbin/start-cli.sh -h localhost -p 6667 -u root -pw root
+  iotdb-datanode:
+    image: apache/iotdb:1.0.0-datanode
+    container_name: iotdb-datanode
+    ports:
+      - "6667:6667"
+      - "8777:8777"
+      - "9003:9003"
+      - "50010:50010"
+      - "40010:40010"
+    environment:
+      - dn_rpc_address=iotdb-2
+      - dn_internal_address=iotdb-2
+      - dn_target_config_node_list=iotdb-1:22277
+      - data_replication_factor=3
+      - data_region_consensus_protocol_class=org.apache.iotdb.consensus.iot.IoTConsensus
+       - schema_replication_factor=3
+      - schema_region_consensus_protocol_class=org.apache.iotdb.consensus.ratis.RatisConsensus
+      - config_node_consensus_protocol_class=org.apache.iotdb.consensus.ratis.RatisConsensus
+    volumes:
+      - /etc/hosts:/etc/hosts:ro
+      - ./data/datanode:/iotdb/data/
+      - ./logs/datanode:/iotdb/logs/
+    network_mode: "host"
 ```
-
-还可以使用本地的 iotdb-cli，执行如下命令：
-
-```shell
-$ /%IOTDB_HOME%/sbin/start-cli.sh -h localhost -p 6667 -u root -pw root
-```
-5. 如果您想写一些代码来插入或者查询数据，您可以在 pom.xml 文件中加入下面的依赖：
-
-```xml
-        <dependency>
-            <groupId>org.apache.iotdb</groupId>
-            <artifactId>iotdb-jdbc</artifactId>
-            <version>0.14.0-SNAPSHOT</version>
-        </dependency>
-```
-这里是一些使用 IoTDB-JDBC 连接 IoTDB 的示例：https://github.com/apache/iotdb/tree/master/example/jdbc/src/main/java/org/apache/iotdb
+注意：
+1. `dn_target_config_node_list`所有节点配置一样，需要配置第一个启动的节点，这里为`iotdb-1`。
+2. 上面docker-compose文件中，`iotdb-2`需要替换为每个节点的 hostname、域名或者IP地址。
+3. 需要映射`/etc/hosts`，文件内配置了 iotdb-1、iotdb-2、iotdb-3 与IP的映射。或者可以在 docker-compose 文件中增加 `extra_hosts` 配置。
+4. 首次启动时，必须首先启动 `iotdb-1`。
+5. 如果部署失败要重新部署集群，必须将所有节点上的IoTDB服务停止并删除，然后清除`data`和`logs`文件夹后，再启动。

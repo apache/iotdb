@@ -38,6 +38,7 @@ def print_message(message):
     print("*********")
     print(message)
     print("*********")
+    assert False
 
 
 def test_aligned_timeseries():
@@ -50,7 +51,7 @@ def test_aligned_timeseries():
             print("can't open session")
             exit(1)
 
-        # set and delete storage groups
+        # set and delete databases
         session.set_storage_group("root.sg_test_01")
         session.set_storage_group("root.sg_test_02")
         session.set_storage_group("root.sg_test_03")
@@ -58,11 +59,11 @@ def test_aligned_timeseries():
 
         if session.delete_storage_group("root.sg_test_02") < 0:
             test_fail()
-            print_message("delete storage group failed")
+            print_message("delete database failed")
 
         if session.delete_storage_groups(["root.sg_test_03", "root.sg_test_04"]) < 0:
             test_fail()
-            print_message("delete storage groups failed")
+            print_message("delete databases failed")
 
         # setting aligned time series.
         measurements_lst_ = [

@@ -22,6 +22,7 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.ByteBuffer;
 
 public class PlanNodeId {
@@ -55,6 +56,10 @@ public class PlanNodeId {
 
   public static PlanNodeId deserialize(ByteBuffer byteBuffer) {
     return new PlanNodeId(ReadWriteIOUtils.readString(byteBuffer));
+  }
+
+  public static PlanNodeId deserialize(InputStream stream) throws IOException {
+    return new PlanNodeId(ReadWriteIOUtils.readString(stream));
   }
 
   public void serialize(ByteBuffer byteBuffer) {

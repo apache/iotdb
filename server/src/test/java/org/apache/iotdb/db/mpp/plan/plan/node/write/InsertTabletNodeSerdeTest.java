@@ -46,7 +46,7 @@ public class InsertTabletNodeSerdeTest {
     insertTabletNode.serialize(byteBuffer);
     byteBuffer.flip();
 
-    Assert.assertEquals(PlanNodeType.INSERT_TABLET.ordinal(), byteBuffer.getShort());
+    Assert.assertEquals(PlanNodeType.INSERT_TABLET.getNodeType(), byteBuffer.getShort());
 
     Assert.assertEquals(insertTabletNode, InsertTabletNode.deserialize(byteBuffer));
 
@@ -55,7 +55,7 @@ public class InsertTabletNodeSerdeTest {
     insertTabletNode.serialize(byteBuffer);
     byteBuffer.flip();
 
-    Assert.assertEquals(PlanNodeType.INSERT_TABLET.ordinal(), byteBuffer.getShort());
+    Assert.assertEquals(PlanNodeType.INSERT_TABLET.getNodeType(), byteBuffer.getShort());
 
     Assert.assertEquals(insertTabletNode, InsertTabletNode.deserialize(byteBuffer));
   }
@@ -74,11 +74,19 @@ public class InsertTabletNodeSerdeTest {
 
     DataInputStream dataInputStream = new DataInputStream(new ByteArrayInputStream(bytes));
 
-    Assert.assertEquals(PlanNodeType.INSERT_TABLET.ordinal(), dataInputStream.readShort());
+    Assert.assertEquals(PlanNodeType.INSERT_TABLET.getNodeType(), dataInputStream.readShort());
 
-    InsertTabletNode tmpNode = InsertTabletNode.deserialize(dataInputStream);
+    InsertTabletNode tmpNode = InsertTabletNode.deserializeFromWAL(dataInputStream);
     tmpNode.setPlanNodeId(insertTabletNode.getPlanNodeId());
 
+    tmpNode.setMeasurementSchemas(
+        new MeasurementSchema[] {
+          new MeasurementSchema("s1", TSDataType.DOUBLE),
+          new MeasurementSchema("s2", TSDataType.FLOAT),
+          new MeasurementSchema("s3", TSDataType.INT64),
+          new MeasurementSchema("s4", TSDataType.INT32),
+          new MeasurementSchema("s5", TSDataType.BOOLEAN)
+        });
     Assert.assertEquals(insertTabletNode, tmpNode);
   }
 

@@ -23,8 +23,10 @@ import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.iterator.IMNodeIterator;
+import org.apache.iotdb.db.metadata.template.Template;
 
 import java.io.File;
+import java.util.Map;
 
 /**
  * This interface defines the basic access methods of an MTreeStore.
@@ -35,11 +37,29 @@ public interface IMTreeStore {
 
   IMNode getRoot();
 
+  /**
+   * Check if parent has child
+   *
+   * @param parent parent node
+   * @param name name or alias
+   * @return true if parent has a child whose name or alias matches the condition
+   */
   boolean hasChild(IMNode parent, String name) throws MetadataException;
 
+  /**
+   * Get child by name or alias
+   *
+   * @param parent parent node
+   * @param name name or alias
+   * @return child node
+   */
   IMNode getChild(IMNode parent, String name) throws MetadataException;
 
   IMNodeIterator getChildrenIterator(IMNode parent) throws MetadataException;
+
+  IMNodeIterator getTraverserIterator(
+      IMNode parent, Map<Integer, Template> templateMap, boolean skipPreDeletedSchema)
+      throws MetadataException;
 
   IMNode addChild(IMNode parent, String childName, IMNode child);
 

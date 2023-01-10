@@ -23,16 +23,16 @@ import org.apache.iotdb.rpc.TSStatusCode;
 
 public class WALException extends IoTDBException {
   public WALException(Throwable cause) {
-    super(cause, TSStatusCode.WRITE_AHEAD_LOG_ERROR.getStatusCode());
+    super(cause, TSStatusCode.WAL_ERROR.getStatusCode());
     this.initCause(cause);
   }
 
   public WALException(String msg) {
-    super(msg, TSStatusCode.WRITE_AHEAD_LOG_ERROR.getStatusCode());
+    super(msg, TSStatusCode.WAL_ERROR.getStatusCode());
   }
 
   public WALException(String message, Throwable cause) {
-    super(message + cause.getMessage(), TSStatusCode.WRITE_AHEAD_LOG_ERROR.getStatusCode());
+    super(message + cause.getMessage(), TSStatusCode.WAL_ERROR.getStatusCode());
     this.initCause(cause);
   }
 }

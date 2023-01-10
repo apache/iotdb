@@ -23,7 +23,7 @@
     <parent>
         <artifactId>iotdb-metrics</artifactId>
         <groupId>org.apache.iotdb</groupId>
-        <version>0.14.0-SNAPSHOT</version>
+        <version>1.1.0-SNAPSHOT</version>
     </parent>
     <modelVersion>4.0.0</modelVersion>
     <artifactId>micrometer-metrics</artifactId>
@@ -31,27 +31,27 @@
         <dependency>
             <groupId>org.apache.iotdb</groupId>
             <artifactId>metrics-interface</artifactId>
-            <version>0.14.0-SNAPSHOT</version>
+            <version>1.1.0-SNAPSHOT</version>
         </dependency>
         <dependency>
             <groupId>io.micrometer</groupId>
             <artifactId>micrometer-registry-prometheus</artifactId>
-            <version>1.6.2</version>
+            <version>${micrometer.metrics.version}</version>
         </dependency>
         <dependency>
             <groupId>io.micrometer</groupId>
             <artifactId>micrometer-registry-jmx</artifactId>
-            <version>1.6.2</version>
+            <version>${micrometer.metrics.version}</version>
         </dependency>
         <dependency>
             <groupId>io.dropwizard.metrics</groupId>
             <artifactId>metrics-core</artifactId>
-            <version>${metrics.version}</version>
+            <version>${dropwizard.metrics.version}</version>
         </dependency>
         <dependency>
             <groupId>io.projectreactor.netty</groupId>
             <artifactId>reactor-netty-http</artifactId>
-            <version>1.0.4</version>
+            <version>1.0.24</version>
         </dependency>
     </dependencies>
 </project>

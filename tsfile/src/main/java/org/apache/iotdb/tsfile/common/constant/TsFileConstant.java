@@ -38,11 +38,18 @@ public class TsFileConstant {
   public static final byte TIME_COLUMN_MASK = (byte) 0x80;
   public static final byte VALUE_COLUMN_MASK = (byte) 0x40;
 
+  // measurementID of aligned time chunk
+  public static final String TIME_COLUMN_ID = "";
+
   private static final String IDENTIFIER_MATCHER = "([a-zA-Z0-9_\\u2E80-\\u9FFF]+)";
   public static final Pattern IDENTIFIER_PATTERN = Pattern.compile(IDENTIFIER_MATCHER);
 
   private static final String NODE_NAME_MATCHER = "(\\*{0,2}[a-zA-Z0-9_\\u2E80-\\u9FFF]+\\*{0,2})";
   public static final Pattern NODE_NAME_PATTERN = Pattern.compile(NODE_NAME_MATCHER);
+
+  private static final String NODE_NAME_IN_INTO_PATH_MATCHER = "([a-zA-Z0-9_${}\\u2E80-\\u9FFF]+)";
+  public static final Pattern NODE_NAME_IN_INTO_PATH_PATTERN =
+      Pattern.compile(NODE_NAME_IN_INTO_PATH_MATCHER);
 
   private TsFileConstant() {}
 }

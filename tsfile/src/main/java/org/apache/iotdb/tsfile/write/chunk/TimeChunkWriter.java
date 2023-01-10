@@ -22,6 +22,7 @@ import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.compress.ICompressor;
 import org.apache.iotdb.tsfile.encoding.encoder.Encoder;
+import org.apache.iotdb.tsfile.exception.write.PageException;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -30,6 +31,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.file.metadata.statistics.TimeStatistics;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
+import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
 import org.apache.iotdb.tsfile.write.page.TimePageWriter;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
@@ -37,6 +39,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.channels.Channels;
+import java.nio.channels.WritableByteChannel;
 
 public class TimeChunkWriter {
 
@@ -101,8 +106,8 @@ public class TimeChunkWriter {
     pageWriter.write(time);
   }
 
-  public void write(long[] timestamps, int batchSize) {
-    pageWriter.write(timestamps, batchSize);
+  public void write(long[] timestamps, int batchSize, int arrayOffset) {
+    pageWriter.write(timestamps, batchSize, arrayOffset);
   }
 
   /**
@@ -110,7 +115,7 @@ public class TimeChunkWriter {
    * to pageBuffer
    */
   public boolean checkPageSizeAndMayOpenANewPage() {
-    if (pageWriter.getPointNumber() == maxNumberOfPointsInPage) {
+    if (pageWriter.getPointNumber() >= maxNumberOfPointsInPage) {
       logger.debug("current line count reaches the upper bound, write page {}", measurementId);
       return true;
     } else if (pageWriter.getPointNumber()
@@ -134,6 +139,10 @@ public class TimeChunkWriter {
       }
     }
     return false;
+  }
+
+  public long getRemainingPointNumberForCurrentPage() {
+    return maxNumberOfPointsInPage - pageWriter.getPointNumber();
   }
 
   public void writePageToPageBuffer() {
@@ -164,6 +173,53 @@ public class TimeChunkWriter {
     }
   }
 
+  public void writePageHeaderAndDataIntoBuff(ByteBuffer data, PageHeader header)
+      throws PageException {
+    // write the page header to pageBuffer
+    try {
+      logger.debug(
+          "start to flush a page header into buffer, buffer position {} ", pageBuffer.size());
+      // serialize pageHeader  see writePageToPageBuffer method
+      if (numOfPages == 0) { // record the firstPageStatistics
+        this.firstPageStatistics = header.getStatistics();
+        this.sizeWithoutStatistic +=
+            ReadWriteForEncodingUtils.writeUnsignedVarInt(header.getUncompressedSize(), pageBuffer);
+        this.sizeWithoutStatistic +=
+            ReadWriteForEncodingUtils.writeUnsignedVarInt(header.getCompressedSize(), pageBuffer);
+      } else if (numOfPages == 1) { // put the firstPageStatistics into pageBuffer
+        byte[] b = pageBuffer.toByteArray();
+        pageBuffer.reset();
+        pageBuffer.write(b, 0, this.sizeWithoutStatistic);
+        firstPageStatistics.serialize(pageBuffer);
+        pageBuffer.write(b, this.sizeWithoutStatistic, b.length - this.sizeWithoutStatistic);
+        ReadWriteForEncodingUtils.writeUnsignedVarInt(header.getUncompressedSize(), pageBuffer);
+        ReadWriteForEncodingUtils.writeUnsignedVarInt(header.getCompressedSize(), pageBuffer);
+        header.getStatistics().serialize(pageBuffer);
+        firstPageStatistics = null;
+      } else {
+        ReadWriteForEncodingUtils.writeUnsignedVarInt(header.getUncompressedSize(), pageBuffer);
+        ReadWriteForEncodingUtils.writeUnsignedVarInt(header.getCompressedSize(), pageBuffer);
+        header.getStatistics().serialize(pageBuffer);
+      }
+      logger.debug(
+          "finish to flush a page header {} of time page into buffer, buffer position {} ",
+          header,
+          pageBuffer.size());
+
+      statistics.mergeStatistics(header.getStatistics());
+
+    } catch (IOException e) {
+      throw new PageException("IO Exception in writeDataPageHeader,ignore this page", e);
+    }
+    numOfPages++;
+    // write page content to temp PBAOS
+    try (WritableByteChannel channel = Channels.newChannel(pageBuffer)) {
+      channel.write(data);
+    } catch (IOException e) {
+      throw new PageException(e);
+    }
+  }
+
   public void writeToFileWriter(TsFileIOWriter tsfileWriter) throws IOException {
     sealCurrentPage();
     writeAllPagesOfChunkToTsFile(tsfileWriter);
@@ -171,6 +227,7 @@ public class TimeChunkWriter {
     // reinit this chunk writer
     pageBuffer.reset();
     numOfPages = 0;
+    sizeWithoutStatistic = 0;
     firstPageStatistics = null;
     this.statistics = new TimeStatistics();
   }
@@ -207,6 +264,10 @@ public class TimeChunkWriter {
 
   public TSDataType getDataType() {
     return TSDataType.VECTOR;
+  }
+
+  public long getPointNum() {
+    return statistics.getCount() + pageWriter.getPointNumber();
   }
 
   /**
@@ -256,5 +317,9 @@ public class TimeChunkWriter {
 
   public TimePageWriter getPageWriter() {
     return pageWriter;
+  }
+
+  public boolean checkIsUnsealedPageOverThreshold(long size, long pointNum) {
+    return pageWriter.getPointNumber() >= pointNum || pageWriter.estimateMaxMemSize() >= size;
   }
 }

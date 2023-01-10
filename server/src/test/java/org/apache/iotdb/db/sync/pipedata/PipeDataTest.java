@@ -20,14 +20,8 @@ package org.apache.iotdb.db.sync.pipedata;
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.engine.modification.Deletion;
-import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
-import org.apache.iotdb.db.utils.EnvironmentUtils;
 
-import org.junit.After;
 import org.junit.Assert;
-import org.junit.Before;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -37,24 +31,10 @@ import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 
 public class PipeDataTest {
   private static final Logger logger = LoggerFactory.getLogger(PipeDataTest.class);
   private static final String pipeLogPath = "target/pipelog";
-
-  @Before
-  public void setUp() throws Exception {
-    EnvironmentUtils.envSetUp();
-  }
-
-  @After
-  public void tearDown() throws IOException, StorageEngineException {
-    EnvironmentUtils.cleanEnv();
-    Files.deleteIfExists(Paths.get(pipeLogPath));
-  }
 
   @Test
   public void testSerializeAndDeserialize() {
@@ -64,25 +44,19 @@ public class PipeDataTest {
       PipeData pipeData1 = new TsFilePipeData("1", 1);
       Deletion deletion = new Deletion(new PartialPath("root.sg1.d1.s1"), 0, 1, 5);
       PipeData pipeData2 = new DeletionPipeData(deletion, 3);
-      PhysicalPlan plan = new SetStorageGroupPlan(new PartialPath("root.sg1"));
-      PipeData pipeData3 = new SchemaPipeData(plan, 2);
       DataOutputStream outputStream = new DataOutputStream(new FileOutputStream(f2));
       pipeData1.serialize(outputStream);
       outputStream.flush();
       DataInputStream inputStream = new DataInputStream(new FileInputStream(f1));
-      Assert.assertEquals(pipeData1, PipeData.deserialize(inputStream));
+      Assert.assertEquals(pipeData1, PipeData.createPipeData(inputStream));
       pipeData2.serialize(outputStream);
       outputStream.flush();
-      Assert.assertEquals(pipeData2, PipeData.deserialize(inputStream));
-      pipeData3.serialize(outputStream);
-      outputStream.flush();
-      Assert.assertEquals(pipeData3, PipeData.deserialize(inputStream));
+      Assert.assertEquals(pipeData2, PipeData.createPipeData(inputStream));
       inputStream.close();
       outputStream.close();
 
-      Assert.assertEquals(pipeData1, PipeData.deserialize(pipeData1.serialize()));
-      Assert.assertEquals(pipeData2, PipeData.deserialize(pipeData2.serialize()));
-      Assert.assertEquals(pipeData3, PipeData.deserialize(pipeData3.serialize()));
+      Assert.assertEquals(pipeData1, PipeData.createPipeData(pipeData1.serialize()));
+      Assert.assertEquals(pipeData2, PipeData.createPipeData(pipeData2.serialize()));
     } catch (Exception e) {
       logger.error(e.getMessage());
       Assert.fail();

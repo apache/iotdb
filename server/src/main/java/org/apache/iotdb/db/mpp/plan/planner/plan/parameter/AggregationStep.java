@@ -39,15 +39,15 @@ import java.nio.ByteBuffer;
 public enum AggregationStep {
 
   // input Raw, output Partial
-  PARTIAL(InputType.RAW, true),
+  PARTIAL(InputType.RAW, true, (byte) 0),
   // input Partial, output Final
-  FINAL(InputType.PARTIAL, false),
+  FINAL(InputType.PARTIAL, false, (byte) 1),
   // input Partial, output Partial
-  INTERMEDIATE(InputType.PARTIAL, true),
+  INTERMEDIATE(InputType.PARTIAL, true, (byte) 2),
   // input Raw, output Final
-  SINGLE(InputType.RAW, false),
+  SINGLE(InputType.RAW, false, (byte) 3),
   // input final, output final
-  STATIC(InputType.FINAL, false);
+  STATIC(InputType.FINAL, false, (byte) 4);
 
   private enum InputType {
     RAW,
@@ -57,10 +57,12 @@ public enum AggregationStep {
 
   private final InputType inputType;
   private final boolean outputPartial;
+  private final byte ordinal;
 
-  AggregationStep(InputType inputType, boolean outputPartial) {
+  AggregationStep(InputType inputType, boolean outputPartial, byte ordinal) {
     this.inputType = inputType;
     this.outputPartial = outputPartial;
+    this.ordinal = ordinal;
   }
 
   public boolean isInputRaw() {
@@ -80,27 +82,28 @@ public enum AggregationStep {
   }
 
   public void serialize(ByteBuffer byteBuffer) {
-    ReadWriteIOUtils.write(isInputRaw(), byteBuffer);
-    ReadWriteIOUtils.write(isOutputPartial(), byteBuffer);
+    ReadWriteIOUtils.write(ordinal, byteBuffer);
   }
 
   public void serialize(DataOutputStream stream) throws IOException {
-    ReadWriteIOUtils.write(isInputRaw(), stream);
-    ReadWriteIOUtils.write(isOutputPartial(), stream);
+    ReadWriteIOUtils.write(ordinal, stream);
   }
 
   public static AggregationStep deserialize(ByteBuffer byteBuffer) {
-    boolean isInputRaw = ReadWriteIOUtils.readBool(byteBuffer);
-    boolean isOutputPartial = ReadWriteIOUtils.readBool(byteBuffer);
-    if (isInputRaw && isOutputPartial) {
-      return AggregationStep.PARTIAL;
+    byte type = ReadWriteIOUtils.readByte(byteBuffer);
+    switch (type) {
+      case 0:
+        return AggregationStep.PARTIAL;
+      case 1:
+        return AggregationStep.FINAL;
+      case 2:
+        return AggregationStep.INTERMEDIATE;
+      case 3:
+        return AggregationStep.SINGLE;
+      case 4:
+        return AggregationStep.STATIC;
+      default:
+        throw new IllegalArgumentException("Invalid AggregationStep type: " + type);
     }
-    if (!isInputRaw && isOutputPartial) {
-      return AggregationStep.INTERMEDIATE;
-    }
-    if (isInputRaw) {
-      return AggregationStep.SINGLE;
-    }
-    return AggregationStep.FINAL;
   }
 }

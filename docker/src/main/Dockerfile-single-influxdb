@@ -33,7 +33,7 @@ RUN apt update \
   && apt autoremove -y \
   && apt purge --auto-remove -y \
   && apt clean -y
-RUN dos2unix /iotdb/sbin/start-server.sh
+RUN dos2unix /iotdb/sbin/start-new-server.sh
 RUN dos2unix /iotdb/sbin/../conf/datanode-env.sh
 EXPOSE 6667
 EXPOSE 31999
@@ -43,4 +43,4 @@ EXPOSE 8181
 VOLUME /iotdb/data
 VOLUME /iotdb/logs
 ENV PATH="/iotdb/sbin/:/iotdb/tools/:${PATH}"
-ENTRYPOINT ["/iotdb/sbin/start-server.sh"]
+ENTRYPOINT ["/iotdb/sbin/start-new-server.sh"]

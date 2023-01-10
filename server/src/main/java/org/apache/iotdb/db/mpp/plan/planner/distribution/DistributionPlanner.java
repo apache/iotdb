@@ -33,6 +33,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.ExchangeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.sink.FragmentSinkNode;
 import org.apache.iotdb.db.mpp.plan.statement.crud.QueryStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.ShowQueriesStatement;
 
 import java.util.List;
 
@@ -51,11 +52,17 @@ public class DistributionPlanner {
 
   public PlanNode rewriteSource() {
     SourceRewriter rewriter = new SourceRewriter(this.analysis);
-    return rewriter.visit(logicalPlan.getRootNode(), new DistributionPlanContext(context));
+    List<PlanNode> planNodeList =
+        rewriter.visit(logicalPlan.getRootNode(), new DistributionPlanContext(context));
+    if (planNodeList.size() != 1) {
+      throw new IllegalStateException("root node must return only one");
+    } else {
+      return planNodeList.get(0);
+    }
   }
 
   public PlanNode addExchangeNode(PlanNode root) {
-    ExchangeNodeAdder adder = new ExchangeNodeAdder();
+    ExchangeNodeAdder adder = new ExchangeNodeAdder(this.analysis);
     return adder.visit(root, new NodeGroupContext(context));
   }
 
@@ -67,12 +74,15 @@ public class DistributionPlanner {
   public DistributedQueryPlan planFragments() {
     PlanNode rootAfterRewrite = rewriteSource();
     PlanNode rootWithExchange = addExchangeNode(rootAfterRewrite);
-    if (analysis.getStatement() instanceof QueryStatement) {
+    if (analysis.getStatement() instanceof QueryStatement
+        || analysis.getStatement() instanceof ShowQueriesStatement) {
       analysis
           .getRespDatasetHeader()
           .setColumnToTsBlockIndexMap(rootWithExchange.getOutputColumnNames());
     }
     SubPlan subPlan = splitFragment(rootWithExchange);
+    // Mark the root Fragment of root SubPlan as `root`
+    subPlan.getPlanFragment().setRoot(true);
     List<FragmentInstance> fragmentInstances = planFragmentInstances(subPlan);
     // Only execute this step for READ operation
     if (context.getQueryType() == QueryType.READ) {
@@ -111,14 +121,14 @@ public class DistributionPlanner {
         context.getLocalDataBlockEndpoint(),
         context.getResultNodeContext().getVirtualFragmentInstanceId(),
         context.getResultNodeContext().getVirtualResultNodeId());
-    sinkNode.setChild(rootInstance.getFragment().getRoot());
+    sinkNode.setChild(rootInstance.getFragment().getPlanNodeTree());
     context
         .getResultNodeContext()
         .setUpStream(
             rootInstance.getHostDataNode().mPPDataExchangeEndPoint,
             rootInstance.getId(),
             sinkNode.getPlanNodeId());
-    rootInstance.getFragment().setRoot(sinkNode);
+    rootInstance.getFragment().setPlanNodeTree(sinkNode);
   }
 
   private PlanFragmentId getNextFragmentId() {

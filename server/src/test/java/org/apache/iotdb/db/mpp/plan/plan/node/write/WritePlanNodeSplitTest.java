@@ -30,7 +30,6 @@ import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.StorageEngineV2;
 import org.apache.iotdb.db.mpp.plan.analyze.Analysis;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.WritePlanNode;
@@ -38,6 +37,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertMultiTabletsNo
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.db.utils.TimePartitionUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import org.junit.After;
@@ -55,8 +55,6 @@ public class WritePlanNodeSplitTest {
 
   long prevTimePartitionInterval;
 
-  boolean prevEnableTimePartition;
-
   Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>>
       dataPartitionMap;
 
@@ -70,10 +68,10 @@ public class WritePlanNodeSplitTest {
 
   @Before
   public void setUp() {
-    prevTimePartitionInterval = StorageEngineV2.getTimePartitionInterval();
-    prevEnableTimePartition = StorageEngineV2.isEnablePartition();
-    StorageEngineV2.setTimePartitionInterval(100);
-    StorageEngineV2.setEnablePartition(true);
+    prevTimePartitionInterval =
+        IoTDBDescriptor.getInstance().getConfig().getTimePartitionInterval();
+    IoTDBDescriptor.getInstance().getConfig().setTimePartitionInterval(100);
+    TimePartitionUtils.setTimePartitionInterval(100);
 
     executorClassName = IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionExecutorClass();
     seriesSlotPartitionNum = IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionSlotNum();
@@ -90,14 +88,18 @@ public class WritePlanNodeSplitTest {
     dataPartitionMap = new HashMap<>();
     Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>
         seriesPartitionSlotMap = new HashMap<>();
+    // sg1 has 5 data regions
     for (int i = 0; i < seriesSlotPartitionNum; i++) {
       Map<TTimePartitionSlot, List<TRegionReplicaSet>> timePartitionSlotMap = new HashMap<>();
       for (int t = 0; t < 5; t++) {
+        long startTime = t * TimePartitionUtils.timePartitionInterval;
         timePartitionSlotMap.put(
-            new TTimePartitionSlot(t * StorageEngineV2.getTimePartitionInterval()),
+            new TTimePartitionSlot(startTime),
             Collections.singletonList(
                 new TRegionReplicaSet(
-                    new TConsensusGroupId(TConsensusGroupType.DataRegion, t), null)));
+                    new TConsensusGroupId(
+                        TConsensusGroupType.DataRegion, getRegionIdByTime(startTime)),
+                    null)));
       }
 
       seriesPartitionSlotMap.put(new TSeriesPartitionSlot(i), timePartitionSlotMap);
@@ -105,15 +107,16 @@ public class WritePlanNodeSplitTest {
 
     dataPartitionMap.put("root.sg1", seriesPartitionSlotMap);
 
+    // sg2 has 1 data region
     seriesPartitionSlotMap = new HashMap<>();
     for (int i = 0; i < seriesSlotPartitionNum; i++) {
       Map<TTimePartitionSlot, List<TRegionReplicaSet>> timePartitionSlotMap = new HashMap<>();
       for (int t = 0; t < 5; t++) {
         timePartitionSlotMap.put(
-            new TTimePartitionSlot(t * StorageEngineV2.getTimePartitionInterval()),
+            new TTimePartitionSlot(t * TimePartitionUtils.timePartitionInterval),
             Collections.singletonList(
                 new TRegionReplicaSet(
-                    new TConsensusGroupId(TConsensusGroupType.DataRegion, 5 - t), null)));
+                    new TConsensusGroupId(TConsensusGroupType.DataRegion, 99), null)));
       }
 
       seriesPartitionSlotMap.put(new TSeriesPartitionSlot(i), timePartitionSlotMap);
@@ -132,6 +135,10 @@ public class WritePlanNodeSplitTest {
               new TConsensusGroupId(TConsensusGroupType.DataRegion, i % 5), null));
     }
     schemaPartitionMap.put("root.sg1", seriesPartitionSlotMap);
+  }
+
+  private int getRegionIdByTime(long startTime) {
+    return (int) (4 - (startTime / TimePartitionUtils.timePartitionInterval));
   }
 
   protected DataPartition getDataPartition(
@@ -192,6 +199,31 @@ public class WritePlanNodeSplitTest {
 
     Assert.assertEquals(5, insertTabletNodeList.size());
     for (WritePlanNode insertNode : insertTabletNodeList) {
+      InsertTabletNode tabletNode = (InsertTabletNode) insertNode;
+      Assert.assertEquals(tabletNode.getTimes().length, 2);
+      TConsensusGroupId regionId = tabletNode.getDataRegionReplicaSet().getRegionId();
+      Assert.assertEquals(getRegionIdByTime(tabletNode.getMinTime()), regionId.getId());
+    }
+
+    insertTabletNode = new InsertTabletNode(new PlanNodeId("plan node 2"));
+
+    insertTabletNode.setDevicePath(new PartialPath("root.sg2.d1"));
+    insertTabletNode.setTimes(new long[] {1, 60, 120, 180, 270, 290, 360, 375, 440, 470});
+    insertTabletNode.setDataTypes(new TSDataType[] {TSDataType.INT32});
+    insertTabletNode.setColumns(new Object[] {new int[] {10, 20, 30, 40, 50, 60, 70, 80, 90, 100}});
+
+    dataPartitionQueryParam = new DataPartitionQueryParam();
+    dataPartitionQueryParam.setDevicePath(insertTabletNode.getDevicePath().getFullPath());
+    dataPartitionQueryParam.setTimePartitionSlotList(insertTabletNode.getTimePartitionSlots());
+
+    dataPartition = getDataPartition(Collections.singletonList(dataPartitionQueryParam));
+    analysis = new Analysis();
+    analysis.setDataPartitionInfo(dataPartition);
+
+    insertTabletNodeList = insertTabletNode.splitByPartition(analysis);
+
+    Assert.assertEquals(5, insertTabletNodeList.size());
+    for (WritePlanNode insertNode : insertTabletNodeList) {
       Assert.assertEquals(((InsertTabletNode) insertNode).getTimes().length, 2);
     }
   }
@@ -244,7 +276,7 @@ public class WritePlanNodeSplitTest {
     for (int i = 0; i < 5; i++) {
       InsertRowNode insertRowNode = new InsertRowNode(new PlanNodeId("plan node 3"));
       insertRowNode.setDevicePath(new PartialPath(String.format("root.sg1.d%d", i)));
-      insertRowNode.setTime(i * StorageEngineV2.getTimePartitionInterval());
+      insertRowNode.setTime(i * TimePartitionUtils.timePartitionInterval);
       insertRowsNode.addOneInsertRowNode(insertRowNode, 2 * i);
 
       insertRowNode = new InsertRowNode(new PlanNodeId("plan node 3"));
@@ -272,7 +304,7 @@ public class WritePlanNodeSplitTest {
 
   @After
   public void tearDown() {
-    StorageEngineV2.setTimePartitionInterval(prevTimePartitionInterval);
-    StorageEngineV2.setEnablePartition(prevEnableTimePartition);
+    TimePartitionUtils.setTimePartitionInterval(prevTimePartitionInterval);
+    IoTDBDescriptor.getInstance().getConfig().setTimePartitionInterval(prevTimePartitionInterval);
   }
 }

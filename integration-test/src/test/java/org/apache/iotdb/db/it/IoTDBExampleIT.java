@@ -19,8 +19,9 @@
 
 package org.apache.iotdb.db.it;
 
+import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.it.env.EnvFactory;
-import org.apache.iotdb.it.env.IoTDBTestRunner;
+import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 
@@ -41,12 +42,12 @@ import java.sql.Statement;
 public class IoTDBExampleIT {
   @BeforeClass
   public static void setUp() throws Exception {
-    EnvFactory.getEnv().initBeforeClass();
+    EnvFactory.getEnv().initClusterEnvironment();
   }
 
   @AfterClass
   public static void tearDown() throws Exception {
-    EnvFactory.getEnv().cleanAfterClass();
+    EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
   @Test
@@ -54,10 +55,10 @@ public class IoTDBExampleIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
-      statement.execute("set storage group to root.sg");
-      try (ResultSet resultSet = statement.executeQuery("show storage group")) {
+      statement.execute("CREATE DATABASE root.sg");
+      try (ResultSet resultSet = statement.executeQuery("show databases")) {
         if (resultSet.next()) {
-          String storageGroupPath = resultSet.getString("storage group");
+          String storageGroupPath = resultSet.getString(ColumnHeaderConstant.DATABASE);
           Assert.assertEquals("root.sg", storageGroupPath);
         } else {
           Assert.fail("This ResultSet is empty.");

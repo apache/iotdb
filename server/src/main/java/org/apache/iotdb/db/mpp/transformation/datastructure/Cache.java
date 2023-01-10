@@ -19,78 +19,29 @@
 
 package org.apache.iotdb.db.mpp.transformation.datastructure;
 
-/** <b>Note: It's not thread safe.</b> */
-public abstract class Cache {
+import java.util.LinkedHashMap;
+import java.util.Map;
 
-  private static class Node {
-
-    private Node previous;
-    private int value;
-    private Node succeeding;
-
-    private Node() {}
-
-    private Node remove() {
-      previous.succeeding = succeeding;
-      succeeding.previous = previous;
-      return this;
-    }
-
-    private void set(Node previous, int value, Node succeeding) {
-      this.previous = previous;
-      previous.succeeding = this;
-      this.value = value;
-      this.succeeding = succeeding;
-      succeeding.previous = this;
-    }
-  }
-
-  protected final Node head;
-  protected final Node tail;
-
-  protected final Node[] cachedNodes;
+public abstract class Cache extends LinkedHashMap<Integer, Integer> {
 
   protected final int cacheCapacity;
-  protected int cacheSize;
 
-  protected Cache(int capacity) {
-    head = new Node();
-    tail = new Node();
-    head.succeeding = tail;
-    tail.previous = head;
-
-    cachedNodes = new Node[capacity];
-    for (int i = 0; i < capacity; ++i) {
-      cachedNodes[i] = new Node();
-    }
-
-    cacheCapacity = capacity;
-    cacheSize = 0;
+  protected Cache(int cacheCapacity) {
+    super(cacheCapacity, 0.75F, true);
+    this.cacheCapacity = cacheCapacity;
   }
 
-  protected boolean removeFirstOccurrence(int value) {
-    for (Node node = head.succeeding; node != tail; node = node.succeeding) {
-      if (node.value == value) {
-        cachedNodes[--cacheSize] = node.remove();
-        return true;
-      }
-    }
-    return false;
+  @Override
+  protected boolean removeEldestEntry(Map.Entry<Integer, Integer> eldest) {
+    return size() > cacheCapacity;
   }
 
-  protected int removeLast() {
-    Node last = tail.previous.remove();
-    cachedNodes[--cacheSize] = last;
-    return last.value;
+  // get the eldest key
+  public int getLast() {
+    return this.entrySet().iterator().next().getKey();
   }
 
-  protected void addFirst(int value) {
-    cachedNodes[cacheSize++].set(head, value, head.succeeding);
-  }
-
-  public void clear() {
-    while (cacheSize != 0) {
-      removeLast();
-    }
+  protected Integer putKey(Integer index) {
+    return put(index, index);
   }
 }

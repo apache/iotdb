@@ -18,9 +18,45 @@
  */
 package org.apache.iotdb.db.mpp.common;
 
-import java.time.ZoneId;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
 
 public class SessionInfo {
-  private String userName;
-  private ZoneId zoneId;
+  private final long sessionId;
+  private final String userName;
+  private final String zoneId;
+
+  public SessionInfo(long sessionId, String userName, String zoneId) {
+    this.sessionId = sessionId;
+    this.userName = userName;
+    this.zoneId = zoneId;
+  }
+
+  public long getSessionId() {
+    return sessionId;
+  }
+
+  public String getUserName() {
+    return userName;
+  }
+
+  public String getZoneId() {
+    return zoneId;
+  }
+
+  public static SessionInfo deserializeFrom(ByteBuffer buffer) {
+    long sessionId = ReadWriteIOUtils.readLong(buffer);
+    String userName = ReadWriteIOUtils.readString(buffer);
+    String zoneId = ReadWriteIOUtils.readString(buffer);
+    return new SessionInfo(sessionId, userName, zoneId);
+  }
+
+  public void serialize(DataOutputStream stream) throws IOException {
+    ReadWriteIOUtils.write(sessionId, stream);
+    ReadWriteIOUtils.write(userName, stream);
+    ReadWriteIOUtils.write(zoneId, stream);
+  }
 }

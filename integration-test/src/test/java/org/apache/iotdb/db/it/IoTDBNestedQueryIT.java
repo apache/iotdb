@@ -18,9 +18,9 @@
  */
 package org.apache.iotdb.db.it;
 
-import org.apache.iotdb.it.env.ConfigFactory;
+import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.it.env.EnvFactory;
-import org.apache.iotdb.it.env.IoTDBTestRunner;
+import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 import org.apache.iotdb.itbase.constant.UDFTestConstant;
@@ -49,23 +49,17 @@ public class IoTDBNestedQueryIT {
 
   protected static final int ITERATION_TIMES = 10;
 
-  protected static boolean enableSeqSpaceCompaction;
-  protected static boolean enableUnseqSpaceCompaction;
-  protected static boolean enableCrossSpaceCompaction;
-
   @BeforeClass
   public static void setUp() throws Exception {
-    enableSeqSpaceCompaction = ConfigFactory.getConfig().isEnableSeqSpaceCompaction();
-    enableUnseqSpaceCompaction = ConfigFactory.getConfig().isEnableUnseqSpaceCompaction();
-    enableCrossSpaceCompaction = ConfigFactory.getConfig().isEnableCrossSpaceCompaction();
-    ConfigFactory.getConfig().setEnableSeqSpaceCompaction(false);
-    ConfigFactory.getConfig().setEnableUnseqSpaceCompaction(false);
-    ConfigFactory.getConfig().setEnableCrossSpaceCompaction(false);
-    ConfigFactory.getConfig()
-        .setUdfCollectorMemoryBudgetInMB(5)
-        .setUdfTransformerMemoryBudgetInMB(5)
-        .setUdfReaderMemoryBudgetInMB(5);
-    EnvFactory.getEnv().initBeforeClass();
+    EnvFactory.getEnv()
+        .getConfig()
+        .getCommonConfig()
+        .setEnableSeqSpaceCompaction(false)
+        .setEnableUnseqSpaceCompaction(false)
+        .setEnableCrossSpaceCompaction(false)
+        .setUdfMemoryBudgetInMB(5);
+
+    EnvFactory.getEnv().initClusterEnvironment();
     createTimeSeries();
     generateData();
     registerUDF();
@@ -73,20 +67,13 @@ public class IoTDBNestedQueryIT {
 
   @AfterClass
   public static void tearDown() throws Exception {
-    EnvFactory.getEnv().cleanAfterClass();
-    ConfigFactory.getConfig().setEnableSeqSpaceCompaction(enableSeqSpaceCompaction);
-    ConfigFactory.getConfig().setEnableUnseqSpaceCompaction(enableUnseqSpaceCompaction);
-    ConfigFactory.getConfig().setEnableCrossSpaceCompaction(enableCrossSpaceCompaction);
-    ConfigFactory.getConfig()
-        .setUdfCollectorMemoryBudgetInMB(100)
-        .setUdfTransformerMemoryBudgetInMB(100)
-        .setUdfReaderMemoryBudgetInMB(100);
+    EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
   private static void createTimeSeries() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("SET STORAGE GROUP TO root.vehicle");
+      statement.execute("CREATE DATABASE root.vehicle");
       statement.execute("CREATE TIMESERIES root.vehicle.d1.s1 with datatype=INT32,encoding=PLAIN");
       statement.execute("CREATE TIMESERIES root.vehicle.d1.s2 with datatype=INT32,encoding=PLAIN");
       statement.execute("CREATE TIMESERIES root.vehicle.d1.s3 with datatype=TEXT,encoding=PLAIN");
@@ -108,7 +95,7 @@ public class IoTDBNestedQueryIT {
                 "insert into root.vehicle.d1(timestamp,s1,s2,s3) values(%d,%d,%d,%s)", i, i, i, i));
         statement.execute(
             (String.format(
-                "insert into root.vehicle.d2(timestamp,s1,s2) values(%d,%d,%d)", i, i, i, i)));
+                "insert into root.vehicle.d2(timestamp,s1,s2) values(%d,%d,%d)", i, i, i)));
       }
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
@@ -128,9 +115,7 @@ public class IoTDBNestedQueryIT {
     }
   }
 
-  // todo: remove ignore after iotdb-3349 is merged
   @Test
-  @Ignore
   public void testNestedArithmeticExpressions() {
     String sqlStr =
         "select d1.s1, d2.s2, d1.s1 + d1.s2 - (d2.s1 + d2.s2), d1.s2 * (d2.s1 / d1.s1), d1.s2 + d1.s2 * d2.s1 - d2.s1, d1.s1 - (d1.s1 - (-d1.s1)), (-d2.s1) * (-d2.s2) / (-d1.s2) from root.vehicle";
@@ -161,8 +146,6 @@ public class IoTDBNestedQueryIT {
     }
   }
 
-  // todo: remove ignore after iotdb-3349 is merged
-  @Ignore
   @Test
   public void testNestedRowByRowUDFExpressions() {
     String sqlStr =
@@ -194,9 +177,8 @@ public class IoTDBNestedQueryIT {
     }
   }
 
-  // todo: remove ignore after iotdb-3349 is merged
-  @Ignore
   @Test
+  @Ignore
   public void testUDFTerminateMethodInNestedExpressions() {
     String sqlStr =
         "select bottom_k(top_k(top_k(s1 + s1 / s1 - s2 / s1, 'k'='100'), 'k'='1'), 'k'='1'), top_k(top_k(s1 + s1 / s1 - s2 / s1, 'k'='100'), 'k'='1'), top_k(s1 + s1 / s1 - s2 / s1, 'k'='1'), top_k(s1, 'k'='1'), top_k(s2, 'k'='1') from root.vehicle.d2";
@@ -223,9 +205,8 @@ public class IoTDBNestedQueryIT {
     }
   }
 
-  // todo: remove ignore after iotdb-3349 is merged
-  @Ignore
   @Test
+  @Ignore
   public void testUDFWithMultiInputsInNestedExpressions() {
     String sqlStr =
         "select adder(d1.s1, d1.s2), -adder(d2.s1, d2.s2), adder(adder(d1.s1, d1.s2), -adder(d2.s1, d2.s2)), adder(adder(d1.s1, d1.s2), adder(d2.s1, d2.s2)), adder(d1.s1, d1.s2) - adder(d1.s1, d1.s2) + adder(adder(d1.s1, d1.s2), -adder(d2.s1, d2.s2)) from root.vehicle";
@@ -342,7 +323,7 @@ public class IoTDBNestedQueryIT {
                   + "size_window_counter(cos(empty - empty) + empty, '%s'='%s', '%s'='%s'), "
                   + "size_window_counter(cos(empty), cos(empty), '%s'='%s', '%s'='%s'), "
                   + "empty, sin(empty) - bottom_k(top_k(empty, 'k'='111'), 'k'='111'), "
-                  + "empty * empty / empty + empty %% empty - empty from root.vehicle",
+                  + "empty * empty / empty + empty %% empty - empty from root.vehicle.d2",
               UDFTestConstant.ACCESS_STRATEGY_KEY,
               UDFTestConstant.ACCESS_STRATEGY_SLIDING_TIME,
               UDFTestConstant.TIME_INTERVAL_KEY,
@@ -372,9 +353,8 @@ public class IoTDBNestedQueryIT {
     }
   }
 
-  // todo: remove ignore after iotdb-3349 is merged
-  @Ignore
   @Test
+  @Ignore
   public void testInvalidNestedBuiltInAggregation() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -383,6 +363,7 @@ public class IoTDBNestedQueryIT {
         statement.executeQuery(query);
       } catch (SQLException e) {
         Assert.assertTrue(
+            e.getMessage(),
             e.getMessage()
                 .contains("The argument of the aggregation function must be a time series."));
       }
@@ -392,9 +373,7 @@ public class IoTDBNestedQueryIT {
     }
   }
 
-  // todo: Exception: Constant is not supported
   @Test
-  @Ignore
   public void testRawDataQueryWithConstants() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -424,8 +403,6 @@ public class IoTDBNestedQueryIT {
     }
   }
 
-  // todo: remove ignore after iotdb-3349 is merged
-  @Ignore
   @Test
   public void testDuplicatedRawDataQueryWithConstants() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
@@ -447,8 +424,6 @@ public class IoTDBNestedQueryIT {
     }
   }
 
-  // todo: remove ignore after iotdb-3349 is merged
-  @Ignore
   @Test
   public void testCommutativeLaws() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
@@ -473,9 +448,7 @@ public class IoTDBNestedQueryIT {
     }
   }
 
-  // todo: Exception: Constant is not supported
   @Test
-  @Ignore
   public void testAssociativeLaws() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -502,9 +475,7 @@ public class IoTDBNestedQueryIT {
     }
   }
 
-  // todo: Exception: Constant is not supported
   @Test
-  @Ignore
   public void testDistributiveLaw() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -529,9 +500,7 @@ public class IoTDBNestedQueryIT {
     }
   }
 
-  // todo: Exception: Constant is not supported
   @Test
-  @Ignore
   public void testOrderOfArithmeticOperations() {
     // Priority from high to low:
     //   1. exponentiation and root extraction (not supported yet)
@@ -570,8 +539,78 @@ public class IoTDBNestedQueryIT {
     }
   }
 
-  // todo: remove ignore after iotdb-3349 is merged
-  @Ignore
+  @Test
+  public void testBetweenExpression() {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      int start = 2, end = 8;
+      String query = "SELECT * FROM root.vehicle.d1 WHERE s1 BETWEEN " + start + " AND " + end;
+      try (ResultSet rs = statement.executeQuery(query)) {
+        for (int i = start; i <= end; i++) {
+          Assert.assertTrue(rs.next());
+          Assert.assertEquals(String.valueOf(i), rs.getString(ColumnHeaderConstant.TIME));
+          Assert.assertEquals(String.valueOf(i), rs.getString("root.vehicle.d1.s1"));
+          Assert.assertEquals(String.valueOf(i), rs.getString("root.vehicle.d1.s2"));
+          Assert.assertEquals(String.valueOf(i), rs.getString("root.vehicle.d1.s3"));
+        }
+      }
+
+      query =
+          "SELECT * FROM root.vehicle.d1 WHERE s1 NOT BETWEEN " // test not between
+              + (end + 1)
+              + " AND "
+              + ITERATION_TIMES;
+      try (ResultSet rs = statement.executeQuery(query)) {
+        Assert.assertTrue(rs.next());
+        Assert.assertEquals("1", rs.getString(ColumnHeaderConstant.TIME));
+        Assert.assertEquals("1", rs.getString("root.vehicle.d1.s1"));
+        Assert.assertEquals("1", rs.getString("root.vehicle.d1.s2"));
+        Assert.assertEquals("1", rs.getString("root.vehicle.d1.s3"));
+        for (int i = start; i <= end; i++) {
+          Assert.assertTrue(rs.next());
+          Assert.assertEquals(String.valueOf(i), rs.getString(ColumnHeaderConstant.TIME));
+          Assert.assertEquals(String.valueOf(i), rs.getString("root.vehicle.d1.s1"));
+          Assert.assertEquals(String.valueOf(i), rs.getString("root.vehicle.d1.s2"));
+          Assert.assertEquals(String.valueOf(i), rs.getString("root.vehicle.d1.s3"));
+        }
+      }
+
+      query = "SELECT * FROM root.vehicle.d1 WHERE time BETWEEN " + start + " AND " + end;
+      try (ResultSet rs = statement.executeQuery(query)) {
+        for (int i = start; i <= end; i++) {
+          Assert.assertTrue(rs.next());
+          Assert.assertEquals(String.valueOf(i), rs.getString(ColumnHeaderConstant.TIME));
+          Assert.assertEquals(String.valueOf(i), rs.getString("root.vehicle.d1.s1"));
+          Assert.assertEquals(String.valueOf(i), rs.getString("root.vehicle.d1.s2"));
+          Assert.assertEquals(String.valueOf(i), rs.getString("root.vehicle.d1.s3"));
+        }
+      }
+
+      query =
+          "SELECT * FROM root.vehicle.d1 WHERE time NOT BETWEEN " // test not between
+              + (end + 1)
+              + " AND "
+              + ITERATION_TIMES;
+      try (ResultSet rs = statement.executeQuery(query)) {
+        Assert.assertTrue(rs.next());
+        Assert.assertEquals("1", rs.getString(ColumnHeaderConstant.TIME));
+        Assert.assertEquals("1", rs.getString("root.vehicle.d1.s1"));
+        Assert.assertEquals("1", rs.getString("root.vehicle.d1.s2"));
+        Assert.assertEquals("1", rs.getString("root.vehicle.d1.s3"));
+        for (int i = start; i <= end; i++) {
+          Assert.assertTrue(rs.next());
+          Assert.assertEquals(String.valueOf(i), rs.getString(ColumnHeaderConstant.TIME));
+          Assert.assertEquals(String.valueOf(i), rs.getString("root.vehicle.d1.s1"));
+          Assert.assertEquals(String.valueOf(i), rs.getString("root.vehicle.d1.s2"));
+          Assert.assertEquals(String.valueOf(i), rs.getString("root.vehicle.d1.s3"));
+        }
+      }
+    } catch (SQLException e) {
+      e.printStackTrace();
+      Assert.fail(e.getMessage());
+    }
+  }
+
   @Test
   public void testRegularLikeInExpressions() {
     try (Connection connection = EnvFactory.getEnv().getConnection();

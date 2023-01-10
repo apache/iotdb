@@ -21,7 +21,7 @@ package org.apache.iotdb.db.tools.upgrade;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.tools.TsFileRewriteTool;
+import org.apache.iotdb.db.tools.TsFileSplitByPartitionTool;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
@@ -47,7 +47,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-public class TsFileOnlineUpgradeTool extends TsFileRewriteTool {
+public class TsFileOnlineUpgradeTool extends TsFileSplitByPartitionTool {
 
   private static final Logger logger = LoggerFactory.getLogger(TsFileOnlineUpgradeTool.class);
 

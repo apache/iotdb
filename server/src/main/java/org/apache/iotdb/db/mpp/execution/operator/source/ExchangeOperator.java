@@ -25,6 +25,8 @@ import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 
 import com.google.common.util.concurrent.ListenableFuture;
 
+import static org.apache.iotdb.tsfile.read.common.block.TsBlockBuilderStatus.DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
+
 public class ExchangeOperator implements SourceOperator {
 
   private final OperatorContext operatorContext;
@@ -63,8 +65,27 @@ public class ExchangeOperator implements SourceOperator {
   }
 
   @Override
+  public long calculateMaxPeekMemory() {
+    return DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
+  }
+
+  @Override
+  public long calculateMaxReturnSize() {
+    return DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
+  }
+
+  @Override
+  public long calculateRetainedSizeAfterCallingNext() {
+    return 0L;
+  }
+
+  @Override
   public PlanNodeId getSourceId() {
     return sourceId;
+  }
+
+  public ISourceHandle getSourceHandle() {
+    return sourceHandle;
   }
 
   @Override
@@ -81,6 +102,6 @@ public class ExchangeOperator implements SourceOperator {
 
   @Override
   public void close() throws Exception {
-    sourceHandle.abort();
+    sourceHandle.close();
   }
 }

@@ -39,12 +39,12 @@ public class MicrometerTimer implements Timer {
   @Override
   public void update(long duration, TimeUnit unit) {
     timer.record(duration, unit);
-    micrometerRate.mark(duration);
+    micrometerRate.mark();
   }
 
   @Override
   public HistogramSnapshot takeSnapshot() {
-    return new MicrometerHistogramSnapshot(timer.takeSnapshot());
+    return new MicrometerTimerHistogramSnapshot(timer.takeSnapshot(), timer.baseTimeUnit());
   }
 
   @Override

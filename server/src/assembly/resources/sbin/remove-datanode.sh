@@ -22,51 +22,38 @@ echo ---------------------
 echo "Starting to remove a DataNode"
 echo ---------------------
 
-if [ -z "${IOTDB_HOME}" ]; then
-  export IOTDB_HOME="`dirname "$0"`/.."
-fi
+source "$(dirname "$0")/iotdb-common.sh"
 
-IOTDB_CONF=${IOTDB_HOME}/conf
+#get_iotdb_include wil remove -D parameters
+VARS=$(get_iotdb_include "$*")
+checkAllVariables
+eval set -- "$VARS"
 
-CONF_PARAMS="-r "$*
+PARAMS="-r "$*
 
-if [ -n "$JAVA_HOME" ]; then
-    for java in "$JAVA_HOME"/bin/amd64/java "$JAVA_HOME"/bin/java; do
-        if [ -x "$java" ]; then
-            JAVA="$java"
-            break
-        fi
-    done
-else
-    JAVA=java
-fi
-
-if [ -z $JAVA ] ; then
-    echo Unable to find java executable. Check JAVA_HOME and PATH environment variables.  > /dev/stderr
-    exit 1;
-fi
-
-if [ -d ${IOTDB_HOME}/lib ]; then
-LIB_PATH=${IOTDB_HOME}/lib
-else
-LIB_PATH=${IOTDB_HOME}/../lib
-fi
+#initEnv is in iotdb-common.sh
+initEnv
 
 CLASSPATH=""
-for f in ${LIB_PATH}/*.jar; do
+for f in ${IOTDB_HOME}/lib/*.jar; do
   CLASSPATH=${CLASSPATH}":"$f
 done
+
 classname=org.apache.iotdb.db.service.DataNode
 
 launch_service()
 {
 	class="$1"
-	iotdb_parms="-Dlogback.configurationFile=${IOTDB_CONF}/logback.xml"
+  iotdb_parms="-Dlogback.configurationFile=${IOTDB_LOG_CONFIG}"
 	iotdb_parms="$iotdb_parms -DIOTDB_HOME=${IOTDB_HOME}"
+	iotdb_parms="$iotdb_parms -DIOTDB_DATA_HOME=${IOTDB_DATA_HOME}"
 	iotdb_parms="$iotdb_parms -DTSFILE_HOME=${IOTDB_HOME}"
 	iotdb_parms="$iotdb_parms -DIOTDB_CONF=${IOTDB_CONF}"
+	iotdb_parms="$iotdb_parms -DTSFILE_CONF=${IOTDB_CONF}"
 	iotdb_parms="$iotdb_parms -Dname=iotdb\.IoTDB"
-	exec "$JAVA" $iotdb_parms $IOTDB_JMX_OPTS -cp "$CLASSPATH" "$class" $CONF_PARAMS
+	iotdb_parms="$iotdb_parms -DIOTDB_LOG_DIR=${IOTDB_LOG_DIR}"
+
+	exec "$JAVA" $iotdb_parms $IOTDB_JMX_OPTS -cp "$CLASSPATH" "$class" $PARAMS
 	return $?
 }
 

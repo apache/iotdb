@@ -24,6 +24,10 @@ import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
 
 public class CountLevelTimeSeriesStatement extends CountStatement {
   private int level;
+  private String key;
+  private String value;
+
+  private boolean isContains;
 
   public CountLevelTimeSeriesStatement(PartialPath partialPath, int level) {
     super(partialPath);
@@ -32,6 +36,34 @@ public class CountLevelTimeSeriesStatement extends CountStatement {
 
   public int getLevel() {
     return level;
+  }
+
+  public void setLevel(int level) {
+    this.level = level;
+  }
+
+  public String getKey() {
+    return key;
+  }
+
+  public void setKey(String key) {
+    this.key = key;
+  }
+
+  public String getValue() {
+    return value;
+  }
+
+  public void setValue(String value) {
+    this.value = value;
+  }
+
+  public boolean isContains() {
+    return isContains;
+  }
+
+  public void setContains(boolean contains) {
+    isContains = contains;
   }
 
   @Override

@@ -19,15 +19,15 @@
 package org.apache.iotdb.db.mpp.plan.planner.plan.node.source;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.metadata.path.MeasurementPath;
-import org.apache.iotdb.db.metadata.path.PathDeserializeUtil;
+import org.apache.iotdb.commons.path.PathDeserializeUtil;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeUtil;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
-import org.apache.iotdb.db.mpp.plan.statement.component.OrderBy;
+import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -57,7 +57,7 @@ public class SeriesScanNode extends SeriesSourceNode {
   // The order to traverse the data.
   // Currently, we only support TIMESTAMP_ASC and TIMESTAMP_DESC here.
   // The default order is TIMESTAMP_ASC, which means "order by timestamp asc"
-  private OrderBy scanOrder = OrderBy.TIMESTAMP_ASC;
+  private Ordering scanOrder = Ordering.ASC;
 
   // time filter for current series, could be null if doesn't exist
   @Nullable private Filter timeFilter;
@@ -79,7 +79,7 @@ public class SeriesScanNode extends SeriesSourceNode {
     this.seriesPath = seriesPath;
   }
 
-  public SeriesScanNode(PlanNodeId id, MeasurementPath seriesPath, OrderBy scanOrder) {
+  public SeriesScanNode(PlanNodeId id, MeasurementPath seriesPath, Ordering scanOrder) {
     this(id, seriesPath);
     this.scanOrder = scanOrder;
   }
@@ -87,7 +87,7 @@ public class SeriesScanNode extends SeriesSourceNode {
   public SeriesScanNode(
       PlanNodeId id,
       MeasurementPath seriesPath,
-      OrderBy scanOrder,
+      Ordering scanOrder,
       @Nullable Filter timeFilter,
       @Nullable Filter valueFilter,
       int limit,
@@ -133,11 +133,11 @@ public class SeriesScanNode extends SeriesSourceNode {
     this.offset = offset;
   }
 
-  public OrderBy getScanOrder() {
+  public Ordering getScanOrder() {
     return scanOrder;
   }
 
-  public void setScanOrder(OrderBy scanOrder) {
+  public void setScanOrder(Ordering scanOrder) {
     this.scanOrder = scanOrder;
   }
 
@@ -241,7 +241,7 @@ public class SeriesScanNode extends SeriesSourceNode {
 
   public static SeriesScanNode deserialize(ByteBuffer byteBuffer) {
     MeasurementPath partialPath = (MeasurementPath) PathDeserializeUtil.deserialize(byteBuffer);
-    OrderBy scanOrder = OrderBy.values()[ReadWriteIOUtils.readInt(byteBuffer)];
+    Ordering scanOrder = Ordering.values()[ReadWriteIOUtils.readInt(byteBuffer)];
     byte isNull = ReadWriteIOUtils.readByte(byteBuffer);
     Filter timeFilter = null;
     if (isNull == 1) {

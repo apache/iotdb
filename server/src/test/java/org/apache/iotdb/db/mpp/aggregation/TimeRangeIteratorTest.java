@@ -295,6 +295,8 @@ public class TimeRangeIteratorTest {
   }
 
   private void checkRes(ITimeRangeIterator timeRangeIterator, String[] res) {
+    Assert.assertEquals(res.length, timeRangeIterator.getTotalIntervalNum());
+
     boolean isAscending = timeRangeIterator.isAscending();
     int cnt = isAscending ? 0 : res.length - 1;
 

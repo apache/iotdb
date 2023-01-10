@@ -21,9 +21,8 @@
 package org.apache.iotdb.db.exception.query;
 
 import org.apache.iotdb.db.exception.WriteProcessException;
+import org.apache.iotdb.db.utils.DateTimeUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
-
-import java.util.Date;
 
 public class OutOfTTLException extends WriteProcessException {
 
@@ -33,8 +32,9 @@ public class OutOfTTLException extends WriteProcessException {
     super(
         String.format(
             "Insertion time [%s] is less than ttl time bound [%s]",
-            new Date(insertionTime), new Date(timeLowerBound)),
-        TSStatusCode.OUT_OF_TTL_ERROR.getStatusCode(),
+            DateTimeUtils.convertMillsecondToZonedDateTime(insertionTime),
+            DateTimeUtils.convertMillsecondToZonedDateTime(timeLowerBound)),
+        TSStatusCode.OUT_OF_TTL.getStatusCode(),
         true);
   }
 }

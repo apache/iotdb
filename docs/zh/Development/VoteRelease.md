@@ -100,7 +100,7 @@ shasum -a512 apache-iotdb-0.12.0-source-release.zip
 * 验证编译
 
 ```
-mvnw.sh install
+mvnw install
 
 应该最后全 SUCCESS
 ```
@@ -130,12 +130,12 @@ nohup ./sbin/start-server.sh >/dev/null 2>&1 &
 
 ./sbin/start-cli.sh
 
-SET STORAGE GROUP TO root.turbine;
+CREATE DATABASE root.turbine;
 CREATE TIMESERIES root.turbine.d1.s0 WITH DATATYPE=DOUBLE, ENCODING=GORILLA;
 insert into root.turbine.d1(timestamp,s0) values(1,1);
 insert into root.turbine.d1(timestamp,s0) values(2,2);
 insert into root.turbine.d1(timestamp,s0) values(3,3);
-select * from root;
+select * from root.**;
 
 打印如下内容：
 +-----------------------------------+------------------+
@@ -161,19 +161,19 @@ The source release:
 LICENSE and NOTICE [ok]
 signatures and hashes [ok]
 All files have ASF header [ok]
-could compile from source: ./mvnw.sh clean install [ok]
+could compile from source: ./mvnw clean install [ok]
 
 The binary distribution:
 LICENSE and NOTICE [ok]
 signatures and hashes [ok]
 Could run with the following statements [ok]
 
-SET STORAGE GROUP TO root.turbine;
+CREATE DATABASE root.turbine;
 CREATE TIMESERIES root.turbine.d1.s0 WITH DATATYPE=DOUBLE, ENCODING=GORILLA;
 insert into root.turbine.d1(timestamp,s0) values(1,1);
 insert into root.turbine.d1(timestamp,s0) values(2,2);
 insert into root.turbine.d1(timestamp,s0) values(3,3);
-select * from root;
+select * from root.**;
 
 Thanks,
 xxx

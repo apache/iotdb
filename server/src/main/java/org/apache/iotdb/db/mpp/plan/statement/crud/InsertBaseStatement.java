@@ -73,6 +73,9 @@ public abstract class InsertBaseStatement extends Statement {
     isAligned = aligned;
   }
 
+  /** Returns true when this statement is empty and no need to write into the server */
+  public abstract boolean isEmpty();
+
   @Override
   public List<PartialPath> getPaths() {
     return Collections.emptyList();

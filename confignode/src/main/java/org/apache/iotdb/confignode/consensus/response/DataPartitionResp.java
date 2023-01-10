@@ -20,18 +20,16 @@
 package org.apache.iotdb.confignode.consensus.response;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
-import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.partition.DataPartitionTable;
-import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionResp;
+import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionTableResp;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import java.util.List;
 import java.util.Map;
-import java.util.Vector;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class DataPartitionResp implements DataSet {
@@ -61,47 +59,30 @@ public class DataPartitionResp implements DataSet {
     return allPartitionsExist;
   }
 
-  public TDataPartitionResp convertToTDataPartitionResp(
-      Map<TConsensusGroupId, TRegionReplicaSet> replicaSetMap) {
-    TDataPartitionResp resp = new TDataPartitionResp();
+  public TDataPartitionTableResp convertToTDataPartitionTableResp() {
+    TDataPartitionTableResp resp = new TDataPartitionTableResp();
     resp.setStatus(status);
 
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>>
+      Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TConsensusGroupId>>>>
           dataPartitionMap = new ConcurrentHashMap<>();
 
       dataPartition.forEach(
           (storageGroup, dataPartitionTable) -> {
-            Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>
+            Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TConsensusGroupId>>>
                 seriesPartitionSlotMap = new ConcurrentHashMap<>();
 
             dataPartitionTable
                 .getDataPartitionMap()
                 .forEach(
-                    (seriesPartitionSlot, seriesPartitionTable) -> {
-                      Map<TTimePartitionSlot, List<TRegionReplicaSet>> timePartitionSlotMap =
-                          new ConcurrentHashMap<>();
-
-                      seriesPartitionTable
-                          .getSeriesPartitionMap()
-                          .forEach(
-                              (timePartitionSlot, consensusGroupIds) -> {
-                                List<TRegionReplicaSet> regionReplicaSets = new Vector<>();
-
-                                consensusGroupIds.forEach(
-                                    consensusGroupId ->
-                                        regionReplicaSets.add(replicaSetMap.get(consensusGroupId)));
-
-                                timePartitionSlotMap.put(timePartitionSlot, regionReplicaSets);
-                              });
-
-                      seriesPartitionSlotMap.put(seriesPartitionSlot, timePartitionSlotMap);
-                    });
+                    (seriesPartitionSlot, seriesPartitionTable) ->
+                        seriesPartitionSlotMap.put(
+                            seriesPartitionSlot, seriesPartitionTable.getSeriesPartitionMap()));
 
             dataPartitionMap.put(storageGroup, seriesPartitionSlotMap);
           });
 
-      resp.setDataPartitionMap(dataPartitionMap);
+      resp.setDataPartitionTable(dataPartitionMap);
     }
 
     return resp;

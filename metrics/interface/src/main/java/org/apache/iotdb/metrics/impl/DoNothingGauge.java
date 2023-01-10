@@ -21,17 +21,21 @@ package org.apache.iotdb.metrics.impl;
 
 import org.apache.iotdb.metrics.type.Gauge;
 
-public class DoNothingGauge implements Gauge {
+public class DoNothingGauge implements Gauge, DoNothingMetric {
   @Override
   public long value() {
     return 0;
   }
 
   @Override
-  public void incr(long value) {}
+  public void incr(long value) {
+    // do nothing
+  }
 
   @Override
-  public void decr(long value) {}
+  public void decr(long value) {
+    // do nothing
+  }
 
   @Override
   public void set(long value) {

@@ -22,7 +22,10 @@ package org.apache.iotdb.commons.file;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.tsfile.fileSystem.FSType;
 
+import org.apache.commons.io.FileUtils;
+
 import java.io.File;
+import java.io.IOException;
 import java.net.URI;
 
 public enum SystemFileFactory {
@@ -66,5 +69,13 @@ public enum SystemFileFactory {
     } else {
       return new File(uri);
     }
+  }
+
+  public void makeDirIfNecessary(String dir) throws IOException {
+    File file = getFile(dir);
+    if (file.exists() && file.isDirectory()) {
+      return;
+    }
+    FileUtils.forceMkdir(file);
   }
 }

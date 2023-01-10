@@ -21,12 +21,11 @@ package org.apache.iotdb.db.mpp.execution;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.common.QueryId;
@@ -38,13 +37,13 @@ import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceState;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceStateMachine;
 import org.apache.iotdb.db.mpp.execution.operator.process.LimitOperator;
-import org.apache.iotdb.db.mpp.execution.operator.process.TimeJoinOperator;
-import org.apache.iotdb.db.mpp.execution.operator.process.merge.AscTimeComparator;
-import org.apache.iotdb.db.mpp.execution.operator.process.merge.SingleColumnMerger;
+import org.apache.iotdb.db.mpp.execution.operator.process.join.TimeJoinOperator;
+import org.apache.iotdb.db.mpp.execution.operator.process.join.merge.AscTimeComparator;
+import org.apache.iotdb.db.mpp.execution.operator.process.join.merge.SingleColumnMerger;
 import org.apache.iotdb.db.mpp.execution.operator.source.SeriesScanOperator;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
-import org.apache.iotdb.db.mpp.plan.statement.component.OrderBy;
+import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.db.query.reader.series.SeriesReaderTestUtil;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -52,8 +51,8 @@ import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.column.IntColumn;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
-import com.google.common.collect.ImmutableList;
 import com.google.common.util.concurrent.ListenableFuture;
+import io.airlift.units.Duration;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -66,6 +65,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.TimeUnit;
 
 import static org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext.createFragmentInstanceContext;
 import static org.apache.iotdb.db.mpp.execution.schedule.DriverTaskThread.EXECUTION_TIME_SLICE;
@@ -109,47 +109,58 @@ public class DataDriverTest {
           new FragmentInstanceId(new PlanFragmentId(queryId, 0), "stub-instance");
       FragmentInstanceStateMachine stateMachine =
           new FragmentInstanceStateMachine(instanceId, instanceNotificationExecutor);
+      DataRegion dataRegion = Mockito.mock(DataRegion.class);
       FragmentInstanceContext fragmentInstanceContext =
           createFragmentInstanceContext(instanceId, stateMachine);
+      fragmentInstanceContext.setDataRegion(dataRegion);
+      DataDriverContext driverContext = new DataDriverContext(fragmentInstanceContext, 0);
       PlanNodeId planNodeId1 = new PlanNodeId("1");
-      fragmentInstanceContext.addOperatorContext(
-          1, planNodeId1, SeriesScanOperator.class.getSimpleName());
+      driverContext.addOperatorContext(1, planNodeId1, SeriesScanOperator.class.getSimpleName());
       PlanNodeId planNodeId2 = new PlanNodeId("2");
-      fragmentInstanceContext.addOperatorContext(
-          2, planNodeId2, SeriesScanOperator.class.getSimpleName());
-      fragmentInstanceContext.addOperatorContext(
+      driverContext.addOperatorContext(2, planNodeId2, SeriesScanOperator.class.getSimpleName());
+      driverContext.addOperatorContext(
           3, new PlanNodeId("3"), TimeJoinOperator.class.getSimpleName());
-      fragmentInstanceContext.addOperatorContext(
-          4, new PlanNodeId("4"), LimitOperator.class.getSimpleName());
+      driverContext.addOperatorContext(4, new PlanNodeId("4"), LimitOperator.class.getSimpleName());
       SeriesScanOperator seriesScanOperator1 =
           new SeriesScanOperator(
+              driverContext.getOperatorContexts().get(0),
               planNodeId1,
               measurementPath1,
               allSensors,
               TSDataType.INT32,
-              fragmentInstanceContext.getOperatorContexts().get(0),
               null,
               null,
               true);
+      driverContext.addSourceOperator(seriesScanOperator1);
+      driverContext.addPath(measurementPath1);
+      seriesScanOperator1
+          .getOperatorContext()
+          .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
 
       MeasurementPath measurementPath2 =
           new MeasurementPath(DATA_DRIVER_TEST_SG + ".device0.sensor1", TSDataType.INT32);
       SeriesScanOperator seriesScanOperator2 =
           new SeriesScanOperator(
+              driverContext.getOperatorContexts().get(1),
               planNodeId2,
               measurementPath2,
               allSensors,
               TSDataType.INT32,
-              fragmentInstanceContext.getOperatorContexts().get(1),
               null,
               null,
               true);
+      driverContext.addSourceOperator(seriesScanOperator2);
+      driverContext.addPath(measurementPath2);
+
+      seriesScanOperator2
+          .getOperatorContext()
+          .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
 
       TimeJoinOperator timeJoinOperator =
           new TimeJoinOperator(
-              fragmentInstanceContext.getOperatorContexts().get(2),
+              driverContext.getOperatorContexts().get(2),
               Arrays.asList(seriesScanOperator1, seriesScanOperator2),
-              OrderBy.TIMESTAMP_ASC,
+              Ordering.ASC,
               Arrays.asList(TSDataType.INT32, TSDataType.INT32),
               Arrays.asList(
                   new SingleColumnMerger(new InputLocation(0, 0), new AscTimeComparator()),
@@ -157,30 +168,21 @@ public class DataDriverTest {
               new AscTimeComparator());
 
       LimitOperator limitOperator =
-          new LimitOperator(
-              fragmentInstanceContext.getOperatorContexts().get(3), 250, timeJoinOperator);
+          new LimitOperator(driverContext.getOperatorContexts().get(3), 250, timeJoinOperator);
 
-      DataRegion dataRegion = Mockito.mock(DataRegion.class);
-
-      List<PartialPath> pathList = ImmutableList.of(measurementPath1, measurementPath2);
       String deviceId = DATA_DRIVER_TEST_SG + ".device0";
-
-      Mockito.when(dataRegion.query(pathList, deviceId, fragmentInstanceContext, null))
+      Mockito.when(
+              dataRegion.query(driverContext.getPaths(), deviceId, fragmentInstanceContext, null))
           .thenReturn(new QueryDataSource(seqResources, unSeqResources));
-
-      DataDriverContext driverContext =
-          new DataDriverContext(
-              fragmentInstanceContext,
-              pathList,
-              null,
-              dataRegion,
-              ImmutableList.of(seriesScanOperator1, seriesScanOperator2));
+      fragmentInstanceContext.initQueryDataSource(driverContext.getPaths());
 
       StubSinkHandle sinkHandle = new StubSinkHandle(fragmentInstanceContext);
+      driverContext.setSinkHandle(sinkHandle);
       IDriver dataDriver = null;
       try {
-        dataDriver = new DataDriver(limitOperator, sinkHandle, driverContext);
-        assertEquals(fragmentInstanceContext.getId(), dataDriver.getInfo());
+        dataDriver = new DataDriver(limitOperator, driverContext);
+        assertEquals(
+            fragmentInstanceContext.getId(), dataDriver.getDriverTaskId().getFragmentInstanceId());
 
         assertFalse(dataDriver.isFinished());
 
@@ -193,36 +195,32 @@ public class DataDriverTest {
         assertEquals(FragmentInstanceState.FLUSHING, stateMachine.getState());
 
         List<TsBlock> result = sinkHandle.getTsBlocks();
-        assertEquals(13, result.size());
 
-        for (int i = 0; i < 13; i++) {
-          TsBlock tsBlock = result.get(i);
+        int row = 0;
+        for (TsBlock tsBlock : result) {
           assertEquals(2, tsBlock.getValueColumnCount());
           assertTrue(tsBlock.getColumn(0) instanceof IntColumn);
           assertTrue(tsBlock.getColumn(1) instanceof IntColumn);
 
-          if (i < 12) {
-            assertEquals(20, tsBlock.getPositionCount());
-          } else {
-            assertEquals(10, tsBlock.getPositionCount());
-          }
-          for (int j = 0; j < tsBlock.getPositionCount(); j++) {
-            long expectedTime = j + 20L * i;
-            assertEquals(expectedTime, tsBlock.getTimeByIndex(j));
-            if (expectedTime < 200) {
-              assertEquals(20000 + expectedTime, tsBlock.getColumn(0).getInt(j));
-              assertEquals(20000 + expectedTime, tsBlock.getColumn(1).getInt(j));
-            } else if (expectedTime < 260
-                || (expectedTime >= 300 && expectedTime < 380)
-                || expectedTime >= 400) {
-              assertEquals(10000 + expectedTime, tsBlock.getColumn(0).getInt(j));
-              assertEquals(10000 + expectedTime, tsBlock.getColumn(1).getInt(j));
+          for (int j = 0; j < tsBlock.getPositionCount(); j++, row++) {
+            assertEquals(row, tsBlock.getTimeByIndex(j));
+            if ((long) row < 200) {
+              assertEquals(20000 + (long) row, tsBlock.getColumn(0).getInt(j));
+              assertEquals(20000 + (long) row, tsBlock.getColumn(1).getInt(j));
+            } else if ((long) row < 260
+                || ((long) row >= 300 && (long) row < 380)
+                || (long) row >= 400) {
+              assertEquals(10000 + (long) row, tsBlock.getColumn(0).getInt(j));
+              assertEquals(10000 + (long) row, tsBlock.getColumn(1).getInt(j));
             } else {
-              assertEquals(expectedTime, tsBlock.getColumn(0).getInt(j));
-              assertEquals(expectedTime, tsBlock.getColumn(1).getInt(j));
+              assertEquals(row, tsBlock.getColumn(0).getInt(j));
+              assertEquals(row, tsBlock.getColumn(1).getInt(j));
             }
           }
         }
+
+        assertEquals(250, row);
+
       } finally {
         if (dataDriver != null) {
           dataDriver.close();

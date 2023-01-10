@@ -20,6 +20,10 @@ package org.apache.iotdb.db.mpp.common;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.db.mpp.plan.analyze.QueryType;
+import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
+
+import java.util.LinkedList;
+import java.util.List;
 
 /**
  * This class is used to record the context of a query including QueryId, query statement, session
@@ -30,26 +34,45 @@ public class MPPQueryContext {
   private QueryId queryId;
   private SessionInfo session;
   private QueryType queryType = QueryType.READ;
+  private long timeOut;
+  private long startTime;
 
   private TEndPoint localDataBlockEndpoint;
   private TEndPoint localInternalEndpoint;
   private ResultNodeContext resultNodeContext;
 
+  // When some DataNode cannot be connected, its endPoint will be put
+  // in this list. And the following retry will avoid planning fragment
+  // onto this node.
+  private final List<TEndPoint> endPointBlackList;
+
+  private final TypeProvider typeProvider = new TypeProvider();
+
   public MPPQueryContext(QueryId queryId) {
     this.queryId = queryId;
+    this.endPointBlackList = new LinkedList<>();
   }
 
+  // TODO too many callers just pass a null SessionInfo which should be forbidden
   public MPPQueryContext(
       String sql,
       QueryId queryId,
       SessionInfo session,
       TEndPoint localDataBlockEndpoint,
       TEndPoint localInternalEndpoint) {
+    this(queryId);
     this.sql = sql;
-    this.queryId = queryId;
     this.session = session;
     this.localDataBlockEndpoint = localDataBlockEndpoint;
     this.localInternalEndpoint = localInternalEndpoint;
+    this.initResultNodeContext();
+  }
+
+  public void prepareForRetry() {
+    this.initResultNodeContext();
+  }
+
+  private void initResultNodeContext() {
     this.resultNodeContext = new ResultNodeContext(queryId);
   }
 
@@ -59,6 +82,14 @@ public class MPPQueryContext {
 
   public QueryType getQueryType() {
     return queryType;
+  }
+
+  public long getTimeOut() {
+    return timeOut;
+  }
+
+  public void setTimeOut(long timeOut) {
+    this.timeOut = timeOut;
   }
 
   public void setQueryType(QueryType queryType) {
@@ -75,5 +106,33 @@ public class MPPQueryContext {
 
   public TEndPoint getLocalInternalEndpoint() {
     return localInternalEndpoint;
+  }
+
+  public SessionInfo getSession() {
+    return session;
+  }
+
+  public long getStartTime() {
+    return startTime;
+  }
+
+  public void setStartTime(long startTime) {
+    this.startTime = startTime;
+  }
+
+  public void addFailedEndPoint(TEndPoint endPoint) {
+    this.endPointBlackList.add(endPoint);
+  }
+
+  public List<TEndPoint> getEndPointBlackList() {
+    return endPointBlackList;
+  }
+
+  public TypeProvider getTypeProvider() {
+    return typeProvider;
+  }
+
+  public String getSql() {
+    return sql;
   }
 }

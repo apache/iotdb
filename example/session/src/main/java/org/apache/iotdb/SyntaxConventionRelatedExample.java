@@ -18,12 +18,12 @@
  */
 package org.apache.iotdb;
 
+import org.apache.iotdb.isession.SessionDataSet;
+import org.apache.iotdb.isession.util.Version;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.session.Session;
-import org.apache.iotdb.session.SessionDataSet;
-import org.apache.iotdb.session.util.Version;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -32,9 +32,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * When using session API, measurement, device, storage group and path are represented by String.
- * The content of the String should be the same as what you would write in a SQL statement. This
- * class is an example to help you understand better.
+ * When using session API, measurement, device, database and path are represented by String. The
+ * content of the String should be the same as what you would write in a SQL statement. This class
+ * is an example to help you understand better.
  */
 public class SyntaxConventionRelatedExample {
   private static Session session;
@@ -86,7 +86,7 @@ public class SyntaxConventionRelatedExample {
     try {
       session.setStorageGroup("root.sg1");
     } catch (StatementExecutionException e) {
-      if (e.getStatusCode() != TSStatusCode.PATH_ALREADY_EXIST_ERROR.getStatusCode()) {
+      if (e.getStatusCode() != TSStatusCode.PATH_ALREADY_EXIST.getStatusCode()) {
         throw e;
       }
     }
@@ -109,8 +109,10 @@ public class SyntaxConventionRelatedExample {
 
     long startTime = 1L;
     long endTime = 100L;
+    long timeOut = 60000;
 
-    try (SessionDataSet dataSet1 = session.executeRawDataQuery(paths, startTime, endTime)) {
+    try (SessionDataSet dataSet1 =
+        session.executeRawDataQuery(paths, startTime, endTime, timeOut)) {
 
       System.out.println(dataSet1.getColumnNames());
       dataSet1.setFetchSize(1024);

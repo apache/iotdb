@@ -65,7 +65,7 @@ public class InsertRowsNodeSerdeTest {
     node.serialize(byteBuffer);
     byteBuffer.flip();
 
-    Assert.assertEquals(PlanNodeType.INSERT_ROWS.ordinal(), byteBuffer.getShort());
+    Assert.assertEquals(PlanNodeType.INSERT_ROWS.getNodeType(), byteBuffer.getShort());
 
     Assert.assertEquals(node, InsertRowsNode.deserialize(byteBuffer));
   }

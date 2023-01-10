@@ -32,6 +32,7 @@ import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.metadata.mtree.store.disk.CachedMNodeContainer;
 import org.apache.iotdb.db.metadata.mtree.store.disk.ICachedMNodeContainer;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.HashMap;
@@ -59,7 +60,7 @@ public class MockSchemaFile implements ISchemaFile {
         new StorageGroupMNode(
             null,
             storageGroupPath.getTailNode(),
-            CommonDescriptor.getInstance().getConfig().getDefaultTTL());
+            CommonDescriptor.getInstance().getConfig().getDefaultTTLInMs());
     writeMNode(storageGroupMNode);
     return cloneMNode(storageGroupMNode);
   }
@@ -76,13 +77,11 @@ public class MockSchemaFile implements ISchemaFile {
     IMNode result = null;
     if (segment != null) {
       result = cloneMNode(segment.get(childName));
-      if (result == null) {
-        if (parent.isEntity()) {
-          for (IMNode node : segment.values()) {
-            if (node.isMeasurement() && childName.equals(node.getAsMeasurementMNode().getAlias())) {
-              result = cloneMNode(node);
-              break;
-            }
+      if (result == null && parent.isEntity()) {
+        for (IMNode node : segment.values()) {
+          if (node.isMeasurement() && childName.equals(node.getAsMeasurementMNode().getAlias())) {
+            result = cloneMNode(node);
+            break;
           }
         }
       }
@@ -98,6 +97,11 @@ public class MockSchemaFile implements ISchemaFile {
       return Collections.emptyIterator();
     }
     return new MockSchemaFileIterator(getSegment(parent).values().iterator());
+  }
+
+  @Override
+  public boolean createSnapshot(File snapshotDir) {
+    return false;
   }
 
   @Override
@@ -208,7 +212,6 @@ public class MockSchemaFile implements ISchemaFile {
 
   private static void cloneInternalMNodeData(IMNode node, IMNode result) {
     result.setUseTemplate(node.isUseTemplate());
-    result.setSchemaTemplate(node.getSchemaTemplate());
     ICachedMNodeContainer container = new CachedMNodeContainer();
     container.setSegmentAddress((getCachedMNodeContainer(node)).getSegmentAddress());
     result.setChildren(container);

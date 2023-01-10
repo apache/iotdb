@@ -29,9 +29,8 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.DataRegionException;
 import org.apache.iotdb.db.metadata.idtable.IDTable;
 import org.apache.iotdb.db.metadata.idtable.entry.IDeviceID;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertNode;
-import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.wal.buffer.WALEntry;
 import org.apache.iotdb.db.wal.exception.WALRecoverException;
 import org.apache.iotdb.db.wal.utils.listener.WALRecoverListener;
@@ -50,6 +49,8 @@ import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.function.Consumer;
 
+import static org.apache.iotdb.commons.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
+
 /**
  * This class is used to help recover all unsealed TsFiles at zero level. There are 3 main
  * procedures: start recovery, redo logs, and end recovery, you must call them in order. Notice:
@@ -61,7 +62,7 @@ public class UnsealedTsFileRecoverPerformer extends AbstractTsFileRecoverPerform
 
   /** sequence file or not */
   private final boolean sequence;
-  /** add recovered TsFile back to virtual storage group */
+  /** add recovered TsFile back to data region */
   private final Consumer<UnsealedTsFileRecoverPerformer> callbackAfterUnsealedTsFileRecovered;
   /** redo wal log to recover TsFile */
   private final TsFilePlanRedoer walRedoer;
@@ -186,13 +187,6 @@ public class UnsealedTsFileRecoverPerformer extends AbstractTsFileRecoverPerform
     }
     try {
       switch (walEntry.getType()) {
-        case INSERT_ROW_PLAN:
-        case INSERT_TABLET_PLAN:
-          walRedoer.redoInsert((InsertPlan) walEntry.getValue());
-          break;
-        case DELETE_PLAN:
-          walRedoer.redoDelete((DeletePlan) walEntry.getValue());
-          break;
         case MEMORY_TABLE_SNAPSHOT:
           IMemTable memTable = (IMemTable) walEntry.getValue();
           if (!memTable.isSignalMemTable()) {
@@ -203,6 +197,11 @@ public class UnsealedTsFileRecoverPerformer extends AbstractTsFileRecoverPerform
         case INSERT_TABLET_NODE:
           walRedoer.redoInsert((InsertNode) walEntry.getValue());
           break;
+        case DELETE_DATA_NODE:
+          walRedoer.redoDelete((DeleteDataNode) walEntry.getValue());
+          break;
+        default:
+          throw new RuntimeException("Unsupported type " + walEntry.getType());
       }
     } catch (Exception e) {
       logger.warn("meet error when redo wal of {}", tsFileResource.getTsFile(), e);
@@ -227,12 +226,14 @@ public class UnsealedTsFileRecoverPerformer extends AbstractTsFileRecoverPerform
       }
       // flush memTable
       try {
-        if (!recoveryMemTable.isEmpty()) {
+        if (!recoveryMemTable.isEmpty() && recoveryMemTable.getSeriesNumber() != 0) {
+          String dataRegionId =
+              tsFileResource.getTsFile().getParentFile().getParentFile().getName();
+          String databaseName =
+              tsFileResource.getTsFile().getParentFile().getParentFile().getParentFile().getName();
           MemTableFlushTask tableFlushTask =
               new MemTableFlushTask(
-                  recoveryMemTable,
-                  writer,
-                  tsFileResource.getTsFile().getParentFile().getParentFile().getName());
+                  recoveryMemTable, writer, databaseName + FILE_NAME_SEPARATOR + dataRegionId);
           tableFlushTask.syncFlushMemTable();
           tsFileResource.updatePlanIndexes(recoveryMemTable.getMinPlanIndex());
           tsFileResource.updatePlanIndexes(recoveryMemTable.getMaxPlanIndex());

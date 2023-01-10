@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.concurrent.threadpool;
 
+import org.apache.iotdb.commons.concurrent.WrappedCallable;
+import org.apache.iotdb.commons.concurrent.WrappedRunnable;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.service.JMXService;
 
@@ -30,6 +32,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.stream.Collectors;
 
 public class WrappedSingleThreadExecutorService
     implements ExecutorService, WrappedSingleThreadExecutorServiceMBean {
@@ -74,46 +77,50 @@ public class WrappedSingleThreadExecutorService
 
   @Override
   public <T> Future<T> submit(Callable<T> task) {
-    return service.submit(task);
+    return service.submit(WrappedCallable.wrap(task));
   }
 
   @Override
   public <T> Future<T> submit(Runnable task, T result) {
-    return service.submit(task, result);
+    return service.submit(WrappedRunnable.wrap(task), result);
   }
 
   @Override
   public Future<?> submit(Runnable task) {
-    return service.submit(task);
+    return service.submit(WrappedRunnable.wrap(task));
   }
 
   @Override
   public <T> List<Future<T>> invokeAll(Collection<? extends Callable<T>> tasks)
       throws InterruptedException {
-    return service.invokeAll(tasks);
+    return service.invokeAll(
+        tasks.stream().map(WrappedCallable::wrap).collect(Collectors.toList()));
   }
 
   @Override
   public <T> List<Future<T>> invokeAll(
       Collection<? extends Callable<T>> tasks, long timeout, TimeUnit unit)
       throws InterruptedException {
-    return service.invokeAll(tasks, timeout, unit);
+    return service.invokeAll(
+        tasks.stream().map(WrappedCallable::wrap).collect(Collectors.toList()), timeout, unit);
   }
 
   @Override
   public <T> T invokeAny(Collection<? extends Callable<T>> tasks)
       throws InterruptedException, ExecutionException {
-    return service.invokeAny(tasks);
+    return service.invokeAny(
+        tasks.stream().map(WrappedCallable::wrap).collect(Collectors.toList()));
   }
 
   @Override
   public <T> T invokeAny(Collection<? extends Callable<T>> tasks, long timeout, TimeUnit unit)
       throws InterruptedException, ExecutionException, TimeoutException {
-    return service.invokeAny(tasks, timeout, unit);
+    return service.invokeAny(
+        tasks.stream().map(WrappedCallable::wrap).collect(Collectors.toList()), timeout, unit);
   }
 
   @Override
   public void execute(Runnable command) {
-    service.execute(command);
+    service.execute(WrappedRunnable.wrap(command));
   }
 }

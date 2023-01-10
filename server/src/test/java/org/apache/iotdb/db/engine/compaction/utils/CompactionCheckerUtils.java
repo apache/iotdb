@@ -21,13 +21,16 @@ package org.apache.iotdb.db.engine.compaction.utils;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.engine.cache.BloomFilterCache;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
+import org.apache.iotdb.db.engine.compaction.execute.utils.reader.IDataBlockReader;
+import org.apache.iotdb.db.engine.compaction.execute.utils.reader.SeriesDataBlockReader;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.query.reader.series.SeriesRawDataBatchReader;
+import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -45,7 +48,7 @@ import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.common.IBatchDataIterator;
 import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.read.reader.IBatchReader;
+import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
 import org.apache.iotdb.tsfile.read.reader.page.PageReader;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
@@ -63,7 +66,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.TreeMap;
 
-import static org.apache.iotdb.db.utils.QueryUtils.modifyChunkMetaData;
+import static org.apache.iotdb.db.utils.ModificationUtils.modifyChunkMetaData;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.fail;
@@ -101,6 +104,9 @@ public class CompactionCheckerUtils {
    */
   public static Map<String, List<TimeValuePair>> readFiles(List<TsFileResource> tsFileResources)
       throws IOException, IllegalPathException {
+    ChunkCache.getInstance().clear();
+    TimeSeriesMetadataCache.getInstance().clear();
+    BloomFilterCache.getInstance().clear();
     Map<String, Map<Long, TimeValuePair>> mapResult = new HashMap<>();
     for (TsFileResource tsFileResource : tsFileResources) {
       try (TsFileSequenceReader reader = new TsFileSequenceReader(tsFileResource.getTsFilePath())) {
@@ -499,29 +505,28 @@ public class CompactionCheckerUtils {
       throws IllegalPathException, IOException {
     Map<PartialPath, List<TimeValuePair>> pathDataMap = new HashMap<>();
     for (int i = 0; i < fullPaths.size(); ++i) {
+      FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
       TimeSeriesMetadataCache.getInstance().clear();
       ChunkCache.getInstance().clear();
-      TimeSeriesMetadataCache.getInstance().clear();
-      ChunkCache.getInstance().clear();
+      BloomFilterCache.getInstance().clear();
 
       PartialPath path = fullPaths.get(i);
       List<TimeValuePair> dataList = new LinkedList<>();
-      IBatchReader reader =
-          new SeriesRawDataBatchReader(
+
+      IDataBlockReader reader =
+          new SeriesDataBlockReader(
               path,
               path.getSeriesType(),
-              EnvironmentUtils.TEST_QUERY_CONTEXT,
+              EnvironmentUtils.TEST_QUERY_FI_CONTEXT,
               sequenceResources,
               unsequenceResources,
-              null,
-              null,
               true);
       while (reader.hasNextBatch()) {
-        BatchData batchData = reader.nextBatch();
-        while (batchData.hasCurrent()) {
-          dataList.add(
-              new TimeValuePair(batchData.currentTime(), batchData.currentTsPrimitiveType()));
-          batchData.next();
+        TsBlock batchData = reader.nextBatch();
+        TsBlock.TsBlockSingleColumnIterator batchDataIterator =
+            batchData.getTsBlockSingleColumnIterator();
+        while (batchDataIterator.hasNextTimeValuePair()) {
+          dataList.add(batchDataIterator.nextTimeValuePair());
         }
       }
       pathDataMap.put(fullPaths.get(i), dataList);

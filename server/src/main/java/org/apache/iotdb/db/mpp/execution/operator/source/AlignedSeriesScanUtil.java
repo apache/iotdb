@@ -18,18 +18,19 @@
  */
 package org.apache.iotdb.db.mpp.execution.operator.source;
 
+import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.metadata.path.AlignedPath;
-import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.reader.universal.AlignedDescPriorityMergeReader;
 import org.apache.iotdb.db.query.reader.universal.AlignedPriorityMergeReader;
 import org.apache.iotdb.db.query.reader.universal.DescPriorityMergeReader;
 import org.apache.iotdb.db.query.reader.universal.PriorityMergeReader;
 import org.apache.iotdb.db.utils.FileLoaderUtils;
+import org.apache.iotdb.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.AlignedTimeSeriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
@@ -47,7 +48,7 @@ public class AlignedSeriesScanUtil extends SeriesScanUtil {
   public AlignedSeriesScanUtil(
       PartialPath seriesPath,
       Set<String> allSensors,
-      FragmentInstanceContext context,
+      QueryContext context,
       Filter timeFilter,
       Filter valueFilter,
       boolean ascending) {
@@ -55,6 +56,43 @@ public class AlignedSeriesScanUtil extends SeriesScanUtil {
     dataTypes =
         ((AlignedPath) seriesPath)
             .getSchemaList().stream().map(IMeasurementSchema::getType).collect(Collectors.toList());
+    isAligned = true;
+  }
+
+  @Override
+  protected Statistics currentFileStatistics(int index) throws IOException {
+    return ((AlignedTimeSeriesMetadata) firstTimeSeriesMetadata).getStatistics(index);
+  }
+
+  @Override
+  protected Statistics currentFileTimeStatistics() throws IOException {
+    return ((AlignedTimeSeriesMetadata) firstTimeSeriesMetadata).getTimeStatistics();
+  }
+
+  @Override
+  protected Statistics currentChunkStatistics(int index) throws IOException {
+    return ((AlignedChunkMetadata) firstChunkMetadata).getStatistics(index);
+  }
+
+  @Override
+  protected Statistics currentChunkTimeStatistics() {
+    return ((AlignedChunkMetadata) firstChunkMetadata).getTimeStatistics();
+  }
+
+  @Override
+  protected Statistics currentPageStatistics(int index) throws IOException {
+    if (firstPageReader == null) {
+      return null;
+    }
+    return firstPageReader.getStatistics(index);
+  }
+
+  @Override
+  protected Statistics currentPageTimeStatistics() throws IOException {
+    if (firstPageReader == null) {
+      return null;
+    }
+    return firstPageReader.getTimeStatistics();
   }
 
   @Override

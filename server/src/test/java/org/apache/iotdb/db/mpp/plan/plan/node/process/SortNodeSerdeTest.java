@@ -19,16 +19,20 @@
 package org.apache.iotdb.db.mpp.plan.plan.node.process;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.db.metadata.path.MeasurementPath;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.db.mpp.plan.plan.node.PlanNodeDeserializeHelper;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.SortNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesScanNode;
-import org.apache.iotdb.db.mpp.plan.statement.component.OrderBy;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.OrderByParameter;
+import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
+import org.apache.iotdb.db.mpp.plan.statement.component.SortItem;
+import org.apache.iotdb.db.mpp.plan.statement.component.SortKey;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.filter.GroupByFilter;
 
 import org.junit.Test;
+import org.testcontainers.shaded.com.google.common.collect.ImmutableList;
 
 import java.nio.ByteBuffer;
 
@@ -42,14 +46,17 @@ public class SortNodeSerdeTest {
         new SeriesScanNode(
             new PlanNodeId("TestSeriesScanNode"),
             new MeasurementPath("root.sg.d1.s1", TSDataType.INT32),
-            OrderBy.TIMESTAMP_DESC,
+            Ordering.DESC,
             new GroupByFilter(1, 2, 3, 4),
             null,
             100,
             100,
             null);
     SortNode sortNode =
-        new SortNode(new PlanNodeId("TestSortNode"), seriesScanNode, OrderBy.TIMESTAMP_ASC);
+        new SortNode(
+            new PlanNodeId("TestSortNode"),
+            seriesScanNode,
+            new OrderByParameter(ImmutableList.of(new SortItem(SortKey.TIME, Ordering.ASC))));
 
     ByteBuffer byteBuffer = ByteBuffer.allocate(2048);
     sortNode.serialize(byteBuffer);

@@ -47,13 +47,15 @@ public enum ExpressionType {
 
   IS_NULL((short) 15, (short) 475),
 
-  // BETWEEN((short) 16, (short) 450),
+  BETWEEN((short) 16, (short) 450),
 
   IN((short) 17, (short) 400),
 
   LOGIC_AND((short) 18, (short) 300),
 
   LOGIC_OR((short) 19, (short) 200),
+
+  NULL((short) 20, (short) 1400),
   ;
 
   private final short expressionType;

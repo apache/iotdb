@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.confignode.consensus.response;
 
-import org.apache.iotdb.common.rpc.thrift.TRegionInfo;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.confignode.rpc.thrift.TRegionInfo;
 import org.apache.iotdb.consensus.common.DataSet;
 
 import java.util.List;

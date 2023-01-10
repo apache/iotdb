@@ -21,21 +21,25 @@ package org.apache.iotdb.commons.udf.builtin;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.access.Row;
 import org.apache.iotdb.udf.api.collector.PointCollector;
 import org.apache.iotdb.udf.api.customizer.config.UDTFConfigurations;
 import org.apache.iotdb.udf.api.customizer.parameter.UDFParameterValidator;
 import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;
-import org.apache.iotdb.udf.api.customizer.strategy.RowByRowAccessStrategy;
+import org.apache.iotdb.udf.api.customizer.strategy.MappableRowByRowAccessStrategy;
 import org.apache.iotdb.udf.api.exception.UDFException;
 import org.apache.iotdb.udf.api.exception.UDFInputSeriesDataTypeNotValidException;
 import org.apache.iotdb.udf.api.type.Type;
 
 import java.io.IOException;
 
-public class UDTFOnOff extends UDTFMath {
+public class UDTFOnOff implements UDTF {
 
   protected double threshold;
+
+  private TSDataType dataType;
 
   @Override
   public void validate(UDFParameterValidator validator) throws UDFException {
@@ -50,7 +54,9 @@ public class UDTFOnOff extends UDTFMath {
       throws MetadataException {
     threshold = parameters.getDouble("threshold");
     dataType = UDFDataTypeTransformer.transformToTsDataType(parameters.getDataType(0));
-    configurations.setAccessStrategy(new RowByRowAccessStrategy()).setOutputDataType(Type.BOOLEAN);
+    configurations
+        .setAccessStrategy(new MappableRowByRowAccessStrategy())
+        .setOutputDataType(Type.BOOLEAN);
   }
 
   @Override
@@ -83,7 +89,28 @@ public class UDTFOnOff extends UDTFMath {
   }
 
   @Override
-  protected void setTransformer() {
-    throw new UnsupportedOperationException("UDTFOnOff#setTransformer()");
+  public Object transform(Row row) throws IOException {
+    if (row.isNull(0)) {
+      return null;
+    }
+    switch (dataType) {
+      case INT32:
+        return row.getInt(0) >= threshold;
+      case INT64:
+        return row.getLong(0) >= threshold;
+      case FLOAT:
+        return row.getFloat(0) >= threshold;
+      case DOUBLE:
+        return row.getDouble(0) >= threshold;
+      default:
+        // This will not happen.
+        throw new UDFInputSeriesDataTypeNotValidException(
+            0,
+            UDFDataTypeTransformer.transformToUDFDataType(dataType),
+            Type.INT32,
+            Type.INT64,
+            Type.FLOAT,
+            Type.DOUBLE);
+    }
   }
 }

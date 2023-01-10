@@ -366,9 +366,9 @@ public class ElasticSerializableTVList implements PointCollector {
     }
 
     BatchData get(int targetIndex) throws IOException {
-      if (!removeFirstOccurrence(targetIndex)) {
-        if (cacheCapacity <= cacheSize) {
-          int lastIndex = removeLast();
+      if (!containsKey(targetIndex)) {
+        if (cacheCapacity <= size()) {
+          int lastIndex = getLast();
           if (lastIndex < evictionUpperBound / internalTVListCapacity) {
             tvLists.set(lastIndex, null);
             bitMaps.set(lastIndex, null);
@@ -378,7 +378,7 @@ public class ElasticSerializableTVList implements PointCollector {
         }
         tvLists.get(targetIndex).deserialize();
       }
-      addFirst(targetIndex);
+      putKey(targetIndex);
       return tvLists.get(targetIndex);
     }
   }

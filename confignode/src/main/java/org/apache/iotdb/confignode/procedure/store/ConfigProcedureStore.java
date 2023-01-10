@@ -20,8 +20,8 @@
 package org.apache.iotdb.confignode.procedure.store;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
-import org.apache.iotdb.confignode.consensus.request.write.DeleteProcedurePlan;
-import org.apache.iotdb.confignode.consensus.request.write.UpdateProcedurePlan;
+import org.apache.iotdb.confignode.consensus.request.write.procedure.DeleteProcedurePlan;
+import org.apache.iotdb.confignode.consensus.request.write.procedure.UpdateProcedurePlan;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.ConsensusManager;
 import org.apache.iotdb.confignode.persistence.ProcedureInfo;
@@ -36,7 +36,7 @@ import java.util.List;
 
 public class ConfigProcedureStore implements IProcedureStore {
 
-  private static final Logger LOG = LoggerFactory.getLogger(ProcedureStore.class);
+  private static final Logger LOG = LoggerFactory.getLogger(ConfigProcedureStore.class);
 
   private volatile boolean isRunning = false;
   private final ProcedureInfo procedureInfo;
@@ -76,7 +76,7 @@ public class ConfigProcedureStore implements IProcedureStore {
   @Override
   public void update(Procedure procedure) {
     UpdateProcedurePlan updateProcedurePlan = new UpdateProcedurePlan();
-    ProcedureFactory.ProcedureType procedureType = ProcedureFactory.getProcedureType(procedure);
+    ProcedureType procedureType = ProcedureFactory.getProcedureType(procedure);
     if (procedureType != null) {
       updateProcedurePlan.setProcedure(procedure);
     }

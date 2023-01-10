@@ -23,6 +23,6 @@ import org.apache.iotdb.commons.exception.MetadataException;
 public class SchemaDirCreationFailureException extends MetadataException {
 
   public SchemaDirCreationFailureException(String dirPath) {
-    super(String.format("create storage group schema folder %s failed.", dirPath));
+    super(String.format("create database schema folder %s failed.", dirPath));
   }
 }

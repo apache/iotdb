@@ -18,9 +18,8 @@
  */
 package org.apache.iotdb.db.it.aligned;
 
-import org.apache.iotdb.it.env.ConfigFactory;
 import org.apache.iotdb.it.env.EnvFactory;
-import org.apache.iotdb.it.env.IoTDBTestRunner;
+import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 
@@ -39,23 +38,20 @@ import static org.junit.Assert.fail;
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBInsertAlignedValues4IT {
-  private boolean autoCreateSchemaEnabled;
-  private int primitiveArraySize;
 
   @Before
   public void setUp() throws Exception {
-    autoCreateSchemaEnabled = ConfigFactory.getConfig().isAutoCreateSchemaEnabled();
-    primitiveArraySize = ConfigFactory.getConfig().getPrimitiveArraySize();
-    ConfigFactory.getConfig().setAutoCreateSchemaEnabled(true);
-    ConfigFactory.getConfig().setPrimitiveArraySize(2);
-    EnvFactory.getEnv().initBeforeClass();
+    EnvFactory.getEnv()
+        .getConfig()
+        .getCommonConfig()
+        .setAutoCreateSchemaEnabled(true)
+        .setPrimitiveArraySize(2);
+    EnvFactory.getEnv().initClusterEnvironment();
   }
 
   @After
   public void tearDown() throws Exception {
-    EnvFactory.getEnv().cleanAfterClass();
-    ConfigFactory.getConfig().setAutoCreateSchemaEnabled(autoCreateSchemaEnabled);
-    ConfigFactory.getConfig().setPrimitiveArraySize(primitiveArraySize);
+    EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
   @Test

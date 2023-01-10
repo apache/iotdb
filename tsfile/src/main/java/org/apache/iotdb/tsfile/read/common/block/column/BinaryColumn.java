@@ -24,9 +24,11 @@ import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 import org.openjdk.jol.info.ClassLayout;
 
+import java.util.Arrays;
 import java.util.Optional;
 
-import static io.airlift.slice.SizeOf.sizeOf;
+import static io.airlift.slice.SizeOf.sizeOfBooleanArray;
+import static io.airlift.slice.SizeOf.sizeOfObjectArray;
 import static org.apache.iotdb.tsfile.read.common.block.column.ColumnUtil.checkValidRegion;
 
 public class BinaryColumn implements Column {
@@ -66,7 +68,8 @@ public class BinaryColumn implements Column {
     this.valueIsNull = valueIsNull;
 
     // TODO we need to sum up all the Binary's retainedSize here
-    retainedSizeInBytes = INSTANCE_SIZE + sizeOf(valueIsNull) + sizeOf(values);
+    retainedSizeInBytes =
+        INSTANCE_SIZE + sizeOfBooleanArray(positionCount) + sizeOfObjectArray(positionCount);
   }
 
   @Override
@@ -81,8 +84,12 @@ public class BinaryColumn implements Column {
 
   @Override
   public Binary getBinary(int position) {
-    checkReadablePosition(position);
     return values[position + arrayOffset];
+  }
+
+  @Override
+  public Binary[] getBinaries() {
+    return values;
   }
 
   @Override
@@ -92,7 +99,6 @@ public class BinaryColumn implements Column {
 
   @Override
   public TsPrimitiveType getTsPrimitiveType(int position) {
-    checkReadablePosition(position);
     return new TsPrimitiveType.TsBinary(getBinary(position));
   }
 
@@ -103,8 +109,17 @@ public class BinaryColumn implements Column {
 
   @Override
   public boolean isNull(int position) {
-    checkReadablePosition(position);
     return valueIsNull != null && valueIsNull[position + arrayOffset];
+  }
+
+  @Override
+  public boolean[] isNull() {
+    if (valueIsNull == null) {
+      boolean[] res = new boolean[positionCount];
+      Arrays.fill(res, false);
+      return res;
+    }
+    return valueIsNull;
   }
 
   @Override
@@ -148,9 +163,8 @@ public class BinaryColumn implements Column {
     }
   }
 
-  private void checkReadablePosition(int position) {
-    if (position < 0 || position >= getPositionCount()) {
-      throw new IllegalArgumentException("position is not valid");
-    }
+  @Override
+  public int getInstanceSize() {
+    return INSTANCE_SIZE;
   }
 }

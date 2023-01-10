@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.consensus.statemachine;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
@@ -52,6 +53,11 @@ public class SchemaRegionStateMachine extends BaseStateMachine {
   public void stop() {}
 
   @Override
+  public boolean isReadOnly() {
+    return CommonDescriptor.getInstance().getConfig().isReadOnly();
+  }
+
+  @Override
   public boolean takeSnapshot(File snapshotDir) {
     return schemaRegion.createSnapshot(snapshotDir);
   }
@@ -63,7 +69,6 @@ public class SchemaRegionStateMachine extends BaseStateMachine {
 
   @Override
   public TSStatus write(IConsensusRequest request) {
-    logger.info("Execute write plan in SchemaRegionStateMachine");
     try {
       return getPlanNode(request).accept(new SchemaExecutionVisitor(), schemaRegion);
     } catch (IllegalArgumentException e) {
@@ -81,10 +86,28 @@ public class SchemaRegionStateMachine extends BaseStateMachine {
       logger.error(e.getMessage());
       return null;
     }
-    logger.info(
+    logger.debug(
         "SchemaRegionStateMachine[{}]: Execute read plan: FragmentInstance-{}",
         schemaRegion.getSchemaRegionId(),
         fragmentInstance.getId());
     return QUERY_INSTANCE_MANAGER.execSchemaQueryFragmentInstance(fragmentInstance, schemaRegion);
+  }
+
+  @Override
+  public boolean shouldRetry(TSStatus writeResult) {
+    // TODO implement this
+    return super.shouldRetry(writeResult);
+  }
+
+  @Override
+  public TSStatus updateResult(TSStatus previousResult, TSStatus retryResult) {
+    // TODO implement this
+    return super.updateResult(previousResult, retryResult);
+  }
+
+  @Override
+  public long getSleepTime() {
+    // TODO implement this
+    return super.getSleepTime();
   }
 }

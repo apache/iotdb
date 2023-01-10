@@ -26,9 +26,6 @@ import org.apache.iotdb.rpc.TSStatusCode;
 public class TemplateIsInUseException extends MetadataException {
 
   public TemplateIsInUseException(String path) {
-    super(
-        String.format("Template is in use on " + path),
-        TSStatusCode.TEMPLATE_IS_IN_USE.getStatusCode(),
-        true);
+    super("Template is in use on " + path, TSStatusCode.TEMPLATE_IS_IN_USE.getStatusCode(), true);
   }
 }

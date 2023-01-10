@@ -21,14 +21,15 @@ package org.apache.iotdb.db.mpp.plan.planner.plan.node.write;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.StorageEngineV2;
+import org.apache.iotdb.db.exception.metadata.AlignedTimeseriesException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.mpp.common.schematree.DeviceSchemaInfo;
-import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
+import org.apache.iotdb.db.mpp.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.mpp.plan.analyze.Analysis;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
@@ -36,10 +37,12 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.utils.CommonUtils;
+import org.apache.iotdb.db.utils.TimePartitionUtils;
 import org.apache.iotdb.db.utils.TypeInferenceUtils;
 import org.apache.iotdb.db.wal.buffer.IWALByteBufferView;
 import org.apache.iotdb.db.wal.buffer.WALEntryValue;
 import org.apache.iotdb.db.wal.utils.WALWriteUtils;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
@@ -60,6 +63,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 public class InsertRowNode extends InsertNode implements WALEntryValue {
 
@@ -95,7 +99,7 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
 
   @Override
   public List<WritePlanNode> splitByPartition(Analysis analysis) {
-    TTimePartitionSlot timePartitionSlot = StorageEngineV2.getTimePartitionSlot(time);
+    TTimePartitionSlot timePartitionSlot = TimePartitionUtils.getTimePartition(time);
     this.dataRegionReplicaSet =
         analysis
             .getDataPartitionInfo()
@@ -139,6 +143,15 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
     return dataTypes;
   }
 
+  @Override
+  public TSDataType getDataType(int index) {
+    if (isNeedInferType) {
+      return TypeInferenceUtils.getPredictedDataType(values[index], true);
+    } else {
+      return dataTypes[index];
+    }
+  }
+
   public Object[] getValues() {
     return values;
   }
@@ -165,28 +178,56 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
 
   @TestOnly
   public List<TTimePartitionSlot> getTimePartitionSlots() {
-    return Collections.singletonList(StorageEngineV2.getTimePartitionSlot(time));
+    return Collections.singletonList(TimePartitionUtils.getTimePartition(time));
   }
 
   @Override
-  public boolean validateAndSetSchema(SchemaTree schemaTree) {
+  public void validateAndSetSchema(ISchemaTree schemaTree)
+      throws QueryProcessException, MetadataException {
     DeviceSchemaInfo deviceSchemaInfo =
         schemaTree.searchDeviceSchemaInfo(devicePath, Arrays.asList(measurements));
+    if (deviceSchemaInfo == null) {
+      throw new PathNotExistException(
+          Arrays.stream(measurements)
+              .map(s -> devicePath.getFullPath() + TsFileConstant.PATH_SEPARATOR + s)
+              .collect(Collectors.toList()));
+    }
     if (deviceSchemaInfo.isAligned() != isAligned) {
-      return false;
+      throw new AlignedTimeseriesException(
+          String.format(
+              "timeseries under this device are%s aligned, " + "please use %s interface",
+              deviceSchemaInfo.isAligned() ? "" : " not",
+              deviceSchemaInfo.isAligned() ? "aligned" : "non-aligned"),
+          devicePath.getFullPath());
     }
     this.measurementSchemas =
         deviceSchemaInfo.getMeasurementSchemaList().toArray(new MeasurementSchema[0]);
 
     // transfer data types from string values when necessary
-    try {
+    if (isNeedInferType) {
       transferType();
-    } catch (QueryProcessException e) {
-      return false;
+      return;
     }
 
     // validate whether data types are matched
-    return selfCheckDataTypes();
+    selfCheckDataTypes();
+  }
+
+  @Override
+  protected boolean checkAndCastDataType(int columnIndex, TSDataType dataType) {
+    if (CommonUtils.checkCanCastType(dataTypes[columnIndex], dataType)) {
+      logger.warn(
+          "Inserting to {}.{} : Cast from {} to {}",
+          devicePath,
+          measurements[columnIndex],
+          dataTypes[columnIndex],
+          dataType);
+      values[columnIndex] =
+          CommonUtils.castValue(dataTypes[columnIndex], dataType, values[columnIndex]);
+      dataTypes[columnIndex] = dataType;
+      return true;
+    }
+    return false;
   }
 
   /**
@@ -194,10 +235,7 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
    * Notice: measurementSchemas must be initialized before calling this method
    */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
-  private void transferType() throws QueryProcessException {
-    if (!isNeedInferType) {
-      return;
-    }
+  public void transferType() throws QueryProcessException {
 
     for (int i = 0; i < measurementSchemas.length; i++) {
       // null when time series doesn't exist
@@ -569,9 +607,13 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
     return size;
   }
 
+  /**
+   * Compared with {@link this#serialize(ByteBuffer)}, more info: search index, less info:
+   * isNeedInferType
+   */
   @Override
   public void serializeToWAL(IWALByteBufferView buffer) {
-    buffer.putShort((short) PlanNodeType.INSERT_ROW.ordinal());
+    buffer.putShort(PlanNodeType.INSERT_ROW.getNodeType());
     subSerialize(buffer);
   }
 
@@ -584,7 +626,7 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
 
   /** Serialize measurements and values, ignoring failed time series */
   private void serializeMeasurementsAndValues(IWALByteBufferView buffer) {
-    buffer.putInt(measurementSchemas.length - getFailedMeasurementNumber());
+    buffer.putInt(measurements.length - getFailedMeasurementNumber());
     serializeMeasurementSchemasToWAL(buffer);
     putDataTypesAndValues(buffer);
     buffer.put((byte) (isAligned ? 1 : 0));
@@ -629,34 +671,37 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
   }
 
   /** Deserialize from wal */
-  public static InsertRowNode deserialize(DataInputStream stream)
-      throws IOException, IllegalPathException {
+  public static InsertRowNode deserializeFromWAL(DataInputStream stream) throws IOException {
     // we do not store plan node id in wal entry
     InsertRowNode insertNode = new InsertRowNode(new PlanNodeId(""));
     insertNode.setSearchIndex(stream.readLong());
     insertNode.setTime(stream.readLong());
-    insertNode.setDevicePath(new PartialPath(ReadWriteIOUtils.readString(stream)));
-    insertNode.deserializeMeasurementsAndValues(stream);
+    try {
+      insertNode.setDevicePath(new PartialPath(ReadWriteIOUtils.readString(stream)));
+    } catch (IllegalPathException e) {
+      throw new IllegalArgumentException("Cannot deserialize InsertRowNode", e);
+    }
+    insertNode.deserializeMeasurementsAndValuesFromWAL(stream);
 
     return insertNode;
   }
 
-  void deserializeMeasurementsAndValues(DataInputStream stream) throws IOException {
+  void deserializeMeasurementsAndValuesFromWAL(DataInputStream stream) throws IOException {
     int measurementSize = stream.readInt();
 
     measurements = new String[measurementSize];
     measurementSchemas = new MeasurementSchema[measurementSize];
+    dataTypes = new TSDataType[measurementSize];
     deserializeMeasurementSchemas(stream);
 
-    dataTypes = new TSDataType[measurementSize];
     values = new Object[measurementSize];
-    fillDataTypesAndValues(stream);
+    fillDataTypesAndValuesFromWAL(stream);
 
     isAligned = stream.readByte() == 1;
   }
 
   /** Make sure the dataTypes and values have been created before calling this */
-  public void fillDataTypesAndValues(DataInputStream stream) throws IOException {
+  public void fillDataTypesAndValuesFromWAL(DataInputStream stream) throws IOException {
     for (int i = 0; i < dataTypes.length; i++) {
       byte typeNum = stream.readByte();
       if (typeNum == TYPE_NULL) {
@@ -681,6 +726,69 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
           break;
         case TEXT:
           values[i] = ReadWriteIOUtils.readBinary(stream);
+          break;
+        default:
+          throw new RuntimeException("Unsupported data type:" + dataTypes[i]);
+      }
+    }
+  }
+
+  /** Deserialize from wal */
+  public static InsertRowNode deserializeFromWAL(ByteBuffer buffer) {
+    // we do not store plan node id in wal entry
+    InsertRowNode insertNode = new InsertRowNode(new PlanNodeId(""));
+    insertNode.setSearchIndex(buffer.getLong());
+    insertNode.setTime(buffer.getLong());
+    try {
+      insertNode.setDevicePath(new PartialPath(ReadWriteIOUtils.readString(buffer)));
+    } catch (IllegalPathException e) {
+      throw new IllegalArgumentException("Cannot deserialize InsertRowNode", e);
+    }
+    insertNode.deserializeMeasurementsAndValuesFromWAL(buffer);
+
+    return insertNode;
+  }
+
+  void deserializeMeasurementsAndValuesFromWAL(ByteBuffer buffer) {
+    int measurementSize = buffer.getInt();
+
+    measurements = new String[measurementSize];
+    measurementSchemas = new MeasurementSchema[measurementSize];
+    deserializeMeasurementSchemas(buffer);
+
+    dataTypes = new TSDataType[measurementSize];
+    values = new Object[measurementSize];
+    fillDataTypesAndValuesFromWAL(buffer);
+
+    isAligned = buffer.get() == 1;
+  }
+
+  /** Make sure the dataTypes and values have been created before calling this */
+  public void fillDataTypesAndValuesFromWAL(ByteBuffer buffer) {
+    for (int i = 0; i < dataTypes.length; i++) {
+      byte typeNum = buffer.get();
+      if (typeNum == TYPE_NULL) {
+        continue;
+      }
+      dataTypes[i] = TSDataType.values()[typeNum];
+      switch (dataTypes[i]) {
+        case BOOLEAN:
+          values[i] = ReadWriteIOUtils.readBool(buffer);
+          break;
+        case INT32:
+          values[i] = ReadWriteIOUtils.readInt(buffer);
+          break;
+        case INT64:
+          values[i] = ReadWriteIOUtils.readLong(buffer);
+          break;
+        case FLOAT:
+          values[i] = ReadWriteIOUtils.readFloat(buffer);
+          break;
+        case DOUBLE:
+          values[i] = ReadWriteIOUtils.readDouble(buffer);
+          break;
+        case TEXT:
+          values[i] = ReadWriteIOUtils.readBinary(buffer);
           break;
         default:
           throw new RuntimeException("Unsupported data type:" + dataTypes[i]);

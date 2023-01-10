@@ -50,7 +50,6 @@ public class EmptyQueueSlidingWindowAggregator extends SlidingWindowAggregator {
   @Override
   public void processPartialResult(PartialAggregationResult partialResult) {
     if (!partialResult.isNull()) {
-      this.accumulator.reset();
       this.accumulator.addIntermediate(partialResult.getPartialResult());
       lastTime = partialResult.getTime();
     }

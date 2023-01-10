@@ -88,7 +88,7 @@ public class InsertMultiTabletsNodeSerdeTest {
     insertMultiTabletsNode.serialize(byteBuffer);
     byteBuffer.flip();
 
-    Assert.assertEquals(PlanNodeType.INSERT_MULTI_TABLET.ordinal(), byteBuffer.getShort());
+    Assert.assertEquals(PlanNodeType.INSERT_MULTI_TABLET.getNodeType(), byteBuffer.getShort());
 
     Assert.assertEquals(insertMultiTabletsNode, InsertMultiTabletsNode.deserialize(byteBuffer));
   }

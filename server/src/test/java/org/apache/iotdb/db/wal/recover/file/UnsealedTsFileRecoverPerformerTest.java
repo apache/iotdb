@@ -19,13 +19,18 @@
 package org.apache.iotdb.db.wal.recover.file;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
-import org.apache.iotdb.db.service.IoTDB;
+import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.DeleteDataNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.wal.buffer.WALEntry;
+import org.apache.iotdb.db.wal.buffer.WALInfoEntry;
 import org.apache.iotdb.db.wal.utils.TsFileUtilsForRecoverTest;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
@@ -61,6 +66,8 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 public class UnsealedTsFileRecoverPerformerTest {
+
+  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final String SG_NAME = "root.recover_sg";
   private static final String DEVICE1_NAME = SG_NAME.concat(".d1");
   private static final String DEVICE2_NAME = SG_NAME.concat(".d2");
@@ -68,35 +75,43 @@ public class UnsealedTsFileRecoverPerformerTest {
       TsFileUtilsForRecoverTest.getTestTsFilePath(SG_NAME, 0, 0, 1);
   private TsFileResource tsFileResource;
 
+  private boolean isClusterMode;
+
   @Before
   public void setUp() throws Exception {
     EnvironmentUtils.cleanDir(new File(FILE_NAME).getParent());
     EnvironmentUtils.envSetUp();
-    IoTDB.schemaProcessor.setStorageGroup(new PartialPath(SG_NAME));
-    IoTDB.schemaProcessor.createTimeseries(
-        new PartialPath(DEVICE1_NAME.concat(".s1")),
-        TSDataType.INT32,
-        TSEncoding.RLE,
-        TSFileDescriptor.getInstance().getConfig().getCompressor(),
-        Collections.emptyMap());
-    IoTDB.schemaProcessor.createTimeseries(
-        new PartialPath(DEVICE1_NAME.concat(".s2")),
-        TSDataType.INT64,
-        TSEncoding.RLE,
-        TSFileDescriptor.getInstance().getConfig().getCompressor(),
-        Collections.emptyMap());
-    IoTDB.schemaProcessor.createTimeseries(
-        new PartialPath(DEVICE2_NAME.concat(".s1")),
-        TSDataType.FLOAT,
-        TSEncoding.RLE,
-        TSFileDescriptor.getInstance().getConfig().getCompressor(),
-        Collections.emptyMap());
-    IoTDB.schemaProcessor.createTimeseries(
-        new PartialPath(DEVICE2_NAME.concat(".s2")),
-        TSDataType.DOUBLE,
-        TSEncoding.RLE,
-        TSFileDescriptor.getInstance().getConfig().getCompressor(),
-        Collections.emptyMap());
+    isClusterMode = config.isClusterMode();
+    config.setClusterMode(true);
+    LocalSchemaProcessor.getInstance().setStorageGroup(new PartialPath(SG_NAME));
+    LocalSchemaProcessor.getInstance()
+        .createTimeseries(
+            new PartialPath(DEVICE1_NAME.concat(".s1")),
+            TSDataType.INT32,
+            TSEncoding.RLE,
+            TSFileDescriptor.getInstance().getConfig().getCompressor(),
+            Collections.emptyMap());
+    LocalSchemaProcessor.getInstance()
+        .createTimeseries(
+            new PartialPath(DEVICE1_NAME.concat(".s2")),
+            TSDataType.INT64,
+            TSEncoding.RLE,
+            TSFileDescriptor.getInstance().getConfig().getCompressor(),
+            Collections.emptyMap());
+    LocalSchemaProcessor.getInstance()
+        .createTimeseries(
+            new PartialPath(DEVICE2_NAME.concat(".s1")),
+            TSDataType.FLOAT,
+            TSEncoding.RLE,
+            TSFileDescriptor.getInstance().getConfig().getCompressor(),
+            Collections.emptyMap());
+    LocalSchemaProcessor.getInstance()
+        .createTimeseries(
+            new PartialPath(DEVICE2_NAME.concat(".s2")),
+            TSDataType.DOUBLE,
+            TSEncoding.RLE,
+            TSFileDescriptor.getInstance().getConfig().getCompressor(),
+            Collections.emptyMap());
   }
 
   @After
@@ -104,6 +119,7 @@ public class UnsealedTsFileRecoverPerformerTest {
     if (tsFileResource != null) {
       tsFileResource.close();
     }
+    config.setClusterMode(isClusterMode);
     EnvironmentUtils.cleanDir(new File(FILE_NAME).getParent());
     EnvironmentUtils.cleanEnv();
   }
@@ -118,12 +134,24 @@ public class UnsealedTsFileRecoverPerformerTest {
     // generate InsertRowPlan
     long time = 4;
     TSDataType[] dataTypes = new TSDataType[] {TSDataType.FLOAT, TSDataType.DOUBLE};
-    String[] columns = new String[] {1 + "", 1.0 + ""};
-    InsertRowPlan insertRowPlan =
-        new InsertRowPlan(
-            new PartialPath(DEVICE2_NAME), time, new String[] {"s1", "s2"}, dataTypes, columns);
+    Object[] columns = new Object[] {1.0f, 1.0d};
+    InsertRowNode insertRowNode =
+        new InsertRowNode(
+            new PlanNodeId(""),
+            new PartialPath(DEVICE2_NAME),
+            false,
+            new String[] {"s1", "s2"},
+            dataTypes,
+            time,
+            columns,
+            false);
+    insertRowNode.setMeasurementSchemas(
+        new MeasurementSchema[] {
+          new MeasurementSchema("s1", TSDataType.FLOAT),
+          new MeasurementSchema("s2", TSDataType.DOUBLE)
+        });
     int fakeMemTableId = 1;
-    WALEntry walEntry = new WALEntry(fakeMemTableId, insertRowPlan);
+    WALEntry walEntry = new WALInfoEntry(fakeMemTableId, insertRowNode);
     // recover
     tsFileResource = new TsFileResource(file);
     // vsg processor is used to test IdTable, don't test IdTable here
@@ -142,13 +170,13 @@ public class UnsealedTsFileRecoverPerformerTest {
     // check file content
     TsFileSequenceReader reader = new TsFileSequenceReader(FILE_NAME);
     List<ChunkMetadata> chunkMetadataList =
-        reader.getChunkMetadataList(new Path(DEVICE1_NAME, "s1"));
+        reader.getChunkMetadataList(new Path(DEVICE1_NAME, "s1", true));
     assertNotNull(chunkMetadataList);
-    chunkMetadataList = reader.getChunkMetadataList(new Path(DEVICE1_NAME, "s2"));
+    chunkMetadataList = reader.getChunkMetadataList(new Path(DEVICE1_NAME, "s2", true));
     assertNotNull(chunkMetadataList);
-    chunkMetadataList = reader.getChunkMetadataList(new Path(DEVICE2_NAME, "s1"));
+    chunkMetadataList = reader.getChunkMetadataList(new Path(DEVICE2_NAME, "s1", true));
     assertNotNull(chunkMetadataList);
-    chunkMetadataList = reader.getChunkMetadataList(new Path(DEVICE2_NAME, "s2"));
+    chunkMetadataList = reader.getChunkMetadataList(new Path(DEVICE2_NAME, "s2", true));
     assertNotNull(chunkMetadataList);
     assertEquals(2, chunkMetadataList.size());
     Chunk chunk = reader.readMemChunk(chunkMetadataList.get(0));
@@ -175,10 +203,14 @@ public class UnsealedTsFileRecoverPerformerTest {
     assertFalse(new File(FILE_NAME.concat(TsFileResource.RESOURCE_SUFFIX)).exists());
     assertFalse(new File(FILE_NAME.concat(ModificationFile.FILE_SUFFIX)).exists());
     // generate InsertRowPlan
-    DeletePlan deletePlan =
-        new DeletePlan(Long.MIN_VALUE, Long.MAX_VALUE, new PartialPath(DEVICE2_NAME));
+    DeleteDataNode deleteDataNode =
+        new DeleteDataNode(
+            new PlanNodeId("0"),
+            Collections.singletonList(new PartialPath(DEVICE2_NAME)),
+            Long.MIN_VALUE,
+            Long.MAX_VALUE);
     int fakeMemTableId = 1;
-    WALEntry walEntry = new WALEntry(fakeMemTableId, deletePlan);
+    WALEntry walEntry = new WALInfoEntry(fakeMemTableId, deleteDataNode);
     // recover
     tsFileResource = new TsFileResource(file);
     // vsg processor is used to test IdTable, don't test IdTable here
@@ -197,13 +229,13 @@ public class UnsealedTsFileRecoverPerformerTest {
     // check file content
     TsFileSequenceReader reader = new TsFileSequenceReader(FILE_NAME);
     List<ChunkMetadata> chunkMetadataList =
-        reader.getChunkMetadataList(new Path(DEVICE1_NAME, "s1"));
+        reader.getChunkMetadataList(new Path(DEVICE1_NAME, "s1", true));
     assertNotNull(chunkMetadataList);
-    chunkMetadataList = reader.getChunkMetadataList(new Path(DEVICE1_NAME, "s2"));
+    chunkMetadataList = reader.getChunkMetadataList(new Path(DEVICE1_NAME, "s2", true));
     assertNotNull(chunkMetadataList);
-    chunkMetadataList = reader.getChunkMetadataList(new Path(DEVICE2_NAME, "s1"));
+    chunkMetadataList = reader.getChunkMetadataList(new Path(DEVICE2_NAME, "s1", true));
     assertNotNull(chunkMetadataList);
-    chunkMetadataList = reader.getChunkMetadataList(new Path(DEVICE2_NAME, "s2"));
+    chunkMetadataList = reader.getChunkMetadataList(new Path(DEVICE2_NAME, "s2", true));
     assertNotNull(chunkMetadataList);
     assertEquals(1, chunkMetadataList.size());
     Chunk chunk = reader.readMemChunk(chunkMetadataList.get(0));
@@ -258,6 +290,65 @@ public class UnsealedTsFileRecoverPerformerTest {
     }
     try (FileChannel channel = new FileOutputStream(tsFile, true).getChannel()) {
       channel.truncate(truncateSize);
+    }
+  }
+
+  /**
+   * Recover WALEntry that only contains InsertRowNode/InsertTabletNode with null values. This type
+   * of node will be generated when inserting mismatched type data.
+   */
+  @Test
+  public void testRecoverNullInsertRowPlan() throws Exception {
+    // generate crashed .tsfile
+    File file = new File(FILE_NAME);
+    generateCrashedFile(file);
+    assertTrue(file.exists());
+    assertFalse(new File(FILE_NAME.concat(TsFileResource.RESOURCE_SUFFIX)).exists());
+    assertFalse(new File(FILE_NAME.concat(ModificationFile.FILE_SUFFIX)).exists());
+    // generate InsertRowNode with null
+    long time = 4;
+    InsertRowNode insertRowNode =
+        new InsertRowNode(
+            new PlanNodeId("plannode 1"),
+            new PartialPath(DEVICE2_NAME),
+            false,
+            new String[] {"s1"},
+            new TSDataType[] {TSDataType.INT64},
+            time,
+            new Integer[] {1},
+            false);
+    insertRowNode.markFailedMeasurement(0, new Exception());
+
+    // generate InsertTabletNode with null
+    time = 5;
+    InsertTabletNode insertTabletNode =
+        new InsertTabletNode(
+            new PlanNodeId("plannode 2"),
+            new PartialPath(DEVICE2_NAME),
+            false,
+            new String[] {"s1"},
+            new TSDataType[] {TSDataType.INT64},
+            new long[] {time},
+            null,
+            new Integer[] {1},
+            1);
+    insertTabletNode.markFailedMeasurement(0, new Exception());
+
+    int fakeMemTableId = 1;
+    WALEntry walEntry1 = new WALInfoEntry(fakeMemTableId++, insertRowNode);
+    WALEntry walEntry2 = new WALInfoEntry(fakeMemTableId, insertTabletNode);
+    // recover
+    tsFileResource = new TsFileResource(file);
+    // vsg processor is used to test IdTable, don't test IdTable here
+    try (UnsealedTsFileRecoverPerformer recoverPerformer =
+        new UnsealedTsFileRecoverPerformer(
+            tsFileResource, true, null, performer -> assertFalse(performer.canWrite()))) {
+      recoverPerformer.startRecovery();
+      assertTrue(recoverPerformer.hasCrashed());
+      assertTrue(recoverPerformer.canWrite());
+      recoverPerformer.redoLog(walEntry1);
+      recoverPerformer.redoLog(walEntry2);
+      recoverPerformer.endRecovery();
     }
   }
 }

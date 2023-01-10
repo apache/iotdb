@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.mpp.plan.analyze;
 
-import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
@@ -42,19 +41,12 @@ public class TypeProvider {
     this.typeMap = typeMap;
   }
 
-  public TSDataType getType(String path) {
-    if (!typeMap.containsKey(path)) {
-      throw new StatementAnalyzeException(String.format("no data type found for path: %s", path));
-    }
-    return typeMap.get(path);
+  public TSDataType getType(String symbol) {
+    return typeMap.get(symbol);
   }
 
-  public void setType(String path, TSDataType dataType) {
-    if (typeMap.containsKey(path) && typeMap.get(path) != dataType) {
-      throw new StatementAnalyzeException(
-          String.format("inconsistent data type for path: %s", path));
-    }
-    this.typeMap.put(path, dataType);
+  public void setType(String symbol, TSDataType dataType) {
+    this.typeMap.put(symbol, dataType);
   }
 
   public boolean containsTypeInfoOf(String path) {

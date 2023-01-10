@@ -19,11 +19,12 @@
  */
 package org.apache.iotdb.db.sync.pipedata;
 
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.sync.utils.SyncConstant;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.sync.conf.SyncConstant;
-import org.apache.iotdb.db.sync.receiver.load.ILoader;
-import org.apache.iotdb.db.sync.receiver.load.TsFileLoader;
+import org.apache.iotdb.db.sync.pipedata.load.ILoader;
+import org.apache.iotdb.db.sync.pipedata.load.TsFileLoader;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.slf4j.Logger;
@@ -43,7 +44,11 @@ public class TsFilePipeData extends PipeData {
 
   private String parentDirPath;
   private String tsFileName;
-  private String storageGroupName;
+  private String database;
+
+  public TsFilePipeData() {
+    super();
+  }
 
   public TsFilePipeData(String tsFilePath, long serialNumber) {
     super(serialNumber);
@@ -58,7 +63,7 @@ public class TsFilePipeData extends PipeData {
       parentDirPath = "";
     }
 
-    initStorageGroupName();
+    initDatabaseName();
   }
 
   public TsFilePipeData(String parentDirPath, String tsFileName, long serialNumber) {
@@ -66,24 +71,24 @@ public class TsFilePipeData extends PipeData {
     this.parentDirPath = parentDirPath;
     this.tsFileName = tsFileName;
 
-    initStorageGroupName();
+    initDatabaseName();
   }
 
-  // == get StorageGroup Info from tsFileName
-  private void initStorageGroupName() {
+  // == get Database Info from tsFileName
+  private void initDatabaseName() {
     if (tsFileName == null) {
-      storageGroupName = null;
+      database = null;
       return;
     }
 
     String[] parts = tsFileName.trim().split("-");
     if (parts.length < 8) {
-      storageGroupName = null;
+      database = null;
       return;
     }
-    storageGroupName = parts[1];
+    database = parts[1];
     for (int i = 2; i < (parts.length - 6); i++) {
-      storageGroupName += "-" + parts[i];
+      database += "-" + parts[i];
     }
   }
 
@@ -99,12 +104,24 @@ public class TsFilePipeData extends PipeData {
     return parentDirPath + File.separator + tsFileName;
   }
 
-  public String getStorageGroupName() {
-    return storageGroupName;
+  public String getResourceFilePath() {
+    return getTsFilePath() + TsFileResource.RESOURCE_SUFFIX;
+  }
+
+  public String getModsFilePath() {
+    return getTsFilePath() + ModificationFile.FILE_SUFFIX;
+  }
+
+  public void setDatabase(String database) {
+    this.database = database;
+  }
+
+  public String getDatabase() {
+    return database;
   }
 
   @Override
-  public PipeDataType getType() {
+  public PipeDataType getPipeDataType() {
     return PipeDataType.TSFILE;
   }
 
@@ -115,22 +132,26 @@ public class TsFilePipeData extends PipeData {
         + ReadWriteIOUtils.write(tsFileName, stream);
   }
 
-  public static TsFilePipeData deserialize(DataInputStream stream) throws IOException {
-    long serialNumber = stream.readLong();
-    String parentDirPath = ReadWriteIOUtils.readString(stream);
-    String tsFileName = ReadWriteIOUtils.readString(stream);
-    return new TsFilePipeData(parentDirPath == null ? "" : parentDirPath, tsFileName, serialNumber);
+  @Override
+  public void deserialize(DataInputStream stream) throws IOException, IllegalPathException {
+    super.deserialize(stream);
+    parentDirPath = ReadWriteIOUtils.readString(stream);
+    if (parentDirPath == null) {
+      parentDirPath = "";
+    }
+    tsFileName = ReadWriteIOUtils.readString(stream);
+    initDatabaseName();
   }
 
   @Override
   public ILoader createLoader() {
-    return new TsFileLoader(new File(getTsFilePath()));
+    return new TsFileLoader(new File(getTsFilePath()), database);
   }
 
   public List<File> getTsFiles(boolean shouldWaitForTsFileClose) throws FileNotFoundException {
     File tsFile = new File(getTsFilePath()).getAbsoluteFile();
-    File resource = new File(tsFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX);
-    File mods = new File(tsFile.getAbsolutePath() + ModificationFile.FILE_SUFFIX);
+    File resource = new File(getResourceFilePath());
+    File mods = new File(getModsFilePath());
 
     List<File> files = new ArrayList<>();
     if (!tsFile.exists()) {

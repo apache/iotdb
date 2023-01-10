@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.mpp.plan.analyze;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.sql.PathNumOverLimitException;
 
 /** apply MaxQueryDeduplicatedPathNum and SLIMIT & SOFFSET */
 public class ColumnPaginationController {
@@ -28,6 +29,9 @@ public class ColumnPaginationController {
       IoTDBDescriptor.getInstance().getConfig().getMaxQueryDeduplicatedPathNum() + 1;
   private int curOffset;
 
+  // records the path number that the SchemaProcessor totally returned
+  private int consumed = 0;
+
   // for ALIGN BY DEVICE / DISABLE ALIGN / GROUP BY LEVEL / LAST, controller does is disabled
   private final boolean isDisabled;
 
@@ -35,7 +39,7 @@ public class ColumnPaginationController {
     // for series limit, the default value is 0, which means no limit
     this.curLimit = seriesLimit == 0 ? this.curLimit : Math.min(seriesLimit, this.curLimit);
     // series offset for result set. The default value is 0
-    int seriesOffset1 = this.curOffset = seriesOffset;
+    this.curOffset = seriesOffset;
     this.isDisabled = isDisabled;
   }
 
@@ -64,10 +68,14 @@ public class ColumnPaginationController {
   }
 
   public void consumeLimit() {
+    consumed++;
+    if (consumed > IoTDBDescriptor.getInstance().getConfig().getMaxQueryDeduplicatedPathNum()) {
+      throw new PathNumOverLimitException();
+    }
+
     if (isDisabled) {
       return;
     }
-
     curLimit--;
   }
 }

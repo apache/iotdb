@@ -149,16 +149,16 @@ public class TsFileResourceList implements List<TsFileResource> {
     } else {
       // find the position to insert of this node
       // the list should be ordered by file timestamp
-      long timeOfNewNode =
-          TsFileNameGenerator.getTsFileName(newNode.getTsFile().getName()).getTime();
+      long versionOfNewNode =
+          TsFileNameGenerator.getTsFileName(newNode.getTsFile().getName()).getVersion();
 
-      if (TsFileNameGenerator.getTsFileName(header.getTsFile().getName()).getTime()
-          > timeOfNewNode) {
+      if (TsFileNameGenerator.getTsFileName(header.getTsFile().getName()).getVersion()
+          > versionOfNewNode) {
         // the timestamp of head node is greater than the new node
         // insert it before the head
         insertBefore(header, newNode);
-      } else if (TsFileNameGenerator.getTsFileName(tail.getTsFile().getName()).getTime()
-          < timeOfNewNode) {
+      } else if (TsFileNameGenerator.getTsFileName(tail.getTsFile().getName()).getVersion()
+          < versionOfNewNode) {
         // the timestamp of new node is greater than the tail node
         // insert it after the tail
         insertAfter(tail, newNode);
@@ -168,14 +168,14 @@ public class TsFileResourceList implements List<TsFileResource> {
         // and insert the new node before this node
         TsFileResource currNode = header;
         while (currNode.next != null) {
-          if (TsFileNameGenerator.getTsFileName(currNode.getTsFile().getName()).getTime()
-              > timeOfNewNode) {
+          if (TsFileNameGenerator.getTsFileName(currNode.getTsFile().getName()).getVersion()
+              > versionOfNewNode) {
             break;
           }
           currNode = currNode.next;
         }
-        if (TsFileNameGenerator.getTsFileName(currNode.getTsFile().getName()).getTime()
-            < timeOfNewNode) {
+        if (TsFileNameGenerator.getTsFileName(currNode.getTsFile().getName()).getVersion()
+            < versionOfNewNode) {
           LOGGER.error("Cannot find an appropriate place to insert {}", newNode);
         } else {
           insertBefore(currNode, newNode);
@@ -250,12 +250,12 @@ public class TsFileResourceList implements List<TsFileResource> {
 
   @Override
   public Object[] toArray() {
-    throw new NotImplementedException();
+    return getArrayList().toArray();
   }
 
   @Override
   public <T> T[] toArray(T[] a) {
-    throw new NotImplementedException();
+    return getArrayList().toArray(a);
   }
 
   @Override

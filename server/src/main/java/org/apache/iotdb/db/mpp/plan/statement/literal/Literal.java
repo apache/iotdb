@@ -62,6 +62,8 @@ public abstract class Literal extends StatementNode {
 
   public abstract boolean isDataTypeConsistency(TSDataType dataType);
 
+  public abstract String getDataTypeString();
+
   public boolean getBoolean() {
     throw new UnsupportedOperationException(getClass().getName());
   }

@@ -19,25 +19,37 @@
 
 package org.apache.iotdb.metrics.type;
 
+import java.util.Map;
+
 public interface Rate extends IMetric {
-  /** Get value of Rate */
+
+  /** Get the value of rate. */
   long getCount();
 
-  /** Get one minute rate */
+  /** Get one minute rate. */
   double getOneMinuteRate();
 
-  /** Get mean rate */
+  /** Get mean rate. */
   double getMeanRate();
 
-  /** Get five minute rate */
+  /** Get five minute rate. */
   double getFiveMinuteRate();
 
-  /** Get fifteen minute rate */
+  /** Get fifteen minute rate. */
   double getFifteenMinuteRate();
 
-  /** mark in rate */
+  /** Mark in rate. */
   void mark();
 
-  /** mark n in rate */
+  /** Mark n in rate. */
   void mark(long n);
+
+  @Override
+  default void constructValueMap(Map<String, Object> result) {
+    result.put("count", getCount());
+    result.put("mean", getMeanRate());
+    result.put("m1", getOneMinuteRate());
+    result.put("m5", getFiveMinuteRate());
+    result.put("m15", getFifteenMinuteRate());
+  }
 }

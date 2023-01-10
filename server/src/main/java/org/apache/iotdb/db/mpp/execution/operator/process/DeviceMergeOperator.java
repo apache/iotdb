@@ -21,8 +21,9 @@ package org.apache.iotdb.db.mpp.execution.operator.process;
 
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
-import org.apache.iotdb.db.mpp.execution.operator.process.merge.TimeComparator;
+import org.apache.iotdb.db.mpp.execution.operator.process.join.merge.TimeComparator;
 import org.apache.iotdb.db.utils.datastructure.TimeSelector;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock.TsBlockSingleColumnIterator;
@@ -114,8 +115,8 @@ public class DeviceMergeOperator implements ProcessOperator {
   public TsBlock next() {
     // get new input TsBlock
     for (int i = 0; i < inputOperatorsCount; i++) {
-      if (!noMoreTsBlocks[i] && isTsBlockEmpty(i) && deviceOperators.get(i).hasNext()) {
-        inputTsBlocks[i] = deviceOperators.get(i).next();
+      if (!noMoreTsBlocks[i] && isTsBlockEmpty(i) && deviceOperators.get(i).hasNextWithTimer()) {
+        inputTsBlocks[i] = deviceOperators.get(i).nextWithTimer();
         if (inputTsBlocks[i] == null || inputTsBlocks[i].isEmpty()) {
           return null;
         }
@@ -203,7 +204,7 @@ public class DeviceMergeOperator implements ProcessOperator {
       if (!isTsBlockEmpty(i)) {
         return true;
       } else if (!noMoreTsBlocks[i]) {
-        if (deviceOperators.get(i).hasNext()) {
+        if (deviceOperators.get(i).hasNextWithTimer()) {
           return true;
         } else {
           noMoreTsBlocks[i] = true;
@@ -277,5 +278,38 @@ public class DeviceMergeOperator implements ProcessOperator {
   private boolean isTsBlockEmpty(int tsBlockIndex) {
     return inputTsBlocks[tsBlockIndex] == null
         || inputTsBlocks[tsBlockIndex].getPositionCount() == 0;
+  }
+
+  @Override
+  public long calculateMaxPeekMemory() {
+    // timeSelector will cache time, we use a single time column to represent max memory cost
+    long maxPeekMemory = TSFileDescriptor.getInstance().getConfig().getPageSizeInByte();
+    // inputTsBlocks will cache all TsBlocks returned by deviceOperators
+    for (Operator operator : deviceOperators) {
+      maxPeekMemory += operator.calculateMaxReturnSize();
+      maxPeekMemory += operator.calculateRetainedSizeAfterCallingNext();
+    }
+    for (Operator operator : deviceOperators) {
+      maxPeekMemory = Math.max(maxPeekMemory, operator.calculateMaxPeekMemory());
+    }
+    return Math.max(maxPeekMemory, calculateMaxReturnSize());
+  }
+
+  @Override
+  public long calculateMaxReturnSize() {
+    // time + all value columns
+    return (1L + dataTypes.size()) * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte();
+  }
+
+  @Override
+  public long calculateRetainedSizeAfterCallingNext() {
+    long currentRetainedSize = 0, minChildReturnSize = Long.MAX_VALUE;
+    for (Operator child : deviceOperators) {
+      long maxReturnSize = child.calculateMaxReturnSize();
+      currentRetainedSize += (maxReturnSize + child.calculateRetainedSizeAfterCallingNext());
+      minChildReturnSize = Math.min(minChildReturnSize, maxReturnSize);
+    }
+    // max cached TsBlock
+    return currentRetainedSize - minChildReturnSize;
   }
 }

@@ -25,8 +25,10 @@ import org.apache.iotdb.db.mpp.transformation.api.LayerPointReader;
 import org.apache.iotdb.db.mpp.transformation.api.LayerRowReader;
 import org.apache.iotdb.db.mpp.transformation.api.LayerRowWindowReader;
 import org.apache.iotdb.db.mpp.transformation.dag.input.ConstantInputReader;
+import org.apache.iotdb.udf.api.customizer.strategy.SessionTimeWindowAccessStrategy;
 import org.apache.iotdb.udf.api.customizer.strategy.SlidingSizeWindowAccessStrategy;
 import org.apache.iotdb.udf.api.customizer.strategy.SlidingTimeWindowAccessStrategy;
+import org.apache.iotdb.udf.api.customizer.strategy.StateWindowAccessStrategy;
 
 /** IntermediateLayer for constants. */
 public class ConstantIntermediateLayer extends IntermediateLayer {
@@ -62,5 +64,20 @@ public class ConstantIntermediateLayer extends IntermediateLayer {
       SlidingTimeWindowAccessStrategy strategy, float memoryBudgetInMB) {
     // Not allowed since the timestamp of a constant row is not defined.
     throw new UnsupportedOperationException();
+  }
+
+  @Override
+  protected LayerRowWindowReader constructRowSessionTimeWindowReader(
+      SessionTimeWindowAccessStrategy strategy, float memoryBudgetInMB) {
+    // Not allowed since the timestamp of a constant row is not defined.
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  protected LayerRowWindowReader constructRowStateWindowReader(
+      StateWindowAccessStrategy strategy, float memoryBudgetInMB) {
+    // Not allowed since the timestamp of a constant row is not defined.
+    throw new UnsupportedOperationException(
+        "StateWindowAccessStrategy does not support pure constant input.");
   }
 }

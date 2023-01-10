@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.integration;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
+import org.apache.iotdb.db.engine.compaction.schedule.CompactionTaskManager;
 import org.apache.iotdb.integration.env.ConfigFactory;
 import org.apache.iotdb.integration.env.EnvFactory;
 import org.apache.iotdb.itbase.category.ClusterTest;
@@ -53,7 +53,7 @@ public class IoTDBCompactionWithIDTableIT {
 
   @Before
   public void setUp() throws Exception {
-    prevPartitionInterval = IoTDBDescriptor.getInstance().getConfig().getPartitionInterval();
+    prevPartitionInterval = IoTDBDescriptor.getInstance().getConfig().getTimePartitionInterval();
     ConfigFactory.getConfig().setPartitionInterval(1);
     isEnableIDTable = IoTDBDescriptor.getInstance().getConfig().isEnableIDTable();
     originalDeviceIDTransformationMethod =
@@ -79,7 +79,7 @@ public class IoTDBCompactionWithIDTableIT {
     logger.info("test...");
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("SET STORAGE GROUP TO root.mergeTest");
+      statement.execute("CREATE DATABASE root.mergeTest");
       try {
         statement.execute("CREATE TIMESERIES root.mergeTest.s1 WITH DATATYPE=INT64,ENCODING=PLAIN");
       } catch (SQLException e) {
@@ -124,7 +124,7 @@ public class IoTDBCompactionWithIDTableIT {
     logger.info("test...");
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("SET STORAGE GROUP TO root.mergeTest");
+      statement.execute("CREATE DATABASE root.mergeTest");
       for (int i = 1; i <= 3; i++) {
         try {
           statement.execute(
@@ -187,7 +187,7 @@ public class IoTDBCompactionWithIDTableIT {
     // e.g.: write 1. seq [10, 20), 2. seq [20, 30), 3. unseq [20, 30), 4. unseq [10, 20)
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("SET STORAGE GROUP TO root.mergeTest");
+      statement.execute("CREATE DATABASE root.mergeTest");
       for (int i = 1; i <= 3; i++) {
         try {
           statement.execute(
@@ -268,7 +268,7 @@ public class IoTDBCompactionWithIDTableIT {
     logger.info("testCrossPartition...");
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("SET STORAGE GROUP TO root.mergeTest");
+      statement.execute("CREATE DATABASE root.mergeTest");
       for (int i = 1; i <= 3; i++) {
         try {
           statement.execute(

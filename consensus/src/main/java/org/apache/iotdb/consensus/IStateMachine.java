@@ -19,16 +19,17 @@
 
 package org.apache.iotdb.consensus;
 
-import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.Peer;
+import org.apache.iotdb.consensus.common.Utils;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 
 import javax.annotation.concurrent.ThreadSafe;
 
 import java.io.File;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.function.Function;
 
@@ -40,6 +41,10 @@ public interface IStateMachine {
   void start();
 
   void stop();
+
+  default boolean isReadOnly() {
+    return false;
+  }
 
   /**
    * apply a write-request from user
@@ -65,11 +70,72 @@ public interface IStateMachine {
   boolean takeSnapshot(File snapshotDir);
 
   /**
+   * Take a snapshot of current statemachine. Snapshot.log will be stored under snapshotDir, The
+   * data of the snapshot will be stored under `data folder/snapshot/snapshotId`.
+   *
+   * @param snapshotDir required storage dir
+   * @param snapshotTmpId temporary id of the snapshot
+   * @param snapshotId the id of the snapshot
+   * @return true if snapshot is successfully taken
+   */
+  default boolean takeSnapshot(File snapshotDir, String snapshotTmpId, String snapshotId) {
+    return takeSnapshot(snapshotDir);
+  }
+
+  /**
    * Load the latest snapshot from given dir
    *
    * @param latestSnapshotRootDir dir where the latest snapshot sits
    */
   void loadSnapshot(File latestSnapshotRootDir);
+
+  /**
+   * given a snapshot dir, ask statemachine to provide all snapshot files. By default, it will list
+   * all files recursively under latestSnapshotDir
+   *
+   * <p>DataRegion may take snapshot at a different disk and only store a log file containing file
+   * paths. So statemachine is required to read the log file and provide the real snapshot file
+   * paths.
+   *
+   * @param latestSnapshotRootDir dir where the latest snapshot sits
+   * @return List of real snapshot files.
+   */
+  default List<Path> getSnapshotFiles(File latestSnapshotRootDir) {
+    return Utils.listAllRegularFilesRecursively(latestSnapshotRootDir);
+  }
+
+  /**
+   * To guarantee the statemachine replication property, when {@link #write(IConsensusRequest)}
+   * failed in this statemachine, Upper consensus implementation like RatisConsensus may choose to
+   * retry the operation until it succeed.
+   */
+  interface RetryPolicy {
+
+    /** Given the last write result, should we retry? */
+    default boolean shouldRetry(TSStatus writeResult) {
+      return false;
+    }
+
+    /**
+     * Use the latest write result to update final write result
+     *
+     * @param previousResult previous write result
+     * @param retryResult latest write result
+     * @return the aggregated result upon current retry
+     */
+    default TSStatus updateResult(TSStatus previousResult, TSStatus retryResult) {
+      return retryResult;
+    }
+
+    /**
+     * sleep time before the next retry
+     *
+     * @return time in millis
+     */
+    default long getSleepTime() {
+      return 100;
+    };
+  }
 
   /** An optional API for event notifications. */
   interface EventApi {
@@ -78,9 +144,9 @@ public interface IStateMachine {
      * can possibly be this server.
      *
      * @param groupId The id of this consensus group.
-     * @param newLeader The id of the new leader.
+     * @param newLeaderId The id of the new leader node.
      */
-    default void notifyLeaderChanged(ConsensusGroupId groupId, TEndPoint newLeader) {}
+    default void notifyLeaderChanged(ConsensusGroupId groupId, int newLeaderId) {}
 
     /**
      * Notify the {@link IStateMachine} a configuration change. This method will be invoked when a
@@ -104,5 +170,15 @@ public interface IStateMachine {
    */
   default IStateMachine.EventApi event() {
     return (IStateMachine.EventApi) this;
+  }
+
+  /**
+   * Since Ratis 2.4.1, RatisConsensus allows statemachine to customize its own snapshot storage.
+   * Currently only DataRegionStateMachine will use this interface.
+   *
+   * @return statemachine snapshot root
+   */
+  default File getSnapshotRoot() {
+    return null;
   }
 }

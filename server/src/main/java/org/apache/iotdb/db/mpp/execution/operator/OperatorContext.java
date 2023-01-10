@@ -18,8 +18,15 @@
  */
 package org.apache.iotdb.db.mpp.execution.operator;
 
+import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.mpp.common.SessionInfo;
+import org.apache.iotdb.db.mpp.execution.driver.DriverContext;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
+
+import io.airlift.units.Duration;
+
+import java.util.Objects;
 
 /**
  * Contains information about {@link Operator} execution.
@@ -29,26 +36,98 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 public class OperatorContext {
 
   private final int operatorId;
+  // It seems it's never used.
   private final PlanNodeId planNodeId;
   private final String operatorType;
-  private final FragmentInstanceContext instanceContext;
+  private DriverContext driverContext;
+  private Duration maxRunTime;
 
+  private long totalExecutionTimeInNanos = 0L;
+  private long nextCalledCount = 0L;
+
+  public OperatorContext(
+      int operatorId, PlanNodeId planNodeId, String operatorType, DriverContext driverContext) {
+    this.operatorId = operatorId;
+    this.planNodeId = planNodeId;
+    this.operatorType = operatorType;
+    this.driverContext = driverContext;
+  }
+
+  @TestOnly
   public OperatorContext(
       int operatorId,
       PlanNodeId planNodeId,
       String operatorType,
-      FragmentInstanceContext instanceContext) {
+      FragmentInstanceContext fragmentInstanceContext) {
     this.operatorId = operatorId;
     this.planNodeId = planNodeId;
     this.operatorType = operatorType;
-    this.instanceContext = instanceContext;
+    this.driverContext = new DriverContext(fragmentInstanceContext, 0);
   }
 
   public int getOperatorId() {
     return operatorId;
   }
 
+  public String getOperatorType() {
+    return operatorType;
+  }
+
+  public DriverContext getDriverContext() {
+    return driverContext;
+  }
+
+  public void setDriverContext(DriverContext driverContext) {
+    this.driverContext = driverContext;
+  }
+
+  // TODO forbid get instance context from operator directly
   public FragmentInstanceContext getInstanceContext() {
-    return instanceContext;
+    return driverContext.getFragmentInstanceContext();
+  }
+
+  public Duration getMaxRunTime() {
+    return maxRunTime;
+  }
+
+  public void setMaxRunTime(Duration maxRunTime) {
+    this.maxRunTime = maxRunTime;
+  }
+
+  public SessionInfo getSessionInfo() {
+    return getInstanceContext().getSessionInfo();
+  }
+
+  public void recordExecutionTime(long executionTimeInNanos) {
+    this.totalExecutionTimeInNanos += executionTimeInNanos;
+  }
+
+  public void recordNextCalled() {
+    this.nextCalledCount++;
+  }
+
+  public long getTotalExecutionTimeInNanos() {
+    return totalExecutionTimeInNanos;
+  }
+
+  public long getNextCalledCount() {
+    return nextCalledCount;
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    OperatorContext that = (OperatorContext) o;
+    return operatorId == that.operatorId;
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(operatorId);
   }
 }

@@ -18,29 +18,31 @@
  */
 package org.apache.iotdb.commons.concurrent;
 
-import com.google.common.base.Throwables;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 
+/** A wrapper for {@link Runnable} logging errors when uncaught exception is thrown. */
 public abstract class WrappedRunnable implements Runnable {
-
-  private static final Logger LOGGER = LoggerFactory.getLogger(WrappedRunnable.class);
 
   @Override
   public final void run() {
     try {
       runMayThrow();
-    } catch (Exception e) {
-      LOGGER.error(e.getMessage(), e);
-      throw propagate(e);
+    } catch (Throwable e) {
+      throw ScheduledExecutorUtil.propagate(e);
     }
   }
 
-  public abstract void runMayThrow() throws Exception;
+  public abstract void runMayThrow() throws Throwable;
 
-  @SuppressWarnings("squid:S112")
-  private static RuntimeException propagate(Throwable throwable) {
-    Throwables.throwIfUnchecked(throwable);
-    throw new RuntimeException(throwable);
+  public static Runnable wrap(Runnable runnable) {
+    if (runnable instanceof WrappedRunnable) {
+      return runnable;
+    }
+    return new WrappedRunnable() {
+      @Override
+      public void runMayThrow() {
+        runnable.run();
+      }
+    };
   }
 }

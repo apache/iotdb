@@ -46,7 +46,7 @@ public class InsertRowNodeSerdeTest {
     insertRowNode.serialize(byteBuffer);
     byteBuffer.flip();
 
-    Assert.assertEquals(PlanNodeType.INSERT_ROW.ordinal(), byteBuffer.getShort());
+    Assert.assertEquals(PlanNodeType.INSERT_ROW.getNodeType(), byteBuffer.getShort());
 
     Assert.assertEquals(insertRowNode, InsertRowNode.deserialize(byteBuffer));
 
@@ -55,7 +55,7 @@ public class InsertRowNodeSerdeTest {
     insertRowNode.serialize(byteBuffer);
     byteBuffer.flip();
 
-    Assert.assertEquals(PlanNodeType.INSERT_ROW.ordinal(), byteBuffer.getShort());
+    Assert.assertEquals(PlanNodeType.INSERT_ROW.getNodeType(), byteBuffer.getShort());
 
     Assert.assertEquals(insertRowNode, InsertRowNode.deserialize(byteBuffer));
 
@@ -64,7 +64,7 @@ public class InsertRowNodeSerdeTest {
     insertRowNode.serialize(byteBuffer);
     byteBuffer.flip();
 
-    Assert.assertEquals(PlanNodeType.INSERT_ROW.ordinal(), byteBuffer.getShort());
+    Assert.assertEquals(PlanNodeType.INSERT_ROW.getNodeType(), byteBuffer.getShort());
 
     Assert.assertEquals(insertRowNode, InsertRowNode.deserialize(byteBuffer));
   }
@@ -83,11 +83,18 @@ public class InsertRowNodeSerdeTest {
 
     DataInputStream dataInputStream = new DataInputStream(new ByteArrayInputStream(bytes));
 
-    Assert.assertEquals(PlanNodeType.INSERT_ROW.ordinal(), dataInputStream.readShort());
+    Assert.assertEquals(PlanNodeType.INSERT_ROW.getNodeType(), dataInputStream.readShort());
 
-    InsertRowNode tmpNode = InsertRowNode.deserialize(dataInputStream);
+    InsertRowNode tmpNode = InsertRowNode.deserializeFromWAL(dataInputStream);
     tmpNode.setPlanNodeId(insertRowNode.getPlanNodeId());
-
+    tmpNode.setMeasurementSchemas(
+        new MeasurementSchema[] {
+          new MeasurementSchema("s1", TSDataType.DOUBLE),
+          new MeasurementSchema("s2", TSDataType.FLOAT),
+          new MeasurementSchema("s3", TSDataType.INT64),
+          new MeasurementSchema("s4", TSDataType.INT32),
+          new MeasurementSchema("s5", TSDataType.BOOLEAN)
+        });
     Assert.assertEquals(insertRowNode, tmpNode);
   }
 

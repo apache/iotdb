@@ -21,8 +21,9 @@ package org.apache.iotdb.db.sync.pipedata;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.db.engine.modification.Deletion;
-import org.apache.iotdb.db.sync.receiver.load.DeletionLoader;
-import org.apache.iotdb.db.sync.receiver.load.ILoader;
+import org.apache.iotdb.db.sync.pipedata.load.DeletionLoader;
+import org.apache.iotdb.db.sync.pipedata.load.ILoader;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -35,28 +36,40 @@ import java.util.Objects;
 public class DeletionPipeData extends PipeData {
   private static final Logger logger = LoggerFactory.getLogger(DeletionPipeData.class);
 
+  private String database;
   private Deletion deletion;
 
+  public DeletionPipeData() {
+    super();
+  }
+
   public DeletionPipeData(Deletion deletion, long serialNumber) {
+    this("", deletion, serialNumber);
+  }
+
+  public DeletionPipeData(String sgName, Deletion deletion, long serialNumber) {
     super(serialNumber);
+    this.database = sgName;
     this.deletion = deletion;
   }
 
   @Override
-  public PipeDataType getType() {
+  public PipeDataType getPipeDataType() {
     return PipeDataType.DELETION;
   }
 
   @Override
   public long serialize(DataOutputStream stream) throws IOException {
-    return super.serialize(stream) + deletion.serializeWithoutFileOffset(stream);
+    return super.serialize(stream)
+        + ReadWriteIOUtils.write(database, stream)
+        + deletion.serializeWithoutFileOffset(stream);
   }
 
-  public static DeletionPipeData deserialize(DataInputStream stream)
-      throws IOException, IllegalPathException {
-    long serialNumber = stream.readLong();
-    Deletion deletion = Deletion.deserializeWithoutFileOffset(stream);
-    return new DeletionPipeData(deletion, serialNumber);
+  @Override
+  public void deserialize(DataInputStream stream) throws IOException, IllegalPathException {
+    super.deserialize(stream);
+    database = ReadWriteIOUtils.readString(stream);
+    deletion = Deletion.deserializeWithoutFileOffset(stream);
   }
 
   @Override
@@ -67,6 +80,14 @@ public class DeletionPipeData extends PipeData {
   @Override
   public String toString() {
     return "DeletionData{" + "serialNumber=" + serialNumber + ", deletion=" + deletion + '}';
+  }
+
+  public Deletion getDeletion() {
+    return deletion;
+  }
+
+  public String getDatabase() {
+    return database;
   }
 
   @Override

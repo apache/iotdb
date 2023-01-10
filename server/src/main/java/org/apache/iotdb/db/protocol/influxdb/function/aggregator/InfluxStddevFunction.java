@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.protocol.influxdb.function.aggregator;
 
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
-import org.apache.iotdb.db.protocol.influxdb.constant.InfluxSQLConstant;
+import org.apache.iotdb.db.protocol.influxdb.constant.InfluxSqlConstant;
 import org.apache.iotdb.db.protocol.influxdb.function.InfluxFunctionValue;
 import org.apache.iotdb.db.utils.MathUtils;
 
@@ -36,8 +36,7 @@ public class InfluxStddevFunction extends InfluxAggregator {
 
   @Override
   public InfluxFunctionValue calculateBruteForce() {
-    return new InfluxFunctionValue(
-        numbers.size() == 0 ? numbers : MathUtils.popStdDev(numbers), 0L);
+    return new InfluxFunctionValue(numbers.isEmpty() ? numbers : MathUtils.popStdDev(numbers), 0L);
   }
 
   @Override
@@ -47,7 +46,7 @@ public class InfluxStddevFunction extends InfluxAggregator {
 
   @Override
   public String getFunctionName() {
-    return InfluxSQLConstant.STDDEV;
+    return InfluxSqlConstant.STDDEV;
   }
 
   @Override

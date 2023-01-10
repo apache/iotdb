@@ -19,6 +19,9 @@
 
 package org.apache.iotdb.db.mpp.aggregation;
 
+import org.apache.iotdb.db.mpp.execution.operator.window.IWindow;
+import org.apache.iotdb.db.mpp.execution.operator.window.TimeWindow;
+import org.apache.iotdb.db.mpp.metric.QueryMetricsManager;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationStep;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -28,9 +31,12 @@ import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 
+import java.util.Collections;
 import java.util.List;
 
 import static com.google.common.base.Preconditions.checkArgument;
+import static org.apache.iotdb.db.mpp.metric.QueryExecutionMetricSet.AGGREGATION_FROM_RAW_DATA;
+import static org.apache.iotdb.db.mpp.metric.QueryExecutionMetricSet.AGGREGATION_FROM_STATISTICS;
 
 public class Aggregator {
 
@@ -39,12 +45,16 @@ public class Aggregator {
   protected List<InputLocation[]> inputLocationList;
   protected final AggregationStep step;
 
-  protected TimeRange curTimeRange = new TimeRange(0, Long.MAX_VALUE);
+  protected IWindow curWindow;
+
+  protected final QueryMetricsManager QUERY_METRICS = QueryMetricsManager.getInstance();
 
   // Used for SeriesAggregateScanOperator
   public Aggregator(Accumulator accumulator, AggregationStep step) {
     this.accumulator = accumulator;
     this.step = step;
+    this.inputLocationList =
+        Collections.singletonList(new InputLocation[] {new InputLocation(0, 0)});
   }
 
   // Used for aggregateOperator
@@ -57,46 +67,53 @@ public class Aggregator {
 
   // Used for SeriesAggregateScanOperator and RawDataAggregateOperator
   public int processTsBlock(TsBlock tsBlock) {
-    checkArgument(
-        step.isInputRaw(),
-        "Step in SeriesAggregateScanOperator and RawDataAggregateOperator can only process raw input");
-    if (inputLocationList == null) {
-      return accumulator.addInput(tsBlock.getTimeAndValueColumn(0), curTimeRange);
-    } else {
+    long startTime = System.nanoTime();
+    try {
+      checkArgument(
+          step.isInputRaw(),
+          "Step in SeriesAggregateScanOperator and RawDataAggregateOperator can only process raw input");
       int lastReadReadIndex = 0;
       for (InputLocation[] inputLocations : inputLocationList) {
         checkArgument(
             inputLocations[0].getTsBlockIndex() == 0,
             "RawDataAggregateOperator can only process one tsBlock input.");
-        Column[] timeValueColumn = new Column[2];
-        timeValueColumn[0] = tsBlock.getTimeColumn();
-        timeValueColumn[1] = tsBlock.getColumn(inputLocations[0].getValueColumnIndex());
+        Column[] controlTimeAndValueColumn = new Column[3];
+        controlTimeAndValueColumn[0] = curWindow.getControlColumn(tsBlock);
+        controlTimeAndValueColumn[1] = tsBlock.getTimeColumn();
+        controlTimeAndValueColumn[2] = tsBlock.getColumn(inputLocations[0].getValueColumnIndex());
         lastReadReadIndex =
-            Math.max(lastReadReadIndex, accumulator.addInput(timeValueColumn, curTimeRange));
+            Math.max(lastReadReadIndex, accumulator.addInput(controlTimeAndValueColumn, curWindow));
       }
       return lastReadReadIndex;
+    } finally {
+      QUERY_METRICS.recordExecutionCost(AGGREGATION_FROM_RAW_DATA, System.nanoTime() - startTime);
     }
   }
 
   // Used for AggregateOperator
   public void processTsBlocks(TsBlock[] tsBlock) {
-    checkArgument(!step.isInputRaw(), "Step in AggregateOperator cannot process raw input");
-    if (step.isInputFinal()) {
-      checkArgument(inputLocationList.size() == 1, "Final output can only be single column");
-      Column finalResult =
-          tsBlock[inputLocationList.get(0)[0].getTsBlockIndex()].getColumn(
-              inputLocationList.get(0)[0].getValueColumnIndex());
-      accumulator.setFinal(finalResult);
-    } else {
-      for (InputLocation[] inputLocations : inputLocationList) {
-        Column[] columns = new Column[inputLocations.length];
-        for (int i = 0; i < inputLocations.length; i++) {
-          columns[i] =
-              tsBlock[inputLocations[i].getTsBlockIndex()].getColumn(
-                  inputLocations[i].getValueColumnIndex());
+    long startTime = System.nanoTime();
+    try {
+      checkArgument(!step.isInputRaw(), "Step in AggregateOperator cannot process raw input");
+      if (step.isInputFinal()) {
+        checkArgument(inputLocationList.size() == 1, "Final output can only be single column");
+        Column finalResult =
+            tsBlock[inputLocationList.get(0)[0].getTsBlockIndex()].getColumn(
+                inputLocationList.get(0)[0].getValueColumnIndex());
+        accumulator.setFinal(finalResult);
+      } else {
+        for (InputLocation[] inputLocations : inputLocationList) {
+          Column[] columns = new Column[inputLocations.length];
+          for (int i = 0; i < inputLocations.length; i++) {
+            columns[i] =
+                tsBlock[inputLocations[i].getTsBlockIndex()].getColumn(
+                    inputLocations[i].getValueColumnIndex());
+          }
+          accumulator.addIntermediate(columns);
         }
-        accumulator.addIntermediate(columns);
       }
+    } finally {
+      QUERY_METRICS.recordExecutionCost(AGGREGATION_FROM_RAW_DATA, System.nanoTime() - startTime);
     }
   }
 
@@ -108,18 +125,16 @@ public class Aggregator {
     }
   }
 
-  public void processStatistics(Statistics statistics) {
-    accumulator.addStatistics(statistics);
-  }
-
-  /** Used for AlignedSeriesAggregateScanOperator. */
+  /** Used for SeriesAggregateScanOperator. */
   public void processStatistics(Statistics[] statistics) {
-    for (InputLocation[] inputLocations : inputLocationList) {
-      checkArgument(
-          inputLocations[0].getTsBlockIndex() == 0,
-          "AlignedSeriesAggregateScanOperator can only process one tsBlock input.");
-      int valueIndex = inputLocations[0].getValueColumnIndex();
-      accumulator.addStatistics(statistics[valueIndex]);
+    long startTime = System.nanoTime();
+    try {
+      for (InputLocation[] inputLocations : inputLocationList) {
+        int valueIndex = inputLocations[0].getValueColumnIndex();
+        accumulator.addStatistics(statistics[valueIndex]);
+      }
+    } finally {
+      QUERY_METRICS.recordExecutionCost(AGGREGATION_FROM_STATISTICS, System.nanoTime() - startTime);
     }
   }
 
@@ -132,19 +147,21 @@ public class Aggregator {
   }
 
   public void reset() {
-    curTimeRange = new TimeRange(0, Long.MAX_VALUE);
+    curWindow = null;
     accumulator.reset();
   }
 
   public boolean hasFinalResult() {
-    return accumulator.hasFinalResult();
+    return curWindow.hasFinalResult(accumulator);
   }
 
   public void updateTimeRange(TimeRange curTimeRange) {
-    this.curTimeRange = curTimeRange;
+    reset();
+    this.curWindow = new TimeWindow(curTimeRange);
   }
 
-  public TimeRange getCurTimeRange() {
-    return curTimeRange;
+  public void updateWindow(IWindow curWindow) {
+    reset();
+    this.curWindow = curWindow;
   }
 }

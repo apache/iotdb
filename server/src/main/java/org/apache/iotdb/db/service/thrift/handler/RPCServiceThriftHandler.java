@@ -16,6 +16,7 @@
  */
 package org.apache.iotdb.db.service.thrift.handler;
 
+import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.db.service.thrift.impl.IClientRPCServiceWithHandler;
 
 import org.apache.thrift.protocol.TProtocol;
@@ -23,24 +24,32 @@ import org.apache.thrift.server.ServerContext;
 import org.apache.thrift.server.TServerEventHandler;
 import org.apache.thrift.transport.TTransport;
 
-public class RPCServiceThriftHandler implements TServerEventHandler {
+import java.util.concurrent.atomic.AtomicLong;
 
+public class RPCServiceThriftHandler extends BaseServerContextHandler
+    implements TServerEventHandler {
+
+  private final AtomicLong thriftConnectionNumber = new AtomicLong(0);
   private final IClientRPCServiceWithHandler eventHandler;
 
   public RPCServiceThriftHandler(IClientRPCServiceWithHandler eventHandler) {
     this.eventHandler = eventHandler;
+    MetricService.getInstance()
+        .addMetricSet(new RPCServiceThriftHandlerMetrics(thriftConnectionNumber));
   }
 
   @Override
-  public ServerContext createContext(TProtocol arg0, TProtocol arg1) {
-    // nothing
-    return null;
+  public ServerContext createContext(TProtocol in, TProtocol out) {
+    thriftConnectionNumber.incrementAndGet();
+    return super.createContext(in, out);
   }
 
   @Override
-  public void deleteContext(ServerContext arg0, TProtocol arg1, TProtocol arg2) {
+  public void deleteContext(ServerContext arg0, TProtocol in, TProtocol out) {
     // release query resources.
     eventHandler.handleClientExit();
+    thriftConnectionNumber.decrementAndGet();
+    super.deleteContext(arg0, in, out);
   }
 
   @Override
@@ -52,4 +61,11 @@ public class RPCServiceThriftHandler implements TServerEventHandler {
   public void processContext(ServerContext arg0, TTransport arg1, TTransport arg2) {
     // nothing
   }
+
+  /**
+   * get the SessionManager Instance. <br>
+   * in v0.13, Cluster mode uses different SessionManager instance...
+   *
+   * @return
+   */
 }

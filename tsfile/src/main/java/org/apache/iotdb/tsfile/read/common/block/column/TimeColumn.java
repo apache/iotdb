@@ -22,7 +22,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import org.openjdk.jol.info.ClassLayout;
 
-import static io.airlift.slice.SizeOf.sizeOf;
+import static io.airlift.slice.SizeOf.sizeOfLongArray;
 import static org.apache.iotdb.tsfile.read.common.block.column.ColumnUtil.checkValidRegion;
 
 public class TimeColumn implements Column {
@@ -32,6 +32,7 @@ public class TimeColumn implements Column {
 
   private final int arrayOffset;
   private final int positionCount;
+
   private final long[] values;
 
   private final long retainedSizeInBytes;
@@ -55,7 +56,7 @@ public class TimeColumn implements Column {
     }
     this.values = values;
 
-    retainedSizeInBytes = INSTANCE_SIZE + sizeOf(values);
+    retainedSizeInBytes = INSTANCE_SIZE + sizeOfLongArray(positionCount);
   }
 
   @Override
@@ -70,7 +71,6 @@ public class TimeColumn implements Column {
 
   @Override
   public long getLong(int position) {
-    checkReadablePosition(position);
     return values[position + arrayOffset];
   }
 
@@ -90,6 +90,12 @@ public class TimeColumn implements Column {
   @Override
   public boolean isNull(int position) {
     return false;
+  }
+
+  @Override
+  public boolean[] isNull() {
+    // todo
+    return null;
   }
 
   @Override
@@ -133,9 +139,12 @@ public class TimeColumn implements Column {
     return values[getPositionCount() + arrayOffset - 1];
   }
 
-  private void checkReadablePosition(int position) {
-    if (position < 0 || position >= getPositionCount()) {
-      throw new IllegalArgumentException("position is not valid");
-    }
+  public long[] getTimes() {
+    return values;
+  }
+
+  @Override
+  public int getInstanceSize() {
+    return INSTANCE_SIZE;
   }
 }

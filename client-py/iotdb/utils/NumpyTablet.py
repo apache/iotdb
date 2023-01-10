@@ -22,7 +22,7 @@ from iotdb.utils.BitMap import BitMap
 
 
 class NumpyTablet(object):
-    def __init__(self, device_id, measurements, data_types, values, timestamps):
+    def __init__(self, device_id, measurements, data_types, values, timestamps, bitmaps=None):
         """
         creating a numpy tablet for insertion
           for example, considering device: root.sg1.d1
@@ -66,6 +66,7 @@ class NumpyTablet(object):
         self.__data_types = data_types
         self.__row_number = len(timestamps)
         self.__column_number = len(measurements)
+        self.bitmaps = bitmaps
 
     @staticmethod
     def check_sorted(timestamps):
@@ -116,6 +117,23 @@ class NumpyTablet(object):
                 bs = value.tobytes()
             bs_list.append(bs)
             bs_len += len(bs)
+        if self.bitmaps is not None:
+            format_str_list = [">"]
+            values_tobe_packed = []
+            for i in range(self.__column_number):
+                format_str_list.append("?")
+                if self.bitmaps[i] is None or self.bitmaps[i].is_all_unmarked():
+                    values_tobe_packed.append(False)
+                else:
+                    values_tobe_packed.append(True)
+                    format_str_list.append(str(self.__row_number // 8 + 1))
+                    format_str_list.append("c")
+                    for j in range(self.__row_number // 8 + 1):
+                        values_tobe_packed.append(bytes([self.bitmaps[i].bits[j]]))
+            format_str = "".join(format_str_list)
+            bs = struct.pack(format_str, *values_tobe_packed)
+            bs_list.append(bs)
+            bs_len += len(bs)
         ret = memoryview(bytearray(bs_len))
         offset = 0
         for bs in bs_list:
@@ -124,8 +142,11 @@ class NumpyTablet(object):
             offset += _l
         return ret
 
-    def __mark_none_value(self, bitmaps, bitmap, column, row):
-        if bitmap is None:
-            bitmap = BitMap(self.__row_number)
-            bitmaps.insert(column, bitmap)
-        bitmap.mark(row)
+    def mark_none_value(self, column, row):
+        if self.bitmaps is None:
+            self.bitmaps = []
+            for i in range(self.__column_number):
+                self.bitmaps.append(None)
+        if self.bitmaps[column] is None:
+            self.bitmaps[column] = BitMap(self.__row_number)
+        self.bitmaps[column].mark(row)

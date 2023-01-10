@@ -23,24 +23,41 @@ import org.apache.iotdb.db.mpp.execution.operator.Operator;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.execution.operator.process.ProcessOperator;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
+import org.apache.iotdb.tsfile.read.common.block.column.BinaryColumn;
+import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
+import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import com.google.common.util.concurrent.ListenableFuture;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.util.List;
+import java.util.Optional;
 
 public class SchemaFetchMergeOperator implements ProcessOperator {
 
   private final OperatorContext operatorContext;
   private final List<Operator> children;
-
   private final int childrenCount;
+
   private int currentIndex;
 
-  public SchemaFetchMergeOperator(OperatorContext operatorContext, List<Operator> children) {
+  private boolean isReadingStorageGroupInfo;
+
+  private final List<String> storageGroupList;
+
+  public SchemaFetchMergeOperator(
+      OperatorContext operatorContext, List<Operator> children, List<String> storageGroupList) {
     this.operatorContext = operatorContext;
     this.children = children;
     this.childrenCount = children.size();
+
     this.currentIndex = 0;
+
+    this.isReadingStorageGroupInfo = true;
+
+    this.storageGroupList = storageGroupList;
   }
 
   @Override
@@ -50,8 +67,13 @@ public class SchemaFetchMergeOperator implements ProcessOperator {
 
   @Override
   public TsBlock next() {
-    if (children.get(currentIndex).hasNext()) {
-      return children.get(currentIndex).next();
+    if (isReadingStorageGroupInfo) {
+      isReadingStorageGroupInfo = false;
+      return generateStorageGroupInfo();
+    }
+
+    if (children.get(currentIndex).hasNextWithTimer()) {
+      return children.get(currentIndex).nextWithTimer();
     } else {
       currentIndex++;
       return null;
@@ -60,17 +82,19 @@ public class SchemaFetchMergeOperator implements ProcessOperator {
 
   @Override
   public boolean hasNext() {
-    return currentIndex < childrenCount;
+    return isReadingStorageGroupInfo || currentIndex < childrenCount;
   }
 
   @Override
   public ListenableFuture<?> isBlocked() {
-    return children.get(currentIndex).isBlocked();
+    return isReadingStorageGroupInfo || currentIndex >= children.size()
+        ? NOT_BLOCKED
+        : children.get(currentIndex).isBlocked();
   }
 
   @Override
   public boolean isFinished() {
-    return !hasNext();
+    return !hasNextWithTimer();
   }
 
   @Override
@@ -78,5 +102,53 @@ public class SchemaFetchMergeOperator implements ProcessOperator {
     for (Operator child : children) {
       child.close();
     }
+  }
+
+  private TsBlock generateStorageGroupInfo() {
+    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    try {
+      // to indicate this binary data is database info
+      ReadWriteIOUtils.write((byte) 0, outputStream);
+
+      ReadWriteIOUtils.write(storageGroupList.size(), outputStream);
+      for (String storageGroup : storageGroupList) {
+        ReadWriteIOUtils.write(storageGroup, outputStream);
+      }
+    } catch (IOException e) {
+      // Totally memory operation. This case won't happen.
+    }
+    return new TsBlock(
+        new TimeColumn(1, new long[] {0}),
+        new BinaryColumn(
+            1, Optional.empty(), new Binary[] {new Binary(outputStream.toByteArray())}));
+  }
+
+  @Override
+  public long calculateMaxPeekMemory() {
+    long childrenMaxPeekMemory = 0;
+    for (Operator child : children) {
+      childrenMaxPeekMemory = Math.max(childrenMaxPeekMemory, child.calculateMaxPeekMemory());
+    }
+
+    return childrenMaxPeekMemory;
+  }
+
+  @Override
+  public long calculateMaxReturnSize() {
+    long childrenMaxReturnSize = 0;
+    for (Operator child : children) {
+      childrenMaxReturnSize = Math.max(childrenMaxReturnSize, child.calculateMaxReturnSize());
+    }
+
+    return childrenMaxReturnSize;
+  }
+
+  @Override
+  public long calculateRetainedSizeAfterCallingNext() {
+    long retainedSize = 0L;
+    for (Operator child : children) {
+      retainedSize += child.calculateRetainedSizeAfterCallingNext();
+    }
+    return retainedSize;
   }
 }

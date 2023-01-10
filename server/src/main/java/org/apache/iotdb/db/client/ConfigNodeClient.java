@@ -24,44 +24,101 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
-import org.apache.iotdb.commons.client.BaseClientFactory;
-import org.apache.iotdb.commons.client.ClientFactoryProperty;
 import org.apache.iotdb.commons.client.ClientManager;
-import org.apache.iotdb.commons.client.ClientPoolProperty;
-import org.apache.iotdb.commons.client.sync.SyncThriftClient;
+import org.apache.iotdb.commons.client.ThriftClient;
+import org.apache.iotdb.commons.client.factory.ThriftClientFactory;
+import org.apache.iotdb.commons.client.property.ClientPoolProperty;
+import org.apache.iotdb.commons.client.property.ThriftClientProperty;
 import org.apache.iotdb.commons.client.sync.SyncThriftClientWithErrorHandler;
-import org.apache.iotdb.commons.consensus.PartitionRegionId;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.consensus.ConfigNodeRegionId;
 import org.apache.iotdb.confignode.rpc.thrift.IConfigNodeRPCService;
+import org.apache.iotdb.confignode.rpc.thrift.TAddConsensusGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCheckUserPrivilegesReq;
-import org.apache.iotdb.confignode.rpc.thrift.TClusterNodeInfos;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
+import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRestartReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCountStorageGroupResp;
+import org.apache.iotdb.confignode.rpc.thrift.TCreateCQReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateFunctionReq;
-import org.apache.iotdb.confignode.rpc.thrift.TDataNodeActiveReq;
-import org.apache.iotdb.confignode.rpc.thrift.TDataNodeInfoResp;
+import org.apache.iotdb.confignode.rpc.thrift.TCreateModelReq;
+import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
+import org.apache.iotdb.confignode.rpc.thrift.TCreateSchemaTemplateReq;
+import org.apache.iotdb.confignode.rpc.thrift.TCreateTriggerReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDataNodeConfigurationResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterResp;
+import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRemoveReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRemoveResp;
+import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRestartReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRestartResp;
+import org.apache.iotdb.confignode.rpc.thrift.TDataNodeUpdateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionReq;
-import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionResp;
+import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionTableResp;
+import org.apache.iotdb.confignode.rpc.thrift.TDeactivateSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteStorageGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteStorageGroupsReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDeleteTimeSeriesReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDropCQReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropFunctionReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDropModelReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDropPipeSinkReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDropTriggerReq;
+import org.apache.iotdb.confignode.rpc.thrift.TGetAllPipeInfoResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetAllTemplatesResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetDataNodeLocationsResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetJarInListReq;
+import org.apache.iotdb.confignode.rpc.thrift.TGetJarInListResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetLocationForTriggerResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetPathsSetTemplatesResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetPipeSinkReq;
+import org.apache.iotdb.confignode.rpc.thrift.TGetPipeSinkResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetRegionIdReq;
+import org.apache.iotdb.confignode.rpc.thrift.TGetRegionIdResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetSeriesSlotListReq;
+import org.apache.iotdb.confignode.rpc.thrift.TGetSeriesSlotListResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetTemplateResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetTimeSlotListReq;
+import org.apache.iotdb.confignode.rpc.thrift.TGetTimeSlotListResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerTableResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetUDFTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TLoginReq;
+import org.apache.iotdb.confignode.rpc.thrift.TMigrateRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
+import org.apache.iotdb.confignode.rpc.thrift.TPipeSinkInfo;
+import org.apache.iotdb.confignode.rpc.thrift.TRecordPipeMessageReq;
+import org.apache.iotdb.confignode.rpc.thrift.TRegionMigrateResultReportReq;
+import org.apache.iotdb.confignode.rpc.thrift.TRegionRouteMapResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionReq;
-import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionResp;
+import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionTableResp;
+import org.apache.iotdb.confignode.rpc.thrift.TSetDataNodeStatusReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetDataReplicationFactorReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetSchemaReplicationFactorReq;
+import org.apache.iotdb.confignode.rpc.thrift.TSetSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetStorageGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetTimePartitionIntervalReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowCQResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowConfigNodesResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowModelReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowModelResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowStorageGroupResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowTrailReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowTrailResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowVariablesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchemaResp;
+import org.apache.iotdb.confignode.rpc.thrift.TSystemConfigurationResp;
+import org.apache.iotdb.confignode.rpc.thrift.TUnsetSchemaTemplateReq;
+import org.apache.iotdb.confignode.rpc.thrift.TUpdateModelInfoReq;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.rpc.RpcTransportFactory;
@@ -78,18 +135,20 @@ import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.lang.reflect.Constructor;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
-public class ConfigNodeClient
-    implements IConfigNodeRPCService.Iface, SyncThriftClient, AutoCloseable {
+public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClient, AutoCloseable {
+
   private static final Logger logger = LoggerFactory.getLogger(ConfigNodeClient.class);
 
   private static final int RETRY_NUM = 5;
 
   public static final String MSG_RECONNECTION_FAIL =
-      "Fail to connect to any config node. Please check server it";
+      "Fail to connect to any config node. Please check status of ConfigNodes";
+
+  private static final int RETRY_INTERVAL_MS = 1000;
 
   private long connectionTimeout = ClientPoolProperty.DefaultProperty.WAIT_CLIENT_TIMEOUT_MS;
 
@@ -105,11 +164,11 @@ public class ConfigNodeClient
 
   private int cursor = 0;
 
-  private IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
-  ClientManager<PartitionRegionId, ConfigNodeClient> clientManager;
+  ClientManager<ConfigNodeRegionId, ConfigNodeClient> clientManager;
 
-  PartitionRegionId partitionRegionId = ConfigNodeInfo.partitionRegionId;
+  ConfigNodeRegionId configNodeRegionId = ConfigNodeInfo.configNodeRegionId;
 
   TProtocolFactory protocolFactory;
 
@@ -117,7 +176,7 @@ public class ConfigNodeClient
     // Read config nodes from configuration
     configNodes = ConfigNodeInfo.getInstance().getLatestConfigNodes();
     protocolFactory =
-        IoTDBDescriptor.getInstance().getConfig().isRpcThriftCompressionEnable()
+        CommonDescriptor.getInstance().getConfig().isRpcThriftCompressionEnabled()
             ? new TCompactProtocol.Factory()
             : new TBinaryProtocol.Factory();
 
@@ -127,7 +186,7 @@ public class ConfigNodeClient
   public ConfigNodeClient(
       TProtocolFactory protocolFactory,
       long connectionTimeout,
-      ClientManager<PartitionRegionId, ConfigNodeClient> clientManager)
+      ClientManager<ConfigNodeRegionId, ConfigNodeClient> clientManager)
       throws TException {
     configNodes = ConfigNodeInfo.getInstance().getLatestConfigNodes();
     this.protocolFactory = protocolFactory;
@@ -138,16 +197,24 @@ public class ConfigNodeClient
   }
 
   public void init() throws TException {
-    reconnect();
+    try {
+      tryToConnect();
+    } catch (TException e) {
+      // Can not connect to each config node
+      syncLatestConfigNodeList();
+      tryToConnect();
+    }
   }
 
   public void connect(TEndPoint endpoint) throws TException {
     try {
       transport =
           RpcTransportFactory.INSTANCE.getTransport(
-              // as there is a try-catch already, we do not need to use TSocket.wrap
+              // As there is a try-catch already, we do not need to use TSocket.wrap
               endpoint.getIp(), endpoint.getPort(), (int) connectionTimeout);
-      transport.open();
+      if (!transport.isOpen()) {
+        transport.open();
+      }
       configNode = endpoint;
     } catch (TTransportException e) {
       throw new TException(e);
@@ -156,7 +223,16 @@ public class ConfigNodeClient
     client = new IConfigNodeRPCService.Client(protocolFactory.getProtocol(transport));
   }
 
-  private void reconnect() throws TException {
+  private void waitAndReconnect() throws TException {
+    try {
+      // wait to start the next try
+      Thread.sleep(RETRY_INTERVAL_MS);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      throw new TException(
+          "Unexpected interruption when waiting to retry to connect to ConfigNode");
+    }
+
     try {
       tryToConnect();
     } catch (TException e) {
@@ -208,7 +284,7 @@ public class ConfigNodeClient
   @Override
   public void close() {
     if (clientManager != null) {
-      clientManager.returnClient(partitionRegionId, this);
+      clientManager.returnClient(configNodeRegionId, this);
     } else {
       invalidate();
     }
@@ -216,16 +292,16 @@ public class ConfigNodeClient
 
   @Override
   public void invalidate() {
-    transport.close();
+    Optional.ofNullable(transport).ifPresent(TTransport::close);
   }
 
   @Override
   public void invalidateAll() {
-    clientManager.clear(ConfigNodeInfo.partitionRegionId);
+    clientManager.clear(ConfigNodeInfo.configNodeRegionId);
   }
 
   private boolean updateConfigNodeLeader(TSStatus status) {
-    if (status.getCode() == TSStatusCode.NEED_REDIRECTION.getStatusCode()) {
+    if (status.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
       if (status.isSetRedirectNode()) {
         configLeader =
             new TEndPoint(status.getRedirectNode().getIp(), status.getRedirectNode().getPort());
@@ -233,12 +309,33 @@ public class ConfigNodeClient
         configLeader = null;
       }
       logger.warn(
-          "Failed to connect to ConfigNode {} from DataNode {},because the current node is not leader,try next node",
+          "Failed to connect to ConfigNode {} from DataNode {}, because the current node is not leader, try next node",
           configNode,
           config.getAddressAndPort());
       return true;
     }
     return false;
+  }
+
+  @Override
+  public TSystemConfigurationResp getSystemConfiguration() throws TException {
+    for (int i = 0; i < RETRY_NUM; i++) {
+      try {
+        TSystemConfigurationResp resp = client.getSystemConfiguration();
+        if (!updateConfigNodeLeader(resp.status)) {
+          return resp;
+        }
+      } catch (TException e) {
+        logger.warn(
+            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            configNode,
+            config.getAddressAndPort(),
+            Thread.currentThread().getStackTrace()[1].getMethodName());
+        configLeader = null;
+      }
+      waitAndReconnect();
+    }
+    throw new TException(MSG_RECONNECTION_FAIL);
   }
 
   @Override
@@ -258,57 +355,156 @@ public class ConfigNodeClient
         }
         configNodes = newConfigNodes;
       } catch (TException e) {
+        logger.warn(
+            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            configNode,
+            config.getAddressAndPort(),
+            Thread.currentThread().getStackTrace()[1].getMethodName());
         configLeader = null;
       }
-      reconnect();
+      waitAndReconnect();
     }
     throw new TException(MSG_RECONNECTION_FAIL);
   }
 
   @Override
-  public TSStatus activeDataNode(TDataNodeActiveReq req) throws TException {
+  public TDataNodeRestartResp restartDataNode(TDataNodeRestartReq req) throws TException {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
-        TSStatus status = client.activeDataNode(req);
+        TDataNodeRestartResp resp = client.restartDataNode(req);
+        if (!updateConfigNodeLeader(resp.status)) {
+          return resp;
+        }
+      } catch (TException e) {
+        logger.warn(
+            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            configNode,
+            config.getAddressAndPort(),
+            Thread.currentThread().getStackTrace()[1].getMethodName());
+        configLeader = null;
+      }
+      waitAndReconnect();
+    }
+    throw new TException(MSG_RECONNECTION_FAIL);
+  }
+
+  @Override
+  public TDataNodeRemoveResp removeDataNode(TDataNodeRemoveReq req) throws TException {
+    for (int i = 0; i < RETRY_NUM; i++) {
+      try {
+        TDataNodeRemoveResp resp = client.removeDataNode(req);
+        if (!updateConfigNodeLeader(resp.status)) {
+          return resp;
+        }
+      } catch (TException e) {
+        logger.warn(
+            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            configNode,
+            config.getAddressAndPort(),
+            Thread.currentThread().getStackTrace()[1].getMethodName());
+        configLeader = null;
+      }
+      waitAndReconnect();
+    }
+    throw new TException(MSG_RECONNECTION_FAIL);
+  }
+
+  @Override
+  public TDataNodeRegisterResp updateDataNode(TDataNodeUpdateReq req) throws TException {
+    for (int i = 0; i < RETRY_NUM; i++) {
+      try {
+        TDataNodeRegisterResp resp = client.updateDataNode(req);
+        if (!updateConfigNodeLeader(resp.status)) {
+          return resp;
+        }
+      } catch (TException e) {
+        configLeader = null;
+      }
+      waitAndReconnect();
+    }
+    throw new TException(MSG_RECONNECTION_FAIL);
+  }
+
+  @Override
+  public TDataNodeConfigurationResp getDataNodeConfiguration(int dataNodeId) throws TException {
+    for (int i = 0; i < RETRY_NUM; i++) {
+      try {
+        TDataNodeConfigurationResp resp = client.getDataNodeConfiguration(dataNodeId);
+        if (!updateConfigNodeLeader(resp.status)) {
+          return resp;
+        }
+      } catch (TException e) {
+        logger.warn(
+            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            configNode,
+            config.getAddressAndPort(),
+            Thread.currentThread().getStackTrace()[1].getMethodName());
+        configLeader = null;
+      }
+      waitAndReconnect();
+    }
+    throw new TException(MSG_RECONNECTION_FAIL);
+  }
+
+  @Override
+  public TSStatus reportRegionMigrateResult(TRegionMigrateResultReportReq req) throws TException {
+    for (int i = 0; i < RETRY_NUM; i++) {
+      try {
+        TSStatus status = client.reportRegionMigrateResult(req);
         if (!updateConfigNodeLeader(status)) {
           return status;
         }
       } catch (TException e) {
+        logger.warn(
+            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            configNode,
+            config.getAddressAndPort(),
+            Thread.currentThread().getStackTrace()[1].getMethodName());
         configLeader = null;
       }
-      reconnect();
+      waitAndReconnect();
     }
     throw new TException(MSG_RECONNECTION_FAIL);
   }
 
   @Override
-  public TDataNodeInfoResp getDataNodeInfo(int dataNodeId) throws TException {
+  public TShowClusterResp showCluster() throws TException {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
-        TDataNodeInfoResp resp = client.getDataNodeInfo(dataNodeId);
+        TShowClusterResp resp = client.showCluster();
         if (!updateConfigNodeLeader(resp.status)) {
           return resp;
         }
       } catch (TException e) {
+        logger.warn(
+            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            configNode,
+            config.getAddressAndPort(),
+            Thread.currentThread().getStackTrace()[1].getMethodName());
         configLeader = null;
       }
-      reconnect();
+      waitAndReconnect();
     }
     throw new TException(MSG_RECONNECTION_FAIL);
   }
 
   @Override
-  public TClusterNodeInfos getAllClusterNodeInfos() throws TException {
+  public TShowVariablesResp showVariables() throws TException {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
-        TClusterNodeInfos resp = client.getAllClusterNodeInfos();
+        TShowVariablesResp resp = client.showVariables();
         if (!updateConfigNodeLeader(resp.status)) {
           return resp;
         }
       } catch (TException e) {
+        logger.warn(
+            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            configNode,
+            config.getAddressAndPort(),
+            Thread.currentThread().getStackTrace()[1].getMethodName());
         configLeader = null;
       }
-      reconnect();
+      waitAndReconnect();
     }
     throw new TException(MSG_RECONNECTION_FAIL);
   }
@@ -322,9 +518,14 @@ public class ConfigNodeClient
           return status;
         }
       } catch (TException e) {
+        logger.warn(
+            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            configNode,
+            config.getAddressAndPort(),
+            Thread.currentThread().getStackTrace()[1].getMethodName());
         configLeader = null;
       }
-      reconnect();
+      waitAndReconnect();
     }
     throw new TException(MSG_RECONNECTION_FAIL);
   }
@@ -338,9 +539,14 @@ public class ConfigNodeClient
           return status;
         }
       } catch (TException e) {
+        logger.warn(
+            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            configNode,
+            config.getAddressAndPort(),
+            Thread.currentThread().getStackTrace()[1].getMethodName());
         configLeader = null;
       }
-      reconnect();
+      waitAndReconnect();
     }
     throw new TException(MSG_RECONNECTION_FAIL);
   }
@@ -354,9 +560,14 @@ public class ConfigNodeClient
           return status;
         }
       } catch (TException e) {
+        logger.warn(
+            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            configNode,
+            config.getAddressAndPort(),
+            Thread.currentThread().getStackTrace()[1].getMethodName());
         configLeader = null;
       }
-      reconnect();
+      waitAndReconnect();
     }
     throw new TException(MSG_RECONNECTION_FAIL);
   }
@@ -371,9 +582,14 @@ public class ConfigNodeClient
           return resp;
         }
       } catch (TException e) {
+        logger.warn(
+            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            configNode,
+            config.getAddressAndPort(),
+            Thread.currentThread().getStackTrace()[1].getMethodName());
         configLeader = null;
       }
-      reconnect();
+      waitAndReconnect();
     }
     throw new TException(MSG_RECONNECTION_FAIL);
   }
@@ -389,9 +605,14 @@ public class ConfigNodeClient
           return resp;
         }
       } catch (TException e) {
+        logger.warn(
+            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            configNode,
+            config.getAddressAndPort(),
+            Thread.currentThread().getStackTrace()[1].getMethodName());
         configLeader = null;
       }
-      reconnect();
+      waitAndReconnect();
     }
     throw new TException(MSG_RECONNECTION_FAIL);
   }
@@ -405,9 +626,14 @@ public class ConfigNodeClient
           return status;
         }
       } catch (TException e) {
+        logger.warn(
+            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            configNode,
+            config.getAddressAndPort(),
+            Thread.currentThread().getStackTrace()[1].getMethodName());
         configLeader = null;
       }
-      reconnect();
+      waitAndReconnect();
     }
     throw new TException(MSG_RECONNECTION_FAIL);
   }
@@ -421,9 +647,14 @@ public class ConfigNodeClient
           return status;
         }
       } catch (TException e) {
+        logger.warn(
+            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            configNode,
+            config.getAddressAndPort(),
+            Thread.currentThread().getStackTrace()[1].getMethodName());
         configLeader = null;
       }
-      reconnect();
+      waitAndReconnect();
     }
     throw new TException(MSG_RECONNECTION_FAIL);
   }
@@ -437,9 +668,14 @@ public class ConfigNodeClient
           return status;
         }
       } catch (TException e) {
+        logger.warn(
+            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            configNode,
+            config.getAddressAndPort(),
+            Thread.currentThread().getStackTrace()[1].getMethodName());
         configLeader = null;
       }
-      reconnect();
+      waitAndReconnect();
     }
     throw new TException(MSG_RECONNECTION_FAIL);
   }
@@ -453,42 +689,58 @@ public class ConfigNodeClient
           return status;
         }
       } catch (TException e) {
+        logger.warn(
+            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            configNode,
+            config.getAddressAndPort(),
+            Thread.currentThread().getStackTrace()[1].getMethodName());
         configLeader = null;
       }
-      reconnect();
+      waitAndReconnect();
     }
     throw new TException(MSG_RECONNECTION_FAIL);
   }
 
   @Override
-  public TSchemaPartitionResp getSchemaPartition(TSchemaPartitionReq req) throws TException {
-    for (int i = 0; i < RETRY_NUM; i++) {
-      try {
-        TSchemaPartitionResp resp = client.getSchemaPartition(req);
-        if (!updateConfigNodeLeader(resp.status)) {
-          return resp;
-        }
-      } catch (TException e) {
-        configLeader = null;
-      }
-      reconnect();
-    }
-    throw new TException(MSG_RECONNECTION_FAIL);
-  }
-
-  @Override
-  public TSchemaPartitionResp getOrCreateSchemaPartition(TSchemaPartitionReq req)
+  public TSchemaPartitionTableResp getSchemaPartitionTable(TSchemaPartitionReq req)
       throws TException {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
-        TSchemaPartitionResp resp = client.getOrCreateSchemaPartition(req);
+        TSchemaPartitionTableResp resp = client.getSchemaPartitionTable(req);
         if (!updateConfigNodeLeader(resp.status)) {
           return resp;
         }
       } catch (TException e) {
+        logger.warn(
+            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            configNode,
+            config.getAddressAndPort(),
+            Thread.currentThread().getStackTrace()[1].getMethodName());
         configLeader = null;
       }
-      reconnect();
+      waitAndReconnect();
+    }
+    throw new TException(MSG_RECONNECTION_FAIL);
+  }
+
+  @Override
+  public TSchemaPartitionTableResp getOrCreateSchemaPartitionTable(TSchemaPartitionReq req)
+      throws TException {
+    for (int i = 0; i < RETRY_NUM; i++) {
+      try {
+        TSchemaPartitionTableResp resp = client.getOrCreateSchemaPartitionTable(req);
+        if (!updateConfigNodeLeader(resp.status)) {
+          return resp;
+        }
+      } catch (TException e) {
+        logger.warn(
+            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            configNode,
+            config.getAddressAndPort(),
+            Thread.currentThread().getStackTrace()[1].getMethodName());
+        configLeader = null;
+      }
+      waitAndReconnect();
     }
     throw new TException(MSG_RECONNECTION_FAIL);
   }
@@ -503,41 +755,57 @@ public class ConfigNodeClient
           return resp;
         }
       } catch (TException e) {
+        logger.warn(
+            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            configNode,
+            config.getAddressAndPort(),
+            Thread.currentThread().getStackTrace()[1].getMethodName());
         configLeader = null;
       }
-      reconnect();
+      waitAndReconnect();
     }
     throw new TException(MSG_RECONNECTION_FAIL);
   }
 
   @Override
-  public TDataPartitionResp getDataPartition(TDataPartitionReq req) throws TException {
+  public TDataPartitionTableResp getDataPartitionTable(TDataPartitionReq req) throws TException {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
-        TDataPartitionResp resp = client.getDataPartition(req);
+        TDataPartitionTableResp resp = client.getDataPartitionTable(req);
         if (!updateConfigNodeLeader(resp.status)) {
           return resp;
         }
       } catch (TException e) {
+        logger.warn(
+            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            configNode,
+            config.getAddressAndPort(),
+            Thread.currentThread().getStackTrace()[1].getMethodName());
         configLeader = null;
       }
-      reconnect();
+      waitAndReconnect();
     }
     throw new TException(MSG_RECONNECTION_FAIL);
   }
 
   @Override
-  public TDataPartitionResp getOrCreateDataPartition(TDataPartitionReq req) throws TException {
+  public TDataPartitionTableResp getOrCreateDataPartitionTable(TDataPartitionReq req)
+      throws TException {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
-        TDataPartitionResp resp = client.getOrCreateDataPartition(req);
+        TDataPartitionTableResp resp = client.getOrCreateDataPartitionTable(req);
         if (!updateConfigNodeLeader(resp.status)) {
           return resp;
         }
       } catch (TException e) {
+        logger.warn(
+            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            configNode,
+            config.getAddressAndPort(),
+            Thread.currentThread().getStackTrace()[1].getMethodName());
         configLeader = null;
       }
-      reconnect();
+      waitAndReconnect();
     }
     throw new TException(MSG_RECONNECTION_FAIL);
   }
@@ -551,9 +819,14 @@ public class ConfigNodeClient
           return status;
         }
       } catch (TException e) {
+        logger.warn(
+            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            configNode,
+            config.getAddressAndPort(),
+            Thread.currentThread().getStackTrace()[1].getMethodName());
         configLeader = null;
       }
-      reconnect();
+      waitAndReconnect();
     }
     throw new TException(MSG_RECONNECTION_FAIL);
   }
@@ -567,9 +840,14 @@ public class ConfigNodeClient
           return resp;
         }
       } catch (TException e) {
+        logger.warn(
+            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            configNode,
+            config.getAddressAndPort(),
+            Thread.currentThread().getStackTrace()[1].getMethodName());
         configLeader = null;
       }
-      reconnect();
+      waitAndReconnect();
     }
     throw new TException(MSG_RECONNECTION_FAIL);
   }
@@ -583,9 +861,14 @@ public class ConfigNodeClient
           return status;
         }
       } catch (TException e) {
+        logger.warn(
+            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            configNode,
+            config.getAddressAndPort(),
+            Thread.currentThread().getStackTrace()[1].getMethodName());
         configLeader = null;
       }
-      reconnect();
+      waitAndReconnect();
     }
     throw new TException(MSG_RECONNECTION_FAIL);
   }
@@ -599,43 +882,31 @@ public class ConfigNodeClient
           return status;
         }
       } catch (TException e) {
+        logger.warn(
+            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            configNode,
+            config.getAddressAndPort(),
+            Thread.currentThread().getStackTrace()[1].getMethodName());
         configLeader = null;
       }
-      reconnect();
+      waitAndReconnect();
     }
     throw new TException(MSG_RECONNECTION_FAIL);
   }
 
   @Override
   public TConfigNodeRegisterResp registerConfigNode(TConfigNodeRegisterReq req) throws TException {
-    for (int i = 0; i < RETRY_NUM; i++) {
-      try {
-        TConfigNodeRegisterResp resp = client.registerConfigNode(req);
-        if (!updateConfigNodeLeader(resp.status)) {
-          return resp;
-        }
-      } catch (TException e) {
-        configLeader = null;
-      }
-      reconnect();
-    }
-    throw new TException(MSG_RECONNECTION_FAIL);
+    throw new TException("DataNode to ConfigNode client doesn't support registerConfigNode.");
   }
 
   @Override
-  public TSStatus addConsensusGroup(TConfigNodeRegisterResp registerResp) throws TException {
-    for (int i = 0; i < RETRY_NUM; i++) {
-      try {
-        TSStatus status = client.addConsensusGroup(registerResp);
-        if (!updateConfigNodeLeader(status)) {
-          return status;
-        }
-      } catch (TException e) {
-        configLeader = null;
-      }
-      reconnect();
-    }
-    throw new TException(MSG_RECONNECTION_FAIL);
+  public TSStatus restartConfigNode(TConfigNodeRestartReq req) throws TException {
+    throw new TException("DataNode to ConfigNode client doesn't support restartConfigNode.");
+  }
+
+  @Override
+  public TSStatus addConsensusGroup(TAddConsensusGroupReq registerResp) throws TException {
+    throw new TException("DataNode to ConfigNode client doesn't support addConsensusGroup.");
   }
 
   @Override
@@ -645,48 +916,36 @@ public class ConfigNodeClient
 
   @Override
   public TSStatus removeConfigNode(TConfigNodeLocation configNodeLocation) throws TException {
-    for (int i = 0; i < RETRY_NUM; i++) {
-      try {
-        TSStatus status = client.removeConfigNode(configNodeLocation);
-        if (!updateConfigNodeLeader(status)) {
-          return status;
-        }
-      } catch (TException e) {
-        configLeader = null;
-      }
-      reconnect();
-    }
-    throw new TException(MSG_RECONNECTION_FAIL);
+    throw new TException("DataNode to ConfigNode client doesn't support removeConfigNode.");
+  }
+
+  @Override
+  public TSStatus deleteConfigNodePeer(TConfigNodeLocation configNodeLocation) throws TException {
+    throw new TException("DataNode to ConfigNode client doesn't support removeConsensusGroup.");
   }
 
   @Override
   public TSStatus stopConfigNode(TConfigNodeLocation configNodeLocation) throws TException {
-    for (int i = 0; i < RETRY_NUM; i++) {
-      try {
-        TSStatus status = client.stopConfigNode(configNodeLocation);
-        if (!updateConfigNodeLeader(status)) {
-          return status;
-        }
-      } catch (TException e) {
-        configLeader = null;
-      }
-      reconnect();
-    }
-    throw new TException(MSG_RECONNECTION_FAIL);
+    throw new TException("DataNode to ConfigNode client doesn't support stopConfigNode.");
   }
 
   @Override
-  public TSStatus createFunction(TCreateFunctionReq req) throws TException {
+  public TSStatus merge() throws TException {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
-        TSStatus status = client.createFunction(req);
+        TSStatus status = client.merge();
         if (!updateConfigNodeLeader(status)) {
           return status;
         }
       } catch (TException e) {
+        logger.warn(
+            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            configNode,
+            config.getAddressAndPort(),
+            Thread.currentThread().getStackTrace()[1].getMethodName());
         configLeader = null;
       }
-      reconnect();
+      waitAndReconnect();
     }
     throw new TException(MSG_RECONNECTION_FAIL);
   }
@@ -700,9 +959,124 @@ public class ConfigNodeClient
           return status;
         }
       } catch (TException e) {
+        logger.warn(
+            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            configNode,
+            config.getAddressAndPort(),
+            Thread.currentThread().getStackTrace()[1].getMethodName());
         configLeader = null;
       }
-      reconnect();
+      waitAndReconnect();
+    }
+    throw new TException(MSG_RECONNECTION_FAIL);
+  }
+
+  @Override
+  public TSStatus clearCache() throws TException {
+    for (int i = 0; i < RETRY_NUM; i++) {
+      try {
+        TSStatus status = client.clearCache();
+        if (!updateConfigNodeLeader(status)) {
+          return status;
+        }
+      } catch (TException e) {
+        logger.warn(
+            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            configNode,
+            config.getAddressAndPort(),
+            Thread.currentThread().getStackTrace()[1].getMethodName());
+        configLeader = null;
+      }
+      waitAndReconnect();
+    }
+    throw new TException(MSG_RECONNECTION_FAIL);
+  }
+
+  @Override
+  public TSStatus loadConfiguration() throws TException {
+    for (int i = 0; i < RETRY_NUM; i++) {
+      try {
+        TSStatus status = client.loadConfiguration();
+        if (!updateConfigNodeLeader(status)) {
+          return status;
+        }
+      } catch (TException e) {
+        logger.warn(
+            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            configNode,
+            config.getAddressAndPort(),
+            Thread.currentThread().getStackTrace()[1].getMethodName());
+        configLeader = null;
+      }
+      waitAndReconnect();
+    }
+    throw new TException(MSG_RECONNECTION_FAIL);
+  }
+
+  @Override
+  public TSStatus setSystemStatus(String systemStatus) throws TException {
+    for (int i = 0; i < RETRY_NUM; i++) {
+      try {
+        TSStatus status = client.setSystemStatus(systemStatus);
+        if (!updateConfigNodeLeader(status)) {
+          return status;
+        }
+      } catch (TException e) {
+        logger.warn(
+            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            configNode,
+            config.getAddressAndPort(),
+            Thread.currentThread().getStackTrace()[1].getMethodName());
+        configLeader = null;
+      }
+      waitAndReconnect();
+    }
+    throw new TException(MSG_RECONNECTION_FAIL);
+  }
+
+  @Override
+  public TSStatus setDataNodeStatus(TSetDataNodeStatusReq req) throws TException {
+    throw new TException("DataNode to ConfigNode client doesn't support setDataNodeStatus.");
+  }
+
+  @Override
+  public TSStatus killQuery(String queryId, int dataNodeId) throws TException {
+    for (int i = 0; i < RETRY_NUM; i++) {
+      try {
+        TSStatus status = client.killQuery(queryId, dataNodeId);
+        if (!updateConfigNodeLeader(status)) {
+          return status;
+        }
+      } catch (TException e) {
+        logger.warn(
+            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            configNode,
+            config.getAddressAndPort(),
+            Thread.currentThread().getStackTrace()[1].getMethodName());
+        configLeader = null;
+      }
+      waitAndReconnect();
+    }
+    throw new TException(MSG_RECONNECTION_FAIL);
+  }
+
+  @Override
+  public TGetDataNodeLocationsResp getRunningDataNodeLocations() throws TException {
+    for (int i = 0; i < RETRY_NUM; i++) {
+      try {
+        TGetDataNodeLocationsResp resp = client.getRunningDataNodeLocations();
+        if (!updateConfigNodeLeader(resp.status)) {
+          return resp;
+        }
+      } catch (TException e) {
+        logger.warn(
+            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            configNode,
+            config.getAddressAndPort(),
+            Thread.currentThread().getStackTrace()[1].getMethodName());
+        configLeader = null;
+      }
+      waitAndReconnect();
     }
     throw new TException(MSG_RECONNECTION_FAIL);
   }
@@ -716,22 +1090,127 @@ public class ConfigNodeClient
           return showRegionResp;
         }
       } catch (TException e) {
+        logger.warn(
+            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            configNode,
+            config.getAddressAndPort(),
+            Thread.currentThread().getStackTrace()[1].getMethodName());
         configLeader = null;
       }
-      reconnect();
+      waitAndReconnect();
+    }
+    throw new TException(MSG_RECONNECTION_FAIL);
+  }
+
+  @Override
+  public TShowDataNodesResp showDataNodes() throws TException {
+    for (int i = 0; i < RETRY_NUM; i++) {
+      try {
+        TShowDataNodesResp showDataNodesResp = client.showDataNodes();
+        showDataNodesResp.setStatus(showDataNodesResp.getStatus());
+        if (!updateConfigNodeLeader(showDataNodesResp.getStatus())) {
+          return showDataNodesResp;
+        }
+      } catch (TException e) {
+        logger.warn(
+            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            configNode,
+            config.getAddressAndPort(),
+            Thread.currentThread().getStackTrace()[1].getMethodName());
+        configLeader = null;
+      }
+      waitAndReconnect();
+    }
+    throw new TException(MSG_RECONNECTION_FAIL);
+  }
+
+  @Override
+  public TShowConfigNodesResp showConfigNodes() throws TException {
+    for (int i = 0; i < RETRY_NUM; i++) {
+      try {
+        TShowConfigNodesResp showConfigNodesResp = client.showConfigNodes();
+        if (!updateConfigNodeLeader(showConfigNodesResp.getStatus())) {
+          return showConfigNodesResp;
+        }
+      } catch (TException e) {
+        logger.warn(
+            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            configNode,
+            config.getAddressAndPort(),
+            Thread.currentThread().getStackTrace()[1].getMethodName());
+        configLeader = null;
+      }
+      waitAndReconnect();
+    }
+    throw new TException(MSG_RECONNECTION_FAIL);
+  }
+
+  @Override
+  public TShowStorageGroupResp showStorageGroup(List<String> storageGroupPathPattern)
+      throws TException {
+    for (int i = 0; i < RETRY_NUM; i++) {
+      try {
+        TShowStorageGroupResp showStorageGroupResp =
+            client.showStorageGroup(storageGroupPathPattern);
+        if (!updateConfigNodeLeader(showStorageGroupResp.getStatus())) {
+          return showStorageGroupResp;
+        }
+      } catch (TException e) {
+        logger.warn(
+            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            configNode,
+            config.getAddressAndPort(),
+            Thread.currentThread().getStackTrace()[1].getMethodName());
+        configLeader = null;
+      }
+      waitAndReconnect();
+    }
+    throw new TException(MSG_RECONNECTION_FAIL);
+  }
+
+  @Override
+  public TRegionRouteMapResp getLatestRegionRouteMap() throws TException {
+    for (int i = 0; i < RETRY_NUM; i++) {
+      try {
+        TRegionRouteMapResp regionRouteMapResp = client.getLatestRegionRouteMap();
+        if (!updateConfigNodeLeader(regionRouteMapResp.getStatus())) {
+          return regionRouteMapResp;
+        }
+      } catch (TException e) {
+        logger.warn(
+            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            configNode,
+            config.getAddressAndPort(),
+            Thread.currentThread().getStackTrace()[1].getMethodName());
+        configLeader = null;
+      }
+      waitAndReconnect();
     }
     throw new TException(MSG_RECONNECTION_FAIL);
   }
 
   @Override
   public long getConfigNodeHeartBeat(long timestamp) throws TException {
+    throw new TException("DataNode to ConfigNode client doesn't support getConfigNodeHeartBeat.");
+  }
+
+  @Override
+  public TSStatus createFunction(TCreateFunctionReq req) throws TException {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
-        return client.getConfigNodeHeartBeat(timestamp);
+        TSStatus status = client.createFunction(req);
+        if (!updateConfigNodeLeader(status)) {
+          return status;
+        }
       } catch (TException e) {
+        logger.warn(
+            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            configNode,
+            config.getAddressAndPort(),
+            Thread.currentThread().getStackTrace()[1].getMethodName());
         configLeader = null;
       }
-      reconnect();
+      waitAndReconnect();
     }
     throw new TException(MSG_RECONNECTION_FAIL);
   }
@@ -745,45 +1224,751 @@ public class ConfigNodeClient
           return status;
         }
       } catch (TException e) {
+        logger.warn(
+            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            configNode,
+            config.getAddressAndPort(),
+            Thread.currentThread().getStackTrace()[1].getMethodName());
         configLeader = null;
       }
-      reconnect();
+      waitAndReconnect();
     }
     throw new TException(MSG_RECONNECTION_FAIL);
   }
 
-  public static class Factory extends BaseClientFactory<PartitionRegionId, ConfigNodeClient> {
+  @Override
+  public TGetUDFTableResp getUDFTable() throws TException {
+    for (int i = 0; i < RETRY_NUM; i++) {
+      try {
+        TGetUDFTableResp resp = client.getUDFTable();
+        if (!updateConfigNodeLeader(resp.getStatus())) {
+          return resp;
+        }
+      } catch (TException e) {
+        configLeader = null;
+      }
+      waitAndReconnect();
+    }
+    throw new TException(MSG_RECONNECTION_FAIL);
+  }
 
+  @Override
+  public TGetJarInListResp getUDFJar(TGetJarInListReq req) throws TException {
+    for (int i = 0; i < RETRY_NUM; i++) {
+      try {
+        TGetJarInListResp resp = client.getUDFJar(req);
+        if (!updateConfigNodeLeader(resp.getStatus())) {
+          return resp;
+        }
+      } catch (TException e) {
+        configLeader = null;
+      }
+      waitAndReconnect();
+    }
+    throw new TException(MSG_RECONNECTION_FAIL);
+  }
+
+  @Override
+  public TSStatus createTrigger(TCreateTriggerReq req) throws TException {
+    for (int i = 0; i < 5; i++) {
+      try {
+        TSStatus status = client.createTrigger(req);
+        if (!updateConfigNodeLeader(status)) {
+          return status;
+        }
+      } catch (TException e) {
+        logger.warn(
+            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            configNode,
+            config.getAddressAndPort(),
+            Thread.currentThread().getStackTrace()[1].getMethodName());
+        configLeader = null;
+      }
+      waitAndReconnect();
+    }
+    throw new TException(MSG_RECONNECTION_FAIL);
+  }
+
+  @Override
+  public TSStatus dropTrigger(TDropTriggerReq req) throws TException {
+    for (int i = 0; i < RETRY_NUM; i++) {
+      try {
+        TSStatus status = client.dropTrigger(req);
+        if (!updateConfigNodeLeader(status)) {
+          return status;
+        }
+      } catch (TException e) {
+        logger.warn(
+            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            configNode,
+            config.getAddressAndPort(),
+            Thread.currentThread().getStackTrace()[1].getMethodName());
+        configLeader = null;
+      }
+      waitAndReconnect();
+    }
+    throw new TException(MSG_RECONNECTION_FAIL);
+  }
+
+  @Override
+  public TGetLocationForTriggerResp getLocationOfStatefulTrigger(String triggerName)
+      throws TException {
+    for (int i = 0; i < RETRY_NUM; i++) {
+      try {
+        TGetLocationForTriggerResp resp = client.getLocationOfStatefulTrigger(triggerName);
+        if (!updateConfigNodeLeader(resp.getStatus())) {
+          return resp;
+        }
+      } catch (TException e) {
+        logger.warn(
+            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            configNode,
+            config.getAddressAndPort(),
+            Thread.currentThread().getStackTrace()[1].getMethodName());
+        configLeader = null;
+      }
+      waitAndReconnect();
+    }
+    throw new TException(MSG_RECONNECTION_FAIL);
+  }
+
+  public TGetTriggerTableResp getTriggerTable() throws TException {
+    for (int i = 0; i < RETRY_NUM; i++) {
+      try {
+        TGetTriggerTableResp resp = client.getTriggerTable();
+        if (!updateConfigNodeLeader(resp.getStatus())) {
+          return resp;
+        }
+      } catch (TException e) {
+        logger.warn(
+            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            configNode,
+            config.getAddressAndPort(),
+            Thread.currentThread().getStackTrace()[1].getMethodName());
+        configLeader = null;
+      }
+      waitAndReconnect();
+    }
+    throw new TException(MSG_RECONNECTION_FAIL);
+  }
+
+  @Override
+  public TGetTriggerTableResp getStatefulTriggerTable() throws TException {
+    for (int i = 0; i < RETRY_NUM; i++) {
+      try {
+        TGetTriggerTableResp resp = client.getStatefulTriggerTable();
+        if (!updateConfigNodeLeader(resp.getStatus())) {
+          return resp;
+        }
+      } catch (TException e) {
+        logger.warn(
+            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            configNode,
+            config.getAddressAndPort(),
+            Thread.currentThread().getStackTrace()[1].getMethodName());
+        configLeader = null;
+      }
+      waitAndReconnect();
+    }
+    throw new TException(MSG_RECONNECTION_FAIL);
+  }
+
+  @Override
+  public TGetJarInListResp getTriggerJar(TGetJarInListReq req) throws TException {
+    for (int i = 0; i < RETRY_NUM; i++) {
+      try {
+        TGetJarInListResp resp = client.getTriggerJar(req);
+        if (!updateConfigNodeLeader(resp.getStatus())) {
+          return resp;
+        }
+      } catch (TException e) {
+        logger.warn(
+            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            configNode,
+            config.getAddressAndPort(),
+            Thread.currentThread().getStackTrace()[1].getMethodName());
+        configLeader = null;
+      }
+      waitAndReconnect();
+    }
+    throw new TException(MSG_RECONNECTION_FAIL);
+  }
+
+  @Override
+  public TSStatus createSchemaTemplate(TCreateSchemaTemplateReq req) throws TException {
+    for (int i = 0; i < RETRY_NUM; i++) {
+      try {
+        TSStatus tsStatus = client.createSchemaTemplate(req);
+        if (!updateConfigNodeLeader(tsStatus)) {
+          return tsStatus;
+        }
+      } catch (TException e) {
+        logger.warn(
+            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            configNode,
+            config.getAddressAndPort(),
+            Thread.currentThread().getStackTrace()[1].getMethodName());
+        configLeader = null;
+      }
+      waitAndReconnect();
+    }
+    throw new TException(MSG_RECONNECTION_FAIL);
+  }
+
+  @Override
+  public TGetAllTemplatesResp getAllTemplates() throws TException {
+    for (int i = 0; i < RETRY_NUM; i++) {
+      try {
+        TGetAllTemplatesResp resp = client.getAllTemplates();
+        if (!updateConfigNodeLeader(resp.getStatus())) {
+          return resp;
+        }
+      } catch (TException e) {
+        logger.warn(
+            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            configNode,
+            config.getAddressAndPort(),
+            Thread.currentThread().getStackTrace()[1].getMethodName());
+        configLeader = null;
+      }
+      waitAndReconnect();
+    }
+    throw new TException(MSG_RECONNECTION_FAIL);
+  }
+
+  @Override
+  public TGetTemplateResp getTemplate(String req) throws TException {
+    for (int i = 0; i < RETRY_NUM; i++) {
+      try {
+        TGetTemplateResp resp = client.getTemplate(req);
+        if (!updateConfigNodeLeader(resp.getStatus())) {
+          return resp;
+        }
+      } catch (TException e) {
+        logger.warn(
+            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            configNode,
+            config.getAddressAndPort(),
+            Thread.currentThread().getStackTrace()[1].getMethodName());
+        configLeader = null;
+      }
+      waitAndReconnect();
+    }
+    throw new TException(MSG_RECONNECTION_FAIL);
+  }
+
+  @Override
+  public TSStatus setSchemaTemplate(TSetSchemaTemplateReq req) throws TException {
+    for (int i = 0; i < RETRY_NUM; i++) {
+      try {
+        TSStatus tsStatus = client.setSchemaTemplate(req);
+        if (!updateConfigNodeLeader(tsStatus)) {
+          return tsStatus;
+        }
+      } catch (TException e) {
+        logger.warn(
+            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            configNode,
+            config.getAddressAndPort(),
+            Thread.currentThread().getStackTrace()[1].getMethodName());
+        configLeader = null;
+      }
+      waitAndReconnect();
+    }
+    throw new TException(MSG_RECONNECTION_FAIL);
+  }
+
+  @Override
+  public TGetPathsSetTemplatesResp getPathsSetTemplate(String req) throws TException {
+    for (int i = 0; i < RETRY_NUM; i++) {
+      try {
+        TGetPathsSetTemplatesResp tGetPathsSetTemplatesResp = client.getPathsSetTemplate(req);
+        if (!updateConfigNodeLeader(tGetPathsSetTemplatesResp.getStatus())) {
+          return tGetPathsSetTemplatesResp;
+        }
+      } catch (TException e) {
+        logger.warn(
+            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            configNode,
+            config.getAddressAndPort(),
+            Thread.currentThread().getStackTrace()[1].getMethodName());
+        configLeader = null;
+      }
+      waitAndReconnect();
+    }
+    throw new TException(MSG_RECONNECTION_FAIL);
+  }
+
+  @Override
+  public TSStatus deactivateSchemaTemplate(TDeactivateSchemaTemplateReq req) throws TException {
+    for (int i = 0; i < RETRY_NUM; i++) {
+      try {
+        TSStatus status = client.deactivateSchemaTemplate(req);
+        if (!updateConfigNodeLeader(status)) {
+          return status;
+        }
+      } catch (TException e) {
+        logger.warn(
+            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            configNode,
+            config.getAddressAndPort(),
+            Thread.currentThread().getStackTrace()[1].getMethodName());
+        configLeader = null;
+      }
+      waitAndReconnect();
+    }
+    throw new TException(MSG_RECONNECTION_FAIL);
+  }
+
+  @Override
+  public TSStatus unsetSchemaTemplate(TUnsetSchemaTemplateReq req) throws TException {
+    for (int i = 0; i < RETRY_NUM; i++) {
+      try {
+        TSStatus status = client.unsetSchemaTemplate(req);
+        if (!updateConfigNodeLeader(status)) {
+          return status;
+        }
+      } catch (TException e) {
+        configLeader = null;
+      }
+      waitAndReconnect();
+    }
+    throw new TException(MSG_RECONNECTION_FAIL);
+  }
+
+  @Override
+  public TSStatus dropSchemaTemplate(String req) throws TException {
+    for (int i = 0; i < RETRY_NUM; i++) {
+      try {
+        TSStatus status = client.dropSchemaTemplate(req);
+        if (!updateConfigNodeLeader(status)) {
+          return status;
+        }
+      } catch (TException e) {
+        logger.warn(
+            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            configNode,
+            config.getAddressAndPort(),
+            Thread.currentThread().getStackTrace()[1].getMethodName());
+        configLeader = null;
+      }
+      waitAndReconnect();
+    }
+    throw new TException(MSG_RECONNECTION_FAIL);
+  }
+
+  @Override
+  public TSStatus deleteTimeSeries(TDeleteTimeSeriesReq req) throws TException {
+    for (int i = 0; i < RETRY_NUM; i++) {
+      try {
+        TSStatus status = client.deleteTimeSeries(req);
+        if (!updateConfigNodeLeader(status)) {
+          return status;
+        }
+      } catch (TException e) {
+        logger.warn(
+            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            configNode,
+            config.getAddressAndPort(),
+            Thread.currentThread().getStackTrace()[1].getMethodName());
+        configLeader = null;
+      }
+      waitAndReconnect();
+    }
+    throw new TException(MSG_RECONNECTION_FAIL);
+  }
+
+  @Override
+  public TSStatus createPipeSink(TPipeSinkInfo req) throws TException {
+    for (int i = 0; i < RETRY_NUM; i++) {
+      try {
+        TSStatus status = client.createPipeSink(req);
+        if (!updateConfigNodeLeader(status)) {
+          return status;
+        }
+      } catch (TException e) {
+        logger.warn(
+            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            configNode,
+            config.getAddressAndPort(),
+            Thread.currentThread().getStackTrace()[1].getMethodName());
+        configLeader = null;
+      }
+      waitAndReconnect();
+    }
+    throw new TException(MSG_RECONNECTION_FAIL);
+  }
+
+  @Override
+  public TSStatus dropPipeSink(TDropPipeSinkReq req) throws TException {
+    for (int i = 0; i < RETRY_NUM; i++) {
+      try {
+        TSStatus status = client.dropPipeSink(req);
+        if (!updateConfigNodeLeader(status)) {
+          return status;
+        }
+      } catch (TException e) {
+        logger.warn(
+            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            configNode,
+            config.getAddressAndPort(),
+            Thread.currentThread().getStackTrace()[1].getMethodName());
+        configLeader = null;
+      }
+      waitAndReconnect();
+    }
+    throw new TException(MSG_RECONNECTION_FAIL);
+  }
+
+  @Override
+  public TGetPipeSinkResp getPipeSink(TGetPipeSinkReq req) throws TException {
+    for (int i = 0; i < RETRY_NUM; i++) {
+      try {
+        TGetPipeSinkResp resp = client.getPipeSink(req);
+        if (!updateConfigNodeLeader(resp.getStatus())) {
+          return resp;
+        }
+      } catch (TException e) {
+        logger.warn(
+            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            configNode,
+            config.getAddressAndPort(),
+            Thread.currentThread().getStackTrace()[1].getMethodName());
+        configLeader = null;
+      }
+      waitAndReconnect();
+    }
+    throw new TException(MSG_RECONNECTION_FAIL);
+  }
+
+  @Override
+  public TSStatus createPipe(TCreatePipeReq req) throws TException {
+    for (int i = 0; i < RETRY_NUM; i++) {
+      try {
+        TSStatus status = client.createPipe(req);
+        if (!updateConfigNodeLeader(status)) {
+          return status;
+        }
+      } catch (TException e) {
+        logger.warn(
+            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            configNode,
+            config.getAddressAndPort(),
+            Thread.currentThread().getStackTrace()[1].getMethodName());
+        configLeader = null;
+      }
+      waitAndReconnect();
+    }
+    throw new TException(MSG_RECONNECTION_FAIL);
+  }
+
+  @Override
+  public TSStatus startPipe(String pipeName) throws TException {
+    for (int i = 0; i < RETRY_NUM; i++) {
+      try {
+        TSStatus status = client.startPipe(pipeName);
+        if (!updateConfigNodeLeader(status)) {
+          return status;
+        }
+      } catch (TException e) {
+        logger.warn(
+            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            configNode,
+            config.getAddressAndPort(),
+            Thread.currentThread().getStackTrace()[1].getMethodName());
+        configLeader = null;
+      }
+      waitAndReconnect();
+    }
+    throw new TException(MSG_RECONNECTION_FAIL);
+  }
+
+  @Override
+  public TSStatus stopPipe(String pipeName) throws TException {
+    for (int i = 0; i < RETRY_NUM; i++) {
+      try {
+        TSStatus status = client.stopPipe(pipeName);
+        if (!updateConfigNodeLeader(status)) {
+          return status;
+        }
+      } catch (TException e) {
+        logger.warn(
+            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            configNode,
+            config.getAddressAndPort(),
+            Thread.currentThread().getStackTrace()[1].getMethodName());
+        configLeader = null;
+      }
+      waitAndReconnect();
+    }
+    throw new TException(MSG_RECONNECTION_FAIL);
+  }
+
+  @Override
+  public TSStatus dropPipe(String pipeName) throws TException {
+    for (int i = 0; i < RETRY_NUM; i++) {
+      try {
+        TSStatus status = client.dropPipe(pipeName);
+        if (!updateConfigNodeLeader(status)) {
+          return status;
+        }
+      } catch (TException e) {
+        logger.warn(
+            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            configNode,
+            config.getAddressAndPort(),
+            Thread.currentThread().getStackTrace()[1].getMethodName());
+        configLeader = null;
+      }
+      waitAndReconnect();
+    }
+    throw new TException(MSG_RECONNECTION_FAIL);
+  }
+
+  @Override
+  public TShowPipeResp showPipe(TShowPipeReq req) throws TException {
+    for (int i = 0; i < RETRY_NUM; i++) {
+      try {
+        TShowPipeResp resp = client.showPipe(req);
+        if (!updateConfigNodeLeader(resp.getStatus())) {
+          return resp;
+        }
+      } catch (TException e) {
+        logger.warn(
+            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            configNode,
+            config.getAddressAndPort(),
+            Thread.currentThread().getStackTrace()[1].getMethodName());
+        configLeader = null;
+      }
+      waitAndReconnect();
+    }
+    throw new TException(MSG_RECONNECTION_FAIL);
+  }
+
+  @Override
+  public TGetAllPipeInfoResp getAllPipeInfo() throws TException {
+    for (int i = 0; i < RETRY_NUM; i++) {
+      try {
+        TGetAllPipeInfoResp resp = client.getAllPipeInfo();
+        if (!updateConfigNodeLeader(resp.getStatus())) {
+          return resp;
+        }
+      } catch (TException e) {
+        configLeader = null;
+      }
+      waitAndReconnect();
+    }
+    throw new TException(MSG_RECONNECTION_FAIL);
+  }
+
+  @Override
+  public TSStatus recordPipeMessage(TRecordPipeMessageReq req) throws TException {
+    for (int i = 0; i < RETRY_NUM; i++) {
+      try {
+        TSStatus status = client.recordPipeMessage(req);
+        if (!updateConfigNodeLeader(status)) {
+          return status;
+        }
+      } catch (TException e) {
+        configLeader = null;
+      }
+      waitAndReconnect();
+    }
+    throw new TException(MSG_RECONNECTION_FAIL);
+  }
+
+  @Override
+  public TGetRegionIdResp getRegionId(TGetRegionIdReq req) throws TException {
+    for (int i = 0; i < RETRY_NUM; i++) {
+      try {
+        TGetRegionIdResp resp = client.getRegionId(req);
+        if (!updateConfigNodeLeader(resp.getStatus())) {
+          return resp;
+        }
+      } catch (TException e) {
+        logger.warn(
+            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            configNode,
+            config.getAddressAndPort(),
+            Thread.currentThread().getStackTrace()[1].getMethodName());
+        configLeader = null;
+      }
+      waitAndReconnect();
+    }
+    throw new TException(MSG_RECONNECTION_FAIL);
+  }
+
+  @Override
+  public TGetTimeSlotListResp getTimeSlotList(TGetTimeSlotListReq req) throws TException {
+    for (int i = 0; i < RETRY_NUM; i++) {
+      try {
+        TGetTimeSlotListResp resp = client.getTimeSlotList(req);
+        if (!updateConfigNodeLeader(resp.getStatus())) {
+          return resp;
+        }
+      } catch (TException e) {
+        logger.warn(
+            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            configNode,
+            config.getAddressAndPort(),
+            Thread.currentThread().getStackTrace()[1].getMethodName());
+        configLeader = null;
+      }
+      waitAndReconnect();
+    }
+    throw new TException(MSG_RECONNECTION_FAIL);
+  }
+
+  @Override
+  public TGetSeriesSlotListResp getSeriesSlotList(TGetSeriesSlotListReq req) throws TException {
+    for (int i = 0; i < RETRY_NUM; i++) {
+      try {
+        TGetSeriesSlotListResp resp = client.getSeriesSlotList(req);
+        if (!updateConfigNodeLeader(resp.getStatus())) {
+          return resp;
+        }
+      } catch (TException e) {
+        logger.warn(
+            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            configNode,
+            config.getAddressAndPort(),
+            Thread.currentThread().getStackTrace()[1].getMethodName());
+        configLeader = null;
+      }
+      waitAndReconnect();
+    }
+    throw new TException(MSG_RECONNECTION_FAIL);
+  }
+
+  @Override
+  public TSStatus migrateRegion(TMigrateRegionReq req) throws TException {
+    for (int i = 0; i < RETRY_NUM; i++) {
+      try {
+        TSStatus status = client.migrateRegion(req);
+        if (!updateConfigNodeLeader(status)) {
+          return status;
+        }
+      } catch (TException e) {
+        logger.warn(
+            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            configNode,
+            config.getAddressAndPort(),
+            Thread.currentThread().getStackTrace()[1].getMethodName());
+        configLeader = null;
+      }
+      waitAndReconnect();
+    }
+    throw new TException(MSG_RECONNECTION_FAIL);
+  }
+
+  @Override
+  public TSStatus createCQ(TCreateCQReq req) throws TException {
+    for (int i = 0; i < RETRY_NUM; i++) {
+      try {
+        TSStatus status = client.createCQ(req);
+        if (!updateConfigNodeLeader(status)) {
+          return status;
+        }
+      } catch (TException e) {
+        configLeader = null;
+      }
+      waitAndReconnect();
+    }
+    throw new TException(MSG_RECONNECTION_FAIL);
+  }
+
+  @Override
+  public TSStatus dropCQ(TDropCQReq req) throws TException {
+    for (int i = 0; i < RETRY_NUM; i++) {
+      try {
+        TSStatus status = client.dropCQ(req);
+        if (!updateConfigNodeLeader(status)) {
+          return status;
+        }
+      } catch (TException e) {
+        configLeader = null;
+      }
+      waitAndReconnect();
+    }
+    throw new TException(MSG_RECONNECTION_FAIL);
+  }
+
+  @Override
+  public TShowCQResp showCQ() throws TException {
+    for (int i = 0; i < RETRY_NUM; i++) {
+      try {
+        TShowCQResp resp = client.showCQ();
+        if (!updateConfigNodeLeader(resp.getStatus())) {
+          return resp;
+        }
+      } catch (TException e) {
+        configLeader = null;
+      }
+      waitAndReconnect();
+    }
+    throw new TException(MSG_RECONNECTION_FAIL);
+  }
+
+  @Override
+  public TSStatus createModel(TCreateModelReq req) throws TException {
+    // TODO
+    throw new TException(new UnsupportedOperationException().getCause());
+  }
+
+  @Override
+  public TSStatus dropModel(TDropModelReq req) throws TException {
+    // TODO
+    throw new TException(new UnsupportedOperationException().getCause());
+  }
+
+  @Override
+  public TShowModelResp showModel(TShowModelReq req) throws TException {
+    // TODO
+    throw new TException(new UnsupportedOperationException().getCause());
+  }
+
+  @Override
+  public TShowTrailResp showTrail(TShowTrailReq req) throws TException {
+    // TODO
+    throw new TException(new UnsupportedOperationException().getCause());
+  }
+
+  @Override
+  public TSStatus updateModelInfo(TUpdateModelInfoReq req) throws TException {
+    // TODO
+    throw new TException(new UnsupportedOperationException().getCause());
+  }
+
+  public static class Factory extends ThriftClientFactory<ConfigNodeRegionId, ConfigNodeClient> {
     public Factory(
-        ClientManager<PartitionRegionId, ConfigNodeClient> clientManager,
-        ClientFactoryProperty clientFactoryProperty) {
-      super(clientManager, clientFactoryProperty);
+        ClientManager<ConfigNodeRegionId, ConfigNodeClient> clientManager,
+        ThriftClientProperty thriftClientProperty) {
+      super(clientManager, thriftClientProperty);
     }
 
     @Override
     public void destroyObject(
-        PartitionRegionId partitionRegionId, PooledObject<ConfigNodeClient> pooledObject) {
+        ConfigNodeRegionId configNodeRegionId, PooledObject<ConfigNodeClient> pooledObject) {
       pooledObject.getObject().invalidate();
     }
 
     @Override
-    public PooledObject<ConfigNodeClient> makeObject(PartitionRegionId partitionRegionId)
+    public PooledObject<ConfigNodeClient> makeObject(ConfigNodeRegionId configNodeRegionId)
         throws Exception {
-      Constructor<ConfigNodeClient> constructor =
-          ConfigNodeClient.class.getConstructor(
-              TProtocolFactory.class, long.class, clientManager.getClass());
       return new DefaultPooledObject<>(
           SyncThriftClientWithErrorHandler.newErrorHandler(
               ConfigNodeClient.class,
-              constructor,
-              clientFactoryProperty.getProtocolFactory(),
-              clientFactoryProperty.getConnectionTimeoutMs(),
+              ConfigNodeClient.class.getConstructor(
+                  TProtocolFactory.class, long.class, clientManager.getClass()),
+              thriftClientProperty.getProtocolFactory(),
+              thriftClientProperty.getConnectionTimeoutMs(),
               clientManager));
     }
 
     @Override
     public boolean validateObject(
-        PartitionRegionId partitionRegionId, PooledObject<ConfigNodeClient> pooledObject) {
+        ConfigNodeRegionId configNodeRegionId, PooledObject<ConfigNodeClient> pooledObject) {
       return pooledObject.getObject() != null && pooledObject.getObject().getTransport().isOpen();
     }
   }

@@ -30,15 +30,13 @@ import org.openjdk.jol.info.ClassLayout;
 import java.util.Arrays;
 import java.util.Iterator;
 
-import static io.airlift.slice.SizeOf.sizeOf;
 import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
 
 /**
- * Intermediate result for most of ExecOperators. The Tablet contains data from one or more columns
+ * Intermediate result for most of ExecOperators. The TsBlock contains data from one or more columns
  * and constructs them as a row based view The columns can be series, aggregation result for one
- * series or scalar value (such as deviceName). The Tablet also contains the metadata to describe
- * the columns.
+ * series or scalar value (such as deviceName).
  */
 public class TsBlock {
 
@@ -182,6 +180,10 @@ public class TsBlock {
     return new TsBlock(subTimeColumn, subValueColumns);
   }
 
+  public TsBlock skipFirst() {
+    return this.subTsBlock(1);
+  }
+
   public long getTimeByIndex(int index) {
     return timeColumn.getLong(index);
   }
@@ -192,6 +194,10 @@ public class TsBlock {
 
   public TimeColumn getTimeColumn() {
     return timeColumn;
+  }
+
+  public Column[] getValueColumns() {
+    return valueColumns;
   }
 
   public Column getColumn(int columnIndex) {
@@ -464,13 +470,22 @@ public class TsBlock {
   }
 
   private long updateRetainedSize() {
-    long retainedSizeInBytes = INSTANCE_SIZE + sizeOf(valueColumns);
+    long retainedSizeInBytes = INSTANCE_SIZE;
     retainedSizeInBytes += timeColumn.getRetainedSizeInBytes();
     for (Column column : valueColumns) {
       retainedSizeInBytes += column.getRetainedSizeInBytes();
     }
     this.retainedSizeInBytes = retainedSizeInBytes;
     return retainedSizeInBytes;
+  }
+
+  public int getTotalInstanceSize() {
+    int totalInstanceSize = INSTANCE_SIZE;
+    totalInstanceSize += timeColumn.getInstanceSize();
+    for (Column column : valueColumns) {
+      totalInstanceSize += column.getInstanceSize();
+    }
+    return totalInstanceSize;
   }
 
   private static int determinePositionCount(Column... columns) {

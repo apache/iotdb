@@ -19,22 +19,13 @@
 
 package org.apache.iotdb.db.exception.sql;
 
-import org.apache.iotdb.db.mpp.plan.constant.FilterConstant;
-
 public class StatementAnalyzeException extends RuntimeException {
 
   public StatementAnalyzeException(String message) {
     super(message);
   }
 
-  public StatementAnalyzeException(String filterOperator, FilterConstant.FilterType filterType) {
-    super(
-        String.format(
-            "Unknown token in [%s]: [%s], [%s].",
-            filterOperator, filterType, FilterConstant.filterNames.get(filterType)));
-  }
-
-  public StatementAnalyzeException(String type, String message) {
-    super(String.format("Unsupported type: [%s]. %s", type, message));
+  public StatementAnalyzeException(Exception cause) {
+    super(cause);
   }
 }

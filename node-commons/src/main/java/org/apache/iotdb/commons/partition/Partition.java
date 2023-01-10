@@ -23,13 +23,15 @@ import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor;
 
 import java.util.List;
 
+// todo replace this data structure with PartitionTable
 public abstract class Partition {
   protected String seriesSlotExecutorName;
   protected int seriesPartitionSlotNum;
 
+  // todo decouple this executor with Partition
   private final SeriesPartitionExecutor executor;
 
-  public Partition(String seriesSlotExecutorName, int seriesPartitionSlotNum) {
+  protected Partition(String seriesSlotExecutorName, int seriesPartitionSlotNum) {
     this.seriesSlotExecutorName = seriesSlotExecutorName;
     this.seriesPartitionSlotNum = seriesPartitionSlotNum;
     executor =

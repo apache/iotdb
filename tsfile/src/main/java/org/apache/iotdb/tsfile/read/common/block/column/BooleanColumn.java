@@ -23,9 +23,10 @@ import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 import org.openjdk.jol.info.ClassLayout;
 
+import java.util.Arrays;
 import java.util.Optional;
 
-import static io.airlift.slice.SizeOf.sizeOf;
+import static io.airlift.slice.SizeOf.sizeOfBooleanArray;
 import static org.apache.iotdb.tsfile.read.common.block.column.ColumnUtil.checkValidRegion;
 
 public class BooleanColumn implements Column {
@@ -65,7 +66,8 @@ public class BooleanColumn implements Column {
     }
     this.valueIsNull = valueIsNull;
 
-    retainedSizeInBytes = (INSTANCE_SIZE + sizeOf(valueIsNull) + sizeOf(values));
+    retainedSizeInBytes =
+        INSTANCE_SIZE + sizeOfBooleanArray(positionCount) + sizeOfBooleanArray(positionCount);
   }
 
   @Override
@@ -80,8 +82,12 @@ public class BooleanColumn implements Column {
 
   @Override
   public boolean getBoolean(int position) {
-    checkReadablePosition(position);
     return values[position + arrayOffset];
+  }
+
+  @Override
+  public boolean[] getBooleans() {
+    return values;
   }
 
   @Override
@@ -91,7 +97,6 @@ public class BooleanColumn implements Column {
 
   @Override
   public TsPrimitiveType getTsPrimitiveType(int position) {
-    checkReadablePosition(position);
     return new TsPrimitiveType.TsBoolean(getBoolean(position));
   }
 
@@ -102,8 +107,17 @@ public class BooleanColumn implements Column {
 
   @Override
   public boolean isNull(int position) {
-    checkReadablePosition(position);
     return valueIsNull != null && valueIsNull[position + arrayOffset];
+  }
+
+  @Override
+  public boolean[] isNull() {
+    if (valueIsNull == null) {
+      boolean[] res = new boolean[positionCount];
+      Arrays.fill(res, false);
+      return res;
+    }
+    return valueIsNull;
   }
 
   @Override
@@ -147,9 +161,8 @@ public class BooleanColumn implements Column {
     }
   }
 
-  private void checkReadablePosition(int position) {
-    if (position < 0 || position >= getPositionCount()) {
-      throw new IllegalArgumentException("position is not valid");
-    }
+  @Override
+  public int getInstanceSize() {
+    return INSTANCE_SIZE;
   }
 }

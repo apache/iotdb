@@ -20,22 +20,21 @@
 package org.apache.iotdb.db.it.aggregation;
 
 import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
+import org.junit.runner.RunWith;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
-import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.sql.Types;
 import java.util.Locale;
 
 import static org.apache.iotdb.db.constant.TestConstant.avg;
@@ -47,9 +46,11 @@ import static org.apache.iotdb.db.constant.TestConstant.maxValue;
 import static org.apache.iotdb.db.constant.TestConstant.minTime;
 import static org.apache.iotdb.db.constant.TestConstant.minValue;
 import static org.apache.iotdb.db.constant.TestConstant.sum;
+import static org.apache.iotdb.db.it.utils.TestUtils.resultSetEqualWithDescOrderTest;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.fail;
 
+@RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBAggregationIT {
 
@@ -59,17 +60,18 @@ public class IoTDBAggregationIT {
 
   private static final String[] creationSqls =
       new String[] {
-        "SET STORAGE GROUP TO root.vehicle.d0",
-        "SET STORAGE GROUP TO root.vehicle.d1",
+        "CREATE DATABASE root.vehicle.d0",
+        "CREATE DATABASE root.vehicle.d1",
         "CREATE TIMESERIES root.vehicle.d0.s0 WITH DATATYPE=INT32, ENCODING=RLE",
         "CREATE TIMESERIES root.vehicle.d0.s1 WITH DATATYPE=INT64, ENCODING=RLE",
         "CREATE TIMESERIES root.vehicle.d0.s2 WITH DATATYPE=FLOAT, ENCODING=RLE",
         "CREATE TIMESERIES root.vehicle.d0.s3 WITH DATATYPE=TEXT, ENCODING=PLAIN",
-        "CREATE TIMESERIES root.vehicle.d0.s4 WITH DATATYPE=BOOLEAN, ENCODING=PLAIN"
+        "CREATE TIMESERIES root.vehicle.d0.s4 WITH DATATYPE=BOOLEAN, ENCODING=PLAIN",
+        "CREATE TIMESERIES root.test.noDataRegion.s1 WITH DATATYPE=INT32"
       };
   private static final String[] dataSet2 =
       new String[] {
-        "SET STORAGE GROUP TO root.ln.wf01.wt01",
+        "CREATE DATABASE root.ln.wf01.wt01",
         "CREATE TIMESERIES root.ln.wf01.wt01.status WITH DATATYPE=BOOLEAN, ENCODING=PLAIN",
         "CREATE TIMESERIES root.ln.wf01.wt01.temperature WITH DATATYPE=FLOAT, ENCODING=PLAIN",
         "CREATE TIMESERIES root.ln.wf01.wt01.hardware WITH DATATYPE=INT32, ENCODING=PLAIN",
@@ -86,7 +88,7 @@ public class IoTDBAggregationIT {
       };
   private static final String[] dataSet3 =
       new String[] {
-        "SET STORAGE GROUP TO root.sg",
+        "CREATE DATABASE root.sg",
         "CREATE TIMESERIES root.sg.d1.s1 WITH DATATYPE=INT32, ENCODING=RLE",
         "insert into root.sg.d1(timestamp,s1) values(5,5)",
         "insert into root.sg.d1(timestamp,s1) values(12,12)",
@@ -104,23 +106,20 @@ public class IoTDBAggregationIT {
   private final String d0s3 = "root.vehicle.d0.s3";
   private static final String insertTemplate =
       "INSERT INTO root.vehicle.d0(timestamp,s0,s1,s2,s3,s4)" + " VALUES(%d,%d,%d,%f,%s,%s)";
-  private static long prevPartitionInterval;
 
   @BeforeClass
   public static void setUp() throws Exception {
-    EnvFactory.getEnv().initBeforeClass();
+    EnvFactory.getEnv().initClusterEnvironment();
     prepareData();
   }
 
   @AfterClass
   public static void tearDown() throws Exception {
-    EnvFactory.getEnv().cleanAfterClass();
+    EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
   // add test for part of points in page don't satisfy filter
   // details in: https://issues.apache.org/jira/projects/IOTDB/issues/IOTDB-54
-  // TODO: remove ignore after supporting value filter
-  @Ignore
   @Test
   public void test() {
     String[] retArray = new String[] {"0,2", "0,4", "0,3"};
@@ -698,7 +697,6 @@ public class IoTDBAggregationIT {
     }
   }
 
-  @Ignore
   @Test
   public void avgSumErrorTest() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
@@ -901,76 +899,57 @@ public class IoTDBAggregationIT {
         statement.execute(sql);
       }
 
-      // TODO: change insert to batch insert
       // prepare BufferWrite file
       for (int i = 5000; i < 7000; i++) {
-        //        statement.addBatch(
-        //            String.format(
-        //                Locale.ENGLISH, insertTemplate, i, i, i, (double) i, "'" + i + "'",
-        // "true"));
-        statement.execute(
+        statement.addBatch(
             String.format(
                 Locale.ENGLISH, insertTemplate, i, i, i, (double) i, "'" + i + "'", "true"));
       }
-      // statement.executeBatch();
+      statement.executeBatch();
+      statement.clearBatch();
       statement.execute("flush");
 
       for (int i = 7500; i < 8500; i++) {
-        statement.execute(
+        statement.addBatch(
             String.format(
-                Locale.ENGLISH, insertTemplate, i, i, i, (double) i, "'" + i + "'", "true"));
-        //        statement.addBatch(
-        //            String.format(
-        //                Locale.ENGLISH, insertTemplate, i, i, i, (double) i, "'" + i + "'",
-        // "false"));
+                Locale.ENGLISH, insertTemplate, i, i, i, (double) i, "'" + i + "'", "false"));
       }
-      // statement.executeBatch();
+      statement.executeBatch();
+      statement.clearBatch();
       statement.execute("flush");
       // prepare Unseq-File
       for (int i = 500; i < 1500; i++) {
-        //        statement.addBatch(
-        //            String.format(
-        //                Locale.ENGLISH, insertTemplate, i, i, i, (double) i, "'" + i + "'",
-        // "true"));
-        statement.execute(
+        statement.addBatch(
             String.format(
                 Locale.ENGLISH, insertTemplate, i, i, i, (double) i, "'" + i + "'", "true"));
       }
-      // statement.executeBatch();
+      statement.executeBatch();
+      statement.clearBatch();
       statement.execute("flush");
       for (int i = 3000; i < 6500; i++) {
-        //        statement.addBatch(
-        //            String.format(
-        //                Locale.ENGLISH, insertTemplate, i, i, i, (double) i, "'" + i + "'",
-        // "false"));
-        statement.execute(
+        statement.addBatch(
             String.format(
-                Locale.ENGLISH, insertTemplate, i, i, i, (double) i, "'" + i + "'", "true"));
+                Locale.ENGLISH, insertTemplate, i, i, i, (double) i, "'" + i + "'", "false"));
       }
-      // statement.executeBatch();
+      statement.executeBatch();
+      statement.clearBatch();
 
       // prepare BufferWrite cache
       for (int i = 9000; i < 10000; i++) {
-        //        statement.addBatch(
-        //            String.format(
-        //                Locale.ENGLISH, insertTemplate, i, i, i, (double) i, "'" + i + "'",
-        // "true"));
-        statement.execute(
+        statement.addBatch(
             String.format(
                 Locale.ENGLISH, insertTemplate, i, i, i, (double) i, "'" + i + "'", "true"));
       }
-      // statement.executeBatch();
+      statement.executeBatch();
+      statement.clearBatch();
       // prepare Overflow cache
       for (int i = 2000; i < 2500; i++) {
-        //        statement.addBatch(
-        //            String.format(
-        //                Locale.ENGLISH, insertTemplate, i, i, i, (double) i, "'" + i + "'",
-        // "false"));
-        statement.execute(
+        statement.addBatch(
             String.format(
-                Locale.ENGLISH, insertTemplate, i, i, i, (double) i, "'" + i + "'", "true"));
+                Locale.ENGLISH, insertTemplate, i, i, i, (double) i, "'" + i + "'", "false"));
       }
-      // statement.executeBatch();
+      statement.executeBatch();
+      statement.clearBatch();
 
       for (String sql : dataSet3) {
         statement.execute(sql);
@@ -981,30 +960,16 @@ public class IoTDBAggregationIT {
       }
     } catch (Exception e) {
       e.printStackTrace();
+      fail(e.getMessage());
     }
   }
 
   @Test
-  public void timeWasNullTest() throws Exception {
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-
-      try (ResultSet resultSet =
-          statement.executeQuery(
-              "select max_value(temperature),count(status) from root.ln.wf01.wt01 group by ([0, 600), 100ms)")) {
-        ResultSetMetaData metaData = resultSet.getMetaData();
-        int columnCount = metaData.getColumnCount();
-        while (resultSet.next()) {
-          for (int i = 1; i <= columnCount; i++) {
-            int ct = metaData.getColumnType(i);
-            if (ct == Types.TIMESTAMP) {
-              if (resultSet.wasNull()) {
-                fail();
-              }
-            }
-          }
-        }
-      }
-    }
+  public void noDataRegionTest() {
+    String[] expectedHeader =
+        new String[] {count("root.test.noDataRegion.s1"), sum("root.test.noDataRegion.s1")};
+    String[] retArray = new String[] {"0,null,"};
+    resultSetEqualWithDescOrderTest(
+        "select count(s1), sum(s1) from root.test.noDataRegion", expectedHeader, retArray);
   }
 }

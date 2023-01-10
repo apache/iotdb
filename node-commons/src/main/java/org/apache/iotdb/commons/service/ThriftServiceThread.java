@@ -31,11 +31,13 @@ public class ThriftServiceThread extends AbstractThriftServiceThread {
   /** for asynced ThriftService. */
   @SuppressWarnings("squid:S107")
   public ThriftServiceThread(
-      TBaseAsyncProcessor processor,
+      TBaseAsyncProcessor<?> processor,
       String serviceName,
       String threadsName,
       String bindAddress,
       int port,
+      int selectorThreads,
+      int minWorkerThreads,
       int maxWorkerThreads,
       int timeoutSecond,
       TServerEventHandler serverEventHandler,
@@ -49,6 +51,8 @@ public class ThriftServiceThread extends AbstractThriftServiceThread {
         threadsName,
         bindAddress,
         port,
+        selectorThreads,
+        minWorkerThreads,
         maxWorkerThreads,
         timeoutSecond,
         serverEventHandler,

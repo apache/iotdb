@@ -24,10 +24,8 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
-import org.apache.iotdb.db.mpp.plan.statement.component.OrderBy;
+import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
-
-import com.google.common.collect.ImmutableList;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -38,27 +36,24 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 
-public class TransformNode extends ProcessNode {
-
-  protected PlanNode childPlanNode;
+public class TransformNode extends SingleChildProcessNode {
 
   protected final Expression[] outputExpressions;
   protected final boolean keepNull;
   protected final ZoneId zoneId;
 
-  protected final OrderBy scanOrder;
+  protected final Ordering scanOrder;
 
   private List<String> outputColumnNames;
 
   public TransformNode(
       PlanNodeId id,
-      PlanNode childPlanNode,
+      PlanNode child,
       Expression[] outputExpressions,
       boolean keepNull,
       ZoneId zoneId,
-      OrderBy scanOrder) {
-    super(id);
-    this.childPlanNode = childPlanNode;
+      Ordering scanOrder) {
+    super(id, child);
     this.outputExpressions = outputExpressions;
     this.keepNull = keepNull;
     this.zoneId = zoneId;
@@ -70,27 +65,12 @@ public class TransformNode extends ProcessNode {
       Expression[] outputExpressions,
       boolean keepNull,
       ZoneId zoneId,
-      OrderBy scanOrder) {
+      Ordering scanOrder) {
     super(id);
     this.outputExpressions = outputExpressions;
     this.keepNull = keepNull;
     this.zoneId = zoneId;
     this.scanOrder = scanOrder;
-  }
-
-  @Override
-  public final List<PlanNode> getChildren() {
-    return ImmutableList.of(childPlanNode);
-  }
-
-  @Override
-  public final void addChild(PlanNode childPlanNode) {
-    this.childPlanNode = childPlanNode;
-  }
-
-  @Override
-  public final int allowedChildCount() {
-    return ONE_CHILD;
   }
 
   @Override
@@ -146,7 +126,7 @@ public class TransformNode extends ProcessNode {
     }
     boolean keepNull = ReadWriteIOUtils.readBool(byteBuffer);
     ZoneId zoneId = ZoneId.of(Objects.requireNonNull(ReadWriteIOUtils.readString(byteBuffer)));
-    OrderBy scanOrder = OrderBy.values()[ReadWriteIOUtils.readInt(byteBuffer)];
+    Ordering scanOrder = Ordering.values()[ReadWriteIOUtils.readInt(byteBuffer)];
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
     return new TransformNode(planNodeId, outputExpressions, keepNull, zoneId, scanOrder);
   }
@@ -163,8 +143,13 @@ public class TransformNode extends ProcessNode {
     return zoneId;
   }
 
-  public OrderBy getScanOrder() {
+  public Ordering getScanOrder() {
     return scanOrder;
+  }
+
+  @Override
+  public String toString() {
+    return "TransformNode-" + this.getPlanNodeId();
   }
 
   @Override
@@ -180,7 +165,6 @@ public class TransformNode extends ProcessNode {
     }
     TransformNode that = (TransformNode) o;
     return keepNull == that.keepNull
-        && childPlanNode.equals(that.childPlanNode)
         && Arrays.equals(outputExpressions, that.outputExpressions)
         && zoneId.equals(that.zoneId)
         && scanOrder == that.scanOrder;
@@ -188,7 +172,7 @@ public class TransformNode extends ProcessNode {
 
   @Override
   public int hashCode() {
-    int result = Objects.hash(super.hashCode(), childPlanNode, keepNull, zoneId, scanOrder);
+    int result = Objects.hash(super.hashCode(), keepNull, zoneId, scanOrder);
     result = 31 * result + Arrays.hashCode(outputExpressions);
     return result;
   }

@@ -20,9 +20,10 @@ package org.apache.iotdb.db.mpp.plan.planner.plan.node.write;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.StatusUtils;
-import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
+import org.apache.iotdb.db.mpp.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.mpp.plan.analyze.Analysis;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
@@ -91,7 +92,7 @@ public class InsertMultiTabletsNode extends InsertNode implements BatchInsertNod
   List<InsertTabletNode> insertTabletNodeList;
 
   /** record the result of insert tablets */
-  private Map<Integer, TSStatus> results = new HashMap<>();
+  private final Map<Integer, TSStatus> results = new HashMap<>();
 
   public InsertMultiTabletsNode(PlanNodeId id) {
     super(id);
@@ -136,19 +137,18 @@ public class InsertMultiTabletsNode extends InsertNode implements BatchInsertNod
   }
 
   @Override
-  public void setSafelyDeletedSearchIndex(long index) {
-    safelyDeletedSearchIndex = index;
-    insertTabletNodeList.forEach(plan -> plan.setSafelyDeletedSearchIndex(index));
+  public void validateAndSetSchema(ISchemaTree schemaTree) throws MetadataException {
+    for (InsertTabletNode insertTabletNode : insertTabletNodeList) {
+      insertTabletNode.validateAndSetSchema(schemaTree);
+      if (!this.hasFailedMeasurements() && insertTabletNode.hasFailedMeasurements()) {
+        this.failedMeasurementIndex2Info = insertTabletNode.failedMeasurementIndex2Info;
+      }
+    }
   }
 
   @Override
-  public boolean validateAndSetSchema(SchemaTree schemaTree) {
-    for (InsertTabletNode insertTabletNode : insertTabletNodeList) {
-      if (!insertTabletNode.validateAndSetSchema(schemaTree)) {
-        return false;
-      }
-    }
-    return true;
+  protected boolean checkAndCastDataType(int columnIndex, TSDataType dataType) {
+    return false;
   }
 
   @Override

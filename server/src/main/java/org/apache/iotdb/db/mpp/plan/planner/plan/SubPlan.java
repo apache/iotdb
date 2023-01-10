@@ -43,8 +43,8 @@ public class SubPlan {
     StringBuilder result = new StringBuilder();
     result.append(
         String.format(
-            "SubPlan-%s. RootNodeId: %s\n",
-            planFragment.getId(), planFragment.getRoot().getPlanNodeId()));
+            "SubPlan-%s. RootNodeId: %s%n",
+            planFragment.getId(), planFragment.getPlanNodeTree().getPlanNodeId()));
     children.forEach(result::append);
     return result.toString();
   }

@@ -19,11 +19,14 @@
 
 package org.apache.iotdb.consensus.config;
 
+import org.apache.iotdb.commons.client.property.ClientPoolProperty.DefaultProperty;
+
 import org.apache.ratis.grpc.GrpcConfigKeys.Server;
 import org.apache.ratis.server.RaftServerConfigKeys;
 import org.apache.ratis.util.SizeInBytes;
 import org.apache.ratis.util.TimeDuration;
 
+import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 
 public class RatisConfig {
@@ -34,6 +37,9 @@ public class RatisConfig {
   private final ThreadPool threadPool;
   private final Log log;
   private final Grpc grpc;
+  private final Client client;
+  private final Impl impl;
+  private final LeaderLogAppender leaderLogAppender;
 
   private RatisConfig(
       Rpc rpc,
@@ -41,13 +47,19 @@ public class RatisConfig {
       Snapshot snapshot,
       ThreadPool threadPool,
       Log log,
-      Grpc grpc) {
+      Grpc grpc,
+      Client client,
+      Impl impl,
+      LeaderLogAppender leaderLogAppender) {
     this.rpc = rpc;
     this.leaderElection = leaderElection;
     this.snapshot = snapshot;
     this.threadPool = threadPool;
     this.log = log;
     this.grpc = grpc;
+    this.client = client;
+    this.impl = impl;
+    this.leaderLogAppender = leaderLogAppender;
   }
 
   public Rpc getRpc() {
@@ -74,11 +86,24 @@ public class RatisConfig {
     return grpc;
   }
 
+  public Client getClient() {
+    return client;
+  }
+
+  public Impl getImpl() {
+    return impl;
+  }
+
+  public LeaderLogAppender getLeaderLogAppender() {
+    return leaderLogAppender;
+  }
+
   public static Builder newBuilder() {
     return new Builder();
   }
 
   public static class Builder {
+
     private Rpc rpc;
     private LeaderElection leaderElection;
     private Snapshot snapshot;
@@ -86,14 +111,22 @@ public class RatisConfig {
     private Log log;
     private Grpc grpc;
 
+    private Client client;
+    private Impl impl;
+    private LeaderLogAppender leaderLogAppender;
+
     public RatisConfig build() {
       return new RatisConfig(
-          rpc != null ? rpc : Rpc.newBuilder().build(),
-          leaderElection != null ? leaderElection : LeaderElection.newBuilder().build(),
-          snapshot != null ? snapshot : Snapshot.newBuilder().build(),
-          threadPool != null ? threadPool : ThreadPool.newBuilder().build(),
-          log != null ? log : Log.newBuilder().build(),
-          grpc != null ? grpc : Grpc.newBuilder().build());
+          Optional.ofNullable(rpc).orElseGet(() -> Rpc.newBuilder().build()),
+          Optional.ofNullable(leaderElection).orElseGet(() -> LeaderElection.newBuilder().build()),
+          Optional.ofNullable(snapshot).orElseGet(() -> Snapshot.newBuilder().build()),
+          Optional.ofNullable(threadPool).orElseGet(() -> ThreadPool.newBuilder().build()),
+          Optional.ofNullable(log).orElseGet(() -> Log.newBuilder().build()),
+          Optional.ofNullable(grpc).orElseGet(() -> Grpc.newBuilder().build()),
+          Optional.ofNullable(client).orElseGet(() -> Client.newBuilder().build()),
+          Optional.ofNullable(impl).orElseGet(() -> Impl.newBuilder().build()),
+          Optional.ofNullable(leaderLogAppender)
+              .orElseGet(() -> LeaderLogAppender.newBuilder().build()));
     }
 
     public Builder setRpc(Rpc rpc) {
@@ -125,27 +158,49 @@ public class RatisConfig {
       this.grpc = grpc;
       return this;
     }
+
+    public Builder setClient(Client client) {
+      this.client = client;
+      return this;
+    }
+
+    public Builder setImpl(Impl impl) {
+      this.impl = impl;
+      return this;
+    }
+
+    public Builder setLeaderLogAppender(LeaderLogAppender leaderLogAppender) {
+      this.leaderLogAppender = leaderLogAppender;
+      return this;
+    }
   }
 
   /** server rpc timeout related */
   public static class Rpc {
+
     private final TimeDuration timeoutMin;
     private final TimeDuration timeoutMax;
     private final TimeDuration requestTimeout;
     private final TimeDuration sleepTime;
     private final TimeDuration slownessTimeout;
+    private final TimeDuration firstElectionTimeoutMin;
+    private final TimeDuration firstElectionTimeoutMax;
 
     private Rpc(
         TimeDuration timeoutMin,
         TimeDuration timeoutMax,
         TimeDuration requestTimeout,
         TimeDuration sleepTime,
-        TimeDuration slownessTimeout) {
+        TimeDuration slownessTimeout,
+        TimeDuration firstElectionTimeoutMin,
+        TimeDuration firstElectionTimeoutMax) {
       this.timeoutMin = timeoutMin;
       this.timeoutMax = timeoutMax;
       this.requestTimeout = requestTimeout;
       this.sleepTime = sleepTime;
       this.slownessTimeout = slownessTimeout;
+      this.firstElectionTimeoutMin = firstElectionTimeoutMin;
+      this.firstElectionTimeoutMax = firstElectionTimeoutMax;
     }
 
     public TimeDuration getTimeoutMin() {
@@ -168,19 +223,41 @@ public class RatisConfig {
       return slownessTimeout;
     }
 
+    public TimeDuration getFirstElectionTimeoutMin() {
+      return firstElectionTimeoutMin;
+    }
+
+    public TimeDuration getFirstElectionTimeoutMax() {
+      return firstElectionTimeoutMax;
+    }
+
     public static Rpc.Builder newBuilder() {
       return new Rpc.Builder();
     }
 
     public static class Builder {
+
       private TimeDuration timeoutMin = TimeDuration.valueOf(2, TimeUnit.SECONDS);
       private TimeDuration timeoutMax = TimeDuration.valueOf(4, TimeUnit.SECONDS);
       private TimeDuration requestTimeout = TimeDuration.valueOf(20, TimeUnit.SECONDS);
       private TimeDuration sleepTime = TimeDuration.valueOf(1, TimeUnit.SECONDS);
       private TimeDuration slownessTimeout = TimeDuration.valueOf(10, TimeUnit.MINUTES);
 
+      private TimeDuration firstElectionTimeoutMin =
+          TimeDuration.valueOf(50, TimeUnit.MILLISECONDS);
+
+      private TimeDuration firstElectionTimeoutMax =
+          TimeDuration.valueOf(150, TimeUnit.MILLISECONDS);
+
       public Rpc build() {
-        return new Rpc(timeoutMin, timeoutMax, requestTimeout, sleepTime, slownessTimeout);
+        return new Rpc(
+            timeoutMin,
+            timeoutMax,
+            requestTimeout,
+            sleepTime,
+            slownessTimeout,
+            firstElectionTimeoutMin,
+            firstElectionTimeoutMax);
       }
 
       public Rpc.Builder setTimeoutMin(TimeDuration timeoutMin) {
@@ -207,10 +284,21 @@ public class RatisConfig {
         this.slownessTimeout = slownessTimeout;
         return this;
       }
+
+      public Rpc.Builder setFirstElectionTimeoutMax(TimeDuration firstElectionTimeoutMax) {
+        this.firstElectionTimeoutMax = firstElectionTimeoutMax;
+        return this;
+      }
+
+      public Rpc.Builder setFirstElectionTimeoutMin(TimeDuration firstElectionTimeoutMin) {
+        this.firstElectionTimeoutMin = firstElectionTimeoutMin;
+        return this;
+      }
     }
   }
 
   public static class LeaderElection {
+
     private final TimeDuration leaderStepDownWaitTimeKey;
     private final boolean preVote;
 
@@ -232,6 +320,7 @@ public class RatisConfig {
     }
 
     public static class Builder {
+
       private TimeDuration leaderStepDownWaitTimeKey = TimeDuration.valueOf(30, TimeUnit.SECONDS);
       private boolean preVote = RaftServerConfigKeys.LeaderElection.PRE_VOTE_DEFAULT;
 
@@ -253,6 +342,7 @@ public class RatisConfig {
   }
 
   public static class Snapshot {
+
     private final boolean autoTriggerEnabled;
     private final long creationGap;
     private final long autoTriggerThreshold;
@@ -290,6 +380,7 @@ public class RatisConfig {
     }
 
     public static class Builder {
+
       private boolean autoTriggerEnabled = true;
       private long creationGap = RaftServerConfigKeys.Snapshot.CREATION_GAP_DEFAULT;
       private long autoTriggerThreshold =
@@ -324,6 +415,7 @@ public class RatisConfig {
   }
 
   public static class ThreadPool {
+
     private final boolean proxyCached;
     private final int proxySize;
     private final boolean serverCached;
@@ -375,6 +467,7 @@ public class RatisConfig {
     }
 
     public static class Builder {
+
       private boolean proxyCached = RaftServerConfigKeys.ThreadPool.PROXY_CACHED_DEFAULT;
       private int proxySize = RaftServerConfigKeys.ThreadPool.PROXY_SIZE_DEFAULT;
       private boolean serverCached = RaftServerConfigKeys.ThreadPool.SERVER_CACHED_DEFAULT;
@@ -426,6 +519,7 @@ public class RatisConfig {
     private final SizeInBytes queueByteLimit;
     private final int purgeGap;
     private final boolean purgeUptoSnapshotIndex;
+    private final long preserveNumsWhenPurge;
     private final SizeInBytes segmentSizeMax;
     private final int segmentCacheNumMax;
     private final SizeInBytes segmentCacheSizeMax;
@@ -440,6 +534,7 @@ public class RatisConfig {
         SizeInBytes queueByteLimit,
         int purgeGap,
         boolean purgeUptoSnapshotIndex,
+        long preserveNumsWhenPurge,
         SizeInBytes segmentSizeMax,
         int segmentCacheNumMax,
         SizeInBytes segmentCacheSizeMax,
@@ -452,6 +547,7 @@ public class RatisConfig {
       this.queueByteLimit = queueByteLimit;
       this.purgeGap = purgeGap;
       this.purgeUptoSnapshotIndex = purgeUptoSnapshotIndex;
+      this.preserveNumsWhenPurge = preserveNumsWhenPurge;
       this.segmentSizeMax = segmentSizeMax;
       this.segmentCacheNumMax = segmentCacheNumMax;
       this.segmentCacheSizeMax = segmentCacheSizeMax;
@@ -509,16 +605,22 @@ public class RatisConfig {
       return unsafeFlushEnabled;
     }
 
+    public long getPreserveNumsWhenPurge() {
+      return preserveNumsWhenPurge;
+    }
+
     public static Log.Builder newBuilder() {
       return new Log.Builder();
     }
 
     public static class Builder {
+
       private boolean useMemory = false;
       private int queueElementLimit = 4096;
       private SizeInBytes queueByteLimit = SizeInBytes.valueOf("64MB");
       private int purgeGap = 1024;
-      private boolean purgeUptoSnapshotIndex = false;
+      private boolean purgeUptoSnapshotIndex = true;
+      private long preserveNumsWhenPurge = 1000;
       private SizeInBytes segmentSizeMax = SizeInBytes.valueOf("24MB");
       private int segmentCacheNumMax = 2;
       private SizeInBytes segmentCacheSizeMax = SizeInBytes.valueOf("200MB");
@@ -534,6 +636,7 @@ public class RatisConfig {
             queueByteLimit,
             purgeGap,
             purgeUptoSnapshotIndex,
+            preserveNumsWhenPurge,
             segmentSizeMax,
             segmentCacheNumMax,
             segmentCacheSizeMax,
@@ -565,6 +668,11 @@ public class RatisConfig {
 
       public Log.Builder setPurgeUptoSnapshotIndex(boolean purgeUptoSnapshotIndex) {
         this.purgeUptoSnapshotIndex = purgeUptoSnapshotIndex;
+        return this;
+      }
+
+      public Log.Builder setPreserveNumsWhenPurge(long preserveNumsWhenPurge) {
+        this.preserveNumsWhenPurge = preserveNumsWhenPurge;
         return this;
       }
 
@@ -606,6 +714,7 @@ public class RatisConfig {
   }
 
   public static class Grpc {
+
     private final SizeInBytes messageSizeMax;
     private final SizeInBytes flowControlWindow;
     private final boolean asyncRequestThreadPoolCached;
@@ -650,6 +759,7 @@ public class RatisConfig {
     }
 
     public static class Builder {
+
       private SizeInBytes messageSizeMax = SizeInBytes.valueOf("512MB");
       private SizeInBytes flowControlWindow = SizeInBytes.valueOf("4MB");
       private boolean asyncRequestThreadPoolCached =
@@ -688,6 +798,248 @@ public class RatisConfig {
 
       public Grpc.Builder setLeaderOutstandingAppendsMax(int leaderOutstandingAppendsMax) {
         this.leaderOutstandingAppendsMax = leaderOutstandingAppendsMax;
+        return this;
+      }
+    }
+  }
+
+  public static class Client {
+
+    private final long clientRequestTimeoutMillis;
+    private final int clientMaxRetryAttempt;
+    private final long clientRetryInitialSleepTimeMs;
+    private final long clientRetryMaxSleepTimeMs;
+    private final int coreClientNumForEachNode;
+    private final int maxClientNumForEachNode;
+
+    public Client(
+        long clientRequestTimeoutMillis,
+        int clientMaxRetryAttempt,
+        long clientRetryInitialSleepTimeMs,
+        long clientRetryMaxSleepTimeMs,
+        int coreClientNumForEachNode,
+        int maxClientNumForEachNode) {
+      this.clientRequestTimeoutMillis = clientRequestTimeoutMillis;
+      this.clientMaxRetryAttempt = clientMaxRetryAttempt;
+      this.clientRetryInitialSleepTimeMs = clientRetryInitialSleepTimeMs;
+      this.clientRetryMaxSleepTimeMs = clientRetryMaxSleepTimeMs;
+      this.coreClientNumForEachNode = coreClientNumForEachNode;
+      this.maxClientNumForEachNode = maxClientNumForEachNode;
+    }
+
+    public long getClientRequestTimeoutMillis() {
+      return clientRequestTimeoutMillis;
+    }
+
+    public int getClientMaxRetryAttempt() {
+      return clientMaxRetryAttempt;
+    }
+
+    public long getClientRetryInitialSleepTimeMs() {
+      return clientRetryInitialSleepTimeMs;
+    }
+
+    public long getClientRetryMaxSleepTimeMs() {
+      return clientRetryMaxSleepTimeMs;
+    }
+
+    public int getCoreClientNumForEachNode() {
+      return coreClientNumForEachNode;
+    }
+
+    public int getMaxClientNumForEachNode() {
+      return maxClientNumForEachNode;
+    }
+
+    public static Client.Builder newBuilder() {
+      return new Builder();
+    }
+
+    public static class Builder {
+
+      private long clientRequestTimeoutMillis = 10000;
+      private int clientMaxRetryAttempt = 10;
+      private long clientRetryInitialSleepTimeMs = 100;
+      private long clientRetryMaxSleepTimeMs = 10000;
+
+      private int coreClientNumForEachNode = DefaultProperty.CORE_CLIENT_NUM_FOR_EACH_NODE;
+
+      private int maxClientNumForEachNode = DefaultProperty.MAX_CLIENT_NUM_FOR_EACH_NODE;
+
+      public Client build() {
+        return new Client(
+            clientRequestTimeoutMillis,
+            clientMaxRetryAttempt,
+            clientRetryInitialSleepTimeMs,
+            clientRetryMaxSleepTimeMs,
+            coreClientNumForEachNode,
+            maxClientNumForEachNode);
+      }
+
+      public Builder setClientRequestTimeoutMillis(long clientRequestTimeoutMillis) {
+        this.clientRequestTimeoutMillis = clientRequestTimeoutMillis;
+        return this;
+      }
+
+      public Builder setClientMaxRetryAttempt(int clientMaxRetryAttempt) {
+        this.clientMaxRetryAttempt = clientMaxRetryAttempt;
+        return this;
+      }
+
+      public Builder setClientRetryInitialSleepTimeMs(long clientRetryInitialSleepTimeMs) {
+        this.clientRetryInitialSleepTimeMs = clientRetryInitialSleepTimeMs;
+        return this;
+      }
+
+      public Builder setClientRetryMaxSleepTimeMs(long clientRetryMaxSleepTimeMs) {
+        this.clientRetryMaxSleepTimeMs = clientRetryMaxSleepTimeMs;
+        return this;
+      }
+
+      public Builder setCoreClientNumForEachNode(int coreClientNumForEachNode) {
+        this.coreClientNumForEachNode = coreClientNumForEachNode;
+        return this;
+      }
+
+      public Builder setMaxClientNumForEachNode(int maxClientNumForEachNode) {
+        this.maxClientNumForEachNode = maxClientNumForEachNode;
+        return this;
+      }
+    }
+  }
+
+  public static class Impl {
+
+    private final int retryTimesMax;
+    private final long retryWaitMillis;
+
+    private final long triggerSnapshotTime;
+    private final long triggerSnapshotFileSize;
+
+    public Impl(
+        int retryTimesMax,
+        long retryWaitMillis,
+        long triggerSnapshotTime,
+        long triggerSnapshotFileSize) {
+      this.retryTimesMax = retryTimesMax;
+      this.retryWaitMillis = retryWaitMillis;
+      this.triggerSnapshotTime = triggerSnapshotTime;
+      this.triggerSnapshotFileSize = triggerSnapshotFileSize;
+    }
+
+    public int getRetryTimesMax() {
+      return retryTimesMax;
+    }
+
+    public long getRetryWaitMillis() {
+      return retryWaitMillis;
+    }
+
+    public long getTriggerSnapshotTime() {
+      return triggerSnapshotTime;
+    }
+
+    public long getTriggerSnapshotFileSize() {
+      return triggerSnapshotFileSize;
+    }
+
+    public static Impl.Builder newBuilder() {
+      return new Builder();
+    }
+
+    public static class Builder {
+
+      private int retryTimesMax = 3;
+      private long retryWaitMillis = 500;
+
+      // 120s
+      private long triggerSnapshotTime = 120;
+      // 20GB
+      private long triggerSnapshotFileSize = 20L << 30;
+
+      public Impl build() {
+        return new Impl(
+            retryTimesMax, retryWaitMillis, triggerSnapshotTime, triggerSnapshotFileSize);
+      }
+
+      public Impl.Builder setRetryTimesMax(int retryTimesMax) {
+        this.retryTimesMax = retryTimesMax;
+        return this;
+      }
+
+      public Impl.Builder setRetryWaitMillis(long retryWaitMillis) {
+        this.retryWaitMillis = retryWaitMillis;
+        return this;
+      }
+
+      public Impl.Builder setTriggerSnapshotTime(long triggerSnapshotTime) {
+        this.triggerSnapshotTime = triggerSnapshotTime;
+        return this;
+      }
+
+      public Impl.Builder setTriggerSnapshotFileSize(long triggerSnapshotFileSize) {
+        this.triggerSnapshotFileSize = triggerSnapshotFileSize;
+        return this;
+      }
+    }
+  }
+
+  public static class LeaderLogAppender {
+
+    private final SizeInBytes bufferByteLimit;
+    private final SizeInBytes snapshotChunkSizeMax;
+    private final boolean installSnapshotEnabled;
+
+    private LeaderLogAppender(
+        SizeInBytes bufferByteLimit,
+        SizeInBytes snapshotChunkSizeMax,
+        boolean installSnapshotEnabled) {
+      this.bufferByteLimit = bufferByteLimit;
+      this.snapshotChunkSizeMax = snapshotChunkSizeMax;
+      this.installSnapshotEnabled = installSnapshotEnabled;
+    }
+
+    public SizeInBytes getBufferByteLimit() {
+      return bufferByteLimit;
+    }
+
+    public SizeInBytes getSnapshotChunkSizeMax() {
+      return snapshotChunkSizeMax;
+    }
+
+    public boolean isInstallSnapshotEnabled() {
+      return installSnapshotEnabled;
+    }
+
+    public static LeaderLogAppender.Builder newBuilder() {
+      return new LeaderLogAppender.Builder();
+    }
+
+    public static class Builder {
+
+      private SizeInBytes bufferByteLimit =
+          RaftServerConfigKeys.Log.Appender.BUFFER_BYTE_LIMIT_DEFAULT;
+      private SizeInBytes snapshotChunkSizeMax =
+          RaftServerConfigKeys.Log.Appender.SNAPSHOT_CHUNK_SIZE_MAX_DEFAULT;
+      private boolean installSnapshotEnabled =
+          RaftServerConfigKeys.Log.Appender.INSTALL_SNAPSHOT_ENABLED_DEFAULT;
+
+      public LeaderLogAppender build() {
+        return new LeaderLogAppender(bufferByteLimit, snapshotChunkSizeMax, installSnapshotEnabled);
+      }
+
+      public LeaderLogAppender.Builder setBufferByteLimit(long bufferByteLimit) {
+        this.bufferByteLimit = SizeInBytes.valueOf(bufferByteLimit);
+        return this;
+      }
+
+      public LeaderLogAppender.Builder setSnapshotChunkSizeMax(long snapshotChunkSizeMax) {
+        this.snapshotChunkSizeMax = SizeInBytes.valueOf(snapshotChunkSizeMax);
+        return this;
+      }
+
+      public LeaderLogAppender.Builder setInstallSnapshotEnabled(boolean installSnapshotEnabled) {
+        this.installSnapshotEnabled = installSnapshotEnabled;
         return this;
       }
     }

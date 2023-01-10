@@ -21,22 +21,18 @@ package org.apache.iotdb.db.metadata.mtree.traverser;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.schema.tree.AbstractTreeVisitor;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.iterator.IMNodeIterator;
+import org.apache.iotdb.db.metadata.mnode.iterator.MNodeIterator;
 import org.apache.iotdb.db.metadata.mtree.store.IMTreeStore;
 import org.apache.iotdb.db.metadata.template.Template;
 
-import java.util.ArrayDeque;
-import java.util.Arrays;
-import java.util.Deque;
 import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.regex.Pattern;
+import java.util.Map;
 
-import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
-import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_ROOT;
+import static org.apache.iotdb.db.metadata.MetadataConstant.NON_TEMPLATE;
 
 /**
  * This class defines the main traversal framework and declares some methods for result process
@@ -48,26 +44,23 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_ROOT;
  *   <li>collector: to collect customized results of the matched node or measurement
  * </ol>
  */
-public abstract class Traverser {
+public abstract class Traverser<R> extends AbstractTreeVisitor<IMNode, R> {
 
   protected IMTreeStore store;
 
   protected IMNode startNode;
   protected String[] nodes;
-  protected int startIndex;
-  protected int startLevel;
-  protected boolean isPrefixStart = false;
 
-  // to construct full path or find mounted node on MTree when traverse into template
-  protected Deque<IMNode> traverseContext;
+  // measurement in template should be processed only if templateMap is not null
+  protected Map<Integer, Template> templateMap;
 
-  protected boolean isInTemplate = false;
-
-  // if isMeasurementTraverser, measurement in template should be processed
-  protected boolean isMeasurementTraverser = false;
+  // if true, the pre deleted measurement or pre deactivated template won't be processed
+  protected boolean skipPreDeletedSchema = false;
 
   // default false means fullPath pattern match
   protected boolean isPrefixMatch = false;
+
+  protected Traverser() {}
 
   /**
    * To traverse subtree under root.sg, e.g., init Traverser(root, "root.sg.**")
@@ -76,7 +69,9 @@ public abstract class Traverser {
    * @param path use wildcard to specify which part to traverse
    * @throws MetadataException
    */
-  public Traverser(IMNode startNode, PartialPath path, IMTreeStore store) throws MetadataException {
+  protected Traverser(IMNode startNode, PartialPath path, IMTreeStore store, boolean isPrefixMatch)
+      throws MetadataException {
+    super(startNode, path, isPrefixMatch);
     String[] nodes = path.getNodes();
     if (nodes.length == 0 || !nodes[0].equals(PATH_ROOT)) {
       throw new IllegalPathException(
@@ -85,49 +80,6 @@ public abstract class Traverser {
     this.startNode = startNode;
     this.nodes = nodes;
     this.store = store;
-    this.traverseContext = new ArrayDeque<>();
-    initStartIndexAndLevel(path);
-  }
-
-  /**
-   * The traverser may start traversing from a storageGroupMNode, which is an InternalMNode of the
-   * whole MTree.
-   */
-  private void initStartIndexAndLevel(PartialPath path) throws MetadataException {
-    IMNode parent = startNode.getParent();
-    Deque<IMNode> ancestors = new ArrayDeque<>();
-    ancestors.push(startNode);
-
-    startLevel = 0;
-    while (parent != null) {
-      startLevel++;
-      traverseContext.addLast(parent);
-
-      ancestors.push(parent);
-      parent = parent.getParent();
-    }
-
-    IMNode cur;
-    // given root.a.sg, accept path starting with prefix like root.a.sg, root.*.*, root.**,
-    // root.a.**, which means the prefix matches the startNode's fullPath
-    for (startIndex = 0; startIndex <= startLevel && startIndex < nodes.length; startIndex++) {
-      cur = ancestors.pop();
-      if (nodes[startIndex].equals(MULTI_LEVEL_PATH_WILDCARD)) {
-        return;
-      } else if (!nodes[startIndex].equals(cur.getName())
-          && !nodes[startIndex].contains(ONE_LEVEL_PATH_WILDCARD)) {
-        throw new IllegalPathException(
-            path.getFullPath(), path.getFullPath() + " doesn't start with " + cur.getFullPath());
-      }
-    }
-
-    if (startIndex <= startLevel) {
-      if (!nodes[startIndex - 1].equals(MULTI_LEVEL_PATH_WILDCARD)) {
-        isPrefixStart = true;
-      }
-    } else {
-      startIndex--;
-    }
   }
 
   /**
@@ -135,336 +87,61 @@ public abstract class Traverser {
    * overriding or implement concerned methods.
    */
   public void traverse() throws MetadataException {
-    if (isPrefixStart && !isPrefixMatch) {
-      return;
+    while (hasNext()) {
+      next();
     }
-    traverse(startNode, startIndex, startLevel);
+    if (!isSuccess()) {
+      Throwable e = getFailure();
+      throw new MetadataException(e.getMessage(), e);
+    }
   }
 
-  /**
-   * The recursive method for MTree traversal. If the node matches nodes[idx], then do some
-   * operation and traverse the children with nodes[idx+1].
-   *
-   * @param node current node that match the targetName in given path
-   * @param idx the index of targetName in given path
-   * @param level the level of current node in MTree
-   * @throws MetadataException some result process may throw MetadataException
-   */
-  protected void traverse(IMNode node, int idx, int level) throws MetadataException {
-
-    if (processMatchedMNode(node, idx, level)) {
-      return;
-    }
-
-    if (idx >= nodes.length - 1) {
-      if (nodes[nodes.length - 1].equals(MULTI_LEVEL_PATH_WILDCARD) || isPrefixMatch) {
-        processMultiLevelWildcard(node, idx, level);
-      }
-      return;
-    }
-
-    if (node.isMeasurement()) {
-      return;
-    }
-
-    String targetName = nodes[idx + 1];
-    if (MULTI_LEVEL_PATH_WILDCARD.equals(targetName)) {
-      processMultiLevelWildcard(node, idx, level);
-    } else if (targetName.contains(ONE_LEVEL_PATH_WILDCARD)) {
-      processOneLevelWildcard(node, idx, level);
+  @Override
+  protected IMNode getChild(IMNode parent, String childName) throws MetadataException {
+    IMNode child = null;
+    if (parent.isAboveDatabase()) {
+      child = parent.getChild(childName);
     } else {
-      processNameMatch(node, idx, level);
+      if (parent.getSchemaTemplateId() != NON_TEMPLATE) {
+        if (!skipPreDeletedSchema || !parent.getAsEntityMNode().isPreDeactivateTemplate()) {
+          child = templateMap.get(parent.getSchemaTemplateId()).getDirectNode(childName);
+        }
+      }
+    }
+    if (child == null) {
+      child = store.getChild(parent, childName);
+    }
+    return child;
+  }
+
+  @Override
+  protected void releaseNode(IMNode node) {
+    if (!node.isAboveDatabase() && !node.isStorageGroup()) {
+      // In any case we can call store#inpin directly because the unpin method will not do anything
+      // if it is an IMNode in template or in memory mode.
+      store.unPin(node);
     }
   }
 
-  /**
-   * process curNode that matches the targetName during traversal. there are two cases: 1. internal
-   * match: root.sg internal match root.sg.**(pattern) 2. full match: root.sg.d full match
-   * root.sg.**(pattern) Both of them are default abstract and should be implemented according
-   * concrete tasks.
-   *
-   * @return whether this branch of recursive traversal should stop; if true, stop
-   */
-  private boolean processMatchedMNode(IMNode node, int idx, int level) throws MetadataException {
-    if (idx < nodes.length - 1) {
-      return processInternalMatchedMNode(node, idx, level);
+  @Override
+  protected Iterator<IMNode> getChildrenIterator(IMNode parent) throws MetadataException {
+    if (parent.isAboveDatabase()) {
+      return new MNodeIterator(parent.getChildren().values().iterator());
     } else {
-      return processFullMatchedMNode(node, idx, level);
+      return store.getTraverserIterator(parent, templateMap, skipPreDeletedSchema);
     }
   }
 
-  /**
-   * internal match: root.sg internal match root.sg.**(pattern)
-   *
-   * @return whether this branch of recursive traversal should stop; if true, stop
-   */
-  protected abstract boolean processInternalMatchedMNode(IMNode node, int idx, int level)
-      throws MetadataException;
-
-  /**
-   * full match: root.sg.d full match root.sg.**(pattern)
-   *
-   * @return whether this branch of recursive traversal should stop; if true, stop
-   */
-  protected abstract boolean processFullMatchedMNode(IMNode node, int idx, int level)
-      throws MetadataException;
-
-  protected void processMultiLevelWildcard(IMNode node, int idx, int level)
-      throws MetadataException {
-    if (isInTemplate) {
-      traverseContext.push(node);
-      for (IMNode child : node.getChildren().values()) {
-        traverse(child, idx + 1, level + 1);
-      }
-      traverseContext.pop();
-      return;
-    }
-
-    traverseContext.push(node);
-    IMNode child;
-    IMNodeIterator iterator = store.getChildrenIterator(node);
-    try {
-      while (iterator.hasNext()) {
-        child = iterator.next();
-        try {
-          traverse(child, idx + 1, level + 1);
-        } finally {
-          store.unPin(child);
-        }
-      }
-    } finally {
-      iterator.close();
-    }
-
-    traverseContext.pop();
-
-    if (!node.isUseTemplate()) {
-      return;
-    }
-
-    Template upperTemplate = node.getUpperTemplate();
-    isInTemplate = true;
-    traverseContext.push(node);
-    for (IMNode childInTemplate : upperTemplate.getDirectNodes()) {
-      traverse(childInTemplate, idx + 1, level + 1);
-    }
-    traverseContext.pop();
-    isInTemplate = false;
+  @Override
+  protected void releaseNodeIterator(Iterator<IMNode> nodeIterator) {
+    ((IMNodeIterator) nodeIterator).close();
   }
 
-  protected void processOneLevelWildcard(IMNode node, int idx, int level) throws MetadataException {
-    boolean multiLevelWildcard = nodes[idx].equals(MULTI_LEVEL_PATH_WILDCARD);
-    String targetNameRegex = nodes[idx + 1].replace("*", ".*");
-
-    if (isInTemplate) {
-      traverseContext.push(node);
-      for (IMNode child : node.getChildren().values()) {
-        if (!Pattern.matches(targetNameRegex, child.getName())) {
-          continue;
-        }
-        traverse(child, idx + 1, level + 1);
-      }
-      traverseContext.pop();
-
-      if (multiLevelWildcard) {
-        traverseContext.push(node);
-        for (IMNode child : node.getChildren().values()) {
-          traverse(child, idx, level + 1);
-        }
-        traverseContext.pop();
-      }
-      return;
-    }
-
-    traverseContext.push(node);
-    IMNode child;
-    IMNodeIterator iterator = store.getChildrenIterator(node);
-    try {
-      while (iterator.hasNext()) {
-        child = iterator.next();
-        try {
-          if (child.isMeasurement()) {
-            String alias = child.getAsMeasurementMNode().getAlias();
-            if (!Pattern.matches(targetNameRegex, child.getName())
-                && !(alias != null && Pattern.matches(targetNameRegex, alias))) {
-              continue;
-            }
-          } else {
-            if (!Pattern.matches(targetNameRegex, child.getName())) {
-              continue;
-            }
-          }
-          traverse(child, idx + 1, level + 1);
-        } finally {
-          store.unPin(child);
-        }
-      }
-    } finally {
-      iterator.close();
-    }
-
-    traverseContext.pop();
-
-    if (multiLevelWildcard) {
-      traverseContext.push(node);
-      iterator = store.getChildrenIterator(node);
-      try {
-        while (iterator.hasNext()) {
-          child = iterator.next();
-          try {
-            traverse(child, idx, level + 1);
-          } finally {
-            store.unPin(child);
-          }
-        }
-      } finally {
-        iterator.close();
-      }
-      traverseContext.pop();
-    }
-
-    if (!node.isUseTemplate()) {
-      return;
-    }
-
-    Template upperTemplate = node.getUpperTemplate();
-
-    isInTemplate = true;
-    traverseContext.push(node);
-    for (IMNode childInTemplate : upperTemplate.getDirectNodes()) {
-      if (!Pattern.matches(targetNameRegex, childInTemplate.getName())) {
-        continue;
-      }
-      traverse(childInTemplate, idx + 1, level + 1);
-    }
-    traverseContext.pop();
-
-    if (multiLevelWildcard) {
-      traverseContext.push(node);
-      for (IMNode childInTemplate : upperTemplate.getDirectNodes()) {
-        traverse(childInTemplate, idx, level + 1);
-      }
-      traverseContext.pop();
-    }
-    isInTemplate = false;
+  public void setTemplateMap(Map<Integer, Template> templateMap) {
+    this.templateMap = templateMap;
   }
 
-  @SuppressWarnings("Duplicates")
-  protected void processNameMatch(IMNode node, int idx, int level) throws MetadataException {
-    boolean multiLevelWildcard = nodes[idx].equals(MULTI_LEVEL_PATH_WILDCARD);
-    String targetName = nodes[idx + 1];
-
-    if (isInTemplate) {
-      IMNode targetNode = node.getChild(targetName);
-      if (targetNode != null) {
-        traverseContext.push(node);
-        traverse(targetNode, idx + 1, level + 1);
-        traverseContext.pop();
-      }
-
-      if (multiLevelWildcard) {
-        traverseContext.push(node);
-        for (IMNode child : node.getChildren().values()) {
-          traverse(child, idx, level + 1);
-        }
-        traverseContext.pop();
-      }
-      return;
-    }
-
-    IMNode next = store.getChild(node, targetName);
-    if (next != null) {
-      try {
-        traverseContext.push(node);
-        traverse(next, idx + 1, level + 1);
-        traverseContext.pop();
-      } finally {
-        store.unPin(next);
-      }
-    }
-
-    if (multiLevelWildcard) {
-      traverseContext.push(node);
-      IMNode child;
-      IMNodeIterator iterator = store.getChildrenIterator(node);
-      try {
-        while (iterator.hasNext()) {
-          child = iterator.next();
-          try {
-            traverse(child, idx, level + 1);
-          } finally {
-            store.unPin(child);
-          }
-        }
-      } finally {
-        iterator.close();
-      }
-      traverseContext.pop();
-    }
-
-    if (!node.isUseTemplate()) {
-      return;
-    }
-
-    Template upperTemplate = node.getUpperTemplate();
-    isInTemplate = true;
-    IMNode targetNode = upperTemplate.getDirectNode(targetName);
-    if (targetNode != null) {
-      traverseContext.push(node);
-      traverse(targetNode, idx + 1, level + 1);
-      traverseContext.pop();
-    }
-
-    if (multiLevelWildcard) {
-      traverseContext.push(node);
-      for (IMNode child : upperTemplate.getDirectNodes()) {
-        traverse(child, idx, level + 1);
-      }
-      traverseContext.pop();
-    }
-    isInTemplate = false;
-  }
-
-  public void setPrefixMatch(boolean isPrefixMatch) {
-    this.isPrefixMatch = isPrefixMatch;
-  }
-
-  /**
-   * @param currentNode the node need to get the full path of
-   * @return full path from traverse start node to the current node
-   */
-  protected PartialPath getCurrentPartialPath(IMNode currentNode) {
-    return new PartialPath(getCurrentPathNodes(currentNode));
-  }
-
-  protected String[] getCurrentPathNodes(IMNode currentNode) {
-    Iterator<IMNode> nodes = traverseContext.descendingIterator();
-    List<String> nodeNames = new LinkedList<>();
-    if (nodes.hasNext()) {
-      nodeNames.addAll(Arrays.asList(nodes.next().getPartialPath().getNodes()));
-    }
-
-    while (nodes.hasNext()) {
-      nodeNames.add(nodes.next().getName());
-    }
-
-    nodeNames.add(currentNode.getName());
-
-    return nodeNames.toArray(new String[0]);
-  }
-
-  /** @return the storage group node in the traverse path */
-  protected IMNode getStorageGroupNodeInTraversePath(IMNode currentNode) {
-    if (currentNode.isStorageGroup()) {
-      return currentNode;
-    }
-    Iterator<IMNode> nodes = traverseContext.iterator();
-    while (nodes.hasNext()) {
-      IMNode node = nodes.next();
-      if (node.isStorageGroup()) {
-        return node;
-      }
-    }
-    return null;
+  public void setSkipPreDeletedSchema(boolean skipPreDeletedSchema) {
+    this.skipPreDeletedSchema = skipPreDeletedSchema;
   }
 }

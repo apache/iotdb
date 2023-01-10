@@ -298,11 +298,11 @@ It is somehow right. But, if you consider the performance, you may change your m
 
 * Write:
 
-We test the performance of writing from two aspects: *batch size* and *client num*. The number of storage group is 10. There are 1000 devices and each device has 100 measurements(i.e.,, 100K time series total).
+We test the performance of writing from two aspects: *batch size* and *client num*. The number of database is 10. There are 1000 devices and each device has 100 measurements(i.e.,, 100K time series total).
 
 * Read:
 
-10 clients read data concurrently. The number of storage group is 10. There are 10 devices and each device has 10 measurements (i.e.,, 100 time series total).
+10 clients read data concurrently. The number of database is 10. There are 10 devices and each device has 10 measurements (i.e.,, 100 time series total).
 The data type is *double*, encoding type is *GORILLA*
 
 * Compression:

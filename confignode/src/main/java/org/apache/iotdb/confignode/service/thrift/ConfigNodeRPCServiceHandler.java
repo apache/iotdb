@@ -14,30 +14,35 @@
  * express or implied. See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package org.apache.iotdb.confignode.service.thrift;
+
+import org.apache.iotdb.commons.service.metric.MetricService;
 
 import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.server.ServerContext;
 import org.apache.thrift.server.TServerEventHandler;
 import org.apache.thrift.transport.TTransport;
 
-public class ConfigNodeRPCServiceHandler implements TServerEventHandler {
-  private final ConfigNodeRPCServiceProcessor processor;
+import java.util.concurrent.atomic.AtomicLong;
 
-  public ConfigNodeRPCServiceHandler(ConfigNodeRPCServiceProcessor processor) {
-    this.processor = processor;
+public class ConfigNodeRPCServiceHandler implements TServerEventHandler {
+  private AtomicLong thriftConnectionNumber = new AtomicLong(0);
+
+  public ConfigNodeRPCServiceHandler() {
+    MetricService.getInstance()
+        .addMetricSet(new ConfigNodeRPCServiceHandlerMetrics(thriftConnectionNumber));
   }
 
   @Override
   public ServerContext createContext(TProtocol arg0, TProtocol arg1) {
-    // nothing
+    thriftConnectionNumber.incrementAndGet();
     return null;
   }
 
   @Override
   public void deleteContext(ServerContext arg0, TProtocol arg1, TProtocol arg2) {
-    // release query resources.
-    processor.handleClientExit();
+    thriftConnectionNumber.decrementAndGet();
   }
 
   @Override

@@ -21,6 +21,7 @@ package org.apache.iotdb.influxdb.session;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.protocol.influxdb.util.JacksonUtils;
+import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.protocol.influxdb.rpc.thrift.InfluxCloseSessionReq;
 import org.apache.iotdb.protocol.influxdb.rpc.thrift.InfluxCreateDatabaseReq;
 import org.apache.iotdb.protocol.influxdb.rpc.thrift.InfluxDBService;
@@ -34,7 +35,6 @@ import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.RpcTransportFactory;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
-import org.apache.iotdb.session.Config;
 
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
@@ -79,10 +79,10 @@ public class InfluxDBSession {
         rpcPort,
         username,
         password,
-        Config.DEFAULT_FETCH_SIZE,
+        SessionConfig.DEFAULT_FETCH_SIZE,
         ZoneId.systemDefault(),
-        Config.DEFAULT_INITIAL_BUFFER_CAPACITY,
-        Config.DEFAULT_MAX_FRAME_SIZE);
+        SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
+        SessionConfig.DEFAULT_MAX_FRAME_SIZE);
   }
 
   public InfluxDBSession(
@@ -104,7 +104,7 @@ public class InfluxDBSession {
   }
 
   public synchronized void open() throws IoTDBConnectionException {
-    open(false, Config.DEFAULT_CONNECTION_TIMEOUT_MS);
+    open(false, SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS);
   }
 
   public synchronized void open(boolean enableRPCCompression, int connectionTimeoutInMs)
@@ -128,7 +128,9 @@ public class InfluxDBSession {
           RpcTransportFactory.INSTANCE.getTransport(
               // as there is a try-catch already, we do not need to use TSocket.wrap
               defaultEndPoint.getIp(), defaultEndPoint.getPort(), connectionTimeoutInMs);
-      transport.open();
+      if (!transport.isOpen()) {
+        transport.open();
+      }
     } catch (TTransportException e) {
       throw new IoTDBConnectionException(e);
     }
@@ -244,7 +246,7 @@ public class InfluxDBSession {
   private boolean reconnect() {
     boolean connectedSuccess = false;
     Random random = new Random();
-    for (int i = 1; i <= Config.RETRY_NUM; i++) {
+    for (int i = 1; i <= SessionConfig.RETRY_NUM; i++) {
       if (transport != null) {
         transport.close();
         int currHostIndex = random.nextInt(endPointList.size());

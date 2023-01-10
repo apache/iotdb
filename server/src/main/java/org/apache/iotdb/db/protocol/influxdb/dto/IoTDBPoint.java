@@ -18,14 +18,11 @@
  */
 package org.apache.iotdb.db.protocol.influxdb.dto;
 
-import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.protocol.influxdb.meta.InfluxDBMetaManager;
-import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
+import org.apache.iotdb.db.protocol.influxdb.meta.IInfluxDBMetaManager;
 import org.apache.iotdb.db.utils.DataTypeUtils;
 import org.apache.iotdb.db.utils.ParameterUtils;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
+import org.apache.iotdb.service.rpc.thrift.TSInsertRecordReq;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import org.influxdb.dto.Point;
@@ -36,6 +33,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
+/**
+ * Represent an IoTDB point, including the device path to be written, the measurement point and the
+ * corresponding value
+ */
 public class IoTDBPoint {
 
   private final String deviceId;
@@ -57,7 +58,8 @@ public class IoTDBPoint {
     this.values = values;
   }
 
-  public IoTDBPoint(String database, Point point, InfluxDBMetaManager metaManager) {
+  public IoTDBPoint(
+      String database, Point point, IInfluxDBMetaManager influxDBMetaManager, long sessionID) {
     String measurement = null;
     Map<String, String> tags = new HashMap<>();
     Map<String, Object> fields = new HashMap<>();
@@ -67,8 +69,8 @@ public class IoTDBPoint {
     for (java.lang.reflect.Field reflectField : point.getClass().getDeclaredFields()) {
       reflectField.setAccessible(true);
       try {
-        if (reflectField.getType().getName().equalsIgnoreCase("java.util.concurrent.TimeUnit")
-            && reflectField.getName().equalsIgnoreCase("precision")) {
+        if ("java.util.concurrent.TimeUnit".equalsIgnoreCase(reflectField.getType().getName())
+            && "precision".equalsIgnoreCase(reflectField.getName())) {
           precision = (TimeUnit) reflectField.get(point);
         }
       } catch (IllegalAccessException e) {
@@ -79,17 +81,17 @@ public class IoTDBPoint {
     for (java.lang.reflect.Field reflectField : point.getClass().getDeclaredFields()) {
       reflectField.setAccessible(true);
       try {
-        if (reflectField.getType().getName().equalsIgnoreCase("java.util.Map")
-            && reflectField.getName().equalsIgnoreCase("fields")) {
+        if ("java.util.Map".equalsIgnoreCase(reflectField.getType().getName())
+            && "fields".equalsIgnoreCase(reflectField.getName())) {
           fields = (Map<String, Object>) reflectField.get(point);
-        } else if (reflectField.getType().getName().equalsIgnoreCase("java.util.Map")
-            && reflectField.getName().equalsIgnoreCase("tags")) {
+        } else if ("java.util.Map".equalsIgnoreCase(reflectField.getType().getName())
+            && "tags".equalsIgnoreCase(reflectField.getName())) {
           tags = (Map<String, String>) reflectField.get(point);
-        } else if (reflectField.getType().getName().equalsIgnoreCase("java.lang.String")
-            && reflectField.getName().equalsIgnoreCase("measurement")) {
+        } else if ("java.lang.String".equalsIgnoreCase(reflectField.getType().getName())
+            && "measurement".equalsIgnoreCase(reflectField.getName())) {
           measurement = (String) reflectField.get(point);
-        } else if (reflectField.getType().getName().equalsIgnoreCase("java.lang.Number")
-            && reflectField.getName().equalsIgnoreCase("time")) {
+        } else if ("java.lang.Number".equalsIgnoreCase(reflectField.getType().getName())
+            && "time".equalsIgnoreCase(reflectField.getName())) {
           time = (Long) reflectField.get(point);
           time = TimeUnit.MILLISECONDS.convert(time, precision);
         }
@@ -103,7 +105,8 @@ public class IoTDBPoint {
     }
     ParameterUtils.checkNonEmptyString(database, "database");
     ParameterUtils.checkNonEmptyString(measurement, "measurement name");
-    String path = metaManager.generatePath(database, measurement, tags);
+    String path =
+        influxDBMetaManager.generatePath(database, measurement, tags, fields.keySet(), sessionID);
     List<String> measurements = new ArrayList<>();
     List<TSDataType> types = new ArrayList<>();
     List<Object> values = new ArrayList<>();
@@ -140,13 +143,22 @@ public class IoTDBPoint {
     return values;
   }
 
-  public InsertRowPlan convertToInsertRowPlan()
-      throws IllegalPathException, IoTDBConnectionException, QueryProcessException {
-    return new InsertRowPlan(
-        new PartialPath(getDeviceId()),
-        getTime(),
-        getMeasurements().toArray(new String[0]),
-        DataTypeUtils.getValueBuffer(getTypes(), getValues()),
-        false);
+  /**
+   * Convert IoTDB point to InsertRecordReq
+   *
+   * @param sessionID session id
+   * @return InsertRecordReq
+   * @throws IoTDBConnectionException
+   */
+  public TSInsertRecordReq convertToTSInsertRecordReq(long sessionID)
+      throws IoTDBConnectionException {
+    TSInsertRecordReq tsInsertRecordReq = new TSInsertRecordReq();
+    tsInsertRecordReq.setValues(DataTypeUtils.getValueBuffer(getTypes(), getValues()));
+    tsInsertRecordReq.setMeasurements(getMeasurements());
+    tsInsertRecordReq.setPrefixPath(getDeviceId());
+    tsInsertRecordReq.setIsAligned(false);
+    tsInsertRecordReq.setTimestamp(getTime());
+    tsInsertRecordReq.setSessionId(sessionID);
+    return tsInsertRecordReq;
   }
 }

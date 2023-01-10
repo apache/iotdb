@@ -25,7 +25,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.FillNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.TimeJoinNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.FillDescriptor;
 import org.apache.iotdb.db.mpp.plan.statement.component.FillPolicy;
-import org.apache.iotdb.db.mpp.plan.statement.component.OrderBy;
+import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.db.mpp.plan.statement.literal.LongLiteral;
 
 import org.junit.Test;
@@ -38,13 +38,13 @@ public class FillNodeSerdeTest {
 
   @Test
   public void testSerializeAndDeserialize() throws IllegalPathException {
-    TimeJoinNode timeJoinNode =
-        new TimeJoinNode(new PlanNodeId("TestTimeJoinNode"), OrderBy.TIMESTAMP_ASC);
+    TimeJoinNode timeJoinNode = new TimeJoinNode(new PlanNodeId("TestTimeJoinNode"), Ordering.ASC);
     FillNode fillNode =
         new FillNode(
             new PlanNodeId("TestFillNode"),
             timeJoinNode,
-            new FillDescriptor(FillPolicy.VALUE, new LongLiteral("100")));
+            new FillDescriptor(FillPolicy.VALUE, new LongLiteral("100")),
+            Ordering.ASC);
 
     ByteBuffer byteBuffer = ByteBuffer.allocate(1024);
     fillNode.serialize(byteBuffer);

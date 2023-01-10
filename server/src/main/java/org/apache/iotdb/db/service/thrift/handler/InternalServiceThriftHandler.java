@@ -19,24 +19,38 @@
 
 package org.apache.iotdb.db.service.thrift.handler;
 
+import org.apache.iotdb.commons.service.metric.MetricService;
+
 import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.server.ServerContext;
 import org.apache.thrift.server.TServerEventHandler;
 import org.apache.thrift.transport.TTransport;
 
+import java.util.concurrent.atomic.AtomicLong;
+
 public class InternalServiceThriftHandler implements TServerEventHandler {
+
+  private AtomicLong thriftConnectionNumber = new AtomicLong(0);
+
+  public InternalServiceThriftHandler() {
+    MetricService.getInstance()
+        .addMetricSet(new InternalServiceThriftHandlerMetrics(thriftConnectionNumber));
+  }
 
   @Override
   public void preServe() {}
 
   @Override
   public ServerContext createContext(TProtocol tProtocol, TProtocol tProtocol1) {
+    thriftConnectionNumber.incrementAndGet();
     return null;
   }
 
   @Override
   public void deleteContext(
-      ServerContext serverContext, TProtocol tProtocol, TProtocol tProtocol1) {}
+      ServerContext serverContext, TProtocol tProtocol, TProtocol tProtocol1) {
+    thriftConnectionNumber.decrementAndGet();
+  }
 
   @Override
   public void processContext(

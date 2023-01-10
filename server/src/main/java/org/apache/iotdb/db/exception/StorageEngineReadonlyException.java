@@ -27,6 +27,6 @@ public class StorageEngineReadonlyException extends StorageEngineException {
       "Database is read-only, and does not accept non-query operation now";
 
   public StorageEngineReadonlyException() {
-    super(ERROR_MESSAGE, TSStatusCode.READ_ONLY_SYSTEM_ERROR.getStatusCode());
+    super(ERROR_MESSAGE, TSStatusCode.SYSTEM_READ_ONLY.getStatusCode());
   }
 }

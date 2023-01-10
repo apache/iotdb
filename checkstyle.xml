@@ -58,6 +58,13 @@
             <property name="ignoreComments" value="true"/>
             <property name="message" value="Using ScheduledExecutorService::schedule(AtFixedRate|WithFixedDelay) directly is unsafe, please use ScheduledExecutorUtil::(unsafely|safely)Schedule(AtFixedRate|WithFixedDelay) instead."/>
         </module>
+        <module name="RegexpSinglelineJava">
+            <property name="id" value="invalidPlanNodeTypeUsage"/>
+            <property name="format" value="PlanNodeType\.[a-zA-Z_]*\.ordinal\("/>
+            <property name="severity" value="error"/>
+            <property name="ignoreComments" value="true"/>
+            <property name="message" value="Please use PlanNodeType::getNodeType instead."/>
+        </module>
         <!--WARNING severity rules, which may be promoted to error level-->
         <module name="OuterTypeFilename"/>
         <module name="IllegalTokenText">

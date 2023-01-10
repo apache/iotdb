@@ -20,6 +20,7 @@ package org.apache.iotdb.db.mpp.execution.operator.process;
 
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.column.BinaryColumnBuilder;
@@ -95,6 +96,9 @@ public class DeviceViewOperator implements ProcessOperator {
 
   @Override
   public ListenableFuture<?> isBlocked() {
+    if (deviceIndex >= deviceOperators.size()) {
+      return NOT_BLOCKED;
+    }
     ListenableFuture<?> blocked = getCurDeviceOperator().isBlocked();
     if (!blocked.isDone()) {
       return blocked;
@@ -104,7 +108,11 @@ public class DeviceViewOperator implements ProcessOperator {
 
   @Override
   public TsBlock next() {
-    TsBlock tsBlock = getCurDeviceOperator().next();
+    if (!getCurDeviceOperator().hasNextWithTimer()) {
+      deviceIndex++;
+      return null;
+    }
+    TsBlock tsBlock = getCurDeviceOperator().nextWithTimer();
     if (tsBlock == null) {
       return null;
     }
@@ -131,14 +139,7 @@ public class DeviceViewOperator implements ProcessOperator {
 
   @Override
   public boolean hasNext() {
-    while (!getCurDeviceOperator().hasNext()) {
-      if (deviceIndex + 1 < devices.size()) {
-        deviceIndex++;
-      } else {
-        return false;
-      }
-    }
-    return true;
+    return deviceIndex < devices.size();
   }
 
   @Override
@@ -150,6 +151,33 @@ public class DeviceViewOperator implements ProcessOperator {
 
   @Override
   public boolean isFinished() {
-    return !this.hasNext();
+    return !this.hasNextWithTimer();
+  }
+
+  @Override
+  public long calculateMaxPeekMemory() {
+    long maxPeekMemory = calculateMaxReturnSize() + calculateRetainedSizeAfterCallingNext();
+    for (Operator child : deviceOperators) {
+      maxPeekMemory = Math.max(maxPeekMemory, child.calculateMaxPeekMemory());
+    }
+    return maxPeekMemory;
+  }
+
+  @Override
+  public long calculateMaxReturnSize() {
+    // null columns would be filled, so return size equals to
+    // (numberOfValueColumns(dataTypes.size() - 1) + 1(timeColumn)) * columnSize + deviceColumnSize
+    // size of device name column is ignored
+    return (long) (dataTypes.size())
+        * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte();
+  }
+
+  @Override
+  public long calculateRetainedSizeAfterCallingNext() {
+    long max = 0;
+    for (Operator operator : deviceOperators) {
+      max = Math.max(max, operator.calculateRetainedSizeAfterCallingNext());
+    }
+    return max;
   }
 }

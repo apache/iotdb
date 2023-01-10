@@ -185,4 +185,10 @@ public class BitMap {
       }
     }
   }
+
+  public BitMap getRegion(int positionOffset, int length) {
+    BitMap newBitMap = new BitMap(length);
+    copyOfRange(this, positionOffset, newBitMap, 0, length);
+    return newBitMap;
+  }
 }

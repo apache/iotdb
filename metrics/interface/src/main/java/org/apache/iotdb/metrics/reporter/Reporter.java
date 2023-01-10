@@ -19,19 +19,15 @@
 
 package org.apache.iotdb.metrics.reporter;
 
-import org.apache.iotdb.metrics.MetricManager;
 import org.apache.iotdb.metrics.utils.ReporterType;
 
 public interface Reporter {
-  /** Start reporter */
+  /** Start reporter. */
   boolean start();
 
-  /** Stop reporter */
+  /** Stop reporter. */
   boolean stop();
 
-  /** Get type of reporter */
+  /** Get the type of reporter. */
   ReporterType getReporterType();
-
-  /** Set metric manager */
-  void setMetricManager(MetricManager metricManager);
 }

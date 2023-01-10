@@ -53,7 +53,14 @@ public class DoubleLiteral extends Literal {
 
   @Override
   public boolean isDataTypeConsistency(TSDataType dataType) {
-    return dataType == TSDataType.FLOAT || dataType == TSDataType.DOUBLE;
+    return dataType == TSDataType.FLOAT
+        || dataType == TSDataType.DOUBLE
+        || dataType == TSDataType.TEXT;
+  }
+
+  @Override
+  public String getDataTypeString() {
+    return TSDataType.DOUBLE.toString();
   }
 
   @Override
@@ -86,5 +93,10 @@ public class DoubleLiteral extends Literal {
   @Override
   public Binary getBinary() {
     return new Binary(String.valueOf(value));
+  }
+
+  @Override
+  public String toString() {
+    return String.valueOf(value);
   }
 }

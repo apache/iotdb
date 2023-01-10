@@ -18,23 +18,26 @@
  */
 package org.apache.iotdb.db.mpp.execution.operator.source;
 
-import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
-import org.apache.iotdb.db.metadata.path.AlignedPath;
+import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
+import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
+import org.apache.iotdb.tsfile.read.common.block.column.Column;
+import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
+import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
+import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 import java.io.IOException;
 import java.util.HashSet;
+import java.util.concurrent.TimeUnit;
 
-public class AlignedSeriesScanOperator implements DataSourceOperator {
+public class AlignedSeriesScanOperator extends AbstractDataSourceOperator {
 
-  private final OperatorContext operatorContext;
-  private final AlignedSeriesScanUtil seriesScanUtil;
-  private final PlanNodeId sourceId;
-  private TsBlock tsBlock;
-  private boolean hasCachedTsBlock = false;
+  private final TsBlockBuilder builder;
+  private final int valueColumnCount;
   private boolean finished = false;
 
   public AlignedSeriesScanOperator(
@@ -54,56 +57,66 @@ public class AlignedSeriesScanOperator implements DataSourceOperator {
             timeFilter,
             valueFilter,
             ascending);
-  }
-
-  @Override
-  public OperatorContext getOperatorContext() {
-    return operatorContext;
+    // time + all value columns
+    this.builder = new TsBlockBuilder(seriesScanUtil.getTsDataTypeList());
+    this.valueColumnCount = seriesPath.getColumnNum();
+    this.maxReturnSize =
+        Math.min(
+            maxReturnSize,
+            (1L + valueColumnCount)
+                * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte());
   }
 
   @Override
   public TsBlock next() {
-    if (hasCachedTsBlock || hasNext()) {
-      hasCachedTsBlock = false;
-      return tsBlock;
+    if (retainedTsBlock != null) {
+      return getResultFromRetainedTsBlock();
     }
-    throw new IllegalStateException("no next batch");
+    resultTsBlock = builder.build();
+    builder.reset();
+    return checkTsBlockSizeAndGetResult();
   }
 
   @Override
   public boolean hasNext() {
-
+    if (retainedTsBlock != null) {
+      return true;
+    }
     try {
-      if (hasCachedTsBlock) {
-        return true;
-      }
 
-      /*
-       * consume page data firstly
-       */
-      if (readPageData()) {
-        hasCachedTsBlock = true;
-        return true;
-      }
+      // start stopwatch
+      long maxRuntime = operatorContext.getMaxRunTime().roundTo(TimeUnit.NANOSECONDS);
+      long start = System.nanoTime();
 
-      /*
-       * consume chunk data secondly
-       */
-      if (readChunkData()) {
-        hasCachedTsBlock = true;
-        return true;
-      }
-
-      /*
-       * consume next file finally
-       */
-      while (seriesScanUtil.hasNextFile()) {
-        if (readChunkData()) {
-          hasCachedTsBlock = true;
-          return true;
+      // here use do-while to promise doing this at least once
+      do {
+        /*
+         * consume page data firstly
+         */
+        if (readPageData()) {
+          continue;
         }
-      }
-      return hasCachedTsBlock;
+
+        /*
+         * consume chunk data secondly
+         */
+        if (readChunkData()) {
+          continue;
+        }
+
+        /*
+         * consume next file finally
+         */
+        if (readFileData()) {
+          continue;
+        }
+        break;
+
+      } while (System.nanoTime() - start < maxRuntime && !builder.isFull());
+
+      finished = builder.isEmpty();
+
+      return !finished;
     } catch (IOException e) {
       throw new RuntimeException("Error happened while scanning the file", e);
     }
@@ -111,7 +124,33 @@ public class AlignedSeriesScanOperator implements DataSourceOperator {
 
   @Override
   public boolean isFinished() {
-    return finished || (finished = !hasNext());
+    return finished;
+  }
+
+  @Override
+  public long calculateMaxPeekMemory() {
+    return Math.max(
+        maxReturnSize,
+        (1L + valueColumnCount) * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte());
+  }
+
+  @Override
+  public long calculateMaxReturnSize() {
+    return maxReturnSize;
+  }
+
+  @Override
+  public long calculateRetainedSizeAfterCallingNext() {
+    return calculateMaxPeekMemory() - calculateMaxReturnSize();
+  }
+
+  private boolean readFileData() throws IOException {
+    while (seriesScanUtil.hasNextFile()) {
+      if (readChunkData()) {
+        return true;
+      }
+    }
+    return false;
   }
 
   private boolean readChunkData() throws IOException {
@@ -125,25 +164,45 @@ public class AlignedSeriesScanOperator implements DataSourceOperator {
 
   private boolean readPageData() throws IOException {
     while (seriesScanUtil.hasNextPage()) {
-      tsBlock = seriesScanUtil.nextPage();
+      TsBlock tsBlock = seriesScanUtil.nextPage();
       if (!isEmpty(tsBlock)) {
+        appendToBuilder(tsBlock);
         return true;
       }
     }
     return false;
   }
 
+  private void appendToBuilder(TsBlock tsBlock) {
+    int size = tsBlock.getPositionCount();
+    TimeColumnBuilder timeColumnBuilder = builder.getTimeColumnBuilder();
+    TimeColumn timeColumn = tsBlock.getTimeColumn();
+    for (int i = 0; i < size; i++) {
+      timeColumnBuilder.writeLong(timeColumn.getLong(i));
+      builder.declarePosition();
+    }
+    for (int columnIndex = 0, columnSize = tsBlock.getValueColumnCount();
+        columnIndex < columnSize;
+        columnIndex++) {
+      ColumnBuilder columnBuilder = builder.getColumnBuilder(columnIndex);
+      Column column = tsBlock.getColumn(columnIndex);
+      if (column.mayHaveNull()) {
+        for (int i = 0; i < size; i++) {
+          if (column.isNull(i)) {
+            columnBuilder.appendNull();
+          } else {
+            columnBuilder.write(column, i);
+          }
+        }
+      } else {
+        for (int i = 0; i < size; i++) {
+          columnBuilder.write(column, i);
+        }
+      }
+    }
+  }
+
   private boolean isEmpty(TsBlock tsBlock) {
     return tsBlock == null || tsBlock.isEmpty();
-  }
-
-  @Override
-  public PlanNodeId getSourceId() {
-    return sourceId;
-  }
-
-  @Override
-  public void initQueryDataSource(QueryDataSource dataSource) {
-    seriesScanUtil.initQueryDataSource(dataSource);
   }
 }

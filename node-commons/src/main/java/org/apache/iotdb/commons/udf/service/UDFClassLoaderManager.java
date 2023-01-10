@@ -24,11 +24,9 @@ import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
 
-import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
 import java.io.IOException;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -76,7 +74,9 @@ public class UDFClassLoaderManager implements IService {
   public UDFClassLoader updateAndGetActiveClassLoader() throws IOException {
     UDFClassLoader deprecatedClassLoader = activeClassLoader;
     activeClassLoader = new UDFClassLoader(libRoot);
-    deprecatedClassLoader.markAsDeprecated();
+    if (deprecatedClassLoader != null) {
+      deprecatedClassLoader.markAsDeprecated();
+    }
     return activeClassLoader;
   }
 
@@ -91,19 +91,11 @@ public class UDFClassLoaderManager implements IService {
   @Override
   public void start() throws StartupException {
     try {
-      makeDirIfNecessary();
+      SystemFileFactory.INSTANCE.makeDirIfNecessary(libRoot);
       activeClassLoader = new UDFClassLoader(libRoot);
     } catch (IOException e) {
       throw new StartupException(this.getID().getName(), e.getMessage());
     }
-  }
-
-  private void makeDirIfNecessary() throws IOException {
-    File file = SystemFileFactory.INSTANCE.getFile(libRoot);
-    if (file.exists() && file.isDirectory()) {
-      return;
-    }
-    FileUtils.forceMkdir(file);
   }
 
   @Override
@@ -123,6 +115,7 @@ public class UDFClassLoaderManager implements IService {
   private static UDFClassLoaderManager INSTANCE = null;
 
   public static synchronized UDFClassLoaderManager setupAndGetInstance(String libRoot) {
+
     if (INSTANCE == null) {
       INSTANCE = new UDFClassLoaderManager(libRoot);
     }

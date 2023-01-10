@@ -18,10 +18,10 @@
  */
 package org.apache.iotdb;
 
+import org.apache.iotdb.isession.SessionDataSet.DataIterator;
+import org.apache.iotdb.isession.pool.SessionDataSetWrapper;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
-import org.apache.iotdb.session.SessionDataSet.DataIterator;
-import org.apache.iotdb.session.pool.SessionDataSetWrapper;
 import org.apache.iotdb.session.pool.SessionPool;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -88,11 +88,11 @@ public class DataMigrationExample {
     int count = 0;
     while (schemaIter.next()) {
       count++;
-      Path currentPath = new Path(schemaIter.getString("timeseries"), true);
+      Path currentPath = new Path(schemaIter.getString("Timeseries"), true);
       Future future =
           executorService.submit(
               new LoadThread(
-                  count, currentPath, TSDataType.valueOf(schemaIter.getString("dataType"))));
+                  count, currentPath, TSDataType.valueOf(schemaIter.getString("DataType"))));
       futureList.add(future);
     }
     readerPool.closeResultSet(schemaDataSet);

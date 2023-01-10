@@ -19,8 +19,10 @@
 package org.apache.iotdb.commons.partition;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
+import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.apache.thrift.TException;
@@ -30,13 +32,19 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.Vector;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.stream.Collectors;
 
 public class SeriesPartitionTable {
 
@@ -57,20 +65,47 @@ public class SeriesPartitionTable {
   /**
    * Thread-safely get DataPartition within the specific StorageGroup
    *
-   * @param partitionSlots TimePartitionSlots
+   * @param partitionSlotList TimePartitionSlotList
    * @param seriesPartitionTable Store the matched SeriesPartitions
    * @return True if all the SeriesPartitionSlots are matched, false otherwise
    */
   public boolean getDataPartition(
-      List<TTimePartitionSlot> partitionSlots, SeriesPartitionTable seriesPartitionTable) {
+      TTimeSlotList partitionSlotList, SeriesPartitionTable seriesPartitionTable) {
     AtomicBoolean result = new AtomicBoolean(true);
+    List<TTimePartitionSlot> partitionSlots = partitionSlotList.getTimePartitionSlots();
 
     if (partitionSlots.isEmpty()) {
       // Return all DataPartitions in one SeriesPartitionSlot
       // when the queried TimePartitionSlots are empty
       seriesPartitionTable.getSeriesPartitionMap().putAll(seriesPartitionMap);
     } else {
-      // Return the DataPartition for each TimePartitionSlot
+      boolean isNeedLeftAll = partitionSlotList.isNeedLeftAll(),
+          isNeedRightAll = partitionSlotList.isNeedRightAll();
+      if (isNeedLeftAll || isNeedRightAll) {
+        // we need to calculate the leftMargin which contains all the time partition on the unclosed
+        // left side: (-oo, leftMargin)
+        // and the rightMargin which contains all the time partition on the unclosed right side:
+        // (rightMargin, +oo)
+        // all the remaining closed time range which locates in [leftMargin, rightMargin] will be
+        // calculated outside if block
+        long leftMargin = isNeedLeftAll ? partitionSlots.get(0).getStartTime() : Long.MIN_VALUE,
+            rightMargin =
+                isNeedRightAll
+                    ? partitionSlots.get(partitionSlots.size() - 1).getStartTime()
+                    : Long.MAX_VALUE;
+        seriesPartitionTable
+            .getSeriesPartitionMap()
+            .putAll(
+                seriesPartitionMap.entrySet().stream()
+                    .filter(
+                        entry -> {
+                          long startTime = entry.getKey().getStartTime();
+                          return startTime < leftMargin || startTime > rightMargin;
+                        })
+                    .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue)));
+      }
+
+      // Return the DataPartition for each match TimePartitionSlot
       partitionSlots.forEach(
           timePartitionSlot -> {
             if (seriesPartitionMap.containsKey(timePartitionSlot)) {
@@ -87,22 +122,79 @@ public class SeriesPartitionTable {
   }
 
   /**
+   * Checks whether the specified DataPartition has a predecessor and returns if it does
+   *
+   * @param timePartitionSlot Corresponding TimePartitionSlot
+   * @param timePartitionInterval Time partition interval
+   * @return The specific DataPartition's predecessor if exists, null otherwise
+   */
+  public TConsensusGroupId getPrecededDataPartition(
+      TTimePartitionSlot timePartitionSlot, long timePartitionInterval) {
+    if (timePartitionSlot.getStartTime() < timePartitionInterval) {
+      // The first DataPartition doesn't have predecessor
+      return null;
+    } else {
+      TTimePartitionSlot predecessorSlot =
+          new TTimePartitionSlot(timePartitionSlot.getStartTime() - timePartitionInterval);
+      return seriesPartitionMap
+          .getOrDefault(predecessorSlot, Collections.singletonList(null))
+          .get(0);
+    }
+  }
+
+  /**
+   * Query a timePartition's corresponding dataRegionIds
+   *
+   * @param timeSlotId Time partition's timeSlotId
+   * @return the timePartition's corresponding dataRegionIds
+   */
+  List<TConsensusGroupId> getRegionId(TTimePartitionSlot timeSlotId) {
+    if (timeSlotId != null) {
+      if (!seriesPartitionMap.containsKey(timeSlotId)) {
+        return new ArrayList<>();
+      }
+      return seriesPartitionMap.get(timeSlotId).stream()
+          .sorted(Comparator.comparing(TConsensusGroupId::getId))
+          .collect(Collectors.toList());
+    } else {
+      Set<TConsensusGroupId> result = new HashSet<>();
+      seriesPartitionMap.values().forEach(result::addAll);
+      return result.stream()
+          .sorted(Comparator.comparing(TConsensusGroupId::getId))
+          .collect(Collectors.toList());
+    }
+  }
+
+  List<TTimePartitionSlot> getTimeSlotList(long startTime, long endTime) {
+    return seriesPartitionMap.keySet().stream()
+        .filter(e -> e.getStartTime() >= startTime && e.getStartTime() < endTime)
+        .sorted(Comparator.comparing(TTimePartitionSlot::getStartTime))
+        .collect(Collectors.toList());
+  }
+
+  /**
    * Create DataPartition within the specific SeriesPartitionSlot
    *
    * @param assignedSeriesPartitionTable Assigned result
-   * @param deltaMap Number of DataPartitions added to each Region
+   * @param seriesPartitionSlot Corresponding TSeriesPartitionSlot
+   * @param groupDeltaMap Map<TConsensusGroupId, Map<TSeriesPartitionSlot, Delta TTimePartitionSlot
+   *     Count>>
    */
   public void createDataPartition(
       SeriesPartitionTable assignedSeriesPartitionTable,
-      Map<TConsensusGroupId, AtomicInteger> deltaMap) {
+      TSeriesPartitionSlot seriesPartitionSlot,
+      Map<TConsensusGroupId, Map<TSeriesPartitionSlot, AtomicLong>> groupDeltaMap) {
     assignedSeriesPartitionTable
         .getSeriesPartitionMap()
         .forEach(
             ((timePartitionSlot, consensusGroupIds) -> {
               seriesPartitionMap.put(timePartitionSlot, new Vector<>(consensusGroupIds));
-              deltaMap
-                  .computeIfAbsent(consensusGroupIds.get(0), empty -> new AtomicInteger(0))
-                  .getAndIncrement();
+              consensusGroupIds.forEach(
+                  consensusGroupId ->
+                      groupDeltaMap
+                          .computeIfAbsent(consensusGroupId, empty -> new ConcurrentHashMap<>())
+                          .computeIfAbsent(seriesPartitionSlot, empty -> new AtomicLong(0))
+                          .getAndIncrement());
             }));
   }
 

@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.commons.concurrent.threadpool;
 
+import com.google.common.base.Throwables;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -184,5 +185,11 @@ public class ScheduledExecutorUtil {
         initialDelay,
         delay,
         unit);
+  }
+
+  public static RuntimeException propagate(Throwable throwable) {
+    logger.error("Run thread failed", throwable);
+    Throwables.throwIfUnchecked(throwable);
+    throw new RuntimeException(throwable);
   }
 }

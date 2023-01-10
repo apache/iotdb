@@ -105,10 +105,15 @@ public class TsFileMetadata {
    * @param outputStream -output stream to determine byte length
    * @return -byte length
    */
-  public int serializeBloomFilter(OutputStream outputStream, Set<Path> paths) throws IOException {
-    int byteLen = 0;
+  public int buildAndSerializeBloomFilter(OutputStream outputStream, Set<Path> paths)
+      throws IOException {
     BloomFilter filter = buildBloomFilter(paths);
+    return serializeBloomFilter(outputStream, filter);
+  }
 
+  public int serializeBloomFilter(OutputStream outputStream, BloomFilter filter)
+      throws IOException {
+    int byteLen = 0;
     byte[] bytes = filter.serialize();
     byteLen += ReadWriteForEncodingUtils.writeUnsignedVarInt(bytes.length, outputStream);
     outputStream.write(bytes);

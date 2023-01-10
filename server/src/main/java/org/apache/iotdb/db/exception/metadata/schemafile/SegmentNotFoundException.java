@@ -38,4 +38,15 @@ public class SegmentNotFoundException extends MetadataException {
         TSStatusCode.SEGMENT_NOT_FOUND.getStatusCode(),
         true);
   }
+
+  public SegmentNotFoundException(String reason) {
+    super(reason, TSStatusCode.SEGMENT_NOT_FOUND.getStatusCode(), true);
+  }
+
+  public SegmentNotFoundException(int pid) {
+    super(
+        String.format("No splittable segment found in page [%s]", pid),
+        TSStatusCode.SEGMENT_NOT_FOUND.getStatusCode(),
+        true);
+  }
 }

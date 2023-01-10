@@ -20,22 +20,16 @@
 package org.apache.iotdb.db.metadata.schemaregion.rocksdb.mnode;
 
 import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.db.metadata.logfile.MLogWriter;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
+import org.apache.iotdb.db.metadata.mnode.MNodeType;
 import org.apache.iotdb.db.metadata.mnode.container.IMNodeContainer;
 import org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaConstants;
 import org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaReadWriteHandler;
 import org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaUtils;
-import org.apache.iotdb.db.metadata.template.Template;
 
 import org.rocksdb.RocksDBException;
 
-import java.io.IOException;
-
 public class RInternalMNode extends RMNode {
-
-  // schema template
-  protected Template schemaTemplate = null;
 
   private volatile boolean useTemplate = false;
 
@@ -160,24 +154,9 @@ public class RInternalMNode extends RMNode {
     throw new UnsupportedOperationException();
   }
 
-  /**
-   * get upper template of this node, remember we get nearest template alone this node to root
-   *
-   * @return upper template
-   */
   @Override
-  public Template getUpperTemplate() {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
-  public Template getSchemaTemplate() {
-    return schemaTemplate;
-  }
-
-  @Override
-  public void setSchemaTemplate(Template schemaTemplate) {
-    this.schemaTemplate = schemaTemplate;
+  public MNodeType getMNodeType(Boolean isConfig) {
+    return isConfig ? MNodeType.SG_INTERNAL : MNodeType.INTERNAL;
   }
 
   @Override
@@ -188,10 +167,5 @@ public class RInternalMNode extends RMNode {
   @Override
   public void setUseTemplate(boolean useTemplate) {
     this.useTemplate = useTemplate;
-  }
-
-  @Override
-  public void serializeTo(MLogWriter logWriter) throws IOException {
-    throw new UnsupportedOperationException();
   }
 }

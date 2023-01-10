@@ -18,8 +18,6 @@
  */
 package org.apache.iotdb.db.wal.buffer;
 
-import org.apache.iotdb.commons.utils.TestOnly;
-
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -40,6 +38,9 @@ public interface IWALBuffer extends AutoCloseable {
   /** Get current wal file's size */
   long getCurrentWALFileSize();
 
+  /** Get current search index */
+  long getCurrentSearchIndex();
+
   @Override
   void close();
 
@@ -49,6 +50,6 @@ public interface IWALBuffer extends AutoCloseable {
   /** Wait for next flush operation done */
   boolean waitForFlush(long time, TimeUnit unit) throws InterruptedException;
 
-  @TestOnly
+  /** Return true when all wal entries all consumed and flushed */
   boolean isAllWALEntriesConsumed();
 }

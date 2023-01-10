@@ -20,18 +20,44 @@
 package org.apache.iotdb.db.mpp.plan.execution.config.executor;
 
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
+import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.db.mpp.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CountStorageGroupStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateContinuousQueryStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateFunctionStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTriggerStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteStorageGroupStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteTimeSeriesStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.GetRegionIdStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.GetSeriesSlotListStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.GetTimeSlotListStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.MigrateRegionStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetTTLStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowClusterStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowDataNodesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowRegionStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTTLStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.template.CreateSchemaTemplateStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.template.DeactivateTemplateStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.template.DropSchemaTemplateStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.template.SetSchemaTemplateStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowNodesInSchemaTemplateStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowPathSetTemplateStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowSchemaTemplateStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.template.UnsetSchemaTemplateStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.KillQueryStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeSinkStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.sync.DropPipeSinkStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.sync.DropPipeStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.sync.ShowPipeSinkStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.sync.ShowPipeStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.sync.StartPipeStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.sync.StopPipeStatement;
 
 import com.google.common.util.concurrent.SettableFuture;
-
-import java.util.List;
 
 public interface IConfigTaskExecutor {
 
@@ -44,21 +70,104 @@ public interface IConfigTaskExecutor {
   SettableFuture<ConfigTaskResult> countStorageGroup(
       CountStorageGroupStatement countStorageGroupStatement);
 
-  SettableFuture<ConfigTaskResult> createFunction(
-      String udfName, String className, List<String> uris);
-
   SettableFuture<ConfigTaskResult> deleteStorageGroup(
       DeleteStorageGroupStatement deleteStorageGroupStatement);
 
+  SettableFuture<ConfigTaskResult> createFunction(CreateFunctionStatement createFunctionStatement);
+
   SettableFuture<ConfigTaskResult> dropFunction(String udfName);
+
+  SettableFuture<ConfigTaskResult> showFunctions();
+
+  SettableFuture<ConfigTaskResult> createTrigger(CreateTriggerStatement createTriggerStatement);
+
+  SettableFuture<ConfigTaskResult> dropTrigger(String triggerName);
+
+  SettableFuture<ConfigTaskResult> showTriggers();
 
   SettableFuture<ConfigTaskResult> setTTL(SetTTLStatement setTTLStatement, String taskName);
 
-  SettableFuture<ConfigTaskResult> flush(TFlushReq tFlushReq);
+  SettableFuture<ConfigTaskResult> merge(boolean onCluster);
 
-  SettableFuture<ConfigTaskResult> showCluster();
+  SettableFuture<ConfigTaskResult> flush(TFlushReq tFlushReq, boolean onCluster);
+
+  SettableFuture<ConfigTaskResult> clearCache(boolean onCluster);
+
+  SettableFuture<ConfigTaskResult> loadConfiguration(boolean onCluster);
+
+  SettableFuture<ConfigTaskResult> setSystemStatus(boolean onCluster, NodeStatus status);
+
+  SettableFuture<ConfigTaskResult> killQuery(KillQueryStatement killQueryStatement);
+
+  SettableFuture<ConfigTaskResult> showCluster(ShowClusterStatement showClusterStatement);
+
+  SettableFuture<ConfigTaskResult> showClusterParameters();
 
   SettableFuture<ConfigTaskResult> showTTL(ShowTTLStatement showTTLStatement);
 
   SettableFuture<ConfigTaskResult> showRegion(ShowRegionStatement showRegionStatement);
+
+  SettableFuture<ConfigTaskResult> showDataNodes(ShowDataNodesStatement showDataNodesStatement);
+
+  SettableFuture<ConfigTaskResult> showConfigNodes();
+
+  SettableFuture<ConfigTaskResult> createSchemaTemplate(
+      CreateSchemaTemplateStatement createSchemaTemplateStatement);
+
+  SettableFuture<ConfigTaskResult> showSchemaTemplate(
+      ShowSchemaTemplateStatement showSchemaTemplateStatement);
+
+  SettableFuture<ConfigTaskResult> showNodesInSchemaTemplate(
+      ShowNodesInSchemaTemplateStatement showNodesInSchemaTemplateStatement);
+
+  SettableFuture<ConfigTaskResult> setSchemaTemplate(
+      SetSchemaTemplateStatement setSchemaTemplateStatement);
+
+  SettableFuture<ConfigTaskResult> showPathSetTemplate(
+      ShowPathSetTemplateStatement showPathSetTemplateStatement);
+
+  SettableFuture<ConfigTaskResult> deactivateSchemaTemplate(
+      String queryId, DeactivateTemplateStatement deactivateTemplateStatement);
+
+  SettableFuture<ConfigTaskResult> unsetSchemaTemplate(
+      String queryId, UnsetSchemaTemplateStatement unsetSchemaTemplateStatement);
+
+  SettableFuture<ConfigTaskResult> dropSchemaTemplate(
+      DropSchemaTemplateStatement dropSchemaTemplateStatement);
+
+  SettableFuture<ConfigTaskResult> createPipeSink(CreatePipeSinkStatement createPipeSinkStatement);
+
+  SettableFuture<ConfigTaskResult> dropPipeSink(DropPipeSinkStatement dropPipeSinkStatement);
+
+  SettableFuture<ConfigTaskResult> showPipeSink(ShowPipeSinkStatement showPipeSinkStatement);
+
+  SettableFuture<ConfigTaskResult> dropPipe(DropPipeStatement dropPipeStatement);
+
+  SettableFuture<ConfigTaskResult> createPipe(CreatePipeStatement createPipeStatement);
+
+  SettableFuture<ConfigTaskResult> startPipe(StartPipeStatement startPipeStatement);
+
+  SettableFuture<ConfigTaskResult> stopPipe(StopPipeStatement stopPipeStatement);
+
+  SettableFuture<ConfigTaskResult> showPipe(ShowPipeStatement showPipeStatement);
+
+  SettableFuture<ConfigTaskResult> deleteTimeSeries(
+      String queryId, DeleteTimeSeriesStatement deleteTimeSeriesStatement);
+
+  SettableFuture<ConfigTaskResult> getRegionId(GetRegionIdStatement getRegionIdStatement);
+
+  SettableFuture<ConfigTaskResult> getSeriesSlotList(
+      GetSeriesSlotListStatement getSeriesSlotListStatement);
+
+  SettableFuture<ConfigTaskResult> getTimeSlotList(
+      GetTimeSlotListStatement getTimeSlotListStatement);
+
+  SettableFuture<ConfigTaskResult> migrateRegion(MigrateRegionStatement migrateRegionStatement);
+
+  SettableFuture<ConfigTaskResult> createContinuousQuery(
+      CreateContinuousQueryStatement createContinuousQueryStatement, String sql, String username);
+
+  SettableFuture<ConfigTaskResult> dropContinuousQuery(String cqId);
+
+  SettableFuture<ConfigTaskResult> showContinuousQueries();
 }

@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.engine.storagegroup;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
@@ -122,12 +123,34 @@ public class TsFileNameGenerator {
     }
   }
 
+  @TestOnly
   public static TsFileResource increaseCrossCompactionCnt(TsFileResource tsFileResource)
       throws IOException {
     File tsFile = tsFileResource.getTsFile();
     String path = tsFile.getParent();
     TsFileName tsFileName = getTsFileName(tsFileResource.getTsFile().getName());
     tsFileName.setCrossCompactionCnt(tsFileName.getCrossCompactionCnt() + 1);
+    tsFileResource.setFile(
+        new File(
+            path,
+            tsFileName.time
+                + FILE_NAME_SEPARATOR
+                + tsFileName.version
+                + FILE_NAME_SEPARATOR
+                + tsFileName.innerCompactionCnt
+                + FILE_NAME_SEPARATOR
+                + tsFileName.crossCompactionCnt
+                + TSFILE_SUFFIX));
+    return tsFileResource;
+  }
+
+  @TestOnly
+  public static TsFileResource increaseInnerCompactionCnt(TsFileResource tsFileResource)
+      throws IOException {
+    File tsFile = tsFileResource.getTsFile();
+    String path = tsFile.getParent();
+    TsFileName tsFileName = getTsFileName(tsFileResource.getTsFile().getName());
+    tsFileName.setInnerCompactionCnt(tsFileName.getInnerCompactionCnt() + 1);
     tsFileResource.setFile(
         new File(
             path,
@@ -172,6 +195,7 @@ public class TsFileNameGenerator {
     for (TsFileResource resource : seqResources) {
       TsFileName tsFileName = getTsFileName(resource.getTsFile().getName());
       tsFileName.setCrossCompactionCnt(tsFileName.getCrossCompactionCnt() + 1);
+      // set target resource to COMPACTING until the end of this task
       targetFileResources.add(
           new TsFileResource(
               new File(
@@ -183,7 +207,8 @@ public class TsFileNameGenerator {
                       + tsFileName.innerCompactionCnt
                       + FILE_NAME_SEPARATOR
                       + tsFileName.crossCompactionCnt
-                      + IoTDBConstant.CROSS_COMPACTION_TMP_FILE_SUFFIX)));
+                      + IoTDBConstant.CROSS_COMPACTION_TMP_FILE_SUFFIX),
+              TsFileResourceStatus.COMPACTING));
     }
     return targetFileResources;
   }
@@ -214,6 +239,7 @@ public class TsFileNameGenerator {
       maxInnerMergeCount = Math.max(tsFileName.innerCompactionCnt, maxInnerMergeCount);
       maxCrossMergeCount = Math.max(tsFileName.crossCompactionCnt, maxCrossMergeCount);
     }
+    // set target resource to COMPACTING until the end of this task
     return sequence
         ? new TsFileResource(
             new File(
@@ -225,7 +251,8 @@ public class TsFileNameGenerator {
                     + (maxInnerMergeCount + 1)
                     + FILE_NAME_SEPARATOR
                     + maxCrossMergeCount
-                    + IoTDBConstant.INNER_COMPACTION_TMP_FILE_SUFFIX))
+                    + IoTDBConstant.INNER_COMPACTION_TMP_FILE_SUFFIX),
+            TsFileResourceStatus.COMPACTING)
         : new TsFileResource(
             new File(
                 tsFileResources.get(0).getTsFile().getParent(),
@@ -236,7 +263,8 @@ public class TsFileNameGenerator {
                     + (maxInnerMergeCount + 1)
                     + FILE_NAME_SEPARATOR
                     + maxCrossMergeCount
-                    + IoTDBConstant.INNER_COMPACTION_TMP_FILE_SUFFIX));
+                    + IoTDBConstant.INNER_COMPACTION_TMP_FILE_SUFFIX),
+            TsFileResourceStatus.COMPACTING);
   }
 
   public static class TsFileName {

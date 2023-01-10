@@ -16,9 +16,11 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 include "common.thrift"
 namespace java org.apache.iotdb.service.rpc.thrift
 namespace py iotdb.thrift.rpc
+namespace go rpc
 
 struct TSQueryDataSet{
   // ByteBuffer for time column
@@ -66,6 +68,8 @@ struct TSExecuteStatementResp {
   10: optional list<string> sgColumns
   11: optional list<byte> aliasColumns
   12: optional TSTracingInfo tracingInfo
+  13: optional list<binary> queryResult
+  14: optional bool moreData
 }
 
 enum TSProtocolVersion {
@@ -92,7 +96,7 @@ struct TSOpenSessionResp {
 struct TSOpenSessionReq {
   1: required TSProtocolVersion client_protocol = TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V3
   2: required string zoneId
-  3: optional string username
+  3: required string username
   4: optional string password
   5: optional map<string, string> configuration
 }
@@ -173,6 +177,8 @@ struct TSFetchResultsResp{
   3: required bool isAlign
   4: optional TSQueryDataSet queryDataSet
   5: optional TSQueryNonAlignDataSet nonAlignQueryDataSet
+  6: optional list<binary> queryResult
+  7: optional bool moreData
 }
 
 struct TSFetchMetadataResp{
@@ -215,6 +221,7 @@ struct TSInsertStringRecordReq {
   4: required list<string> values
   5: required i64 timestamp
   6: optional bool isAligned
+  7: optional i64 timeout
 }
 
 struct TSInsertTabletReq {
@@ -315,6 +322,7 @@ struct TSRawDataQueryReq {
   6: required i64 statementId
   7: optional bool enableRedirectQuery;
   8: optional bool jdbcQuery;
+  9: optional i64 timeout
 }
 
 struct TSLastDataQueryReq {
@@ -325,6 +333,7 @@ struct TSLastDataQueryReq {
   5: required i64 statementId
   6: optional bool enableRedirectQuery;
   7: optional bool jdbcQuery;
+  8: optional i64 timeout
 }
 
 struct TSCreateMultiTimeseriesReq {
@@ -350,6 +359,7 @@ struct ServerProperties {
   8: optional i32 watermarkParamMaxRightBit;
   9: optional i32 thriftMaxFrameSize;
   10:optional bool isReadOnly;
+  11:optional string buildInfo;
 }
 
 struct TSSetSchemaTemplateReq {
@@ -406,7 +416,61 @@ struct TSDropSchemaTemplateReq {
   2: required string templateName
 }
 
+// The sender and receiver need to check some info to confirm validity
+struct TSyncIdentityInfo{
+  // Sender needs to tell receiver its identity.
+  1:required string pipeName
+  2:required i64 createTime
+  // The version of sender and receiver need to be the same.
+  3:required string version
+  4:required string database
+}
+
+struct TSyncTransportMetaInfo{
+  // The name of the file in sending.
+  1:required string fileName
+  // The start index of the file slice in sending.
+  2:required i64 startIndex
+}
+
+struct TSBackupConfigurationResp {
+  1: required common.TSStatus status
+  2: optional bool enableOperationSync
+  3: optional string secondaryAddress
+  4: optional i32 secondaryPort
+}
+
+enum TSConnectionType {
+  THRIFT_BASED
+  MQTT_BASED
+  INTERNAL
+}
+
+struct TSConnectionInfo {
+  1: required string userName
+  2: required i64 logInTime
+  3: required string connectionId // ip:port for thrift-based service and clientId for mqtt-based service
+  4: required TSConnectionType type
+}
+
+struct TSConnectionInfoResp {
+  1: required list<TSConnectionInfo> connectionInfoList
+}
+
 service IClientRPCService {
+
+  TSExecuteStatementResp executeQueryStatementV2(1:TSExecuteStatementReq req);
+
+  TSExecuteStatementResp executeUpdateStatementV2(1:TSExecuteStatementReq req);
+
+  TSExecuteStatementResp executeStatementV2(1:TSExecuteStatementReq req);
+
+  TSExecuteStatementResp executeRawDataQueryV2(1:TSRawDataQueryReq req);
+
+  TSExecuteStatementResp executeLastDataQueryV2(1:TSLastDataQueryReq req);
+
+  TSFetchResultsResp fetchResultsV2(1:TSFetchResultsReq req);
+
   TSOpenSessionResp openSession(1:TSOpenSessionReq req);
 
   common.TSStatus closeSession(1:TSCloseSessionReq req);
@@ -419,9 +483,9 @@ service IClientRPCService {
 
   TSExecuteStatementResp executeUpdateStatement(1:TSExecuteStatementReq req);
 
-  TSFetchResultsResp fetchResults(1:TSFetchResultsReq req)
+  TSFetchResultsResp fetchResults(1:TSFetchResultsReq req);
 
-  TSFetchMetadataResp fetchMetadata(1:TSFetchMetadataReq req)
+  TSFetchMetadataResp fetchMetadata(1:TSFetchMetadataReq req);
 
   common.TSStatus cancelOperation(1:TSCancelOperationReq req);
 
@@ -496,4 +560,14 @@ service IClientRPCService {
   common.TSStatus unsetSchemaTemplate(1:TSUnsetSchemaTemplateReq req);
 
   common.TSStatus dropSchemaTemplate(1:TSDropSchemaTemplateReq req);
+
+  common.TSStatus handshake(TSyncIdentityInfo info);
+
+  common.TSStatus sendPipeData(1:binary buff);
+
+  common.TSStatus sendFile(1:TSyncTransportMetaInfo metaInfo, 2:binary buff);
+
+  TSBackupConfigurationResp getBackupConfiguration();
+
+  TSConnectionInfoResp fetchAllConnectionsInfo();
 }

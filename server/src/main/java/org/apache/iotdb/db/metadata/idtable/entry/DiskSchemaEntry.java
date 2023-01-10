@@ -29,6 +29,8 @@ import java.io.OutputStream;
  * the disk schema entry of schema entry of id table. This is a po class, so every field is public
  */
 public class DiskSchemaEntry {
+
+  public static final String TOMBSTONE = "tombstone_record";
   // id form device path, eg: 1#2#3#4
   public String deviceID;
 
@@ -72,6 +74,15 @@ public class DiskSchemaEntry {
     this.isAligned = isAligned;
   }
 
+  /**
+   * get device path
+   *
+   * @return device path
+   */
+  public String getDevicePath() {
+    return seriesKey.substring(0, seriesKey.length() - measurementName.length() - 1);
+  }
+
   public int serialize(OutputStream outputStream) throws IOException {
     int byteLen = 0;
     byteLen += ReadWriteIOUtils.write(deviceID, outputStream);
@@ -100,8 +111,14 @@ public class DiskSchemaEntry {
     // read byte len
     res.entrySize = ReadWriteIOUtils.readInt(inputStream);
     res.entrySize += Integer.BYTES;
-
+    if (isTombstone(res.deviceID)) res.deviceID = TOMBSTONE;
     return res;
+  }
+
+  private static Boolean isTombstone(String deviceID) {
+    int length = deviceID.getBytes().length;
+    byte[] bytes = new byte[length];
+    return deviceID.equals(new String(bytes, 0, length));
   }
 
   @Override

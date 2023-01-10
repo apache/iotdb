@@ -18,44 +18,20 @@
 # under the License.
 #
 
-
 echo ----------------------------
 echo Starting to remove IoTDB ConfigNode
 echo ----------------------------
 
-if [ -z "${CONFIGNODE_HOME}" ]; then
-  export CONFIGNODE_HOME="`dirname "$0"`/.."
-fi
+source "$(dirname "$0")/iotdb-common.sh"
 
-CONFIGNODE_CONF=${CONFIGNODE_HOME}/conf
-CONFIGNODE_LOGS=${CONFIGNODE_HOME}/logs
+#get_iotdb_include wil remove -D parameters
+VARS=$(get_iotdb_include "$*")
+checkAllConfigNodeVariables
+eval set -- "$VARS"
 
-is_conf_path=false
-for arg do
-  shift
-  if [ "$arg" == "-c" ]; then
-    is_conf_path=true
-    continue
-  fi
-  if [ $is_conf_path == true ]; then
-    CONFIGNODE_CONF=$arg
-    is_conf_path=false
-    continue
-  fi
-  set -- "$@" "$arg"
-done
+PARAMS="-r "$*
 
-CONF_PARAMS="-r "$*
-
-if [ -f "$CONFIGNODE_CONF/confignode-env.sh" ]; then
-    if [ "$#" -ge "1" -a "$1" == "printgc" ]; then
-      . "$CONFIGNODE_CONF/confignode-env.sh" "printgc"
-    else
-        . "$CONFIGNODE_CONF/confignode-env.sh"
-    fi
-else
-    echo "can't find $CONFIGNODE_CONF/confignode-env.sh"
-fi
+initConfigNodeEnv
 
 CLASSPATH=""
 for f in ${CONFIGNODE_HOME}/lib/*.jar; do
@@ -63,14 +39,19 @@ for f in ${CONFIGNODE_HOME}/lib/*.jar; do
 done
 classname=org.apache.iotdb.confignode.service.ConfigNode
 
-launch_service()
-{
-	class="$1"
-	confignode_parms="-Dlogback.configurationFile=${CONFIGNODE_CONF}/logback.xml"
-	confignode_parms="$confignode_parms -DCONFIGNODE_HOME=${CONFIGNODE_HOME}"
-	confignode_parms="$confignode_parms -DCONFIGNODE_CONF=${CONFIGNODE_CONF}"
-	exec "$JAVA" $illegal_access_params $confignode_parms $CONFIGNODE_JMX_OPTS -cp "$CLASSPATH" "$class" $CONF_PARAMS
-	return $?
+launch_service() {
+  class="$1"
+    iotdb_parms="-Dlogback.configurationFile=${CONFIGNODE_LOG_CONFIG}"
+  	iotdb_parms="$iotdb_parms -DCONFIGNODE_HOME=${CONFIGNODE_HOME}"
+  	iotdb_parms="$iotdb_parms -DCONFIGNODE_DATA_HOME=${CONFIGNODE_DATA_HOME}"
+  	iotdb_parms="$iotdb_parms -DTSFILE_HOME=${CONFIGNODE_HOME}"
+  	iotdb_parms="$iotdb_parms -DCONFIGNODE_CONF=${CONFIGNODE_CONF}"
+  	iotdb_parms="$iotdb_parms -DTSFILE_CONF=${CONFIGNODE_CONF}"
+  	iotdb_parms="$iotdb_parms -Dname=iotdb\.ConfigNode"
+  	iotdb_parms="$iotdb_parms -DCONFIGNODE_LOGS=${CONFIGNODE_LOGS}"
+
+  exec "$JAVA" $illegal_access_params $iotdb_parms $IOTDB_JMX_OPTS -cp "$CLASSPATH" "$class" $PARAMS
+  return $?
 }
 
 # Start up the service

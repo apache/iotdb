@@ -22,11 +22,13 @@ import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.utils.BasicStructureSerDeUtil;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 
@@ -37,7 +39,7 @@ public class AuthorPlan extends ConfigPhysicalPlan {
   private String password;
   private String newPassword;
   private Set<Integer> permissions;
-  private String nodeName;
+  private List<String> nodeNameList;
   private String userName;
 
   public AuthorPlan(ConfigPhysicalPlanType type) {
@@ -54,7 +56,7 @@ public class AuthorPlan extends ConfigPhysicalPlan {
    * @param password password
    * @param newPassword new password
    * @param permissions permissions
-   * @param nodeName node name in Path structure
+   * @param nodeNameList node name in Path structure
    * @throws AuthException Authentication Exception
    */
   public AuthorPlan(
@@ -64,7 +66,7 @@ public class AuthorPlan extends ConfigPhysicalPlan {
       String password,
       String newPassword,
       Set<Integer> permissions,
-      String nodeName)
+      List<String> nodeNameList)
       throws AuthException {
     this(authorType);
     this.authorType = authorType;
@@ -73,7 +75,7 @@ public class AuthorPlan extends ConfigPhysicalPlan {
     this.password = password;
     this.newPassword = newPassword;
     this.permissions = permissions;
-    this.nodeName = nodeName;
+    this.nodeNameList = nodeNameList;
   }
 
   public ConfigPhysicalPlanType getAuthorType() {
@@ -116,12 +118,12 @@ public class AuthorPlan extends ConfigPhysicalPlan {
     this.permissions = permissions;
   }
 
-  public String getNodeName() {
-    return nodeName;
+  public List<String> getNodeNameList() {
+    return nodeNameList;
   }
 
-  public void setNodeName(String nodeName) {
-    this.nodeName = nodeName;
+  public void setNodeNameList(List<String> nodeNameList) {
+    this.nodeNameList = nodeNameList;
   }
 
   public String getUserName() {
@@ -134,7 +136,7 @@ public class AuthorPlan extends ConfigPhysicalPlan {
 
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
-    BasicStructureSerDeUtil.write(getPlanTypeOrdinal(authorType), stream);
+    ReadWriteIOUtils.write(getPlanType(authorType), stream);
     BasicStructureSerDeUtil.write(userName, stream);
     BasicStructureSerDeUtil.write(roleName, stream);
     BasicStructureSerDeUtil.write(password, stream);
@@ -148,7 +150,7 @@ public class AuthorPlan extends ConfigPhysicalPlan {
         stream.writeInt(permission);
       }
     }
-    BasicStructureSerDeUtil.write(nodeName, stream);
+    BasicStructureSerDeUtil.write(nodeNameList, stream);
   }
 
   @Override
@@ -167,62 +169,62 @@ public class AuthorPlan extends ConfigPhysicalPlan {
         permissions.add(buffer.getInt());
       }
     }
-    nodeName = BasicStructureSerDeUtil.readString(buffer);
+    nodeNameList = BasicStructureSerDeUtil.readStringList(buffer);
   }
 
-  private int getPlanTypeOrdinal(ConfigPhysicalPlanType configPhysicalPlanType) {
-    int type;
+  private short getPlanType(ConfigPhysicalPlanType configPhysicalPlanType) {
+    short type;
     switch (configPhysicalPlanType) {
       case CreateUser:
-        type = ConfigPhysicalPlanType.CreateUser.ordinal();
+        type = ConfigPhysicalPlanType.CreateUser.getPlanType();
         break;
       case CreateRole:
-        type = ConfigPhysicalPlanType.CreateRole.ordinal();
+        type = ConfigPhysicalPlanType.CreateRole.getPlanType();
         break;
       case DropUser:
-        type = ConfigPhysicalPlanType.DropUser.ordinal();
+        type = ConfigPhysicalPlanType.DropUser.getPlanType();
         break;
       case DropRole:
-        type = ConfigPhysicalPlanType.DropRole.ordinal();
+        type = ConfigPhysicalPlanType.DropRole.getPlanType();
         break;
       case GrantRole:
-        type = ConfigPhysicalPlanType.GrantRole.ordinal();
+        type = ConfigPhysicalPlanType.GrantRole.getPlanType();
         break;
       case GrantUser:
-        type = ConfigPhysicalPlanType.GrantUser.ordinal();
+        type = ConfigPhysicalPlanType.GrantUser.getPlanType();
         break;
       case GrantRoleToUser:
-        type = ConfigPhysicalPlanType.GrantRoleToUser.ordinal();
+        type = ConfigPhysicalPlanType.GrantRoleToUser.getPlanType();
         break;
       case RevokeUser:
-        type = ConfigPhysicalPlanType.RevokeUser.ordinal();
+        type = ConfigPhysicalPlanType.RevokeUser.getPlanType();
         break;
       case RevokeRole:
-        type = ConfigPhysicalPlanType.RevokeRole.ordinal();
+        type = ConfigPhysicalPlanType.RevokeRole.getPlanType();
         break;
       case RevokeRoleFromUser:
-        type = ConfigPhysicalPlanType.RevokeRoleFromUser.ordinal();
+        type = ConfigPhysicalPlanType.RevokeRoleFromUser.getPlanType();
         break;
       case UpdateUser:
-        type = ConfigPhysicalPlanType.UpdateUser.ordinal();
+        type = ConfigPhysicalPlanType.UpdateUser.getPlanType();
         break;
       case ListUser:
-        type = ConfigPhysicalPlanType.ListUser.ordinal();
+        type = ConfigPhysicalPlanType.ListUser.getPlanType();
         break;
       case ListRole:
-        type = ConfigPhysicalPlanType.ListRole.ordinal();
+        type = ConfigPhysicalPlanType.ListRole.getPlanType();
         break;
       case ListUserPrivilege:
-        type = ConfigPhysicalPlanType.ListUserPrivilege.ordinal();
+        type = ConfigPhysicalPlanType.ListUserPrivilege.getPlanType();
         break;
       case ListRolePrivilege:
-        type = ConfigPhysicalPlanType.ListRolePrivilege.ordinal();
+        type = ConfigPhysicalPlanType.ListRolePrivilege.getPlanType();
         break;
       case ListUserRoles:
-        type = ConfigPhysicalPlanType.ListUserRoles.ordinal();
+        type = ConfigPhysicalPlanType.ListUserRoles.getPlanType();
         break;
       case ListRoleUsers:
-        type = ConfigPhysicalPlanType.ListRoleUsers.ordinal();
+        type = ConfigPhysicalPlanType.ListRoleUsers.getPlanType();
         break;
       default:
         throw new IllegalArgumentException("Unknown operator: " + configPhysicalPlanType);
@@ -245,12 +247,12 @@ public class AuthorPlan extends ConfigPhysicalPlan {
         && Objects.equals(password, that.password)
         && Objects.equals(newPassword, that.newPassword)
         && Objects.equals(permissions, that.permissions)
-        && Objects.equals(nodeName, that.nodeName);
+        && Objects.equals(nodeNameList, that.nodeNameList);
   }
 
   @Override
   public int hashCode() {
     return Objects.hash(
-        authorType, userName, roleName, password, newPassword, permissions, nodeName);
+        authorType, userName, roleName, password, newPassword, permissions, nodeNameList);
   }
 }

@@ -20,12 +20,12 @@
 package org.apache.iotdb.db.engine.version;
 
 /**
- * VersionController manages the version(a monotonically increasing long) of a storage group. We
- * define that each memtable flush, data deletion, or data update will generate a new version of
- * dataset. So upon the above actions are performed, a new version number is generated and assigned
- * to such actions. Additionally, we also assign versions to TsFiles in their file names, so
- * hopefully we will compare files directly across IoTDB replicas. NOTICE: Thread-safety should be
- * guaranteed by the caller.
+ * VersionController manages the version(a monotonically increasing long) of a database. We define
+ * that each memtable flush, data deletion, or data update will generate a new version of dataset.
+ * So upon the above actions are performed, a new version number is generated and assigned to such
+ * actions. Additionally, we also assign versions to TsFiles in their file names, so hopefully we
+ * will compare files directly across IoTDB replicas. NOTICE: Thread-safety should be guaranteed by
+ * the caller.
  */
 public interface VersionController {
   /**

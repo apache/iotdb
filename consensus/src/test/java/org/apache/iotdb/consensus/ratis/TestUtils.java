@@ -76,6 +76,7 @@ public class TestUtils {
     private AtomicInteger integer;
     private final Logger logger = LoggerFactory.getLogger(IntegerCounter.class);
     private TEndPoint leaderEndpoint;
+    private int leaderId;
     private List<Peer> configuration;
 
     @Override
@@ -131,11 +132,11 @@ public class TestUtils {
     }
 
     @Override
-    public void notifyLeaderChanged(ConsensusGroupId groupId, TEndPoint newLeader) {
-      this.leaderEndpoint = newLeader;
+    public void notifyLeaderChanged(ConsensusGroupId groupId, int newLeaderId) {
+      this.leaderId = newLeaderId;
       System.out.println("---------newLeader-----------");
       System.out.println(groupId);
-      System.out.println(newLeader);
+      System.out.println(newLeaderId);
       System.out.println("----------------------");
     }
 

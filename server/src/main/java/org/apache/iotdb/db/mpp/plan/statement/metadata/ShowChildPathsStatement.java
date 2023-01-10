@@ -22,12 +22,20 @@ package org.apache.iotdb.db.mpp.plan.statement.metadata;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
 
+import java.util.Collections;
+import java.util.List;
+
 public class ShowChildPathsStatement extends ShowStatement {
   private final PartialPath partialPath;
 
   public ShowChildPathsStatement(PartialPath partialPath) {
     super();
     this.partialPath = partialPath;
+  }
+
+  @Override
+  public List<PartialPath> getPaths() {
+    return Collections.singletonList(partialPath);
   }
 
   public PartialPath getPartialPath() {

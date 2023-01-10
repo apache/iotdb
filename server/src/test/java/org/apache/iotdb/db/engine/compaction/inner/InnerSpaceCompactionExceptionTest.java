@@ -18,13 +18,12 @@
  */
 package org.apache.iotdb.db.engine.compaction.inner;
 
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.compaction.CompactionExceptionHandler;
-import org.apache.iotdb.db.engine.compaction.CompactionUtils;
-import org.apache.iotdb.db.engine.compaction.log.CompactionLogger;
-import org.apache.iotdb.db.engine.compaction.performer.ICompactionPerformer;
-import org.apache.iotdb.db.engine.compaction.performer.impl.ReadChunkCompactionPerformer;
-import org.apache.iotdb.db.engine.compaction.task.CompactionTaskSummary;
+import org.apache.iotdb.db.engine.compaction.execute.exception.CompactionExceptionHandler;
+import org.apache.iotdb.db.engine.compaction.execute.performer.ICompactionPerformer;
+import org.apache.iotdb.db.engine.compaction.execute.performer.impl.FastCompactionPerformer;
+import org.apache.iotdb.db.engine.compaction.execute.task.CompactionTaskSummary;
+import org.apache.iotdb.db.engine.compaction.execute.utils.CompactionUtils;
+import org.apache.iotdb.db.engine.compaction.execute.utils.log.CompactionLogger;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionFileGeneratorUtils;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
@@ -46,6 +45,8 @@ import java.util.Map;
 
 public class InnerSpaceCompactionExceptionTest extends AbstractInnerSpaceCompactionTest {
 
+  ICompactionPerformer performer = new FastCompactionPerformer(false);
+
   /**
    * Test when all source files exist, and target file is not complete. System should delete target
    * file and its resource at this time.
@@ -66,7 +67,8 @@ public class InnerSpaceCompactionExceptionTest extends AbstractInnerSpaceCompact
     compactionLogger.logFiles(seqResources, CompactionLogger.STR_SOURCE_FILES);
     compactionLogger.logFiles(
         Collections.singletonList(targetResource), CompactionLogger.STR_TARGET_FILES);
-    ICompactionPerformer performer = new ReadChunkCompactionPerformer(seqResources, targetResource);
+    performer.setSourceFiles(seqResources);
+    performer.setTargetFiles(Collections.singletonList(targetResource));
     performer.setSummary(new CompactionTaskSummary());
     performer.perform();
     CompactionUtils.moveTargetFile(
@@ -117,7 +119,8 @@ public class InnerSpaceCompactionExceptionTest extends AbstractInnerSpaceCompact
     compactionLogger.logFiles(seqResources, CompactionLogger.STR_SOURCE_FILES);
     compactionLogger.logFiles(
         Collections.singletonList(targetResource), CompactionLogger.STR_TARGET_FILES);
-    ICompactionPerformer performer = new ReadChunkCompactionPerformer(seqResources, targetResource);
+    performer.setSourceFiles(seqResources);
+    performer.setTargetFiles(Collections.singletonList(targetResource));
     performer.setSummary(new CompactionTaskSummary());
     performer.perform();
     CompactionUtils.moveTargetFile(
@@ -164,7 +167,8 @@ public class InnerSpaceCompactionExceptionTest extends AbstractInnerSpaceCompact
     compactionLogger.logFiles(seqResources, CompactionLogger.STR_SOURCE_FILES);
     compactionLogger.logFiles(
         Collections.singletonList(targetResource), CompactionLogger.STR_TARGET_FILES);
-    ICompactionPerformer performer = new ReadChunkCompactionPerformer(seqResources, targetResource);
+    performer.setSourceFiles(seqResources);
+    performer.setTargetFiles(Collections.singletonList(targetResource));
     performer.setSummary(new CompactionTaskSummary());
     performer.perform();
     CompactionUtils.moveTargetFile(
@@ -222,7 +226,8 @@ public class InnerSpaceCompactionExceptionTest extends AbstractInnerSpaceCompact
     compactionLogger.logFiles(seqResources, CompactionLogger.STR_SOURCE_FILES);
     compactionLogger.logFiles(
         Collections.singletonList(targetResource), CompactionLogger.STR_TARGET_FILES);
-    ICompactionPerformer performer = new ReadChunkCompactionPerformer(seqResources, targetResource);
+    performer.setSourceFiles(seqResources);
+    performer.setTargetFiles(Collections.singletonList(targetResource));
     performer.setSummary(new CompactionTaskSummary());
     performer.perform();
     CompactionUtils.moveTargetFile(
@@ -254,8 +259,6 @@ public class InnerSpaceCompactionExceptionTest extends AbstractInnerSpaceCompact
     }
 
     Assert.assertFalse(tsFileManager.isAllowCompaction());
-    Assert.assertTrue(IoTDBDescriptor.getInstance().getConfig().isReadOnly());
-    IoTDBDescriptor.getInstance().getConfig().setReadOnly(false);
   }
 
   /**
@@ -278,7 +281,8 @@ public class InnerSpaceCompactionExceptionTest extends AbstractInnerSpaceCompact
     compactionLogger.logFiles(seqResources, CompactionLogger.STR_SOURCE_FILES);
     compactionLogger.logFiles(
         Collections.singletonList(targetResource), CompactionLogger.STR_TARGET_FILES);
-    ICompactionPerformer performer = new ReadChunkCompactionPerformer(seqResources, targetResource);
+    performer.setSourceFiles(seqResources);
+    performer.setTargetFiles(Collections.singletonList(targetResource));
     performer.setSummary(new CompactionTaskSummary());
     performer.perform();
     CompactionUtils.moveTargetFile(
@@ -355,7 +359,8 @@ public class InnerSpaceCompactionExceptionTest extends AbstractInnerSpaceCompact
           new Pair<>(i * ptNum, i * ptNum + 10));
       CompactionFileGeneratorUtils.generateMods(deleteMap, seqResources.get(i), false);
     }
-    ICompactionPerformer performer = new ReadChunkCompactionPerformer(seqResources, targetResource);
+    performer.setSourceFiles(seqResources);
+    performer.setTargetFiles(Collections.singletonList(targetResource));
     performer.setSummary(new CompactionTaskSummary());
     performer.perform();
     CompactionUtils.moveTargetFile(
@@ -416,7 +421,8 @@ public class InnerSpaceCompactionExceptionTest extends AbstractInnerSpaceCompact
           new Pair<>(i * ptNum, i * ptNum + 5));
       CompactionFileGeneratorUtils.generateMods(deleteMap, seqResources.get(i), false);
     }
-    ICompactionPerformer performer = new ReadChunkCompactionPerformer(seqResources, targetResource);
+    performer.setSourceFiles(seqResources);
+    performer.setTargetFiles(Collections.singletonList(targetResource));
     performer.setSummary(new CompactionTaskSummary());
     performer.perform();
     CompactionUtils.moveTargetFile(
@@ -446,6 +452,7 @@ public class InnerSpaceCompactionExceptionTest extends AbstractInnerSpaceCompact
     Assert.assertFalse(targetResource.getModFile().exists());
 
     for (TsFileResource resource : seqResources) {
+      resource.resetModFile();
       Assert.assertTrue(resource.resourceFileExists());
       Assert.assertTrue(resource.getTsFile().exists());
       Assert.assertTrue(resource.getModFile().exists());

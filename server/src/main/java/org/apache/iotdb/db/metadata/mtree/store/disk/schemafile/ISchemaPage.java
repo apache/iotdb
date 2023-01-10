@@ -19,107 +19,127 @@
 package org.apache.iotdb.db.metadata.mtree.store.disk.schemafile;
 
 import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.db.exception.metadata.schemafile.SchemaPageOverflowException;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.exception.metadata.schemafile.SegmentNotFoundException;
-import org.apache.iotdb.db.metadata.mnode.IMNode;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.IOException;
+import java.io.OutputStream;
 import java.nio.ByteBuffer;
-import java.util.Queue;
+import java.nio.channels.FileChannel;
 
 public interface ISchemaPage {
-
   /**
-   * Insert a content directly into specified segment, without considering preallocate and
-   * reallocate segment. <br>
-   * Find the right segment instance which MUST exists, cache the segment and insert the record.
-   * <br>
-   * If not enough, reallocate inside page first, or throw exception for new page then.
+   * <b>Page Header Structure: (23 bytes used, 9 bytes reserved)</b>
    *
-   * <p>Notice that, since {@link SchemaFile#reEstimateSegSize(int)} may increase segment with very
-   * small extent, which originates from design of {@link SchemaFile#estimateSegmentSize(IMNode)}, a
-   * twice relocate will suffice any nodes smaller than 1024 KiB.<br>
-   * This reason works for {@link #update(short, String, ByteBuffer)} as well.
+   * <ul>
+   *   <li>1 byte: page type indicator
+   *   <li>1 int (4 bytes): pageIndex, a non-negative number
+   *   <li>1 short (2 bytes): spareOffset, bound of the variable length part in a slotted structure
+   *   <li>1 short (2 bytes): spareSize, space left to use
+   *   <li>1 short (2 bytes): memberNum, amount of the member whose type depends on implementation
+   *   <li>1 long (8 bytes): firstLeaf, points to first segmented page, only in {@link InternalPage}
+   *   <li>1 int (4 bytes): subIndexPage, points to sub-index, only in {@link InternalPage}
+   * </ul>
    *
-   * @return return 0 if write succeed, a positive for next segment address
-   * @throws SchemaPageOverflowException no next segment, no spare space inside page
+   * <p>While header of a page is partly fixed, the body is dependent on implementation.
    */
-  long write(short segIdx, String key, ByteBuffer buffer) throws MetadataException;
+  static SchemaPage loadSchemaPage(ByteBuffer buffer) throws MetadataException {
+    buffer.clear();
+    byte pageType = ReadWriteIOUtils.readByte(buffer);
 
-  IMNode read(short segIdx, String key) throws SegmentNotFoundException;
+    switch (pageType) {
+      case SchemaFileConfig.SEGMENTED_PAGE:
+        return new SegmentedPage(buffer);
+      case SchemaFileConfig.INTERNAL_PAGE:
+        return new InternalPage(buffer);
+      case SchemaFileConfig.ALIAS_PAGE:
+        return new AliasIndexPage(buffer);
+      default:
+        throw new MetadataException(
+            "ByteBuffer is corrupted or set to a wrong position to load as a SchemaPage.");
+    }
+  }
 
-  /**
-   * The record is definitely inside specified segment. This method compare old and new buffer to
-   * decide whether update in place. <br>
-   * If segment not enough, it will reallocate in this page first, and update segment offset list.
-   * <br>
-   * If no more space for reallocation, throw {@link SchemaPageOverflowException} and return a
-   * negative for new page.
-   *
-   * <p>See {@linkplain #write(short, String, ByteBuffer)} for the detail reason of a twice try.
-   *
-   * @return spare space of the segment, negative if not enough
-   */
-  void update(short segIdx, String key, ByteBuffer buffer) throws MetadataException;
+  /** InternalPage should be initiated with a pointer which points to the minimal child of it. */
+  static SchemaPage initInternalPage(ByteBuffer buffer, int pageIndex, int ptr) {
+    buffer.clear();
 
-  /**
-   * Check if record exists with name or alias.
-   *
-   * @param key name or alias of target child
-   * @param segId target segment index
-   */
-  boolean hasRecordKeyInSegment(String key, short segId) throws SegmentNotFoundException;
+    buffer.position(SchemaFileConfig.PAGE_HEADER_SIZE);
+    ReadWriteIOUtils.write(
+        ((SchemaFileConfig.PAGE_INDEX_MASK & ptr) << SchemaFileConfig.COMP_POINTER_OFFSET_DIGIT),
+        buffer);
 
-  Queue<IMNode> getChildren(short segId) throws SegmentNotFoundException;
+    buffer.position(0);
+    ReadWriteIOUtils.write(SchemaFileConfig.INTERNAL_PAGE, buffer);
+    ReadWriteIOUtils.write(pageIndex, buffer);
+    ReadWriteIOUtils.write((short) buffer.capacity(), buffer);
+    ReadWriteIOUtils.write(
+        (short)
+            (buffer.capacity()
+                - SchemaFileConfig.PAGE_HEADER_SIZE
+                - InternalPage.COMPOUND_POINT_LENGTH),
+        buffer);
+    ReadWriteIOUtils.write((short) 1, buffer);
+    ReadWriteIOUtils.write(-1L, buffer);
+    ReadWriteIOUtils.write(-1, buffer);
 
-  void removeRecord(short segId, String key) throws SegmentNotFoundException;
+    return new InternalPage(buffer);
+  }
 
-  void deleteSegment(short segId) throws SegmentNotFoundException;
+  static ISegmentedPage initSegmentedPage(ByteBuffer buffer, int pageIndex) {
+    buffer.clear();
+    ReadWriteIOUtils.write(SchemaFileConfig.SEGMENTED_PAGE, buffer);
+    ReadWriteIOUtils.write(pageIndex, buffer);
+    ReadWriteIOUtils.write(SchemaFileConfig.PAGE_HEADER_SIZE, buffer);
+    ReadWriteIOUtils.write((short) (buffer.capacity() - SchemaFileConfig.PAGE_HEADER_SIZE), buffer);
+    ReadWriteIOUtils.write((short) 0, buffer);
+    ReadWriteIOUtils.write(-1L, buffer);
+    return new SegmentedPage(buffer);
+  }
+
+  static SchemaPage initAliasIndexPage(ByteBuffer buffer, int pageIndex) {
+    buffer.clear();
+    ReadWriteIOUtils.write(SchemaFileConfig.ALIAS_PAGE, buffer);
+    ReadWriteIOUtils.write(pageIndex, buffer);
+    ReadWriteIOUtils.write((short) buffer.capacity(), buffer);
+    ReadWriteIOUtils.write((short) (buffer.capacity() - SchemaFileConfig.PAGE_HEADER_SIZE), buffer);
+    ReadWriteIOUtils.write((short) 0, buffer);
+    ReadWriteIOUtils.write(-1L, buffer);
+    return new AliasIndexPage(buffer);
+  }
+
+  void syncPageBuffer();
+
+  void flushPageToChannel(FileChannel channel) throws IOException;
+
+  void flushPageToStream(OutputStream stream) throws IOException;
+
+  String inspect() throws SegmentNotFoundException;
 
   int getPageIndex();
 
-  short getSpareSize();
+  void setPageIndex(int pid);
 
-  short getSegmentSize(short segId) throws SegmentNotFoundException;
+  int getSubIndex();
 
-  void getPageBuffer(ByteBuffer dst);
+  void setSubIndex(int pid);
 
-  boolean isCapableForSize(short size);
+  ISegment<Integer, Integer> getAsInternalPage();
 
-  boolean isSegmentCapableFor(short segId, short size) throws SegmentNotFoundException;
+  ISegment<String, String> getAsAliasIndexPage();
 
-  /**
-   * While segments are always synchronized with buffer {@linkplain SchemaPage#pageBuffer}, header
-   * and tail are not. This method will synchronize them with in mem attributes.
-   */
-  void syncPageBuffer();
+  ISegmentedPage getAsSegmentedPage();
 
-  /**
-   * Allocate space for a new segment inside this page
-   *
-   * @param size expected segment size
-   * @return segment index in this page, negative for not enough space
-   */
-  short allocNewSegment(short size) throws IOException, SchemaPageOverflowException;
+  ByteBuffer getEntireSegmentSlice() throws MetadataException;
 
-  /**
-   * Transplant designated segment from srcPage, to spare space of the page
-   *
-   * @param srcPage source page conveys source segment
-   * @param segId id of the target segment
-   * @param newSegSize size of new segment in this page
-   * @throws MetadataException if spare not enough, segment not found or inconsistency
-   */
-  long transplantSegment(ISchemaPage srcPage, short segId, short newSegSize)
-      throws MetadataException;
+  void markDirty();
 
-  void setNextSegAddress(short segId, long address) throws SegmentNotFoundException;
+  boolean isDirty();
 
-  void setPrevSegAddress(short segId, long address) throws SegmentNotFoundException;
+  @TestOnly
+  WrappedSegment getSegmentOnTest(short idx) throws SegmentNotFoundException;
 
-  long getNextSegAddress(short segId) throws SegmentNotFoundException;
-
-  long getPrevSegAddress(short segId) throws SegmentNotFoundException;
-
-  String inspect() throws SegmentNotFoundException;
+  @TestOnly
+  void getPageBuffer(ByteBuffer dstBuffer);
 }

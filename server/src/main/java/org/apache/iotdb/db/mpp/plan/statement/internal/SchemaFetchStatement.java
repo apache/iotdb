@@ -19,24 +19,28 @@
 
 package org.apache.iotdb.db.mpp.plan.statement.internal;
 
-import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
-import org.apache.iotdb.db.mpp.plan.constant.StatementType;
+import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
+import org.apache.iotdb.db.mpp.plan.statement.StatementType;
 import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
 
 import java.util.List;
+import java.util.Map;
 
 public class SchemaFetchStatement extends Statement {
 
-  private PathPatternTree patternTree;
+  private final PathPatternTree patternTree;
+  private final Map<Integer, Template> templateMap;
+  private final boolean withTags;
 
-  private SchemaPartition schemaPartition;
-
-  public SchemaFetchStatement(PathPatternTree patternTree) {
+  public SchemaFetchStatement(
+      PathPatternTree patternTree, Map<Integer, Template> templateMap, boolean withTags) {
     super();
     this.patternTree = patternTree;
+    this.templateMap = templateMap;
+    this.withTags = withTags;
     setType(StatementType.FETCH_SCHEMA);
   }
 
@@ -44,12 +48,8 @@ public class SchemaFetchStatement extends Statement {
     return patternTree;
   }
 
-  public SchemaPartition getSchemaPartition() {
-    return schemaPartition;
-  }
-
-  public void setSchemaPartition(SchemaPartition schemaPartition) {
-    this.schemaPartition = schemaPartition;
+  public Map<Integer, Template> getTemplateMap() {
+    return templateMap;
   }
 
   @Override
@@ -60,5 +60,9 @@ public class SchemaFetchStatement extends Statement {
   @Override
   public List<PartialPath> getPaths() {
     return patternTree.getAllPathPatterns();
+  }
+
+  public boolean isWithTags() {
+    return withTags;
   }
 }

@@ -18,71 +18,48 @@
  */
 package org.apache.iotdb.db.engine.storagegroup;
 
-import org.apache.iotdb.db.service.metrics.MetricsService;
-import org.apache.iotdb.db.service.metrics.enums.Metric;
-import org.apache.iotdb.db.service.metrics.enums.Tag;
-import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
-import org.apache.iotdb.metrics.utils.MetricLevel;
+import org.apache.iotdb.commons.service.metric.MetricService;
 
 /** The TsFileProcessorInfo records the memory cost of this TsFileProcessor. */
 public class TsFileProcessorInfo {
 
   /** Once tspInfo updated, report to storageGroupInfo that this TSP belongs to. */
-  private StorageGroupInfo storageGroupInfo;
+  private DataRegionInfo dataRegionInfo;
 
   /** memory occupation of unsealed TsFileResource, ChunkMetadata, WAL */
   private long memCost;
 
-  public TsFileProcessorInfo(StorageGroupInfo storageGroupInfo) {
-    this.storageGroupInfo = storageGroupInfo;
+  public TsFileProcessorInfo(DataRegionInfo dataRegionInfo) {
+    this.dataRegionInfo = dataRegionInfo;
     this.memCost = 0L;
+    if (null != dataRegionInfo.getDataRegion()) {
+      MetricService.getInstance()
+          .addMetricSet(
+              new TsFileProcessorInfoMetrics(
+                  dataRegionInfo.getDataRegion().getDatabaseName(), this));
+    }
   }
 
   /** called in each insert */
   public void addTSPMemCost(long cost) {
     memCost += cost;
-    storageGroupInfo.addStorageGroupMemCost(cost);
-    if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
-      MetricsService.getInstance()
-          .getMetricManager()
-          .getOrCreateGauge(
-              Metric.MEM.toString(),
-              MetricLevel.IMPORTANT,
-              Tag.NAME.toString(),
-              "chunkMetaData_" + storageGroupInfo.getDataRegion().getLogicalStorageGroupName())
-          .incr(cost);
-    }
+    dataRegionInfo.addStorageGroupMemCost(cost);
   }
 
   /** called when meet exception */
   public void releaseTSPMemCost(long cost) {
-    storageGroupInfo.releaseStorageGroupMemCost(cost);
+    dataRegionInfo.releaseStorageGroupMemCost(cost);
     memCost -= cost;
-    if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
-      MetricsService.getInstance()
-          .getMetricManager()
-          .getOrCreateGauge(
-              Metric.MEM.toString(),
-              MetricLevel.IMPORTANT,
-              Tag.NAME.toString(),
-              "chunkMetaData_" + storageGroupInfo.getDataRegion().getLogicalStorageGroupName())
-          .decr(cost);
-    }
   }
 
   /** called when closing TSP */
   public void clear() {
-    storageGroupInfo.releaseStorageGroupMemCost(memCost);
-    if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
-      MetricsService.getInstance()
-          .getMetricManager()
-          .getOrCreateGauge(
-              Metric.MEM.toString(),
-              MetricLevel.IMPORTANT,
-              Tag.NAME.toString(),
-              "chunkMetaData_" + storageGroupInfo.getDataRegion().getLogicalStorageGroupName())
-          .decr(memCost);
-    }
+    dataRegionInfo.releaseStorageGroupMemCost(memCost);
     memCost = 0L;
+  }
+
+  /** get memCost */
+  public long getMemCost() {
+    return memCost;
   }
 }

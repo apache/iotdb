@@ -11,11 +11,17 @@ on:
       - master
       - "rel/*"
       - "new_*"
+    paths-ignore:
+      - 'docs/**'
+      - 'site/**'
   pull_request:
     branches:
       - master
       - "rel/*"
       - "new_*"
+    paths-ignore:
+      - 'docs/**'
+      - 'site/**'
   # allow manually run the action:
   workflow_dispatch:
 
@@ -36,11 +42,7 @@ jobs:
     runs-on: ${{ matrix.os}}
 
     steps:
-      - uses: actions/checkout@v2
-      - name: Set up JDK ${{ matrix.java }}
-        uses: actions/setup-java@v1
-        with:
-          java-version: 11
+      - uses: actions/checkout@v3
       - name: Install CPP Dependencies (Ubuntu)
         if: matrix.os == 'ubuntu-latest'
         shell: bash
@@ -55,13 +57,17 @@ jobs:
           source ~/.bash_profile && export LDFLAGS="-L/usr/local/opt/bison/lib"
           brew install openssl
       - name: Cache Maven packages
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: ~/.m2
           key: client-${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
           restore-keys: ${{ runner.os }}-m2-
+      - name: Build IoTDB server
+        run: mvn clean package -pl distribution -am -DskipTests
       - name: Test with Maven
-        run: mvn -B clean integration-test -P compile-cpp -Dtsfile.test.skip=true -Djdbc.test.skip=true -Diotdb.test.skip=true -Dcommons.test.skip=true -Dtest.port.closed=true -pl server,client-cpp,example/client-cpp-example -am
+        run: mvn clean verify -pl client-cpp -am -P compile-cpp -P cppTest
+      - name: Show test result
+        run: cat client-cpp/target/build/test/Testing/Temporary/LastTest_*.log
 
   build-win:
     strategy:
@@ -72,13 +78,14 @@ jobs:
     runs-on: ${{ matrix.os}}
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Set up JDK ${{ matrix.java }}
-        uses: actions/setup-java@v1
+        uses: actions/setup-java@v3
         with:
+          distribution: liberica
           java-version: 11
       - name: Cache Maven packages
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: ~/.m2
           key: client-${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
@@ -98,6 +105,16 @@ jobs:
       - name: Add Flex and Bison Path and OpenSSL
         shell: bash
         run: cd /d/a/cpp && unzip win_flex_bison.zip && mv win_flex.exe flex.exe && mv win_bison.exe bison.exe  && echo 'export PATH=/d/a/cpp:$PATH' >> ~/.bash_profile && source ~/.bash_profile
+      - name: Build IoTDB server
+        shell: bash
+        run: source ~/.bash_profile && mvn clean package -pl distribution -am -DskipTests
       - name: Test with Maven
         shell: bash
-        run: source ~/.bash_profile && mvn -B clean integration-test -P compile-cpp -Dboost.include.dir=/c/local/boost_1_78_0 -Dboost.library.dir=/c/local/boost_1_78_0/stage/lib -Dtsfile.test.skip=true -Djdbc.test.skip=true -Diotdb.test.skip=true -Dcommons.test.skip=true -Dtest.port.closed=true -Denforcer.skip=true -pl server,client-cpp,example/client-cpp-example -am -Dcmake.url="https://github.com/Kitware/CMake/releases/download/v3.21.6/cmake-3.21.6-windows-x86_64.zip" -Dcmake.root.dir=/D/a/iotdb/iotdb/compile-tools/thrift/target/cmake-3.21.6-windows-x86_64/ -Dcmake.generator="Visual Studio 17 2022"
+        run: source ~/.bash_profile && mvn clean verify -pl client-cpp -am -P compile-cpp -P cppTest -Dboost.include.dir=/c/local/boost_1_78_0 -Dboost.library.dir=/c/local/boost_1_78_0/stage/lib -Dcmake.url="https://github.com/Kitware/CMake/releases/download/v3.21.6/cmake-3.21.6-windows-x86_64.zip" -Dcmake.root.dir=/D/a/iotdb/iotdb/compile-tools/thrift/target/cmake-3.21.6-windows-x86_64/ -Dcmake.generator="Visual Studio 17 2022"
+      - name: Upload Artifact
+        if: failure()
+        uses: actions/upload-artifact@v3
+        with:
+          name: cpp-IT-${{ runner.os }}
+          path: client-cpp/target/build/test/Testing
+          retention-days: 1

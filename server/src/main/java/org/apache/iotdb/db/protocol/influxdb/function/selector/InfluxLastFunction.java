@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.protocol.influxdb.function.selector;
 
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
-import org.apache.iotdb.db.protocol.influxdb.constant.InfluxSQLConstant;
+import org.apache.iotdb.db.protocol.influxdb.constant.InfluxSqlConstant;
 import org.apache.iotdb.db.protocol.influxdb.function.InfluxFunctionValue;
 
 import java.util.List;
@@ -45,10 +45,7 @@ public class InfluxLastFunction extends InfluxSelector {
 
   @Override
   public void updateValueIoTDBFunc(InfluxFunctionValue... functionValues) {
-    if (value == null && getTimestamp() == null) {
-      value = functionValues[0].getValue();
-      setTimestamp(functionValues[0].getTimestamp());
-    } else if (getTimestamp() > functionValues[0].getTimestamp()) {
+    if (functionValues[0].getTimestamp() > getTimestamp()) {
       value = functionValues[0].getValue();
       setTimestamp(functionValues[0].getTimestamp());
     }
@@ -68,6 +65,6 @@ public class InfluxLastFunction extends InfluxSelector {
 
   @Override
   public String getFunctionName() {
-    return InfluxSQLConstant.LAST;
+    return InfluxSqlConstant.LAST;
   }
 }

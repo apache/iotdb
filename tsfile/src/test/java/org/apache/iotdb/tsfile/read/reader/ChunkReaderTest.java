@@ -93,7 +93,7 @@ public class ChunkReaderTest {
         for (int j = 0; j < measurementNum; j++) {
           List<ChunkMetadata> chunkMetadataList =
               tsFileSequenceReader.getChunkMetadataList(
-                  new Path(testStorageGroup + PATH_SEPARATOR + "d" + i, "s" + j));
+                  new Path(testStorageGroup + PATH_SEPARATOR + "d" + i, "s" + j, true));
           for (ChunkMetadata chunkMetadata : chunkMetadataList) {
             Chunk chunk = tsFileSequenceReader.readMemChunk(chunkMetadata);
             ChunkReader chunkReader = new ChunkReader(chunk, null);

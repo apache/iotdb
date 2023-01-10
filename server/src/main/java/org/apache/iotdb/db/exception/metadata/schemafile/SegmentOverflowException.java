@@ -27,14 +27,18 @@ public class SegmentOverflowException extends MetadataException {
 
   public SegmentOverflowException(int tarIndex) {
     super(
-        String.format("Segment overflow  : " + tarIndex),
+        String.format("Segment overflow  : %d", tarIndex),
         TSStatusCode.SEGMENT_OUT_OF_SPACE.getStatusCode(),
         true);
   }
 
   public SegmentOverflowException() {
+    super("Segment not enough space", TSStatusCode.SEGMENT_OUT_OF_SPACE.getStatusCode(), true);
+  }
+
+  public SegmentOverflowException(String key) {
     super(
-        String.format("Segment not enough space"),
+        String.format("Segment not enough space even after split and compact to insert: %s", key),
         TSStatusCode.SEGMENT_OUT_OF_SPACE.getStatusCode(),
         true);
   }

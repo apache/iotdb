@@ -34,9 +34,6 @@ import static com.google.common.base.Preconditions.checkState;
 import static com.google.common.util.concurrent.Futures.immediateFuture;
 import static java.util.Objects.requireNonNull;
 
-/**
- * Simple state machine which holds a single state. Callers can register for state change events.
- */
 @ThreadSafe
 public class StateMachine<T> {
   private final String name;
@@ -272,12 +269,10 @@ public class StateMachine<T> {
   public void addStateChangeListener(StateChangeListener<T> stateChangeListener) {
     requireNonNull(stateChangeListener, "stateChangeListener is null");
 
-    boolean inTerminalState;
     T currentState;
     synchronized (lock) {
       currentState = state;
-      inTerminalState = isTerminalState(currentState);
-      if (!inTerminalState) {
+      if (!isTerminalState(currentState)) {
         stateChangeListeners.add(stateChangeListener);
       }
     }

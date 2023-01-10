@@ -49,4 +49,7 @@ public interface IWALByteBufferView {
 
   /** Like {@link ByteBuffer#putDouble(double)}. */
   void putDouble(double value);
+
+  /** Like {@link ByteBuffer#position()}. */
+  int position();
 }

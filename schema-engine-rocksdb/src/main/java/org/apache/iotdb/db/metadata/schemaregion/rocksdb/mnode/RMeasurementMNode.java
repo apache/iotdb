@@ -20,18 +20,15 @@
 package org.apache.iotdb.db.metadata.schemaregion.rocksdb.mnode;
 
 import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.db.engine.trigger.executor.TriggerExecutor;
-import org.apache.iotdb.db.metadata.lastCache.container.ILastCacheContainer;
-import org.apache.iotdb.db.metadata.logfile.MLogWriter;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
+import org.apache.iotdb.db.metadata.mnode.MNodeType;
 import org.apache.iotdb.db.metadata.mnode.container.IMNodeContainer;
-import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaConstants;
 import org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaReadWriteHandler;
 import org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaUtils;
-import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
@@ -131,29 +128,12 @@ public class RMeasurementMNode extends RMNode implements IMeasurementMNode {
   }
 
   @Override
-  public TriggerExecutor getTriggerExecutor() {
-    return null;
+  public boolean isPreDeleted() {
+    return false;
   }
 
   @Override
-  public void setTriggerExecutor(TriggerExecutor triggerExecutor) {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
-  public ILastCacheContainer getLastCacheContainer() {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
-  public void setLastCacheContainer(ILastCacheContainer lastCacheContainer) {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
-  public void serializeTo(MLogWriter logWriter) throws IOException {
-    throw new UnsupportedOperationException();
-  }
+  public void setPreDeleted(boolean preDeleted) {}
 
   private void deserialize(byte[] value) {
     ByteBuffer byteBuffer = ByteBuffer.wrap(value);
@@ -219,25 +199,16 @@ public class RMeasurementMNode extends RMNode implements IMeasurementMNode {
   }
 
   @Override
-  public Template getUpperTemplate() {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
-  public void setSchemaTemplate(Template schemaTemplate) {}
-
-  @Override
-  public Template getSchemaTemplate() {
-    throw new RuntimeException(
-        String.format("current node %s is a MeasurementMNode, can not get Device Template", name));
-  }
-
-  @Override
   public void setUseTemplate(boolean useTemplate) {}
 
   @Override
   public boolean isMeasurement() {
     return true;
+  }
+
+  @Override
+  public MNodeType getMNodeType(Boolean isConfig) {
+    return MNodeType.MEASUREMENT;
   }
 
   public Map<String, String> getTags() {

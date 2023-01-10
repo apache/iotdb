@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.mpp.plan.statement.metadata;
 
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.mpp.plan.constant.StatementType;
+import org.apache.iotdb.db.mpp.plan.statement.StatementType;
 
 import java.util.Collections;
 import java.util.List;
@@ -30,26 +30,26 @@ import java.util.List;
  *
  * <p>Here is the syntax definition:
  *
- * <p>COUNT {STORAGE GROUP | DEVICES | TIMESERIES | NODES} [prefixPath] [GROUP BY] LEVEL = level
+ * <p>COUNT {DATABASES | DEVICES | TIMESERIES | NODES} [prefixPath] [GROUP BY] LEVEL = level
  */
 public class CountStatement extends ShowStatement {
-  protected PartialPath partialPath;
+  protected PartialPath pathPattern;
 
-  public CountStatement(PartialPath partialPath) {
-    this.partialPath = partialPath;
+  public CountStatement(PartialPath pathPattern) {
+    this.pathPattern = pathPattern;
     setType(StatementType.COUNT);
   }
 
-  public PartialPath getPartialPath() {
-    return partialPath;
+  public PartialPath getPathPattern() {
+    return pathPattern;
   }
 
-  public void setPartialPath(PartialPath partialPath) {
-    this.partialPath = partialPath;
+  public void setPathPattern(PartialPath pathPattern) {
+    this.pathPattern = pathPattern;
   }
 
   @Override
   public List<PartialPath> getPaths() {
-    return Collections.singletonList(partialPath);
+    return Collections.singletonList(pathPattern);
   }
 }

@@ -19,21 +19,24 @@
 
 package org.apache.iotdb.db.metadata.cache;
 
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.metadata.path.MeasurementPath;
-import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
-import org.apache.iotdb.db.service.metrics.MetricsService;
-import org.apache.iotdb.db.service.metrics.enums.Metric;
-import org.apache.iotdb.db.service.metrics.enums.Tag;
-import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
-import org.apache.iotdb.metrics.utils.MetricLevel;
+import org.apache.iotdb.db.mpp.common.schematree.ClusterSchemaTree;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /**
  * This class takes the responsibility of metadata cache management of all DataRegions under
@@ -41,9 +44,13 @@ import com.github.benmanes.caffeine.cache.Caffeine;
  */
 public class DataNodeSchemaCache {
 
+  private static final Logger logger = LoggerFactory.getLogger(DataNodeSchemaCache.class);
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   private final Cache<PartialPath, SchemaCacheEntry> cache;
+
+  // cache update or clean have higher priority than cache read
+  private final ReentrantReadWriteLock readWriteLock = new ReentrantReadWriteLock(false);
 
   private DataNodeSchemaCache() {
     cache =
@@ -53,18 +60,11 @@ public class DataNodeSchemaCache {
                 (PartialPath key, SchemaCacheEntry value) ->
                     PartialPath.estimateSize(key) + SchemaCacheEntry.estimateSize(value))
             .build();
-    if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
-      // add metrics
-      MetricsService.getInstance()
-          .getMetricManager()
-          .getOrCreateAutoGauge(
-              Metric.CACHE_HIT.toString(),
-              MetricLevel.IMPORTANT,
-              cache,
-              l -> (long) (l.stats().hitRate() * 100),
-              Tag.NAME.toString(),
-              "schemaCache");
-    }
+    MetricService.getInstance().addMetricSet(new DataNodeSchemaCacheMetrics(this));
+  }
+
+  public double getHitRate() {
+    return cache.stats().hitRate() * 100;
   }
 
   public static DataNodeSchemaCache getInstance() {
@@ -76,6 +76,22 @@ public class DataNodeSchemaCache {
     private static final DataNodeSchemaCache INSTANCE = new DataNodeSchemaCache();
   }
 
+  public void takeReadLock() {
+    readWriteLock.readLock().lock();
+  }
+
+  public void releaseReadLock() {
+    readWriteLock.readLock().unlock();
+  }
+
+  public void takeWriteLock() {
+    readWriteLock.writeLock().lock();
+  }
+
+  public void releaseWriteLock() {
+    readWriteLock.writeLock().unlock();
+  }
+
   /**
    * Get SchemaEntity info without auto create schema
    *
@@ -83,32 +99,56 @@ public class DataNodeSchemaCache {
    * @param measurements
    * @return timeseries partialPath and its SchemaEntity
    */
-  public SchemaTree get(PartialPath devicePath, String[] measurements) {
-    SchemaTree schemaTree = new SchemaTree();
+  public ClusterSchemaTree get(PartialPath devicePath, String[] measurements) {
+    ClusterSchemaTree schemaTree = new ClusterSchemaTree();
+    Set<String> storageGroupSet = new HashSet<>();
     SchemaCacheEntry schemaCacheEntry;
     for (String measurement : measurements) {
       PartialPath path = devicePath.concatNode(measurement);
       schemaCacheEntry = cache.getIfPresent(path);
       if (schemaCacheEntry != null) {
         schemaTree.appendSingleMeasurement(
-            devicePath.concatNode(
-                schemaCacheEntry.getSchemaEntryId()), // the cached path may be alias path
+            devicePath.concatNode(schemaCacheEntry.getSchemaEntryId()),
             schemaCacheEntry.getMeasurementSchema(),
+            schemaCacheEntry.getTagMap(),
             null,
             schemaCacheEntry.isAligned());
+        storageGroupSet.add(schemaCacheEntry.getStorageGroup());
       }
+    }
+    schemaTree.setDatabases(storageGroupSet);
+    return schemaTree;
+  }
+
+  public ClusterSchemaTree get(PartialPath fullPath) {
+    ClusterSchemaTree schemaTree = new ClusterSchemaTree();
+    SchemaCacheEntry schemaCacheEntry = cache.getIfPresent(fullPath);
+    if (schemaCacheEntry != null) {
+      schemaTree.appendSingleMeasurement(
+          fullPath,
+          schemaCacheEntry.getMeasurementSchema(),
+          schemaCacheEntry.getTagMap(),
+          null,
+          schemaCacheEntry.isAligned());
+      schemaTree.setDatabases(Collections.singleton(schemaCacheEntry.getStorageGroup()));
     }
     return schemaTree;
   }
 
-  public void put(SchemaTree schemaTree) {
+  public void put(ClusterSchemaTree schemaTree) {
     for (MeasurementPath measurementPath : schemaTree.getAllMeasurement()) {
-      SchemaCacheEntry schemaCacheEntry =
-          new SchemaCacheEntry(
-              (MeasurementSchema) measurementPath.getMeasurementSchema(),
-              measurementPath.isUnderAlignedEntity());
-      cache.put(new PartialPath(measurementPath.getNodes()), schemaCacheEntry);
+      putSingleMeasurementPath(schemaTree.getBelongedDatabase(measurementPath), measurementPath);
     }
+  }
+
+  private void putSingleMeasurementPath(String storageGroup, MeasurementPath measurementPath) {
+    SchemaCacheEntry schemaCacheEntry =
+        new SchemaCacheEntry(
+            storageGroup,
+            (MeasurementSchema) measurementPath.getMeasurementSchema(),
+            measurementPath.getTagMap(),
+            measurementPath.isUnderAlignedEntity());
+    cache.put(new PartialPath(measurementPath.getNodes()), schemaCacheEntry);
   }
 
   public TimeValuePair getLastCache(PartialPath seriesPath) {
@@ -120,6 +160,7 @@ public class DataNodeSchemaCache {
     return DataNodeLastCacheManager.getLastCache(entry);
   }
 
+  /** get SchemaCacheEntry and update last cache */
   public void updateLastCache(
       PartialPath seriesPath,
       TimeValuePair timeValuePair,
@@ -128,6 +169,37 @@ public class DataNodeSchemaCache {
     SchemaCacheEntry entry = cache.getIfPresent(seriesPath);
     if (null == entry) {
       return;
+    }
+
+    DataNodeLastCacheManager.updateLastCache(
+        entry, timeValuePair, highPriorityUpdate, latestFlushedTime);
+  }
+
+  /**
+   * get or create SchemaCacheEntry and update last cache, only support non-aligned sensor or
+   * aligned sensor without only one sub sensor
+   */
+  public void updateLastCache(
+      String storageGroup,
+      MeasurementPath measurementPath,
+      TimeValuePair timeValuePair,
+      boolean highPriorityUpdate,
+      Long latestFlushedTime) {
+    PartialPath seriesPath = measurementPath.transformToPartialPath();
+    SchemaCacheEntry entry = cache.getIfPresent(seriesPath);
+    if (null == entry) {
+      synchronized (cache) {
+        entry = cache.getIfPresent(seriesPath);
+        if (null == entry) {
+          entry =
+              new SchemaCacheEntry(
+                  storageGroup,
+                  (MeasurementSchema) measurementPath.getMeasurementSchema(),
+                  measurementPath.getTagMap(),
+                  measurementPath.isUnderAlignedEntity());
+          cache.put(seriesPath, entry);
+        }
+      }
     }
 
     DataNodeLastCacheManager.updateLastCache(
@@ -152,6 +224,17 @@ public class DataNodeSchemaCache {
   public void invalidate(PartialPath partialPath) {
     resetLastCache(partialPath);
     cache.invalidate(partialPath);
+  }
+
+  public void invalidateMatchedSchema(PartialPath pathPattern) {
+    cache
+        .asMap()
+        .forEach(
+            (k, v) -> {
+              if (pathPattern.matchFullPath(k)) {
+                cache.invalidate(k);
+              }
+            });
   }
 
   public long estimatedSize() {

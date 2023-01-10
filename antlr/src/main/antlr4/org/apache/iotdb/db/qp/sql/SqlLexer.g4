@@ -85,16 +85,16 @@ ATTRIBUTES
     : A T T R I B U T E S
     ;
 
-AUTOREGISTER
-    : A U T O R E G I S T E R
-    ;
-
 BEFORE
     : B E F O R E
     ;
 
 BEGIN
     : B E G I N
+    ;
+
+BLOCKED
+    : B L O C K E D
     ;
 
 BOUNDARY
@@ -121,8 +121,16 @@ CLUSTER
     : C L U S T E R
     ;
 
+VARIABLES
+    : V A R I A B L E S
+    ;
+
 CONCAT
     : C O N C A T
+    ;
+
+CONFIGNODES
+    : C O N F I G N O D E S
     ;
 
 CONFIGURATION
@@ -157,6 +165,27 @@ DATA
     : D A T A
     ;
 
+DATABASE
+    : D A T A B A S E
+    ;
+
+DATABASES
+    : D A T A B A S E S
+    ;
+
+DATANODEID
+    : D A T A N O D E I D
+    ;
+
+DATANODES
+
+    : D A T A N O D E S
+    ;
+
+DEACTIVATE
+    : D E A C T I V A T E
+    ;
+
 DEBUG
     : D E B U G
     ;
@@ -173,8 +202,16 @@ DESCRIBE
     : D E S C R I B E
     ;
 
+DETAILS
+    : D E T A I L S
+    ;
+
 DEVICE
     : D E V I C E
+    ;
+
+DEVICEID
+    : D E V I C E I D
     ;
 
 DEVICES
@@ -185,18 +222,29 @@ DISABLE
     : D I S A B L E
     ;
 
+DISCARD
+    : D I S C A R D
+    ;
+
 DROP
     : D R O P
+    ;
+
+ELAPSEDTIME
+    : E L A P S E D T I M E
     ;
 
 END
     : E N D
     ;
 
+ENDTIME
+    : E N D T I M E
+    ;
+
 EVERY
     : E V E R Y
     ;
-
 
 EXPLAIN
     : E X P L A I N
@@ -204,6 +252,10 @@ EXPLAIN
 
 FILL
     : F I L L
+    ;
+
+FILE
+    : F I L E
     ;
 
 FLUSH
@@ -240,6 +292,10 @@ GRANT
 
 GROUP
     : G R O U P
+    ;
+
+HAVING
+    : H A V I N G
     ;
 
 INDEX
@@ -318,8 +374,20 @@ METADATA
     : M E T A D A T A
     ;
 
+MIGRATE
+    : M I G R A T E
+    ;
+
+NODEID
+    : N O D E I D
+    ;
+
 NODES
     : N O D E S
+    ;
+
+NONE
+    : N O N E
     ;
 
 NOW
@@ -346,6 +414,10 @@ ORDER
     : O R D E R
     ;
 
+ONSUCCESS
+    : O N S U C C E S S
+    ;
+
 PARTITION
     : P A R T I T I O N
     ;
@@ -366,10 +438,6 @@ PIPES
     : P I P E S
     ;
 
-PIPESERVER
-    : P I P E S E R V E R
-    ;
-
 PIPESINK
     : P I P E S I N K
     ;
@@ -380,6 +448,10 @@ PIPESINKS
 
 PIPESINKTYPE
     : P I P E S I N K T Y P E
+    ;
+
+POLICY
+    : P O L I C Y
     ;
 
 PREVIOUS
@@ -414,12 +486,28 @@ QUERY
     : Q U E R Y
     ;
 
+QUERYID
+    : Q U E R Y I D
+    ;
+
+RANGE
+    : R A N G E
+    ;
+
 READONLY
     : R E A D O N L Y
     ;
 
 REGEXP
     : R E G E X P
+    ;
+
+REGION
+    : R E G I O N
+    ;
+
+REGIONID
+    : R E G I O N I D
     ;
 
 REGIONS
@@ -454,12 +542,20 @@ ROOT
     : R O O T
     ;
 
+RUNNING
+    : R U N N I N G
+    ;
+
 SCHEMA
     : S C H E M A
     ;
 
 SELECT
     : S E L E C T
+    ;
+
+SERIESSLOTID
+    : S E R I E S S L O T I D
     ;
 
 SET
@@ -494,6 +590,22 @@ START
     : S T A R T
     ;
 
+STARTTIME
+    : S T A R T T I M E
+    ;
+
+STATEFUL
+    : S T A T E F U L
+    ;
+
+STATELESS
+    : S T A T E L E S S
+    ;
+
+STATEMENT
+    : S T A T E M E N T
+    ;
+
 STOP
     : S T O P
     ;
@@ -522,8 +634,16 @@ TIME
     : T I M E
     ;
 
+TIMEOUT
+    : T I M E O U T
+    ;
+
 TIMESERIES
     : T I M E S E R I E S
+    ;
+
+TIMESLOTID
+    : T I M E S L O T I D
     ;
 
 TIMESTAMP
@@ -578,6 +698,10 @@ UPSERT
     : U P S E R T
     ;
 
+URI
+    : U R I
+    ;
+
 USER
     : U S E R
     ;
@@ -622,13 +746,14 @@ WRITABLE
 // Privileges Keywords
 
 PRIVILEGE_VALUE
-    : SET_STORAGE_GROUP | DELETE_STORAGE_GROUP
-    | CREATE_TIMESERIES | INSERT_TIMESERIES | READ_TIMESERIES | DELETE_TIMESERIES
+    : SET_STORAGE_GROUP | DELETE_STORAGE_GROUP | CREATE_DATABASE | DELETE_DATABASE
+    | CREATE_TIMESERIES | INSERT_TIMESERIES | READ_TIMESERIES | DELETE_TIMESERIES | ALTER_TIMESERIES
     | CREATE_USER | DELETE_USER | MODIFY_PASSWORD | LIST_USER
     | GRANT_USER_PRIVILEGE | REVOKE_USER_PRIVILEGE | GRANT_USER_ROLE | REVOKE_USER_ROLE
     | CREATE_ROLE | DELETE_ROLE | LIST_ROLE | GRANT_ROLE_PRIVILEGE | REVOKE_ROLE_PRIVILEGE
     | CREATE_FUNCTION | DROP_FUNCTION | CREATE_TRIGGER | DROP_TRIGGER | START_TRIGGER | STOP_TRIGGER
-    | CREATE_CONTINUOUS_QUERY | DROP_CONTINUOUS_QUERY
+    | CREATE_CONTINUOUS_QUERY | DROP_CONTINUOUS_QUERY | SHOW_CONTINUOUS_QUERIES
+    | APPLY_TEMPLATE | UPDATE_TEMPLATE | READ_TEMPLATE | READ_TEMPLATE_APPLICATION
     ;
 
 SET_STORAGE_GROUP
@@ -637,6 +762,14 @@ SET_STORAGE_GROUP
 
 DELETE_STORAGE_GROUP
     : D E L E T E '_' S T O R A G E '_' G R O U P
+    ;
+
+CREATE_DATABASE
+    : C R E A T E '_' D A T A B A S E
+    ;
+
+DELETE_DATABASE
+    : D E L E T E '_' D A T A B A S E
     ;
 
 CREATE_TIMESERIES
@@ -653,6 +786,10 @@ READ_TIMESERIES
 
 DELETE_TIMESERIES
     : D E L E T E '_' T I M E S E R I E S
+    ;
+
+ALTER_TIMESERIES
+    : A L T E R '_' T I M E S E R I E S
     ;
 
 CREATE_USER
@@ -739,6 +876,10 @@ DROP_CONTINUOUS_QUERY
     : D R O P '_' C O N T I N U O U S '_' Q U E R Y
     ;
 
+SHOW_CONTINUOUS_QUERIES
+    : S H O W '_' C O N T I N U O U S '_' Q U E R I E S
+    ;
+
 SCHEMA_REPLICATION_FACTOR
     : S C H E M A '_' R E P L I C A T I O N '_' F A C T O R
     ;
@@ -749,6 +890,22 @@ DATA_REPLICATION_FACTOR
 
 TIME_PARTITION_INTERVAL
     : T I M E '_' P A R T I T I O N '_' I N T E R V A L
+    ;
+
+APPLY_TEMPLATE
+    : A P P L Y '_' T E M P L A T E
+    ;
+
+UPDATE_TEMPLATE
+    : U P D A T E '_' T E M P L A T E
+    ;
+
+READ_TEMPLATE
+    : R E A D '_' T E M P L A T E
+    ;
+
+READ_TEMPLATE_APPLICATION
+    : R E A D '_' T E M P L A T E '_' A P P L I C A T I O N
     ;
 
 /**
@@ -772,6 +929,8 @@ OPERATOR_GTE : '>=';
 OPERATOR_LT : '<';
 OPERATOR_LTE : '<=';
 OPERATOR_NEQ : '!=' | '<>';
+
+OPERATOR_BETWEEN : B E T W E E N;
 
 OPERATOR_IS : I S;
 
@@ -811,6 +970,7 @@ LR_BRACKET : '(';
 RR_BRACKET : ')';
 LS_BRACKET : '[';
 RS_BRACKET : ']';
+DOUBLE_COLON: '::';
 
 
 /**
@@ -909,15 +1069,15 @@ fragment CN_CHAR
     ;
 
 fragment DQUOTA_STRING
-    : '"' ( '\\'. | '""' | ~('"') )* '"'
+    : '"' ( '""' | ~('"') )* '"'
     ;
 
 fragment SQUOTA_STRING
-    : '\'' ( '\\'. | '\'\'' |~('\'') )* '\''
+    : '\'' ( '\'\'' | ~('\'') )* '\''
     ;
 
 fragment BQUOTA_STRING
-    : '`' ( '\\' ~('`') | '``' | ~('`') )* '`'
+    : '`' ( '``' | ~('`') )* '`'
     ;
 
 

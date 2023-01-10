@@ -1,3 +1,3 @@
-[submodule "iotdb-client-go"]
+[submodule "client-go"]
 	path = client-go
-	url = git@github.com:apache/iotdb-client-go.git
+	url = https://github.com/apache/iotdb-client-go.git

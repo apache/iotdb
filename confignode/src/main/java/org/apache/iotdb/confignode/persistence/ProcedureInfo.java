@@ -21,8 +21,8 @@ package org.apache.iotdb.confignode.persistence;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
-import org.apache.iotdb.confignode.consensus.request.write.DeleteProcedurePlan;
-import org.apache.iotdb.confignode.consensus.request.write.UpdateProcedurePlan;
+import org.apache.iotdb.confignode.consensus.request.write.procedure.DeleteProcedurePlan;
+import org.apache.iotdb.confignode.consensus.request.write.procedure.UpdateProcedurePlan;
 import org.apache.iotdb.confignode.procedure.Procedure;
 import org.apache.iotdb.confignode.procedure.store.ProcedureFactory;
 import org.apache.iotdb.confignode.procedure.store.ProcedureStore;
@@ -38,6 +38,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Stream;
 
 public class ProcedureInfo {
 
@@ -49,10 +50,8 @@ public class ProcedureInfo {
   private final ConcurrentHashMap<Long, ProcedureWAL> procWALMap = new ConcurrentHashMap<>();
 
   public void load(List<Procedure> procedureList) {
-    try {
-      Files.list(Paths.get(procedureWalDir))
-          .filter(
-              path -> path.getFileName().toString().endsWith(ProcedureStore.PROCEDURE_WAL_SUFFIX))
+    try (Stream<Path> s = Files.list(Paths.get(procedureWalDir))) {
+      s.filter(path -> path.getFileName().toString().endsWith(ProcedureStore.PROCEDURE_WAL_SUFFIX))
           .sorted(
               (p1, p2) ->
                   Long.compareUnsigned(

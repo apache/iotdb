@@ -24,7 +24,7 @@ import org.apache.iotdb.db.engine.settle.SettleLog;
 import org.apache.iotdb.db.engine.settle.SettleLog.SettleCheckStatus;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
-import org.apache.iotdb.db.tools.TsFileRewriteTool;
+import org.apache.iotdb.db.tools.TsFileSplitByPartitionTool;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.fileSystem.fsFactory.FSFactory;
@@ -99,7 +99,7 @@ public class TsFileAndModSettleTool {
         if (arg.endsWith(TSFILE_SUFFIX)) { // it's a file
           File f = new File(arg);
           if (!f.exists()) {
-            logger.warn("Cannot find TsFile : " + arg);
+            logger.warn("Cannot find TsFile : {}", arg);
             continue;
           }
           files.add(f);
@@ -115,11 +115,11 @@ public class TsFileAndModSettleTool {
   private static List<File> getAllFilesInOneDirBySuffix(String dirPath, String suffix) {
     File dir = new File(dirPath);
     if (!dir.isDirectory()) {
-      logger.warn("It's not a directory path : " + dirPath);
+      logger.warn("It's not a directory path : {}", dirPath);
       return Collections.emptyList();
     }
     if (!dir.exists()) {
-      logger.warn("Cannot find Directory : " + dirPath);
+      logger.warn("Cannot find Directory : {}", dirPath);
       return Collections.emptyList();
     }
     List<File> tsFiles =
@@ -212,11 +212,9 @@ public class TsFileAndModSettleTool {
     if (!resourceToBeSettled.getModFile().exists()) {
       return;
     }
-    try (TsFileRewriteTool tsFileRewriteTool = new TsFileRewriteTool(resourceToBeSettled)) {
+    try (TsFileSplitByPartitionTool tsFileRewriteTool =
+        new TsFileSplitByPartitionTool(resourceToBeSettled)) {
       tsFileRewriteTool.parseAndRewriteFile(settledResources);
-    }
-    if (settledResources.size() == 0) {
-      resourceToBeSettled.setStatus(TsFileResourceStatus.DELETED);
     }
   }
 

@@ -20,11 +20,10 @@
 package org.apache.iotdb.confignode.consensus.response;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
-import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.commons.partition.SchemaPartitionTable;
-import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionResp;
+import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionTableResp;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -38,7 +37,7 @@ public class SchemaPartitionResp implements DataSet {
   private final boolean allPartitionsExist;
 
   // Map<StorageGroup, SchemaPartitionTable>
-  // TODO: Replace this map whit new SchemaPartition
+  // TODO: Replace this map with new SchemaPartition
   private final Map<String, SchemaPartitionTable> schemaPartition;
 
   public SchemaPartitionResp(
@@ -62,31 +61,19 @@ public class SchemaPartitionResp implements DataSet {
     return allPartitionsExist;
   }
 
-  public TSchemaPartitionResp convertToRpcSchemaPartitionResp(
-      Map<TConsensusGroupId, TRegionReplicaSet> replicaSetMap) {
-    TSchemaPartitionResp resp = new TSchemaPartitionResp();
+  public TSchemaPartitionTableResp convertToRpcSchemaPartitionTableResp() {
+    TSchemaPartitionTableResp resp = new TSchemaPartitionTableResp();
     resp.setStatus(status);
 
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      Map<String, Map<TSeriesPartitionSlot, TRegionReplicaSet>> schemaPartitionMap =
+      Map<String, Map<TSeriesPartitionSlot, TConsensusGroupId>> schemaPartitionMap =
           new ConcurrentHashMap<>();
 
       schemaPartition.forEach(
-          (storageGroup, schemaPartitionTable) -> {
-            Map<TSeriesPartitionSlot, TRegionReplicaSet> seriesPartitionSlotMap =
-                new ConcurrentHashMap<>();
+          (storageGroup, schemaPartitionTable) ->
+              schemaPartitionMap.put(storageGroup, schemaPartitionTable.getSchemaPartitionMap()));
 
-            schemaPartitionTable
-                .getSchemaPartitionMap()
-                .forEach(
-                    (seriesPartitionSlot, consensusGroupId) ->
-                        seriesPartitionSlotMap.put(
-                            seriesPartitionSlot, replicaSetMap.get(consensusGroupId)));
-
-            schemaPartitionMap.put(storageGroup, seriesPartitionSlotMap);
-          });
-
-      resp.setSchemaRegionMap(schemaPartitionMap);
+      resp.setSchemaPartitionTable(schemaPartitionMap);
     }
 
     return resp;

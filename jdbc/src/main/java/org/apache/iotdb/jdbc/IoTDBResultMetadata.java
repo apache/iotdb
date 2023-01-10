@@ -75,13 +75,13 @@ public class IoTDBResultMetadata implements ResultSetMetaData {
     if ("SHOW".equals(operationType)) {
       if ("count".equals(listColumns.get(0))) {
         return system_database;
-      } else if ("storage group".equals(listColumns.get(0))
+      } else if ("database".equals(listColumns.get(0))
           && listColumns.size() > 1
           && "ttl".equals(listColumns.get(1))) {
         return "";
       } else if ("version".equals(listColumns.get(0).trim()) && listColumns.size() == 1) {
         return system;
-      } else if ("storage group".equals(listColumns.get(0))
+      } else if ("database".equals(listColumns.get(0))
           || "devices".equals(listColumns.get(0))
           || "child paths".equals(listColumns.get(0))
           || "child nodes".equals(listColumns.get(0))

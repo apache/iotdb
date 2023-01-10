@@ -31,26 +31,13 @@ import java.util.List;
 public class StartupChecks {
 
   private static final Logger logger = LoggerFactory.getLogger(StartupChecks.class);
-  public static final StartupCheck checkJMXPort =
-      () -> {
-        String jmxPort = System.getProperty(IoTDBConstant.IOTDB_JMX_PORT);
-        if (jmxPort == null) {
-          logger.warn(
-              "{} missing from {}.sh(Unix or OS X, if you use Windows," + " check conf/{}.bat)",
-              IoTDBConstant.IOTDB_JMX_PORT,
-              IoTDBConstant.ENV_FILE_NAME,
-              IoTDBConstant.ENV_FILE_NAME);
-        } else {
-          logger.info("JMX is enabled to receive remote connection on port {}", jmxPort);
-        }
-      };
   public static final StartupCheck checkJDK =
       () -> {
         int version = JVMCommonUtils.getJdkVersion();
         if (version < IoTDBConstant.MIN_SUPPORTED_JDK_VERSION) {
           throw new StartupException(
               String.format(
-                  "Requires JDK version >= %d, current version is %d",
+                  "Requires JDK version >= %d, current version is %d.",
                   IoTDBConstant.MIN_SUPPORTED_JDK_VERSION, version));
         } else {
           logger.info("JDK version is {}.", version);
@@ -59,9 +46,34 @@ public class StartupChecks {
   private final List<StartupCheck> preChecks = new ArrayList<>();
   private final List<StartupCheck> defaultTests = new ArrayList<>();
 
-  public StartupChecks() {
-    defaultTests.add(checkJMXPort);
+  public StartupChecks(String nodeRole) {
+    defaultTests.add(() -> checkJMXPort(nodeRole));
     defaultTests.add(checkJDK);
+  }
+
+  private void checkJMXPort(String nodeRole) {
+    Boolean jmxLocal = Boolean.valueOf(System.getProperty(IoTDBConstant.IOTDB_JMX_LOCAL));
+    String jmxPort = System.getProperty(IoTDBConstant.IOTDB_JMX_PORT);
+
+    if (jmxLocal) {
+      logger.info("Start JMX locally.");
+      return;
+    }
+
+    if (jmxPort == null) {
+      String filename =
+          nodeRole.equals(IoTDBConstant.DN_ROLE)
+              ? IoTDBConstant.DN_ENV_FILE_NAME
+              : IoTDBConstant.CN_ENV_FILE_NAME;
+      logger.warn(
+          "{} missing from {}.sh(Unix or OS X, if you use Windows," + " check conf/{}.bat)",
+          IoTDBConstant.IOTDB_JMX_PORT,
+          filename,
+          filename);
+    } else {
+      logger.info(
+          "Start JMX remotely: JMX is enabled to receive remote connection on port {}", jmxPort);
+    }
   }
 
   public StartupChecks withDefaultTest() {

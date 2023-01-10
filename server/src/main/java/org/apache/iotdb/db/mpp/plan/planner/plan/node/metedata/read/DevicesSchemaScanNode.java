@@ -20,7 +20,8 @@ package org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.mpp.common.header.HeaderConstant;
+import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
+import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
@@ -31,6 +32,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 public class DevicesSchemaScanNode extends SchemaQueryScanNode {
 
@@ -59,9 +61,13 @@ public class DevicesSchemaScanNode extends SchemaQueryScanNode {
   @Override
   public List<String> getOutputColumnNames() {
     if (hasSgCol) {
-      return HeaderConstant.showDevicesWithSgHeader.getRespColumns();
+      return ColumnHeaderConstant.showDevicesWithSgColumnHeaders.stream()
+          .map(ColumnHeader::getColumnName)
+          .collect(Collectors.toList());
     }
-    return HeaderConstant.showDevicesHeader.getRespColumns();
+    return ColumnHeaderConstant.showDevicesColumnHeaders.stream()
+        .map(ColumnHeader::getColumnName)
+        .collect(Collectors.toList());
   }
 
   @Override

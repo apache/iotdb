@@ -18,24 +18,21 @@
  */
 package org.apache.iotdb.db.protocol.influxdb.meta;
 
-import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.utils.DataTypeUtils;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
+import org.apache.iotdb.service.rpc.thrift.TSInsertRecordReq;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-
-import org.influxdb.InfluxDBException;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicLong;
 
 public class TagInfoRecords {
 
   private static final String TAG_INFO_DEVICE_ID = "root.TAG_INFO";
   private static final List<String> TAG_INFO_MEASUREMENTS = new ArrayList<>();
   private static final List<TSDataType> TAG_INFO_TYPES = new ArrayList<>();
+  private static final AtomicLong TAG_TIME_STAMPS = new AtomicLong();
 
   static {
     TAG_INFO_MEASUREMENTS.add("database_name");
@@ -65,7 +62,8 @@ public class TagInfoRecords {
 
   public void add(String database, String measurement, String tag, int order) {
     deviceIds.add(TAG_INFO_DEVICE_ID);
-    times.add(System.currentTimeMillis());
+    // Multiple adjacent records, possibly with the same timestamp
+    times.add(TAG_TIME_STAMPS.getAndIncrement());
     measurementsList.add(TAG_INFO_MEASUREMENTS);
     typesList.add(TAG_INFO_TYPES);
 
@@ -77,21 +75,21 @@ public class TagInfoRecords {
     valuesList.add(values);
   }
 
-  public List<InsertRowPlan> convertToInsertRowPlans() {
-    ArrayList<InsertRowPlan> insertRowPlans = new ArrayList<>();
+  public List<TSInsertRecordReq> convertToInsertRecordsReq(long sessionID)
+      throws IoTDBConnectionException {
+    ArrayList<TSInsertRecordReq> reqs = new ArrayList<>();
+    long now = 0;
     for (int i = 0; i < deviceIds.size(); i++) {
-      try {
-        insertRowPlans.add(
-            new InsertRowPlan(
-                new PartialPath(deviceIds.get(i)),
-                times.get(i),
-                measurementsList.get(i).toArray(new String[0]),
-                DataTypeUtils.getValueBuffer(typesList.get(i), valuesList.get(i)),
-                false));
-      } catch (QueryProcessException | IllegalPathException | IoTDBConnectionException e) {
-        throw new InfluxDBException(e.getMessage());
-      }
+      TSInsertRecordReq tsInsertRecordReq = new TSInsertRecordReq();
+      tsInsertRecordReq.setSessionId(sessionID);
+      tsInsertRecordReq.setTimestamp(times.get(i));
+      tsInsertRecordReq.setIsAligned(false);
+      tsInsertRecordReq.setPrefixPath(deviceIds.get(i));
+      tsInsertRecordReq.setMeasurements(measurementsList.get(i));
+      tsInsertRecordReq.setValues(
+          DataTypeUtils.getValueBuffer(typesList.get(i), valuesList.get(i)));
+      reqs.add(tsInsertRecordReq);
     }
-    return insertRowPlans;
+    return reqs;
   }
 }

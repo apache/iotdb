@@ -18,14 +18,15 @@
  */
 package org.apache.iotdb.db.mpp.execution.schedule;
 
+import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.execution.driver.IDriver;
 import org.apache.iotdb.db.mpp.execution.schedule.queue.IndexedBlockingQueue;
 import org.apache.iotdb.db.mpp.execution.schedule.task.DriverTask;
+import org.apache.iotdb.db.utils.SetThreadName;
 import org.apache.iotdb.db.utils.stats.CpuTimer;
 
 import com.google.common.util.concurrent.ListenableFuture;
-import com.google.common.util.concurrent.MoreExecutors;
-import io.airlift.concurrent.SetThreadName;
 import io.airlift.units.Duration;
 
 import java.util.concurrent.Executor;
@@ -34,17 +35,22 @@ import java.util.concurrent.TimeUnit;
 /** the worker thread of {@link DriverTask} */
 public class DriverTaskThread extends AbstractDriverThread {
 
-  public static final Duration EXECUTION_TIME_SLICE = new Duration(100, TimeUnit.MILLISECONDS);
+  public static final Duration EXECUTION_TIME_SLICE =
+      new Duration(
+          IoTDBDescriptor.getInstance().getConfig().getDriverTaskExecutionTimeSliceInMs(),
+          TimeUnit.MILLISECONDS);
 
-  // As the callback is lightweight enough, there's no need to use another one thread to execute.
-  private static final Executor listeningExecutor = MoreExecutors.directExecutor();
+  // we manage thread pool size directly, so create an unlimited pool
+  private static final Executor listeningExecutor =
+      IoTDBThreadPoolFactory.newCachedThreadPool("scheduler-notification");
 
   public DriverTaskThread(
       String workerId,
       ThreadGroup tg,
       IndexedBlockingQueue<DriverTask> queue,
-      ITaskScheduler scheduler) {
-    super(workerId, tg, queue, scheduler);
+      ITaskScheduler scheduler,
+      ThreadProducer producer) {
+    super(workerId, tg, queue, scheduler, producer);
   }
 
   @Override
@@ -53,21 +59,21 @@ public class DriverTaskThread extends AbstractDriverThread {
     if (!scheduler.readyToRunning(task)) {
       return;
     }
-    IDriver instance = task.getFragmentInstance();
+    IDriver driver = task.getDriver();
     CpuTimer timer = new CpuTimer();
-    ListenableFuture<?> future = instance.processFor(EXECUTION_TIME_SLICE);
+    ListenableFuture<?> future = driver.processFor(EXECUTION_TIME_SLICE);
     CpuTimer.CpuDuration duration = timer.elapsedTime();
     // long cost = System.nanoTime() - startTime;
     // If the future is cancelled, the task is in an error and should be thrown.
     if (future.isCancelled()) {
-      task.setAbortCause(FragmentInstanceAbortedException.BY_ALREADY_BEING_CANCELLED);
+      task.setAbortCause(DriverTaskAbortedException.BY_ALREADY_BEING_CANCELLED);
       scheduler.toAborted(task);
       return;
     }
     ExecutionContext context = new ExecutionContext();
     context.setCpuDuration(duration);
     context.setTimeSlice(EXECUTION_TIME_SLICE);
-    if (instance.isFinished()) {
+    if (driver.isFinished()) {
       scheduler.runningToFinished(task, context);
       return;
     }
@@ -78,8 +84,8 @@ public class DriverTaskThread extends AbstractDriverThread {
       scheduler.runningToBlocked(task, context);
       future.addListener(
           () -> {
-            try (SetThreadName fragmentInstanceName2 =
-                new SetThreadName(task.getFragmentInstance().getInfo().getFullId())) {
+            try (SetThreadName driverTaskName2 =
+                new SetThreadName(task.getDriver().getDriverTaskId().getFullId())) {
               scheduler.blockedToReady(task);
             }
           },

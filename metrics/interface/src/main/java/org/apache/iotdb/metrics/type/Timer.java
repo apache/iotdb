@@ -19,35 +19,38 @@
 
 package org.apache.iotdb.metrics.type;
 
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 public interface Timer extends IMetric {
 
-  /** update time of timer */
+  /** Update time of timer. */
   void update(long duration, TimeUnit unit);
 
-  /** update timer by millisecond */
+  /** Update timer by millisecond. */
   default void updateMillis(long durationMillis) {
     update(durationMillis, TimeUnit.MILLISECONDS);
   }
 
-  /** update timer by microseconds */
+  /** Update timer by microseconds. */
   default void updateMicros(long durationMicros) {
     update(durationMicros, TimeUnit.MICROSECONDS);
   }
 
-  /** update timer by nanoseconds */
+  /** Update timer by nanoseconds. */
   default void updateNanos(long durationNanos) {
     update(durationNanos, TimeUnit.NANOSECONDS);
   }
 
-  /** take snapshot of timer */
+  /** Take snapshot of timer. */
   HistogramSnapshot takeSnapshot();
 
-  /**
-   * It's not safe to use the update interface.
-   *
-   * @return the getOrCreatRate related with the getOrCreateTimer
-   */
+  /** It's not safe to use the update interface of this rate. */
   Rate getImmutableRate();
+
+  @Override
+  default void constructValueMap(Map<String, Object> result) {
+    takeSnapshot().constructValueMap(result);
+    getImmutableRate().constructValueMap(result);
+  }
 }

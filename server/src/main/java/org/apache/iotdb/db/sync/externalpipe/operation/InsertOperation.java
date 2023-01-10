@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.sync.externalpipe.operation;
 
-import org.apache.iotdb.db.metadata.path.MeasurementPath;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.utils.Pair;
 
@@ -41,7 +41,7 @@ public class InsertOperation extends Operation {
       long startIndex,
       long endIndex,
       List<Pair<MeasurementPath, List<TimeValuePair>>> dataList) {
-    super(storageGroup, startIndex, endIndex);
+    super(OperationType.INSERT, storageGroup, startIndex, endIndex);
     this.dataList = Validate.notNull(dataList);
   }
 
@@ -56,14 +56,6 @@ public class InsertOperation extends Operation {
       tmpStr = ", dataList=" + dataList;
     }
 
-    return "InsertOperation{"
-        + "sg="
-        + getStorageGroup()
-        + ", startIndex="
-        + getStartIndex()
-        + ", endIndex="
-        + getEndIndex()
-        + tmpStr
-        + '}';
+    return "InsertOperation{" + super.toString() + tmpStr + '}';
   }
 }

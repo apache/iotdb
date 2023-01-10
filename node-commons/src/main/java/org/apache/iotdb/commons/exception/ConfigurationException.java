@@ -22,16 +22,35 @@ package org.apache.iotdb.commons.exception;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 public class ConfigurationException extends IoTDBException {
-  final String parameter;
-  final String correctValue;
+  private String parameter;
+  private String correctValue;
 
+  /**
+   * @param parameter The error parameter
+   * @param badValue The bad value
+   * @param correctValue The correct value (if it could be listed)
+   */
   public ConfigurationException(String parameter, String badValue, String correctValue) {
     super(
         String.format(
             "Parameter %s can not be %s, please set to: %s", parameter, badValue, correctValue),
-        TSStatusCode.CONFIG_ERROR.getStatusCode());
+        TSStatusCode.CONFIGURATION_ERROR.getStatusCode());
     this.parameter = parameter;
     this.correctValue = correctValue;
+  }
+
+  /**
+   * @param parameter The error parameter
+   * @param badValue The bad value
+   */
+  public ConfigurationException(String parameter, String badValue) {
+    super(
+        String.format("Parameter %s can not be %s", parameter, badValue),
+        TSStatusCode.CONFIGURATION_ERROR.getStatusCode());
+  }
+
+  public ConfigurationException(String errorStr) {
+    super(errorStr, TSStatusCode.CONFIGURATION_ERROR.getStatusCode());
   }
 
   public String getParameter() {

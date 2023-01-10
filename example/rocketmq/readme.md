@@ -32,21 +32,21 @@ A devices is an installation equipped with measurements in real scenarios. In Io
 
 A measurement is a detection equipment in an actual scene, which can sense the information to be measured, and can transform the sensed information into an electrical signal or other desired form of information output and send it to IoTDB. In IoTDB, all data and paths stored are organized in units of sensors.
 
-* Storage Group
+* Database
 
-Storage groups are used to let users define how to organize and isolate different time series data on disk. Time series belonging to the same storage group will be continuously written to the same file in the corresponding folder. The file may be closed due to user commands or system policies, and hence the data coming next from these measurements will be stored in a new file in the same folder. Time series belonging to different storage groups are stored in different folders.
+Databases are used to let users define how to organize and isolate different time series data on disk. Time series belonging to the same database will be continuously written to the same file in the corresponding folder. The file may be closed due to user commands or system policies, and hence the data coming next from these measurements will be stored in a new file in the same folder. Time series belonging to different databases are stored in different folders.
 ## Connector
 > note:In this sample program, there are some update operations for historical data, so it is necessary to ensure the sequential transmission and consumption of data via RocketMQ. If there is no update operation in use, then there is no need to guarantee the order of data. IoTDB will process these data which may be disorderly.
 
 ### Producer
 Producers insert IoTDB insert statements into partitions according to devices, ensuring that the same device's data is inserted or updated in the same MessageQueue.
 ### Consumer 
-1. At startup, the consumer client first creates a IOTDB-Session connection and check whether the storage groups and timeseries are created in IoTDB. If not, create it.  
+1. At startup, the consumer client first creates a IOTDB-Session connection and check whether the databases and timeseries are created in IoTDB. If not, create it.  
 2. Then consume client consume data from RocketMQ using MessageListener Orderly to ensure orderly consumption, and insert the sql statement into IoTDB.
 
 ## Usage
 ### Version usage
-IoTDB: 0.14.0-SNAPSHOT  
+IoTDB: 1.0.0  
 RocketMQ: 4.4.0
 ### Dependencies with Maven
 
@@ -55,7 +55,7 @@ RocketMQ: 4.4.0
     <dependency>
       <groupId>org.apache.iotdb</groupId>
       <artifactId>iotdb-session</artifactId>
-      <version>0.14.0-SNAPSHOT</version>
+      <version>1.0.0</version>
     </dependency>
     <dependency>
       <groupId>org.apache.rocketmq</groupId>

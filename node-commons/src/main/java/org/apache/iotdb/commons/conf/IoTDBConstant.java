@@ -18,23 +18,59 @@
  */
 package org.apache.iotdb.commons.conf;
 
+import java.io.File;
+import java.util.Arrays;
 import java.util.HashSet;
+import java.util.Properties;
 import java.util.Set;
+import java.util.regex.Pattern;
 
 public class IoTDBConstant {
 
   private IoTDBConstant() {}
 
-  public static final String ENV_FILE_NAME = "datanode-env";
+  static {
+    Properties prop = new Properties();
+    String finalBuildInfo = "UNKNOWN";
+    try {
+      prop.load(IoTDBConstant.class.getResourceAsStream("/git.properties"));
+      finalBuildInfo = prop.getProperty("git.commit.id.abbrev", "UNKNOWN");
+      String isDirty = prop.getProperty("git.dirty", "false");
+      if (isDirty.equalsIgnoreCase("true")) {
+        finalBuildInfo += "-dev";
+      }
+    } catch (Exception e) {
+      System.err.println("get git.properties error: " + e.getMessage());
+    }
+    BUILD_INFO = finalBuildInfo;
+  }
+
+  public static final String BUILD_INFO;
+
+  public static final String DN_ENV_FILE_NAME = "datanode-env";
+  public static final String CN_ENV_FILE_NAME = "confignode-env";
   public static final String IOTDB_CONF = "IOTDB_CONF";
   public static final String GLOBAL_DB_NAME = "IoTDB";
+  public static final String CN_ROLE = "confignode";
+  public static final String DN_ROLE = "datanode";
 
-  public static final String RPC_ADDRESS = "rpc_address";
-  public static final String RPC_PORT = "rpc_port";
-  public static final String INTERNAL_ADDRESS = "internal_address";
-  public static final String INTERNAL_PORT = "internal_port";
-  public static final String CONSENSUS_PORT = "consensus_port";
-  public static final String TARGET_CONFIG_NODES = "target_config_nodes";
+  public static final String DATA_NODE_CONF_FILE_NAME = "iotdb-datanode.properties";
+
+  public static final String DN_RPC_ADDRESS = "dn_rpc_address";
+  public static final String DN_RPC_PORT = "dn_rpc_port";
+
+  public static final String CN_INTERNAL_ADDRESS = "cn_internal_address";
+  public static final String DN_INTERNAL_ADDRESS = "dn_internal_address";
+
+  public static final String CN_INTERNAL_PORT = "cn_internal_port";
+  public static final String DN_INTERNAL_PORT = "dn_internal_port";
+  public static final String CN_CONSENSUS_PORT = "cn_consensus_port";
+
+  public static final String CN_TARGET_CONFIG_NODE_LIST = "cn_target_config_node_list";
+  public static final String DN_TARGET_CONFIG_NODE_LIST = "dn_target_config_node_list";
+
+  public static final String CLUSTER_NAME = "cluster_name";
+  public static final String DEFAULT_CLUSTER_NAME = "defaultCluster";
 
   // when running the program in IDE, we can not get the version info using
   // getImplementationVersion()
@@ -46,12 +82,14 @@ public class IoTDBConstant {
       "UNKNOWN".equals(VERSION)
           ? "UNKNOWN"
           : VERSION.split("\\.")[0] + "." + VERSION.split("\\.")[1];
+  public static final String VERSION_WITH_BUILD = VERSION + " (Build: " + BUILD_INFO + ")";
 
   public static final String AUDIT_LOGGER_NAME = "IoTDB_AUDIT_LOGGER";
   public static final String SLOW_SQL_LOGGER_NAME = "SLOW_SQL";
   public static final String COMPACTION_LOGGER_NAME = "COMPACTION";
 
-  public static final String IOTDB_JMX_PORT = "iotdb.jmx.port";
+  public static final String IOTDB_JMX_LOCAL = "iotdb.jmx.local";
+  public static final String IOTDB_JMX_PORT = "com.sun.management.jmxremote.port";
 
   public static final String IOTDB_PACKAGE = "org.apache.iotdb.service";
   public static final String IOTDB_THREADPOOL_PACKAGE = "org.apache.iotdb.threadpool";
@@ -63,6 +101,8 @@ public class IoTDBConstant {
 
   public static final String IOTDB_HOME = "IOTDB_HOME";
 
+  public static final String IOTDB_DATA_HOME = "IOTDB_DATA_HOME";
+
   public static final String SEQFILE_LOG_NODE_SUFFIX = "-seq";
   public static final String UNSEQFILE_LOG_NODE_SUFFIX = "-unseq";
 
@@ -73,19 +113,19 @@ public class IoTDBConstant {
   public static final String MIN_TIME = "min_time";
   public static final String LAST_VALUE = "last_value";
   public static final int MIN_SUPPORTED_JDK_VERSION = 8;
-  public static final Set<String> reservedWords =
-      new HashSet<String>() {
-        {
-          add("TIME");
-          add("TIMESTAMP");
-          add("ROOT");
-        }
-      };
+  public static final Set<String> reservedWords = new HashSet<>();
+
+  static {
+    reservedWords.add("TIME");
+    reservedWords.add("TIMESTAMP");
+    reservedWords.add("ROOT");
+  }
 
   // show info
   public static final String COLUMN_ITEM = "                             item";
   public static final String COLUMN_VALUE = "value";
-  public static final String COLUMN_VERSION = "        version";
+  public static final String COLUMN_VERSION = "version";
+  public static final String COLUMN_BUILD_INFO = "build info";
   public static final String COLUMN_TIMESERIES = "timeseries";
   public static final String COLUMN_TIMESERIES_ALIAS = "alias";
   public static final String COLUMN_TIMESERIES_DATATYPE = "dataType";
@@ -93,6 +133,7 @@ public class IoTDBConstant {
   public static final String COLUMN_TIMESERIES_COMPRESSION = "compression";
   public static final String COLUMN_TIMESERIES_COMPRESSOR = "compressor";
   public static final String COLUMN_CHILD_PATHS = "child paths";
+  public static final String COLUMN_CHILD_PATHS_TYPES = "node types";
   public static final String COLUMN_CHILD_NODES = "child nodes";
   public static final String COLUMN_DEVICES = "devices";
   public static final String COLUMN_COLUMN = "column";
@@ -108,26 +149,12 @@ public class IoTDBConstant {
   public static final String COLUMN_USER = "user";
   public static final String COLUMN_PRIVILEGE = "privilege";
 
-  public static final String COLUMN_STORAGE_GROUP = "storage group";
-  public static final String COLUMN_LOCK_INFO = "lock holder";
+  public static final String COLUMN_DATABASE = "database";
   public static final String COLUMN_TTL = "ttl";
-
-  public static final String COLUMN_TASK_NAME = "task name";
-  public static final String COLUMN_CREATED_TIME = "created time";
-  public static final String COLUMN_PROGRESS = "progress";
-  public static final String COLUMN_CANCELLED = "cancelled";
-  public static final String COLUMN_DONE = "done";
 
   public static final String COLUMN_FUNCTION_NAME = "function name";
   public static final String COLUMN_FUNCTION_TYPE = "function type";
   public static final String COLUMN_FUNCTION_CLASS = "class name (UDF)";
-
-  public static final String COLUMN_CONTINUOUS_QUERY_NAME = "cq name";
-  public static final String COLUMN_CONTINUOUS_QUERY_EVERY_INTERVAL = "every interval";
-  public static final String COLUMN_CONTINUOUS_QUERY_FOR_INTERVAL = "for interval";
-  public static final String COLUMN_CONTINUOUS_QUERY_BOUNDARY = "boundary";
-  public static final String COLUMN_CONTINUOUS_QUERY_TARGET_PATH = "target path";
-  public static final String COLUMN_CONTINUOUS_QUERY_QUERY_SQL = "query sql";
 
   public static final String COLUMN_SCHEMA_TEMPLATE = "template name";
 
@@ -147,25 +174,9 @@ public class IoTDBConstant {
   public static final String COLUMN_TRIGGER_STATUS_STARTED = "started";
   public static final String COLUMN_TRIGGER_STATUS_STOPPED = "stopped";
 
-  // sync module
-  public static final String COLUMN_PIPESERVER_STATUS = "enable";
-  public static final String COLUMN_PIPESINK_NAME = "name";
-  public static final String COLUMN_PIPESINK_TYPE = "type";
-  public static final String COLUMN_PIPESINK_ATTRIBUTES = "attributes";
-  public static final String COLUMN_PIPE_NAME = "name";
-  public static final String COLUMN_PIPE_CREATE_TIME = "create time";
-  public static final String COLUMN_PIPE_ROLE = "role";
-  public static final String COLUMN_PIPE_REMOTE = "remote";
-  public static final String COLUMN_PIPE_STATUS = "status";
-  public static final String COLUMN_PIPE_MSG = "message";
-  public static final String COLUMN_PIPE_ERRORS = "errors";
-  public static final String COLUMN_PIPE_PERF_INFO = "performance_info";
-
   public static final String ONE_LEVEL_PATH_WILDCARD = "*";
   public static final String MULTI_LEVEL_PATH_WILDCARD = "**";
   public static final String TIME = "time";
-  public static final String SYNC_SENDER_ROLE = "sender";
-  public static final String SYNC_RECEIVER_ROLE = "receiver";
 
   // sdt parameters
   public static final String LOSS = "loss";
@@ -173,9 +184,26 @@ public class IoTDBConstant {
   public static final String SDT_COMP_DEV = "compdev";
   public static final String SDT_COMP_MIN_TIME = "compmintime";
   public static final String SDT_COMP_MAX_TIME = "compmaxtime";
+  public static final String[] SDT_PARAMETERS =
+      new String[] {SDT_COMP_DEV, SDT_COMP_MIN_TIME, SDT_COMP_MAX_TIME};
+
+  public static final String DEADBAND = "deadband";
+  public static final String MAX_POINT_NUMBER = "max_point_number";
+  public static final String MAX_STRING_LENGTH = "max_string_length";
+  public static final Set<String> ALLOWED_SCHEMA_PROPS =
+      new HashSet<>(
+          Arrays.asList(
+              DEADBAND,
+              LOSS,
+              SDT,
+              SDT_COMP_DEV,
+              SDT_COMP_MIN_TIME,
+              SDT_COMP_MAX_TIME,
+              MAX_POINT_NUMBER,
+              MAX_STRING_LENGTH));
 
   // default base dir, stores all IoTDB runtime files
-  public static final String DEFAULT_BASE_DIR = "data";
+  public static final String DEFAULT_BASE_DIR = "data" + File.separator + DN_ROLE;
 
   // data folder name
   public static final String DATA_FOLDER_NAME = "data";
@@ -184,18 +212,21 @@ public class IoTDBConstant {
   public static final String FILE_NAME_SEPARATOR = "-";
   public static final String UPGRADE_FOLDER_NAME = "upgrade";
   public static final String CONSENSUS_FOLDER_NAME = "consensus";
+  public static final String SNAPSHOT_FOLDER_NAME = "snapshot";
 
   // system folder name
   public static final String SYSTEM_FOLDER_NAME = "system";
   public static final String SCHEMA_FOLDER_NAME = "schema";
+  public static final String LOAD_TSFILE_FOLDER_NAME = "load";
   public static final String SYNC_FOLDER_NAME = "sync";
   public static final String QUERY_FOLDER_NAME = "query";
   public static final String TRACING_FOLDER_NAME = "tracing";
   public static final String TRACING_LOG = "tracing.txt";
   public static final String EXT_FOLDER_NAME = "ext";
   public static final String UDF_FOLDER_NAME = "udf";
-  public static final String TMP_FOLDER_NAME = "temporary";
   public static final String TRIGGER_FOLDER_NAME = "trigger";
+  public static final String TMP_FOLDER_NAME = "tmp";
+
   public static final String MQTT_FOLDER_NAME = "mqtt";
   public static final String WAL_FOLDER_NAME = "wal";
   public static final String EXT_PIPE_FOLDER_NAME = "extPipe";
@@ -213,13 +244,8 @@ public class IoTDBConstant {
   public static final int DEFAULT_FETCH_SIZE = 5000;
   public static final int DEFAULT_CONNECTION_TIMEOUT_MS = 0;
 
-  // change tsFile name
-  public static final int FILE_NAME_SUFFIX_INDEX = 0;
-  public static final int FILE_NAME_SUFFIX_TIME_INDEX = 0;
-  public static final int FILE_NAME_SUFFIX_VERSION_INDEX = 1;
-  public static final int FILE_NAME_SUFFIX_MERGECNT_INDEX = 2;
-  public static final int FILE_NAME_SUFFIX_UNSEQMERGECNT_INDEX = 3;
-  public static final String FILE_NAME_SUFFIX_SEPARATOR = "\\.";
+  // ratis
+  public static final int RAFT_LOG_BASIC_SIZE = 48;
 
   // inner space compaction
   public static final String INNER_COMPACTION_TMP_FILE_SUFFIX = ".inner";
@@ -241,15 +267,18 @@ public class IoTDBConstant {
   public static final String WAL_START_SEARCH_INDEX = "startSearchIndex";
   public static final String WAL_STATUS_CODE = "statusCode";
 
-  // show cluster status
-  public static final String NODE_TYPE_CONFIG_NODE = "ConfigNode";
-  public static final String NODE_TYPE_DATA_NODE = "DataNode";
-  public static final String NODE_STATUS_RUNNING = "Running";
-  public static final String NODE_STATUS_Down = "Down";
+  public static final String IOTDB_FOREGROUND = "iotdb-foreground";
+  public static final String IOTDB_PIDFILE = "iotdb-pidfile";
 
   // client version number
   public enum ClientVersion {
     V_0_12,
     V_0_13
   }
+
+  // select into
+  public static final Pattern LEVELED_PATH_TEMPLATE_PATTERN = Pattern.compile("\\$\\{\\w+}");
+  public static final String DOUBLE_COLONS = "::";
+
+  public static final int MAX_DATABASE_NAME_LENGTH = 64;
 }

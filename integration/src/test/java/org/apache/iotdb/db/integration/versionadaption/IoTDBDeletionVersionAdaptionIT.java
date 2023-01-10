@@ -48,8 +48,8 @@ public class IoTDBDeletionVersionAdaptionIT {
 
   private static String[] creationSqls =
       new String[] {
-        "SET STORAGE GROUP TO root.vehicle.d0",
-        "SET STORAGE GROUP TO root.vehicle.d1",
+        "CREATE DATABASE root.vehicle.d0",
+        "CREATE DATABASE root.vehicle.d1",
         "CREATE TIMESERIES root.vehicle.d0.s0 WITH DATATYPE=INT32, ENCODING=RLE",
         "CREATE TIMESERIES root.vehicle.d0.s1 WITH DATATYPE=INT64, ENCODING=RLE",
         "CREATE TIMESERIES root.vehicle.d0.s2 WITH DATATYPE=FLOAT, ENCODING=RLE",
@@ -59,13 +59,13 @@ public class IoTDBDeletionVersionAdaptionIT {
 
   private String insertTemplate =
       "INSERT INTO root.vehicle.d0(timestamp,s0,s1,s2,s3,s4" + ") VALUES(%d,%d,%d,%f,%s,%b)";
-  private String deleteAllTemplate = "DELETE FROM root.vehicle.d0 WHERE time <= 10000";
+  private String deleteAllTemplate = "DELETE FROM root.vehicle.d0.* WHERE time <= 10000";
   private long prevPartitionInterval;
 
   @Before
   public void setUp() throws Exception {
     Locale.setDefault(Locale.ENGLISH);
-    prevPartitionInterval = IoTDBDescriptor.getInstance().getConfig().getPartitionInterval();
+    prevPartitionInterval = IoTDBDescriptor.getInstance().getConfig().getTimePartitionInterval();
     ConfigFactory.getConfig().setPartitionInterval(1000);
     EnvFactory.getEnv().initBeforeTest();
     prepareSeries();

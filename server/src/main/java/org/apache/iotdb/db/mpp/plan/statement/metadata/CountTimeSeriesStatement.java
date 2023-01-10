@@ -23,8 +23,38 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
 
 public class CountTimeSeriesStatement extends CountStatement {
+
+  private String key;
+  private String value;
+
+  private boolean isContains;
+
   public CountTimeSeriesStatement(PartialPath partialPath) {
     super(partialPath);
+  }
+
+  public String getKey() {
+    return key;
+  }
+
+  public void setKey(String key) {
+    this.key = key;
+  }
+
+  public String getValue() {
+    return value;
+  }
+
+  public void setValue(String value) {
+    this.value = value;
+  }
+
+  public boolean isContains() {
+    return isContains;
+  }
+
+  public void setContains(boolean contains) {
+    isContains = contains;
   }
 
   @Override

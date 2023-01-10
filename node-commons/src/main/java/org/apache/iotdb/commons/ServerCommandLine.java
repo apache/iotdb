@@ -37,7 +37,7 @@ public abstract class ServerCommandLine {
    * @param args system args
    * @return return 0 if exec success
    */
-  protected abstract int run(String[] args);
+  protected abstract int run(String[] args) throws Exception;
 
   protected void usage(String message) {
     if (message != null) {

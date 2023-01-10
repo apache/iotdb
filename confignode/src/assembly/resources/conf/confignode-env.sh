@@ -57,6 +57,9 @@ case "$(uname)" in
     ;;
 esac
 
+# whether we allow enable heap dump files
+IOTDB_ALLOW_HEAP_DUMP="true"
+
 calculate_heap_sizes()
 {
     case "`uname`" in
@@ -114,6 +117,13 @@ calculate_heap_sizes()
         max_heap_size_in_mb="$quarter_system_memory_in_mb"
     fi
     MAX_HEAP_SIZE="${max_heap_size_in_mb}M"
+
+    # if the heap size is larger than 16GB, we will forbid writing the heap dump file
+    if [ "$max_heap_size_in_mb" -gt "16384" ]
+    then
+       echo "IoTDB memory is too large ($max_heap_size_in_mb MB), will forbid writing heap dump file"
+       IOTDB_ALLOW_HEAP_DUMP="false"
+    fi
 
     # Young gen: min(max_sensible_per_modern_cpu_core * num_cores, 1/4 * heap size)
     max_sensible_yg_per_core_in_mb="100"
@@ -253,7 +263,7 @@ else
   echo "setting local JMX..."
 fi
 
-
+CONFIGNODE_JMX_OPTS="$CONFIGNODE_JMX_OPTS -Diotdb.jmx.local=$JMX_LOCAL"
 CONFIGNODE_JMX_OPTS="$CONFIGNODE_JMX_OPTS -Xms${HEAP_NEWSIZE}"
 CONFIGNODE_JMX_OPTS="$CONFIGNODE_JMX_OPTS -Xmx${MAX_HEAP_SIZE}"
 CONFIGNODE_JMX_OPTS="$CONFIGNODE_JMX_OPTS -XX:MaxDirectMemorySize=${MAX_DIRECT_MEMORY_SIZE}"

@@ -19,14 +19,13 @@
 package org.apache.iotdb.db.it.alignbydevice;
 
 import org.apache.iotdb.it.env.EnvFactory;
-import org.apache.iotdb.it.env.IoTDBTestRunner;
+import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -48,10 +47,10 @@ import static org.junit.Assert.fail;
 @Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBAlignByDeviceIT {
 
-  private static String[] sqls =
+  private static final String[] sqls =
       new String[] {
-        "SET STORAGE GROUP TO root.vehicle",
-        "SET STORAGE GROUP TO root.other",
+        "CREATE DATABASE root.vehicle",
+        "CREATE DATABASE root.other",
         "CREATE TIMESERIES root.vehicle.d0.s0 WITH DATATYPE=INT32, ENCODING=RLE",
         "CREATE TIMESERIES root.vehicle.d0.s1 WITH DATATYPE=INT64, ENCODING=RLE",
         "CREATE TIMESERIES root.vehicle.d0.s2 WITH DATATYPE=FLOAT, ENCODING=RLE",
@@ -105,13 +104,13 @@ public class IoTDBAlignByDeviceIT {
 
   @BeforeClass
   public static void setUp() throws Exception {
-    EnvFactory.getEnv().initBeforeClass();
+    EnvFactory.getEnv().initClusterEnvironment();
     insertData();
   }
 
   @AfterClass
   public static void tearDown() throws Exception {
-    EnvFactory.getEnv().cleanAfterClass();
+    EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
   private static void insertData() {
@@ -417,11 +416,10 @@ public class IoTDBAlignByDeviceIT {
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      // single device
 
       try (ResultSet resultSet =
           statement.executeQuery(
-              "select * from root.vehicle.d0 where s0 > 0 AND s1 < 200 align by device")) {
+              "select * from root.vehicle.* where s0 > 0 AND s1 < 200 align by device")) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
         List<Integer> actualIndexToExpectedIndexList =
             checkHeader(
@@ -469,6 +467,7 @@ public class IoTDBAlignByDeviceIT {
           "103,root.vehicle.d0,99,",
           "104,root.vehicle.d0,90,",
           "105,root.vehicle.d0,99,",
+          "946684800000,root.vehicle.d0,null"
         };
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
@@ -674,58 +673,6 @@ public class IoTDBAlignByDeviceIT {
                 "Time,Device,count(s2)",
                 new int[] {
                   Types.TIMESTAMP, Types.VARCHAR, Types.BIGINT,
-                });
-
-        int cnt = 0;
-        while (resultSet.next()) {
-          String[] expectedStrings = retArray[cnt].split(",");
-          StringBuilder expectedBuilder = new StringBuilder();
-          StringBuilder actualBuilder = new StringBuilder();
-          for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-            actualBuilder.append(resultSet.getString(i)).append(",");
-            expectedBuilder
-                .append(expectedStrings[actualIndexToExpectedIndexList.get(i - 1)])
-                .append(",");
-          }
-          Assert.assertEquals(expectedBuilder.toString(), actualBuilder.toString());
-          cnt++;
-        }
-        Assert.assertEquals(retArray.length, cnt);
-      }
-    } catch (Exception e) {
-      e.printStackTrace();
-      fail(e.getMessage());
-    }
-  }
-
-  @Ignore
-  @Test
-  public void fillTest() {
-    String[] retArray =
-        new String[] {
-          "3,root.vehicle.d0,10000,40000,3.33,null,null,",
-          "3,root.vehicle.d1,999,null,null,null,null,",
-        };
-
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-
-      try (ResultSet resultSet =
-          statement.executeQuery(
-              "select * from root.vehicle.* where time = 3 Fill(int32[previous, 5ms]) align by device")) {
-        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-        List<Integer> actualIndexToExpectedIndexList =
-            checkHeader(
-                resultSetMetaData,
-                "Time,Device,s0,s1,s2,s3,s4",
-                new int[] {
-                  Types.TIMESTAMP,
-                  Types.VARCHAR,
-                  Types.INTEGER,
-                  Types.BIGINT,
-                  Types.FLOAT,
-                  Types.VARCHAR,
-                  Types.BOOLEAN,
                 });
 
         int cnt = 0;

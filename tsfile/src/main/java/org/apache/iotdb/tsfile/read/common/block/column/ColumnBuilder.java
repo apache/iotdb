@@ -67,6 +67,8 @@ public interface ColumnBuilder {
   /**
    * Write value at index of passing column
    *
+   * <p>Caller should make sure that value at index is not null
+   *
    * @param column source column whose type should be same as ColumnBuilder
    * @param index index of source column to read from
    */

@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.tsfile.read.common.block;
 
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.column.BinaryColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.BooleanColumnBuilder;
@@ -29,6 +30,7 @@ import org.apache.iotdb.tsfile.read.common.block.column.IntColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.LongColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
+import org.apache.iotdb.tsfile.utils.Binary;
 
 import java.util.List;
 
@@ -43,6 +45,9 @@ public class TsBlockBuilder {
   //
   // This could be any other small number.
   private static final int DEFAULT_INITIAL_EXPECTED_ENTRIES = 8;
+
+  private static final int MAX_LINE_NUMBER =
+      TSFileDescriptor.getInstance().getConfig().getMaxTsBlockLineNumber();
 
   private TimeColumnBuilder timeColumnBuilder;
   private ColumnBuilder[] valueColumnBuilders;
@@ -254,7 +259,7 @@ public class TsBlockBuilder {
   }
 
   public boolean isFull() {
-    return declaredPositions == Integer.MAX_VALUE || tsBlockBuilderStatus.isFull();
+    return declaredPositions >= MAX_LINE_NUMBER || tsBlockBuilderStatus.isFull();
   }
 
   public boolean isEmpty() {
@@ -303,6 +308,21 @@ public class TsBlockBuilder {
     }
 
     return TsBlock.wrapBlocksWithoutCopy(declaredPositions, timeColumn, columns);
+  }
+
+  /**
+   * Write a text value to the columnIndex. If the value is null, then the place will be recorded
+   * with null.
+   *
+   * @param columnIndex the target column index.
+   * @param value the text value to be inserted.
+   */
+  public void writeNullableText(int columnIndex, String value) {
+    if (value == null) {
+      getColumnBuilder(columnIndex).appendNull();
+    } else {
+      getColumnBuilder(columnIndex).writeBinary(new Binary(value));
+    }
   }
 
   private static void checkArgument(boolean expression, String errorMessage) {

@@ -72,7 +72,10 @@ public class TypeInferenceUtilsTest {
       "9999999999999999",
       "true",
       "77123 ",
-      " 7112324 "
+      " 7112324 ",
+      "16777217", // 2^24 + 1
+      "16777216", // 2^24
+      "271840880000000000000000",
     };
     TSDataType[] encodings = {
       IoTDBDescriptor.getInstance().getConfig().getIntegerStringInferType(),
@@ -85,7 +88,10 @@ public class TypeInferenceUtilsTest {
       IoTDBDescriptor.getInstance().getConfig().getLongStringInferType(),
       IoTDBDescriptor.getInstance().getConfig().getBooleanStringInferType(),
       IoTDBDescriptor.getInstance().getConfig().getIntegerStringInferType(),
-      IoTDBDescriptor.getInstance().getConfig().getIntegerStringInferType()
+      IoTDBDescriptor.getInstance().getConfig().getIntegerStringInferType(),
+      IoTDBDescriptor.getInstance().getConfig().getLongStringInferType(),
+      IoTDBDescriptor.getInstance().getConfig().getIntegerStringInferType(),
+      IoTDBDescriptor.getInstance().getConfig().getLongStringInferType(),
     };
 
     for (int i = 0; i < values.length; i++) {

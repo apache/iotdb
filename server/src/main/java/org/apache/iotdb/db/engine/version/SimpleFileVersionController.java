@@ -40,7 +40,7 @@ public class SimpleFileVersionController implements VersionController {
    * by saveInterval to avoid conflicts.
    */
   private static long saveInterval = 100;
-  /** time partition id to dividing time series into different storage group */
+  /** time partition id to dividing time series into different database */
   private long timePartitionId;
 
   private long prevVersion;

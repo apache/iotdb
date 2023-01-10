@@ -27,6 +27,6 @@ public class MergeException extends IoTDBException {
   private static final long serialVersionUID = 5445240999141374140L;
 
   public MergeException(Throwable cause) {
-    super(cause.getMessage(), TSStatusCode.MERGE_ERROR.getStatusCode());
+    super(cause.getMessage(), cause, TSStatusCode.COMPACTION_ERROR.getStatusCode());
   }
 }

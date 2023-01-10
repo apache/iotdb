@@ -22,6 +22,7 @@ package org.apache.iotdb.confignode.consensus.response;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.common.rpc.thrift.TSchemaNode;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.commons.partition.SchemaPartitionTable;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementResp;
@@ -40,7 +41,7 @@ public class SchemaNodeManagementResp implements DataSet {
   // TODO: Replace this map with new SchemaPartition
   private Map<String, SchemaPartitionTable> schemaPartition;
 
-  private Set<String> matchedNode;
+  private Set<TSchemaNode> matchedNode;
 
   public SchemaNodeManagementResp() {
     // empty constructor
@@ -58,7 +59,7 @@ public class SchemaNodeManagementResp implements DataSet {
     this.schemaPartition = schemaPartition;
   }
 
-  public void setMatchedNode(Set<String> matchedNode) {
+  public void setMatchedNode(Set<TSchemaNode> matchedNode) {
     this.matchedNode = matchedNode;
   }
 

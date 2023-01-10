@@ -19,26 +19,29 @@
 
 package org.apache.iotdb.db.mpp.aggregation;
 
-import org.apache.iotdb.tsfile.read.common.TimeRange;
+import org.apache.iotdb.db.mpp.execution.operator.window.IWindow;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 
 public class MinTimeDescAccumulator extends MinTimeAccumulator {
 
   @Override
-  public int addInput(Column[] column, TimeRange timeRange) {
+  public int addInput(Column[] column, IWindow curWindow) {
     int curPositionCount = column[0].getPositionCount();
-    long curMinTime = timeRange.getMin();
-    long curMaxTime = timeRange.getMax();
+
     for (int i = 0; i < curPositionCount; i++) {
-      long curTime = column[0].getLong(i);
-      if (curTime > curMaxTime || curTime < curMinTime) {
+      // skip null value in control column
+      if (column[0].isNull(i)) {
+        continue;
+      }
+      if (!curWindow.satisfy(column[0], i)) {
         return i;
       }
-      if (!column[1].isNull(i)) {
-        updateMinTime(curTime);
+      curWindow.mergeOnePoint();
+      if (!column[2].isNull(i)) {
+        updateMinTime(column[1].getLong(i));
       }
     }
-    return column[0].getPositionCount();
+    return curPositionCount;
   }
 
   @Override

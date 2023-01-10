@@ -19,34 +19,21 @@
 
 package org.apache.iotdb.db.mpp.plan.expression.binary;
 
-import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
+import org.apache.iotdb.db.mpp.common.NodeRef;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
+import org.apache.iotdb.db.mpp.plan.expression.visitor.ExpressionVisitor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
-import org.apache.iotdb.db.mpp.transformation.api.LayerPointReader;
-import org.apache.iotdb.db.mpp.transformation.dag.input.QueryDataSetInputLayer;
-import org.apache.iotdb.db.mpp.transformation.dag.intermediate.IntermediateLayer;
-import org.apache.iotdb.db.mpp.transformation.dag.intermediate.SingleInputColumnMultiReferenceIntermediateLayer;
-import org.apache.iotdb.db.mpp.transformation.dag.intermediate.SingleInputColumnSingleReferenceIntermediateLayer;
 import org.apache.iotdb.db.mpp.transformation.dag.memory.LayerMemoryAssigner;
-import org.apache.iotdb.db.mpp.transformation.dag.transformer.Transformer;
-import org.apache.iotdb.db.mpp.transformation.dag.transformer.binary.BinaryTransformer;
-import org.apache.iotdb.db.mpp.transformation.dag.udf.UDTFContext;
 import org.apache.iotdb.db.mpp.transformation.dag.udf.UDTFExecutor;
-import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.time.ZoneId;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 public abstract class BinaryExpression extends Expression {
 
@@ -61,6 +48,11 @@ public abstract class BinaryExpression extends Expression {
   protected BinaryExpression(ByteBuffer byteBuffer) {
     this.leftExpression = Expression.deserialize(byteBuffer);
     this.rightExpression = Expression.deserialize(byteBuffer);
+  }
+
+  @Override
+  public <R, C> R accept(ExpressionVisitor<R, C> visitor, C context) {
+    return visitor.visitBinaryExpression(this, context);
   }
 
   public Expression getLeftExpression() {
@@ -85,105 +77,8 @@ public abstract class BinaryExpression extends Expression {
   }
 
   @Override
-  public boolean isTimeSeriesGeneratingFunctionExpression() {
-    return !isUserDefinedAggregationFunctionExpression();
-  }
-
-  @Override
-  public boolean isUserDefinedAggregationFunctionExpression() {
-    return leftExpression.isBuiltInAggregationFunctionExpression()
-        || rightExpression.isBuiltInAggregationFunctionExpression()
-        || leftExpression.isUserDefinedAggregationFunctionExpression()
-        || rightExpression.isUserDefinedAggregationFunctionExpression();
-  }
-
-  @Override
   public List<Expression> getExpressions() {
     return Arrays.asList(leftExpression, rightExpression);
-  }
-
-  @Override
-  public final void concat(List<PartialPath> prefixPaths, List<Expression> resultExpressions) {
-    List<Expression> leftExpressions = new ArrayList<>();
-    leftExpression.concat(prefixPaths, leftExpressions);
-
-    List<Expression> rightExpressions = new ArrayList<>();
-    rightExpression.concat(prefixPaths, rightExpressions);
-
-    reconstruct(leftExpressions, rightExpressions, resultExpressions);
-  }
-
-  @Override
-  public final void removeWildcards(
-      org.apache.iotdb.db.qp.utils.WildcardsRemover wildcardsRemover,
-      List<Expression> resultExpressions)
-      throws LogicalOptimizeException {
-    List<Expression> leftExpressions = new ArrayList<>();
-    leftExpression.removeWildcards(wildcardsRemover, leftExpressions);
-
-    List<Expression> rightExpressions = new ArrayList<>();
-    rightExpression.removeWildcards(wildcardsRemover, rightExpressions);
-
-    reconstruct(leftExpressions, rightExpressions, resultExpressions);
-  }
-
-  private void reconstruct(
-      List<Expression> leftExpressions,
-      List<Expression> rightExpressions,
-      List<Expression> resultExpressions) {
-    for (Expression le : leftExpressions) {
-      for (Expression re : rightExpressions) {
-        switch (operator()) {
-          case "+":
-            resultExpressions.add(new AdditionExpression(le, re));
-            break;
-          case "-":
-            resultExpressions.add(new SubtractionExpression(le, re));
-            break;
-          case "*":
-            resultExpressions.add(new MultiplicationExpression(le, re));
-            break;
-          case "/":
-            resultExpressions.add(new DivisionExpression(le, re));
-            break;
-          case "%":
-            resultExpressions.add(new ModuloExpression(le, re));
-            break;
-          case "<":
-            resultExpressions.add(new LessThanExpression(le, re));
-            break;
-          case "<=":
-            resultExpressions.add(new LessEqualExpression(le, re));
-            break;
-          case ">":
-            resultExpressions.add(new GreaterThanExpression(le, re));
-            break;
-          case ">=":
-            resultExpressions.add(new GreaterEqualExpression(le, re));
-            break;
-          case "=":
-            resultExpressions.add(new EqualToExpression(le, re));
-            break;
-          case "!=":
-            resultExpressions.add(new NonEqualExpression(le, re));
-            break;
-          case "&":
-            resultExpressions.add(new LogicAndExpression(le, re));
-            break;
-          case "|":
-            resultExpressions.add(new LogicOrExpression(le, re));
-            break;
-          default:
-            throw new UnsupportedOperationException();
-        }
-      }
-    }
-  }
-
-  @Override
-  public void collectPaths(Set<PartialPath> pathSet) {
-    leftExpression.collectPaths(pathSet);
-    rightExpression.collectPaths(pathSet);
   }
 
   @Override
@@ -194,19 +89,13 @@ public abstract class BinaryExpression extends Expression {
   }
 
   @Override
-  public final void bindInputLayerColumnIndexWithExpression(UDTFPlan udtfPlan) {
-    leftExpression.bindInputLayerColumnIndexWithExpression(udtfPlan);
-    rightExpression.bindInputLayerColumnIndexWithExpression(udtfPlan);
-    inputColumnIndex = udtfPlan.getReaderIndexByExpressionName(toString());
-  }
-
-  @Override
   public final void bindInputLayerColumnIndexWithExpression(
       Map<String, List<InputLocation>> inputLocations) {
     leftExpression.bindInputLayerColumnIndexWithExpression(inputLocations);
     rightExpression.bindInputLayerColumnIndexWithExpression(inputLocations);
 
     final String digest = toString();
+
     if (inputLocations.containsKey(digest)) {
       inputColumnIndex = inputLocations.get(digest).get(0).getValueColumnIndex();
     }
@@ -220,104 +109,10 @@ public abstract class BinaryExpression extends Expression {
   }
 
   @Override
-  public IntermediateLayer constructIntermediateLayer(
-      long queryId,
-      UDTFContext udtfContext,
-      QueryDataSetInputLayer rawTimeSeriesInputLayer,
-      Map<Expression, IntermediateLayer> expressionIntermediateLayerMap,
-      Map<Expression, TSDataType> expressionDataTypeMap,
-      LayerMemoryAssigner memoryAssigner)
-      throws QueryProcessException, IOException {
-    if (!expressionIntermediateLayerMap.containsKey(this)) {
-      float memoryBudgetInMB = memoryAssigner.assign();
-
-      IntermediateLayer leftParentIntermediateLayer =
-          leftExpression.constructIntermediateLayer(
-              queryId,
-              udtfContext,
-              rawTimeSeriesInputLayer,
-              expressionIntermediateLayerMap,
-              expressionDataTypeMap,
-              memoryAssigner);
-      IntermediateLayer rightParentIntermediateLayer =
-          rightExpression.constructIntermediateLayer(
-              queryId,
-              udtfContext,
-              rawTimeSeriesInputLayer,
-              expressionIntermediateLayerMap,
-              expressionDataTypeMap,
-              memoryAssigner);
-      Transformer transformer =
-          constructTransformer(
-              leftParentIntermediateLayer.constructPointReader(),
-              rightParentIntermediateLayer.constructPointReader());
-      expressionDataTypeMap.put(this, transformer.getDataType());
-
-      // SingleInputColumnMultiReferenceIntermediateLayer doesn't support ConstantLayerPointReader
-      // yet. And since a ConstantLayerPointReader won't produce too much IO,
-      // SingleInputColumnSingleReferenceIntermediateLayer could be a better choice.
-      expressionIntermediateLayerMap.put(
-          this,
-          memoryAssigner.getReference(this) == 1 || isConstantOperand()
-              ? new SingleInputColumnSingleReferenceIntermediateLayer(
-                  this, queryId, memoryBudgetInMB, transformer)
-              : new SingleInputColumnMultiReferenceIntermediateLayer(
-                  this, queryId, memoryBudgetInMB, transformer));
-    }
-
-    return expressionIntermediateLayerMap.get(this);
+  public boolean isMappable(Map<NodeRef<Expression>, TSDataType> expressionTypes) {
+    return leftExpression.isMappable(expressionTypes)
+        && rightExpression.isMappable(expressionTypes);
   }
-
-  @Override
-  public IntermediateLayer constructIntermediateLayer(
-      long queryId,
-      UDTFContext udtfContext,
-      QueryDataSetInputLayer rawTimeSeriesInputLayer,
-      Map<Expression, IntermediateLayer> expressionIntermediateLayerMap,
-      TypeProvider typeProvider,
-      LayerMemoryAssigner memoryAssigner)
-      throws QueryProcessException, IOException {
-    if (!expressionIntermediateLayerMap.containsKey(this)) {
-      float memoryBudgetInMB = memoryAssigner.assign();
-
-      IntermediateLayer leftParentIntermediateLayer =
-          leftExpression.constructIntermediateLayer(
-              queryId,
-              udtfContext,
-              rawTimeSeriesInputLayer,
-              expressionIntermediateLayerMap,
-              typeProvider,
-              memoryAssigner);
-      IntermediateLayer rightParentIntermediateLayer =
-          rightExpression.constructIntermediateLayer(
-              queryId,
-              udtfContext,
-              rawTimeSeriesInputLayer,
-              expressionIntermediateLayerMap,
-              typeProvider,
-              memoryAssigner);
-      Transformer transformer =
-          constructTransformer(
-              leftParentIntermediateLayer.constructPointReader(),
-              rightParentIntermediateLayer.constructPointReader());
-
-      // SingleInputColumnMultiReferenceIntermediateLayer doesn't support ConstantLayerPointReader
-      // yet. And since a ConstantLayerPointReader won't produce too much IO,
-      // SingleInputColumnSingleReferenceIntermediateLayer could be a better choice.
-      expressionIntermediateLayerMap.put(
-          this,
-          memoryAssigner.getReference(this) == 1 || isConstantOperand()
-              ? new SingleInputColumnSingleReferenceIntermediateLayer(
-                  this, queryId, memoryBudgetInMB, transformer)
-              : new SingleInputColumnMultiReferenceIntermediateLayer(
-                  this, queryId, memoryBudgetInMB, transformer));
-    }
-
-    return expressionIntermediateLayerMap.get(this);
-  }
-
-  protected abstract BinaryTransformer constructTransformer(
-      LayerPointReader leftParentLayerPointReader, LayerPointReader rightParentLayerPointReader);
 
   @Override
   public final String getExpressionStringInternal() {

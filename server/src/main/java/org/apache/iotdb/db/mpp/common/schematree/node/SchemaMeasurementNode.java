@@ -25,11 +25,14 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.util.Map;
 
 public class SchemaMeasurementNode extends SchemaNode {
 
   private String alias;
   private MeasurementSchema schema;
+
+  private Map<String, String> tagMap;
 
   public SchemaMeasurementNode(String name, MeasurementSchema schema) {
     super(name);
@@ -46,6 +49,10 @@ public class SchemaMeasurementNode extends SchemaNode {
 
   public MeasurementSchema getSchema() {
     return schema;
+  }
+
+  public Map<String, String> getTagMap() {
+    return tagMap;
   }
 
   @Override
@@ -66,6 +73,10 @@ public class SchemaMeasurementNode extends SchemaNode {
 
   private void setSchema(MeasurementSchema schema) {
     this.schema = schema;
+  }
+
+  public void setTagMap(Map<String, String> tagMap) {
+    this.tagMap = tagMap;
   }
 
   @Override
@@ -90,15 +101,18 @@ public class SchemaMeasurementNode extends SchemaNode {
 
     ReadWriteIOUtils.write(alias, outputStream);
     schema.serializeTo(outputStream);
+    ReadWriteIOUtils.write(tagMap, outputStream);
   }
 
   public static SchemaMeasurementNode deserialize(InputStream inputStream) throws IOException {
     String name = ReadWriteIOUtils.readString(inputStream);
     String alias = ReadWriteIOUtils.readString(inputStream);
     MeasurementSchema schema = MeasurementSchema.deserializeFrom(inputStream);
+    Map<String, String> tagMap = ReadWriteIOUtils.readMap(inputStream);
 
     SchemaMeasurementNode measurementNode = new SchemaMeasurementNode(name, schema);
     measurementNode.setAlias(alias);
+    measurementNode.setTagMap(tagMap);
     return measurementNode;
   }
 }

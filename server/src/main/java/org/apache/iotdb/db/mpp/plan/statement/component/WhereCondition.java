@@ -40,4 +40,8 @@ public class WhereCondition extends StatementNode {
   public void setPredicate(Expression predicate) {
     this.predicate = predicate;
   }
+
+  public String toSQLString() {
+    return "WHERE " + predicate.toString();
+  }
 }

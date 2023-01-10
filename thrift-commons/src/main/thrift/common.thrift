@@ -19,7 +19,9 @@
 
 namespace java org.apache.iotdb.common.rpc.thrift
 namespace py iotdb.thrift.common
+namespace go common
 
+// Define a set of ip:port address
 struct TEndPoint {
   1: required string ip
   2: required i32 port
@@ -34,7 +36,7 @@ struct TSStatus {
 }
 
 enum TConsensusGroupType {
-  PartitionRegion,
+  ConfigNodeRegion,
   DataRegion,
   SchemaRegion
 }
@@ -57,6 +59,11 @@ struct TRegionReplicaSet {
   2: required list<TDataNodeLocation> dataNodeLocations
 }
 
+struct TNodeResource {
+  1: required i32 cpuCoreNum
+  2: required i64 maxMemory
+}
+
 struct TConfigNodeLocation {
   1: required i32 configNodeId
   2: required TEndPoint internalEndPoint
@@ -67,7 +74,7 @@ struct TDataNodeLocation {
   1: required i32 dataNodeId
   // TEndPoint for DataNode's client rpc
   2: required TEndPoint clientRpcEndPoint
-  // TEndPoint for DataNode's internal rpc
+  // TEndPoint for DataNode's cluster internal rpc
   3: required TEndPoint internalEndPoint
   // TEndPoint for exchange data between DataNodes
   4: required TEndPoint mPPDataExchangeEndPoint
@@ -77,30 +84,42 @@ struct TDataNodeLocation {
   6: required TEndPoint schemaRegionConsensusEndPoint
 }
 
-struct TRegionInfo {
-  1: required TConsensusGroupId consensusGroupId
-  2: required string storageGroup
-  3: required i32 dataNodeId
-  4: required string clientRpcIp
-  5: required i32 clientRpcPort
-  6: required i64 seriesSlots
-  7: required i64 timeSlots
-  8: optional string status
+struct TDataNodeConfiguration {
+  1: required TDataNodeLocation location
+  2: required TNodeResource resource
 }
 
-struct TDataNodeInfo {
-  1: required TDataNodeLocation location
-  2: required i32 cpuCoreNum
-  3: required i64 maxMemory
+enum TRegionMigrateFailedType {
+  AddPeerFailed,
+  RemovePeerFailed,
+  RemoveConsensusGroupFailed,
+  DeleteRegionFailed,
+  CreateRegionFailed
 }
 
 struct TFlushReq {
    1: optional string isSeq
    2: optional list<string> storageGroups
-   3: optional i32 dataNodeId
+}
+
+// for node management
+struct TSchemaNode {
+  1: required string nodeName
+  2: required byte nodeType
 }
 
 struct TSetTTLReq {
-  1: required string storageGroup
+  1: required list<string> storageGroupPathPattern
   2: required i64 TTL
+}
+
+// for File
+struct TFile {
+  1: required string fileName
+  2: required binary file
+}
+
+struct TFilesResp {
+  1: required TSStatus status
+  2: required list<TFile> files
 }

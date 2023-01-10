@@ -69,7 +69,8 @@ public class SchemaQueryMergeNode extends AbstractSchemaMergeNode {
     return visitor.visitSchemaQueryMerge(this, context);
   }
 
+  @Override
   public String toString() {
-    return String.format("SchemaMergeNode-%s", getPlanNodeId());
+    return String.format("SchemaQueryMergeNode-%s", getPlanNodeId());
   }
 }

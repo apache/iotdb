@@ -20,7 +20,7 @@ package org.apache.iotdb.db.integration;
 
 import org.apache.iotdb.integration.env.EnvFactory;
 import org.apache.iotdb.itbase.category.LocalStandaloneTest;
-import org.apache.iotdb.jdbc.AbstractIoTDBJDBCResultSet;
+import org.apache.iotdb.jdbc.IoTDBJDBCResultSet;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -47,7 +47,7 @@ public class IoTDBTracingIT {
   private static void prepareData() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("SET STORAGE GROUP TO root.sg_tracing");
+      statement.execute("CREATE DATABASE root.sg_tracing");
       statement.execute(
           "CREATE TIMESERIES root.sg_tracing.d1.s1 WITH DATATYPE=INT32, ENCODING=RLE");
 
@@ -68,7 +68,7 @@ public class IoTDBTracingIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute("tracing select s1 from root.sg_tracing.d1");
-      AbstractIoTDBJDBCResultSet resultSet = (AbstractIoTDBJDBCResultSet) statement.getResultSet();
+      IoTDBJDBCResultSet resultSet = (IoTDBJDBCResultSet) statement.getResultSet();
       Assert.assertTrue(resultSet.isSetTracingInfo());
       Assert.assertEquals(1, resultSet.getStatisticsByName("seriesPathNum"));
       Assert.assertEquals(1, resultSet.getStatisticsByName("seqFileNum"));

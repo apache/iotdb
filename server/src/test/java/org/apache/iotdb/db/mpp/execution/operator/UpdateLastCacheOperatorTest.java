@@ -21,16 +21,18 @@ package org.apache.iotdb.db.mpp.execution.operator;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.mpp.aggregation.Aggregator;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.common.QueryId;
+import org.apache.iotdb.db.mpp.execution.driver.DriverContext;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceStateMachine;
-import org.apache.iotdb.db.mpp.execution.operator.process.UpdateLastCacheOperator;
+import org.apache.iotdb.db.mpp.execution.operator.process.last.LastQueryUtil;
+import org.apache.iotdb.db.mpp.execution.operator.process.last.UpdateLastCacheOperator;
 import org.apache.iotdb.db.mpp.execution.operator.source.SeriesAggregationScanOperator;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
@@ -54,6 +56,9 @@ import java.util.Set;
 import java.util.concurrent.ExecutorService;
 
 import static org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext.createFragmentInstanceContext;
+import static org.apache.iotdb.db.mpp.execution.operator.AggregationOperatorTest.TEST_TIME_SLICE;
+import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.initTimeRangeIterator;
+import static org.apache.iotdb.tsfile.read.common.block.TsBlockBuilderStatus.DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -188,28 +193,37 @@ public class UpdateLastCacheOperatorTest {
         new FragmentInstanceStateMachine(instanceId, instanceNotificationExecutor);
     FragmentInstanceContext fragmentInstanceContext =
         createFragmentInstanceContext(instanceId, stateMachine);
+    DriverContext driverContext = new DriverContext(fragmentInstanceContext, 0);
     PlanNodeId planNodeId1 = new PlanNodeId("1");
-    fragmentInstanceContext.addOperatorContext(
+    driverContext.addOperatorContext(
         1, planNodeId1, SeriesAggregationScanOperator.class.getSimpleName());
     PlanNodeId planNodeId2 = new PlanNodeId("2");
-    fragmentInstanceContext.addOperatorContext(
-        2, planNodeId2, UpdateLastCacheOperator.class.getSimpleName());
+    driverContext.addOperatorContext(2, planNodeId2, UpdateLastCacheOperator.class.getSimpleName());
+
+    driverContext
+        .getOperatorContexts()
+        .forEach(
+            operatorContext -> {
+              operatorContext.setMaxRunTime(TEST_TIME_SLICE);
+            });
 
     SeriesAggregationScanOperator seriesAggregationScanOperator =
         new SeriesAggregationScanOperator(
             planNodeId1,
             measurementPath,
             allSensors,
-            fragmentInstanceContext.getOperatorContexts().get(0),
+            driverContext.getOperatorContexts().get(0),
             aggregators,
+            initTimeRangeIterator(groupByTimeParameter, ascending, true),
             timeFilter,
             ascending,
-            groupByTimeParameter);
+            groupByTimeParameter,
+            DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES);
     seriesAggregationScanOperator.initQueryDataSource(
         new QueryDataSource(seqResources, unSeqResources));
 
     return new UpdateLastCacheOperator(
-        fragmentInstanceContext.getOperatorContexts().get(1),
+        driverContext.getOperatorContexts().get(1),
         seriesAggregationScanOperator,
         measurementPath,
         measurementPath.getSeriesType(),

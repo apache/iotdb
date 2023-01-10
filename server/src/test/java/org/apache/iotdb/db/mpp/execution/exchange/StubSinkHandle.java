@@ -59,8 +59,8 @@ public class StubSinkHandle implements ISinkHandle {
   }
 
   @Override
-  public void send(List<TsBlock> tsBlocks) {
-    this.tsBlocks.addAll(tsBlocks);
+  public void send(TsBlock tsBlock) {
+    this.tsBlocks.add(tsBlock);
   }
 
   @Override
@@ -92,6 +92,15 @@ public class StubSinkHandle implements ISinkHandle {
     closed = true;
     tsBlocks.clear();
   }
+
+  @Override
+  public void close() {
+    closed = true;
+    tsBlocks.clear();
+  }
+
+  @Override
+  public void setMaxBytesCanReserve(long maxBytesCanReserve) {}
 
   public List<TsBlock> getTsBlocks() {
     return tsBlocks;

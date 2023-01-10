@@ -36,4 +36,6 @@ public interface IAuthorityFetcher {
   SettableFuture<ConfigTaskResult> operatePermission(AuthorStatement authorStatement);
 
   SettableFuture<ConfigTaskResult> queryPermission(AuthorStatement authorStatement);
+
+  IAuthorCache getAuthorCache();
 }

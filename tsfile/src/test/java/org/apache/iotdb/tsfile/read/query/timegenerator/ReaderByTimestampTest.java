@@ -63,7 +63,7 @@ public class ReaderByTimestampTest {
   public void readByTimestamp() throws IOException {
     CachedChunkLoaderImpl seriesChunkLoader = new CachedChunkLoaderImpl(fileReader);
     List<IChunkMetadata> chunkMetadataList =
-        metadataQuerierByFile.getChunkMetaDataList(new Path("d1", "s1"));
+        metadataQuerierByFile.getChunkMetaDataList(new Path("d1", "s1", true));
     AbstractFileSeriesReader seriesReader =
         new FileSeriesReader(seriesChunkLoader, chunkMetadataList, null);
 

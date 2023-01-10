@@ -57,11 +57,11 @@ public class TSFileDescriptor {
   private void init() {
     Properties properties = loadProperties();
     if (properties != null) {
-      overwriteConfigByCustomSettings(this.conf, properties);
+      overwriteConfigByCustomSettings(properties);
     }
   }
 
-  private void overwriteConfigByCustomSettings(TSFileConfig conf, Properties properties) {
+  public void overwriteConfigByCustomSettings(Properties properties) {
     PropertiesOverWriter writer = new PropertiesOverWriter(properties);
 
     writer.setInt(conf::setGroupSizeInByte, "group_size_in_byte");

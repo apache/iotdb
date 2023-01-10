@@ -27,7 +27,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.ExchangeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.TimeJoinNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.sink.FragmentSinkNode;
-import org.apache.iotdb.db.mpp.plan.statement.component.OrderBy;
+import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 
 import org.junit.Test;
 
@@ -39,8 +39,7 @@ public class ExchangeNodeSerdeTest {
 
   @Test
   public void testSerializeAndDeserialize() throws IllegalPathException {
-    TimeJoinNode timeJoinNode =
-        new TimeJoinNode(new PlanNodeId("TestTimeJoinNode"), OrderBy.TIMESTAMP_ASC);
+    TimeJoinNode timeJoinNode = new TimeJoinNode(new PlanNodeId("TestTimeJoinNode"), Ordering.ASC);
 
     ExchangeNode exchangeNode = new ExchangeNode(new PlanNodeId("TestExchangeNode"));
     FragmentSinkNode fragmentSinkNode =

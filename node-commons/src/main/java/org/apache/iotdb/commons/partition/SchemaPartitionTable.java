@@ -30,13 +30,17 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Vector;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.stream.Collectors;
 
 public class SchemaPartitionTable {
 
@@ -89,23 +93,25 @@ public class SchemaPartitionTable {
    * Create SchemaPartition within the specific StorageGroup
    *
    * @param assignedSchemaPartition assigned result
-   * @return Number of SchemaPartitions added to each Region
+   * @return Map<TConsensusGroupId, Map<TSeriesPartitionSlot, Delta TTimePartitionSlot Count(always
+   *     0)>>
    */
-  public Map<TConsensusGroupId, AtomicInteger> createSchemaPartition(
+  public Map<TConsensusGroupId, Map<TSeriesPartitionSlot, AtomicLong>> createSchemaPartition(
       SchemaPartitionTable assignedSchemaPartition) {
-    Map<TConsensusGroupId, AtomicInteger> deltaMap = new ConcurrentHashMap<>();
+    Map<TConsensusGroupId, Map<TSeriesPartitionSlot, AtomicLong>> groupDeltaMap =
+        new ConcurrentHashMap<>();
 
     assignedSchemaPartition
         .getSchemaPartitionMap()
         .forEach(
             ((seriesPartitionSlot, consensusGroupId) -> {
               schemaPartitionMap.put(seriesPartitionSlot, consensusGroupId);
-              deltaMap
-                  .computeIfAbsent(consensusGroupId, empty -> new AtomicInteger(0))
-                  .getAndIncrement();
+              groupDeltaMap
+                  .computeIfAbsent(consensusGroupId, empty -> new ConcurrentHashMap<>())
+                  .put(seriesPartitionSlot, new AtomicLong(0));
             }));
 
-    return deltaMap;
+    return groupDeltaMap;
   }
 
   /**
@@ -127,6 +133,19 @@ public class SchemaPartitionTable {
         });
 
     return result;
+  }
+
+  public List<TConsensusGroupId> getRegionId(TSeriesPartitionSlot seriesSlotId) {
+    if (!schemaPartitionMap.containsKey(seriesSlotId)) {
+      return new ArrayList<>();
+    }
+    return Collections.singletonList(schemaPartitionMap.get(seriesSlotId));
+  }
+
+  public List<TSeriesPartitionSlot> getSeriesSlotList() {
+    return schemaPartitionMap.keySet().stream()
+        .sorted(Comparator.comparing(TSeriesPartitionSlot::getSlotId))
+        .collect(Collectors.toList());
   }
 
   public void serialize(OutputStream outputStream, TProtocol protocol)

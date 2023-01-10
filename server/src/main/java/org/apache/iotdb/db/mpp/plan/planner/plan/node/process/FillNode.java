@@ -23,8 +23,8 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.FillDescriptor;
-
-import com.google.common.collect.ImmutableList;
+import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -33,49 +33,29 @@ import java.util.List;
 import java.util.Objects;
 
 /** FillNode is used to fill the empty field in one row. */
-public class FillNode extends ProcessNode {
+public class FillNode extends SingleChildProcessNode {
 
   // descriptions of how null values are filled
-  private FillDescriptor fillDescriptor;
+  private final FillDescriptor fillDescriptor;
 
-  private PlanNode child;
+  private final Ordering scanOrder;
 
-  public FillNode(PlanNodeId id) {
+  public FillNode(PlanNodeId id, FillDescriptor fillDescriptor, Ordering scanOrder) {
     super(id);
-  }
-
-  public FillNode(PlanNodeId id, FillDescriptor fillDescriptor) {
-    this(id);
     this.fillDescriptor = fillDescriptor;
+    this.scanOrder = scanOrder;
   }
 
-  public FillNode(PlanNodeId id, PlanNode child, FillDescriptor fillDescriptor) {
-    this(id, fillDescriptor);
-    this.child = child;
-  }
-
-  @Override
-  public List<PlanNode> getChildren() {
-    return ImmutableList.of(child);
-  }
-
-  public PlanNode getChild() {
-    return child;
-  }
-
-  @Override
-  public void addChild(PlanNode child) {
-    this.child = child;
-  }
-
-  @Override
-  public int allowedChildCount() {
-    return ONE_CHILD;
+  public FillNode(
+      PlanNodeId id, PlanNode child, FillDescriptor fillDescriptor, Ordering scanOrder) {
+    super(id, child);
+    this.fillDescriptor = fillDescriptor;
+    this.scanOrder = scanOrder;
   }
 
   @Override
   public PlanNode clone() {
-    return new FillNode(getPlanNodeId(), fillDescriptor);
+    return new FillNode(getPlanNodeId(), fillDescriptor, scanOrder);
   }
 
   @Override
@@ -92,18 +72,21 @@ public class FillNode extends ProcessNode {
   protected void serializeAttributes(ByteBuffer byteBuffer) {
     PlanNodeType.FILL.serialize(byteBuffer);
     fillDescriptor.serialize(byteBuffer);
+    ReadWriteIOUtils.write(scanOrder.ordinal(), byteBuffer);
   }
 
   @Override
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
     PlanNodeType.FILL.serialize(stream);
     fillDescriptor.serialize(stream);
+    ReadWriteIOUtils.write(scanOrder.ordinal(), stream);
   }
 
   public static FillNode deserialize(ByteBuffer byteBuffer) {
     FillDescriptor fillDescriptor = FillDescriptor.deserialize(byteBuffer);
+    Ordering scanOrder = Ordering.values()[ReadWriteIOUtils.readInt(byteBuffer)];
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
-    return new FillNode(planNodeId, fillDescriptor);
+    return new FillNode(planNodeId, fillDescriptor, scanOrder);
   }
 
   @Override
@@ -117,17 +100,20 @@ public class FillNode extends ProcessNode {
     if (!super.equals(o)) {
       return false;
     }
-    FillNode fillNode = (FillNode) o;
-    return Objects.equals(fillDescriptor, fillNode.fillDescriptor)
-        && Objects.equals(child, fillNode.child);
+    FillNode that = (FillNode) o;
+    return Objects.equals(fillDescriptor, that.fillDescriptor) && scanOrder == that.scanOrder;
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), fillDescriptor, child);
+    return Objects.hash(super.hashCode(), fillDescriptor, scanOrder);
   }
 
   public FillDescriptor getFillDescriptor() {
     return fillDescriptor;
+  }
+
+  public Ordering getScanOrder() {
+    return scanOrder;
   }
 }

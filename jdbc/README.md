@@ -47,7 +47,7 @@ mvn clean install -pl jdbc -am -Dmaven.test.skip=true
     <dependency>
       <groupId>org.apache.iotdb</groupId>
       <artifactId>iotdb-jdbc</artifactId>
-      <version>0.14.0-SNAPSHOT</version>
+      <version>1.0.0</version>
     </dependency>
 </dependencies>
 ```
@@ -79,16 +79,16 @@ public class JDBCExample {
       return;
     }
     Statement statement = connection.createStatement();
-    //Create storage group
+    //Create database
     try {
-      statement.execute("SET STORAGE GROUP TO root.demo");
+      statement.execute("CREATE DATABASE root.demo");
     }catch (IoTDBSQLException e){
       System.out.println(e.getMessage());
     }
 
 
-    //Show storage group
-    statement.execute("SHOW STORAGE GROUP");
+    //SHOW DATABASES
+    statement.execute("SHOW DATABASES");
     outputResult(statement.getResultSet());
 
     //Create time series
@@ -240,12 +240,12 @@ Here is a list of Status Code and related message:
 |401|SQL_PARSE_ERROR|Meet error while parsing SQL|
 |402|GENERATE_TIME_ZONE_ERROR|Meet error while generating time zone|
 |403|SET_TIME_ZONE_ERROR|Meet error while setting time zone|
-|404|NOT_A_STORAGE_GROUP_ERROR|Operating object is not a storage group|
+|404|NOT_A_STORAGE_GROUP_ERROR|Operating object is not a database|
 |405|READ_ONLY_SYSTEM_ERROR|Operating system is read only|
 |500|INTERNAL_SERVER_ERROR|Internal server error|
 |600|WRONG_LOGIN_PASSWORD_ERROR|Username or password is wrong|
 |601|NOT_LOGIN_ERROR|Has not logged in|
-|602|NO_PERMISSION_ERROR|No permissions for this operation|
+|602|NO_PERMISSION_ERROR|No permissions for this operation, please add privilege|
 |603|UNINITIALIZED_AUTH_ERROR|Uninitialized authorizer|
 
 ##How to try IoTDB JDBC using Karaf
@@ -255,7 +255,7 @@ Put the iotdb-jdbc jars into your maven repository:
 `mvn install -DskipTests -pl iotdb-jdbc -am`
 
 In your Karaf client shell:
-feature:repo-add mvn:org.apache.iotdb/iotdb-jdbc/0.14.0-SNAPSHOT/xml/features
+feature:repo-add mvn:org.apache.iotdb/iotdb-jdbc/1.0.0/xml/features
 
 NOTE: that you must install JDBC first and then iotdb-feature
 

@@ -30,7 +30,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
 
-// This class is used for schema partition maintaining the map between storage group and
+@Deprecated
+// This class is used for schema partition maintaining the map between database and
 // schemaRegionIds.
 public class LocalSchemaPartitionTable {
 
@@ -87,7 +88,7 @@ public class LocalSchemaPartitionTable {
   }
 
   public List<SchemaRegionId> getInvolvedSchemaRegionIds(
-      PartialPath storageGroup, PartialPath pathPattern, boolean isPrefixMatch) {
+      PartialPath storageGroup, PartialPath pathPattern) {
     List<SchemaRegionId> result = new ArrayList<>();
     if (table.containsKey(storageGroup)) {
       result.addAll(table.get(storageGroup));

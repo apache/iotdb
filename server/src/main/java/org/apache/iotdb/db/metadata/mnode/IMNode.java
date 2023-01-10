@@ -19,19 +19,13 @@
 package org.apache.iotdb.db.metadata.mnode;
 
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.engine.trigger.executor.TriggerExecutor;
-import org.apache.iotdb.db.metadata.logfile.MLogWriter;
+import org.apache.iotdb.commons.schema.tree.ITreeNode;
 import org.apache.iotdb.db.metadata.mnode.container.IMNodeContainer;
 import org.apache.iotdb.db.metadata.mnode.visitor.MNodeVisitor;
 import org.apache.iotdb.db.metadata.mtree.store.disk.cache.CacheEntry;
-import org.apache.iotdb.db.metadata.template.Template;
-
-import java.io.IOException;
-import java.io.Serializable;
-import java.util.List;
 
 /** This interface defines a MNode's operation interfaces. */
-public interface IMNode extends Serializable {
+public interface IMNode extends ITreeNode {
 
   String getName();
 
@@ -72,11 +66,23 @@ public interface IMNode extends Serializable {
 
   void setUseTemplate(boolean useTemplate);
 
-  Template getUpperTemplate();
+  /** @return the logic id of template set or activated on this node, id>=-1 */
+  int getSchemaTemplateId();
 
-  Template getSchemaTemplate();
+  /** @return the template id with current state, may be negative since unset or deactivation */
+  int getSchemaTemplateIdWithState();
 
-  void setSchemaTemplate(Template schemaTemplate);
+  void setSchemaTemplateId(int schemaTemplateId);
+
+  void preUnsetSchemaTemplate();
+
+  void rollbackUnsetSchemaTemplate();
+
+  boolean isSchemaTemplatePreUnset();
+
+  void unsetSchemaTemplate();
+
+  boolean isAboveDatabase();
 
   boolean isStorageGroup();
 
@@ -84,19 +90,13 @@ public interface IMNode extends Serializable {
 
   boolean isMeasurement();
 
+  MNodeType getMNodeType(Boolean isConfig);
+
   IStorageGroupMNode getAsStorageGroupMNode();
 
   IEntityMNode getAsEntityMNode();
 
   IMeasurementMNode getAsMeasurementMNode();
-
-  List<TriggerExecutor> getUpperTriggerExecutorList();
-
-  TriggerExecutor getTriggerExecutor();
-
-  void setTriggerExecutor(TriggerExecutor triggerExecutor);
-
-  void serializeTo(MLogWriter logWriter) throws IOException;
 
   CacheEntry getCacheEntry();
 

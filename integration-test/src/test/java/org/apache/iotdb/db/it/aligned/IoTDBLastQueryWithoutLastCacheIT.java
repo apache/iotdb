@@ -18,9 +18,9 @@
  */
 package org.apache.iotdb.db.it.aligned;
 
-import org.apache.iotdb.it.env.ConfigFactory;
+import org.apache.iotdb.db.it.utils.AlignedWriteUtil;
 import org.apache.iotdb.it.env.EnvFactory;
-import org.apache.iotdb.it.env.IoTDBTestRunner;
+import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 
@@ -51,32 +51,22 @@ import static org.junit.Assert.fail;
 @Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBLastQueryWithoutLastCacheIT {
 
-  protected static boolean enableSeqSpaceCompaction;
-  protected static boolean enableUnseqSpaceCompaction;
-  protected static boolean enableCrossSpaceCompaction;
-  protected static boolean enableLastCache;
-
   @BeforeClass
   public static void setUp() throws Exception {
-    enableSeqSpaceCompaction = ConfigFactory.getConfig().isEnableSeqSpaceCompaction();
-    enableUnseqSpaceCompaction = ConfigFactory.getConfig().isEnableUnseqSpaceCompaction();
-    enableCrossSpaceCompaction = ConfigFactory.getConfig().isEnableCrossSpaceCompaction();
-    enableLastCache = ConfigFactory.getConfig().isLastCacheEnabled();
-    ConfigFactory.getConfig().setEnableSeqSpaceCompaction(false);
-    ConfigFactory.getConfig().setEnableUnseqSpaceCompaction(false);
-    ConfigFactory.getConfig().setEnableCrossSpaceCompaction(false);
-    ConfigFactory.getConfig().setEnableLastCache(false);
-    EnvFactory.getEnv().initBeforeClass();
+    EnvFactory.getEnv()
+        .getConfig()
+        .getCommonConfig()
+        .setEnableSeqSpaceCompaction(false)
+        .setEnableUnseqSpaceCompaction(false)
+        .setEnableCrossSpaceCompaction(false)
+        .setEnableLastCache(false);
+    EnvFactory.getEnv().initClusterEnvironment();
     AlignedWriteUtil.insertData();
   }
 
   @AfterClass
   public static void tearDown() throws Exception {
-    EnvFactory.getEnv().cleanAfterClass();
-    ConfigFactory.getConfig().setEnableSeqSpaceCompaction(enableSeqSpaceCompaction);
-    ConfigFactory.getConfig().setEnableUnseqSpaceCompaction(enableUnseqSpaceCompaction);
-    ConfigFactory.getConfig().setEnableCrossSpaceCompaction(enableCrossSpaceCompaction);
-    ConfigFactory.getConfig().setEnableLastCache(enableLastCache);
+    EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
   @Test
@@ -93,7 +83,8 @@ public class IoTDBLastQueryWithoutLastCacheIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
-      try (ResultSet resultSet = statement.executeQuery("select last * from root.sg1.d1")) {
+      try (ResultSet resultSet =
+          statement.executeQuery("select last * from root.sg1.d1 order by timeseries asc")) {
         int cnt = 0;
         while (resultSet.next()) {
           String ans =
@@ -136,7 +127,8 @@ public class IoTDBLastQueryWithoutLastCacheIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
-      try (ResultSet resultSet = statement.executeQuery("select last * from root.sg1.*")) {
+      try (ResultSet resultSet =
+          statement.executeQuery("select last * from root.sg1.* order by timeseries asc")) {
         int cnt = 0;
         while (resultSet.next()) {
           String ans =
@@ -170,7 +162,8 @@ public class IoTDBLastQueryWithoutLastCacheIT {
         Statement statement = connection.createStatement()) {
 
       try (ResultSet resultSet =
-          statement.executeQuery("select last * from root.sg1.d1 where time > 30")) {
+          statement.executeQuery(
+              "select last * from root.sg1.d1 where time > 30 order by timeseries asc")) {
         int cnt = 0;
         while (resultSet.next()) {
           String ans =
@@ -206,7 +199,8 @@ public class IoTDBLastQueryWithoutLastCacheIT {
         Statement statement = connection.createStatement()) {
 
       try (ResultSet resultSet =
-          statement.executeQuery("select last s1, s4, s5 from root.sg1.d1")) {
+          statement.executeQuery(
+              "select last s1, s4, s5 from root.sg1.d1 order by timeseries asc")) {
         int cnt = 0;
         while (resultSet.next()) {
           String ans =
@@ -238,7 +232,8 @@ public class IoTDBLastQueryWithoutLastCacheIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
-      try (ResultSet resultSet = statement.executeQuery("select last s1, s4 from root.sg1.d1")) {
+      try (ResultSet resultSet =
+          statement.executeQuery("select last s1, s4 from root.sg1.d1 order by timeseries asc")) {
         int cnt = 0;
         while (resultSet.next()) {
           String ans =
@@ -271,7 +266,8 @@ public class IoTDBLastQueryWithoutLastCacheIT {
         Statement statement = connection.createStatement()) {
 
       try (ResultSet resultSet =
-          statement.executeQuery("select last s1, s4, s5 from root.sg1.d1 where time > 30")) {
+          statement.executeQuery(
+              "select last s1, s4, s5 from root.sg1.d1 where time > 30 order by timeseries asc")) {
         int cnt = 0;
         while (resultSet.next()) {
           String ans =
@@ -308,7 +304,7 @@ public class IoTDBLastQueryWithoutLastCacheIT {
 
       try (ResultSet resultSet =
           statement.executeQuery(
-              "select last d2.s5, d1.s4, d2.s1, d1.s5, d2.s4, d1.s1 from root.sg1 where time > 30")) {
+              "select last d2.s5, d1.s4, d2.s1, d1.s5, d2.s4, d1.s1 from root.sg1 where time > 30 order by timeseries asc")) {
         int cnt = 0;
         while (resultSet.next()) {
           String ans =

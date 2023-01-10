@@ -20,8 +20,10 @@
 package org.apache.iotdb.db.mpp.plan.plan.node.metadata.read;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.common.rpc.thrift.TSchemaNode;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.metadata.mnode.MNodeType;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.plan.plan.node.PlanNodeDeserializeHelper;
@@ -82,9 +84,9 @@ public class NodeManagementMemoryMergeNodeSerdeTest {
 
   private NodeManagementMemoryMergeNode createNodeManagementMemoryMergeNode()
       throws IllegalPathException {
-    Set<String> data = new HashSet<>();
-    data.add("root.ln");
-    data.add("root.abc");
+    Set<TSchemaNode> data = new HashSet<>();
+    data.add(new TSchemaNode("root.ln", MNodeType.STORAGE_GROUP.getNodeType()));
+    data.add(new TSchemaNode("root.abc", MNodeType.STORAGE_GROUP.getNodeType()));
     NodeManagementMemoryMergeNode memorySourceNode =
         new NodeManagementMemoryMergeNode(new PlanNodeId("nodeManagementMerge"), data);
     SchemaQueryMergeNode schemaMergeNode = new SchemaQueryMergeNode(new PlanNodeId("schemaMerge"));

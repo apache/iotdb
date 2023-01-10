@@ -88,4 +88,9 @@ public class NodePathsCountNode extends ProcessNode {
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
     return new NodePathsCountNode(planNodeId);
   }
+
+  @Override
+  public String toString() {
+    return String.format("NodePathsCountNode-%s", this.getPlanNodeId());
+  }
 }

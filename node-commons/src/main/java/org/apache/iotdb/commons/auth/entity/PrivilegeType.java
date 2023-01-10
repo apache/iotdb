@@ -21,7 +21,7 @@ package org.apache.iotdb.commons.auth.entity;
 
 /** This enum class contains all available privileges in IoTDB. */
 public enum PrivilegeType {
-  SET_STORAGE_GROUP(true),
+  CREATE_DATABASE(true),
   INSERT_TIMESERIES(true),
   @Deprecated
   UPDATE_TIMESERIES(true),
@@ -50,7 +50,13 @@ public enum PrivilegeType {
   CREATE_CONTINUOUS_QUERY,
   DROP_CONTINUOUS_QUERY,
   ALL,
-  DELETE_STORAGE_GROUP(true);
+  DELETE_DATABASE(true),
+  ALTER_TIMESERIES(true),
+  UPDATE_TEMPLATE,
+  READ_TEMPLATE,
+  APPLY_TEMPLATE(true),
+  READ_TEMPLATE_APPLICATION,
+  SHOW_CONTINUOUS_QUERIES;
 
   private static final int PRIVILEGE_COUNT = values().length;
 
@@ -73,5 +79,9 @@ public enum PrivilegeType {
    */
   public static boolean isPathRelevant(int type) {
     return 0 <= type && type < PRIVILEGE_COUNT && values()[type].isPathRelevant;
+  }
+
+  public boolean isPathRelevant() {
+    return isPathRelevant;
   }
 }

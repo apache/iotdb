@@ -30,7 +30,13 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileWriter;
 import java.io.IOException;
+import java.nio.file.Path;
+import java.util.Collections;
+import java.util.List;
+import java.util.Scanner;
 
 public class SnapshotTest {
 
@@ -38,6 +44,9 @@ public class SnapshotTest {
 
   // Mock Storage which only provides the state machine dir
   private static class EmptyStorageWithOnlySMDir implements RaftStorage {
+
+    @Override
+    public void initialize() throws IOException {}
 
     @Override
     public RaftStorageDirectory getStorageDir() {
@@ -96,7 +105,6 @@ public class SnapshotTest {
     long index = proxy.takeSnapshot();
     Assert.assertEquals(index, 616);
     Assert.assertTrue(new File(snapshotFilename).exists());
-    Assert.assertTrue(new File(getSnapshotMetaFilename("421_616")).exists());
 
     // take a snapshot at 616-4217
     proxy.notifyTermIndexUpdated(616, 4217);
@@ -105,7 +113,6 @@ public class SnapshotTest {
     long indexLatest = proxy.takeSnapshot();
     Assert.assertEquals(indexLatest, 4217);
     Assert.assertTrue(new File(snapshotFilenameLatest).exists());
-    Assert.assertTrue(new File(getSnapshotMetaFilename("616_4217")).exists());
 
     // query the latest snapshot
     SnapshotInfo info = proxy.getLatestSnapshot();
@@ -118,12 +125,59 @@ public class SnapshotTest {
     Assert.assertTrue(new File(snapshotFilenameLatest).exists());
   }
 
-  private String getSnapshotMetaFilename(String termIndexMeta) {
-    return testDir.getAbsolutePath()
-        + File.separator
-        + termIndexMeta
-        + File.separator
-        + ".ratis_meta."
-        + termIndexMeta;
+  static class CrossDiskLinkStatemachine extends TestUtils.IntegerCounter {
+    @Override
+    public boolean takeSnapshot(File snapshotDir) {
+      /*
+       * Simulate the cross disk link snapshot
+       * create a real snapshot file and a log file recording real snapshot file path
+       */
+      File snapshotRaw = new File(snapshotDir.getAbsolutePath() + File.separator + "snapshot");
+      File snapshotRecord = new File(snapshotDir.getAbsolutePath() + File.separator + "record");
+      try {
+        Assert.assertTrue(snapshotRaw.createNewFile());
+        FileWriter writer = new FileWriter(snapshotRecord);
+        writer.write(snapshotRaw.getName());
+        writer.close();
+      } catch (IOException ioException) {
+        ioException.printStackTrace();
+      }
+      return true;
+    }
+
+    @Override
+    public List<Path> getSnapshotFiles(File latestSnapshotRootDir) {
+      File log = new File(latestSnapshotRootDir.getAbsolutePath() + File.separator + "record");
+      Assert.assertTrue(log.exists());
+      Scanner scanner = null;
+      String relativePath = null;
+      try {
+        scanner = new Scanner(log);
+        relativePath = scanner.nextLine();
+        scanner.close();
+      } catch (FileNotFoundException e) {
+        e.printStackTrace();
+      }
+      Assert.assertNotNull(scanner);
+
+      return Collections.singletonList(new File(latestSnapshotRootDir, relativePath).toPath());
+    }
+  }
+
+  @Test
+  public void testCrossDiskLinkSnapshot() throws Exception {
+    ApplicationStateMachineProxy proxy =
+        new ApplicationStateMachineProxy(new CrossDiskLinkStatemachine(), null);
+
+    proxy.initialize(null, null, new EmptyStorageWithOnlySMDir());
+    proxy.notifyTermIndexUpdated(20, 1005);
+    proxy.takeSnapshot();
+    String actualSnapshotName =
+        CrossDiskLinkStatemachine.ensureSnapshotFileName(testDir, "20_1005");
+    File actualSnapshotFile = new File(actualSnapshotName);
+    Assert.assertEquals(proxy.getLatestSnapshot().getFiles().size(), 1);
+    Assert.assertEquals(
+        proxy.getLatestSnapshot().getFiles().get(0).getPath().toFile().getAbsolutePath(),
+        actualSnapshotFile.getAbsolutePath());
   }
 }

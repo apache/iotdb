@@ -19,9 +19,10 @@
 package org.apache.iotdb.confignode.manager.load.balancer.partition;
 
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
-import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.partition.DataPartitionTable;
 import org.apache.iotdb.commons.partition.SchemaPartitionTable;
+import org.apache.iotdb.confignode.exception.NoAvailableRegionGroupException;
+import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
 
 import java.util.List;
 import java.util.Map;
@@ -39,7 +40,8 @@ public interface IPartitionAllocator {
    * @return Map<StorageGroupName, SchemaPartitionTable>, the allocating result
    */
   Map<String, SchemaPartitionTable> allocateSchemaPartition(
-      Map<String, List<TSeriesPartitionSlot>> unassignedSchemaPartitionSlotsMap);
+      Map<String, List<TSeriesPartitionSlot>> unassignedSchemaPartitionSlotsMap)
+      throws NoAvailableRegionGroupException;
 
   /**
    * Allocate DataPartitions
@@ -48,6 +50,6 @@ public interface IPartitionAllocator {
    * @return Map<StorageGroupName, DataPartitionTable>, the allocating result
    */
   Map<String, DataPartitionTable> allocateDataPartition(
-      Map<String, Map<TSeriesPartitionSlot, List<TTimePartitionSlot>>>
-          unassignedDataPartitionSlotsMap);
+      Map<String, Map<TSeriesPartitionSlot, TTimeSlotList>> unassignedDataPartitionSlotsMap)
+      throws NoAvailableRegionGroupException;
 }

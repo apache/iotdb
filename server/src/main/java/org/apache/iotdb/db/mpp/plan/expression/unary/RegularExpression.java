@@ -19,14 +19,9 @@
 
 package org.apache.iotdb.db.mpp.plan.expression.unary;
 
-import org.apache.iotdb.db.exception.sql.SemanticException;
-import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.ExpressionType;
-import org.apache.iotdb.db.mpp.transformation.api.LayerPointReader;
-import org.apache.iotdb.db.mpp.transformation.dag.transformer.Transformer;
-import org.apache.iotdb.db.mpp.transformation.dag.transformer.unary.RegularTransformer;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.db.mpp.plan.expression.visitor.ExpressionVisitor;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.apache.commons.lang3.Validate;
@@ -68,24 +63,8 @@ public class RegularExpression extends UnaryExpression {
   }
 
   @Override
-  protected Transformer constructTransformer(LayerPointReader pointReader) {
-    return new RegularTransformer(pointReader, pattern);
-  }
-
-  @Override
   protected Expression constructExpression(Expression childExpression) {
     return new RegularExpression(childExpression, patternString, pattern);
-  }
-
-  @Override
-  public TSDataType inferTypes(TypeProvider typeProvider) throws SemanticException {
-    final String expressionString = toString();
-    if (!typeProvider.containsTypeInfoOf(expressionString)) {
-      checkInputExpressionDataType(
-          expression.toString(), expression.inferTypes(typeProvider), TSDataType.TEXT);
-      typeProvider.setType(expressionString, TSDataType.BOOLEAN);
-    }
-    return TSDataType.BOOLEAN;
   }
 
   @Override
@@ -108,5 +87,10 @@ public class RegularExpression extends UnaryExpression {
   protected void serialize(DataOutputStream stream) throws IOException {
     super.serialize(stream);
     ReadWriteIOUtils.write(patternString, stream);
+  }
+
+  @Override
+  public <R, C> R accept(ExpressionVisitor<R, C> visitor, C context) {
+    return visitor.visitRegularExpression(this, context);
   }
 }

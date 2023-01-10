@@ -19,9 +19,8 @@
 
 package org.apache.iotdb.db.it.aggregation;
 
-import org.apache.iotdb.it.env.ConfigFactory;
 import org.apache.iotdb.it.env.EnvFactory;
-import org.apache.iotdb.it.env.IoTDBTestRunner;
+import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 
@@ -61,7 +60,7 @@ public class IoTDBAggregationLargeDataIT {
 
   private static String[] createSql =
       new String[] {
-        "SET STORAGE GROUP TO root.vehicle",
+        "CREATE DATABASE root.vehicle",
         "CREATE TIMESERIES root.vehicle.d1.s0 WITH DATATYPE=INT32, ENCODING=RLE",
         "CREATE TIMESERIES root.vehicle.d0.s2 WITH DATATYPE=FLOAT, ENCODING=RLE",
         "CREATE TIMESERIES root.vehicle.d0.s3 WITH DATATYPE=TEXT, ENCODING=PLAIN",
@@ -115,19 +114,15 @@ public class IoTDBAggregationLargeDataIT {
         "insert into root.vehicle.d0(timestamp,s4) values(100, true)",
       };
 
-  private static long prevPartitionInterval;
-
   @BeforeClass
   public static void setUp() throws Exception {
-    prevPartitionInterval = ConfigFactory.getConfig().getPartitionInterval();
-    EnvFactory.getEnv().initBeforeClass();
+    EnvFactory.getEnv().initClusterEnvironment();
     insertSQL();
   }
 
   @AfterClass
   public static void tearDown() throws Exception {
-    EnvFactory.getEnv().cleanAfterClass();
-    ConfigFactory.getConfig().setPartitionInterval(prevPartitionInterval);
+    EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
   @Test

@@ -19,13 +19,22 @@
 
 package org.apache.iotdb.metrics.type;
 
+import java.util.Map;
+
 public interface Histogram extends IMetric {
-  /** update histogram by value */
+
+  /** Update histogram by value. */
   void update(long value);
 
-  /** get value of histogram */
+  /** Get the value of histogram. */
   long count();
 
-  /** take snapshot of histogram */
+  /** Take snapshot of histogram. */
   HistogramSnapshot takeSnapshot();
+
+  @Override
+  default void constructValueMap(Map<String, Object> result) {
+    result.put("count", count());
+    takeSnapshot().constructValueMap(result);
+  }
 }

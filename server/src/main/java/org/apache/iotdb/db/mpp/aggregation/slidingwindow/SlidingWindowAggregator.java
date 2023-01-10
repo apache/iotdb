@@ -45,7 +45,9 @@ public abstract class SlidingWindowAggregator extends Aggregator {
   // cached partial aggregation result of pre-aggregate windows
   protected Deque<PartialAggregationResult> deque;
 
-  public SlidingWindowAggregator(
+  protected TimeRange curTimeRange;
+
+  protected SlidingWindowAggregator(
       Accumulator accumulator, List<InputLocation[]> inputLocationList, AggregationStep step) {
     super(accumulator, step, inputLocationList);
     this.deque = new LinkedList<>();
@@ -66,7 +68,7 @@ public abstract class SlidingWindowAggregator extends Aggregator {
       valueColumn[i] = tsBlock.getColumn(inputLocation.getValueColumnIndex());
     }
     processPartialResult(new PartialAggregationResult(timeColumn, valueColumn));
-    return tsBlock.getPositionCount();
+    return 1;
   }
 
   @Override

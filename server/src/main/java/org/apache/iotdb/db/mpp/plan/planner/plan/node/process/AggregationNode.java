@@ -24,7 +24,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
-import org.apache.iotdb.db.mpp.plan.statement.component.OrderBy;
+import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import javax.annotation.Nullable;
@@ -44,7 +44,7 @@ import java.util.stream.Collectors;
  * input as a TsBlock, it may be raw data or partial aggregation result. This node will output the
  * final series aggregated result represented by TsBlock.
  */
-public class AggregationNode extends MultiChildNode {
+public class AggregationNode extends MultiChildProcessNode {
 
   // The list of aggregate functions, each AggregateDescriptor will be output as one or two column
   // of
@@ -55,13 +55,13 @@ public class AggregationNode extends MultiChildNode {
   // Its value will be null if there is no `group by time` clause.
   @Nullable protected GroupByTimeParameter groupByTimeParameter;
 
-  protected OrderBy scanOrder;
+  protected Ordering scanOrder;
 
   public AggregationNode(
       PlanNodeId id,
       List<AggregationDescriptor> aggregationDescriptorList,
       @Nullable GroupByTimeParameter groupByTimeParameter,
-      OrderBy scanOrder) {
+      Ordering scanOrder) {
     super(id, new ArrayList<>());
     this.aggregationDescriptorList = getDeduplicatedDescriptors(aggregationDescriptorList);
     this.groupByTimeParameter = groupByTimeParameter;
@@ -73,9 +73,11 @@ public class AggregationNode extends MultiChildNode {
       List<PlanNode> children,
       List<AggregationDescriptor> aggregationDescriptorList,
       @Nullable GroupByTimeParameter groupByTimeParameter,
-      OrderBy scanOrder) {
-    this(id, aggregationDescriptorList, groupByTimeParameter, scanOrder);
-    this.children = children;
+      Ordering scanOrder) {
+    super(id, children);
+    this.aggregationDescriptorList = getDeduplicatedDescriptors(aggregationDescriptorList);
+    this.groupByTimeParameter = groupByTimeParameter;
+    this.scanOrder = scanOrder;
   }
 
   public List<AggregationDescriptor> getAggregationDescriptorList() {
@@ -87,23 +89,8 @@ public class AggregationNode extends MultiChildNode {
     return groupByTimeParameter;
   }
 
-  public OrderBy getScanOrder() {
+  public Ordering getScanOrder() {
     return scanOrder;
-  }
-
-  @Override
-  public List<PlanNode> getChildren() {
-    return children;
-  }
-
-  @Override
-  public void addChild(PlanNode child) {
-    this.children.add(child);
-  }
-
-  @Override
-  public int allowedChildCount() {
-    return CHILD_COUNT_NO_LIMIT;
   }
 
   @Override
@@ -173,7 +160,7 @@ public class AggregationNode extends MultiChildNode {
     if (isNull == 1) {
       groupByTimeParameter = GroupByTimeParameter.deserialize(byteBuffer);
     }
-    OrderBy scanOrder = OrderBy.values()[ReadWriteIOUtils.readInt(byteBuffer)];
+    Ordering scanOrder = Ordering.values()[ReadWriteIOUtils.readInt(byteBuffer)];
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
     return new AggregationNode(
         planNodeId, aggregationDescriptorList, groupByTimeParameter, scanOrder);
