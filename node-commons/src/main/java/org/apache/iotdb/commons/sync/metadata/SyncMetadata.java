@@ -213,6 +213,8 @@ public class SyncMetadata implements SnapshotProcessor {
           case STOP:
             writer.operatePipe(pipeInfo.getPipeName(), SyncOperation.STOP_PIPE);
             break;
+          default:
+            break;
         }
       }
     }

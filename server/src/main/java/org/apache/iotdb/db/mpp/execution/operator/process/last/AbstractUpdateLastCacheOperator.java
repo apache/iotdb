@@ -48,7 +48,7 @@ public abstract class AbstractUpdateLastCacheOperator implements ProcessOperator
 
   protected String databaseName;
 
-  public AbstractUpdateLastCacheOperator(
+  protected AbstractUpdateLastCacheOperator(
       OperatorContext operatorContext,
       Operator child,
       DataNodeSchemaCache dataNodeSchemaCache,
@@ -73,7 +73,7 @@ public abstract class AbstractUpdateLastCacheOperator implements ProcessOperator
   protected String getDatabaseName() {
     if (databaseName == null) {
       databaseName =
-          ((DataDriverContext) operatorContext.getInstanceContext().getDriverContext())
+          ((DataDriverContext) operatorContext.getDriverContext())
               .getDataRegion()
               .getDatabaseName();
     }

@@ -55,7 +55,7 @@ public class InsertRowsOfOneDeviceStatement extends InsertBaseStatement {
     this.insertRowStatementList = insertRowStatementList;
 
     // set device path, measurements, and data types
-    if (insertRowStatementList == null || insertRowStatementList.size() == 0) {
+    if (insertRowStatementList == null || insertRowStatementList.isEmpty()) {
       return;
     }
     devicePath = insertRowStatementList.get(0).getDevicePath();
@@ -89,6 +89,7 @@ public class InsertRowsOfOneDeviceStatement extends InsertBaseStatement {
         .collectRedirectInfo(dataPartition);
   }
 
+  @Override
   public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
     return visitor.visitInsertRowsOfOneDevice(this, context);
   }

@@ -30,7 +30,7 @@ abstract class AbstractDFATransition implements IFATransition {
    */
   private final int id; // only used for hash
 
-  public AbstractDFATransition(int index) {
+  protected AbstractDFATransition(int index) {
     this.id = index;
   }
 

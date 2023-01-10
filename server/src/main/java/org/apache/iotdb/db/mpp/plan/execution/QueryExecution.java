@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.query.KilledByOthersException;
 import org.apache.iotdb.db.exception.query.QueryTimeoutRuntimeException;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
@@ -328,10 +329,8 @@ public class QueryExecution implements IQueryExecution {
   // Stop the workers for this query
   public void stop() {
     // only stop once
-    if (stopped.compareAndSet(false, true)) {
-      if (this.scheduler != null) {
-        this.scheduler.stop();
-      }
+    if (stopped.compareAndSet(false, true) && this.scheduler != null) {
+      this.scheduler.stop();
     }
   }
 
@@ -339,6 +338,14 @@ public class QueryExecution implements IQueryExecution {
   public void stopAndCleanup() {
     stop();
     releaseResource();
+  }
+
+  @Override
+  public void cancel() {
+    stateMachine.transitionToCanceled(
+        new KilledByOthersException(),
+        new TSStatus(TSStatusCode.QUERY_WAS_KILLED.getStatusCode())
+            .setMessage(KilledByOthersException.MESSAGE));
   }
 
   /** Release the resources that current QueryExecution hold. */
@@ -535,7 +542,7 @@ public class QueryExecution implements IQueryExecution {
         isSameNode(upstreamEndPoint)
             ? MPPDataExchangeService.getInstance()
                 .getMPPDataExchangeManager()
-                .createLocalSourceHandle(
+                .createLocalSourceHandleForFragment(
                     context.getResultNodeContext().getVirtualFragmentInstanceId().toThrift(),
                     context.getResultNodeContext().getVirtualResultNodeId().getId(),
                     context.getResultNodeContext().getUpStreamFragmentInstanceId().toThrift(),

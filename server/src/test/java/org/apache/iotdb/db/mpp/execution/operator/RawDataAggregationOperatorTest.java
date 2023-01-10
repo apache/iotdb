@@ -31,6 +31,7 @@ import org.apache.iotdb.db.mpp.aggregation.Aggregator;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.common.QueryId;
+import org.apache.iotdb.db.mpp.execution.driver.DriverContext;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceStateMachine;
 import org.apache.iotdb.db.mpp.execution.operator.process.RawDataAggregationOperator;
@@ -824,17 +825,16 @@ public class RawDataAggregationOperatorTest {
         new FragmentInstanceStateMachine(instanceId, instanceNotificationExecutor);
     FragmentInstanceContext fragmentInstanceContext =
         createFragmentInstanceContext(instanceId, stateMachine);
+    DriverContext driverContext = new DriverContext(fragmentInstanceContext, 0);
     PlanNodeId planNodeId1 = new PlanNodeId("1");
-    fragmentInstanceContext.addOperatorContext(
-        1, planNodeId1, SeriesScanOperator.class.getSimpleName());
+    driverContext.addOperatorContext(1, planNodeId1, SeriesScanOperator.class.getSimpleName());
     PlanNodeId planNodeId2 = new PlanNodeId("2");
-    fragmentInstanceContext.addOperatorContext(
-        2, planNodeId2, SeriesScanOperator.class.getSimpleName());
-    fragmentInstanceContext.addOperatorContext(
+    driverContext.addOperatorContext(2, planNodeId2, SeriesScanOperator.class.getSimpleName());
+    driverContext.addOperatorContext(
         3, new PlanNodeId("3"), TimeJoinOperator.class.getSimpleName());
-    fragmentInstanceContext.addOperatorContext(
+    driverContext.addOperatorContext(
         4, new PlanNodeId("4"), RawDataAggregationOperatorTest.class.getSimpleName());
-    fragmentInstanceContext
+    driverContext
         .getOperatorContexts()
         .forEach(
             operatorContext -> {
@@ -847,11 +847,11 @@ public class RawDataAggregationOperatorTest {
     }
     SeriesScanOperator seriesScanOperator1 =
         new SeriesScanOperator(
+            driverContext.getOperatorContexts().get(0),
             planNodeId1,
             measurementPath1,
             allSensors,
             TSDataType.INT32,
-            fragmentInstanceContext.getOperatorContexts().get(0),
             timeFilter,
             null,
             true);
@@ -861,11 +861,11 @@ public class RawDataAggregationOperatorTest {
         new MeasurementPath(AGGREGATION_OPERATOR_TEST_SG + ".device0.sensor1", TSDataType.INT32);
     SeriesScanOperator seriesScanOperator2 =
         new SeriesScanOperator(
+            driverContext.getOperatorContexts().get(1),
             planNodeId2,
             measurementPath2,
             allSensors,
             TSDataType.INT32,
-            fragmentInstanceContext.getOperatorContexts().get(1),
             timeFilter,
             null,
             true);
@@ -873,7 +873,7 @@ public class RawDataAggregationOperatorTest {
 
     TimeJoinOperator timeJoinOperator =
         new TimeJoinOperator(
-            fragmentInstanceContext.getOperatorContexts().get(2),
+            driverContext.getOperatorContexts().get(2),
             Arrays.asList(seriesScanOperator1, seriesScanOperator2),
             Ordering.ASC,
             Arrays.asList(TSDataType.INT32, TSDataType.INT32),
@@ -890,7 +890,7 @@ public class RawDataAggregationOperatorTest {
           new Aggregator(accumulators.get(i), AggregationStep.SINGLE, inputLocations.get(i)));
     }
     return new RawDataAggregationOperator(
-        fragmentInstanceContext.getOperatorContexts().get(3),
+        driverContext.getOperatorContexts().get(3),
         aggregators,
         initTimeRangeIterator(groupByTimeParameter, true, true),
         timeJoinOperator,

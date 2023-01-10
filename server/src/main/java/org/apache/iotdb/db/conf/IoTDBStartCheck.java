@@ -60,12 +60,14 @@ public class IoTDBStartCheck {
   public static final String PROPERTIES_FILE_NAME = "system.properties";
   private static final String SCHEMA_DIR = config.getSchemaDir();
 
+  private boolean isFirstStart = false;
+
   private final File propertiesFile;
   private final File tmpPropertiesFile;
 
   private final Properties properties = new Properties();
 
-  private final Map<String, String> systemProperties = new HashMap<>();
+  private final Map<String, Supplier<String>> systemProperties = new HashMap<>();
 
   // region params need checking, determined when first start
   private static final String SYSTEM_PROPERTIES_STRING = "System properties:";
@@ -160,7 +162,7 @@ public class IoTDBStartCheck {
   }
 
   private IoTDBStartCheck() {
-    logger.info("Starting IoTDB " + IoTDBConstant.VERSION_WITH_BUILD);
+    logger.info("Starting IoTDB {}", IoTDBConstant.VERSION_WITH_BUILD);
 
     // check whether SCHEMA_DIR exists, create if not exists
     File dir = SystemFileFactory.INSTANCE.getFile(SCHEMA_DIR);
@@ -198,12 +200,12 @@ public class IoTDBStartCheck {
       System.exit(-1);
     }
 
-    systemProperties.put(IOTDB_VERSION_STRING, IoTDBConstant.VERSION);
+    systemProperties.put(IOTDB_VERSION_STRING, () -> IoTDBConstant.VERSION);
     for (String param : constantParamValueTable.keySet()) {
-      systemProperties.put(param, getVal(param));
+      systemProperties.put(param, () -> getVal(param));
     }
     for (String param : variableParamValueTable.keySet()) {
-      systemProperties.put(param, getVal(param));
+      systemProperties.put(param, () -> getVal(param));
     }
   }
 
@@ -221,9 +223,10 @@ public class IoTDBStartCheck {
 
       // write properties to system.properties
       try (FileOutputStream outputStream = new FileOutputStream(propertiesFile)) {
-        systemProperties.forEach(properties::setProperty);
+        systemProperties.forEach((k, v) -> properties.setProperty(k, v.get()));
         properties.store(outputStream, SYSTEM_PROPERTIES_STRING);
       }
+      isFirstStart = true;
       return true;
     }
 
@@ -231,12 +234,14 @@ public class IoTDBStartCheck {
       // rename tmp file to system.properties, no need to check
       FileUtils.moveFile(tmpPropertiesFile, propertiesFile);
       logger.info("rename {} to {}", tmpPropertiesFile, propertiesFile);
+      isFirstStart = false;
       return false;
     } else if (propertiesFile.exists() && tmpPropertiesFile.exists()) {
       // both files exist, remove tmp file
       FileUtils.forceDelete(tmpPropertiesFile);
       logger.info("remove {}", tmpPropertiesFile);
     }
+    isFirstStart = false;
     return false;
   }
 
@@ -292,23 +297,32 @@ public class IoTDBStartCheck {
             new InputStreamReader(inputStream, TSFileConfig.STRING_CHARSET)) {
       properties.load(inputStreamReader);
     }
-    // check whether upgrading from <=v0.9
-    if (!properties.containsKey(IOTDB_VERSION_STRING)) {
-      logger.error(
-          "DO NOT UPGRADE IoTDB from v0.9 or lower version to v1.0!"
-              + " Please upgrade to v0.10 first");
-      System.exit(-1);
+
+    if (isFirstStart) {
+      // overwrite system.properties when first start
+      try (FileOutputStream outputStream = new FileOutputStream(propertiesFile)) {
+        systemProperties.forEach((k, v) -> properties.setProperty(k, v.get()));
+        properties.store(outputStream, SYSTEM_PROPERTIES_STRING);
+      }
+    } else {
+      // check whether upgrading from <=v0.9
+      if (!properties.containsKey(IOTDB_VERSION_STRING)) {
+        logger.error(
+            "DO NOT UPGRADE IoTDB from v0.9 or lower version to v1.0!"
+                + " Please upgrade to v0.10 first");
+        System.exit(-1);
+      }
+      // check whether upgrading from [v0.10, v.13]
+      String versionString = properties.getProperty(IOTDB_VERSION_STRING);
+      if (versionString.startsWith("0.10") || versionString.startsWith("0.11")) {
+        logger.error("IoTDB version is too old, please upgrade to 0.12 firstly.");
+        System.exit(-1);
+      } else if (versionString.startsWith("0.12") || versionString.startsWith("0.13")) {
+        checkWALNotExists();
+        upgradePropertiesFile();
+      }
+      checkProperties();
     }
-    // check whether upgrading from [v0.10, v.13]
-    String versionString = properties.getProperty(IOTDB_VERSION_STRING);
-    if (versionString.startsWith("0.10") || versionString.startsWith("0.11")) {
-      logger.error("IoTDB version is too old, please upgrade to 0.12 firstly.");
-      System.exit(-1);
-    } else if (versionString.startsWith("0.12") || versionString.startsWith("0.13")) {
-      checkWALNotExists();
-      upgradePropertiesFile();
-    }
-    checkProperties();
   }
 
   private void checkWALNotExists() {
@@ -345,7 +359,7 @@ public class IoTDBStartCheck {
       systemProperties.forEach(
           (k, v) -> {
             if (!properties.containsKey(k)) {
-              properties.setProperty(k, v);
+              properties.setProperty(k, v.get());
             }
           });
       properties.setProperty(IOTDB_VERSION_STRING, IoTDBConstant.VERSION);
@@ -377,7 +391,7 @@ public class IoTDBStartCheck {
       systemProperties.forEach(
           (k, v) -> {
             if (!properties.containsKey(k)) {
-              properties.setProperty(k, v);
+              properties.setProperty(k, v.get());
             }
           });
       properties.setProperty(IOTDB_VERSION_STRING, IoTDBConstant.VERSION);
@@ -393,7 +407,7 @@ public class IoTDBStartCheck {
 
   /** Check all immutable properties */
   private void checkProperties() throws ConfigurationException, IOException {
-    for (Entry<String, String> entry : systemProperties.entrySet()) {
+    for (Entry<String, Supplier<String>> entry : systemProperties.entrySet()) {
       if (!properties.containsKey(entry.getKey())) {
         upgradePropertiesFileFromBrokenFile();
         logger.info("repair system.properties, lack {}", entry.getKey());

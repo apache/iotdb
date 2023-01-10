@@ -26,11 +26,11 @@ public abstract class ShowSchemaResult implements Comparable<ShowSchemaResult>, 
 
   protected String path;
 
-  public ShowSchemaResult(String path) {
+  protected ShowSchemaResult(String path) {
     this.path = path;
   }
 
-  public ShowSchemaResult() {}
+  protected ShowSchemaResult() {}
 
   public String getPath() {
     return path;

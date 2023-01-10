@@ -23,13 +23,13 @@ import java.util.Map;
 
 public interface Histogram extends IMetric {
 
-  /** Update histogram by value */
+  /** Update histogram by value. */
   void update(long value);
 
-  /** Get the value of histogram */
+  /** Get the value of histogram. */
   long count();
 
-  /** Take snapshot of histogram */
+  /** Take snapshot of histogram. */
   HistogramSnapshot takeSnapshot();
 
   @Override

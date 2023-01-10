@@ -43,6 +43,7 @@ import java.util.concurrent.TimeUnit;
  * dataRegion's reading and writing
  */
 public class DataRegionConsensusImpl {
+
   private static final IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
 
   private static IConsensus INSTANCE = null;
@@ -82,8 +83,9 @@ public class DataRegionConsensusImpl {
                                       .setThriftServerAwaitTimeForStopService(
                                           conf.getThriftServerAwaitTimeForStopService())
                                       .setThriftMaxFrameSize(conf.getThriftMaxFrameSize())
-                                      .setMaxConnectionForInternalService(
-                                          conf.getMaxConnectionForInternalService())
+                                      .setCoreClientNumForEachNode(
+                                          conf.getCoreClientNumForEachNode())
+                                      .setMaxClientNumForEachNode(conf.getMaxClientNumForEachNode())
                                       .build())
                               .setReplication(
                                   IoTConsensusConfig.Replication.newBuilder()
@@ -144,13 +146,8 @@ public class DataRegionConsensusImpl {
                                               conf.getRatisFirstElectionTimeoutMaxMs(),
                                               TimeUnit.MILLISECONDS))
                                       .build())
-                              .setLeaderLogAppender(
-                                  RatisConfig.LeaderLogAppender.newBuilder()
-                                      .setBufferByteLimit(
-                                          conf.getDataRatisConsensusLogAppenderBufferSizeMax())
-                                      .build())
-                              .setRatisConsensus(
-                                  RatisConfig.Impl.newBuilder()
+                              .setClient(
+                                  RatisConfig.Client.newBuilder()
                                       .setClientRequestTimeoutMillis(
                                           conf.getDataRatisConsensusRequestTimeoutMs())
                                       .setClientMaxRetryAttempt(
@@ -159,7 +156,18 @@ public class DataRegionConsensusImpl {
                                           conf.getDataRatisConsensusInitialSleepTimeMs())
                                       .setClientRetryMaxSleepTimeMs(
                                           conf.getDataRatisConsensusMaxSleepTimeMs())
+                                      .setCoreClientNumForEachNode(
+                                          conf.getCoreClientNumForEachNode())
+                                      .setMaxClientNumForEachNode(conf.getMaxClientNumForEachNode())
+                                      .build())
+                              .setImpl(
+                                  RatisConfig.Impl.newBuilder()
                                       .setTriggerSnapshotFileSize(conf.getDataRatisLogMax())
+                                      .build())
+                              .setLeaderLogAppender(
+                                  RatisConfig.LeaderLogAppender.newBuilder()
+                                      .setBufferByteLimit(
+                                          conf.getDataRatisConsensusLogAppenderBufferSizeMax())
                                       .build())
                               .build())
                       .build(),

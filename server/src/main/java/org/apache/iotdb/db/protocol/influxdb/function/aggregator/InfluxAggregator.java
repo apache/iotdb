@@ -27,7 +27,7 @@ import java.util.List;
 
 public abstract class InfluxAggregator extends InfluxFunction {
 
-  public InfluxAggregator(List<Expression> expressionList) {
+  protected InfluxAggregator(List<Expression> expressionList) {
     super(expressionList);
   }
 

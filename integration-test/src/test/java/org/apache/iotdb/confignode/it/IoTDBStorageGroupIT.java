@@ -58,7 +58,7 @@ public class IoTDBStorageGroupIT {
 
   @After
   public void tearDown() {
-    EnvFactory.getEnv().cleanAfterClass();
+    EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
   @Test

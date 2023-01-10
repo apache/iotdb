@@ -28,11 +28,11 @@ public abstract class InfluxFunction {
   // contain possible parameters
   private List<Expression> expressionList;
 
-  public InfluxFunction(List<Expression> expressionList) {
+  protected InfluxFunction(List<Expression> expressionList) {
     this.expressionList = expressionList;
   }
 
-  public InfluxFunction() {}
+  protected InfluxFunction() {}
 
   public List<Expression> getExpressions() {
     return this.expressionList;

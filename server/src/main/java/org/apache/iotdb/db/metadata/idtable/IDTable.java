@@ -155,7 +155,7 @@ public interface IDTable {
           timeseriesID.getMeasurement(),
           fullPath.getMeasurementSchema());
     } catch (MetadataException e) {
-      logger.error("Error when translate query path: " + fullPath);
+      logger.error("Error when translate query path: {}", fullPath);
       throw new IllegalArgumentException("can't translate path to device id, path is: " + fullPath);
     }
   }

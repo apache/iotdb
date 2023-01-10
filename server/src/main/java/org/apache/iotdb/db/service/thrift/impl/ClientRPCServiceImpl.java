@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.commons.utils.PathUtils;
+import org.apache.iotdb.db.audit.AuditLogger;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -145,6 +146,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
   private static final TSProtocolVersion CURRENT_RPC_VERSION =
       TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V3;
 
+  private static final boolean enableAuditLog = config.isEnableAuditLog();
+
   private final IPartitionFetcher PARTITION_FETCHER;
 
   private final ISchemaFetcher SCHEMA_FETCHER;
@@ -204,6 +207,10 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       }
 
       statementType = s.getType();
+      if (enableAuditLog) {
+        AuditLogger.log(statement, s);
+      }
+
       queryId = SESSION_MANAGER.requestQueryId(SESSION_MANAGER.getCurrSession(), req.statementId);
       // create and cache dataset
       ExecutionResult result =
@@ -273,6 +280,9 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         return RpcUtils.getTSExecuteStatementResp(status);
       }
 
+      if (enableAuditLog) {
+        AuditLogger.log(String.format("execute Raw Data Query: %s", req), s);
+      }
       queryId = SESSION_MANAGER.requestQueryId(SESSION_MANAGER.getCurrSession(), req.statementId);
       // create and cache dataset
       ExecutionResult result =
@@ -336,6 +346,9 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         return RpcUtils.getTSExecuteStatementResp(status);
       }
 
+      if (enableAuditLog) {
+        AuditLogger.log(String.format("Last Data Query: %s", req), s);
+      }
       queryId = SESSION_MANAGER.requestQueryId(SESSION_MANAGER.getCurrSession(), req.statementId);
       // create and cache dataset
       ExecutionResult result =
@@ -433,7 +446,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
             QueryDataSetUtils.convertQueryResultByFetchSize(queryExecution, req.fetchSize);
         List<ByteBuffer> result = pair.left;
         finished = pair.right;
-        boolean hasResultSet = !(result.size() == 0);
+        boolean hasResultSet = !result.isEmpty();
         resp.setHasResultSet(hasResultSet);
         resp.setIsAlign(true);
         resp.setQueryResult(result);
@@ -570,6 +583,9 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       // Step 1: Create SetStorageGroupStatement
       SetStorageGroupStatement statement =
           (SetStorageGroupStatement) StatementGenerator.createStatement(storageGroup);
+      if (enableAuditLog) {
+        AuditLogger.log(String.format("create database %s", storageGroup), statement);
+      }
       // permission check
       TSStatus status =
           AuthorityChecker.checkAuthority(statement, SESSION_MANAGER.getCurrSession());
@@ -609,7 +625,9 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       // Step 1: transfer from TSCreateTimeseriesReq to Statement
       CreateTimeSeriesStatement statement =
           (CreateTimeSeriesStatement) StatementGenerator.createStatement(req);
-
+      if (enableAuditLog) {
+        AuditLogger.log(String.format("create timeseries %s", req.getPath()), statement);
+      }
       // permission check
       TSStatus status =
           AuthorityChecker.checkAuthority(statement, SESSION_MANAGER.getCurrSession());
@@ -653,7 +671,12 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       // Step 1: transfer from CreateAlignedTimeSeriesReq to Statement
       CreateAlignedTimeSeriesStatement statement =
           (CreateAlignedTimeSeriesStatement) StatementGenerator.createStatement(req);
-
+      if (enableAuditLog) {
+        AuditLogger.log(
+            String.format(
+                "create aligned timeseries %s.%s", req.getPrefixPath(), req.getMeasurements()),
+            statement);
+      }
       // permission check
       TSStatus status =
           AuthorityChecker.checkAuthority(statement, SESSION_MANAGER.getCurrSession());
@@ -695,7 +718,13 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       // Step 1: transfer from CreateMultiTimeSeriesReq to Statement
       CreateMultiTimeSeriesStatement statement =
           (CreateMultiTimeSeriesStatement) StatementGenerator.createStatement(req);
-
+      if (enableAuditLog) {
+        AuditLogger.log(
+            String.format(
+                "create %s timeseries, the first is %s",
+                req.getPaths().size(), req.getPaths().get(0)),
+            statement);
+      }
       // permission check
       TSStatus status =
           AuthorityChecker.checkAuthority(statement, SESSION_MANAGER.getCurrSession());
@@ -772,6 +801,10 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       DeleteStorageGroupStatement statement =
           (DeleteStorageGroupStatement) StatementGenerator.createStatement(storageGroups);
 
+      if (enableAuditLog) {
+        AuditLogger.log(String.format("delete databases: %s", storageGroups), statement);
+      }
+
       // permission check
       TSStatus status =
           AuthorityChecker.checkAuthority(statement, SESSION_MANAGER.getCurrSession());
@@ -835,6 +868,10 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         TSStatus status = AuthorityChecker.checkAuthority(s, SESSION_MANAGER.getCurrSession());
         if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
           return status;
+        }
+
+        if (enableAuditLog) {
+          AuditLogger.log(statement, s);
         }
 
         long queryId = SESSION_MANAGER.requestQueryId();
@@ -948,6 +985,15 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
       }
 
+      if (enableAuditLog) {
+        AuditLogger.log(
+            String.format(
+                "insertRecords, first device %s, first time %s",
+                req.prefixPaths.get(0), req.getTimestamps().get(0)),
+            statement,
+            true);
+      }
+
       // permission check
       TSStatus status =
           AuthorityChecker.checkAuthority(statement, SESSION_MANAGER.getCurrSession());
@@ -998,6 +1044,15 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       // return success when this statement is empty because server doesn't need to execute it
       if (statement.isEmpty()) {
         return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+      }
+
+      if (enableAuditLog) {
+        AuditLogger.log(
+            String.format(
+                "insertRecords, first device %s, first time %s",
+                req.prefixPath, req.getTimestamps().get(0)),
+            statement,
+            true);
       }
 
       // permission check
@@ -1052,6 +1107,14 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
       }
 
+      if (enableAuditLog) {
+        AuditLogger.log(
+            String.format(
+                "insertRecords, first device %s, first time %s",
+                req.prefixPath, req.getTimestamps().get(0)),
+            statement,
+            true);
+      }
       // permission check
       TSStatus status =
           AuthorityChecker.checkAuthority(statement, SESSION_MANAGER.getCurrSession());
@@ -1102,6 +1165,14 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       // return success when this statement is empty because server doesn't need to execute it
       if (statement.isEmpty()) {
         return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+      }
+
+      if (enableAuditLog) {
+        AuditLogger.log(
+            String.format(
+                "insertRecord, device %s, time %s", req.getPrefixPath(), req.getTimestamp()),
+            statement,
+            true);
       }
 
       // permission check
@@ -1251,6 +1322,15 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
       }
 
+      if (enableAuditLog) {
+        AuditLogger.log(
+            String.format(
+                "insertRecords, first device %s, first time %s",
+                req.prefixPaths.get(0), req.getTimestamps().get(0)),
+            statement,
+            true);
+      }
+
       // permission check
       TSStatus status =
           AuthorityChecker.checkAuthority(statement, SESSION_MANAGER.getCurrSession());
@@ -1384,6 +1464,9 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       // Step 1: transfer from TSCreateSchemaTemplateReq to Statement
       CreateSchemaTemplateStatement statement = StatementGenerator.createStatement(req);
 
+      if (enableAuditLog) {
+        AuditLogger.log(String.format("create schema template %s", req.getName()), statement);
+      }
       // permission check
       TSStatus status =
           AuthorityChecker.checkAuthority(statement, SESSION_MANAGER.getCurrSession());
@@ -1475,6 +1558,9 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         return resp;
       }
 
+      if (enableAuditLog) {
+        AuditLogger.log(String.format("execute Query: %s", statement), statement);
+      }
       long queryId = SESSION_MANAGER.requestQueryId();
       // create and cache dataset
       ExecutionResult executionResult =
@@ -1538,6 +1624,12 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       // Step 1: transfer from TSCreateSchemaTemplateReq to Statement
       SetSchemaTemplateStatement statement = StatementGenerator.createStatement(req);
 
+      if (enableAuditLog) {
+        AuditLogger.log(
+            String.format("set schema template %s.%s", req.getTemplateName(), req.getPrefixPath()),
+            statement);
+      }
+
       // permission check
       TSStatus status =
           AuthorityChecker.checkAuthority(statement, SESSION_MANAGER.getCurrSession());
@@ -1575,6 +1667,13 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       // Step 1: transfer from TSCreateSchemaTemplateReq to Statement
       UnsetSchemaTemplateStatement statement = StatementGenerator.createStatement(req);
 
+      if (enableAuditLog) {
+        AuditLogger.log(
+            String.format(
+                "unset schema template %s from %s", req.getTemplateName(), req.getPrefixPath()),
+            statement);
+      }
+
       // permission check
       TSStatus status =
           AuthorityChecker.checkAuthority(statement, SESSION_MANAGER.getCurrSession());
@@ -1611,6 +1710,10 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
       // Step 1: transfer from TSCreateSchemaTemplateReq to Statement
       DropSchemaTemplateStatement statement = StatementGenerator.createStatement(req);
+
+      if (enableAuditLog) {
+        AuditLogger.log(String.format("drop schema template %s", req.getTemplateName()), statement);
+      }
 
       // permission check
       TSStatus status =
@@ -1680,6 +1783,14 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       req.setMeasurements(PathUtils.checkIsLegalSingleMeasurementsAndUpdate(req.getMeasurements()));
 
       InsertRowStatement statement = (InsertRowStatement) StatementGenerator.createStatement(req);
+
+      if (enableAuditLog) {
+        AuditLogger.log(
+            String.format(
+                "insertStringRecord, device %s, time %s", req.getPrefixPath(), req.getTimestamp()),
+            statement,
+            true);
+      }
 
       // permission check
       TSStatus status =

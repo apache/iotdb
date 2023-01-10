@@ -20,9 +20,10 @@
 package org.apache.iotdb.commons.client.sync;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
-import org.apache.iotdb.commons.client.BaseClientFactory;
-import org.apache.iotdb.commons.client.ClientFactoryProperty;
 import org.apache.iotdb.commons.client.ClientManager;
+import org.apache.iotdb.commons.client.ThriftClient;
+import org.apache.iotdb.commons.client.factory.ThriftClientFactory;
+import org.apache.iotdb.commons.client.property.ThriftClientProperty;
 import org.apache.iotdb.confignode.rpc.thrift.IConfigNodeRPCService;
 import org.apache.iotdb.rpc.RpcTransportFactory;
 import org.apache.iotdb.rpc.TConfigurationConst;
@@ -34,13 +35,12 @@ import org.apache.thrift.protocol.TProtocolFactory;
 import org.apache.thrift.transport.TSocket;
 import org.apache.thrift.transport.TTransportException;
 
-import java.lang.reflect.Constructor;
 import java.net.SocketException;
 
 public class SyncConfigNodeIServiceClient extends IConfigNodeRPCService.Client
-    implements SyncThriftClient, AutoCloseable {
+    implements ThriftClient, AutoCloseable {
 
-  private final TEndPoint endPoint;
+  private final TEndPoint endpoint;
   private final ClientManager<TEndPoint, SyncConfigNodeIServiceClient> clientManager;
 
   public SyncConfigNodeIServiceClient(
@@ -57,15 +57,13 @@ public class SyncConfigNodeIServiceClient extends IConfigNodeRPCService.Client
                     endPoint.getIp(),
                     endPoint.getPort(),
                     connectionTimeout))));
-    this.endPoint = endPoint;
+    this.endpoint = endPoint;
     this.clientManager = clientManager;
     getInputProtocol().getTransport().open();
   }
 
-  public void close() {
-    if (clientManager != null) {
-      clientManager.returnClient(endPoint, this);
-    }
+  public int getTimeout() throws SocketException {
+    return ((TimeoutChangeableTransport) getInputProtocol().getTransport()).getTimeOut();
   }
 
   public void setTimeout(int timeout) {
@@ -73,30 +71,32 @@ public class SyncConfigNodeIServiceClient extends IConfigNodeRPCService.Client
     ((TimeoutChangeableTransport) (getInputProtocol().getTransport())).setTimeout(timeout);
   }
 
+  @Override
+  public void close() {
+    clientManager.returnClient(endpoint, this);
+  }
+
+  @Override
   public void invalidate() {
     getInputProtocol().getTransport().close();
   }
 
   @Override
   public void invalidateAll() {
-    clientManager.clear(endPoint);
-  }
-
-  public int getTimeout() throws SocketException {
-    return ((TimeoutChangeableTransport) getInputProtocol().getTransport()).getTimeOut();
+    clientManager.clear(endpoint);
   }
 
   @Override
   public String toString() {
-    return String.format("SyncConfigNodeIServiceClient{%s}", endPoint);
+    return String.format("SyncConfigNodeIServiceClient{%s}", endpoint);
   }
 
-  public static class Factory extends BaseClientFactory<TEndPoint, SyncConfigNodeIServiceClient> {
+  public static class Factory extends ThriftClientFactory<TEndPoint, SyncConfigNodeIServiceClient> {
 
     public Factory(
         ClientManager<TEndPoint, SyncConfigNodeIServiceClient> clientManager,
-        ClientFactoryProperty clientFactoryProperty) {
-      super(clientManager, clientFactoryProperty);
+        ThriftClientProperty thriftClientProperty) {
+      super(clientManager, thriftClientProperty);
     }
 
     @Override
@@ -108,15 +108,13 @@ public class SyncConfigNodeIServiceClient extends IConfigNodeRPCService.Client
     @Override
     public PooledObject<SyncConfigNodeIServiceClient> makeObject(TEndPoint endpoint)
         throws Exception {
-      Constructor<SyncConfigNodeIServiceClient> constructor =
-          SyncConfigNodeIServiceClient.class.getConstructor(
-              TProtocolFactory.class, int.class, endpoint.getClass(), clientManager.getClass());
       return new DefaultPooledObject<>(
           SyncThriftClientWithErrorHandler.newErrorHandler(
               SyncConfigNodeIServiceClient.class,
-              constructor,
-              clientFactoryProperty.getProtocolFactory(),
-              clientFactoryProperty.getConnectionTimeoutMs(),
+              SyncConfigNodeIServiceClient.class.getConstructor(
+                  TProtocolFactory.class, int.class, endpoint.getClass(), clientManager.getClass()),
+              thriftClientProperty.getProtocolFactory(),
+              thriftClientProperty.getConnectionTimeoutMs(),
               endpoint,
               clientManager));
     }
@@ -124,8 +122,7 @@ public class SyncConfigNodeIServiceClient extends IConfigNodeRPCService.Client
     @Override
     public boolean validateObject(
         TEndPoint endpoint, PooledObject<SyncConfigNodeIServiceClient> pooledObject) {
-      return pooledObject.getObject() != null
-          && pooledObject.getObject().getInputProtocol().getTransport().isOpen();
+      return pooledObject.getObject().getInputProtocol().getTransport().isOpen();
     }
   }
 }

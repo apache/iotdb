@@ -31,18 +31,18 @@ import com.sun.management.OperatingSystemMXBean;
 import java.lang.management.ManagementFactory;
 
 public class ProcessMetrics implements IMetricSet {
-  private OperatingSystemMXBean sunOsMXBean;
-  private Runtime runtime;
+  private final OperatingSystemMXBean sunOsMxBean;
+  private final Runtime runtime;
 
   public ProcessMetrics() {
-    sunOsMXBean =
+    sunOsMxBean =
         (com.sun.management.OperatingSystemMXBean) ManagementFactory.getOperatingSystemMXBean();
     runtime = Runtime.getRuntime();
   }
 
   @Override
   public void bindTo(AbstractMetricService metricService) {
-    collectProcessCPUInfo(metricService);
+    collectProcessCpuInfo(metricService);
     collectProcessMemInfo(metricService);
     collectProcessStatusInfo(metricService);
     collectThreadInfo(metricService);
@@ -50,31 +50,31 @@ public class ProcessMetrics implements IMetricSet {
 
   @Override
   public void unbindFrom(AbstractMetricService metricService) {
-    removeProcessCPUInfo(metricService);
+    removeProcessCpuInfo(metricService);
     removeProcessMemInfo(metricService);
     removeProcessStatusInfo(metricService);
     removeThreadInfo(metricService);
   }
 
-  private void collectProcessCPUInfo(AbstractMetricService metricService) {
+  private void collectProcessCpuInfo(AbstractMetricService metricService) {
     metricService.createAutoGauge(
         Metric.PROCESS_CPU_LOAD.toString(),
         MetricLevel.CORE,
-        sunOsMXBean,
-        a -> (long) (sunOsMXBean.getProcessCpuLoad() * 100),
+        sunOsMxBean,
+        a -> (long) (sunOsMxBean.getProcessCpuLoad() * 100),
         Tag.NAME.toString(),
         "process");
 
     metricService.createAutoGauge(
         Metric.PROCESS_CPU_TIME.toString(),
         MetricLevel.CORE,
-        sunOsMXBean,
+        sunOsMxBean,
         com.sun.management.OperatingSystemMXBean::getProcessCpuTime,
         Tag.NAME.toString(),
         "process");
   }
 
-  private void removeProcessCPUInfo(AbstractMetricService metricService) {
+  private void removeProcessCpuInfo(AbstractMetricService metricService) {
     metricService.remove(
         MetricType.AUTO_GAUGE, Metric.PROCESS_CPU_LOAD.toString(), Tag.NAME.toString(), "process");
 
@@ -178,17 +178,16 @@ public class ProcessMetrics implements IMetricSet {
   }
 
   private int getThreadsCount() {
-    ThreadGroup parentThread;
-    for (parentThread = Thread.currentThread().getThreadGroup();
-        parentThread.getParent() != null;
-        parentThread = parentThread.getParent()) {}
-
+    ThreadGroup parentThread = Thread.currentThread().getThreadGroup();
+    while (parentThread.getParent() != null) {
+      parentThread = parentThread.getParent();
+    }
     return parentThread.activeCount();
   }
 
   private double getProcessMemoryRatio() {
     long processUsedMemory = getProcessUsedMemory();
-    long totalPhysicalMemorySize = sunOsMXBean.getTotalPhysicalMemorySize();
+    long totalPhysicalMemorySize = sunOsMxBean.getTotalPhysicalMemorySize();
     return (double) processUsedMemory / (double) totalPhysicalMemorySize * 100;
   }
 }
