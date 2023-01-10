@@ -191,23 +191,6 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
         long unsequenceFileSize = deleteOldFiles(selectedUnsequenceFiles);
         CompactionUtils.deleteCompactionModsFile(selectedSequenceFiles, selectedUnsequenceFiles);
 
-        // update metric
-        TsFileMetricManager.getInstance()
-            .deleteFile(sequenceFileSize, true, selectedSequenceFiles.size());
-        TsFileMetricManager.getInstance()
-            .deleteFile(unsequenceFileSize, false, selectedUnsequenceFiles.size());
-        for (TsFileResource targetResource : targetTsfileResourceList) {
-          if (!targetResource.isDeleted()) {
-            TsFileMetricManager.getInstance().addFile(targetResource.getTsFileSize(), true);
-
-            // set target resources to CLOSED, so that they can be selected to compact
-            targetResource.setStatus(TsFileResourceStatus.CLOSED);
-          } else {
-            // target resource is empty after compaction, then delete it
-            targetResource.remove();
-          }
-        }
-
         if (logFile.exists()) {
           FileUtils.delete(logFile);
         }
@@ -225,6 +208,23 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
               subTaskSummary.PAGE_OVERLAP_OR_MODIFIED,
               subTaskSummary.PAGE_FAKE_OVERLAP);
         }
+
+        // update the metrics finally in case of any exception occurs
+        for (TsFileResource targetResource : targetTsfileResourceList) {
+          if (!targetResource.isDeleted()) {
+            TsFileMetricManager.getInstance().addFile(targetResource.getTsFileSize(), true);
+
+            // set target resources to CLOSED, so that they can be selected to compact
+            targetResource.setStatus(TsFileResourceStatus.CLOSED);
+          } else {
+            // target resource is empty after compaction, then delete it
+            targetResource.remove();
+          }
+        }
+        TsFileMetricManager.getInstance()
+            .deleteFile(sequenceFileSize, true, selectedSequenceFiles.size());
+        TsFileMetricManager.getInstance()
+            .deleteFile(unsequenceFileSize, false, selectedUnsequenceFiles.size());
         long costTime = (System.currentTimeMillis() - startTime) / 1000;
         LOGGER.info(
             "{}-{} [Compaction] CrossSpaceCompaction task finishes successfully, time cost is {} s, compaction speed is {} MB/s",

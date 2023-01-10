@@ -350,7 +350,7 @@ public class SinkHandle implements ISinkHandle {
 
   @Override
   public void setMaxBytesCanReserve(long maxBytesCanReserve) {
-    this.maxBytesCanReserve = maxBytesCanReserve;
+    this.maxBytesCanReserve = Math.min(this.maxBytesCanReserve, maxBytesCanReserve);
   }
 
   @Override

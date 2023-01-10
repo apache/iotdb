@@ -59,21 +59,21 @@ public class DriverTaskThread extends AbstractDriverThread {
     if (!scheduler.readyToRunning(task)) {
       return;
     }
-    IDriver instance = task.getFragmentInstance();
+    IDriver driver = task.getDriver();
     CpuTimer timer = new CpuTimer();
-    ListenableFuture<?> future = instance.processFor(EXECUTION_TIME_SLICE);
+    ListenableFuture<?> future = driver.processFor(EXECUTION_TIME_SLICE);
     CpuTimer.CpuDuration duration = timer.elapsedTime();
     // long cost = System.nanoTime() - startTime;
     // If the future is cancelled, the task is in an error and should be thrown.
     if (future.isCancelled()) {
-      task.setAbortCause(FragmentInstanceAbortedException.BY_ALREADY_BEING_CANCELLED);
+      task.setAbortCause(DriverTaskAbortedException.BY_ALREADY_BEING_CANCELLED);
       scheduler.toAborted(task);
       return;
     }
     ExecutionContext context = new ExecutionContext();
     context.setCpuDuration(duration);
     context.setTimeSlice(EXECUTION_TIME_SLICE);
-    if (instance.isFinished()) {
+    if (driver.isFinished()) {
       scheduler.runningToFinished(task, context);
       return;
     }
@@ -84,8 +84,8 @@ public class DriverTaskThread extends AbstractDriverThread {
       scheduler.runningToBlocked(task, context);
       future.addListener(
           () -> {
-            try (SetThreadName fragmentInstanceName2 =
-                new SetThreadName(task.getFragmentInstance().getInfo().getFullId())) {
+            try (SetThreadName driverTaskName2 =
+                new SetThreadName(task.getDriver().getDriverTaskId().getFullId())) {
               scheduler.blockedToReady(task);
             }
           },

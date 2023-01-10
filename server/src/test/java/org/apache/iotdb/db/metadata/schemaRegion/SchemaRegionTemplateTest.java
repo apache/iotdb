@@ -19,9 +19,12 @@
 
 package org.apache.iotdb.db.metadata.schemaRegion;
 
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.db.metadata.plan.schemaregion.impl.read.SchemaRegionReadPlanFactory;
 import org.apache.iotdb.db.metadata.plan.schemaregion.impl.write.SchemaRegionWritePlanFactory;
+import org.apache.iotdb.db.metadata.plan.schemaregion.result.ShowTimeSeriesResult;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -33,6 +36,7 @@ import org.junit.Test;
 
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -178,5 +182,63 @@ public class SchemaRegionTemplateTest extends AbstractSchemaRegionTest {
     allPatternTree.appendPathPattern(new PartialPath("root.**"));
     allPatternTree.constructTree();
     Assert.assertEquals(1, schemaRegion.countPathsUsingTemplate(templateId, allPatternTree));
+  }
+
+  @Test
+  public void testFetchSchemaWithTemplate() throws Exception {
+    ISchemaRegion schemaRegion = getSchemaRegion("root.sg", 0);
+    SchemaRegionTestUtil.createSimpleTimeseriesByList(
+        schemaRegion, Arrays.asList("root.sg.wf01.wt01.status", "root.sg.wf01.wt01.temperature"));
+    int templateId = 1;
+    Template template =
+        new Template(
+            "t1",
+            Arrays.asList(Collections.singletonList("s1"), Collections.singletonList("s2")),
+            Arrays.asList(
+                Collections.singletonList(TSDataType.DOUBLE),
+                Collections.singletonList(TSDataType.INT32)),
+            Arrays.asList(
+                Collections.singletonList(TSEncoding.RLE),
+                Collections.singletonList(TSEncoding.RLE)),
+            Arrays.asList(
+                Collections.singletonList(CompressionType.SNAPPY),
+                Collections.singletonList(CompressionType.SNAPPY)));
+    template.setId(templateId);
+    schemaRegion.activateSchemaTemplate(
+        SchemaRegionWritePlanFactory.getActivateTemplateInClusterPlan(
+            new PartialPath("root.sg.wf01.wt01"), 3, templateId),
+        template);
+    schemaRegion.activateSchemaTemplate(
+        SchemaRegionWritePlanFactory.getActivateTemplateInClusterPlan(
+            new PartialPath("root.sg.wf02"), 2, templateId),
+        template);
+    Map<Integer, Template> templateMap = Collections.singletonMap(templateId, template);
+    List<String> expectedTimeseries =
+        Arrays.asList(
+            "root.sg.wf01.wt01.s1",
+            "root.sg.wf01.wt01.s2",
+            "root.sg.wf01.wt01.status",
+            "root.sg.wf01.wt01.temperature",
+            "root.sg.wf02.s1",
+            "root.sg.wf02.s2");
+
+    // check fetch schema
+    List<MeasurementPath> schemas =
+        schemaRegion.fetchSchema(new PartialPath("root.**"), templateMap, true);
+    Assert.assertEquals(expectedTimeseries.size(), schemas.size());
+    schemas.sort(Comparator.comparing(PartialPath::getFullPath));
+    for (int i = 0; i < schemas.size(); i++) {
+      Assert.assertEquals(expectedTimeseries.get(i), schemas.get(i).getFullPath());
+    }
+
+    // check show timeseries
+    List<ShowTimeSeriesResult> result =
+        schemaRegion.showTimeseries(
+            SchemaRegionReadPlanFactory.getShowTimeSeriesPlan(
+                new PartialPath("root.**"), templateMap));
+    result.sort(ShowTimeSeriesResult::compareTo);
+    for (int i = 0; i < result.size(); i++) {
+      Assert.assertEquals(expectedTimeseries.get(i), result.get(i).getFullPath());
+    }
   }
 }

@@ -32,7 +32,7 @@ public class QueueElement implements IDIndexedAccessible {
   }
 
   @Override
-  public ID getId() {
+  public ID getDriverTaskId() {
     return id;
   }
 
@@ -48,7 +48,7 @@ public class QueueElement implements IDIndexedAccessible {
 
   @Override
   public boolean equals(Object o) {
-    return o instanceof QueueElement && ((QueueElement) o).getId().equals(this.id);
+    return o instanceof QueueElement && ((QueueElement) o).getDriverTaskId().equals(this.id);
   }
 
   public static class QueueElementID implements ID {

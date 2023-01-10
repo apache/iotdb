@@ -34,7 +34,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.localconfignode.LocalConfigNode;
+import org.apache.iotdb.db.metadata.schemaregion.SchemaEngine;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateAlignedTimeSeriesNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateMultiTimeSeriesNode;
@@ -68,7 +68,6 @@ import java.util.Map;
 public class DataNodeInternalRPCServiceImplTest {
   private static final IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
   DataNodeInternalRPCServiceImpl dataNodeInternalRPCServiceImpl;
-  static LocalConfigNode configNode;
   private static final int dataNodeId = 0;
 
   @BeforeClass
@@ -76,9 +75,9 @@ public class DataNodeInternalRPCServiceImplTest {
     // In standalone mode, we need to set dataNodeId to 0 for RaftPeerId in RatisConsensus
     conf.setDataNodeId(dataNodeId);
 
-    LocalConfigNode.getInstance().init();
-    configNode = LocalConfigNode.getInstance();
-    configNode.getBelongedSchemaRegionIdWithAutoCreate(new PartialPath("root.ln"));
+    SchemaEngine.getInstance().init();
+    SchemaEngine.getInstance()
+        .createSchemaRegion(new PartialPath("root.ln"), new SchemaRegionId(0));
     DataRegionConsensusImpl.setupAndGetInstance().start();
     SchemaRegionConsensusImpl.setupAndGetInstance().start();
     DataNodeRegionManager.getInstance().init();
@@ -108,7 +107,7 @@ public class DataNodeInternalRPCServiceImplTest {
     DataNodeRegionManager.getInstance().clear();
     DataRegionConsensusImpl.getInstance().stop();
     SchemaRegionConsensusImpl.getInstance().stop();
-    LocalConfigNode.getInstance().clear();
+    SchemaEngine.getInstance().clear();
     EnvironmentUtils.cleanEnv();
   }
 
