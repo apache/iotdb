@@ -220,25 +220,33 @@ public class LSMEngineBuilder<T extends IMemManager> {
    * build level processors from ApplicationContext object
    *
    * @param applicationContext ApplicationContext object
+   * @param enableFlush enable flush or not
    * @param memManager
    */
   private LSMEngineBuilder<T> buildLevelProcessors(
       ApplicationContext applicationContext,
       T memManager,
       String flushDirPath,
-      String flushFilePrefix) {
+      String flushFilePrefix,
+      boolean enableFlush) {
     LevelProcessorChain<T, IInsertionRequest, InsertRequestContext> insertionLevelProcessChain =
         generateLevelProcessorsChain(applicationContext.getInsertionLevelProcessClass());
     LevelProcessorChain<T, IDeletionRequest, DeleteRequestContext> deletionLevelProcessChain =
         generateLevelProcessorsChain(applicationContext.getDeletionLevelProcessClass());
     LevelProcessorChain<T, ISingleQueryRequest, QueryRequestContext> queryLevelProcessChain =
         generateLevelProcessorsChain(applicationContext.getQueryLevelProcessClass());
-    LevelProcessorChain<T, IFlushRequest, FlushRequestContext> flushLevelProcessChain =
-        generateLevelProcessorsChain(applicationContext.getFlushLevelProcessClass());
-    return buildQueryManager(queryLevelProcessChain)
-        .buildInsertionManager(insertionLevelProcessChain)
-        .buildDeletionManager(deletionLevelProcessChain)
-        .buildFlushManager(flushLevelProcessChain, memManager, flushDirPath, flushFilePrefix);
+    if (enableFlush) {
+      LevelProcessorChain<T, IFlushRequest, FlushRequestContext> flushLevelProcessChain =
+          generateLevelProcessorsChain(applicationContext.getFlushLevelProcessClass());
+      return buildQueryManager(queryLevelProcessChain)
+          .buildInsertionManager(insertionLevelProcessChain)
+          .buildDeletionManager(deletionLevelProcessChain)
+          .buildFlushManager(flushLevelProcessChain, memManager, flushDirPath, flushFilePrefix);
+    } else {
+      return buildQueryManager(queryLevelProcessChain)
+          .buildInsertionManager(insertionLevelProcessChain)
+          .buildDeletionManager(deletionLevelProcessChain);
+    }
   }
 
   /**
@@ -247,11 +255,15 @@ public class LSMEngineBuilder<T extends IMemManager> {
    * @param packageName package name
    */
   private LSMEngineBuilder<T> buildLevelProcessors(
-      String packageName, T memManager, String flushDirPath, String flushFilePrefix) {
+      String packageName,
+      T memManager,
+      String flushDirPath,
+      String flushFilePrefix,
+      boolean enableFlush) {
     try {
       ApplicationContext property =
-          ApplicationContextGenerator.GeneratePropertyWithAnnotation(packageName);
-      buildLevelProcessors(property, memManager, flushDirPath, flushFilePrefix);
+          ApplicationContextGenerator.GeneratePropertyWithAnnotation(packageName, enableFlush);
+      buildLevelProcessors(property, memManager, flushDirPath, flushFilePrefix, enableFlush);
     } catch (Exception e) {
       logger.error(e.getMessage());
     }
@@ -271,12 +283,16 @@ public class LSMEngineBuilder<T extends IMemManager> {
       T memManager,
       String flushDirPath,
       String flushFilePrefix,
-      IDiskQueryManager diskQueryManager) {
+      IDiskQueryManager diskQueryManager,
+      boolean enableFlush) {
     try {
       buildWalManager(walManager)
-          .buildLevelProcessors(applicationContext, memManager, flushDirPath, flushFilePrefix)
-          .buildRecoverManager()
-          .buildDiskQueryManager(diskQueryManager);
+          .buildLevelProcessors(
+              applicationContext, memManager, flushDirPath, flushFilePrefix, enableFlush)
+          .buildRecoverManager();
+      if (enableFlush) {
+        this.buildDiskQueryManager(diskQueryManager);
+      }
     } catch (Exception e) {
       logger.error(e.getMessage());
     }
@@ -295,12 +311,19 @@ public class LSMEngineBuilder<T extends IMemManager> {
       T memManager,
       String flushDirPath,
       String flushFilePrefix,
-      IDiskQueryManager diskQueryManager) {
+      IDiskQueryManager diskQueryManager,
+      boolean enableFlush) {
     try {
       ApplicationContext property =
-          ApplicationContextGenerator.GeneratePropertyWithAnnotation(packageName);
+          ApplicationContextGenerator.GeneratePropertyWithAnnotation(packageName, enableFlush);
       buildLSMManagers(
-          property, walManager, memManager, flushDirPath, flushFilePrefix, diskQueryManager);
+          property,
+          walManager,
+          memManager,
+          flushDirPath,
+          flushFilePrefix,
+          diskQueryManager,
+          enableFlush);
     } catch (Exception e) {
       logger.error(e.getMessage());
     }

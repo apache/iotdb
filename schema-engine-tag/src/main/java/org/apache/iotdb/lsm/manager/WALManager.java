@@ -58,6 +58,8 @@ public abstract class WALManager<T> {
 
   private String flushFilePrefix;
 
+  private boolean enableFlush;
+
   public WALManager(String walDirPath) {
     this.walDirPath = walDirPath;
   }
@@ -67,18 +69,22 @@ public abstract class WALManager<T> {
       String walFilePrefix,
       String flushDirPath,
       String flushFilePrefix,
-      IWALRecord walRecord)
+      IWALRecord walRecord,
+      boolean enableFlush)
       throws IOException {
     this.walDirPath = walDirPath;
     this.walFilePrefix = walFilePrefix;
     this.flushDirPath = flushDirPath;
     this.flushFilePrefix = flushFilePrefix;
+    this.enableFlush = enableFlush;
     initRecover(walRecord);
     recover = false;
   }
 
   public void initRecover(IWALRecord walRecord) throws IOException {
-    checkPoint();
+    if (enableFlush) {
+      checkPoint();
+    }
     File walDir = new File(walDirPath);
     walDir.mkdirs();
     File[] walFiles = walDir.listFiles();

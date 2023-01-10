@@ -64,6 +64,7 @@ public class MemTableGroupInsertion
     Map<Integer, MemTable> immutableMemTables = memNode.getImmutableMemTables();
     // if the device id can not be saved to the current working MemTable
     if (!memNode.inWorkingMemTable(id)) {
+      int a = memNode.getMaxDeviceID() / memNode.getNumOfDeviceIdsInMemTable();
       workingMemTable.setStatus(MemTable.IMMUTABLE);
       immutableMemTables.put(
           memNode.getMaxDeviceID() / memNode.getNumOfDeviceIdsInMemTable(), workingMemTable);

@@ -46,11 +46,17 @@ public class MemTableGroup implements IMemManager {
 
   private long maxChunkSize;
 
+  private boolean enableFlush;
+
   public MemTableGroup(
-      int numOfDeviceIdsInMemTable, int numOfImmutableMemTable, long maxChunkSize) {
+      int numOfDeviceIdsInMemTable,
+      int numOfImmutableMemTable,
+      long maxChunkSize,
+      boolean enableFlush) {
     this.numOfDeviceIdsInMemTable = numOfDeviceIdsInMemTable;
     this.numOfImmutableMemTable = numOfImmutableMemTable;
     this.maxChunkSize = maxChunkSize;
+    this.enableFlush = enableFlush;
     workingMemTable = new MemTable(MemTable.WORKING);
     immutableMemTables = new ConcurrentHashMap<>();
     maxDeviceID = 0;
@@ -115,6 +121,11 @@ public class MemTableGroup implements IMemManager {
   @Override
   public boolean isNeedFlush() {
     return immutableMemTables.size() > numOfImmutableMemTable;
+  }
+
+  @Override
+  public boolean isEnableFlush() {
+    return enableFlush;
   }
 
   @Override

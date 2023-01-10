@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.lsm.manager;
 
+import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.response.QueryResponse;
 import org.apache.iotdb.lsm.context.requestcontext.QueryRequestContext;
 import org.apache.iotdb.lsm.request.ISingleQueryRequest;
 import org.apache.iotdb.lsm.request.QueryRequest;
@@ -41,11 +42,10 @@ public class QueryManager<T> {
     } else {
       if (queryRequest.isIterativeQuery()) {
         memResponse.addIterator(diskResponse.getIterator());
-        return memResponse;
       } else {
         memResponse.or(diskResponse);
-        return memResponse;
       }
+      return memResponse;
     }
   }
 
@@ -70,7 +70,11 @@ public class QueryManager<T> {
   }
 
   private <K, R extends IQueryResponse> R processDisk(QueryRequest<K> queryRequest) {
-    return diskQueryManager.process(queryRequest);
+    // enable flush
+    if (diskQueryManager != null) {
+      return diskQueryManager.process(queryRequest);
+    }
+    return (R) new QueryResponse();
   }
 
   public MemQueryManager<T, ISingleQueryRequest> getMemQueryManager() {

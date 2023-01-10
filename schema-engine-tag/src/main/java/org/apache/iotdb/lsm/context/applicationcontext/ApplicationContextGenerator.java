@@ -39,9 +39,11 @@ public class ApplicationContextGenerator {
    * annotations of these classes
    *
    * @param packageName package name
+   * @param enableFlush whether to enable flush
    * @return ApplicationContext object
    */
-  public static ApplicationContext GeneratePropertyWithAnnotation(String packageName) {
+  public static ApplicationContext GeneratePropertyWithAnnotation(
+      String packageName, boolean enableFlush) {
     Reflections reflections =
         new Reflections(
             new ConfigurationBuilder()
@@ -51,7 +53,9 @@ public class ApplicationContextGenerator {
     setDeletionLevelProcessor(applicationContext, reflections);
     setInsertionLevelProcessor(applicationContext, reflections);
     setQueryLevelProcessor(applicationContext, reflections);
-    setFlushLevelProcessor(applicationContext, reflections);
+    if (enableFlush) {
+      setFlushLevelProcessor(applicationContext, reflections);
+    }
     return applicationContext;
   }
 

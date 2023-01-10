@@ -70,6 +70,9 @@ public class TagSchemaDescriptor {
               properties.getProperty(
                   "num_of_deviceIds_in_memTable",
                   String.valueOf(conf.getNumOfDeviceIdsInMemTable()))));
+      conf.setEnableFlush(
+          Boolean.parseBoolean(
+              properties.getProperty("enable_flush", String.valueOf(conf.isEnableFlush()))));
       conf.setDegree(
           Integer.parseInt(properties.getProperty("degree", String.valueOf(conf.getDegree()))));
       conf.setBPlusTreePageSize(

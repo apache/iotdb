@@ -25,6 +25,8 @@ import java.util.List;
 public interface IMemManager<R extends IFlushRequest> {
   boolean isNeedFlush();
 
+  boolean isEnableFlush();
+
   List<R> getFlushRequests();
 
   void removeMemData(R request);

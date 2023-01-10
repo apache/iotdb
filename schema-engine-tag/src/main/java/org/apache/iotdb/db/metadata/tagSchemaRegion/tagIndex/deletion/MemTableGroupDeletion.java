@@ -61,19 +61,23 @@ public class MemTableGroupDeletion
       if (memTable != null) {
         memTables.add(memTable);
       } else {
-        // If the immutable memtable has been flushed, write the id to the corresponding deletion
-        // file
-        File deletionFile =
-            new File(
-                request.getFlushDirPath()
-                    + File.separator
-                    + request.getFlushFilePrefix()
-                    + "-"
-                    + SchemaRegionConstant.DELETE
-                    + "-0-"
-                    + num);
-        writeDeleteFile(deletionFile, id, context);
-        return new ArrayList<>();
+        if (memNode.isEnableFlush()) {
+          // If the immutable memtable has been flushed, write the id to the corresponding deletion
+          // file
+          File deletionFile =
+              new File(
+                  request.getFlushDirPath()
+                      + File.separator
+                      + request.getFlushFilePrefix()
+                      + "-"
+                      + SchemaRegionConstant.DELETE
+                      + "-0-"
+                      + num);
+          writeDeleteFile(deletionFile, id, context);
+          return new ArrayList<>();
+        } else {
+          throw new RuntimeException("can't find specified memtable");
+        }
       }
     }
     return memTables;

@@ -84,13 +84,15 @@ public class TagInvertedIndex implements ITagInvertedIndex {
               WAL_FILE_PREFIX,
               schemaDirPath + File.separator + FLUSH_DIR_PATH,
               FLUSH_FILE_PREFIX,
-              new WALEntry());
+              new WALEntry(),
+              tagSchemaConfig.isEnableFlush());
       // root memory node, used to manage working and immutableMemTables
       MemTableGroup memTableGroup =
           new MemTableGroup(
               tagSchemaConfig.getNumOfDeviceIdsInMemTable(),
               tagSchemaConfig.getNumOfImmutableMemTable(),
-              tagSchemaConfig.getMaxChunkSize());
+              tagSchemaConfig.getMaxChunkSize(),
+              tagSchemaConfig.isEnableFlush());
 
       DiskQueryManager diskQueryManager =
           new DiskQueryManager(schemaDirPath + File.separator + FLUSH_DIR_PATH, FLUSH_FILE_PREFIX);
@@ -104,7 +106,8 @@ public class TagInvertedIndex implements ITagInvertedIndex {
                   memTableGroup,
                   schemaDirPath + File.separator + FLUSH_DIR_PATH,
                   FLUSH_FILE_PREFIX,
-                  diskQueryManager)
+                  diskQueryManager,
+                  tagSchemaConfig.isEnableFlush())
               .build();
 
       // recover the lsm engine

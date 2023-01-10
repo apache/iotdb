@@ -46,6 +46,7 @@ public class WALReader implements IWALReader {
     this.logStream =
         new DataInputStream(new BufferedInputStream(Files.newInputStream(logFile.toPath())));
     this.prototype = prototype;
+    nextRecord = null;
   }
 
   @Override
@@ -93,6 +94,7 @@ public class WALReader implements IWALReader {
     this.logFile = logFile;
     this.logStream =
         new DataInputStream(new BufferedInputStream(Files.newInputStream(logFile.toPath())));
+    this.nextRecord = null;
   }
 
   @Override

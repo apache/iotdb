@@ -36,6 +36,9 @@ public class TagSchemaConfig {
   // store.(unit: byte)
   private long maxChunkSize = 16 * 1024;
 
+  // Decide whether to enable the flush function.
+  private boolean enableFlush = false;
+
   public int getNumOfDeviceIdsInMemTable() {
     return numOfDeviceIdsInMemTable;
   }
@@ -90,5 +93,13 @@ public class TagSchemaConfig {
         + ", maxChunkSize="
         + maxChunkSize
         + '}';
+  }
+
+  public boolean isEnableFlush() {
+    return enableFlush;
+  }
+
+  public void setEnableFlush(boolean enableFlush) {
+    this.enableFlush = enableFlush;
   }
 }
