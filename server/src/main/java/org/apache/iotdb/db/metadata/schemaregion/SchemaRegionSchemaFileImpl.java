@@ -254,10 +254,15 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
     if (!initialized) {
       return;
     }
-    try {
-      logWriter.force();
-    } catch (IOException e) {
-      logger.error("Cannot force {} mlog to the schema region", schemaRegionId, e);
+    if (usingMLog) {
+      try {
+        SchemaLogWriter<ISchemaRegionPlan> logWriter = this.logWriter;
+        if (logWriter != null) {
+          logWriter.force();
+        }
+      } catch (IOException e) {
+        logger.error("Cannot force {} mlog to the schema region", schemaRegionId, e);
+      }
     }
   }
 
@@ -757,27 +762,16 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
   public long constructSchemaBlackList(PathPatternTree patternTree) throws MetadataException {
     long preDeletedNum = 0;
     for (PartialPath pathPattern : patternTree.getAllPathPatterns()) {
-      List<IMeasurementMNode> measurementMNodeList = mtree.getMatchedMeasurementMNode(pathPattern);
-      try {
-        for (IMeasurementMNode measurementMNode : measurementMNodeList) {
-          // Given pathPatterns may match one timeseries multi times, which may results in the
-          // preDeletedNum larger than the actual num of timeseries. It doesn't matter since the
-          // main
-          // purpose is to check whether there's timeseries to be deleted.
-          try {
-            preDeletedNum++;
-            measurementMNode.setPreDeleted(true);
-            mtree.updateMNode(measurementMNode);
-            writeToMLog(
-                SchemaRegionWritePlanFactory.getPreDeleteTimeSeriesPlan(
-                    measurementMNode.getPartialPath()));
-          } catch (IOException e) {
-            throw new MetadataException(e);
-          }
-        }
-      } finally {
-        for (IMeasurementMNode measurementMNode : measurementMNodeList) {
-          mtree.unPinMNode(measurementMNode);
+      // Given pathPatterns may match one timeseries multi times, which may results in the
+      // preDeletedNum larger than the actual num of timeseries. It doesn't matter since the main
+      // purpose is to check whether there's timeseries to be deleted.
+      List<PartialPath> paths = mtree.constructSchemaBlackList(pathPattern);
+      preDeletedNum += paths.size();
+      for (PartialPath path : paths) {
+        try {
+          writeToMLog(SchemaRegionWritePlanFactory.getPreDeleteTimeSeriesPlan(path));
+        } catch (IOException e) {
+          throw new MetadataException(e);
         }
       }
     }
@@ -787,17 +781,13 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
   @Override
   public void rollbackSchemaBlackList(PathPatternTree patternTree) throws MetadataException {
     for (PartialPath pathPattern : patternTree.getAllPathPatterns()) {
-      for (IMeasurementMNode measurementMNode : mtree.getMatchedMeasurementMNode(pathPattern)) {
+      List<PartialPath> paths = mtree.rollbackSchemaBlackList(pathPattern);
+      ;
+      for (PartialPath path : paths) {
         try {
-          measurementMNode.setPreDeleted(false);
-          mtree.updateMNode(measurementMNode);
-          writeToMLog(
-              SchemaRegionWritePlanFactory.getRollbackPreDeleteTimeSeriesPlan(
-                  measurementMNode.getPartialPath()));
+          writeToMLog(SchemaRegionWritePlanFactory.getRollbackPreDeleteTimeSeriesPlan(path));
         } catch (IOException e) {
           throw new MetadataException(e);
-        } finally {
-          mtree.unPinMNode(measurementMNode);
         }
       }
     }

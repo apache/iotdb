@@ -44,7 +44,7 @@ public interface IMPPDataExchangeManager {
       String localPlanNodeId,
       FragmentInstanceContext instanceContext);
 
-  ISinkHandle createLocalSinkHandle(
+  ISinkHandle createLocalSinkHandleForFragment(
       TFragmentInstanceId localFragmentInstanceId,
       TFragmentInstanceId remoteFragmentInstanceId,
       String remotePlanNodeId,
@@ -69,7 +69,7 @@ public interface IMPPDataExchangeManager {
       TFragmentInstanceId remoteFragmentInstanceId,
       IMPPDataExchangeManagerCallback<Throwable> onFailureCallback);
 
-  ISourceHandle createLocalSourceHandle(
+  ISourceHandle createLocalSourceHandleForFragment(
       TFragmentInstanceId localFragmentInstanceId,
       String localPlanNodeId,
       TFragmentInstanceId remoteFragmentInstanceId,

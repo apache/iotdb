@@ -28,11 +28,22 @@ public class SchemaDriverContext extends DriverContext {
 
   public SchemaDriverContext(
       FragmentInstanceContext fragmentInstanceContext, ISchemaRegion schemaRegion) {
-    super(fragmentInstanceContext);
+    // TODO whether schema driver need to be split to pipeline, default 0 now
+    super(fragmentInstanceContext, 0);
     this.schemaRegion = schemaRegion;
+  }
+
+  public SchemaDriverContext(SchemaDriverContext parentContext, int pipelineId) {
+    super(parentContext.getFragmentInstanceContext(), pipelineId);
+    this.schemaRegion = parentContext.schemaRegion;
   }
 
   public ISchemaRegion getSchemaRegion() {
     return schemaRegion;
+  }
+
+  @Override
+  public DriverContext createSubDriverContext(int pipelineId) {
+    return new SchemaDriverContext(this, pipelineId);
   }
 }

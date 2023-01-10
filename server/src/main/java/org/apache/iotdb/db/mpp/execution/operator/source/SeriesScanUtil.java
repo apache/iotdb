@@ -23,7 +23,6 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.metadata.idtable.IDTable;
-import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.mpp.metric.QueryMetricsManager;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.reader.chunk.MemAlignedPageReader;
@@ -67,7 +66,8 @@ import static org.apache.iotdb.db.mpp.metric.SeriesScanCostMetricSet.BUILD_TSBLO
 import static org.apache.iotdb.db.mpp.metric.SeriesScanCostMetricSet.BUILD_TSBLOCK_FROM_PAGE_READER_NONALIGNED_MEM;
 
 public class SeriesScanUtil {
-  private final FragmentInstanceContext context;
+
+  private final QueryContext context;
 
   // The path of the target series which will be scanned.
   private final PartialPath seriesPath;
@@ -135,7 +135,7 @@ public class SeriesScanUtil {
       PartialPath seriesPath,
       Set<String> allSensors,
       TSDataType dataType,
-      FragmentInstanceContext context,
+      QueryContext context,
       Filter timeFilter,
       Filter valueFilter,
       boolean ascending) {

@@ -152,7 +152,8 @@ public class IoTDBClusterRestartIT {
           .get(i)
           .changeConfig(
               (MppBaseConfig) EnvFactory.getEnv().getConfig().getDataNodeConfig(),
-              (MppCommonConfig) EnvFactory.getEnv().getConfig().getDataNodeCommonConfig());
+              (MppCommonConfig) EnvFactory.getEnv().getConfig().getDataNodeCommonConfig(),
+              null);
       EnvFactory.getEnv().startDataNode(i);
     }
 

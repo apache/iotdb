@@ -514,13 +514,13 @@ public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
             "root.laptop.d2.s2"));
 
     Assert.assertEquals(
-        new LinkedList<>(Arrays.asList(new PartialPath("root"))),
+        new LinkedList<>(Collections.singletonList(new PartialPath("root"))),
         getNodesListInGivenLevel(schemaRegion, new PartialPath("root.**"), 0, false));
     Assert.assertEquals(
-        new LinkedList<>(Arrays.asList(new PartialPath("root.laptop"))),
+        new LinkedList<>(Collections.singletonList(new PartialPath("root.laptop"))),
         getNodesListInGivenLevel(schemaRegion, new PartialPath("root.**"), 1, false));
     Assert.assertEquals(
-        new LinkedList<>(Arrays.asList(new PartialPath("root.laptop"))),
+        new LinkedList<>(Collections.singletonList(new PartialPath("root.laptop"))),
         getNodesListInGivenLevel(schemaRegion, new PartialPath("root.laptop"), 1, false));
     Assert.assertEquals(
         new HashSet<>(
@@ -548,7 +548,7 @@ public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
             getNodesListInGivenLevel(schemaRegion, new PartialPath("root.laptop.*.s1"), 3, false)));
     // Empty return
     Assert.assertEquals(
-        new HashSet<>(Arrays.asList()),
+        new HashSet<>(Collections.emptyList()),
         new HashSet<>(
             getNodesListInGivenLevel(
                 schemaRegion, new PartialPath("root.laptop.notExists"), 1, false)));
@@ -569,7 +569,7 @@ public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
             "root.laptop.d2.s2"));
 
     Assert.assertEquals(
-        new HashSet<>(Arrays.asList()),
+        new HashSet<>(Collections.emptyList()),
         getChildNodePathInNextLevel(schemaRegion, new PartialPath("root.laptop.d0")));
 
     Assert.assertEquals(
@@ -597,7 +597,8 @@ public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
 
     Assert.assertEquals(
         new HashSet<>(
-            Arrays.asList(new ShowNodesResult("root.laptop.d1.s2.t1", MNodeType.MEASUREMENT))),
+            Collections.singletonList(
+                new ShowNodesResult("root.laptop.d1.s2.t1", MNodeType.MEASUREMENT))),
         getChildNodePathInNextLevel(schemaRegion, new PartialPath("root.**.s2")));
   }
 

@@ -19,7 +19,9 @@
 package org.apache.iotdb.db.mpp.execution.operator.source;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.mpp.execution.driver.DriverContext;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
+import org.apache.iotdb.db.mpp.execution.operator.factory.SourceOperatorFactory;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -35,17 +37,89 @@ import java.io.IOException;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
+import static com.google.common.base.Preconditions.checkState;
+import static java.util.Objects.requireNonNull;
+
 public class SeriesScanOperator extends AbstractDataSourceOperator {
+
+  public static class SeriesScanOperatorFactory implements SourceOperatorFactory {
+    private final int operatorId;
+    private final PlanNodeId sourceId;
+    private final PartialPath seriesPath;
+    private final Set<String> allSensors;
+    private final TSDataType dataType;
+    private final Filter timeFilter;
+    private final Filter valueFilter;
+    private final boolean ascending;
+    private boolean closed;
+
+    public SeriesScanOperatorFactory(
+        int operatorId,
+        PlanNodeId sourceId,
+        PartialPath seriesPath,
+        Set<String> allSensors,
+        TSDataType dataType,
+        Filter timeFilter,
+        Filter valueFilter,
+        boolean ascending) {
+      this.operatorId = operatorId;
+      this.sourceId = requireNonNull(sourceId, "sourceId is null");
+      this.seriesPath = requireNonNull(seriesPath, "seriesPath is null");
+      this.allSensors = requireNonNull(allSensors, "allSensors is null");
+      this.dataType = requireNonNull(dataType, "dataType is null");
+      this.timeFilter = timeFilter;
+      this.valueFilter = valueFilter;
+      this.ascending = ascending;
+    }
+
+    public int getOperatorId() {
+      return operatorId;
+    }
+
+    @Override
+    public PlanNodeId getSourceId() {
+      return sourceId;
+    }
+
+    public PlanNodeId getPlanNodeId() {
+      return sourceId;
+    }
+
+    public String getOperatorType() {
+      return SeriesScanOperator.class.getSimpleName();
+    }
+
+    @Override
+    public SourceOperator createOperator(DriverContext driverContext) {
+      checkState(!closed, "Factory is already closed");
+      OperatorContext operatorContext =
+          driverContext.addOperatorContext(operatorId, sourceId, getOperatorType());
+      return new SeriesScanOperator(
+          operatorContext,
+          sourceId,
+          seriesPath,
+          allSensors,
+          dataType,
+          timeFilter,
+          valueFilter,
+          ascending);
+    }
+
+    @Override
+    public void noMoreOperators() {
+      closed = true;
+    }
+  }
 
   private final TsBlockBuilder builder;
   private boolean finished = false;
 
   public SeriesScanOperator(
+      OperatorContext context,
       PlanNodeId sourceId,
       PartialPath seriesPath,
       Set<String> allSensors,
       TSDataType dataType,
-      OperatorContext context,
       Filter timeFilter,
       Filter valueFilter,
       boolean ascending) {
