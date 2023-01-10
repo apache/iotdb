@@ -553,21 +553,6 @@ public class IoTDBDescriptor {
       conf.setMaxAllowedConcurrentQueries(1000);
     }
 
-    conf.setSubRawQueryThreadCount(
-        Integer.parseInt(
-            properties.getProperty(
-                "sub_rawQuery_thread_count", Integer.toString(conf.getSubRawQueryThreadCount()))));
-
-    if (conf.getSubRawQueryThreadCount() <= 0) {
-      conf.setSubRawQueryThreadCount(Runtime.getRuntime().availableProcessors());
-    }
-
-    conf.setRawQueryBlockingQueueCapacity(
-        Integer.parseInt(
-            properties.getProperty(
-                "raw_query_blocking_queue_capacity",
-                Integer.toString(conf.getRawQueryBlockingQueueCapacity()))));
-
     conf.setmRemoteSchemaCacheSize(
         Integer.parseInt(
             properties

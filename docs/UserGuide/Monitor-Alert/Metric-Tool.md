@@ -196,7 +196,6 @@ Core-level metrics are enabled by default during system operation. The addition 
 | queue     | name="compaction_cross", status="running/waiting" | Gauge     | The number of cross compatcion tasks  |
 | cost_task | name="inner_compaction/cross_compaction/flush"    | Gauge     | The time consumed of compaction tasks |
 | queue     | name="flush",status="running/waiting"             | AutoGauge | The number of flush tasks             |
-| queue     | name="Sub_RawQuery",status="running/waiting"      | AutoGauge | The number of Sub_RawQuery            |
 
 #### 4.2.8. Compaction
 | Metric                | Tags                                                | Type    | Description                            |

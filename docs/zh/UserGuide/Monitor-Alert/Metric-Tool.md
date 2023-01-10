@@ -192,7 +192,6 @@ Core 级别的监控指标在系统运行中默认开启，每一个 Core 级别
 | queue     | name="compaction_cross", status="running/waiting" | Gauge     | 跨空间合并任务数   |
 | cost_task | name="inner_compaction/cross_compaction/flush"    | Gauge     | 任务耗时情况       |
 | queue     | name="flush",status="running/waiting"             | AutoGauge | 刷盘任务数         |
-| queue     | name="Sub_RawQuery",status="running/waiting"      | AutoGauge | Sub_RawQuery任务数 |
 
 #### 4.2.8. 合并统计
 | Metric                | Tags                                                | Type    | Description        |

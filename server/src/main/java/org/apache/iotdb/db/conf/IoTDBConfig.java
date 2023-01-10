@@ -324,14 +324,6 @@ public class IoTDBConfig {
   /** How many queries can be concurrently executed. When <= 0, use 1000. */
   private int maxAllowedConcurrentQueries = 1000;
 
-  /**
-   * How many threads can concurrently read data for raw data query. When <= 0, use CPU core number.
-   */
-  private int subRawQueryThreadCount = 8;
-
-  /** Blocking queue size for read task in raw data query. */
-  private int rawQueryBlockingQueueCapacity = 5;
-
   /** How many threads can concurrently evaluate windows. When <= 0, use CPU core number. */
   private int windowEvaluationThreadCount = Runtime.getRuntime().availableProcessors();
 
@@ -1520,24 +1512,8 @@ public class IoTDBConfig {
     this.maxAllowedConcurrentQueries = maxAllowedConcurrentQueries;
   }
 
-  public int getSubRawQueryThreadCount() {
-    return subRawQueryThreadCount;
-  }
-
-  void setSubRawQueryThreadCount(int subRawQueryThreadCount) {
-    this.subRawQueryThreadCount = subRawQueryThreadCount;
-  }
-
   public long getMaxBytesPerFragmentInstance() {
     return allocateMemoryForDataExchange / queryThreadCount;
-  }
-
-  public int getRawQueryBlockingQueueCapacity() {
-    return rawQueryBlockingQueueCapacity;
-  }
-
-  public void setRawQueryBlockingQueueCapacity(int rawQueryBlockingQueueCapacity) {
-    this.rawQueryBlockingQueueCapacity = rawQueryBlockingQueueCapacity;
   }
 
   public int getWindowEvaluationThreadCount() {
