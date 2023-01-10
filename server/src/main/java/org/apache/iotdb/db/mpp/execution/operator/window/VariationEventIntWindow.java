@@ -17,39 +17,21 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.aggregation;
+package org.apache.iotdb.db.mpp.execution.operator.window;
 
-import org.apache.iotdb.db.mpp.execution.operator.window.IWindow;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 
-public class MaxTimeDescAccumulator extends MaxTimeAccumulator {
+public class VariationEventIntWindow extends EventIntWindow {
 
-  // Column should be like: | ControlColumn | Time | Value |
-  // Value is used to judge isNull()
-  @Override
-  public int addInput(Column[] column, IWindow curWindow) {
-    int curPositionCount = column[0].getPositionCount();
-
-    for (int i = 0; i < curPositionCount; i++) {
-      // skip null value in control column
-      if (column[0].isNull(i)) {
-        continue;
-      }
-      if (!curWindow.satisfy(column[0], i)) {
-        return i;
-      }
-      curWindow.mergeOnePoint(column, i);
-      if (!column[2].isNull(i)) {
-        updateMaxTime(column[1].getLong(i));
-        return i;
-      }
-    }
-
-    return curPositionCount;
+  public VariationEventIntWindow(EventWindowParameter eventWindowParameter) {
+    super(eventWindowParameter);
   }
 
   @Override
-  public boolean hasFinalResult() {
-    return initResult;
+  public boolean satisfy(Column column, int index) {
+    if (!initializedEventValue) {
+      return true;
+    }
+    return Math.abs(column.getInt(index) - eventValue) <= eventWindowParameter.getDelta();
   }
 }
