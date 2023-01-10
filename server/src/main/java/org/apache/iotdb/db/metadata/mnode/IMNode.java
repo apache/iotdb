@@ -19,14 +19,13 @@
 package org.apache.iotdb.db.metadata.mnode;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.schema.tree.ITreeNode;
 import org.apache.iotdb.db.metadata.mnode.container.IMNodeContainer;
 import org.apache.iotdb.db.metadata.mnode.visitor.MNodeVisitor;
 import org.apache.iotdb.db.metadata.mtree.store.disk.cache.CacheEntry;
 
-import java.io.Serializable;
-
 /** This interface defines a MNode's operation interfaces. */
-public interface IMNode extends Serializable {
+public interface IMNode extends ITreeNode {
 
   String getName();
 
@@ -82,6 +81,8 @@ public interface IMNode extends Serializable {
   boolean isSchemaTemplatePreUnset();
 
   void unsetSchemaTemplate();
+
+  boolean isAboveDatabase();
 
   boolean isStorageGroup();
 

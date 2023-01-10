@@ -23,43 +23,22 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mtree.store.IMTreeStore;
+import org.apache.iotdb.db.metadata.mtree.traverser.basic.EntityTraverser;
 
 // This class defines EntityMNode as target node and defines the Entity process framework.
-public abstract class EntityCollector<T> extends CollectorTraverser<T> {
+// TODO: set R is IDeviceSchemaInfo
+public abstract class EntityCollector<R> extends EntityTraverser<R> {
 
-  public EntityCollector(IMNode startNode, PartialPath path, IMTreeStore store)
+  protected EntityCollector(
+      IMNode startNode, PartialPath path, IMTreeStore store, boolean isPrefixMatch)
       throws MetadataException {
-    super(startNode, path, store);
-  }
-
-  public EntityCollector(
-      IMNode startNode, PartialPath path, IMTreeStore store, int limit, int offset)
-      throws MetadataException {
-    super(startNode, path, store, limit, offset);
+    super(startNode, path, store, isPrefixMatch);
   }
 
   @Override
-  protected boolean processInternalMatchedMNode(IMNode node, int idx, int level) {
-    return false;
+  protected R generateResult(IMNode nextMatchedNode) {
+    return collectEntity(nextMatchedNode.getAsEntityMNode());
   }
 
-  @Override
-  protected boolean processFullMatchedMNode(IMNode node, int idx, int level)
-      throws MetadataException {
-    if (node.isEntity()) {
-      if (hasLimit) {
-        curOffset += 1;
-        if (curOffset < offset) {
-          return true;
-        }
-      }
-      collectEntity(node.getAsEntityMNode());
-      if (hasLimit) {
-        count += 1;
-      }
-    }
-    return false;
-  }
-
-  protected abstract void collectEntity(IEntityMNode node) throws MetadataException;
+  protected abstract R collectEntity(IEntityMNode node);
 }

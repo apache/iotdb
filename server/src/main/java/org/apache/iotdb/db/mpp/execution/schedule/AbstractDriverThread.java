@@ -38,7 +38,7 @@ public abstract class AbstractDriverThread extends Thread implements Closeable {
   protected final ITaskScheduler scheduler;
   private volatile boolean closed;
 
-  public AbstractDriverThread(
+  protected AbstractDriverThread(
       String workerId,
       ThreadGroup tg,
       IndexedBlockingQueue<DriverTask> queue,
@@ -59,7 +59,7 @@ public abstract class AbstractDriverThread extends Thread implements Closeable {
         try {
           next = queue.poll();
         } catch (InterruptedException e) {
-          logger.warn("Executor " + this.getName() + " failed to poll driver task from queue");
+          logger.warn("Executor {} failed to poll driver task from queue", this.getName());
           Thread.currentThread().interrupt();
           break;
         }
@@ -69,16 +69,15 @@ public abstract class AbstractDriverThread extends Thread implements Closeable {
           continue;
         }
 
-        try (SetThreadName fragmentInstanceName =
-            new SetThreadName(next.getFragmentInstance().getInfo().getFullId())) {
+        try (SetThreadName driverTaskName = new SetThreadName(next.getDriverTaskId().getFullId())) {
           execute(next);
         } catch (Throwable t) {
           // try-with-resource syntax will call close once after try block is done, so we need to
           // reset the thread name here
-          try (SetThreadName fragmentInstanceName =
-              new SetThreadName(next.getFragmentInstance().getInfo().getFullId())) {
+          try (SetThreadName driverTaskName =
+              new SetThreadName(next.getDriver().getDriverTaskId().getFullId())) {
             logger.warn("[ExecuteFailed]", t);
-            next.setAbortCause(FragmentInstanceAbortedException.BY_INTERNAL_ERROR_SCHEDULED);
+            next.setAbortCause(DriverTaskAbortedException.BY_INTERNAL_ERROR_SCHEDULED);
             scheduler.toAborted(next);
           }
         }
@@ -87,12 +86,11 @@ public abstract class AbstractDriverThread extends Thread implements Closeable {
       // unless we have been closed, we need to replace this thread
       if (!closed) {
         logger.warn(
-            "Executor "
-                + this.getName()
-                + " exits because it's interrupted, and we will produce another thread to replace.");
+            "Executor {} exits because it's interrupted, and we will produce another thread to replace.",
+            this.getName());
         producer.produce(getName(), getThreadGroup(), queue, producer);
       } else {
-        logger.info("Executor " + this.getName() + " exits because it is closed.");
+        logger.info("Executor {} exits because it is closed.", this.getName());
       }
     }
   }

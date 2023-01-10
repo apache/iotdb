@@ -174,7 +174,7 @@ import static org.apache.iotdb.db.mpp.plan.analyze.SelectIntoUtils.constructTarg
 /** This visitor is used to analyze each type of Statement and returns the {@link Analysis}. */
 public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> {
 
-  private static final Logger logger = LoggerFactory.getLogger(Analyzer.class);
+  private static final Logger logger = LoggerFactory.getLogger(AnalyzeVisitor.class);
 
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
@@ -367,7 +367,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     Set<Expression> sourceExpressions;
 
     OrderByParameter orderByParameter = analysis.getMergeOrderParameter();
-    if (orderByParameter != null && orderByParameter.getSortItemList().size() > 0) {
+    if (orderByParameter != null && !orderByParameter.getSortItemList().isEmpty()) {
       List<SortItem> sortItemList = orderByParameter.getSortItemList();
       checkState(
           sortItemList.size() == 1 && sortItemList.get(0).getSortKey() == SortKey.TIMESERIES,

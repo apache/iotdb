@@ -44,12 +44,12 @@ import static org.junit.Assert.fail;
 public class IoTDBExecuteBatchIT {
   @Before
   public void setUp() throws Exception {
-    EnvFactory.getEnv().initBeforeTest();
+    EnvFactory.getEnv().initClusterEnvironment();
   }
 
   @After
   public void tearDown() throws Exception {
-    EnvFactory.getEnv().cleanAfterTest();
+    EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
   @Test

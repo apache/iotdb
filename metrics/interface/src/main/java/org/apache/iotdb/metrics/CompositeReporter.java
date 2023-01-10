@@ -32,7 +32,7 @@ public class CompositeReporter {
   private static final Logger LOGGER = LoggerFactory.getLogger(CompositeReporter.class);
   private final List<Reporter> reporters = new ArrayList<>();
 
-  /** Start all reporters */
+  /** Start all reporters. */
   public void startAll() {
     for (Reporter reporter : reporters) {
       if (!reporter.start()) {
@@ -41,7 +41,7 @@ public class CompositeReporter {
     }
   }
 
-  /** Start reporter by reporterType */
+  /** Start reporter by reporterType. */
   public boolean start(ReporterType reporterType) {
     for (Reporter reporter : reporters) {
       if (reporter.getReporterType() == reporterType) {
@@ -52,16 +52,16 @@ public class CompositeReporter {
     return false;
   }
 
-  /** Stop all reporters */
+  /** Stop all reporters. */
   public void stopAll() {
     for (Reporter reporter : reporters) {
       if (!reporter.stop()) {
-        LOGGER.error("Failed to stop {} reporter.", reporter.getReporterType());
+        LOGGER.warn("Failed to stop {} reporter.", reporter.getReporterType());
       }
     }
   }
 
-  /** Stop reporter by reporterType */
+  /** Stop reporter by reporterType. */
   public boolean stop(ReporterType reporterType) {
     for (Reporter reporter : reporters) {
       if (reporter.getReporterType() == reporterType) {
@@ -72,7 +72,7 @@ public class CompositeReporter {
     return false;
   }
 
-  /** Add reporter into reporter list */
+  /** Add reporter into reporter list. */
   public void addReporter(Reporter reporter) {
     for (Reporter originReporter : reporters) {
       if (originReporter.getReporterType() == reporter.getReporterType()) {
@@ -84,7 +84,7 @@ public class CompositeReporter {
     reporters.add(reporter);
   }
 
-  /** Clear all reporters */
+  /** Clear all reporters. */
   public void clearReporter() {
     reporters.clear();
   }

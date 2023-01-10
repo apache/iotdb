@@ -22,6 +22,7 @@ import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
@@ -29,23 +30,23 @@ import org.apache.iotdb.db.exception.metadata.MeasurementAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.localconfignode.LocalConfigNode;
+import org.apache.iotdb.db.metadata.plan.schemaregion.impl.read.SchemaRegionReadPlanFactory;
 import org.apache.iotdb.db.metadata.plan.schemaregion.impl.write.SchemaRegionWritePlanFactory;
+import org.apache.iotdb.db.metadata.query.info.ITimeSeriesSchemaInfo;
+import org.apache.iotdb.db.metadata.query.reader.ISchemaReader;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaEngine;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 /**
  * This class takes the responsibility of serialization of all the metadata info and persistent it
@@ -74,6 +75,8 @@ import java.util.Set;
  *   <li>Interfaces for alias and tag/attribute operations
  *   <li>TestOnly Interfaces
  * </ol>
+ *
+ * @deprecated
  */
 @SuppressWarnings("java:S1135") // ignore todos
 // Now it's only used for test and isn't able to recover after restarting
@@ -120,10 +123,9 @@ public class LocalSchemaProcessor {
    * paths represented by the given pathPattern. If isPrefixMatch, all databases under the
    * prefixPath that matches the given pathPattern will be collected.
    */
-  private List<ISchemaRegion> getInvolvedSchemaRegions(
-      PartialPath pathPattern, boolean isPrefixMatch) throws MetadataException {
-    List<SchemaRegionId> schemaRegionIds =
-        configManager.getInvolvedSchemaRegionIds(pathPattern, isPrefixMatch);
+  private List<ISchemaRegion> getInvolvedSchemaRegions(PartialPath pathPattern)
+      throws MetadataException {
+    List<SchemaRegionId> schemaRegionIds = configManager.getInvolvedSchemaRegionIds(pathPattern);
     List<ISchemaRegion> schemaRegions = new ArrayList<>();
     for (SchemaRegionId schemaRegionId : schemaRegionIds) {
       schemaRegions.add(schemaEngine.getSchemaRegion(schemaRegionId));
@@ -185,33 +187,23 @@ public class LocalSchemaProcessor {
    * Delete all timeseries matching the given path pattern, may cross different database
    *
    * @param pathPattern path to be deleted
-   * @return deletion failed Timeseries
    */
-  public String deleteTimeseries(PartialPath pathPattern) throws MetadataException {
-    List<ISchemaRegion> schemaRegions = getInvolvedSchemaRegions(pathPattern, false);
+  public void deleteTimeseries(PartialPath pathPattern) throws MetadataException {
+    List<ISchemaRegion> schemaRegions = getInvolvedSchemaRegions(pathPattern);
     if (schemaRegions.isEmpty()) {
       // In the cluster mode, the deletion of a timeseries will be forwarded to all the nodes. For
       // nodes that do not have the metadata of the timeseries, the coordinator expects a
       // PathNotExistException.
       throw new PathNotExistException(pathPattern.getFullPath());
     }
-    Set<String> failedNames = new HashSet<>();
-    int deletedNum = 0;
-    Pair<Integer, Set<String>> sgDeletionResult;
+
+    PathPatternTree patternTree = new PathPatternTree();
+    patternTree.appendPathPattern(pathPattern);
+    patternTree.constructTree();
     for (ISchemaRegion schemaRegion : schemaRegions) {
-      sgDeletionResult = schemaRegion.deleteTimeseries(pathPattern, false);
-      deletedNum += sgDeletionResult.left;
-      failedNames.addAll(sgDeletionResult.right);
+      schemaRegion.constructSchemaBlackList(patternTree);
+      schemaRegion.deleteTimeseriesInBlackList(patternTree);
     }
-
-    if (deletedNum == 0 && failedNames.isEmpty()) {
-      // In the cluster mode, the deletion of a timeseries will be forwarded to all the nodes. For
-      // nodes that do not have the metadata of the timeseries, the coordinator expects a
-      // PathNotExistException.
-      throw new PathNotExistException(pathPattern.getFullPath());
-    }
-
-    return failedNames.isEmpty() ? null : String.join(",", failedNames);
   }
   // endregion
 
@@ -231,40 +223,27 @@ public class LocalSchemaProcessor {
   // region Interfaces for metadata info Query
 
   // region Interfaces for timeseries, measurement and schema info Query
-  /**
-   * Similar to method getMeasurementPaths(), but return Path with alias and filter the result by
-   * limit and offset. If using prefix match, the path pattern is used to match prefix path. All
-   * timeseries start with the matched prefix path will be collected.
-   *
-   * @param isPrefixMatch if true, the path pattern is used to match prefix path
-   */
-  public Pair<List<MeasurementPath>, Integer> getMeasurementPathsWithAlias(
-      PartialPath pathPattern, int limit, int offset, boolean isPrefixMatch, boolean withTags)
+
+  public List<MeasurementPath> getMeasurementPathsWithAlias(PartialPath pathPattern)
       throws MetadataException {
     List<MeasurementPath> measurementPaths = new LinkedList<>();
-    Pair<List<MeasurementPath>, Integer> result;
-    int resultOffset = 0;
 
-    int tmpLimit = limit;
-    int tmpOffset = offset;
-
-    for (ISchemaRegion schemaRegion : getInvolvedSchemaRegions(pathPattern, isPrefixMatch)) {
-      if (limit != 0 && tmpLimit == 0) {
-        break;
-      }
-      result =
-          schemaRegion.getMeasurementPathsWithAlias(
-              pathPattern, tmpLimit, tmpOffset, isPrefixMatch, withTags);
-      measurementPaths.addAll(result.left);
-      resultOffset += result.right;
-      if (limit != 0) {
-        tmpOffset = Math.max(0, tmpOffset - result.right);
-        tmpLimit -= result.left.size();
+    for (ISchemaRegion schemaRegion : getInvolvedSchemaRegions(pathPattern)) {
+      ISchemaReader<ITimeSeriesSchemaInfo> timeSeriesReader =
+          schemaRegion.getTimeSeriesReader(
+              SchemaRegionReadPlanFactory.getShowTimeSeriesPlan(pathPattern));
+      while (timeSeriesReader.hasNext()) {
+        ITimeSeriesSchemaInfo timeSeriesSchemaInfo = timeSeriesReader.next();
+        MeasurementPath measurementPath =
+            new MeasurementPath(
+                timeSeriesSchemaInfo.getPartialPath(), timeSeriesSchemaInfo.getSchema());
+        measurementPath.setMeasurementAlias(timeSeriesSchemaInfo.getAlias());
+        measurementPath.setUnderAlignedEntity(timeSeriesSchemaInfo.isUnderAlignedDevice());
+        measurementPaths.add(measurementPath);
       }
     }
 
-    result = new Pair<>(measurementPaths, resultOffset);
-    return result;
+    return measurementPaths;
   }
   // endregion
   // endregion

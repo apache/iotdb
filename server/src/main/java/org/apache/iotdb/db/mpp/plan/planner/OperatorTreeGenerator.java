@@ -31,11 +31,14 @@ import org.apache.iotdb.db.mpp.aggregation.slidingwindow.SlidingWindowAggregator
 import org.apache.iotdb.db.mpp.aggregation.timerangeiterator.ITimeRangeIterator;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.common.NodeRef;
+import org.apache.iotdb.db.mpp.execution.driver.DataDriverContext;
 import org.apache.iotdb.db.mpp.execution.driver.SchemaDriverContext;
 import org.apache.iotdb.db.mpp.execution.exchange.ISinkHandle;
 import org.apache.iotdb.db.mpp.execution.exchange.ISourceHandle;
+import org.apache.iotdb.db.mpp.execution.exchange.LocalSinkHandle;
 import org.apache.iotdb.db.mpp.execution.exchange.MPPDataExchangeManager;
 import org.apache.iotdb.db.mpp.execution.exchange.MPPDataExchangeService;
+import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceManager;
 import org.apache.iotdb.db.mpp.execution.operator.AggregationUtil;
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
@@ -96,21 +99,19 @@ import org.apache.iotdb.db.mpp.execution.operator.process.last.LastQueryOperator
 import org.apache.iotdb.db.mpp.execution.operator.process.last.LastQuerySortOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.last.LastQueryUtil;
 import org.apache.iotdb.db.mpp.execution.operator.process.last.UpdateLastCacheOperator;
+import org.apache.iotdb.db.mpp.execution.operator.schema.CountGroupByLevelMergeOperator;
+import org.apache.iotdb.db.mpp.execution.operator.schema.CountGroupByLevelScanOperator;
 import org.apache.iotdb.db.mpp.execution.operator.schema.CountMergeOperator;
-import org.apache.iotdb.db.mpp.execution.operator.schema.DevicesCountOperator;
-import org.apache.iotdb.db.mpp.execution.operator.schema.DevicesSchemaScanOperator;
-import org.apache.iotdb.db.mpp.execution.operator.schema.LevelTimeSeriesCountOperator;
 import org.apache.iotdb.db.mpp.execution.operator.schema.NodeManageMemoryMergeOperator;
 import org.apache.iotdb.db.mpp.execution.operator.schema.NodePathsConvertOperator;
 import org.apache.iotdb.db.mpp.execution.operator.schema.NodePathsCountOperator;
-import org.apache.iotdb.db.mpp.execution.operator.schema.NodePathsSchemaScanOperator;
-import org.apache.iotdb.db.mpp.execution.operator.schema.PathsUsingTemplateScanOperator;
+import org.apache.iotdb.db.mpp.execution.operator.schema.SchemaCountOperator;
 import org.apache.iotdb.db.mpp.execution.operator.schema.SchemaFetchMergeOperator;
 import org.apache.iotdb.db.mpp.execution.operator.schema.SchemaFetchScanOperator;
 import org.apache.iotdb.db.mpp.execution.operator.schema.SchemaQueryMergeOperator;
 import org.apache.iotdb.db.mpp.execution.operator.schema.SchemaQueryOrderByHeatOperator;
-import org.apache.iotdb.db.mpp.execution.operator.schema.TimeSeriesCountOperator;
-import org.apache.iotdb.db.mpp.execution.operator.schema.TimeSeriesSchemaScanOperator;
+import org.apache.iotdb.db.mpp.execution.operator.schema.SchemaQueryScanOperator;
+import org.apache.iotdb.db.mpp.execution.operator.schema.source.SchemaSourceFactory;
 import org.apache.iotdb.db.mpp.execution.operator.source.AlignedSeriesAggregationScanOperator;
 import org.apache.iotdb.db.mpp.execution.operator.source.AlignedSeriesScanOperator;
 import org.apache.iotdb.db.mpp.execution.operator.source.ExchangeOperator;
@@ -254,7 +255,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     boolean ascending = node.getScanOrder() == Ordering.ASC;
     OperatorContext operatorContext =
         context
-            .getInstanceContext()
+            .getDriverContext()
             .addOperatorContext(
                 context.getNextOperatorId(),
                 node.getPlanNodeId(),
@@ -264,17 +265,18 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     Filter valueFilter = node.getValueFilter();
     SeriesScanOperator seriesScanOperator =
         new SeriesScanOperator(
+            operatorContext,
             node.getPlanNodeId(),
             seriesPath,
             context.getAllSensors(seriesPath.getDevice(), seriesPath.getMeasurement()),
             seriesPath.getSeriesType(),
-            operatorContext,
             timeFilter != null ? timeFilter.copy() : null,
             valueFilter != null ? valueFilter.copy() : null,
             ascending);
 
-    context.addSourceOperator(seriesScanOperator);
-    context.addPath(seriesPath);
+    ((DataDriverContext) context.getDriverContext()).addSourceOperator(seriesScanOperator);
+    ((DataDriverContext) context.getDriverContext()).addPath(seriesPath);
+    context.getDriverContext().setInputDriver(true);
     context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
     return seriesScanOperator;
   }
@@ -286,7 +288,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     boolean ascending = node.getScanOrder() == Ordering.ASC;
     OperatorContext operatorContext =
         context
-            .getInstanceContext()
+            .getDriverContext()
             .addOperatorContext(
                 context.getNextOperatorId(),
                 node.getPlanNodeId(),
@@ -303,8 +305,9 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
             valueFilter != null ? valueFilter.copy() : null,
             ascending);
 
-    context.addSourceOperator(seriesScanOperator);
-    context.addPath(seriesPath);
+    ((DataDriverContext) context.getDriverContext()).addSourceOperator(seriesScanOperator);
+    ((DataDriverContext) context.getDriverContext()).addPath(seriesPath);
+    context.getDriverContext().setInputDriver(true);
     context
         .getTimeSliceAllocator()
         .recordExecutionWeight(operatorContext, seriesPath.getColumnNum());
@@ -318,7 +321,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     boolean ascending = node.getScanOrder() == Ordering.ASC;
     OperatorContext operatorContext =
         context
-            .getInstanceContext()
+            .getDriverContext()
             .addOperatorContext(
                 context.getNextOperatorId(),
                 node.getPlanNodeId(),
@@ -355,8 +358,9 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
             node.getGroupByTimeParameter(),
             maxReturnSize);
 
-    context.addSourceOperator(aggregateScanOperator);
-    context.addPath(seriesPath);
+    ((DataDriverContext) context.getDriverContext()).addSourceOperator(aggregateScanOperator);
+    ((DataDriverContext) context.getDriverContext()).addPath(seriesPath);
+    context.getDriverContext().setInputDriver(true);
     context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, aggregators.size());
     return aggregateScanOperator;
   }
@@ -368,7 +372,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     boolean ascending = node.getScanOrder() == Ordering.ASC;
     OperatorContext operatorContext =
         context
-            .getInstanceContext()
+            .getDriverContext()
             .addOperatorContext(
                 context.getNextOperatorId(),
                 node.getPlanNodeId(),
@@ -416,8 +420,10 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
             groupByTimeParameter,
             maxReturnSize);
 
-    context.addSourceOperator(seriesAggregationScanOperator);
-    context.addPath(seriesPath);
+    ((DataDriverContext) context.getDriverContext())
+        .addSourceOperator(seriesAggregationScanOperator);
+    ((DataDriverContext) context.getDriverContext()).addPath(seriesPath);
+    context.getDriverContext().setInputDriver(true);
     context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, aggregators.size());
     return seriesAggregationScanOperator;
   }
@@ -430,7 +436,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
 
     OperatorContext operatorContext =
         context
-            .getInstanceContext()
+            .getDriverContext()
             .addOperatorContext(
                 context.getNextOperatorId(),
                 node.getPlanNodeId(),
@@ -466,24 +472,24 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
       TimeSeriesSchemaScanNode node, LocalExecutionPlanContext context) {
     OperatorContext operatorContext =
         context
-            .getInstanceContext()
+            .getDriverContext()
             .addOperatorContext(
                 context.getNextOperatorId(),
                 node.getPlanNodeId(),
-                TimeSeriesSchemaScanOperator.class.getSimpleName());
+                SchemaQueryScanOperator.class.getSimpleName());
     context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
-    return new TimeSeriesSchemaScanOperator(
+    return new SchemaQueryScanOperator<>(
         node.getPlanNodeId(),
         operatorContext,
-        node.getLimit(),
-        node.getOffset(),
-        node.getPath(),
-        node.getKey(),
-        node.getValue(),
-        node.isContains(),
-        node.isOrderByHeat(),
-        node.isPrefixPath(),
-        node.getTemplateMap());
+        SchemaSourceFactory.getTimeSeriesSchemaSource(
+            node.getPath(),
+            node.isPrefixPath(),
+            node.getLimit(),
+            node.getOffset(),
+            node.getKey(),
+            node.getValue(),
+            node.isContains(),
+            node.getTemplateMap()));
   }
 
   @Override
@@ -491,30 +497,30 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
       DevicesSchemaScanNode node, LocalExecutionPlanContext context) {
     OperatorContext operatorContext =
         context
-            .getInstanceContext()
+            .getDriverContext()
             .addOperatorContext(
                 context.getNextOperatorId(),
                 node.getPlanNodeId(),
-                DevicesSchemaScanOperator.class.getSimpleName());
+                SchemaQueryScanOperator.class.getSimpleName());
     context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
-    return new DevicesSchemaScanOperator(
+    return new SchemaQueryScanOperator<>(
         node.getPlanNodeId(),
         operatorContext,
-        node.getLimit(),
-        node.getOffset(),
-        node.getPath(),
-        node.isPrefixPath(),
-        node.isHasSgCol());
+        SchemaSourceFactory.getDeviceSchemaSource(
+            node.getPath(),
+            node.isPrefixPath(),
+            node.getLimit(),
+            node.getOffset(),
+            node.isHasSgCol()));
   }
 
   @Override
   public Operator visitSchemaQueryMerge(
       SchemaQueryMergeNode node, LocalExecutionPlanContext context) {
-    List<Operator> children =
-        node.getChildren().stream().map(n -> n.accept(this, context)).collect(Collectors.toList());
+    List<Operator> children = dealWithConsumeChildrenOneByOneNode(node, context);
     OperatorContext operatorContext =
         context
-            .getInstanceContext()
+            .getDriverContext()
             .addOperatorContext(
                 context.getNextOperatorId(),
                 node.getPlanNodeId(),
@@ -525,31 +531,36 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
 
   @Override
   public Operator visitCountMerge(CountSchemaMergeNode node, LocalExecutionPlanContext context) {
-    List<Operator> children =
-        node.getChildren().stream().map(n -> n.accept(this, context)).collect(Collectors.toList());
+    List<Operator> children = dealWithConsumeChildrenOneByOneNode(node, context);
     OperatorContext operatorContext =
         context
-            .getInstanceContext()
+            .getDriverContext()
             .addOperatorContext(
                 context.getNextOperatorId(),
                 node.getPlanNodeId(),
                 CountMergeOperator.class.getSimpleName());
     context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
-    return new CountMergeOperator(node.getPlanNodeId(), operatorContext, children);
+    if (children.get(0) instanceof CountGroupByLevelScanOperator) {
+      return new CountGroupByLevelMergeOperator(node.getPlanNodeId(), operatorContext, children);
+    } else {
+      return new CountMergeOperator(node.getPlanNodeId(), operatorContext, children);
+    }
   }
 
   @Override
   public Operator visitDevicesCount(DevicesCountNode node, LocalExecutionPlanContext context) {
     OperatorContext operatorContext =
         context
-            .getInstanceContext()
+            .getDriverContext()
             .addOperatorContext(
                 context.getNextOperatorId(),
                 node.getPlanNodeId(),
-                DevicesCountOperator.class.getSimpleName());
+                SchemaCountOperator.class.getSimpleName());
     context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
-    return new DevicesCountOperator(
-        node.getPlanNodeId(), operatorContext, node.getPath(), node.isPrefixPath());
+    return new SchemaCountOperator<>(
+        node.getPlanNodeId(),
+        operatorContext,
+        SchemaSourceFactory.getDeviceSchemaSource(node.getPath(), node.isPrefixPath()));
   }
 
   @Override
@@ -557,21 +568,22 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
       TimeSeriesCountNode node, LocalExecutionPlanContext context) {
     OperatorContext operatorContext =
         context
-            .getInstanceContext()
+            .getDriverContext()
             .addOperatorContext(
                 context.getNextOperatorId(),
                 node.getPlanNodeId(),
-                TimeSeriesCountOperator.class.getSimpleName());
+                SchemaCountOperator.class.getSimpleName());
     context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
-    return new TimeSeriesCountOperator(
+    return new SchemaCountOperator<>(
         node.getPlanNodeId(),
         operatorContext,
-        node.getPath(),
-        node.isPrefixPath(),
-        node.getKey(),
-        node.getValue(),
-        node.isContains(),
-        node.getTemplateMap());
+        SchemaSourceFactory.getTimeSeriesSchemaSource(
+            node.getPath(),
+            node.isPrefixPath(),
+            node.getKey(),
+            node.getValue(),
+            node.isContains(),
+            node.getTemplateMap()));
   }
 
   @Override
@@ -579,21 +591,23 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
       LevelTimeSeriesCountNode node, LocalExecutionPlanContext context) {
     OperatorContext operatorContext =
         context
-            .getInstanceContext()
+            .getDriverContext()
             .addOperatorContext(
                 context.getNextOperatorId(),
                 node.getPlanNodeId(),
-                LevelTimeSeriesCountOperator.class.getSimpleName());
+                CountGroupByLevelScanOperator.class.getSimpleName());
     context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
-    return new LevelTimeSeriesCountOperator(
+    return new CountGroupByLevelScanOperator<>(
         node.getPlanNodeId(),
         operatorContext,
-        node.getPath(),
-        node.isPrefixPath(),
         node.getLevel(),
-        node.getKey(),
-        node.getValue(),
-        node.isContains());
+        SchemaSourceFactory.getTimeSeriesSchemaSource(
+            node.getPath(),
+            node.isPrefixPath(),
+            node.getKey(),
+            node.getValue(),
+            node.isContains(),
+            null));
   }
 
   @Override
@@ -601,14 +615,16 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
       NodePathsSchemaScanNode node, LocalExecutionPlanContext context) {
     OperatorContext operatorContext =
         context
-            .getInstanceContext()
+            .getDriverContext()
             .addOperatorContext(
                 context.getNextOperatorId(),
                 node.getPlanNodeId(),
-                NodePathsSchemaScanOperator.class.getSimpleName());
+                SchemaQueryScanOperator.class.getSimpleName());
     context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
-    return new NodePathsSchemaScanOperator(
-        node.getPlanNodeId(), operatorContext, node.getPrefixPath(), node.getLevel());
+    return new SchemaQueryScanOperator<>(
+        node.getPlanNodeId(),
+        operatorContext,
+        SchemaSourceFactory.getNodeSchemaSource(node.getPrefixPath(), node.getLevel()));
   }
 
   @Override
@@ -617,7 +633,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     Operator child = node.getChild().accept(this, context);
     OperatorContext operatorContext =
         context
-            .getInstanceContext()
+            .getDriverContext()
             .addOperatorContext(
                 context.getNextOperatorId(),
                 node.getPlanNodeId(),
@@ -632,7 +648,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     Operator child = node.getChild().accept(this, context);
     OperatorContext operatorContext =
         context
-            .getInstanceContext()
+            .getDriverContext()
             .addOperatorContext(
                 context.getNextOperatorId(),
                 node.getPlanNodeId(),
@@ -646,7 +662,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     Operator child = node.getChild().accept(this, context);
     OperatorContext operatorContext =
         context
-            .getInstanceContext()
+            .getDriverContext()
             .addOperatorContext(
                 context.getNextOperatorId(),
                 node.getPlanNodeId(),
@@ -660,7 +676,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
       SingleDeviceViewNode node, LocalExecutionPlanContext context) {
     OperatorContext operatorContext =
         context
-            .getInstanceContext()
+            .getDriverContext()
             .addOperatorContext(
                 context.getNextOperatorId(),
                 node.getPlanNodeId(),
@@ -671,7 +687,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         node.isCacheOutputColumnNames()
             ? getOutputColumnTypes(node, context.getTypeProvider())
             : context.getCachedDataTypes();
-    if (outputColumnTypes == null || outputColumnTypes.size() == 0) {
+    if (outputColumnTypes == null || outputColumnTypes.isEmpty()) {
       throw new IllegalStateException("OutputColumTypes should not be null/empty");
     }
     context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
@@ -683,15 +699,12 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
   public Operator visitDeviceView(DeviceViewNode node, LocalExecutionPlanContext context) {
     OperatorContext operatorContext =
         context
-            .getInstanceContext()
+            .getDriverContext()
             .addOperatorContext(
                 context.getNextOperatorId(),
                 node.getPlanNodeId(),
                 DeviceViewOperator.class.getSimpleName());
-    List<Operator> children =
-        node.getChildren().stream()
-            .map(child -> child.accept(this, context))
-            .collect(Collectors.toList());
+    List<Operator> children = dealWithConsumeChildrenOneByOneNode(node, context);
     List<List<Integer>> deviceColumnIndex =
         node.getDevices().stream()
             .map(deviceName -> node.getDeviceToMeasurementIndexesMap().get(deviceName))
@@ -707,15 +720,12 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
   public Operator visitDeviceMerge(DeviceMergeNode node, LocalExecutionPlanContext context) {
     OperatorContext operatorContext =
         context
-            .getInstanceContext()
+            .getDriverContext()
             .addOperatorContext(
                 context.getNextOperatorId(),
                 node.getPlanNodeId(),
                 DeviceMergeOperator.class.getSimpleName());
-    List<Operator> children =
-        node.getChildren().stream()
-            .map(child -> child.accept(this, context))
-            .collect(Collectors.toList());
+    List<Operator> children = dealWithConsumeAllChildrenPipelineBreaker(node, context);
     List<TSDataType> dataTypes = getOutputColumnTypes(node, context.getTypeProvider());
     TimeSelector selector = null;
     TimeComparator timeComparator = null;
@@ -742,18 +752,14 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
   public Operator visitMergeSort(MergeSortNode node, LocalExecutionPlanContext context) {
     OperatorContext operatorContext =
         context
-            .getInstanceContext()
+            .getDriverContext()
             .addOperatorContext(
                 context.getNextOperatorId(),
                 node.getPlanNodeId(),
                 MergeSortOperator.class.getSimpleName());
     List<TSDataType> dataTypes = getOutputColumnTypes(node, context.getTypeProvider());
     context.setCachedDataTypes(dataTypes);
-    List<Operator> children =
-        node.getChildren().stream()
-            .map(child -> child.accept(this, context))
-            .collect(Collectors.toList());
-
+    List<Operator> children = dealWithConsumeAllChildrenPipelineBreaker(node, context);
     List<SortItem> sortItemList = node.getMergeOrderParameter().getSortItemList();
     context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
 
@@ -810,7 +816,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     FillPolicy fillPolicy = descriptor.getFillPolicy();
     OperatorContext operatorContext =
         context
-            .getInstanceContext()
+            .getDriverContext()
             .addOperatorContext(
                 context.getNextOperatorId(),
                 node.getPlanNodeId(),
@@ -928,7 +934,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
   public Operator visitTransform(TransformNode node, LocalExecutionPlanContext context) {
     final OperatorContext operatorContext =
         context
-            .getInstanceContext()
+            .getDriverContext()
             .addOperatorContext(
                 context.getNextOperatorId(),
                 node.getPlanNodeId(),
@@ -1030,7 +1036,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     final List<TSDataType> filterOutputDataTypes = new ArrayList<>(inputDataTypes);
     final OperatorContext operatorContext =
         context
-            .getInstanceContext()
+            .getDriverContext()
             .addOperatorContext(
                 context.getNextOperatorId(),
                 node.getPlanNodeId(),
@@ -1132,7 +1138,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     try {
       final OperatorContext transformContext =
           context
-              .getInstanceContext()
+              .getDriverContext()
               .addOperatorContext(
                   context.getNextOperatorId(),
                   node.getPlanNodeId(),
@@ -1156,12 +1162,9 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
   @Override
   public Operator visitGroupByLevel(GroupByLevelNode node, LocalExecutionPlanContext context) {
     checkArgument(
-        node.getGroupByLevelDescriptors().size() >= 1,
+        !node.getGroupByLevelDescriptors().isEmpty(),
         "GroupByLevel descriptorList cannot be empty");
-    List<Operator> children =
-        node.getChildren().stream()
-            .map(child -> child.accept(this, context))
-            .collect(Collectors.toList());
+    List<Operator> children = dealWithConsumeAllChildrenPipelineBreaker(node, context);
     boolean ascending = node.getScanOrder() == Ordering.ASC;
     List<Aggregator> aggregators = new ArrayList<>();
     Map<String, List<InputLocation>> layout = makeLayout(node);
@@ -1183,7 +1186,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     }
     OperatorContext operatorContext =
         context
-            .getInstanceContext()
+            .getDriverContext()
             .addOperatorContext(
                 context.getNextOperatorId(),
                 node.getPlanNodeId(),
@@ -1203,15 +1206,12 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
 
   @Override
   public Operator visitGroupByTag(GroupByTagNode node, LocalExecutionPlanContext context) {
-    checkArgument(node.getTagKeys().size() >= 1, "GroupByTag tag keys cannot be empty");
+    checkArgument(!node.getTagKeys().isEmpty(), "GroupByTag tag keys cannot be empty");
     checkArgument(
         node.getTagValuesToAggregationDescriptors().size() >= 1,
         "GroupByTag aggregation descriptors cannot be empty");
 
-    List<Operator> children =
-        node.getChildren().stream()
-            .map(child -> child.accept(this, context))
-            .collect(Collectors.toList());
+    List<Operator> children = dealWithConsumeAllChildrenPipelineBreaker(node, context);
 
     boolean ascending = node.getScanOrder() == Ordering.ASC;
     Map<String, List<InputLocation>> layout = makeLayout(node);
@@ -1254,7 +1254,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
             aggregationDescriptors, timeRangeIterator, context.getTypeProvider());
     OperatorContext operatorContext =
         context
-            .getInstanceContext()
+            .getDriverContext()
             .addOperatorContext(
                 context.getNextOperatorId(),
                 node.getPlanNodeId(),
@@ -1268,11 +1268,11 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
   public Operator visitSlidingWindowAggregation(
       SlidingWindowAggregationNode node, LocalExecutionPlanContext context) {
     checkArgument(
-        node.getAggregationDescriptorList().size() >= 1,
+        !node.getAggregationDescriptorList().isEmpty(),
         "Aggregation descriptorList cannot be empty");
     OperatorContext operatorContext =
         context
-            .getInstanceContext()
+            .getDriverContext()
             .addOperatorContext(
                 context.getNextOperatorId(),
                 node.getPlanNodeId(),
@@ -1319,7 +1319,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     Operator child = node.getChild().accept(this, context);
     OperatorContext operatorContext =
         context
-            .getInstanceContext()
+            .getDriverContext()
             .addOperatorContext(
                 context.getNextOperatorId(),
                 node.getPlanNodeId(),
@@ -1334,7 +1334,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     Operator child = node.getChild().accept(this, context);
     OperatorContext operatorContext =
         context
-            .getInstanceContext()
+            .getDriverContext()
             .addOperatorContext(
                 context.getNextOperatorId(),
                 node.getPlanNodeId(),
@@ -1347,12 +1347,9 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
   @Override
   public Operator visitAggregation(AggregationNode node, LocalExecutionPlanContext context) {
     checkArgument(
-        node.getAggregationDescriptorList().size() >= 1,
+        !node.getAggregationDescriptorList().isEmpty(),
         "Aggregation descriptorList cannot be empty");
-    List<Operator> children =
-        node.getChildren().stream()
-            .map(child -> child.accept(this, context))
-            .collect(Collectors.toList());
+    List<Operator> children = dealWithConsumeAllChildrenPipelineBreaker(node, context);
     boolean ascending = node.getScanOrder() == Ordering.ASC;
     List<Aggregator> aggregators = new ArrayList<>();
     Map<String, List<InputLocation>> layout = makeLayout(node);
@@ -1378,7 +1375,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
       checkArgument(children.size() == 1, "rawDataAggregateOperator can only accept one input");
       OperatorContext operatorContext =
           context
-              .getInstanceContext()
+              .getDriverContext()
               .addOperatorContext(
                   context.getNextOperatorId(),
                   node.getPlanNodeId(),
@@ -1401,7 +1398,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     } else {
       OperatorContext operatorContext =
           context
-              .getInstanceContext()
+              .getDriverContext()
               .addOperatorContext(
                   context.getNextOperatorId(),
                   node.getPlanNodeId(),
@@ -1447,7 +1444,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     Operator child = node.getChild().accept(this, context);
     OperatorContext operatorContext =
         context
-            .getInstanceContext()
+            .getDriverContext()
             .addOperatorContext(
                 context.getNextOperatorId(),
                 node.getPlanNodeId(),
@@ -1477,7 +1474,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     Operator child = node.getChild().accept(this, context);
     OperatorContext operatorContext =
         context
-            .getInstanceContext()
+            .getDriverContext()
             .addOperatorContext(
                 context.getNextOperatorId(),
                 node.getPlanNodeId(),
@@ -1511,7 +1508,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         intoPathDescriptor.getTargetDeviceToAlignedMap(),
         intoPathDescriptor.getSourceTargetPathPairList(),
         sourceColumnToInputLocationMap,
-        context.getIntoOperationExecutor(),
+        FragmentInstanceManager.getInstance().getIntoOperationExecutor(),
         maxStatementSize);
   }
 
@@ -1520,7 +1517,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     Operator child = node.getChild().accept(this, context);
     OperatorContext operatorContext =
         context
-            .getInstanceContext()
+            .getDriverContext()
             .addOperatorContext(
                 context.getNextOperatorId(),
                 node.getPlanNodeId(),
@@ -1569,7 +1566,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         deviceViewIntoPathDescriptor.getTargetDeviceToAlignedMap(),
         deviceViewIntoPathDescriptor.getDeviceToSourceTargetPathPairListMap(),
         sourceColumnToInputLocationMap,
-        context.getIntoOperationExecutor(),
+        FragmentInstanceManager.getInstance().getIntoOperationExecutor(),
         maxStatementSize);
   }
 
@@ -1638,13 +1635,10 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
 
   @Override
   public Operator visitTimeJoin(TimeJoinNode node, LocalExecutionPlanContext context) {
-    List<Operator> children =
-        node.getChildren().stream()
-            .map(child -> child.accept(this, context))
-            .collect(Collectors.toList());
+    List<Operator> children = dealWithConsumeAllChildrenPipelineBreaker(node, context);
     OperatorContext operatorContext =
         context
-            .getInstanceContext()
+            .getDriverContext()
             .addOperatorContext(
                 context.getNextOperatorId(),
                 node.getPlanNodeId(),
@@ -1668,13 +1662,10 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
   @Override
   public Operator visitVerticallyConcat(
       VerticallyConcatNode node, LocalExecutionPlanContext context) {
-    List<Operator> children =
-        node.getChildren().stream()
-            .map(child -> child.accept(this, context))
-            .collect(Collectors.toList());
+    List<Operator> children = dealWithConsumeAllChildrenPipelineBreaker(node, context);
     OperatorContext operatorContext =
         context
-            .getInstanceContext()
+            .getDriverContext()
             .addOperatorContext(
                 context.getNextOperatorId(),
                 node.getPlanNodeId(),
@@ -1689,7 +1680,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
   public Operator visitShowQueries(ShowQueriesNode node, LocalExecutionPlanContext context) {
     OperatorContext operatorContext =
         context
-            .getInstanceContext()
+            .getDriverContext()
             .addOperatorContext(
                 context.getNextOperatorId(),
                 node.getPlanNodeId(),
@@ -1733,7 +1724,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
   public Operator visitExchange(ExchangeNode node, LocalExecutionPlanContext context) {
     OperatorContext operatorContext =
         context
-            .getInstanceContext()
+            .getDriverContext()
             .addOperatorContext(
                 context.getNextOperatorId(),
                 node.getPlanNodeId(),
@@ -1746,7 +1737,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     TEndPoint upstreamEndPoint = node.getUpstreamEndpoint();
     ISourceHandle sourceHandle =
         isSameNode(upstreamEndPoint)
-            ? MPP_DATA_EXCHANGE_MANAGER.createLocalSourceHandle(
+            ? MPP_DATA_EXCHANGE_MANAGER.createLocalSourceHandleForFragment(
                 localInstanceId.toThrift(),
                 node.getPlanNodeId().getId(),
                 remoteInstanceId.toThrift(),
@@ -1757,11 +1748,19 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                 upstreamEndPoint,
                 remoteInstanceId.toThrift(),
                 context.getInstanceContext()::failed);
-    return new ExchangeOperator(operatorContext, sourceHandle, node.getUpstreamPlanNodeId());
+    context.addExchangeSumNum(1);
+    sourceHandle.setMaxBytesCanReserve(context.getMaxBytesOneHandleCanReserve());
+    ExchangeOperator exchangeOperator =
+        new ExchangeOperator(operatorContext, sourceHandle, node.getUpstreamPlanNodeId());
+    context.addExchangeOperator(exchangeOperator);
+    return exchangeOperator;
   }
 
   @Override
   public Operator visitFragmentSink(FragmentSinkNode node, LocalExecutionPlanContext context) {
+    if (!isSameNode(node.getDownStreamEndpoint())) {
+      context.addExchangeSumNum(1);
+    }
     Operator child = node.getChild().accept(this, context);
 
     FragmentInstanceId localInstanceId = context.getInstanceContext().getId();
@@ -1773,7 +1772,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
 
     ISinkHandle sinkHandle =
         isSameNode(downStreamEndPoint)
-            ? MPP_DATA_EXCHANGE_MANAGER.createLocalSinkHandle(
+            ? MPP_DATA_EXCHANGE_MANAGER.createLocalSinkHandleForFragment(
                 localInstanceId.toThrift(),
                 targetInstanceId.toThrift(),
                 node.getDownStreamPlanNodeId().getId(),
@@ -1785,18 +1784,18 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                 node.getDownStreamPlanNodeId().getId(),
                 node.getPlanNodeId().getId(),
                 context.getInstanceContext());
-    context.setSinkHandle(sinkHandle);
+    sinkHandle.setMaxBytesCanReserve(context.getMaxBytesOneHandleCanReserve());
+    context.getDriverContext().setSinkHandle(sinkHandle);
     return child;
   }
 
   @Override
   public Operator visitSchemaFetchMerge(
       SchemaFetchMergeNode node, LocalExecutionPlanContext context) {
-    List<Operator> children =
-        node.getChildren().stream().map(n -> n.accept(this, context)).collect(Collectors.toList());
+    List<Operator> children = dealWithConsumeChildrenOneByOneNode(node, context);
     OperatorContext operatorContext =
         context
-            .getInstanceContext()
+            .getDriverContext()
             .addOperatorContext(
                 context.getNextOperatorId(),
                 node.getPlanNodeId(),
@@ -1810,7 +1809,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
       SchemaFetchScanNode node, LocalExecutionPlanContext context) {
     OperatorContext operatorContext =
         context
-            .getInstanceContext()
+            .getDriverContext()
             .addOperatorContext(
                 context.getNextOperatorId(),
                 node.getPlanNodeId(),
@@ -1821,7 +1820,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         operatorContext,
         node.getPatternTree(),
         node.getTemplateMap(),
-        ((SchemaDriverContext) (context.getInstanceContext().getDriverContext())).getSchemaRegion(),
+        ((SchemaDriverContext) (context.getDriverContext())).getSchemaRegion(),
         node.isWithTags());
   }
 
@@ -1856,7 +1855,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
 
     OperatorContext operatorContext =
         context
-            .getInstanceContext()
+            .getDriverContext()
             .addOperatorContext(
                 context.getNextOperatorId(),
                 node.getPlanNodeId(),
@@ -1876,7 +1875,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     MeasurementPath seriesPath = node.getSeriesPath();
     OperatorContext operatorContext =
         context
-            .getInstanceContext()
+            .getDriverContext()
             .addOperatorContext(
                 context.getNextOperatorId(),
                 node.getPlanNodeId(),
@@ -1901,8 +1900,9 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
             false,
             null,
             maxReturnSize);
-    context.addSourceOperator(seriesAggregationScanOperator);
-    context.addPath(seriesPath);
+    ((DataDriverContext) context.getDriverContext())
+        .addSourceOperator(seriesAggregationScanOperator);
+    ((DataDriverContext) context.getDriverContext()).addPath(seriesPath);
     context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, aggregators.size());
     return seriesAggregationScanOperator;
   }
@@ -1953,7 +1953,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
 
     OperatorContext operatorContext =
         context
-            .getInstanceContext()
+            .getDriverContext()
             .addOperatorContext(
                 context.getNextOperatorId(),
                 node.getPlanNodeId(),
@@ -1971,7 +1971,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
       AlignedLastQueryScanNode node, AlignedPath unCachedPath, LocalExecutionPlanContext context) {
     OperatorContext operatorContext =
         context
-            .getInstanceContext()
+            .getDriverContext()
             .addOperatorContext(
                 context.getNextOperatorId(),
                 node.getPlanNodeId(),
@@ -1997,8 +1997,9 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
             false,
             null,
             maxReturnSize);
-    context.addSourceOperator(seriesAggregationScanOperator);
-    context.addPath(unCachedPath);
+    ((DataDriverContext) context.getDriverContext())
+        .addSourceOperator(seriesAggregationScanOperator);
+    ((DataDriverContext) context.getDriverContext()).addPath(unCachedPath);
     context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, aggregators.size());
     return seriesAggregationScanOperator;
   }
@@ -2040,7 +2041,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
       }
       OperatorContext operatorContext =
           context
-              .getInstanceContext()
+              .getDriverContext()
               .addOperatorContext(
                   context.getNextOperatorId(),
                   node.getPlanNodeId(),
@@ -2071,7 +2072,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
 
       OperatorContext operatorContext =
           context
-              .getInstanceContext()
+              .getDriverContext()
               .addOperatorContext(
                   context.getNextOperatorId(),
                   node.getPlanNodeId(),
@@ -2089,7 +2090,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
             .collect(Collectors.toList());
     OperatorContext operatorContext =
         context
-            .getInstanceContext()
+            .getDriverContext()
             .addOperatorContext(
                 context.getNextOperatorId(),
                 node.getPlanNodeId(),
@@ -2108,13 +2109,10 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
   @Override
   public Operator visitLastQueryCollect(
       LastQueryCollectNode node, LocalExecutionPlanContext context) {
-    List<Operator> children =
-        node.getChildren().stream()
-            .map(child -> child.accept(this, context))
-            .collect(Collectors.toList());
+    List<Operator> children = dealWithConsumeChildrenOneByOneNode(node, context);
     OperatorContext operatorContext =
         context
-            .getInstanceContext()
+            .getDriverContext()
             .addOperatorContext(
                 context.getNextOperatorId(),
                 node.getPlanNodeId(),
@@ -2167,13 +2165,73 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
       PathsUsingTemplateScanNode node, LocalExecutionPlanContext context) {
     OperatorContext operatorContext =
         context
-            .getInstanceContext()
+            .getDriverContext()
             .addOperatorContext(
                 context.getNextOperatorId(),
                 node.getPlanNodeId(),
-                PathsUsingTemplateScanNode.class.getSimpleName());
+                SchemaQueryScanOperator.class.getSimpleName());
     context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
-    return new PathsUsingTemplateScanOperator(
-        node.getPlanNodeId(), operatorContext, node.getPathPatternList(), node.getTemplateId());
+    return new SchemaQueryScanOperator<>(
+        node.getPlanNodeId(),
+        operatorContext,
+        SchemaSourceFactory.getPathsUsingTemplateSource(
+            node.getPathPatternList(), node.getTemplateId()));
+  }
+
+  private List<Operator> dealWithConsumeAllChildrenPipelineBreaker(
+      PlanNode node, LocalExecutionPlanContext context) {
+    // children after pipelining
+    List<Operator> children = new ArrayList<>();
+    int finalExchangeNum = context.getExchangeSumNum();
+    for (PlanNode childSource : node.getChildren()) {
+      // Create pipelines for children
+      LocalExecutionPlanContext subContext = context.createSubContext();
+      Operator childOperation = childSource.accept(this, subContext);
+      // If the child belongs to another fragment instance, we don't create pipeline for it
+      if (childOperation instanceof ExchangeOperator) {
+        children.add(childOperation);
+        finalExchangeNum += 1;
+      } else {
+        ISinkHandle localSinkHandle =
+            MPP_DATA_EXCHANGE_MANAGER.createLocalSinkHandleForPipeline(
+                subContext.getDriverContext(), childSource.getPlanNodeId().getId());
+        subContext.setSinkHandle(localSinkHandle);
+        subContext.addPipelineDriverFactory(childOperation, subContext.getDriverContext());
+
+        ExchangeOperator sourceOperator =
+            new ExchangeOperator(
+                context
+                    .getDriverContext()
+                    .addOperatorContext(
+                        context.getNextOperatorId(), null, ExchangeOperator.class.getSimpleName()),
+                MPP_DATA_EXCHANGE_MANAGER.createLocalSourceHandleForPipeline(
+                    ((LocalSinkHandle) localSinkHandle).getSharedTsBlockQueue(),
+                    context.getDriverContext()),
+                childSource.getPlanNodeId());
+        context
+            .getTimeSliceAllocator()
+            .recordExecutionWeight(sourceOperator.getOperatorContext(), 1);
+        children.add(sourceOperator);
+        context.addExchangeOperator(sourceOperator);
+        finalExchangeNum += subContext.getExchangeSumNum() - context.getExchangeSumNum() + 1;
+      }
+    }
+    context.setExchangeSumNum(finalExchangeNum);
+    return children;
+  }
+
+  private List<Operator> dealWithConsumeChildrenOneByOneNode(
+      PlanNode node, LocalExecutionPlanContext context) {
+    int originExchangeNum = context.getExchangeSumNum();
+    int finalExchangeNum = context.getExchangeSumNum();
+    List<Operator> children = new ArrayList<>();
+    for (PlanNode childSource : node.getChildren()) {
+      Operator childOperation = childSource.accept(this, context);
+      finalExchangeNum = Math.max(finalExchangeNum, context.getExchangeSumNum());
+      context.setExchangeSumNum(originExchangeNum);
+      children.add(childOperation);
+    }
+    context.setExchangeSumNum(finalExchangeNum);
+    return children;
   }
 }

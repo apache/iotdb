@@ -88,7 +88,7 @@ public class LocalSchemaPartitionTable {
   }
 
   public List<SchemaRegionId> getInvolvedSchemaRegionIds(
-      PartialPath storageGroup, PartialPath pathPattern, boolean isPrefixMatch) {
+      PartialPath storageGroup, PartialPath pathPattern) {
     List<SchemaRegionId> result = new ArrayList<>();
     if (table.containsKey(storageGroup)) {
       result.addAll(table.get(storageGroup));

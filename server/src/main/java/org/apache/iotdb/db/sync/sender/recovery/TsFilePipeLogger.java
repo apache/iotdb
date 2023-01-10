@@ -135,7 +135,7 @@ public class TsFilePipeLogger {
   public void finishCollect() {
     try {
       if (SyncPathUtil.createFile(new File(pipeDir, SyncConstant.FINISH_COLLECT_LOCK_NAME))) {
-        logger.info(String.format("Create finish collecting Lock file in %s.", pipeDir));
+        logger.info("Create finish collecting Lock file in {}.", pipeDir);
       }
     } catch (IOException e) {
       logger.warn(String.format("Can not make lock file in %s, because %s", pipeDir, e));

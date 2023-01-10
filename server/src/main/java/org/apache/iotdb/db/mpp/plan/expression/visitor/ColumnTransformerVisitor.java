@@ -72,6 +72,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.db.mpp.plan.expression.ExpressionType.BETWEEN;
+
 /** Responsible for constructing {@link ColumnTransformer} through Expression. */
 public class ColumnTransformerVisitor
     extends ExpressionVisitor<
@@ -409,18 +411,17 @@ public class ColumnTransformerVisitor
       ColumnTransformer secondColumnTransformer,
       ColumnTransformer thirdColumnTransformer,
       Type returnType) {
-    switch (expression.getExpressionType()) {
-      case BETWEEN:
-        BetweenExpression betweenExpression = (BetweenExpression) expression;
-        return new BetweenColumnTransformer(
-            returnType,
-            firstColumnTransformer,
-            secondColumnTransformer,
-            thirdColumnTransformer,
-            betweenExpression.isNotBetween());
-      default:
-        throw new UnsupportedOperationException(
-            "Unsupported Expression Type: " + expression.getExpressionType());
+    if (expression.getExpressionType() == BETWEEN) {
+      BetweenExpression betweenExpression = (BetweenExpression) expression;
+      return new BetweenColumnTransformer(
+          returnType,
+          firstColumnTransformer,
+          secondColumnTransformer,
+          thirdColumnTransformer,
+          betweenExpression.isNotBetween());
+    } else {
+      throw new UnsupportedOperationException(
+          "Unsupported Expression Type: " + expression.getExpressionType());
     }
   }
 

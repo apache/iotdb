@@ -117,4 +117,9 @@ public class NullColumn implements Column {
         throw new IllegalArgumentException("Unknown data type: " + dataType);
     }
   }
+
+  @Override
+  public int getInstanceSize() {
+    return INSTANCE_SIZE;
+  }
 }

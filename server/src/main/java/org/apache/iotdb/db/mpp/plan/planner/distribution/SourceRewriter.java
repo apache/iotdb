@@ -966,7 +966,7 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
             }
           }
         }
-        if (descriptorExpressions.size() == 0) {
+        if (descriptorExpressions.isEmpty()) {
           continue;
         }
         CrossSeriesAggregationDescriptor descriptor = originalDescriptor.deepClone();

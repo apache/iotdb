@@ -35,6 +35,8 @@ public interface IQueryExecution {
 
   void stopAndCleanup();
 
+  void cancel();
+
   ExecutionResult getStatus();
 
   Optional<TsBlock> getBatchResult() throws IoTDBException;

@@ -18,7 +18,9 @@
  */
 package org.apache.iotdb.db.mpp.execution.operator;
 
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.mpp.common.SessionInfo;
+import org.apache.iotdb.db.mpp.execution.driver.DriverContext;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 
@@ -34,24 +36,33 @@ import java.util.Objects;
 public class OperatorContext {
 
   private final int operatorId;
+  // It seems it's never used.
   private final PlanNodeId planNodeId;
   private final String operatorType;
-  private final FragmentInstanceContext instanceContext;
-
+  private DriverContext driverContext;
   private Duration maxRunTime;
 
   private long totalExecutionTimeInNanos = 0L;
   private long nextCalledCount = 0L;
 
   public OperatorContext(
-      int operatorId,
-      PlanNodeId planNodeId,
-      String operatorType,
-      FragmentInstanceContext instanceContext) {
+      int operatorId, PlanNodeId planNodeId, String operatorType, DriverContext driverContext) {
     this.operatorId = operatorId;
     this.planNodeId = planNodeId;
     this.operatorType = operatorType;
-    this.instanceContext = instanceContext;
+    this.driverContext = driverContext;
+  }
+
+  @TestOnly
+  public OperatorContext(
+      int operatorId,
+      PlanNodeId planNodeId,
+      String operatorType,
+      FragmentInstanceContext fragmentInstanceContext) {
+    this.operatorId = operatorId;
+    this.planNodeId = planNodeId;
+    this.operatorType = operatorType;
+    this.driverContext = new DriverContext(fragmentInstanceContext, 0);
   }
 
   public int getOperatorId() {
@@ -62,8 +73,17 @@ public class OperatorContext {
     return operatorType;
   }
 
+  public DriverContext getDriverContext() {
+    return driverContext;
+  }
+
+  public void setDriverContext(DriverContext driverContext) {
+    this.driverContext = driverContext;
+  }
+
+  // TODO forbid get instance context from operator directly
   public FragmentInstanceContext getInstanceContext() {
-    return instanceContext;
+    return driverContext.getFragmentInstanceContext();
   }
 
   public Duration getMaxRunTime() {
@@ -75,7 +95,7 @@ public class OperatorContext {
   }
 
   public SessionInfo getSessionInfo() {
-    return instanceContext.getSessionInfo();
+    return getInstanceContext().getSessionInfo();
   }
 
   public void recordExecutionTime(long executionTimeInNanos) {

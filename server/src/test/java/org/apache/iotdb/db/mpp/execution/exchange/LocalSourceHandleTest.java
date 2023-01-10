@@ -50,11 +50,7 @@ public class LocalSourceHandleTest {
 
     LocalSourceHandle localSourceHandle =
         new LocalSourceHandle(
-            remoteFragmentInstanceId,
-            localFragmentInstanceId,
-            localPlanNodeId,
-            queue,
-            mockSourceHandleListener);
+            localFragmentInstanceId, localPlanNodeId, queue, mockSourceHandleListener);
     Assert.assertFalse(localSourceHandle.isBlocked().isDone());
     Assert.assertFalse(localSourceHandle.isAborted());
     Assert.assertFalse(localSourceHandle.isFinished());
@@ -98,11 +94,7 @@ public class LocalSourceHandleTest {
 
     LocalSourceHandle localSourceHandle =
         new LocalSourceHandle(
-            remoteFragmentInstanceId,
-            localFragmentInstanceId,
-            localPlanNodeId,
-            queue,
-            mockSourceHandleListener);
+            localFragmentInstanceId, localPlanNodeId, queue, mockSourceHandleListener);
     ListenableFuture<?> future = localSourceHandle.isBlocked();
     Assert.assertFalse(future.isDone());
     Assert.assertFalse(localSourceHandle.isAborted());

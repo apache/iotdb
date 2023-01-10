@@ -53,7 +53,7 @@ public class UDTFBottomK extends UDTFSelectK {
                   final String cs1 = pairB.right;
                   final String cs2 = pairA.right;
 
-                  if (Objects.requireNonNull(cs1) == Objects.requireNonNull(cs2)) {
+                  if (Objects.requireNonNull(cs1).equals(Objects.requireNonNull(cs2))) {
                     return 0;
                   }
 

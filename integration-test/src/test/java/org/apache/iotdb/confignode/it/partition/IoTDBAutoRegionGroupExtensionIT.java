@@ -33,11 +33,9 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
 import org.apache.iotdb.consensus.ConsensusFactory;
-import org.apache.iotdb.it.env.ConfigFactory;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
-import org.apache.iotdb.itbase.env.BaseConfig;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.thrift.TException;
@@ -56,59 +54,34 @@ import java.util.concurrent.atomic.AtomicInteger;
 @RunWith(IoTDBTestRunner.class)
 @Category({ClusterIT.class})
 public class IoTDBAutoRegionGroupExtensionIT {
-
-  private static final BaseConfig CONF = ConfigFactory.getConfig();
-
-  private static String originalDataRegionGroupExtensionPolicy;
   private static final String testDataRegionGroupExtensionPolicy = "AUTO";
-
-  private static String originalSchemaRegionConsensusProtocolClass;
-  private static String originalDataRegionConsensusProtocolClass;
   private static final String testConsensusProtocolClass = ConsensusFactory.RATIS_CONSENSUS;
-
-  private static int originalSchemaReplicationFactor;
-  private static int originalDataReplicationFactor;
   private static final int testReplicationFactor = 1;
-
-  private static long originalTimePartitionInterval;
-
-  private static int originalLeastDataRegionGroupNum;
 
   private static final String sg = "root.sg";
   private static final int testSgNum = 2;
+  private static final long testTimePartitionInterval = 604800000;
+  private static final int testLeastDataRegionGroupNum = 5;
 
   @Before
   public void setUp() throws Exception {
-    originalSchemaRegionConsensusProtocolClass = CONF.getSchemaRegionConsensusProtocolClass();
-    originalDataRegionConsensusProtocolClass = CONF.getDataRegionConsensusProtocolClass();
-    CONF.setSchemaRegionConsensusProtocolClass(testConsensusProtocolClass);
-    CONF.setDataRegionConsensusProtocolClass(testConsensusProtocolClass);
-
-    originalSchemaReplicationFactor = CONF.getSchemaReplicationFactor();
-    originalDataReplicationFactor = CONF.getDataReplicationFactor();
-    CONF.setSchemaReplicationFactor(testReplicationFactor);
-    CONF.setDataReplicationFactor(testReplicationFactor);
-
-    originalTimePartitionInterval = CONF.getTimePartitionInterval();
-
-    originalLeastDataRegionGroupNum = CONF.getLeastDataRegionGroupNum();
-
-    originalDataRegionGroupExtensionPolicy = CONF.getDataRegionGroupExtensionPolicy();
-    CONF.setDataRegionGroupExtensionPolicy(testDataRegionGroupExtensionPolicy);
-
+    EnvFactory.getEnv()
+        .getConfig()
+        .getCommonConfig()
+        .setSchemaRegionConsensusProtocolClass(testConsensusProtocolClass)
+        .setDataRegionConsensusProtocolClass(testConsensusProtocolClass)
+        .setSchemaReplicationFactor(testReplicationFactor)
+        .setDataReplicationFactor(testReplicationFactor)
+        .setDataRegionGroupExtensionPolicy(testDataRegionGroupExtensionPolicy)
+        .setTimePartitionInterval(testTimePartitionInterval)
+        .setLeastDataRegionGroupNum(testLeastDataRegionGroupNum);
     // Init 1C3D environment
     EnvFactory.getEnv().initClusterEnvironment(1, 3);
   }
 
   @After
   public void tearDown() {
-    EnvFactory.getEnv().cleanAfterClass();
-
-    CONF.setSchemaRegionConsensusProtocolClass(originalSchemaRegionConsensusProtocolClass);
-    CONF.setDataRegionConsensusProtocolClass(originalDataRegionConsensusProtocolClass);
-    CONF.setSchemaReplicationFactor(originalSchemaReplicationFactor);
-    CONF.setDataReplicationFactor(originalDataReplicationFactor);
-    CONF.setDataRegionGroupExtensionPolicy(originalDataRegionGroupExtensionPolicy);
+    EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
   @Test
@@ -158,7 +131,7 @@ public class IoTDBAutoRegionGroupExtensionIT {
       /* Insert a DataPartition to create DataRegionGroups */
       Map<String, Map<TSeriesPartitionSlot, TTimeSlotList>> partitionSlotsMap =
           ConfigNodeTestUtils.constructPartitionSlotsMap(
-              curSg, 0, 10, 0, 10, originalTimePartitionInterval);
+              curSg, 0, 10, 0, 10, testTimePartitionInterval);
       TDataPartitionTableResp dataPartitionTableResp =
           client.getOrCreateDataPartitionTable(new TDataPartitionReq(partitionSlotsMap));
       Assert.assertEquals(
@@ -174,7 +147,7 @@ public class IoTDBAutoRegionGroupExtensionIT {
     }
     final int leastDataRegionGroupNum =
         Math.min(
-            originalLeastDataRegionGroupNum,
+            testLeastDataRegionGroupNum,
             (int)
                 Math.ceil((double) totalCpuCoreNum / (double) (testSgNum * testReplicationFactor)));
 
