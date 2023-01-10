@@ -62,7 +62,7 @@ public class DriverTaskHandle {
   public synchronized Priority resetLevelPriority() {
     long levelMinPriority =
         driverTaskQueue.getLevelMinPriority(priority.get().getLevel(), scheduledTimeInNanos);
-    if (priority.get().getLevelPriority() < levelMinPriority) {
+    if (priority.get().getLevelScheduledTime() < levelMinPriority) {
       Priority newPriority = new Priority(priority.get().getLevel(), levelMinPriority);
       priority.set(newPriority);
       return newPriority;

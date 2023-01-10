@@ -42,6 +42,7 @@ public class MultilevelPriorityQueue extends IndexedBlockingQueue<DriverTask> {
 
   private final PriorityQueue<DriverTask>[] levelWaitingSplits;
 
+  /** Total amount of time each level has occupied. */
   private final AtomicLong[] levelScheduledTime;
 
   private final AtomicLong[] levelMinPriority;
@@ -107,7 +108,7 @@ public class MultilevelPriorityQueue extends IndexedBlockingQueue<DriverTask> {
         continue;
       }
       int selectedLevel = result.getPriority().getLevel();
-      levelMinPriority[selectedLevel].set(result.getPriority().getLevelPriority());
+      levelMinPriority[selectedLevel].set(result.getPriority().getLevelScheduledTime());
       return result;
     }
   }
@@ -229,7 +230,7 @@ public class MultilevelPriorityQueue extends IndexedBlockingQueue<DriverTask> {
 
     if (oldLevel == newLevel) {
       addLevelTime(oldLevel, levelContribution);
-      return new Priority(oldLevel, oldPriority.getLevelPriority() + quantaNanos);
+      return new Priority(oldLevel, oldPriority.getLevelScheduledTime() + quantaNanos);
     }
 
     long remainingLevelContribution = levelContribution;

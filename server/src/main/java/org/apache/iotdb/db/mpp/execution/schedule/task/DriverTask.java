@@ -196,7 +196,7 @@ public class DriverTask implements IDIndexedAccessible {
     }
   }
 
-  /** a comparator of DriverTask, the higher the levelPriority is, the lower order it has. */
+  /** a comparator of DriverTask, the higher the levelScheduledTime is, the lower order it has. */
   public static class SchedulePriorityComparator implements Comparator<DriverTask> {
 
     @Override
@@ -205,7 +205,8 @@ public class DriverTask implements IDIndexedAccessible {
         return 0;
       }
       int result =
-          Long.compare(o1.priority.get().getLevelPriority(), o2.priority.get().getLevelPriority());
+          Long.compare(
+              o1.priority.get().getLevelScheduledTime(), o2.priority.get().getLevelScheduledTime());
       if (result != 0) {
         return result;
       }

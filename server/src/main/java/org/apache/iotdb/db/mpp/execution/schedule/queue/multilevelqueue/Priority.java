@@ -45,26 +45,29 @@ public final class Priority {
   private final int level;
 
   /**
-   * levelPriority increases as the schedule time accumulates. The higher this value is, the later
-   * the task with this Priority will be polled out by a PriorityQueue.
+   * levelScheduledTime increases as the schedule time accumulates. The higher this value is, the
+   * later the task with this Priority will be polled out by a PriorityQueue.
    */
-  private final long levelPriority;
+  private final long levelScheduledTime;
 
-  public Priority(int level, long levelPriority) {
+  public Priority(int level, long levelScheduledTime) {
     this.level = level;
-    this.levelPriority = levelPriority;
+    this.levelScheduledTime = levelScheduledTime;
   }
 
   public int getLevel() {
     return level;
   }
 
-  public long getLevelPriority() {
-    return levelPriority;
+  public long getLevelScheduledTime() {
+    return levelScheduledTime;
   }
 
   @Override
   public String toString() {
-    return toStringHelper(this).add("level", level).add("levelPriority", levelPriority).toString();
+    return toStringHelper(this)
+        .add("level", level)
+        .add("levelScheduledTime", levelScheduledTime)
+        .toString();
   }
 }
