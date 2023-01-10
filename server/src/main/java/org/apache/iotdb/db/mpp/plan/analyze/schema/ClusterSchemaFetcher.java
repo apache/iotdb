@@ -257,28 +257,38 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
       }
 
       // auto create the still missing schema and merge them into schemaTree
+      hasMissingMeasurement = false;
       List<Integer> indexOfMissingMeasurements;
       for (int i = 0; i < devicePathList.size(); i++) {
-        int finalI = i;
         indexOfMissingMeasurements = indexOfMissingMeasurementsList.get(i);
+        if (indexOfMissingMeasurements.isEmpty()) {
+          continue;
+        }
+
         indexOfMissingMeasurements =
             checkMissingMeasurementsAfterSchemaFetch(
                 schemaTree,
                 devicePathList.get(i),
                 indexOfMissingMeasurements,
                 measurementsList.get(i));
+        indexOfMissingMeasurementsList.set(i, indexOfMissingMeasurements);
         if (!indexOfMissingMeasurements.isEmpty()) {
-          autoCreateSchemaExecutor.autoCreateMissingMeasurements(
-              schemaTree,
-              devicePathList.get(i),
-              indexOfMissingMeasurements,
-              measurementsList.get(i),
-              index -> tsDataTypesList.get(finalI)[index],
-              encodingsList == null ? null : encodingsList.get(i),
-              compressionTypesList == null ? null : compressionTypesList.get(i),
-              isAlignedList.get(i));
+          hasMissingMeasurement = true;
         }
       }
+
+      if (hasMissingMeasurement) {
+        autoCreateSchemaExecutor.autoCreateMissingMeasurements(
+            schemaTree,
+            devicePathList,
+            indexOfMissingMeasurementsList,
+            measurementsList,
+            tsDataTypesList,
+            encodingsList,
+            compressionTypesList,
+            isAlignedList);
+      }
+
       return schemaTree;
     } finally {
       schemaCache.releaseReadLock();

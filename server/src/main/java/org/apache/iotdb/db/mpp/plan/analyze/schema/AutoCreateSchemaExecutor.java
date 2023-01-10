@@ -146,6 +146,33 @@ class AutoCreateSchemaExecutor {
     }
   }
 
+  void autoCreateMissingMeasurements(
+      ClusterSchemaTree schemaTree,
+      List<PartialPath> devicePathList,
+      List<List<Integer>> indexOfTargetMeasurementsList,
+      List<String[]> measurementsList,
+      List<TSDataType[]> tsDataTypesList,
+      List<TSEncoding[]> encodingsList,
+      List<CompressionType[]> compressionTypesList,
+      List<Boolean> isAlignedList) {
+
+    for (int i = 0, size = devicePathList.size(); i < size; i++) {
+      if (indexOfTargetMeasurementsList.get(i).isEmpty()) {
+        continue;
+      }
+      int finalI = i;
+      autoCreateMissingMeasurements(
+          schemaTree,
+          devicePathList.get(i),
+          indexOfTargetMeasurementsList.get(i),
+          measurementsList.get(i),
+          index -> tsDataTypesList.get(finalI)[index],
+          encodingsList.get(i),
+          compressionTypesList.get(i),
+          isAlignedList.get(i));
+    }
+  }
+
   // try to create the target timeseries and return schemaTree involving successfully created
   // timeseries and existing timeseries
   private ClusterSchemaTree internalCreateTimeseries(
