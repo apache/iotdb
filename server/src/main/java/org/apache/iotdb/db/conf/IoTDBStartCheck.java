@@ -303,6 +303,12 @@ public class IoTDBStartCheck {
         systemProperties.forEach((k, v) -> properties.setProperty(k, v.get()));
         properties.store(outputStream, SYSTEM_PROPERTIES_STRING);
       }
+      if (config.isClusterMode()
+          && config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)
+          && config.getWalMode().equals(WALMode.DISABLE)) {
+        throw new ConfigurationException(
+            "Configuring the WALMode as disable is not supported under IoTConsensus");
+      }
     } else {
       // check whether upgrading from <=v0.9
       if (!properties.containsKey(IOTDB_VERSION_STRING)) {
