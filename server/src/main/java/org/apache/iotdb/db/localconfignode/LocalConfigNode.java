@@ -35,15 +35,8 @@ import org.apache.iotdb.db.engine.cache.BloomFilterCache;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
-import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaEngine;
-import org.apache.iotdb.db.metadata.storagegroup.IStorageGroupSchemaManager;
-import org.apache.iotdb.db.metadata.storagegroup.StorageGroupSchemaManager;
-import org.apache.iotdb.db.metadata.utils.MetaUtils;
-import org.apache.iotdb.db.rescon.MemTableManager;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -51,8 +44,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
-import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -67,9 +58,6 @@ public class LocalConfigNode {
 
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private volatile boolean initialized = false;
-
-  private final IStorageGroupSchemaManager storageGroupSchemaManager =
-      StorageGroupSchemaManager.getInstance();
   private final SchemaEngine schemaEngine = SchemaEngine.getInstance();
   private final LocalSchemaPartitionTable schemaPartitionTable =
       LocalSchemaPartitionTable.getInstance();
@@ -110,7 +98,6 @@ public class LocalConfigNode {
     }
 
     try {
-      storageGroupSchemaManager.init();
 
       Map<PartialPath, List<SchemaRegionId>> recoveredLocalSchemaRegionInfo =
           schemaEngine.initForLocalConfigNode();
@@ -122,7 +109,7 @@ public class LocalConfigNode {
             storageEngine.getLocalDataRegionInfo();
         dataPartitionInfo.init(recoveredLocalDataRegionInfo);
       }
-    } catch (MetadataException | IOException e) {
+    } catch (MetadataException e) {
       logger.error(
           "Cannot recover all MTree from file, we try to recover as possible as we can", e);
     }
@@ -135,121 +122,12 @@ public class LocalConfigNode {
       return;
     }
 
-    try {
+    schemaPartitionTable.clear();
+    schemaEngine.clear();
 
-      schemaPartitionTable.clear();
-      schemaEngine.clear();
-      storageGroupSchemaManager.clear();
-
-      dataPartitionInfo.clear();
-
-    } catch (IOException e) {
-      logger.error("Error occurred when clearing LocalConfigNode:", e);
-    }
+    dataPartitionInfo.clear();
 
     initialized = false;
-  }
-
-  // endregion
-
-  // region Interfaces for database management
-
-  // region Interfaces for database write operation
-
-  /**
-   * CREATE DATABASE of the given path to MTree.
-   *
-   * @param storageGroup root.node.(node)*
-   */
-  public void setStorageGroup(PartialPath storageGroup) throws MetadataException {
-    storageGroupSchemaManager.setStorageGroup(storageGroup);
-    for (SchemaRegionId schemaRegionId : schemaPartitionTable.setStorageGroup(storageGroup)) {
-      schemaEngine.createSchemaRegion(storageGroup, schemaRegionId);
-    }
-
-    if (!config.isEnableMemControl()) {
-      MemTableManager.getInstance().addOrDeleteStorageGroup(1);
-    }
-  }
-
-  private PartialPath ensureStorageGroup(PartialPath path) throws MetadataException {
-    try {
-      return getBelongedStorageGroup(path);
-    } catch (StorageGroupNotSetException e) {
-      if (!config.isAutoCreateSchemaEnabled()) {
-        throw e;
-      }
-      PartialPath storageGroupPath =
-          MetaUtils.getStorageGroupPathByLevel(path, config.getDefaultStorageGroupLevel());
-      try {
-        setStorageGroup(storageGroupPath);
-        return storageGroupPath;
-      } catch (StorageGroupAlreadySetException storageGroupAlreadySetException) {
-        if (storageGroupAlreadySetException.isHasChild()) {
-          // if setStorageGroup failure is because of child, the deviceNode should not be created.
-          // Timeseries can't be created under a deviceNode without storageGroup.
-          throw storageGroupAlreadySetException;
-        }
-
-        // concurrent timeseries creation may result concurrent ensureStorageGroup
-        // it's ok that the storageGroup has already been set
-        return getBelongedStorageGroup(path);
-      }
-    }
-  }
-
-  // endregion
-
-  // region Interfaces for database info query
-
-  /**
-   * Get database name by path
-   *
-   * <p>e.g., root.sg1 is a database and path = root.sg1.d1, return root.sg1
-   *
-   * @param path only full path, cannot be path pattern
-   * @return database in the given path
-   */
-  public PartialPath getBelongedStorageGroup(PartialPath path) throws StorageGroupNotSetException {
-    return storageGroupSchemaManager.getBelongedStorageGroup(path);
-  }
-
-  // endregion
-
-  // endregion
-
-  // region Interfaces for SchemaRegionId Management
-
-  // This interface involves database and schema region auto creation
-  public SchemaRegionId getBelongedSchemaRegionIdWithAutoCreate(PartialPath path)
-      throws MetadataException {
-    PartialPath storageGroup = ensureStorageGroup(path);
-    SchemaRegionId schemaRegionId = schemaPartitionTable.getSchemaRegionId(storageGroup, path);
-    if (schemaRegionId == null) {
-      schemaPartitionTable.setStorageGroup(storageGroup);
-      schemaRegionId = schemaPartitionTable.getSchemaRegionId(storageGroup, path);
-    }
-    ISchemaRegion schemaRegion = schemaEngine.getSchemaRegion(schemaRegionId);
-    if (schemaRegion == null) {
-      schemaEngine.createSchemaRegion(storageGroup, schemaRegionId);
-    }
-    return schemaRegionId;
-  }
-
-  /**
-   * Get the target SchemaRegionIds, which will be involved/covered by the given pathPattern. The
-   * path may contain wildcards, * or **. This method is the first step when there's a task on
-   * multiple paths represented by the given pathPattern. If isPrefixMatch, all databases under the
-   * prefixPath that matches the given pathPattern will be collected.
-   */
-  public List<SchemaRegionId> getInvolvedSchemaRegionIds(PartialPath pathPattern)
-      throws MetadataException {
-    List<SchemaRegionId> result = new ArrayList<>();
-    for (PartialPath storageGroup :
-        storageGroupSchemaManager.getInvolvedStorageGroups(pathPattern)) {
-      result.addAll(schemaPartitionTable.getInvolvedSchemaRegionIds(storageGroup, pathPattern));
-    }
-    return result;
   }
 
   // endregion

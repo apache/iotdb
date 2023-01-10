@@ -40,8 +40,6 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.DataRegionException;
-import org.apache.iotdb.db.localconfignode.LocalConfigNode;
-import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -127,7 +125,6 @@ public class SizeTieredCompactionRecoverTest {
 
   @Before
   public void setUp() throws Exception {
-    LocalConfigNode.getInstance().init();
     CompactionTaskManager.getInstance().start();
     originDataDirs = config.getDataDirs();
     setDataDirs(testDataDirs);
@@ -145,7 +142,6 @@ public class SizeTieredCompactionRecoverTest {
     new CompactionConfigRestorer().restoreCompactionConfig();
     CompactionTaskManager.getInstance().stop();
     setDataDirs(originDataDirs);
-    LocalConfigNode.getInstance().clear();
     File dataDir = new File(testDataDirs[0]);
     if (dataDir.exists()) {
       FileUtils.forceDelete(dataDir);
@@ -167,18 +163,6 @@ public class SizeTieredCompactionRecoverTest {
               TSEncoding.RLE,
               CompressionType.UNCOMPRESSED);
       deviceIds[i] = new PartialPath(fullPaths[i].substring(0, 27));
-    }
-    LocalSchemaProcessor.getInstance().setStorageGroup(new PartialPath(COMPACTION_TEST_SG));
-    for (int i = 0; i < fullPaths.length; ++i) {
-      MeasurementSchema schema = schemas[i];
-      PartialPath deviceId = deviceIds[i];
-      LocalSchemaProcessor.getInstance()
-          .createTimeseries(
-              deviceId.concatNode(schema.getMeasurementId()),
-              schema.getType(),
-              schema.getEncodingType(),
-              schema.getCompressor(),
-              Collections.emptyMap());
     }
   }
 
