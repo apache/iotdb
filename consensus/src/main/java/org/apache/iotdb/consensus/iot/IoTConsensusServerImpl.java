@@ -285,7 +285,7 @@ public class IoTConsensusServerImpl {
 
   public void takeSnapshot() throws ConsensusGroupModifyPeerException {
     try {
-      long latestSnapshotIndex = getLatestSnapshotIndex();
+      long latestSnapshotIndex = getLatestSnapshotIndex() + 1;
       latestSnapshotId =
           String.format(
               "%s_%s_%d", SNAPSHOT_DIR_NAME, thisNode.getGroupId().getId(), latestSnapshotIndex);
@@ -370,14 +370,14 @@ public class IoTConsensusServerImpl {
     File directory = new File(storageDir);
     File[] versionFiles = directory.listFiles((dir, name) -> name.startsWith(SNAPSHOT_DIR_NAME));
     if (versionFiles == null || versionFiles.length == 0) {
-      return snapShotIndex + 1;
+      return snapShotIndex;
     }
     for (File file : versionFiles) {
       snapShotIndex =
           Long.max(
               snapShotIndex, Long.parseLong(file.getName().replaceAll(".*[^\\d](?=(\\d+))", "")));
     }
-    return snapShotIndex + 1;
+    return snapShotIndex;
   }
 
   private void clearOldSnapshot() {
