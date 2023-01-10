@@ -390,6 +390,7 @@ public class DefaultDriverSchedulerTest {
       DriverTask testTask1 = new DriverTask(mockDriver1, 100L, status, driverTaskHandle);
       DriverTask testTask2 =
           new DriverTask(mockDriver2, 100L, DriverTaskStatus.BLOCKED, driverTaskHandle);
+
       Set<DriverTask> taskSet1 = new HashSet<>();
       taskSet1.add(testTask1);
       Set<DriverTask> taskSet2 = new HashSet<>();

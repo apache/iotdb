@@ -20,7 +20,6 @@ package org.apache.iotdb.db.engine.memtable;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.db.constant.TestConstant;
-import org.apache.iotdb.db.engine.MetadataManagerHelper;
 import org.apache.iotdb.db.engine.flush.MemTableFlushTask;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -51,7 +50,6 @@ public class MemTableFlushTaskTest {
   @Before
   public void setUp() throws Exception {
     EnvironmentUtils.envSetUp();
-    MetadataManagerHelper.initMetadata();
     writer = new RestorableTsFileIOWriter(FSFactoryProducer.getFSFactory().getFile(filePath));
     memTable = new PrimitiveMemTable();
   }

@@ -109,7 +109,8 @@ public abstract class AbstractEnv implements BaseEnv {
     seedConfigNodeWrapper.createDir();
     seedConfigNodeWrapper.changeConfig(
         (MppConfigNodeConfig) clusterConfig.getConfigNodeConfig(),
-        (MppCommonConfig) clusterConfig.getConfigNodeCommonConfig());
+        (MppCommonConfig) clusterConfig.getConfigNodeCommonConfig(),
+        (MppJVMConfig) clusterConfig.getConfigNodeJVMConfig());
     seedConfigNodeWrapper.start();
     String targetConfigNode = seedConfigNodeWrapper.getIpAndPortString();
     this.configNodeWrapperList.add(seedConfigNodeWrapper);
@@ -138,7 +139,8 @@ public abstract class AbstractEnv implements BaseEnv {
       configNodeWrapper.createDir();
       configNodeWrapper.changeConfig(
           (MppConfigNodeConfig) clusterConfig.getConfigNodeConfig(),
-          (MppCommonConfig) clusterConfig.getConfigNodeCommonConfig());
+          (MppCommonConfig) clusterConfig.getConfigNodeCommonConfig(),
+          (MppJVMConfig) clusterConfig.getConfigNodeJVMConfig());
       configNodesDelegate.addRequest(
           () -> {
             configNodeWrapper.start();
@@ -164,7 +166,8 @@ public abstract class AbstractEnv implements BaseEnv {
       dataNodeWrapper.createDir();
       dataNodeWrapper.changeConfig(
           (MppDataNodeConfig) clusterConfig.getDataNodeConfig(),
-          (MppCommonConfig) clusterConfig.getDataNodeCommonConfig());
+          (MppCommonConfig) clusterConfig.getDataNodeCommonConfig(),
+          (MppJVMConfig) clusterConfig.getDataNodeJVMConfig());
       dataNodesDelegate.addRequest(
           () -> {
             dataNodeWrapper.start();
@@ -565,7 +568,8 @@ public abstract class AbstractEnv implements BaseEnv {
     newConfigNodeWrapper.createDir();
     newConfigNodeWrapper.changeConfig(
         (MppConfigNodeConfig) clusterConfig.getConfigNodeConfig(),
-        (MppCommonConfig) clusterConfig.getConfigNodeCommonConfig());
+        (MppCommonConfig) clusterConfig.getConfigNodeCommonConfig(),
+        (MppJVMConfig) clusterConfig.getConfigNodeJVMConfig());
     return newConfigNodeWrapper;
   }
 
@@ -581,7 +585,8 @@ public abstract class AbstractEnv implements BaseEnv {
     newDataNodeWrapper.createDir();
     newDataNodeWrapper.changeConfig(
         (MppDataNodeConfig) clusterConfig.getDataNodeConfig(),
-        (MppCommonConfig) clusterConfig.getDataNodeCommonConfig());
+        (MppCommonConfig) clusterConfig.getDataNodeCommonConfig(),
+        (MppJVMConfig) clusterConfig.getDataNodeJVMConfig());
     return newDataNodeWrapper;
   }
 
