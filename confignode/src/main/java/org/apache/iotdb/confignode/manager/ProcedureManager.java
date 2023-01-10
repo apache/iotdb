@@ -439,7 +439,7 @@ public class ProcedureManager {
       status.setMessage(
           "Submit RegionMigrateProcedure failed, because the destDataNode "
               + migrateRegionReq.getToId()
-              + " is ReadOnly.");
+              + " is ReadOnly or Unknown.");
       return status;
     }
     this.executor.submitProcedure(
