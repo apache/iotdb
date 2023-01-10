@@ -182,9 +182,9 @@ public class UDTFEqualSizeBucketOutlierSample extends UDTFEqualSizeBucketSample 
       PriorityQueue<Pair<Integer, Double>> pq =
           new PriorityQueue<>(number, Comparator.comparing(o -> o.right));
 
-      double A = row0y - row1y;
-      double B = row1x - row0x;
-      double C = row0x * row1y - row1x * row0y;
+      double A = (double) row0y - row1y;
+      double B = (double) row1x - row0x;
+      double C = (double) row0x * row1y - row1x * row0y;
       double denominator = Math.sqrt(A * A + B * B);
 
       for (int i = 1; i < windowSize - 1; i++) {
@@ -212,9 +212,9 @@ public class UDTFEqualSizeBucketOutlierSample extends UDTFEqualSizeBucketSample 
       PriorityQueue<Pair<Integer, Double>> pq =
           new PriorityQueue<>(number, Comparator.comparing(o -> o.right));
 
-      double A = row0y - row1y;
-      double B = row1x - row0x;
-      double C = row0x * row1y - row1x * row0y;
+      double A = (double) row0y - row1y;
+      double B = (double) row1x - row0x;
+      double C = (double) row0x * row1y - row1x * row0y;
       double denominator = Math.sqrt(A * A + B * B);
 
       for (int i = 1; i < windowSize - 1; i++) {
@@ -242,9 +242,9 @@ public class UDTFEqualSizeBucketOutlierSample extends UDTFEqualSizeBucketSample 
       PriorityQueue<Pair<Integer, Double>> pq =
           new PriorityQueue<>(number, Comparator.comparing(o -> o.right));
 
-      double A = row0y - row1y;
-      double B = row1x - row0x;
-      double C = row0x * row1y - row1x * row0y;
+      double A = (double) row0y - row1y;
+      double B = (double) row1x - row0x;
+      double C = (double) row0x * row1y - row1x * row0y;
       double denominator = Math.sqrt(A * A + B * B);
 
       for (int i = 1; i < windowSize - 1; i++) {
@@ -273,7 +273,7 @@ public class UDTFEqualSizeBucketOutlierSample extends UDTFEqualSizeBucketSample 
           new PriorityQueue<>(number, Comparator.comparing(o -> o.right));
 
       double A = row0y - row1y;
-      double B = row1x - row0x;
+      double B = (double) row1x - row0x;
       double C = row0x * row1y - row1x * row0y;
       double denominator = Math.sqrt(A * A + B * B);
 
@@ -475,7 +475,7 @@ public class UDTFEqualSizeBucketOutlierSample extends UDTFEqualSizeBucketSample 
         y1 = Math.abs(currentValue - lastValue);
         y2 = Math.abs(nextValue - currentValue);
 
-        value = x1 + y1 + x2 + y2;
+        value = (double) x1 + y1 + x2 + y2;
 
         addToMinHeap(pq, i, value);
       }
@@ -512,7 +512,7 @@ public class UDTFEqualSizeBucketOutlierSample extends UDTFEqualSizeBucketSample 
         y1 = Math.abs(currentValue - lastValue);
         y2 = Math.abs(nextValue - currentValue);
 
-        value = x1 + y1 + x2 + y2;
+        value = (double) x1 + y1 + x2 + y2;
 
         addToMinHeap(pq, i, value);
       }
