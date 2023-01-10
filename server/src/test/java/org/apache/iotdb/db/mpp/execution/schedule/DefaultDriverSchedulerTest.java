@@ -24,6 +24,7 @@ import org.apache.iotdb.db.mpp.common.QueryId;
 import org.apache.iotdb.db.mpp.execution.driver.IDriver;
 import org.apache.iotdb.db.mpp.execution.exchange.IMPPDataExchangeManager;
 import org.apache.iotdb.db.mpp.execution.schedule.task.DriverTask;
+import org.apache.iotdb.db.mpp.execution.schedule.task.DriverTaskId;
 import org.apache.iotdb.db.mpp.execution.schedule.task.DriverTaskStatus;
 import org.apache.iotdb.db.utils.stats.CpuTimer;
 import org.apache.iotdb.mpp.rpc.thrift.IDataNodeRPCService;
@@ -36,7 +37,9 @@ import org.mockito.Mockito;
 
 import java.io.IOException;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
 public class DefaultDriverSchedulerTest {
@@ -58,7 +61,8 @@ public class DefaultDriverSchedulerTest {
     QueryId queryId = new QueryId("test");
     FragmentInstanceId instanceId =
         new FragmentInstanceId(new PlanFragmentId(queryId, 0), "inst-0");
-    Mockito.when(mockDriver.getInfo()).thenReturn(instanceId);
+    DriverTaskId driverTaskID = new DriverTaskId(instanceId, 0);
+    Mockito.when(mockDriver.getDriverTaskId()).thenReturn(driverTaskID);
     DriverTaskStatus[] invalidStates =
         new DriverTaskStatus[] {
           DriverTaskStatus.FINISHED,
@@ -71,30 +75,34 @@ public class DefaultDriverSchedulerTest {
       manager.getBlockedTasks().add(testTask);
       Set<DriverTask> taskSet = new HashSet<>();
       taskSet.add(testTask);
-      manager.getQueryMap().put(queryId, taskSet);
+      Map<FragmentInstanceId, Set<DriverTask>> fragmentRelatedTask = new ConcurrentHashMap<>();
+      fragmentRelatedTask.put(instanceId, taskSet);
+      manager.getQueryMap().put(queryId, fragmentRelatedTask);
       manager.getTimeoutQueue().push(testTask);
       defaultScheduler.blockedToReady(testTask);
       Assert.assertEquals(status, testTask.getStatus());
       Assert.assertTrue(manager.getBlockedTasks().contains(testTask));
-      Assert.assertNull(manager.getReadyQueue().get(testTask.getId()));
-      Assert.assertNotNull(manager.getTimeoutQueue().get(testTask.getId()));
+      Assert.assertNull(manager.getReadyQueue().get(testTask.getDriverTaskId()));
+      Assert.assertNotNull(manager.getTimeoutQueue().get(testTask.getDriverTaskId()));
       Assert.assertTrue(manager.getQueryMap().containsKey(queryId));
-      Assert.assertTrue(manager.getQueryMap().get(queryId).contains(testTask));
+      Assert.assertTrue(manager.getQueryMap().get(queryId).get(instanceId).contains(testTask));
       clear();
     }
     DriverTask testTask = new DriverTask(mockDriver, 100L, DriverTaskStatus.BLOCKED);
     manager.getBlockedTasks().add(testTask);
     Set<DriverTask> taskSet = new HashSet<>();
     taskSet.add(testTask);
-    manager.getQueryMap().put(queryId, taskSet);
+    Map<FragmentInstanceId, Set<DriverTask>> fragmentRelatedTask = new ConcurrentHashMap<>();
+    fragmentRelatedTask.put(instanceId, taskSet);
+    manager.getQueryMap().put(queryId, fragmentRelatedTask);
     manager.getTimeoutQueue().push(testTask);
     defaultScheduler.blockedToReady(testTask);
     Assert.assertEquals(DriverTaskStatus.READY, testTask.getStatus());
     Assert.assertFalse(manager.getBlockedTasks().contains(testTask));
-    Assert.assertNotNull(manager.getReadyQueue().get(testTask.getId()));
-    Assert.assertNotNull(manager.getTimeoutQueue().get(testTask.getId()));
+    Assert.assertNotNull(manager.getReadyQueue().get(testTask.getDriverTaskId()));
+    Assert.assertNotNull(manager.getTimeoutQueue().get(testTask.getDriverTaskId()));
     Assert.assertTrue(manager.getQueryMap().containsKey(queryId));
-    Assert.assertTrue(manager.getQueryMap().get(queryId).contains(testTask));
+    Assert.assertTrue(manager.getQueryMap().get(queryId).get(instanceId).contains(testTask));
     Mockito.verify(mockDriver, Mockito.never()).failed(Mockito.any());
     clear();
   }
@@ -110,7 +118,8 @@ public class DefaultDriverSchedulerTest {
     QueryId queryId = new QueryId("test");
     FragmentInstanceId instanceId =
         new FragmentInstanceId(new PlanFragmentId(queryId, 0), "inst-0");
-    Mockito.when(mockDriver.getInfo()).thenReturn(instanceId);
+    DriverTaskId driverTaskID = new DriverTaskId(instanceId, 0);
+    Mockito.when(mockDriver.getDriverTaskId()).thenReturn(driverTaskID);
     DriverTaskStatus[] invalidStates =
         new DriverTaskStatus[] {
           DriverTaskStatus.FINISHED,
@@ -122,27 +131,31 @@ public class DefaultDriverSchedulerTest {
       DriverTask testTask = new DriverTask(mockDriver, 100L, status);
       Set<DriverTask> taskSet = new HashSet<>();
       taskSet.add(testTask);
-      manager.getQueryMap().put(queryId, taskSet);
+      Map<FragmentInstanceId, Set<DriverTask>> fragmentRelatedTask = new ConcurrentHashMap<>();
+      fragmentRelatedTask.put(instanceId, taskSet);
+      manager.getQueryMap().put(queryId, fragmentRelatedTask);
       manager.getTimeoutQueue().push(testTask);
       defaultScheduler.readyToRunning(testTask);
       Assert.assertEquals(status, testTask.getStatus());
       Assert.assertFalse(manager.getBlockedTasks().contains(testTask));
-      Assert.assertNotNull(manager.getTimeoutQueue().get(testTask.getId()));
+      Assert.assertNotNull(manager.getTimeoutQueue().get(testTask.getDriverTaskId()));
       Assert.assertTrue(manager.getQueryMap().containsKey(queryId));
-      Assert.assertTrue(manager.getQueryMap().get(queryId).contains(testTask));
+      Assert.assertTrue(manager.getQueryMap().get(queryId).get(instanceId).contains(testTask));
       clear();
     }
     DriverTask testTask = new DriverTask(mockDriver, 100L, DriverTaskStatus.READY);
     Set<DriverTask> taskSet = new HashSet<>();
     taskSet.add(testTask);
-    manager.getQueryMap().put(queryId, taskSet);
+    Map<FragmentInstanceId, Set<DriverTask>> fragmentRelatedTask = new ConcurrentHashMap<>();
+    fragmentRelatedTask.put(instanceId, taskSet);
+    manager.getQueryMap().put(queryId, fragmentRelatedTask);
     manager.getTimeoutQueue().push(testTask);
     defaultScheduler.readyToRunning(testTask);
     Assert.assertEquals(DriverTaskStatus.RUNNING, testTask.getStatus());
     Assert.assertFalse(manager.getBlockedTasks().contains(testTask));
-    Assert.assertNotNull(manager.getTimeoutQueue().get(testTask.getId()));
+    Assert.assertNotNull(manager.getTimeoutQueue().get(testTask.getDriverTaskId()));
     Assert.assertTrue(manager.getQueryMap().containsKey(queryId));
-    Assert.assertTrue(manager.getQueryMap().get(queryId).contains(testTask));
+    Assert.assertTrue(manager.getQueryMap().get(queryId).get(instanceId).contains(testTask));
     Mockito.verify(mockDriver, Mockito.never()).failed(Mockito.any());
     clear();
   }
@@ -157,7 +170,8 @@ public class DefaultDriverSchedulerTest {
     QueryId queryId = new QueryId("test");
     FragmentInstanceId instanceId =
         new FragmentInstanceId(new PlanFragmentId(queryId, 0), "inst-0");
-    Mockito.when(mockDriver.getInfo()).thenReturn(instanceId);
+    DriverTaskId driverTaskID = new DriverTaskId(instanceId, 0);
+    Mockito.when(mockDriver.getDriverTaskId()).thenReturn(driverTaskID);
     DriverTaskStatus[] invalidStates =
         new DriverTaskStatus[] {
           DriverTaskStatus.FINISHED,
@@ -169,21 +183,25 @@ public class DefaultDriverSchedulerTest {
       DriverTask testTask = new DriverTask(mockDriver, 100L, status);
       Set<DriverTask> taskSet = new HashSet<>();
       taskSet.add(testTask);
-      manager.getQueryMap().put(queryId, taskSet);
+      Map<FragmentInstanceId, Set<DriverTask>> fragmentRelatedTask = new ConcurrentHashMap<>();
+      fragmentRelatedTask.put(instanceId, taskSet);
+      manager.getQueryMap().put(queryId, fragmentRelatedTask);
       manager.getTimeoutQueue().push(testTask);
       defaultScheduler.runningToReady(testTask, new ExecutionContext());
       Assert.assertEquals(status, testTask.getStatus());
       Assert.assertFalse(manager.getBlockedTasks().contains(testTask));
-      Assert.assertNull(manager.getReadyQueue().get(testTask.getId()));
-      Assert.assertNotNull(manager.getTimeoutQueue().get(testTask.getId()));
+      Assert.assertNull(manager.getReadyQueue().get(testTask.getDriverTaskId()));
+      Assert.assertNotNull(manager.getTimeoutQueue().get(testTask.getDriverTaskId()));
       Assert.assertTrue(manager.getQueryMap().containsKey(queryId));
-      Assert.assertTrue(manager.getQueryMap().get(queryId).contains(testTask));
+      Assert.assertTrue(manager.getQueryMap().get(queryId).get(instanceId).contains(testTask));
       clear();
     }
     DriverTask testTask = new DriverTask(mockDriver, 100L, DriverTaskStatus.RUNNING);
     Set<DriverTask> taskSet = new HashSet<>();
     taskSet.add(testTask);
-    manager.getQueryMap().put(queryId, taskSet);
+    Map<FragmentInstanceId, Set<DriverTask>> fragmentRelatedTask = new ConcurrentHashMap<>();
+    fragmentRelatedTask.put(instanceId, taskSet);
+    manager.getQueryMap().put(queryId, fragmentRelatedTask);
     manager.getTimeoutQueue().push(testTask);
     ExecutionContext context = new ExecutionContext();
     context.setTimeSlice(new Duration(1, TimeUnit.SECONDS));
@@ -192,10 +210,10 @@ public class DefaultDriverSchedulerTest {
     Assert.assertEquals(0.0D, testTask.getSchedulePriority(), 0.00001);
     Assert.assertEquals(DriverTaskStatus.READY, testTask.getStatus());
     Assert.assertFalse(manager.getBlockedTasks().contains(testTask));
-    Assert.assertNotNull(manager.getReadyQueue().get(testTask.getId()));
-    Assert.assertNotNull(manager.getTimeoutQueue().get(testTask.getId()));
+    Assert.assertNotNull(manager.getReadyQueue().get(testTask.getDriverTaskId()));
+    Assert.assertNotNull(manager.getTimeoutQueue().get(testTask.getDriverTaskId()));
     Assert.assertTrue(manager.getQueryMap().containsKey(queryId));
-    Assert.assertTrue(manager.getQueryMap().get(queryId).contains(testTask));
+    Assert.assertTrue(manager.getQueryMap().get(queryId).get(instanceId).contains(testTask));
     Mockito.verify(mockDriver, Mockito.never()).failed(Mockito.any());
     clear();
   }
@@ -210,7 +228,8 @@ public class DefaultDriverSchedulerTest {
     QueryId queryId = new QueryId("test");
     FragmentInstanceId instanceId =
         new FragmentInstanceId(new PlanFragmentId(queryId, 0), "inst-0");
-    Mockito.when(mockDriver.getInfo()).thenReturn(instanceId);
+    DriverTaskId driverTaskID = new DriverTaskId(instanceId, 0);
+    Mockito.when(mockDriver.getDriverTaskId()).thenReturn(driverTaskID);
     DriverTaskStatus[] invalidStates =
         new DriverTaskStatus[] {
           DriverTaskStatus.FINISHED,
@@ -222,21 +241,25 @@ public class DefaultDriverSchedulerTest {
       DriverTask testTask = new DriverTask(mockDriver, 100L, status);
       Set<DriverTask> taskSet = new HashSet<>();
       taskSet.add(testTask);
-      manager.getQueryMap().put(queryId, taskSet);
+      Map<FragmentInstanceId, Set<DriverTask>> fragmentRelatedTask = new ConcurrentHashMap<>();
+      fragmentRelatedTask.put(instanceId, taskSet);
+      manager.getQueryMap().put(queryId, fragmentRelatedTask);
       manager.getTimeoutQueue().push(testTask);
       defaultScheduler.runningToBlocked(testTask, new ExecutionContext());
       Assert.assertEquals(status, testTask.getStatus());
       Assert.assertFalse(manager.getBlockedTasks().contains(testTask));
-      Assert.assertNull(manager.getReadyQueue().get(testTask.getId()));
-      Assert.assertNotNull(manager.getTimeoutQueue().get(testTask.getId()));
+      Assert.assertNull(manager.getReadyQueue().get(testTask.getDriverTaskId()));
+      Assert.assertNotNull(manager.getTimeoutQueue().get(testTask.getDriverTaskId()));
       Assert.assertTrue(manager.getQueryMap().containsKey(queryId));
-      Assert.assertTrue(manager.getQueryMap().get(queryId).contains(testTask));
+      Assert.assertTrue(manager.getQueryMap().get(queryId).get(instanceId).contains(testTask));
       clear();
     }
     DriverTask testTask = new DriverTask(mockDriver, 100L, DriverTaskStatus.RUNNING);
     Set<DriverTask> taskSet = new HashSet<>();
     taskSet.add(testTask);
-    manager.getQueryMap().put(queryId, taskSet);
+    Map<FragmentInstanceId, Set<DriverTask>> fragmentRelatedTask = new ConcurrentHashMap<>();
+    fragmentRelatedTask.put(instanceId, taskSet);
+    manager.getQueryMap().put(queryId, fragmentRelatedTask);
     manager.getTimeoutQueue().push(testTask);
     ExecutionContext context = new ExecutionContext();
     context.setTimeSlice(new Duration(1, TimeUnit.SECONDS));
@@ -245,10 +268,10 @@ public class DefaultDriverSchedulerTest {
     Assert.assertEquals(0.0D, testTask.getSchedulePriority(), 0.00001);
     Assert.assertEquals(DriverTaskStatus.BLOCKED, testTask.getStatus());
     Assert.assertTrue(manager.getBlockedTasks().contains(testTask));
-    Assert.assertNull(manager.getReadyQueue().get(testTask.getId()));
-    Assert.assertNotNull(manager.getTimeoutQueue().get(testTask.getId()));
+    Assert.assertNull(manager.getReadyQueue().get(testTask.getDriverTaskId()));
+    Assert.assertNotNull(manager.getTimeoutQueue().get(testTask.getDriverTaskId()));
     Assert.assertTrue(manager.getQueryMap().containsKey(queryId));
-    Assert.assertTrue(manager.getQueryMap().get(queryId).contains(testTask));
+    Assert.assertTrue(manager.getQueryMap().get(queryId).get(instanceId).contains(testTask));
     Mockito.verify(mockDriver, Mockito.never()).failed(Mockito.any());
     clear();
   }
@@ -263,7 +286,8 @@ public class DefaultDriverSchedulerTest {
     QueryId queryId = new QueryId("test");
     FragmentInstanceId instanceId =
         new FragmentInstanceId(new PlanFragmentId(queryId, 0), "inst-0");
-    Mockito.when(mockDriver.getInfo()).thenReturn(instanceId);
+    DriverTaskId driverTaskID = new DriverTaskId(instanceId, 0);
+    Mockito.when(mockDriver.getDriverTaskId()).thenReturn(driverTaskID);
     DriverTaskStatus[] invalidStates =
         new DriverTaskStatus[] {
           DriverTaskStatus.FINISHED,
@@ -275,21 +299,25 @@ public class DefaultDriverSchedulerTest {
       DriverTask testTask = new DriverTask(mockDriver, 100L, status);
       Set<DriverTask> taskSet = new HashSet<>();
       taskSet.add(testTask);
-      manager.getQueryMap().put(queryId, taskSet);
+      Map<FragmentInstanceId, Set<DriverTask>> fragmentRelatedTask = new ConcurrentHashMap<>();
+      fragmentRelatedTask.put(instanceId, taskSet);
+      manager.getQueryMap().put(queryId, fragmentRelatedTask);
       manager.getTimeoutQueue().push(testTask);
       defaultScheduler.runningToFinished(testTask, new ExecutionContext());
       Assert.assertEquals(status, testTask.getStatus());
       Assert.assertFalse(manager.getBlockedTasks().contains(testTask));
-      Assert.assertNull(manager.getReadyQueue().get(testTask.getId()));
-      Assert.assertNotNull(manager.getTimeoutQueue().get(testTask.getId()));
+      Assert.assertNull(manager.getReadyQueue().get(testTask.getDriverTaskId()));
+      Assert.assertNotNull(manager.getTimeoutQueue().get(testTask.getDriverTaskId()));
       Assert.assertTrue(manager.getQueryMap().containsKey(queryId));
-      Assert.assertTrue(manager.getQueryMap().get(queryId).contains(testTask));
+      Assert.assertTrue(manager.getQueryMap().get(queryId).get(instanceId).contains(testTask));
       clear();
     }
     DriverTask testTask = new DriverTask(mockDriver, 100L, DriverTaskStatus.RUNNING);
     Set<DriverTask> taskSet = new HashSet<>();
     taskSet.add(testTask);
-    manager.getQueryMap().put(queryId, taskSet);
+    Map<FragmentInstanceId, Set<DriverTask>> fragmentRelatedTask = new ConcurrentHashMap<>();
+    fragmentRelatedTask.put(instanceId, taskSet);
+    manager.getQueryMap().put(queryId, fragmentRelatedTask);
     manager.getTimeoutQueue().push(testTask);
     ExecutionContext context = new ExecutionContext();
     context.setTimeSlice(new Duration(1, TimeUnit.SECONDS));
@@ -298,8 +326,8 @@ public class DefaultDriverSchedulerTest {
     Assert.assertEquals(0.0D, testTask.getSchedulePriority(), 0.00001);
     Assert.assertEquals(DriverTaskStatus.FINISHED, testTask.getStatus());
     Assert.assertFalse(manager.getBlockedTasks().contains(testTask));
-    Assert.assertNull(manager.getReadyQueue().get(testTask.getId()));
-    Assert.assertNull(manager.getTimeoutQueue().get(testTask.getId()));
+    Assert.assertNull(manager.getReadyQueue().get(testTask.getDriverTaskId()));
+    Assert.assertNull(manager.getTimeoutQueue().get(testTask.getDriverTaskId()));
     Assert.assertFalse(manager.getQueryMap().containsKey(queryId));
     Mockito.verify(mockDriver, Mockito.never()).failed(Mockito.any());
     clear();
@@ -316,12 +344,14 @@ public class DefaultDriverSchedulerTest {
     QueryId queryId = new QueryId("test");
     FragmentInstanceId instanceId1 =
         new FragmentInstanceId(new PlanFragmentId(queryId, 0), "inst-0");
+    DriverTaskId driverTaskId1 = new DriverTaskId(instanceId1, 0);
     IDriver mockDriver1 = Mockito.mock(IDriver.class);
-    Mockito.when(mockDriver1.getInfo()).thenReturn(instanceId1);
+    Mockito.when(mockDriver1.getDriverTaskId()).thenReturn(driverTaskId1);
     IDriver mockDriver2 = Mockito.mock(IDriver.class);
     FragmentInstanceId instanceId2 =
         new FragmentInstanceId(new PlanFragmentId(queryId, 0), "inst-1");
-    Mockito.when(mockDriver2.getInfo()).thenReturn(instanceId2);
+    DriverTaskId driverTaskId2 = new DriverTaskId(instanceId2, 0);
+    Mockito.when(mockDriver2.getDriverTaskId()).thenReturn(driverTaskId2);
     DriverTaskStatus[] invalidStates =
         new DriverTaskStatus[] {
           DriverTaskStatus.FINISHED, DriverTaskStatus.ABORTED,
@@ -329,10 +359,14 @@ public class DefaultDriverSchedulerTest {
     for (DriverTaskStatus status : invalidStates) {
       DriverTask testTask1 = new DriverTask(mockDriver1, 100L, status);
       DriverTask testTask2 = new DriverTask(mockDriver2, 100L, DriverTaskStatus.BLOCKED);
-      Set<DriverTask> taskSet = new HashSet<>();
-      taskSet.add(testTask1);
-      taskSet.add(testTask2);
-      manager.getQueryMap().put(queryId, taskSet);
+      Set<DriverTask> taskSet1 = new HashSet<>();
+      taskSet1.add(testTask1);
+      Set<DriverTask> taskSet2 = new HashSet<>();
+      taskSet2.add(testTask2);
+      Map<FragmentInstanceId, Set<DriverTask>> fragmentRelatedTask = new ConcurrentHashMap<>();
+      fragmentRelatedTask.put(instanceId1, taskSet1);
+      fragmentRelatedTask.put(instanceId2, taskSet2);
+      manager.getQueryMap().put(queryId, fragmentRelatedTask);
       manager.getTimeoutQueue().push(testTask1);
       manager.getTimeoutQueue().push(testTask2);
       manager.getBlockedTasks().add(testTask2);
@@ -342,13 +376,13 @@ public class DefaultDriverSchedulerTest {
       Assert.assertEquals(DriverTaskStatus.BLOCKED, testTask2.getStatus());
       Assert.assertFalse(manager.getBlockedTasks().contains(testTask1));
       Assert.assertTrue(manager.getBlockedTasks().contains(testTask2));
-      Assert.assertNull(manager.getReadyQueue().get(testTask1.getId()));
-      Assert.assertNull(manager.getReadyQueue().get(testTask2.getId()));
-      Assert.assertNotNull(manager.getTimeoutQueue().get(testTask1.getId()));
-      Assert.assertNotNull(manager.getTimeoutQueue().get(testTask2.getId()));
+      Assert.assertNull(manager.getReadyQueue().get(testTask1.getDriverTaskId()));
+      Assert.assertNull(manager.getReadyQueue().get(testTask2.getDriverTaskId()));
+      Assert.assertNotNull(manager.getTimeoutQueue().get(testTask1.getDriverTaskId()));
+      Assert.assertNotNull(manager.getTimeoutQueue().get(testTask2.getDriverTaskId()));
       Assert.assertTrue(manager.getQueryMap().containsKey(queryId));
-      Assert.assertTrue(manager.getQueryMap().get(queryId).contains(testTask1));
-      Assert.assertTrue(manager.getQueryMap().get(queryId).contains(testTask2));
+      Assert.assertTrue(manager.getQueryMap().get(queryId).get(instanceId1).contains(testTask1));
+      Assert.assertTrue(manager.getQueryMap().get(queryId).get(instanceId2).contains(testTask2));
 
       Mockito.verify(mockDriver1, Mockito.never()).failed(Mockito.any());
       Mockito.verify(mockDriver2, Mockito.never()).failed(Mockito.any());
@@ -360,17 +394,21 @@ public class DefaultDriverSchedulerTest {
         };
     for (DriverTaskStatus status : validStates) {
       Mockito.reset(mockDriver1);
-      Mockito.when(mockDriver1.getInfo()).thenReturn(instanceId1);
+      Mockito.when(mockDriver1.getDriverTaskId()).thenReturn(driverTaskId1);
       Mockito.reset(mockDriver2);
-      Mockito.when(mockDriver2.getInfo()).thenReturn(instanceId2);
+      Mockito.when(mockDriver2.getDriverTaskId()).thenReturn(driverTaskId2);
 
       DriverTask testTask1 = new DriverTask(mockDriver1, 100L, status);
 
       DriverTask testTask2 = new DriverTask(mockDriver2, 100L, DriverTaskStatus.BLOCKED);
-      Set<DriverTask> taskSet = new HashSet<>();
-      taskSet.add(testTask1);
-      taskSet.add(testTask2);
-      manager.getQueryMap().put(queryId, taskSet);
+      Set<DriverTask> taskSet1 = new HashSet<>();
+      taskSet1.add(testTask1);
+      Set<DriverTask> taskSet2 = new HashSet<>();
+      taskSet2.add(testTask2);
+      Map<FragmentInstanceId, Set<DriverTask>> fragmentRelatedTask = new ConcurrentHashMap<>();
+      fragmentRelatedTask.put(instanceId1, taskSet1);
+      fragmentRelatedTask.put(instanceId2, taskSet2);
+      manager.getQueryMap().put(queryId, fragmentRelatedTask);
       manager.getTimeoutQueue().push(testTask1);
       defaultScheduler.toAborted(testTask1);
 
@@ -384,10 +422,10 @@ public class DefaultDriverSchedulerTest {
       Assert.assertEquals(DriverTaskStatus.ABORTED, testTask2.getStatus());
       Assert.assertFalse(manager.getBlockedTasks().contains(testTask1));
       Assert.assertFalse(manager.getBlockedTasks().contains(testTask2));
-      Assert.assertNull(manager.getReadyQueue().get(testTask1.getId()));
-      Assert.assertNull(manager.getReadyQueue().get(testTask2.getId()));
-      Assert.assertNull(manager.getTimeoutQueue().get(testTask1.getId()));
-      Assert.assertNull(manager.getTimeoutQueue().get(testTask2.getId()));
+      Assert.assertNull(manager.getReadyQueue().get(testTask1.getDriverTaskId()));
+      Assert.assertNull(manager.getReadyQueue().get(testTask2.getDriverTaskId()));
+      Assert.assertNull(manager.getTimeoutQueue().get(testTask1.getDriverTaskId()));
+      Assert.assertNull(manager.getTimeoutQueue().get(testTask2.getDriverTaskId()));
       Assert.assertFalse(manager.getQueryMap().containsKey(queryId));
 
       // The mockDriver1.failed() will be called outside the scheduler

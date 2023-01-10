@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.mpp.execution.schedule.task;
 
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
@@ -25,44 +26,62 @@ import org.apache.iotdb.db.mpp.execution.schedule.queue.ID;
 
 import org.jetbrains.annotations.NotNull;
 
-/** the class of id of the fragment instance task */
-public class DriverTaskID implements ID, Comparable<DriverTaskID> {
+import java.util.Objects;
 
-  private final FragmentInstanceId id;
+/** the class of id of the pipeline driver task */
+public class DriverTaskId implements ID, Comparable<DriverTaskId> {
 
-  public DriverTaskID(FragmentInstanceId id) {
-    this.id = id;
-  }
+  private final FragmentInstanceId fragmentInstanceId;
+  // TODO Create another field to store id of driver level
+  // Currently, we just save pipelineId in driverTask since it's one-to-one relation.
+  private final int pipelineId;
+  private final String fullId;
 
-  @Override
-  public boolean equals(Object o) {
-    return o instanceof DriverTaskID && ((DriverTaskID) o).id.equals(id);
+  public DriverTaskId(FragmentInstanceId id, int pipelineId) {
+    this.fragmentInstanceId = id;
+    this.pipelineId = pipelineId;
+    this.fullId = String.format("%s.%d", id.getFullId(), pipelineId);
   }
 
   @Override
   public int hashCode() {
-    return id.hashCode();
+    return Objects.hash(fragmentInstanceId, pipelineId);
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    return o instanceof DriverTaskId
+        && ((DriverTaskId) o).fragmentInstanceId.equals(fragmentInstanceId)
+        && ((DriverTaskId) o).pipelineId == pipelineId;
   }
 
   public String toString() {
-    return id.getFullId();
+    return fullId;
   }
 
-  public String getInstanceId() {
-    return id.getInstanceId();
+  public FragmentInstanceId getFragmentInstanceId() {
+    return fragmentInstanceId;
   }
 
   public PlanFragmentId getFragmentId() {
-    return id.getFragmentId();
+    return fragmentInstanceId.getFragmentId();
   }
 
   public QueryId getQueryId() {
-    return id.getQueryId();
+    return fragmentInstanceId.getQueryId();
+  }
+
+  public int getPipelineId() {
+    return pipelineId;
+  }
+
+  public String getFullId() {
+    return fullId;
   }
 
   // This is the default comparator of FragmentInstanceID
   @Override
-  public int compareTo(@NotNull DriverTaskID o) {
+  public int compareTo(@NotNull DriverTaskId o) {
     return String.CASE_INSENSITIVE_ORDER.compare(this.toString(), o.toString());
   }
 }

@@ -27,6 +27,7 @@ import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.common.QueryId;
+import org.apache.iotdb.db.mpp.execution.driver.DriverContext;
 import org.apache.iotdb.db.mpp.execution.driver.SchemaDriverContext;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceStateMachine;
@@ -68,32 +69,32 @@ public class CountGroupByLevelMergeOperatorTest {
           new FragmentInstanceStateMachine(instanceId, instanceNotificationExecutor);
       FragmentInstanceContext fragmentInstanceContext =
           createFragmentInstanceContext(instanceId, stateMachine);
+      DriverContext driverContext = new DriverContext(fragmentInstanceContext, 0);
       PlanNodeId planNodeId = queryId.genPlanNodeId();
       OperatorContext operatorContext =
-          fragmentInstanceContext.addOperatorContext(
+          driverContext.addOperatorContext(
               1, planNodeId, CountGroupByLevelScanOperator.class.getSimpleName());
       ISchemaRegion schemaRegion = Mockito.mock(ISchemaRegion.class);
-      operatorContext
-          .getInstanceContext()
-          .setDriverContext(new SchemaDriverContext(fragmentInstanceContext, schemaRegion));
+      operatorContext.setDriverContext(
+          new SchemaDriverContext(fragmentInstanceContext, schemaRegion));
       CountGroupByLevelScanOperator<ITimeSeriesSchemaInfo> timeSeriesCountOperator1 =
           new CountGroupByLevelScanOperator<>(
               planNodeId,
-              fragmentInstanceContext.getOperatorContexts().get(0),
+              driverContext.getOperatorContexts().get(0),
               2,
               mockSchemaSource(schemaRegion, new PartialPath(OPERATOR_TEST_SG + ".device2")));
 
       CountGroupByLevelScanOperator<ITimeSeriesSchemaInfo> timeSeriesCountOperator2 =
           new CountGroupByLevelScanOperator<>(
               planNodeId,
-              fragmentInstanceContext.getOperatorContexts().get(0),
+              driverContext.getOperatorContexts().get(0),
               2,
               mockSchemaSource(schemaRegion, new PartialPath(OPERATOR_TEST_SG)));
 
       CountGroupByLevelMergeOperator mergeOperator =
           new CountGroupByLevelMergeOperator(
               planNodeId,
-              fragmentInstanceContext.getOperatorContexts().get(0),
+              driverContext.getOperatorContexts().get(0),
               Arrays.asList(timeSeriesCountOperator1, timeSeriesCountOperator2));
 
       Assert.assertTrue(mergeOperator.isBlocked().isDone());

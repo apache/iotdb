@@ -97,8 +97,7 @@ public class CountGroupByLevelScanOperator<T extends ISchemaInfo> implements Sou
 
   public ISchemaReader<T> createTimeSeriesReader() {
     return schemaSource.getSchemaReader(
-        ((SchemaDriverContext) operatorContext.getInstanceContext().getDriverContext())
-            .getSchemaRegion());
+        ((SchemaDriverContext) operatorContext.getDriverContext()).getSchemaRegion());
   }
 
   private TsBlock generateResult() {

@@ -39,9 +39,8 @@ import java.util.concurrent.locks.ReentrantLock;
 /** the scheduling element of {@link DriverTaskThread}. It wraps a single Driver. */
 public class DriverTask implements IDIndexedAccessible {
 
-  private DriverTaskID id;
+  private final IDriver driver;
   private DriverTaskStatus status;
-  private final IDriver fragmentInstance;
 
   // the higher this field is, the higher probability it will be scheduled.
   private volatile double schedulePriority;
@@ -61,22 +60,21 @@ public class DriverTask implements IDIndexedAccessible {
     this(new StubFragmentInstance(), 0L, null);
   }
 
-  public DriverTask(IDriver instance, long timeoutMs, DriverTaskStatus status) {
-    this.fragmentInstance = instance;
-    this.id = new DriverTaskID(instance.getInfo());
+  public DriverTask(IDriver driver, long timeoutMs, DriverTaskStatus status) {
+    this.driver = driver;
     this.setStatus(status);
     this.schedulePriority = 0.0D;
     this.ddl = System.currentTimeMillis() + timeoutMs;
     this.lock = new ReentrantLock();
   }
 
-  public DriverTaskID getId() {
-    return id;
+  public DriverTaskId getDriverTaskId() {
+    return driver.getDriverTaskId();
   }
 
   @Override
   public void setId(ID id) {
-    this.id = (DriverTaskID) id;
+    driver.setDriverTaskId((DriverTaskId) id);
   }
 
   public DriverTaskStatus getStatus() {
@@ -87,8 +85,8 @@ public class DriverTask implements IDIndexedAccessible {
     return status == DriverTaskStatus.ABORTED || status == DriverTaskStatus.FINISHED;
   }
 
-  public IDriver getFragmentInstance() {
-    return fragmentInstance;
+  public IDriver getDriver() {
+    return driver;
   }
 
   public void setStatus(DriverTaskStatus status) {
@@ -133,12 +131,12 @@ public class DriverTask implements IDIndexedAccessible {
 
   @Override
   public int hashCode() {
-    return id.hashCode();
+    return driver.getDriverTaskId().hashCode();
   }
 
   @Override
   public boolean equals(Object o) {
-    return o instanceof DriverTask && ((DriverTask) o).getId().equals(id);
+    return o instanceof DriverTask && ((DriverTask) o).getDriverTaskId().equals(getDriverTaskId());
   }
 
   public String getAbortCause() {
@@ -170,7 +168,7 @@ public class DriverTask implements IDIndexedAccessible {
 
     @Override
     public int compare(DriverTask o1, DriverTask o2) {
-      if (o1.getId().equals(o2.getId())) {
+      if (o1.getDriverTaskId().equals(o2.getDriverTaskId())) {
         return 0;
       }
       if (o1.getDDL() < o2.getDDL()) {
@@ -179,7 +177,7 @@ public class DriverTask implements IDIndexedAccessible {
       if (o1.getDDL() > o2.getDDL()) {
         return 1;
       }
-      return o1.getId().compareTo(o2.getId());
+      return o1.getDriverTaskId().compareTo(o2.getDriverTaskId());
     }
   }
 
@@ -188,7 +186,7 @@ public class DriverTask implements IDIndexedAccessible {
 
     @Override
     public int compare(DriverTask o1, DriverTask o2) {
-      if (o1.getId().equals(o2.getId())) {
+      if (o1.getDriverTaskId().equals(o2.getDriverTaskId())) {
         return 0;
       }
       if (o1.getSchedulePriority() > o2.getSchedulePriority()) {
@@ -197,15 +195,16 @@ public class DriverTask implements IDIndexedAccessible {
       if (o1.getSchedulePriority() < o2.getSchedulePriority()) {
         return 1;
       }
-      return o1.getId().compareTo(o2.getId());
+      return o1.getDriverTaskId().compareTo(o2.getDriverTaskId());
     }
   }
 
   private static class StubFragmentInstance implements IDriver {
 
     private static final QueryId stubQueryId = new QueryId("stub_query");
-    private static final FragmentInstanceId stubInstance =
-        new FragmentInstanceId(new PlanFragmentId(stubQueryId, 0), "stub-instance");
+    private static DriverTaskId stubDriver =
+        new DriverTaskId(
+            new FragmentInstanceId(new PlanFragmentId(stubQueryId, 0), "stub-instance"), 0);
 
     @Override
     public boolean isFinished() {
@@ -218,8 +217,13 @@ public class DriverTask implements IDIndexedAccessible {
     }
 
     @Override
-    public FragmentInstanceId getInfo() {
-      return stubInstance;
+    public DriverTaskId getDriverTaskId() {
+      return stubDriver;
+    }
+
+    @Override
+    public void setDriverTaskId(DriverTaskId driverTaskId) {
+      stubDriver = driverTaskId;
     }
 
     @Override

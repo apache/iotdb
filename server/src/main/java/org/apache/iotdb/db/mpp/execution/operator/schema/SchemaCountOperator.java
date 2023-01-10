@@ -56,8 +56,7 @@ public class SchemaCountOperator<T extends ISchemaInfo> implements SourceOperato
   }
 
   private final ISchemaRegion getSchemaRegion() {
-    return ((SchemaDriverContext) operatorContext.getInstanceContext().getDriverContext())
-        .getSchemaRegion();
+    return ((SchemaDriverContext) operatorContext.getDriverContext()).getSchemaRegion();
   }
 
   private ISchemaReader<T> createSchemaReader() {

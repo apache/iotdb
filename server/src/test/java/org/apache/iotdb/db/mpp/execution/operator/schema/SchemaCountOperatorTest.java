@@ -28,6 +28,7 @@ import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.common.QueryId;
+import org.apache.iotdb.db.mpp.execution.driver.DriverContext;
 import org.apache.iotdb.db.mpp.execution.driver.SchemaDriverContext;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceStateMachine;
@@ -65,14 +66,14 @@ public class SchemaCountOperatorTest {
           new FragmentInstanceStateMachine(instanceId, instanceNotificationExecutor);
       FragmentInstanceContext fragmentInstanceContext =
           createFragmentInstanceContext(instanceId, stateMachine);
+      DriverContext driverContext = new DriverContext(fragmentInstanceContext, 0);
       PlanNodeId planNodeId = queryId.genPlanNodeId();
       ISchemaRegion schemaRegion = Mockito.mock(ISchemaRegion.class);
       OperatorContext operatorContext =
-          fragmentInstanceContext.addOperatorContext(
+          driverContext.addOperatorContext(
               1, planNodeId, SchemaCountOperator.class.getSimpleName());
-      operatorContext
-          .getInstanceContext()
-          .setDriverContext(new SchemaDriverContext(fragmentInstanceContext, schemaRegion));
+      operatorContext.setDriverContext(
+          new SchemaDriverContext(fragmentInstanceContext, schemaRegion));
       ISchemaSource<?> schemaSource = Mockito.mock(ISchemaSource.class);
 
       List<ISchemaInfo> schemaInfoList = new ArrayList<>(10);
@@ -99,7 +100,7 @@ public class SchemaCountOperatorTest {
 
       SchemaCountOperator<?> schemaCountOperator =
           new SchemaCountOperator<>(
-              planNodeId, fragmentInstanceContext.getOperatorContexts().get(0), schemaSource);
+              planNodeId, driverContext.getOperatorContexts().get(0), schemaSource);
 
       TsBlock tsBlock = null;
       while (schemaCountOperator.hasNext()) {
@@ -124,19 +125,19 @@ public class SchemaCountOperatorTest {
           new FragmentInstanceStateMachine(instanceId, instanceNotificationExecutor);
       FragmentInstanceContext fragmentInstanceContext =
           createFragmentInstanceContext(instanceId, stateMachine);
+      DriverContext driverContext = new DriverContext(fragmentInstanceContext, 0);
       PlanNodeId planNodeId = queryId.genPlanNodeId();
       OperatorContext operatorContext =
-          fragmentInstanceContext.addOperatorContext(
+          driverContext.addOperatorContext(
               1, planNodeId, CountGroupByLevelScanOperator.class.getSimpleName());
       ISchemaRegion schemaRegion = Mockito.mock(ISchemaRegion.class);
 
-      operatorContext
-          .getInstanceContext()
-          .setDriverContext(new SchemaDriverContext(fragmentInstanceContext, schemaRegion));
+      operatorContext.setDriverContext(
+          new SchemaDriverContext(fragmentInstanceContext, schemaRegion));
       CountGroupByLevelScanOperator<ITimeSeriesSchemaInfo> timeSeriesCountOperator =
           new CountGroupByLevelScanOperator<>(
               planNodeId,
-              fragmentInstanceContext.getOperatorContexts().get(0),
+              driverContext.getOperatorContexts().get(0),
               2,
               mockSchemaSource(schemaRegion));
       TsBlock tsBlock = null;
@@ -153,7 +154,7 @@ public class SchemaCountOperatorTest {
       CountGroupByLevelScanOperator<ITimeSeriesSchemaInfo> timeSeriesCountOperator2 =
           new CountGroupByLevelScanOperator<>(
               planNodeId,
-              fragmentInstanceContext.getOperatorContexts().get(0),
+              driverContext.getOperatorContexts().get(0),
               1,
               mockSchemaSource(schemaRegion));
       tsBlockList = collectResult(timeSeriesCountOperator2);
