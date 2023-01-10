@@ -63,6 +63,7 @@ class AutoCreateSchemaExecutor {
     this.statementExecutor = statementExecutor;
   }
 
+  // auto create the missing measurements and merge them into given schemaTree
   void autoCreateMissingMeasurements(
       ClusterSchemaTree schemaTree,
       PartialPath devicePath,
