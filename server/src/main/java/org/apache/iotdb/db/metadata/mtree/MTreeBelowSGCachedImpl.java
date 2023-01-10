@@ -104,7 +104,7 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
 
   private final CachedMTreeStore store;
   private volatile IStorageGroupMNode storageGroupMNode;
-  private volatile IMNode rootNode;
+  private final IMNode rootNode;
   private final Function<IMeasurementMNode, Map<String, String>> tagGetter;
   private final int levelOfSG;
 

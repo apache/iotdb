@@ -786,14 +786,6 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     measurementMNode.setPreDeleted(false);
   }
 
-  private void deleteSingleTimeseriesInternal(PartialPath p) throws MetadataException, IOException {
-    deleteOneTimeseriesUpdateStatistics(p);
-    if (!isRecovering) {
-      writeToMLog(
-          SchemaRegionWritePlanFactory.getDeleteTimeSeriesPlan(Collections.singletonList(p)));
-    }
-  }
-
   /**
    * @param path full path from root to leaf node
    * @return After delete if the schema region is empty, return its path, otherwise return null
@@ -1194,13 +1186,12 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   public ISchemaReader<ITimeSeriesSchemaInfo> getTimeSeriesReader(
       IShowTimeSeriesPlan showTimeSeriesPlan) throws MetadataException {
     if (showTimeSeriesPlan.getKey() != null && showTimeSeriesPlan.getValue() != null) {
-      // TODO
       List<ShowTimeSeriesResult> showTimeSeriesResultList =
           showTimeseriesWithIndex(showTimeSeriesPlan);
       Iterator<ShowTimeSeriesResult> iterator = showTimeSeriesResultList.iterator();
       return new ISchemaReader<ITimeSeriesSchemaInfo>() {
         @Override
-        public void close() throws Exception {}
+        public void close() {}
 
         @Override
         public boolean hasNext() {
@@ -1213,23 +1204,6 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
         }
       };
     } else {
-      //      List<ShowTimeSeriesResult> showTimeSeriesResultList =
-      //              showTimeseriesWithoutIndex(showTimeSeriesPlan);
-      //      Iterator<ShowTimeSeriesResult> iterator = showTimeSeriesResultList.iterator();
-      //      return new ISchemaReader<ITimeSeriesSchemaInfo>() {
-      //        @Override
-      //        public void close() throws Exception {}
-      //
-      //        @Override
-      //        public boolean hasNext() {
-      //          return iterator.hasNext();
-      //        }
-      //
-      //        @Override
-      //        public ITimeSeriesSchemaInfo next() {
-      //          return iterator.next();
-      //        }
-      //      };
       return mtree.getTimeSeriesReader(
           showTimeSeriesPlan,
           offset -> {

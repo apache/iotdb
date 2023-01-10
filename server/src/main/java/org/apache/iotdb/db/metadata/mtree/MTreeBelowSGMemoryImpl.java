@@ -103,11 +103,11 @@ import java.util.function.Function;
 public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
 
   // this implementation is based on memory, thus only MTree write operation must invoke MTreeStore
-  private MemMTreeStore store;
+  private final MemMTreeStore store;
   private volatile IStorageGroupMNode storageGroupMNode;
-  private volatile IMNode rootNode;
+  private final IMNode rootNode;
   private final Function<IMeasurementMNode, Map<String, String>> tagGetter;
-  private int levelOfSG;
+  private final int levelOfSG;
 
   // region MTree initialization, clear and serialization
   public MTreeBelowSGMemoryImpl(
