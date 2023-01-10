@@ -331,8 +331,6 @@ public class IoTDBDescriptor {
     conf.setQueryDir(
         FilePathUtils.regularizePath(conf.getSystemDir() + IoTDBConstant.QUERY_FOLDER_NAME));
 
-    conf.setTracingDir(properties.getProperty("dn_tracing_dir", conf.getTracingDir()));
-
     conf.setDataDirs(properties.getProperty("dn_data_dirs", conf.getDataDirs()[0]).split(","));
 
     conf.setConsensusDir(properties.getProperty("dn_consensus_dir", conf.getConsensusDir()));
@@ -568,14 +566,6 @@ public class IoTDBDescriptor {
           Boolean.parseBoolean(properties.getProperty("chunk_buffer_pool_enable")));
     }
 
-    conf.setEnableExternalSort(
-        Boolean.parseBoolean(
-            properties.getProperty(
-                "enable_external_sort", Boolean.toString(conf.isEnableExternalSort()))));
-    conf.setExternalSortThreshold(
-        Integer.parseInt(
-            properties.getProperty(
-                "external_sort_threshold", Integer.toString(conf.getExternalSortThreshold()))));
     conf.setUpgradeThreadCount(
         Integer.parseInt(
             properties.getProperty(
@@ -1692,11 +1682,6 @@ public class IoTDBDescriptor {
       conf.setUdfMemoryBudgetInMB(
           (float)
               Math.min(Float.parseFloat(memoryBudgetInMb), 0.2 * conf.getAllocateMemoryForRead()));
-    }
-
-    String groupByFillCacheSizeInMB = properties.getProperty("group_by_fill_cache_size_in_mb");
-    if (groupByFillCacheSizeInMB != null) {
-      conf.setGroupByFillCacheSizeInMB(Float.parseFloat(groupByFillCacheSizeInMB));
     }
 
     String readerTransformerCollectorMemoryProportion =

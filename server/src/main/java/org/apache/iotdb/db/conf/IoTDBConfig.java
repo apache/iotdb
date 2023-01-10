@@ -250,10 +250,6 @@ public class IoTDBConfig {
           + File.separator
           + IoTDBConstant.SCHEMA_FOLDER_NAME;
 
-  /** Performance tracing directory, stores performance tracing files */
-  private String tracingDir =
-      IoTDBConstant.DEFAULT_BASE_DIR + File.separator + IoTDBConstant.TRACING_FOLDER_NAME;
-
   /** Query directory, stores temporary files of query */
   private String queryDir =
       IoTDBConstant.DEFAULT_BASE_DIR + File.separator + IoTDBConstant.QUERY_FOLDER_NAME;
@@ -518,23 +514,8 @@ public class IoTDBConfig {
   /** Whether to enable Last cache */
   private boolean lastCacheEnable = true;
 
-  /** Set true to enable statistics monitor service, false to disable statistics service. */
-  private boolean enableStatMonitor = false;
-
-  /** Set true to enable writing monitor time series. */
-  private boolean enableMonitorSeriesWrite = false;
-
   /** Cache size of {@code checkAndGetDataTypeCache}. */
   private int mRemoteSchemaCacheSize = 100000;
-
-  /** Is external sort enable. */
-  private boolean enableExternalSort = true;
-
-  /**
-   * The threshold of items in external sort. If the number of chunks participating in sorting
-   * exceeds this threshold, external sorting is enabled, otherwise memory sorting is used.
-   */
-  private int externalSortThreshold = 1000;
 
   /** White list for sync */
   private String ipWhiteList = "127.0.0.1/32";
@@ -779,9 +760,6 @@ public class IoTDBConfig {
   private float udfTransformerMemoryBudgetInMB = (float) (1.0 / 3 * udfMemoryBudgetInMB);
 
   private float udfCollectorMemoryBudgetInMB = (float) (1.0 / 3 * udfMemoryBudgetInMB);
-
-  /** The cached record size (in MB) of each series in group by fill query */
-  private float groupByFillCacheSizeInMB = (float) 1.0;
 
   // time in nanosecond precision when starting up
   private long startUpNanosecond = System.nanoTime();
@@ -1073,14 +1051,6 @@ public class IoTDBConfig {
     this.udfMemoryBudgetInMB = udfMemoryBudgetInMB;
   }
 
-  public float getGroupByFillCacheSizeInMB() {
-    return groupByFillCacheSizeInMB;
-  }
-
-  public void setGroupByFillCacheSizeInMB(float groupByFillCacheSizeInMB) {
-    this.groupByFillCacheSizeInMB = groupByFillCacheSizeInMB;
-  }
-
   public float getUdfReaderMemoryBudgetInMB() {
     return udfReaderMemoryBudgetInMB;
   }
@@ -1156,7 +1126,6 @@ public class IoTDBConfig {
     systemDir = addDataHomeDir(systemDir);
     schemaDir = addDataHomeDir(schemaDir);
     loadTsFileDir = addDataHomeDir(loadTsFileDir);
-    tracingDir = addDataHomeDir(tracingDir);
     consensusDir = addDataHomeDir(consensusDir);
     dataRegionConsensusDir = addDataHomeDir(dataRegionConsensusDir);
     ratisDataRegionSnapshotDir = addDataHomeDir(ratisDataRegionSnapshotDir);
@@ -1348,14 +1317,6 @@ public class IoTDBConfig {
 
   public void setSchemaDir(String schemaDir) {
     this.schemaDir = schemaDir;
-  }
-
-  public String getTracingDir() {
-    return tracingDir;
-  }
-
-  void setTracingDir(String tracingDir) {
-    this.tracingDir = tracingDir;
   }
 
   public String getQueryDir() {
@@ -1848,22 +1809,6 @@ public class IoTDBConfig {
         - allocateMemoryForStorageEngine
         - allocateMemoryForRead
         - allocateMemoryForSchema;
-  }
-
-  public boolean isEnableExternalSort() {
-    return enableExternalSort;
-  }
-
-  void setEnableExternalSort(boolean enableExternalSort) {
-    this.enableExternalSort = enableExternalSort;
-  }
-
-  public int getExternalSortThreshold() {
-    return externalSortThreshold;
-  }
-
-  void setExternalSortThreshold(int externalSortThreshold) {
-    this.externalSortThreshold = externalSortThreshold;
   }
 
   public boolean isEnablePartialInsert() {
