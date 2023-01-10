@@ -22,12 +22,14 @@ import org.apache.iotdb.itbase.env.ClusterConfig;
 import org.apache.iotdb.itbase.env.CommonConfig;
 import org.apache.iotdb.itbase.env.ConfigNodeConfig;
 import org.apache.iotdb.itbase.env.DataNodeConfig;
+import org.apache.iotdb.itbase.env.JVMConfig;
 
 public class RemoteClusterConfig implements ClusterConfig {
 
   private final CommonConfig commonConfig = new RemoteCommonConfig();
   private final ConfigNodeConfig configNodeConfig = new RemoteConfigNodeConfig();
   private final DataNodeConfig dataNodeConfig = new RemoteDataNodeConfig();
+  private final RemoteJVMConfig jvmConfig = new RemoteJVMConfig();
 
   @Override
   public DataNodeConfig getDataNodeConfig() {
@@ -52,5 +54,15 @@ public class RemoteClusterConfig implements ClusterConfig {
   @Override
   public CommonConfig getCommonConfig() {
     return commonConfig;
+  }
+
+  @Override
+  public JVMConfig getConfigNodeJVMConfig() {
+    return jvmConfig;
+  }
+
+  @Override
+  public JVMConfig getDataNodeJVMConfig() {
+    return jvmConfig;
   }
 }

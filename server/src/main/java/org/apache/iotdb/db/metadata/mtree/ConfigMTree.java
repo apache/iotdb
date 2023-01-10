@@ -158,27 +158,6 @@ public class ConfigMTree {
   }
 
   /**
-   * Get database path by path
-   *
-   * <p>e.g., root.sg1 is database, path is root.sg1.d1, return root.sg1
-   *
-   * @return database in the given path
-   */
-  public PartialPath getBelongedStorageGroup(PartialPath path) throws StorageGroupNotSetException {
-    String[] nodes = path.getNodes();
-    IMNode cur = root;
-    for (int i = 1; i < nodes.length; i++) {
-      cur = cur.getChild(nodes[i]);
-      if (cur == null) {
-        throw new StorageGroupNotSetException(path.getFullPath());
-      } else if (cur.isStorageGroup()) {
-        return cur.getPartialPath();
-      }
-    }
-    throw new StorageGroupNotSetException(path.getFullPath());
-  }
-
-  /**
    * Get the database that given path pattern matches or belongs to.
    *
    * <p>Suppose we have (root.sg1.d1.s1, root.sg2.d2.s2), refer the following cases: 1. given path

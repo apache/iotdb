@@ -127,12 +127,6 @@ public abstract class MTreeBelowSGTest {
     try {
       storageGroup = getStorageGroup(new PartialPath("root.laptop.d1"));
       assertTrue(root.isStorageGroupAlreadySet(new PartialPath("root.laptop.d1")));
-      assertEquals(
-          "root.laptop.d1",
-          root.getBelongedStorageGroup(new PartialPath("root.laptop.d1")).getFullPath());
-      assertEquals(
-          "root.laptop.d1",
-          root.getBelongedStorageGroup(new PartialPath("root.laptop.d1.s1")).getFullPath());
 
     } catch (MetadataException e) {
       e.printStackTrace();
@@ -146,9 +140,6 @@ public abstract class MTreeBelowSGTest {
     }
 
     try {
-      assertEquals(
-          "root.laptop.d1",
-          root.getBelongedStorageGroup(new PartialPath("root.laptop.d1.s0")).getFullPath());
       storageGroup.createTimeseries(
           new PartialPath("root.laptop.d1.s0"),
           TSDataType.INT32,
@@ -156,9 +147,6 @@ public abstract class MTreeBelowSGTest {
           TSFileDescriptor.getInstance().getConfig().getCompressor(),
           Collections.emptyMap(),
           null);
-      assertEquals(
-          "root.laptop.d1",
-          root.getBelongedStorageGroup(new PartialPath("root.laptop.d1.s1")).getFullPath());
       storageGroup.createTimeseries(
           new PartialPath("root.laptop.d1.s1"),
           TSDataType.INT32,
