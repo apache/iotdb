@@ -186,7 +186,7 @@ public class SchemaFile implements ISchemaFile {
     this.dataTTL = sgNode.getDataTTL();
     this.isEntity = sgNode.isEntity();
     this.sgNodeTemplateIdWithState = sgNode.getSchemaTemplateIdWithState();
-    updateHeader();
+    updateHeaderBuffer();
     return true;
   }
 
@@ -220,6 +220,7 @@ public class SchemaFile implements ISchemaFile {
     pageManager.writeNewChildren(node);
     pageManager.writeUpdatedChildren(node);
     pageManager.flushDirtyPages();
+    updateHeaderBuffer();
   }
 
   @Override
@@ -240,16 +241,18 @@ public class SchemaFile implements ISchemaFile {
 
   @Override
   public void close() throws IOException {
-    updateHeader();
+    updateHeaderBuffer();
     pageManager.flushDirtyPages();
     pageManager.close();
+    forceChannel();
     channel.close();
   }
 
   @Override
   public void sync() throws IOException {
-    updateHeader();
+    updateHeaderBuffer();
     pageManager.flushDirtyPages();
+    forceChannel();
   }
 
   @Override
@@ -346,7 +349,7 @@ public class SchemaFile implements ISchemaFile {
     }
   }
 
-  private void updateHeader() throws IOException {
+  private void updateHeaderBuffer() throws IOException {
     headerContent.clear();
 
     ReadWriteIOUtils.write(pageManager.getLastPageIndex(), headerContent);
@@ -356,8 +359,11 @@ public class SchemaFile implements ISchemaFile {
     ReadWriteIOUtils.write(lastSGAddr, headerContent);
     ReadWriteIOUtils.write(SchemaFileConfig.SCHEMA_FILE_VERSION, headerContent);
 
-    headerContent.clear();
+    headerContent.flip();
     channel.write(headerContent, 0);
+  }
+
+  private void forceChannel() throws IOException {
     channel.force(true);
   }
 

@@ -559,7 +559,7 @@ public class IoTDBConfig {
   private long cacheFileReaderClearPeriod = 100000;
 
   /** the max executing time of query in ms. Unit: millisecond */
-  private long queryTimeoutThreshold = 60000;
+  private long queryTimeoutThreshold = 5000;
 
   /** the max time to live of a session in ms. Unit: millisecond */
   private int sessionTimeoutThreshold = 0;
@@ -842,7 +842,7 @@ public class IoTDBConfig {
   private boolean enableIDTableLogFile = false;
 
   /** whether to use persistent schema mode */
-  private String schemaEngineMode = "Memory";
+  private String schemaEngineMode = "Schema_File";
 
   /** the memory used for metadata cache when using persistent schema */
   private int cachedMNodeSizeInSchemaFileMode = -1;
