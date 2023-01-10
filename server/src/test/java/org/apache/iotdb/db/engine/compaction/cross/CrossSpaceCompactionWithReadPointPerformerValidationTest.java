@@ -22,13 +22,15 @@ package org.apache.iotdb.db.engine.compaction.cross;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.AbstractCompactionTest;
-import org.apache.iotdb.db.engine.compaction.CompactionUtils;
-import org.apache.iotdb.db.engine.compaction.cross.rewrite.CrossSpaceCompactionResource;
-import org.apache.iotdb.db.engine.compaction.cross.rewrite.RewriteCrossSpaceCompactionSelector;
-import org.apache.iotdb.db.engine.compaction.performer.ICrossCompactionPerformer;
-import org.apache.iotdb.db.engine.compaction.performer.impl.ReadChunkCompactionPerformer;
-import org.apache.iotdb.db.engine.compaction.performer.impl.ReadPointCompactionPerformer;
-import org.apache.iotdb.db.engine.compaction.task.CompactionTaskSummary;
+import org.apache.iotdb.db.engine.compaction.execute.performer.ICrossCompactionPerformer;
+import org.apache.iotdb.db.engine.compaction.execute.performer.impl.ReadChunkCompactionPerformer;
+import org.apache.iotdb.db.engine.compaction.execute.performer.impl.ReadPointCompactionPerformer;
+import org.apache.iotdb.db.engine.compaction.execute.task.CompactionTaskSummary;
+import org.apache.iotdb.db.engine.compaction.execute.task.CrossSpaceCompactionTask;
+import org.apache.iotdb.db.engine.compaction.execute.utils.CompactionUtils;
+import org.apache.iotdb.db.engine.compaction.selector.ICrossSpaceSelector;
+import org.apache.iotdb.db.engine.compaction.selector.impl.RewriteCrossSpaceCompactionSelector;
+import org.apache.iotdb.db.engine.compaction.selector.utils.CrossSpaceCompactionResource;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionFileGeneratorUtils;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -114,7 +116,7 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
             new AtomicInteger(0),
             0,
             tsFileManager.getNextCompactionTaskId())
-        .doCompaction();
+        .start();
 
     validateSeqFiles(true);
   }
@@ -159,7 +161,7 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
             new AtomicInteger(0),
             0,
             tsFileManager.getNextCompactionTaskId())
-        .doCompaction();
+        .start();
 
     validateSeqFiles(true);
   }
@@ -204,7 +206,7 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
             new AtomicInteger(0),
             0,
             tsFileManager.getNextCompactionTaskId())
-        .doCompaction();
+        .start();
 
     validateSeqFiles(true);
   }
@@ -257,7 +259,7 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
             new AtomicInteger(0),
             0,
             tsFileManager.getNextCompactionTaskId())
-        .doCompaction();
+        .start();
 
     validateSeqFiles(true);
   }
@@ -307,7 +309,7 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
             new AtomicInteger(0),
             0,
             tsFileManager.getNextCompactionTaskId())
-        .doCompaction();
+        .start();
 
     validateSeqFiles(true);
   }
@@ -355,7 +357,7 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
             new AtomicInteger(0),
             0,
             tsFileManager.getNextCompactionTaskId())
-        .doCompaction();
+        .start();
 
     validateSeqFiles(true);
   }
@@ -406,7 +408,7 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
             new AtomicInteger(0),
             0,
             tsFileManager.getNextCompactionTaskId())
-        .doCompaction();
+        .start();
 
     validateSeqFiles(true);
   }
@@ -456,7 +458,7 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
             new AtomicInteger(0),
             0,
             tsFileManager.getNextCompactionTaskId())
-        .doCompaction();
+        .start();
 
     validateSeqFiles(true);
   }
@@ -506,7 +508,7 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
             new AtomicInteger(0),
             0,
             tsFileManager.getNextCompactionTaskId())
-        .doCompaction();
+        .start();
 
     validateSeqFiles(true);
   }
@@ -557,7 +559,7 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
             new AtomicInteger(0),
             0,
             tsFileManager.getNextCompactionTaskId())
-        .doCompaction();
+        .start();
 
     validateSeqFiles(true);
   }
@@ -608,7 +610,7 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
             new AtomicInteger(0),
             0,
             tsFileManager.getNextCompactionTaskId())
-        .doCompaction();
+        .start();
 
     validateSeqFiles(true);
   }
@@ -659,7 +661,7 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
             new AtomicInteger(0),
             0,
             tsFileManager.getNextCompactionTaskId())
-        .doCompaction();
+        .start();
 
     validateSeqFiles(true);
   }
@@ -711,7 +713,7 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
             new AtomicInteger(0),
             0,
             tsFileManager.getNextCompactionTaskId())
-        .doCompaction();
+        .start();
 
     validateSeqFiles(true);
   }
@@ -764,7 +766,7 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
             new AtomicInteger(0),
             0,
             tsFileManager.getNextCompactionTaskId())
-        .doCompaction();
+        .start();
 
     validateSeqFiles(true);
   }
@@ -817,7 +819,7 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
             new AtomicInteger(0),
             0,
             tsFileManager.getNextCompactionTaskId())
-        .doCompaction();
+        .start();
 
     validateSeqFiles(true);
   }
@@ -871,7 +873,7 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
             new AtomicInteger(0),
             0,
             tsFileManager.getNextCompactionTaskId())
-        .doCompaction();
+        .start();
 
     validateSeqFiles(true);
   }
@@ -926,7 +928,7 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
             new AtomicInteger(0),
             0,
             tsFileManager.getNextCompactionTaskId())
-        .doCompaction();
+        .start();
 
     validateSeqFiles(true);
   }
@@ -981,7 +983,7 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
             new AtomicInteger(0),
             0,
             tsFileManager.getNextCompactionTaskId())
-        .doCompaction();
+        .start();
 
     validateSeqFiles(true);
   }
@@ -1036,7 +1038,7 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
             new AtomicInteger(0),
             0,
             tsFileManager.getNextCompactionTaskId())
-        .doCompaction();
+        .start();
 
     validateSeqFiles(true);
   }
@@ -1091,7 +1093,7 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
             new AtomicInteger(0),
             0,
             tsFileManager.getNextCompactionTaskId())
-        .doCompaction();
+        .start();
 
     validateSeqFiles(true);
   }
@@ -1145,7 +1147,7 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
             new AtomicInteger(0),
             0,
             tsFileManager.getNextCompactionTaskId())
-        .doCompaction();
+        .start();
 
     validateSeqFiles(true);
   }
@@ -1195,7 +1197,7 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
             new AtomicInteger(0),
             0,
             tsFileManager.getNextCompactionTaskId())
-        .doCompaction();
+        .start();
 
     validateSeqFiles(true);
   }
@@ -1246,7 +1248,7 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
             new AtomicInteger(0),
             0,
             tsFileManager.getNextCompactionTaskId())
-        .doCompaction();
+        .start();
 
     validateSeqFiles(true);
   }
@@ -1297,7 +1299,7 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
             new AtomicInteger(0),
             0,
             tsFileManager.getNextCompactionTaskId())
-        .doCompaction();
+        .start();
 
     validateSeqFiles(true);
   }
@@ -1348,7 +1350,7 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
             new AtomicInteger(0),
             0,
             tsFileManager.getNextCompactionTaskId())
-        .doCompaction();
+        .start();
 
     validateSeqFiles(true);
   }
@@ -1400,7 +1402,7 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
             new AtomicInteger(0),
             0,
             tsFileManager.getNextCompactionTaskId())
-        .doCompaction();
+        .start();
 
     validateSeqFiles(true);
   }
@@ -1453,7 +1455,7 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
             new AtomicInteger(0),
             0,
             tsFileManager.getNextCompactionTaskId())
-        .doCompaction();
+        .start();
 
     validateSeqFiles(true);
   }
@@ -1506,7 +1508,7 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
             new AtomicInteger(0),
             0,
             tsFileManager.getNextCompactionTaskId())
-        .doCompaction();
+        .start();
 
     validateSeqFiles(true);
   }
@@ -1560,7 +1562,7 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
             new AtomicInteger(0),
             0,
             tsFileManager.getNextCompactionTaskId())
-        .doCompaction();
+        .start();
 
     validateSeqFiles(true);
   }
@@ -1615,7 +1617,7 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
             new AtomicInteger(0),
             0,
             tsFileManager.getNextCompactionTaskId())
-        .doCompaction();
+        .start();
 
     validateSeqFiles(true);
   }
@@ -1670,7 +1672,7 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
             new AtomicInteger(0),
             0,
             tsFileManager.getNextCompactionTaskId())
-        .doCompaction();
+        .start();
 
     validateSeqFiles(true);
   }
@@ -1725,7 +1727,7 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
             new AtomicInteger(0),
             0,
             tsFileManager.getNextCompactionTaskId())
-        .doCompaction();
+        .start();
 
     validateSeqFiles(true);
   }
@@ -1780,7 +1782,7 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
             new AtomicInteger(0),
             0,
             tsFileManager.getNextCompactionTaskId())
-        .doCompaction();
+        .start();
 
     validateSeqFiles(true);
   }
@@ -1834,7 +1836,7 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
             new AtomicInteger(0),
             0,
             tsFileManager.getNextCompactionTaskId())
-        .doCompaction();
+        .start();
 
     validateSeqFiles(true);
   }
@@ -1886,7 +1888,7 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
             new AtomicInteger(0),
             0,
             tsFileManager.getNextCompactionTaskId())
-        .doCompaction();
+        .start();
 
     validateSeqFiles(true);
   }
@@ -1934,7 +1936,7 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
             new AtomicInteger(0),
             0,
             tsFileManager.getNextCompactionTaskId())
-        .doCompaction();
+        .start();
 
     validateSeqFiles(true);
   }
@@ -1987,7 +1989,7 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
             new AtomicInteger(0),
             0,
             tsFileManager.getNextCompactionTaskId())
-        .doCompaction();
+        .start();
 
     validateSeqFiles(true);
   }
@@ -2041,7 +2043,7 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
             new AtomicInteger(0),
             0,
             tsFileManager.getNextCompactionTaskId())
-        .doCompaction();
+        .start();
 
     validateSeqFiles(true);
   }
@@ -2095,7 +2097,7 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
             new AtomicInteger(0),
             0,
             tsFileManager.getNextCompactionTaskId())
-        .doCompaction();
+        .start();
 
     validateSeqFiles(true);
   }
