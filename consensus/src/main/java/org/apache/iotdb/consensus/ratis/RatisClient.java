@@ -37,7 +37,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.concurrent.TimeUnit;
-import java.util.function.Supplier;
 
 public class RatisClient {
 
@@ -75,13 +74,13 @@ public class RatisClient {
 
     private final RaftProperties raftProperties;
     private final RaftClientRpc clientRpc;
-    private final Supplier<RatisConfig.Impl> config;
+    private final RatisConfig.Client config;
 
     public Factory(
         ClientManager<RaftGroup, RatisClient> clientManager,
         RaftProperties raftProperties,
         RaftClientRpc clientRpc,
-        Supplier<RatisConfig.Impl> config) {
+        RatisConfig.Client config) {
       super(clientManager);
       this.raftProperties = raftProperties;
       this.clientRpc = clientRpc;
@@ -101,7 +100,7 @@ public class RatisClient {
               RaftClient.newBuilder()
                   .setProperties(raftProperties)
                   .setRaftGroup(group)
-                  .setRetryPolicy(new RatisRetryPolicy(config.get()))
+                  .setRetryPolicy(new RatisRetryPolicy(config))
                   .setClientRpc(clientRpc)
                   .build(),
               clientManager));
@@ -125,10 +124,9 @@ public class RatisClient {
   private static class RatisRetryPolicy implements RetryPolicy {
 
     private static final Logger logger = LoggerFactory.getLogger(RatisClient.class);
-    private static final int MAX_ATTEMPTS = 10;
     RetryPolicy defaultPolicy;
 
-    public RatisRetryPolicy(RatisConfig.Impl config) {
+    public RatisRetryPolicy(RatisConfig.Client config) {
       defaultPolicy =
           ExponentialBackoffRetry.newBuilder()
               .setBaseSleepTime(

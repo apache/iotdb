@@ -71,7 +71,6 @@ import org.apache.ratis.protocol.exceptions.ResourceUnavailableException;
 import org.apache.ratis.server.DivisionInfo;
 import org.apache.ratis.server.RaftServer;
 import org.apache.ratis.server.RaftServerConfigKeys;
-import org.apache.ratis.util.MemoizedSupplier;
 import org.apache.ratis.util.function.CheckedSupplier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -186,6 +185,7 @@ class RatisConsensus implements IConsensus {
     // currently, we only retry when ResourceUnavailableException is caught
     return !reply.isSuccess() && (reply.getException() instanceof ResourceUnavailableException);
   }
+
   /** launch a consensus write with retry mechanism */
   private RaftClientReply writeWithRetry(CheckedSupplier<RaftClientReply, IOException> caller)
       throws IOException {
@@ -808,13 +808,17 @@ class RatisConsensus implements IConsensus {
   }
 
   private class RatisClientPoolFactory implements IClientPoolFactory<RaftGroup, RatisClient> {
+
     @Override
     public KeyedObjectPool<RaftGroup, RatisClient> createClientPool(
         ClientManager<RaftGroup, RatisClient> manager) {
       return new GenericKeyedObjectPool<>(
-          new RatisClient.Factory(
-              manager, properties, clientRpc, MemoizedSupplier.valueOf(config::getImpl)),
-          new ClientPoolProperty.Builder<RatisClient>().build().getConfig());
+          new RatisClient.Factory(manager, properties, clientRpc, config.getClient()),
+          new ClientPoolProperty.Builder<RatisClient>()
+              .setCoreClientNumForEachNode(config.getClient().getCoreClientNumForEachNode())
+              .setMaxClientNumForEachNode(config.getClient().getMaxClientNumForEachNode())
+              .build()
+              .getConfig());
     }
   }
 }
