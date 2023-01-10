@@ -45,8 +45,8 @@ public final class Priority {
   private final int level;
 
   /**
-   * Occupied time in particular level. The higher this value is, the later the task with this
-   * Priority will be polled out by a PriorityQueue.
+   * Occupied time in particular level of this task. The higher this value is, the later the task
+   * with this Priority will be polled out by a PriorityQueue.
    */
   private final long levelScheduledTime;
 
