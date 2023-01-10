@@ -31,7 +31,7 @@ public class RegionCache {
 
   private final List<RegionHeartbeatSample> slidingWindow;
 
-  private boolean is_migrating = false;
+  private boolean isMigrating = false;
 
   public RegionCache() {
     this.slidingWindow = Collections.synchronizedList(new LinkedList<>());
@@ -60,7 +60,7 @@ public class RegionCache {
 
     // TODO: Optimize judge logic
     RegionStatus status;
-    if (is_migrating) {
+    if (isMigrating) {
       status = RegionStatus.Removing;
     } else if (System.currentTimeMillis() - lastSample.getSendTimestamp()
         > HEARTBEAT_TIMEOUT_TIME) {
@@ -76,7 +76,7 @@ public class RegionCache {
     return slidingWindow.get(slidingWindow.size() - 1);
   }
 
-  public void setIs_migrating(boolean is_migrating) {
-    this.is_migrating = is_migrating;
+  public void setIsMigrating(boolean isMigrating) {
+    this.isMigrating = isMigrating;
   }
 }

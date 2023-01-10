@@ -82,7 +82,7 @@ public class DataNodeRemoveHandler {
         .getRegionGroupCacheMap()
         .get(consensusGroupId)
         .getRegionCache(originalDataNode.getDataNodeId())
-        .setIs_migrating(true);
+        .setIsMigrating(true);
   }
 
   /**
