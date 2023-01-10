@@ -42,7 +42,6 @@ With Status Code, instead of writing codes like `if (e.getErrorMessage().contain
 
 Here is a list of Status Code and related message:
 
-
 | Status Code | Status Type                       | Meanings                                                                                  |
 |:------------|:----------------------------------|:------------------------------------------------------------------------------------------|
 | 200         | SUCCESS_STATUS                    |                                                                                           |
