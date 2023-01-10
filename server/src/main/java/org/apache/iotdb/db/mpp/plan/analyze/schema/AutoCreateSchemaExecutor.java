@@ -77,23 +77,12 @@ class AutoCreateSchemaExecutor {
     Pair<Template, PartialPath> templateInfo = templateManager.checkTemplateSetInfo(devicePath);
     if (templateInfo != null) {
       Template template = templateInfo.left;
-      boolean shouldActivateTemplate = false;
-      for (int index : indexOfTargetMeasurements) {
-        if (template.hasSchema(measurements[index])) {
-          shouldActivateTemplate = true;
-          break;
-        }
-      }
-
-      if (shouldActivateTemplate) {
+      List<Integer> indexOfMeasurementsNotInTemplate =
+          checkMeasurementsInSchemaTemplate(
+              devicePath, indexOfTargetMeasurements, measurements, isAligned, templateInfo.left);
+      if (indexOfMeasurementsNotInTemplate.size() < indexOfTargetMeasurements.size()) {
+        // there are measurements in schema template
         internalActivateTemplate(devicePath);
-        List<Integer> recheckedIndexOfMissingMeasurements = new ArrayList<>();
-        for (int i = 0; i < indexOfTargetMeasurements.size(); i++) {
-          if (!template.hasSchema(measurements[i])) {
-            recheckedIndexOfMissingMeasurements.add(indexOfTargetMeasurements.get(i));
-          }
-        }
-        indexOfTargetMeasurements = recheckedIndexOfMissingMeasurements;
         for (Map.Entry<String, IMeasurementSchema> entry : template.getSchemaMap().entrySet()) {
           schemaTree.appendSingleMeasurement(
               devicePath.concatNode(entry.getKey()),
@@ -102,10 +91,10 @@ class AutoCreateSchemaExecutor {
               null,
               template.isDirectAligned());
         }
-
-        if (indexOfTargetMeasurements.isEmpty()) {
+        if (indexOfMeasurementsNotInTemplate.isEmpty()) {
           return;
         }
+        indexOfTargetMeasurements = indexOfMeasurementsNotInTemplate;
       }
     }
 
@@ -169,6 +158,48 @@ class AutoCreateSchemaExecutor {
           encodingsList.get(deviceIndex),
           compressionTypesList.get(deviceIndex),
           isAlignedList.get(deviceIndex));
+    }
+  }
+
+  private List<Integer> checkMeasurementsInSchemaTemplate(
+      PartialPath devicePath,
+      List<Integer> indexOfTargetMeasurements,
+      String[] measurements,
+      boolean isAligned,
+      Template template) {
+    // check whether there is template should be activated
+    if (isAligned != template.isDirectAligned()) {
+      if (template.isDirectAligned()) {
+        throw new RuntimeException(
+            new MetadataException(
+                String.format(
+                    "The schema template set on prefix of device %s is aligned, please use aligned interfaces.",
+                    devicePath.getFullPath())));
+      } else {
+        throw new RuntimeException(
+            new MetadataException(
+                String.format(
+                    "The schema template set on prefix of device %s is unaligned, please use unaligned interfaces.",
+                    devicePath.getFullPath())));
+      }
+    }
+    boolean shouldActivateTemplate = false;
+    for (int index : indexOfTargetMeasurements) {
+      if (template.hasSchema(measurements[index])) {
+        shouldActivateTemplate = true;
+        break;
+      }
+    }
+    if (shouldActivateTemplate) {
+      List<Integer> recheckedIndexOfMissingMeasurements = new ArrayList<>();
+      for (int index : indexOfTargetMeasurements) {
+        if (!template.hasSchema(measurements[index])) {
+          recheckedIndexOfMissingMeasurements.add(index);
+        }
+      }
+      return recheckedIndexOfMissingMeasurements;
+    } else {
+      return indexOfTargetMeasurements;
     }
   }
 
