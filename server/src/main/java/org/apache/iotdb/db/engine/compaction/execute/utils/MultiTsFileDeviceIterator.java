@@ -39,6 +39,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -57,7 +58,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
   public MultiTsFileDeviceIterator(List<TsFileResource> tsFileResources) throws IOException {
     this.tsFileResources = new ArrayList<>(tsFileResources);
     // sort the files from the oldest to the newest
-    Collections.sort(this.tsFileResources, TsFileResource::compareFileName);
+    Collections.sort(this.tsFileResources, TsFileResource::compareFileNameByDesc);
     try {
       for (TsFileResource tsFileResource : this.tsFileResources) {
         TsFileSequenceReader reader = new TsFileSequenceReader(tsFileResource.getTsFilePath());
@@ -113,7 +114,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
       hasNext =
           hasNext
               || iterator.hasNext()
-              || (iterator.current() != null && !iterator.current().equals(currentDevice));
+              || (iterator.current() != null && !iterator.current().left.equals(currentDevice.left));
     }
     return hasNext;
   }
@@ -126,9 +127,13 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
   public Pair<String, Boolean> nextDevice() {
     List<TsFileResource> toBeRemovedResources = new LinkedList<>();
     Pair<String, Boolean> minDevice = null;
-    for (TsFileResource resource : deviceIteratorMap.keySet()) {
+    for (TsFileResource resource :tsFileResources) {
+      if(!deviceIteratorMap.containsKey(resource)){
+        continue;
+      }
       TsFileDeviceIterator deviceIterator = deviceIteratorMap.get(resource);
-      if (deviceIterator.current() == null || deviceIterator.current().equals(currentDevice)) {
+      if (deviceIterator.current() == null || deviceIterator.current().left.equals(currentDevice.left)) {
+        // if current file has same device with current device, then get its next device
         if (deviceIterator.hasNext()) {
           deviceIterator.next();
         } else {
@@ -139,6 +144,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
         }
       }
       if (minDevice == null || minDevice.left.compareTo(deviceIterator.current().left) > 0) {
+        // get the device that is minimal in lexicographical order according to the all files
         minDevice = deviceIterator.current();
       }
     }
