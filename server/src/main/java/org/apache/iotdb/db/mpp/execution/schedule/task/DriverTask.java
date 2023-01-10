@@ -147,19 +147,19 @@ public class DriverTask implements IDIndexedAccessible {
    *
    * @return true if the level changed.
    */
-  public boolean updateLevelPriority() {
+  public boolean updatePriority() {
     Priority newPriority = driverTaskHandle.getPriority();
     Priority oldPriority = priority.getAndSet(newPriority);
     return newPriority.getLevel() != oldPriority.getLevel();
   }
 
   /**
-   * Updates the task level priority to be greater than or equal to the minimum priority within that
-   * level. This ensures that tasks that spend time blocked do not return and starve already-running
-   * tasks. Also updates the cached priority object.
+   * Updates the task levelScheduledTime to be greater than or equal to the minimum
+   * levelScheduledTime within that level. This ensures that tasks that spend time blocked do not
+   * return and starve already-running tasks. Also updates the cached priority object.
    */
-  public void resetLevelPriority() {
-    priority.set(driverTaskHandle.resetLevelPriority());
+  public void resetLevelScheduledTime() {
+    priority.set(driverTaskHandle.resetLevelScheduledTime());
   }
 
   public long getLastEnterReadyQueueTime() {

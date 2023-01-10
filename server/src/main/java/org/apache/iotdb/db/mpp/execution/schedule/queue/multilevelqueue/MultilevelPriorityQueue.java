@@ -84,7 +84,7 @@ public class MultilevelPriorityQueue extends IndexedBlockingQueue<DriverTask> {
    * scheduled time.
    */
   @Override
-  public synchronized void pushToQueue(DriverTask task) {
+  public void pushToQueue(DriverTask task) {
     checkArgument(task != null, "DriverTask to be pushed is null");
 
     int level = task.getPriority().getLevel();
@@ -105,8 +105,8 @@ public class MultilevelPriorityQueue extends IndexedBlockingQueue<DriverTask> {
     DriverTask result;
     while (true) {
       result = chooseLevelAndTask();
-      if (result.updateLevelPriority()) {
-        // result.updateLevelPriority() returns true means that the Priority of DriverTaskHandle the
+      if (result.updatePriority()) {
+        // result.updatePriority() returns true means that the Priority of DriverTaskHandle the
         // result belongs to has changed.
         // All the DriverTasks of one DriverTaskHandle should be in the same level.
         // We push the result into the queue and choose another DriverTask.
@@ -267,12 +267,12 @@ public class MultilevelPriorityQueue extends IndexedBlockingQueue<DriverTask> {
     }
 
     addLevelTime(newLevel, remainingLevelContribution);
-    // TODO figure out why add newLevelMinPriority
-    long newLevelMinPriority = getLevelMinPriority(newLevel, scheduledNanos);
-    return new Priority(newLevel, newLevelMinPriority + remainingTaskTime);
+    // TODO figure out why add newLevelMinScheduledTime
+    long newLevelMinScheduledTime = getLevelMinScheduledTime(newLevel, scheduledNanos);
+    return new Priority(newLevel, newLevelMinScheduledTime + remainingTaskTime);
   }
 
-  public long getLevelMinPriority(int level, long taskThreadUsageNanos) {
+  public long getLevelMinScheduledTime(int level, long taskThreadUsageNanos) {
     levelMinScheduledTime[level].compareAndSet(-1, taskThreadUsageNanos);
     return levelMinScheduledTime[level].get();
   }

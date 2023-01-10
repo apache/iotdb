@@ -59,11 +59,11 @@ public class DriverTaskHandle {
     return newPriority;
   }
 
-  public synchronized Priority resetLevelPriority() {
-    long levelMinPriority =
-        driverTaskQueue.getLevelMinPriority(priority.get().getLevel(), scheduledTimeInNanos);
-    if (priority.get().getLevelScheduledTime() < levelMinPriority) {
-      Priority newPriority = new Priority(priority.get().getLevel(), levelMinPriority);
+  public synchronized Priority resetLevelScheduledTime() {
+    long levelMinScheduledTime =
+        driverTaskQueue.getLevelMinScheduledTime(priority.get().getLevel(), scheduledTimeInNanos);
+    if (priority.get().getLevelScheduledTime() < levelMinScheduledTime) {
+      Priority newPriority = new Priority(priority.get().getLevel(), levelMinScheduledTime);
       priority.set(newPriority);
       return newPriority;
     }
@@ -73,10 +73,6 @@ public class DriverTaskHandle {
 
   public Priority getPriority() {
     return priority.get();
-  }
-
-  public int getDriverTaskHandleId() {
-    return driverTaskHandleId;
   }
 
   @Override
