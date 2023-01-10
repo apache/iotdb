@@ -91,19 +91,4 @@ session.executeQueryStatement(String sql, long timeout)
 
 ### 查询终止
 
-除了被动地等待查询超时外，IoTDB 还支持主动地终止查询，命令为：
-
-```sql
-KILL QUERY <queryId>
-```
-
-通过指定 `queryId` 可以中止指定的查询，而如果不指定 `queryId`，将中止所有正在执行的查询。
-
-为了获取正在执行的查询 id，用户可以使用 `show query processlist` 命令，该命令将显示所有正在执行的查询列表，结果形式如下：
-
-| Time | queryId | statement |
-|------|---------|-----------|
-|      |         |           |
-
-其中 statement 最大显示长度为 64 字符。对于超过 64 字符的查询语句，将截取部分进行显示。
-
+尚未支持
