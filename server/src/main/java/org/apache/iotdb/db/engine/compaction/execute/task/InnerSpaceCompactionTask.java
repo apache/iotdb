@@ -223,16 +223,6 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
           selectedTsFileResourceList, storageGroupName + "-" + dataRegionId);
       CompactionUtils.deleteModificationForSourceFile(
           selectedTsFileResourceList, storageGroupName + "-" + dataRegionId);
-      TsFileMetricManager.getInstance()
-          .deleteFile(totalSizeOfDeletedFile, sequence, selectedTsFileResourceList.size());
-      // inner space compaction task has only one target file
-      if (targetTsFileList.get(0) != null) {
-        TsFileMetricManager.getInstance()
-            .addFile(targetTsFileList.get(0).getTsFile().length(), sequence);
-
-        // set target resources to CLOSED, so that they can be selected to compact
-        targetTsFileList.get(0).setStatus(TsFileResourceStatus.CLOSED);
-      }
 
       if (performer instanceof FastCompactionPerformer) {
         SubCompactionTaskSummary subTaskSummary =
@@ -248,6 +238,10 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
             subTaskSummary.PAGE_FAKE_OVERLAP);
       }
 
+      if (logFile.exists()) {
+        FileUtils.delete(logFile);
+      }
+
       double costTime = (System.currentTimeMillis() - startTime) / 1000.0d;
       LOGGER.info(
           "{}-{} [Compaction] InnerSpaceCompaction task finishes successfully, target file is {},"
@@ -256,11 +250,19 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
           dataRegionId,
           targetTsFileResource.getTsFile().getName(),
           costTime,
-          selectedFileSize / 1024.0d / 1024.0d / costTime);
+          ((double) selectedFileSize) / 1024.0d / 1024.0d / costTime);
 
-      if (logFile.exists()) {
-        FileUtils.delete(logFile);
+      // inner space compaction task has only one target file
+      if (targetTsFileList.get(0) != null) {
+        TsFileMetricManager.getInstance()
+            .addFile(targetTsFileList.get(0).getTsFile().length(), sequence);
+
+        // set target resources to CLOSED, so that they can be selected to compact
+        targetTsFileList.get(0).setStatus(TsFileResourceStatus.CLOSED);
       }
+      TsFileMetricManager.getInstance()
+          .deleteFile(totalSizeOfDeletedFile, sequence, selectedTsFileResourceList.size());
+
     } catch (Throwable throwable) {
       // catch throwable to handle OOM errors
       if (!(throwable instanceof InterruptedException)) {
