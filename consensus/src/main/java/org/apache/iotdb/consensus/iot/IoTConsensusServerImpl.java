@@ -74,9 +74,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
@@ -290,8 +288,7 @@ public class IoTConsensusServerImpl {
       long latestSnapshotIndex = getLatestSnapshotIndex();
       latestSnapshotId =
           String.format(
-              "%s_%s_%d",
-              SNAPSHOT_DIR_NAME, thisNode.getGroupId().getId(), latestSnapshotIndex);
+              "%s_%s_%d", SNAPSHOT_DIR_NAME, thisNode.getGroupId().getId(), latestSnapshotIndex);
       File snapshotDir = new File(storageDir, latestSnapshotId);
       if (snapshotDir.exists()) {
         FileUtils.deleteDirectory(snapshotDir);
@@ -376,7 +373,9 @@ public class IoTConsensusServerImpl {
       return snapShotIndex + 1;
     }
     for (File file : versionFiles) {
-      snapShotIndex = Long.max(snapShotIndex, Long.parseLong(file.getName().replaceAll(".*[^\\d](?=(\\d+))","")));
+      snapShotIndex =
+          Long.max(
+              snapShotIndex, Long.parseLong(file.getName().replaceAll(".*[^\\d](?=(\\d+))", "")));
     }
     return snapShotIndex + 1;
   }
@@ -391,7 +390,7 @@ public class IoTConsensusServerImpl {
       return;
     }
     for (File file : versionFiles) {
-      if(!file.getName().equals(latestSnapshotId)) {
+      if (!file.getName().equals(latestSnapshotId)) {
         try {
           FileUtils.deleteDirectory(file);
         } catch (IOException e) {
