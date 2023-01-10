@@ -19,9 +19,8 @@
 
 package org.apache.iotdb.tsfile.encoding.decoder;
 
-import org.apache.iotdb.tsfile.encoding.encoder.HuffmanEncoder;
 import org.apache.iotdb.tsfile.encoding.encoder.HuffmanEncoderV2;
-import org.apache.iotdb.tsfile.utils.Binary;
+
 import org.junit.Test;
 
 import java.io.ByteArrayOutputStream;

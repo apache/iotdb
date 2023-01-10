@@ -21,12 +21,9 @@ package org.apache.iotdb.tsfile.encoding.decoder;
 
 import org.apache.iotdb.tsfile.encoding.HuffmanTree.HuffmanTree;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.utils.Binary;
 
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
 import java.util.LinkedList;
-import java.util.List;
 import java.util.Queue;
 
 public class HuffmanDecoderV2 extends Decoder {
@@ -83,7 +80,7 @@ public class HuffmanDecoderV2 extends Decoder {
 
   private void loadRecords(ByteBuffer buffer) {
     HuffmanTree tempTree = tree;
-    for(int i = 0; i < recordnum; i++) {
+    for (int i = 0; i < recordnum; i++) {
       tempTree = tree;
       while (!tempTree.isLeaf) {
         if (readbit(buffer) == 0) tempTree = tempTree.leftNode;

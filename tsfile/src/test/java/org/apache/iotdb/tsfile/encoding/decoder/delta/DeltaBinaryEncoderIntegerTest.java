@@ -48,10 +48,10 @@ public class DeltaBinaryEncoderIntegerTest {
   }
 
   @Test
-  public void testtest() throws IOException{
+  public void testtest() throws IOException {
     int[] data = new int[20];
     for (int i = 0; i < 20; i++) {
-      data[i] = i * (int)pow(-1, i);
+      data[i] = i * (int) pow(-1, i);
     }
     shouldReadAndWrite(data, data.length);
   }
@@ -116,6 +116,5 @@ public class DeltaBinaryEncoderIntegerTest {
     while (reader.hasNext(buffer)) {
       assertEquals(data[i++], reader.readInt(buffer));
     }
-
   }
 }

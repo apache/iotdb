@@ -26,6 +26,7 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.awt.*;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 
@@ -211,7 +212,6 @@ public abstract class DeltaBinaryEncoder extends Encoder {
 
     @Override
     public void encode(int value, ByteArrayOutputStream out) {
-//      System.out.println(value);
       encodeValue(value, out);
     }
 

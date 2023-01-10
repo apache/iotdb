@@ -152,7 +152,7 @@ public abstract class TSEncodingBuilder {
           return new LongRleEncoder();
         case FLOAT:
         case DOUBLE:
-          return new FloatEncoder(TSEncoding.RLE, type, 6);//maxPointNumber);
+          return new FloatEncoder(TSEncoding.RLE, type, maxPointNumber);
         case TEXT:
           return new TextRleEncoder();
         default:
@@ -196,19 +196,19 @@ public abstract class TSEncodingBuilder {
   /** for INT32, INT64, FLOAT, DOUBLE. */
   public static class Ts2Diff extends TSEncodingBuilder {
 
-    private int maxPointNumber = 5;
+    private int maxPointNumber;
 
     @Override
     public Encoder getEncoder(TSDataType type) {
       switch (type) {
         case INT32:
+
           return new DeltaBinaryEncoder.IntDeltaEncoder();
         case INT64:
           return new DeltaBinaryEncoder.LongDeltaEncoder();
         case FLOAT:
         case DOUBLE:
-//          maxPointNumber
-//          System.out.println(maxPointNumber);
+          //          maxPointNumber
           return new FloatEncoder(TSEncoding.TS_2DIFF, type, maxPointNumber);
         default:
           throw new UnSupportedDataTypeException("TS_2DIFF doesn't support data type: " + type);
@@ -223,10 +223,8 @@ public abstract class TSEncodingBuilder {
     public void initFromProps(Map<String, String> props) {
       // set max error from initialized map or default value if not set
       if (props == null || !props.containsKey(Encoder.MAX_POINT_NUMBER)) {
-        System.out.println(Encoder.MAX_POINT_NUMBER);
         maxPointNumber = TSFileDescriptor.getInstance().getConfig().getFloatPrecision();
       } else {
-        System.out.println(Encoder.MAX_POINT_NUMBER);
         try {
           this.maxPointNumber = Integer.parseInt(props.get(Encoder.MAX_POINT_NUMBER));
         } catch (NumberFormatException e) {
@@ -444,6 +442,7 @@ public abstract class TSEncodingBuilder {
       // do nothing
     }
   }
+
   public static class BucketEncoder extends TSEncodingBuilder {
     @Override
     public Encoder getEncoder(TSDataType type) {

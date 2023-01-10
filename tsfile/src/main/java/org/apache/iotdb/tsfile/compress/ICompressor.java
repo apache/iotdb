@@ -27,10 +27,10 @@ import net.jpountz.lz4.LZ4Compressor;
 import net.jpountz.lz4.LZ4Factory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.tukaani.xz.LZMA2Options;
 import org.tukaani.xz.XZInputStream;
 import org.tukaani.xz.XZOutputStream;
 import org.xerial.snappy.Snappy;
-import org.tukaani.xz.LZMA2Options;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -42,8 +42,8 @@ import java.util.zip.GZIPOutputStream;
 
 import static org.apache.iotdb.tsfile.file.metadata.enums.CompressionType.GZIP;
 import static org.apache.iotdb.tsfile.file.metadata.enums.CompressionType.LZ4;
-import static org.apache.iotdb.tsfile.file.metadata.enums.CompressionType.SNAPPY;
 import static org.apache.iotdb.tsfile.file.metadata.enums.CompressionType.LZMA2;
+import static org.apache.iotdb.tsfile.file.metadata.enums.CompressionType.SNAPPY;
 
 /** compress data according to type in schema. */
 public interface ICompressor extends Serializable {
@@ -330,6 +330,7 @@ public interface ICompressor extends Serializable {
       return GZIP;
     }
   }
+
   class LZMA2Compress {
     private static LZMA2Options options;
 
@@ -366,6 +367,7 @@ public interface ICompressor extends Serializable {
   class LZMA2Compressor implements ICompressor {
 
     private static LZMA2Compress Compress;
+
     public LZMA2Compressor() {
       Compress = new LZMA2Compress();
     }
@@ -410,7 +412,7 @@ public interface ICompressor extends Serializable {
     public int getMaxBytesForCompression(int uncompressedDataSize) {
       // hard to estimate
       return 40 + uncompressedDataSize;
-      //return Math.max(40 + uncompressedDataSize / 2, uncompressedDataSize);
+      // return Math.max(40 + uncompressedDataSize / 2, uncompressedDataSize);
     }
 
     @Override

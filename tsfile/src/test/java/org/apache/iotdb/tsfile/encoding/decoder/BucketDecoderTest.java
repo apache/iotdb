@@ -20,7 +20,7 @@
 package org.apache.iotdb.tsfile.encoding.decoder;
 
 import org.apache.iotdb.tsfile.encoding.encoder.BucketEncoder;
-import org.apache.iotdb.tsfile.encoding.encoder.HuffmanEncoderV2;
+
 import org.junit.Test;
 
 import java.io.ByteArrayOutputStream;
@@ -67,7 +67,7 @@ public class BucketDecoderTest {
     // all characters
     int[] allChars = new int[1000000];
     for (int i = 0; i < 1000000; i++) {
-      allChars[i] = (int)(1000000 * Math.random());
+      allChars[i] = (int) (1000000 * Math.random());
     }
     testAll(allChars);
   }

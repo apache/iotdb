@@ -314,6 +314,7 @@ public interface IUnCompressor {
       return CompressionType.GZIP;
     }
   }
+
   class LZMA2UnCompressor implements IUnCompressor {
 
     @Override
@@ -336,7 +337,7 @@ public interface IUnCompressor {
 
     @Override
     public int uncompress(byte[] byteArray, int offset, int length, byte[] output, int outOffset)
-            throws IOException {
+        throws IOException {
       byte[] dataBefore = new byte[length];
       System.arraycopy(byteArray, offset, dataBefore, 0, length);
       byte[] res = ICompressor.LZMA2Compress.uncompress(dataBefore);

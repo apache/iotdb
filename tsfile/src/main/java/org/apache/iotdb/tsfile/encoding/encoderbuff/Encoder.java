@@ -5,13 +5,10 @@
  */
 package org.apache.iotdb.tsfile.encoding.encoderbuff;
 
-/**
- *
- * @author Wang
- */
+/** @author Wang */
 public interface Encoder {
 
-    public byte[] encode(double[] origin);
+  public byte[] encode(double[] origin);
 
-    public double[] decode(byte[] bytes);
+  public double[] decode(byte[] bytes);
 }
