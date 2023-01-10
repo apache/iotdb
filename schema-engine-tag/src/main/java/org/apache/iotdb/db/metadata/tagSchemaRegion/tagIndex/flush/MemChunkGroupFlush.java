@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.flush;
 
+import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.entry.IndexType;
+import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.entry.OffsetIndex;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemChunk;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemChunkGroup;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.request.FlushRequest;
@@ -26,12 +28,9 @@ import org.apache.iotdb.lsm.annotation.FlushProcessor;
 import org.apache.iotdb.lsm.context.requestcontext.FlushRequestContext;
 import org.apache.iotdb.lsm.levelProcess.FlushLevelProcessor;
 import org.apache.iotdb.lsm.sstable.fileIO.TiFileOutputStream;
-import org.apache.iotdb.lsm.sstable.index.IDiskIndexWriter;
-import org.apache.iotdb.lsm.sstable.index.bplustree.writer.BPlusTreeWriter;
 
 import java.io.IOException;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.Map;
 
 /** flush for MemChunkGroup */
@@ -47,14 +46,17 @@ public class MemChunkGroupFlush extends FlushLevelProcessor<MemChunkGroup, MemCh
   @Override
   public void flush(MemChunkGroup memNode, FlushRequest request, FlushRequestContext context)
       throws IOException {
-    Map<String, Long> tagValueToOffset = new HashMap<>();
+    // TODO use offsetIndex
+    OffsetIndex tagValueToOffset = new OffsetIndex(IndexType.BPlusTree);
     FlushResponse flushResponse = context.getResponse();
     for (Map.Entry<String, MemChunk> entry : memNode.getMemChunkMap().entrySet()) {
       tagValueToOffset.put(entry.getKey(), flushResponse.getChunkOffset(entry.getValue()));
     }
     TiFileOutputStream fileOutput = context.getFileOutput();
-    IDiskIndexWriter diskIndexWriter = new BPlusTreeWriter(fileOutput);
-    Long offset = diskIndexWriter.write(tagValueToOffset, false);
+    // TODO how to write OffsetIndex
+    Long offset = fileOutput.write(tagValueToOffset);
+    //    IDiskIndexWriter diskIndexWriter = new BPlusTreeWriter(fileOutput);
+    //    Long offset = diskIndexWriter.write(tagValueToOffset, false);
     flushResponse.addTagKeyOffset(memNode, offset);
   }
 }
