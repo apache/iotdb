@@ -28,6 +28,7 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.common.QueryId;
+import org.apache.iotdb.db.mpp.execution.driver.DriverContext;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceStateMachine;
 import org.apache.iotdb.db.mpp.execution.operator.process.DeviceMergeOperator;
@@ -102,21 +103,19 @@ public class DeviceMergeOperatorTest {
           new FragmentInstanceStateMachine(instanceId, instanceNotificationExecutor);
       FragmentInstanceContext fragmentInstanceContext =
           createFragmentInstanceContext(instanceId, stateMachine);
+      DriverContext driverContext = new DriverContext(fragmentInstanceContext, 0);
       PlanNodeId planNodeId1 = new PlanNodeId("1");
-      fragmentInstanceContext.addOperatorContext(
-          1, planNodeId1, SeriesScanOperator.class.getSimpleName());
+      driverContext.addOperatorContext(1, planNodeId1, SeriesScanOperator.class.getSimpleName());
       PlanNodeId planNodeId2 = new PlanNodeId("2");
-      fragmentInstanceContext.addOperatorContext(
-          2, planNodeId2, SeriesScanOperator.class.getSimpleName());
+      driverContext.addOperatorContext(2, planNodeId2, SeriesScanOperator.class.getSimpleName());
       PlanNodeId planNodeId3 = new PlanNodeId("3");
-      fragmentInstanceContext.addOperatorContext(
+      driverContext.addOperatorContext(
           3, planNodeId3, DeviceViewOperatorTest.class.getSimpleName());
       PlanNodeId planNodeId4 = new PlanNodeId("4");
-      fragmentInstanceContext.addOperatorContext(
+      driverContext.addOperatorContext(
           4, planNodeId4, DeviceViewOperatorTest.class.getSimpleName());
       PlanNodeId planNodeId5 = new PlanNodeId("5");
-      fragmentInstanceContext.addOperatorContext(
-          5, planNodeId5, DeviceMergeOperator.class.getSimpleName());
+      driverContext.addOperatorContext(5, planNodeId5, DeviceMergeOperator.class.getSimpleName());
 
       List<TSDataType> dataTypes = new ArrayList<>();
       dataTypes.add(TSDataType.TEXT);
@@ -126,7 +125,7 @@ public class DeviceMergeOperatorTest {
           new MeasurementPath(DEVICE_MERGE_OPERATOR_TEST_SG + ".device0.sensor0", TSDataType.INT32);
       SeriesScanOperator seriesScanOperator1 =
           new SeriesScanOperator(
-              fragmentInstanceContext.getOperatorContexts().get(0),
+              driverContext.getOperatorContexts().get(0),
               planNodeId1,
               measurementPath1,
               Collections.singleton("sensor0"),
@@ -141,7 +140,7 @@ public class DeviceMergeOperatorTest {
 
       DeviceViewOperator deviceViewOperator1 =
           new DeviceViewOperator(
-              fragmentInstanceContext.getOperatorContexts().get(2),
+              driverContext.getOperatorContexts().get(2),
               Collections.singletonList(DEVICE_MERGE_OPERATOR_TEST_SG + ".device0"),
               Collections.singletonList(seriesScanOperator1),
               Collections.singletonList(Collections.singletonList(1)),
@@ -151,7 +150,7 @@ public class DeviceMergeOperatorTest {
           new MeasurementPath(DEVICE_MERGE_OPERATOR_TEST_SG + ".device1.sensor1", TSDataType.INT32);
       SeriesScanOperator seriesScanOperator2 =
           new SeriesScanOperator(
-              fragmentInstanceContext.getOperatorContexts().get(1),
+              driverContext.getOperatorContexts().get(1),
               planNodeId2,
               measurementPath2,
               Collections.singleton("sensor1"),
@@ -166,7 +165,7 @@ public class DeviceMergeOperatorTest {
 
       DeviceViewOperator deviceViewOperator2 =
           new DeviceViewOperator(
-              fragmentInstanceContext.getOperatorContexts().get(3),
+              driverContext.getOperatorContexts().get(3),
               Collections.singletonList(DEVICE_MERGE_OPERATOR_TEST_SG + ".device1"),
               Collections.singletonList(seriesScanOperator2),
               Collections.singletonList(Collections.singletonList(2)),
@@ -180,7 +179,7 @@ public class DeviceMergeOperatorTest {
       deviceOperators.add(deviceViewOperator2);
       DeviceMergeOperator deviceMergeOperator =
           new DeviceMergeOperator(
-              fragmentInstanceContext.getOperatorContexts().get(4),
+              driverContext.getOperatorContexts().get(4),
               devices,
               deviceOperators,
               dataTypes,
@@ -258,21 +257,19 @@ public class DeviceMergeOperatorTest {
           new FragmentInstanceStateMachine(instanceId, instanceNotificationExecutor);
       FragmentInstanceContext fragmentInstanceContext =
           createFragmentInstanceContext(instanceId, stateMachine);
+      DriverContext driverContext = new DriverContext(fragmentInstanceContext, 0);
       PlanNodeId planNodeId1 = new PlanNodeId("1");
-      fragmentInstanceContext.addOperatorContext(
-          1, planNodeId1, SeriesScanOperator.class.getSimpleName());
+      driverContext.addOperatorContext(1, planNodeId1, SeriesScanOperator.class.getSimpleName());
       PlanNodeId planNodeId2 = new PlanNodeId("2");
-      fragmentInstanceContext.addOperatorContext(
-          2, planNodeId2, SeriesScanOperator.class.getSimpleName());
+      driverContext.addOperatorContext(2, planNodeId2, SeriesScanOperator.class.getSimpleName());
       PlanNodeId planNodeId3 = new PlanNodeId("3");
-      fragmentInstanceContext.addOperatorContext(
+      driverContext.addOperatorContext(
           3, planNodeId3, DeviceViewOperatorTest.class.getSimpleName());
       PlanNodeId planNodeId4 = new PlanNodeId("4");
-      fragmentInstanceContext.addOperatorContext(
+      driverContext.addOperatorContext(
           4, planNodeId4, DeviceViewOperatorTest.class.getSimpleName());
       PlanNodeId planNodeId5 = new PlanNodeId("5");
-      fragmentInstanceContext.addOperatorContext(
-          5, planNodeId5, DeviceMergeOperator.class.getSimpleName());
+      driverContext.addOperatorContext(5, planNodeId5, DeviceMergeOperator.class.getSimpleName());
 
       List<TSDataType> dataTypes = new ArrayList<>();
       dataTypes.add(TSDataType.TEXT);
@@ -281,7 +278,7 @@ public class DeviceMergeOperatorTest {
           new MeasurementPath(DEVICE_MERGE_OPERATOR_TEST_SG + ".device0.sensor0", TSDataType.INT32);
       SeriesScanOperator seriesScanOperator1 =
           new SeriesScanOperator(
-              fragmentInstanceContext.getOperatorContexts().get(0),
+              driverContext.getOperatorContexts().get(0),
               planNodeId1,
               measurementPath1,
               Collections.singleton("sensor0"),
@@ -305,7 +302,7 @@ public class DeviceMergeOperatorTest {
 
       DeviceViewOperator deviceViewOperator1 =
           new DeviceViewOperator(
-              fragmentInstanceContext.getOperatorContexts().get(2),
+              driverContext.getOperatorContexts().get(2),
               Collections.singletonList(DEVICE_MERGE_OPERATOR_TEST_SG + ".device0"),
               Collections.singletonList(seriesScanOperator1),
               Collections.singletonList(Collections.singletonList(1)),
@@ -313,7 +310,7 @@ public class DeviceMergeOperatorTest {
 
       SeriesScanOperator seriesScanOperator2 =
           new SeriesScanOperator(
-              fragmentInstanceContext.getOperatorContexts().get(1),
+              driverContext.getOperatorContexts().get(1),
               planNodeId2,
               measurementPath1,
               Collections.singleton("sensor0"),
@@ -334,7 +331,7 @@ public class DeviceMergeOperatorTest {
       seriesScanOperator2.initQueryDataSource(new QueryDataSource(seqResources2, unSeqResources2));
       DeviceViewOperator deviceViewOperator2 =
           new DeviceViewOperator(
-              fragmentInstanceContext.getOperatorContexts().get(3),
+              driverContext.getOperatorContexts().get(3),
               Collections.singletonList(DEVICE_MERGE_OPERATOR_TEST_SG + ".device0"),
               Collections.singletonList(seriesScanOperator2),
               Collections.singletonList(Collections.singletonList(1)),
@@ -347,7 +344,7 @@ public class DeviceMergeOperatorTest {
       deviceOperators.add(deviceViewOperator2);
       DeviceMergeOperator deviceMergeOperator =
           new DeviceMergeOperator(
-              fragmentInstanceContext.getOperatorContexts().get(4),
+              driverContext.getOperatorContexts().get(4),
               devices,
               deviceOperators,
               dataTypes,
@@ -408,20 +405,18 @@ public class DeviceMergeOperatorTest {
           new FragmentInstanceStateMachine(instanceId, instanceNotificationExecutor);
       FragmentInstanceContext fragmentInstanceContext =
           createFragmentInstanceContext(instanceId, stateMachine);
+      DriverContext driverContext = new DriverContext(fragmentInstanceContext, 0);
       PlanNodeId planNodeId1 = new PlanNodeId("1");
-      fragmentInstanceContext.addOperatorContext(
-          1, planNodeId1, SeriesScanOperator.class.getSimpleName());
+      driverContext.addOperatorContext(1, planNodeId1, SeriesScanOperator.class.getSimpleName());
       PlanNodeId planNodeId2 = new PlanNodeId("2");
-      fragmentInstanceContext.addOperatorContext(
-          2, planNodeId2, SeriesScanOperator.class.getSimpleName());
+      driverContext.addOperatorContext(2, planNodeId2, SeriesScanOperator.class.getSimpleName());
       PlanNodeId planNodeId3 = new PlanNodeId("3");
-      fragmentInstanceContext.addOperatorContext(
-          3, planNodeId3, SeriesScanOperator.class.getSimpleName());
-      fragmentInstanceContext.addOperatorContext(
+      driverContext.addOperatorContext(3, planNodeId3, SeriesScanOperator.class.getSimpleName());
+      driverContext.addOperatorContext(
           4, new PlanNodeId("4"), DeviceViewOperatorTest.class.getSimpleName());
-      fragmentInstanceContext.addOperatorContext(
+      driverContext.addOperatorContext(
           5, new PlanNodeId("5"), DeviceViewOperatorTest.class.getSimpleName());
-      fragmentInstanceContext.addOperatorContext(
+      driverContext.addOperatorContext(
           6, new PlanNodeId("6"), DeviceMergeOperator.class.getSimpleName());
 
       List<TSDataType> dataTypes = new ArrayList<>();
@@ -432,7 +427,7 @@ public class DeviceMergeOperatorTest {
           new MeasurementPath(DEVICE_MERGE_OPERATOR_TEST_SG + ".device0.sensor0", TSDataType.INT32);
       SeriesScanOperator seriesScanOperator1 =
           new SeriesScanOperator(
-              fragmentInstanceContext.getOperatorContexts().get(0),
+              driverContext.getOperatorContexts().get(0),
               planNodeId1,
               measurementPath1,
               Collections.singleton("sensor0"),
@@ -458,7 +453,7 @@ public class DeviceMergeOperatorTest {
           new MeasurementPath(DEVICE_MERGE_OPERATOR_TEST_SG + ".device1.sensor1", TSDataType.INT32);
       SeriesScanOperator seriesScanOperator2 =
           new SeriesScanOperator(
-              fragmentInstanceContext.getOperatorContexts().get(1),
+              driverContext.getOperatorContexts().get(1),
               planNodeId2,
               measurementPath2,
               Collections.singleton("sensor1"),
@@ -482,7 +477,7 @@ public class DeviceMergeOperatorTest {
       deviceColumnIndex.add(Collections.singletonList(2));
       DeviceViewOperator deviceViewOperator1 =
           new DeviceViewOperator(
-              fragmentInstanceContext.getOperatorContexts().get(3),
+              driverContext.getOperatorContexts().get(3),
               devices,
               deviceOperators,
               deviceColumnIndex,
@@ -490,7 +485,7 @@ public class DeviceMergeOperatorTest {
 
       SeriesScanOperator seriesScanOperator3 =
           new SeriesScanOperator(
-              fragmentInstanceContext.getOperatorContexts().get(2),
+              driverContext.getOperatorContexts().get(2),
               planNodeId3,
               measurementPath1,
               Collections.singleton("sensor0"),
@@ -511,7 +506,7 @@ public class DeviceMergeOperatorTest {
       seriesScanOperator3.initQueryDataSource(new QueryDataSource(seqResources2, unSeqResources2));
       DeviceViewOperator deviceViewOperator2 =
           new DeviceViewOperator(
-              fragmentInstanceContext.getOperatorContexts().get(4),
+              driverContext.getOperatorContexts().get(4),
               Collections.singletonList(DEVICE_MERGE_OPERATOR_TEST_SG + ".device0"),
               Collections.singletonList(seriesScanOperator3),
               Collections.singletonList(Collections.singletonList(1)),
@@ -522,7 +517,7 @@ public class DeviceMergeOperatorTest {
       deviceViewOperators.add(deviceViewOperator2);
       DeviceMergeOperator deviceMergeOperator =
           new DeviceMergeOperator(
-              fragmentInstanceContext.getOperatorContexts().get(5),
+              driverContext.getOperatorContexts().get(5),
               devices,
               deviceViewOperators,
               dataTypes,

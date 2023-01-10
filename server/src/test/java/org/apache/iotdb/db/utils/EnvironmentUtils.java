@@ -102,7 +102,6 @@ public class EnvironmentUtils {
   public static void cleanEnv() throws IOException, StorageEngineException {
     // wait all compaction finished
     CompactionTaskManager.getInstance().waitAllCompactionFinish();
-
     // deregister all user defined classes
     try {
       if (UDFManagementService.getInstance() != null) {
@@ -113,8 +112,8 @@ public class EnvironmentUtils {
     }
 
     logger.debug("EnvironmentUtil cleanEnv...");
-    QueryResourceManager.getInstance().endQuery(TEST_QUERY_JOB_ID);
 
+    QueryResourceManager.getInstance().endQuery(TEST_QUERY_JOB_ID);
     // clear opened file streams
     FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
 
@@ -134,17 +133,13 @@ public class EnvironmentUtils {
         }
       }
     }
-
     // clean wal manager
     WALManager.getInstance().clear();
     WALRecoverManager.getInstance().clear();
-
     StorageEngine.getInstance().stop();
-
     SchemaEngine.getInstance().clear();
     LocalConfigNode.getInstance().clear();
     FlushManager.getInstance().stop();
-
     CommonDescriptor.getInstance().getConfig().setNodeStatus(NodeStatus.Running);
     // We must disable MQTT service as it will cost a lot of time to be shutdown, which may slow our
     // unit tests.

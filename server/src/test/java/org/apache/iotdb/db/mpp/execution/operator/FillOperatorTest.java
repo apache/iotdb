@@ -22,6 +22,7 @@ import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.common.QueryId;
+import org.apache.iotdb.db.mpp.execution.driver.DriverContext;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceStateMachine;
 import org.apache.iotdb.db.mpp.execution.operator.process.FillOperator;
@@ -56,9 +57,9 @@ public class FillOperatorTest {
           new FragmentInstanceStateMachine(instanceId, instanceNotificationExecutor);
       FragmentInstanceContext fragmentInstanceContext =
           createFragmentInstanceContext(instanceId, stateMachine);
+      DriverContext driverContext = new DriverContext(fragmentInstanceContext, 0);
       PlanNodeId planNodeId1 = new PlanNodeId("1");
-      fragmentInstanceContext.addOperatorContext(
-          1, planNodeId1, FillOperator.class.getSimpleName());
+      driverContext.addOperatorContext(1, planNodeId1, FillOperator.class.getSimpleName());
 
       IFill[] fillArray =
           new IFill[] {
@@ -68,14 +69,14 @@ public class FillOperatorTest {
           };
       FillOperator fillOperator =
           new FillOperator(
-              fragmentInstanceContext.getOperatorContexts().get(0),
+              driverContext.getOperatorContexts().get(0),
               fillArray,
               new Operator() {
                 private int index = 0;
 
                 @Override
                 public OperatorContext getOperatorContext() {
-                  return fragmentInstanceContext.getOperatorContexts().get(0);
+                  return driverContext.getOperatorContexts().get(0);
                 }
 
                 @Override
@@ -230,22 +231,22 @@ public class FillOperatorTest {
           new FragmentInstanceStateMachine(instanceId, instanceNotificationExecutor);
       FragmentInstanceContext fragmentInstanceContext =
           createFragmentInstanceContext(instanceId, stateMachine);
+      DriverContext driverContext = new DriverContext(fragmentInstanceContext, 0);
       PlanNodeId planNodeId1 = new PlanNodeId("1");
-      fragmentInstanceContext.addOperatorContext(
-          1, planNodeId1, FillOperator.class.getSimpleName());
+      driverContext.addOperatorContext(1, planNodeId1, FillOperator.class.getSimpleName());
 
       IFill[] fillArray =
           new IFill[] {new IntPreviousFill(), new IntPreviousFill(), new IntPreviousFill()};
       FillOperator fillOperator =
           new FillOperator(
-              fragmentInstanceContext.getOperatorContexts().get(0),
+              driverContext.getOperatorContexts().get(0),
               fillArray,
               new Operator() {
                 private int index = 0;
 
                 @Override
                 public OperatorContext getOperatorContext() {
-                  return fragmentInstanceContext.getOperatorContexts().get(0);
+                  return driverContext.getOperatorContexts().get(0);
                 }
 
                 @Override

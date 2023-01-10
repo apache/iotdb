@@ -129,9 +129,9 @@ public class FragmentInstanceExecution {
             // will try to call ISinkHandle.setNoMoreTsBlocks()
             for (IDriver driver : drivers) {
               driver.close();
-              // help for gc
-              driver = null;
             }
+            // help for gc
+            drivers = null;
             if (newState.isFailed()) {
               scheduler.abortFragmentInstance(instanceId);
             }

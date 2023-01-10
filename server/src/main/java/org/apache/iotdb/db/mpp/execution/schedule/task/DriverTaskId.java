@@ -28,10 +28,12 @@ import org.jetbrains.annotations.NotNull;
 
 import java.util.Objects;
 
-/** the class of id of the fragment instance task */
+/** the class of id of the pipeline driver task */
 public class DriverTaskId implements ID, Comparable<DriverTaskId> {
 
   private final FragmentInstanceId fragmentInstanceId;
+  // TODO Create another field to store id of driver level
+  // Currently, we just save pipelineId in driverTask since it's one-to-one relation.
   private final int pipelineId;
   private final String fullId;
 

@@ -18,22 +18,17 @@
  */
 package org.apache.iotdb.db.mpp.execution.driver;
 
-import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.IDataRegionForQuery;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.idtable.IDTable;
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
 import org.apache.iotdb.db.mpp.execution.operator.source.DataSourceOperator;
 import org.apache.iotdb.db.query.control.FileReaderManager;
-import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 import com.google.common.util.concurrent.SettableFuture;
 
 import javax.annotation.concurrent.NotThreadSafe;
 
-import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
@@ -97,7 +92,7 @@ public class DataDriver extends Driver {
    * init seq file list and unseq file list in QueryDataSource and set it into each SourceNode TODO
    * we should change all the blocked lock operation into tryLock
    */
-  private void initialize() throws QueryProcessException {
+  private void initialize() {
     long startTime = System.nanoTime();
     try {
       List<DataSourceOperator> sourceOperators =
@@ -126,32 +121,19 @@ public class DataDriver extends Driver {
    * The method is called in mergeLock() when executing query. This method will get all the
    * QueryDataSource needed for this query
    */
-  private QueryDataSource initQueryDataSource() throws QueryProcessException {
+  private QueryDataSource initQueryDataSource() {
     DataDriverContext context = (DataDriverContext) driverContext;
     IDataRegionForQuery dataRegion = context.getDataRegion();
     dataRegion.readLock();
     try {
-      List<PartialPath> pathList = new ArrayList<>();
-      Set<String> selectedDeviceIdSet = new HashSet<>();
-      for (PartialPath path : context.getPaths()) {
-        PartialPath translatedPath = IDTable.translateQueryPath(path);
-        pathList.add(translatedPath);
-        selectedDeviceIdSet.add(translatedPath.getDevice());
-      }
 
-      Filter timeFilter = context.getTimeFilter();
-      QueryDataSource dataSource =
-          dataRegion.query(
-              pathList,
-              // when all the selected series are under the same device, the QueryDataSource will be
-              // filtered according to timeIndex
-              selectedDeviceIdSet.size() == 1 ? selectedDeviceIdSet.iterator().next() : null,
-              driverContext.getFragmentInstanceContext(),
-              timeFilter != null ? timeFilter.copy() : null);
+      QueryDataSource dataSource = ((DataDriverContext) driverContext).getSharedQueryDataSource();
 
       // used files should be added before mergeLock is unlocked, or they may be deleted by
       // running merge
-      addUsedFilesForQuery(dataSource);
+      if (dataSource != null) {
+        addUsedFilesForQuery(dataSource);
+      }
 
       return dataSource;
     } finally {

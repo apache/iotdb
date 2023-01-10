@@ -19,7 +19,6 @@
 package org.apache.iotdb.db.mpp.plan.planner;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.storagegroup.IDataRegionForQuery;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.execution.driver.DataDriverContext;
@@ -55,6 +54,7 @@ import static java.util.Objects.requireNonNull;
 public class LocalExecutionPlanContext {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(LocalExecutionPlanContext.class);
+  // Save operators in this pipeline, a new one will be created when creating another pipeline
   private final DriverContext driverContext;
   private final AtomicInteger nextOperatorId;
   private final TypeProvider typeProvider;
@@ -79,18 +79,13 @@ public class LocalExecutionPlanContext {
 
   // for data region
   public LocalExecutionPlanContext(
-      TypeProvider typeProvider,
-      FragmentInstanceContext instanceContext,
-      long dataRegionTTL,
-      Filter timeFilter,
-      IDataRegionForQuery dataRegionForQuery) {
+      TypeProvider typeProvider, FragmentInstanceContext instanceContext) {
     this.typeProvider = typeProvider;
     this.allSensorsMap = new ConcurrentHashMap<>();
-    this.dataRegionTTL = dataRegionTTL;
+    this.dataRegionTTL = instanceContext.getDataRegion().getDataTTL();
     this.nextOperatorId = new AtomicInteger(0);
     this.nextPipelineId = new AtomicInteger(0);
-    this.driverContext =
-        new DataDriverContext(instanceContext, getNextPipelineId(), timeFilter, dataRegionForQuery);
+    this.driverContext = new DataDriverContext(instanceContext, getNextPipelineId());
     this.pipelineDriverFactories = new ArrayList<>();
   }
 
@@ -214,10 +209,6 @@ public class LocalExecutionPlanContext {
 
   public List<Pair<TimeValuePair, Binary>> getCachedLastValueAndPathList() {
     return cachedLastValueAndPathList;
-  }
-
-  public ISinkHandle getSinkHandle() {
-    return driverContext.getSinkHandle();
   }
 
   public void setSinkHandle(ISinkHandle sinkHandle) {

@@ -16,47 +16,40 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.metadata.mtree.traverser.collector;
+package org.apache.iotdb.db.metadata.mtree.traverser.counter;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
-import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.mtree.store.IMTreeStore;
+import org.apache.iotdb.db.metadata.mtree.traverser.basic.DatabaseTraverser;
 
-// This class implements database path collection function.
-public abstract class StorageGroupCollector<T> extends CollectorTraverser<T> {
+// This class implement database counter.
+public class DatabaseCounter extends DatabaseTraverser<Void> implements Counter {
 
-  protected boolean collectInternal = false;
+  private int count;
 
-  protected StorageGroupCollector(IMNode startNode, PartialPath path, IMTreeStore store)
+  public DatabaseCounter(
+      IMNode startNode, PartialPath path, IMTreeStore store, boolean isPrefixMatch)
       throws MetadataException {
-    super(startNode, path, store);
+    super(startNode, path, store, isPrefixMatch);
   }
 
   @Override
-  protected boolean processInternalMatchedMNode(IMNode node, int idx, int level) {
-    if (node.isStorageGroup()) {
-      if (collectInternal) {
-        collectStorageGroup(node.getAsStorageGroupMNode());
-      }
-      return true;
-    }
-    return false;
+  protected Void generateResult(IMNode nextMatchedNode) {
+    count++;
+    return null;
   }
 
   @Override
-  protected boolean processFullMatchedMNode(IMNode node, int idx, int level) {
-    if (node.isStorageGroup()) {
-      collectStorageGroup(node.getAsStorageGroupMNode());
-      return true;
+  public long count() throws MetadataException {
+    while (hasNext()) {
+      next();
     }
-    return false;
-  }
-
-  protected abstract void collectStorageGroup(IStorageGroupMNode node);
-
-  public void setCollectInternal(boolean collectInternal) {
-    this.collectInternal = collectInternal;
+    if (!isSuccess()) {
+      Throwable e = getFailure();
+      throw new MetadataException(e.getMessage(), e);
+    }
+    return count;
   }
 }

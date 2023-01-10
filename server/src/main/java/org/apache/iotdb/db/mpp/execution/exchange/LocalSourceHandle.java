@@ -54,7 +54,7 @@ public class LocalSourceHandle implements ISourceHandle {
 
   private int currSequenceId;
 
-  private String threadName;
+  private final String threadName;
 
   private static final TsBlockSerde serde = new TsBlockSerde();
   private static final QueryMetricsManager QUERY_METRICS = QueryMetricsManager.getInstance();

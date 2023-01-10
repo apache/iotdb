@@ -530,7 +530,7 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
    * As we know the upstream and downstream node of shared queue, we don't need to put it into the
    * sourceHandle map.
    */
-  public synchronized ISourceHandle createLocalSourceHandleForPipeline(
+  public ISourceHandle createLocalSourceHandleForPipeline(
       SharedTsBlockQueue queue, DriverContext context) {
     logger.debug("Create local source handle for {}", context.getDriverTaskID());
     return new LocalSourceHandle(

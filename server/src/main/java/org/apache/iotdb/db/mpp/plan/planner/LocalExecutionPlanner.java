@@ -18,10 +18,12 @@
  */
 package org.apache.iotdb.db.mpp.plan.planner;
 
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.storagegroup.IDataRegionForQuery;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.mpp.exception.MemoryNotEnoughException;
+import org.apache.iotdb.db.mpp.execution.driver.DataDriverContext;
 import org.apache.iotdb.db.mpp.execution.driver.SchemaDriver;
 import org.apache.iotdb.db.mpp.execution.driver.SchemaDriverContext;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
@@ -32,11 +34,11 @@ import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.utils.SetThreadName;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -57,15 +59,9 @@ public class LocalExecutionPlanner {
   }
 
   public List<PipelineDriverFactory> plan(
-      PlanNode plan,
-      TypeProvider types,
-      FragmentInstanceContext instanceContext,
-      Filter timeFilter,
-      IDataRegionForQuery dataRegion)
-      throws MemoryNotEnoughException {
-    LocalExecutionPlanContext context =
-        new LocalExecutionPlanContext(
-            types, instanceContext, dataRegion.getDataTTL(), timeFilter, dataRegion);
+      PlanNode plan, TypeProvider types, FragmentInstanceContext instanceContext)
+      throws MemoryNotEnoughException, QueryProcessException {
+    LocalExecutionPlanContext context = new LocalExecutionPlanContext(types, instanceContext);
 
     // Generate pipelines, return the last pipeline data structure
     // TODO Replace operator with operatorFactory to build multiple driver for one pipeline
@@ -75,6 +71,9 @@ public class LocalExecutionPlanner {
     checkMemory(root, instanceContext.getStateMachine());
 
     context.addPipelineDriverFactory(root, context.getDriverContext());
+
+    List<PartialPath> sourcePaths = collectSourcePaths(context);
+    instanceContext.initQueryDataSource(sourcePaths);
 
     // set maxBytes one SourceHandle can reserve after visiting the whole tree
     context.setMaxBytesOneHandleCanReserve();
@@ -152,6 +151,16 @@ public class LocalExecutionPlanner {
             }
           }
         });
+  }
+
+  private List<PartialPath> collectSourcePaths(LocalExecutionPlanContext context) {
+    List<PartialPath> sourcePaths = new ArrayList<>();
+    context
+        .getPipelineDriverFactories()
+        .forEach(
+            pipeline ->
+                sourcePaths.addAll(((DataDriverContext) pipeline.getDriverContext()).getPaths()));
+    return sourcePaths;
   }
 
   private static class InstanceHolder {

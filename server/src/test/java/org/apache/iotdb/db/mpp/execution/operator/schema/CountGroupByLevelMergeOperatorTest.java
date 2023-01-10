@@ -21,17 +21,18 @@ package org.apache.iotdb.db.mpp.execution.operator.schema;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.metadata.plan.schemaregion.impl.read.SchemaRegionReadPlanFactory;
 import org.apache.iotdb.db.metadata.query.info.ITimeSeriesSchemaInfo;
 import org.apache.iotdb.db.metadata.query.reader.ISchemaReader;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.common.QueryId;
+import org.apache.iotdb.db.mpp.execution.driver.DriverContext;
 import org.apache.iotdb.db.mpp.execution.driver.SchemaDriverContext;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceStateMachine;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
+import org.apache.iotdb.db.mpp.execution.operator.schema.source.ISchemaSource;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 
@@ -68,39 +69,32 @@ public class CountGroupByLevelMergeOperatorTest {
           new FragmentInstanceStateMachine(instanceId, instanceNotificationExecutor);
       FragmentInstanceContext fragmentInstanceContext =
           createFragmentInstanceContext(instanceId, stateMachine);
+      DriverContext driverContext = new DriverContext(fragmentInstanceContext, 0);
       PlanNodeId planNodeId = queryId.genPlanNodeId();
       OperatorContext operatorContext =
-          fragmentInstanceContext.addOperatorContext(
-              1, planNodeId, LevelTimeSeriesCountOperator.class.getSimpleName());
-      ISchemaRegion schemaRegion = mockSchemaRegion();
+          driverContext.addOperatorContext(
+              1, planNodeId, CountGroupByLevelScanOperator.class.getSimpleName());
+      ISchemaRegion schemaRegion = Mockito.mock(ISchemaRegion.class);
       operatorContext.setDriverContext(
           new SchemaDriverContext(fragmentInstanceContext, schemaRegion));
-      LevelTimeSeriesCountOperator timeSeriesCountOperator1 =
-          new LevelTimeSeriesCountOperator(
+      CountGroupByLevelScanOperator<ITimeSeriesSchemaInfo> timeSeriesCountOperator1 =
+          new CountGroupByLevelScanOperator<>(
               planNodeId,
-              fragmentInstanceContext.getOperatorContexts().get(0),
-              new PartialPath(OPERATOR_TEST_SG + ".device2"),
-              true,
+              driverContext.getOperatorContexts().get(0),
               2,
-              null,
-              null,
-              false);
+              mockSchemaSource(schemaRegion, new PartialPath(OPERATOR_TEST_SG + ".device2")));
 
-      LevelTimeSeriesCountOperator timeSeriesCountOperator2 =
-          new LevelTimeSeriesCountOperator(
+      CountGroupByLevelScanOperator<ITimeSeriesSchemaInfo> timeSeriesCountOperator2 =
+          new CountGroupByLevelScanOperator<>(
               planNodeId,
-              fragmentInstanceContext.getOperatorContexts().get(0),
-              new PartialPath(OPERATOR_TEST_SG),
-              true,
+              driverContext.getOperatorContexts().get(0),
               2,
-              null,
-              null,
-              false);
+              mockSchemaSource(schemaRegion, new PartialPath(OPERATOR_TEST_SG)));
 
       CountGroupByLevelMergeOperator mergeOperator =
           new CountGroupByLevelMergeOperator(
               planNodeId,
-              fragmentInstanceContext.getOperatorContexts().get(0),
+              driverContext.getOperatorContexts().get(0),
               Arrays.asList(timeSeriesCountOperator1, timeSeriesCountOperator2));
 
       Assert.assertTrue(mergeOperator.isBlocked().isDone());
@@ -138,29 +132,18 @@ public class CountGroupByLevelMergeOperatorTest {
     }
   }
 
-  private ISchemaRegion mockSchemaRegion() throws Exception {
-    ISchemaRegion schemaRegion = Mockito.mock(ISchemaRegion.class);
-    ISchemaReader<ITimeSeriesSchemaInfo> schemaReader =
-        mockSchemaReader(10, OPERATOR_TEST_SG + ".device2");
-    Mockito.when(
-            schemaRegion.getTimeSeriesReader(
-                SchemaRegionReadPlanFactory.getShowTimeSeriesPlan(
-                    new PartialPath(OPERATOR_TEST_SG + ".device2"),
-                    null,
-                    false,
-                    null,
-                    null,
-                    0,
-                    0,
-                    true)))
-        .thenReturn(schemaReader);
-    schemaReader = mockSchemaReader(2000, OPERATOR_TEST_SG);
-    Mockito.when(
-            schemaRegion.getTimeSeriesReader(
-                SchemaRegionReadPlanFactory.getShowTimeSeriesPlan(
-                    new PartialPath(OPERATOR_TEST_SG), null, false, null, null, 0, 0, true)))
-        .thenReturn(schemaReader);
-    return schemaRegion;
+  private ISchemaSource<ITimeSeriesSchemaInfo> mockSchemaSource(
+      ISchemaRegion schemaRegion, PartialPath path) throws Exception {
+    ISchemaSource<ITimeSeriesSchemaInfo> schemaSource = Mockito.mock(ISchemaSource.class);
+    if (path.equals(new PartialPath(OPERATOR_TEST_SG + ".device2"))) {
+      ISchemaReader<ITimeSeriesSchemaInfo> schemaReader =
+          mockSchemaReader(10, OPERATOR_TEST_SG + ".device2");
+      Mockito.when(schemaSource.getSchemaReader(schemaRegion)).thenReturn(schemaReader);
+    } else if (path.equals(new PartialPath(OPERATOR_TEST_SG))) {
+      ISchemaReader<ITimeSeriesSchemaInfo> schemaReader = mockSchemaReader(2000, OPERATOR_TEST_SG);
+      Mockito.when(schemaSource.getSchemaReader(schemaRegion)).thenReturn(schemaReader);
+    }
+    return schemaSource;
   }
 
   private ISchemaReader<ITimeSeriesSchemaInfo> mockSchemaReader(int expectedNum, String prefix)

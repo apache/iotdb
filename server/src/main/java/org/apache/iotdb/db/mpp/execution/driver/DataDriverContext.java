@@ -19,11 +19,10 @@
 package org.apache.iotdb.db.mpp.execution.driver;
 
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.IDataRegionForQuery;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.mpp.execution.operator.source.DataSourceOperator;
-import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -32,50 +31,22 @@ import java.util.List;
 public class DataDriverContext extends DriverContext {
 
   private final List<PartialPath> paths;
-  private Filter timeFilter;
-  private final IDataRegionForQuery dataRegion;
   private final List<DataSourceOperator> sourceOperators;
 
-  public DataDriverContext(
-      FragmentInstanceContext fragmentInstanceContext,
-      int pipelineId,
-      Filter timeFilter,
-      IDataRegionForQuery dataRegion) {
+  public DataDriverContext(FragmentInstanceContext fragmentInstanceContext, int pipelineId) {
     super(fragmentInstanceContext, pipelineId);
-    this.timeFilter = timeFilter;
-    this.dataRegion = dataRegion;
     this.paths = new ArrayList<>();
     this.sourceOperators = new ArrayList<>();
   }
 
-  @TestOnly
-  public DataDriverContext(
-      FragmentInstanceContext fragmentInstanceContext,
-      List<PartialPath> paths,
-      Filter timeFilter,
-      IDataRegionForQuery dataRegion,
-      List<DataSourceOperator> sourceOperators) {
-    super(fragmentInstanceContext, 0);
-    this.paths = paths;
-    this.timeFilter = timeFilter;
-    this.dataRegion = dataRegion;
-    this.sourceOperators = sourceOperators;
-  }
-
   public DataDriverContext(DataDriverContext parentContext, int pipelineId) {
     super(parentContext.getFragmentInstanceContext(), pipelineId);
-    this.timeFilter = parentContext.timeFilter;
-    this.dataRegion = parentContext.dataRegion;
     this.paths = new ArrayList<>();
     this.sourceOperators = new ArrayList<>();
   }
 
   public void addPath(PartialPath path) {
     this.paths.add(path);
-  }
-
-  public void setTimeFilter(Filter timeFilter) {
-    this.timeFilter = timeFilter;
   }
 
   public void addSourceOperator(DataSourceOperator sourceOperator) {
@@ -86,12 +57,12 @@ public class DataDriverContext extends DriverContext {
     return paths;
   }
 
-  public Filter getTimeFilter() {
-    return timeFilter;
+  public IDataRegionForQuery getDataRegion() {
+    return getFragmentInstanceContext().getDataRegion();
   }
 
-  public IDataRegionForQuery getDataRegion() {
-    return dataRegion;
+  public QueryDataSource getSharedQueryDataSource() {
+    return getFragmentInstanceContext().getSharedQueryDataSource();
   }
 
   public List<DataSourceOperator> getSourceOperators() {
