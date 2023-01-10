@@ -91,7 +91,6 @@ public class TimeSeriesSchemaSource implements ISchemaSource<ITimeSeriesSchemaIn
   @Override
   public void transformToTsBlockColumns(
       ITimeSeriesSchemaInfo series, TsBlockBuilder builder, String database) {
-    Pair<Map<String, String>, Map<String, String>> tagAndAttribute = series.getTagAndAttribute();
     Pair<String, String> deadbandInfo = MetaUtils.parseDeadbandInfo(series.getSchema().getProps());
     builder.getTimeColumnBuilder().writeLong(0);
     builder.writeNullableText(0, series.getFullPath());
@@ -100,8 +99,8 @@ public class TimeSeriesSchemaSource implements ISchemaSource<ITimeSeriesSchemaIn
     builder.writeNullableText(3, series.getSchema().getType().toString());
     builder.writeNullableText(4, series.getSchema().getEncodingType().toString());
     builder.writeNullableText(5, series.getSchema().getCompressor().toString());
-    builder.writeNullableText(6, mapToString(tagAndAttribute.left));
-    builder.writeNullableText(7, mapToString(tagAndAttribute.right));
+    builder.writeNullableText(6, mapToString(series.getTags()));
+    builder.writeNullableText(7, mapToString(series.getAttributes()));
     builder.writeNullableText(8, deadbandInfo.left);
     builder.writeNullableText(9, deadbandInfo.right);
     builder.declarePosition();
