@@ -265,7 +265,10 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     }
     if (usingMLog) {
       try {
-        logWriter.force();
+        SchemaLogWriter<ISchemaRegionPlan> logWriter = this.logWriter;
+        if (logWriter != null) {
+          logWriter.force();
+        }
       } catch (IOException e) {
         logger.error("Cannot force {} mlog to the schema region", schemaRegionId, e);
       }
