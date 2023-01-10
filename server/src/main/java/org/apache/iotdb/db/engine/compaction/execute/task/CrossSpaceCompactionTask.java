@@ -205,10 +205,6 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
         }
 
         // update the metrics finally in case of any exception occurs
-        TsFileMetricManager.getInstance()
-            .deleteFile(sequenceFileSize, true, selectedSequenceFiles.size());
-        TsFileMetricManager.getInstance()
-            .deleteFile(unsequenceFileSize, false, selectedUnsequenceFiles.size());
         for (TsFileResource targetResource : targetTsfileResourceList) {
           if (targetResource != null) {
             TsFileMetricManager.getInstance().addFile(targetResource.getTsFileSize(), true);
@@ -217,6 +213,10 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
             targetResource.setStatus(TsFileResourceStatus.CLOSED);
           }
         }
+        TsFileMetricManager.getInstance()
+            .deleteFile(sequenceFileSize, true, selectedSequenceFiles.size());
+        TsFileMetricManager.getInstance()
+            .deleteFile(unsequenceFileSize, false, selectedUnsequenceFiles.size());
         long costTime = (System.currentTimeMillis() - startTime) / 1000;
         LOGGER.info(
             "{}-{} [Compaction] CrossSpaceCompaction task finishes successfully, time cost is {} s, compaction speed is {} MB/s",
