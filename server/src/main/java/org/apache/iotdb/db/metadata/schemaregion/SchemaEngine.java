@@ -60,7 +60,7 @@ public class SchemaEngine {
 
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
-  private Map<SchemaRegionId, ISchemaRegion> schemaRegionMap;
+  private volatile Map<SchemaRegionId, ISchemaRegion> schemaRegionMap;
   private SchemaEngineMode schemaRegionStoredMode;
 
   private ScheduledExecutorService timedForceMLogThread;
@@ -214,6 +214,7 @@ public class SchemaEngine {
   }
 
   public void forceMlog() {
+    Map<SchemaRegionId, ISchemaRegion> schemaRegionMap = this.schemaRegionMap;
     if (schemaRegionMap != null) {
       for (ISchemaRegion schemaRegion : schemaRegionMap.values()) {
         schemaRegion.forceMlog();
