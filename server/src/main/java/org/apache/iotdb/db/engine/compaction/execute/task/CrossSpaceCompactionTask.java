@@ -191,6 +191,7 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
 
         long sequenceFileSize = deleteOldFiles(selectedSequenceFiles);
         long unsequenceFileSize = deleteOldFiles(selectedUnsequenceFiles);
+
         CompactionUtils.deleteCompactionModsFile(selectedSequenceFiles, selectedUnsequenceFiles);
 
         if (logFile.exists()) {
@@ -209,13 +210,13 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
             targetResource.remove();
           }
         }
+
         TsFileMetricManager.getInstance()
             .deleteFile(sequenceFileSize, true, selectedSequenceFiles.size());
         TsFileMetricManager.getInstance()
             .deleteFile(unsequenceFileSize, false, selectedUnsequenceFiles.size());
 
         CompactionMetricsRecorder.updateSummary(summary);
-
         long costTime = (System.currentTimeMillis() - startTime) / 1000;
 
         LOGGER.info(
