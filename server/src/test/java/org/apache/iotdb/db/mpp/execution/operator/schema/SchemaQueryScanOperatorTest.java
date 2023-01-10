@@ -44,7 +44,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.column.BinaryColumn;
 import org.apache.iotdb.tsfile.utils.Binary;
-import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.junit.Assert;
@@ -181,7 +180,8 @@ public class SchemaQueryScanOperatorTest {
             .thenReturn(
                 new MeasurementSchema(
                     "s" + i, TSDataType.INT32, TSEncoding.PLAIN, CompressionType.UNCOMPRESSED));
-        Mockito.when(timeSeriesSchemaInfo.getTagAndAttribute()).thenReturn(new Pair<>(null, null));
+        Mockito.when(timeSeriesSchemaInfo.getTags()).thenReturn(null);
+        Mockito.when(timeSeriesSchemaInfo.getAttributes()).thenReturn(null);
         showTimeSeriesResults.add(timeSeriesSchemaInfo);
       }
       Iterator<ITimeSeriesSchemaInfo> iterator = showTimeSeriesResults.iterator();
