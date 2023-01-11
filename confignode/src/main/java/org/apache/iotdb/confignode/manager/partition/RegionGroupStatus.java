@@ -30,6 +30,13 @@ public enum RegionGroupStatus {
   Available("Available"),
 
   /**
+   * All Regions in RegionGroup are in the Running, Unknown or ReadOnly status, and at least 1 node
+   * is in ReadOnly status, the number of Regions in the Unknown or ReadOnly status is less than
+   * half
+   */
+  Discouraged("Discouraged"),
+
+  /**
    * The following cases will lead to Disabled RegionGroup:
    *
    * <p>1. There is a Region in ReadOnly or Removing status
