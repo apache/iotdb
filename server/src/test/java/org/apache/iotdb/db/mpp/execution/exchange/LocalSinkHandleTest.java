@@ -50,25 +50,20 @@ public class LocalSinkHandleTest {
     SharedTsBlockQueue queue =
         new SharedTsBlockQueue(remoteFragmentInstanceId, remotePlanNodeId, mockLocalMemoryManager);
 
+    // Construct SinkHandle.
+    LocalSinkHandle localSinkHandle =
+        new LocalSinkHandle(localFragmentInstanceId, queue, mockSinkHandleListener);
+
     queue.setMaxBytesCanReserve(Long.MAX_VALUE);
 
     // Construct SourceHandle
     LocalSourceHandle localSourceHandle =
         new LocalSourceHandle(
             localFragmentInstanceId,
-            remoteFragmentInstanceId,
             remotePlanNodeId,
             queue,
             Mockito.mock(MPPDataExchangeManager.SourceHandleListener.class));
 
-    // Construct SinkHandle.
-    LocalSinkHandle localSinkHandle =
-        new LocalSinkHandle(
-            remoteFragmentInstanceId,
-            remotePlanNodeId,
-            localFragmentInstanceId,
-            queue,
-            mockSinkHandleListener);
     Assert.assertFalse(localSinkHandle.isFull().isDone());
     localSourceHandle.isBlocked();
     // blocked of LocalSinkHandle should be completed after calling isBlocked() of corresponding
@@ -137,25 +132,20 @@ public class LocalSinkHandleTest {
     SharedTsBlockQueue queue =
         new SharedTsBlockQueue(remoteFragmentInstanceId, remotePlanNodeId, mockLocalMemoryManager);
 
+    // Construct SinkHandle.
+    LocalSinkHandle localSinkHandle =
+        new LocalSinkHandle(localFragmentInstanceId, queue, mockSinkHandleListener);
+
     queue.setMaxBytesCanReserve(Long.MAX_VALUE);
 
     // Construct SourceHandle
     LocalSourceHandle localSourceHandle =
         new LocalSourceHandle(
             localFragmentInstanceId,
-            remoteFragmentInstanceId,
             remotePlanNodeId,
             queue,
             Mockito.mock(MPPDataExchangeManager.SourceHandleListener.class));
 
-    // Construct SinkHandle.
-    LocalSinkHandle localSinkHandle =
-        new LocalSinkHandle(
-            remoteFragmentInstanceId,
-            remotePlanNodeId,
-            localFragmentInstanceId,
-            queue,
-            mockSinkHandleListener);
     Assert.assertFalse(localSinkHandle.isFull().isDone());
     localSourceHandle.isBlocked();
     // blocked of LocalSinkHandle should be completed after calling isBlocked() of corresponding

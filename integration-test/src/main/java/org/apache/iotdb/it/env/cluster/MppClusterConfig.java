@@ -22,6 +22,7 @@ import org.apache.iotdb.itbase.env.ClusterConfig;
 import org.apache.iotdb.itbase.env.CommonConfig;
 import org.apache.iotdb.itbase.env.ConfigNodeConfig;
 import org.apache.iotdb.itbase.env.DataNodeConfig;
+import org.apache.iotdb.itbase.env.JVMConfig;
 
 /** MppClusterConfig stores a whole cluster config items. */
 public class MppClusterConfig implements ClusterConfig {
@@ -31,6 +32,8 @@ public class MppClusterConfig implements ClusterConfig {
   private final MppCommonConfig configNodeCommonConfig;
   private final MppCommonConfig dataNodeCommonConfig;
   private final MppSharedCommonConfig sharedCommonConfig;
+  private final MppJVMConfig configNodeJVMConfig;
+  private final MppJVMConfig dataNodeJVMConfig;
 
   public MppClusterConfig() {
     this.configNodeConfig = new MppConfigNodeConfig();
@@ -39,6 +42,8 @@ public class MppClusterConfig implements ClusterConfig {
     this.dataNodeCommonConfig = new MppCommonConfig();
     this.sharedCommonConfig =
         new MppSharedCommonConfig(configNodeCommonConfig, dataNodeCommonConfig);
+    this.configNodeJVMConfig = new MppJVMConfig();
+    this.dataNodeJVMConfig = new MppJVMConfig();
   }
 
   @Override
@@ -64,5 +69,15 @@ public class MppClusterConfig implements ClusterConfig {
   @Override
   public CommonConfig getCommonConfig() {
     return sharedCommonConfig;
+  }
+
+  @Override
+  public JVMConfig getConfigNodeJVMConfig() {
+    return configNodeJVMConfig;
+  }
+
+  @Override
+  public JVMConfig getDataNodeJVMConfig() {
+    return dataNodeJVMConfig;
   }
 }

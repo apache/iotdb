@@ -23,8 +23,6 @@ import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
-import org.apache.iotdb.db.metadata.plan.schemaregion.read.IShowDevicesPlan;
-import org.apache.iotdb.db.metadata.plan.schemaregion.result.ShowDevicesResult;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -98,6 +96,22 @@ public interface IMTreeBelowSG {
   boolean isEmptyInternalMNode(IMNode node) throws MetadataException;
 
   /**
+   * Construct schema black list via setting matched timeseries to pre deleted.
+   *
+   * @param pathPattern path pattern
+   * @return PartialPath of timeseries that has been set to pre deleted
+   */
+  List<PartialPath> constructSchemaBlackList(PartialPath pathPattern) throws MetadataException;
+
+  /**
+   * Rollback schema black list via setting matched timeseries to not pre deleted.
+   *
+   * @param pathPattern path pattern
+   * @return PartialPath of timeseries that has been set to not pre deleted
+   */
+  List<PartialPath> rollbackSchemaBlackList(PartialPath pathPattern) throws MetadataException;
+
+  /**
    * Get all pre-deleted timeseries matched by given pathPattern. For example, given path pattern
    * root.sg.*.s1 and pre-deleted timeseries root.sg.d1.s1, root.sg.d2.s1, then the result set is
    * {root.sg.d1.s1, root.sg.d2.s1}.
@@ -127,8 +141,6 @@ public interface IMTreeBelowSG {
    */
   IMNode getDeviceNodeWithAutoCreating(PartialPath deviceId) throws MetadataException;
 
-  List<ShowDevicesResult> getDevices(IShowDevicesPlan plan) throws MetadataException;
-
   /**
    * Fetch all measurement path
    *
@@ -152,16 +164,34 @@ public interface IMTreeBelowSG {
 
   List<IMeasurementMNode> getAllMeasurementMNode() throws MetadataException;
 
-  /**
-   * Get IMeasurementMNode by path pattern
-   *
-   * @param pathPattern full path or path pattern with wildcard
-   * @return list of IMeasurementMNode
-   */
-  List<IMeasurementMNode> getMatchedMeasurementMNode(PartialPath pathPattern)
-      throws MetadataException;
-
   void activateTemplate(PartialPath activatePath, Template template) throws MetadataException;
+
+  /**
+   * constructSchemaBlackListWithTemplate
+   *
+   * @param templateSetInfo PathPattern and templateId to pre-deactivate
+   * @return Actual full path and templateId that has been pre-deactivated
+   */
+  Map<PartialPath, List<Integer>> constructSchemaBlackListWithTemplate(
+      Map<PartialPath, List<Integer>> templateSetInfo) throws MetadataException;
+
+  /**
+   * rollbackSchemaBlackListWithTemplate
+   *
+   * @param templateSetInfo PathPattern and templateId to rollback pre-deactivate
+   * @return Actual full path and templateId that has been rolled back
+   */
+  Map<PartialPath, List<Integer>> rollbackSchemaBlackListWithTemplate(
+      Map<PartialPath, List<Integer>> templateSetInfo) throws MetadataException;
+
+  /**
+   * deactivateTemplateInBlackList
+   *
+   * @param templateSetInfo PathPattern and templateId to rollback deactivate
+   * @return Actual full path and templateId that has been deactivated
+   */
+  Map<PartialPath, List<Integer>> deactivateTemplateInBlackList(
+      Map<PartialPath, List<Integer>> templateSetInfo) throws MetadataException;
 
   long countPathsUsingTemplate(PartialPath pathPattern, int templateId) throws MetadataException;
 }

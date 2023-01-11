@@ -135,7 +135,8 @@ public class IoTDBClusterNodeErrorStartUpIT {
         EnvFactory.getEnv().getConfigNodeWrapper(1).getConsensusPort());
     conflictConfigNodeWrapper.changeConfig(
         (MppBaseConfig) EnvFactory.getEnv().getConfig().getConfigNodeConfig(),
-        (MppCommonConfig) EnvFactory.getEnv().getConfig().getConfigNodeCommonConfig());
+        (MppCommonConfig) EnvFactory.getEnv().getConfig().getConfigNodeCommonConfig(),
+        null);
 
     // The registration request should be rejected since there exists conflict port
     try (SyncConfigNodeIServiceClient client =
@@ -165,7 +166,8 @@ public class IoTDBClusterNodeErrorStartUpIT {
         EnvFactory.getEnv().getDataNodeWrapper(0).getInternalPort());
     conflictDataNodeWrapper.changeConfig(
         (MppBaseConfig) EnvFactory.getEnv().getConfig().getDataNodeConfig(),
-        (MppCommonConfig) EnvFactory.getEnv().getConfig().getDataNodeCommonConfig());
+        (MppCommonConfig) EnvFactory.getEnv().getConfig().getDataNodeCommonConfig(),
+        null);
 
     // The registration request should be rejected since there exists conflict port
     try (SyncConfigNodeIServiceClient client =

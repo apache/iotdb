@@ -230,7 +230,7 @@ public class MaxValueAccumulator implements Accumulator {
       if (!curWindow.satisfy(column[0], i)) {
         return i;
       }
-      curWindow.mergeOnePoint();
+      curWindow.mergeOnePoint(column, i);
       if (!column[2].isNull(i)) {
         updateIntResult(column[2].getInt(i));
       }
@@ -256,7 +256,7 @@ public class MaxValueAccumulator implements Accumulator {
       if (!curWindow.satisfy(column[0], i)) {
         return i;
       }
-      curWindow.mergeOnePoint();
+      curWindow.mergeOnePoint(column, i);
       if (!column[2].isNull(i)) {
         updateLongResult(column[2].getLong(i));
       }
@@ -282,7 +282,7 @@ public class MaxValueAccumulator implements Accumulator {
       if (!curWindow.satisfy(column[0], i)) {
         return i;
       }
-      curWindow.mergeOnePoint();
+      curWindow.mergeOnePoint(column, i);
       if (!column[2].isNull(i)) {
         updateFloatResult(column[2].getFloat(i));
       }
@@ -308,7 +308,7 @@ public class MaxValueAccumulator implements Accumulator {
       if (!curWindow.satisfy(column[0], i)) {
         return i;
       }
-      curWindow.mergeOnePoint();
+      curWindow.mergeOnePoint(column, i);
       if (!column[2].isNull(i)) {
         updateDoubleResult(column[2].getDouble(i));
       }
