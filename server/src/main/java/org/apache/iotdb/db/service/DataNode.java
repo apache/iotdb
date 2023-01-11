@@ -138,6 +138,7 @@ public class DataNode implements DataNodeMBean {
   }
 
   public static void main(String[] args) {
+    logger.info("IoTDB-DataNode environment variables: " + IoTDBConfig.getEnvironmentVariables());
     new DataNodeServerCommandLine().doMain(args);
   }
 
@@ -170,7 +171,7 @@ public class DataNode implements DataNodeMBean {
       // Setup metric service
       setUpMetricService();
 
-      logger.info("IoTDB configuration: " + config.getConfigMessage());
+      logger.info("IoTDB configuration variables: " + config.getConfigMessage());
       logger.info("Congratulation, IoTDB DataNode is set up successfully. Now, enjoy yourself!");
 
     } catch (StartupException | ConfigurationException | IOException e) {
