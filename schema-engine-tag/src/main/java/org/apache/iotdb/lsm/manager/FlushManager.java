@@ -20,10 +20,10 @@ package org.apache.iotdb.lsm.manager;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
-import org.apache.iotdb.db.metadata.tagSchemaRegion.config.SchemaRegionConstant;
 import org.apache.iotdb.lsm.context.requestcontext.FlushRequestContext;
 import org.apache.iotdb.lsm.request.IFlushRequest;
 import org.apache.iotdb.lsm.sstable.fileIO.SSTableOutputStream;
+import org.apache.iotdb.lsm.util.DiskFileNameDescriptor;
 
 import java.io.File;
 import java.io.IOException;
@@ -73,9 +73,12 @@ public class FlushManager<T, R extends IFlushRequest>
         List<R> flushRequests = memManager.getFlushRequests();
         for (R flushRequest : flushRequests) {
           flushRequest.setFlushDirPath(flushDirPath);
-          flushRequest.setFlushFileName(flushFilePrefix + "-0-" + flushRequest.getIndex());
+          flushRequest.setFlushFileName(
+              DiskFileNameDescriptor.generateFlushFileName(
+                  flushFilePrefix, 0, flushRequest.getIndex()));
           flushRequest.setFlushDeleteFileName(
-              flushFilePrefix + "-delete" + "-0-" + flushRequest.getIndex());
+              DiskFileNameDescriptor.generateDeleteFlushFileName(
+                  flushFilePrefix, 0, flushRequest.getIndex()));
           flush(flushRequest);
         }
       }
@@ -91,7 +94,8 @@ public class FlushManager<T, R extends IFlushRequest>
     SSTableOutputStream fileOutput = context.getFileOutput();
     try {
       fileOutput.close();
-      String flushFileName = request.getFlushFileName() + SchemaRegionConstant.TMP;
+      String flushFileName =
+          DiskFileNameDescriptor.generateTmpFlushFileName(request.getFlushFileName());
       File flushFile = new File(this.flushDirPath, flushFileName);
       File newFlushFile = new File(this.flushDirPath, request.getFlushFileName());
       flushFile.renameTo(newFlushFile);
@@ -107,7 +111,8 @@ public class FlushManager<T, R extends IFlushRequest>
 
   @Override
   public void preProcess(T root, R request, FlushRequestContext context) {
-    String flushFileName = request.getFlushFileName() + SchemaRegionConstant.TMP;
+    String flushFileName =
+        DiskFileNameDescriptor.generateTmpFlushFileName(request.getFlushFileName());
     File flushFile = new File(this.flushDirPath, flushFileName);
     try {
       if (!flushFile.exists()) {

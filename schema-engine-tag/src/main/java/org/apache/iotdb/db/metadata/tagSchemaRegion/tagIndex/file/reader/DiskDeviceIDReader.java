@@ -18,8 +18,8 @@
  */
 package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.reader;
 
-import org.apache.iotdb.db.metadata.tagSchemaRegion.utils.ConvertUtils;
 import org.apache.iotdb.lsm.sstable.fileIO.SSTableInputStream;
+import org.apache.iotdb.lsm.util.DiskFileNameDescriptor;
 
 import org.roaringbitmap.RoaringBitmap;
 import org.slf4j.Logger;
@@ -197,7 +197,7 @@ public class DiskDeviceIDReader implements Iterator<Integer> {
     return new File(
         flushDirPath
             + File.separator
-            + ConvertUtils.getFlushDeleteFileNameFromFlushFileName(flushFileName));
+            + DiskFileNameDescriptor.getFlushDeleteFileNameFromFlushFileName(flushFileName));
   }
 
   private void setDeletionIDs(File deletionFile) throws IOException {

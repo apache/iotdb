@@ -22,10 +22,33 @@ import org.apache.iotdb.db.metadata.tagSchemaRegion.config.SchemaRegionConstant;
 
 public class DiskFileNameDescriptor {
 
-  public static Integer getFlushFileID(String fileName) {
+  public static Integer getTmpFlushFileID(String fileName) {
     return Integer.parseInt(
         fileName
             .substring(fileName.lastIndexOf("-") + 1)
             .replaceFirst(SchemaRegionConstant.TMP, ""));
+  }
+
+  public static String generateFlushFileName(String flushFilePrefix, int level, int fileID) {
+    return flushFilePrefix + "-" + level + "-" + fileID;
+  }
+
+  public static String generateTmpFlushFileName(String flushFileName) {
+    return flushFileName + SchemaRegionConstant.TMP;
+  }
+
+  public static String generateDeleteFlushFileName(String flushFilePrefix, int level, int fileID) {
+    return flushFilePrefix + "-" + SchemaRegionConstant.DELETE + "-" + level + "-" + fileID;
+  }
+
+  public static String getFlushDeleteFileNameFromFlushFileName(String flushFileName) {
+    String[] split = flushFileName.split("-");
+    StringBuilder prefix = new StringBuilder();
+    for (int i = 0; i < split.length - 2; i++) {
+      prefix.append(split[i]);
+    }
+    StringBuilder suffix = new StringBuilder();
+    suffix.append(split[split.length - 2]).append("-").append(split[split.length - 1]);
+    return prefix + "-" + SchemaRegionConstant.DELETE + "-" + suffix;
   }
 }

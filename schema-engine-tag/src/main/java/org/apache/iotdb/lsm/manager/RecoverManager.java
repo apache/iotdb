@@ -19,7 +19,6 @@
 package org.apache.iotdb.lsm.manager;
 
 import org.apache.iotdb.db.metadata.tagSchemaRegion.config.SchemaRegionConstant;
-import org.apache.iotdb.db.metadata.tagSchemaRegion.utils.ConvertUtils;
 import org.apache.iotdb.lsm.engine.IRecoverable;
 import org.apache.iotdb.lsm.request.IRequest;
 import org.apache.iotdb.lsm.util.DiskFileNameDescriptor;
@@ -66,7 +65,7 @@ public class RecoverManager<T extends IRecoverable> {
             .toArray(String[]::new);
     Integer[] flushTmpIDs =
         Arrays.stream(flushTmpFileNames)
-            .map(DiskFileNameDescriptor::getFlushFileID)
+            .map(DiskFileNameDescriptor::getTmpFlushFileID)
             .toArray(Integer[]::new);
     File walDir = new File(walDirPath);
     walDir.mkdirs();
@@ -87,7 +86,7 @@ public class RecoverManager<T extends IRecoverable> {
       else {
         flushTmpFile.delete();
         String flushDeleteFileName =
-            ConvertUtils.getFlushDeleteFileNameFromFlushFileName(flushFileName);
+            DiskFileNameDescriptor.getFlushDeleteFileNameFromFlushFileName(flushFileName);
         File flushDeleteFile = new File(flushDirPath + File.separator + flushDeleteFileName);
         if (flushDeleteFile.exists()) {
           flushDeleteFile.delete();
