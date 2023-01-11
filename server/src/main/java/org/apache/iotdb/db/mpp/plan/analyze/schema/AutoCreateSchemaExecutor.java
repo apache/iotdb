@@ -159,28 +159,30 @@ class AutoCreateSchemaExecutor {
     for (int i = 0, size = indexOfTargetDevices.size(); i < size; i++) {
       deviceIndex = indexOfTargetDevices.get(i);
       devicePath = devicePathList.get(deviceIndex);
+      indexOfTargetMeasurements = indexOfTargetMeasurementsList.get(i);
 
       templateInfo = devicesNeedActivateTemplate.get(devicePath);
       if (templateInfo == null) {
         templateInfo = templateManager.checkTemplateSetInfo(devicePath);
-        if (templateInfo == null) {
-          continue;
+      }
+
+      if (templateInfo == null) {
+        indexOfMeasurementsNotInTemplate = indexOfTargetMeasurements;
+      } else {
+        template = templateInfo.left;
+        indexOfMeasurementsNotInTemplate =
+            checkMeasurementsInSchemaTemplate(
+                devicePath,
+                indexOfTargetMeasurements,
+                measurementsList.get(deviceIndex),
+                isAlignedList.get(deviceIndex),
+                template);
+        if (indexOfMeasurementsNotInTemplate.size() < indexOfTargetMeasurements.size()) {
+          // there are measurements in schema template
+          devicesNeedActivateTemplate.putIfAbsent(devicePath, templateInfo);
         }
       }
 
-      template = templateInfo.left;
-      indexOfTargetMeasurements = indexOfTargetMeasurementsList.get(i);
-      indexOfMeasurementsNotInTemplate =
-          checkMeasurementsInSchemaTemplate(
-              devicePath,
-              indexOfTargetMeasurements,
-              measurementsList.get(deviceIndex),
-              isAlignedList.get(deviceIndex),
-              template);
-      if (indexOfMeasurementsNotInTemplate.size() < indexOfTargetMeasurements.size()) {
-        // there are measurements in schema template
-        devicesNeedActivateTemplate.putIfAbsent(devicePath, templateInfo);
-      }
       if (!indexOfMeasurementsNotInTemplate.isEmpty()) {
         // there are measurements need to be created as normal timeseries
         int finalDeviceIndex = deviceIndex;
