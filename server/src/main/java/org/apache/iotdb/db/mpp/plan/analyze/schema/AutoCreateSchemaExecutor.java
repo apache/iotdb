@@ -201,6 +201,9 @@ class AutoCreateSchemaExecutor {
               CompressionType[] compressionTypes =
                   compressionTypesList == null ? null : compressionTypesList.get(finalDeviceIndex);
               for (int measurementIndex : finalIndexOfMeasurementsNotInTemplate) {
+                if (tsDataTypes[measurementIndex] == null) {
+                  continue;
+                }
                 measurementGroup.addMeasurement(
                     measurements[measurementIndex],
                     tsDataTypes[measurementIndex],
