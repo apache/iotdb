@@ -101,11 +101,14 @@ public class StabilityTest {
         consensusImpl.createPeer(
             dataRegionId,
             Collections.singletonList(new Peer(dataRegionId, 1, new TEndPoint("0.0.0.0", 9000))));
-
+    consensusImpl.deletePeer(dataRegionId);
     Assert.assertTrue(response.isSuccess());
   }
 
   public void snapshotTest() throws IOException {
+    consensusImpl.createPeer(
+        dataRegionId,
+        Collections.singletonList(new Peer(dataRegionId, 1, new TEndPoint("0.0.0.0", 9000))));
     consensusImpl.triggerSnapshot(dataRegionId);
 
     File dataDir = new File(IoTConsensus.buildPeerDir(storageDir, dataRegionId));
@@ -121,21 +124,18 @@ public class StabilityTest {
 
     File[] versionFiles2 =
         dataDir.listFiles((dir, name) -> name.startsWith(IoTConsensusServerImpl.SNAPSHOT_DIR_NAME));
+    consensusImpl.deletePeer(dataRegionId);
     Assert.assertNotNull(versionFiles2);
     Assert.assertEquals(1, versionFiles2.length);
 
     Assert.assertNotEquals(versionFiles1[0].getName(), versionFiles2[0].getName());
-    for (File file : versionFiles2) {
-      try {
-        org.apache.commons.io.FileUtils.deleteDirectory(file);
-      } catch (IOException e) {
-        throw new IOException(
-            String.format("Delete old snapshot dir %s failed", file.getAbsolutePath()));
-      }
-    }
   }
 
   public void snapshotUpgradeTest() throws Exception {
+    consensusImpl.createPeer(
+        dataRegionId,
+        Collections.singletonList(new Peer(dataRegionId, 1, new TEndPoint("0.0.0.0", 9000))));
+    consensusImpl.triggerSnapshot(dataRegionId);
     String oldSnapshotId =
         String.format(
             "%s_%s_%d",
@@ -165,6 +165,7 @@ public class StabilityTest {
 
     File[] versionFiles2 =
         dataDir.listFiles((dir, name) -> name.startsWith(IoTConsensusServerImpl.SNAPSHOT_DIR_NAME));
+    consensusImpl.deletePeer(dataRegionId);
     Assert.assertNotNull(versionFiles2);
     Assert.assertEquals(1, versionFiles2.length);
     Assert.assertNotEquals(versionFiles1[0].getName(), versionFiles2[0].getName());
