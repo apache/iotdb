@@ -21,9 +21,13 @@ package org.apache.iotdb.commons.client;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.async.AsyncDataNodeInternalServiceClient;
+import org.apache.iotdb.commons.client.exception.BorrowNullClientManagerException;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.client.mock.MockInternalRPCService;
+import org.apache.iotdb.commons.client.property.ClientPoolProperty;
+import org.apache.iotdb.commons.client.property.ThriftClientProperty;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
+import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.mpp.rpc.thrift.IDataNodeRPCService;
 
@@ -61,20 +65,22 @@ public class ClientManagerTest {
   /**
    * We put all tests together to avoid frequent restarts of thrift Servers, which can cause "bind
    * address already used" problems in macOS CI environments. The reason for this may be about this
-   * [blog](https://stackoverflow.com/questions/51998042/macos-so-reuseaddr-so-reuseport-not-consistent-with-linux)
+   * <a
+   * href="https://stackoverflow.com/questions/51998042/macos-so-reuseaddr-so-reuseport-not-consistent-with-linux">blog</a>
    */
   @Test
   public void allTest() throws Exception {
-    normalSyncClientManagersTest();
-    normalAsyncClientManagersTest();
-    MaxIdleClientManagersTest();
-    MaxTotalClientManagersTest();
-    MaxWaitClientTimeoutClientManagersTest();
-    InvalidSyncClientReturnClientManagersTest();
-    InvalidAsyncClientReturnClientManagersTest();
+    normalSyncTest();
+    normalAsyncTest();
+    maxIdleTest();
+    maxTotalTest();
+    maxWaitClientTimeoutTest();
+    invalidSyncClientReturnTest();
+    invalidAsyncClientReturnTest();
+    borrowNullTest();
   }
 
-  public void normalSyncClientManagersTest() throws Exception {
+  public void normalSyncTest() throws Exception {
     // init syncClientManager
     ClientManager<TEndPoint, SyncDataNodeInternalServiceClient> syncClusterManager =
         (ClientManager<TEndPoint, SyncDataNodeInternalServiceClient>)
@@ -117,7 +123,7 @@ public class ClientManagerTest {
     Assert.assertFalse(syncClient2.getInputProtocol().getTransport().isOpen());
   }
 
-  public void normalAsyncClientManagersTest() throws Exception {
+  public void normalAsyncTest() throws Exception {
     // init asyncClientManager
     ClientManager<TEndPoint, AsyncDataNodeInternalServiceClient> asyncClusterManager =
         (ClientManager<TEndPoint, AsyncDataNodeInternalServiceClient>)
@@ -158,7 +164,7 @@ public class ClientManagerTest {
     Assert.assertEquals(0, asyncClusterManager.getPool().getNumIdle(endPoint));
   }
 
-  public void MaxIdleClientManagersTest() throws Exception {
+  public void maxIdleTest() throws Exception {
     int maxIdleClientForEachNode = 1;
 
     // init syncClientManager and set maxIdleClientForEachNode to 1
@@ -173,9 +179,9 @@ public class ClientManagerTest {
                               ClientManager<TEndPoint, SyncDataNodeInternalServiceClient> manager) {
                         return new GenericKeyedObjectPool<>(
                             new SyncDataNodeInternalServiceClient.Factory(
-                                manager, new ClientFactoryProperty.Builder().build()),
+                                manager, new ThriftClientProperty.Builder().build()),
                             new ClientPoolProperty.Builder<SyncDataNodeInternalServiceClient>()
-                                .setMaxIdleClientForEachNode(maxIdleClientForEachNode)
+                                .setCoreClientNumForEachNode(maxIdleClientForEachNode)
                                 .build()
                                 .getConfig());
                       }
@@ -217,7 +223,7 @@ public class ClientManagerTest {
     Assert.assertFalse(syncClient1.getInputProtocol().getTransport().isOpen());
   }
 
-  public void MaxTotalClientManagersTest() throws Exception {
+  public void maxTotalTest() throws Exception {
     int maxTotalClientForEachNode = 1;
     long waitClientTimeoutMs = TimeUnit.SECONDS.toMillis(1);
 
@@ -233,10 +239,10 @@ public class ClientManagerTest {
                               ClientManager<TEndPoint, SyncDataNodeInternalServiceClient> manager) {
                         return new GenericKeyedObjectPool<>(
                             new SyncDataNodeInternalServiceClient.Factory(
-                                manager, new ClientFactoryProperty.Builder().build()),
+                                manager, new ThriftClientProperty.Builder().build()),
                             new ClientPoolProperty.Builder<SyncDataNodeInternalServiceClient>()
-                                .setMaxTotalClientForEachNode(maxTotalClientForEachNode)
-                                .setWaitClientTimeoutMS(waitClientTimeoutMs)
+                                .setMaxClientNumForEachNode(maxTotalClientForEachNode)
+                                .setWaitClientTimeoutMs(waitClientTimeoutMs)
                                 .build()
                                 .getConfig());
                       }
@@ -257,6 +263,7 @@ public class ClientManagerTest {
     try {
       start = System.nanoTime();
       syncClient2 = syncClusterManager.borrowClient(endPoint);
+      Assert.fail();
     } catch (ClientManagerException e) {
       long end = System.nanoTime();
       Assert.assertTrue(end - start >= waitClientTimeoutMs * 1_000_000);
@@ -289,7 +296,7 @@ public class ClientManagerTest {
     Assert.assertFalse(syncClient2.getInputProtocol().getTransport().isOpen());
   }
 
-  public void MaxWaitClientTimeoutClientManagersTest() throws Exception {
+  public void maxWaitClientTimeoutTest() throws Exception {
     long waitClientTimeoutMS = TimeUnit.SECONDS.toMillis(2);
     int maxTotalClientForEachNode = 1;
 
@@ -306,10 +313,10 @@ public class ClientManagerTest {
                               ClientManager<TEndPoint, SyncDataNodeInternalServiceClient> manager) {
                         return new GenericKeyedObjectPool<>(
                             new SyncDataNodeInternalServiceClient.Factory(
-                                manager, new ClientFactoryProperty.Builder().build()),
+                                manager, new ThriftClientProperty.Builder().build()),
                             new ClientPoolProperty.Builder<SyncDataNodeInternalServiceClient>()
-                                .setWaitClientTimeoutMS(waitClientTimeoutMS)
-                                .setMaxTotalClientForEachNode(maxTotalClientForEachNode)
+                                .setWaitClientTimeoutMs(waitClientTimeoutMS)
+                                .setMaxClientNumForEachNode(maxTotalClientForEachNode)
                                 .build()
                                 .getConfig());
                       }
@@ -329,6 +336,7 @@ public class ClientManagerTest {
     try {
       start = System.nanoTime();
       syncClient1 = syncClusterManager.borrowClient(endPoint);
+      Assert.fail();
     } catch (ClientManagerException e) {
       long end = System.nanoTime();
       Assert.assertTrue(end - start >= waitClientTimeoutMS * 1_000_000);
@@ -348,7 +356,7 @@ public class ClientManagerTest {
     Assert.assertFalse(syncClient1.getInputProtocol().getTransport().isOpen());
   }
 
-  public void InvalidSyncClientReturnClientManagersTest() throws Exception {
+  public void invalidSyncClientReturnTest() throws Exception {
     // init syncClientManager
     ClientManager<TEndPoint, SyncDataNodeInternalServiceClient> syncClusterManager =
         (ClientManager<TEndPoint, SyncDataNodeInternalServiceClient>)
@@ -391,7 +399,7 @@ public class ClientManagerTest {
     Assert.assertFalse(syncClient2.getInputProtocol().getTransport().isOpen());
   }
 
-  public void InvalidAsyncClientReturnClientManagersTest() throws Exception {
+  public void invalidAsyncClientReturnTest() throws Exception {
     // init asyncClientManager
     ClientManager<TEndPoint, AsyncDataNodeInternalServiceClient> asyncClusterManager =
         (ClientManager<TEndPoint, AsyncDataNodeInternalServiceClient>)
@@ -432,28 +440,51 @@ public class ClientManagerTest {
     Assert.assertEquals(0, asyncClusterManager.getPool().getNumIdle(endPoint));
   }
 
+  public void borrowNullTest() {
+    // init asyncClientManager
+    ClientManager<TEndPoint, AsyncDataNodeInternalServiceClient> asyncClusterManager =
+        (ClientManager<TEndPoint, AsyncDataNodeInternalServiceClient>)
+            new IClientManager.Factory<TEndPoint, AsyncDataNodeInternalServiceClient>()
+                .createClientManager(new TestAsyncDataNodeInternalServiceClientPoolFactory());
+
+    try {
+      asyncClusterManager.borrowClient(null);
+      Assert.fail();
+    } catch (ClientManagerException e) {
+      Assert.assertTrue(e instanceof BorrowNullClientManagerException);
+      Assert.assertTrue(e.getMessage().contains("Can not borrow client for node null"));
+    }
+
+    // close asyncClientManager, asyncClientManager should destroy all client
+    asyncClusterManager.close();
+    Assert.assertEquals(0, asyncClusterManager.getPool().getNumActive(endPoint));
+    Assert.assertEquals(0, asyncClusterManager.getPool().getNumIdle(endPoint));
+  }
+
   public static class TestSyncDataNodeInternalServiceClientPoolFactory
       implements IClientPoolFactory<TEndPoint, SyncDataNodeInternalServiceClient> {
+
     @Override
     public KeyedObjectPool<TEndPoint, SyncDataNodeInternalServiceClient> createClientPool(
         ClientManager<TEndPoint, SyncDataNodeInternalServiceClient> manager) {
       return new GenericKeyedObjectPool<>(
           new SyncDataNodeInternalServiceClient.Factory(
-              manager, new ClientFactoryProperty.Builder().build()),
+              manager, new ThriftClientProperty.Builder().build()),
           new ClientPoolProperty.Builder<SyncDataNodeInternalServiceClient>().build().getConfig());
     }
   }
 
   public static class TestAsyncDataNodeInternalServiceClientPoolFactory
       implements IClientPoolFactory<TEndPoint, AsyncDataNodeInternalServiceClient> {
+
     @Override
     public KeyedObjectPool<TEndPoint, AsyncDataNodeInternalServiceClient> createClientPool(
         ClientManager<TEndPoint, AsyncDataNodeInternalServiceClient> manager) {
       return new GenericKeyedObjectPool<>(
           new AsyncDataNodeInternalServiceClient.Factory(
               manager,
-              new ClientFactoryProperty.Builder().build(),
-              "AsyncDataNodeInternalServiceClientPool"),
+              new ThriftClientProperty.Builder().build(),
+              ThreadName.ASYNC_DATANODE_CLIENT_POOL.getName()),
           new ClientPoolProperty.Builder<AsyncDataNodeInternalServiceClient>().build().getConfig());
     }
   }

@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.commons.conf;
 
+import org.apache.iotdb.commons.client.property.ClientPoolProperty.DefaultProperty;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.enums.HandleSystemErrorStrategy;
 import org.apache.iotdb.tsfile.fileSystem.FSType;
@@ -99,13 +100,13 @@ public class CommonConfig {
    * ClientManager will have so many selector threads (TAsyncClientManager) to distribute to its
    * clients.
    */
-  private int selectorNumOfClientManager =
-      Runtime.getRuntime().availableProcessors() / 4 > 0
-          ? Runtime.getRuntime().availableProcessors() / 4
-          : 1;
+  private int selectorNumOfClientManager = 1;
 
   /** whether to use thrift compression. */
-  private boolean isCnRpcThriftCompressionEnabled = false;
+  private boolean isRpcThriftCompressionEnabled = false;
+
+  private int coreClientNumForEachNode = DefaultProperty.CORE_CLIENT_NUM_FOR_EACH_NODE;
+  private int maxClientNumForEachNode = DefaultProperty.MAX_CLIENT_NUM_FOR_EACH_NODE;
 
   /** What will the system do when unrecoverable error occurs. */
   private HandleSystemErrorStrategy handleSystemErrorStrategy =
@@ -246,28 +247,44 @@ public class CommonConfig {
     this.defaultTTLInMs = defaultTTLInMs;
   }
 
-  public int getCnConnectionTimeoutInMS() {
+  public int getConnectionTimeoutInMS() {
     return connectionTimeoutInMS;
   }
 
-  public void setCnConnectionTimeoutInMS(int connectionTimeoutInMS) {
+  public void setConnectionTimeoutInMS(int connectionTimeoutInMS) {
     this.connectionTimeoutInMS = connectionTimeoutInMS;
   }
 
-  public int getCnSelectorNumOfClientManager() {
+  public int getSelectorNumOfClientManager() {
     return selectorNumOfClientManager;
   }
 
-  public void setCnSelectorNumOfClientManager(int selectorNumOfClientManager) {
+  public void setSelectorNumOfClientManager(int selectorNumOfClientManager) {
     this.selectorNumOfClientManager = selectorNumOfClientManager;
   }
 
-  public boolean isCnRpcThriftCompressionEnabled() {
-    return isCnRpcThriftCompressionEnabled;
+  public boolean isRpcThriftCompressionEnabled() {
+    return isRpcThriftCompressionEnabled;
   }
 
-  public void setCnRpcThriftCompressionEnabled(boolean cnRpcThriftCompressionEnabled) {
-    isCnRpcThriftCompressionEnabled = cnRpcThriftCompressionEnabled;
+  public void setRpcThriftCompressionEnabled(boolean rpcThriftCompressionEnabled) {
+    isRpcThriftCompressionEnabled = rpcThriftCompressionEnabled;
+  }
+
+  public int getMaxClientNumForEachNode() {
+    return maxClientNumForEachNode;
+  }
+
+  public void setMaxClientNumForEachNode(int maxClientNumForEachNode) {
+    this.maxClientNumForEachNode = maxClientNumForEachNode;
+  }
+
+  public int getCoreClientNumForEachNode() {
+    return coreClientNumForEachNode;
+  }
+
+  public void setCoreClientNumForEachNode(int coreClientNumForEachNode) {
+    this.coreClientNumForEachNode = coreClientNumForEachNode;
   }
 
   HandleSystemErrorStrategy getHandleSystemErrorStrategy() {

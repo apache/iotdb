@@ -489,7 +489,7 @@ SHOW FUNCTIONS
 
 ## 配置项
 
-使用配置项 `trigger_lib_dir` 来配置 trigger 的存储目录.  
+使用配置项 `udf_lib_dir` 来配置 udf 的存储目录.  
 在 SQL 语句中使用自定义函数时，可能提示内存不足。这种情况下，您可以通过更改配置文件`iotdb-datanode.properties`中的`udf_initial_byte_array_length_for_memory_control`，`udf_memory_budget_in_mb`和`udf_reader_transformer_collector_memory_proportion`并重启服务来解决此问题。
 
 ## 贡献 UDF

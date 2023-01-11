@@ -66,8 +66,8 @@ public class IoTDBPartitionInheritPolicyIT {
 
   private static int originalSeriesPartitionSlotNum;
 
-  private static long originalTimePartitionInterval;
-  private static final long testTimePartitionInterval = 604800000;
+  private static final long testTimePartitionInterval =
+      ConfigFactory.getConfig().getTimePartitionInterval();
 
   private static final String sg = "root.sg";
   private static final int storageGroupNum = 2;
@@ -94,9 +94,6 @@ public class IoTDBPartitionInheritPolicyIT {
     originalSeriesPartitionSlotNum = ConfigFactory.getConfig().getSeriesPartitionSlotNum();
     ConfigFactory.getConfig().setSeriesPartitionSlotNum(testSeriesPartitionSlotNum * 10);
 
-    originalTimePartitionInterval = ConfigFactory.getConfig().getTimePartitionInterval();
-    ConfigFactory.getConfig().setTimePartitionInterval(testTimePartitionInterval);
-
     // Init 1C3D environment
     EnvFactory.getEnv().initClusterEnvironment(1, 3);
 
@@ -121,7 +118,6 @@ public class IoTDBPartitionInheritPolicyIT {
         .setEnableDataPartitionInheritPolicy(originalEnableDataPartitionInheritPolicy);
     ConfigFactory.getConfig().setDataReplicationFactor(originalDataReplicationFactor);
     ConfigFactory.getConfig().setSeriesPartitionSlotNum(originalSeriesPartitionSlotNum);
-    ConfigFactory.getConfig().setTimePartitionInterval(originalTimePartitionInterval);
   }
 
   @Test

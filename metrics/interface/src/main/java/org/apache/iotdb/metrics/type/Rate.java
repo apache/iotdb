@@ -23,25 +23,25 @@ import java.util.Map;
 
 public interface Rate extends IMetric {
 
-  /** Get the value of rate */
+  /** Get the value of rate. */
   long getCount();
 
-  /** Get one minute rate */
+  /** Get one minute rate. */
   double getOneMinuteRate();
 
-  /** Get mean rate */
+  /** Get mean rate. */
   double getMeanRate();
 
-  /** Get five minute rate */
+  /** Get five minute rate. */
   double getFiveMinuteRate();
 
-  /** Get fifteen minute rate */
+  /** Get fifteen minute rate. */
   double getFifteenMinuteRate();
 
-  /** Mark in rate */
+  /** Mark in rate. */
   void mark();
 
-  /** Mark n in rate */
+  /** Mark n in rate. */
   void mark(long n);
 
   @Override

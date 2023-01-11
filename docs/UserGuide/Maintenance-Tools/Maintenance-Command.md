@@ -93,19 +93,5 @@ session.executeQueryStatement(String sql, long timeout)
 
 ### Query abort
 
-In addition to waiting for the query to time out passively, IoTDB also supports stopping the query actively:
-
-```sql
-KILL QUERY <queryId>
-```
-
-You can abort the specified query by specifying `queryId`. If `queryId` is not specified, all executing queries will be killed.
-
-To get the executing `queryId`，you can use the `show query processlist` command，which will show the list of all executing queries，with the following result set：
-
-| Time | queryId | statement |
-|------|---------|-----------|
-|      |         |           |
-
-The maximum display length of statement is 64 characters. For statements with more than 64 characters, the intercepted part will be displayed.
+Not supported yet
 

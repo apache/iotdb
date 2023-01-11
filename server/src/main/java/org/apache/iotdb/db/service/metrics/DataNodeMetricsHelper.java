@@ -24,7 +24,7 @@ import org.apache.iotdb.metrics.metricsets.jvm.JvmMetrics;
 import org.apache.iotdb.metrics.metricsets.logback.LogbackMetrics;
 
 public class DataNodeMetricsHelper {
-  /** Bind predefined metric sets into DataNode */
+  /** Bind predefined metric sets into DataNode. */
   public static void bind() {
     MetricService.getInstance().addMetricSet(new JvmMetrics());
     MetricService.getInstance().addMetricSet(new LogbackMetrics());
