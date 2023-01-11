@@ -348,7 +348,7 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
     List<Integer> indexOfMissingMeasurements = new ArrayList<>();
     List<MeasurementSchema> schemaList = deviceSchemaInfo.getMeasurementSchemaList();
     for (int i = 0, size = schemaList.size(); i < size; i++) {
-      if (schemaList.get(i) != null) {
+      if (schemaList.get(i) == null) {
         indexOfMissingMeasurements.add(indexOfTargetMeasurements.get(i));
       }
     }
