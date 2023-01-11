@@ -44,7 +44,7 @@ public class SystemPropertiesUtils {
 
   private static final File systemPropertiesFile =
       new File(
-          ConfigNodeDescriptor.getInstance().getConf().getSystemDir()
+          ConfigNodeDescriptor.getInstance().getConf().getCnSystemDir()
               + File.separator
               + ConfigNodeConstant.SYSTEM_FILE_NAME);
 

@@ -126,7 +126,7 @@ public class SizeTieredCompactionRecoverTest {
   @Before
   public void setUp() throws Exception {
     CompactionTaskManager.getInstance().start();
-    originDataDirs = config.getDataDirs();
+    originDataDirs = config.getDnDataDirs();
     setDataDirs(testDataDirs);
     if (!new File(SEQ_FILE_DIR).exists()) {
       Assert.assertTrue(new File(SEQ_FILE_DIR).mkdirs());

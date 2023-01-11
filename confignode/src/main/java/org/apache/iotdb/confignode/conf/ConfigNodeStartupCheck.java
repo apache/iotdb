@@ -120,11 +120,11 @@ public class ConfigNodeStartupCheck {
 
   private void createDirsIfNecessary() throws IOException {
     // If systemDir does not exist, create systemDir
-    File systemDir = new File(CONF.getSystemDir());
+    File systemDir = new File(CONF.getCnSystemDir());
     createDirIfEmpty(systemDir);
 
     // If consensusDir does not exist, create consensusDir
-    File consensusDir = new File(CONF.getConsensusDir());
+    File consensusDir = new File(CONF.getCnConsensusDir());
     createDirIfEmpty(consensusDir);
   }
 

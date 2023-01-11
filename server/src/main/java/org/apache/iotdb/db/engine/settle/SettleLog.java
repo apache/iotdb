@@ -42,7 +42,7 @@ public class SettleLog {
   private static BufferedWriter settleLogWriter;
   private static File settleLogPath = // the path of upgrade log is "data/system/settle/settle.txt"
       SystemFileFactory.INSTANCE.getFile(
-          SystemFileFactory.INSTANCE.getFile(config.getSystemDir(), SETTLE_DIR), SETTLE_LOG_NAME);
+          SystemFileFactory.INSTANCE.getFile(config.getDnSystemDir(), SETTLE_DIR), SETTLE_LOG_NAME);
 
   private static final ReadWriteLock settleLogFileLock = new ReentrantReadWriteLock();
 

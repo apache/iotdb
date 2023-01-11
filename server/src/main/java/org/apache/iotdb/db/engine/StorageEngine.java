@@ -107,7 +107,7 @@ public class StorageEngine implements IService {
    * subfolder under the systemDir.
    */
   private final String systemDir =
-      FilePathUtils.regularizePath(config.getSystemDir()) + "databases";
+      FilePathUtils.regularizePath(config.getDnSystemDir()) + "databases";
 
   /** DataRegionId -> DataRegion */
   private final ConcurrentHashMap<DataRegionId, DataRegion> dataRegionMap =
@@ -659,7 +659,7 @@ public class StorageEngine implements IService {
               .deleteWALNode(
                   region.getDatabaseName() + FILE_NAME_SEPARATOR + region.getDataRegionId());
           // delete snapshot
-          for (String dataDir : config.getDataDirs()) {
+          for (String dataDir : config.getDnDataDirs()) {
             File regionSnapshotDir =
                 new File(
                     dataDir + File.separator + IoTDBConstant.SNAPSHOT_FOLDER_NAME,

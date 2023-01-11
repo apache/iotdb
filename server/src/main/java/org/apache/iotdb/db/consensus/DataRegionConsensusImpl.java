@@ -64,7 +64,7 @@ public class DataRegionConsensusImpl {
                       .setThisNodeId(conf.getDataNodeId())
                       .setThisNode(
                           new TEndPoint(
-                              conf.getInternalAddress(), conf.getDataRegionConsensusPort()))
+                              conf.getDnInternalAddress(), conf.getDnDataRegionConsensusPort()))
                       .setStorageDir(conf.getDataRegionConsensusDir())
                       .setIoTConsensusConfig(
                           IoTConsensusConfig.newBuilder()

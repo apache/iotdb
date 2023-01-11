@@ -78,12 +78,12 @@ public class DataNodeInternalRPCService extends ThriftService
 
   @Override
   public String getBindIP() {
-    return IoTDBDescriptor.getInstance().getConfig().getInternalAddress();
+    return IoTDBDescriptor.getInstance().getConfig().getDnInternalAddress();
   }
 
   @Override
   public int getBindPort() {
-    return IoTDBDescriptor.getInstance().getConfig().getInternalPort();
+    return IoTDBDescriptor.getInstance().getConfig().getDnInternalPort();
   }
 
   private static class DataNodeInternalRPCServiceHolder {

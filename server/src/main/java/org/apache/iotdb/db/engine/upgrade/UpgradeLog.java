@@ -41,7 +41,8 @@ public class UpgradeLog {
   private static BufferedWriter upgradeLogWriter;
   private static File upgradeLogPath =
       SystemFileFactory.INSTANCE.getFile(
-          SystemFileFactory.INSTANCE.getFile(config.getSystemDir(), UPGRADE_DIR), UPGRADE_LOG_NAME);
+          SystemFileFactory.INSTANCE.getFile(config.getDnSystemDir(), UPGRADE_DIR),
+          UPGRADE_LOG_NAME);
 
   public static boolean createUpgradeLog() {
     try {

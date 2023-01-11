@@ -63,8 +63,8 @@ public class RPCService extends ThriftService implements RPCServiceMBean {
               processor,
               getID().getName(),
               ThreadName.CLIENT_RPC_PROCESSOR.getName(),
-              config.getRpcAddress(),
-              config.getRpcPort(),
+              config.getDnRpcAddress(),
+              config.getDnRpcPort(),
               config.getDnRpcMaxConcurrentClientNum(),
               config.getThriftServerAwaitTimeForStopService(),
               new RPCServiceThriftHandler(impl),
@@ -78,12 +78,12 @@ public class RPCService extends ThriftService implements RPCServiceMBean {
 
   @Override
   public String getBindIP() {
-    return IoTDBDescriptor.getInstance().getConfig().getRpcAddress();
+    return IoTDBDescriptor.getInstance().getConfig().getDnRpcAddress();
   }
 
   @Override
   public int getBindPort() {
-    return IoTDBDescriptor.getInstance().getConfig().getRpcPort();
+    return IoTDBDescriptor.getInstance().getConfig().getDnRpcPort();
   }
 
   @Override

@@ -61,8 +61,8 @@ public abstract class AbstractFragInsStateTracker implements IFragInstanceStateT
     this.scheduledExecutor = scheduledExecutor;
     this.instances = instances;
     this.internalServiceClientManager = internalServiceClientManager;
-    this.localhostIpAddr = IoTDBDescriptor.getInstance().getConfig().getInternalAddress();
-    this.localhostInternalPort = IoTDBDescriptor.getInstance().getConfig().getInternalPort();
+    this.localhostIpAddr = IoTDBDescriptor.getInstance().getConfig().getDnInternalAddress();
+    this.localhostInternalPort = IoTDBDescriptor.getInstance().getConfig().getDnInternalPort();
   }
 
   public abstract void start();

@@ -275,7 +275,7 @@ public class CompactionRecoverTask {
    * the file is not found, it will return null.
    */
   private File getFileFromDataDirs(String filePath) {
-    String[] dataDirs = IoTDBDescriptor.getInstance().getConfig().getDataDirs();
+    String[] dataDirs = IoTDBDescriptor.getInstance().getConfig().getDnDataDirs();
     for (String dataDir : dataDirs) {
       File f = new File(dataDir, filePath);
       if (f.exists()) {

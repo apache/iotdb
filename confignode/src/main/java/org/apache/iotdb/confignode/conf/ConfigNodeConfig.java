@@ -19,7 +19,7 @@
 package org.apache.iotdb.confignode.conf;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
-import org.apache.iotdb.commons.client.property.ClientPoolProperty.DefaultProperty;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.confignode.manager.load.balancer.RegionBalancer;
 import org.apache.iotdb.confignode.manager.load.balancer.router.priority.IPriorityBalancer;
@@ -44,11 +44,11 @@ public class ConfigNodeConfig {
 
   /** Directory Configuration */
   // System directory, including version file for each database and metadata
-  private String systemDir =
+  private String cnSystemDir =
       ConfigNodeConstant.DATA_DIR + File.separator + IoTDBConstant.SYSTEM_FOLDER_NAME;
 
   // Consensus directory, storage consensus protocol logs
-  private String consensusDir =
+  private String cnConsensusDir =
       ConfigNodeConstant.DATA_DIR + File.separator + ConfigNodeConstant.CONSENSUS_FOLDER;
 
   /** Thrift RPC Configuration */
@@ -65,6 +65,10 @@ public class ConfigNodeConfig {
   private int cnConnectionTimeoutMs = (int) TimeUnit.SECONDS.toMillis(20);
   // ClientManager will have so many selector threads (TAsyncClientManager) to distribute to its clients
   private int cnSelectorThreadNumsOfClientManager = 1;
+  // The maximum number of clients that can be idle for a node in a clientManager
+  private int cnCoreClientCountForEachNodeInClientManager = 200;
+  // The maximum number of clients that can be allocated for a node in a clientManager
+  private int cnMaxClientCountForEachNodeInClientManager = 300;
 
   /** Metric Configuration */
   // TODO: Add if necessary
@@ -72,8 +76,7 @@ public class ConfigNodeConfig {
   /** Internal Configurations(Unconfigurable in .properties file) */
   // ConfigNodeId, the default value -1 will be changed after join cluster
   private volatile int configNodeId = -1;
-  // TODO: Read from iotdb-confignode.properties
-  private int configNodeRegionId = 0;
+  private static final int configNodeRegionId = 0;
 
   // RegionGroup allocate policy
   private RegionBalancer.RegionGroupAllocatePolicy regionGroupAllocatePolicy =
@@ -98,8 +101,8 @@ public class ConfigNodeConfig {
   }
 
   private void formulateFolders() {
-    systemDir = addHomeDir(systemDir);
-    consensusDir = addHomeDir(consensusDir);
+    cnSystemDir = addHomeDir(cnSystemDir);
+    cnConsensusDir = addHomeDir(cnConsensusDir);
   }
 
   private String addHomeDir(String dir) {
@@ -146,20 +149,20 @@ public class ConfigNodeConfig {
     this.cnTargetConfigNode = cnTargetConfigNode;
   }
 
-  public String getSystemDir() {
-    return systemDir;
+  public String getCnSystemDir() {
+    return cnSystemDir;
   }
 
-  public void setSystemDir(String systemDir) {
-    this.systemDir = systemDir;
+  public void setCnSystemDir(String cnSystemDir) {
+    this.cnSystemDir = cnSystemDir;
   }
 
-  public String getConsensusDir() {
-    return consensusDir;
+  public String getCnConsensusDir() {
+    return cnConsensusDir;
   }
 
-  public void setConsensusDir(String consensusDir) {
-    this.consensusDir = consensusDir;
+  public void setCnConsensusDir(String cnConsensusDir) {
+    this.cnConsensusDir = cnConsensusDir;
   }
 
   public boolean isCnRpcThriftCompressionEnable() {
@@ -218,6 +221,22 @@ public class ConfigNodeConfig {
     this.cnSelectorThreadNumsOfClientManager = cnSelectorThreadNumsOfClientManager;
   }
 
+  public int getCnCoreClientCountForEachNodeInClientManager() {
+    return cnCoreClientCountForEachNodeInClientManager;
+  }
+
+  public void setCnCoreClientCountForEachNodeInClientManager(int cnCoreClientCountForEachNodeInClientManager) {
+    this.cnCoreClientCountForEachNodeInClientManager = cnCoreClientCountForEachNodeInClientManager;
+  }
+
+  public int getCnMaxClientCountForEachNodeInClientManager() {
+    return cnMaxClientCountForEachNodeInClientManager;
+  }
+
+  public void setCnMaxClientCountForEachNodeInClientManager(int cnMaxClientCountForEachNodeInClientManager) {
+    this.cnMaxClientCountForEachNodeInClientManager = cnMaxClientCountForEachNodeInClientManager;
+  }
+
   public int getConfigNodeId() {
     return configNodeId;
   }
@@ -230,24 +249,12 @@ public class ConfigNodeConfig {
     return configNodeRegionId;
   }
 
-  public void setConfigNodeRegionId(int configNodeRegionId) {
-    this.configNodeRegionId = configNodeRegionId;
-  }
-
   public RegionBalancer.RegionGroupAllocatePolicy getRegionGroupAllocatePolicy() {
     return regionGroupAllocatePolicy;
   }
 
   public void setRegionGroupAllocatePolicy(RegionBalancer.RegionGroupAllocatePolicy regionGroupAllocatePolicy) {
     this.regionGroupAllocatePolicy = regionGroupAllocatePolicy;
-  }
-
-  public long getUnknownDataNodeDetectInterval() {
-    return unknownDataNodeDetectInterval;
-  }
-
-  public void setUnknownDataNodeDetectInterval(long unknownDataNodeDetectInterval) {
-    this.unknownDataNodeDetectInterval = unknownDataNodeDetectInterval;
   }
 
   public String getRoutePriorityPolicy() {

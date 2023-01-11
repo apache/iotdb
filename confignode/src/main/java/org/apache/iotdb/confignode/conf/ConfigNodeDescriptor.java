@@ -20,10 +20,8 @@ package org.apache.iotdb.confignode.conf;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.BadNodeUrlException;
-import org.apache.iotdb.commons.loadbalance.RegionGroupExtensionPolicy;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.confignode.manager.load.balancer.RegionBalancer;
-import org.apache.iotdb.confignode.manager.load.balancer.router.leader.ILeaderBalancer;
 import org.apache.iotdb.confignode.manager.load.balancer.router.priority.IPriorityBalancer;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 
@@ -206,9 +204,9 @@ public class ConfigNodeDescriptor {
           .trim()));
 
 
-    CONF.setSystemDir(properties.getProperty("cn_system_dir", CONF.getSystemDir()).trim());
+    CONF.setCnSystemDir(properties.getProperty("cn_system_dir", CONF.getCnSystemDir()).trim());
 
-    CONF.setConsensusDir(properties.getProperty("cn_consensus_dir", CONF.getConsensusDir()).trim());
+    CONF.setCnConsensusDir(properties.getProperty("cn_consensus_dir", CONF.getCnConsensusDir()).trim());
 
     String routePriorityPolicy =
         properties.getProperty("route_priority_policy", CONF.getRoutePriorityPolicy()).trim();

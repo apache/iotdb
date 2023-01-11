@@ -68,7 +68,7 @@ public class InfluxDBRPCService extends ThriftService implements InfluxDBRPCServ
               processor,
               getID().getName(),
               ThreadName.INFLUXDB_RPC_PROCESSOR.getName(),
-              config.getRpcAddress(),
+              config.getDnRpcAddress(),
               config.getInfluxDBRpcPort(),
               config.getDnRpcMaxConcurrentClientNum(),
               config.getThriftServerAwaitTimeForStopService(),
@@ -82,7 +82,7 @@ public class InfluxDBRPCService extends ThriftService implements InfluxDBRPCServ
 
   @Override
   public String getBindIP() {
-    return IoTDBDescriptor.getInstance().getConfig().getRpcAddress();
+    return IoTDBDescriptor.getInstance().getConfig().getDnRpcAddress();
   }
 
   @Override

@@ -186,7 +186,7 @@ public class SystemMetrics implements IMetricSet {
   }
 
   private void collectSystemDiskInfo(AbstractMetricService metricService) {
-    String[] dataDirs = IoTDBDescriptor.getInstance().getConfig().getDataDirs();
+    String[] dataDirs = IoTDBDescriptor.getInstance().getConfig().getDnDataDirs();
     for (String dataDir : dataDirs) {
       Path path = Paths.get(dataDir);
       FileStore fileStore = null;

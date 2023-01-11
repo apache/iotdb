@@ -62,7 +62,7 @@ public class IoTDBSyncReceiverLoaderIT {
     IoTDBDescriptor.getInstance().getConfig().setEnableCrossSpaceCompaction(false);
     SyncTestUtil.insertData();
     EnvironmentUtils.shutdownDaemon();
-    File srcDir = new File(IoTDBDescriptor.getInstance().getConfig().getDataDirs()[0]);
+    File srcDir = new File(IoTDBDescriptor.getInstance().getConfig().getDnDataDirs()[0]);
     FileUtils.moveDirectory(srcDir, tmpDir);
   }
 

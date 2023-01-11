@@ -176,7 +176,7 @@ public class ConsensusManager {
                                       .setTriggerSnapshotFileSize(CONF.getConfigNodeRatisLogMax())
                                       .build())
                               .build())
-                      .setStorageDir(CONF.getConsensusDir())
+                      .setStorageDir(CONF.getCnConsensusDir())
                       .build(),
                   gid -> stateMachine)
               .orElseThrow(

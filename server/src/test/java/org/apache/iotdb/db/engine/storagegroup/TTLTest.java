@@ -87,7 +87,7 @@ public class TTLTest {
     EnvironmentUtils.envSetUp();
     dataRegion =
         new DataRegion(
-            IoTDBDescriptor.getInstance().getConfig().getSystemDir(),
+            IoTDBDescriptor.getInstance().getConfig().getDnSystemDir(),
             String.valueOf(dataRegionId1.getId()),
             new DirectFlushPolicy(),
             sg1);

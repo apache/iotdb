@@ -115,7 +115,7 @@ public class DataNode implements DataNodeMBean {
    */
   private static final int DEFAULT_RETRY = 10;
 
-  private static final long DEFAULT_RETRY_INTERVAL_IN_MS = config.getJoinClusterRetryIntervalMs();
+  private static final long DEFAULT_RETRY_INTERVAL_IN_MS = config.getDnJoinClusterRetryIntervalMs();
 
   private final TEndPoint thisNode = new TEndPoint();
 
@@ -148,7 +148,7 @@ public class DataNode implements DataNodeMBean {
       isFirstStart = prepareDataNode();
 
       // Set target ConfigNodeList from iotdb-datanode.properties file
-      ConfigNodeInfo.getInstance().updateConfigNodeList(config.getTargetConfigNodeList());
+      ConfigNodeInfo.getInstance().updateConfigNodeList(config.getDnTargetConfigNodeList());
 
       // Pull and check system configurations from ConfigNode-leader
       pullAndCheckSystemConfigurations();
@@ -193,7 +193,7 @@ public class DataNode implements DataNodeMBean {
     boolean isFirstStart = IoTDBStartCheck.getInstance().checkIsFirstStart();
 
     // Check target ConfigNodes
-    for (TEndPoint endPoint : config.getTargetConfigNodeList()) {
+    for (TEndPoint endPoint : config.getDnTargetConfigNodeList()) {
       if (endPoint.getIp().equals("0.0.0.0")) {
         throw new StartupException(
             "The ip address of any target_config_node_list couldn't be 0.0.0.0");
@@ -201,8 +201,8 @@ public class DataNode implements DataNodeMBean {
     }
 
     // Set this node
-    thisNode.setIp(config.getInternalAddress());
-    thisNode.setPort(config.getInternalPort());
+    thisNode.setIp(config.getDnInternalAddress());
+    thisNode.setPort(config.getDnInternalPort());
 
     // Startup checks
     StartupChecks checks = new StartupChecks(IoTDBConstant.DN_ROLE).withDefaultTest();
@@ -561,15 +561,15 @@ public class DataNode implements DataNodeMBean {
   private TDataNodeLocation generateDataNodeLocation() {
     TDataNodeLocation location = new TDataNodeLocation();
     location.setDataNodeId(config.getDataNodeId());
-    location.setClientRpcEndPoint(new TEndPoint(config.getRpcAddress(), config.getRpcPort()));
+    location.setClientRpcEndPoint(new TEndPoint(config.getDnRpcAddress(), config.getDnRpcPort()));
     location.setInternalEndPoint(
-        new TEndPoint(config.getInternalAddress(), config.getInternalPort()));
+        new TEndPoint(config.getDnInternalAddress(), config.getDnInternalPort()));
     location.setMPPDataExchangeEndPoint(
-        new TEndPoint(config.getInternalAddress(), config.getMppDataExchangePort()));
+        new TEndPoint(config.getDnInternalAddress(), config.getDnMppDataExchangePort()));
     location.setDataRegionConsensusEndPoint(
-        new TEndPoint(config.getInternalAddress(), config.getDataRegionConsensusPort()));
+        new TEndPoint(config.getDnInternalAddress(), config.getDnDataRegionConsensusPort()));
     location.setSchemaRegionConsensusEndPoint(
-        new TEndPoint(config.getInternalAddress(), config.getSchemaRegionConsensusPort()));
+        new TEndPoint(config.getDnInternalAddress(), config.getDnSchemaRegionConsensusPort()));
     return location;
   }
 

@@ -71,7 +71,7 @@ public class CompressionRatio {
   private CompressionRatio() {
     directory =
         SystemFileFactory.INSTANCE.getFile(
-            FilePathUtils.regularizePath(CONFIG.getSystemDir()) + COMPRESSION_RATIO_DIR);
+            FilePathUtils.regularizePath(CONFIG.getDnSystemDir()) + COMPRESSION_RATIO_DIR);
     restore();
   }
 

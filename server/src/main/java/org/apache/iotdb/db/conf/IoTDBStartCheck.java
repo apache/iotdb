@@ -120,16 +120,17 @@ public class IoTDBStartCheck {
 
   static {
     variableParamValueTable.put(
-        INTERNAL_ADDRESS, () -> String.valueOf(config.getInternalAddress()));
-    variableParamValueTable.put(INTERNAL_PORT, () -> String.valueOf(config.getInternalPort()));
-    variableParamValueTable.put(RPC_ADDRESS, () -> String.valueOf(config.getRpcAddress()));
-    variableParamValueTable.put(RPC_PORT, () -> String.valueOf(config.getRpcPort()));
+        INTERNAL_ADDRESS, () -> String.valueOf(config.getDnInternalAddress()));
+    variableParamValueTable.put(INTERNAL_PORT, () -> String.valueOf(config.getDnInternalPort()));
+    variableParamValueTable.put(RPC_ADDRESS, () -> String.valueOf(config.getDnRpcAddress()));
+    variableParamValueTable.put(RPC_PORT, () -> String.valueOf(config.getDnRpcPort()));
     variableParamValueTable.put(
-        MPP_DATA_EXCHANGE_PORT, () -> String.valueOf(config.getMppDataExchangePort()));
+        MPP_DATA_EXCHANGE_PORT, () -> String.valueOf(config.getDnMppDataExchangePort()));
     variableParamValueTable.put(
-        SCHEMA_REGION_CONSENSUS_PORT, () -> String.valueOf(config.getSchemaRegionConsensusPort()));
+        SCHEMA_REGION_CONSENSUS_PORT,
+        () -> String.valueOf(config.getDnSchemaRegionConsensusPort()));
     variableParamValueTable.put(
-        DATA_REGION_CONSENSUS_PORT, () -> String.valueOf(config.getDataRegionConsensusPort()));
+        DATA_REGION_CONSENSUS_PORT, () -> String.valueOf(config.getDnDataRegionConsensusPort()));
   }
   // endregion
   // region params don't need checking, determined by the system
@@ -254,18 +255,18 @@ public class IoTDBStartCheck {
    */
   public void checkDirectory() throws ConfigurationException, IOException {
     // check data dirs
-    for (String dataDir : config.getDataDirs()) {
+    for (String dataDir : config.getDnDataDirs()) {
       DirectoryChecker.getInstance().registerDirectory(new File(dataDir));
     }
     if (config.isClusterMode()
         && config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.RATIS_CONSENSUS)) {
-      if (DirectoryChecker.getInstance().isCrossDisk(config.getDataDirs())) {
+      if (DirectoryChecker.getInstance().isCrossDisk(config.getDnDataDirs())) {
         throw new ConfigurationException(
             "Configuring the data directories as cross-disk directories is not supported under RatisConsensus(it will be supported in a later version).");
       }
     }
     // check system dir
-    DirectoryChecker.getInstance().registerDirectory(new File(config.getSystemDir()));
+    DirectoryChecker.getInstance().registerDirectory(new File(config.getDnSystemDir()));
     // check WAL dir
     if (!(config.isClusterMode()
             && config
@@ -278,7 +279,7 @@ public class IoTDBStartCheck {
     }
     // in cluster mode, check consensus dir
     if (config.isClusterMode()) {
-      DirectoryChecker.getInstance().registerDirectory(new File(config.getConsensusDir()));
+      DirectoryChecker.getInstance().registerDirectory(new File(config.getDnConsensusDir()));
     }
   }
 

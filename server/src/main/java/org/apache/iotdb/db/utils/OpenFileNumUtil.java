@@ -269,7 +269,7 @@ public class OpenFileNumUtil {
     SEQUENCE_FILE_OPEN_NUM(directoryManager.getAllSequenceFileFolders()),
     UNSEQUENCE_FILE_OPEN_NUM(directoryManager.getAllUnSequenceFileFolders()),
     WAL_OPEN_FILE_NUM(Arrays.asList(commonConfig.getWalDirs())),
-    DIGEST_OPEN_FILE_NUM(Collections.singletonList(config.getSystemDir())),
+    DIGEST_OPEN_FILE_NUM(Collections.singletonList(config.getDnSystemDir())),
     SOCKET_OPEN_FILE_NUM(null);
 
     // path is a list of directory corresponding to the OpenFileNumStatistics enum element,

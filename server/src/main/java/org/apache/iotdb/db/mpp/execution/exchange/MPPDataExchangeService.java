@@ -109,12 +109,12 @@ public class MPPDataExchangeService extends ThriftService implements MPPDataExch
 
   @Override
   public String getBindIP() {
-    return IoTDBDescriptor.getInstance().getConfig().getInternalAddress();
+    return IoTDBDescriptor.getInstance().getConfig().getDnInternalAddress();
   }
 
   @Override
   public int getBindPort() {
-    return IoTDBDescriptor.getInstance().getConfig().getMppDataExchangePort();
+    return IoTDBDescriptor.getInstance().getConfig().getDnMppDataExchangePort();
   }
 
   @Override

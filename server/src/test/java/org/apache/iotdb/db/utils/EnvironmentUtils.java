@@ -238,11 +238,11 @@ public class EnvironmentUtils {
       cleanDir(path);
     }
     // delete system info
-    cleanDir(config.getSystemDir());
+    cleanDir(config.getDnSystemDir());
     // delete query
     cleanDir(config.getQueryDir());
     // delete tracing
-    cleanDir(config.getTracingDir());
+    cleanDir(config.getDnTracingDir());
     // delete ulog
     cleanDir(config.getUdfDir());
     // delete tlog
@@ -260,7 +260,7 @@ public class EnvironmentUtils {
     // delete sync dir
     cleanDir(commonConfig.getSyncDir());
     // delete data files
-    for (String dataDir : config.getDataDirs()) {
+    for (String dataDir : config.getDnDataDirs()) {
       cleanDir(dataDir);
     }
   }
@@ -328,9 +328,9 @@ public class EnvironmentUtils {
       createDir(path);
     }
     // create database
-    createDir(config.getSystemDir());
+    createDir(config.getDnSystemDir());
     // create sg dir
-    String sgDir = FilePathUtils.regularizePath(config.getSystemDir()) + "databases";
+    String sgDir = FilePathUtils.regularizePath(config.getDnSystemDir()) + "databases";
     createDir(sgDir);
     // create sync
     createDir(commonConfig.getSyncDir());
@@ -342,7 +342,7 @@ public class EnvironmentUtils {
       createDir(walDir);
     }
     // create data
-    for (String dataDir : config.getDataDirs()) {
+    for (String dataDir : config.getDnDataDirs()) {
       createDir(dataDir);
     }
     // create user and roles folder

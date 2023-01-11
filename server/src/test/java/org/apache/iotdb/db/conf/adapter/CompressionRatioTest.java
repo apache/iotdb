@@ -42,7 +42,8 @@ public class CompressionRatioTest {
   private CompressionRatio compressionRatio = CompressionRatio.getInstance();
 
   private static final String directory =
-      FilePathUtils.regularizePath(CONFIG.getSystemDir()) + CompressionRatio.COMPRESSION_RATIO_DIR;
+      FilePathUtils.regularizePath(CONFIG.getDnSystemDir())
+          + CompressionRatio.COMPRESSION_RATIO_DIR;
 
   @Before
   public void setUp() throws Exception {
