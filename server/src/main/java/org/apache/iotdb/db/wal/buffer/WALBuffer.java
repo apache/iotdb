@@ -173,20 +173,21 @@ public class WALBuffer extends AbstractWALBuffer {
         Thread.currentThread().interrupt();
       }
 
-      // for better fsync performance, sleep a while to enlarge write batch
-      long fsyncDelay = config.getFsyncWalDelayInMs();
-      if (fsyncDelay > 0) {
+      // try to get more WALEntries with blocking interface to enlarge write batch
+      while (totalSize < HALF_WAL_BUFFER_SIZE * FSYNC_BUFFER_RATIO) {
+        WALEntry walEntry = null;
         try {
-          Thread.sleep(fsyncDelay);
+          // for better fsync performance, wait a while to enlarge write batch
+          walEntry = walEntries.poll(config.getFsyncWalDelayInMs(), TimeUnit.MILLISECONDS);
         } catch (InterruptedException e) {
-          logger.warn("Interrupted when sleeping a while to enlarge wal write batch.");
+          logger.warn(
+              "Interrupted when waiting for taking WALEntry from blocking queue to serialize.");
           Thread.currentThread().interrupt();
         }
-      }
 
-      // try to get more WALEntries with non-blocking interface to enlarge write batch
-      while (walEntries.peek() != null && totalSize < HALF_WAL_BUFFER_SIZE * FSYNC_BUFFER_RATIO) {
-        WALEntry walEntry = walEntries.poll();
+        if (walEntry == null) {
+          break;
+        }
         boolean returnFlag = handleWALEntry(walEntry);
         if (returnFlag) {
           return;
@@ -225,9 +226,6 @@ public class WALBuffer extends AbstractWALBuffer {
       try {
         walEntry.serialize(byteBufferView);
         size = byteBufferView.position() - size;
-        if (logger.isDebugEnabled()) {
-          logger.debug("wal entry size is: {}", size);
-        }
       } catch (Exception e) {
         logger.error(
             "Fail to serialize WALEntry to wal node-{}'s buffer, discard it.", identifier, e);
