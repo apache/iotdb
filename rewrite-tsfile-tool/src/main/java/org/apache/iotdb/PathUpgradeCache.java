@@ -34,7 +34,7 @@ import java.util.Map;
 
 public class PathUpgradeCache {
   private final boolean needUpgrade;
-  private final Map<String, String> paths;
+  private final Map<String, String[]> paths;
 
   public PathUpgradeCache(boolean needUpgrade) {
     this.needUpgrade = needUpgrade;
@@ -42,9 +42,26 @@ public class PathUpgradeCache {
   }
 
   public String getPath(String path) {
-    if (!needUpgrade || paths.containsKey(path)) {
+    if (!needUpgrade) {
+      return path;
+    }
+    if (paths.containsKey(path)) {
+      return String.join(".", paths.get(path));
+    }
+    return String.join(".", parsePath(path));
+  }
+
+  public String[] getNodes(String path) {
+    if (!needUpgrade) {
+      return path.split("\\.");
+    }
+    if (paths.containsKey(path)) {
       return paths.get(path);
     }
+    return parsePath(path);
+  }
+
+  private String[] parsePath(String path) {
 
     OldIoTDBSqlVisitor ioTDBSqlVisitor = new OldIoTDBSqlVisitor();
 
@@ -87,17 +104,20 @@ public class PathUpgradeCache {
       String replacedNodeName = nodes[i].replace("`", "``");
       nodes[i] = containIllegalChar(nodes[i]) ? "`" + replacedNodeName + "`" : replacedNodeName;
     }
-    paths.put(path, String.join(".", nodes));
-    return paths.get(path);
+    return paths.putIfAbsent(path, nodes);
   }
 
   private boolean containIllegalChar(String nodeName) {
+    boolean nonDigital = false;
     for (int i = 0; i < nodeName.length(); i++) {
       char c = nodeName.charAt(i);
       if (!Character.isLetterOrDigit(c) && (c < '\u2E80' || c > '\u9FFF')) {
         return true;
       }
+      if (!Character.isDigit(c)) {
+        nonDigital = true;
+      }
     }
-    return false;
+    return !nonDigital;
   }
 }

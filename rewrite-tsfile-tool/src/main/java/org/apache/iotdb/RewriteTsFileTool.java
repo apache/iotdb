@@ -27,6 +27,7 @@ import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.exception.VerifyMetadataException;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Session;
@@ -42,6 +43,7 @@ import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
@@ -76,6 +78,7 @@ import org.apache.commons.cli.ParseException;
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -99,6 +102,10 @@ public class RewriteTsFileTool {
   private static boolean ignoreBrokenChunk = false;
 
   private static boolean needUpgrade = false;
+
+  private static int sgLevel = 1;
+  private static boolean deleteAfterLoad = false;
+
   private static PathUpgradeCache upgradeCache;
 
   public static void main(String[] args) {
@@ -139,6 +146,8 @@ public class RewriteTsFileTool {
       readMode = getArgOrDefault(commandLine, "rm", readMode);
       ignoreBrokenChunk = commandLine.hasOption("ig");
       needUpgrade = commandLine.hasOption("ug");
+      sgLevel = Integer.parseInt(getArgOrDefault(commandLine, "sl", "1"));
+      deleteAfterLoad = commandLine.hasOption("delete");
     } catch (ParseException e) {
       System.out.printf("Parse Args Error. %s%n", e.getMessage());
       priHelp(options);
@@ -208,6 +217,16 @@ public class RewriteTsFileTool {
     options.addOption("ig", "ignore-broken chunks");
 
     options.addOption("ug", "upgrade for older version partial path");
+
+    Option sgLevelOpt =
+        Option.builder("sl")
+            .argName("sgLevel")
+            .hasArg()
+            .desc("storage group level (optional, default 1)")
+            .build();
+    options.addOption(sgLevelOpt);
+
+    options.addOption("delete", "delete loaded tsfiles");
     return options;
   }
 
@@ -255,13 +274,10 @@ public class RewriteTsFileTool {
             "------------------------------End Message------------------------------");
       }
     }
-    System.out.println("Finish Loading TsFiles");
   }
 
   private static void writeTsFileSequentially(List<File> files, Session session) {
-    if (needUpgrade) {
-      upgradeCache = new PathUpgradeCache(needUpgrade);
-    }
+    upgradeCache = new PathUpgradeCache(needUpgrade);
 
     int size = files.size();
     List<File> unloadTsFiles = new ArrayList<>();
@@ -271,6 +287,14 @@ public class RewriteTsFileTool {
       try {
         seqWriteSingleTsFile(file.getPath(), session);
         session.executeNonQueryStatement("FLUSH");
+        System.out.println("Done");
+        if (deleteAfterLoad) {
+          Files.deleteIfExists(file.toPath());
+          Files.deleteIfExists(
+              new File(file.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX).toPath());
+          Files.deleteIfExists(
+              new File(file.getAbsolutePath() + ModificationFile.FILE_SUFFIX).toPath());
+        }
       } catch (Exception e) {
         System.out.println(
             "------------------------------Error Message------------------------------");
@@ -280,7 +304,6 @@ public class RewriteTsFileTool {
         unloadTsFiles.add(file);
         continue;
       }
-      System.out.println("Done");
     }
     System.out.printf(
         "Load %d TsFiles successfully, %d TsFiles not loaded.%n",
@@ -322,9 +345,11 @@ public class RewriteTsFileTool {
    */
   public static void seqWriteSingleTsFile(String filename, Session session)
       throws IOException, IllegalPathException, IoTDBConnectionException,
-          StatementExecutionException, NoMeasurementException {
+          StatementExecutionException, NoMeasurementException, VerifyMetadataException {
 
     try (TsFileSequenceReader reader = new TsFileSequenceReader(filename)) {
+      createSg(reader, session);
+
       if (!ignoreBrokenChunk) {
         long status = reader.selfCheck(new HashMap<>(), new ArrayList<>(), true);
         if (status == TsFileCheckStatus.INCOMPATIBLE_FILE
@@ -561,6 +586,28 @@ public class RewriteTsFileTool {
     }
 
     writeModification(filename, session);
+  }
+
+  private static void createSg(TsFileSequenceReader reader, Session session)
+      throws IOException, VerifyMetadataException, IoTDBConnectionException,
+          StatementExecutionException {
+    sgLevel += 1;
+    Set<String> sgSet = new HashSet<>();
+    Map<String, List<TimeseriesMetadata>> device2Metadata = reader.getAllTimeseriesMetadata(true);
+    for (Map.Entry<String, List<TimeseriesMetadata>> entry : device2Metadata.entrySet()) {
+      String[] nodes = upgradeCache.getNodes(entry.getKey());
+      String[] sgNodes = new String[sgLevel];
+      if (nodes.length < sgLevel) {
+        throw new VerifyMetadataException(
+            String.format("Sg level %d is longer than device %s.", sgLevel, entry.getKey()));
+      }
+      System.arraycopy(nodes, 0, sgNodes, 0, sgLevel);
+      sgSet.add(String.join(".", sgNodes));
+    }
+
+    for (String sgName : sgSet) {
+      session.createDatabase(sgName);
+    }
   }
 
   private static void readAndSendValuePage(
