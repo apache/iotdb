@@ -114,5 +114,15 @@ public class PathsUsingTemplateSource implements ISchemaSource<IDeviceSchemaInfo
     public IDeviceSchemaInfo next() {
       return currentDeviceReader.next();
     }
+
+    @Override
+    public boolean isSuccess() {
+      return currentDeviceReader.isSuccess();
+    }
+
+    @Override
+    public Throwable getFailure() {
+      return currentDeviceReader.getFailure();
+    }
   }
 }

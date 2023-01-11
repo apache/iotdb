@@ -85,7 +85,17 @@ public class SchemaCountOperatorTest {
           .thenReturn(
               new ISchemaReader() {
                 @Override
-                public void close() throws Exception {}
+                public boolean isSuccess() {
+                  return true;
+                }
+
+                @Override
+                public Throwable getFailure() {
+                  return null;
+                }
+
+                @Override
+                public void close() {}
 
                 @Override
                 public boolean hasNext() {
@@ -140,7 +150,7 @@ public class SchemaCountOperatorTest {
               driverContext.getOperatorContexts().get(0),
               2,
               mockSchemaSource(schemaRegion));
-      TsBlock tsBlock = null;
+      TsBlock tsBlock;
       List<TsBlock> tsBlockList = collectResult(timeSeriesCountOperator);
       assertEquals(1, tsBlockList.size());
       tsBlock = tsBlockList.get(0);
@@ -203,7 +213,17 @@ public class SchemaCountOperatorTest {
     Iterator<ITimeSeriesSchemaInfo> iterator = timeSeriesSchemaInfoList.iterator();
     return new ISchemaReader<ITimeSeriesSchemaInfo>() {
       @Override
-      public void close() throws Exception {}
+      public boolean isSuccess() {
+        return true;
+      }
+
+      @Override
+      public Throwable getFailure() {
+        return null;
+      }
+
+      @Override
+      public void close() {}
 
       @Override
       public boolean hasNext() {

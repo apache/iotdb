@@ -97,6 +97,16 @@ public class SchemaQueryScanOperatorTest {
           .thenReturn(
               new ISchemaReader<IDeviceSchemaInfo>() {
                 @Override
+                public boolean isSuccess() {
+                  return true;
+                }
+
+                @Override
+                public Throwable getFailure() {
+                  return null;
+                }
+
+                @Override
                 public void close() throws Exception {}
 
                 @Override
@@ -197,6 +207,16 @@ public class SchemaQueryScanOperatorTest {
       Mockito.when(timeSeriesSchemaSource.getSchemaReader(schemaRegion))
           .thenReturn(
               new ISchemaReader<ITimeSeriesSchemaInfo>() {
+                @Override
+                public boolean isSuccess() {
+                  return true;
+                }
+
+                @Override
+                public Throwable getFailure() {
+                  return null;
+                }
+
                 @Override
                 public void close() throws Exception {}
 
