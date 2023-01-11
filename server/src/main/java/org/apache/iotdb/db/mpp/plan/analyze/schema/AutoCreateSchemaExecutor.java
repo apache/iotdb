@@ -31,6 +31,7 @@ import org.apache.iotdb.db.mpp.common.schematree.ClusterSchemaTree;
 import org.apache.iotdb.db.mpp.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.MeasurementGroup;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
+import org.apache.iotdb.db.mpp.plan.statement.internal.InternalBatchActivateTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.internal.InternalCreateTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ActivateTemplateStatement;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -354,12 +355,35 @@ class AutoCreateSchemaExecutor {
     TSStatus status = executionResult.status;
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
         && status.getCode() != TSStatusCode.TEMPLATE_IS_IN_USE.getStatusCode()) {
-      throw new RuntimeException(new IoTDBException(status.getMessage(), status.getCode()));
+      throw new SemanticException(new IoTDBException(status.getMessage(), status.getCode()));
     }
   }
 
   private void internalActivateTemplate(
-      Map<PartialPath, Pair<Template, PartialPath>> devicesNeedActivateTemplate) {}
+      Map<PartialPath, Pair<Template, PartialPath>> devicesNeedActivateTemplate) {
+    ExecutionResult executionResult =
+        statementExecutor.apply(
+            new InternalBatchActivateTemplateStatement(devicesNeedActivateTemplate));
+    TSStatus status = executionResult.status;
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        || status.getCode() == TSStatusCode.TEMPLATE_IS_IN_USE.getStatusCode()) {
+      return;
+    }
+    if (status.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
+      Set<String> failedActivationSet = new HashSet<>();
+      for (TSStatus subStatus : status.subStatus) {
+        if (subStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+            && subStatus.getCode() != TSStatusCode.TEMPLATE_IS_IN_USE.getStatusCode()) {
+          failedActivationSet.add(subStatus.message);
+        }
+      }
+      if (!failedActivationSet.isEmpty()) {
+        throw new SemanticException(new MetadataException(String.join("; ", failedActivationSet)));
+      }
+    } else {
+      throw new SemanticException(new IoTDBException(status.getMessage(), status.getCode()));
+    }
+  }
 
   private void internalCreateTimeSeries(
       ClusterSchemaTree schemaTree,

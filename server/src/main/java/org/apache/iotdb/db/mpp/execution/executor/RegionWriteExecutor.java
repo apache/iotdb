@@ -46,6 +46,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.ActivateTem
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateAlignedTimeSeriesNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateMultiTimeSeriesNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateTimeSeriesNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.InternalBatchActivateTemplateNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.InternalCreateTimeSeriesNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.MeasurementGroup;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.DeleteDataNode;
@@ -67,6 +68,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -523,6 +525,39 @@ public class RegionWriteExecutor {
           return result;
         }
         return super.visitActivateTemplate(node, context);
+      } finally {
+        context.getRegionWriteValidationRWLock().readLock().unlock();
+      }
+    }
+
+    @Override
+    public RegionExecutionResult visitInternalBatchActivateTemplate(
+        InternalBatchActivateTemplateNode node, WritePlanNodeExecutionContext context) {
+      // activate template operation shall be blocked by unset template check
+      context.getRegionWriteValidationRWLock().readLock().lock();
+      try {
+        for (Map.Entry<PartialPath, Pair<Integer, Integer>> entry :
+            node.getTemplateActivationMap().entrySet()) {
+          Pair<Template, PartialPath> templateSetInfo =
+              ClusterTemplateManager.getInstance().checkTemplateSetInfo(entry.getKey());
+          if (templateSetInfo == null) {
+            // The activation has already been validated during analyzing.
+            // That means the template is being unset during the activation plan transport.
+            RegionExecutionResult result = new RegionExecutionResult();
+            result.setAccepted(false);
+            String message =
+                String.format(
+                    "Template is being unsetting from prefix path of %s. Please try activating later.",
+                    new PartialPath(
+                            Arrays.copyOf(entry.getKey().getNodes(), entry.getValue().right + 1))
+                        .getFullPath());
+            result.setMessage(message);
+            result.setStatus(RpcUtils.getStatus(TSStatusCode.METADATA_ERROR, message));
+            return result;
+          }
+        }
+
+        return super.visitInternalBatchActivateTemplate(node, context);
       } finally {
         context.getRegionWriteValidationRWLock().readLock().unlock();
       }

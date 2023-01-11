@@ -41,6 +41,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateMulti
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateTimeSeriesNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.DeactivateTemplateNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.DeleteTimeSeriesNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.InternalBatchActivateTemplateNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.InternalCreateTimeSeriesNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.MeasurementGroup;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.PreDeactivateTemplateNode;
@@ -51,6 +52,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -282,6 +284,25 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
       Template template = ClusterTemplateManager.getInstance().getTemplate(node.getTemplateId());
       node.setAligned(template.isDirectAligned());
       schemaRegion.activateSchemaTemplate(node, template);
+      return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+    } catch (MetadataException e) {
+      logger.error(e.getMessage(), e);
+      return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
+    }
+  }
+
+  @Override
+  public TSStatus visitInternalBatchActivateTemplate(
+      InternalBatchActivateTemplateNode node, ISchemaRegion schemaRegion) {
+    try {
+      for (Map.Entry<PartialPath, Pair<Integer, Integer>> entry :
+          node.getTemplateActivationMap().entrySet()) {
+        Template template = ClusterTemplateManager.getInstance().getTemplate(entry.getValue().left);
+        schemaRegion.activateSchemaTemplate(
+            SchemaRegionWritePlanFactory.getActivateTemplateInClusterPlan(
+                entry.getKey(), entry.getValue().right, entry.getValue().left),
+            template);
+      }
       return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
     } catch (MetadataException e) {
       logger.error(e.getMessage(), e);

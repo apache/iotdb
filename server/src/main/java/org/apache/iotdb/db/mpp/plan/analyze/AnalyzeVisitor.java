@@ -87,6 +87,7 @@ import org.apache.iotdb.db.mpp.plan.statement.crud.InsertStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.QueryStatement;
+import org.apache.iotdb.db.mpp.plan.statement.internal.InternalBatchActivateTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.internal.InternalCreateTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.internal.SchemaFetchStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.AlterTimeSeriesStatement;
@@ -2443,6 +2444,26 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
     PathPatternTree patternTree = new PathPatternTree();
     patternTree.appendPathPattern(activatePath.concatNode(ONE_LEVEL_PATH_WILDCARD));
+    SchemaPartition partition = partitionFetcher.getOrCreateSchemaPartition(patternTree);
+
+    analysis.setSchemaPartitionInfo(partition);
+
+    return analysis;
+  }
+
+  @Override
+  public Analysis visitInternalBatchActivateTemplate(
+      InternalBatchActivateTemplateStatement internalBatchActivateTemplateStatement,
+      MPPQueryContext context) {
+    context.setQueryType(QueryType.WRITE);
+    Analysis analysis = new Analysis();
+    analysis.setStatement(internalBatchActivateTemplateStatement);
+
+    PathPatternTree patternTree = new PathPatternTree();
+    for (PartialPath activatePath :
+        internalBatchActivateTemplateStatement.getDeviceMap().keySet()) {
+      patternTree.appendPathPattern(activatePath.concatNode(ONE_LEVEL_PATH_WILDCARD));
+    }
     SchemaPartition partition = partitionFetcher.getOrCreateSchemaPartition(patternTree);
 
     analysis.setSchemaPartitionInfo(partition);

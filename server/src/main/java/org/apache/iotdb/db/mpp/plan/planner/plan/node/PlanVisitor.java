@@ -41,6 +41,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateMulti
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateTimeSeriesNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.DeactivateTemplateNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.DeleteTimeSeriesNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.InternalBatchActivateTemplateNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.InternalCreateTimeSeriesNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.PreDeactivateTemplateNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.RollbackPreDeactivateTemplateNode;
@@ -344,6 +345,10 @@ public abstract class PlanVisitor<R, C> {
   }
 
   public R visitShowQueries(ShowQueriesNode node, C context) {
+    return visitPlan(node, context);
+  }
+
+  public R visitInternalBatchActivateTemplate(InternalBatchActivateTemplateNode node, C context) {
     return visitPlan(node, context);
   }
 }
