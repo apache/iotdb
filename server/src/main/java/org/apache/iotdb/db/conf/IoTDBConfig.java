@@ -90,7 +90,7 @@ public class IoTDBConfig {
   private boolean enableMQTTService = false;
 
   /** the mqtt service binding host. */
-  private String mqttHost = "0.0.0.0";
+  private String mqttHost = "127.0.0.1";
 
   /** the mqtt service binding port. */
   private int mqttPort = 1883;
