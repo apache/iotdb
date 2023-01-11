@@ -49,7 +49,9 @@ import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 
@@ -91,7 +93,11 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
     if (type == QueryType.READ) {
       return dispatchRead(instances);
     } else {
-      return dispatchWriteSync(instances);
+      if (instances.size() == 1) {
+        return dispatchWriteSync(instances.get(0));
+      } else {
+        return dispatchWriteAsync(instances);
+      }
     }
   }
 
@@ -118,19 +124,66 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
     return immediateFuture(new FragInstanceDispatchResult(true));
   }
 
-  private Future<FragInstanceDispatchResult> dispatchWriteSync(List<FragmentInstance> instances) {
+  private Future<FragInstanceDispatchResult> dispatchWriteAsync(List<FragmentInstance> instances) {
+    List<Future<FragInstanceDispatchResult>> futureList = new ArrayList<>(instances.size());
     for (FragmentInstance instance : instances) {
-      try (SetThreadName threadName = new SetThreadName(instance.getId().getFullId())) {
-        dispatchOneInstance(instance);
-      } catch (FragmentInstanceDispatchException e) {
-        return immediateFuture(new FragInstanceDispatchResult(e.getFailureStatus()));
-      } catch (Throwable t) {
-        logger.warn("[DispatchFailed]", t);
-        return immediateFuture(
-            new FragInstanceDispatchResult(
-                RpcUtils.getStatus(
-                    TSStatusCode.INTERNAL_SERVER_ERROR, "Unexpected errors: " + t.getMessage())));
+      futureList.add(
+          writeOperationExecutor.submit(
+              () -> {
+                try (SetThreadName threadName = new SetThreadName(instance.getId().getFullId())) {
+                  dispatchOneInstance(instance);
+                } catch (FragmentInstanceDispatchException e) {
+                  return new FragInstanceDispatchResult(e.getFailureStatus());
+                } catch (Throwable t) {
+                  logger.warn("[DispatchFailed]", t);
+                  return new FragInstanceDispatchResult(
+                      RpcUtils.getStatus(
+                          TSStatusCode.INTERNAL_SERVER_ERROR,
+                          "Unexpected errors: " + t.getMessage()));
+                }
+                return new FragInstanceDispatchResult(true);
+              }));
+    }
+    FragInstanceDispatchResult fragInstanceDispatchResult;
+    List<TSStatus> tsStatusList = new ArrayList<>();
+    TSStatus failureStatus;
+    for (Future<FragInstanceDispatchResult> future : futureList) {
+      try {
+        fragInstanceDispatchResult = future.get();
+        if (fragInstanceDispatchResult.isSuccessful()) {
+          continue;
+        }
+        failureStatus = fragInstanceDispatchResult.getFailureStatus();
+        if (failureStatus.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
+          tsStatusList.addAll(failureStatus.subStatus);
+        } else {
+          tsStatusList.add(failureStatus);
+        }
+      } catch (InterruptedException | ExecutionException e) {
+        logger.warn("[DispatchFailed]", e);
+        tsStatusList.add(
+            RpcUtils.getStatus(
+                TSStatusCode.INTERNAL_SERVER_ERROR, "Unexpected errors: " + e.getMessage()));
       }
+    }
+    if (tsStatusList.isEmpty()) {
+      return immediateFuture(new FragInstanceDispatchResult(true));
+    } else {
+      return immediateFuture(new FragInstanceDispatchResult(RpcUtils.getStatus(tsStatusList)));
+    }
+  }
+
+  private Future<FragInstanceDispatchResult> dispatchWriteSync(FragmentInstance instance) {
+    try (SetThreadName threadName = new SetThreadName(instance.getId().getFullId())) {
+      dispatchOneInstance(instance);
+    } catch (FragmentInstanceDispatchException e) {
+      return immediateFuture(new FragInstanceDispatchResult(e.getFailureStatus()));
+    } catch (Throwable t) {
+      logger.warn("[DispatchFailed]", t);
+      return immediateFuture(
+          new FragInstanceDispatchResult(
+              RpcUtils.getStatus(
+                  TSStatusCode.INTERNAL_SERVER_ERROR, "Unexpected errors: " + t.getMessage())));
     }
     return immediateFuture(new FragInstanceDispatchResult(true));
   }
