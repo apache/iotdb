@@ -16,6 +16,25 @@
 # under the License.
 #
 
-from . import algorithm, data_provider
 
-__all__ = ['algorithm', 'data_provider']
+import argparse
+
+
+def parseModelConfig(modelConfig):
+    modelType = modelConfig.model_type
+    if modelType == 'DLinear':
+        config = argparse.Namespace(
+            model_type = modelConfig.model_type,
+            # seq_len=int(modelConfig.input_length),
+            # pred_len=int(modelConfig.output_length),
+            seq_len = int(modelConfig.seq_len),
+            pred_len = int(modelConfig.pred_len),
+            enc_in=int(modelConfig.num_series),
+            individual=modelConfig.individual == str(True),
+        )
+        # default config
+        config.kernel_size = 25
+    else:
+        raise NotImplementedError
+
+    return config
