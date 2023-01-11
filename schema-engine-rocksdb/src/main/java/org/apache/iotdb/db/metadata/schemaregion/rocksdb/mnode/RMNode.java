@@ -184,6 +184,11 @@ public abstract class RMNode implements IMNode {
   }
 
   @Override
+  public boolean isAboveDatabase() {
+    return false;
+  }
+
+  @Override
   public boolean isStorageGroup() {
     return false;
   }

@@ -228,20 +228,20 @@ public class IoTDBDescriptor {
                     "dn_connection_timeout_ms", String.valueOf(conf.getDnConnectionTimeoutInMS()))
                 .trim()));
 
-    conf.setDnMaxConnectionForInternalService(
+    conf.setCoreClientNumForEachNode(
         Integer.parseInt(
             properties
                 .getProperty(
-                    "dn_max_connection_for_internal_service",
-                    String.valueOf(conf.getDnMaxConnectionForInternalService()))
+                    "dn_core_client_count_for_each_node_in_client_manager",
+                    String.valueOf(conf.getCoreClientNumForEachNode()))
                 .trim()));
 
-    conf.setDnCoreConnectionForInternalService(
+    conf.setMaxClientNumForEachNode(
         Integer.parseInt(
             properties
                 .getProperty(
-                    "dn_core_connection_for_internal_service",
-                    String.valueOf(conf.getDnCoreConnectionForInternalService()))
+                    "dn_max_client_count_for_each_node_in_client_manager",
+                    String.valueOf(conf.getMaxClientNumForEachNode()))
                 .trim()));
 
     conf.setDnSelectorThreadCountOfClientManager(
@@ -650,10 +650,11 @@ public class IoTDBDescriptor {
                 "max_cross_compaction_candidate_file_size",
                 Long.toString(conf.getMaxCrossCompactionCandidateFileSize()))));
 
-    conf.setCompactionIORatePerSec(
+    conf.setCompactionWriteThroughputMbPerSec(
         Integer.parseInt(
             properties.getProperty(
-                "compaction_io_rate_per_sec", Integer.toString(conf.getCompactionIORatePerSec()))));
+                "compaction_write_throughput_mb_per_sec",
+                Integer.toString(conf.getCompactionWriteThroughputMbPerSec()))));
 
     conf.setEnableCompactionValidation(
         Boolean.parseBoolean(
@@ -1430,11 +1431,11 @@ public class IoTDBDescriptor {
               properties.getProperty(
                   "slow_query_threshold", Long.toString(conf.getSlowQueryThreshold()))));
       // update merge_write_throughput_mb_per_sec
-      conf.setCompactionIORatePerSec(
+      conf.setCompactionWriteThroughputMbPerSec(
           Integer.parseInt(
               properties.getProperty(
-                  "compaction_io_rate_per_sec",
-                  Integer.toString(conf.getCompactionIORatePerSec()))));
+                  "merge_write_throughput_mb_per_sec",
+                  Integer.toString(conf.getCompactionWriteThroughputMbPerSec()))));
       // update insert-tablet-plan's row limit for select-into
       conf.setSelectIntoInsertTabletPlanRowLimit(
           Integer.parseInt(

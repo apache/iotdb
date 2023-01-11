@@ -46,7 +46,7 @@ public interface IWindow {
    * When we merge a point into window, at this time, we can use this method to change the status in
    * this window
    */
-  void mergeOnePoint();
+  void mergeOnePoint(Column[] controlTimeAndValueColumn, int index);
 
   /**
    * Used to customize whether the window has final aggregation result

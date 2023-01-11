@@ -19,16 +19,14 @@
 
 package org.apache.iotdb.db.metadata.schemaregion;
 
-import org.apache.iotdb.common.rpc.thrift.TSchemaNode;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.db.metadata.plan.schemaregion.read.IShowDevicesPlan;
+import org.apache.iotdb.db.metadata.plan.schemaregion.read.IShowNodesPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.read.IShowTimeSeriesPlan;
-import org.apache.iotdb.db.metadata.plan.schemaregion.result.ShowDevicesResult;
-import org.apache.iotdb.db.metadata.plan.schemaregion.result.ShowTimeSeriesResult;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IActivateTemplateInClusterPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.ICreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.ICreateTimeSeriesPlan;
@@ -36,13 +34,13 @@ import org.apache.iotdb.db.metadata.plan.schemaregion.write.IDeactivateTemplateP
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IPreDeactivateTemplatePlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IRollbackPreDeactivateTemplatePlan;
 import org.apache.iotdb.db.metadata.query.info.IDeviceSchemaInfo;
+import org.apache.iotdb.db.metadata.query.info.INodeSchemaInfo;
 import org.apache.iotdb.db.metadata.query.info.ITimeSeriesSchemaInfo;
 import org.apache.iotdb.db.metadata.query.reader.ISchemaReader;
 import org.apache.iotdb.db.metadata.template.Template;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -59,7 +57,6 @@ import java.util.Set;
  *   <li>Interfaces for Timeseries operation
  *   <li>Interfaces for metadata info Query
  *       <ol>
- *         <li>Interfaces for level Node info Query
  *         <li>Interfaces for Entity/Device info Query
  *         <li>Interfaces for timeseries, measurement and schema info Query
  *       </ol>
@@ -159,57 +156,12 @@ public interface ISchemaRegion {
 
   // region Interfaces for metadata info Query
 
-  // region Interfaces for level Node info Query
-  /**
-   * Get paths of nodes in given level and matching the pathPattern.
-   *
-   * @param pathPattern
-   * @param nodeLevel
-   * @param isPrefixMatch
-   * @throws MetadataException
-   * @return returns a list of PartialPath.
-   */
-  List<PartialPath> getNodesListInGivenLevel(
-      PartialPath pathPattern, int nodeLevel, boolean isPrefixMatch) throws MetadataException;
-
-  /**
-   * Get child node path in the next level of the given path pattern.
-   *
-   * <p>give pathPattern and the child nodes is those matching pathPattern.*
-   *
-   * <p>e.g., MTree has [root.sg1.d1.s1, root.sg1.d1.s2, root.sg1.d2.s1] given path = root.sg1,
-   * return [root.sg1.d1, root.sg1.d2]
-   *
-   * @param pathPattern The given path
-   * @return All child nodes' seriesPath(s) of given seriesPath.
-   */
-  Set<TSchemaNode> getChildNodePathInNextLevel(PartialPath pathPattern) throws MetadataException;
-  // endregion
-
-  // region Interfaces for Entity/Device info Query
-
-  /**
-   * Get all device paths and corresponding database paths as ShowDevicesResult.
-   *
-   * @param plan ShowDevicesPlan which contains the path pattern and restriction params.
-   * @return ShowDevicesResult
-   */
-  List<ShowDevicesResult> getMatchedDevices(IShowDevicesPlan plan) throws MetadataException;
-  // endregion
-
   // region Interfaces for timeseries, measurement and schema info Query
 
   List<MeasurementPath> fetchSchema(
       PartialPath pathPattern, Map<Integer, Template> templateMap, boolean withTags)
       throws MetadataException;
 
-  /**
-   * Show timeseries.
-   *
-   * @param plan
-   * @throws MetadataException
-   */
-  List<ShowTimeSeriesResult> showTimeseries(IShowTimeSeriesPlan plan) throws MetadataException;
   // endregion
   // endregion
 
@@ -303,45 +255,14 @@ public interface ISchemaRegion {
 
   // region Interfaces for SchemaReader
 
-  default ISchemaReader<IDeviceSchemaInfo> getDeviceReader(IShowDevicesPlan showDevicesPlan)
-      throws MetadataException {
-    List<ShowDevicesResult> showDevicesResultList = getMatchedDevices(showDevicesPlan);
-    Iterator<ShowDevicesResult> iterator = showDevicesResultList.iterator();
-    return new ISchemaReader<IDeviceSchemaInfo>() {
-      @Override
-      public void close() throws Exception {}
+  ISchemaReader<IDeviceSchemaInfo> getDeviceReader(IShowDevicesPlan showDevicesPlan)
+      throws MetadataException;
 
-      @Override
-      public boolean hasNext() {
-        return iterator.hasNext();
-      }
+  ISchemaReader<ITimeSeriesSchemaInfo> getTimeSeriesReader(IShowTimeSeriesPlan showTimeSeriesPlan)
+      throws MetadataException;
 
-      @Override
-      public IDeviceSchemaInfo next() {
-        return iterator.next();
-      }
-    };
-  }
-
-  default ISchemaReader<ITimeSeriesSchemaInfo> getTimeSeriesReader(
-      IShowTimeSeriesPlan showTimeSeriesPlan) throws MetadataException {
-    List<ShowTimeSeriesResult> showTimeSeriesResultList = showTimeseries(showTimeSeriesPlan);
-    Iterator<ShowTimeSeriesResult> iterator = showTimeSeriesResultList.iterator();
-    return new ISchemaReader<ITimeSeriesSchemaInfo>() {
-      @Override
-      public void close() throws Exception {}
-
-      @Override
-      public boolean hasNext() {
-        return iterator.hasNext();
-      }
-
-      @Override
-      public ITimeSeriesSchemaInfo next() {
-        return iterator.next();
-      }
-    };
-  }
+  ISchemaReader<INodeSchemaInfo> getNodeReader(IShowNodesPlan showNodesPlan)
+      throws MetadataException;
 
   // endregion
 }

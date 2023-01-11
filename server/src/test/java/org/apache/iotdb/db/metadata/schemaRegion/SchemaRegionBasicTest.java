@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.metadata.schemaRegion;
 
-import org.apache.iotdb.common.rpc.thrift.TSchemaNode;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -30,7 +29,9 @@ import org.apache.iotdb.db.metadata.mnode.MNodeType;
 import org.apache.iotdb.db.metadata.plan.schemaregion.impl.read.SchemaRegionReadPlanFactory;
 import org.apache.iotdb.db.metadata.plan.schemaregion.impl.write.SchemaRegionWritePlanFactory;
 import org.apache.iotdb.db.metadata.plan.schemaregion.result.ShowDevicesResult;
-import org.apache.iotdb.db.metadata.plan.schemaregion.result.ShowTimeSeriesResult;
+import org.apache.iotdb.db.metadata.plan.schemaregion.result.ShowNodesResult;
+import org.apache.iotdb.db.metadata.query.info.IDeviceSchemaInfo;
+import org.apache.iotdb.db.metadata.query.info.ITimeSeriesSchemaInfo;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -51,8 +52,10 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import static org.apache.iotdb.db.metadata.schemaRegion.SchemaRegionTestUtil.getAllTimeseriesCount;
+import static org.apache.iotdb.db.metadata.schemaRegion.SchemaRegionTestUtil.getChildNodePathInNextLevel;
 import static org.apache.iotdb.db.metadata.schemaRegion.SchemaRegionTestUtil.getDevicesNum;
 import static org.apache.iotdb.db.metadata.schemaRegion.SchemaRegionTestUtil.getMeasurementCountGroupByLevel;
+import static org.apache.iotdb.db.metadata.schemaRegion.SchemaRegionTestUtil.getNodesListInGivenLevel;
 
 /**
  * This class define test cases for {@link ISchemaRegion}. All test cases will be run in both Memory
@@ -512,14 +515,14 @@ public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
             "root.laptop.d2.s2"));
 
     Assert.assertEquals(
-        new LinkedList<>(Arrays.asList(new PartialPath("root"))),
-        schemaRegion.getNodesListInGivenLevel(new PartialPath("root.**"), 0, false));
+        new LinkedList<>(Collections.singletonList(new PartialPath("root"))),
+        getNodesListInGivenLevel(schemaRegion, new PartialPath("root.**"), 0, false));
     Assert.assertEquals(
-        new LinkedList<>(Arrays.asList(new PartialPath("root.laptop"))),
-        schemaRegion.getNodesListInGivenLevel(new PartialPath("root.**"), 1, false));
+        new LinkedList<>(Collections.singletonList(new PartialPath("root.laptop"))),
+        getNodesListInGivenLevel(schemaRegion, new PartialPath("root.**"), 1, false));
     Assert.assertEquals(
-        new LinkedList<>(Arrays.asList(new PartialPath("root.laptop"))),
-        schemaRegion.getNodesListInGivenLevel(new PartialPath("root.laptop"), 1, false));
+        new LinkedList<>(Collections.singletonList(new PartialPath("root.laptop"))),
+        getNodesListInGivenLevel(schemaRegion, new PartialPath("root.laptop"), 1, false));
     Assert.assertEquals(
         new HashSet<>(
             Arrays.asList(
@@ -527,7 +530,7 @@ public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
                 new PartialPath("root.laptop.d1"),
                 new PartialPath("root.laptop.d2"))),
         new HashSet<>(
-            schemaRegion.getNodesListInGivenLevel(new PartialPath("root.laptop.**"), 2, false)));
+            getNodesListInGivenLevel(schemaRegion, new PartialPath("root.laptop.**"), 2, false)));
     Assert.assertEquals(
         new HashSet<>(
             Arrays.asList(
@@ -537,19 +540,19 @@ public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
                 new PartialPath("root.laptop.d2.s1"),
                 new PartialPath("root.laptop.d2.s2"))),
         new HashSet<>(
-            schemaRegion.getNodesListInGivenLevel(new PartialPath("root.laptop.**"), 3, false)));
+            getNodesListInGivenLevel(schemaRegion, new PartialPath("root.laptop.**"), 3, false)));
     Assert.assertEquals(
         new HashSet<>(
             Arrays.asList(
                 new PartialPath("root.laptop.d1.s1"), new PartialPath("root.laptop.d2.s1"))),
         new HashSet<>(
-            schemaRegion.getNodesListInGivenLevel(new PartialPath("root.laptop.*.s1"), 3, false)));
+            getNodesListInGivenLevel(schemaRegion, new PartialPath("root.laptop.*.s1"), 3, false)));
     // Empty return
     Assert.assertEquals(
-        new HashSet<>(Arrays.asList()),
+        new HashSet<>(Collections.emptyList()),
         new HashSet<>(
-            schemaRegion.getNodesListInGivenLevel(
-                new PartialPath("root.laptop.notExists"), 1, false)));
+            getNodesListInGivenLevel(
+                schemaRegion, new PartialPath("root.laptop.notExists"), 1, false)));
   }
 
   @Test
@@ -567,37 +570,37 @@ public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
             "root.laptop.d2.s2"));
 
     Assert.assertEquals(
-        new HashSet<>(Arrays.asList()),
-        schemaRegion.getChildNodePathInNextLevel(new PartialPath("root.laptop.d0")));
+        new HashSet<>(Collections.emptyList()),
+        getChildNodePathInNextLevel(schemaRegion, new PartialPath("root.laptop.d0")));
 
     Assert.assertEquals(
         new HashSet<>(
             Arrays.asList(
-                new TSchemaNode("root.laptop.d1.s1", MNodeType.MEASUREMENT.getNodeType()),
-                new TSchemaNode("root.laptop.d1.s2", MNodeType.DEVICE.getNodeType()),
-                new TSchemaNode("root.laptop.d1.s3", MNodeType.MEASUREMENT.getNodeType()))),
-        schemaRegion.getChildNodePathInNextLevel(new PartialPath("root.laptop.d1")));
+                new ShowNodesResult("root.laptop.d1.s1", MNodeType.MEASUREMENT),
+                new ShowNodesResult("root.laptop.d1.s2", MNodeType.DEVICE),
+                new ShowNodesResult("root.laptop.d1.s3", MNodeType.MEASUREMENT))),
+        getChildNodePathInNextLevel(schemaRegion, new PartialPath("root.laptop.d1")));
 
     Assert.assertEquals(
         new HashSet<>(
             Arrays.asList(
-                new TSchemaNode("root.laptop.d2.s1", MNodeType.MEASUREMENT.getNodeType()),
-                new TSchemaNode("root.laptop.d2.s2", MNodeType.MEASUREMENT.getNodeType()))),
-        schemaRegion.getChildNodePathInNextLevel(new PartialPath("root.laptop.d2")));
+                new ShowNodesResult("root.laptop.d2.s1", MNodeType.MEASUREMENT),
+                new ShowNodesResult("root.laptop.d2.s2", MNodeType.MEASUREMENT))),
+        getChildNodePathInNextLevel(schemaRegion, new PartialPath("root.laptop.d2")));
 
     Assert.assertEquals(
         new HashSet<>(
             Arrays.asList(
-                new TSchemaNode("root.laptop.d0", MNodeType.MEASUREMENT.getNodeType()),
-                new TSchemaNode("root.laptop.d1", MNodeType.DEVICE.getNodeType()),
-                new TSchemaNode("root.laptop.d2", MNodeType.DEVICE.getNodeType()))),
-        schemaRegion.getChildNodePathInNextLevel(new PartialPath("root.laptop")));
+                new ShowNodesResult("root.laptop.d0", MNodeType.MEASUREMENT),
+                new ShowNodesResult("root.laptop.d1", MNodeType.DEVICE),
+                new ShowNodesResult("root.laptop.d2", MNodeType.DEVICE))),
+        getChildNodePathInNextLevel(schemaRegion, new PartialPath("root.laptop")));
 
     Assert.assertEquals(
         new HashSet<>(
-            Arrays.asList(
-                new TSchemaNode("root.laptop.d1.s2.t1", MNodeType.MEASUREMENT.getNodeType()))),
-        schemaRegion.getChildNodePathInNextLevel(new PartialPath("root.**.s2")));
+            Collections.singletonList(
+                new ShowNodesResult("root.laptop.d1.s2.t1", MNodeType.MEASUREMENT))),
+        getChildNodePathInNextLevel(schemaRegion, new PartialPath("root.**.s2")));
   }
 
   @Test
@@ -616,38 +619,44 @@ public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
 
     Assert.assertEquals(
         Collections.emptyList(),
-        schemaRegion.getMatchedDevices(
+        SchemaRegionTestUtil.getMatchedDevices(
+            schemaRegion,
             SchemaRegionReadPlanFactory.getShowDevicesPlan(new PartialPath("root.laptop.d0"))));
     Assert.assertEquals(
         Collections.singletonList(new ShowDevicesResult("root.laptop.d1", false)),
-        schemaRegion.getMatchedDevices(
+        SchemaRegionTestUtil.getMatchedDevices(
+            schemaRegion,
             SchemaRegionReadPlanFactory.getShowDevicesPlan(new PartialPath("root.laptop.d1"))));
     Assert.assertEquals(
         Collections.singletonList(new ShowDevicesResult("root.laptop.d2", false)),
-        schemaRegion.getMatchedDevices(
+        SchemaRegionTestUtil.getMatchedDevices(
+            schemaRegion,
             SchemaRegionReadPlanFactory.getShowDevicesPlan(new PartialPath("root.laptop.d2"))));
     Assert.assertEquals(
         Collections.singletonList(new ShowDevicesResult("root.laptop", false)),
-        schemaRegion.getMatchedDevices(
+        SchemaRegionTestUtil.getMatchedDevices(
+            schemaRegion,
             SchemaRegionReadPlanFactory.getShowDevicesPlan(new PartialPath("root.laptop"))));
     Assert.assertEquals(
         Collections.singletonList(new ShowDevicesResult("root.laptop", false)),
-        schemaRegion.getMatchedDevices(
+        SchemaRegionTestUtil.getMatchedDevices(
+            schemaRegion,
             SchemaRegionReadPlanFactory.getShowDevicesPlan(new PartialPath("root.*"))));
 
-    List<ShowDevicesResult> expectedList =
+    List<IDeviceSchemaInfo> expectedList =
         Arrays.asList(
             new ShowDevicesResult("root.laptop", false),
             new ShowDevicesResult("root.laptop.d1", false),
             new ShowDevicesResult("root.laptop.d2", false),
             new ShowDevicesResult("root.laptop.d1.s2", false));
 
-    List<ShowDevicesResult> actualResult =
-        schemaRegion.getMatchedDevices(
+    List<IDeviceSchemaInfo> actualResult =
+        SchemaRegionTestUtil.getMatchedDevices(
+            schemaRegion,
             SchemaRegionReadPlanFactory.getShowDevicesPlan(new PartialPath("root.**")));
     // Compare hash sets because the order does not matter.
-    HashSet<ShowDevicesResult> expectedHashset = new HashSet<>(expectedList);
-    HashSet<ShowDevicesResult> actualHashset = new HashSet<>(actualResult);
+    HashSet<IDeviceSchemaInfo> expectedHashset = new HashSet<>(expectedList);
+    HashSet<IDeviceSchemaInfo> actualHashset = new HashSet<>(actualResult);
     Assert.assertEquals(expectedHashset, actualHashset);
 
     expectedList =
@@ -656,7 +665,8 @@ public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
             new ShowDevicesResult("root.laptop.d2", false));
 
     actualResult =
-        schemaRegion.getMatchedDevices(
+        SchemaRegionTestUtil.getMatchedDevices(
+            schemaRegion,
             SchemaRegionReadPlanFactory.getShowDevicesPlan(new PartialPath("root.**.d*")));
     // Compare hash sets because the order does not matter.
     expectedHashset = new HashSet<>(expectedList);
@@ -679,8 +689,10 @@ public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
             "root.laptop.d2.s2"));
 
     // case 01: all timeseries
-    List<ShowTimeSeriesResult> result =
-        schemaRegion.showTimeseries(
+
+    List<ITimeSeriesSchemaInfo> result =
+        SchemaRegionTestUtil.showTimeseries(
+            schemaRegion,
             SchemaRegionReadPlanFactory.getShowTimeSeriesPlan(new PartialPath("root.**")));
     HashSet<String> expectedPathList =
         new HashSet<>(
@@ -695,13 +707,14 @@ public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
     Assert.assertEquals(expectedSize, result.size());
     HashSet<String> actualPathList = new HashSet<>();
     for (int index = 0; index < expectedSize; index++) {
-      actualPathList.add(result.get(index).getPath());
+      actualPathList.add(result.get(index).getFullPath());
     }
     Assert.assertEquals(expectedPathList, actualPathList);
 
     // case 02: some timeseries, pattern "root.**.s*"
     result =
-        schemaRegion.showTimeseries(
+        SchemaRegionTestUtil.showTimeseries(
+            schemaRegion,
             SchemaRegionReadPlanFactory.getShowTimeSeriesPlan(new PartialPath("root.**.s*")));
     expectedPathList =
         new HashSet<>(
@@ -714,7 +727,7 @@ public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
     Assert.assertEquals(expectedSize, result.size());
     actualPathList = new HashSet<>();
     for (int index = 0; index < expectedSize; index++) {
-      actualPathList.add(result.get(index).getPath());
+      actualPathList.add(result.get(index).getFullPath());
     }
     Assert.assertEquals(expectedPathList, actualPathList);
   }

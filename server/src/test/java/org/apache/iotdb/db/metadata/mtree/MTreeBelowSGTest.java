@@ -28,7 +28,6 @@ import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaEngineMode;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
-import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 
@@ -128,12 +127,6 @@ public abstract class MTreeBelowSGTest {
     try {
       storageGroup = getStorageGroup(new PartialPath("root.laptop.d1"));
       assertTrue(root.isStorageGroupAlreadySet(new PartialPath("root.laptop.d1")));
-      assertEquals(
-          "root.laptop.d1",
-          root.getBelongedStorageGroup(new PartialPath("root.laptop.d1")).getFullPath());
-      assertEquals(
-          "root.laptop.d1",
-          root.getBelongedStorageGroup(new PartialPath("root.laptop.d1.s1")).getFullPath());
 
     } catch (MetadataException e) {
       e.printStackTrace();
@@ -147,9 +140,6 @@ public abstract class MTreeBelowSGTest {
     }
 
     try {
-      assertEquals(
-          "root.laptop.d1",
-          root.getBelongedStorageGroup(new PartialPath("root.laptop.d1.s0")).getFullPath());
       storageGroup.createTimeseries(
           new PartialPath("root.laptop.d1.s0"),
           TSDataType.INT32,
@@ -157,9 +147,6 @@ public abstract class MTreeBelowSGTest {
           TSFileDescriptor.getInstance().getConfig().getCompressor(),
           Collections.emptyMap(),
           null);
-      assertEquals(
-          "root.laptop.d1",
-          root.getBelongedStorageGroup(new PartialPath("root.laptop.d1.s1")).getFullPath());
       storageGroup.createTimeseries(
           new PartialPath("root.laptop.d1.s1"),
           TSDataType.INT32,
@@ -247,61 +234,5 @@ public abstract class MTreeBelowSGTest {
 
     IMNode node = storageGroup.getNodeByPath(new PartialPath("root.sg1.a.b"));
     assertFalse(node instanceof MeasurementMNode);
-  }
-
-  @Test
-  public void testGetNodeListInLevel() throws MetadataException {
-
-    storageGroup = getStorageGroup(new PartialPath("root.sg1"));
-    storageGroup.createTimeseries(
-        new PartialPath("root.sg1.d1.s1"),
-        TSDataType.INT32,
-        TSEncoding.PLAIN,
-        CompressionType.GZIP,
-        null,
-        null);
-    storageGroup.createTimeseries(
-        new PartialPath("root.sg1.d1.s2"),
-        TSDataType.INT32,
-        TSEncoding.PLAIN,
-        CompressionType.GZIP,
-        null,
-        null);
-
-    Assert.assertEquals(
-        2, storageGroup.getNodesListInGivenLevel(new PartialPath("root.**"), 3, false).size());
-
-    Assert.assertEquals(
-        1, storageGroup.getNodesListInGivenLevel(new PartialPath("root.*.*"), 2, false).size());
-    Assert.assertEquals(
-        1, storageGroup.getNodesListInGivenLevel(new PartialPath("root.*.*"), 1, false).size());
-    Assert.assertEquals(
-        1, storageGroup.getNodesListInGivenLevel(new PartialPath("root.*.*.s1"), 2, false).size());
-
-    storageGroup = getStorageGroup(new PartialPath("root.sg2"));
-    storageGroup.createTimeseries(
-        new PartialPath("root.sg2.d1.s1"),
-        TSDataType.INT32,
-        TSEncoding.PLAIN,
-        CompressionType.GZIP,
-        null,
-        null);
-    storageGroup.createTimeseries(
-        new PartialPath("root.sg2.d2.s1"),
-        TSDataType.INT32,
-        TSEncoding.PLAIN,
-        CompressionType.GZIP,
-        null,
-        null);
-
-    Assert.assertEquals(
-        2, storageGroup.getNodesListInGivenLevel(new PartialPath("root.**"), 3, false).size());
-
-    Assert.assertEquals(
-        2, storageGroup.getNodesListInGivenLevel(new PartialPath("root.*.*"), 2, false).size());
-    Assert.assertEquals(
-        1, storageGroup.getNodesListInGivenLevel(new PartialPath("root.*.*"), 1, false).size());
-    Assert.assertEquals(
-        2, storageGroup.getNodesListInGivenLevel(new PartialPath("root.*.*.s1"), 2, false).size());
   }
 }

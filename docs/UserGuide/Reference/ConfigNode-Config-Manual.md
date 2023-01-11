@@ -202,4 +202,22 @@ The global configuration of cluster is in ConfigNode.
 |   Default   | 1                                                                              |
 |  Effective  | After restarting system                                                        |
 
+* cn\_core\_client\_count\_for\_each\_node\_in\_client\_manager
+
+|     Name     | cn\_core\_client\_count\_for\_each\_node\_in\_client\_manager  |
+|:------------:|:---------------------------------------------------------------|
+| Description  | Number of core clients routed to each node in a ClientManager  |
+|     Type     | int                                                            |
+|   Default    | 200                                                            |
+|  Effective   | After restarting system                                        |
+
+* cn\_max\_client\_count\_for\_each\_node\_in\_client\_manager
+
+|      Name      | cn\_max\_client\_count\_for\_each\_node\_in\_client\_manager |
+|:--------------:|:-------------------------------------------------------------|
+|  Description   | Number of max clients routed to each node in a ClientManager |
+|      Type      | int                                                          |
+|    Default     | 300                                                          |
+|   Effective    | After restarting system                                      |
+
 ### Metric Configuration

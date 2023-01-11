@@ -18,14 +18,11 @@
  */
 package org.apache.iotdb.db.metadata.mtree;
 
-import org.apache.iotdb.common.rpc.thrift.TSchemaNode;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
-import org.apache.iotdb.db.metadata.plan.schemaregion.read.IShowDevicesPlan;
-import org.apache.iotdb.db.metadata.plan.schemaregion.result.ShowDevicesResult;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -99,6 +96,22 @@ public interface IMTreeBelowSG {
   boolean isEmptyInternalMNode(IMNode node) throws MetadataException;
 
   /**
+   * Construct schema black list via setting matched timeseries to pre deleted.
+   *
+   * @param pathPattern path pattern
+   * @return PartialPath of timeseries that has been set to pre deleted
+   */
+  List<PartialPath> constructSchemaBlackList(PartialPath pathPattern) throws MetadataException;
+
+  /**
+   * Rollback schema black list via setting matched timeseries to not pre deleted.
+   *
+   * @param pathPattern path pattern
+   * @return PartialPath of timeseries that has been set to not pre deleted
+   */
+  List<PartialPath> rollbackSchemaBlackList(PartialPath pathPattern) throws MetadataException;
+
+  /**
    * Get all pre-deleted timeseries matched by given pathPattern. For example, given path pattern
    * root.sg.*.s1 and pre-deleted timeseries root.sg.d1.s1, root.sg.d2.s1, then the result set is
    * {root.sg.d1.s1, root.sg.d2.s1}.
@@ -128,8 +141,6 @@ public interface IMTreeBelowSG {
    */
   IMNode getDeviceNodeWithAutoCreating(PartialPath deviceId) throws MetadataException;
 
-  List<ShowDevicesResult> getDevices(IShowDevicesPlan plan) throws MetadataException;
-
   /**
    * Fetch all measurement path
    *
@@ -143,23 +154,6 @@ public interface IMTreeBelowSG {
       throws MetadataException;
 
   /**
-   * Get child node path in the next level of the given path pattern.
-   *
-   * <p>give pathPattern and the child nodes is those matching pathPattern.*.
-   *
-   * <p>e.g., MTree has [root.sg1.d1.s1, root.sg1.d1.s2, root.sg1.d2.s1] given path = root.sg1,
-   * return [root.sg1.d1, root.sg1.d2]
-   *
-   * @param pathPattern The given path
-   * @return All child nodes' seriesPath(s) of given seriesPath.
-   */
-  Set<TSchemaNode> getChildNodePathInNextLevel(PartialPath pathPattern) throws MetadataException;
-
-  /** Get all paths from root to the given level */
-  List<PartialPath> getNodesListInGivenLevel(
-      PartialPath pathPattern, int nodeLevel, boolean isPrefixMatch) throws MetadataException;
-
-  /**
    * Get node by the path
    *
    * @return last node in given seriesPath
@@ -170,16 +164,34 @@ public interface IMTreeBelowSG {
 
   List<IMeasurementMNode> getAllMeasurementMNode() throws MetadataException;
 
-  /**
-   * Get IMeasurementMNode by path pattern
-   *
-   * @param pathPattern full path or path pattern with wildcard
-   * @return list of IMeasurementMNode
-   */
-  List<IMeasurementMNode> getMatchedMeasurementMNode(PartialPath pathPattern)
-      throws MetadataException;
-
   void activateTemplate(PartialPath activatePath, Template template) throws MetadataException;
+
+  /**
+   * constructSchemaBlackListWithTemplate
+   *
+   * @param templateSetInfo PathPattern and templateId to pre-deactivate
+   * @return Actual full path and templateId that has been pre-deactivated
+   */
+  Map<PartialPath, List<Integer>> constructSchemaBlackListWithTemplate(
+      Map<PartialPath, List<Integer>> templateSetInfo) throws MetadataException;
+
+  /**
+   * rollbackSchemaBlackListWithTemplate
+   *
+   * @param templateSetInfo PathPattern and templateId to rollback pre-deactivate
+   * @return Actual full path and templateId that has been rolled back
+   */
+  Map<PartialPath, List<Integer>> rollbackSchemaBlackListWithTemplate(
+      Map<PartialPath, List<Integer>> templateSetInfo) throws MetadataException;
+
+  /**
+   * deactivateTemplateInBlackList
+   *
+   * @param templateSetInfo PathPattern and templateId to rollback deactivate
+   * @return Actual full path and templateId that has been deactivated
+   */
+  Map<PartialPath, List<Integer>> deactivateTemplateInBlackList(
+      Map<PartialPath, List<Integer>> templateSetInfo) throws MetadataException;
 
   long countPathsUsingTemplate(PartialPath pathPattern, int templateId) throws MetadataException;
 }

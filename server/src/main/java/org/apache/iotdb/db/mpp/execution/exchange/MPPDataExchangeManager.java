@@ -22,6 +22,7 @@ package org.apache.iotdb.db.mpp.execution.exchange;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeMPPDataExchangeServiceClient;
+import org.apache.iotdb.db.mpp.execution.driver.DriverContext;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.mpp.execution.memory.LocalMemoryManager;
 import org.apache.iotdb.db.mpp.metric.QueryMetricsManager;
@@ -273,6 +274,38 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
     }
   }
 
+  /**
+   * Listen to the state changes of a source handle of pipeline. Since we register nothing in the
+   * exchangeManager, so we don't need to remove it too.
+   */
+  static class PipelineSourceHandleListenerImpl implements SourceHandleListener {
+
+    private final IMPPDataExchangeManagerCallback<Throwable> onFailureCallback;
+
+    public PipelineSourceHandleListenerImpl(
+        IMPPDataExchangeManagerCallback<Throwable> onFailureCallback) {
+      this.onFailureCallback = onFailureCallback;
+    }
+
+    @Override
+    public void onFinished(ISourceHandle sourceHandle) {
+      logger.debug("[ScHListenerOnFinish]");
+    }
+
+    @Override
+    public void onAborted(ISourceHandle sourceHandle) {
+      logger.debug("[ScHListenerOnAbort]");
+    }
+
+    @Override
+    public void onFailure(ISourceHandle sourceHandle, Throwable t) {
+      logger.warn("Source handle failed due to: ", t);
+      if (onFailureCallback != null) {
+        onFailureCallback.call(t);
+      }
+    }
+  }
+
   /** Listen to the state changes of a sink handle. */
   class SinkHandleListenerImpl implements SinkHandleListener {
 
@@ -324,6 +357,48 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
     }
   }
 
+  /**
+   * Listen to the state changes of a sink handle of pipeline. And since the finish of pipeline sink
+   * handle doesn't equal the finish of the whole fragment, therefore we don't need to notify
+   * fragment context. But if it's aborted or failed, it can lead to the total fail.
+   */
+  static class PipelineSinkHandleListenerImpl implements SinkHandleListener {
+
+    private final FragmentInstanceContext context;
+    private final IMPPDataExchangeManagerCallback<Throwable> onFailureCallback;
+
+    public PipelineSinkHandleListenerImpl(
+        FragmentInstanceContext context,
+        IMPPDataExchangeManagerCallback<Throwable> onFailureCallback) {
+      this.context = context;
+      this.onFailureCallback = onFailureCallback;
+    }
+
+    @Override
+    public void onFinish(ISinkHandle sinkHandle) {
+      logger.debug("[SkHListenerOnFinish]");
+    }
+
+    @Override
+    public void onEndOfBlocks(ISinkHandle sinkHandle) {
+      logger.debug("[SkHListenerOnEndOfTsBlocks]");
+    }
+
+    @Override
+    public Optional<Throwable> onAborted(ISinkHandle sinkHandle) {
+      logger.debug("[SkHListenerOnAbort]");
+      return context.getFailureCause();
+    }
+
+    @Override
+    public void onFailure(ISinkHandle sinkHandle, Throwable t) {
+      logger.warn("Sink handle failed due to", t);
+      if (onFailureCallback != null) {
+        onFailureCallback.call(t);
+      }
+    }
+  }
+
   private final LocalMemoryManager localMemoryManager;
   private final Supplier<TsBlockSerde> tsBlockSerdeFactory;
   private final ExecutorService executorService;
@@ -357,7 +432,7 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
   }
 
   @Override
-  public synchronized ISinkHandle createLocalSinkHandle(
+  public synchronized ISinkHandle createLocalSinkHandleForFragment(
       TFragmentInstanceId localFragmentInstanceId,
       TFragmentInstanceId remoteFragmentInstanceId,
       String remotePlanNodeId,
@@ -390,13 +465,29 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
 
     LocalSinkHandle localSinkHandle =
         new LocalSinkHandle(
-            remoteFragmentInstanceId,
-            remotePlanNodeId,
             localFragmentInstanceId,
             queue,
             new SinkHandleListenerImpl(instanceContext, instanceContext::failed));
     sinkHandles.put(localFragmentInstanceId, localSinkHandle);
     return localSinkHandle;
+  }
+
+  /**
+   * As we know the upstream and downstream node of shared queue, we don't need to put it into the
+   * sinkHandle map.
+   */
+  public ISinkHandle createLocalSinkHandleForPipeline(
+      DriverContext driverContext, String planNodeId) {
+    logger.debug("Create local sink handle for {}", driverContext.getDriverTaskID());
+    SharedTsBlockQueue queue =
+        new SharedTsBlockQueue(
+            driverContext.getDriverTaskID().getFragmentInstanceId().toThrift(),
+            planNodeId,
+            localMemoryManager);
+    return new LocalSinkHandle(
+        queue,
+        new PipelineSinkHandleListenerImpl(
+            driverContext.getFragmentInstanceContext(), driverContext::failed));
   }
 
   @Override
@@ -435,8 +526,21 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
     return sinkHandle;
   }
 
+  /**
+   * As we know the upstream and downstream node of shared queue, we don't need to put it into the
+   * sourceHandle map.
+   */
+  public ISourceHandle createLocalSourceHandleForPipeline(
+      SharedTsBlockQueue queue, DriverContext context) {
+    logger.debug("Create local source handle for {}", context.getDriverTaskID());
+    return new LocalSourceHandle(
+        queue,
+        new PipelineSourceHandleListenerImpl(context::failed),
+        context.getDriverTaskID().toString());
+  }
+
   @Override
-  public synchronized ISourceHandle createLocalSourceHandle(
+  public synchronized ISourceHandle createLocalSourceHandleForFragment(
       TFragmentInstanceId localFragmentInstanceId,
       String localPlanNodeId,
       TFragmentInstanceId remoteFragmentInstanceId,
@@ -466,7 +570,6 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
     }
     LocalSourceHandle localSourceHandle =
         new LocalSourceHandle(
-            remoteFragmentInstanceId,
             localFragmentInstanceId,
             localPlanNodeId,
             queue,

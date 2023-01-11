@@ -50,8 +50,8 @@ public class DataNodeClientPoolFactory {
                   .setRpcThriftCompressionEnabled(conf.isDnRpcThriftCompressionEnable())
                   .build()),
           new ClientPoolProperty.Builder<ConfigNodeClient>()
-              .setMaxIdleClientForEachNode(conf.getDnCoreConnectionForInternalService())
-              .setMaxTotalClientForEachNode(conf.getDnMaxConnectionForInternalService())
+              .setCoreClientNumForEachNode(conf.getCoreClientNumForEachNode())
+              .setMaxClientNumForEachNode(conf.getMaxClientNumForEachNode())
               .build()
               .getConfig());
     }
@@ -74,7 +74,11 @@ public class DataNodeClientPoolFactory {
                           ? conf.getDnSelectorThreadCountOfClientManager() / 10
                           : 1)
                   .build()),
-          new ClientPoolProperty.Builder<ConfigNodeClient>().build().getConfig());
+          new ClientPoolProperty.Builder<ConfigNodeClient>()
+              .setCoreClientNumForEachNode(conf.getCoreClientNumForEachNode())
+              .setMaxClientNumForEachNode(conf.getMaxClientNumForEachNode())
+              .build()
+              .getConfig());
     }
   }
 }

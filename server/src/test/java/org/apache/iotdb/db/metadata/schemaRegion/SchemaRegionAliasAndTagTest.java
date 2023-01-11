@@ -22,7 +22,7 @@ package org.apache.iotdb.db.metadata.schemaRegion;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.metadata.plan.schemaregion.impl.read.SchemaRegionReadPlanFactory;
-import org.apache.iotdb.db.metadata.plan.schemaregion.result.ShowTimeSeriesResult;
+import org.apache.iotdb.db.metadata.query.info.ITimeSeriesSchemaInfo;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -42,7 +42,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-// todo add alias and tag test
 public class SchemaRegionAliasAndTagTest extends AbstractSchemaRegionTest {
 
   private static final Logger logger = LoggerFactory.getLogger(SchemaRegionAliasAndTagTest.class);
@@ -144,14 +143,15 @@ public class SchemaRegionAliasAndTagTest extends AbstractSchemaRegionTest {
   private void checkAliasAndTagsAndAttributes(
       String fullPath, String alias, Map<String, String> tags, Map<String, String> attributes) {
     try {
-      List<ShowTimeSeriesResult> result =
-          schemaRegion.showTimeseries(
+      List<ITimeSeriesSchemaInfo> result =
+          SchemaRegionTestUtil.showTimeseries(
+              schemaRegion,
               SchemaRegionReadPlanFactory.getShowTimeSeriesPlan(new PartialPath(fullPath)));
       Assert.assertEquals(1, result.size());
-      Assert.assertEquals(fullPath, result.get(0).getPath());
+      Assert.assertEquals(fullPath, result.get(0).getFullPath());
       Assert.assertEquals(alias, result.get(0).getAlias());
-      Assert.assertEquals(tags, result.get(0).getTag());
-      Assert.assertEquals(attributes, result.get(0).getAttribute());
+      Assert.assertEquals(tags, result.get(0).getTags());
+      Assert.assertEquals(attributes, result.get(0).getAttributes());
     } catch (Exception e) {
       logger.error(e.getMessage(), e);
       Assert.fail(e.getMessage());
@@ -160,12 +160,13 @@ public class SchemaRegionAliasAndTagTest extends AbstractSchemaRegionTest {
 
   private void checkAttributes(String fullPath, Map<String, String> attributes) {
     try {
-      List<ShowTimeSeriesResult> result =
-          schemaRegion.showTimeseries(
+      List<ITimeSeriesSchemaInfo> result =
+          SchemaRegionTestUtil.showTimeseries(
+              schemaRegion,
               SchemaRegionReadPlanFactory.getShowTimeSeriesPlan(new PartialPath(fullPath)));
       Assert.assertEquals(1, result.size());
-      Assert.assertEquals(fullPath, result.get(0).getPath());
-      Assert.assertEquals(attributes, result.get(0).getAttribute());
+      Assert.assertEquals(fullPath, result.get(0).getFullPath());
+      Assert.assertEquals(attributes, result.get(0).getAttributes());
     } catch (Exception e) {
       e.printStackTrace();
       Assert.fail(e.getMessage());
@@ -174,12 +175,13 @@ public class SchemaRegionAliasAndTagTest extends AbstractSchemaRegionTest {
 
   private void checkTags(String fullPath, Map<String, String> tags) {
     try {
-      List<ShowTimeSeriesResult> result =
-          schemaRegion.showTimeseries(
+      List<ITimeSeriesSchemaInfo> result =
+          SchemaRegionTestUtil.showTimeseries(
+              schemaRegion,
               SchemaRegionReadPlanFactory.getShowTimeSeriesPlan(new PartialPath(fullPath)));
       Assert.assertEquals(1, result.size());
-      Assert.assertEquals(fullPath, result.get(0).getPath());
-      Assert.assertEquals(tags, result.get(0).getTag());
+      Assert.assertEquals(fullPath, result.get(0).getFullPath());
+      Assert.assertEquals(tags, result.get(0).getTags());
     } catch (Exception e) {
       logger.error(e.getMessage(), e);
       Assert.fail(e.getMessage());

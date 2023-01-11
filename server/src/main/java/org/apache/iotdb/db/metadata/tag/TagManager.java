@@ -193,8 +193,7 @@ public class TagManager {
     return timeseries;
   }
 
-  public List<IMeasurementMNode> getMatchedTimeseriesInIndex(IShowTimeSeriesPlan plan)
-      throws MetadataException {
+  public List<IMeasurementMNode> getMatchedTimeseriesInIndex(IShowTimeSeriesPlan plan) {
     if (!tagIndex.containsKey(plan.getKey())) {
       return Collections.emptyList();
     }

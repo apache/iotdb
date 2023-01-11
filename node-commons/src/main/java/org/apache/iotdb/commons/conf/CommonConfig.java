@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.commons.conf;
 
+import org.apache.iotdb.commons.client.property.ClientPoolProperty.DefaultProperty;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.consensus.ConsensusProtocolClass;
 import org.apache.iotdb.commons.enums.HandleSystemErrorStrategy;
