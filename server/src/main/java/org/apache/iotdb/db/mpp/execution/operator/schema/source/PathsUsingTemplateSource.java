@@ -75,6 +75,7 @@ public class PathsUsingTemplateSource implements ISchemaSource<IDeviceSchemaInfo
         Iterator<PartialPath> pathPatternIterator, ISchemaRegion schemaRegion) {
       this.pathPatternIterator = pathPatternIterator;
       this.schemaRegion = schemaRegion;
+      this.throwable = null;
     }
 
     @Override
