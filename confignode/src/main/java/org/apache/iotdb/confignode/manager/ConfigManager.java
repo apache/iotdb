@@ -431,7 +431,7 @@ public class ConfigManager implements IManager {
         CONF.getSchemaRegionConsensusProtocolClass());
     clusterParameters.setSeriesPartitionSlotNum(CONF.getSeriesSlotNum());
     clusterParameters.setSeriesPartitionExecutorClass(CONF.getSeriesPartitionExecutorClass());
-    clusterParameters.setDefaultTTL(COMMON_CONF.getDefaultTTLInMs());
+    clusterParameters.setDefaultTTL(COMMON_CONF.getDefaultTtlInMs());
     clusterParameters.setTimePartitionInterval(CONF.getTimePartitionInterval());
     clusterParameters.setDataReplicationFactor(CONF.getDataReplicationFactor());
     clusterParameters.setSchemaReplicationFactor(CONF.getSchemaReplicationFactor());
@@ -906,7 +906,7 @@ public class ConfigManager implements IManager {
     }
 
     if (clusterParameters.getDefaultTTL()
-        != CommonDescriptor.getInstance().getConfig().getDefaultTTLInMs()) {
+        != CommonDescriptor.getInstance().getConfig().getDefaultTtlInMs()) {
       return errorStatus.setMessage(errorPrefix + "default_ttl" + errorSuffix);
     }
     if (clusterParameters.getTimePartitionInterval() != CONF.getTimePartitionInterval()) {

@@ -149,7 +149,7 @@ public class IoTDBDescriptor {
   /** load an property file and set TsfileDBConfig variables. */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private void loadProps() {
-    URL url = getPropsUrl(CommonConfig.CONFIG_NAME);
+    URL url = getPropsUrl(CommonConfig.CONF_FILE_NAME);
     Properties commonProperties = new Properties();
     if (url != null) {
       try (InputStream inputStream = url.openStream()) {
@@ -165,7 +165,7 @@ public class IoTDBDescriptor {
     } else {
       logger.warn(
           "Couldn't load the configuration {} from any of the known sources.",
-          CommonConfig.CONFIG_NAME);
+          CommonConfig.CONF_FILE_NAME);
     }
     url = getPropsUrl(IoTDBConfig.CONFIG_NAME);
     if (url != null) {
@@ -205,51 +205,51 @@ public class IoTDBDescriptor {
     conf.setRpcAddress(
         properties.getProperty(IoTDBConstant.DN_RPC_ADDRESS, conf.getRpcAddress()).trim());
 
-    conf.setRpcThriftCompressionEnable(
+    conf.setDnRpcThriftCompressionEnable(
         Boolean.parseBoolean(
             properties
                 .getProperty(
                     "dn_rpc_thrift_compression_enable",
-                    Boolean.toString(conf.isRpcThriftCompressionEnable()))
+                    Boolean.toString(conf.isDnRpcThriftCompressionEnable()))
                 .trim()));
 
-    conf.setRpcAdvancedCompressionEnable(
+    conf.setDnRpcAdvancedCompressionEnable(
         Boolean.parseBoolean(
             properties
                 .getProperty(
                     "dn_rpc_advanced_compression_enable",
-                    Boolean.toString(conf.isRpcAdvancedCompressionEnable()))
+                    Boolean.toString(conf.isDnRpcAdvancedCompressionEnable()))
                 .trim()));
 
-    conf.setConnectionTimeoutInMS(
+    conf.setDnConnectionTimeoutInMS(
         Integer.parseInt(
             properties
                 .getProperty(
-                    "dn_connection_timeout_ms", String.valueOf(conf.getConnectionTimeoutInMS()))
+                    "dn_connection_timeout_ms", String.valueOf(conf.getDnConnectionTimeoutInMS()))
                 .trim()));
 
-    conf.setMaxConnectionForInternalService(
+    conf.setDnMaxConnectionForInternalService(
         Integer.parseInt(
             properties
                 .getProperty(
                     "dn_max_connection_for_internal_service",
-                    String.valueOf(conf.getMaxConnectionForInternalService()))
+                    String.valueOf(conf.getDnMaxConnectionForInternalService()))
                 .trim()));
 
-    conf.setCoreConnectionForInternalService(
+    conf.setDnCoreConnectionForInternalService(
         Integer.parseInt(
             properties
                 .getProperty(
                     "dn_core_connection_for_internal_service",
-                    String.valueOf(conf.getCoreConnectionForInternalService()))
+                    String.valueOf(conf.getDnCoreConnectionForInternalService()))
                 .trim()));
 
-    conf.setSelectorNumOfClientManager(
+    conf.setDnSelectorThreadCountOfClientManager(
         Integer.parseInt(
             properties
                 .getProperty(
                     "dn_selector_thread_count_of_client_manager",
-                    String.valueOf(conf.getSelectorNumOfClientManager()))
+                    String.valueOf(conf.getDnSelectorThreadCountOfClientManager()))
                 .trim()));
 
     conf.setRpcPort(
@@ -488,11 +488,11 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "query_timeout_threshold", Long.toString(conf.getQueryTimeoutThreshold()))));
 
-    conf.setSessionTimeoutThreshold(
+    conf.setDnSessionTimeoutThreshold(
         Integer.parseInt(
             properties.getProperty(
                 "dn_session_timeout_threshold",
-                Integer.toString(conf.getSessionTimeoutThreshold()))));
+                Integer.toString(conf.getDnSessionTimeoutThreshold()))));
     conf.setMaxNumberOfSyncFileRetry(
         Integer.parseInt(
             properties
@@ -670,34 +670,34 @@ public class IoTDBDescriptor {
         Integer.parseInt(
             properties.getProperty(
                 "dn_rpc_selector_thread_count",
-                Integer.toString(conf.getRpcSelectorThreadCount()).trim()));
+                Integer.toString(conf.getDnRpcSelectorThreadCount()).trim()));
     if (rpcSelectorThreadNum <= 0) {
       rpcSelectorThreadNum = 1;
     }
 
-    conf.setRpcSelectorThreadCount(rpcSelectorThreadNum);
+    conf.setDnRpcSelectorThreadCount(rpcSelectorThreadNum);
 
     int minConcurrentClientNum =
         Integer.parseInt(
             properties.getProperty(
                 "dn_rpc_min_concurrent_client_num",
-                Integer.toString(conf.getRpcMinConcurrentClientNum()).trim()));
+                Integer.toString(conf.getDnRpcMinConcurrentClientNum()).trim()));
     if (minConcurrentClientNum <= 0) {
       minConcurrentClientNum = Runtime.getRuntime().availableProcessors();
     }
 
-    conf.setRpcMinConcurrentClientNum(minConcurrentClientNum);
+    conf.setDnRpcMinConcurrentClientNum(minConcurrentClientNum);
 
     int maxConcurrentClientNum =
         Integer.parseInt(
             properties.getProperty(
                 "dn_rpc_max_concurrent_client_num",
-                Integer.toString(conf.getRpcMaxConcurrentClientNum()).trim()));
+                Integer.toString(conf.getDnRpcMaxConcurrentClientNum()).trim()));
     if (maxConcurrentClientNum <= 0) {
       maxConcurrentClientNum = 65535;
     }
 
-    conf.setRpcMaxConcurrentClientNum(maxConcurrentClientNum);
+    conf.setDnRpcMaxConcurrentClientNum(maxConcurrentClientNum);
 
     conf.setEnableWatermark(
         Boolean.parseBoolean(
@@ -765,19 +765,19 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "primitive_array_size", String.valueOf(conf.getPrimitiveArraySize())))));
 
-    conf.setThriftMaxFrameSize(
+    conf.setDnThriftMaxFrameSize(
         Integer.parseInt(
             properties.getProperty(
-                "dn_thrift_max_frame_size", String.valueOf(conf.getThriftMaxFrameSize()))));
+                "dn_thrift_max_frame_size", String.valueOf(conf.getDnThriftMaxFrameSize()))));
 
-    if (conf.getThriftMaxFrameSize() < IoTDBConstant.LEFT_SIZE_IN_REQUEST * 2) {
-      conf.setThriftMaxFrameSize(IoTDBConstant.LEFT_SIZE_IN_REQUEST * 2);
+    if (conf.getDnThriftMaxFrameSize() < IoTDBConstant.LEFT_SIZE_IN_REQUEST * 2) {
+      conf.setDnThriftMaxFrameSize(IoTDBConstant.LEFT_SIZE_IN_REQUEST * 2);
     }
 
-    conf.setThriftDefaultBufferSize(
+    conf.setDnThriftDefaultBufferSize(
         Integer.parseInt(
             properties.getProperty(
-                "dn_thrift_init_buffer_size", String.valueOf(conf.getThriftDefaultBufferSize()))));
+                "dn_thrift_init_buffer_size", String.valueOf(conf.getDnThriftDefaultBufferSize()))));
 
     conf.setFrequencyIntervalInMinute(
         Integer.parseInt(
@@ -1471,7 +1471,7 @@ public class IoTDBDescriptor {
   }
 
   public void loadHotModifiedProps() throws QueryProcessException {
-    URL url = getPropsUrl(CommonConfig.CONFIG_NAME);
+    URL url = getPropsUrl(CommonConfig.CONF_FILE_NAME);
     if (url == null) {
       logger.warn("Couldn't load the configuration from any of the known sources.");
       return;

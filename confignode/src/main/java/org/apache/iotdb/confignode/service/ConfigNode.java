@@ -133,8 +133,8 @@ public class ConfigNode implements ConfigNodeMBean {
             .applyConfigNode(
                 new TConfigNodeLocation(
                     SEED_CONFIG_NODE_ID,
-                    new TEndPoint(CONF.getInternalAddress(), CONF.getInternalPort()),
-                    new TEndPoint(CONF.getInternalAddress(), CONF.getConsensusPort())));
+                    new TEndPoint(CONF.getCnInternalAddress(), CONF.getCnInternalPort()),
+                    new TEndPoint(CONF.getCnInternalAddress(), CONF.getCnConsensusPort())));
         // We always set up Seed-ConfigNode's RPC service lastly to ensure that
         // the external service is not provided until Seed-ConfigNode is fully initialized
         setUpRPCService();
@@ -237,11 +237,11 @@ public class ConfigNode implements ConfigNodeMBean {
         new TConfigNodeRegisterReq(
             new TConfigNodeLocation(
                 INIT_NON_SEED_CONFIG_NODE_ID,
-                new TEndPoint(CONF.getInternalAddress(), CONF.getInternalPort()),
-                new TEndPoint(CONF.getInternalAddress(), CONF.getConsensusPort())),
+                new TEndPoint(CONF.getCnInternalAddress(), CONF.getCnInternalPort()),
+                new TEndPoint(CONF.getCnInternalAddress(), CONF.getCnConsensusPort())),
             configManager.getClusterParameters());
 
-    TEndPoint targetConfigNode = CONF.getTargetConfigNode();
+    TEndPoint targetConfigNode = CONF.getCnTargetConfigNode();
     if (targetConfigNode == null) {
       LOGGER.error(
           "Please set the cn_target_config_node_list parameter in iotdb-confignode.properties file.");
@@ -297,10 +297,10 @@ public class ConfigNode implements ConfigNodeMBean {
             CONF.getClusterName(),
             new TConfigNodeLocation(
                 CONF.getConfigNodeId(),
-                new TEndPoint(CONF.getInternalAddress(), CONF.getInternalPort()),
-                new TEndPoint(CONF.getInternalAddress(), CONF.getConsensusPort())));
+                new TEndPoint(CONF.getCnInternalAddress(), CONF.getCnInternalPort()),
+                new TEndPoint(CONF.getCnInternalAddress(), CONF.getCnConsensusPort())));
 
-    TEndPoint targetConfigNode = CONF.getTargetConfigNode();
+    TEndPoint targetConfigNode = CONF.getCnTargetConfigNode();
     if (targetConfigNode == null) {
       LOGGER.error(
           "Please set the cn_target_config_node_list parameter in iotdb-confignode.properties file.");

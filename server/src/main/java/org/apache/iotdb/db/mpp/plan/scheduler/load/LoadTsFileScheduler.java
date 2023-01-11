@@ -80,7 +80,7 @@ public class LoadTsFileScheduler implements IScheduler {
   public static final long LOAD_TASK_MAX_TIME_IN_SECOND = 5184000L; // one day
   private static final long MAX_MEMORY_SIZE =
       Math.min(
-          config.getThriftMaxFrameSize() / 2,
+          config.getDnThriftMaxFrameSize() / 2,
           (long) (config.getAllocateMemoryForStorageEngine() * config.getLoadTsFileProportion()));
 
   private final MPPQueryContext queryContext;

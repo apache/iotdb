@@ -63,7 +63,7 @@ public class DataNodeInternalRPCService extends ThriftService
               ThreadName.DATANODE_INTERNAL_RPC_PROCESSOR.getName(),
               getBindIP(),
               getBindPort(),
-              config.getRpcMaxConcurrentClientNum(),
+              config.getDnRpcMaxConcurrentClientNum(),
               config.getThriftServerAwaitTimeForStopService(),
               new InternalServiceThriftHandler(),
               // TODO: hard coded compress strategy

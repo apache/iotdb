@@ -87,7 +87,7 @@ public class ConsensusManager {
                   SIMPLE_CONSENSUS,
                   ConsensusConfig.newBuilder()
                       .setThisNode(
-                          new TEndPoint(CONF.getInternalAddress(), CONF.getConsensusPort()))
+                          new TEndPoint(CONF.getCnInternalAddress(), CONF.getCnConsensusPort()))
                       .setStorageDir("target" + java.io.File.separator + "simple")
                       .build(),
                   gid -> stateMachine)
@@ -103,7 +103,7 @@ public class ConsensusManager {
                   ConsensusConfig.newBuilder()
                       .setThisNodeId(CONF.getConfigNodeId())
                       .setThisNode(
-                          new TEndPoint(CONF.getInternalAddress(), CONF.getConsensusPort()))
+                          new TEndPoint(CONF.getCnInternalAddress(), CONF.getCnConsensusPort()))
                       .setRatisConfig(
                           RatisConfig.newBuilder()
                               .setLeaderLogAppender(
@@ -201,8 +201,8 @@ public class ConsensusManager {
           Collections.singletonList(
               new TConfigNodeLocation(
                   SEED_CONFIG_NODE_ID,
-                  new TEndPoint(CONF.getInternalAddress(), CONF.getInternalPort()),
-                  new TEndPoint(CONF.getInternalAddress(), CONF.getConsensusPort()))));
+                  new TEndPoint(CONF.getCnInternalAddress(), CONF.getCnInternalPort()),
+                  new TEndPoint(CONF.getCnInternalAddress(), CONF.getCnConsensusPort()))));
     }
   }
 

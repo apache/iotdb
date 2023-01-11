@@ -46,12 +46,12 @@ public class DataNodeClientPoolFactory {
           new ConfigNodeClient.Factory(
               manager,
               new ThriftClientProperty.Builder()
-                  .setConnectionTimeoutMs(conf.getConnectionTimeoutInMS())
-                  .setRpcThriftCompressionEnabled(conf.isRpcThriftCompressionEnable())
+                  .setConnectionTimeoutMs(conf.getDnConnectionTimeoutInMS())
+                  .setRpcThriftCompressionEnabled(conf.isDnRpcThriftCompressionEnable())
                   .build()),
           new ClientPoolProperty.Builder<ConfigNodeClient>()
-              .setMaxIdleClientForEachNode(conf.getCoreConnectionForInternalService())
-              .setMaxTotalClientForEachNode(conf.getMaxConnectionForInternalService())
+              .setMaxIdleClientForEachNode(conf.getDnCoreConnectionForInternalService())
+              .setMaxTotalClientForEachNode(conf.getDnMaxConnectionForInternalService())
               .build()
               .getConfig());
     }
@@ -67,11 +67,11 @@ public class DataNodeClientPoolFactory {
           new ConfigNodeClient.Factory(
               manager,
               new ThriftClientProperty.Builder()
-                  .setConnectionTimeoutMs(conf.getConnectionTimeoutInMS() * 10)
-                  .setRpcThriftCompressionEnabled(conf.isRpcThriftCompressionEnable())
+                  .setConnectionTimeoutMs(conf.getDnConnectionTimeoutInMS() * 10)
+                  .setRpcThriftCompressionEnabled(conf.isDnRpcThriftCompressionEnable())
                   .setSelectorNumOfAsyncClientManager(
-                      conf.getSelectorNumOfClientManager() / 10 > 0
-                          ? conf.getSelectorNumOfClientManager() / 10
+                      conf.getDnSelectorThreadCountOfClientManager() / 10 > 0
+                          ? conf.getDnSelectorThreadCountOfClientManager() / 10
                           : 1)
                   .build()),
           new ClientPoolProperty.Builder<ConfigNodeClient>().build().getConfig());

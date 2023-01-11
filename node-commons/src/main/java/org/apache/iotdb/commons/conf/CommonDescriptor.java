@@ -19,22 +19,28 @@
 
 package org.apache.iotdb.commons.conf;
 
+import org.apache.iotdb.commons.consensus.ConsensusProtocolClass;
 import org.apache.iotdb.commons.enums.HandleSystemErrorStrategy;
+import org.apache.iotdb.commons.loadbalance.LeaderDistributionPolicy;
+import org.apache.iotdb.commons.loadbalance.RegionGroupExtensionPolicy;
 import org.apache.iotdb.confignode.rpc.thrift.TGlobalConfig;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.Properties;
 
 public class CommonDescriptor {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(CommonDescriptor.class);
 
-  private final CommonConfig config = new CommonConfig();
+  private final CommonConfig CONF = new CommonConfig();
 
-  private CommonDescriptor() {}
+  private CommonDescriptor() {
+    // Empty constructor
+  }
 
   public static CommonDescriptor getInstance() {
     return CommonDescriptorHolder.INSTANCE;
@@ -45,133 +51,299 @@ public class CommonDescriptor {
     private static final CommonDescriptor INSTANCE = new CommonDescriptor();
 
     private CommonDescriptorHolder() {
-      // empty constructor
+      // Empty constructor
     }
   }
 
   public CommonConfig getConfig() {
-    return config;
+    return CONF;
   }
 
   public void initCommonConfigDir(String systemDir) {
-    config.setUserFolder(systemDir + File.separator + "users");
-    config.setRoleFolder(systemDir + File.separator + "roles");
-    config.setProcedureWalFolder(systemDir + File.separator + "procedure");
+    CONF.setUserFolder(systemDir + File.separator + "users");
+    CONF.setRoleFolder(systemDir + File.separator + "roles");
+    CONF.setProcedureWalFolder(systemDir + File.separator + "procedure");
   }
 
-  public void loadCommonProps(Properties properties) {
-    config.setAuthorizerProvider(
-        properties.getProperty("authorizer_provider_class", config.getAuthorizerProvider()).trim());
-    // if using org.apache.iotdb.db.auth.authorizer.OpenIdAuthorizer, openID_url is needed.
-    config.setOpenIdProviderUrl(
-        properties.getProperty("openID_url", config.getOpenIdProviderUrl()).trim());
-    config.setAdminName(properties.getProperty("admin_name", config.getAdminName()).trim());
 
-    config.setAdminPassword(
-        properties.getProperty("admin_password", config.getAdminPassword()).trim());
-    config.setEncryptDecryptProvider(
+
+  private void loadCommonProps(Properties properties) {
+    CONF.setClusterName(
+      properties.getProperty(IoTDBConstant.CLUSTER_NAME, CONF.getClusterName()).trim());
+
+    try {
+      CONF.setConfigNodeConsensusProtocolClass(
+        ConsensusProtocolClass.parse(
+          properties
+            .getProperty(
+              "config_node_consensus_protocol_class", CONF.getConfigNodeConsensusProtocolClass().getProtocol())
+            .trim()));
+    } catch (IOException e) {
+      LOGGER.warn("Unknown config_node_consensus_protocol_class in iotdb-common.properties file, use default config", e);
+    }
+
+    CONF.setSchemaReplicationFactor(
+      Integer.parseInt(
+        properties
+          .getProperty(
+            "schema_replication_factor", String.valueOf(CONF.getSchemaReplicationFactor()))
+          .trim()));
+
+    try {
+      CONF.setSchemaRegionConsensusProtocolClass(
+        ConsensusProtocolClass.parse(
+          properties
+            .getProperty(
+              "schema_region_consensus_protocol_class", CONF.getSchemaRegionConsensusProtocolClass().getProtocol())
+            .trim()));
+    } catch (IOException e) {
+      LOGGER.warn("Unknown schema_region_consensus_protocol_class in iotdb-common.properties file, use default config", e);
+    }
+
+    CONF.setDataReplicationFactor(
+      Integer.parseInt(
+        properties
+          .getProperty(
+            "data_replication_factor", String.valueOf(CONF.getDataReplicationFactor()))
+          .trim()));
+
+    try {
+      CONF.setDataRegionConsensusProtocolClass(
+        ConsensusProtocolClass.parse(
+          properties
+            .getProperty(
+              "data_region_consensus_protocol_class", CONF.getDataRegionConsensusProtocolClass().getProtocol())
+            .trim()));
+    } catch (IOException e) {
+      LOGGER.warn("Unknown data_region_consensus_protocol_class in iotdb-common.properties file, use default config", e);
+    }
+
+    CONF.setSeriesSlotNum(
+      Integer.parseInt(
+        properties
+          .getProperty("series_slot_num", String.valueOf(CONF.getSeriesSlotNum()))
+          .trim()));
+
+    CONF.setSeriesPartitionExecutorClass(
+      properties
+        .getProperty("series_partition_executor_class", CONF.getSeriesPartitionExecutorClass())
+        .trim());
+
+    CONF.setSchemaRegionPerDataNode(
+      Double.parseDouble(
+        properties
+          .getProperty(
+            "schema_region_per_data_node",
+            String.valueOf(CONF.getSchemaReplicationFactor()))
+          .trim()));
+
+    CONF.setDataRegionPerProcessor(
+      Double.parseDouble(
+        properties
+          .getProperty(
+            "data_region_per_processor", String.valueOf(CONF.getDataRegionPerProcessor()))
+          .trim()));
+
+    try {
+      CONF.setSchemaRegionGroupExtensionPolicy(
+        RegionGroupExtensionPolicy.parse(
+          properties.getProperty(
+            "schema_region_group_extension_policy",
+            CONF.getSchemaRegionGroupExtensionPolicy().getPolicy().trim())));
+    } catch (IOException e) {
+      LOGGER.warn("Unknown schema_region_group_extension_policy in iotdb-common.properties file, use default config", e);
+    }
+
+    CONF.setSchemaRegionGroupPerDatabase(
+      Integer.parseInt(
+        properties.getProperty(
+          "schema_region_group_per_database",
+          String.valueOf(CONF.getSchemaRegionGroupPerDatabase()).trim())));
+
+    try {
+      CONF.setDataRegionGroupExtensionPolicy(
+        RegionGroupExtensionPolicy.parse(
+          properties.getProperty(
+            "data_region_group_extension_policy",
+            CONF.getDataRegionGroupExtensionPolicy().getPolicy().trim())));
+    } catch (IOException e) {
+      LOGGER.warn("Unknown data_region_group_extension_policy in iotdb-common.properties file, use default config", e);
+    }
+
+    CONF.setDataRegionGroupPerDatabase(
+      Integer.parseInt(
+        properties.getProperty(
+          "data_region_group_per_database",
+          String.valueOf(CONF.getDataRegionGroupPerDatabase()).trim())));
+
+    CONF.setLeastDataRegionGroupNum(
+      Integer.parseInt(
+        properties.getProperty(
+          "least_data_region_group_num", String.valueOf(CONF.getLeastDataRegionGroupNum()))));
+
+    CONF.setEnableDataPartitionInheritPolicy(
+      Boolean.parseBoolean(
+        properties.getProperty(
+          "enable_data_partition_inherit_policy",
+          String.valueOf(CONF.isEnableDataPartitionInheritPolicy()))));
+
+    try {
+      CONF.setLeaderDistributionPolicy(
+        LeaderDistributionPolicy.parse(
+          properties.getProperty(
+            "leader_distribution_policy",
+            CONF.getLeaderDistributionPolicy().getPolicy().trim())));
+    } catch (IOException e) {
+      LOGGER.warn("Unknown leader_distribution_policy in iotdb-common.properties file, use default config", e);
+    }
+
+    CONF.setEnableAutoLeaderBalanceForRatisConsensus(
+      Boolean.parseBoolean(
+        properties
+          .getProperty(
+            "enable_auto_leader_balance_for_ratis_consensus",
+            String.valueOf(CONF.isEnableAutoLeaderBalanceForRatisConsensus()))
+          .trim()));
+
+    CONF.setEnableAutoLeaderBalanceForIoTConsensus(
+      Boolean.parseBoolean(
+        properties
+          .getProperty(
+            "enable_auto_leader_balance_for_iot_consensus",
+            String.valueOf(CONF.isEnableAutoLeaderBalanceForIoTConsensus()))
+          .trim()));
+
+    CONF.setTimePartitionInterval(
+      Long.parseLong(
+        properties
+          .getProperty(
+            "time_partition_interval", String.valueOf(CONF.getTimePartitionInterval()))
+          .trim()));
+
+    CONF.setHeartbeatIntervalInMs(
+      Long.parseLong(
+        properties
+          .getProperty(
+            "heartbeat_interval_in_ms", String.valueOf(CONF.getHeartbeatIntervalInMs()))
+          .trim()));
+
+    CONF.setDiskSpaceWarningThreshold(
+      Double.parseDouble(
+        properties
+          .getProperty(
+            "disk_space_warning_threshold",
+            String.valueOf(CONF.getDiskSpaceWarningThreshold()))
+          .trim()));
+
+    String readConsistencyLevel =
+      properties.getProperty("read_consistency_level", CONF.getReadConsistencyLevel()).trim();
+    if (readConsistencyLevel.equals("strong") || readConsistencyLevel.equals("weak")) {
+      CONF.setReadConsistencyLevel(readConsistencyLevel);
+    } else {
+      LOGGER.warn(
+        String.format(
+          "Unknown read_consistency_level: %s, please set to \"strong\" or \"weak\"",
+          readConsistencyLevel));
+    }
+
+    CONF.setDefaultTtlInMs(
+      Long.parseLong(
+        properties
+          .getProperty("default_ttl_in_ms", String.valueOf(CONF.getDefaultTtlInMs()))
+          .trim()));
+
+    CONF.setAuthorizerProvider(
+        properties.getProperty("authorizer_provider_class", CONF.getAuthorizerProvider()).trim());
+
+    // if using org.apache.iotdb.db.auth.authorizer.OpenIdAuthorizer, openID_url is needed.
+    CONF.setOpenIdProviderUrl(
+        properties.getProperty("openID_url", CONF.getOpenIdProviderUrl()).trim());
+
+    CONF.setAdminName(properties.getProperty("admin_name", CONF.getAdminName()).trim());
+
+    CONF.setAdminPassword(
+        properties.getProperty("admin_password", CONF.getAdminPassword()).trim());
+
+    CONF.setEncryptDecryptProvider(
         properties
             .getProperty(
-                "iotdb_server_encrypt_decrypt_provider", config.getEncryptDecryptProvider())
+                "iotdb_server_encrypt_decrypt_provider", CONF.getEncryptDecryptProvider())
             .trim());
 
-    config.setEncryptDecryptProviderParameter(
+    CONF.setEncryptDecryptProviderParameter(
         properties.getProperty(
             "iotdb_server_encrypt_decrypt_provider_parameter",
-            config.getEncryptDecryptProviderParameter()));
+            CONF.getEncryptDecryptProviderParameter()));
 
-    config.setDefaultTTLInMs(
-        Long.parseLong(
-            properties
-                .getProperty("default_ttl_in_ms", String.valueOf(config.getDefaultTTLInMs()))
-                .trim()));
-    config.setSyncDir(properties.getProperty("dn_sync_dir", config.getSyncDir()).trim());
 
-    config.setWalDirs(
+    CONF.setUdfDir(properties.getProperty("udf_lib_dir", CONF.getUdfDir()).trim());
+
+    CONF.setTriggerDir(properties.getProperty("trigger_lib_dir", CONF.getTriggerDir()).trim());
+
+    CONF.setSyncDir(properties.getProperty("dn_sync_dir", CONF.getSyncDir()).trim());
+
+    CONF.setWalDirs(
         properties
-            .getProperty("dn_wal_dirs", String.join(",", config.getWalDirs()))
+            .getProperty("dn_wal_dirs", String.join(",", CONF.getWalDirs()))
             .trim()
             .split(","));
 
-    config.setRpcThriftCompressionEnabled(
+    CONF.setRpcThriftCompressionEnabled(
         Boolean.parseBoolean(
             properties
                 .getProperty(
                     "cn_rpc_thrift_compression_enable",
-                    String.valueOf(config.isRpcThriftCompressionEnabled()))
+                    String.valueOf(CONF.isRpcThriftCompressionEnabled()))
                 .trim()));
 
-    config.setConnectionTimeoutInMS(
+    CONF.setConnectionTimeoutInMS(
         Integer.parseInt(
             properties
                 .getProperty(
-                    "cn_connection_timeout_ms", String.valueOf(config.getConnectionTimeoutInMS()))
+                    "dn_connection_timeout_ms", String.valueOf(CONF.getConnectionTimeoutInMS()))
                 .trim()));
 
-    config.setSelectorNumOfClientManager(
-        Integer.parseInt(
-            properties
-                .getProperty(
-                    "cn_selector_thread_nums_of_client_manager",
-                    String.valueOf(config.getSelectorNumOfClientManager()))
-                .trim()));
-
-    config.setConnectionTimeoutInMS(
-        Integer.parseInt(
-            properties
-                .getProperty(
-                    "dn_connection_timeout_ms", String.valueOf(config.getConnectionTimeoutInMS()))
-                .trim()));
-
-    config.setRpcThriftCompressionEnabled(
+    CONF.setRpcThriftCompressionEnabled(
         Boolean.parseBoolean(
             properties
                 .getProperty(
                     "dn_rpc_thrift_compression_enable",
-                    String.valueOf(config.isRpcThriftCompressionEnabled()))
+                    String.valueOf(CONF.isRpcThriftCompressionEnabled()))
                 .trim()));
 
-    config.setSelectorNumOfClientManager(
+    CONF.setSelectorNumOfClientManager(
         Integer.parseInt(
             properties
                 .getProperty(
                     "dn_selector_thread_nums_of_client_manager",
-                    String.valueOf(config.getSelectorNumOfClientManager()))
+                    String.valueOf(CONF.getSelectorNumOfClientManager()))
                 .trim()));
 
-    config.setMaxTotalClientForEachNode(
+    CONF.setMaxTotalClientForEachNode(
         Integer.parseInt(
             properties
                 .getProperty(
                     "dn_max_connection_for_internal_service",
-                    String.valueOf(config.getMaxTotalClientForEachNode()))
+                    String.valueOf(CONF.getMaxTotalClientForEachNode()))
                 .trim()));
 
-    config.setMaxIdleClientForEachNode(
+    CONF.setMaxIdleClientForEachNode(
         Integer.parseInt(
             properties
                 .getProperty(
                     "dn_core_connection_for_internal_service",
-                    String.valueOf(config.getMaxIdleClientForEachNode()))
+                    String.valueOf(CONF.getMaxIdleClientForEachNode()))
                 .trim()));
 
-    config.setHandleSystemErrorStrategy(
+    CONF.setHandleSystemErrorStrategy(
         HandleSystemErrorStrategy.valueOf(
             properties
                 .getProperty(
-                    "handle_system_error", String.valueOf(config.getHandleSystemErrorStrategy()))
-                .trim()));
-
-    config.setDiskSpaceWarningThreshold(
-        Double.parseDouble(
-            properties
-                .getProperty(
-                    "disk_space_warning_threshold",
-                    String.valueOf(config.getDiskSpaceWarningThreshold()))
+                    "handle_system_error", String.valueOf(CONF.getHandleSystemErrorStrategy()))
                 .trim()));
   }
 
   public void loadGlobalConfig(TGlobalConfig globalConfig) {
-    config.setDiskSpaceWarningThreshold(globalConfig.getDiskSpaceWarningThreshold());
+    CONF.setDiskSpaceWarningThreshold(globalConfig.getDiskSpaceWarningThreshold());
   }
 }

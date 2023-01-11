@@ -82,7 +82,7 @@ public class IoTDBSyncClient implements ISyncClient {
    * @param databaseName database name that client belongs to
    */
   public IoTDBSyncClient(Pipe pipe, String remoteAddress, int port, String databaseName) {
-    RpcTransportFactory.setThriftMaxFrameSize(config.getThriftMaxFrameSize());
+    RpcTransportFactory.setThriftMaxFrameSize(config.getDnThriftMaxFrameSize());
     this.pipe = pipe;
     this.ipAddress = remoteAddress;
     this.port = port;
@@ -123,7 +123,7 @@ public class IoTDBSyncClient implements ISyncClient {
                   SyncConstant.SOCKET_TIMEOUT_MILLISECONDS,
                   SyncConstant.CONNECT_TIMEOUT_MILLISECONDS));
       TProtocol protocol;
-      if (config.isRpcThriftCompressionEnable()) {
+      if (config.isDnRpcThriftCompressionEnable()) {
         protocol = new TCompactProtocol(transport);
       } else {
         protocol = new TBinaryProtocol(transport);

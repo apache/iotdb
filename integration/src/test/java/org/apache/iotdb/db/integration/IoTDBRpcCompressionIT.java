@@ -41,9 +41,9 @@ import static org.junit.Assert.assertEquals;
 @Category({LocalStandaloneTest.class})
 public class IoTDBRpcCompressionIT {
   boolean rpcThriftCompression =
-      IoTDBDescriptor.getInstance().getConfig().isRpcThriftCompressionEnable();
+      IoTDBDescriptor.getInstance().getConfig().isDnRpcThriftCompressionEnable();
   boolean rpcAdvancedCompression =
-      IoTDBDescriptor.getInstance().getConfig().isRpcAdvancedCompressionEnable();
+      IoTDBDescriptor.getInstance().getConfig().isDnRpcAdvancedCompressionEnable();
 
   @Before
   public void setUp() throws Exception {}

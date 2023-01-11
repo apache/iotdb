@@ -54,12 +54,12 @@ public class ConfigNodeStartupCheck {
     // When the ConfigNode consensus protocol is set to SIMPLE_CONSENSUS,
     // the target_config_node_list needs to point to itself
     if (CONF.getConfigNodeConsensusProtocolClass().equals(ConsensusFactory.SIMPLE_CONSENSUS)
-        && (!CONF.getInternalAddress().equals(CONF.getTargetConfigNode().getIp())
-            || CONF.getInternalPort() != CONF.getTargetConfigNode().getPort())) {
+        && (!CONF.getCnInternalAddress().equals(CONF.getCnTargetConfigNode().getIp())
+            || CONF.getCnInternalPort() != CONF.getCnTargetConfigNode().getPort())) {
       throw new ConfigurationException(
           IoTDBConstant.CN_TARGET_CONFIG_NODE_LIST,
-          CONF.getTargetConfigNode().getIp() + ":" + CONF.getTargetConfigNode().getPort(),
-          CONF.getInternalAddress() + ":" + CONF.getInternalPort());
+          CONF.getCnTargetConfigNode().getIp() + ":" + CONF.getCnTargetConfigNode().getPort(),
+          CONF.getCnInternalAddress() + ":" + CONF.getCnInternalPort());
     }
 
     // When the data region consensus protocol is set to SIMPLE_CONSENSUS,
@@ -107,7 +107,7 @@ public class ConfigNodeStartupCheck {
     }
 
     // The ip of target ConfigNode couldn't be 0.0.0.0
-    if (CONF.getTargetConfigNode().getIp().equals("0.0.0.0")) {
+    if (CONF.getCnTargetConfigNode().getIp().equals("0.0.0.0")) {
       throw new ConfigurationException(
           "The ip address of any target_config_node_list couldn't be 0.0.0.0");
     }

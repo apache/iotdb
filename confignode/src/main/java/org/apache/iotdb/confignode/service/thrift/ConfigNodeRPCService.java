@@ -72,7 +72,7 @@ public class ConfigNodeRPCService extends ThriftService implements ConfigNodeRPC
               getBindIP(),
               getBindPort(),
               configConf.getCnRpcMaxConcurrentClientNum(),
-              configConf.getThriftServerAwaitTimeForStopService(),
+              configConf.getCnConnectionTimeoutMs() / 1000,
               new ConfigNodeRPCServiceHandler(),
               commonConfig.isRpcThriftCompressionEnabled());
     } catch (RPCServiceException e) {
@@ -84,11 +84,11 @@ public class ConfigNodeRPCService extends ThriftService implements ConfigNodeRPC
 
   @Override
   public String getBindIP() {
-    return configConf.getInternalAddress();
+    return configConf.getCnInternalAddress();
   }
 
   @Override
   public int getBindPort() {
-    return configConf.getInternalPort();
+    return configConf.getCnInternalPort();
   }
 }

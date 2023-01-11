@@ -16,18 +16,17 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.manager.partition;
+package org.apache.iotdb.commons.loadbalance;
 
 import java.io.IOException;
 
-public enum RegionGroupExtensionPolicy {
-  CUSTOM("CUSTOM"),
-
-  AUTO("AUTO");
+public enum LeaderDistributionPolicy {
+  GREEDY("GREEDY"),
+  MIN_COST_FLOW("MIN_COST_FLOW");
 
   private final String policy;
 
-  RegionGroupExtensionPolicy(String policy) {
+  LeaderDistributionPolicy(String policy) {
     this.policy = policy;
   }
 
@@ -35,13 +34,12 @@ public enum RegionGroupExtensionPolicy {
     return policy;
   }
 
-  public static RegionGroupExtensionPolicy parse(String policy) throws IOException {
-    for (RegionGroupExtensionPolicy extensionPolicy : RegionGroupExtensionPolicy.values()) {
-      if (extensionPolicy.policy.equals(policy)) {
-        return extensionPolicy;
+  public static LeaderDistributionPolicy parse(String policy) throws IOException {
+    for (LeaderDistributionPolicy leaderDistributionPolicy : LeaderDistributionPolicy.values()) {
+      if (leaderDistributionPolicy.policy.equals(policy)) {
+        return leaderDistributionPolicy;
       }
     }
-    throw new IOException(
-        String.format("DataRegionGroupExtensionPolicy %s doesn't exist.", policy));
+    throw new IOException(String.format("LeaderDistributionPolicy %s doesn't exist.", policy));
   }
 }

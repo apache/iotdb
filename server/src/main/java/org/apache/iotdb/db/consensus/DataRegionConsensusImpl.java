@@ -69,21 +69,21 @@ public class DataRegionConsensusImpl {
                           IoTConsensusConfig.newBuilder()
                               .setRpc(
                                   RPC.newBuilder()
-                                      .setConnectionTimeoutInMs(conf.getConnectionTimeoutInMS())
-                                      .setRpcSelectorThreadNum(conf.getRpcSelectorThreadCount())
+                                      .setConnectionTimeoutInMs(conf.getDnConnectionTimeoutInMS())
+                                      .setRpcSelectorThreadNum(conf.getDnRpcSelectorThreadCount())
                                       .setRpcMinConcurrentClientNum(
-                                          conf.getRpcMinConcurrentClientNum())
+                                          conf.getDnRpcMinConcurrentClientNum())
                                       .setRpcMaxConcurrentClientNum(
-                                          conf.getRpcMaxConcurrentClientNum())
+                                          conf.getDnRpcMaxConcurrentClientNum())
                                       .setRpcThriftCompressionEnabled(
-                                          conf.isRpcThriftCompressionEnable())
+                                          conf.isDnRpcThriftCompressionEnable())
                                       .setSelectorNumOfClientManager(
-                                          conf.getSelectorNumOfClientManager())
+                                          conf.getDnSelectorThreadCountOfClientManager())
                                       .setThriftServerAwaitTimeForStopService(
                                           conf.getThriftServerAwaitTimeForStopService())
-                                      .setThriftMaxFrameSize(conf.getThriftMaxFrameSize())
+                                      .setThriftMaxFrameSize(conf.getDnThriftMaxFrameSize())
                                       .setMaxConnectionForInternalService(
-                                          conf.getMaxConnectionForInternalService())
+                                          conf.getDnMaxConnectionForInternalService())
                                       .build())
                               .setReplication(
                                   IoTConsensusConfig.Replication.newBuilder()

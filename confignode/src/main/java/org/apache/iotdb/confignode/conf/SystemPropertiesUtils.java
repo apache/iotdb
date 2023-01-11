@@ -79,19 +79,19 @@ public class SystemPropertiesUtils {
     String internalAddress = systemProperties.getProperty("cn_internal_address", null);
     if (internalAddress == null) {
       needReWrite = true;
-    } else if (!internalAddress.equals(conf.getInternalAddress())) {
+    } else if (!internalAddress.equals(conf.getCnInternalAddress())) {
       throw new ConfigurationException(
-          "cn_internal_address", conf.getInternalAddress(), internalAddress);
+          "cn_internal_address", conf.getCnInternalAddress(), internalAddress);
     }
 
     if (systemProperties.getProperty("cn_internal_port", null) == null) {
       needReWrite = true;
     } else {
       int internalPort = Integer.parseInt(systemProperties.getProperty("cn_internal_port"));
-      if (internalPort != conf.getInternalPort()) {
+      if (internalPort != conf.getCnInternalPort()) {
         throw new ConfigurationException(
             "cn_internal_port",
-            String.valueOf(conf.getInternalPort()),
+            String.valueOf(conf.getCnInternalPort()),
             String.valueOf(internalPort));
       }
     }
@@ -100,10 +100,10 @@ public class SystemPropertiesUtils {
       needReWrite = true;
     } else {
       int consensusPort = Integer.parseInt(systemProperties.getProperty("cn_consensus_port"));
-      if (consensusPort != conf.getConsensusPort()) {
+      if (consensusPort != conf.getCnConsensusPort()) {
         throw new ConfigurationException(
             "cn_consensus_port",
-            String.valueOf(conf.getConsensusPort()),
+            String.valueOf(conf.getCnConsensusPort()),
             String.valueOf(consensusPort));
       }
     }
@@ -212,9 +212,10 @@ public class SystemPropertiesUtils {
         String.valueOf(ConfigNodeDescriptor.getInstance().isSeedConfigNode()));
 
     // Startup configuration
-    systemProperties.setProperty("cn_internal_address", String.valueOf(conf.getInternalAddress()));
-    systemProperties.setProperty("cn_internal_port", String.valueOf(conf.getInternalPort()));
-    systemProperties.setProperty("cn_consensus_port", String.valueOf(conf.getConsensusPort()));
+    systemProperties.setProperty(
+        "cn_internal_address", String.valueOf(conf.getCnInternalAddress()));
+    systemProperties.setProperty("cn_internal_port", String.valueOf(conf.getCnInternalPort()));
+    systemProperties.setProperty("cn_consensus_port", String.valueOf(conf.getCnConsensusPort()));
 
     // Consensus protocol configuration
     systemProperties.setProperty(

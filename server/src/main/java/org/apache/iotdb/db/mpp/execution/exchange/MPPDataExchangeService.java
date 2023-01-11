@@ -94,7 +94,7 @@ public class MPPDataExchangeService extends ThriftService implements MPPDataExch
               ThreadName.MPP_DATA_EXCHANGE_RPC_PROCESSOR.getName(),
               getBindIP(),
               getBindPort(),
-              config.getRpcMaxConcurrentClientNum(),
+              config.getDnRpcMaxConcurrentClientNum(),
               config.getThriftServerAwaitTimeForStopService(),
               new MPPDataExchangeServiceThriftHandler(),
               // TODO: hard coded compress strategy

@@ -61,6 +61,35 @@ import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARA
 
 public class IoTDBConfig {
 
+  /** Connection Configuration */
+  // The max time to live of a session in ms. Unit: millisecond
+  private int dnSessionTimeoutThreshold = 0;
+  // Whether to use thrift compression
+  private boolean dnRpcThriftCompressionEnable = false;
+  // Whether to use Snappy compression before sending data through the network
+  private boolean dnRpcAdvancedCompressionEnable = false;
+  // Rpc Selector thread num
+  private int dnRpcSelectorThreadCount = 1;
+  // Min concurrent client number
+  private int dnRpcMinConcurrentClientNum = Runtime.getRuntime().availableProcessors();
+  // Max concurrent client number
+  private int dnRpcMaxConcurrentClientNum = 65535;
+  // Thrift max frame size, 512MB by default
+  private int dnThriftMaxFrameSize = 536870912;
+  // Thrift init buffer size
+  private int dnThriftDefaultBufferSize = RpcUtils.THRIFT_DEFAULT_BUF_CAPACITY;
+  // Thrift socket and connection timeout between DataNode and ConfigNode
+  private int dnConnectionTimeoutInMS = (int) TimeUnit.SECONDS.toMillis(20);
+  // The maximum number of clients that can be idle for a node's InternalService. When the number of idle clients on a node exceeds this number, newly returned clients will be released
+  private int dnCoreConnectionForInternalService = 100;
+  // The maximum number of clients that can be applied for a node's InternalService
+  private int dnMaxConnectionForInternalService = 100;
+  // ClientManager will have so many selector threads (TAsyncClientManager) to distribute to its clients
+  private int dnSelectorThreadCountOfClientManager =
+    Runtime.getRuntime().availableProcessors() / 4 > 0
+      ? Runtime.getRuntime().availableProcessors() / 4
+      : 1;
+
   /* Names of Watermark methods */
   public static final String WATERMARK_GROUPED_LSB = "GroupBasedLSBMethod";
   public static final String CONFIG_NAME = "iotdb-datanode.properties";
@@ -104,26 +133,11 @@ public class IoTDBConfig {
   /** Rpc binding address. */
   private String rpcAddress = "127.0.0.1";
 
-  /** whether to use thrift compression. */
-  private boolean rpcThriftCompressionEnable = false;
-
-  /** whether to use Snappy compression before sending data through the network */
-  private boolean rpcAdvancedCompressionEnable = false;
-
   /** Port which the JDBC server listens to. */
   private int rpcPort = 6667;
 
   /** Port which the influxdb protocol server listens to. */
   private int influxDBRpcPort = 8086;
-
-  /** Rpc Selector thread num */
-  private int rpcSelectorThreadCount = 1;
-
-  /** Min concurrent client number */
-  private int rpcMinConcurrentClientNum = Runtime.getRuntime().availableProcessors();
-
-  /** Max concurrent client number */
-  private int rpcMaxConcurrentClientNum = 65535;
 
   /** Memory allocated for the write process */
   private long allocateMemoryForStorageEngine = Runtime.getRuntime().maxMemory() * 3 / 10;
@@ -558,9 +572,6 @@ public class IoTDBConfig {
   /** the max executing time of query in ms. Unit: millisecond */
   private long queryTimeoutThreshold = 60000;
 
-  /** the max time to live of a session in ms. Unit: millisecond */
-  private int sessionTimeoutThreshold = 0;
-
   /** Replace implementation class of JDBC service */
   private String rpcImplClassName = ClientRPCServiceImpl.class.getName();
 
@@ -791,11 +802,6 @@ public class IoTDBConfig {
   // time in nanosecond precision when starting up
   private long startUpNanosecond = System.nanoTime();
 
-  /** Unit: byte */
-  private int thriftMaxFrameSize = 536870912;
-
-  private int thriftDefaultBufferSize = RpcUtils.THRIFT_DEFAULT_BUF_CAPACITY;
-
   /** time interval in minute for calculating query frequency. Unit: minute */
   private int frequencyIntervalInMinute = 1;
 
@@ -914,27 +920,6 @@ public class IoTDBConfig {
 
   /** Thread keep alive time in ms of mpp data exchange. */
   private int mppDataExchangeKeepAliveTimeInMs = 1000;
-
-  /** Thrift socket and connection timeout between data node and config node. */
-  private int connectionTimeoutInMS = (int) TimeUnit.SECONDS.toMillis(20);
-
-  /** the maximum number of clients that can be applied for a node's InternalService */
-  private int maxConnectionForInternalService = 100;
-
-  /**
-   * the maximum number of clients that can be idle for a node's InternalService. When the number of
-   * idle clients on a node exceeds this number, newly returned clients will be released
-   */
-  private int coreConnectionForInternalService = 100;
-
-  /**
-   * ClientManager will have so many selector threads (TAsyncClientManager) to distribute to its
-   * clients.
-   */
-  private int selectorNumOfClientManager =
-      Runtime.getRuntime().availableProcessors() / 4 > 0
-          ? Runtime.getRuntime().availableProcessors() / 4
-          : 1;
 
   /**
    * Cache size of partition cache in {@link
@@ -1550,28 +1535,28 @@ public class IoTDBConfig {
     this.unSeqTsFileSize = unSeqTsFileSize;
   }
 
-  public int getRpcSelectorThreadCount() {
-    return rpcSelectorThreadCount;
+  public int getDnRpcSelectorThreadCount() {
+    return dnRpcSelectorThreadCount;
   }
 
-  public void setRpcSelectorThreadCount(int rpcSelectorThreadCount) {
-    this.rpcSelectorThreadCount = rpcSelectorThreadCount;
+  public void setDnRpcSelectorThreadCount(int dnRpcSelectorThreadCount) {
+    this.dnRpcSelectorThreadCount = dnRpcSelectorThreadCount;
   }
 
-  public int getRpcMinConcurrentClientNum() {
-    return rpcMinConcurrentClientNum;
+  public int getDnRpcMinConcurrentClientNum() {
+    return dnRpcMinConcurrentClientNum;
   }
 
-  public void setRpcMinConcurrentClientNum(int rpcMinConcurrentClientNum) {
-    this.rpcMinConcurrentClientNum = rpcMinConcurrentClientNum;
+  public void setDnRpcMinConcurrentClientNum(int dnRpcMinConcurrentClientNum) {
+    this.dnRpcMinConcurrentClientNum = dnRpcMinConcurrentClientNum;
   }
 
-  public int getRpcMaxConcurrentClientNum() {
-    return rpcMaxConcurrentClientNum;
+  public int getDnRpcMaxConcurrentClientNum() {
+    return dnRpcMaxConcurrentClientNum;
   }
 
-  void setRpcMaxConcurrentClientNum(int rpcMaxConcurrentClientNum) {
-    this.rpcMaxConcurrentClientNum = rpcMaxConcurrentClientNum;
+  void setDnRpcMaxConcurrentClientNum(int dnRpcMaxConcurrentClientNum) {
+    this.dnRpcMaxConcurrentClientNum = dnRpcMaxConcurrentClientNum;
   }
 
   public int getmRemoteSchemaCacheSize() {
@@ -1636,12 +1621,12 @@ public class IoTDBConfig {
     this.queryTimeoutThreshold = queryTimeoutThreshold;
   }
 
-  public int getSessionTimeoutThreshold() {
-    return sessionTimeoutThreshold;
+  public int getDnSessionTimeoutThreshold() {
+    return dnSessionTimeoutThreshold;
   }
 
-  public void setSessionTimeoutThreshold(int sessionTimeoutThreshold) {
-    this.sessionTimeoutThreshold = sessionTimeoutThreshold;
+  public void setDnSessionTimeoutThreshold(int dnSessionTimeoutThreshold) {
+    this.dnSessionTimeoutThreshold = dnSessionTimeoutThreshold;
   }
 
   public String getRpcImplClassName() {
@@ -2012,12 +1997,12 @@ public class IoTDBConfig {
     this.crossCompactionFileSelectionTimeBudget = crossCompactionFileSelectionTimeBudget;
   }
 
-  public boolean isRpcThriftCompressionEnable() {
-    return rpcThriftCompressionEnable;
+  public boolean isDnRpcThriftCompressionEnable() {
+    return dnRpcThriftCompressionEnable;
   }
 
-  public void setRpcThriftCompressionEnable(boolean rpcThriftCompressionEnable) {
-    this.rpcThriftCompressionEnable = rpcThriftCompressionEnable;
+  public void setDnRpcThriftCompressionEnable(boolean dnRpcThriftCompressionEnable) {
+    this.dnRpcThriftCompressionEnable = dnRpcThriftCompressionEnable;
   }
 
   public boolean isMetaDataCacheEnable() {
@@ -2506,22 +2491,22 @@ public class IoTDBConfig {
     return startUpNanosecond;
   }
 
-  public int getThriftMaxFrameSize() {
-    return thriftMaxFrameSize;
+  public int getDnThriftMaxFrameSize() {
+    return dnThriftMaxFrameSize;
   }
 
-  public void setThriftMaxFrameSize(int thriftMaxFrameSize) {
-    this.thriftMaxFrameSize = thriftMaxFrameSize;
-    RpcTransportFactory.setThriftMaxFrameSize(this.thriftMaxFrameSize);
+  public void setDnThriftMaxFrameSize(int dnThriftMaxFrameSize) {
+    this.dnThriftMaxFrameSize = dnThriftMaxFrameSize;
+    RpcTransportFactory.setThriftMaxFrameSize(this.dnThriftMaxFrameSize);
   }
 
-  public int getThriftDefaultBufferSize() {
-    return thriftDefaultBufferSize;
+  public int getDnThriftDefaultBufferSize() {
+    return dnThriftDefaultBufferSize;
   }
 
-  public void setThriftDefaultBufferSize(int thriftDefaultBufferSize) {
-    this.thriftDefaultBufferSize = thriftDefaultBufferSize;
-    RpcTransportFactory.setDefaultBufferCapacity(this.thriftDefaultBufferSize);
+  public void setDnThriftDefaultBufferSize(int dnThriftDefaultBufferSize) {
+    this.dnThriftDefaultBufferSize = dnThriftDefaultBufferSize;
+    RpcTransportFactory.setDefaultBufferCapacity(this.dnThriftDefaultBufferSize);
   }
 
   public int getMaxQueryDeduplicatedPathNum() {
@@ -2612,13 +2597,13 @@ public class IoTDBConfig {
     this.recoveryLogIntervalInMs = recoveryLogIntervalInMs;
   }
 
-  public boolean isRpcAdvancedCompressionEnable() {
-    return rpcAdvancedCompressionEnable;
+  public boolean isDnRpcAdvancedCompressionEnable() {
+    return dnRpcAdvancedCompressionEnable;
   }
 
-  public void setRpcAdvancedCompressionEnable(boolean rpcAdvancedCompressionEnable) {
-    this.rpcAdvancedCompressionEnable = rpcAdvancedCompressionEnable;
-    RpcTransportFactory.setUseSnappy(this.rpcAdvancedCompressionEnable);
+  public void setDnRpcAdvancedCompressionEnable(boolean dnRpcAdvancedCompressionEnable) {
+    this.dnRpcAdvancedCompressionEnable = dnRpcAdvancedCompressionEnable;
+    RpcTransportFactory.setUseSnappy(this.dnRpcAdvancedCompressionEnable);
   }
 
   public int getMlogBufferSize() {
@@ -3033,36 +3018,36 @@ public class IoTDBConfig {
     this.mppDataExchangeKeepAliveTimeInMs = mppDataExchangeKeepAliveTimeInMs;
   }
 
-  public int getConnectionTimeoutInMS() {
-    return connectionTimeoutInMS;
+  public int getDnConnectionTimeoutInMS() {
+    return dnConnectionTimeoutInMS;
   }
 
-  public void setConnectionTimeoutInMS(int connectionTimeoutInMS) {
-    this.connectionTimeoutInMS = connectionTimeoutInMS;
+  public void setDnConnectionTimeoutInMS(int dnConnectionTimeoutInMS) {
+    this.dnConnectionTimeoutInMS = dnConnectionTimeoutInMS;
   }
 
-  public int getMaxConnectionForInternalService() {
-    return maxConnectionForInternalService;
+  public int getDnMaxConnectionForInternalService() {
+    return dnMaxConnectionForInternalService;
   }
 
-  public void setMaxConnectionForInternalService(int maxConnectionForInternalService) {
-    this.maxConnectionForInternalService = maxConnectionForInternalService;
+  public void setDnMaxConnectionForInternalService(int dnMaxConnectionForInternalService) {
+    this.dnMaxConnectionForInternalService = dnMaxConnectionForInternalService;
   }
 
-  public int getCoreConnectionForInternalService() {
-    return coreConnectionForInternalService;
+  public int getDnCoreConnectionForInternalService() {
+    return dnCoreConnectionForInternalService;
   }
 
-  public void setCoreConnectionForInternalService(int coreConnectionForInternalService) {
-    this.coreConnectionForInternalService = coreConnectionForInternalService;
+  public void setDnCoreConnectionForInternalService(int dnCoreConnectionForInternalService) {
+    this.dnCoreConnectionForInternalService = dnCoreConnectionForInternalService;
   }
 
-  public int getSelectorNumOfClientManager() {
-    return selectorNumOfClientManager;
+  public int getDnSelectorThreadCountOfClientManager() {
+    return dnSelectorThreadCountOfClientManager;
   }
 
-  public void setSelectorNumOfClientManager(int selectorNumOfClientManager) {
-    this.selectorNumOfClientManager = selectorNumOfClientManager;
+  public void setDnSelectorThreadCountOfClientManager(int dnSelectorThreadCountOfClientManager) {
+    this.dnSelectorThreadCountOfClientManager = dnSelectorThreadCountOfClientManager;
   }
 
   public boolean isClusterMode() {

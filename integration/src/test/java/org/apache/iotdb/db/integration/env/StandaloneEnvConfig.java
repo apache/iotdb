@@ -70,14 +70,14 @@ public class StandaloneEnvConfig implements BaseConfig {
   public BaseConfig setRpcThriftCompressionEnable(boolean rpcThriftCompressionEnable) {
     IoTDBDescriptor.getInstance()
         .getConfig()
-        .setRpcThriftCompressionEnable(rpcThriftCompressionEnable);
+        .setDnRpcThriftCompressionEnable(rpcThriftCompressionEnable);
     return this;
   }
 
   public BaseConfig setRpcAdvancedCompressionEnable(boolean rpcAdvancedCompressionEnable) {
     IoTDBDescriptor.getInstance()
         .getConfig()
-        .setRpcAdvancedCompressionEnable(rpcAdvancedCompressionEnable);
+        .setDnRpcAdvancedCompressionEnable(rpcAdvancedCompressionEnable);
     return this;
   }
 

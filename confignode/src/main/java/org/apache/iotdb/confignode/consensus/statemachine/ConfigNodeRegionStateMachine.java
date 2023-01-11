@@ -82,8 +82,8 @@ public class ConfigNodeRegionStateMachine
     this.configManager = configManager;
     this.currentNodeTEndPoint =
         new TEndPoint()
-            .setIp(ConfigNodeDescriptor.getInstance().getConf().getInternalAddress())
-            .setPort(ConfigNodeDescriptor.getInstance().getConf().getConsensusPort());
+            .setIp(ConfigNodeDescriptor.getInstance().getConf().getCnInternalAddress())
+            .setPort(ConfigNodeDescriptor.getInstance().getConf().getCnConsensusPort());
   }
 
   public ConfigManager getConfigManager() {

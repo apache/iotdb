@@ -27,6 +27,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
+import org.apache.iotdb.commons.loadbalance.LeaderDistributionPolicy;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.confignode.client.async.AsyncDataNodeClientPool;
 import org.apache.iotdb.confignode.client.async.handlers.AsyncClientHandler;
@@ -120,10 +121,10 @@ public class RouteBalancer {
     this.regionRouteMap = new RegionRouteMap();
 
     switch (CONF.getLeaderDistributionPolicy()) {
-      case ILeaderBalancer.GREEDY_POLICY:
+      case LeaderDistributionPolicy.GREEDY_POLICY:
         this.leaderBalancer = new GreedyLeaderBalancer();
         break;
-      case ILeaderBalancer.MIN_COST_FLOW_POLICY:
+      case LeaderDistributionPolicy.MIN_COST_FLOW_POLICY:
       default:
         this.leaderBalancer = new MinCostFlowLeaderBalancer();
         break;
