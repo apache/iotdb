@@ -16,17 +16,21 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.entry;
+package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.index;
 
-import org.apache.iotdb.lsm.sstable.diskentry.IDiskEntry;
+import org.apache.iotdb.lsm.sstable.fileIO.TiFileOutputStream;
+import org.apache.iotdb.lsm.sstable.index.IDiskIndex;
+import org.apache.iotdb.lsm.sstable.index.IDiskIndexWriter;
+import org.apache.iotdb.lsm.sstable.index.IndexType;
+import org.apache.iotdb.lsm.sstable.index.bplustree.writer.BPlusTreeWriter;
 
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
 import java.io.IOException;
+import java.io.InvalidObjectException;
+import java.io.OutputStream;
 import java.util.HashMap;
 import java.util.Map;
 
-public class OffsetIndex implements IDiskEntry {
+public class OffsetIndex implements IDiskIndex {
   private Map<String, Long> index;
 
   private IndexType indexType;
@@ -41,18 +45,20 @@ public class OffsetIndex implements IDiskEntry {
   }
 
   @Override
-  public int serialize(DataOutputStream out) throws IOException {
-    //        switch (indexType) {
-    //            case BPlusTree: {
-    //                IDiskIndexWriter diskIndexWriter = new BPlusTreeWriter(out);
-    //                return BPlusTreeIndex.serialize(out, offsetIndex);
-    //            }
-    //        }
-    return 1;
-  }
-
-  @Override
-  public IDiskEntry deserialize(DataInputStream input) throws IOException {
-    return null;
+  public long serialize(OutputStream out) throws IOException {
+    switch (indexType) {
+      case BPlusTree:
+        {
+          if (out instanceof TiFileOutputStream) {
+            IDiskIndexWriter diskIndexWriter = new BPlusTreeWriter((TiFileOutputStream) out);
+            return diskIndexWriter.write(index, false);
+          } else {
+            throw new InvalidObjectException(
+                "only support TiFileOutputStream to serialize BPlusTree indexType");
+          }
+        }
+      default:
+        throw new InvalidObjectException("not support indexType");
+    }
   }
 }
