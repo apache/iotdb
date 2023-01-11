@@ -196,10 +196,11 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
   }
 
   @Test
-  public void getDevicesFromDifferentFilesWithFourLayersInNodeTreeTest() throws MetadataException, IOException, WriteProcessException {
+  public void getDevicesFromDifferentFilesWithFourLayersInNodeTreeTest()
+      throws MetadataException, IOException, WriteProcessException {
     TSFileDescriptor.getInstance().getConfig().setMaxDegreeOfIndexNode(3);
-    int oldAlignedDeviceOffset=TsFileGeneratorUtils.alignDeviceOffset;
-    TsFileGeneratorUtils.alignDeviceOffset=0;
+    int oldAlignedDeviceOffset = TsFileGeneratorUtils.alignDeviceOffset;
+    TsFileGeneratorUtils.alignDeviceOffset = 0;
     // create nonAligned device
     registerTimeseriesInMManger(30, 5, false);
     createFiles(3, 10, 5, 100, 0, 0, 50, 50, false, true);
@@ -209,7 +210,7 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
     List<String> seriesPaths = new ArrayList<>();
     for (int i = 0; i < 15; i++) {
       for (int j = 0; j < 5; j++) {
-        seriesPaths.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d"+i + PATH_SEPARATOR + "s" + j);
+        seriesPaths.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i + PATH_SEPARATOR + "s" + j);
       }
     }
     generateModsFile(seriesPaths, seqResources, Long.MIN_VALUE, Long.MAX_VALUE);
@@ -221,30 +222,32 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
     createFiles(3, 30, 3, 100, 1000, 0, 50, 50, true, false);
 
     // sort the deviceId in lexicographical order from small to large
-    List<String> deviceIds=new ArrayList<>();
-    for(int i=0;i<30;i++){
-      deviceIds.add("root.testsg.d"+(i+ TsFileGeneratorUtils.getAlignDeviceOffset()));
+    List<String> deviceIds = new ArrayList<>();
+    for (int i = 0; i < 30; i++) {
+      deviceIds.add("root.testsg.d" + (i + TsFileGeneratorUtils.getAlignDeviceOffset()));
     }
     deviceIds.sort(String::compareTo);
 
-    int deviceNum=0;
-    try(MultiTsFileDeviceIterator multiTsFileDeviceIterator=new MultiTsFileDeviceIterator(seqResources,unseqResources)){
-      while(multiTsFileDeviceIterator.hasNextDevice()){
-        Pair<String,Boolean> deviceInfo= multiTsFileDeviceIterator.nextDevice();
-        Assert.assertEquals(deviceIds.get(deviceNum),deviceInfo.left);
+    int deviceNum = 0;
+    try (MultiTsFileDeviceIterator multiTsFileDeviceIterator =
+        new MultiTsFileDeviceIterator(seqResources, unseqResources)) {
+      while (multiTsFileDeviceIterator.hasNextDevice()) {
+        Pair<String, Boolean> deviceInfo = multiTsFileDeviceIterator.nextDevice();
+        Assert.assertEquals(deviceIds.get(deviceNum), deviceInfo.left);
         Assert.assertTrue(deviceInfo.right);
         deviceNum++;
       }
     }
-    Assert.assertEquals(30,deviceNum);
-    TsFileGeneratorUtils.alignDeviceOffset=oldAlignedDeviceOffset;
+    Assert.assertEquals(30, deviceNum);
+    TsFileGeneratorUtils.alignDeviceOffset = oldAlignedDeviceOffset;
   }
 
   @Test
-  public void getDevicesFromSeqFilesWithFourLayersInNodeTreeTest() throws MetadataException, IOException, WriteProcessException {
+  public void getDevicesFromSeqFilesWithFourLayersInNodeTreeTest()
+      throws MetadataException, IOException, WriteProcessException {
     TSFileDescriptor.getInstance().getConfig().setMaxDegreeOfIndexNode(3);
-    int oldAlignedDeviceOffset=TsFileGeneratorUtils.alignDeviceOffset;
-    TsFileGeneratorUtils.alignDeviceOffset=0;
+    int oldAlignedDeviceOffset = TsFileGeneratorUtils.alignDeviceOffset;
+    TsFileGeneratorUtils.alignDeviceOffset = 0;
     registerTimeseriesInMManger(30, 5, false);
     createFiles(3, 10, 5, 100, 0, 0, 50, 50, false, true);
     createFiles(4, 30, 5, 100, 1000, 0, 50, 50, false, true);
@@ -253,7 +256,7 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
     List<String> seriesPaths = new ArrayList<>();
     for (int i = 0; i < 15; i++) {
       for (int j = 0; j < 5; j++) {
-        seriesPaths.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d"+i + PATH_SEPARATOR + "s" + j);
+        seriesPaths.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i + PATH_SEPARATOR + "s" + j);
       }
     }
     generateModsFile(seriesPaths, seqResources, Long.MIN_VALUE, Long.MAX_VALUE);
@@ -263,27 +266,27 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
     createFiles(2, 10, 5, 100, 2000, 2000, 50, 50, true, true);
 
     // sort the deviceId in lexicographical order from small to large
-    List<String> deviceIds=new ArrayList<>();
-    for(int i=0;i<30;i++){
-      deviceIds.add("root.testsg.d"+(i+ TsFileGeneratorUtils.getAlignDeviceOffset()));
+    List<String> deviceIds = new ArrayList<>();
+    for (int i = 0; i < 30; i++) {
+      deviceIds.add("root.testsg.d" + (i + TsFileGeneratorUtils.getAlignDeviceOffset()));
     }
     deviceIds.sort(String::compareTo);
 
-    int deviceNum=0;
-    try(MultiTsFileDeviceIterator multiTsFileDeviceIterator=new MultiTsFileDeviceIterator(seqResources)){
-      while(multiTsFileDeviceIterator.hasNextDevice()){
-        Pair<String,Boolean> deviceInfo= multiTsFileDeviceIterator.nextDevice();
-        Assert.assertEquals(deviceIds.get(deviceNum),deviceInfo.left);
-        if (Integer.parseInt(deviceInfo.left.substring(13))<10) {
+    int deviceNum = 0;
+    try (MultiTsFileDeviceIterator multiTsFileDeviceIterator =
+        new MultiTsFileDeviceIterator(seqResources)) {
+      while (multiTsFileDeviceIterator.hasNextDevice()) {
+        Pair<String, Boolean> deviceInfo = multiTsFileDeviceIterator.nextDevice();
+        Assert.assertEquals(deviceIds.get(deviceNum), deviceInfo.left);
+        if (Integer.parseInt(deviceInfo.left.substring(13)) < 10) {
           Assert.assertTrue(deviceInfo.right);
-        }else{
+        } else {
           Assert.assertFalse(deviceInfo.right);
         }
         deviceNum++;
       }
     }
-    Assert.assertEquals(30,deviceNum);
-    TsFileGeneratorUtils.alignDeviceOffset=oldAlignedDeviceOffset;
+    Assert.assertEquals(30, deviceNum);
+    TsFileGeneratorUtils.alignDeviceOffset = oldAlignedDeviceOffset;
   }
-
 }
