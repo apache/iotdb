@@ -23,4 +23,6 @@ import org.apache.iotdb.db.metadata.query.info.ISchemaInfo;
 
 import java.util.Iterator;
 
-public interface ISchemaReader<T extends ISchemaInfo> extends Iterator<T>, AutoCloseable {}
+public interface ISchemaReader<T extends ISchemaInfo> extends Iterator<T>, AutoCloseable {
+
+}
