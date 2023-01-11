@@ -47,6 +47,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateAlign
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateMultiTimeSeriesNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateTimeSeriesNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.InternalBatchActivateTemplateNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.InternalCreateMultiTimeSeriesNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.InternalCreateTimeSeriesNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.MeasurementGroup;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.DeleteDataNode;
@@ -500,6 +501,107 @@ public class RegionWriteExecutor {
         }
       } else {
         return super.visitInternalCreateTimeSeries(node, context);
+      }
+    }
+
+    @Override
+    public RegionExecutionResult visitInternalCreateMultiTimeSeries(
+        InternalCreateMultiTimeSeriesNode node, WritePlanNodeExecutionContext context) {
+      ISchemaRegion schemaRegion =
+          SchemaEngine.getInstance().getSchemaRegion((SchemaRegionId) context.getRegionId());
+      if (config.getSchemaRegionConsensusProtocolClass().equals(ConsensusFactory.RATIS_CONSENSUS)) {
+        context.getRegionWriteValidationRWLock().writeLock().lock();
+        try {
+          List<TSStatus> failingStatus = new ArrayList<>();
+          List<TSStatus> alreadyExistingStatus = new ArrayList<>();
+
+          MeasurementGroup measurementGroup;
+          Map<Integer, MetadataException> failingMeasurementMap;
+          MetadataException metadataException;
+          for (Map.Entry<PartialPath, Pair<Boolean, MeasurementGroup>> deviceEntry :
+              node.getDeviceMap().entrySet()) {
+            measurementGroup = deviceEntry.getValue().right;
+            failingMeasurementMap =
+                schemaRegion.checkMeasurementExistence(
+                    deviceEntry.getKey(),
+                    measurementGroup.getMeasurements(),
+                    measurementGroup.getAliasList());
+            // filter failed measurement and keep the rest for execution
+            for (Map.Entry<Integer, MetadataException> failingMeasurement :
+                failingMeasurementMap.entrySet()) {
+              metadataException = failingMeasurement.getValue();
+              if (metadataException.getErrorCode()
+                  == TSStatusCode.TIMESERIES_ALREADY_EXIST.getStatusCode()) {
+                LOGGER.info(
+                    "There's no need to internal create timeseries. {}",
+                    failingMeasurement.getValue().getMessage());
+                alreadyExistingStatus.add(
+                    RpcUtils.getStatus(
+                        metadataException.getErrorCode(),
+                        MeasurementPath.transformDataToString(
+                            ((MeasurementAlreadyExistException) metadataException)
+                                .getMeasurementPath())));
+              } else {
+                LOGGER.error("Metadata error: ", metadataException);
+                failingStatus.add(
+                    RpcUtils.getStatus(
+                        metadataException.getErrorCode(), metadataException.getMessage()));
+              }
+            }
+            measurementGroup.removeMeasurements(failingMeasurementMap.keySet());
+          }
+
+          RegionExecutionResult executionResult =
+              super.visitInternalCreateMultiTimeSeries(node, context);
+
+          if (failingStatus.isEmpty() && alreadyExistingStatus.isEmpty()) {
+            return executionResult;
+          }
+
+          TSStatus executionStatus = executionResult.getStatus();
+
+          // separate the measurement_already_exist exception and other exceptions process,
+          // measurement_already_exist exception is acceptable due to concurrent timeseries creation
+          if (failingStatus.isEmpty()) {
+            if (executionStatus.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
+              if (executionStatus.getSubStatus().get(0).getCode()
+                  == TSStatusCode.TIMESERIES_ALREADY_EXIST.getStatusCode()) {
+                // there's only measurement_already_exist exception
+                alreadyExistingStatus.addAll(executionStatus.getSubStatus());
+              } else {
+                failingStatus.addAll(executionStatus.getSubStatus());
+              }
+            } else if (executionStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+              failingStatus.add(executionStatus);
+            }
+          } else {
+            if (executionStatus.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
+              if (executionStatus.getSubStatus().get(0).getCode()
+                  != TSStatusCode.TIMESERIES_ALREADY_EXIST.getStatusCode()) {
+                failingStatus.addAll(executionStatus.getSubStatus());
+              }
+            } else if (executionStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+              failingStatus.add(executionStatus);
+            }
+          }
+
+          TSStatus status;
+          if (failingStatus.isEmpty()) {
+            status = RpcUtils.getStatus(alreadyExistingStatus);
+          } else {
+            status = RpcUtils.getStatus(failingStatus);
+          }
+
+          RegionExecutionResult result = new RegionExecutionResult();
+          result.setAccepted(false);
+          result.setMessage(status.getMessage());
+          result.setStatus(status);
+          return result;
+        } finally {
+          context.getRegionWriteValidationRWLock().writeLock().unlock();
+        }
+      } else {
+        return super.visitInternalCreateMultiTimeSeries(node, context);
       }
     }
 

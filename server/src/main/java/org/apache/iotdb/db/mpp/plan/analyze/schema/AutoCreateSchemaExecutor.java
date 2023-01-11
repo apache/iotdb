@@ -32,6 +32,7 @@ import org.apache.iotdb.db.mpp.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.MeasurementGroup;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.mpp.plan.statement.internal.InternalBatchActivateTemplateStatement;
+import org.apache.iotdb.db.mpp.plan.statement.internal.InternalCreateMultiTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.internal.InternalCreateTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ActivateTemplateStatement;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -316,8 +317,7 @@ class AutoCreateSchemaExecutor {
   }
 
   // auto create timeseries and return the existing timeseries info
-  private List<MeasurementPath> executeInternalCreateTimeseriesStatement(
-      InternalCreateTimeSeriesStatement statement) {
+  private List<MeasurementPath> executeInternalCreateTimeseriesStatement(Statement statement) {
 
     ExecutionResult executionResult = statementExecutor.apply(statement);
 
@@ -387,5 +387,42 @@ class AutoCreateSchemaExecutor {
 
   private void internalCreateTimeSeries(
       ClusterSchemaTree schemaTree,
-      Map<PartialPath, Pair<Boolean, MeasurementGroup>> devicesNeedAutoCreateTimeSeries) {}
+      Map<PartialPath, Pair<Boolean, MeasurementGroup>> devicesNeedAutoCreateTimeSeries) {
+
+    List<MeasurementPath> measurementPathList =
+        executeInternalCreateTimeseriesStatement(
+            new InternalCreateMultiTimeSeriesStatement(devicesNeedAutoCreateTimeSeries));
+
+    schemaTree.appendMeasurementPaths(measurementPathList);
+
+    Map<PartialPath, Set<String>> alreadyExistingMeasurementMap = new HashMap<>();
+    for (MeasurementPath measurementPath : measurementPathList) {
+      alreadyExistingMeasurementMap
+          .computeIfAbsent(measurementPath.getDevicePath(), k -> new HashSet<>())
+          .add(measurementPath.getMeasurement());
+    }
+    Set<String> measurementSet;
+    MeasurementGroup measurementGroup;
+    for (Map.Entry<PartialPath, Pair<Boolean, MeasurementGroup>> entry :
+        devicesNeedAutoCreateTimeSeries.entrySet()) {
+      measurementSet = alreadyExistingMeasurementMap.get(entry.getKey());
+      measurementGroup = entry.getValue().right;
+      for (int i = 0, size = measurementGroup.size(); i < size; i++) {
+        if (measurementSet != null
+            && measurementSet.contains(measurementGroup.getMeasurements().get(i))) {
+          continue;
+        }
+        schemaTree.appendSingleMeasurement(
+            entry.getKey().concatNode(measurementGroup.getMeasurements().get(i)),
+            new MeasurementSchema(
+                measurementGroup.getMeasurements().get(i),
+                measurementGroup.getDataTypes().get(i),
+                measurementGroup.getEncodings().get(i),
+                measurementGroup.getCompressors().get(i)),
+            null,
+            null,
+            entry.getValue().left);
+      }
+    }
+  }
 }

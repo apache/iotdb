@@ -42,6 +42,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateTimeS
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.DeactivateTemplateNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.DeleteTimeSeriesNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.InternalBatchActivateTemplateNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.InternalCreateMultiTimeSeriesNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.InternalCreateTimeSeriesNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.MeasurementGroup;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.PreDeactivateTemplateNode;
@@ -151,6 +152,39 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
     } else {
       executeInternalCreateTimeseries(
           devicePath, measurementGroup, schemaRegion, alreadyExistingTimeseries, failingStatus);
+    }
+
+    if (!failingStatus.isEmpty()) {
+      return RpcUtils.getStatus(failingStatus);
+    }
+
+    if (!alreadyExistingTimeseries.isEmpty()) {
+      return RpcUtils.getStatus(alreadyExistingTimeseries);
+    }
+
+    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "Execute successfully");
+  }
+
+  @Override
+  public TSStatus visitInternalCreateMultiTimeSeries(
+      InternalCreateMultiTimeSeriesNode node, ISchemaRegion schemaRegion) {
+    PartialPath devicePath;
+    MeasurementGroup measurementGroup;
+
+    List<TSStatus> alreadyExistingTimeseries = new ArrayList<>();
+    List<TSStatus> failingStatus = new ArrayList<>();
+
+    for (Map.Entry<PartialPath, Pair<Boolean, MeasurementGroup>> deviceEntry :
+        node.getDeviceMap().entrySet()) {
+      devicePath = deviceEntry.getKey();
+      measurementGroup = deviceEntry.getValue().right;
+      if (deviceEntry.getValue().left) {
+        executeInternalCreateAlignedTimeseries(
+            devicePath, measurementGroup, schemaRegion, alreadyExistingTimeseries, failingStatus);
+      } else {
+        executeInternalCreateTimeseries(
+            devicePath, measurementGroup, schemaRegion, alreadyExistingTimeseries, failingStatus);
+      }
     }
 
     if (!failingStatus.isEmpty()) {

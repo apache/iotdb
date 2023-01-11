@@ -32,6 +32,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateAlign
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateMultiTimeSeriesNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateTimeSeriesNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.InternalBatchActivateTemplateNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.InternalCreateMultiTimeSeriesNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.InternalCreateTimeSeriesNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.MeasurementGroup;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.DeleteDataNode;
@@ -54,6 +55,7 @@ import org.apache.iotdb.db.mpp.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.QueryStatement;
 import org.apache.iotdb.db.mpp.plan.statement.internal.InternalBatchActivateTemplateStatement;
+import org.apache.iotdb.db.mpp.plan.statement.internal.InternalCreateMultiTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.internal.InternalCreateTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.internal.SchemaFetchStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.AlterTimeSeriesStatement;
@@ -364,6 +366,15 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
         createMultiTimeSeriesStatement.getAliasList(),
         createMultiTimeSeriesStatement.getTagsList(),
         createMultiTimeSeriesStatement.getAttributesList());
+  }
+
+  @Override
+  public PlanNode visitInternalCreateMultiTimeSeries(
+      InternalCreateMultiTimeSeriesStatement internalCreateMultiTimeSeriesStatement,
+      MPPQueryContext context) {
+    return new InternalCreateMultiTimeSeriesNode(
+        context.getQueryId().genPlanNodeId(),
+        internalCreateMultiTimeSeriesStatement.getDeviceMap());
   }
 
   @Override

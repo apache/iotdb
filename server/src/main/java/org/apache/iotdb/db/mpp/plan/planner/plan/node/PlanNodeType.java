@@ -43,6 +43,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateTimeS
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.DeactivateTemplateNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.DeleteTimeSeriesNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.InternalBatchActivateTemplateNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.InternalCreateMultiTimeSeriesNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.InternalCreateTimeSeriesNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.InvalidateSchemaCacheNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.PreDeactivateTemplateNode;
@@ -160,7 +161,8 @@ public enum PlanNodeType {
   SINGLE_DEVICE_VIEW((short) 65),
   MERGE_SORT((short) 66),
   SHOW_QUERIES((short) 67),
-  INTERNAL_BATCH_ACTIVATE_TEMPLATE((short) 68);
+  INTERNAL_BATCH_ACTIVATE_TEMPLATE((short) 68),
+  INTERNAL_CREATE_MULTI_TIMESERIES((short) 69);
 
   public static final int BYTES = Short.BYTES;
 
@@ -347,6 +349,8 @@ public enum PlanNodeType {
         return ShowQueriesNode.deserialize(buffer);
       case 68:
         return InternalBatchActivateTemplateNode.deserialize(buffer);
+      case 69:
+        return InternalCreateMultiTimeSeriesNode.deserialize(buffer);
       default:
         throw new IllegalArgumentException("Invalid node type: " + nodeType);
     }
