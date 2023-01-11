@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.flush;
 
+import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.index.OffsetIndex;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.entry.TiFileHeader;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemChunkGroup;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemTable;
@@ -27,14 +28,12 @@ import org.apache.iotdb.lsm.annotation.FlushProcessor;
 import org.apache.iotdb.lsm.context.requestcontext.FlushRequestContext;
 import org.apache.iotdb.lsm.levelProcess.FlushLevelProcessor;
 import org.apache.iotdb.lsm.sstable.fileIO.TiFileOutputStream;
-import org.apache.iotdb.lsm.sstable.index.IDiskIndexWriter;
-import org.apache.iotdb.lsm.sstable.index.bplustree.writer.BPlusTreeWriter;
+import org.apache.iotdb.lsm.sstable.index.IndexType;
 import org.apache.iotdb.lsm.util.BloomFilter;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.Map;
 
 /** flush for MemTable */
@@ -52,15 +51,14 @@ public class MemTableFlush extends FlushLevelProcessor<MemTable, MemChunkGroup, 
     if (memNode.getDeletionList() != null && memNode.getDeletionList().size() != 0) {
       flushDeletionList(memNode, flushRequest, context);
     }
-    Map<String, Long> tagKeyToOffset = new HashMap<>();
+    OffsetIndex tagKeyToOffset = new OffsetIndex(IndexType.BPlusTree);
     FlushResponse flushResponse = context.getResponse();
     for (Map.Entry<String, MemChunkGroup> entry : memNode.getMemChunkGroupMap().entrySet()) {
       tagKeyToOffset.put(entry.getKey(), flushResponse.getTagKeyOffset(entry.getValue()));
     }
     TiFileOutputStream fileOutput = context.getFileOutput();
-    IDiskIndexWriter diskIndexWriter = new BPlusTreeWriter(fileOutput);
     TiFileHeader tiFileHeader = new TiFileHeader();
-    tiFileHeader.setTagKeyIndexOffset(diskIndexWriter.write(tagKeyToOffset, false));
+    tiFileHeader.setTagKeyIndexOffset(tagKeyToOffset.serialize(fileOutput));
     BloomFilter bloomFilter = BloomFilter.getEmptyBloomFilter(0.05, 3);
     addToBloomFilter(bloomFilter, memNode);
     tiFileHeader.setBloomFilterOffset(fileOutput.write(bloomFilter));

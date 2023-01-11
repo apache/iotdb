@@ -16,8 +16,19 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.file.entry;
+package org.apache.iotdb.lsm.sstable.index;
 
-public enum IndexType {
-  BPlusTree
+import java.io.IOException;
+import java.io.OutputStream;
+
+public interface IDiskIndex {
+
+  /**
+   * Serialize to output stream
+   *
+   * @param out data output stream
+   * @return serialized offset
+   * @throws IOException if an I/O error occurs.
+   */
+  long serialize(OutputStream out) throws IOException;
 }
