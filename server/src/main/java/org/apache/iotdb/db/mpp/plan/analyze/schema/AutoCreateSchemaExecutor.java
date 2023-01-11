@@ -249,21 +249,6 @@ class AutoCreateSchemaExecutor {
       boolean isAligned,
       Template template) {
     // check whether there is template should be activated
-    if (isAligned != template.isDirectAligned()) {
-      if (template.isDirectAligned()) {
-        throw new RuntimeException(
-            new MetadataException(
-                String.format(
-                    "The schema template set on prefix of device %s is aligned, please use aligned interfaces.",
-                    devicePath.getFullPath())));
-      } else {
-        throw new RuntimeException(
-            new MetadataException(
-                String.format(
-                    "The schema template set on prefix of device %s is unaligned, please use unaligned interfaces.",
-                    devicePath.getFullPath())));
-      }
-    }
     boolean shouldActivateTemplate = false;
     for (int index : indexOfTargetMeasurements) {
       if (template.hasSchema(measurements[index])) {
