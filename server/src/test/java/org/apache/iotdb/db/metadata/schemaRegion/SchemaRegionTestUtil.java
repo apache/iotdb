@@ -22,6 +22,8 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.metadata.plan.schemaregion.impl.read.SchemaRegionReadPlanFactory;
 import org.apache.iotdb.db.metadata.plan.schemaregion.impl.write.SchemaRegionWritePlanFactory;
+import org.apache.iotdb.db.metadata.plan.schemaregion.read.IShowDevicesPlan;
+import org.apache.iotdb.db.metadata.plan.schemaregion.read.IShowTimeSeriesPlan;
 import org.apache.iotdb.db.metadata.query.info.IDeviceSchemaInfo;
 import org.apache.iotdb.db.metadata.query.info.INodeSchemaInfo;
 import org.apache.iotdb.db.metadata.query.info.ITimeSeriesSchemaInfo;
@@ -215,8 +217,7 @@ public class SchemaRegionTestUtil {
   }
 
   public static List<String> getPathsUsingTemplate(
-      ISchemaRegion schemaRegion, PartialPath pathPattern, int templateId)
-      throws MetadataException {
+      ISchemaRegion schemaRegion, PartialPath pathPattern, int templateId) {
     List<String> result = new ArrayList<>();
     try (ISchemaReader<IDeviceSchemaInfo> deviceReader =
         schemaRegion.getDeviceReader(
@@ -232,8 +233,7 @@ public class SchemaRegionTestUtil {
   }
 
   public static List<PartialPath> getNodesListInGivenLevel(
-      ISchemaRegion schemaRegion, PartialPath pathPattern, int nodeLevel, boolean isPrefixMatch)
-      throws MetadataException {
+      ISchemaRegion schemaRegion, PartialPath pathPattern, int nodeLevel, boolean isPrefixMatch) {
     List<PartialPath> result = new ArrayList<>();
     try (ISchemaReader<INodeSchemaInfo> nodeReader =
         schemaRegion.getNodeReader(
@@ -248,7 +248,7 @@ public class SchemaRegionTestUtil {
   }
 
   public static Set<INodeSchemaInfo> getChildNodePathInNextLevel(
-      ISchemaRegion schemaRegion, PartialPath pathPattern) throws MetadataException {
+      ISchemaRegion schemaRegion, PartialPath pathPattern) {
     Set<INodeSchemaInfo> result = new HashSet<>();
     try (ISchemaReader<INodeSchemaInfo> nodeReader =
         schemaRegion.getNodeReader(
@@ -256,6 +256,32 @@ public class SchemaRegionTestUtil {
                 pathPattern.concatNode(ONE_LEVEL_PATH_WILDCARD)))) {
       while (nodeReader.hasNext()) {
         result.add(nodeReader.next());
+      }
+    } catch (Exception e) {
+      throw new RuntimeException(e);
+    }
+    return result;
+  }
+
+  public static List<ITimeSeriesSchemaInfo> showTimeseries(
+      ISchemaRegion schemaRegion, IShowTimeSeriesPlan plan) {
+    List<ITimeSeriesSchemaInfo> result = new ArrayList<>();
+    try (ISchemaReader<ITimeSeriesSchemaInfo> reader = schemaRegion.getTimeSeriesReader(plan)) {
+      while (reader.hasNext()) {
+        result.add(reader.next());
+      }
+    } catch (Exception e) {
+      throw new RuntimeException(e);
+    }
+    return result;
+  }
+
+  public static List<IDeviceSchemaInfo> getMatchedDevices(
+      ISchemaRegion schemaRegion, IShowDevicesPlan plan) {
+    List<IDeviceSchemaInfo> result = new ArrayList<>();
+    try (ISchemaReader<IDeviceSchemaInfo> reader = schemaRegion.getDeviceReader(plan)) {
+      while (reader.hasNext()) {
+        result.add(reader.next());
       }
     } catch (Exception e) {
       throw new RuntimeException(e);

@@ -70,6 +70,8 @@ import org.apache.iotdb.db.mpp.execution.operator.source.ExchangeOperator;
 import org.apache.iotdb.db.mpp.execution.operator.source.LastCacheScanOperator;
 import org.apache.iotdb.db.mpp.execution.operator.source.SeriesAggregationScanOperator;
 import org.apache.iotdb.db.mpp.execution.operator.source.SeriesScanOperator;
+import org.apache.iotdb.db.mpp.execution.operator.window.TimeWindowParameter;
+import org.apache.iotdb.db.mpp.execution.operator.window.WindowParameter;
 import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
@@ -1267,6 +1269,8 @@ public class OperatorMemoryTest {
         AggregationUtil.calculateMaxAggregationResultSize(
             aggregationDescriptors, timeRangeIterator, typeProvider);
 
+    WindowParameter windowParameter = new TimeWindowParameter(false);
+
     RawDataAggregationOperator rawDataAggregationOperator =
         new RawDataAggregationOperator(
             Mockito.mock(OperatorContext.class),
@@ -1274,7 +1278,8 @@ public class OperatorMemoryTest {
             timeRangeIterator,
             child,
             true,
-            maxReturnSize);
+            maxReturnSize,
+            windowParameter);
 
     long expectedMaxReturnSize =
         100

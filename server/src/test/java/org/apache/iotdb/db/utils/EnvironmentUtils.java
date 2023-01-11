@@ -133,7 +133,7 @@ public class EnvironmentUtils {
       }
     }
     // clean wal manager
-    WALManager.getInstance().clear();
+    WALManager.getInstance().stop();
     WALRecoverManager.getInstance().clear();
     StorageEngine.getInstance().stop();
     SchemaEngine.getInstance().clear();
@@ -287,6 +287,7 @@ public class EnvironmentUtils {
     CompactionTaskManager.getInstance().start();
 
     try {
+      WALManager.getInstance().start();
       FlushManager.getInstance().start();
     } catch (StartupException e) {
       throw new RuntimeException(e);
