@@ -81,6 +81,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.regex.Pattern;
 
 public class IoTConsensusServerImpl {
 
@@ -101,7 +102,9 @@ public class IoTConsensusServerImpl {
   private final IoTConsensusConfig config;
   private final ConsensusReqReader reader;
   private volatile boolean active;
-  private String latestSnapshotId;
+  private String newSnapshotFileName;
+
+  private final Pattern snapshotIndexPatten = Pattern.compile(".*[^\\d](?=(\\d+))");
   private final IClientManager<TEndPoint, SyncIoTConsensusServiceClient> syncClientManager;
   private final IoTConsensusServerMetrics metrics;
 
@@ -285,11 +288,11 @@ public class IoTConsensusServerImpl {
 
   public void takeSnapshot() throws ConsensusGroupModifyPeerException {
     try {
-      long latestSnapshotIndex = getLatestSnapshotIndex() + 1;
-      latestSnapshotId =
+      long newSnapshotIndex = getNewSnapshotIndex() + 1;
+      newSnapshotFileName =
           String.format(
-              "%s_%s_%d", SNAPSHOT_DIR_NAME, thisNode.getGroupId().getId(), latestSnapshotIndex);
-      File snapshotDir = new File(storageDir, latestSnapshotId);
+              "%s_%s_%d", SNAPSHOT_DIR_NAME, thisNode.getGroupId().getId(), newSnapshotIndex);
+      File snapshotDir = new File(storageDir, newSnapshotFileName);
       if (snapshotDir.exists()) {
         FileUtils.deleteDirectory(snapshotDir);
       }
@@ -307,13 +310,13 @@ public class IoTConsensusServerImpl {
   }
 
   public void transitSnapshot(Peer targetPeer) throws ConsensusGroupModifyPeerException {
-    File snapshotDir = new File(storageDir, latestSnapshotId);
+    File snapshotDir = new File(storageDir, newSnapshotFileName);
     List<Path> snapshotPaths = stateMachine.getSnapshotFiles(snapshotDir);
     logger.info("transit snapshots: {}", snapshotPaths);
     try (SyncIoTConsensusServiceClient client =
         syncClientManager.borrowClient(targetPeer.getEndpoint())) {
       for (Path path : snapshotPaths) {
-        SnapshotFragmentReader reader = new SnapshotFragmentReader(latestSnapshotId, path);
+        SnapshotFragmentReader reader = new SnapshotFragmentReader(newSnapshotFileName, path);
         try {
           while (reader.hasNext()) {
             TSendSnapshotFragmentReq req = reader.next().toTSendSnapshotFragmentReq();
@@ -365,7 +368,7 @@ public class IoTConsensusServerImpl {
     return originalFilePath.substring(originalFilePath.indexOf(snapshotId));
   }
 
-  private long getLatestSnapshotIndex() {
+  private long getNewSnapshotIndex() {
     long snapShotIndex = 0;
     File directory = new File(storageDir);
     File[] versionFiles = directory.listFiles((dir, name) -> name.startsWith(SNAPSHOT_DIR_NAME));
@@ -375,7 +378,8 @@ public class IoTConsensusServerImpl {
     for (File file : versionFiles) {
       snapShotIndex =
           Long.max(
-              snapShotIndex, Long.parseLong(file.getName().replaceAll(".*[^\\d](?=(\\d+))", "")));
+              snapShotIndex,
+              Long.parseLong(snapshotIndexPatten.matcher(file.getName()).replaceAll("")));
     }
     return snapShotIndex;
   }
@@ -390,7 +394,7 @@ public class IoTConsensusServerImpl {
       return;
     }
     for (File file : versionFiles) {
-      if (!file.getName().equals(latestSnapshotId)) {
+      if (!file.getName().equals(newSnapshotFileName)) {
         try {
           FileUtils.deleteDirectory(file);
         } catch (IOException e) {
@@ -427,7 +431,7 @@ public class IoTConsensusServerImpl {
       TTriggerSnapshotLoadRes res =
           client.triggerSnapshotLoad(
               new TTriggerSnapshotLoadReq(
-                  thisNode.getGroupId().convertToTConsensusGroupId(), latestSnapshotId));
+                  thisNode.getGroupId().convertToTConsensusGroupId(), newSnapshotFileName));
       if (!isSuccess(res.status)) {
         throw new ConsensusGroupModifyPeerException(
             String.format("error when triggering snapshot load %s. %s", peer, res.getStatus()));
@@ -755,7 +759,7 @@ public class IoTConsensusServerImpl {
         syncClientManager.borrowClient(targetPeer.getEndpoint())) {
       TCleanupTransferredSnapshotReq req =
           new TCleanupTransferredSnapshotReq(
-              targetPeer.getGroupId().convertToTConsensusGroupId(), latestSnapshotId);
+              targetPeer.getGroupId().convertToTConsensusGroupId(), newSnapshotFileName);
       TCleanupTransferredSnapshotRes res = client.cleanupTransferredSnapshot(req);
       if (!isSuccess(res.getStatus())) {
         throw new ConsensusGroupModifyPeerException(
