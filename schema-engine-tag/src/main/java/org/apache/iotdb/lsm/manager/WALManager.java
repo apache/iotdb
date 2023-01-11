@@ -18,8 +18,6 @@
  */
 package org.apache.iotdb.lsm.manager;
 
-import org.apache.iotdb.db.metadata.tagSchemaRegion.config.SchemaRegionConstant;
-import org.apache.iotdb.db.metadata.tagSchemaRegion.utils.ConvertUtils;
 import org.apache.iotdb.lsm.request.IRequest;
 import org.apache.iotdb.lsm.wal.IWALRecord;
 import org.apache.iotdb.lsm.wal.WALReader;
@@ -28,8 +26,6 @@ import org.apache.iotdb.lsm.wal.WALWriter;
 import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 /** Manage wal entry writes and reads */
 public abstract class WALManager<T> {
@@ -54,37 +50,20 @@ public abstract class WALManager<T> {
 
   private boolean recover;
 
-  private String flushDirPath;
-
-  private String flushFilePrefix;
-
-  private boolean enableFlush;
+  private IWALRecord walRecord;
 
   public WALManager(String walDirPath) {
     this.walDirPath = walDirPath;
   }
 
-  public WALManager(
-      String walDirPath,
-      String walFilePrefix,
-      String flushDirPath,
-      String flushFilePrefix,
-      IWALRecord walRecord,
-      boolean enableFlush)
-      throws IOException {
+  public WALManager(String walDirPath, String walFilePrefix, IWALRecord walRecord) {
     this.walDirPath = walDirPath;
     this.walFilePrefix = walFilePrefix;
-    this.flushDirPath = flushDirPath;
-    this.flushFilePrefix = flushFilePrefix;
-    this.enableFlush = enableFlush;
-    initRecover(walRecord);
+    this.walRecord = walRecord;
     recover = false;
   }
 
-  public void initRecover(IWALRecord walRecord) throws IOException {
-    if (enableFlush) {
-      checkPoint();
-    }
+  public void initRecover() throws IOException {
     File walDir = new File(walDirPath);
     walDir.mkdirs();
     File[] walFiles = walDir.listFiles();
@@ -100,46 +79,7 @@ public abstract class WALManager<T> {
     } else {
       walFileName = walFileNames[currentFileIndex];
     }
-    initWalWriterAndReader(initFile(walFileName), walRecord);
-  }
-
-  private void checkPoint() {
-    File flushDir = new File(flushDirPath);
-    flushDir.mkdirs();
-    File[] flushFiles = flushDir.listFiles();
-    String[] flushTmpFileNames =
-        Arrays.stream(flushFiles)
-            .map(File::getName)
-            .filter(name -> name.endsWith(SchemaRegionConstant.TMP))
-            .toArray(String[]::new);
-    Integer[] flushTmpIDs =
-        Arrays.stream(flushTmpFileNames).map(this::getFlushFileID).toArray(Integer[]::new);
-    File walDir = new File(walDirPath);
-    walDir.mkdirs();
-    File[] walFiles = walDir.listFiles();
-    Set<Integer> walFileIDs =
-        Arrays.stream(walFiles).map(this::getWalFileID).collect(Collectors.toSet());
-    for (int i = 0; i < flushTmpFileNames.length; i++) {
-      // have tifile tmp don't have wal, tifile is complete, need rename tifile.
-      File flushTmpFile = new File(flushDirPath + File.separator + flushTmpFileNames[i]);
-      String flushFileName =
-          flushTmpFileNames[i].substring(
-              0, flushTmpFileNames[i].length() - SchemaRegionConstant.TMP.length());
-      if (!walFileIDs.contains(flushTmpIDs[i])) {
-        File flushFile = new File(flushDirPath + File.separator + flushFileName);
-        flushTmpFile.renameTo(flushFile);
-      }
-      // have tifile tmp and have wal, tifile is incomplete,delete tifile tmp and delete file.
-      else {
-        flushTmpFile.delete();
-        String flushDeleteFileName =
-            ConvertUtils.getFlushDeleteFileNameFromFlushFileName(flushFileName);
-        File flushDeleteFile = new File(flushDirPath + File.separator + flushDeleteFileName);
-        if (flushDeleteFile.exists()) {
-          flushDeleteFile.delete();
-        }
-      }
-    }
+    initWalWriterAndReader(initFile(walFileName));
   }
 
   public IRequest recover() throws IOException {
@@ -161,13 +101,6 @@ public abstract class WALManager<T> {
     return Integer.parseInt(file.getName().substring(walFilePrefix.length()));
   }
 
-  protected Integer getFlushFileID(String fileName) {
-    return Integer.parseInt(
-        fileName
-            .substring(fileName.lastIndexOf("-") + 1)
-            .replaceFirst(SchemaRegionConstant.TMP, ""));
-  }
-
   protected String getWalFileName(Integer ID) {
     return walFilePrefix + ID;
   }
@@ -180,9 +113,9 @@ public abstract class WALManager<T> {
     return walFile;
   }
 
-  private void initWalWriterAndReader(File walFile, IWALRecord walRecord) throws IOException {
+  private void initWalWriterAndReader(File walFile) throws IOException {
     walWriter = new WALWriter(walFile);
-    walReader = new WALReader(walFile, walRecord);
+    walReader = new WALReader(walFile, this.walRecord);
   }
 
   public void updateFile(String walFileName) throws IOException {
@@ -233,6 +166,10 @@ public abstract class WALManager<T> {
 
   public WALReader getWalReader() {
     return walReader;
+  }
+
+  public String getWalDirPath() {
+    return walDirPath;
   }
 
   public void setWalReader(WALReader walReader) {

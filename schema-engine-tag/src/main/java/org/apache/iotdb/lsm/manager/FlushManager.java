@@ -121,8 +121,8 @@ public class FlushManager<T, R extends IFlushRequest>
 
   @Override
   public void postProcess(T root, R request, FlushRequestContext context) {
-    memManager.removeMemData(request);
     updateWal(request);
     renameFlushFile(root, request, context);
+    memManager.removeMemData(request);
   }
 }

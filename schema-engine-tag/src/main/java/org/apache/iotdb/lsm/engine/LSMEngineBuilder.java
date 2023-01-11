@@ -45,6 +45,7 @@ import org.apache.iotdb.lsm.request.ISingleQueryRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.util.List;
 
@@ -200,8 +201,10 @@ public class LSMEngineBuilder<T extends IMemManager> {
   }
 
   /** build RecoverManager for lsmEngine */
-  public LSMEngineBuilder<T> buildRecoverManager() {
-    RecoverManager<LSMEngine<T>> recoverManager = new RecoverManager<>(lsmEngine.getWalManager());
+  public LSMEngineBuilder<T> buildRecoverManager(String flushDirPath, boolean enableFlush)
+      throws IOException {
+    RecoverManager<LSMEngine<T>> recoverManager =
+        new RecoverManager<>(lsmEngine.getWalManager(), enableFlush, flushDirPath);
     lsmEngine.setRecoverManager(recoverManager);
     return this;
   }
@@ -289,7 +292,7 @@ public class LSMEngineBuilder<T extends IMemManager> {
       buildWalManager(walManager)
           .buildLevelProcessors(
               applicationContext, memManager, flushDirPath, flushFilePrefix, enableFlush)
-          .buildRecoverManager();
+          .buildRecoverManager(flushDirPath, enableFlush);
       if (enableFlush) {
         this.buildDiskQueryManager(diskQueryManager);
       }
