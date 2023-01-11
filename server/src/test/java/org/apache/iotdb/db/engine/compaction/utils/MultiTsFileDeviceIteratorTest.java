@@ -195,8 +195,12 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
     Assert.assertEquals(30, deviceNum);
   }
 
+  /**
+   * Create device with nonAligned property. Deleted it and create new device with same deviceID but
+   * aligned property. Check whether the deviceID and its property can be obtained correctly.
+   */
   @Test
-  public void getDevicesFromDifferentFilesWithFourLayersInNodeTreeTest()
+  public void getDeletedDevicesWithSameNameFromDifferentFilesWithFourLayersInNodeTreeTest()
       throws MetadataException, IOException, WriteProcessException {
     TSFileDescriptor.getInstance().getConfig().setMaxDegreeOfIndexNode(3);
     int oldAlignedDeviceOffset = TsFileGeneratorUtils.alignDeviceOffset;
@@ -242,8 +246,12 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
     TsFileGeneratorUtils.alignDeviceOffset = oldAlignedDeviceOffset;
   }
 
+  /**
+   * Create device with nonAligned property. Deleted it and create new device with same deviceID but
+   * aligned property. Check whether the deviceID and its property can be obtained correctly.
+   */
   @Test
-  public void getDevicesFromSeqFilesWithFourLayersInNodeTreeTest()
+  public void getDeletedDevicesWithSameNameFromSeqFilesWithFourLayersInNodeTreeTest()
       throws MetadataException, IOException, WriteProcessException {
     TSFileDescriptor.getInstance().getConfig().setMaxDegreeOfIndexNode(3);
     int oldAlignedDeviceOffset = TsFileGeneratorUtils.alignDeviceOffset;
