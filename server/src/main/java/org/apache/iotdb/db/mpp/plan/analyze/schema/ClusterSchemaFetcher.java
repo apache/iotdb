@@ -193,8 +193,6 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
             indexOfMissingMeasurements,
             measurements,
             getDataType,
-            null,
-            null,
             isAligned);
       }
 
