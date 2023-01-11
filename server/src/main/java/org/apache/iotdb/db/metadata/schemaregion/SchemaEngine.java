@@ -348,4 +348,33 @@ public class SchemaEngine {
   public void setSeriesNumerMonitor(ISeriesNumerMonitor seriesNumerMonitor) {
     this.seriesNumerMonitor = seriesNumerMonitor;
   }
+
+  public Map<Integer, Long> countDeviceNumBySchemaRegion(List<Integer> schemaIds) {
+    Map<Integer, Long> deviceNum = new HashMap<>();
+    try {
+      for (Map.Entry<SchemaRegionId, ISchemaRegion> entry : schemaRegionMap.entrySet()) {
+        if (schemaIds.contains(entry.getKey().getId())) {
+          deviceNum.put(entry.getKey().getId(), entry.getValue().countDeviceNumBySchemaRegion());
+        }
+      }
+    } catch (MetadataException e) {
+      // no
+    }
+    return deviceNum;
+  }
+
+  public Map<Integer, Long> countTimeSeriesNumBySchemaRegion(List<Integer> schemaIds) {
+    Map<Integer, Long> timeSeriesNum = new HashMap<>();
+    try {
+      for (Map.Entry<SchemaRegionId, ISchemaRegion> entry : schemaRegionMap.entrySet()) {
+        if (schemaIds.contains(entry.getKey().getId())) {
+          timeSeriesNum.put(
+              entry.getKey().getId(), entry.getValue().countTimeSeriesNumBySchemaRegion());
+        }
+      }
+    } catch (MetadataException e) {
+      // no
+    }
+    return timeSeriesNum;
+  }
 }

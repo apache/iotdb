@@ -22,6 +22,7 @@ import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.common.rpc.thrift.TSetSpaceQuotaReq;
 import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
@@ -146,6 +147,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowStorageGroupResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTrailReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTrailResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowVariablesResp;
+import org.apache.iotdb.confignode.rpc.thrift.TSpaceQuotaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchemaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSystemConfigurationResp;
@@ -826,6 +828,21 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   @Override
   public TShowCQResp showCQ() {
     return configManager.showCQ();
+  }
+
+  @Override
+  public TSStatus setSpaceQuota(TSetSpaceQuotaReq req) throws TException {
+    return configManager.setSpaceQuota(req);
+  }
+
+  @Override
+  public TSpaceQuotaResp showSpaceQuota(List<String> storageGroups) throws TException {
+    return configManager.showSpaceQuota(storageGroups);
+  }
+
+  @Override
+  public TSpaceQuotaResp getSpaceQuota() throws TException {
+    return configManager.getSpaceQuota();
   }
 
   @Override

@@ -60,6 +60,7 @@ import org.apache.iotdb.confignode.consensus.request.write.partition.CreateSchem
 import org.apache.iotdb.confignode.consensus.request.write.partition.UpdateRegionLocationPlan;
 import org.apache.iotdb.confignode.consensus.request.write.procedure.DeleteProcedurePlan;
 import org.apache.iotdb.confignode.consensus.request.write.procedure.UpdateProcedurePlan;
+import org.apache.iotdb.confignode.consensus.request.write.quota.SetSpaceQuotaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.OfferRegionMaintainTasksPlan;
 import org.apache.iotdb.confignode.consensus.request.write.storagegroup.AdjustMaxRegionGroupNumPlan;
@@ -98,6 +99,7 @@ import org.apache.iotdb.confignode.persistence.UDFInfo;
 import org.apache.iotdb.confignode.persistence.cq.CQInfo;
 import org.apache.iotdb.confignode.persistence.node.NodeInfo;
 import org.apache.iotdb.confignode.persistence.partition.PartitionInfo;
+import org.apache.iotdb.confignode.persistence.quota.QuotaInfo;
 import org.apache.iotdb.confignode.persistence.schema.ClusterSchemaInfo;
 import org.apache.iotdb.confignode.persistence.sync.ClusterSyncInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
@@ -146,6 +148,8 @@ public class ConfigPlanExecutor {
 
   private final CQInfo cqInfo;
 
+  private final QuotaInfo quotaInfo;
+
   public ConfigPlanExecutor(
       NodeInfo nodeInfo,
       ClusterSchemaInfo clusterSchemaInfo,
@@ -155,7 +159,8 @@ public class ConfigPlanExecutor {
       UDFInfo udfInfo,
       TriggerInfo triggerInfo,
       ClusterSyncInfo syncInfo,
-      CQInfo cqInfo) {
+      CQInfo cqInfo,
+      QuotaInfo quotaInfo) {
 
     this.snapshotProcessorList = new ArrayList<>();
 
@@ -184,6 +189,9 @@ public class ConfigPlanExecutor {
     this.snapshotProcessorList.add(cqInfo);
 
     this.procedureInfo = procedureInfo;
+
+    this.quotaInfo = quotaInfo;
+    this.snapshotProcessorList.add(quotaInfo);
   }
 
   public DataSet executeQueryPlan(ConfigPhysicalPlan req)
@@ -368,6 +376,8 @@ public class ConfigPlanExecutor {
         return cqInfo.activeCQ((ActiveCQPlan) physicalPlan);
       case UPDATE_CQ_LAST_EXEC_TIME:
         return cqInfo.updateCQLastExecutionTime((UpdateCQLastExecTimePlan) physicalPlan);
+      case SET_SPACE_QUOTA:
+        return quotaInfo.setSpaceQuota((SetSpaceQuotaPlan) physicalPlan);
       default:
         throw new UnknownPhysicalPlanTypeException(physicalPlan.getType());
     }

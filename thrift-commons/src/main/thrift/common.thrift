@@ -123,3 +123,15 @@ struct TFilesResp {
   1: required TSStatus status
   2: required list<TFile> files
 }
+
+// quota
+struct TSpaceQuota {
+  1: optional i64 diskSize
+  2: optional i64 deviceNum
+  3: optional i64 timeserieNum
+}
+
+struct TSetSpaceQuotaReq {
+  1: required list<string> storageGroup
+  2: required TSpaceQuota spaceLimit
+}

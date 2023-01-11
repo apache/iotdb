@@ -22,6 +22,7 @@ import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.common.rpc.thrift.TSetSpaceQuotaReq;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
@@ -586,6 +587,10 @@ public interface IManager {
   TSStatus dropCQ(TDropCQReq req);
 
   TShowCQResp showCQ();
+
+  TSStatus setSpaceQuota(TSetSpaceQuotaReq req);
+
+  ClusterQuotaManager getClusterQuotaManager();
 
   TSStatus checkConfigNodeGlobalConfig(TConfigNodeRegisterReq req);
 

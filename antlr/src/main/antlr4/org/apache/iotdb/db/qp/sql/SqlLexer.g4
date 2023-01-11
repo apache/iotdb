@@ -490,6 +490,10 @@ QUERYID
     : Q U E R Y I D
     ;
 
+QUOTA
+    : Q U O T A
+    ;
+
 RANGE
     : R A N G E
     ;
@@ -580,6 +584,10 @@ SLIMIT
 
 SOFFSET
     : S O F F S E T
+    ;
+
+SPACE
+    : S P A C E
     ;
 
 STORAGE

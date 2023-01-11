@@ -714,6 +714,15 @@ struct TUpdateModelInfoReq {
   2: required map<string, string> modelInfo
 }
 
+// ====================================================
+// Quota
+// ====================================================
+struct TSpaceQuotaResp{
+  1: required common.TSStatus status
+  2: optional map<string, common.TSpaceQuota> spaceQuota
+  3: optional map<string, common.TSpaceQuota> spaceQuotaUsage
+}
+
 service IConfigNodeRPCService {
 
   // ======================================================
@@ -1261,5 +1270,12 @@ service IConfigNodeRPCService {
    * @return SUCCESS_STATUS if the model was removed successfully
    */
   common.TSStatus updateModelInfo(TUpdateModelInfoReq req)
+
+  /** Set Space Quota */
+  common.TSStatus setSpaceQuota(common.TSetSpaceQuotaReq req)
+
+  TSpaceQuotaResp showSpaceQuota(list<string> storageGroups);
+
+  TSpaceQuotaResp getSpaceQuota();
 }
 

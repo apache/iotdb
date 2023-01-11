@@ -1068,6 +1068,8 @@ public class IoTDBConfig {
   /** whether the local write api records audit logs * */
   private boolean enableAuditLogForNativeInsertApi = true;
 
+  private boolean quotaEnable = false;
+
   // customizedProperties, this should be empty by default.
   private Properties customizedProperties = new Properties();
 
@@ -3566,6 +3568,14 @@ public class IoTDBConfig {
 
   public void setSchemaRatisConsensusMaxSleepTimeMs(long schemaRatisConsensusMaxSleepTimeMs) {
     this.schemaRatisConsensusMaxSleepTimeMs = schemaRatisConsensusMaxSleepTimeMs;
+  }
+
+  public boolean isQuotaEnable() {
+    return quotaEnable;
+  }
+
+  public void setQuotaEnable(boolean quotaEnable) {
+    this.quotaEnable = quotaEnable;
   }
 
   public Properties getCustomizedProperties() {

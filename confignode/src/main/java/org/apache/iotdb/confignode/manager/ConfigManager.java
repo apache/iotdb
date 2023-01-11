@@ -27,6 +27,7 @@ import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
+import org.apache.iotdb.common.rpc.thrift.TSetSpaceQuotaReq;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.cluster.NodeType;
@@ -93,6 +94,7 @@ import org.apache.iotdb.confignode.persistence.cq.CQInfo;
 import org.apache.iotdb.confignode.persistence.executor.ConfigPlanExecutor;
 import org.apache.iotdb.confignode.persistence.node.NodeInfo;
 import org.apache.iotdb.confignode.persistence.partition.PartitionInfo;
+import org.apache.iotdb.confignode.persistence.quota.QuotaInfo;
 import org.apache.iotdb.confignode.persistence.schema.ClusterSchemaInfo;
 import org.apache.iotdb.confignode.persistence.sync.ClusterSyncInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TClusterParameters;
@@ -145,6 +147,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowStorageGroupResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowVariablesResp;
+import org.apache.iotdb.confignode.rpc.thrift.TSpaceQuotaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsetSchemaTemplateReq;
@@ -213,6 +216,9 @@ public class ConfigManager implements IManager {
   /** CQ */
   private final CQManager cqManager;
 
+  /** Manage quotas */
+  private final ClusterQuotaManager clusterQuotaManager;
+
   private final ConfigNodeRegionStateMachine stateMachine;
 
   private final RetryFailedTasksThread retryFailedTasksThread;
@@ -228,6 +234,7 @@ public class ConfigManager implements IManager {
     TriggerInfo triggerInfo = new TriggerInfo();
     ClusterSyncInfo syncInfo = new ClusterSyncInfo();
     CQInfo cqInfo = new CQInfo();
+    QuotaInfo quotaInfo = new QuotaInfo();
 
     // Build state machine and executor
     ConfigPlanExecutor executor =
@@ -240,7 +247,8 @@ public class ConfigManager implements IManager {
             udfInfo,
             triggerInfo,
             syncInfo,
-            cqInfo);
+            cqInfo,
+            quotaInfo);
     this.stateMachine = new ConfigNodeRegionStateMachine(this, executor);
 
     // Build the manager module
@@ -256,6 +264,7 @@ public class ConfigManager implements IManager {
     this.loadManager = new LoadManager(this);
 
     this.retryFailedTasksThread = new RetryFailedTasksThread(this);
+    this.clusterQuotaManager = new ClusterQuotaManager(this, quotaInfo);
   }
 
   public void initConsensusManager() throws IOException {
@@ -1202,6 +1211,11 @@ public class ConfigManager implements IManager {
   }
 
   @Override
+  public ClusterQuotaManager getClusterQuotaManager() {
+    return clusterQuotaManager;
+  }
+
+  @Override
   public RetryFailedTasksThread getRetryFailedTasksThread() {
     return retryFailedTasksThread;
   }
@@ -1527,6 +1541,28 @@ public class ConfigManager implements IManager {
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
         ? cqManager.showCQ()
         : new TShowCQResp(status, Collections.emptyList());
+  }
+
+  @Override
+  public TSStatus setSpaceQuota(TSetSpaceQuotaReq req) {
+    TSStatus status = confirmLeader();
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        ? clusterQuotaManager.setSpaceQuota(req)
+        : status;
+  }
+
+  public TSpaceQuotaResp showSpaceQuota(List<String> storageGroups) {
+    TSStatus status = confirmLeader();
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        ? clusterQuotaManager.showSpaceQuota(storageGroups)
+        : new TSpaceQuotaResp(status);
+  }
+
+  public TSpaceQuotaResp getSpaceQuota() {
+    TSStatus status = confirmLeader();
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        ? clusterQuotaManager.getSpaceQuota()
+        : new TSpaceQuotaResp(status);
   }
 
   /** Get all related schemaRegion which may contains the timeSeries matched by given patternTree */

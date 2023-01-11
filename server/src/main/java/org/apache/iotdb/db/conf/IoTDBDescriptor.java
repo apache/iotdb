@@ -966,6 +966,9 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "coordinator_write_executor_size",
                 Integer.toString(conf.getCoordinatorWriteExecutorSize()))));
+    conf.setQuotaEnable(
+        Boolean.parseBoolean(
+            properties.getProperty("quota_enable", String.valueOf(conf.isQuotaEnable()))));
 
     // commons
     commonDescriptor.loadCommonProps(properties);

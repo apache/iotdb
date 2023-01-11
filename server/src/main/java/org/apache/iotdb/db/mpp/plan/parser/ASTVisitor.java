@@ -148,6 +148,8 @@ import org.apache.iotdb.db.mpp.plan.statement.sys.MergeStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.SetSystemStatusStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ShowQueriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ShowVersionStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.quota.SetSpaceQuotaStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.quota.ShowSpaceQuotaStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeSinkStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.DropPipeSinkStatement;
@@ -1907,6 +1909,97 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       privileges.add(privilegeValue.getText());
     }
     return privileges.toArray(new String[0]);
+  }
+
+  // Quota
+  @Override
+  public Statement visitSetSpaceQuota(IoTDBSqlParser.SetSpaceQuotaContext ctx) {
+    if (!IoTDBDescriptor.getInstance().getConfig().isQuotaEnable()) {
+      throw new SemanticException("Limit configuration is not enabled, please enable it first.");
+    }
+    SetSpaceQuotaStatement setSpaceQuotaStatement = new SetSpaceQuotaStatement();
+    List<IoTDBSqlParser.PrefixPathContext> prefixPathContexts = ctx.prefixPath();
+    List<String> paths = new ArrayList<>();
+    for (IoTDBSqlParser.PrefixPathContext prefixPathContext : prefixPathContexts) {
+      paths.add(parsePrefixPath(prefixPathContext).getFullPath());
+    }
+    setSpaceQuotaStatement.setPrefixPathList(paths);
+
+    Map<String, String> quotas = new HashMap<>();
+    for (IoTDBSqlParser.AttributePairContext attributePair : ctx.attributePair()) {
+      quotas.put(
+          parseAttributeKey(attributePair.attributeKey()),
+          parseAttributeValue(attributePair.attributeValue()));
+    }
+
+    if (quotas.containsKey(IoTDBConstant.COLUMN_DEVICES)) {
+      if (quotas.get(IoTDBConstant.COLUMN_DEVICES).equals(IoTDBConstant.SPACE_QUOTA_UNLIMITED)) {
+        setSpaceQuotaStatement.setDeviceNum(-1);
+      } else if (Long.parseLong(quotas.get(IoTDBConstant.COLUMN_DEVICES)) <= 0) {
+        throw new SemanticException("Please set the number of devices greater than 0");
+      } else {
+        setSpaceQuotaStatement.setDeviceNum(
+            Long.parseLong(quotas.get(IoTDBConstant.COLUMN_DEVICES)));
+      }
+    }
+    if (quotas.containsKey(IoTDBConstant.COLUMN_TIMESERIES)) {
+      if (quotas.get(IoTDBConstant.COLUMN_TIMESERIES).equals(IoTDBConstant.SPACE_QUOTA_UNLIMITED)) {
+        setSpaceQuotaStatement.setTimeSeriesNum(-1);
+      } else if (Long.parseLong(quotas.get(IoTDBConstant.COLUMN_TIMESERIES)) <= 0) {
+        throw new SemanticException("Please set the number of timeseries greater than 0");
+      } else {
+        setSpaceQuotaStatement.setTimeSeriesNum(
+            Long.parseLong(quotas.get(IoTDBConstant.COLUMN_TIMESERIES)));
+      }
+    }
+    if (quotas.containsKey(IoTDBConstant.SPACE_QUOTA_DISK)) {
+      if (quotas.get(IoTDBConstant.SPACE_QUOTA_DISK).equals(IoTDBConstant.SPACE_QUOTA_UNLIMITED)) {
+        setSpaceQuotaStatement.setDiskSize(-1);
+      } else {
+        setSpaceQuotaStatement.setDiskSize(parseUnit(quotas.get(IoTDBConstant.SPACE_QUOTA_DISK)));
+      }
+    }
+    return setSpaceQuotaStatement;
+  }
+
+  private long parseUnit(String data) {
+    String unit = data.substring(data.length() - 1);
+    long disk = Long.parseLong(data.substring(0, data.length() - 1));
+    if (disk <= 0) {
+      throw new SemanticException("Please set the disk size greater than 0");
+    }
+    switch (unit.toLowerCase()) {
+      case "m":
+        return disk;
+      case "g":
+        return disk * 1024;
+      case "t":
+        return disk * 1024 * 1024;
+      case "p":
+        return disk * 1024 * 1024 * 1024;
+      default:
+        throw new SemanticException(
+            "When setting the disk size, the unit is incorrect. Please use 'M', 'G', 'P', 'T' as the unit");
+    }
+  }
+
+  @Override
+  public Statement visitShowSpaceQuota(IoTDBSqlParser.ShowSpaceQuotaContext ctx) {
+    if (!IoTDBDescriptor.getInstance().getConfig().isQuotaEnable()) {
+      throw new SemanticException("Limit configuration is not enabled, please enable it first.");
+    }
+    ShowSpaceQuotaStatement showSpaceQuotaStatement = new ShowSpaceQuotaStatement();
+    List<PartialPath> storageGroups = null;
+    if (ctx.prefixPath() != null) {
+      storageGroups = new ArrayList<>();
+      for (IoTDBSqlParser.PrefixPathContext prefixPathContext : ctx.prefixPath()) {
+        storageGroups.add(parsePrefixPath(prefixPathContext));
+      }
+      showSpaceQuotaStatement.setStorageGroups(storageGroups);
+    } else {
+      showSpaceQuotaStatement.setStorageGroups(null);
+    }
+    return showSpaceQuotaStatement;
   }
 
   // Create database

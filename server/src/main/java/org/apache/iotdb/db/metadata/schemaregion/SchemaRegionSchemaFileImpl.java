@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.metadata.schemaregion;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
@@ -44,6 +45,7 @@ import org.apache.iotdb.db.metadata.plan.schemaregion.ISchemaRegionPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.SchemaRegionPlanVisitor;
 import org.apache.iotdb.db.metadata.plan.schemaregion.impl.SchemaRegionPlanDeserializer;
 import org.apache.iotdb.db.metadata.plan.schemaregion.impl.SchemaRegionPlanSerializer;
+import org.apache.iotdb.db.metadata.plan.schemaregion.impl.read.SchemaRegionReadPlanFactory;
 import org.apache.iotdb.db.metadata.plan.schemaregion.impl.write.SchemaRegionWritePlanFactory;
 import org.apache.iotdb.db.metadata.plan.schemaregion.read.IShowDevicesPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.read.IShowNodesPlan;
@@ -60,7 +62,9 @@ import org.apache.iotdb.db.metadata.plan.schemaregion.write.IDeactivateTemplateP
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IDeleteTimeSeriesPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IPreDeactivateTemplatePlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IRollbackPreDeactivateTemplatePlan;
+import org.apache.iotdb.db.metadata.query.info.IDeviceSchemaInfo;
 import org.apache.iotdb.db.metadata.query.info.INodeSchemaInfo;
+import org.apache.iotdb.db.metadata.query.info.ITimeSeriesSchemaInfo;
 import org.apache.iotdb.db.metadata.query.reader.ISchemaReader;
 import org.apache.iotdb.db.metadata.rescon.MemoryStatistics;
 import org.apache.iotdb.db.metadata.rescon.SchemaStatisticsManager;
@@ -83,6 +87,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
@@ -865,6 +870,7 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
   // endregion
 
   // region Interfaces for get and auto create device
+
   /**
    * get device node, if the schema region is not set, create it when autoCreateSchema is true
    *
@@ -998,6 +1004,7 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
   // endregion
 
   // region Interfaces for alias and tag/attribute operations
+
   /**
    * Set the new offset of a timeseries. Only used for Recover. When creating tags/attributes for a
    * timeseries, if is first time, the file offset where the tags/attributes stored will be stored
@@ -1320,6 +1327,49 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
       throws MetadataException {
     return mtree.getNodeReader(showNodesPlan);
   }
+
+  @Override
+  public long countDeviceNumBySchemaRegion() throws MetadataException {
+    ISchemaReader<IDeviceSchemaInfo> deviceReader =
+        this.getDeviceReader(
+            SchemaRegionReadPlanFactory.getShowDevicesPlan(
+                new PartialPath(
+                    IoTDBConstant.PATH_ROOT
+                        + IoTDBConstant.PATH_SEPARATOR
+                        + IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD),
+                false));
+    long count = 0;
+    while (deviceReader.hasNext()) {
+      deviceReader.next();
+      count++;
+    }
+    return count;
+  }
+
+  @Override
+  public long countTimeSeriesNumBySchemaRegion() throws MetadataException {
+    ISchemaReader<ITimeSeriesSchemaInfo> timeSeriesReader =
+        this.getTimeSeriesReader(
+            SchemaRegionReadPlanFactory.getShowTimeSeriesPlan(
+                new PartialPath(
+                    IoTDBConstant.PATH_ROOT
+                        + IoTDBConstant.PATH_SEPARATOR
+                        + IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD),
+                new HashMap<>(),
+                false,
+                null,
+                null,
+                0,
+                0,
+                false));
+    long count = 0;
+    while (timeSeriesReader.hasNext()) {
+      timeSeriesReader.next();
+      count++;
+    }
+    return count;
+  }
+
   // endregion
 
   private static class RecoverOperationResult {

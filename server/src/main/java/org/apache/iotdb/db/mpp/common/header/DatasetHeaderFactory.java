@@ -162,4 +162,8 @@ public class DatasetHeaderFactory {
   public static DatasetHeader getShowQueriesHeader() {
     return new DatasetHeader(ColumnHeaderConstant.showQueriesColumnHeaders, false);
   }
+
+  public static DatasetHeader getShowSpaceQuotaHeader() {
+    return new DatasetHeader(ColumnHeaderConstant.showSpaceQuotaColumnHeaders, true);
+  }
 }

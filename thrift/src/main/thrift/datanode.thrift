@@ -215,6 +215,9 @@ struct THeartbeatReq {
   1: required i64 heartbeatTimestamp
   2: required bool needJudgeLeader
   3: required bool needSamplingLoad
+  4: optional list<i32> schemaRegionIds
+  5: optional list<i32> dataRegionIds
+  6: optional map<string, common.TSpaceQuota> spaceQuotaUsage
 }
 
 struct THeartbeatResp {
@@ -223,6 +226,9 @@ struct THeartbeatResp {
   3: optional string statusReason
   4: optional map<common.TConsensusGroupId, bool> judgedLeaders
   5: optional TLoadSample loadSample
+  6: optional map<i32, i64> deviceNum
+  7: optional map<i32, i64> timeSeriesNum
+  8: optional map<i32, i64> regionDisk
 }
 
 struct TLoadSample {
@@ -707,6 +713,11 @@ service IDataNodeRPCService {
   * Execute CQ on DataNode
   */
   common.TSStatus executeCQ(TExecuteCQ req)
+
+  /**
+   * Set space quota
+   **/
+  common.TSStatus setSpaceQuota(common.TSetSpaceQuotaReq req)
 
  /**
   * Delete model training metrics on DataNode

@@ -272,6 +272,11 @@ public interface ISchemaRegion {
   long countPathsUsingTemplate(int templateId, PathPatternTree patternTree)
       throws MetadataException;
 
+  // count
+  long countDeviceNumBySchemaRegion() throws MetadataException;
+
+  long countTimeSeriesNumBySchemaRegion() throws MetadataException;
+
   // endregion
 
   // region Interfaces for SchemaReader

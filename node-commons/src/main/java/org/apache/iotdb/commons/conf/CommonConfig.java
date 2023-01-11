@@ -120,6 +120,9 @@ public class CommonConfig {
   /** Disk Monitor */
   private double diskSpaceWarningThreshold = 0.05;
 
+  /** quota */
+  private boolean quotaEnable = false;
+
   CommonConfig() {}
 
   public void updatePath(String homeDir) {
@@ -346,5 +349,13 @@ public class CommonConfig {
 
   public void setStatusReason(String statusReason) {
     this.statusReason = statusReason;
+  }
+
+  public boolean isQuotaEnable() {
+    return quotaEnable;
+  }
+
+  public void setQuotaEnable(boolean quotaEnable) {
+    this.quotaEnable = quotaEnable;
   }
 }
