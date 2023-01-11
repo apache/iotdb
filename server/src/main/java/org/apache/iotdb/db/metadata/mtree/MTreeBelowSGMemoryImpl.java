@@ -883,6 +883,16 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
             collector, showDevicesPlan.getLimit(), showDevicesPlan.getOffset());
     return new ISchemaReader<IDeviceSchemaInfo>() {
       @Override
+      public boolean isSuccess() {
+        return traverser.isSuccess();
+      }
+
+      @Override
+      public Throwable getFailure() {
+        return traverser.getFailure();
+      }
+
+      @Override
       public void close() {
         traverser.close();
       }
@@ -925,6 +935,16 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
             collector, showTimeSeriesPlan.getLimit(), showTimeSeriesPlan.getOffset());
     return new ISchemaReader<ITimeSeriesSchemaInfo>() {
       @Override
+      public boolean isSuccess() {
+        return traverser.isSuccess();
+      }
+
+      @Override
+      public Throwable getFailure() {
+        return traverser.getFailure();
+      }
+
+      @Override
       public void close() {
         traverser.close();
       }
@@ -955,6 +975,16 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
     collector.setTargetLevel(showNodesPlan.getLevel());
 
     return new ISchemaReader<INodeSchemaInfo>() {
+      @Override
+      public boolean isSuccess() {
+        return collector.isSuccess();
+      }
+
+      @Override
+      public Throwable getFailure() {
+        return collector.getFailure();
+      }
+
       @Override
       public void close() {
         collector.close();

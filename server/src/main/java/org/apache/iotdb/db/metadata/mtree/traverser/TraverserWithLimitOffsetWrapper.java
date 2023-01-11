@@ -74,6 +74,16 @@ public class TraverserWithLimitOffsetWrapper<R> extends Traverser<R> {
   }
 
   @Override
+  public boolean isSuccess() {
+    return traverser.isSuccess();
+  }
+
+  @Override
+  public Throwable getFailure() {
+    return traverser.getFailure();
+  }
+
+  @Override
   protected boolean shouldVisitSubtreeOfInternalMatchedNode(IMNode node) {
     return false;
   }
