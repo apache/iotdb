@@ -144,8 +144,8 @@ public class QuotaInfo implements SnapshotProcessor {
     while (size > 0) {
       String path = ReadWriteIOUtils.readString(fileInputStream);
       TSpaceQuota spaceQuota = new TSpaceQuota();
-      spaceQuota.setDeviceNum(ReadWriteIOUtils.readInt(fileInputStream));
-      spaceQuota.setTimeserieNum(ReadWriteIOUtils.readInt(fileInputStream));
+      spaceQuota.setDeviceNum(ReadWriteIOUtils.readLong(fileInputStream));
+      spaceQuota.setTimeserieNum(ReadWriteIOUtils.readLong(fileInputStream));
       spaceQuota.setDiskSize(ReadWriteIOUtils.readLong(fileInputStream));
       spaceQuotaLimit.put(path, spaceQuota);
       size--;
