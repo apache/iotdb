@@ -101,8 +101,8 @@ public class StabilityTest {
         consensusImpl.createPeer(
             dataRegionId,
             Collections.singletonList(new Peer(dataRegionId, 1, new TEndPoint("0.0.0.0", 9000))));
-    consensusImpl.deletePeer(dataRegionId);
     Assert.assertTrue(response.isSuccess());
+    consensusImpl.deletePeer(dataRegionId);
   }
 
   public void snapshotTest() throws IOException {
@@ -124,11 +124,10 @@ public class StabilityTest {
 
     File[] versionFiles2 =
         dataDir.listFiles((dir, name) -> name.startsWith(IoTConsensusServerImpl.SNAPSHOT_DIR_NAME));
-    consensusImpl.deletePeer(dataRegionId);
     Assert.assertNotNull(versionFiles2);
     Assert.assertEquals(1, versionFiles2.length);
-
     Assert.assertNotEquals(versionFiles1[0].getName(), versionFiles2[0].getName());
+    consensusImpl.deletePeer(dataRegionId);
   }
 
   public void snapshotUpgradeTest() throws Exception {
@@ -136,38 +135,32 @@ public class StabilityTest {
         dataRegionId,
         Collections.singletonList(new Peer(dataRegionId, 1, new TEndPoint("0.0.0.0", 9000))));
     consensusImpl.triggerSnapshot(dataRegionId);
-    String oldSnapshotId =
+    long oldSnapshotIndex = System.currentTimeMillis();
+    String oldSnapshotDirName =
         String.format(
             "%s_%s_%d",
-            IoTConsensusServerImpl.SNAPSHOT_DIR_NAME,
-            dataRegionId.getId(),
-            System.currentTimeMillis());
-    File snapshotDir = new File(storageDir, "1_1");
-    File oldSnapshotName = new File(snapshotDir, oldSnapshotId);
-    if (oldSnapshotName.exists()) {
-      org.apache.commons.io.FileUtils.deleteDirectory(oldSnapshotName);
+            IoTConsensusServerImpl.SNAPSHOT_DIR_NAME, dataRegionId.getId(), oldSnapshotIndex);
+    File regionDir = new File(storageDir, "1_1");
+    File oldSnapshotDir = new File(regionDir, oldSnapshotDirName);
+    if (oldSnapshotDir.exists()) {
+      FileUtils.deleteFully(oldSnapshotDir);
     }
-    if (!oldSnapshotName.mkdirs()) {
+    if (!oldSnapshotDir.mkdirs()) {
       throw new ConsensusGroupModifyPeerException(
           String.format("%s: cannot mkdir for snapshot", dataRegionId));
     }
     consensusImpl.triggerSnapshot(dataRegionId);
+    Assert.assertFalse(oldSnapshotDir.exists());
+
     File dataDir = new File(IoTConsensus.buildPeerDir(storageDir, dataRegionId));
 
-    File[] versionFiles1 =
+    File[] snapshotFiles =
         dataDir.listFiles((dir, name) -> name.startsWith(IoTConsensusServerImpl.SNAPSHOT_DIR_NAME));
-    Assert.assertNotNull(versionFiles1);
-    Assert.assertEquals(1, versionFiles1.length);
-
-    consensusImpl.triggerSnapshot(dataRegionId);
-
-    consensusImpl.triggerSnapshot(dataRegionId);
-
-    File[] versionFiles2 =
-        dataDir.listFiles((dir, name) -> name.startsWith(IoTConsensusServerImpl.SNAPSHOT_DIR_NAME));
+    Assert.assertNotNull(snapshotFiles);
+    Assert.assertEquals(1, snapshotFiles.length);
+    Assert.assertEquals(
+        oldSnapshotIndex + 1,
+        Long.parseLong(snapshotFiles[0].getName().replaceAll(".*[^\\d](?=(\\d+))", "")));
     consensusImpl.deletePeer(dataRegionId);
-    Assert.assertNotNull(versionFiles2);
-    Assert.assertEquals(1, versionFiles2.length);
-    Assert.assertNotEquals(versionFiles1[0].getName(), versionFiles2[0].getName());
   }
 }
