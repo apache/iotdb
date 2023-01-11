@@ -9,16 +9,18 @@ on:
   push:
     branches:
       - master
-      - "rel/*"
-      - "new_*"
+      - 'rel/*'
+      - 'rc/*'
+      - 'new_*'
     paths-ignore:
       - 'docs/**'
       - 'site/**'
   pull_request:
     branches:
       - master
-      - "rel/*"
-      - "new_*"
+      - 'rel/*'
+      - 'rc/*'
+      - 'new_*'
     paths-ignore:
       - 'docs/**'
       - 'site/**'
