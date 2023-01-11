@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.engine.compaction.execute.performer.ICompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.execute.task.AbstractCompactionTask;
 import org.apache.iotdb.db.engine.compaction.execute.task.InnerSpaceCompactionTask;
 import org.apache.iotdb.db.engine.compaction.schedule.CompactionTaskManager;
@@ -261,13 +262,17 @@ public class SettleRequestHandler {
     }
 
     private TSStatus submitCompactionTask(List<TsFileResource> tsFileResources) {
+      ICompactionPerformer performer =
+          hasSeqFiles
+              ? config.getInnerSeqCompactionPerformer().createInstance()
+              : config.getInnerUnseqCompactionPerformer().createInstance();
       AbstractCompactionTask task =
           new InnerSpaceCompactionTask(
               targetConsistentSettleInfo.timePartitionId,
               tsFileManager,
               tsFileResources,
               hasSeqFiles,
-              config.getInnerSeqCompactionPerformer().createInstance(),
+              performer,
               CompactionTaskManager.currentTaskNum,
               tsFileManager.getNextCompactionTaskId());
       try {
