@@ -418,7 +418,7 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
 
           bitMaps[i].unmark(rowCount);
           writtenCounter.get(measurements[i]).getAndIncrement();
-          switch (valueColumn.getDataType()) {
+          switch (dataTypes[i]) {
             case INT32:
               ((int[]) columns[i])[rowCount] =
                   sourceTypeConvertor.getInt(valueColumn, lastReadIndex);
