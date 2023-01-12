@@ -48,7 +48,7 @@ public class PointPriorityReader {
 
   private boolean shouldReadPointFromQueue = true;
 
-  private long nextPageStartTime = Long.MAX_VALUE;
+  private long nextPointInOtherPage = Long.MAX_VALUE;
 
   private PointElement currentPointElement;
 
@@ -128,7 +128,7 @@ public class PointPriorityReader {
       if (pointReader.hasNextTimeValuePair()) {
         // get the point directly if it is not overlapped with other points
         currentPoint = pointReader.nextTimeValuePair();
-        if (currentPoint.getTimestamp() >= nextPageStartTime) {
+        if (currentPoint.getTimestamp() >= nextPointInOtherPage) {
           // if the point is overlapped with other points, then add it into priority queue
           currentPointElement.setPoint(currentPoint);
           pointQueue.add(currentPointElement);
@@ -152,9 +152,9 @@ public class PointPriorityReader {
           IPointReader pointReader = pointElement.pointReader;
           if (pointReader.hasNextTimeValuePair()) {
             pointElement.setPoint(pointReader.nextTimeValuePair());
-            nextPageStartTime =
-                pointQueue.size() > 0 ? pointQueue.peek().pageElement.startTime : Long.MAX_VALUE;
-            if (pointElement.timestamp < nextPageStartTime) {
+            nextPointInOtherPage =
+                pointQueue.size() > 0 ? pointQueue.peek().timestamp : Long.MAX_VALUE;
+            if (pointElement.timestamp < nextPointInOtherPage) {
               currentPointElement = pointElement;
               currentPoint = currentPointElement.timeValuePair;
             } else {
@@ -177,8 +177,8 @@ public class PointPriorityReader {
   /** Add a new overlapped page. */
   public void addNewPage(PageElement pageElement) throws IOException {
     if (currentPointElement != null) {
-      nextPageStartTime = Math.min(nextPageStartTime, pageElement.startTime);
-      if (currentPoint.getTimestamp() >= nextPageStartTime) {
+      nextPointInOtherPage = Math.min(nextPointInOtherPage, pageElement.startTime);
+      if (currentPoint.getTimestamp() >= nextPointInOtherPage) {
         currentPointElement.setPoint(currentPoint);
         pointQueue.add(currentPointElement);
         currentPointElement = null;

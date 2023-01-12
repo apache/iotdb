@@ -16,25 +16,23 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.confignode.manager;
 
-package org.apache.iotdb.db.metadata.query.reader;
+import org.junit.Assert;
+import org.junit.Test;
 
-import org.apache.iotdb.db.metadata.query.info.ISchemaInfo;
+public class ClusterSchemaManagerTest {
 
-import java.util.Iterator;
+  @Test
+  public void testCalcMaxRegionGroupNum() {
 
-public interface ISchemaReader<T extends ISchemaInfo> extends Iterator<T>, AutoCloseable {
-  /**
-   * Determines if the iteration is successful when it completes.
-   *
-   * @return False if an exception occurs during the iteration. Otherwise, return true.
-   */
-  boolean isSuccess();
+    // The maxRegionGroupNum should be great or equal to the leastRegionGroupNum
+    Assert.assertEquals(100, ClusterSchemaManager.calcMaxRegionGroupNum(100, 1.0, 3, 1, 3, 0));
 
-  /**
-   * Get throwable if there is exception occurs during the iteration.
-   *
-   * @return Throwable, null if no exception.
-   */
-  Throwable getFailure();
+    // The maxRegionGroupNum should be great or equal to the allocatedRegionGroupCount
+    Assert.assertEquals(100, ClusterSchemaManager.calcMaxRegionGroupNum(3, 1.0, 6, 2, 3, 100));
+
+    // (resourceWeight * resource) / (createdStorageGroupNum * replicationFactor)
+    Assert.assertEquals(20, ClusterSchemaManager.calcMaxRegionGroupNum(3, 1.0, 120, 2, 3, 5));
+  }
 }

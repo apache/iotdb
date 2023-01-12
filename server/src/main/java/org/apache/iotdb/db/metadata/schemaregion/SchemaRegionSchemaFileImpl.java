@@ -1274,6 +1274,16 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
       Iterator<ShowTimeSeriesResult> iterator = showTimeSeriesResultList.iterator();
       return new ISchemaReader<ITimeSeriesSchemaInfo>() {
         @Override
+        public boolean isSuccess() {
+          return true;
+        }
+
+        @Override
+        public Throwable getFailure() {
+          return null;
+        }
+
+        @Override
         public void close() {}
 
         @Override

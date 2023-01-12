@@ -77,6 +77,7 @@ public class SchemaFile implements ISchemaFile {
   private File pmtFile;
   private FileChannel channel;
 
+  // todo refactor constructor for schema file in Jan.
   private SchemaFile(
       String sgName, int schemaRegionId, boolean override, long ttl, boolean isEntity)
       throws IOException, MetadataException {
@@ -186,7 +187,7 @@ public class SchemaFile implements ISchemaFile {
     this.dataTTL = sgNode.getDataTTL();
     this.isEntity = sgNode.isEntity();
     this.sgNodeTemplateIdWithState = sgNode.getSchemaTemplateIdWithState();
-    updateHeader();
+    updateHeaderBuffer();
     return true;
   }
 
@@ -220,6 +221,7 @@ public class SchemaFile implements ISchemaFile {
     pageManager.writeNewChildren(node);
     pageManager.writeUpdatedChildren(node);
     pageManager.flushDirtyPages();
+    updateHeaderBuffer();
   }
 
   @Override
@@ -240,16 +242,18 @@ public class SchemaFile implements ISchemaFile {
 
   @Override
   public void close() throws IOException {
-    updateHeader();
+    updateHeaderBuffer();
     pageManager.flushDirtyPages();
     pageManager.close();
+    forceChannel();
     channel.close();
   }
 
   @Override
   public void sync() throws IOException {
-    updateHeader();
+    updateHeaderBuffer();
     pageManager.flushDirtyPages();
+    forceChannel();
   }
 
   @Override
@@ -327,7 +331,7 @@ public class SchemaFile implements ISchemaFile {
       ReadWriteIOUtils.write(sgNodeTemplateIdWithState, headerContent);
       ReadWriteIOUtils.write(SchemaFileConfig.SCHEMA_FILE_VERSION, headerContent);
       lastSGAddr = 0L;
-      pageManager = new BTreePageManager(channel, -1, logPath);
+      pageManager = new BTreePageManager(channel, pmtFile, -1, logPath);
     } else {
       channel.read(headerContent);
       headerContent.clear();
@@ -342,11 +346,11 @@ public class SchemaFile implements ISchemaFile {
         throw new MetadataException("SchemaFile with wrong version, please check or upgrade.");
       }
 
-      pageManager = new BTreePageManager(channel, lastPageIndex, logPath);
+      pageManager = new BTreePageManager(channel, pmtFile, lastPageIndex, logPath);
     }
   }
 
-  private void updateHeader() throws IOException {
+  private void updateHeaderBuffer() throws IOException {
     headerContent.clear();
 
     ReadWriteIOUtils.write(pageManager.getLastPageIndex(), headerContent);
@@ -356,8 +360,11 @@ public class SchemaFile implements ISchemaFile {
     ReadWriteIOUtils.write(lastSGAddr, headerContent);
     ReadWriteIOUtils.write(SchemaFileConfig.SCHEMA_FILE_VERSION, headerContent);
 
-    headerContent.clear();
+    headerContent.flip();
     channel.write(headerContent, 0);
+  }
+
+  private void forceChannel() throws IOException {
     channel.force(true);
   }
 

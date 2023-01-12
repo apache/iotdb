@@ -125,6 +125,9 @@ public class CountGroupByLevelScanOperator<T extends ISchemaInfo> implements Sou
         break;
       }
     }
+    if (!schemaReader.isSuccess()) {
+      throw new RuntimeException(schemaReader.getFailure());
+    }
 
     TsBlockBuilder tsBlockBuilder = new TsBlockBuilder(OUTPUT_DATA_TYPES);
     for (Map.Entry<PartialPath, Long> entry : countMap.entrySet()) {
