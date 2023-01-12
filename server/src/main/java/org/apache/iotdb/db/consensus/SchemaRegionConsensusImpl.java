@@ -20,6 +20,8 @@
 package org.apache.iotdb.db.consensus;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.IConsensus;
@@ -41,7 +43,7 @@ import java.util.concurrent.TimeUnit;
  */
 public class SchemaRegionConsensusImpl {
 
-  private static final IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
+  private static final CommonConfig conf = CommonDescriptor.getInstance().getConfig();
 
   private static IConsensus INSTANCE = null;
 

@@ -629,10 +629,6 @@ public class CommonConfig {
     userFolder = addHomeDir(userFolder, homeDir);
     roleFolder = addHomeDir(roleFolder, homeDir);
     procedureWalFolder = addHomeDir(procedureWalFolder, homeDir);
-    syncDir = addHomeDir(syncDir, homeDir);
-    for (int i = 0; i < walDirs.length; i++) {
-      walDirs[i] = addHomeDir(walDirs[i], homeDir);
-    }
   }
 
   private String addHomeDir(String dir, String homeDir) {
@@ -1509,22 +1505,6 @@ public class CommonConfig {
 
   public void setProcedureWalFolder(String procedureWalFolder) {
     this.procedureWalFolder = procedureWalFolder;
-  }
-
-  public String getSyncDir() {
-    return syncDir;
-  }
-
-  public void setSyncDir(String syncDir) {
-    this.syncDir = syncDir;
-  }
-
-  public String[] getWalDirs() {
-    return walDirs;
-  }
-
-  public void setWalDirs(String[] walDirs) {
-    this.walDirs = walDirs;
   }
 
   public FSType getSystemFileStorageFs() {

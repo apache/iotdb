@@ -653,15 +653,6 @@ public class CommonDescriptor {
         properties
           .getProperty("influxdb_rpc_port", Integer.toString(CONF.getInfluxDBRpcPort()))
           .trim()));
-
-
-    CONF.setSyncDir(properties.getProperty("dn_sync_dir", CONF.getSyncDir()).trim());
-
-    CONF.setWalDirs(
-        properties
-            .getProperty("dn_wal_dirs", String.join(",", CONF.getWalDirs()))
-            .trim()
-            .split(","));
   }
 
   private void initMemoryAllocate(Properties properties) {
@@ -1598,8 +1589,6 @@ public class CommonDescriptor {
 
   // Mqtt related
   private void loadMqttProps(Properties properties) {
-    CONF.setMqttDir(properties.getProperty("mqtt_root_dir", CONF.getMqttDir()));
-
     if (properties.getProperty(IoTDBConstant.ENABLE_MQTT) != null) {
       CONF.setEnableMqttService(
         Boolean.parseBoolean(properties.getProperty(IoTDBConstant.ENABLE_MQTT)));

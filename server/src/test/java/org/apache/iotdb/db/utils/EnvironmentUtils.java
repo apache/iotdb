@@ -250,7 +250,7 @@ public class EnvironmentUtils {
     // delete extPipe
     cleanDir(config.getExtPipeDir());
     // delete ext
-    cleanDir(config.getExtDir());
+    cleanDir(config.getDnExtDir());
     // delete mqtt dir
     cleanDir(config.getMqttDir());
     // delete wal
