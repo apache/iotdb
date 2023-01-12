@@ -363,8 +363,8 @@ public class ClusterSchemaManager {
                             // (createdStorageGroupNum * schemaReplicationFactor)
                             SCHEMA_REGION_PER_DATA_NODE
                                 * dataNodeNum
-                                / storageGroupNum
-                                * storageGroupSchema.getSchemaReplicationFactor()),
+                                / (storageGroupNum
+                                    * storageGroupSchema.getSchemaReplicationFactor())),
                     allocatedSchemaRegionGroupCount));
         LOGGER.info(
             "[AdjustRegionGroupNum] The maximum number of SchemaRegionGroups for Database: {} is adjusted to: {}",
