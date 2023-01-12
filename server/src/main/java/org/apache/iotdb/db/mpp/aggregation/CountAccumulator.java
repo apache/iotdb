@@ -38,7 +38,7 @@ public class CountAccumulator implements Accumulator {
   public int addInput(Column[] column, IWindow curWindow) {
     int curPositionCount = column[0].getPositionCount();
 
-    if (!column[2].mayHaveNull() && curWindow.contains(column[1])) {
+    if (!column[2].mayHaveNull() && curWindow.contains(column[0])) {
       countValue += curPositionCount;
     } else {
       for (int i = 0; i < curPositionCount; i++) {
@@ -49,7 +49,7 @@ public class CountAccumulator implements Accumulator {
         if (!curWindow.satisfy(column[0], i)) {
           return i;
         }
-        curWindow.mergeOnePoint();
+        curWindow.mergeOnePoint(column, i);
         if (!column[2].isNull(i)) {
           countValue++;
         }

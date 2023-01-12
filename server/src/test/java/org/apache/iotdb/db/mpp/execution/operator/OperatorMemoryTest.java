@@ -70,6 +70,8 @@ import org.apache.iotdb.db.mpp.execution.operator.source.ExchangeOperator;
 import org.apache.iotdb.db.mpp.execution.operator.source.LastCacheScanOperator;
 import org.apache.iotdb.db.mpp.execution.operator.source.SeriesAggregationScanOperator;
 import org.apache.iotdb.db.mpp.execution.operator.source.SeriesScanOperator;
+import org.apache.iotdb.db.mpp.execution.operator.window.TimeWindowParameter;
+import org.apache.iotdb.db.mpp.execution.operator.window.WindowParameter;
 import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
@@ -1012,16 +1014,13 @@ public class OperatorMemoryTest {
           TimeColumn.SIZE_IN_BYTES_PER_POSITION
               + 512 * Byte.BYTES
               + LongColumn.SIZE_IN_BYTES_PER_POSITION;
-      long expectedMaxRetainSize =
-          2L * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte();
+      long cachedRawDataSize = 2L * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte();
 
       assertEquals(
-          expectedMaxReturnSize + expectedMaxRetainSize,
+          expectedMaxReturnSize + cachedRawDataSize,
           seriesAggregationScanOperator1.calculateMaxPeekMemory());
       assertEquals(expectedMaxReturnSize, seriesAggregationScanOperator1.calculateMaxReturnSize());
-      assertEquals(
-          expectedMaxRetainSize,
-          seriesAggregationScanOperator1.calculateRetainedSizeAfterCallingNext());
+      assertEquals(0, seriesAggregationScanOperator1.calculateRetainedSizeAfterCallingNext());
 
       // case2: without group by, step is PARTIAL
       List<AggregationDescriptor> aggregationDescriptors2 =
@@ -1047,15 +1046,13 @@ public class OperatorMemoryTest {
           TimeColumn.SIZE_IN_BYTES_PER_POSITION
               + 512 * Byte.BYTES
               + 2 * LongColumn.SIZE_IN_BYTES_PER_POSITION;
-      expectedMaxRetainSize = 2L * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte();
+      cachedRawDataSize = 2L * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte();
 
       assertEquals(
-          expectedMaxReturnSize + expectedMaxRetainSize,
+          expectedMaxReturnSize + cachedRawDataSize,
           seriesAggregationScanOperator2.calculateMaxPeekMemory());
       assertEquals(expectedMaxReturnSize, seriesAggregationScanOperator2.calculateMaxReturnSize());
-      assertEquals(
-          expectedMaxRetainSize,
-          seriesAggregationScanOperator2.calculateRetainedSizeAfterCallingNext());
+      assertEquals(0, seriesAggregationScanOperator2.calculateRetainedSizeAfterCallingNext());
 
       long maxTsBlockLineNumber =
           TSFileDescriptor.getInstance().getConfig().getMaxTsBlockLineNumber();
@@ -1092,14 +1089,14 @@ public class OperatorMemoryTest {
               * (TimeColumn.SIZE_IN_BYTES_PER_POSITION
                   + 512 * Byte.BYTES
                   + LongColumn.SIZE_IN_BYTES_PER_POSITION);
-      expectedMaxRetainSize = 2L * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte();
+      cachedRawDataSize = 2L * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte();
 
       assertEquals(
-          expectedMaxReturnSize + expectedMaxRetainSize,
+          expectedMaxReturnSize + cachedRawDataSize,
           seriesAggregationScanOperator3.calculateMaxPeekMemory());
       assertEquals(expectedMaxReturnSize, seriesAggregationScanOperator3.calculateMaxReturnSize());
       assertEquals(
-          expectedMaxRetainSize,
+          cachedRawDataSize,
           seriesAggregationScanOperator3.calculateRetainedSizeAfterCallingNext());
 
       // case4: with group by, total window num > 1000
@@ -1130,14 +1127,14 @@ public class OperatorMemoryTest {
                   * (TimeColumn.SIZE_IN_BYTES_PER_POSITION
                       + 512 * Byte.BYTES
                       + LongColumn.SIZE_IN_BYTES_PER_POSITION));
-      expectedMaxRetainSize = 2L * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte();
+      cachedRawDataSize = 2L * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte();
 
       assertEquals(
-          expectedMaxReturnSize + expectedMaxRetainSize,
+          expectedMaxReturnSize + cachedRawDataSize,
           seriesAggregationScanOperator4.calculateMaxPeekMemory());
       assertEquals(expectedMaxReturnSize, seriesAggregationScanOperator4.calculateMaxReturnSize());
       assertEquals(
-          expectedMaxRetainSize,
+          cachedRawDataSize,
           seriesAggregationScanOperator4.calculateRetainedSizeAfterCallingNext());
 
       // case5: over DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES
@@ -1166,14 +1163,14 @@ public class OperatorMemoryTest {
               typeProvider);
 
       expectedMaxReturnSize = DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
-      expectedMaxRetainSize = 2L * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte();
+      cachedRawDataSize = 2L * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte();
 
       assertEquals(
-          expectedMaxReturnSize + expectedMaxRetainSize,
+          expectedMaxReturnSize + cachedRawDataSize,
           seriesAggregationScanOperator5.calculateMaxPeekMemory());
       assertEquals(expectedMaxReturnSize, seriesAggregationScanOperator5.calculateMaxReturnSize());
       assertEquals(
-          expectedMaxRetainSize,
+          cachedRawDataSize,
           seriesAggregationScanOperator5.calculateRetainedSizeAfterCallingNext());
     } catch (IllegalPathException e) {
       e.printStackTrace();
@@ -1267,6 +1264,8 @@ public class OperatorMemoryTest {
         AggregationUtil.calculateMaxAggregationResultSize(
             aggregationDescriptors, timeRangeIterator, typeProvider);
 
+    WindowParameter windowParameter = new TimeWindowParameter(false);
+
     RawDataAggregationOperator rawDataAggregationOperator =
         new RawDataAggregationOperator(
             Mockito.mock(OperatorContext.class),
@@ -1274,7 +1273,8 @@ public class OperatorMemoryTest {
             timeRangeIterator,
             child,
             true,
-            maxReturnSize);
+            maxReturnSize,
+            windowParameter);
 
     long expectedMaxReturnSize =
         100

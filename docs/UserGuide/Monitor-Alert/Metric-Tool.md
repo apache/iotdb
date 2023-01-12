@@ -593,6 +593,37 @@ data source for Apache IoTDB Dashboard.
     - `Cache Hit Rate`: cache hit rate
     - `Thrift Connection`: the number of Thrift connections established
     - `Thrift Active Thread`: The number of active Thrift connections established
+- `Query Engine`: query engine
+     - `The time consumed of query plan stages(avg\50%\75%\100%)`: The average\median\upper quartile\maximum value of the query plan stages time consumption
+     - `The time consumed of plan dispatch stages(avg\50%\75%\100%)`: The average\median\upper quartile\maximum value of query plan dispatch stages time consumption
+     - `The time consumed of query execution stages(avg\50%\75%\100%)`: the average\median\upper quartile\maximum value of the query execution stages time consumption
+     - `The time consumed of operator execution stages(avg\50%\75%\100%)`: the average\median\upper quartile\maximum value of operator exection time consumption
+     - `The time consumed of query aggregation(avg\50%\75%\100%)`: The average\median\upper quartile\maximum value of query aggregation time consumption
+     - `The time consumed of query scan(avg\50%\75%\100%)`: the average\median\upper quartile\maximum value of query file/memory time consumption
+     - `The usage of query resource(avg\50%\75%\100%)`: the average\median\upper quartile\maximum of the number of accesses to different resources
+     - `The time consumed of query data exchange(avg\50%\75%\100%)`: the average\median\upper quartile\maximum value of query data exchange time consumption
+     - `The count of data exchange(avg)`: the average number of query data exchange
+     - `The count of data exchange`: the distribution of the number of query data exchange (minimum, lower quartile, median, upper quartile, maximum)
+     - `The number of query queue`: the size of different query queues
+     - `The time consumed of query schedule time(avg\50%\75%\100%)`: the average\median\upper quartile\maximum value of query task scheduling time
+- `Query Interface`: Query files/time-consuming specific time-consuming conditions
+     - `The time consumed of load timesereis metadata(avg\50%\75%\100%)`: the average\median\upper quartile\maximum value of the time query spent loading timeseries metadata from different sources
+     - `The time consumed of read timeseries metadata(avg\50%\75%\100%)`: the average\median\upper quartile\maximum of time query spent reading time seriesmetadata from different sources value
+     - `The time consumed of timeseries metadata modification(avg\50%\75%\100%)`: the average\median\upper quartile\maximum value of the time query consumed to modify different types of timeseries metadata
+     - `The time consumed of load chunk metadata list(avg\50%\75%\100%)`: the average\median\upper quartile\maximum value of the time query spent loading different types of chunk metadata
+     - `The time consumed of chunk metadata modification(avg\50%\75%\100%)`: the average\median\upper quartile\maximum value of the time query consumed to modify different types of chunk metadata
+     - `The time consumed of chunk metadata filter(avg\50%\75%\100%)`: the average\median\upper quartile\maximum value of the time query spent to filter different types of chunk metadata
+     - `The time consumed of construct chunk reader(avg\50%\75%\100%)`: the average\median\upper quartile\maximum value of the time query spent on constructing different types of chunk readers
+     - `The time consumed of read chunk(avg\50%\75%\100%)`: the average\median\upper quartile\maximum value of the time query consumed to read different types of Chunk
+     - `The time consumed of init chunk reader(avg\50%\75%\100%)`: the average\median\upper quartile\maximum value of the time query consumed to initialize different types of chunk readers
+     - `The time consumed of build tsblock from page reader(avg\50%\75%\100%)`: the average\median\upper quartile\maximum value of the time query consumed to construct TsBlock from Page Reader
+     - `The time consumed of build tsblock from merge reader(avg\50%\75%\100%)`: the average\median\upper quartile\maximum value of the time query consumed to construct TsBlock from Merge Reader
+- `Query Data Exchange`: Query the specific time-consuming situation of data transmission
+     - `The time consumed of source handle get tsblock(avg\50%\75%\100%)`: the average\median\upper quartile\maximum value of the time query consumed to obtain TsBlock from different sources
+     - `The time consumed of source handle deserialize tsblock(avg\50%\75%\100%)`: the average\median\upper quartile\maximum of the time query consumed to deserialize TsBlock from different sources value
+     - `The time consumed of sink handle send tsblock(avg\50%\75%\100%)`: the average\median\upper quartile\maximum value of the time query spent sending TsBlock to different places
+     - `The time consumed of on acknowledge data block event task(avg\50%\75%\100%)`: the average\median\upper quartile\maximum value of time query consumed to acknowlege data block event from different places
+     - `The time consumed of get data block event task(avg\50%\75%\100%)`: query the average\median\upper quartile\maximum value of time query consumed to get data block from different places
 - `Engine`:
     - `Task Number`: the number of tasks in different states in the system
     - `The Time Consumed Of Tasking`: Time consumption of tasks in different states in the system

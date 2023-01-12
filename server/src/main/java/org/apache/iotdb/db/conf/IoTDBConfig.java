@@ -21,6 +21,7 @@ package org.apache.iotdb.db.conf;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.property.ClientPoolProperty.DefaultProperty;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.audit.AuditLogOperation;
 import org.apache.iotdb.db.audit.AuditLogStorage;
@@ -499,6 +500,9 @@ public class IoTDBConfig {
 
   /** Memory allocated for operators */
   private long allocateMemoryForDataExchange = allocateMemoryForRead * 200 / 1001;
+
+  /** Max bytes of each FragmentInstance for DataExchange */
+  private long maxBytesPerFragmentInstance = allocateMemoryForDataExchange / queryThreadCount;
 
   /** Memory allocated proportion for timeIndex */
   private long allocateMemoryForTimeIndex = allocateMemoryForRead * 200 / 1001;
@@ -1474,7 +1478,12 @@ public class IoTDBConfig {
   }
 
   public long getMaxBytesPerFragmentInstance() {
-    return allocateMemoryForDataExchange / queryThreadCount;
+    return maxBytesPerFragmentInstance;
+  }
+
+  @TestOnly
+  public void setMaxBytesPerFragmentInstance(long maxBytesPerFragmentInstance) {
+    this.maxBytesPerFragmentInstance = maxBytesPerFragmentInstance;
   }
 
   public int getWindowEvaluationThreadCount() {
