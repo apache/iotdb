@@ -38,6 +38,4 @@ fi
 
 nohup bash "$CONFIGNODE_START_PATH" >/dev/null 2>&1 &
 sleep 3
-nohup bash "$DATANODE_START_PATH" >/dev/null 2>&1 &
-
-echo "Execute start-standalone.sh finished, you can see more details in the logs of confignode and datanode"
+bash "$DATANODE_START_PATH"
