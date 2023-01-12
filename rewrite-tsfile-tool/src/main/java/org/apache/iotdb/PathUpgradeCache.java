@@ -21,6 +21,8 @@ package org.apache.iotdb;
 
 import org.apache.iotdb.db.qp.sql.OldIoTDBSqlLexer;
 import org.apache.iotdb.db.qp.sql.OldIoTDBSqlParser;
+import org.apache.iotdb.db.qp.sql.OldIoTDBSqlParser12Lexer;
+import org.apache.iotdb.db.qp.sql.OldIoTDBSqlParser12Parser;
 import org.apache.iotdb.db.qp.strategy.SQLParseError;
 
 import org.antlr.v4.runtime.CharStream;
@@ -62,6 +64,14 @@ public class PathUpgradeCache {
   }
 
   private String[] parsePath(String path) {
+    try {
+      return parse13Path(path);
+    } catch (Exception e) {
+      return parse12Path(path);
+    }
+  }
+
+  private String[] parse13Path(String path) {
 
     OldIoTDBSqlVisitor ioTDBSqlVisitor = new OldIoTDBSqlVisitor();
 
@@ -105,6 +115,36 @@ public class PathUpgradeCache {
       nodes[i] = containIllegalChar(nodes[i]) ? "`" + replacedNodeName + "`" : replacedNodeName;
     }
     return paths.putIfAbsent(path, nodes);
+  }
+
+  private String[] parse12Path(String path) {
+    OldIoTDBSqlVisitor12 ioTDBSqlVisitor = new OldIoTDBSqlVisitor12();
+    CharStream charStream1 = CharStreams.fromString(path);
+    OldIoTDBSqlParser12Lexer lexer1 = new OldIoTDBSqlParser12Lexer(charStream1);
+    lexer1.removeErrorListeners();
+    lexer1.addErrorListener(SQLParseError.INSTANCE);
+    CommonTokenStream tokens1 = new CommonTokenStream(lexer1);
+    OldIoTDBSqlParser12Parser parser1 = new OldIoTDBSqlParser12Parser(tokens1);
+    parser1.getInterpreter().setPredictionMode(PredictionMode.SLL);
+    parser1.removeErrorListeners();
+    parser1.addErrorListener(SQLParseError.INSTANCE);
+    ParseTree tree;
+    try {
+      tree = parser1.prefixPath(); // STAGE 1
+    } catch (Exception ex) {
+      CharStream charStream2 = CharStreams.fromString(path);
+      OldIoTDBSqlParser12Lexer lexer2 = new OldIoTDBSqlParser12Lexer(charStream2);
+      lexer2.removeErrorListeners();
+      lexer2.addErrorListener(SQLParseError.INSTANCE);
+      CommonTokenStream tokens2 = new CommonTokenStream(lexer2);
+      OldIoTDBSqlParser12Parser parser2 = new OldIoTDBSqlParser12Parser(tokens2);
+      parser2.getInterpreter().setPredictionMode(PredictionMode.LL);
+      parser2.removeErrorListeners();
+      parser2.addErrorListener(SQLParseError.INSTANCE);
+      tree = parser2.prefixPath(); // STAGE 2
+      // if we parse ok, it's LL not SLL
+    }
+    return ioTDBSqlVisitor.visit(tree);
   }
 
   private boolean containIllegalChar(String nodeName) {
