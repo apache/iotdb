@@ -140,6 +140,22 @@ public class DeviceViewIntoPathDescriptor {
     return sourceDeviceToTargetPathMap;
   }
 
+  public Map<String, Map<PartialPath, Map<String, TSDataType>>>
+      getSourceDeviceToTargetPathDataTypeMap() {
+    // sourceDevice -> targetPathToDataTypeMap (for each device)
+    //  targetPathToSourceMap: targetDevice -> { targetMeasurement -> dataType }
+    Map<String, Map<PartialPath, Map<String, TSDataType>>> sourceDeviceToTargetPathDataTypeMap =
+        new HashMap<>();
+    for (Map.Entry<String, List<Pair<String, PartialPath>>> sourceTargetEntry :
+        deviceToSourceTargetPathPairListMap.entrySet()) {
+      sourceDeviceToTargetPathDataTypeMap.put(
+          sourceTargetEntry.getKey(),
+          SelectIntoUtils.convertSourceTargetPathPairListToTargetPathDataTypeMap(
+              sourceTargetEntry.getValue()));
+    }
+    return sourceDeviceToTargetPathDataTypeMap;
+  }
+
   public Map<String, Boolean> getTargetDeviceToAlignedMap() {
     return targetDeviceToAlignedMap;
   }

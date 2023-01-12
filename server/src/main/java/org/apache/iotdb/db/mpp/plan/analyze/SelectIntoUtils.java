@@ -30,6 +30,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
@@ -139,5 +140,20 @@ public class SelectIntoUtils {
       sourceTypeBoundTargetPathPairList.add(new Pair<>(sourceColumn, targetPathWithSchema));
     }
     return sourceTypeBoundTargetPathPairList;
+  }
+
+  public static Map<PartialPath, Map<String, TSDataType>>
+      convertSourceTargetPathPairListToTargetPathDataTypeMap(
+          List<Pair<String, PartialPath>> sourceTargetPathPairList) {
+    // targetDevice -> { targetMeasurement -> dataType }
+    Map<PartialPath, Map<String, TSDataType>> targetPathToDataTypeMap = new HashMap<>();
+
+    for (Pair<String, PartialPath> sourceTargetPathPair : sourceTargetPathPairList) {
+      PartialPath targetPath = sourceTargetPathPair.right;
+      targetPathToDataTypeMap
+          .computeIfAbsent(targetPath.getDevicePath(), key -> new HashMap<>())
+          .put(targetPath.getMeasurement(), targetPath.getSeriesType());
+    }
+    return targetPathToDataTypeMap;
   }
 }

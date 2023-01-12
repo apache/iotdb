@@ -120,6 +120,11 @@ public class IntoPathDescriptor {
     return targetPathToSourceMap;
   }
 
+  public Map<PartialPath, Map<String, TSDataType>> getTargetPathToDataTypeMap() {
+    return SelectIntoUtils.convertSourceTargetPathPairListToTargetPathDataTypeMap(
+        sourceTargetPathPairList);
+  }
+
   public void serialize(ByteBuffer byteBuffer) {
     ReadWriteIOUtils.write(sourceTargetPathPairList.size(), byteBuffer);
     for (Pair<String, PartialPath> sourceTargetPathPair : sourceTargetPathPairList) {

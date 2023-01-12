@@ -34,6 +34,8 @@ import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
+import org.apache.iotdb.tsfile.read.common.type.Type;
+import org.apache.iotdb.tsfile.read.common.type.TypeFactory;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.BitMap;
 
@@ -51,6 +53,7 @@ import java.util.Objects;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 
 import static com.google.common.util.concurrent.Futures.successfulAsList;
 import static org.apache.iotdb.tsfile.read.common.block.TsBlockBuilderStatus.DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
@@ -78,16 +81,20 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
   private final long maxRetainedSize;
   private final long maxReturnSize;
 
+  protected final List<Type> typeConvertors;
+
   protected AbstractIntoOperator(
       OperatorContext operatorContext,
       Operator child,
-      List<InsertTabletStatementGenerator> insertTabletStatementGenerators,
+      List<TSDataType> inputColumnTypes,
       Map<String, InputLocation> sourceColumnToInputLocationMap,
       ExecutorService intoOperationExecutor,
       long maxStatementSize) {
     this.operatorContext = operatorContext;
     this.child = child;
-    this.insertTabletStatementGenerators = insertTabletStatementGenerators;
+    this.typeConvertors =
+        inputColumnTypes.stream().map(TypeFactory::getType).collect(Collectors.toList());
+
     this.sourceColumnToInputLocationMap = sourceColumnToInputLocationMap;
     this.writeOperationExecutor = intoOperationExecutor;
 
@@ -202,7 +209,8 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
   protected static List<InsertTabletStatementGenerator> constructInsertTabletStatementGenerators(
       Map<PartialPath, Map<String, InputLocation>> targetPathToSourceInputLocationMap,
       Map<PartialPath, Map<String, TSDataType>> targetPathToDataTypeMap,
-      Map<String, Boolean> targetDeviceToAlignedMap) {
+      Map<String, Boolean> targetDeviceToAlignedMap,
+      List<Type> sourceTypeConvertors) {
     List<InsertTabletStatementGenerator> insertTabletStatementGenerators =
         new ArrayList<>(targetPathToSourceInputLocationMap.size());
     for (Map.Entry<PartialPath, Map<String, InputLocation>> entry :
@@ -213,7 +221,8 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
               targetDevice,
               entry.getValue(),
               targetPathToDataTypeMap.get(targetDevice),
-              targetDeviceToAlignedMap.get(targetDevice.toString()));
+              targetDeviceToAlignedMap.get(targetDevice.toString()),
+              sourceTypeConvertors);
       insertTabletStatementGenerators.add(generator);
     }
     return insertTabletStatementGenerators;
@@ -333,11 +342,14 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
 
     private final Map<String, AtomicInteger> writtenCounter;
 
+    private final List<Type> sourceTypeConvertors;
+
     public InsertTabletStatementGenerator(
         PartialPath devicePath,
         Map<String, InputLocation> measurementToInputLocationMap,
         Map<String, TSDataType> measurementToDataTypeMap,
-        Boolean isAligned) {
+        Boolean isAligned,
+        List<Type> sourceTypeConvertors) {
       this.devicePath = devicePath;
       this.isAligned = isAligned;
       this.measurements = measurementToInputLocationMap.keySet().toArray(new String[0]);
@@ -347,6 +359,7 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
       for (String measurement : measurements) {
         writtenCounter.put(measurement, new AtomicInteger(0));
       }
+      this.sourceTypeConvertors = sourceTypeConvertors;
       this.reset();
     }
 
@@ -394,6 +407,7 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
 
         for (int i = 0; i < measurements.length; ++i) {
           Column valueColumn = tsBlock.getValueColumns()[inputLocations[i].getValueColumnIndex()];
+          Type sourceTypeConvertor = sourceTypeConvertors.get(i);
 
           // if the value is NULL
           if (valueColumn.isNull(lastReadIndex)) {
@@ -405,22 +419,28 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
           writtenCounter.get(measurements[i]).getAndIncrement();
           switch (valueColumn.getDataType()) {
             case INT32:
-              ((int[]) columns[i])[rowCount] = valueColumn.getInt(lastReadIndex);
+              ((int[]) columns[i])[rowCount] =
+                  sourceTypeConvertor.getInt(valueColumn, lastReadIndex);
               break;
             case INT64:
-              ((long[]) columns[i])[rowCount] = valueColumn.getLong(lastReadIndex);
+              ((long[]) columns[i])[rowCount] =
+                  sourceTypeConvertor.getLong(valueColumn, lastReadIndex);
               break;
             case FLOAT:
-              ((float[]) columns[i])[rowCount] = valueColumn.getFloat(lastReadIndex);
+              ((float[]) columns[i])[rowCount] =
+                  sourceTypeConvertor.getFloat(valueColumn, lastReadIndex);
               break;
             case DOUBLE:
-              ((double[]) columns[i])[rowCount] = valueColumn.getDouble(lastReadIndex);
+              ((double[]) columns[i])[rowCount] =
+                  sourceTypeConvertor.getDouble(valueColumn, lastReadIndex);
               break;
             case BOOLEAN:
-              ((boolean[]) columns[i])[rowCount] = valueColumn.getBoolean(lastReadIndex);
+              ((boolean[]) columns[i])[rowCount] =
+                  sourceTypeConvertor.getBoolean(valueColumn, lastReadIndex);
               break;
             case TEXT:
-              ((Binary[]) columns[i])[rowCount] = valueColumn.getBinary(lastReadIndex);
+              ((Binary[]) columns[i])[rowCount] =
+                  sourceTypeConvertor.getBinary(valueColumn, lastReadIndex);
               break;
             default:
               throw new UnSupportedDataTypeException(
