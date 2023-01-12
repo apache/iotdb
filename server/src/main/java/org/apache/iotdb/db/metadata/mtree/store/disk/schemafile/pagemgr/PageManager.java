@@ -130,7 +130,7 @@ public abstract class PageManager implements IPageManager {
     reader.close();
 
     // complete log file
-    if (res.size() != 0) {
+    if (!res.isEmpty()) {
       FileOutputStream outputStream = new FileOutputStream(logPath, true);
       outputStream.write(new byte[] {SchemaFileConfig.SF_COMMIT_MARK});
       long length = outputStream.getChannel().size();
