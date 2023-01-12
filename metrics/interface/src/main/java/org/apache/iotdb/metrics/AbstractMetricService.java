@@ -47,6 +47,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.ServiceLoader;
@@ -67,7 +68,7 @@ public abstract class AbstractMetricService {
   protected IoTDBInternalReporter internalReporter = new IoTDBInternalMemoryReporter();
 
   /** The list of metric sets. */
-  protected List<IMetricSet> metricSets = new ArrayList<>();
+  protected List<IMetricSet> metricSets = Collections.synchronizedList(new ArrayList<>());
 
   public AbstractMetricService() {
     // empty constructor
