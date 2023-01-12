@@ -62,7 +62,7 @@ public abstract class AbstractCrossCompactionWriter extends AbstractCompactionWr
 
   protected List<TsFileResource> targetResources;
 
-  public AbstractCrossCompactionWriter(
+  protected AbstractCrossCompactionWriter(
       List<TsFileResource> targetResources, List<TsFileResource> seqFileResources)
       throws IOException {
     currentDeviceEndTime = new long[seqFileResources.size()];

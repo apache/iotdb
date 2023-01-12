@@ -57,7 +57,7 @@ public class ChunkCache {
 
   private ChunkCache() {
     if (CACHE_ENABLE) {
-      logger.info("ChunkCache size = " + MEMORY_THRESHOLD_IN_CHUNK_CACHE);
+      logger.info("ChunkCache size = {}", MEMORY_THRESHOLD_IN_CHUNK_CACHE);
     }
     lruCache =
         Caffeine.newBuilder()
@@ -114,7 +114,7 @@ public class ChunkCache {
     Chunk chunk = lruCache.get(chunkMetaData);
 
     if (debug) {
-      DEBUG_LOGGER.info("get chunk from cache whose meta data is: " + chunkMetaData);
+      DEBUG_LOGGER.info("get chunk from cache whose meta data is: {}", chunkMetaData);
     }
 
     return new Chunk(
