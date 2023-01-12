@@ -781,7 +781,6 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
   public void rollbackSchemaBlackList(PathPatternTree patternTree) throws MetadataException {
     for (PartialPath pathPattern : patternTree.getAllPathPatterns()) {
       List<PartialPath> paths = mtree.rollbackSchemaBlackList(pathPattern);
-      ;
       for (PartialPath path : paths) {
         try {
           writeToMLog(SchemaRegionWritePlanFactory.getRollbackPreDeleteTimeSeriesPlan(path));

@@ -28,6 +28,9 @@ import org.apache.iotdb.commons.path.fa.match.IStateMatchInfo;
 import org.apache.iotdb.commons.path.fa.match.StateMultiMatchInfo;
 import org.apache.iotdb.commons.path.fa.match.StateSingleMatchInfo;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
@@ -64,6 +67,7 @@ import java.util.NoSuchElementException;
  */
 public abstract class AbstractTreeVisitor<N extends ITreeNode, R>
     implements Iterator<R>, AutoCloseable {
+  private static final Logger logger = LoggerFactory.getLogger(AbstractTreeVisitor.class);
 
   // command parameters
   protected N root;
@@ -162,6 +166,7 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R>
       try {
         getNext();
       } catch (Throwable e) {
+        logger.warn(e.getMessage(), e);
         setFailure(e);
       }
     }
@@ -437,8 +442,7 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R>
         try {
           getNext();
         } catch (Throwable e) {
-          setFailure(e);
-          return false;
+          throw new RuntimeException(e.getMessage(), e);
         }
       }
       return nextMatchedChild != null;
