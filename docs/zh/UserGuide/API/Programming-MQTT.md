@@ -115,7 +115,7 @@ connection.disconnect();
             <version>${project.version}</version>
         </dependency>
 ```
-* 创建一个实现类，实现接口 `org.apache.iotdb.db.mqtt.PayloadFormatter.java`
+* 创建一个实现类，实现接口 `org.apache.iotdb.db.protocol.mqtt.PayloadFormatter`
 
 ```java
 package org.apache.iotdb.mqtt.server;
@@ -161,7 +161,7 @@ public class CustomizedJsonPayloadFormatter implements PayloadFormatter {
     }
 }
 ```
-* 修改项目中的 `src/main/resources/META-INF/services/org.apache.iotdb.db.mqtt.PayloadFormatter` 文件:
+* 修改项目中的 `src/main/resources/META-INF/services/org.apache.iotdb.db.protocol.mqtt.PayloadFormatter` 文件:
   将示例中的文件内容清除，并将刚才的实现类的全名（包名.类名）写入文件中。注意，这个文件中只有一行。
   在本例中，文件内容为: `org.apache.iotdb.mqtt.server.CustomizedJsonPayloadFormatter`
 * 编译项目生成一个 jar 包: `mvn package -DskipTests`
