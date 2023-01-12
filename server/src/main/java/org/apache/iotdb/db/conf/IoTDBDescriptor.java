@@ -1290,6 +1290,10 @@ public class IoTDBDescriptor {
 
     if (properties.getProperty(IoTDBConstant.MQTT_HOST_NAME) != null) {
       conf.setMqttHost(properties.getProperty(IoTDBConstant.MQTT_HOST_NAME));
+    } else {
+      logger.info("MQTT host is not configured, will use dn_rpc_address.");
+      conf.setMqttHost(
+          properties.getProperty(IoTDBConstant.DN_RPC_ADDRESS, conf.getRpcAddress().trim()));
     }
 
     if (properties.getProperty(IoTDBConstant.MQTT_PORT_NAME) != null) {
