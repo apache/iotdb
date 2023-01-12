@@ -380,10 +380,9 @@ public class ReorderingEncodeTest {
         quickSort(ts_block,0,0,block_size-1);
 //        System.out.println(ts_block);
         int i_star = i_star_ready.get(1);
-        int j_star = 0;
-        int j_star_bit_width = 33;
+        int j_star;
         count_raw ++;
-        i_star =getIStar(ts_block,block_size,raw_length,0);
+//        i_star =getIStar(ts_block,block_size,raw_length,0);
         j_star =getJStar(ts_block,i_star,block_size,raw_length,0);
 
         while(j_star!=0){
@@ -424,7 +423,7 @@ public class ReorderingEncodeTest {
         int j_star = 0;
         ArrayList<Integer> j_star_list =new ArrayList<>();
         count_reorder ++;
-        i_star =getIStar(ts_block,block_size,raw_length,0);
+//        i_star =getIStar(ts_block,block_size,raw_length,0);
         j_star =getJStar(ts_block,i_star,block_size,raw_length,0);
         while(j_star != 0){
           ArrayList<Integer> tmp_tv = ts_block_reorder.get(i_star);
