@@ -19,11 +19,9 @@
 package org.apache.iotdb.db.mpp.execution.operator.schema;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
-import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.metadata.query.info.ISchemaInfo;
 import org.apache.iotdb.db.metadata.query.info.ITimeSeriesSchemaInfo;
-import org.apache.iotdb.db.metadata.query.reader.ISchemaReader;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
@@ -37,6 +35,7 @@ import org.apache.iotdb.db.mpp.execution.operator.schema.source.ISchemaSource;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 
+import org.junit.Assert;
 import org.junit.Test;
 import org.mockito.Mockito;
 
@@ -46,6 +45,7 @@ import java.util.List;
 import java.util.concurrent.ExecutorService;
 
 import static org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext.createFragmentInstanceContext;
+import static org.apache.iotdb.db.mpp.execution.operator.schema.SchemaOperatorTestUtil.EXCEPTION_MESSAGE;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
@@ -74,29 +74,14 @@ public class SchemaCountOperatorTest {
               1, planNodeId, SchemaCountOperator.class.getSimpleName());
       operatorContext.setDriverContext(
           new SchemaDriverContext(fragmentInstanceContext, schemaRegion));
-      ISchemaSource<?> schemaSource = Mockito.mock(ISchemaSource.class);
+      ISchemaSource<ISchemaInfo> schemaSource = Mockito.mock(ISchemaSource.class);
 
       List<ISchemaInfo> schemaInfoList = new ArrayList<>(10);
       for (int i = 0; i < 10; i++) {
         schemaInfoList.add(Mockito.mock(ISchemaInfo.class));
       }
-      Iterator<ISchemaInfo> iterator = schemaInfoList.iterator();
-      Mockito.when(schemaSource.getSchemaReader(schemaRegion))
-          .thenReturn(
-              new ISchemaReader() {
-                @Override
-                public void close() throws Exception {}
-
-                @Override
-                public boolean hasNext() {
-                  return iterator.hasNext();
-                }
-
-                @Override
-                public ISchemaInfo next() {
-                  return iterator.next();
-                }
-              });
+      SchemaOperatorTestUtil.mockGetSchemaReader(
+          schemaSource, schemaInfoList.iterator(), schemaRegion, true);
 
       SchemaCountOperator<?> schemaCountOperator =
           new SchemaCountOperator<>(
@@ -107,7 +92,22 @@ public class SchemaCountOperatorTest {
         tsBlock = schemaCountOperator.next();
       }
       assertNotNull(tsBlock);
-      assertEquals(tsBlock.getColumn(0).getLong(0), 10);
+      assertEquals(10, tsBlock.getColumn(0).getLong(0));
+
+      // Assert failure if exception occurs
+      SchemaOperatorTestUtil.mockGetSchemaReader(
+          schemaSource, schemaInfoList.iterator(), schemaRegion, false);
+      try {
+        SchemaCountOperator<?> schemaCountOperatorFailure =
+            new SchemaCountOperator<>(
+                planNodeId, driverContext.getOperatorContexts().get(0), schemaSource);
+        while (schemaCountOperatorFailure.hasNext()) {
+          schemaCountOperatorFailure.next();
+        }
+        Assert.fail();
+      } catch (RuntimeException e) {
+        Assert.assertTrue(e.getMessage().contains(EXCEPTION_MESSAGE));
+      }
     } finally {
       instanceNotificationExecutor.shutdown();
     }
@@ -139,8 +139,8 @@ public class SchemaCountOperatorTest {
               planNodeId,
               driverContext.getOperatorContexts().get(0),
               2,
-              mockSchemaSource(schemaRegion));
-      TsBlock tsBlock = null;
+              mockSchemaSource(schemaRegion, true));
+      TsBlock tsBlock;
       List<TsBlock> tsBlockList = collectResult(timeSeriesCountOperator);
       assertEquals(1, tsBlockList.size());
       tsBlock = tsBlockList.get(0);
@@ -156,12 +156,26 @@ public class SchemaCountOperatorTest {
               planNodeId,
               driverContext.getOperatorContexts().get(0),
               1,
-              mockSchemaSource(schemaRegion));
+              mockSchemaSource(schemaRegion, true));
       tsBlockList = collectResult(timeSeriesCountOperator2);
       assertEquals(1, tsBlockList.size());
       tsBlock = tsBlockList.get(0);
 
       assertEquals(100, tsBlock.getColumn(1).getLong(0));
+
+      // Assert failure if exception occurs
+      try {
+        CountGroupByLevelScanOperator<ITimeSeriesSchemaInfo> timeSeriesCountOperatorFailure =
+            new CountGroupByLevelScanOperator<>(
+                planNodeId,
+                driverContext.getOperatorContexts().get(0),
+                1,
+                mockSchemaSource(schemaRegion, false));
+        collectResult(timeSeriesCountOperatorFailure);
+        Assert.fail();
+      } catch (RuntimeException e) {
+        Assert.assertTrue(e.getMessage().contains(EXCEPTION_MESSAGE));
+      }
     } catch (Exception e) {
       e.printStackTrace();
       fail();
@@ -182,15 +196,9 @@ public class SchemaCountOperatorTest {
     return tsBlocks;
   }
 
-  private ISchemaSource<ITimeSeriesSchemaInfo> mockSchemaSource(ISchemaRegion schemaRegion)
-      throws Exception {
+  private ISchemaSource<ITimeSeriesSchemaInfo> mockSchemaSource(
+      ISchemaRegion schemaRegion, boolean success) throws Exception {
     ISchemaSource<ITimeSeriesSchemaInfo> schemaSource = Mockito.mock(ISchemaSource.class);
-    ISchemaReader<ITimeSeriesSchemaInfo> schemaReader = mockSchemaReader();
-    Mockito.when(schemaSource.getSchemaReader(schemaRegion)).thenReturn(schemaReader);
-    return schemaSource;
-  }
-
-  private ISchemaReader<ITimeSeriesSchemaInfo> mockSchemaReader() throws IllegalPathException {
     List<ITimeSeriesSchemaInfo> timeSeriesSchemaInfoList = new ArrayList<>(1000);
     for (int i = 0; i < 10; i++) {
       for (int j = 0; j < 10; j++) {
@@ -201,19 +209,7 @@ public class SchemaCountOperatorTest {
       }
     }
     Iterator<ITimeSeriesSchemaInfo> iterator = timeSeriesSchemaInfoList.iterator();
-    return new ISchemaReader<ITimeSeriesSchemaInfo>() {
-      @Override
-      public void close() throws Exception {}
-
-      @Override
-      public boolean hasNext() {
-        return iterator.hasNext();
-      }
-
-      @Override
-      public ITimeSeriesSchemaInfo next() {
-        return iterator.next();
-      }
-    };
+    SchemaOperatorTestUtil.mockGetSchemaReader(schemaSource, iterator, schemaRegion, success);
+    return schemaSource;
   }
 }

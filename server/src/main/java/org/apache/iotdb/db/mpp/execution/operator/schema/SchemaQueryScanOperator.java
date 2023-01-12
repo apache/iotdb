@@ -139,6 +139,9 @@ public class SchemaQueryScanOperator<T extends ISchemaInfo> implements SourceOpe
         break;
       }
     }
+    if (!schemaReader.isSuccess()) {
+      throw new RuntimeException(schemaReader.getFailure());
+    }
     return tsBlockBuilder.build();
   }
 
