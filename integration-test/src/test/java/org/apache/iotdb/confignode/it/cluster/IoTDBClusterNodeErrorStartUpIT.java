@@ -55,8 +55,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.Arrays;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({ClusterIT.class})
@@ -286,29 +285,12 @@ public class IoTDBClusterNodeErrorStartUpIT {
       // Shutdown and check
       EnvFactory.getEnv().shutdownConfigNode(1);
       EnvFactory.getEnv().shutdownDataNode(0);
-      int retryTimes;
-      for (retryTimes = 0; retryTimes < maxRetryTimes; retryTimes++) {
-        AtomicInteger unknownCnt = new AtomicInteger(0);
-        showClusterResp = client.showCluster();
-        showClusterResp
-            .getNodeStatus()
-            .forEach(
-                (nodeId, status) -> {
-                  if (NodeStatus.Unknown.equals(NodeStatus.parse(status))) {
-                    unknownCnt.getAndIncrement();
-                  }
-                });
-
-        if (unknownCnt.get() == testNodeNum - 2) {
-          break;
-        }
-        TimeUnit.SECONDS.sleep(1);
-      }
-      logger.info(showClusterStatus(showClusterResp));
-      if (retryTimes >= maxRetryTimes) {
-        Assert.fail(
-            "The running nodes are still insufficient after retrying " + maxRetryTimes + " times");
-      }
+      EnvFactory.getEnv()
+          .ensureNodeStatus(
+              Arrays.asList(
+                  EnvFactory.getEnv().getConfigNodeWrapper(1),
+                  EnvFactory.getEnv().getDataNodeWrapper(0)),
+              Arrays.asList(NodeStatus.Unknown, NodeStatus.Unknown));
 
       /* Restart and updatePeer */
       // TODO: @Itami-sho, enable this test and delete it
@@ -338,28 +320,12 @@ public class IoTDBClusterNodeErrorStartUpIT {
       // Restart and check
       EnvFactory.getEnv().startConfigNode(1);
       EnvFactory.getEnv().startDataNode(0);
-      for (retryTimes = 0; retryTimes < maxRetryTimes; retryTimes++) {
-        AtomicInteger runningCnt = new AtomicInteger(0);
-        showClusterResp = client.showCluster();
-        showClusterResp
-            .getNodeStatus()
-            .forEach(
-                (nodeId, status) -> {
-                  if (NodeStatus.Running.equals(NodeStatus.parse(status))) {
-                    runningCnt.getAndIncrement();
-                  }
-                });
-
-        if (runningCnt.get() == testNodeNum) {
-          break;
-        }
-        TimeUnit.SECONDS.sleep(1);
-      }
-      logger.info(showClusterStatus(showClusterResp));
-      if (retryTimes >= maxRetryTimes) {
-        Assert.fail(
-            "The running nodes are still insufficient after retrying " + maxRetryTimes + " times");
-      }
+      EnvFactory.getEnv()
+          .ensureNodeStatus(
+              Arrays.asList(
+                  EnvFactory.getEnv().getConfigNodeWrapper(1),
+                  EnvFactory.getEnv().getDataNodeWrapper(0)),
+              Arrays.asList(NodeStatus.Running, NodeStatus.Running));
     }
   }
 
