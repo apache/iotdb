@@ -114,6 +114,30 @@ public class CompactionTaskSummary {
     this.processPointNum = processPointNum;
   }
 
+  public int getProcessChunkNum() {
+    return processChunkNum;
+  }
+
+  public int getDirectlyFlushChunkNum() {
+    return directlyFlushChunkNum;
+  }
+
+  public int getDeserializeChunkCount() {
+    return deserializeChunkCount;
+  }
+
+  public int getDeserializePageCount() {
+    return deserializePageCount;
+  }
+
+  public int getMergedChunkNum() {
+    return mergedChunkNum;
+  }
+
+  public long getProcessPointNum() {
+    return processPointNum;
+  }
+
   enum Status {
     NOT_STARTED,
     STARTED,
