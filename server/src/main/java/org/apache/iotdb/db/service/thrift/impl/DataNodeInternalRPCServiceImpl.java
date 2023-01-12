@@ -346,7 +346,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   @Override
   public TLoadResp sendTsFilePieceNode(TTsFilePieceReq req) throws TException {
-    LOGGER.info(String.format("Receive load node from uuid %s.", req.uuid));
+    LOGGER.info("Receive load node from uuid {}.", req.uuid);
 
     ConsensusGroupId groupId =
         ConsensusGroupId.Factory.createFromTConsensusGroupId(req.consensusGroupId);

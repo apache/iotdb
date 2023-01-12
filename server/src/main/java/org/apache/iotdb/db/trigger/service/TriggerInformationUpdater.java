@@ -53,7 +53,7 @@ public class TriggerInformationUpdater {
 
   private Future<?> updateFuture;
 
-  private static final long UPDATE_INTERVAL = 1000 * 60;
+  private static final long UPDATE_INTERVAL = 1000L * 60;
 
   public void startTriggerInformationUpdater() {
     if (updateFuture == null) {
