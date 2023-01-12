@@ -115,6 +115,7 @@ public class ReorderingEncodeRegressionTest {
     int deviation_max = Integer.MIN_VALUE;
     int max_bit_width_deviation=0;
     int r0 = 0;
+    int d0 = 0;
 
     // split timestamp into intervals and deviations
 
@@ -143,15 +144,14 @@ public class ReorderingEncodeRegressionTest {
 
     // address timestamp0
     r0 = ts_block.get(0).get(0) /td;
-    int deviation0 = ts_block.get(0).get(0) %td;
-    if(deviation0 >= (td/2)){
-      deviation0 -= td;
+    d0 = ts_block.get(0).get(0) %td;
+    if(d0 >= (td/2)){
+      d0 -= td;
       r0 ++;
     }
-    deviation0 = zigzag(deviation0);
-    deviation_list.add(deviation0);
-    if(deviation0 > deviation_max){
-      deviation_max = deviation0;
+    d0 = zigzag(d0);
+    if(d0 > deviation_max){
+      deviation_max = d0;
     }
 
     int value0 = ts_block.get(0).get(1);
@@ -171,6 +171,7 @@ public class ReorderingEncodeRegressionTest {
     max_bit_width_deviation = getBitWith(deviation_max);
     result.add(max_bit_width_deviation);
     result.add(r0);
+    result.add(d0);
   }
   public static ArrayList<ArrayList<Integer>> getEncodeBitsRegression(ArrayList<ArrayList<Integer>> ts_block, int block_size,
                                                                  ArrayList<Integer> result, ArrayList<Integer> i_star,
@@ -344,13 +345,15 @@ public class ReorderingEncodeRegressionTest {
   public static ArrayList<Byte> encode2Bytes(ArrayList<ArrayList<Integer>> ts_block,ArrayList<Integer> deviation_list,
                                              ArrayList<Integer> raw_length,ArrayList<Double> theta){
     ArrayList<Byte> encoded_result = new ArrayList<>();
-    // encode block size (Integer)
-    byte[] block_size_byte = int2Bytes(ts_block.size());
-    for (byte b : block_size_byte) encoded_result.add(b);
+//    // encode block size (Integer)
+//    byte[] block_size_byte = int2Bytes(ts_block.size());
+//    for (byte b : block_size_byte) encoded_result.add(b);
 
     // r0 of a block (Integer)
-    byte[] r0_byte = int2Bytes(raw_length.get(4));
+    byte[] r0_byte = int2Bytes(raw_length.get(6));
     for (byte b : r0_byte) encoded_result.add(b);
+    byte[] d0_byte = int2Bytes(raw_length.get(7));
+    for (byte b : d0_byte) encoded_result.add(b);
 
     // encode interval0 and value0
     byte[] interval0_byte = int2Bytes(ts_block.get(0).get(0));
@@ -383,9 +386,9 @@ public class ReorderingEncodeRegressionTest {
 
 
     // encode deviation
-    byte[] max_bit_width_deviation_byte = int2Bytes(raw_length.get(3));
+    byte[] max_bit_width_deviation_byte = int2Bytes(raw_length.get(5));
     for (byte b: max_bit_width_deviation_byte) encoded_result.add(b);
-    byte[] deviation_list_bytes = bitPacking(deviation_list,raw_length.get(3));
+    byte[] deviation_list_bytes = bitPacking(deviation_list,raw_length.get(5));
     for (byte b: deviation_list_bytes) encoded_result.add(b);
 
 
@@ -396,6 +399,10 @@ public class ReorderingEncodeRegressionTest {
     int length_all = data.size();
     int block_num = length_all/block_size;
     ArrayList<Byte> encoded_result=new ArrayList<Byte>();
+    // encode block size (Integer)
+    byte[] block_size_byte = int2Bytes(block_size);
+    for (byte b : block_size_byte) encoded_result.add(b);
+
     int count_raw = 0;
     int count_reorder = 0;
 //    for(int i=0;i<1;i++){
@@ -466,6 +473,7 @@ public class ReorderingEncodeRegressionTest {
                 i_star_ready_reorder,theta);
         raw_length.add(result.get(0)); // max_bit_width_deviation
         raw_length.add(result.get(1)); // r0
+        raw_length.add(result.get(2)); // d0
         ArrayList<Byte> cur_encoded_result = encode2Bytes(ts_block_delta_reorder,deviation_list,raw_length,theta);
         encoded_result.addAll(cur_encoded_result);
 
@@ -506,6 +514,7 @@ public class ReorderingEncodeRegressionTest {
                 i_star_ready_reorder,theta_reorder);
         reorder_length.add(result.get(0)); // max_bit_width_deviation
         reorder_length.add(result.get(1)); // r0
+        reorder_length.add(result.get(2)); // d0
         ArrayList<Byte> cur_encoded_result = encode2Bytes(ts_block_delta_reorder,deviation_list,reorder_length,theta_reorder);
         encoded_result.addAll(cur_encoded_result);
       }
