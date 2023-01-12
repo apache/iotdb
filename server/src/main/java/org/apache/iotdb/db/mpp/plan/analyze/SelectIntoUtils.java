@@ -114,7 +114,8 @@ public class SelectIntoUtils {
   public static List<Pair<String, PartialPath>> bindTypeForSourceTargetPathPairList(
       List<Pair<String, PartialPath>> sourceTargetPathPairList,
       Map<String, TSDataType> sourceToDataTypeMap,
-      ISchemaTree targetSchemaTree) {
+      ISchemaTree targetSchemaTree,
+      Map<String, Boolean> targetDeviceToAlignedMap) {
     List<Pair<String, PartialPath>> sourceTypeBoundTargetPathPairList = new ArrayList<>();
     for (Pair<String, PartialPath> sourceTargetPathPair : sourceTargetPathPairList) {
       String sourceColumn = sourceTargetPathPair.left;
@@ -134,6 +135,14 @@ public class SelectIntoUtils {
               String.format(
                   "The data type of target path (%s[%s]) is not compatible with the data type of source column (%s[%s]).",
                   targetPath, actualTargetPath.getSeriesType(), sourceColumn, sourceColumnType));
+        }
+        boolean actualTargetPathAlignment = actualTargetPath.isUnderAlignedEntity();
+        String targetDevice = targetPath.getDevice();
+        if (targetDeviceToAlignedMap.get(targetDevice) != actualTargetPathAlignment) {
+          throw new SemanticException(
+              String.format(
+                  "The specified alignment property of the target device (%s) conflicts with the actual (isAligned = %s).",
+                  targetDevice, actualTargetPathAlignment));
         }
         targetPathWithSchema = actualTargetPath;
       }

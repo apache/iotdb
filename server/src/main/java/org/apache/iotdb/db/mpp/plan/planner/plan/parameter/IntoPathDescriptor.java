@@ -93,7 +93,10 @@ public class IntoPathDescriptor {
   public void bindType(ISchemaTree targetSchemaTree) {
     this.sourceTargetPathPairList =
         SelectIntoUtils.bindTypeForSourceTargetPathPairList(
-            sourceTargetPathPairList, sourceToDataTypeMap, targetSchemaTree);
+            sourceTargetPathPairList,
+            sourceToDataTypeMap,
+            targetSchemaTree,
+            targetDeviceToAlignedMap);
   }
 
   public List<Pair<String, PartialPath>> getSourceTargetPathPairList() {

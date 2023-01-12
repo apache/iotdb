@@ -107,7 +107,10 @@ public class DeviceViewIntoPathDescriptor {
       deviceToSourceTypeBoundTargetPathPairListMap.put(
           sourceTargetEntry.getKey(),
           SelectIntoUtils.bindTypeForSourceTargetPathPairList(
-              sourceTargetEntry.getValue(), sourceToDataTypeMap, targetSchemaTree));
+              sourceTargetEntry.getValue(),
+              sourceToDataTypeMap,
+              targetSchemaTree,
+              targetDeviceToAlignedMap));
     }
     this.deviceToSourceTargetPathPairListMap = deviceToSourceTypeBoundTargetPathPairListMap;
   }
