@@ -3046,7 +3046,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     if (ctx.timeSlot != null) {
       getRegionIdStatement.setTimeSlotId(
           new TTimePartitionSlot(
-              Long.parseLong(ctx.timeSlot.getText()) * CONFIG.getTimePartitionInterval()));
+              Long.parseLong(ctx.timeSlot.getText()) * CONFIG.getDnTimePartitionInterval()));
     } else if (ctx.timeStamp != null) {
       getRegionIdStatement.setTimeStamp(Long.parseLong(ctx.timeStamp.getText()));
     }

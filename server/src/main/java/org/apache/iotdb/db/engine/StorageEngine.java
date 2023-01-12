@@ -146,7 +146,7 @@ public class StorageEngine implements IService {
   }
 
   private static void initTimePartition() {
-    timePartitionInterval = IoTDBDescriptor.getInstance().getConfig().getTimePartitionInterval();
+    timePartitionInterval = IoTDBDescriptor.getInstance().getConfig().getDnTimePartitionInterval();
   }
 
   public static long getTimePartitionInterval() {

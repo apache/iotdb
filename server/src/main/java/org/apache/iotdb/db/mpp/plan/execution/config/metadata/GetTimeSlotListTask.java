@@ -61,7 +61,7 @@ public class GetTimeSlotListTask implements IConfigTask {
         .getColumnBuilder(0)
         .writeLong(
             timePartitionSlot.getStartTime()
-                / IoTDBDescriptor.getInstance().getConfig().getTimePartitionInterval());
+                / IoTDBDescriptor.getInstance().getConfig().getDnTimePartitionInterval());
     builder.declarePosition();
   }
 

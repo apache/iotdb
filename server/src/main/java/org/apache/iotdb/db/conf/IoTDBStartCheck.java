@@ -88,7 +88,7 @@ public class IoTDBStartCheck {
   static {
     constantParamValueTable.put(TIMESTAMP_PRECISION_STRING, config::getTimestampPrecision);
     constantParamValueTable.put(
-        PARTITION_INTERVAL_STRING, () -> String.valueOf(config.getTimePartitionInterval()));
+        PARTITION_INTERVAL_STRING, () -> String.valueOf(config.getDnTimePartitionInterval()));
     constantParamValueTable.put(
         TSFILE_FILE_SYSTEM_STRING, () -> config.getTsFileStorageFs().toString());
     constantParamValueTable.put(

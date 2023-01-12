@@ -1618,6 +1618,175 @@ public class CommonDescriptor {
     }
   }
 
+  public void loadHotModifiedProps(Properties properties) {
+
+    // update timed flush & close conf
+    loadTimedService(properties);
+
+    // update tsfile-format config
+    loadTsFileProps(properties);
+
+    // update max_deduplicated_path_num
+    CONF.setMaxDeduplicatedPathNum(
+      Integer.parseInt(
+        properties.getProperty(
+          "max_deduplicated_path_num",
+          Integer.toString(CONF.getMaxDeduplicatedPathNum()))));
+    // update slow_query_threshold
+    CONF.setSlowQueryThreshold(
+      Long.parseLong(
+        properties.getProperty(
+          "slow_query_threshold", Long.toString(CONF.getSlowQueryThreshold()))));
+
+    // update insert-tablet-plan's row limit for select-into
+    CONF.setSelectIntoInsertTabletPlanRowLimit(
+      Integer.parseInt(
+        properties.getProperty(
+          "select_into_insert_tablet_plan_row_limit",
+          String.valueOf(CONF.getSelectIntoInsertTabletPlanRowLimit()))));
+
+    // update sync config
+    CONF.setMaxNumberOfSyncFileRetry(
+      Integer.parseInt(
+        properties
+          .getProperty(
+            "max_number_of_sync_file_retry",
+            Integer.toString(CONF.getMaxNumberOfSyncFileRetry()))
+          .trim()));
+
+
+  }
+
+  private void loadWALHotModifiedProps(Properties properties) {
+    long fsyncWalDelayInMs =
+      Long.parseLong(
+        properties.getProperty(
+          "fsync_wal_delay_in_ms", Long.toString(CONF.getFsyncWalDelayInMs())));
+    if (fsyncWalDelayInMs > 0) {
+      CONF.setFsyncWalDelayInMs(fsyncWalDelayInMs);
+    }
+
+    long walFileSizeThreshold =
+      Long.parseLong(
+        properties.getProperty(
+          "wal_file_size_threshold_in_byte",
+          Long.toString(CONF.getWalFileSizeThresholdInByte())));
+    if (walFileSizeThreshold > 0) {
+      CONF.setWalFileSizeThresholdInByte(walFileSizeThreshold);
+    }
+
+    double walMinEffectiveInfoRatio =
+      Double.parseDouble(
+        properties.getProperty(
+          "wal_min_effective_info_ratio",
+          Double.toString(CONF.getWalMinEffectiveInfoRatio())));
+    if (walMinEffectiveInfoRatio > 0) {
+      CONF.setWalMinEffectiveInfoRatio(walMinEffectiveInfoRatio);
+    }
+
+    long walMemTableSnapshotThreshold =
+      Long.parseLong(
+        properties.getProperty(
+          "wal_memtable_snapshot_threshold_in_byte",
+          Long.toString(CONF.getWalMemTableSnapshotThreshold())));
+    if (walMemTableSnapshotThreshold > 0) {
+      CONF.setWalMemTableSnapshotThreshold(walMemTableSnapshotThreshold);
+    }
+
+    int maxWalMemTableSnapshotNum =
+      Integer.parseInt(
+        properties.getProperty(
+          "max_wal_memtable_snapshot_num",
+          Integer.toString(CONF.getMaxWalMemTableSnapshotNum())));
+    if (maxWalMemTableSnapshotNum > 0) {
+      CONF.setMaxWalMemTableSnapshotNum(maxWalMemTableSnapshotNum);
+    }
+
+    long deleteWalFilesPeriod =
+      Long.parseLong(
+        properties.getProperty(
+          "delete_wal_files_period_in_ms",
+          Long.toString(CONF.getDeleteWalFilesPeriodInMs())));
+    if (deleteWalFilesPeriod > 0) {
+      CONF.setDeleteWalFilesPeriodInMs(deleteWalFilesPeriod);
+    }
+
+    long throttleDownThresholdInByte =
+      Long.parseLong(
+        properties.getProperty(
+          "iot_consensus_throttle_threshold_in_byte",
+          Long.toString(CONF.getIotConsensusThrottleThresholdInByte())));
+    if (throttleDownThresholdInByte > 0) {
+      CONF.setIotConsensusThrottleThresholdInByte(throttleDownThresholdInByte);
+    }
+
+    long cacheWindowInMs =
+      Long.parseLong(
+        properties.getProperty(
+          "iot_consensus_cache_window_time_in_ms",
+          Long.toString(CONF.getIotConsensusCacheWindowTimeInMs())));
+    if (cacheWindowInMs > 0) {
+      CONF.setIotConsensusCacheWindowTimeInMs(cacheWindowInMs);
+    }
+  }
+
+  /** Get default encode algorithm by data type */
+  public TSEncoding getDefaultEncodingByType(TSDataType dataType) {
+    switch (dataType) {
+      case BOOLEAN:
+        return CONF.getDefaultBooleanEncoding();
+      case INT32:
+        return CONF.getDefaultInt32Encoding();
+      case INT64:
+        return CONF.getDefaultInt64Encoding();
+      case FLOAT:
+        return CONF.getDefaultFloatEncoding();
+      case DOUBLE:
+        return CONF.getDefaultDoubleEncoding();
+      default:
+        return CONF.getDefaultTextEncoding();
+    }
+  }
+
+  public void reclaimConsensusMemory() {
+    CONF.setAllocateMemoryForStorageEngine(
+      CONF.getAllocateMemoryForStorageEngine() + CONF.getAllocateMemoryForConsensus());
+  }
+
+  public void initClusterSchemaMemoryAllocate() {
+    if (!CONF.isDefaultSchemaMemoryConfig()) {
+      // the config has already been updated as user config in properties file
+      return;
+    }
+
+    // process the default schema memory allocate
+
+    long schemaMemoryTotal = CONF.getAllocateMemoryForSchema();
+
+    int proportionSum = 10;
+    int schemaRegionProportion = 5;
+    int schemaCacheProportion = 3;
+    int partitionCacheProportion = 1;
+    int lastCacheProportion = 1;
+
+    CONF.setAllocateMemoryForSchemaRegion(
+      schemaMemoryTotal * schemaRegionProportion / proportionSum);
+    LOGGER.info(
+      "Cluster allocateMemoryForSchemaRegion = {}", CONF.getAllocateMemoryForSchemaRegion());
+
+    CONF.setAllocateMemoryForSchemaCache(schemaMemoryTotal * schemaCacheProportion / proportionSum);
+    LOGGER.info(
+      "Cluster allocateMemoryForSchemaCache = {}", CONF.getAllocateMemoryForSchemaCache());
+
+    CONF.setAllocateMemoryForPartitionCache(
+      schemaMemoryTotal * partitionCacheProportion / proportionSum);
+    LOGGER.info(
+      "Cluster allocateMemoryForPartitionCache = {}", CONF.getAllocateMemoryForPartitionCache());
+
+    CONF.setAllocateMemoryForLastCache(schemaMemoryTotal * lastCacheProportion / proportionSum);
+    LOGGER.info("Cluster allocateMemoryForLastCache = {}", CONF.getAllocateMemoryForLastCache());
+  }
+
   public void loadGlobalConfig(TGlobalConfig globalConfig) {
     CONF.setDiskSpaceWarningThreshold(globalConfig.getDiskSpaceWarningThreshold());
   }

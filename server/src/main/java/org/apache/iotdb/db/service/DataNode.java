@@ -286,6 +286,7 @@ public class DataNode implements DataNodeMBean {
       if (!config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)) {
         // In current implementation, only IoTConsensus need separated memory from Consensus
         IoTDBDescriptor.getInstance().reclaimConsensusMemory();
+        SystemInfo.getInstance().allocateWriteMemory();
       }
     } catch (Exception e) {
       throw new StartupException(e.getMessage());

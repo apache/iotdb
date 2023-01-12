@@ -18,6 +18,7 @@
  */
 
 package org.apache.iotdb.db.service.thrift.impl;
+import org.apache.iotdb.db.wal.WALManager;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
@@ -1115,7 +1116,19 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   @Override
   public TSStatus loadConfiguration() throws TException {
     try {
+      long prevDeleteWalFilesPeriodInMs = CommonDescriptor.getInstance().getConfig().getDeleteWalFilesPeriodInMs();
+
+      CommonDescriptor.getInstance().loadHotModifiedProps();
       IoTDBDescriptor.getInstance().loadHotModifiedProps();
+
+      try {
+        if (prevDeleteWalFilesPeriodInMs != CommonDescriptor.getInstance().getConfig().getDeleteWalFilesPeriodInMs()) {
+          WALManager.getInstance().rebootWALDeleteThread();
+        }
+      } catch (Exception e) {
+        throw new QueryProcessException(String.format("Fail to reload configuration because %s", e));
+      }
+
     } catch (QueryProcessException e) {
       return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
     }

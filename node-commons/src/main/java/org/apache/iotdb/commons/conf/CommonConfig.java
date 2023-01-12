@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.consensus.ConsensusProtocolClass;
 import org.apache.iotdb.commons.enums.HandleSystemErrorStrategy;
 import org.apache.iotdb.commons.loadbalance.LeaderDistributionPolicy;
 import org.apache.iotdb.commons.loadbalance.RegionGroupExtensionPolicy;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.commons.utils.datastructure.TVListSortAlgorithm;
 import org.apache.iotdb.commons.wal.WALMode;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -33,6 +34,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class CommonConfig {
 
@@ -102,7 +105,7 @@ public class CommonConfig {
 
   /** Cluster management */
   // Time partition interval in milliseconds
-  private long timePartitionInterval = 604_800_000;
+  private long timePartitionInterval = 604_800_000L;
   // The heartbeat interval in milliseconds
   private long heartbeatIntervalInMs = 1000;
   // Disk Monitor
@@ -269,8 +272,6 @@ public class CommonConfig {
   private int maxTsBlockSizeInBytes = 128 * 1024;
   // Maximum number of lines in a single TsBlock
   private int maxTsBlockLineNumber = 1000;
-
-  // TODO:
 
   // Time cost(ms) threshold for slow query. Unit: millisecond
   private long slowQueryThreshold = 5000;
@@ -904,6 +905,11 @@ public class CommonConfig {
 
   public void setUdfDir(String udfDir) {
     this.udfDir = udfDir;
+    updateUdfTemporaryLibDir();
+  }
+
+  public void updateUdfTemporaryLibDir() {
+    this.udfTemporaryLibDir = udfDir + File.separator + IoTDBConstant.TMP_FOLDER_NAME;
   }
 
   public String getUdfTemporaryLibDir() {
@@ -920,6 +926,11 @@ public class CommonConfig {
 
   public void setTriggerDir(String triggerDir) {
     this.triggerDir = triggerDir;
+    updateTriggerTemporaryLibDir();
+  }
+
+  public void updateTriggerTemporaryLibDir() {
+    this.triggerTemporaryLibDir = triggerDir + File.separator + IoTDBConstant.TMP_FOLDER_NAME;
   }
 
   public String getTriggerTemporaryLibDir() {
@@ -1537,6 +1548,7 @@ public class CommonConfig {
 
   public void setAllocateMemoryForStorageEngine(long allocateMemoryForStorageEngine) {
     this.allocateMemoryForStorageEngine = allocateMemoryForStorageEngine;
+    this.allocateMemoryForTimePartitionInfo = allocateMemoryForStorageEngine * 50 / 1001;
   }
 
   public long getAllocateMemoryForRead() {
@@ -1545,6 +1557,21 @@ public class CommonConfig {
 
   public void setAllocateMemoryForRead(long allocateMemoryForRead) {
     this.allocateMemoryForRead = allocateMemoryForRead;
+
+    this.allocateMemoryForBloomFilterCache = allocateMemoryForRead / 1001;
+    this.allocateMemoryForTimeSeriesMetaDataCache = allocateMemoryForRead * 200 / 1001;
+    this.allocateMemoryForChunkCache = allocateMemoryForRead * 100 / 1001;
+    this.allocateMemoryForCoordinator = allocateMemoryForRead * 50 / 1001;
+    this.allocateMemoryForOperators = allocateMemoryForRead * 200 / 1001;
+    this.allocateMemoryForDataExchange = allocateMemoryForRead * 200 / 1001;
+    this.allocateMemoryForTimeIndex = allocateMemoryForRead * 200 / 1001;
+  }
+
+  public long getAllocateMemoryForFree() {
+    return Runtime.getRuntime().maxMemory()
+      - allocateMemoryForStorageEngine
+      - allocateMemoryForRead
+      - allocateMemoryForSchema;
   }
 
   public long getAllocateMemoryForSchema() {
@@ -1553,6 +1580,10 @@ public class CommonConfig {
 
   public void setAllocateMemoryForSchema(long allocateMemoryForSchema) {
     this.allocateMemoryForSchema = allocateMemoryForSchema;
+
+    this.allocateMemoryForSchemaRegion = allocateMemoryForSchema * 8 / 10;
+    this.allocateMemoryForSchemaCache = allocateMemoryForSchema / 10;
+    this.allocateMemoryForLastCache = allocateMemoryForSchema / 10;
   }
 
   public long getAllocateMemoryForConsensus() {
@@ -1672,6 +1703,7 @@ public class CommonConfig {
     return maxBytesPerFragmentInstance;
   }
 
+  @TestOnly
   public void setMaxBytesPerFragmentInstance(long maxBytesPerFragmentInstance) {
     this.maxBytesPerFragmentInstance = maxBytesPerFragmentInstance;
   }
@@ -2378,6 +2410,36 @@ public class CommonConfig {
 
   public void setWatermarkMethod(String watermarkMethod) {
     this.watermarkMethod = watermarkMethod;
+  }
+
+  public String getWatermarkMethodName() {
+    return watermarkMethod.split("\\(")[0];
+  }
+
+  public int getWatermarkParamMarkRate() {
+    return Integer.parseInt(getWatermarkParamValue("embed_row_cycle", "5"));
+  }
+
+  public int getWatermarkParamMaxRightBit() {
+    return Integer.parseInt(getWatermarkParamValue("embed_lsb_num", "5"));
+  }
+
+  private String getWatermarkParamValue(String key, String defaultValue) {
+    String res = getWatermarkParamValue(key);
+    if (res != null) {
+      return res;
+    }
+    return defaultValue;
+  }
+
+  private String getWatermarkParamValue(String key) {
+    String pattern = key + "=(\\w*)";
+    Pattern r = Pattern.compile(pattern);
+    Matcher m = r.matcher(watermarkMethod);
+    if (m.find() && m.groupCount() > 0) {
+      return m.group(1);
+    }
+    return null;
   }
 
   public boolean isEnableInfluxDBRpcService() {

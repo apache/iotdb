@@ -19,9 +19,7 @@
 package org.apache.iotdb.db.conf;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
-import org.apache.iotdb.commons.client.property.ClientPoolProperty.DefaultProperty;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.audit.AuditLogOperation;
 import org.apache.iotdb.db.audit.AuditLogStorage;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
@@ -190,10 +188,7 @@ public class IoTDBConfig {
   // Compact the unsequence files into the overlapped sequence files
   private boolean enableCrossSpaceCompaction = true;
 
-  /**
-   * The strategy of inner space compaction task. There are just one inner space compaction strategy
-   * SIZE_TIRED_COMPACTION:
-   */
+  // The strategy of inner space compaction task. There are just one inner space compaction strategy SIZE_TIRED_COMPACTION:
   private InnerSequenceCompactionSelector innerSequenceCompactionSelector =
     InnerSequenceCompactionSelector.SIZE_TIERED;
 
@@ -211,75 +206,69 @@ public class IoTDBConfig {
   private CrossCompactionSelector crossCompactionSelector = CrossCompactionSelector.REWRITE;
   private CrossCompactionPerformer crossCompactionPerformer = CrossCompactionPerformer.READ_POINT;
 
-  /**
-   * The priority of compaction task execution. There are three priority strategy INNER_CROSS:
-   * prioritize inner space compaction, reduce the number of files first CROSS INNER: prioritize
-   * cross space compaction, eliminate the unsequence files first BALANCE: alternate two compaction
-   * types
-   */
+  // The priority of compaction task execution. There are three priority strategy INNER_CROSS:
+  // prioritize inner space compaction, reduce the number of files first CROSS INNER: prioritize
+  // cross space compaction, eliminate the unsequence files first BALANCE: alternate two compaction types
   private CompactionPriority compactionPriority = CompactionPriority.BALANCE;
 
-  /** The target tsfile size in compaction, 1 GB by default */
+  // The target tsfile size in compaction, 1 GB by default
   private long targetCompactionFileSize = 1073741824L;
 
-  /** The target chunk size in compaction. */
+  // The target chunk size in compaction
   private long targetChunkSize = 1048576L;
 
-  /** The target chunk point num in compaction. */
+  // The target chunk point num in compaction
   private long targetChunkPointNum = 100000L;
 
-  /**
-   * If the chunk size is lower than this threshold, it will be deserialized into points, default is
-   * 10 KB
-   */
+  // If the chunk size is lower than this threshold, it will be deserialized into points, default is 10 KB
   private long chunkSizeLowerBoundInCompaction = 10240L;
 
-  /**
-   * If the chunk point num is lower than this threshold, it will be deserialized into points,
-   * default is 1000
-   */
+  // If the chunk point num is lower than this threshold, it will be deserialized into points, default is 1000
   private long chunkPointNumLowerBoundInCompaction = 1000;
 
-  /**
-   * If compaction thread cannot acquire the write lock within this timeout, the compaction task
-   * will be abort.
-   */
+  // If compaction thread cannot acquire the write lock within this timeout, the compaction task will be abort.
   private long compactionAcquireWriteLockTimeout = 60_000L;
 
-  /** The max candidate file num in inner space compaction */
+  // The max candidate file num in inner space compaction
   private int maxInnerCompactionCandidateFileNum = 30;
 
-  /** The max candidate file num in cross space compaction */
+  // The max candidate file num in cross space compaction
   private int maxCrossCompactionCandidateFileNum = 1000;
 
-  /** The max total size of candidate files in cross space compaction */
+  // The max total size of candidate files in cross space compaction
   private long maxCrossCompactionCandidateFileSize = 1024 * 1024 * 1024 * 5L;
 
-  /** The interval of compaction task schedulation in each virtual database. The unit is ms. */
+  // The interval of compaction task schedulation in each virtual database. The unit is ms
   private long compactionScheduleIntervalInMs = 60_000L;
 
-  /** The interval of compaction task submission from queue in CompactionTaskMananger */
+  // The interval of compaction task submission from queue in CompactionTaskMananger
   private long compactionSubmissionIntervalInMs = 60_000L;
 
-  /**
-   * The number of sub compaction threads to be set up to perform compaction. Currently only works
-   * for nonAligned data in cross space compaction and unseq inner space compaction.
-   */
+  // The number of sub compaction threads to be set up to perform compaction. Currently only works
+  // for nonAligned data in cross space compaction and unseq inner space compaction.
   private int subCompactionTaskNum = 4;
 
   private boolean enableCompactionValidation = true;
 
-
-  /**
-   * If one merge file selection runs for more than this time, it will be ended and its current
-   * selection will be used as final selection. When < 0, it means time is unbounded. Unit:
-   * millisecond
-   */
+  // If one merge file selection runs for more than this time, it will be ended and its current
+  // selection will be used as final selection. When < 0, it means time is unbounded. Unit: millisecond
   private long crossCompactionFileSelectionTimeBudget = 30 * 1000L;
 
-  /** End Compaction Configurations */
+  /** Retain Configuration */
+  // Default TSfile storage is in local file system
+  private FSType tsFileStorageFs = FSType.LOCAL;
 
+  // Default core-site.xml file path is /etc/hadoop/conf/core-site.xml
+  private String coreSitePath = "/etc/hadoop/conf/core-site.xml";
 
+  // Default hdfs-site.xml file path is /etc/hadoop/conf/hdfs-site.xml
+  private String hdfsSitePath = "/etc/hadoop/conf/hdfs-site.xml";
+
+  // Default HDFS ip is localhost
+  private String hdfsIp = "localhost";
+
+  // Default HDFS port is 9000
+  private String hdfsPort = "9000";
 
 
   /* Names of Watermark methods */
@@ -375,20 +364,8 @@ public class IoTDBConfig {
    */
   private int compactionThreadCount = 10;
 
-  /** Default TSfile storage is in local file system */
-  private FSType tsFileStorageFs = FSType.LOCAL;
 
-  /** Default core-site.xml file path is /etc/hadoop/conf/core-site.xml */
-  private String coreSitePath = "/etc/hadoop/conf/core-site.xml";
 
-  /** Default hdfs-site.xml file path is /etc/hadoop/conf/hdfs-site.xml */
-  private String hdfsSitePath = "/etc/hadoop/conf/hdfs-site.xml";
-
-  /** Default HDFS ip is localhost */
-  private String hdfsIp = "localhost";
-
-  /** Default HDFS port is 9000 */
-  private String hdfsPort = "9000";
 
   /** Default DFS NameServices is hdfsnamespace */
   private String dfsNameServices = "hdfsnamespace";
@@ -415,11 +392,8 @@ public class IoTDBConfig {
   /** kerberos principal */
   private String kerberosPrincipal = "your principal";
 
-  /** the default fill interval in LinearFill and PreviousFill, -1 means infinite past time */
-  private int defaultFillInterval = -1;
-
   /** Time partition interval in milliseconds */
-  private long timePartitionInterval = 604_800_000;
+  private long dnTimePartitionInterval = 604_800_000;
 
   /**
    * Level of TimeIndex, which records the start time and end time of TsFileResource. Currently,
@@ -499,20 +473,12 @@ public class IoTDBConfig {
     this.groupByFillCacheSizeInMB = groupByFillCacheSizeInMB;
   }
 
-  public int getDefaultFillInterval() {
-    return defaultFillInterval;
+  public long getDnTimePartitionInterval() {
+    return dnTimePartitionInterval;
   }
 
-  public void setDefaultFillInterval(int defaultFillInterval) {
-    this.defaultFillInterval = defaultFillInterval;
-  }
-
-  public long getTimePartitionInterval() {
-    return timePartitionInterval;
-  }
-
-  public void setTimePartitionInterval(long timePartitionInterval) {
-    this.timePartitionInterval = timePartitionInterval;
+  public void setDnTimePartitionInterval(long dnTimePartitionInterval) {
+    this.dnTimePartitionInterval = dnTimePartitionInterval;
   }
 
   public TimeIndexLevel getTimeIndexLevel() {
@@ -671,14 +637,6 @@ public class IoTDBConfig {
     this.dnRpcPort = dnRpcPort;
   }
 
-  public int getInfluxDBRpcPort() {
-    return influxDBRpcPort;
-  }
-
-  public void setInfluxDBRpcPort(int influxDBRpcPort) {
-    this.influxDBRpcPort = influxDBRpcPort;
-  }
-
   public String getDnSystemDir() {
     return dnSystemDir;
   }
@@ -777,40 +735,6 @@ public class IoTDBConfig {
     this.dnExtDir = dnExtDir;
   }
 
-  public String getUdfDir() {
-    return udfDir;
-  }
-
-  public void setUdfDir(String udfDir) {
-    this.udfDir = udfDir;
-    updateUdfTemporaryLibDir();
-  }
-
-  public String getUdfTemporaryLibDir() {
-    return udfTemporaryLibDir;
-  }
-
-  public void updateUdfTemporaryLibDir() {
-    this.udfTemporaryLibDir = udfDir + File.separator + IoTDBConstant.TMP_FOLDER_NAME;
-  }
-
-  public String getTriggerDir() {
-    return triggerDir;
-  }
-
-  public void setTriggerDir(String triggerDir) {
-    this.triggerDir = triggerDir;
-    updateTriggerTemporaryLibDir();
-  }
-
-  public String getTriggerTemporaryLibDir() {
-    return triggerTemporaryLibDir;
-  }
-
-  public void updateTriggerTemporaryLibDir() {
-    this.triggerTemporaryLibDir = triggerDir + File.separator + IoTDBConstant.TMP_FOLDER_NAME;
-  }
-
   public String getMqttDir() {
     return mqttDir;
   }
@@ -847,31 +771,6 @@ public class IoTDBConfig {
 
   public void setMaxMemtableNumber(int maxMemtableNumber) {
     this.maxMemtableNumber = maxMemtableNumber;
-  }
-
-  public int getSubRawQueryThreadCount() {
-    return subRawQueryThreadCount;
-  }
-
-  void setSubRawQueryThreadCount(int subRawQueryThreadCount) {
-    this.subRawQueryThreadCount = subRawQueryThreadCount;
-  }
-
-  public long getMaxBytesPerFragmentInstance() {
-    return maxBytesPerFragmentInstance;
-  }
-
-  @TestOnly
-  public void setMaxBytesPerFragmentInstance(long maxBytesPerFragmentInstance) {
-    this.maxBytesPerFragmentInstance = maxBytesPerFragmentInstance;
-  }
-
-  public int getRawQueryBlockingQueueCapacity() {
-    return rawQueryBlockingQueueCapacity;
-  }
-
-  public void setRawQueryBlockingQueueCapacity(int rawQueryBlockingQueueCapacity) {
-    this.rawQueryBlockingQueueCapacity = rawQueryBlockingQueueCapacity;
   }
 
   public int getWindowEvaluationThreadCount() {
@@ -930,22 +829,6 @@ public class IoTDBConfig {
     this.dnRpcMaxConcurrentClientNum = dnRpcMaxConcurrentClientNum;
   }
 
-  public int getmRemoteSchemaCacheSize() {
-    return mRemoteSchemaCacheSize;
-  }
-
-  public void setmRemoteSchemaCacheSize(int mRemoteSchemaCacheSize) {
-    this.mRemoteSchemaCacheSize = mRemoteSchemaCacheSize;
-  }
-
-  String getLanguageVersion() {
-    return languageVersion;
-  }
-
-  void setLanguageVersion(String languageVersion) {
-    this.languageVersion = languageVersion;
-  }
-
   public String getIoTDBVersion() {
     return IoTDBConstant.VERSION;
   }
@@ -958,14 +841,6 @@ public class IoTDBConfig {
     return "UNKNOWN".equals(version)
         ? "UNKNOWN"
         : version.split("\\.")[0] + "." + version.split("\\.")[1];
-  }
-
-  public String getIpWhiteList() {
-    return ipWhiteList;
-  }
-
-  public void setIpWhiteList(String ipWhiteList) {
-    this.ipWhiteList = ipWhiteList;
   }
 
   public long getCacheFileReaderClearPeriod() {
@@ -1012,55 +887,6 @@ public class IoTDBConfig {
     this.checkpointFileSizeThresholdInByte = checkpointFileSizeThresholdInByte;
   }
 
-  public boolean isChunkBufferPoolEnable() {
-    return chunkBufferPoolEnable;
-  }
-
-  void setChunkBufferPoolEnable(boolean chunkBufferPoolEnable) {
-    this.chunkBufferPoolEnable = chunkBufferPoolEnable;
-  }
-
-  public long getMergeIntervalSec() {
-    return mergeIntervalSec;
-  }
-
-  void setMergeIntervalSec(long mergeIntervalSec) {
-    this.mergeIntervalSec = mergeIntervalSec;
-  }
-
-  public void setAllocateMemoryForStorageEngine(long allocateMemoryForStorageEngine) {
-    this.allocateMemoryForStorageEngine = allocateMemoryForStorageEngine;
-    this.allocateMemoryForTimePartitionInfo = allocateMemoryForStorageEngine * 50 / 1001;
-  }
-
-
-  public void setAllocateMemoryForSchema(long allocateMemoryForSchema) {
-    this.allocateMemoryForSchema = allocateMemoryForSchema;
-
-    this.allocateMemoryForSchemaRegion = allocateMemoryForSchema * 8 / 10;
-    this.allocateMemoryForSchemaCache = allocateMemoryForSchema / 10;
-    this.allocateMemoryForLastCache = allocateMemoryForSchema / 10;
-  }
-
-  void setAllocateMemoryForRead(long allocateMemoryForRead) {
-    this.allocateMemoryForRead = allocateMemoryForRead;
-
-    this.allocateMemoryForBloomFilterCache = allocateMemoryForRead / 1001;
-    this.allocateMemoryForTimeSeriesMetaDataCache = allocateMemoryForRead * 200 / 1001;
-    this.allocateMemoryForChunkCache = allocateMemoryForRead * 100 / 1001;
-    this.allocateMemoryForCoordinator = allocateMemoryForRead * 50 / 1001;
-    this.allocateMemoryForOperators = allocateMemoryForRead * 200 / 1001;
-    this.allocateMemoryForDataExchange = allocateMemoryForRead * 200 / 1001;
-    this.allocateMemoryForTimeIndex = allocateMemoryForRead * 200 / 1001;
-  }
-
-  public long getAllocateMemoryForFree() {
-    return Runtime.getRuntime().maxMemory()
-        - allocateMemoryForStorageEngine
-        - allocateMemoryForRead
-        - allocateMemoryForSchema;
-  }
-
   public int getCompactionThreadCount() {
     return compactionThreadCount;
   }
@@ -1093,35 +919,6 @@ public class IoTDBConfig {
     this.dnRpcThriftCompressionEnable = dnRpcThriftCompressionEnable;
   }
 
-  public String getWatermarkMethodName() {
-    return watermarkMethod.split("\\(")[0];
-  }
-
-  public int getWatermarkParamMarkRate() {
-    return Integer.parseInt(getWatermarkParamValue("embed_row_cycle", "5"));
-  }
-
-  public int getWatermarkParamMaxRightBit() {
-    return Integer.parseInt(getWatermarkParamValue("embed_lsb_num", "5"));
-  }
-
-  private String getWatermarkParamValue(String key, String defaultValue) {
-    String res = getWatermarkParamValue(key);
-    if (res != null) {
-      return res;
-    }
-    return defaultValue;
-  }
-
-  private String getWatermarkParamValue(String key) {
-    String pattern = key + "=(\\w*)";
-    Pattern r = Pattern.compile(pattern);
-    Matcher m = r.matcher(watermarkMethod);
-    if (m.find() && m.groupCount() > 0) {
-      return m.group(1);
-    }
-    return null;
-  }
 
   FSType getTsFileStorageFs() {
     return tsFileStorageFs;
