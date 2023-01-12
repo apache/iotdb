@@ -319,10 +319,8 @@ public class QueryExecution implements IQueryExecution {
   // Stop the workers for this query
   public void stop() {
     // only stop once
-    if (stopped.compareAndSet(false, true)) {
-      if (this.scheduler != null) {
-        this.scheduler.stop();
-      }
+    if (stopped.compareAndSet(false, true) && this.scheduler != null) {
+      this.scheduler.stop();
     }
   }
 

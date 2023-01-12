@@ -28,17 +28,20 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 
 import java.util.Comparator;
-import java.util.HashMap;
+import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 
 public class SlidingWindowAggregatorFactory {
 
   /** comparators used for MonotonicQueueSlidingWindowAggregator */
-  private static final Map<TSDataType, Comparator<Column>> maxComparators = new HashMap<>();
+  private static final Map<TSDataType, Comparator<Column>> maxComparators =
+      new EnumMap<>(TSDataType.class);
 
-  private static final Map<TSDataType, Comparator<Column>> minComparators = new HashMap<>();
-  private static final Map<TSDataType, Comparator<Column>> extremeComparators = new HashMap<>();
+  private static final Map<TSDataType, Comparator<Column>> minComparators =
+      new EnumMap<>(TSDataType.class);
+  private static final Map<TSDataType, Comparator<Column>> extremeComparators =
+      new EnumMap<>(TSDataType.class);
 
   static {
     // return a value greater than 0 if o1 is numerically greater than o2

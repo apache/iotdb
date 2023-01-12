@@ -325,12 +325,11 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
     DeviceViewIntoPathDescriptor descriptor = node.getDeviceViewIntoPathDescriptor();
     Map<String, List<Pair<String, PartialPath>>> deviceToSourceTargetPathPairListMap =
         descriptor.getDeviceToSourceTargetPathPairListMap();
-    for (String deviceName : deviceToSourceTargetPathPairListMap.keySet()) {
+    for (Map.Entry<String, List<Pair<String, PartialPath>>> entry :
+        deviceToSourceTargetPathPairListMap.entrySet()) {
+      String deviceName = entry.getKey();
       boxValue.add(String.format("Device [%s]:", deviceName));
-      drawSourceTargetPath(
-          boxValue,
-          deviceToSourceTargetPathPairListMap.get(deviceName),
-          descriptor.getTargetDeviceToAlignedMap());
+      drawSourceTargetPath(boxValue, entry.getValue(), descriptor.getTargetDeviceToAlignedMap());
     }
     return render(node, boxValue, context);
   }
@@ -444,7 +443,7 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
     }
     box.lines.add(printBoxEdge(box, false));
 
-    if (children.size() == 0) {
+    if (children.isEmpty()) {
       return box.lines;
     }
 
@@ -598,7 +597,7 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
     public void calculateBoxParams(List<List<String>> childBoxStrings) {
       int childrenWidth = 0;
       for (List<String> childBoxString : childBoxStrings) {
-        Validate.isTrue(childBoxString.size() > 0, "Lines of box string should be greater than 0");
+        Validate.isTrue(!childBoxString.isEmpty(), "Lines of box string should be greater than 0");
         childrenWidth += childBoxString.get(0).length();
       }
       childrenWidth += childBoxStrings.size() > 1 ? (childBoxStrings.size() - 1) * BOX_MARGIN : 0;

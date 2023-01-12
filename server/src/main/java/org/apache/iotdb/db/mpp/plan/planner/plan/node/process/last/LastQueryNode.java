@@ -152,6 +152,7 @@ public class LastQueryNode extends MultiChildProcessNode {
     return new LastQueryNode(planNodeId, timeFilter, mergeOrderParameter);
   }
 
+  @Override
   public void setChildren(List<PlanNode> children) {
     this.children = children;
   }

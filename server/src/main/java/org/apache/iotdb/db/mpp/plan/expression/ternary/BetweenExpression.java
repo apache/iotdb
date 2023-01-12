@@ -72,6 +72,7 @@ public class BetweenExpression extends TernaryExpression {
     return ExpressionType.BETWEEN;
   }
 
+  @Override
   protected void serialize(ByteBuffer byteBuffer) {
     super.serialize(byteBuffer);
     ReadWriteIOUtils.write(isNotBetween, byteBuffer);
