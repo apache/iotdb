@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.db.consensus.statemachine;
 
-import java.util.LinkedList;
-import java.util.List;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.consensus.common.request.BatchIndexedConsensusRequest;
 import org.apache.iotdb.consensus.common.request.DeserializedBatchIndexedConsensusRequest;
@@ -29,8 +27,12 @@ import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.rpc.TSStatusCode;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.LinkedList;
+import java.util.List;
 
 public class IoTConsensusDataRegionStateMachine extends DataRegionStateMachine {
 
