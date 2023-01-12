@@ -23,15 +23,15 @@ import java.util.Date;
 
 /** The summary of one {@link AbstractCompactionTask} execution */
 public class CompactionTaskSummary {
-  private long timeCost = 0L;
-  private volatile Status status = Status.NOT_STARTED;
-  private long startTime = -1L;
-  private int processChunkNum = 0;
-  private int directlyFlushChunkNum = 0;
-  private int deserializeChunkCount = 0;
-  private int deserializePageCount = 0;
-  private int mergedChunkNum = 0;
-  private long processPointNum = 0;
+  protected long timeCost = 0L;
+  protected volatile Status status = Status.NOT_STARTED;
+  protected long startTime = -1L;
+  protected int processChunkNum = 0;
+  protected int directlyFlushChunkNum = 0;
+  protected int deserializeChunkCount = 0;
+  protected int deserializePageCount = 0;
+  protected int mergedChunkNum = 0;
+  protected long processPointNum = 0;
 
   public CompactionTaskSummary() {}
 
@@ -127,12 +127,13 @@ public class CompactionTaskSummary {
     String startTimeInStr = new SimpleDateFormat().format(new Date(startTime));
     return String.format(
         "Task start time: %s, time cost: %.2f s, total process chunk num: %d, "
-            + "directly flush chunk num: %d, deserialize chunk num: %d, deserialize page num: %d,"
+            + "directly flush chunk num: %d, merge chunk num: %d, deserialize chunk num: %d, deserialize page num: %d,"
             + " total process point num: %d",
         startTimeInStr,
         timeCost / 1000.0d,
         processChunkNum,
         directlyFlushChunkNum,
+        mergedChunkNum,
         deserializeChunkCount,
         deserializePageCount,
         processPointNum);

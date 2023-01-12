@@ -25,7 +25,7 @@ import org.apache.iotdb.db.engine.TsFileMetricManager;
 import org.apache.iotdb.db.engine.compaction.execute.exception.CompactionExceptionHandler;
 import org.apache.iotdb.db.engine.compaction.execute.performer.ICompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.execute.performer.impl.FastCompactionPerformer;
-import org.apache.iotdb.db.engine.compaction.execute.task.subtask.SubCompactionTaskSummary;
+import org.apache.iotdb.db.engine.compaction.execute.task.subtask.FastCompactionTaskSummary;
 import org.apache.iotdb.db.engine.compaction.execute.utils.CompactionUtils;
 import org.apache.iotdb.db.engine.compaction.execute.utils.log.CompactionLogger;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
@@ -95,6 +95,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
     }
     this.hashCode = this.toString().hashCode();
     collectSelectedFilesInfo();
+    createSummary();
   }
 
   @Override
@@ -224,20 +225,6 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
       CompactionUtils.deleteModificationForSourceFile(
           selectedTsFileResourceList, storageGroupName + "-" + dataRegionId);
 
-      if (performer instanceof FastCompactionPerformer) {
-        SubCompactionTaskSummary subTaskSummary =
-            ((FastCompactionPerformer) performer).getSubTaskSummary();
-        LOGGER.info(
-            "CHUNK_NONE_OVERLAP num is {}, CHUNK_NONE_OVERLAP_BUT_DESERIALIZE num is {}, CHUNK_OVERLAP_OR_MODIFIED num is {}, PAGE_NONE_OVERLAP num is {}, PAGE_NONE_OVERLAP_BUT_DESERIALIZE num is {}, PAGE_OVERLAP_OR_MODIFIED num is {}, PAGE_FAKE_OVERLAP num is {}.",
-            subTaskSummary.CHUNK_NONE_OVERLAP,
-            subTaskSummary.CHUNK_NONE_OVERLAP_BUT_DESERIALIZE,
-            subTaskSummary.CHUNK_OVERLAP_OR_MODIFIED,
-            subTaskSummary.PAGE_NONE_OVERLAP,
-            subTaskSummary.PAGE_NONE_OVERLAP_BUT_DESERIALIZE,
-            subTaskSummary.PAGE_OVERLAP_OR_MODIFIED,
-            subTaskSummary.PAGE_FAKE_OVERLAP);
-      }
-
       if (logFile.exists()) {
         FileUtils.delete(logFile);
       }
@@ -256,12 +243,13 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
       double costTime = (System.currentTimeMillis() - startTime) / 1000.0d;
       LOGGER.info(
           "{}-{} [Compaction] InnerSpaceCompaction task finishes successfully, target file is {},"
-              + "time cost is {} s, compaction speed is {} MB/s",
+              + "time cost is {} s, compaction speed is {} MB/s, {}",
           storageGroupName,
           dataRegionId,
           targetTsFileResource.getTsFile().getName(),
           costTime,
-          selectedFileSize / 1024.0d / 1024.0d / costTime);
+          selectedFileSize / 1024.0d / 1024.0d / costTime,
+          summary);
     } catch (Throwable throwable) {
       // catch throwable to handle OOM errors
       if (!(throwable instanceof InterruptedException)) {
@@ -451,5 +439,14 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
       throw e;
     }
     return true;
+  }
+
+  @Override
+  protected void createSummary() {
+    if (performer instanceof FastCompactionPerformer) {
+      this.summary = new FastCompactionTaskSummary();
+    } else {
+      this.summary = new CompactionTaskSummary();
+    }
   }
 }
