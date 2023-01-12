@@ -105,13 +105,6 @@ public class CompactionMetricsRecorder {
             MetricLevel.NORMAL,
             Tag.NAME.toString(),
             "compaction");
-    MetricService.getInstance()
-        .count(
-            summary.getDeserializePageCount(),
-            "Deserialized_Page_Num",
-            MetricLevel.NORMAL,
-            Tag.NAME.toString(),
-            "compaction");
   }
 
   public static void recordTaskInfo(

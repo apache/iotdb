@@ -249,9 +249,6 @@ public class SingleSeriesCompactionExecutor {
   private void writeChunkIntoChunkWriter(Chunk chunk) throws IOException {
     IChunkReader chunkReader = new ChunkReader(chunk, null);
     while (chunkReader.hasNextSatisfiedPage()) {
-      if (cachedChunk != chunk) {
-        summary.increaseDeserializePageNum(1);
-      }
       IPointReader batchIterator = chunkReader.nextPageData().getBatchDataIterator();
       while (batchIterator.hasNextTimeValuePair()) {
         TimeValuePair timeValuePair = batchIterator.nextTimeValuePair();

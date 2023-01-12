@@ -86,10 +86,6 @@ public class CompactionTaskSummary {
     deserializeChunkCount += increment;
   }
 
-  public void increaseDeserializePageNum(int increment) {
-    deserializePageCount += increment;
-  }
-
   public void increaseProcessPointNum(long increment) {
     processPointNum += increment;
   }
@@ -106,10 +102,6 @@ public class CompactionTaskSummary {
     this.deserializeChunkCount = deserializeChunkCount;
   }
 
-  public void setDeserializePageCount(int deserializePageCount) {
-    this.deserializePageCount = deserializePageCount;
-  }
-
   public void setProcessPointNum(int processPointNum) {
     this.processPointNum = processPointNum;
   }
@@ -124,10 +116,6 @@ public class CompactionTaskSummary {
 
   public int getDeserializeChunkCount() {
     return deserializeChunkCount;
-  }
-
-  public int getDeserializePageCount() {
-    return deserializePageCount;
   }
 
   public int getMergedChunkNum() {
@@ -151,7 +139,7 @@ public class CompactionTaskSummary {
     String startTimeInStr = new SimpleDateFormat().format(new Date(startTime));
     return String.format(
         "Task start time: %s, time cost: %.2f s, total process chunk num: %d, "
-            + "directly flush chunk num: %d, merge chunk num: %d, deserialize chunk num: %d, deserialize page num: %d,"
+            + "directly flush chunk num: %d, merge chunk num: %d, deserialize chunk num: %d,"
             + " total process point num: %d",
         startTimeInStr,
         timeCost / 1000.0d,
@@ -159,7 +147,6 @@ public class CompactionTaskSummary {
         directlyFlushChunkNum,
         mergedChunkNum,
         deserializeChunkCount,
-        deserializePageCount,
         processPointNum);
   }
 }

@@ -637,7 +637,7 @@ public abstract class SeriesCompactionExecutor {
                       .size()
                   + 1);
         } else {
-          summary.increaseDeserializePageNum(1);
+          summary.increaseDeserializedChunkNum(1);
         }
         break;
     }

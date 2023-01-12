@@ -172,7 +172,6 @@ public class AlignedSeriesCompactionExecutor {
       throws IOException {
     while (chunkReader.hasNextSatisfiedPage()) {
       // including value chunk and time chunk, thus we should plus one
-      summary.increaseDeserializePageNum(notNullChunkNum + 1);
       IBatchDataIterator batchDataIterator = chunkReader.nextPageData().getBatchDataIterator();
       while (batchDataIterator.hasNext()) {
         TsPrimitiveType[] pointsData = (TsPrimitiveType[]) batchDataIterator.currentValue();

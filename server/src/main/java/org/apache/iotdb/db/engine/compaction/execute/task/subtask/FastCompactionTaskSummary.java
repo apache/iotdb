@@ -38,6 +38,11 @@ public class FastCompactionTaskSummary extends CompactionTaskSummary {
     this.PAGE_OVERLAP_OR_MODIFIED += summary.PAGE_OVERLAP_OR_MODIFIED;
     this.PAGE_FAKE_OVERLAP += summary.PAGE_FAKE_OVERLAP;
     this.PAGE_NONE_OVERLAP_BUT_DESERIALIZE += summary.PAGE_NONE_OVERLAP_BUT_DESERIALIZE;
+    this.processChunkNum += summary.processChunkNum;
+    this.processPointNum += summary.processPointNum;
+    this.directlyFlushChunkNum += summary.directlyFlushChunkNum;
+    this.mergedChunkNum += summary.mergedChunkNum;
+    this.deserializeChunkCount += summary.deserializeChunkCount;
   }
 
   @Override
