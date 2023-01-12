@@ -335,7 +335,7 @@ public class ReorderingEncodeTest {
         int i_star = i_star_ready.get(1);
         int j_star = 0;
         int j_star_bit_width = 33;
-        int raw_bit_width_r = raw_length.get(0);
+        int raw_bit_width_r = raw_length.get(1);
         while(adjustPoint(ts_block,i_star,block_size,raw_length.get(2),raw_bit_width_r, j_star,j_star_bit_width)){
           ArrayList<Integer> tmp_tv = ts_block_reorder.get(i_star);
           if(j_star<i_star){
@@ -368,7 +368,7 @@ public class ReorderingEncodeTest {
         int i_star = i_star_ready_reorder.get(0);
         int j_star = 0;
         int j_star_bit_width = 33;
-        int raw_bit_width_r = raw_length.get(1);
+        int raw_bit_width_r = raw_length.get(2);
         while(adjustPoint(ts_block,i_star,block_size,raw_length.get(2),raw_bit_width_r, j_star,j_star_bit_width)){
           ArrayList<Integer> tmp_tv = ts_block_reorder.get(i_star);
           if(j_star<i_star){
@@ -594,7 +594,7 @@ public class ReorderingEncodeTest {
                 (double) buffer.size() / (double) (data.size() * Integer.BYTES);
         ratio += ratioTmp;
         s = System.nanoTime();
-        ReorderingDeltaDecoder(buffer);
+        ReorderingDeltaDecoder(buffer,3600);
         e = System.nanoTime();
         decodeTime += (e-s);
       }
