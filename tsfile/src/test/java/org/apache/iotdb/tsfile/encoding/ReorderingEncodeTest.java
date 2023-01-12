@@ -239,6 +239,8 @@ public class ReorderingEncodeTest {
                                     ArrayList<Integer> raw_length, int index){
     int j_star_bit_width = 33;
     int j_star = 0;
+    if(i_star == block_size - 1 || i_star == 0)
+      return 0;
     int delta_r_i_star_plus_1 = ts_block.get(i_star+1).get(0) - ts_block.get(i_star-1).get(0);
     int delta_v_i_star_plus_1 = ts_block.get(i_star+1).get(1) - ts_block.get(i_star-1).get(1);
     if(delta_r_i_star_plus_1 > raw_length.get(1) || delta_v_i_star_plus_1 >raw_length.get(2))
