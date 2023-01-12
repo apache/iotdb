@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.mpp.plan.plan.node.write;
 
-import org.aopalliance.reflect.Code;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
