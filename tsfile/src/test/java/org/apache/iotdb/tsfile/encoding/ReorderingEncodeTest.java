@@ -443,6 +443,11 @@ public class ReorderingEncodeTest {
     int r0 = bytes2Integer(encoded,decode_pos,decode_pos+4);
     decode_pos+=4;
 
+    int min_delta_interval = bytes2Integer(encoded,decode_pos,decode_pos+4);
+    decode_pos+=4;
+    int min_delta_value = bytes2Integer(encoded,decode_pos,decode_pos+4);
+    decode_pos+=4;
+
     int interval0 = bytes2Integer(encoded,decode_pos,decode_pos+4);
     decode_pos+=4;
     int value0 = bytes2Integer(encoded,decode_pos,decode_pos+4);
@@ -455,6 +460,7 @@ public class ReorderingEncodeTest {
       for(int j=0;j<max_bit_width_interval;j++){
         interval = interval * 2 + encoded.get(decode_pos+j);
       }
+      interval += min_delta_interval;
       interval_list.add(interval);
       decode_pos += max_bit_width_interval;
     }
@@ -466,6 +472,7 @@ public class ReorderingEncodeTest {
       for(int j=0;j<max_bit_width_value;j++){
         value = value * 2 + encoded.get(decode_pos+j);
       }
+      value += min_delta_value;
       value_list.add(value);
       decode_pos += max_bit_width_value;
     }
@@ -494,17 +501,21 @@ public class ReorderingEncodeTest {
       }
     }
 
-    int d_i_1 = interval0;
+    int di_pre = interval0;
+    int vi_pre = value0;
     for(int i=0;i<block_size;i++){
-      int r_i = interval_list.get(i) * td;
-      int d_i = d_i_1 + deviation_list.get(i);
-      d_i_1 = d_i;
-      int timestamp = r_i + d_i;
+      int vi = vi_pre + value_list.get(i);
+      vi_pre = vi;
 
-      ArrayList<Integer> tmp_data = new ArrayList<>();
-      tmp_data.add(timestamp);
-      tmp_data.add(value_list.get(i));
-      data.add(tmp_data);
+      int ri = interval_list.get(i) * td;
+      int di = di_pre + deviation_list.get(i);
+      di_pre = di;
+      int timestampi = ri + di;
+
+      ArrayList<Integer> tmp_datai = new ArrayList<>();
+      tmp_datai.add(timestampi);
+      tmp_datai.add(vi);
+      data.add(tmp_datai);
     }
     return data;
   }
