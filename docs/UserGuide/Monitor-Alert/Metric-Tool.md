@@ -317,6 +317,81 @@ carefully evaluated. The current Core-level metrics are as follows:
 | ----------------------- | --------------------------------------------- | --------- | -------------------------------- |
 | jvm_compilation_time_ms | {compiler="HotSpot 64-Bit Tiered Compilers",} | AutoGauge | The time consumed in compilation |
 
+#### 4.2.17. Query Planning
+
+| Metric          | Tags                         | Type  | Description                                         |
+|-----------------|------------------------------|-------|-----------------------------------------------------|
+| query_plan_cost | stage="sql_parser"           | Timer | The SQL parsing time-consuming                      |
+| query_plan_cost | stage="analyzer"             | Timer | The query statement analysis time-consuming         |
+| query_plan_cost | stage="logical_planner"      | Timer | The query logical plan planning time-consuming      |
+| query_plan_cost | stage="distribution_planner" | Timer | The query distribution plan planning time-consuming |
+| query_plan_cost | stage="partition_fetcher"    | Timer | The partition information fetching time-consuming   |
+| query_plan_cost | stage="schema_fetcher"       | Timer | The schema information fetching time-consuming      |
+
+#### 4.2.18. Plan Dispatcher
+
+| Metric     | Tags                      | Type  | Description                                                  |
+|------------|---------------------------|-------|--------------------------------------------------------------|
+| dispatcher | stage="wait_for_dispatch" | Timer | The distribution plan dispatcher time-consuming              |
+| dispatcher | stage="dispatch_read"     | Timer | The distribution plan dispatcher time-consuming (only query) |
+
+#### 4.2.19. Query Resource
+
+| Metric         | Tags                     | Type | Description                                |
+|----------------|--------------------------|------|--------------------------------------------|
+| query_resource | type="sequence_tsfile"   | Rate | The access frequency of sequence tsfiles   |
+| query_resource | type="unsequence_tsfile" | Rate | The access frequency of unsequence tsfiles |
+| query_resource | type="flushing_memtable" | Rate | The access frequency of flushing memtables |
+| query_resource | type="working_memtable"  | Rate | The access frequency of working memtables  |
+
+#### 4.2.20. Data Exchange
+
+| Metric              | Tags                                                                   | Type      | Description                                                     |
+|---------------------|------------------------------------------------------------------------|-----------|-----------------------------------------------------------------|
+| data_exchange_cost  | operation="source_handle_get_tsblock", type="local/remote"             | Timer     | The time-consuming that source handles receive TsBlock          |
+| data_exchange_cost  | operation="source_handle_deserialize_tsblock", type="local/remote"     | Timer     | The time-consuming that source handles deserialize TsBlock      |
+| data_exchange_cost  | operation="sink_handle_send_tsblock", type="local/remote"              | Timer     | The time-consuming that sink handles send TsBlock               |
+| data_exchange_cost  | operation="send_new_data_block_event_task", type="server/caller"       | Timer     | The RPC time-consuming that sink handles send TsBlock           |
+| data_exchange_cost  | operation="get_data_block_task", type="server/caller"                  | Timer     | The RPC time-consuming that source handles receive TsBlock      |
+| data_exchange_cost  | operation="on_acknowledge_data_block_event_task", type="server/caller" | Timer     | The RPC time-consuming that source handles ack received TsBlock |
+| data_exchange_count | name="send_new_data_block_num", type="server/caller"                   | Histogram | The number of sent TsBlocks by sink handles                     |
+| data_exchange_count | name="get_data_block_num", type="server/caller"                        | Histogram | The number of received TsBlocks by source handles               |
+| data_exchange_count | name="on_acknowledge_data_block_num", type="server/caller"             | Histogram | The number of acknowledged TsBlocks by source handles           |
+
+#### 4.2.21. Query Task Schedule
+
+| Metric           | Tags                           | Type      | Description                                      |
+|------------------|--------------------------------|-----------|--------------------------------------------------|
+| driver_scheduler | name="ready_queued_time"       | Timer     | The queuing time of ready queue                  |
+| driver_scheduler | name="block_queued_time"       | Timer     | The queuing time of blocking queue               |
+| driver_scheduler | name="ready_queue_task_count"  | AutoGauge | The number of tasks queued in the ready queue    |
+| driver_scheduler | name="block_queued_task_count" | AutoGauge | The number of tasks queued in the blocking queue |
+
+#### 4.2.22. Query Execution
+
+| Metric                   | Tags                                                                                | Type    | Description                                                                             |
+|--------------------------|-------------------------------------------------------------------------------------|---------|-----------------------------------------------------------------------------------------|
+| query_execution          | stage="local_execution_planner"                                                     | Timer   | The time-consuming of operator tree construction                                        |
+| query_execution          | stage="query_resource_init"                                                         | Timer   | The time-consuming of query resource initialization                                     |
+| query_execution          | stage="get_query_resource_from_mem"                                                 | Timer   | The time-consuming of query resource memory query and construction                      |
+| query_execution          | stage="driver_internal_process"                                                     | Timer   | The time-consuming of driver execution                                                  |
+| query_execution          | stage="wait_for_result"                                                             | Timer   | The time-consuming of getting query result from result handle                           |
+| operator_execution_cost  | name="{{operator_name}}"                                                            | Timer   | The operator execution time                                                             |
+| operator_execution_count | name="{{operator_name}}"                                                            | Counter | The number of operator calls (counted by the number of next method calls)               |
+| aggregation              | from="raw_data"                                                                     | Timer   | The time-consuming of performing an aggregation calculation from a batch of raw data    |
+| aggregation              | from="statistics"                                                                   | Timer   | The time-consuming of updating an aggregated value with statistics                      |
+| series_scan_cost         | stage="load_timeseries_metadata", type="aligned/non_aligned", from="mem/disk"       | Timer   | The time-consuming of loading TimeseriesMetadata                                        |
+| series_scan_cost         | stage="read_timeseries_metadata", type="", from="cache/file"                        | Timer   | The time-consuming of reading TimeseriesMetadata of a tsfile                            |
+| series_scan_cost         | stage="timeseries_metadata_modification", type="aligned/non_aligned", from="null"   | Timer   | The time-consuming of filtering TimeseriesMetadata by mods                              |
+| series_scan_cost         | stage="load_chunk_metadata_list", type="aligned/non_aligned", from="mem/disk"       | Timer   | The time-consuming of loading ChunkMetadata list                                        |
+| series_scan_cost         | stage="chunk_metadata_modification", type="aligned/non_aligned", from="mem/disk"    | Timer   | The time-consuming of filtering ChunkMetadata by mods                                   |
+| series_scan_cost         | stage="chunk_metadata_filter", type="aligned/non_aligned", from="mem/disk"          | Timer   | The time-consuming of filtering ChunkMetadata by query filter                           |
+| series_scan_cost         | stage="construct_chunk_reader", type="aligned/non_aligned", from="mem/disk"         | Timer   | The time-consuming of constructing ChunkReader                                          |
+| series_scan_cost         | stage="read_chunk", type="", from="cache/file"                                      | Timer   | The time-consuming of reading Chunk                                                     |
+| series_scan_cost         | stage="init_chunk_reader", type="aligned/non_aligned", from="mem/disk"              | Timer   | The time-consuming of initializing ChunkReader (constructing PageReader)                |
+| series_scan_cost         | stage="build_tsblock_from_page_reader", type="aligned/non_aligned", from="mem/disk" | Timer   | The time-consuming of constructing Tsblock from PageReader                              |
+| series_scan_cost         | stage="build_tsblock_from_merge_reader", type="aligned/non_aligned", from="null"    | Timer   | The time-consuming of constructing Tsblock from MergeReader (handling overlapping data) |
+
 ### 4.3. Normal level Metrics
 
 #### 4.3.1. Cluster
