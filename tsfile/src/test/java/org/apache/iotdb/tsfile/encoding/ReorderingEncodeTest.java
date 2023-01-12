@@ -700,6 +700,7 @@ public class ReorderingEncodeTest {
               "Decoding Time",
               //      "Compress Time",
               //      "Uncompress Time",
+              "Points",
               "Compressed Size",
               "Compression Ratio"
       };
@@ -752,6 +753,7 @@ public class ReorderingEncodeTest {
                 "RD",
                 String.valueOf(encodeTime),
                 String.valueOf(decodeTime),
+                String.valueOf(data.size()),
                 String.valueOf(compressed_size),
                 String.valueOf(ratio)
         };
