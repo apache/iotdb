@@ -29,19 +29,19 @@ import org.apache.commons.lang3.StringUtils;
 
 public class TypeInferenceUtils {
 
-  private static TSDataType booleanStringInferType =
+  private static final TSDataType booleanStringInferType =
       IoTDBDescriptor.getInstance().getConfig().getBooleanStringInferType();
 
-  private static TSDataType integerStringInferType =
+  private static final TSDataType integerStringInferType =
       IoTDBDescriptor.getInstance().getConfig().getIntegerStringInferType();
 
-  private static TSDataType longStringInferType =
+  private static final TSDataType longStringInferType =
       IoTDBDescriptor.getInstance().getConfig().getLongStringInferType();
 
-  private static TSDataType floatingStringInferType =
+  private static final TSDataType floatingStringInferType =
       IoTDBDescriptor.getInstance().getConfig().getFloatingStringInferType();
 
-  private static TSDataType nanStringInferType =
+  private static final TSDataType nanStringInferType =
       IoTDBDescriptor.getInstance().getConfig().getNanStringInferType();
 
   private TypeInferenceUtils() {}
@@ -155,6 +155,33 @@ public class TypeInferenceUtils {
         return true;
       default:
         throw new IllegalArgumentException("Invalid Aggregation function: " + aggrFuncName);
+    }
+  }
+
+  public static boolean canAutoCast(TSDataType fromType, TSDataType toType) {
+    if (fromType.equals(toType)) {
+      return true;
+    }
+
+    switch (fromType) {
+      case INT32:
+        switch (toType) {
+          case INT64:
+          case FLOAT:
+          case DOUBLE:
+            return true;
+          default:
+            return false;
+        }
+      case INT64:
+      case FLOAT:
+        return toType.equals(TSDataType.DOUBLE);
+      case DOUBLE:
+      case BOOLEAN:
+      case TEXT:
+        return false;
+      default:
+        throw new IllegalArgumentException("Unknown data type: " + fromType);
     }
   }
 }

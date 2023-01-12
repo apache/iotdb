@@ -1273,6 +1273,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     intoComponent.validate(sourceDevices, sourceColumns);
 
     DeviceViewIntoPathDescriptor deviceViewIntoPathDescriptor = new DeviceViewIntoPathDescriptor();
+    PathPatternTree targetPathTree = new PathPatternTree();
     IntoComponent.IntoDeviceMeasurementIterator intoDeviceMeasurementIterator =
         intoComponent.getIntoDeviceMeasurementIterator();
     for (PartialPath sourceDevice : sourceDevices) {
@@ -1293,12 +1294,24 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         }
         deviceViewIntoPathDescriptor.specifyTargetDeviceMeasurement(
             sourceDevice, targetDevice, sourceColumn.toString(), targetMeasurement);
+
+        targetPathTree.appendFullPath(targetDevice, targetMeasurement);
+        deviceViewIntoPathDescriptor.recordSourceColumnDataType(
+            sourceColumn.toString(), analysis.getType(sourceColumn));
+
         intoDeviceMeasurementIterator.nextMeasurement();
       }
 
       intoDeviceMeasurementIterator.nextDevice();
     }
     deviceViewIntoPathDescriptor.validate();
+
+    // fetch schema of target paths
+    long startTime = System.nanoTime();
+    ISchemaTree targetSchemaTree = schemaFetcher.fetchSchema(targetPathTree);
+    QueryMetricsManager.getInstance().recordPlanCost(SCHEMA_FETCHER, System.nanoTime() - startTime);
+    deviceViewIntoPathDescriptor.bindType(targetSchemaTree);
+
     analysis.setDeviceViewIntoPathDescriptor(deviceViewIntoPathDescriptor);
   }
 
@@ -1320,6 +1333,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     intoComponent.validate(sourceColumns);
 
     IntoPathDescriptor intoPathDescriptor = new IntoPathDescriptor();
+    PathPatternTree targetPathTree = new PathPatternTree();
     IntoComponent.IntoPathIterator intoPathIterator = intoComponent.getIntoPathIterator();
     for (Expression sourceColumn : sourceColumns) {
       PartialPath deviceTemplate = intoPathIterator.getDeviceTemplate();
@@ -1336,9 +1350,21 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       intoPathDescriptor.specifyTargetPath(sourceColumn.toString(), targetPath);
       intoPathDescriptor.specifyDeviceAlignment(
           targetPath.getDevicePath().toString(), isAlignedDevice);
+
+      targetPathTree.appendFullPath(targetPath);
+      intoPathDescriptor.recordSourceColumnDataType(
+          sourceColumn.toString(), analysis.getType(sourceColumn));
+
       intoPathIterator.next();
     }
     intoPathDescriptor.validate();
+
+    // fetch schema of target paths
+    long startTime = System.nanoTime();
+    ISchemaTree targetSchemaTree = schemaFetcher.fetchSchema(targetPathTree);
+    QueryMetricsManager.getInstance().recordPlanCost(SCHEMA_FETCHER, System.nanoTime() - startTime);
+    intoPathDescriptor.bindType(targetSchemaTree);
+
     analysis.setIntoPathDescriptor(intoPathDescriptor);
   }
 
