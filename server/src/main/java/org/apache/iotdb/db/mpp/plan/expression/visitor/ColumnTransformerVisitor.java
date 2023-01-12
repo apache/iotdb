@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.mpp.plan.expression.visitor;
 
+import org.apache.iotdb.db.constant.SqlConstant;
 import org.apache.iotdb.db.mpp.common.NodeRef;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.binary.BinaryExpression;
@@ -57,6 +58,7 @@ import org.apache.iotdb.db.mpp.transformation.dag.column.leaf.TimeColumnTransfor
 import org.apache.iotdb.db.mpp.transformation.dag.column.multi.MappableUDFColumnTransformer;
 import org.apache.iotdb.db.mpp.transformation.dag.column.ternary.BetweenColumnTransformer;
 import org.apache.iotdb.db.mpp.transformation.dag.column.unary.ArithmeticNegationColumnTransformer;
+import org.apache.iotdb.db.mpp.transformation.dag.column.unary.DiffFunctionColumnTransformer;
 import org.apache.iotdb.db.mpp.transformation.dag.column.unary.InColumnTransformer;
 import org.apache.iotdb.db.mpp.transformation.dag.column.unary.IsNullColumnTransformer;
 import org.apache.iotdb.db.mpp.transformation.dag.column.unary.LogicNotColumnTransformer;
@@ -218,6 +220,8 @@ public class ColumnTransformerVisitor
                       .getValueColumnIndex());
           context.leafList.add(identity);
           context.cache.put(functionExpression, identity);
+        } else if (functionExpression.isBuiltInScalarFunction()) {
+          visitBuiltInScalarFunctionExpression(functionExpression, context);
         } else {
           ColumnTransformer[] inputColumnTransformers =
               expressions.stream()
@@ -251,6 +255,28 @@ public class ColumnTransformerVisitor
     }
     ColumnTransformer res = context.cache.get(functionExpression);
     res.addReferenceCount();
+    return res;
+  }
+
+  private ColumnTransformer visitBuiltInScalarFunctionExpression(
+      FunctionExpression expression, ColumnTransformerVisitorContext context) {
+    ColumnTransformer childColumnTransformer =
+        this.process(expression.getExpressions().get(0), context);
+    ColumnTransformer res;
+    switch (expression.getFunctionName()) {
+      case SqlConstant.DIFF:
+        res =
+            new DiffFunctionColumnTransformer(
+                TypeFactory.getType(TSDataType.DOUBLE),
+                childColumnTransformer,
+                Boolean.parseBoolean(
+                    expression.getFunctionAttributes().getOrDefault("ignoreNull", "true")));
+        break;
+      default:
+        throw new IllegalArgumentException(
+            "Invalid Scalar function: " + expression.getExpressionString());
+    }
+    context.cache.put(expression, res);
     return res;
   }
 

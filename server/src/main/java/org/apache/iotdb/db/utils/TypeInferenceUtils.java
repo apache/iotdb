@@ -157,4 +157,31 @@ public class TypeInferenceUtils {
         throw new IllegalArgumentException("Invalid Aggregation function: " + aggrFuncName);
     }
   }
+
+  public static TSDataType getScalarFunctionDataType(String funcName, TSDataType dataType) {
+    if (funcName == null) {
+      throw new IllegalArgumentException("ScalarFunction Name must not be null");
+    }
+    if (!verifyIsScalarFunctionDataTypeMatched(funcName, dataType)) {
+      throw new SemanticException(
+          "Scalar functions [DIFF] only support numeric data types [INT32, INT64, FLOAT, DOUBLE]");
+    }
+
+    switch (funcName.toLowerCase()) {
+      case SqlConstant.DIFF:
+        return TSDataType.DOUBLE;
+      default:
+        throw new IllegalArgumentException("Invalid Scalar function: " + funcName);
+    }
+  }
+
+  private static boolean verifyIsScalarFunctionDataTypeMatched(
+      String funcName, TSDataType dataType) {
+    switch (funcName.toLowerCase()) {
+      case SqlConstant.DIFF:
+        return dataType.isNumeric();
+      default:
+        throw new IllegalArgumentException("Invalid Scalar function: " + funcName);
+    }
+  }
 }
