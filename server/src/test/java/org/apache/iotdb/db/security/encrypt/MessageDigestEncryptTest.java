@@ -48,7 +48,7 @@ public class MessageDigestEncryptTest {
 
   @Before
   public void setUp() throws Exception {
-    CommonDescriptor.getInstance().getConfig().setEncryptDecryptProvider(providerClass);
+    CommonDescriptor.getInstance().getConfig().setIotdbServerEncryptDecryptProvider(providerClass);
     EnvironmentUtils.envSetUp();
     testFolder = new File(TestConstant.BASE_OUTPUT_PATH.concat("test"));
     testFolder.mkdirs();

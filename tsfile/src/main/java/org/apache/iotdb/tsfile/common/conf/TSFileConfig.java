@@ -153,6 +153,9 @@ public class TSFileConfig implements Serializable {
 
   private int patternMatchingThreshold = 1000000;
 
+  // Time interval in minute for calculating query frequency. Unit: minute
+  private int frequencyIntervalInMinute = 1;
+
   /** customizedProperties, this should be empty by default. */
   private Properties customizedProperties = new Properties();
 
@@ -438,22 +441,6 @@ public class TSFileConfig implements Serializable {
     this.freqEncodingBlockSize = freqEncodingBlockSize;
   }
 
-  public int getMaxTsBlockSizeInBytes() {
-    return maxTsBlockSizeInBytes;
-  }
-
-  public void setMaxTsBlockSizeInBytes(int maxTsBlockSizeInBytes) {
-    this.maxTsBlockSizeInBytes = maxTsBlockSizeInBytes;
-  }
-
-  public int getMaxTsBlockLineNumber() {
-    return maxTsBlockLineNumber;
-  }
-
-  public void setMaxTsBlockLineNumber(int maxTsBlockLineNumber) {
-    this.maxTsBlockLineNumber = maxTsBlockLineNumber;
-  }
-
   public int getPatternMatchingThreshold() {
     return patternMatchingThreshold;
   }
@@ -468,5 +455,13 @@ public class TSFileConfig implements Serializable {
 
   public void setCustomizedProperties(Properties customizedProperties) {
     this.customizedProperties = customizedProperties;
+  }
+
+  public int getFrequencyIntervalInMinute() {
+    return frequencyIntervalInMinute;
+  }
+
+  public void setFrequencyIntervalInMinute(int frequencyIntervalInMinute) {
+    this.frequencyIntervalInMinute = frequencyIntervalInMinute;
   }
 }

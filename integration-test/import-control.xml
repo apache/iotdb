@@ -41,7 +41,7 @@
     <allow class="org.apache.iotdb.db.constant.TestConstant" />
     <allow class="org.apache.iotdb.db.tools.watermark.WatermarkDetector" />
     <allow class="org.apache.iotdb.db.utils.MathUtils" />
-    <allow class="org.apache.iotdb.db.wal.utils.WALMode" />
+    <allow class="org.apache.iotdb.commons.wal.WALMode" />
     <allow class="org.fusesource.mqtt.client.QoS" />
     <allow class="org.apache.iotdb.commons.path.PartialPath" />
     <allow pkg="java.text"/>

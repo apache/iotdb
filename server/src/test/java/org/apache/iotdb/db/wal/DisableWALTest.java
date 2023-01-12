@@ -18,11 +18,11 @@
  */
 package org.apache.iotdb.db.wal;
 
+import org.apache.iotdb.commons.wal.WALMode;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.wal.node.IWALNode;
 import org.apache.iotdb.db.wal.node.WALFakeNode;
-import org.apache.iotdb.db.wal.utils.WALMode;
 
 import org.junit.After;
 import org.junit.Before;

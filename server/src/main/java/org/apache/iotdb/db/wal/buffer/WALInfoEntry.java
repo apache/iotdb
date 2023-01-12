@@ -18,10 +18,10 @@
  */
 package org.apache.iotdb.db.wal.buffer;
 
+import org.apache.iotdb.commons.wal.WALMode;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertTabletNode;
-import org.apache.iotdb.db.wal.utils.WALMode;
 
 /** This entry class stores info for persistence */
 public class WALInfoEntry extends WALEntry {
