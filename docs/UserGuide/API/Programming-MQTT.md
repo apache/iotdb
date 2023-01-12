@@ -115,7 +115,7 @@ Steps:
             <version>${project.version}</version>
         </dependency>
 ```
-* Define your implementation which implements `org.apache.iotdb.db.mqtt.PayloadFormatter.java`
+* Define your implementation which implements `org.apache.iotdb.db.protocol.mqtt.PayloadFormatter`
 e.g.,
 
 ```java
@@ -162,7 +162,7 @@ public class CustomizedJsonPayloadFormatter implements PayloadFormatter {
     }
 }
 ```
-* modify the file in `src/main/resources/META-INF/services/org.apache.iotdb.db.mqtt.PayloadFormatter`:
+* modify the file in `src/main/resources/META-INF/services/org.apache.iotdb.db.protocol.mqtt.PayloadFormatter`:
   clean the file and put your implementation class name into the file.
   In this example, the content is: `org.apache.iotdb.mqtt.server.CustomizedJsonPayloadFormatter`
 * compile your implementation as a jar file: `mvn package -DskipTests`
