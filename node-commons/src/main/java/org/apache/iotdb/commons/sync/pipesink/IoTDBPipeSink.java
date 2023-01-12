@@ -35,7 +35,7 @@ import java.util.Objects;
 import java.util.regex.Pattern;
 
 public class IoTDBPipeSink implements PipeSink {
-  private final PipeSinkType pipeSinkType = PipeSinkType.IoTDB;
+  private static final PipeSinkType pipeSinkType = PipeSinkType.IoTDB;
 
   private String name;
   private String ip;

@@ -64,7 +64,7 @@ public abstract class AbstractSeriesAggregationScanOperator extends AbstractData
 
   protected boolean finished = false;
 
-  private final long maxRetainedSize;
+  private final long cachedRawDataSize;
   private final long maxReturnSize;
 
   public AbstractSeriesAggregationScanOperator(
@@ -92,14 +92,14 @@ public abstract class AbstractSeriesAggregationScanOperator extends AbstractData
     }
     this.resultTsBlockBuilder = new TsBlockBuilder(dataTypes);
 
-    this.maxRetainedSize =
+    this.cachedRawDataSize =
         (1L + subSensorSize) * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte();
     this.maxReturnSize = maxReturnSize;
   }
 
   @Override
   public long calculateMaxPeekMemory() {
-    return maxRetainedSize + maxReturnSize;
+    return cachedRawDataSize + maxReturnSize;
   }
 
   @Override
@@ -109,7 +109,7 @@ public abstract class AbstractSeriesAggregationScanOperator extends AbstractData
 
   @Override
   public long calculateRetainedSizeAfterCallingNext() {
-    return maxRetainedSize;
+    return isGroupByQuery ? cachedRawDataSize : 0;
   }
 
   @Override
