@@ -86,6 +86,7 @@ public class InsertMultiTabletsStatement extends InsertBaseStatement {
     return insertTabletStatementList.isEmpty();
   }
 
+  @Override
   public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
     return visitor.visitInsertMultiTablets(this, context);
   }

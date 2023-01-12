@@ -557,7 +557,7 @@ public class ExpressionAnalyzer {
       List<PartialPath> noStarPaths = new ArrayList<>();
       for (PartialPath concatPath : concatPaths) {
         List<MeasurementPath> actualPaths = schemaTree.searchMeasurementPaths(concatPath).left;
-        if (actualPaths.size() == 0) {
+        if (actualPaths.isEmpty()) {
           return Collections.singletonList(new NullOperand());
         }
         noStarPaths.addAll(actualPaths);
@@ -661,7 +661,7 @@ public class ExpressionAnalyzer {
       for (Expression suffixExpression : expression.getExpressions()) {
         List<Expression> concatedExpression =
             concatDeviceAndRemoveWildcard(suffixExpression, devicePath, schemaTree);
-        if (concatedExpression != null && concatedExpression.size() != 0) {
+        if (concatedExpression != null && !concatedExpression.isEmpty()) {
           extendedExpressions.add(concatedExpression);
         }
       }
@@ -754,7 +754,7 @@ public class ExpressionAnalyzer {
       PartialPath concatPath = devicePath.concatPath(measurement);
 
       List<MeasurementPath> noStarPaths = schemaTree.searchMeasurementPaths(concatPath).left;
-      if (noStarPaths.size() == 0) {
+      if (noStarPaths.isEmpty()) {
         return Collections.singletonList(new NullOperand());
       }
       return reconstructTimeSeriesOperands(noStarPaths);

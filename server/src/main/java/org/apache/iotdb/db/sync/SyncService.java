@@ -349,7 +349,7 @@ public class SyncService implements IService {
 
   public void recordMessage(String pipeName, PipeMessage message) {
     if (!pipes.containsKey(pipeName)) {
-      logger.warn(String.format("No running PIPE for message %s.", message));
+      logger.warn("No running PIPE for message {}.", message);
       return;
     }
     TSStatus status = null;
@@ -365,10 +365,10 @@ public class SyncService implements IService {
         status = syncInfoFetcher.recordMsg(pipeName, message);
         break;
       default:
-        logger.error(String.format("Unknown message type: %s", message));
+        logger.error("Unknown message type: {}", message);
     }
     if (status != null && status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      logger.error(String.format("Failed to record message: %s", message));
+      logger.error("Failed to record message: {}", message);
     }
   }
 
@@ -420,13 +420,13 @@ public class SyncService implements IService {
   private void startExternalPipeManager(String pipeName, boolean startExtPipe)
       throws PipeException {
     if (!(pipes.get(pipeName) instanceof TsFilePipe)) {
-      logger.error("startExternalPipeManager(), runningPipe is not TsFilePipe. " + pipeName);
+      logger.error("startExternalPipeManager(), runningPipe is not TsFilePipe. {}", pipeName);
       return;
     }
 
     PipeSink pipeSink = pipes.get(pipeName).getPipeSink();
     if (!(pipeSink instanceof ExternalPipeSink)) {
-      logger.error("startExternalPipeManager(), pipeSink is not ExternalPipeSink." + pipeSink);
+      logger.error("startExternalPipeManager(), pipeSink is not ExternalPipeSink. {}", pipeSink);
       return;
     }
 
@@ -435,9 +435,8 @@ public class SyncService implements IService {
         ExtPipePluginRegister.getInstance().getWriteFactory(extPipeSinkTypeName);
     if (externalPipeSinkWriterFactory == null) {
       logger.error(
-          String.format(
-              "startExternalPipeManager(), can not found ExternalPipe plugin for %s.",
-              extPipeSinkTypeName));
+          "startExternalPipeManager(), can not found ExternalPipe plugin for {}.",
+          extPipeSinkTypeName);
       throw new PipeException("Can not found ExternalPipe plugin for " + extPipeSinkTypeName + ".");
     }
 

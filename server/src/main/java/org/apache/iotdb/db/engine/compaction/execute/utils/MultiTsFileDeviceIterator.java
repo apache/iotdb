@@ -305,7 +305,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
       TsFileSequenceReader reader = readerMap.get(tsFileResource);
       List<AlignedChunkMetadata> alignedChunkMetadataList =
           reader.getAlignedChunkMetadata(currentDevice.left);
-      if (alignedChunkMetadataList.size() > 0) {
+      if (!alignedChunkMetadataList.isEmpty()) {
         alignedChunkMetadataList.forEach(x -> x.setFilePath(tsFileResource.getTsFilePath()));
       }
       applyModificationForAlignedChunkMetadataList(tsFileResource, alignedChunkMetadataList);
@@ -428,7 +428,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
         }
         tempCollectedSeries.addAll(chunkMetadataListMap.keySet());
       }
-      if (tempCollectedSeries.size() > 0) {
+      if (!tempCollectedSeries.isEmpty()) {
         if (!hasRemainingSeries()) {
           lastSeries = Collections.max(tempCollectedSeries);
         }
@@ -454,7 +454,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
     }
 
     public boolean hasNextSeries() {
-      if (seriesInThisIteration.size() == 0 && !collectSeries()) {
+      if (seriesInThisIteration.isEmpty() && !collectSeries()) {
         return false;
       } else {
         return true;

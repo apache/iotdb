@@ -112,6 +112,7 @@ public class BatchHandlerQueue<T extends Event> {
       this.queue = queue;
     }
 
+    @Override
     public void run() {
       final long maxWaitMillis = 500;
       final ArrayList<T> list = new ArrayList<>();

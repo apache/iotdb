@@ -67,7 +67,7 @@ public abstract class AbstractSeriesAggregationScanOperator extends AbstractData
   private final long cachedRawDataSize;
   private final long maxReturnSize;
 
-  public AbstractSeriesAggregationScanOperator(
+  protected AbstractSeriesAggregationScanOperator(
       PlanNodeId sourceId,
       OperatorContext context,
       SeriesScanUtil seriesScanUtil,

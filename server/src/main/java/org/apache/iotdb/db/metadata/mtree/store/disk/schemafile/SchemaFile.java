@@ -92,8 +92,7 @@ public class SchemaFile implements ISchemaFile {
     }
 
     if (pmtFile.exists() && override) {
-      logger.warn(
-          String.format("Schema File [%s] will be overwritten since already exists.", filePath));
+      logger.warn("Schema File [{}] will be overwritten since already exists.", filePath);
       Files.delete(Paths.get(pmtFile.toURI()));
       pmtFile.createNewFile();
     }

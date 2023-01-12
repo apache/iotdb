@@ -87,7 +87,7 @@ public class TimeJoinOperator extends AbstractProcessOperator {
       List<ColumnMerger> mergers,
       TimeComparator comparator) {
     checkArgument(
-        children != null && children.size() > 0,
+        children != null && !children.isEmpty(),
         "child size of TimeJoinOperator should be larger than 0");
     this.operatorContext = operatorContext;
     this.children = children;

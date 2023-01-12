@@ -206,6 +206,7 @@ public class CreateMultiTimeSeriesNode extends WritePlanNode {
     }
   }
 
+  @Override
   public int hashCode() {
     return Objects.hash(this.getPlanNodeId(), measurementGroupMap);
   }

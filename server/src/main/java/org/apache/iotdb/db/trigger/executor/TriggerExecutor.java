@@ -87,7 +87,7 @@ public class TriggerExecutor {
       LOGGER.warn(
           "Trigger {} was fired with wrong event {}",
           triggerInformation.getTriggerName(),
-          triggerInformation.getEvent().toString());
+          triggerInformation.getEvent());
     }
     return true;
   }

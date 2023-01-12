@@ -417,7 +417,7 @@ public class InternalPage extends SchemaPage implements ISegment<Integer, Intege
     StringBuilder builder =
         new StringBuilder(
             String.format(
-                "page_id:%d, spare_offset:%d, spare_size:%d\n", pageIndex, spareOffset, spareSize));
+                "page_id:%d, spare_offset:%d, spare_size:%d%n", pageIndex, spareOffset, spareSize));
     builder.append(
         String.format(
             "[IndexEntrySegment, total_ptrs:%d, spare_size:%d, sub_index:%d, ",

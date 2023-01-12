@@ -138,7 +138,7 @@ public class SimpleFragmentParallelPlanner implements IFragmentParallelPlaner {
   private TDataNodeLocation selectTargetDataNode(TRegionReplicaSet regionReplicaSet) {
     if (regionReplicaSet == null
         || regionReplicaSet.getDataNodeLocations() == null
-        || regionReplicaSet.getDataNodeLocations().size() == 0) {
+        || regionReplicaSet.getDataNodeLocations().isEmpty()) {
       throw new IllegalArgumentException(
           String.format("regionReplicaSet is invalid: %s", regionReplicaSet));
     }
@@ -152,7 +152,7 @@ public class SimpleFragmentParallelPlanner implements IFragmentParallelPlaner {
     // black list won't be considered because it may have connection issue now.
     List<TDataNodeLocation> availableDataNodes =
         filterAvailableTDataNode(regionReplicaSet.getDataNodeLocations());
-    if (availableDataNodes.size() == 0) {
+    if (availableDataNodes.isEmpty()) {
       String errorMsg =
           String.format(
               "all replicas for region[%s] are not available in these DataNodes[%s]",

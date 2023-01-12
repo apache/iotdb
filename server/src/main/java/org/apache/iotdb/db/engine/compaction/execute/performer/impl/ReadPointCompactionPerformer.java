@@ -105,7 +105,7 @@ public class ReadPointCompactionPerformer
         .getQueryFileManager()
         .addUsedFilesForQuery(queryId, queryDataSource);
     TsFileMetricManager.getInstance()
-        .addCompactionTempFileNum(seqFiles.size() == 0, false, targetFiles.size());
+        .addCompactionTempFileNum(seqFiles.isEmpty(), false, targetFiles.size());
     try (AbstractCompactionWriter compactionWriter =
         getCompactionWriter(seqFiles, unseqFiles, targetFiles)) {
       // Do not close device iterator, because tsfile reader is managed by FileReaderManager.
@@ -133,9 +133,9 @@ public class ReadPointCompactionPerformer
     } finally {
       QueryResourceManager.getInstance().endQuery(queryId);
       TsFileMetricManager.getInstance()
-          .addCompactionTempFileNum(seqFiles.size() == 0, false, -targetFiles.size());
+          .addCompactionTempFileNum(seqFiles.isEmpty(), false, -targetFiles.size());
       TsFileMetricManager.getInstance()
-          .addCompactionTempFileSize(seqFiles.size() == 0, false, tempFileSize);
+          .addCompactionTempFileSize(seqFiles.isEmpty(), false, tempFileSize);
     }
   }
 
@@ -188,7 +188,7 @@ public class ReadPointCompactionPerformer
     // add temp file metrics
     long currentWriterSize = compactionWriter.getWriterSize();
     TsFileMetricManager.getInstance()
-        .addCompactionTempFileSize(seqFiles.size() == 0, false, currentWriterSize - tempFileSize);
+        .addCompactionTempFileSize(seqFiles.isEmpty(), false, currentWriterSize - tempFileSize);
     tempFileSize = currentWriterSize;
   }
 
@@ -241,7 +241,7 @@ public class ReadPointCompactionPerformer
     // add temp file metrics
     long currentWriterSize = compactionWriter.getWriterSize();
     TsFileMetricManager.getInstance()
-        .addCompactionTempFileSize(seqFiles.size() == 0, false, currentWriterSize - tempFileSize);
+        .addCompactionTempFileSize(seqFiles.isEmpty(), false, currentWriterSize - tempFileSize);
     tempFileSize = currentWriterSize;
   }
 

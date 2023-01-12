@@ -63,14 +63,14 @@ The IoTDB MQTT service load configurations from `${IOTDB_HOME}/${IOTDB_CONF}/iot
 
 Configurations are as follows:
 
-| NAME        | DESCRIPTION           | DEFAULT  |
-| ------------- |:-------------:|:------:|
-| enable_mqtt_service      | whether to enable the mqtt service | false |
-| mqtt_host      | the mqtt service binding host | 0.0.0.0 |
-| mqtt_port      | the mqtt service binding port    |   1883 |
-| mqtt_handler_pool_size | the handler pool size for handing the mqtt messages      |    1 |
-| mqtt_payload_formatter | the mqtt message payload formatter     |    json |
-| mqtt_max_message_size | the max mqtt message size in byte|   1048576 |
+| NAME        | DESCRIPTION           |  DEFAULT  |
+| ------------- |:-------------:|:---------:|
+| enable_mqtt_service      | whether to enable the mqtt service |   false   |
+| mqtt_host      | the mqtt service binding host | 127.0.0.1 |
+| mqtt_port      | the mqtt service binding port    |   1883    |
+| mqtt_handler_pool_size | the handler pool size for handing the mqtt messages      |     1     |
+| mqtt_payload_formatter | the mqtt message payload formatter     |   json    |
+| mqtt_max_message_size | the max mqtt message size in byte|  1048576  |
 
 
 ### Coding Examples

@@ -145,7 +145,7 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
   }
 
   public void dispatchLocally(FragmentInstance instance) throws FragmentInstanceDispatchException {
-    logger.info(String.format("Receive load node from uuid %s.", uuid));
+    logger.info("Receive load node from uuid {}.", uuid);
 
     ConsensusGroupId groupId =
         ConsensusGroupId.Factory.createFromTConsensusGroupId(
