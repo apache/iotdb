@@ -401,18 +401,97 @@ public class ReorderingEncodeTest {
   }
 
   public static int bytes2Integer(ArrayList<Byte> encoded, int start, int num) {
+    int value = 0;
     if(num > 4){
       System.out.println("bytes2Integer error");
       return 0;
     }
-    return 0;
-  }
-  public static ArrayList<ArrayList<Integer>> ReorderingDeltaDecoder(ArrayList<Byte> encoded){
-
-    int max_bit_width_interval   = bytes2Integer(encoded,0,4);
-    return null;
+    for(int i=start;i<num;i++){
+      value = value * 2 + encoded.get(i);
+    }
+    return value;
   }
 
+  public static ArrayList<ArrayList<Integer>> ReorderingDeltaDecoder(ArrayList<Byte> encoded,int td){
+
+    ArrayList<Integer> interval_list = new ArrayList<>();
+    ArrayList<Integer> value_list = new ArrayList<>();
+    ArrayList<Integer> deviation_list = new ArrayList<>();
+
+    ArrayList<ArrayList<Integer>> data = new ArrayList<>();
+    ArrayList<ArrayList<Integer>> ts_block = new ArrayList<>();
+
+    int decode_pos = 0;
+    int block_size = bytes2Integer(encoded,decode_pos,decode_pos+4);
+    decode_pos+=4;
+    int r0 = bytes2Integer(encoded,decode_pos,decode_pos+4);
+    decode_pos+=4;
+
+    int interval0 = bytes2Integer(encoded,decode_pos,decode_pos+4);
+    decode_pos+=4;
+    int value0 = bytes2Integer(encoded,decode_pos,decode_pos+4);
+    decode_pos+=4;
+
+    int max_bit_width_interval = bytes2Integer(encoded,decode_pos,decode_pos+4);
+    decode_pos += 4;
+    for(int i=0;i<block_size;i++){
+      int interval = 0;
+      for(int j=0;j<max_bit_width_interval;j++){
+        interval = interval * 2 + encoded.get(decode_pos+j);
+      }
+      interval_list.add(interval);
+      decode_pos += max_bit_width_interval;
+    }
+
+    int max_bit_width_value = bytes2Integer(encoded,decode_pos,decode_pos+4);
+    decode_pos += 4;
+    for(int i=0;i<block_size;i++){
+      int value = 0;
+      for(int j=0;j<max_bit_width_value;j++){
+        value = value * 2 + encoded.get(decode_pos+j);
+      }
+      value_list.add(value);
+      decode_pos += max_bit_width_value;
+    }
+
+    int max_bit_width_deviation = bytes2Integer(encoded,decode_pos,decode_pos+4);
+    decode_pos += 4;
+    for(int i=0;i<block_size;i++){
+      int deviation = 0;
+      for(int j=0;j<max_bit_width_deviation;j++){
+        deviation = deviation * 2 + encoded.get(decode_pos+j);
+      }
+      deviation_list.add(deviation);
+      decode_pos += max_bit_width_deviation;
+    }
+
+    for(int i=0;i<block_size;i++){
+      for(int j=0;j<block_size-i-1;j++){
+        if(interval_list.get(i)>interval_list.get(i+1)){
+          int tmp_interval=interval_list.get(i);
+          interval_list.set(i,interval_list.get(i+1));
+          interval_list.set(i+1,tmp_interval);
+          int tmp_value=value_list.get(i);
+          value_list.set(i,value_list.get(i+1));
+          value_list.set(i+1,tmp_value);
+        }
+      }
+    }
+
+    int d_i_1 = interval0;
+    for(int i=0;i<block_size;i++){
+      int r_i = interval_list.get(i) * td;
+      int d_i = d_i_1 + deviation_list.get(i);
+      d_i_1 = d_i;
+      int timestamp = r_i + d_i;
+
+      ArrayList<Integer> tmp_data = new ArrayList<>();
+      tmp_data.add(timestamp);
+      tmp_data.add(value_list.get(i));
+      data.add(tmp_data);
+    }
+    return data;
+  }
 
 
   public static void main(@org.jetbrains.annotations.NotNull String[] args) throws IOException {
