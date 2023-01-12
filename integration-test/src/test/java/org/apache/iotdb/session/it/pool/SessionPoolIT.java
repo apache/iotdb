@@ -18,39 +18,28 @@
  */
 package org.apache.iotdb.session.it.pool;
 
-import org.apache.iotdb.commons.client.exception.ClientManagerException;
-import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.commons.cluster.NodeStatus;
-import org.apache.iotdb.confignode.rpc.thrift.TDataNodeInfo;
-import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
 import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.isession.pool.ISessionPool;
 import org.apache.iotdb.isession.pool.SessionDataSetWrapper;
-import org.apache.iotdb.isession.util.Version;
 import org.apache.iotdb.it.env.EnvFactory;
-import org.apache.iotdb.it.env.cluster.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
+import org.apache.iotdb.itbase.env.BaseNodeWrapper;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
-import org.apache.iotdb.session.pool.SessionPool;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
-import org.apache.thrift.TException;
 import org.junit.After;
-import org.junit.Assert;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.time.ZoneId;
-import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -253,14 +242,16 @@ public class SessionPoolIT {
   }
 
   @Test
-  public void tryIfTheServerIsRestart()
-      throws InterruptedException, TException, ClientManagerException, IOException {
+  public void tryIfTheServerIsRestart() {
     ISessionPool pool = EnvFactory.getEnv().getSessionPool(3);
     SessionDataSetWrapper wrapper = null;
+    BaseNodeWrapper node = EnvFactory.getEnv().getDataNodeWrapper(0);
     try {
       wrapper = pool.executeQueryStatement("select * from root.sg1.d1 where time > 1");
-      EnvFactory.getEnv().getDataNodeWrapper(0).stop();
-      EnvFactory.getEnv().getDataNodeWrapper(0).waitingToShutDown();
+      node.stop();
+      EnvFactory.getEnv()
+          .ensureNodeStatus(
+              Collections.singletonList(node), Collections.singletonList(NodeStatus.Unknown));
       // user does not know what happens.
       while (wrapper.hasNext()) {
         wrapper.next();
@@ -268,11 +259,14 @@ public class SessionPoolIT {
     } catch (IoTDBConnectionException e) {
       pool.closeResultSet(wrapper);
       pool.close();
-      EnvFactory.getEnv().getDataNodeWrapper(0).stop();
-      EnvFactory.getEnv().getDataNodeWrapper(0).waitingToShutDown();
-      Assert.assertTrue(waitDataNodeStatusUnknown(EnvFactory.getEnv().getDataNodeWrapper(0)));
-      EnvFactory.getEnv().getDataNodeWrapper(0).start();
-      TimeUnit.SECONDS.sleep(10);
+      node.stop();
+      EnvFactory.getEnv()
+          .ensureNodeStatus(
+              Collections.singletonList(node), Collections.singletonList(NodeStatus.Unknown));
+      node.start();
+      EnvFactory.getEnv()
+          .ensureNodeStatus(
+              Collections.singletonList(node), Collections.singletonList(NodeStatus.Running));
       pool = EnvFactory.getEnv().getSessionPool(3);
       correctQuery(pool, DEFAULT_QUERY_TIMEOUT);
       pool.close();
@@ -291,10 +285,14 @@ public class SessionPoolIT {
       } catch (IoTDBConnectionException ec) {
         pool.closeResultSet(wrapper);
         pool.close();
-        EnvFactory.getEnv().getDataNodeWrapper(0).stop();
-        EnvFactory.getEnv().getDataNodeWrapper(0).waitingToShutDown();
-        Assert.assertTrue(waitDataNodeStatusUnknown(EnvFactory.getEnv().getDataNodeWrapper(0)));
-        EnvFactory.getEnv().getDataNodeWrapper(0).start();
+        node.stop();
+        EnvFactory.getEnv()
+            .ensureNodeStatus(
+                Collections.singletonList(node), Collections.singletonList(NodeStatus.Unknown));
+        node.start();
+        EnvFactory.getEnv()
+            .ensureNodeStatus(
+                Collections.singletonList(node), Collections.singletonList(NodeStatus.Running));
         pool = EnvFactory.getEnv().getSessionPool(3);
         correctQuery(pool, DEFAULT_QUERY_TIMEOUT);
         pool.close();
@@ -312,24 +310,8 @@ public class SessionPoolIT {
   }
 
   @Test
-  @Ignore
   public void tryIfTheServerIsRestartButDataIsGotten() {
-    SessionPool pool =
-        new SessionPool(
-            "127.0.0.1",
-            6667,
-            "root",
-            "root",
-            3,
-            1,
-            60000,
-            false,
-            null,
-            false,
-            SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS,
-            SessionConfig.DEFAULT_VERSION,
-            SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
-            SessionConfig.DEFAULT_MAX_FRAME_SIZE);
+    ISessionPool pool = EnvFactory.getEnv().getSessionPool(3);
     write10Data(pool, true);
     assertEquals(1, pool.currentAvailableSize());
     SessionDataSetWrapper wrapper;
@@ -353,20 +335,24 @@ public class SessionPoolIT {
   }
 
   @Test
-  public void restart()
-      throws TException, ClientManagerException, IOException, InterruptedException {
+  public void restart() {
     ISessionPool pool = EnvFactory.getEnv().getSessionPool(1);
     write10Data(pool, true);
     // stop the server.
     pool.close();
-    EnvFactory.getEnv().getDataNodeWrapper(0).stop();
-    EnvFactory.getEnv().getDataNodeWrapper(0).waitingToShutDown();
+    BaseNodeWrapper node = EnvFactory.getEnv().getDataNodeWrapper(0);
+    node.stop();
+    EnvFactory.getEnv()
+        .ensureNodeStatus(
+            Collections.singletonList(node), Collections.singletonList(NodeStatus.Unknown));
     pool = EnvFactory.getEnv().getSessionPool(1);
     // all this ten data will fail.
     write10Data(pool, false);
     // restart the server
-    Assert.assertTrue(waitDataNodeStatusUnknown(EnvFactory.getEnv().getDataNodeWrapper(0)));
-    EnvFactory.getEnv().getDataNodeWrapper(0).start();
+    node.start();
+    EnvFactory.getEnv()
+        .ensureNodeStatus(
+            Collections.singletonList(node), Collections.singletonList(NodeStatus.Running));
     write10Data(pool, true);
     pool.close();
   }
@@ -411,55 +397,8 @@ public class SessionPoolIT {
   }
 
   @Test
-  public void testBuilder() {
-    SessionPool pool =
-        new SessionPool.Builder()
-            .host("localhost")
-            .port(1234)
-            .maxSize(10)
-            .user("abc")
-            .password("123")
-            .fetchSize(1)
-            .waitToGetSessionTimeoutInMs(2)
-            .enableRedirection(true)
-            .enableCompression(true)
-            .zoneId(ZoneOffset.UTC)
-            .connectionTimeoutInMs(3)
-            .version(Version.V_0_13)
-            .build();
-
-    assertEquals("localhost", pool.getHost());
-    assertEquals(1234, pool.getPort());
-    assertEquals("abc", pool.getUser());
-    assertEquals("123", pool.getPassword());
-    assertEquals(10, pool.getMaxSize());
-    assertEquals(1, pool.getFetchSize());
-    assertEquals(2, pool.getWaitToGetSessionTimeoutInMs());
-    assertTrue(pool.isEnableRedirection());
-    assertTrue(pool.isEnableCompression());
-    assertEquals(3, pool.getConnectionTimeoutInMs());
-    assertEquals(ZoneOffset.UTC, pool.getZoneId());
-    assertEquals(Version.V_0_13, pool.getVersion());
-  }
-
-  @Test
   public void testSetters() {
-    SessionPool pool =
-        new SessionPool(
-            "127.0.0.1",
-            6667,
-            "root",
-            "root",
-            3,
-            1,
-            60000,
-            false,
-            null,
-            false,
-            SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS,
-            SessionConfig.DEFAULT_VERSION,
-            SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
-            SessionConfig.DEFAULT_MAX_FRAME_SIZE);
+    ISessionPool pool = EnvFactory.getEnv().getSessionPool(3);
     try {
       pool.setEnableRedirection(true);
       assertTrue(pool.isEnableRedirection());
@@ -474,29 +413,10 @@ public class SessionPoolIT {
       pool.setFetchSize(16);
       assertEquals(16, pool.getFetchSize());
     } catch (Exception e) {
+      e.printStackTrace();
       fail(e.getMessage());
     } finally {
       pool.close();
     }
-  }
-
-  private boolean waitDataNodeStatusUnknown(DataNodeWrapper dataNode)
-      throws ClientManagerException, IOException, InterruptedException, TException {
-    try (SyncConfigNodeIServiceClient client =
-        (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
-      // At least wait 20 seconds
-      for (int count = 0; count < 30; count++) {
-        TShowDataNodesResp showDataNodesResp = client.showDataNodes();
-        for (TDataNodeInfo dataNodeInfo : showDataNodesResp.getDataNodesInfoList()) {
-          if (dataNodeInfo.getRpcAddresss().equals(dataNode.getIp())
-              && dataNodeInfo.getRpcPort() == dataNode.getPort()
-              && NodeStatus.Unknown.getStatus().equals(dataNodeInfo.getStatus())) {
-            return true;
-          }
-        }
-        TimeUnit.SECONDS.sleep(1);
-      }
-    }
-    return false;
   }
 }

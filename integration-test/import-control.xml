@@ -89,7 +89,7 @@
     <allow class="org.apache.iotdb.commons.conf.IoTDBConstant" />
     <allow class="org.apache.iotdb.db.conf.IoTDBDescriptor" />
     <allow class="org.apache.iotdb.db.conf.OperationType" />
-    <allow class="org.apache.iotdb.db.utils.EnvironmentUtils" />
+    <allow class="org.apache.iotdb.commons.cluster.NodeStatus" />
     <allow class="org.apache.iotdb.tsfile.common.constant.TsFileConstant" />
     <allow class="org.apache.iotdb.service.rpc.thrift.TSConnectionInfoResp" />
     <allow class="org.apache.iotdb.service.rpc.thrift.TSConnectionType" />
