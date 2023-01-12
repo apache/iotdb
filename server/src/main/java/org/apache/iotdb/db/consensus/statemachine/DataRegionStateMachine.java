@@ -76,7 +76,7 @@ public class DataRegionStateMachine extends BaseStateMachine {
 
   private static final int MAX_REQUEST_CACHE_SIZE = 5;
   private static final long CACHE_WINDOW_TIME_IN_MS =
-      IoTDBDescriptor.getInstance().getConf().getCacheWindowTimeInMs();
+      CommonDescriptor.getInstance().getConf().getIotConsensusCacheWindowTimeInMs();
 
   private ConcurrentHashMap<String, SyncLogCacheQueue> cacheQueueMap;
 

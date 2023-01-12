@@ -18,10 +18,10 @@
  */
 package org.apache.iotdb.db.sync.pipedata.load;
 
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.sync.PipeDataLoadException;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.LoadFileException;
 import org.apache.iotdb.db.mpp.plan.Coordinator;
 import org.apache.iotdb.db.mpp.plan.execution.ExecutionResult;
@@ -66,7 +66,7 @@ public class TsFileLoader implements ILoader {
                   "",
                   PARTITION_FETCHER,
                   SCHEMA_FETCHER,
-                  IoTDBDescriptor.getInstance().getConf().getQueryTimeoutThreshold());
+                  CommonDescriptor.getInstance().getConf().getQueryTimeoutThreshold());
       if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         logger.error("Load TsFile {} error, statement: {}.", tsFile.getPath(), statement);
         logger.error("Load TsFile result status : {}.", result.status);

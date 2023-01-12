@@ -17,7 +17,7 @@
  * under the License.
  */
 package org.apache.iotdb.db.engine.compaction.selector.impl;
-
+import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -46,6 +46,7 @@ import java.util.stream.Collectors;
 public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector {
   private static final Logger LOGGER =
       LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
+
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConf();
 
   private final int SELECT_WARN_THRESHOLD = 10;
