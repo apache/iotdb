@@ -292,6 +292,81 @@ Core 级别的监控指标在系统运行中默认开启，每一个 Core 级别
 | ----------------------- | --------------------------------------------- | --------- | ------------------ |
 | jvm_compilation_time_ms | {compiler="HotSpot 64-Bit Tiered Compilers",} | AutoGauge | 耗费在编译上的时间 |
 
+#### 4.2.17. 查询规划耗时统计
+
+| Metric          | Tags                         | Type  | Description                |
+|-----------------|------------------------------|-------|----------------------------|
+| query_plan_cost | stage="sql_parser"           | Timer | SQL 解析耗时               |
+| query_plan_cost | stage="analyzer"             | Timer | 查询语句分析耗时           |
+| query_plan_cost | stage="logical_planner"      | Timer | 查询逻辑计划规划耗时       |
+| query_plan_cost | stage="distribution_planner" | Timer | 查询分布式执行计划规划耗时 |
+| query_plan_cost | stage="partition_fetcher"    | Timer | 分区信息拉取耗时           |
+| query_plan_cost | stage="schema_fetcher"       | Timer | 元数据信息拉取耗时         |
+
+#### 4.2.18. 执行计划分发耗时统计
+
+| Metric     | Tags                      | Type  | Description          |
+|------------|---------------------------|-------|----------------------|
+| dispatcher | stage="wait_for_dispatch" | Timer | 分发执行计划耗时     |
+| dispatcher | stage="dispatch_read"     | Timer | 查询执行计划发送耗时 |
+
+#### 4.2.19. 查询资源访问统计
+
+| Metric         | Tags                     | Type | Description                |
+|----------------|--------------------------|------|----------------------------|
+| query_resource | type="sequence_tsfile"   | Rate | 顺序文件访问频率           |
+| query_resource | type="unsequence_tsfile" | Rate | 乱序文件访问频率           |
+| query_resource | type="flushing_memtable" | Rate | flushing memtable 访问频率 |
+| query_resource | type="working_memtable"  | Rate | working memtable 访问频率  |
+
+#### 4.2.20. 数据传输模块统计
+
+| Metric              | Tags                                                                   | Type      | Description                             |
+|---------------------|------------------------------------------------------------------------|-----------|-----------------------------------------|
+| data_exchange_cost  | operation="source_handle_get_tsblock", type="local/remote"             | Timer     | source handle 接收 TsBlock 耗时         |
+| data_exchange_cost  | operation="source_handle_deserialize_tsblock", type="local/remote"     | Timer     | source handle 反序列化 TsBlock 耗时     |
+| data_exchange_cost  | operation="sink_handle_send_tsblock", type="local/remote"              | Timer     | sink handle 发送 TsBlock 耗时           |
+| data_exchange_cost  | operation="send_new_data_block_event_task", type="server/caller"       | Timer     | sink handle 发送 TsBlock RPC 耗时       |
+| data_exchange_cost  | operation="get_data_block_task", type="server/caller"                  | Timer     | source handle 接收 TsBlock RPC 耗时     |
+| data_exchange_cost  | operation="on_acknowledge_data_block_event_task", type="server/caller" | Timer     | source handle 确认接收 TsBlock RPC 耗时 |
+| data_exchange_count | name="send_new_data_block_num", type="server/caller"                   | Histogram | sink handle 发送 TsBlock数量            |
+| data_exchange_count | name="get_data_block_num", type="server/caller"                        | Histogram | source handle 接收 TsBlock 数量         |
+| data_exchange_count | name="on_acknowledge_data_block_num", type="server/caller"             | Histogram | source handle 确认接收 TsBlock 数量     |
+
+#### 4.2.21. 查询任务调度统计
+
+| Metric           | Tags                           | Type      | Description        |
+|------------------|--------------------------------|-----------|--------------------|
+| driver_scheduler | name="ready_queued_time"       | Timer     | 就绪队列排队时间   |
+| driver_scheduler | name="block_queued_time"       | Timer     | 阻塞队列排队时间   |
+| driver_scheduler | name="ready_queue_task_count"  | AutoGauge | 就绪队列排队任务数 |
+| driver_scheduler | name="block_queued_task_count" | AutoGauge | 阻塞队列排队任务数 |
+
+#### 4.2.22. 查询执行耗时统计
+
+| Metric                   | Tags                                                                                | Type    | Description                                    |
+|--------------------------|-------------------------------------------------------------------------------------|---------|------------------------------------------------|
+| query_execution          | stage="local_execution_planner"                                                     | Timer   | 算子树构造耗时                                 |
+| query_execution          | stage="query_resource_init"                                                         | Timer   | 查询资源初始化耗时                             |
+| query_execution          | stage="get_query_resource_from_mem"                                                 | Timer   | 查询资源内存查询与构造耗时                     |
+| query_execution          | stage="driver_internal_process"                                                     | Timer   | Driver 执行耗时                                |
+| query_execution          | stage="wait_for_result"                                                             | Timer   | 从resultHandle 获取一次查询结果的耗时          |
+| operator_execution_cost  | name="{{operator_name}}"                                                            | Timer   | 算子执行耗时                                   |
+| operator_execution_count | name="{{operator_name}}"                                                            | Counter | 算子调用次数（以 next 方法调用次数计算）       |
+| aggregation              | from="raw_data"                                                                     | Timer   | 从一批原始数据进行一次聚合计算的耗时           |
+| aggregation              | from="statistics"                                                                   | Timer   | 使用统计信息更新一次聚合值的耗时               |
+| series_scan_cost         | stage="load_timeseries_metadata", type="aligned/non_aligned", from="mem/disk"       | Timer   | 加载 TimeseriesMetadata 耗时                   |
+| series_scan_cost         | stage="read_timeseries_metadata", type="", from="cache/file"                        | Timer   | 读取一个文件的 Metadata 耗时                   |
+| series_scan_cost         | stage="timeseries_metadata_modification", type="aligned/non_aligned", from="null"   | Timer   | 过滤删除的 TimeseriesMetadata 耗时             |
+| series_scan_cost         | stage="load_chunk_metadata_list", type="aligned/non_aligned", from="mem/disk"       | Timer   | 加载 ChunkMetadata 列表耗时                    |
+| series_scan_cost         | stage="chunk_metadata_modification", type="aligned/non_aligned", from="mem/disk"    | Timer   | 过滤删除的 ChunkMetadata 耗时                  |
+| series_scan_cost         | stage="chunk_metadata_filter", type="aligned/non_aligned", from="mem/disk"          | Timer   | 根据查询过滤条件过滤 ChunkMetadata 耗时        |
+| series_scan_cost         | stage="construct_chunk_reader", type="aligned/non_aligned", from="mem/disk"         | Timer   | 构造 ChunkReader 耗时                          |
+| series_scan_cost         | stage="read_chunk", type="", from="cache/file"                                      | Timer   | 读取 Chunk 的耗时                              |
+| series_scan_cost         | stage="init_chunk_reader", type="aligned/non_aligned", from="mem/disk"              | Timer   | 初始化 ChunkReader（构造 PageReader） 耗时     |
+| series_scan_cost         | stage="build_tsblock_from_page_reader", type="aligned/non_aligned", from="mem/disk" | Timer   | 从 PageReader 构造 Tsblock 耗时                |
+| series_scan_cost         | stage="build_tsblock_from_merge_reader", type="aligned/non_aligned", from="null"    | Timer   | 从 MergeReader 构造 Tsblock （解乱序数据）耗时 |
+
 ### 4.3. Normal 级别监控指标
 
 #### 4.3.1. 集群
