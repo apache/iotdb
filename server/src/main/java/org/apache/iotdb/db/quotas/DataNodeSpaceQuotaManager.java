@@ -77,14 +77,18 @@ public class DataNodeSpaceQuotaManager {
 
   private void recover() {
     TSpaceQuotaResp spaceQuota = ClusterConfigTaskExecutor.getInstance().getSpaceQuota();
-    if (spaceQuota.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        && spaceQuota.getSpaceQuota() != null) {
-      for (String storageGroup : spaceQuota.getSpaceQuota().keySet()) {
-        spaceQuotaLimit.put(storageGroup, spaceQuota.getSpaceQuota().get(storageGroup));
-        spaceQuotaUsage.put(storageGroup, new TSpaceQuota());
+    if (spaceQuota.getStatus() != null) {
+      if (spaceQuota.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+          && spaceQuota.getSpaceQuota() != null) {
+        for (String storageGroup : spaceQuota.getSpaceQuota().keySet()) {
+          spaceQuotaLimit.put(storageGroup, spaceQuota.getSpaceQuota().get(storageGroup));
+          spaceQuotaUsage.put(storageGroup, new TSpaceQuota());
+        }
       }
+      LOGGER.info("Space quota limit restored succeeded. " + spaceQuotaLimit.toString());
+    } else {
+      LOGGER.error("Space quota limit restored failed. " + spaceQuotaLimit.toString());
     }
-    LOGGER.info("Space quota limit restored successfully. " + spaceQuotaLimit.toString());
   }
 
   public boolean checkDeviceLimit(String storageGroup) {
