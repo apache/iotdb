@@ -51,7 +51,7 @@ public class DataExchangeCountMetricSet implements IMetricSet {
         new MetricInfo(
             MetricType.HISTOGRAM,
             metric,
-            Tag.OPERATION.toString(),
+            Tag.NAME.toString(),
             "send_new_data_block_num",
             Tag.TYPE.toString(),
             "caller"));
@@ -60,7 +60,7 @@ public class DataExchangeCountMetricSet implements IMetricSet {
         new MetricInfo(
             MetricType.HISTOGRAM,
             metric,
-            Tag.OPERATION.toString(),
+            Tag.NAME.toString(),
             "send_new_data_block_num",
             Tag.TYPE.toString(),
             "server"));
@@ -69,7 +69,7 @@ public class DataExchangeCountMetricSet implements IMetricSet {
         new MetricInfo(
             MetricType.HISTOGRAM,
             metric,
-            Tag.OPERATION.toString(),
+            Tag.NAME.toString(),
             "on_acknowledge_data_block_num",
             Tag.TYPE.toString(),
             "caller"));
@@ -78,7 +78,7 @@ public class DataExchangeCountMetricSet implements IMetricSet {
         new MetricInfo(
             MetricType.HISTOGRAM,
             metric,
-            Tag.OPERATION.toString(),
+            Tag.NAME.toString(),
             "on_acknowledge_data_block_num",
             Tag.TYPE.toString(),
             "server"));
@@ -87,7 +87,7 @@ public class DataExchangeCountMetricSet implements IMetricSet {
         new MetricInfo(
             MetricType.HISTOGRAM,
             metric,
-            Tag.OPERATION.toString(),
+            Tag.NAME.toString(),
             "get_data_block_num",
             Tag.TYPE.toString(),
             "caller"));
@@ -96,7 +96,7 @@ public class DataExchangeCountMetricSet implements IMetricSet {
         new MetricInfo(
             MetricType.HISTOGRAM,
             metric,
-            Tag.OPERATION.toString(),
+            Tag.NAME.toString(),
             "get_data_block_num",
             Tag.TYPE.toString(),
             "server"));
