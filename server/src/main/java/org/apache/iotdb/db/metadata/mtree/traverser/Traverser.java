@@ -60,23 +60,43 @@ public abstract class Traverser<R> extends AbstractTreeVisitor<IMNode, R> {
   // default false means fullPath pattern match
   protected boolean isPrefixMatch = false;
 
+  private boolean needWriteLock;
+
   protected Traverser() {}
+
+  protected Traverser(IMNode startNode, PartialPath path, IMTreeStore store, boolean isPrefixMatch)
+      throws MetadataException {
+    this(startNode, path, store, isPrefixMatch, false);
+  }
 
   /**
    * To traverse subtree under root.sg, e.g., init Traverser(root, "root.sg.**")
    *
    * @param startNode denote which tree to traverse by passing its root
    * @param path use wildcard to specify which part to traverse
-   * @throws MetadataException
+   * @param store MTree store to traverse
+   * @param isPrefixMatch prefix match or not
+   * @param needWriteLock true if there may be a write operation during the traversal
+   * @throws MetadataException path does not meet the expected rules
    */
-  protected Traverser(IMNode startNode, PartialPath path, IMTreeStore store, boolean isPrefixMatch)
+  protected Traverser(
+      IMNode startNode,
+      PartialPath path,
+      IMTreeStore store,
+      boolean isPrefixMatch,
+      boolean needWriteLock)
       throws MetadataException {
     super(startNode, path, isPrefixMatch);
+    if (needWriteLock) {
+      store.writeLock();
+    }
+    initStack();
     String[] nodes = path.getNodes();
     if (nodes.length == 0 || !nodes[0].equals(PATH_ROOT)) {
       throw new IllegalPathException(
           path.getFullPath(), path.getFullPath() + " doesn't start with " + startNode.getName());
     }
+    this.needWriteLock = needWriteLock;
     this.startNode = startNode;
     this.nodes = nodes;
     this.store = store;
@@ -135,6 +155,14 @@ public abstract class Traverser<R> extends AbstractTreeVisitor<IMNode, R> {
   @Override
   protected void releaseNodeIterator(Iterator<IMNode> nodeIterator) {
     ((IMNodeIterator) nodeIterator).close();
+  }
+
+  @Override
+  public void close() {
+    super.close();
+    if (needWriteLock) {
+      store.unlockWrite();
+    }
   }
 
   public void setTemplateMap(Map<Integer, Template> templateMap) {

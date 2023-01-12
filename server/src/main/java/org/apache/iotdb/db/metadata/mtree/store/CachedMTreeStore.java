@@ -49,7 +49,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
-import java.util.concurrent.locks.StampedLock;
 
 import static org.apache.iotdb.db.metadata.mtree.store.disk.ICachedMNodeContainer.getCachedMNodeContainer;
 
@@ -73,7 +72,8 @@ public class CachedMTreeStore implements IMTreeStore {
   private volatile boolean hasReleaseTask;
   private int releaseCount = 0;
 
-  private final StampedLock lock = new StampedLock();
+  private final CachedMTreeReadWriteLock lock = new CachedMTreeReadWriteLock();
+  private long writeLockStamp;
 
   public CachedMTreeStore(PartialPath storageGroup, int schemaRegionId)
       throws MetadataException, IOException {
@@ -92,7 +92,7 @@ public class CachedMTreeStore implements IMTreeStore {
 
   @Override
   public boolean hasChild(IMNode parent, String name) throws MetadataException {
-    long stamp = lock.readLock();
+    lock.readLock();
     try {
       IMNode child = getChild(parent, name);
       if (child == null) {
@@ -102,7 +102,7 @@ public class CachedMTreeStore implements IMTreeStore {
         return true;
       }
     } finally {
-      lock.unlockRead(stamp);
+      lock.unlockRead();
     }
   }
 
@@ -120,7 +120,7 @@ public class CachedMTreeStore implements IMTreeStore {
    */
   @Override
   public IMNode getChild(IMNode parent, String name) throws MetadataException {
-    long stamp = lock.readLock();
+    lock.readLock();
     try {
       IMNode node = parent.getChild(name);
       if (node == null) {
@@ -138,7 +138,7 @@ public class CachedMTreeStore implements IMTreeStore {
 
       return node;
     } finally {
-      lock.unlockRead(stamp);
+      lock.unlockRead();
     }
   }
 
@@ -209,14 +209,14 @@ public class CachedMTreeStore implements IMTreeStore {
   // must pin parent first
   @Override
   public IMNode addChild(IMNode parent, String childName, IMNode child) {
-    long stamp = lock.readLock();
+    lock.readLock();
     try {
       child.setParent(parent);
       cacheManager.updateCacheStatusAfterAppend(child);
       ensureMemoryStatus();
       return parent.getChild(childName);
     } finally {
-      lock.unlockRead(stamp);
+      lock.unlockRead();
     }
   }
 
@@ -233,7 +233,7 @@ public class CachedMTreeStore implements IMTreeStore {
    */
   @Override
   public void deleteChild(IMNode parent, String childName) throws MetadataException {
-    long stamp = lock.writeLock();
+    lock.writeLock();
     try {
       IMNode deletedMNode = getChild(parent, childName);
       ICachedMNodeContainer container = getCachedMNodeContainer(parent);
@@ -250,7 +250,7 @@ public class CachedMTreeStore implements IMTreeStore {
       parent.deleteChild(childName);
       cacheManager.remove(deletedMNode);
     } finally {
-      lock.unlockWrite(stamp);
+      lock.unlockWrite();
     }
   }
 
@@ -264,7 +264,7 @@ public class CachedMTreeStore implements IMTreeStore {
   public void updateMNode(IMNode node) throws MetadataException {
     if (node.isStorageGroup()) {
       this.root = node;
-      long stamp = lock.writeLock();
+      lock.writeLock();
       try {
         file.updateStorageGroupNode(node.getAsStorageGroupMNode());
       } catch (IOException e) {
@@ -272,14 +272,14 @@ public class CachedMTreeStore implements IMTreeStore {
             "IOException occurred during updating StorageGroupMNode {}", node.getFullPath());
         throw new MetadataException(e);
       } finally {
-        lock.unlockWrite(stamp);
+        lock.unlockWrite();
       }
     } else {
-      long stamp = lock.readLock();
+      lock.readLock();
       try {
         cacheManager.updateCacheStatusAfterUpdate(node);
       } finally {
-        lock.unlockRead(stamp);
+        lock.unlockRead();
       }
     }
   }
@@ -334,11 +334,11 @@ public class CachedMTreeStore implements IMTreeStore {
    */
   @Override
   public void pin(IMNode node) throws MetadataException {
-    long stamp = lock.readLock();
+    lock.readLock();
     try {
       cacheManager.pinMNode(node);
     } finally {
-      lock.unlockRead(stamp);
+      lock.unlockRead();
     }
   }
 
@@ -352,13 +352,13 @@ public class CachedMTreeStore implements IMTreeStore {
    */
   @Override
   public void unPin(IMNode node) {
-    long stamp = lock.readLock();
+    lock.readLock();
     try {
       if (cacheManager.unPinMNode(node)) {
         ensureMemoryStatus();
       }
     } finally {
-      lock.unlockRead(stamp);
+      lock.unlockRead();
     }
   }
 
@@ -370,10 +370,20 @@ public class CachedMTreeStore implements IMTreeStore {
     }
   }
 
+  @Override
+  public void writeLock() {
+    lock.writeLock();
+  }
+
+  @Override
+  public void unlockWrite() {
+    lock.unlockWrite();
+  }
+
   /** clear all the data of MTreeStore in memory and disk. */
   @Override
   public void clear() {
-    long stamp = lock.writeLock();
+    lock.writeLock();
     try {
       cacheManager.clear(root);
       root = null;
@@ -390,18 +400,18 @@ public class CachedMTreeStore implements IMTreeStore {
       hasFlushTask = false;
       hasReleaseTask = false;
     } finally {
-      lock.unlockWrite(stamp);
+      lock.unlockWrite();
     }
   }
 
   @Override
   public boolean createSnapshot(File snapshotDir) {
-    long stamp = lock.writeLock();
+    lock.writeLock();
     try {
       flushVolatileNodes();
       return file.createSnapshot(snapshotDir);
     } finally {
-      lock.unlockWrite(stamp);
+      lock.unlockWrite();
     }
   }
 
@@ -441,13 +451,13 @@ public class CachedMTreeStore implements IMTreeStore {
    * added or updated, fire flush task.
    */
   private void tryExecuteMemoryRelease() {
-    long stamp = lock.readLock();
+    lock.readLock();
     try {
       executeMemoryRelease();
       releaseCount++;
       hasReleaseTask = false;
     } finally {
-      lock.unlockRead(stamp);
+      lock.unlockRead();
     }
     if (memManager.isExceedFlushThreshold() && !hasFlushTask) {
       registerFlushTask();
@@ -476,7 +486,7 @@ public class CachedMTreeStore implements IMTreeStore {
 
   /** Sync all volatile nodes to schemaFile and execute memory release after flush. */
   private void flushVolatileNodes() {
-    long stamp = lock.writeLock();
+    lock.writeLock();
     try {
       List<IMNode> nodesToPersist = cacheManager.collectVolatileMNodes();
       for (IMNode volatileNode : nodesToPersist) {
@@ -499,7 +509,7 @@ public class CachedMTreeStore implements IMTreeStore {
           "Error occurred during MTree flush, current SchemaRegion is {}", root.getFullPath(), e);
       e.printStackTrace();
     } finally {
-      lock.unlockWrite(stamp);
+      lock.unlockWrite();
     }
   }
 
@@ -514,13 +524,11 @@ public class CachedMTreeStore implements IMTreeStore {
     Iterator<IMNode> bufferIterator;
     boolean isIteratingDisk;
     IMNode nextNode;
-    long lockStamp;
-    boolean isLocked = false;
+    boolean isLocked;
 
     CachedMNodeIterator(IMNode parent) throws MetadataException, IOException {
-      lockStamp = lock.readLock();
+      lock.readLock();
       isLocked = true;
-      System.out.println("lock readlock");
       try {
         this.parent = parent;
         ICachedMNodeContainer container = getCachedMNodeContainer(parent);
@@ -534,7 +542,7 @@ public class CachedMTreeStore implements IMTreeStore {
         }
 
       } catch (Throwable e) {
-        lock.unlockRead(lockStamp);
+        lock.unlockRead();
         isLocked = false;
         throw e;
       }
@@ -624,8 +632,7 @@ public class CachedMTreeStore implements IMTreeStore {
         }
       } finally {
         if (isLocked) {
-          System.out.println("unlock readlock");
-          lock.unlockRead(lockStamp);
+          lock.unlockRead();
         }
       }
     }

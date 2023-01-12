@@ -179,6 +179,12 @@ public class MemMTreeStore implements IMTreeStore {
   public void unPinPath(IMNode node) {}
 
   @Override
+  public void writeLock() {}
+
+  @Override
+  public void unlockWrite() {}
+
+  @Override
   public void clear() {
     root = new InternalMNode(null, IoTDBConstant.PATH_ROOT);
     memoryStatistics.releaseMemory(localMemoryUsage.get());

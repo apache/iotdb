@@ -122,11 +122,10 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R>
         usingDFA
             ? new IPatternFA.Builder().pattern(pathPattern).isPrefixMatch(isPrefixMatch).buildDFA()
             : new IPatternFA.Builder().pattern(pathPattern).isPrefixMatch(isPrefixMatch).buildNFA();
-
-    initStack();
   }
 
-  private void initStack() {
+  /** This method must be invoked before iteration */
+  protected final void initStack() {
     IFAState initialState = patternFA.getInitialState();
     IFATransition transition =
         patternFA.getPreciseMatchTransition(initialState).get(root.getName());
