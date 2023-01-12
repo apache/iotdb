@@ -58,8 +58,8 @@ public class WALManagerTest {
 
   @Before
   public void setUp() throws Exception {
-    prevWalDirs = commonConfig.getWalDirs();
-    commonConfig.setWalDirs(walDirs);
+    prevWalDirs = config.getDnWalDirs();
+    config.setDnWalDirs(walDirs);
     EnvironmentUtils.envSetUp();
   }
 
@@ -69,7 +69,7 @@ public class WALManagerTest {
     for (String walDir : walDirs) {
       EnvironmentUtils.cleanDir(walDir);
     }
-    commonConfig.setWalDirs(prevWalDirs);
+    config.setDnWalDirs(prevWalDirs);
   }
 
   @Test

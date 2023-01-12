@@ -20,10 +20,8 @@ package org.apache.iotdb.db.service.basic;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
-import org.apache.iotdb.commons.conf.CommonConfig;
-import org.apache.iotdb.db.conf.IoTDBConfig;
-
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

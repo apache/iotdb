@@ -19,11 +19,13 @@
 
 package org.apache.iotdb.db.mpp.plan.plan.node.write;
 
+import org.aopalliance.reflect.Code;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
@@ -73,8 +75,8 @@ public class WritePlanNodeSplitTest {
     IoTDBDescriptor.getInstance().getConf().setDnTimePartitionInterval(100);
     TimePartitionUtils.setTimePartitionInterval(100);
 
-    executorClassName = IoTDBDescriptor.getInstance().getConf().getSeriesPartitionExecutorClass();
-    seriesSlotPartitionNum = IoTDBDescriptor.getInstance().getConf().getSeriesPartitionSlotNum();
+    executorClassName = CommonDescriptor.getInstance().getConf().getSeriesPartitionExecutorClass();
+    seriesSlotPartitionNum = CommonDescriptor.getInstance().getConf().getSeriesSlotNum();
     partitionExecutor =
         SeriesPartitionExecutor.getSeriesPartitionExecutor(
             executorClassName, seriesSlotPartitionNum);

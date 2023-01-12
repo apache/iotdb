@@ -23,6 +23,8 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.partition.QueryExecutor;
 import org.apache.iotdb.commons.partition.StorageExecutor;
@@ -53,7 +55,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 
 public class FragmentInstanceSerdeTest {
-  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConf();
+  private static final CommonConfig config = CommonDescriptor.getInstance().getConf();
   private static final SessionInfo sessionInfo =
       new SessionInfo(1, "test", ZoneId.systemDefault().getId());
 

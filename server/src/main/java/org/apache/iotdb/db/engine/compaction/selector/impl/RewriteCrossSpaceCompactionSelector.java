@@ -17,7 +17,7 @@
  * under the License.
  */
 package org.apache.iotdb.db.engine.compaction.selector.impl;
-import org.apache.iotdb.commons.conf.CommonConfig;
+
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBConfig;

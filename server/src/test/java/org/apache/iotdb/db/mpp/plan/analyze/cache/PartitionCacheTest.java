@@ -25,6 +25,8 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
+import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.SchemaPartition;
@@ -53,10 +55,10 @@ import static org.junit.Assert.fail;
 
 public class PartitionCacheTest {
 
-  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConf();
+  private static final CommonConfig config = CommonDescriptor.getInstance().getConf();
   private static final SeriesPartitionExecutor partitionExecutor =
       SeriesPartitionExecutor.getSeriesPartitionExecutor(
-          config.getSeriesPartitionExecutorClass(), config.getSeriesPartitionSlotNum());
+          config.getSeriesPartitionExecutorClass(), config.getSeriesSlotNum());
 
   private static final Set<String> storageGroups = new HashSet<>();
   private static final Map<String, Map<TSeriesPartitionSlot, TConsensusGroupId>>

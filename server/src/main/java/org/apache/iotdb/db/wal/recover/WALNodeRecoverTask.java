@@ -23,8 +23,6 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.consensus.ConsensusFactory;
-import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.memtable.AbstractMemTable;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.wal.WALManager;
@@ -96,7 +94,10 @@ public class WALNodeRecoverTask implements Runnable {
       }
     }
 
-    if (!config.getDataRegionConsensusProtocolClass().getProtocol().equals(ConsensusFactory.IOT_CONSENSUS)) {
+    if (!config
+        .getDataRegionConsensusProtocolClass()
+        .getProtocol()
+        .equals(ConsensusFactory.IOT_CONSENSUS)) {
       // delete this wal node folder
       FileUtils.deleteDirectory(logDirectory);
       logger.info(
