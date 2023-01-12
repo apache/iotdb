@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.engine.compaction.selector.impl;
 
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -74,7 +75,7 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
         (long)
             ((double) SystemInfo.getInstance().getMemorySizeForCompaction()
                 / IoTDBDescriptor.getInstance().getConf().getCompactionThreadCount()
-                * config.getUsableCompactionMemoryProportion());
+                * CommonDescriptor.getInstance().getConf().getUsableCompactionMemoryProportion());
     this.maxCrossCompactionFileNum =
         IoTDBDescriptor.getInstance().getConf().getMaxCrossCompactionCandidateFileNum();
     this.maxCrossCompactionFileSize =

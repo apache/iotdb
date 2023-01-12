@@ -120,7 +120,8 @@ public class DataNode implements DataNodeMBean {
    */
   private static final int DEFAULT_RETRY = 10;
 
-  private static final long DEFAULT_RETRY_INTERVAL_IN_MS = IOTDB_CONFIG.getDnJoinClusterRetryIntervalMs();
+  private static final long DEFAULT_RETRY_INTERVAL_IN_MS =
+      IOTDB_CONFIG.getDnJoinClusterRetryIntervalMs();
 
   private final TEndPoint thisNode = new TEndPoint();
 
@@ -272,15 +273,17 @@ public class DataNode implements DataNodeMBean {
     /* Set cluster consensus protocol class */
     try {
       if (!IoTDBStartCheck.getInstance()
-        .checkConsensusProtocolExists(TConsensusGroupType.DataRegion)) {
-        COMMON_CONFIG.setDataRegionConsensusProtocolClass(ConsensusProtocolClass.parse(
-          configurationResp.globalConfig.getDataRegionConsensusProtocolClass()));
+          .checkConsensusProtocolExists(TConsensusGroupType.DataRegion)) {
+        COMMON_CONFIG.setDataRegionConsensusProtocolClass(
+            ConsensusProtocolClass.parse(
+                configurationResp.globalConfig.getDataRegionConsensusProtocolClass()));
       }
 
       if (!IoTDBStartCheck.getInstance()
-        .checkConsensusProtocolExists(TConsensusGroupType.SchemaRegion)) {
-        COMMON_CONFIG.setSchemaRegionConsensusProtocolClass(ConsensusProtocolClass.parse(
-          configurationResp.globalConfig.getSchemaRegionConsensusProtocolClass()));
+          .checkConsensusProtocolExists(TConsensusGroupType.SchemaRegion)) {
+        COMMON_CONFIG.setSchemaRegionConsensusProtocolClass(
+            ConsensusProtocolClass.parse(
+                configurationResp.globalConfig.getSchemaRegionConsensusProtocolClass()));
       }
     } catch (IOException e) {
       throw new StartupException(e);
@@ -292,7 +295,10 @@ public class DataNode implements DataNodeMBean {
       IoTDBStartCheck.getInstance().checkDirectory();
       IoTDBStartCheck.getInstance().serializeGlobalConfig(configurationResp.globalConfig);
       CommonDescriptor.getInstance().initClusterSchemaMemoryAllocate();
-      if (!COMMON_CONFIG.getDataRegionConsensusProtocolClass().getProtocol().equals(ConsensusFactory.IOT_CONSENSUS)) {
+      if (!COMMON_CONFIG
+          .getDataRegionConsensusProtocolClass()
+          .getProtocol()
+          .equals(ConsensusFactory.IOT_CONSENSUS)) {
         // In current implementation, only IoTConsensus need separated memory from Consensus
         CommonDescriptor.getInstance().reclaimConsensusMemory();
         SystemInfo.getInstance().allocateWriteMemory();
@@ -404,7 +410,9 @@ public class DataNode implements DataNodeMBean {
     int retry = DEFAULT_RETRY;
     TDataNodeRestartReq req = new TDataNodeRestartReq();
     req.setClusterName(
-        IOTDB_CONFIG.getClusterName() == null ? DEFAULT_CLUSTER_NAME : IOTDB_CONFIG.getClusterName());
+        IOTDB_CONFIG.getClusterName() == null
+            ? DEFAULT_CLUSTER_NAME
+            : IOTDB_CONFIG.getClusterName());
     req.setDataNodeConfiguration(generateDataNodeConfiguration());
     TDataNodeRestartResp dataNodeRestartResp = null;
     while (retry > 0) {
@@ -496,7 +504,10 @@ public class DataNode implements DataNodeMBean {
 
     // close wal when using ratis consensus
     if (IOTDB_CONFIG.isClusterMode()
-        && COMMON_CONFIG.getDataRegionConsensusProtocolClass().getProtocol().equals(ConsensusFactory.RATIS_CONSENSUS)) {
+        && COMMON_CONFIG
+            .getDataRegionConsensusProtocolClass()
+            .getProtocol()
+            .equals(ConsensusFactory.RATIS_CONSENSUS)) {
       COMMON_CONFIG.setWalMode(WALMode.DISABLE);
     }
     registerManager.register(WALManager.getInstance());
@@ -571,15 +582,19 @@ public class DataNode implements DataNodeMBean {
   private TDataNodeLocation generateDataNodeLocation() {
     TDataNodeLocation location = new TDataNodeLocation();
     location.setDataNodeId(IOTDB_CONFIG.getDataNodeId());
-    location.setClientRpcEndPoint(new TEndPoint(IOTDB_CONFIG.getDnRpcAddress(), IOTDB_CONFIG.getDnRpcPort()));
+    location.setClientRpcEndPoint(
+        new TEndPoint(IOTDB_CONFIG.getDnRpcAddress(), IOTDB_CONFIG.getDnRpcPort()));
     location.setInternalEndPoint(
         new TEndPoint(IOTDB_CONFIG.getDnInternalAddress(), IOTDB_CONFIG.getDnInternalPort()));
     location.setMPPDataExchangeEndPoint(
-        new TEndPoint(IOTDB_CONFIG.getDnInternalAddress(), IOTDB_CONFIG.getDnMppDataExchangePort()));
+        new TEndPoint(
+            IOTDB_CONFIG.getDnInternalAddress(), IOTDB_CONFIG.getDnMppDataExchangePort()));
     location.setDataRegionConsensusEndPoint(
-        new TEndPoint(IOTDB_CONFIG.getDnInternalAddress(), IOTDB_CONFIG.getDnDataRegionConsensusPort()));
+        new TEndPoint(
+            IOTDB_CONFIG.getDnInternalAddress(), IOTDB_CONFIG.getDnDataRegionConsensusPort()));
     location.setSchemaRegionConsensusEndPoint(
-        new TEndPoint(IOTDB_CONFIG.getDnInternalAddress(), IOTDB_CONFIG.getDnSchemaRegionConsensusPort()));
+        new TEndPoint(
+            IOTDB_CONFIG.getDnInternalAddress(), IOTDB_CONFIG.getDnSchemaRegionConsensusPort()));
     return location;
   }
 
@@ -607,7 +622,8 @@ public class DataNode implements DataNodeMBean {
 
   private void initUDFRelatedInstance() throws StartupException {
     try {
-      UDFExecutableManager.setupAndGetInstance(COMMON_CONFIG.getUdfTemporaryLibDir(), COMMON_CONFIG.getUdfDir());
+      UDFExecutableManager.setupAndGetInstance(
+          COMMON_CONFIG.getUdfTemporaryLibDir(), COMMON_CONFIG.getUdfDir());
       UDFClassLoaderManager.setupAndGetInstance(COMMON_CONFIG.getUdfDir());
     } catch (IOException e) {
       throw new StartupException(e);
@@ -708,7 +724,7 @@ public class DataNode implements DataNodeMBean {
   private void initTriggerRelatedInstance() throws StartupException {
     try {
       TriggerExecutableManager.setupAndGetInstance(
-        COMMON_CONFIG.getTriggerTemporaryLibDir(), COMMON_CONFIG.getTriggerDir());
+          COMMON_CONFIG.getTriggerTemporaryLibDir(), COMMON_CONFIG.getTriggerDir());
     } catch (IOException e) {
       throw new StartupException(e);
     }

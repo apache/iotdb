@@ -1768,6 +1768,10 @@ public class CommonConfig {
     this.chunkMetadataSizeProportion = chunkMetadataSizeProportion;
   }
 
+  public double getUsableCompactionMemoryProportion() {
+    return 1.0d - chunkMetadataSizeProportion;
+  }
+
   public double getFlushProportion() {
     return flushProportion;
   }

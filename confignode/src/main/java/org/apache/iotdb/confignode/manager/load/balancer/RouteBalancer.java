@@ -76,9 +76,9 @@ public class RouteBalancer {
   private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConf();
   private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
   private static final String SCHEMA_REGION_CONSENSUS_PROTOCOL_CLASS =
-    COMMON_CONFIG.getSchemaRegionConsensusProtocolClass().getProtocol();
+      COMMON_CONFIG.getSchemaRegionConsensusProtocolClass().getProtocol();
   private static final String DATA_REGION_CONSENSUS_PROTOCOL_CLASS =
-    COMMON_CONFIG.getDataRegionConsensusProtocolClass().getProtocol();
+      COMMON_CONFIG.getDataRegionConsensusProtocolClass().getProtocol();
 
   private static final boolean IS_ENABLE_AUTO_LEADER_BALANCE_FOR_DATA_REGION =
       (COMMON_CONFIG.isEnableAutoLeaderBalanceForRatisConsensus()

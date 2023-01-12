@@ -34,8 +34,6 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.trigger.TriggerInformation;
 import org.apache.iotdb.commons.utils.StatusUtils;
-import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
-import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RemoveDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.procedure.UpdateProcedurePlan;
@@ -119,9 +117,7 @@ public class ProcedureManager {
     this.env = new ConfigNodeProcedureEnv(configManager, scheduler);
     this.executor = new ProcedureExecutor<>(env, store, scheduler);
     this.planSizeLimit =
-        CommonDescriptor.getInstance()
-                .getConf()
-                .getConfigNodeRatisConsensusLogAppenderBufferSize()
+        CommonDescriptor.getInstance().getConf().getConfigNodeRatisConsensusLogAppenderBufferSize()
             - IoTDBConstant.RAFT_LOG_BASIC_SIZE;
   }
 
@@ -131,8 +127,8 @@ public class ProcedureManager {
         executor.init(COMMON_CONFIG.getProcedureCoreWorkerThreadsCount());
         executor.startWorkers();
         executor.startCompletedCleaner(
-          COMMON_CONFIG.getProcedureCompletedCleanInterval(),
-          COMMON_CONFIG.getProcedureCompletedEvictTTL());
+            COMMON_CONFIG.getProcedureCompletedCleanInterval(),
+            COMMON_CONFIG.getProcedureCompletedEvictTTL());
         store.start();
         LOGGER.info("ProcedureManager is started successfully.");
       }

@@ -34,9 +34,7 @@ public class SchemaFileConfig {
   public static int FILE_HEADER_SIZE = 256; // size of file header in bytes
 
   public static final int PAGE_CACHE_SIZE =
-      IoTDBDescriptor.getInstance()
-          .getConf()
-          .getPageCacheSizeInSchemaFile(); // size of page cache
+      IoTDBDescriptor.getInstance().getConf().getPageCacheSizeInSchemaFile(); // size of page cache
 
   // size of page within one redo log, restricting log around 1GB
   public static final int SCHEMA_FILE_LOG_SIZE =

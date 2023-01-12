@@ -100,7 +100,7 @@ public class SinkHandle implements ISinkHandle {
 
   /** max bytes this SourceHandle can reserve. */
   private long maxBytesCanReserve =
-    CommonDescriptor.getInstance().getConf().getMaxBytesPerFragmentInstance();
+      CommonDescriptor.getInstance().getConf().getMaxBytesPerFragmentInstance();
 
   private static final QueryMetricsManager QUERY_METRICS = QueryMetricsManager.getInstance();
 

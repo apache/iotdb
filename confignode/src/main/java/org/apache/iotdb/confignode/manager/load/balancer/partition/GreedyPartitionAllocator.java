@@ -44,7 +44,7 @@ public class GreedyPartitionAllocator implements IPartitionAllocator {
 
   private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConf();
   private static final boolean ENABLE_DATA_PARTITION_INHERIT_POLICY =
-    COMMON_CONFIG.isEnableDataPartitionInheritPolicy();
+      COMMON_CONFIG.isEnableDataPartitionInheritPolicy();
   private static final long TIME_PARTITION_INTERVAL = COMMON_CONFIG.getTimePartitionInterval();
 
   private final IManager configManager;

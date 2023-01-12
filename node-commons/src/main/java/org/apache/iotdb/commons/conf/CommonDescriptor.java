@@ -1896,12 +1896,12 @@ public class CommonDescriptor {
 
   public void loadRatisConfig(TRatisConfig ratisConfig) {
     CONF.setDataRegionRatisConsensusLogAppenderBufferSize(ratisConfig.getDataAppenderBufferSize());
-    CONF.setSchemaRegionRatisConsensusLogAppenderBufferSize(ratisConfig.getSchemaAppenderBufferSize());
+    CONF.setSchemaRegionRatisConsensusLogAppenderBufferSize(
+        ratisConfig.getSchemaAppenderBufferSize());
 
-    CONF.setDataRegionRatisSnapshotTriggerThreshold(
-      ratisConfig.getDataSnapshotTriggerThreshold());
+    CONF.setDataRegionRatisSnapshotTriggerThreshold(ratisConfig.getDataSnapshotTriggerThreshold());
     CONF.setSchemaRegionRatisSnapshotTriggerThreshold(
-      ratisConfig.getSchemaSnapshotTriggerThreshold());
+        ratisConfig.getSchemaSnapshotTriggerThreshold());
 
     CONF.setDataRegionRatisLogUnsafeFlushEnable(ratisConfig.isDataLogUnsafeFlushEnable());
     CONF.setSchemaRegionRatisLogUnsafeFlushEnable(ratisConfig.isSchemaLogUnsafeFlushEnable());
@@ -1913,14 +1913,14 @@ public class CommonDescriptor {
     CONF.setSchemaRegionRatisGrpcFlowControlWindow(ratisConfig.getSchemaGrpcFlowControlWindow());
 
     CONF.setDataRegionRatisRpcLeaderElectionTimeoutMinMs(
-      ratisConfig.getDataLeaderElectionTimeoutMin());
+        ratisConfig.getDataLeaderElectionTimeoutMin());
     CONF.setSchemaRegionRatisRpcLeaderElectionTimeoutMinMs(
-      ratisConfig.getSchemaLeaderElectionTimeoutMin());
+        ratisConfig.getSchemaLeaderElectionTimeoutMin());
 
     CONF.setDataRegionRatisRpcLeaderElectionTimeoutMaxMs(
-      ratisConfig.getDataLeaderElectionTimeoutMax());
+        ratisConfig.getDataLeaderElectionTimeoutMax());
     CONF.setSchemaRegionRatisRpcLeaderElectionTimeoutMaxMs(
-      ratisConfig.getSchemaLeaderElectionTimeoutMax());
+        ratisConfig.getSchemaLeaderElectionTimeoutMax());
 
     CONF.setDataRegionRatisRequestTimeoutMs(ratisConfig.getDataRequestTimeout());
     CONF.setSchemaRegionRatisRequestTimeoutMs(ratisConfig.getSchemaRequestTimeout());

@@ -42,7 +42,8 @@ public class ConfigNodeStartupCheck {
   private static final Logger LOGGER = LoggerFactory.getLogger(ConfigNodeStartupCheck.class);
 
   private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConf();
-  private static final ConfigNodeConfig CONFIG_NODE_CONFIG = ConfigNodeDescriptor.getInstance().getConf();
+  private static final ConfigNodeConfig CONFIG_NODE_CONFIG =
+      ConfigNodeDescriptor.getInstance().getConf();
 
   public void startUpCheck() throws StartupException, IOException, ConfigurationException {
     checkGlobalConfig();
@@ -56,18 +57,29 @@ public class ConfigNodeStartupCheck {
   private void checkGlobalConfig() throws ConfigurationException {
     // When the ConfigNode consensus protocol is set to SIMPLE_CONSENSUS,
     // the target_config_node_list needs to point to itself
-    if (COMMON_CONFIG.getConfigNodeConsensusProtocolClass().getProtocol().equals(ConsensusFactory.SIMPLE_CONSENSUS)
-        && (!CONFIG_NODE_CONFIG.getCnInternalAddress().equals(CONFIG_NODE_CONFIG.getCnTargetConfigNode().getIp())
-            || CONFIG_NODE_CONFIG.getCnInternalPort() != CONFIG_NODE_CONFIG.getCnTargetConfigNode().getPort())) {
+    if (COMMON_CONFIG
+            .getConfigNodeConsensusProtocolClass()
+            .getProtocol()
+            .equals(ConsensusFactory.SIMPLE_CONSENSUS)
+        && (!CONFIG_NODE_CONFIG
+                .getCnInternalAddress()
+                .equals(CONFIG_NODE_CONFIG.getCnTargetConfigNode().getIp())
+            || CONFIG_NODE_CONFIG.getCnInternalPort()
+                != CONFIG_NODE_CONFIG.getCnTargetConfigNode().getPort())) {
       throw new ConfigurationException(
           IoTDBConstant.CN_TARGET_CONFIG_NODE_LIST,
-          CONFIG_NODE_CONFIG.getCnTargetConfigNode().getIp() + ":" + CONFIG_NODE_CONFIG.getCnTargetConfigNode().getPort(),
+          CONFIG_NODE_CONFIG.getCnTargetConfigNode().getIp()
+              + ":"
+              + CONFIG_NODE_CONFIG.getCnTargetConfigNode().getPort(),
           CONFIG_NODE_CONFIG.getCnInternalAddress() + ":" + CONFIG_NODE_CONFIG.getCnInternalPort());
     }
 
     // When the data region consensus protocol is set to SIMPLE_CONSENSUS,
     // the data replication factor must be 1
-    if (COMMON_CONFIG.getDataRegionConsensusProtocolClass().getProtocol().equals(ConsensusFactory.SIMPLE_CONSENSUS)
+    if (COMMON_CONFIG
+            .getDataRegionConsensusProtocolClass()
+            .getProtocol()
+            .equals(ConsensusFactory.SIMPLE_CONSENSUS)
         && COMMON_CONFIG.getDataReplicationFactor() != 1) {
       throw new ConfigurationException(
           "data_replication_factor",
@@ -77,7 +89,10 @@ public class ConfigNodeStartupCheck {
 
     // When the schema region consensus protocol is set to SIMPLE_CONSENSUS,
     // the schema replication factor must be 1
-    if (COMMON_CONFIG.getSchemaRegionConsensusProtocolClass().getProtocol().equals(ConsensusFactory.SIMPLE_CONSENSUS)
+    if (COMMON_CONFIG
+            .getSchemaRegionConsensusProtocolClass()
+            .getProtocol()
+            .equals(ConsensusFactory.SIMPLE_CONSENSUS)
         && COMMON_CONFIG.getSchemaReplicationFactor() != 1) {
       throw new ConfigurationException(
           "schema_replication_factor",
@@ -87,7 +102,10 @@ public class ConfigNodeStartupCheck {
 
     // When the schema region consensus protocol is set to IoTConsensus,
     // we should report an error
-    if (COMMON_CONFIG.getSchemaRegionConsensusProtocolClass().getProtocol().equals(ConsensusFactory.IOT_CONSENSUS)) {
+    if (COMMON_CONFIG
+        .getSchemaRegionConsensusProtocolClass()
+        .getProtocol()
+        .equals(ConsensusFactory.IOT_CONSENSUS)) {
       throw new ConfigurationException(
           "schema_region_consensus_protocol_class",
           String.valueOf(COMMON_CONFIG.getSchemaRegionConsensusProtocolClass()),
@@ -97,9 +115,12 @@ public class ConfigNodeStartupCheck {
 
     // The leader distribution policy is limited
     if (!LeaderDistributionPolicy.GREEDY.equals(COMMON_CONFIG.getLeaderDistributionPolicy())
-        && !LeaderDistributionPolicy.MIN_COST_FLOW.equals(COMMON_CONFIG.getLeaderDistributionPolicy())) {
+        && !LeaderDistributionPolicy.MIN_COST_FLOW.equals(
+            COMMON_CONFIG.getLeaderDistributionPolicy())) {
       throw new ConfigurationException(
-          "leader_distribution_policy", CONFIG_NODE_CONFIG.getRoutePriorityPolicy(), "GREEDY or MIN_COST_FLOW");
+          "leader_distribution_policy",
+          CONFIG_NODE_CONFIG.getRoutePriorityPolicy(),
+          "GREEDY or MIN_COST_FLOW");
     }
 
     // The route priority policy is limited

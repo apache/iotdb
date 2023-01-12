@@ -205,9 +205,12 @@ public class SystemInfo {
   public void allocateWriteMemory() {
     memorySizeForMemtable =
         (long)
-            (COMMON_CONFIG.getAllocateMemoryForStorageEngine() * COMMON_CONFIG.getWriteProportionForMemtable());
+            (COMMON_CONFIG.getAllocateMemoryForStorageEngine()
+                * COMMON_CONFIG.getWriteProportionForMemtable());
     memorySizeForCompaction =
-        (long) (COMMON_CONFIG.getAllocateMemoryForStorageEngine() * COMMON_CONFIG.getCompactionProportion());
+        (long)
+            (COMMON_CONFIG.getAllocateMemoryForStorageEngine()
+                * COMMON_CONFIG.getCompactionProportion());
     FLUSH_THERSHOLD = memorySizeForMemtable * COMMON_CONFIG.getFlushProportion();
     REJECT_THERSHOLD = memorySizeForMemtable * COMMON_CONFIG.getRejectProportion();
   }

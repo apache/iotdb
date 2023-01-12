@@ -44,7 +44,8 @@ public class PrimitiveArrayManager {
 
   public static final int ARRAY_SIZE = COMMON_CONFIG.getPrimitiveArraySize();
 
-  public static final TVListSortAlgorithm TVLIST_SORT_ALGORITHM = COMMON_CONFIG.getTvListSortAlgorithm();
+  public static final TVListSortAlgorithm TVLIST_SORT_ALGORITHM =
+      COMMON_CONFIG.getTvListSortAlgorithm();
 
   /**
    * The actual used memory will be 50% larger than the statistic, so we need to limit the size of
@@ -54,7 +55,7 @@ public class PrimitiveArrayManager {
 
   /** threshold total size of arrays for all data types */
   private static final double POOLED_ARRAYS_MEMORY_THRESHOLD =
-    COMMON_CONFIG.getAllocateMemoryForStorageEngine()
+      COMMON_CONFIG.getAllocateMemoryForStorageEngine()
           * COMMON_CONFIG.getBufferedArraysMemoryProportion()
           / AMPLIFICATION_FACTOR;
 

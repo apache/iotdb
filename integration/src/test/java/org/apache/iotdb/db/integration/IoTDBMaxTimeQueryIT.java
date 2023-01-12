@@ -67,8 +67,7 @@ public class IoTDBMaxTimeQueryIT {
   public static void setUp() throws Exception {
     EnvironmentUtils.envSetUp();
     // TODO When the aligned time series support compaction, we need to set compaction to true
-    enableSeqSpaceCompaction =
-        IoTDBDescriptor.getInstance().getConf().isEnableSeqSpaceCompaction();
+    enableSeqSpaceCompaction = IoTDBDescriptor.getInstance().getConf().isEnableSeqSpaceCompaction();
     enableUnseqSpaceCompaction =
         IoTDBDescriptor.getInstance().getConf().isEnableUnseqSpaceCompaction();
     enableCrossSpaceCompaction =

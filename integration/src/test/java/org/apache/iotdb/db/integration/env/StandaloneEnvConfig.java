@@ -57,9 +57,7 @@ public class StandaloneEnvConfig implements BaseConfig {
   }
 
   public BaseConfig setMaxQueryDeduplicatedPathNum(int maxQueryDeduplicatedPathNum) {
-    CommonDescriptor.getInstance()
-        .getConf()
-        .setMaxDeduplicatedPathNum(maxQueryDeduplicatedPathNum);
+    CommonDescriptor.getInstance().getConf().setMaxDeduplicatedPathNum(maxQueryDeduplicatedPathNum);
     return this;
   }
 

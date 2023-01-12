@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.engine.trigger.utils;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 
 import org.apache.http.impl.conn.PoolingHttpClientConnectionManager;
 

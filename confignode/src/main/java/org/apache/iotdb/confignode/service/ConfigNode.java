@@ -58,7 +58,8 @@ public class ConfigNode implements ConfigNodeMBean {
   private static final Logger LOGGER = LoggerFactory.getLogger(ConfigNode.class);
 
   private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConf();
-  private static final ConfigNodeConfig CONFIG_NODE_CONFIG = ConfigNodeDescriptor.getInstance().getConf();
+  private static final ConfigNodeConfig CONFIG_NODE_CONFIG =
+      ConfigNodeDescriptor.getInstance().getConf();
 
   private static final int STARTUP_RETRY_NUM = 10;
   private static final int SCHEDULE_WAITING_RETRY_NUM = 20;
@@ -112,7 +113,7 @@ public class ConfigNode implements ConfigNodeMBean {
         LOGGER.info(
             "{} has successfully restarted and joined the cluster: {}.",
             ConfigNodeConstant.GLOBAL_NAME,
-          COMMON_CONFIG.getClusterName());
+            COMMON_CONFIG.getClusterName());
         return;
       }
 
@@ -136,8 +137,12 @@ public class ConfigNode implements ConfigNodeMBean {
             .applyConfigNode(
                 new TConfigNodeLocation(
                     SEED_CONFIG_NODE_ID,
-                    new TEndPoint(CONFIG_NODE_CONFIG.getCnInternalAddress(), CONFIG_NODE_CONFIG.getCnInternalPort()),
-                    new TEndPoint(CONFIG_NODE_CONFIG.getCnInternalAddress(), CONFIG_NODE_CONFIG.getCnConsensusPort())));
+                    new TEndPoint(
+                        CONFIG_NODE_CONFIG.getCnInternalAddress(),
+                        CONFIG_NODE_CONFIG.getCnInternalPort()),
+                    new TEndPoint(
+                        CONFIG_NODE_CONFIG.getCnInternalAddress(),
+                        CONFIG_NODE_CONFIG.getCnConsensusPort())));
         // We always set up Seed-ConfigNode's RPC service lastly to ensure that
         // the external service is not provided until Seed-ConfigNode is fully initialized
         setUpRPCService();
@@ -146,7 +151,7 @@ public class ConfigNode implements ConfigNodeMBean {
         LOGGER.info(
             "{} has successfully started and joined the cluster: {}.",
             ConfigNodeConstant.GLOBAL_NAME,
-          COMMON_CONFIG.getClusterName());
+            COMMON_CONFIG.getClusterName());
         return;
       }
 
@@ -161,7 +166,7 @@ public class ConfigNode implements ConfigNodeMBean {
           "{} {} has registered successfully. Waiting for the leader's scheduling to join the cluster: {}.",
           ConfigNodeConstant.GLOBAL_NAME,
           CONFIG_NODE_CONFIG.getConfigNodeId(),
-        COMMON_CONFIG.getClusterName());
+          COMMON_CONFIG.getClusterName());
 
       boolean isJoinedCluster = false;
       for (int retry = 0; retry < SCHEDULE_WAITING_RETRY_NUM; retry++) {
@@ -240,8 +245,12 @@ public class ConfigNode implements ConfigNodeMBean {
         new TConfigNodeRegisterReq(
             new TConfigNodeLocation(
                 INIT_NON_SEED_CONFIG_NODE_ID,
-                new TEndPoint(CONFIG_NODE_CONFIG.getCnInternalAddress(), CONFIG_NODE_CONFIG.getCnInternalPort()),
-                new TEndPoint(CONFIG_NODE_CONFIG.getCnInternalAddress(), CONFIG_NODE_CONFIG.getCnConsensusPort())),
+                new TEndPoint(
+                    CONFIG_NODE_CONFIG.getCnInternalAddress(),
+                    CONFIG_NODE_CONFIG.getCnInternalPort()),
+                new TEndPoint(
+                    CONFIG_NODE_CONFIG.getCnInternalAddress(),
+                    CONFIG_NODE_CONFIG.getCnConsensusPort())),
             configManager.getClusterParameters());
 
     TEndPoint targetConfigNode = CONFIG_NODE_CONFIG.getCnTargetConfigNode();
@@ -297,11 +306,15 @@ public class ConfigNode implements ConfigNodeMBean {
   private void sendRestartConfigNodeRequest() throws IOException, StartupException {
     TConfigNodeRestartReq req =
         new TConfigNodeRestartReq(
-          COMMON_CONFIG.getClusterName(),
+            COMMON_CONFIG.getClusterName(),
             new TConfigNodeLocation(
                 CONFIG_NODE_CONFIG.getConfigNodeId(),
-                new TEndPoint(CONFIG_NODE_CONFIG.getCnInternalAddress(), CONFIG_NODE_CONFIG.getCnInternalPort()),
-                new TEndPoint(CONFIG_NODE_CONFIG.getCnInternalAddress(), CONFIG_NODE_CONFIG.getCnConsensusPort())));
+                new TEndPoint(
+                    CONFIG_NODE_CONFIG.getCnInternalAddress(),
+                    CONFIG_NODE_CONFIG.getCnInternalPort()),
+                new TEndPoint(
+                    CONFIG_NODE_CONFIG.getCnInternalAddress(),
+                    CONFIG_NODE_CONFIG.getCnConsensusPort())));
 
     TEndPoint targetConfigNode = CONFIG_NODE_CONFIG.getCnTargetConfigNode();
     if (targetConfigNode == null) {

@@ -95,11 +95,13 @@ public class IoTDBStartCheck {
     constantParamValueTable.put(
         TAG_ATTRIBUTE_SIZE_STRING, () -> String.valueOf(COMMON_CONFIG.getTagAttributeTotalSize()));
     constantParamValueTable.put(
-        TAG_ATTRIBUTE_FLUSH_INTERVAL, () -> String.valueOf(COMMON_CONFIG.getTagAttributeFlushInterval()));
+        TAG_ATTRIBUTE_FLUSH_INTERVAL,
+        () -> String.valueOf(COMMON_CONFIG.getTagAttributeFlushInterval()));
     constantParamValueTable.put(
         MAX_DEGREE_OF_INDEX_STRING,
         () -> String.valueOf(TSFileDescriptor.getInstance().getConfig().getMaxDegreeOfIndexNode()));
-    constantParamValueTable.put(ENABLE_ID_TABLE, () -> String.valueOf(IOTDB_CONFIG.isEnableIDTable()));
+    constantParamValueTable.put(
+        ENABLE_ID_TABLE, () -> String.valueOf(IOTDB_CONFIG.isEnableIDTable()));
     constantParamValueTable.put(
         ENABLE_ID_TABLE_LOG_FILE, () -> String.valueOf(IOTDB_CONFIG.isEnableIDTableLogFile()));
     constantParamValueTable.put(
@@ -121,7 +123,8 @@ public class IoTDBStartCheck {
   static {
     variableParamValueTable.put(
         INTERNAL_ADDRESS, () -> String.valueOf(IOTDB_CONFIG.getDnInternalAddress()));
-    variableParamValueTable.put(INTERNAL_PORT, () -> String.valueOf(IOTDB_CONFIG.getDnInternalPort()));
+    variableParamValueTable.put(
+        INTERNAL_PORT, () -> String.valueOf(IOTDB_CONFIG.getDnInternalPort()));
     variableParamValueTable.put(RPC_ADDRESS, () -> String.valueOf(IOTDB_CONFIG.getDnRpcAddress()));
     variableParamValueTable.put(RPC_PORT, () -> String.valueOf(IOTDB_CONFIG.getDnRpcPort()));
     variableParamValueTable.put(
@@ -130,7 +133,8 @@ public class IoTDBStartCheck {
         SCHEMA_REGION_CONSENSUS_PORT,
         () -> String.valueOf(IOTDB_CONFIG.getDnSchemaRegionConsensusPort()));
     variableParamValueTable.put(
-        DATA_REGION_CONSENSUS_PORT, () -> String.valueOf(IOTDB_CONFIG.getDnDataRegionConsensusPort()));
+        DATA_REGION_CONSENSUS_PORT,
+        () -> String.valueOf(IOTDB_CONFIG.getDnDataRegionConsensusPort()));
   }
   // endregion
   // region params don't need checking, determined by the system
@@ -259,7 +263,10 @@ public class IoTDBStartCheck {
       DirectoryChecker.getInstance().registerDirectory(new File(dataDir));
     }
     if (IOTDB_CONFIG.isClusterMode()
-        && COMMON_CONFIG.getDataRegionConsensusProtocolClass().getProtocol().equals(ConsensusFactory.RATIS_CONSENSUS)) {
+        && COMMON_CONFIG
+            .getDataRegionConsensusProtocolClass()
+            .getProtocol()
+            .equals(ConsensusFactory.RATIS_CONSENSUS)) {
       if (DirectoryChecker.getInstance().isCrossDisk(IOTDB_CONFIG.getDnDataDirs())) {
         throw new ConfigurationException(
             "Configuring the data directories as cross-disk directories is not supported under RatisConsensus(it will be supported in a later version).");
@@ -270,7 +277,8 @@ public class IoTDBStartCheck {
     // check WAL dir
     if (!(IOTDB_CONFIG.isClusterMode()
             && COMMON_CONFIG
-                .getDataRegionConsensusProtocolClass().getProtocol()
+                .getDataRegionConsensusProtocolClass()
+                .getProtocol()
                 .equals(ConsensusFactory.RATIS_CONSENSUS))
         && !COMMON_CONFIG.getWalMode().equals(WALMode.DISABLE)) {
       for (String walDir : IOTDB_CONFIG.getDnWalDirs()) {
@@ -306,7 +314,10 @@ public class IoTDBStartCheck {
         properties.store(outputStream, SYSTEM_PROPERTIES_STRING);
       }
       if (IOTDB_CONFIG.isClusterMode()
-          && COMMON_CONFIG.getDataRegionConsensusProtocolClass().getProtocol().equals(ConsensusFactory.IOT_CONSENSUS)
+          && COMMON_CONFIG
+              .getDataRegionConsensusProtocolClass()
+              .getProtocol()
+              .equals(ConsensusFactory.IOT_CONSENSUS)
           && COMMON_CONFIG.getWalMode().equals(WALMode.DISABLE)) {
         throw new ConfigurationException(
             "Configuring the WALMode as disable is not supported under IoTConsensus");
@@ -436,13 +447,13 @@ public class IoTDBStartCheck {
     }
 
     if (properties.containsKey(SCHEMA_REGION_CONSENSUS_PROTOCOL)) {
-      COMMON_CONFIG.setSchemaRegionConsensusProtocolClass(ConsensusProtocolClass.parse(
-          properties.getProperty(SCHEMA_REGION_CONSENSUS_PROTOCOL)));
+      COMMON_CONFIG.setSchemaRegionConsensusProtocolClass(
+          ConsensusProtocolClass.parse(properties.getProperty(SCHEMA_REGION_CONSENSUS_PROTOCOL)));
     }
 
     if (properties.containsKey(DATA_REGION_CONSENSUS_PROTOCOL)) {
-      COMMON_CONFIG.setDataRegionConsensusProtocolClass(ConsensusProtocolClass.parse(
-          properties.getProperty(DATA_REGION_CONSENSUS_PROTOCOL)));
+      COMMON_CONFIG.setDataRegionConsensusProtocolClass(
+          ConsensusProtocolClass.parse(properties.getProperty(DATA_REGION_CONSENSUS_PROTOCOL)));
     }
   }
 

@@ -66,8 +66,8 @@ public class MQTTService implements IService {
 
     LOG.info(
         "Start MQTT service successfully, listening on ip {} port {}",
-      commonConfig.getMqttHost(),
-      commonConfig.getMqttPort());
+        commonConfig.getMqttHost(),
+        commonConfig.getMqttPort());
 
     Runtime.getRuntime()
         .addShutdownHook(

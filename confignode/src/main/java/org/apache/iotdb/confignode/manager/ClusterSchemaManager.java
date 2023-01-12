@@ -100,7 +100,8 @@ public class ClusterSchemaManager {
   private static final Logger LOGGER = LoggerFactory.getLogger(ClusterSchemaManager.class);
 
   private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConf();
-  private static final double SCHEMA_REGION_PER_DATA_NODE = COMMON_CONFIG.getSchemaRegionPerDataNode();
+  private static final double SCHEMA_REGION_PER_DATA_NODE =
+      COMMON_CONFIG.getSchemaRegionPerDataNode();
   private static final double DATA_REGION_PER_PROCESSOR = COMMON_CONFIG.getDataRegionPerProcessor();
 
   private final IManager configManager;
@@ -374,7 +375,7 @@ public class ClusterSchemaManager {
                 .getRegionGroupCount(storageGroupSchema.getName(), TConsensusGroupType.DataRegion);
         int maxDataRegionGroupNum =
             calcMaxRegionGroupNum(
-              COMMON_CONFIG.getLeastDataRegionGroupNum(),
+                COMMON_CONFIG.getLeastDataRegionGroupNum(),
                 DATA_REGION_PER_PROCESSOR,
                 totalCpuCoreNum,
                 storageGroupNum,

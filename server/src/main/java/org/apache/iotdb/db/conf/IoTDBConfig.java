@@ -313,7 +313,8 @@ public class IoTDBConfig {
   // How many threads can concurrently evaluate windows. When <= 0, use CPU core number
   private int windowEvaluationThreadCount = Runtime.getRuntime().availableProcessors();
 
-  // Max number of window evaluation tasks that can be pending for execution. When <= 0, the value is 64 by default
+  // Max number of window evaluation tasks that can be pending for execution. When <= 0, the value
+  // is 64 by default
   private int maxPendingWindowEvaluationTasks = 64;
 
   // When a unSequence TsFile's file size (in byte) exceed this, the TsFile is forced closed
@@ -331,10 +332,12 @@ public class IoTDBConfig {
   // indicate whether current mode is cluster
   private boolean isClusterMode = false;
 
-  // The cluster name that this DataNode joined in the cluster mode. The default value "defaultCluster" will be changed after join cluster
+  // The cluster name that this DataNode joined in the cluster mode. The default value
+  // "defaultCluster" will be changed after join cluster
   private String clusterName = "defaultCluster";
 
-  // The DataNodeId of this DataNode for cluster mode. The default value -1 will be changed after join cluster
+  // The DataNodeId of this DataNode for cluster mode. The default value -1 will be changed after
+  // join cluster
   private int dataNodeId = -1;
 
   // Replace implementation class of influxdb protocol service
@@ -346,7 +349,8 @@ public class IoTDBConfig {
   // The limit of compaction merge can reach per second
   private int compactionWriteThroughputMbPerSec = 16;
 
-  // How many thread will be set up to perform compaction, 10 by default. Set to 1 when less than or equal to 0
+  // How many thread will be set up to perform compaction, 10 by default. Set to 1 when less than or
+  // equal to 0
   private int compactionThreadCount = 10;
 
   // Default DFS NameServices is hdfsnamespace
@@ -358,7 +362,8 @@ public class IoTDBConfig {
   // Default DFS HA automatic failover is enabled
   private boolean dfsHaAutomaticFailoverEnabled = true;
 
-  // Default DFS client failover proxy provider is "org.apache.hadoop.hdfs.server.namenode.ha.ConfiguredFailoverProxyProvider"
+  // Default DFS client failover proxy provider is
+  // "org.apache.hadoop.hdfs.server.namenode.ha.ConfiguredFailoverProxyProvider"
   private String dfsClientFailoverProxyProvider =
       "org.apache.hadoop.hdfs.server.namenode.ha.ConfiguredFailoverProxyProvider";
 
@@ -387,7 +392,8 @@ public class IoTDBConfig {
   // time in nanosecond precision when starting up
   private final long startUpNanosecond = System.nanoTime();
 
-  // Whether enable the rpc service. This parameter has no a corresponding field in the iotdb-common.properties
+  // Whether enable the rpc service. This parameter has no a corresponding field in the
+  // iotdb-common.properties
   private boolean enableRpcService = true;
 
   // The method to transform device path to device id, can be 'Plain' or 'SHA256'

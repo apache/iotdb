@@ -169,7 +169,9 @@ public class ReceiverManager {
               identityInfo.getRemoteAddress(), COMMON_CONFIG.getIpWhiteList()));
     }
     // Version check
-    if (!IOTDB_CONFIG.getIoTDBMajorVersion(identityInfo.version).equals(IOTDB_CONFIG.getIoTDBMajorVersion())) {
+    if (!IOTDB_CONFIG
+        .getIoTDBMajorVersion(identityInfo.version)
+        .equals(IOTDB_CONFIG.getIoTDBMajorVersion())) {
       return RpcUtils.getStatus(
           TSStatusCode.PIPESERVER_ERROR,
           String.format(
@@ -437,7 +439,7 @@ public class ReceiverManager {
                   "",
                   partitionFetcher,
                   schemaFetcher,
-                COMMON_CONFIG.getQueryTimeoutThreshold());
+                  COMMON_CONFIG.getQueryTimeoutThreshold());
       if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()
           && result.status.code != TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode()) {
         logger.error("Create Database error, statement: {}.", statement);

@@ -141,9 +141,7 @@ public class CompactionSchedulerTest {
     int prevMaxCompactionCandidateFileNum =
         IoTDBDescriptor.getInstance().getConf().getMaxInnerCompactionCandidateFileNum();
     IoTDBDescriptor.getInstance().getConf().setMaxInnerCompactionCandidateFileNum(100);
-    IoTDBDescriptor.getInstance()
-        .getConf()
-        .setTargetCompactionFileSize(2L * 1024L * 1024L * 1024L);
+    IoTDBDescriptor.getInstance().getConf().setTargetCompactionFileSize(2L * 1024L * 1024L * 1024L);
     String sgName = COMPACTION_TEST_SG + "test1";
     try {
       CompactionTaskManager.getInstance().restart();
@@ -475,9 +473,7 @@ public class CompactionSchedulerTest {
     int prevMaxCompactionCandidateFileNum =
         IoTDBDescriptor.getInstance().getConf().getMaxInnerCompactionCandidateFileNum();
     IoTDBDescriptor.getInstance().getConf().setMaxInnerCompactionCandidateFileNum(100);
-    IoTDBDescriptor.getInstance()
-        .getConf()
-        .setTargetCompactionFileSize(2L * 1024L * 1024L * 1024L);
+    IoTDBDescriptor.getInstance().getConf().setTargetCompactionFileSize(2L * 1024L * 1024L * 1024L);
     String sgName = COMPACTION_TEST_SG + "test4";
     try {
       CompactionTaskManager.getInstance().restart();

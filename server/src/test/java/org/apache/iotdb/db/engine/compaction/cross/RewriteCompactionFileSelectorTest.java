@@ -974,9 +974,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
     assertEquals(1, seqSelected.size());
     assertEquals(1, unseqSelected.size());
 
-    IoTDBDescriptor.getInstance()
-        .getConf()
-        .setMaxCrossCompactionCandidateFileNum(maxCrossFilesNum);
+    IoTDBDescriptor.getInstance().getConf().setMaxCrossCompactionCandidateFileNum(maxCrossFilesNum);
   }
 
   @Test

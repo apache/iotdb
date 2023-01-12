@@ -23,7 +23,6 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathDeserializeUtil;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.plan.analyze.Analysis;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
@@ -48,7 +47,7 @@ import java.util.Objects;
 public class CreateMultiTimeSeriesNode extends WritePlanNode {
 
   private static final int SPLIT_SIZE =
-    CommonDescriptor.getInstance().getConf().getMaxMeasurementNumOfInternalRequest();
+      CommonDescriptor.getInstance().getConf().getMaxMeasurementNumOfInternalRequest();
 
   private final Map<PartialPath, MeasurementGroup> measurementGroupMap;
 

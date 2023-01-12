@@ -61,9 +61,9 @@ public class TransformOperator implements ProcessOperator {
   protected final float udfReaderMemoryBudgetInMB =
       CommonDescriptor.getInstance().getConf().getUdfReaderMemoryBudgetInMB();
   protected final float udfTransformerMemoryBudgetInMB =
-    CommonDescriptor.getInstance().getConf().getUdfTransformerMemoryBudgetInMB();
+      CommonDescriptor.getInstance().getConf().getUdfTransformerMemoryBudgetInMB();
   protected final float udfCollectorMemoryBudgetInMB =
-    CommonDescriptor.getInstance().getConf().getUdfCollectorMemoryBudgetInMB();
+      CommonDescriptor.getInstance().getConf().getUdfCollectorMemoryBudgetInMB();
 
   protected final OperatorContext operatorContext;
   protected final Operator inputOperator;

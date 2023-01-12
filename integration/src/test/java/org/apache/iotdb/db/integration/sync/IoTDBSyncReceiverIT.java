@@ -63,8 +63,7 @@ public class IoTDBSyncReceiverIT {
   @Before
   public void setUp() throws Exception {
     EnvironmentUtils.envSetUp();
-    enableSeqSpaceCompaction =
-        IoTDBDescriptor.getInstance().getConf().isEnableSeqSpaceCompaction();
+    enableSeqSpaceCompaction = IoTDBDescriptor.getInstance().getConf().isEnableSeqSpaceCompaction();
     enableUnseqSpaceCompaction =
         IoTDBDescriptor.getInstance().getConf().isEnableUnseqSpaceCompaction();
     enableCrossSpaceCompaction =

@@ -1011,8 +1011,7 @@ public class IoTDBSizeTieredCompactionIT {
   @Test
   public void testSequenceInnerCompactionContinously() throws SQLException {
     int oriThreadNum = IoTDBDescriptor.getInstance().getConf().getCompactionThreadCount();
-    long oriTargetFileSize =
-        IoTDBDescriptor.getInstance().getConf().getTargetCompactionFileSize();
+    long oriTargetFileSize = IoTDBDescriptor.getInstance().getConf().getTargetCompactionFileSize();
     IoTDBDescriptor.getInstance().getConf().setCompactionThreadCount(2);
     IoTDBDescriptor.getInstance().getConf().setTargetCompactionFileSize(600);
     int originCandidateNum =
@@ -1099,8 +1098,7 @@ public class IoTDBSizeTieredCompactionIT {
 
   @Test
   public void testSequenceInnerCompactionConcurrently() throws SQLException {
-    long oriTargetFileSize =
-        IoTDBDescriptor.getInstance().getConf().getTargetCompactionFileSize();
+    long oriTargetFileSize = IoTDBDescriptor.getInstance().getConf().getTargetCompactionFileSize();
     IoTDBDescriptor.getInstance().getConf().setTargetCompactionFileSize(600);
     long originCompactionNum = CompactionTaskManager.getInstance().getFinishedTaskNum();
     try (Connection connection = EnvFactory.getEnv().getConnection();
@@ -1163,8 +1161,7 @@ public class IoTDBSizeTieredCompactionIT {
   @Test
   public void testUnsequenceInnerCompactionContinously() throws SQLException {
     int oriThreadNum = IoTDBDescriptor.getInstance().getConf().getCompactionThreadCount();
-    long oriTargetFileSize =
-        IoTDBDescriptor.getInstance().getConf().getTargetCompactionFileSize();
+    long oriTargetFileSize = IoTDBDescriptor.getInstance().getConf().getTargetCompactionFileSize();
     IoTDBDescriptor.getInstance().getConf().setCompactionThreadCount(2);
     IoTDBDescriptor.getInstance().getConf().setTargetCompactionFileSize(600);
     long originFinishCount = CompactionTaskManager.getInstance().getFinishedTaskNum();
@@ -1228,16 +1225,13 @@ public class IoTDBSizeTieredCompactionIT {
     } finally {
       IoTDBDescriptor.getInstance().getConf().setCompactionThreadCount(oriThreadNum);
       IoTDBDescriptor.getInstance().getConf().setTargetCompactionFileSize(oriTargetFileSize);
-      IoTDBDescriptor.getInstance()
-          .getConf()
-          .setCompactionPriority(CompactionPriority.INNER_CROSS);
+      IoTDBDescriptor.getInstance().getConf().setCompactionPriority(CompactionPriority.INNER_CROSS);
     }
   }
 
   @Test
   public void testUnsequenceInnerCompactionConcurrently() throws SQLException {
-    long oriTargetFileSize =
-        IoTDBDescriptor.getInstance().getConf().getTargetCompactionFileSize();
+    long oriTargetFileSize = IoTDBDescriptor.getInstance().getConf().getTargetCompactionFileSize();
     IoTDBDescriptor.getInstance().getConf().setTargetCompactionFileSize(600);
     long originCompactionNum = CompactionTaskManager.getInstance().getFinishedTaskNum();
     try (Connection connection = EnvFactory.getEnv().getConnection();
@@ -1302,8 +1296,7 @@ public class IoTDBSizeTieredCompactionIT {
   // Test concurrent compaction in sequence space and unsequence space
   @Test
   public void testSequenceAndUnsequenceInnerCompactionConcurrently() throws SQLException {
-    long oriTargetFileSize =
-        IoTDBDescriptor.getInstance().getConf().getTargetCompactionFileSize();
+    long oriTargetFileSize = IoTDBDescriptor.getInstance().getConf().getTargetCompactionFileSize();
     IoTDBDescriptor.getInstance().getConf().setTargetCompactionFileSize(600);
     long originCompactionNum = CompactionTaskManager.getInstance().getFinishedTaskNum();
     try (Connection connection = EnvFactory.getEnv().getConnection();

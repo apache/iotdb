@@ -63,7 +63,8 @@ public class ConfigNodeRegionStateMachine
       IoTDBThreadPoolFactory.newCachedThreadPool("CQ-recovery");
 
   private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConf();
-  private static final ConfigNodeConfig CONFIG_NODE_CONFIG = ConfigNodeDescriptor.getInstance().getConf();
+  private static final ConfigNodeConfig CONFIG_NODE_CONFIG =
+      ConfigNodeDescriptor.getInstance().getConf();
   private final ConfigPlanExecutor executor;
   private ConfigManager configManager;
   private LogWriter logWriter;
@@ -72,12 +73,16 @@ public class ConfigNodeRegionStateMachine
   private int endIndex;
 
   private static final String CURRENT_FILE_DIR =
-      CONFIG_NODE_CONFIG.getCnConsensusDir() + File.separator + "simple" + File.separator + "current";
+      CONFIG_NODE_CONFIG.getCnConsensusDir()
+          + File.separator
+          + "simple"
+          + File.separator
+          + "current";
   private static final String PROGRESS_FILE_PATH =
       CURRENT_FILE_DIR + File.separator + "log_inprogress_";
   private static final String FILE_PATH = CURRENT_FILE_DIR + File.separator + "log_";
   private static final long LOG_FILE_MAX_SIZE =
-    COMMON_CONFIG.getConfigNodeSimpleConsensusLogSegmentSizeMax();
+      COMMON_CONFIG.getConfigNodeSimpleConsensusLogSegmentSizeMax();
   private final TEndPoint currentNodeTEndPoint;
 
   public ConfigNodeRegionStateMachine(ConfigManager configManager, ConfigPlanExecutor executor) {
@@ -133,7 +138,8 @@ public class ConfigNodeRegionStateMachine
       result = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
     }
 
-    if (ConsensusFactory.SIMPLE_CONSENSUS.equals(COMMON_CONFIG.getConfigNodeConsensusProtocolClass().getProtocol())) {
+    if (ConsensusFactory.SIMPLE_CONSENSUS.equals(
+        COMMON_CONFIG.getConfigNodeConsensusProtocolClass().getProtocol())) {
       writeLogForSimpleConsensus(plan);
     }
     return result;
@@ -229,7 +235,8 @@ public class ConfigNodeRegionStateMachine
 
   @Override
   public void start() {
-    if (ConsensusFactory.SIMPLE_CONSENSUS.equals(COMMON_CONFIG.getConfigNodeConsensusProtocolClass().getProtocol())) {
+    if (ConsensusFactory.SIMPLE_CONSENSUS.equals(
+        COMMON_CONFIG.getConfigNodeConsensusProtocolClass().getProtocol())) {
       initStandAloneConfigNode();
     }
   }

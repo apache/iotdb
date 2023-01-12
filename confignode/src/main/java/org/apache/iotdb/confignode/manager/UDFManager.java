@@ -27,7 +27,6 @@ import org.apache.iotdb.commons.udf.UDFInformation;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.confignode.client.async.AsyncDataNodeClientPool;
 import org.apache.iotdb.confignode.client.async.handlers.AsyncClientHandler;
-import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.read.function.GetFunctionTablePlan;
 import org.apache.iotdb.confignode.consensus.request.read.udf.GetUDFJarPlan;
 import org.apache.iotdb.confignode.consensus.request.write.function.CreateFunctionPlan;
@@ -61,9 +60,7 @@ public class UDFManager {
   private final UDFInfo udfInfo;
 
   private final long planSizeLimit =
-      CommonDescriptor.getInstance()
-              .getConf()
-              .getConfigNodeRatisConsensusLogAppenderBufferSize()
+      CommonDescriptor.getInstance().getConf().getConfigNodeRatisConsensusLogAppenderBufferSize()
           - IoTDBConstant.RAFT_LOG_BASIC_SIZE;
 
   public UDFManager(ConfigManager configManager, UDFInfo udfInfo) {

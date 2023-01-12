@@ -101,7 +101,7 @@ public class IoTDBNewTsFileCompactionIT {
       {"2", "2"}
     };
     int preAvgSeriesPointNumberThreshold =
-      CommonDescriptor.getInstance().getConf().getAvgSeriesPointNumberThreshold();
+        CommonDescriptor.getInstance().getConf().getAvgSeriesPointNumberThreshold();
     try (Connection connection =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
@@ -155,7 +155,7 @@ public class IoTDBNewTsFileCompactionIT {
       {"3", "3"}
     };
     int preAvgSeriesPointNumberThreshold =
-      CommonDescriptor.getInstance().getConf().getAvgSeriesPointNumberThreshold();
+        CommonDescriptor.getInstance().getConf().getAvgSeriesPointNumberThreshold();
     try (Connection connection =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
@@ -211,7 +211,7 @@ public class IoTDBNewTsFileCompactionIT {
       {"3", "3"},
     };
     int preAvgSeriesPointNumberThreshold =
-      CommonDescriptor.getInstance().getConf().getAvgSeriesPointNumberThreshold();
+        CommonDescriptor.getInstance().getConf().getAvgSeriesPointNumberThreshold();
     try (Connection connection =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
@@ -327,7 +327,7 @@ public class IoTDBNewTsFileCompactionIT {
       {"3", "3"},
     };
     int preAvgSeriesPointNumberThreshold =
-      CommonDescriptor.getInstance().getConf().getAvgSeriesPointNumberThreshold();
+        CommonDescriptor.getInstance().getConf().getAvgSeriesPointNumberThreshold();
     try (Connection connection =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
@@ -384,7 +384,7 @@ public class IoTDBNewTsFileCompactionIT {
       {"4", "4"},
     };
     int preAvgSeriesPointNumberThreshold =
-      CommonDescriptor.getInstance().getConf().getAvgSeriesPointNumberThreshold();
+        CommonDescriptor.getInstance().getConf().getAvgSeriesPointNumberThreshold();
     try (Connection connection =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
@@ -445,7 +445,7 @@ public class IoTDBNewTsFileCompactionIT {
       {"4", "4"}
     };
     int preAvgSeriesPointNumberThreshold =
-      CommonDescriptor.getInstance().getConf().getAvgSeriesPointNumberThreshold();
+        CommonDescriptor.getInstance().getConf().getAvgSeriesPointNumberThreshold();
     try (Connection connection =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
@@ -504,7 +504,7 @@ public class IoTDBNewTsFileCompactionIT {
       {"6", "6"}
     };
     int preAvgSeriesPointNumberThreshold =
-      CommonDescriptor.getInstance().getConf().getAvgSeriesPointNumberThreshold();
+        CommonDescriptor.getInstance().getConf().getAvgSeriesPointNumberThreshold();
     try (Connection connection =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
@@ -565,7 +565,7 @@ public class IoTDBNewTsFileCompactionIT {
       {"3", "3"},
     };
     int preAvgSeriesPointNumberThreshold =
-      CommonDescriptor.getInstance().getConf().getAvgSeriesPointNumberThreshold();
+        CommonDescriptor.getInstance().getConf().getAvgSeriesPointNumberThreshold();
     try (Connection connection =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
@@ -623,7 +623,7 @@ public class IoTDBNewTsFileCompactionIT {
       {"4", "4"}
     };
     int preAvgSeriesPointNumberThreshold =
-      CommonDescriptor.getInstance().getConf().getAvgSeriesPointNumberThreshold();
+        CommonDescriptor.getInstance().getConf().getAvgSeriesPointNumberThreshold();
     try (Connection connection =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
@@ -689,7 +689,7 @@ public class IoTDBNewTsFileCompactionIT {
       {"4", "4"}
     };
     int preAvgSeriesPointNumberThreshold =
-      CommonDescriptor.getInstance().getConf().getAvgSeriesPointNumberThreshold();
+        CommonDescriptor.getInstance().getConf().getAvgSeriesPointNumberThreshold();
     try (Connection connection =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
@@ -748,7 +748,7 @@ public class IoTDBNewTsFileCompactionIT {
       {"6", "6"}
     };
     int preAvgSeriesPointNumberThreshold =
-      CommonDescriptor.getInstance().getConf().getAvgSeriesPointNumberThreshold();
+        CommonDescriptor.getInstance().getConf().getAvgSeriesPointNumberThreshold();
     try (Connection connection =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
@@ -811,7 +811,7 @@ public class IoTDBNewTsFileCompactionIT {
       {"5", "5"}
     };
     int preAvgSeriesPointNumberThreshold =
-      CommonDescriptor.getInstance().getConf().getAvgSeriesPointNumberThreshold();
+        CommonDescriptor.getInstance().getConf().getAvgSeriesPointNumberThreshold();
     try (Connection connection =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
@@ -874,7 +874,7 @@ public class IoTDBNewTsFileCompactionIT {
       {"6", "6"}
     };
     int preAvgSeriesPointNumberThreshold =
-      CommonDescriptor.getInstance().getConf().getAvgSeriesPointNumberThreshold();
+        CommonDescriptor.getInstance().getConf().getAvgSeriesPointNumberThreshold();
     try (Connection connection =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
@@ -939,7 +939,7 @@ public class IoTDBNewTsFileCompactionIT {
       {"6", "6"}
     };
     int preAvgSeriesPointNumberThreshold =
-      CommonDescriptor.getInstance().getConf().getAvgSeriesPointNumberThreshold();
+        CommonDescriptor.getInstance().getConf().getAvgSeriesPointNumberThreshold();
     try (Connection connection =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
@@ -1006,7 +1006,7 @@ public class IoTDBNewTsFileCompactionIT {
       {"8", "8"}
     };
     int preAvgSeriesPointNumberThreshold =
-      CommonDescriptor.getInstance().getConf().getAvgSeriesPointNumberThreshold();
+        CommonDescriptor.getInstance().getConf().getAvgSeriesPointNumberThreshold();
     try (Connection connection =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");

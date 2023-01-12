@@ -620,8 +620,7 @@ public class InnerSeqCompactionWithReadChunkPerformerTest {
     long prevChunkSizeLowerBoundInCompaction =
         IoTDBDescriptor.getInstance().getConf().getChunkSizeLowerBoundInCompaction();
     IoTDBDescriptor.getInstance().getConf().setChunkSizeLowerBoundInCompaction(1);
-    long prevTargetChunkPointNum =
-        IoTDBDescriptor.getInstance().getConf().getTargetChunkPointNum();
+    long prevTargetChunkPointNum = IoTDBDescriptor.getInstance().getConf().getTargetChunkPointNum();
     long prevTargetChunkSize = IoTDBDescriptor.getInstance().getConf().getTargetChunkSize();
     IoTDBDescriptor.getInstance().getConf().setTargetChunkSize(1);
     IoTDBDescriptor.getInstance().getConf().setTargetChunkPointNum(1);

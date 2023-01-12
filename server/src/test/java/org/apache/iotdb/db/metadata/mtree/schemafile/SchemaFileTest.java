@@ -76,9 +76,7 @@ public class SchemaFileTest {
   @After
   public void tearDown() throws Exception {
     EnvironmentUtils.cleanEnv();
-    IoTDBDescriptor.getInstance()
-        .getConf()
-        .setSchemaEngineMode(SchemaEngineMode.Memory.toString());
+    IoTDBDescriptor.getInstance().getConf().setSchemaEngineMode(SchemaEngineMode.Memory.toString());
   }
 
   @Test

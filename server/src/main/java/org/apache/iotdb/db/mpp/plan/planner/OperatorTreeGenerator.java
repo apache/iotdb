@@ -23,7 +23,6 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.cache.DataNodeSchemaCache;
 import org.apache.iotdb.db.mpp.aggregation.AccumulatorFactory;
@@ -1500,8 +1499,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         sourceColumnToInputLocationMap,
         context.getTypeProvider());
 
-    int rowLimit =
-        CommonDescriptor.getInstance().getConf().getSelectIntoInsertTabletPlanRowLimit();
+    int rowLimit = CommonDescriptor.getInstance().getConf().getSelectIntoInsertTabletPlanRowLimit();
     long maxStatementSize = calculateStatementSizePerLine(targetPathToDataTypeMap) * rowLimit;
 
     context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
@@ -1559,8 +1557,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
       statementSizePerLine += calculateStatementSizePerLine(targetPathToDataTypeMap);
     }
 
-    int rowLimit =
-        CommonDescriptor.getInstance().getConf().getSelectIntoInsertTabletPlanRowLimit();
+    int rowLimit = CommonDescriptor.getInstance().getConf().getSelectIntoInsertTabletPlanRowLimit();
     long maxStatementSize = statementSizePerLine * rowLimit;
 
     context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);

@@ -62,7 +62,8 @@ public class ConsensusManager {
   private static final Logger LOGGER = LoggerFactory.getLogger(ConsensusManager.class);
 
   private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConf();
-  private static final ConfigNodeConfig CONFIG_NODE_CONFIG = ConfigNodeDescriptor.getInstance().getConf();
+  private static final ConfigNodeConfig CONFIG_NODE_CONFIG =
+      ConfigNodeDescriptor.getInstance().getConf();
   private static final int SEED_CONFIG_NODE_ID = 0;
 
   private final IManager configManager;
@@ -85,13 +86,16 @@ public class ConsensusManager {
     // There is only one ConfigNodeGroup
     consensusGroupId = new ConfigNodeRegionId(CONFIG_NODE_CONFIG.getConfigNodeRegionId());
 
-    if (SIMPLE_CONSENSUS.equals(COMMON_CONFIG.getConfigNodeConsensusProtocolClass().getProtocol())) {
+    if (SIMPLE_CONSENSUS.equals(
+        COMMON_CONFIG.getConfigNodeConsensusProtocolClass().getProtocol())) {
       consensusImpl =
           ConsensusFactory.getConsensusImpl(
                   SIMPLE_CONSENSUS,
                   ConsensusConfig.newBuilder()
                       .setThisNode(
-                          new TEndPoint(CONFIG_NODE_CONFIG.getCnInternalAddress(), CONFIG_NODE_CONFIG.getCnConsensusPort()))
+                          new TEndPoint(
+                              CONFIG_NODE_CONFIG.getCnInternalAddress(),
+                              CONFIG_NODE_CONFIG.getCnConsensusPort()))
                       .setStorageDir("target" + java.io.File.separator + "simple")
                       .build(),
                   gid -> stateMachine)
@@ -103,81 +107,90 @@ public class ConsensusManager {
       // Implement local ConsensusLayer by ConfigNodeConfig
       consensusImpl =
           ConsensusFactory.getConsensusImpl(
-              COMMON_CONFIG.getConfigNodeConsensusProtocolClass().getProtocol(),
+                  COMMON_CONFIG.getConfigNodeConsensusProtocolClass().getProtocol(),
                   ConsensusConfig.newBuilder()
                       .setThisNodeId(CONFIG_NODE_CONFIG.getConfigNodeId())
                       .setThisNode(
-                          new TEndPoint(CONFIG_NODE_CONFIG.getCnInternalAddress(), CONFIG_NODE_CONFIG.getCnConsensusPort()))
+                          new TEndPoint(
+                              CONFIG_NODE_CONFIG.getCnInternalAddress(),
+                              CONFIG_NODE_CONFIG.getCnConsensusPort()))
                       .setRatisConfig(
                           RatisConfig.newBuilder()
                               .setLeaderLogAppender(
                                   RatisConfig.LeaderLogAppender.newBuilder()
                                       .setBufferByteLimit(
-                                        COMMON_CONFIG.getConfigNodeRatisConsensusLogAppenderBufferSize())
+                                          COMMON_CONFIG
+                                              .getConfigNodeRatisConsensusLogAppenderBufferSize())
                                       .build())
                               .setSnapshot(
                                   RatisConfig.Snapshot.newBuilder()
                                       .setAutoTriggerThreshold(
-                                        COMMON_CONFIG.getConfigNodeRatisSnapshotTriggerThreshold())
+                                          COMMON_CONFIG
+                                              .getConfigNodeRatisSnapshotTriggerThreshold())
                                       .build())
                               .setLog(
                                   RatisConfig.Log.newBuilder()
                                       .setUnsafeFlushEnabled(
-                                        COMMON_CONFIG.isConfigNodeRatisLogUnsafeFlushEnable())
+                                          COMMON_CONFIG.isConfigNodeRatisLogUnsafeFlushEnable())
                                       .setSegmentCacheSizeMax(
                                           SizeInBytes.valueOf(
-                                            COMMON_CONFIG.getConfigNodeRatisLogSegmentSizeMax()))
+                                              COMMON_CONFIG.getConfigNodeRatisLogSegmentSizeMax()))
                                       .setPreserveNumsWhenPurge(
-                                        COMMON_CONFIG.getConfigNodeRatisPreserveLogsWhenPurge())
+                                          COMMON_CONFIG.getConfigNodeRatisPreserveLogsWhenPurge())
                                       .build())
                               .setGrpc(
                                   RatisConfig.Grpc.newBuilder()
                                       .setFlowControlWindow(
                                           SizeInBytes.valueOf(
-                                            COMMON_CONFIG.getConfigNodeRatisGrpcFlowControlWindow()))
+                                              COMMON_CONFIG
+                                                  .getConfigNodeRatisGrpcFlowControlWindow()))
                                       .build())
                               .setRpc(
                                   RatisConfig.Rpc.newBuilder()
                                       .setTimeoutMin(
                                           TimeDuration.valueOf(
-                                            COMMON_CONFIG
+                                              COMMON_CONFIG
                                                   .getConfigNodeRatisRpcLeaderElectionTimeoutMinMs(),
                                               TimeUnit.MILLISECONDS))
                                       .setTimeoutMax(
                                           TimeDuration.valueOf(
-                                            COMMON_CONFIG
+                                              COMMON_CONFIG
                                                   .getConfigNodeRatisRpcLeaderElectionTimeoutMaxMs(),
                                               TimeUnit.MILLISECONDS))
                                       .setRequestTimeout(
                                           TimeDuration.valueOf(
-                                            COMMON_CONFIG.getConfigNodeRatisRequestTimeoutMs(),
+                                              COMMON_CONFIG.getConfigNodeRatisRequestTimeoutMs(),
                                               TimeUnit.MILLISECONDS))
                                       .setFirstElectionTimeoutMin(
                                           TimeDuration.valueOf(
-                                            COMMON_CONFIG.getRatisFirstElectionTimeoutMinMs(),
+                                              COMMON_CONFIG.getRatisFirstElectionTimeoutMinMs(),
                                               TimeUnit.MILLISECONDS))
                                       .setFirstElectionTimeoutMax(
                                           TimeDuration.valueOf(
-                                            COMMON_CONFIG.getRatisFirstElectionTimeoutMaxMs(),
+                                              COMMON_CONFIG.getRatisFirstElectionTimeoutMaxMs(),
                                               TimeUnit.MILLISECONDS))
                                       .build())
                               .setClient(
                                   RatisConfig.Client.newBuilder()
                                       .setClientRequestTimeoutMillis(
-                                        COMMON_CONFIG.getConfigNodeRatisRequestTimeoutMs())
+                                          COMMON_CONFIG.getConfigNodeRatisRequestTimeoutMs())
                                       .setClientMaxRetryAttempt(
-                                        COMMON_CONFIG.getConfigNodeRatisMaxRetryAttempts())
+                                          COMMON_CONFIG.getConfigNodeRatisMaxRetryAttempts())
                                       .setClientRetryInitialSleepTimeMs(
-                                        COMMON_CONFIG.getConfigNodeRatisInitialSleepTimeMs())
+                                          COMMON_CONFIG.getConfigNodeRatisInitialSleepTimeMs())
                                       .setClientRetryMaxSleepTimeMs(
-                                        COMMON_CONFIG.getConfigNodeRatisMaxSleepTimeMs())
+                                          COMMON_CONFIG.getConfigNodeRatisMaxSleepTimeMs())
                                       .setCoreClientNumForEachNode(
-                                        CONFIG_NODE_CONFIG.getCnCoreClientCountForEachNodeInClientManager())
-                                      .setMaxClientNumForEachNode(CONFIG_NODE_CONFIG.getCnMaxClientCountForEachNodeInClientManager())
+                                          CONFIG_NODE_CONFIG
+                                              .getCnCoreClientCountForEachNodeInClientManager())
+                                      .setMaxClientNumForEachNode(
+                                          CONFIG_NODE_CONFIG
+                                              .getCnMaxClientCountForEachNodeInClientManager())
                                       .build())
                               .setImpl(
                                   RatisConfig.Impl.newBuilder()
-                                      .setTriggerSnapshotFileSize(COMMON_CONFIG.getConfigNodeRatisLogMax())
+                                      .setTriggerSnapshotFileSize(
+                                          COMMON_CONFIG.getConfigNodeRatisLogMax())
                                       .build())
                               .build())
                       .setStorageDir(CONFIG_NODE_CONFIG.getCnConsensusDir())
@@ -188,13 +201,14 @@ public class ConsensusManager {
                       new IllegalArgumentException(
                           String.format(
                               ConsensusFactory.CONSTRUCT_FAILED_MSG,
-                            COMMON_CONFIG.getConfigNodeConsensusProtocolClass())));
+                              COMMON_CONFIG.getConfigNodeConsensusProtocolClass())));
     }
     consensusImpl.start();
     if (SystemPropertiesUtils.isRestarted()) {
       // TODO: @Itami-Sho Check and notify if current ConfigNode's ip or port has changed
 
-      if (SIMPLE_CONSENSUS.equals(COMMON_CONFIG.getConfigNodeConsensusProtocolClass().getProtocol())) {
+      if (SIMPLE_CONSENSUS.equals(
+          COMMON_CONFIG.getConfigNodeConsensusProtocolClass().getProtocol())) {
         // Only SIMPLE_CONSENSUS need invoking `createPeerForConsensusGroup` when restarted,
         // but RATIS_CONSENSUS doesn't need it
         try {
@@ -211,8 +225,12 @@ public class ConsensusManager {
           Collections.singletonList(
               new TConfigNodeLocation(
                   SEED_CONFIG_NODE_ID,
-                  new TEndPoint(CONFIG_NODE_CONFIG.getCnInternalAddress(), CONFIG_NODE_CONFIG.getCnInternalPort()),
-                  new TEndPoint(CONFIG_NODE_CONFIG.getCnInternalAddress(), CONFIG_NODE_CONFIG.getCnConsensusPort()))));
+                  new TEndPoint(
+                      CONFIG_NODE_CONFIG.getCnInternalAddress(),
+                      CONFIG_NODE_CONFIG.getCnInternalPort()),
+                  new TEndPoint(
+                      CONFIG_NODE_CONFIG.getCnInternalAddress(),
+                      CONFIG_NODE_CONFIG.getCnConsensusPort()))));
     }
   }
 

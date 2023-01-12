@@ -34,12 +34,15 @@ public class PrimitiveArrayManagerTest {
 
     Assert.assertEquals(
         1224827,
-        PrimitiveArrayManager.getArrayRowCount(1224826 * COMMON_CONFIG.getPrimitiveArraySize() + 1));
+        PrimitiveArrayManager.getArrayRowCount(
+            1224826 * COMMON_CONFIG.getPrimitiveArraySize() + 1));
 
     Assert.assertEquals(
-        1224826, PrimitiveArrayManager.getArrayRowCount(1224826 * COMMON_CONFIG.getPrimitiveArraySize()));
+        1224826,
+        PrimitiveArrayManager.getArrayRowCount(1224826 * COMMON_CONFIG.getPrimitiveArraySize()));
 
-    Assert.assertEquals(1, PrimitiveArrayManager.getArrayRowCount(COMMON_CONFIG.getPrimitiveArraySize()));
+    Assert.assertEquals(
+        1, PrimitiveArrayManager.getArrayRowCount(COMMON_CONFIG.getPrimitiveArraySize()));
 
     Assert.assertEquals(
         1, PrimitiveArrayManager.getArrayRowCount(COMMON_CONFIG.getPrimitiveArraySize() - 1));

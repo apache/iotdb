@@ -33,9 +33,7 @@ public abstract class MTreeDiskModeTest extends MTreeBelowSGTest {
 
   @Override
   protected void rollBackConfig() {
-    IoTDBDescriptor.getInstance()
-        .getConf()
-        .setSchemaEngineMode(SchemaEngineMode.Memory.toString());
+    IoTDBDescriptor.getInstance().getConf().setSchemaEngineMode(SchemaEngineMode.Memory.toString());
   }
 
   protected abstract void setMemSize();

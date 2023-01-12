@@ -68,9 +68,7 @@ public class InnerCompactionSchedulerTest extends AbstractCompactionTest {
     IoTDBDescriptor.getInstance()
         .getConf()
         .setEnableUnseqSpaceCompaction(oldEnableUnSeqSpaceCompaction);
-    IoTDBDescriptor.getInstance()
-        .getConf()
-        .setCompactionThreadCount(oldConcurrentCompactionThread);
+    IoTDBDescriptor.getInstance().getConf().setCompactionThreadCount(oldConcurrentCompactionThread);
     IoTDBDescriptor.getInstance()
         .getConf()
         .setMaxInnerCompactionCandidateFileNum(oldMaxCompactionCandidateFileNum);

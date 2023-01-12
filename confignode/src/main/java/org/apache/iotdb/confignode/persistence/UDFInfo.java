@@ -59,8 +59,7 @@ public class UDFInfo implements SnapshotProcessor {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(UDFInfo.class);
 
-  private static final CommonConfig COMMON_CONFIG =
-      CommonDescriptor.getInstance().getConf();
+  private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConf();
 
   private final UDFTable udfTable;
   private final Map<String, String> existedJarToMD5;

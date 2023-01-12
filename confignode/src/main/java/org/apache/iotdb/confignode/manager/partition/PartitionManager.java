@@ -107,12 +107,13 @@ public class PartitionManager {
 
   private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConf();
   private static final RegionGroupExtensionPolicy SCHEMA_REGION_GROUP_EXTENSION_POLICY =
-    COMMON_CONFIG.getSchemaRegionGroupExtensionPolicy();
+      COMMON_CONFIG.getSchemaRegionGroupExtensionPolicy();
   private static final int SCHEMA_REGION_GROUP_PER_DATABASE =
-    COMMON_CONFIG.getSchemaRegionGroupPerDatabase();
+      COMMON_CONFIG.getSchemaRegionGroupPerDatabase();
   private static final RegionGroupExtensionPolicy DATA_REGION_GROUP_EXTENSION_POLICY =
-    COMMON_CONFIG.getDataRegionGroupExtensionPolicy();
-  private static final int DATA_REGION_GROUP_PER_DATABASE = COMMON_CONFIG.getDataRegionGroupPerDatabase();
+      COMMON_CONFIG.getDataRegionGroupExtensionPolicy();
+  private static final int DATA_REGION_GROUP_PER_DATABASE =
+      COMMON_CONFIG.getDataRegionGroupPerDatabase();
 
   private final IManager configManager;
   private final PartitionInfo partitionInfo;
@@ -143,7 +144,7 @@ public class PartitionManager {
   private void setSeriesPartitionExecutor() {
     this.executor =
         SeriesPartitionExecutor.getSeriesPartitionExecutor(
-          COMMON_CONFIG.getSeriesPartitionExecutorClass(), COMMON_CONFIG.getSeriesSlotNum());
+            COMMON_CONFIG.getSeriesPartitionExecutorClass(), COMMON_CONFIG.getSeriesSlotNum());
   }
 
   // ======================================================
@@ -702,7 +703,8 @@ public class PartitionManager {
                 ? req.getTimeSlotId()
                 : (req.isSetTimeStamp()
                     ? new TTimePartitionSlot(
-                        req.getTimeStamp() - req.getTimeStamp() % COMMON_CONFIG.getTimePartitionInterval())
+                        req.getTimeStamp()
+                            - req.getTimeStamp() % COMMON_CONFIG.getTimePartitionInterval())
                     : null));
     return (GetRegionIdResp) getConsensusManager().read(plan).getDataset();
   }

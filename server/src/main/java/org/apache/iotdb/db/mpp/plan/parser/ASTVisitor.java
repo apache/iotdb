@@ -312,7 +312,8 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     }
 
     createTimeSeriesStatement.setEncoding(
-      CommonDescriptor.getInstance().getDefaultEncodingByType(createTimeSeriesStatement.getDataType()));
+        CommonDescriptor.getInstance()
+            .getDefaultEncodingByType(createTimeSeriesStatement.getDataType()));
     if (props != null
         && props.containsKey(IoTDBConstant.COLUMN_TIMESERIES_ENCODING.toLowerCase())) {
       String encodingString =
@@ -2316,7 +2317,10 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   private Expression parseRealLiteral(String value) {
     // 3.33 is float by default
     return new ConstantOperand(
-        CommonDescriptor.getInstance().getConf().getFloatingStringInferType().equals(TSDataType.DOUBLE)
+        CommonDescriptor.getInstance()
+                .getConf()
+                .getFloatingStringInferType()
+                .equals(TSDataType.DOUBLE)
             ? TSDataType.DOUBLE
             : TSDataType.FLOAT,
         value);

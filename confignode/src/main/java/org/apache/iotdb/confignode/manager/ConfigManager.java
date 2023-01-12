@@ -422,13 +422,14 @@ public class ConfigManager implements IManager {
     TClusterParameters clusterParameters = new TClusterParameters();
     clusterParameters.setClusterName(COMMON_CONF.getClusterName());
     clusterParameters.setConfigNodeConsensusProtocolClass(
-      COMMON_CONF.getConfigNodeConsensusProtocolClass().getProtocol());
+        COMMON_CONF.getConfigNodeConsensusProtocolClass().getProtocol());
     clusterParameters.setDataRegionConsensusProtocolClass(
-      COMMON_CONF.getDataRegionConsensusProtocolClass().getProtocol());
+        COMMON_CONF.getDataRegionConsensusProtocolClass().getProtocol());
     clusterParameters.setSchemaRegionConsensusProtocolClass(
-      COMMON_CONF.getSchemaRegionConsensusProtocolClass().getProtocol());
+        COMMON_CONF.getSchemaRegionConsensusProtocolClass().getProtocol());
     clusterParameters.setSeriesPartitionSlotNum(COMMON_CONF.getSeriesSlotNum());
-    clusterParameters.setSeriesPartitionExecutorClass(COMMON_CONF.getSeriesPartitionExecutorClass());
+    clusterParameters.setSeriesPartitionExecutorClass(
+        COMMON_CONF.getSeriesPartitionExecutorClass());
     clusterParameters.setDefaultTTL(COMMON_CONF.getDefaultTtlInMs());
     clusterParameters.setTimePartitionInterval(COMMON_CONF.getTimePartitionInterval());
     clusterParameters.setDataReplicationFactor(COMMON_CONF.getDataReplicationFactor());
@@ -911,21 +912,25 @@ public class ConfigManager implements IManager {
       return errorStatus.setMessage(errorPrefix + "time_partition_interval" + errorSuffix);
     }
 
-    if (clusterParameters.getSchemaReplicationFactor() != COMMON_CONF.getSchemaReplicationFactor()) {
+    if (clusterParameters.getSchemaReplicationFactor()
+        != COMMON_CONF.getSchemaReplicationFactor()) {
       return errorStatus.setMessage(errorPrefix + "schema_replication_factor" + errorSuffix);
     }
     if (clusterParameters.getDataReplicationFactor() != COMMON_CONF.getDataReplicationFactor()) {
       return errorStatus.setMessage(errorPrefix + "data_replication_factor" + errorSuffix);
     }
 
-    if (clusterParameters.getSchemaRegionPerDataNode() != COMMON_CONF.getSchemaRegionPerDataNode()) {
+    if (clusterParameters.getSchemaRegionPerDataNode()
+        != COMMON_CONF.getSchemaRegionPerDataNode()) {
       return errorStatus.setMessage(errorPrefix + "schema_region_per_data_node" + errorSuffix);
     }
     if (clusterParameters.getDataRegionPerProcessor() != COMMON_CONF.getDataRegionPerProcessor()) {
       return errorStatus.setMessage(errorPrefix + "data_region_per_processor" + errorSuffix);
     }
 
-    if (!clusterParameters.getReadConsistencyLevel().equals(COMMON_CONF.getReadConsistencyLevel())) {
+    if (!clusterParameters
+        .getReadConsistencyLevel()
+        .equals(COMMON_CONF.getReadConsistencyLevel())) {
       return errorStatus.setMessage(errorPrefix + "read_consistency_level" + errorSuffix);
     }
 
@@ -934,7 +939,8 @@ public class ConfigManager implements IManager {
       return errorStatus.setMessage(errorPrefix + "disk_space_warning_threshold" + errorSuffix);
     }
 
-    if (clusterParameters.getLeastDataRegionGroupNum() != COMMON_CONF.getLeastDataRegionGroupNum()) {
+    if (clusterParameters.getLeastDataRegionGroupNum()
+        != COMMON_CONF.getLeastDataRegionGroupNum()) {
       return errorStatus.setMessage(errorPrefix + "least_data_region_group_num" + errorSuffix);
     }
 

@@ -753,8 +753,8 @@ public class IoTDBDescriptor {
   // These configurations are received from config node when registering
   public void loadGlobalConfig(TGlobalConfig globalConfig) {
     CONF.setDnTimePartitionInterval(
-      DateTimeUtils.convertMilliTimeWithPrecision(
-        globalConfig.timePartitionInterval, COMMON_CONFIG.getTimestampPrecision()));
+        DateTimeUtils.convertMilliTimeWithPrecision(
+            globalConfig.timePartitionInterval, COMMON_CONFIG.getTimestampPrecision()));
   }
 
   public void loadCQConfig(TCQConfig cqConfig) {

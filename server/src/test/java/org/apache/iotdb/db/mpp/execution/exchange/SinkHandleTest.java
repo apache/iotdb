@@ -52,8 +52,7 @@ public class SinkHandleTest {
     final long mockTsBlockSize = 128 * 1024L;
     final int numOfMockTsBlock = 1;
     final TEndPoint remoteEndpoint =
-        new TEndPoint(
-            "remote", IoTDBDescriptor.getInstance().getConf().getDnMppDataExchangePort());
+        new TEndPoint("remote", IoTDBDescriptor.getInstance().getConf().getDnMppDataExchangePort());
     final TFragmentInstanceId remoteFragmentInstanceId = new TFragmentInstanceId(queryId, 0, "0");
     final String remotePlanNodeId = "exchange_0";
     final String localPlanNodeId = "fragmentSink_0";
@@ -191,8 +190,7 @@ public class SinkHandleTest {
     final long mockTsBlockSize = 128 * 1024L;
     final int numOfMockTsBlock = 1;
     final TEndPoint remoteEndpoint =
-        new TEndPoint(
-            "remote", IoTDBDescriptor.getInstance().getConf().getDnMppDataExchangePort());
+        new TEndPoint("remote", IoTDBDescriptor.getInstance().getConf().getDnMppDataExchangePort());
     final TFragmentInstanceId remoteFragmentInstanceId = new TFragmentInstanceId(queryId, 0, "0");
     final String remotePlanNodeId = "exchange_0";
     final String localPlanNodeId = "fragmentSink_0";
@@ -392,8 +390,7 @@ public class SinkHandleTest {
     final long mockTsBlockSize = 1024L * 1024L;
     final int numOfMockTsBlock = 1;
     final TEndPoint remoteEndpoint =
-        new TEndPoint(
-            "remote", IoTDBDescriptor.getInstance().getConf().getDnMppDataExchangePort());
+        new TEndPoint("remote", IoTDBDescriptor.getInstance().getConf().getDnMppDataExchangePort());
     final TFragmentInstanceId remoteFragmentInstanceId = new TFragmentInstanceId(queryId, 0, "0");
     final String remotePlanNodeId = "exchange_0";
     final String localPlanNodeId = "fragmentSink_0";
@@ -505,8 +502,7 @@ public class SinkHandleTest {
     final long mockTsBlockSize = 1024L * 1024L;
     final int numOfMockTsBlock = 1;
     final TEndPoint remoteEndpoint =
-        new TEndPoint(
-            "remote", IoTDBDescriptor.getInstance().getConf().getDnMppDataExchangePort());
+        new TEndPoint("remote", IoTDBDescriptor.getInstance().getConf().getDnMppDataExchangePort());
     final TFragmentInstanceId remoteFragmentInstanceId = new TFragmentInstanceId(queryId, 0, "0");
     final String remotePlanNodeId = "exchange_0";
     final String localPlanNodeId = "fragmentSink_0";

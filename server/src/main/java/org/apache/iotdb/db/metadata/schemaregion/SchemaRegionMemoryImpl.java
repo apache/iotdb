@@ -169,7 +169,8 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     // be clear first
     if (IOTDB_CONFIG.isClusterMode()
         && COMMON_CONFIG
-            .getSchemaRegionConsensusProtocolClass().getProtocol()
+            .getSchemaRegionConsensusProtocolClass()
+            .getProtocol()
             .equals(ConsensusFactory.RATIS_CONSENSUS)) {
       File schemaRegionDir = new File(schemaRegionDirPath);
       if (schemaRegionDir.exists()) {
@@ -202,7 +203,8 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
 
       if (!(IOTDB_CONFIG.isClusterMode()
           && COMMON_CONFIG
-              .getSchemaRegionConsensusProtocolClass().getProtocol()
+              .getSchemaRegionConsensusProtocolClass()
+              .getProtocol()
               .equals(ConsensusFactory.RATIS_CONSENSUS))) {
         usingMLog = true;
         initMLog();
@@ -254,7 +256,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
             schemaRegionDirPath,
             MetadataConstant.METADATA_LOG,
             new FakeCRC32Serializer<>(new SchemaRegionPlanSerializer()),
-          COMMON_CONFIG.getSyncMlogPeriodInMs() == 0);
+            COMMON_CONFIG.getSyncMlogPeriodInMs() == 0);
   }
 
   public void writeToMLog(ISchemaRegionPlan schemaRegionPlan) throws IOException {
@@ -586,7 +588,8 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     }
 
     // update id table if not in recovering or disable id table log file
-    if (IOTDB_CONFIG.isEnableIDTable() && (!isRecovering || !IOTDB_CONFIG.isEnableIDTableLogFile())) {
+    if (IOTDB_CONFIG.isEnableIDTable()
+        && (!isRecovering || !IOTDB_CONFIG.isEnableIDTableLogFile())) {
       IDTable idTable = IDTableManager.getInstance().getIDTable(plan.getPath().getDevicePath());
       idTable.createTimeseries(plan);
     }
@@ -691,7 +694,8 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     }
 
     // update id table if not in recovering or disable id table log file
-    if (IOTDB_CONFIG.isEnableIDTable() && (!isRecovering || !IOTDB_CONFIG.isEnableIDTableLogFile())) {
+    if (IOTDB_CONFIG.isEnableIDTable()
+        && (!isRecovering || !IOTDB_CONFIG.isEnableIDTableLogFile())) {
       IDTable idTable = IDTableManager.getInstance().getIDTable(plan.getDevicePath());
       idTable.createAlignedTimeseries(plan);
     }

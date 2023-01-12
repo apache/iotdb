@@ -69,8 +69,7 @@ import java.util.concurrent.locks.ReentrantLock;
 public class TriggerInfo implements SnapshotProcessor {
   private static final Logger LOGGER = LoggerFactory.getLogger(TriggerInfo.class);
 
-  private static final CommonConfig COMMON_CONFIG =
-      CommonDescriptor.getInstance().getConf();
+  private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConf();
 
   private final TriggerTable triggerTable;
   private final Map<String, String> existedJarToMD5;

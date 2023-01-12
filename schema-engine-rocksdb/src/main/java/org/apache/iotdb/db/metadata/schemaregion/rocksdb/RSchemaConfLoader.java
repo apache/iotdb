@@ -48,7 +48,7 @@ public class RSchemaConfLoader {
   private long blockCache =
       CommonDescriptor.getInstance().getConf().getAllocateMemoryForSchemaRegion() * 2 / 3;
   private long blockCacheCompressed =
-    CommonDescriptor.getInstance().getConf().getAllocateMemoryForSchemaRegion() / 3;
+      CommonDescriptor.getInstance().getConf().getAllocateMemoryForSchemaRegion() / 3;
 
   private static final String ROCKSDB_CONFIG_FILE_NAME = "schema-rocksdb.properties";
   private static final Logger logger = LoggerFactory.getLogger(RSchemaConfLoader.class);

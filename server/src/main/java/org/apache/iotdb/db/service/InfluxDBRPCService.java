@@ -72,7 +72,7 @@ public class InfluxDBRPCService extends ThriftService implements InfluxDBRPCServ
               getID().getName(),
               ThreadName.INFLUXDB_RPC_PROCESSOR.getName(),
               config.getDnRpcAddress(),
-            commonConfig.getInfluxDBRpcPort(),
+              commonConfig.getInfluxDBRpcPort(),
               config.getDnRpcMaxConcurrentClientNum(),
               config.getThriftServerAwaitTimeForStopService(),
               new InfluxDBServiceThriftHandler(impl),
