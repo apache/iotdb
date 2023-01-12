@@ -19,6 +19,13 @@
 
 package org.apache.iotdb.metrics;
 
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.ServiceLoader;
+import java.util.Set;
+import java.util.concurrent.TimeUnit;
+import java.util.function.ToLongFunction;
 import org.apache.iotdb.metrics.config.MetricConfig;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.config.ReloadLevel;
@@ -42,17 +49,8 @@ import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
 import org.apache.iotdb.metrics.utils.ReporterType;
 import org.apache.iotdb.tsfile.utils.Pair;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.ServiceLoader;
-import java.util.concurrent.TimeUnit;
-import java.util.function.ToLongFunction;
 
 /** MetricService is the entry to get all metric features. */
 public abstract class AbstractMetricService {
@@ -68,7 +66,7 @@ public abstract class AbstractMetricService {
   protected IoTDBInternalReporter internalReporter = new IoTDBInternalMemoryReporter();
 
   /** The list of metric sets. */
-  protected List<IMetricSet> metricSets = Collections.synchronizedList(new ArrayList<>());
+  protected Set<IMetricSet> metricSets = new HashSet<>();
 
   public AbstractMetricService() {
     // empty constructor
@@ -371,7 +369,7 @@ public abstract class AbstractMetricService {
   }
 
   /** Bind metrics and store metric set. */
-  public void addMetricSet(IMetricSet metricSet) {
+  public synchronized void addMetricSet(IMetricSet metricSet) {
     if (!metricSets.contains(metricSet)) {
       metricSet.bindTo(this);
       metricSets.add(metricSet);
@@ -379,7 +377,7 @@ public abstract class AbstractMetricService {
   }
 
   /** Remove metrics. */
-  public void removeMetricSet(IMetricSet metricSet) {
+  public synchronized void removeMetricSet(IMetricSet metricSet) {
     if (metricSets.contains(metricSet)) {
       metricSet.unbindFrom(this);
       metricSets.remove(metricSet);
