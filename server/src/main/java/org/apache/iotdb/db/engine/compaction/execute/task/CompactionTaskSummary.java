@@ -18,11 +18,20 @@
  */
 package org.apache.iotdb.db.engine.compaction.execute.task;
 
+import java.text.SimpleDateFormat;
+import java.util.Date;
+
 /** The summary of one {@link AbstractCompactionTask} execution */
 public class CompactionTaskSummary {
   private long timeCost = 0L;
   private volatile Status status = Status.NOT_STARTED;
   private long startTime = -1L;
+  private int processChunkNum = 0;
+  private int directlyFlushChunkNum = 0;
+  private int deserializeChunkCount = 0;
+  private int deserializePageCount = 0;
+  private int mergedChunkNum = 0;
+  private long processPointNum = 0;
 
   public CompactionTaskSummary() {}
 
@@ -65,11 +74,67 @@ public class CompactionTaskSummary {
     return timeCost;
   }
 
+  public void increaseProcessChunkNum(int increment) {
+    processChunkNum += increment;
+  }
+
+  public void increaseDirectlyFlushChunkNum(int increment) {
+    directlyFlushChunkNum += increment;
+  }
+
+  public void increaseDeserializedChunkNum(int increment) {
+    deserializeChunkCount += increment;
+  }
+
+  public void increaseDeserializePageNum(int increment) {
+    deserializePageCount += increment;
+  }
+
+  public void increaseProcessPointNum(long increment) {
+    processPointNum += increment;
+  }
+
+  public void increaseMergedChunkNum(int increment) {
+    this.mergedChunkNum += increment;
+  }
+
+  public void setDirectlyFlushChunkNum(int directlyFlushChunkNum) {
+    this.directlyFlushChunkNum = directlyFlushChunkNum;
+  }
+
+  public void setDeserializeChunkCount(int deserializeChunkCount) {
+    this.deserializeChunkCount = deserializeChunkCount;
+  }
+
+  public void setDeserializePageCount(int deserializePageCount) {
+    this.deserializePageCount = deserializePageCount;
+  }
+
+  public void setProcessPointNum(int processPointNum) {
+    this.processPointNum = processPointNum;
+  }
+
   enum Status {
     NOT_STARTED,
     STARTED,
     SUCCESS,
     FAILED,
     CANCELED
+  }
+
+  @Override
+  public String toString() {
+    String startTimeInStr = new SimpleDateFormat().format(new Date(startTime));
+    return String.format(
+        "Task start time: %s, time cost: %.2f s, total process chunk num: %d, "
+            + "directly flush chunk num: %d, deserialize chunk num: %d, deserialize page num: %d,"
+            + " total process point num: %d",
+        startTimeInStr,
+        timeCost / 1000.0d,
+        processChunkNum,
+        directlyFlushChunkNum,
+        deserializeChunkCount,
+        deserializePageCount,
+        processPointNum);
   }
 }
