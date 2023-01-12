@@ -225,33 +225,46 @@ public class ReorderingEncodeTest {
     result.add(max_bit_width_interval);
     result.add(max_bit_width_value);
 
+    result.add(timestamp_delta_min);
+    result.add(value_delta_min);
+
     i_star.add(max_timestamp_i);
     i_star.add(max_value_i);
-//    result.add(max_bit_width_deviation);
 
-//    other_result.add(deviation_list);
-//    other_result.add(outlier_deviation_index);
-//    other_result.add(outlier_value_index);
     return ts_block_delta;
   }
   public static boolean adjustPoint(ArrayList<ArrayList<Integer>> ts_block, int i_star, int block_size,
-                                    int max_bit_k, int max_bit_other, int j_star, int j_star_bit_width){
+                                    ArrayList<Integer> raw_length, int index, int j_star, int j_star_bit_width){
     j_star_bit_width = 33;
     j_star = 0;
     int delta_r_i_star_plus_1 = ts_block.get(i_star+1).get(0) - ts_block.get(i_star-1).get(0);
     int delta_v_i_star_plus_1 = ts_block.get(i_star+1).get(1) - ts_block.get(i_star-1).get(1);
+    if(delta_r_i_star_plus_1 > raw_length.get(1) || delta_v_i_star_plus_1 >raw_length.get(2))
+      return false;
     for(int j = 1;j<block_size;j++){
       if(j!=i_star){
         int delta_r_j = ts_block.get(j).get(0) - ts_block.get(i_star).get(0);
         int delta_v_j = ts_block.get(j).get(1) - ts_block.get(i_star).get(1);
         int delta_r_i_star = ts_block.get(i_star).get(0) - ts_block.get(j-1).get(0);
         int delta_v_i_star = ts_block.get(i_star).get(1) - ts_block.get(j-1).get(1);
+        if(delta_r_j > raw_length.get(1) || delta_v_j >raw_length.get(2) ||
+                delta_r_i_star > raw_length.get(1) || delta_v_i_star >raw_length.get(2)  )
+          return false;
         int max_r = max3(delta_r_i_star_plus_1,delta_r_j,delta_r_i_star);
         int max_v = max3(delta_v_i_star_plus_1,delta_v_j,delta_v_i_star);
-        if(max_v<max_bit_k && max_r < j_star_bit_width && max_r <= max_bit_other){
-          j_star_bit_width = max_r;
-          j_star = j;
+        // adjust r
+        if(index == 1){
+          if(max_v<=raw_length.get(2) && max_r < j_star_bit_width && max_r < raw_length.get(1)){
+            j_star_bit_width = max_r;
+            j_star = j;
+          }
+        }else{
+          if(max_v<raw_length.get(2) && max_v < j_star_bit_width && max_r <= raw_length.get(1)){
+            j_star_bit_width = max_v;
+            j_star = j;
+          }
         }
+
       }
     }
     return j_star != 0;
@@ -266,11 +279,18 @@ public class ReorderingEncodeTest {
     byte[] r0_byte = int2Bytes(raw_length.get(4));
     for (byte b : r0_byte) encoded_result.add(b);
 
+    // encode min_delta_interval and min_delta_value
+    byte[] min_delta_interval_byte = int2Bytes(raw_length.get(3));
+    for (byte b : min_delta_interval_byte) encoded_result.add(b);
+    byte[] min_delta_value_byte = int2Bytes(raw_length.get(4));
+    for (byte b : min_delta_value_byte) encoded_result.add(b);
+
     // encode interval0 and value0
     byte[] interval0_byte = int2Bytes(ts_block.get(0).get(0));
     for (byte b : interval0_byte) encoded_result.add(b);
     byte[] value0_byte = int2Bytes(ts_block.get(0).get(1));
     for (byte b : value0_byte) encoded_result.add(b);
+
 
     // encode interval
     byte[] max_bit_width_interval_byte = int2Bytes(raw_length.get(1));
@@ -286,7 +306,7 @@ public class ReorderingEncodeTest {
 
 
     // encode deviation
-    byte[] max_bit_width_deviation_byte = int2Bytes(raw_length.get(3));
+    byte[] max_bit_width_deviation_byte = int2Bytes(raw_length.get(5));
     for (byte b: max_bit_width_deviation_byte) encoded_result.add(b);
     byte[] deviation_list_bytes = bitPacking(deviation_list,raw_length.get(3));
     for (byte b: deviation_list_bytes) encoded_result.add(b);
@@ -335,8 +355,8 @@ public class ReorderingEncodeTest {
         int i_star = i_star_ready.get(1);
         int j_star = 0;
         int j_star_bit_width = 33;
-        int raw_bit_width_r = raw_length.get(1);
-        while(adjustPoint(ts_block,i_star,block_size,raw_length.get(2),raw_bit_width_r, j_star,j_star_bit_width)){
+//        int raw_bit_width_r = raw_length.get(1);
+        while(adjustPoint(ts_block,i_star,block_size,raw_length,0, j_star,j_star_bit_width)){
           ArrayList<Integer> tmp_tv = ts_block_reorder.get(i_star);
           if(j_star<i_star){
             for(int u=i_star-1;u>=j_star;u--){
@@ -354,22 +374,20 @@ public class ReorderingEncodeTest {
             }
           }
           ts_block.set(j_star,tmp_tv);
-          raw_bit_width_r = j_star_bit_width;
+//          raw_bit_width_r = j_star_bit_width;
         }
 
         ts_block_delta_reorder = getEncodeBitsDelta( ts_block,  block_size,reorder_length,i_star_ready_reorder);
         ArrayList<Byte> cur_encoded_result = encode2Bytes(ts_block_delta_reorder,deviation_list,reorder_length);
-        for(Byte byte_encode :cur_encoded_result){
-          encoded_result.add(byte_encode);
-        }
+        encoded_result.addAll(cur_encoded_result);
 
       }else{
         // adjust to reduce max_bit_width_r
         int i_star = i_star_ready_reorder.get(0);
         int j_star = 0;
         int j_star_bit_width = 33;
-        int raw_bit_width_r = raw_length.get(2);
-        while(adjustPoint(ts_block,i_star,block_size,raw_length.get(2),raw_bit_width_r, j_star,j_star_bit_width)){
+//        int raw_bit_width_r = raw_length.get(2);
+        while(adjustPoint(ts_block,i_star,block_size,raw_length,1, j_star,j_star_bit_width)){
           ArrayList<Integer> tmp_tv = ts_block_reorder.get(i_star);
           if(j_star<i_star){
             for(int u=i_star-1;u>=j_star;u--){
@@ -387,14 +405,12 @@ public class ReorderingEncodeTest {
             }
           }
           ts_block.set(j_star,tmp_tv);
-          raw_bit_width_r = j_star_bit_width;
+//          raw_bit_width_r = j_star_bit_width;
         }
 
         ts_block_delta_reorder = getEncodeBitsDelta( ts_block,  block_size,reorder_length,i_star_ready_reorder);
         ArrayList<Byte> cur_encoded_result = encode2Bytes(ts_block_delta_reorder,deviation_list,reorder_length);
-        for(Byte byte_encode :cur_encoded_result){
-          encoded_result.add(byte_encode);
-        }
+        encoded_result.addAll(cur_encoded_result);
       }
     }
     return encoded_result;
