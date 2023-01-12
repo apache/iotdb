@@ -828,9 +828,10 @@ public class SessionExample {
     session.executeNonQueryStatement("insert into root.sg1.d1(timestamp,s1) values(200, 1)");
   }
 
-  private static void setTimeout() throws StatementExecutionException {
-    Session tempSession = new Session(LOCAL_HOST, 6667, "root", "root", 10000, 20000);
-    tempSession.setQueryTimeout(60000);
+  private static void setTimeout() throws StatementExecutionException, IoTDBConnectionException {
+    try (Session tempSession = new Session(LOCAL_HOST, 6667, "root", "root", 10000, 20000)) {
+      tempSession.setQueryTimeout(60000);
+    }
   }
 
   private static void createClusterSession() throws IoTDBConnectionException {
@@ -838,8 +839,8 @@ public class SessionExample {
     nodeList.add("127.0.0.1:6669");
     nodeList.add("127.0.0.1:6667");
     nodeList.add("127.0.0.1:6668");
-    Session clusterSession = new Session(nodeList, "root", "root");
-    clusterSession.open();
-    clusterSession.close();
+    try (Session clusterSession = new Session(nodeList, "root", "root")) {
+      clusterSession.open();
+    }
   }
 }
