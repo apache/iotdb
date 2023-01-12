@@ -166,12 +166,6 @@ public class CommonConfig {
   // it if its estimated memory exceeds current free memory
   private boolean enableQueryMemoryEstimation = true;
 
-
-  // Max bytes of each FragmentInstance for DataExchange
-  private long maxBytesPerFragmentInstance = allocateMemoryForDataExchange / queryThreadCount;
-
-
-
   /** Schema Engine Configuration */
   // ThreadPool size for read operation in coordinator
   private int coordinatorReadExecutorSize = 20;
@@ -472,15 +466,17 @@ public class CommonConfig {
   private int triggerForwardMQTTPoolSize = 4;
 
   /** Select-Into Configuration */
-  // The maximum number of rows can be processed in insert-tablet-plan when executing select-into statements.
+  // The maximum number of rows can be processed in insert-tablet-plan when executing select-into
+  // statements.
   private int selectIntoInsertTabletPlanRowLimit = 10000;
   // The number of threads in the thread pool that execute insert-tablet tasks.
   private int intoOperationExecutionThreadCount = 2;
 
   /** Continuous Query Configuration */
-  // How many thread will be set up to perform continuous queries. When <= 0, use max(1, CPU core number / 2).
+  // How many thread will be set up to perform continuous queries. When <= 0, use max(1, CPU core
+  // number / 2).
   private int continuousQueryThreadCount =
-    Math.max(1, Runtime.getRuntime().availableProcessors() / 2);
+      Math.max(1, Runtime.getRuntime().availableProcessors() / 2);
 
   // Minimum every interval to perform continuous query.
   // The every interval of continuous query instances should not be lower than this limit.
@@ -495,6 +491,7 @@ public class CommonConfig {
   /** RatisConsensus Configuration */
   // RatisConsensus protocol, Max size for a single log append request from leader
   private long configNodeRatisConsensusLogAppenderBufferSize = 4 * 1024 * 1024L;
+
   private long schemaRegionRatisConsensusLogAppenderBufferSize = 4 * 1024 * 1024L;
   private long dataRegionRatisConsensusLogAppenderBufferSize = 4 * 1024 * 1024L;
 
@@ -590,22 +587,17 @@ public class CommonConfig {
   // Whether enable the influxdb rpc service.
   // This parameter has no a corresponding field in the iotdb-common.properties
   private boolean enableInfluxDBRpcService = false;
-
-  /** Port which the influxdb protocol server listens to. */
+  // Port which the influxdb protocol server listens to
   private int influxDBRpcPort = 8086;
 
-  /** Internal Configurations(Unconfigurable in .properties file) */
-  // NodeStatus
-  private volatile NodeStatus status = NodeStatus.Running;
-
-  private volatile String statusReason = null;
-  // Common folders
+  /** Common Folders */
   private String userFolder =
       IoTDBConstant.DEFAULT_BASE_DIR
           + File.separator
           + IoTDBConstant.SYSTEM_FOLDER_NAME
           + File.separator
           + "users";
+
   private String roleFolder =
       IoTDBConstant.DEFAULT_BASE_DIR
           + File.separator
@@ -619,28 +611,36 @@ public class CommonConfig {
           + File.separator
           + "procedure";
 
+  /** Internal Configurations(Unconfigurable in .properties file) */
+  // NodeStatus
+  private volatile NodeStatus status = NodeStatus.Running;
+
+  private volatile String statusReason = null;
+
   // Default system file storage is in local file system (unsupported)
   private FSType systemFileStorageFs = FSType.LOCAL;
+
+  // Max bytes of each FragmentInstance for DataExchange
+  private long maxBytesPerFragmentInstance = allocateMemoryForDataExchange / queryThreadCount;
 
   CommonConfig() {
     // Empty constructor
   }
 
-  public void updatePath(String homeDir) {
-    userFolder = addHomeDir(userFolder, homeDir);
-    roleFolder = addHomeDir(roleFolder, homeDir);
-    procedureWalFolder = addHomeDir(procedureWalFolder, homeDir);
-  }
-
-  private String addHomeDir(String dir, String homeDir) {
-    if (!new File(dir).isAbsolute() && homeDir != null && homeDir.length() > 0) {
-      if (!homeDir.endsWith(File.separator)) {
-        dir = homeDir + File.separatorChar + dir;
-      } else {
-        dir = homeDir + dir;
-      }
+  public void formulateFolders() {
+    String homeDir = System.getProperty(IoTDBConstant.IOTDB_HOME, null);
+    if (homeDir == null) {
+      homeDir = System.getProperty(IoTDBConstant.CONFIGNODE_HOME, null);
     }
-    return dir;
+
+    udfDir = PropertiesUtils.addHomeDir(udfDir, homeDir);
+    udfTemporaryLibDir = PropertiesUtils.addHomeDir(udfTemporaryLibDir, homeDir);
+    triggerDir = PropertiesUtils.addHomeDir(triggerDir, homeDir);
+    triggerTemporaryLibDir = PropertiesUtils.addHomeDir(triggerTemporaryLibDir, homeDir);
+
+    userFolder = PropertiesUtils.addHomeDir(userFolder, homeDir);
+    roleFolder = PropertiesUtils.addHomeDir(roleFolder, homeDir);
+    procedureWalFolder = PropertiesUtils.addHomeDir(procedureWalFolder, homeDir);
   }
 
   public String getClusterName() {
@@ -1569,9 +1569,9 @@ public class CommonConfig {
 
   public long getAllocateMemoryForFree() {
     return Runtime.getRuntime().maxMemory()
-      - allocateMemoryForStorageEngine
-      - allocateMemoryForRead
-      - allocateMemoryForSchema;
+        - allocateMemoryForStorageEngine
+        - allocateMemoryForRead
+        - allocateMemoryForSchema;
   }
 
   public long getAllocateMemoryForSchema() {

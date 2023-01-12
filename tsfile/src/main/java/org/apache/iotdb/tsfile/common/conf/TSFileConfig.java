@@ -156,6 +156,11 @@ public class TSFileConfig implements Serializable {
   // Time interval in minute for calculating query frequency. Unit: minute
   private int frequencyIntervalInMinute = 1;
 
+  // Maximum capacity of a TsBlock, allow up to two pages
+  private int maxTsBlockSizeInBytes = 128 * 1024;
+  // Maximum number of lines in a single TsBlock
+  private int maxTsBlockLineNumber = 1000;
+
   /** customizedProperties, this should be empty by default. */
   private Properties customizedProperties = new Properties();
 
@@ -463,5 +468,21 @@ public class TSFileConfig implements Serializable {
 
   public void setFrequencyIntervalInMinute(int frequencyIntervalInMinute) {
     this.frequencyIntervalInMinute = frequencyIntervalInMinute;
+  }
+
+  public int getMaxTsBlockSizeInBytes() {
+    return maxTsBlockSizeInBytes;
+  }
+
+  public void setMaxTsBlockSizeInBytes(int maxTsBlockSizeInBytes) {
+    this.maxTsBlockSizeInBytes = maxTsBlockSizeInBytes;
+  }
+
+  public int getMaxTsBlockLineNumber() {
+    return maxTsBlockLineNumber;
+  }
+
+  public void setMaxTsBlockLineNumber(int maxTsBlockLineNumber) {
+    this.maxTsBlockLineNumber = maxTsBlockLineNumber;
   }
 }

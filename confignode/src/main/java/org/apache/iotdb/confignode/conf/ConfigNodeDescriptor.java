@@ -97,7 +97,7 @@ public class ConfigNodeDescriptor {
       } catch (IOException | BadNodeUrlException e) {
         LOGGER.warn("Couldn't load ConfigNode conf file, use default config", e);
       } finally {
-        CONF.updatePath();
+        CONF.formulateFolders();
         MetricConfigDescriptor.getInstance().loadProps(properties);
         MetricConfigDescriptor.getInstance()
             .getMetricConfig()
@@ -151,12 +151,12 @@ public class ConfigNodeDescriptor {
     }
 
     CONF.setCnRpcThriftCompressionEnable(
-      Boolean.parseBoolean(
-        properties.getProperty(
-          "cn_rpc_thrift_compression_enable", String.valueOf(CONF.isCnRpcThriftCompressionEnable())
-        ).trim()
-      )
-    );
+        Boolean.parseBoolean(
+            properties
+                .getProperty(
+                    "cn_rpc_thrift_compression_enable",
+                    String.valueOf(CONF.isCnRpcThriftCompressionEnable()))
+                .trim()));
 
     CONF.setCnRpcAdvancedCompressionEnable(
         Boolean.parseBoolean(
@@ -175,11 +175,11 @@ public class ConfigNodeDescriptor {
                 .trim()));
 
     CONF.setCnThriftMaxFrameSize(
-      Integer.parseInt(
-        properties
-          .getProperty(
-            "cn_thrift_max_frame_size", String.valueOf(CONF.getCnThriftMaxFrameSize()))
-          .trim()));
+        Integer.parseInt(
+            properties
+                .getProperty(
+                    "cn_thrift_max_frame_size", String.valueOf(CONF.getCnThriftMaxFrameSize()))
+                .trim()));
 
     CONF.setCnThriftInitBufferSize(
         Integer.parseInt(
@@ -189,24 +189,24 @@ public class ConfigNodeDescriptor {
                 .trim()));
 
     CONF.setCnConnectionTimeoutMs(
-      Integer.parseInt(
-        properties
-          .getProperty(
-            "cn_connection_timeout_ms", String.valueOf(CONF.getCnConnectionTimeoutMs()))
-          .trim()));
+        Integer.parseInt(
+            properties
+                .getProperty(
+                    "cn_connection_timeout_ms", String.valueOf(CONF.getCnConnectionTimeoutMs()))
+                .trim()));
 
     CONF.setCnSelectorThreadNumsOfClientManager(
-      Integer.parseInt(
-        properties
-          .getProperty(
-            "cn_selector_thread_nums_of_client_manager",
-            String.valueOf(CONF.setCnSelectorThreadNumsOfClientManager()))
-          .trim()));
-
+        Integer.parseInt(
+            properties
+                .getProperty(
+                    "cn_selector_thread_nums_of_client_manager",
+                    String.valueOf(CONF.getCnSelectorThreadNumsOfClientManager()))
+                .trim()));
 
     CONF.setCnSystemDir(properties.getProperty("cn_system_dir", CONF.getCnSystemDir()).trim());
 
-    CONF.setCnConsensusDir(properties.getProperty("cn_consensus_dir", CONF.getCnConsensusDir()).trim());
+    CONF.setCnConsensusDir(
+        properties.getProperty("cn_consensus_dir", CONF.getCnConsensusDir()).trim());
 
     String routePriorityPolicy =
         properties.getProperty("route_priority_policy", CONF.getRoutePriorityPolicy()).trim();

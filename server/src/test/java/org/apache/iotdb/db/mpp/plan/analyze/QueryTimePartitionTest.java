@@ -397,7 +397,8 @@ public class QueryTimePartitionTest {
             new AndFilter(
                 TimeFilter.gt(0),
                 TimeFilter.ltEq(
-                    IoTDBDescriptor.getInstance().getConfig().getDnTimePartitionInterval() * 3 + 1)));
+                    IoTDBDescriptor.getInstance().getConfig().getDnTimePartitionInterval() * 3
+                        + 1)));
     expected =
         Arrays.asList(
             new TTimePartitionSlot(0),
@@ -511,7 +512,8 @@ public class QueryTimePartitionTest {
                 TimeFilter.lt(
                     IoTDBDescriptor.getInstance().getConfig().getDnTimePartitionInterval())),
             new AndFilter(
-                TimeFilter.gt(IoTDBDescriptor.getInstance().getConfig().getDnTimePartitionInterval()),
+                TimeFilter.gt(
+                    IoTDBDescriptor.getInstance().getConfig().getDnTimePartitionInterval()),
                 TimeFilter.lt(
                     IoTDBDescriptor.getInstance().getConfig().getDnTimePartitionInterval() * 2
                         - 100)));
@@ -520,7 +522,8 @@ public class QueryTimePartitionTest {
             orFilter1,
             new AndFilter(
                 TimeFilter.gt(
-                    IoTDBDescriptor.getInstance().getConfig().getDnTimePartitionInterval() * 2 - 50),
+                    IoTDBDescriptor.getInstance().getConfig().getDnTimePartitionInterval() * 2
+                        - 50),
                 TimeFilter.ltEq(
                     IoTDBDescriptor.getInstance().getConfig().getDnTimePartitionInterval() * 2
                         - 40)));
@@ -529,7 +532,8 @@ public class QueryTimePartitionTest {
             orFilter2,
             new AndFilter(
                 TimeFilter.gt(
-                    IoTDBDescriptor.getInstance().getConfig().getDnTimePartitionInterval() * 2 - 20),
+                    IoTDBDescriptor.getInstance().getConfig().getDnTimePartitionInterval() * 2
+                        - 20),
                 TimeFilter.ltEq(
                     IoTDBDescriptor.getInstance().getConfig().getDnTimePartitionInterval() * 3
                         + 10)));

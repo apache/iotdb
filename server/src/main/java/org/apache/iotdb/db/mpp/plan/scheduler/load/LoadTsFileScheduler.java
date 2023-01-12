@@ -24,6 +24,8 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
+import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.partition.StorageExecutor;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -77,11 +79,14 @@ import java.util.stream.Collectors;
 public class LoadTsFileScheduler implements IScheduler {
   private static final Logger logger = LoggerFactory.getLogger(LoadTsFileScheduler.class);
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
   public static final long LOAD_TASK_MAX_TIME_IN_SECOND = 5184000L; // one day
   private static final long MAX_MEMORY_SIZE =
       Math.min(
           config.getDnThriftMaxFrameSize() / 2,
-          (long) (config.getAllocateMemoryForStorageEngine() * config.getLoadTsFileProportion()));
+          (long)
+              (COMMON_CONFIG.getAllocateMemoryForStorageEngine()
+                  * config.getLoadTsFileProportion()));
 
   private final MPPQueryContext queryContext;
   private final QueryStateMachine stateMachine;

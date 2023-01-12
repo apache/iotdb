@@ -18,7 +18,6 @@
  */
 
 package org.apache.iotdb.db.service.thrift.impl;
-import org.apache.iotdb.db.wal.WALManager;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
@@ -61,7 +60,6 @@ import org.apache.iotdb.db.engine.cache.BloomFilterCache;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.cache.DataNodeSchemaCache;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaEngine;
@@ -114,6 +112,7 @@ import org.apache.iotdb.db.trigger.executor.TriggerExecutor;
 import org.apache.iotdb.db.trigger.executor.TriggerFireResult;
 import org.apache.iotdb.db.trigger.service.TriggerManagementService;
 import org.apache.iotdb.db.utils.SetThreadName;
+import org.apache.iotdb.db.wal.WALManager;
 import org.apache.iotdb.metrics.type.AutoGauge;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.mpp.rpc.thrift.IDataNodeRPCService;
@@ -1116,22 +1115,18 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   @Override
   public TSStatus loadConfiguration() throws TException {
     try {
-      long prevDeleteWalFilesPeriodInMs = CommonDescriptor.getInstance().getConfig().getDeleteWalFilesPeriodInMs();
-
+      long prevDeleteWalFilesPeriodInMs =
+          CommonDescriptor.getInstance().getConfig().getDeleteWalFilesPeriodInMs();
       CommonDescriptor.getInstance().loadHotModifiedProps();
       IoTDBDescriptor.getInstance().loadHotModifiedProps();
-
-      try {
-        if (prevDeleteWalFilesPeriodInMs != CommonDescriptor.getInstance().getConfig().getDeleteWalFilesPeriodInMs()) {
-          WALManager.getInstance().rebootWALDeleteThread();
-        }
-      } catch (Exception e) {
-        throw new QueryProcessException(String.format("Fail to reload configuration because %s", e));
+      if (prevDeleteWalFilesPeriodInMs
+          != CommonDescriptor.getInstance().getConfig().getDeleteWalFilesPeriodInMs()) {
+        WALManager.getInstance().rebootWALDeleteThread();
       }
-
-    } catch (QueryProcessException e) {
+    } catch (Exception e) {
       return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
     }
+
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }
 

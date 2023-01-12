@@ -89,7 +89,8 @@ public class RSchemaReadWriteHandler {
   private static final String[] INNER_TABLES =
       new String[] {new String(RocksDB.DEFAULT_COLUMN_FAMILY), TABLE_NAME_TAGS};
 
-  public static final String ROCKSDB_PATH = config.getDnSystemDir() + File.separator + ROCKSDB_FOLDER;
+  public static final String ROCKSDB_PATH =
+      config.getDnSystemDir() + File.separator + ROCKSDB_FOLDER;
 
   private RocksDB rocksDB;
 

@@ -20,6 +20,7 @@ package org.apache.iotdb.db.conf;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.conf.PropertiesUtils;
 import org.apache.iotdb.db.audit.AuditLogOperation;
 import org.apache.iotdb.db.audit.AuditLogStorage;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
@@ -51,7 +52,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Properties;
 import java.util.concurrent.TimeUnit;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
@@ -71,7 +71,7 @@ public class IoTDBConfig {
   private static final String PARTIAL_NODE_MATCHER = "[" + PATH_SEPARATOR + "]" + NODE_NAME_MATCHER;
 
   private static final String NODE_MATCHER =
-    "([" + PATH_SEPARATOR + "])?" + NODE_NAME_MATCHER + "(" + PARTIAL_NODE_MATCHER + ")*";
+      "([" + PATH_SEPARATOR + "])?" + NODE_NAME_MATCHER + "(" + PARTIAL_NODE_MATCHER + ")*";
 
   public static final Pattern NODE_PATTERN = Pattern.compile(NODE_MATCHER);
 
@@ -143,7 +143,7 @@ public class IoTDBConfig {
   };
 
   private static final String MULTI_DIR_STRATEGY_PREFIX =
-    "org.apache.iotdb.db.conf.directories.strategy.";
+      "org.apache.iotdb.db.conf.directories.strategy.";
   private static final String DEFAULT_MULTI_DIR_STRATEGY = "MaxDiskUsableSpaceFirstStrategy";
   // Strategy of multiple directories
   private String dnMultiDirStrategyClassName = null;
@@ -166,15 +166,15 @@ public class IoTDBConfig {
 
   // Schema directory, including storage set of values
   private String schemaDir =
-    IoTDBConstant.DEFAULT_BASE_DIR
-      + File.separator
-      + IoTDBConstant.SYSTEM_FOLDER_NAME
-      + File.separator
-      + IoTDBConstant.SCHEMA_FOLDER_NAME;
+      IoTDBConstant.DEFAULT_BASE_DIR
+          + File.separator
+          + IoTDBConstant.SYSTEM_FOLDER_NAME
+          + File.separator
+          + IoTDBConstant.SCHEMA_FOLDER_NAME;
 
   // Query directory, stores temporary files of query
   private String queryDir =
-    IoTDBConstant.DEFAULT_BASE_DIR + File.separator + IoTDBConstant.QUERY_FOLDER_NAME;
+      IoTDBConstant.DEFAULT_BASE_DIR + File.separator + IoTDBConstant.QUERY_FOLDER_NAME;
 
   /** Metric Configuration */
   // TODO: Add if necessary
@@ -188,18 +188,19 @@ public class IoTDBConfig {
   // Compact the unsequence files into the overlapped sequence files
   private boolean enableCrossSpaceCompaction = true;
 
-  // The strategy of inner space compaction task. There are just one inner space compaction strategy SIZE_TIRED_COMPACTION:
+  // The strategy of inner space compaction task. There are just one inner space compaction strategy
+  // SIZE_TIRED_COMPACTION:
   private InnerSequenceCompactionSelector innerSequenceCompactionSelector =
-    InnerSequenceCompactionSelector.SIZE_TIERED;
+      InnerSequenceCompactionSelector.SIZE_TIERED;
 
   private InnerSeqCompactionPerformer innerSeqCompactionPerformer =
-    InnerSeqCompactionPerformer.READ_CHUNK;
+      InnerSeqCompactionPerformer.READ_CHUNK;
 
   private InnerUnsequenceCompactionSelector innerUnsequenceCompactionSelector =
-    InnerUnsequenceCompactionSelector.SIZE_TIERED;
+      InnerUnsequenceCompactionSelector.SIZE_TIERED;
 
   private InnerUnseqCompactionPerformer innerUnseqCompactionPerformer =
-    InnerUnseqCompactionPerformer.READ_POINT;
+      InnerUnseqCompactionPerformer.READ_POINT;
 
   // The strategy of cross space compaction task. There are just one cross space compaction strategy
   // SIZE_TIRED_COMPACTION:
@@ -208,7 +209,8 @@ public class IoTDBConfig {
 
   // The priority of compaction task execution. There are three priority strategy INNER_CROSS:
   // prioritize inner space compaction, reduce the number of files first CROSS INNER: prioritize
-  // cross space compaction, eliminate the unsequence files first BALANCE: alternate two compaction types
+  // cross space compaction, eliminate the unsequence files first BALANCE: alternate two compaction
+  // types
   private CompactionPriority compactionPriority = CompactionPriority.BALANCE;
 
   // The target tsfile size in compaction, 1 GB by default
@@ -220,13 +222,16 @@ public class IoTDBConfig {
   // The target chunk point num in compaction
   private long targetChunkPointNum = 100000L;
 
-  // If the chunk size is lower than this threshold, it will be deserialized into points, default is 10 KB
+  // If the chunk size is lower than this threshold, it will be deserialized into points, default is
+  // 10 KB
   private long chunkSizeLowerBoundInCompaction = 10240L;
 
-  // If the chunk point num is lower than this threshold, it will be deserialized into points, default is 1000
+  // If the chunk point num is lower than this threshold, it will be deserialized into points,
+  // default is 1000
   private long chunkPointNumLowerBoundInCompaction = 1000;
 
-  // If compaction thread cannot acquire the write lock within this timeout, the compaction task will be abort.
+  // If compaction thread cannot acquire the write lock within this timeout, the compaction task
+  // will be abort.
   private long compactionAcquireWriteLockTimeout = 60_000L;
 
   // The max candidate file num in inner space compaction
@@ -251,7 +256,8 @@ public class IoTDBConfig {
   private boolean enableCompactionValidation = true;
 
   // If one merge file selection runs for more than this time, it will be ended and its current
-  // selection will be used as final selection. When < 0, it means time is unbounded. Unit: millisecond
+  // selection will be used as final selection. When < 0, it means time is unbounded. Unit:
+  // millisecond
   private long crossCompactionFileSelectionTimeBudget = 30 * 1000L;
 
   /** Retain Configuration */
@@ -270,11 +276,10 @@ public class IoTDBConfig {
   // Default HDFS port is 9000
   private String hdfsPort = "9000";
 
-
   /* Names of Watermark methods */
 
   /** The proportion of write memory for loading TsFile */
-  private double loadTsFileProportion = 0.125;
+  private final double loadTsFileProportion = 0.125;
 
   /** Size threshold of each checkpoint file. Unit: byte */
   private volatile long checkpointFileSizeThresholdInByte = 3 * 1024 * 1024L;
@@ -363,9 +368,6 @@ public class IoTDBConfig {
    * equal to 0.
    */
   private int compactionThreadCount = 10;
-
-
-
 
   /** Default DFS NameServices is hdfsnamespace */
   private String dfsNameServices = "hdfsnamespace";
@@ -504,12 +506,7 @@ public class IoTDBConfig {
     dataRegionConsensusDir = addDataHomeDir(dataRegionConsensusDir);
     ratisDataRegionSnapshotDir = addDataHomeDir(ratisDataRegionSnapshotDir);
     schemaRegionConsensusDir = addDataHomeDir(schemaRegionConsensusDir);
-    indexRootFolder = addDataHomeDir(indexRootFolder);
     dnExtDir = addDataHomeDir(dnExtDir);
-    udfDir = addDataHomeDir(udfDir);
-    udfTemporaryLibDir = addDataHomeDir(udfTemporaryLibDir);
-    triggerDir = addDataHomeDir(triggerDir);
-    triggerTemporaryLibDir = addDataHomeDir(triggerTemporaryLibDir);
     mqttDir = addDataHomeDir(mqttDir);
 
     extPipeDir = addDataHomeDir(extPipeDir);
@@ -565,18 +562,7 @@ public class IoTDBConfig {
     if (dataHomeDir == null) {
       dataHomeDir = System.getProperty(IoTDBConstant.IOTDB_HOME, null);
     }
-    return addDirPrefix(dataHomeDir, dir);
-  }
-
-  private String addDirPrefix(String prefix, String dir) {
-    if (!new File(dir).isAbsolute() && prefix != null && prefix.length() > 0) {
-      if (!prefix.endsWith(File.separator)) {
-        dir = prefix + File.separatorChar + dir;
-      } else {
-        dir = prefix + dir;
-      }
-    }
-    return dir;
+    return PropertiesUtils.addHomeDir(dataHomeDir, dir);
   }
 
   void confirmMultiDirStrategy() {
@@ -918,7 +904,6 @@ public class IoTDBConfig {
   public void setDnRpcThriftCompressionEnable(boolean dnRpcThriftCompressionEnable) {
     this.dnRpcThriftCompressionEnable = dnRpcThriftCompressionEnable;
   }
-
 
   FSType getTsFileStorageFs() {
     return tsFileStorageFs;
@@ -1490,7 +1475,6 @@ public class IoTDBConfig {
   public void setCqMinEveryIntervalInMs(long cqMinEveryIntervalInMs) {
     this.cqMinEveryIntervalInMs = cqMinEveryIntervalInMs;
   }
-
 
   public Properties getCustomizedProperties() {
     return customizedProperties;

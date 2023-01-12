@@ -270,6 +270,9 @@ public class IoTDBConstant {
   public static final String IOTDB_FOREGROUND = "iotdb-foreground";
   public static final String IOTDB_PIDFILE = "iotdb-pidfile";
 
+  public static final String CONFIGNODE_CONF = "CONFIGNODE_CONF";
+  public static final String CONFIGNODE_HOME = "CONFIGNODE_HOME";
+
   // client version number
   public enum ClientVersion {
     V_0_12,

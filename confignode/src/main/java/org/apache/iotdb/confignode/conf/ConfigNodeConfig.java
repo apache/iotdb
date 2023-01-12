@@ -21,6 +21,7 @@ package org.apache.iotdb.confignode.conf;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.conf.PropertiesUtils;
 import org.apache.iotdb.confignode.manager.load.balancer.RegionBalancer;
 import org.apache.iotdb.confignode.manager.load.balancer.router.priority.IPriorityBalancer;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -63,7 +64,8 @@ public class ConfigNodeConfig {
   private int cnThriftInitBufferSize = RpcUtils.THRIFT_DEFAULT_BUF_CAPACITY;
   // Wait for 20 second by default
   private int cnConnectionTimeoutMs = (int) TimeUnit.SECONDS.toMillis(20);
-  // ClientManager will have so many selector threads (TAsyncClientManager) to distribute to its clients
+  // ClientManager will have so many selector threads (TAsyncClientManager) to distribute to its
+  // clients
   private int cnSelectorThreadNumsOfClientManager = 1;
   // The maximum number of clients that can be idle for a node in a clientManager
   private int cnCoreClientCountForEachNodeInClientManager = 200;
@@ -76,6 +78,7 @@ public class ConfigNodeConfig {
   /** Internal Configurations(Unconfigurable in .properties file) */
   // ConfigNodeId, the default value -1 will be changed after join cluster
   private volatile int configNodeId = -1;
+
   private static final int configNodeRegionId = 0;
 
   // RegionGroup allocate policy
@@ -83,7 +86,8 @@ public class ConfigNodeConfig {
       RegionBalancer.RegionGroupAllocatePolicy.GREEDY;
 
   // The unknown DataNode detect interval in milliseconds
-  private long unknownDataNodeDetectInterval = CommonDescriptor.getInstance().getConfig().getHeartbeatIntervalInMs();
+  private long unknownDataNodeDetectInterval =
+      CommonDescriptor.getInstance().getConfig().getHeartbeatIntervalInMs();
 
   // The route priority policy of cluster read/write requests
   private String routePriorityPolicy = IPriorityBalancer.LEADER_POLICY;
@@ -96,25 +100,10 @@ public class ConfigNodeConfig {
     // Empty constructor
   }
 
-  public void updatePath() {
-    formulateFolders();
-  }
-
-  private void formulateFolders() {
-    cnSystemDir = addHomeDir(cnSystemDir);
-    cnConsensusDir = addHomeDir(cnConsensusDir);
-  }
-
-  private String addHomeDir(String dir) {
+  public void formulateFolders() {
     String homeDir = System.getProperty(ConfigNodeConstant.CONFIGNODE_HOME, null);
-    if (!new File(dir).isAbsolute() && homeDir != null && homeDir.length() > 0) {
-      if (!homeDir.endsWith(File.separator)) {
-        dir = homeDir + File.separatorChar + dir;
-      } else {
-        dir = homeDir + dir;
-      }
-    }
-    return dir;
+    cnSystemDir = PropertiesUtils.addHomeDir(cnSystemDir, homeDir);
+    cnConsensusDir = PropertiesUtils.addHomeDir(cnConsensusDir, homeDir);
   }
 
   public String getCnInternalAddress() {
@@ -225,7 +214,8 @@ public class ConfigNodeConfig {
     return cnCoreClientCountForEachNodeInClientManager;
   }
 
-  public void setCnCoreClientCountForEachNodeInClientManager(int cnCoreClientCountForEachNodeInClientManager) {
+  public void setCnCoreClientCountForEachNodeInClientManager(
+      int cnCoreClientCountForEachNodeInClientManager) {
     this.cnCoreClientCountForEachNodeInClientManager = cnCoreClientCountForEachNodeInClientManager;
   }
 
@@ -233,7 +223,8 @@ public class ConfigNodeConfig {
     return cnMaxClientCountForEachNodeInClientManager;
   }
 
-  public void setCnMaxClientCountForEachNodeInClientManager(int cnMaxClientCountForEachNodeInClientManager) {
+  public void setCnMaxClientCountForEachNodeInClientManager(
+      int cnMaxClientCountForEachNodeInClientManager) {
     this.cnMaxClientCountForEachNodeInClientManager = cnMaxClientCountForEachNodeInClientManager;
   }
 
@@ -253,7 +244,8 @@ public class ConfigNodeConfig {
     return regionGroupAllocatePolicy;
   }
 
-  public void setRegionGroupAllocatePolicy(RegionBalancer.RegionGroupAllocatePolicy regionGroupAllocatePolicy) {
+  public void setRegionGroupAllocatePolicy(
+      RegionBalancer.RegionGroupAllocatePolicy regionGroupAllocatePolicy) {
     this.regionGroupAllocatePolicy = regionGroupAllocatePolicy;
   }
 
