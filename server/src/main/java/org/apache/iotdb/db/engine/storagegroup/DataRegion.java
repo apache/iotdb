@@ -162,8 +162,8 @@ import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFF
  */
 public class DataRegion implements IDataRegionForQuery {
 
-  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-  private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
+  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConf();
+  private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConf();
   private static final Logger DEBUG_LOGGER = LoggerFactory.getLogger("QUERY_DEBUG");
 
   /**
@@ -603,7 +603,7 @@ public class DataRegion implements IDataRegionForQuery {
         timedCompactionScheduleTask,
         this::executeCompaction,
         COMPACTION_TASK_SUBMIT_DELAY,
-        IoTDBDescriptor.getInstance().getConfig().getCompactionScheduleIntervalInMs(),
+        IoTDBDescriptor.getInstance().getConf().getCompactionScheduleIntervalInMs(),
         TimeUnit.MILLISECONDS);
   }
 
@@ -1236,7 +1236,7 @@ public class DataRegion implements IDataRegionForQuery {
         logger.error(
             "disk space is insufficient when creating TsFile processor, change system mode to read-only",
             e);
-        CommonDescriptor.getInstance().getConfig().setNodeStatus(NodeStatus.ReadOnly);
+        CommonDescriptor.getInstance().getConf().setNodeStatus(NodeStatus.ReadOnly);
         break;
       } catch (IOException e) {
         if (retryCnt < 3) {
@@ -1245,7 +1245,7 @@ public class DataRegion implements IDataRegionForQuery {
         } else {
           logger.error(
               "meet IOException when creating TsFileProcessor, change system mode to error", e);
-          CommonDescriptor.getInstance().getConfig().handleUnrecoverableError();
+          CommonDescriptor.getInstance().getConf().handleUnrecoverableError();
           break;
         }
       }

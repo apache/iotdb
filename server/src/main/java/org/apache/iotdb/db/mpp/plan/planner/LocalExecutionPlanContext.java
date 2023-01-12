@@ -19,7 +19,6 @@
 package org.apache.iotdb.db.mpp.plan.planner;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.execution.driver.DataDriverContext;
@@ -164,7 +163,7 @@ public class LocalExecutionPlanContext {
   }
 
   public long getMaxBytesOneHandleCanReserve() {
-    long maxBytesPerFI = CommonDescriptor.getInstance().getConfig().getMaxBytesPerFragmentInstance();
+    long maxBytesPerFI = CommonDescriptor.getInstance().getConf().getMaxBytesPerFragmentInstance();
     return exchangeSumNum == 0 ? maxBytesPerFI : maxBytesPerFI / exchangeSumNum;
   }
 

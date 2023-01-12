@@ -32,7 +32,7 @@ import java.util.TreeSet;
 public class TsFileResourceManager {
   private static final Logger logger = LoggerFactory.getLogger(TsFileResourceManager.class);
 
-  private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
+  private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConf();
 
   /** threshold total memory for all TimeIndex */
   private double TIME_INDEX_MEMORY_THRESHOLD = COMMON_CONFIG.getAllocateMemoryForTimeIndex();

@@ -30,7 +30,7 @@ public class DataNodeLastCacheManager {
   private static final Logger logger = LoggerFactory.getLogger(DataNodeLastCacheManager.class);
 
   private static final boolean CACHE_ENABLED =
-      IoTDBDescriptor.getInstance().getConfig().isLastCacheEnabled();
+      IoTDBDescriptor.getInstance().getConf().isLastCacheEnabled();
 
   /**
    * get the last cache value from time series

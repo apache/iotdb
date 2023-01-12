@@ -240,7 +240,7 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
     for (int i = 0; i < measurementSchemas.length; i++) {
       // null when time series doesn't exist
       if (measurementSchemas[i] == null) {
-        if (!CommonDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
+        if (!CommonDescriptor.getInstance().getConf().isEnablePartialInsert()) {
           throw new QueryProcessException(
               new PathNotExistException(
                   devicePath.getFullPath() + IoTDBConstant.PATH_SEPARATOR + measurements[i]));
@@ -265,7 +265,7 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
             dataTypes[i],
             time,
             values[i]);
-        if (!CommonDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
+        if (!CommonDescriptor.getInstance().getConf().isEnablePartialInsert()) {
           throw e;
         } else {
           markFailedMeasurement(i, e);

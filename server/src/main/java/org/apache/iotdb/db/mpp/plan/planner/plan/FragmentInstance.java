@@ -50,7 +50,7 @@ public class FragmentInstance implements IConsensusRequest {
 
   private final Logger logger = LoggerFactory.getLogger(FragmentInstance.class);
 
-  private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
+  private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConf();
 
   private final FragmentInstanceId id;
   private final QueryType type;

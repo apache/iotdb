@@ -71,8 +71,8 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
     long sizeForFileWriter =
         (long)
             ((double) SystemInfo.getInstance().getMemorySizeForCompaction()
-                / IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount()
-                * CommonDescriptor.getInstance().getConfig().getChunkMetadataSizeProportion());
+                / IoTDBDescriptor.getInstance().getConf().getCompactionThreadCount()
+                * CommonDescriptor.getInstance().getConf().getChunkMetadataSizeProportion());
     TsFileMetricManager.getInstance().addCompactionTempFileNum(true, true, 1);
     try (MultiTsFileDeviceIterator deviceIterator = new MultiTsFileDeviceIterator(seqFiles);
         TsFileIOWriter writer =

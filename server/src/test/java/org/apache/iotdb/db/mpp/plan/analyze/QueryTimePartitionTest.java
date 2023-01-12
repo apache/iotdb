@@ -397,17 +397,17 @@ public class QueryTimePartitionTest {
             new AndFilter(
                 TimeFilter.gt(0),
                 TimeFilter.ltEq(
-                    IoTDBDescriptor.getInstance().getConfig().getDnTimePartitionInterval() * 3
+                    IoTDBDescriptor.getInstance().getConf().getDnTimePartitionInterval() * 3
                         + 1)));
     expected =
         Arrays.asList(
             new TTimePartitionSlot(0),
             new TTimePartitionSlot(
-                IoTDBDescriptor.getInstance().getConfig().getDnTimePartitionInterval()),
+                IoTDBDescriptor.getInstance().getConf().getDnTimePartitionInterval()),
             new TTimePartitionSlot(
-                IoTDBDescriptor.getInstance().getConfig().getDnTimePartitionInterval() * 2),
+                IoTDBDescriptor.getInstance().getConf().getDnTimePartitionInterval() * 2),
             new TTimePartitionSlot(
-                IoTDBDescriptor.getInstance().getConfig().getDnTimePartitionInterval() * 3));
+                IoTDBDescriptor.getInstance().getConf().getDnTimePartitionInterval() * 3));
     assertEquals(expected.size(), res.left.size());
     for (int i = 0; i < expected.size(); i++) {
       assertEquals(expected.get(i), res.left.get(i));
@@ -421,14 +421,14 @@ public class QueryTimePartitionTest {
         getTimePartitionSlotList(
             new AndFilter(
                 TimeFilter.gtEq(
-                    IoTDBDescriptor.getInstance().getConfig().getDnTimePartitionInterval() - 1),
+                    IoTDBDescriptor.getInstance().getConf().getDnTimePartitionInterval() - 1),
                 TimeFilter.lt(
-                    IoTDBDescriptor.getInstance().getConfig().getDnTimePartitionInterval() + 1)));
+                    IoTDBDescriptor.getInstance().getConf().getDnTimePartitionInterval() + 1)));
     expected =
         Arrays.asList(
             new TTimePartitionSlot(0),
             new TTimePartitionSlot(
-                IoTDBDescriptor.getInstance().getConfig().getDnTimePartitionInterval()));
+                IoTDBDescriptor.getInstance().getConf().getDnTimePartitionInterval()));
     assertEquals(expected.size(), res.left.size());
     for (int i = 0; i < expected.size(); i++) {
       assertEquals(expected.get(i), res.left.get(i));
@@ -441,14 +441,14 @@ public class QueryTimePartitionTest {
     res =
         getTimePartitionSlotList(
             TimeFilter.between(
-                IoTDBDescriptor.getInstance().getConfig().getDnTimePartitionInterval() - 1,
-                IoTDBDescriptor.getInstance().getConfig().getDnTimePartitionInterval(),
+                IoTDBDescriptor.getInstance().getConf().getDnTimePartitionInterval() - 1,
+                IoTDBDescriptor.getInstance().getConf().getDnTimePartitionInterval(),
                 false));
     expected =
         Arrays.asList(
             new TTimePartitionSlot(0),
             new TTimePartitionSlot(
-                IoTDBDescriptor.getInstance().getConfig().getDnTimePartitionInterval()));
+                IoTDBDescriptor.getInstance().getConf().getDnTimePartitionInterval()));
     assertEquals(expected.size(), res.left.size());
     for (int i = 0; i < expected.size(); i++) {
       assertEquals(expected.get(i), res.left.get(i));
@@ -462,13 +462,13 @@ public class QueryTimePartitionTest {
         getTimePartitionSlotList(
             new AndFilter(
                 TimeFilter.gtEq(
-                    IoTDBDescriptor.getInstance().getConfig().getDnTimePartitionInterval()),
+                    IoTDBDescriptor.getInstance().getConf().getDnTimePartitionInterval()),
                 TimeFilter.ltEq(
-                    IoTDBDescriptor.getInstance().getConfig().getDnTimePartitionInterval() + 1)));
+                    IoTDBDescriptor.getInstance().getConf().getDnTimePartitionInterval() + 1)));
     expected =
         Collections.singletonList(
             new TTimePartitionSlot(
-                IoTDBDescriptor.getInstance().getConfig().getDnTimePartitionInterval()));
+                IoTDBDescriptor.getInstance().getConf().getDnTimePartitionInterval()));
     assertEquals(expected.size(), res.left.size());
     for (int i = 0; i < expected.size(); i++) {
       assertEquals(expected.get(i), res.left.get(i));
@@ -481,13 +481,13 @@ public class QueryTimePartitionTest {
     res =
         getTimePartitionSlotList(
             TimeFilter.between(
-                IoTDBDescriptor.getInstance().getConfig().getDnTimePartitionInterval(),
-                IoTDBDescriptor.getInstance().getConfig().getDnTimePartitionInterval() + 1,
+                IoTDBDescriptor.getInstance().getConf().getDnTimePartitionInterval(),
+                IoTDBDescriptor.getInstance().getConf().getDnTimePartitionInterval() + 1,
                 false));
     expected =
         Collections.singletonList(
             new TTimePartitionSlot(
-                IoTDBDescriptor.getInstance().getConfig().getDnTimePartitionInterval()));
+                IoTDBDescriptor.getInstance().getConf().getDnTimePartitionInterval()));
     assertEquals(expected.size(), res.left.size());
     for (int i = 0; i < expected.size(); i++) {
       assertEquals(expected.get(i), res.left.get(i));
@@ -510,41 +510,41 @@ public class QueryTimePartitionTest {
             new AndFilter(
                 TimeFilter.gtEq(10),
                 TimeFilter.lt(
-                    IoTDBDescriptor.getInstance().getConfig().getDnTimePartitionInterval())),
+                    IoTDBDescriptor.getInstance().getConf().getDnTimePartitionInterval())),
             new AndFilter(
                 TimeFilter.gt(
-                    IoTDBDescriptor.getInstance().getConfig().getDnTimePartitionInterval()),
+                    IoTDBDescriptor.getInstance().getConf().getDnTimePartitionInterval()),
                 TimeFilter.lt(
-                    IoTDBDescriptor.getInstance().getConfig().getDnTimePartitionInterval() * 2
+                    IoTDBDescriptor.getInstance().getConf().getDnTimePartitionInterval() * 2
                         - 100)));
     OrFilter orFilter2 =
         new OrFilter(
             orFilter1,
             new AndFilter(
                 TimeFilter.gt(
-                    IoTDBDescriptor.getInstance().getConfig().getDnTimePartitionInterval() * 2
+                    IoTDBDescriptor.getInstance().getConf().getDnTimePartitionInterval() * 2
                         - 50),
                 TimeFilter.ltEq(
-                    IoTDBDescriptor.getInstance().getConfig().getDnTimePartitionInterval() * 2
+                    IoTDBDescriptor.getInstance().getConf().getDnTimePartitionInterval() * 2
                         - 40)));
     OrFilter orFilter3 =
         new OrFilter(
             orFilter2,
             new AndFilter(
                 TimeFilter.gt(
-                    IoTDBDescriptor.getInstance().getConfig().getDnTimePartitionInterval() * 2
+                    IoTDBDescriptor.getInstance().getConf().getDnTimePartitionInterval() * 2
                         - 20),
                 TimeFilter.ltEq(
-                    IoTDBDescriptor.getInstance().getConfig().getDnTimePartitionInterval() * 3
+                    IoTDBDescriptor.getInstance().getConf().getDnTimePartitionInterval() * 3
                         + 10)));
     OrFilter orFilter4 =
         new OrFilter(
             orFilter3,
             new AndFilter(
                 TimeFilter.gt(
-                    IoTDBDescriptor.getInstance().getConfig().getDnTimePartitionInterval() * 5 + 1),
+                    IoTDBDescriptor.getInstance().getConf().getDnTimePartitionInterval() * 5 + 1),
                 TimeFilter.lt(
-                    IoTDBDescriptor.getInstance().getConfig().getDnTimePartitionInterval() * 5
+                    IoTDBDescriptor.getInstance().getConf().getDnTimePartitionInterval() * 5
                         + 10)));
 
     res = getTimePartitionSlotList(orFilter4);
@@ -552,13 +552,13 @@ public class QueryTimePartitionTest {
         Arrays.asList(
             new TTimePartitionSlot(0),
             new TTimePartitionSlot(
-                IoTDBDescriptor.getInstance().getConfig().getDnTimePartitionInterval()),
+                IoTDBDescriptor.getInstance().getConf().getDnTimePartitionInterval()),
             new TTimePartitionSlot(
-                IoTDBDescriptor.getInstance().getConfig().getDnTimePartitionInterval() * 2),
+                IoTDBDescriptor.getInstance().getConf().getDnTimePartitionInterval() * 2),
             new TTimePartitionSlot(
-                IoTDBDescriptor.getInstance().getConfig().getDnTimePartitionInterval() * 3),
+                IoTDBDescriptor.getInstance().getConf().getDnTimePartitionInterval() * 3),
             new TTimePartitionSlot(
-                IoTDBDescriptor.getInstance().getConfig().getDnTimePartitionInterval() * 5));
+                IoTDBDescriptor.getInstance().getConf().getDnTimePartitionInterval() * 5));
     assertEquals(expected.size(), res.left.size());
     for (int i = 0; i < expected.size(); i++) {
       assertEquals(expected.get(i), res.left.get(i));

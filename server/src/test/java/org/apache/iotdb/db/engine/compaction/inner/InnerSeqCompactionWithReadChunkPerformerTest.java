@@ -113,11 +113,11 @@ public class InnerSeqCompactionWithReadChunkPerformerTest {
   public void testDeserializePage() throws Exception {
 
     long chunkSizeLowerBoundInCompaction =
-        IoTDBDescriptor.getInstance().getConfig().getChunkSizeLowerBoundInCompaction();
-    IoTDBDescriptor.getInstance().getConfig().setChunkSizeLowerBoundInCompaction(10240);
+        IoTDBDescriptor.getInstance().getConf().getChunkSizeLowerBoundInCompaction();
+    IoTDBDescriptor.getInstance().getConf().setChunkSizeLowerBoundInCompaction(10240);
     long chunkPointNumLowerBoundInCompaction =
-        IoTDBDescriptor.getInstance().getConfig().getChunkPointNumLowerBoundInCompaction();
-    IoTDBDescriptor.getInstance().getConfig().setChunkPointNumLowerBoundInCompaction(1000);
+        IoTDBDescriptor.getInstance().getConf().getChunkPointNumLowerBoundInCompaction();
+    IoTDBDescriptor.getInstance().getConf().setChunkPointNumLowerBoundInCompaction(1000);
     try {
       for (int toMergeFileNum : toMergeFileNums) {
         for (CompactionTimeseriesType compactionTimeseriesType : compactionTimeseriesTypes) {
@@ -339,10 +339,10 @@ public class InnerSeqCompactionWithReadChunkPerformerTest {
       e.printStackTrace();
     } finally {
       IoTDBDescriptor.getInstance()
-          .getConfig()
+          .getConf()
           .setChunkPointNumLowerBoundInCompaction(chunkPointNumLowerBoundInCompaction);
       IoTDBDescriptor.getInstance()
-          .getConfig()
+          .getConf()
           .setChunkSizeLowerBoundInCompaction(chunkSizeLowerBoundInCompaction);
     }
   }
@@ -615,16 +615,16 @@ public class InnerSeqCompactionWithReadChunkPerformerTest {
   @Test
   public void testAppendChunk() throws Exception {
     long prevChunkPointNumLowerBoundInCompaction =
-        IoTDBDescriptor.getInstance().getConfig().getChunkPointNumLowerBoundInCompaction();
-    IoTDBDescriptor.getInstance().getConfig().setChunkPointNumLowerBoundInCompaction(1);
+        IoTDBDescriptor.getInstance().getConf().getChunkPointNumLowerBoundInCompaction();
+    IoTDBDescriptor.getInstance().getConf().setChunkPointNumLowerBoundInCompaction(1);
     long prevChunkSizeLowerBoundInCompaction =
-        IoTDBDescriptor.getInstance().getConfig().getChunkSizeLowerBoundInCompaction();
-    IoTDBDescriptor.getInstance().getConfig().setChunkSizeLowerBoundInCompaction(1);
+        IoTDBDescriptor.getInstance().getConf().getChunkSizeLowerBoundInCompaction();
+    IoTDBDescriptor.getInstance().getConf().setChunkSizeLowerBoundInCompaction(1);
     long prevTargetChunkPointNum =
-        IoTDBDescriptor.getInstance().getConfig().getTargetChunkPointNum();
-    long prevTargetChunkSize = IoTDBDescriptor.getInstance().getConfig().getTargetChunkSize();
-    IoTDBDescriptor.getInstance().getConfig().setTargetChunkSize(1);
-    IoTDBDescriptor.getInstance().getConfig().setTargetChunkPointNum(1);
+        IoTDBDescriptor.getInstance().getConf().getTargetChunkPointNum();
+    long prevTargetChunkSize = IoTDBDescriptor.getInstance().getConf().getTargetChunkSize();
+    IoTDBDescriptor.getInstance().getConf().setTargetChunkSize(1);
+    IoTDBDescriptor.getInstance().getConf().setTargetChunkPointNum(1);
 
     try {
       for (int toMergeFileNum : toMergeFileNums) {
@@ -948,13 +948,13 @@ public class InnerSeqCompactionWithReadChunkPerformerTest {
       e.printStackTrace();
     } finally {
       IoTDBDescriptor.getInstance()
-          .getConfig()
+          .getConf()
           .setChunkSizeLowerBoundInCompaction(prevChunkSizeLowerBoundInCompaction);
       IoTDBDescriptor.getInstance()
-          .getConfig()
+          .getConf()
           .setChunkPointNumLowerBoundInCompaction(prevChunkPointNumLowerBoundInCompaction);
-      IoTDBDescriptor.getInstance().getConfig().setTargetChunkPointNum(prevTargetChunkPointNum);
-      IoTDBDescriptor.getInstance().getConfig().setTargetChunkSize(prevTargetChunkSize);
+      IoTDBDescriptor.getInstance().getConf().setTargetChunkPointNum(prevTargetChunkPointNum);
+      IoTDBDescriptor.getInstance().getConf().setTargetChunkSize(prevTargetChunkSize);
     }
   }
 

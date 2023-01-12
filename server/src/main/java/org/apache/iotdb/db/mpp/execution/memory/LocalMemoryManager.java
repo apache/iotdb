@@ -33,8 +33,8 @@ public class LocalMemoryManager {
     queryPool =
         new MemoryPool(
             "query",
-            CommonDescriptor.getInstance().getConfig().getAllocateMemoryForDataExchange(),
-            CommonDescriptor.getInstance().getConfig().getMaxBytesPerFragmentInstance());
+            CommonDescriptor.getInstance().getConf().getAllocateMemoryForDataExchange(),
+            CommonDescriptor.getInstance().getConf().getMaxBytesPerFragmentInstance());
   }
 
   public MemoryPool getQueryPool() {

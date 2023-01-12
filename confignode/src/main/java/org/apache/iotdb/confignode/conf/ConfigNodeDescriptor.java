@@ -41,7 +41,7 @@ public class ConfigNodeDescriptor {
   private static final Logger LOGGER = LoggerFactory.getLogger(ConfigNodeDescriptor.class);
 
   private final ConfigNodeConfig CONF = new ConfigNodeConfig();
-  private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
+  private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConf();
 
   private ConfigNodeDescriptor() {
     loadProps();

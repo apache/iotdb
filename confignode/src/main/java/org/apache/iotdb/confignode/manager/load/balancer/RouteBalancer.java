@@ -29,7 +29,6 @@ import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
-import org.apache.iotdb.commons.loadbalance.LeaderDistributionPolicy;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.confignode.client.async.AsyncDataNodeClientPool;
 import org.apache.iotdb.confignode.client.async.handlers.AsyncClientHandler;
@@ -74,7 +73,7 @@ public class RouteBalancer {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(RouteBalancer.class);
 
-  private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
+  private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConf();
   private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
   private static final String SCHEMA_REGION_CONSENSUS_PROTOCOL_CLASS =
     COMMON_CONFIG.getSchemaRegionConsensusProtocolClass().getProtocol();

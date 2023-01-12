@@ -138,8 +138,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ClientRPCServiceImpl.class);
 
-  private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
-  private static final IoTDBConfig IOTDB_CONFIG = IoTDBDescriptor.getInstance().getConfig();
+  private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConf();
+  private static final IoTDBConfig IOTDB_CONFIG = IoTDBDescriptor.getInstance().getConf();
 
   private static final Coordinator COORDINATOR = Coordinator.getInstance();
 
@@ -563,9 +563,9 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     properties.setWatermarkBitString(COMMON_CONFIG.getWatermarkBitString());
     properties.setWatermarkParamMarkRate(COMMON_CONFIG.getWatermarkParamMarkRate());
     properties.setWatermarkParamMaxRightBit(COMMON_CONFIG.getWatermarkParamMaxRightBit());
-    properties.setIsReadOnly(CommonDescriptor.getInstance().getConfig().isReadOnly());
+    properties.setIsReadOnly(CommonDescriptor.getInstance().getConf().isReadOnly());
     properties.setThriftMaxFrameSize(
-        IoTDBDescriptor.getInstance().getConfig().getDnThriftMaxFrameSize());
+        IoTDBDescriptor.getInstance().getConf().getDnThriftMaxFrameSize());
     return properties;
   }
 

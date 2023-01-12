@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.mpp.plan.planner;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -1500,7 +1501,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         context.getTypeProvider());
 
     int rowLimit =
-        IoTDBDescriptor.getInstance().getConfig().getSelectIntoInsertTabletPlanRowLimit();
+        CommonDescriptor.getInstance().getConf().getSelectIntoInsertTabletPlanRowLimit();
     long maxStatementSize = calculateStatementSizePerLine(targetPathToDataTypeMap) * rowLimit;
 
     context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
@@ -1559,7 +1560,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     }
 
     int rowLimit =
-        IoTDBDescriptor.getInstance().getConfig().getSelectIntoInsertTabletPlanRowLimit();
+        CommonDescriptor.getInstance().getConf().getSelectIntoInsertTabletPlanRowLimit();
     long maxStatementSize = statementSizePerLine * rowLimit;
 
     context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);

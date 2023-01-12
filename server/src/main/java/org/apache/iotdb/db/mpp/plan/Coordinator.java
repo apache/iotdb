@@ -61,8 +61,8 @@ public class Coordinator {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(Coordinator.class);
 
-  private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
-  private static final IoTDBConfig IOTDB_CONFIG = IoTDBDescriptor.getInstance().getConfig();
+  private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConf();
+  private static final IoTDBConfig IOTDB_CONFIG = IoTDBDescriptor.getInstance().getConf();
 
   private static final String COORDINATOR_EXECUTOR_NAME = "MPPCoordinator";
   private static final String COORDINATOR_WRITE_EXECUTOR_NAME = "MPPCoordinatorWrite";

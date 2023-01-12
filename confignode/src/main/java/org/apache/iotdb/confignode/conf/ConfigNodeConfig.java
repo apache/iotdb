@@ -87,7 +87,7 @@ public class ConfigNodeConfig {
 
   // The unknown DataNode detect interval in milliseconds
   private long unknownDataNodeDetectInterval =
-      CommonDescriptor.getInstance().getConfig().getHeartbeatIntervalInMs();
+      CommonDescriptor.getInstance().getConf().getHeartbeatIntervalInMs();
 
   // The route priority policy of cluster read/write requests
   private String routePriorityPolicy = IPriorityBalancer.LEADER_POLICY;

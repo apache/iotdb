@@ -32,7 +32,7 @@ public class EncodingInferenceUtils {
 
   /** Get default encoding by dataType */
   public static TSEncoding getDefaultEncoding(TSDataType dataType) {
-    CommonConfig conf = CommonDescriptor.getInstance().getConfig();
+    CommonConfig conf = CommonDescriptor.getInstance().getConf();
     switch (dataType) {
       case BOOLEAN:
         return conf.getDefaultBooleanEncoding();

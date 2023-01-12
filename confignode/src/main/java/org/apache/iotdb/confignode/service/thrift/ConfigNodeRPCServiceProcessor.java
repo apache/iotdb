@@ -276,7 +276,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
 
     // Set default configurations if necessary
     if (!storageGroupSchema.isSetTTL()) {
-      storageGroupSchema.setTTL(CommonDescriptor.getInstance().getConfig().getDefaultTtlInMs());
+      storageGroupSchema.setTTL(CommonDescriptor.getInstance().getConf().getDefaultTtlInMs());
     }
     if (!storageGroupSchema.isSetSchemaReplicationFactor()) {
       storageGroupSchema.setSchemaReplicationFactor(
@@ -487,7 +487,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
     LOGGER.info(
         "{} has successfully started and joined the cluster: {}.",
         ConfigNodeConstant.GLOBAL_NAME,
-        CommonDescriptor.getInstance().getConfig().getClusterName());
+        CommonDescriptor.getInstance().getConf().getClusterName());
     return StatusUtils.OK;
   }
 

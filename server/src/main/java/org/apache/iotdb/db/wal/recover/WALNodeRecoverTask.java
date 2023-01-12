@@ -53,7 +53,7 @@ import static org.apache.iotdb.consensus.iot.wal.ConsensusReqReader.DEFAULT_SEAR
 /** This task is responsible for the recovery of one wal node. */
 public class WALNodeRecoverTask implements Runnable {
   private static final Logger logger = LoggerFactory.getLogger(WALNodeRecoverTask.class);
-  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConf();
   private static final WALRecoverManager walRecoverManger = WALRecoverManager.getInstance();
 
   /** this directory store one wal node's .wal and .checkpoint files */

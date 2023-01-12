@@ -78,8 +78,8 @@ import java.util.stream.Collectors;
  */
 public class LoadTsFileScheduler implements IScheduler {
   private static final Logger logger = LoggerFactory.getLogger(LoadTsFileScheduler.class);
-  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-  private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
+  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConf();
+  private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConf();
   public static final long LOAD_TASK_MAX_TIME_IN_SECOND = 5184000L; // one day
   private static final long MAX_MEMORY_SIZE =
       Math.min(

@@ -76,7 +76,7 @@ public class RegionWriteExecutor {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(RegionWriteExecutor.class);
 
-  private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
+  private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConf();
 
   private static final DataNodeRegionManager REGION_MANAGER = DataNodeRegionManager.getInstance();
 

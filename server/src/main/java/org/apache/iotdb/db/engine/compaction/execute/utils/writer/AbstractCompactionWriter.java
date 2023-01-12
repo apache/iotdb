@@ -46,7 +46,7 @@ import java.nio.ByteBuffer;
 import java.util.List;
 
 public abstract class AbstractCompactionWriter implements AutoCloseable {
-  protected int subTaskNum = IoTDBDescriptor.getInstance().getConfig().getSubCompactionTaskNum();
+  protected int subTaskNum = IoTDBDescriptor.getInstance().getConf().getSubCompactionTaskNum();
 
   private RateLimiter compactionRateLimiter =
       CompactionTaskManager.getInstance().getMergeWriteRateLimiter();
@@ -63,11 +63,11 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
   protected int[] chunkPointNumArray = new int[subTaskNum];
 
   // used to control the target chunk size
-  protected long targetChunkSize = IoTDBDescriptor.getInstance().getConfig().getTargetChunkSize();
+  protected long targetChunkSize = IoTDBDescriptor.getInstance().getConf().getTargetChunkSize();
 
   // used to control the point num of target chunk
   protected long targetChunkPointNum =
-      IoTDBDescriptor.getInstance().getConfig().getTargetChunkPointNum();
+      IoTDBDescriptor.getInstance().getConf().getTargetChunkPointNum();
 
   // When num of points writing into target files reaches check point, then check chunk size
   private final long checkPoint = (targetChunkPointNum >= 10 ? targetChunkPointNum : 10) / 10;
@@ -77,12 +77,12 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
   // if unsealed chunk size is lower then this, then deserialize next chunk no matter it is
   // overlapped or not
   protected long chunkSizeLowerBoundInCompaction =
-      IoTDBDescriptor.getInstance().getConfig().getChunkSizeLowerBoundInCompaction();
+      IoTDBDescriptor.getInstance().getConf().getChunkSizeLowerBoundInCompaction();
 
   // if point num of unsealed chunk is lower then this, then deserialize next chunk no matter it is
   // overlapped or not
   protected long chunkPointNumLowerBoundInCompaction =
-      IoTDBDescriptor.getInstance().getConfig().getChunkPointNumLowerBoundInCompaction();
+      IoTDBDescriptor.getInstance().getConf().getChunkPointNumLowerBoundInCompaction();
 
   // if unsealed page size is lower then this, then deserialize next page no matter it is
   // overlapped or not

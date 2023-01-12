@@ -23,8 +23,6 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.auth.AuthorityChecker;
-import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.plan.Coordinator;
 import org.apache.iotdb.db.mpp.plan.analyze.ClusterPartitionFetcher;
 import org.apache.iotdb.db.mpp.plan.analyze.IPartitionFetcher;
@@ -170,7 +168,7 @@ public class MPPPublishHandler extends AbstractInterceptHandler {
                       "",
                       partitionFetcher,
                       schemaFetcher,
-                      CommonDescriptor.getInstance().getConfig().getQueryTimeoutThreshold());
+                      CommonDescriptor.getInstance().getConf().getQueryTimeoutThreshold());
           tsStatus = result.status;
         }
       } catch (Exception e) {

@@ -38,8 +38,6 @@ import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.confignode.client.sync.SyncDataNodeClientPool;
-import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
-import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetNodePathsPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetOrCreateDataPartitionPlan;
@@ -107,7 +105,7 @@ public class PartitionManager {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PartitionManager.class);
 
-  private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
+  private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConf();
   private static final RegionGroupExtensionPolicy SCHEMA_REGION_GROUP_EXTENSION_POLICY =
     COMMON_CONFIG.getSchemaRegionGroupExtensionPolicy();
   private static final int SCHEMA_REGION_GROUP_PER_DATABASE =

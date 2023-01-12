@@ -72,8 +72,8 @@ public class ResourceManagerTest {
   List<TsFileResource> seqResources = new ArrayList<>();
   List<TsFileResource> unseqResources = new ArrayList<>();
 
-  private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
-  private static final IoTDBConfig IOTDB_CONFIG = IoTDBDescriptor.getInstance().getConfig();
+  private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConf();
+  private static final IoTDBConfig IOTDB_CONFIG = IoTDBDescriptor.getInstance().getConf();
   private final TsFileResourceManager tsFileResourceManager = TsFileResourceManager.getInstance();
   private long prevTimeIndexMemoryThreshold;
   private TimeIndexLevel timeIndexLevel;

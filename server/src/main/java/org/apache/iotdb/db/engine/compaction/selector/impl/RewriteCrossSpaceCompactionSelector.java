@@ -45,7 +45,7 @@ import java.util.stream.Collectors;
 public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector {
   private static final Logger LOGGER =
       LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
-  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConf();
 
   private final int SELECT_WARN_THRESHOLD = 10;
   protected String logicalStorageGroupName;
@@ -73,16 +73,16 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
     this.memoryBudget =
         (long)
             ((double) SystemInfo.getInstance().getMemorySizeForCompaction()
-                / IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount()
+                / IoTDBDescriptor.getInstance().getConf().getCompactionThreadCount()
                 * config.getUsableCompactionMemoryProportion());
     this.maxCrossCompactionFileNum =
-        IoTDBDescriptor.getInstance().getConfig().getMaxCrossCompactionCandidateFileNum();
+        IoTDBDescriptor.getInstance().getConf().getMaxCrossCompactionCandidateFileNum();
     this.maxCrossCompactionFileSize =
-        IoTDBDescriptor.getInstance().getConfig().getMaxCrossCompactionCandidateFileSize();
+        IoTDBDescriptor.getInstance().getConf().getMaxCrossCompactionCandidateFileSize();
 
     this.compactionEstimator =
         ICompactionSelector.getCompactionEstimator(
-            IoTDBDescriptor.getInstance().getConfig().getCrossCompactionPerformer(), false);
+            IoTDBDescriptor.getInstance().getConf().getCrossCompactionPerformer(), false);
   }
 
   /**

@@ -51,7 +51,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
 public abstract class WALBufferCommonTest {
-  protected static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  protected static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConf();
   protected static final String identifier = String.valueOf(Integer.MAX_VALUE);
   protected static final boolean preIsClusterMode = config.isClusterMode();
   protected static final String logDirectory = TestConstant.BASE_OUTPUT_PATH.concat("wal-test");

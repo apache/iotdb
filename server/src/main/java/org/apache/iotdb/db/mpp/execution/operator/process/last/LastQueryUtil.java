@@ -43,7 +43,7 @@ import java.util.List;
 public class LastQueryUtil {
 
   private static final boolean CACHE_ENABLED =
-      IoTDBDescriptor.getInstance().getConfig().isLastCacheEnabled();
+      IoTDBDescriptor.getInstance().getConf().isLastCacheEnabled();
 
   public static TsBlockBuilder createTsBlockBuilder() {
     return new TsBlockBuilder(ImmutableList.of(TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT));

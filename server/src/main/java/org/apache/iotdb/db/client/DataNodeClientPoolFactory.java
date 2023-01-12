@@ -32,7 +32,7 @@ import org.apache.commons.pool2.impl.GenericKeyedObjectPool;
 
 public class DataNodeClientPoolFactory {
 
-  private static final IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
+  private static final IoTDBConfig conf = IoTDBDescriptor.getInstance().getConf();
 
   private DataNodeClientPoolFactory() {}
 

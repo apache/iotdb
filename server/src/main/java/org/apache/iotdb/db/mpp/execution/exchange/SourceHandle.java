@@ -24,7 +24,6 @@ import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeMPPDataExchangeServiceClient;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.execution.exchange.MPPDataExchangeManager.SourceHandleListener;
 import org.apache.iotdb.db.mpp.execution.memory.LocalMemoryManager;
 import org.apache.iotdb.db.mpp.metric.QueryMetricsManager;
@@ -98,7 +97,7 @@ public class SourceHandle implements ISourceHandle {
 
   /** max bytes this SourceHandle can reserve. */
   private long maxBytesCanReserve =
-    CommonDescriptor.getInstance().getConfig().getMaxBytesPerFragmentInstance();
+    CommonDescriptor.getInstance().getConf().getMaxBytesPerFragmentInstance();
 
   /**
    * this is set to true after calling isBlocked() at least once which indicates that this

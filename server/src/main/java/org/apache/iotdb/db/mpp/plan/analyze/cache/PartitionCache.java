@@ -25,6 +25,8 @@ import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
+import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.ConfigNodeRegionId;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.MetadataException;
@@ -71,7 +73,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class PartitionCache {
   private static final Logger logger = LoggerFactory.getLogger(PartitionCache.class);
-  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private static final CommonConfig config = CommonDescriptor.getInstance().getConf();
   private static final List<String> ROOT_PATH = Arrays.asList("root", "**");
   private static final String STORAGE_GROUP_CACHE_NAME = "Database";
   private static final String SCHEMA_PARTITION_CACHE_NAME = "SchemaPartition";
@@ -80,7 +82,7 @@ public class PartitionCache {
   /** calculate slotId by device */
   private final String seriesSlotExecutorName = config.getSeriesPartitionExecutorClass();
 
-  private final int seriesPartitionSlotNum = config.getSeriesPartitionSlotNum();
+  private final int seriesPartitionSlotNum = config.getSeriesSlotNum();
   private final SeriesPartitionExecutor partitionExecutor;
 
   /** the size of partitionCache */

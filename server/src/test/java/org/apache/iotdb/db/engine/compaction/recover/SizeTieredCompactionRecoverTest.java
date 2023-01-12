@@ -121,7 +121,7 @@ public class SizeTieredCompactionRecoverTest {
       TestConstant.BASE_OUTPUT_PATH + File.separator + "test-compaction.compaction.log";
   static String[] originDataDirs = null;
   static String[] testDataDirs = new String[] {TestConstant.BASE_OUTPUT_PATH + "data"};
-  static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  static IoTDBConfig config = IoTDBDescriptor.getInstance().getConf();
 
   @Before
   public void setUp() throws Exception {

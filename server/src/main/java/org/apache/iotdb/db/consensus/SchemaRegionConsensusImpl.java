@@ -43,8 +43,8 @@ import java.util.concurrent.TimeUnit;
  */
 public class SchemaRegionConsensusImpl {
 
-  private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
-  private static final IoTDBConfig IOTDB_CONFIG = IoTDBDescriptor.getInstance().getConfig();
+  private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConf();
+  private static final IoTDBConfig IOTDB_CONFIG = IoTDBDescriptor.getInstance().getConf();
 
   private static IConsensus INSTANCE = null;
 

@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.loadbalance.RegionGroupExtensionPolicy;
 import org.apache.iotdb.commons.utils.datastructure.TVListSortAlgorithm;
 import org.apache.iotdb.commons.wal.WALMode;
 import org.apache.iotdb.confignode.rpc.thrift.TGlobalConfig;
+import org.apache.iotdb.confignode.rpc.thrift.TRatisConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -63,7 +64,7 @@ public class CommonDescriptor {
     }
   }
 
-  public CommonConfig getConfig() {
+  public CommonConfig getConf() {
     return CONF;
   }
 
@@ -164,6 +165,7 @@ public class CommonDescriptor {
     loadWatermarkConfiguration(properties);
 
     /* Authorization Configuration */
+    loadAuthorizationConfiguration(properties);
 
     /* UDF Configuration */
     loadUDFConfiguration(properties);
@@ -1886,6 +1888,58 @@ public class CommonDescriptor {
   }
 
   public void loadGlobalConfig(TGlobalConfig globalConfig) {
+    CONF.setSeriesSlotNum(globalConfig.getSeriesPartitionSlotNum());
+    CONF.setSeriesPartitionExecutorClass(globalConfig.getSeriesPartitionExecutorClass());
+    CONF.setReadConsistencyLevel(globalConfig.getReadConsistencyLevel());
     CONF.setDiskSpaceWarningThreshold(globalConfig.getDiskSpaceWarningThreshold());
+  }
+
+  public void loadRatisConfig(TRatisConfig ratisConfig) {
+    CONF.setDataRegionRatisConsensusLogAppenderBufferSize(ratisConfig.getDataAppenderBufferSize());
+    CONF.setSchemaRegionRatisConsensusLogAppenderBufferSize(ratisConfig.getSchemaAppenderBufferSize());
+
+    CONF.setDataRegionRatisSnapshotTriggerThreshold(
+      ratisConfig.getDataSnapshotTriggerThreshold());
+    CONF.setSchemaRegionRatisSnapshotTriggerThreshold(
+      ratisConfig.getSchemaSnapshotTriggerThreshold());
+
+    CONF.setDataRegionRatisLogUnsafeFlushEnable(ratisConfig.isDataLogUnsafeFlushEnable());
+    CONF.setSchemaRegionRatisLogUnsafeFlushEnable(ratisConfig.isSchemaLogUnsafeFlushEnable());
+
+    CONF.setDataRegionRatisLogSegmentSizeMax(ratisConfig.getDataLogSegmentSizeMax());
+    CONF.setConfigNodeRatisLogSegmentSizeMax(ratisConfig.getSchemaLogSegmentSizeMax());
+
+    CONF.setDataRegionRatisGrpcFlowControlWindow(ratisConfig.getDataGrpcFlowControlWindow());
+    CONF.setSchemaRegionRatisGrpcFlowControlWindow(ratisConfig.getSchemaGrpcFlowControlWindow());
+
+    CONF.setDataRegionRatisRpcLeaderElectionTimeoutMinMs(
+      ratisConfig.getDataLeaderElectionTimeoutMin());
+    CONF.setSchemaRegionRatisRpcLeaderElectionTimeoutMinMs(
+      ratisConfig.getSchemaLeaderElectionTimeoutMin());
+
+    CONF.setDataRegionRatisRpcLeaderElectionTimeoutMaxMs(
+      ratisConfig.getDataLeaderElectionTimeoutMax());
+    CONF.setSchemaRegionRatisRpcLeaderElectionTimeoutMaxMs(
+      ratisConfig.getSchemaLeaderElectionTimeoutMax());
+
+    CONF.setDataRegionRatisRequestTimeoutMs(ratisConfig.getDataRequestTimeout());
+    CONF.setSchemaRegionRatisRequestTimeoutMs(ratisConfig.getSchemaRequestTimeout());
+
+    CONF.setDataRegionRatisMaxRetryAttempts(ratisConfig.getDataMaxRetryAttempts());
+    CONF.setDataRegionRatisInitialSleepTimeMs(ratisConfig.getDataInitialSleepTime());
+    CONF.setDataRegionRatisMaxSleepTimeMs(ratisConfig.getDataMaxSleepTime());
+
+    CONF.setSchemaRegionRatisMaxRetryAttempts(ratisConfig.getSchemaMaxRetryAttempts());
+    CONF.setSchemaRegionRatisInitialSleepTimeMs(ratisConfig.getSchemaInitialSleepTime());
+    CONF.setSchemaRegionRatisMaxSleepTimeMs(ratisConfig.getSchemaMaxSleepTime());
+
+    CONF.setDataRegionRatisPreserveLogsWhenPurge(ratisConfig.getDataPreserveWhenPurge());
+    CONF.setSchemaRegionRatisPreserveLogsWhenPurge(ratisConfig.getSchemaPreserveWhenPurge());
+
+    CONF.setRatisFirstElectionTimeoutMinMs(ratisConfig.getFirstElectionTimeoutMin());
+    CONF.setRatisFirstElectionTimeoutMaxMs(ratisConfig.getFirstElectionTimeoutMax());
+
+    CONF.setSchemaRegionRatisLogMax(ratisConfig.getSchemaRegionRatisLogMax());
+    CONF.setDataRegionRatisLogMax(ratisConfig.getDataRegionRatisLogMax());
   }
 }

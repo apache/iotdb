@@ -40,7 +40,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 
 public class IoTDBRewriteTsFileToolIT {
-  private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
+  private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConf();
 
   private String tmpDir;
 

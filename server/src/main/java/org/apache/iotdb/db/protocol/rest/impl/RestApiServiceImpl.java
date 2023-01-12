@@ -51,7 +51,7 @@ import java.time.ZoneId;
 
 public class RestApiServiceImpl extends RestApiService {
 
-  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConf();
 
   private static final Coordinator COORDINATOR = Coordinator.getInstance();
 

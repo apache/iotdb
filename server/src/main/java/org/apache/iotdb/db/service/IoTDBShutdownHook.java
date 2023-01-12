@@ -39,18 +39,18 @@ public class IoTDBShutdownHook extends Thread {
   @Override
   public void run() {
     // close rocksdb if possible to avoid lose data
-    if (SchemaEngineMode.valueOf(IoTDBDescriptor.getInstance().getConfig().getSchemaEngineMode())
+    if (SchemaEngineMode.valueOf(IoTDBDescriptor.getInstance().getConf().getSchemaEngineMode())
         .equals(SchemaEngineMode.Rocksdb_based)) {
       SchemaEngine.getInstance().clear();
     }
 
     // reject write operations to make sure all tsfiles will be sealed
-    CommonDescriptor.getInstance().getConfig().setNodeStatusToShutdown();
+    CommonDescriptor.getInstance().getConf().setNodeStatusToShutdown();
     // wait all wal are flushed
     WALManager.getInstance().waitAllWALFlushed();
 
     // flush data to Tsfile and remove WAL log files
-    if (!IoTDBDescriptor.getInstance().getConfig().isClusterMode()) {
+    if (!IoTDBDescriptor.getInstance().getConf().isClusterMode()) {
       StorageEngine.getInstance().syncCloseAllProcessor();
     }
     WALManager.getInstance().deleteOutdatedWALFiles();
@@ -59,9 +59,9 @@ public class IoTDBShutdownHook extends Thread {
     // consensus algorithms, which will replace the underlying storage engine based on its own
     // latest snapshot, while other consensus algorithms will not. This judgement ensures that
     // compaction work is not discarded even if there are frequent restarts
-    if (IoTDBDescriptor.getInstance().getConfig().isClusterMode()
+    if (IoTDBDescriptor.getInstance().getConf().isClusterMode()
         && CommonDescriptor.getInstance()
-            .getConfig()
+            .getConf()
             .getDataRegionConsensusProtocolClass()
             .getProtocol()
             .equals(ConsensusFactory.RATIS_CONSENSUS)) {

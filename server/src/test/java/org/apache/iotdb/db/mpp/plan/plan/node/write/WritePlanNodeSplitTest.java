@@ -69,12 +69,12 @@ public class WritePlanNodeSplitTest {
   @Before
   public void setUp() {
     prevTimePartitionInterval =
-        IoTDBDescriptor.getInstance().getConfig().getDnTimePartitionInterval();
-    IoTDBDescriptor.getInstance().getConfig().setDnTimePartitionInterval(100);
+        IoTDBDescriptor.getInstance().getConf().getDnTimePartitionInterval();
+    IoTDBDescriptor.getInstance().getConf().setDnTimePartitionInterval(100);
     TimePartitionUtils.setTimePartitionInterval(100);
 
-    executorClassName = IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionExecutorClass();
-    seriesSlotPartitionNum = IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionSlotNum();
+    executorClassName = IoTDBDescriptor.getInstance().getConf().getSeriesPartitionExecutorClass();
+    seriesSlotPartitionNum = IoTDBDescriptor.getInstance().getConf().getSeriesPartitionSlotNum();
     partitionExecutor =
         SeriesPartitionExecutor.getSeriesPartitionExecutor(
             executorClassName, seriesSlotPartitionNum);
@@ -305,6 +305,6 @@ public class WritePlanNodeSplitTest {
   @After
   public void tearDown() {
     TimePartitionUtils.setTimePartitionInterval(prevTimePartitionInterval);
-    IoTDBDescriptor.getInstance().getConfig().setDnTimePartitionInterval(prevTimePartitionInterval);
+    IoTDBDescriptor.getInstance().getConf().setDnTimePartitionInterval(prevTimePartitionInterval);
   }
 }

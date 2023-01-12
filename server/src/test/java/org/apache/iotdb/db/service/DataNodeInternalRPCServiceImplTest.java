@@ -66,7 +66,7 @@ import java.util.List;
 import java.util.Map;
 
 public class DataNodeInternalRPCServiceImplTest {
-  private static final IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
+  private static final IoTDBConfig conf = IoTDBDescriptor.getInstance().getConf();
   DataNodeInternalRPCServiceImpl dataNodeInternalRPCServiceImpl;
   private static final int dataNodeId = 0;
 

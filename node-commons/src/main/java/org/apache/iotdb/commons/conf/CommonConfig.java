@@ -932,10 +932,6 @@ public class CommonConfig {
     return udfTemporaryLibDir;
   }
 
-  public void setUdfTemporaryLibDir(String udfTemporaryLibDir) {
-    this.udfTemporaryLibDir = udfTemporaryLibDir;
-  }
-
   public String getTriggerDir() {
     return triggerDir;
   }
@@ -951,10 +947,6 @@ public class CommonConfig {
 
   public String getTriggerTemporaryLibDir() {
     return triggerTemporaryLibDir;
-  }
-
-  public void setTriggerTemporaryLibDir(String triggerTemporaryLibDir) {
-    this.triggerTemporaryLibDir = triggerTemporaryLibDir;
   }
 
   public int getStatefulTriggerRetryNumWhenNotFound() {

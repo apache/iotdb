@@ -33,8 +33,6 @@ import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.confignode.client.async.AsyncDataNodeClientPool;
 import org.apache.iotdb.confignode.client.async.handlers.AsyncClientHandler;
 import org.apache.iotdb.confignode.client.sync.SyncDataNodeClientPool;
-import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
-import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.read.storagegroup.CountStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.read.storagegroup.GetStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.CheckTemplateSettablePlan;
@@ -101,7 +99,7 @@ public class ClusterSchemaManager {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ClusterSchemaManager.class);
 
-  private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
+  private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConf();
   private static final double SCHEMA_REGION_PER_DATA_NODE = COMMON_CONFIG.getSchemaRegionPerDataNode();
   private static final double DATA_REGION_PER_PROCESSOR = COMMON_CONFIG.getDataRegionPerProcessor();
 
@@ -357,7 +355,7 @@ public class ClusterSchemaManager {
                     storageGroupSchema.getName(), TConsensusGroupType.SchemaRegion);
         int maxSchemaRegionGroupNum =
             calcMaxRegionGroupNum(
-                CONF.getLeastSchemaRegionGroupNum(),
+                COMMON_CONFIG.getLeastSchemaRegionGroupNum(),
                 SCHEMA_REGION_PER_DATA_NODE,
                 dataNodeNum,
                 storageGroupNum,
@@ -376,7 +374,7 @@ public class ClusterSchemaManager {
                 .getRegionGroupCount(storageGroupSchema.getName(), TConsensusGroupType.DataRegion);
         int maxDataRegionGroupNum =
             calcMaxRegionGroupNum(
-                CONF.getLeastDataRegionGroupNum(),
+              COMMON_CONFIG.getLeastDataRegionGroupNum(),
                 DATA_REGION_PER_PROCESSOR,
                 totalCpuCoreNum,
                 storageGroupNum,

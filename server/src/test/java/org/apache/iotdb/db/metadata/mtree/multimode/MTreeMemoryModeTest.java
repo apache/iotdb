@@ -26,7 +26,7 @@ public class MTreeMemoryModeTest extends MTreeBelowSGTest {
   @Override
   protected void setConfig() {
     IoTDBDescriptor.getInstance()
-        .getConfig()
+        .getConf()
         .setSchemaEngineMode(SchemaEngineMode.Memory.toString());
   }
 

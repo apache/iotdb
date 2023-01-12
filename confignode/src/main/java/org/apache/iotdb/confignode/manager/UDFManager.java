@@ -21,6 +21,7 @@ package org.apache.iotdb.confignode.manager;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.udf.UDFInformation;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
@@ -60,7 +61,7 @@ public class UDFManager {
   private final UDFInfo udfInfo;
 
   private final long planSizeLimit =
-      ConfigNodeDescriptor.getInstance()
+      CommonDescriptor.getInstance()
               .getConf()
               .getConfigNodeRatisConsensusLogAppenderBufferSize()
           - IoTDBConstant.RAFT_LOG_BASIC_SIZE;

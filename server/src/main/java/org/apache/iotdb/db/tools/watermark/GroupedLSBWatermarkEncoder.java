@@ -47,10 +47,10 @@ public class GroupedLSBWatermarkEncoder implements WatermarkEncoder {
 
   public GroupedLSBWatermarkEncoder() {
     this(
-        CommonDescriptor.getInstance().getConfig().getWatermarkSecretKey(),
-        CommonDescriptor.getInstance().getConfig().getWatermarkBitString());
-    this.markRate = CommonDescriptor.getInstance().getConfig().getWatermarkParamMarkRate();
-    this.maxBitPosition = CommonDescriptor.getInstance().getConfig().getWatermarkParamMaxRightBit();
+        CommonDescriptor.getInstance().getConf().getWatermarkSecretKey(),
+        CommonDescriptor.getInstance().getConf().getWatermarkBitString());
+    this.markRate = CommonDescriptor.getInstance().getConf().getWatermarkParamMarkRate();
+    this.maxBitPosition = CommonDescriptor.getInstance().getConf().getWatermarkParamMaxRightBit();
   }
 
   public static int hashMod(String val, Integer base) {

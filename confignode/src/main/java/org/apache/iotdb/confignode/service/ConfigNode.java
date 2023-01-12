@@ -57,7 +57,7 @@ public class ConfigNode implements ConfigNodeMBean {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ConfigNode.class);
 
-  private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
+  private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConf();
   private static final ConfigNodeConfig CONFIG_NODE_CONFIG = ConfigNodeDescriptor.getInstance().getConf();
 
   private static final int STARTUP_RETRY_NUM = 10;

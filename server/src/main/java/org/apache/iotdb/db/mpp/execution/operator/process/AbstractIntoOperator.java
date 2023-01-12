@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.mpp.execution.operator.process;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.client.DataNodeInternalClient;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -317,7 +318,7 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
   public static class InsertTabletStatementGenerator {
 
     private final int TABLET_ROW_LIMIT =
-        IoTDBDescriptor.getInstance().getConfig().getSelectIntoInsertTabletPlanRowLimit();
+        CommonDescriptor.getInstance().getConf().getSelectIntoInsertTabletPlanRowLimit();
 
     private final PartialPath devicePath;
     private final boolean isAligned;

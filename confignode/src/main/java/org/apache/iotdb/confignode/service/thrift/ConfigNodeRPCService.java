@@ -35,7 +35,7 @@ import org.apache.iotdb.confignode.rpc.thrift.IConfigNodeRPCService;
 public class ConfigNodeRPCService extends ThriftService implements ConfigNodeRPCServiceMBean {
 
   private static final ConfigNodeConfig configConf = ConfigNodeDescriptor.getInstance().getConf();
-  private static final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
+  private static final CommonConfig commonConfig = CommonDescriptor.getInstance().getConf();
 
   private ConfigNodeRPCServiceProcessor configNodeRPCServiceProcessor;
 

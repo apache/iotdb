@@ -78,8 +78,8 @@ public class Util {
     try {
       SeriesPartitionExecutor executor =
           SeriesPartitionExecutor.getSeriesPartitionExecutor(
-              IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionExecutorClass(),
-              IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionSlotNum());
+              IoTDBDescriptor.getInstance().getConf().getSeriesPartitionExecutorClass(),
+              IoTDBDescriptor.getInstance().getConf().getSeriesPartitionSlotNum());
       Analysis analysis = new Analysis();
 
       String device1 = "root.sg.d1";
@@ -121,8 +121,8 @@ public class Util {
 
       DataPartition dataPartition =
           new DataPartition(
-              IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionExecutorClass(),
-              IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionSlotNum());
+              IoTDBDescriptor.getInstance().getConf().getSeriesPartitionExecutorClass(),
+              IoTDBDescriptor.getInstance().getConf().getSeriesPartitionSlotNum());
 
       Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>>
           dataPartitionMap = new HashMap<>();
@@ -197,8 +197,8 @@ public class Util {
       // construct schema partition
       SchemaPartition schemaPartition =
           new SchemaPartition(
-              IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionExecutorClass(),
-              IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionSlotNum());
+              IoTDBDescriptor.getInstance().getConf().getSeriesPartitionExecutorClass(),
+              IoTDBDescriptor.getInstance().getConf().getSeriesPartitionSlotNum());
       Map<String, Map<TSeriesPartitionSlot, TRegionReplicaSet>> schemaPartitionMap =
           new HashMap<>();
 

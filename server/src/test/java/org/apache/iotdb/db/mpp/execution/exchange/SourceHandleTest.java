@@ -56,13 +56,13 @@ public class SourceHandleTest {
 
   @BeforeClass
   public static void beforeClass() {
-    maxBytesPerFI = CommonDescriptor.getInstance().getConfig().getMaxBytesPerFragmentInstance();
-    CommonDescriptor.getInstance().getConfig().setMaxBytesPerFragmentInstance(5 * MOCK_TSBLOCK_SIZE);
+    maxBytesPerFI = CommonDescriptor.getInstance().getConf().getMaxBytesPerFragmentInstance();
+    CommonDescriptor.getInstance().getConf().setMaxBytesPerFragmentInstance(5 * MOCK_TSBLOCK_SIZE);
   }
 
   @AfterClass
   public static void afterClass() {
-    CommonDescriptor.getInstance().getConfig().setMaxBytesPerFragmentInstance(maxBytesPerFI);
+    CommonDescriptor.getInstance().getConf().setMaxBytesPerFragmentInstance(maxBytesPerFI);
   }
 
   @Test
@@ -71,7 +71,7 @@ public class SourceHandleTest {
     final int numOfMockTsBlock = 10;
     final TEndPoint remoteEndpoint =
         new TEndPoint(
-            "remote", IoTDBDescriptor.getInstance().getConfig().getDnMppDataExchangePort());
+            "remote", IoTDBDescriptor.getInstance().getConf().getDnMppDataExchangePort());
     final TFragmentInstanceId remoteFragmentInstanceId = new TFragmentInstanceId(queryId, 1, "0");
     final String localPlanNodeId = "exchange_0";
     final TFragmentInstanceId localFragmentInstanceId = new TFragmentInstanceId(queryId, 0, "0");
@@ -186,7 +186,7 @@ public class SourceHandleTest {
     final int numOfMockTsBlock = 10;
     final TEndPoint remoteEndpoint =
         new TEndPoint(
-            "remote", IoTDBDescriptor.getInstance().getConfig().getDnMppDataExchangePort());
+            "remote", IoTDBDescriptor.getInstance().getConf().getDnMppDataExchangePort());
     final TFragmentInstanceId remoteFragmentInstanceId = new TFragmentInstanceId(queryId, 1, "0");
     final String localPlanNodeId = "exchange_0";
     final TFragmentInstanceId localFragmentInstanceId = new TFragmentInstanceId(queryId, 0, "0");
@@ -238,7 +238,7 @@ public class SourceHandleTest {
     long maxBytesCanReserve =
         Math.min(
             5 * MOCK_TSBLOCK_SIZE,
-            CommonDescriptor.getInstance().getConfig().getMaxBytesPerFragmentInstance());
+            CommonDescriptor.getInstance().getConf().getMaxBytesPerFragmentInstance());
     sourceHandle.setMaxBytesCanReserve(maxBytesCanReserve);
     Assert.assertFalse(sourceHandle.isBlocked().isDone());
     Assert.assertFalse(sourceHandle.isAborted());
@@ -343,7 +343,7 @@ public class SourceHandleTest {
     final int numOfMockTsBlock = 10;
     final TEndPoint remoteEndpoint =
         new TEndPoint(
-            "remote", IoTDBDescriptor.getInstance().getConfig().getDnMppDataExchangePort());
+            "remote", IoTDBDescriptor.getInstance().getConf().getDnMppDataExchangePort());
     final TFragmentInstanceId remoteFragmentInstanceId = new TFragmentInstanceId(queryId, 1, "0");
     final String localPlanNodeId = "exchange_0";
     final TFragmentInstanceId localFragmentInstanceId = new TFragmentInstanceId(queryId, 0, "0");
@@ -524,7 +524,7 @@ public class SourceHandleTest {
     final int numOfMockTsBlock = 10;
     final TEndPoint remoteEndpoint =
         new TEndPoint(
-            "remote", IoTDBDescriptor.getInstance().getConfig().getDnMppDataExchangePort());
+            "remote", IoTDBDescriptor.getInstance().getConf().getDnMppDataExchangePort());
     final TFragmentInstanceId remoteFragmentInstanceId = new TFragmentInstanceId(queryId, 1, "0");
     final String localPlanNodeId = "exchange_0";
     final TFragmentInstanceId localFragmentInstanceId = new TFragmentInstanceId(queryId, 0, "0");
@@ -604,7 +604,7 @@ public class SourceHandleTest {
     final long MOCK_TSBLOCK_SIZE = 1024L * 1024L;
     final TEndPoint remoteEndpoint =
         new TEndPoint(
-            "remote", IoTDBDescriptor.getInstance().getConfig().getDnMppDataExchangePort());
+            "remote", IoTDBDescriptor.getInstance().getConf().getDnMppDataExchangePort());
     final TFragmentInstanceId remoteFragmentInstanceId = new TFragmentInstanceId(queryId, 1, "0");
     final String localPlanNodeId = "exchange_0";
     final TFragmentInstanceId localFragmentInstanceId = new TFragmentInstanceId(queryId, 0, "0");

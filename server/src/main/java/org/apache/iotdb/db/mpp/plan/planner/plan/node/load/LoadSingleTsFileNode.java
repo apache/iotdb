@@ -114,8 +114,8 @@ public class LoadSingleTsFileNode extends WritePlanNode {
   }
 
   private boolean isDispatchedToLocal(TEndPoint endPoint) {
-    return IoTDBDescriptor.getInstance().getConfig().getDnInternalAddress().equals(endPoint.getIp())
-        && IoTDBDescriptor.getInstance().getConfig().getDnInternalPort() == endPoint.port;
+    return IoTDBDescriptor.getInstance().getConf().getDnInternalAddress().equals(endPoint.getIp())
+        && IoTDBDescriptor.getInstance().getConf().getDnInternalPort() == endPoint.port;
   }
 
   public boolean needDecodeTsFile() {

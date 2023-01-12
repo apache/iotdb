@@ -73,7 +73,7 @@ public class SharedTsBlockQueue {
   private LocalSinkHandle sinkHandle;
 
   private long maxBytesCanReserve =
-      CommonDescriptor.getInstance().getConfig().getMaxBytesPerFragmentInstance();
+      CommonDescriptor.getInstance().getConf().getMaxBytesPerFragmentInstance();
 
   public SharedTsBlockQueue(
       TFragmentInstanceId fragmentInstanceId,

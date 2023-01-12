@@ -70,7 +70,7 @@ public class TsFileAndModSettleToolTest {
 
   @Before
   public void setUp() {
-    config = IoTDBDescriptor.getInstance().getConfig();
+    config = IoTDBDescriptor.getInstance().getConf();
     originPartitionInterval = config.getDnTimePartitionInterval();
     config.setDnTimePartitionInterval(newPartitionInterval);
     EnvironmentUtils.envSetUp();

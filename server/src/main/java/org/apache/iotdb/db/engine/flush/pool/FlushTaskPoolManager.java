@@ -31,7 +31,7 @@ public class FlushTaskPoolManager extends AbstractPoolManager {
   private static final Logger LOGGER = LoggerFactory.getLogger(FlushTaskPoolManager.class);
 
   private FlushTaskPoolManager() {
-    int threadCnt = CommonDescriptor.getInstance().getConfig().getFlushThreadCount();
+    int threadCnt = CommonDescriptor.getInstance().getConf().getFlushThreadCount();
     pool = IoTDBThreadPoolFactory.newFixedThreadPool(threadCnt, ThreadName.FLUSH_SERVICE.getName());
   }
 
@@ -52,7 +52,7 @@ public class FlushTaskPoolManager extends AbstractPoolManager {
   @Override
   public void start() {
     if (pool == null) {
-      int threadCnt = CommonDescriptor.getInstance().getConfig().getFlushThreadCount();
+      int threadCnt = CommonDescriptor.getInstance().getConf().getFlushThreadCount();
       pool =
           IoTDBThreadPoolFactory.newFixedThreadPool(threadCnt, ThreadName.FLUSH_SERVICE.getName());
     }

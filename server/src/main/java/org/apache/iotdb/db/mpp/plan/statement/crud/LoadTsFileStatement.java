@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.mpp.plan.statement.crud;
 
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -46,10 +47,10 @@ public class LoadTsFileStatement extends Statement {
 
   public LoadTsFileStatement(String filePath) throws FileNotFoundException {
     this.file = new File(filePath);
-    this.sgLevel = IoTDBDescriptor.getInstance().getConfig().getDefaultStorageGroupLevel();
+    this.sgLevel = CommonDescriptor.getInstance().getConf().getDefaultStorageGroupLevel();
     this.verifySchema = true;
     this.deleteAfterLoad = true;
-    this.autoCreateDatabase = IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled();
+    this.autoCreateDatabase = CommonDescriptor.getInstance().getConf().isEnableAutoCreateSchema();
     this.tsFiles = new ArrayList<>();
     this.resources = new ArrayList<>();
     this.statementType = StatementType.MULTI_BATCH_INSERT;

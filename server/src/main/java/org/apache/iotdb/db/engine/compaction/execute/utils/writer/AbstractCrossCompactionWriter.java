@@ -72,10 +72,10 @@ public abstract class AbstractCrossCompactionWriter extends AbstractCompactionWr
     long memorySizeForEachWriter =
         (long)
             (SystemInfo.getInstance().getMemorySizeForCompaction()
-                / IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount()
-                * CommonDescriptor.getInstance().getConfig().getChunkMetadataSizeProportion()
+                / IoTDBDescriptor.getInstance().getConf().getCompactionThreadCount()
+                * CommonDescriptor.getInstance().getConf().getChunkMetadataSizeProportion()
                 / targetResources.size());
-    boolean enableMemoryControl = CommonDescriptor.getInstance().getConfig().isEnableMemControl();
+    boolean enableMemoryControl = CommonDescriptor.getInstance().getConf().isEnableMemControl();
     for (int i = 0; i < targetResources.size(); i++) {
       this.targetFileWriters.add(
           new TsFileIOWriter(

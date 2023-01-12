@@ -46,7 +46,7 @@ public class CompressionRatio {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(CompressionRatio.class);
 
-  private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
+  private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConf();
 
   static final String COMPRESSION_RATIO_DIR = "compression_ratio";
 

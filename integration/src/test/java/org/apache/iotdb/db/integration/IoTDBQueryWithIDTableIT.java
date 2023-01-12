@@ -108,10 +108,10 @@ public class IoTDBQueryWithIDTableIT {
 
   @BeforeClass
   public static void setUp() throws Exception {
-    IoTDBDescriptor.getInstance().getConfig().setAutoCreateSchemaEnabled(true);
-    isEnableIDTable = IoTDBDescriptor.getInstance().getConfig().isEnableIDTable();
+    IoTDBDescriptor.getInstance().getConf().setAutoCreateSchemaEnabled(true);
+    isEnableIDTable = IoTDBDescriptor.getInstance().getConf().isEnableIDTable();
     originalDeviceIDTransformationMethod =
-        IoTDBDescriptor.getInstance().getConfig().getDeviceIDTransformationMethod();
+        IoTDBDescriptor.getInstance().getConf().getDeviceIDTransformationMethod();
 
     ConfigFactory.getConfig().setEnableIDTable(true);
     ConfigFactory.getConfig().setDeviceIDTransformationMethod("SHA256");

@@ -99,8 +99,8 @@ public class TsFileProcessor {
   /** logger fot this class */
   private static final Logger logger = LoggerFactory.getLogger(TsFileProcessor.class);
 
-  private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
-  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConf();
+  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConf();
 
   /** storgae group name of this tsfile */
   private final String storageGroupName;
@@ -1073,7 +1073,7 @@ public class TsFileProcessor {
                 storageGroupName,
                 tsFileResource.getTsFile().getAbsolutePath(),
                 e);
-            CommonDescriptor.getInstance().getConfig().handleUnrecoverableError();
+            CommonDescriptor.getInstance().getConf().handleUnrecoverableError();
             try {
               logger.error(
                   "{}: {} IOTask meets error, truncate the corrupted data",
@@ -1208,7 +1208,7 @@ public class TsFileProcessor {
               storageGroupName,
               tsFileResource.getTsFile().getAbsolutePath(),
               e);
-          CommonDescriptor.getInstance().getConfig().handleUnrecoverableError();
+          CommonDescriptor.getInstance().getConf().handleUnrecoverableError();
           break;
         }
       }

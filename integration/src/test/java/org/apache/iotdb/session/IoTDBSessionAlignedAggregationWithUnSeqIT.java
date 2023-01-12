@@ -43,7 +43,7 @@ import static org.junit.Assert.fail;
 public class IoTDBSessionAlignedAggregationWithUnSeqIT {
 
   private static final String ROOT_SG1_D1_VECTOR1 = "root.sg1.d1.vector1";
-  private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
+  private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConf();
   private static Session session;
   private static int originCompactionThreadNum;
 

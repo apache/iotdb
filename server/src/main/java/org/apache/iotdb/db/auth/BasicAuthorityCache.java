@@ -23,7 +23,6 @@ import org.apache.iotdb.commons.auth.entity.Role;
 import org.apache.iotdb.commons.auth.entity.User;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
@@ -36,7 +35,7 @@ import java.util.concurrent.TimeUnit;
 public class BasicAuthorityCache implements IAuthorCache {
   private static final Logger logger = LoggerFactory.getLogger(BasicAuthorityCache.class);
 
-  private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
+  private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConf();
 
   private Cache<String, User> userCache =
       Caffeine.newBuilder()

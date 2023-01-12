@@ -48,7 +48,7 @@ import java.util.concurrent.Future;
 /** First set allVsgScannedLatch, then call recover method. */
 public class WALRecoverManager {
   private static final Logger logger = LoggerFactory.getLogger(WALRecoverManager.class);
-  private static final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
+  private static final CommonConfig commonConfig = CommonDescriptor.getInstance().getConf();
 
   /** true when the recover procedure has started */
   private volatile boolean hasStarted = false;

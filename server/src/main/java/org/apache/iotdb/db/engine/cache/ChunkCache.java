@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.engine.cache;
 
+import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -51,7 +53,7 @@ public class ChunkCache {
 
   private static final Logger logger = LoggerFactory.getLogger(ChunkCache.class);
   private static final Logger DEBUG_LOGGER = LoggerFactory.getLogger("QUERY_DEBUG");
-  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private static final CommonConfig config = CommonDescriptor.getInstance().getConf();
   private static final long MEMORY_THRESHOLD_IN_CHUNK_CACHE =
       config.getAllocateMemoryForChunkCache();
   private static final boolean CACHE_ENABLE = config.isMetaDataCacheEnable();

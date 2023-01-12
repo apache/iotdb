@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.session.it;
 
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.OperationType;
@@ -148,9 +149,9 @@ public class IoTDBSessionSimpleIT {
       session.insertRecord(deviceId, 1L, measurements, values);
 
       Set<String> expected = new HashSet<>();
-      expected.add(IoTDBDescriptor.getInstance().getConfig().getIntegerStringInferType().name());
-      expected.add(IoTDBDescriptor.getInstance().getConfig().getFloatingStringInferType().name());
-      expected.add(IoTDBDescriptor.getInstance().getConfig().getBooleanStringInferType().name());
+      expected.add(CommonDescriptor.getInstance().getConf().getIntegerStringInferType().name());
+      expected.add(CommonDescriptor.getInstance().getConf().getFloatingStringInferType().name());
+      expected.add(CommonDescriptor.getInstance().getConf().getBooleanStringInferType().name());
       expected.add(TSDataType.TEXT.name());
 
       Set<String> actual = new HashSet<>();

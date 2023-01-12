@@ -35,7 +35,7 @@ public class UpgradeLog {
 
   private static final Logger logger = LoggerFactory.getLogger(UpgradeLog.class);
 
-  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConf();
   private static final String UPGRADE_DIR = "upgrade";
   private static final String UPGRADE_LOG_NAME = "upgrade.txt";
   private static BufferedWriter upgradeLogWriter;

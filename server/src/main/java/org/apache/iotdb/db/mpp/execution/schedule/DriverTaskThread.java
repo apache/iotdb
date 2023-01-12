@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.mpp.execution.schedule;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.execution.driver.IDriver;
 import org.apache.iotdb.db.mpp.execution.schedule.queue.IndexedBlockingQueue;
@@ -38,7 +39,7 @@ public class DriverTaskThread extends AbstractDriverThread {
 
   public static final Duration EXECUTION_TIME_SLICE =
       new Duration(
-          IoTDBDescriptor.getInstance().getConfig().getDriverTaskExecutionTimeSliceInMs(),
+          CommonDescriptor.getInstance().getConf().getDriverTaskExecutionTimeSliceInMs(),
           TimeUnit.MILLISECONDS);
 
   // we manage thread pool size directly, so create an unlimited pool

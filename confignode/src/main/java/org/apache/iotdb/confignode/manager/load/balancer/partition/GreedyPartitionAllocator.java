@@ -22,11 +22,11 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
+import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.partition.DataPartitionTable;
 import org.apache.iotdb.commons.partition.SchemaPartitionTable;
 import org.apache.iotdb.commons.partition.SeriesPartitionTable;
-import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
-import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.exception.NoAvailableRegionGroupException;
 import org.apache.iotdb.confignode.manager.IManager;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
@@ -42,10 +42,10 @@ import java.util.concurrent.ConcurrentHashMap;
 /** Allocating new Partitions by greedy algorithm */
 public class GreedyPartitionAllocator implements IPartitionAllocator {
 
-  private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
+  private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConf();
   private static final boolean ENABLE_DATA_PARTITION_INHERIT_POLICY =
-      CONF.isEnableDataPartitionInheritPolicy();
-  private static final long TIME_PARTITION_INTERVAL = CONF.getTimePartitionInterval();
+    COMMON_CONFIG.isEnableDataPartitionInheritPolicy();
+  private static final long TIME_PARTITION_INTERVAL = COMMON_CONFIG.getTimePartitionInterval();
 
   private final IManager configManager;
 

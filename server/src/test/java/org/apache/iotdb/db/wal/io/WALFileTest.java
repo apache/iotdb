@@ -65,8 +65,8 @@ public class WALFileTest {
     if (walFile.exists()) {
       Files.delete(walFile.toPath());
     }
-    prevIsCluster = IoTDBDescriptor.getInstance().getConfig().isClusterMode();
-    IoTDBDescriptor.getInstance().getConfig().setClusterMode(true);
+    prevIsCluster = IoTDBDescriptor.getInstance().getConf().isClusterMode();
+    IoTDBDescriptor.getInstance().getConf().setClusterMode(true);
   }
 
   @After
@@ -74,7 +74,7 @@ public class WALFileTest {
     if (walFile.exists()) {
       Files.delete(walFile.toPath());
     }
-    IoTDBDescriptor.getInstance().getConfig().setClusterMode(prevIsCluster);
+    IoTDBDescriptor.getInstance().getConf().setClusterMode(prevIsCluster);
   }
 
   @Test

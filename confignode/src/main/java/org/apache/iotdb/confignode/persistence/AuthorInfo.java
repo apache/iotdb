@@ -60,7 +60,7 @@ import java.util.Set;
 public class AuthorInfo implements SnapshotProcessor {
 
   private static final Logger logger = LoggerFactory.getLogger(AuthorInfo.class);
-  private static final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
+  private static final CommonConfig commonConfig = CommonDescriptor.getInstance().getConf();
 
   private IAuthorizer authorizer;
 

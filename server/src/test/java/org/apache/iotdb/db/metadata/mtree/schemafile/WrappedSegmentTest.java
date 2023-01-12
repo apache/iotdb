@@ -47,7 +47,7 @@ public class WrappedSegmentTest {
   @Before
   public void setUp() {
     IoTDBDescriptor.getInstance()
-        .getConfig()
+        .getConf()
         .setSchemaEngineMode(SchemaEngineMode.Schema_File.toString());
     EnvironmentUtils.envSetUp();
   }
@@ -56,7 +56,7 @@ public class WrappedSegmentTest {
   public void tearDown() throws Exception {
     EnvironmentUtils.cleanEnv();
     IoTDBDescriptor.getInstance()
-        .getConfig()
+        .getConf()
         .setSchemaEngineMode(SchemaEngineMode.Memory.toString());
   }
 

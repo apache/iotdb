@@ -50,7 +50,7 @@ import java.util.stream.IntStream;
 
 public class ClusterSchemaFetcher implements ISchemaFetcher {
 
-  private final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private final IoTDBConfig config = IoTDBDescriptor.getInstance().getConf();
 
   private final Coordinator coordinator = Coordinator.getInstance();
   private final DataNodeSchemaCache schemaCache = DataNodeSchemaCache.getInstance();

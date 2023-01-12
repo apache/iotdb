@@ -54,8 +54,8 @@ import java.util.concurrent.atomic.AtomicLong;
 public class WALManager implements IService {
   private static final Logger logger = LoggerFactory.getLogger(WALManager.class);
 
-  private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
-  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConf();
+  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConf();
 
   /** manage all wal nodes and decide how to allocate them */
   private final NodeAllocationStrategy walNodesManager;

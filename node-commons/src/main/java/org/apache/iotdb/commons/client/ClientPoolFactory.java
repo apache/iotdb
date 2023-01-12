@@ -39,7 +39,7 @@ import org.apache.commons.pool2.impl.GenericKeyedObjectPool;
 
 public class ClientPoolFactory {
 
-  private static final CommonConfig conf = CommonDescriptor.getInstance().getConfig();
+  private static final CommonConfig conf = CommonDescriptor.getInstance().getConf();
 
   private ClientPoolFactory() {}
 

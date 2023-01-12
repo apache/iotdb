@@ -39,8 +39,8 @@ public class PrimitiveArrayManager {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PrimitiveArrayManager.class);
 
-  private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
-  private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
+  private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConf();
+  private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConf();
 
   public static final int ARRAY_SIZE = COMMON_CONFIG.getPrimitiveArraySize();
 

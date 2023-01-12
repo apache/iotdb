@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.engine.cache;
 
+import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.utils.TestOnly;
@@ -63,7 +65,7 @@ public class TimeSeriesMetadataCache {
 
   private static final Logger logger = LoggerFactory.getLogger(TimeSeriesMetadataCache.class);
   private static final Logger DEBUG_LOGGER = LoggerFactory.getLogger("QUERY_DEBUG");
-  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private static final CommonConfig config = CommonDescriptor.getInstance().getConf();
   private static final long MEMORY_THRESHOLD_IN_TIME_SERIES_METADATA_CACHE =
       config.getAllocateMemoryForTimeSeriesMetaDataCache();
   private static final boolean CACHE_ENABLE = config.isMetaDataCacheEnable();

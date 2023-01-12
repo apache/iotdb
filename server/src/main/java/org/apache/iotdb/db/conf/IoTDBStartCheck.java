@@ -53,8 +53,8 @@ public class IoTDBStartCheck {
 
   private static final Logger logger = LoggerFactory.getLogger(IoTDBStartCheck.class);
 
-  private static final IoTDBConfig IOTDB_CONFIG = IoTDBDescriptor.getInstance().getConfig();
-  private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
+  private static final IoTDBConfig IOTDB_CONFIG = IoTDBDescriptor.getInstance().getConf();
+  private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConf();
 
   // this file is located in data/system/schema/system.properties
   // If user delete folder "data", system.properties can reset.

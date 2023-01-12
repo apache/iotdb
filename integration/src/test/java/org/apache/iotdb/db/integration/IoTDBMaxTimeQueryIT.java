@@ -68,27 +68,27 @@ public class IoTDBMaxTimeQueryIT {
     EnvironmentUtils.envSetUp();
     // TODO When the aligned time series support compaction, we need to set compaction to true
     enableSeqSpaceCompaction =
-        IoTDBDescriptor.getInstance().getConfig().isEnableSeqSpaceCompaction();
+        IoTDBDescriptor.getInstance().getConf().isEnableSeqSpaceCompaction();
     enableUnseqSpaceCompaction =
-        IoTDBDescriptor.getInstance().getConfig().isEnableUnseqSpaceCompaction();
+        IoTDBDescriptor.getInstance().getConf().isEnableUnseqSpaceCompaction();
     enableCrossSpaceCompaction =
-        IoTDBDescriptor.getInstance().getConfig().isEnableCrossSpaceCompaction();
+        IoTDBDescriptor.getInstance().getConf().isEnableCrossSpaceCompaction();
     numOfPointsPerPage = TSFileDescriptor.getInstance().getConfig().getMaxNumberOfPointsInPage();
-    IoTDBDescriptor.getInstance().getConfig().setEnableSeqSpaceCompaction(false);
-    IoTDBDescriptor.getInstance().getConfig().setEnableUnseqSpaceCompaction(false);
-    IoTDBDescriptor.getInstance().getConfig().setEnableCrossSpaceCompaction(false);
+    IoTDBDescriptor.getInstance().getConf().setEnableSeqSpaceCompaction(false);
+    IoTDBDescriptor.getInstance().getConf().setEnableUnseqSpaceCompaction(false);
+    IoTDBDescriptor.getInstance().getConf().setEnableCrossSpaceCompaction(false);
     TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(2);
     insertData();
   }
 
   @AfterClass
   public static void tearDown() throws Exception {
-    IoTDBDescriptor.getInstance().getConfig().setEnableSeqSpaceCompaction(enableSeqSpaceCompaction);
+    IoTDBDescriptor.getInstance().getConf().setEnableSeqSpaceCompaction(enableSeqSpaceCompaction);
     IoTDBDescriptor.getInstance()
-        .getConfig()
+        .getConf()
         .setEnableUnseqSpaceCompaction(enableUnseqSpaceCompaction);
     IoTDBDescriptor.getInstance()
-        .getConfig()
+        .getConf()
         .setEnableCrossSpaceCompaction(enableCrossSpaceCompaction);
     TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(numOfPointsPerPage);
     EnvironmentUtils.cleanEnv();

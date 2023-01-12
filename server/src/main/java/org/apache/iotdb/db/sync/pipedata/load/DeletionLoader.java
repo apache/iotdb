@@ -48,7 +48,7 @@ public class DeletionLoader implements ILoader {
 
   @Override
   public void load() throws PipeDataLoadException {
-    if (CommonDescriptor.getInstance().getConfig().isReadOnly()) {
+    if (CommonDescriptor.getInstance().getConf().isReadOnly()) {
       throw new PipeDataLoadException("storage engine readonly");
     }
     try {
@@ -63,7 +63,7 @@ public class DeletionLoader implements ILoader {
                   "",
                   PARTITION_FETCHER,
                   SCHEMA_FETCHER,
-                  IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold());
+                  IoTDBDescriptor.getInstance().getConf().getQueryTimeoutThreshold());
       if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         logger.error("Delete {} error, statement: {}.", deletion, statement);
         logger.error("Delete result status : {}.", result.status);

@@ -97,8 +97,8 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
 public class StorageEngine implements IService {
   private static final Logger logger = LoggerFactory.getLogger(StorageEngine.class);
 
-  private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
-  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConf();
+  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConf();
   private static final long TTL_CHECK_INTERVAL = 60 * 1000L;
 
   /** Time range for dividing database, the time unit is the same with IoTDB's TimestampPrecision */
@@ -148,7 +148,7 @@ public class StorageEngine implements IService {
   }
 
   private static void initTimePartition() {
-    timePartitionInterval = IoTDBDescriptor.getInstance().getConfig().getDnTimePartitionInterval();
+    timePartitionInterval = IoTDBDescriptor.getInstance().getConf().getDnTimePartitionInterval();
   }
 
   public static long getTimePartitionInterval() {
@@ -559,7 +559,7 @@ public class StorageEngine implements IService {
    * @throws StorageEngineException StorageEngineException
    */
   public void mergeAll() throws StorageEngineException {
-    if (CommonDescriptor.getInstance().getConfig().isReadOnly()) {
+    if (CommonDescriptor.getInstance().getConf().isReadOnly()) {
       throw new StorageEngineException("Current system mode is read only, does not support merge");
     }
     dataRegionMap.values().forEach(DataRegion::compact);

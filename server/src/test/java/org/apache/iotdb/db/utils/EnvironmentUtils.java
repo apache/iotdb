@@ -79,8 +79,8 @@ public class EnvironmentUtils {
 
   private static final Logger logger = LoggerFactory.getLogger(EnvironmentUtils.class);
 
-  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-  private static final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
+  private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConf();
+  private static final IoTDBConfig IOTDB_CONFIG = IoTDBDescriptor.getInstance().getConf();
   private static final DirectoryManager directoryManager = DirectoryManager.getInstance();
 
   public static long TEST_QUERY_JOB_ID = 1;
@@ -88,10 +88,10 @@ public class EnvironmentUtils {
   public static FragmentInstanceContext TEST_QUERY_FI_CONTEXT =
       FragmentInstanceContext.createFragmentInstanceContextForCompaction(TEST_QUERY_JOB_ID);
 
-  private static final long oldSeqTsFileSize = config.getSeqTsFileSize();
-  private static final long oldUnSeqTsFileSize = config.getUnSeqTsFileSize();
+  private static final long oldSeqTsFileSize = IOTDB_CONFIG.getSeqTsFileSize();
+  private static final long oldUnSeqTsFileSize = IOTDB_CONFIG.getUnSeqTsFileSize();
 
-  private static final long oldGroupSizeInByte = config.getMemtableSizeThreshold();
+  private static final long oldGroupSizeInByte = COMMON_CONFIG.getMemtableSizeThreshold();
 
   private static TConfiguration tConfiguration = TConfigurationConst.defaultTConfiguration;
 
@@ -138,13 +138,13 @@ public class EnvironmentUtils {
     StorageEngine.getInstance().stop();
     SchemaEngine.getInstance().clear();
     FlushManager.getInstance().stop();
-    CommonDescriptor.getInstance().getConfig().setNodeStatus(NodeStatus.Running);
+    CommonDescriptor.getInstance().getConf().setNodeStatus(NodeStatus.Running);
     // We must disable MQTT service as it will cost a lot of time to be shutdown, which may slow our
     // unit tests.
-    IoTDBDescriptor.getInstance().getConfig().setEnableMQTTService(false);
+    COMMON_CONFIG.setEnableMqttService(false);
 
     // clean cache
-    if (config.isMetaDataCacheEnable()) {
+    if (COMMON_CONFIG.isMetaDataCacheEnable()) {
       ChunkCache.getInstance().clear();
       TimeSeriesMetadataCache.getInstance().clear();
       BloomFilterCache.getInstance().clear();
@@ -177,9 +177,9 @@ public class EnvironmentUtils {
 
     // delete all directory
     cleanAllDir();
-    config.setSeqTsFileSize(oldSeqTsFileSize);
-    config.setUnSeqTsFileSize(oldUnSeqTsFileSize);
-    config.setMemtableSizeThreshold(oldGroupSizeInByte);
+    IOTDB_CONFIG.setSeqTsFileSize(oldSeqTsFileSize);
+    IOTDB_CONFIG.setUnSeqTsFileSize(oldUnSeqTsFileSize);
+    COMMON_CONFIG.setMemtableSizeThreshold(oldGroupSizeInByte);
   }
 
   private static boolean examinePorts() {
@@ -238,29 +238,29 @@ public class EnvironmentUtils {
       cleanDir(path);
     }
     // delete system info
-    cleanDir(config.getDnSystemDir());
+    cleanDir(IOTDB_CONFIG.getDnSystemDir());
     // delete query
-    cleanDir(config.getQueryDir());
+    cleanDir(IOTDB_CONFIG.getQueryDir());
     // delete tracing
-    cleanDir(config.getDnTracingDir());
+    cleanDir(IOTDB_CONFIG.getDnTracingDir());
     // delete ulog
-    cleanDir(config.getUdfDir());
+    cleanDir(COMMON_CONFIG.getUdfDir());
     // delete tlog
-    cleanDir(config.getTriggerDir());
+    cleanDir(COMMON_CONFIG.getTriggerDir());
     // delete extPipe
-    cleanDir(config.getExtPipeDir());
+    cleanDir(IOTDB_CONFIG.getExtPipeDir());
     // delete ext
-    cleanDir(config.getDnExtDir());
+    cleanDir(IOTDB_CONFIG.getDnExtDir());
     // delete mqtt dir
-    cleanDir(config.getMqttDir());
+    cleanDir(IOTDB_CONFIG.getMqttDir());
     // delete wal
-    for (String walDir : commonConfig.getWalDirs()) {
+    for (String walDir : IOTDB_CONFIG.getDnWalDirs()) {
       cleanDir(walDir);
     }
     // delete sync dir
-    cleanDir(commonConfig.getSyncDir());
+    cleanDir(COMMON_CONFIG.getSyncDir());
     // delete data files
-    for (String dataDir : config.getDnDataDirs()) {
+    for (String dataDir : IOTDB_CONFIG.getDnDataDirs()) {
       cleanDir(dataDir);
     }
   }
@@ -272,11 +272,11 @@ public class EnvironmentUtils {
   /** disable memory control</br> this function should be called before all code in the setup */
   public static void envSetUp() {
     logger.debug("EnvironmentUtil setup...");
-    config.setThriftServerAwaitTimeForStopService(60);
+    IOTDB_CONFIG.setThriftServerAwaitTimeForStopService(60);
     // we do not start 9091 port in test.
-    config.setAvgSeriesPointNumberThreshold(Integer.MAX_VALUE);
+    COMMON_CONFIG.setAvgSeriesPointNumberThreshold(Integer.MAX_VALUE);
     // use async wal mode in test
-    config.setAvgSeriesPointNumberThreshold(Integer.MAX_VALUE);
+    COMMON_CONFIG.setAvgSeriesPointNumberThreshold(Integer.MAX_VALUE);
 
     createAllDir();
 
@@ -328,21 +328,21 @@ public class EnvironmentUtils {
       createDir(path);
     }
     // create database
-    createDir(config.getDnSystemDir());
+    createDir(IOTDB_CONFIG.getDnSystemDir());
     // create sg dir
-    String sgDir = FilePathUtils.regularizePath(config.getDnSystemDir()) + "databases";
+    String sgDir = FilePathUtils.regularizePath(IOTDB_CONFIG.getDnSystemDir()) + "databases";
     createDir(sgDir);
     // create sync
-    createDir(commonConfig.getSyncDir());
+    createDir(COMMON_CONFIG.getSyncDir());
     // create query
-    createDir(config.getQueryDir());
+    createDir(IOTDB_CONFIG.getQueryDir());
     createDir(TestConstant.OUTPUT_DATA_DIR);
     // create wal
-    for (String walDir : commonConfig.getWalDirs()) {
+    for (String walDir : IOTDB_CONFIG.getDnWalDirs()) {
       createDir(walDir);
     }
     // create data
-    for (String dataDir : config.getDnDataDirs()) {
+    for (String dataDir : IOTDB_CONFIG.getDnDataDirs()) {
       createDir(dataDir);
     }
     // create user and roles folder

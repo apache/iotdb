@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathDeserializeUtil;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -47,7 +48,7 @@ import java.util.Objects;
 public class CreateMultiTimeSeriesNode extends WritePlanNode {
 
   private static final int SPLIT_SIZE =
-      IoTDBDescriptor.getInstance().getConfig().getMaxMeasurementNumOfInternalRequest();
+    CommonDescriptor.getInstance().getConf().getMaxMeasurementNumOfInternalRequest();
 
   private final Map<PartialPath, MeasurementGroup> measurementGroupMap;
 

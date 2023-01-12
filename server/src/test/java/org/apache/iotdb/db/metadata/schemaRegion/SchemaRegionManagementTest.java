@@ -49,7 +49,7 @@ import java.util.Map;
 
 public class SchemaRegionManagementTest extends AbstractSchemaRegionTest {
 
-  IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  IoTDBConfig config = IoTDBDescriptor.getInstance().getConf();
 
   public SchemaRegionManagementTest(SchemaRegionTestParams testParams) {
     super(testParams);

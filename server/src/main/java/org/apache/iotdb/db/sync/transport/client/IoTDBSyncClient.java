@@ -57,7 +57,7 @@ public class IoTDBSyncClient implements ISyncClient {
 
   private static final Logger logger = LoggerFactory.getLogger(IoTDBSyncClient.class);
 
-  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConf();
 
   private static final int TRANSFER_BUFFER_SIZE_IN_BYTES = 1 * 1024 * 1024;
 

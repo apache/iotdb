@@ -55,7 +55,7 @@ import java.util.List;
 
 public class GrafanaApiServiceImpl extends GrafanaApiService {
 
-  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConf();
 
   private static final Coordinator COORDINATOR = Coordinator.getInstance();
 
@@ -73,7 +73,7 @@ public class GrafanaApiServiceImpl extends GrafanaApiService {
     SCHEMA_FETCHER = ClusterSchemaFetcher.getInstance();
     authorizationHandler = new AuthorizationHandler();
 
-    switch (IoTDBDescriptor.getInstance().getConfig().getTimestampPrecision()) {
+    switch (IoTDBDescriptor.getInstance().getConf().getTimestampPrecision()) {
       case "ns":
         timePrecision = 1000000;
         break;

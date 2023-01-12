@@ -87,7 +87,7 @@ public class ClusterSchemaTree implements ISchemaTree {
             root,
             pathPattern,
             false,
-            CommonDescriptor.getInstance().getConfig().getMaxDeduplicatedPathNum() + 1,
+            CommonDescriptor.getInstance().getConf().getMaxDeduplicatedPathNum() + 1,
             0);
     return new Pair<>(visitor.getAllResult(), visitor.getNextOffset());
   }

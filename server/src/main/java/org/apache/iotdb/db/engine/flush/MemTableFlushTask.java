@@ -58,7 +58,7 @@ public class MemTableFlushTask {
   private static final Logger LOGGER = LoggerFactory.getLogger(MemTableFlushTask.class);
   private static final FlushSubTaskPoolManager SUB_TASK_POOL_MANAGER =
       FlushSubTaskPoolManager.getInstance();
-  private static CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
+  private static CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConf();
   private final Future<?> encodingTaskFuture;
   private final Future<?> ioTaskFuture;
   private RestorableTsFileIOWriter writer;

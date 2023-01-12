@@ -21,15 +21,13 @@ package org.apache.iotdb.db.utils.datastructure;
 
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
-import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
 
 import org.junit.Assert;
 import org.junit.Test;
 
 public class PrimitiveArrayManagerTest {
-  private CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
+  private CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConf();
 
   @Test
   public void testGetArrayRowCount() {

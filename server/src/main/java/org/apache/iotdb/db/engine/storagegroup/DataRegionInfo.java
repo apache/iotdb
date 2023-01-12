@@ -39,9 +39,9 @@ public class DataRegionInfo {
   /** The threshold of reporting it's size to SystemInfo */
   private final long storageGroupSizeReportThreshold =
       (long)
-          (CommonDescriptor.getInstance().getConfig().getWriteMemoryVariationReportProportion()
-              * CommonDescriptor.getInstance().getConfig().getAllocateMemoryForStorageEngine()
-              * CommonDescriptor.getInstance().getConfig().getWriteProportionForMemtable());
+          (CommonDescriptor.getInstance().getConf().getWriteMemoryVariationReportProportion()
+              * CommonDescriptor.getInstance().getConf().getAllocateMemoryForStorageEngine()
+              * CommonDescriptor.getInstance().getConf().getWriteProportionForMemtable());
 
   private final AtomicLong lastReportedSize = new AtomicLong();
 

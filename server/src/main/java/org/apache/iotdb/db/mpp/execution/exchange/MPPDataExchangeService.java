@@ -49,13 +49,13 @@ public class MPPDataExchangeService extends ThriftService implements MPPDataExch
 
   private static final Logger LOGGER = LoggerFactory.getLogger(MPPDataExchangeService.class);
 
-  private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
+  private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConf();
 
   private final MPPDataExchangeManager mppDataExchangeManager;
   private final ExecutorService executorService;
 
   private MPPDataExchangeService() {
-    IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+    IoTDBConfig config = IoTDBDescriptor.getInstance().getConf();
     executorService =
         IoTDBThreadPoolFactory.newThreadPool(
             COMMON_CONFIG.getMppDataExchangeCorePoolSize(),
@@ -90,7 +90,7 @@ public class MPPDataExchangeService extends ThriftService implements MPPDataExch
   @Override
   public void initThriftServiceThread() throws IllegalAccessException {
     try {
-      IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+      IoTDBConfig config = IoTDBDescriptor.getInstance().getConf();
       thriftServiceThread =
           new ThriftServiceThread(
               processor,
@@ -113,12 +113,12 @@ public class MPPDataExchangeService extends ThriftService implements MPPDataExch
 
   @Override
   public String getBindIP() {
-    return IoTDBDescriptor.getInstance().getConfig().getDnInternalAddress();
+    return IoTDBDescriptor.getInstance().getConf().getDnInternalAddress();
   }
 
   @Override
   public int getBindPort() {
-    return IoTDBDescriptor.getInstance().getConfig().getDnMppDataExchangePort();
+    return IoTDBDescriptor.getInstance().getConf().getDnMppDataExchangePort();
   }
 
   @Override

@@ -93,7 +93,7 @@ public class ExtPipePlugin {
     this.pipeOpManager = pipeOpManager;
     this.extPipePluginManager = extPipePluginManager;
 
-    String timePrecision = IoTDBDescriptor.getInstance().getConfig().getTimestampPrecision();
+    String timePrecision = IoTDBDescriptor.getInstance().getConf().getTimestampPrecision();
     switch (timePrecision) {
       case "ms":
         timestampDivisor = 1;

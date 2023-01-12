@@ -53,7 +53,7 @@ import static org.junit.Assert.fail;
 
 public class PartitionCacheTest {
 
-  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConf();
   private static final SeriesPartitionExecutor partitionExecutor =
       SeriesPartitionExecutor.getSeriesPartitionExecutor(
           config.getSeriesPartitionExecutorClass(), config.getSeriesPartitionSlotNum());

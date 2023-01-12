@@ -22,8 +22,6 @@ import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
-import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.protocol.mqtt.BrokerAuthenticator;
 import org.apache.iotdb.db.protocol.mqtt.MPPPublishHandler;
 
@@ -58,7 +56,7 @@ public class MQTTService implements IService {
   }
 
   public void startup() {
-    CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
+    CommonConfig commonConfig = CommonDescriptor.getInstance().getConf();
     IConfig config = createBrokerConfig(commonConfig);
     List<InterceptHandler> handlers = new ArrayList<>(1);
     handlers.add(new MPPPublishHandler(commonConfig));

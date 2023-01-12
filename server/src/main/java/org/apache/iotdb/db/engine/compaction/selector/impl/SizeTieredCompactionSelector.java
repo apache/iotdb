@@ -56,7 +56,7 @@ public class SizeTieredCompactionSelector
     implements IInnerSeqSpaceSelector, IInnerUnseqSpaceSelector {
   private static final Logger LOGGER =
       LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
-  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConf();
   protected String storageGroupName;
   protected String dataRegionId;
   protected long timePartition;

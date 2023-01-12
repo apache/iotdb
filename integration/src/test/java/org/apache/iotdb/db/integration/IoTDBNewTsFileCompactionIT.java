@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.integration;
 
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -61,10 +62,10 @@ public class IoTDBNewTsFileCompactionIT {
     storageGroupPath = new PartialPath("root.newTsFileCompaction");
     TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(1);
     originCompactionFileNum =
-        IoTDBDescriptor.getInstance().getConfig().getMaxInnerCompactionCandidateFileNum();
-    originSeqTsFileSize = IoTDBDescriptor.getInstance().getConfig().getSeqTsFileSize();
-    IoTDBDescriptor.getInstance().getConfig().setMaxInnerCompactionCandidateFileNum(2);
-    IoTDBDescriptor.getInstance().getConfig().setSeqTsFileSize(1);
+        IoTDBDescriptor.getInstance().getConf().getMaxInnerCompactionCandidateFileNum();
+    originSeqTsFileSize = IoTDBDescriptor.getInstance().getConf().getSeqTsFileSize();
+    IoTDBDescriptor.getInstance().getConf().setMaxInnerCompactionCandidateFileNum(2);
+    IoTDBDescriptor.getInstance().getConf().setSeqTsFileSize(1);
     EnvironmentUtils.envSetUp();
     Class.forName(Config.JDBC_DRIVER_NAME);
 
@@ -81,12 +82,12 @@ public class IoTDBNewTsFileCompactionIT {
   public void tearDown() throws Exception {
     EnvironmentUtils.cleanEnv();
     IoTDBDescriptor.getInstance()
-        .getConfig()
+        .getConf()
         .setMaxInnerCompactionCandidateFileNum(originCompactionFileNum);
     TSFileDescriptor.getInstance()
         .getConfig()
         .setMaxNumberOfPointsInPage(preMaxNumberOfPointsInPage);
-    IoTDBDescriptor.getInstance().getConfig().setSeqTsFileSize(originSeqTsFileSize);
+    IoTDBDescriptor.getInstance().getConf().setSeqTsFileSize(originSeqTsFileSize);
   }
 
   /**
@@ -100,13 +101,13 @@ public class IoTDBNewTsFileCompactionIT {
       {"2", "2"}
     };
     int preAvgSeriesPointNumberThreshold =
-        IoTDBDescriptor.getInstance().getConfig().getAvgSeriesPointNumberThreshold();
+      CommonDescriptor.getInstance().getConf().getAvgSeriesPointNumberThreshold();
     try (Connection connection =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
 
-      IoTDBDescriptor.getInstance().getConfig().setAvgSeriesPointNumberThreshold(10000);
+      CommonDescriptor.getInstance().getConf().setAvgSeriesPointNumberThreshold(10000);
 
       // first file
       statement.execute("INSERT INTO root.newTsFileCompaction.d1(time,s1) values(1, 1)");
@@ -136,8 +137,8 @@ public class IoTDBNewTsFileCompactionIT {
       e.printStackTrace();
       fail();
     } finally {
-      IoTDBDescriptor.getInstance()
-          .getConfig()
+      CommonDescriptor.getInstance()
+          .getConf()
           .setAvgSeriesPointNumberThreshold(preAvgSeriesPointNumberThreshold);
     }
   }
@@ -154,13 +155,13 @@ public class IoTDBNewTsFileCompactionIT {
       {"3", "3"}
     };
     int preAvgSeriesPointNumberThreshold =
-        IoTDBDescriptor.getInstance().getConfig().getAvgSeriesPointNumberThreshold();
+      CommonDescriptor.getInstance().getConf().getAvgSeriesPointNumberThreshold();
     try (Connection connection =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
 
-      IoTDBDescriptor.getInstance().getConfig().setAvgSeriesPointNumberThreshold(1);
+      CommonDescriptor.getInstance().getConf().setAvgSeriesPointNumberThreshold(1);
 
       // first file
       // two chunks
@@ -192,8 +193,8 @@ public class IoTDBNewTsFileCompactionIT {
       e.printStackTrace();
       fail();
     } finally {
-      IoTDBDescriptor.getInstance()
-          .getConfig()
+      CommonDescriptor.getInstance()
+          .getConf()
           .setAvgSeriesPointNumberThreshold(preAvgSeriesPointNumberThreshold);
     }
   }
@@ -210,13 +211,13 @@ public class IoTDBNewTsFileCompactionIT {
       {"3", "3"},
     };
     int preAvgSeriesPointNumberThreshold =
-        IoTDBDescriptor.getInstance().getConfig().getAvgSeriesPointNumberThreshold();
+      CommonDescriptor.getInstance().getConf().getAvgSeriesPointNumberThreshold();
     try (Connection connection =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
 
-      IoTDBDescriptor.getInstance().getConfig().setAvgSeriesPointNumberThreshold(10000);
+      CommonDescriptor.getInstance().getConf().setAvgSeriesPointNumberThreshold(10000);
 
       // first file
       statement.execute("INSERT INTO root.newTsFileCompaction.d1(time,s1) values(1, 1)");
@@ -247,8 +248,8 @@ public class IoTDBNewTsFileCompactionIT {
       e.printStackTrace();
       fail();
     } finally {
-      IoTDBDescriptor.getInstance()
-          .getConfig()
+      CommonDescriptor.getInstance()
+          .getConf()
           .setAvgSeriesPointNumberThreshold(preAvgSeriesPointNumberThreshold);
     }
   }
@@ -267,13 +268,13 @@ public class IoTDBNewTsFileCompactionIT {
       {"5", "5"},
     };
     int preAvgSeriesPointNumberThreshold =
-        IoTDBDescriptor.getInstance().getConfig().getAvgSeriesPointNumberThreshold();
+        CommonDescriptor.getInstance().getConf().getAvgSeriesPointNumberThreshold();
     try (Connection connection =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
 
-      IoTDBDescriptor.getInstance().getConfig().setAvgSeriesPointNumberThreshold(2);
+      CommonDescriptor.getInstance().getConf().setAvgSeriesPointNumberThreshold(2);
 
       // first file
       // one chunk with two pages
@@ -308,8 +309,8 @@ public class IoTDBNewTsFileCompactionIT {
       e.printStackTrace();
       fail();
     } finally {
-      IoTDBDescriptor.getInstance()
-          .getConfig()
+      CommonDescriptor.getInstance()
+          .getConf()
           .setAvgSeriesPointNumberThreshold(preAvgSeriesPointNumberThreshold);
     }
   }
@@ -326,13 +327,13 @@ public class IoTDBNewTsFileCompactionIT {
       {"3", "3"},
     };
     int preAvgSeriesPointNumberThreshold =
-        IoTDBDescriptor.getInstance().getConfig().getAvgSeriesPointNumberThreshold();
+      CommonDescriptor.getInstance().getConf().getAvgSeriesPointNumberThreshold();
     try (Connection connection =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
 
-      IoTDBDescriptor.getInstance().getConfig().setAvgSeriesPointNumberThreshold(10000);
+      CommonDescriptor.getInstance().getConf().setAvgSeriesPointNumberThreshold(10000);
 
       // first file
       statement.execute("INSERT INTO root.newTsFileCompaction.d1(time,s1) values(1, 1)");
@@ -364,8 +365,8 @@ public class IoTDBNewTsFileCompactionIT {
       e.printStackTrace();
       fail();
     } finally {
-      IoTDBDescriptor.getInstance()
-          .getConfig()
+      CommonDescriptor.getInstance()
+          .getConf()
           .setAvgSeriesPointNumberThreshold(preAvgSeriesPointNumberThreshold);
     }
   }
@@ -383,13 +384,13 @@ public class IoTDBNewTsFileCompactionIT {
       {"4", "4"},
     };
     int preAvgSeriesPointNumberThreshold =
-        IoTDBDescriptor.getInstance().getConfig().getAvgSeriesPointNumberThreshold();
+      CommonDescriptor.getInstance().getConf().getAvgSeriesPointNumberThreshold();
     try (Connection connection =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
 
-      IoTDBDescriptor.getInstance().getConfig().setAvgSeriesPointNumberThreshold(1);
+      CommonDescriptor.getInstance().getConf().setAvgSeriesPointNumberThreshold(1);
 
       // first file
       // two chunks
@@ -397,7 +398,7 @@ public class IoTDBNewTsFileCompactionIT {
       statement.execute("INSERT INTO root.newTsFileCompaction.d1(time,s1) values(2, 2)");
       statement.execute("FLUSH");
 
-      IoTDBDescriptor.getInstance().getConfig().setAvgSeriesPointNumberThreshold(2);
+      CommonDescriptor.getInstance().getConf().setAvgSeriesPointNumberThreshold(2);
       // second file
       // two pages for one chunk
       statement.execute("INSERT INTO root.newTsFileCompaction.d1(time,s1) values(3, 3)");
@@ -425,8 +426,8 @@ public class IoTDBNewTsFileCompactionIT {
       e.printStackTrace();
       fail();
     } finally {
-      IoTDBDescriptor.getInstance()
-          .getConfig()
+      CommonDescriptor.getInstance()
+          .getConf()
           .setAvgSeriesPointNumberThreshold(preAvgSeriesPointNumberThreshold);
     }
   }
@@ -444,13 +445,13 @@ public class IoTDBNewTsFileCompactionIT {
       {"4", "4"}
     };
     int preAvgSeriesPointNumberThreshold =
-        IoTDBDescriptor.getInstance().getConfig().getAvgSeriesPointNumberThreshold();
+      CommonDescriptor.getInstance().getConf().getAvgSeriesPointNumberThreshold();
     try (Connection connection =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
 
-      IoTDBDescriptor.getInstance().getConfig().setAvgSeriesPointNumberThreshold(10000);
+      CommonDescriptor.getInstance().getConf().setAvgSeriesPointNumberThreshold(10000);
 
       // first file
       statement.execute("INSERT INTO root.newTsFileCompaction.d1(time,s1) values(1, 1)");
@@ -482,8 +483,8 @@ public class IoTDBNewTsFileCompactionIT {
       e.printStackTrace();
       fail();
     } finally {
-      IoTDBDescriptor.getInstance()
-          .getConfig()
+      CommonDescriptor.getInstance()
+          .getConf()
           .setAvgSeriesPointNumberThreshold(preAvgSeriesPointNumberThreshold);
     }
   }
@@ -503,13 +504,13 @@ public class IoTDBNewTsFileCompactionIT {
       {"6", "6"}
     };
     int preAvgSeriesPointNumberThreshold =
-        IoTDBDescriptor.getInstance().getConfig().getAvgSeriesPointNumberThreshold();
+      CommonDescriptor.getInstance().getConf().getAvgSeriesPointNumberThreshold();
     try (Connection connection =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
 
-      IoTDBDescriptor.getInstance().getConfig().setAvgSeriesPointNumberThreshold(2);
+      CommonDescriptor.getInstance().getConf().setAvgSeriesPointNumberThreshold(2);
 
       // first file
       // one chunk with two pages
@@ -546,8 +547,8 @@ public class IoTDBNewTsFileCompactionIT {
       e.printStackTrace();
       fail();
     } finally {
-      IoTDBDescriptor.getInstance()
-          .getConfig()
+      CommonDescriptor.getInstance()
+          .getConf()
           .setAvgSeriesPointNumberThreshold(preAvgSeriesPointNumberThreshold);
     }
   }
@@ -564,19 +565,19 @@ public class IoTDBNewTsFileCompactionIT {
       {"3", "3"},
     };
     int preAvgSeriesPointNumberThreshold =
-        IoTDBDescriptor.getInstance().getConfig().getAvgSeriesPointNumberThreshold();
+      CommonDescriptor.getInstance().getConf().getAvgSeriesPointNumberThreshold();
     try (Connection connection =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
 
-      IoTDBDescriptor.getInstance().getConfig().setAvgSeriesPointNumberThreshold(10000);
+      CommonDescriptor.getInstance().getConf().setAvgSeriesPointNumberThreshold(10000);
 
       // first file
       statement.execute("INSERT INTO root.newTsFileCompaction.d1(time,s1) values(1, 1)");
       statement.execute("FLUSH");
 
-      IoTDBDescriptor.getInstance().getConfig().setAvgSeriesPointNumberThreshold(1);
+      CommonDescriptor.getInstance().getConf().setAvgSeriesPointNumberThreshold(1);
       // second file
       // two pages for one chunk
       statement.execute("INSERT INTO root.newTsFileCompaction.d1(time,s1) values(2, 2)");
@@ -603,8 +604,8 @@ public class IoTDBNewTsFileCompactionIT {
       e.printStackTrace();
       fail();
     } finally {
-      IoTDBDescriptor.getInstance()
-          .getConfig()
+      CommonDescriptor.getInstance()
+          .getConf()
           .setAvgSeriesPointNumberThreshold(preAvgSeriesPointNumberThreshold);
     }
   }
@@ -622,13 +623,13 @@ public class IoTDBNewTsFileCompactionIT {
       {"4", "4"}
     };
     int preAvgSeriesPointNumberThreshold =
-        IoTDBDescriptor.getInstance().getConfig().getAvgSeriesPointNumberThreshold();
+      CommonDescriptor.getInstance().getConf().getAvgSeriesPointNumberThreshold();
     try (Connection connection =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
 
-      IoTDBDescriptor.getInstance().getConfig().setAvgSeriesPointNumberThreshold(1);
+      CommonDescriptor.getInstance().getConf().setAvgSeriesPointNumberThreshold(1);
 
       // first file
       // two chunks
@@ -669,8 +670,8 @@ public class IoTDBNewTsFileCompactionIT {
       e.printStackTrace();
       fail();
     } finally {
-      IoTDBDescriptor.getInstance()
-          .getConfig()
+      CommonDescriptor.getInstance()
+          .getConf()
           .setAvgSeriesPointNumberThreshold(preAvgSeriesPointNumberThreshold);
     }
   }
@@ -688,19 +689,19 @@ public class IoTDBNewTsFileCompactionIT {
       {"4", "4"}
     };
     int preAvgSeriesPointNumberThreshold =
-        IoTDBDescriptor.getInstance().getConfig().getAvgSeriesPointNumberThreshold();
+      CommonDescriptor.getInstance().getConf().getAvgSeriesPointNumberThreshold();
     try (Connection connection =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
 
-      IoTDBDescriptor.getInstance().getConfig().setAvgSeriesPointNumberThreshold(10000);
+      CommonDescriptor.getInstance().getConf().setAvgSeriesPointNumberThreshold(10000);
       // first file
       statement.execute("INSERT INTO root.newTsFileCompaction.d1(time,s1) values(1, 1)");
       statement.execute("INSERT INTO root.newTsFileCompaction.d1(time,s1) values(2, 2)");
       statement.execute("FLUSH");
 
-      IoTDBDescriptor.getInstance().getConfig().setAvgSeriesPointNumberThreshold(1);
+      CommonDescriptor.getInstance().getConf().setAvgSeriesPointNumberThreshold(1);
       // second file
       statement.execute("INSERT INTO root.newTsFileCompaction.d1(time,s1) values(3, 3)");
       statement.execute("INSERT INTO root.newTsFileCompaction.d1(time,s1) values(4, 4)");
@@ -726,8 +727,8 @@ public class IoTDBNewTsFileCompactionIT {
       e.printStackTrace();
       fail();
     } finally {
-      IoTDBDescriptor.getInstance()
-          .getConfig()
+      CommonDescriptor.getInstance()
+          .getConf()
           .setAvgSeriesPointNumberThreshold(preAvgSeriesPointNumberThreshold);
     }
   }
@@ -747,13 +748,13 @@ public class IoTDBNewTsFileCompactionIT {
       {"6", "6"}
     };
     int preAvgSeriesPointNumberThreshold =
-        IoTDBDescriptor.getInstance().getConfig().getAvgSeriesPointNumberThreshold();
+      CommonDescriptor.getInstance().getConf().getAvgSeriesPointNumberThreshold();
     try (Connection connection =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
 
-      IoTDBDescriptor.getInstance().getConfig().setAvgSeriesPointNumberThreshold(2);
+      CommonDescriptor.getInstance().getConf().setAvgSeriesPointNumberThreshold(2);
       // first file
       // one chunk with two pages
       statement.execute("INSERT INTO root.newTsFileCompaction.d1(time,s1) values(1, 1)");
@@ -763,7 +764,7 @@ public class IoTDBNewTsFileCompactionIT {
       statement.execute("INSERT INTO root.newTsFileCompaction.d1(time,s1) values(4, 4)");
       statement.execute("FLUSH");
 
-      IoTDBDescriptor.getInstance().getConfig().setAvgSeriesPointNumberThreshold(1);
+      CommonDescriptor.getInstance().getConf().setAvgSeriesPointNumberThreshold(1);
       // second file
       // two pages for one chunk
       statement.execute("INSERT INTO root.newTsFileCompaction.d1(time,s1) values(5, 5)");
@@ -790,8 +791,8 @@ public class IoTDBNewTsFileCompactionIT {
       e.printStackTrace();
       fail();
     } finally {
-      IoTDBDescriptor.getInstance()
-          .getConfig()
+      CommonDescriptor.getInstance()
+          .getConf()
           .setAvgSeriesPointNumberThreshold(preAvgSeriesPointNumberThreshold);
     }
   }
@@ -810,19 +811,19 @@ public class IoTDBNewTsFileCompactionIT {
       {"5", "5"}
     };
     int preAvgSeriesPointNumberThreshold =
-        IoTDBDescriptor.getInstance().getConfig().getAvgSeriesPointNumberThreshold();
+      CommonDescriptor.getInstance().getConf().getAvgSeriesPointNumberThreshold();
     try (Connection connection =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
 
-      IoTDBDescriptor.getInstance().getConfig().setAvgSeriesPointNumberThreshold(10000);
+      CommonDescriptor.getInstance().getConf().setAvgSeriesPointNumberThreshold(10000);
 
       // first file
       statement.execute("INSERT INTO root.newTsFileCompaction.d1(time,s1) values(1, 1)");
       statement.execute("FLUSH");
 
-      IoTDBDescriptor.getInstance().getConfig().setAvgSeriesPointNumberThreshold(2);
+      CommonDescriptor.getInstance().getConf().setAvgSeriesPointNumberThreshold(2);
       // second file
       // one chunk with two pages
       statement.execute("INSERT INTO root.newTsFileCompaction.d1(time,s1) values(2, 2)");
@@ -852,8 +853,8 @@ public class IoTDBNewTsFileCompactionIT {
       e.printStackTrace();
       fail();
     } finally {
-      IoTDBDescriptor.getInstance()
-          .getConfig()
+      CommonDescriptor.getInstance()
+          .getConf()
           .setAvgSeriesPointNumberThreshold(preAvgSeriesPointNumberThreshold);
     }
   }
@@ -873,13 +874,13 @@ public class IoTDBNewTsFileCompactionIT {
       {"6", "6"}
     };
     int preAvgSeriesPointNumberThreshold =
-        IoTDBDescriptor.getInstance().getConfig().getAvgSeriesPointNumberThreshold();
+      CommonDescriptor.getInstance().getConf().getAvgSeriesPointNumberThreshold();
     try (Connection connection =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
 
-      IoTDBDescriptor.getInstance().getConfig().setAvgSeriesPointNumberThreshold(1);
+      CommonDescriptor.getInstance().getConf().setAvgSeriesPointNumberThreshold(1);
 
       // first file
       // two chunks
@@ -887,7 +888,7 @@ public class IoTDBNewTsFileCompactionIT {
       statement.execute("INSERT INTO root.newTsFileCompaction.d1(time,s1) values(2, 2)");
       statement.execute("FLUSH");
 
-      IoTDBDescriptor.getInstance().getConfig().setAvgSeriesPointNumberThreshold(2);
+      CommonDescriptor.getInstance().getConf().setAvgSeriesPointNumberThreshold(2);
       // second file
       // one chunk with two pages
       statement.execute("INSERT INTO root.newTsFileCompaction.d1(time,s1) values(3, 3)");
@@ -917,8 +918,8 @@ public class IoTDBNewTsFileCompactionIT {
       e.printStackTrace();
       fail();
     } finally {
-      IoTDBDescriptor.getInstance()
-          .getConfig()
+      CommonDescriptor.getInstance()
+          .getConf()
           .setAvgSeriesPointNumberThreshold(preAvgSeriesPointNumberThreshold);
     }
   }
@@ -938,13 +939,13 @@ public class IoTDBNewTsFileCompactionIT {
       {"6", "6"}
     };
     int preAvgSeriesPointNumberThreshold =
-        IoTDBDescriptor.getInstance().getConfig().getAvgSeriesPointNumberThreshold();
+      CommonDescriptor.getInstance().getConf().getAvgSeriesPointNumberThreshold();
     try (Connection connection =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
 
-      IoTDBDescriptor.getInstance().getConfig().setAvgSeriesPointNumberThreshold(10000);
+      CommonDescriptor.getInstance().getConf().setAvgSeriesPointNumberThreshold(10000);
 
       // first file
       // two pages for one chunk
@@ -952,7 +953,7 @@ public class IoTDBNewTsFileCompactionIT {
       statement.execute("INSERT INTO root.newTsFileCompaction.d1(time,s1) values(2, 2)");
       statement.execute("FLUSH");
 
-      IoTDBDescriptor.getInstance().getConfig().setAvgSeriesPointNumberThreshold(2);
+      CommonDescriptor.getInstance().getConf().setAvgSeriesPointNumberThreshold(2);
       // second file
       // one chunk with two pages
       statement.execute("INSERT INTO root.newTsFileCompaction.d1(time,s1) values(3, 3)");
@@ -982,8 +983,8 @@ public class IoTDBNewTsFileCompactionIT {
       e.printStackTrace();
       fail();
     } finally {
-      IoTDBDescriptor.getInstance()
-          .getConfig()
+      CommonDescriptor.getInstance()
+          .getConf()
           .setAvgSeriesPointNumberThreshold(preAvgSeriesPointNumberThreshold);
     }
   }
@@ -1005,13 +1006,13 @@ public class IoTDBNewTsFileCompactionIT {
       {"8", "8"}
     };
     int preAvgSeriesPointNumberThreshold =
-        IoTDBDescriptor.getInstance().getConfig().getAvgSeriesPointNumberThreshold();
+      CommonDescriptor.getInstance().getConf().getAvgSeriesPointNumberThreshold();
     try (Connection connection =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
 
-      IoTDBDescriptor.getInstance().getConfig().setAvgSeriesPointNumberThreshold(2);
+      CommonDescriptor.getInstance().getConf().setAvgSeriesPointNumberThreshold(2);
       // first file
       // one chunk with two pages
       statement.execute("INSERT INTO root.newTsFileCompaction.d1(time,s1) values(1, 1)");
@@ -1051,8 +1052,8 @@ public class IoTDBNewTsFileCompactionIT {
       fail();
 
     } finally {
-      IoTDBDescriptor.getInstance()
-          .getConfig()
+      CommonDescriptor.getInstance()
+          .getConf()
           .setAvgSeriesPointNumberThreshold(preAvgSeriesPointNumberThreshold);
     }
   }

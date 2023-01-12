@@ -46,8 +46,8 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 public class WALManagerTest {
-  private static final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
-  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private static final CommonConfig commonConfig = CommonDescriptor.getInstance().getConf();
+  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConf();
   private final String[] walDirs =
       new String[] {
         TestConstant.BASE_OUTPUT_PATH.concat("wal_test1"),

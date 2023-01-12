@@ -65,7 +65,7 @@ import java.util.Map;
 public class ClusterPartitionFetcher implements IPartitionFetcher {
 
   private static final Logger logger = LoggerFactory.getLogger(ClusterPartitionFetcher.class);
-  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConf();
 
   private final SeriesPartitionExecutor partitionExecutor;
 
@@ -385,16 +385,16 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
 
     return new SchemaPartition(
         regionReplicaMap,
-        IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionExecutorClass(),
-        IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionSlotNum());
+        IoTDBDescriptor.getInstance().getConf().getSeriesPartitionExecutorClass(),
+        IoTDBDescriptor.getInstance().getConf().getSeriesPartitionSlotNum());
   }
 
   private SchemaNodeManagementPartition parseSchemaNodeManagementPartitionResp(
       TSchemaNodeManagementResp schemaNodeManagementResp) {
     return new SchemaNodeManagementPartition(
         schemaNodeManagementResp.getSchemaRegionMap(),
-        IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionExecutorClass(),
-        IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionSlotNum(),
+        IoTDBDescriptor.getInstance().getConf().getSeriesPartitionExecutorClass(),
+        IoTDBDescriptor.getInstance().getConf().getSeriesPartitionSlotNum(),
         schemaNodeManagementResp.getMatchedNode());
   }
 

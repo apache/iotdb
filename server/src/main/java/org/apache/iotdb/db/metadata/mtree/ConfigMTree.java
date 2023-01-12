@@ -131,7 +131,7 @@ public class ConfigMTree {
       } else {
         IStorageGroupMNode storageGroupMNode =
             new StorageGroupMNode(
-                cur, nodeNames[i], CommonDescriptor.getInstance().getConfig().getDefaultTtlInMs());
+                cur, nodeNames[i], CommonDescriptor.getInstance().getConf().getDefaultTtlInMs());
 
         IMNode result = cur.addChild(nodeNames[i], storageGroupMNode);
 

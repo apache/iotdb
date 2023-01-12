@@ -77,7 +77,7 @@ public class TagTagInvertedIndexTest {
     numOfDeviceIdsInMemTable =
         TagSchemaDescriptor.getInstance().getTagSchemaConfig().getNumOfDeviceIdsInMemTable();
     TagSchemaDescriptor.getInstance().getTagSchemaConfig().setNumOfDeviceIdsInMemTable(3);
-    schemaDir = IoTDBDescriptor.getInstance().getConfig().getSchemaDir();
+    schemaDir = IoTDBDescriptor.getInstance().getConf().getSchemaDir();
     storageGroupDirPath = schemaDir + File.separator + storageGroupFullPath;
     schemaRegionDirPath = storageGroupDirPath + File.separator + 0;
     tagInvertedIndex = new TagInvertedIndex(schemaRegionDirPath);

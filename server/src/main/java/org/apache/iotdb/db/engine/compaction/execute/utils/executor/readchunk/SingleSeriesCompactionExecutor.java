@@ -65,13 +65,13 @@ public class SingleSeriesCompactionExecutor {
   private long pointCountInChunkWriter = 0;
 
   private final long targetChunkSize =
-      IoTDBDescriptor.getInstance().getConfig().getTargetChunkSize();
+      IoTDBDescriptor.getInstance().getConf().getTargetChunkSize();
   private final long targetChunkPointNum =
-      IoTDBDescriptor.getInstance().getConfig().getTargetChunkPointNum();
+      IoTDBDescriptor.getInstance().getConf().getTargetChunkPointNum();
   private final long chunkSizeLowerBound =
-      IoTDBDescriptor.getInstance().getConfig().getChunkSizeLowerBoundInCompaction();
+      IoTDBDescriptor.getInstance().getConf().getChunkSizeLowerBoundInCompaction();
   private final long chunkPointNumLowerBound =
-      IoTDBDescriptor.getInstance().getConfig().getChunkPointNumLowerBoundInCompaction();
+      IoTDBDescriptor.getInstance().getConf().getChunkPointNumLowerBoundInCompaction();
 
   public SingleSeriesCompactionExecutor(
       PartialPath series,

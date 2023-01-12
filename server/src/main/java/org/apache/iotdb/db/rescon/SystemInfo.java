@@ -24,8 +24,6 @@ import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.flush.FlushManager;
 import org.apache.iotdb.db.engine.storagegroup.DataRegionInfo;
 import org.apache.iotdb.db.engine.storagegroup.TsFileProcessor;
@@ -42,7 +40,7 @@ import java.util.concurrent.atomic.AtomicLong;
 
 public class SystemInfo {
 
-  private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
+  private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConf();
   private static final Logger logger = LoggerFactory.getLogger(SystemInfo.class);
 
   private long totalStorageGroupMemCost = 0L;

@@ -25,6 +25,8 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.cluster.NodeStatus;
+import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.sync.PipeException;
@@ -97,8 +99,7 @@ import java.util.stream.Collectors;
 public class ProcedureManager {
   private static final Logger LOGGER = LoggerFactory.getLogger(ProcedureManager.class);
 
-  private static final ConfigNodeConfig CONFIG_NODE_CONFIG =
-      ConfigNodeDescriptor.getInstance().getConf();
+  private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConf();
 
   private static final int PROCEDURE_WAIT_TIME_OUT = 30;
   private static final int PROCEDURE_WAIT_RETRY_TIMEOUT = 250;
@@ -118,7 +119,7 @@ public class ProcedureManager {
     this.env = new ConfigNodeProcedureEnv(configManager, scheduler);
     this.executor = new ProcedureExecutor<>(env, store, scheduler);
     this.planSizeLimit =
-        ConfigNodeDescriptor.getInstance()
+        CommonDescriptor.getInstance()
                 .getConf()
                 .getConfigNodeRatisConsensusLogAppenderBufferSize()
             - IoTDBConstant.RAFT_LOG_BASIC_SIZE;
@@ -127,11 +128,11 @@ public class ProcedureManager {
   public void shiftExecutor(boolean running) {
     if (running) {
       if (!executor.isRunning()) {
-        executor.init(CONFIG_NODE_CONFIG.getProcedureCoreWorkerThreadsCount());
+        executor.init(COMMON_CONFIG.getProcedureCoreWorkerThreadsCount());
         executor.startWorkers();
         executor.startCompletedCleaner(
-            CONFIG_NODE_CONFIG.getProcedureCompletedCleanInterval(),
-            CONFIG_NODE_CONFIG.getProcedureCompletedEvictTTL());
+          COMMON_CONFIG.getProcedureCompletedCleanInterval(),
+          COMMON_CONFIG.getProcedureCompletedEvictTTL());
         store.start();
         LOGGER.info("ProcedureManager is started successfully.");
       }

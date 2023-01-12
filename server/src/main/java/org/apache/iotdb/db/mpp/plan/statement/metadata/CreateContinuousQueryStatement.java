@@ -175,12 +175,12 @@ public class CreateContinuousQueryStatement extends Statement implements IConfig
 
   public void semanticCheck() {
     if (everyInterval
-        < IoTDBDescriptor.getInstance().getConfig().getContinuousQueryMinimumEveryInterval()) {
+        < IoTDBDescriptor.getInstance().getConf().getContinuousQueryMinimumEveryInterval()) {
       throw new SemanticException(
           String.format(
               "CQ: Every interval [%d] should not be lower than the `continuous_query_minimum_every_interval` [%d] configured.",
               everyInterval,
-              IoTDBDescriptor.getInstance().getConfig().getContinuousQueryMinimumEveryInterval()));
+              IoTDBDescriptor.getInstance().getConf().getContinuousQueryMinimumEveryInterval()));
     }
     if (startTimeOffset <= 0) {
       throw new SemanticException("CQ: The start time offset should be greater than 0.");

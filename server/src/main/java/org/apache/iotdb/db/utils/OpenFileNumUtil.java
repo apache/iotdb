@@ -52,8 +52,8 @@ public class OpenFileNumUtil {
   // command 'lsof -p' is available on most Linux distro except CentOS.
   private static final String SEARCH_OPEN_DATA_FILE_BY_PID = "lsof -p %d";
 
-  private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-  private static CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
+  private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConf();
+  private static CommonConfig commonConfig = CommonDescriptor.getInstance().getConf();
   private static DirectoryManager directoryManager = DirectoryManager.getInstance();
   private static final String[] COMMAND_TEMPLATE = {"/bin/bash", "-c", ""};
   private static boolean isOutputValid = false;

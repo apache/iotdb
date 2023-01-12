@@ -63,7 +63,7 @@ import java.util.ServiceLoader;
 public class IoTDBDescriptor {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBDescriptor.class);
-  private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
+  private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConf();
 
   private final IoTDBConfig CONF = new IoTDBConfig();
 
@@ -96,7 +96,7 @@ public class IoTDBDescriptor {
     return IoTDBDescriptorHolder.INSTANCE;
   }
 
-  public IoTDBConfig getConfig() {
+  public IoTDBConfig getConf() {
     return CONF;
   }
 
@@ -752,12 +752,9 @@ public class IoTDBDescriptor {
 
   // These configurations are received from config node when registering
   public void loadGlobalConfig(TGlobalConfig globalConfig) {
-    CONF.setSeriesPartitionExecutorClass(globalConfig.getSeriesPartitionExecutorClass());
-    CONF.setSeriesPartitionSlotNum(globalConfig.getSeriesPartitionSlotNum());
     CONF.setDnTimePartitionInterval(
-        DateTimeUtils.convertMilliTimeWithPrecision(
-            globalConfig.timePartitionInterval, CONF.getTimestampPrecision()));
-    CONF.setReadConsistencyLevel(globalConfig.getReadConsistencyLevel());
+      DateTimeUtils.convertMilliTimeWithPrecision(
+        globalConfig.timePartitionInterval, COMMON_CONFIG.getTimestampPrecision()));
   }
 
   public void loadCQConfig(TCQConfig cqConfig) {

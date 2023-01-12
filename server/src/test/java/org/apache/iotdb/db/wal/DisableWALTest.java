@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.wal;
 
+import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.wal.WALMode;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -31,7 +33,7 @@ import org.junit.Test;
 import static org.junit.Assert.assertEquals;
 
 public class DisableWALTest {
-  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private static final CommonConfig config = CommonDescriptor.getInstance().getConf();
   private WALMode prevMode;
 
   @Before

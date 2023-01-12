@@ -45,7 +45,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 public class DataNodeSchemaCache {
 
   private static final Logger logger = LoggerFactory.getLogger(DataNodeSchemaCache.class);
-  private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
+  private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConf();
 
   private final Cache<PartialPath, SchemaCacheEntry> cache;
 

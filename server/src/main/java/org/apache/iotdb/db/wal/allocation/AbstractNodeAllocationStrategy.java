@@ -37,7 +37,7 @@ import java.util.Arrays;
 public abstract class AbstractNodeAllocationStrategy implements NodeAllocationStrategy {
   private static final Logger logger =
       LoggerFactory.getLogger(AbstractNodeAllocationStrategy.class);
-  private static final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
+  private static final CommonConfig commonConfig = CommonDescriptor.getInstance().getConf();
 
   /** manage wal folders */
   protected FolderManager folderManager;

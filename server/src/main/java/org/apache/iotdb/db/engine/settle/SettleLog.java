@@ -36,7 +36,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 public class SettleLog {
   private static final Logger logger = LoggerFactory.getLogger(SettleLog.class);
   public static final String COMMA_SEPERATOR = ",";
-  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConf();
   private static final String SETTLE_DIR = "settle";
   private static final String SETTLE_LOG_NAME = "settle.txt";
   private static BufferedWriter settleLogWriter;

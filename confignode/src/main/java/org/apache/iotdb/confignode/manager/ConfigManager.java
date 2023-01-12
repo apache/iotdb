@@ -40,7 +40,6 @@ import org.apache.iotdb.commons.sync.pipe.PipeMessage;
 import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.StatusUtils;
-import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.conf.SystemPropertiesUtils;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
@@ -179,7 +178,7 @@ public class ConfigManager implements IManager {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ConfigManager.class);
 
-  private static final CommonConfig COMMON_CONF = CommonDescriptor.getInstance().getConfig();
+  private static final CommonConfig COMMON_CONF = CommonDescriptor.getInstance().getConf();
 
   /** Manage PartitionTable read/write requests through the ConsensusLayer */
   private volatile ConsensusManager consensusManager;
@@ -905,7 +904,7 @@ public class ConfigManager implements IManager {
     }
 
     if (clusterParameters.getDefaultTTL()
-        != CommonDescriptor.getInstance().getConfig().getDefaultTtlInMs()) {
+        != CommonDescriptor.getInstance().getConf().getDefaultTtlInMs()) {
       return errorStatus.setMessage(errorPrefix + "default_ttl" + errorSuffix);
     }
     if (clusterParameters.getTimePartitionInterval() != COMMON_CONF.getTimePartitionInterval()) {
@@ -931,7 +930,7 @@ public class ConfigManager implements IManager {
     }
 
     if (clusterParameters.getDiskSpaceWarningThreshold()
-        != CommonDescriptor.getInstance().getConfig().getDiskSpaceWarningThreshold()) {
+        != CommonDescriptor.getInstance().getConf().getDiskSpaceWarningThreshold()) {
       return errorStatus.setMessage(errorPrefix + "disk_space_warning_threshold" + errorSuffix);
     }
 

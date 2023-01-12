@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.it;
 
+import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.it.env.EnvFactory;
@@ -314,13 +316,14 @@ public class IoTDBRestartIT {
 
   @Test
   public void testRecoverWALDeleteSchemaCheckResourceTime() throws Exception {
-    IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-    int avgSeriesPointNumberThreshold = config.getAvgSeriesPointNumberThreshold();
-    config.setAvgSeriesPointNumberThreshold(2);
-    long tsFileSize = config.getSeqTsFileSize();
-    long unFsFileSize = config.getSeqTsFileSize();
-    config.setSeqTsFileSize(10000000);
-    config.setUnSeqTsFileSize(10000000);
+    CommonConfig commonConfig = CommonDescriptor.getInstance().getConf();
+    IoTDBConfig iotdbConfig = IoTDBDescriptor.getInstance().getConf();
+    int avgSeriesPointNumberThreshold = commonConfig.getAvgSeriesPointNumberThreshold();
+    commonConfig.setAvgSeriesPointNumberThreshold(2);
+    long tsFileSize = iotdbConfig.getSeqTsFileSize();
+    long unFsFileSize = iotdbConfig.getSeqTsFileSize();
+    iotdbConfig.setSeqTsFileSize(10000000);
+    iotdbConfig.setUnSeqTsFileSize(10000000);
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -350,9 +353,9 @@ public class IoTDBRestartIT {
       assertEquals(2, cnt);
     }
 
-    config.setAvgSeriesPointNumberThreshold(avgSeriesPointNumberThreshold);
-    config.setSeqTsFileSize(tsFileSize);
-    config.setUnSeqTsFileSize(unFsFileSize);
+    commonConfig.setAvgSeriesPointNumberThreshold(avgSeriesPointNumberThreshold);
+    iotdbConfig.setSeqTsFileSize(tsFileSize);
+    iotdbConfig.setUnSeqTsFileSize(unFsFileSize);
   }
 
   @Test

@@ -75,7 +75,7 @@ public class TriggerFireVisitor extends PlanVisitor<TriggerFireResult, TriggerEv
    * How many times should we retry when error occurred during firing a trigger on another datanode
    */
   private static final int FIRE_RETRY_NUM =
-      IoTDBDescriptor.getInstance().getConfig().getRetryNumToFindStatefulTrigger();
+      IoTDBDescriptor.getInstance().getConf().getRetryNumToFindStatefulTrigger();
 
   @Override
   public TriggerFireResult process(PlanNode node, TriggerEvent context) {

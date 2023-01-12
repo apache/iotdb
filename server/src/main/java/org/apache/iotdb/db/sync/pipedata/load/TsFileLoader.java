@@ -66,7 +66,7 @@ public class TsFileLoader implements ILoader {
                   "",
                   PARTITION_FETCHER,
                   SCHEMA_FETCHER,
-                  IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold());
+                  IoTDBDescriptor.getInstance().getConf().getQueryTimeoutThreshold());
       if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         logger.error("Load TsFile {} error, statement: {}.", tsFile.getPath(), statement);
         logger.error("Load TsFile result status : {}.", result.status);

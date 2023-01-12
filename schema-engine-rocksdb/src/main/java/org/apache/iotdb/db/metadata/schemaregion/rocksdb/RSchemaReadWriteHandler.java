@@ -82,7 +82,7 @@ public class RSchemaReadWriteHandler {
 
   private static final Logger logger = LoggerFactory.getLogger(RSchemaReadWriteHandler.class);
 
-  protected static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  protected static IoTDBConfig config = IoTDBDescriptor.getInstance().getConf();
 
   private static final String ROCKSDB_FOLDER = "rocksdb-schema";
 

@@ -51,7 +51,7 @@ public class MQTTConnectionPool extends GenericObjectPool<BlockingConnection> {
   private MQTTConnectionPool(MQTTConnectionFactory factory, int size) {
     super(factory);
     setMaxTotal(
-        Math.min(size, CommonDescriptor.getInstance().getConfig().getTriggerForwardMQTTPoolSize()));
+        Math.min(size, CommonDescriptor.getInstance().getConf().getTriggerForwardMQTTPoolSize()));
     setMinIdle(1);
   }
 

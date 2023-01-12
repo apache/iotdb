@@ -42,12 +42,12 @@ public class StandaloneEnvConfig implements BaseConfig {
   }
 
   public BaseConfig setMemtableSizeThreshold(long memtableSizeThreshold) {
-    CommonDescriptor.getInstance().getConfig().setMemtableSizeThreshold(memtableSizeThreshold);
+    CommonDescriptor.getInstance().getConf().setMemtableSizeThreshold(memtableSizeThreshold);
     return this;
   }
 
   public BaseConfig setPartitionInterval(long partitionInterval) {
-    IoTDBDescriptor.getInstance().getConfig().setDnTimePartitionInterval(partitionInterval);
+    IoTDBDescriptor.getInstance().getConf().setDnTimePartitionInterval(partitionInterval);
     return this;
   }
 
@@ -58,79 +58,79 @@ public class StandaloneEnvConfig implements BaseConfig {
 
   public BaseConfig setMaxQueryDeduplicatedPathNum(int maxQueryDeduplicatedPathNum) {
     CommonDescriptor.getInstance()
-        .getConfig()
+        .getConf()
         .setMaxDeduplicatedPathNum(maxQueryDeduplicatedPathNum);
     return this;
   }
 
   public BaseConfig setRpcThriftCompressionEnable(boolean rpcThriftCompressionEnable) {
     IoTDBDescriptor.getInstance()
-        .getConfig()
+        .getConf()
         .setDnRpcThriftCompressionEnable(rpcThriftCompressionEnable);
     return this;
   }
 
   public BaseConfig setRpcAdvancedCompressionEnable(boolean rpcAdvancedCompressionEnable) {
     IoTDBDescriptor.getInstance()
-        .getConfig()
+        .getConf()
         .setDnRpcAdvancedCompressionEnable(rpcAdvancedCompressionEnable);
     return this;
   }
 
   public BaseConfig setUdfCollectorMemoryBudgetInMB(float udfCollectorMemoryBudgetInMB) {
     CommonDescriptor.getInstance()
-        .getConfig()
+        .getConf()
         .setUdfCollectorMemoryBudgetInMB(udfCollectorMemoryBudgetInMB);
     return this;
   }
 
   public BaseConfig setUdfTransformerMemoryBudgetInMB(float udfTransformerMemoryBudgetInMB) {
     CommonDescriptor.getInstance()
-        .getConfig()
+        .getConf()
         .setUdfTransformerMemoryBudgetInMB(udfTransformerMemoryBudgetInMB);
     return this;
   }
 
   public BaseConfig setUdfReaderMemoryBudgetInMB(float udfReaderMemoryBudgetInMB) {
     CommonDescriptor.getInstance()
-        .getConfig()
+        .getConf()
         .setUdfReaderMemoryBudgetInMB(udfReaderMemoryBudgetInMB);
     return this;
   }
 
   public BaseConfig setEnableSeqSpaceCompaction(boolean enableSeqSpaceCompaction) {
-    IoTDBDescriptor.getInstance().getConfig().setEnableSeqSpaceCompaction(enableSeqSpaceCompaction);
+    IoTDBDescriptor.getInstance().getConf().setEnableSeqSpaceCompaction(enableSeqSpaceCompaction);
     return this;
   }
 
   public BaseConfig setEnableUnseqSpaceCompaction(boolean enableUnseqSpaceCompaction) {
     IoTDBDescriptor.getInstance()
-        .getConfig()
+        .getConf()
         .setEnableUnseqSpaceCompaction(enableUnseqSpaceCompaction);
     return this;
   }
 
   public BaseConfig setEnableCrossSpaceCompaction(boolean enableCrossSpaceCompaction) {
     IoTDBDescriptor.getInstance()
-        .getConfig()
+        .getConf()
         .setEnableCrossSpaceCompaction(enableCrossSpaceCompaction);
     return this;
   }
 
   public BaseConfig setEnableIDTable(boolean isEnableIDTable) {
-    IoTDBDescriptor.getInstance().getConfig().setEnableIDTable(isEnableIDTable);
+    IoTDBDescriptor.getInstance().getConf().setEnableIDTable(isEnableIDTable);
     return this;
   }
 
   public BaseConfig setDeviceIDTransformationMethod(String deviceIDTransformationMethod) {
     IoTDBDescriptor.getInstance()
-        .getConfig()
+        .getConf()
         .setDeviceIDTransformationMethod(deviceIDTransformationMethod);
     return this;
   }
 
   public BaseConfig setAutoCreateSchemaEnabled(boolean enableAutoCreateSchema) {
-    CommonDescriptor.getInstance().getConfig().setEnableAutoCreateSchema(enableAutoCreateSchema);
+    CommonDescriptor.getInstance().getConf().setEnableAutoCreateSchema(enableAutoCreateSchema);
     return this;
   }
 }

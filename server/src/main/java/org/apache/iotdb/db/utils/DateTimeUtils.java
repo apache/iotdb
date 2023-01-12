@@ -455,7 +455,7 @@ public class DateTimeUtils {
         str,
         toZoneOffset(zoneId),
         0,
-        CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
+        CommonDescriptor.getInstance().getConf().getTimestampPrecision());
   }
 
   public static long convertDatetimeStrToLong(
@@ -533,7 +533,7 @@ public class DateTimeUtils {
 
   public static long convertDurationStrToLong(long currentTime, String duration) {
     return convertDurationStrToLong(
-        currentTime, duration, CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
+        currentTime, duration, CommonDescriptor.getInstance().getConf().getTimestampPrecision());
   }
 
   /**
@@ -653,8 +653,8 @@ public class DateTimeUtils {
   }
 
   public static long currentTime() {
-    long startupNano = IoTDBDescriptor.getInstance().getConfig().getStartUpNanosecond();
-    String timePrecision = CommonDescriptor.getInstance().getConfig().getTimestampPrecision();
+    long startupNano = IoTDBDescriptor.getInstance().getConf().getStartUpNanosecond();
+    String timePrecision = CommonDescriptor.getInstance().getConf().getTimestampPrecision();
     switch (timePrecision) {
       case "ns":
         return System.currentTimeMillis() * 1000_000 + (System.nanoTime() - startupNano) % 1000_000;
@@ -666,7 +666,7 @@ public class DateTimeUtils {
   }
 
   public static String convertLongToDate(long timestamp) {
-    String timePrecision = CommonDescriptor.getInstance().getConfig().getTimestampPrecision();
+    String timePrecision = CommonDescriptor.getInstance().getConf().getTimestampPrecision();
     switch (timePrecision) {
       case "ns":
         timestamp /= 1000_000_000;

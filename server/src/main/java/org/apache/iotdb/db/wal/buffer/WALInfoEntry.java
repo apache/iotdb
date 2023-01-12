@@ -25,7 +25,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertTabletNode;
 
 /** This entry class stores info for persistence */
 public class WALInfoEntry extends WALEntry {
-  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConf();
 
   /** wal entry type 1 byte, memTable id 8 bytes */
   public static final int FIXED_SERIALIZED_SIZE = Byte.BYTES + Long.BYTES;

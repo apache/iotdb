@@ -20,7 +20,6 @@ package org.apache.iotdb.db.metadata.schemaregion.rocksdb;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 
 import org.rocksdb.util.SizeUnit;
 import org.slf4j.Logger;
@@ -47,9 +46,9 @@ public class RSchemaConfLoader {
   private long writeBufferSize = 64 * SizeUnit.KB;
   private long maxTotalWalSize = 64 * SizeUnit.KB;
   private long blockCache =
-      CommonDescriptor.getInstance().getConfig().getAllocateMemoryForSchemaRegion() * 2 / 3;
+      CommonDescriptor.getInstance().getConf().getAllocateMemoryForSchemaRegion() * 2 / 3;
   private long blockCacheCompressed =
-    CommonDescriptor.getInstance().getConfig().getAllocateMemoryForSchemaRegion() / 3;
+    CommonDescriptor.getInstance().getConf().getAllocateMemoryForSchemaRegion() / 3;
 
   private static final String ROCKSDB_CONFIG_FILE_NAME = "schema-rocksdb.properties";
   private static final Logger logger = LoggerFactory.getLogger(RSchemaConfLoader.class);

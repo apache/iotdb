@@ -31,8 +31,8 @@ import org.slf4j.LoggerFactory;
 
 public class MemTableManager {
 
-  private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
-  private static final IoTDBConfig IOTDB_CONFIG = IoTDBDescriptor.getInstance().getConfig();
+  private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConf();
+  private static final IoTDBConfig IOTDB_CONFIG = IoTDBDescriptor.getInstance().getConf();
 
   private static final Logger logger = LoggerFactory.getLogger(MemTableManager.class);
 

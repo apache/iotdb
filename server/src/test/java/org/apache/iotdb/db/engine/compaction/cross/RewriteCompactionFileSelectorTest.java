@@ -146,7 +146,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
     timeIndexField.setAccessible(true);
     ITimeIndex timeIndex = (ITimeIndex) timeIndexField.get(secondTsFileResource);
     ITimeIndex newTimeIndex =
-        IoTDBDescriptor.getInstance().getConfig().getTimeIndexLevel().getTimeIndex();
+        IoTDBDescriptor.getInstance().getConf().getTimeIndexLevel().getTimeIndex();
     for (String device : devices) {
       newTimeIndex.updateStartTime(device, timeIndex.getStartTime(device));
     }
@@ -198,7 +198,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
     timeIndexField.setAccessible(true);
     ITimeIndex timeIndex = (ITimeIndex) timeIndexField.get(secondTsFileResource);
     ITimeIndex newTimeIndex =
-        IoTDBDescriptor.getInstance().getConfig().getTimeIndexLevel().getTimeIndex();
+        IoTDBDescriptor.getInstance().getConf().getTimeIndexLevel().getTimeIndex();
     for (String device : devices) {
       newTimeIndex.updateStartTime(device, timeIndex.getStartTime(device));
     }
@@ -306,7 +306,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
       long originMemoryBudget = SystemInfo.getInstance().getMemorySizeForCompaction();
       SystemInfo.getInstance()
           .setMemorySizeForCompaction(
-              29000L * IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount());
+              29000L * IoTDBDescriptor.getInstance().getConf().getCompactionThreadCount());
       try {
         RewriteCrossSpaceCompactionSelector selector =
             new RewriteCrossSpaceCompactionSelector("", "", 0, null);
@@ -389,7 +389,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
             500L
                 * 1024
                 * 1024
-                * IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount());
+                * IoTDBDescriptor.getInstance().getConf().getCompactionThreadCount());
     try {
       RewriteCrossSpaceCompactionSelector selector =
           new RewriteCrossSpaceCompactionSelector("", "", 0, null);
@@ -462,7 +462,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
             500L
                 * 1024
                 * 1024
-                * IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount());
+                * IoTDBDescriptor.getInstance().getConf().getCompactionThreadCount());
     try {
       RewriteCrossSpaceCompactionSelector selector =
           new RewriteCrossSpaceCompactionSelector("", "", 0, null);
@@ -537,7 +537,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
             500L
                 * 1024
                 * 1024
-                * IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount());
+                * IoTDBDescriptor.getInstance().getConf().getCompactionThreadCount());
     try {
       RewriteCrossSpaceCompactionSelector selector =
           new RewriteCrossSpaceCompactionSelector("", "", 0, null);
@@ -613,7 +613,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
             500L
                 * 1024
                 * 1024
-                * IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount());
+                * IoTDBDescriptor.getInstance().getConf().getCompactionThreadCount());
     try {
       RewriteCrossSpaceCompactionSelector selector =
           new RewriteCrossSpaceCompactionSelector("", "", 0, null);
@@ -692,7 +692,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
             500L
                 * 1024
                 * 1024
-                * IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount());
+                * IoTDBDescriptor.getInstance().getConf().getCompactionThreadCount());
     try {
       RewriteCrossSpaceCompactionSelector selector =
           new RewriteCrossSpaceCompactionSelector("", "", 0, null);
@@ -924,7 +924,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
             500L
                 * 1024
                 * 1024
-                * IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount());
+                * IoTDBDescriptor.getInstance().getConf().getCompactionThreadCount());
     try {
       RewriteCrossSpaceCompactionSelector selector =
           new RewriteCrossSpaceCompactionSelector("", "", 0, null);
@@ -941,8 +941,8 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
   @Test
   public void testMaxFileSelection() throws MergeException, IOException {
     int oldMaxCrossCompactionCandidateFileNum =
-        IoTDBDescriptor.getInstance().getConfig().getMaxCrossCompactionCandidateFileNum();
-    IoTDBDescriptor.getInstance().getConfig().setMaxCrossCompactionCandidateFileNum(5);
+        IoTDBDescriptor.getInstance().getConf().getMaxCrossCompactionCandidateFileNum();
+    IoTDBDescriptor.getInstance().getConf().setMaxCrossCompactionCandidateFileNum(5);
     RewriteCrossSpaceCompactionSelector selector =
         new RewriteCrossSpaceCompactionSelector("", "", 0, null);
     List<CrossCompactionTaskResource> selected =
@@ -954,15 +954,15 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
     assertEquals(2, unseqSelected.size());
 
     IoTDBDescriptor.getInstance()
-        .getConfig()
+        .getConf()
         .setMaxCrossCompactionCandidateFileNum(oldMaxCrossCompactionCandidateFileNum);
   }
 
   @Test
   public void testAtLeastOneUnseqFileBeenSelected() throws IOException, MergeException {
     int maxCrossFilesNum =
-        IoTDBDescriptor.getInstance().getConfig().getMaxCrossCompactionCandidateFileNum();
-    IoTDBDescriptor.getInstance().getConfig().setMaxCrossCompactionCandidateFileNum(1);
+        IoTDBDescriptor.getInstance().getConf().getMaxCrossCompactionCandidateFileNum();
+    IoTDBDescriptor.getInstance().getConf().setMaxCrossCompactionCandidateFileNum(1);
 
     RewriteCrossSpaceCompactionSelector selector =
         new RewriteCrossSpaceCompactionSelector("", "", 0, null);
@@ -975,7 +975,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
     assertEquals(1, unseqSelected.size());
 
     IoTDBDescriptor.getInstance()
-        .getConfig()
+        .getConf()
         .setMaxCrossCompactionCandidateFileNum(maxCrossFilesNum);
   }
 
