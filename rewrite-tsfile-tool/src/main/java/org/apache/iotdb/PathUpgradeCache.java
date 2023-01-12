@@ -47,20 +47,21 @@ public class PathUpgradeCache {
     if (!needUpgrade) {
       return path;
     }
-    if (paths.containsKey(path)) {
-      return String.join(".", paths.get(path));
-    }
-    return String.join(".", parsePath(path));
+    return String.join(".", paths.getOrDefault(path, parsePath(path)));
   }
 
   public String[] getNodes(String path) {
     if (!needUpgrade) {
       return path.split("\\.");
     }
-    if (paths.containsKey(path)) {
-      return paths.get(path);
+    return paths.getOrDefault(path, parsePath(path));
+  }
+
+  public String getMeasurement(String measurementId) {
+    if (!needUpgrade) {
+      return measurementId;
     }
-    return parsePath(path);
+    return paths.computeIfAbsent(measurementId, )
   }
 
   private String[] parsePath(String path) {
@@ -144,7 +145,17 @@ public class PathUpgradeCache {
       tree = parser2.prefixPath(); // STAGE 2
       // if we parse ok, it's LL not SLL
     }
-    return ioTDBSqlVisitor.visit(tree);
+    String[] nodes = ioTDBSqlVisitor.visit(tree);
+    for (int i = 0; i < nodes.length; i++) {
+      String replacedNodeName = nodes[i].replace("`", "``");
+      nodes[i] = containIllegalChar(nodes[i]) ? "`" + replacedNodeName + "`" : replacedNodeName;
+    }
+    return paths.putIfAbsent(path, nodes);
+  }
+
+  private String parseMeasurementId(String measurementId) {
+    measurementId = measurementId.replace("`", "``");
+    return paths.putIfAbsent(measurementId, new String[]{containIllegalChar(measurementId) ? "`" + measurementId + "`" : measurementId})[0];
   }
 
   private boolean containIllegalChar(String nodeName) {

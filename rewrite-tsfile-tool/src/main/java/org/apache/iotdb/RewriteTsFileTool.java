@@ -623,7 +623,7 @@ public class RewriteTsFileTool {
     if (!addSchema && header.getDataType() != TSDataType.VECTOR) {
       schemaForAlignedSeries.add(
           new MeasurementSchema(
-              upgradeCache.getPath(header.getMeasurementID()),
+              header.getMeasurementID(),
               header.getDataType(),
               header.getEncodingType(),
               header.getCompressionType()));
@@ -648,7 +648,7 @@ public class RewriteTsFileTool {
     if (!addSchema && header.getDataType() != TSDataType.VECTOR) {
       schemaForAlignedSeries.add(
           new MeasurementSchema(
-              upgradeCache.getPath(header.getMeasurementID()),
+              header.getMeasurementID(),
               header.getDataType(),
               header.getEncodingType(),
               header.getCompressionType()));
@@ -674,7 +674,7 @@ public class RewriteTsFileTool {
             upgradeCache.getPath(currentDevice),
             Collections.singletonList(
                 new MeasurementSchema(
-                    upgradeCache.getPath(measurementId),
+                    measurementId,
                     header.getDataType(),
                     header.getEncodingType(),
                     header.getCompressionType())),
