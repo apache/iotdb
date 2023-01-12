@@ -131,11 +131,11 @@ public abstract class PageManager implements IPageManager {
 
     // complete log file
     if (!res.isEmpty()) {
-      FileOutputStream outputStream = new FileOutputStream(logPath, true);
-      outputStream.write(new byte[] {SchemaFileConfig.SF_COMMIT_MARK});
-      long length = outputStream.getChannel().size();
-      outputStream.close();
-      return length;
+      try (FileOutputStream outputStream = new FileOutputStream(logPath, true)) {
+        outputStream.write(new byte[] {SchemaFileConfig.SF_COMMIT_MARK});
+        long length = outputStream.getChannel().size();
+        return length;
+      }
     }
     return 0L;
   }
