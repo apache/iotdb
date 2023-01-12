@@ -74,7 +74,7 @@ public class ConfigNodeRPCService extends ThriftService implements ConfigNodeRPC
               configConf.getCnRpcMaxConcurrentClientNum(),
               configConf.getCnConnectionTimeoutMs() / 1000,
               new ConfigNodeRPCServiceHandler(),
-              commonConfig.isRpcThriftCompressionEnabled());
+              configConf.isCnRpcThriftCompressionEnable());
     } catch (RPCServiceException e) {
       throw new IllegalAccessException(e.getMessage());
     }

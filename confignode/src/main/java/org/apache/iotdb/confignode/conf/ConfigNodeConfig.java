@@ -102,8 +102,8 @@ public class ConfigNodeConfig {
 
   public void formulateFolders() {
     String homeDir = System.getProperty(ConfigNodeConstant.CONFIGNODE_HOME, null);
-    cnSystemDir = PropertiesUtils.addHomeDir(cnSystemDir, homeDir);
-    cnConsensusDir = PropertiesUtils.addHomeDir(cnConsensusDir, homeDir);
+    cnSystemDir = PropertiesUtils.addHomeDir(homeDir, cnSystemDir);
+    cnConsensusDir = PropertiesUtils.addHomeDir(homeDir, cnConsensusDir);
   }
 
   public String getCnInternalAddress() {

@@ -1087,7 +1087,8 @@ public class CommonDescriptor {
     tsFileConfig.setValueEncoder(
         properties.getProperty("value_encoder", tsFileConfig.getValueEncoder()));
 
-    tsFileConfig.setCompressor(properties.getProperty("compressor", tsFileConfig.toString()));
+    tsFileConfig.setCompressor(
+        properties.getProperty("compressor", tsFileConfig.getCompressor().getName()));
 
     tsFileConfig.setMaxDegreeOfIndexNode(
         Integer.parseInt(

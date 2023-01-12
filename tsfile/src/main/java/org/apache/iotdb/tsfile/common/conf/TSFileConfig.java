@@ -299,7 +299,7 @@ public class TSFileConfig implements Serializable {
   }
 
   public void setCompressor(String compressor) {
-    this.compressor = CompressionType.valueOf(compressor);
+    this.compressor = CompressionType.parse(compressor);
   }
 
   public int getPageCheckSizeThreshold() {

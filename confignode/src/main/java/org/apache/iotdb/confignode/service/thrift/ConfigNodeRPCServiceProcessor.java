@@ -31,7 +31,6 @@ import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.conf.ConfigNodeConstant;
-import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.conf.SystemPropertiesUtils;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
@@ -280,15 +279,15 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
     }
     if (!storageGroupSchema.isSetSchemaReplicationFactor()) {
       storageGroupSchema.setSchemaReplicationFactor(
-          ConfigNodeDescriptor.getInstance().getConf().getSchemaReplicationFactor());
+          CommonDescriptor.getInstance().getConf().getSchemaReplicationFactor());
     }
     if (!storageGroupSchema.isSetDataReplicationFactor()) {
       storageGroupSchema.setDataReplicationFactor(
-          ConfigNodeDescriptor.getInstance().getConf().getDataReplicationFactor());
+          CommonDescriptor.getInstance().getConf().getDataReplicationFactor());
     }
     if (!storageGroupSchema.isSetTimePartitionInterval()) {
       storageGroupSchema.setTimePartitionInterval(
-          ConfigNodeDescriptor.getInstance().getConf().getTimePartitionInterval());
+          CommonDescriptor.getInstance().getConf().getTimePartitionInterval());
     }
 
     // Initialize the maxSchemaRegionGroupCount and maxDataRegionGroupCount as 0

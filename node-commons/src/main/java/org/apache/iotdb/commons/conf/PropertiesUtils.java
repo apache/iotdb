@@ -101,7 +101,7 @@ public class PropertiesUtils {
     }
   }
 
-  public static String addHomeDir(String dir, String homeDir) {
+  public static String addHomeDir(String homeDir, String dir) {
     if (!new File(dir).isAbsolute() && homeDir != null && homeDir.length() > 0) {
       if (!homeDir.endsWith(File.separator)) {
         dir = homeDir + File.separatorChar + dir;

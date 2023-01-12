@@ -126,32 +126,13 @@ public class IoTDBDescriptor {
   /** load an property file and set TsfileDBConfig variables. */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private void loadProps() {
-    URL url = getPropsUrl(CommonConfig.CONF_FILE_NAME);
-    Properties commonProperties = new Properties();
+    URL url = getPropsUrl(IoTDBConfig.CONFIG_NAME);
+    Properties properties = new Properties();
     if (url != null) {
       try (InputStream inputStream = url.openStream()) {
         LOGGER.info("Start to read config file {}", url);
-        commonProperties.load(inputStream);
-      } catch (FileNotFoundException e) {
-        LOGGER.warn("Fail to find config file {}", url, e);
-      } catch (IOException e) {
-        LOGGER.warn("Cannot load config file, use default configuration", e);
-      } catch (Exception e) {
-        LOGGER.warn("Incorrect format in config file, use default configuration", e);
-      }
-    } else {
-      LOGGER.warn(
-          "Couldn't load the configuration {} from any of the known sources.",
-          CommonConfig.CONF_FILE_NAME);
-    }
-    url = getPropsUrl(IoTDBConfig.CONFIG_NAME);
-    if (url != null) {
-      try (InputStream inputStream = url.openStream()) {
-        LOGGER.info("Start to read config file {}", url);
-        Properties properties = new Properties();
         properties.load(inputStream);
-        commonProperties.putAll(properties);
-        loadProperties(commonProperties);
+        loadProperties(properties);
       } catch (FileNotFoundException e) {
         LOGGER.warn("Fail to find config file {}", url, e);
       } catch (IOException e) {
@@ -164,7 +145,7 @@ public class IoTDBDescriptor {
 
         CommonDescriptor.getInstance().initCommonConfigDir(CONF.getDnSystemDir());
 
-        MetricConfigDescriptor.getInstance().loadProps(commonProperties);
+        MetricConfigDescriptor.getInstance().loadProps(properties);
         MetricConfigDescriptor.getInstance()
             .getMetricConfig()
             .updateRpcInstance(CONF.getDnInternalAddress(), CONF.getDnInternalPort());

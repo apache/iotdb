@@ -649,14 +649,14 @@ public class CommonConfig {
       homeDir = System.getProperty(IoTDBConstant.CONFIGNODE_HOME, null);
     }
 
-    udfDir = PropertiesUtils.addHomeDir(udfDir, homeDir);
-    udfTemporaryLibDir = PropertiesUtils.addHomeDir(udfTemporaryLibDir, homeDir);
-    triggerDir = PropertiesUtils.addHomeDir(triggerDir, homeDir);
-    triggerTemporaryLibDir = PropertiesUtils.addHomeDir(triggerTemporaryLibDir, homeDir);
+    udfDir = PropertiesUtils.addHomeDir(homeDir, udfDir);
+    udfTemporaryLibDir = PropertiesUtils.addHomeDir(homeDir, udfTemporaryLibDir);
+    triggerDir = PropertiesUtils.addHomeDir(homeDir, triggerDir);
+    triggerTemporaryLibDir = PropertiesUtils.addHomeDir(homeDir, triggerTemporaryLibDir);
 
-    userFolder = PropertiesUtils.addHomeDir(userFolder, homeDir);
-    roleFolder = PropertiesUtils.addHomeDir(roleFolder, homeDir);
-    procedureWalFolder = PropertiesUtils.addHomeDir(procedureWalFolder, homeDir);
+    userFolder = PropertiesUtils.addHomeDir(homeDir, userFolder);
+    roleFolder = PropertiesUtils.addHomeDir(homeDir, roleFolder);
+    procedureWalFolder = PropertiesUtils.addHomeDir(homeDir, procedureWalFolder);
   }
 
   public String getClusterName() {
