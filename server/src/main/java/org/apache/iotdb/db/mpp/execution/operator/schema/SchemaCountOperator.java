@@ -83,6 +83,9 @@ public class SchemaCountOperator<T extends ISchemaInfo> implements SourceOperato
       schemaReader.next();
       count++;
     }
+    if (!schemaReader.isSuccess()) {
+      throw new RuntimeException(schemaReader.getFailure());
+    }
 
     tsBlockBuilder.getTimeColumnBuilder().writeLong(0L);
     tsBlockBuilder.getColumnBuilder(0).writeLong(count);
