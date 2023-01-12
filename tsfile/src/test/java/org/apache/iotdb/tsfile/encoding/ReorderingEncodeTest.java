@@ -687,7 +687,7 @@ public class ReorderingEncodeTest {
 
         String[] record = {
                 f.toString(),
-                "Reordering",
+                "RD",
                 String.valueOf(encodeTime),
                 String.valueOf(decodeTime),
                 String.valueOf(compressed_size),
