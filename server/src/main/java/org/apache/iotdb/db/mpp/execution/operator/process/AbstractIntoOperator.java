@@ -406,8 +406,9 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
         times[rowCount] = tsBlock.getTimeByIndex(lastReadIndex);
 
         for (int i = 0; i < measurements.length; ++i) {
-          Column valueColumn = tsBlock.getValueColumns()[inputLocations[i].getValueColumnIndex()];
-          Type sourceTypeConvertor = sourceTypeConvertors.get(i);
+          int valueColumnIndex = inputLocations[i].getValueColumnIndex();
+          Column valueColumn = tsBlock.getValueColumns()[valueColumnIndex];
+          Type sourceTypeConvertor = sourceTypeConvertors.get(valueColumnIndex);
 
           // if the value is NULL
           if (valueColumn.isNull(lastReadIndex)) {
