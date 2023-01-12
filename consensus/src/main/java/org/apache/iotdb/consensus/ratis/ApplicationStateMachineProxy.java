@@ -134,7 +134,9 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
         if (!firstTry) {
           Thread.sleep(retryPolicy.getSleepTime());
         }
-        TSStatus result = applicationStateMachine.write(applicationRequest);
+        IConsensusRequest deserializedRequest =
+            applicationStateMachine.deserializeRequest(applicationRequest);
+        TSStatus result = applicationStateMachine.write(deserializedRequest);
 
         if (firstTry) {
           finalStatus = result;

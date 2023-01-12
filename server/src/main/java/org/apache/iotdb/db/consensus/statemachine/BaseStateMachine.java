@@ -27,7 +27,6 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.wal.buffer.WALEntry;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

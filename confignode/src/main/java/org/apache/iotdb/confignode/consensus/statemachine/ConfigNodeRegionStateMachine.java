@@ -96,28 +96,36 @@ public class ConfigNodeRegionStateMachine
 
   @Override
   public TSStatus write(IConsensusRequest request) {
-    ConfigPhysicalPlan plan;
+    if (request == null) {
+      return new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
+    }
+    return write((ConfigPhysicalPlan) request);
+  }
+
+  @Override
+  public IConsensusRequest deserializeRequest(IConsensusRequest request) {
+    IConsensusRequest result;
     if (request instanceof ByteBufferConsensusRequest) {
       try {
-        plan = ConfigPhysicalPlan.Factory.create(request.serializeToByteBuffer());
+        result = ConfigPhysicalPlan.Factory.create(request.serializeToByteBuffer());
       } catch (Throwable e) {
         LOGGER.error(
             "Deserialization error for write plan, request: {}, bytebuffer: {}",
             request,
             request.serializeToByteBuffer(),
             e);
-        return new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
+        return null;
       }
     } else if (request instanceof ConfigPhysicalPlan) {
-      plan = (ConfigPhysicalPlan) request;
+      result = request;
     } else {
       LOGGER.error(
           "Unexpected write plan, request: {}, bytebuffer: {}",
           request,
           request.serializeToByteBuffer());
-      return new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
+      return null;
     }
-    return write(plan);
+    return result;
   }
 
   /** Transmit PhysicalPlan to confignode.service.executor.PlanExecutor */

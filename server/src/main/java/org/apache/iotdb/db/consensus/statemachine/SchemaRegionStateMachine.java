@@ -47,10 +47,14 @@ public class SchemaRegionStateMachine extends BaseStateMachine {
   }
 
   @Override
-  public void start() {}
+  public void start() {
+    // do nothing
+  }
 
   @Override
-  public void stop() {}
+  public void stop() {
+    // do nothing
+  }
 
   @Override
   public boolean isReadOnly() {
@@ -75,6 +79,11 @@ public class SchemaRegionStateMachine extends BaseStateMachine {
       logger.error(e.getMessage(), e);
       return new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
     }
+  }
+
+  @Override
+  public IConsensusRequest deserializeRequest(IConsensusRequest request) {
+    return request;
   }
 
   @Override

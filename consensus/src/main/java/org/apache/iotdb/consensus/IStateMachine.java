@@ -47,11 +47,18 @@ public interface IStateMachine {
   }
 
   /**
-   * apply a write-request from user
+   * apply a write-request from user. please use deserializeRequest to deserialize request before
+   *
+   * @param IConsensusRequest PlanNode
+   */
+  TSStatus write(IConsensusRequest IConsensusRequest);
+
+  /**
+   * deserialize IConsensusRequest to PlanNode
    *
    * @param IConsensusRequest write request
    */
-  TSStatus write(IConsensusRequest IConsensusRequest);
+  IConsensusRequest deserializeRequest(IConsensusRequest IConsensusRequest);
 
   /**
    * read local data and return
