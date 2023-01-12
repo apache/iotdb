@@ -103,7 +103,7 @@ public class IoTConsensusServerImpl {
   private final ConsensusReqReader reader;
   private volatile boolean active;
   private String newSnapshotDirName;
-  private final Pattern snapshotIndexPatten = Pattern.compile(".*[^\\d](?=(\\d+))");
+  private static final Pattern snapshotIndexPatten = Pattern.compile(".*[^\\d](?=(\\d+))");
   private final IClientManager<TEndPoint, SyncIoTConsensusServiceClient> syncClientManager;
   private final IoTConsensusServerMetrics metrics;
 
