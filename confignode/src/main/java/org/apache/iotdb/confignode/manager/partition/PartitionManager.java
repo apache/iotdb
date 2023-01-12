@@ -29,6 +29,8 @@ import org.apache.iotdb.commons.cluster.RegionRoleType;
 import org.apache.iotdb.commons.cluster.RegionStatus;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
+import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.loadbalance.RegionGroupExtensionPolicy;
 import org.apache.iotdb.commons.partition.DataPartitionTable;
 import org.apache.iotdb.commons.partition.SchemaPartitionTable;
@@ -105,14 +107,14 @@ public class PartitionManager {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PartitionManager.class);
 
-  private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
+  private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
   private static final RegionGroupExtensionPolicy SCHEMA_REGION_GROUP_EXTENSION_POLICY =
-      CONF.getSchemaRegionGroupExtensionPolicy();
+    COMMON_CONFIG.getSchemaRegionGroupExtensionPolicy();
   private static final int SCHEMA_REGION_GROUP_PER_DATABASE =
-      CONF.getSchemaRegionGroupPerDatabase();
+    COMMON_CONFIG.getSchemaRegionGroupPerDatabase();
   private static final RegionGroupExtensionPolicy DATA_REGION_GROUP_EXTENSION_POLICY =
-      CONF.getDataRegionGroupExtensionPolicy();
-  private static final int DATA_REGION_GROUP_PER_DATABASE = CONF.getDataRegionGroupPerDatabase();
+    COMMON_CONFIG.getDataRegionGroupExtensionPolicy();
+  private static final int DATA_REGION_GROUP_PER_DATABASE = COMMON_CONFIG.getDataRegionGroupPerDatabase();
 
   private final IManager configManager;
   private final PartitionInfo partitionInfo;
@@ -143,7 +145,7 @@ public class PartitionManager {
   private void setSeriesPartitionExecutor() {
     this.executor =
         SeriesPartitionExecutor.getSeriesPartitionExecutor(
-            CONF.getSeriesPartitionExecutorClass(), CONF.getSeriesSlotNum());
+          COMMON_CONFIG.getSeriesPartitionExecutorClass(), COMMON_CONFIG.getSeriesSlotNum());
   }
 
   // ======================================================
@@ -420,14 +422,14 @@ public class PartitionManager {
               + unassignedPartitionSlotsCount;
       float maxRegionGroupCount =
           getClusterSchemaManager().getMaxRegionGroupNum(storageGroup, consensusGroupType);
-      float maxSlotCount = CONF.getSeriesSlotNum();
+      float maxSlotCount = COMMON_CONFIG.getSeriesSlotNum();
 
       /* RegionGroup extension is required in the following cases */
       // 1. The number of current RegionGroup of the StorageGroup is less than the least number
       int leastRegionGroupNum =
           TConsensusGroupType.SchemaRegion.equals(consensusGroupType)
-              ? CONF.getLeastSchemaRegionGroupNum()
-              : CONF.getLeastDataRegionGroupNum();
+              ? COMMON_CONFIG.getLeastSchemaRegionGroupNum()
+              : COMMON_CONFIG.getLeastDataRegionGroupNum();
       if (allocatedRegionGroupCount < leastRegionGroupNum) {
         // Let the sum of unassignedPartitionSlotsCount and allocatedRegionGroupCount
         // no less than the leastRegionGroupNum
@@ -702,7 +704,7 @@ public class PartitionManager {
                 ? req.getTimeSlotId()
                 : (req.isSetTimeStamp()
                     ? new TTimePartitionSlot(
-                        req.getTimeStamp() - req.getTimeStamp() % CONF.getTimePartitionInterval())
+                        req.getTimeStamp() - req.getTimeStamp() % COMMON_CONFIG.getTimePartitionInterval())
                     : null));
     return (GetRegionIdResp) getConsensusManager().read(plan).getDataset();
   }

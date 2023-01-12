@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.mpp.plan.planner.plan.node.write;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.consensus.iot.wal.ConsensusReqReader;
@@ -249,7 +250,7 @@ public abstract class InsertNode extends WritePlanNode {
   /** Check whether data types are matched with measurement schemas */
   protected void selfCheckDataTypes() throws DataTypeMismatchException, PathNotExistException {
     for (int i = 0; i < measurementSchemas.length; i++) {
-      if (IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
+      if (CommonDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
         // if enable partial insert, mark failed measurements with exception
         if (measurementSchemas[i] == null) {
           markFailedMeasurement(

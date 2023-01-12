@@ -62,7 +62,7 @@ import java.util.ServiceLoader;
 
 public class IoTDBDescriptor {
 
-  private static final Logger logger = LoggerFactory.getLogger(IoTDBDescriptor.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBDescriptor.class);
   private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
 
   private final IoTDBConfig CONF = new IoTDBConfig();
@@ -72,7 +72,7 @@ public class IoTDBDescriptor {
     ServiceLoader<IPropertiesLoader> propertiesLoaderServiceLoader =
         ServiceLoader.load(IPropertiesLoader.class);
     for (IPropertiesLoader loader : propertiesLoaderServiceLoader) {
-      logger.info("Will reload properties from {} ", loader.getClass().getName());
+      LOGGER.info("Will reload properties from {} ", loader.getClass().getName());
       Properties properties = loader.loadProperties();
       loadProperties(properties);
       CONF.setCustomizedProperties(loader.getCustomizedProperties());
@@ -116,7 +116,7 @@ public class IoTDBDescriptor {
     if (uri != null) {
       return uri;
     }
-    logger.warn(
+    LOGGER.warn(
         "Cannot find IOTDB_HOME, IOTDB_CONF, CONFIGNODE_HOME and CONFIGNODE_CONF environment variable when loading "
             + "config file {}, use default configuration",
         CommonConfig.CONF_FILE_NAME);
@@ -130,44 +130,47 @@ public class IoTDBDescriptor {
     Properties commonProperties = new Properties();
     if (url != null) {
       try (InputStream inputStream = url.openStream()) {
-        logger.info("Start to read config file {}", url);
+        LOGGER.info("Start to read config file {}", url);
         commonProperties.load(inputStream);
       } catch (FileNotFoundException e) {
-        logger.warn("Fail to find config file {}", url, e);
+        LOGGER.warn("Fail to find config file {}", url, e);
       } catch (IOException e) {
-        logger.warn("Cannot load config file, use default configuration", e);
+        LOGGER.warn("Cannot load config file, use default configuration", e);
       } catch (Exception e) {
-        logger.warn("Incorrect format in config file, use default configuration", e);
+        LOGGER.warn("Incorrect format in config file, use default configuration", e);
       }
     } else {
-      logger.warn(
+      LOGGER.warn(
           "Couldn't load the configuration {} from any of the known sources.",
           CommonConfig.CONF_FILE_NAME);
     }
     url = getPropsUrl(IoTDBConfig.CONFIG_NAME);
     if (url != null) {
       try (InputStream inputStream = url.openStream()) {
-        logger.info("Start to read config file {}", url);
+        LOGGER.info("Start to read config file {}", url);
         Properties properties = new Properties();
         properties.load(inputStream);
         commonProperties.putAll(properties);
         loadProperties(commonProperties);
       } catch (FileNotFoundException e) {
-        logger.warn("Fail to find config file {}", url, e);
+        LOGGER.warn("Fail to find config file {}", url, e);
       } catch (IOException e) {
-        logger.warn("Cannot load config file, use default configuration", e);
+        LOGGER.warn("Cannot load config file, use default configuration", e);
       } catch (Exception e) {
-        logger.warn("Incorrect format in config file, use default configuration", e);
+        LOGGER.warn("Incorrect format in config file, use default configuration", e);
       } finally {
         // update all data seriesPath
         CONF.updatePath();
+
+        CommonDescriptor.getInstance().initCommonConfigDir(CONF.getDnSystemDir());
+
         MetricConfigDescriptor.getInstance().loadProps(commonProperties);
         MetricConfigDescriptor.getInstance()
             .getMetricConfig()
             .updateRpcInstance(CONF.getDnInternalAddress(), CONF.getDnInternalPort());
       }
     } else {
-      logger.warn(
+      LOGGER.warn(
           "Couldn't load the configuration {} from any of the known sources.",
           IoTDBConfig.CONFIG_NAME);
     }
@@ -250,7 +253,7 @@ public class IoTDBDescriptor {
       try {
         CONF.setDnTargetConfigNodeList(NodeUrlUtils.parseTEndPointUrls(configNodeUrls));
       } catch (BadNodeUrlException e) {
-        logger.error(
+        LOGGER.error(
             "ConfigNodes are set in wrong format, please set them like 127.0.0.1:10710,127.0.0.1:10712");
       }
     }
@@ -270,6 +273,7 @@ public class IoTDBDescriptor {
                     "dn_rpc_thrift_compression_enable",
                     Boolean.toString(CONF.isDnRpcThriftCompressionEnable()))
                 .trim()));
+    COMMON_CONFIG.setRpcThriftCompressionEnable(CONF.isDnRpcThriftCompressionEnable());
 
     CONF.setDnRpcAdvancedCompressionEnable(
         Boolean.parseBoolean(
@@ -325,6 +329,7 @@ public class IoTDBDescriptor {
                 .getProperty(
                     "dn_connection_timeout_ms", String.valueOf(CONF.getDnConnectionTimeoutInMS()))
                 .trim()));
+    COMMON_CONFIG.setConnectionTimeoutInMS(CONF.getDnConnectionTimeoutInMS());
 
     CONF.setDnSelectorThreadCountOfClientManager(
         Integer.parseInt(
@@ -333,6 +338,8 @@ public class IoTDBDescriptor {
                     "dn_selector_thread_count_of_client_manager",
                     String.valueOf(CONF.getDnSelectorThreadCountOfClientManager()))
                 .trim()));
+    COMMON_CONFIG.setSelectorThreadCountOfClientManager(
+        CONF.getDnSelectorThreadCountOfClientManager());
 
     CONF.setDnCoreClientCountForEachNodeInClientManager(
         Integer.parseInt(
@@ -341,6 +348,8 @@ public class IoTDBDescriptor {
                     "dn_core_client_count_for_each_node_in_client_manager",
                     String.valueOf(CONF.getDnCoreClientCountForEachNodeInClientManager()))
                 .trim()));
+    COMMON_CONFIG.setCoreClientCountForEachNodeInClientManager(
+        CONF.getDnCoreClientCountForEachNodeInClientManager());
 
     CONF.setDnMaxClientCountForEachNodeInClientManager(
         Integer.parseInt(
@@ -349,6 +358,8 @@ public class IoTDBDescriptor {
                     "dn_max_client_count_for_each_node_in_client_manager",
                     String.valueOf(CONF.getDnMaxClientCountForEachNodeInClientManager()))
                 .trim()));
+    COMMON_CONFIG.setMaxClientCountForEachNodeInClientManager(
+        CONF.getDnMaxClientCountForEachNodeInClientManager());
   }
 
   private void loadDirectoryConfiguration(Properties properties) {
@@ -392,6 +403,7 @@ public class IoTDBDescriptor {
     CONF.setDnTracingDir(properties.getProperty("dn_tracing_dir", CONF.getDnTracingDir()));
 
     CONF.setDnSyncDir(properties.getProperty("dn_sync_dir", CONF.getDnSyncDir()).trim());
+    COMMON_CONFIG.setSyncDir(CONF.getDnSyncDir());
   }
 
   private void loadCompactionConfigurations(Properties properties) {
@@ -709,21 +721,21 @@ public class IoTDBDescriptor {
     Properties properties = new Properties();
 
     if (url == null) {
-      logger.warn("Couldn't load the configuration from any of the known sources.");
+      LOGGER.warn("Couldn't load the configuration from any of the known sources.");
       return;
     }
     try (InputStream inputStream = url.openStream()) {
-      logger.info("Start to reload config file {}", url);
+      LOGGER.info("Start to reload config file {}", url);
       properties.load(inputStream);
       loadHotModifiedProps(properties);
     } catch (Exception e) {
-      logger.warn("Fail to reload config file {}", url, e);
+      LOGGER.warn("Fail to reload config file {}", url, e);
       throw new QueryProcessException(
           String.format("Fail to reload config file %s because %s", url, e.getMessage()));
     }
 
     ReloadLevel reloadLevel = MetricConfigDescriptor.getInstance().loadHotProps(properties);
-    logger.info("Reload metric service in level {}", reloadLevel);
+    LOGGER.info("Reload metric service in level {}", reloadLevel);
     if (reloadLevel == ReloadLevel.RESTART_INTERNAL_REPORTER) {
       IoTDBInternalReporter internalReporter;
       if (MetricConfigDescriptor.getInstance().getMetricConfig().getInternalReportType()

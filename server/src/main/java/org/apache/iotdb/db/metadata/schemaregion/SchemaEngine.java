@@ -22,6 +22,8 @@ package org.apache.iotdb.db.metadata.schemaregion;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
+import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
@@ -58,6 +60,7 @@ public class SchemaEngine {
 
   private static final Logger logger = LoggerFactory.getLogger(SchemaEngine.class);
 
+  private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   private volatile Map<SchemaRegionId, ISchemaRegion> schemaRegionMap;
@@ -120,18 +123,19 @@ public class SchemaEngine {
     Map<PartialPath, List<SchemaRegionId>> schemaRegionInfo = initSchemaRegion();
 
     if (!(config.isClusterMode()
-            && config
+            && COMMON_CONFIG
                 .getSchemaRegionConsensusProtocolClass()
+                .getProtocol()
                 .equals(ConsensusFactory.RATIS_CONSENSUS))
-        && config.getSyncMlogPeriodInMs() != 0) {
+        && COMMON_CONFIG.getSyncMlogPeriodInMs() != 0) {
       timedForceMLogThread =
           IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
               "SchemaEngine-TimedForceMLog-Thread");
       ScheduledExecutorUtil.unsafelyScheduleAtFixedRate(
           timedForceMLogThread,
           this::forceMlog,
-          config.getSyncMlogPeriodInMs(),
-          config.getSyncMlogPeriodInMs(),
+          COMMON_CONFIG.getSyncMlogPeriodInMs(),
+          COMMON_CONFIG.getSyncMlogPeriodInMs(),
           TimeUnit.MILLISECONDS);
     }
 

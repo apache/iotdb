@@ -21,6 +21,8 @@ package org.apache.iotdb.db.auth;
 
 import org.apache.iotdb.commons.auth.entity.Role;
 import org.apache.iotdb.commons.auth.entity.User;
+import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 
 import com.github.benmanes.caffeine.cache.Cache;
@@ -34,18 +36,18 @@ import java.util.concurrent.TimeUnit;
 public class BasicAuthorityCache implements IAuthorCache {
   private static final Logger logger = LoggerFactory.getLogger(BasicAuthorityCache.class);
 
-  private IoTDBDescriptor conf = IoTDBDescriptor.getInstance();
+  private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
 
   private Cache<String, User> userCache =
       Caffeine.newBuilder()
-          .maximumSize(conf.getConfig().getAuthorCacheSize())
-          .expireAfterAccess(conf.getConfig().getAuthorCacheExpireTime(), TimeUnit.MINUTES)
+          .maximumSize(COMMON_CONFIG.getAuthorCacheSize())
+          .expireAfterAccess(COMMON_CONFIG.getAuthorCacheExpireTime(), TimeUnit.MINUTES)
           .build();
 
   private Cache<String, Role> roleCache =
       Caffeine.newBuilder()
-          .maximumSize(conf.getConfig().getAuthorCacheSize())
-          .expireAfterAccess(conf.getConfig().getAuthorCacheExpireTime(), TimeUnit.MINUTES)
+          .maximumSize(COMMON_CONFIG.getAuthorCacheSize())
+          .expireAfterAccess(COMMON_CONFIG.getAuthorCacheExpireTime(), TimeUnit.MINUTES)
           .build();
 
   @Override

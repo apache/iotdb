@@ -276,22 +276,20 @@ public class IoTDBConfig {
   // Default HDFS port is 9000
   private String hdfsPort = "9000";
 
-  /* Names of Watermark methods */
-
-  /** The proportion of write memory for loading TsFile */
+  // The proportion of write memory for loading TsFile
   private final double loadTsFileProportion = 0.125;
 
-  /** Size threshold of each checkpoint file. Unit: byte */
+  // Size threshold of each checkpoint file. Unit: byte
   private volatile long checkpointFileSizeThresholdInByte = 3 * 1024 * 1024L;
 
-  /** Buffer entry size of each wal buffer. Unit: byte */
+  // Buffer entry size of each wal buffer. Unit: byte
   private int walBufferEntrySize = 16 * 1024;
 
-  /** External lib directory for ext Pipe plugins, stores user-defined JAR files */
+  // External lib directory for ext Pipe plugins, stores user-defined JAR files
   private String extPipeDir =
       IoTDBConstant.EXT_FOLDER_NAME + File.separator + IoTDBConstant.EXT_PIPE_FOLDER_NAME;
 
-  /** External lib directory for MQTT, stores user-uploaded JAR files */
+  // External lib directory for MQTT, stores user-uploaded JAR files
   private String mqttDir =
       IoTDBConstant.EXT_FOLDER_NAME + File.separator + IoTDBConstant.MQTT_FOLDER_NAME;
 
@@ -309,163 +307,136 @@ public class IoTDBConfig {
 
   private String schemaRegionConsensusDir = dnConsensusDir + File.separator + "schema_region";
 
-  /** Maximum MemTable number. Invalid when enableMemControl is true. */
+  // Maximum MemTable number. Invalid when enableMemControl is true
   private int maxMemtableNumber = 0;
 
-  /** How many threads can concurrently evaluate windows. When <= 0, use CPU core number. */
+  // How many threads can concurrently evaluate windows. When <= 0, use CPU core number
   private int windowEvaluationThreadCount = Runtime.getRuntime().availableProcessors();
 
-  /**
-   * Max number of window evaluation tasks that can be pending for execution. When <= 0, the value
-   * is 64 by default.
-   */
+  // Max number of window evaluation tasks that can be pending for execution. When <= 0, the value is 64 by default
   private int maxPendingWindowEvaluationTasks = 64;
 
-  /** When a unSequence TsFile's file size (in byte) exceed this, the TsFile is forced closed. */
+  // When a unSequence TsFile's file size (in byte) exceed this, the TsFile is forced closed
   private long unSeqTsFileSize = 0L;
 
-  /** When a sequence TsFile's file size (in byte) exceed this, the TsFile is forced closed. */
+  // When a sequence TsFile's file size (in byte) exceed this, the TsFile is forced closed
   private long seqTsFileSize = 0L;
 
-  /** Set true to enable statistics monitor service, false to disable statistics service. */
-  private boolean enableStatMonitor = false;
-
-  /** Set true to enable writing monitor time series. */
-  private boolean enableMonitorSeriesWrite = false;
-
-  /** Examining period of cache file reader : 100 seconds. Unit: millisecond */
+  // Examining period of cache file reader : 100 seconds. Unit: millisecond
   private long cacheFileReaderClearPeriod = 100000;
 
-  /** Replace implementation class of JDBC service */
+  // Replace implementation class of JDBC service
   private String rpcImplClassName = ClientRPCServiceImpl.class.getName();
 
-  /** indicate whether current mode is cluster */
+  // indicate whether current mode is cluster
   private boolean isClusterMode = false;
 
-  /**
-   * The cluster name that this DataNode joined in the cluster mode. The default value
-   * "defaultCluster" will be changed after join cluster
-   */
+  // The cluster name that this DataNode joined in the cluster mode. The default value "defaultCluster" will be changed after join cluster
   private String clusterName = "defaultCluster";
 
-  /**
-   * The DataNodeId of this DataNode for cluster mode. The default value -1 will be changed after
-   * join cluster
-   */
+  // The DataNodeId of this DataNode for cluster mode. The default value -1 will be changed after join cluster
   private int dataNodeId = -1;
 
-  /** Replace implementation class of influxdb protocol service */
-  private String influxdbImplClassName = NewInfluxDBServiceImpl.class.getName();
+  // Replace implementation class of influxdb protocol service
+  private final String influxdbImplClassName = NewInfluxDBServiceImpl.class.getName();
 
-  /** How many threads will be set up to perform settle tasks. */
+  // How many threads will be set up to perform settle tasks
   private int settleThreadNum = 1;
 
-  /** The limit of compaction merge can reach per second */
+  // The limit of compaction merge can reach per second
   private int compactionWriteThroughputMbPerSec = 16;
 
-  /**
-   * How many thread will be set up to perform compaction, 10 by default. Set to 1 when less than or
-   * equal to 0.
-   */
+  // How many thread will be set up to perform compaction, 10 by default. Set to 1 when less than or equal to 0
   private int compactionThreadCount = 10;
 
-  /** Default DFS NameServices is hdfsnamespace */
+  // Default DFS NameServices is hdfsnamespace
   private String dfsNameServices = "hdfsnamespace";
 
-  /** Default DFS HA name nodes are nn1 and nn2 */
+  // Default DFS HA name nodes are nn1 and nn2
   private String dfsHaNamenodes = "nn1,nn2";
 
-  /** Default DFS HA automatic failover is enabled */
+  // Default DFS HA automatic failover is enabled
   private boolean dfsHaAutomaticFailoverEnabled = true;
 
-  /**
-   * Default DFS client failover proxy provider is
-   * "org.apache.hadoop.hdfs.server.namenode.ha.ConfiguredFailoverProxyProvider"
-   */
+  // Default DFS client failover proxy provider is "org.apache.hadoop.hdfs.server.namenode.ha.ConfiguredFailoverProxyProvider"
   private String dfsClientFailoverProxyProvider =
       "org.apache.hadoop.hdfs.server.namenode.ha.ConfiguredFailoverProxyProvider";
 
-  /** whether use kerberos to authenticate hdfs */
+  // Whether use kerberos to authenticate hdfs
   private boolean useKerberos = false;
 
-  /** full path of kerberos keytab file */
+  // full path of kerberos keytab file
   private String kerberosKeytabFilePath = "/path";
 
-  /** kerberos principal */
+  // kerberos principal
   private String kerberosPrincipal = "your principal";
 
-  /** Time partition interval in milliseconds */
+  // Time partition interval in milliseconds
   private long dnTimePartitionInterval = 604_800_000;
 
-  /**
-   * Level of TimeIndex, which records the start time and end time of TsFileResource. Currently,
-   * DEVICE_TIME_INDEX and FILE_TIME_INDEX are supported, and could not be changed after first set.
-   */
+  // Level of TimeIndex, which records the start time and end time of TsFileResource. Currently,
+  // DEVICE_TIME_INDEX and FILE_TIME_INDEX are supported, and could not be changed after first set
   private TimeIndexLevel timeIndexLevel = TimeIndexLevel.DEVICE_TIME_INDEX;
 
-  // just for test
-  // wait for 60 second by default.
+  // Just for test wait for 60 second by default.
   private int thriftServerAwaitTimeForStopService = 60;
 
-  /** The cached record size (in MB) of each series in group by fill query */
+  // The cached record size (in MB) of each series in group by fill query
   private float groupByFillCacheSizeInMB = (float) 1.0;
 
   // time in nanosecond precision when starting up
-  private long startUpNanosecond = System.nanoTime();
+  private final long startUpNanosecond = System.nanoTime();
 
-  /**
-   * whether enable the rpc service. This parameter has no a corresponding field in the
-   * iotdb-common.properties
-   */
+  // Whether enable the rpc service. This parameter has no a corresponding field in the iotdb-common.properties
   private boolean enableRpcService = true;
 
-  /** the method to transform device path to device id, can be 'Plain' or 'SHA256' */
+  // The method to transform device path to device id, can be 'Plain' or 'SHA256'
   private String deviceIDTransformationMethod = "Plain";
 
-  /** whether to use id table. ATTENTION: id table is not compatible with alias */
+  // Whether to use id table. ATTENTION: id table is not compatible with alias
   private boolean enableIDTable = false;
 
-  /**
-   * whether create mapping file of id table. This file can map device id in tsfile to device path
-   */
+  // Whether create mapping file of id table. This file can map device id in tsfile to device path
   private boolean enableIDTableLogFile = false;
 
-  /** whether to use persistent schema mode */
+  // Whether to use persistent schema mode
   private String schemaEngineMode = "Memory";
 
-  /** the memory used for metadata cache when using persistent schema */
+  // The memory used for metadata cache when using persistent schema
   private int cachedMNodeSizeInSchemaFileMode = -1;
 
-  /** the minimum size (in bytes) of segment inside a schema file page */
+  // The minimum size (in bytes) of segment inside a schema file page
   private short minimumSegmentInSchemaFile = 0;
 
-  /** cache size for pages in one schema file */
+  // Cache size for pages in one schema file
   private int pageCacheSizeInSchemaFile = 1024;
 
-  /** maximum number of logged pages before log erased */
+  // Maximum number of logged pages before log erased
   private int schemaFileLogSize = 16384;
 
   /** CQ related */
   private long cqMinEveryIntervalInMs = 1_000;
 
-  /** whether to enable the audit log * */
+  // Whether to enable the audit log
   private boolean enableAuditLog = false;
 
-  /** Output location of audit logs * */
+  // Output location of audit logs
   private List<AuditLogStorage> auditLogStorage =
       Arrays.asList(AuditLogStorage.IOTDB, AuditLogStorage.LOGGER);
 
-  /** Indicates the category collection of audit logs * */
+  // Indicates the category collection of audit logs
   private List<AuditLogOperation> auditLogOperation =
       Arrays.asList(AuditLogOperation.DML, AuditLogOperation.DDL, AuditLogOperation.QUERY);
 
-  /** whether the local write api records audit logs * */
+  // whether the local write api records audit logs
   private boolean enableAuditLogForNativeInsertApi = true;
 
   // customizedProperties, this should be empty by default.
   private Properties customizedProperties = new Properties();
 
-  IoTDBConfig() {}
+  IoTDBConfig() {
+    // Empty constructor
+  }
 
   public float getGroupByFillCacheSizeInMB() {
     return groupByFillCacheSizeInMB;

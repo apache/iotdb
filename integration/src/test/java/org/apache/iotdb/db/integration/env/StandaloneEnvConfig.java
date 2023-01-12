@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.integration.env;
 
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.itbase.env.BaseConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -41,12 +42,7 @@ public class StandaloneEnvConfig implements BaseConfig {
   }
 
   public BaseConfig setMemtableSizeThreshold(long memtableSizeThreshold) {
-    IoTDBDescriptor.getInstance().getConfig().setMemtableSizeThreshold(memtableSizeThreshold);
-    return this;
-  }
-
-  public BaseConfig setDataRegionNum(int dataRegionNum) {
-    IoTDBDescriptor.getInstance().getConfig().setDataRegionNum(dataRegionNum);
+    CommonDescriptor.getInstance().getConfig().setMemtableSizeThreshold(memtableSizeThreshold);
     return this;
   }
 
@@ -61,9 +57,9 @@ public class StandaloneEnvConfig implements BaseConfig {
   }
 
   public BaseConfig setMaxQueryDeduplicatedPathNum(int maxQueryDeduplicatedPathNum) {
-    IoTDBDescriptor.getInstance()
+    CommonDescriptor.getInstance()
         .getConfig()
-        .setMaxQueryDeduplicatedPathNum(maxQueryDeduplicatedPathNum);
+        .setMaxDeduplicatedPathNum(maxQueryDeduplicatedPathNum);
     return this;
   }
 
@@ -82,21 +78,21 @@ public class StandaloneEnvConfig implements BaseConfig {
   }
 
   public BaseConfig setUdfCollectorMemoryBudgetInMB(float udfCollectorMemoryBudgetInMB) {
-    IoTDBDescriptor.getInstance()
+    CommonDescriptor.getInstance()
         .getConfig()
         .setUdfCollectorMemoryBudgetInMB(udfCollectorMemoryBudgetInMB);
     return this;
   }
 
   public BaseConfig setUdfTransformerMemoryBudgetInMB(float udfTransformerMemoryBudgetInMB) {
-    IoTDBDescriptor.getInstance()
+    CommonDescriptor.getInstance()
         .getConfig()
         .setUdfTransformerMemoryBudgetInMB(udfTransformerMemoryBudgetInMB);
     return this;
   }
 
   public BaseConfig setUdfReaderMemoryBudgetInMB(float udfReaderMemoryBudgetInMB) {
-    IoTDBDescriptor.getInstance()
+    CommonDescriptor.getInstance()
         .getConfig()
         .setUdfReaderMemoryBudgetInMB(udfReaderMemoryBudgetInMB);
     return this;
@@ -134,7 +130,7 @@ public class StandaloneEnvConfig implements BaseConfig {
   }
 
   public BaseConfig setAutoCreateSchemaEnabled(boolean enableAutoCreateSchema) {
-    IoTDBDescriptor.getInstance().getConfig().setAutoCreateSchemaEnabled(enableAutoCreateSchema);
+    CommonDescriptor.getInstance().getConfig().setEnableAutoCreateSchema(enableAutoCreateSchema);
     return this;
   }
 }

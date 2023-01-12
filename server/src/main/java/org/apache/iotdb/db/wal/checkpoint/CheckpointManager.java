@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.wal.checkpoint;
 
+import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -44,6 +45,7 @@ import java.util.concurrent.locks.ReentrantLock;
 /** This class is used to manage checkpoints of one wal node */
 public class CheckpointManager implements AutoCloseable {
   private static final Logger logger = LoggerFactory.getLogger(CheckpointManager.class);
+  private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   /** WALNode identifier of this checkpoint manager */
@@ -260,7 +262,7 @@ public class CheckpointManager implements AutoCloseable {
   public long getTotalCostOfActiveMemTables() {
     long totalCost = 0;
 
-    if (!config.isEnableMemControl()) {
+    if (!COMMON_CONFIG.isEnableMemControl()) {
       infoLock.lock();
       try {
         totalCost = memTableId2Info.size();

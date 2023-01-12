@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.confignode.conf;
 
+import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.BadNodeUrlException;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
@@ -39,6 +41,7 @@ public class ConfigNodeDescriptor {
   private static final Logger LOGGER = LoggerFactory.getLogger(ConfigNodeDescriptor.class);
 
   private final ConfigNodeConfig CONF = new ConfigNodeConfig();
+  private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
 
   private ConfigNodeDescriptor() {
     loadProps();
@@ -46,6 +49,19 @@ public class ConfigNodeDescriptor {
 
   public ConfigNodeConfig getConf() {
     return CONF;
+  }
+
+  public static ConfigNodeDescriptor getInstance() {
+    return ConfigNodeDescriptorHolder.INSTANCE;
+  }
+
+  private static class ConfigNodeDescriptorHolder {
+
+    private static final ConfigNodeDescriptor INSTANCE = new ConfigNodeDescriptor();
+
+    private ConfigNodeDescriptorHolder() {
+      // empty constructor
+    }
   }
 
   /**
@@ -98,6 +114,9 @@ public class ConfigNodeDescriptor {
         LOGGER.warn("Couldn't load ConfigNode conf file, use default config", e);
       } finally {
         CONF.formulateFolders();
+
+        CommonDescriptor.getInstance().initCommonConfigDir(CONF.getCnSystemDir());
+
         MetricConfigDescriptor.getInstance().loadProps(properties);
         MetricConfigDescriptor.getInstance()
             .getMetricConfig()
@@ -111,7 +130,41 @@ public class ConfigNodeDescriptor {
   }
 
   private void loadProperties(Properties properties) throws BadNodeUrlException, IOException {
+    /* ConfigNode RPC Configuration */
+    loadConfigNodeRPCConfiguration(properties);
 
+    /* Target ConfigNodes */
+    loadTargetConfigNodes(properties);
+
+    /* Directory Configuration */
+    loadDirectoryConfiguration(properties);
+
+    try {
+      CONF.setRegionGroupAllocatePolicy(
+          RegionBalancer.RegionGroupAllocatePolicy.valueOf(
+              properties
+                  .getProperty(
+                      "region_group_allocate_policy", CONF.getRegionGroupAllocatePolicy().name())
+                  .trim()));
+    } catch (IllegalArgumentException e) {
+      LOGGER.warn(
+          "The configured region allocate strategy does not exist, use the default: GREEDY!");
+    }
+
+    String routePriorityPolicy =
+        properties.getProperty("route_priority_policy", CONF.getRoutePriorityPolicy()).trim();
+    if (IPriorityBalancer.GREEDY_POLICY.equals(routePriorityPolicy)
+        || IPriorityBalancer.LEADER_POLICY.equals(routePriorityPolicy)) {
+      CONF.setRoutePriorityPolicy(routePriorityPolicy);
+    } else {
+      throw new IOException(
+          String.format(
+              "Unknown route_priority_policy: %s, please set to \"LEADER\" or \"GREEDY\"",
+              routePriorityPolicy));
+    }
+  }
+
+  private void loadConfigNodeRPCConfiguration(Properties properties) {
     CONF.setCnInternalAddress(
         properties
             .getProperty(IoTDBConstant.CN_INTERNAL_ADDRESS, CONF.getCnInternalAddress())
@@ -130,26 +183,25 @@ public class ConfigNodeDescriptor {
                 .getProperty(
                     IoTDBConstant.CN_CONSENSUS_PORT, String.valueOf(CONF.getCnConsensusPort()))
                 .trim()));
+  }
 
+  private void loadTargetConfigNodes(Properties properties) throws BadNodeUrlException {
     // TODO: Enable multiple target_config_node_list
     String targetConfigNodes =
         properties.getProperty(IoTDBConstant.CN_TARGET_CONFIG_NODE_LIST, null);
     if (targetConfigNodes != null) {
       CONF.setCnTargetConfigNode(NodeUrlUtils.parseTEndPointUrl(targetConfigNodes.trim()));
     }
+  }
 
-    try {
-      CONF.setRegionGroupAllocatePolicy(
-          RegionBalancer.RegionGroupAllocatePolicy.valueOf(
-              properties
-                  .getProperty(
-                      "region_group_allocate_policy", CONF.getRegionGroupAllocatePolicy().name())
-                  .trim()));
-    } catch (IllegalArgumentException e) {
-      LOGGER.warn(
-          "The configured region allocate strategy does not exist, use the default: GREEDY!");
-    }
+  private void loadDirectoryConfiguration(Properties properties) {
+    CONF.setCnSystemDir(properties.getProperty("cn_system_dir", CONF.getCnSystemDir()).trim());
 
+    CONF.setCnConsensusDir(
+        properties.getProperty("cn_consensus_dir", CONF.getCnConsensusDir()).trim());
+  }
+
+  private void loadThriftRPCConfiguration(Properties properties) {
     CONF.setCnRpcThriftCompressionEnable(
         Boolean.parseBoolean(
             properties
@@ -157,6 +209,7 @@ public class ConfigNodeDescriptor {
                     "cn_rpc_thrift_compression_enable",
                     String.valueOf(CONF.isCnRpcThriftCompressionEnable()))
                 .trim()));
+    COMMON_CONFIG.setRpcThriftCompressionEnable(CONF.isCnRpcThriftCompressionEnable());
 
     CONF.setCnRpcAdvancedCompressionEnable(
         Boolean.parseBoolean(
@@ -194,6 +247,7 @@ public class ConfigNodeDescriptor {
                 .getProperty(
                     "cn_connection_timeout_ms", String.valueOf(CONF.getCnConnectionTimeoutMs()))
                 .trim()));
+    COMMON_CONFIG.setConnectionTimeoutInMS(CONF.getCnConnectionTimeoutMs());
 
     CONF.setCnSelectorThreadNumsOfClientManager(
         Integer.parseInt(
@@ -202,23 +256,28 @@ public class ConfigNodeDescriptor {
                     "cn_selector_thread_nums_of_client_manager",
                     String.valueOf(CONF.getCnSelectorThreadNumsOfClientManager()))
                 .trim()));
+    COMMON_CONFIG.setSelectorThreadCountOfClientManager(
+        CONF.getCnSelectorThreadNumsOfClientManager());
 
-    CONF.setCnSystemDir(properties.getProperty("cn_system_dir", CONF.getCnSystemDir()).trim());
+    CONF.setCnCoreClientCountForEachNodeInClientManager(
+        Integer.parseInt(
+            properties
+                .getProperty(
+                    "cn_core_client_count_for_each_node_in_client_manager",
+                    String.valueOf(CONF.getCnCoreClientCountForEachNodeInClientManager()))
+                .trim()));
+    COMMON_CONFIG.setCoreClientCountForEachNodeInClientManager(
+        CONF.getCnCoreClientCountForEachNodeInClientManager());
 
-    CONF.setCnConsensusDir(
-        properties.getProperty("cn_consensus_dir", CONF.getCnConsensusDir()).trim());
-
-    String routePriorityPolicy =
-        properties.getProperty("route_priority_policy", CONF.getRoutePriorityPolicy()).trim();
-    if (IPriorityBalancer.GREEDY_POLICY.equals(routePriorityPolicy)
-        || IPriorityBalancer.LEADER_POLICY.equals(routePriorityPolicy)) {
-      CONF.setRoutePriorityPolicy(routePriorityPolicy);
-    } else {
-      throw new IOException(
-          String.format(
-              "Unknown route_priority_policy: %s, please set to \"LEADER\" or \"GREEDY\"",
-              routePriorityPolicy));
-    }
+    CONF.setCnMaxClientCountForEachNodeInClientManager(
+        Integer.parseInt(
+            properties
+                .getProperty(
+                    "cn_max_client_count_for_each_node_in_client_manager",
+                    String.valueOf(CONF.getCnMaxClientCountForEachNodeInClientManager()))
+                .trim()));
+    COMMON_CONFIG.setMaxClientCountForEachNodeInClientManager(
+        CONF.getCnMaxClientCountForEachNodeInClientManager());
   }
 
   /**
@@ -233,18 +292,5 @@ public class ConfigNodeDescriptor {
             || (NodeUrlUtils.isLocalAddress(CONF.getCnInternalAddress())
                 && NodeUrlUtils.isLocalAddress(CONF.getCnTargetConfigNode().getIp())))
         && CONF.getCnInternalPort() == CONF.getCnTargetConfigNode().getPort();
-  }
-
-  public static ConfigNodeDescriptor getInstance() {
-    return ConfigNodeDescriptorHolder.INSTANCE;
-  }
-
-  private static class ConfigNodeDescriptorHolder {
-
-    private static final ConfigNodeDescriptor INSTANCE = new ConfigNodeDescriptor();
-
-    private ConfigNodeDescriptorHolder() {
-      // empty constructor
-    }
   }
 }

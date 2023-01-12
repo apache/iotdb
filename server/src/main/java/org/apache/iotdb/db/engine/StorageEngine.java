@@ -24,6 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
+import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.consensus.DataRegionId;
@@ -96,6 +97,7 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
 public class StorageEngine implements IService {
   private static final Logger logger = LoggerFactory.getLogger(StorageEngine.class);
 
+  private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final long TTL_CHECK_INTERVAL = 60 * 1000L;
 
@@ -172,8 +174,9 @@ public class StorageEngine implements IService {
         break;
       }
       try {
-        TimeUnit.MILLISECONDS.sleep(config.getCheckPeriodWhenInsertBlocked());
-        if (System.currentTimeMillis() - startTime > config.getMaxWaitingTimeWhenInsertBlocked()) {
+        TimeUnit.MILLISECONDS.sleep(COMMON_CONFIG.getCheckPeriodWhenInsertBlocked());
+        if (System.currentTimeMillis() - startTime
+            > COMMON_CONFIG.getMaxWaitingTimeWhenInsertBlockedInMs()) {
           throw new WriteProcessRejectException(
               "System rejected over " + (System.currentTimeMillis() - startTime) + "ms");
         }
@@ -215,7 +218,10 @@ public class StorageEngine implements IService {
 
     // wait until wal is recovered
     if (!config.isClusterMode()
-        || !config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.RATIS_CONSENSUS)) {
+        || !COMMON_CONFIG
+            .getDataRegionConsensusProtocolClass()
+            .getProtocol()
+            .equals(ConsensusFactory.RATIS_CONSENSUS)) {
       try {
         WALRecoverManager.getInstance().recover();
       } catch (WALException e) {
@@ -338,28 +344,28 @@ public class StorageEngine implements IService {
 
   private void startTimedService() {
     // timed flush sequence memtable
-    if (config.isEnableTimedFlushSeqMemtable()) {
+    if (COMMON_CONFIG.isEnableTimedFlushSeqMemtable()) {
       seqMemtableTimedFlushCheckThread =
           IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
               ThreadName.TIMED_FLUSH_SEQ_MEMTABLE.getName());
       ScheduledExecutorUtil.safelyScheduleAtFixedRate(
           seqMemtableTimedFlushCheckThread,
           this::timedFlushSeqMemTable,
-          config.getSeqMemtableFlushCheckInterval(),
-          config.getSeqMemtableFlushCheckInterval(),
+          COMMON_CONFIG.getSeqMemtableFlushCheckInterval(),
+          COMMON_CONFIG.getSeqMemtableFlushCheckInterval(),
           TimeUnit.MILLISECONDS);
       logger.info("start sequence memtable timed flush check thread successfully.");
     }
     // timed flush unsequence memtable
-    if (config.isEnableTimedFlushUnseqMemtable()) {
+    if (COMMON_CONFIG.isEnableTimedFlushUnseqMemtable()) {
       unseqMemtableTimedFlushCheckThread =
           IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
               ThreadName.TIMED_FLUSH_UNSEQ_MEMTABLE.getName());
       ScheduledExecutorUtil.safelyScheduleAtFixedRate(
           unseqMemtableTimedFlushCheckThread,
           this::timedFlushUnseqMemTable,
-          config.getUnseqMemtableFlushCheckInterval(),
-          config.getUnseqMemtableFlushCheckInterval(),
+          COMMON_CONFIG.getUnseqMemtableFlushCheckInterval(),
+          COMMON_CONFIG.getUnseqMemtableFlushCheckInterval(),
           TimeUnit.MILLISECONDS);
       logger.info("start unsequence memtable timed flush check thread successfully.");
     }
@@ -651,8 +657,9 @@ public class StorageEngine implements IService {
         region.syncDeleteDataFiles();
         region.deleteFolder(systemDir);
         if (config.isClusterMode()
-            && config
+            && COMMON_CONFIG
                 .getDataRegionConsensusProtocolClass()
+                .getProtocol()
                 .equals(ConsensusFactory.IOT_CONSENSUS)) {
           // delete wal
           WALManager.getInstance()

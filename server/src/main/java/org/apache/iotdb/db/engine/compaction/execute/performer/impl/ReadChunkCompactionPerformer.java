@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.engine.compaction.execute.performer.impl;
 
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -71,7 +72,7 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
         (long)
             ((double) SystemInfo.getInstance().getMemorySizeForCompaction()
                 / IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount()
-                * IoTDBDescriptor.getInstance().getConfig().getChunkMetadataSizeProportion());
+                * CommonDescriptor.getInstance().getConfig().getChunkMetadataSizeProportion());
     TsFileMetricManager.getInstance().addCompactionTempFileNum(true, true, 1);
     try (MultiTsFileDeviceIterator deviceIterator = new MultiTsFileDeviceIterator(seqFiles);
         TsFileIOWriter writer =

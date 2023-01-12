@@ -121,7 +121,7 @@ public class CommonDescriptor {
     }
   }
 
-  private void loadCommonProps(Properties properties) {
+  private void loadCommonProps(Properties properties) throws IOException {
 
     /* Cluster Configuration */
     CONF.setClusterName(
@@ -196,20 +196,14 @@ public class CommonDescriptor {
     loadInfluxDBRPCServiceConfiguration(properties);
   }
 
-  private void loadReplicationConfiguration(Properties properties) {
-    try {
-      CONF.setConfigNodeConsensusProtocolClass(
-          ConsensusProtocolClass.parse(
-              properties
-                  .getProperty(
-                      "config_node_consensus_protocol_class",
-                      CONF.getConfigNodeConsensusProtocolClass().getProtocol())
-                  .trim()));
-    } catch (IOException e) {
-      LOGGER.warn(
-          "Unknown config_node_consensus_protocol_class in iotdb-common.properties file, use default config",
-          e);
-    }
+  private void loadReplicationConfiguration(Properties properties) throws IOException {
+    CONF.setConfigNodeConsensusProtocolClass(
+        ConsensusProtocolClass.parse(
+            properties
+                .getProperty(
+                    "config_node_consensus_protocol_class",
+                    CONF.getConfigNodeConsensusProtocolClass().getProtocol())
+                .trim()));
 
     CONF.setSchemaReplicationFactor(
         Integer.parseInt(
@@ -218,19 +212,13 @@ public class CommonDescriptor {
                     "schema_replication_factor", String.valueOf(CONF.getSchemaReplicationFactor()))
                 .trim()));
 
-    try {
-      CONF.setSchemaRegionConsensusProtocolClass(
-          ConsensusProtocolClass.parse(
-              properties
-                  .getProperty(
-                      "schema_region_consensus_protocol_class",
-                      CONF.getSchemaRegionConsensusProtocolClass().getProtocol())
-                  .trim()));
-    } catch (IOException e) {
-      LOGGER.warn(
-          "Unknown schema_region_consensus_protocol_class in iotdb-common.properties file, use default config",
-          e);
-    }
+    CONF.setSchemaRegionConsensusProtocolClass(
+        ConsensusProtocolClass.parse(
+            properties
+                .getProperty(
+                    "schema_region_consensus_protocol_class",
+                    CONF.getSchemaRegionConsensusProtocolClass().getProtocol())
+                .trim()));
 
     CONF.setDataReplicationFactor(
         Integer.parseInt(
@@ -239,19 +227,13 @@ public class CommonDescriptor {
                     "data_replication_factor", String.valueOf(CONF.getDataReplicationFactor()))
                 .trim()));
 
-    try {
-      CONF.setDataRegionConsensusProtocolClass(
-          ConsensusProtocolClass.parse(
-              properties
-                  .getProperty(
-                      "data_region_consensus_protocol_class",
-                      CONF.getDataRegionConsensusProtocolClass().getProtocol())
-                  .trim()));
-    } catch (IOException e) {
-      LOGGER.warn(
-          "Unknown data_region_consensus_protocol_class in iotdb-common.properties file, use default config",
-          e);
-    }
+    CONF.setDataRegionConsensusProtocolClass(
+        ConsensusProtocolClass.parse(
+            properties
+                .getProperty(
+                    "data_region_consensus_protocol_class",
+                    CONF.getDataRegionConsensusProtocolClass().getProtocol())
+                .trim()));
   }
 
   private void loadLoadBalancingConfiguration(Properties properties) {

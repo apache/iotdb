@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.service;
 
+import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -56,18 +58,18 @@ public class MQTTService implements IService {
   }
 
   public void startup() {
-    IoTDBConfig iotDBConfig = IoTDBDescriptor.getInstance().getConfig();
-    IConfig config = createBrokerConfig(iotDBConfig);
+    CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
+    IConfig config = createBrokerConfig(commonConfig);
     List<InterceptHandler> handlers = new ArrayList<>(1);
-    handlers.add(new MPPPublishHandler(iotDBConfig));
+    handlers.add(new MPPPublishHandler(commonConfig));
     IAuthenticator authenticator = new BrokerAuthenticator();
 
     server.startServer(config, handlers, null, authenticator, null);
 
     LOG.info(
         "Start MQTT service successfully, listening on ip {} port {}",
-        iotDBConfig.getMqttHost(),
-        iotDBConfig.getMqttPort());
+      commonConfig.getMqttHost(),
+      commonConfig.getMqttPort());
 
     Runtime.getRuntime()
         .addShutdownHook(
@@ -79,20 +81,20 @@ public class MQTTService implements IService {
                 }));
   }
 
-  private IConfig createBrokerConfig(IoTDBConfig iotDBConfig) {
+  private IConfig createBrokerConfig(CommonConfig commonConfig) {
     Properties properties = new Properties();
-    properties.setProperty(BrokerConstants.HOST_PROPERTY_NAME, iotDBConfig.getMqttHost());
+    properties.setProperty(BrokerConstants.HOST_PROPERTY_NAME, commonConfig.getMqttHost());
     properties.setProperty(
-        BrokerConstants.PORT_PROPERTY_NAME, String.valueOf(iotDBConfig.getMqttPort()));
+        BrokerConstants.PORT_PROPERTY_NAME, String.valueOf(commonConfig.getMqttPort()));
     properties.setProperty(
         BrokerConstants.BROKER_INTERCEPTOR_THREAD_POOL_SIZE,
-        String.valueOf(iotDBConfig.getMqttHandlerPoolSize()));
+        String.valueOf(commonConfig.getMqttHandlerPoolSize()));
     properties.setProperty(BrokerConstants.IMMEDIATE_BUFFER_FLUSH_PROPERTY_NAME, "true");
     properties.setProperty(BrokerConstants.ALLOW_ANONYMOUS_PROPERTY_NAME, "false");
     properties.setProperty(BrokerConstants.ALLOW_ZERO_BYTE_CLIENT_ID_PROPERTY_NAME, "true");
     properties.setProperty(
         BrokerConstants.NETTY_MAX_BYTES_PROPERTY_NAME,
-        String.valueOf(iotDBConfig.getMqttMaxMessageSize()));
+        String.valueOf(commonConfig.getMqttMaxMessageSize()));
     return new MemoryConfig(properties);
   }
 

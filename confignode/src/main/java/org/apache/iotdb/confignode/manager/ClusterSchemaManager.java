@@ -23,6 +23,8 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
+import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -99,11 +101,11 @@ public class ClusterSchemaManager {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ClusterSchemaManager.class);
 
-  private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
-  private static final int LEAST_SCHEMA_REGION_GROUP_NUM = CONF.getLeastSchemaRegionGroupNum();
-  private static final double SCHEMA_REGION_PER_DATA_NODE = CONF.getSchemaRegionPerDataNode();
-  private static final int LEAST_DATA_REGION_GROUP_NUM = CONF.getLeastDataRegionGroupNum();
-  private static final double DATA_REGION_PER_PROCESSOR = CONF.getDataRegionPerProcessor();
+  private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
+  private static final int LEAST_SCHEMA_REGION_GROUP_NUM = COMMON_CONFIG.getLeastSchemaRegionGroupNum();
+  private static final double SCHEMA_REGION_PER_DATA_NODE = COMMON_CONFIG.getSchemaRegionPerDataNode();
+  private static final int LEAST_DATA_REGION_GROUP_NUM = COMMON_CONFIG.getLeastDataRegionGroupNum();
+  private static final double DATA_REGION_PER_PROCESSOR = COMMON_CONFIG.getDataRegionPerProcessor();
 
   private final IManager configManager;
   private final ClusterSchemaInfo clusterSchemaInfo;
@@ -330,11 +332,11 @@ public class ClusterSchemaManager {
         (int)
             Math.ceil(
                 (double) totalCpuCoreNum
-                    / (double) (storageGroupNum * CONF.getDataReplicationFactor()));
-    if (leastDataRegionGroupNum < CONF.getLeastDataRegionGroupNum()) {
+                    / (double) (storageGroupNum * COMMON_CONFIG.getDataReplicationFactor()));
+    if (leastDataRegionGroupNum < COMMON_CONFIG.getLeastDataRegionGroupNum()) {
       // The leastDataRegionGroupNum should be the maximum integer that satisfy:
       // 1 <= leastDataRegionGroupNum <= 5(default)
-      CONF.setLeastDataRegionGroupNum(leastDataRegionGroupNum);
+      COMMON_CONFIG.setLeastDataRegionGroupNum(leastDataRegionGroupNum);
       LOGGER.info(
           "[AdjustRegionGroupNum] The least number of DataRegionGroups per Database is adjusted to: {}",
           leastDataRegionGroupNum);

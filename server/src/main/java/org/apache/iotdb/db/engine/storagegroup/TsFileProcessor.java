@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.engine.storagegroup;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.AlignedPath;
@@ -98,14 +99,14 @@ public class TsFileProcessor {
   /** logger fot this class */
   private static final Logger logger = LoggerFactory.getLogger(TsFileProcessor.class);
 
+  private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
+  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+
   /** storgae group name of this tsfile */
   private final String storageGroupName;
 
-  /** IoTDB config */
-  private final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-
   /** whether it's enable mem control */
-  private final boolean enableMemControl = config.isEnableMemControl();
+  private final boolean enableMemControl = COMMON_CONFIG.isEnableMemControl();
 
   /** database info for mem control */
   private DataRegionInfo dataRegionInfo;
@@ -718,7 +719,7 @@ public class TsFileProcessor {
   }
 
   private long getMemtableSizeThresholdBasedOnSeriesNum() {
-    return config.getMemtableSizeThreshold();
+    return COMMON_CONFIG.getMemtableSizeThreshold();
   }
 
   public boolean shouldClose() {

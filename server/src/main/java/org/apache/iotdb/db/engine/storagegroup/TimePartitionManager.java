@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.engine.storagegroup;
 
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -35,7 +36,7 @@ public class TimePartitionManager {
 
   long memCost = 0;
   long timePartitionInfoMemoryThreshold =
-      IoTDBDescriptor.getInstance().getConfig().getAllocateMemoryForTimePartitionInfo();
+      CommonDescriptor.getInstance().getConfig().getAllocateMemoryForTimePartitionInfo();
 
   private TimePartitionManager() {
     timePartitionInfoMap = new HashMap<>();

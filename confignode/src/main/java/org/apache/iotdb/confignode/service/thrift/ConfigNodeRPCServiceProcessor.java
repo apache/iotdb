@@ -487,7 +487,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
     LOGGER.info(
         "{} has successfully started and joined the cluster: {}.",
         ConfigNodeConstant.GLOBAL_NAME,
-        ConfigNodeDescriptor.getInstance().getConf().getClusterName());
+        CommonDescriptor.getInstance().getConfig().getClusterName());
     return StatusUtils.OK;
   }
 

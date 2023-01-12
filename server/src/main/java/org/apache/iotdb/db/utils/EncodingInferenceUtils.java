@@ -18,8 +18,8 @@
  */
 package org.apache.iotdb.db.utils;
 
-import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -32,7 +32,7 @@ public class EncodingInferenceUtils {
 
   /** Get default encoding by dataType */
   public static TSEncoding getDefaultEncoding(TSDataType dataType) {
-    IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
+    CommonConfig conf = CommonDescriptor.getInstance().getConfig();
     switch (dataType) {
       case BOOLEAN:
         return conf.getDefaultBooleanEncoding();

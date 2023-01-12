@@ -22,6 +22,7 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.consensus.ConsensusProtocolClass;
 import org.apache.iotdb.commons.exception.ConfigurationException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.wal.WALMode;
@@ -52,13 +53,13 @@ public class IoTDBStartCheck {
 
   private static final Logger logger = LoggerFactory.getLogger(IoTDBStartCheck.class);
 
-  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-  private static final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
+  private static final IoTDBConfig IOTDB_CONFIG = IoTDBDescriptor.getInstance().getConfig();
+  private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
 
   // this file is located in data/system/schema/system.properties
   // If user delete folder "data", system.properties can reset.
   public static final String PROPERTIES_FILE_NAME = "system.properties";
-  private static final String SCHEMA_DIR = config.getSchemaDir();
+  private static final String SCHEMA_DIR = IOTDB_CONFIG.getSchemaDir();
 
   private boolean isFirstStart = false;
 
@@ -86,24 +87,23 @@ public class IoTDBStartCheck {
   private static final Map<String, Supplier<String>> constantParamValueTable = new HashMap<>();
 
   static {
-    constantParamValueTable.put(TIMESTAMP_PRECISION_STRING, config::getTimestampPrecision);
+    constantParamValueTable.put(TIMESTAMP_PRECISION_STRING, COMMON_CONFIG::getTimestampPrecision);
     constantParamValueTable.put(
-        PARTITION_INTERVAL_STRING, () -> String.valueOf(config.getDnTimePartitionInterval()));
+        PARTITION_INTERVAL_STRING, () -> String.valueOf(IOTDB_CONFIG.getDnTimePartitionInterval()));
     constantParamValueTable.put(
-        TSFILE_FILE_SYSTEM_STRING, () -> config.getTsFileStorageFs().toString());
+        TSFILE_FILE_SYSTEM_STRING, () -> IOTDB_CONFIG.getTsFileStorageFs().toString());
     constantParamValueTable.put(
-        TAG_ATTRIBUTE_SIZE_STRING, () -> String.valueOf(config.getTagAttributeTotalSize()));
+        TAG_ATTRIBUTE_SIZE_STRING, () -> String.valueOf(COMMON_CONFIG.getTagAttributeTotalSize()));
     constantParamValueTable.put(
-        TAG_ATTRIBUTE_FLUSH_INTERVAL, () -> String.valueOf(config.getTagAttributeFlushInterval()));
+        TAG_ATTRIBUTE_FLUSH_INTERVAL, () -> String.valueOf(COMMON_CONFIG.getTagAttributeFlushInterval()));
     constantParamValueTable.put(
         MAX_DEGREE_OF_INDEX_STRING,
         () -> String.valueOf(TSFileDescriptor.getInstance().getConfig().getMaxDegreeOfIndexNode()));
-    constantParamValueTable.put(DATA_REGION_NUM, () -> String.valueOf(config.getDataRegionNum()));
-    constantParamValueTable.put(ENABLE_ID_TABLE, () -> String.valueOf(config.isEnableIDTable()));
+    constantParamValueTable.put(ENABLE_ID_TABLE, () -> String.valueOf(IOTDB_CONFIG.isEnableIDTable()));
     constantParamValueTable.put(
-        ENABLE_ID_TABLE_LOG_FILE, () -> String.valueOf(config.isEnableIDTableLogFile()));
+        ENABLE_ID_TABLE_LOG_FILE, () -> String.valueOf(IOTDB_CONFIG.isEnableIDTableLogFile()));
     constantParamValueTable.put(
-        SCHEMA_ENGINE_MODE, () -> String.valueOf(config.getSchemaEngineMode()));
+        SCHEMA_ENGINE_MODE, () -> String.valueOf(IOTDB_CONFIG.getSchemaEngineMode()));
     constantParamValueTable.put(
         TIME_ENCODER_KEY, TSFileDescriptor.getInstance().getConfig()::getTimeEncoder);
   }
@@ -120,17 +120,17 @@ public class IoTDBStartCheck {
 
   static {
     variableParamValueTable.put(
-        INTERNAL_ADDRESS, () -> String.valueOf(config.getDnInternalAddress()));
-    variableParamValueTable.put(INTERNAL_PORT, () -> String.valueOf(config.getDnInternalPort()));
-    variableParamValueTable.put(RPC_ADDRESS, () -> String.valueOf(config.getDnRpcAddress()));
-    variableParamValueTable.put(RPC_PORT, () -> String.valueOf(config.getDnRpcPort()));
+        INTERNAL_ADDRESS, () -> String.valueOf(IOTDB_CONFIG.getDnInternalAddress()));
+    variableParamValueTable.put(INTERNAL_PORT, () -> String.valueOf(IOTDB_CONFIG.getDnInternalPort()));
+    variableParamValueTable.put(RPC_ADDRESS, () -> String.valueOf(IOTDB_CONFIG.getDnRpcAddress()));
+    variableParamValueTable.put(RPC_PORT, () -> String.valueOf(IOTDB_CONFIG.getDnRpcPort()));
     variableParamValueTable.put(
-        MPP_DATA_EXCHANGE_PORT, () -> String.valueOf(config.getDnMppDataExchangePort()));
+        MPP_DATA_EXCHANGE_PORT, () -> String.valueOf(IOTDB_CONFIG.getDnMppDataExchangePort()));
     variableParamValueTable.put(
         SCHEMA_REGION_CONSENSUS_PORT,
-        () -> String.valueOf(config.getDnSchemaRegionConsensusPort()));
+        () -> String.valueOf(IOTDB_CONFIG.getDnSchemaRegionConsensusPort()));
     variableParamValueTable.put(
-        DATA_REGION_CONSENSUS_PORT, () -> String.valueOf(config.getDnDataRegionConsensusPort()));
+        DATA_REGION_CONSENSUS_PORT, () -> String.valueOf(IOTDB_CONFIG.getDnDataRegionConsensusPort()));
   }
   // endregion
   // region params don't need checking, determined by the system
@@ -255,31 +255,31 @@ public class IoTDBStartCheck {
    */
   public void checkDirectory() throws ConfigurationException, IOException {
     // check data dirs
-    for (String dataDir : config.getDnDataDirs()) {
+    for (String dataDir : IOTDB_CONFIG.getDnDataDirs()) {
       DirectoryChecker.getInstance().registerDirectory(new File(dataDir));
     }
-    if (config.isClusterMode()
-        && config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.RATIS_CONSENSUS)) {
-      if (DirectoryChecker.getInstance().isCrossDisk(config.getDnDataDirs())) {
+    if (IOTDB_CONFIG.isClusterMode()
+        && COMMON_CONFIG.getDataRegionConsensusProtocolClass().getProtocol().equals(ConsensusFactory.RATIS_CONSENSUS)) {
+      if (DirectoryChecker.getInstance().isCrossDisk(IOTDB_CONFIG.getDnDataDirs())) {
         throw new ConfigurationException(
             "Configuring the data directories as cross-disk directories is not supported under RatisConsensus(it will be supported in a later version).");
       }
     }
     // check system dir
-    DirectoryChecker.getInstance().registerDirectory(new File(config.getDnSystemDir()));
+    DirectoryChecker.getInstance().registerDirectory(new File(IOTDB_CONFIG.getDnSystemDir()));
     // check WAL dir
-    if (!(config.isClusterMode()
-            && config
-                .getDataRegionConsensusProtocolClass()
+    if (!(IOTDB_CONFIG.isClusterMode()
+            && COMMON_CONFIG
+                .getDataRegionConsensusProtocolClass().getProtocol()
                 .equals(ConsensusFactory.RATIS_CONSENSUS))
-        && !config.getWalMode().equals(WALMode.DISABLE)) {
-      for (String walDir : commonConfig.getWalDirs()) {
+        && !COMMON_CONFIG.getWalMode().equals(WALMode.DISABLE)) {
+      for (String walDir : IOTDB_CONFIG.getDnWalDirs()) {
         DirectoryChecker.getInstance().registerDirectory(new File(walDir));
       }
     }
     // in cluster mode, check consensus dir
-    if (config.isClusterMode()) {
-      DirectoryChecker.getInstance().registerDirectory(new File(config.getDnConsensusDir()));
+    if (IOTDB_CONFIG.isClusterMode()) {
+      DirectoryChecker.getInstance().registerDirectory(new File(IOTDB_CONFIG.getDnConsensusDir()));
     }
   }
 
@@ -305,9 +305,9 @@ public class IoTDBStartCheck {
         systemProperties.forEach((k, v) -> properties.setProperty(k, v.get()));
         properties.store(outputStream, SYSTEM_PROPERTIES_STRING);
       }
-      if (config.isClusterMode()
-          && config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)
-          && config.getWalMode().equals(WALMode.DISABLE)) {
+      if (IOTDB_CONFIG.isClusterMode()
+          && COMMON_CONFIG.getDataRegionConsensusProtocolClass().getProtocol().equals(ConsensusFactory.IOT_CONSENSUS)
+          && COMMON_CONFIG.getWalMode().equals(WALMode.DISABLE)) {
         throw new ConfigurationException(
             "Configuring the WALMode as disable is not supported under IoTConsensus");
       }
@@ -333,7 +333,7 @@ public class IoTDBStartCheck {
   }
 
   private void checkWALNotExists() {
-    for (String walDir : commonConfig.getWalDirs()) {
+    for (String walDir : IOTDB_CONFIG.getDnWalDirs()) {
       if (SystemFileFactory.INSTANCE.getFile(walDir).isDirectory()) {
         File[] sgWALs = SystemFileFactory.INSTANCE.getFile(walDir).listFiles();
         if (sgWALs != null) {
@@ -429,20 +429,20 @@ public class IoTDBStartCheck {
 
     // load configuration from system properties only when start as Data node
     if (properties.containsKey(IoTDBConstant.CLUSTER_NAME)) {
-      config.setClusterName(properties.getProperty(IoTDBConstant.CLUSTER_NAME));
+      IOTDB_CONFIG.setClusterName(properties.getProperty(IoTDBConstant.CLUSTER_NAME));
     }
     if (properties.containsKey(DATA_NODE_ID)) {
-      config.setDataNodeId(Integer.parseInt(properties.getProperty(DATA_NODE_ID)));
+      IOTDB_CONFIG.setDataNodeId(Integer.parseInt(properties.getProperty(DATA_NODE_ID)));
     }
 
     if (properties.containsKey(SCHEMA_REGION_CONSENSUS_PROTOCOL)) {
-      config.setSchemaRegionConsensusProtocolClass(
-          properties.getProperty(SCHEMA_REGION_CONSENSUS_PROTOCOL));
+      COMMON_CONFIG.setSchemaRegionConsensusProtocolClass(ConsensusProtocolClass.parse(
+          properties.getProperty(SCHEMA_REGION_CONSENSUS_PROTOCOL)));
     }
 
     if (properties.containsKey(DATA_REGION_CONSENSUS_PROTOCOL)) {
-      config.setDataRegionConsensusProtocolClass(
-          properties.getProperty(DATA_REGION_CONSENSUS_PROTOCOL));
+      COMMON_CONFIG.setDataRegionConsensusProtocolClass(ConsensusProtocolClass.parse(
+          properties.getProperty(DATA_REGION_CONSENSUS_PROTOCOL)));
     }
   }
 

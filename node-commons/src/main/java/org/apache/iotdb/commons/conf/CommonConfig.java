@@ -34,6 +34,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -611,6 +612,10 @@ public class CommonConfig {
           + File.separator
           + "procedure";
 
+  // Sync directory, including the log and hardlink tsfiles
+  private String syncDir =
+      IoTDBConstant.DEFAULT_BASE_DIR + File.separator + IoTDBConstant.SYNC_FOLDER_NAME;
+
   /** Internal Configurations(Unconfigurable in .properties file) */
   // NodeStatus
   private volatile NodeStatus status = NodeStatus.Running;
@@ -623,7 +628,18 @@ public class CommonConfig {
   // Max bytes of each FragmentInstance for DataExchange
   private long maxBytesPerFragmentInstance = allocateMemoryForDataExchange / queryThreadCount;
 
-  CommonConfig() {
+  private boolean rpcThriftCompressionEnable = false;
+  private int connectionTimeoutInMS = (int) TimeUnit.SECONDS.toMillis(20);
+  // ClientManager will have so many selector threads (TAsyncClientManager) to distribute to its
+  // clients
+  private int selectorThreadCountOfClientManager =
+      Runtime.getRuntime().availableProcessors() / 4 > 0
+          ? Runtime.getRuntime().availableProcessors() / 4
+          : 1;
+  private int coreClientCountForEachNodeInClientManager = 200;
+  private int maxClientCountForEachNodeInClientManager = 300;
+
+  public CommonConfig() {
     // Empty constructor
   }
 
@@ -1518,6 +1534,14 @@ public class CommonConfig {
     this.procedureWalFolder = procedureWalFolder;
   }
 
+  public String getSyncDir() {
+    return syncDir;
+  }
+
+  public void setSyncDir(String syncDir) {
+    this.syncDir = syncDir;
+  }
+
   public FSType getSystemFileStorageFs() {
     return systemFileStorageFs;
   }
@@ -1532,6 +1556,10 @@ public class CommonConfig {
 
   public void setHandleSystemErrorStrategy(HandleSystemErrorStrategy handleSystemErrorStrategy) {
     this.handleSystemErrorStrategy = handleSystemErrorStrategy;
+  }
+
+  public void handleUnrecoverableError() {
+    handleSystemErrorStrategy.handle();
   }
 
   public boolean isEnableMemControl() {
@@ -2497,5 +2525,47 @@ public class CommonConfig {
 
   public void setStatusReason(String statusReason) {
     this.statusReason = statusReason;
+  }
+
+  public boolean isRpcThriftCompressionEnable() {
+    return rpcThriftCompressionEnable;
+  }
+
+  public void setRpcThriftCompressionEnable(boolean rpcThriftCompressionEnable) {
+    this.rpcThriftCompressionEnable = rpcThriftCompressionEnable;
+  }
+
+  public int getConnectionTimeoutInMS() {
+    return connectionTimeoutInMS;
+  }
+
+  public void setConnectionTimeoutInMS(int connectionTimeoutInMS) {
+    this.connectionTimeoutInMS = connectionTimeoutInMS;
+  }
+
+  public int getSelectorThreadCountOfClientManager() {
+    return selectorThreadCountOfClientManager;
+  }
+
+  public void setSelectorThreadCountOfClientManager(int selectorThreadCountOfClientManager) {
+    this.selectorThreadCountOfClientManager = selectorThreadCountOfClientManager;
+  }
+
+  public int getCoreClientCountForEachNodeInClientManager() {
+    return coreClientCountForEachNodeInClientManager;
+  }
+
+  public void setCoreClientCountForEachNodeInClientManager(
+      int coreClientCountForEachNodeInClientManager) {
+    this.coreClientCountForEachNodeInClientManager = coreClientCountForEachNodeInClientManager;
+  }
+
+  public int getMaxClientCountForEachNodeInClientManager() {
+    return maxClientCountForEachNodeInClientManager;
+  }
+
+  public void setMaxClientCountForEachNodeInClientManager(
+      int maxClientCountForEachNodeInClientManager) {
+    this.maxClientCountForEachNodeInClientManager = maxClientCountForEachNodeInClientManager;
   }
 }

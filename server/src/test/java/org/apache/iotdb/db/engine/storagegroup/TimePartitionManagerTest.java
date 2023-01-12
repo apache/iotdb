@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.engine.storagegroup;
 
+import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -41,14 +43,14 @@ import static org.junit.Assert.assertTrue;
 public class TimePartitionManagerTest {
 
   private final TimePartitionManager timePartitionManager = TimePartitionManager.getInstance();
-  private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
+  private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
   private long prevTimePartitionInfoMemoryThreshold;
 
   public TimePartitionManagerTest() throws QueryProcessException {}
 
   @Before
   public void setUp() throws IOException, WriteProcessException, MetadataException {
-    prevTimePartitionInfoMemoryThreshold = CONFIG.getAllocateMemoryForTimePartitionInfo();
+    prevTimePartitionInfoMemoryThreshold = COMMON_CONFIG.getAllocateMemoryForTimePartitionInfo();
     timePartitionManager.setTimePartitionInfoMemoryThreshold(100L);
   }
 
