@@ -56,6 +56,7 @@ public class DeviceViewIntoPathDescriptor {
   public DeviceViewIntoPathDescriptor() {
     this.deviceToSourceTargetPathPairListMap = new HashMap<>();
     this.targetDeviceToAlignedMap = new HashMap<>();
+    this.sourceToDataTypeMap = new HashMap<>();
   }
 
   public DeviceViewIntoPathDescriptor(
