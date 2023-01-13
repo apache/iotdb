@@ -23,6 +23,9 @@ import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.utils.PathUtils;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -33,6 +36,7 @@ import java.util.stream.Collectors;
 
 // TODO: Remove this class
 public class DataPartition extends Partition {
+  private static final Logger logger = LoggerFactory.getLogger(DataPartition.class);
   public static final TRegionReplicaSet NOT_ASSIGNED = new TRegionReplicaSet();
   // Map<StorageGroup, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionMessage>>>>
   private Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>>
@@ -99,6 +103,11 @@ public class DataPartition extends Partition {
     for (TTimePartitionSlot timePartitionSlot : timePartitionSlotList) {
       List<TRegionReplicaSet> targetRegionList = slotReplicaSetMap.get(timePartitionSlot);
       if (targetRegionList == null || targetRegionList.size() == 0) {
+        logger.error(
+            "met error when calculating partition for writing. device: {}, target timePartitionSlotList: {}, dataPartitionMap: {}",
+            deviceName,
+            timePartitionSlotList,
+            dataPartitionMap);
         throw new RuntimeException(
             String.format(
                 "targetRegionList is empty. device: %s, timeSlot: %s",
