@@ -247,7 +247,7 @@ public class TagManager {
             }
           }
         }
-        return throwable != null && nextMatched != null;
+        return throwable == null && nextMatched != null;
       }
 
       @Override
