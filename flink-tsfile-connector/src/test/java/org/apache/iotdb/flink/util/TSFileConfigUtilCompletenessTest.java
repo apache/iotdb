@@ -78,7 +78,8 @@ public class TSFileConfigUtilCompletenessTest {
       "setMaxTsBlockLineNumber",
       "setMaxTsBlockSizeInBytes",
       "setPatternMatchingThreshold",
-      "setCustomizedProperties"
+      "setCustomizedProperties",
+      "setFrequencyIntervalInMinute"
     };
     Set<String> addedSetters = new HashSet<>();
     Collections.addAll(addedSetters, setters);
