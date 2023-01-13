@@ -16,25 +16,23 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.itbase.env;
+package org.apache.iotdb.confignode.manager;
 
-public interface BaseNodeWrapper {
+import org.junit.Assert;
+import org.junit.Test;
 
-  void createDir();
+public class ClusterSchemaManagerTest {
 
-  void destroyDir();
+  @Test
+  public void testCalcMaxRegionGroupNum() {
 
-  void start();
+    // The maxRegionGroupNum should be great or equal to the leastRegionGroupNum
+    Assert.assertEquals(100, ClusterSchemaManager.calcMaxRegionGroupNum(100, 1.0, 3, 1, 3, 0));
 
-  void stop();
+    // The maxRegionGroupNum should be great or equal to the allocatedRegionGroupCount
+    Assert.assertEquals(100, ClusterSchemaManager.calcMaxRegionGroupNum(3, 1.0, 6, 2, 3, 100));
 
-  String getIp();
-
-  int getPort();
-
-  String getId();
-
-  String getIpAndPortString();
-
-  void dumpJVMSnapshot(String testCaseName);
+    // (resourceWeight * resource) / (createdStorageGroupNum * replicationFactor)
+    Assert.assertEquals(20, ClusterSchemaManager.calcMaxRegionGroupNum(3, 1.0, 120, 2, 3, 5));
+  }
 }

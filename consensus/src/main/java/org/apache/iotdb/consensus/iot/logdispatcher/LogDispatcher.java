@@ -344,7 +344,7 @@ public class LogDispatcher {
       long startIndex = syncStatus.getNextSendingIndex();
       long maxIndex;
       synchronized (impl.getIndexObject()) {
-        maxIndex = impl.getIndex() + 1;
+        maxIndex = impl.getSearchIndex() + 1;
         logger.debug(
             "{}: startIndex: {}, maxIndex: {}, pendingEntries size: {}, bufferedEntries size: {}",
             impl.getThisNode().getGroupId(),

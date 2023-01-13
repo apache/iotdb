@@ -57,6 +57,7 @@ import org.junit.runner.RunWith;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -402,6 +403,10 @@ public class IoTDBPartitionDurableIT {
   public void testUnknownDataNode() throws Exception {
     // Shutdown a DataNode, the ConfigNode should still be able to create RegionGroup
     EnvFactory.getEnv().shutdownDataNode(testDataNodeId);
+    EnvFactory.getEnv()
+        .ensureNodeStatus(
+            Collections.singletonList(EnvFactory.getEnv().getDataNodeWrapper(testDataNodeId)),
+            Collections.singletonList(NodeStatus.Unknown));
 
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
@@ -551,21 +556,10 @@ public class IoTDBPartitionDurableIT {
       Assert.assertEquals(unknownCnt * 2, runningCnt);
 
       EnvFactory.getEnv().startDataNode(testDataNodeId);
-      // Wait for heartbeat check
-      while (true) {
-        boolean containUnknown = false;
-        showClusterResp = client.showCluster();
-        for (TDataNodeLocation dataNodeLocation : showClusterResp.getDataNodeList()) {
-          if (NodeStatus.Unknown.getStatus()
-              .equals(showClusterResp.getNodeStatus().get(dataNodeLocation.getDataNodeId()))) {
-            containUnknown = true;
-            break;
-          }
-        }
-        if (!containUnknown) {
-          break;
-        }
-      }
+      EnvFactory.getEnv()
+          .ensureNodeStatus(
+              Collections.singletonList(EnvFactory.getEnv().getDataNodeWrapper(testDataNodeId)),
+              Collections.singletonList(NodeStatus.Running));
 
       // All Regions should alive after the testDataNode is restarted
       boolean allRunning = true;

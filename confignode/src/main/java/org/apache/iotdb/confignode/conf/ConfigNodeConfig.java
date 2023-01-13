@@ -96,10 +96,10 @@ public class ConfigNodeConfig {
   private double dataRegionPerProcessor = 1.0;
 
   /** The least number of SchemaRegionGroup for each Database. */
-  private int leastSchemaRegionGroupNum = 1;
+  private volatile int leastSchemaRegionGroupNum = 1;
 
   /** The least number of DataRegionGroup for each Database. */
-  private int leastDataRegionGroupNum = 5;
+  private volatile int leastDataRegionGroupNum = 5;
 
   /** RegionGroup allocate policy. */
   private RegionBalancer.RegionGroupAllocatePolicy regionGroupAllocatePolicy =
