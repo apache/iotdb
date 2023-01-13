@@ -23,12 +23,14 @@ import org.apache.iotdb.commons.client.ClientPoolFactory;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
+import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.confignode.rpc.thrift.IConfigNodeRPCService;
 import org.apache.iotdb.isession.ISession;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.env.cluster.ConfigNodeWrapper;
 import org.apache.iotdb.it.env.cluster.DataNodeWrapper;
 import org.apache.iotdb.itbase.env.BaseEnv;
+import org.apache.iotdb.itbase.env.BaseNodeWrapper;
 import org.apache.iotdb.itbase.env.ClusterConfig;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.jdbc.Constant;
@@ -167,6 +169,11 @@ public class RemoteServerEnv implements BaseEnv {
 
   @Override
   public void shutdownConfigNode(int index) {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public void ensureNodeStatus(List<BaseNodeWrapper> nodes, List<NodeStatus> targetStatus) {
     throw new UnsupportedOperationException();
   }
 
