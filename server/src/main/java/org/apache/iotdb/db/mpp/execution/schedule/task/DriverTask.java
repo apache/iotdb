@@ -27,12 +27,14 @@ import org.apache.iotdb.db.mpp.execution.schedule.DriverTaskThread;
 import org.apache.iotdb.db.mpp.execution.schedule.ExecutionContext;
 import org.apache.iotdb.db.mpp.execution.schedule.queue.ID;
 import org.apache.iotdb.db.mpp.execution.schedule.queue.IDIndexedAccessible;
+import org.apache.iotdb.db.mpp.execution.schedule.queue.multilevelqueue.DriverTaskHandle;
+import org.apache.iotdb.db.mpp.execution.schedule.queue.multilevelqueue.Priority;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import io.airlift.units.Duration;
 
 import java.util.Comparator;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -42,8 +44,6 @@ public class DriverTask implements IDIndexedAccessible {
   private final IDriver driver;
   private DriverTaskStatus status;
 
-  // the higher this field is, the higher probability it will be scheduled.
-  private volatile double schedulePriority;
   private final long ddl;
   private final Lock lock;
 
@@ -52,20 +52,25 @@ public class DriverTask implements IDIndexedAccessible {
 
   private String abortCause;
 
+  private final AtomicReference<Priority> priority;
+
+  private final DriverTaskHandle driverTaskHandle;
   private long lastEnterReadyQueueTime;
   private long lastEnterBlockQueueTime;
 
   /** Initialize a dummy instance for queryHolder */
   public DriverTask() {
-    this(new StubFragmentInstance(), 0L, null);
+    this(new StubFragmentInstance(), 0L, null, null);
   }
 
-  public DriverTask(IDriver driver, long timeoutMs, DriverTaskStatus status) {
+  public DriverTask(
+      IDriver driver, long timeoutMs, DriverTaskStatus status, DriverTaskHandle driverTaskHandle) {
     this.driver = driver;
     this.setStatus(status);
-    this.schedulePriority = 0.0D;
     this.ddl = System.currentTimeMillis() + timeoutMs;
     this.lock = new ReentrantLock();
+    this.driverTaskHandle = driverTaskHandle;
+    this.priority = new AtomicReference<>(new Priority(0, 0));
   }
 
   public DriverTaskId getDriverTaskId() {
@@ -99,18 +104,7 @@ public class DriverTask implements IDIndexedAccessible {
    * @param context the last execution context.
    */
   public void updateSchedulePriority(ExecutionContext context) {
-    // TODO: need to implement more complex here
-
-    // 1. The penalty factor means that if a task executes less time in one schedule, it will have a
-    // high schedule priority
-    double penaltyFactor =
-        context.getCpuDuration().getWall().getValue(TimeUnit.NANOSECONDS)
-            / context.getTimeSlice().getValue(TimeUnit.NANOSECONDS);
-    // 2. If a task is nearly timeout, it should be scheduled as soon as possible.
-    long base = System.currentTimeMillis() - ddl;
-
-    // 3. Now the final schedulePriority is out, this may not be so reasonable.
-    this.schedulePriority = base * penaltyFactor;
+    priority.set(driverTaskHandle.addScheduledTimeInNanos(context.getScheduledTimeInNanos()));
   }
 
   public void lock() {
@@ -119,10 +113,6 @@ public class DriverTask implements IDIndexedAccessible {
 
   public void unlock() {
     lock.unlock();
-  }
-
-  public double getSchedulePriority() {
-    return schedulePriority;
   }
 
   public long getDDL() {
@@ -145,6 +135,31 @@ public class DriverTask implements IDIndexedAccessible {
 
   public void setAbortCause(String abortCause) {
     this.abortCause = abortCause;
+  }
+
+  public Priority getPriority() {
+    return priority.get();
+  }
+
+  /**
+   * Updates the (potentially stale) priority value cached in this object. This should be called
+   * when this object is outside the queue.
+   *
+   * @return true if the level changed.
+   */
+  public boolean updatePriority() {
+    Priority newPriority = driverTaskHandle.getPriority();
+    Priority oldPriority = priority.getAndSet(newPriority);
+    return newPriority.getLevel() != oldPriority.getLevel();
+  }
+
+  /**
+   * Updates the task levelScheduledTime to be greater than or equal to the minimum
+   * levelScheduledTime within that level. This ensures that tasks that spend time blocked do not
+   * return and starve already-running tasks. Also updates the cached priority object.
+   */
+  public void resetLevelScheduledTime() {
+    priority.set(driverTaskHandle.resetLevelScheduledTime());
   }
 
   public long getLastEnterReadyQueueTime() {
@@ -181,7 +196,7 @@ public class DriverTask implements IDIndexedAccessible {
     }
   }
 
-  /** a comparator of ddl, the higher the schedulePriority is, the low order it has. */
+  /** a comparator of DriverTask, the higher the levelScheduledTime is, the lower order it has. */
   public static class SchedulePriorityComparator implements Comparator<DriverTask> {
 
     @Override
@@ -189,11 +204,11 @@ public class DriverTask implements IDIndexedAccessible {
       if (o1.getDriverTaskId().equals(o2.getDriverTaskId())) {
         return 0;
       }
-      if (o1.getSchedulePriority() > o2.getSchedulePriority()) {
-        return -1;
-      }
-      if (o1.getSchedulePriority() < o2.getSchedulePriority()) {
-        return 1;
+      int result =
+          Long.compare(
+              o1.priority.get().getLevelScheduledTime(), o2.priority.get().getLevelScheduledTime());
+      if (result != 0) {
+        return result;
       }
       return o1.getDriverTaskId().compareTo(o2.getDriverTaskId());
     }
