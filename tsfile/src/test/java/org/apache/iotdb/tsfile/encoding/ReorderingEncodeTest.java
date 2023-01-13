@@ -38,11 +38,11 @@ public class ReorderingEncodeTest {
   }
   public static byte[] int2Bytes(int integer)
   {
-    byte[] bytes=new byte[4];
-    bytes[3]= (byte) ((byte) integer>>24);
-    bytes[2]= (byte) ((byte) integer>>16);
-    bytes[1]= (byte) ((byte) integer>>8);
-    bytes[0]=(byte) integer;
+    byte[] bytes = new byte[4];
+    bytes[0] = (byte) (integer >> 24);
+    bytes[1] = (byte) (integer >> 16);
+    bytes[2] = (byte) (integer >> 8);
+    bytes[3] = (byte) integer;
     return bytes;
   }
   public static byte[] bitPacking(ArrayList<Integer> numbers,int bit_width){
@@ -329,6 +329,12 @@ public class ReorderingEncodeTest {
     byte[] timestamp_bytes = bitPacking(ts_block,0,raw_length.get(1));
     for (byte b : timestamp_bytes) encoded_result.add(b);
 
+    for (int i=0;i<ts_block.size();i++){
+      System.out.print(i);
+      System.out.print(" encode ");
+      System.out.println(ts_block.get(i).get(0));
+    }
+
     // encode value
     byte[] max_bit_width_value_byte = int2Bytes(raw_length.get(2));
 //    System.out.println(raw_length.get(2));
@@ -465,6 +471,7 @@ public class ReorderingEncodeTest {
         reorder_length.add(result.get(1)); // r0
         reorder_length.add(result.get(2)); // d0
         ArrayList<Byte> cur_encoded_result = encode2Bytes(ts_block_delta_reorder,deviation_list,reorder_length);
+        //System.out.println(cur_encoded_result.size());
         encoded_result.addAll(cur_encoded_result);
         count_reorder ++;
       }
@@ -492,6 +499,8 @@ public class ReorderingEncodeTest {
     ArrayList<ArrayList<Integer>> data = new ArrayList<>();
     int decode_pos = 0;
     int block_size = bytes2Integer(encoded, decode_pos, 4);
+    System.out.println("decode block_size: ");
+    System.out.println(block_size);
     decode_pos += 4;
 
     while(decode_pos < encoded.size()) {
@@ -502,23 +511,37 @@ public class ReorderingEncodeTest {
       ArrayList<ArrayList<Integer>> ts_block = new ArrayList<>();
 
       int r0 = bytes2Integer(encoded, decode_pos, 4);
+      System.out.println("decode r0: ");
+      System.out.println(r0);
       decode_pos += 4;
       int d0 = bytes2Integer(encoded, decode_pos, 4);
+      System.out.println("decode d0: ");
+      System.out.println(d0);
       decode_pos += 4;
 
       int min_delta_interval = bytes2Integer(encoded, decode_pos, 4);
+      System.out.println("decode min_delta_interval: ");
+      System.out.println(min_delta_interval);
       decode_pos += 4;
       int min_delta_value = bytes2Integer(encoded, decode_pos, 4);
+      System.out.println("decode min_delta_value: ");
+      System.out.println(min_delta_interval);
       decode_pos += 4;
 
       int interval0 = bytes2Integer(encoded, decode_pos, 4);
+      System.out.println("decode interval0: ");
+      System.out.println(interval0);
       decode_pos += 4;
       int value0 = bytes2Integer(encoded, decode_pos, 4);
+      System.out.println("decode value0: ");
+      System.out.println(value0);
       decode_pos += 4;
 
       int max_bit_width_interval = bytes2Integer(encoded, decode_pos, 4);
+      System.out.println("max_bit_width_interval: ");
+      System.out.println(max_bit_width_interval);
       decode_pos += 4;
-      for (int i = 0; i < block_size / 8; i++) { //bitpacking  纵向8个，bit width是多少列
+      for (int i = 0; i < (block_size-1) / 8; i++) { //bitpacking  纵向8个，bit width是多少列
         int[] val8 = new int[8];
         for (int j = 0; j < 8; j++) {
           val8[j] = 0;
@@ -538,13 +561,16 @@ public class ReorderingEncodeTest {
         }
         for (int j = 0; j < 8; j++) {
           interval_list.add(val8[j] + min_delta_interval);
+          System.out.print(i*8+j);
+          System.out.print(" decode ");
+          System.out.println(val8[j] + min_delta_value);
         }
         decode_pos += max_bit_width_interval;
       }
 
       int max_bit_width_value = bytes2Integer(encoded, decode_pos, 4);
       decode_pos += 4;
-      for (int i = 0; i < block_size / 8; i++) {
+      for (int i = 0; i < (block_size-1) / 8; i++) {
         int[] val8 = new int[8];
         for (int j = 0; j < 8; j++) {
           val8[j] = 0;
@@ -568,7 +594,7 @@ public class ReorderingEncodeTest {
 
       int max_bit_width_deviation = bytes2Integer(encoded, decode_pos, 4);
       decode_pos += 4;
-      for (int i = 0; i < block_size / 8; i++) {
+      for (int i = 0; i < (block_size-1) / 8; i++) {
         int[] val8 = new int[8];
         for (int j = 0; j < 8; j++) {
           val8[j] = 0;
@@ -590,13 +616,13 @@ public class ReorderingEncodeTest {
         decode_pos += max_bit_width_deviation;
       }
 
-      for (int i = 0; i < block_size; i++) {
+      for (int i = 0; i < block_size-1; i++) {
         ArrayList<Integer> ts_block_tmp = new ArrayList<>();
         ts_block_tmp.add(interval_list.get(i));
         ts_block_tmp.add(value_list.get(i));
         ts_block.add(ts_block_tmp);
       }
-      quickSort(ts_block, 0, 0, block_size - 1);
+      quickSort(ts_block, 0, 0, block_size-2);
 
 //    for(int i=0;i<block_size;i++){
 //      for(int j=0;j<block_size-i-1;j++){
@@ -613,7 +639,7 @@ public class ReorderingEncodeTest {
 
       int di_pre = interval0;
       int vi_pre = value0;
-      for (int i = 0; i < block_size; i++) {
+      for (int i = 0; i < block_size-1; i++) {
         //int vi = vi_pre + value_list.get(i);
         int vi = vi_pre + ts_block.get(i).get(1);
         vi_pre = vi;
@@ -621,10 +647,10 @@ public class ReorderingEncodeTest {
         int ri = r0 * td + ts_block.get(i).get(0) * td;
 
         int dev; //zigzag
-        if (deviation_list.get(block_size - i - 1) % 2 == 0) {
-          dev = deviation_list.get(block_size - i - 1) / 2;
+        if (deviation_list.get(block_size-1 - i - 1) % 2 == 0) {
+          dev = deviation_list.get(block_size-1 - i - 1) / 2;
         } else {
-          dev = -(deviation_list.get(block_size - i - 1) + 1) / 2;
+          dev = -(deviation_list.get(block_size-1 - i - 1) + 1) / 2;
         }
         int di = di_pre + dev;
         di_pre = di;
@@ -743,10 +769,28 @@ public class ReorderingEncodeTest {
 
           for(int j=0;j<256;j++){
             if(!data.get(j).get(0).equals(data_decoded.get(j).get(0))){
-              System.out.println("Wrong!");
+              System.out.println("Wrong Time!");
+              System.out.print(data.get(j).get(0));
+              System.out.print(" ");
+              System.out.println(data_decoded.get(j).get(0));
+            }
+            else{
+              System.out.println("Correct Time!");
+              System.out.print(data.get(j).get(0));
+              System.out.print(" ");
+              System.out.println(data_decoded.get(j).get(0));
             }
             if(!data.get(j).get(1).equals(data_decoded.get(j).get(1))){
-              System.out.println("Wrong!");
+              System.out.println("Wrong Value!");
+              System.out.print(data.get(j).get(1));
+              System.out.print(" ");
+              System.out.println(data_decoded.get(j).get(1));
+            }
+            else{
+              System.out.println("Correct Value!");
+              System.out.print(data.get(j).get(1));
+              System.out.print(" ");
+              System.out.println(data_decoded.get(j).get(1));
             }
           }
 
