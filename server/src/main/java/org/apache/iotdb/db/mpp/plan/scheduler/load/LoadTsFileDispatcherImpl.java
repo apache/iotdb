@@ -138,7 +138,7 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
     } catch (ClientManagerException | TException e) {
       logger.warn("can't connect to node {}", endPoint, e);
       TSStatus status = new TSStatus();
-      status.setCode(TSStatusCode.SYNC_CONNECTION_ERROR.getStatusCode());
+      status.setCode(TSStatusCode.DISPATCH_ERROR.getStatusCode());
       status.setMessage("can't connect to node {}" + endPoint);
       throw new FragmentInstanceDispatchException(status);
     }
@@ -226,7 +226,7 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
     } catch (ClientManagerException | TException e) {
       logger.warn("can't connect to node {}", endPoint, e);
       TSStatus status = new TSStatus();
-      status.setCode(TSStatusCode.SYNC_CONNECTION_ERROR.getStatusCode());
+      status.setCode(TSStatusCode.DISPATCH_ERROR.getStatusCode());
       status.setMessage(
           "can't connect to node {}, please reset longer dn_connection_timeout_ms in iotdb-common.properties and restart iotdb."
               + endPoint);
