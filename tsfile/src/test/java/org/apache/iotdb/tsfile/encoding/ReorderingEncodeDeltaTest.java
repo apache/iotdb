@@ -417,7 +417,7 @@ public class ReorderingEncodeDeltaTest {
 
         ts_block_delta = getEncodeBitsDelta( ts_block,  block_size,raw_length,
                 i_star_ready_reorder);
-        System.out.println(raw_length);
+//        System.out.println(raw_length);
         raw_length.add(result.get(0)); // max_bit_width_deviation
         raw_length.add(result.get(1)); // r0
         raw_length.add(result.get(2)); // d0
@@ -459,7 +459,7 @@ public class ReorderingEncodeDeltaTest {
 
         ts_block_delta_reorder = getEncodeBitsDelta( ts_block,  block_size,reorder_length,
                 i_star_ready_reorder);
-        System.out.println(reorder_length);
+//        System.out.println(reorder_length);
         reorder_length.add(result.get(0)); // max_bit_width_deviation
         reorder_length.add(result.get(1)); // r0
         reorder_length.add(result.get(2)); // d0
@@ -674,7 +674,7 @@ public class ReorderingEncodeDeltaTest {
     dataset_map_td.add(60);
 
 
-    for(int file_i=input_path_list.size()-1;file_i<input_path_list.size();file_i++){
+    for(int file_i=0;file_i<input_path_list.size();file_i++){
 //    for(int file_i=0;file_i<1;file_i++){
       String inputPath = input_path_list.get(file_i);
       String Output =output_path_list.get(file_i);
@@ -709,7 +709,7 @@ public class ReorderingEncodeDeltaTest {
 
       for (File f : tempList) {
         InputStream inputStream = Files.newInputStream(f.toPath());
-        System.out.println(f.toPath());
+//        System.out.println(f.toPath());
         CsvReader loader = new CsvReader(inputStream, StandardCharsets.UTF_8);
         ArrayList<ArrayList<Integer>> data = new ArrayList<>();
         ArrayList<ArrayList<Integer>> data_decoded = new ArrayList<>();
