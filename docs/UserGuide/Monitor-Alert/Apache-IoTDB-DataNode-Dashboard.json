@@ -9,13 +9,13 @@
       "pluginName": "Prometheus"
     }
   ],
-  "__elements": {},
+  "__elements": [],
   "__requires": [
     {
       "type": "grafana",
       "id": "grafana",
       "name": "Grafana",
-      "version": "9.3.2"
+      "version": "8.4.2"
     },
     {
       "type": "datasource",
@@ -63,6 +63,7 @@
   "fiscalYearStartMonth": 0,
   "graphTooltip": 1,
   "id": null,
+  "iteration": 1673602401383,
   "links": [],
   "liveNow": false,
   "panels": [
@@ -70,7 +71,7 @@
       "collapsed": true,
       "datasource": {
         "type": "prometheus",
-        "uid": "eLDDMh2Vk"
+        "uid": "${DS_PROMETHEUS}"
       },
       "gridPos": {
         "h": 1,
@@ -134,7 +135,7 @@
             "h": 8,
             "w": 8,
             "x": 0,
-            "y": 17
+            "y": 1
           },
           "id": 2,
           "options": {
@@ -221,7 +222,7 @@
             "h": 8,
             "w": 8,
             "x": 8,
-            "y": 17
+            "y": 1
           },
           "id": 3,
           "options": {
@@ -309,7 +310,7 @@
             "h": 8,
             "w": 8,
             "x": 16,
-            "y": 17
+            "y": 1
           },
           "id": 4,
           "options": {
@@ -347,7 +348,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "eLDDMh2Vk"
+            "uid": "${DS_PROMETHEUS}"
           },
           "refId": "A"
         }
@@ -359,7 +360,7 @@
       "collapsed": true,
       "datasource": {
         "type": "prometheus",
-        "uid": "eLDDMh2Vk"
+        "uid": "${DS_PROMETHEUS}"
       },
       "gridPos": {
         "h": 1,
@@ -424,7 +425,7 @@
             "h": 8,
             "w": 8,
             "x": 0,
-            "y": 18
+            "y": 2
           },
           "id": 6,
           "options": {
@@ -511,7 +512,7 @@
             "h": 8,
             "w": 8,
             "x": 8,
-            "y": 18
+            "y": 2
           },
           "id": 55,
           "options": {
@@ -598,7 +599,7 @@
             "h": 8,
             "w": 8,
             "x": 16,
-            "y": 18
+            "y": 2
           },
           "id": 56,
           "options": {
@@ -685,7 +686,7 @@
             "h": 8,
             "w": 8,
             "x": 0,
-            "y": 26
+            "y": 10
           },
           "id": 9,
           "options": {
@@ -773,7 +774,7 @@
             "h": 8,
             "w": 8,
             "x": 8,
-            "y": 26
+            "y": 10
           },
           "id": 10,
           "options": {
@@ -863,7 +864,7 @@
             "h": 8,
             "w": 8,
             "x": 16,
-            "y": 26
+            "y": 10
           },
           "id": 11,
           "options": {
@@ -963,7 +964,7 @@
             "h": 8,
             "w": 8,
             "x": 0,
-            "y": 34
+            "y": 18
           },
           "id": 12,
           "options": {
@@ -1051,7 +1052,7 @@
             "h": 8,
             "w": 8,
             "x": 8,
-            "y": 34
+            "y": 18
           },
           "id": 13,
           "options": {
@@ -1089,7 +1090,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "eLDDMh2Vk"
+            "uid": "${DS_PROMETHEUS}"
           },
           "refId": "A"
         }
@@ -1101,7 +1102,7 @@
       "collapsed": false,
       "datasource": {
         "type": "prometheus",
-        "uid": "eLDDMh2Vk"
+        "uid": "${DS_PROMETHEUS}"
       },
       "gridPos": {
         "h": 1,
@@ -1115,7 +1116,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "eLDDMh2Vk"
+            "uid": "${DS_PROMETHEUS}"
           },
           "refId": "A"
         }
@@ -1134,8 +1135,6 @@
             "mode": "palette-classic"
           },
           "custom": {
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
@@ -1224,8 +1223,6 @@
             "mode": "palette-classic"
           },
           "custom": {
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
@@ -1315,8 +1312,6 @@
             "mode": "palette-classic"
           },
           "custom": {
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
@@ -1418,8 +1413,6 @@
             "mode": "palette-classic"
           },
           "custom": {
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
@@ -1509,8 +1502,6 @@
             "mode": "palette-classic"
           },
           "custom": {
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
@@ -1614,18 +1605,12 @@
       "type": "timeseries"
     },
     {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
-      },
       "fieldConfig": {
         "defaults": {
           "color": {
             "mode": "palette-classic"
           },
           "custom": {
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
@@ -1677,8 +1662,7 @@
         "legend": {
           "calcs": [],
           "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true
+          "placement": "bottom"
         },
         "tooltip": {
           "mode": "single",
@@ -1691,10 +1675,10 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "editorMode": "code",
-          "expr": "Compacted_Chunk_Num_total{instance=~\"$instance\"}",
-          "legendFormat": "Compacted Chunk Num In Total",
-          "range": true,
+          "exemplar": true,
+          "expr": "sum(rate(Compacted_Chunk_Num_total{instance=~\"$instance\"}[1m]))*60",
+          "interval": "",
+          "legendFormat": "Compacted Chunk Num Per Min",
           "refId": "A"
         },
         {
@@ -1702,11 +1686,11 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "editorMode": "code",
-          "expr": "Deserialized_Chunk_Num_total{instance=~\"$instance\"}",
+          "exemplar": true,
+          "expr": "sum(rate(Deserialized_Chunk_Num_total{instance=~\"$instance\"}[1m]))*60",
           "hide": false,
-          "legendFormat": "Deserialized Chunk Num",
-          "range": true,
+          "interval": "",
+          "legendFormat": "Deserialized Chunk Num Per Min",
           "refId": "B"
         },
         {
@@ -1714,11 +1698,11 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "editorMode": "code",
-          "expr": "Directly_Flush_Chunk_Num_total{instance=~\"$instance\"}",
+          "exemplar": true,
+          "expr": "sum(rate(Directly_Flush_Chunk_Num_total{instance=~\"$instance\"}[1m]))*60",
           "hide": false,
-          "legendFormat": "Directly Flush Chunk Num",
-          "range": true,
+          "interval": "",
+          "legendFormat": "Directly Flush Chunk Num Per Min",
           "refId": "C"
         },
         {
@@ -1726,30 +1710,24 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "editorMode": "code",
-          "expr": "Merged_Chunk_Num_total{instance=~\"$instance\"}",
+          "exemplar": true,
+          "expr": "sum(rate(Merged_Chunk_Num_total{instance=~\"$instance\"}[1m]))*60",
           "hide": false,
-          "legendFormat": "Merged Chunk Num",
-          "range": true,
+          "interval": "",
+          "legendFormat": "Merged Chunk Num Per Min",
           "refId": "D"
         }
       ],
-      "title": "Compaction Chunk Process Status",
+      "title": "Compaction Process Chunk Status",
       "type": "timeseries"
     },
     {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
-      },
       "fieldConfig": {
         "defaults": {
           "color": {
             "mode": "palette-classic"
           },
           "custom": {
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
@@ -1801,8 +1779,7 @@
         "legend": {
           "calcs": [],
           "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true
+          "placement": "bottom"
         },
         "tooltip": {
           "mode": "single",
@@ -1815,22 +1792,18 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "editorMode": "code",
-          "expr": "Compacted_Point_Num_total{instance=~\"$instance\"}",
-          "legendFormat": "Compacted Point Num",
-          "range": true,
+          "exemplar": true,
+          "expr": "sum(rate(Compacted_Point_Num_total{instance=~\"$instance\"}[1m]))*60",
+          "interval": "",
+          "legendFormat": "Compacted Point Num Per Min",
           "refId": "A"
         }
       ],
-      "title": "Compacted Point Num",
+      "title": "Compacted Point Num Per Minute",
       "type": "timeseries"
     },
     {
       "collapsed": true,
-      "datasource": {
-        "type": "prometheus",
-        "uid": "eLDDMh2Vk"
-      },
       "gridPos": {
         "h": 1,
         "w": 24,
@@ -1894,15 +1867,14 @@
             "h": 8,
             "w": 6,
             "x": 0,
-            "y": 20
+            "y": 4
           },
           "id": 80,
           "options": {
             "legend": {
               "calcs": [],
               "displayMode": "list",
-              "placement": "bottom",
-              "showLegend": true
+              "placement": "bottom"
             },
             "tooltip": {
               "mode": "multi",
@@ -1980,15 +1952,14 @@
             "h": 8,
             "w": 6,
             "x": 6,
-            "y": 20
+            "y": 4
           },
           "id": 60,
           "options": {
             "legend": {
               "calcs": [],
               "displayMode": "list",
-              "placement": "bottom",
-              "showLegend": true
+              "placement": "bottom"
             },
             "tooltip": {
               "mode": "multi",
@@ -2066,15 +2037,14 @@
             "h": 8,
             "w": 6,
             "x": 12,
-            "y": 20
+            "y": 4
           },
           "id": 61,
           "options": {
             "legend": {
               "calcs": [],
               "displayMode": "list",
-              "placement": "bottom",
-              "showLegend": true
+              "placement": "bottom"
             },
             "tooltip": {
               "mode": "multi",
@@ -2152,15 +2122,14 @@
             "h": 8,
             "w": 6,
             "x": 18,
-            "y": 20
+            "y": 4
           },
           "id": 62,
           "options": {
             "legend": {
               "calcs": [],
               "displayMode": "list",
-              "placement": "bottom",
-              "showLegend": true
+              "placement": "bottom"
             },
             "tooltip": {
               "mode": "multi",
@@ -2238,15 +2207,14 @@
             "h": 8,
             "w": 6,
             "x": 0,
-            "y": 28
+            "y": 12
           },
           "id": 63,
           "options": {
             "legend": {
               "calcs": [],
               "displayMode": "list",
-              "placement": "bottom",
-              "showLegend": true
+              "placement": "bottom"
             },
             "tooltip": {
               "mode": "multi",
@@ -2324,15 +2292,14 @@
             "h": 8,
             "w": 6,
             "x": 6,
-            "y": 28
+            "y": 12
           },
           "id": 81,
           "options": {
             "legend": {
               "calcs": [],
               "displayMode": "list",
-              "placement": "bottom",
-              "showLegend": true
+              "placement": "bottom"
             },
             "tooltip": {
               "mode": "multi",
@@ -2410,15 +2377,14 @@
             "h": 8,
             "w": 6,
             "x": 12,
-            "y": 28
+            "y": 12
           },
           "id": 64,
           "options": {
             "legend": {
               "calcs": [],
               "displayMode": "list",
-              "placement": "bottom",
-              "showLegend": true
+              "placement": "bottom"
             },
             "tooltip": {
               "mode": "multi",
@@ -2496,15 +2462,14 @@
             "h": 8,
             "w": 6,
             "x": 18,
-            "y": 28
+            "y": 12
           },
           "id": 65,
           "options": {
             "legend": {
               "calcs": [],
               "displayMode": "list",
-              "placement": "bottom",
-              "showLegend": true
+              "placement": "bottom"
             },
             "tooltip": {
               "mode": "multi",
@@ -2582,15 +2547,14 @@
             "h": 8,
             "w": 6,
             "x": 0,
-            "y": 36
+            "y": 20
           },
           "id": 83,
           "options": {
             "legend": {
               "calcs": [],
               "displayMode": "list",
-              "placement": "bottom",
-              "showLegend": true
+              "placement": "bottom"
             },
             "tooltip": {
               "mode": "multi",
@@ -2668,15 +2632,14 @@
             "h": 8,
             "w": 6,
             "x": 6,
-            "y": 36
+            "y": 20
           },
           "id": 66,
           "options": {
             "legend": {
               "calcs": [],
               "displayMode": "list",
-              "placement": "bottom",
-              "showLegend": true
+              "placement": "bottom"
             },
             "tooltip": {
               "mode": "multi",
@@ -2754,15 +2717,14 @@
             "h": 8,
             "w": 6,
             "x": 12,
-            "y": 36
+            "y": 20
           },
           "id": 67,
           "options": {
             "legend": {
               "calcs": [],
               "displayMode": "list",
-              "placement": "bottom",
-              "showLegend": true
+              "placement": "bottom"
             },
             "tooltip": {
               "mode": "multi",
@@ -2840,15 +2802,14 @@
             "h": 8,
             "w": 6,
             "x": 18,
-            "y": 36
+            "y": 20
           },
           "id": 68,
           "options": {
             "legend": {
               "calcs": [],
               "displayMode": "list",
-              "placement": "bottom",
-              "showLegend": true
+              "placement": "bottom"
             },
             "tooltip": {
               "mode": "multi",
@@ -2926,15 +2887,14 @@
             "h": 8,
             "w": 6,
             "x": 0,
-            "y": 44
+            "y": 28
           },
           "id": 82,
           "options": {
             "legend": {
               "calcs": [],
               "displayMode": "list",
-              "placement": "bottom",
-              "showLegend": true
+              "placement": "bottom"
             },
             "tooltip": {
               "mode": "multi",
@@ -3012,15 +2972,14 @@
             "h": 8,
             "w": 6,
             "x": 6,
-            "y": 44
+            "y": 28
           },
           "id": 69,
           "options": {
             "legend": {
               "calcs": [],
               "displayMode": "list",
-              "placement": "bottom",
-              "showLegend": true
+              "placement": "bottom"
             },
             "tooltip": {
               "mode": "multi",
@@ -3098,15 +3057,14 @@
             "h": 8,
             "w": 6,
             "x": 12,
-            "y": 44
+            "y": 28
           },
           "id": 70,
           "options": {
             "legend": {
               "calcs": [],
               "displayMode": "list",
-              "placement": "bottom",
-              "showLegend": true
+              "placement": "bottom"
             },
             "tooltip": {
               "mode": "multi",
@@ -3184,15 +3142,14 @@
             "h": 8,
             "w": 6,
             "x": 18,
-            "y": 44
+            "y": 28
           },
           "id": 71,
           "options": {
             "legend": {
               "calcs": [],
               "displayMode": "list",
-              "placement": "bottom",
-              "showLegend": true
+              "placement": "bottom"
             },
             "tooltip": {
               "mode": "multi",
@@ -3270,15 +3227,14 @@
             "h": 8,
             "w": 6,
             "x": 0,
-            "y": 52
+            "y": 36
           },
           "id": 72,
           "options": {
             "legend": {
               "calcs": [],
               "displayMode": "list",
-              "placement": "bottom",
-              "showLegend": true
+              "placement": "bottom"
             },
             "tooltip": {
               "mode": "multi",
@@ -3356,15 +3312,14 @@
             "h": 8,
             "w": 6,
             "x": 6,
-            "y": 52
+            "y": 36
           },
           "id": 84,
           "options": {
             "legend": {
               "calcs": [],
               "displayMode": "list",
-              "placement": "bottom",
-              "showLegend": true
+              "placement": "bottom"
             },
             "tooltip": {
               "mode": "multi",
@@ -3442,15 +3397,14 @@
             "h": 8,
             "w": 6,
             "x": 12,
-            "y": 52
+            "y": 36
           },
           "id": 73,
           "options": {
             "legend": {
               "calcs": [],
               "displayMode": "list",
-              "placement": "bottom",
-              "showLegend": true
+              "placement": "bottom"
             },
             "tooltip": {
               "mode": "multi",
@@ -3528,15 +3482,14 @@
             "h": 8,
             "w": 6,
             "x": 18,
-            "y": 52
+            "y": 36
           },
           "id": 74,
           "options": {
             "legend": {
               "calcs": [],
               "displayMode": "list",
-              "placement": "bottom",
-              "showLegend": true
+              "placement": "bottom"
             },
             "tooltip": {
               "mode": "multi",
@@ -3614,15 +3567,14 @@
             "h": 8,
             "w": 6,
             "x": 0,
-            "y": 60
+            "y": 44
           },
           "id": 131,
           "options": {
             "legend": {
               "calcs": [],
               "displayMode": "list",
-              "placement": "bottom",
-              "showLegend": true
+              "placement": "bottom"
             },
             "tooltip": {
               "mode": "multi",
@@ -3701,15 +3653,14 @@
             "h": 8,
             "w": 6,
             "x": 6,
-            "y": 60
+            "y": 44
           },
           "id": 132,
           "options": {
             "legend": {
               "calcs": [],
               "displayMode": "list",
-              "placement": "bottom",
-              "showLegend": true
+              "placement": "bottom"
             },
             "tooltip": {
               "mode": "multi",
@@ -3788,15 +3739,14 @@
             "h": 8,
             "w": 6,
             "x": 12,
-            "y": 60
+            "y": 44
           },
           "id": 133,
           "options": {
             "legend": {
               "calcs": [],
               "displayMode": "list",
-              "placement": "bottom",
-              "showLegend": true
+              "placement": "bottom"
             },
             "tooltip": {
               "mode": "multi",
@@ -3876,15 +3826,14 @@
             "h": 8,
             "w": 6,
             "x": 18,
-            "y": 60
+            "y": 44
           },
           "id": 134,
           "options": {
             "legend": {
               "calcs": [],
               "displayMode": "list",
-              "placement": "bottom",
-              "showLegend": true
+              "placement": "bottom"
             },
             "tooltip": {
               "mode": "multi",
@@ -3963,15 +3912,14 @@
             "h": 8,
             "w": 6,
             "x": 0,
-            "y": 68
+            "y": 52
           },
           "id": 76,
           "options": {
             "legend": {
               "calcs": [],
               "displayMode": "list",
-              "placement": "bottom",
-              "showLegend": true
+              "placement": "bottom"
             },
             "tooltip": {
               "mode": "multi",
@@ -4049,15 +3997,14 @@
             "h": 8,
             "w": 6,
             "x": 6,
-            "y": 68
+            "y": 52
           },
           "id": 128,
           "options": {
             "legend": {
               "calcs": [],
               "displayMode": "list",
-              "placement": "bottom",
-              "showLegend": true
+              "placement": "bottom"
             },
             "tooltip": {
               "mode": "multi",
@@ -4135,15 +4082,14 @@
             "h": 8,
             "w": 6,
             "x": 12,
-            "y": 68
+            "y": 52
           },
           "id": 129,
           "options": {
             "legend": {
               "calcs": [],
               "displayMode": "list",
-              "placement": "bottom",
-              "showLegend": true
+              "placement": "bottom"
             },
             "tooltip": {
               "mode": "multi",
@@ -4221,15 +4167,14 @@
             "h": 8,
             "w": 6,
             "x": 18,
-            "y": 68
+            "y": 52
           },
           "id": 130,
           "options": {
             "legend": {
               "calcs": [],
               "displayMode": "list",
-              "placement": "bottom",
-              "showLegend": true
+              "placement": "bottom"
             },
             "tooltip": {
               "mode": "multi",
@@ -4307,15 +4252,14 @@
             "h": 8,
             "w": 6,
             "x": 0,
-            "y": 76
+            "y": 60
           },
           "id": 135,
           "options": {
             "legend": {
               "calcs": [],
               "displayMode": "list",
-              "placement": "bottom",
-              "showLegend": true
+              "placement": "bottom"
             },
             "tooltip": {
               "mode": "multi",
@@ -4393,15 +4337,14 @@
             "h": 8,
             "w": 6,
             "x": 6,
-            "y": 76
+            "y": 60
           },
           "id": 136,
           "options": {
             "legend": {
               "calcs": [],
               "displayMode": "list",
-              "placement": "bottom",
-              "showLegend": true
+              "placement": "bottom"
             },
             "tooltip": {
               "mode": "multi",
@@ -4479,15 +4422,14 @@
             "h": 8,
             "w": 6,
             "x": 12,
-            "y": 76
+            "y": 60
           },
           "id": 137,
           "options": {
             "legend": {
               "calcs": [],
               "displayMode": "list",
-              "placement": "bottom",
-              "showLegend": true
+              "placement": "bottom"
             },
             "tooltip": {
               "mode": "multi",
@@ -4565,15 +4507,14 @@
             "h": 8,
             "w": 6,
             "x": 18,
-            "y": 76
+            "y": 60
           },
           "id": 138,
           "options": {
             "legend": {
               "calcs": [],
               "displayMode": "list",
-              "placement": "bottom",
-              "showLegend": true
+              "placement": "bottom"
             },
             "tooltip": {
               "mode": "multi",
@@ -4651,15 +4592,14 @@
             "h": 8,
             "w": 8,
             "x": 0,
-            "y": 84
+            "y": 68
           },
           "id": 139,
           "options": {
             "legend": {
               "calcs": [],
               "displayMode": "list",
-              "placement": "bottom",
-              "showLegend": true
+              "placement": "bottom"
             },
             "tooltip": {
               "mode": "multi",
@@ -4737,15 +4677,14 @@
             "h": 8,
             "w": 8,
             "x": 8,
-            "y": 84
+            "y": 68
           },
           "id": 140,
           "options": {
             "legend": {
               "calcs": [],
               "displayMode": "list",
-              "placement": "bottom",
-              "showLegend": true
+              "placement": "bottom"
             },
             "tooltip": {
               "mode": "multi",
@@ -4823,15 +4762,14 @@
             "h": 8,
             "w": 8,
             "x": 16,
-            "y": 84
+            "y": 68
           },
           "id": 167,
           "options": {
             "legend": {
               "calcs": [],
               "displayMode": "list",
-              "placement": "bottom",
-              "showLegend": true
+              "placement": "bottom"
             },
             "tooltip": {
               "mode": "multi",
@@ -4910,15 +4848,14 @@
             "h": 8,
             "w": 6,
             "x": 0,
-            "y": 92
+            "y": 76
           },
           "id": 163,
           "options": {
             "legend": {
               "calcs": [],
               "displayMode": "list",
-              "placement": "bottom",
-              "showLegend": true
+              "placement": "bottom"
             },
             "tooltip": {
               "mode": "multi",
@@ -4997,15 +4934,14 @@
             "h": 8,
             "w": 6,
             "x": 6,
-            "y": 92
+            "y": 76
           },
           "id": 164,
           "options": {
             "legend": {
               "calcs": [],
               "displayMode": "list",
-              "placement": "bottom",
-              "showLegend": true
+              "placement": "bottom"
             },
             "tooltip": {
               "mode": "multi",
@@ -5084,15 +5020,14 @@
             "h": 8,
             "w": 6,
             "x": 12,
-            "y": 92
+            "y": 76
           },
           "id": 165,
           "options": {
             "legend": {
               "calcs": [],
               "displayMode": "list",
-              "placement": "bottom",
-              "showLegend": true
+              "placement": "bottom"
             },
             "tooltip": {
               "mode": "multi",
@@ -5171,15 +5106,14 @@
             "h": 8,
             "w": 6,
             "x": 18,
-            "y": 92
+            "y": 76
           },
           "id": 166,
           "options": {
             "legend": {
               "calcs": [],
               "displayMode": "list",
-              "placement": "bottom",
-              "showLegend": true
+              "placement": "bottom"
             },
             "tooltip": {
               "mode": "multi",
@@ -5204,24 +5138,11 @@
           "type": "timeseries"
         }
       ],
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "eLDDMh2Vk"
-          },
-          "refId": "A"
-        }
-      ],
       "title": "Query Engine",
       "type": "row"
     },
     {
       "collapsed": true,
-      "datasource": {
-        "type": "prometheus",
-        "uid": "eLDDMh2Vk"
-      },
       "gridPos": {
         "h": 1,
         "w": 24,
@@ -5285,15 +5206,14 @@
             "h": 8,
             "w": 6,
             "x": 0,
-            "y": 21
+            "y": 5
           },
           "id": 75,
           "options": {
             "legend": {
               "calcs": [],
               "displayMode": "list",
-              "placement": "bottom",
-              "showLegend": true
+              "placement": "bottom"
             },
             "tooltip": {
               "mode": "multi",
@@ -5371,15 +5291,14 @@
             "h": 8,
             "w": 6,
             "x": 6,
-            "y": 21
+            "y": 5
           },
           "id": 85,
           "options": {
             "legend": {
               "calcs": [],
               "displayMode": "list",
-              "placement": "bottom",
-              "showLegend": true
+              "placement": "bottom"
             },
             "tooltip": {
               "mode": "multi",
@@ -5457,15 +5376,14 @@
             "h": 8,
             "w": 6,
             "x": 12,
-            "y": 21
+            "y": 5
           },
           "id": 77,
           "options": {
             "legend": {
               "calcs": [],
               "displayMode": "list",
-              "placement": "bottom",
-              "showLegend": true
+              "placement": "bottom"
             },
             "tooltip": {
               "mode": "multi",
@@ -5543,15 +5461,14 @@
             "h": 8,
             "w": 6,
             "x": 18,
-            "y": 21
+            "y": 5
           },
           "id": 78,
           "options": {
             "legend": {
               "calcs": [],
               "displayMode": "list",
-              "placement": "bottom",
-              "showLegend": true
+              "placement": "bottom"
             },
             "tooltip": {
               "mode": "multi",
@@ -5629,15 +5546,14 @@
             "h": 8,
             "w": 6,
             "x": 0,
-            "y": 29
+            "y": 13
           },
           "id": 86,
           "options": {
             "legend": {
               "calcs": [],
               "displayMode": "list",
-              "placement": "bottom",
-              "showLegend": true
+              "placement": "bottom"
             },
             "tooltip": {
               "mode": "multi",
@@ -5715,15 +5631,14 @@
             "h": 8,
             "w": 6,
             "x": 6,
-            "y": 29
+            "y": 13
           },
           "id": 87,
           "options": {
             "legend": {
               "calcs": [],
               "displayMode": "list",
-              "placement": "bottom",
-              "showLegend": true
+              "placement": "bottom"
             },
             "tooltip": {
               "mode": "multi",
@@ -5801,15 +5716,14 @@
             "h": 8,
             "w": 6,
             "x": 12,
-            "y": 29
+            "y": 13
           },
           "id": 88,
           "options": {
             "legend": {
               "calcs": [],
               "displayMode": "list",
-              "placement": "bottom",
-              "showLegend": true
+              "placement": "bottom"
             },
             "tooltip": {
               "mode": "multi",
@@ -5887,15 +5801,14 @@
             "h": 8,
             "w": 6,
             "x": 18,
-            "y": 29
+            "y": 13
           },
           "id": 89,
           "options": {
             "legend": {
               "calcs": [],
               "displayMode": "list",
-              "placement": "bottom",
-              "showLegend": true
+              "placement": "bottom"
             },
             "tooltip": {
               "mode": "multi",
@@ -5973,15 +5886,14 @@
             "h": 8,
             "w": 6,
             "x": 0,
-            "y": 37
+            "y": 21
           },
           "id": 90,
           "options": {
             "legend": {
               "calcs": [],
               "displayMode": "list",
-              "placement": "bottom",
-              "showLegend": true
+              "placement": "bottom"
             },
             "tooltip": {
               "mode": "multi",
@@ -6059,15 +5971,14 @@
             "h": 8,
             "w": 6,
             "x": 6,
-            "y": 37
+            "y": 21
           },
           "id": 91,
           "options": {
             "legend": {
               "calcs": [],
               "displayMode": "list",
-              "placement": "bottom",
-              "showLegend": true
+              "placement": "bottom"
             },
             "tooltip": {
               "mode": "multi",
@@ -6145,15 +6056,14 @@
             "h": 8,
             "w": 6,
             "x": 12,
-            "y": 37
+            "y": 21
           },
           "id": 92,
           "options": {
             "legend": {
               "calcs": [],
               "displayMode": "list",
-              "placement": "bottom",
-              "showLegend": true
+              "placement": "bottom"
             },
             "tooltip": {
               "mode": "multi",
@@ -6231,15 +6141,14 @@
             "h": 8,
             "w": 6,
             "x": 18,
-            "y": 37
+            "y": 21
           },
           "id": 93,
           "options": {
             "legend": {
               "calcs": [],
               "displayMode": "list",
-              "placement": "bottom",
-              "showLegend": true
+              "placement": "bottom"
             },
             "tooltip": {
               "mode": "multi",
@@ -6317,15 +6226,14 @@
             "h": 8,
             "w": 6,
             "x": 0,
-            "y": 45
+            "y": 29
           },
           "id": 94,
           "options": {
             "legend": {
               "calcs": [],
               "displayMode": "list",
-              "placement": "bottom",
-              "showLegend": true
+              "placement": "bottom"
             },
             "tooltip": {
               "mode": "multi",
@@ -6403,15 +6311,14 @@
             "h": 8,
             "w": 6,
             "x": 6,
-            "y": 45
+            "y": 29
           },
           "id": 95,
           "options": {
             "legend": {
               "calcs": [],
               "displayMode": "list",
-              "placement": "bottom",
-              "showLegend": true
+              "placement": "bottom"
             },
             "tooltip": {
               "mode": "multi",
@@ -6489,15 +6396,14 @@
             "h": 8,
             "w": 6,
             "x": 12,
-            "y": 45
+            "y": 29
           },
           "id": 96,
           "options": {
             "legend": {
               "calcs": [],
               "displayMode": "list",
-              "placement": "bottom",
-              "showLegend": true
+              "placement": "bottom"
             },
             "tooltip": {
               "mode": "multi",
@@ -6575,15 +6481,14 @@
             "h": 8,
             "w": 6,
             "x": 18,
-            "y": 45
+            "y": 29
           },
           "id": 97,
           "options": {
             "legend": {
               "calcs": [],
               "displayMode": "list",
-              "placement": "bottom",
-              "showLegend": true
+              "placement": "bottom"
             },
             "tooltip": {
               "mode": "multi",
@@ -6661,15 +6566,14 @@
             "h": 8,
             "w": 6,
             "x": 0,
-            "y": 53
+            "y": 37
           },
           "id": 98,
           "options": {
             "legend": {
               "calcs": [],
               "displayMode": "list",
-              "placement": "bottom",
-              "showLegend": true
+              "placement": "bottom"
             },
             "tooltip": {
               "mode": "multi",
@@ -6748,15 +6652,14 @@
             "h": 8,
             "w": 6,
             "x": 6,
-            "y": 53
+            "y": 37
           },
           "id": 101,
           "options": {
             "legend": {
               "calcs": [],
               "displayMode": "list",
-              "placement": "bottom",
-              "showLegend": true
+              "placement": "bottom"
             },
             "tooltip": {
               "mode": "multi",
@@ -6835,15 +6738,14 @@
             "h": 8,
             "w": 6,
             "x": 12,
-            "y": 53
+            "y": 37
           },
           "id": 102,
           "options": {
             "legend": {
               "calcs": [],
               "displayMode": "list",
-              "placement": "bottom",
-              "showLegend": true
+              "placement": "bottom"
             },
             "tooltip": {
               "mode": "multi",
@@ -6922,15 +6824,14 @@
             "h": 8,
             "w": 6,
             "x": 18,
-            "y": 53
+            "y": 37
           },
           "id": 103,
           "options": {
             "legend": {
               "calcs": [],
               "displayMode": "list",
-              "placement": "bottom",
-              "showLegend": true
+              "placement": "bottom"
             },
             "tooltip": {
               "mode": "multi",
@@ -7008,15 +6909,14 @@
             "h": 8,
             "w": 6,
             "x": 0,
-            "y": 61
+            "y": 45
           },
           "id": 104,
           "options": {
             "legend": {
               "calcs": [],
               "displayMode": "list",
-              "placement": "bottom",
-              "showLegend": true
+              "placement": "bottom"
             },
             "tooltip": {
               "mode": "multi",
@@ -7095,15 +6995,14 @@
             "h": 8,
             "w": 6,
             "x": 6,
-            "y": 61
+            "y": 45
           },
           "id": 105,
           "options": {
             "legend": {
               "calcs": [],
               "displayMode": "list",
-              "placement": "bottom",
-              "showLegend": true
+              "placement": "bottom"
             },
             "tooltip": {
               "mode": "multi",
@@ -7182,15 +7081,14 @@
             "h": 8,
             "w": 6,
             "x": 12,
-            "y": 61
+            "y": 45
           },
           "id": 106,
           "options": {
             "legend": {
               "calcs": [],
               "displayMode": "list",
-              "placement": "bottom",
-              "showLegend": true
+              "placement": "bottom"
             },
             "tooltip": {
               "mode": "multi",
@@ -7269,15 +7167,14 @@
             "h": 8,
             "w": 6,
             "x": 18,
-            "y": 61
+            "y": 45
           },
           "id": 107,
           "options": {
             "legend": {
               "calcs": [],
               "displayMode": "list",
-              "placement": "bottom",
-              "showLegend": true
+              "placement": "bottom"
             },
             "tooltip": {
               "mode": "multi",
@@ -7355,15 +7252,14 @@
             "h": 8,
             "w": 6,
             "x": 0,
-            "y": 69
+            "y": 53
           },
           "id": 108,
           "options": {
             "legend": {
               "calcs": [],
               "displayMode": "list",
-              "placement": "bottom",
-              "showLegend": true
+              "placement": "bottom"
             },
             "tooltip": {
               "mode": "multi",
@@ -7442,15 +7338,14 @@
             "h": 8,
             "w": 6,
             "x": 6,
-            "y": 69
+            "y": 53
           },
           "id": 109,
           "options": {
             "legend": {
               "calcs": [],
               "displayMode": "list",
-              "placement": "bottom",
-              "showLegend": true
+              "placement": "bottom"
             },
             "tooltip": {
               "mode": "multi",
@@ -7529,15 +7424,14 @@
             "h": 8,
             "w": 6,
             "x": 12,
-            "y": 69
+            "y": 53
           },
           "id": 110,
           "options": {
             "legend": {
               "calcs": [],
               "displayMode": "list",
-              "placement": "bottom",
-              "showLegend": true
+              "placement": "bottom"
             },
             "tooltip": {
               "mode": "multi",
@@ -7616,15 +7510,14 @@
             "h": 8,
             "w": 6,
             "x": 18,
-            "y": 69
+            "y": 53
           },
           "id": 111,
           "options": {
             "legend": {
               "calcs": [],
               "displayMode": "list",
-              "placement": "bottom",
-              "showLegend": true
+              "placement": "bottom"
             },
             "tooltip": {
               "mode": "multi",
@@ -7702,15 +7595,14 @@
             "h": 8,
             "w": 6,
             "x": 0,
-            "y": 77
+            "y": 61
           },
           "id": 112,
           "options": {
             "legend": {
               "calcs": [],
               "displayMode": "list",
-              "placement": "bottom",
-              "showLegend": true
+              "placement": "bottom"
             },
             "tooltip": {
               "mode": "multi",
@@ -7789,15 +7681,14 @@
             "h": 8,
             "w": 6,
             "x": 6,
-            "y": 77
+            "y": 61
           },
           "id": 113,
           "options": {
             "legend": {
               "calcs": [],
               "displayMode": "list",
-              "placement": "bottom",
-              "showLegend": true
+              "placement": "bottom"
             },
             "tooltip": {
               "mode": "multi",
@@ -7876,15 +7767,14 @@
             "h": 8,
             "w": 6,
             "x": 12,
-            "y": 77
+            "y": 61
           },
           "id": 114,
           "options": {
             "legend": {
               "calcs": [],
               "displayMode": "list",
-              "placement": "bottom",
-              "showLegend": true
+              "placement": "bottom"
             },
             "tooltip": {
               "mode": "multi",
@@ -7963,15 +7853,14 @@
             "h": 8,
             "w": 6,
             "x": 18,
-            "y": 77
+            "y": 61
           },
           "id": 115,
           "options": {
             "legend": {
               "calcs": [],
               "displayMode": "list",
-              "placement": "bottom",
-              "showLegend": true
+              "placement": "bottom"
             },
             "tooltip": {
               "mode": "multi",
@@ -8049,15 +7938,14 @@
             "h": 8,
             "w": 6,
             "x": 0,
-            "y": 85
+            "y": 69
           },
           "id": 116,
           "options": {
             "legend": {
               "calcs": [],
               "displayMode": "list",
-              "placement": "bottom",
-              "showLegend": true
+              "placement": "bottom"
             },
             "tooltip": {
               "mode": "multi",
@@ -8136,15 +8024,14 @@
             "h": 8,
             "w": 6,
             "x": 6,
-            "y": 85
+            "y": 69
           },
           "id": 117,
           "options": {
             "legend": {
               "calcs": [],
               "displayMode": "list",
-              "placement": "bottom",
-              "showLegend": true
+              "placement": "bottom"
             },
             "tooltip": {
               "mode": "multi",
@@ -8223,15 +8110,14 @@
             "h": 8,
             "w": 6,
             "x": 12,
-            "y": 85
+            "y": 69
           },
           "id": 118,
           "options": {
             "legend": {
               "calcs": [],
               "displayMode": "list",
-              "placement": "bottom",
-              "showLegend": true
+              "placement": "bottom"
             },
             "tooltip": {
               "mode": "multi",
@@ -8310,15 +8196,14 @@
             "h": 8,
             "w": 6,
             "x": 18,
-            "y": 85
+            "y": 69
           },
           "id": 119,
           "options": {
             "legend": {
               "calcs": [],
               "displayMode": "list",
-              "placement": "bottom",
-              "showLegend": true
+              "placement": "bottom"
             },
             "tooltip": {
               "mode": "multi",
@@ -8396,15 +8281,14 @@
             "h": 8,
             "w": 6,
             "x": 0,
-            "y": 93
+            "y": 77
           },
           "id": 120,
           "options": {
             "legend": {
               "calcs": [],
               "displayMode": "list",
-              "placement": "bottom",
-              "showLegend": true
+              "placement": "bottom"
             },
             "tooltip": {
               "mode": "multi",
@@ -8483,15 +8367,14 @@
             "h": 8,
             "w": 6,
             "x": 6,
-            "y": 93
+            "y": 77
           },
           "id": 121,
           "options": {
             "legend": {
               "calcs": [],
               "displayMode": "list",
-              "placement": "bottom",
-              "showLegend": true
+              "placement": "bottom"
             },
             "tooltip": {
               "mode": "multi",
@@ -8570,15 +8453,14 @@
             "h": 8,
             "w": 6,
             "x": 12,
-            "y": 93
+            "y": 77
           },
           "id": 122,
           "options": {
             "legend": {
               "calcs": [],
               "displayMode": "list",
-              "placement": "bottom",
-              "showLegend": true
+              "placement": "bottom"
             },
             "tooltip": {
               "mode": "multi",
@@ -8657,15 +8539,14 @@
             "h": 8,
             "w": 6,
             "x": 18,
-            "y": 93
+            "y": 77
           },
           "id": 123,
           "options": {
             "legend": {
               "calcs": [],
               "displayMode": "list",
-              "placement": "bottom",
-              "showLegend": true
+              "placement": "bottom"
             },
             "tooltip": {
               "mode": "multi",
@@ -8743,15 +8624,14 @@
             "h": 8,
             "w": 6,
             "x": 0,
-            "y": 101
+            "y": 85
           },
           "id": 124,
           "options": {
             "legend": {
               "calcs": [],
               "displayMode": "list",
-              "placement": "bottom",
-              "showLegend": true
+              "placement": "bottom"
             },
             "tooltip": {
               "mode": "multi",
@@ -8830,15 +8710,14 @@
             "h": 8,
             "w": 6,
             "x": 6,
-            "y": 101
+            "y": 85
           },
           "id": 125,
           "options": {
             "legend": {
               "calcs": [],
               "displayMode": "list",
-              "placement": "bottom",
-              "showLegend": true
+              "placement": "bottom"
             },
             "tooltip": {
               "mode": "multi",
@@ -8917,15 +8796,14 @@
             "h": 8,
             "w": 6,
             "x": 12,
-            "y": 101
+            "y": 85
           },
           "id": 126,
           "options": {
             "legend": {
               "calcs": [],
               "displayMode": "list",
-              "placement": "bottom",
-              "showLegend": true
+              "placement": "bottom"
             },
             "tooltip": {
               "mode": "multi",
@@ -9004,15 +8882,14 @@
             "h": 8,
             "w": 6,
             "x": 18,
-            "y": 101
+            "y": 85
           },
           "id": 127,
           "options": {
             "legend": {
               "calcs": [],
               "displayMode": "list",
-              "placement": "bottom",
-              "showLegend": true
+              "placement": "bottom"
             },
             "tooltip": {
               "mode": "multi",
@@ -9036,24 +8913,11 @@
           "type": "timeseries"
         }
       ],
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "eLDDMh2Vk"
-          },
-          "refId": "A"
-        }
-      ],
       "title": "Query Interface",
       "type": "row"
     },
     {
       "collapsed": true,
-      "datasource": {
-        "type": "prometheus",
-        "uid": "eLDDMh2Vk"
-      },
       "gridPos": {
         "h": 1,
         "w": 24,
@@ -9117,15 +8981,14 @@
             "h": 8,
             "w": 6,
             "x": 0,
-            "y": 22
+            "y": 6
           },
           "id": 143,
           "options": {
             "legend": {
               "calcs": [],
               "displayMode": "list",
-              "placement": "bottom",
-              "showLegend": true
+              "placement": "bottom"
             },
             "tooltip": {
               "mode": "multi",
@@ -9203,15 +9066,14 @@
             "h": 8,
             "w": 6,
             "x": 6,
-            "y": 22
+            "y": 6
           },
           "id": 144,
           "options": {
             "legend": {
               "calcs": [],
               "displayMode": "list",
-              "placement": "bottom",
-              "showLegend": true
+              "placement": "bottom"
             },
             "tooltip": {
               "mode": "multi",
@@ -9289,15 +9151,14 @@
             "h": 8,
             "w": 6,
             "x": 12,
-            "y": 22
+            "y": 6
           },
           "id": 145,
           "options": {
             "legend": {
               "calcs": [],
               "displayMode": "list",
-              "placement": "bottom",
-              "showLegend": true
+              "placement": "bottom"
             },
             "tooltip": {
               "mode": "multi",
@@ -9375,15 +9236,14 @@
             "h": 8,
             "w": 6,
             "x": 18,
-            "y": 22
+            "y": 6
           },
           "id": 146,
           "options": {
             "legend": {
               "calcs": [],
               "displayMode": "list",
-              "placement": "bottom",
-              "showLegend": true
+              "placement": "bottom"
             },
             "tooltip": {
               "mode": "multi",
@@ -9461,15 +9321,14 @@
             "h": 8,
             "w": 6,
             "x": 0,
-            "y": 30
+            "y": 14
           },
           "id": 147,
           "options": {
             "legend": {
               "calcs": [],
               "displayMode": "list",
-              "placement": "bottom",
-              "showLegend": true
+              "placement": "bottom"
             },
             "tooltip": {
               "mode": "multi",
@@ -9547,15 +9406,14 @@
             "h": 8,
             "w": 6,
             "x": 6,
-            "y": 30
+            "y": 14
           },
           "id": 148,
           "options": {
             "legend": {
               "calcs": [],
               "displayMode": "list",
-              "placement": "bottom",
-              "showLegend": true
+              "placement": "bottom"
             },
             "tooltip": {
               "mode": "multi",
@@ -9633,15 +9491,14 @@
             "h": 8,
             "w": 6,
             "x": 12,
-            "y": 30
+            "y": 14
           },
           "id": 149,
           "options": {
             "legend": {
               "calcs": [],
               "displayMode": "list",
-              "placement": "bottom",
-              "showLegend": true
+              "placement": "bottom"
             },
             "tooltip": {
               "mode": "multi",
@@ -9719,15 +9576,14 @@
             "h": 8,
             "w": 6,
             "x": 18,
-            "y": 30
+            "y": 14
           },
           "id": 150,
           "options": {
             "legend": {
               "calcs": [],
               "displayMode": "list",
-              "placement": "bottom",
-              "showLegend": true
+              "placement": "bottom"
             },
             "tooltip": {
               "mode": "multi",
@@ -9805,15 +9661,14 @@
             "h": 8,
             "w": 6,
             "x": 0,
-            "y": 38
+            "y": 22
           },
           "id": 151,
           "options": {
             "legend": {
               "calcs": [],
               "displayMode": "list",
-              "placement": "bottom",
-              "showLegend": true
+              "placement": "bottom"
             },
             "tooltip": {
               "mode": "multi",
@@ -9891,15 +9746,14 @@
             "h": 8,
             "w": 6,
             "x": 6,
-            "y": 38
+            "y": 22
           },
           "id": 152,
           "options": {
             "legend": {
               "calcs": [],
               "displayMode": "list",
-              "placement": "bottom",
-              "showLegend": true
+              "placement": "bottom"
             },
             "tooltip": {
               "mode": "multi",
@@ -9977,15 +9831,14 @@
             "h": 8,
             "w": 6,
             "x": 12,
-            "y": 38
+            "y": 22
           },
           "id": 153,
           "options": {
             "legend": {
               "calcs": [],
               "displayMode": "list",
-              "placement": "bottom",
-              "showLegend": true
+              "placement": "bottom"
             },
             "tooltip": {
               "mode": "multi",
@@ -10063,15 +9916,14 @@
             "h": 8,
             "w": 6,
             "x": 18,
-            "y": 38
+            "y": 22
           },
           "id": 154,
           "options": {
             "legend": {
               "calcs": [],
               "displayMode": "list",
-              "placement": "bottom",
-              "showLegend": true
+              "placement": "bottom"
             },
             "tooltip": {
               "mode": "multi",
@@ -10149,15 +10001,14 @@
             "h": 8,
             "w": 6,
             "x": 0,
-            "y": 46
+            "y": 30
           },
           "id": 155,
           "options": {
             "legend": {
               "calcs": [],
               "displayMode": "list",
-              "placement": "bottom",
-              "showLegend": true
+              "placement": "bottom"
             },
             "tooltip": {
               "mode": "multi",
@@ -10235,15 +10086,14 @@
             "h": 8,
             "w": 6,
             "x": 6,
-            "y": 46
+            "y": 30
           },
           "id": 156,
           "options": {
             "legend": {
               "calcs": [],
               "displayMode": "list",
-              "placement": "bottom",
-              "showLegend": true
+              "placement": "bottom"
             },
             "tooltip": {
               "mode": "multi",
@@ -10321,15 +10171,14 @@
             "h": 8,
             "w": 6,
             "x": 12,
-            "y": 46
+            "y": 30
           },
           "id": 157,
           "options": {
             "legend": {
               "calcs": [],
               "displayMode": "list",
-              "placement": "bottom",
-              "showLegend": true
+              "placement": "bottom"
             },
             "tooltip": {
               "mode": "multi",
@@ -10407,15 +10256,14 @@
             "h": 8,
             "w": 6,
             "x": 18,
-            "y": 46
+            "y": 30
           },
           "id": 158,
           "options": {
             "legend": {
               "calcs": [],
               "displayMode": "list",
-              "placement": "bottom",
-              "showLegend": true
+              "placement": "bottom"
             },
             "tooltip": {
               "mode": "multi",
@@ -10493,15 +10341,14 @@
             "h": 8,
             "w": 6,
             "x": 0,
-            "y": 54
+            "y": 38
           },
           "id": 159,
           "options": {
             "legend": {
               "calcs": [],
               "displayMode": "list",
-              "placement": "bottom",
-              "showLegend": true
+              "placement": "bottom"
             },
             "tooltip": {
               "mode": "multi",
@@ -10579,15 +10426,14 @@
             "h": 8,
             "w": 6,
             "x": 6,
-            "y": 54
+            "y": 38
           },
           "id": 160,
           "options": {
             "legend": {
               "calcs": [],
               "displayMode": "list",
-              "placement": "bottom",
-              "showLegend": true
+              "placement": "bottom"
             },
             "tooltip": {
               "mode": "multi",
@@ -10665,15 +10511,14 @@
             "h": 8,
             "w": 6,
             "x": 12,
-            "y": 54
+            "y": 38
           },
           "id": 161,
           "options": {
             "legend": {
               "calcs": [],
               "displayMode": "list",
-              "placement": "bottom",
-              "showLegend": true
+              "placement": "bottom"
             },
             "tooltip": {
               "mode": "multi",
@@ -10751,15 +10596,14 @@
             "h": 8,
             "w": 6,
             "x": 18,
-            "y": 54
+            "y": 38
           },
           "id": 162,
           "options": {
             "legend": {
               "calcs": [],
               "displayMode": "list",
-              "placement": "bottom",
-              "showLegend": true
+              "placement": "bottom"
             },
             "tooltip": {
               "mode": "multi",
@@ -10783,15 +10627,6 @@
           "type": "timeseries"
         }
       ],
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "eLDDMh2Vk"
-          },
-          "refId": "A"
-        }
-      ],
       "title": "Query Data Exchange",
       "type": "row"
     },
@@ -10799,7 +10634,7 @@
       "collapsed": true,
       "datasource": {
         "type": "prometheus",
-        "uid": "eLDDMh2Vk"
+        "uid": "${DS_PROMETHEUS}"
       },
       "gridPos": {
         "h": 1,
@@ -10820,8 +10655,6 @@
                 "mode": "palette-classic"
               },
               "custom": {
-                "axisCenteredZero": false,
-                "axisColorMode": "text",
                 "axisLabel": "",
                 "axisPlacement": "auto",
                 "barAlignment": 0,
@@ -10867,7 +10700,7 @@
             "h": 8,
             "w": 8,
             "x": 0,
-            "y": 23
+            "y": 7
           },
           "id": 21,
           "options": {
@@ -10912,8 +10745,6 @@
                 "mode": "palette-classic"
               },
               "custom": {
-                "axisCenteredZero": false,
-                "axisColorMode": "text",
                 "axisLabel": "",
                 "axisPlacement": "auto",
                 "barAlignment": 0,
@@ -10958,7 +10789,7 @@
             "h": 8,
             "w": 8,
             "x": 8,
-            "y": 23
+            "y": 7
           },
           "id": 22,
           "options": {
@@ -11003,8 +10834,6 @@
                 "mode": "palette-classic"
               },
               "custom": {
-                "axisCenteredZero": false,
-                "axisColorMode": "text",
                 "axisLabel": "",
                 "axisPlacement": "auto",
                 "barAlignment": 0,
@@ -11050,7 +10879,7 @@
             "h": 8,
             "w": 8,
             "x": 16,
-            "y": 23
+            "y": 7
           },
           "id": 23,
           "options": {
@@ -11110,8 +10939,6 @@
                 "mode": "palette-classic"
               },
               "custom": {
-                "axisCenteredZero": false,
-                "axisColorMode": "text",
                 "axisLabel": "",
                 "axisPlacement": "auto",
                 "barAlignment": 0,
@@ -11157,7 +10984,7 @@
             "h": 8,
             "w": 8,
             "x": 0,
-            "y": 31
+            "y": 15
           },
           "id": 24,
           "options": {
@@ -11202,8 +11029,6 @@
                 "mode": "palette-classic"
               },
               "custom": {
-                "axisCenteredZero": false,
-                "axisColorMode": "text",
                 "axisLabel": "",
                 "axisPlacement": "auto",
                 "barAlignment": 0,
@@ -11279,7 +11104,7 @@
             "h": 8,
             "w": 8,
             "x": 8,
-            "y": 31
+            "y": 15
           },
           "id": 25,
           "options": {
@@ -11324,8 +11149,6 @@
                 "mode": "palette-classic"
               },
               "custom": {
-                "axisCenteredZero": false,
-                "axisColorMode": "text",
                 "axisLabel": "",
                 "axisPlacement": "auto",
                 "barAlignment": 0,
@@ -11396,7 +11219,7 @@
             "h": 8,
             "w": 8,
             "x": 16,
-            "y": 31
+            "y": 15
           },
           "id": 26,
           "options": {
@@ -11473,7 +11296,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   }
                 ]
               }
@@ -11484,7 +11308,7 @@
             "h": 8,
             "w": 8,
             "x": 0,
-            "y": 39
+            "y": 23
           },
           "id": 27,
           "options": {
@@ -11561,7 +11385,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   }
                 ]
               }
@@ -11572,7 +11397,7 @@
             "h": 8,
             "w": 8,
             "x": 8,
-            "y": 39
+            "y": 23
           },
           "id": 28,
           "options": {
@@ -11648,7 +11473,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   }
                 ]
               },
@@ -11660,7 +11486,7 @@
             "h": 8,
             "w": 8,
             "x": 16,
-            "y": 39
+            "y": 23
           },
           "id": 29,
           "options": {
@@ -11737,7 +11563,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   }
                 ]
               },
@@ -11749,7 +11576,7 @@
             "h": 8,
             "w": 8,
             "x": 0,
-            "y": 47
+            "y": 31
           },
           "id": 30,
           "options": {
@@ -11828,7 +11655,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   }
                 ]
               },
@@ -11840,7 +11668,7 @@
             "h": 8,
             "w": 8,
             "x": 8,
-            "y": 47
+            "y": 31
           },
           "id": 31,
           "options": {
@@ -11920,7 +11748,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   }
                 ]
               },
@@ -11932,7 +11761,7 @@
             "h": 8,
             "w": 8,
             "x": 16,
-            "y": 47
+            "y": 31
           },
           "id": 32,
           "options": {
@@ -11973,7 +11802,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "eLDDMh2Vk"
+            "uid": "${DS_PROMETHEUS}"
           },
           "refId": "A"
         }
@@ -11985,7 +11814,7 @@
       "collapsed": true,
       "datasource": {
         "type": "prometheus",
-        "uid": "eLDDMh2Vk"
+        "uid": "${DS_PROMETHEUS}"
       },
       "gridPos": {
         "h": 1,
@@ -12022,7 +11851,7 @@
             "h": 8,
             "w": 8,
             "x": 0,
-            "y": 24
+            "y": 8
           },
           "id": 34,
           "options": {
@@ -12115,7 +11944,7 @@
             "h": 8,
             "w": 8,
             "x": 8,
-            "y": 24
+            "y": 8
           },
           "id": 35,
           "options": {
@@ -12217,7 +12046,7 @@
             "h": 8,
             "w": 8,
             "x": 16,
-            "y": 24
+            "y": 8
           },
           "id": 40,
           "options": {
@@ -12307,7 +12136,7 @@
             "h": 8,
             "w": 8,
             "x": 0,
-            "y": 32
+            "y": 16
           },
           "id": 41,
           "options": {
@@ -12421,7 +12250,7 @@
             "h": 8,
             "w": 8,
             "x": 8,
-            "y": 32
+            "y": 16
           },
           "id": 42,
           "options": {
@@ -12523,7 +12352,7 @@
             "h": 8,
             "w": 8,
             "x": 16,
-            "y": 32
+            "y": 16
           },
           "id": 43,
           "options": {
@@ -12635,7 +12464,7 @@
             "h": 8,
             "w": 8,
             "x": 0,
-            "y": 40
+            "y": 24
           },
           "id": 44,
           "options": {
@@ -12757,7 +12586,7 @@
             "h": 8,
             "w": 8,
             "x": 8,
-            "y": 40
+            "y": 24
           },
           "id": 45,
           "options": {
@@ -12856,7 +12685,7 @@
             "h": 8,
             "w": 8,
             "x": 16,
-            "y": 40
+            "y": 24
           },
           "id": 46,
           "options": {
@@ -12957,7 +12786,7 @@
             "h": 7,
             "w": 8,
             "x": 0,
-            "y": 48
+            "y": 32
           },
           "id": 47,
           "options": {
@@ -13057,7 +12886,7 @@
             "h": 7,
             "w": 8,
             "x": 8,
-            "y": 48
+            "y": 32
           },
           "id": 48,
           "options": {
@@ -13154,7 +12983,7 @@
             "h": 7,
             "w": 8,
             "x": 16,
-            "y": 48
+            "y": 32
           },
           "id": 49,
           "options": {
@@ -13252,7 +13081,7 @@
             "h": 8,
             "w": 8,
             "x": 0,
-            "y": 55
+            "y": 39
           },
           "id": 50,
           "options": {
@@ -13386,7 +13215,7 @@
             "h": 8,
             "w": 8,
             "x": 8,
-            "y": 55
+            "y": 39
           },
           "id": 51,
           "options": {
@@ -13518,7 +13347,7 @@
             "h": 8,
             "w": 8,
             "x": 16,
-            "y": 55
+            "y": 39
           },
           "id": 52,
           "options": {
@@ -13607,7 +13436,7 @@
             "h": 8,
             "w": 8,
             "x": 0,
-            "y": 63
+            "y": 47
           },
           "id": 53,
           "options": {
@@ -13696,7 +13525,7 @@
             "h": 8,
             "w": 8,
             "x": 8,
-            "y": 63
+            "y": 47
           },
           "id": 54,
           "options": {
@@ -13746,7 +13575,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "eLDDMh2Vk"
+            "uid": "${DS_PROMETHEUS}"
           },
           "refId": "A"
         }
@@ -13756,7 +13585,7 @@
     }
   ],
   "refresh": "15s",
-  "schemaVersion": 37,
+  "schemaVersion": 35,
   "style": "dark",
   "tags": [
     "Apache-IoTDB",
