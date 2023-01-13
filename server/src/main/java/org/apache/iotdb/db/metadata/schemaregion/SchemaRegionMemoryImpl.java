@@ -50,7 +50,6 @@ import org.apache.iotdb.db.metadata.plan.schemaregion.impl.write.SchemaRegionWri
 import org.apache.iotdb.db.metadata.plan.schemaregion.read.IShowDevicesPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.read.IShowNodesPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.read.IShowTimeSeriesPlan;
-import org.apache.iotdb.db.metadata.plan.schemaregion.result.ShowTimeSeriesResult;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IActivateTemplateInClusterPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IAutoCreateDeviceMNodePlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IChangeAliasPlan;
@@ -76,7 +75,6 @@ import org.apache.iotdb.external.api.ISeriesNumerMonitor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.Pair;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -86,11 +84,8 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
-import java.util.Iterator;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.NoSuchElementException;
 import java.util.Set;
 
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
@@ -1136,116 +1131,11 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     return mtree.getDeviceReader(showDevicesPlan);
   }
 
-
-  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
-  private ISchemaReader<ITimeSeriesSchemaInfo> getTimeSeriesReaderWithIndex(IShowTimeSeriesPlan plan)
-          throws MetadataException {
-    Iterator<IMeasurementMNode> allMatchedNodes = tagManager.getMatchedTimeseriesInIndex(plan).iterator();
-    PartialPath pathPattern = plan.getPath();
-    int curOffset = 0;
-    int count = 0;
-    int limit = plan.getLimit();
-    int offset = plan.getOffset();
-    boolean hasLimit = limit > 0 || offset > 0;
-    while (curOffset < offset && allMatchedNodes.hasNext()) {
-      IMeasurementMNode node = allMatchedNodes.next();
-      if (plan.isPrefixMatch()
-              ? pathPattern.prefixMatchFullPath(node.getPartialPath())
-              : pathPattern.matchFullPath(node.getPartialPath())) {
-        curOffset++;
-      }
-    }
-    return new ISchemaReader<ITimeSeriesSchemaInfo>() {
-      private IMeasurementMNode nextMatchedNode;
-
-      @Override
-      public void close() {}
-
-      @Override
-      public boolean hasNext() {
-        if(hasLimit&&count>=limit){
-          return false;
-        }else if (nextMatchedNode == null) {
-          getNext();
-        }
-        return nextMatchedNode!=null;
-      }
-
-      @Override
-      public ITimeSeriesSchemaInfo next() {
-        if (!hasNext()) {
-          throw new NoSuchElementException();
-        }
-        Pair<Map<String, String>, Map<String, String>> tagAndAttributePair =
-                tagManager.readTagFile(nextMatchedNode.getOffset());
-        ITimeSeriesSchemaInfo result =
-                new ShowTimeSeriesResult(
-                        nextMatchedNode.getFullPath(),
-                        nextMatchedNode.getAlias(),
-                        (MeasurementSchema) nextMatchedNode.getSchema(),
-                        tagAndAttributePair.left,
-                        tagAndAttributePair.right,
-                        nextMatchedNode.getParent().isAligned());
-        nextMatchedNode = null;
-        return result;
-      }
-
-      private void getNext(){
-        nextMatchedNode = null;
-        while (allMatchedNodes.hasNext()){
-          IMeasurementMNode node = allMatchedNodes.next();
-          if (plan.isPrefixMatch()
-                  ? pathPattern.prefixMatchFullPath(node.getPartialPath())
-                  : pathPattern.matchFullPath(node.getPartialPath())) {
-            nextMatchedNode = node;
-            break;
-          }
-        }
-      }
-    };
-//
-//    List<ShowTimeSeriesResult> res = new LinkedList<>();
-//
-//
-//    for (IMeasurementMNode leaf : allMatchedNodes) {
-//      if (plan.isPrefixMatch()
-//              ? pathPattern.prefixMatchFullPath(leaf.getPartialPath())
-//              : pathPattern.matchFullPath(leaf.getPartialPath())) {
-//        if (limit != 0 || offset != 0) {
-//          curOffset++;
-//          if (curOffset < offset || count == limit) {
-//            continue;
-//          }
-//        }
-//        try {
-//          Pair<Map<String, String>, Map<String, String>> tagAndAttributePair =
-//                  tagManager.readTagFile(leaf.getOffset());
-//          res.add(
-//                  new ShowTimeSeriesResult(
-//                          leaf.getFullPath(),
-//                          leaf.getAlias(),
-//                          (MeasurementSchema) leaf.getSchema(),
-//                          tagAndAttributePair.left,
-//                          tagAndAttributePair.right,
-//                          leaf.getParent().isAligned()));
-//          if (limit != 0) {
-//            count++;
-//          }
-//        } catch (IOException e) {
-//          throw new MetadataException(
-//                  "Something went wrong while deserialize tag info of " + leaf.getFullPath(), e);
-//        }
-//      }
-//    }
-//
-//    return res;
-  }
-
   @Override
   public ISchemaReader<ITimeSeriesSchemaInfo> getTimeSeriesReader(
       IShowTimeSeriesPlan showTimeSeriesPlan) throws MetadataException {
     if (showTimeSeriesPlan.getKey() != null && showTimeSeriesPlan.getValue() != null) {
-      return  getTimeSeriesReaderWithIndex(showTimeSeriesPlan);
+      return tagManager.getTimeSeriesReaderWithIndex(showTimeSeriesPlan);
     } else {
       return mtree.getTimeSeriesReader(
           showTimeSeriesPlan,
