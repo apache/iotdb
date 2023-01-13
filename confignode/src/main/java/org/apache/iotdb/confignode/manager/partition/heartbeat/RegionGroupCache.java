@@ -125,7 +125,7 @@ public class RegionGroupCache {
     int unknownCount = 0;
     int readonlyCount = 0;
     for (RegionStatistics regionStatistics : regionStatisticsMap.values()) {
-      if (RegionStatus.ReadOnly.equals(regionStatistics.getRegionStatus())) {
+      if (RegionStatus.Removing.equals(regionStatistics.getRegionStatus())) {
         // The RegionGroup is considered as Disabled when
         // at least one Region is in the ReadOnly or Removing status
         return RegionGroupStatus.Disabled;
@@ -134,7 +134,7 @@ public class RegionGroupCache {
       readonlyCount += RegionStatus.ReadOnly.equals(regionStatistics.getRegionStatus()) ? 1 : 0;
     }
 
-    if (unknownCount == 0) {
+    if (unknownCount + readonlyCount == 0) {
       // The RegionGroup is considered as Running only if
       // all Regions are in the Running status
       return RegionGroupStatus.Running;

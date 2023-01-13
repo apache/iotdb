@@ -39,9 +39,9 @@ public enum RegionGroupStatus {
   /**
    * The following cases will lead to Disabled RegionGroup:
    *
-   * <p>1. There is a Region in ReadOnly or Removing status
+   * <p>1. There is a Region in Removing status
    *
-   * <p>2. More than half of the Regions are in Unknown status
+   * <p>2. More than half of the Regions are in Unknown or ReadOnly status
    */
   Disabled("Disabled");
 
