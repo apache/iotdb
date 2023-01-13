@@ -3123,13 +3123,18 @@ public class DataRegion implements IDataRegionForQuery {
    * @param insertRowsNode batch of rows belongs to multiple devices
    */
   public void insert(InsertRowsNode insertRowsNode) throws BatchProcessException {
-    for (int i = 0; i < insertRowsNode.getInsertRowNodeList().size(); i++) {
-      InsertRowNode insertRowNode = insertRowsNode.getInsertRowNodeList().get(i);
-      try {
-        insert(insertRowNode);
-      } catch (WriteProcessException e) {
-        insertRowsNode.getResults().put(i, RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
+    writeLock("InsertRows");
+    try {
+      for (int i = 0; i < insertRowsNode.getInsertRowNodeList().size(); i++) {
+        InsertRowNode insertRowNode = insertRowsNode.getInsertRowNodeList().get(i);
+        try {
+          insert(insertRowNode);
+        } catch (WriteProcessException e) {
+          insertRowsNode.getResults().put(i, RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
+        }
       }
+    } finally {
+      writeUnlock();
     }
 
     if (!insertRowsNode.getResults().isEmpty()) {
