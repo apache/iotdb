@@ -10,7 +10,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.ArrayList;
 
-public class ReorderingEncodeRegressionTest {
+public class ReorderingEncodeRegressionNoTTTest {
 
   static int DeviationOutlierThreshold = 8;
   static int OutlierThreshold = 0;
@@ -342,18 +342,18 @@ public class ReorderingEncodeRegressionTest {
     return i_star;
   }
 
-  public static ArrayList<Byte> encode2Bytes(ArrayList<ArrayList<Integer>> ts_block,ArrayList<Integer> deviation_list,
+  public static ArrayList<Byte> encode2Bytes(ArrayList<ArrayList<Integer>> ts_block,
                                              ArrayList<Integer> raw_length,ArrayList<Double> theta){
     ArrayList<Byte> encoded_result = new ArrayList<>();
 //    // encode block size (Integer)
 //    byte[] block_size_byte = int2Bytes(ts_block.size());
 //    for (byte b : block_size_byte) encoded_result.add(b);
 
-    // r0 of a block (Integer)
-    byte[] r0_byte = int2Bytes(raw_length.get(4));
-    for (byte b : r0_byte) encoded_result.add(b);
-    byte[] d0_byte = int2Bytes(raw_length.get(5));
-    for (byte b : d0_byte) encoded_result.add(b);
+//    // r0 of a block (Integer)
+//    byte[] r0_byte = int2Bytes(raw_length.get(4));
+//    for (byte b : r0_byte) encoded_result.add(b);
+//    byte[] d0_byte = int2Bytes(raw_length.get(5));
+//    for (byte b : d0_byte) encoded_result.add(b);
 
     // encode interval0 and value0
     byte[] interval0_byte = int2Bytes(ts_block.get(0).get(0));
@@ -385,11 +385,11 @@ public class ReorderingEncodeRegressionTest {
     for (byte b : value_bytes) encoded_result.add(b);
 
 
-    // encode deviation
-    byte[] max_bit_width_deviation_byte = int2Bytes(raw_length.get(3));
-    for (byte b: max_bit_width_deviation_byte) encoded_result.add(b);
-    byte[] deviation_list_bytes = bitPacking(deviation_list,raw_length.get(3));
-    for (byte b: deviation_list_bytes) encoded_result.add(b);
+//    // encode deviation
+//    byte[] max_bit_width_deviation_byte = int2Bytes(raw_length.get(3));
+//    for (byte b: max_bit_width_deviation_byte) encoded_result.add(b);
+//    byte[] deviation_list_bytes = bitPacking(deviation_list,raw_length.get(3));
+//    for (byte b: deviation_list_bytes) encoded_result.add(b);
 
 
     return encoded_result;
@@ -414,9 +414,9 @@ public class ReorderingEncodeRegressionTest {
         ts_block_reorder.add(data.get(j+i*block_size));
       }
 
-      ArrayList<Integer> deviation_list = new ArrayList<>();
-      ArrayList<Integer> result = new ArrayList<>();
-      splitTimeStamp(ts_block,block_size,td,deviation_list,result);
+//      ArrayList<Integer> deviation_list = new ArrayList<>();
+//      ArrayList<Integer> result = new ArrayList<>();
+//      splitTimeStamp(ts_block,block_size,td,deviation_list,result);
       quickSort(ts_block,0,0,block_size-1);
 
       //ts_block order by interval
@@ -469,12 +469,13 @@ public class ReorderingEncodeRegressionTest {
           System.out.println("adjust");
         }
 
-        ts_block_delta = getEncodeBitsRegression( ts_block,  block_size,raw_length,
+        ts_block_delta_reorder = getEncodeBitsRegression( ts_block,  block_size,raw_length,
                 i_star_ready_reorder,theta);
-        raw_length.add(result.get(0)); // max_bit_width_deviation
-        raw_length.add(result.get(1)); // r0
-        raw_length.add(result.get(2)); // d0
-        ArrayList<Byte> cur_encoded_result = encode2Bytes(ts_block_delta,deviation_list,raw_length,theta);
+//        raw_length.add(result.get(0)); // max_bit_width_deviation
+//        raw_length.add(result.get(1)); // r0
+//        raw_length.add(result.get(2)); // d0
+//        ArrayList<Byte> cur_encoded_result = encode2Bytes(ts_block_delta_reorder,deviation_list,raw_length,theta);
+        ArrayList<Byte> cur_encoded_result = encode2Bytes(ts_block_delta_reorder,raw_length,theta);
         encoded_result.addAll(cur_encoded_result);
 
       }
@@ -512,10 +513,11 @@ public class ReorderingEncodeRegressionTest {
 
         ts_block_delta_reorder = getEncodeBitsRegression( ts_block,  block_size,reorder_length,
                 i_star_ready_reorder,theta_reorder);
-        reorder_length.add(result.get(0)); // max_bit_width_deviation
-        reorder_length.add(result.get(1)); // r0
-        reorder_length.add(result.get(2)); // d0
-        ArrayList<Byte> cur_encoded_result = encode2Bytes(ts_block_delta_reorder,deviation_list,reorder_length,theta_reorder);
+//        reorder_length.add(result.get(0)); // max_bit_width_deviation
+//        reorder_length.add(result.get(1)); // r0
+//        reorder_length.add(result.get(2)); // d0
+//        ArrayList<Byte> cur_encoded_result = encode2Bytes(ts_block_delta_reorder,deviation_list,reorder_length,theta_reorder);
+        ArrayList<Byte> cur_encoded_result = encode2Bytes(ts_block_delta_reorder,reorder_length,theta_reorder);
         encoded_result.addAll(cur_encoded_result);
       }
     }
@@ -544,31 +546,31 @@ public class ReorderingEncodeRegressionTest {
     ArrayList<Integer> dataset_map_td = new ArrayList<>();
     input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\Metro-Traffic");
     output_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation" +
-            "\\compression_ratio\\regression_ratio\\Metro-Traffic_ratio.csv");
+            "\\ablation\\RR-no-TT\\Metro-Traffic_ratio.csv");
     dataset_map_td.add(3600);
     input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\Nifty-Stocks");
     output_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation" +
-            "\\compression_ratio\\regression_ratio\\Nifty-Stocks_ratio.csv");
+            "\\ablation\\RR-no-TT\\Nifty-Stocks_ratio.csv");
     dataset_map_td.add(86400);
     input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\USGS-Earthquakes");
     output_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation" +
-            "\\compression_ratio\\regression_ratio\\USGS-Earthquakes_ratio.csv");
+            "\\ablation\\RR-no-TT\\USGS-Earthquakes_ratio.csv");
     dataset_map_td.add(50);
     input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\Cyber-Vehicle");
     output_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation" +
-            "\\compression_ratio\\regression_ratio\\Cyber-Vehicle_ratio.csv");
+            "\\ablation\\RR-no-TT\\Cyber-Vehicle_ratio.csv");
     dataset_map_td.add(10);
     input_path_list.add( "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\TH-Climate");
     output_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation" +
-            "\\compression_ratio\\regression_ratio\\TH-Climate_ratio.csv");
+            "\\ablation\\RR-no-TT\\TH-Climate_ratio.csv");
     dataset_map_td.add(3);
     input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\TY-Transport");
     output_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation" +
-            "\\compression_ratio\\regression_ratio\\TY-Transport_ratio.csv");
+            "\\ablation\\RR-no-TT\\TY-Transport_ratio.csv");
     dataset_map_td.add(5);
     input_path_list.add( "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\TY-Fuel");
     output_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation" +
-            "\\compression_ratio\\regression_ratio\\TY-Fuel_ratio.csv");
+            "\\ablation\\RR-no-TT\\TY-Fuel_ratio.csv");
     dataset_map_td.add(60);
 
 
@@ -647,7 +649,7 @@ public class ReorderingEncodeRegressionTest {
 
         String[] record = {
                 f.toString(),
-                "RR",
+                "RR-no-TT",
                 String.valueOf(encodeTime),
                 String.valueOf(decodeTime),
                 String.valueOf(data.size()),

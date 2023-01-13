@@ -10,9 +10,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.ArrayList;
 
-import static org.codehaus.groovy.runtime.DefaultGroovyMethods.sort;
-
-public class ReorderingEncodeTest {
+public class ReorderingEncodeNoROTest {
 
   static int DeviationOutlierThreshold = 8;
   static int OutlierThreshold = 0;
@@ -171,7 +169,7 @@ public class ReorderingEncodeTest {
     result.add(d0);
   }
   public static ArrayList<ArrayList<Integer>> getEncodeBitsDelta(ArrayList<ArrayList<Integer>> ts_block, int block_size,
-                                                      ArrayList<Integer> result, ArrayList<Integer> i_star){
+                                                      ArrayList<Integer> result){
     int timestamp_delta_min = Integer.MAX_VALUE;
     int value_delta_min = Integer.MAX_VALUE;
     ArrayList<ArrayList<Integer>> ts_block_delta = new ArrayList<>();
@@ -231,9 +229,6 @@ public class ReorderingEncodeTest {
 
     result.add(timestamp_delta_min);
     result.add(value_delta_min);
-
-    i_star.add(max_timestamp_i);
-    i_star.add(max_value_i);
 
     return ts_block_delta;
   }
@@ -376,98 +371,106 @@ public class ReorderingEncodeTest {
       ArrayList<Integer> raw_length = new ArrayList<>(); // length,max_bit_width_interval,max_bit_width_value,max_bit_width_deviation
       ArrayList<Integer> i_star_ready = new ArrayList<>();
 
-      ArrayList<ArrayList<Integer>> ts_block_delta = getEncodeBitsDelta( ts_block,  block_size, raw_length,i_star_ready);
+      ArrayList<ArrayList<Integer>> ts_block_delta = getEncodeBitsDelta( ts_block,  block_size, raw_length);
 
 
-      // value-order
-      quickSort(ts_block,1,0,block_size-1);
-      ArrayList<Integer> reorder_length = new ArrayList<>();
-      ArrayList<Integer> i_star_ready_reorder = new ArrayList<>();
-      ArrayList<ArrayList<Integer>> ts_block_delta_reorder = getEncodeBitsDelta( ts_block,  block_size, reorder_length,i_star_ready_reorder);
+//      // value-order
+//      quickSort(ts_block,1,0,block_size-1);
+//      ArrayList<Integer> reorder_length = new ArrayList<>();
+//      ArrayList<Integer> i_star_ready_reorder = new ArrayList<>();
+//      ArrayList<ArrayList<Integer>> ts_block_delta_reorder = getEncodeBitsDelta( ts_block,  block_size, reorder_length,i_star_ready_reorder);
 
 
-      if(raw_length.get(0)<=reorder_length.get(0)){
-        quickSort(ts_block,0,0,block_size-1);
-//        System.out.println(ts_block);
-        int i_star = i_star_ready.get(1);
-        int j_star;
-        count_raw ++;
-//        i_star =getIStar(ts_block,block_size,raw_length,0);
-        j_star =getJStar(ts_block,i_star,block_size,raw_length,0);
+//      if(raw_length.get(0)<=reorder_length.get(0)){
+//        quickSort(ts_block,0,0,block_size-1);
+////        System.out.println(ts_block);
+//        int i_star = i_star_ready.get(1);
+//        int j_star;
+//        count_raw ++;
+////        i_star =getIStar(ts_block,block_size,raw_length,0);
+//        j_star =getJStar(ts_block,i_star,block_size,raw_length,0);
+//
+//        while(j_star!=0){
+//          ArrayList<Integer> tmp_tv = ts_block_reorder.get(i_star);
+//          if(j_star<i_star){
+//            for(int u=i_star-1;u>=j_star;u--){
+//              ArrayList<Integer> tmp_tv_cur = new ArrayList<>();
+//              tmp_tv_cur.add(ts_block_reorder.get(u).get(0));
+//              tmp_tv_cur.add(ts_block_reorder.get(u).get(1));
+//              ts_block.set(u+1,tmp_tv_cur);
+//            }
+//          }else{
+//            for(int u=i_star+1;u<=j_star;u++){
+//              ArrayList<Integer> tmp_tv_cur = new ArrayList<>();
+//              tmp_tv_cur.add(ts_block_reorder.get(u).get(0));
+//              tmp_tv_cur.add(ts_block_reorder.get(u).get(1));
+//              ts_block.set(u-1,tmp_tv_cur);
+//            }
+//          }
+//          ts_block.set(j_star,tmp_tv);
+//          i_star =getIStar(ts_block,block_size,raw_length,0);
+//          j_star =getJStar(ts_block,i_star,block_size,raw_length,0);
+//          System.out.println("adjust");
+//        }
+//
+//        ts_block_delta = getEncodeBitsDelta( ts_block,  block_size,reorder_length,
+//                i_star_ready_reorder);
+//        raw_length.add(result.get(0)); // max_bit_width_deviation
+//        raw_length.add(result.get(1)); // r0
+//        raw_length.add(result.get(2)); // d0
+//        ArrayList<Byte> cur_encoded_result = encode2Bytes(ts_block_delta,deviation_list,raw_length);
+//        encoded_result.addAll(cur_encoded_result);
+//        count_raw ++;
+//      }
+//      else{
+//        // adjust to reduce max_bit_width_r
+////        System.out.println(ts_block);
+//        int i_star = i_star_ready_reorder.get(0);
+//        int j_star = 0;
+//        ArrayList<Integer> j_star_list =new ArrayList<>();
+//        count_reorder ++;
+////        i_star =getIStar(ts_block,block_size,raw_length,0);
+//        j_star =getJStar(ts_block,i_star,block_size,raw_length,0);
+//        while(j_star != 0){
+//          ArrayList<Integer> tmp_tv = ts_block_reorder.get(i_star);
+//          if(j_star<i_star){
+//            for(int u=i_star-1;u>=j_star;u--){
+//              ArrayList<Integer> tmp_tv_cur = new ArrayList<>();
+//              tmp_tv_cur.add(ts_block_reorder.get(u).get(0));
+//              tmp_tv_cur.add(ts_block_reorder.get(u).get(1));
+//              ts_block.set(u+1,tmp_tv_cur);
+//            }
+//          }else{
+//            for(int u=i_star+1;u<=j_star;u++){
+//              ArrayList<Integer> tmp_tv_cur = new ArrayList<>();
+//              tmp_tv_cur.add(ts_block_reorder.get(u).get(0));
+//              tmp_tv_cur.add(ts_block_reorder.get(u).get(1));
+//              ts_block.set(u-1,tmp_tv_cur);
+//            }
+//          }
+//          System.out.println("adjust");
+//          ts_block.set(j_star,tmp_tv);
+//          i_star =getIStar(ts_block,block_size,raw_length,0);
+//          j_star =getJStar(ts_block,i_star,block_size,raw_length,0);
+//        }
+//
+//        ts_block_delta_reorder = getEncodeBitsDelta( ts_block,  block_size,reorder_length,
+//                i_star_ready_reorder);
+//        reorder_length.add(result.get(0)); // max_bit_width_deviation
+//        reorder_length.add(result.get(1)); // r0
+//        reorder_length.add(result.get(2)); // d0
+//        ArrayList<Byte> cur_encoded_result = encode2Bytes(ts_block_delta_reorder,deviation_list,reorder_length);
+//        encoded_result.addAll(cur_encoded_result);
+//        count_reorder ++;
+//      }
 
-        while(j_star!=0){
-          ArrayList<Integer> tmp_tv = ts_block_reorder.get(i_star);
-          if(j_star<i_star){
-            for(int u=i_star-1;u>=j_star;u--){
-              ArrayList<Integer> tmp_tv_cur = new ArrayList<>();
-              tmp_tv_cur.add(ts_block_reorder.get(u).get(0));
-              tmp_tv_cur.add(ts_block_reorder.get(u).get(1));
-              ts_block.set(u+1,tmp_tv_cur);
-            }
-          }else{
-            for(int u=i_star+1;u<=j_star;u++){
-              ArrayList<Integer> tmp_tv_cur = new ArrayList<>();
-              tmp_tv_cur.add(ts_block_reorder.get(u).get(0));
-              tmp_tv_cur.add(ts_block_reorder.get(u).get(1));
-              ts_block.set(u-1,tmp_tv_cur);
-            }
-          }
-          ts_block.set(j_star,tmp_tv);
-          i_star =getIStar(ts_block,block_size,raw_length,0);
-          j_star =getJStar(ts_block,i_star,block_size,raw_length,0);
-          System.out.println("adjust");
-        }
-
-        ts_block_delta = getEncodeBitsDelta( ts_block,  block_size,raw_length,
-                i_star_ready_reorder);
-        raw_length.add(result.get(0)); // max_bit_width_deviation
-        raw_length.add(result.get(1)); // r0
-        raw_length.add(result.get(2)); // d0
-        ArrayList<Byte> cur_encoded_result = encode2Bytes(ts_block_delta,deviation_list,raw_length);
-        encoded_result.addAll(cur_encoded_result);
-        count_raw ++;
-      }
-      else{
-        // adjust to reduce max_bit_width_r
-//        System.out.println(ts_block);
-        int i_star = i_star_ready_reorder.get(0);
-        int j_star = 0;
-        ArrayList<Integer> j_star_list =new ArrayList<>();
-        count_reorder ++;
-//        i_star =getIStar(ts_block,block_size,raw_length,0);
-        j_star =getJStar(ts_block,i_star,block_size,raw_length,0);
-        while(j_star != 0){
-          ArrayList<Integer> tmp_tv = ts_block_reorder.get(i_star);
-          if(j_star<i_star){
-            for(int u=i_star-1;u>=j_star;u--){
-              ArrayList<Integer> tmp_tv_cur = new ArrayList<>();
-              tmp_tv_cur.add(ts_block_reorder.get(u).get(0));
-              tmp_tv_cur.add(ts_block_reorder.get(u).get(1));
-              ts_block.set(u+1,tmp_tv_cur);
-            }
-          }else{
-            for(int u=i_star+1;u<=j_star;u++){
-              ArrayList<Integer> tmp_tv_cur = new ArrayList<>();
-              tmp_tv_cur.add(ts_block_reorder.get(u).get(0));
-              tmp_tv_cur.add(ts_block_reorder.get(u).get(1));
-              ts_block.set(u-1,tmp_tv_cur);
-            }
-          }
-          System.out.println("adjust");
-          ts_block.set(j_star,tmp_tv);
-          i_star =getIStar(ts_block,block_size,raw_length,0);
-          j_star =getJStar(ts_block,i_star,block_size,raw_length,0);
-        }
-
-        ts_block_delta_reorder = getEncodeBitsDelta( ts_block,  block_size,reorder_length,
-                i_star_ready_reorder);
-        reorder_length.add(result.get(0)); // max_bit_width_deviation
-        reorder_length.add(result.get(1)); // r0
-        reorder_length.add(result.get(2)); // d0
-        ArrayList<Byte> cur_encoded_result = encode2Bytes(ts_block_delta_reorder,deviation_list,reorder_length);
-        encoded_result.addAll(cur_encoded_result);
-        count_reorder ++;
-      }
+//      ts_block_delta = getEncodeBitsDelta( ts_block,  block_size,raw_length);
+      raw_length.add(result.get(0)); // max_bit_width_deviation
+      raw_length.add(result.get(1)); // r0
+      raw_length.add(result.get(2)); // d0
+      ArrayList<Byte> cur_encoded_result = encode2Bytes(ts_block_delta,deviation_list,raw_length);
+      encoded_result.addAll(cur_encoded_result);
+//      count_raw ++;
     }
 //    System.out.println(count_raw);
 //    System.out.println(count_reorder);
@@ -647,31 +650,31 @@ public class ReorderingEncodeTest {
     ArrayList<Integer> dataset_map_td = new ArrayList<>();
     input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\Metro-Traffic");
     output_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation" +
-            "\\compression_ratio\\rd_ratio\\Metro-Traffic_ratio.csv");
+            "\\ablation\\RD-no-RO\\Metro-Traffic_ratio.csv");
     dataset_map_td.add(3600);
     input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\Nifty-Stocks");
     output_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation" +
-            "\\compression_ratio\\rd_ratio\\Nifty-Stocks_ratio.csv");
+            "\\ablation\\RD-no-RO\\Nifty-Stocks_ratio.csv");
     dataset_map_td.add(86400);
     input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\USGS-Earthquakes");
     output_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation" +
-            "\\compression_ratio\\rd_ratio\\USGS-Earthquakes_ratio.csv");
+            "\\ablation\\RD-no-RO\\USGS-Earthquakes_ratio.csv");
     dataset_map_td.add(50);
     input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\Cyber-Vehicle");
     output_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation" +
-            "\\compression_ratio\\rd_ratio\\Cyber-Vehicle_ratio.csv");
+            "\\ablation\\RD-no-RO\\Cyber-Vehicle_ratio.csv");
     dataset_map_td.add(10);
     input_path_list.add( "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\TH-Climate");
     output_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation" +
-            "\\compression_ratio\\rd_ratio\\TH-Climate_ratio.csv");
+            "\\ablation\\RD-no-RO\\TH-Climate_ratio.csv");
     dataset_map_td.add(3);
     input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\TY-Transport");
     output_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation" +
-            "\\compression_ratio\\rd_ratio\\TY-Transport_ratio.csv");
+            "\\ablation\\RD-no-RO\\TY-Transport_ratio.csv");
     dataset_map_td.add(5);
     input_path_list.add( "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\TY-Fuel");
     output_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation" +
-            "\\compression_ratio\\rd_ratio\\TY-Fuel_ratio.csv");
+            "\\ablation\\RD-no-RO\\TY-Fuel_ratio.csv");
     dataset_map_td.add(60);
 
 
@@ -750,7 +753,7 @@ public class ReorderingEncodeTest {
 
         String[] record = {
                 f.toString(),
-                "RD",
+                "RD-no-RO",
                 String.valueOf(encodeTime),
                 String.valueOf(decodeTime),
                 String.valueOf(data.size()),
