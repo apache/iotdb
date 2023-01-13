@@ -157,4 +157,31 @@ public class TypeInferenceUtils {
         throw new IllegalArgumentException("Invalid Aggregation function: " + aggrFuncName);
     }
   }
+
+  public static boolean canAutoCast(TSDataType fromType, TSDataType toType) {
+    if (fromType.equals(toType)) {
+      return true;
+    }
+
+    switch (fromType) {
+      case INT32:
+        switch (toType) {
+          case INT64:
+          case FLOAT:
+          case DOUBLE:
+            return true;
+          default:
+            return false;
+        }
+      case INT64:
+      case FLOAT:
+        return toType.equals(TSDataType.DOUBLE);
+      case DOUBLE:
+      case BOOLEAN:
+      case TEXT:
+        return false;
+      default:
+        throw new IllegalArgumentException("Unknown data type: " + fromType);
+    }
+  }
 }
