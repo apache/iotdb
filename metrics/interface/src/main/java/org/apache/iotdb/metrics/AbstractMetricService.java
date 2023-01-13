@@ -19,13 +19,6 @@
 
 package org.apache.iotdb.metrics;
 
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.ServiceLoader;
-import java.util.Set;
-import java.util.concurrent.TimeUnit;
-import java.util.function.ToLongFunction;
 import org.apache.iotdb.metrics.config.MetricConfig;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.config.ReloadLevel;
@@ -49,8 +42,17 @@ import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
 import org.apache.iotdb.metrics.utils.ReporterType;
 import org.apache.iotdb.tsfile.utils.Pair;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.ServiceLoader;
+import java.util.Set;
+import java.util.concurrent.TimeUnit;
+import java.util.function.ToLongFunction;
 
 /** MetricService is the entry to get all metric features. */
 public abstract class AbstractMetricService {
