@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.metadata.MeasurementAlreadyExistException;
+import org.apache.iotdb.db.exception.metadata.template.TemplateIsInUseException;
 import org.apache.iotdb.db.metadata.plan.schemaregion.impl.write.SchemaRegionWritePlanFactory;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.ICreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.ICreateTimeSeriesPlan;
@@ -328,20 +329,25 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
   @Override
   public TSStatus visitInternalBatchActivateTemplate(
       InternalBatchActivateTemplateNode node, ISchemaRegion schemaRegion) {
-    try {
-      for (Map.Entry<PartialPath, Pair<Integer, Integer>> entry :
-          node.getTemplateActivationMap().entrySet()) {
-        Template template = ClusterTemplateManager.getInstance().getTemplate(entry.getValue().left);
+    for (Map.Entry<PartialPath, Pair<Integer, Integer>> entry :
+        node.getTemplateActivationMap().entrySet()) {
+      Template template = ClusterTemplateManager.getInstance().getTemplate(entry.getValue().left);
+      try {
         schemaRegion.activateSchemaTemplate(
             SchemaRegionWritePlanFactory.getActivateTemplateInClusterPlan(
                 entry.getKey(), entry.getValue().right, entry.getValue().left),
             template);
+      } catch (TemplateIsInUseException e) {
+        logger.info(
+            String.format(
+                "Schema template has already been activated on path %s, there's no need to activate again.",
+                entry.getKey()));
+      } catch (MetadataException e) {
+        logger.error(e.getMessage(), e);
+        return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
       }
-      return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
-    } catch (MetadataException e) {
-      logger.error(e.getMessage(), e);
-      return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
     }
+    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }
 
   @Override
