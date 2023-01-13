@@ -153,7 +153,6 @@ Core-level metrics are enabled by default during system operation. The addition 
 | stage        | name="iot_consensus", region="{{region}}", type="syncLogTimePerRequest"                      | Histogram | The time consumed to sync log in asynchronous callback process        |
 
 #### 4.2.4. Cache
-
 | Metric    | Tags                               | Type      | Description                                                              |
 | --------- | ---------------------------------- | --------- | ------------------------------------------------------------------------ |
 | cache_hit | name="chunk"                       | AutoGauge | The cache hit ratio of ChunkCache, Unit: %                               |
