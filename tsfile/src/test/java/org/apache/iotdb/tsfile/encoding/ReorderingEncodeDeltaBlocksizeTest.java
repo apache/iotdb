@@ -770,7 +770,7 @@ public class ReorderingEncodeDeltaBlocksizeTest {
                   String.valueOf(decodeTime),
                   String.valueOf(data.size()),
                   String.valueOf(compressed_size),
-                  String.valueOf(block_size),
+                  String.valueOf(block_size_exp),
                   String.valueOf(ratio)
           };
           writer.writeRecord(record);

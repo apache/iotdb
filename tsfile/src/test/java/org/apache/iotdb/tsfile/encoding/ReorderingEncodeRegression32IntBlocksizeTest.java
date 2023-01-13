@@ -175,7 +175,7 @@ public class ReorderingEncodeRegression32IntBlocksizeTest {
   }
   public static ArrayList<ArrayList<Integer>> getEncodeBitsRegression(ArrayList<ArrayList<Integer>> ts_block, int block_size,
                                                                  ArrayList<Integer> result, ArrayList<Integer> i_star,
-                                                                      ArrayList<Double> theta){
+                                                                      ArrayList<Integer> theta){
     ArrayList<ArrayList<Integer>> ts_block_delta = new ArrayList<>();
     theta.clear();
 
@@ -201,18 +201,18 @@ public class ReorderingEncodeRegression32IntBlocksizeTest {
     }
 
     int m_reg = block_size -1;
-    double theta0_r = 0.0;
-    double theta1_r = 1.0;
-    if((double)(m_reg*sum_squ_X_r) != (double)(sum_X_r*sum_X_r) ){
-      theta0_r = (double) (sum_squ_X_r*sum_Y_r - sum_X_r*sum_squ_XY_r) / (double) (m_reg*sum_squ_X_r - sum_X_r*sum_X_r);
-      theta1_r = (double) (m_reg*sum_squ_XY_r - sum_X_r*sum_Y_r) / (double) (m_reg*sum_squ_X_r - sum_X_r*sum_X_r);
+    int theta0_r = 0;
+    int theta1_r = 1;
+    if((m_reg*sum_squ_X_r) != (sum_X_r*sum_X_r) ){
+      theta0_r = (int) (sum_squ_X_r*sum_Y_r - sum_X_r*sum_squ_XY_r) / (int) (m_reg*sum_squ_X_r - sum_X_r*sum_X_r);
+      theta1_r = (int) (m_reg*sum_squ_XY_r - sum_X_r*sum_Y_r) / (int) (m_reg*sum_squ_X_r - sum_X_r*sum_X_r);
     }
 
-    double theta0_v = 0.0;
-    double theta1_v = 1.0;
-    if((double)(m_reg*sum_squ_X_v) != (double)(sum_X_v*sum_X_v) ){
-      theta0_v = (double) (sum_squ_X_v*sum_Y_v - sum_X_v*sum_squ_XY_v) / (double) (m_reg*sum_squ_X_v - sum_X_v*sum_X_v);
-      theta1_v = (double) (m_reg*sum_squ_XY_v - sum_X_v*sum_Y_v) / (double) (m_reg*sum_squ_X_v - sum_X_v*sum_X_v);
+    int theta0_v = 0;
+    int theta1_v = 1;
+    if((m_reg*sum_squ_X_v) != (sum_X_v*sum_X_v) ){
+      theta0_v = (int) (sum_squ_X_v*sum_Y_v - sum_X_v*sum_squ_XY_v) / (int) (m_reg*sum_squ_X_v - sum_X_v*sum_X_v);
+      theta1_v = (int) (m_reg*sum_squ_XY_v - sum_X_v*sum_Y_v) / (int) (m_reg*sum_squ_X_v - sum_X_v*sum_X_v);
     }
 
 
@@ -223,8 +223,8 @@ public class ReorderingEncodeRegression32IntBlocksizeTest {
 
     // delta to Regression
     for(int j=1;j<block_size;j++) {
-      int epsilon_r = (int) ((double)ts_block.get(j).get(0) - theta0_r - theta1_r * (double)ts_block.get(j-1).get(0));
-      int epsilon_v = (int) ((double)ts_block.get(j).get(1) - theta0_v - theta1_v * (double)ts_block.get(j-1).get(1));
+      int epsilon_r =  (ts_block.get(j).get(0) - theta0_r - theta1_r * ts_block.get(j-1).get(0));
+      int epsilon_v =  (ts_block.get(j).get(1) - theta0_v - theta1_v * ts_block.get(j-1).get(1));
       ArrayList<Integer> tmp = new ArrayList<>();
       tmp.add(epsilon_r);
       tmp.add(epsilon_v);
@@ -271,19 +271,19 @@ public class ReorderingEncodeRegression32IntBlocksizeTest {
     return ts_block_delta;
   }
   public static int getJStar(ArrayList<ArrayList<Integer>> ts_block, int i_star, int block_size,
-                                    ArrayList<Integer> raw_length, int index, ArrayList<Double> theta){
+                                    ArrayList<Integer> raw_length, int index, ArrayList<Integer> theta){
     int j_star_bit_width = 33;
     int j_star = 0;
-    double theta0_r = theta.get(0);
-    double theta1_r = theta.get(1);
-    double theta0_v = theta.get(2);
-    double theta1_v = theta.get(3);
+    int theta0_r = theta.get(0);
+    int theta1_r = theta.get(1);
+    int theta0_v = theta.get(2);
+    int theta1_v = theta.get(3);
     if(i_star == block_size - 1 || i_star == 0)
       return 0;
-    int epsilon_r_i_star_plus_1 = (int) ((double)ts_block.get(i_star+1).get(0) - theta0_r -
-            theta1_r * (double) ts_block.get(i_star-1).get(0));
-    int epsilon_v_i_star_plus_1 = (int) ((double)ts_block.get(i_star+1).get(1) - theta0_v -
-            theta1_v * (double)ts_block.get(i_star-1).get(1));
+    int epsilon_r_i_star_plus_1 = (int) (ts_block.get(i_star+1).get(0) - theta0_r -
+            theta1_r *  ts_block.get(i_star-1).get(0));
+    int epsilon_v_i_star_plus_1 = (int) (ts_block.get(i_star+1).get(1) - theta0_v -
+            theta1_v * ts_block.get(i_star-1).get(1));
 
     if(epsilon_r_i_star_plus_1 > raw_length.get(1) || epsilon_v_i_star_plus_1 > raw_length.get(2))
       return 0;
@@ -291,10 +291,10 @@ public class ReorderingEncodeRegression32IntBlocksizeTest {
 
     for(int j = 1;j<block_size;j++){
       if(j!=i_star){
-        int epsilon_r_j = (int) ((double) ts_block.get(j).get(0) - theta0_r -theta1_r * (double) ts_block.get(i_star).get(0));
-        int epsilon_v_j = (int) ((double) ts_block.get(j).get(1) - theta0_v - theta1_v * (double) ts_block.get(i_star).get(1));
-        int epsilon_r_i_star = (int) ((double) ts_block.get(i_star).get(0) - theta0_r -theta1_r * (double) ts_block.get(j-1).get(0));
-        int epsilon_v_i_star = (int) ((double) ts_block.get(i_star).get(1) - theta0_r -theta1_r * (double) ts_block.get(j-1).get(1));
+        int epsilon_r_j = ts_block.get(j).get(0) - theta0_r -theta1_r * ts_block.get(i_star).get(0);
+        int epsilon_v_j = ts_block.get(j).get(1) - theta0_v - theta1_v *  ts_block.get(i_star).get(1);
+        int epsilon_r_i_star = ts_block.get(i_star).get(0) - theta0_r -theta1_r *  ts_block.get(j-1).get(0);
+        int epsilon_v_i_star = ts_block.get(i_star).get(1) - theta0_r -theta1_r * ts_block.get(j-1).get(1);
         if(epsilon_r_j >raw_length.get(1) || epsilon_v_j >raw_length.get(2) ||
                 epsilon_r_i_star > raw_length.get(1) || epsilon_v_i_star> raw_length.get(2))
           return 0;
@@ -316,17 +316,17 @@ public class ReorderingEncodeRegression32IntBlocksizeTest {
     return j_star;
   }
   public static int getIStar(ArrayList<ArrayList<Integer>> ts_block, int block_size,
-                             ArrayList<Integer> raw_length, int index, ArrayList<Double> theta){
+                             ArrayList<Integer> raw_length, int index, ArrayList<Integer> theta){
     int i_star_bit_width = 33;
     int i_star = 0;
-    double theta0_r = theta.get(0);
-    double theta1_r = theta.get(1);
-    double theta0_v = theta.get(2);
-    double theta1_v = theta.get(3);
+    int theta0_r = theta.get(0);
+    int theta1_r = theta.get(1);
+    int theta0_v = theta.get(2);
+    int theta1_v = theta.get(3);
 
     for(int j = 1;j<block_size;j++){
-        int epsilon_r_j = getBitWith((int) ((double) ts_block.get(j).get(0) - theta0_r -theta1_r * (double) ts_block.get(j-1).get(0)));
-        int epsilon_v_j = getBitWith ((int) ((double) ts_block.get(j).get(1) - theta0_v - theta1_v * (double) ts_block.get(j-1).get(1)));
+        int epsilon_r_j = getBitWith(ts_block.get(j).get(0) - theta0_r -theta1_r * ts_block.get(j-1).get(0));
+        int epsilon_v_j = getBitWith (ts_block.get(j).get(1) - theta0_v - theta1_v * ts_block.get(j-1).get(1));
       if(index == 1){
         if(epsilon_v_j<=raw_length.get(2) && epsilon_r_j < i_star_bit_width && epsilon_r_j < raw_length.get(1)){
           i_star_bit_width = epsilon_r_j;
@@ -343,7 +343,7 @@ public class ReorderingEncodeRegression32IntBlocksizeTest {
   }
 
   public static ArrayList<Byte> encode2Bytes(ArrayList<ArrayList<Integer>> ts_block,ArrayList<Integer> deviation_list,
-                                             ArrayList<Integer> raw_length,ArrayList<Double> theta){
+                                             ArrayList<Integer> raw_length,ArrayList<Integer> theta){
     ArrayList<Byte> encoded_result = new ArrayList<>();
 //    // encode block size (Integer)
 //    byte[] block_size_byte = int2Bytes(ts_block.size());
@@ -362,13 +362,13 @@ public class ReorderingEncodeRegression32IntBlocksizeTest {
     for (byte b : value0_byte) encoded_result.add(b);
 
     // encode theta
-    byte[] theta0_r_byte = double2Bytes(theta.get(0));
+    byte[] theta0_r_byte = int2Bytes(theta.get(0));
     for (byte b : theta0_r_byte) encoded_result.add(b);
-    byte[] theta1_r_byte = double2Bytes(theta.get(1));
+    byte[] theta1_r_byte = int2Bytes(theta.get(1));
     for (byte b : theta1_r_byte) encoded_result.add(b);
-    byte[] theta0_v_byte = double2Bytes(theta.get(2));
+    byte[] theta0_v_byte = int2Bytes(theta.get(2));
     for (byte b : theta0_v_byte) encoded_result.add(b);
-    byte[] theta1_v_byte = double2Bytes(theta.get(3));
+    byte[] theta1_v_byte = int2Bytes(theta.get(3));
     for (byte b : theta1_v_byte) encoded_result.add(b);
 
 
@@ -424,7 +424,7 @@ public class ReorderingEncodeRegression32IntBlocksizeTest {
       // time-order
       ArrayList<Integer> raw_length = new ArrayList<>(); // length,max_bit_width_interval,max_bit_width_value,max_bit_width_deviation
       ArrayList<Integer> i_star_ready = new ArrayList<>();
-      ArrayList<Double> theta = new ArrayList<>();
+      ArrayList<Integer> theta = new ArrayList<>();
       ArrayList<ArrayList<Integer>> ts_block_delta = getEncodeBitsRegression( ts_block,  block_size, raw_length,
               i_star_ready,theta);
 
@@ -433,7 +433,7 @@ public class ReorderingEncodeRegression32IntBlocksizeTest {
       quickSort(ts_block,1,0,block_size-1);
       ArrayList<Integer> reorder_length = new ArrayList<>();
       ArrayList<Integer> i_star_ready_reorder = new ArrayList<>();
-      ArrayList<Double> theta_reorder = new ArrayList<>();
+      ArrayList<Integer> theta_reorder = new ArrayList<>();
       ArrayList<ArrayList<Integer>> ts_block_delta_reorder = getEncodeBitsRegression( ts_block,  block_size, reorder_length,
               i_star_ready_reorder,theta_reorder);
 
@@ -544,31 +544,31 @@ public class ReorderingEncodeRegression32IntBlocksizeTest {
     ArrayList<Integer> dataset_map_td = new ArrayList<>();
     input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\Metro-Traffic");
     output_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation" +
-            "\\vary_parameter\\rr_ratio\\Metro-Traffic_ratio.csv");
+            "\\vary_parameter\\rr_int_ratio\\Metro-Traffic_ratio.csv");
     dataset_map_td.add(3600);
     input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\Nifty-Stocks");
     output_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation" +
-            "\\vary_parameter\\rr_ratio\\Nifty-Stocks_ratio.csv");
+            "\\vary_parameter\\rr_int_ratio\\Nifty-Stocks_ratio.csv");
     dataset_map_td.add(86400);
     input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\USGS-Earthquakes");
     output_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation" +
-            "\\vary_parameter\\rr_ratio\\USGS-Earthquakes_ratio.csv");
+            "\\vary_parameter\\rr_int_ratio\\USGS-Earthquakes_ratio.csv");
     dataset_map_td.add(50);
     input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\Cyber-Vehicle");
     output_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation" +
-            "\\vary_parameter\\rr_ratio\\Cyber-Vehicle_ratio.csv");
+            "\\vary_parameter\\rr_int_ratio\\Cyber-Vehicle_ratio.csv");
     dataset_map_td.add(10);
     input_path_list.add( "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\TH-Climate");
     output_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation" +
-            "\\vary_parameter\\rr_ratio\\TH-Climate_ratio.csv");
+            "\\vary_parameter\\rr_int_ratio\\TH-Climate_ratio.csv");
     dataset_map_td.add(3);
     input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\TY-Transport");
     output_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation" +
-            "\\vary_parameter\\rr_ratio\\TY-Transport_ratio.csv");
+            "\\vary_parameter\\rr_int_ratio\\TY-Transport_ratio.csv");
     dataset_map_td.add(5);
     input_path_list.add( "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\TY-Fuel");
     output_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation" +
-            "\\vary_parameter\\rr_ratio\\TY-Fuel_ratio.csv");
+            "\\vary_parameter\\rr_int_ratio\\TY-Fuel_ratio.csv");
     dataset_map_td.add(60);
 
 
@@ -628,7 +628,7 @@ public class ReorderingEncodeRegression32IntBlocksizeTest {
           double compressed_size = 0;
           for (int i = 0; i < repeatTime; i++) {
             long s = System.nanoTime();
-            ArrayList<Byte> buffer = ReorderingRegressionEncoder(data, 256, dataset_map_td.get(file_i));
+            ArrayList<Byte> buffer = ReorderingRegressionEncoder(data, block_size, dataset_map_td.get(file_i));
             long e = System.nanoTime();
             encodeTime += (e - s);
             compressed_size += buffer.size();
@@ -649,12 +649,12 @@ public class ReorderingEncodeRegression32IntBlocksizeTest {
 
           String[] record = {
                   f.toString(),
-                  "RR",
+                  "RR-32-INT",
                   String.valueOf(encodeTime),
                   String.valueOf(decodeTime),
                   String.valueOf(data.size()),
                   String.valueOf(compressed_size),
-                  String.valueOf(block_size),
+                  String.valueOf(block_size_exp),
                   String.valueOf(ratio)
           };
           writer.writeRecord(record);
