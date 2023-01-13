@@ -250,14 +250,7 @@ public class DataRegionStateMachine extends BaseStateMachine {
 
   @Override
   public IConsensusRequest deserializeRequest(IConsensusRequest request) {
-    IConsensusRequest result;
-    if (request instanceof IndexedConsensusRequest) {
-      IndexedConsensusRequest indexedRequest = (IndexedConsensusRequest) request;
-      result = grabInsertNode(indexedRequest);
-    } else {
-      result = getPlanNode(request);
-    }
-    return result;
+    return getPlanNode(request);
   }
 
   @Override
