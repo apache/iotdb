@@ -328,7 +328,7 @@ public class ReorderingEncodeNoROTest {
     byte[] max_bit_width_value_byte = int2Bytes(raw_length.get(2));
 //    System.out.println(raw_length.get(2));
     for (byte b : max_bit_width_value_byte) encoded_result.add(b);
-    byte[] value_bytes = bitPacking(ts_block,1,raw_length.get(1));
+    byte[] value_bytes = bitPacking(ts_block,1,raw_length.get(2));
     for (byte b : value_bytes) encoded_result.add(b);
 
 
@@ -348,16 +348,16 @@ public class ReorderingEncodeNoROTest {
     ArrayList<Byte> encoded_result=new ArrayList<Byte>();
     byte[] block_size_byte = int2Bytes(block_size);
     for (byte b : block_size_byte) encoded_result.add(b);
-    int count_raw = 0;
-    int count_reorder = 0;
+//    int count_raw = 0;
+//    int count_reorder = 0;
 
 //    for(int i=0;i<1;i++){
     for(int i=0;i<block_num;i++){
       ArrayList<ArrayList<Integer>> ts_block = new ArrayList<>();
-      ArrayList<ArrayList<Integer>> ts_block_reorder = new ArrayList<>();
+//      ArrayList<ArrayList<Integer>> ts_block_reorder = new ArrayList<>();
       for(int j=0;j<block_size;j++){
         ts_block.add(data.get(j+i*block_size));
-        ts_block_reorder.add(data.get(j+i*block_size));
+//        ts_block_reorder.add(data.get(j+i*block_size));
       }
 
       ArrayList<Integer> deviation_list = new ArrayList<>();
@@ -369,10 +369,10 @@ public class ReorderingEncodeNoROTest {
 
       // time-order
       ArrayList<Integer> raw_length = new ArrayList<>(); // length,max_bit_width_interval,max_bit_width_value,max_bit_width_deviation
-      ArrayList<Integer> i_star_ready = new ArrayList<>();
+//      ArrayList<Integer> i_star_ready = new ArrayList<>();
 
       ArrayList<ArrayList<Integer>> ts_block_delta = getEncodeBitsDelta( ts_block,  block_size, raw_length);
-
+//      System.out.println(raw_length);
 
 //      // value-order
 //      quickSort(ts_block,1,0,block_size-1);
@@ -469,6 +469,7 @@ public class ReorderingEncodeNoROTest {
       raw_length.add(result.get(1)); // r0
       raw_length.add(result.get(2)); // d0
       ArrayList<Byte> cur_encoded_result = encode2Bytes(ts_block_delta,deviation_list,raw_length);
+//      System.out.println(cur_encoded_result.size());
       encoded_result.addAll(cur_encoded_result);
 //      count_raw ++;
     }
@@ -678,7 +679,7 @@ public class ReorderingEncodeNoROTest {
     dataset_map_td.add(60);
 
 
-    for(int file_i=0;file_i<input_path_list.size();file_i++){
+    for(int file_i=input_path_list.size()-1;file_i<input_path_list.size();file_i++){
 
       String inputPath = input_path_list.get(file_i);
       String Output =output_path_list.get(file_i);
@@ -713,6 +714,7 @@ public class ReorderingEncodeNoROTest {
 
       for (File f : tempList) {
         InputStream inputStream = Files.newInputStream(f.toPath());
+        System.out.println(f.toPath());
         CsvReader loader = new CsvReader(inputStream, StandardCharsets.UTF_8);
         ArrayList<ArrayList<Integer>> data = new ArrayList<>();
 
@@ -736,6 +738,7 @@ public class ReorderingEncodeNoROTest {
           long e = System.nanoTime();
           encodeTime += (e - s);
           compressed_size += buffer.size();
+//          System.out.println(buffer.size());
           double ratioTmp =
                   (double) buffer.size() / (double) (data.size() * Integer.BYTES*2);
           ratio += ratioTmp;

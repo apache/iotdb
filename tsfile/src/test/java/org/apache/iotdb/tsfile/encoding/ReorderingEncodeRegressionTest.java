@@ -381,7 +381,7 @@ public class ReorderingEncodeRegressionTest {
     // encode value
     byte[] max_bit_width_value_byte = int2Bytes(raw_length.get(2));
     for (byte b : max_bit_width_value_byte) encoded_result.add(b);
-    byte[] value_bytes = bitPacking(ts_block,1,raw_length.get(1));
+    byte[] value_bytes = bitPacking(ts_block,1,raw_length.get(2));
     for (byte b : value_bytes) encoded_result.add(b);
 
 

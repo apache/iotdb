@@ -331,7 +331,7 @@ public class ReorderingEncodeDeltaTest {
     byte[] max_bit_width_value_byte = int2Bytes(raw_length.get(2));
 //    System.out.println(raw_length.get(2));
     for (byte b : max_bit_width_value_byte) encoded_result.add(b);
-    byte[] value_bytes = bitPacking(ts_block,1,raw_length.get(1));
+    byte[] value_bytes = bitPacking(ts_block,1,raw_length.get(2));
     for (byte b : value_bytes) encoded_result.add(b);
 
 
@@ -373,16 +373,15 @@ public class ReorderingEncodeDeltaTest {
       // time-order
       ArrayList<Integer> raw_length = new ArrayList<>(); // length,max_bit_width_interval,max_bit_width_value,max_bit_width_deviation
       ArrayList<Integer> i_star_ready = new ArrayList<>();
-
       ArrayList<ArrayList<Integer>> ts_block_delta = getEncodeBitsDelta( ts_block,  block_size, raw_length,i_star_ready);
-
+//      System.out.println(raw_length);
 
       // value-order
       quickSort(ts_block,1,0,block_size-1);
       ArrayList<Integer> reorder_length = new ArrayList<>();
       ArrayList<Integer> i_star_ready_reorder = new ArrayList<>();
       ArrayList<ArrayList<Integer>> ts_block_delta_reorder = getEncodeBitsDelta( ts_block,  block_size, reorder_length,i_star_ready_reorder);
-
+//      System.out.println(reorder_length);
 
       if(raw_length.get(0)<=reorder_length.get(0)){
         quickSort(ts_block,0,0,block_size-1);
@@ -418,6 +417,7 @@ public class ReorderingEncodeDeltaTest {
 
         ts_block_delta = getEncodeBitsDelta( ts_block,  block_size,raw_length,
                 i_star_ready_reorder);
+        System.out.println(raw_length);
         raw_length.add(result.get(0)); // max_bit_width_deviation
         raw_length.add(result.get(1)); // r0
         raw_length.add(result.get(2)); // d0
@@ -459,6 +459,7 @@ public class ReorderingEncodeDeltaTest {
 
         ts_block_delta_reorder = getEncodeBitsDelta( ts_block,  block_size,reorder_length,
                 i_star_ready_reorder);
+        System.out.println(reorder_length);
         reorder_length.add(result.get(0)); // max_bit_width_deviation
         reorder_length.add(result.get(1)); // r0
         reorder_length.add(result.get(2)); // d0
@@ -673,7 +674,7 @@ public class ReorderingEncodeDeltaTest {
     dataset_map_td.add(60);
 
 
-    for(int file_i=0;file_i<input_path_list.size();file_i++){
+    for(int file_i=input_path_list.size()-1;file_i<input_path_list.size();file_i++){
 //    for(int file_i=0;file_i<1;file_i++){
       String inputPath = input_path_list.get(file_i);
       String Output =output_path_list.get(file_i);
@@ -708,6 +709,7 @@ public class ReorderingEncodeDeltaTest {
 
       for (File f : tempList) {
         InputStream inputStream = Files.newInputStream(f.toPath());
+        System.out.println(f.toPath());
         CsvReader loader = new CsvReader(inputStream, StandardCharsets.UTF_8);
         ArrayList<ArrayList<Integer>> data = new ArrayList<>();
         ArrayList<ArrayList<Integer>> data_decoded = new ArrayList<>();
@@ -732,6 +734,7 @@ public class ReorderingEncodeDeltaTest {
           long e = System.nanoTime();
           encodeTime += (e - s);
           compressed_size += buffer.size();
+//          System.out.println(buffer.size());
           double ratioTmp =
                   (double) buffer.size() / (double) (data.size() * Integer.BYTES*2);
           ratio += ratioTmp;
