@@ -400,12 +400,12 @@ static_configs:
 在创建Grafana时，您可以选择Import刚刚下载的json文件，并为Apache IoTDB Dashboard选择对应目标数据源。
 
 ##### 5.2.4.2. Apache IoTDB ConfigNode Dashboard 说明
-> 除特殊说明的监控项以外，以下监控项均保证在Important级别的监控框架中可用。
+> 除特殊说明的监控项以外，以下监控项均保证在Important级别的监控框架中可用
 
 - `Overview`：系统概述
     - `Registered Node`：注册的ConfigNode/DataNode个数
-    - `DataNode`：集群DataNode的存活状态，包括Online和Unknown两种。
-    - `ConfigNode`：集群ConfigNode的存活状态，包括Online和Unknown两种。
+    - `DataNode`(仅在 ConfigNode Leader 侧可见)：集群DataNode的存活状态，包括Online和Unknown两种。
+    - `ConfigNode`(仅在 ConfigNode Leader 侧可见)：集群ConfigNode的存活状态，包括Online和Unknown两种。
     - `The Status Of Node`：集群具体节点运行状态，包括Online和Unkown两种。
 - `Region`：Region概述
     - `Region Number`：Region个数，包括总个数，DataRegion 个数和 SchemaRegion 个数。
