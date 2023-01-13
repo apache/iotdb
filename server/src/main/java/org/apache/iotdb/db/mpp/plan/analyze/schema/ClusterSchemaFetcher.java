@@ -183,15 +183,18 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
       }
 
       // auto create the still missing schema and merge them into schemaTree
-      checkAndAutoCreateMissingMeasurements(
-          schemaTree,
-          devicePath,
-          indexOfMissingMeasurements,
-          measurements,
-          getDataType,
-          null,
-          null,
-          isAligned);
+      indexOfMissingMeasurements =
+          checkMissingMeasurementsAfterSchemaFetch(
+              schemaTree, devicePath, indexOfMissingMeasurements, measurements);
+      if (!indexOfMissingMeasurements.isEmpty()) {
+        autoCreateSchemaExecutor.autoCreateMissingMeasurements(
+            schemaTree,
+            devicePath,
+            indexOfMissingMeasurements,
+            measurements,
+            getDataType,
+            isAligned);
+      }
 
       return schemaTree;
     } finally {
@@ -223,26 +226,29 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
     try {
       ClusterSchemaTree schemaTree = new ClusterSchemaTree();
       List<List<Integer>> indexOfMissingMeasurementsList = new ArrayList<>(devicePathList.size());
-      boolean hasMissingMeasurement = false;
+      List<Integer> indexOfDevicesWithMissingMeasurements = new ArrayList<>();
       for (int i = 0; i < devicePathList.size(); i++) {
         schemaTree.mergeSchemaTree(schemaCache.get(devicePathList.get(i), measurementsList.get(i)));
         List<Integer> indexOfMissingMeasurements =
             checkMissingMeasurements(schemaTree, devicePathList.get(i), measurementsList.get(i));
-        indexOfMissingMeasurementsList.add(indexOfMissingMeasurements);
         if (!indexOfMissingMeasurements.isEmpty()) {
-          hasMissingMeasurement = true;
+          indexOfDevicesWithMissingMeasurements.add(i);
+          indexOfMissingMeasurementsList.add(indexOfMissingMeasurements);
         }
       }
 
       // all schema can be taken from cache
-      if (!hasMissingMeasurement) {
+      if (indexOfDevicesWithMissingMeasurements.isEmpty()) {
         return schemaTree;
       }
 
       // try fetch the missing schema from remote and cache fetched schema
       ClusterSchemaTree remoteSchemaTree =
           clusterSchemaFetchExecutor.fetchSchemaOfMultiDevices(
-              devicePathList, measurementsList, indexOfMissingMeasurementsList);
+              devicePathList,
+              measurementsList,
+              indexOfDevicesWithMissingMeasurements,
+              indexOfMissingMeasurementsList);
       if (!remoteSchemaTree.isEmpty()) {
         schemaTree.mergeSchemaTree(remoteSchemaTree);
       }
@@ -252,18 +258,38 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
       }
 
       // auto create the still missing schema and merge them into schemaTree
-      for (int i = 0; i < devicePathList.size(); i++) {
-        int finalI = i;
-        checkAndAutoCreateMissingMeasurements(
-            schemaTree,
-            devicePathList.get(i),
-            indexOfMissingMeasurementsList.get(i),
-            measurementsList.get(i),
-            index -> tsDataTypesList.get(finalI)[index],
-            encodingsList == null ? null : encodingsList.get(i),
-            compressionTypesList == null ? null : compressionTypesList.get(i),
-            isAlignedList.get(i));
+      List<Integer> indexOfDevicesNeedAutoCreateSchema = new ArrayList<>();
+      List<List<Integer>> indexOfMeasurementsNeedAutoCreate = new ArrayList<>();
+      List<Integer> indexOfMissingMeasurements;
+      int deviceIndex;
+      for (int i = 0, size = indexOfDevicesWithMissingMeasurements.size(); i < size; i++) {
+        deviceIndex = indexOfDevicesWithMissingMeasurements.get(i);
+        indexOfMissingMeasurements = indexOfMissingMeasurementsList.get(i);
+        indexOfMissingMeasurements =
+            checkMissingMeasurementsAfterSchemaFetch(
+                schemaTree,
+                devicePathList.get(deviceIndex),
+                indexOfMissingMeasurements,
+                measurementsList.get(deviceIndex));
+        if (!indexOfMissingMeasurements.isEmpty()) {
+          indexOfDevicesNeedAutoCreateSchema.add(deviceIndex);
+          indexOfMeasurementsNeedAutoCreate.add(indexOfMissingMeasurements);
+        }
       }
+
+      if (!indexOfDevicesNeedAutoCreateSchema.isEmpty()) {
+        autoCreateSchemaExecutor.autoCreateMissingMeasurements(
+            schemaTree,
+            devicePathList,
+            indexOfDevicesNeedAutoCreateSchema,
+            indexOfMeasurementsNeedAutoCreate,
+            measurementsList,
+            tsDataTypesList,
+            encodingsList,
+            compressionTypesList,
+            isAlignedList);
+      }
+
       return schemaTree;
     } finally {
       schemaCache.releaseReadLock();
@@ -285,49 +311,6 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
     return templateManager.getAllPathsSetTemplate(templateName);
   }
 
-  // check which measurements are missing and auto create the missing measurements and merge them
-  // into given schemaTree
-  private void checkAndAutoCreateMissingMeasurements(
-      ClusterSchemaTree schemaTree,
-      PartialPath devicePath,
-      List<Integer> indexOfMissingMeasurements,
-      String[] measurements,
-      Function<Integer, TSDataType> getDataType,
-      TSEncoding[] encodings,
-      CompressionType[] compressionTypes,
-      boolean isAligned) {
-    // check missing measurements
-    DeviceSchemaInfo deviceSchemaInfo =
-        schemaTree.searchDeviceSchemaInfo(
-            devicePath,
-            indexOfMissingMeasurements.stream()
-                .map(index -> measurements[index])
-                .collect(Collectors.toList()));
-    if (deviceSchemaInfo != null) {
-      List<MeasurementSchema> schemaList = deviceSchemaInfo.getMeasurementSchemaList();
-      int removedCount = 0;
-      for (int i = 0, size = schemaList.size(); i < size; i++) {
-        if (schemaList.get(i) != null) {
-          indexOfMissingMeasurements.remove(i - removedCount);
-          removedCount++;
-        }
-      }
-    }
-    if (indexOfMissingMeasurements.isEmpty()) {
-      return;
-    }
-
-    autoCreateSchemaExecutor.autoCreateMissingMeasurements(
-        schemaTree,
-        devicePath,
-        indexOfMissingMeasurements,
-        measurements,
-        getDataType,
-        encodings,
-        compressionTypes,
-        isAligned);
-  }
-
   private List<Integer> checkMissingMeasurements(
       ISchemaTree schemaTree, PartialPath devicePath, String[] measurements) {
     DeviceSchemaInfo deviceSchemaInfo =
@@ -341,6 +324,32 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
     for (int i = 0; i < measurements.length; i++) {
       if (schemaList.get(i) == null) {
         indexOfMissingMeasurements.add(i);
+      }
+    }
+
+    return indexOfMissingMeasurements;
+  }
+
+  private List<Integer> checkMissingMeasurementsAfterSchemaFetch(
+      ClusterSchemaTree schemaTree,
+      PartialPath devicePath,
+      List<Integer> indexOfTargetMeasurements,
+      String[] measurements) {
+    DeviceSchemaInfo deviceSchemaInfo =
+        schemaTree.searchDeviceSchemaInfo(
+            devicePath,
+            indexOfTargetMeasurements.stream()
+                .map(index -> measurements[index])
+                .collect(Collectors.toList()));
+    if (deviceSchemaInfo == null) {
+      return indexOfTargetMeasurements;
+    }
+
+    List<Integer> indexOfMissingMeasurements = new ArrayList<>();
+    List<MeasurementSchema> schemaList = deviceSchemaInfo.getMeasurementSchemaList();
+    for (int i = 0, size = schemaList.size(); i < size; i++) {
+      if (schemaList.get(i) == null) {
+        indexOfMissingMeasurements.add(indexOfTargetMeasurements.get(i));
       }
     }
 
