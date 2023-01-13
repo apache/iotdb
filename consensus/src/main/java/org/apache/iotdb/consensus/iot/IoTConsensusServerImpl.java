@@ -161,7 +161,8 @@ public class IoTConsensusServerImpl {
   }
 
   /**
-   * records the index of the log and writes locally, and then asynchronous replication is performed
+   * records the index of the log and writes locally, and then asynchronous replication is
+   * performed.
    */
   public TSStatus write(IConsensusRequest request) {
     long consensusWriteStartTime = System.currentTimeMillis();
@@ -499,7 +500,8 @@ public class IoTConsensusServerImpl {
           // after current operation
           // TODO: (xingtanzjr) design more reliable way for IoTConsensus
           logger.error(
-              "cannot notify {} to build sync log channel. Please check the status of this node manually",
+              "cannot notify {} to build sync log channel. "
+                  + "Please check the status of this node manually",
               peer,
               e);
         }
