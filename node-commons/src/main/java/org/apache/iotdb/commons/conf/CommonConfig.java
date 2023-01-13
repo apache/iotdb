@@ -1587,13 +1587,6 @@ public class CommonConfig {
     this.allocateMemoryForTimeIndex = allocateMemoryForRead * 200 / 1001;
   }
 
-  public long getAllocateMemoryForFree() {
-    return Runtime.getRuntime().maxMemory()
-        - allocateMemoryForStorageEngine
-        - allocateMemoryForRead
-        - allocateMemoryForSchema;
-  }
-
   public long getAllocateMemoryForSchema() {
     return allocateMemoryForSchema;
   }

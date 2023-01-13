@@ -175,6 +175,8 @@ public class IoTDBDescriptor {
     loadCompactionConfigurations(properties);
 
     /* Retain Configurations */
+    // Notice: Never read any configuration through loadRetainConfiguration
+    // Every parameter in retain configuration will be deleted or moved into other set
     loadRetainConfiguration(properties);
 
     // make RPCTransportFactory taking effect.
@@ -528,6 +530,11 @@ public class IoTDBDescriptor {
                 Long.toString(CONF.getCrossCompactionFileSelectionTimeBudget()))));
   }
 
+  /**
+   * Load retain configuration. Please don't insert any code within this function
+   *
+   * <p>TODO: Delete this function in the future
+   */
   private void loadRetainConfiguration(Properties properties) {
     CONF.setTsFileStorageFs(
         properties.getProperty("tsfile_storage_fs", CONF.getTsFileStorageFs().toString()));

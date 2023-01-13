@@ -139,29 +139,13 @@ public class ConfigNodeDescriptor {
     /* Directory Configuration */
     loadDirectoryConfiguration(properties);
 
-    try {
-      CONF.setRegionGroupAllocatePolicy(
-          RegionBalancer.RegionGroupAllocatePolicy.valueOf(
-              properties
-                  .getProperty(
-                      "region_group_allocate_policy", CONF.getRegionGroupAllocatePolicy().name())
-                  .trim()));
-    } catch (IllegalArgumentException e) {
-      LOGGER.warn(
-          "The configured region allocate strategy does not exist, use the default: GREEDY!");
-    }
+    /* Thrift RPC Configuration */
+    loadThriftRPCConfiguration(properties);
 
-    String routePriorityPolicy =
-        properties.getProperty("route_priority_policy", CONF.getRoutePriorityPolicy()).trim();
-    if (IPriorityBalancer.GREEDY_POLICY.equals(routePriorityPolicy)
-        || IPriorityBalancer.LEADER_POLICY.equals(routePriorityPolicy)) {
-      CONF.setRoutePriorityPolicy(routePriorityPolicy);
-    } else {
-      throw new IOException(
-          String.format(
-              "Unknown route_priority_policy: %s, please set to \"LEADER\" or \"GREEDY\"",
-              routePriorityPolicy));
-    }
+    /* Retain Configurations */
+    // Notice: Never read any configuration through loadRetainConfiguration
+    // Every parameter in retain configuration will be deleted or moved into other set
+    loadRetainConfiguration(properties);
   }
 
   private void loadConfigNodeRPCConfiguration(Properties properties) {
@@ -278,6 +262,37 @@ public class ConfigNodeDescriptor {
                 .trim()));
     COMMON_CONFIG.setMaxClientCountForEachNodeInClientManager(
         CONF.getCnMaxClientCountForEachNodeInClientManager());
+  }
+
+  /**
+   * Load retain configuration. Please don't insert any code within this function
+   *
+   * <p>TODO: Delete this function in the future
+   */
+  private void loadRetainConfiguration(Properties properties) throws IOException {
+    try {
+      CONF.setRegionGroupAllocatePolicy(
+          RegionBalancer.RegionGroupAllocatePolicy.valueOf(
+              properties
+                  .getProperty(
+                      "region_group_allocate_policy", CONF.getRegionGroupAllocatePolicy().name())
+                  .trim()));
+    } catch (IllegalArgumentException e) {
+      LOGGER.warn(
+          "The configured region allocate strategy does not exist, use the default: GREEDY!");
+    }
+
+    String routePriorityPolicy =
+        properties.getProperty("route_priority_policy", CONF.getRoutePriorityPolicy()).trim();
+    if (IPriorityBalancer.GREEDY_POLICY.equals(routePriorityPolicy)
+        || IPriorityBalancer.LEADER_POLICY.equals(routePriorityPolicy)) {
+      CONF.setRoutePriorityPolicy(routePriorityPolicy);
+    } else {
+      throw new IOException(
+          String.format(
+              "Unknown route_priority_policy: %s, please set to \"LEADER\" or \"GREEDY\"",
+              routePriorityPolicy));
+    }
   }
 
   /**

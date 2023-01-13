@@ -19,7 +19,6 @@
 package org.apache.iotdb.confignode.conf;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
-import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.conf.PropertiesUtils;
 import org.apache.iotdb.confignode.manager.load.balancer.RegionBalancer;
@@ -86,8 +85,6 @@ public class ConfigNodeConfig {
       RegionBalancer.RegionGroupAllocatePolicy.GREEDY;
 
   // The unknown DataNode detect interval in milliseconds
-  private long unknownDataNodeDetectInterval =
-      CommonDescriptor.getInstance().getConf().getHeartbeatIntervalInMs();
 
   // The route priority policy of cluster read/write requests
   private String routePriorityPolicy = IPriorityBalancer.LEADER_POLICY;
