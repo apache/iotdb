@@ -112,7 +112,7 @@ public class IoTDBDescriptor {
     }
 
     // Try to find a default config in the root of the classpath.
-    URL uri = IoTDBConfig.class.getResource("/" + CommonConfig.CONF_FILE_NAME);
+    URL uri = IoTDBConfig.class.getResource("/" + IoTDBConfig.CONFIG_NAME);
     if (uri != null) {
       return uri;
     }
