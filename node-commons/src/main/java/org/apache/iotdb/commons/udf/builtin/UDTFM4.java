@@ -47,9 +47,9 @@ import java.io.IOException;
  * root.vehicle.d1" (windowSize is required, slidingStep is optional.)
  *
  * <p>SlidingTimeWindow usage Example: "select
- * M4(s1,'timeInterval'='25','slidingStep'='25','displayWindowBegin'='0','displayWindowEnd'='100')
- * from root.vehicle.d1" (timeInterval is required, slidingStep/displayWindowBegin/displayWindowEnd
- * are optional.)
+ * M4(s1,'windowInterval'='25','slidingStep'='25','displayWindowBegin'='0','displayWindowEnd'='100')
+ * from root.vehicle.d1" (windowInterval is required,
+ * slidingStep/displayWindowBegin/displayWindowEnd are optional.)
  */
 public class UDTFM4 implements UDTF {
 
@@ -62,7 +62,7 @@ public class UDTFM4 implements UDTF {
   protected TSDataType dataType;
 
   public static final String WINDOW_SIZE_KEY = "windowSize";
-  public static final String TIME_INTERVAL_KEY = "timeInterval";
+  public static final String WINDOW_INTERVAL_KEY = "windowInterval";
   public static final String SLIDING_STEP_KEY = "slidingStep";
   public static final String DISPLAY_WINDOW_BEGIN_KEY = "displayWindowBegin";
   public static final String DISPLAY_WINDOW_END_KEY = "displayWindowEnd";
@@ -74,18 +74,18 @@ public class UDTFM4 implements UDTF {
         .validateInputSeriesDataType(0, Type.INT32, Type.INT64, Type.FLOAT, Type.DOUBLE);
 
     if (!validator.getParameters().hasAttribute(WINDOW_SIZE_KEY)
-        && !validator.getParameters().hasAttribute(TIME_INTERVAL_KEY)) {
+        && !validator.getParameters().hasAttribute(WINDOW_INTERVAL_KEY)) {
       throw new UDFParameterNotValidException(
           String.format(
               "attribute \"%s\"/\"%s\" is required but was not provided.",
-              WINDOW_SIZE_KEY, TIME_INTERVAL_KEY));
+              WINDOW_SIZE_KEY, WINDOW_INTERVAL_KEY));
     }
     if (validator.getParameters().hasAttribute(WINDOW_SIZE_KEY)
-        && validator.getParameters().hasAttribute(TIME_INTERVAL_KEY)) {
+        && validator.getParameters().hasAttribute(WINDOW_INTERVAL_KEY)) {
       throw new UDFParameterNotValidException(
           String.format(
               "use attribute \"%s\" or \"%s\" only one at a time.",
-              WINDOW_SIZE_KEY, TIME_INTERVAL_KEY));
+              WINDOW_SIZE_KEY, WINDOW_INTERVAL_KEY));
     }
     if (validator.getParameters().hasAttribute(WINDOW_SIZE_KEY)) {
       accessStrategy = AccessStrategy.SIZE_WINDOW;
@@ -110,14 +110,14 @@ public class UDTFM4 implements UDTF {
       configurations.setAccessStrategy(
           new SlidingSizeWindowAccessStrategy(windowSize, slidingStep));
     } else {
-      long timeInterval = parameters.getLong(TIME_INTERVAL_KEY);
+      long windowInterval = parameters.getLong(WINDOW_INTERVAL_KEY);
       long displayWindowBegin =
           parameters.getLongOrDefault(DISPLAY_WINDOW_BEGIN_KEY, Long.MIN_VALUE);
       long displayWindowEnd = parameters.getLongOrDefault(DISPLAY_WINDOW_END_KEY, Long.MAX_VALUE);
-      long slidingStep = parameters.getLongOrDefault(SLIDING_STEP_KEY, timeInterval);
+      long slidingStep = parameters.getLongOrDefault(SLIDING_STEP_KEY, windowInterval);
       configurations.setAccessStrategy(
           new SlidingTimeWindowAccessStrategy(
-              timeInterval, slidingStep, displayWindowBegin, displayWindowEnd));
+              windowInterval, slidingStep, displayWindowBegin, displayWindowEnd));
     }
   }
 
