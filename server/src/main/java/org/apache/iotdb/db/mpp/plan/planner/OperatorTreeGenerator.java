@@ -1486,18 +1486,18 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                 IntoOperator.class.getSimpleName());
 
     IntoPathDescriptor intoPathDescriptor = node.getIntoPathDescriptor();
+
     Map<String, InputLocation> sourceColumnToInputLocationMap =
         constructSourceColumnToInputLocationMap(node);
-
     Map<PartialPath, Map<String, InputLocation>> targetPathToSourceInputLocationMap =
         new HashMap<>();
-    Map<PartialPath, Map<String, TSDataType>> targetPathToDataTypeMap = new HashMap<>();
     processTargetPathToSourceMap(
         intoPathDescriptor.getTargetPathToSourceMap(),
         targetPathToSourceInputLocationMap,
-        targetPathToDataTypeMap,
-        sourceColumnToInputLocationMap,
-        context.getTypeProvider());
+        sourceColumnToInputLocationMap);
+
+    Map<PartialPath, Map<String, TSDataType>> targetPathToDataTypeMap =
+        intoPathDescriptor.getTargetPathToDataTypeMap();
 
     int rowLimit = CommonDescriptor.getInstance().getConf().getSelectIntoInsertTabletPlanRowLimit();
     long maxStatementSize = calculateStatementSizePerLine(targetPathToDataTypeMap) * rowLimit;
@@ -1507,6 +1507,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     return new IntoOperator(
         operatorContext,
         child,
+        getInputColumnTypes(node, context.getTypeProvider()),
         targetPathToSourceInputLocationMap,
         targetPathToDataTypeMap,
         intoPathDescriptor.getTargetDeviceToAlignedMap(),
@@ -1535,7 +1536,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     Map<String, Map<PartialPath, Map<String, InputLocation>>>
         deviceToTargetPathSourceInputLocationMap = new HashMap<>();
     Map<String, Map<PartialPath, Map<String, TSDataType>>> deviceToTargetPathDataTypeMap =
-        new HashMap<>();
+        deviceViewIntoPathDescriptor.getSourceDeviceToTargetPathDataTypeMap();
     Map<String, Map<PartialPath, Map<String, String>>> sourceDeviceToTargetPathMap =
         deviceViewIntoPathDescriptor.getSourceDeviceToTargetPathMap();
     long statementSizePerLine = 0L;
@@ -1544,17 +1545,14 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
       String sourceDevice = deviceEntry.getKey();
       Map<PartialPath, Map<String, InputLocation>> targetPathToSourceInputLocationMap =
           new HashMap<>();
-      Map<PartialPath, Map<String, TSDataType>> targetPathToDataTypeMap = new HashMap<>();
       processTargetPathToSourceMap(
           deviceEntry.getValue(),
           targetPathToSourceInputLocationMap,
-          targetPathToDataTypeMap,
-          sourceColumnToInputLocationMap,
-          context.getTypeProvider());
+          sourceColumnToInputLocationMap);
       deviceToTargetPathSourceInputLocationMap.put(
           sourceDevice, targetPathToSourceInputLocationMap);
-      deviceToTargetPathDataTypeMap.put(sourceDevice, targetPathToDataTypeMap);
-      statementSizePerLine += calculateStatementSizePerLine(targetPathToDataTypeMap);
+      statementSizePerLine +=
+          calculateStatementSizePerLine(deviceToTargetPathDataTypeMap.get(sourceDevice));
     }
 
     int rowLimit = CommonDescriptor.getInstance().getConf().getSelectIntoInsertTabletPlanRowLimit();
@@ -1564,6 +1562,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     return new DeviceViewIntoOperator(
         operatorContext,
         child,
+        getInputColumnTypes(node, context.getTypeProvider()),
         deviceToTargetPathSourceInputLocationMap,
         deviceToTargetPathDataTypeMap,
         deviceViewIntoPathDescriptor.getTargetDeviceToAlignedMap(),
@@ -1585,22 +1584,17 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
   private void processTargetPathToSourceMap(
       Map<PartialPath, Map<String, String>> targetPathToSourceMap,
       Map<PartialPath, Map<String, InputLocation>> targetPathToSourceInputLocationMap,
-      Map<PartialPath, Map<String, TSDataType>> targetPathToDataTypeMap,
-      Map<String, InputLocation> sourceColumnToInputLocationMap,
-      TypeProvider typeProvider) {
+      Map<String, InputLocation> sourceColumnToInputLocationMap) {
     for (Map.Entry<PartialPath, Map<String, String>> entry : targetPathToSourceMap.entrySet()) {
       PartialPath targetDevice = entry.getKey();
       Map<String, InputLocation> measurementToInputLocationMap = new HashMap<>();
-      Map<String, TSDataType> measurementToDataTypeMap = new HashMap<>();
       for (Map.Entry<String, String> measurementEntry : entry.getValue().entrySet()) {
         String targetMeasurement = measurementEntry.getKey();
         String sourceColumn = measurementEntry.getValue();
         measurementToInputLocationMap.put(
             targetMeasurement, sourceColumnToInputLocationMap.get(sourceColumn));
-        measurementToDataTypeMap.put(targetMeasurement, typeProvider.getType(sourceColumn));
       }
       targetPathToSourceInputLocationMap.put(targetDevice, measurementToInputLocationMap);
-      targetPathToDataTypeMap.put(targetDevice, measurementToDataTypeMap);
     }
   }
 
