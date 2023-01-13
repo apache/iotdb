@@ -45,7 +45,6 @@ public enum ThreadName {
   SYNC_CLIENT("Sync-Client"),
   SYNC_SERVER("Sync"),
   QUERY_SERVICE("Query"),
-  SUB_RAW_QUERY_SERVICE("Sub_RawQuery"),
   INSERTION_SERVICE("MultithreadingInsertionPool"),
   WINDOW_EVALUATION_SERVICE("WindowEvaluationTaskPoolManager"),
   TTL_CHECK_SERVICE("TTL-CHECK"),
