@@ -207,6 +207,7 @@ Core-level metrics are enabled by default during system operation. The addition 
 | compaction_task_count | name = "cross_compaction", type="cross"             | Counter | The number of corss compction          |
 
 #### 4.2.9. File
+
 | Metric     | Tags                      | Type      | Description                                                                 |
 | ---------- |---------------------------| --------- |-----------------------------------------------------------------------------|
 | file_size  | name="wal"                | AutoGauge | The size of WAL file, Unit: byte                                            |
@@ -224,6 +225,7 @@ Core-level metrics are enabled by default during system operation. The addition 
 | file_count | name="open_file_handlers" | AutoGauge | The count of open files of the IoTDB process, only supports Linux and MacOS |
 
 #### 4.2.10. IoTDB Process
+
 | Metric                | Tags           | Type      | Description                                 |
 | --------------------- | -------------- | --------- | ------------------------------------------- |
 | process_used_mem      | name="memory"  | AutoGauge | The used memory of IoTDB process            |
@@ -237,6 +239,7 @@ Core-level metrics are enabled by default during system operation. The addition 
 | logback_events | level="trace/debug/info/warn/error" | Counter | The number of log events |
 
 #### 4.2.12. JVM Thread
+
 | Metric                     | Tags                                                          | Type      | Description                              |
 | -------------------------- | ------------------------------------------------------------- | --------- | ---------------------------------------- |
 | jvm_threads_live_threads   |                                                               | AutoGauge | The number of live thread                |
@@ -355,7 +358,6 @@ Core-level metrics are enabled by default during system operation. The addition 
 | slot   | name="{{DatabaseName}}",type="schemaSlotNumber/dataSlotNumber" | AutoGauge | The number of DataSlot/SchemaSlot of database in specific node     |
 
 ### 4.4. All Metric
-
 Currently there is no All level metrics, and it will continue to be added in the future.
 
 ## 5. How to get these metrics？
