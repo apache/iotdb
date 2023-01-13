@@ -18,6 +18,23 @@
  */
 package org.apache.iotdb.db.metadata.mtree.store;
 
+/**
+ * CachedMTreeReadWriteLock is a special read-write lock.
+ *
+ * <p>ReadLock can be locked by one thread but unlocked by another thread. And WriteLock must be
+ * unlocked by the same thread. When the thread crashes, the locks it used can no longer be unlocked
+ * by itself and another thread must do unlock for it.
+ *
+ * <p>In particular, if the current thread has already requested a WriteLock, it can continue to
+ * reenter to acquire a WriteLock or a ReadLock. However, if a ReadLock has already been acquired
+ * (including by the current thread), the WriteLock acquiring will be blocked, which may cause
+ * deadlocks. Therefore, if a write operation needs to be performed, a WriteLock must be applied
+ * first.
+ *
+ * <p>WARNING: as the lock holder is not recorded, the caller must assure that lock() and unlock()
+ * match, i.e., if you only call lock() once then do not call unlock() more than once and vice
+ * versa.
+ */
 public class CachedMTreeReadWriteLock {
   private volatile Thread exclusiveOwnerThread;
   private volatile int readCnt;
