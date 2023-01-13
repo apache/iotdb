@@ -417,8 +417,8 @@ data source for Apache IoTDB Dashboard.
 
 - `Overview`: system overview
     - `Registered Node`: The number of registered ConfigNode/DataNode
-    - `DataNode`: The status of the cluster DataNode, including Online and Unknown.
-    - `ConfigNode`: The status of the cluster ConfigNode, including Online and Unknown.
+    - `DataNode`(Only visible in the leader of ConfigNode): The status of the cluster DataNode, including Online and Unknown.
+    - `ConfigNode`(Only visible in the leader of ConfigNode): The status of the cluster ConfigNode, including Online and Unknown.
     - `The Status Of Node`: The status of specific nodes in the cluster, including Online and Unknown.
 - `Region`: Region overview
     - `Region Number`: the number of Regions, including the total number, the number of DataRegions and the number of
