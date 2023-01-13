@@ -485,8 +485,11 @@ public class IoTDBConfig {
     schemaRegionConsensusDir = addDataHomeDir(schemaRegionConsensusDir);
     dnExtDir = addDataHomeDir(dnExtDir);
     mqttDir = addDataHomeDir(mqttDir);
-
     extPipeDir = addDataHomeDir(extPipeDir);
+    dnSyncDir = addDataHomeDir(dnSyncDir);
+    for (int i = 0; i < dnWalDirs.length; i++) {
+      dnWalDirs[i] = addDataHomeDir(dnWalDirs[i]);
+    }
 
     if (TSFileDescriptor.getInstance().getConfig().getTSFileStorageFs().equals(FSType.HDFS)) {
       String hdfsDir = getHdfsDir();
