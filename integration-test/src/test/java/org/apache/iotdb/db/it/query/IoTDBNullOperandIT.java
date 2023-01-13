@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.it.query;
 
-import org.apache.iotdb.it.env.ConfigFactory;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
@@ -52,20 +51,16 @@ public class IoTDBNullOperandIT {
         "flush",
       };
 
-  private static long prevPartitionInterval;
-
   @BeforeClass
   public static void setUp() throws Exception {
-    prevPartitionInterval = ConfigFactory.getConfig().getPartitionInterval();
-    ConfigFactory.getConfig().setPartitionInterval(1000);
-    EnvFactory.getEnv().initBeforeClass();
+    EnvFactory.getEnv().getConfig().getCommonConfig().setPartitionInterval(1000);
+    EnvFactory.getEnv().initClusterEnvironment();
     prepareData(SQLs);
   }
 
   @AfterClass
   public static void tearDown() throws Exception {
-    EnvFactory.getEnv().cleanAfterClass();
-    ConfigFactory.getConfig().setPartitionInterval(prevPartitionInterval);
+    EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
   /**
@@ -181,7 +176,8 @@ public class IoTDBNullOperandIT {
     String[] retArray = new String[] {};
     resultSetEqualTest("select s1, s3, s4 from root.** where s2>0", expectedHeader, retArray);
 
-    resultSetEqualTest("select s1, s3, s4 from root.** where s2", expectedHeader, retArray);
+    resultSetEqualTest(
+        "select s1, s3, s4 from root.** where s2 is not null", expectedHeader, retArray);
 
     retArray =
         new String[] {

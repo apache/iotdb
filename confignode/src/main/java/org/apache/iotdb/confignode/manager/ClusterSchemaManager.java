@@ -61,6 +61,7 @@ import org.apache.iotdb.confignode.consensus.response.TemplateInfoResp;
 import org.apache.iotdb.confignode.consensus.response.TemplateSetInfoResp;
 import org.apache.iotdb.confignode.exception.StorageGroupNotExistsException;
 import org.apache.iotdb.confignode.manager.node.NodeManager;
+import org.apache.iotdb.confignode.manager.observer.NodeStatisticsEvent;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
 import org.apache.iotdb.confignode.persistence.schema.ClusterSchemaInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllTemplatesResp;
@@ -78,6 +79,8 @@ import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.Pair;
 
+import com.google.common.eventbus.AllowConcurrentEvents;
+import com.google.common.eventbus.Subscribe;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -97,9 +100,7 @@ public class ClusterSchemaManager {
   private static final Logger LOGGER = LoggerFactory.getLogger(ClusterSchemaManager.class);
 
   private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
-  private static final int LEAST_SCHEMA_REGION_GROUP_NUM = CONF.getLeastSchemaRegionGroupNum();
   private static final double SCHEMA_REGION_PER_DATA_NODE = CONF.getSchemaRegionPerDataNode();
-  private static final int LEAST_DATA_REGION_GROUP_NUM = CONF.getLeastDataRegionGroupNum();
   private static final double DATA_REGION_PER_PROCESSOR = CONF.getDataRegionPerProcessor();
 
   private final IManager configManager;
@@ -316,6 +317,11 @@ public class ClusterSchemaManager {
     // Get all StorageGroupSchemas
     Map<String, TStorageGroupSchema> storageGroupSchemaMap =
         getMatchedStorageGroupSchemasByName(getStorageGroupNames());
+    if (storageGroupSchemaMap.size() == 0) {
+      // Skip when there are no StorageGroups
+      return;
+    }
+
     int dataNodeNum = getNodeManager().getRegisteredDataNodeCount();
     int totalCpuCoreNum = getNodeManager().getTotalCpuCoreCount();
     int storageGroupNum = storageGroupSchemaMap.size();
@@ -348,25 +354,13 @@ public class ClusterSchemaManager {
                 .getRegionGroupCount(
                     storageGroupSchema.getName(), TConsensusGroupType.SchemaRegion);
         int maxSchemaRegionGroupNum =
-            Math.max(
-                // The least number of SchemaRegionGroup of each StorageGroup is specified
-                // by parameter least_schema_region_group_num, which is currently unconfigurable.
-                LEAST_SCHEMA_REGION_GROUP_NUM,
-                Math.max(
-                    (int)
-                        // Use Math.ceil here to ensure that the maxSchemaRegionGroupNum
-                        // will be increased as long as the number of cluster DataNodes is increased
-                        Math.ceil(
-                            // The maxSchemaRegionGroupNum of the current StorageGroup
-                            // is expected to be:
-                            // (SCHEMA_REGION_PER_DATA_NODE * registerDataNodeNum) /
-                            // (createdStorageGroupNum * schemaReplicationFactor)
-                            SCHEMA_REGION_PER_DATA_NODE
-                                * dataNodeNum
-                                / (double)
-                                    (storageGroupNum
-                                        * storageGroupSchema.getSchemaReplicationFactor())),
-                    allocatedSchemaRegionGroupCount));
+            calcMaxRegionGroupNum(
+                CONF.getLeastSchemaRegionGroupNum(),
+                SCHEMA_REGION_PER_DATA_NODE,
+                dataNodeNum,
+                storageGroupNum,
+                storageGroupSchema.getSchemaReplicationFactor(),
+                allocatedSchemaRegionGroupCount);
         LOGGER.info(
             "[AdjustRegionGroupNum] The maximum number of SchemaRegionGroups for Database: {} is adjusted to: {}",
             storageGroupSchema.getName(),
@@ -379,25 +373,13 @@ public class ClusterSchemaManager {
             getPartitionManager()
                 .getRegionGroupCount(storageGroupSchema.getName(), TConsensusGroupType.DataRegion);
         int maxDataRegionGroupNum =
-            Math.max(
-                // The least number of DataRegionGroup of each StorageGroup is specified
-                // by parameter least_data_region_group_num.
-                LEAST_DATA_REGION_GROUP_NUM,
-                Math.max(
-                    (int)
-                        // Use Math.ceil here to ensure that the maxDataRegionGroupNum
-                        // will be increased as long as the number of cluster DataNodes is increased
-                        Math.ceil(
-                            // The maxDataRegionGroupNum of the current StorageGroup
-                            // is expected to be:
-                            // (DATA_REGION_PER_PROCESSOR * totalCpuCoreNum) /
-                            // (createdStorageGroupNum * dataReplicationFactor)
-                            DATA_REGION_PER_PROCESSOR
-                                * totalCpuCoreNum
-                                / (double)
-                                    (storageGroupNum
-                                        * storageGroupSchema.getDataReplicationFactor())),
-                    allocatedDataRegionGroupCount));
+            calcMaxRegionGroupNum(
+                CONF.getLeastDataRegionGroupNum(),
+                DATA_REGION_PER_PROCESSOR,
+                totalCpuCoreNum,
+                storageGroupNum,
+                storageGroupSchema.getDataReplicationFactor(),
+                allocatedDataRegionGroupCount);
         LOGGER.info(
             "[AdjustRegionGroupNum] The maximum number of DataRegionGroups for Database: {} is adjusted to: {}",
             storageGroupSchema.getName(),
@@ -411,6 +393,28 @@ public class ClusterSchemaManager {
       }
     }
     getConsensusManager().write(adjustMaxRegionGroupNumPlan);
+  }
+
+  public static int calcMaxRegionGroupNum(
+      int leastRegionGroupNum,
+      double resourceWeight,
+      int resource,
+      int storageGroupNum,
+      int replicationFactor,
+      int allocatedRegionGroupCount) {
+    return Math.max(
+        // The maxRegionGroupNum should be great or equal to the leastRegionGroupNum
+        leastRegionGroupNum,
+        Math.max(
+            (int)
+                // Use Math.ceil here to ensure that the maxRegionGroupNum
+                // will be increased as long as the number of cluster DataNodes is increased
+                Math.ceil(
+                    // The maxRegionGroupNum of the current StorageGroup is expected to be:
+                    // (resourceWeight * resource) / (createdStorageGroupNum * replicationFactor)
+                    resourceWeight * resource / (double) (storageGroupNum * replicationFactor)),
+            // The maxRegionGroupNum should be great or equal to the allocatedRegionGroupCount
+            allocatedRegionGroupCount));
   }
 
   // ======================================================
@@ -498,12 +502,11 @@ public class ClusterSchemaManager {
         (TemplateInfoResp) getConsensusManager().read(getAllSchemaTemplatePlan).getDataset();
     TGetAllTemplatesResp resp = new TGetAllTemplatesResp();
     resp.setStatus(templateResp.getStatus());
-    if (resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      if (templateResp.getTemplateList() != null) {
-        List<ByteBuffer> list = new ArrayList<>();
-        templateResp.getTemplateList().forEach(template -> list.add(template.serialize()));
-        resp.setTemplateList(list);
-      }
+    if (resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        && templateResp.getTemplateList() != null) {
+      List<ByteBuffer> list = new ArrayList<>();
+      templateResp.getTemplateList().forEach(template -> list.add(template.serialize()));
+      resp.setTemplateList(list);
     }
     return resp;
   }
@@ -514,11 +517,11 @@ public class ClusterSchemaManager {
     TemplateInfoResp templateResp =
         (TemplateInfoResp) getConsensusManager().read(getSchemaTemplatePlan).getDataset();
     TGetTemplateResp resp = new TGetTemplateResp();
-    if (templateResp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      if (templateResp.getTemplateList() != null && !templateResp.getTemplateList().isEmpty()) {
-        ByteBuffer byteBuffer = templateResp.getTemplateList().get(0).serialize();
-        resp.setTemplate(byteBuffer);
-      }
+    if (templateResp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        && templateResp.getTemplateList() != null
+        && !templateResp.getTemplateList().isEmpty()) {
+      ByteBuffer byteBuffer = templateResp.getTemplateList().get(0).serialize();
+      resp.setTemplate(byteBuffer);
     }
     resp.setStatus(templateResp.getStatus());
     return resp;
@@ -711,6 +714,18 @@ public class ClusterSchemaManager {
 
     // execute drop template
     return getConsensusManager().write(new DropSchemaTemplatePlan(templateName)).getStatus();
+  }
+
+  /**
+   * When some Nodes' states changed during a heartbeat loop, the eventbus in LoadManager will post
+   * the different NodeStatstics event to SyncManager and ClusterSchemaManager.
+   *
+   * @param nodeStatisticsEvent nodeStatistics that changed in a heartbeat loop
+   */
+  @Subscribe
+  @AllowConcurrentEvents
+  public void handleNodeStatistics(NodeStatisticsEvent nodeStatisticsEvent) {
+    // TODO
   }
 
   private NodeManager getNodeManager() {

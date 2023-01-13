@@ -82,7 +82,7 @@ The global configuration of cluster is in ConfigNode.
 |:---:|:---|
 |Description| ConfigNode internal service port|
 |Type| Short Int : [0,65535] |
-|Default| 22277 |
+|Default| 10710 |
 |Effective|After restarting system|
 
 ### Consensus
@@ -93,7 +93,7 @@ The global configuration of cluster is in ConfigNode.
 |:---:|:---|
 |Description| ConfigNode data Consensus Port  |
 |Type| Short Int : [0,65535] |
-|Default| 22278 |
+|Default| 10720 |
 |Effective|After restarting system|
 
 ### Target Config Nodes
@@ -104,7 +104,7 @@ The global configuration of cluster is in ConfigNode.
 |:---:|:----------------------------------------------------------------------|
 |Description| Target ConfigNode address, for current ConfigNode to join the cluster |
 |Type| String                                                                |
-|Default| 127.0.0.1:22277                                                       |
+|Default| 127.0.0.1:10710                                                       |
 |Effective| After restarting system                                               |
 
 ### Directory configuration
@@ -201,5 +201,23 @@ The global configuration of cluster is in ConfigNode.
 |    Type     | int                                                                            |
 |   Default   | 1                                                                              |
 |  Effective  | After restarting system                                                        |
+
+* cn\_core\_client\_count\_for\_each\_node\_in\_client\_manager
+
+|     Name     | cn\_core\_client\_count\_for\_each\_node\_in\_client\_manager  |
+|:------------:|:---------------------------------------------------------------|
+| Description  | Number of core clients routed to each node in a ClientManager  |
+|     Type     | int                                                            |
+|   Default    | 200                                                            |
+|  Effective   | After restarting system                                        |
+
+* cn\_max\_client\_count\_for\_each\_node\_in\_client\_manager
+
+|      Name      | cn\_max\_client\_count\_for\_each\_node\_in\_client\_manager |
+|:--------------:|:-------------------------------------------------------------|
+|  Description   | Number of max clients routed to each node in a ClientManager |
+|      Type      | int                                                          |
+|    Default     | 300                                                          |
+|   Effective    | After restarting system                                      |
 
 ### Metric Configuration

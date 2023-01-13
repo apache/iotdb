@@ -40,11 +40,11 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
-import static org.apache.iotdb.confignode.conf.ConfigNodeConstant.REMOVE_DATANODE_PROCESS;
+import static org.apache.iotdb.confignode.conf.ConfigNodeConstant.REGION_MIGRATE_PROCESS;
 import static org.apache.iotdb.confignode.procedure.env.DataNodeRemoveHandler.getIdWithRpcEndpoint;
 import static org.apache.iotdb.rpc.TSStatusCode.SUCCESS_STATUS;
 
-/** region migrate procedure */
+/** Region migrate procedure */
 public class RegionMigrateProcedure
     extends StateMachineProcedure<ConfigNodeProcedureEnv, RegionTransitionState> {
   private static final Logger LOG = LoggerFactory.getLogger(RegionMigrateProcedure.class);
@@ -133,7 +133,7 @@ public class RegionMigrateProcedure
           "{}, Meets error in region migrate state, "
               + "please do the rollback operation yourself manually according to the error message!!! "
               + "error state: {}, migrateResult: {}",
-          REMOVE_DATANODE_PROCESS,
+          REGION_MIGRATE_PROCESS,
           state,
           migrateResult);
       if (isRollbackSupported(state)) {
@@ -141,7 +141,7 @@ public class RegionMigrateProcedure
       } else {
         LOG.error(
             "{}, Failed state [{}] is not support rollback, originalDataNode: {}",
-            REMOVE_DATANODE_PROCESS,
+            REGION_MIGRATE_PROCESS,
             state,
             getIdWithRpcEndpoint(originalDataNode));
         if (getCycles() > RETRY_THRESHOLD) {
@@ -252,7 +252,7 @@ public class RegionMigrateProcedure
 
     LOG.info(
         "{}, Wait for state {} finished, regionId: {}",
-        REMOVE_DATANODE_PROCESS,
+        REGION_MIGRATE_PROCESS,
         state,
         consensusGroupId);
 
@@ -264,13 +264,13 @@ public class RegionMigrateProcedure
 
         if (!migrateSuccess) {
           throw new ProcedureException(
-              String.format("Region migrate failed, regionId: %s", consensusGroupId));
+              String.format("Region migration failed, regionId: %s", consensusGroupId));
         }
       } catch (InterruptedException e) {
-        LOG.error("{}, region migrate {} interrupt", REMOVE_DATANODE_PROCESS, consensusGroupId, e);
+        LOG.error("{}, region migration {} interrupt", REGION_MIGRATE_PROCESS, consensusGroupId, e);
         Thread.currentThread().interrupt();
         status.setCode(TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode());
-        status.setMessage("wait region migrate interrupt," + e.getMessage());
+        status.setMessage("Waiting for region migration interruption," + e.getMessage());
       }
     }
     return status;
@@ -280,18 +280,18 @@ public class RegionMigrateProcedure
   public void notifyTheRegionMigrateFinished(TRegionMigrateResultReportReq req) {
 
     LOG.info(
-        "{}, ConfigNode received region migrate result reported by DataNode: {}",
-        REMOVE_DATANODE_PROCESS,
+        "{}, ConfigNode received region migration result reported by DataNode: {}",
+        REGION_MIGRATE_PROCESS,
         req);
 
     // TODO the req is used in roll back
     synchronized (regionMigrateLock) {
       TSStatus migrateStatus = req.getMigrateResult();
-      // migrate failed
+      // Migration failed
       if (migrateStatus.getCode() != SUCCESS_STATUS.getStatusCode()) {
         LOG.info(
-            "{}, Region migrate failed in DataNode, migrateStatus: {}",
-            REMOVE_DATANODE_PROCESS,
+            "{}, Region migration failed in DataNode, migrateStatus: {}",
+            REGION_MIGRATE_PROCESS,
             migrateStatus);
         migrateSuccess = false;
         migrateResult = migrateStatus.toString();

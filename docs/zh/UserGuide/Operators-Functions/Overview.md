@@ -152,7 +152,7 @@ OR, |, ||
 | STRING_CONTAINS | TEXT         | `s`: 待搜寻的字符串                  | BOOLEAN      | 判断字符串中是否存在`s`                   |
 | STRING_MATCHES  | TEXT         | `regex`: Java 标准库风格的正则表达式 | BOOLEAN      | 判断字符串是否能够被正则表达式`regex`匹配 |
 | LENGTH | TEXT | 无 | INT32 | 返回字符串的长度 |
-| STRLOCATE | TEXT | `target`: 需要被定位的子串 <br/> `reverse`: 指定是否需要倒序定位，默认值为`false`, 即从左至右定位 | INT32 | 获取`target`子串第一次出现在输入序列的位置，如果输入序列中不包含`target`则返回 -1 |
+| LOCATE | TEXT | `target`: 需要被定位的子串 <br/> `reverse`: 指定是否需要倒序定位，默认值为`false`, 即从左至右定位 | INT32 | 获取`target`子串第一次出现在输入序列的位置，如果输入序列中不包含`target`则返回 -1 |
 | STARTSWITH | TEXT | `target`: 需要匹配的前缀 | BOOLEAN | 判断字符串是否有指定前缀 |
 | ENDSWITH | TEXT | `target`: 需要匹配的后缀 | BOOLEAN | 判断字符串是否有指定后缀 |
 | CONCAT | TEXT | `targets`: 一系列 K-V, key需要以`target`为前缀且不重复, value是待拼接的字符串。<br/>`series_behind`: 指定拼接时时间序列是否在后面，默认为`false`。 | TEXT | 拼接字符串和`target`字串 |
@@ -234,6 +234,6 @@ OR, |, ||
 
 **该函数库中的函数不是内置函数，使用前要先加载到系统中。** 操作流程如下：
 1. 下载包含全部依赖的 jar 包和注册脚本 [【点击下载】](https://archive.apache.org/dist/iotdb/0.14.0-preview3/apache-iotdb-0.14.0-preview3-library-udf-bin.zip) ；
-2. 将 jar 包复制到 IoTDB 程序目录的 `ext\udf` 目录下；
+2. 将 jar 包复制到 IoTDB 程序目录的 `ext\udf` 目录下 (若您使用的是集群，请将jar包复制到所有DataNode的该目录下)；
 3. 启动 IoTDB；
 4. 将注册脚本复制到 IoTDB 的程序目录下（与`sbin`目录同级的根目录下），修改脚本中的参数（如果需要）并运行注册脚本以注册 UDF。

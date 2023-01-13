@@ -99,7 +99,7 @@ The result is shown below. The query result shows that the insertion statements 
 
 ```
 +-----------------------------+--------------+--------------+
-|                         Time|root.sg1.d2.s1|root.sg1.d2.s2|
+|                         Time|root.sg1.d1.s1|root.sg1.d1.s2|
 +-----------------------------+--------------+--------------+
 |1970-01-01T08:00:00.001+08:00|             1|           1.0|
 |1970-01-01T08:00:00.002+08:00|             2|           2.0|

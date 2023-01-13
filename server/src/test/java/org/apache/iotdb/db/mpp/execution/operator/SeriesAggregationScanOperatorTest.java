@@ -29,13 +29,14 @@ import org.apache.iotdb.db.mpp.aggregation.Aggregator;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.common.QueryId;
+import org.apache.iotdb.db.mpp.execution.driver.DriverContext;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceStateMachine;
 import org.apache.iotdb.db.mpp.execution.operator.source.SeriesAggregationScanOperator;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationStep;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
-import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.db.query.reader.series.SeriesReaderTestUtil;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -500,10 +501,11 @@ public class SeriesAggregationScanOperatorTest {
         new FragmentInstanceStateMachine(instanceId, instanceNotificationExecutor);
     FragmentInstanceContext fragmentInstanceContext =
         createFragmentInstanceContext(instanceId, stateMachine);
+    DriverContext driverContext = new DriverContext(fragmentInstanceContext, 0);
     PlanNodeId planNodeId = new PlanNodeId("1");
-    fragmentInstanceContext.addOperatorContext(
+    driverContext.addOperatorContext(
         1, planNodeId, SeriesAggregationScanOperator.class.getSimpleName());
-    fragmentInstanceContext
+    driverContext
         .getOperatorContexts()
         .forEach(
             operatorContext -> {
@@ -515,7 +517,7 @@ public class SeriesAggregationScanOperatorTest {
             planNodeId,
             measurementPath,
             allSensors,
-            fragmentInstanceContext.getOperatorContexts().get(0),
+            driverContext.getOperatorContexts().get(0),
             aggregators,
             initTimeRangeIterator(groupByTimeParameter, ascending, true),
             timeFilter,

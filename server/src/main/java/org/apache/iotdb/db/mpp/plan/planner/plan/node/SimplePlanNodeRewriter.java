@@ -19,30 +19,34 @@
 
 package org.apache.iotdb.db.mpp.plan.planner.plan.node;
 
+import java.util.Collections;
 import java.util.List;
 
 import static com.google.common.collect.ImmutableList.toImmutableList;
 
-public class SimplePlanNodeRewriter<C> extends PlanVisitor<PlanNode, C> {
+public class SimplePlanNodeRewriter<C> extends PlanVisitor<List<PlanNode>, C> {
   @Override
-  public PlanNode visitPlan(PlanNode node, C context) {
+  public List<PlanNode> visitPlan(PlanNode node, C context) {
     // TODO: (xingtanzjr) we apply no action for IWritePlanNode currently
     if (node instanceof WritePlanNode) {
-      return node;
+      return Collections.singletonList(node);
     }
     return defaultRewrite(node, context);
   }
 
-  public PlanNode defaultRewrite(PlanNode node, C context) {
-    List<PlanNode> children =
+  public List<PlanNode> defaultRewrite(PlanNode node, C context) {
+    List<List<PlanNode>> children =
         node.getChildren().stream()
             .map(child -> rewrite(child, context))
             .collect(toImmutableList());
-
-    return node.cloneWithChildren(children);
+    PlanNode newNode = node.clone();
+    for (List<PlanNode> planNodes : children) {
+      planNodes.forEach(newNode::addChild);
+    }
+    return Collections.singletonList(newNode);
   }
 
-  public PlanNode rewrite(PlanNode node, C userContext) {
+  public List<PlanNode> rewrite(PlanNode node, C userContext) {
     return node.accept(this, userContext);
   }
 }

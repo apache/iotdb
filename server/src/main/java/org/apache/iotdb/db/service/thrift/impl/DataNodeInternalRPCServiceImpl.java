@@ -26,6 +26,7 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
+import org.apache.iotdb.common.rpc.thrift.TSettleReq;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
@@ -51,7 +52,6 @@ import org.apache.iotdb.consensus.common.response.ConsensusGenericResponse;
 import org.apache.iotdb.consensus.exception.PeerNotInConsensusGroupException;
 import org.apache.iotdb.db.auth.AuthorizerManager;
 import org.apache.iotdb.db.client.ConfigNodeInfo;
-import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.OperationType;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
@@ -60,6 +60,7 @@ import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.cache.BloomFilterCache;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
+import org.apache.iotdb.db.engine.settle.SettleRequestHandler;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.cache.DataNodeSchemaCache;
@@ -77,11 +78,9 @@ import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceManager;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceState;
 import org.apache.iotdb.db.mpp.plan.Coordinator;
 import org.apache.iotdb.db.mpp.plan.analyze.ClusterPartitionFetcher;
-import org.apache.iotdb.db.mpp.plan.analyze.ClusterSchemaFetcher;
 import org.apache.iotdb.db.mpp.plan.analyze.IPartitionFetcher;
-import org.apache.iotdb.db.mpp.plan.analyze.ISchemaFetcher;
-import org.apache.iotdb.db.mpp.plan.analyze.StandalonePartitionFetcher;
-import org.apache.iotdb.db.mpp.plan.analyze.StandaloneSchemaFetcher;
+import org.apache.iotdb.db.mpp.plan.analyze.schema.ClusterSchemaFetcher;
+import org.apache.iotdb.db.mpp.plan.analyze.schema.ISchemaFetcher;
 import org.apache.iotdb.db.mpp.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.mpp.plan.execution.IQueryExecution;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
@@ -136,6 +135,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TCreateSchemaRegionReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDeactivateTemplateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDeleteDataForDeleteSchemaReq;
+import org.apache.iotdb.mpp.rpc.thrift.TDeleteModelMetricsReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDeleteTimeSeriesReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDisableDataNodeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDropFunctionInstanceReq;
@@ -144,6 +144,10 @@ import org.apache.iotdb.mpp.rpc.thrift.TExecuteCQ;
 import org.apache.iotdb.mpp.rpc.thrift.TFetchFragmentInstanceInfoReq;
 import org.apache.iotdb.mpp.rpc.thrift.TFetchSchemaBlackListReq;
 import org.apache.iotdb.mpp.rpc.thrift.TFetchSchemaBlackListResp;
+import org.apache.iotdb.mpp.rpc.thrift.TFetchTimeseriesReq;
+import org.apache.iotdb.mpp.rpc.thrift.TFetchTimeseriesResp;
+import org.apache.iotdb.mpp.rpc.thrift.TFetchWindowBatchReq;
+import org.apache.iotdb.mpp.rpc.thrift.TFetchWindowBatchResp;
 import org.apache.iotdb.mpp.rpc.thrift.TFireTriggerReq;
 import org.apache.iotdb.mpp.rpc.thrift.TFireTriggerResp;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceInfoResp;
@@ -158,6 +162,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TLoadResp;
 import org.apache.iotdb.mpp.rpc.thrift.TLoadSample;
 import org.apache.iotdb.mpp.rpc.thrift.TMaintainPeerReq;
 import org.apache.iotdb.mpp.rpc.thrift.TOperatePipeOnDataNodeReq;
+import org.apache.iotdb.mpp.rpc.thrift.TRecordModelMetricsReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionLeaderChangeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRollbackSchemaBlackListReq;
@@ -202,7 +207,6 @@ import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
 import static org.apache.iotdb.db.service.RegionMigrateService.REGION_MIGRATE_PROCESS;
-import static org.apache.iotdb.db.service.basic.ServiceProvider.QUERY_FREQUENCY_RECORDER;
 import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onQueryException;
 
 public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface {
@@ -213,8 +217,6 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   private static final SessionManager SESSION_MANAGER = SessionManager.getInstance();
 
   private static final Coordinator COORDINATOR = Coordinator.getInstance();
-
-  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   private final IPartitionFetcher PARTITION_FETCHER;
 
@@ -227,13 +229,8 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   public DataNodeInternalRPCServiceImpl() {
     super();
-    if (config.isClusterMode()) {
-      PARTITION_FETCHER = ClusterPartitionFetcher.getInstance();
-      SCHEMA_FETCHER = ClusterSchemaFetcher.getInstance();
-    } else {
-      PARTITION_FETCHER = StandalonePartitionFetcher.getInstance();
-      SCHEMA_FETCHER = StandaloneSchemaFetcher.getInstance();
-    }
+    PARTITION_FETCHER = ClusterPartitionFetcher.getInstance();
+    SCHEMA_FETCHER = ClusterSchemaFetcher.getInstance();
   }
 
   @Override
@@ -241,14 +238,16 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     LOGGER.debug("receive FragmentInstance to group[{}]", req.getConsensusGroupId());
 
     // deserialize ConsensusGroupId
-    ConsensusGroupId groupId;
-    try {
-      groupId = ConsensusGroupId.Factory.createFromTConsensusGroupId(req.getConsensusGroupId());
-    } catch (Throwable t) {
-      LOGGER.warn("Deserialize ConsensusGroupId failed. ", t);
-      TSendFragmentInstanceResp resp = new TSendFragmentInstanceResp(false);
-      resp.setMessage("Deserialize ConsensusGroupId failed: " + t.getMessage());
-      return resp;
+    ConsensusGroupId groupId = null;
+    if (req.consensusGroupId != null) {
+      try {
+        groupId = ConsensusGroupId.Factory.createFromTConsensusGroupId(req.getConsensusGroupId());
+      } catch (Throwable t) {
+        LOGGER.warn("Deserialize ConsensusGroupId failed. ", t);
+        TSendFragmentInstanceResp resp = new TSendFragmentInstanceResp(false);
+        resp.setMessage("Deserialize ConsensusGroupId failed: " + t.getMessage());
+        return resp;
+      }
     }
 
     // We deserialize here instead of the underlying state machine because parallelism is possible
@@ -264,11 +263,14 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     }
 
     RegionReadExecutor executor = new RegionReadExecutor();
-    RegionExecutionResult executionResult = executor.execute(groupId, fragmentInstance);
+    RegionExecutionResult executionResult =
+        groupId == null
+            ? executor.execute(fragmentInstance)
+            : executor.execute(groupId, fragmentInstance);
     TSendFragmentInstanceResp resp = new TSendFragmentInstanceResp();
     resp.setAccepted(executionResult.isAccepted());
     resp.setMessage(executionResult.getMessage());
-
+    // TODO
     return resp;
   }
 
@@ -341,7 +343,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   @Override
   public TLoadResp sendTsFilePieceNode(TTsFilePieceReq req) throws TException {
-    LOGGER.info(String.format("Receive load node from uuid %s.", req.uuid));
+    LOGGER.info("Receive load node from uuid {}.", req.uuid);
 
     ConsensusGroupId groupId =
         ConsensusGroupId.Factory.createFromTConsensusGroupId(req.consensusGroupId);
@@ -863,8 +865,6 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       }
       executedSQL = String.join(" ", s.constructFormattedSQL().split("\n")).replaceAll(" +", " ");
 
-      QUERY_FREQUENCY_RECORDER.incrementAndGet();
-
       long queryId =
           SESSION_MANAGER.requestQueryId(session, SESSION_MANAGER.requestStatementId(session));
       // create and cache dataset
@@ -904,6 +904,30 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       SESSION_MANAGER.closeSession(session, COORDINATOR::cleanupQueryExecution);
       SESSION_MANAGER.removeCurrSession();
     }
+  }
+
+  @Override
+  public TSStatus deleteModelMetrics(TDeleteModelMetricsReq req) throws TException {
+    // TODO
+    throw new TException(new UnsupportedOperationException().getCause());
+  }
+
+  @Override
+  public TFetchTimeseriesResp fetchTimeseries(TFetchTimeseriesReq req) throws TException {
+    // TODO
+    throw new TException(new UnsupportedOperationException().getCause());
+  }
+
+  @Override
+  public TFetchWindowBatchResp fetchWindowBatch(TFetchWindowBatchReq req) throws TException {
+    // TODO
+    throw new TException(new UnsupportedOperationException().getCause());
+  }
+
+  @Override
+  public TSStatus recordModelMetrics(TRecordModelMetricsReq req) throws TException {
+    // TODO
+    throw new TException(new UnsupportedOperationException().getCause());
   }
 
   private PathPatternTree filterPathPatternTree(PathPatternTree patternTree, String storageGroup) {
@@ -1091,6 +1115,11 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
+  public TSStatus settle(TSettleReq req) throws TException {
+    return SettleRequestHandler.getInstance().handleSettleRequest(req);
+  }
+
+  @Override
   public TSStatus loadConfiguration() throws TException {
     try {
       IoTDBDescriptor.getInstance().loadHotModifiedProps();
@@ -1108,6 +1137,25 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
     }
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+  }
+
+  @Override
+  public TSStatus killQueryInstance(String queryId) {
+    Coordinator coordinator = Coordinator.getInstance();
+    if (queryId == null) {
+      coordinator.getAllQueryExecutions().forEach(IQueryExecution::cancel);
+    } else {
+      Optional<IQueryExecution> queryExecution =
+          coordinator.getAllQueryExecutions().stream()
+              .filter(iQueryExecution -> iQueryExecution.getQueryId().equals(queryId))
+              .findAny();
+      if (queryExecution.isPresent()) {
+        queryExecution.get().cancel();
+      } else {
+        return new TSStatus(TSStatusCode.NO_SUCH_QUERY.getStatusCode()).setMessage("No such query");
+      }
+    }
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
   @Override

@@ -47,7 +47,7 @@ public abstract class SlidingWindowAggregator extends Aggregator {
 
   protected TimeRange curTimeRange;
 
-  public SlidingWindowAggregator(
+  protected SlidingWindowAggregator(
       Accumulator accumulator, List<InputLocation[]> inputLocationList, AggregationStep step) {
     super(accumulator, step, inputLocationList);
     this.deque = new LinkedList<>();

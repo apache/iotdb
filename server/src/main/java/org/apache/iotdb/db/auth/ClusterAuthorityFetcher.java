@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.auth.entity.PathPrivilege;
 import org.apache.iotdb.commons.auth.entity.Role;
 import org.apache.iotdb.commons.auth.entity.User;
 import org.apache.iotdb.commons.client.IClientManager;
+import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.consensus.ConfigNodeRegionId;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -37,11 +38,11 @@ import org.apache.iotdb.confignode.rpc.thrift.TCheckUserPrivilegesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TLoginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 import org.apache.iotdb.db.client.ConfigNodeClient;
+import org.apache.iotdb.db.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.client.ConfigNodeInfo;
-import org.apache.iotdb.db.client.DataNodeClientPoolFactory;
 import org.apache.iotdb.db.mpp.plan.execution.config.ConfigTaskResult;
+import org.apache.iotdb.db.mpp.plan.statement.AuthorType;
 import org.apache.iotdb.db.mpp.plan.statement.sys.AuthorStatement;
-import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -50,7 +51,6 @@ import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
@@ -66,9 +66,7 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
   private IAuthorizer authorizer;
 
   private static final IClientManager<ConfigNodeRegionId, ConfigNodeClient>
-      CONFIG_NODE_CLIENT_MANAGER =
-          new IClientManager.Factory<ConfigNodeRegionId, ConfigNodeClient>()
-              .createClientManager(new DataNodeClientPoolFactory.ConfigNodeClientPoolFactory());
+      CONFIG_NODE_CLIENT_MANAGER = ConfigNodeClientManager.getInstance();
 
   public ClusterAuthorityFetcher(IAuthorCache iAuthorCache) {
     this.iAuthorCache = iAuthorCache;
@@ -133,15 +131,13 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
         logger.error(
             "Failed to execute {} in config node, status is {}.",
-            AuthorOperator.AuthorType.values()[authorizerReq.getAuthorType()]
-                .toString()
-                .toLowerCase(Locale.ROOT),
+            AuthorType.values()[authorizerReq.getAuthorType()].toString().toLowerCase(Locale.ROOT),
             tsStatus);
         future.setException(new IoTDBException(tsStatus.message, tsStatus.code));
       } else {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       }
-    } catch (TException | IOException e) {
+    } catch (ClientManagerException | TException e) {
       logger.error("Failed to connect to config node.");
       future.setException(e);
     } catch (AuthException e) {
@@ -167,9 +163,7 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != authorizerResp.getStatus().getCode()) {
         logger.error(
             "Failed to execute {} in config node, status is {}.",
-            AuthorOperator.AuthorType.values()[authorizerReq.getAuthorType()]
-                .toString()
-                .toLowerCase(Locale.ROOT),
+            AuthorType.values()[authorizerReq.getAuthorType()].toString().toLowerCase(Locale.ROOT),
             authorizerResp.getStatus());
         future.setException(
             new IoTDBException(
@@ -177,7 +171,7 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
       } else {
         AuthorizerManager.getInstance().buildTSBlock(authorizerResp.getAuthorizerInfo(), future);
       }
-    } catch (TException | IOException e) {
+    } catch (ClientManagerException | TException e) {
       logger.error("Failed to connect to config node.");
       authorizerResp.setStatus(
           RpcUtils.getStatus(
@@ -213,7 +207,7 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
           CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.configNodeRegionId)) {
         // Send request to some API server
         status = configNodeClient.login(req);
-      } catch (TException | IOException e) {
+      } catch (ClientManagerException | TException e) {
         logger.error("Failed to connect to config node.");
         status = new TPermissionInfoResp();
         status.setStatus(
@@ -240,7 +234,7 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.configNodeRegionId)) {
       // Send request to some API server
       permissionInfoResp = configNodeClient.checkUserPrivileges(req);
-    } catch (TException | IOException e) {
+    } catch (ClientManagerException | TException e) {
       logger.error("Failed to connect to config node.");
       permissionInfoResp = new TPermissionInfoResp();
       permissionInfoResp.setStatus(
@@ -262,9 +256,9 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
     List<PathPrivilege> pathPrivilegeList = new ArrayList<>();
     user.setName(tPermissionInfoResp.getUserInfo().getUsername());
     user.setPassword(tPermissionInfoResp.getUserInfo().getPassword());
-    for (int i = 0; i < privilegeList.size(); i++) {
+    for (int i = 0; i < privilegeList.size(); i += 2) {
       String path = privilegeList.get(i);
-      String privilege = privilegeList.get(++i);
+      String privilege = privilegeList.get(i + 1);
       pathPrivilegeList.add(toPathPrivilege(path, privilege));
     }
     user.setOpenIdUser(tPermissionInfoResp.getUserInfo().isIsOpenIdUser());
@@ -282,9 +276,9 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
     List<String> privilegeList = tPermissionInfoResp.getRoleInfo().get(roleName).getPrivilegeList();
     List<PathPrivilege> pathPrivilegeList = new ArrayList<>();
     role.setName(tPermissionInfoResp.getRoleInfo().get(roleName).getRoleName());
-    for (int i = 0; i < privilegeList.size(); i++) {
+    for (int i = 0; i < privilegeList.size(); i += 2) {
       String path = privilegeList.get(i);
-      String privilege = privilegeList.get(++i);
+      String privilege = privilegeList.get(i + 1);
       pathPrivilegeList.add(toPathPrivilege(path, privilege));
     }
     role.setPrivilegeList(pathPrivilegeList);

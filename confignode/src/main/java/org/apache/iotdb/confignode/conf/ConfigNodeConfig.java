@@ -19,6 +19,7 @@
 package org.apache.iotdb.confignode.conf;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.commons.client.property.ClientPoolProperty.DefaultProperty;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.confignode.manager.load.balancer.RegionBalancer;
 import org.apache.iotdb.confignode.manager.load.balancer.router.leader.ILeaderBalancer;
@@ -31,22 +32,23 @@ import java.io.File;
 
 public class ConfigNodeConfig {
 
-  /**
-   * the config node id for cluster mode, the default value -1 should be changed after join cluster
-   */
+  /** ClusterId, the default value "defaultCluster" will be changed after join cluster */
+  private volatile String clusterName = "defaultCluster";
+
+  /** ConfigNodeId, the default value -1 will be changed after join cluster */
   private volatile int configNodeId = -1;
 
   /** could set ip or hostname */
   private String internalAddress = "127.0.0.1";
 
   /** used for communication between data node and config node */
-  private int internalPort = 22277;
+  private int internalPort = 10710;
 
   /** used for communication between config node and config node */
-  private int consensusPort = 22278;
+  private int consensusPort = 10720;
 
   /** Used for connecting to the ConfigNodeGroup */
-  private TEndPoint targetConfigNode = new TEndPoint("127.0.0.1", 22277);
+  private TEndPoint targetConfigNode = new TEndPoint("127.0.0.1", 10710);
 
   // TODO: Read from iotdb-confignode.properties
   private int configNodeRegionId = 0;
@@ -94,10 +96,10 @@ public class ConfigNodeConfig {
   private double dataRegionPerProcessor = 1.0;
 
   /** The least number of SchemaRegionGroup for each Database. */
-  private int leastSchemaRegionGroupNum = 1;
+  private volatile int leastSchemaRegionGroupNum = 1;
 
   /** The least number of DataRegionGroup for each Database. */
-  private int leastDataRegionGroupNum = 5;
+  private volatile int leastDataRegionGroupNum = 5;
 
   /** RegionGroup allocate policy. */
   private RegionBalancer.RegionGroupAllocatePolicy regionGroupAllocatePolicy =
@@ -123,6 +125,20 @@ public class ConfigNodeConfig {
 
   /** just for test wait for 60 second by default. */
   private int thriftServerAwaitTimeForStopService = 60;
+
+  /**
+   * The maximum number of clients that can be idle for a node in a clientManager. When the number
+   * of idle clients on a node exceeds this number, newly returned clients will be released
+   */
+  private int coreClientNumForEachNode = DefaultProperty.CORE_CLIENT_NUM_FOR_EACH_NODE;
+
+  /**
+   * The maximum number of clients that can be allocated for a node in a clientManager. When the
+   * number of the client to a single node exceeds this number, the thread for applying for a client
+   * will be blocked for a while, then ClientManager will throw ClientManagerException if there are
+   * no clients after the block time.
+   */
+  private int maxClientNumForEachNode = DefaultProperty.MAX_CLIENT_NUM_FOR_EACH_NODE;
 
   /** System directory, including version file for each database and metadata */
   private String systemDir =
@@ -262,9 +278,9 @@ public class ConfigNodeConfig {
   private long ratisFirstElectionTimeoutMinMs = 50;
   private long ratisFirstElectionTimeoutMaxMs = 150;
 
-  private long configNodeRatisLogMaxMB = 2 * 1024;
-  private long schemaRegionRatisLogMaxMB = 2 * 1024;
-  private long dataRegionRatisLogMaxMB = 20 * 1024;
+  private long configNodeRatisLogMax = 2L * 1024 * 1024 * 1024; // 2G
+  private long schemaRegionRatisLogMax = 2L * 1024 * 1024 * 1024; // 2G
+  private long dataRegionRatisLogMax = 20L * 1024 * 1024 * 1024; // 20G
 
   public ConfigNodeConfig() {
     // empty constructor
@@ -294,6 +310,14 @@ public class ConfigNodeConfig {
       }
     }
     return dir;
+  }
+
+  public String getClusterName() {
+    return clusterName;
+  }
+
+  public void setClusterName(String clusterName) {
+    this.clusterName = clusterName;
   }
 
   public int getConfigNodeId() {
@@ -398,6 +422,24 @@ public class ConfigNodeConfig {
 
   public void setCnThriftDefaultBufferSize(int thriftDefaultBufferSize) {
     this.thriftDefaultBufferSize = thriftDefaultBufferSize;
+  }
+
+  public int getCoreClientNumForEachNode() {
+    return coreClientNumForEachNode;
+  }
+
+  public ConfigNodeConfig setCoreClientNumForEachNode(int coreClientNumForEachNode) {
+    this.coreClientNumForEachNode = coreClientNumForEachNode;
+    return this;
+  }
+
+  public int getMaxClientNumForEachNode() {
+    return maxClientNumForEachNode;
+  }
+
+  public ConfigNodeConfig setMaxClientNumForEachNode(int maxClientNumForEachNode) {
+    this.maxClientNumForEachNode = maxClientNumForEachNode;
+    return this;
   }
 
   public String getConsensusDir() {
@@ -1024,27 +1066,27 @@ public class ConfigNodeConfig {
     this.ratisFirstElectionTimeoutMaxMs = ratisFirstElectionTimeoutMaxMs;
   }
 
-  public long getConfigNodeRatisLogMaxMB() {
-    return configNodeRatisLogMaxMB;
+  public long getConfigNodeRatisLogMax() {
+    return configNodeRatisLogMax;
   }
 
-  public void setConfigNodeRatisLogMaxMB(long configNodeRatisLogMaxMB) {
-    this.configNodeRatisLogMaxMB = configNodeRatisLogMaxMB;
+  public void setConfigNodeRatisLogMax(long configNodeRatisLogMax) {
+    this.configNodeRatisLogMax = configNodeRatisLogMax;
   }
 
-  public long getSchemaRegionRatisLogMaxMB() {
-    return schemaRegionRatisLogMaxMB;
+  public long getSchemaRegionRatisLogMax() {
+    return schemaRegionRatisLogMax;
   }
 
-  public void setSchemaRegionRatisLogMaxMB(long schemaRegionRatisLogMaxMB) {
-    this.schemaRegionRatisLogMaxMB = schemaRegionRatisLogMaxMB;
+  public void setSchemaRegionRatisLogMax(long schemaRegionRatisLogMax) {
+    this.schemaRegionRatisLogMax = schemaRegionRatisLogMax;
   }
 
-  public long getDataRegionRatisLogMaxMB() {
-    return dataRegionRatisLogMaxMB;
+  public long getDataRegionRatisLogMax() {
+    return dataRegionRatisLogMax;
   }
 
-  public void setDataRegionRatisLogMaxMB(long dataRegionRatisLogMaxMB) {
-    this.dataRegionRatisLogMaxMB = dataRegionRatisLogMaxMB;
+  public void setDataRegionRatisLogMax(long dataRegionRatisLogMax) {
+    this.dataRegionRatisLogMax = dataRegionRatisLogMax;
   }
 }

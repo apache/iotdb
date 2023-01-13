@@ -23,7 +23,7 @@ import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor;
 
 public class JSHashExecutor extends SeriesPartitionExecutor {
 
-  private static final int base = 1315423911;
+  private static final int BASE = 1315423911;
 
   public JSHashExecutor(int deviceGroupCount) {
     super(deviceGroupCount);
@@ -31,7 +31,7 @@ public class JSHashExecutor extends SeriesPartitionExecutor {
 
   @Override
   public TSeriesPartitionSlot getSeriesPartitionSlot(String device) {
-    int hash = base;
+    int hash = BASE;
 
     for (int i = 0; i < device.length(); i++) {
       hash ^= ((hash << 5) + (int) device.charAt(i) + (hash >> 2));

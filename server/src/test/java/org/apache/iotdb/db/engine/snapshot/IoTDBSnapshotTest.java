@@ -207,7 +207,7 @@ public class IoTDBSnapshotTest {
                 + File.separator
                 + "1-1-0-0.tsfile");
     DataRegion region = Mockito.mock(DataRegion.class);
-    Mockito.when(region.getStorageGroupName()).thenReturn("root.test");
+    Mockito.when(region.getDatabaseName()).thenReturn("root.test");
     Mockito.when(region.getDataRegionId()).thenReturn("0");
     File snapshotFile =
         new SnapshotTaker(region).getSnapshotFilePathForTsFile(tsFile, "test-snapshotId");

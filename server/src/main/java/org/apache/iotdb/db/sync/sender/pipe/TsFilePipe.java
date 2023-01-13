@@ -157,7 +157,7 @@ public class TsFilePipe implements Pipe {
       logger.info(
           logFormat(
               "init syncManager for %s-%s",
-              dataRegion.getStorageGroupName(), dataRegion.getDataRegionId()));
+              dataRegion.getDatabaseName(), dataRegion.getDataRegionId()));
       getOrCreateSyncManager(dataRegion.getDataRegionId());
     }
     try {
@@ -192,7 +192,7 @@ public class TsFilePipe implements Pipe {
       // put history data into PipeDataQueue
       int historyTsFilesSize = historyTsFiles.size();
       for (int i = 0; i < historyTsFilesSize; i++) {
-        long serialNumber = 1 - historyTsFilesSize + i;
+        long serialNumber = 1L - historyTsFilesSize + i;
         File tsFile = historyTsFiles.get(i);
         historyQueueMap
             .get(entry.getKey())

@@ -37,7 +37,7 @@ import java.nio.ByteBuffer;
 /** remove config node procedure */
 public class RemoveConfigNodeProcedure extends AbstractNodeProcedure<RemoveConfigNodeState> {
   private static final Logger LOG = LoggerFactory.getLogger(RemoveConfigNodeProcedure.class);
-  private static final int retryThreshold = 5;
+  private static final int RETRY_THRESHOLD = 5;
 
   private TConfigNodeLocation removedConfigNode;
 
@@ -82,7 +82,7 @@ public class RemoveConfigNodeProcedure extends AbstractNodeProcedure<RemoveConfi
             removedConfigNode,
             state,
             e);
-        if (getCycles() > retryThreshold) {
+        if (getCycles() > RETRY_THRESHOLD) {
           setFailure(new ProcedureException("State stuck at " + state));
         }
       }

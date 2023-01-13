@@ -22,6 +22,7 @@ package org.apache.iotdb.consensus.iot;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.IClientManager;
+import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
@@ -80,12 +81,13 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.regex.Pattern;
 
 public class IoTConsensusServerImpl {
 
   private static final String CONFIGURATION_FILE_NAME = "configuration.dat";
   private static final String CONFIGURATION_TMP_FILE_NAME = "configuration.dat.tmp";
-  private static final String SNAPSHOT_DIR_NAME = "snapshot";
+  public static final String SNAPSHOT_DIR_NAME = "snapshot";
 
   private final Logger logger = LoggerFactory.getLogger(IoTConsensusServerImpl.class);
 
@@ -95,12 +97,13 @@ public class IoTConsensusServerImpl {
   private final Condition stateMachineCondition = stateMachineLock.newCondition();
   private final String storageDir;
   private final List<Peer> configuration;
-  private final AtomicLong index;
+  private final AtomicLong searchIndex;
   private final LogDispatcher logDispatcher;
   private final IoTConsensusConfig config;
   private final ConsensusReqReader reader;
   private volatile boolean active;
-  private String latestSnapshotId;
+  private String newSnapshotDirName;
+  private static final Pattern snapshotIndexPatten = Pattern.compile(".*[^\\d](?=(\\d+))");
   private final IClientManager<TEndPoint, SyncIoTConsensusServiceClient> syncClientManager;
   private final IoTConsensusServerMetrics metrics;
 
@@ -129,11 +132,8 @@ public class IoTConsensusServerImpl {
     this.logDispatcher = new LogDispatcher(this, clientManager);
     reader = (ConsensusReqReader) stateMachine.read(new GetConsensusReqReaderPlan());
     long currentSearchIndex = reader.getCurrentSearchIndex();
-    if (1 == configuration.size()) {
-      // only one configuration means single replica.
-      reader.setSafelyDeletedSearchIndex(Long.MAX_VALUE);
-    }
-    this.index = new AtomicLong(currentSearchIndex);
+    checkAndUpdateSafeDeletedSearchIndex();
+    this.searchIndex = new AtomicLong(currentSearchIndex);
     this.consensusGroupId = thisNode.getGroupId().toString();
     this.metrics = new IoTConsensusServerMetrics(this);
   }
@@ -177,7 +177,7 @@ public class IoTConsensusServerImpl {
       if (needBlockWrite()) {
         logger.info(
             "[Throttle Down] index:{}, safeIndex:{}",
-            getIndex(),
+            getSearchIndex(),
             getCurrentSafelyDeletedSearchIndex());
         try {
           boolean timeout =
@@ -237,9 +237,9 @@ public class IoTConsensusServerImpl {
         // is not expected and will slow down the preparation speed for batch.
         // So we need to use the lock to ensure the `offer()` and `incrementAndGet()` are
         // in one transaction.
-        synchronized (index) {
+        synchronized (searchIndex) {
           logDispatcher.offer(indexedConsensusRequest);
-          index.incrementAndGet();
+          searchIndex.incrementAndGet();
         }
         // statistic the time of offering request into queue
         MetricService.getInstance()
@@ -284,11 +284,11 @@ public class IoTConsensusServerImpl {
 
   public void takeSnapshot() throws ConsensusGroupModifyPeerException {
     try {
-      latestSnapshotId =
+      long newSnapshotIndex = getLatestSnapshotIndex() + 1;
+      newSnapshotDirName =
           String.format(
-              "%s_%s_%d",
-              SNAPSHOT_DIR_NAME, thisNode.getGroupId().getId(), System.currentTimeMillis());
-      File snapshotDir = new File(storageDir, latestSnapshotId);
+              "%s_%s_%d", SNAPSHOT_DIR_NAME, thisNode.getGroupId().getId(), newSnapshotIndex);
+      File snapshotDir = new File(storageDir, newSnapshotDirName);
       if (snapshotDir.exists()) {
         FileUtils.deleteDirectory(snapshotDir);
       }
@@ -299,19 +299,20 @@ public class IoTConsensusServerImpl {
       if (!stateMachine.takeSnapshot(snapshotDir)) {
         throw new ConsensusGroupModifyPeerException("unknown error when taking snapshot");
       }
+      clearOldSnapshot();
     } catch (IOException e) {
       throw new ConsensusGroupModifyPeerException("error when taking snapshot", e);
     }
   }
 
   public void transitSnapshot(Peer targetPeer) throws ConsensusGroupModifyPeerException {
-    File snapshotDir = new File(storageDir, latestSnapshotId);
+    File snapshotDir = new File(storageDir, newSnapshotDirName);
     List<Path> snapshotPaths = stateMachine.getSnapshotFiles(snapshotDir);
     logger.info("transit snapshots: {}", snapshotPaths);
     try (SyncIoTConsensusServiceClient client =
         syncClientManager.borrowClient(targetPeer.getEndpoint())) {
       for (Path path : snapshotPaths) {
-        SnapshotFragmentReader reader = new SnapshotFragmentReader(latestSnapshotId, path);
+        SnapshotFragmentReader reader = new SnapshotFragmentReader(newSnapshotDirName, path);
         try {
           while (reader.hasNext()) {
             TSendSnapshotFragmentReq req = reader.next().toTSendSnapshotFragmentReq();
@@ -326,7 +327,7 @@ public class IoTConsensusServerImpl {
           reader.close();
         }
       }
-    } catch (IOException | TException e) {
+    } catch (Exception e) {
       throw new ConsensusGroupModifyPeerException(
           String.format("error when send snapshot file to %s", targetPeer), e);
     }
@@ -363,6 +364,42 @@ public class IoTConsensusServerImpl {
     return originalFilePath.substring(originalFilePath.indexOf(snapshotId));
   }
 
+  private long getLatestSnapshotIndex() {
+    long snapShotIndex = 0;
+    File directory = new File(storageDir);
+    File[] versionFiles = directory.listFiles((dir, name) -> name.startsWith(SNAPSHOT_DIR_NAME));
+    if (versionFiles == null || versionFiles.length == 0) {
+      return snapShotIndex;
+    }
+    for (File file : versionFiles) {
+      snapShotIndex =
+          Long.max(
+              snapShotIndex,
+              Long.parseLong(snapshotIndexPatten.matcher(file.getName()).replaceAll("")));
+    }
+    return snapShotIndex;
+  }
+
+  private void clearOldSnapshot() {
+    File directory = new File(storageDir);
+    File[] versionFiles = directory.listFiles((dir, name) -> name.startsWith(SNAPSHOT_DIR_NAME));
+    if (versionFiles == null || versionFiles.length == 0) {
+      logger.error(
+          "Can not find any snapshot dir after build a new snapshot for group {}",
+          thisNode.getGroupId());
+      return;
+    }
+    for (File file : versionFiles) {
+      if (!file.getName().equals(newSnapshotDirName)) {
+        try {
+          FileUtils.deleteDirectory(file);
+        } catch (IOException e) {
+          logger.error("Delete old snapshot dir {} failed", file.getAbsolutePath(), e);
+        }
+      }
+    }
+  }
+
   public void loadSnapshot(String snapshotId) {
     // TODO: (xingtanzjr) throw exception if the snapshot load failed
     stateMachine.loadSnapshot(new File(storageDir, snapshotId));
@@ -378,7 +415,7 @@ public class IoTConsensusServerImpl {
         throw new ConsensusGroupModifyPeerException(
             String.format("error when inactivating %s. %s", peer, res.getStatus()));
       }
-    } catch (IOException | TException e) {
+    } catch (Exception e) {
       throw new ConsensusGroupModifyPeerException(
           String.format("error when inactivating %s", peer), e);
     }
@@ -390,12 +427,12 @@ public class IoTConsensusServerImpl {
       TTriggerSnapshotLoadRes res =
           client.triggerSnapshotLoad(
               new TTriggerSnapshotLoadReq(
-                  thisNode.getGroupId().convertToTConsensusGroupId(), latestSnapshotId));
+                  thisNode.getGroupId().convertToTConsensusGroupId(), newSnapshotDirName));
       if (!isSuccess(res.status)) {
         throw new ConsensusGroupModifyPeerException(
             String.format("error when triggering snapshot load %s. %s", peer, res.getStatus()));
       }
-    } catch (IOException | TException e) {
+    } catch (Exception e) {
       throw new ConsensusGroupModifyPeerException(
           String.format("error when activating %s", peer), e);
     }
@@ -410,7 +447,7 @@ public class IoTConsensusServerImpl {
         throw new ConsensusGroupModifyPeerException(
             String.format("error when activating %s. %s", peer, res.getStatus()));
       }
-    } catch (IOException | TException e) {
+    } catch (Exception e) {
       throw new ConsensusGroupModifyPeerException(
           String.format("error when activating %s", peer), e);
     }
@@ -430,7 +467,7 @@ public class IoTConsensusServerImpl {
       if (peer.equals(thisNode)) {
         // use searchIndex for thisNode as the initialSyncIndex because targetPeer will load the
         // snapshot produced by thisNode
-        buildSyncLogChannel(targetPeer, index.get());
+        buildSyncLogChannel(targetPeer, searchIndex.get());
       } else {
         // use RPC to tell other peers to build sync log channel to target peer
         try (SyncIoTConsensusServiceClient client =
@@ -445,7 +482,7 @@ public class IoTConsensusServerImpl {
             throw new ConsensusGroupModifyPeerException(
                 String.format("build sync log channel failed from %s to %s", peer, targetPeer));
           }
-        } catch (IOException | TException e) {
+        } catch (Exception e) {
           // We use a simple way to deal with the connection issue when notifying other nodes to
           // build sync log. If the un-responsible peer is the peer which will be removed, we cannot
           // suspend the operation and need to skip it. In order to keep the mechanism works fine,
@@ -488,7 +525,7 @@ public class IoTConsensusServerImpl {
             throw new ConsensusGroupModifyPeerException(
                 String.format("remove sync log channel failed from %s to %s", peer, targetPeer));
           }
-        } catch (IOException | TException e) {
+        } catch (Exception e) {
           throw new ConsensusGroupModifyPeerException(
               String.format("error when removing sync log channel to %s", peer), e);
         }
@@ -520,7 +557,7 @@ public class IoTConsensusServerImpl {
             res.safeIndex);
         Thread.sleep(checkIntervalInMs);
       }
-    } catch (IOException | TException e) {
+    } catch (ClientManagerException | TException e) {
       throw new ConsensusGroupModifyPeerException(
           String.format(
               "error when waiting %s to complete SyncLog. %s", targetPeer, e.getMessage()),
@@ -566,6 +603,7 @@ public class IoTConsensusServerImpl {
       logger.info("[IoTConsensus] log dispatcher to {} removed and cleanup", targetPeer);
       // step 2, update configuration
       configuration.remove(targetPeer);
+      checkAndUpdateSafeDeletedSearchIndex();
       // step 3, persist configuration
       persistConfigurationUpdate();
       logger.info("[IoTConsensus] configuration updated to {}", this.configuration);
@@ -642,7 +680,7 @@ public class IoTConsensusServerImpl {
 
   public IndexedConsensusRequest buildIndexedConsensusRequestForLocalRequest(
       IConsensusRequest request) {
-    return new IndexedConsensusRequest(index.get() + 1, Collections.singletonList(request));
+    return new IndexedConsensusRequest(searchIndex.get() + 1, Collections.singletonList(request));
   }
 
   public IndexedConsensusRequest buildIndexedConsensusRequestForRemoteRequest(
@@ -656,7 +694,7 @@ public class IoTConsensusServerImpl {
    * single copies, the current index is selected
    */
   public long getCurrentSafelyDeletedSearchIndex() {
-    return logDispatcher.getMinSyncIndex().orElseGet(index::get);
+    return logDispatcher.getMinSyncIndex().orElseGet(searchIndex::get);
   }
 
   public String getStorageDir() {
@@ -671,8 +709,8 @@ public class IoTConsensusServerImpl {
     return configuration;
   }
 
-  public long getIndex() {
-    return index.get();
+  public long getSearchIndex() {
+    return searchIndex.get();
   }
 
   public IoTConsensusConfig getConfig() {
@@ -697,7 +735,7 @@ public class IoTConsensusServerImpl {
   }
 
   public AtomicLong getIndexObject() {
-    return index;
+    return searchIndex;
   }
 
   public boolean isReadOnly() {
@@ -718,14 +756,14 @@ public class IoTConsensusServerImpl {
         syncClientManager.borrowClient(targetPeer.getEndpoint())) {
       TCleanupTransferredSnapshotReq req =
           new TCleanupTransferredSnapshotReq(
-              targetPeer.getGroupId().convertToTConsensusGroupId(), latestSnapshotId);
+              targetPeer.getGroupId().convertToTConsensusGroupId(), newSnapshotDirName);
       TCleanupTransferredSnapshotRes res = client.cleanupTransferredSnapshot(req);
       if (!isSuccess(res.getStatus())) {
         throw new ConsensusGroupModifyPeerException(
             String.format(
                 "cleanup remote snapshot failed of %s ,status is %s", targetPeer, res.getStatus()));
       }
-    } catch (IOException | TException e) {
+    } catch (Exception e) {
       throw new ConsensusGroupModifyPeerException(
           String.format("cleanup remote snapshot failed of %s", targetPeer), e);
     }
@@ -740,6 +778,26 @@ public class IoTConsensusServerImpl {
       } catch (IOException e) {
         throw new ConsensusGroupModifyPeerException(e);
       }
+    }
+  }
+
+  /**
+   * We should set safelyDeletedSearchIndex to searchIndex before addPeer to avoid potential data
+   * lost.
+   */
+  public void checkAndLockSafeDeletedSearchIndex() {
+    if (configuration.size() == 1) {
+      reader.setSafelyDeletedSearchIndex(searchIndex.get());
+    }
+  }
+
+  /**
+   * only one configuration means single replica, then we can set safelyDeletedSearchIndex to
+   * Long.MAX_VALUE.
+   */
+  public void checkAndUpdateSafeDeletedSearchIndex() {
+    if (configuration.size() == 1) {
+      reader.setSafelyDeletedSearchIndex(Long.MAX_VALUE);
     }
   }
 }

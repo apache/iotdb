@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.service.thrift.impl;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.protocol.influxdb.constant.InfluxConstant;
 import org.apache.iotdb.db.protocol.influxdb.dto.IoTDBPoint;
 import org.apache.iotdb.db.protocol.influxdb.handler.AbstractQueryHandler;
@@ -26,10 +27,9 @@ import org.apache.iotdb.db.protocol.influxdb.handler.QueryHandlerFactory;
 import org.apache.iotdb.db.protocol.influxdb.input.InfluxLineParser;
 import org.apache.iotdb.db.protocol.influxdb.meta.IInfluxDBMetaManager;
 import org.apache.iotdb.db.protocol.influxdb.meta.InfluxDBMetaManagerFactory;
-import org.apache.iotdb.db.protocol.influxdb.operator.InfluxQueryOperator;
-import org.apache.iotdb.db.protocol.influxdb.sql.InfluxDBLogicalGenerator;
+import org.apache.iotdb.db.protocol.influxdb.parser.InfluxDBStatementGenerator;
+import org.apache.iotdb.db.protocol.influxdb.statement.InfluxQueryStatement;
 import org.apache.iotdb.db.protocol.influxdb.util.InfluxReqAndRespUtils;
-import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.utils.DataTypeUtils;
 import org.apache.iotdb.protocol.influxdb.rpc.thrift.InfluxCloseSessionReq;
 import org.apache.iotdb.protocol.influxdb.rpc.thrift.InfluxCreateDatabaseReq;
@@ -153,9 +153,14 @@ public class NewInfluxDBServiceImpl implements IInfluxDBServiceWithHandler {
    */
   @Override
   public InfluxQueryResultRsp query(InfluxQueryReq req) throws TException {
-    Operator operator = InfluxDBLogicalGenerator.generate(req.command);
-    queryHandler.checkInfluxDBQueryOperator(operator);
-    return queryHandler.queryInfluxDB(req.database, (InfluxQueryOperator) operator, req.sessionId);
+    Statement queryStatement = InfluxDBStatementGenerator.generate(req.command);
+    if (!(queryStatement instanceof InfluxQueryStatement)) {
+      throw new IllegalArgumentException("not query sql");
+    }
+    ((InfluxQueryStatement) queryStatement).semanticCheck();
+
+    return queryHandler.queryInfluxDB(
+        req.database, (InfluxQueryStatement) queryStatement, req.sessionId);
   }
 
   /**

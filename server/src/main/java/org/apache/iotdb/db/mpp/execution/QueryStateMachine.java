@@ -106,6 +106,15 @@ public class QueryStateMachine {
     queryState.set(QueryState.CANCELED);
   }
 
+  public void transitionToCanceled(Throwable throwable, TSStatus failureStatus) {
+    if (queryState.get().isDone()) {
+      return;
+    }
+    this.failureException = throwable;
+    this.failureStatus = failureStatus;
+    queryState.set(QueryState.CANCELED);
+  }
+
   public void transitionToAborted() {
     if (queryState.get().isDone()) {
       return;

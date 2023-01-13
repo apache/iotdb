@@ -110,23 +110,28 @@ public class SchemaRegionConsensusImpl {
                                               conf.getRatisFirstElectionTimeoutMaxMs(),
                                               TimeUnit.MILLISECONDS))
                                       .build())
+                              .setClient(
+                                  RatisConfig.Client.newBuilder()
+                                      .setClientRequestTimeoutMillis(
+                                          conf.getDataRatisConsensusRequestTimeoutMs())
+                                      .setClientMaxRetryAttempt(
+                                          conf.getDataRatisConsensusMaxRetryAttempts())
+                                      .setClientRetryInitialSleepTimeMs(
+                                          conf.getDataRatisConsensusInitialSleepTimeMs())
+                                      .setClientRetryMaxSleepTimeMs(
+                                          conf.getDataRatisConsensusMaxSleepTimeMs())
+                                      .setCoreClientNumForEachNode(
+                                          conf.getCoreClientNumForEachNode())
+                                      .setMaxClientNumForEachNode(conf.getMaxClientNumForEachNode())
+                                      .build())
+                              .setImpl(
+                                  RatisConfig.Impl.newBuilder()
+                                      .setTriggerSnapshotFileSize(conf.getSchemaRatisLogMax())
+                                      .build())
                               .setLeaderLogAppender(
                                   RatisConfig.LeaderLogAppender.newBuilder()
                                       .setBufferByteLimit(
                                           conf.getSchemaRatisConsensusLogAppenderBufferSizeMax())
-                                      .build())
-                              .setRatisConsensus(
-                                  RatisConfig.RatisConsensus.newBuilder()
-                                      .setClientRequestTimeoutMillis(
-                                          conf.getSchemaRatisConsensusRequestTimeoutMs())
-                                      .setClientMaxRetryAttempt(
-                                          conf.getSchemaRatisConsensusMaxRetryAttempts())
-                                      .setClientRetryInitialSleepTimeMs(
-                                          conf.getSchemaRatisConsensusInitialSleepTimeMs())
-                                      .setClientRetryMaxSleepTimeMs(
-                                          conf.getSchemaRatisConsensusMaxSleepTimeMs())
-                                      .setTriggerSnapshotFileSize(
-                                          conf.getSchemaRatisLogMaxMB() * 1024 * 1024)
                                       .build())
                               .build())
                       .setStorageDir(conf.getSchemaRegionConsensusDir())

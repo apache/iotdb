@@ -29,6 +29,8 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.cluster.NodeStatus;
+import org.apache.iotdb.commons.cluster.NodeType;
+import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
@@ -40,6 +42,7 @@ import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
+import org.apache.iotdb.confignode.conf.SystemPropertiesUtils;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
 import org.apache.iotdb.confignode.consensus.request.read.datanode.GetDataNodeConfigurationPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetDataPartitionPlan;
@@ -49,7 +52,6 @@ import org.apache.iotdb.confignode.consensus.request.read.partition.GetOrCreateS
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetSchemaPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetSeriesSlotListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetTimeSlotListPlan;
-import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionIdPlan;
 import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionInfoListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.storagegroup.CountStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.read.storagegroup.GetStorageGroupPlan;
@@ -65,6 +67,7 @@ import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetTimeP
 import org.apache.iotdb.confignode.consensus.request.write.sync.CreatePipeSinkPlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.DropPipeSinkPlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
+import org.apache.iotdb.confignode.consensus.response.ConfigurationResp;
 import org.apache.iotdb.confignode.consensus.response.CountStorageGroupResp;
 import org.apache.iotdb.confignode.consensus.response.DataNodeConfigurationResp;
 import org.apache.iotdb.confignode.consensus.response.DataNodeRegisterResp;
@@ -79,6 +82,7 @@ import org.apache.iotdb.confignode.consensus.response.TemplateSetInfoResp;
 import org.apache.iotdb.confignode.consensus.statemachine.ConfigNodeRegionStateMachine;
 import org.apache.iotdb.confignode.manager.cq.CQManager;
 import org.apache.iotdb.confignode.manager.load.LoadManager;
+import org.apache.iotdb.confignode.manager.node.ClusterNodeStartUtils;
 import org.apache.iotdb.confignode.manager.node.NodeManager;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
 import org.apache.iotdb.confignode.persistence.AuthorInfo;
@@ -91,13 +95,18 @@ import org.apache.iotdb.confignode.persistence.node.NodeInfo;
 import org.apache.iotdb.confignode.persistence.partition.PartitionInfo;
 import org.apache.iotdb.confignode.persistence.schema.ClusterSchemaInfo;
 import org.apache.iotdb.confignode.persistence.sync.ClusterSyncInfo;
+import org.apache.iotdb.confignode.rpc.thrift.TClusterParameters;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
+import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRestartReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateCQReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateFunctionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTriggerReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRestartReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRestartResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDeactivateSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteTimeSeriesReq;
@@ -105,18 +114,21 @@ import org.apache.iotdb.confignode.rpc.thrift.TDropCQReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllPipeInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllTemplatesResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetDataNodeLocationsResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetJarInListReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetJarInListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetLocationForTriggerResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPathsSetTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPipeSinkReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPipeSinkResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetRegionIdReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetRegionIdResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetSeriesSlotListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTemplateResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTimeSlotListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetUDFTableResp;
+import org.apache.iotdb.confignode.rpc.thrift.TMigrateRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TRecordPipeMessageReq;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionMigrateResultReportReq;
@@ -132,6 +144,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowStorageGroupResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowVariablesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsetSchemaTemplateReq;
@@ -166,6 +179,9 @@ public class ConfigManager implements IManager {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ConfigManager.class);
 
+  private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
+  private static final CommonConfig COMMON_CONF = CommonDescriptor.getInstance().getConfig();
+
   /** Manage PartitionTable read/write requests through the ConsensusLayer */
   private volatile ConsensusManager consensusManager;
 
@@ -198,6 +214,8 @@ public class ConfigManager implements IManager {
   private final CQManager cqManager;
 
   private final ConfigNodeRegionStateMachine stateMachine;
+
+  private final RetryFailedTasksThread retryFailedTasksThread;
 
   public ConfigManager() throws IOException {
     // Build the persistence module
@@ -233,9 +251,11 @@ public class ConfigManager implements IManager {
     this.procedureManager = new ProcedureManager(this, procedureInfo);
     this.udfManager = new UDFManager(this, udfInfo);
     this.triggerManager = new TriggerManager(this, triggerInfo);
-    this.loadManager = new LoadManager(this);
     this.syncManager = new SyncManager(this, syncInfo);
     this.cqManager = new CQManager(this);
+    this.loadManager = new LoadManager(this);
+
+    this.retryFailedTasksThread = new RetryFailedTasksThread(this);
   }
 
   public void initConsensusManager() throws IOException {
@@ -255,29 +275,67 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public DataSet registerDataNode(RegisterDataNodePlan registerDataNodePlan) {
+  public DataSet getSystemConfiguration() {
     TSStatus status = confirmLeader();
-    DataNodeRegisterResp dataSet;
-    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      triggerManager.getTriggerInfo().acquireTriggerTableLock();
-      udfManager.getUdfInfo().acquireUDFTableLock();
-      try {
-        dataSet = (DataNodeRegisterResp) nodeManager.registerDataNode(registerDataNodePlan);
-        dataSet.setTemplateInfo(clusterSchemaManager.getAllTemplateSetInfo());
-        dataSet.setTriggerInformation(
-            triggerManager.getTriggerTable(false).getAllTriggerInformation());
-        dataSet.setAllUDFInformation(udfManager.getUDFTable().getAllUDFInformation());
-        dataSet.setAllTTLInformation(clusterSchemaManager.getAllTTLInfo());
-      } finally {
-        triggerManager.getTriggerInfo().releaseTriggerTableLock();
-        udfManager.getUdfInfo().releaseUDFTableLock();
-      }
+    ConfigurationResp dataSet;
+    // Notice: The Seed-ConfigNode must also have the privilege to give system configuration.
+    // Otherwise, the IoTDB-cluster will not have the ability to restart from scratch.
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        || ConfigNodeDescriptor.getInstance().isSeedConfigNode()
+        || SystemPropertiesUtils.isSeedConfigNode()) {
+      dataSet = (ConfigurationResp) nodeManager.getSystemConfiguration();
     } else {
-      dataSet = new DataNodeRegisterResp();
+      dataSet = new ConfigurationResp();
       dataSet.setStatus(status);
-      dataSet.setConfigNodeList(nodeManager.getRegisteredConfigNodes());
     }
     return dataSet;
+  }
+
+  @Override
+  public DataSet registerDataNode(TDataNodeRegisterReq req) {
+    TSStatus status = confirmLeader();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      status =
+          ClusterNodeStartUtils.confirmNodeRegistration(
+              NodeType.DataNode,
+              req.getClusterName(),
+              req.getDataNodeConfiguration().getLocation(),
+              this);
+      if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return nodeManager.registerDataNode(
+            new RegisterDataNodePlan(req.getDataNodeConfiguration()));
+      }
+    }
+
+    DataNodeRegisterResp resp = new DataNodeRegisterResp();
+    resp.setStatus(status);
+    resp.setConfigNodeList(getNodeManager().getRegisteredConfigNodes());
+    return resp;
+  }
+
+  @Override
+  public TDataNodeRestartResp restartDataNode(TDataNodeRestartReq req) {
+    TSStatus status = confirmLeader();
+    // Notice: The Seed-ConfigNode must also have the privilege to do Node restart check.
+    // Otherwise, the IoTDB-cluster will not have the ability to restart from scratch.
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        || ConfigNodeDescriptor.getInstance().isSeedConfigNode()
+        || SystemPropertiesUtils.isSeedConfigNode()) {
+      status =
+          ClusterNodeStartUtils.confirmNodeRestart(
+              NodeType.DataNode,
+              req.getClusterName(),
+              req.getDataNodeConfiguration().getLocation().getDataNodeId(),
+              req.getDataNodeConfiguration().getLocation(),
+              this);
+      if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return nodeManager.restartDataNode(req.getDataNodeConfiguration().getLocation());
+      }
+    }
+
+    return new TDataNodeRestartResp()
+        .setStatus(status)
+        .setConfigNodeList(getNodeManager().getRegisteredConfigNodes());
   }
 
   @Override
@@ -297,15 +355,7 @@ public class ConfigManager implements IManager {
     TSStatus status = confirmLeader();
     DataNodeRegisterResp dataSet;
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      triggerManager.getTriggerInfo().acquireTriggerTableLock();
-      try {
-        dataSet = (DataNodeRegisterResp) nodeManager.updateDataNode(updateDataNodePlan);
-        dataSet.setTemplateInfo(clusterSchemaManager.getAllTemplateSetInfo());
-        dataSet.setTriggerInformation(
-            triggerManager.getTriggerTable(false).getAllTriggerInformation());
-      } finally {
-        triggerManager.getTriggerInfo().releaseTriggerTableLock();
-      }
+      dataSet = (DataNodeRegisterResp) nodeManager.updateDataNode(updateDataNodePlan);
     } else {
       dataSet = new DataNodeRegisterResp();
       dataSet.setStatus(status);
@@ -357,6 +407,40 @@ public class ConfigManager implements IManager {
     } else {
       return new TShowClusterResp(status, new ArrayList<>(), new ArrayList<>(), new HashMap<>());
     }
+  }
+
+  @Override
+  public TShowVariablesResp showVariables() {
+    TSStatus status = confirmLeader();
+    TShowVariablesResp resp = new TShowVariablesResp();
+    resp.setStatus(status);
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      resp.setClusterParameters(getClusterParameters());
+    }
+    return resp;
+  }
+
+  public TClusterParameters getClusterParameters() {
+    TClusterParameters clusterParameters = new TClusterParameters();
+    clusterParameters.setClusterName(CONF.getClusterName());
+    clusterParameters.setConfigNodeConsensusProtocolClass(
+        CONF.getConfigNodeConsensusProtocolClass());
+    clusterParameters.setDataRegionConsensusProtocolClass(
+        CONF.getDataRegionConsensusProtocolClass());
+    clusterParameters.setSchemaRegionConsensusProtocolClass(
+        CONF.getSchemaRegionConsensusProtocolClass());
+    clusterParameters.setSeriesPartitionSlotNum(CONF.getSeriesSlotNum());
+    clusterParameters.setSeriesPartitionExecutorClass(CONF.getSeriesPartitionExecutorClass());
+    clusterParameters.setDefaultTTL(COMMON_CONF.getDefaultTTLInMs());
+    clusterParameters.setTimePartitionInterval(CONF.getTimePartitionInterval());
+    clusterParameters.setDataReplicationFactor(CONF.getDataReplicationFactor());
+    clusterParameters.setSchemaReplicationFactor(CONF.getSchemaReplicationFactor());
+    clusterParameters.setDataRegionPerProcessor(CONF.getDataRegionPerProcessor());
+    clusterParameters.setSchemaRegionPerDataNode(CONF.getSchemaRegionPerDataNode());
+    clusterParameters.setDiskSpaceWarningThreshold(COMMON_CONF.getDiskSpaceWarningThreshold());
+    clusterParameters.setReadConsistencyLevel(CONF.getReadConsistencyLevel());
+    clusterParameters.setLeastDataRegionGroupNum(CONF.getLeastDataRegionGroupNum());
+    return clusterParameters;
   }
 
   @Override
@@ -649,6 +733,13 @@ public class ConfigManager implements IManager {
   }
 
   private TSStatus confirmLeader() {
+    // Make sure the consensus layer has been initialized
+    if (getConsensusManager() == null) {
+      return new TSStatus(TSStatusCode.CONSENSUS_NOT_INITIALIZED.getStatusCode())
+          .setMessage(
+              "ConsensusManager of target-ConfigNode is not initialized, "
+                  + "please make sure the target-ConfigNode has been started successfully.");
+    }
     return getConsensusManager().confirmLeader();
   }
 
@@ -736,56 +827,119 @@ public class ConfigManager implements IManager {
 
   @Override
   public TConfigNodeRegisterResp registerConfigNode(TConfigNodeRegisterReq req) {
-    return nodeManager.registerConfigNode(req);
+    final int ERROR_STATUS_NODE_ID = -1;
+
+    TSStatus status = confirmLeader();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      // Make sure the global configurations are consist
+      status = checkConfigNodeGlobalConfig(req);
+      if (status == null) {
+        status =
+            ClusterNodeStartUtils.confirmNodeRegistration(
+                NodeType.ConfigNode,
+                req.getClusterParameters().getClusterName(),
+                req.getConfigNodeLocation(),
+                this);
+        if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          return nodeManager.registerConfigNode(req);
+        }
+      }
+    }
+
+    return new TConfigNodeRegisterResp().setStatus(status).setConfigNodeId(ERROR_STATUS_NODE_ID);
+  }
+
+  @Override
+  public TSStatus restartConfigNode(TConfigNodeRestartReq req) {
+    TSStatus status = confirmLeader();
+    // Notice: The Seed-ConfigNode must also have the privilege to do Node restart check.
+    // Otherwise, the IoTDB-cluster will not have the ability to restart from scratch.
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        || ConfigNodeDescriptor.getInstance().isSeedConfigNode()
+        || SystemPropertiesUtils.isSeedConfigNode()) {
+      status =
+          ClusterNodeStartUtils.confirmNodeRestart(
+              NodeType.ConfigNode,
+              req.getClusterName(),
+              req.getConfigNodeLocation().getConfigNodeId(),
+              req.getConfigNodeLocation(),
+              this);
+      if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return nodeManager.restartConfigNode(req.getConfigNodeLocation());
+      }
+    }
+    return status;
   }
 
   public TSStatus checkConfigNodeGlobalConfig(TConfigNodeRegisterReq req) {
     final String errorPrefix = "Reject register, please ensure that the parameter ";
     final String errorSuffix = " is consistent with the Seed-ConfigNode.";
-
-    ConfigNodeConfig conf = ConfigNodeDescriptor.getInstance().getConf();
     TSStatus errorStatus = new TSStatus(TSStatusCode.CONFIGURATION_ERROR.getStatusCode());
-    if (!req.getDataRegionConsensusProtocolClass()
-        .equals(conf.getDataRegionConsensusProtocolClass())) {
+    TClusterParameters clusterParameters = req.getClusterParameters();
+
+    if (!clusterParameters
+        .getConfigNodeConsensusProtocolClass()
+        .equals(CONF.getConfigNodeConsensusProtocolClass())) {
+      return errorStatus.setMessage(
+          errorPrefix + "config_node_consensus_protocol_class" + errorSuffix);
+    }
+    if (!clusterParameters
+        .getDataRegionConsensusProtocolClass()
+        .equals(CONF.getDataRegionConsensusProtocolClass())) {
       return errorStatus.setMessage(
           errorPrefix + "data_region_consensus_protocol_class" + errorSuffix);
     }
-    if (!req.getSchemaRegionConsensusProtocolClass()
-        .equals(conf.getSchemaRegionConsensusProtocolClass())) {
+    if (!clusterParameters
+        .getSchemaRegionConsensusProtocolClass()
+        .equals(CONF.getSchemaRegionConsensusProtocolClass())) {
       return errorStatus.setMessage(
           errorPrefix + "schema_region_consensus_protocol_class" + errorSuffix);
     }
-    if (req.getSeriesPartitionSlotNum() != conf.getSeriesSlotNum()) {
+
+    if (clusterParameters.getSeriesPartitionSlotNum() != CONF.getSeriesSlotNum()) {
       return errorStatus.setMessage(errorPrefix + "series_partition_slot_num" + errorSuffix);
     }
-    if (!req.getSeriesPartitionExecutorClass().equals(conf.getSeriesPartitionExecutorClass())) {
+    if (!clusterParameters
+        .getSeriesPartitionExecutorClass()
+        .equals(CONF.getSeriesPartitionExecutorClass())) {
       return errorStatus.setMessage(errorPrefix + "series_partition_executor_class" + errorSuffix);
     }
-    if (req.getDefaultTTL() != CommonDescriptor.getInstance().getConfig().getDefaultTTLInMs()) {
+
+    if (clusterParameters.getDefaultTTL()
+        != CommonDescriptor.getInstance().getConfig().getDefaultTTLInMs()) {
       return errorStatus.setMessage(errorPrefix + "default_ttl" + errorSuffix);
     }
-    if (req.getTimePartitionInterval() != conf.getTimePartitionInterval()) {
+    if (clusterParameters.getTimePartitionInterval() != CONF.getTimePartitionInterval()) {
       return errorStatus.setMessage(errorPrefix + "time_partition_interval" + errorSuffix);
     }
-    if (req.getSchemaReplicationFactor() != conf.getSchemaReplicationFactor()) {
+
+    if (clusterParameters.getSchemaReplicationFactor() != CONF.getSchemaReplicationFactor()) {
       return errorStatus.setMessage(errorPrefix + "schema_replication_factor" + errorSuffix);
     }
-    if (req.getSchemaRegionPerDataNode() != conf.getSchemaRegionPerDataNode()) {
-      return errorStatus.setMessage(errorPrefix + "schema_region_per_data_node" + errorSuffix);
-    }
-    if (req.getDataReplicationFactor() != conf.getDataReplicationFactor()) {
+    if (clusterParameters.getDataReplicationFactor() != CONF.getDataReplicationFactor()) {
       return errorStatus.setMessage(errorPrefix + "data_replication_factor" + errorSuffix);
     }
-    if (req.getDataRegionPerProcessor() != conf.getDataRegionPerProcessor()) {
+
+    if (clusterParameters.getSchemaRegionPerDataNode() != CONF.getSchemaRegionPerDataNode()) {
+      return errorStatus.setMessage(errorPrefix + "schema_region_per_data_node" + errorSuffix);
+    }
+    if (clusterParameters.getDataRegionPerProcessor() != CONF.getDataRegionPerProcessor()) {
       return errorStatus.setMessage(errorPrefix + "data_region_per_processor" + errorSuffix);
     }
-    if (!req.getReadConsistencyLevel().equals(conf.getReadConsistencyLevel())) {
+
+    if (!clusterParameters.getReadConsistencyLevel().equals(CONF.getReadConsistencyLevel())) {
       return errorStatus.setMessage(errorPrefix + "read_consistency_level" + errorSuffix);
     }
-    if (req.getDiskSpaceWarningThreshold()
+
+    if (clusterParameters.getDiskSpaceWarningThreshold()
         != CommonDescriptor.getInstance().getConfig().getDiskSpaceWarningThreshold()) {
       return errorStatus.setMessage(errorPrefix + "disk_space_warning_threshold" + errorSuffix);
     }
+
+    if (clusterParameters.getLeastDataRegionGroupNum() != CONF.getLeastDataRegionGroupNum()) {
+      return errorStatus.setMessage(errorPrefix + "least_data_region_group_num" + errorSuffix);
+    }
+
     return null;
   }
 
@@ -954,6 +1108,26 @@ public class ConfigManager implements IManager {
   }
 
   @Override
+  public TSStatus killQuery(String queryId, int dataNodeId) {
+    TSStatus status = confirmLeader();
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        ? nodeManager.killQuery(queryId, dataNodeId)
+        : status;
+  }
+
+  @Override
+  public TGetDataNodeLocationsResp getRunningDataNodeLocations() {
+    TSStatus status = confirmLeader();
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        ? new TGetDataNodeLocationsResp(
+            new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()),
+            nodeManager.filterDataNodeThroughStatus(NodeStatus.Running).stream()
+                .map(TDataNodeConfiguration::getLocation)
+                .collect(Collectors.toList()))
+        : new TGetDataNodeLocationsResp(status, Collections.emptyList());
+  }
+
+  @Override
   public TRegionRouteMapResp getLatestRegionRouteMap() {
     TSStatus status = confirmLeader();
     TRegionRouteMapResp resp = new TRegionRouteMapResp(status);
@@ -1025,6 +1199,11 @@ public class ConfigManager implements IManager {
   @Override
   public CQManager getCQManager() {
     return cqManager;
+  }
+
+  @Override
+  public RetryFailedTasksThread getRetryFailedTasksThread() {
+    return retryFailedTasksThread;
   }
 
   /**
@@ -1295,10 +1474,10 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public TGetRegionIdResp getRegionId(GetRegionIdPlan plan) {
+  public TGetRegionIdResp getRegionId(TGetRegionIdReq req) {
     TSStatus status = confirmLeader();
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        ? partitionManager.getRegionId(plan).convertToRpcGetRegionIdResp()
+        ? partitionManager.getRegionId(req).convertToRpcGetRegionIdResp()
         : new TGetRegionIdResp(status);
   }
 
@@ -1316,6 +1495,14 @@ public class ConfigManager implements IManager {
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
         ? partitionManager.getSeriesSlotList(plan).convertToRpcGetSeriesSlotListResp()
         : new TGetSeriesSlotListResp(status);
+  }
+
+  @Override
+  public TSStatus migrateRegion(TMigrateRegionReq req) {
+    TSStatus status = confirmLeader();
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        ? procedureManager.migrateRegion(req)
+        : status;
   }
 
   @Override
@@ -1412,16 +1599,6 @@ public class ConfigManager implements IManager {
     return filteredRegionReplicaSets;
   }
 
-  public TConfigNodeLocation getConfigNodeLocation(int nodeId) {
-    List<TConfigNodeLocation> configNodeLocations = this.nodeManager.getRegisteredConfigNodes();
-    for (TConfigNodeLocation configNodeLocation : configNodeLocations) {
-      if (configNodeLocation.getConfigNodeId() == nodeId) {
-        return configNodeLocation;
-      }
-    }
-    return null;
-  }
-
   public TSStatus transfer(List<TDataNodeLocation> newUnknownDataList) {
     Map<Integer, TDataNodeLocation> runningDataNodeLocationMap = new HashMap<>();
     nodeManager
@@ -1432,7 +1609,7 @@ public class ConfigManager implements IManager {
                     dataNodeConfiguration.getLocation().getDataNodeId(),
                     dataNodeConfiguration.getLocation()));
     if (runningDataNodeLocationMap.isEmpty()) {
-      // no running DataNode, will not transfer and print log
+      // No running DataNode, will not transfer and print log
       return new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
     }
 
@@ -1440,7 +1617,7 @@ public class ConfigManager implements IManager {
         dataNodeLocation -> runningDataNodeLocationMap.remove(dataNodeLocation.getDataNodeId()));
 
     LOGGER.info("Start transfer of {}", newUnknownDataList);
-    // transfer trigger
+    // Transfer trigger
     TSStatus transferResult =
         triggerManager.transferTrigger(newUnknownDataList, runningDataNodeLocationMap);
     if (transferResult.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {

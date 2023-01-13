@@ -23,7 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.mpp.plan.constant.StatementType;
+import org.apache.iotdb.db.mpp.plan.statement.StatementType;
 import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.utils.TimePartitionUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -86,6 +86,7 @@ public class InsertMultiTabletsStatement extends InsertBaseStatement {
     return insertTabletStatementList.isEmpty();
   }
 
+  @Override
   public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
     return visitor.visitInsertMultiTablets(this, context);
   }

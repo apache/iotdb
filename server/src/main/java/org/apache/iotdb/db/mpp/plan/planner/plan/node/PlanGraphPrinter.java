@@ -34,11 +34,14 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.GroupByLevelNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.GroupByTagNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.IntoNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.LimitNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.MergeSortNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.OffsetNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.SingleDeviceViewNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.SlidingWindowAggregationNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.SortNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.TimeJoinNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.TransformNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.VerticallyConcatNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.last.LastQueryCollectNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.last.LastQueryMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.last.LastQueryNode;
@@ -145,10 +148,27 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
   }
 
   @Override
+  public List<String> visitSingleDeviceView(SingleDeviceViewNode node, GraphContext context) {
+    List<String> boxValue = new ArrayList<>();
+    boxValue.add(String.format("SingleDeviceView-%s", node.getPlanNodeId().getId()));
+    boxValue.add(String.format("DeviceName: %s", node.getDevice()));
+    return render(node, boxValue, context);
+  }
+
+  @Override
   public List<String> visitDeviceView(DeviceViewNode node, GraphContext context) {
     List<String> boxValue = new ArrayList<>();
     boxValue.add(String.format("DeviceView-%s", node.getPlanNodeId().getId()));
     boxValue.add(String.format("DeviceCount: %d", node.getDevices().size()));
+    return render(node, boxValue, context);
+  }
+
+  @Override
+  public List<String> visitMergeSort(MergeSortNode node, GraphContext context) {
+    List<String> boxValue = new ArrayList<>();
+    boxValue.add(String.format("MergeSort-%s", node.getPlanNodeId().getId()));
+    boxValue.add(String.format("ChildrenCount: %d", node.getChildren().size()));
+    boxValue.add(node.getMergeOrderParameter().toString());
     return render(node, boxValue, context);
   }
 
@@ -258,7 +278,7 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
   public List<String> visitSort(SortNode node, GraphContext context) {
     List<String> boxValue = new ArrayList<>();
     boxValue.add(String.format("Sort-%s", node.getPlanNodeId().getId()));
-    boxValue.add(String.format("OrderBy: %s", node.getSortOrder()));
+    boxValue.add(node.getOrderByParameter().toString());
     return render(node, boxValue, context);
   }
 
@@ -324,12 +344,11 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
     DeviceViewIntoPathDescriptor descriptor = node.getDeviceViewIntoPathDescriptor();
     Map<String, List<Pair<String, PartialPath>>> deviceToSourceTargetPathPairListMap =
         descriptor.getDeviceToSourceTargetPathPairListMap();
-    for (String deviceName : deviceToSourceTargetPathPairListMap.keySet()) {
+    for (Map.Entry<String, List<Pair<String, PartialPath>>> entry :
+        deviceToSourceTargetPathPairListMap.entrySet()) {
+      String deviceName = entry.getKey();
       boxValue.add(String.format("Device [%s]:", deviceName));
-      drawSourceTargetPath(
-          boxValue,
-          deviceToSourceTargetPathPairListMap.get(deviceName),
-          descriptor.getTargetDeviceToAlignedMap());
+      drawSourceTargetPath(boxValue, entry.getValue(), descriptor.getTargetDeviceToAlignedMap());
     }
     return render(node, boxValue, context);
   }
@@ -394,6 +413,13 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
     return render(node, boxValue, context);
   }
 
+  @Override
+  public List<String> visitVerticallyConcat(VerticallyConcatNode node, GraphContext context) {
+    List<String> boxValue = new ArrayList<>();
+    boxValue.add(String.format("VerticallyConcat-%s", node.getPlanNodeId().getId()));
+    return render(node, boxValue, context);
+  }
+
   private String printRegion(TRegionReplicaSet regionReplicaSet) {
     return String.format(
         "Partition: %s",
@@ -436,7 +462,7 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
     }
     box.lines.add(printBoxEdge(box, false));
 
-    if (children.size() == 0) {
+    if (children.isEmpty()) {
       return box.lines;
     }
 
@@ -590,7 +616,7 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
     public void calculateBoxParams(List<List<String>> childBoxStrings) {
       int childrenWidth = 0;
       for (List<String> childBoxString : childBoxStrings) {
-        Validate.isTrue(childBoxString.size() > 0, "Lines of box string should be greater than 0");
+        Validate.isTrue(!childBoxString.isEmpty(), "Lines of box string should be greater than 0");
         childrenWidth += childBoxString.get(0).length();
       }
       childrenWidth += childBoxStrings.size() > 1 ? (childBoxStrings.size() - 1) * BOX_MARGIN : 0;

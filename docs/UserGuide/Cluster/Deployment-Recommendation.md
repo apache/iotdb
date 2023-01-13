@@ -20,18 +20,18 @@
 -->
 
 # IoTDB Deployment Recommendation
-## Backgrands
+## Backgrounds
 
 System Abilities
-- Performance: write and read performance, compression ratio
-- Extensibility: system has ability to manage data with multiple nodes, essentially data can be manage by partitions
-- High availability(HA): system has ability to tolerate node disconnected, essentially whether the data has replicas
-- Consistency：when data with multiple copies, whether the replicas consistent, essentially treat the database as a single node
+- Performance: writing and reading performance, compression ratio
+- Extensibility: system has the ability to manage data with multiple nodes, and is essentially that data can be managed by partitions
+- High availability(HA): system has the ability to tolerate the nodes disconnected, and is essentially that the data has replicas
+- Consistency：when data is with multiple copies, whether the replicas are consistent, and is essentially that the system treats the whole database as a single node
 
-Abbreviation
+Abbreviations
 - C: ConfigNode
 - D: DataNode
-- aCbD：cluster with a ConfigNodes and b DataNodes
+- nCmD：cluster with n ConfigNodes and m DataNodes
 
 ## Deployment mode
 
@@ -43,15 +43,15 @@ Abbreviation
 |     Strong consistency cluster mode     | Medium         | High          | High   | High        | 
 
 
-|                 Config                 | Lightweight standalone mode | Scalable single node mode | High performance mode | trong consistency cluster mode |
-|:--------------------------------------:|:----------------------------|:--------------------------|:----------------------|:-------------------------------|
-|           ConfigNode number            | 1                           | ≥1 (odd number)           | ≥1 (odd number)       | ≥1 (odd number)                |
-|            DataNode number             | 1                           | ≥1                        | ≥3                    | ≥3                             |
-|       schema_replication_factor        | 1                           | 1                         | 3                     | 3                              |
-|        data_replication_factor         | 1                           | 1                         | 2                     | 3                              |
-|  config_node_consensus_protocol_class  | Simple                      | Ratis                     | Ratis                 | Ratis                          |
-| schema_region_consensus_protocol_class | Simple                      | Ratis                     | Ratis                 | Ratis                          |
-|  data_region_consensus_protocol_class  | Simple                      | IoT                       | IoT                   | Ratis                          |
+|                 Config                 | Lightweight standalone mode | Scalable single node mode | High performance mode | strong consistency cluster mode |
+|:--------------------------------------:|:----------------------------|:--------------------------|:----------------------|:--------------------------------|
+|           ConfigNode number            | 1                           | ≥1 (odd number)           | ≥1 (odd number)       | ≥1 (odd number)                 |
+|            DataNode number             | 1                           | ≥1                        | ≥3                    | ≥3                              |
+|       schema_replication_factor        | 1                           | 1                         | 3                     | 3                               |
+|        data_replication_factor         | 1                           | 1                         | 2                     | 3                               |
+|  config_node_consensus_protocol_class  | Simple                      | Ratis                     | Ratis                 | Ratis                           |
+| schema_region_consensus_protocol_class | Simple                      | Ratis                     | Ratis                 | Ratis                           |
+|  data_region_consensus_protocol_class  | Simple                      | IoT                       | IoT                   | Ratis                           |
 
 
 ## Deployment Recommendation
@@ -74,7 +74,7 @@ Configuration modification:
     - for 1C1D standalone mode: use virtual_storage_group_num in v0.13
 
 Data migration:
-After modified the configuration, use load-tsfile tool to load the TsFiles of v0.13 to v1.0.
+After modifying the configuration, use load-tsfile tool to load the TsFiles of v0.13 to v1.0.
 
 ### Use v1.0 directly
 
@@ -98,8 +98,8 @@ Cluster DataNode total heap size（B） = 20 * (180 + 2 * average character num 
 
 Heap size of each DataNode = Cluster DataNode total heap size / DataNode number
 
-> Example: use 3C3D to manage 1 million timeseries, use 3schema replicas, series name such as root.sg_1.d_10.s_100(20 chars)
-> - Cluster DataNode total heap size: 20 * （180 + 2 * 20）* 1,000,000 * 3 = 13.2 GB
+> Example: use 3C3D to manage 1 million timeseries, use 3 schema replicas, series name such as root.sg_1.d_10.s_100(20 chars)
+> - Cluster DataNode total heap size: 20 * (180 + 2 * 20) * 1,000,000 * 3 = 13.2 GB
 > - Heap size of each DataNode: 13.2 GB / 3 = 4.4 GB
 
 #### Disk estimation
@@ -123,8 +123,8 @@ Series number * Sampling frequency * Data point size * Storage duration * data_r
 
 ##### Schema storage size
 
-One series uses the path charactor byte size + 20 bytes.
-If the series has tag, add the tag charactor byte size.
+One series uses the path character byte size + 20 bytes.
+If the series has tag, add the tag character byte size.
 
 ##### Temp storage size
 
@@ -136,7 +136,7 @@ max wal storage size = memtable memory size ÷ wal_min_effective_info_ratio
 - memtable memory size is decided by storage_query_schema_consensus_free_memory_proportion, storage_engine_memory_proportion and write_memory_proportion
 - wal_min_effective_info_ratio is decided by wal_min_effective_info_ratio configuration
 
-> Example: allocate 16G memory for Datanode, config as below:
+> Example: allocate 16G memory for DataNode, config is as below:
 >  storage_query_schema_consensus_free_memory_proportion=3:3:1:1:2
 >  storage_engine_memory_proportion=8:2
 >  write_memory_proportion=19:1
@@ -146,7 +146,8 @@ max wal storage size = memtable memory size ÷ wal_min_effective_info_ratio
 2. Consensus
 
 Ratis consensus
-When using ratis consensus protocol, we need extra storage for Raft Log. Raft Log will be deleted after state machine takes snapshot.
+
+When using ratis consensus protocol, we need extra storage for Raft Log, which will be deleted after the state machine takes snapshot.
 We can adjust `trigger_snapshot_threshold` to control the maximum Raft Log disk usage.
 
 
@@ -174,7 +175,7 @@ By default, data_region_ratis_log_max_size=20G, which guarantees that Raft Log s
   The overlap of out-of-order data = overlapped data amount  / total out-of-order data amount
 
   Disk space for temporary file = Total ordered Disk space of origin files + Total out-of-order disk space of origin files *（1 - overlap）
-  > Example: 10 sequence files, 10 out-of-order files, 100M for each sequence file, 50M for each out-of-order file, half of data is overlapped with sequence file
+  > Example: 10 ordered files, 10 out-of-order files, 100M for each ordered file, 50M for each out-of-order file, half of data is overlapped with sequence file
   > The overlap of out-of-order data = 25M/50M * 100% = 50%
   > Disk space for temporary files = 10 * 100 + 10 * 50 * 50% = 1250M
 

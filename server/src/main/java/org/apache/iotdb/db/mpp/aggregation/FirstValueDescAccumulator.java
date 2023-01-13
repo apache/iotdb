@@ -35,6 +35,7 @@ public class FirstValueDescAccumulator extends FirstValueAccumulator {
   }
 
   // Don't break in advance
+  @Override
   protected int addIntInput(Column[] column, IWindow curWindow) {
     int curPositionCount = column[0].getPositionCount();
 
@@ -46,7 +47,7 @@ public class FirstValueDescAccumulator extends FirstValueAccumulator {
       if (!curWindow.satisfy(column[0], i)) {
         return i;
       }
-      curWindow.mergeOnePoint();
+      curWindow.mergeOnePoint(column, i);
       if (!column[2].isNull(i)) {
         updateIntFirstValue(column[2].getInt(i), column[1].getLong(i));
       }
@@ -54,6 +55,7 @@ public class FirstValueDescAccumulator extends FirstValueAccumulator {
     return curPositionCount;
   }
 
+  @Override
   protected int addLongInput(Column[] column, IWindow curWindow) {
     int curPositionCount = column[0].getPositionCount();
 
@@ -65,7 +67,7 @@ public class FirstValueDescAccumulator extends FirstValueAccumulator {
       if (!curWindow.satisfy(column[0], i)) {
         return i;
       }
-      curWindow.mergeOnePoint();
+      curWindow.mergeOnePoint(column, i);
       if (!column[2].isNull(i)) {
         updateLongFirstValue(column[2].getLong(i), column[1].getLong(i));
       }
@@ -73,6 +75,7 @@ public class FirstValueDescAccumulator extends FirstValueAccumulator {
     return curPositionCount;
   }
 
+  @Override
   protected int addFloatInput(Column[] column, IWindow curWindow) {
     int curPositionCount = column[0].getPositionCount();
 
@@ -84,7 +87,7 @@ public class FirstValueDescAccumulator extends FirstValueAccumulator {
       if (!curWindow.satisfy(column[0], i)) {
         return i;
       }
-      curWindow.mergeOnePoint();
+      curWindow.mergeOnePoint(column, i);
       if (!column[2].isNull(i)) {
         updateFloatFirstValue(column[2].getFloat(i), column[1].getLong(i));
       }
@@ -92,6 +95,7 @@ public class FirstValueDescAccumulator extends FirstValueAccumulator {
     return curPositionCount;
   }
 
+  @Override
   protected int addDoubleInput(Column[] column, IWindow curWindow) {
     int curPositionCount = column[0].getPositionCount();
 
@@ -103,7 +107,7 @@ public class FirstValueDescAccumulator extends FirstValueAccumulator {
       if (!curWindow.satisfy(column[0], i)) {
         return i;
       }
-      curWindow.mergeOnePoint();
+      curWindow.mergeOnePoint(column, i);
       if (!column[2].isNull(i)) {
         updateDoubleFirstValue(column[2].getDouble(i), column[1].getLong(i));
       }
@@ -111,6 +115,7 @@ public class FirstValueDescAccumulator extends FirstValueAccumulator {
     return curPositionCount;
   }
 
+  @Override
   protected int addBooleanInput(Column[] column, IWindow curWindow) {
     int curPositionCount = column[0].getPositionCount();
 
@@ -122,7 +127,7 @@ public class FirstValueDescAccumulator extends FirstValueAccumulator {
       if (!curWindow.satisfy(column[0], i)) {
         return i;
       }
-      curWindow.mergeOnePoint();
+      curWindow.mergeOnePoint(column, i);
       if (!column[2].isNull(i)) {
         updateBooleanFirstValue(column[2].getBoolean(i), column[1].getLong(i));
       }
@@ -130,6 +135,7 @@ public class FirstValueDescAccumulator extends FirstValueAccumulator {
     return curPositionCount;
   }
 
+  @Override
   protected int addBinaryInput(Column[] column, IWindow curWindow) {
     int curPositionCount = column[0].getPositionCount();
 
@@ -141,7 +147,7 @@ public class FirstValueDescAccumulator extends FirstValueAccumulator {
       if (!curWindow.satisfy(column[0], i)) {
         return i;
       }
-      curWindow.mergeOnePoint();
+      curWindow.mergeOnePoint(column, i);
       if (!column[2].isNull(i)) {
         updateBinaryFirstValue(column[2].getBinary(i), column[1].getLong(i));
       }

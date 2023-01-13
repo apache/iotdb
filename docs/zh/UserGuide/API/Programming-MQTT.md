@@ -67,7 +67,7 @@ MQTT 主题与 IoTDB 时间序列相对应。
 | 名称      | 描述         | 默认 |
 | ------------- |:-------------:|:------:|
 | enable_mqtt_service      | 是否启用 mqtt 服务 | false |
-| mqtt_host      | mqtt 服务绑定主机 | 0.0.0.0 |
+| mqtt_host      | mqtt 服务绑定主机 | 127.0.0.1 |
 | mqtt_port      | mqtt 服务绑定端口 |   1883 |
 | mqtt_handler_pool_size | 处理 mqtt 消息的处理程序池大小 |    1 |
 | mqtt_payload_formatter | mqtt 消息有效负载格式化程序 |    json |
@@ -115,7 +115,7 @@ connection.disconnect();
             <version>${project.version}</version>
         </dependency>
 ```
-* 创建一个实现类，实现接口 `org.apache.iotdb.db.mqtt.PayloadFormatter.java`
+* 创建一个实现类，实现接口 `org.apache.iotdb.db.mqtt.protocol.PayloadFormatter`
 
 ```java
 package org.apache.iotdb.mqtt.server;

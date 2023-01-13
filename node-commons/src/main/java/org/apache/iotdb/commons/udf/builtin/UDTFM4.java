@@ -150,162 +150,170 @@ public class UDTFM4 implements UDTF {
   }
 
   public void transformInt(RowWindow rowWindow, PointCollector collector) throws IOException {
-    int firstValue = rowWindow.getRow(0).getInt(0);
-    int lastValue = rowWindow.getRow(rowWindow.windowSize() - 1).getInt(0);
+    if (rowWindow.windowSize() > 0) { // else empty window do nothing
+      int firstValue = rowWindow.getRow(0).getInt(0);
+      int lastValue = rowWindow.getRow(rowWindow.windowSize() - 1).getInt(0);
 
-    int minValue = Math.min(firstValue, lastValue);
-    int maxValue = Math.max(firstValue, lastValue);
-    int minIndex = (firstValue < lastValue) ? 0 : rowWindow.windowSize() - 1;
-    int maxIndex = (firstValue > lastValue) ? 0 : rowWindow.windowSize() - 1;
+      int minValue = Math.min(firstValue, lastValue);
+      int maxValue = Math.max(firstValue, lastValue);
+      int minIndex = (firstValue < lastValue) ? 0 : rowWindow.windowSize() - 1;
+      int maxIndex = (firstValue > lastValue) ? 0 : rowWindow.windowSize() - 1;
 
-    for (int i = 1; i < rowWindow.windowSize() - 1; i++) {
-      int value = rowWindow.getRow(i).getInt(0);
-      if (value < minValue) {
-        minValue = value;
-        minIndex = i;
+      for (int i = 1; i < rowWindow.windowSize() - 1; i++) {
+        int value = rowWindow.getRow(i).getInt(0);
+        if (value < minValue) {
+          minValue = value;
+          minIndex = i;
+        }
+        if (value > maxValue) {
+          maxValue = value;
+          maxIndex = i;
+        }
       }
-      if (value > maxValue) {
-        maxValue = value;
-        maxIndex = i;
+
+      Row row = rowWindow.getRow(0);
+      collector.putInt(row.getTime(), row.getInt(0));
+
+      int smallerIndex = Math.min(minIndex, maxIndex);
+      int largerIndex = Math.max(minIndex, maxIndex);
+      if (smallerIndex > 0) {
+        row = rowWindow.getRow(smallerIndex);
+        collector.putInt(row.getTime(), row.getInt(0));
       }
-    }
-
-    Row row = rowWindow.getRow(0);
-    collector.putInt(row.getTime(), row.getInt(0));
-
-    int smallerIndex = Math.min(minIndex, maxIndex);
-    int largerIndex = Math.max(minIndex, maxIndex);
-    if (smallerIndex > 0) {
-      row = rowWindow.getRow(smallerIndex);
-      collector.putInt(row.getTime(), row.getInt(0));
-    }
-    if (largerIndex > smallerIndex) {
-      row = rowWindow.getRow(largerIndex);
-      collector.putInt(row.getTime(), row.getInt(0));
-    }
-    if (largerIndex < rowWindow.windowSize() - 1) {
-      row = rowWindow.getRow(rowWindow.windowSize() - 1);
-      collector.putInt(row.getTime(), row.getInt(0));
+      if (largerIndex > smallerIndex) {
+        row = rowWindow.getRow(largerIndex);
+        collector.putInt(row.getTime(), row.getInt(0));
+      }
+      if (largerIndex < rowWindow.windowSize() - 1) {
+        row = rowWindow.getRow(rowWindow.windowSize() - 1);
+        collector.putInt(row.getTime(), row.getInt(0));
+      }
     }
   }
 
   public void transformLong(RowWindow rowWindow, PointCollector collector) throws IOException {
-    long firstValue = rowWindow.getRow(0).getLong(0);
-    long lastValue = rowWindow.getRow(rowWindow.windowSize() - 1).getLong(0);
+    if (rowWindow.windowSize() > 0) { // else empty window do nothing
+      long firstValue = rowWindow.getRow(0).getLong(0);
+      long lastValue = rowWindow.getRow(rowWindow.windowSize() - 1).getLong(0);
 
-    long minValue = Math.min(firstValue, lastValue);
-    long maxValue = Math.max(firstValue, lastValue);
-    int minIndex = (firstValue < lastValue) ? 0 : rowWindow.windowSize() - 1;
-    int maxIndex = (firstValue > lastValue) ? 0 : rowWindow.windowSize() - 1;
+      long minValue = Math.min(firstValue, lastValue);
+      long maxValue = Math.max(firstValue, lastValue);
+      int minIndex = (firstValue < lastValue) ? 0 : rowWindow.windowSize() - 1;
+      int maxIndex = (firstValue > lastValue) ? 0 : rowWindow.windowSize() - 1;
 
-    for (int i = 1; i < rowWindow.windowSize() - 1; i++) {
-      long value = rowWindow.getRow(i).getLong(0);
-      if (value < minValue) {
-        minValue = value;
-        minIndex = i;
+      for (int i = 1; i < rowWindow.windowSize() - 1; i++) {
+        long value = rowWindow.getRow(i).getLong(0);
+        if (value < minValue) {
+          minValue = value;
+          minIndex = i;
+        }
+        if (value > maxValue) {
+          maxValue = value;
+          maxIndex = i;
+        }
       }
-      if (value > maxValue) {
-        maxValue = value;
-        maxIndex = i;
+
+      Row row = rowWindow.getRow(0);
+      collector.putLong(row.getTime(), row.getLong(0));
+
+      int smallerIndex = Math.min(minIndex, maxIndex);
+      int largerIndex = Math.max(minIndex, maxIndex);
+      if (smallerIndex > 0) {
+        row = rowWindow.getRow(smallerIndex);
+        collector.putLong(row.getTime(), row.getLong(0));
       }
-    }
-
-    Row row = rowWindow.getRow(0);
-    collector.putLong(row.getTime(), row.getLong(0));
-
-    int smallerIndex = Math.min(minIndex, maxIndex);
-    int largerIndex = Math.max(minIndex, maxIndex);
-    if (smallerIndex > 0) {
-      row = rowWindow.getRow(smallerIndex);
-      collector.putLong(row.getTime(), row.getLong(0));
-    }
-    if (largerIndex > smallerIndex) {
-      row = rowWindow.getRow(largerIndex);
-      collector.putLong(row.getTime(), row.getLong(0));
-    }
-    if (largerIndex < rowWindow.windowSize() - 1) {
-      row = rowWindow.getRow(rowWindow.windowSize() - 1);
-      collector.putLong(row.getTime(), row.getLong(0));
+      if (largerIndex > smallerIndex) {
+        row = rowWindow.getRow(largerIndex);
+        collector.putLong(row.getTime(), row.getLong(0));
+      }
+      if (largerIndex < rowWindow.windowSize() - 1) {
+        row = rowWindow.getRow(rowWindow.windowSize() - 1);
+        collector.putLong(row.getTime(), row.getLong(0));
+      }
     }
   }
 
   public void transformFloat(RowWindow rowWindow, PointCollector collector) throws IOException {
-    float firstValue = rowWindow.getRow(0).getFloat(0);
-    float lastValue = rowWindow.getRow(rowWindow.windowSize() - 1).getFloat(0);
+    if (rowWindow.windowSize() > 0) { // else empty window do nothing
+      float firstValue = rowWindow.getRow(0).getFloat(0);
+      float lastValue = rowWindow.getRow(rowWindow.windowSize() - 1).getFloat(0);
 
-    float minValue = Math.min(firstValue, lastValue);
-    float maxValue = Math.max(firstValue, lastValue);
-    int minIndex = (firstValue < lastValue) ? 0 : rowWindow.windowSize() - 1;
-    int maxIndex = (firstValue > lastValue) ? 0 : rowWindow.windowSize() - 1;
+      float minValue = Math.min(firstValue, lastValue);
+      float maxValue = Math.max(firstValue, lastValue);
+      int minIndex = (firstValue < lastValue) ? 0 : rowWindow.windowSize() - 1;
+      int maxIndex = (firstValue > lastValue) ? 0 : rowWindow.windowSize() - 1;
 
-    for (int i = 1; i < rowWindow.windowSize() - 1; i++) {
-      float value = rowWindow.getRow(i).getFloat(0);
-      if (value < minValue) {
-        minValue = value;
-        minIndex = i;
+      for (int i = 1; i < rowWindow.windowSize() - 1; i++) {
+        float value = rowWindow.getRow(i).getFloat(0);
+        if (value < minValue) {
+          minValue = value;
+          minIndex = i;
+        }
+        if (value > maxValue) {
+          maxValue = value;
+          maxIndex = i;
+        }
       }
-      if (value > maxValue) {
-        maxValue = value;
-        maxIndex = i;
+
+      Row row = rowWindow.getRow(0);
+      collector.putFloat(row.getTime(), row.getFloat(0));
+
+      int smallerIndex = Math.min(minIndex, maxIndex);
+      int largerIndex = Math.max(minIndex, maxIndex);
+      if (smallerIndex > 0) {
+        row = rowWindow.getRow(smallerIndex);
+        collector.putFloat(row.getTime(), row.getFloat(0));
       }
-    }
-
-    Row row = rowWindow.getRow(0);
-    collector.putFloat(row.getTime(), row.getFloat(0));
-
-    int smallerIndex = Math.min(minIndex, maxIndex);
-    int largerIndex = Math.max(minIndex, maxIndex);
-    if (smallerIndex > 0) {
-      row = rowWindow.getRow(smallerIndex);
-      collector.putFloat(row.getTime(), row.getFloat(0));
-    }
-    if (largerIndex > smallerIndex) {
-      row = rowWindow.getRow(largerIndex);
-      collector.putFloat(row.getTime(), row.getFloat(0));
-    }
-    if (largerIndex < rowWindow.windowSize() - 1) {
-      row = rowWindow.getRow(rowWindow.windowSize() - 1);
-      collector.putFloat(row.getTime(), row.getFloat(0));
+      if (largerIndex > smallerIndex) {
+        row = rowWindow.getRow(largerIndex);
+        collector.putFloat(row.getTime(), row.getFloat(0));
+      }
+      if (largerIndex < rowWindow.windowSize() - 1) {
+        row = rowWindow.getRow(rowWindow.windowSize() - 1);
+        collector.putFloat(row.getTime(), row.getFloat(0));
+      }
     }
   }
 
   public void transformDouble(RowWindow rowWindow, PointCollector collector) throws IOException {
-    double firstValue = rowWindow.getRow(0).getDouble(0);
-    double lastValue = rowWindow.getRow(rowWindow.windowSize() - 1).getDouble(0);
+    if (rowWindow.windowSize() > 0) { // else empty window do nothing
+      double firstValue = rowWindow.getRow(0).getDouble(0);
+      double lastValue = rowWindow.getRow(rowWindow.windowSize() - 1).getDouble(0);
 
-    double minValue = Math.min(firstValue, lastValue);
-    double maxValue = Math.max(firstValue, lastValue);
-    int minIndex = (firstValue < lastValue) ? 0 : rowWindow.windowSize() - 1;
-    int maxIndex = (firstValue > lastValue) ? 0 : rowWindow.windowSize() - 1;
+      double minValue = Math.min(firstValue, lastValue);
+      double maxValue = Math.max(firstValue, lastValue);
+      int minIndex = (firstValue < lastValue) ? 0 : rowWindow.windowSize() - 1;
+      int maxIndex = (firstValue > lastValue) ? 0 : rowWindow.windowSize() - 1;
 
-    for (int i = 1; i < rowWindow.windowSize() - 1; i++) {
-      double value = rowWindow.getRow(i).getDouble(0);
-      if (value < minValue) {
-        minValue = value;
-        minIndex = i;
+      for (int i = 1; i < rowWindow.windowSize() - 1; i++) {
+        double value = rowWindow.getRow(i).getDouble(0);
+        if (value < minValue) {
+          minValue = value;
+          minIndex = i;
+        }
+        if (value > maxValue) {
+          maxValue = value;
+          maxIndex = i;
+        }
       }
-      if (value > maxValue) {
-        maxValue = value;
-        maxIndex = i;
+
+      Row row = rowWindow.getRow(0);
+      collector.putDouble(row.getTime(), row.getDouble(0));
+
+      int smallerIndex = Math.min(minIndex, maxIndex);
+      int largerIndex = Math.max(minIndex, maxIndex);
+      if (smallerIndex > 0) {
+        row = rowWindow.getRow(smallerIndex);
+        collector.putDouble(row.getTime(), row.getDouble(0));
       }
-    }
-
-    Row row = rowWindow.getRow(0);
-    collector.putDouble(row.getTime(), row.getDouble(0));
-
-    int smallerIndex = Math.min(minIndex, maxIndex);
-    int largerIndex = Math.max(minIndex, maxIndex);
-    if (smallerIndex > 0) {
-      row = rowWindow.getRow(smallerIndex);
-      collector.putDouble(row.getTime(), row.getDouble(0));
-    }
-    if (largerIndex > smallerIndex) {
-      row = rowWindow.getRow(largerIndex);
-      collector.putDouble(row.getTime(), row.getDouble(0));
-    }
-    if (largerIndex < rowWindow.windowSize() - 1) {
-      row = rowWindow.getRow(rowWindow.windowSize() - 1);
-      collector.putDouble(row.getTime(), row.getDouble(0));
+      if (largerIndex > smallerIndex) {
+        row = rowWindow.getRow(largerIndex);
+        collector.putDouble(row.getTime(), row.getDouble(0));
+      }
+      if (largerIndex < rowWindow.windowSize() - 1) {
+        row = rowWindow.getRow(rowWindow.windowSize() - 1);
+        collector.putDouble(row.getTime(), row.getDouble(0));
+      }
     }
   }
 }

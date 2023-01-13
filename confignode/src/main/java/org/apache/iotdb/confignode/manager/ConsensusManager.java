@@ -123,6 +123,8 @@ public class ConsensusManager {
                                       .setSegmentCacheSizeMax(
                                           SizeInBytes.valueOf(
                                               CONF.getConfigNodeRatisLogSegmentSizeMax()))
+                                      .setPreserveNumsWhenPurge(
+                                          CONF.getConfigNodeRatisPreserveLogsWhenPurge())
                                       .build())
                               .setGrpc(
                                   RatisConfig.Grpc.newBuilder()
@@ -155,8 +157,8 @@ public class ConsensusManager {
                                               CONF.getRatisFirstElectionTimeoutMaxMs(),
                                               TimeUnit.MILLISECONDS))
                                       .build())
-                              .setRatisConsensus(
-                                  RatisConfig.RatisConsensus.newBuilder()
+                              .setClient(
+                                  RatisConfig.Client.newBuilder()
                                       .setClientRequestTimeoutMillis(
                                           CONF.getConfigNodeRatisRequestTimeoutMs())
                                       .setClientMaxRetryAttempt(
@@ -165,8 +167,13 @@ public class ConsensusManager {
                                           CONF.getConfigNodeRatisInitialSleepTimeMs())
                                       .setClientRetryMaxSleepTimeMs(
                                           CONF.getConfigNodeRatisMaxSleepTimeMs())
-                                      .setTriggerSnapshotFileSize(
-                                          CONF.getConfigNodeRatisLogMaxMB() * 1024 * 1024)
+                                      .setCoreClientNumForEachNode(
+                                          CONF.getCoreClientNumForEachNode())
+                                      .setMaxClientNumForEachNode(CONF.getMaxClientNumForEachNode())
+                                      .build())
+                              .setImpl(
+                                  RatisConfig.Impl.newBuilder()
+                                      .setTriggerSnapshotFileSize(CONF.getConfigNodeRatisLogMax())
                                       .build())
                               .build())
                       .setStorageDir(CONF.getConsensusDir())
@@ -181,7 +188,7 @@ public class ConsensusManager {
     }
     consensusImpl.start();
     if (SystemPropertiesUtils.isRestarted()) {
-      // TODO: Check and notify if current ConfigNode's ip or port has changed
+      // TODO: @Itami-Sho Check and notify if current ConfigNode's ip or port has changed
 
       if (SIMPLE_CONSENSUS.equals(CONF.getConfigNodeConsensusProtocolClass())) {
         // Only SIMPLE_CONSENSUS need invoking `createPeerForConsensusGroup` when restarted,
@@ -343,7 +350,7 @@ public class ConsensusManager {
   @TestOnly
   public void singleCopyMayWaitUntilLeaderReady() {
     long startTime = System.currentTimeMillis();
-    long maxWaitTime = 1000 * 60; // milliseconds, which is 60s
+    long maxWaitTime = 1000L * 60; // milliseconds, which is 60s
     try {
       while (!consensusImpl.isLeader(consensusGroupId)) {
         TimeUnit.MILLISECONDS.sleep(100);

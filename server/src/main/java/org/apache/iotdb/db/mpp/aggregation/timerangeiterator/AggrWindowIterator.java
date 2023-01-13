@@ -19,10 +19,10 @@
 
 package org.apache.iotdb.db.mpp.aggregation.timerangeiterator;
 
-import org.apache.iotdb.db.qp.utils.DateTimeUtils;
+import org.apache.iotdb.db.utils.DateTimeUtils;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 
-import static org.apache.iotdb.db.qp.utils.DateTimeUtils.MS_TO_MONTH;
+import static org.apache.iotdb.db.utils.DateTimeUtils.MS_TO_MONTH;
 
 /**
  * This class iteratively generates aggregated time windows.

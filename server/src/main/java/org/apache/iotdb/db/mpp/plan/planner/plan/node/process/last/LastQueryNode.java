@@ -44,7 +44,7 @@ public class LastQueryNode extends MultiChildProcessNode {
 
   // The result output order, which could sort by sensor and time.
   // The size of this list is 2 and the first SortItem in this list has higher priority.
-  private final OrderByParameter mergeOrderParameter;
+  private OrderByParameter mergeOrderParameter;
 
   public LastQueryNode(PlanNodeId id, Filter timeFilter, OrderByParameter mergeOrderParameter) {
     super(id);
@@ -152,6 +152,7 @@ public class LastQueryNode extends MultiChildProcessNode {
     return new LastQueryNode(planNodeId, timeFilter, mergeOrderParameter);
   }
 
+  @Override
   public void setChildren(List<PlanNode> children) {
     this.children = children;
   }
@@ -163,5 +164,9 @@ public class LastQueryNode extends MultiChildProcessNode {
 
   public OrderByParameter getMergeOrderParameter() {
     return mergeOrderParameter;
+  }
+
+  public void setMergeOrderParameter(OrderByParameter mergeOrderParameter) {
+    this.mergeOrderParameter = mergeOrderParameter;
   }
 }

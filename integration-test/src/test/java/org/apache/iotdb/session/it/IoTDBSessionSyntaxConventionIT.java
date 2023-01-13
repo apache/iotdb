@@ -19,13 +19,13 @@
 package org.apache.iotdb.session.it;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.isession.ISession;
+import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 import org.apache.iotdb.rpc.StatementExecutionException;
-import org.apache.iotdb.session.ISession;
-import org.apache.iotdb.session.SessionDataSet;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -55,12 +55,12 @@ public class IoTDBSessionSyntaxConventionIT {
   @Before
   public void setUp() throws Exception {
     System.setProperty(IoTDBConstant.IOTDB_CONF, "src/test/resources/");
-    EnvFactory.getEnv().initBeforeTest();
+    EnvFactory.getEnv().initClusterEnvironment();
   }
 
   @After
   public void tearDown() throws Exception {
-    EnvFactory.getEnv().cleanAfterTest();
+    EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
   @Test
@@ -109,6 +109,7 @@ public class IoTDBSessionSyntaxConventionIT {
       measurements.add("`a“（Φ）”b`");
       measurements.add("`a>b`");
       measurements.add("`\\\"a`");
+      measurements.add("`aaa`");
       List<String> values = new ArrayList<>();
 
       for (int i = 0; i < measurements.size(); i++) {
@@ -125,6 +126,7 @@ public class IoTDBSessionSyntaxConventionIT {
       assertTrue(session.checkTimeseriesExists("root.sg1.d1.`a“（Φ）”b`"));
       assertTrue(session.checkTimeseriesExists("root.sg1.d1.`a>b`"));
       assertTrue(session.checkTimeseriesExists("root.sg1.d1.`\\\"a`"));
+      assertTrue(session.checkTimeseriesExists("root.sg1.d1.aaa"));
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());

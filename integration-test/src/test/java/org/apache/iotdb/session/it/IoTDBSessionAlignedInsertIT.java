@@ -19,15 +19,14 @@
 package org.apache.iotdb.session.it;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.it.env.ConfigFactory;
+import org.apache.iotdb.isession.ISession;
+import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
-import org.apache.iotdb.session.ISession;
-import org.apache.iotdb.session.SessionDataSet;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.write.record.Tablet;
@@ -54,20 +53,16 @@ public class IoTDBSessionAlignedInsertIT {
   private static final String ROOT_SG1_D2 = "root.sg_1.d2";
   private static final double DELTA_DOUBLE = 1e-7d;
 
-  private int originMaxDegreeOfIndexNode;
-
   @Before
   public void setUp() throws Exception {
     System.setProperty(IoTDBConstant.IOTDB_CONF, "src/test/resources/");
-    originMaxDegreeOfIndexNode = ConfigFactory.getConfig().getMaxDegreeOfIndexNode();
-    ConfigFactory.getConfig().setMaxDegreeOfIndexNode(3);
-    EnvFactory.getEnv().initBeforeTest();
+    EnvFactory.getEnv().getConfig().getCommonConfig().setMaxDegreeOfIndexNode(3);
+    EnvFactory.getEnv().initClusterEnvironment();
   }
 
   @After
   public void tearDown() throws Exception {
-    EnvFactory.getEnv().cleanAfterTest();
-    ConfigFactory.getConfig().setMaxDegreeOfIndexNode(originMaxDegreeOfIndexNode);
+    EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
   @Test

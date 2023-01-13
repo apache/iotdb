@@ -23,22 +23,16 @@ import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.service.rpc.thrift.IClientRPCService;
 import org.apache.iotdb.service.rpc.thrift.TSFetchMetadataReq;
 import org.apache.iotdb.service.rpc.thrift.TSFetchMetadataResp;
-import org.apache.iotdb.service.rpc.thrift.TSQueryDataSet;
-import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.TsBlockSerde;
-import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.utils.Binary;
 
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.ByteArrayOutputStream;
-import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.sql.Connection;
@@ -53,7 +47,6 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
@@ -714,132 +707,18 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         false);
   }
 
-  public static TSQueryDataSet convertQueryDataSetByFetchSize(
-      QueryDataSet queryDataSet, int fetchSize, WatermarkEncoder watermarkEncoder)
-      throws IOException {
-    int columnNum = queryDataSet.getColumnNum();
-    TSQueryDataSet tsQueryDataSet = new TSQueryDataSet();
-    // one time column and each value column has a actual value buffer and a bitmap value to
-    // indicate whether it is a null
-    int columnNumWithTime = columnNum * 2 + 1;
-    DataOutputStream[] dataOutputStreams = new DataOutputStream[columnNumWithTime];
-    ByteArrayOutputStream[] byteArrayOutputStreams = new ByteArrayOutputStream[columnNumWithTime];
-    for (int i = 0; i < columnNumWithTime; i++) {
-      byteArrayOutputStreams[i] = new ByteArrayOutputStream();
-      dataOutputStreams[i] = new DataOutputStream(byteArrayOutputStreams[i]);
-    }
-    int rowCount = 0;
-    int[] valueOccupation = new int[columnNum];
-    // used to record a bitmap for every 8 row record
-    int[] bitmap = new int[columnNum];
-    for (int i = 0; i < fetchSize; i++) {
-      if (queryDataSet.hasNext()) {
-        RowRecord rowRecord = queryDataSet.next();
-        if (watermarkEncoder != null) {
-          rowRecord = watermarkEncoder.encodeRecord(rowRecord);
-        }
-        // use columnOutput to write byte array
-        dataOutputStreams[0].writeLong(rowRecord.getTimestamp());
-        List<org.apache.iotdb.tsfile.read.common.Field> fields = rowRecord.getFields();
-        for (int k = 0; k < fields.size(); k++) {
-          org.apache.iotdb.tsfile.read.common.Field field = fields.get(k);
-          DataOutputStream dataOutputStream = dataOutputStreams[2 * k + 1]; // DO NOT FORGET +1
-          if (field == null || field.getDataType() == null) {
-            bitmap[k] = (bitmap[k] << 1);
-          } else {
-            bitmap[k] = (bitmap[k] << 1) | 0x01;
-            TSDataType type = field.getDataType();
-            switch (type) {
-              case INT32:
-                dataOutputStream.writeInt(field.getIntV());
-                valueOccupation[k] += 4;
-                break;
-              case INT64:
-                dataOutputStream.writeLong(field.getLongV());
-                valueOccupation[k] += 8;
-                break;
-              case FLOAT:
-                dataOutputStream.writeFloat(field.getFloatV());
-                valueOccupation[k] += 4;
-                break;
-              case DOUBLE:
-                dataOutputStream.writeDouble(field.getDoubleV());
-                valueOccupation[k] += 8;
-                break;
-              case BOOLEAN:
-                dataOutputStream.writeBoolean(field.getBoolV());
-                valueOccupation[k] += 1;
-                break;
-              case TEXT:
-                dataOutputStream.writeInt(field.getBinaryV().getLength());
-                dataOutputStream.write(field.getBinaryV().getValues());
-                valueOccupation[k] = valueOccupation[k] + 4 + field.getBinaryV().getLength();
-                break;
-              default:
-                throw new UnSupportedDataTypeException(
-                    String.format("Data type %s is not supported.", type));
-            }
-          }
-        }
-        rowCount++;
-        if (rowCount % 8 == 0) {
-          for (int j = 0; j < bitmap.length; j++) {
-            DataOutputStream dataBitmapOutputStream = dataOutputStreams[2 * (j + 1)];
-            dataBitmapOutputStream.writeByte(bitmap[j]);
-            // we should clear the bitmap every 8 row record
-            bitmap[j] = 0;
-          }
-        }
-      } else {
-        break;
-      }
-    }
-
-    // feed the remaining bitmap
-    int remaining = rowCount % 8;
-    if (remaining != 0) {
-      for (int j = 0; j < bitmap.length; j++) {
-        DataOutputStream dataBitmapOutputStream = dataOutputStreams[2 * (j + 1)];
-        dataBitmapOutputStream.writeByte(bitmap[j] << (8 - remaining));
-      }
-    }
-    // calculate the time buffer size
-    int timeOccupation = rowCount * 8;
-    ByteBuffer timeBuffer = ByteBuffer.allocate(timeOccupation);
-    timeBuffer.put(byteArrayOutputStreams[0].toByteArray());
-    timeBuffer.flip();
-    tsQueryDataSet.setTime(timeBuffer);
-
-    // calculate the bitmap buffer size
-    int bitmapOccupation = rowCount / 8 + (rowCount % 8 == 0 ? 0 : 1);
-
-    List<ByteBuffer> bitmapList = new LinkedList<>();
-    List<ByteBuffer> valueList = new LinkedList<>();
-    for (int i = 1; i < byteArrayOutputStreams.length; i += 2) {
-      ByteBuffer valueBuffer = ByteBuffer.allocate(valueOccupation[(i - 1) / 2]);
-      valueBuffer.put(byteArrayOutputStreams[i].toByteArray());
-      valueBuffer.flip();
-      valueList.add(valueBuffer);
-
-      ByteBuffer bitmapBuffer = ByteBuffer.allocate(bitmapOccupation);
-      bitmapBuffer.put(byteArrayOutputStreams[i + 1].toByteArray());
-      bitmapBuffer.flip();
-      bitmapList.add(bitmapBuffer);
-    }
-    tsQueryDataSet.setBitmapList(bitmapList);
-    tsQueryDataSet.setValueList(valueList);
-    return tsQueryDataSet;
-  }
-
   public static ByteBuffer convertTsBlock(
       List<List<Object>> valuesList, List<TSDataType> tsDataTypeList) throws IOException {
     TsBlockBuilder tsBlockBuilder = new TsBlockBuilder(tsDataTypeList);
     for (List<Object> valuesInRow : valuesList) {
+      tsBlockBuilder.getTimeColumnBuilder().writeLong(0);
       for (int j = 0; j < tsDataTypeList.size(); j++) {
         TSDataType columnType = tsDataTypeList.get(j);
         switch (columnType) {
           case TEXT:
-            tsBlockBuilder.getColumnBuilder(j).writeBinary((Binary) valuesInRow.get(j));
+            tsBlockBuilder
+                .getColumnBuilder(j)
+                .writeBinary(new Binary(valuesInRow.get(j).toString()));
             break;
           case FLOAT:
             tsBlockBuilder.getColumnBuilder(j).writeFloat((float) valuesInRow.get(j));
@@ -866,48 +745,6 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
     } else {
       return serde.serialize(tsBlock);
     }
-  }
-
-  private void addToDataSet(List<List<Map>> listbigPaths, ListDataSet dataSet) {
-    List<TSDataType> listType = new ArrayList<>();
-    int i = 0;
-    for (List<Map> listPaths : listbigPaths) {
-      RowRecord record = new RowRecord(0);
-      for (Map<String, Object> map : listPaths) {
-        TSDataType columnType = (TSDataType) map.get("type");
-        Object val = map.get("val");
-        org.apache.iotdb.tsfile.read.common.Field field =
-            new org.apache.iotdb.tsfile.read.common.Field(columnType);
-        switch (columnType) {
-          case TEXT:
-            field.setBinaryV(new Binary(val.toString()));
-            break;
-          case FLOAT:
-            field.setFloatV(((float) val));
-            break;
-          case INT32:
-            field.setIntV(((int) val));
-            break;
-          case INT64:
-            field.setLongV(((long) val));
-            break;
-          case DOUBLE:
-            field.setDoubleV(((double) val));
-            break;
-          case BOOLEAN:
-            field.setBoolV(((boolean) val));
-            break;
-        }
-        record.addField(field);
-        if (i == 0) {
-          listType.add(columnType);
-        }
-      }
-      i++;
-      dataSet.putRecord(record);
-    }
-    dataSet.setDataTypes(listType);
-    dataSet.setColumnNum(listType.size());
   }
 
   @Override
@@ -1672,6 +1509,11 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
             TSDataType.TEXT,
             TSDataType.INT32,
             TSDataType.TEXT);
+
+    String database = "";
+    if (catalog != null) database = catalog;
+    else if (schema != null) database = schema;
+
     Field[] fields = new Field[6];
     fields[0] = new Field("", "TABLE_CAT", "TEXT");
     fields[1] = new Field("", "TABLE_SCHEM", "TEXT");
@@ -1680,8 +1522,8 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
     fields[4] = new Field("", "KEY_SEQ", "INT32");
     fields[5] = new Field("", "PK_NAME", "TEXT");
 
-    List<Object> listValSub_1 = Arrays.asList(catalog, "", table, "time", 1, "PRIMARY");
-    List<Object> listValSub_2 = Arrays.asList(catalog, "", table, "deivce", 2, "PRIMARY");
+    List<Object> listValSub_1 = Arrays.asList(database, "", table, "time", 1, "PRIMARY");
+    List<Object> listValSub_2 = Arrays.asList(database, "", table, "deivce", 2, "PRIMARY");
     List<List<Object>> valuesList = Arrays.asList(listValSub_1, listValSub_2);
     for (int i = 0; i < fields.length; i++) {
       columnNameList.add(fields[i].getName());
@@ -2225,7 +2067,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
       throws SQLException {
     Statement stmt = this.connection.createStatement();
 
-    String sql = "SHOW DATABASES";
+    String sql = "SHOW TIMESERIES";
     if (catalog != null && catalog.length() > 0) {
       if (catalog.contains("%")) {
         catalog = catalog.replace("%", "*");
@@ -2253,6 +2095,9 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         && tableNamePattern.length() > 0
         && columnNamePattern != null
         && columnNamePattern.length() > 0) {
+      if (columnNamePattern.contains("%")) {
+        columnNamePattern = columnNamePattern.replace("%", "*");
+      }
       sql = sql + "." + columnNamePattern;
     }
     ResultSet rs = stmt.executeQuery(sql);
@@ -2319,11 +2164,19 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
     }
     while (rs.next()) {
       List<Object> valuesInRow = new ArrayList<>();
+      String res = rs.getString(1);
+      String[] splitRes = res.split("\\.");
       for (int i = 0; i < fields.length; i++) {
-        if (i < 4) {
-          valuesInRow.add(1);
+        if (i <= 1) {
+          valuesInRow.add(" ");
+        } else if (i == 2) {
+          valuesInRow.add(
+              res.substring(0, res.length() - splitRes[splitRes.length - 1].length() - 1));
+        } else if (i == 3) {
+          // column name
+          valuesInRow.add(splitRes[splitRes.length - 1]);
         } else if (i == 4) {
-          valuesInRow.add(getSQLType(fields[i].getSqlType()));
+          valuesInRow.add(getSQLType(rs.getString(4)));
         } else if (i == 6) {
           valuesInRow.add(getTypePrecision(fields[i].getSqlType()));
         } else if (i == 7) {
@@ -2473,16 +2326,19 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
       throws SQLException {
     Statement stmt = this.connection.createStatement();
 
-    String sql = "SHOW timeseries";
+    String sql = "SHOW devices";
+    String database = "";
     if (catalog != null && catalog.length() > 0) {
       if (catalog.contains("%")) {
         catalog = catalog.replace("%", "*");
       }
+      database = catalog;
       sql = sql + " " + catalog;
     } else if (schemaPattern != null && schemaPattern.length() > 0) {
       if (schemaPattern.contains("%")) {
         schemaPattern = schemaPattern.replace("%", "*");
       }
+      database = schemaPattern;
       sql = sql + " " + schemaPattern;
     }
     if (((catalog != null && catalog.length() > 0)
@@ -2490,7 +2346,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         && tableNamePattern != null
         && tableNamePattern.length() > 0) {
       if (tableNamePattern.contains("%")) {
-        tableNamePattern = tableNamePattern.replace("%", "*");
+        tableNamePattern = tableNamePattern.replace("%", "**");
       }
       sql = sql + "." + tableNamePattern;
     }
@@ -2532,11 +2388,13 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
     }
     while (rs.next()) {
       List<Object> valueInRow = new ArrayList<>();
+      String res = rs.getString(1);
+
       for (int i = 0; i < fields.length; i++) {
         if (i < 2) {
-          valueInRow.add(rs.getString(3));
+          valueInRow.add("");
         } else if (i == 2) {
-          valueInRow.add(rs.getString(1));
+          valueInRow.add(res.substring(database.length() + 1));
         } else if (i == 3) {
           valueInRow.add("TABLE");
         } else {

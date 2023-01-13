@@ -48,10 +48,12 @@ public class PathsUsingTemplateScanNode extends SchemaQueryScanNode {
     this.templateId = templateId;
   }
 
+  @Override
   public List<PartialPath> getPathPatternList() {
     return pathPatternList;
   }
 
+  @Override
   public void setPathPatternList(List<PartialPath> pathPatternList) {
     this.pathPatternList = pathPatternList;
   }

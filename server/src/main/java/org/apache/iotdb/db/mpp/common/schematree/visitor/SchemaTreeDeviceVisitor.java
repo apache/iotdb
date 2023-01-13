@@ -32,25 +32,22 @@ import java.util.List;
 public class SchemaTreeDeviceVisitor extends SchemaTreeVisitor<DeviceSchemaInfo> {
 
   public SchemaTreeDeviceVisitor(SchemaNode root, PartialPath pathPattern, boolean isPrefixMatch) {
-    super(root, pathPattern, 0, 0, isPrefixMatch);
+    super(root, pathPattern, isPrefixMatch);
   }
 
   @Override
-  protected boolean processInternalMatchedNode(SchemaNode node) {
-    return true;
+  protected boolean acceptInternalMatchedNode(SchemaNode node) {
+    return false;
   }
 
   @Override
-  protected boolean processFullMatchedNode(SchemaNode node) {
-    if (node.isEntity()) {
-      nextMatchedNode = node;
-    }
-    return true;
+  protected boolean acceptFullMatchedNode(SchemaNode node) {
+    return node.isEntity();
   }
 
   @Override
-  protected DeviceSchemaInfo generateResult() {
-    PartialPath path = new PartialPath(generateFullPathNodes(nextMatchedNode));
+  protected DeviceSchemaInfo generateResult(SchemaNode nextMatchedNode) {
+    PartialPath path = getPartialPathFromRootToNode(nextMatchedNode);
     List<MeasurementSchemaInfo> measurementSchemaInfoList = new ArrayList<>();
     Iterator<SchemaNode> iterator = getChildrenIterator(nextMatchedNode);
     SchemaNode node;

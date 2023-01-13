@@ -18,9 +18,11 @@
  */
 package org.apache.iotdb.db.mpp.execution.driver;
 
-import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.execution.exchange.ISinkHandle;
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
+import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
+import org.apache.iotdb.db.mpp.execution.schedule.task.DriverTaskId;
+import org.apache.iotdb.db.mpp.metric.QueryMetricsManager;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 
 import com.google.common.collect.ImmutableList;
@@ -45,18 +47,21 @@ import static com.google.common.base.Throwables.throwIfUnchecked;
 import static com.google.common.util.concurrent.MoreExecutors.directExecutor;
 import static java.lang.Boolean.TRUE;
 import static org.apache.iotdb.db.mpp.execution.operator.Operator.NOT_BLOCKED;
+import static org.apache.iotdb.db.mpp.metric.QueryExecutionMetricSet.DRIVER_INTERNAL_PROCESS;
 
 public abstract class Driver implements IDriver {
 
   protected static final Logger LOGGER = LoggerFactory.getLogger(Driver.class);
 
+  protected final DriverContext driverContext;
   protected final Operator root;
   protected final ISinkHandle sinkHandle;
-  protected final DriverContext driverContext;
   protected final AtomicReference<SettableFuture<?>> driverBlockedFuture = new AtomicReference<>();
   protected final AtomicReference<State> state = new AtomicReference<>(State.ALIVE);
 
   protected final DriverLock exclusiveLock = new DriverLock();
+
+  protected final QueryMetricsManager QUERY_METRICS = QueryMetricsManager.getInstance();
 
   protected enum State {
     ALIVE,
@@ -64,12 +69,12 @@ public abstract class Driver implements IDriver {
     DESTROYED
   }
 
-  public Driver(Operator root, ISinkHandle sinkHandle, DriverContext driverContext) {
+  protected Driver(Operator root, DriverContext driverContext) {
     checkNotNull(root, "root Operator should not be null");
-    checkNotNull(sinkHandle, "SinkHandle should not be null");
-    this.root = root;
-    this.sinkHandle = sinkHandle;
+    checkNotNull(driverContext.getSinkHandle(), "SinkHandle should not be null");
     this.driverContext = driverContext;
+    this.root = root;
+    this.sinkHandle = driverContext.getSinkHandle();
 
     // initially the driverBlockedFuture is not blocked (it is completed)
     SettableFuture<Void> future = SettableFuture.create();
@@ -100,12 +105,6 @@ public abstract class Driver implements IDriver {
   public ListenableFuture<?> processFor(Duration duration) {
 
     SettableFuture<?> blockedFuture = driverBlockedFuture.get();
-    // initialization may be time-consuming, so we keep it in the processFor method
-    // in normal case, it won't cause deadlock and should finish soon, otherwise it will be a
-    // critical bug
-    if (!init(blockedFuture)) {
-      return blockedFuture;
-    }
 
     // if the driver is blocked we don't need to continue
     if (!blockedFuture.isDone()) {
@@ -120,13 +119,26 @@ public abstract class Driver implements IDriver {
             TimeUnit.MILLISECONDS,
             true,
             () -> {
-              long start = System.nanoTime();
-              do {
-                ListenableFuture<?> future = processInternal();
-                if (!future.isDone()) {
-                  return updateDriverBlockedFuture(future);
+              // only keep doing query processing if driver state is still alive
+              if (state.get() == State.ALIVE) {
+                long start = System.nanoTime();
+                // initialization may be time-consuming, so we keep it in the processFor method
+                // in normal case, it won't cause deadlock and should finish soon, otherwise it will
+                // be a
+                // critical bug
+                // We should do initialization after holding the lock to avoid parallelism problems
+                // with close
+                if (!init(blockedFuture)) {
+                  return blockedFuture;
                 }
-              } while (System.nanoTime() - start < maxRuntime && !isFinishedInternal());
+
+                do {
+                  ListenableFuture<?> future = processInternal();
+                  if (!future.isDone()) {
+                    return updateDriverBlockedFuture(future);
+                  }
+                } while (System.nanoTime() - start < maxRuntime && !isFinishedInternal());
+              }
               return NOT_BLOCKED;
             });
 
@@ -134,8 +146,13 @@ public abstract class Driver implements IDriver {
   }
 
   @Override
-  public FragmentInstanceId getInfo() {
-    return driverContext.getId();
+  public DriverTaskId getDriverTaskId() {
+    return driverContext.getDriverTaskID();
+  }
+
+  @Override
+  public void setDriverTaskId(DriverTaskId driverTaskId) {
+    this.driverContext.setDriverTaskID(driverTaskId);
   }
 
   @Override
@@ -173,6 +190,7 @@ public abstract class Driver implements IDriver {
   }
 
   private ListenableFuture<?> processInternal() {
+    long startTimeNanos = System.nanoTime();
     try {
       ListenableFuture<?> blocked = root.isBlocked();
       if (!blocked.isDone()) {
@@ -182,8 +200,8 @@ public abstract class Driver implements IDriver {
       if (!blocked.isDone()) {
         return blocked;
       }
-      if (root.hasNext()) {
-        TsBlock tsBlock = root.next();
+      if (root.hasNextWithTimer()) {
+        TsBlock tsBlock = root.nextWithTimer();
         if (tsBlock != null && !tsBlock.isEmpty()) {
           sinkHandle.send(tsBlock);
         }
@@ -205,6 +223,9 @@ public abstract class Driver implements IDriver {
       newException.addSuppressed(t);
       driverContext.failed(newException);
       throw newException;
+    } finally {
+      QUERY_METRICS.recordExecutionCost(
+          DRIVER_INTERNAL_PROCESS, System.nanoTime() - startTimeNanos);
     }
   }
 
@@ -311,7 +332,10 @@ public abstract class Driver implements IDriver {
       // this shouldn't happen but be safe
       inFlightException =
           addSuppressedException(
-              inFlightException, t, "Error destroying driver for task %s", driverContext.getId());
+              inFlightException,
+              t,
+              "Error destroying driver for task %s",
+              driverContext.getDriverTaskID());
     } finally {
       releaseResource();
     }
@@ -332,6 +356,16 @@ public abstract class Driver implements IDriver {
     try {
       root.close();
       sinkHandle.setNoMoreTsBlocks();
+
+      // record operator execution statistics to metrics
+      List<OperatorContext> operatorContexts = driverContext.getOperatorContexts();
+      for (OperatorContext operatorContext : operatorContexts) {
+        String operatorType = operatorContext.getOperatorType();
+        QUERY_METRICS.recordOperatorExecutionCost(
+            operatorType, operatorContext.getTotalExecutionTimeInNanos());
+        QUERY_METRICS.recordOperatorExecutionCount(
+            operatorType, operatorContext.getNextCalledCount());
+      }
     } catch (InterruptedException t) {
       // don't record the stack
       wasInterrupted = true;
@@ -341,9 +375,9 @@ public abstract class Driver implements IDriver {
           addSuppressedException(
               inFlightException,
               t,
-              "Error closing operator {} for fragment instance {}",
+              "Error closing operator {} for driver task {}",
               root.getOperatorContext().getOperatorId(),
-              driverContext.getId());
+              driverContext.getDriverTaskID());
     } finally {
       // reset the interrupted flag
       if (wasInterrupted) {
@@ -372,6 +406,7 @@ public abstract class Driver implements IDriver {
   }
 
   private static class DriverLock {
+
     private final ReentrantLock lock = new ReentrantLock();
 
     @GuardedBy("this")

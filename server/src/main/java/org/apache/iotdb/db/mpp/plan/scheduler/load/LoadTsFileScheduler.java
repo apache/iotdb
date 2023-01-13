@@ -24,6 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
+import org.apache.iotdb.commons.partition.StorageExecutor;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.load.ChunkData;
@@ -173,7 +174,7 @@ public class LoadTsFileScheduler implements IScheduler {
             queryContext.getQueryType(),
             queryContext.getTimeOut(),
             queryContext.getSession());
-    instance.setDataRegionAndHost(replicaSet);
+    instance.setExecutorAndHost(new StorageExecutor(replicaSet));
     Future<FragInstanceDispatchResult> dispatchResultFuture =
         dispatcher.dispatch(Collections.singletonList(instance));
 
@@ -193,9 +194,9 @@ public class LoadTsFileScheduler implements IScheduler {
         if (result.getFailureStatus().getSubStatus() != null) {
           for (TSStatus status : result.getFailureStatus().getSubStatus()) {
             logger.warn(
-                String.format(
-                    "Sub status code %s. Sub status message %s.",
-                    TSStatusCode.representOf(status.getCode()).name(), status.getMessage()));
+                "Sub status code {}. Sub status message {}.",
+                TSStatusCode.representOf(status.getCode()).name(),
+                status.getMessage());
           }
         }
         TSStatus status = result.getFailureStatus();
@@ -223,7 +224,7 @@ public class LoadTsFileScheduler implements IScheduler {
   }
 
   private boolean secondPhase(boolean isFirstPhaseSuccess, String uuid, File tsFile) {
-    logger.info(String.format("Start dispatching Load command for uuid %s", uuid));
+    logger.info("Start dispatching Load command for uuid {}", uuid);
     TLoadCommandReq loadCommandReq =
         new TLoadCommandReq(
             (isFirstPhaseSuccess ? LoadCommand.EXECUTE : LoadCommand.ROLLBACK).ordinal(), uuid);
@@ -260,9 +261,7 @@ public class LoadTsFileScheduler implements IScheduler {
   }
 
   private boolean loadLocally(LoadSingleTsFileNode node) {
-    logger.info(
-        String.format(
-            "Start load TsFile %s locally.", node.getTsFileResource().getTsFile().getPath()));
+    logger.info("Start load TsFile {} locally.", node.getTsFileResource().getTsFile().getPath());
     try {
       FragmentInstance instance =
           new FragmentInstance(
@@ -272,7 +271,7 @@ public class LoadTsFileScheduler implements IScheduler {
               queryContext.getQueryType(),
               queryContext.getTimeOut(),
               queryContext.getSession());
-      instance.setDataRegionAndHost(node.getLocalRegionReplicaSet());
+      instance.setExecutorAndHost(new StorageExecutor(node.getLocalRegionReplicaSet()));
       dispatcher.dispatchLocally(instance);
     } catch (FragmentInstanceDispatchException e) {
       logger.warn(
@@ -392,9 +391,9 @@ public class LoadTsFileScheduler implements IScheduler {
       for (Map.Entry<TRegionReplicaSet, LoadTsFilePieceNode> entry : replicaSet2Piece.entrySet()) {
         if (!scheduler.dispatchOnePieceNode(entry.getValue(), entry.getKey())) {
           logger.warn(
-              String.format(
-                  "Dispatch piece node %s of TsFile %s error.",
-                  entry.getValue(), singleTsFileNode.getTsFileResource().getTsFile()));
+              "Dispatch piece node {} of TsFile {} error.",
+              entry.getValue(),
+              singleTsFileNode.getTsFileResource().getTsFile());
           return false;
         }
       }

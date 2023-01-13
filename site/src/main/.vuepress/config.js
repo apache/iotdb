@@ -18,6 +18,7 @@
 
 var config = {
     plugins: [
+        '@vuepress/back-to-top',
         ['@vuepress/plugin-html-redirect', {
           countdown: 0,
         }],
@@ -67,12 +68,18 @@ var config = {
 
 		sidebarDepth: 0,
 
+    editLinks: true,
+
+    docsRepo: 'apache/iotdb',
+
+    docsDir: 'docs',
+
 		locales: {
 		  '/': {
 			selectText: 'Languages',
 			label: 'English',
 			ariaLabel: 'Languages',
-			editLinkText: 'Edit this page on GitHub',
+			editLinkText: 'Found Error, Edit this page on GitHub',
 			serviceWorker: {
 			  updatePopup: {
 				message: "New content is available.",
@@ -136,12 +143,12 @@ var config = {
 				  {
 					text: 'ASF',
 					items: [
-					  { text: 'Foundation', link: 'http://www.apache.org/'},
-					  { text: 'License', link: 'http://www.apache.org/licenses/'},
-					  { text: 'Security', link: 'http://www.apache.org/security/'},
-					  { text: 'Sponsorship', link: 'http://www.apache.org/foundation/sponsorship.html'},
-					  { text: 'Thanks', link: 'http://www.apache.org/foundation/thanks.html'},
-					  { text: 'Current Events', link: 'http://www.apache.org/events/current-event'},
+					  { text: 'Foundation', link: 'https://www.apache.org/'},
+					  { text: 'License', link: 'https://www.apache.org/licenses/'},
+					  { text: 'Security', link: 'https://www.apache.org/security/'},
+					  { text: 'Sponsorship', link: 'https://www.apache.org/foundation/sponsorship.html'},
+					  { text: 'Thanks', link: 'https://www.apache.org/foundation/thanks.html'},
+					  { text: 'Current Events', link: 'https://www.apache.org/events/current-event'},
 					]
 				  },
 			],
@@ -619,13 +626,6 @@ var config = {
 						]
 					},
 					{
-						title: 'Cluster Setup',
-						children: [
-							['Cluster/Cluster-Setup','Cluster Setup'],
-							//['Cluster/Cluster-Setup-Example','Cluster Setup Example']
-						]
-					},
-					{
 						title: 'FAQ',
 						children: [
 							['FAQ/Frequently-asked-questions','Frequently asked questions']
@@ -677,6 +677,7 @@ var config = {
 							['Data-Concept/Data-Model-and-Terminology','Data Model and Terminology'],
 							['Data-Concept/Schema-Template','Schema Template'],
 							['Data-Concept/Data-Type','Data Type'],
+							['Data-Concept/Deadband-Process', 'Deadband Process'],
 							['Data-Concept/Encoding','Encoding'],
 							['Data-Concept/Compression','Compression'],
 							['Data-Concept/Time-Partition','Time Partition'],
@@ -767,6 +768,7 @@ var config = {
 							['Maintenance-Tools/JMX-Tool','JMX Tool'],
 							['Maintenance-Tools/MLogParser-Tool','MLogParser Tool'],
 							['Maintenance-Tools/MLogLoad-Tool','MLogLoad Tool'],
+							['Maintenance-Tools/Export-Schema-Tool','Export Schema Tool'],
 							['Maintenance-Tools/NodeTool','Node Tool'],
 							['Maintenance-Tools/Watermark-Tool','Watermark Tool'],
 							['Maintenance-Tools/Metric-Tool','Metric Tool'],
@@ -788,13 +790,6 @@ var config = {
 							['Ecosystem Integration/Flink IoTDB','Flink IoTDB'],
 							['Ecosystem Integration/Flink TsFile','Flink TsFile'],
 							['Ecosystem Integration/NiFi-IoTDB','NiFi IoTDB'],
-						]
-					},
-					{
-						title: 'Cluster Setup',
-						children: [
-							['Cluster/Cluster-Setup','Cluster Setup'],
-							['Cluster/Cluster-Setup-Example','Cluster Setup Example']
 						]
 					},
 					{
@@ -999,12 +994,11 @@ var config = {
 							['Maintenance-Tools/Log-Tool','Log Tool'],
 							['Maintenance-Tools/JMX-Tool','JMX Tool'],
 							['Maintenance-Tools/MLogParser-Tool','MLogParser Tool'],
-							['Maintenance-Tools/Load-Tsfile','Load TsFile'],
 							['Maintenance-Tools/IoTDB-Data-Dir-Overview-Tool','IoTDB Data Directory Overview Tool'],
 							['Maintenance-Tools/TsFile-Sketch-Tool','TsFile Sketch Tool'],
 							['Maintenance-Tools/TsFile-Resource-Sketch-Tool','TsFile Resource Sketch Tool'],
 							['Maintenance-Tools/TsFile-Split-Tool','TsFile Split Tool'],
-							['Maintenance-Tools/TsFile-Load-Export-Tool','TsFile Export Tool'],
+							['Maintenance-Tools/TsFile-Load-Export-Tool','TsFile Load Export Tool'],
 							['Maintenance-Tools/CSV-Tool','CSV Load Export Tool'],
 						]
 					},
@@ -1043,6 +1037,7 @@ var config = {
 						title: 'FAQ',
 						children: [
 							['FAQ/Frequently-asked-questions','Frequently asked questions'],
+							['FAQ/FAQ-for-cluster-setup','FAQ for cluster setup'],
 						]
 					},
 					{
@@ -1076,6 +1071,7 @@ var config = {
 						title: 'Quick Start',
 						children: [
 							['QuickStart/QuickStart','Quick Start'],
+							['QuickStart/ClusterQuickStart','Cluster Quick Start'],
 							['QuickStart/WayToGetIoTDB','Download and Setup'],
 							['QuickStart/Command-Line-Interface','Command Line Interface'],
 							['QuickStart/Files','Data storage']
@@ -1233,12 +1229,11 @@ var config = {
 							['Maintenance-Tools/Log-Tool','Log Tool'],
 							['Maintenance-Tools/JMX-Tool','JMX Tool'],
 							['Maintenance-Tools/MLogParser-Tool','MLogParser Tool'],
-							['Maintenance-Tools/Load-Tsfile','Load TsFile'],
 							['Maintenance-Tools/IoTDB-Data-Dir-Overview-Tool','IoTDB Data Directory Overview Tool'],
 							['Maintenance-Tools/TsFile-Sketch-Tool','TsFile Sketch Tool'],
 							['Maintenance-Tools/TsFile-Resource-Sketch-Tool','TsFile Resource Sketch Tool'],
 							['Maintenance-Tools/TsFile-Split-Tool','TsFile Split Tool'],
-							['Maintenance-Tools/TsFile-Load-Export-Tool','TsFile Export Tool'],
+							['Maintenance-Tools/TsFile-Load-Export-Tool','TsFile Load Export Tool'],
 							['Maintenance-Tools/CSV-Tool','CSV Load Export Tool'],
 						]
 					},
@@ -1277,6 +1272,7 @@ var config = {
 						title: 'FAQ',
 						children: [
 							['FAQ/Frequently-asked-questions','Frequently asked questions'],
+							['FAQ/FAQ-for-cluster-setup','FAQ for cluster setup'],
 						]
 					},
 					{
@@ -1299,7 +1295,7 @@ var config = {
 			// 该语言在下拉菜单中的标签
 			label: '简体中文',
 			// 编辑链接文字
-			editLinkText: '在 GitHub 上编辑此页',
+			editLinkText: '发现错误？在 GitHub 上编辑此页',
 			// Service Worker 的配置
 			serviceWorker: {
 			  updatePopup: {
@@ -1359,12 +1355,12 @@ var config = {
 				  {
 					text: 'ASF',
 					items: [
-					  { text: '基金会', link: 'http://www.apache.org/'},
-					  { text: '许可证', link: 'http://www.apache.org/licenses/'},
-					  { text: '安全', link: 'http://www.apache.org/security/'},
-					  { text: '赞助', link: 'http://www.apache.org/foundation/sponsorship.html'},
-					  { text: '致谢', link: 'http://www.apache.org/foundation/thanks.html'},
-					  { text: '活动', link: 'http://www.apache.org/events/current-event'},
+					  { text: '基金会', link: 'https://www.apache.org/'},
+					  { text: '许可证', link: 'https://www.apache.org/licenses/'},
+					  { text: '安全', link: 'https://www.apache.org/security/'},
+					  { text: '赞助', link: 'https://www.apache.org/foundation/sponsorship.html'},
+					  { text: '致谢', link: 'https://www.apache.org/foundation/thanks.html'},
+					  { text: '活动', link: 'https://www.apache.org/events/current-event'},
 					]
 				  },
 			],
@@ -1836,13 +1832,6 @@ var config = {
 						]
 					},
 					{
-						title: '集群搭建',
-						children: [
-							['Cluster/Cluster-Setup','集群搭建'],
-							//['Cluster/Cluster-Setup-Example','集群搭建示例']
-						]
-					},
-					{
 						title: '常见问题',
 						children: [
 							['FAQ/Frequently-asked-questions','常见问题']
@@ -1888,6 +1877,7 @@ var config = {
 							['Data-Concept/Data-Model-and-Terminology','数据模型'],
 							['Data-Concept/Schema-Template','元数据模板'],
 							['Data-Concept/Data-Type','数据类型'],
+							['Data-Concept/Deadband-Process', '死区处理'],
 							['Data-Concept/Encoding','编码方式'],
 							['Data-Concept/Compression','压缩方式'],
 							['Data-Concept/Time-Partition','时间分区'],
@@ -1978,6 +1968,7 @@ var config = {
 							['Maintenance-Tools/JMX-Tool','JMX 工具'],
 							['Maintenance-Tools/MLogParser-Tool','MLog 解析工具'],
 							['Maintenance-Tools/MLogLoad-Tool','MLog 加载工具'],
+							['Maintenance-Tools/Export-Schema-Tool','元数据导出工具'],
 							['Maintenance-Tools/NodeTool','节点工具'],
 							['Maintenance-Tools/Watermark-Tool','水印工具'],
 							['Maintenance-Tools/Metric-Tool','监控工具'],
@@ -1999,13 +1990,6 @@ var config = {
 							['Ecosystem Integration/Flink TsFile','Flink-TsFile'],
 							['Ecosystem Integration/Flink IoTDB','Flink-IoTDB'],
 							['Ecosystem Integration/NiFi-IoTDB','NiFi IoTDB']
-						]
-					},
-					{
-						title: '集群搭建',
-						children: [
-							['Cluster/Cluster-Setup','集群搭建'],
-							['Cluster/Cluster-Setup-Example','集群搭建示例']
 						]
 					},
 					{
@@ -2210,12 +2194,11 @@ var config = {
 							['Maintenance-Tools/Log-Tool','日志工具'],
 							['Maintenance-Tools/JMX-Tool','JMX 工具'],
 							['Maintenance-Tools/MLogParser-Tool','Mlog解析工具'],
-							['Maintenance-Tools/Load-Tsfile','加载 TsFile'],
 							['Maintenance-Tools/IoTDB-Data-Dir-Overview-Tool','IoTDB数据文件夹概览工具'],
 							['Maintenance-Tools/TsFile-Sketch-Tool','TsFile概览工具'],
 							['Maintenance-Tools/TsFile-Resource-Sketch-Tool','TsFile Resource概览工具'],
 							['Maintenance-Tools/TsFile-Split-Tool','TsFile 拆分工具'],
-							['Maintenance-Tools/TsFile-Load-Export-Tool','TsFile 导出工具'],
+							['Maintenance-Tools/TsFile-Load-Export-Tool','TsFile 导入导出工具'],
 							['Maintenance-Tools/CSV-Tool','CSV 导入导出工具'],
 						]
 					},
@@ -2254,6 +2237,7 @@ var config = {
 						title: 'FAQ',
 						children: [
 							['FAQ/Frequently-asked-questions','常见问题'],
+							['FAQ/FAQ-for-cluster-setup','分布式部署FAQ'],
 						]
 					},
 					{
@@ -2287,6 +2271,7 @@ var config = {
 						title: '快速上手',
 						children: [
 							['QuickStart/QuickStart','快速上手'],
+							['QuickStart/ClusterQuickStart', '集群快速上手'],
 							['QuickStart/WayToGetIoTDB','下载与安装'],
 							['QuickStart/Command-Line-Interface','SQL命令行终端(CLI)'],
 							['QuickStart/Files','数据文件存储']
@@ -2444,12 +2429,11 @@ var config = {
 							['Maintenance-Tools/Log-Tool','日志工具'],
 							['Maintenance-Tools/JMX-Tool','JMX 工具'],
 							['Maintenance-Tools/MLogParser-Tool','Mlog解析工具'],
-							['Maintenance-Tools/Load-Tsfile','加载 TsFile'],
 							['Maintenance-Tools/IoTDB-Data-Dir-Overview-Tool','IoTDB数据文件夹概览工具'],
               ['Maintenance-Tools/TsFile-Sketch-Tool','TsFile概览工具'],
               ['Maintenance-Tools/TsFile-Resource-Sketch-Tool','TsFile Resource概览工具'],
 							['Maintenance-Tools/TsFile-Split-Tool','TsFile 拆分工具'],
-							['Maintenance-Tools/TsFile-Load-Export-Tool','TsFile 导出工具'],
+							['Maintenance-Tools/TsFile-Load-Export-Tool','TsFile 导入导出工具'],
 							['Maintenance-Tools/CSV-Tool','CSV 导入导出工具'],
 						]
 					},
@@ -2488,6 +2472,7 @@ var config = {
 						title: 'FAQ',
 						children: [
 							['FAQ/Frequently-asked-questions','常见问题'],
+							['FAQ/FAQ-for-cluster-setup','分布式部署FAQ'],
 						]
 					},
 					{

@@ -202,7 +202,7 @@ public class IoTConsensus implements IConsensus {
         groupId,
         k -> {
           exist.set(false);
-          String path = buildPeerDir(groupId);
+          String path = buildPeerDir(storageDir, groupId);
           File file = new File(path);
           if (!file.mkdirs()) {
             logger.warn("Unable to create consensus dir for group {} at {}", groupId, path);
@@ -235,7 +235,7 @@ public class IoTConsensus implements IConsensus {
         (k, v) -> {
           exist.set(true);
           v.stop();
-          FileUtils.deleteDirectory(new File(buildPeerDir(groupId)));
+          FileUtils.deleteDirectory(new File(buildPeerDir(storageDir, groupId)));
           return null;
         });
 
@@ -262,6 +262,7 @@ public class IoTConsensus implements IConsensus {
 
       // step 2: notify all the other Peers to build the sync connection to newPeer
       logger.info("[IoTConsensus] notify current peers to build sync log...");
+      impl.checkAndLockSafeDeletedSearchIndex();
       impl.notifyPeersToBuildSyncLogChannel(peer);
 
       // step 3: take snapshot
@@ -390,7 +391,7 @@ public class IoTConsensus implements IConsensus {
     return stateMachineMap.get(groupId);
   }
 
-  private String buildPeerDir(ConsensusGroupId groupId) {
+  public static String buildPeerDir(File storageDir, ConsensusGroupId groupId) {
     return storageDir + File.separator + groupId.getType().getValue() + "_" + groupId.getId();
   }
 }

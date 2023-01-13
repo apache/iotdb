@@ -18,9 +18,6 @@
  */
 package org.apache.iotdb.db.utils.writelog;
 
-import org.apache.iotdb.commons.file.SystemFileFactory;
-import org.apache.iotdb.commons.utils.TestOnly;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -40,27 +37,13 @@ import java.util.zip.CRC32;
 public class LogWriter implements ILogWriter {
   private static final Logger logger = LoggerFactory.getLogger(LogWriter.class);
 
-  private File logFile;
+  private final File logFile;
   private FileOutputStream fileOutputStream;
   private FileChannel channel;
   private final CRC32 checkSummer = new CRC32();
   private final ByteBuffer lengthBuffer = ByteBuffer.allocate(4);
   private final ByteBuffer checkSumBuffer = ByteBuffer.allocate(8);
   private final boolean forceEachWrite;
-
-  /**
-   * @param logFilePath
-   * @param forceEachWrite
-   * @throws FileNotFoundException
-   */
-  @TestOnly
-  public LogWriter(String logFilePath, boolean forceEachWrite) throws FileNotFoundException {
-    logFile = SystemFileFactory.INSTANCE.getFile(logFilePath);
-    this.forceEachWrite = forceEachWrite;
-
-    fileOutputStream = new FileOutputStream(logFile, true);
-    channel = fileOutputStream.getChannel();
-  }
 
   public LogWriter(File logFile, boolean forceEachWrite) throws FileNotFoundException {
     this.logFile = logFile;

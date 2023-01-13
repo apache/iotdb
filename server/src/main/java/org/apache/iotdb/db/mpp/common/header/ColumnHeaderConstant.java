@@ -58,6 +58,7 @@ public class ColumnHeaderConstant {
   public static final String VERSION = "Version";
   public static final String BUILD_INFO = "BuildInfo";
   public static final String PATHS = "Paths";
+  public static final String VARIABLE = "Variable";
 
   // column names for count statement
   public static final String COLUMN = "Column";
@@ -92,10 +93,30 @@ public class ColumnHeaderConstant {
   public static final String PATH_PATTERN = "PathPattern";
   public static final String CLASS_NAME = "ClassName";
 
+  // show cluster status
+  public static final String NODE_TYPE_CONFIG_NODE = "ConfigNode";
+  public static final String NODE_TYPE_DATA_NODE = "DataNode";
+  public static final String COLUMN_CLUSTER_NAME = "ClusterName";
+  public static final String CONFIG_NODE_CONSENSUS_PROTOCOL_CLASS =
+      "ConfigNodeConsensusProtocolClass";
+  public static final String DATA_REGION_CONSENSUS_PROTOCOL_CLASS =
+      "DataRegionConsensusProtocolClass";
+  public static final String SCHEMA_REGION_CONSENSUS_PROTOCOL_CLASS =
+      "SchemaRegionConsensusProtocolClass";
+  public static final String SERIES_SLOT_NUM = "SeriesSlotNum";
+  public static final String SERIES_SLOT_EXECUTOR_CLASS = "SeriesSlotExecutorClass";
+  public static final String DEFAULT_TTL = "DefaultTTL(ms)";
+  public static final String SCHEMA_REGION_PER_DATA_NODE = "SchemaRegionPerDataNode";
+  public static final String DATA_REGION_PER_PROCESSOR = "DataRegionPerProcessor";
+  public static final String READ_CONSISTENCY_LEVEL = "ReadConsistencyLevel";
+  public static final String DISK_SPACE_WARNING_THRESHOLD = "DiskSpaceWarningThreshold";
+  public static final String LEAST_DATA_REGION_GROUP_NUM = "LeastDataRegionGroupNum";
+
   // column names for show region statement
   public static final String REGION_ID = "RegionId";
   public static final String TYPE = "Type";
   public static final String DATA_NODE_ID = "DataNodeId";
+  public static final String TIME_SLOT_NUM = "TimeSlotNum";
   public static final String SERIES_SLOT_ID = "SeriesSlotId";
   public static final String TIME_SLOT_ID = "TimeSlotId";
   public static final String ROLE = "Role";
@@ -124,6 +145,11 @@ public class ColumnHeaderConstant {
   // column names for show cq
   public static final String CQID = "CQId";
   public static final String QUERY = "Query";
+
+  // column names for show query processlist
+  public static final String QUERY_ID = "QueryId";
+  public static final String ELAPSED_TIME = "ElapsedTime";
+  public static final String STATEMENT = "Statement";
 
   public static final List<ColumnHeader> lastQueryColumnHeaders =
       ImmutableList.of(
@@ -218,8 +244,8 @@ public class ColumnHeaderConstant {
           new ColumnHeader(TYPE, TSDataType.TEXT),
           new ColumnHeader(STATUS, TSDataType.TEXT),
           new ColumnHeader(DATABASE, TSDataType.TEXT),
-          new ColumnHeader(SERIES_SLOT_ID, TSDataType.INT32),
-          new ColumnHeader(TIME_SLOT_ID, TSDataType.INT64),
+          new ColumnHeader(SERIES_SLOT_NUM, TSDataType.INT32),
+          new ColumnHeader(TIME_SLOT_NUM, TSDataType.INT64),
           new ColumnHeader(DATA_NODE_ID, TSDataType.INT32),
           new ColumnHeader(RPC_ADDRESS, TSDataType.TEXT),
           new ColumnHeader(RPC_PORT, TSDataType.INT32),
@@ -260,9 +286,13 @@ public class ColumnHeaderConstant {
           new ColumnHeader(CONFIG_CONSENSUS_PORT, TSDataType.TEXT),
           new ColumnHeader(RPC_ADDRESS, TSDataType.TEXT),
           new ColumnHeader(RPC_PORT, TSDataType.TEXT),
-          new ColumnHeader(DATA_CONSENSUS_PORT, TSDataType.TEXT),
+          new ColumnHeader(MPP_PORT, TSDataType.TEXT),
           new ColumnHeader(SCHEMA_CONSENSUS_PORT, TSDataType.TEXT),
-          new ColumnHeader(MPP_PORT, TSDataType.TEXT));
+          new ColumnHeader(DATA_CONSENSUS_PORT, TSDataType.TEXT));
+
+  public static final List<ColumnHeader> showVariablesColumnHeaders =
+      ImmutableList.of(
+          new ColumnHeader(VARIABLE, TSDataType.TEXT), new ColumnHeader(VALUE, TSDataType.TEXT));
 
   public static final List<ColumnHeader> showFunctionsColumnHeaders =
       ImmutableList.of(
@@ -329,4 +359,11 @@ public class ColumnHeaderConstant {
           new ColumnHeader(CQID, TSDataType.TEXT),
           new ColumnHeader(QUERY, TSDataType.TEXT),
           new ColumnHeader(STATE, TSDataType.TEXT));
+
+  public static final List<ColumnHeader> showQueriesColumnHeaders =
+      ImmutableList.of(
+          new ColumnHeader(QUERY_ID, TSDataType.TEXT),
+          new ColumnHeader(DATA_NODE_ID, TSDataType.INT32),
+          new ColumnHeader(ELAPSED_TIME, TSDataType.FLOAT),
+          new ColumnHeader(STATEMENT, TSDataType.TEXT));
 }

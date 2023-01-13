@@ -25,7 +25,6 @@ import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.common.schematree.ClusterSchemaTree;
-import org.apache.iotdb.db.mpp.common.schematree.ISchemaTree;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
@@ -87,7 +86,6 @@ public class DataNodeSchemaCache {
 
   public void takeWriteLock() {
     readWriteLock.writeLock().lock();
-    ;
   }
 
   public void releaseWriteLock() {
@@ -137,14 +135,10 @@ public class DataNodeSchemaCache {
     return schemaTree;
   }
 
-  public void put(ISchemaTree schemaTree) {
+  public void put(ClusterSchemaTree schemaTree) {
     for (MeasurementPath measurementPath : schemaTree.getAllMeasurement()) {
       putSingleMeasurementPath(schemaTree.getBelongedDatabase(measurementPath), measurementPath);
     }
-  }
-
-  public void put(String storageGroup, MeasurementPath measurementPath) {
-    putSingleMeasurementPath(storageGroup, measurementPath);
   }
 
   private void putSingleMeasurementPath(String storageGroup, MeasurementPath measurementPath) {

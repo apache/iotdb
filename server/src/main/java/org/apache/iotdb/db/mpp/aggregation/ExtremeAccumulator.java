@@ -123,7 +123,25 @@ public class ExtremeAccumulator implements Accumulator {
       return;
     }
     initResult = true;
-    extremeResult.setObject(finalResult.getObject(0));
+    switch (seriesDataType) {
+      case INT32:
+        extremeResult.setInt(finalResult.getInt(0));
+        break;
+      case INT64:
+        extremeResult.setLong(finalResult.getLong(0));
+        break;
+      case FLOAT:
+        extremeResult.setFloat(finalResult.getFloat(0));
+        break;
+      case DOUBLE:
+        extremeResult.setDouble(finalResult.getDouble(0));
+        break;
+      case TEXT:
+      case BOOLEAN:
+      default:
+        throw new UnSupportedDataTypeException(
+            String.format("Unsupported data type in Extreme: %s", seriesDataType));
+    }
   }
 
   // columnBuilder should be single in ExtremeAccumulator
@@ -214,7 +232,7 @@ public class ExtremeAccumulator implements Accumulator {
       if (!curWindow.satisfy(column[0], i)) {
         return i;
       }
-      curWindow.mergeOnePoint();
+      curWindow.mergeOnePoint(column, i);
       if (!column[2].isNull(i)) {
         updateIntResult(column[2].getInt(i));
       }
@@ -246,7 +264,7 @@ public class ExtremeAccumulator implements Accumulator {
       if (!curWindow.satisfy(column[0], i)) {
         return i;
       }
-      curWindow.mergeOnePoint();
+      curWindow.mergeOnePoint(column, i);
       if (!column[2].isNull(i)) {
         updateLongResult(column[2].getLong(i));
       }
@@ -278,7 +296,7 @@ public class ExtremeAccumulator implements Accumulator {
       if (!curWindow.satisfy(column[0], i)) {
         return i;
       }
-      curWindow.mergeOnePoint();
+      curWindow.mergeOnePoint(column, i);
       if (!column[2].isNull(i)) {
         updateFloatResult(column[2].getFloat(i));
       }
@@ -310,7 +328,7 @@ public class ExtremeAccumulator implements Accumulator {
       if (!curWindow.satisfy(column[0], i)) {
         return i;
       }
-      curWindow.mergeOnePoint();
+      curWindow.mergeOnePoint(column, i);
       if (!column[2].isNull(i)) {
         updateDoubleResult(column[2].getDouble(i));
       }

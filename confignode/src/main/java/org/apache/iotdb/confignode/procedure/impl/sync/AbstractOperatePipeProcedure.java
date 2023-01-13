@@ -38,7 +38,7 @@ abstract class AbstractOperatePipeProcedure
 
   private static final Logger LOGGER = LoggerFactory.getLogger(AbstractOperatePipeProcedure.class);
 
-  private static final int retryThreshold = 3;
+  private static final int RETRY_THRESHOLD = 3;
 
   /**
    * Execute at state OPERATE_CHECK
@@ -91,7 +91,7 @@ abstract class AbstractOperatePipeProcedure
         setFailure(new ProcedureException(e.getMessage()));
       } else {
         LOGGER.error("Retrievable error trying to {} at state [{}]", getOperation(), state, e);
-        if (getCycles() > retryThreshold) {
+        if (getCycles() > RETRY_THRESHOLD) {
           setFailure(
               new ProcedureException(
                   String.format("Fail to %s because %s", getOperation().name(), e.getMessage())));

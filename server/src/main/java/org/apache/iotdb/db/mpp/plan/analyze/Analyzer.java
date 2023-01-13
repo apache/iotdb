@@ -19,11 +19,14 @@
 
 package org.apache.iotdb.db.mpp.plan.analyze;
 
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
+import org.apache.iotdb.db.mpp.metric.QueryMetricsManager;
+import org.apache.iotdb.db.mpp.plan.analyze.schema.ClusterSchemaFetcher;
+import org.apache.iotdb.db.mpp.plan.analyze.schema.ISchemaFetcher;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 
 import static org.apache.iotdb.db.mpp.common.QueryId.mockQueryId;
+import static org.apache.iotdb.db.mpp.metric.QueryPlanCostMetricSet.ANALYZER;
 
 /** Analyze the statement and generate Analysis. */
 public class Analyzer {
@@ -40,7 +43,14 @@ public class Analyzer {
   }
 
   public Analysis analyze(Statement statement) {
-    return new AnalyzeVisitor(partitionFetcher, schemaFetcher).process(statement, context);
+    long startTime = System.nanoTime();
+    Analysis analysis =
+        new AnalyzeVisitor(partitionFetcher, schemaFetcher).process(statement, context);
+
+    if (statement.isQuery()) {
+      QueryMetricsManager.getInstance().recordPlanCost(ANALYZER, System.nanoTime() - startTime);
+    }
+    return analysis;
   }
 
   public static void validate(Statement statement) {
@@ -48,13 +58,8 @@ public class Analyzer {
 
     IPartitionFetcher partitionFetcher;
     ISchemaFetcher schemaFetcher;
-    if (IoTDBDescriptor.getInstance().getConfig().isClusterMode()) {
-      partitionFetcher = ClusterPartitionFetcher.getInstance();
-      schemaFetcher = ClusterSchemaFetcher.getInstance();
-    } else {
-      partitionFetcher = StandalonePartitionFetcher.getInstance();
-      schemaFetcher = StandaloneSchemaFetcher.getInstance();
-    }
+    partitionFetcher = ClusterPartitionFetcher.getInstance();
+    schemaFetcher = ClusterSchemaFetcher.getInstance();
 
     Analyzer analyzer = new Analyzer(context, partitionFetcher, schemaFetcher);
     analyzer.analyze(statement);

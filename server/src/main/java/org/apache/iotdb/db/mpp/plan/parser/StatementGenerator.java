@@ -22,9 +22,11 @@ package org.apache.iotdb.db.mpp.plan.parser;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.constant.SqlConstant;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.template.TemplateQueryType;
 import org.apache.iotdb.db.metadata.utils.MetaFormatUtils;
+import org.apache.iotdb.db.mpp.metric.QueryMetricsManager;
 import org.apache.iotdb.db.mpp.plan.expression.binary.GreaterEqualExpression;
 import org.apache.iotdb.db.mpp.plan.expression.binary.LessThanExpression;
 import org.apache.iotdb.db.mpp.plan.expression.binary.LogicAndExpression;
@@ -57,10 +59,8 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowPathSetTempl
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowPathsUsingTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.UnsetSchemaTemplateStatement;
-import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser;
 import org.apache.iotdb.db.qp.sql.SqlLexer;
-import org.apache.iotdb.db.qp.strategy.SQLParseError;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
 import org.apache.iotdb.service.rpc.thrift.TSCreateAlignedTimeseriesReq;
 import org.apache.iotdb.service.rpc.thrift.TSCreateMultiTimeseriesReq;
@@ -100,6 +100,8 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+import static org.apache.iotdb.db.mpp.metric.QueryPlanCostMetricSet.SQL_PARSER;
 
 /** Convert SQL and RPC requests to {@link Statement}. */
 public class StatementGenerator {
@@ -472,48 +474,53 @@ public class StatementGenerator {
   }
 
   private static Statement invokeParser(String sql, ZoneId zoneId) {
-    ASTVisitor astVisitor = new ASTVisitor();
-    astVisitor.setZoneId(zoneId);
-
-    CharStream charStream1 = CharStreams.fromString(sql);
-
-    SqlLexer lexer1 = new SqlLexer(charStream1);
-    lexer1.removeErrorListeners();
-    lexer1.addErrorListener(SQLParseError.INSTANCE);
-
-    CommonTokenStream tokens1 = new CommonTokenStream(lexer1);
-
-    IoTDBSqlParser parser1 = new IoTDBSqlParser(tokens1);
-    parser1.getInterpreter().setPredictionMode(PredictionMode.SLL);
-    parser1.removeErrorListeners();
-    parser1.addErrorListener(SQLParseError.INSTANCE);
-
-    ParseTree tree;
+    long startTime = System.nanoTime();
     try {
-      // STAGE 1: try with simpler/faster SLL(*)
-      tree = parser1.singleStatement();
-      // if we get here, there was no syntax error and SLL(*) was enough;
-      // there is no need to try full LL(*)
-    } catch (Exception ex) {
-      CharStream charStream2 = CharStreams.fromString(sql);
+      ASTVisitor astVisitor = new ASTVisitor();
+      astVisitor.setZoneId(zoneId);
 
-      SqlLexer lexer2 = new SqlLexer(charStream2);
-      lexer2.removeErrorListeners();
-      lexer2.addErrorListener(SQLParseError.INSTANCE);
+      CharStream charStream1 = CharStreams.fromString(sql);
 
-      CommonTokenStream tokens2 = new CommonTokenStream(lexer2);
+      SqlLexer lexer1 = new SqlLexer(charStream1);
+      lexer1.removeErrorListeners();
+      lexer1.addErrorListener(SqlParseError.INSTANCE);
 
-      org.apache.iotdb.db.qp.sql.IoTDBSqlParser parser2 =
-          new org.apache.iotdb.db.qp.sql.IoTDBSqlParser(tokens2);
-      parser2.getInterpreter().setPredictionMode(PredictionMode.LL);
-      parser2.removeErrorListeners();
-      parser2.addErrorListener(SQLParseError.INSTANCE);
+      CommonTokenStream tokens1 = new CommonTokenStream(lexer1);
 
-      // STAGE 2: parser with full LL(*)
-      tree = parser2.singleStatement();
-      // if we get here, it's LL not SLL
+      IoTDBSqlParser parser1 = new IoTDBSqlParser(tokens1);
+      parser1.getInterpreter().setPredictionMode(PredictionMode.SLL);
+      parser1.removeErrorListeners();
+      parser1.addErrorListener(SqlParseError.INSTANCE);
+
+      ParseTree tree;
+      try {
+        // STAGE 1: try with simpler/faster SLL(*)
+        tree = parser1.singleStatement();
+        // if we get here, there was no syntax error and SLL(*) was enough;
+        // there is no need to try full LL(*)
+      } catch (Exception ex) {
+        CharStream charStream2 = CharStreams.fromString(sql);
+
+        SqlLexer lexer2 = new SqlLexer(charStream2);
+        lexer2.removeErrorListeners();
+        lexer2.addErrorListener(SqlParseError.INSTANCE);
+
+        CommonTokenStream tokens2 = new CommonTokenStream(lexer2);
+
+        org.apache.iotdb.db.qp.sql.IoTDBSqlParser parser2 =
+            new org.apache.iotdb.db.qp.sql.IoTDBSqlParser(tokens2);
+        parser2.getInterpreter().setPredictionMode(PredictionMode.LL);
+        parser2.removeErrorListeners();
+        parser2.addErrorListener(SqlParseError.INSTANCE);
+
+        // STAGE 2: parser with full LL(*)
+        tree = parser2.singleStatement();
+        // if we get here, it's LL not SLL
+      }
+      return astVisitor.visit(tree);
+    } finally {
+      QueryMetricsManager.getInstance().recordPlanCost(SQL_PARSER, System.nanoTime() - startTime);
     }
-    return astVisitor.visit(tree);
   }
 
   private static void addMeasurementAndValue(
@@ -631,7 +638,7 @@ public class StatementGenerator {
         return new ShowPathSetTemplateStatement(req.getName());
       case SHOW_USING_TEMPLATES:
         return new ShowPathsUsingTemplateStatement(
-            new PartialPath(SQLConstant.getSingleRootArray()), req.getName());
+            new PartialPath(SqlConstant.getSingleRootArray()), req.getName());
       default:
         return null;
     }

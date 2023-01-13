@@ -27,6 +27,7 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.common.QueryId;
+import org.apache.iotdb.db.mpp.execution.driver.DriverContext;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceStateMachine;
 import org.apache.iotdb.db.mpp.execution.operator.process.join.TimeJoinOperator;
@@ -100,21 +101,20 @@ public class TimeJoinOperatorTest {
           new FragmentInstanceStateMachine(instanceId, instanceNotificationExecutor);
       FragmentInstanceContext fragmentInstanceContext =
           createFragmentInstanceContext(instanceId, stateMachine);
+      DriverContext driverContext = new DriverContext(fragmentInstanceContext, 0);
       PlanNodeId planNodeId1 = new PlanNodeId("1");
-      fragmentInstanceContext.addOperatorContext(
-          1, planNodeId1, SeriesScanOperator.class.getSimpleName());
+      driverContext.addOperatorContext(1, planNodeId1, SeriesScanOperator.class.getSimpleName());
       PlanNodeId planNodeId2 = new PlanNodeId("2");
-      fragmentInstanceContext.addOperatorContext(
-          2, planNodeId2, SeriesScanOperator.class.getSimpleName());
-      fragmentInstanceContext.addOperatorContext(
+      driverContext.addOperatorContext(2, planNodeId2, SeriesScanOperator.class.getSimpleName());
+      driverContext.addOperatorContext(
           3, new PlanNodeId("3"), TimeJoinOperator.class.getSimpleName());
       SeriesScanOperator seriesScanOperator1 =
           new SeriesScanOperator(
+              driverContext.getOperatorContexts().get(0),
               planNodeId1,
               measurementPath1,
               allSensors,
               TSDataType.INT32,
-              fragmentInstanceContext.getOperatorContexts().get(0),
               null,
               null,
               true);
@@ -127,11 +127,11 @@ public class TimeJoinOperatorTest {
           new MeasurementPath(TIME_JOIN_OPERATOR_TEST_SG + ".device0.sensor1", TSDataType.INT32);
       SeriesScanOperator seriesScanOperator2 =
           new SeriesScanOperator(
+              driverContext.getOperatorContexts().get(1),
               planNodeId2,
               measurementPath2,
               allSensors,
               TSDataType.INT32,
-              fragmentInstanceContext.getOperatorContexts().get(1),
               null,
               null,
               true);
@@ -142,7 +142,7 @@ public class TimeJoinOperatorTest {
 
       TimeJoinOperator timeJoinOperator =
           new TimeJoinOperator(
-              fragmentInstanceContext.getOperatorContexts().get(2),
+              driverContext.getOperatorContexts().get(2),
               Arrays.asList(seriesScanOperator1, seriesScanOperator2),
               Ordering.ASC,
               Arrays.asList(TSDataType.INT32, TSDataType.INT32),
@@ -200,24 +200,22 @@ public class TimeJoinOperatorTest {
           new FragmentInstanceStateMachine(instanceId, instanceNotificationExecutor);
       FragmentInstanceContext fragmentInstanceContext =
           createFragmentInstanceContext(instanceId, stateMachine);
+      DriverContext driverContext = new DriverContext(fragmentInstanceContext, 0);
       PlanNodeId planNodeId1 = new PlanNodeId("1");
-      fragmentInstanceContext.addOperatorContext(
-          1, planNodeId1, SeriesScanOperator.class.getSimpleName());
+      driverContext.addOperatorContext(1, planNodeId1, SeriesScanOperator.class.getSimpleName());
       PlanNodeId planNodeId2 = new PlanNodeId("2");
-      fragmentInstanceContext.addOperatorContext(
-          2, planNodeId2, SeriesScanOperator.class.getSimpleName());
+      driverContext.addOperatorContext(2, planNodeId2, SeriesScanOperator.class.getSimpleName());
       PlanNodeId planNodeId3 = new PlanNodeId("3");
-      fragmentInstanceContext.addOperatorContext(
-          3, planNodeId3, SeriesScanOperator.class.getSimpleName());
-      fragmentInstanceContext.addOperatorContext(
+      driverContext.addOperatorContext(3, planNodeId3, SeriesScanOperator.class.getSimpleName());
+      driverContext.addOperatorContext(
           4, new PlanNodeId("4"), TimeJoinOperator.class.getSimpleName());
       SeriesScanOperator seriesScanOperator1 =
           new SeriesScanOperator(
+              driverContext.getOperatorContexts().get(0),
               planNodeId1,
               measurementPath1,
               allSensors,
               TSDataType.INT32,
-              fragmentInstanceContext.getOperatorContexts().get(0),
               null,
               null,
               true);
@@ -230,11 +228,11 @@ public class TimeJoinOperatorTest {
           new MeasurementPath(TIME_JOIN_OPERATOR_TEST_SG + ".device0.sensor1", TSDataType.INT32);
       SeriesScanOperator seriesScanOperator2 =
           new SeriesScanOperator(
+              driverContext.getOperatorContexts().get(1),
               planNodeId2,
               measurementPath2,
               allSensors,
               TSDataType.INT32,
-              fragmentInstanceContext.getOperatorContexts().get(1),
               null,
               null,
               true);
@@ -248,11 +246,11 @@ public class TimeJoinOperatorTest {
               TIME_JOIN_OPERATOR_TEST_SG + ".device0.error_sensor", TSDataType.INT32);
       SeriesScanOperator seriesScanOperator3 =
           new SeriesScanOperator(
+              driverContext.getOperatorContexts().get(2),
               planNodeId3,
               measurementPath3,
               allSensors,
               TSDataType.INT32,
-              fragmentInstanceContext.getOperatorContexts().get(2),
               null,
               null,
               true);
@@ -263,7 +261,7 @@ public class TimeJoinOperatorTest {
 
       TimeJoinOperator timeJoinOperator =
           new TimeJoinOperator(
-              fragmentInstanceContext.getOperatorContexts().get(3),
+              driverContext.getOperatorContexts().get(3),
               Arrays.asList(seriesScanOperator1, seriesScanOperator2, seriesScanOperator3),
               Ordering.ASC,
               Arrays.asList(TSDataType.INT32, TSDataType.INT32, TSDataType.INT32),
@@ -324,24 +322,22 @@ public class TimeJoinOperatorTest {
           new FragmentInstanceStateMachine(instanceId, instanceNotificationExecutor);
       FragmentInstanceContext fragmentInstanceContext =
           createFragmentInstanceContext(instanceId, stateMachine);
+      DriverContext driverContext = new DriverContext(fragmentInstanceContext, 0);
       PlanNodeId planNodeId1 = new PlanNodeId("1");
-      fragmentInstanceContext.addOperatorContext(
-          1, planNodeId1, SeriesScanOperator.class.getSimpleName());
+      driverContext.addOperatorContext(1, planNodeId1, SeriesScanOperator.class.getSimpleName());
       PlanNodeId planNodeId2 = new PlanNodeId("2");
-      fragmentInstanceContext.addOperatorContext(
-          2, planNodeId2, SeriesScanOperator.class.getSimpleName());
+      driverContext.addOperatorContext(2, planNodeId2, SeriesScanOperator.class.getSimpleName());
       PlanNodeId planNodeId3 = new PlanNodeId("3");
-      fragmentInstanceContext.addOperatorContext(
-          3, planNodeId3, SeriesScanOperator.class.getSimpleName());
-      fragmentInstanceContext.addOperatorContext(
+      driverContext.addOperatorContext(3, planNodeId3, SeriesScanOperator.class.getSimpleName());
+      driverContext.addOperatorContext(
           4, new PlanNodeId("4"), TimeJoinOperator.class.getSimpleName());
       SeriesScanOperator seriesScanOperator1 =
           new SeriesScanOperator(
+              driverContext.getOperatorContexts().get(0),
               planNodeId1,
               measurementPath1,
               allSensors,
               TSDataType.INT32,
-              fragmentInstanceContext.getOperatorContexts().get(0),
               null,
               null,
               false);
@@ -354,11 +350,11 @@ public class TimeJoinOperatorTest {
           new MeasurementPath(TIME_JOIN_OPERATOR_TEST_SG + ".device0.sensor1", TSDataType.INT32);
       SeriesScanOperator seriesScanOperator2 =
           new SeriesScanOperator(
+              driverContext.getOperatorContexts().get(1),
               planNodeId2,
               measurementPath2,
               allSensors,
               TSDataType.INT32,
-              fragmentInstanceContext.getOperatorContexts().get(1),
               null,
               null,
               false);
@@ -372,11 +368,11 @@ public class TimeJoinOperatorTest {
               TIME_JOIN_OPERATOR_TEST_SG + ".device0.error_sensor", TSDataType.INT32);
       SeriesScanOperator seriesScanOperator3 =
           new SeriesScanOperator(
+              driverContext.getOperatorContexts().get(2),
               planNodeId3,
               measurementPath3,
               allSensors,
               TSDataType.INT32,
-              fragmentInstanceContext.getOperatorContexts().get(2),
               null,
               null,
               true);
@@ -387,7 +383,7 @@ public class TimeJoinOperatorTest {
 
       TimeJoinOperator timeJoinOperator =
           new TimeJoinOperator(
-              fragmentInstanceContext.getOperatorContexts().get(3),
+              driverContext.getOperatorContexts().get(3),
               Arrays.asList(seriesScanOperator1, seriesScanOperator2, seriesScanOperator3),
               Ordering.DESC,
               Arrays.asList(TSDataType.INT32, TSDataType.INT32, TSDataType.INT32),

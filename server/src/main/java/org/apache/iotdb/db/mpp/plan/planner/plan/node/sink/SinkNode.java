@@ -23,7 +23,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 
 public abstract class SinkNode extends PlanNode implements AutoCloseable {
 
-  public SinkNode(PlanNodeId id) {
+  protected SinkNode(PlanNodeId id) {
     super(id);
   }
 

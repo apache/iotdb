@@ -90,6 +90,7 @@ public class SumAccumulator implements Accumulator {
     if (finalResult.isNull(0)) {
       return;
     }
+    initResult = true;
     sumValue = finalResult.getDouble(0);
   }
 
@@ -145,7 +146,7 @@ public class SumAccumulator implements Accumulator {
       if (!curWindow.satisfy(column[0], i)) {
         return i;
       }
-      curWindow.mergeOnePoint();
+      curWindow.mergeOnePoint(column, i);
       if (!column[2].isNull(i)) {
         initResult = true;
         sumValue += column[2].getInt(i);
@@ -165,7 +166,7 @@ public class SumAccumulator implements Accumulator {
       if (!curWindow.satisfy(column[0], i)) {
         return i;
       }
-      curWindow.mergeOnePoint();
+      curWindow.mergeOnePoint(column, i);
       if (!column[2].isNull(i)) {
         initResult = true;
         sumValue += column[2].getLong(i);
@@ -185,7 +186,7 @@ public class SumAccumulator implements Accumulator {
       if (!curWindow.satisfy(column[0], i)) {
         return i;
       }
-      curWindow.mergeOnePoint();
+      curWindow.mergeOnePoint(column, i);
       if (!column[2].isNull(i)) {
         initResult = true;
         sumValue += column[2].getFloat(i);
@@ -205,7 +206,7 @@ public class SumAccumulator implements Accumulator {
       if (!curWindow.satisfy(column[0], i)) {
         return i;
       }
-      curWindow.mergeOnePoint();
+      curWindow.mergeOnePoint(column, i);
       if (!column[2].isNull(i)) {
         initResult = true;
         sumValue += column[2].getDouble(i);

@@ -57,7 +57,7 @@ public class CQInfo implements SnapshotProcessor {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(CQInfo.class);
 
-  private static final String snapshotFileName = "cq_info.snapshot";
+  private static final String SNAPSHOT_FILENAME = "cq_info.snapshot";
 
   private final Map<String, CQEntry> cqMap;
 
@@ -210,7 +210,7 @@ public class CQInfo implements SnapshotProcessor {
 
   @Override
   public boolean processTakeSnapshot(File snapshotDir) throws TException, IOException {
-    File snapshotFile = new File(snapshotDir, snapshotFileName);
+    File snapshotFile = new File(snapshotDir, SNAPSHOT_FILENAME);
     if (snapshotFile.exists() && snapshotFile.isFile()) {
       LOGGER.error(
           "Failed to take snapshot of CQInfo, because snapshot file [{}] is already exist.",
@@ -245,7 +245,7 @@ public class CQInfo implements SnapshotProcessor {
 
   @Override
   public void processLoadSnapshot(File snapshotDir) throws TException, IOException {
-    File snapshotFile = new File(snapshotDir, snapshotFileName);
+    File snapshotFile = new File(snapshotDir, SNAPSHOT_FILENAME);
     if (!snapshotFile.exists() || !snapshotFile.isFile()) {
       LOGGER.error(
           "Failed to load snapshot of CQInfo, snapshot file [{}] does not exist.",

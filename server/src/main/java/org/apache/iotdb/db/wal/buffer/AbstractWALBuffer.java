@@ -46,7 +46,7 @@ public abstract class AbstractWALBuffer implements IWALBuffer {
   /** current wal file log writer */
   protected volatile WALWriter currentWALFileWriter;
 
-  public AbstractWALBuffer(
+  protected AbstractWALBuffer(
       String identifier, String logDirectory, long startFileVersion, long startSearchIndex)
       throws FileNotFoundException {
     this.identifier = identifier;
@@ -84,6 +84,7 @@ public abstract class AbstractWALBuffer implements IWALBuffer {
     String currentName = currentFile.getName();
     currentWALFileWriter.close();
     WALManager.getInstance().addTotalDiskUsage(currentWALFileWriter.size());
+    WALManager.getInstance().addTotalFileNum(1);
     if (WALFileUtils.parseStatusCode(currentName) != fileStatus) {
       String targetName =
           WALFileUtils.getLogFileName(

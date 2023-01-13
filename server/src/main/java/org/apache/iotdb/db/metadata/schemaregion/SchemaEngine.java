@@ -60,7 +60,7 @@ public class SchemaEngine {
 
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
-  private Map<SchemaRegionId, ISchemaRegion> schemaRegionMap;
+  private volatile Map<SchemaRegionId, ISchemaRegion> schemaRegionMap;
   private SchemaEngineMode schemaRegionStoredMode;
 
   private ScheduledExecutorService timedForceMLogThread;
@@ -204,7 +204,7 @@ public class SchemaEngine {
         ISchemaRegion schemaRegion = future.get();
         schemaRegionMap.put(schemaRegion.getSchemaRegionId(), schemaRegion);
       } catch (ExecutionException | InterruptedException | RuntimeException e) {
-        logger.error("Something wrong happened during SchemaRegion recovery: " + e.getMessage());
+        logger.error("Something wrong happened during SchemaRegion recovery: {}", e.getMessage());
         e.printStackTrace();
       }
     }
@@ -214,6 +214,7 @@ public class SchemaEngine {
   }
 
   public void forceMlog() {
+    Map<SchemaRegionId, ISchemaRegion> schemaRegionMap = this.schemaRegionMap;
     if (schemaRegionMap != null) {
       for (ISchemaRegion schemaRegion : schemaRegionMap.values()) {
         schemaRegion.forceMlog();
@@ -277,9 +278,9 @@ public class SchemaEngine {
             createSchemaRegionWithoutExistenceCheck(storageGroup, schemaRegionId);
         timeRecord = System.currentTimeMillis() - timeRecord;
         logger.info(
-            String.format(
-                "Recover [%s] spend: %s ms",
-                storageGroup.concatNode(schemaRegionId.toString()), timeRecord));
+            "Recover [{}] spend: {} ms",
+            storageGroup.concatNode(schemaRegionId.toString()),
+            timeRecord);
         return schemaRegion;
       } catch (MetadataException e) {
         logger.error(

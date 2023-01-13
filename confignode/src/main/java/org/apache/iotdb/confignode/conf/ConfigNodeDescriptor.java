@@ -143,6 +143,9 @@ public class ConfigNodeDescriptor {
   }
 
   private void loadProperties(Properties properties) throws BadNodeUrlException, IOException {
+    conf.setClusterName(
+        properties.getProperty(IoTDBConstant.CLUSTER_NAME, conf.getClusterName()).trim());
+
     conf.setInternalAddress(
         properties
             .getProperty(IoTDBConstant.CN_INTERNAL_ADDRESS, conf.getInternalAddress())
@@ -303,6 +306,22 @@ public class ConfigNodeDescriptor {
             properties
                 .getProperty(
                     "cn_thrift_max_frame_size", String.valueOf(conf.getCnThriftMaxFrameSize()))
+                .trim()));
+
+    conf.setCoreClientNumForEachNode(
+        Integer.parseInt(
+            properties
+                .getProperty(
+                    "cn_core_client_count_for_each_node_in_client_manager",
+                    String.valueOf(conf.getCoreClientNumForEachNode()))
+                .trim()));
+
+    conf.setMaxClientNumForEachNode(
+        Integer.parseInt(
+            properties
+                .getProperty(
+                    "cn_max_client_count_for_each_node_in_client_manager",
+                    String.valueOf(conf.getMaxClientNumForEachNode()))
                 .trim()));
 
     conf.setSystemDir(properties.getProperty("cn_system_dir", conf.getSystemDir()).trim());
@@ -717,35 +736,29 @@ public class ConfigNodeDescriptor {
                     String.valueOf(conf.getRatisFirstElectionTimeoutMaxMs()))
                 .trim()));
 
-    conf.setConfigNodeRatisLogMaxMB(
+    conf.setConfigNodeRatisLogMax(
         Long.parseLong(
-                properties
-                    .getProperty(
-                        "config_node_ratis_log_max_size_mb",
-                        String.valueOf(conf.getConfigNodeRatisLogMaxMB()))
-                    .trim())
-            / 1024
-            / 1024);
+            properties
+                .getProperty(
+                    "config_node_ratis_log_max_size",
+                    String.valueOf(conf.getConfigNodeRatisLogMax()))
+                .trim()));
 
-    conf.setSchemaRegionRatisLogMaxMB(
+    conf.setSchemaRegionRatisLogMax(
         Long.parseLong(
-                properties
-                    .getProperty(
-                        "schema_region_ratis_log_max_size_mb",
-                        String.valueOf(conf.getSchemaRegionRatisLogMaxMB()))
-                    .trim())
-            / 1024
-            / 1024);
+            properties
+                .getProperty(
+                    "schema_region_ratis_log_max_size",
+                    String.valueOf(conf.getSchemaRegionRatisLogMax()))
+                .trim()));
 
-    conf.setDataRegionRatisLogMaxMB(
+    conf.setDataRegionRatisLogMax(
         Long.parseLong(
-                properties
-                    .getProperty(
-                        "data_region_ratis_log_max_size_mb",
-                        String.valueOf(conf.getDataRegionRatisLogMaxMB()))
-                    .trim())
-            / 1024
-            / 1024);
+            properties
+                .getProperty(
+                    "data_region_ratis_log_max_size",
+                    String.valueOf(conf.getDataRegionRatisLogMax()))
+                .trim()));
   }
 
   private void loadCQConfig(Properties properties) {
@@ -785,6 +798,8 @@ public class ConfigNodeDescriptor {
 
   /**
    * Check if the current ConfigNode is SeedConfigNode.
+   *
+   * <p>Notice: Only invoke this interface when first startup.
    *
    * @return True if the target_config_node_list points to itself
    */

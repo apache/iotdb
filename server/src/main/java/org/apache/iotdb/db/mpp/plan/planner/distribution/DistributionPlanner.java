@@ -33,6 +33,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.ExchangeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.sink.FragmentSinkNode;
 import org.apache.iotdb.db.mpp.plan.statement.crud.QueryStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.ShowQueriesStatement;
 
 import java.util.List;
 
@@ -51,7 +52,13 @@ public class DistributionPlanner {
 
   public PlanNode rewriteSource() {
     SourceRewriter rewriter = new SourceRewriter(this.analysis);
-    return rewriter.visit(logicalPlan.getRootNode(), new DistributionPlanContext(context));
+    List<PlanNode> planNodeList =
+        rewriter.visit(logicalPlan.getRootNode(), new DistributionPlanContext(context));
+    if (planNodeList.size() != 1) {
+      throw new IllegalStateException("root node must return only one");
+    } else {
+      return planNodeList.get(0);
+    }
   }
 
   public PlanNode addExchangeNode(PlanNode root) {
@@ -67,7 +74,8 @@ public class DistributionPlanner {
   public DistributedQueryPlan planFragments() {
     PlanNode rootAfterRewrite = rewriteSource();
     PlanNode rootWithExchange = addExchangeNode(rootAfterRewrite);
-    if (analysis.getStatement() instanceof QueryStatement) {
+    if (analysis.getStatement() instanceof QueryStatement
+        || analysis.getStatement() instanceof ShowQueriesStatement) {
       analysis
           .getRespDatasetHeader()
           .setColumnToTsBlockIndexMap(rootWithExchange.getOutputColumnNames());

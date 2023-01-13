@@ -24,12 +24,13 @@
     <parent>
         <artifactId>iotdb-parent</artifactId>
         <groupId>org.apache.iotdb</groupId>
-        <version>1.0.1-SNAPSHOT</version>
+        <version>1.1.0-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
     <artifactId>integration-test</artifactId>
     <properties>
         <integrationTest.forkCount>1</integrationTest.forkCount>
+        <integrationTest.threadCount>1</integrationTest.threadCount>
         <integrationTest.randomSelectWriteNode>true</integrationTest.randomSelectWriteNode>
         <integrationTest.readAndVerifyWithMultiNode>true</integrationTest.readAndVerifyWithMultiNode>
         <integrationTest.launchNodeInSameJVM>true</integrationTest.launchNodeInSameJVM>
@@ -65,7 +66,17 @@
         </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
+            <artifactId>iotdb-cli</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.iotdb</groupId>
             <artifactId>iotdb-confignode</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.iotdb</groupId>
+            <artifactId>library-udf</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
@@ -76,6 +87,47 @@
             <groupId>org.apache.iotdb</groupId>
             <artifactId>rewrite-tsfile-tool</artifactId>
             <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.awaitility</groupId>
+            <artifactId>awaitility</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.iotdb</groupId>
+            <artifactId>zeppelin-iotdb</artifactId>
+            <version>${project.version}</version>
+            <scope>test</scope>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.slf4j</groupId>
+                    <artifactId>slf4j-jcl</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.slf4j</groupId>
+                    <artifactId>slf4j-api</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.slf4j</groupId>
+                    <artifactId>slf4j-log4j12</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.zeppelin</groupId>
+            <artifactId>zeppelin-interpreter</artifactId>
+            <version>${zeppelin.version}</version>
+            <scope>test</scope>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.slf4j</groupId>
+                    <artifactId>slf4j-api</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.slf4j</groupId>
+                    <artifactId>slf4j-log4j12</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
     </dependencies>
     <dependencyManagement>
@@ -162,7 +214,7 @@
                             <excludedGroups>${integrationTest.excludedGroups}</excludedGroups>
                             <useSystemClassLoader>false</useSystemClassLoader>
                             <parallel>${integrationTest.parallelMode}</parallel>
-                            <threadCount>1</threadCount>
+                            <threadCount>${integrationTest.threadCount}</threadCount>
                             <forkCount>${integrationTest.forkCount}</forkCount>
                             <reuseForks>false</reuseForks>
                             <systemPropertyVariables>
@@ -179,7 +231,9 @@
                             <goal>verify</goal>
                         </goals>
                         <configuration>
-                            <skipTests>false</skipTests>
+                            <summaryFiles>
+                                <summaryFile>target/failsafe-reports/failsafe-summary-IT.xml</summaryFile>
+                            </summaryFiles>
                         </configuration>
                     </execution>
                 </executions>
@@ -213,7 +267,7 @@
                 <integrationTest.launchNodeInSameJVM>false</integrationTest.launchNodeInSameJVM>
                 <integrationTest.randomSelectWriteNode>false</integrationTest.randomSelectWriteNode>
                 <integrationTest.readAndVerifyWithMultiNode>false</integrationTest.readAndVerifyWithMultiNode>
-                <integrationTest.parallelMode>classes</integrationTest.parallelMode>
+                <integrationTest.parallelMode>suitesAndClasses</integrationTest.parallelMode>
             </properties>
             <activation>
                 <activeByDefault>true</activeByDefault>
@@ -240,7 +294,7 @@
                 <integrationTest.launchNodeInSameJVM>false</integrationTest.launchNodeInSameJVM>
                 <integrationTest.randomSelectWriteNode>true</integrationTest.randomSelectWriteNode>
                 <integrationTest.readAndVerifyWithMultiNode>true</integrationTest.readAndVerifyWithMultiNode>
-                <integrationTest.parallelMode>classes</integrationTest.parallelMode>
+                <integrationTest.parallelMode>suitesAndClasses</integrationTest.parallelMode>
             </properties>
             <activation>
                 <activeByDefault>false</activeByDefault>

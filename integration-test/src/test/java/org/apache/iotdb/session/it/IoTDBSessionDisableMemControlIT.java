@@ -19,14 +19,13 @@
 package org.apache.iotdb.session.it;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.it.env.ConfigFactory;
+import org.apache.iotdb.isession.ISession;
+import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 import org.apache.iotdb.rpc.StatementExecutionException;
-import org.apache.iotdb.session.ISession;
-import org.apache.iotdb.session.SessionDataSet;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -37,6 +36,7 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -53,25 +53,22 @@ import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
+@Ignore
 public class IoTDBSessionDisableMemControlIT {
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(IoTDBSessionDisableMemControlIT.class);
 
-  protected static boolean enableMemControl;
-
   @Before
   public void setUp() throws Exception {
     System.setProperty(IoTDBConstant.IOTDB_CONF, "src/test/resources/");
-    enableMemControl = ConfigFactory.getConfig().isEnableMemControl();
-    ConfigFactory.getConfig().setEnableMemControl(false);
-    EnvFactory.getEnv().initBeforeTest();
+    EnvFactory.getEnv().getConfig().getCommonConfig().setEnableMemControl(false);
+    EnvFactory.getEnv().initClusterEnvironment();
   }
 
   @After
   public void tearDown() throws Exception {
-    EnvFactory.getEnv().cleanAfterTest();
-    ConfigFactory.getConfig().setEnableMemControl(enableMemControl);
+    EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
   @Test

@@ -103,7 +103,7 @@ public class DataRegionStateMachine extends BaseStateMachine {
     } catch (Exception e) {
       logger.error(
           "Exception occurs when taking snapshot for {}-{} in {}",
-          region.getStorageGroupName(),
+          region.getDatabaseName(),
           region.getDataRegionId(),
           snapshotDir,
           e);
@@ -119,7 +119,7 @@ public class DataRegionStateMachine extends BaseStateMachine {
     } catch (Exception e) {
       logger.error(
           "Exception occurs when taking snapshot for {}-{} in {}",
-          region.getStorageGroupName(),
+          region.getDatabaseName(),
           region.getDataRegionId(),
           snapshotDir,
           e);
@@ -132,7 +132,7 @@ public class DataRegionStateMachine extends BaseStateMachine {
     DataRegion newRegion =
         new SnapshotLoader(
                 latestSnapshotRootDir.getAbsolutePath(),
-                region.getStorageGroupName(),
+                region.getDatabaseName(),
                 region.getDataRegionId())
             .loadSnapshotForStateMachine();
     if (newRegion == null) {
@@ -316,13 +316,13 @@ public class DataRegionStateMachine extends BaseStateMachine {
     try {
       return new SnapshotLoader(
               latestSnapshotRootDir.getAbsolutePath(),
-              region.getStorageGroupName(),
+              region.getDatabaseName(),
               region.getDataRegionId())
           .getSnapshotFileInfo().stream().map(File::toPath).collect(Collectors.toList());
     } catch (IOException e) {
       logger.error(
           "Meets error when getting snapshot files for {}-{}",
-          region.getStorageGroupName(),
+          region.getDatabaseName(),
           region.getDataRegionId(),
           e);
       return null;
@@ -450,7 +450,7 @@ public class DataRegionStateMachine extends BaseStateMachine {
     String snapshotDir =
         IoTDBDescriptor.getInstance().getConfig().getRatisDataRegionSnapshotDir()
             + File.separator
-            + region.getStorageGroupName()
+            + region.getDatabaseName()
             + "-"
             + region.getDataRegionId();
     try {

@@ -29,13 +29,17 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.net.URL;
 import java.net.URLClassLoader;
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /** ExtPipePluginRegister is used to manage the all External Pipe Plugin info. */
 public class ExtPipePluginRegister {
@@ -75,11 +79,17 @@ public class ExtPipePluginRegister {
     FileUtils.forceMkdir(file);
   }
 
+  private Collection<File> findAllJar(File directory) {
+    try (Stream<File> stream = FileUtils.streamFiles(directory, true, "jar")) {
+      return stream.collect(Collectors.toList());
+    } catch (IOException e) {
+      throw new UncheckedIOException(directory.toString(), e);
+    }
+  }
+
   private URL[] getPlugInJarURLs() throws IOException {
     HashSet<File> fileSet =
-        new HashSet<>(
-            FileUtils.listFiles(
-                SystemFileFactory.INSTANCE.getFile(extPipeDir), new String[] {"jar"}, true));
+        new HashSet<>(findAllJar(SystemFileFactory.INSTANCE.getFile(extPipeDir)));
     return FileUtils.toURLs(fileSet.toArray(new File[0]));
   }
 

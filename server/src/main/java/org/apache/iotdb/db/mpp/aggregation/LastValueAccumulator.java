@@ -130,7 +130,32 @@ public class LastValueAccumulator implements Accumulator {
   @Override
   public void setFinal(Column finalResult) {
     reset();
-    lastValue.setObject(finalResult.getObject(0));
+    if (!finalResult.isNull(0)) {
+      initResult = true;
+      switch (seriesDataType) {
+        case INT32:
+          lastValue.setInt(finalResult.getInt(0));
+          break;
+        case INT64:
+          lastValue.setLong(finalResult.getLong(0));
+          break;
+        case FLOAT:
+          lastValue.setFloat(finalResult.getFloat(0));
+          break;
+        case DOUBLE:
+          lastValue.setDouble(finalResult.getDouble(0));
+          break;
+        case TEXT:
+          lastValue.setBinary(finalResult.getBinary(0));
+          break;
+        case BOOLEAN:
+          lastValue.setBoolean(finalResult.getBoolean(0));
+          break;
+        default:
+          throw new UnSupportedDataTypeException(
+              String.format("Unsupported data type in LastValue: %s", seriesDataType));
+      }
+    }
   }
 
   // columnBuilder should be double in LastValueAccumulator
@@ -232,7 +257,7 @@ public class LastValueAccumulator implements Accumulator {
       if (!curWindow.satisfy(column[0], i)) {
         return i;
       }
-      curWindow.mergeOnePoint();
+      curWindow.mergeOnePoint(column, i);
       if (!column[2].isNull(i)) {
         updateIntLastValue(column[2].getInt(i), column[1].getLong(i));
       }
@@ -259,7 +284,7 @@ public class LastValueAccumulator implements Accumulator {
       if (!curWindow.satisfy(column[0], i)) {
         return i;
       }
-      curWindow.mergeOnePoint();
+      curWindow.mergeOnePoint(column, i);
       if (!column[2].isNull(i)) {
         updateLongLastValue(column[2].getLong(i), column[1].getLong(i));
       }
@@ -286,7 +311,7 @@ public class LastValueAccumulator implements Accumulator {
       if (!curWindow.satisfy(column[0], i)) {
         return i;
       }
-      curWindow.mergeOnePoint();
+      curWindow.mergeOnePoint(column, i);
       if (!column[2].isNull(i)) {
         updateFloatLastValue(column[2].getFloat(i), column[1].getLong(i));
       }
@@ -313,7 +338,7 @@ public class LastValueAccumulator implements Accumulator {
       if (!curWindow.satisfy(column[0], i)) {
         return i;
       }
-      curWindow.mergeOnePoint();
+      curWindow.mergeOnePoint(column, i);
       if (!column[2].isNull(i)) {
         updateDoubleLastValue(column[2].getDouble(i), column[1].getLong(i));
       }
@@ -340,7 +365,7 @@ public class LastValueAccumulator implements Accumulator {
       if (!curWindow.satisfy(column[0], i)) {
         return i;
       }
-      curWindow.mergeOnePoint();
+      curWindow.mergeOnePoint(column, i);
       if (!column[2].isNull(i)) {
         updateBooleanLastValue(column[2].getBoolean(i), column[1].getLong(i));
       }
@@ -367,7 +392,7 @@ public class LastValueAccumulator implements Accumulator {
       if (!curWindow.satisfy(column[0], i)) {
         return i;
       }
-      curWindow.mergeOnePoint();
+      curWindow.mergeOnePoint(column, i);
       if (!column[2].isNull(i)) {
         updateBinaryLastValue(column[2].getBinary(i), column[1].getLong(i));
       }

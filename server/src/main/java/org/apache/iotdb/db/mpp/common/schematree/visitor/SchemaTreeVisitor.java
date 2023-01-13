@@ -20,19 +20,19 @@
 package org.apache.iotdb.db.mpp.common.schematree.visitor;
 
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.commons.schema.tree.AbstractTreeVisitorWithLimitOffset;
+import org.apache.iotdb.commons.schema.tree.AbstractTreeVisitor;
 import org.apache.iotdb.db.mpp.common.schematree.node.SchemaNode;
 
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
-public abstract class SchemaTreeVisitor<R>
-    extends AbstractTreeVisitorWithLimitOffset<SchemaNode, R> {
+public abstract class SchemaTreeVisitor<R> extends AbstractTreeVisitor<SchemaNode, R> {
 
-  public SchemaTreeVisitor(
-      SchemaNode root, PartialPath pathPattern, int limit, int offset, boolean isPrefixMatch) {
-    super(root, pathPattern, limit, offset, isPrefixMatch);
+  protected SchemaTreeVisitor() {}
+
+  public SchemaTreeVisitor(SchemaNode root, PartialPath pathPattern, boolean isPrefixMatch) {
+    super(root, pathPattern, isPrefixMatch);
   }
 
   public List<R> getAllResult() {
@@ -44,7 +44,12 @@ public abstract class SchemaTreeVisitor<R>
   }
 
   @Override
-  protected boolean isInternalNode(SchemaNode node) {
+  protected boolean shouldVisitSubtreeOfInternalMatchedNode(SchemaNode node) {
+    return !node.isMeasurement();
+  }
+
+  @Override
+  protected boolean shouldVisitSubtreeOfFullMatchedNode(SchemaNode node) {
     return !node.isMeasurement();
   }
 

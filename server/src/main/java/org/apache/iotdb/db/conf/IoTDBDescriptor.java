@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.conf;
 
-import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
@@ -30,26 +29,25 @@ import org.apache.iotdb.confignode.rpc.thrift.TGlobalConfig;
 import org.apache.iotdb.confignode.rpc.thrift.TRatisConfig;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.StorageEngine;
-import org.apache.iotdb.db.engine.compaction.constant.CompactionPriority;
-import org.apache.iotdb.db.engine.compaction.constant.CrossCompactionPerformer;
-import org.apache.iotdb.db.engine.compaction.constant.CrossCompactionSelector;
-import org.apache.iotdb.db.engine.compaction.constant.InnerSeqCompactionPerformer;
-import org.apache.iotdb.db.engine.compaction.constant.InnerSequenceCompactionSelector;
-import org.apache.iotdb.db.engine.compaction.constant.InnerUnseqCompactionPerformer;
-import org.apache.iotdb.db.engine.compaction.constant.InnerUnsequenceCompactionSelector;
-import org.apache.iotdb.db.exception.BadNodeUrlFormatException;
+import org.apache.iotdb.db.engine.compaction.execute.performer.constant.CrossCompactionPerformer;
+import org.apache.iotdb.db.engine.compaction.execute.performer.constant.InnerSeqCompactionPerformer;
+import org.apache.iotdb.db.engine.compaction.execute.performer.constant.InnerUnseqCompactionPerformer;
+import org.apache.iotdb.db.engine.compaction.schedule.constant.CompactionPriority;
+import org.apache.iotdb.db.engine.compaction.selector.constant.CrossCompactionSelector;
+import org.apache.iotdb.db.engine.compaction.selector.constant.InnerSequenceCompactionSelector;
+import org.apache.iotdb.db.engine.compaction.selector.constant.InnerUnsequenceCompactionSelector;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.qp.utils.DateTimeUtils;
 import org.apache.iotdb.db.rescon.SystemInfo;
-import org.apache.iotdb.db.service.metrics.IoTDBInternalReporter;
+import org.apache.iotdb.db.service.metrics.IoTDBInternalLocalReporter;
+import org.apache.iotdb.db.utils.DateTimeUtils;
 import org.apache.iotdb.db.utils.datastructure.TVListSortAlgorithm;
 import org.apache.iotdb.db.wal.WALManager;
 import org.apache.iotdb.db.wal.utils.WALMode;
 import org.apache.iotdb.external.api.IPropertiesLoader;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.config.ReloadLevel;
-import org.apache.iotdb.metrics.reporter.iotdb.InternalIoTDBReporter;
-import org.apache.iotdb.metrics.reporter.iotdb.MemoryInternalIoTDBReporter;
+import org.apache.iotdb.metrics.reporter.iotdb.IoTDBInternalMemoryReporter;
+import org.apache.iotdb.metrics.reporter.iotdb.IoTDBInternalReporter;
 import org.apache.iotdb.metrics.utils.InternalReporterType;
 import org.apache.iotdb.rpc.RpcTransportFactory;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -58,7 +56,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSType;
 import org.apache.iotdb.tsfile.utils.FilePathUtils;
 
-import com.google.common.net.InetAddresses;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -66,10 +63,8 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.InetAddress;
 import java.net.MalformedURLException;
 import java.net.URL;
-import java.net.UnknownHostException;
 import java.util.Properties;
 import java.util.ServiceLoader;
 
@@ -193,7 +188,7 @@ public class IoTDBDescriptor {
         MetricConfigDescriptor.getInstance().loadProps(commonProperties);
         MetricConfigDescriptor.getInstance()
             .getMetricConfig()
-            .updateRpcInstance(conf.getRpcAddress(), conf.getRpcPort());
+            .updateRpcInstance(conf.getInternalAddress(), conf.getInternalPort());
       }
     } else {
       logger.warn(
@@ -204,15 +199,11 @@ public class IoTDBDescriptor {
 
   public void loadProperties(Properties properties) {
 
+    conf.setClusterName(
+        properties.getProperty(IoTDBConstant.CLUSTER_NAME, conf.getClusterName()).trim());
+
     conf.setRpcAddress(
         properties.getProperty(IoTDBConstant.DN_RPC_ADDRESS, conf.getRpcAddress()).trim());
-
-    // TODO: Use FQDN  to identify our nodes afterwards
-    try {
-      replaceHostnameWithIP();
-    } catch (Exception e) {
-      logger.info(String.format("replace hostname with ip failed, %s", e.getMessage()));
-    }
 
     conf.setRpcThriftCompressionEnable(
         Boolean.parseBoolean(
@@ -237,20 +228,20 @@ public class IoTDBDescriptor {
                     "dn_connection_timeout_ms", String.valueOf(conf.getConnectionTimeoutInMS()))
                 .trim()));
 
-    conf.setMaxConnectionForInternalService(
+    conf.setCoreClientNumForEachNode(
         Integer.parseInt(
             properties
                 .getProperty(
-                    "dn_max_connection_for_internal_service",
-                    String.valueOf(conf.getMaxConnectionForInternalService()))
+                    "dn_core_client_count_for_each_node_in_client_manager",
+                    String.valueOf(conf.getCoreClientNumForEachNode()))
                 .trim()));
 
-    conf.setCoreConnectionForInternalService(
+    conf.setMaxClientNumForEachNode(
         Integer.parseInt(
             properties
                 .getProperty(
-                    "dn_core_connection_for_internal_service",
-                    String.valueOf(conf.getCoreConnectionForInternalService()))
+                    "dn_max_client_count_for_each_node_in_client_manager",
+                    String.valueOf(conf.getMaxClientNumForEachNode()))
                 .trim()));
 
     conf.setSelectorNumOfClientManager(
@@ -339,8 +330,6 @@ public class IoTDBDescriptor {
 
     conf.setQueryDir(
         FilePathUtils.regularizePath(conf.getSystemDir() + IoTDBConstant.QUERY_FOLDER_NAME));
-
-    conf.setTracingDir(properties.getProperty("dn_tracing_dir", conf.getTracingDir()));
 
     conf.setDataDirs(properties.getProperty("dn_data_dirs", conf.getDataDirs()[0]).split(","));
 
@@ -562,29 +551,6 @@ public class IoTDBDescriptor {
       conf.setMaxAllowedConcurrentQueries(1000);
     }
 
-    conf.setSubRawQueryThreadCount(
-        Integer.parseInt(
-            properties.getProperty(
-                "sub_rawQuery_thread_count", Integer.toString(conf.getSubRawQueryThreadCount()))));
-
-    if (conf.getSubRawQueryThreadCount() <= 0) {
-      conf.setSubRawQueryThreadCount(Runtime.getRuntime().availableProcessors());
-    }
-
-    conf.setRawQueryBlockingQueueCapacity(
-        Integer.parseInt(
-            properties.getProperty(
-                "raw_query_blocking_queue_capacity",
-                Integer.toString(conf.getRawQueryBlockingQueueCapacity()))));
-
-    conf.setSchemaRegionDeviceNodeCacheSize(
-        Integer.parseInt(
-            properties
-                .getProperty(
-                    "schema_region_device_node_cache_size",
-                    Integer.toString(conf.getSchemaRegionDeviceNodeCacheSize()))
-                .trim()));
-
     conf.setmRemoteSchemaCacheSize(
         Integer.parseInt(
             properties
@@ -600,14 +566,6 @@ public class IoTDBDescriptor {
           Boolean.parseBoolean(properties.getProperty("chunk_buffer_pool_enable")));
     }
 
-    conf.setEnableExternalSort(
-        Boolean.parseBoolean(
-            properties.getProperty(
-                "enable_external_sort", Boolean.toString(conf.isEnableExternalSort()))));
-    conf.setExternalSortThreshold(
-        Integer.parseInt(
-            properties.getProperty(
-                "external_sort_threshold", Integer.toString(conf.getExternalSortThreshold()))));
     conf.setUpgradeThreadCount(
         Integer.parseInt(
             properties.getProperty(
@@ -644,7 +602,7 @@ public class IoTDBDescriptor {
     conf.setChunkPointNumLowerBoundInCompaction(
         Long.parseLong(
             properties.getProperty(
-                "chunk_size_lower_bound_in_compaction",
+                "chunk_point_num_lower_bound_in_compaction",
                 Long.toString(conf.getChunkPointNumLowerBoundInCompaction()))));
     conf.setChunkSizeLowerBoundInCompaction(
         Long.parseLong(
@@ -903,6 +861,14 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "select_into_insert_tablet_plan_row_limit",
                 String.valueOf(conf.getSelectIntoInsertTabletPlanRowLimit()))));
+    conf.setIntoOperationExecutionThreadCount(
+        Integer.parseInt(
+            properties.getProperty(
+                "into_operation_execution_thread_count",
+                String.valueOf(conf.getIntoOperationExecutionThreadCount()))));
+    if (conf.getIntoOperationExecutionThreadCount() <= 0) {
+      conf.setIntoOperationExecutionThreadCount(2);
+    }
 
     conf.setExtPipeDir(properties.getProperty("ext_pipe_dir", conf.getExtPipeDir()).trim());
 
@@ -1021,33 +987,6 @@ public class IoTDBDescriptor {
         Integer.parseInt(
             properties.getProperty(
                 "author_cache_expire_time", String.valueOf(conf.getAuthorCacheExpireTime()))));
-  }
-
-  // to keep consistent with the cluster module.
-  private void replaceHostnameWithIP() throws UnknownHostException, BadNodeUrlFormatException {
-    boolean isInvalidRpcIp = InetAddresses.isInetAddress(conf.getRpcAddress());
-    if (!isInvalidRpcIp) {
-      conf.setRpcAddress(InetAddress.getByName(conf.getRpcAddress()).getHostAddress());
-    }
-
-    boolean isInvalidInternalIp = InetAddresses.isInetAddress(conf.getInternalAddress());
-    if (!isInvalidInternalIp) {
-      conf.setInternalAddress(InetAddress.getByName(conf.getInternalAddress()).getHostAddress());
-    }
-
-    for (TEndPoint configNode : conf.getTargetConfigNodeList()) {
-      boolean isInvalidNodeIp = InetAddresses.isInetAddress(configNode.ip);
-      if (!isInvalidNodeIp) {
-        String newNodeIP = InetAddress.getByName(configNode.ip).getHostAddress();
-        configNode.setIp(newNodeIP);
-      }
-    }
-
-    logger.debug(
-        "after replace, the rpcIP={}, internalIP={}, configNodeUrls={}",
-        conf.getRpcAddress(),
-        conf.getInternalAddress(),
-        conf.getTargetConfigNodeList());
   }
 
   private void loadWALProps(Properties properties) {
@@ -1308,7 +1247,7 @@ public class IoTDBDescriptor {
             (int)
                 Math.min(
                     TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes(),
-                    conf.getMaxBytesPerQuery()));
+                    conf.getMaxBytesPerFragmentInstance()));
 
     TSFileDescriptor.getInstance()
         .getConfig()
@@ -1326,6 +1265,10 @@ public class IoTDBDescriptor {
 
     if (properties.getProperty(IoTDBConstant.MQTT_HOST_NAME) != null) {
       conf.setMqttHost(properties.getProperty(IoTDBConstant.MQTT_HOST_NAME));
+    } else {
+      logger.info("MQTT host is not configured, will use dn_rpc_address.");
+      conf.setMqttHost(
+          properties.getProperty(IoTDBConstant.DN_RPC_ADDRESS, conf.getRpcAddress().trim()));
     }
 
     if (properties.getProperty(IoTDBConstant.MQTT_PORT_NAME) != null) {
@@ -1472,7 +1415,6 @@ public class IoTDBDescriptor {
               properties.getProperty(
                   "merge_write_throughput_mb_per_sec",
                   Integer.toString(conf.getCompactionWriteThroughputMbPerSec()))));
-
       // update insert-tablet-plan's row limit for select-into
       conf.setSelectIntoInsertTabletPlanRowLimit(
           Integer.parseInt(
@@ -1544,12 +1486,12 @@ public class IoTDBDescriptor {
     ReloadLevel reloadLevel = MetricConfigDescriptor.getInstance().loadHotProps(commonProperties);
     logger.info("Reload metric service in level {}", reloadLevel);
     if (reloadLevel == ReloadLevel.RESTART_INTERNAL_REPORTER) {
-      InternalIoTDBReporter internalReporter;
+      IoTDBInternalReporter internalReporter;
       if (MetricConfigDescriptor.getInstance().getMetricConfig().getInternalReportType()
           == InternalReporterType.IOTDB) {
-        internalReporter = new IoTDBInternalReporter();
+        internalReporter = new IoTDBInternalLocalReporter();
       } else {
-        internalReporter = new MemoryInternalIoTDBReporter();
+        internalReporter = new IoTDBInternalMemoryReporter();
       }
       MetricService.getInstance().reloadInternalReporter(internalReporter);
     } else {
@@ -1746,11 +1688,6 @@ public class IoTDBDescriptor {
               Math.min(Float.parseFloat(memoryBudgetInMb), 0.2 * conf.getAllocateMemoryForRead()));
     }
 
-    String groupByFillCacheSizeInMB = properties.getProperty("group_by_fill_cache_size_in_mb");
-    if (groupByFillCacheSizeInMB != null) {
-      conf.setGroupByFillCacheSizeInMB(Float.parseFloat(groupByFillCacheSizeInMB));
-    }
-
     String readerTransformerCollectorMemoryProportion =
         properties.getProperty("udf_reader_transformer_collector_memory_proportion");
     if (readerTransformerCollectorMemoryProportion != null) {
@@ -1846,7 +1783,7 @@ public class IoTDBDescriptor {
         conf.setTargetConfigNodeList(NodeUrlUtils.parseTEndPointUrls(configNodeUrls));
       } catch (BadNodeUrlException e) {
         logger.error(
-            "Config nodes are set in wrong format, please set them like 127.0.0.1:22277,127.0.0.1:22281");
+            "Config nodes are set in wrong format, please set them like 127.0.0.1:10710,127.0.0.1:10712");
       }
     }
 
@@ -1982,8 +1919,8 @@ public class IoTDBDescriptor {
     conf.setRatisFirstElectionTimeoutMinMs(ratisConfig.getFirstElectionTimeoutMin());
     conf.setRatisFirstElectionTimeoutMaxMs(ratisConfig.getFirstElectionTimeoutMax());
 
-    conf.setSchemaRatisLogMaxMB(ratisConfig.getSchemaRegionRatisLogMax());
-    conf.setDataRatisLogMaxMB(ratisConfig.getDataRegionRatisLogMax());
+    conf.setSchemaRatisLogMax(ratisConfig.getSchemaRegionRatisLogMax());
+    conf.setDataRatisLogMax(ratisConfig.getDataRegionRatisLogMax());
   }
 
   public void loadCQConfig(TCQConfig cqConfig) {

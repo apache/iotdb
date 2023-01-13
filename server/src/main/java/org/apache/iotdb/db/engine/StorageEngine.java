@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.exception.ShutdownException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
@@ -340,7 +341,7 @@ public class StorageEngine implements IService {
     if (config.isEnableTimedFlushSeqMemtable()) {
       seqMemtableTimedFlushCheckThread =
           IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
-              ThreadName.TIMED_FlUSH_SEQ_MEMTABLE.getName());
+              ThreadName.TIMED_FLUSH_SEQ_MEMTABLE.getName());
       ScheduledExecutorUtil.safelyScheduleAtFixedRate(
           seqMemtableTimedFlushCheckThread,
           this::timedFlushSeqMemTable,
@@ -353,7 +354,7 @@ public class StorageEngine implements IService {
     if (config.isEnableTimedFlushUnseqMemtable()) {
       unseqMemtableTimedFlushCheckThread =
           IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
-              ThreadName.TIMED_FlUSH_UNSEQ_MEMTABLE.getName());
+              ThreadName.TIMED_FLUSH_UNSEQ_MEMTABLE.getName());
       ScheduledExecutorUtil.safelyScheduleAtFixedRate(
           unseqMemtableTimedFlushCheckThread,
           this::timedFlushUnseqMemTable,
@@ -391,9 +392,9 @@ public class StorageEngine implements IService {
     syncCloseAllProcessor();
     ThreadUtils.stopThreadPool(ttlCheckThread, ThreadName.TTL_CHECK_SERVICE);
     ThreadUtils.stopThreadPool(
-        seqMemtableTimedFlushCheckThread, ThreadName.TIMED_FlUSH_SEQ_MEMTABLE);
+        seqMemtableTimedFlushCheckThread, ThreadName.TIMED_FLUSH_SEQ_MEMTABLE);
     ThreadUtils.stopThreadPool(
-        unseqMemtableTimedFlushCheckThread, ThreadName.TIMED_FlUSH_UNSEQ_MEMTABLE);
+        unseqMemtableTimedFlushCheckThread, ThreadName.TIMED_FLUSH_UNSEQ_MEMTABLE);
     if (cachedThreadPool != null) {
       cachedThreadPool.shutdownNow();
     }
@@ -508,7 +509,7 @@ public class StorageEngine implements IService {
   public void closeStorageGroupProcessor(String storageGroupPath, boolean isSeq) {
     List<Future<Void>> tasks = new ArrayList<>();
     for (DataRegion dataRegion : dataRegionMap.values()) {
-      if (dataRegion.getStorageGroupName().equals(storageGroupPath)) {
+      if (dataRegion.getDatabaseName().equals(storageGroupPath)) {
         if (isSeq) {
           for (TsFileProcessor tsFileProcessor : dataRegion.getWorkSequenceTsFileProcessors()) {
             tasks.add(
@@ -653,15 +654,30 @@ public class StorageEngine implements IService {
             && config
                 .getDataRegionConsensusProtocolClass()
                 .equals(ConsensusFactory.IOT_CONSENSUS)) {
+          // delete wal
           WALManager.getInstance()
               .deleteWALNode(
-                  region.getStorageGroupName() + FILE_NAME_SEPARATOR + region.getDataRegionId());
+                  region.getDatabaseName() + FILE_NAME_SEPARATOR + region.getDataRegionId());
+          // delete snapshot
+          for (String dataDir : config.getDataDirs()) {
+            File regionSnapshotDir =
+                new File(
+                    dataDir + File.separator + IoTDBConstant.SNAPSHOT_FOLDER_NAME,
+                    region.getDatabaseName() + FILE_NAME_SEPARATOR + regionId.getId());
+            if (regionSnapshotDir.exists()) {
+              try {
+                FileUtils.deleteDirectory(regionSnapshotDir);
+              } catch (IOException e) {
+                logger.error("Failed to delete snapshot dir {}", regionSnapshotDir, e);
+              }
+            }
+          }
         }
         SyncService.getInstance().unregisterDataRegion(region.getDataRegionId());
       } catch (Exception e) {
         logger.error(
             "Error occurs when deleting data region {}-{}",
-            region.getStorageGroupName(),
+            region.getDatabaseName(),
             region.getDataRegionId(),
             e);
       } finally {

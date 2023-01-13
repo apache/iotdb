@@ -30,15 +30,16 @@ import org.apache.iotdb.db.mpp.aggregation.Aggregator;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.common.QueryId;
+import org.apache.iotdb.db.mpp.execution.driver.DriverContext;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceStateMachine;
 import org.apache.iotdb.db.mpp.execution.operator.source.AlignedSeriesAggregationScanOperator;
 import org.apache.iotdb.db.mpp.execution.operator.source.SeriesScanOperator;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationStep;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
-import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
@@ -618,10 +619,10 @@ public class AlignedSeriesAggregationScanOperatorTest {
         new FragmentInstanceStateMachine(instanceId, instanceNotificationExecutor);
     FragmentInstanceContext fragmentInstanceContext =
         createFragmentInstanceContext(instanceId, stateMachine);
+    DriverContext driverContext = new DriverContext(fragmentInstanceContext, 0);
     PlanNodeId planNodeId = new PlanNodeId("1");
-    fragmentInstanceContext.addOperatorContext(
-        1, planNodeId, SeriesScanOperator.class.getSimpleName());
-    fragmentInstanceContext
+    driverContext.addOperatorContext(1, planNodeId, SeriesScanOperator.class.getSimpleName());
+    driverContext
         .getOperatorContexts()
         .forEach(operatorContext -> operatorContext.setMaxRunTime(TEST_TIME_SLICE));
 
@@ -629,7 +630,7 @@ public class AlignedSeriesAggregationScanOperatorTest {
         new AlignedSeriesAggregationScanOperator(
             planNodeId,
             alignedPath,
-            fragmentInstanceContext.getOperatorContexts().get(0),
+            driverContext.getOperatorContexts().get(0),
             aggregators,
             initTimeRangeIterator(groupByTimeParameter, ascending, true),
             timeFilter,

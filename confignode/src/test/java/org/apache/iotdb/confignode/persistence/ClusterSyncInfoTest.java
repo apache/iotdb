@@ -82,10 +82,24 @@ public class ClusterSyncInfoTest {
   }
 
   @Test
-  public void testSnapshot() throws Exception {
-    prepareClusterSyncInfo();
+  public void testEmptySnapshot() throws Exception {
+    // test empty snapshot
+    Assert.assertTrue(clusterSyncInfo.processTakeSnapshot(snapshotDir));
+    ClusterSyncInfo clusterSyncInfo2 = new ClusterSyncInfo();
+    clusterSyncInfo2.processLoadSnapshot(snapshotDir);
 
-    clusterSyncInfo.processTakeSnapshot(snapshotDir);
+    List<PipeSink> expectedPipeSink =
+        clusterSyncInfo.getPipeSink(new GetPipeSinkPlan()).getPipeSinkList();
+    List<PipeSink> actualPipeSink =
+        clusterSyncInfo2.getPipeSink(new GetPipeSinkPlan()).getPipeSinkList();
+    Assert.assertEquals(expectedPipeSink, actualPipeSink);
+  }
+
+  @Test
+  public void testSnapshot() throws Exception {
+    // test snapshot with data
+    prepareClusterSyncInfo();
+    Assert.assertTrue(clusterSyncInfo.processTakeSnapshot(snapshotDir));
     ClusterSyncInfo clusterSyncInfo2 = new ClusterSyncInfo();
     clusterSyncInfo2.processLoadSnapshot(snapshotDir);
 

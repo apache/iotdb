@@ -30,7 +30,6 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertTabletNode;
-import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.wal.utils.TsFileUtilsForRecoverTest;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -94,44 +93,6 @@ public class TsFilePlanRedoerTest {
     prevIsEnablePartialInsert = IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert();
     IoTDBDescriptor.getInstance().getConfig().setEnablePartialInsert(true);
     compressionType = TSFileDescriptor.getInstance().getConfig().getCompressor();
-    IoTDB.schemaProcessor.setStorageGroup(new PartialPath(SG_NAME));
-    IoTDB.schemaProcessor.createTimeseries(
-        new PartialPath(DEVICE1_NAME.concat(".s1")),
-        TSDataType.INT32,
-        TSEncoding.RLE,
-        TSFileDescriptor.getInstance().getConfig().getCompressor(),
-        Collections.emptyMap());
-    IoTDB.schemaProcessor.createTimeseries(
-        new PartialPath(DEVICE1_NAME.concat(".s2")),
-        TSDataType.INT64,
-        TSEncoding.RLE,
-        TSFileDescriptor.getInstance().getConfig().getCompressor(),
-        Collections.emptyMap());
-    IoTDB.schemaProcessor.createTimeseries(
-        new PartialPath(DEVICE2_NAME.concat(".s1")),
-        TSDataType.FLOAT,
-        TSEncoding.RLE,
-        TSFileDescriptor.getInstance().getConfig().getCompressor(),
-        Collections.emptyMap());
-    IoTDB.schemaProcessor.createTimeseries(
-        new PartialPath(DEVICE2_NAME.concat(".s2")),
-        TSDataType.DOUBLE,
-        TSEncoding.RLE,
-        TSFileDescriptor.getInstance().getConfig().getCompressor(),
-        Collections.emptyMap());
-    IoTDB.schemaProcessor.createAlignedTimeSeries(
-        new PartialPath(DEVICE3_NAME),
-        Arrays.asList("s1", "s2", "s3", "s4", "s5"),
-        Arrays.asList(
-            TSDataType.INT32,
-            TSDataType.INT64,
-            TSDataType.BOOLEAN,
-            TSDataType.FLOAT,
-            TSDataType.TEXT),
-        Arrays.asList(
-            TSEncoding.RLE, TSEncoding.RLE, TSEncoding.RLE, TSEncoding.RLE, TSEncoding.PLAIN),
-        Arrays.asList(
-            compressionType, compressionType, compressionType, compressionType, compressionType));
   }
 
   @After
@@ -634,9 +595,6 @@ public class TsFilePlanRedoerTest {
 
   @Test
   public void testRedoAlignedInsertAfterDeleteTimeseries() throws Exception {
-    // some timeseries have been deleted
-    IoTDB.schemaProcessor.deleteTimeseries(new PartialPath(DEVICE3_NAME.concat(".s1")));
-    IoTDB.schemaProcessor.deleteTimeseries(new PartialPath(DEVICE3_NAME.concat(".s5")));
     // generate .tsfile and update resource in memory
     File file = new File(FILE_NAME);
     generateCompleteFile(file);

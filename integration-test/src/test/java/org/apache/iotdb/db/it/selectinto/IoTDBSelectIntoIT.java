@@ -45,9 +45,6 @@ import static org.junit.Assert.fail;
 @Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBSelectIntoIT {
 
-  protected static int selectIntoInsertTabletPlanRowLimit;
-  protected static int numOfPointsPerPage;
-
   protected static final String[] SQLs =
       new String[] {
         "CREATE DATABASE root.sg",
@@ -106,13 +103,14 @@ public class IoTDBSelectIntoIT {
 
   @BeforeClass
   public static void setUp() throws Exception {
-    EnvFactory.getEnv().initBeforeClass();
+    EnvFactory.getEnv().getConfig().getCommonConfig().setQueryThreadCount(1);
+    EnvFactory.getEnv().initClusterEnvironment();
     prepareData(SQLs);
   }
 
   @AfterClass
   public static void tearDown() throws Exception {
-    EnvFactory.getEnv().cleanAfterClass();
+    EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
   // -------------------------------------- ALIGN BY TIME ---------------------------------------

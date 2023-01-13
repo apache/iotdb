@@ -206,6 +206,8 @@ public class SerializeUtils {
                 case INT32:
                   values[j] = new TsPrimitiveType.TsInt(buffer.getInt());
                   break;
+                default:
+                  break;
               }
             }
           }
@@ -302,6 +304,9 @@ public class SerializeUtils {
           break;
         case DOUBLE:
           serializeDoubleTVPairs(timeValuePairs, dataOutputStream);
+          break;
+        default:
+          break;
       }
     } catch (IOException ignored) {
       // unreachable
@@ -353,6 +358,9 @@ public class SerializeUtils {
           if (timeValuePair.getTimestamp() != Long.MIN_VALUE) {
             dataOutputStream.writeDouble(timeValuePair.getValue().getDouble());
           }
+          break;
+        default:
+          break;
       }
     } catch (IOException e) {
       // unreachable
@@ -463,6 +471,8 @@ public class SerializeUtils {
       case TEXT:
         deserializeTextTVPairs(buffer, ret, size, dataType);
         break;
+      default:
+        break;
     }
     return ret;
   }
@@ -493,8 +503,9 @@ public class SerializeUtils {
         buffer.get(bytes);
         TsPrimitiveType primitiveType = TsPrimitiveType.getByType(dataType, new Binary(bytes));
         return new TimeValuePair(time, primitiveType);
+      default:
+        return null;
     }
-    return null;
   }
 
   public static ByteBuffer serializeFilter(Filter filter) {

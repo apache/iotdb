@@ -47,12 +47,12 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesAggregationSc
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationStep;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.CrossSeriesAggregationDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.OrderByParameter;
 import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.db.mpp.plan.statement.component.SortItem;
 import org.apache.iotdb.db.mpp.plan.statement.component.SortKey;
-import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
@@ -255,7 +255,7 @@ public class QueryLogicalPlanUtil {
   static {
     String sql =
         "SELECT * FROM root.sg.* WHERE time > 100 and s1 > 10 "
-            + "ORDER BY TIME DESC LIMIT 100 OFFSET 100 ALIGN BY DEVICE";
+            + "ORDER BY DEVICE,TIME DESC LIMIT 100 OFFSET 100 ALIGN BY DEVICE";
 
     QueryId queryId = new QueryId("test");
     List<PlanNode> sourceNodeList1 = new ArrayList<>();
@@ -659,7 +659,7 @@ public class QueryLogicalPlanUtil {
   static {
     String sql =
         "SELECT count(s1), max_value(s2), last_value(s1) FROM root.sg.* WHERE time > 100 "
-            + "ORDER BY TIME DESC LIMIT 100 OFFSET 100 ALIGN BY DEVICE";
+            + "ORDER BY DEVICE,TIME DESC LIMIT 100 OFFSET 100 ALIGN BY DEVICE";
 
     QueryId queryId = new QueryId("test");
     Filter timeFilter = TimeFilter.gt(100);
@@ -892,7 +892,7 @@ public class QueryLogicalPlanUtil {
   static {
     String sql =
         "SELECT count(s1), max_value(s2), last_value(s1) FROM root.sg.* WHERE time > 100 and s2 > 10 "
-            + "ORDER BY TIME DESC LIMIT 100 OFFSET 100 ALIGN BY DEVICE";
+            + "ORDER BY DEVICE,TIME DESC LIMIT 100 OFFSET 100 ALIGN BY DEVICE";
 
     QueryId queryId = new QueryId("test");
     List<PlanNode> sourceNodeList1 = new ArrayList<>();
@@ -907,9 +907,7 @@ public class QueryLogicalPlanUtil {
             (MeasurementPath) schemaMap.get("root.sg.d1.s2"),
             Ordering.DESC));
     sourceNodeList1.forEach(
-        planNode -> {
-          ((SeriesScanNode) planNode).setTimeFilter(TimeFilter.gt(100));
-        });
+        planNode -> ((SeriesScanNode) planNode).setTimeFilter(TimeFilter.gt(100)));
 
     TimeJoinNode timeJoinNode1 =
         new TimeJoinNode(queryId.genPlanNodeId(), Ordering.DESC, sourceNodeList1);

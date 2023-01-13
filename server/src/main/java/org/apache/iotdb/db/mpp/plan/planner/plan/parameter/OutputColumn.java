@@ -47,7 +47,7 @@ public class OutputColumn {
 
   public OutputColumn(List<InputLocation> sourceLocations, boolean overlapped) {
     checkArgument(
-        sourceLocations != null && sourceLocations.size() > 0,
+        sourceLocations != null && !sourceLocations.isEmpty(),
         "size of sourceLocations should be larger than 0");
     this.sourceLocations = sourceLocations;
     this.overlapped = overlapped;

@@ -62,16 +62,16 @@ public class IoTDBTriggerManagementIT {
       "org.apache.iotdb.db.trigger.example.TriggerFireTimesCounter";
 
   private static final String STATELESS_TRIGGER_BEFORE_INSERTION_PREFIX =
-      "statelessTriggerBeforeInsertion_";
+      "statelessTriggerBeforeInsertionTriggerManagement_";
 
   private static final String STATELESS_TRIGGER_AFTER_INSERTION_PREFIX =
-      "statelessTriggerAfterInsertion_";
+      "statelessTriggerAfterInsertionTriggerManagement_";
 
   private static final String STATEFUL_TRIGGER_BEFORE_INSERTION_PREFIX =
-      "statefulTriggerBeforeInsertion_";
+      "statefulTriggerBeforeInsertionTriggerManagement_";
 
   private static final String STATEFUL_TRIGGER_AFTER_INSERTION_PREFIX =
-      "statefulTriggerAfterInsertion_";
+      "statefulTriggerAfterInsertionTriggerManagement_";
 
   private static final String STATEFUL = "STATEFUL";
 
@@ -85,13 +85,13 @@ public class IoTDBTriggerManagementIT {
 
   @Before
   public void setUp() throws Exception {
-    EnvFactory.getEnv().initBeforeClass();
+    EnvFactory.getEnv().initClusterEnvironment();
     createTimeSeries();
   }
 
   @After
   public void tearDown() throws Exception {
-    EnvFactory.getEnv().cleanAfterClass();
+    EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
   private static void createTimeSeries() {

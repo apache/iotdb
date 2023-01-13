@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.mpp.execution.exchange;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.commons.client.ClientPoolFactory;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeMPPDataExchangeServiceClient;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
@@ -30,7 +31,6 @@ import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.service.ThriftService;
 import org.apache.iotdb.commons.service.ThriftServiceThread;
 import org.apache.iotdb.commons.service.metric.MetricService;
-import org.apache.iotdb.db.client.DataNodeClientPoolFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.execution.memory.LocalMemoryManager;
@@ -69,8 +69,7 @@ public class MPPDataExchangeService extends ThriftService implements MPPDataExch
             executorService,
             new IClientManager.Factory<TEndPoint, SyncDataNodeMPPDataExchangeServiceClient>()
                 .createClientManager(
-                    new DataNodeClientPoolFactory
-                        .SyncDataNodeMPPDataExchangeServiceClientPoolFactory()));
+                    new ClientPoolFactory.SyncDataNodeMPPDataExchangeServiceClientPoolFactory()));
     LOGGER.info("MPPDataExchangeManager init successfully");
   }
 

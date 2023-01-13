@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.it.schema;
 
 import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
-import org.apache.iotdb.it.env.ConfigFactory;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
@@ -46,17 +45,13 @@ import static org.junit.Assert.fail;
 @Category({ClusterIT.class})
 public class IoTDBDeleteAlignedTimeseriesIT {
 
-  private long memtableSizeThreshold;
-
   private Statement statement;
   private Connection connection;
 
   @Before
   public void setUp() throws ClassNotFoundException, SQLException, InterruptedException {
-    memtableSizeThreshold = ConfigFactory.getConfig().getMemtableSizeThreshold();
-    ConfigFactory.getConfig().setMemtableSizeThreshold(2);
-
-    EnvFactory.getEnv().initBeforeTest();
+    EnvFactory.getEnv().getConfig().getCommonConfig().setMemtableSizeThreshold(2);
+    EnvFactory.getEnv().initClusterEnvironment();
 
     connection = EnvFactory.getEnv().getConnection();
     statement = connection.createStatement();
@@ -66,8 +61,7 @@ public class IoTDBDeleteAlignedTimeseriesIT {
   public void tearDown() throws Exception {
     statement.close();
     connection.close();
-    EnvFactory.getEnv().cleanAfterTest();
-    ConfigFactory.getConfig().setMemtableSizeThreshold(memtableSizeThreshold);
+    EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
   @Test

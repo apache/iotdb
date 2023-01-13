@@ -1384,6 +1384,15 @@ Different configuration parameters take effect in the following three ways:
 |   Default   | 10000                                                        |
 |  Effective  | hot-load                                                      |
 
+* into\_operation\_execution\_thread\_count
+
+|    Name     | into\_operation\_execution\_thread\_count                     |
+| :---------: | :------------------------------------------------------------ |
+| Description | The number of threads in the thread pool that execute insert-tablet tasks |
+|    Type     | int32                                                         |
+|   Default   | 2                                                             |
+|  Effective  | After restarting system                                       |
+
 ### Continuous Query
 
 * continuous\_query\_execution\_thread
