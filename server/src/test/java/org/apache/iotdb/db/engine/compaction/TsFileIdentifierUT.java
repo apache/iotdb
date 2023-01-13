@@ -159,7 +159,7 @@ public class TsFileIdentifierUT {
     IoTDBConfig config = IoTDBDescriptor.getInstance().getConf();
     String[] originDataDirs = config.getDnDataDirs();
     Class configClass = config.getClass();
-    Field dataDirField = configClass.getDeclaredField("dataDirs");
+    Field dataDirField = configClass.getDeclaredField("dnDataDirs");
     dataDirField.setAccessible(true);
     dataDirField.set(
         config,

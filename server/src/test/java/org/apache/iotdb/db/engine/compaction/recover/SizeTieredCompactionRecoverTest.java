@@ -168,7 +168,7 @@ public class SizeTieredCompactionRecoverTest {
 
   public void setDataDirs(String[] dataDirs) throws Exception {
     Class configClass = config.getClass();
-    Field dataDirsField = configClass.getDeclaredField("dataDirs");
+    Field dataDirsField = configClass.getDeclaredField("dnDataDirs");
     dataDirsField.setAccessible(true);
     dataDirsField.set(config, dataDirs);
   }

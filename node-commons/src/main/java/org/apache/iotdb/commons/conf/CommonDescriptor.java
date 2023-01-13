@@ -738,7 +738,7 @@ public class CommonDescriptor {
     CONF.setMaxTsBlockSizeInBytes(
         Integer.parseInt(
             properties.getProperty(
-                "max_ts_block_size_in_bytes", Integer.toString(CONF.getMaxTsBlockLineNumber()))));
+                "max_ts_block_size_in_bytes", Integer.toString(CONF.getMaxTsBlockSizeInBytes()))));
     TSFileDescriptor.getInstance()
         .getConfig()
         .setMaxTsBlockSizeInBytes(CONF.getMaxTsBlockSizeInBytes());
