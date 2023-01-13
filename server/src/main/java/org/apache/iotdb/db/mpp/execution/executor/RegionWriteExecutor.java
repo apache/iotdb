@@ -521,7 +521,10 @@ public class RegionWriteExecutor {
         InternalCreateMultiTimeSeriesNode node, WritePlanNodeExecutionContext context) {
       ISchemaRegion schemaRegion =
           SchemaEngine.getInstance().getSchemaRegion((SchemaRegionId) context.getRegionId());
-      if (config.getSchemaRegionConsensusProtocolClass().equals(ConsensusFactory.RATIS_CONSENSUS)) {
+      if (COMMON_CONFIG
+          .getSchemaRegionConsensusProtocolClass()
+          .getProtocol()
+          .equals(ConsensusFactory.RATIS_CONSENSUS)) {
         context.getRegionWriteValidationRWLock().writeLock().lock();
         try {
           List<TSStatus> failingStatus = new ArrayList<>();
