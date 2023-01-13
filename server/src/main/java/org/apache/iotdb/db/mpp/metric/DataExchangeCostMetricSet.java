@@ -30,7 +30,7 @@ import org.apache.iotdb.metrics.utils.MetricType;
 import java.util.HashMap;
 import java.util.Map;
 
-public class DataExchangeMetricSet implements IMetricSet {
+public class DataExchangeCostMetricSet implements IMetricSet {
 
   private static final String metric = Metric.DATA_EXCHANGE_COST.toString();
 
@@ -170,19 +170,12 @@ public class DataExchangeMetricSet implements IMetricSet {
             "server"));
   }
 
-  public static final String GET_DATA_BLOCK_NUM = "get_data_block_num";
-
   @Override
   public void bindTo(AbstractMetricService metricService) {
     for (MetricInfo metricInfo : metricInfoMap.values()) {
       metricService.getOrCreateTimer(
           metricInfo.getName(), MetricLevel.IMPORTANT, metricInfo.getTagsInArray());
     }
-    metricService.getOrCreateHistogram(
-        Metric.DATA_EXCHANGE_COUNT.toString(),
-        MetricLevel.IMPORTANT,
-        Tag.NAME.toString(),
-        GET_DATA_BLOCK_NUM);
   }
 
   @Override
@@ -190,6 +183,5 @@ public class DataExchangeMetricSet implements IMetricSet {
     for (MetricInfo metricInfo : metricInfoMap.values()) {
       metricService.remove(MetricType.TIMER, metric, metricInfo.getTagsInArray());
     }
-    metricService.remove(MetricType.HISTOGRAM, metric, Tag.NAME.toString(), GET_DATA_BLOCK_NUM);
   }
 }
