@@ -50,8 +50,6 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
@@ -61,17 +59,12 @@ import java.util.Arrays;
 @Category({ClusterIT.class})
 public class IoTDBClusterNodeErrorStartUpIT {
 
-  private static final Logger logger =
-      LoggerFactory.getLogger(IoTDBClusterNodeErrorStartUpIT.class);
-
   private static final int testConfigNodeNum = 3;
   private static final int testDataNodeNum = 1;
-  private static final int testNodeNum = testConfigNodeNum + testDataNodeNum;
   private static final String testConsensusProtocolClass = ConsensusFactory.RATIS_CONSENSUS;
 
   private static final String TEST_CLUSTER_NAME = "defaultCluster";
   private static final String ERROR_CLUSTER_NAME = "errorCluster";
-  private static final int maxRetryTimes = 60;
 
   @Before
   public void setUp() throws Exception {
@@ -327,28 +320,5 @@ public class IoTDBClusterNodeErrorStartUpIT {
                   EnvFactory.getEnv().getDataNodeWrapper(0)),
               Arrays.asList(NodeStatus.Running, NodeStatus.Running));
     }
-  }
-
-  private String showClusterStatus(TShowClusterResp showClusterResp) {
-    StringBuilder sb = new StringBuilder();
-    showClusterResp
-        .getConfigNodeList()
-        .forEach(
-            d ->
-                sb.append("ConfigNode")
-                    .append(d.getInternalEndPoint().getPort())
-                    .append(": ")
-                    .append(showClusterResp.getNodeStatus().get(d.getConfigNodeId()))
-                    .append("\n"));
-    showClusterResp
-        .getDataNodeList()
-        .forEach(
-            d ->
-                sb.append("DataNode")
-                    .append(d.getClientRpcEndPoint().getPort())
-                    .append(": ")
-                    .append(showClusterResp.getNodeStatus().get(d.getDataNodeId()))
-                    .append("\n"));
-    return sb.toString();
   }
 }
