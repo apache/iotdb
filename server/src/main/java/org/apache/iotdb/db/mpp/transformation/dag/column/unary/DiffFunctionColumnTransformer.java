@@ -42,10 +42,9 @@ public class DiffFunctionColumnTransformer extends UnaryColumnTransformer {
   }
 
   @Override
-  protected final void doTransform(Column column, ColumnBuilder columnBuilder) {
+  protected void doTransform(Column column, ColumnBuilder columnBuilder) {
     for (int i = 0, n = column.getPositionCount(); i < n; i++) {
-      boolean currValueIsNull = column.isNull(i);
-      if (currValueIsNull) {
+      if (column.isNull(i)) {
         columnBuilder.appendNull(); // currValue is null, append null
 
         // When currValue is null:

@@ -21,12 +21,19 @@ package org.apache.iotdb.db.mpp.transformation.dag.transformer.unary;
 
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.mpp.transformation.api.LayerPointReader;
+import org.apache.iotdb.db.mpp.transformation.api.YieldableState;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.io.IOException;
 
 public class DiffFunctionTransformer extends UnaryTransformer {
   private final boolean ignoreNull;
+
+  // cache the last non-null value
+  private double lastValue;
+
+  // indicate whether lastValue is null
+  private boolean lastValueIsNull = true;
 
   public DiffFunctionTransformer(LayerPointReader layerPointReader, boolean ignoreNull) {
     super(layerPointReader);
@@ -35,27 +42,62 @@ public class DiffFunctionTransformer extends UnaryTransformer {
 
   @Override
   public TSDataType getDataType() {
-    return layerPointReaderDataType;
+    return TSDataType.DOUBLE;
+  }
+
+  @Override
+  public final YieldableState yieldValue() throws IOException, QueryProcessException {
+    final YieldableState yieldableState = layerPointReader.yield();
+    if (!YieldableState.YIELDABLE.equals(yieldableState)) {
+      return yieldableState;
+    }
+
+    if (!isLayerPointReaderConstant) {
+      cachedTime = layerPointReader.currentTime();
+    }
+
+    transformAndCache();
+
+    layerPointReader.readyForNext();
+    return YieldableState.YIELDABLE;
   }
 
   @Override
   protected void transformAndCache() throws QueryProcessException, IOException {
-    switch (layerPointReaderDataType) {
-      case INT32:
-        cachedInt = -layerPointReader.currentInt();
-        break;
-      case INT64:
-        cachedLong = -layerPointReader.currentLong();
-        break;
-      case FLOAT:
-        cachedFloat = -layerPointReader.currentFloat();
-        break;
-      case DOUBLE:
-        cachedDouble = -layerPointReader.currentDouble();
-        break;
-      default:
-        throw new QueryProcessException(
-            "Unsupported data type: " + layerPointReader.getDataType().toString());
+    if (layerPointReader.isCurrentNull()) {
+      currentNull = true; // currValue is null, append null
+
+      // When currValue is null:
+      // ignoreNull = true, keep lastValueIsNull as before
+      // ignoreNull = false, update lastValueIsNull to true
+      lastValueIsNull |= !ignoreNull;
+    } else {
+      double currValue;
+      switch (layerPointReaderDataType) {
+        case INT32:
+          currValue = layerPointReader.currentInt();
+          break;
+        case INT64:
+          currValue = layerPointReader.currentLong();
+          break;
+        case FLOAT:
+          currValue = layerPointReader.currentFloat();
+          break;
+        case DOUBLE:
+          currValue = layerPointReader.currentDouble();
+          break;
+        default:
+          throw new QueryProcessException(
+              "Unsupported data type: " + layerPointReader.getDataType().toString());
+      }
+      if (lastValueIsNull) {
+        currentNull = true; // lastValue is null, append null
+      } else {
+        cachedDouble = currValue - lastValue;
+      }
+
+      lastValue = currValue; // currValue is not null, update lastValue
+      lastValueIsNull = false;
     }
   }
 }

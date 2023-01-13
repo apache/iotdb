@@ -221,7 +221,8 @@ public class ColumnTransformerVisitor
           context.leafList.add(identity);
           context.cache.put(functionExpression, identity);
         } else if (functionExpression.isBuiltInScalarFunction()) {
-          visitBuiltInScalarFunctionExpression(functionExpression, context);
+          context.cache.put(
+              functionExpression, getBuiltInScalarFunctionTransformer(functionExpression, context));
         } else {
           ColumnTransformer[] inputColumnTransformers =
               expressions.stream()
@@ -258,26 +259,22 @@ public class ColumnTransformerVisitor
     return res;
   }
 
-  private ColumnTransformer visitBuiltInScalarFunctionExpression(
+  private ColumnTransformer getBuiltInScalarFunctionTransformer(
       FunctionExpression expression, ColumnTransformerVisitorContext context) {
     ColumnTransformer childColumnTransformer =
         this.process(expression.getExpressions().get(0), context);
-    ColumnTransformer res;
+
     switch (expression.getFunctionName()) {
       case SqlConstant.DIFF:
-        res =
-            new DiffFunctionColumnTransformer(
-                TypeFactory.getType(TSDataType.DOUBLE),
-                childColumnTransformer,
-                Boolean.parseBoolean(
-                    expression.getFunctionAttributes().getOrDefault("ignoreNull", "true")));
-        break;
+        return new DiffFunctionColumnTransformer(
+            TypeFactory.getType(TSDataType.DOUBLE),
+            childColumnTransformer,
+            Boolean.parseBoolean(
+                expression.getFunctionAttributes().getOrDefault("ignoreNull", "true")));
       default:
         throw new IllegalArgumentException(
             "Invalid Scalar function: " + expression.getExpressionString());
     }
-    context.cache.put(expression, res);
-    return res;
   }
 
   @Override
