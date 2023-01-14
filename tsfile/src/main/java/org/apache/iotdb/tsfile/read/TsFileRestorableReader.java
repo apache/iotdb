@@ -62,10 +62,9 @@ public class TsFileRestorableReader extends TsFileSequenceReader {
       // Try to close it
       logger.info("File {} has no correct tail magic, try to repair...", file);
       try (RestorableTsFileIOWriter rWriter =
-          new RestorableTsFileIOWriter(FSFactoryProducer.getFSFactory().getFile(file))) {
-        TsFileWriter writer = new TsFileWriter(rWriter);
+              new RestorableTsFileIOWriter(FSFactoryProducer.getFSFactory().getFile(file));
+          TsFileWriter writer = new TsFileWriter(rWriter)) {
         // This writes the right magic string
-        writer.close();
       }
     }
   }
