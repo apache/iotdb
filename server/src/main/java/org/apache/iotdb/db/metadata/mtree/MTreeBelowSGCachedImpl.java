@@ -30,6 +30,7 @@ import org.apache.iotdb.db.exception.metadata.MeasurementAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.MeasurementInBlackListException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
+import org.apache.iotdb.db.exception.metadata.template.DifferentTemplateException;
 import org.apache.iotdb.db.exception.metadata.template.TemplateImcompatibeException;
 import org.apache.iotdb.db.exception.metadata.template.TemplateIsInUseException;
 import org.apache.iotdb.db.metadata.MetadataConstant;
@@ -523,7 +524,7 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
     // delete the last node of path
     store.deleteChild(parent, path.getMeasurement());
     if (deletedNode.getAlias() != null) {
-      parent.addAlias(deletedNode.getAlias(), deletedNode);
+      parent.deleteAliasChild(deletedNode.getAlias());
     }
     return new Pair<>(deleteEmptyInternalMNodeAndReturnEmptyStorageGroup(parent), deletedNode);
   }
@@ -846,7 +847,11 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
         }
 
         if (cur.isUseTemplate()) {
-          throw new TemplateIsInUseException(cur.getFullPath());
+          if (template.getId() == cur.getSchemaTemplateId()) {
+            throw new TemplateIsInUseException(cur.getFullPath());
+          } else {
+            throw new DifferentTemplateException(activatePath.getFullPath(), template.getName());
+          }
         }
 
         if (cur.isEntity()) {
