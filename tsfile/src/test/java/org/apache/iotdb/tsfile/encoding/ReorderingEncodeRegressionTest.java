@@ -416,7 +416,13 @@ public class ReorderingEncodeRegressionTest {
 
       ArrayList<Integer> deviation_list = new ArrayList<>();
       ArrayList<Integer> result = new ArrayList<>();
-      splitTimeStamp(ts_block,block_size,td,deviation_list,result);
+      if(td>=10)
+        splitTimeStamp(ts_block,block_size,td,deviation_list,result);
+      else {
+        result.add(0);
+        result.add(0);
+        result.add(0);
+      }
       quickSort(ts_block,0,0,block_size-1);
 
       //ts_block order by interval
