@@ -214,6 +214,11 @@ public class MeasurementMNode extends MNode implements IMeasurementMNode {
   public void unsetSchemaTemplate() {}
 
   @Override
+  public boolean isAboveDatabase() {
+    return false;
+  }
+
+  @Override
   public void setUseTemplate(boolean useTemplate) {}
 
   @Override

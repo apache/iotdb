@@ -21,6 +21,8 @@ package org.apache.iotdb.db.mpp.execution.schedule;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.common.QueryId;
 import org.apache.iotdb.db.mpp.execution.driver.IDriver;
+import org.apache.iotdb.db.mpp.execution.schedule.queue.multilevelqueue.Priority;
+import org.apache.iotdb.db.mpp.execution.schedule.task.DriverTaskId;
 
 import java.util.List;
 
@@ -52,11 +54,11 @@ public interface IDriverScheduler {
   void abortFragmentInstance(FragmentInstanceId instanceId);
 
   /**
-   * Return the schedule priority of a fragment.
+   * Return the schedule priority of a Driver task.
    *
-   * @param instanceId the fragment instance id.
+   * @param driverTaskID the fragment instance id.
    * @return the schedule priority.
    * @throws IllegalStateException if the instance has already been cleared.
    */
-  double getSchedulePriority(FragmentInstanceId instanceId);
+  Priority getSchedulePriority(DriverTaskId driverTaskID);
 }

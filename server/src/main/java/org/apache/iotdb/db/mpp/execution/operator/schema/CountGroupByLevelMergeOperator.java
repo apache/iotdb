@@ -183,4 +183,11 @@ public class CountGroupByLevelMergeOperator implements ProcessOperator {
     }
     return retainedSize;
   }
+
+  @Override
+  public void close() throws Exception {
+    for (Operator child : children) {
+      child.close();
+    }
+  }
 }

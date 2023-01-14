@@ -194,7 +194,6 @@ public class TimeJoinOperator extends AbstractProcessOperator {
     System.arraycopy(shadowInputIndex, 0, inputIndex, 0, inputOperatorsCount);
 
     resultTsBlock = tsBlockBuilder.build();
-
     return checkTsBlockSizeAndGetResult();
   }
 

@@ -100,19 +100,9 @@ public class EnvUtils {
   }
 
   public static Pair<Integer, Integer> getNodeNum() {
-    int configNodeNum = 0;
-    int dataNodeNum = 0;
-    try {
-      configNodeNum = Integer.parseInt(System.getProperty(sysVarDefaultConfigNodeNum, "1"));
-    } catch (NumberFormatException e) {
-      throw new RuntimeException("Invalid config node number: " + configNodeNum);
-    }
-    try {
-      dataNodeNum = Integer.parseInt(System.getProperty(sysVarDefaultDataNodeNum, "3"));
-    } catch (NumberFormatException e) {
-      throw new RuntimeException("Invalid data node number: " + dataNodeNum);
-    }
-    return new Pair<>(configNodeNum, dataNodeNum);
+    return new Pair<>(
+        getIntFromSysVar(sysVarDefaultConfigNodeNum, 1),
+        getIntFromSysVar(sysVarDefaultDataNodeNum, 3));
   }
 
   public static String getFilePathFromSysVar(String key) {
@@ -121,5 +111,14 @@ public class EnvUtils {
       return null;
     }
     return System.getProperty("user.dir") + File.separator + value;
+  }
+
+  public static int getIntFromSysVar(String key, int defaultValue) {
+    String value = System.getProperty(key, String.valueOf(defaultValue));
+    try {
+      return Integer.parseInt(value);
+    } catch (NumberFormatException e) {
+      throw new IllegalArgumentException("Invalid property value: " + value + " of key " + key);
+    }
   }
 }
