@@ -564,7 +564,27 @@ public class ReorderingEncodeTest {
         ts_block.add(ts_block_tmp);
       }
 
+//      for(int i=0;i<block_size-1;i++){
+//        for(int j=0;j<block_size-1 -i -1;j++){
+//          if(interval_list.get(j)>interval_list.get(j+1)){
+//            int tmp_1 = interval_list.get(j);
+//            interval_list.set(j,interval_list.get(j+1));
+//            interval_list.set(j,tmp_1);
+//            int tmp_2 = value_list.get(j);
+//            value_list.set(j,value_list.get(j+1));
+//            value_list.set(j,tmp_2);
+//          }
+//        }
+//      }
+
       quickSort(ts_block, 0, 0, block_size-2);
+
+      for (int i = 0; i < block_size-1; i++) {
+        ArrayList<Integer> tmp_datai = new ArrayList<>();
+        tmp_datai.add(ts_block.get(i).get(0) * td + deviation_list.get(i) + r0 * td + d0 + 7200);
+        tmp_datai.add(ts_block.get(i).get(1));
+        data.add(tmp_datai);
+      }
 
       for (int i = 0; i < block_size-1; i++) {
         ArrayList<Integer> tmp_datai = new ArrayList<>();
