@@ -39,11 +39,17 @@ public class ReorderingEncodeTest {
   }
   public static byte[] int2Bytes(int integer)
   {
+    System.out.println(integer);
     byte[] bytes = new byte[4];
-    bytes[0] = (byte) (integer >> 24);
-    bytes[1] = (byte) (integer >> 16);
+    //bytes[0] = (byte) (integer >> 24);
+    //bytes[1] = (byte) (integer >> 16);
     bytes[2] = (byte) (integer >> 8);
     bytes[3] = (byte) integer;
+    //System.out.println(bytes[0]);
+    //System.out.println(bytes[1]);
+    System.out.println(bytes[2]);
+    System.out.println(bytes[3]);
+    System.out.println(" ");
     return bytes;
   }
   public static byte[] bitPacking(ArrayList<Integer> numbers,int bit_width){
@@ -424,11 +430,11 @@ public class ReorderingEncodeTest {
     byte[] block_size_byte = int2Bytes(block_size);
     for (byte b : block_size_byte) encoded_result.add(b);
 
-    System.out.println(block_size);
+    //System.out.println(block_size);
 
     int a;
     a=bytes2Integer(encoded_result,0,4);
-    System.out.println(a);
+    //System.out.println(a);
 
     int count_raw = 0;
     int count_reorder = 0;
@@ -560,8 +566,10 @@ public class ReorderingEncodeTest {
     for (int i = start; i < start + num; i++) {
       value <<= 8;
       int b = encoded.get(i) & 0xFF;
+      //System.out.println(encoded.get(i));
       value |= b;
     }
+    //System.out.println(" ");
     return value;
   }
 
