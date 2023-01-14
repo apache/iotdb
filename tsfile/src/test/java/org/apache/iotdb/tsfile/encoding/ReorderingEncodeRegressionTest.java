@@ -570,7 +570,10 @@ public class ReorderingEncodeRegressionTest {
     output_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation" +
             "\\compression_ratio\\regression_ratio\\TY-Fuel_ratio.csv");
     dataset_map_td.add(60);
-
+    input_path_list.add( "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\GW-Magnetic");
+    output_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation" +
+            "\\compression_ratio\\regression_ratio\\GW-Magnetic_ratio.csv");
+    dataset_map_td.add(100);
 
     for(int file_i=0;file_i<input_path_list.size();file_i++){
 
