@@ -9,6 +9,7 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.ArrayList;
+import java.util.Objects;
 
 public class ReorderingEncodeDeltaTest {
 
@@ -103,6 +104,37 @@ public class ReorderingEncodeDeltaTest {
       quickSort(ts_block,index, r + 1, high);
     }
   }
+  public static void quickSort2(ArrayList<ArrayList<Integer>> ts_block, int low, int high) {
+    if(low>=high)
+      return;
+    ArrayList<Integer> pivot = ts_block.get(low);
+    int l = low;
+    int r = high;
+    ArrayList<Integer> temp;
+    while(l<r){
+      while (l < r && (ts_block.get(r).get(0) > pivot.get(0)||
+              (Objects.equals(ts_block.get(r).get(0), pivot.get(0)) &&ts_block.get(r).get(1) >= pivot.get(1)))) {
+        r--;
+      }
+      while (l < r && ts_block.get(l).get(0) < pivot.get(0)||
+              (Objects.equals(ts_block.get(r).get(0), pivot.get(0)) &&ts_block.get(r).get(1) <= pivot.get(1))) {
+        l++;
+      }
+      if (l < r) {
+        temp = ts_block.get(l);
+        ts_block.set(l, ts_block.get(r));
+        ts_block.set(r, temp);
+      }
+    }
+    ts_block.set(low, ts_block.get(l));
+    ts_block.set(l, pivot);
+    if (low < l) {
+      quickSort2(ts_block, low, l - 1);
+    }
+    if (r < high) {
+      quickSort2(ts_block,r + 1, high);
+    }
+  }
 
   public static void splitTimeStamp(ArrayList<ArrayList<Integer>> ts_block, int block_size, int td,
                                     ArrayList<Integer> deviation_list,ArrayList<Integer> result){
@@ -123,7 +155,7 @@ public class ReorderingEncodeDeltaTest {
         delta_interval ++;
       }
       deviation = zigzag(deviation);
-      deviation_list.add(deviation);
+//      deviation_list.add(deviation);
       if(deviation > deviation_max){
         deviation_max = deviation;
       }
@@ -132,6 +164,7 @@ public class ReorderingEncodeDeltaTest {
       ArrayList<Integer> tmp = new ArrayList<>();
       tmp.add(delta_interval);
       tmp.add(value);
+      tmp.add(deviation);
       ts_block.set(j,tmp);
     }
 
@@ -153,14 +186,31 @@ public class ReorderingEncodeDeltaTest {
     ArrayList<Integer> tmp0 = new ArrayList<>();
     tmp0.add(0);
     tmp0.add(value0);
+    tmp0.add(d0);
     ts_block.set(0,tmp0);
+
+
 
     for(int j=1;j<block_size-1;j++){
       int interval = ts_block.get(j).get(0) + ts_block.get(j-1).get(0);
+//      int value = ts_block.get(j).get(1);
+      ArrayList<Integer> tmp;
+      tmp = ts_block.get(j);
+      tmp.set(0,interval);
+//      tmp.add(interval);
+//      tmp.add(value);
+      ts_block.set(j,tmp);
+    }
+    quickSort2(ts_block,0,block_size-1);
+
+    for(int j=0;j<block_size-1;j++){
+      int interval = ts_block.get(j).get(0);
       int value = ts_block.get(j).get(1);
+      int deviation = ts_block.get(j).get(2);
       ArrayList<Integer> tmp = new ArrayList<>();
       tmp.add(interval);
       tmp.add(value);
+      deviation_list.add(deviation);
       ts_block.set(j,tmp);
     }
     max_bit_width_deviation = getBitWith(deviation_max);
