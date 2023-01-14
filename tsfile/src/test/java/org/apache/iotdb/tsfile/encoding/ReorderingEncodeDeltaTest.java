@@ -67,7 +67,7 @@ public class ReorderingEncodeDeltaTest {
       for(int j=0;j<bit_width;j++){
         int tmp_int = 0;
         for(int k=0;k<8;k++){
-          tmp_int += (((numbers.get(i*8+k).get(index) >>j) %2) << k);
+          tmp_int += (((numbers.get(i*8+k+1).get(index) >>j) %2) << k);
         }
 //        System.out.println(Integer.toBinaryString(tmp_int));
         result[i*bit_width+j] = (byte) tmp_int;
@@ -137,79 +137,143 @@ public class ReorderingEncodeDeltaTest {
     }
   }
 
+//  public static void splitTimeStamp(ArrayList<ArrayList<Integer>> ts_block, int block_size, int td,
+//                                    ArrayList<Integer> deviation_list,ArrayList<Integer> result){
+//    int deviation_max = Integer.MIN_VALUE;
+//    int max_bit_width_deviation;
+//    int r0;
+//    int d0;
+//
+//    // split timestamp into intervals and deviations
+//
+//    //address other timestamps and values
+//    for(int j=block_size-1;j>0;j--) {
+//      int delta_interval = (ts_block.get(j).get(0) - ts_block.get(j-1).get(0))/td;
+//      ArrayList<Integer> tmp = ts_block.get(j);
+//      tmp.add(delta_interval);
+//      ts_block.set(j,tmp);
+//    }
+//
+//
+//    // address timestamp0
+//    r0 = ts_block.get(0).get(0) /td;
+//    d0 = ts_block.get(0).get(0) %td;
+//    if(d0 >= (td/2)){
+//      d0 -= td;
+//      r0 ++;
+//    }
+//    d0 = zigzag(d0);
+////    deviation_list.add(d0);
+//    if(d0 > deviation_max){
+//      deviation_max = d0;
+//    }
+//    ArrayList<Integer> tmp0 = ts_block.get(0);
+//    tmp0.add(0);
+////    System.out.println(tmp0);
+//    ts_block.set(0,tmp0);
+//
+//    for(int j=1;j<block_size;j++){
+//      int interval = ts_block.get(j).get(2) + ts_block.get(j-1).get(2);
+//      ArrayList<Integer> tmp;
+//      tmp = ts_block.get(j);
+//      tmp.set(2,interval);
+//      ts_block.set(j,tmp);
+//    }
+////    System.out.println(ts_block);
+//    quickSort2(ts_block,0,block_size-1);
+//
+//    for(int j=block_size-1;j>0;j--){
+//      int interval = ts_block.get(j).get(2);
+//      int value = ts_block.get(j).get(1);
+//
+//      int delta_interval = ts_block.get(j).get(2) - ts_block.get(j-1).get(2);
+//      int deviation = (ts_block.get(j).get(0) - ts_block.get(j-1).get(0))-delta_interval*td;
+//      deviation = zigzag(deviation);
+//      deviation_list.add(deviation);
+//      if(deviation > deviation_max){
+//        deviation_max = deviation;
+//      }
+//
+//      ArrayList<Integer> tmp = new ArrayList<>();
+//      tmp.add(interval);
+//      tmp.add(value);
+//      ts_block.set(j,tmp);
+//    }
+//    tmp0 = new ArrayList<>();
+//    tmp0.add(ts_block.get(0).get(2));
+//    tmp0.add(ts_block.get(0).get(1));
+//    ts_block.set(0,tmp0);
+//
+//
+//    max_bit_width_deviation = getBitWith(deviation_max);
+//    result.add(max_bit_width_deviation);
+//    result.add(r0);
+//    result.add(d0);
+//  }
   public static void splitTimeStamp(ArrayList<ArrayList<Integer>> ts_block, int block_size, int td,
-                                    ArrayList<Integer> deviation_list,ArrayList<Integer> result){
-    int deviation_max = Integer.MIN_VALUE;
-    int max_bit_width_deviation;
-    int r0;
-    int d0;
+                                  ArrayList<Integer> deviation_list,ArrayList<Integer> result){
+  int deviation_max = Integer.MIN_VALUE;
+  int max_bit_width_deviation=0;
+  int r0 = 0;
+  int d0 = 0;
 
-    // split timestamp into intervals and deviations
+  // split timestamp into intervals and deviations
 
-    //address other timestamps and values
-    for(int j=block_size-1;j>0;j--) {
-      int delta_interval = (ts_block.get(j).get(0) - ts_block.get(j-1).get(0))/td;
-      ArrayList<Integer> tmp = ts_block.get(j);
-      tmp.add(delta_interval);
-      ts_block.set(j,tmp);
+  //address other timestamps and values
+
+  for(int j=block_size-1;j>0;j--) {
+    int delta_interval = (ts_block.get(j).get(0) - ts_block.get(j-1).get(0))/td;
+    int deviation = (ts_block.get(j).get(0) - ts_block.get(j-1).get(0))%td;
+    if(deviation >= (td/2)){
+      deviation -= td;
+      delta_interval ++;
+    }
+    deviation = zigzag(deviation);
+    deviation_list.add(deviation);
+    if(deviation > deviation_max){
+      deviation_max = deviation;
     }
 
-
-    // address timestamp0
-    r0 = ts_block.get(0).get(0) /td;
-    d0 = ts_block.get(0).get(0) %td;
-    if(d0 >= (td/2)){
-      d0 -= td;
-      r0 ++;
-    }
-    d0 = zigzag(d0);
-//    deviation_list.add(d0);
-    if(d0 > deviation_max){
-      deviation_max = d0;
-    }
-    ArrayList<Integer> tmp0 = ts_block.get(0);
-    tmp0.add(0);
-//    System.out.println(tmp0);
-    ts_block.set(0,tmp0);
-
-    for(int j=1;j<block_size;j++){
-      int interval = ts_block.get(j).get(2) + ts_block.get(j-1).get(2);
-      ArrayList<Integer> tmp;
-      tmp = ts_block.get(j);
-      tmp.set(2,interval);
-      ts_block.set(j,tmp);
-    }
-//    System.out.println(ts_block);
-    quickSort2(ts_block,0,block_size-1);
-
-    for(int j=block_size-1;j>0;j--){
-      int interval = ts_block.get(j).get(2);
-      int value = ts_block.get(j).get(1);
-
-      int delta_interval = ts_block.get(j).get(2) - ts_block.get(j-1).get(2);
-      int deviation = (ts_block.get(j).get(0) - ts_block.get(j-1).get(0))-delta_interval*td;
-      deviation = zigzag(deviation);
-      deviation_list.add(deviation);
-      if(deviation > deviation_max){
-        deviation_max = deviation;
-      }
-
-      ArrayList<Integer> tmp = new ArrayList<>();
-      tmp.add(interval);
-      tmp.add(value);
-      ts_block.set(j,tmp);
-    }
-    tmp0 = new ArrayList<>();
-    tmp0.add(ts_block.get(0).get(2));
-    tmp0.add(ts_block.get(0).get(1));
-    ts_block.set(0,tmp0);
-
-
-    max_bit_width_deviation = getBitWith(deviation_max);
-    result.add(max_bit_width_deviation);
-    result.add(r0);
-    result.add(d0);
+    int value = ts_block.get(j).get(1);
+    ArrayList<Integer> tmp = new ArrayList<>();
+    tmp.add(delta_interval);
+    tmp.add(value);
+    ts_block.set(j,tmp);
   }
+
+
+  // address timestamp0
+  r0 = ts_block.get(0).get(0) /td;
+  d0 = ts_block.get(0).get(0) %td;
+  if(d0 >= (td/2)){
+    d0 -= td;
+    r0 ++;
+  }
+  d0 = zigzag(d0);
+  if(d0 > deviation_max){
+    deviation_max = d0;
+  }
+
+  int value0 = ts_block.get(0).get(1);
+  ArrayList<Integer> tmp0 = new ArrayList<>();
+  tmp0.add(0);
+  tmp0.add(value0);
+  ts_block.set(0,tmp0);
+
+  for(int j=1;j<block_size-1;j++){
+    int interval = ts_block.get(j).get(0) + ts_block.get(j-1).get(0);
+    int value = ts_block.get(j).get(1);
+    ArrayList<Integer> tmp = new ArrayList<>();
+    tmp.add(interval);
+    tmp.add(value);
+    ts_block.set(j,tmp);
+  }
+  max_bit_width_deviation = getBitWith(deviation_max);
+  result.add(max_bit_width_deviation);
+  result.add(r0);
+  result.add(d0);
+}
+
   public static ArrayList<ArrayList<Integer>> getEncodeBitsDelta(ArrayList<ArrayList<Integer>> ts_block, int block_size,
                                                       ArrayList<Integer> result, ArrayList<Integer> i_star){
     int timestamp_delta_min = Integer.MAX_VALUE;
@@ -364,14 +428,14 @@ public class ReorderingEncodeDeltaTest {
 
     // encode interval
     byte[] max_bit_width_interval_byte = int2Bytes(raw_length.get(1));
-//    System.out.println(raw_length.get(1));
+    System.out.println(raw_length.get(1));
     for (byte b : max_bit_width_interval_byte) encoded_result.add(b);
     byte[] timestamp_bytes = bitPacking(ts_block,0,raw_length.get(1));
     for (byte b : timestamp_bytes) encoded_result.add(b);
 
     // encode value
     byte[] max_bit_width_value_byte = int2Bytes(raw_length.get(2));
-//    System.out.println(raw_length.get(2));
+    System.out.println(raw_length.get(2));
     for (byte b : max_bit_width_value_byte) encoded_result.add(b);
     byte[] value_bytes = bitPacking(ts_block,1,raw_length.get(2));
     for (byte b : value_bytes) encoded_result.add(b);
@@ -407,8 +471,14 @@ public class ReorderingEncodeDeltaTest {
 
       ArrayList<Integer> deviation_list = new ArrayList<>();
       ArrayList<Integer> result = new ArrayList<>();
-      quickSort(ts_block,0,0,block_size-1);
+//      quickSort(ts_block,0,0,block_size-1);
+      if(td>=16)
       splitTimeStamp(ts_block,block_size,td,deviation_list,result);
+      else {
+        result.add(0);
+        result.add(0);
+        result.add(0);
+      }
       quickSort(ts_block,0,0,block_size-1);
 
       //ts_block order by interval
@@ -721,13 +791,12 @@ public class ReorderingEncodeDeltaTest {
     dataset_map_td.add(100);
 
 //    for(int file_i=0;file_i<input_path_list.size();file_i++){
-    for(int file_i=4;file_i<5;file_i++){
+    for(int file_i=7;file_i<8;file_i++){
       String inputPath = input_path_list.get(file_i);
-      String Output =output_path_list.get(file_i);
+//      String Output =output_path_list.get(file_i);
 
 
-      //    String Output =
-      //            "C:\\Users\\xiaoj\\Desktop\\test_ratio.csv"; // the direction of output compression ratio and
+          String Output = "C:\\Users\\xiaoj\\Desktop\\test_ratio.csv";
 
       // speed
       int repeatTime = 1; // set repeat time

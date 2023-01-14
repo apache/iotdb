@@ -55,9 +55,12 @@ public class EncodeTest {
             "\\compression_ratio\\java_ratio\\GW-Magnetic_ratio.csv");
     dataset_map_td.add(100);
 
-    for(int file_i=0;file_i<input_path_list.size();file_i++){
+    for(int file_i=4;file_i<5;file_i++){
+//    for(int file_i=0;file_i<input_path_list.size();file_i++){
       String inputPath = input_path_list.get(file_i);
-      String Output =output_path_list.get(file_i);
+//      String Output =output_path_list.get(file_i);
+      String Output =
+              "C:\\Users\\xiaoj\\Desktop\\test_ratio_ts_2diff.csv"; // the direction of output compression ratio and
 
     // speed
     int repeatTime = 1; // set repeat time
