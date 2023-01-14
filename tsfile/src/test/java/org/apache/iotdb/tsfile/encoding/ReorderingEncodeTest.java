@@ -9,6 +9,7 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.ArrayList;
+import java.util.Objects;
 
 import static org.codehaus.groovy.runtime.DefaultGroovyMethods.sort;
 
@@ -105,35 +106,53 @@ public class ReorderingEncodeTest {
       quickSort(ts_block,index, r + 1, high);
     }
   }
+  public static void quickSort2(ArrayList<ArrayList<Integer>> ts_block, int low, int high) {
+    if(low>=high)
+      return;
+    ArrayList<Integer> pivot = ts_block.get(low);
+    int l = low;
+    int r = high;
+    ArrayList<Integer> temp;
+    while(l<r){
+      while (l < r && (ts_block.get(r).get(2) > pivot.get(2)||
+              (Objects.equals(ts_block.get(r).get(2), pivot.get(2)) &&ts_block.get(r).get(1) >= pivot.get(1)))) {
+        r--;
+      }
+      while (l < r && ts_block.get(l).get(2) < pivot.get(2)||
+              (Objects.equals(ts_block.get(l).get(2), pivot.get(2)) &&ts_block.get(l).get(1) < pivot.get(1))) {
+        l++;
+//        System.out.println(l);
+      }
+      if (l < r) {
+        temp = ts_block.get(l);
+        ts_block.set(l, ts_block.get(r));
+        ts_block.set(r, temp);
+      }
+    }
+    ts_block.set(low, ts_block.get(l));
+    ts_block.set(l, pivot);
+    if (low < l) {
+      quickSort2(ts_block, low, l - 1);
+    }
+    if (r < high) {
+      quickSort2(ts_block,r + 1, high);
+    }
+  }
 
   public static void splitTimeStamp(ArrayList<ArrayList<Integer>> ts_block, int block_size, int td,
                                     ArrayList<Integer> deviation_list,ArrayList<Integer> result){
     int deviation_max = Integer.MIN_VALUE;
-    int max_bit_width_deviation=0;
-    int r0 = 0;
-    int d0 = 0;
+    int max_bit_width_deviation;
+    int r0;
+    int d0;
 
     // split timestamp into intervals and deviations
 
     //address other timestamps and values
-
     for(int j=block_size-1;j>0;j--) {
       int delta_interval = (ts_block.get(j).get(0) - ts_block.get(j-1).get(0))/td;
-      int deviation = (ts_block.get(j).get(0) - ts_block.get(j-1).get(0))%td;
-      if(deviation >= (td/2)){
-        deviation -= td;
-        delta_interval ++;
-      }
-      deviation = zigzag(deviation);
-      deviation_list.add(deviation);
-      if(deviation > deviation_max){
-        deviation_max = deviation;
-      }
-
-      int value = ts_block.get(j).get(1);
-      ArrayList<Integer> tmp = new ArrayList<>();
+      ArrayList<Integer> tmp = ts_block.get(j);
       tmp.add(delta_interval);
-      tmp.add(value);
       ts_block.set(j,tmp);
     }
 
@@ -150,27 +169,49 @@ public class ReorderingEncodeTest {
     if(d0 > deviation_max){
       deviation_max = d0;
     }
-
-    int value0 = ts_block.get(0).get(1);
-    ArrayList<Integer> tmp0 = new ArrayList<>();
+    ArrayList<Integer> tmp0 = ts_block.get(0);
     tmp0.add(0);
-    tmp0.add(value0);
+//    System.out.println(tmp0);
     ts_block.set(0,tmp0);
 
-    for(int j=1;j<block_size-1;j++){
-      int interval = ts_block.get(j).get(0) + ts_block.get(j-1).get(0);
+    for(int j=1;j<block_size;j++){
+      int interval = ts_block.get(j).get(2) + ts_block.get(j-1).get(2);
+      ArrayList<Integer> tmp;
+      tmp = ts_block.get(j);
+      tmp.set(2,interval);
+      ts_block.set(j,tmp);
+    }
+//    System.out.println(ts_block);
+    quickSort2(ts_block,0,block_size-1);
+
+    for(int j=block_size-1;j>0;j--){
+      int interval = ts_block.get(j).get(2);
       int value = ts_block.get(j).get(1);
+
+      int delta_interval = ts_block.get(j).get(2) - ts_block.get(j-1).get(2);
+      int deviation = (ts_block.get(j).get(0) - ts_block.get(j-1).get(0))-delta_interval*td;
+      deviation = zigzag(deviation);
+      deviation_list.add(deviation);
+      if(deviation > deviation_max){
+        deviation_max = deviation;
+      }
+
       ArrayList<Integer> tmp = new ArrayList<>();
       tmp.add(interval);
       tmp.add(value);
       ts_block.set(j,tmp);
     }
+    tmp0 = new ArrayList<>();
+    tmp0.add(ts_block.get(0).get(2));
+    tmp0.add(ts_block.get(0).get(1));
+    ts_block.set(0,tmp0);
+
+
     max_bit_width_deviation = getBitWith(deviation_max);
     result.add(max_bit_width_deviation);
     result.add(r0);
     result.add(d0);
-  }
-  public static ArrayList<ArrayList<Integer>> getEncodeBitsDelta(ArrayList<ArrayList<Integer>> ts_block, int block_size,
+  }  public static ArrayList<ArrayList<Integer>> getEncodeBitsDelta(ArrayList<ArrayList<Integer>> ts_block, int block_size,
                                                       ArrayList<Integer> result, ArrayList<Integer> i_star){
     int timestamp_delta_min = Integer.MAX_VALUE;
     int value_delta_min = Integer.MAX_VALUE;

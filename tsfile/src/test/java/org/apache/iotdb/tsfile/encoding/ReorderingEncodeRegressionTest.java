@@ -561,11 +561,11 @@ public class ReorderingEncodeRegressionTest {
     input_path_list.add( "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\TH-Climate");
     output_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation" +
             "\\compression_ratio\\regression_ratio\\TH-Climate_ratio.csv");
-    dataset_map_td.add(3);
+    dataset_map_td.add(4);
     input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\TY-Transport");
     output_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation" +
             "\\compression_ratio\\regression_ratio\\TY-Transport_ratio.csv");
-    dataset_map_td.add(5);
+    dataset_map_td.add(6);
     input_path_list.add( "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\TY-Fuel");
     output_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation" +
             "\\compression_ratio\\regression_ratio\\TY-Fuel_ratio.csv");
