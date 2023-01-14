@@ -37,17 +37,11 @@ public class ReorderingEncodeRRTest {
   }
   public static byte[] int2Bytes(int integer)
   {
-    System.out.println(integer);
     byte[] bytes = new byte[4];
-    bytes[0] = (byte) ((byte) integer >> 24);
-    bytes[1] = (byte) ((byte) integer >> 16);
-    bytes[2] = (byte) ((byte) integer >> 8);
+    bytes[0] = (byte) (integer >> 24);
+    bytes[1] = (byte) (integer >> 16);
+    bytes[2] = (byte) (integer >> 8);
     bytes[3] = (byte) integer;
-    System.out.println(bytes[0]);
-    System.out.println(bytes[1]);
-    System.out.println(bytes[2]);
-    System.out.println(bytes[3]);
-    System.out.println(" ");
     return bytes;
   }
   public static byte[] double2Bytes(double dou){
@@ -414,6 +408,7 @@ public class ReorderingEncodeRRTest {
     // encode theta
     byte[] theta0_r_byte = double2Bytes(theta.get(0));
     for (byte b : theta0_r_byte) encoded_result.add(b);
+    //System.out.println(theta.get(0));
     byte[] theta1_r_byte = double2Bytes(theta.get(1));
     for (byte b : theta1_r_byte) encoded_result.add(b);
     byte[] theta0_v_byte = double2Bytes(theta.get(2));
@@ -449,12 +444,6 @@ public class ReorderingEncodeRRTest {
     // encode block size (Integer)
     byte[] block_size_byte = int2Bytes(block_size);
     for (byte b : block_size_byte) encoded_result.add(b);
-
-    //System.out.println(block_size);
-
-    int a;
-    a=bytes2Integer(encoded_result,0,4);
-    //System.out.println(a);
 
     int count_raw = 0;
     int count_reorder = 0;
@@ -610,9 +599,13 @@ public class ReorderingEncodeRRTest {
   }
 
   public static double bytes2Double(ArrayList<Byte> encoded, int start, int num) {
-      long value = 0;
-      for (int i = start; i < start + num; i++) {
-        value |= ((long) (encoded.get(i) & 0xff)) << (num * i);
+    if(num > 8){
+      System.out.println("bytes2Doubleerror");
+      return 0;
+    }
+    long value = 0;
+      for (int i = start; i < start + 8; i++) {
+        value |= ((long) (encoded.get(i) & 0xff)) << (8 * i);
       }
       return Double.longBitsToDouble(value);
   }
@@ -626,10 +619,8 @@ public class ReorderingEncodeRRTest {
     for (int i = start; i < start + num; i++) {
       value <<= 8;
       int b = encoded.get(i) & 0xFF;
-      //System.out.println(encoded.get(i));
       value |= b;
     }
-    //System.out.println(" ");
     return value;
   }
 
@@ -638,7 +629,6 @@ public class ReorderingEncodeRRTest {
     int decode_pos = 0;
     int block_size = bytes2Integer(encoded, decode_pos, 4);
     decode_pos += 4;
-    System.out.println(block_size);
 
     while(decode_pos < encoded.size()) {
       ArrayList<Integer> interval_list = new ArrayList<>();
@@ -652,17 +642,10 @@ public class ReorderingEncodeRRTest {
       int d0 = bytes2Integer(encoded, decode_pos, 4);
       decode_pos += 4;
 
-      int min_delta_interval = bytes2Integer(encoded, decode_pos, 4);
-      decode_pos += 4;
-      int min_delta_value = bytes2Integer(encoded, decode_pos, 4);
-      decode_pos += 4;
-
       int interval0 = bytes2Integer(encoded, decode_pos, 4);
       decode_pos += 4;
       int value0 = bytes2Integer(encoded, decode_pos, 4);
       decode_pos += 4;
-
-      //System.out.println(value0);
 
       double theta0_r = bytes2Double(encoded, decode_pos, 8);
       decode_pos += 8;
@@ -673,14 +656,16 @@ public class ReorderingEncodeRRTest {
       double theta1_v = bytes2Double(encoded, decode_pos, 8);
       decode_pos += 8;
 
+      //System.out.println(theta0_r);
+
       int max_bit_width_interval = bytes2Integer(encoded, decode_pos, 4);
       decode_pos += 4;
-      interval_list = decodebitPacking(encoded,decode_pos,max_bit_width_interval,min_delta_interval,block_size);
+      interval_list = decodebitPacking(encoded,decode_pos,max_bit_width_interval,0,block_size);
       decode_pos += max_bit_width_interval * (block_size - 1) / 8;
 
       int max_bit_width_value = bytes2Integer(encoded, decode_pos, 4);
       decode_pos += 4;
-      value_list = decodebitPacking(encoded,decode_pos,max_bit_width_value,min_delta_value,block_size);
+      value_list = decodebitPacking(encoded,decode_pos,max_bit_width_value,0,block_size);
       decode_pos += max_bit_width_value * (block_size - 1) / 8;
 
       int max_bit_width_deviation = bytes2Integer(encoded, decode_pos, 4);
