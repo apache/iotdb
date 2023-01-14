@@ -69,7 +69,7 @@ public class ReorderingEncodeTest {
       for(int j=0;j<bit_width;j++){
         int tmp_int = 0;
         for(int k=0;k<8;k++){
-          tmp_int += (((numbers.get(i*8+k).get(index) >>j) %2) << k);
+          tmp_int += (((numbers.get(i*8+k+1).get(index) >>j) %2) << k);
         }
 //        System.out.println(Integer.toBinaryString(tmp_int));
         result[i*bit_width+j] = (byte) tmp_int;
@@ -136,6 +136,39 @@ public class ReorderingEncodeTest {
     }
     if (r < high) {
       quickSort2(ts_block,r + 1, high);
+    }
+  }
+
+  public static void quickSort22(ArrayList<ArrayList<Integer>> ts_block, int low, int high) {
+    if(low>=high)
+      return;
+    ArrayList<Integer> pivot = ts_block.get(low);
+    int l = low;
+    int r = high;
+    ArrayList<Integer> temp;
+    while(l<r){
+      while (l < r && (ts_block.get(r).get(0) > pivot.get(0)||
+              (Objects.equals(ts_block.get(r).get(0), pivot.get(0)) &&ts_block.get(r).get(1) >= pivot.get(1)))) {
+        r--;
+      }
+      while (l < r && ts_block.get(l).get(0) < pivot.get(0)||
+              (Objects.equals(ts_block.get(l).get(0), pivot.get(0)) &&ts_block.get(l).get(1) < pivot.get(1))) {
+        l++;
+//        System.out.println(l);
+      }
+      if (l < r) {
+        temp = ts_block.get(l);
+        ts_block.set(l, ts_block.get(r));
+        ts_block.set(r, temp);
+      }
+    }
+    ts_block.set(low, ts_block.get(l));
+    ts_block.set(l, pivot);
+    if (low < l) {
+      quickSort22(ts_block, low, l - 1);
+    }
+    if (r < high) {
+      quickSort22(ts_block,r + 1, high);
     }
   }
 
@@ -574,14 +607,18 @@ public class ReorderingEncodeTest {
 //        ts_block.add(ts_block_tmp);
 //      }
 
-      ArrayList<Integer> tmp_data = new ArrayList<>();
-      int timestamp = r0 * td + d0;
-      tmp_data.add(timestamp);
-      tmp_data.add(value0);
-      data.add(tmp_data);
+//      ArrayList<Integer> tmp_data = new ArrayList<>();
+//      int timestamp = r0 * td + d0;
+//      tmp_data.add(timestamp);
+//      tmp_data.add(value0);
+//      data.add(tmp_data);
 
       int ri_pre = interval0;
       int vi_pre = value0;
+      ArrayList<Integer> ts_block_tmp0 = new ArrayList<>();
+      ts_block_tmp0.add(interval0);
+      ts_block_tmp0.add(value0);
+      ts_block.add(ts_block_tmp0);
       for (int i = 0; i < block_size-1; i++) {
         int ri = ri_pre + interval_list.get(i);
         interval_list.set(i,ri);
@@ -618,21 +655,23 @@ public class ReorderingEncodeTest {
 //        }
 //      }
 
-      quickSort(ts_block, 0, 0, block_size-2);
+      //quickSort(ts_block, 0, 0, block_size-2);
+
+      quickSort22(ts_block, 0, block_size-1);
 
       for (int i = 0; i < block_size-1; i++) {
         ArrayList<Integer> tmp_datai = new ArrayList<>();
-        tmp_datai.add(ts_block.get(i).get(0) * td + deviation_list.get(i) + r0 * td + d0 + 7200);
+        tmp_datai.add(ts_block.get(i).get(0) * td + deviation_list.get(i) + r0 * td + d0);
         tmp_datai.add(ts_block.get(i).get(1));
         data.add(tmp_datai);
       }
 
-      for (int i = 0; i < block_size-1; i++) {
-        ArrayList<Integer> tmp_datai = new ArrayList<>();
-        tmp_datai.add(interval_list.get(i) * td + deviation_list.get(i) + r0 * td + d0 + 7200);
-        tmp_datai.add(value_list.get(i));
-        data.add(tmp_datai);
-      }
+//      for (int i = 0; i < block_size-1; i++) {
+//        ArrayList<Integer> tmp_datai = new ArrayList<>();
+//        tmp_datai.add(interval_list.get(i) * td + deviation_list.get(i) + r0 * td + d0);
+//        tmp_datai.add(value_list.get(i));
+//        data.add(tmp_datai);
+//      }
 
 //      for (int i = 0; i < block_size-1; i++) {
 //        //int vi = vi_pre + value_list.get(i);
@@ -813,12 +852,12 @@ public class ReorderingEncodeTest {
               System.out.println(data_decoded.get(j).get(1));
             }
             else{
-//              System.out.print(j);
-//              System.out.print(" ");
-//              System.out.println("Correct Value!");
-//              System.out.print(data.get(j).get(1));
-//              System.out.print(" ");
-//              System.out.println(data_decoded.get(j).get(1));
+              System.out.println("Correct Value!");
+              System.out.print(j);
+              System.out.print(" ");
+              System.out.print(data.get(j).get(1));
+              System.out.print(" ");
+              System.out.println(data_decoded.get(j).get(1));
             }
           }
 
