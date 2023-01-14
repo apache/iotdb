@@ -86,6 +86,7 @@ public abstract class DeltaBinaryEncoder extends Encoder {
   }
 
   private void writeHeaderToBytes() throws IOException {
+
     ReadWriteIOUtils.write(writeIndex, out);
     ReadWriteIOUtils.write(writeWidth, out);
     writeHeader();
@@ -101,7 +102,9 @@ public abstract class DeltaBinaryEncoder extends Encoder {
     for (int i = 0; i < writeIndex; i++) {
       calcTwoDiff(i);
     }
+
     writeWidth = calculateBitWidthsForDeltaBlockBuffer();
+    System.out.println(writeWidth);
     writeHeaderToBytes();
     writeDataWithMinWidth();
 
@@ -113,6 +116,7 @@ public abstract class DeltaBinaryEncoder extends Encoder {
   @Override
   public void flush(ByteArrayOutputStream out) {
     try {
+
       flushBlockBuffer(out);
     } catch (IOException e) {
       logger.error("flush data to stream failed!", e);
@@ -174,6 +178,7 @@ public abstract class DeltaBinaryEncoder extends Encoder {
       }
       calcDelta(value);
       previousValue = value;
+
       if (writeIndex == blockSize) {
         flush(out);
       }
