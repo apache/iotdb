@@ -244,7 +244,8 @@ public class ReorderingEncodeTest {
     result.add(max_bit_width_deviation);
     result.add(r0);
     result.add(d0);
-  }  public static ArrayList<ArrayList<Integer>> getEncodeBitsDelta(ArrayList<ArrayList<Integer>> ts_block, int block_size,
+  }
+  public static ArrayList<ArrayList<Integer>> getEncodeBitsDelta(ArrayList<ArrayList<Integer>> ts_block, int block_size,
                                                       ArrayList<Integer> result, ArrayList<Integer> i_star){
     int timestamp_delta_min = Integer.MAX_VALUE;
     int value_delta_min = Integer.MAX_VALUE;
