@@ -444,7 +444,7 @@ public class ReorderingEncodeDeltaTest {
 
     // encode deviation
     byte[] max_bit_width_deviation_byte = int2Bytes(raw_length.get(5));
-    System.out.println(raw_length.get(5));
+//    System.out.println(raw_length.get(5));
     for (byte b: max_bit_width_deviation_byte) encoded_result.add(b);
     byte[] deviation_list_bytes = bitPacking(deviation_list,raw_length.get(5));
     for (byte b: deviation_list_bytes) encoded_result.add(b);
@@ -792,13 +792,13 @@ public class ReorderingEncodeDeltaTest {
             "\\compression_ratio\\rd_ratio\\GW-Magnetic_ratio.csv");
     dataset_map_td.add(100);
 
-//    for(int file_i=0;file_i<input_path_list.size();file_i++){
-    for(int file_i=7;file_i<8;file_i++){
+    for(int file_i=0;file_i<input_path_list.size();file_i++){
+//    for(int file_i=7;file_i<8;file_i++){
       String inputPath = input_path_list.get(file_i);
-//      String Output =output_path_list.get(file_i);
+      String Output =output_path_list.get(file_i);
 
 
-          String Output = "C:\\Users\\xiaoj\\Desktop\\test_ratio.csv";
+//          String Output = "C:\\Users\\xiaoj\\Desktop\\test_ratio.csv";
 
       // speed
       int repeatTime = 1; // set repeat time
