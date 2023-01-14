@@ -423,6 +423,13 @@ public class ReorderingEncodeTest {
     ArrayList<Byte> encoded_result=new ArrayList<Byte>();
     byte[] block_size_byte = int2Bytes(block_size);
     for (byte b : block_size_byte) encoded_result.add(b);
+
+    System.out.println(block_size);
+
+    int a;
+    a=bytes2Integer(encoded_result,0,4);
+    System.out.println(a);
+
     int count_raw = 0;
     int count_reorder = 0;
 
