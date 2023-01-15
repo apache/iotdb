@@ -889,40 +889,40 @@ public class ReorderingEncodeTest {
 
           data_decoded = ReorderingDeltaDecoder(buffer,dataset_map_td.get(file_i));
 
-          for(int j=0;j<256;j++){
-            if(!data.get(j).get(0).equals(data_decoded.get(j).get(0))){
-              System.out.println("Wrong Time!");
-              System.out.print(j);
-              System.out.print(" ");
-              System.out.print(data.get(j).get(0));
-              System.out.print(" ");
-              System.out.println(data_decoded.get(j).get(0));
-            }
-            else{
-              System.out.println("Correct Time!");
-              System.out.print(j);
-              System.out.print(" ");
-              System.out.print(data.get(j).get(0));
-              System.out.print(" ");
-              System.out.println(data_decoded.get(j).get(0));
-            }
-            if(!data.get(j).get(1).equals(data_decoded.get(j).get(1))){
-              System.out.println("Wrong Value!");
-              System.out.print(j);
-              System.out.print(" ");
-              System.out.print(data.get(j).get(1));
-              System.out.print(" ");
-              System.out.println(data_decoded.get(j).get(1));
-            }
-            else{
-              System.out.println("Correct Value!");
-              System.out.print(j);
-              System.out.print(" ");
-              System.out.print(data.get(j).get(1));
-              System.out.print(" ");
-              System.out.println(data_decoded.get(j).get(1));
-            }
-          }
+//          for(int j=0;j<256;j++){
+//            if(!data.get(j).get(0).equals(data_decoded.get(j).get(0))){
+//              System.out.println("Wrong Time!");
+//              System.out.print(j);
+//              System.out.print(" ");
+//              System.out.print(data.get(j).get(0));
+//              System.out.print(" ");
+//              System.out.println(data_decoded.get(j).get(0));
+//            }
+//            else{
+//              System.out.println("Correct Time!");
+//              System.out.print(j);
+//              System.out.print(" ");
+//              System.out.print(data.get(j).get(0));
+//              System.out.print(" ");
+//              System.out.println(data_decoded.get(j).get(0));
+//            }
+//            if(!data.get(j).get(1).equals(data_decoded.get(j).get(1))){
+//              System.out.println("Wrong Value!");
+//              System.out.print(j);
+//              System.out.print(" ");
+//              System.out.print(data.get(j).get(1));
+//              System.out.print(" ");
+//              System.out.println(data_decoded.get(j).get(1));
+//            }
+//            else{
+//              System.out.println("Correct Value!");
+//              System.out.print(j);
+//              System.out.print(" ");
+//              System.out.print(data.get(j).get(1));
+//              System.out.print(" ");
+//              System.out.println(data_decoded.get(j).get(1));
+//            }
+//          }
 
           e = System.nanoTime();
           decodeTime += (e-s);
