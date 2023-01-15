@@ -271,6 +271,12 @@ public class ReorderingEncodeRRTest {
     for(int j=1;j<block_size;j++) {
       int epsilon_r = (int) ((double)ts_block.get(j).get(0) - theta0_r - theta1_r * (double)ts_block.get(j-1).get(0));
       int epsilon_v = (int) ((double)ts_block.get(j).get(1) - theta0_v - theta1_v * (double)ts_block.get(j-1).get(1));
+      if(epsilon_r<timestamp_delta_min){
+        timestamp_delta_min = epsilon_r;
+      }
+      if(epsilon_v<value_delta_min){
+        value_delta_min = epsilon_v;
+      }
       ArrayList<Integer> tmp = new ArrayList<>();
       tmp.add(epsilon_r);
       tmp.add(epsilon_v);
@@ -282,14 +288,8 @@ public class ReorderingEncodeRRTest {
     int max_value = Integer.MIN_VALUE;
     int max_value_i = -1;
     for(int j=block_size-1;j>0;j--) {
-      int epsilon_r = ts_block_delta.get(j).get(0);
-      int epsilon_v = ts_block_delta.get(j).get(1) ;
-      if(epsilon_r<timestamp_delta_min){
-        timestamp_delta_min = epsilon_r;
-      }
-      if(epsilon_v<value_delta_min){
-        value_delta_min = epsilon_v;
-      }
+      int epsilon_r = ts_block_delta.get(j).get(0) - timestamp_delta_min;
+      int epsilon_v = ts_block_delta.get(j).get(1) - value_delta_min;
       if(epsilon_r>max_interval){
         max_interval = epsilon_r;
         max_interval_i = j;
@@ -298,6 +298,10 @@ public class ReorderingEncodeRRTest {
         max_value = epsilon_v;
         max_value_i = j;
       }
+      ArrayList<Integer> tmp = new ArrayList<>();
+      tmp.add(epsilon_r);
+      tmp.add(epsilon_v);
+      ts_block_delta.add(tmp);
     }
     int max_bit_width_interval = getBitWith(max_interval);
     int max_bit_width_value = getBitWith(max_value);
