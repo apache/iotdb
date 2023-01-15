@@ -269,8 +269,11 @@ public class ReorderingEncodeRRTest {
 
     // delta to Regression
     for(int j=1;j<block_size;j++) {
-      int epsilon_r = (int) ((double)ts_block.get(j).get(0) - theta0_r - theta1_r * (double)ts_block.get(j-1).get(0));
-      int epsilon_v = (int) ((double)ts_block.get(j).get(1) - theta0_v - theta1_v * (double)ts_block.get(j-1).get(1));
+//      int epsilon_r = (int) ((double)ts_block.get(j).get(0) - theta0_r - theta1_r * (double)ts_block.get(j-1).get(0));
+//      int epsilon_v = (int) ((double)ts_block.get(j).get(1) - theta0_v - theta1_v * (double)ts_block.get(j-1).get(1));
+      int epsilon_r = ts_block.get(j).get(0) - (int) ( theta0_r + theta1_r * (double)ts_block.get(j-1).get(0));
+      int epsilon_v = ts_block.get(j).get(1) - (int) ( theta0_v + theta1_v * (double)ts_block.get(j-1).get(1));
+
       if(epsilon_r<timestamp_delta_min){
         timestamp_delta_min = epsilon_r;
       }
@@ -759,6 +762,8 @@ public class ReorderingEncodeRRTest {
 
       //quickSort(ts_block, 0, 0, block_size-2);
       quickSort22(ts_block, 0, block_size-1);
+
+      quickSort(ts_block, 0, 0, block_size-1);
 
       ArrayList<Integer> tmp_data0 = new ArrayList<>();
       tmp_data0.add(ts_block.get(0).get(0) * td + d0 + r0 * td);
