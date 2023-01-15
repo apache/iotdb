@@ -245,6 +245,8 @@ public class ReorderingEncodeRegressionTest {
     int max_value = Integer.MIN_VALUE;
     int max_value_i = -1;
     for(int j=block_size-1;j>0;j--) {
+//      int epsilon_r = ts_block_delta.get(j).get(0);
+//      int epsilon_v = ts_block_delta.get(j).get(1);
       int epsilon_r = ts_block_delta.get(j).get(0) - timestamp_delta_min;
       int epsilon_v = ts_block_delta.get(j).get(1) - value_delta_min;
       if(epsilon_r>max_interval){
@@ -258,7 +260,8 @@ public class ReorderingEncodeRegressionTest {
     }
     int max_bit_width_interval = getBitWith(max_interval);
     int max_bit_width_value = getBitWith(max_value);
-
+    System.out.println(max_bit_width_interval);
+    System.out.println(max_bit_width_value);
 
     // calculate error
     int  length = (max_bit_width_interval+max_bit_width_value)*(block_size-1);
@@ -599,8 +602,8 @@ public class ReorderingEncodeRegressionTest {
             "\\compression_ratio\\regression_ratio\\GW-Magnetic_ratio.csv");
     dataset_map_td.add(100);
 
-    for(int file_i=0;file_i<input_path_list.size();file_i++){
-
+//    for(int file_i=0;file_i<input_path_list.size();file_i++){
+      for(int file_i=0;file_i<1;file_i++){
       String inputPath = input_path_list.get(file_i);
       String Output =output_path_list.get(file_i);
 
