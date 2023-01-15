@@ -47,6 +47,8 @@ public class IoTDBUDFM4IT {
   public static final String SLIDING_STEP_KEY = "slidingStep";
   public static final String DISPLAY_WINDOW_BEGIN_KEY = "displayWindowBegin";
   public static final String DISPLAY_WINDOW_END_KEY = "displayWindowEnd";
+  public static final String SAMPLING_INTERVAL_KEY = "samplingInterval";
+  public static final String SAMPLING_THRESHOLD_KEY = "samplingThreshold";
 
   @BeforeClass
   public static void setUp() throws Exception {
@@ -135,6 +137,75 @@ public class IoTDBUDFM4IT {
         String.format(
             "select M4(s1,'%s'='%s','%s'='%s') from root.vehicle.d1",
             WINDOW_SIZE_KEY, 10, SLIDING_STEP_KEY, 10);
+
+    try (Connection conn = EnvFactory.getEnv().getConnection();
+        Statement statement = conn.createStatement()) {
+      ResultSet resultSet = statement.executeQuery(sql);
+      int count = 0;
+      while (resultSet.next()) {
+        String str = resultSet.getString(1) + "," + resultSet.getString(2);
+        Assert.assertEquals(res[count], str);
+        count++;
+      }
+      Assert.assertEquals(res.length, count);
+    } catch (SQLException throwable) {
+      fail(throwable.getMessage());
+    }
+  }
+
+  @Test
+  public void test_M4_sampling_small_threshold() {
+    String[] res =
+        new String[] {
+          "1,5.0", "30,40.0", "35,10.0", "40,20.0", "45,30.0", "52,8.0", "54,18.0", "120,8.0"
+        };
+
+    String sql =
+        String.format(
+            "select M4(s1, '%s'='%s','%s'='%s','%s'='%s','%s'='%s') from root.vehicle.d1",
+            SAMPLING_INTERVAL_KEY,
+            5,
+            SAMPLING_THRESHOLD_KEY,
+            20,
+            DISPLAY_WINDOW_BEGIN_KEY,
+            0,
+            DISPLAY_WINDOW_END_KEY,
+            150);
+
+    try (Connection conn = EnvFactory.getEnv().getConnection();
+        Statement statement = conn.createStatement()) {
+      ResultSet resultSet = statement.executeQuery(sql);
+      int count = 0;
+      while (resultSet.next()) {
+        String str = resultSet.getString(1) + "," + resultSet.getString(2);
+        Assert.assertEquals(res[count], str);
+        count++;
+      }
+      Assert.assertEquals(res.length, count);
+    } catch (SQLException throwable) {
+      fail(throwable.getMessage());
+    }
+  }
+
+  @Test
+  public void test_M4_sampling_large_threshold() {
+    String[] res =
+        new String[] {
+          "1,5.0", "10,30.0", "20,20.0", "25,8.0", "30,40.0", "35,10.0", "40,20.0", "45,30.0",
+          "52,8.0", "54,18.0", "120,8.0"
+        };
+
+    String sql =
+        String.format(
+            "select M4(s1, '%s'='%s','%s'='%s','%s'='%s','%s'='%s') from root.vehicle.d1",
+            SAMPLING_INTERVAL_KEY,
+            5,
+            SAMPLING_THRESHOLD_KEY,
+            100,
+            DISPLAY_WINDOW_BEGIN_KEY,
+            0,
+            DISPLAY_WINDOW_END_KEY,
+            150);
 
     try (Connection conn = EnvFactory.getEnv().getConnection();
         Statement statement = conn.createStatement()) {

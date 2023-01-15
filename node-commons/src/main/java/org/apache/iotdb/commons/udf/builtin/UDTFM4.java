@@ -55,17 +55,20 @@ public class UDTFM4 implements UDTF {
 
   enum AccessStrategy {
     SIZE_WINDOW,
-    TIME_WINDOW
+    TIME_WINDOW,
+    SAMPLING_TIME_WINDOW
   }
 
   protected AccessStrategy accessStrategy;
   protected TSDataType dataType;
 
   public static final String WINDOW_SIZE_KEY = "windowSize";
-  public static final String WINDOW_INTERVAL_KEY = "windowInterval";
   public static final String SLIDING_STEP_KEY = "slidingStep";
+  public static final String WINDOW_INTERVAL_KEY = "windowInterval";
   public static final String DISPLAY_WINDOW_BEGIN_KEY = "displayWindowBegin";
   public static final String DISPLAY_WINDOW_END_KEY = "displayWindowEnd";
+  public static final String SAMPLING_INTERVAL_KEY = "samplingInterval";
+  public static final String SAMPLING_THRESHOLD_KEY = "samplingThreshold";
 
   @Override
   public void validate(UDFParameterValidator validator) throws UDFException {
@@ -73,24 +76,55 @@ public class UDTFM4 implements UDTF {
         .validateInputSeriesNumber(1)
         .validateInputSeriesDataType(0, Type.INT32, Type.INT64, Type.FLOAT, Type.DOUBLE);
 
-    if (!validator.getParameters().hasAttribute(WINDOW_SIZE_KEY)
-        && !validator.getParameters().hasAttribute(WINDOW_INTERVAL_KEY)) {
+    int flag = 0;
+    flag += validator.getParameters().hasAttribute(WINDOW_SIZE_KEY) ? 1 : 0;
+    flag += validator.getParameters().hasAttribute(WINDOW_INTERVAL_KEY) ? 1 : 0;
+    flag += validator.getParameters().hasAttribute(SAMPLING_INTERVAL_KEY) ? 1 : 0;
+
+    if (flag == 0) {
       throw new UDFParameterNotValidException(
           String.format(
-              "attribute \"%s\"/\"%s\" is required but was not provided.",
-              WINDOW_SIZE_KEY, WINDOW_INTERVAL_KEY));
+              "Attribute \"%s\"/\"%s\"/\"%s\" is required but was not provided.",
+              WINDOW_SIZE_KEY, WINDOW_INTERVAL_KEY, SAMPLING_INTERVAL_KEY));
     }
-    if (validator.getParameters().hasAttribute(WINDOW_SIZE_KEY)
-        && validator.getParameters().hasAttribute(WINDOW_INTERVAL_KEY)) {
+
+    if (flag > 1) {
       throw new UDFParameterNotValidException(
           String.format(
-              "use attribute \"%s\" or \"%s\" only one at a time.",
-              WINDOW_SIZE_KEY, WINDOW_INTERVAL_KEY));
+              "Use the attribute \"%s\" or \"%s\" or \"%s\" only one at a time.",
+              WINDOW_SIZE_KEY, WINDOW_INTERVAL_KEY, SAMPLING_INTERVAL_KEY));
     }
-    if (validator.getParameters().hasAttribute(WINDOW_SIZE_KEY)) {
+
+    if (validator.getParameters().hasAttribute(SAMPLING_INTERVAL_KEY)) {
+      // check the co-existence of DISPLAY_WINDOW_BEGIN_KEY and DISPLAY_WINDOW_END_KEY
+      if (!validator.getParameters().hasAttribute(DISPLAY_WINDOW_BEGIN_KEY)
+          || !validator.getParameters().hasAttribute(DISPLAY_WINDOW_END_KEY)) {
+        throw new UDFParameterNotValidException(
+            String.format(
+                "\"%s\" and \"%s\" must be provided together with \"%s\".",
+                DISPLAY_WINDOW_BEGIN_KEY, DISPLAY_WINDOW_END_KEY, SAMPLING_INTERVAL_KEY));
+      }
+      // check the non-existence of SLIDING_STEP_KEY
+      if (validator.getParameters().hasAttribute(SLIDING_STEP_KEY)) {
+        throw new UDFParameterNotValidException(
+            String.format(
+                "\"%s\" should not be provided together with \"%s\".",
+                SLIDING_STEP_KEY, SAMPLING_INTERVAL_KEY));
+      }
+      // check the value range of SAMPLING_THRESHOLD_KEY if provided
+      if (validator.getParameters().hasAttribute(SAMPLING_THRESHOLD_KEY)) {
+        long samplingThreshold = validator.getParameters().getLong(SAMPLING_THRESHOLD_KEY);
+        if (samplingThreshold < 5) {
+          throw new UDFParameterNotValidException(
+              String.format("\"%s\" should not be smaller than 5.", SAMPLING_THRESHOLD_KEY));
+        }
+      }
+      // set access strategy
+      accessStrategy = AccessStrategy.SAMPLING_TIME_WINDOW;
+    } else if (validator.getParameters().hasAttribute(WINDOW_SIZE_KEY)) {
       accessStrategy = AccessStrategy.SIZE_WINDOW;
     } else {
-      accessStrategy = AccessStrategy.TIME_WINDOW;
+      accessStrategy = AccessStrategy.TIME_WINDOW; // WINDOW_INTERVAL_KEY
     }
 
     dataType =
@@ -109,7 +143,7 @@ public class UDTFM4 implements UDTF {
       int slidingStep = parameters.getIntOrDefault(SLIDING_STEP_KEY, windowSize);
       configurations.setAccessStrategy(
           new SlidingSizeWindowAccessStrategy(windowSize, slidingStep));
-    } else {
+    } else if (accessStrategy == AccessStrategy.TIME_WINDOW) {
       long windowInterval = parameters.getLong(WINDOW_INTERVAL_KEY);
       long displayWindowBegin =
           parameters.getLongOrDefault(DISPLAY_WINDOW_BEGIN_KEY, Long.MIN_VALUE);
@@ -118,6 +152,26 @@ public class UDTFM4 implements UDTF {
       configurations.setAccessStrategy(
           new SlidingTimeWindowAccessStrategy(
               windowInterval, slidingStep, displayWindowBegin, displayWindowEnd));
+    } else { // SAMPLING_TIME_WINDOW
+      long samplingInterval = parameters.getLong(SAMPLING_INTERVAL_KEY);
+      long displayWindowBegin = parameters.getLong(DISPLAY_WINDOW_BEGIN_KEY);
+      long displayWindowEnd = parameters.getLong(DISPLAY_WINDOW_END_KEY);
+      long samplingThreshold = parameters.getLongOrDefault(SAMPLING_THRESHOLD_KEY, 10000);
+      long estimatedSamplingPointNum =
+          (long) Math.ceil((displayWindowEnd - displayWindowBegin) * 1.0 / samplingInterval);
+      long windowInterval;
+      // adjust windowInterval considering (1) a M4 window samples 4 points, (2) there is an upper
+      // limit on the total number of points sampled.
+      if (estimatedSamplingPointNum <= samplingThreshold - 4) {
+        windowInterval = samplingInterval * 4;
+      } else {
+        windowInterval =
+            (long)
+                Math.ceil((displayWindowEnd - displayWindowBegin) * 4.0 / (samplingThreshold - 4));
+      }
+      configurations.setAccessStrategy(
+          new SlidingTimeWindowAccessStrategy(
+              windowInterval, windowInterval, displayWindowBegin, displayWindowEnd));
     }
   }
 

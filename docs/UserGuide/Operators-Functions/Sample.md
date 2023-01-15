@@ -252,7 +252,7 @@ M4 is used to sample the `first, last, bottom, top` points for each sliding wind
 
 | Function Name | Allowed Input Series Data Types | Attributes                                                   | Output Series Data Type        | Series Data Type  Description                                |
 | ------------- | ------------------------------- | ------------------------------------------------------------ | ------------------------------ | ------------------------------------------------------------ |
-| M4            | INT32 / INT64 / FLOAT / DOUBLE  | Different attributes used by the size window and the time window. The size window uses attributes `windowSize` and `slidingStep`. The time window uses attributes `windowInterval`, `slidingStep`, `displayWindowBegin`, and `displayWindowEnd`. More details see below. | INT32 / INT64 / FLOAT / DOUBLE | Returns the `first, last, bottom, top` points in each sliding window. M4 sorts and deduplicates the aggregated points within the window before outputting them. |
+| M4            | INT32 / INT64 / FLOAT / DOUBLE  | Support three kinds of parameters based on different types of windows: (1) The size window uses attributes `windowSize` and `slidingStep`. (2) The time window uses attributes `windowInterval`, `slidingStep`, `displayWindowBegin`, and `displayWindowEnd`. (3) The user-defined sampling time window uses attributes `samplingInterval`, `samplingThreshold`, `displayWindowBegin`, and `displayWindowEnd`. More details see below. | INT32 / INT64 / FLOAT / DOUBLE | Returns the `first, last, bottom, top` points in each sliding window. M4 sorts and deduplicates the aggregated points within the window before outputting them. |
 
 ### Attributes
 
@@ -275,6 +275,28 @@ M4 is used to sample the `first, last, bottom, top` points for each sliding wind
 <img src="https://user-images.githubusercontent.com/33376433/198183015-93b56644-3330-4acf-ae9e-d718a02b5f4c.png" alt="groupBy window" style="zoom: 67%;" />
 
 *(image source: https://iotdb.apache.org/UserGuide/Master/Query-Data/Aggregate-Query.html#downsampling-aggregate-query)*
+
+**(3) Attributes for the user-defined sampling time window:**
+
++ `samplingInterval`: The sampling time interval length. Long data type. **Required**.
++ `samplingThreshold`: The upper limit of the number of sampling points. Long data type. Optional. If not set, default to 10000.
++ `displayWindowBegin`: The starting position of the window (included). Long data type. **Required**.
++ `displayWindowEnd`: End time limit (excluded, essentially playing the same role as `WHERE time < displayWindowEnd`). Long data type. **Required**.
+
+The user-defined sampling time window is a special kind of sliding time window, which is special in that:
+
+1.   There is a conversion relationship between the length of the sliding time window `windowInterval` and the sampling time interval `samplingInterval`, see below for details.
+2.   The sliding step of the sliding time window `slidingStep` is fixed to be equal to the window length `windowInterval` here, so there is no need for the user to input the `slidingStep` parameter.
+3.   `displayWindowBegin` and `displayWindowEnd` are required parameters here.
+
+For simplicity, let $L=displayWindowEnd-displayWindowBegin$, $T=samplingInterval$, $t=windowInterval$, $M=samplingThreshold$. The conversion relationship between the length $t$ of the sliding time window and the sampling time interval $T$ is as follows:
+
+It is easy to know that given the sampling time interval $T$ specified by the user, the maximum number of sampling points is $\lceil L/T \rceil$; given the sliding time window length $t$, the maximum number of M4 sampling points is $\lceil L/t\rceil *4$. Consider two aspects: (1) M4 samples 4 points in a sliding time window, and (2) the upper limit of the number of sampling points must be satisfied. Therefore, the conversion idea is: if the length of the sliding time window set to be four times the sampling time interval (i.e., $t=4T $) can meet the upper limit of the number of sampling points, then set accordingly, otherwise adjust the length of the sliding time window to meet the upper limit of the number of sampling points. Details as follows:
+
+1.   If $\lceil L/T\rceil \le M-4$, then set $t=4*T$. At this time $L/T\le \lceil L/T\rceil\le M-4$, so $\lceil L/t\rceil *4=\lceil L/4T\rceil *4<(L/4T+1 )*4\le M$, that is, the maximum number of M4 sampling points does not exceed the upper limit of sampling points $M$.
+2.   Otherwise $\lceil L/T\rceil > M-4$, then set $t=\lceil 4L/(M-4) \rceil$. At this time $t=\lceil 4L/(M-4) \rceil\ge 4L/(M-4)$, so $\lceil L/t\rceil *4<(L/t+1)*4\le M$, that is, the maximum number of M4 sampling points does not exceed the upper limit of sampling points $M$.
+
+
 
 ### Examples
 
@@ -305,50 +327,78 @@ Input series:
 SQL for query1:
 
 ```sql
-select M4(s1,'windowInterval'='25','displayWindowBegin'='0','displayWindowEnd'='100') from root.vehicle.d1
+select M4(s1,'windowSize'='10') as samples from root.vehicle.d1
 ```
 
 Output1:
 
 ```sql
-+-----------------------------+-----------------------------------------------------------------------------------------------+
-|                         Time|M4(root.vehicle.d1.s1, "windowInterval"="25", "displayWindowBegin"="0", "displayWindowEnd"="100")|
-+-----------------------------+-----------------------------------------------------------------------------------------------+
-|1970-01-01T08:00:00.001+08:00|                                                                                            5.0|
-|1970-01-01T08:00:00.010+08:00|                                                                                           30.0|
-|1970-01-01T08:00:00.020+08:00|                                                                                           20.0|
-|1970-01-01T08:00:00.025+08:00|                                                                                            8.0|
-|1970-01-01T08:00:00.030+08:00|                                                                                           40.0|
-|1970-01-01T08:00:00.045+08:00|                                                                                           30.0|
-|1970-01-01T08:00:00.052+08:00|                                                                                            8.0|
-|1970-01-01T08:00:00.054+08:00|                                                                                           18.0|
-+-----------------------------+-----------------------------------------------------------------------------------------------+
-Total line number = 8
++-----------------------------+-------+
+|                         Time|samples|
++-----------------------------+-------+
+|1970-01-01T08:00:00.001+08:00|    5.0|
+|1970-01-01T08:00:00.030+08:00|   40.0|
+|1970-01-01T08:00:00.033+08:00|    9.0|
+|1970-01-01T08:00:00.035+08:00|   10.0|
+|1970-01-01T08:00:00.045+08:00|   30.0|
+|1970-01-01T08:00:00.052+08:00|    8.0|
+|1970-01-01T08:00:00.054+08:00|   18.0|
++-----------------------------+-------+
+Total line number = 7
 ```
 
 SQL for query2:
 
 ```sql
-select M4(s1,'windowSize'='10') from root.vehicle.d1
+select M4(s1,'windowInterval'='25','displayWindowBegin'='0','displayWindowEnd'='100') as samples from root.vehicle.d1
 ```
 
 Output2:
 
 ```sql
-+-----------------------------+-----------------------------------------+
-|                         Time|M4(root.vehicle.d1.s1, "windowSize"="10")|
-+-----------------------------+-----------------------------------------+
-|1970-01-01T08:00:00.001+08:00|                                      5.0|
-|1970-01-01T08:00:00.030+08:00|                                     40.0|
-|1970-01-01T08:00:00.033+08:00|                                      9.0|
-|1970-01-01T08:00:00.035+08:00|                                     10.0|
-|1970-01-01T08:00:00.045+08:00|                                     30.0|
-|1970-01-01T08:00:00.052+08:00|                                      8.0|
-|1970-01-01T08:00:00.054+08:00|                                     18.0|
-+-----------------------------+-----------------------------------------+
-Total line number = 7
++-----------------------------+-------+
+|                         Time|samples|
++-----------------------------+-------+
+|1970-01-01T08:00:00.001+08:00|    5.0|
+|1970-01-01T08:00:00.010+08:00|   30.0|
+|1970-01-01T08:00:00.020+08:00|   20.0|
+|1970-01-01T08:00:00.025+08:00|    8.0|
+|1970-01-01T08:00:00.030+08:00|   40.0|
+|1970-01-01T08:00:00.045+08:00|   30.0|
+|1970-01-01T08:00:00.052+08:00|    8.0|
+|1970-01-01T08:00:00.054+08:00|   18.0|
++-----------------------------+-------+
+Total line number = 8
 ```
- 
+
+SQL for query3:
+
+```sql
+select M4(s1,'samplingInterval'='5','samplingThreshold'='100','displayWindowBegin'='0','displayWindowEnd'='150') as samples from root.vehicle.d1
+```
+
+Output3:
+
+```sql
++-----------------------------+-------+
+|                         Time|samples|
++-----------------------------+-------+
+|1970-01-01T08:00:00.001+08:00|    5.0|
+|1970-01-01T08:00:00.010+08:00|   30.0|
+|1970-01-01T08:00:00.020+08:00|   20.0|
+|1970-01-01T08:00:00.025+08:00|    8.0|
+|1970-01-01T08:00:00.030+08:00|   40.0|
+|1970-01-01T08:00:00.035+08:00|   10.0|
+|1970-01-01T08:00:00.040+08:00|   20.0|
+|1970-01-01T08:00:00.045+08:00|   30.0|
+|1970-01-01T08:00:00.052+08:00|    8.0|
+|1970-01-01T08:00:00.054+08:00|   18.0|
++-----------------------------+-------+
+Total line number = 10
+```
+
+
+
 ### Suggested Use Cases
 
 **(1) Use Case: Extreme-point-preserving downsampling**
