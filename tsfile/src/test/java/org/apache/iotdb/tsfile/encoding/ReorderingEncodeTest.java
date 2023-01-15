@@ -673,7 +673,7 @@ public class ReorderingEncodeTest {
 
       for (int i = 1; i < block_size; i++) {
         ArrayList<Integer> tmp_datai = new ArrayList<>();
-        tmp_datai.add(ts_block.get(i).get(0) * td + deviation_list.get(i-1) + r0 * td);
+        tmp_datai.add(ts_block.get(i).get(0) * td + deviation_list.get(i-1) + d0 + r0 * td);
         tmp_datai.add(ts_block.get(i).get(1));
         ts_block.set(i,tmp_datai);
       }
@@ -889,40 +889,40 @@ public class ReorderingEncodeTest {
 
           data_decoded = ReorderingDeltaDecoder(buffer,dataset_map_td.get(file_i));
 
-          for(int j=0;j<256;j++){
-            if(!data.get(j).get(0).equals(data_decoded.get(j).get(0))){
-              System.out.println("Wrong Time!");
-              System.out.print(j);
-              System.out.print(" ");
-              System.out.print(data.get(j).get(0));
-              System.out.print(" ");
-              System.out.println(data_decoded.get(j).get(0));
-            }
-            else{
-              System.out.println("Correct Time!");
-              System.out.print(j);
-              System.out.print(" ");
-              System.out.print(data.get(j).get(0));
-              System.out.print(" ");
-              System.out.println(data_decoded.get(j).get(0));
-            }
-            if(!data.get(j).get(1).equals(data_decoded.get(j).get(1))){
-              System.out.println("Wrong Value!");
-              System.out.print(j);
-              System.out.print(" ");
-              System.out.print(data.get(j).get(1));
-              System.out.print(" ");
-              System.out.println(data_decoded.get(j).get(1));
-            }
-            else{
-              System.out.println("Correct Value!");
-              System.out.print(j);
-              System.out.print(" ");
-              System.out.print(data.get(j).get(1));
-              System.out.print(" ");
-              System.out.println(data_decoded.get(j).get(1));
-            }
-          }
+//          for(int j=0;j<256;j++){
+//            if(!data.get(j).get(0).equals(data_decoded.get(j).get(0))){
+//              System.out.println("Wrong Time!");
+//              System.out.print(j);
+//              System.out.print(" ");
+//              System.out.print(data.get(j).get(0));
+//              System.out.print(" ");
+//              System.out.println(data_decoded.get(j).get(0));
+//            }
+//            else{
+//              System.out.println("Correct Time!");
+//              System.out.print(j);
+//              System.out.print(" ");
+//              System.out.print(data.get(j).get(0));
+//              System.out.print(" ");
+//              System.out.println(data_decoded.get(j).get(0));
+//            }
+//            if(!data.get(j).get(1).equals(data_decoded.get(j).get(1))){
+//              System.out.println("Wrong Value!");
+//              System.out.print(j);
+//              System.out.print(" ");
+//              System.out.print(data.get(j).get(1));
+//              System.out.print(" ");
+//              System.out.println(data_decoded.get(j).get(1));
+//            }
+//            else{
+//              System.out.println("Correct Value!");
+//              System.out.print(j);
+//              System.out.print(" ");
+//              System.out.print(data.get(j).get(1));
+//              System.out.print(" ");
+//              System.out.println(data_decoded.get(j).get(1));
+//            }
+//          }
 
           e = System.nanoTime();
           decodeTime += (e-s);
