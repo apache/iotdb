@@ -285,7 +285,7 @@ M4 is used to sample the `first, last, bottom, top` points for each sliding wind
 
 The user-defined sampling time window is a special kind of sliding time window, which is special in that:
 
-1.   There is a conversion relationship between the length of the sliding time window `windowInterval` and the sampling time interval `samplingInterval`, see below for details.
+1.   There is a conversion relationship between the length of the sliding time window `windowInterval` and the sampling time interval `samplingInterval`, see below for details. Note that here user **indirectly** controls the window time length `windowInterval`.
 2.   The sliding step of the sliding time window `slidingStep` is fixed to be equal to the window length `windowInterval` here, so there is no need for the user to input the `slidingStep` parameter.
 3.   `displayWindowBegin` and `displayWindowEnd` are required parameters here.
 
@@ -413,13 +413,15 @@ Given a chart of `w*h` pixels, suppose the visualization time range of the time 
 
 Therefore, from a visualization-driven perspective, use the sql: `"select M4(s1,'windowInterval'='(tqe-tqs)/w','displayWindowBegin'='tqs','displayWindowEnd'='tqe') from root.vehicle.d1"` to sample the `first, last, bottom, top` points for each time span. The resulting series has no more than `4*w` points, a big reduction compared to the original large-scale time series. The line chart drawn from the reduced data is identical that to that drawn from the original data (pixel-level consistency).
 
+
+
 ### Comparison with Other SQL
 
 | SQL                                                          | Whether support M4 aggregation                               | Sliding window type                               | Example                                                      | Docs                                                         |
 | ------------------------------------------------------------ | ------------------------------------------------------------ | ------------------------------------------------- | ------------------------------------------------------------ | ------------------------------------------------------------ |
 | 1. native built-in aggregate functions with Group By clause  | No. Lack `BOTTOM_TIME` and `TOP_TIME`, which are respectively the time of the points that have the mininum and maximum value. | Time Window                                       | `select count(status), max_value(temperature) from root.ln.wf01.wt01 group by ([2017-11-01 00:00:00, 2017-11-07 23:00:00), 3h, 1d)` | https://iotdb.apache.org/UserGuide/Master/Query-Data/Aggregate-Query.html#built-in-aggregate-functions <br />https://iotdb.apache.org/UserGuide/Master/Query-Data/Aggregate-Query.html#downsampling-aggregate-query |
 | 2. EQUAL_SIZE_BUCKET_M4_SAMPLE (built-in UDF)                | Yes*                                                         | Size Window. `windowSize = 4*(int)(1/proportion)` | `select equal_size_bucket_m4_sample(temperature, 'proportion'='0.1') as M4_sample from root.ln.wf01.wt01` | https://iotdb.apache.org/UserGuide/Master/Query-Data/Select-Expression.html#time-series-generating-functions |
-| **3. M4 (built-in UDF)**                                     | Yes*                                                         | Size Window, Time Window                          | (1) Size Window: `select M4(s1,'windowSize'='10') from root.vehicle.d1` <br />(2) Time Window: `select M4(s1,'windowInterval'='25','displayWindowBegin'='0','displayWindowEnd'='100') from root.vehicle.d1` | refer to this doc                                            |
+| **3. M4 (built-in UDF)**                                     | Yes*                                                         | Size Window, Time Window                          | (1) Size Window: `select M4(s1,'windowSize'='10') from root.vehicle.d1` <br />(2) Time Window: `select M4(s1,'windowInterval'='25','displayWindowBegin'='0','displayWindowEnd'='100') from root.vehicle.d1`<br />(3) User-defined Sampling Time Window: `select M4(s1,'samplingInterval'='5','samplingThreshold'='100','displayWindowBegin'='0','displayWindowEnd'='150') from root.vehicle.d1` | refer to this doc                                            |
 | 4. extend native built-in aggregate functions with Group By clause to support M4 aggregation | not implemented                                              | not implemented                                   | not implemented                                              | not implemented                                              |
 
 Further compare `EQUAL_SIZE_BUCKET_M4_SAMPLE` and `M4`:
@@ -436,4 +438,4 @@ It is worth noting that both functions sort and deduplicate the aggregated point
 
 `EQUAL_SIZE_BUCKET_M4_SAMPLE` uses SlidingSizeWindowAccessStrategy and **indirectly** controls sliding window size by sampling proportion. The conversion formula is `windowSize = 4*(int)(1/proportion)`. 
 
-`M4` supports two types of sliding window: SlidingSizeWindowAccessStrategy and SlidingTimeWindowAccessStrategy. `M4` **directly** controls the window point size or time length using corresponding parameters.
+`M4` supports two types of sliding window: SlidingSizeWindowAccessStrategy and SlidingTimeWindowAccessStrategy. For the regular size window or time window, `M4` **directly** controls the window point size or time length using corresponding attributes. For the user-defined sampling time window, `M4` **indirectly** controls the window time length.

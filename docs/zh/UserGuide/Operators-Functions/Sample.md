@@ -304,7 +304,7 @@ M4用于在窗口内采样第一个点（`first`）、最后一个点（`last`�
 
 用户定义的采样时间窗口是一种特殊的滑动时间窗口，其特殊之处在于：
 
-1.   滑动时间窗口的的时间长度`windowInterval`与采样时间间隔`samplingInterval`之间有一个转换关系，具体见下文。
+1.   滑动时间窗口的的时间长度`windowInterval`与采样时间间隔`samplingInterval`之间有一个转换关系，具体见下文。注意到用户这里是**间接**控制的滑动时间窗口长度。
 2.   滑动时间窗口的滑动时长`slidingStep`这里固定等于窗口长度`windowInterval`，因此无需用户输入`slidingStep`参数。
 3.   `displayWindowBegin`和`displayWindowEnd`这里是必需参数。
 
@@ -432,13 +432,15 @@ Total line number = 10
 
 于是从可视化驱动的角度出发，使用查询语句：`"select M4(s1,'windowInterval'='(tqe-tqs)/w','displayWindowBegin'='tqs','displayWindowEnd'='tqe') from root.vehicle.d1"`，来采集每个时间跨度内的第一个点（`first`）、最后一个点（`last`）、最小值点（`bottom`）、最大值点（`top`）。最终结果点数不会超过`4*w`个，使用这些聚合点画出来的折线图与使用原始数据画出来的图在像素级别上是完全一致的。
 
+
+
 ### 和其它SQL的功能比较
 
 | SQL                                               | 是否支持M4聚合                                               | 滑动窗口类型                                      | 示例                                                         | 相关文档                                                     |
 | ------------------------------------------------- | ------------------------------------------------------------ | ------------------------------------------------- | ------------------------------------------------------------ | ------------------------------------------------------------ |
 | 1. 带有Group By子句的内置聚合函数                 | 不支持，缺少`BOTTOM_TIME`和`TOP_TIME`，即缺少最小值点和最大值点的时间戳。 | Time Window                                       | `select count(status), max_value(temperature) from root.ln.wf01.wt01 group by ([2017-11-01 00:00:00, 2017-11-07 23:00:00), 3h, 1d)` | https://iotdb.apache.org/UserGuide/Master/Query-Data/Aggregate-Query.html#built-in-aggregate-functions <br />https://iotdb.apache.org/UserGuide/Master/Query-Data/Aggregate-Query.html#downsampling-aggregate-query |
 | 2. EQUAL_SIZE_BUCKET_M4_SAMPLE (内置UDF)          | 支持*                                                        | Size Window. `windowSize = 4*(int)(1/proportion)` | `select equal_size_bucket_m4_sample(temperature, 'proportion'='0.1') as M4_sample from root.ln.wf01.wt01` | https://iotdb.apache.org/UserGuide/Master/Query-Data/Select-Expression.html#time-series-generating-functions |
-| **3. M4 (内置UDF)**                               | 支持*                                                        | Size Window, Time Window                          | (1) Size Window: `select M4(s1,'windowSize'='10') from root.vehicle.d1` <br />(2) Time Window: `select M4(s1,'windowInterval'='25','displayWindowBegin'='0','displayWindowEnd'='100') from root.vehicle.d1` | 本文档                                                       |
+| **3. M4 (内置UDF)**                               | 支持*                                                        | Size Window, Time Window                          | (1) Size Window: `select M4(s1,'windowSize'='10') from root.vehicle.d1` <br />(2) Time Window: `select M4(s1,'windowInterval'='25','displayWindowBegin'='0','displayWindowEnd'='100') from root.vehicle.d1`<br />(3) User-defined Sampling Time Window: `select M4(s1,'samplingInterval'='5','samplingThreshold'='100','displayWindowBegin'='0','displayWindowEnd'='150') from root.vehicle.d1` | 本文档                                                       |
 | 4. 扩展带有Group By子句的内置聚合函数来支持M4聚合 | 未实施                                                       | 未实施                                            | 未实施                                                       | 未实施                                                       |
 
 进一步比较`EQUAL_SIZE_BUCKET_M4_SAMPLE`和`M4`：
@@ -455,4 +457,4 @@ Total line number = 10
 
 `EQUAL_SIZE_BUCKET_M4_SAMPLE`使用SlidingSizeWindowAccessStrategy，并且通过采样比例（`proportion`）来间接控制窗口点数（`windowSize`)，转换公式是`windowSize = 4*(int)(1/proportion)`。
 
-`M4`支持两种滑动窗口：SlidingSizeWindowAccessStrategy和SlidingTimeWindowAccessStrategy，并且`M4`通过相应的参数直接控制窗口的点数或者时长。
+`M4`支持两种滑动窗口：SlidingSizeWindowAccessStrategy和SlidingTimeWindowAccessStrateg。对于常规的size window或time window，`M4`通过相应的参数**直接**控制窗口的点数或者时长。对于用户定义的采样时间窗口，`M4`通过相应的参数**间接**控制窗口时长。
