@@ -36,10 +36,10 @@ public class ReorderingEncodeRegressionTest {
   }
   public static byte[] int2Bytes(int integer) {
     byte[] bytes=new byte[4];
-    bytes[3]= (byte) ((byte) integer>>24);
-    bytes[2]= (byte) ((byte) integer>>16);
-    bytes[1]= (byte) ((byte) integer>>8);
-    bytes[0]=(byte) integer;
+    bytes[3]= (byte) ( integer>>24);
+    bytes[2]= (byte) ( integer>>16);
+    bytes[1]= (byte) ( integer>>8);
+    bytes[0]= (byte) integer;
     return bytes;
   }
   public static byte[] double2Bytes(double dou){
@@ -113,6 +113,7 @@ public class ReorderingEncodeRegressionTest {
   public static void splitTimeStamp(ArrayList<ArrayList<Integer>> ts_block, int block_size, int td,
                                     ArrayList<Integer> deviation_list,ArrayList<Integer> result){
     int deviation_max = Integer.MIN_VALUE;
+    int deviation_min = Integer.MAX_VALUE;
     int max_bit_width_deviation=0;
     int r0 = 0;
     int d0 = 0;
@@ -130,10 +131,10 @@ public class ReorderingEncodeRegressionTest {
       }
       deviation = zigzag(deviation);
       deviation_list.add(deviation);
-      if(deviation > deviation_max){
-        deviation_max = deviation;
-      }
 
+      if(deviation < deviation_min){
+        deviation_min = deviation;
+      }
       int value = ts_block.get(j).get(1);
       ArrayList<Integer> tmp = new ArrayList<>();
       tmp.add(delta_interval);
@@ -159,6 +160,14 @@ public class ReorderingEncodeRegressionTest {
     tmp0.add(0);
     tmp0.add(value0);
     ts_block.set(0,tmp0);
+
+    for(int j=0;j<deviation_list.size();j++){
+      int deviation_cur = deviation_list.get(j) - deviation_min;
+      deviation_list.set(j,deviation_cur);
+      if(deviation_cur > deviation_max){
+        deviation_max = deviation_cur;
+      }
+    }
 
     for(int j=1;j<block_size-1;j++){
       int interval = ts_block.get(j).get(0) + ts_block.get(j-1).get(0);
@@ -225,8 +234,8 @@ public class ReorderingEncodeRegressionTest {
 
     // delta to Regression
     for(int j=1;j<block_size;j++) {
-      int epsilon_r = (int) ((double)ts_block.get(j).get(0) - theta0_r - theta1_r * (double)ts_block.get(j-1).get(0));
-      int epsilon_v = (int) ((double)ts_block.get(j).get(1) - theta0_v - theta1_v * (double)ts_block.get(j-1).get(1));
+      int epsilon_r = ts_block.get(j).get(0) - (int)(theta0_r + theta1_r *(double) ts_block.get(j-1).get(0));
+      int epsilon_v = ts_block.get(j).get(1) - (int)(theta0_v + theta1_v *(double) ts_block.get(j-1).get(1));
       if(epsilon_r<timestamp_delta_min){
         timestamp_delta_min = epsilon_r;
       }
@@ -260,8 +269,8 @@ public class ReorderingEncodeRegressionTest {
     }
     int max_bit_width_interval = getBitWith(max_interval);
     int max_bit_width_value = getBitWith(max_value);
-    System.out.println(max_bit_width_interval);
-    System.out.println(max_bit_width_value);
+//    System.out.println(max_bit_width_interval);
+//    System.out.println(max_bit_width_value);
 
     // calculate error
     int  length = (max_bit_width_interval+max_bit_width_value)*(block_size-1);
@@ -401,6 +410,7 @@ public class ReorderingEncodeRegressionTest {
 
     // encode value
     byte[] max_bit_width_value_byte = int2Bytes(raw_length.get(2));
+//    System.out.println(raw_length.get(2));
     for (byte b : max_bit_width_value_byte) encoded_result.add(b);
     byte[] value_bytes = bitPacking(ts_block,1,raw_length.get(2));
     for (byte b : value_bytes) encoded_result.add(b);
@@ -588,11 +598,11 @@ public class ReorderingEncodeRegressionTest {
     input_path_list.add( "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\TH-Climate");
     output_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation" +
             "\\compression_ratio\\regression_ratio\\TH-Climate_ratio.csv");
-    dataset_map_td.add(4);
+    dataset_map_td.add(2);
     input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\TY-Transport");
     output_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation" +
             "\\compression_ratio\\regression_ratio\\TY-Transport_ratio.csv");
-    dataset_map_td.add(6);
+    dataset_map_td.add(5);
     input_path_list.add( "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\TY-Fuel");
     output_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation" +
             "\\compression_ratio\\regression_ratio\\TY-Fuel_ratio.csv");
@@ -603,7 +613,7 @@ public class ReorderingEncodeRegressionTest {
     dataset_map_td.add(100);
 
 //    for(int file_i=0;file_i<input_path_list.size();file_i++){
-      for(int file_i=0;file_i<1;file_i++){
+      for(int file_i=1;file_i<2;file_i++){
       String inputPath = input_path_list.get(file_i);
       String Output =output_path_list.get(file_i);
 
