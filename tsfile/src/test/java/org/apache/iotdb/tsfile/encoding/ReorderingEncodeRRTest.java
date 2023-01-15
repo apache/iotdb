@@ -678,10 +678,10 @@ public class ReorderingEncodeRRTest {
       int value0 = bytes2Integer(encoded, decode_pos, 4);
       decode_pos += 4;
 
-      int min_delta_interval = bytes2Integer(encoded, decode_pos, 4);
-      decode_pos += 4;
-      int min_delta_value = bytes2Integer(encoded, decode_pos, 4);
-      decode_pos += 4;
+//      int min_delta_interval = bytes2Integer(encoded, decode_pos, 4);
+//      decode_pos += 4;
+//      int min_delta_value = bytes2Integer(encoded, decode_pos, 4);
+//      decode_pos += 4;
 
       double theta0_r = bytes2Double(encoded, decode_pos, 8);
       decode_pos += 8;
@@ -694,12 +694,12 @@ public class ReorderingEncodeRRTest {
 
       int max_bit_width_interval = bytes2Integer(encoded, decode_pos, 4);
       decode_pos += 4;
-      interval_list = decodebitPacking(encoded,decode_pos,max_bit_width_interval,min_delta_interval,block_size);
+      interval_list = decodebitPacking(encoded,decode_pos,max_bit_width_interval,0,block_size);
       decode_pos += max_bit_width_interval * (block_size - 1) / 8;
 
       int max_bit_width_value = bytes2Integer(encoded, decode_pos, 4);
       decode_pos += 4;
-      value_list = decodebitPacking(encoded,decode_pos,max_bit_width_value,min_delta_value,block_size);
+      value_list = decodebitPacking(encoded,decode_pos,max_bit_width_value,0,block_size);
       decode_pos += max_bit_width_value * (block_size - 1) / 8;
 
       int max_bit_width_deviation = bytes2Integer(encoded, decode_pos, 4);
