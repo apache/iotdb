@@ -774,7 +774,7 @@ public class ReorderingEncodeRRTest {
 
       for (int i = 1; i < block_size; i++) {
         ArrayList<Integer> tmp_datai = new ArrayList<>();
-        tmp_datai.add(ts_block.get(i).get(0) * td + deviation_list.get(i-1) + r0 * td);
+        tmp_datai.add(ts_block.get(i).get(0) * td + deviation_list.get(i-1) + d0 + r0 * td);
         tmp_datai.add(ts_block.get(i).get(1));
         ts_block.set(i,tmp_datai);
       }
