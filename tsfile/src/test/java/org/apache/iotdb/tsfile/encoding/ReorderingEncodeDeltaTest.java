@@ -216,7 +216,8 @@ public class ReorderingEncodeDeltaTest {
   int max_bit_width_deviation=0;
   int r0 = 0;
   int d0 = 0;
-
+  ArrayList<ArrayList<Integer>> ts_block_raw = (ArrayList<ArrayList<Integer>>) ts_block.clone();
+  System.out.println(ts_block_raw);
   // split timestamp into intervals and deviations
 
   //address other timestamps and values
@@ -436,7 +437,7 @@ public class ReorderingEncodeDeltaTest {
 
     // encode value
     byte[] max_bit_width_value_byte = int2Bytes(raw_length.get(2));
-//    System.out.println(raw_length.get(2));
+    System.out.println(raw_length.get(2));
     for (byte b : max_bit_width_value_byte) encoded_result.add(b);
     byte[] value_bytes = bitPacking(ts_block,1,raw_length.get(2));
     for (byte b : value_bytes) encoded_result.add(b);
@@ -792,8 +793,8 @@ public class ReorderingEncodeDeltaTest {
             "\\compression_ratio\\rd_ratio\\GW-Magnetic_ratio.csv");
     dataset_map_td.add(100);
 
-    for(int file_i=0;file_i<input_path_list.size();file_i++){
-//    for(int file_i=7;file_i<8;file_i++){
+//    for(int file_i=0;file_i<input_path_list.size();file_i++){
+    for(int file_i=0;file_i<1;file_i++){
       String inputPath = input_path_list.get(file_i);
       String Output =output_path_list.get(file_i);
 
