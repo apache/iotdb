@@ -310,7 +310,7 @@ M4用于在窗口内采样第一个点（`first`）、最后一个点（`last`�
 
 简记$L=displayWindowEnd-displayWindowBegin$，$T=samplingInterval$，$t=windowInterval$，$M=samplingThreshold$。滑动时间窗口的的时间长度$t$与采样时间间隔$T$之间的转换关系如下：
 
-易知在用户指定的采样时间间隔$T$下，采样点数最多为$\lceil L/T \rceil$；在设定的滑动时间窗口长度$t$下，M4最大采样点数为$\lceil L/t\rceil *4$。考虑两个方面：（1）M4在一个滑动时间窗口内采样4个点，（2）必须满足采样点数的上限，因此转换思路是：如果设置滑动时间窗口长度为四倍的采样时间间隔（即$t=4T$）能满足采样点数上限限制，则依此设置，否则调整滑动时间窗口长度使其满足采样点数上限限制。具体如下：
+考虑两个方面：（1）M4在一个滑动时间窗口内采样4个点，（2）必须满足采样点数上限限制。易知在用户指定的采样时间间隔$T$下，采样点数最多为$\lceil L/T \rceil$；在设定的滑动时间窗口长度$t$下，M4最大采样点数为$\lceil L/t\rceil *4$。因此转换思路是：如果设置滑动时间窗口长度为四倍的采样时间间隔（即$t=4T$）能满足采样点数上限限制，则依此设置，否则调整滑动时间窗口长度使其满足采样点数上限限制。具体如下：
 
 1.   如果$\lceil L/T\rceil \le M-4$，则取$t=4*T$。此时$L/T\le \lceil L/T\rceil\le M-4$，从而$\lceil L/t\rceil *4=\lceil L/4T\rceil *4<(L/4T+1)*4\le M$，即此时M4滑动时间窗口的最大采样点数不超过采样点数上限$M$。
 2.   否则$\lceil L/T\rceil > M-4$，则取$t=\lceil 4L/(M-4) \rceil$。此时$t=\lceil 4L/(M-4) \rceil\ge 4L/(M-4)$，从而$\lceil L/t\rceil *4<(L/t+1)*4\le M$，即此时M4滑动时间窗口的最大采样点数不超过采样点数上限$M$。
