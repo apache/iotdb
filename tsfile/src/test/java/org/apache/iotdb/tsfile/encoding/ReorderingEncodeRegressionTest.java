@@ -176,6 +176,8 @@ public class ReorderingEncodeRegressionTest {
   public static ArrayList<ArrayList<Integer>> getEncodeBitsRegression(ArrayList<ArrayList<Integer>> ts_block, int block_size,
                                                                  ArrayList<Integer> result, ArrayList<Integer> i_star,
                                                                       ArrayList<Double> theta){
+    int timestamp_delta_min = Integer.MAX_VALUE;
+    int value_delta_min = Integer.MAX_VALUE;
     ArrayList<ArrayList<Integer>> ts_block_delta = new ArrayList<>();
     theta.clear();
 
@@ -225,6 +227,13 @@ public class ReorderingEncodeRegressionTest {
     for(int j=1;j<block_size;j++) {
       int epsilon_r = (int) ((double)ts_block.get(j).get(0) - theta0_r - theta1_r * (double)ts_block.get(j-1).get(0));
       int epsilon_v = (int) ((double)ts_block.get(j).get(1) - theta0_v - theta1_v * (double)ts_block.get(j-1).get(1));
+      if(epsilon_r<timestamp_delta_min){
+        timestamp_delta_min = epsilon_r;
+      }
+      if(epsilon_v<value_delta_min){
+        value_delta_min = epsilon_v;
+      }
+
       ArrayList<Integer> tmp = new ArrayList<>();
       tmp.add(epsilon_r);
       tmp.add(epsilon_v);
@@ -236,8 +245,8 @@ public class ReorderingEncodeRegressionTest {
     int max_value = Integer.MIN_VALUE;
     int max_value_i = -1;
     for(int j=block_size-1;j>0;j--) {
-      int epsilon_r = ts_block_delta.get(j).get(0);
-      int epsilon_v = ts_block_delta.get(j).get(1) ;
+      int epsilon_r = ts_block_delta.get(j).get(0) - timestamp_delta_min;
+      int epsilon_v = ts_block_delta.get(j).get(1) - value_delta_min;
       if(epsilon_r>max_interval){
         max_interval = epsilon_r;
         max_interval_i = j;
@@ -258,6 +267,9 @@ public class ReorderingEncodeRegressionTest {
     result.add(length);
     result.add(max_bit_width_interval);
     result.add(max_bit_width_value);
+
+    result.add(timestamp_delta_min);
+    result.add(value_delta_min);
 
     theta.add(theta0_r);
     theta.add(theta1_r);
@@ -350,9 +362,9 @@ public class ReorderingEncodeRegressionTest {
 //    for (byte b : block_size_byte) encoded_result.add(b);
 
     // r0 of a block (Integer)
-    byte[] r0_byte = int2Bytes(raw_length.get(4));
+    byte[] r0_byte = int2Bytes(raw_length.get(6));
     for (byte b : r0_byte) encoded_result.add(b);
-    byte[] d0_byte = int2Bytes(raw_length.get(5));
+    byte[] d0_byte = int2Bytes(raw_length.get(7));
     for (byte b : d0_byte) encoded_result.add(b);
 
     // encode interval0 and value0
@@ -360,6 +372,12 @@ public class ReorderingEncodeRegressionTest {
     for (byte b : interval0_byte) encoded_result.add(b);
     byte[] value0_byte = int2Bytes(ts_block.get(0).get(1));
     for (byte b : value0_byte) encoded_result.add(b);
+
+    // encode min_delta_interval and min_delta_value
+    byte[] min_delta_interval_byte = int2Bytes(raw_length.get(3));
+    for (byte b : min_delta_interval_byte) encoded_result.add(b);
+    byte[] min_delta_value_byte = int2Bytes(raw_length.get(4));
+    for (byte b : min_delta_value_byte) encoded_result.add(b);
 
     // encode theta
     byte[] theta0_r_byte = double2Bytes(theta.get(0));
@@ -386,9 +404,9 @@ public class ReorderingEncodeRegressionTest {
 
 
     // encode deviation
-    byte[] max_bit_width_deviation_byte = int2Bytes(raw_length.get(3));
+    byte[] max_bit_width_deviation_byte = int2Bytes(raw_length.get(5));
     for (byte b: max_bit_width_deviation_byte) encoded_result.add(b);
-    byte[] deviation_list_bytes = bitPacking(deviation_list,raw_length.get(3));
+    byte[] deviation_list_bytes = bitPacking(deviation_list,raw_length.get(5));
     for (byte b: deviation_list_bytes) encoded_result.add(b);
 
 

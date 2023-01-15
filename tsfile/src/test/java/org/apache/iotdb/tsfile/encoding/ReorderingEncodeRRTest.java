@@ -468,7 +468,7 @@ public class ReorderingEncodeRRTest {
     // encode deviation
     byte[] max_bit_width_deviation_byte = int2Bytes(raw_length.get(5));
     for (byte b: max_bit_width_deviation_byte) encoded_result.add(b);
-    byte[] deviation_list_bytes = bitPacking(deviation_list,raw_length.get(3));
+    byte[] deviation_list_bytes = bitPacking(deviation_list,raw_length.get(5));
     for (byte b: deviation_list_bytes) encoded_result.add(b);
 //    for(int i=0;i<deviation_list.size();i++){
 //      System.out.println(deviation_list.get(i));
