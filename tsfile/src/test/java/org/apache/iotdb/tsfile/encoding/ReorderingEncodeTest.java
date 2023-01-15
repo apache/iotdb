@@ -554,10 +554,8 @@ public class ReorderingEncodeTest {
     for (int i = start; i < start + num; i++) {
       value <<= 8;
       int b = encoded.get(i) & 0xFF;
-      //System.out.println(encoded.get(i));
       value |= b;
     }
-    //System.out.println(" ");
     return value;
   }
 
