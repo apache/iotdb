@@ -666,19 +666,34 @@ public class ReorderingEncodeTest {
       //quickSort(ts_block, 0, 0, block_size-1);
       quickSort22(ts_block, 0, block_size-1);
 
-      quickSort(ts_block, 0, 0, block_size-1);
-
       ArrayList<Integer> tmp_data0 = new ArrayList<>();
       tmp_data0.add(ts_block.get(0).get(0) * td + d0 + r0 * td);
       tmp_data0.add(ts_block.get(0).get(1));
-      data.add(tmp_data0);
+      ts_block.set(0,tmp_data0);
 
       for (int i = 1; i < block_size; i++) {
         ArrayList<Integer> tmp_datai = new ArrayList<>();
         tmp_datai.add(ts_block.get(i).get(0) * td + deviation_list.get(i-1) + r0 * td);
         tmp_datai.add(ts_block.get(i).get(1));
-        data.add(tmp_datai);
+        ts_block.set(i,tmp_datai);
       }
+
+      quickSort(ts_block, 0, 0, block_size-1);
+
+      data.addAll(ts_block);
+
+
+//      ArrayList<Integer> tmp_data0 = new ArrayList<>();
+//      tmp_data0.add(ts_block.get(0).get(0) * td + d0 + r0 * td);
+//      tmp_data0.add(ts_block.get(0).get(1));
+//      data.add(tmp_data0);
+//
+//      for (int i = 1; i < block_size; i++) {
+//        ArrayList<Integer> tmp_datai = new ArrayList<>();
+//        tmp_datai.add(ts_block.get(i).get(0) * td + deviation_list.get(i-1) + r0 * td);
+//        tmp_datai.add(ts_block.get(i).get(1));
+//        data.add(tmp_datai);
+//      }
 
 //      for (int i = 0; i < block_size-1; i++) {
 //        ArrayList<Integer> tmp_datai = new ArrayList<>();
@@ -809,7 +824,7 @@ public class ReorderingEncodeTest {
 
 
     //for(int file_i=0;file_i<input_path_list.size();file_i++){
-    for(int file_i=0;file_i<1;file_i++){
+    for(int file_i=1;file_i<2;file_i++){
       String inputPath = input_path_list.get(file_i);
       String Output =output_path_list.get(file_i);
 
