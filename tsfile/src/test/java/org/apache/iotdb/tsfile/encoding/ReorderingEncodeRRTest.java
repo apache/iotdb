@@ -656,24 +656,27 @@ public class ReorderingEncodeRRTest {
     decode_pos += 4;
 
     while(decode_pos < encoded.size()) {
-      ArrayList<Integer> interval_list = new ArrayList<>();
+      //ArrayList<Integer> interval_list = new ArrayList<>();
+      ArrayList<Integer> time_list = new ArrayList<>();
       ArrayList<Integer> value_list = new ArrayList<>();
-      ArrayList<Integer> deviation_list = new ArrayList<>();
+      //ArrayList<Integer> deviation_list = new ArrayList<>();
 
       ArrayList<ArrayList<Integer>> ts_block = new ArrayList<>();
 
       int r0 = bytes2Integer(encoded, decode_pos, 4);
       decode_pos += 4;
-      int d0 = bytes2Integer(encoded, decode_pos, 4);
-      decode_pos += 4;
+//      int d0 = bytes2Integer(encoded, decode_pos, 4);
+//      decode_pos += 4;
+//
+//      if (d0 % 2 == 0) {
+//        d0 = d0 / 2;
+//      } else {
+//        d0 = -(d0 + 1) / 2;
+//      }
 
-      if (d0 % 2 == 0) {
-        d0 = d0 / 2;
-      } else {
-        d0 = -(d0 + 1) / 2;
-      }
-
-      int interval0 = bytes2Integer(encoded, decode_pos, 4);
+//      int interval0 = bytes2Integer(encoded, decode_pos, 4);
+//      decode_pos += 4;
+      int time0 = bytes2Integer(encoded, decode_pos, 4);
       decode_pos += 4;
       int value0 = bytes2Integer(encoded, decode_pos, 4);
       decode_pos += 4;
@@ -692,20 +695,25 @@ public class ReorderingEncodeRRTest {
       double theta1_v = bytes2Double(encoded, decode_pos, 8);
       decode_pos += 8;
 
-      int max_bit_width_interval = bytes2Integer(encoded, decode_pos, 4);
+//      int max_bit_width_interval = bytes2Integer(encoded, decode_pos, 4);
+//      decode_pos += 4;
+//      interval_list = decodebitPacking(encoded,decode_pos,max_bit_width_interval,0,block_size);
+//      decode_pos += max_bit_width_interval * (block_size - 1) / 8;
+
+      int max_bit_width_time = bytes2Integer(encoded, decode_pos, 4);
       decode_pos += 4;
-      interval_list = decodebitPacking(encoded,decode_pos,max_bit_width_interval,0,block_size);
-      decode_pos += max_bit_width_interval * (block_size - 1) / 8;
+      time_list = decodebitPacking(encoded,decode_pos,max_bit_width_time,0,block_size);
+      decode_pos += max_bit_width_time * (block_size - 1) / 8;
 
       int max_bit_width_value = bytes2Integer(encoded, decode_pos, 4);
       decode_pos += 4;
       value_list = decodebitPacking(encoded,decode_pos,max_bit_width_value,0,block_size);
       decode_pos += max_bit_width_value * (block_size - 1) / 8;
 
-      int max_bit_width_deviation = bytes2Integer(encoded, decode_pos, 4);
-      decode_pos += 4;
-      deviation_list = decodebitPacking(encoded,decode_pos,max_bit_width_deviation,0,block_size);
-      decode_pos += max_bit_width_deviation * (block_size - 1) / 8;
+//      int max_bit_width_deviation = bytes2Integer(encoded, decode_pos, 4);
+//      decode_pos += 4;
+//      deviation_list = decodebitPacking(encoded,decode_pos,max_bit_width_deviation,0,block_size);
+//      decode_pos += max_bit_width_deviation * (block_size - 1) / 8;
 
 //      for (int i = 0; i < block_size-1; i++) {
 //        ArrayList<Integer> ts_block_tmp = new ArrayList<>();
@@ -720,34 +728,55 @@ public class ReorderingEncodeRRTest {
 //      tmp_data.add(value0);
 //      data.add(tmp_data);
 
-      int ri_pre = interval0;
+      int ti_pre = time0;
       int vi_pre = value0;
       ArrayList<Integer> ts_block_tmp0 = new ArrayList<>();
-      ts_block_tmp0.add(interval0);
+      ts_block_tmp0.add(time0);
       ts_block_tmp0.add(value0);
       ts_block.add(ts_block_tmp0);
       for (int i = 0; i < block_size-1; i++) {
-        int ri = (int) (theta1_r * ri_pre + theta0_r + interval_list.get(i));
-        interval_list.set(i,ri);
-        ri_pre = ri;
+        int ti = (int) (theta1_r * ti_pre + theta0_r + time_list.get(i));
+        time_list.set(i,ti);
+        ti_pre = ti;
 
         int vi = (int) (theta1_v * vi_pre + theta0_v + value_list.get(i));
         value_list.set(i,vi);
         vi_pre = vi;
 
-        int dev; //zigzag
-        if (deviation_list.get(block_size-1 - i - 1) % 2 == 0) {
-          dev = deviation_list.get(block_size-1 - i - 1) / 2;
-        } else {
-          dev = -(deviation_list.get(block_size-1 - i - 1) + 1) / 2;
-        }
-        deviation_list.set(block_size-1 - i - 1,dev);
-
         ArrayList<Integer> ts_block_tmp = new ArrayList<>();
-        ts_block_tmp.add(interval_list.get(i));
+        ts_block_tmp.add(time_list.get(i));
         ts_block_tmp.add(value_list.get(i));
         ts_block.add(ts_block_tmp);
       }
+
+//      int ri_pre = interval0;
+//      int vi_pre = value0;
+//      ArrayList<Integer> ts_block_tmp0 = new ArrayList<>();
+//      ts_block_tmp0.add(interval0);
+//      ts_block_tmp0.add(value0);
+//      ts_block.add(ts_block_tmp0);
+//      for (int i = 0; i < block_size-1; i++) {
+//        int ri = (int) (theta1_r * ri_pre + theta0_r + interval_list.get(i));
+//        interval_list.set(i,ri);
+//        ri_pre = ri;
+//
+//        int vi = (int) (theta1_v * vi_pre + theta0_v + value_list.get(i));
+//        value_list.set(i,vi);
+//        vi_pre = vi;
+//
+//        int dev; //zigzag
+//        if (deviation_list.get(block_size-1 - i - 1) % 2 == 0) {
+//          dev = deviation_list.get(block_size-1 - i - 1) / 2;
+//        } else {
+//          dev = -(deviation_list.get(block_size-1 - i - 1) + 1) / 2;
+//        }
+//        deviation_list.set(block_size-1 - i - 1,dev);
+//
+//        ArrayList<Integer> ts_block_tmp = new ArrayList<>();
+//        ts_block_tmp.add(interval_list.get(i));
+//        ts_block_tmp.add(value_list.get(i));
+//        ts_block.add(ts_block_tmp);
+//      }
 
 //      for(int i=0;i<block_size-1;i++){
 //        for(int j=0;j<block_size-1 -i -1;j++){
@@ -765,16 +794,14 @@ public class ReorderingEncodeRRTest {
       //quickSort(ts_block, 0, 0, block_size-2);
       quickSort22(ts_block, 0, block_size-1);
 
-      quickSort(ts_block, 0, 0, block_size-1);
-
       ArrayList<Integer> tmp_data0 = new ArrayList<>();
-      tmp_data0.add(ts_block.get(0).get(0) * td + d0 + r0 * td);
+      tmp_data0.add(ts_block.get(0).get(0) * td + r0 * td);
       tmp_data0.add(ts_block.get(0).get(1));
       ts_block.set(0,tmp_data0);
 
       for (int i = 1; i < block_size; i++) {
         ArrayList<Integer> tmp_datai = new ArrayList<>();
-        tmp_datai.add(ts_block.get(i).get(0) * td + deviation_list.get(i-1) + d0 + r0 * td);
+        tmp_datai.add(ts_block.get(i).get(0) * td + r0 * td);
         tmp_datai.add(ts_block.get(i).get(1));
         ts_block.set(i,tmp_datai);
       }
