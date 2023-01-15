@@ -267,6 +267,14 @@ public class ReorderingEncodeRegression32FloatTest {
     for(int j=1;j<block_size;j++) {
       int epsilon_r = (int) ((float)ts_block.get(j).get(0) - theta0_r - theta1_r * (float)ts_block.get(j-1).get(0));
       int epsilon_v =  (int)((float)ts_block.get(j).get(1) - theta0_v - theta1_v * (float) ts_block.get(j-1).get(1));
+      if(epsilon_r<timestamp_delta_min){
+        timestamp_delta_min = epsilon_r;
+      }
+      if(epsilon_v<value_delta_min){
+        value_delta_min = epsilon_v;
+      }
+
+
       ArrayList<Integer> tmp = new ArrayList<>();
       tmp.add(epsilon_r);
       tmp.add(epsilon_v);
@@ -301,6 +309,8 @@ public class ReorderingEncodeRegression32FloatTest {
     result.add(max_bit_width_interval);
     result.add(max_bit_width_value);
 
+    theta0_r += timestamp_delta_min;
+    theta0_v += value_delta_min;
     theta.add(theta0_r);
     theta.add(theta1_r);
     theta.add(theta0_v);
@@ -586,35 +596,35 @@ public class ReorderingEncodeRegression32FloatTest {
     ArrayList<Integer> dataset_map_td = new ArrayList<>();
     input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\Metro-Traffic");
     output_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation" +
-            "\\vary_parameter\\rr_float_ratio\\Metro-Traffic_ratio.csv");
+            "\\compression_ratio\\rr_float_ratio\\Metro-Traffic_ratio.csv");
     dataset_map_td.add(3600);
     input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\Nifty-Stocks");
     output_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation" +
-            "\\vary_parameter\\rr_float_ratio\\Nifty-Stocks_ratio.csv");
+            "\\compression_ratio\\rr_float_ratio\\Nifty-Stocks_ratio.csv");
     dataset_map_td.add(86400);
     input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\USGS-Earthquakes");
     output_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation" +
-            "\\vary_parameter\\rr_float_ratio\\USGS-Earthquakes_ratio.csv");
+            "\\compression_ratio\\rr_float_ratio\\USGS-Earthquakes_ratio.csv");
     dataset_map_td.add(50);
     input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\Cyber-Vehicle");
     output_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation" +
-            "\\vary_parameter\\rr_float_ratio\\Cyber-Vehicle_ratio.csv");
+            "\\compression_ratio\\rr_float_ratio\\Cyber-Vehicle_ratio.csv");
     dataset_map_td.add(10);
     input_path_list.add( "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\TH-Climate");
     output_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation" +
-            "\\vary_parameter\\rr_float_ratio\\TH-Climate_ratio.csv");
+            "\\compression_ratio\\rr_float_ratio\\TH-Climate_ratio.csv");
     dataset_map_td.add(3);
     input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\TY-Transport");
     output_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation" +
-            "\\vary_parameter\\rr_float_ratio\\TY-Transport_ratio.csv");
+            "\\compression_ratio\\rr_float_ratio\\TY-Transport_ratio.csv");
     dataset_map_td.add(5);
     input_path_list.add( "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\TY-Fuel");
     output_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation" +
-            "\\vary_parameter\\rr_float_ratio\\TY-Fuel_ratio.csv");
+            "\\compression_ratio\\rr_float_ratio\\TY-Fuel_ratio.csv");
     dataset_map_td.add(60);
     input_path_list.add( "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\GW-Magnetic");
     output_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation" +
-            "\\vary_parameter\\rr_float_ratio\\GW-Magnetic_ratio.csv");
+            "\\compression_ratio\\rr_float_ratio\\GW-Magnetic_ratio.csv");
     dataset_map_td.add(100);
 
     for(int file_i=0;file_i<input_path_list.size();file_i++){
@@ -650,7 +660,9 @@ public class ReorderingEncodeRegression32FloatTest {
       writer.writeRecord(head); // write header to output file
 
       assert tempList != null;
-      for(int block_size_exp=4;block_size_exp<9;block_size_exp++) {
+      int block_size_exp = 8;
+//      for(int block_size_exp=4;block_size_exp<9;block_size_exp++) {
+
         int block_size = (int) Math.pow(2, block_size_exp);
         for (File f : tempList) {
           InputStream inputStream = Files.newInputStream(f.toPath());
@@ -704,7 +716,7 @@ public class ReorderingEncodeRegression32FloatTest {
           };
           writer.writeRecord(record);
         }
-      }
+//      }
       writer.close();
 
     }

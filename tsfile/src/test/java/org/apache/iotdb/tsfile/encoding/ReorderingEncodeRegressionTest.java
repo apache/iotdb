@@ -192,7 +192,7 @@ public class ReorderingEncodeRegressionTest {
 
     int max_bit_timestamp = getBitWith(delta_t_max-delta_t_min);
     int max_bit_interval = getBitWith(delta_interval_max-delta_interval_min);
-    if(max_bit_width_deviation+max_bit_interval+1<max_bit_timestamp){
+    if(max_bit_width_deviation+max_bit_interval+1<=max_bit_timestamp){
       result.add(max_bit_width_deviation);
       result.add(r0);
       result.add(d0);
