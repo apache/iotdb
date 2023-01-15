@@ -662,6 +662,12 @@ public class ReorderingEncodeRRTest {
       int d0 = bytes2Integer(encoded, decode_pos, 4);
       decode_pos += 4;
 
+      if (d0 % 2 == 0) {
+        d0 = d0 / 2;
+      } else {
+        d0 = -(d0 + 1) / 2;
+      }
+
       int interval0 = bytes2Integer(encoded, decode_pos, 4);
       decode_pos += 4;
       int value0 = bytes2Integer(encoded, decode_pos, 4);
@@ -752,19 +758,23 @@ public class ReorderingEncodeRRTest {
 //      }
 
       //quickSort(ts_block, 0, 0, block_size-2);
-
       quickSort22(ts_block, 0, block_size-1);
 
-      for (int i = 0; i < block_size-1; i++) {
+      ArrayList<Integer> tmp_data0 = new ArrayList<>();
+      tmp_data0.add(ts_block.get(0).get(0) * td + d0 + r0 * td);
+      tmp_data0.add(ts_block.get(0).get(1));
+      data.add(tmp_data0);
+
+      for (int i = 1; i < block_size; i++) {
         ArrayList<Integer> tmp_datai = new ArrayList<>();
-        tmp_datai.add(ts_block.get(i).get(0) * td + deviation_list.get(i) + r0 * td + d0);
+        tmp_datai.add(ts_block.get(i).get(0) * td + deviation_list.get(i-1) + r0 * td);
         tmp_datai.add(ts_block.get(i).get(1));
         data.add(tmp_datai);
       }
 
-//      for (int i = 0; i < block_size-1; i++) {
+//      for (int i = 0; i < block_size; i++) {
 //        ArrayList<Integer> tmp_datai = new ArrayList<>();
-//        tmp_datai.add(interval_list.get(i) * td + deviation_list.get(i) + r0 * td + d0);
+//        tmp_datai.add(interval_list.get(i) * td + deviation_list.get(i-1) + r0 * td);
 //        tmp_datai.add(value_list.get(i));
 //        data.add(tmp_datai);
 //      }
