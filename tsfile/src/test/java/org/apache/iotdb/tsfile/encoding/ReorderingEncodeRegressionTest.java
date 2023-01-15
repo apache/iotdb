@@ -14,6 +14,8 @@ public class ReorderingEncodeRegressionTest {
 
   static int DeviationOutlierThreshold = 8;
   static int OutlierThreshold = 0;
+  static int tt_count = 0;
+  static int sum_count = 0;
   public static int zigzag(int num){
     if(num<0){
       return 2*(-num)-1;
@@ -113,17 +115,35 @@ public class ReorderingEncodeRegressionTest {
   public static void splitTimeStamp(ArrayList<ArrayList<Integer>> ts_block, int block_size, int td,
                                     ArrayList<Integer> deviation_list,ArrayList<Integer> result){
     int deviation_max = Integer.MIN_VALUE;
-    int deviation_min = Integer.MAX_VALUE;
+    int delta_t_max = Integer.MIN_VALUE;
+    int delta_t_min = Integer.MAX_VALUE;
+    int delta_interval_max = Integer.MIN_VALUE;
+    int delta_interval_min = Integer.MAX_VALUE;
     int max_bit_width_deviation=0;
+
     int r0 = 0;
     int d0 = 0;
-
+    ArrayList<ArrayList<Integer>> ts_block_raw = (ArrayList<ArrayList<Integer>>) ts_block.clone();
     // split timestamp into intervals and deviations
 
     //address other timestamps and values
 
     for(int j=block_size-1;j>0;j--) {
-      int delta_interval = (ts_block.get(j).get(0) - ts_block.get(j-1).get(0))/td;
+      int delta_t = ts_block.get(j).get(0) - ts_block.get(j-1).get(0);
+      if(delta_t>delta_t_max){
+        delta_t_max = delta_t;
+      }
+      if(delta_t <delta_t_min){
+        delta_t_min = delta_t;
+      }
+      int delta_interval = delta_t/td;
+      if(delta_interval >delta_interval_max){
+        delta_interval_max = delta_interval;
+      }
+      if(delta_interval < delta_interval_min){
+        delta_interval_min = delta_interval;
+      }
+
       int deviation = (ts_block.get(j).get(0) - ts_block.get(j-1).get(0))%td;
       if(deviation >= (td/2)){
         deviation -= td;
@@ -131,17 +151,16 @@ public class ReorderingEncodeRegressionTest {
       }
       deviation = zigzag(deviation);
       deviation_list.add(deviation);
-
-      if(deviation < deviation_min){
-        deviation_min = deviation;
+      if(deviation > deviation_max){
+        deviation_max = deviation;
       }
+
       int value = ts_block.get(j).get(1);
       ArrayList<Integer> tmp = new ArrayList<>();
       tmp.add(delta_interval);
       tmp.add(value);
       ts_block.set(j,tmp);
     }
-
 
     // address timestamp0
     r0 = ts_block.get(0).get(0) /td;
@@ -161,14 +180,6 @@ public class ReorderingEncodeRegressionTest {
     tmp0.add(value0);
     ts_block.set(0,tmp0);
 
-    for(int j=0;j<deviation_list.size();j++){
-      int deviation_cur = deviation_list.get(j) - deviation_min;
-      deviation_list.set(j,deviation_cur);
-      if(deviation_cur > deviation_max){
-        deviation_max = deviation_cur;
-      }
-    }
-
     for(int j=1;j<block_size-1;j++){
       int interval = ts_block.get(j).get(0) + ts_block.get(j-1).get(0);
       int value = ts_block.get(j).get(1);
@@ -178,9 +189,21 @@ public class ReorderingEncodeRegressionTest {
       ts_block.set(j,tmp);
     }
     max_bit_width_deviation = getBitWith(deviation_max);
-    result.add(max_bit_width_deviation);
-    result.add(r0);
-    result.add(d0);
+
+    int max_bit_timestamp = getBitWith(delta_t_max-delta_t_min);
+    int max_bit_interval = getBitWith(delta_interval_max-delta_interval_min);
+    if(max_bit_width_deviation+max_bit_interval+1<max_bit_timestamp){
+      result.add(max_bit_width_deviation);
+      result.add(r0);
+      result.add(d0);
+      tt_count ++;
+    }else {
+      result.add(0);
+      result.add(0);
+      result.add(0);
+      ts_block = (ArrayList<ArrayList<Integer>>) ts_block_raw.clone();
+    }
+    sum_count ++;
   }
   public static ArrayList<ArrayList<Integer>> getEncodeBitsRegression(ArrayList<ArrayList<Integer>> ts_block, int block_size,
                                                                  ArrayList<Integer> result, ArrayList<Integer> i_star,
@@ -385,11 +408,11 @@ public class ReorderingEncodeRegressionTest {
     byte[] value0_byte = int2Bytes(ts_block.get(0).get(1));
     for (byte b : value0_byte) encoded_result.add(b);
 
-    // encode min_delta_interval and min_delta_value
-    byte[] min_delta_interval_byte = int2Bytes(raw_length.get(3));
-    for (byte b : min_delta_interval_byte) encoded_result.add(b);
-    byte[] min_delta_value_byte = int2Bytes(raw_length.get(4));
-    for (byte b : min_delta_value_byte) encoded_result.add(b);
+//    // encode min_delta_interval and min_delta_value
+//    byte[] min_delta_interval_byte = int2Bytes(raw_length.get(3));
+//    for (byte b : min_delta_interval_byte) encoded_result.add(b);
+//    byte[] min_delta_value_byte = int2Bytes(raw_length.get(4));
+//    for (byte b : min_delta_value_byte) encoded_result.add(b);
 
     // encode theta
     byte[] theta0_r_byte = double2Bytes(theta.get(0));
@@ -447,13 +470,13 @@ public class ReorderingEncodeRegressionTest {
 
       ArrayList<Integer> deviation_list = new ArrayList<>();
       ArrayList<Integer> result = new ArrayList<>();
-      if(td>=10)
+//      if(td>=10)
         splitTimeStamp(ts_block,block_size,td,deviation_list,result);
-      else {
-        result.add(0);
-        result.add(0);
-        result.add(0);
-      }
+//      else {
+//        result.add(0);
+//        result.add(0);
+//        result.add(0);
+//      }
       quickSort(ts_block,0,0,block_size-1);
 
       //ts_block order by interval
@@ -612,8 +635,8 @@ public class ReorderingEncodeRegressionTest {
             "\\compression_ratio\\regression_ratio\\GW-Magnetic_ratio.csv");
     dataset_map_td.add(100);
 
-//    for(int file_i=0;file_i<input_path_list.size();file_i++){
-      for(int file_i=1;file_i<2;file_i++){
+    for(int file_i=0;file_i<input_path_list.size();file_i++){
+//      for(int file_i=1;file_i<2;file_i++){
       String inputPath = input_path_list.get(file_i);
       String Output =output_path_list.get(file_i);
 
@@ -697,7 +720,11 @@ public class ReorderingEncodeRegressionTest {
         writer.writeRecord(record);
       }
       writer.close();
-
+      System.out.println(inputPath);
+      System.out.println(sum_count);
+      System.out.println(tt_count);
+      sum_count =0;
+      tt_count =0;
     }
   }
 }

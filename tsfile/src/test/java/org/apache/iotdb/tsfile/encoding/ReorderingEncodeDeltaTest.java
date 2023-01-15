@@ -15,6 +15,8 @@ public class ReorderingEncodeDeltaTest {
 
   static int DeviationOutlierThreshold = 8;
   static int OutlierThreshold = 0;
+  static int tt_count = 0;
+  static int sum_count = 0;
   public static int zigzag(int num){
     if(num<0){
       return 2*(-num)-1;
@@ -213,17 +215,35 @@ public class ReorderingEncodeDeltaTest {
   public static void splitTimeStamp(ArrayList<ArrayList<Integer>> ts_block, int block_size, int td,
                                   ArrayList<Integer> deviation_list,ArrayList<Integer> result){
   int deviation_max = Integer.MIN_VALUE;
+  int delta_t_max = Integer.MIN_VALUE;
+  int delta_t_min = Integer.MAX_VALUE;
+  int delta_interval_max = Integer.MIN_VALUE;
+  int delta_interval_min = Integer.MAX_VALUE;
   int max_bit_width_deviation=0;
+
   int r0 = 0;
   int d0 = 0;
   ArrayList<ArrayList<Integer>> ts_block_raw = (ArrayList<ArrayList<Integer>>) ts_block.clone();
-  System.out.println(ts_block_raw);
   // split timestamp into intervals and deviations
 
   //address other timestamps and values
 
   for(int j=block_size-1;j>0;j--) {
-    int delta_interval = (ts_block.get(j).get(0) - ts_block.get(j-1).get(0))/td;
+    int delta_t = ts_block.get(j).get(0) - ts_block.get(j-1).get(0);
+    if(delta_t>delta_t_max){
+      delta_t_max = delta_t;
+    }
+    if(delta_t <delta_t_min){
+      delta_t_min = delta_t;
+    }
+    int delta_interval = delta_t/td;
+    if(delta_interval >delta_interval_max){
+      delta_interval_max = delta_interval;
+    }
+    if(delta_interval < delta_interval_min){
+      delta_interval_min = delta_interval;
+    }
+
     int deviation = (ts_block.get(j).get(0) - ts_block.get(j-1).get(0))%td;
     if(deviation >= (td/2)){
       deviation -= td;
@@ -241,7 +261,6 @@ public class ReorderingEncodeDeltaTest {
     tmp.add(value);
     ts_block.set(j,tmp);
   }
-
 
   // address timestamp0
   r0 = ts_block.get(0).get(0) /td;
@@ -270,9 +289,21 @@ public class ReorderingEncodeDeltaTest {
     ts_block.set(j,tmp);
   }
   max_bit_width_deviation = getBitWith(deviation_max);
-  result.add(max_bit_width_deviation);
-  result.add(r0);
-  result.add(d0);
+
+  int max_bit_timestamp = getBitWith(delta_t_max-delta_t_min);
+  int max_bit_interval = getBitWith(delta_interval_max-delta_interval_min);
+  if(max_bit_width_deviation+max_bit_interval+1<max_bit_timestamp){
+    result.add(max_bit_width_deviation);
+    result.add(r0);
+    result.add(d0);
+    tt_count ++;
+  }else {
+    result.add(0);
+    result.add(0);
+    result.add(0);
+    ts_block = (ArrayList<ArrayList<Integer>>) ts_block_raw.clone();
+  }
+  sum_count ++;
 }
 
   public static ArrayList<ArrayList<Integer>> getEncodeBitsDelta(ArrayList<ArrayList<Integer>> ts_block, int block_size,
@@ -437,7 +468,7 @@ public class ReorderingEncodeDeltaTest {
 
     // encode value
     byte[] max_bit_width_value_byte = int2Bytes(raw_length.get(2));
-    System.out.println(raw_length.get(2));
+//    System.out.println(raw_length.get(2));
     for (byte b : max_bit_width_value_byte) encoded_result.add(b);
     byte[] value_bytes = bitPacking(ts_block,1,raw_length.get(2));
     for (byte b : value_bytes) encoded_result.add(b);
@@ -475,13 +506,13 @@ public class ReorderingEncodeDeltaTest {
       ArrayList<Integer> deviation_list = new ArrayList<>();
       ArrayList<Integer> result = new ArrayList<>();
 //      quickSort(ts_block,0,0,block_size-1);
-      if(td>=16)
+//      if(td>=16)
       splitTimeStamp(ts_block,block_size,td,deviation_list,result);
-      else {
-        result.add(0);
-        result.add(0);
-        result.add(0);
-      }
+//      else {
+//        result.add(0);
+//        result.add(0);
+//        result.add(0);
+//      }
       quickSort(ts_block,0,0,block_size-1);
 
       //ts_block order by interval
@@ -793,8 +824,8 @@ public class ReorderingEncodeDeltaTest {
             "\\compression_ratio\\rd_ratio\\GW-Magnetic_ratio.csv");
     dataset_map_td.add(100);
 
-//    for(int file_i=0;file_i<input_path_list.size();file_i++){
-    for(int file_i=0;file_i<1;file_i++){
+    for(int file_i=0;file_i<input_path_list.size();file_i++){
+//    for(int file_i=0;file_i<1;file_i++){
       String inputPath = input_path_list.get(file_i);
       String Output =output_path_list.get(file_i);
 
@@ -891,7 +922,14 @@ public class ReorderingEncodeDeltaTest {
         writer.writeRecord(record);
       }
       writer.close();
-
+      System.out.println(inputPath);
+      System.out.println(sum_count);
+      System.out.println(tt_count);
+      sum_count =0;
+      tt_count =0;
     }
+
+
   }
+
 }
