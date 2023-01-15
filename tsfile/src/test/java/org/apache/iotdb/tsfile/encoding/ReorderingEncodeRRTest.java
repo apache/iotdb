@@ -321,6 +321,8 @@ public class ReorderingEncodeRRTest {
     result.add(timestamp_delta_min);
     result.add(value_delta_min);
 
+    theta0_r += timestamp_delta_min;
+    theta1_r += value_delta_min;
     theta.add(theta0_r);
     theta.add(theta1_r);
     theta.add(theta0_v);
@@ -423,11 +425,11 @@ public class ReorderingEncodeRRTest {
     byte[] value0_byte = int2Bytes(ts_block.get(0).get(1));
     for (byte b : value0_byte) encoded_result.add(b);
 
-    // encode min_delta_interval and min_delta_value
-    byte[] min_delta_interval_byte = int2Bytes(raw_length.get(3));
-    for (byte b : min_delta_interval_byte) encoded_result.add(b);
-    byte[] min_delta_value_byte = int2Bytes(raw_length.get(4));
-    for (byte b : min_delta_value_byte) encoded_result.add(b);
+//    // encode min_delta_interval and min_delta_value
+//    byte[] min_delta_interval_byte = int2Bytes(raw_length.get(3));
+//    for (byte b : min_delta_interval_byte) encoded_result.add(b);
+//    byte[] min_delta_value_byte = int2Bytes(raw_length.get(4));
+//    for (byte b : min_delta_value_byte) encoded_result.add(b);
 
     // encode theta
     byte[] theta0_r_byte = double2Bytes(theta.get(0));
