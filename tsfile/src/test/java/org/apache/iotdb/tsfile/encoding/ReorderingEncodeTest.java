@@ -416,7 +416,7 @@ public class ReorderingEncodeTest {
 
     return encoded_result;
   }
-  public static ArrayList<Byte> ReorderingDeltaEncoder(ArrayList<ArrayList<Integer>> data,int block_size, int td){
+  public static ArrayList<Byte> ReorderingDeltaEncoder(ArrayList<ArrayList<Integer>> data,int block_size){
     block_size ++;
     int length_all = data.size();
     int block_num = length_all/block_size;
@@ -878,7 +878,8 @@ public class ReorderingEncodeTest {
         double compressed_size = 0;
         for (int i = 0; i < repeatTime; i++) {
           long s = System.nanoTime();
-          ArrayList<Byte> buffer = ReorderingDeltaEncoder(data, 256, dataset_map_td.get(file_i));
+          ArrayList<Byte> buffer = ReorderingDeltaEncoder(data, 256);
+//          ArrayList<Byte> buffer = ReorderingDeltaEncoder(data, 256, dataset_map_td.get(file_i));
           long e = System.nanoTime();
           encodeTime += (e - s);
           compressed_size += buffer.size();
