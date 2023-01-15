@@ -301,7 +301,7 @@ public class ReorderingEncodeRRTest {
       ArrayList<Integer> tmp = new ArrayList<>();
       tmp.add(epsilon_r);
       tmp.add(epsilon_v);
-      ts_block_delta.add(tmp);
+      ts_block_delta.set(j,tmp);
     }
     int max_bit_width_interval = getBitWith(max_interval);
     int max_bit_width_value = getBitWith(max_value);
