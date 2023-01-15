@@ -285,7 +285,7 @@ M4 is used to sample the `first, last, bottom, top` points for each sliding wind
 
 The user-defined sampling time window is a special kind of sliding time window, which is special in that:
 
-1.   There is a conversion relationship between the length of the sliding time window `windowInterval` and the sampling time interval `samplingInterval`, see below for details. Note that here user **indirectly** controls the window time length `windowInterval`.
+1.   There is a conversion relationship between the length of the sliding time window `windowInterval` and the sampling time interval `samplingInterval`, see below for details. Note that here the user **indirectly** controls the window time length `windowInterval`.
 2.   The sliding step of the sliding time window `slidingStep` is fixed to be equal to the window length `windowInterval` here, so there is no need for the user to input the `slidingStep` parameter.
 3.   `displayWindowBegin` and `displayWindowEnd` are required parameters here.
 
