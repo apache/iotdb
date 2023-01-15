@@ -43,7 +43,7 @@ import static org.junit.Assert.fail;
 public class IoTDBUDFM4IT {
 
   public static final String WINDOW_SIZE_KEY = "windowSize";
-  public static final String TIME_INTERVAL_KEY = "timeInterval";
+  public static final String TIME_INTERVAL_KEY = "windowInterval";
   public static final String SLIDING_STEP_KEY = "slidingStep";
   public static final String DISPLAY_WINDOW_BEGIN_KEY = "displayWindowBegin";
   public static final String DISPLAY_WINDOW_END_KEY = "displayWindowEnd";
