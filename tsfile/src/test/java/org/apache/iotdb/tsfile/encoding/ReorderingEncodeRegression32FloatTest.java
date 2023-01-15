@@ -120,99 +120,6 @@ public class ReorderingEncodeRegression32FloatTest {
     }
   }
 
-  public static void splitTimeStamp(ArrayList<ArrayList<Integer>> ts_block, int block_size, int td,
-                                    ArrayList<Integer> deviation_list,ArrayList<Integer> result){
-    int deviation_max = Integer.MIN_VALUE;
-    int delta_t_max = Integer.MIN_VALUE;
-    int delta_t_min = Integer.MAX_VALUE;
-    int delta_interval_max = Integer.MIN_VALUE;
-    int delta_interval_min = Integer.MAX_VALUE;
-    int max_bit_width_deviation=0;
-
-    int r0 = 0;
-    int d0 = 0;
-    ArrayList<ArrayList<Integer>> ts_block_raw = (ArrayList<ArrayList<Integer>>) ts_block.clone();
-    // split timestamp into intervals and deviations
-
-    //address other timestamps and values
-
-    for(int j=block_size-1;j>0;j--) {
-      int delta_t = ts_block.get(j).get(0) - ts_block.get(j-1).get(0);
-      if(delta_t>delta_t_max){
-        delta_t_max = delta_t;
-      }
-      if(delta_t <delta_t_min){
-        delta_t_min = delta_t;
-      }
-      int delta_interval = delta_t/td;
-      if(delta_interval >delta_interval_max){
-        delta_interval_max = delta_interval;
-      }
-      if(delta_interval < delta_interval_min){
-        delta_interval_min = delta_interval;
-      }
-
-      int deviation = (ts_block.get(j).get(0) - ts_block.get(j-1).get(0))%td;
-      if(deviation >= (td/2)){
-        deviation -= td;
-        delta_interval ++;
-      }
-      deviation = zigzag(deviation);
-      deviation_list.add(deviation);
-      if(deviation > deviation_max){
-        deviation_max = deviation;
-      }
-
-      int value = ts_block.get(j).get(1);
-      ArrayList<Integer> tmp = new ArrayList<>();
-      tmp.add(delta_interval);
-      tmp.add(value);
-      ts_block.set(j,tmp);
-    }
-
-    // address timestamp0
-    r0 = ts_block.get(0).get(0) /td;
-    d0 = ts_block.get(0).get(0) %td;
-    if(d0 >= (td/2)){
-      d0 -= td;
-      r0 ++;
-    }
-    d0 = zigzag(d0);
-    if(d0 > deviation_max){
-      deviation_max = d0;
-    }
-
-    int value0 = ts_block.get(0).get(1);
-    ArrayList<Integer> tmp0 = new ArrayList<>();
-    tmp0.add(0);
-    tmp0.add(value0);
-    ts_block.set(0,tmp0);
-
-    for(int j=1;j<block_size-1;j++){
-      int interval = ts_block.get(j).get(0) + ts_block.get(j-1).get(0);
-      int value = ts_block.get(j).get(1);
-      ArrayList<Integer> tmp = new ArrayList<>();
-      tmp.add(interval);
-      tmp.add(value);
-      ts_block.set(j,tmp);
-    }
-    max_bit_width_deviation = getBitWith(deviation_max);
-
-    int max_bit_timestamp = getBitWith(delta_t_max-delta_t_min);
-    int max_bit_interval = getBitWith(delta_interval_max-delta_interval_min);
-    if(max_bit_width_deviation+max_bit_interval+1<max_bit_timestamp){
-      result.add(max_bit_width_deviation);
-      result.add(r0);
-      result.add(d0);
-      tt_count ++;
-    }else {
-      result.add(0);
-      result.add(0);
-      result.add(0);
-      ts_block = (ArrayList<ArrayList<Integer>>) ts_block_raw.clone();
-    }
-    sum_count ++;
-  }
   public static ArrayList<ArrayList<Integer>> getEncodeBitsRegression(ArrayList<ArrayList<Integer>> ts_block, int block_size,
                                                                  ArrayList<Integer> result, ArrayList<Integer> i_star,
                                                                       ArrayList<Float> theta){
@@ -394,18 +301,10 @@ public class ReorderingEncodeRegression32FloatTest {
     return i_star;
   }
 
-  public static ArrayList<Byte> encode2Bytes(ArrayList<ArrayList<Integer>> ts_block,ArrayList<Integer> deviation_list,
+  public static ArrayList<Byte> encode2Bytes(ArrayList<ArrayList<Integer>> ts_block,
                                              ArrayList<Integer> raw_length,ArrayList<Float> theta){
     ArrayList<Byte> encoded_result = new ArrayList<>();
-//    // encode block size (Integer)
-//    byte[] block_size_byte = int2Bytes(ts_block.size());
-//    for (byte b : block_size_byte) encoded_result.add(b);
 
-    // r0 of a block (Integer)
-    byte[] r0_byte = int2Bytes(raw_length.get(4));
-    for (byte b : r0_byte) encoded_result.add(b);
-    byte[] d0_byte = int2Bytes(raw_length.get(5));
-    for (byte b : d0_byte) encoded_result.add(b);
 
     // encode interval0 and value0
     byte[] interval0_byte = int2Bytes(ts_block.get(0).get(0));
@@ -437,16 +336,9 @@ public class ReorderingEncodeRegression32FloatTest {
     for (byte b : value_bytes) encoded_result.add(b);
 
 
-    // encode deviation
-    byte[] max_bit_width_deviation_byte = int2Bytes(raw_length.get(3));
-    for (byte b: max_bit_width_deviation_byte) encoded_result.add(b);
-    byte[] deviation_list_bytes = bitPacking(deviation_list,raw_length.get(3));
-    for (byte b: deviation_list_bytes) encoded_result.add(b);
-
-
     return encoded_result;
   }
-  public static ArrayList<Byte> ReorderingRegressionEncoder(ArrayList<ArrayList<Integer>> data,int block_size, int td){
+  public static ArrayList<Byte> ReorderingRegressionEncoder(ArrayList<ArrayList<Integer>> data,int block_size){
     block_size ++;
     int length_all = data.size();
     int block_num = length_all/block_size;
@@ -466,9 +358,6 @@ public class ReorderingEncodeRegression32FloatTest {
         ts_block_reorder.add(data.get(j+i*block_size));
       }
 
-      ArrayList<Integer> deviation_list = new ArrayList<>();
-      ArrayList<Integer> result = new ArrayList<>();
-      splitTimeStamp(ts_block,block_size,td,deviation_list,result);
       quickSort(ts_block,0,0,block_size-1);
 
       //ts_block order by interval
@@ -523,10 +412,7 @@ public class ReorderingEncodeRegression32FloatTest {
 
         ts_block_delta = getEncodeBitsRegression( ts_block,  block_size,raw_length,
                 i_star_ready_reorder,theta);
-        raw_length.add(result.get(0)); // max_bit_width_deviation
-        raw_length.add(result.get(1)); // r0
-        raw_length.add(result.get(2)); // d0
-        ArrayList<Byte> cur_encoded_result = encode2Bytes(ts_block_delta,deviation_list,raw_length,theta);
+        ArrayList<Byte> cur_encoded_result = encode2Bytes(ts_block_delta,raw_length,theta);
         encoded_result.addAll(cur_encoded_result);
 
       }
@@ -564,10 +450,7 @@ public class ReorderingEncodeRegression32FloatTest {
 
         ts_block_delta_reorder = getEncodeBitsRegression( ts_block,  block_size,reorder_length,
                 i_star_ready_reorder,theta_reorder);
-        reorder_length.add(result.get(0)); // max_bit_width_deviation
-        reorder_length.add(result.get(1)); // r0
-        reorder_length.add(result.get(2)); // d0
-        ArrayList<Byte> cur_encoded_result = encode2Bytes(ts_block_delta_reorder,deviation_list,reorder_length,theta_reorder);
+        ArrayList<Byte> cur_encoded_result = encode2Bytes(ts_block_delta_reorder,reorder_length,theta_reorder);
         encoded_result.addAll(cur_encoded_result);
       }
     }
@@ -685,7 +568,7 @@ public class ReorderingEncodeRegression32FloatTest {
           double compressed_size = 0;
           for (int i = 0; i < repeatTime; i++) {
             long s = System.nanoTime();
-            ArrayList<Byte> buffer = ReorderingRegressionEncoder(data, block_size, dataset_map_td.get(file_i));
+            ArrayList<Byte> buffer = ReorderingRegressionEncoder(data, block_size);
             long e = System.nanoTime();
             encodeTime += (e - s);
             compressed_size += buffer.size();
