@@ -306,6 +306,8 @@ public class ReorderingEncodeRegressionTest {
     result.add(timestamp_delta_min);
     result.add(value_delta_min);
 
+    theta0_r += timestamp_delta_min;
+    theta0_v += value_delta_min;
     theta.add(theta0_r);
     theta.add(theta1_r);
     theta.add(theta0_v);
