@@ -994,7 +994,7 @@ public class ReorderingEncodeRRTest {
           ratio += ratioTmp;
           s = System.nanoTime();
 
-          data_decoded = ReorderingRegressionDecoder(buffer,dataset_map_td.get(file_i));
+//          data_decoded = ReorderingRegressionDecoder(buffer,dataset_map_td.get(file_i));
 
 //          for(int j=0;j<256;j++){
 //            if(!data.get(j).get(0).equals(data_decoded.get(j).get(0))){

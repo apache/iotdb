@@ -433,17 +433,9 @@ public class ReorderingEncodeDeltaTest {
     }
     return i_star;
   }
-  public static ArrayList<Byte> encode2Bytes(ArrayList<ArrayList<Integer>> ts_block,ArrayList<Integer> deviation_list,ArrayList<Integer> raw_length){
+  public static ArrayList<Byte> encode2Bytes(ArrayList<ArrayList<Integer>> ts_block,ArrayList<Integer> raw_length){
     ArrayList<Byte> encoded_result = new ArrayList<>();
-//    // encode block size (Integer)
-//    byte[] block_size_byte = int2Bytes(ts_block.size());
-//    for (byte b : block_size_byte) encoded_result.add(b);
 
-    // encode r0 and d0 of a block (Integer)
-    byte[] r0_byte = int2Bytes(raw_length.get(6));
-    for (byte b : r0_byte) encoded_result.add(b);
-    byte[] d0_byte = int2Bytes(raw_length.get(7));
-    for (byte b : d0_byte) encoded_result.add(b);
 
     // encode min_delta_interval and min_delta_value
     byte[] min_delta_interval_byte = int2Bytes(raw_length.get(3));
@@ -458,7 +450,7 @@ public class ReorderingEncodeDeltaTest {
     byte[] value0_byte = int2Bytes(ts_block.get(0).get(1));
     for (byte b : value0_byte) encoded_result.add(b);
 
-//    System.out.println(ts_block);
+
     // encode interval
     byte[] max_bit_width_interval_byte = int2Bytes(raw_length.get(1));
 //    System.out.println(raw_length.get(1));
@@ -474,17 +466,10 @@ public class ReorderingEncodeDeltaTest {
     for (byte b : value_bytes) encoded_result.add(b);
 
 
-    // encode deviation
-    byte[] max_bit_width_deviation_byte = int2Bytes(raw_length.get(5));
-//    System.out.println(raw_length.get(5));
-    for (byte b: max_bit_width_deviation_byte) encoded_result.add(b);
-    byte[] deviation_list_bytes = bitPacking(deviation_list,raw_length.get(5));
-    for (byte b: deviation_list_bytes) encoded_result.add(b);
-
 
     return encoded_result;
   }
-  public static ArrayList<Byte> ReorderingDeltaEncoder(ArrayList<ArrayList<Integer>> data,int block_size, int td){
+  public static ArrayList<Byte> ReorderingDeltaEncoder(ArrayList<ArrayList<Integer>> data,int block_size){
     block_size ++;
     int length_all = data.size();
     int block_num = length_all/block_size;
@@ -505,14 +490,6 @@ public class ReorderingEncodeDeltaTest {
 //      System.out.println(ts_block);
       ArrayList<Integer> deviation_list = new ArrayList<>();
       ArrayList<Integer> result = new ArrayList<>();
-//      quickSort(ts_block,0,0,block_size-1);
-//      if(td>=16)
-      splitTimeStamp(ts_block,block_size,td,deviation_list,result);
-//      else {
-//        result.add(0);
-//        result.add(0);
-//        result.add(0);
-//      }
       quickSort(ts_block,0,0,block_size-1);
 
       //ts_block order by interval
@@ -564,11 +541,7 @@ public class ReorderingEncodeDeltaTest {
 
         ts_block_delta = getEncodeBitsDelta( ts_block,  block_size,raw_length,
                 i_star_ready_reorder);
-//        System.out.println(raw_length);
-        raw_length.add(result.get(0)); // max_bit_width_deviation
-        raw_length.add(result.get(1)); // r0
-        raw_length.add(result.get(2)); // d0
-        ArrayList<Byte> cur_encoded_result = encode2Bytes(ts_block_delta,deviation_list,raw_length);
+        ArrayList<Byte> cur_encoded_result = encode2Bytes(ts_block_delta,raw_length);
         encoded_result.addAll(cur_encoded_result);
         count_raw ++;
       }
@@ -606,11 +579,7 @@ public class ReorderingEncodeDeltaTest {
 
         ts_block_delta_reorder = getEncodeBitsDelta( ts_block,  block_size,reorder_length,
                 i_star_ready_reorder);
-//        System.out.println(reorder_length);
-        reorder_length.add(result.get(0)); // max_bit_width_deviation
-        reorder_length.add(result.get(1)); // r0
-        reorder_length.add(result.get(2)); // d0
-        ArrayList<Byte> cur_encoded_result = encode2Bytes(ts_block_delta_reorder,deviation_list,reorder_length);
+        ArrayList<Byte> cur_encoded_result = encode2Bytes(ts_block_delta_reorder,reorder_length);
         encoded_result.addAll(cur_encoded_result);
         count_reorder ++;
       }
@@ -879,7 +848,7 @@ public class ReorderingEncodeDeltaTest {
         double compressed_size = 0;
         for (int i = 0; i < repeatTime; i++) {
           long s = System.nanoTime();
-          ArrayList<Byte> buffer = ReorderingDeltaEncoder(data, 256, dataset_map_td.get(file_i));
+          ArrayList<Byte> buffer = ReorderingDeltaEncoder(data, 256);
           long e = System.nanoTime();
           encodeTime += (e - s);
           compressed_size += buffer.size();
