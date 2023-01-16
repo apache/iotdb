@@ -62,6 +62,7 @@ public class IoTDBPartitionCreationIT {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBPartitionDurableIT.class);
   private static final String testConsensusProtocolClass = ConsensusFactory.RATIS_CONSENSUS;
+  private static final String IoTConsensusProtocolClass = ConsensusFactory.IOT_CONSENSUS;
   private static final int testReplicationFactor = 3;
   private static final long testTimePartitionInterval = 604800000;
   private static final String sg = "root.sg";
@@ -85,7 +86,7 @@ public class IoTDBPartitionCreationIT {
         .getCommonConfig()
         .setConfigNodeConsensusProtocolClass(testConsensusProtocolClass)
         .setSchemaRegionConsensusProtocolClass(testConsensusProtocolClass)
-        .setDataRegionConsensusProtocolClass(testConsensusProtocolClass)
+        .setDataRegionConsensusProtocolClass(IoTConsensusProtocolClass)
         .setSchemaReplicationFactor(testReplicationFactor)
         .setDataReplicationFactor(testReplicationFactor)
         .setTimePartitionInterval(testTimePartitionInterval)
