@@ -23,7 +23,6 @@ import org.apache.iotdb.commons.consensus.ConsensusProtocolClass;
 import org.apache.iotdb.commons.enums.HandleSystemErrorStrategy;
 import org.apache.iotdb.commons.loadbalance.LeaderDistributionPolicy;
 import org.apache.iotdb.commons.loadbalance.RegionGroupExtensionPolicy;
-import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.commons.utils.datastructure.TVListSortAlgorithm;
 import org.apache.iotdb.commons.wal.WALMode;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -624,9 +623,6 @@ public class CommonConfig {
 
   // Default system file storage is in local file system (unsupported)
   private FSType systemFileStorageFs = FSType.LOCAL;
-
-  // Max bytes of each FragmentInstance for DataExchange
-  private long maxBytesPerFragmentInstance = allocateMemoryForDataExchange / queryThreadCount;
 
   private boolean rpcThriftCompressionEnable = false;
   private int connectionTimeoutInMS = (int) TimeUnit.SECONDS.toMillis(20);
@@ -1712,13 +1708,9 @@ public class CommonConfig {
     this.allocateMemoryForDataExchange = allocateMemoryForDataExchange;
   }
 
+  /** Get max bytes of each fragmentInstance for DataExchange. */
   public long getMaxBytesPerFragmentInstance() {
-    return maxBytesPerFragmentInstance;
-  }
-
-  @TestOnly
-  public void setMaxBytesPerFragmentInstance(long maxBytesPerFragmentInstance) {
-    this.maxBytesPerFragmentInstance = maxBytesPerFragmentInstance;
+    return allocateMemoryForDataExchange / queryThreadCount;
   }
 
   public long getAllocateMemoryForTimeIndex() {
