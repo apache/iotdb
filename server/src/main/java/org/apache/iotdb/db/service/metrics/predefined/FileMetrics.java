@@ -178,8 +178,7 @@ public class FileMetrics implements IMetricSet {
             .sum();
     File walFolder = new File(walDirs);
     if (walFolder.exists() && walFolder.isDirectory()) {
-      walFileTotalCount =
-          org.apache.commons.io.FileUtils.listFiles(new File(walDirs), null, true).size();
+      walFileTotalCount = FileUtils.listFiles(new File(walDirs), null, true).size();
     }
     sequenceFileTotalCount =
         Stream.of(dataDirs)
@@ -189,8 +188,7 @@ public class FileMetrics implements IMetricSet {
                   File folder = new File(dir);
                   if (folder.exists()) {
                     try {
-                      return org.apache.commons.io.FileUtils.listFiles(
-                              new File(dir), new String[] {"tsfile"}, true)
+                      return FileUtils.listFiles(new File(dir), new String[] {"tsfile"}, true)
                           .size();
                     } catch (UncheckedIOException exception) {
                       // do nothing
@@ -208,9 +206,7 @@ public class FileMetrics implements IMetricSet {
                   File folder = new File(dir);
                   if (folder.exists()) {
                     try {
-                      return org.apache.commons.io.FileUtils.listFiles(
-                              new File(dir), new String[] {"mods"}, true)
-                          .size();
+                      return FileUtils.listFiles(new File(dir), new String[] {"mods"}, true).size();
                     } catch (UncheckedIOException exception) {
                       // do nothing
                       logger.debug("Failed when count sequence mods: ", exception);
@@ -227,8 +223,7 @@ public class FileMetrics implements IMetricSet {
                   File folder = new File(dir);
                   if (folder.exists()) {
                     try {
-                      return org.apache.commons.io.FileUtils.listFiles(
-                              new File(dir), new String[] {"tsfile"}, true)
+                      return FileUtils.listFiles(new File(dir), new String[] {"tsfile"}, true)
                           .size();
                     } catch (UncheckedIOException exception) {
                       // do nothing
@@ -246,9 +241,7 @@ public class FileMetrics implements IMetricSet {
                   File folder = new File(dir);
                   if (folder.exists()) {
                     try {
-                      return org.apache.commons.io.FileUtils.listFiles(
-                              new File(dir), new String[] {"mods"}, true)
-                          .size();
+                      return FileUtils.listFiles(new File(dir), new String[] {"mods"}, true).size();
                     } catch (UncheckedIOException exception) {
                       // do nothing
                       logger.debug("Failed when count unsequence mods: ", exception);
