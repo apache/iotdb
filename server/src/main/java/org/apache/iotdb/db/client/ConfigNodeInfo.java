@@ -62,7 +62,7 @@ public class ConfigNodeInfo {
     this.onlineConfigNodes = new HashSet<>();
     propertiesFile =
         SystemFileFactory.INSTANCE.getFile(
-            IoTDBDescriptor.getInstance().getConfig().getSchemaDir()
+            IoTDBDescriptor.getInstance().getConf().getSchemaDir()
                 + File.separator
                 + PROPERTIES_FILE_NAME);
   }

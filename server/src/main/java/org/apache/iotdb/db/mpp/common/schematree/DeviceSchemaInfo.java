@@ -22,13 +22,10 @@ package org.apache.iotdb.db.mpp.common.schematree;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -37,9 +34,6 @@ public class DeviceSchemaInfo {
   private PartialPath devicePath;
   private boolean isAligned;
   private List<MeasurementSchemaInfo> measurementSchemaInfoList;
-
-  private Map<String, MeasurementSchemaInfo> measurementSchemaInfoMap;
-  private Map<String, MeasurementSchemaInfo> aliasMap;
 
   private DeviceSchemaInfo() {}
 
@@ -58,50 +52,6 @@ public class DeviceSchemaInfo {
 
   public boolean isAligned() {
     return isAligned;
-  }
-
-  public DeviceSchemaInfo getSubDeviceSchemaInfo(List<String> measurements) {
-    DeviceSchemaInfo result = new DeviceSchemaInfo();
-    result.devicePath = devicePath;
-    result.isAligned = isAligned;
-    List<MeasurementSchemaInfo> desiredMeasurementSchemaInfoList =
-        new ArrayList<>(measurements.size());
-
-    if (measurementSchemaInfoMap == null) {
-      constructMap();
-    }
-
-    MeasurementSchemaInfo measurementSchemaInfo;
-    for (String measurement : measurements) {
-      measurementSchemaInfo = measurementSchemaInfoMap.get(measurement);
-      if (measurementSchemaInfo == null) {
-        measurementSchemaInfo = aliasMap.get(measurement);
-      }
-
-      if (measurementSchemaInfo == null) {
-        desiredMeasurementSchemaInfoList.add(null);
-      }
-
-      desiredMeasurementSchemaInfoList.add(measurementSchemaInfo);
-    }
-
-    result.measurementSchemaInfoList = desiredMeasurementSchemaInfoList;
-    return result;
-  }
-
-  private void constructMap() {
-    measurementSchemaInfoMap = new HashMap<>();
-    aliasMap = new HashMap<>();
-    measurementSchemaInfoList.forEach(
-        measurementSchemaInfo -> {
-          if (measurementSchemaInfo == null) {
-            return;
-          }
-          measurementSchemaInfoMap.put(measurementSchemaInfo.getName(), measurementSchemaInfo);
-          if (measurementSchemaInfo.getAlias() != null) {
-            aliasMap.put(measurementSchemaInfo.getAlias(), measurementSchemaInfo);
-          }
-        });
   }
 
   public List<MeasurementSchema> getMeasurementSchemaList() {
@@ -148,26 +98,5 @@ public class DeviceSchemaInfo {
       }
     }
     return measurementPaths;
-  }
-
-  public MeasurementPath getPathByMeasurement(String measurementName) {
-    for (MeasurementSchemaInfo measurementSchemaInfo : measurementSchemaInfoList) {
-      MeasurementPath measurementPath =
-          new MeasurementPath(
-              devicePath.concatNode(measurementSchemaInfo.getName()),
-              measurementSchemaInfo.getSchema());
-      measurementPath.setUnderAlignedEntity(isAligned);
-      if (measurementSchemaInfo.getName().equals(measurementName)) {
-        return measurementPath;
-      } else if (measurementSchemaInfo.getAlias() != null
-          && measurementSchemaInfo.getAlias().equals(measurementName)) {
-        measurementPath.setMeasurementAlias(measurementSchemaInfo.getAlias());
-        return measurementPath;
-      }
-    }
-    throw new SemanticException(
-        String.format(
-            "ALIGN BY DEVICE: measurement '%s' does not exist in device '%s'",
-            measurementName, getDevicePath()));
   }
 }

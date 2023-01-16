@@ -18,8 +18,8 @@
  */
 package org.apache.iotdb.db.wal.io;
 
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.wal.buffer.WALEntry;
 import org.apache.iotdb.db.wal.buffer.WALEntryType;
 
@@ -42,7 +42,7 @@ public class WALReader implements Closeable {
   private static final Logger logger = LoggerFactory.getLogger(WALReader.class);
   /** 1/10 of .wal file size as buffer size */
   private static final int STREAM_BUFFER_SIZE =
-      (int) IoTDBDescriptor.getInstance().getConfig().getWalFileSizeThresholdInByte() / 10;
+      (int) CommonDescriptor.getInstance().getConf().getWalFileSizeThresholdInByte() / 10;
 
   private final File logFile;
   private final boolean fileMayCorrupt;

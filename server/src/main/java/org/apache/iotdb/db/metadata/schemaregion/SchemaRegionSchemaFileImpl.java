@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.metadata.schemaregion;
 
+import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
@@ -48,7 +50,6 @@ import org.apache.iotdb.db.metadata.plan.schemaregion.impl.write.SchemaRegionWri
 import org.apache.iotdb.db.metadata.plan.schemaregion.read.IShowDevicesPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.read.IShowNodesPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.read.IShowTimeSeriesPlan;
-import org.apache.iotdb.db.metadata.plan.schemaregion.result.ShowTimeSeriesResult;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IActivateTemplateInClusterPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IAutoCreateDeviceMNodePlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IChangeAliasPlan;
@@ -73,7 +74,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.Pair;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -83,8 +83,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
-import java.util.Iterator;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -122,7 +120,8 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
 
   private static final Logger logger = LoggerFactory.getLogger(SchemaRegionSchemaFileImpl.class);
 
-  protected static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConf();
+  protected static final IoTDBConfig IOTDB_CONFIG = IoTDBDescriptor.getInstance().getConf();
 
   private boolean isRecovering = true;
   private volatile boolean initialized = false;
@@ -160,7 +159,7 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
     storageGroupFullPath = storageGroup.getFullPath();
     this.schemaRegionId = schemaRegionId;
 
-    storageGroupDirPath = config.getSchemaDir() + File.separator + storageGroupFullPath;
+    storageGroupDirPath = IOTDB_CONFIG.getSchemaDir() + File.separator + storageGroupFullPath;
     schemaRegionDirPath = storageGroupDirPath + File.separator + schemaRegionId.getId();
 
     this.seriesNumerMonitor = seriesNumerMonitor;
@@ -185,9 +184,10 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
           new MTreeBelowSGCachedImpl(
               new PartialPath(storageGroupFullPath), tagManager::readTags, schemaRegionId.getId());
 
-      if (!(config.isClusterMode()
-          && config
+      if (!(IOTDB_CONFIG.isClusterMode()
+          && COMMON_CONFIG
               .getSchemaRegionConsensusProtocolClass()
+              .getProtocol()
               .equals(ConsensusFactory.RATIS_CONSENSUS))) {
         usingMLog = true;
         initMLog();
@@ -239,7 +239,7 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
             schemaRegionDirPath,
             MetadataConstant.METADATA_LOG,
             new FakeCRC32Serializer<>(new SchemaRegionPlanSerializer()),
-            config.getSyncMlogPeriodInMs() == 0);
+            COMMON_CONFIG.getSyncMlogPeriodInMs() == 0);
   }
 
   public void writeToMLog(ISchemaRegionPlan schemaRegionPlan) throws IOException {
@@ -600,7 +600,8 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
     }
 
     // update id table if not in recovering or disable id table log file
-    if (config.isEnableIDTable() && (!isRecovering || !config.isEnableIDTableLogFile())) {
+    if (IOTDB_CONFIG.isEnableIDTable()
+        && (!isRecovering || !IOTDB_CONFIG.isEnableIDTableLogFile())) {
       IDTable idTable = IDTableManager.getInstance().getIDTable(plan.getPath().getDevicePath());
       idTable.createTimeseries(plan);
     }
@@ -745,7 +746,8 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
     }
 
     // update id table if not in recovering or disable id table log file
-    if (config.isEnableIDTable() && (!isRecovering || !config.isEnableIDTableLogFile())) {
+    if (IOTDB_CONFIG.isEnableIDTable()
+        && (!isRecovering || !IOTDB_CONFIG.isEnableIDTableLogFile())) {
       IDTable idTable = IDTableManager.getInstance().getIDTable(plan.getDevicePath());
       idTable.createAlignedTimeseries(plan);
     }
@@ -892,52 +894,6 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
     return mtree.fetchSchema(pathPattern, templateMap, withTags);
   }
 
-  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
-  private List<ShowTimeSeriesResult> showTimeseriesWithIndex(IShowTimeSeriesPlan plan)
-      throws MetadataException {
-
-    List<IMeasurementMNode> allMatchedNodes = tagManager.getMatchedTimeseriesInIndex(plan);
-
-    List<ShowTimeSeriesResult> res = new LinkedList<>();
-    PartialPath pathPattern = plan.getPath();
-    int curOffset = -1;
-    int count = 0;
-    int limit = plan.getLimit();
-    int offset = plan.getOffset();
-
-    for (IMeasurementMNode leaf : allMatchedNodes) {
-      if (plan.isPrefixMatch()
-          ? pathPattern.prefixMatchFullPath(leaf.getPartialPath())
-          : pathPattern.matchFullPath(leaf.getPartialPath())) {
-        if (limit != 0 || offset != 0) {
-          curOffset++;
-          if (curOffset < offset || count == limit) {
-            continue;
-          }
-        }
-        try {
-          Pair<Map<String, String>, Map<String, String>> tagAndAttributePair =
-              tagManager.readTagFile(leaf.getOffset());
-          res.add(
-              new ShowTimeSeriesResult(
-                  leaf.getFullPath(),
-                  leaf.getAlias(),
-                  (MeasurementSchema) leaf.getSchema(),
-                  tagAndAttributePair.left,
-                  tagAndAttributePair.right,
-                  leaf.getParent().isAligned()));
-          if (limit != 0) {
-            count++;
-          }
-        } catch (IOException e) {
-          throw new MetadataException(
-              "Something went wrong while deserialize tag info of " + leaf.getFullPath(), e);
-        }
-      }
-    }
-
-    return res;
-  }
   // endregion
   // endregion
 
@@ -1269,23 +1225,7 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
   public ISchemaReader<ITimeSeriesSchemaInfo> getTimeSeriesReader(
       IShowTimeSeriesPlan showTimeSeriesPlan) throws MetadataException {
     if (showTimeSeriesPlan.getKey() != null && showTimeSeriesPlan.getValue() != null) {
-      List<ShowTimeSeriesResult> showTimeSeriesResultList =
-          showTimeseriesWithIndex(showTimeSeriesPlan);
-      Iterator<ShowTimeSeriesResult> iterator = showTimeSeriesResultList.iterator();
-      return new ISchemaReader<ITimeSeriesSchemaInfo>() {
-        @Override
-        public void close() {}
-
-        @Override
-        public boolean hasNext() {
-          return iterator.hasNext();
-        }
-
-        @Override
-        public ITimeSeriesSchemaInfo next() {
-          return iterator.next();
-        }
-      };
+      return tagManager.getTimeSeriesReaderWithIndex(showTimeSeriesPlan);
     } else {
       return mtree.getTimeSeriesReader(
           showTimeSeriesPlan,

@@ -23,6 +23,8 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
+import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -31,8 +33,6 @@ import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.confignode.client.async.AsyncDataNodeClientPool;
 import org.apache.iotdb.confignode.client.async.handlers.AsyncClientHandler;
 import org.apache.iotdb.confignode.client.sync.SyncDataNodeClientPool;
-import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
-import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.read.storagegroup.CountStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.read.storagegroup.GetStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.CheckTemplateSettablePlan;
@@ -99,11 +99,10 @@ public class ClusterSchemaManager {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ClusterSchemaManager.class);
 
-  private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
-  private static final int LEAST_SCHEMA_REGION_GROUP_NUM = CONF.getLeastSchemaRegionGroupNum();
-  private static final double SCHEMA_REGION_PER_DATA_NODE = CONF.getSchemaRegionPerDataNode();
-  private static final int LEAST_DATA_REGION_GROUP_NUM = CONF.getLeastDataRegionGroupNum();
-  private static final double DATA_REGION_PER_PROCESSOR = CONF.getDataRegionPerProcessor();
+  private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConf();
+  private static final double SCHEMA_REGION_PER_DATA_NODE =
+      COMMON_CONFIG.getSchemaRegionPerDataNode();
+  private static final double DATA_REGION_PER_PROCESSOR = COMMON_CONFIG.getDataRegionPerProcessor();
 
   private final IManager configManager;
   private final ClusterSchemaInfo clusterSchemaInfo;
@@ -319,6 +318,11 @@ public class ClusterSchemaManager {
     // Get all StorageGroupSchemas
     Map<String, TStorageGroupSchema> storageGroupSchemaMap =
         getMatchedStorageGroupSchemasByName(getStorageGroupNames());
+    if (storageGroupSchemaMap.size() == 0) {
+      // Skip when there are no StorageGroups
+      return;
+    }
+
     int dataNodeNum = getNodeManager().getRegisteredDataNodeCount();
     int totalCpuCoreNum = getNodeManager().getTotalCpuCoreCount();
     int storageGroupNum = storageGroupSchemaMap.size();
@@ -330,11 +334,11 @@ public class ClusterSchemaManager {
         (int)
             Math.ceil(
                 (double) totalCpuCoreNum
-                    / (double) (storageGroupNum * CONF.getDataReplicationFactor()));
-    if (leastDataRegionGroupNum < CONF.getLeastDataRegionGroupNum()) {
+                    / (double) (storageGroupNum * COMMON_CONFIG.getDataReplicationFactor()));
+    if (leastDataRegionGroupNum < COMMON_CONFIG.getLeastDataRegionGroupNum()) {
       // The leastDataRegionGroupNum should be the maximum integer that satisfy:
       // 1 <= leastDataRegionGroupNum <= 5(default)
-      CONF.setLeastDataRegionGroupNum(leastDataRegionGroupNum);
+      COMMON_CONFIG.setLeastDataRegionGroupNum(leastDataRegionGroupNum);
       LOGGER.info(
           "[AdjustRegionGroupNum] The least number of DataRegionGroups per Database is adjusted to: {}",
           leastDataRegionGroupNum);
@@ -351,24 +355,13 @@ public class ClusterSchemaManager {
                 .getRegionGroupCount(
                     storageGroupSchema.getName(), TConsensusGroupType.SchemaRegion);
         int maxSchemaRegionGroupNum =
-            Math.max(
-                // The least number of SchemaRegionGroup of each StorageGroup is specified
-                // by parameter least_schema_region_group_num, which is currently unconfigurable.
-                LEAST_SCHEMA_REGION_GROUP_NUM,
-                Math.max(
-                    (int)
-                        // Use Math.ceil here to ensure that the maxSchemaRegionGroupNum
-                        // will be increased as long as the number of cluster DataNodes is increased
-                        Math.ceil(
-                            // The maxSchemaRegionGroupNum of the current StorageGroup
-                            // is expected to be:
-                            // (SCHEMA_REGION_PER_DATA_NODE * registerDataNodeNum) /
-                            // (createdStorageGroupNum * schemaReplicationFactor)
-                            SCHEMA_REGION_PER_DATA_NODE
-                                * dataNodeNum
-                                / storageGroupNum
-                                * storageGroupSchema.getSchemaReplicationFactor()),
-                    allocatedSchemaRegionGroupCount));
+            calcMaxRegionGroupNum(
+                COMMON_CONFIG.getLeastSchemaRegionGroupNum(),
+                SCHEMA_REGION_PER_DATA_NODE,
+                dataNodeNum,
+                storageGroupNum,
+                storageGroupSchema.getSchemaReplicationFactor(),
+                allocatedSchemaRegionGroupCount);
         LOGGER.info(
             "[AdjustRegionGroupNum] The maximum number of SchemaRegionGroups for Database: {} is adjusted to: {}",
             storageGroupSchema.getName(),
@@ -381,24 +374,13 @@ public class ClusterSchemaManager {
             getPartitionManager()
                 .getRegionGroupCount(storageGroupSchema.getName(), TConsensusGroupType.DataRegion);
         int maxDataRegionGroupNum =
-            Math.max(
-                // The least number of DataRegionGroup of each StorageGroup is specified
-                // by parameter least_data_region_group_num.
-                LEAST_DATA_REGION_GROUP_NUM,
-                Math.max(
-                    (int)
-                        // Use Math.ceil here to ensure that the maxDataRegionGroupNum
-                        // will be increased as long as the number of cluster DataNodes is increased
-                        Math.ceil(
-                            // The maxDataRegionGroupNum of the current StorageGroup
-                            // is expected to be:
-                            // (DATA_REGION_PER_PROCESSOR * totalCpuCoreNum) /
-                            // (createdStorageGroupNum * dataReplicationFactor)
-                            DATA_REGION_PER_PROCESSOR
-                                * totalCpuCoreNum
-                                / storageGroupNum
-                                * storageGroupSchema.getDataReplicationFactor()),
-                    allocatedDataRegionGroupCount));
+            calcMaxRegionGroupNum(
+                COMMON_CONFIG.getLeastDataRegionGroupNum(),
+                DATA_REGION_PER_PROCESSOR,
+                totalCpuCoreNum,
+                storageGroupNum,
+                storageGroupSchema.getDataReplicationFactor(),
+                allocatedDataRegionGroupCount);
         LOGGER.info(
             "[AdjustRegionGroupNum] The maximum number of DataRegionGroups for Database: {} is adjusted to: {}",
             storageGroupSchema.getName(),
@@ -412,6 +394,28 @@ public class ClusterSchemaManager {
       }
     }
     getConsensusManager().write(adjustMaxRegionGroupNumPlan);
+  }
+
+  public static int calcMaxRegionGroupNum(
+      int leastRegionGroupNum,
+      double resourceWeight,
+      int resource,
+      int storageGroupNum,
+      int replicationFactor,
+      int allocatedRegionGroupCount) {
+    return Math.max(
+        // The maxRegionGroupNum should be great or equal to the leastRegionGroupNum
+        leastRegionGroupNum,
+        Math.max(
+            (int)
+                // Use Math.ceil here to ensure that the maxRegionGroupNum
+                // will be increased as long as the number of cluster DataNodes is increased
+                Math.ceil(
+                    // The maxRegionGroupNum of the current StorageGroup is expected to be:
+                    // (resourceWeight * resource) / (createdStorageGroupNum * replicationFactor)
+                    resourceWeight * resource / (double) (storageGroupNum * replicationFactor)),
+            // The maxRegionGroupNum should be great or equal to the allocatedRegionGroupCount
+            allocatedRegionGroupCount));
   }
 
   // ======================================================

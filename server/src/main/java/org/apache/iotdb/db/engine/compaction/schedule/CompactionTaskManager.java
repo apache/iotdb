@@ -77,7 +77,7 @@ public class CompactionTaskManager implements IService {
 
   private final RateLimiter mergeWriteRateLimiter = RateLimiter.create(Double.MAX_VALUE);
 
-  private final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private final IoTDBConfig config = IoTDBDescriptor.getInstance().getConf();
   private volatile boolean init = false;
 
   public static CompactionTaskManager getInstance() {
@@ -87,7 +87,7 @@ public class CompactionTaskManager implements IService {
   @Override
   public synchronized void start() {
     if (taskExecutionPool == null
-        && IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount() > 0
+        && IoTDBDescriptor.getInstance().getConf().getCompactionThreadCount() > 0
         && (config.isEnableSeqSpaceCompaction()
             || config.isEnableUnseqSpaceCompaction()
             || config.isEnableCrossSpaceCompaction())) {
@@ -105,7 +105,7 @@ public class CompactionTaskManager implements IService {
   }
 
   private void initThreadPool() {
-    int compactionThreadNum = IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount();
+    int compactionThreadNum = IoTDBDescriptor.getInstance().getConf().getCompactionThreadCount();
     this.taskExecutionPool =
         (WrappedThreadPoolExecutor)
             IoTDBThreadPoolFactory.newFixedThreadPool(
@@ -114,7 +114,7 @@ public class CompactionTaskManager implements IService {
         (WrappedThreadPoolExecutor)
             IoTDBThreadPoolFactory.newFixedThreadPool(
                 compactionThreadNum
-                    * IoTDBDescriptor.getInstance().getConfig().getSubCompactionTaskNum(),
+                    * IoTDBDescriptor.getInstance().getConf().getSubCompactionTaskNum(),
                 ThreadName.COMPACTION_SUB_SERVICE.getName());
     for (int i = 0; i < compactionThreadNum; ++i) {
       taskExecutionPool.submit(new CompactionWorker(i, candidateCompactionTaskQueue));
@@ -242,7 +242,7 @@ public class CompactionTaskManager implements IService {
 
   public RateLimiter getMergeWriteRateLimiter() {
     setWriteMergeRate(
-        IoTDBDescriptor.getInstance().getConfig().getCompactionWriteThroughputMbPerSec());
+        IoTDBDescriptor.getInstance().getConf().getCompactionWriteThroughputMbPerSec());
     return mergeWriteRateLimiter;
   }
 
@@ -354,7 +354,7 @@ public class CompactionTaskManager implements IService {
 
   @TestOnly
   public void restart() throws InterruptedException {
-    if (IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount() > 0) {
+    if (IoTDBDescriptor.getInstance().getConf().getCompactionThreadCount() > 0) {
       if (subCompactionTaskExecutionPool != null) {
         this.subCompactionTaskExecutionPool.shutdownNow();
         if (!this.subCompactionTaskExecutionPool.awaitTermination(

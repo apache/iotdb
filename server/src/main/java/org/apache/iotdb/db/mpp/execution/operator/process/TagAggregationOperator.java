@@ -122,7 +122,7 @@ public class TagAggregationOperator implements ProcessOperator {
         continue;
       }
 
-      if (!canCallNext[i]) {
+      if (!canCallNext[i] || !children.get(i).hasNextWithTimer()) {
         return false;
       }
 

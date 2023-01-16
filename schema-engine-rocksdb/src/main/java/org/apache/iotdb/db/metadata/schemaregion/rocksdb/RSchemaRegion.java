@@ -120,7 +120,7 @@ public class RSchemaRegion implements ISchemaRegion {
 
   private static final Logger logger = LoggerFactory.getLogger(RSchemaRegion.class);
 
-  protected static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  protected static IoTDBConfig config = IoTDBDescriptor.getInstance().getConf();
 
   // TODO: make it configurable
   public static final int MAX_PATH_DEPTH = 10;

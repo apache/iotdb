@@ -26,9 +26,6 @@ import java.util.Set;
 
 public interface ILeaderBalancer {
 
-  String GREEDY_POLICY = "GREEDY";
-  String MIN_COST_FLOW_POLICY = "MIN_COST_FLOW";
-
   /**
    * Generate an optimal leader distribution.
    *

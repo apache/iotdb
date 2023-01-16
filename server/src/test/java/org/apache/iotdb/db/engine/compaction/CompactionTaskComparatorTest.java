@@ -186,7 +186,7 @@ public class CompactionTaskComparatorTest {
   /** Test the comparation of different type of compaction task */
   @Test
   public void testComparationOfDifferentTaskType() throws InterruptedException {
-    IoTDBDescriptor.getInstance().getConfig().setCompactionPriority(CompactionPriority.INNER_CROSS);
+    IoTDBDescriptor.getInstance().getConf().setCompactionPriority(CompactionPriority.INNER_CROSS);
     AbstractCompactionTask[] innerCompactionTasks = new AbstractCompactionTask[100];
     AbstractCompactionTask[] crossCompactionTasks = new AbstractCompactionTask[100];
     for (int i = 0; i < 100; ++i) {

@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.engine.compaction.execute.utils.writer;
 
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.execute.utils.CompactionUtils;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -46,9 +47,9 @@ public abstract class AbstractInnerCompactionWriter extends AbstractCompactionWr
     long sizeForFileWriter =
         (long)
             (SystemInfo.getInstance().getMemorySizeForCompaction()
-                / IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount()
-                * IoTDBDescriptor.getInstance().getConfig().getChunkMetadataSizeProportion());
-    boolean enableMemoryControl = IoTDBDescriptor.getInstance().getConfig().isEnableMemControl();
+                / IoTDBDescriptor.getInstance().getConf().getCompactionThreadCount()
+                * CommonDescriptor.getInstance().getConf().getChunkMetadataSizeProportion());
+    boolean enableMemoryControl = CommonDescriptor.getInstance().getConf().isEnableMemControl();
     this.fileWriter =
         new TsFileIOWriter(targetFileResource.getTsFile(), enableMemoryControl, sizeForFileWriter);
     this.targetResource = targetFileResource;

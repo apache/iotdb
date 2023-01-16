@@ -19,6 +19,8 @@
 package org.apache.iotdb.confignode.conf;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
+import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.BadNodeUrlException;
 import org.apache.iotdb.commons.exception.ConfigurationException;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
@@ -44,11 +46,13 @@ public class SystemPropertiesUtils {
 
   private static final File systemPropertiesFile =
       new File(
-          ConfigNodeDescriptor.getInstance().getConf().getSystemDir()
+          ConfigNodeDescriptor.getInstance().getConf().getCnSystemDir()
               + File.separator
               + ConfigNodeConstant.SYSTEM_FILE_NAME);
 
-  private static final ConfigNodeConfig conf = ConfigNodeDescriptor.getInstance().getConf();
+  private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConf();
+  private static final ConfigNodeConfig CONFIG_NODE_CONFIG =
+      ConfigNodeDescriptor.getInstance().getConf();
 
   /**
    * Check if the ConfigNode is restarted
@@ -72,26 +76,26 @@ public class SystemPropertiesUtils {
 
     // Startup configuration
     String clusterName = systemProperties.getProperty(CLUSTER_NAME, null);
-    if (clusterName != null && !clusterName.equals(conf.getClusterName())) {
-      throw new ConfigurationException(CLUSTER_NAME, conf.getClusterName(), clusterName);
+    if (clusterName != null && !clusterName.equals(COMMON_CONFIG.getClusterName())) {
+      throw new ConfigurationException(CLUSTER_NAME, COMMON_CONFIG.getClusterName(), clusterName);
     }
 
     String internalAddress = systemProperties.getProperty("cn_internal_address", null);
     if (internalAddress == null) {
       needReWrite = true;
-    } else if (!internalAddress.equals(conf.getInternalAddress())) {
+    } else if (!internalAddress.equals(CONFIG_NODE_CONFIG.getCnInternalAddress())) {
       throw new ConfigurationException(
-          "cn_internal_address", conf.getInternalAddress(), internalAddress);
+          "cn_internal_address", CONFIG_NODE_CONFIG.getCnInternalAddress(), internalAddress);
     }
 
     if (systemProperties.getProperty("cn_internal_port", null) == null) {
       needReWrite = true;
     } else {
       int internalPort = Integer.parseInt(systemProperties.getProperty("cn_internal_port"));
-      if (internalPort != conf.getInternalPort()) {
+      if (internalPort != CONFIG_NODE_CONFIG.getCnInternalPort()) {
         throw new ConfigurationException(
             "cn_internal_port",
-            String.valueOf(conf.getInternalPort()),
+            String.valueOf(CONFIG_NODE_CONFIG.getCnInternalPort()),
             String.valueOf(internalPort));
       }
     }
@@ -100,10 +104,10 @@ public class SystemPropertiesUtils {
       needReWrite = true;
     } else {
       int consensusPort = Integer.parseInt(systemProperties.getProperty("cn_consensus_port"));
-      if (consensusPort != conf.getConsensusPort()) {
+      if (consensusPort != CONFIG_NODE_CONFIG.getCnConsensusPort()) {
         throw new ConfigurationException(
             "cn_consensus_port",
-            String.valueOf(conf.getConsensusPort()),
+            String.valueOf(CONFIG_NODE_CONFIG.getCnConsensusPort()),
             String.valueOf(consensusPort));
       }
     }
@@ -114,10 +118,10 @@ public class SystemPropertiesUtils {
     if (configNodeConsensusProtocolClass == null) {
       needReWrite = true;
     } else if (!configNodeConsensusProtocolClass.equals(
-        conf.getConfigNodeConsensusProtocolClass())) {
+        COMMON_CONFIG.getConfigNodeConsensusProtocolClass().getProtocol())) {
       throw new ConfigurationException(
           "config_node_consensus_protocol_class",
-          conf.getConfigNodeConsensusProtocolClass(),
+          COMMON_CONFIG.getConfigNodeConsensusProtocolClass().getProtocol(),
           configNodeConsensusProtocolClass);
     }
 
@@ -126,10 +130,10 @@ public class SystemPropertiesUtils {
     if (dataRegionConsensusProtocolClass == null) {
       needReWrite = true;
     } else if (!dataRegionConsensusProtocolClass.equals(
-        conf.getDataRegionConsensusProtocolClass())) {
+        COMMON_CONFIG.getDataRegionConsensusProtocolClass().getProtocol())) {
       throw new ConfigurationException(
           "data_region_consensus_protocol_class",
-          conf.getDataRegionConsensusProtocolClass(),
+          COMMON_CONFIG.getDataRegionConsensusProtocolClass().getProtocol(),
           dataRegionConsensusProtocolClass);
     }
 
@@ -138,10 +142,10 @@ public class SystemPropertiesUtils {
     if (schemaRegionConsensusProtocolClass == null) {
       needReWrite = true;
     } else if (!schemaRegionConsensusProtocolClass.equals(
-        conf.getSchemaRegionConsensusProtocolClass())) {
+        COMMON_CONFIG.getSchemaRegionConsensusProtocolClass().getProtocol())) {
       throw new ConfigurationException(
           "schema_region_consensus_protocol_class",
-          conf.getSchemaRegionConsensusProtocolClass(),
+          COMMON_CONFIG.getSchemaRegionConsensusProtocolClass().getProtocol(),
           schemaRegionConsensusProtocolClass);
     }
 
@@ -151,10 +155,10 @@ public class SystemPropertiesUtils {
     } else {
       int seriesPartitionSlotNum =
           Integer.parseInt(systemProperties.getProperty("series_partition_slot_num"));
-      if (seriesPartitionSlotNum != conf.getSeriesSlotNum()) {
+      if (seriesPartitionSlotNum != COMMON_CONFIG.getSeriesSlotNum()) {
         throw new ConfigurationException(
             "series_partition_slot_num",
-            String.valueOf(conf.getSeriesSlotNum()),
+            String.valueOf(COMMON_CONFIG.getSeriesSlotNum()),
             String.valueOf(seriesPartitionSlotNum));
       }
     }
@@ -164,10 +168,10 @@ public class SystemPropertiesUtils {
     if (seriesPartitionSlotExecutorClass == null) {
       needReWrite = true;
     } else if (!Objects.equals(
-        seriesPartitionSlotExecutorClass, conf.getSeriesPartitionExecutorClass())) {
+        seriesPartitionSlotExecutorClass, COMMON_CONFIG.getSeriesPartitionExecutorClass())) {
       throw new ConfigurationException(
           "series_partition_executor_class",
-          conf.getSeriesPartitionExecutorClass(),
+          COMMON_CONFIG.getSeriesPartitionExecutorClass(),
           seriesPartitionSlotExecutorClass);
     }
 
@@ -205,30 +209,37 @@ public class SystemPropertiesUtils {
     Properties systemProperties = getSystemProperties();
 
     // Cluster configuration
-    systemProperties.setProperty("cluster_name", conf.getClusterName());
-    systemProperties.setProperty("config_node_id", String.valueOf(conf.getConfigNodeId()));
+    systemProperties.setProperty("cluster_name", COMMON_CONFIG.getClusterName());
+    systemProperties.setProperty(
+        "config_node_id", String.valueOf(CONFIG_NODE_CONFIG.getConfigNodeId()));
     systemProperties.setProperty(
         "is_seed_config_node",
         String.valueOf(ConfigNodeDescriptor.getInstance().isSeedConfigNode()));
 
     // Startup configuration
-    systemProperties.setProperty("cn_internal_address", String.valueOf(conf.getInternalAddress()));
-    systemProperties.setProperty("cn_internal_port", String.valueOf(conf.getInternalPort()));
-    systemProperties.setProperty("cn_consensus_port", String.valueOf(conf.getConsensusPort()));
+    systemProperties.setProperty(
+        "cn_internal_address", String.valueOf(CONFIG_NODE_CONFIG.getCnInternalAddress()));
+    systemProperties.setProperty(
+        "cn_internal_port", String.valueOf(CONFIG_NODE_CONFIG.getCnInternalPort()));
+    systemProperties.setProperty(
+        "cn_consensus_port", String.valueOf(CONFIG_NODE_CONFIG.getCnConsensusPort()));
 
     // Consensus protocol configuration
     systemProperties.setProperty(
-        "config_node_consensus_protocol_class", conf.getConfigNodeConsensusProtocolClass());
+        "config_node_consensus_protocol_class",
+        COMMON_CONFIG.getConfigNodeConsensusProtocolClass().getProtocol());
     systemProperties.setProperty(
-        "data_region_consensus_protocol_class", conf.getDataRegionConsensusProtocolClass());
+        "data_region_consensus_protocol_class",
+        COMMON_CONFIG.getDataRegionConsensusProtocolClass().getProtocol());
     systemProperties.setProperty(
-        "schema_region_consensus_protocol_class", conf.getSchemaRegionConsensusProtocolClass());
+        "schema_region_consensus_protocol_class",
+        COMMON_CONFIG.getSchemaRegionConsensusProtocolClass().getProtocol());
 
     // PartitionSlot configuration
     systemProperties.setProperty(
-        "series_partition_slot_num", String.valueOf(conf.getSeriesSlotNum()));
+        "series_partition_slot_num", String.valueOf(COMMON_CONFIG.getSeriesSlotNum()));
     systemProperties.setProperty(
-        "series_partition_executor_class", conf.getSeriesPartitionExecutorClass());
+        "series_partition_executor_class", COMMON_CONFIG.getSeriesPartitionExecutorClass());
 
     storeSystemProperties(systemProperties);
   }

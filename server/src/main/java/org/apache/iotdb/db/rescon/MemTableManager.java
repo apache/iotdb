@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.rescon;
 
+import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
@@ -29,7 +31,8 @@ import org.slf4j.LoggerFactory;
 
 public class MemTableManager {
 
-  private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
+  private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConf();
+  private static final IoTDBConfig IOTDB_CONFIG = IoTDBDescriptor.getInstance().getConf();
 
   private static final Logger logger = LoggerFactory.getLogger(MemTableManager.class);
 
@@ -45,9 +48,9 @@ public class MemTableManager {
 
   public synchronized IMemTable getAvailableMemTable(String storageGroup)
       throws WriteProcessException {
-    if (CONFIG.isEnableMemControl()) {
+    if (COMMON_CONFIG.isEnableMemControl()) {
       currentMemtableNumber++;
-      return new PrimitiveMemTable(CONFIG.isEnableMemControl());
+      return new PrimitiveMemTable(COMMON_CONFIG.isEnableMemControl());
     }
 
     if (!reachMaxMemtableNumber()) {
@@ -86,15 +89,15 @@ public class MemTableManager {
 
   /** Called when memory control is disabled */
   private boolean reachMaxMemtableNumber() {
-    return currentMemtableNumber >= CONFIG.getMaxMemtableNumber();
+    return currentMemtableNumber >= IOTDB_CONFIG.getMaxMemtableNumber();
   }
 
   /** Called when memory control is disabled */
   public synchronized void addOrDeleteStorageGroup(int diff) {
-    int maxMemTableNum = CONFIG.getMaxMemtableNumber();
+    int maxMemTableNum = IOTDB_CONFIG.getMaxMemtableNumber();
     maxMemTableNum +=
-        MEMTABLE_NUM_FOR_EACH_PARTITION * CONFIG.getConcurrentWritingTimePartition() * diff;
-    CONFIG.setMaxMemtableNumber(maxMemTableNum);
+        MEMTABLE_NUM_FOR_EACH_PARTITION * COMMON_CONFIG.getConcurrentWritingTimePartition() * diff;
+    IOTDB_CONFIG.setMaxMemtableNumber(maxMemTableNum);
     notifyAll();
   }
 

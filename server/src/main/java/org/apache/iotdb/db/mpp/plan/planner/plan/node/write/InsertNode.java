@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.mpp.plan.planner.plan.node.write;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.consensus.iot.wal.ConsensusReqReader;
@@ -185,7 +186,7 @@ public abstract class InsertNode extends WritePlanNode {
       if (measurements[i] == null) {
         continue;
       }
-      if (IoTDBDescriptor.getInstance().getConfig().isClusterMode()) {
+      if (IoTDBDescriptor.getInstance().getConf().isClusterMode()) {
         byteLen += WALWriteUtils.sizeToWrite(measurementSchemas[i]);
       } else {
         byteLen += ReadWriteIOUtils.sizeToWrite(measurements[i]);
@@ -205,7 +206,7 @@ public abstract class InsertNode extends WritePlanNode {
       }
 
       // serialize measurementId only for standalone version for better write performance
-      if (IoTDBDescriptor.getInstance().getConfig().isClusterMode()) {
+      if (IoTDBDescriptor.getInstance().getConf().isClusterMode()) {
         WALWriteUtils.write(measurementSchemas[i], buffer);
       } else {
         WALWriteUtils.write(measurements[i], buffer);
@@ -220,7 +221,7 @@ public abstract class InsertNode extends WritePlanNode {
    */
   protected void deserializeMeasurementSchemas(DataInputStream stream) throws IOException {
     for (int i = 0; i < measurements.length; i++) {
-      if (IoTDBDescriptor.getInstance().getConfig().isClusterMode()) {
+      if (IoTDBDescriptor.getInstance().getConf().isClusterMode()) {
         measurementSchemas[i] = MeasurementSchema.deserializeFrom(stream);
         measurements[i] = measurementSchemas[i].getMeasurementId();
         dataTypes[i] = measurementSchemas[i].getType();
@@ -249,7 +250,7 @@ public abstract class InsertNode extends WritePlanNode {
   /** Check whether data types are matched with measurement schemas */
   protected void selfCheckDataTypes() throws DataTypeMismatchException, PathNotExistException {
     for (int i = 0; i < measurementSchemas.length; i++) {
-      if (IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
+      if (CommonDescriptor.getInstance().getConf().isEnablePartialInsert()) {
         // if enable partial insert, mark failed measurements with exception
         if (measurementSchemas[i] == null) {
           markFailedMeasurement(

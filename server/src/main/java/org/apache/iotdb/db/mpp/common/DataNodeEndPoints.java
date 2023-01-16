@@ -30,13 +30,13 @@ public class DataNodeEndPoints {
 
   public static final TEndPoint LOCAL_HOST_DATA_BLOCK_ENDPOINT =
       new TEndPoint(
-          IoTDBDescriptor.getInstance().getConfig().getInternalAddress(),
-          IoTDBDescriptor.getInstance().getConfig().getMppDataExchangePort());
+          IoTDBDescriptor.getInstance().getConf().getDnInternalAddress(),
+          IoTDBDescriptor.getInstance().getConf().getDnMppDataExchangePort());
 
   public static final TEndPoint LOCAL_HOST_INTERNAL_ENDPOINT =
       new TEndPoint(
-          IoTDBDescriptor.getInstance().getConfig().getInternalAddress(),
-          IoTDBDescriptor.getInstance().getConfig().getInternalPort());
+          IoTDBDescriptor.getInstance().getConf().getDnInternalAddress(),
+          IoTDBDescriptor.getInstance().getConf().getDnInternalPort());
 
   public static boolean isSameNode(TEndPoint endPoint) {
     return endPoint.equals(LOCAL_HOST_DATA_BLOCK_ENDPOINT);

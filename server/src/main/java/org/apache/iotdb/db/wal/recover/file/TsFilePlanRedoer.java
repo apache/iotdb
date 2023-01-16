@@ -105,11 +105,11 @@ public class TsFilePlanRedoer {
       }
     }
 
-    if (IoTDBDescriptor.getInstance().getConfig().isEnableIDTable()) {
+    if (IoTDBDescriptor.getInstance().getConf().isEnableIDTable()) {
       // TODO get device id by idTable
       // idTable.getSeriesSchemas(node);
     } else {
-      if (!IoTDBDescriptor.getInstance().getConfig().isClusterMode()) {
+      if (!IoTDBDescriptor.getInstance().getConf().isClusterMode()) {
         SchemaValidator.validate(node);
       }
       node.setDeviceID(DeviceIDFactory.getInstance().getDeviceID(node.getDevicePath()));

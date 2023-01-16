@@ -26,7 +26,7 @@ import org.apache.iotdb.db.conf.ServerConfigConsistent;
 public class TimePartitionUtils {
   @ServerConfigConsistent
   public static long timePartitionInterval =
-      IoTDBDescriptor.getInstance().getConfig().getTimePartitionInterval();
+      IoTDBDescriptor.getInstance().getConf().getDnTimePartitionInterval();
 
   public static TTimePartitionSlot getTimePartition(long time) {
     TTimePartitionSlot timePartitionSlot = new TTimePartitionSlot();

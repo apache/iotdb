@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.wal.WALMode;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
@@ -41,7 +42,6 @@ import org.apache.iotdb.db.wal.checkpoint.CheckpointManager;
 import org.apache.iotdb.db.wal.checkpoint.MemTableInfo;
 import org.apache.iotdb.db.wal.recover.file.UnsealedTsFileRecoverPerformer;
 import org.apache.iotdb.db.wal.utils.TsFileUtilsForRecoverTest;
-import org.apache.iotdb.db.wal.utils.WALMode;
 import org.apache.iotdb.db.wal.utils.listener.WALRecoverListener;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
@@ -85,8 +85,10 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 public class WALRecoverManagerTest {
-  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-  private static final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
+
+  private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConf();
+  private static final IoTDBConfig IOTDB_CONFIG = IoTDBDescriptor.getInstance().getConf();
+  private static final CommonConfig commonConfig = CommonDescriptor.getInstance().getConf();
   private static final String SG_NAME = "root.recover_sg";
   private static final String DEVICE1_NAME = SG_NAME.concat(".d1");
   private static final String DEVICE2_NAME = SG_NAME.concat(".d2");
@@ -96,7 +98,7 @@ public class WALRecoverManagerTest {
       TsFileUtilsForRecoverTest.getTestTsFilePath(SG_NAME, 0, 1, 1);
   private static final String WAL_NODE_IDENTIFIER = String.valueOf(Integer.MAX_VALUE);
   private static final String WAL_NODE_FOLDER =
-      commonConfig.getWalDirs()[0].concat(File.separator + WAL_NODE_IDENTIFIER);
+      IOTDB_CONFIG.getDnWalDirs()[0].concat(File.separator + WAL_NODE_IDENTIFIER);
   private static final WALRecoverManager recoverManager = WALRecoverManager.getInstance();
 
   private WALMode prevMode;
@@ -109,12 +111,12 @@ public class WALRecoverManagerTest {
 
   @Before
   public void setUp() throws Exception {
-    isClusterMode = config.isClusterMode();
+    isClusterMode = IOTDB_CONFIG.isClusterMode();
     EnvironmentUtils.cleanDir(new File(FILE_WITH_WAL_NAME).getParent());
     EnvironmentUtils.envSetUp();
-    config.setClusterMode(true);
-    prevMode = config.getWalMode();
-    config.setWalMode(WALMode.SYNC);
+    IOTDB_CONFIG.setClusterMode(true);
+    prevMode = COMMON_CONFIG.getWalMode();
+    COMMON_CONFIG.setWalMode(WALMode.SYNC);
     walBuffer = new WALBuffer(WAL_NODE_IDENTIFIER, WAL_NODE_FOLDER);
     checkpointManager = new CheckpointManager(WAL_NODE_IDENTIFIER, WAL_NODE_FOLDER);
   }
@@ -129,8 +131,8 @@ public class WALRecoverManagerTest {
     }
     checkpointManager.close();
     walBuffer.close();
-    config.setWalMode(prevMode);
-    config.setClusterMode(isClusterMode);
+    COMMON_CONFIG.setWalMode(prevMode);
+    IOTDB_CONFIG.setClusterMode(isClusterMode);
     EnvironmentUtils.cleanDir(new File(FILE_WITH_WAL_NAME).getParent());
     EnvironmentUtils.cleanDir(new File(FILE_WITHOUT_WAL_NAME).getParent());
     EnvironmentUtils.cleanEnv();

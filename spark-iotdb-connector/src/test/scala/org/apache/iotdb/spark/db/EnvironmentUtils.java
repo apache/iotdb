@@ -89,8 +89,8 @@ public class EnvironmentUtils {
 
   private static final Logger logger = LoggerFactory.getLogger(EnvironmentUtils.class);
 
-  private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-  private static final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
+  private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConf();
+  private static final CommonConfig commonConfig = CommonDescriptor.getInstance().getConf();
   private static DirectoryManager directoryManager = DirectoryManager.getInstance();
 
   public static long TEST_QUERY_JOB_ID = QueryResourceManager.getInstance().assignQueryId();
@@ -99,7 +99,7 @@ public class EnvironmentUtils {
   private static long oldSeqTsFileSize = config.getSeqTsFileSize();
   private static long oldUnSeqTsFileSize = config.getUnSeqTsFileSize();
 
-  private static long oldGroupSizeInByte = config.getMemtableSizeThreshold();
+  private static long oldGroupSizeInByte = commonConfig.getMemtableSizeThreshold();
 
   public static void cleanEnv() throws IOException, StorageEngineException {
 
@@ -110,12 +110,12 @@ public class EnvironmentUtils {
 
     // clean database manager
     StorageEngine.getInstance().reset();
-    CommonDescriptor.getInstance().getConfig().setNodeStatus(NodeStatus.Running);
+    CommonDescriptor.getInstance().getConf().setNodeStatus(NodeStatus.Running);
 
     // clean wal
     WALManager.getInstance().stop();
     // clean cache
-    if (config.isMetaDataCacheEnable()) {
+    if (commonConfig.isMetaDataCacheEnable()) {
       ChunkCache.getInstance().clear();
       TimeSeriesMetadataCache.getInstance().clear();
       BloomFilterCache.getInstance().clear();
@@ -127,7 +127,7 @@ public class EnvironmentUtils {
 
     config.setSeqTsFileSize(oldSeqTsFileSize);
     config.setUnSeqTsFileSize(oldUnSeqTsFileSize);
-    config.setMemtableSizeThreshold(oldGroupSizeInByte);
+    commonConfig.setMemtableSizeThreshold(oldGroupSizeInByte);
   }
 
   public static void cleanAllDir() throws IOException {
@@ -140,13 +140,13 @@ public class EnvironmentUtils {
       cleanDir(path);
     }
     // delete system info
-    cleanDir(config.getSystemDir());
+    cleanDir(config.getDnSystemDir());
     // delete wal
-    for (String walDir : commonConfig.getWalDirs()) {
+    for (String walDir : config.getDnWalDirs()) {
       cleanDir(walDir);
     }
     // delete data files
-    for (String dataDir : config.getDataDirs()) {
+    for (String dataDir : config.getDnDataDirs()) {
       cleanDir(dataDir);
     }
   }
@@ -186,13 +186,13 @@ public class EnvironmentUtils {
       createDir(path);
     }
     // create database
-    createDir(config.getSystemDir());
+    createDir(config.getDnSystemDir());
     // create wal
-    for (String walDir : commonConfig.getWalDirs()) {
+    for (String walDir : config.getDnWalDirs()) {
       createDir(walDir);
     }
     // create data
-    for (String dataDir : config.getDataDirs()) {
+    for (String dataDir : config.getDnDataDirs()) {
       createDir(dataDir);
     }
   }

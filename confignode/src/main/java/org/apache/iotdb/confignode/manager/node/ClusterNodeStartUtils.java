@@ -25,9 +25,9 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.cluster.NodeType;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.confignode.conf.ConfigNodeConstant;
-import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.node.heartbeat.BaseNodeCache;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -41,7 +41,7 @@ import java.util.Set;
 public class ClusterNodeStartUtils {
 
   private static final String CLUSTER_NAME =
-      ConfigNodeDescriptor.getInstance().getConf().getClusterName();
+      CommonDescriptor.getInstance().getConf().getClusterName();
 
   private static final String POSSIBLE_SOLUTIONS = " Possible solutions are as follows:\r\n";
 

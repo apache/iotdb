@@ -66,8 +66,8 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
   public void setUp()
       throws IOException, WriteProcessException, MetadataException, InterruptedException {
     super.setUp();
-    IoTDBDescriptor.getInstance().getConfig().setTargetChunkSize(512);
-    IoTDBDescriptor.getInstance().getConfig().setTargetChunkPointNum(100);
+    IoTDBDescriptor.getInstance().getConf().setTargetChunkSize(512);
+    IoTDBDescriptor.getInstance().getConf().setTargetChunkPointNum(100);
     TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(10);
   }
 

@@ -19,9 +19,9 @@
 
 package org.apache.iotdb.db.mpp.plan.statement.metadata;
 
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.cq.TimeoutPolicy;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.mpp.plan.analyze.ExpressionAnalyzer;
 import org.apache.iotdb.db.mpp.plan.analyze.QueryType;
@@ -175,12 +175,12 @@ public class CreateContinuousQueryStatement extends Statement implements IConfig
 
   public void semanticCheck() {
     if (everyInterval
-        < IoTDBDescriptor.getInstance().getConfig().getContinuousQueryMinimumEveryInterval()) {
+        < CommonDescriptor.getInstance().getConf().getContinuousQueryMinEveryIntervalInMs()) {
       throw new SemanticException(
           String.format(
               "CQ: Every interval [%d] should not be lower than the `continuous_query_minimum_every_interval` [%d] configured.",
               everyInterval,
-              IoTDBDescriptor.getInstance().getConfig().getContinuousQueryMinimumEveryInterval()));
+              CommonDescriptor.getInstance().getConf().getContinuousQueryMinEveryIntervalInMs()));
     }
     if (startTimeOffset <= 0) {
       throw new SemanticException("CQ: The start time offset should be greater than 0.");

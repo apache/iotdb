@@ -55,7 +55,7 @@ public class DataNodeInternalRPCService extends ThriftService
   public void initThriftServiceThread()
       throws IllegalAccessException, InstantiationException, ClassNotFoundException {
     try {
-      IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+      IoTDBConfig config = IoTDBDescriptor.getInstance().getConf();
       thriftServiceThread =
           new ThriftServiceThread(
               processor,
@@ -63,7 +63,7 @@ public class DataNodeInternalRPCService extends ThriftService
               ThreadName.DATANODE_INTERNAL_RPC_PROCESSOR.getName(),
               getBindIP(),
               getBindPort(),
-              config.getRpcMaxConcurrentClientNum(),
+              config.getDnRpcMaxConcurrentClientNum(),
               config.getThriftServerAwaitTimeForStopService(),
               new InternalServiceThriftHandler(),
               // TODO: hard coded compress strategy
@@ -78,12 +78,12 @@ public class DataNodeInternalRPCService extends ThriftService
 
   @Override
   public String getBindIP() {
-    return IoTDBDescriptor.getInstance().getConfig().getInternalAddress();
+    return IoTDBDescriptor.getInstance().getConf().getDnInternalAddress();
   }
 
   @Override
   public int getBindPort() {
-    return IoTDBDescriptor.getInstance().getConfig().getInternalPort();
+    return IoTDBDescriptor.getInstance().getConf().getDnInternalPort();
   }
 
   private static class DataNodeInternalRPCServiceHolder {

@@ -20,7 +20,6 @@ package org.apache.iotdb.db.sync.pipedata.load;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.sync.PipeDataLoadException;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.exception.LoadFileException;
 import org.apache.iotdb.db.mpp.plan.Coordinator;
@@ -48,7 +47,7 @@ public class DeletionLoader implements ILoader {
 
   @Override
   public void load() throws PipeDataLoadException {
-    if (CommonDescriptor.getInstance().getConfig().isReadOnly()) {
+    if (CommonDescriptor.getInstance().getConf().isReadOnly()) {
       throw new PipeDataLoadException("storage engine readonly");
     }
     try {
@@ -63,7 +62,7 @@ public class DeletionLoader implements ILoader {
                   "",
                   PARTITION_FETCHER,
                   SCHEMA_FETCHER,
-                  IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold());
+                  CommonDescriptor.getInstance().getConf().getQueryTimeoutThreshold());
       if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         logger.error("Delete {} error, statement: {}.", deletion, statement);
         logger.error("Delete result status : {}.", result.status);

@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.wal.node;
 
+import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.file.SystemFileFactory;
@@ -78,7 +80,8 @@ import java.util.regex.Pattern;
  */
 public class WALNode implements IWALNode {
   private static final Logger logger = LoggerFactory.getLogger(WALNode.class);
-  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConf();
+  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConf();
   /** no iot consensus, all insert nodes can be safely deleted */
   public static final long DEFAULT_SAFELY_DELETED_SEARCH_INDEX = Long.MAX_VALUE;
 
@@ -162,7 +165,7 @@ public class WALNode implements IWALNode {
     // remove snapshot info
     memTableSnapshotCount.remove(memTable.getMemTableId());
     // update cost info
-    long cost = config.isEnableMemControl() ? memTable.getTVListsRamCost() : 1;
+    long cost = COMMON_CONFIG.isEnableMemControl() ? memTable.getTVListsRamCost() : 1;
     long currentWALFileVersion = buffer.getCurrentWALFileVersion();
     walFileVersionId2MemTablesTotalCost.compute(
         currentWALFileVersion, (k, v) -> v == null ? cost : v + cost);
@@ -238,14 +241,14 @@ public class WALNode implements IWALNode {
       // effective information ratio is too small
       // update first valid version id by snapshotting or flushing memTable,
       // then delete old .wal files again
-      if (effectiveInfoRatio < config.getWalMinEffectiveInfoRatio()) {
+      if (effectiveInfoRatio < COMMON_CONFIG.getWalMinEffectiveInfoRatio()) {
         logger.info(
             "Effective information ratio {} (active memTables cost is {}, flushed memTables cost is {}) of wal node-{} is below wal min effective info ratio {}, some memTables will be snapshot or flushed.",
             effectiveInfoRatio,
             costOfActiveMemTables,
             costOfFlushedMemTables,
             identifier,
-            config.getWalMinEffectiveInfoRatio());
+            COMMON_CONFIG.getWalMinEffectiveInfoRatio());
         if (snapshotOrFlushMemTable() && recursionTime < MAX_RECURSION_TIME) {
           // wal is used to search, cannot optimize files deletion
           if (safelyDeletedSearchIndex != DEFAULT_SAFELY_DELETED_SEARCH_INDEX) {
@@ -352,8 +355,8 @@ public class WALNode implements IWALNode {
       int snapshotCount = memTableSnapshotCount.getOrDefault(oldestMemTable.getMemTableId(), 0);
       if (TsFileUtils.getTimePartition(new File(oldestMemTableInfo.getTsFilePath()))
               < dataRegion.getLatestTimePartition()
-          || snapshotCount >= config.getMaxWalMemTableSnapshotNum()
-          || oldestMemTable.getTVListsRamCost() > config.getWalMemTableSnapshotThreshold()) {
+          || snapshotCount >= COMMON_CONFIG.getMaxWalMemTableSnapshotNum()
+          || oldestMemTable.getTVListsRamCost() > COMMON_CONFIG.getWalMemTableSnapshotThreshold()) {
         flushMemTable(dataRegion, oldestTsFile, oldestMemTable);
       } else {
         snapshotMemTable(dataRegion, oldestTsFile, oldestMemTableInfo);

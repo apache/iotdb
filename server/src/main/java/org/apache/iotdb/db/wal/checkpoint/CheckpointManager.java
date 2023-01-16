@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.wal.checkpoint;
 
+import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -44,7 +45,8 @@ import java.util.concurrent.locks.ReentrantLock;
 /** This class is used to manage checkpoints of one wal node */
 public class CheckpointManager implements AutoCloseable {
   private static final Logger logger = LoggerFactory.getLogger(CheckpointManager.class);
-  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConf();
+  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConf();
 
   /** WALNode identifier of this checkpoint manager */
   protected final String identifier;
@@ -174,7 +176,7 @@ public class CheckpointManager implements AutoCloseable {
             "Fail to fsync wal node-{}'s checkpoint writer, change system mode to error.",
             identifier,
             e);
-        CommonDescriptor.getInstance().getConfig().handleUnrecoverableError();
+        CommonDescriptor.getInstance().getConf().handleUnrecoverableError();
       }
 
       try {
@@ -193,7 +195,7 @@ public class CheckpointManager implements AutoCloseable {
             "Fail to roll wal node-{}'s checkpoint writer, change system mode to error.",
             identifier,
             e);
-        CommonDescriptor.getInstance().getConfig().handleUnrecoverableError();
+        CommonDescriptor.getInstance().getConf().handleUnrecoverableError();
       }
     } finally {
       infoLock.unlock();
@@ -260,7 +262,7 @@ public class CheckpointManager implements AutoCloseable {
   public long getTotalCostOfActiveMemTables() {
     long totalCost = 0;
 
-    if (!config.isEnableMemControl()) {
+    if (!COMMON_CONFIG.isEnableMemControl()) {
       infoLock.lock();
       try {
         totalCost = memTableId2Info.size();

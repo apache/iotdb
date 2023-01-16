@@ -26,7 +26,7 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 
 public class LocalFileAuthorizer extends BasicAuthorizer {
 
-  private static final CommonConfig config = CommonDescriptor.getInstance().getConfig();
+  private static final CommonConfig config = CommonDescriptor.getInstance().getConf();
 
   public LocalFileAuthorizer() throws AuthException {
     super(
