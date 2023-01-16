@@ -379,6 +379,10 @@ public class IoTDBPartitionCreationIT {
           readOnlyCnt += 1;
         }
       }
+      System.out.println("runningCnt:" + runningCnt);
+      System.out.println("removingCnt:" + removingCnt);
+      System.out.println("readOnlyCnt:" + readOnlyCnt);
+      System.out.println("unknownCnt:" + unknownCnt);
       Assert.assertEquals(9, runningCnt);
       Assert.assertEquals(1, removingCnt);
       Assert.assertEquals(1, readOnlyCnt);
