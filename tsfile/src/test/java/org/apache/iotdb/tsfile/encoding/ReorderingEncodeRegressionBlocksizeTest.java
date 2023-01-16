@@ -223,8 +223,8 @@ public class ReorderingEncodeRegressionBlocksizeTest {
 
     // delta to Regression
     for(int j=1;j<block_size;j++) {
-      int epsilon_r = (int) ((double)ts_block.get(j).get(0) - theta0_r - theta1_r * (double)ts_block.get(j-1).get(0));
-      int epsilon_v = (int) ((double)ts_block.get(j).get(1) - theta0_v - theta1_v * (double)ts_block.get(j-1).get(1));
+      int epsilon_r = ts_block.get(j).get(0) -(int) (theta0_r + theta1_r * (double)ts_block.get(j-1).get(0));
+      int epsilon_v = ts_block.get(j).get(1) - (int) (theta0_v + theta1_v * (double)ts_block.get(j-1).get(1));
       ArrayList<Integer> tmp = new ArrayList<>();
       tmp.add(epsilon_r);
       tmp.add(epsilon_v);
@@ -291,10 +291,10 @@ public class ReorderingEncodeRegressionBlocksizeTest {
 
     for(int j = 1;j<block_size;j++){
       if(j!=i_star){
-        int epsilon_r_j = (int) ((double) ts_block.get(j).get(0) - theta0_r -theta1_r * (double) ts_block.get(i_star).get(0));
-        int epsilon_v_j = (int) ((double) ts_block.get(j).get(1) - theta0_v - theta1_v * (double) ts_block.get(i_star).get(1));
-        int epsilon_r_i_star = (int) ((double) ts_block.get(i_star).get(0) - theta0_r -theta1_r * (double) ts_block.get(j-1).get(0));
-        int epsilon_v_i_star = (int) ((double) ts_block.get(i_star).get(1) - theta0_r -theta1_r * (double) ts_block.get(j-1).get(1));
+        int epsilon_r_j =  ts_block.get(j).get(0) - (int) (theta0_r +theta1_r * (double) ts_block.get(i_star).get(0));
+        int epsilon_v_j =  ts_block.get(j).get(1) - (int) (theta0_v + theta1_v * (double) ts_block.get(i_star).get(1));
+        int epsilon_r_i_star = ts_block.get(i_star).get(0) - (int) ( theta0_r + theta1_r * (double) ts_block.get(j-1).get(0));
+        int epsilon_v_i_star =  ts_block.get(i_star).get(1) - (int) (theta0_r +theta1_r * (double) ts_block.get(j-1).get(1));
         if(epsilon_r_j >raw_length.get(1) || epsilon_v_j >raw_length.get(2) ||
                 epsilon_r_i_star > raw_length.get(1) || epsilon_v_i_star> raw_length.get(2))
           return 0;
@@ -325,8 +325,8 @@ public class ReorderingEncodeRegressionBlocksizeTest {
     double theta1_v = theta.get(3);
 
     for(int j = 1;j<block_size;j++){
-        int epsilon_r_j = getBitWith((int) ((double) ts_block.get(j).get(0) - theta0_r -theta1_r * (double) ts_block.get(j-1).get(0)));
-        int epsilon_v_j = getBitWith ((int) ((double) ts_block.get(j).get(1) - theta0_v - theta1_v * (double) ts_block.get(j-1).get(1)));
+        int epsilon_r_j = getBitWith( ts_block.get(j).get(0) - (int) (theta0_r + theta1_r * (double) ts_block.get(j-1).get(0)));
+        int epsilon_v_j = getBitWith ( ts_block.get(j).get(1) - (int) (theta0_v + theta1_v * (double) ts_block.get(j-1).get(1)));
       if(index == 1){
         if(epsilon_v_j<=raw_length.get(2) && epsilon_r_j < i_star_bit_width && epsilon_r_j < raw_length.get(1)){
           i_star_bit_width = epsilon_r_j;
@@ -426,8 +426,13 @@ public class ReorderingEncodeRegressionBlocksizeTest {
         count_raw ++;
 //        i_star =getIStar(ts_block,block_size,raw_length,0,theta);
         j_star =getJStar(ts_block,i_star,block_size,raw_length,0,theta);
-
+        int adjust_count = 0;
         while(j_star!=0){
+          if(adjust_count > block_size/2){
+            break;
+          }else{
+            adjust_count ++;
+          }
           ArrayList<Integer> tmp_tv = ts_block_reorder.get(i_star);
           if(j_star<i_star){
             for(int u=i_star-1;u>=j_star;u--){
@@ -463,9 +468,15 @@ public class ReorderingEncodeRegressionBlocksizeTest {
         int j_star = 0;
         ArrayList<Integer> j_star_list =new ArrayList<>();
         count_reorder ++;
-        i_star =getIStar(ts_block,block_size,raw_length,0,theta);
+//        i_star =getIStar(ts_block,block_size,raw_length,0,theta);
+        int adjust_count = 0;
         j_star =getJStar(ts_block,i_star,block_size,raw_length,0,theta);
         while(j_star != 0){
+          if(adjust_count > block_size/2){
+            break;
+          }else{
+            adjust_count ++;
+          }
           ArrayList<Integer> tmp_tv = ts_block_reorder.get(i_star);
           if(j_star<i_star){
             for(int u=i_star-1;u>=j_star;u--){
