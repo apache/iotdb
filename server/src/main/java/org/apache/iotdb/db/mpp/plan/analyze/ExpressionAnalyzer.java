@@ -1282,8 +1282,9 @@ public class ExpressionAnalyzer {
     } else if (predicate instanceof UnaryExpression) {
       return isDeviceViewNeedSpecialProcess(((UnaryExpression) predicate).getExpression());
     } else if (predicate instanceof FunctionExpression) {
-      if (BuiltinScalarFunction.DEVICE_VIEW_SPECIAL_PROCESS_FUNCTIONS.contains(
-          ((FunctionExpression) predicate).getFunctionName().toLowerCase())) {
+      if (((FunctionExpression) predicate).isBuiltInScalarFunction()
+          && BuiltinScalarFunction.DEVICE_VIEW_SPECIAL_PROCESS_FUNCTIONS.contains(
+              ((FunctionExpression) predicate).getFunctionName().toLowerCase())) {
         return true;
       }
       for (Expression expression : predicate.getExpressions()) {
