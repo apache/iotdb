@@ -52,7 +52,7 @@ public class ExtPipePluginRegister {
       new ConcurrentHashMap<>();
 
   private ExtPipePluginRegister() throws IOException {
-    extPipeDir = IoTDBDescriptor.getInstance().getConfig().getExtPipeDir();
+    extPipeDir = IoTDBDescriptor.getInstance().getConf().getExtPipeDir();
     logger.info("extPipeDir: {}", extPipeDir);
 
     makeExtPipeDir();

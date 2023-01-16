@@ -37,7 +37,7 @@ public class SchemaResourceManager {
                 SchemaStatisticsManager.getInstance(), MemoryStatistics.getInstance()));
     MemoryStatistics.getInstance().init();
     if (IoTDBDescriptor.getInstance()
-        .getConfig()
+        .getConf()
         .getSchemaEngineMode()
         .equals(SchemaEngineMode.Schema_File.toString())) {
       initSchemaFileModeResource();
@@ -48,7 +48,7 @@ public class SchemaResourceManager {
     SchemaStatisticsManager.getInstance().clear();
     MemoryStatistics.getInstance().clear();
     if (IoTDBDescriptor.getInstance()
-        .getConfig()
+        .getConf()
         .getSchemaEngineMode()
         .equals(SchemaEngineMode.Schema_File.toString())) {
       clearSchemaFileModeResource();

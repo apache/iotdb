@@ -20,6 +20,8 @@
 package org.apache.iotdb.db.sync.transport.server;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.sync.PipeDataLoadException;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -64,7 +66,8 @@ import java.util.concurrent.atomic.AtomicLong;
 public class ReceiverManager {
   private static final Logger logger = LoggerFactory.getLogger(ReceiverManager.class);
 
-  private final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConf();
+  private static final IoTDBConfig IOTDB_CONFIG = IoTDBDescriptor.getInstance().getConf();
 
   // When the client abnormally exits, we can still know who to disconnect
   private final ThreadLocal<Long> currentConnectionId;
@@ -158,20 +161,22 @@ public class ReceiverManager {
     SyncIdentityInfo identityInfo = new SyncIdentityInfo(tIdentityInfo, remoteAddress);
     logger.info("Invoke handshake method from client ip = {}", identityInfo.getRemoteAddress());
     // check ip address
-    if (!verifyIPSegment(config.getIpWhiteList(), identityInfo.getRemoteAddress())) {
+    if (!verifyIPSegment(COMMON_CONFIG.getIpWhiteList(), identityInfo.getRemoteAddress())) {
       return RpcUtils.getStatus(
           TSStatusCode.PIPESERVER_ERROR,
           String.format(
               "permission is not allowed: the sender IP <%s>, the white list of receiver <%s>",
-              identityInfo.getRemoteAddress(), config.getIpWhiteList()));
+              identityInfo.getRemoteAddress(), COMMON_CONFIG.getIpWhiteList()));
     }
     // Version check
-    if (!config.getIoTDBMajorVersion(identityInfo.version).equals(config.getIoTDBMajorVersion())) {
+    if (!IOTDB_CONFIG
+        .getIoTDBMajorVersion(identityInfo.version)
+        .equals(IOTDB_CONFIG.getIoTDBMajorVersion())) {
       return RpcUtils.getStatus(
           TSStatusCode.PIPESERVER_ERROR,
           String.format(
               "version mismatch: the sender <%s>, the receiver <%s>",
-              identityInfo.version, config.getIoTDBVersion()));
+              identityInfo.version, IOTDB_CONFIG.getIoTDBVersion()));
     }
 
     if (!new File(SyncPathUtil.getFileDataDirPath(identityInfo)).exists()) {
@@ -434,7 +439,7 @@ public class ReceiverManager {
                   "",
                   partitionFetcher,
                   schemaFetcher,
-                  IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold());
+                  COMMON_CONFIG.getQueryTimeoutThreshold());
       if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()
           && result.status.code != TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode()) {
         logger.error("Create Database error, statement: {}.", statement);

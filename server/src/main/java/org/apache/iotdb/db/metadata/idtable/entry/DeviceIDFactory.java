@@ -49,9 +49,9 @@ public class DeviceIDFactory {
   }
 
   private DeviceIDFactory() {
-    if (IoTDBDescriptor.getInstance().getConfig().isEnableIDTable()
+    if (IoTDBDescriptor.getInstance().getConf().isEnableIDTable()
         && IoTDBDescriptor.getInstance()
-            .getConfig()
+            .getConf()
             .getDeviceIDTransformationMethod()
             .equals("SHA256")) {
       getDeviceIDFunction = SHA256DeviceID::new;
@@ -84,9 +84,9 @@ public class DeviceIDFactory {
   /** reset id method */
   @TestOnly
   public void reset() {
-    if (IoTDBDescriptor.getInstance().getConfig().isEnableIDTable()
+    if (IoTDBDescriptor.getInstance().getConf().isEnableIDTable()
         && IoTDBDescriptor.getInstance()
-            .getConfig()
+            .getConf()
             .getDeviceIDTransformationMethod()
             .equals("SHA256")) {
       getDeviceIDFunction = SHA256DeviceID::new;

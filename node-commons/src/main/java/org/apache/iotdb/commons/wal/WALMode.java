@@ -16,10 +16,20 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.utils.datastructure;
+package org.apache.iotdb.commons.wal;
 
-public enum TVListSortAlgorithm {
-  TIM,
-  QUICK,
-  BACKWARD
+/** Write mode of wal */
+public enum WALMode {
+  /** disable wal */
+  DISABLE,
+  /**
+   * submit wal synchronously, write request will not return until its wal is flushed to the disk
+   * successfully
+   */
+  SYNC,
+  /**
+   * submit wal asynchronously, write request will return immediately no matter its wal is flushed
+   * to the disk successfully
+   */
+  ASYNC,
 }

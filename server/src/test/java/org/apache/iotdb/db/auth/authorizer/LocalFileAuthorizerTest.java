@@ -256,7 +256,7 @@ public class LocalFileAuthorizerTest {
     IAuthorizer authorizer = AuthorizerManager.getInstance();
     List<String> userList = authorizer.listAllUsers();
     assertEquals(1, userList.size());
-    assertEquals(CommonDescriptor.getInstance().getConfig().getAdminName(), userList.get(0));
+    assertEquals(CommonDescriptor.getInstance().getConf().getAdminName(), userList.get(0));
 
     int userCnt = 10;
     for (int i = 0; i < userCnt; i++) {

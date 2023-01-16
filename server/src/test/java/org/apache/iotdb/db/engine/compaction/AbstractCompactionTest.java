@@ -85,26 +85,26 @@ public class AbstractCompactionTest {
   private TSDataType dataType;
 
   private static final long oldTargetChunkSize =
-      IoTDBDescriptor.getInstance().getConfig().getTargetChunkSize();
+      IoTDBDescriptor.getInstance().getConf().getTargetChunkSize();
 
   private static final long oldTargetChunkPointNum =
-      IoTDBDescriptor.getInstance().getConfig().getTargetChunkPointNum();
+      IoTDBDescriptor.getInstance().getConf().getTargetChunkPointNum();
   private static final int oldChunkGroupSize =
       TSFileDescriptor.getInstance().getConfig().getGroupSizeInByte();
   private static final int oldPagePointMaxNumber =
       TSFileDescriptor.getInstance().getConfig().getMaxNumberOfPointsInPage();
 
   private static final int oldMaxCrossCompactionFileNum =
-      IoTDBDescriptor.getInstance().getConfig().getMaxCrossCompactionCandidateFileNum();
+      IoTDBDescriptor.getInstance().getConf().getMaxCrossCompactionCandidateFileNum();
 
   private final int oldMaxDegreeOfIndexNode =
       TSFileDescriptor.getInstance().getConfig().getMaxDegreeOfIndexNode();
 
   private final long oldLowerTargetChunkSize =
-      IoTDBDescriptor.getInstance().getConfig().getChunkSizeLowerBoundInCompaction();
+      IoTDBDescriptor.getInstance().getConf().getChunkSizeLowerBoundInCompaction();
 
   private final long oldLowerTargetChunkPointNum =
-      IoTDBDescriptor.getInstance().getConfig().getChunkPointNumLowerBoundInCompaction();
+      IoTDBDescriptor.getInstance().getConf().getChunkPointNumLowerBoundInCompaction();
 
   protected static File STORAGE_GROUP_DIR =
       new File(
@@ -374,16 +374,16 @@ public class AbstractCompactionTest {
     CompactionTaskManager.getInstance().stop();
     seqResources.clear();
     unseqResources.clear();
-    IoTDBDescriptor.getInstance().getConfig().setTargetChunkSize(oldTargetChunkSize);
-    IoTDBDescriptor.getInstance().getConfig().setTargetChunkPointNum(oldTargetChunkPointNum);
+    IoTDBDescriptor.getInstance().getConf().setTargetChunkSize(oldTargetChunkSize);
+    IoTDBDescriptor.getInstance().getConf().setTargetChunkPointNum(oldTargetChunkPointNum);
     IoTDBDescriptor.getInstance()
-        .getConfig()
+        .getConf()
         .setMaxCrossCompactionCandidateFileNum(oldMaxCrossCompactionFileNum);
     IoTDBDescriptor.getInstance()
-        .getConfig()
+        .getConf()
         .setChunkSizeLowerBoundInCompaction(oldTargetChunkPointNum);
     IoTDBDescriptor.getInstance()
-        .getConfig()
+        .getConf()
         .setChunkPointNumLowerBoundInCompaction(oldLowerTargetChunkPointNum);
     TSFileDescriptor.getInstance().getConfig().setGroupSizeInByte(oldChunkGroupSize);
 

@@ -20,7 +20,7 @@ package org.apache.iotdb.db.mpp.execution.fragment;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.db.engine.storagegroup.IDataRegionForQuery;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
@@ -73,7 +73,7 @@ public class FragmentInstanceManager {
   private final CounterStat failedInstances = new CounterStat();
 
   private static final long QUERY_TIMEOUT_MS =
-      IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold();
+      CommonDescriptor.getInstance().getConf().getQueryTimeoutThreshold();
 
   private final ExecutorService intoOperationExecutor;
 
@@ -104,7 +104,7 @@ public class FragmentInstanceManager {
 
     this.intoOperationExecutor =
         IoTDBThreadPoolFactory.newFixedThreadPool(
-            IoTDBDescriptor.getInstance().getConfig().getIntoOperationExecutionThreadCount(),
+            CommonDescriptor.getInstance().getConf().getIntoOperationExecutionThreadCount(),
             "into-operation-executor");
   }
 

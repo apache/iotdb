@@ -70,9 +70,9 @@ public class TsFileAndModSettleToolTest {
 
   @Before
   public void setUp() {
-    config = IoTDBDescriptor.getInstance().getConfig();
-    originPartitionInterval = config.getTimePartitionInterval();
-    config.setTimePartitionInterval(newPartitionInterval);
+    config = IoTDBDescriptor.getInstance().getConf();
+    originPartitionInterval = config.getDnTimePartitionInterval();
+    config.setDnTimePartitionInterval(newPartitionInterval);
     EnvironmentUtils.envSetUp();
 
     File f = new File(folder);
@@ -100,7 +100,7 @@ public class TsFileAndModSettleToolTest {
     } catch (Exception e) {
       Assert.fail(e.getMessage());
     } finally {
-      config.setTimePartitionInterval(originPartitionInterval);
+      config.setDnTimePartitionInterval(originPartitionInterval);
     }
   }
 

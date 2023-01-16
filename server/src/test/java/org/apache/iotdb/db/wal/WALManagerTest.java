@@ -46,8 +46,8 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 public class WALManagerTest {
-  private static final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
-  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private static final CommonConfig commonConfig = CommonDescriptor.getInstance().getConf();
+  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConf();
   private final String[] walDirs =
       new String[] {
         TestConstant.BASE_OUTPUT_PATH.concat("wal_test1"),
@@ -58,8 +58,8 @@ public class WALManagerTest {
 
   @Before
   public void setUp() throws Exception {
-    prevWalDirs = commonConfig.getWalDirs();
-    commonConfig.setWalDirs(walDirs);
+    prevWalDirs = config.getDnWalDirs();
+    config.setDnWalDirs(walDirs);
     EnvironmentUtils.envSetUp();
   }
 
@@ -69,7 +69,7 @@ public class WALManagerTest {
     for (String walDir : walDirs) {
       EnvironmentUtils.cleanDir(walDir);
     }
-    commonConfig.setWalDirs(prevWalDirs);
+    config.setDnWalDirs(prevWalDirs);
   }
 
   @Test

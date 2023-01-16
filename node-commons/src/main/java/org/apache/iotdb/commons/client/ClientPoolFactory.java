@@ -39,7 +39,7 @@ import org.apache.commons.pool2.impl.GenericKeyedObjectPool;
 
 public class ClientPoolFactory {
 
-  private static final CommonConfig conf = CommonDescriptor.getInstance().getConfig();
+  private static final CommonConfig conf = CommonDescriptor.getInstance().getConf();
 
   private ClientPoolFactory() {}
 
@@ -54,11 +54,11 @@ public class ClientPoolFactory {
               manager,
               new ThriftClientProperty.Builder()
                   .setConnectionTimeoutMs(conf.getConnectionTimeoutInMS())
-                  .setRpcThriftCompressionEnabled(conf.isRpcThriftCompressionEnabled())
+                  .setRpcThriftCompressionEnabled(conf.isRpcThriftCompressionEnable())
                   .build()),
           new ClientPoolProperty.Builder<SyncConfigNodeIServiceClient>()
-              .setCoreClientNumForEachNode(conf.getCoreClientNumForEachNode())
-              .setMaxClientNumForEachNode(conf.getMaxClientNumForEachNode())
+              .setCoreClientNumForEachNode(conf.getCoreClientCountForEachNodeInClientManager())
+              .setMaxClientNumForEachNode(conf.getMaxClientCountForEachNodeInClientManager())
               .build()
               .getConfig());
     }
@@ -75,13 +75,13 @@ public class ClientPoolFactory {
               manager,
               new ThriftClientProperty.Builder()
                   .setConnectionTimeoutMs(conf.getConnectionTimeoutInMS())
-                  .setRpcThriftCompressionEnabled(conf.isRpcThriftCompressionEnabled())
-                  .setSelectorNumOfAsyncClientManager(conf.getSelectorNumOfClientManager())
+                  .setRpcThriftCompressionEnabled(conf.isRpcThriftCompressionEnable())
+                  .setSelectorNumOfAsyncClientManager(conf.getSelectorThreadCountOfClientManager())
                   .build(),
               ThreadName.ASYNC_CONFIGNODE_CLIENT_POOL.getName()),
           new ClientPoolProperty.Builder<AsyncConfigNodeIServiceClient>()
-              .setCoreClientNumForEachNode(conf.getCoreClientNumForEachNode())
-              .setMaxClientNumForEachNode(conf.getMaxClientNumForEachNode())
+              .setCoreClientNumForEachNode(conf.getCoreClientCountForEachNodeInClientManager())
+              .setMaxClientNumForEachNode(conf.getMaxClientCountForEachNodeInClientManager())
               .build()
               .getConfig());
     }
@@ -98,11 +98,11 @@ public class ClientPoolFactory {
               manager,
               new ThriftClientProperty.Builder()
                   .setConnectionTimeoutMs(conf.getConnectionTimeoutInMS())
-                  .setRpcThriftCompressionEnabled(conf.isRpcThriftCompressionEnabled())
+                  .setRpcThriftCompressionEnabled(conf.isRpcThriftCompressionEnable())
                   .build()),
           new ClientPoolProperty.Builder<SyncDataNodeInternalServiceClient>()
-              .setCoreClientNumForEachNode(conf.getCoreClientNumForEachNode())
-              .setMaxClientNumForEachNode(conf.getMaxClientNumForEachNode())
+              .setCoreClientNumForEachNode(conf.getCoreClientCountForEachNodeInClientManager())
+              .setMaxClientNumForEachNode(conf.getMaxClientCountForEachNodeInClientManager())
               .build()
               .getConfig());
     }
@@ -119,13 +119,13 @@ public class ClientPoolFactory {
               manager,
               new ThriftClientProperty.Builder()
                   .setConnectionTimeoutMs(conf.getConnectionTimeoutInMS())
-                  .setRpcThriftCompressionEnabled(conf.isRpcThriftCompressionEnabled())
-                  .setSelectorNumOfAsyncClientManager(conf.getSelectorNumOfClientManager())
+                  .setRpcThriftCompressionEnabled(conf.isRpcThriftCompressionEnable())
+                  .setSelectorNumOfAsyncClientManager(conf.getSelectorThreadCountOfClientManager())
                   .build(),
               ThreadName.ASYNC_DATANODE_CLIENT_POOL.getName()),
           new ClientPoolProperty.Builder<AsyncDataNodeInternalServiceClient>()
-              .setCoreClientNumForEachNode(conf.getCoreClientNumForEachNode())
-              .setMaxClientNumForEachNode(conf.getMaxClientNumForEachNode())
+              .setCoreClientNumForEachNode(conf.getCoreClientCountForEachNodeInClientManager())
+              .setMaxClientNumForEachNode(conf.getMaxClientCountForEachNodeInClientManager())
               .build()
               .getConfig());
     }
@@ -142,13 +142,13 @@ public class ClientPoolFactory {
               manager,
               new ThriftClientProperty.Builder()
                   .setConnectionTimeoutMs(conf.getConnectionTimeoutInMS())
-                  .setRpcThriftCompressionEnabled(conf.isRpcThriftCompressionEnabled())
-                  .setSelectorNumOfAsyncClientManager(conf.getSelectorNumOfClientManager())
+                  .setRpcThriftCompressionEnabled(conf.isRpcThriftCompressionEnable())
+                  .setSelectorNumOfAsyncClientManager(conf.getSelectorThreadCountOfClientManager())
                   .build(),
               ThreadName.ASYNC_CONFIGNODE_HEARTBEAT_CLIENT_POOL.getName()),
           new ClientPoolProperty.Builder<AsyncConfigNodeHeartbeatServiceClient>()
-              .setCoreClientNumForEachNode(conf.getCoreClientNumForEachNode())
-              .setMaxClientNumForEachNode(conf.getMaxClientNumForEachNode())
+              .setCoreClientNumForEachNode(conf.getCoreClientCountForEachNodeInClientManager())
+              .setMaxClientNumForEachNode(conf.getMaxClientCountForEachNodeInClientManager())
               .build()
               .getConfig());
     }
@@ -165,13 +165,13 @@ public class ClientPoolFactory {
               manager,
               new ThriftClientProperty.Builder()
                   .setConnectionTimeoutMs(conf.getConnectionTimeoutInMS())
-                  .setRpcThriftCompressionEnabled(conf.isRpcThriftCompressionEnabled())
-                  .setSelectorNumOfAsyncClientManager(conf.getSelectorNumOfClientManager())
+                  .setRpcThriftCompressionEnabled(conf.isRpcThriftCompressionEnable())
+                  .setSelectorNumOfAsyncClientManager(conf.getSelectorThreadCountOfClientManager())
                   .build(),
               ThreadName.ASYNC_DATANODE_HEARTBEAT_CLIENT_POOL.getName()),
           new ClientPoolProperty.Builder<AsyncDataNodeHeartbeatServiceClient>()
-              .setCoreClientNumForEachNode(conf.getCoreClientNumForEachNode())
-              .setMaxClientNumForEachNode(conf.getMaxClientNumForEachNode())
+              .setCoreClientNumForEachNode(conf.getCoreClientCountForEachNodeInClientManager())
+              .setMaxClientNumForEachNode(conf.getMaxClientCountForEachNodeInClientManager())
               .build()
               .getConfig());
     }
@@ -188,11 +188,11 @@ public class ClientPoolFactory {
               manager,
               new ThriftClientProperty.Builder()
                   .setConnectionTimeoutMs(conf.getConnectionTimeoutInMS())
-                  .setRpcThriftCompressionEnabled(conf.isRpcThriftCompressionEnabled())
+                  .setRpcThriftCompressionEnabled(conf.isRpcThriftCompressionEnable())
                   .build()),
           new ClientPoolProperty.Builder<SyncDataNodeMPPDataExchangeServiceClient>()
-              .setCoreClientNumForEachNode(conf.getCoreClientNumForEachNode())
-              .setMaxClientNumForEachNode(conf.getMaxClientNumForEachNode())
+              .setCoreClientNumForEachNode(conf.getCoreClientCountForEachNodeInClientManager())
+              .setMaxClientNumForEachNode(conf.getMaxClientCountForEachNodeInClientManager())
               .build()
               .getConfig());
     }
@@ -209,13 +209,13 @@ public class ClientPoolFactory {
               manager,
               new ThriftClientProperty.Builder()
                   .setConnectionTimeoutMs(conf.getConnectionTimeoutInMS())
-                  .setRpcThriftCompressionEnabled(conf.isRpcThriftCompressionEnabled())
-                  .setSelectorNumOfAsyncClientManager(conf.getSelectorNumOfClientManager())
+                  .setRpcThriftCompressionEnabled(conf.isRpcThriftCompressionEnable())
+                  .setSelectorNumOfAsyncClientManager(conf.getSelectorThreadCountOfClientManager())
                   .build(),
               ThreadName.ASYNC_DATANODE_MPP_DATA_EXCHANGE_CLIENT_POOL.getName()),
           new ClientPoolProperty.Builder<AsyncDataNodeMPPDataExchangeServiceClient>()
-              .setCoreClientNumForEachNode(conf.getCoreClientNumForEachNode())
-              .setMaxClientNumForEachNode(conf.getMaxClientNumForEachNode())
+              .setCoreClientNumForEachNode(conf.getCoreClientCountForEachNodeInClientManager())
+              .setMaxClientNumForEachNode(conf.getMaxClientCountForEachNodeInClientManager())
               .build()
               .getConfig());
     }

@@ -40,6 +40,34 @@ public enum CompressionType {
     this.index = index;
   }
 
+  public static CompressionType parse(String compressor) {
+    switch (compressor) {
+      case "UNCOMPRESSED":
+        return UNCOMPRESSED;
+      case "GZIP":
+        return GZIP;
+      case "LZ4":
+        return LZ4;
+      case "SNAPPY":
+      default:
+        return SNAPPY;
+    }
+  }
+
+  public String getName() {
+    switch (index) {
+      case 0:
+        return "UNCOMPRESSED";
+      case 2:
+        return "GZIP";
+      case 7:
+        return "LZ4";
+      case 1:
+      default:
+        return "SNAPPY";
+    }
+  }
+
   /**
    * deserialize byte number.
    *

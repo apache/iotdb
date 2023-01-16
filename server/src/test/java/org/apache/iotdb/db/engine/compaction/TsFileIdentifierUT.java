@@ -134,7 +134,7 @@ public class TsFileIdentifierUT {
             + "0"
             + File.separator
             + "100-10-5-1.tsfile";
-    String[] dataDirs = IoTDBDescriptor.getInstance().getConfig().getDataDirs();
+    String[] dataDirs = IoTDBDescriptor.getInstance().getConf().getDnDataDirs();
     File file = new File(dataDirs[0], firstPath);
 
     if (file.exists()) {
@@ -156,10 +156,10 @@ public class TsFileIdentifierUT {
 
   @Test
   public void testGetInfoFromFileFromMultiDirs() throws Exception {
-    IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-    String[] originDataDirs = config.getDataDirs();
+    IoTDBConfig config = IoTDBDescriptor.getInstance().getConf();
+    String[] originDataDirs = config.getDnDataDirs();
     Class configClass = config.getClass();
-    Field dataDirField = configClass.getDeclaredField("dataDirs");
+    Field dataDirField = configClass.getDeclaredField("dnDataDirs");
     dataDirField.setAccessible(true);
     dataDirField.set(
         config,

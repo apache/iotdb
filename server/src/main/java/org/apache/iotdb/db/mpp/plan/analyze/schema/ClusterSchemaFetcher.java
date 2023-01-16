@@ -18,10 +18,10 @@
  */
 package org.apache.iotdb.db.mpp.plan.analyze.schema;
 
+import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
-import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.metadata.cache.DataNodeSchemaCache;
 import org.apache.iotdb.db.metadata.template.ClusterTemplateManager;
 import org.apache.iotdb.db.metadata.template.ITemplateManager;
@@ -50,7 +50,7 @@ import java.util.stream.IntStream;
 
 public class ClusterSchemaFetcher implements ISchemaFetcher {
 
-  private final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private final CommonConfig config = CommonDescriptor.getInstance().getConf();
 
   private final Coordinator coordinator = Coordinator.getInstance();
   private final DataNodeSchemaCache schemaCache = DataNodeSchemaCache.getInstance();
@@ -178,7 +178,7 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
         schemaTree.mergeSchemaTree(remoteSchemaTree);
       }
 
-      if (!config.isAutoCreateSchemaEnabled()) {
+      if (!config.isEnableAutoCreateSchema()) {
         return schemaTree;
       }
 
@@ -253,7 +253,7 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
         schemaTree.mergeSchemaTree(remoteSchemaTree);
       }
 
-      if (!config.isAutoCreateSchemaEnabled()) {
+      if (!config.isEnableAutoCreateSchema()) {
         return schemaTree;
       }
 

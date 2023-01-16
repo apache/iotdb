@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.service.thrift.impl;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
@@ -137,7 +138,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ClientRPCServiceImpl.class);
 
-  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConf();
+  private static final IoTDBConfig IOTDB_CONFIG = IoTDBDescriptor.getInstance().getConf();
 
   private static final Coordinator COORDINATOR = Coordinator.getInstance();
 
@@ -146,7 +148,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
   private static final TSProtocolVersion CURRENT_RPC_VERSION =
       TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V3;
 
-  private static final boolean enableAuditLog = config.isEnableAuditLog();
+  private static final boolean enableAuditLog = IOTDB_CONFIG.isEnableAuditLog();
 
   private final IPartitionFetcher PARTITION_FETCHER;
 
@@ -555,21 +557,15 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     properties.setSupportedTimeAggregationOperations(new ArrayList<>());
     properties.getSupportedTimeAggregationOperations().add(IoTDBConstant.MAX_TIME);
     properties.getSupportedTimeAggregationOperations().add(IoTDBConstant.MIN_TIME);
-    properties.setTimestampPrecision(
-        IoTDBDescriptor.getInstance().getConfig().getTimestampPrecision());
-    properties.setMaxConcurrentClientNum(
-        IoTDBDescriptor.getInstance().getConfig().getRpcMaxConcurrentClientNum());
-    properties.setWatermarkSecretKey(
-        IoTDBDescriptor.getInstance().getConfig().getWatermarkSecretKey());
-    properties.setWatermarkBitString(
-        IoTDBDescriptor.getInstance().getConfig().getWatermarkBitString());
-    properties.setWatermarkParamMarkRate(
-        IoTDBDescriptor.getInstance().getConfig().getWatermarkParamMarkRate());
-    properties.setWatermarkParamMaxRightBit(
-        IoTDBDescriptor.getInstance().getConfig().getWatermarkParamMaxRightBit());
-    properties.setIsReadOnly(CommonDescriptor.getInstance().getConfig().isReadOnly());
+    properties.setTimestampPrecision(COMMON_CONFIG.getTimestampPrecision());
+    properties.setMaxConcurrentClientNum(IOTDB_CONFIG.getDnRpcMaxConcurrentClientNum());
+    properties.setWatermarkSecretKey(COMMON_CONFIG.getWatermarkSecretKey());
+    properties.setWatermarkBitString(COMMON_CONFIG.getWatermarkBitString());
+    properties.setWatermarkParamMarkRate(COMMON_CONFIG.getWatermarkParamMarkRate());
+    properties.setWatermarkParamMaxRightBit(COMMON_CONFIG.getWatermarkParamMaxRightBit());
+    properties.setIsReadOnly(CommonDescriptor.getInstance().getConf().isReadOnly());
     properties.setThriftMaxFrameSize(
-        IoTDBDescriptor.getInstance().getConfig().getThriftMaxFrameSize());
+        IoTDBDescriptor.getInstance().getConf().getDnThriftMaxFrameSize());
     return properties;
   }
 
@@ -885,7 +881,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
                 statement,
                 PARTITION_FETCHER,
                 SCHEMA_FETCHER,
-                config.getQueryTimeoutThreshold());
+                COMMON_CONFIG.getQueryTimeoutThreshold());
         results.add(result.status);
       } catch (Exception e) {
         LOGGER.warn("Error occurred when executing executeBatchStatement: ", e);
@@ -1571,7 +1567,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
               null,
               PARTITION_FETCHER,
               SCHEMA_FETCHER,
-              config.getQueryTimeoutThreshold());
+              COMMON_CONFIG.getQueryTimeoutThreshold());
 
       if (executionResult.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()
           && executionResult.status.code != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {

@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.engine.trigger.utils;
 
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.db.engine.trigger.sink.api.Event;
 import org.apache.iotdb.db.engine.trigger.sink.api.Handler;
 
@@ -53,13 +53,12 @@ public class BatchHandlerQueue<T extends Event> {
     this.queueNumber =
         Math.min(
             queueNumber,
-            IoTDBDescriptor.getInstance().getConfig().getTriggerForwardMaxQueueNumber());
+            CommonDescriptor.getInstance().getConf().getTriggerForwardMaxQueueNumber());
     this.queueSize =
         Math.min(
-            queueSize,
-            IoTDBDescriptor.getInstance().getConfig().getTriggerForwardMaxSizePerQueue());
+            queueSize, CommonDescriptor.getInstance().getConf().getTriggerForwardMaxSizePerQueue());
     this.batchSize =
-        Math.min(batchSize, IoTDBDescriptor.getInstance().getConfig().getTriggerForwardBatchSize());
+        Math.min(batchSize, CommonDescriptor.getInstance().getConf().getTriggerForwardBatchSize());
     this.handler = handler;
     queues = new ArrayBlockingQueue[this.queueNumber];
     for (int i = 0; i < queueNumber; i++) {

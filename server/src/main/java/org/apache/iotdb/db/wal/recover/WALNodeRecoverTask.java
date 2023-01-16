@@ -18,11 +18,11 @@
  */
 package org.apache.iotdb.db.wal.recover;
 
+import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.consensus.ConsensusFactory;
-import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.memtable.AbstractMemTable;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.wal.WALManager;
@@ -53,7 +53,7 @@ import static org.apache.iotdb.consensus.iot.wal.ConsensusReqReader.DEFAULT_SEAR
 /** This task is responsible for the recovery of one wal node. */
 public class WALNodeRecoverTask implements Runnable {
   private static final Logger logger = LoggerFactory.getLogger(WALNodeRecoverTask.class);
-  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private static final CommonConfig config = CommonDescriptor.getInstance().getConf();
   private static final WALRecoverManager walRecoverManger = WALRecoverManager.getInstance();
 
   /** this directory store one wal node's .wal and .checkpoint files */
@@ -94,7 +94,10 @@ public class WALNodeRecoverTask implements Runnable {
       }
     }
 
-    if (!config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)) {
+    if (!config
+        .getDataRegionConsensusProtocolClass()
+        .getProtocol()
+        .equals(ConsensusFactory.IOT_CONSENSUS)) {
       // delete this wal node folder
       FileUtils.deleteDirectory(logDirectory);
       logger.info(

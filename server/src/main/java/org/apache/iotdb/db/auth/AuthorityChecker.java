@@ -42,8 +42,7 @@ import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onQueryException;
 
 public class AuthorityChecker {
 
-  private static final String SUPER_USER =
-      CommonDescriptor.getInstance().getConfig().getAdminName();
+  private static final String SUPER_USER = CommonDescriptor.getInstance().getConf().getAdminName();
   private static final Logger logger = LoggerFactory.getLogger(AuthorityChecker.class);
 
   private static final AuthorizerManager authorizerManager = AuthorizerManager.getInstance();

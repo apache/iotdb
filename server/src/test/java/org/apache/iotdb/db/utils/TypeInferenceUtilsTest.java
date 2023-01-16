@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.utils;
 
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
@@ -78,20 +78,20 @@ public class TypeInferenceUtilsTest {
       "271840880000000000000000",
     };
     TSDataType[] encodings = {
-      IoTDBDescriptor.getInstance().getConfig().getIntegerStringInferType(),
+      CommonDescriptor.getInstance().getConf().getIntegerStringInferType(),
       TSDataType.TEXT,
-      IoTDBDescriptor.getInstance().getConfig().getFloatingStringInferType(),
+      CommonDescriptor.getInstance().getConf().getFloatingStringInferType(),
       TSDataType.BOOLEAN,
       TSDataType.FLOAT,
-      IoTDBDescriptor.getInstance().getConfig().getIntegerStringInferType(),
-      IoTDBDescriptor.getInstance().getConfig().getFloatingStringInferType(),
-      IoTDBDescriptor.getInstance().getConfig().getLongStringInferType(),
-      IoTDBDescriptor.getInstance().getConfig().getBooleanStringInferType(),
-      IoTDBDescriptor.getInstance().getConfig().getIntegerStringInferType(),
-      IoTDBDescriptor.getInstance().getConfig().getIntegerStringInferType(),
-      IoTDBDescriptor.getInstance().getConfig().getLongStringInferType(),
-      IoTDBDescriptor.getInstance().getConfig().getIntegerStringInferType(),
-      IoTDBDescriptor.getInstance().getConfig().getLongStringInferType(),
+      CommonDescriptor.getInstance().getConf().getIntegerStringInferType(),
+      CommonDescriptor.getInstance().getConf().getFloatingStringInferType(),
+      CommonDescriptor.getInstance().getConf().getLongStringInferType(),
+      CommonDescriptor.getInstance().getConf().getBooleanStringInferType(),
+      CommonDescriptor.getInstance().getConf().getIntegerStringInferType(),
+      CommonDescriptor.getInstance().getConf().getIntegerStringInferType(),
+      CommonDescriptor.getInstance().getConf().getLongStringInferType(),
+      CommonDescriptor.getInstance().getConf().getIntegerStringInferType(),
+      CommonDescriptor.getInstance().getConf().getLongStringInferType(),
     };
 
     for (int i = 0; i < values.length; i++) {

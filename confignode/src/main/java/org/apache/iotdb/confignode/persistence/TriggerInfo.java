@@ -21,6 +21,8 @@ package org.apache.iotdb.confignode.persistence;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.executable.ExecutableManager;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.commons.trigger.TriggerInformation;
@@ -28,8 +30,6 @@ import org.apache.iotdb.commons.trigger.TriggerTable;
 import org.apache.iotdb.commons.trigger.exception.TriggerManagementException;
 import org.apache.iotdb.commons.trigger.service.TriggerExecutableManager;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
-import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.read.trigger.GetTriggerJarPlan;
 import org.apache.iotdb.confignode.consensus.request.read.trigger.GetTriggerLocationPlan;
 import org.apache.iotdb.confignode.consensus.request.read.trigger.GetTriggerTablePlan;
@@ -69,8 +69,7 @@ import java.util.concurrent.locks.ReentrantLock;
 public class TriggerInfo implements SnapshotProcessor {
   private static final Logger LOGGER = LoggerFactory.getLogger(TriggerInfo.class);
 
-  private static final ConfigNodeConfig CONFIG_NODE_CONF =
-      ConfigNodeDescriptor.getInstance().getConf();
+  private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConf();
 
   private final TriggerTable triggerTable;
   private final Map<String, String> existedJarToMD5;
@@ -88,7 +87,7 @@ public class TriggerInfo implements SnapshotProcessor {
     // jarReferenceTable = new ConcurrentHashMap<>();
     triggerExecutableManager =
         TriggerExecutableManager.setupAndGetInstance(
-            CONFIG_NODE_CONF.getTriggerTemporaryLibDir(), CONFIG_NODE_CONF.getTriggerDir());
+            COMMON_CONFIG.getTriggerTemporaryLibDir(), COMMON_CONFIG.getTriggerDir());
   }
 
   public void acquireTriggerTableLock() {

@@ -27,6 +27,8 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
+import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.confignode.client.async.AsyncDataNodeClientPool;
 import org.apache.iotdb.confignode.client.async.handlers.AsyncClientHandler;
@@ -71,21 +73,22 @@ public class RouteBalancer {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(RouteBalancer.class);
 
+  private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConf();
   private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
   private static final String SCHEMA_REGION_CONSENSUS_PROTOCOL_CLASS =
-      CONF.getSchemaRegionConsensusProtocolClass();
+      COMMON_CONFIG.getSchemaRegionConsensusProtocolClass().getProtocol();
   private static final String DATA_REGION_CONSENSUS_PROTOCOL_CLASS =
-      CONF.getDataRegionConsensusProtocolClass();
+      COMMON_CONFIG.getDataRegionConsensusProtocolClass().getProtocol();
 
   private static final boolean IS_ENABLE_AUTO_LEADER_BALANCE_FOR_DATA_REGION =
-      (CONF.isEnableAutoLeaderBalanceForRatisConsensus()
+      (COMMON_CONFIG.isEnableAutoLeaderBalanceForRatisConsensus()
               && ConsensusFactory.RATIS_CONSENSUS.equals(DATA_REGION_CONSENSUS_PROTOCOL_CLASS))
-          || (CONF.isEnableAutoLeaderBalanceForIoTConsensus()
+          || (COMMON_CONFIG.isEnableAutoLeaderBalanceForIoTConsensus()
               && ConsensusFactory.IOT_CONSENSUS.equals(DATA_REGION_CONSENSUS_PROTOCOL_CLASS));
   private static final boolean IS_ENABLE_AUTO_LEADER_BALANCE_FOR_SCHEMA_REGION =
-      (CONF.isEnableAutoLeaderBalanceForRatisConsensus()
+      (COMMON_CONFIG.isEnableAutoLeaderBalanceForRatisConsensus()
               && ConsensusFactory.RATIS_CONSENSUS.equals(SCHEMA_REGION_CONSENSUS_PROTOCOL_CLASS))
-          || (CONF.isEnableAutoLeaderBalanceForIoTConsensus()
+          || (COMMON_CONFIG.isEnableAutoLeaderBalanceForIoTConsensus()
               && ConsensusFactory.IOT_CONSENSUS.equals(SCHEMA_REGION_CONSENSUS_PROTOCOL_CLASS));
 
   private static final boolean IS_DATA_REGION_IOT_CONSENSUS =
@@ -119,11 +122,11 @@ public class RouteBalancer {
     this.leaderCache = new ConcurrentHashMap<>();
     this.regionRouteMap = new RegionRouteMap();
 
-    switch (CONF.getLeaderDistributionPolicy()) {
-      case ILeaderBalancer.GREEDY_POLICY:
+    switch (COMMON_CONFIG.getLeaderDistributionPolicy()) {
+      case GREEDY:
         this.leaderBalancer = new GreedyLeaderBalancer();
         break;
-      case ILeaderBalancer.MIN_COST_FLOW_POLICY:
+      case MIN_COST_FLOW:
       default:
         this.leaderBalancer = new MinCostFlowLeaderBalancer();
         break;

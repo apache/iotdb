@@ -18,11 +18,11 @@
  */
 package org.apache.iotdb.db.mpp.execution.schedule;
 
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.common.QueryId;
 import org.apache.iotdb.db.mpp.execution.driver.IDriver;
@@ -80,11 +80,11 @@ public class DriverScheduler implements IDriverScheduler, IService {
   private IMPPDataExchangeManager blockManager;
 
   private static final int MAX_CAPACITY =
-      IoTDBDescriptor.getInstance().getConfig().getMaxAllowedConcurrentQueries();
+      CommonDescriptor.getInstance().getConf().getMaxAllowedConcurrentQueries();
   private static final int WORKER_THREAD_NUM =
-      IoTDBDescriptor.getInstance().getConfig().getQueryThreadCount();
+      CommonDescriptor.getInstance().getConf().getQueryThreadCount();
   private static final long QUERY_TIMEOUT_MS =
-      IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold();
+      CommonDescriptor.getInstance().getConf().getQueryTimeoutThreshold();
   private final ThreadGroup workerGroups;
   private final List<AbstractDriverThread> threads;
 

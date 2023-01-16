@@ -31,8 +31,8 @@ import java.net.URI;
 public enum SystemFileFactory {
   INSTANCE;
 
-  private static FSType fsType =
-      CommonDescriptor.getInstance().getConfig().getSystemFileStorageFs();
+  private static final FSType fsType =
+      CommonDescriptor.getInstance().getConf().getSystemFileStorageFs();
   private static final String UNSUPPORT_FILE_SYSTEM = "Unsupported file system: ";
 
   public File getFile(String pathname) {

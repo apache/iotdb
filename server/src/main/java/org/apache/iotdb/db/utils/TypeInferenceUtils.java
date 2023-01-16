@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.utils;
 
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.db.constant.SqlConstant;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
@@ -30,19 +30,19 @@ import org.apache.commons.lang3.StringUtils;
 public class TypeInferenceUtils {
 
   private static final TSDataType booleanStringInferType =
-      IoTDBDescriptor.getInstance().getConfig().getBooleanStringInferType();
+      CommonDescriptor.getInstance().getConf().getBooleanStringInferType();
 
   private static final TSDataType integerStringInferType =
-      IoTDBDescriptor.getInstance().getConfig().getIntegerStringInferType();
+      CommonDescriptor.getInstance().getConf().getIntegerStringInferType();
 
   private static final TSDataType longStringInferType =
-      IoTDBDescriptor.getInstance().getConfig().getLongStringInferType();
+      CommonDescriptor.getInstance().getConf().getLongStringInferType();
 
   private static final TSDataType floatingStringInferType =
-      IoTDBDescriptor.getInstance().getConfig().getFloatingStringInferType();
+      CommonDescriptor.getInstance().getConf().getFloatingStringInferType();
 
   private static final TSDataType nanStringInferType =
-      IoTDBDescriptor.getInstance().getConfig().getNanStringInferType();
+      CommonDescriptor.getInstance().getConf().getNanStringInferType();
 
   private TypeInferenceUtils() {}
 

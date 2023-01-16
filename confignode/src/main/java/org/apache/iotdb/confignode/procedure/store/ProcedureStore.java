@@ -39,8 +39,7 @@ import java.util.stream.Stream;
 public class ProcedureStore implements IProcedureStore {
 
   private static final Logger LOG = LoggerFactory.getLogger(ProcedureStore.class);
-  private String procedureWalDir =
-      CommonDescriptor.getInstance().getConfig().getProcedureWalFolder();
+  private String procedureWalDir = CommonDescriptor.getInstance().getConf().getProcedureWalFolder();
   private final ConcurrentHashMap<Long, ProcedureWAL> procWALMap = new ConcurrentHashMap<>();
   public static final String PROCEDURE_WAL_SUFFIX = ".proc.wal";
   private final IProcedureFactory procedureFactory;

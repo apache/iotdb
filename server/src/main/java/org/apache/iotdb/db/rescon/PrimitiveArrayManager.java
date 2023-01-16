@@ -18,9 +18,11 @@
  */
 package org.apache.iotdb.db.rescon;
 
+import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.utils.datastructure.TVListSortAlgorithm;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.utils.datastructure.TVListSortAlgorithm;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
@@ -37,11 +39,13 @@ public class PrimitiveArrayManager {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PrimitiveArrayManager.class);
 
-  private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
+  private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConf();
+  private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConf();
 
-  public static final int ARRAY_SIZE = CONFIG.getPrimitiveArraySize();
+  public static final int ARRAY_SIZE = COMMON_CONFIG.getPrimitiveArraySize();
 
-  public static final TVListSortAlgorithm TVLIST_SORT_ALGORITHM = CONFIG.getTvListSortAlgorithm();
+  public static final TVListSortAlgorithm TVLIST_SORT_ALGORITHM =
+      COMMON_CONFIG.getTvListSortAlgorithm();
 
   /**
    * The actual used memory will be 50% larger than the statistic, so we need to limit the size of
@@ -51,8 +55,8 @@ public class PrimitiveArrayManager {
 
   /** threshold total size of arrays for all data types */
   private static final double POOLED_ARRAYS_MEMORY_THRESHOLD =
-      CONFIG.getAllocateMemoryForStorageEngine()
-          * CONFIG.getBufferedArraysMemoryProportion()
+      COMMON_CONFIG.getAllocateMemoryForStorageEngine()
+          * COMMON_CONFIG.getBufferedArraysMemoryProportion()
           / AMPLIFICATION_FACTOR;
 
   /** TSDataType#serialize() -> ArrayDeque<Array>, VECTOR is ignored */

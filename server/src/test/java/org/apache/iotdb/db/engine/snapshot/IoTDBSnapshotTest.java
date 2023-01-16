@@ -94,8 +94,8 @@ public class IoTDBSnapshotTest {
   @Test
   public void testCreateSnapshot()
       throws IOException, WriteProcessException, DataRegionException, DirectoryNotLegalException {
-    String[] originDataDirs = IoTDBDescriptor.getInstance().getConfig().getDataDirs();
-    IoTDBDescriptor.getInstance().getConfig().setDataDirs(testDataDirs);
+    String[] originDataDirs = IoTDBDescriptor.getInstance().getConf().getDnDataDirs();
+    IoTDBDescriptor.getInstance().getConf().setDnDataDirs(testDataDirs);
     DirectoryManager.getInstance().resetFolders();
     try {
       List<TsFileResource> resources = writeTsFiles();
@@ -120,7 +120,7 @@ public class IoTDBSnapshotTest {
         FileUtils.recursiveDeleteFolder(snapshotDir.getAbsolutePath());
       }
     } finally {
-      IoTDBDescriptor.getInstance().getConfig().setDataDirs(originDataDirs);
+      IoTDBDescriptor.getInstance().getConf().setDnDataDirs(originDataDirs);
       DirectoryManager.getInstance().resetFolders();
     }
   }
@@ -128,8 +128,8 @@ public class IoTDBSnapshotTest {
   @Test
   public void testCreateSnapshotWithUnclosedTsFile()
       throws IOException, WriteProcessException, DirectoryNotLegalException {
-    String[] originDataDirs = IoTDBDescriptor.getInstance().getConfig().getDataDirs();
-    IoTDBDescriptor.getInstance().getConfig().setDataDirs(testDataDirs);
+    String[] originDataDirs = IoTDBDescriptor.getInstance().getConf().getDnDataDirs();
+    IoTDBDescriptor.getInstance().getConf().setDnDataDirs(testDataDirs);
     DirectoryManager.getInstance().resetFolders();
     try {
       List<TsFileResource> resources = writeTsFiles();
@@ -156,7 +156,7 @@ public class IoTDBSnapshotTest {
         FileUtils.recursiveDeleteFolder(snapshotDir.getAbsolutePath());
       }
     } finally {
-      IoTDBDescriptor.getInstance().getConfig().setDataDirs(originDataDirs);
+      IoTDBDescriptor.getInstance().getConf().setDnDataDirs(originDataDirs);
       DirectoryManager.getInstance().resetFolders();
     }
   }
@@ -164,8 +164,8 @@ public class IoTDBSnapshotTest {
   @Test
   public void testLoadSnapshot()
       throws IOException, WriteProcessException, DataRegionException, DirectoryNotLegalException {
-    String[] originDataDirs = IoTDBDescriptor.getInstance().getConfig().getDataDirs();
-    IoTDBDescriptor.getInstance().getConfig().setDataDirs(testDataDirs);
+    String[] originDataDirs = IoTDBDescriptor.getInstance().getConf().getDnDataDirs();
+    IoTDBDescriptor.getInstance().getConf().setDnDataDirs(testDataDirs);
     DirectoryManager.getInstance().resetFolders();
     try {
       List<TsFileResource> resources = writeTsFiles();
@@ -186,7 +186,7 @@ public class IoTDBSnapshotTest {
         FileUtils.recursiveDeleteFolder(snapshotDir.getAbsolutePath());
       }
     } finally {
-      IoTDBDescriptor.getInstance().getConfig().setDataDirs(originDataDirs);
+      IoTDBDescriptor.getInstance().getConf().setDnDataDirs(originDataDirs);
       DirectoryManager.getInstance().resetFolders();
     }
   }
@@ -195,7 +195,7 @@ public class IoTDBSnapshotTest {
   public void testGetSnapshotFile() throws IOException {
     File tsFile =
         new File(
-            IoTDBDescriptor.getInstance().getConfig().getDataDirs()[0]
+            IoTDBDescriptor.getInstance().getConf().getDnDataDirs()[0]
                 + File.separator
                 + "sequence"
                 + File.separator
@@ -213,7 +213,7 @@ public class IoTDBSnapshotTest {
         new SnapshotTaker(region).getSnapshotFilePathForTsFile(tsFile, "test-snapshotId");
     Assert.assertEquals(
         new File(
-                IoTDBDescriptor.getInstance().getConfig().getDataDirs()[0]
+                IoTDBDescriptor.getInstance().getConf().getDnDataDirs()[0]
                     + File.separator
                     + "snapshot"
                     + File.separator

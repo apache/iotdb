@@ -30,7 +30,7 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import java.util.List;
 
 public class DefaultCompactionTaskComparatorImpl implements ICompactionTaskComparator {
-  private IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private IoTDBConfig config = IoTDBDescriptor.getInstance().getConf();
 
   @Override
   public int compare(AbstractCompactionTask o1, AbstractCompactionTask o2) {

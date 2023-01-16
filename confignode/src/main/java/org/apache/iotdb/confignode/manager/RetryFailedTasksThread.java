@@ -23,11 +23,10 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.confignode.client.async.AsyncDataNodeClientPool;
 import org.apache.iotdb.confignode.client.async.handlers.AsyncClientHandler;
-import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
-import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.manager.node.NodeManager;
 import org.apache.iotdb.confignode.manager.node.heartbeat.BaseNodeCache;
 import org.apache.iotdb.mpp.rpc.thrift.TOperatePipeOnDataNodeReq;
@@ -57,8 +56,8 @@ public class RetryFailedTasksThread {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(RetryFailedTasksThread.class);
 
-  private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
-  private static final long HEARTBEAT_INTERVAL = CONF.getHeartbeatIntervalInMs();
+  private static final long HEARTBEAT_INTERVAL =
+      CommonDescriptor.getInstance().getConf().getHeartbeatIntervalInMs();
   private final IManager configManager;
   private final NodeManager nodeManager;
   private final ScheduledExecutorService retryFailTasksExecutor =

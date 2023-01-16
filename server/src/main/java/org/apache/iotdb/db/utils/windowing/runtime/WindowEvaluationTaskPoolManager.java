@@ -39,7 +39,7 @@ public class WindowEvaluationTaskPoolManager extends AbstractPoolManager {
       LoggerFactory.getLogger(WindowEvaluationTaskPoolManager.class);
 
   private WindowEvaluationTaskPoolManager() {
-    final int nThreads = IoTDBDescriptor.getInstance().getConfig().getWindowEvaluationThreadCount();
+    final int nThreads = IoTDBDescriptor.getInstance().getConf().getWindowEvaluationThreadCount();
     LOGGER.info("WindowEvaluationTaskPoolManager is initializing, thread number: {}", nThreads);
     pool =
         new ThreadPoolExecutor(
@@ -48,7 +48,7 @@ public class WindowEvaluationTaskPoolManager extends AbstractPoolManager {
             0L,
             TimeUnit.MILLISECONDS,
             new LinkedBlockingQueue<>(
-                IoTDBDescriptor.getInstance().getConfig().getMaxPendingWindowEvaluationTasks()),
+                IoTDBDescriptor.getInstance().getConf().getMaxPendingWindowEvaluationTasks()),
             new IoTThreadFactory(ThreadName.WINDOW_EVALUATION_SERVICE.getName()));
   }
 
@@ -78,7 +78,7 @@ public class WindowEvaluationTaskPoolManager extends AbstractPoolManager {
 
     pool =
         IoTDBThreadPoolFactory.newFixedThreadPool(
-            IoTDBDescriptor.getInstance().getConfig().getWindowEvaluationThreadCount(),
+            IoTDBDescriptor.getInstance().getConf().getWindowEvaluationThreadCount(),
             ThreadName.WINDOW_EVALUATION_SERVICE.getName());
   }
 

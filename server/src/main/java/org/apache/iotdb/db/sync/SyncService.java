@@ -73,7 +73,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class SyncService implements IService {
   private static final Logger logger = LoggerFactory.getLogger(SyncService.class);
-  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConf();
 
   private final Map<String, Pipe> pipes;
 

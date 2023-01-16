@@ -21,9 +21,9 @@ package org.apache.iotdb.db.mpp.plan.planner.distribution;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.partition.QueryExecutor;
 import org.apache.iotdb.commons.partition.StorageExecutor;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.common.DataNodeEndPoints;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
@@ -150,7 +150,7 @@ public class SimpleFragmentParallelPlanner implements IFragmentParallelPlaner {
           String.format("regionReplicaSet is invalid: %s", regionReplicaSet));
     }
     String readConsistencyLevel =
-        IoTDBDescriptor.getInstance().getConfig().getReadConsistencyLevel();
+        CommonDescriptor.getInstance().getConf().getReadConsistencyLevel();
     // TODO: (Chen Rongzhao) need to make the values of ReadConsistencyLevel as static variable or
     // enums
     boolean selectRandomDataNode = "weak".equals(readConsistencyLevel);
