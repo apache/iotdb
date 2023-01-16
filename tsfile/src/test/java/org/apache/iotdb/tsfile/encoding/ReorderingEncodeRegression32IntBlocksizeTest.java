@@ -72,7 +72,7 @@ public class ReorderingEncodeRegression32IntBlocksizeTest {
       for(int j=0;j<bit_width;j++){
         int tmp_int = 0;
         for(int k=0;k<8;k++){
-          tmp_int += (((numbers.get(i*8+k).get(index) >>j) %2) << k);
+          tmp_int += (((numbers.get(i*8+k+1).get(index) >>j) %2) << k);
         }
 //        System.out.println(Integer.toBinaryString(tmp_int));
         result[i*bit_width+j] = (byte) tmp_int;
@@ -110,69 +110,6 @@ public class ReorderingEncodeRegression32IntBlocksizeTest {
     }
   }
 
-  public static void splitTimeStamp(ArrayList<ArrayList<Integer>> ts_block, int block_size, int td,
-                                    ArrayList<Integer> deviation_list,ArrayList<Integer> result){
-    int deviation_max = Integer.MIN_VALUE;
-    int max_bit_width_deviation=0;
-    int r0 = 0;
-    int d0 = 0;
-
-    // split timestamp into intervals and deviations
-
-    //address other timestamps and values
-
-    for(int j=block_size-1;j>0;j--) {
-      int delta_interval = (ts_block.get(j).get(0) - ts_block.get(j-1).get(0))/td;
-      int deviation = (ts_block.get(j).get(0) - ts_block.get(j-1).get(0))%td;
-      if(deviation >= (td/2)){
-        deviation -= td;
-        delta_interval ++;
-      }
-      deviation = zigzag(deviation);
-      deviation_list.add(deviation);
-      if(deviation > deviation_max){
-        deviation_max = deviation;
-      }
-
-      int value = ts_block.get(j).get(1);
-      ArrayList<Integer> tmp = new ArrayList<>();
-      tmp.add(delta_interval);
-      tmp.add(value);
-      ts_block.set(j,tmp);
-    }
-
-
-    // address timestamp0
-    r0 = ts_block.get(0).get(0) /td;
-    d0 = ts_block.get(0).get(0) %td;
-    if(d0 >= (td/2)){
-      d0 -= td;
-      r0 ++;
-    }
-    d0 = zigzag(d0);
-    if(d0 > deviation_max){
-      deviation_max = d0;
-    }
-
-    int value0 = ts_block.get(0).get(1);
-    ArrayList<Integer> tmp0 = new ArrayList<>();
-    tmp0.add(0);
-    tmp0.add(value0);
-    ts_block.set(0,tmp0);
-
-    for(int j=1;j<block_size-1;j++){
-      int interval = ts_block.get(j).get(0) + ts_block.get(j-1).get(0);
-      int value = ts_block.get(j).get(1);
-      ArrayList<Integer> tmp = new ArrayList<>();
-      tmp.add(interval);
-      tmp.add(value);
-      ts_block.set(j,tmp);
-    }
-    max_bit_width_deviation = getBitWith(deviation_max);
-    result.add(max_bit_width_deviation);
-    result.add(r0);
-    result.add(d0);
-  }
   public static ArrayList<ArrayList<Integer>> getEncodeBitsRegression(ArrayList<ArrayList<Integer>> ts_block, int block_size,
                                                                  ArrayList<Integer> result, ArrayList<Integer> i_star,
                                                                       ArrayList<Integer> theta){
@@ -223,8 +160,8 @@ public class ReorderingEncodeRegression32IntBlocksizeTest {
 
     // delta to Regression
     for(int j=1;j<block_size;j++) {
-      int epsilon_r =  (ts_block.get(j).get(0) - theta0_r - theta1_r * ts_block.get(j-1).get(0));
-      int epsilon_v =  (ts_block.get(j).get(1) - theta0_v - theta1_v * ts_block.get(j-1).get(1));
+      int epsilon_r = ts_block.get(j).get(0) -theta0_r + theta1_r * ts_block.get(j-1).get(0);
+      int epsilon_v = ts_block.get(j).get(1) - theta0_v + theta1_v * ts_block.get(j-1).get(1);
       ArrayList<Integer> tmp = new ArrayList<>();
       tmp.add(epsilon_r);
       tmp.add(epsilon_v);
@@ -428,8 +365,13 @@ public class ReorderingEncodeRegression32IntBlocksizeTest {
         int j_star = 0;
         count_raw ++;
         j_star =getJStar(ts_block,i_star,block_size,raw_length,0,theta);
-
+       int adjust_count = 0;
         while(j_star!=0){
+          if(adjust_count < block_size/2){
+            adjust_count ++;
+          }else {
+            break;
+          }
           ArrayList<Integer> tmp_tv = ts_block_reorder.get(i_star);
           if(j_star<i_star){
             for(int u=i_star-1;u>=j_star;u--){
@@ -467,7 +409,13 @@ public class ReorderingEncodeRegression32IntBlocksizeTest {
         count_reorder ++;
         i_star =getIStar(ts_block,block_size,raw_length,0,theta);
         j_star =getJStar(ts_block,i_star,block_size,raw_length,0,theta);
+        int adjust_count = 0;
         while(j_star != 0){
+          if(adjust_count < block_size/2){
+            adjust_count ++;
+          }else {
+            break;
+          }
           ArrayList<Integer> tmp_tv = ts_block_reorder.get(i_star);
           if(j_star<i_star){
             for(int u=i_star-1;u>=j_star;u--){

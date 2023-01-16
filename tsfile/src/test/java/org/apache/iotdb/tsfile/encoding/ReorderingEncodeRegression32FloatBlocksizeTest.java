@@ -231,8 +231,8 @@ public class ReorderingEncodeRegression32FloatBlocksizeTest {
 
     // delta to Regression
     for(int j=1;j<block_size;j++) {
-      int epsilon_r = (int) ((float)ts_block.get(j).get(0) - theta0_r - theta1_r * (float)ts_block.get(j-1).get(0));
-      int epsilon_v =  (int)((float)ts_block.get(j).get(1) - theta0_v - theta1_v * (float) ts_block.get(j-1).get(1));
+      int epsilon_r = ts_block.get(j).get(0) - (int) (theta0_r + theta1_r * (float)ts_block.get(j-1).get(0));
+      int epsilon_v =  ts_block.get(j).get(1) - (int)(theta0_v + theta1_v * (float) ts_block.get(j-1).get(1));
       ArrayList<Integer> tmp = new ArrayList<>();
       tmp.add(epsilon_r);
       tmp.add(epsilon_v);
@@ -288,9 +288,9 @@ public class ReorderingEncodeRegression32FloatBlocksizeTest {
     float theta1_v = theta.get(3);
     if(i_star == block_size - 1 || i_star == 0)
       return 0;
-    int epsilon_r_i_star_plus_1 = (int) ((float)ts_block.get(i_star+1).get(0) - theta0_r -
+    int epsilon_r_i_star_plus_1 = ts_block.get(i_star+1).get(0) - (int) (theta0_r +
             theta1_r *  (float)ts_block.get(i_star-1).get(0));
-    int epsilon_v_i_star_plus_1 = (int) ((float)ts_block.get(i_star+1).get(1) - theta0_v -
+    int epsilon_v_i_star_plus_1 = ts_block.get(i_star+1).get(1) - (int) (theta0_v +
             theta1_v * (float)ts_block.get(i_star-1).get(1));
 
     if(epsilon_r_i_star_plus_1 > raw_length.get(1) || epsilon_v_i_star_plus_1 > raw_length.get(2))
@@ -299,10 +299,10 @@ public class ReorderingEncodeRegression32FloatBlocksizeTest {
 
     for(int j = 1;j<block_size;j++){
       if(j!=i_star){
-        int epsilon_r_j = (int) ((float)ts_block.get(j).get(0) - theta0_r -theta1_r * (float)ts_block.get(i_star).get(0));
-        int epsilon_v_j = (int) ((float)ts_block.get(j).get(1) - theta0_v - theta1_v *  (float)ts_block.get(i_star).get(1));
-        int epsilon_r_i_star = (int) ((float)ts_block.get(i_star).get(0) - theta0_r -theta1_r * (float) ts_block.get(j-1).get(0));
-        int epsilon_v_i_star = (int) ((float)ts_block.get(i_star).get(1) - theta0_r -theta1_r * (float)ts_block.get(j-1).get(1));
+        int epsilon_r_j = ts_block.get(j).get(0) - (int) (theta0_r +theta1_r * (float)ts_block.get(i_star).get(0));
+        int epsilon_v_j = ts_block.get(j).get(1) - (int) (theta0_v + theta1_v *  (float)ts_block.get(i_star).get(1));
+        int epsilon_r_i_star = ts_block.get(i_star).get(0) - (int) (theta0_r +theta1_r * (float) ts_block.get(j-1).get(0));
+        int epsilon_v_i_star = ts_block.get(i_star).get(1) - (int) (theta0_r +theta1_r * (float)ts_block.get(j-1).get(1));
         if(epsilon_r_j >raw_length.get(1) || epsilon_v_j >raw_length.get(2) ||
                 epsilon_r_i_star > raw_length.get(1) || epsilon_v_i_star> raw_length.get(2))
           return 0;
@@ -333,8 +333,8 @@ public class ReorderingEncodeRegression32FloatBlocksizeTest {
     float theta1_v = theta.get(3);
 
     for(int j = 1;j<block_size;j++){
-        int epsilon_r_j = getBitWith((int) ((float) ts_block.get(j).get(0) - theta0_r -theta1_r *(float) ts_block.get(j-1).get(0)));
-        int epsilon_v_j = getBitWith ((int) ((float)ts_block.get(j).get(1) - theta0_v - theta1_v * (float)ts_block.get(j-1).get(1)));
+        int epsilon_r_j = getBitWith( ts_block.get(j).get(0) - (int) (theta0_r +theta1_r *(float) ts_block.get(j-1).get(0)));
+        int epsilon_v_j = getBitWith (ts_block.get(j).get(1) - (int) (theta0_v + theta1_v * (float)ts_block.get(j-1).get(1)));
       if(index == 1){
         if(epsilon_v_j<=raw_length.get(2) && epsilon_r_j < i_star_bit_width && epsilon_r_j < raw_length.get(1)){
           i_star_bit_width = epsilon_r_j;
@@ -435,8 +435,13 @@ public class ReorderingEncodeRegression32FloatBlocksizeTest {
         count_raw ++;
 //        i_star =getIStar(ts_block,block_size,raw_length,0,theta);
         j_star =getJStar(ts_block,i_star,block_size,raw_length,0,theta);
-
+        int adjust_count = 0;
         while(j_star!=0){
+          if(adjust_count < block_size/2){
+            adjust_count ++;
+          }else {
+            break;
+          }
           ArrayList<Integer> tmp_tv = ts_block_reorder.get(i_star);
           if(j_star<i_star){
             for(int u=i_star-1;u>=j_star;u--){
@@ -472,9 +477,15 @@ public class ReorderingEncodeRegression32FloatBlocksizeTest {
         int j_star = 0;
         ArrayList<Integer> j_star_list =new ArrayList<>();
         count_reorder ++;
-        i_star =getIStar(ts_block,block_size,raw_length,0,theta);
+//        i_star =getIStar(ts_block,block_size,raw_length,0,theta);
         j_star =getJStar(ts_block,i_star,block_size,raw_length,0,theta);
+        int adjust_count = 0;
         while(j_star != 0){
+          if(adjust_count < block_size/2){
+            adjust_count ++;
+          }else {
+            break;
+          }
           ArrayList<Integer> tmp_tv = ts_block_reorder.get(i_star);
           if(j_star<i_star){
             for(int u=i_star-1;u>=j_star;u--){

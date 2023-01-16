@@ -515,8 +515,13 @@ public class ReorderingEncodeDeltaTest {
         count_raw ++;
 //        i_star =getIStar(ts_block,block_size,raw_length,0);
         j_star =getJStar(ts_block,i_star,block_size,raw_length,0);
-
+        int adjust_count = 0;
         while(j_star!=0){
+          if(adjust_count < block_size/2){
+            adjust_count ++;
+          }else {
+            break;
+          }
           ArrayList<Integer> tmp_tv = ts_block_reorder.get(i_star);
           if(j_star<i_star){
             for(int u=i_star-1;u>=j_star;u--){
@@ -554,7 +559,13 @@ public class ReorderingEncodeDeltaTest {
         count_reorder ++;
 //        i_star =getIStar(ts_block,block_size,raw_length,0);
         j_star =getJStar(ts_block,i_star,block_size,raw_length,0);
+        int adjust_count = 0;
         while(j_star != 0){
+          if(adjust_count < block_size/2){
+            adjust_count ++;
+          }else {
+            break;
+          }
           ArrayList<Integer> tmp_tv = ts_block_reorder.get(i_star);
           if(j_star<i_star){
             for(int u=i_star-1;u>=j_star;u--){
