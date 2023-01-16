@@ -49,7 +49,7 @@ import java.util.List;
 public class CompactionScheduler {
   private static final Logger LOGGER =
       LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
-  private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConf();
 
   public static void scheduleCompaction(TsFileManager tsFileManager, long timePartition) {
     if (!tsFileManager.isAllowCompaction()) {
@@ -112,11 +112,11 @@ public class CompactionScheduler {
       ICompactionPerformer performer =
           sequence
               ? IoTDBDescriptor.getInstance()
-                  .getConfig()
+                  .getConf()
                   .getInnerSeqCompactionPerformer()
                   .createInstance()
               : IoTDBDescriptor.getInstance()
-                  .getConfig()
+                  .getConf()
                   .getInnerUnseqCompactionPerformer()
                   .createInstance();
       CompactionTaskManager.getInstance()
@@ -159,7 +159,7 @@ public class CompactionScheduler {
                   taskList.get(i).getSeqFiles(),
                   taskList.get(i).getUnseqFiles(),
                   IoTDBDescriptor.getInstance()
-                      .getConfig()
+                      .getConf()
                       .getCrossCompactionPerformer()
                       .createInstance(),
                   CompactionTaskManager.currentTaskNum,

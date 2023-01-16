@@ -24,6 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
+import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.consensus.DataRegionId;
@@ -96,7 +97,8 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
 public class StorageEngine implements IService {
   private static final Logger logger = LoggerFactory.getLogger(StorageEngine.class);
 
-  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConf();
+  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConf();
   private static final long TTL_CHECK_INTERVAL = 60 * 1000L;
 
   /** Time range for dividing database, the time unit is the same with IoTDB's TimestampPrecision */
@@ -107,7 +109,7 @@ public class StorageEngine implements IService {
    * subfolder under the systemDir.
    */
   private final String systemDir =
-      FilePathUtils.regularizePath(config.getSystemDir()) + "databases";
+      FilePathUtils.regularizePath(config.getDnSystemDir()) + "databases";
 
   /** DataRegionId -> DataRegion */
   private final ConcurrentHashMap<DataRegionId, DataRegion> dataRegionMap =
@@ -146,7 +148,7 @@ public class StorageEngine implements IService {
   }
 
   private static void initTimePartition() {
-    timePartitionInterval = IoTDBDescriptor.getInstance().getConfig().getTimePartitionInterval();
+    timePartitionInterval = IoTDBDescriptor.getInstance().getConf().getDnTimePartitionInterval();
   }
 
   public static long getTimePartitionInterval() {
@@ -172,8 +174,9 @@ public class StorageEngine implements IService {
         break;
       }
       try {
-        TimeUnit.MILLISECONDS.sleep(config.getCheckPeriodWhenInsertBlocked());
-        if (System.currentTimeMillis() - startTime > config.getMaxWaitingTimeWhenInsertBlocked()) {
+        TimeUnit.MILLISECONDS.sleep(COMMON_CONFIG.getCheckPeriodWhenInsertBlocked());
+        if (System.currentTimeMillis() - startTime
+            > COMMON_CONFIG.getMaxWaitingTimeWhenInsertBlockedInMs()) {
           throw new WriteProcessRejectException(
               "System rejected over " + (System.currentTimeMillis() - startTime) + "ms");
         }
@@ -215,7 +218,10 @@ public class StorageEngine implements IService {
 
     // wait until wal is recovered
     if (!config.isClusterMode()
-        || !config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.RATIS_CONSENSUS)) {
+        || !COMMON_CONFIG
+            .getDataRegionConsensusProtocolClass()
+            .getProtocol()
+            .equals(ConsensusFactory.RATIS_CONSENSUS)) {
       try {
         WALRecoverManager.getInstance().recover();
       } catch (WALException e) {
@@ -338,28 +344,28 @@ public class StorageEngine implements IService {
 
   private void startTimedService() {
     // timed flush sequence memtable
-    if (config.isEnableTimedFlushSeqMemtable()) {
+    if (COMMON_CONFIG.isEnableTimedFlushSeqMemtable()) {
       seqMemtableTimedFlushCheckThread =
           IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
               ThreadName.TIMED_FLUSH_SEQ_MEMTABLE.getName());
       ScheduledExecutorUtil.safelyScheduleAtFixedRate(
           seqMemtableTimedFlushCheckThread,
           this::timedFlushSeqMemTable,
-          config.getSeqMemtableFlushCheckInterval(),
-          config.getSeqMemtableFlushCheckInterval(),
+          COMMON_CONFIG.getSeqMemtableFlushCheckInterval(),
+          COMMON_CONFIG.getSeqMemtableFlushCheckInterval(),
           TimeUnit.MILLISECONDS);
       logger.info("start sequence memtable timed flush check thread successfully.");
     }
     // timed flush unsequence memtable
-    if (config.isEnableTimedFlushUnseqMemtable()) {
+    if (COMMON_CONFIG.isEnableTimedFlushUnseqMemtable()) {
       unseqMemtableTimedFlushCheckThread =
           IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
               ThreadName.TIMED_FLUSH_UNSEQ_MEMTABLE.getName());
       ScheduledExecutorUtil.safelyScheduleAtFixedRate(
           unseqMemtableTimedFlushCheckThread,
           this::timedFlushUnseqMemTable,
-          config.getUnseqMemtableFlushCheckInterval(),
-          config.getUnseqMemtableFlushCheckInterval(),
+          COMMON_CONFIG.getUnseqMemtableFlushCheckInterval(),
+          COMMON_CONFIG.getUnseqMemtableFlushCheckInterval(),
           TimeUnit.MILLISECONDS);
       logger.info("start unsequence memtable timed flush check thread successfully.");
     }
@@ -553,7 +559,7 @@ public class StorageEngine implements IService {
    * @throws StorageEngineException StorageEngineException
    */
   public void mergeAll() throws StorageEngineException {
-    if (CommonDescriptor.getInstance().getConfig().isReadOnly()) {
+    if (CommonDescriptor.getInstance().getConf().isReadOnly()) {
       throw new StorageEngineException("Current system mode is read only, does not support merge");
     }
     dataRegionMap.values().forEach(DataRegion::compact);
@@ -651,15 +657,16 @@ public class StorageEngine implements IService {
         region.syncDeleteDataFiles();
         region.deleteFolder(systemDir);
         if (config.isClusterMode()
-            && config
+            && COMMON_CONFIG
                 .getDataRegionConsensusProtocolClass()
+                .getProtocol()
                 .equals(ConsensusFactory.IOT_CONSENSUS)) {
           // delete wal
           WALManager.getInstance()
               .deleteWALNode(
                   region.getDatabaseName() + FILE_NAME_SEPARATOR + region.getDataRegionId());
           // delete snapshot
-          for (String dataDir : config.getDataDirs()) {
+          for (String dataDir : config.getDnDataDirs()) {
             File regionSnapshotDir =
                 new File(
                     dataDir + File.separator + IoTDBConstant.SNAPSHOT_FOLDER_NAME,

@@ -19,11 +19,11 @@
 
 package org.apache.iotdb.db.metadata.cache;
 
+import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.service.metric.MetricService;
-import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.common.schematree.ClusterSchemaTree;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
@@ -45,7 +45,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 public class DataNodeSchemaCache {
 
   private static final Logger logger = LoggerFactory.getLogger(DataNodeSchemaCache.class);
-  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConf();
 
   private final Cache<PartialPath, SchemaCacheEntry> cache;
 
@@ -55,7 +55,7 @@ public class DataNodeSchemaCache {
   private DataNodeSchemaCache() {
     cache =
         Caffeine.newBuilder()
-            .maximumWeight(config.getAllocateMemoryForSchemaCache())
+            .maximumWeight(COMMON_CONFIG.getAllocateMemoryForSchemaCache())
             .weigher(
                 (PartialPath key, SchemaCacheEntry value) ->
                     PartialPath.estimateSize(key) + SchemaCacheEntry.estimateSize(value))

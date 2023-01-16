@@ -18,11 +18,11 @@
 package org.apache.iotdb.db.protocol.mqtt;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.auth.AuthorityChecker;
-import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.plan.Coordinator;
 import org.apache.iotdb.db.mpp.plan.analyze.ClusterPartitionFetcher;
 import org.apache.iotdb.db.mpp.plan.analyze.IPartitionFetcher;
@@ -56,7 +56,6 @@ public class MPPPublishHandler extends AbstractInterceptHandler {
 
   private static final Logger LOG = LoggerFactory.getLogger(MPPPublishHandler.class);
 
-  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private final SessionManager SESSION_MANAGER = SessionManager.getInstance();
 
   private final ConcurrentHashMap<String, MqttClientSession> clientIdToSessionMap =
@@ -65,7 +64,7 @@ public class MPPPublishHandler extends AbstractInterceptHandler {
   private final IPartitionFetcher partitionFetcher;
   private final ISchemaFetcher schemaFetcher;
 
-  public MPPPublishHandler(IoTDBConfig config) {
+  public MPPPublishHandler(CommonConfig config) {
     this.payloadFormat = PayloadFormatManager.getPayloadFormat(config.getMqttPayloadFormatter());
     partitionFetcher = ClusterPartitionFetcher.getInstance();
     schemaFetcher = ClusterSchemaFetcher.getInstance();
@@ -169,7 +168,7 @@ public class MPPPublishHandler extends AbstractInterceptHandler {
                       "",
                       partitionFetcher,
                       schemaFetcher,
-                      config.getQueryTimeoutThreshold());
+                      CommonDescriptor.getInstance().getConf().getQueryTimeoutThreshold());
           tsStatus = result.status;
         }
       } catch (Exception e) {

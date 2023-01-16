@@ -56,7 +56,7 @@ public class SchemaFileSketchTest {
   @Before
   public void setUp() {
     IoTDBDescriptor.getInstance()
-        .getConfig()
+        .getConf()
         .setSchemaEngineMode(SchemaEngineMode.Schema_File.toString());
     EnvironmentUtils.envSetUp();
   }
@@ -66,9 +66,7 @@ public class SchemaFileSketchTest {
     File sketch = new File("sketch_schemafile.txt");
     sketch.deleteOnExit();
     EnvironmentUtils.cleanEnv();
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setSchemaEngineMode(SchemaEngineMode.Memory.toString());
+    IoTDBDescriptor.getInstance().getConf().setSchemaEngineMode(SchemaEngineMode.Memory.toString());
   }
 
   private void prepareData() throws IOException, MetadataException {

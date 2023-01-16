@@ -62,7 +62,6 @@ import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.settle.SettleRequestHandler;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.cache.DataNodeSchemaCache;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaEngine;
@@ -115,6 +114,7 @@ import org.apache.iotdb.db.trigger.executor.TriggerExecutor;
 import org.apache.iotdb.db.trigger.executor.TriggerFireResult;
 import org.apache.iotdb.db.trigger.service.TriggerManagementService;
 import org.apache.iotdb.db.utils.SetThreadName;
+import org.apache.iotdb.db.wal.WALManager;
 import org.apache.iotdb.metrics.type.AutoGauge;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.mpp.rpc.thrift.IDataNodeRPCService;
@@ -982,9 +982,9 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     }
 
     resp.setHeartbeatTimestamp(req.getHeartbeatTimestamp());
-    resp.setStatus(CommonDescriptor.getInstance().getConfig().getNodeStatus().getStatus());
-    if (CommonDescriptor.getInstance().getConfig().getStatusReason() != null) {
-      resp.setStatusReason(CommonDescriptor.getInstance().getConfig().getStatusReason());
+    resp.setStatus(CommonDescriptor.getInstance().getConf().getNodeStatus().getStatus());
+    if (CommonDescriptor.getInstance().getConf().getStatusReason() != null) {
+      resp.setStatusReason(CommonDescriptor.getInstance().getConf().getStatusReason());
     }
     return resp;
   }
@@ -1052,7 +1052,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   private void sampleDiskLoad(TLoadSample loadSample) {
-    final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
+    final CommonConfig commonConfig = CommonDescriptor.getInstance().getConf();
 
     long freeDisk =
         MetricService.getInstance()
@@ -1122,17 +1122,25 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   @Override
   public TSStatus loadConfiguration() throws TException {
     try {
+      long prevDeleteWalFilesPeriodInMs =
+          CommonDescriptor.getInstance().getConf().getDeleteWalFilesPeriodInMs();
+      CommonDescriptor.getInstance().loadHotModifiedProps();
       IoTDBDescriptor.getInstance().loadHotModifiedProps();
-    } catch (QueryProcessException e) {
+      if (prevDeleteWalFilesPeriodInMs
+          != CommonDescriptor.getInstance().getConf().getDeleteWalFilesPeriodInMs()) {
+        WALManager.getInstance().rebootWALDeleteThread();
+      }
+    } catch (Exception e) {
       return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
     }
+
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }
 
   @Override
   public TSStatus setSystemStatus(String status) throws TException {
     try {
-      CommonDescriptor.getInstance().getConfig().setNodeStatus(NodeStatus.parse(status));
+      CommonDescriptor.getInstance().getConf().setNodeStatus(NodeStatus.parse(status));
     } catch (Exception e) {
       return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
     }

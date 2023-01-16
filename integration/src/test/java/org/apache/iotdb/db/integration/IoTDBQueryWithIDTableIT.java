@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.integration;
 
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.metadata.idtable.entry.DeviceIDFactory;
 import org.apache.iotdb.integration.env.ConfigFactory;
@@ -108,10 +109,10 @@ public class IoTDBQueryWithIDTableIT {
 
   @BeforeClass
   public static void setUp() throws Exception {
-    IoTDBDescriptor.getInstance().getConfig().setAutoCreateSchemaEnabled(true);
-    isEnableIDTable = IoTDBDescriptor.getInstance().getConfig().isEnableIDTable();
+    CommonDescriptor.getInstance().getConf().setEnableAutoCreateSchema(true);
+    isEnableIDTable = IoTDBDescriptor.getInstance().getConf().isEnableIDTable();
     originalDeviceIDTransformationMethod =
-        IoTDBDescriptor.getInstance().getConfig().getDeviceIDTransformationMethod();
+        IoTDBDescriptor.getInstance().getConf().getDeviceIDTransformationMethod();
 
     ConfigFactory.getConfig().setEnableIDTable(true);
     ConfigFactory.getConfig().setDeviceIDTransformationMethod("SHA256");

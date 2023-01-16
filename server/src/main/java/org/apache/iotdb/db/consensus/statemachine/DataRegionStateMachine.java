@@ -76,7 +76,7 @@ public class DataRegionStateMachine extends BaseStateMachine {
 
   private static final int MAX_REQUEST_CACHE_SIZE = 5;
   private static final long CACHE_WINDOW_TIME_IN_MS =
-      IoTDBDescriptor.getInstance().getConfig().getCacheWindowTimeInMs();
+      CommonDescriptor.getInstance().getConf().getIotConsensusCacheWindowTimeInMs();
 
   private ConcurrentHashMap<String, SyncLogCacheQueue> cacheQueueMap;
 
@@ -93,7 +93,7 @@ public class DataRegionStateMachine extends BaseStateMachine {
 
   @Override
   public boolean isReadOnly() {
-    return CommonDescriptor.getInstance().getConfig().isReadOnly();
+    return CommonDescriptor.getInstance().getConf().isReadOnly();
   }
 
   @Override
@@ -448,7 +448,7 @@ public class DataRegionStateMachine extends BaseStateMachine {
   @Override
   public File getSnapshotRoot() {
     String snapshotDir =
-        IoTDBDescriptor.getInstance().getConfig().getRatisDataRegionSnapshotDir()
+        IoTDBDescriptor.getInstance().getConf().getRatisDataRegionSnapshotDir()
             + File.separator
             + region.getDatabaseName()
             + "-"

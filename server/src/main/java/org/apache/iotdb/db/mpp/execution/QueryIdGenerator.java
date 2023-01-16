@@ -56,7 +56,7 @@ public class QueryIdGenerator {
   private int counter;
 
   public QueryIdGenerator() {
-    int dataNodeId = IoTDBDescriptor.getInstance().getConfig().getDataNodeId();
+    int dataNodeId = IoTDBDescriptor.getInstance().getConf().getDataNodeId();
     checkArgument(dataNodeId != -1, "DataNodeId should be init first!");
     this.dataNodeId = String.valueOf(dataNodeId);
   }

@@ -50,7 +50,7 @@ import static org.junit.Assert.fail;
 public class IoTDBCheckConfigIT {
   private File propertiesFile =
       SystemFileFactory.INSTANCE.getFile(
-          IoTDBDescriptor.getInstance().getConfig().getSchemaDir()
+          IoTDBDescriptor.getInstance().getConf().getSchemaDir()
               + File.separator
               + "system.properties");
 

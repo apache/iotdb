@@ -98,7 +98,7 @@ public class SettleRequestHandler {
     private SettleRequestContext(List<String> paths) {
       this.paths = paths;
       this.tsFileNames = new HashSet<>();
-      this.config = IoTDBDescriptor.getInstance().getConfig();
+      this.config = IoTDBDescriptor.getInstance().getConf();
     }
 
     private TSStatus validate() {

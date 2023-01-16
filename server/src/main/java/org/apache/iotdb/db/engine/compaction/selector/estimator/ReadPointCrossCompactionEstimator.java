@@ -51,7 +51,7 @@ public class ReadPointCrossCompactionEstimator extends AbstractCrossSpaceEstimat
 
   // the number of timeseries being compacted at the same time
   private final int subCompactionTaskNum =
-      IoTDBDescriptor.getInstance().getConfig().getSubCompactionTaskNum();
+      IoTDBDescriptor.getInstance().getConf().getSubCompactionTaskNum();
 
   public ReadPointCrossCompactionEstimator() {
     this.maxCostOfReadingSeqFile = 0;

@@ -135,7 +135,7 @@ public class InfluxDBSession {
       throw new IoTDBConnectionException(e);
     }
 
-    if (IoTDBDescriptor.getInstance().getConfig().isRpcThriftCompressionEnable()) {
+    if (IoTDBDescriptor.getInstance().getConf().isDnRpcThriftCompressionEnable()) {
       client = new InfluxDBService.Client(new TCompactProtocol(transport));
     } else {
       client = new InfluxDBService.Client(new TBinaryProtocol(transport));

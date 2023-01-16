@@ -19,12 +19,12 @@
 package org.apache.iotdb.db.mpp.plan.planner.plan.node.write;
 
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.AlignedTimeseriesException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -240,7 +240,7 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
     for (int i = 0; i < measurementSchemas.length; i++) {
       // null when time series doesn't exist
       if (measurementSchemas[i] == null) {
-        if (!IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
+        if (!CommonDescriptor.getInstance().getConf().isEnablePartialInsert()) {
           throw new QueryProcessException(
               new PathNotExistException(
                   devicePath.getFullPath() + IoTDBConstant.PATH_SEPARATOR + measurements[i]));
@@ -265,7 +265,7 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
             dataTypes[i],
             time,
             values[i]);
-        if (!IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
+        if (!CommonDescriptor.getInstance().getConf().isEnablePartialInsert()) {
           throw e;
         } else {
           markFailedMeasurement(i, e);

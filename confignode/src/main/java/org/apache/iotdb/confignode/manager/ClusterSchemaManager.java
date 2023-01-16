@@ -23,6 +23,8 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
+import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -31,8 +33,6 @@ import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.confignode.client.async.AsyncDataNodeClientPool;
 import org.apache.iotdb.confignode.client.async.handlers.AsyncClientHandler;
 import org.apache.iotdb.confignode.client.sync.SyncDataNodeClientPool;
-import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
-import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.read.storagegroup.CountStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.read.storagegroup.GetStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.CheckTemplateSettablePlan;
@@ -99,9 +99,10 @@ public class ClusterSchemaManager {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ClusterSchemaManager.class);
 
-  private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
-  private static final double SCHEMA_REGION_PER_DATA_NODE = CONF.getSchemaRegionPerDataNode();
-  private static final double DATA_REGION_PER_PROCESSOR = CONF.getDataRegionPerProcessor();
+  private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConf();
+  private static final double SCHEMA_REGION_PER_DATA_NODE =
+      COMMON_CONFIG.getSchemaRegionPerDataNode();
+  private static final double DATA_REGION_PER_PROCESSOR = COMMON_CONFIG.getDataRegionPerProcessor();
 
   private final IManager configManager;
   private final ClusterSchemaInfo clusterSchemaInfo;
@@ -333,11 +334,11 @@ public class ClusterSchemaManager {
         (int)
             Math.ceil(
                 (double) totalCpuCoreNum
-                    / (double) (storageGroupNum * CONF.getDataReplicationFactor()));
-    if (leastDataRegionGroupNum < CONF.getLeastDataRegionGroupNum()) {
+                    / (double) (storageGroupNum * COMMON_CONFIG.getDataReplicationFactor()));
+    if (leastDataRegionGroupNum < COMMON_CONFIG.getLeastDataRegionGroupNum()) {
       // The leastDataRegionGroupNum should be the maximum integer that satisfy:
       // 1 <= leastDataRegionGroupNum <= 5(default)
-      CONF.setLeastDataRegionGroupNum(leastDataRegionGroupNum);
+      COMMON_CONFIG.setLeastDataRegionGroupNum(leastDataRegionGroupNum);
       LOGGER.info(
           "[AdjustRegionGroupNum] The least number of DataRegionGroups per Database is adjusted to: {}",
           leastDataRegionGroupNum);
@@ -355,7 +356,7 @@ public class ClusterSchemaManager {
                     storageGroupSchema.getName(), TConsensusGroupType.SchemaRegion);
         int maxSchemaRegionGroupNum =
             calcMaxRegionGroupNum(
-                CONF.getLeastSchemaRegionGroupNum(),
+                COMMON_CONFIG.getLeastSchemaRegionGroupNum(),
                 SCHEMA_REGION_PER_DATA_NODE,
                 dataNodeNum,
                 storageGroupNum,
@@ -374,7 +375,7 @@ public class ClusterSchemaManager {
                 .getRegionGroupCount(storageGroupSchema.getName(), TConsensusGroupType.DataRegion);
         int maxDataRegionGroupNum =
             calcMaxRegionGroupNum(
-                CONF.getLeastDataRegionGroupNum(),
+                COMMON_CONFIG.getLeastDataRegionGroupNum(),
                 DATA_REGION_PER_PROCESSOR,
                 totalCpuCoreNum,
                 storageGroupNum,
