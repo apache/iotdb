@@ -18,12 +18,12 @@
  */
 package org.apache.iotdb.db.engine.compaction.selector;
 
+import org.apache.iotdb.db.engine.compaction.selector.impl.CrossCompactionTaskResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.util.List;
 
 public interface ICrossSpaceSelector extends ICompactionSelector {
-  List<Pair<List<TsFileResource>, List<TsFileResource>>> selectCrossSpaceTask(
+  List<CrossCompactionTaskResource> selectCrossSpaceTask(
       List<TsFileResource> seqFiles, List<TsFileResource> unseqFiles);
 }
