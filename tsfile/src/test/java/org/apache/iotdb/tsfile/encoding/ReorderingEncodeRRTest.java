@@ -144,79 +144,79 @@ public class ReorderingEncodeRRTest {
     }
   }
 
-  public static void splitTimeStamp(ArrayList<ArrayList<Integer>> ts_block, int block_size, int td,
-                                    ArrayList<Integer> deviation_list,ArrayList<Integer> result){
-    int deviation_max = Integer.MIN_VALUE;
-    int max_bit_width_deviation;
-    int r0;
-    int d0;
-
-    // split timestamp into intervals and deviations
-
-    //address other timestamps and values
-    for(int j=block_size-1;j>0;j--) {
-      int delta_interval = (ts_block.get(j).get(0) - ts_block.get(j-1).get(0))/td;
-      ArrayList<Integer> tmp = ts_block.get(j);
-      tmp.add(delta_interval);
-      ts_block.set(j,tmp);
-    }
-
-
-    // address timestamp0
-    r0 = ts_block.get(0).get(0) /td;
-    d0 = ts_block.get(0).get(0) %td;
-    if(d0 >= (td/2)){
-      d0 -= td;
-      r0 ++;
-    }
-    d0 = zigzag(d0);
-//    deviation_list.add(d0);
-    if(d0 > deviation_max){
-      deviation_max = d0;
-    }
-    ArrayList<Integer> tmp0 = ts_block.get(0);
-    tmp0.add(0);
-//    System.out.println(tmp0);
-    ts_block.set(0,tmp0);
-
-    for(int j=1;j<block_size;j++){
-      int interval = ts_block.get(j).get(2) + ts_block.get(j-1).get(2);
-      ArrayList<Integer> tmp;
-      tmp = ts_block.get(j);
-      tmp.set(2,interval);
-      ts_block.set(j,tmp);
-    }
-//    System.out.println(ts_block);
-    quickSort2(ts_block,0,block_size-1);
-
-    for(int j=block_size-1;j>0;j--){
-      int interval = ts_block.get(j).get(2);
-      int value = ts_block.get(j).get(1);
-
-      int delta_interval = ts_block.get(j).get(2) - ts_block.get(j-1).get(2);
-      int deviation = (ts_block.get(j).get(0) - ts_block.get(j-1).get(0))-delta_interval*td;
-      deviation = zigzag(deviation);
-      deviation_list.add(deviation);
-      if(deviation > deviation_max){
-        deviation_max = deviation;
-      }
-
-      ArrayList<Integer> tmp = new ArrayList<>();
-      tmp.add(interval);
-      tmp.add(value);
-      ts_block.set(j,tmp);
-    }
-    tmp0 = new ArrayList<>();
-    tmp0.add(ts_block.get(0).get(2));
-    tmp0.add(ts_block.get(0).get(1));
-    ts_block.set(0,tmp0);
-
-
-    max_bit_width_deviation = getBitWith(deviation_max);
-    result.add(max_bit_width_deviation);
-    result.add(r0);
-    result.add(d0);
-  }
+//  public static void splitTimeStamp(ArrayList<ArrayList<Integer>> ts_block, int block_size, int td,
+//                                    ArrayList<Integer> deviation_list,ArrayList<Integer> result){
+//    int deviation_max = Integer.MIN_VALUE;
+//    int max_bit_width_deviation;
+//    int r0;
+//    int d0;
+//
+//    // split timestamp into intervals and deviations
+//
+//    //address other timestamps and values
+//    for(int j=block_size-1;j>0;j--) {
+//      int delta_interval = (ts_block.get(j).get(0) - ts_block.get(j-1).get(0))/td;
+//      ArrayList<Integer> tmp = ts_block.get(j);
+//      tmp.add(delta_interval);
+//      ts_block.set(j,tmp);
+//    }
+//
+//
+//    // address timestamp0
+//    r0 = ts_block.get(0).get(0) /td;
+//    d0 = ts_block.get(0).get(0) %td;
+//    if(d0 >= (td/2)){
+//      d0 -= td;
+//      r0 ++;
+//    }
+//    d0 = zigzag(d0);
+////    deviation_list.add(d0);
+//    if(d0 > deviation_max){
+//      deviation_max = d0;
+//    }
+//    ArrayList<Integer> tmp0 = ts_block.get(0);
+//    tmp0.add(0);
+////    System.out.println(tmp0);
+//    ts_block.set(0,tmp0);
+//
+//    for(int j=1;j<block_size;j++){
+//      int interval = ts_block.get(j).get(2) + ts_block.get(j-1).get(2);
+//      ArrayList<Integer> tmp;
+//      tmp = ts_block.get(j);
+//      tmp.set(2,interval);
+//      ts_block.set(j,tmp);
+//    }
+////    System.out.println(ts_block);
+//    quickSort2(ts_block,0,block_size-1);
+//
+//    for(int j=block_size-1;j>0;j--){
+//      int interval = ts_block.get(j).get(2);
+//      int value = ts_block.get(j).get(1);
+//
+//      int delta_interval = ts_block.get(j).get(2) - ts_block.get(j-1).get(2);
+//      int deviation = (ts_block.get(j).get(0) - ts_block.get(j-1).get(0))-delta_interval*td;
+//      deviation = zigzag(deviation);
+//      deviation_list.add(deviation);
+//      if(deviation > deviation_max){
+//        deviation_max = deviation;
+//      }
+//
+//      ArrayList<Integer> tmp = new ArrayList<>();
+//      tmp.add(interval);
+//      tmp.add(value);
+//      ts_block.set(j,tmp);
+//    }
+//    tmp0 = new ArrayList<>();
+//    tmp0.add(ts_block.get(0).get(2));
+//    tmp0.add(ts_block.get(0).get(1));
+//    ts_block.set(0,tmp0);
+//
+//
+//    max_bit_width_deviation = getBitWith(deviation_max);
+//    result.add(max_bit_width_deviation);
+//    result.add(r0);
+//    result.add(d0);
+//  }
   public static ArrayList<ArrayList<Integer>> getEncodeBitsRegression(ArrayList<ArrayList<Integer>> ts_block, int block_size,
                                                                  ArrayList<Integer> result, ArrayList<Integer> i_star,
                                                                       ArrayList<Double> theta){
@@ -710,6 +710,9 @@ public class ReorderingEncodeRRTest {
         ts_block.add(ts_block_tmp);
       }
 
+      quickSort(ts_block, 0, 0, block_size-1);
+      data.addAll(ts_block);
+
 //      int ri_pre = interval0;
 //      int vi_pre = value0;
 //      ArrayList<Integer> ts_block_tmp0 = new ArrayList<>();
@@ -753,18 +756,14 @@ public class ReorderingEncodeRRTest {
 //      }
 
       //quickSort(ts_block, 0, 0, block_size-2);
-      quickSort22(ts_block, 0, block_size-1);
+      //quickSort22(ts_block, 0, block_size-1);
 
-      for (int i = 0; i < block_size; i++) {
-        ArrayList<Integer> tmp_datai = new ArrayList<>();
-        tmp_datai.add(ts_block.get(i).get(0));
-        tmp_datai.add(ts_block.get(i).get(1));
-        ts_block.set(i,tmp_datai);
-      }
-
-      quickSort(ts_block, 0, 0, block_size-1);
-
-      data.addAll(ts_block);
+//      for (int i = 0; i < block_size; i++) {
+//        ArrayList<Integer> tmp_datai = new ArrayList<>();
+//        tmp_datai.add(ts_block.get(i).get(0));
+//        tmp_datai.add(ts_block.get(i).get(1));
+//        ts_block.set(i,tmp_datai);
+//      }
 
 //      for (int i = 0; i < block_size; i++) {
 //        ArrayList<Integer> tmp_datai = new ArrayList<>();

@@ -625,6 +625,9 @@ public class ReorderingEncodeTest {
         ts_block.add(ts_block_tmp);
       }
 
+      quickSort(ts_block, 0, 0, block_size-1);
+      data.addAll(ts_block);
+
 //      for(int i=0;i<block_size-1;i++){
 //        for(int j=0;j<block_size-1 -i -1;j++){
 //          if(interval_list.get(j)>interval_list.get(j+1)){
@@ -639,19 +642,14 @@ public class ReorderingEncodeTest {
 //      }
 
       //quickSort(ts_block, 0, 0, block_size-1);
-      quickSort22(ts_block, 0, block_size-1);
+      //quickSort22(ts_block, 0, block_size-1);
 
-      for (int i = 0; i < block_size; i++) {
-        ArrayList<Integer> tmp_datai = new ArrayList<>();
-        tmp_datai.add(ts_block.get(i).get(0));
-        tmp_datai.add(ts_block.get(i).get(1));
-        ts_block.set(i,tmp_datai);
-      }
-
-      quickSort(ts_block, 0, 0, block_size-1);
-
-      data.addAll(ts_block);
-
+//      for (int i = 0; i < block_size; i++) {
+//        ArrayList<Integer> tmp_datai = new ArrayList<>();
+//        tmp_datai.add(ts_block.get(i).get(0));
+//        tmp_datai.add(ts_block.get(i).get(1));
+//        ts_block.set(i,tmp_datai);
+//      }
 
 //      ArrayList<Integer> tmp_data0 = new ArrayList<>();
 //      tmp_data0.add(ts_block.get(0).get(0) * td + d0 + r0 * td);
