@@ -125,6 +125,15 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
     fullPath = String.join(TsFileConstant.PATH_SEPARATOR, nodes);
   }
 
+  public PartialPath concat(String[] otherNodes) {
+    int len = nodes.length;
+    String[] newNodes = Arrays.copyOf(nodes, nodes.length + otherNodes.length);
+    System.arraycopy(otherNodes, 0, newNodes, len, otherNodes.length);
+    PartialPath partialPath = new PartialPath(newNodes);
+    partialPath.fullPath = String.join(TsFileConstant.PATH_SEPARATOR, nodes);
+    return partialPath;
+  }
+
   public PartialPath concatNode(String node) {
     String[] newPathNodes = Arrays.copyOf(nodes, nodes.length + 1);
     newPathNodes[newPathNodes.length - 1] = node;

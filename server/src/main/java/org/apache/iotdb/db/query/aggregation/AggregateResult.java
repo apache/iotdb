@@ -33,6 +33,7 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
+import java.util.List;
 
 public abstract class AggregateResult {
 
@@ -46,6 +47,7 @@ public abstract class AggregateResult {
   private float floatValue;
   private double doubleValue;
   private Binary binaryValue;
+  private List<Integer> intArrayValue;
 
   protected boolean hasCandidateResult;
 
@@ -67,6 +69,7 @@ public abstract class AggregateResult {
    *
    * @param statistics chunkStatistics or pageStatistics
    */
+  // update data by headers
   public abstract void updateResultFromStatistics(Statistics statistics)
       throws QueryProcessException;
 
@@ -76,6 +79,7 @@ public abstract class AggregateResult {
    *
    * @param batchIterator the data in Page
    */
+  // update by original data
   public abstract void updateResultFromPageData(IBatchDataIterator batchIterator)
       throws IOException, QueryProcessException;
 
@@ -264,6 +268,15 @@ public abstract class AggregateResult {
   public void setIntValue(int intValue) {
     this.hasCandidateResult = true;
     this.intValue = intValue;
+  }
+
+  protected List<Integer> getIntArrayValue() {
+    return intArrayValue;
+  }
+
+  public void setIntArrayValue(List<Integer> intArrayValue) {
+    this.hasCandidateResult = true;
+    this.intArrayValue = intArrayValue;
   }
 
   protected long getLongValue() {

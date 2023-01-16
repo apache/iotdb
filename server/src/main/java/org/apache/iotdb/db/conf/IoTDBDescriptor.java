@@ -829,6 +829,16 @@ public class IoTDBDescriptor {
               properties.getProperty("kerberos_principal", conf.getKerberosPrincipal()));
       TSFileDescriptor.getInstance().getConfig().setBatchSize(conf.getBatchSize());
 
+      conf.setGamma(
+          Double.parseDouble(
+              properties.getProperty("bucket_width", Double.toString(conf.getGamma()))));
+      conf.setFileNum(
+          Integer.parseInt(
+              properties.getProperty("file_num", Integer.toString(conf.getFileNum()))));
+      conf.setDelta(
+          Integer.parseInt(
+              properties.getProperty("window_size", Integer.toString(conf.getDelta()))));
+
       // timed flush memtable, timed close tsfile
       loadTimedService(properties);
 
@@ -974,6 +984,55 @@ public class IoTDBDescriptor {
                     "group_size_in_byte",
                     Integer.toString(
                         TSFileDescriptor.getInstance().getConfig().getGroupSizeInByte()))));
+    TSFileDescriptor.getInstance()
+        .getConfig()
+        .setXMax(
+            Double.parseDouble(
+                properties.getProperty(
+                    "xMax",
+                    Double.toString(TSFileDescriptor.getInstance().getConfig().getXMax()))));
+    TSFileDescriptor.getInstance()
+        .getConfig()
+        .setXMin(
+            Double.parseDouble(
+                properties.getProperty(
+                    "xMin",
+                    Double.toString(TSFileDescriptor.getInstance().getConfig().getXMin()))));
+    TSFileDescriptor.getInstance()
+        .getConfig()
+        .setsMax(
+            Double.parseDouble(
+                properties.getProperty(
+                    "sMax",
+                    Double.toString(TSFileDescriptor.getInstance().getConfig().getsMax()))));
+    TSFileDescriptor.getInstance()
+        .getConfig()
+        .setSmin(
+            Double.parseDouble(
+                properties.getProperty(
+                    "sMin",
+                    Double.toString(TSFileDescriptor.getInstance().getConfig().getSmin()))));
+    TSFileDescriptor.getInstance()
+        .getConfig()
+        .setMussRate(
+            Double.parseDouble(
+                properties.getProperty(
+                    "mussRate",
+                    Double.toString(TSFileDescriptor.getInstance().getConfig().getMussRate()))));
+    TSFileDescriptor.getInstance()
+        .getConfig()
+        .setUsePreSpeed(
+            Boolean.parseBoolean(
+                properties.getProperty(
+                    "usePreSpeed",
+                    Boolean.toString(TSFileDescriptor.getInstance().getConfig().isUsePreSpeed()))));
+    TSFileDescriptor.getInstance()
+        .getConfig()
+        .setUsePreRange(
+            Boolean.parseBoolean(
+                properties.getProperty(
+                    "usePreRange",
+                    Boolean.toString(TSFileDescriptor.getInstance().getConfig().isUsePreRange()))));
     TSFileDescriptor.getInstance()
         .getConfig()
         .setPageSizeInByte(

@@ -39,6 +39,7 @@ import org.apache.iotdb.db.query.reader.series.SeriesReader;
 import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.db.utils.datastructure.TVList;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -55,10 +56,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 public class MeasurementPath extends PartialPath {
 
@@ -91,6 +89,17 @@ public class MeasurementPath extends PartialPath {
       throws IllegalPathException {
     super(device, measurement);
     this.measurementSchema = measurementSchema;
+  }
+
+  public MeasurementPath concat(String[] otherNodes) {
+    int len = nodes.length;
+    String[] newNodes = Arrays.copyOf(nodes, nodes.length + otherNodes.length);
+    System.arraycopy(otherNodes, 0, newNodes, len, otherNodes.length);
+    MeasurementPath measurementPath = new MeasurementPath();
+    measurementPath.nodes = newNodes;
+    measurementPath.fullPath = this.fullPath;
+    measurementPath.fullPath = String.join(TsFileConstant.PATH_SEPARATOR, nodes);
+    return measurementPath;
   }
 
   public IMeasurementSchema getMeasurementSchema() {

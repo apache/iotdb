@@ -67,6 +67,8 @@ public class AggregateResultFactory {
         return !ascending
             ? new LastValueDescAggrResult(dataType)
             : new LastValueAggrResult(dataType);
+      case SQLConstant.DODDS:
+        return new DoddsAggrResult(dataType);
       default:
         throw new IllegalArgumentException("Invalid Aggregation function: " + aggrFuncName);
     }
@@ -98,6 +100,8 @@ public class AggregateResultFactory {
         return new SumAggrResult(dataType);
       case SQLConstant.LAST_VALUE:
         return new LastValueDescAggrResult(dataType);
+      case SQLConstant.DODDS:
+        return new DoddsAggrResult(dataType);
       default:
         throw new IllegalArgumentException("Invalid Aggregation function: " + aggrFuncName);
     }
@@ -130,6 +134,8 @@ public class AggregateResultFactory {
         return new MinValueAggrResult(dataType);
       case EXTREME:
         return new ExtremeAggrResult(dataType);
+      case DODDS:
+        return new DoddsAggrResult(dataType);
       default:
         throw new IllegalArgumentException("Invalid Aggregation Type: " + aggregationType.name());
     }

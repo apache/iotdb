@@ -283,11 +283,11 @@ public class IoTDBConfig {
   /**
    * If we enable the memory-control mechanism during index building , {@code indexBufferSize}
    * refers to the byte-size of memory buffer threshold. For each index processor, all indexes in
-   * one {@linkplain org.apache.iotdb.db.index.IndexFileProcessor IndexFileProcessor} share a total
-   * common buffer size. With the memory-control mechanism, the occupied memory of all raw data and
-   * index structures will be counted. If the memory buffer size reaches this threshold, the indexes
-   * will be flushed to the disk file. As a result, data in one series may be divided into more than
-   * one part and indexed separately. Unit: byte
+   * one {@linkplain org.apache.iotdb.db.index IndexFileProcessor} share a total common buffer size.
+   * With the memory-control mechanism, the occupied memory of all raw data and index structures
+   * will be counted. If the memory buffer size reaches this threshold, the indexes will be flushed
+   * to the disk file. As a result, data in one series may be divided into more than one part and
+   * indexed separately. Unit: byte
    */
   private long indexBufferSize = 128 * 1024 * 1024L;
 
@@ -801,6 +801,36 @@ public class IoTDBConfig {
    * whether create mapping file of id table. This file can map device id in tsfile to device path
    */
   private boolean enableIDTableLogFile = false;
+
+  public double getGamma() {
+    return gamma;
+  }
+
+  public void setGamma(double gamma) {
+    this.gamma = gamma;
+  }
+
+  public int getFileNum() {
+    return fileNum;
+  }
+
+  public void setFileNum(int fileNum) {
+    this.fileNum = fileNum;
+  }
+
+  public int getDelta() {
+    return delta;
+  }
+
+  public void setDelta(int delta) {
+    this.delta = delta;
+  }
+
+  private double gamma = 2;
+
+  private int fileNum = 1;
+
+  private int delta = 60000;
 
   public IoTDBConfig() {
     // empty constructor

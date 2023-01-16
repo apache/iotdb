@@ -60,7 +60,7 @@ public class QueryOperator extends Operator {
   protected WhereComponent whereComponent;
   protected SpecialClauseComponent specialClauseComponent;
 
-  protected Map<String, Object> props;
+  protected Map<String, Object> props; // parameters
   protected IndexType indexType;
 
   protected boolean enableTracing;

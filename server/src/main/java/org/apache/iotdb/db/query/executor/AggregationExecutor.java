@@ -25,6 +25,7 @@ import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.path.AlignedPath;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
@@ -34,6 +35,8 @@ import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
+import org.apache.iotdb.db.query.aggregation.AggregationType;
+import org.apache.iotdb.db.query.aggregation.impl.DoddsAggrResult;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.dataset.SingleDataSet;
@@ -47,6 +50,8 @@ import org.apache.iotdb.db.query.reader.series.SeriesReaderByTimestamp;
 import org.apache.iotdb.db.query.timegenerator.ServerTimeGenerator;
 import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.db.utils.ValueIterator;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
@@ -59,14 +64,8 @@ import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.read.query.timegenerator.TimeGenerator;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.Map.Entry;
-import java.util.Set;
 
 import static org.apache.iotdb.tsfile.read.query.executor.ExecutorWithTimeGenerator.markFilterdPaths;
 
@@ -76,10 +75,12 @@ public class AggregationExecutor {
   private List<PartialPath> selectedSeries;
   protected List<TSDataType> dataTypes;
   protected List<String> aggregations;
+  protected List<Map<String, String>> parameters;
   protected IExpression expression;
   protected boolean ascending;
+  private final TSFileConfig tsFileConfig = TSFileDescriptor.getInstance().getConfig();
   protected QueryContext context;
-  protected AggregateResult[] aggregateResultList;
+  protected AggregateResult[] aggregssateResultList;
 
   /** aggregation batch calculation size. */
   private int aggregateFetchSize;
@@ -91,6 +92,7 @@ public class AggregationExecutor {
         .forEach(k -> selectedSeries.add(((MeasurementPath) k).transformToExactPath()));
     this.dataTypes = aggregationPlan.getDeduplicatedDataTypes();
     this.aggregations = aggregationPlan.getDeduplicatedAggregations();
+    this.parameters = aggregationPlan.getParameters();
     this.expression = aggregationPlan.getExpression();
     this.aggregateFetchSize = IoTDBDescriptor.getInstance().getConfig().getBatchSize();
     this.ascending = aggregationPlan.isAscending();
@@ -101,7 +103,6 @@ public class AggregationExecutor {
   /** execute aggregate function with only time filter or no filter. */
   public QueryDataSet executeWithoutValueFilter(AggregationPlan aggregationPlan)
       throws StorageEngineException, IOException, QueryProcessException {
-
     Filter timeFilter = null;
     if (expression != null) {
       timeFilter = ((GlobalTimeExpression) expression).getFilter();
@@ -155,13 +156,24 @@ public class AggregationExecutor {
       throws IOException, QueryProcessException, StorageEngineException {
     List<AggregateResult> ascAggregateResultList = new ArrayList<>();
     List<AggregateResult> descAggregateResultList = new ArrayList<>();
+
+    DoddsAggrResult doddsAggrResult = null;
     boolean[] isAsc = new boolean[aggregateResultList.length];
+    boolean[] isValidity = new boolean[aggregateResultList.length];
+    boolean[] isDodds = new boolean[aggregateResultList.length];
 
     TSDataType tsDataType = dataTypes.get(indexes.get(0));
     for (int i : indexes) {
       // construct AggregateResult
       AggregateResult aggregateResult =
           AggregateResultFactory.getAggrResultByName(aggregations.get(i), tsDataType);
+
+      if (aggregateResult.getAggregationType() == AggregationType.DODDS) {
+        doddsAggrResult = (DoddsAggrResult) aggregateResult;
+        doddsAggrResult.setParameters(parameters.get(i));
+        isDodds[i] = true;
+        continue;
+      }
       if (aggregateResult.isAscending()) {
         ascAggregateResultList.add(aggregateResult);
         isAsc[i] = true;
@@ -169,6 +181,7 @@ public class AggregationExecutor {
         descAggregateResultList.add(aggregateResult);
       }
     }
+
     aggregateOneSeries(
         seriesPath,
         allMeasurementsInDevice,
@@ -178,15 +191,813 @@ public class AggregationExecutor {
         ascAggregateResultList,
         descAggregateResultList,
         null);
-
+    if (doddsAggrResult != null) {
+      aggregateDodds(
+          seriesPath,
+          allMeasurementsInDevice,
+          context,
+          timeFilter,
+          tsDataType,
+          doddsAggrResult,
+          null);
+    }
     int ascIndex = 0;
     int descIndex = 0;
     for (int i : indexes) {
-      aggregateResultList[i] =
-          isAsc[i]
-              ? ascAggregateResultList.get(ascIndex++)
-              : descAggregateResultList.get(descIndex++);
+      if (isDodds[i]) {
+        if (doddsAggrResult != null) {
+          aggregateResultList[i] = doddsAggrResult;
+        }
+      } else {
+        aggregateResultList[i] =
+            (isAsc[i]
+                ? ascAggregateResultList.get(ascIndex++)
+                : descAggregateResultList.get(descIndex++));
+      }
     }
+  }
+
+  private void aggregateDodds(
+      PartialPath seriesPath,
+      Set<String> measurements,
+      QueryContext context,
+      Filter timeFilter,
+      TSDataType tsDataType,
+      DoddsAggrResult doddsAggrResult,
+      TsFileFilter fileFilter)
+      throws QueryProcessException, StorageEngineException, IOException {
+    //        // construct series reader without value filter
+    QueryDataSource queryDataSource =
+        QueryResourceManager.getInstance().getQueryDataSource(seriesPath, context, timeFilter);
+    if (fileFilter != null) {
+      QueryUtils.filterQueryDataSource(queryDataSource, fileFilter);
+    }
+
+    double r = doddsAggrResult.getR();
+    int k = doddsAggrResult.getK();
+    int w = doddsAggrResult.getW();
+    int s = doddsAggrResult.getS();
+
+    System.out.println("r=" + r + ", k=" + k + ", w=" + w + ", s=" + s);
+
+//    long delta = doddsAggrResult.getDelta();
+//    double gamma = doddsAggrResult.getGamma();
+//    int fileNum = doddsAggrResult.getFileNum();
+    int delta = IoTDBDescriptor.getInstance().getConfig().getDelta();
+    double gamma = IoTDBDescriptor.getInstance().getConfig().getGamma();
+    int fileNum = IoTDBDescriptor.getInstance().getConfig().getFileNum();
+    boolean ifWithUpperBound = doddsAggrResult.getIfWithUpperBound();
+
+    System.out.println(
+        "delta="
+            + delta
+            + ", gamma="
+            + gamma
+            + ", fileNum="
+            + fileNum
+            + ", ifWithUpperBound"
+            + ifWithUpperBound);
+
+    // update filter by TTL
+    timeFilter = queryDataSource.updateFilterUsingTTL(timeFilter);
+    IAggregateReader seriesReader =
+        new SeriesAggregateReader(
+            seriesPath,
+            measurements,
+            tsDataType,
+            context,
+            queryDataSource,
+            timeFilter,
+            null,
+            null,
+            true);
+    long startTime = Long.MAX_VALUE, endTime = Long.MIN_VALUE;
+    double minValue = Double.MAX_VALUE, maxValue = Double.MIN_VALUE;
+    // TODO: 构造原始数据的reader，计算min/maxValue
+    while (seriesReader.hasNextFile()) {
+      Statistics fileStatistic = seriesReader.currentFileStatistics();
+      startTime = Math.min(fileStatistic.getStartTime(), startTime);
+      endTime = Math.max(fileStatistic.getEndTime(), endTime);
+      minValue = Math.min((Double) fileStatistic.getMinValue(), minValue);
+      maxValue = Math.max((Double) fileStatistic.getMaxValue(), maxValue);
+      seriesReader.skipCurrentFile();
+    }
+    startTime = startTime / delta * delta;
+    endTime = (endTime / delta + 1) * delta;
+    minValue = Math.floor(minValue / gamma) * gamma;
+    maxValue = Math.floor(maxValue / gamma + 1) * gamma;
+
+    int bucketsCnt = (int) ((maxValue - minValue) / gamma);
+    int segsCnt = (int) ((endTime - startTime) / delta);
+    System.out.println("bucketsCnt:" + bucketsCnt);
+    System.out.println("segsCnt:" + segsCnt);
+    List<SeriesAggregateReader> seriesReaderList = new ArrayList<>();
+
+    for (int f = 0; f < fileNum; f++) {
+      // construct readers for each series (bucket)
+      for (int bucketIndex = 0; bucketIndex < bucketsCnt; bucketIndex++) {
+        String newPath = seriesPath.getFullPath() + "b.b" + bucketIndex;
+        if (f > 0) {
+          String oldDatasetName = newPath.split("\\.")[1];
+          String newDatasetName = oldDatasetName + Integer.toString(f);
+          newPath = newPath.replace(oldDatasetName, newDatasetName);
+          try {
+            MeasurementPath measurementPath = new MeasurementPath(newPath);
+            QueryResourceManager queryResourceManager = QueryResourceManager.getInstance();
+            QueryContext newContext = new QueryContext(queryResourceManager.assignQueryId(true));
+            QueryDataSource newQueryDataSource =
+                queryResourceManager.getQueryDataSource(measurementPath, newContext, timeFilter);
+            SeriesAggregateReader curSeriesReader =
+                new SeriesAggregateReader(
+                    measurementPath,
+                    Collections.singleton("b" + bucketIndex),
+                    tsDataType,
+                    newContext,
+                    newQueryDataSource,
+                    timeFilter,
+                    null,
+                    null,
+                    true);
+            seriesReaderList.add(curSeriesReader);
+          } catch (IllegalPathException e) {
+            System.out.println(newPath + " failed.");
+          }
+        } else {
+          try {
+            MeasurementPath measurementPath = new MeasurementPath(newPath);
+            SeriesAggregateReader curSeriesReader =
+                new SeriesAggregateReader(
+                    measurementPath,
+                    Collections.singleton("b" + bucketIndex),
+                    tsDataType,
+                    context,
+                    queryDataSource,
+                    timeFilter,
+                    null,
+                    null,
+                    true);
+            seriesReaderList.add(curSeriesReader);
+          } catch (IllegalPathException e) {
+            System.out.println(newPath + " failed.");
+          }
+        }
+      }
+    }
+
+    //    if (fileNum == 1) {
+    //      List<Pair<Long, Double>> outlierList = new ArrayList<>();
+    //
+    //      int[] mergedBuckets = new int[bucketsCnt];
+    //      Queue<List<Integer>> curWindowBuckets = new LinkedList<>();
+    //      int lambda = (int) Math.ceil(r / gamma), ell = (int) Math.floor(r / gamma);
+    //      int upper, lower, tightUpper;
+    //
+    //      int segIndex = 0;
+    //      int[] readFlags = new int[bucketsCnt];
+    //      SeriesAggregateReader[] seriesReaders = new SeriesAggregateReader[bucketsCnt];
+    //      Long[] startTimes = new Long[bucketsCnt];
+    //      while (segIndex + w < segsCnt) {
+    //        // update buckets, mergedBuckets, curWindowBuckets
+    //        List<Integer> buckets = new ArrayList<>();
+    //        for (int bucketIndex = 0; bucketIndex < bucketsCnt; bucketIndex++) {
+    //
+    //          SeriesAggregateReader curSeriesReader = seriesReaderList.get(bucketIndex);
+    //          int readFlag = readFlags[bucketIndex];
+    //          boolean finish = false;
+    //          while (!finish) {
+    //            switch (readFlag) {
+    //              case 0:
+    //                if (curSeriesReader.hasNextFile()) {
+    //                  readFlag = 1;
+    //                } else {
+    //                  readFlag = -1;
+    //                }
+    //                break;
+    //              case 1:
+    //                if (curSeriesReader.hasNextChunk()) {
+    //                  readFlag = 2;
+    //                } else {
+    //                  readFlag = 0;
+    //                }
+    //                break;
+    //              case 2:
+    //                if (curSeriesReader.hasNextPage()) {
+    //                  long curStartTime = curSeriesReader.currentPageStatistics().getStartTime();
+    //                  if (curStartTime >= segIndex * delta && curStartTime < (segIndex + 1) *
+    // delta) {
+    //                    Statistics pageStatistic = curSeriesReader.currentPageStatistics();
+    //                    buckets.add(pageStatistic.getCount());
+    //                    mergedBuckets[bucketIndex] += pageStatistic.getCount();
+    //                    curSeriesReader.skipCurrentPage();
+    //                  } else {
+    //                    buckets.add(0);
+    //                  }
+    //                  finish = true;
+    //                } else {
+    //                  readFlag = 1;
+    //                }
+    //                break;
+    //              case -1:
+    //                buckets.add(0);
+    //                finish = true;
+    //                break;
+    //            }
+    //          }
+    //          readFlags[bucketIndex] = readFlag;
+    //        }
+    //        if (segIndex >= w) {
+    //          for (int bucketIndex = 0; bucketIndex < bucketsCnt; bucketIndex++) {
+    //            mergedBuckets[bucketIndex] =
+    //                mergedBuckets[bucketIndex] - curWindowBuckets.peek().get(bucketIndex);
+    //          }
+    //          curWindowBuckets.poll();
+    //        }
+    //        curWindowBuckets.add(buckets);
+    //
+    //        if (segIndex < w - 1 || (segIndex - w + 1) % s != 0) {
+    //          segIndex++;
+    //          continue;
+    //        }
+    //
+    //        segIndex++;
+    //
+    //        // update bounds and outlier detection
+    //        for (int bucketIndex = 0; bucketIndex < bucketsCnt; bucketIndex++) {
+    //          upper = lower = tightUpper = 0;
+    //          for (int tmpIndex = Math.max(0, bucketIndex - ell + 1);
+    //              tmpIndex <= Math.min(bucketsCnt - 1, bucketIndex + ell - 1);
+    //              tmpIndex++) {
+    //            lower += mergedBuckets[tmpIndex];
+    //          }
+    //          for (int tmpIndex = Math.max(0, bucketIndex - lambda);
+    //              tmpIndex <= Math.min(bucketsCnt - 1, bucketIndex + lambda);
+    //              tmpIndex++) {
+    //            upper += mergedBuckets[tmpIndex];
+    //          }
+    //          if (bucketIndex - lambda < 0 && bucketIndex + lambda < bucketsCnt)
+    //            tightUpper = upper - mergedBuckets[bucketIndex + lambda];
+    //          else if (bucketIndex + lambda > bucketsCnt - 1 && bucketIndex - lambda >= 0)
+    //            tightUpper = upper - mergedBuckets[bucketIndex - lambda];
+    //          else if (bucketIndex + lambda < bucketsCnt && bucketIndex - lambda >= 0) {
+    //            tightUpper =
+    //                Math.max(
+    //                    upper - mergedBuckets[bucketIndex + lambda],
+    //                    upper - mergedBuckets[bucketIndex - lambda]);
+    //          } else tightUpper = upper;
+    //          //  TODO: outlier detection
+    //          if (mergedBuckets[bucketIndex] == 0) continue;
+    //          if (lower >= k) {
+    //            //          System.out.println("All points in this buckets are inliers");
+    //            continue;
+    //          } else if ((lambda - r / gamma < 0.5 && upper < k)
+    //              || (lambda - r / gamma >= 0.5 && tightUpper < k)) {
+    //            // TODO: load outliers from PageData
+    //            System.out.println("load outliers from PageData");
+    //            System.out.println(upper);
+    //            String newPath = seriesPath.getFullPath() + "b.b" + bucketIndex;
+    //            try {
+    //              MeasurementPath measurementPath = new MeasurementPath(newPath);
+    //              QueryResourceManager queryResourceManager = QueryResourceManager.getInstance();
+    //              QueryContext newContext = new
+    // QueryContext(queryResourceManager.assignQueryId(true));
+    //              QueryDataSource newQueryDataSource =
+    //                  queryResourceManager.getQueryDataSource(measurementPath, newContext,
+    // timeFilter);
+    //              seriesReader =
+    //                  new SeriesAggregateReader(
+    //                      measurementPath,
+    //                      Collections.singleton("b" + bucketIndex),
+    //                      tsDataType,
+    //                      newContext,
+    //                      newQueryDataSource,
+    //                      timeFilter,
+    //                      null,
+    //                      null,
+    //                      true);
+    //
+    //            } catch (IllegalPathException e) {
+    //              System.out.println(newPath + " failed.");
+    //            }
+    //
+    //            boolean finished = false;
+    //            while (seriesReader.hasNextFile()) {
+    //              while (seriesReader.hasNextChunk()) {
+    //                while (seriesReader.hasNextPage()) {
+    //                  Statistics curStatistics = seriesReader.currentPageStatistics();
+    //                  if (curStatistics.getStartTime() < (long) (segIndex - w) * delta) {
+    //                    seriesReader.nextPage();
+    //                    continue;
+    //                  }
+    //                  IBatchDataIterator batchIterator =
+    // seriesReader.nextPage().getBatchDataIterator();
+    //                  while (batchIterator.hasNext()) {
+    //                    long t = batchIterator.currentTime();
+    //                    if (t >= ((long) segIndex * delta)) {
+    //                      finished = true;
+    //                      break;
+    //                    } else {
+    //                      outlierList.add(
+    //                          new Pair<>(
+    //                              batchIterator.currentTime(), (double)
+    // batchIterator.currentValue()));
+    //                      //                  System.out.println(batchIterator.currentTime());
+    //                      batchIterator.next();
+    //                    }
+    //                  }
+    //                  if (finished) break;
+    //                }
+    //                if (finished) break;
+    //              }
+    //              if (finished) break;
+    //            }
+    //          } else { // TODO: load buckets [bucketIndex] [bucketIndex-lambda]
+    // [bucketIndex+lambda]
+    //            // from
+    //            // [segIndex] to [segIndex+w]
+    //            // load bucket B[bucketIndex]
+    //            System.out.println("load and check");
+    //            List<Pair<Long, Double>> suspiciousPoints = new ArrayList<>();
+    //            List<Pair<Long, Double>> checkPoints = new ArrayList<>();
+    //            // load bucket B[bucketIndex] into suspiciousPoints
+    //            String newPath = seriesPath.getFullPath() + "b.b" + bucketIndex;
+    //            try {
+    //              MeasurementPath measurementPath = new MeasurementPath(newPath);
+    //              QueryResourceManager queryResourceManager = QueryResourceManager.getInstance();
+    //              QueryContext newContext = new
+    // QueryContext(queryResourceManager.assignQueryId(true));
+    //              QueryDataSource newQueryDataSource =
+    //                  queryResourceManager.getQueryDataSource(measurementPath, newContext,
+    // timeFilter);
+    //              seriesReader =
+    //                  new SeriesAggregateReader(
+    //                      measurementPath,
+    //                      Collections.singleton("b" + bucketIndex),
+    //                      tsDataType,
+    //                      newContext,
+    //                      newQueryDataSource,
+    //                      timeFilter,
+    //                      null,
+    //                      null,
+    //                      true);
+    //            } catch (IllegalPathException e) {
+    //              System.out.println(newPath + " failed.");
+    //            }
+    //
+    //            boolean finished = false;
+    //            while (seriesReader.hasNextFile()) {
+    //              while (seriesReader.hasNextChunk()) {
+    //                while (seriesReader.hasNextPage()) {
+    //                  Statistics curStatistics = seriesReader.currentPageStatistics();
+    //                  if (curStatistics.getStartTime() < (segIndex - w) * delta) {
+    //                    seriesReader.nextPage();
+    //                    continue;
+    //                  } else {
+    //                    IBatchDataIterator batchIterator =
+    //                        seriesReader.nextPage().getBatchDataIterator();
+    //                    while (batchIterator.hasNext()) {
+    //                      long t = batchIterator.currentTime();
+    //                      if (t >= (long) (segIndex * delta)) {
+    //                        finished = true;
+    //                        break;
+    //                      } else {
+    //                        suspiciousPoints.add(
+    //                            new Pair<>(
+    //                                batchIterator.currentTime(),
+    //                                (double) batchIterator.currentValue()));
+    //                        batchIterator.next();
+    //                      }
+    //                    }
+    //                    if (finished) break;
+    //                  }
+    //                }
+    //                if (finished) break;
+    //              }
+    //              if (finished) break;
+    //            }
+    //            // load buckets B[bucketIndex-lambda], B[bucketIndex+lambda] into checkPoints
+    //            for (int index : new int[] {bucketIndex - lambda, bucketIndex + lambda}) {
+    //              newPath = seriesPath.getFullPath() + "b.b" + index;
+    //              try {
+    //
+    //                MeasurementPath measurementPath = new MeasurementPath(newPath);
+    //                QueryResourceManager queryResourceManager =
+    // QueryResourceManager.getInstance();
+    //                QueryContext newContext =
+    //                    new QueryContext(queryResourceManager.assignQueryId(true));
+    //                QueryDataSource newQueryDataSource =
+    //                    queryResourceManager.getQueryDataSource(
+    //                        measurementPath, newContext, timeFilter);
+    //                seriesReader =
+    //                    new SeriesAggregateReader(
+    //                        measurementPath,
+    //                        Collections.singleton("b" + index),
+    //                        tsDataType,
+    //                        newContext,
+    //                        newQueryDataSource,
+    //                        timeFilter,
+    //                        null,
+    //                        null,
+    //                        true);
+    //              } catch (IllegalPathException e) {
+    //                System.out.println(newPath + " failed.");
+    //              }
+    //
+    //              while (seriesReader.hasNextFile()) {
+    //                while (seriesReader.hasNextChunk()) {
+    //                  while (seriesReader.hasNextPage()) {
+    //                    Statistics curStatistics = seriesReader.currentPageStatistics();
+    //                    if (curStatistics.getStartTime() < (segIndex - w) * delta) {
+    //                      seriesReader.nextPage();
+    //                      continue;
+    //                    }
+    //                    IBatchDataIterator batchIterator =
+    //                        seriesReader.nextPage().getBatchDataIterator();
+    //                    while (batchIterator.hasNext()) {
+    //                      checkPoints.add(
+    //                          new Pair<>(
+    //                              batchIterator.currentTime(), (double)
+    // batchIterator.currentValue()));
+    //                      if (batchIterator.hasNext()) {
+    //                        batchIterator.next();
+    //                        if (batchIterator.currentTime() >= segIndex * delta) {
+    //                          finished = true;
+    //                          break;
+    //                        }
+    //                      } else {
+    //                        break;
+    //                      }
+    //                    }
+    //                    if (finished) break;
+    //                  }
+    //                  if (finished) break;
+    //                }
+    //                if (finished) break;
+    //              }
+    //            }
+    //            // detection
+    //            int trueNeighbor = lower;
+    //            for (Pair<Long, Double> p1 : suspiciousPoints) {
+    //              for (Pair<Long, Double> p2 : checkPoints) {
+    //                if (Math.abs(p1.getSecond() - p2.getSecond()) <= r) trueNeighbor += 1;
+    //              }
+    //              if (trueNeighbor < k) {
+    //                outlierList.add(p1);
+    //              }
+    //            }
+    //          }
+    //        }
+    //      }
+    //      System.out.println("Outliers Num:" + outlierList.size());
+    //      //    for (Pair<Long, Double> p : outlierList) {
+    //      ////      System.out.println(p.getSecond());
+    //      //    }
+    //    }
+
+    Map<Long, Double> outliers = new HashMap<>();
+
+    int lambda = (int) Math.ceil(r / gamma), ell = (int) Math.floor(r / gamma);
+    int upper, lower, tightUpper;
+
+    int segIndex = 0;
+    int[] readFlags = new int[bucketsCnt * fileNum];
+    int[][] merged = new int[fileNum][bucketsCnt];
+    Queue<int[][]> expired = new LinkedList<>();
+
+    while (segIndex < segsCnt) {
+      // update buckets, mergedBuckets, curWindowBuckets
+      int[][] current = new int[fileNum][bucketsCnt];
+      for (int fileIndex = 0; fileIndex < fileNum; fileIndex++) {
+        for (int bucketIndex = 0; bucketIndex < bucketsCnt; bucketIndex++) {
+          SeriesAggregateReader curSeriesReader =
+              seriesReaderList.get(bucketIndex + fileIndex * bucketsCnt);
+          int readFlag = readFlags[bucketIndex + fileIndex * bucketsCnt];
+          boolean finish = false;
+          while (!finish) {
+            switch (readFlag) {
+              case 0:
+                if (curSeriesReader.hasNextFile()) {
+                  readFlag = 1;
+                } else {
+                  readFlag = -1;
+                }
+                break;
+              case 1:
+                if (curSeriesReader.hasNextChunk()) {
+                  readFlag = 2;
+                } else {
+                  readFlag = 0;
+                }
+                break;
+              case 2:
+                if (curSeriesReader.hasNextPage()) {
+                  long curStartTime = curSeriesReader.currentPageStatistics().getStartTime();
+                  if (curStartTime >= segIndex * delta && curStartTime < (segIndex + 1) * delta) {
+                    Statistics pageStatistic = curSeriesReader.currentPageStatistics();
+                    // update incoming
+                    current[fileIndex][bucketIndex] = pageStatistic.getCount();
+                    if (segIndex < w) {
+                      merged[fileIndex][bucketIndex] += pageStatistic.getCount();
+                    } else {
+                      merged[fileIndex][bucketIndex] =
+                          merged[fileIndex][bucketIndex]
+                              - expired.peek()[fileIndex][bucketIndex]
+                              + pageStatistic.getCount();
+                    }
+                    curSeriesReader.skipCurrentPage();
+                  }
+                  finish = true;
+                } else {
+                  readFlag = 1;
+                }
+                break;
+              case -1:
+                finish = true;
+                break;
+            }
+          }
+          readFlags[bucketIndex + fileIndex * bucketsCnt] = readFlag;
+        }
+      }
+      if (segIndex >= w) {
+        expired.poll();
+      }
+      expired.add(current);
+      if (segIndex == 0 || (segIndex - w + 1) % s != 0) {
+        segIndex++;
+        continue;
+      }
+      segIndex++;
+
+      // update bounds and outlier detection
+      int[] bucketsCheck = new int[bucketsCnt];
+      int[] bucketsHat = new int[bucketsCnt];
+      if (fileNum > 1) {
+        for (int bucketIndex = 0; bucketIndex < bucketsCnt; bucketIndex++) {
+          for (int fileIndex = 0; fileIndex < fileNum; fileIndex++) {
+            bucketsHat[bucketIndex] += merged[fileIndex][bucketIndex];
+            if (fileIndex == 0 || merged[fileIndex][bucketIndex] > 0) {
+              bucketsCheck[bucketIndex] = merged[fileIndex][bucketIndex];
+            }
+          }
+        }
+      }
+
+      for (int bucketIndex = 0; bucketIndex < bucketsCnt; bucketIndex++) {
+        upper = lower = tightUpper = 0;
+        if (fileNum == 1) {
+          for (int tmpIndex = Math.max(0, bucketIndex - ell + 1);
+              tmpIndex <= Math.min(bucketsCnt - 1, bucketIndex + ell - 1);
+              tmpIndex++) lower += merged[0][tmpIndex];
+          for (int tmpIndex = Math.max(0, bucketIndex - lambda);
+              tmpIndex <= Math.min(bucketsCnt - 1, bucketIndex + lambda);
+              tmpIndex++) upper += merged[0][tmpIndex];
+
+          if (bucketIndex - lambda < 0 && bucketIndex + lambda < bucketsCnt)
+            tightUpper = upper - merged[0][bucketIndex + lambda];
+          else if (bucketIndex + lambda > bucketsCnt - 1 && bucketIndex - lambda >= 0)
+            tightUpper = upper - merged[0][bucketIndex - lambda];
+          else if (bucketIndex + lambda < bucketsCnt && bucketIndex - lambda >= 0) {
+            tightUpper =
+                Math.max(
+                    upper - merged[0][bucketIndex + lambda],
+                    upper - merged[0][bucketIndex - lambda]);
+          } else tightUpper = upper;
+        }
+
+        if (fileNum > 1) {
+          for (int tmpIndex = Math.max(0, bucketIndex - ell + 1);
+              tmpIndex <= Math.min(bucketsCnt - 1, bucketIndex + ell - 1);
+              tmpIndex++) {
+            lower += bucketsCheck[tmpIndex];
+          }
+          for (int tmpIndex = Math.max(0, bucketIndex - lambda);
+              tmpIndex <= Math.min(bucketsCnt - 1, bucketIndex + lambda);
+              tmpIndex++) {
+            upper += bucketsHat[tmpIndex];
+          }
+          if (bucketIndex - lambda < 0 && bucketIndex + lambda < bucketsCnt)
+            tightUpper = upper - bucketsHat[bucketIndex + lambda];
+          else if (bucketIndex + lambda > bucketsCnt - 1 && bucketIndex - lambda >= 0)
+            tightUpper = upper - bucketsHat[bucketIndex - lambda];
+          else if (bucketIndex + lambda < bucketsCnt && bucketIndex - lambda >= 0) {
+            tightUpper =
+                Math.max(
+                    upper - bucketsHat[bucketIndex + lambda],
+                    upper - bucketsHat[bucketIndex - lambda]);
+          } else tightUpper = upper;
+        }
+
+        //  TODO: outlier detection
+        if ((fileNum == 1 && merged[0][bucketIndex] == 0)
+            || (fileNum > 1 && bucketsHat[bucketIndex] == 0)) continue;
+        if (lower >= k) {
+          continue;
+        } else if (ifWithUpperBound
+            && ((lambda - r / gamma < 0.5 && upper < k)
+                || (lambda - r / gamma >= 0.5 && tightUpper < k))) {
+          // TODO: load outliers from PageData
+          System.out.println("load outliers from PageData");
+          for (int f = fileNum - 1; f >= 0; f--) {
+            String newPath = seriesPath.getFullPath() + "b.b" + bucketIndex;
+            if (f > 0) {
+              String oldDatasetName = newPath.split("\\.")[1];
+              String newDatasetName = oldDatasetName + Integer.toString(f);
+              newPath = newPath.replace(oldDatasetName, newDatasetName);
+            }
+            try {
+              MeasurementPath measurementPath = new MeasurementPath(newPath);
+              QueryResourceManager queryResourceManager = QueryResourceManager.getInstance();
+              QueryContext newContext = new QueryContext(queryResourceManager.assignQueryId(true));
+              QueryDataSource newQueryDataSource =
+                  queryResourceManager.getQueryDataSource(measurementPath, newContext, timeFilter);
+              seriesReader =
+                  new SeriesAggregateReader(
+                      measurementPath,
+                      measurements,
+                      tsDataType,
+                      newContext,
+                      newQueryDataSource,
+                      timeFilter,
+                      null,
+                      null,
+                      true);
+            } catch (IllegalPathException e) {
+              System.out.println(newPath + " failed.");
+            }
+
+            boolean finished = false;
+            while (seriesReader.hasNextFile()) {
+              while (seriesReader.hasNextChunk()) {
+                while (seriesReader.hasNextPage()) {
+                  Statistics curStatistics = seriesReader.currentPageStatistics();
+                  if (curStatistics.getStartTime() < (segIndex - w) * delta) {
+                    seriesReader.nextPage();
+                    continue;
+                  }
+                  IBatchDataIterator batchIterator = seriesReader.nextPage().getBatchDataIterator();
+                  while (batchIterator.hasNext()) {
+                    if (!outliers.containsKey(batchIterator.currentTime())) {
+                      outliers.put(
+                          batchIterator.currentTime(), (double) batchIterator.currentValue());
+                    }
+                    batchIterator.next();
+                    if (batchIterator.currentTime() >= (long) segIndex * delta) {
+                      finished = true;
+                      break;
+                    }
+                  }
+                  if (finished) break;
+                }
+                if (finished) break;
+              }
+              if (finished) break;
+            }
+          }
+        } else {
+          // TODO: load buckets [bucketIndex] [bucketIndex-lambda] [bucketIndex+lambda]
+          System.out.println("load and check");
+
+          Map<Long, Double> suspiciousPoints = new HashMap<>();
+          Map<Long, Double> checkPoints = new HashMap<>();
+          // load bucket B[bucketIndex] into suspiciousPoints
+          for (int f = fileNum - 1; f >= 0; f--) {
+            String newPath = seriesPath.getFullPath() + "b.b" + bucketIndex;
+            if (f > 0) {
+              String oldDatasetName = newPath.split("\\.")[1];
+              String newDatasetName = oldDatasetName + Integer.toString(f);
+              newPath = newPath.replace(oldDatasetName, newDatasetName);
+            }
+            try {
+              MeasurementPath measurementPath = new MeasurementPath(newPath);
+              QueryResourceManager queryResourceManager = QueryResourceManager.getInstance();
+              QueryContext newContext = new QueryContext(queryResourceManager.assignQueryId(true));
+              QueryDataSource newQueryDataSource =
+                  queryResourceManager.getQueryDataSource(measurementPath, newContext, timeFilter);
+              seriesReader =
+                  new SeriesAggregateReader(
+                      measurementPath,
+                      measurements,
+                      tsDataType,
+                      newContext,
+                      newQueryDataSource,
+                      timeFilter,
+                      null,
+                      null,
+                      true);
+            } catch (IllegalPathException e) {
+              System.out.println(newPath + " failed.");
+            }
+
+            boolean finished = false;
+            while (seriesReader.hasNextFile()) {
+              while (seriesReader.hasNextChunk()) {
+                while (seriesReader.hasNextPage()) {
+                  Statistics curStatistics = seriesReader.currentPageStatistics();
+                  if (curStatistics.getStartTime() < (long) (segIndex - w) * delta) {
+                    seriesReader.nextPage();
+                    continue;
+                  } else {
+                    IBatchDataIterator batchIterator =
+                        seriesReader.nextPage().getBatchDataIterator();
+                    while (batchIterator.hasNext()) {
+                      if (!suspiciousPoints.containsKey(batchIterator.currentTime())) {
+                        suspiciousPoints.put(
+                            batchIterator.currentTime(), (double) batchIterator.currentValue());
+                      }
+                      batchIterator.next();
+                      if (batchIterator.currentTime() >= (long) segIndex * delta) {
+                        finished = true;
+                        break;
+                      }
+                    }
+                    if (finished) break;
+                  }
+                }
+                if (finished) break;
+              }
+              if (finished) break;
+            }
+          }
+          // load buckets B[bucketIndex-lambda], B[bucketIndex+lambda] into checkPoints
+          for (int f = fileNum - 1; f >= 0; f--) {
+            for (int index :
+                new int[] {
+                  bucketIndex - lambda, bucketIndex + lambda, bucketIndex - ell, bucketIndex + ell
+                }) {
+              if (index < 0 || index > bucketsCnt - 1) continue;
+              String newPath = seriesPath.getFullPath() + "b.b" + index;
+              if (f > 0) {
+                String oldDatasetName = newPath.split("\\.")[1];
+                String newDatasetName = oldDatasetName + Integer.toString(f);
+                newPath = newPath.replace(oldDatasetName, newDatasetName);
+              }
+              try {
+                MeasurementPath measurementPath = new MeasurementPath(newPath);
+                QueryResourceManager queryResourceManager = QueryResourceManager.getInstance();
+                QueryContext newContext =
+                    new QueryContext(queryResourceManager.assignQueryId(true));
+                QueryDataSource newQueryDataSource =
+                    queryResourceManager.getQueryDataSource(
+                        measurementPath, newContext, timeFilter);
+                seriesReader =
+                    new SeriesAggregateReader(
+                        measurementPath,
+                        measurements,
+                        tsDataType,
+                        newContext,
+                        newQueryDataSource,
+                        timeFilter,
+                        null,
+                        null,
+                        true);
+              } catch (IllegalPathException e) {
+                System.out.println(newPath + " failed.");
+              }
+              boolean finished = false;
+              while (seriesReader.hasNextFile()) {
+                while (seriesReader.hasNextChunk()) {
+                  while (seriesReader.hasNextPage()) {
+                    Statistics curStatistics = seriesReader.currentPageStatistics();
+                    if (curStatistics.getStartTime() < (segIndex - w) * delta) {
+                      seriesReader.nextPage();
+                      continue;
+                    }
+                    IBatchDataIterator batchIterator =
+                        seriesReader.nextPage().getBatchDataIterator();
+                    while (batchIterator.hasNext()) {
+                      if (!checkPoints.containsKey(batchIterator.currentTime())) {
+                        checkPoints.put(
+                            batchIterator.currentTime(), (double) batchIterator.currentValue());
+                      }
+                      batchIterator.next();
+                      if (batchIterator.currentTime() >= (long) segIndex * delta) {
+                        finished = true;
+                        break;
+                      }
+                    }
+                    if (finished) break;
+                  }
+                  if (finished) break;
+                }
+                if (finished) break;
+              }
+            }
+          }
+          // detection
+          int trueNeighbor = lower;
+          for (Long t1 : suspiciousPoints.keySet()) {
+            for (Long t2 : checkPoints.keySet()) {
+              if (Math.abs(suspiciousPoints.get(t1) - checkPoints.get(t2)) <= r) trueNeighbor += 1;
+            }
+            if (trueNeighbor < k) outliers.put(t1, suspiciousPoints.get(t1));
+          }
+        }
+      }
+    }
+    for (Long o : outliers.keySet()){
+      System.out.println(o);
+    }
+    System.out.println("Outliers Num:" + outliers.keySet().size());
   }
 
   protected void aggregateOneAlignedSeries(

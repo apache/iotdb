@@ -125,7 +125,9 @@ public class AggregationQueryOperator extends QueryOperator {
 
   protected AggregationPlan initAggregationPlan(QueryPlan queryPlan) throws QueryProcessException {
     AggregationPlan aggregationPlan = (AggregationPlan) queryPlan;
-    aggregationPlan.setAggregations(selectComponent.getAggregationFunctions());
+    aggregationPlan.setAggregations(selectComponent.getAggregationFunctions()); // function name
+    aggregationPlan.setParameters(selectComponent.getAggregationAttributes());
+    // TODO: aggregationPlan.setParams(selectComponent.getParams)
     if (isGroupByLevel()) {
       initGroupByLevel(aggregationPlan);
     }

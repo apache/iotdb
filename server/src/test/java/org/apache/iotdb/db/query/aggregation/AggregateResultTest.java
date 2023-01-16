@@ -36,6 +36,8 @@ import java.nio.ByteBuffer;
 /** Unit tests of AggregateResult without desc aggregate result. */
 public class AggregateResultTest {
 
+  private static final double maxError = 0.0001d;
+
   @Test
   public void avgAggrResultTest() throws QueryProcessException, IOException {
     AggregateResult avgAggrResult1 =
@@ -291,4 +293,36 @@ public class AggregateResultTest {
     AggregateResult result = AggregateResult.deserializeFrom(byteBuffer);
     Assert.assertEquals(2d, (double) result.getResult(), 0.01);
   }
+
+  //  @Test
+  //  public void validityAggrResultTest() throws QueryProcessException, IOException {
+  //    AggregateResult validityAggrResult1 =
+  //        AggregateResultFactory.getAggrResultByName(SQLConstant.VALIDITY, TSDataType.DOUBLE,
+  // true);
+  //    AggregateResult validityAggrResult2 =
+  //        AggregateResultFactory.getAggrResultByName(SQLConstant.VALIDITY, TSDataType.DOUBLE,
+  // true);
+  //
+  //    Statistics statistics1 = Statistics.getStatsByType(TSDataType.DOUBLE);
+  //    Statistics statistics2 = Statistics.getStatsByType(TSDataType.DOUBLE);
+  //    statistics1.update(1L, 1d);
+  //    statistics1.update(2L, 1d);
+  //    statistics2.update(3L, 1d);
+  //    statistics2.update(4L, 3d);
+  //
+  //    validityAggrResult1.updateResultFromStatistics(statistics1);
+  //    validityAggrResult2.updateResultFromStatistics(statistics2);
+  //    //    System.out.println(validityAggrResult1.getResult());
+  //    //    System.out.println(validityAggrResult2.getResult());
+  //    validityAggrResult1.merge(validityAggrResult2);
+  //    //    System.out.println(validityAggrResult1.getResult());
+  //
+  //    //    Assert.assertEquals(0.25, (double) validityAggrResult1.getResult(), maxError);
+  //
+  //    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+  //    validityAggrResult1.serializeTo(outputStream);
+  //    ByteBuffer byteBuffer = ByteBuffer.wrap(outputStream.toByteArray());
+  //    AggregateResult result = AggregateResult.deserializeFrom(byteBuffer);
+  //    Assert.assertEquals(0.25, (double) result.getResult(), maxError);
+  //  }
 }

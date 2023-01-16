@@ -28,6 +28,7 @@ import org.apache.iotdb.db.query.expression.unary.TimeSeriesOperand;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 /** this class maintains information from select clause. */
 public final class SelectComponent {
@@ -128,8 +129,21 @@ public final class SelectComponent {
             expression instanceof FunctionExpression
                 ? ((FunctionExpression) resultColumn.getExpression()).getFunctionName()
                 : null);
+        // TODO: resultColumn.getExpression().getFunctionAttributes()(
       }
     }
     return aggregationFunctionsCache;
+  }
+
+  public List<Map<String, String>> getAggregationAttributes() {
+    List<Map<String, String>> aggregationAttributesCache = new ArrayList<>();
+    for (ResultColumn resultColumn : resultColumns) {
+      Expression expression = resultColumn.getExpression();
+      aggregationAttributesCache.add(
+          expression instanceof FunctionExpression
+              ? ((FunctionExpression) resultColumn.getExpression()).getFunctionAttributes()
+              : null);
+    }
+    return aggregationAttributesCache;
   }
 }
