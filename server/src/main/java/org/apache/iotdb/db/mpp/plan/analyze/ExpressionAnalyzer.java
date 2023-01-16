@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.udf.builtin.BuiltinScalarFunction;
 import org.apache.iotdb.db.constant.SqlConstant;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
@@ -1262,6 +1263,37 @@ public class ExpressionAnalyzer {
           String.format("please ensure input[%s] is correct", oldPathString));
     } else if (predicate instanceof LeafOperand) {
       return predicate;
+    } else {
+      throw new IllegalArgumentException(
+          "unsupported expression type: " + predicate.getExpressionType());
+    }
+  }
+
+  public static boolean isDeviceViewNeedSpecialProcess(Expression predicate) {
+    if (predicate instanceof TernaryExpression) {
+      TernaryExpression ternaryExpression = (TernaryExpression) predicate;
+      return isDeviceViewNeedSpecialProcess(ternaryExpression.getFirstExpression())
+          || isDeviceViewNeedSpecialProcess(ternaryExpression.getSecondExpression())
+          || isDeviceViewNeedSpecialProcess(ternaryExpression.getThirdExpression());
+    } else if (predicate instanceof BinaryExpression) {
+      BinaryExpression binaryExpression = (BinaryExpression) predicate;
+      return isDeviceViewNeedSpecialProcess(binaryExpression.getLeftExpression())
+          || isDeviceViewNeedSpecialProcess(binaryExpression.getRightExpression());
+    } else if (predicate instanceof UnaryExpression) {
+      return isDeviceViewNeedSpecialProcess(((UnaryExpression) predicate).getExpression());
+    } else if (predicate instanceof FunctionExpression) {
+      if (BuiltinScalarFunction.DEVICE_VIEW_SPECIAL_PROCESS_FUNCTIONS.contains(
+          ((FunctionExpression) predicate).getFunctionName().toLowerCase())) {
+        return true;
+      }
+      for (Expression expression : predicate.getExpressions()) {
+        if (isDeviceViewNeedSpecialProcess(expression)) {
+          return true;
+        }
+      }
+      return false;
+    } else if (predicate instanceof LeafOperand) {
+      return false;
     } else {
       throw new IllegalArgumentException(
           "unsupported expression type: " + predicate.getExpressionType());

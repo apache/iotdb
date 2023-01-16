@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.udf.builtin;
 
+import com.google.common.collect.ImmutableSet;
+
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
@@ -43,6 +45,8 @@ public enum BuiltinScalarFunction {
           Arrays.stream(BuiltinScalarFunction.values())
               .map(BuiltinScalarFunction::getFunctionName)
               .collect(Collectors.toList()));
+
+  public static final Set<String> DEVICE_VIEW_SPECIAL_PROCESS_FUNCTIONS = ImmutableSet.of("diff");
 
   public static Set<String> getNativeFunctionNames() {
     return NATIVE_FUNCTION_NAMES;

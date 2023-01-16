@@ -137,6 +137,8 @@ public class Analysis {
 
   private Set<Expression> deviceViewOutputExpressions;
 
+  private boolean deviceViewSpecialProcess;
+
   /////////////////////////////////////////////////////////////////////////////////////////////////
   // Query Common Analysis (above DeviceView)
   /////////////////////////////////////////////////////////////////////////////////////////////////
@@ -480,6 +482,14 @@ public class Analysis {
 
   public void setDeviceViewOutputExpressions(Set<Expression> deviceViewOutputExpressions) {
     this.deviceViewOutputExpressions = deviceViewOutputExpressions;
+  }
+
+  public boolean isDeviceViewSpecialProcess() {
+    return deviceViewSpecialProcess;
+  }
+
+  public void setDeviceViewSpecialProcess(boolean deviceViewSpecialProcess) {
+    this.deviceViewSpecialProcess = deviceViewSpecialProcess;
   }
 
   public DeviceViewIntoPathDescriptor getDeviceViewIntoPathDescriptor() {
