@@ -158,6 +158,35 @@ public class TypeInferenceUtils {
     }
   }
 
+  public static TSDataType getScalarFunctionDataType(String funcName, TSDataType dataType) {
+    if (funcName == null) {
+      throw new IllegalArgumentException("ScalarFunction Name must not be null");
+    }
+    verifyIsScalarFunctionDataTypeMatched(funcName, dataType);
+
+    switch (funcName.toLowerCase()) {
+      case SqlConstant.DIFF:
+        return TSDataType.DOUBLE;
+      default:
+        throw new IllegalArgumentException("Invalid Scalar function: " + funcName);
+    }
+  }
+
+  private static void verifyIsScalarFunctionDataTypeMatched(String funcName, TSDataType dataType) {
+    switch (funcName.toLowerCase()) {
+      case SqlConstant.DIFF:
+        if (dataType.isNumeric()) {
+          return;
+        }
+        throw new SemanticException(
+            String.format(
+                "Scalar function [%s] only support numeric data types [INT32, INT64, FLOAT, DOUBLE]",
+                funcName));
+      default:
+        throw new IllegalArgumentException("Invalid Scalar function: " + funcName);
+    }
+  }
+
   public static boolean canAutoCast(TSDataType fromType, TSDataType toType) {
     if (fromType.equals(toType)) {
       return true;
