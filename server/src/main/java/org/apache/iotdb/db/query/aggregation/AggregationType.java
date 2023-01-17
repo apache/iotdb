@@ -59,7 +59,9 @@ public enum AggregationType {
   EXACT_MEDIAN_KLL_STAT_OVERLAP_SINGLE,
   TDIGEST_STAT_SINGLE,
   SAMPLING_STAT_SINGLE,
-  STRICT_KLL_STAT_SINGLE;
+  STRICT_KLL_STAT_SINGLE,
+  DDSKETCH_SINGLE,
+  CHUNK_STAT_AVAIL;
 
   /**
    * give an integer to return a data type.
@@ -137,6 +139,10 @@ public enum AggregationType {
         return SAMPLING_STAT_SINGLE;
       case 33:
         return STRICT_KLL_STAT_SINGLE;
+      case 34:
+        return DDSKETCH_SINGLE;
+      case 35:
+        return CHUNK_STAT_AVAIL;
       default:
         throw new IllegalArgumentException("Invalid Aggregation Type: " + i);
     }
@@ -246,6 +252,12 @@ public enum AggregationType {
         break;
       case STRICT_KLL_STAT_SINGLE:
         i = 33;
+        break;
+      case DDSKETCH_SINGLE:
+        i = 34;
+        break;
+      case CHUNK_STAT_AVAIL:
+        i = 35;
         break;
       default:
         throw new IllegalArgumentException("Invalid Aggregation Type: " + this.name());

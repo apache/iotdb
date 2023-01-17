@@ -28,7 +28,6 @@ import org.apache.iotdb.db.service.metrics.MetricsService;
 import org.apache.iotdb.db.service.metrics.Tag;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -45,12 +44,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.lang.ref.WeakReference;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
-import java.util.WeakHashMap;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
@@ -97,13 +91,14 @@ public class TimeSeriesMetadataCache {
                                 + RamUsageEstimator.shallowSizeOf(value)
                                 + RamUsageEstimator.sizeOf(value.getMeasurementId())
                                 + RamUsageEstimator.shallowSizeOf(value.getStatistics())
-                                + (value.getChunkMetadataList().get(0) == null
-                                        ? 0
-                                        : ((ChunkMetadata) value.getChunkMetadataList().get(0))
-                                                .calculateRamSize()
-                                            + RamUsageEstimator.NUM_BYTES_OBJECT_REF)
-                                    * value.getChunkMetadataList().size()
-                                + RamUsageEstimator.shallowSizeOf(value.getChunkMetadataList())))
+                                + value.getDataSizeOfChunkMetaDataList()
+                            /*(value.getChunkMetadataList().get(0) == null
+                                    ? 0
+                                    : ((ChunkMetadata) value.getChunkMetadataList().get(0))
+                                            .calculateRamSize()
+                                        + RamUsageEstimator.NUM_BYTES_OBJECT_REF)
+                                * value.getChunkMetadataList().size()
+                            + RamUsageEstimator.shallowSizeOf(value.getChunkMetadataList())*/ ))
             .recordStats()
             .build();
 

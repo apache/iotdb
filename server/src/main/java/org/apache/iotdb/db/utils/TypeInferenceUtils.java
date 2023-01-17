@@ -145,6 +145,8 @@ public class TypeInferenceUtils {
       case SQLConstant.TDIGEST_STAT_SINGLE:
       case SQLConstant.SAMPLING_STAT_SINGLE:
       case SQLConstant.STRICT_KLL_STAT_SINGLE:
+      case SQLConstant.DDSKETCH_SINGLE:
+      case SQLConstant.CHUNK_STAT_AVAIL:
         return TSDataType.DOUBLE;
       default:
         throw new IllegalArgumentException("Invalid Aggregation function: " + aggrFuncName);

@@ -41,6 +41,12 @@ public class SeriesAggregateReader implements IAggregateReader {
 
   private final SeriesReader seriesReader;
 
+  public SeriesReader getSeriesReader() {
+    return seriesReader;
+  }
+
+  //  public AggregateResult quantileAggrResult;
+
   public SeriesAggregateReader(
       PartialPath seriesPath,
       Set<String> allSensors,
@@ -100,6 +106,19 @@ public class SeriesAggregateReader implements IAggregateReader {
   @Override
   public boolean canUseCurrentFileStatistics() throws IOException {
     Statistics fileStatistics = currentFileStatistics();
+    //    if (fileStatistics.getCount() > 10000) {
+    //      System.out.println(
+    //          "\t\t\t\t[SeriesAggrReader checkFileStat]\toverlap:"
+    //              + seriesReader.isFileOverlapped()
+    //              + "\t"
+    //              + fileStatistics.getStartTime()
+    //              + "..."
+    //              + fileStatistics.getEndTime()
+    //              + "containedByT:"
+    //              + containedByTimeFilter(fileStatistics)
+    //              + "\tmodified:"
+    //              + seriesReader.currentFileModified());
+    //    }
     return !seriesReader.isFileOverlapped()
         && containedByTimeFilter(fileStatistics)
         && !seriesReader.currentFileModified();

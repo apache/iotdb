@@ -74,6 +74,8 @@ public abstract class Statistics<T extends Serializable> {
   public static int BLOOM_FILTER_SIZE = 0;
   public static int PAGE_SIZE_IN_BYTE = 65536;
   public static int SUMMARY_TYPE = 0;
+  //  public static boolean ENABLE_LSM_SKETCH =
+  // TSFileDescriptor.getInstance().getConfig().getCompressionPerLSMLevel();
 
   protected static double getFPP(double bitsPerKey) {
     return Math.exp(-1 * bitsPerKey * Math.pow(Math.log(2.0D), 2));
@@ -181,20 +183,20 @@ public abstract class Statistics<T extends Serializable> {
     return serialize(outputStream, false);
   }
 
-  public int serialize(OutputStream outputStream, boolean isChunkMetaData) throws IOException {
+  public int serialize(OutputStream outputStream, boolean sketch) throws IOException {
     int byteLen = 0;
     byteLen += ReadWriteForEncodingUtils.writeUnsignedVarInt(count, outputStream);
     byteLen += ReadWriteIOUtils.write(startTime, outputStream);
     byteLen += ReadWriteIOUtils.write(endTime, outputStream);
     // value statistics of different data type
-    if (!isChunkMetaData) byteLen += serializeStats(outputStream);
-    else byteLen += serializeChunkMetadataStat(outputStream);
+    if (!sketch) byteLen += serializeStats(outputStream);
+    else byteLen += serializeSketchStat(outputStream);
     return byteLen;
   }
 
   abstract int serializeStats(OutputStream outputStream) throws IOException;
 
-  int serializeChunkMetadataStat(OutputStream outputStream) throws IOException {
+  int serializeSketchStat(OutputStream outputStream) throws IOException {
     return serializeStats(outputStream);
   }
 
