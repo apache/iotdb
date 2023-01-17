@@ -50,7 +50,7 @@ public interface IDTable {
   Logger logger = LoggerFactory.getLogger(IDTable.class);
 
   /** iotdb config */
-  IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  IoTDBConfig config = IoTDBDescriptor.getInstance().getConf();
 
   /**
    * create aligned timeseries

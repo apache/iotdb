@@ -66,7 +66,7 @@ public class TriggerManagementService {
    */
   private final PatternTreeMap<String, PatternTreeMapFactory.StringSerializer> patternTreeMap;
 
-  private static final int DATA_NODE_ID = IoTDBDescriptor.getInstance().getConfig().getDataNodeId();
+  private static final int DATA_NODE_ID = IoTDBDescriptor.getInstance().getConf().getDataNodeId();
 
   private TriggerManagementService() {
     this.lock = new ReentrantLock();

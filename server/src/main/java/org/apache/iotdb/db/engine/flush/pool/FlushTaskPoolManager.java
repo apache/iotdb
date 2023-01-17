@@ -20,7 +20,7 @@ package org.apache.iotdb.db.engine.flush.pool;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.db.rescon.AbstractPoolManager;
 
 import org.slf4j.Logger;
@@ -31,7 +31,7 @@ public class FlushTaskPoolManager extends AbstractPoolManager {
   private static final Logger LOGGER = LoggerFactory.getLogger(FlushTaskPoolManager.class);
 
   private FlushTaskPoolManager() {
-    int threadCnt = IoTDBDescriptor.getInstance().getConfig().getFlushThreadCount();
+    int threadCnt = CommonDescriptor.getInstance().getConf().getFlushThreadCount();
     pool = IoTDBThreadPoolFactory.newFixedThreadPool(threadCnt, ThreadName.FLUSH_SERVICE.getName());
   }
 
@@ -52,7 +52,7 @@ public class FlushTaskPoolManager extends AbstractPoolManager {
   @Override
   public void start() {
     if (pool == null) {
-      int threadCnt = IoTDBDescriptor.getInstance().getConfig().getFlushThreadCount();
+      int threadCnt = CommonDescriptor.getInstance().getConf().getFlushThreadCount();
       pool =
           IoTDBThreadPoolFactory.newFixedThreadPool(threadCnt, ThreadName.FLUSH_SERVICE.getName());
     }

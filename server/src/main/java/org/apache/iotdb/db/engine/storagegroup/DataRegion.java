@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
+import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.consensus.DataRegionId;
@@ -32,6 +33,7 @@ import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.commons.wal.WALMode;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -94,7 +96,6 @@ import org.apache.iotdb.db.wal.node.IWALNode;
 import org.apache.iotdb.db.wal.recover.WALRecoverManager;
 import org.apache.iotdb.db.wal.recover.file.SealedTsFileRecoverPerformer;
 import org.apache.iotdb.db.wal.recover.file.UnsealedTsFileRecoverPerformer;
-import org.apache.iotdb.db.wal.utils.WALMode;
 import org.apache.iotdb.db.wal.utils.listener.WALFlushListener;
 import org.apache.iotdb.db.wal.utils.listener.WALRecoverListener;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -164,7 +165,8 @@ import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFF
  */
 public class DataRegion implements IDataRegionForQuery {
 
-  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConf();
+  private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConf();
   private static final Logger DEBUG_LOGGER = LoggerFactory.getLogger("QUERY_DEBUG");
 
   /**
@@ -178,7 +180,7 @@ public class DataRegion implements IDataRegionForQuery {
   /** indicating the file to be loaded overlap with some files. */
   private static final int POS_OVERLAP = -3;
 
-  private final boolean enableMemControl = config.isEnableMemControl();
+  private final boolean enableMemControl = COMMON_CONFIG.isEnableMemControl();
   /**
    * a read write lock for guaranteeing concurrent safety when accessing all fields in this class
    * (i.e., schema, (un)sequenceFileList, work(un)SequenceTsFileProcessor,
@@ -311,7 +313,10 @@ public class DataRegion implements IDataRegionForQuery {
 
     // recover tsfiles unless consensus protocol is ratis and storage engine is not ready
     if (config.isClusterMode()
-        && config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.RATIS_CONSENSUS)
+        && COMMON_CONFIG
+            .getDataRegionConsensusProtocolClass()
+            .getProtocol()
+            .equals(ConsensusFactory.RATIS_CONSENSUS)
         && !StorageEngine.getInstance().isAllSgReady()) {
       logger.debug(
           "Skip recovering data region {}[{}] when consensus protocol is ratis and storage engine is not ready.",
@@ -413,7 +418,7 @@ public class DataRegion implements IDataRegionForQuery {
       if (lastLogCheckFilesNum + filesNumLogCheckTrigger < recoveredFilesNum) {
         lastLogCheckFilesNum = recoveredFilesNum;
         // log only when log interval exceeds recovery log interval
-        if (lastLogTime + config.getRecoveryLogIntervalInMs() < System.currentTimeMillis()) {
+        if (lastLogTime + COMMON_CONFIG.getRecoveryLogIntervalInMs() < System.currentTimeMillis()) {
           logger.info(
               "The data region {}[{}] has recovered {}%, please wait a moment.",
               databaseName, dataRegionId, recoveredFilesNum * 1.0 / numOfFilesToRecover);
@@ -601,7 +606,7 @@ public class DataRegion implements IDataRegionForQuery {
         timedCompactionScheduleTask,
         this::executeCompaction,
         COMPACTION_TASK_SUBMIT_DELAY,
-        IoTDBDescriptor.getInstance().getConfig().getCompactionScheduleIntervalInMs(),
+        IoTDBDescriptor.getInstance().getConf().getCompactionScheduleIntervalInMs(),
         TimeUnit.MILLISECONDS);
   }
 
@@ -931,8 +936,7 @@ public class DataRegion implements IDataRegionForQuery {
                   timePartitionId, insertRowNode.getDevicePath().getFullPath());
 
       // is unsequence and user set config to discard out of order data
-      if (!isSequence
-          && IoTDBDescriptor.getInstance().getConfig().isEnableDiscardOutOfOrderData()) {
+      if (!isSequence && COMMON_CONFIG.isEnableDiscardOutOfOrderData()) {
         return;
       }
 
@@ -1022,7 +1026,7 @@ public class DataRegion implements IDataRegionForQuery {
         // judge if we should insert sequence
         if (!isSequence && time > lastFlushTime) {
           // insert into unsequence and then start sequence
-          if (!IoTDBDescriptor.getInstance().getConfig().isEnableDiscardOutOfOrderData()) {
+          if (!COMMON_CONFIG.isEnableDiscardOutOfOrderData()) {
             noFailure =
                 insertTabletToTsFileProcessor(
                         insertTabletNode, before, loc, false, results, beforeTimePartition)
@@ -1035,9 +1039,7 @@ public class DataRegion implements IDataRegionForQuery {
       }
 
       // do not forget last part
-      if (before < loc
-          && (isSequence
-              || !IoTDBDescriptor.getInstance().getConfig().isEnableDiscardOutOfOrderData())) {
+      if (before < loc && (isSequence || !COMMON_CONFIG.isEnableDiscardOutOfOrderData())) {
         noFailure =
             insertTabletToTsFileProcessor(
                     insertTabletNode, before, loc, isSequence, results, beforeTimePartition)
@@ -1118,7 +1120,7 @@ public class DataRegion implements IDataRegionForQuery {
   }
 
   private void tryToUpdateBatchInsertLastCache(InsertTabletNode node, long latestFlushedTime) {
-    if (!IoTDBDescriptor.getInstance().getConfig().isLastCacheEnabled()) {
+    if (!COMMON_CONFIG.isEnableLastCache()) {
       return;
     }
     for (int i = 0; i < node.getColumns().length; i++) {
@@ -1157,7 +1159,7 @@ public class DataRegion implements IDataRegionForQuery {
   }
 
   private void tryToUpdateInsertLastCache(InsertRowNode node, long latestFlushedTime) {
-    if (!IoTDBDescriptor.getInstance().getConfig().isLastCacheEnabled()) {
+    if (!COMMON_CONFIG.isEnableLastCache()) {
       return;
     }
     for (int i = 0; i < node.getValues().length; i++) {
@@ -1237,7 +1239,7 @@ public class DataRegion implements IDataRegionForQuery {
         logger.error(
             "disk space is insufficient when creating TsFile processor, change system mode to read-only",
             e);
-        CommonDescriptor.getInstance().getConfig().setNodeStatus(NodeStatus.ReadOnly);
+        CommonDescriptor.getInstance().getConf().setNodeStatus(NodeStatus.ReadOnly);
         break;
       } catch (IOException e) {
         if (retryCnt < 3) {
@@ -1246,7 +1248,7 @@ public class DataRegion implements IDataRegionForQuery {
         } else {
           logger.error(
               "meet IOException when creating TsFileProcessor, change system mode to error", e);
-          CommonDescriptor.getInstance().getConfig().handleUnrecoverableError();
+          CommonDescriptor.getInstance().getConf().handleUnrecoverableError();
           break;
         }
       } catch (ExceedQuotaException e) {
@@ -1549,7 +1551,7 @@ public class DataRegion implements IDataRegionForQuery {
             resource.getTsFilePath(),
             new Date(ttlLowerBound),
             dataTTL,
-            config.getTimestampPrecision());
+            COMMON_CONFIG.getTimestampPrecision());
       } finally {
         resource.writeUnlock();
       }
@@ -1562,7 +1564,8 @@ public class DataRegion implements IDataRegionForQuery {
       // only check sequence tsfiles' memtables
       List<TsFileProcessor> tsFileProcessors =
           new ArrayList<>(workSequenceTsFileProcessors.values());
-      long timeLowerBound = System.currentTimeMillis() - config.getSeqMemtableFlushInterval();
+      long timeLowerBound =
+          System.currentTimeMillis() - COMMON_CONFIG.getSeqMemtableFlushInterval();
 
       for (TsFileProcessor tsFileProcessor : tsFileProcessors) {
         if (tsFileProcessor.getWorkMemTableCreatedTime() < timeLowerBound) {
@@ -1585,7 +1588,8 @@ public class DataRegion implements IDataRegionForQuery {
       // only check unsequence tsfiles' memtables
       List<TsFileProcessor> tsFileProcessors =
           new ArrayList<>(workUnsequenceTsFileProcessors.values());
-      long timeLowerBound = System.currentTimeMillis() - config.getUnseqMemtableFlushInterval();
+      long timeLowerBound =
+          System.currentTimeMillis() - COMMON_CONFIG.getUnseqMemtableFlushInterval();
 
       for (TsFileProcessor tsFileProcessor : tsFileProcessors) {
         if (tsFileProcessor.getWorkMemTableCreatedTime() < timeLowerBound) {
@@ -1912,7 +1916,7 @@ public class DataRegion implements IDataRegionForQuery {
     long timePartitionStartId = StorageEngine.getTimePartition(startTime);
     long timePartitionEndId = StorageEngine.getTimePartition(endTime);
     List<WALFlushListener> walFlushListeners = new ArrayList<>();
-    if (config.getWalMode() == WALMode.DISABLE) {
+    if (COMMON_CONFIG.getWalMode() == WALMode.DISABLE) {
       return walFlushListeners;
     }
     DeleteDataNode deleteDataNode =
@@ -2260,7 +2264,7 @@ public class DataRegion implements IDataRegionForQuery {
   }
 
   private void resetLastCacheWhenLoadingTsFile() throws IllegalPathException {
-    if (!IoTDBDescriptor.getInstance().getConfig().isLastCacheEnabled()) {
+    if (!COMMON_CONFIG.isEnableLastCache()) {
       return;
     }
     DataNodeSchemaCache.getInstance().cleanUp();
@@ -2874,7 +2878,7 @@ public class DataRegion implements IDataRegionForQuery {
     if (dataTTL != Long.MAX_VALUE) {
       dataTTL =
           DateTimeUtils.convertMilliTimeWithPrecision(
-              dataTTL, IoTDBDescriptor.getInstance().getConfig().getTimestampPrecision());
+              dataTTL, COMMON_CONFIG.getTimestampPrecision());
     }
     this.dataTTL = dataTTL;
   }
@@ -3109,8 +3113,7 @@ public class DataRegion implements IDataRegionForQuery {
                       timePartitionId, insertRowNode.getDevicePath().getFullPath());
         }
         // is unsequence and user set config to discard out of order data
-        if (!isSequence
-            && IoTDBDescriptor.getInstance().getConfig().isEnableDiscardOutOfOrderData()) {
+        if (!isSequence && COMMON_CONFIG.isEnableDiscardOutOfOrderData()) {
           return;
         }
 
@@ -3352,7 +3355,10 @@ public class DataRegion implements IDataRegionForQuery {
 
   /** This method could only be used in iot consensus */
   public IWALNode getWALNode() {
-    if (!config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)) {
+    if (!COMMON_CONFIG
+        .getDataRegionConsensusProtocolClass()
+        .getProtocol()
+        .equals(ConsensusFactory.IOT_CONSENSUS)) {
       throw new UnsupportedOperationException();
     }
     // identifier should be same with getTsFileProcessor method

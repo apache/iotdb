@@ -19,13 +19,14 @@
 package org.apache.iotdb.db.mpp.execution.schedule;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.db.mpp.execution.driver.IDriver;
 import org.apache.iotdb.db.mpp.execution.schedule.queue.IndexedBlockingQueue;
 import org.apache.iotdb.db.mpp.execution.schedule.task.DriverTask;
 import org.apache.iotdb.db.utils.SetThreadName;
 import org.apache.iotdb.db.utils.stats.CpuTimer;
 
+import com.google.common.base.Ticker;
 import com.google.common.util.concurrent.ListenableFuture;
 import io.airlift.units.Duration;
 
@@ -37,12 +38,14 @@ public class DriverTaskThread extends AbstractDriverThread {
 
   public static final Duration EXECUTION_TIME_SLICE =
       new Duration(
-          IoTDBDescriptor.getInstance().getConfig().getDriverTaskExecutionTimeSliceInMs(),
+          CommonDescriptor.getInstance().getConf().getDriverTaskExecutionTimeSliceInMs(),
           TimeUnit.MILLISECONDS);
 
   // we manage thread pool size directly, so create an unlimited pool
   private static final Executor listeningExecutor =
       IoTDBThreadPoolFactory.newCachedThreadPool("scheduler-notification");
+
+  private final Ticker ticker;
 
   public DriverTaskThread(
       String workerId,
@@ -51,10 +54,12 @@ public class DriverTaskThread extends AbstractDriverThread {
       ITaskScheduler scheduler,
       ThreadProducer producer) {
     super(workerId, tg, queue, scheduler, producer);
+    this.ticker = Ticker.systemTicker();
   }
 
   @Override
   public void execute(DriverTask task) throws InterruptedException {
+    long startNanos = ticker.read();
     // try to switch it to RUNNING
     if (!scheduler.readyToRunning(task)) {
       return;
@@ -63,15 +68,16 @@ public class DriverTaskThread extends AbstractDriverThread {
     CpuTimer timer = new CpuTimer();
     ListenableFuture<?> future = driver.processFor(EXECUTION_TIME_SLICE);
     CpuTimer.CpuDuration duration = timer.elapsedTime();
-    // long cost = System.nanoTime() - startTime;
     // If the future is cancelled, the task is in an error and should be thrown.
     if (future.isCancelled()) {
       task.setAbortCause(DriverTaskAbortedException.BY_ALREADY_BEING_CANCELLED);
       scheduler.toAborted(task);
       return;
     }
+    long quantaScheduledNanos = ticker.read() - startNanos;
     ExecutionContext context = new ExecutionContext();
     context.setCpuDuration(duration);
+    context.setScheduledTimeInNanos(quantaScheduledNanos);
     context.setTimeSlice(EXECUTION_TIME_SLICE);
     if (driver.isFinished()) {
       scheduler.runningToFinished(task, context);

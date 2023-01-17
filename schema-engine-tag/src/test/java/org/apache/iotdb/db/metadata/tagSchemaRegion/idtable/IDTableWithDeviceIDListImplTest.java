@@ -67,14 +67,14 @@ public class IDTableWithDeviceIDListImplTest {
   @Before
   public void before() {
     compressionType = TSFileDescriptor.getInstance().getConfig().getCompressor();
-    schemaDir = IoTDBDescriptor.getInstance().getConfig().getSchemaDir();
-    isEnableIDTable = IoTDBDescriptor.getInstance().getConfig().isEnableIDTable();
+    schemaDir = IoTDBDescriptor.getInstance().getConf().getSchemaDir();
+    isEnableIDTable = IoTDBDescriptor.getInstance().getConf().isEnableIDTable();
     originalDeviceIDTransformationMethod =
-        IoTDBDescriptor.getInstance().getConfig().getDeviceIDTransformationMethod();
-    isEnableIDTableLogFile = IoTDBDescriptor.getInstance().getConfig().isEnableIDTableLogFile();
-    IoTDBDescriptor.getInstance().getConfig().setEnableIDTable(true);
-    IoTDBDescriptor.getInstance().getConfig().setDeviceIDTransformationMethod("SHA256");
-    IoTDBDescriptor.getInstance().getConfig().setEnableIDTableLogFile(true);
+        IoTDBDescriptor.getInstance().getConf().getDeviceIDTransformationMethod();
+    isEnableIDTableLogFile = IoTDBDescriptor.getInstance().getConf().isEnableIDTableLogFile();
+    IoTDBDescriptor.getInstance().getConf().setEnableIDTable(true);
+    IoTDBDescriptor.getInstance().getConf().setDeviceIDTransformationMethod("SHA256");
+    IoTDBDescriptor.getInstance().getConf().setEnableIDTableLogFile(true);
     storageGroupDirPath = schemaDir + File.separator + storageGroupFullPath;
     schemaRegionDirPath = storageGroupDirPath + File.separator + 0;
     idTableWithDeviceIDList = new IDTableWithDeviceIDListImpl(new File(schemaRegionDirPath));
@@ -83,11 +83,11 @@ public class IDTableWithDeviceIDListImplTest {
   @After
   public void clean() throws IOException, StorageEngineException {
     idTableWithDeviceIDList.clear();
-    IoTDBDescriptor.getInstance().getConfig().setEnableIDTable(isEnableIDTable);
+    IoTDBDescriptor.getInstance().getConf().setEnableIDTable(isEnableIDTable);
     IoTDBDescriptor.getInstance()
-        .getConfig()
+        .getConf()
         .setDeviceIDTransformationMethod(originalDeviceIDTransformationMethod);
-    IoTDBDescriptor.getInstance().getConfig().setEnableIDTableLogFile(isEnableIDTableLogFile);
+    IoTDBDescriptor.getInstance().getConf().setEnableIDTableLogFile(isEnableIDTableLogFile);
     FileUtils.deleteDirectoryAndEmptyParent(new File(schemaDir));
   }
 

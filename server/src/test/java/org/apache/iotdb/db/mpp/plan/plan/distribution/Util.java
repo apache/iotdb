@@ -26,6 +26,7 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
@@ -34,7 +35,6 @@ import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.common.schematree.ClusterSchemaTree;
@@ -78,8 +78,8 @@ public class Util {
     try {
       SeriesPartitionExecutor executor =
           SeriesPartitionExecutor.getSeriesPartitionExecutor(
-              IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionExecutorClass(),
-              IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionSlotNum());
+              CommonDescriptor.getInstance().getConf().getSeriesPartitionExecutorClass(),
+              CommonDescriptor.getInstance().getConf().getSeriesSlotNum());
       Analysis analysis = new Analysis();
 
       String device1 = "root.sg.d1";
@@ -121,8 +121,8 @@ public class Util {
 
       DataPartition dataPartition =
           new DataPartition(
-              IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionExecutorClass(),
-              IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionSlotNum());
+              CommonDescriptor.getInstance().getConf().getSeriesPartitionExecutorClass(),
+              CommonDescriptor.getInstance().getConf().getSeriesSlotNum());
 
       Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>>
           dataPartitionMap = new HashMap<>();
@@ -197,8 +197,8 @@ public class Util {
       // construct schema partition
       SchemaPartition schemaPartition =
           new SchemaPartition(
-              IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionExecutorClass(),
-              IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionSlotNum());
+              CommonDescriptor.getInstance().getConf().getSeriesPartitionExecutorClass(),
+              CommonDescriptor.getInstance().getConf().getSeriesSlotNum());
       Map<String, Map<TSeriesPartitionSlot, TRegionReplicaSet>> schemaPartitionMap =
           new HashMap<>();
 

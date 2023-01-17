@@ -31,7 +31,6 @@ import org.apache.iotdb.commons.client.factory.ThriftClientFactory;
 import org.apache.iotdb.commons.client.property.ClientPoolProperty;
 import org.apache.iotdb.commons.client.property.ThriftClientProperty;
 import org.apache.iotdb.commons.client.sync.SyncThriftClientWithErrorHandler;
-import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.ConfigNodeRegionId;
 import org.apache.iotdb.confignode.rpc.thrift.IConfigNodeRPCService;
 import org.apache.iotdb.confignode.rpc.thrift.TAddConsensusGroupReq;
@@ -166,7 +165,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
 
   private int cursor = 0;
 
-  private final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private final IoTDBConfig config = IoTDBDescriptor.getInstance().getConf();
 
   ClientManager<ConfigNodeRegionId, ConfigNodeClient> clientManager;
 
@@ -178,7 +177,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
     // Read config nodes from configuration
     configNodes = ConfigNodeInfo.getInstance().getLatestConfigNodes();
     protocolFactory =
-        CommonDescriptor.getInstance().getConfig().isRpcThriftCompressionEnabled()
+        IoTDBDescriptor.getInstance().getConf().isDnRpcThriftCompressionEnable()
             ? new TCompactProtocol.Factory()
             : new TBinaryProtocol.Factory();
 

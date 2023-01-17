@@ -57,7 +57,7 @@ public class OpenIdAuthorizer extends BasicAuthorizer {
   public static final String IOTDB_ADMIN_ROLE_NAME = "iotdb_admin";
   public static final String OPENID_USER_PREFIX = "openid-";
 
-  private static final CommonConfig config = CommonDescriptor.getInstance().getConfig();
+  private static final CommonConfig config = CommonDescriptor.getInstance().getConf();
 
   private final RSAPublicKey providerKey;
 

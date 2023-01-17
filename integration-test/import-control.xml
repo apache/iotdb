@@ -36,12 +36,13 @@
   <allow pkg="org\.apache\.commons\.lang3.*" regex="true"/>
   <allow pkg="org\.slf4j.*" regex="true" />
   <allow pkg="org\.apache\.iotdb\.tools.*" regex="true"/>
+  <allow pkg="org\.apache\.iotdb\.commons\.conf.*" regex="true" />
   <subpackage name="db.it">
     <disallow pkg="org.apache.iotdb.jdbc.*"/>
     <allow class="org.apache.iotdb.db.constant.TestConstant" />
     <allow class="org.apache.iotdb.db.tools.watermark.WatermarkDetector" />
     <allow class="org.apache.iotdb.db.utils.MathUtils" />
-    <allow class="org.apache.iotdb.db.wal.utils.WALMode" />
+    <allow class="org.apache.iotdb.commons.wal.WALMode" />
     <allow class="org.fusesource.mqtt.client.QoS" />
     <allow class="org.apache.iotdb.commons.path.PartialPath" />
     <allow pkg="java.text"/>
@@ -89,7 +90,7 @@
     <allow class="org.apache.iotdb.commons.conf.IoTDBConstant" />
     <allow class="org.apache.iotdb.db.conf.IoTDBDescriptor" />
     <allow class="org.apache.iotdb.db.conf.OperationType" />
-    <allow class="org.apache.iotdb.db.utils.EnvironmentUtils" />
+    <allow class="org.apache.iotdb.commons.cluster.NodeStatus" />
     <allow class="org.apache.iotdb.tsfile.common.constant.TsFileConstant" />
     <allow class="org.apache.iotdb.service.rpc.thrift.TSConnectionInfoResp" />
     <allow class="org.apache.iotdb.service.rpc.thrift.TSConnectionType" />

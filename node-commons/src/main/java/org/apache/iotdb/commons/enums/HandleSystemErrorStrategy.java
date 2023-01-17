@@ -37,7 +37,7 @@ public enum HandleSystemErrorStrategy {
       logger.error(
           "Unrecoverable error occurs! Change system status to read-only because handle_system_error is CHANGE_TO_READ_ONLY. Only query statements are permitted!",
           new RuntimeException("System mode is set to READ_ONLY"));
-      CommonDescriptor.getInstance().getConfig().setNodeStatus(NodeStatus.ReadOnly);
+      CommonDescriptor.getInstance().getConf().setNodeStatus(NodeStatus.ReadOnly);
     } else if (this == HandleSystemErrorStrategy.SHUTDOWN) {
       logger.error(
           "Unrecoverable error occurs! Shutdown system directly because handle_system_error is SHUTDOWN.",

@@ -71,7 +71,7 @@ public class FastCompactionPerformer
   private List<TsFileResource> sortedSourceFiles = new ArrayList<>();
 
   private static final int subTaskNum =
-      IoTDBDescriptor.getInstance().getConfig().getSubCompactionTaskNum();
+      IoTDBDescriptor.getInstance().getConf().getSubCompactionTaskNum();
 
   public Map<TsFileResource, TsFileSequenceReader> readerCacheMap = new ConcurrentHashMap<>();
 

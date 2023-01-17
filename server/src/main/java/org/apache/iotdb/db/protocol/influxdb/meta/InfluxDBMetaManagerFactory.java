@@ -31,10 +31,10 @@ public class InfluxDBMetaManagerFactory {
    */
   public static IInfluxDBMetaManager getInstance() {
     if (IoTDBDescriptor.getInstance()
-        .getConfig()
+        .getConf()
         .getRpcImplClassName()
         .equals(ClientRPCServiceImpl.class.getName())) {
-      if ("Tag".equals(IoTDBDescriptor.getInstance().getConfig().getSchemaEngineMode())) {
+      if ("Tag".equals(IoTDBDescriptor.getInstance().getConf().getSchemaEngineMode())) {
         return TagInfluxDBMetaManager.getInstance();
       }
       return NewInfluxDBMetaManager.getInstance();

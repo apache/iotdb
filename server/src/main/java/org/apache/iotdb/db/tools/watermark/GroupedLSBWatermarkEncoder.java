@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.tools.watermark;
 
-import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
@@ -45,10 +45,12 @@ public class GroupedLSBWatermarkEncoder implements WatermarkEncoder {
     this.groupNumber = bitString.length();
   }
 
-  public GroupedLSBWatermarkEncoder(IoTDBConfig conf) {
-    this(conf.getWatermarkSecretKey(), conf.getWatermarkBitString());
-    this.markRate = conf.getWatermarkParamMarkRate();
-    this.maxBitPosition = conf.getWatermarkParamMaxRightBit();
+  public GroupedLSBWatermarkEncoder() {
+    this(
+        CommonDescriptor.getInstance().getConf().getWatermarkSecretKey(),
+        CommonDescriptor.getInstance().getConf().getWatermarkBitString());
+    this.markRate = CommonDescriptor.getInstance().getConf().getWatermarkParamMarkRate();
+    this.maxBitPosition = CommonDescriptor.getInstance().getConf().getWatermarkParamMaxRightBit();
   }
 
   public static int hashMod(String val, Integer base) {

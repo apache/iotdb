@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.utils;
 
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.db.constant.SqlConstant;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
@@ -29,20 +29,20 @@ import org.apache.commons.lang3.StringUtils;
 
 public class TypeInferenceUtils {
 
-  private static TSDataType booleanStringInferType =
-      IoTDBDescriptor.getInstance().getConfig().getBooleanStringInferType();
+  private static final TSDataType booleanStringInferType =
+      CommonDescriptor.getInstance().getConf().getBooleanStringInferType();
 
-  private static TSDataType integerStringInferType =
-      IoTDBDescriptor.getInstance().getConfig().getIntegerStringInferType();
+  private static final TSDataType integerStringInferType =
+      CommonDescriptor.getInstance().getConf().getIntegerStringInferType();
 
-  private static TSDataType longStringInferType =
-      IoTDBDescriptor.getInstance().getConfig().getLongStringInferType();
+  private static final TSDataType longStringInferType =
+      CommonDescriptor.getInstance().getConf().getLongStringInferType();
 
-  private static TSDataType floatingStringInferType =
-      IoTDBDescriptor.getInstance().getConfig().getFloatingStringInferType();
+  private static final TSDataType floatingStringInferType =
+      CommonDescriptor.getInstance().getConf().getFloatingStringInferType();
 
-  private static TSDataType nanStringInferType =
-      IoTDBDescriptor.getInstance().getConfig().getNanStringInferType();
+  private static final TSDataType nanStringInferType =
+      CommonDescriptor.getInstance().getConf().getNanStringInferType();
 
   private TypeInferenceUtils() {}
 
@@ -155,6 +155,33 @@ public class TypeInferenceUtils {
         return true;
       default:
         throw new IllegalArgumentException("Invalid Aggregation function: " + aggrFuncName);
+    }
+  }
+
+  public static boolean canAutoCast(TSDataType fromType, TSDataType toType) {
+    if (fromType.equals(toType)) {
+      return true;
+    }
+
+    switch (fromType) {
+      case INT32:
+        switch (toType) {
+          case INT64:
+          case FLOAT:
+          case DOUBLE:
+            return true;
+          default:
+            return false;
+        }
+      case INT64:
+      case FLOAT:
+        return toType.equals(TSDataType.DOUBLE);
+      case DOUBLE:
+      case BOOLEAN:
+      case TEXT:
+        return false;
+      default:
+        throw new IllegalArgumentException("Unknown data type: " + fromType);
     }
   }
 }

@@ -76,6 +76,35 @@ public enum TSEncoding {
     }
   }
 
+  public static TSEncoding parse(String encoding) {
+    switch (encoding) {
+      case "PLAIN":
+        return PLAIN;
+      case "DICTIONARY":
+        return DICTIONARY;
+      case "RLE":
+        return RLE;
+      case "DIFF":
+        return DIFF;
+      case "TS_2DIFF":
+        return TS_2DIFF;
+      case "BITMAP":
+        return BITMAP;
+      case "GORILLA_V1":
+        return GORILLA_V1;
+      case "REGULAR":
+        return REGULAR;
+      case "GORILLA":
+        return GORILLA;
+      case "ZIGZAG":
+        return ZIGZAG;
+      case "FREQ":
+        return FREQ;
+      default:
+        throw new IllegalArgumentException("Invalid input: " + encoding);
+    }
+  }
+
   public static int getSerializedSize() {
     return Byte.BYTES;
   }

@@ -67,7 +67,7 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
   public void setUp()
       throws IOException, WriteProcessException, MetadataException, InterruptedException {
     super.setUp();
-    IoTDBDescriptor.getInstance().getConfig().setTargetChunkSize(1024);
+    IoTDBDescriptor.getInstance().getConf().setTargetChunkSize(1024);
     TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(30);
     Thread.currentThread().setName("pool-1-IoTDB-Compaction-1");
   }
@@ -273,7 +273,7 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
    */
   @Test
   public void test5() throws MetadataException, IOException, WriteProcessException, MergeException {
-    IoTDBDescriptor.getInstance().getConfig().setMaxCrossCompactionCandidateFileNum(7);
+    IoTDBDescriptor.getInstance().getConf().setMaxCrossCompactionCandidateFileNum(7);
     registerTimeseriesInMManger(5, 10, true);
     createFiles(7, 5, 10, 1000, 0, 0, 100, 100, true, true);
     createFiles(1, 5, 10, 3300, 2150, 2150, 100, 100, true, false);
@@ -2136,7 +2136,7 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     // start selecting files and then start a cross space compaction task
     ICrossSpaceSelector selector =
         IoTDBDescriptor.getInstance()
-            .getConfig()
+            .getConf()
             .getCrossCompactionSelector()
             .createInstance(COMPACTION_TEST_SG, "0", 0, tsFileManager);
     // In the process of getting the file list and starting to select files, the file list is

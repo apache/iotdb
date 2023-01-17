@@ -19,26 +19,35 @@
 
 package org.apache.iotdb.db.mpp.execution.operator.window;
 
+import org.apache.iotdb.db.mpp.aggregation.Aggregator;
 import org.apache.iotdb.db.mpp.aggregation.timerangeiterator.ITimeRangeIterator;
 import org.apache.iotdb.db.mpp.execution.operator.AggregationUtil;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
+import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockUtil;
+import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
+import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
+
+import java.util.List;
 
 public class TimeWindowManager implements IWindowManager {
 
-  private TimeWindow curWindow;
+  private final TimeWindow curWindow;
+  private final boolean ascending;
+  private final ITimeRangeIterator timeRangeIterator;
+  private final boolean needOutputEndTime;
   private boolean initialized;
-
-  private boolean ascending;
-
-  private ITimeRangeIterator timeRangeIterator;
-
   private boolean needSkip;
+  private long startTime;
+  private long endTime;
 
-  public TimeWindowManager(ITimeRangeIterator timeRangeIterator) {
+  public TimeWindowManager(
+      ITimeRangeIterator timeRangeIterator, TimeWindowParameter timeWindowParameter) {
     this.timeRangeIterator = timeRangeIterator;
     this.initialized = false;
     this.curWindow = new TimeWindow(this.timeRangeIterator.nextTimeRange());
+    this.needOutputEndTime = timeWindowParameter.isNeedOutputEndTime();
     this.ascending = timeRangeIterator.isAscending();
     // At beginning, we do not need to skip inputTsBlock
     this.needSkip = false;
@@ -65,12 +74,9 @@ public class TimeWindowManager implements IWindowManager {
     // belong to previous window have been consumed. If not, we need skip these points.
     this.needSkip = true;
     this.initialized = false;
+    this.startTime = this.timeRangeIterator.currentOutputTime();
+    this.endTime = this.curWindow.getCurMaxTime();
     this.curWindow.update(this.timeRangeIterator.nextTimeRange());
-  }
-
-  @Override
-  public long currentOutputTime() {
-    return timeRangeIterator.currentOutputTime();
   }
 
   @Override
@@ -129,5 +135,48 @@ public class TimeWindowManager implements IWindowManager {
         && (this.ascending
             ? inputTsBlock.getEndTime() > this.curWindow.getCurMaxTime()
             : inputTsBlock.getEndTime() < this.curWindow.getCurMinTime());
+  }
+
+  @Override
+  public TsBlockBuilder createResultTsBlockBuilder(List<Aggregator> aggregators) {
+    List<TSDataType> dataTypes = getResultDataTypes(aggregators);
+    // Judge whether we need output endTime column.
+    if (this.needOutputEndTime) {
+      dataTypes.add(0, TSDataType.INT64);
+    }
+    return new TsBlockBuilder(dataTypes);
+  }
+
+  @Override
+  public void appendAggregationResult(
+      TsBlockBuilder resultTsBlockBuilder, List<Aggregator> aggregators) {
+    TimeColumnBuilder timeColumnBuilder = resultTsBlockBuilder.getTimeColumnBuilder();
+    // Use start time of current time range as time column
+    timeColumnBuilder.writeLong(startTime);
+    ColumnBuilder[] columnBuilders = resultTsBlockBuilder.getValueColumnBuilders();
+    int columnIndex = 0;
+    if (this.needOutputEndTime) {
+      columnBuilders[0].writeLong(endTime);
+      columnIndex = 1;
+    }
+    for (Aggregator aggregator : aggregators) {
+      ColumnBuilder[] columnBuilder = new ColumnBuilder[aggregator.getOutputType().length];
+      columnBuilder[0] = columnBuilders[columnIndex++];
+      if (columnBuilder.length > 1) {
+        columnBuilder[1] = columnBuilders[columnIndex++];
+      }
+      aggregator.outputResult(columnBuilder);
+    }
+    resultTsBlockBuilder.declarePosition();
+  }
+
+  @Override
+  public boolean notInitedLastTimeWindow() {
+    return !this.initialized;
+  }
+
+  @Override
+  public boolean needSkipInAdvance() {
+    return false;
   }
 }

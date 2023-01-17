@@ -18,8 +18,11 @@
  */
 package org.apache.iotdb.db.wal.node;
 
+import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.wal.WALMode;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
 import org.apache.iotdb.consensus.iot.wal.ConsensusReqReader;
@@ -33,7 +36,6 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.wal.buffer.WALEntry;
-import org.apache.iotdb.db.wal.utils.WALMode;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.BitMap;
@@ -52,7 +54,9 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
 public class ConsensusReqReaderTest {
-  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+
+  private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConf();
+  private static final IoTDBConfig IOTDB_CONFIG = IoTDBDescriptor.getInstance().getConf();
   private static final String identifier = String.valueOf(Integer.MAX_VALUE);
   private static final String logDirectory = TestConstant.BASE_OUTPUT_PATH.concat("wal-test");
   private static final String devicePath = "root.test_sg.test_d";
@@ -62,17 +66,17 @@ public class ConsensusReqReaderTest {
   @Before
   public void setUp() throws Exception {
     EnvironmentUtils.cleanDir(logDirectory);
-    config.setClusterMode(true);
-    prevMode = config.getWalMode();
-    config.setWalMode(WALMode.SYNC);
+    IOTDB_CONFIG.setClusterMode(true);
+    prevMode = COMMON_CONFIG.getWalMode();
+    COMMON_CONFIG.setWalMode(WALMode.SYNC);
     walNode = new WALNode(identifier, logDirectory);
   }
 
   @After
   public void tearDown() throws Exception {
     walNode.close();
-    config.setWalMode(prevMode);
-    config.setClusterMode(false);
+    COMMON_CONFIG.setWalMode(prevMode);
+    IOTDB_CONFIG.setClusterMode(false);
     EnvironmentUtils.cleanDir(logDirectory);
   }
 

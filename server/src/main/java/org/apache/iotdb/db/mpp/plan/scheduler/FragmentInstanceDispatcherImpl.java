@@ -82,8 +82,8 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
     this.executor = executor;
     this.writeOperationExecutor = writeOperationExecutor;
     this.internalServiceClientManager = internalServiceClientManager;
-    this.localhostIpAddr = IoTDBDescriptor.getInstance().getConfig().getInternalAddress();
-    this.localhostInternalPort = IoTDBDescriptor.getInstance().getConfig().getInternalPort();
+    this.localhostIpAddr = IoTDBDescriptor.getInstance().getConf().getDnInternalAddress();
+    this.localhostInternalPort = IoTDBDescriptor.getInstance().getConf().getDnInternalPort();
   }
 
   @Override

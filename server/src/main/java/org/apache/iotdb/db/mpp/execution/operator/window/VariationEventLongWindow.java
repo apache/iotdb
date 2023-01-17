@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -17,24 +17,21 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.service.metric.enums;
+package org.apache.iotdb.db.mpp.execution.operator.window;
 
-public enum Operation {
-  EXECUTE_JDBC_BATCH("EXECUTE_JDBC_BATCH"),
-  EXECUTE_ONE_SQL_IN_BATCH("EXECUTE_ONE_SQL_IN_BATCH"),
-  EXECUTE_ROWS_PLAN_IN_BATCH("EXECUTE_ROWS_PLAN_IN_BATCH"),
-  EXECUTE_MULTI_TIMESERIES_PLAN_IN_BATCH("EXECUTE_MULTI_TIMESERIES_PLAN_IN_BATCH"),
-  EXECUTE_RPC_BATCH_INSERT("EXECUTE_RPC_BATCH_INSERT"),
-  EXECUTE_QUERY("EXECUTE_QUERY"),
-  EXECUTE_SELECT_INTO("EXECUTE_SELECT_INTO");
+import org.apache.iotdb.tsfile.read.common.block.column.Column;
 
-  public String getName() {
-    return name;
+public class VariationEventLongWindow extends EventLongWindow {
+
+  public VariationEventLongWindow(EventWindowParameter eventWindowParameter) {
+    super(eventWindowParameter);
   }
 
-  String name;
-
-  Operation(String name) {
-    this.name = name;
+  @Override
+  public boolean satisfy(Column column, int index) {
+    if (!initializedEventValue) {
+      return true;
+    }
+    return Math.abs(column.getLong(index) - eventValue) <= eventWindowParameter.getDelta();
   }
 }

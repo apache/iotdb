@@ -65,19 +65,20 @@ ZigZag编码将有符号整型映射到无符号整型，适合比较小的整�
 
 ## 数据类型与编码的对应关系
 
-前文介绍的五种编码适用于不同的数据类型，若对应关系错误，则无法正确创建时间序列。数据类型与支持其编码的编码方式对应关系总结如表格 2-3。
+前文介绍的五种编码适用于不同的数据类型，若对应关系错误，则无法正确创建时间序列。数据类型与支持其编码的编码方式对应关系总结如下表所示。
 
-<div style="text-align: center;"> 
+| 数据类型 | 支持的编码                                  |
+|-:-:------|-:-:-----------------------------------------|
+| BOOLEAN  | PLAIN, RLE                                  |
+| INT32    | PLAIN, RLE, TS_2DIFF, GORILLA, FREQ, ZIGZAG |
+| INT64    | PLAIN, RLE, TS_2DIFF, GORILLA, FREQ, ZIGZAG |
+| FLOAT    | PLAIN, RLE, TS_2DIFF, GORILLA, FREQ         |
+| DOUBLE   | PLAIN, RLE, TS_2DIFF, GORILLA, FREQ         |
+| TEXT     | PLAIN, DICTIONARY                           |
 
-**表格 2-3 数据类型与支持其编码的对应关系**
+当用户输入的数据类型与编码方式不对应时，系统会提示错误。如下所示，二阶差分编码不支持布尔类型：
 
-|数据类型	|支持的编码|
-|:---:|:---:|
-|BOOLEAN|	PLAIN, RLE|
-|INT32	|PLAIN, RLE, TS_2DIFF, GORILLA, FREQ, ZIGZAG|
-|INT64	|PLAIN, RLE, TS_2DIFF, GORILLA, FREQ, ZIGZAG|
-|FLOAT	|PLAIN, RLE, TS_2DIFF, GORILLA, FREQ|
-|DOUBLE	|PLAIN, RLE, TS_2DIFF, GORILLA, FREQ|
-|TEXT	|PLAIN, DICTIONARY|
-
-</div>
+```
+IoTDB> create timeseries root.ln.wf02.wt02.status WITH DATATYPE=BOOLEAN, ENCODING=TS_2DIFF
+Msg: 507: encoding TS_2DIFF does not support BOOLEAN
+```

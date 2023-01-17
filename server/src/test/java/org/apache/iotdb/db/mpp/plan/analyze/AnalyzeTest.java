@@ -20,7 +20,9 @@
 package org.apache.iotdb.db.mpp.plan.analyze;
 
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
@@ -579,13 +581,22 @@ public class AnalyzeTest {
 
   @Test
   public void testDataPartitionAnalyze() {
-    Analysis analysis = analyzeSQL("insert into root.sg.d1(timestamp,s) values(1,10),(86401,11)");
+    String deviceName = "root.sg.d1";
+    TSeriesPartitionSlot seriesPartitionSlot =
+        new TSeriesPartitionSlot(
+            SeriesPartitionExecutor.getSeriesPartitionExecutor(
+                    CommonDescriptor.getInstance().getConf().getSeriesPartitionExecutorClass(),
+                    CommonDescriptor.getInstance().getConf().getSeriesSlotNum())
+                .getSeriesPartitionSlot(deviceName));
+
+    Analysis analysis =
+        analyzeSQL("insert into " + deviceName + "(timestamp,s) values(1,10),(86401,11)");
     Assert.assertEquals(
         analysis
             .getDataPartitionInfo()
             .getDataPartitionMap()
             .get("root.sg")
-            .get(new TSeriesPartitionSlot(8923))
+            .get(seriesPartitionSlot)
             .size(),
         1);
   }

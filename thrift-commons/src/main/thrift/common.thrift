@@ -102,6 +102,10 @@ struct TFlushReq {
    2: optional list<string> storageGroups
 }
 
+struct TSettleReq {
+   1: required list<string> paths
+}
+
 // for node management
 struct TSchemaNode {
   1: required string nodeName

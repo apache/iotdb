@@ -19,9 +19,9 @@
 package org.apache.iotdb.db.service;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.upgrade.UpgradeLog;
 import org.apache.iotdb.db.engine.upgrade.UpgradeTask;
 import org.apache.iotdb.db.utils.UpgradeUtils;
@@ -53,7 +53,7 @@ public class UpgradeSevice implements IService {
 
   @Override
   public void start() {
-    int updateThreadNum = IoTDBDescriptor.getInstance().getConfig().getUpgradeThreadCount();
+    int updateThreadNum = CommonDescriptor.getInstance().getConf().getUpgradeThreadCount();
     if (updateThreadNum <= 0) {
       updateThreadNum = 1;
     }

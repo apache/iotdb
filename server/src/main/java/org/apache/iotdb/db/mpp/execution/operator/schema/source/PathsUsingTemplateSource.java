@@ -67,12 +67,15 @@ public class PathsUsingTemplateSource implements ISchemaSource<IDeviceSchemaInfo
 
     final ISchemaRegion schemaRegion;
 
+    private Throwable throwable;
+
     ISchemaReader<IDeviceSchemaInfo> currentDeviceReader;
 
     DevicesUsingTemplateReader(
         Iterator<PartialPath> pathPatternIterator, ISchemaRegion schemaRegion) {
       this.pathPatternIterator = pathPatternIterator;
       this.schemaRegion = schemaRegion;
+      this.throwable = null;
     }
 
     @Override
@@ -85,11 +88,18 @@ public class PathsUsingTemplateSource implements ISchemaSource<IDeviceSchemaInfo
     @Override
     public boolean hasNext() {
       try {
+        if (throwable != null) {
+          return false;
+        }
         if (currentDeviceReader != null) {
           if (currentDeviceReader.hasNext()) {
             return true;
           } else {
             currentDeviceReader.close();
+            if (!currentDeviceReader.isSuccess()) {
+              throwable = currentDeviceReader.getFailure();
+              return false;
+            }
           }
         }
 
@@ -113,6 +123,22 @@ public class PathsUsingTemplateSource implements ISchemaSource<IDeviceSchemaInfo
     @Override
     public IDeviceSchemaInfo next() {
       return currentDeviceReader.next();
+    }
+
+    @Override
+    public boolean isSuccess() {
+      return throwable == null && (currentDeviceReader == null || currentDeviceReader.isSuccess());
+    }
+
+    @Override
+    public Throwable getFailure() {
+      if (throwable != null) {
+        return throwable;
+      } else if (currentDeviceReader != null) {
+        return currentDeviceReader.getFailure();
+      } else {
+        return null;
+      }
     }
   }
 }

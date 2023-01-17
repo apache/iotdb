@@ -29,7 +29,10 @@ import org.apache.iotdb.db.metadata.template.ITemplateManager;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.mpp.common.schematree.ClusterSchemaTree;
 import org.apache.iotdb.db.mpp.plan.execution.ExecutionResult;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.MeasurementGroup;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
+import org.apache.iotdb.db.mpp.plan.statement.internal.InternalBatchActivateTemplateStatement;
+import org.apache.iotdb.db.mpp.plan.statement.internal.InternalCreateMultiTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.internal.InternalCreateTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ActivateTemplateStatement;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -43,6 +46,7 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -63,36 +67,24 @@ class AutoCreateSchemaExecutor {
     this.statementExecutor = statementExecutor;
   }
 
+  // auto create the missing measurements and merge them into given schemaTree
   void autoCreateMissingMeasurements(
       ClusterSchemaTree schemaTree,
       PartialPath devicePath,
       List<Integer> indexOfTargetMeasurements,
       String[] measurements,
       Function<Integer, TSDataType> getDataType,
-      TSEncoding[] encodings,
-      CompressionType[] compressionTypes,
       boolean isAligned) {
     // check whether there is template should be activated
     Pair<Template, PartialPath> templateInfo = templateManager.checkTemplateSetInfo(devicePath);
     if (templateInfo != null) {
       Template template = templateInfo.left;
-      boolean shouldActivateTemplate = false;
-      for (int index : indexOfTargetMeasurements) {
-        if (template.hasSchema(measurements[index])) {
-          shouldActivateTemplate = true;
-          break;
-        }
-      }
-
-      if (shouldActivateTemplate) {
+      List<Integer> indexOfMeasurementsNotInTemplate =
+          checkMeasurementsInSchemaTemplate(
+              devicePath, indexOfTargetMeasurements, measurements, isAligned, template);
+      if (indexOfMeasurementsNotInTemplate.size() < indexOfTargetMeasurements.size()) {
+        // there are measurements in schema template
         internalActivateTemplate(devicePath);
-        List<Integer> recheckedIndexOfMissingMeasurements = new ArrayList<>();
-        for (int i = 0; i < indexOfTargetMeasurements.size(); i++) {
-          if (!template.hasSchema(measurements[i])) {
-            recheckedIndexOfMissingMeasurements.add(indexOfTargetMeasurements.get(i));
-          }
-        }
-        indexOfTargetMeasurements = recheckedIndexOfMissingMeasurements;
         for (Map.Entry<String, IMeasurementSchema> entry : template.getSchemaMap().entrySet()) {
           schemaTree.appendSingleMeasurement(
               devicePath.concatNode(entry.getKey()),
@@ -101,11 +93,12 @@ class AutoCreateSchemaExecutor {
               null,
               template.isDirectAligned());
         }
-
-        if (indexOfTargetMeasurements.isEmpty()) {
-          return;
-        }
       }
+      if (indexOfMeasurementsNotInTemplate.isEmpty()) {
+        return;
+      }
+      // there are measurements need to be created as normal timeseries
+      indexOfTargetMeasurements = indexOfMeasurementsNotInTemplate;
     }
 
     // auto create the rest missing timeseries
@@ -124,30 +117,162 @@ class AutoCreateSchemaExecutor {
           if (tsDataType != null) {
             missingMeasurements.add(measurements[index]);
             dataTypesOfMissingMeasurement.add(tsDataType);
-            encodingsOfMissingMeasurement.add(
-                encodings == null ? getDefaultEncoding(tsDataType) : encodings[index]);
+            encodingsOfMissingMeasurement.add(getDefaultEncoding(tsDataType));
             compressionTypesOfMissingMeasurement.add(
-                compressionTypes == null
-                    ? TSFileDescriptor.getInstance().getConfig().getCompressor()
-                    : compressionTypes[index]);
+                TSFileDescriptor.getInstance().getConfig().getCompressor());
           }
         });
 
     if (!missingMeasurements.isEmpty()) {
-      schemaTree.mergeSchemaTree(
-          internalCreateTimeseries(
-              devicePath,
-              missingMeasurements,
-              dataTypesOfMissingMeasurement,
-              encodingsOfMissingMeasurement,
-              compressionTypesOfMissingMeasurement,
-              isAligned));
+      internalCreateTimeSeries(
+          schemaTree,
+          devicePath,
+          missingMeasurements,
+          dataTypesOfMissingMeasurement,
+          encodingsOfMissingMeasurement,
+          compressionTypesOfMissingMeasurement,
+          isAligned);
     }
   }
 
-  // try to create the target timeseries and return schemaTree involving successfully created
-  // timeseries and existing timeseries
-  private ClusterSchemaTree internalCreateTimeseries(
+  void autoCreateMissingMeasurements(
+      ClusterSchemaTree schemaTree,
+      List<PartialPath> devicePathList,
+      List<Integer> indexOfTargetDevices,
+      List<List<Integer>> indexOfTargetMeasurementsList,
+      List<String[]> measurementsList,
+      List<TSDataType[]> tsDataTypesList,
+      List<TSEncoding[]> encodingsList,
+      List<CompressionType[]> compressionTypesList,
+      List<Boolean> isAlignedList) {
+    // check whether there is template should be activated
+
+    Map<PartialPath, Pair<Template, PartialPath>> devicesNeedActivateTemplate = new HashMap<>();
+    Map<PartialPath, Pair<Boolean, MeasurementGroup>> devicesNeedAutoCreateTimeSeries =
+        new HashMap<>();
+    int deviceIndex;
+    PartialPath devicePath;
+    List<Integer> indexOfTargetMeasurements;
+    Pair<Template, PartialPath> templateInfo;
+    Template template;
+    List<Integer> indexOfMeasurementsNotInTemplate;
+    for (int i = 0, size = indexOfTargetDevices.size(); i < size; i++) {
+      deviceIndex = indexOfTargetDevices.get(i);
+      devicePath = devicePathList.get(deviceIndex);
+      indexOfTargetMeasurements = indexOfTargetMeasurementsList.get(i);
+
+      templateInfo = devicesNeedActivateTemplate.get(devicePath);
+      if (templateInfo == null) {
+        templateInfo = templateManager.checkTemplateSetInfo(devicePath);
+      }
+
+      if (templateInfo == null) {
+        indexOfMeasurementsNotInTemplate = indexOfTargetMeasurements;
+      } else {
+        template = templateInfo.left;
+        indexOfMeasurementsNotInTemplate =
+            checkMeasurementsInSchemaTemplate(
+                devicePath,
+                indexOfTargetMeasurements,
+                measurementsList.get(deviceIndex),
+                isAlignedList.get(deviceIndex),
+                template);
+        if (indexOfMeasurementsNotInTemplate.size() < indexOfTargetMeasurements.size()) {
+          // there are measurements in schema template
+          devicesNeedActivateTemplate.putIfAbsent(devicePath, templateInfo);
+        }
+      }
+
+      if (!indexOfMeasurementsNotInTemplate.isEmpty()) {
+        // there are measurements need to be created as normal timeseries
+        int finalDeviceIndex = deviceIndex;
+        List<Integer> finalIndexOfMeasurementsNotInTemplate = indexOfMeasurementsNotInTemplate;
+        devicesNeedAutoCreateTimeSeries.compute(
+            devicePath,
+            (k, v) -> {
+              if (v == null) {
+                v = new Pair<>(isAlignedList.get(finalDeviceIndex), new MeasurementGroup());
+              }
+              MeasurementGroup measurementGroup = v.right;
+              String[] measurements = measurementsList.get(finalDeviceIndex);
+              TSDataType[] tsDataTypes = tsDataTypesList.get(finalDeviceIndex);
+              TSEncoding[] encodings =
+                  encodingsList == null ? null : encodingsList.get(finalDeviceIndex);
+              CompressionType[] compressionTypes =
+                  compressionTypesList == null ? null : compressionTypesList.get(finalDeviceIndex);
+              for (int measurementIndex : finalIndexOfMeasurementsNotInTemplate) {
+                if (tsDataTypes[measurementIndex] == null) {
+                  continue;
+                }
+                measurementGroup.addMeasurement(
+                    measurements[measurementIndex],
+                    tsDataTypes[measurementIndex],
+                    encodings == null
+                        ? getDefaultEncoding(tsDataTypes[measurementIndex])
+                        : encodings[measurementIndex],
+                    compressionTypes == null
+                        ? TSFileDescriptor.getInstance().getConfig().getCompressor()
+                        : compressionTypes[measurementIndex]);
+              }
+              return v;
+            });
+      }
+    }
+
+    if (!devicesNeedActivateTemplate.isEmpty()) {
+      internalActivateTemplate(devicesNeedActivateTemplate);
+      for (Map.Entry<PartialPath, Pair<Template, PartialPath>> entry :
+          devicesNeedActivateTemplate.entrySet()) {
+        devicePath = entry.getKey();
+        template = entry.getValue().left;
+        for (Map.Entry<String, IMeasurementSchema> measurementEntry :
+            template.getSchemaMap().entrySet()) {
+          schemaTree.appendSingleMeasurement(
+              devicePath.concatNode(measurementEntry.getKey()),
+              (MeasurementSchema) measurementEntry.getValue(),
+              null,
+              null,
+              template.isDirectAligned());
+        }
+      }
+    }
+
+    if (!devicesNeedAutoCreateTimeSeries.isEmpty()) {
+      internalCreateTimeSeries(schemaTree, devicesNeedAutoCreateTimeSeries);
+    }
+  }
+
+  private List<Integer> checkMeasurementsInSchemaTemplate(
+      PartialPath devicePath,
+      List<Integer> indexOfTargetMeasurements,
+      String[] measurements,
+      boolean isAligned,
+      Template template) {
+    // check whether there is template should be activated
+    boolean shouldActivateTemplate = false;
+    for (int index : indexOfTargetMeasurements) {
+      if (template.hasSchema(measurements[index])) {
+        shouldActivateTemplate = true;
+        break;
+      }
+    }
+    if (shouldActivateTemplate) {
+      List<Integer> recheckedIndexOfMissingMeasurements = new ArrayList<>();
+      for (int index : indexOfTargetMeasurements) {
+        if (!template.hasSchema(measurements[index])) {
+          recheckedIndexOfMissingMeasurements.add(index);
+        }
+      }
+      return recheckedIndexOfMissingMeasurements;
+    } else {
+      return indexOfTargetMeasurements;
+    }
+  }
+
+  // try to create the target timeseries and merge schema of successfully created
+  // timeseries and existing timeseries into given schemaTree
+  private void internalCreateTimeSeries(
+      ClusterSchemaTree schemaTree,
       PartialPath devicePath,
       List<String> measurements,
       List<TSDataType> tsDataTypes,
@@ -164,7 +289,6 @@ class AutoCreateSchemaExecutor {
             .map(o -> measurements.indexOf(o.getMeasurement()))
             .collect(Collectors.toSet());
 
-    ClusterSchemaTree schemaTree = new ClusterSchemaTree();
     schemaTree.appendMeasurementPaths(measurementPathList);
 
     for (int i = 0, size = measurements.size(); i < size; i++) {
@@ -180,13 +304,10 @@ class AutoCreateSchemaExecutor {
           null,
           isAligned);
     }
-
-    return schemaTree;
   }
 
   // auto create timeseries and return the existing timeseries info
-  private List<MeasurementPath> executeInternalCreateTimeseriesStatement(
-      InternalCreateTimeSeriesStatement statement) {
+  private List<MeasurementPath> executeInternalCreateTimeseriesStatement(Statement statement) {
 
     ExecutionResult executionResult = statementExecutor.apply(statement);
 
@@ -224,7 +345,74 @@ class AutoCreateSchemaExecutor {
     TSStatus status = executionResult.status;
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
         && status.getCode() != TSStatusCode.TEMPLATE_IS_IN_USE.getStatusCode()) {
-      throw new RuntimeException(new IoTDBException(status.getMessage(), status.getCode()));
+      throw new SemanticException(new IoTDBException(status.getMessage(), status.getCode()));
+    }
+  }
+
+  private void internalActivateTemplate(
+      Map<PartialPath, Pair<Template, PartialPath>> devicesNeedActivateTemplate) {
+    ExecutionResult executionResult =
+        statementExecutor.apply(
+            new InternalBatchActivateTemplateStatement(devicesNeedActivateTemplate));
+    TSStatus status = executionResult.status;
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        || status.getCode() == TSStatusCode.TEMPLATE_IS_IN_USE.getStatusCode()) {
+      return;
+    }
+    if (status.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
+      Set<String> failedActivationSet = new HashSet<>();
+      for (TSStatus subStatus : status.subStatus) {
+        if (subStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+            && subStatus.getCode() != TSStatusCode.TEMPLATE_IS_IN_USE.getStatusCode()) {
+          failedActivationSet.add(subStatus.message);
+        }
+      }
+      if (!failedActivationSet.isEmpty()) {
+        throw new SemanticException(new MetadataException(String.join("; ", failedActivationSet)));
+      }
+    } else {
+      throw new SemanticException(new IoTDBException(status.getMessage(), status.getCode()));
+    }
+  }
+
+  private void internalCreateTimeSeries(
+      ClusterSchemaTree schemaTree,
+      Map<PartialPath, Pair<Boolean, MeasurementGroup>> devicesNeedAutoCreateTimeSeries) {
+
+    List<MeasurementPath> measurementPathList =
+        executeInternalCreateTimeseriesStatement(
+            new InternalCreateMultiTimeSeriesStatement(devicesNeedAutoCreateTimeSeries));
+
+    schemaTree.appendMeasurementPaths(measurementPathList);
+
+    Map<PartialPath, Set<String>> alreadyExistingMeasurementMap = new HashMap<>();
+    for (MeasurementPath measurementPath : measurementPathList) {
+      alreadyExistingMeasurementMap
+          .computeIfAbsent(measurementPath.getDevicePath(), k -> new HashSet<>())
+          .add(measurementPath.getMeasurement());
+    }
+    Set<String> measurementSet;
+    MeasurementGroup measurementGroup;
+    for (Map.Entry<PartialPath, Pair<Boolean, MeasurementGroup>> entry :
+        devicesNeedAutoCreateTimeSeries.entrySet()) {
+      measurementSet = alreadyExistingMeasurementMap.get(entry.getKey());
+      measurementGroup = entry.getValue().right;
+      for (int i = 0, size = measurementGroup.size(); i < size; i++) {
+        if (measurementSet != null
+            && measurementSet.contains(measurementGroup.getMeasurements().get(i))) {
+          continue;
+        }
+        schemaTree.appendSingleMeasurement(
+            entry.getKey().concatNode(measurementGroup.getMeasurements().get(i)),
+            new MeasurementSchema(
+                measurementGroup.getMeasurements().get(i),
+                measurementGroup.getDataTypes().get(i),
+                measurementGroup.getEncodings().get(i),
+                measurementGroup.getCompressors().get(i)),
+            null,
+            null,
+            entry.getValue().left);
+      }
     }
   }
 }

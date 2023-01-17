@@ -37,12 +37,13 @@ import static org.junit.Assert.fail;
 
 public class CompressionRatioTest {
 
-  private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
+  private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConf();
 
   private CompressionRatio compressionRatio = CompressionRatio.getInstance();
 
   private static final String directory =
-      FilePathUtils.regularizePath(CONFIG.getSystemDir()) + CompressionRatio.COMPRESSION_RATIO_DIR;
+      FilePathUtils.regularizePath(CONFIG.getDnSystemDir())
+          + CompressionRatio.COMPRESSION_RATIO_DIR;
 
   @Before
   public void setUp() throws Exception {

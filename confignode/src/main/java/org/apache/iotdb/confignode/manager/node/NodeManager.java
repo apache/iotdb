@@ -108,8 +108,11 @@ public class NodeManager {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(NodeManager.class);
 
-  private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
-  public static final long HEARTBEAT_INTERVAL = CONF.getHeartbeatIntervalInMs();
+  private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConf();
+  private static final ConfigNodeConfig CONFIG_NODE_CONFIG =
+      ConfigNodeDescriptor.getInstance().getConf();
+
+  public static final long HEARTBEAT_INTERVAL = COMMON_CONFIG.getHeartbeatIntervalInMs();
 
   private final IManager configManager;
   private final NodeInfo nodeInfo;
@@ -152,19 +155,16 @@ public class NodeManager {
 
   private void setGlobalConfig(ConfigurationResp dataSet) {
     // Set TGlobalConfig
-    final ConfigNodeConfig configNodeConfig = ConfigNodeDescriptor.getInstance().getConf();
-    final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
     TGlobalConfig globalConfig = new TGlobalConfig();
     globalConfig.setDataRegionConsensusProtocolClass(
-        configNodeConfig.getDataRegionConsensusProtocolClass());
+        COMMON_CONFIG.getDataRegionConsensusProtocolClass().getProtocol());
     globalConfig.setSchemaRegionConsensusProtocolClass(
-        configNodeConfig.getSchemaRegionConsensusProtocolClass());
-    globalConfig.setSeriesPartitionSlotNum(configNodeConfig.getSeriesSlotNum());
-    globalConfig.setSeriesPartitionExecutorClass(
-        configNodeConfig.getSeriesPartitionExecutorClass());
-    globalConfig.setTimePartitionInterval(configNodeConfig.getTimePartitionInterval());
-    globalConfig.setReadConsistencyLevel(configNodeConfig.getReadConsistencyLevel());
-    globalConfig.setDiskSpaceWarningThreshold(commonConfig.getDiskSpaceWarningThreshold());
+        COMMON_CONFIG.getSchemaRegionConsensusProtocolClass().getProtocol());
+    globalConfig.setSeriesPartitionSlotNum(COMMON_CONFIG.getSeriesSlotNum());
+    globalConfig.setSeriesPartitionExecutorClass(COMMON_CONFIG.getSeriesPartitionExecutorClass());
+    globalConfig.setTimePartitionInterval(COMMON_CONFIG.getTimePartitionInterval());
+    globalConfig.setReadConsistencyLevel(COMMON_CONFIG.getReadConsistencyLevel());
+    globalConfig.setDiskSpaceWarningThreshold(COMMON_CONFIG.getDiskSpaceWarningThreshold());
     dataSet.setGlobalConfig(globalConfig);
   }
 
@@ -172,51 +172,57 @@ public class NodeManager {
     final ConfigNodeConfig conf = ConfigNodeDescriptor.getInstance().getConf();
     TRatisConfig ratisConfig = new TRatisConfig();
 
-    ratisConfig.setDataAppenderBufferSize(conf.getDataRegionRatisConsensusLogAppenderBufferSize());
+    ratisConfig.setDataAppenderBufferSize(
+        COMMON_CONFIG.getDataRegionRatisConsensusLogAppenderBufferSize());
     ratisConfig.setSchemaAppenderBufferSize(
-        conf.getSchemaRegionRatisConsensusLogAppenderBufferSize());
+        COMMON_CONFIG.getSchemaRegionRatisConsensusLogAppenderBufferSize());
 
-    ratisConfig.setDataSnapshotTriggerThreshold(conf.getDataRegionRatisSnapshotTriggerThreshold());
+    ratisConfig.setDataSnapshotTriggerThreshold(
+        COMMON_CONFIG.getDataRegionRatisSnapshotTriggerThreshold());
     ratisConfig.setSchemaSnapshotTriggerThreshold(
-        conf.getSchemaRegionRatisSnapshotTriggerThreshold());
+        COMMON_CONFIG.getSchemaRegionRatisSnapshotTriggerThreshold());
 
-    ratisConfig.setDataLogUnsafeFlushEnable(conf.isDataRegionRatisLogUnsafeFlushEnable());
-    ratisConfig.setSchemaLogUnsafeFlushEnable(conf.isSchemaRegionRatisLogUnsafeFlushEnable());
+    ratisConfig.setDataLogUnsafeFlushEnable(COMMON_CONFIG.isDataRegionRatisLogUnsafeFlushEnable());
+    ratisConfig.setSchemaLogUnsafeFlushEnable(
+        COMMON_CONFIG.isSchemaRegionRatisLogUnsafeFlushEnable());
 
-    ratisConfig.setDataLogSegmentSizeMax(conf.getDataRegionRatisLogSegmentSizeMax());
-    ratisConfig.setSchemaLogSegmentSizeMax(conf.getSchemaRegionRatisLogSegmentSizeMax());
+    ratisConfig.setDataLogSegmentSizeMax(COMMON_CONFIG.getDataRegionRatisLogSegmentSizeMax());
+    ratisConfig.setSchemaLogSegmentSizeMax(COMMON_CONFIG.getSchemaRegionRatisLogSegmentSizeMax());
 
-    ratisConfig.setDataGrpcFlowControlWindow(conf.getDataRegionRatisGrpcFlowControlWindow());
-    ratisConfig.setSchemaGrpcFlowControlWindow(conf.getSchemaRegionRatisGrpcFlowControlWindow());
+    ratisConfig.setDataGrpcFlowControlWindow(
+        COMMON_CONFIG.getDataRegionRatisGrpcFlowControlWindow());
+    ratisConfig.setSchemaGrpcFlowControlWindow(
+        COMMON_CONFIG.getSchemaRegionRatisGrpcFlowControlWindow());
 
     ratisConfig.setDataLeaderElectionTimeoutMin(
-        conf.getDataRegionRatisRpcLeaderElectionTimeoutMinMs());
+        COMMON_CONFIG.getDataRegionRatisRpcLeaderElectionTimeoutMinMs());
     ratisConfig.setSchemaLeaderElectionTimeoutMin(
-        conf.getSchemaRegionRatisRpcLeaderElectionTimeoutMinMs());
+        COMMON_CONFIG.getSchemaRegionRatisRpcLeaderElectionTimeoutMinMs());
 
     ratisConfig.setDataLeaderElectionTimeoutMax(
-        conf.getDataRegionRatisRpcLeaderElectionTimeoutMaxMs());
+        COMMON_CONFIG.getDataRegionRatisRpcLeaderElectionTimeoutMaxMs());
     ratisConfig.setSchemaLeaderElectionTimeoutMax(
-        conf.getSchemaRegionRatisRpcLeaderElectionTimeoutMaxMs());
+        COMMON_CONFIG.getSchemaRegionRatisRpcLeaderElectionTimeoutMaxMs());
 
-    ratisConfig.setDataRequestTimeout(conf.getDataRegionRatisRequestTimeoutMs());
-    ratisConfig.setSchemaRequestTimeout(conf.getSchemaRegionRatisRequestTimeoutMs());
+    ratisConfig.setDataRequestTimeout(COMMON_CONFIG.getDataRegionRatisRequestTimeoutMs());
+    ratisConfig.setSchemaRequestTimeout(COMMON_CONFIG.getSchemaRegionRatisRequestTimeoutMs());
 
-    ratisConfig.setDataMaxRetryAttempts(conf.getDataRegionRatisMaxRetryAttempts());
-    ratisConfig.setDataInitialSleepTime(conf.getDataRegionRatisInitialSleepTimeMs());
-    ratisConfig.setDataMaxSleepTime(conf.getDataRegionRatisMaxSleepTimeMs());
-    ratisConfig.setSchemaMaxRetryAttempts(conf.getSchemaRegionRatisMaxRetryAttempts());
-    ratisConfig.setSchemaInitialSleepTime(conf.getSchemaRegionRatisInitialSleepTimeMs());
-    ratisConfig.setSchemaMaxSleepTime(conf.getSchemaRegionRatisMaxSleepTimeMs());
+    ratisConfig.setDataMaxRetryAttempts(COMMON_CONFIG.getDataRegionRatisMaxRetryAttempts());
+    ratisConfig.setDataInitialSleepTime(COMMON_CONFIG.getDataRegionRatisInitialSleepTimeMs());
+    ratisConfig.setDataMaxSleepTime(COMMON_CONFIG.getDataRegionRatisMaxSleepTimeMs());
+    ratisConfig.setSchemaMaxRetryAttempts(COMMON_CONFIG.getSchemaRegionRatisMaxRetryAttempts());
+    ratisConfig.setSchemaInitialSleepTime(COMMON_CONFIG.getSchemaRegionRatisInitialSleepTimeMs());
+    ratisConfig.setSchemaMaxSleepTime(COMMON_CONFIG.getSchemaRegionRatisMaxSleepTimeMs());
 
-    ratisConfig.setSchemaPreserveWhenPurge(conf.getSchemaRegionRatisPreserveLogsWhenPurge());
-    ratisConfig.setDataPreserveWhenPurge(conf.getDataRegionRatisPreserveLogsWhenPurge());
+    ratisConfig.setSchemaPreserveWhenPurge(
+        COMMON_CONFIG.getSchemaRegionRatisPreserveLogsWhenPurge());
+    ratisConfig.setDataPreserveWhenPurge(COMMON_CONFIG.getDataRegionRatisPreserveLogsWhenPurge());
 
-    ratisConfig.setFirstElectionTimeoutMin(conf.getRatisFirstElectionTimeoutMinMs());
-    ratisConfig.setFirstElectionTimeoutMax(conf.getRatisFirstElectionTimeoutMaxMs());
+    ratisConfig.setFirstElectionTimeoutMin(COMMON_CONFIG.getRatisFirstElectionTimeoutMinMs());
+    ratisConfig.setFirstElectionTimeoutMax(COMMON_CONFIG.getRatisFirstElectionTimeoutMaxMs());
 
-    ratisConfig.setSchemaRegionRatisLogMax(conf.getSchemaRegionRatisLogMax());
-    ratisConfig.setDataRegionRatisLogMax(conf.getDataRegionRatisLogMax());
+    ratisConfig.setSchemaRegionRatisLogMax(COMMON_CONFIG.getSchemaRegionRatisLogMax());
+    ratisConfig.setDataRegionRatisLogMax(COMMON_CONFIG.getDataRegionRatisLogMax());
 
     dataSet.setRatisConfig(ratisConfig);
   }

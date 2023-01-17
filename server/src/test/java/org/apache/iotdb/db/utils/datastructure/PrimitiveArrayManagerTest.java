@@ -19,32 +19,35 @@
 
 package org.apache.iotdb.db.utils.datastructure;
 
-import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
 
 import org.junit.Assert;
 import org.junit.Test;
 
 public class PrimitiveArrayManagerTest {
-  private IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConf();
 
   @Test
   public void testGetArrayRowCount() {
 
     Assert.assertEquals(
         1224827,
-        PrimitiveArrayManager.getArrayRowCount(1224826 * config.getPrimitiveArraySize() + 1));
+        PrimitiveArrayManager.getArrayRowCount(
+            1224826 * COMMON_CONFIG.getPrimitiveArraySize() + 1));
 
     Assert.assertEquals(
-        1224826, PrimitiveArrayManager.getArrayRowCount(1224826 * config.getPrimitiveArraySize()));
-
-    Assert.assertEquals(1, PrimitiveArrayManager.getArrayRowCount(config.getPrimitiveArraySize()));
-
-    Assert.assertEquals(
-        1, PrimitiveArrayManager.getArrayRowCount(config.getPrimitiveArraySize() - 1));
+        1224826,
+        PrimitiveArrayManager.getArrayRowCount(1224826 * COMMON_CONFIG.getPrimitiveArraySize()));
 
     Assert.assertEquals(
-        2, PrimitiveArrayManager.getArrayRowCount(config.getPrimitiveArraySize() + 1));
+        1, PrimitiveArrayManager.getArrayRowCount(COMMON_CONFIG.getPrimitiveArraySize()));
+
+    Assert.assertEquals(
+        1, PrimitiveArrayManager.getArrayRowCount(COMMON_CONFIG.getPrimitiveArraySize() - 1));
+
+    Assert.assertEquals(
+        2, PrimitiveArrayManager.getArrayRowCount(COMMON_CONFIG.getPrimitiveArraySize() + 1));
   }
 }

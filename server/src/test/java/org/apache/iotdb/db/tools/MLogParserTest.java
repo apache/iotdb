@@ -151,7 +151,7 @@ public class MLogParserTest {
   private void testParseMLog(String storageGroup, int schemaRegionId, int expectedLineNum)
       throws IOException {
     testParseLog(
-        IoTDBDescriptor.getInstance().getConfig().getSchemaDir()
+        IoTDBDescriptor.getInstance().getConf().getSchemaDir()
             + File.separator
             + storageGroup
             + File.separator
