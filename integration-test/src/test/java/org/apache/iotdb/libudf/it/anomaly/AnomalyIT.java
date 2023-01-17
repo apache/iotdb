@@ -1553,7 +1553,8 @@ public class AnomalyIT {
 
   @Test
   public void testOutlier1() {
-    String sqlStr = "select outlier(d0.s0, \"r\"=\"5\", \"k\"=\"4\", \"w\"=\"10\", \"s\"=\"5\") from root.vehicle";
+    String sqlStr =
+        "select outlier(d0.s0, \"r\"=\"5\", \"k\"=\"4\", \"w\"=\"10\", \"s\"=\"5\") from root.vehicle";
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
