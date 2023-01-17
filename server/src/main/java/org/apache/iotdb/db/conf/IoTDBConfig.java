@@ -146,7 +146,7 @@ public class IoTDBConfig {
       "org.apache.iotdb.db.conf.directories.strategy.";
   private static final String DEFAULT_MULTI_DIR_STRATEGY = "MaxDiskUsableSpaceFirstStrategy";
   // Strategy of multiple directories
-  private String dnMultiDirStrategyClassName = null;
+  private String dnMultiDirStrategyClassName = DEFAULT_MULTI_DIR_STRATEGY;
 
   // Consensus directory
   private String dnConsensusDir = IoTDBConstant.DEFAULT_BASE_DIR + File.separator + "consensus";
