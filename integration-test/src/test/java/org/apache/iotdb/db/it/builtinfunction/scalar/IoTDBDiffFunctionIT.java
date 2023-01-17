@@ -319,7 +319,7 @@ public class IoTDBDiffFunctionIT {
         expectedHeader,
         retArray);
 
-    // align by device
+    // align by device + order by time
     expectedHeader =
         new String[] {
           TIMESTAMP_STR, DEVICE, "change_points(s1)", "diff(s2, \"ignoreNull\"=\"false\")"
