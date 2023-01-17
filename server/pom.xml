@@ -237,6 +237,8 @@
                     <systemProperties>
                         <IOTDB_CONF>src/test/resources</IOTDB_CONF>
                     </systemProperties>
+                    <reuseForks>false</reuseForks>
+                    <runOrder>random</runOrder>
                 </configuration>
             </plugin>
             <plugin>
@@ -255,6 +257,8 @@
                 <configuration>
                     <skipTests>${iotdb.test.skip}</skipTests>
                     <skipITs>${iotdb.it.skip}</skipITs>
+                    <reuseForks>false</reuseForks>
+                    <runOrder>random</runOrder>
                 </configuration>
             </plugin>
             <plugin>
