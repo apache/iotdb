@@ -52,17 +52,26 @@ import java.util.stream.Stream;
 public class SourceHandleTest {
   private static final long MOCK_TSBLOCK_SIZE = 1024L * 1024L;
 
-  private static long maxBytesPerFI;
+  private static int queryThreadCount;
+  private static long allocateMemoryForDataExchange;
 
   @BeforeClass
   public static void beforeClass() {
-    maxBytesPerFI = CommonDescriptor.getInstance().getConf().getMaxBytesPerFragmentInstance();
-    CommonDescriptor.getInstance().getConf().setMaxBytesPerFragmentInstance(5 * MOCK_TSBLOCK_SIZE);
+    queryThreadCount = CommonDescriptor.getInstance().getConf().getQueryThreadCount();
+    allocateMemoryForDataExchange =
+        CommonDescriptor.getInstance().getConf().getAllocateMemoryForDataExchange();
+    CommonDescriptor.getInstance().getConf().setQueryThreadCount(2);
+    CommonDescriptor.getInstance()
+        .getConf()
+        .setAllocateMemoryForDataExchange(5 * MOCK_TSBLOCK_SIZE * 2);
   }
 
   @AfterClass
   public static void afterClass() {
-    CommonDescriptor.getInstance().getConf().setMaxBytesPerFragmentInstance(maxBytesPerFI);
+    CommonDescriptor.getInstance().getConf().setQueryThreadCount(queryThreadCount);
+    CommonDescriptor.getInstance()
+        .getConf()
+        .setAllocateMemoryForDataExchange(allocateMemoryForDataExchange);
   }
 
   @Test
