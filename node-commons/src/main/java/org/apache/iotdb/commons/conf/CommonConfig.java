@@ -634,7 +634,7 @@ public class CommonConfig {
           : 1;
   private int coreClientCountForEachNodeInClientManager = 200;
   private int maxClientCountForEachNodeInClientManager = 300;
-  
+
   /** quota */
   private boolean quotaEnable = false;
 

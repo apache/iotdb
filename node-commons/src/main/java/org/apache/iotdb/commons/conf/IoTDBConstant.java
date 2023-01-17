@@ -271,7 +271,7 @@ public class IoTDBConstant {
 
   public static final String CONFIGNODE_CONF = "CONFIGNODE_CONF";
   public static final String CONFIGNODE_HOME = "CONFIGNODE_HOME";
-  
+
   // quota
   public static final String SPACE_QUOTA_DISK = "disk";
   public static final String SPACE_QUOTA_UNLIMITED = "unlimited";
