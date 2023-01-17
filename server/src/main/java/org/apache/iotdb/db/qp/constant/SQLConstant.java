@@ -101,6 +101,8 @@ public class SQLConstant {
   public static final String TDIGEST_STAT_SINGLE = "tdigest_quantile";
   public static final String SAMPLING_STAT_SINGLE = "sampling_quantile";
   public static final String STRICT_KLL_STAT_SINGLE = "kll_quantile";
+  public static final String DDSKETCH_SINGLE = "ddsketch_quantile";
+  public static final String CHUNK_STAT_AVAIL = "chunk_stat_available";
 
   public static final String ALL = "all";
 
@@ -140,7 +142,9 @@ public class SQLConstant {
               EXACT_MEDIAN_KLL_STAT_OVERLAP_SINGLE,
               TDIGEST_STAT_SINGLE,
               SAMPLING_STAT_SINGLE,
-              STRICT_KLL_STAT_SINGLE));
+              STRICT_KLL_STAT_SINGLE,
+              DDSKETCH_SINGLE,
+              CHUNK_STAT_AVAIL));
 
   public static final int TOK_WHERE = 23;
   public static final int TOK_INSERT = 24;

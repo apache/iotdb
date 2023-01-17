@@ -115,6 +115,10 @@ public class AggregateResultFactory {
         return new SamplingStatSingleAggrResult(dataType);
       case SQLConstant.STRICT_KLL_STAT_SINGLE:
         return new StrictKLLStatSingleAggrResult(dataType);
+      case SQLConstant.DDSKETCH_SINGLE:
+        return new DDSketchSingleAggrResult(dataType);
+      case SQLConstant.CHUNK_STAT_AVAIL:
+        return new KLLStatChunkAvailAggrResult(dataType);
       default:
         throw new IllegalArgumentException("Invalid Aggregation function: " + aggrFuncName);
     }
@@ -194,6 +198,10 @@ public class AggregateResultFactory {
         return new SamplingStatSingleAggrResult(dataType);
       case SQLConstant.STRICT_KLL_STAT_SINGLE:
         return new StrictKLLStatSingleAggrResult(dataType);
+      case SQLConstant.DDSKETCH_SINGLE:
+        return new DDSketchSingleAggrResult(dataType);
+      case SQLConstant.CHUNK_STAT_AVAIL:
+        return new KLLStatChunkAvailAggrResult(dataType);
       default:
         throw new IllegalArgumentException("Invalid Aggregation function: " + aggrFuncName);
     }
@@ -274,6 +282,10 @@ public class AggregateResultFactory {
         return new SamplingStatSingleAggrResult(dataType);
       case STRICT_KLL_STAT_SINGLE:
         return new StrictKLLStatSingleAggrResult(dataType);
+      case DDSKETCH_SINGLE:
+        return new DDSketchSingleAggrResult(dataType);
+      case CHUNK_STAT_AVAIL:
+        return new KLLStatChunkAvailAggrResult(dataType);
       default:
         throw new IllegalArgumentException("Invalid Aggregation Type: " + aggregationType.name());
     }

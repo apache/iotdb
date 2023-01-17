@@ -398,7 +398,11 @@ public class KLLStatMedianAggrResult extends AggregateResult {
           //          if(stat.getBfNum()>1)
           //            System.out.println("\t\tFK\tstat:" +
           //                stat.getStartTime() + "..." + stat.getEndTime());
-          for (LongKLLSketch sketch : stat.getKllSketchList()) addSketch(sketch);
+          for (KLLSketchForQuantile sketch : stat.getKllSketchList()) {
+
+            ((LongKLLSketch) sketch).deserializeFromBuffer();
+            addSketch(sketch);
+          }
           //          heapKLL.mergeWithTempSpace(stat.getKllSketch());
           return;
         } else System.out.println("\t\t\t\t!!!!!![ERROR!] no KLL in stat!");

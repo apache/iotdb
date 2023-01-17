@@ -33,7 +33,6 @@ import org.apache.iotdb.tsfile.read.common.IBatchDataIterator;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.utils.HeapLongKLLSketch;
 import org.apache.iotdb.tsfile.utils.KLLSketchForQuantile;
-import org.apache.iotdb.tsfile.utils.LongKLLSketch;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.eclipse.collections.api.iterator.MutableLongIterator;
@@ -370,7 +369,7 @@ public class KLLStatOverlapSingleAggrResult extends AggregateResult {
         DoubleStatistics stat = (DoubleStatistics) statistics;
         if (stat.getKllSketchNum() > 0) {
           pageKLLNum += stat.getKllSketchNum();
-          for (LongKLLSketch sketch : stat.getKllSketchList()) addSketch(sketch);
+          for (KLLSketchForQuantile sketch : stat.getKllSketchList()) addSketch(sketch);
           //          System.out.println(
           //              "\t[KLL STAT Single DEBUG] updateResultFromStatistics. pageN:"
           //                  + stat.getKllSketch().getN());

@@ -148,6 +148,8 @@ public class AggregationQueryOperator extends QueryOperator {
       case SQLConstant.TDIGEST_STAT_SINGLE:
       case SQLConstant.SAMPLING_STAT_SINGLE:
       case SQLConstant.STRICT_KLL_STAT_SINGLE:
+      case SQLConstant.DDSKETCH_SINGLE:
+      case SQLConstant.CHUNK_STAT_AVAIL:
         return dataType.isNumeric();
       case SQLConstant.COUNT:
       case SQLConstant.MIN_TIME:
@@ -197,6 +199,8 @@ public class AggregationQueryOperator extends QueryOperator {
       case SQLConstant.TDIGEST_STAT_SINGLE:
       case SQLConstant.SAMPLING_STAT_SINGLE:
       case SQLConstant.STRICT_KLL_STAT_SINGLE:
+      case SQLConstant.DDSKETCH_SINGLE:
+      case SQLConstant.CHUNK_STAT_AVAIL:
         return dataTypes.stream().allMatch(dataTypes.get(0)::equals);
       default:
         return true;

@@ -34,6 +34,7 @@ import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
+import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.dataset.SingleDataSet;
@@ -315,7 +316,7 @@ public class AggregationExecutor {
         allUseStatistics &= aggregateResult.useStatisticsIfPossible();
       IAggregateReader seriesReader;
       int strategy = IoTDBDescriptor.getInstance().getConfig().getAggregationStrategy();
-      if (!allUseStatistics || strategy == 0)
+      if (!allUseStatistics || strategy == 0) {
         seriesReader =
             new SeriesAggregateReader(
                 seriesPath,
@@ -327,7 +328,13 @@ public class AggregationExecutor {
                 null,
                 null,
                 true);
-      else {
+        if (ascAggregateResultList.get(0).getAggregationType()
+            == AggregationType.STRICT_KLL_STAT_SINGLE) {
+          (((SeriesAggregateReader) seriesReader).getSeriesReader()).quantileAggrResult =
+              ascAggregateResultList.get(0);
+          (((SeriesAggregateReader) seriesReader).getSeriesReader()).aggrSST = true;
+        }
+      } else {
         if (strategy == 1)
           seriesReader =
               new SeriesAggregateReaderForStatChain(
@@ -614,9 +621,29 @@ public class AggregationExecutor {
     while (seriesReader.hasNextFile()) {
       aggregateResultList =
           findUnfinishedAggregateResults(aggregateResultList, resultToGroupedAhead);
+      //      System.out.println(
+      //          "\t\t[DEBUG nextFile In AggrExe] startT:"
+      //              + seriesReader.currentFileStatistics().getStartTime()
+      //              + "\tN:"
+      //              + seriesReader.currentFileStatistics().getCount());
       // try to calc by file statistics
       if (seriesReader.canUseCurrentFileStatistics()) {
         Statistics fileStatistics = seriesReader.currentFileStatistics();
+        //        {
+        //          DoubleStatistics doubleStats = (DoubleStatistics) fileStatistics;
+        //          System.out.println(
+        //              "\t\t\t[aggr files from reader]\tfileStat\tN:"
+        //                  + doubleStats.getCount()
+        //                  + "\tT:"
+        //                  + doubleStats.getStartTime()
+        //                  + "..."
+        //                  + doubleStats.getEndTime()
+        //                  + "\tsummaryNum:"
+        //                  + doubleStats.getSummaryNum());
+        //          if (doubleStats.getSummaryNum() > 0)
+        //            System.out.println(
+        //                "\t\t\t\t\t\tsketch numLen:" + doubleStats.getOneKllSketch().getNumLen());
+        //        }
         List<AggregateResult> remainingAggregateResultList =
             tryToAggregateFromStatistics(aggregateResultList, fileStatistics, resultToGroupedAhead);
         if (remainingAggregateResultList.isEmpty()) {
@@ -644,6 +671,7 @@ public class AggregationExecutor {
     while (seriesReader.hasNextFile()) {
       // cal by file statistics
       // TODO
+
       //      if (seriesReader.canUseCurrentFileStatistics()) {
       //        while (seriesReader.hasNextSubSeries()) {
       //          Statistics fileStatistics = seriesReader.currentFileStatistics();

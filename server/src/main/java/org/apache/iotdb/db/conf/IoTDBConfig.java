@@ -149,7 +149,7 @@ public class IoTDBConfig {
    * When a certain amount of write ahead logs is reached, they will be flushed to the disk. It is
    * possible to lose at most flush_wal_threshold operations.
    */
-  private int flushWalThreshold = 10000;
+  private int flushWalThreshold = 8192;
 
   /** this variable set timestamp precision as millisecond, microsecond or nanosecond */
   private String timestampPrecision = "ms";
@@ -2544,5 +2544,25 @@ public class IoTDBConfig {
 
   public int getAggregationStrategy() {
     return aggregationStrategy;
+  }
+
+  private boolean noUpdate = true;
+
+  public void setNoUpdate(boolean no) {
+    this.noUpdate = no;
+  }
+
+  public boolean getNoUpdate() {
+    return this.noUpdate;
+  }
+
+  private boolean onlyUsePageSynopsis = true;
+
+  public void setOnlyUsePageSynopsis(boolean only) {
+    this.onlyUsePageSynopsis = only;
+  }
+
+  public boolean getOnlyUsePageSynopsis() {
+    return this.onlyUsePageSynopsis;
   }
 }
