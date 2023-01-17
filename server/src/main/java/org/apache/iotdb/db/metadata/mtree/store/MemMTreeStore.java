@@ -185,6 +185,11 @@ public class MemMTreeStore implements IMTreeStore {
   public void unlockWrite() {}
 
   @Override
+  public IMTreeStore getWithReentrantReadLock() {
+    return this;
+  }
+
+  @Override
   public void clear() {
     root = new InternalMNode(null, IoTDBConstant.PATH_ROOT);
     memoryStatistics.releaseMemory(localMemoryUsage.get());

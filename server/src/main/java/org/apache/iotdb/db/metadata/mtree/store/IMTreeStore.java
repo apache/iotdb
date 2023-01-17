@@ -83,6 +83,8 @@ public interface IMTreeStore {
 
   void unlockWrite();
 
+  IMTreeStore getWithReentrantReadLock();
+
   void clear();
 
   boolean createSnapshot(File snapshotDir);

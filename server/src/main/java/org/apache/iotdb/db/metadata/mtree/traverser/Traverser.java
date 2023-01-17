@@ -26,6 +26,7 @@ import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.iterator.IMNodeIterator;
 import org.apache.iotdb.db.metadata.mnode.iterator.MNodeIterator;
 import org.apache.iotdb.db.metadata.mtree.store.IMTreeStore;
+import org.apache.iotdb.db.metadata.mtree.store.ReentrantReadOnlyCachedMTreeStore;
 import org.apache.iotdb.db.metadata.template.Template;
 
 import java.util.Iterator;
@@ -89,6 +90,9 @@ public abstract class Traverser<R> extends AbstractTreeVisitor<IMNode, R> {
     super(startNode, path, isPrefixMatch);
     if (needWriteLock) {
       store.writeLock();
+      this.store = store;
+    } else {
+      this.store = store.getWithReentrantReadLock();
     }
     initStack();
     String[] nodes = path.getNodes();
@@ -99,7 +103,6 @@ public abstract class Traverser<R> extends AbstractTreeVisitor<IMNode, R> {
     this.needWriteLock = needWriteLock;
     this.startNode = startNode;
     this.nodes = nodes;
-    this.store = store;
   }
 
   /**
@@ -162,6 +165,8 @@ public abstract class Traverser<R> extends AbstractTreeVisitor<IMNode, R> {
     super.close();
     if (needWriteLock) {
       store.unlockWrite();
+    } else if (store instanceof ReentrantReadOnlyCachedMTreeStore) {
+      ((ReentrantReadOnlyCachedMTreeStore) store).unlockRead();
     }
   }
 
