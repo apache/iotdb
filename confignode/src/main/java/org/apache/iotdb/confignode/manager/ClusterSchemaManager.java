@@ -312,7 +312,7 @@ public class ClusterSchemaManager {
 
   /**
    * Only leader use this interface. Adjust the maxSchemaRegionGroupNum and maxDataRegionGroupNum of
-   * each StorageGroup bases on existing cluster resources
+   * each StorageGroup based on existing cluster resources
    */
   public synchronized void adjustMaxRegionGroupNum() {
     // Get all StorageGroupSchemas
