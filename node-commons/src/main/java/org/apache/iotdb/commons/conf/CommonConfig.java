@@ -39,11 +39,11 @@ public class CommonConfig {
 
   // the authorizer provider class which extends BasicAuthorizer
   private String authorizerProvider =
-    "org.apache.iotdb.commons.auth.authorizer.LocalFileAuthorizer";
+      "org.apache.iotdb.commons.auth.authorizer.LocalFileAuthorizer";
 
   /** Encryption provider class */
   private String encryptDecryptProvider =
-    "org.apache.iotdb.commons.security.encrypt.MessageDigestEncrypt";
+      "org.apache.iotdb.commons.security.encrypt.MessageDigestEncrypt";
 
   /** Encryption provided class parameter */
   private String encryptDecryptProviderParameter;
@@ -53,29 +53,29 @@ public class CommonConfig {
   private String adminPassword = "root";
 
   private String userFolder =
-    IoTDBConstant.DEFAULT_BASE_DIR
-      + File.separator
-      + IoTDBConstant.SYSTEM_FOLDER_NAME
-      + File.separator
-      + "users";
+      IoTDBConstant.DEFAULT_BASE_DIR
+          + File.separator
+          + IoTDBConstant.SYSTEM_FOLDER_NAME
+          + File.separator
+          + "users";
 
   private String roleFolder =
-    IoTDBConstant.DEFAULT_BASE_DIR
-      + File.separator
-      + IoTDBConstant.SYSTEM_FOLDER_NAME
-      + File.separator
-      + "roles";
+      IoTDBConstant.DEFAULT_BASE_DIR
+          + File.separator
+          + IoTDBConstant.SYSTEM_FOLDER_NAME
+          + File.separator
+          + "roles";
 
   private String procedureWalFolder =
-    IoTDBConstant.DEFAULT_BASE_DIR
-      + File.separator
-      + IoTDBConstant.SYSTEM_FOLDER_NAME
-      + File.separator
-      + "procedure";
+      IoTDBConstant.DEFAULT_BASE_DIR
+          + File.separator
+          + IoTDBConstant.SYSTEM_FOLDER_NAME
+          + File.separator
+          + "procedure";
 
   /** Sync directory, including the log and hardlink tsfiles */
   private String syncDir =
-    IoTDBConstant.DEFAULT_BASE_DIR + File.separator + IoTDBConstant.SYNC_FOLDER_NAME;
+      IoTDBConstant.DEFAULT_BASE_DIR + File.separator + IoTDBConstant.SYNC_FOLDER_NAME;
 
   /** WAL directories */
   private String[] walDirs = {
@@ -110,7 +110,7 @@ public class CommonConfig {
 
   /** What will the system do when unrecoverable error occurs. */
   private HandleSystemErrorStrategy handleSystemErrorStrategy =
-    HandleSystemErrorStrategy.CHANGE_TO_READ_ONLY;
+      HandleSystemErrorStrategy.CHANGE_TO_READ_ONLY;
 
   /** Status of current system. */
   private volatile NodeStatus status = NodeStatus.Running;
@@ -328,12 +328,12 @@ public class CommonConfig {
     switch (newStatus) {
       case ReadOnly:
         logger.error(
-          "Change system status to ReadOnly! Only query statements are permitted!",
-          new RuntimeException("System mode is set to READ_ONLY"));
+            "Change system status to ReadOnly! Only query statements are permitted!",
+            new RuntimeException("System mode is set to READ_ONLY"));
         break;
       case Removing:
         logger.info(
-          "Change system status to Removing! The current Node is being removed from cluster!");
+            "Change system status to Removing! The current Node is being removed from cluster!");
         break;
       default:
         break;

@@ -70,7 +70,7 @@ public class IoTDBConfig {
   public static final String CONFIG_NAME = "iotdb-datanode.properties";
   private static final Logger logger = LoggerFactory.getLogger(IoTDBConfig.class);
   private static final String MULTI_DIR_STRATEGY_PREFIX =
-    "org.apache.iotdb.db.conf.directories.strategy.";
+      "org.apache.iotdb.db.conf.directories.strategy.";
   private static final String DEFAULT_MULTI_DIR_STRATEGY = "MaxDiskUsableSpaceFirstStrategy";
 
   private static final String STORAGE_GROUP_MATCHER = "([a-zA-Z0-9`_.\\-\\u2E80-\\u9FFF]+)";
@@ -83,7 +83,7 @@ public class IoTDBConfig {
   private static final String PARTIAL_NODE_MATCHER = "[" + PATH_SEPARATOR + "]" + NODE_NAME_MATCHER;
 
   private static final String NODE_MATCHER =
-    "([" + PATH_SEPARATOR + "])?" + NODE_NAME_MATCHER + "(" + PARTIAL_NODE_MATCHER + ")*";
+      "([" + PATH_SEPARATOR + "])?" + NODE_NAME_MATCHER + "(" + PARTIAL_NODE_MATCHER + ")*";
 
   public static final Pattern NODE_PATTERN = Pattern.compile(NODE_MATCHER);
 
@@ -241,45 +241,45 @@ public class IoTDBConfig {
 
   /** System directory, including version file for each database and metadata */
   private String systemDir =
-    IoTDBConstant.DEFAULT_BASE_DIR + File.separator + IoTDBConstant.SYSTEM_FOLDER_NAME;
+      IoTDBConstant.DEFAULT_BASE_DIR + File.separator + IoTDBConstant.SYSTEM_FOLDER_NAME;
 
   /** Schema directory, including storage set of values. */
   private String schemaDir =
-    IoTDBConstant.DEFAULT_BASE_DIR
-      + File.separator
-      + IoTDBConstant.SYSTEM_FOLDER_NAME
-      + File.separator
-      + IoTDBConstant.SCHEMA_FOLDER_NAME;
+      IoTDBConstant.DEFAULT_BASE_DIR
+          + File.separator
+          + IoTDBConstant.SYSTEM_FOLDER_NAME
+          + File.separator
+          + IoTDBConstant.SCHEMA_FOLDER_NAME;
 
   /** Query directory, stores temporary files of query */
   private String queryDir =
-    IoTDBConstant.DEFAULT_BASE_DIR + File.separator + IoTDBConstant.QUERY_FOLDER_NAME;
+      IoTDBConstant.DEFAULT_BASE_DIR + File.separator + IoTDBConstant.QUERY_FOLDER_NAME;
 
   /** External lib directory, stores user-uploaded JAR files */
   private String extDir = IoTDBConstant.EXT_FOLDER_NAME;
 
   /** External lib directory for UDF, stores user-uploaded JAR files */
   private String udfDir =
-    IoTDBConstant.EXT_FOLDER_NAME + File.separator + IoTDBConstant.UDF_FOLDER_NAME;
+      IoTDBConstant.EXT_FOLDER_NAME + File.separator + IoTDBConstant.UDF_FOLDER_NAME;
 
   /** External temporary lib directory for storing downloaded udf JAR files */
   private String udfTemporaryLibDir = udfDir + File.separator + IoTDBConstant.TMP_FOLDER_NAME;
 
   /** External lib directory for trigger, stores user-uploaded JAR files */
   private String triggerDir =
-    IoTDBConstant.EXT_FOLDER_NAME + File.separator + IoTDBConstant.TRIGGER_FOLDER_NAME;
+      IoTDBConstant.EXT_FOLDER_NAME + File.separator + IoTDBConstant.TRIGGER_FOLDER_NAME;
 
   /** External temporary lib directory for storing downloaded trigger JAR files */
   private String triggerTemporaryLibDir =
-    triggerDir + File.separator + IoTDBConstant.TMP_FOLDER_NAME;
+      triggerDir + File.separator + IoTDBConstant.TMP_FOLDER_NAME;
 
   /** External lib directory for ext Pipe plugins, stores user-defined JAR files */
   private String extPipeDir =
-    IoTDBConstant.EXT_FOLDER_NAME + File.separator + IoTDBConstant.EXT_PIPE_FOLDER_NAME;
+      IoTDBConstant.EXT_FOLDER_NAME + File.separator + IoTDBConstant.EXT_PIPE_FOLDER_NAME;
 
   /** External lib directory for MQTT, stores user-uploaded JAR files */
   private String mqttDir =
-    IoTDBConstant.EXT_FOLDER_NAME + File.separator + IoTDBConstant.MQTT_FOLDER_NAME;
+      IoTDBConstant.EXT_FOLDER_NAME + File.separator + IoTDBConstant.MQTT_FOLDER_NAME;
 
   /** Data directories. It can be settled as dataDirs = {"data1", "data2", "data3"}; */
   private String[] dataDirs = {
@@ -287,17 +287,17 @@ public class IoTDBConfig {
   };
 
   private String loadTsFileDir =
-    dataDirs[0] + File.separator + IoTDBConstant.LOAD_TSFILE_FOLDER_NAME;
+      dataDirs[0] + File.separator + IoTDBConstant.LOAD_TSFILE_FOLDER_NAME;
 
   /** Strategy of multiple directories. */
   private String multiDirStrategyClassName = null;
 
   private String ratisDataRegionSnapshotDir =
-    IoTDBConstant.DEFAULT_BASE_DIR
-      + File.separator
-      + IoTDBConstant.DATA_FOLDER_NAME
-      + File.separator
-      + IoTDBConstant.SNAPSHOT_FOLDER_NAME;
+      IoTDBConstant.DEFAULT_BASE_DIR
+          + File.separator
+          + IoTDBConstant.DATA_FOLDER_NAME
+          + File.separator
+          + IoTDBConstant.SNAPSHOT_FOLDER_NAME;
 
   /** Consensus directory. */
   private String consensusDir = IoTDBConstant.DEFAULT_BASE_DIR + File.separator + "consensus";
@@ -401,16 +401,16 @@ public class IoTDBConfig {
    * SIZE_TIRED_COMPACTION:
    */
   private InnerSequenceCompactionSelector innerSequenceCompactionSelector =
-    InnerSequenceCompactionSelector.SIZE_TIERED;
+      InnerSequenceCompactionSelector.SIZE_TIERED;
 
   private InnerSeqCompactionPerformer innerSeqCompactionPerformer =
-    InnerSeqCompactionPerformer.READ_CHUNK;
+      InnerSeqCompactionPerformer.READ_CHUNK;
 
   private InnerUnsequenceCompactionSelector innerUnsequenceCompactionSelector =
-    InnerUnsequenceCompactionSelector.SIZE_TIERED;
+      InnerUnsequenceCompactionSelector.SIZE_TIERED;
 
   private InnerUnseqCompactionPerformer innerUnseqCompactionPerformer =
-    InnerUnseqCompactionPerformer.READ_POINT;
+      InnerUnseqCompactionPerformer.READ_POINT;
 
   /**
    * The strategy of cross space compaction task. There are just one cross space compaction strategy
@@ -654,7 +654,7 @@ public class IoTDBConfig {
    * How many thread will be set up to perform continuous queries. When <= 0, use max(1, CPU core number / 2).
    */
   private int continuousQueryThreadNum =
-    Math.max(1, Runtime.getRuntime().availableProcessors() / 2);
+      Math.max(1, Runtime.getRuntime().availableProcessors() / 2);
 
   /*
    * Minimum every interval to perform continuous query.
@@ -700,7 +700,7 @@ public class IoTDBConfig {
    * "org.apache.hadoop.hdfs.server.namenode.ha.ConfiguredFailoverProxyProvider"
    */
   private String dfsClientFailoverProxyProvider =
-    "org.apache.hadoop.hdfs.server.namenode.ha.ConfiguredFailoverProxyProvider";
+      "org.apache.hadoop.hdfs.server.namenode.ha.ConfiguredFailoverProxyProvider";
 
   /** whether use kerberos to authenticate hdfs */
   private boolean useKerberos = false;
@@ -850,7 +850,7 @@ public class IoTDBConfig {
 
   /** Ip and port of config nodes. */
   private List<TEndPoint> targetConfigNodeList =
-    Collections.singletonList(new TEndPoint("127.0.0.1", 10710));
+      Collections.singletonList(new TEndPoint("127.0.0.1", 10710));
 
   /** The time of data node waiting for the next retry to join into the cluster */
   private long joinClusterRetryIntervalMs = TimeUnit.SECONDS.toMillis(5);
@@ -875,7 +875,7 @@ public class IoTDBConfig {
    * series partition
    */
   private String seriesPartitionExecutorClass =
-    "org.apache.iotdb.commons.partition.executor.hash.APHashExecutor";
+      "org.apache.iotdb.commons.partition.executor.hash.APHashExecutor";
 
   /** The number of series partitions in a database */
   private int seriesPartitionSlotNum = 10000;
@@ -900,9 +900,9 @@ public class IoTDBConfig {
    * clients.
    */
   private int selectorNumOfClientManager =
-    Runtime.getRuntime().availableProcessors() / 4 > 0
-      ? Runtime.getRuntime().availableProcessors() / 4
-      : 1;
+      Runtime.getRuntime().availableProcessors() / 4 > 0
+          ? Runtime.getRuntime().availableProcessors() / 4
+          : 1;
 
   /**
    * The maximum number of clients that can be idle for a node in a clientManager. When the number
@@ -1033,11 +1033,11 @@ public class IoTDBConfig {
 
   /** Output location of audit logs * */
   private List<AuditLogStorage> auditLogStorage =
-    Arrays.asList(AuditLogStorage.IOTDB, AuditLogStorage.LOGGER);
+      Arrays.asList(AuditLogStorage.IOTDB, AuditLogStorage.LOGGER);
 
   /** Indicates the category collection of audit logs * */
   private List<AuditLogOperation> auditLogOperation =
-    Arrays.asList(AuditLogOperation.DML, AuditLogOperation.DDL, AuditLogOperation.QUERY);
+      Arrays.asList(AuditLogOperation.DML, AuditLogOperation.DDL, AuditLogOperation.QUERY);
 
   /** whether the local write api records audit logs * */
   private boolean enableAuditLogForNativeInsertApi = true;
@@ -1084,7 +1084,7 @@ public class IoTDBConfig {
   }
 
   public void setUdfInitialByteArrayLengthForMemoryControl(
-    int udfInitialByteArrayLengthForMemoryControl) {
+      int udfInitialByteArrayLengthForMemoryControl) {
     this.udfInitialByteArrayLengthForMemoryControl = udfInitialByteArrayLengthForMemoryControl;
   }
 
@@ -1175,7 +1175,7 @@ public class IoTDBConfig {
     for (String oldDir : this.dataDirs) {
       if (!newDirs.contains(oldDir)) {
         String msg =
-          String.format("%s is removed from data_dirs parameter, please add it back.", oldDir);
+            String.format("%s is removed from data_dirs parameter, please add it back.", oldDir);
         logger.error(msg);
         throw new LoadConfigurationException(msg);
       }
@@ -1221,9 +1221,9 @@ public class IoTDBConfig {
       Class.forName(multiDirStrategyClassName);
     } catch (ClassNotFoundException e) {
       logger.warn(
-        "Cannot find given directory strategy {}, using the default value",
-        getMultiDirStrategyClassName(),
-        e);
+          "Cannot find given directory strategy {}, using the default value",
+          getMultiDirStrategyClassName(),
+          e);
       setMultiDirStrategyClassName(MULTI_DIR_STRATEGY_PREFIX + DEFAULT_MULTI_DIR_STRATEGY);
     }
   }
@@ -1247,7 +1247,7 @@ public class IoTDBConfig {
     this.dataDirs = dataDirs;
     // TODO(szywilliam): rewrite the logic here when ratis supports complete snapshot semantic
     setRatisDataRegionSnapshotDir(
-      dataDirs[0] + File.separator + IoTDBConstant.SNAPSHOT_FOLDER_NAME);
+        dataDirs[0] + File.separator + IoTDBConstant.SNAPSHOT_FOLDER_NAME);
     setLoadTsFileDir(dataDirs[0] + File.separator + IoTDBConstant.LOAD_TSFILE_FOLDER_NAME);
   }
 
@@ -1281,11 +1281,11 @@ public class IoTDBConfig {
 
   public void setTimestampPrecision(String timestampPrecision) {
     if (!("ms".equals(timestampPrecision)
-      || "us".equals(timestampPrecision)
-      || "ns".equals(timestampPrecision))) {
+        || "us".equals(timestampPrecision)
+        || "ns".equals(timestampPrecision))) {
       logger.error(
-        "Wrong timestamp precision, please set as: ms, us or ns ! Current is: {}",
-        timestampPrecision);
+          "Wrong timestamp precision, please set as: ms, us or ns ! Current is: {}",
+          timestampPrecision);
       System.exit(-1);
     }
     this.timestampPrecision = timestampPrecision;
@@ -1425,13 +1425,13 @@ public class IoTDBConfig {
 
   public void checkMultiDirStrategyClassName() {
     if (isClusterMode
-      && !(multiDirStrategyClassName.equals(DEFAULT_MULTI_DIR_STRATEGY)
-      || multiDirStrategyClassName.equals(
-      MULTI_DIR_STRATEGY_PREFIX + DEFAULT_MULTI_DIR_STRATEGY))) {
+        && !(multiDirStrategyClassName.equals(DEFAULT_MULTI_DIR_STRATEGY)
+            || multiDirStrategyClassName.equals(
+                MULTI_DIR_STRATEGY_PREFIX + DEFAULT_MULTI_DIR_STRATEGY))) {
       String msg =
-        String.format(
-          "Cannot set multi_dir_strategy to %s, because cluster mode only allows MaxDiskUsableSpaceFirstStrategy.",
-          multiDirStrategyClassName);
+          String.format(
+              "Cannot set multi_dir_strategy to %s, because cluster mode only allows MaxDiskUsableSpaceFirstStrategy.",
+              multiDirStrategyClassName);
       logger.error(msg);
       throw new RuntimeException(msg);
     }
@@ -1576,8 +1576,8 @@ public class IoTDBConfig {
 
   public String getIoTDBMajorVersion(String version) {
     return "UNKNOWN".equals(version)
-      ? "UNKNOWN"
-      : version.split("\\.")[0] + "." + version.split("\\.")[1];
+        ? "UNKNOWN"
+        : version.split("\\.")[0] + "." + version.split("\\.")[1];
   }
 
   public String getIpWhiteList() {
@@ -1815,9 +1815,9 @@ public class IoTDBConfig {
 
   public long getAllocateMemoryForFree() {
     return Runtime.getRuntime().maxMemory()
-      - allocateMemoryForStorageEngine
-      - allocateMemoryForRead
-      - allocateMemoryForSchema;
+        - allocateMemoryForStorageEngine
+        - allocateMemoryForRead
+        - allocateMemoryForSchema;
   }
 
   public boolean isEnablePartialInsert() {
@@ -1993,7 +1993,7 @@ public class IoTDBConfig {
   }
 
   public void setAllocateMemoryForTimeSeriesMetaDataCache(
-    long allocateMemoryForTimeSeriesMetaDataCache) {
+      long allocateMemoryForTimeSeriesMetaDataCache) {
     this.allocateMemoryForTimeSeriesMetaDataCache = allocateMemoryForTimeSeriesMetaDataCache;
   }
 
@@ -2169,11 +2169,11 @@ public class IoTDBConfig {
 
   public void setNanStringInferType(TSDataType nanStringInferType) {
     if (nanStringInferType != TSDataType.DOUBLE
-      && nanStringInferType != TSDataType.FLOAT
-      && nanStringInferType != TSDataType.TEXT) {
+        && nanStringInferType != TSDataType.FLOAT
+        && nanStringInferType != TSDataType.TEXT) {
       throw new IllegalArgumentException(
-        "Config Property nan_string_infer_type can only be FLOAT, DOUBLE or TEXT but is "
-          + nanStringInferType);
+          "Config Property nan_string_infer_type can only be FLOAT, DOUBLE or TEXT but is "
+              + nanStringInferType);
     }
     this.nanStringInferType = nanStringInferType;
   }
@@ -2650,7 +2650,7 @@ public class IoTDBConfig {
   }
 
   public void setInnerSequenceCompactionSelector(
-    InnerSequenceCompactionSelector innerSequenceCompactionSelector) {
+      InnerSequenceCompactionSelector innerSequenceCompactionSelector) {
     this.innerSequenceCompactionSelector = innerSequenceCompactionSelector;
   }
 
@@ -2659,7 +2659,7 @@ public class IoTDBConfig {
   }
 
   public void setInnerUnsequenceCompactionSelector(
-    InnerUnsequenceCompactionSelector innerUnsequenceCompactionSelector) {
+      InnerUnsequenceCompactionSelector innerUnsequenceCompactionSelector) {
     this.innerUnsequenceCompactionSelector = innerUnsequenceCompactionSelector;
   }
 
@@ -2668,7 +2668,7 @@ public class IoTDBConfig {
   }
 
   public void setInnerSeqCompactionPerformer(
-    InnerSeqCompactionPerformer innerSeqCompactionPerformer) {
+      InnerSeqCompactionPerformer innerSeqCompactionPerformer) {
     this.innerSeqCompactionPerformer = innerSeqCompactionPerformer;
   }
 
@@ -2677,7 +2677,7 @@ public class IoTDBConfig {
   }
 
   public void setInnerUnseqCompactionPerformer(
-    InnerUnseqCompactionPerformer innerUnseqCompactionPerformer) {
+      InnerUnseqCompactionPerformer innerUnseqCompactionPerformer) {
     this.innerUnseqCompactionPerformer = innerUnseqCompactionPerformer;
   }
 
@@ -3255,7 +3255,7 @@ public class IoTDBConfig {
   }
 
   public void setDataRatisConsensusLogAppenderBufferSizeMax(
-    long dataRatisConsensusLogAppenderBufferSizeMax) {
+      long dataRatisConsensusLogAppenderBufferSizeMax) {
     this.dataRatisConsensusLogAppenderBufferSizeMax = dataRatisConsensusLogAppenderBufferSizeMax;
   }
 
@@ -3297,7 +3297,7 @@ public class IoTDBConfig {
   }
 
   public void setDataRatisConsensusSnapshotTriggerThreshold(
-    long dataRatisConsensusSnapshotTriggerThreshold) {
+      long dataRatisConsensusSnapshotTriggerThreshold) {
     this.dataRatisConsensusSnapshotTriggerThreshold = dataRatisConsensusSnapshotTriggerThreshold;
   }
 
@@ -3306,7 +3306,7 @@ public class IoTDBConfig {
   }
 
   public void setDataRatisConsensusLogUnsafeFlushEnable(
-    boolean dataRatisConsensusLogUnsafeFlushEnable) {
+      boolean dataRatisConsensusLogUnsafeFlushEnable) {
     this.dataRatisConsensusLogUnsafeFlushEnable = dataRatisConsensusLogUnsafeFlushEnable;
   }
 
@@ -3323,7 +3323,7 @@ public class IoTDBConfig {
   }
 
   public void setDataRatisConsensusGrpcFlowControlWindow(
-    long dataRatisConsensusGrpcFlowControlWindow) {
+      long dataRatisConsensusGrpcFlowControlWindow) {
     this.dataRatisConsensusGrpcFlowControlWindow = dataRatisConsensusGrpcFlowControlWindow;
   }
 
@@ -3332,9 +3332,9 @@ public class IoTDBConfig {
   }
 
   public void setDataRatisConsensusLeaderElectionTimeoutMinMs(
-    long dataRatisConsensusLeaderElectionTimeoutMinMs) {
+      long dataRatisConsensusLeaderElectionTimeoutMinMs) {
     this.dataRatisConsensusLeaderElectionTimeoutMinMs =
-      dataRatisConsensusLeaderElectionTimeoutMinMs;
+        dataRatisConsensusLeaderElectionTimeoutMinMs;
   }
 
   public long getDataRatisConsensusLeaderElectionTimeoutMaxMs() {
@@ -3342,9 +3342,9 @@ public class IoTDBConfig {
   }
 
   public void setDataRatisConsensusLeaderElectionTimeoutMaxMs(
-    long dataRatisConsensusLeaderElectionTimeoutMaxMs) {
+      long dataRatisConsensusLeaderElectionTimeoutMaxMs) {
     this.dataRatisConsensusLeaderElectionTimeoutMaxMs =
-      dataRatisConsensusLeaderElectionTimeoutMaxMs;
+        dataRatisConsensusLeaderElectionTimeoutMaxMs;
   }
 
   public long getSchemaRatisConsensusLogAppenderBufferSizeMax() {
@@ -3352,9 +3352,9 @@ public class IoTDBConfig {
   }
 
   public void setSchemaRatisConsensusLogAppenderBufferSizeMax(
-    long schemaRatisConsensusLogAppenderBufferSizeMax) {
+      long schemaRatisConsensusLogAppenderBufferSizeMax) {
     this.schemaRatisConsensusLogAppenderBufferSizeMax =
-      schemaRatisConsensusLogAppenderBufferSizeMax;
+        schemaRatisConsensusLogAppenderBufferSizeMax;
   }
 
   public long getSchemaRatisConsensusSnapshotTriggerThreshold() {
@@ -3362,9 +3362,9 @@ public class IoTDBConfig {
   }
 
   public void setSchemaRatisConsensusSnapshotTriggerThreshold(
-    long schemaRatisConsensusSnapshotTriggerThreshold) {
+      long schemaRatisConsensusSnapshotTriggerThreshold) {
     this.schemaRatisConsensusSnapshotTriggerThreshold =
-      schemaRatisConsensusSnapshotTriggerThreshold;
+        schemaRatisConsensusSnapshotTriggerThreshold;
   }
 
   public boolean isSchemaRatisConsensusLogUnsafeFlushEnable() {
@@ -3372,7 +3372,7 @@ public class IoTDBConfig {
   }
 
   public void setSchemaRatisConsensusLogUnsafeFlushEnable(
-    boolean schemaRatisConsensusLogUnsafeFlushEnable) {
+      boolean schemaRatisConsensusLogUnsafeFlushEnable) {
     this.schemaRatisConsensusLogUnsafeFlushEnable = schemaRatisConsensusLogUnsafeFlushEnable;
   }
 
@@ -3389,7 +3389,7 @@ public class IoTDBConfig {
   }
 
   public void setSchemaRatisConsensusGrpcFlowControlWindow(
-    long schemaRatisConsensusGrpcFlowControlWindow) {
+      long schemaRatisConsensusGrpcFlowControlWindow) {
     this.schemaRatisConsensusGrpcFlowControlWindow = schemaRatisConsensusGrpcFlowControlWindow;
   }
 
@@ -3398,9 +3398,9 @@ public class IoTDBConfig {
   }
 
   public void setSchemaRatisConsensusLeaderElectionTimeoutMinMs(
-    long schemaRatisConsensusLeaderElectionTimeoutMinMs) {
+      long schemaRatisConsensusLeaderElectionTimeoutMinMs) {
     this.schemaRatisConsensusLeaderElectionTimeoutMinMs =
-      schemaRatisConsensusLeaderElectionTimeoutMinMs;
+        schemaRatisConsensusLeaderElectionTimeoutMinMs;
   }
 
   public long getSchemaRatisConsensusLeaderElectionTimeoutMaxMs() {
@@ -3408,9 +3408,9 @@ public class IoTDBConfig {
   }
 
   public void setSchemaRatisConsensusLeaderElectionTimeoutMaxMs(
-    long schemaRatisConsensusLeaderElectionTimeoutMaxMs) {
+      long schemaRatisConsensusLeaderElectionTimeoutMaxMs) {
     this.schemaRatisConsensusLeaderElectionTimeoutMaxMs =
-      schemaRatisConsensusLeaderElectionTimeoutMaxMs;
+        schemaRatisConsensusLeaderElectionTimeoutMaxMs;
   }
 
   public long getCqMinEveryIntervalInMs() {
@@ -3478,7 +3478,7 @@ public class IoTDBConfig {
   }
 
   public void setSchemaRatisConsensusInitialSleepTimeMs(
-    long schemaRatisConsensusInitialSleepTimeMs) {
+      long schemaRatisConsensusInitialSleepTimeMs) {
     this.schemaRatisConsensusInitialSleepTimeMs = schemaRatisConsensusInitialSleepTimeMs;
   }
 
