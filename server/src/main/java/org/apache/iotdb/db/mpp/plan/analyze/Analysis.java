@@ -137,7 +137,7 @@ public class Analysis {
 
   private Set<Expression> deviceViewOutputExpressions;
 
-  // indicates whether we need special process when rewriteSource in DistributionPlan,
+  // indicates whether DeviceView need special process when rewriteSource in DistributionPlan,
   // you can see SourceRewriter#visitDeviceView to get more information
   private boolean deviceViewSpecialProcess;
 
