@@ -41,23 +41,23 @@ public class IoTDBDiffFunctionIT {
   // 2 devices 4 regions
   protected static final String[] SQLs =
       new String[] {
-        "CREATE DATABASE root.test",
-        "CREATE TIMESERIES root.test.s1 WITH DATATYPE=INT32, ENCODING=PLAIN",
-        "CREATE TIMESERIES root.test.s2 WITH DATATYPE=FLOAT, ENCODING=PLAIN",
-        "INSERT INTO root.test(timestamp,s1,s2) values(1, 1, 1)",
-        "INSERT INTO root.test(timestamp,s1) values(2, 2)",
-        "INSERT INTO root.test(timestamp,s2) values(3, 3)",
-        "INSERT INTO root.test(timestamp,s1) values(4, 4)",
-        "INSERT INTO root.test(timestamp,s1,s2) values(5, 5, 5)",
-        "INSERT INTO root.test(timestamp,s2) values(6, 6)",
-        "INSERT INTO root.test(timestamp,s1,s2) values(5000000000, null, 7)",
-        "INSERT INTO root.test(timestamp,s1,s2) values(5000000001, 8, null)",
-        "CREATE TIMESERIES root.test2.s1 WITH DATATYPE=INT32, ENCODING=PLAIN",
-        "CREATE TIMESERIES root.test2.s2 WITH DATATYPE=FLOAT, ENCODING=PLAIN",
-        "INSERT INTO root.test2(timestamp,s1,s2) values(1, 1, 1)",
-        "INSERT INTO root.test2(timestamp,s1,s2) values(2, 2, 2)",
-        "INSERT INTO root.test2(timestamp,s1,s2) values(5000000000, null, 3)",
-        "INSERT INTO root.test2(timestamp,s1,s2) values(5000000001, 4, null)",
+        "CREATE DATABASE root.db",
+        "CREATE TIMESERIES root.db.d1.s1 WITH DATATYPE=INT32, ENCODING=PLAIN",
+        "CREATE TIMESERIES root.db.d1.s2 WITH DATATYPE=FLOAT, ENCODING=PLAIN",
+        "INSERT INTO root.db.d1(timestamp,s1,s2) values(1, 1, 1)",
+        "INSERT INTO root.db.d1(timestamp,s1) values(2, 2)",
+        "INSERT INTO root.db.d1(timestamp,s2) values(3, 3)",
+        "INSERT INTO root.db.d1(timestamp,s1) values(4, 4)",
+        "INSERT INTO root.db.d1(timestamp,s1,s2) values(5, 5, 5)",
+        "INSERT INTO root.db.d1(timestamp,s2) values(6, 6)",
+        "INSERT INTO root.db.d1(timestamp,s1,s2) values(5000000000, null, 7)",
+        "INSERT INTO root.db.d1(timestamp,s1,s2) values(5000000001, 8, null)",
+        "CREATE TIMESERIES root.db.d2.s1 WITH DATATYPE=INT32, ENCODING=PLAIN",
+        "CREATE TIMESERIES root.db.d2.s2 WITH DATATYPE=FLOAT, ENCODING=PLAIN",
+        "INSERT INTO root.db.d2(timestamp,s1,s2) values(1, 1, 1)",
+        "INSERT INTO root.db.d2(timestamp,s1,s2) values(2, 2, 2)",
+        "INSERT INTO root.db.d2(timestamp,s1,s2) values(5000000000, null, 3)",
+        "INSERT INTO root.db.d2(timestamp,s1,s2) values(5000000001, 4, null)",
         "flush"
       };
 
@@ -76,7 +76,7 @@ public class IoTDBDiffFunctionIT {
   @Test
   public void testNewTransformerIgnoreNull() {
     String[] expectedHeader =
-        new String[] {TIMESTAMP_STR, "Diff(root.test.s1)", "diff(root.test.s2)"};
+        new String[] {TIMESTAMP_STR, "Diff(root.db.d1.s1)", "diff(root.db.d1.s2)"};
     String[] retArray =
         new String[] {
           "1,null,null,",
@@ -88,48 +88,48 @@ public class IoTDBDiffFunctionIT {
           "5000000000,null,1.0,",
           "5000000001,3.0,null,"
         };
-    resultSetEqualTest("select Diff(s1), diff(s2) from root.test", expectedHeader, retArray);
+    resultSetEqualTest("select Diff(s1), diff(s2) from root.db.d1", expectedHeader, retArray);
 
     // align by device
     expectedHeader = new String[] {TIMESTAMP_STR, DEVICE, "Diff(s1)", "diff(s2)"};
     retArray =
         new String[] {
-          "1,root.test,null,null,",
-          "2,root.test,1.0,null,",
-          "3,root.test,null,2.0,",
-          "4,root.test,2.0,null,",
-          "5,root.test,1.0,2.0,",
-          "6,root.test,null,1.0,",
-          "5000000000,root.test,null,1.0,",
-          "5000000001,root.test,3.0,null,",
-          "1,root.test2,null,null,",
-          "2,root.test2,1.0,1.0,",
-          "5000000000,root.test2,null,1.0,",
-          "5000000001,root.test2,2.0,null,"
+          "1,root.db.d1,null,null,",
+          "2,root.db.d1,1.0,null,",
+          "3,root.db.d1,null,2.0,",
+          "4,root.db.d1,2.0,null,",
+          "5,root.db.d1,1.0,2.0,",
+          "6,root.db.d1,null,1.0,",
+          "5000000000,root.db.d1,null,1.0,",
+          "5000000001,root.db.d1,3.0,null,",
+          "1,root.db.d2,null,null,",
+          "2,root.db.d2,1.0,1.0,",
+          "5000000000,root.db.d2,null,1.0,",
+          "5000000001,root.db.d2,2.0,null,"
         };
     resultSetEqualTest(
-        "select Diff(s1), diff(s2) from root.test, root.test2 align by device",
+        "select Diff(s1), diff(s2) from root.db.d1, root.db.d2 align by device",
         expectedHeader,
         retArray);
 
     // align by device + order by time
     retArray =
         new String[] {
-          "1,root.test,null,null,",
-          "1,root.test2,null,null,",
-          "2,root.test,1.0,null,",
-          "2,root.test2,1.0,1.0,",
-          "3,root.test,null,2.0,",
-          "4,root.test,2.0,null,",
-          "5,root.test,1.0,2.0,",
-          "6,root.test,null,1.0,",
-          "5000000000,root.test,null,1.0,",
-          "5000000000,root.test2,null,1.0,",
-          "5000000001,root.test,3.0,null,",
-          "5000000001,root.test2,2.0,null,"
+          "1,root.db.d1,null,null,",
+          "1,root.db.d2,null,null,",
+          "2,root.db.d1,1.0,null,",
+          "2,root.db.d2,1.0,1.0,",
+          "3,root.db.d1,null,2.0,",
+          "4,root.db.d1,2.0,null,",
+          "5,root.db.d1,1.0,2.0,",
+          "6,root.db.d1,null,1.0,",
+          "5000000000,root.db.d1,null,1.0,",
+          "5000000000,root.db.d2,null,1.0,",
+          "5000000001,root.db.d1,3.0,null,",
+          "5000000001,root.db.d2,2.0,null,"
         };
     resultSetEqualTest(
-        "select Diff(s1), diff(s2) from root.test, root.test2 order by time align by device",
+        "select Diff(s1), diff(s2) from root.db.d1, root.db.d2 order by time align by device",
         expectedHeader,
         retArray);
   }
@@ -139,8 +139,8 @@ public class IoTDBDiffFunctionIT {
     String[] expectedHeader =
         new String[] {
           TIMESTAMP_STR,
-          "Diff(root.test.s1, \"ignoreNull\"=\"false\")",
-          "diff(root.test.s2, \"ignoreNull\"=\"false\")"
+          "Diff(root.db.d1.s1, \"ignoreNull\"=\"false\")",
+          "diff(root.db.d1.s2, \"ignoreNull\"=\"false\")"
         };
     String[] retArray =
         new String[] {
@@ -154,7 +154,7 @@ public class IoTDBDiffFunctionIT {
           "5000000001,null,null,"
         };
     resultSetEqualTest(
-        "select Diff(s1, 'ignoreNull'='false'), diff(s2, 'ignoreNull'='false') from root.test",
+        "select Diff(s1, 'ignoreNull'='false'), diff(s2, 'ignoreNull'='false') from root.db.d1",
         expectedHeader,
         retArray);
 
@@ -168,42 +168,42 @@ public class IoTDBDiffFunctionIT {
         };
     retArray =
         new String[] {
-          "1,root.test,null,null,",
-          "2,root.test,1.0,null,",
-          "3,root.test,null,null,",
-          "4,root.test,null,null,",
-          "5,root.test,1.0,null,",
-          "6,root.test,null,1.0,",
-          "5000000000,root.test,null,1.0,",
-          "5000000001,root.test,null,null,",
-          "1,root.test2,null,null,",
-          "2,root.test2,1.0,1.0,",
-          "5000000000,root.test2,null,1.0,",
-          "5000000001,root.test2,null,null,",
+          "1,root.db.d1,null,null,",
+          "2,root.db.d1,1.0,null,",
+          "3,root.db.d1,null,null,",
+          "4,root.db.d1,null,null,",
+          "5,root.db.d1,1.0,null,",
+          "6,root.db.d1,null,1.0,",
+          "5000000000,root.db.d1,null,1.0,",
+          "5000000001,root.db.d1,null,null,",
+          "1,root.db.d2,null,null,",
+          "2,root.db.d2,1.0,1.0,",
+          "5000000000,root.db.d2,null,1.0,",
+          "5000000001,root.db.d2,null,null,",
         };
     resultSetEqualTest(
-        "select Diff(s1, 'ignoreNull'='false'), diff(s2, 'ignoreNull'='false') from root.test, root.test2 align by device",
+        "select Diff(s1, 'ignoreNull'='false'), diff(s2, 'ignoreNull'='false') from root.db.d1, root.db.d2 align by device",
         expectedHeader,
         retArray);
 
     // align by device + order by time
     retArray =
         new String[] {
-          "1,root.test,null,null,",
-          "1,root.test2,null,null,",
-          "2,root.test,1.0,null,",
-          "2,root.test2,1.0,1.0,",
-          "3,root.test,null,null,",
-          "4,root.test,null,null,",
-          "5,root.test,1.0,null,",
-          "6,root.test,null,1.0,",
-          "5000000000,root.test,null,1.0,",
-          "5000000000,root.test2,null,1.0,",
-          "5000000001,root.test,null,null,",
-          "5000000001,root.test2,null,null,",
+          "1,root.db.d1,null,null,",
+          "1,root.db.d2,null,null,",
+          "2,root.db.d1,1.0,null,",
+          "2,root.db.d2,1.0,1.0,",
+          "3,root.db.d1,null,null,",
+          "4,root.db.d1,null,null,",
+          "5,root.db.d1,1.0,null,",
+          "6,root.db.d1,null,1.0,",
+          "5000000000,root.db.d1,null,1.0,",
+          "5000000000,root.db.d2,null,1.0,",
+          "5000000001,root.db.d1,null,null,",
+          "5000000001,root.db.d2,null,null,",
         };
     resultSetEqualTest(
-        "select Diff(s1, 'ignoreNull'='false'), diff(s2, 'ignoreNull'='false') from root.test, root.test2 order by time align by device",
+        "select Diff(s1, 'ignoreNull'='false'), diff(s2, 'ignoreNull'='false') from root.db.d1, root.db.d2 order by time align by device",
         expectedHeader,
         retArray);
   }
@@ -212,7 +212,7 @@ public class IoTDBDiffFunctionIT {
   @Test
   public void testOldTransformerIgnoreNull() {
     String[] expectedHeader =
-        new String[] {TIMESTAMP_STR, "change_points(root.test.s1)", "diff(root.test.s2)"};
+        new String[] {TIMESTAMP_STR, "change_points(root.db.d1.s1)", "diff(root.db.d1.s2)"};
     String[] retArray =
         new String[] {
           "1,1,null,",
@@ -225,27 +225,27 @@ public class IoTDBDiffFunctionIT {
           "5000000001,8,null,"
         };
     resultSetEqualTest(
-        "select change_points(s1), diff(s2) from root.test", expectedHeader, retArray);
+        "select change_points(s1), diff(s2) from root.db.d1", expectedHeader, retArray);
 
     // align by device
     expectedHeader = new String[] {TIMESTAMP_STR, DEVICE, "change_points(s1)", "diff(s2)"};
     retArray =
         new String[] {
-          "1,root.test,1,null,",
-          "2,root.test,2,null,",
-          "3,root.test,null,2.0,",
-          "4,root.test,4,null,",
-          "5,root.test,5,2.0,",
-          "6,root.test,null,1.0,",
-          "5000000000,root.test,null,1.0,",
-          "5000000001,root.test,8,null,",
-          "1,root.test2,1,null,",
-          "2,root.test2,2,1.0,",
-          "5000000000,root.test2,null,1.0,",
-          "5000000001,root.test2,4,null,",
+          "1,root.db.d1,1,null,",
+          "2,root.db.d1,2,null,",
+          "3,root.db.d1,null,2.0,",
+          "4,root.db.d1,4,null,",
+          "5,root.db.d1,5,2.0,",
+          "6,root.db.d1,null,1.0,",
+          "5000000000,root.db.d1,null,1.0,",
+          "5000000001,root.db.d1,8,null,",
+          "1,root.db.d2,1,null,",
+          "2,root.db.d2,2,1.0,",
+          "5000000000,root.db.d2,null,1.0,",
+          "5000000001,root.db.d2,4,null,",
         };
     resultSetEqualTest(
-        "select change_points(s1), diff(s2) from root.test, root.test2 align by device",
+        "select change_points(s1), diff(s2) from root.db.d1, root.db.d2 align by device",
         expectedHeader,
         retArray);
 
@@ -253,21 +253,21 @@ public class IoTDBDiffFunctionIT {
     expectedHeader = new String[] {TIMESTAMP_STR, DEVICE, "change_points(s1)", "diff(s2)"};
     retArray =
         new String[] {
-          "1,root.test,1,null,",
-          "1,root.test2,1,null,",
-          "2,root.test,2,null,",
-          "2,root.test2,2,1.0,",
-          "3,root.test,null,2.0,",
-          "4,root.test,4,null,",
-          "5,root.test,5,2.0,",
-          "6,root.test,null,1.0,",
-          "5000000000,root.test,null,1.0,",
-          "5000000000,root.test2,null,1.0,",
-          "5000000001,root.test,8,null,",
-          "5000000001,root.test2,4,null,",
+          "1,root.db.d1,1,null,",
+          "1,root.db.d2,1,null,",
+          "2,root.db.d1,2,null,",
+          "2,root.db.d2,2,1.0,",
+          "3,root.db.d1,null,2.0,",
+          "4,root.db.d1,4,null,",
+          "5,root.db.d1,5,2.0,",
+          "6,root.db.d1,null,1.0,",
+          "5000000000,root.db.d1,null,1.0,",
+          "5000000000,root.db.d2,null,1.0,",
+          "5000000001,root.db.d1,8,null,",
+          "5000000001,root.db.d2,4,null,",
         };
     resultSetEqualTest(
-        "select change_points(s1), diff(s2) from root.test, root.test2 order by time align by device",
+        "select change_points(s1), diff(s2) from root.db.d1, root.db.d2 order by time align by device",
         expectedHeader,
         retArray);
   }
@@ -277,8 +277,8 @@ public class IoTDBDiffFunctionIT {
     String[] expectedHeader =
         new String[] {
           TIMESTAMP_STR,
-          "change_points(root.test.s1)",
-          "diff(root.test.s2, \"ignoreNull\"=\"false\")"
+          "change_points(root.db.d1.s1)",
+          "diff(root.db.d1.s2, \"ignoreNull\"=\"false\")"
         };
     String[] retArray =
         new String[] {
@@ -291,7 +291,7 @@ public class IoTDBDiffFunctionIT {
           "5000000001,8,null,"
         };
     resultSetEqualTest(
-        "select change_points(s1), diff(s2, 'ignoreNull'='false') from root.test",
+        "select change_points(s1), diff(s2, 'ignoreNull'='false') from root.db.d1",
         expectedHeader,
         retArray);
 
@@ -302,20 +302,20 @@ public class IoTDBDiffFunctionIT {
         };
     retArray =
         new String[] {
-          "1,root.test,1,null,",
-          "2,root.test,2,null,",
-          "4,root.test,4,null,",
-          "5,root.test,5,null,",
-          "6,root.test,null,1.0,",
-          "5000000000,root.test,null,1.0,",
-          "5000000001,root.test,8,null,",
-          "1,root.test2,1,null,",
-          "2,root.test2,2,1.0,",
-          "5000000000,root.test2,null,1.0,",
-          "5000000001,root.test2,4,null,",
+          "1,root.db.d1,1,null,",
+          "2,root.db.d1,2,null,",
+          "4,root.db.d1,4,null,",
+          "5,root.db.d1,5,null,",
+          "6,root.db.d1,null,1.0,",
+          "5000000000,root.db.d1,null,1.0,",
+          "5000000001,root.db.d1,8,null,",
+          "1,root.db.d2,1,null,",
+          "2,root.db.d2,2,1.0,",
+          "5000000000,root.db.d2,null,1.0,",
+          "5000000001,root.db.d2,4,null,",
         };
     resultSetEqualTest(
-        "select change_points(s1), diff(s2, 'ignoreNull'='false') from root.test, root.test2 align by device",
+        "select change_points(s1), diff(s2, 'ignoreNull'='false') from root.db.d1, root.db.d2 align by device",
         expectedHeader,
         retArray);
 
@@ -326,20 +326,20 @@ public class IoTDBDiffFunctionIT {
         };
     retArray =
         new String[] {
-          "1,root.test,1,null,",
-          "1,root.test2,1,null,",
-          "2,root.test,2,null,",
-          "2,root.test2,2,1.0,",
-          "4,root.test,4,null,",
-          "5,root.test,5,null,",
-          "6,root.test,null,1.0,",
-          "5000000000,root.test,null,1.0,",
-          "5000000000,root.test2,null,1.0,",
-          "5000000001,root.test,8,null,",
-          "5000000001,root.test2,4,null,",
+          "1,root.db.d1,1,null,",
+          "1,root.db.d2,1,null,",
+          "2,root.db.d1,2,null,",
+          "2,root.db.d2,2,1.0,",
+          "4,root.db.d1,4,null,",
+          "5,root.db.d1,5,null,",
+          "6,root.db.d1,null,1.0,",
+          "5000000000,root.db.d1,null,1.0,",
+          "5000000000,root.db.d2,null,1.0,",
+          "5000000001,root.db.d1,8,null,",
+          "5000000001,root.db.d2,4,null,",
         };
     resultSetEqualTest(
-        "select change_points(s1), diff(s2, 'ignoreNull'='false') from root.test, root.test2 order by time align by device",
+        "select change_points(s1), diff(s2, 'ignoreNull'='false') from root.db.d1, root.db.d2 order by time align by device",
         expectedHeader,
         retArray);
   }
