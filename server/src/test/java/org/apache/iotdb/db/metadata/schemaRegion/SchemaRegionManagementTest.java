@@ -19,12 +19,10 @@
 
 package org.apache.iotdb.db.metadata.schemaRegion;
 
-import org.apache.iotdb.commons.conf.CommonConfig;
-import org.apache.iotdb.commons.conf.CommonDescriptor;
-import org.apache.iotdb.commons.consensus.ConsensusProtocolClass;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.metadata.MetadataConstant;
@@ -51,8 +49,7 @@ import java.util.Map;
 
 public class SchemaRegionManagementTest extends AbstractSchemaRegionTest {
 
-  private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConf();
-  IoTDBConfig config = IoTDBDescriptor.getInstance().getConf();
+  IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   public SchemaRegionManagementTest(SchemaRegionTestParams testParams) {
     super(testParams);
@@ -60,9 +57,8 @@ public class SchemaRegionManagementTest extends AbstractSchemaRegionTest {
 
   @Test
   public void testRatisModeSnapshot() throws Exception {
-    String schemaRegionConsensusProtocolClass =
-        COMMON_CONFIG.getSchemaRegionConsensusProtocolClass().getProtocol();
-    COMMON_CONFIG.setSchemaRegionConsensusProtocolClass(ConsensusProtocolClass.RATIS_CONSENSUS);
+    String schemaRegionConsensusProtocolClass = config.getSchemaRegionConsensusProtocolClass();
+    config.setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS);
     try {
       ISchemaRegion schemaRegion = getSchemaRegion("root.sg", 0);
 
@@ -143,8 +139,7 @@ public class SchemaRegionManagementTest extends AbstractSchemaRegionTest {
           new PartialPath("root.sg.d2.s1").getFullPath(), result.get(1).getFullPath());
 
     } finally {
-      COMMON_CONFIG.setSchemaRegionConsensusProtocolClass(
-          ConsensusProtocolClass.parse(schemaRegionConsensusProtocolClass));
+      config.setSchemaRegionConsensusProtocolClass(schemaRegionConsensusProtocolClass);
     }
   }
 
@@ -162,9 +157,8 @@ public class SchemaRegionManagementTest extends AbstractSchemaRegionTest {
 
   @Test
   public void testEmptySnapshot() throws Exception {
-    String schemaRegionConsensusProtocolClass =
-        COMMON_CONFIG.getSchemaRegionConsensusProtocolClass().getProtocol();
-    COMMON_CONFIG.setSchemaRegionConsensusProtocolClass(ConsensusProtocolClass.RATIS_CONSENSUS);
+    String schemaRegionConsensusProtocolClass = config.getSchemaRegionConsensusProtocolClass();
+    config.setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS);
     try {
       ISchemaRegion schemaRegion = getSchemaRegion("root.sg", 0);
 
@@ -202,17 +196,15 @@ public class SchemaRegionManagementTest extends AbstractSchemaRegionTest {
 
       Assert.assertEquals(0, result.size());
     } finally {
-      COMMON_CONFIG.setSchemaRegionConsensusProtocolClass(
-          ConsensusProtocolClass.parse(schemaRegionConsensusProtocolClass));
+      config.setSchemaRegionConsensusProtocolClass(schemaRegionConsensusProtocolClass);
     }
   }
 
   @Test
   @Ignore
   public void testSnapshotPerformance() throws Exception {
-    String schemaRegionConsensusProtocolClass =
-        COMMON_CONFIG.getSchemaRegionConsensusProtocolClass().getProtocol();
-    COMMON_CONFIG.setSchemaRegionConsensusProtocolClass(ConsensusProtocolClass.RATIS_CONSENSUS);
+    String schemaRegionConsensusProtocolClass = config.getSchemaRegionConsensusProtocolClass();
+    config.setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS);
     try {
       ISchemaRegion schemaRegion = getSchemaRegion("root.sg", 0);
 
@@ -244,8 +236,7 @@ public class SchemaRegionManagementTest extends AbstractSchemaRegionTest {
 
       schemaRegion.loadSnapshot(snapshotDir);
     } finally {
-      COMMON_CONFIG.setSchemaRegionConsensusProtocolClass(
-          ConsensusProtocolClass.parse(schemaRegionConsensusProtocolClass));
+      config.setSchemaRegionConsensusProtocolClass(schemaRegionConsensusProtocolClass);
     }
   }
 }

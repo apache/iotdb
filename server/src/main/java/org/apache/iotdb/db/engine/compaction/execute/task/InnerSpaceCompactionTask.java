@@ -177,7 +177,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
             false);
       }
 
-      if (IoTDBDescriptor.getInstance().getConf().isEnableCompactionValidation()
+      if (IoTDBDescriptor.getInstance().getConfig().isEnableCompactionValidation()
           && !CompactionUtils.validateTsFileResources(
               tsFileManager, storageGroupName, timePartition)) {
         LOGGER.error(

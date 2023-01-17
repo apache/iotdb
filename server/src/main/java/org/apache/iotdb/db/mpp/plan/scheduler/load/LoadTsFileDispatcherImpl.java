@@ -72,8 +72,8 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
   public LoadTsFileDispatcherImpl(
       IClientManager<TEndPoint, SyncDataNodeInternalServiceClient> internalServiceClientManager) {
     this.internalServiceClientManager = internalServiceClientManager;
-    this.localhostIpAddr = IoTDBDescriptor.getInstance().getConf().getDnInternalAddress();
-    this.localhostInternalPort = IoTDBDescriptor.getInstance().getConf().getDnInternalPort();
+    this.localhostIpAddr = IoTDBDescriptor.getInstance().getConfig().getInternalAddress();
+    this.localhostInternalPort = IoTDBDescriptor.getInstance().getConfig().getInternalPort();
     this.executor =
         IoTDBThreadPoolFactory.newCachedThreadPool(LoadTsFileDispatcherImpl.class.getName());
   }

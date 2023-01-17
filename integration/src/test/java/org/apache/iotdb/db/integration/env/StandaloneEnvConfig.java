@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.integration.env;
 
-import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.itbase.env.BaseConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -42,12 +41,17 @@ public class StandaloneEnvConfig implements BaseConfig {
   }
 
   public BaseConfig setMemtableSizeThreshold(long memtableSizeThreshold) {
-    CommonDescriptor.getInstance().getConf().setMemtableSizeThreshold(memtableSizeThreshold);
+    IoTDBDescriptor.getInstance().getConfig().setMemtableSizeThreshold(memtableSizeThreshold);
+    return this;
+  }
+
+  public BaseConfig setDataRegionNum(int dataRegionNum) {
+    IoTDBDescriptor.getInstance().getConfig().setDataRegionNum(dataRegionNum);
     return this;
   }
 
   public BaseConfig setPartitionInterval(long partitionInterval) {
-    IoTDBDescriptor.getInstance().getConf().setDnTimePartitionInterval(partitionInterval);
+    IoTDBDescriptor.getInstance().getConfig().setTimePartitionInterval(partitionInterval);
     return this;
   }
 
@@ -57,78 +61,80 @@ public class StandaloneEnvConfig implements BaseConfig {
   }
 
   public BaseConfig setMaxQueryDeduplicatedPathNum(int maxQueryDeduplicatedPathNum) {
-    CommonDescriptor.getInstance().getConf().setMaxDeduplicatedPathNum(maxQueryDeduplicatedPathNum);
+    IoTDBDescriptor.getInstance()
+        .getConfig()
+        .setMaxQueryDeduplicatedPathNum(maxQueryDeduplicatedPathNum);
     return this;
   }
 
   public BaseConfig setRpcThriftCompressionEnable(boolean rpcThriftCompressionEnable) {
     IoTDBDescriptor.getInstance()
-        .getConf()
-        .setDnRpcThriftCompressionEnable(rpcThriftCompressionEnable);
+        .getConfig()
+        .setRpcThriftCompressionEnable(rpcThriftCompressionEnable);
     return this;
   }
 
   public BaseConfig setRpcAdvancedCompressionEnable(boolean rpcAdvancedCompressionEnable) {
     IoTDBDescriptor.getInstance()
-        .getConf()
-        .setDnRpcAdvancedCompressionEnable(rpcAdvancedCompressionEnable);
+        .getConfig()
+        .setRpcAdvancedCompressionEnable(rpcAdvancedCompressionEnable);
     return this;
   }
 
   public BaseConfig setUdfCollectorMemoryBudgetInMB(float udfCollectorMemoryBudgetInMB) {
-    CommonDescriptor.getInstance()
-        .getConf()
+    IoTDBDescriptor.getInstance()
+        .getConfig()
         .setUdfCollectorMemoryBudgetInMB(udfCollectorMemoryBudgetInMB);
     return this;
   }
 
   public BaseConfig setUdfTransformerMemoryBudgetInMB(float udfTransformerMemoryBudgetInMB) {
-    CommonDescriptor.getInstance()
-        .getConf()
+    IoTDBDescriptor.getInstance()
+        .getConfig()
         .setUdfTransformerMemoryBudgetInMB(udfTransformerMemoryBudgetInMB);
     return this;
   }
 
   public BaseConfig setUdfReaderMemoryBudgetInMB(float udfReaderMemoryBudgetInMB) {
-    CommonDescriptor.getInstance()
-        .getConf()
+    IoTDBDescriptor.getInstance()
+        .getConfig()
         .setUdfReaderMemoryBudgetInMB(udfReaderMemoryBudgetInMB);
     return this;
   }
 
   public BaseConfig setEnableSeqSpaceCompaction(boolean enableSeqSpaceCompaction) {
-    IoTDBDescriptor.getInstance().getConf().setEnableSeqSpaceCompaction(enableSeqSpaceCompaction);
+    IoTDBDescriptor.getInstance().getConfig().setEnableSeqSpaceCompaction(enableSeqSpaceCompaction);
     return this;
   }
 
   public BaseConfig setEnableUnseqSpaceCompaction(boolean enableUnseqSpaceCompaction) {
     IoTDBDescriptor.getInstance()
-        .getConf()
+        .getConfig()
         .setEnableUnseqSpaceCompaction(enableUnseqSpaceCompaction);
     return this;
   }
 
   public BaseConfig setEnableCrossSpaceCompaction(boolean enableCrossSpaceCompaction) {
     IoTDBDescriptor.getInstance()
-        .getConf()
+        .getConfig()
         .setEnableCrossSpaceCompaction(enableCrossSpaceCompaction);
     return this;
   }
 
   public BaseConfig setEnableIDTable(boolean isEnableIDTable) {
-    IoTDBDescriptor.getInstance().getConf().setEnableIDTable(isEnableIDTable);
+    IoTDBDescriptor.getInstance().getConfig().setEnableIDTable(isEnableIDTable);
     return this;
   }
 
   public BaseConfig setDeviceIDTransformationMethod(String deviceIDTransformationMethod) {
     IoTDBDescriptor.getInstance()
-        .getConf()
+        .getConfig()
         .setDeviceIDTransformationMethod(deviceIDTransformationMethod);
     return this;
   }
 
   public BaseConfig setAutoCreateSchemaEnabled(boolean enableAutoCreateSchema) {
-    CommonDescriptor.getInstance().getConf().setEnableAutoCreateSchema(enableAutoCreateSchema);
+    IoTDBDescriptor.getInstance().getConfig().setAutoCreateSchemaEnabled(enableAutoCreateSchema);
     return this;
   }
 }

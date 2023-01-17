@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.wal.recover.file;
 
-import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -83,16 +82,16 @@ public class TsFilePlanRedoerTest {
 
   @Before
   public void setUp() throws Exception {
-    prevIsCluster = IoTDBDescriptor.getInstance().getConf().isClusterMode();
+    prevIsCluster = IoTDBDescriptor.getInstance().getConfig().isClusterMode();
     EnvironmentUtils.envSetUp();
-    IoTDBDescriptor.getInstance().getConf().setClusterMode(true);
+    IoTDBDescriptor.getInstance().getConfig().setClusterMode(true);
 
     // set recover config, avoid creating deleted time series when recovering wal
     prevIsAutoCreateSchemaEnabled =
-        CommonDescriptor.getInstance().getConf().isEnableAutoCreateSchema();
+        IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled();
     //    IoTDBDescriptor.getInstance().getConfig().setAutoCreateSchemaEnabled(false);
-    prevIsEnablePartialInsert = CommonDescriptor.getInstance().getConf().isEnablePartialInsert();
-    CommonDescriptor.getInstance().getConf().setEnablePartialInsert(true);
+    prevIsEnablePartialInsert = IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert();
+    IoTDBDescriptor.getInstance().getConfig().setEnablePartialInsert(true);
     compressionType = TSFileDescriptor.getInstance().getConfig().getCompressor();
   }
 
@@ -105,13 +104,13 @@ public class TsFilePlanRedoerTest {
     if (modsFile.exists()) {
       modsFile.delete();
     }
-    IoTDBDescriptor.getInstance().getConf().setClusterMode(prevIsCluster);
+    IoTDBDescriptor.getInstance().getConfig().setClusterMode(prevIsCluster);
     EnvironmentUtils.cleanEnv();
     // reset config
     //    IoTDBDescriptor.getInstance()
     //        .getConfig()
     //        .setAutoCreateSchemaEnabled(prevIsAutoCreateSchemaEnabled);
-    CommonDescriptor.getInstance().getConf().setEnablePartialInsert(prevIsEnablePartialInsert);
+    IoTDBDescriptor.getInstance().getConfig().setEnablePartialInsert(prevIsEnablePartialInsert);
   }
 
   @Test

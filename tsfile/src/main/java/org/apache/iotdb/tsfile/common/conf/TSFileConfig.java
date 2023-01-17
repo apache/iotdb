@@ -151,15 +151,13 @@ public class TSFileConfig implements Serializable {
   /** The amount of data iterate each time */
   private int batchSize = 1000;
 
-  private int patternMatchingThreshold = 1000000;
-
-  // Time interval in minute for calculating query frequency. Unit: minute
-  private int frequencyIntervalInMinute = 1;
-
-  // Maximum capacity of a TsBlock, allow up to two pages
+  /** Maximum capacity of a TsBlock, allow up to two pages. */
   private int maxTsBlockSizeInBytes = 128 * 1024;
-  // Maximum number of lines in a single TsBlock
+
+  /** Maximum number of lines in a single TsBlock */
   private int maxTsBlockLineNumber = 1000;
+
+  private int patternMatchingThreshold = 1000000;
 
   /** customizedProperties, this should be empty by default. */
   private Properties customizedProperties = new Properties();
@@ -299,7 +297,7 @@ public class TSFileConfig implements Serializable {
   }
 
   public void setCompressor(String compressor) {
-    this.compressor = CompressionType.parse(compressor);
+    this.compressor = CompressionType.valueOf(compressor);
   }
 
   public int getPageCheckSizeThreshold() {
@@ -446,30 +444,6 @@ public class TSFileConfig implements Serializable {
     this.freqEncodingBlockSize = freqEncodingBlockSize;
   }
 
-  public int getPatternMatchingThreshold() {
-    return patternMatchingThreshold;
-  }
-
-  public void setPatternMatchingThreshold(int patternMatchingThreshold) {
-    this.patternMatchingThreshold = patternMatchingThreshold;
-  }
-
-  public Properties getCustomizedProperties() {
-    return customizedProperties;
-  }
-
-  public void setCustomizedProperties(Properties customizedProperties) {
-    this.customizedProperties = customizedProperties;
-  }
-
-  public int getFrequencyIntervalInMinute() {
-    return frequencyIntervalInMinute;
-  }
-
-  public void setFrequencyIntervalInMinute(int frequencyIntervalInMinute) {
-    this.frequencyIntervalInMinute = frequencyIntervalInMinute;
-  }
-
   public int getMaxTsBlockSizeInBytes() {
     return maxTsBlockSizeInBytes;
   }
@@ -484,5 +458,21 @@ public class TSFileConfig implements Serializable {
 
   public void setMaxTsBlockLineNumber(int maxTsBlockLineNumber) {
     this.maxTsBlockLineNumber = maxTsBlockLineNumber;
+  }
+
+  public int getPatternMatchingThreshold() {
+    return patternMatchingThreshold;
+  }
+
+  public void setPatternMatchingThreshold(int patternMatchingThreshold) {
+    this.patternMatchingThreshold = patternMatchingThreshold;
+  }
+
+  public Properties getCustomizedProperties() {
+    return customizedProperties;
+  }
+
+  public void setCustomizedProperties(Properties customizedProperties) {
+    this.customizedProperties = customizedProperties;
   }
 }

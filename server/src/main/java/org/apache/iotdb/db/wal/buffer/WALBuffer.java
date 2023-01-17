@@ -20,8 +20,9 @@ package org.apache.iotdb.db.wal.buffer;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
-import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.utils.MmapUtil;
@@ -55,9 +56,8 @@ import static org.apache.iotdb.db.wal.node.WALNode.DEFAULT_SEARCH_INDEX;
  */
 public class WALBuffer extends AbstractWALBuffer {
   private static final Logger logger = LoggerFactory.getLogger(WALBuffer.class);
-
-  private static final CommonConfig config = CommonDescriptor.getInstance().getConf();
-  private static final int HALF_WAL_BUFFER_SIZE = config.getWalBufferSizeInByte() / 2;
+  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private static final int HALF_WAL_BUFFER_SIZE = config.getWalBufferSize() / 2;
   private static final int QUEUE_CAPACITY = config.getWalBufferQueueCapacity();
 
   /** whether close method is called */
@@ -426,7 +426,7 @@ public class WALBuffer extends AbstractWALBuffer {
       } catch (Throwable e) {
         logger.error(
             "Fail to sync wal node-{}'s buffer, change system mode to error.", identifier, e);
-        CommonDescriptor.getInstance().getConf().handleUnrecoverableError();
+        CommonDescriptor.getInstance().getConfig().handleUnrecoverableError();
       } finally {
         switchSyncingBufferToIdle();
       }
@@ -447,7 +447,7 @@ public class WALBuffer extends AbstractWALBuffer {
           if (info.rollWALFileWriterListener != null) {
             info.rollWALFileWriterListener.fail(e);
           }
-          CommonDescriptor.getInstance().getConf().handleUnrecoverableError();
+          CommonDescriptor.getInstance().getConfig().handleUnrecoverableError();
         }
       } else if (forceFlag) { // force os cache to the storage device, avoid force twice by judging
         // after rolling file
@@ -462,7 +462,7 @@ public class WALBuffer extends AbstractWALBuffer {
           for (WALFlushListener fsyncListener : info.fsyncListeners) {
             fsyncListener.fail(e);
           }
-          CommonDescriptor.getInstance().getConf().handleUnrecoverableError();
+          CommonDescriptor.getInstance().getConfig().handleUnrecoverableError();
         }
       }
 

@@ -76,7 +76,7 @@ public class RewriteCrossSpaceCompactionWithReadPointPerformerTest extends Abstr
       throws IOException, WriteProcessException, MetadataException, InterruptedException {
     super.setUp();
     WALRecoverManager.getInstance().setAllDataRegionScannedLatch(new CountDownLatch(1));
-    IoTDBDescriptor.getInstance().getConf().setTargetChunkSize(1024);
+    IoTDBDescriptor.getInstance().getConfig().setTargetChunkSize(1024);
     Thread.currentThread().setName("pool-1-IoTDB-Compaction-1");
   }
 

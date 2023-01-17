@@ -72,7 +72,7 @@ public abstract class BasicUserManager implements IUserManager {
   private void initAdmin() throws AuthException {
     User admin;
     try {
-      admin = getUser(CommonDescriptor.getInstance().getConf().getAdminName());
+      admin = getUser(CommonDescriptor.getInstance().getConfig().getAdminName());
     } catch (AuthException e) {
       logger.warn("Cannot load admin, Creating a new one", e);
       admin = null;
@@ -80,9 +80,9 @@ public abstract class BasicUserManager implements IUserManager {
 
     if (admin == null) {
       createUser(
-          CommonDescriptor.getInstance().getConf().getAdminName(),
-          CommonDescriptor.getInstance().getConf().getAdminPassword());
-      setUserUseWaterMark(CommonDescriptor.getInstance().getConf().getAdminName(), false);
+          CommonDescriptor.getInstance().getConfig().getAdminName(),
+          CommonDescriptor.getInstance().getConfig().getAdminPassword());
+      setUserUseWaterMark(CommonDescriptor.getInstance().getConfig().getAdminName(), false);
     }
     logger.info("Admin initialized");
   }

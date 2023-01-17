@@ -29,15 +29,14 @@ import org.apache.iotdb.commons.cluster.RegionRoleType;
 import org.apache.iotdb.commons.cluster.RegionStatus;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
-import org.apache.iotdb.commons.conf.CommonConfig;
-import org.apache.iotdb.commons.conf.CommonDescriptor;
-import org.apache.iotdb.commons.loadbalance.RegionGroupExtensionPolicy;
 import org.apache.iotdb.commons.partition.DataPartitionTable;
 import org.apache.iotdb.commons.partition.SchemaPartitionTable;
 import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.confignode.client.sync.SyncDataNodeClientPool;
+import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
+import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetNodePathsPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetOrCreateDataPartitionPlan;
@@ -105,15 +104,14 @@ public class PartitionManager {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PartitionManager.class);
 
-  private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConf();
+  private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
   private static final RegionGroupExtensionPolicy SCHEMA_REGION_GROUP_EXTENSION_POLICY =
-      COMMON_CONFIG.getSchemaRegionGroupExtensionPolicy();
+      CONF.getSchemaRegionGroupExtensionPolicy();
   private static final int SCHEMA_REGION_GROUP_PER_DATABASE =
-      COMMON_CONFIG.getSchemaRegionGroupPerDatabase();
+      CONF.getSchemaRegionGroupPerDatabase();
   private static final RegionGroupExtensionPolicy DATA_REGION_GROUP_EXTENSION_POLICY =
-      COMMON_CONFIG.getDataRegionGroupExtensionPolicy();
-  private static final int DATA_REGION_GROUP_PER_DATABASE =
-      COMMON_CONFIG.getDataRegionGroupPerDatabase();
+      CONF.getDataRegionGroupExtensionPolicy();
+  private static final int DATA_REGION_GROUP_PER_DATABASE = CONF.getDataRegionGroupPerDatabase();
 
   private final IManager configManager;
   private final PartitionInfo partitionInfo;
@@ -144,7 +142,7 @@ public class PartitionManager {
   private void setSeriesPartitionExecutor() {
     this.executor =
         SeriesPartitionExecutor.getSeriesPartitionExecutor(
-            COMMON_CONFIG.getSeriesPartitionExecutorClass(), COMMON_CONFIG.getSeriesSlotNum());
+            CONF.getSeriesPartitionExecutorClass(), CONF.getSeriesSlotNum());
   }
 
   // ======================================================
@@ -421,14 +419,14 @@ public class PartitionManager {
               + unassignedPartitionSlotsCount;
       float maxRegionGroupCount =
           getClusterSchemaManager().getMaxRegionGroupNum(storageGroup, consensusGroupType);
-      float maxSlotCount = COMMON_CONFIG.getSeriesSlotNum();
+      float maxSlotCount = CONF.getSeriesSlotNum();
 
       /* RegionGroup extension is required in the following cases */
       // 1. The number of current RegionGroup of the StorageGroup is less than the least number
       int leastRegionGroupNum =
           TConsensusGroupType.SchemaRegion.equals(consensusGroupType)
-              ? COMMON_CONFIG.getLeastSchemaRegionGroupNum()
-              : COMMON_CONFIG.getLeastDataRegionGroupNum();
+              ? CONF.getLeastSchemaRegionGroupNum()
+              : CONF.getLeastDataRegionGroupNum();
       if (allocatedRegionGroupCount < leastRegionGroupNum) {
         // Let the sum of unassignedPartitionSlotsCount and allocatedRegionGroupCount
         // no less than the leastRegionGroupNum
@@ -703,8 +701,7 @@ public class PartitionManager {
                 ? req.getTimeSlotId()
                 : (req.isSetTimeStamp()
                     ? new TTimePartitionSlot(
-                        req.getTimeStamp()
-                            - req.getTimeStamp() % COMMON_CONFIG.getTimePartitionInterval())
+                        req.getTimeStamp() - req.getTimeStamp() % CONF.getTimePartitionInterval())
                     : null));
     return (GetRegionIdResp) getConsensusManager().read(plan).getDataset();
   }

@@ -167,11 +167,11 @@ public class ReadChunkCompactionPerformerNoAlignedTest {
    */
   @Test
   public void testDirectlyFlushChunk() throws Exception {
-    long originTargetChunkSize = IoTDBDescriptor.getInstance().getConf().getTargetChunkSize();
+    long originTargetChunkSize = IoTDBDescriptor.getInstance().getConfig().getTargetChunkSize();
     long originTargetChunkPointNum =
-        IoTDBDescriptor.getInstance().getConf().getTargetChunkPointNum();
-    IoTDBDescriptor.getInstance().getConf().setTargetChunkSize(100);
-    IoTDBDescriptor.getInstance().getConf().setTargetChunkPointNum(100);
+        IoTDBDescriptor.getInstance().getConfig().getTargetChunkPointNum();
+    IoTDBDescriptor.getInstance().getConfig().setTargetChunkSize(100);
+    IoTDBDescriptor.getInstance().getConfig().setTargetChunkPointNum(100);
     try {
       List<TsFileResource> sourceFiles = new ArrayList();
       int fileNum = 6;
@@ -212,8 +212,8 @@ public class ReadChunkCompactionPerformerNoAlignedTest {
               paths, schemaList, Collections.singletonList(targetResource), new ArrayList<>());
       CompactionCheckerUtils.validDataByValueList(originData, compactedData);
     } finally {
-      IoTDBDescriptor.getInstance().getConf().setTargetChunkSize(originTargetChunkSize);
-      IoTDBDescriptor.getInstance().getConf().setTargetChunkPointNum(originTargetChunkPointNum);
+      IoTDBDescriptor.getInstance().getConfig().setTargetChunkSize(originTargetChunkSize);
+      IoTDBDescriptor.getInstance().getConfig().setTargetChunkPointNum(originTargetChunkPointNum);
     }
   }
 
@@ -229,20 +229,20 @@ public class ReadChunkCompactionPerformerNoAlignedTest {
     long testTargetChunkPointNum = 2000L;
     long testChunkSizeLowerBound = 1024L;
     long testChunkPointNumLowerBound = 100L;
-    long originTargetChunkSize = IoTDBDescriptor.getInstance().getConf().getTargetChunkSize();
+    long originTargetChunkSize = IoTDBDescriptor.getInstance().getConfig().getTargetChunkSize();
     long originTargetChunkPointNum =
-        IoTDBDescriptor.getInstance().getConf().getTargetChunkPointNum();
-    IoTDBDescriptor.getInstance().getConf().setTargetChunkSize(1024 * 1024);
-    IoTDBDescriptor.getInstance().getConf().setTargetChunkPointNum(testTargetChunkPointNum);
+        IoTDBDescriptor.getInstance().getConfig().getTargetChunkPointNum();
+    IoTDBDescriptor.getInstance().getConfig().setTargetChunkSize(1024 * 1024);
+    IoTDBDescriptor.getInstance().getConfig().setTargetChunkPointNum(testTargetChunkPointNum);
     long originChunkSizeLowerBound =
-        IoTDBDescriptor.getInstance().getConf().getChunkSizeLowerBoundInCompaction();
+        IoTDBDescriptor.getInstance().getConfig().getChunkSizeLowerBoundInCompaction();
     IoTDBDescriptor.getInstance()
-        .getConf()
+        .getConfig()
         .setChunkSizeLowerBoundInCompaction(testChunkSizeLowerBound);
     long originChunkPointNumLowerBound =
-        IoTDBDescriptor.getInstance().getConf().getChunkPointNumLowerBoundInCompaction();
+        IoTDBDescriptor.getInstance().getConfig().getChunkPointNumLowerBoundInCompaction();
     IoTDBDescriptor.getInstance()
-        .getConf()
+        .getConfig()
         .setChunkPointNumLowerBoundInCompaction(testChunkPointNumLowerBound);
     try {
       List<TsFileResource> sourceFiles = new ArrayList();
@@ -295,13 +295,13 @@ public class ReadChunkCompactionPerformerNoAlignedTest {
       CompactionCheckerUtils.validDataByValueList(originData, compactedData);
       CompactionCheckerUtils.checkChunkAndPage(chunkPagePointsNumMerged, targetResource);
     } finally {
-      IoTDBDescriptor.getInstance().getConf().setTargetChunkSize(originTargetChunkSize);
-      IoTDBDescriptor.getInstance().getConf().setTargetChunkPointNum(originTargetChunkPointNum);
+      IoTDBDescriptor.getInstance().getConfig().setTargetChunkSize(originTargetChunkSize);
+      IoTDBDescriptor.getInstance().getConfig().setTargetChunkPointNum(originTargetChunkPointNum);
       IoTDBDescriptor.getInstance()
-          .getConf()
+          .getConfig()
           .setChunkSizeLowerBoundInCompaction(originChunkSizeLowerBound);
       IoTDBDescriptor.getInstance()
-          .getConf()
+          .getConfig()
           .setChunkPointNumLowerBoundInCompaction(originChunkPointNumLowerBound);
     }
   }
@@ -317,20 +317,20 @@ public class ReadChunkCompactionPerformerNoAlignedTest {
     long testTargetChunkPointNum = 2000L;
     long testChunkSizeLowerBound = 1024L;
     long testChunkPointNumLowerBound = 100L;
-    long originTargetChunkSize = IoTDBDescriptor.getInstance().getConf().getTargetChunkSize();
+    long originTargetChunkSize = IoTDBDescriptor.getInstance().getConfig().getTargetChunkSize();
     long originTargetChunkPointNum =
-        IoTDBDescriptor.getInstance().getConf().getTargetChunkPointNum();
-    IoTDBDescriptor.getInstance().getConf().setTargetChunkSize(1024 * 1024);
-    IoTDBDescriptor.getInstance().getConf().setTargetChunkPointNum(testTargetChunkPointNum);
+        IoTDBDescriptor.getInstance().getConfig().getTargetChunkPointNum();
+    IoTDBDescriptor.getInstance().getConfig().setTargetChunkSize(1024 * 1024);
+    IoTDBDescriptor.getInstance().getConfig().setTargetChunkPointNum(testTargetChunkPointNum);
     long originChunkSizeLowerBound =
-        IoTDBDescriptor.getInstance().getConf().getChunkSizeLowerBoundInCompaction();
+        IoTDBDescriptor.getInstance().getConfig().getChunkSizeLowerBoundInCompaction();
     IoTDBDescriptor.getInstance()
-        .getConf()
+        .getConfig()
         .setChunkSizeLowerBoundInCompaction(testChunkSizeLowerBound);
     long originChunkPointNumLowerBound =
-        IoTDBDescriptor.getInstance().getConf().getChunkPointNumLowerBoundInCompaction();
+        IoTDBDescriptor.getInstance().getConfig().getChunkPointNumLowerBoundInCompaction();
     IoTDBDescriptor.getInstance()
-        .getConf()
+        .getConfig()
         .setChunkPointNumLowerBoundInCompaction(testChunkPointNumLowerBound);
     try {
       List<TsFileResource> sourceFiles = new ArrayList();
@@ -386,13 +386,13 @@ public class ReadChunkCompactionPerformerNoAlignedTest {
       CompactionCheckerUtils.validDataByValueList(originData, compactedData);
       CompactionCheckerUtils.checkChunkAndPage(chunkPagePointsNumMerged, targetResource);
     } finally {
-      IoTDBDescriptor.getInstance().getConf().setTargetChunkSize(originTargetChunkSize);
-      IoTDBDescriptor.getInstance().getConf().setTargetChunkPointNum(originTargetChunkPointNum);
+      IoTDBDescriptor.getInstance().getConfig().setTargetChunkSize(originTargetChunkSize);
+      IoTDBDescriptor.getInstance().getConfig().setTargetChunkPointNum(originTargetChunkPointNum);
       IoTDBDescriptor.getInstance()
-          .getConf()
+          .getConfig()
           .setChunkSizeLowerBoundInCompaction(originChunkSizeLowerBound);
       IoTDBDescriptor.getInstance()
-          .getConf()
+          .getConfig()
           .setChunkPointNumLowerBoundInCompaction(originChunkPointNumLowerBound);
     }
   }
@@ -406,17 +406,17 @@ public class ReadChunkCompactionPerformerNoAlignedTest {
   @Test
   public void testMergeChunk() throws Exception {
     long testTargetChunkPointNum = 1000L;
-    long originTargetChunkSize = IoTDBDescriptor.getInstance().getConf().getTargetChunkSize();
+    long originTargetChunkSize = IoTDBDescriptor.getInstance().getConfig().getTargetChunkSize();
     long originTargetChunkPointNum =
-        IoTDBDescriptor.getInstance().getConf().getTargetChunkPointNum();
-    IoTDBDescriptor.getInstance().getConf().setTargetChunkSize(10240);
-    IoTDBDescriptor.getInstance().getConf().setTargetChunkPointNum(testTargetChunkPointNum);
+        IoTDBDescriptor.getInstance().getConfig().getTargetChunkPointNum();
+    IoTDBDescriptor.getInstance().getConfig().setTargetChunkSize(10240);
+    IoTDBDescriptor.getInstance().getConfig().setTargetChunkPointNum(testTargetChunkPointNum);
     long originChunkSizeLowerBound =
-        IoTDBDescriptor.getInstance().getConf().getChunkSizeLowerBoundInCompaction();
-    IoTDBDescriptor.getInstance().getConf().setChunkSizeLowerBoundInCompaction(1);
+        IoTDBDescriptor.getInstance().getConfig().getChunkSizeLowerBoundInCompaction();
+    IoTDBDescriptor.getInstance().getConfig().setChunkSizeLowerBoundInCompaction(1);
     long originChunkPointNumLowerBound =
-        IoTDBDescriptor.getInstance().getConf().getChunkPointNumLowerBoundInCompaction();
-    IoTDBDescriptor.getInstance().getConf().setChunkPointNumLowerBoundInCompaction(1);
+        IoTDBDescriptor.getInstance().getConfig().getChunkPointNumLowerBoundInCompaction();
+    IoTDBDescriptor.getInstance().getConfig().setChunkPointNumLowerBoundInCompaction(1);
     try {
       List<TsFileResource> sourceFiles = new ArrayList();
       Set<String> fullPathSetWithDeleted = new HashSet<>(fullPathSet);
@@ -473,13 +473,13 @@ public class ReadChunkCompactionPerformerNoAlignedTest {
               paths, schemaList, Collections.singletonList(targetResource), new ArrayList<>());
       CompactionCheckerUtils.validDataByValueList(originData, compactedData);
     } finally {
-      IoTDBDescriptor.getInstance().getConf().setTargetChunkSize(originTargetChunkSize);
-      IoTDBDescriptor.getInstance().getConf().setTargetChunkPointNum(originTargetChunkPointNum);
+      IoTDBDescriptor.getInstance().getConfig().setTargetChunkSize(originTargetChunkSize);
+      IoTDBDescriptor.getInstance().getConfig().setTargetChunkPointNum(originTargetChunkPointNum);
       IoTDBDescriptor.getInstance()
-          .getConf()
+          .getConfig()
           .setChunkSizeLowerBoundInCompaction(originChunkSizeLowerBound);
       IoTDBDescriptor.getInstance()
-          .getConf()
+          .getConfig()
           .setChunkPointNumLowerBoundInCompaction(originChunkPointNumLowerBound);
     }
   }
@@ -496,20 +496,20 @@ public class ReadChunkCompactionPerformerNoAlignedTest {
     long testTargetChunkPointNum = 2000L;
     long testChunkSizeLowerBound = 1024L;
     long testChunkPointNumLowerBound = 100L;
-    long originTargetChunkSize = IoTDBDescriptor.getInstance().getConf().getTargetChunkSize();
+    long originTargetChunkSize = IoTDBDescriptor.getInstance().getConfig().getTargetChunkSize();
     long originTargetChunkPointNum =
-        IoTDBDescriptor.getInstance().getConf().getTargetChunkPointNum();
-    IoTDBDescriptor.getInstance().getConf().setTargetChunkSize(1024 * 1024);
-    IoTDBDescriptor.getInstance().getConf().setTargetChunkPointNum(testTargetChunkPointNum);
+        IoTDBDescriptor.getInstance().getConfig().getTargetChunkPointNum();
+    IoTDBDescriptor.getInstance().getConfig().setTargetChunkSize(1024 * 1024);
+    IoTDBDescriptor.getInstance().getConfig().setTargetChunkPointNum(testTargetChunkPointNum);
     long originChunkSizeLowerBound =
-        IoTDBDescriptor.getInstance().getConf().getChunkSizeLowerBoundInCompaction();
+        IoTDBDescriptor.getInstance().getConfig().getChunkSizeLowerBoundInCompaction();
     IoTDBDescriptor.getInstance()
-        .getConf()
+        .getConfig()
         .setChunkSizeLowerBoundInCompaction(testChunkSizeLowerBound);
     long originChunkPointNumLowerBound =
-        IoTDBDescriptor.getInstance().getConf().getChunkPointNumLowerBoundInCompaction();
+        IoTDBDescriptor.getInstance().getConfig().getChunkPointNumLowerBoundInCompaction();
     IoTDBDescriptor.getInstance()
-        .getConf()
+        .getConfig()
         .setChunkPointNumLowerBoundInCompaction(testChunkPointNumLowerBound);
     try {
       List<TsFileResource> sourceFiles = new ArrayList();
@@ -565,13 +565,13 @@ public class ReadChunkCompactionPerformerNoAlignedTest {
       CompactionCheckerUtils.validDataByValueList(originData, compactedData);
       CompactionCheckerUtils.checkChunkAndPage(chunkPagePointsNumMerged, targetResource);
     } finally {
-      IoTDBDescriptor.getInstance().getConf().setTargetChunkSize(originTargetChunkSize);
-      IoTDBDescriptor.getInstance().getConf().setTargetChunkPointNum(originTargetChunkPointNum);
+      IoTDBDescriptor.getInstance().getConfig().setTargetChunkSize(originTargetChunkSize);
+      IoTDBDescriptor.getInstance().getConfig().setTargetChunkPointNum(originTargetChunkPointNum);
       IoTDBDescriptor.getInstance()
-          .getConf()
+          .getConfig()
           .setChunkSizeLowerBoundInCompaction(originChunkSizeLowerBound);
       IoTDBDescriptor.getInstance()
-          .getConf()
+          .getConfig()
           .setChunkPointNumLowerBoundInCompaction(originChunkPointNumLowerBound);
     }
   }
@@ -585,20 +585,20 @@ public class ReadChunkCompactionPerformerNoAlignedTest {
     long testTargetChunkPointNum = 1500L;
     long testChunkSizeLowerBound = 1024L;
     long testChunkPointNumLowerBound = 1000L;
-    long originTargetChunkSize = IoTDBDescriptor.getInstance().getConf().getTargetChunkSize();
+    long originTargetChunkSize = IoTDBDescriptor.getInstance().getConfig().getTargetChunkSize();
     long originTargetChunkPointNum =
-        IoTDBDescriptor.getInstance().getConf().getTargetChunkPointNum();
-    IoTDBDescriptor.getInstance().getConf().setTargetChunkSize(10240);
-    IoTDBDescriptor.getInstance().getConf().setTargetChunkPointNum(testTargetChunkPointNum);
+        IoTDBDescriptor.getInstance().getConfig().getTargetChunkPointNum();
+    IoTDBDescriptor.getInstance().getConfig().setTargetChunkSize(10240);
+    IoTDBDescriptor.getInstance().getConfig().setTargetChunkPointNum(testTargetChunkPointNum);
     long originChunkSizeLowerBound =
-        IoTDBDescriptor.getInstance().getConf().getChunkSizeLowerBoundInCompaction();
+        IoTDBDescriptor.getInstance().getConfig().getChunkSizeLowerBoundInCompaction();
     IoTDBDescriptor.getInstance()
-        .getConf()
+        .getConfig()
         .setChunkSizeLowerBoundInCompaction(testChunkSizeLowerBound);
     long originChunkPointNumLowerBound =
-        IoTDBDescriptor.getInstance().getConf().getChunkPointNumLowerBoundInCompaction();
+        IoTDBDescriptor.getInstance().getConfig().getChunkPointNumLowerBoundInCompaction();
     IoTDBDescriptor.getInstance()
-        .getConf()
+        .getConfig()
         .setChunkPointNumLowerBoundInCompaction(testChunkPointNumLowerBound);
     try {
       List<TsFileResource> sourceFiles = new ArrayList();
@@ -639,13 +639,13 @@ public class ReadChunkCompactionPerformerNoAlignedTest {
               paths, schemaList, Collections.singletonList(targetResource), new ArrayList<>());
       CompactionCheckerUtils.validDataByValueList(originData, compactedData);
     } finally {
-      IoTDBDescriptor.getInstance().getConf().setTargetChunkSize(originTargetChunkSize);
-      IoTDBDescriptor.getInstance().getConf().setTargetChunkPointNum(originTargetChunkPointNum);
+      IoTDBDescriptor.getInstance().getConfig().setTargetChunkSize(originTargetChunkSize);
+      IoTDBDescriptor.getInstance().getConfig().setTargetChunkPointNum(originTargetChunkPointNum);
       IoTDBDescriptor.getInstance()
-          .getConf()
+          .getConfig()
           .setChunkSizeLowerBoundInCompaction(originChunkSizeLowerBound);
       IoTDBDescriptor.getInstance()
-          .getConf()
+          .getConfig()
           .setChunkPointNumLowerBoundInCompaction(originChunkPointNumLowerBound);
     }
   }
@@ -662,20 +662,20 @@ public class ReadChunkCompactionPerformerNoAlignedTest {
     long testTargetChunkPointNum = 1500L;
     long testChunkSizeLowerBound = 1024L;
     long testChunkPointNumLowerBound = 100L;
-    long originTargetChunkSize = IoTDBDescriptor.getInstance().getConf().getTargetChunkSize();
+    long originTargetChunkSize = IoTDBDescriptor.getInstance().getConfig().getTargetChunkSize();
     long originTargetChunkPointNum =
-        IoTDBDescriptor.getInstance().getConf().getTargetChunkPointNum();
-    IoTDBDescriptor.getInstance().getConf().setTargetChunkSize(10240);
-    IoTDBDescriptor.getInstance().getConf().setTargetChunkPointNum(testTargetChunkPointNum);
+        IoTDBDescriptor.getInstance().getConfig().getTargetChunkPointNum();
+    IoTDBDescriptor.getInstance().getConfig().setTargetChunkSize(10240);
+    IoTDBDescriptor.getInstance().getConfig().setTargetChunkPointNum(testTargetChunkPointNum);
     long originChunkSizeLowerBound =
-        IoTDBDescriptor.getInstance().getConf().getChunkSizeLowerBoundInCompaction();
+        IoTDBDescriptor.getInstance().getConfig().getChunkSizeLowerBoundInCompaction();
     IoTDBDescriptor.getInstance()
-        .getConf()
+        .getConfig()
         .setChunkSizeLowerBoundInCompaction(testChunkSizeLowerBound);
     long originChunkPointNumLowerBound =
-        IoTDBDescriptor.getInstance().getConf().getChunkPointNumLowerBoundInCompaction();
+        IoTDBDescriptor.getInstance().getConfig().getChunkPointNumLowerBoundInCompaction();
     IoTDBDescriptor.getInstance()
-        .getConf()
+        .getConfig()
         .setChunkPointNumLowerBoundInCompaction(testChunkPointNumLowerBound);
     try {
       List<TsFileResource> sourceFiles = new ArrayList();
@@ -717,13 +717,13 @@ public class ReadChunkCompactionPerformerNoAlignedTest {
               paths, schemaList, Collections.singletonList(targetResource), new ArrayList<>());
       CompactionCheckerUtils.validDataByValueList(originData, compactedData);
     } finally {
-      IoTDBDescriptor.getInstance().getConf().setTargetChunkSize(originTargetChunkSize);
-      IoTDBDescriptor.getInstance().getConf().setTargetChunkPointNum(originTargetChunkPointNum);
+      IoTDBDescriptor.getInstance().getConfig().setTargetChunkSize(originTargetChunkSize);
+      IoTDBDescriptor.getInstance().getConfig().setTargetChunkPointNum(originTargetChunkPointNum);
       IoTDBDescriptor.getInstance()
-          .getConf()
+          .getConfig()
           .setChunkSizeLowerBoundInCompaction(originChunkSizeLowerBound);
       IoTDBDescriptor.getInstance()
-          .getConf()
+          .getConfig()
           .setChunkPointNumLowerBoundInCompaction(originChunkPointNumLowerBound);
     }
   }
@@ -733,20 +733,20 @@ public class ReadChunkCompactionPerformerNoAlignedTest {
     long testTargetChunkPointNum = 2000L;
     long testChunkSizeLowerBound = 1024L;
     long testChunkPointNumLowerBound = 100L;
-    long originTargetChunkSize = IoTDBDescriptor.getInstance().getConf().getTargetChunkSize();
+    long originTargetChunkSize = IoTDBDescriptor.getInstance().getConfig().getTargetChunkSize();
     long originTargetChunkPointNum =
-        IoTDBDescriptor.getInstance().getConf().getTargetChunkPointNum();
-    IoTDBDescriptor.getInstance().getConf().setTargetChunkSize(1024 * 1024);
-    IoTDBDescriptor.getInstance().getConf().setTargetChunkPointNum(testTargetChunkPointNum);
+        IoTDBDescriptor.getInstance().getConfig().getTargetChunkPointNum();
+    IoTDBDescriptor.getInstance().getConfig().setTargetChunkSize(1024 * 1024);
+    IoTDBDescriptor.getInstance().getConfig().setTargetChunkPointNum(testTargetChunkPointNum);
     long originChunkSizeLowerBound =
-        IoTDBDescriptor.getInstance().getConf().getChunkSizeLowerBoundInCompaction();
+        IoTDBDescriptor.getInstance().getConfig().getChunkSizeLowerBoundInCompaction();
     IoTDBDescriptor.getInstance()
-        .getConf()
+        .getConfig()
         .setChunkSizeLowerBoundInCompaction(testChunkSizeLowerBound);
     long originChunkPointNumLowerBound =
-        IoTDBDescriptor.getInstance().getConf().getChunkPointNumLowerBoundInCompaction();
+        IoTDBDescriptor.getInstance().getConfig().getChunkPointNumLowerBoundInCompaction();
     IoTDBDescriptor.getInstance()
-        .getConf()
+        .getConfig()
         .setChunkPointNumLowerBoundInCompaction(testChunkPointNumLowerBound);
     try {
       List<TsFileResource> sourceFiles = new ArrayList();
@@ -790,13 +790,13 @@ public class ReadChunkCompactionPerformerNoAlignedTest {
       CompactionCheckerUtils.validDataByValueList(originData, compactedData);
       CompactionCheckerUtils.checkChunkAndPage(chunkPagePointsNumMerged, targetResource);
     } finally {
-      IoTDBDescriptor.getInstance().getConf().setTargetChunkSize(originTargetChunkSize);
-      IoTDBDescriptor.getInstance().getConf().setTargetChunkPointNum(originTargetChunkPointNum);
+      IoTDBDescriptor.getInstance().getConfig().setTargetChunkSize(originTargetChunkSize);
+      IoTDBDescriptor.getInstance().getConfig().setTargetChunkPointNum(originTargetChunkPointNum);
       IoTDBDescriptor.getInstance()
-          .getConf()
+          .getConfig()
           .setChunkSizeLowerBoundInCompaction(originChunkSizeLowerBound);
       IoTDBDescriptor.getInstance()
-          .getConf()
+          .getConfig()
           .setChunkPointNumLowerBoundInCompaction(originChunkPointNumLowerBound);
     }
   }
@@ -806,20 +806,20 @@ public class ReadChunkCompactionPerformerNoAlignedTest {
     long testTargetChunkPointNum = 2000L;
     long testChunkSizeLowerBound = 1024L;
     long testChunkPointNumLowerBound = 100L;
-    long originTargetChunkSize = IoTDBDescriptor.getInstance().getConf().getTargetChunkSize();
+    long originTargetChunkSize = IoTDBDescriptor.getInstance().getConfig().getTargetChunkSize();
     long originTargetChunkPointNum =
-        IoTDBDescriptor.getInstance().getConf().getTargetChunkPointNum();
-    IoTDBDescriptor.getInstance().getConf().setTargetChunkSize(1024 * 1024);
-    IoTDBDescriptor.getInstance().getConf().setTargetChunkPointNum(testTargetChunkPointNum);
+        IoTDBDescriptor.getInstance().getConfig().getTargetChunkPointNum();
+    IoTDBDescriptor.getInstance().getConfig().setTargetChunkSize(1024 * 1024);
+    IoTDBDescriptor.getInstance().getConfig().setTargetChunkPointNum(testTargetChunkPointNum);
     long originChunkSizeLowerBound =
-        IoTDBDescriptor.getInstance().getConf().getChunkSizeLowerBoundInCompaction();
+        IoTDBDescriptor.getInstance().getConfig().getChunkSizeLowerBoundInCompaction();
     IoTDBDescriptor.getInstance()
-        .getConf()
+        .getConfig()
         .setChunkSizeLowerBoundInCompaction(testChunkSizeLowerBound);
     long originChunkPointNumLowerBound =
-        IoTDBDescriptor.getInstance().getConf().getChunkPointNumLowerBoundInCompaction();
+        IoTDBDescriptor.getInstance().getConfig().getChunkPointNumLowerBoundInCompaction();
     IoTDBDescriptor.getInstance()
-        .getConf()
+        .getConfig()
         .setChunkPointNumLowerBoundInCompaction(testChunkPointNumLowerBound);
     try {
       List<TsFileResource> sourceFiles = new ArrayList();
@@ -867,13 +867,13 @@ public class ReadChunkCompactionPerformerNoAlignedTest {
       CompactionCheckerUtils.validDataByValueList(originData, compactedData);
       CompactionCheckerUtils.checkChunkAndPage(chunkPagePointsNumMerged, targetResource);
     } finally {
-      IoTDBDescriptor.getInstance().getConf().setTargetChunkSize(originTargetChunkSize);
-      IoTDBDescriptor.getInstance().getConf().setTargetChunkPointNum(originTargetChunkPointNum);
+      IoTDBDescriptor.getInstance().getConfig().setTargetChunkSize(originTargetChunkSize);
+      IoTDBDescriptor.getInstance().getConfig().setTargetChunkPointNum(originTargetChunkPointNum);
       IoTDBDescriptor.getInstance()
-          .getConf()
+          .getConfig()
           .setChunkSizeLowerBoundInCompaction(originChunkSizeLowerBound);
       IoTDBDescriptor.getInstance()
-          .getConf()
+          .getConfig()
           .setChunkPointNumLowerBoundInCompaction(originChunkPointNumLowerBound);
     }
   }

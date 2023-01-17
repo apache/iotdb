@@ -18,8 +18,6 @@
  */
 package org.apache.iotdb.db.wal.buffer;
 
-import org.apache.iotdb.commons.conf.CommonConfig;
-import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -53,9 +51,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
 public abstract class WALBufferCommonTest {
-
-  private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConf();
-  protected static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConf();
+  protected static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   protected static final String identifier = String.valueOf(Integer.MAX_VALUE);
   protected static final boolean preIsClusterMode = config.isClusterMode();
   protected static final String logDirectory = TestConstant.BASE_OUTPUT_PATH.concat("wal-test");
@@ -171,12 +167,12 @@ public abstract class WALBufferCommonTest {
   @Test
   public void testHugeWrite() throws Exception {
     // use small buffer (only 32 bytes) to simulate huge write request
-    int prevWalBufferSize = COMMON_CONFIG.getWalBufferSizeInByte();
-    COMMON_CONFIG.setWalBufferSizeInByte(32);
+    int prevWalBufferSize = config.getWalBufferSize();
+    config.setWalBufferSize(32);
     try {
       testConcurrentWrite();
     } finally {
-      COMMON_CONFIG.setWalBufferSizeInByte(prevWalBufferSize);
+      config.setWalBufferSize(prevWalBufferSize);
     }
   }
 }

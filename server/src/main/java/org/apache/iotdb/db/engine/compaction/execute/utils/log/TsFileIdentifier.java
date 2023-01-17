@@ -180,7 +180,7 @@ public class TsFileIdentifier {
    * the file is not found, it will return null.
    */
   public File getFileFromDataDirs() {
-    String[] dataDirs = IoTDBDescriptor.getInstance().getConf().getDnDataDirs();
+    String[] dataDirs = IoTDBDescriptor.getInstance().getConfig().getDataDirs();
     String partialFileString =
         (sequence ? IoTDBConstant.SEQUENCE_FLODER_NAME : IoTDBConstant.UNSEQUENCE_FLODER_NAME)
             + File.separator

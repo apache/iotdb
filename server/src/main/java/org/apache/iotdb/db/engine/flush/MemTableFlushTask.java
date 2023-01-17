@@ -18,11 +18,11 @@
  */
 package org.apache.iotdb.db.engine.flush;
 
-import org.apache.iotdb.commons.conf.CommonConfig;
-import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.flush.pool.FlushSubTaskPoolManager;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.memtable.IWritableMemChunk;
@@ -58,15 +58,15 @@ public class MemTableFlushTask {
   private static final Logger LOGGER = LoggerFactory.getLogger(MemTableFlushTask.class);
   private static final FlushSubTaskPoolManager SUB_TASK_POOL_MANAGER =
       FlushSubTaskPoolManager.getInstance();
-  private static CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConf();
+  private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private final Future<?> encodingTaskFuture;
   private final Future<?> ioTaskFuture;
   private RestorableTsFileIOWriter writer;
 
   private final LinkedBlockingQueue<Object> encodingTaskQueue = new LinkedBlockingQueue<>();
   private final LinkedBlockingQueue<Object> ioTaskQueue =
-      (COMMON_CONFIG.isEnableMemControl() && SystemInfo.getInstance().isEncodingFasterThanIo())
-          ? new LinkedBlockingQueue<>(COMMON_CONFIG.getIoTaskQueueSizeForFlushing())
+      (config.isEnableMemControl() && SystemInfo.getInstance().isEncodingFasterThanIo())
+          ? new LinkedBlockingQueue<>(config.getIoTaskQueueSizeForFlushing())
           : new LinkedBlockingQueue<>();
 
   private String storageGroup;
@@ -106,13 +106,13 @@ public class MemTableFlushTask {
         memTable.getSeriesNumber());
 
     long estimatedTemporaryMemSize = 0L;
-    if (COMMON_CONFIG.isEnableMemControl() && SystemInfo.getInstance().isEncodingFasterThanIo()) {
+    if (config.isEnableMemControl() && SystemInfo.getInstance().isEncodingFasterThanIo()) {
       estimatedTemporaryMemSize =
           memTable.getSeriesNumber() == 0
               ? 0
               : memTable.memSize()
                   / memTable.getSeriesNumber()
-                  * COMMON_CONFIG.getIoTaskQueueSizeForFlushing();
+                  * config.getIoTaskQueueSizeForFlushing();
       SystemInfo.getInstance().applyTemporaryMemoryForFlushing(estimatedTemporaryMemSize);
     }
     long start = System.currentTimeMillis();
@@ -170,7 +170,7 @@ public class MemTableFlushTask {
       throw new ExecutionException(e);
     }
 
-    if (COMMON_CONFIG.isEnableMemControl()) {
+    if (config.isEnableMemControl()) {
       if (estimatedTemporaryMemSize != 0) {
         SystemInfo.getInstance().releaseTemporaryMemoryForFlushing(estimatedTemporaryMemSize);
       }

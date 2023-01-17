@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.engine.compaction.utils;
 
-import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.cache.BloomFilterCache;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
@@ -49,7 +49,7 @@ public class CompactionClearUtils {
     deleteAllFilesInOneDirBySuffix("target", CompactionLogger.INNER_COMPACTION_LOG_NAME_SUFFIX);
     deleteAllFilesInOneDirBySuffix("target", CompactionLogger.CROSS_COMPACTION_LOG_NAME_SUFFIX);
     // clean cache
-    if (CommonDescriptor.getInstance().getConf().isMetaDataCacheEnable()) {
+    if (IoTDBDescriptor.getInstance().getConfig().isMetaDataCacheEnable()) {
       ChunkCache.getInstance().clear();
       TimeSeriesMetadataCache.getInstance().clear();
       BloomFilterCache.getInstance().clear();

@@ -24,13 +24,16 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.BadNodeUrlException;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.confignode.manager.load.balancer.RegionBalancer;
+import org.apache.iotdb.confignode.manager.load.balancer.router.leader.ILeaderBalancer;
 import org.apache.iotdb.confignode.manager.load.balancer.router.priority.IPriorityBalancer;
+import org.apache.iotdb.confignode.manager.partition.RegionGroupExtensionPolicy;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.MalformedURLException;
@@ -40,32 +43,20 @@ import java.util.Properties;
 public class ConfigNodeDescriptor {
   private static final Logger LOGGER = LoggerFactory.getLogger(ConfigNodeDescriptor.class);
 
-  private final ConfigNodeConfig CONF = new ConfigNodeConfig();
-  private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConf();
+  private final CommonDescriptor commonDescriptor = CommonDescriptor.getInstance();
+
+  private final ConfigNodeConfig conf = new ConfigNodeConfig();
 
   private ConfigNodeDescriptor() {
     loadProps();
   }
 
   public ConfigNodeConfig getConf() {
-    return CONF;
-  }
-
-  public static ConfigNodeDescriptor getInstance() {
-    return ConfigNodeDescriptorHolder.INSTANCE;
-  }
-
-  private static class ConfigNodeDescriptorHolder {
-
-    private static final ConfigNodeDescriptor INSTANCE = new ConfigNodeDescriptor();
-
-    private ConfigNodeDescriptorHolder() {
-      // empty constructor
-    }
+    return conf;
   }
 
   /**
-   * Get props url location
+   * get props url location
    *
    * @return url object if location exit, otherwise null.
    */
@@ -103,24 +94,46 @@ public class ConfigNodeDescriptor {
   }
 
   private void loadProps() {
-    Properties properties = new Properties();
-    URL url = getPropsUrl(ConfigNodeConstant.CONF_FILE_NAME);
+    URL url = getPropsUrl(CommonConfig.CONFIG_NAME);
+    Properties commonProperties = new Properties();
     if (url != null) {
       try (InputStream inputStream = url.openStream()) {
-        LOGGER.info("Start reading ConfigNode conf file: {}", url);
+
+        LOGGER.info("Start to read config file {}", url);
+        commonProperties.load(inputStream);
+
+      } catch (FileNotFoundException e) {
+        LOGGER.warn("Fail to find config file {}", url, e);
+      } catch (IOException e) {
+        LOGGER.warn("Cannot load config file, use default configuration", e);
+      } catch (Exception e) {
+        LOGGER.warn("Incorrect format in config file, use default configuration", e);
+      }
+    } else {
+      LOGGER.warn(
+          "Couldn't load the configuration {} from any of the known sources.",
+          CommonConfig.CONFIG_NAME);
+    }
+
+    url = getPropsUrl(ConfigNodeConstant.CONF_FILE_NAME);
+    if (url != null) {
+      try (InputStream inputStream = url.openStream()) {
+        LOGGER.info("start reading ConfigNode conf file: {}", url);
+        Properties properties = new Properties();
         properties.load(inputStream);
-        loadProperties(properties);
+        commonProperties.putAll(properties);
+        loadProperties(commonProperties);
       } catch (IOException | BadNodeUrlException e) {
         LOGGER.warn("Couldn't load ConfigNode conf file, use default config", e);
       } finally {
-        CONF.formulateFolders();
-
-        CommonDescriptor.getInstance().initCommonConfigDir(CONF.getCnSystemDir());
-
-        MetricConfigDescriptor.getInstance().loadProps(properties);
+        conf.updatePath();
+        commonDescriptor
+            .getConfig()
+            .updatePath(System.getProperty(ConfigNodeConstant.CONFIGNODE_HOME, null));
+        MetricConfigDescriptor.getInstance().loadProps(commonProperties);
         MetricConfigDescriptor.getInstance()
             .getMetricConfig()
-            .updateRpcInstance(CONF.getCnInternalAddress(), CONF.getCnInternalPort());
+            .updateRpcInstance(conf.getInternalAddress(), conf.getInternalPort());
       }
     } else {
       LOGGER.warn(
@@ -130,169 +143,657 @@ public class ConfigNodeDescriptor {
   }
 
   private void loadProperties(Properties properties) throws BadNodeUrlException, IOException {
-    /* ConfigNode RPC Configuration */
-    loadConfigNodeRPCConfiguration(properties);
+    conf.setClusterName(
+        properties.getProperty(IoTDBConstant.CLUSTER_NAME, conf.getClusterName()).trim());
 
-    /* Target ConfigNodes */
-    loadTargetConfigNodes(properties);
-
-    /* Directory Configuration */
-    loadDirectoryConfiguration(properties);
-
-    /* Thrift RPC Configuration */
-    loadThriftRPCConfiguration(properties);
-
-    /* Retain Configurations */
-    // Notice: Never read any configuration through loadRetainConfiguration
-    // Every parameter in retain configuration will be deleted or moved into other set
-    loadRetainConfiguration(properties);
-  }
-
-  private void loadConfigNodeRPCConfiguration(Properties properties) {
-    CONF.setCnInternalAddress(
+    conf.setInternalAddress(
         properties
-            .getProperty(IoTDBConstant.CN_INTERNAL_ADDRESS, CONF.getCnInternalAddress())
+            .getProperty(IoTDBConstant.CN_INTERNAL_ADDRESS, conf.getInternalAddress())
             .trim());
 
-    CONF.setCnInternalPort(
+    conf.setInternalPort(
+        Integer.parseInt(
+            properties
+                .getProperty(IoTDBConstant.CN_INTERNAL_PORT, String.valueOf(conf.getInternalPort()))
+                .trim()));
+
+    conf.setConsensusPort(
         Integer.parseInt(
             properties
                 .getProperty(
-                    IoTDBConstant.CN_INTERNAL_PORT, String.valueOf(CONF.getCnInternalPort()))
+                    IoTDBConstant.CN_CONSENSUS_PORT, String.valueOf(conf.getConsensusPort()))
                 .trim()));
 
-    CONF.setCnConsensusPort(
-        Integer.parseInt(
-            properties
-                .getProperty(
-                    IoTDBConstant.CN_CONSENSUS_PORT, String.valueOf(CONF.getCnConsensusPort()))
-                .trim()));
-  }
-
-  private void loadTargetConfigNodes(Properties properties) throws BadNodeUrlException {
     // TODO: Enable multiple target_config_node_list
     String targetConfigNodes =
         properties.getProperty(IoTDBConstant.CN_TARGET_CONFIG_NODE_LIST, null);
     if (targetConfigNodes != null) {
-      CONF.setCnTargetConfigNode(NodeUrlUtils.parseTEndPointUrl(targetConfigNodes.trim()));
+      conf.setTargetConfigNode(NodeUrlUtils.parseTEndPointUrl(targetConfigNodes.trim()));
     }
-  }
 
-  private void loadDirectoryConfiguration(Properties properties) {
-    CONF.setCnSystemDir(properties.getProperty("cn_system_dir", CONF.getCnSystemDir()).trim());
-
-    CONF.setCnConsensusDir(
-        properties.getProperty("cn_consensus_dir", CONF.getCnConsensusDir()).trim());
-  }
-
-  private void loadThriftRPCConfiguration(Properties properties) {
-    CONF.setCnRpcThriftCompressionEnable(
-        Boolean.parseBoolean(
+    conf.setSeriesSlotNum(
+        Integer.parseInt(
             properties
-                .getProperty(
-                    "cn_rpc_thrift_compression_enable",
-                    String.valueOf(CONF.isCnRpcThriftCompressionEnable()))
-                .trim()));
-    COMMON_CONFIG.setRpcThriftCompressionEnable(CONF.isCnRpcThriftCompressionEnable());
-
-    CONF.setCnRpcAdvancedCompressionEnable(
-        Boolean.parseBoolean(
-            properties
-                .getProperty(
-                    "cn_rpc_advanced_compression_enable",
-                    String.valueOf(CONF.isCnRpcAdvancedCompressionEnable()))
+                .getProperty("series_slot_num", String.valueOf(conf.getSeriesSlotNum()))
                 .trim()));
 
-    CONF.setCnRpcMaxConcurrentClientNum(
+    conf.setSeriesPartitionExecutorClass(
+        properties
+            .getProperty("series_partition_executor_class", conf.getSeriesPartitionExecutorClass())
+            .trim());
+
+    conf.setConfigNodeConsensusProtocolClass(
+        properties
+            .getProperty(
+                "config_node_consensus_protocol_class", conf.getConfigNodeConsensusProtocolClass())
+            .trim());
+
+    conf.setSchemaRegionConsensusProtocolClass(
+        properties
+            .getProperty(
+                "schema_region_consensus_protocol_class",
+                conf.getSchemaRegionConsensusProtocolClass())
+            .trim());
+
+    conf.setSchemaReplicationFactor(
         Integer.parseInt(
             properties
                 .getProperty(
-                    "cn_rpc_max_concurrent_client_num",
-                    String.valueOf(CONF.getCnRpcMaxConcurrentClientNum()))
+                    "schema_replication_factor", String.valueOf(conf.getSchemaReplicationFactor()))
                 .trim()));
 
-    CONF.setCnThriftMaxFrameSize(
+    conf.setDataRegionConsensusProtocolClass(
+        properties
+            .getProperty(
+                "data_region_consensus_protocol_class", conf.getDataRegionConsensusProtocolClass())
+            .trim());
+
+    conf.setDataReplicationFactor(
         Integer.parseInt(
             properties
                 .getProperty(
-                    "cn_thrift_max_frame_size", String.valueOf(CONF.getCnThriftMaxFrameSize()))
+                    "data_replication_factor", String.valueOf(conf.getDataReplicationFactor()))
                 .trim()));
 
-    CONF.setCnThriftInitBufferSize(
-        Integer.parseInt(
+    conf.setSchemaRegionPerDataNode(
+        Double.parseDouble(
             properties
                 .getProperty(
-                    "cn_thrift_init_buffer_size", String.valueOf(CONF.getCnThriftInitBufferSize()))
+                    "schema_region_per_data_node",
+                    String.valueOf(conf.getSchemaReplicationFactor()))
                 .trim()));
 
-    CONF.setCnConnectionTimeoutMs(
+    conf.setSchemaRegionGroupExtensionPolicy(
+        RegionGroupExtensionPolicy.parse(
+            properties.getProperty(
+                "schema_region_group_extension_policy",
+                conf.getSchemaRegionGroupExtensionPolicy().getPolicy().trim())));
+
+    conf.setSchemaRegionGroupPerDatabase(
         Integer.parseInt(
+            properties.getProperty(
+                "schema_region_group_per_database",
+                String.valueOf(conf.getSchemaRegionGroupPerDatabase()).trim())));
+
+    conf.setDataRegionGroupExtensionPolicy(
+        RegionGroupExtensionPolicy.parse(
+            properties.getProperty(
+                "data_region_group_extension_policy",
+                conf.getDataRegionGroupExtensionPolicy().getPolicy().trim())));
+
+    conf.setDataRegionGroupPerDatabase(
+        Integer.parseInt(
+            properties.getProperty(
+                "data_region_group_per_database",
+                String.valueOf(conf.getDataRegionGroupPerDatabase()).trim())));
+
+    conf.setDataRegionPerProcessor(
+        Double.parseDouble(
             properties
                 .getProperty(
-                    "cn_connection_timeout_ms", String.valueOf(CONF.getCnConnectionTimeoutMs()))
+                    "data_region_per_processor", String.valueOf(conf.getDataRegionPerProcessor()))
                 .trim()));
-    COMMON_CONFIG.setConnectionTimeoutInMS(CONF.getCnConnectionTimeoutMs());
 
-    CONF.setCnSelectorThreadNumsOfClientManager(
+    conf.setLeastDataRegionGroupNum(
         Integer.parseInt(
-            properties
-                .getProperty(
-                    "cn_selector_thread_nums_of_client_manager",
-                    String.valueOf(CONF.getCnSelectorThreadNumsOfClientManager()))
-                .trim()));
-    COMMON_CONFIG.setSelectorThreadCountOfClientManager(
-        CONF.getCnSelectorThreadNumsOfClientManager());
+            properties.getProperty(
+                "least_data_region_group_num", String.valueOf(conf.getLeastDataRegionGroupNum()))));
 
-    CONF.setCnCoreClientCountForEachNodeInClientManager(
-        Integer.parseInt(
-            properties
-                .getProperty(
-                    "cn_core_client_count_for_each_node_in_client_manager",
-                    String.valueOf(CONF.getCnCoreClientCountForEachNodeInClientManager()))
-                .trim()));
-    COMMON_CONFIG.setCoreClientCountForEachNodeInClientManager(
-        CONF.getCnCoreClientCountForEachNodeInClientManager());
-
-    CONF.setCnMaxClientCountForEachNodeInClientManager(
-        Integer.parseInt(
-            properties
-                .getProperty(
-                    "cn_max_client_count_for_each_node_in_client_manager",
-                    String.valueOf(CONF.getCnMaxClientCountForEachNodeInClientManager()))
-                .trim()));
-    COMMON_CONFIG.setMaxClientCountForEachNodeInClientManager(
-        CONF.getCnMaxClientCountForEachNodeInClientManager());
-  }
-
-  /**
-   * Load retain configuration. Please don't insert any code within this function
-   *
-   * <p>TODO: Delete this function in the future
-   */
-  private void loadRetainConfiguration(Properties properties) throws IOException {
     try {
-      CONF.setRegionGroupAllocatePolicy(
+      conf.setRegionAllocateStrategy(
           RegionBalancer.RegionGroupAllocatePolicy.valueOf(
               properties
                   .getProperty(
-                      "region_group_allocate_policy", CONF.getRegionGroupAllocatePolicy().name())
+                      "region_group_allocate_policy", conf.getRegionGroupAllocatePolicy().name())
                   .trim()));
     } catch (IllegalArgumentException e) {
       LOGGER.warn(
           "The configured region allocate strategy does not exist, use the default: GREEDY!");
     }
 
+    conf.setEnableDataPartitionInheritPolicy(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "enable_data_partition_inherit_policy",
+                String.valueOf(conf.isEnableDataPartitionInheritPolicy()))));
+
+    conf.setCnRpcAdvancedCompressionEnable(
+        Boolean.parseBoolean(
+            properties
+                .getProperty(
+                    "cn_rpc_advanced_compression_enable",
+                    String.valueOf(conf.isCnRpcAdvancedCompressionEnable()))
+                .trim()));
+
+    conf.setCnRpcMaxConcurrentClientNum(
+        Integer.parseInt(
+            properties
+                .getProperty(
+                    "cn_rpc_max_concurrent_client_num",
+                    String.valueOf(conf.getCnRpcMaxConcurrentClientNum()))
+                .trim()));
+
+    conf.setCnThriftDefaultBufferSize(
+        Integer.parseInt(
+            properties
+                .getProperty(
+                    "cn_thrift_init_buffer_size",
+                    String.valueOf(conf.getCnThriftDefaultBufferSize()))
+                .trim()));
+
+    conf.setCnThriftMaxFrameSize(
+        Integer.parseInt(
+            properties
+                .getProperty(
+                    "cn_thrift_max_frame_size", String.valueOf(conf.getCnThriftMaxFrameSize()))
+                .trim()));
+
+    conf.setCoreClientNumForEachNode(
+        Integer.parseInt(
+            properties
+                .getProperty(
+                    "cn_core_client_count_for_each_node_in_client_manager",
+                    String.valueOf(conf.getCoreClientNumForEachNode()))
+                .trim()));
+
+    conf.setMaxClientNumForEachNode(
+        Integer.parseInt(
+            properties
+                .getProperty(
+                    "cn_max_client_count_for_each_node_in_client_manager",
+                    String.valueOf(conf.getMaxClientNumForEachNode()))
+                .trim()));
+
+    conf.setSystemDir(properties.getProperty("cn_system_dir", conf.getSystemDir()).trim());
+
+    conf.setConsensusDir(properties.getProperty("cn_consensus_dir", conf.getConsensusDir()).trim());
+
+    conf.setUdfDir(properties.getProperty("udf_lib_dir", conf.getUdfDir()).trim());
+
+    conf.setTriggerDir(properties.getProperty("trigger_lib_dir", conf.getTriggerDir()).trim());
+
+    conf.setTimePartitionInterval(
+        Long.parseLong(
+            properties
+                .getProperty(
+                    "time_partition_interval", String.valueOf(conf.getTimePartitionInterval()))
+                .trim()));
+
+    conf.setHeartbeatIntervalInMs(
+        Long.parseLong(
+            properties
+                .getProperty(
+                    "heartbeat_interval_in_ms", String.valueOf(conf.getHeartbeatIntervalInMs()))
+                .trim()));
+
+    String leaderDistributionPolicy =
+        properties
+            .getProperty("leader_distribution_policy", conf.getLeaderDistributionPolicy())
+            .trim();
+    if (ILeaderBalancer.GREEDY_POLICY.equals(leaderDistributionPolicy)
+        || ILeaderBalancer.MIN_COST_FLOW_POLICY.equals(leaderDistributionPolicy)) {
+      conf.setLeaderDistributionPolicy(leaderDistributionPolicy);
+    } else {
+      throw new IOException(
+          String.format(
+              "Unknown leader_distribution_policy: %s, please set to \"GREEDY\" or \"MIN_COST_FLOW\"",
+              leaderDistributionPolicy));
+    }
+
+    conf.setEnableAutoLeaderBalanceForRatisConsensus(
+        Boolean.parseBoolean(
+            properties
+                .getProperty(
+                    "enable_auto_leader_balance_for_ratis_consensus",
+                    String.valueOf(conf.isEnableAutoLeaderBalanceForRatisConsensus()))
+                .trim()));
+
+    conf.setEnableAutoLeaderBalanceForIoTConsensus(
+        Boolean.parseBoolean(
+            properties
+                .getProperty(
+                    "enable_auto_leader_balance_for_iot_consensus",
+                    String.valueOf(conf.isEnableAutoLeaderBalanceForIoTConsensus()))
+                .trim()));
+
     String routePriorityPolicy =
-        properties.getProperty("route_priority_policy", CONF.getRoutePriorityPolicy()).trim();
+        properties.getProperty("route_priority_policy", conf.getRoutePriorityPolicy()).trim();
     if (IPriorityBalancer.GREEDY_POLICY.equals(routePriorityPolicy)
         || IPriorityBalancer.LEADER_POLICY.equals(routePriorityPolicy)) {
-      CONF.setRoutePriorityPolicy(routePriorityPolicy);
+      conf.setRoutePriorityPolicy(routePriorityPolicy);
     } else {
       throw new IOException(
           String.format(
               "Unknown route_priority_policy: %s, please set to \"LEADER\" or \"GREEDY\"",
               routePriorityPolicy));
     }
+
+    String readConsistencyLevel =
+        properties.getProperty("read_consistency_level", conf.getReadConsistencyLevel()).trim();
+    if (readConsistencyLevel.equals("strong") || readConsistencyLevel.equals("weak")) {
+      conf.setReadConsistencyLevel(readConsistencyLevel);
+    } else {
+      throw new IOException(
+          String.format(
+              "Unknown read_consistency_level: %s, please set to \"strong\" or \"weak\"",
+              readConsistencyLevel));
+    }
+
+    // commons
+    commonDescriptor.loadCommonProps(properties);
+    commonDescriptor.initCommonConfigDir(conf.getSystemDir());
+
+    conf.setProcedureCompletedEvictTTL(
+        Integer.parseInt(
+            properties
+                .getProperty(
+                    "procedure_completed_evict_ttl",
+                    String.valueOf(conf.getProcedureCompletedEvictTTL()))
+                .trim()));
+
+    conf.setProcedureCompletedCleanInterval(
+        Integer.parseInt(
+            properties
+                .getProperty(
+                    "procedure_completed_clean_interval",
+                    String.valueOf(conf.getProcedureCompletedCleanInterval()))
+                .trim()));
+
+    conf.setProcedureCoreWorkerThreadsCount(
+        Integer.parseInt(
+            properties
+                .getProperty(
+                    "procedure_core_worker_thread_count",
+                    String.valueOf(conf.getProcedureCoreWorkerThreadsCount()))
+                .trim()));
+
+    loadRatisConsensusConfig(properties);
+    loadCQConfig(properties);
+  }
+
+  private void loadRatisConsensusConfig(Properties properties) {
+    conf.setDataRegionRatisConsensusLogAppenderBufferSize(
+        Long.parseLong(
+            properties
+                .getProperty(
+                    "data_region_ratis_log_appender_buffer_size_max",
+                    String.valueOf(conf.getDataRegionRatisConsensusLogAppenderBufferSize()))
+                .trim()));
+
+    conf.setConfigNodeRatisConsensusLogAppenderBufferSize(
+        Long.parseLong(
+            properties
+                .getProperty(
+                    "config_node_ratis_log_appender_buffer_size_max",
+                    String.valueOf(conf.getConfigNodeRatisConsensusLogAppenderBufferSize()))
+                .trim()));
+
+    conf.setSchemaRegionRatisConsensusLogAppenderBufferSize(
+        Long.parseLong(
+            properties
+                .getProperty(
+                    "schema_region_ratis_log_appender_buffer_size_max",
+                    String.valueOf(conf.getSchemaRegionRatisConsensusLogAppenderBufferSize()))
+                .trim()));
+
+    conf.setDataRegionRatisSnapshotTriggerThreshold(
+        Long.parseLong(
+            properties
+                .getProperty(
+                    "data_region_ratis_snapshot_trigger_threshold",
+                    String.valueOf(conf.getDataRegionRatisSnapshotTriggerThreshold()))
+                .trim()));
+
+    conf.setConfigNodeRatisSnapshotTriggerThreshold(
+        Long.parseLong(
+            properties
+                .getProperty(
+                    "config_node_ratis_snapshot_trigger_threshold",
+                    String.valueOf(conf.getConfigNodeRatisSnapshotTriggerThreshold()))
+                .trim()));
+
+    conf.setSchemaRegionRatisSnapshotTriggerThreshold(
+        Long.parseLong(
+            properties
+                .getProperty(
+                    "schema_region_ratis_snapshot_trigger_threshold",
+                    String.valueOf(conf.getSchemaRegionRatisSnapshotTriggerThreshold()))
+                .trim()));
+
+    conf.setDataRegionRatisLogUnsafeFlushEnable(
+        Boolean.parseBoolean(
+            properties
+                .getProperty(
+                    "data_region_ratis_log_unsafe_flush_enable",
+                    String.valueOf(conf.isDataRegionRatisLogUnsafeFlushEnable()))
+                .trim()));
+
+    conf.setConfigNodeRatisLogUnsafeFlushEnable(
+        Boolean.parseBoolean(
+            properties
+                .getProperty(
+                    "config_node_ratis_log_unsafe_flush_enable",
+                    String.valueOf(conf.isConfigNodeRatisLogUnsafeFlushEnable()))
+                .trim()));
+
+    conf.setSchemaRegionRatisLogUnsafeFlushEnable(
+        Boolean.parseBoolean(
+            properties
+                .getProperty(
+                    "schema_region_ratis_log_unsafe_flush_enable",
+                    String.valueOf(conf.isSchemaRegionRatisLogUnsafeFlushEnable()))
+                .trim()));
+
+    conf.setDataRegionRatisLogSegmentSizeMax(
+        Long.parseLong(
+            properties
+                .getProperty(
+                    "data_region_ratis_log_segment_size_max_in_byte",
+                    String.valueOf(conf.getDataRegionRatisLogSegmentSizeMax()))
+                .trim()));
+
+    conf.setConfigNodeRatisLogSegmentSizeMax(
+        Long.parseLong(
+            properties
+                .getProperty(
+                    "config_node_ratis_log_segment_size_max_in_byte",
+                    String.valueOf(conf.getConfigNodeRatisLogSegmentSizeMax()))
+                .trim()));
+
+    conf.setSchemaRegionRatisLogSegmentSizeMax(
+        Long.parseLong(
+            properties
+                .getProperty(
+                    "schema_region_ratis_log_segment_size_max_in_byte",
+                    String.valueOf(conf.getSchemaRegionRatisLogSegmentSizeMax()))
+                .trim()));
+
+    conf.setConfigNodeSimpleConsensusLogSegmentSizeMax(
+        Long.parseLong(
+            properties
+                .getProperty(
+                    "config_node_simple_consensus_log_segment_size_max_in_byte",
+                    String.valueOf(conf.getConfigNodeSimpleConsensusLogSegmentSizeMax()))
+                .trim()));
+
+    conf.setDataRegionRatisGrpcFlowControlWindow(
+        Long.parseLong(
+            properties
+                .getProperty(
+                    "data_region_ratis_grpc_flow_control_window",
+                    String.valueOf(conf.getDataRegionRatisGrpcFlowControlWindow()))
+                .trim()));
+
+    conf.setConfigNodeRatisGrpcFlowControlWindow(
+        Long.parseLong(
+            properties
+                .getProperty(
+                    "config_node_ratis_grpc_flow_control_window",
+                    String.valueOf(conf.getConfigNodeRatisGrpcFlowControlWindow()))
+                .trim()));
+
+    conf.setSchemaRegionRatisGrpcFlowControlWindow(
+        Long.parseLong(
+            properties
+                .getProperty(
+                    "schema_region_ratis_grpc_flow_control_window",
+                    String.valueOf(conf.getSchemaRegionRatisGrpcFlowControlWindow()))
+                .trim()));
+
+    conf.setDataRegionRatisRpcLeaderElectionTimeoutMinMs(
+        Long.parseLong(
+            properties
+                .getProperty(
+                    "data_region_ratis_rpc_leader_election_timeout_min_ms",
+                    String.valueOf(conf.getDataRegionRatisRpcLeaderElectionTimeoutMinMs()))
+                .trim()));
+
+    conf.setConfigNodeRatisRpcLeaderElectionTimeoutMinMs(
+        Long.parseLong(
+            properties
+                .getProperty(
+                    "config_node_ratis_rpc_leader_election_timeout_min_ms",
+                    String.valueOf(conf.getConfigNodeRatisRpcLeaderElectionTimeoutMinMs()))
+                .trim()));
+
+    conf.setSchemaRegionRatisRpcLeaderElectionTimeoutMinMs(
+        Long.parseLong(
+            properties
+                .getProperty(
+                    "schema_region_ratis_rpc_leader_election_timeout_min_ms",
+                    String.valueOf(conf.getSchemaRegionRatisRpcLeaderElectionTimeoutMinMs()))
+                .trim()));
+
+    conf.setDataRegionRatisRpcLeaderElectionTimeoutMaxMs(
+        Long.parseLong(
+            properties
+                .getProperty(
+                    "data_region_ratis_rpc_leader_election_timeout_max_ms",
+                    String.valueOf(conf.getDataRegionRatisRpcLeaderElectionTimeoutMaxMs()))
+                .trim()));
+
+    conf.setConfigNodeRatisRpcLeaderElectionTimeoutMaxMs(
+        Long.parseLong(
+            properties
+                .getProperty(
+                    "config_node_ratis_rpc_leader_election_timeout_max_ms",
+                    String.valueOf(conf.getConfigNodeRatisRpcLeaderElectionTimeoutMaxMs()))
+                .trim()));
+
+    conf.setSchemaRegionRatisRpcLeaderElectionTimeoutMaxMs(
+        Long.parseLong(
+            properties
+                .getProperty(
+                    "schema_region_ratis_rpc_leader_election_timeout_max_ms",
+                    String.valueOf(conf.getSchemaRegionRatisRpcLeaderElectionTimeoutMaxMs()))
+                .trim()));
+
+    conf.setConfigNodeRatisRequestTimeoutMs(
+        Long.parseLong(
+            properties
+                .getProperty(
+                    "config_node_ratis_request_timeout_ms",
+                    String.valueOf(conf.getConfigNodeRatisRequestTimeoutMs()))
+                .trim()));
+    conf.setSchemaRegionRatisRequestTimeoutMs(
+        Long.parseLong(
+            properties
+                .getProperty(
+                    "schema_region_ratis_request_timeout_ms",
+                    String.valueOf(conf.getSchemaRegionRatisRequestTimeoutMs()))
+                .trim()));
+    conf.setDataRegionRatisRequestTimeoutMs(
+        Long.parseLong(
+            properties
+                .getProperty(
+                    "data_region_ratis_request_timeout_ms",
+                    String.valueOf(conf.getDataRegionRatisRequestTimeoutMs()))
+                .trim()));
+
+    conf.setConfigNodeRatisMaxRetryAttempts(
+        Integer.parseInt(
+            properties
+                .getProperty(
+                    "config_node_ratis_max_retry_attempts",
+                    String.valueOf(conf.getConfigNodeRatisMaxRetryAttempts()))
+                .trim()));
+    conf.setConfigNodeRatisInitialSleepTimeMs(
+        Long.parseLong(
+            properties
+                .getProperty(
+                    "config_node_ratis_initial_sleep_time_ms",
+                    String.valueOf(conf.getConfigNodeRatisInitialSleepTimeMs()))
+                .trim()));
+    conf.setConfigNodeRatisMaxSleepTimeMs(
+        Long.parseLong(
+            properties
+                .getProperty(
+                    "config_node_ratis_max_sleep_time_ms",
+                    String.valueOf(conf.getConfigNodeRatisMaxSleepTimeMs()))
+                .trim()));
+
+    conf.setDataRegionRatisMaxRetryAttempts(
+        Integer.parseInt(
+            properties
+                .getProperty(
+                    "data_region_ratis_max_retry_attempts",
+                    String.valueOf(conf.getDataRegionRatisMaxRetryAttempts()))
+                .trim()));
+    conf.setDataRegionRatisInitialSleepTimeMs(
+        Long.parseLong(
+            properties
+                .getProperty(
+                    "data_region_ratis_initial_sleep_time_ms",
+                    String.valueOf(conf.getDataRegionRatisInitialSleepTimeMs()))
+                .trim()));
+    conf.setDataRegionRatisMaxSleepTimeMs(
+        Long.parseLong(
+            properties
+                .getProperty(
+                    "data_region_ratis_max_sleep_time_ms",
+                    String.valueOf(conf.getDataRegionRatisMaxSleepTimeMs()))
+                .trim()));
+
+    conf.setSchemaRegionRatisMaxRetryAttempts(
+        Integer.parseInt(
+            properties
+                .getProperty(
+                    "schema_region_ratis_max_retry_attempts",
+                    String.valueOf(conf.getSchemaRegionRatisMaxRetryAttempts()))
+                .trim()));
+    conf.setSchemaRegionRatisInitialSleepTimeMs(
+        Long.parseLong(
+            properties
+                .getProperty(
+                    "schema_region_ratis_initial_sleep_time_ms",
+                    String.valueOf(conf.getSchemaRegionRatisInitialSleepTimeMs()))
+                .trim()));
+    conf.setSchemaRegionRatisMaxSleepTimeMs(
+        Long.parseLong(
+            properties
+                .getProperty(
+                    "schema_region_ratis_max_sleep_time_ms",
+                    String.valueOf(conf.getSchemaRegionRatisMaxSleepTimeMs()))
+                .trim()));
+
+    conf.setConfigNodeRatisPreserveLogsWhenPurge(
+        Long.parseLong(
+            properties
+                .getProperty(
+                    "config_node_ratis_preserve_logs_num_when_purge",
+                    String.valueOf(conf.getConfigNodeRatisPreserveLogsWhenPurge()))
+                .trim()));
+
+    conf.setSchemaRegionRatisPreserveLogsWhenPurge(
+        Long.parseLong(
+            properties
+                .getProperty(
+                    "schema_region_ratis_preserve_logs_num_when_purge",
+                    String.valueOf(conf.getSchemaRegionRatisPreserveLogsWhenPurge()))
+                .trim()));
+
+    conf.setDataRegionRatisPreserveLogsWhenPurge(
+        Long.parseLong(
+            properties
+                .getProperty(
+                    "data_region_ratis_preserve_logs_num_when_purge",
+                    String.valueOf(conf.getDataRegionRatisPreserveLogsWhenPurge()))
+                .trim()));
+
+    conf.setRatisFirstElectionTimeoutMinMs(
+        Long.parseLong(
+            properties
+                .getProperty(
+                    "ratis_first_election_timeout_min_ms",
+                    String.valueOf(conf.getRatisFirstElectionTimeoutMinMs()))
+                .trim()));
+
+    conf.setRatisFirstElectionTimeoutMaxMs(
+        Long.parseLong(
+            properties
+                .getProperty(
+                    "ratis_first_election_timeout_max_ms",
+                    String.valueOf(conf.getRatisFirstElectionTimeoutMaxMs()))
+                .trim()));
+
+    conf.setConfigNodeRatisLogMax(
+        Long.parseLong(
+            properties
+                .getProperty(
+                    "config_node_ratis_log_max_size",
+                    String.valueOf(conf.getConfigNodeRatisLogMax()))
+                .trim()));
+
+    conf.setSchemaRegionRatisLogMax(
+        Long.parseLong(
+            properties
+                .getProperty(
+                    "schema_region_ratis_log_max_size",
+                    String.valueOf(conf.getSchemaRegionRatisLogMax()))
+                .trim()));
+
+    conf.setDataRegionRatisLogMax(
+        Long.parseLong(
+            properties
+                .getProperty(
+                    "data_region_ratis_log_max_size",
+                    String.valueOf(conf.getDataRegionRatisLogMax()))
+                .trim()));
+  }
+
+  private void loadCQConfig(Properties properties) {
+    int cqSubmitThread =
+        Integer.parseInt(
+            properties
+                .getProperty(
+                    "continuous_query_submit_thread_count",
+                    String.valueOf(conf.getCqSubmitThread()))
+                .trim());
+    if (cqSubmitThread <= 0) {
+      LOGGER.warn(
+          "continuous_query_submit_thread should be greater than 0, but current value is {}, ignore that and use the default value {}",
+          cqSubmitThread,
+          conf.getCqSubmitThread());
+      cqSubmitThread = conf.getCqSubmitThread();
+    }
+    conf.setCqSubmitThread(cqSubmitThread);
+
+    long cqMinEveryIntervalInMs =
+        Long.parseLong(
+            properties
+                .getProperty(
+                    "continuous_query_min_every_interval_in_ms",
+                    String.valueOf(conf.getCqMinEveryIntervalInMs()))
+                .trim());
+    if (cqMinEveryIntervalInMs <= 0) {
+      LOGGER.warn(
+          "continuous_query_min_every_interval_in_ms should be greater than 0, but current value is {}, ignore that and use the default value {}",
+          cqMinEveryIntervalInMs,
+          conf.getCqMinEveryIntervalInMs());
+      cqMinEveryIntervalInMs = conf.getCqMinEveryIntervalInMs();
+    }
+
+    conf.setCqMinEveryIntervalInMs(cqMinEveryIntervalInMs);
   }
 
   /**
@@ -303,9 +804,22 @@ public class ConfigNodeDescriptor {
    * @return True if the target_config_node_list points to itself
    */
   public boolean isSeedConfigNode() {
-    return (CONF.getCnInternalAddress().equals(CONF.getCnTargetConfigNode().getIp())
-            || (NodeUrlUtils.isLocalAddress(CONF.getCnInternalAddress())
-                && NodeUrlUtils.isLocalAddress(CONF.getCnTargetConfigNode().getIp())))
-        && CONF.getCnInternalPort() == CONF.getCnTargetConfigNode().getPort();
+    return (conf.getInternalAddress().equals(conf.getTargetConfigNode().getIp())
+            || (NodeUrlUtils.isLocalAddress(conf.getInternalAddress())
+                && NodeUrlUtils.isLocalAddress(conf.getTargetConfigNode().getIp())))
+        && conf.getInternalPort() == conf.getTargetConfigNode().getPort();
+  }
+
+  public static ConfigNodeDescriptor getInstance() {
+    return ConfigNodeDescriptorHolder.INSTANCE;
+  }
+
+  private static class ConfigNodeDescriptorHolder {
+
+    private static final ConfigNodeDescriptor INSTANCE = new ConfigNodeDescriptor();
+
+    private ConfigNodeDescriptorHolder() {
+      // empty constructor
+    }
   }
 }

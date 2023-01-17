@@ -21,8 +21,8 @@ package org.apache.iotdb.confignode.persistence.node;
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
+import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.conf.SystemPropertiesUtils;
 import org.apache.iotdb.confignode.consensus.request.read.datanode.GetDataNodeConfigurationPlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.ApplyConfigNodePlan;
@@ -71,8 +71,8 @@ public class NodeInfo implements SnapshotProcessor {
 
   private static final int MINIMUM_DATANODE =
       Math.max(
-          CommonDescriptor.getInstance().getConf().getSchemaReplicationFactor(),
-          CommonDescriptor.getInstance().getConf().getDataReplicationFactor());
+          ConfigNodeDescriptor.getInstance().getConf().getSchemaReplicationFactor(),
+          ConfigNodeDescriptor.getInstance().getConf().getDataReplicationFactor());
 
   // Registered ConfigNodes
   private final ReentrantReadWriteLock configNodeInfoReadWriteLock;

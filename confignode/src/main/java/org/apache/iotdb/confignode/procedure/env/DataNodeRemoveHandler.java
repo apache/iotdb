@@ -25,10 +25,10 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.cluster.NodeStatus;
-import org.apache.iotdb.commons.conf.CommonConfig;
-import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.confignode.client.sync.SyncDataNodeClientPool;
+import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
+import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RemoveDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.UpdateRegionLocationPlan;
 import org.apache.iotdb.confignode.consensus.response.DataNodeToStatusResp;
@@ -58,7 +58,7 @@ import static org.apache.iotdb.consensus.ConsensusFactory.SIMPLE_CONSENSUS;
 public class DataNodeRemoveHandler {
   private static final Logger LOGGER = LoggerFactory.getLogger(DataNodeRemoveHandler.class);
 
-  private static final CommonConfig CONF = CommonDescriptor.getInstance().getConf();
+  private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
 
   private final ConfigManager configManager;
 
@@ -181,7 +181,7 @@ public class DataNodeRemoveHandler {
 
     List<TDataNodeLocation> currentPeerNodes;
     if (TConsensusGroupType.DataRegion.equals(regionId.getType())
-        && IOT_CONSENSUS.equals(CONF.getDataRegionConsensusProtocolClass().getProtocol())) {
+        && IOT_CONSENSUS.equals(CONF.getDataRegionConsensusProtocolClass())) {
       // parameter of createPeer for MultiLeader should be all peers
       currentPeerNodes = new ArrayList<>(regionReplicaNodes);
       currentPeerNodes.add(destDataNode);
@@ -578,7 +578,7 @@ public class DataNodeRemoveHandler {
         filterDataNodeWithOtherRegionReplica(regionId, originalDataNode);
 
     if (TConsensusGroupType.DataRegion.equals(regionId.getType())
-        && IOT_CONSENSUS.equals(CONF.getDataRegionConsensusProtocolClass().getProtocol())) {
+        && IOT_CONSENSUS.equals(CONF.getDataRegionConsensusProtocolClass())) {
       if (CONF.getDataReplicationFactor() == 1) {
         newLeaderNode = Optional.of(migrateDestDataNode);
       }
@@ -661,8 +661,8 @@ public class DataNodeRemoveHandler {
    */
   private TSStatus checkClusterProtocol() {
     TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-    if (CONF.getDataRegionConsensusProtocolClass().getProtocol().equals(SIMPLE_CONSENSUS)
-        || CONF.getSchemaRegionConsensusProtocolClass().getProtocol().equals(SIMPLE_CONSENSUS)) {
+    if (CONF.getDataRegionConsensusProtocolClass().equals(SIMPLE_CONSENSUS)
+        || CONF.getSchemaRegionConsensusProtocolClass().equals(SIMPLE_CONSENSUS)) {
       status.setCode(TSStatusCode.REMOVE_DATANODE_ERROR.getStatusCode());
       status.setMessage("SimpleConsensus protocol is not supported to remove data node");
     }

@@ -56,7 +56,7 @@ public class ConfigExecution implements IQueryExecution {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ConfigExecution.class);
 
-  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConf();
+  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   private final MPPQueryContext context;
   private final ExecutorService executor;
