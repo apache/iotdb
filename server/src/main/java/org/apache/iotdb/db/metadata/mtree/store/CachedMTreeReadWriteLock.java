@@ -122,7 +122,7 @@ public class CachedMTreeReadWriteLock {
   private long acquireReadLock() {
     if (exclusiveOwnerThread != Thread.currentThread()) {
       if (writeCnt + writeWait > 0) {
-        readWait = readWait + 1;
+        readWait++;
         try {
           okToRead.await();
         } catch (InterruptedException e) {

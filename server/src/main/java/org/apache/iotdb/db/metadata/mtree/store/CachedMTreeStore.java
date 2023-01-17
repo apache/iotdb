@@ -226,7 +226,7 @@ public class CachedMTreeStore implements IMTreeStore {
       iterator.setSkipPreDeletedSchema(skipPreDeletedSchema);
       return iterator;
     } else {
-      return getChildrenIterator(parent);
+      return store.getChildrenIterator(parent);
     }
   }
 
