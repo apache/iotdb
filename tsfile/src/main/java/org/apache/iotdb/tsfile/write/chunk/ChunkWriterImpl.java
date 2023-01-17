@@ -198,6 +198,8 @@ public class ChunkWriterImpl implements IChunkWriter {
     if (isSdtEncoding && isLastPoint) {
       pageWriter.write(time, value);
     }
+    //    if (pageWriter.getPointNumber() % 4000 == 0)
+    //      System.out.println("\t\t[write point] 4000 points written");
     checkPageSizeAndMayOpenANewPage();
   }
 
@@ -241,6 +243,7 @@ public class ChunkWriterImpl implements IChunkWriter {
     }
     pageWriter.write(timestamps, values, batchSize);
     checkPageSizeAndMayOpenANewPage();
+    System.out.println("\t\t[write batch] " + batchSize + " points written");
   }
 
   public void write(long[] timestamps, Binary[] values, int batchSize) {

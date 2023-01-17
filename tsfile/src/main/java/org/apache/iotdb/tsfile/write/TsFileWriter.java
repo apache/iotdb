@@ -506,6 +506,7 @@ public class TsFileWriter implements AutoCloseable {
    * @throws WriteProcessException exception in write process
    */
   public boolean write(Tablet tablet) throws IOException, WriteProcessException {
+    //    System.out.println("\t\t[TsFileWriter write_tablet]:N=" + tablet.rowSize);
     // make sure the ChunkGroupWriter for this Tablet exist
     checkIsTimeseriesExist(tablet, false);
     // get corresponding ChunkGroupWriter and write this Tablet

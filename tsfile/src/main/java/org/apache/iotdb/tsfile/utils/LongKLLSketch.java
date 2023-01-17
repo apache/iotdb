@@ -17,14 +17,32 @@ public class LongKLLSketch extends KLLSketchForQuantile {
   int maxN, maxSerializeNum;
   int K;
   int maxLevel;
+  ByteBuffer sketchBuffer = null;
 
-  public LongKLLSketch(
-      int maxN, int maxMemoryByte, int maxSerializeByte) { // maxN=7000 for PAGE, 1.6e6 for CHUNK
+  public LongKLLSketch(int maxN, int maxMemoryByte, int maxSerializeByte) {
     this.maxN = maxN;
     N = 0;
     maxLevel = calcMaxLevel(maxN, maxSerializeByte);
     calcParameters(maxMemoryByte, maxSerializeByte);
     calcLevelMaxSize(1);
+  }
+
+  public LongKLLSketch(KLLSketchForQuantile sketch) {
+    N = sketch.getN();
+    maxN = (int) N;
+    cntLevel = maxLevel = sketch.cntLevel;
+    maxSerializeNum = Integer.MAX_VALUE;
+    num = sketch.num;
+    levelPos = sketch.levelPos;
+  }
+
+  @Override
+  public void update(long x) { // signed long
+    deserializeFromBuffer();
+    if (levelPos[0] == 0) compact();
+    num[--levelPos[0]] = x;
+    N++;
+    level0Sorted = false;
   }
 
   //  public int getCntLevel(){return cntLevel;}
@@ -97,7 +115,7 @@ public class LongKLLSketch extends KLLSketchForQuantile {
     int numLEN = getNumLen();
     System.out.println(
         "\t\tCOMPACT_SIZE:"
-            + (13 + (maxLevel) * (numLEN < 256 ? 1 : 2) + numLEN * 8)
+            + (13 + (maxLevel) * (numLEN < 256 ? 1 : 4) + numLEN * 8)
             + "\t//maxMemNum:"
             + maxMemoryNum
             + ",maxSeriNum:"
@@ -173,19 +191,20 @@ public class LongKLLSketch extends KLLSketchForQuantile {
   }
 
   public int serialize(OutputStream outputStream) throws IOException { // 15+1*?+8*?
+    deserializeFromBuffer();
     compactBeforeSerialization(); // if N==maxN
     int byteLen = 0;
     byteLen += ReadWriteIOUtils.write(N, outputStream);
     byteLen += ReadWriteIOUtils.write(maxN, outputStream);
     byteLen += ReadWriteIOUtils.write((byte) maxLevel, outputStream);
     int numLEN = getNumLen();
-    byteLen += ReadWriteIOUtils.write((short) numLEN, outputStream);
+    byteLen += ReadWriteIOUtils.write(numLEN, outputStream);
     if (numLEN < 256)
       for (int i = 0; i < maxLevel; i++)
         byteLen += ReadWriteIOUtils.write((byte) (levelPos[i + 1] - levelPos[i]), outputStream);
     else
       for (int i = 0; i < maxLevel; i++)
-        byteLen += ReadWriteIOUtils.write((short) (levelPos[i + 1] - levelPos[i]), outputStream);
+        byteLen += ReadWriteIOUtils.write((levelPos[i + 1] - levelPos[i]), outputStream);
     for (int i = levelPos[0]; i < levelPos[maxLevel]; i++)
       byteLen += ReadWriteIOUtils.write(num[i], outputStream);
     return byteLen;
@@ -197,11 +216,11 @@ public class LongKLLSketch extends KLLSketchForQuantile {
     this.maxN = ReadWriteIOUtils.readInt(inputStream);
     this.maxLevel = ReadWriteIOUtils.readByte(inputStream);
     calcParameters(maxMemoryByte, maxSerializeByte);
-    int numLEN = ReadWriteIOUtils.readShort(inputStream);
+    int numLEN = ReadWriteIOUtils.readInt(inputStream);
     for (int i = 0, tmp = 0; i < maxLevel; i++) {
       levelPos[i] = maxMemoryNum - (numLEN - tmp);
       if (numLEN < 256) tmp += UnsignedBytes.toInt(ReadWriteIOUtils.readByte(inputStream));
-      else tmp += ReadWriteIOUtils.readShort(inputStream);
+      else tmp += ReadWriteIOUtils.readInt(inputStream);
     }
     int actualLevel = maxLevel - 1;
     while (levelPos[actualLevel] == levelPos[actualLevel + 1]) actualLevel--;
@@ -215,11 +234,11 @@ public class LongKLLSketch extends KLLSketchForQuantile {
     this.maxN = ReadWriteIOUtils.readInt(byteBuffer);
     this.maxLevel = ReadWriteIOUtils.readByte(byteBuffer);
     calcParameters(maxMemoryByte, maxSerializeByte);
-    int numLEN = ReadWriteIOUtils.readShort(byteBuffer);
+    int numLEN = ReadWriteIOUtils.readInt(byteBuffer);
     for (int i = 0, tmp = 0; i < maxLevel; i++) {
       levelPos[i] = maxMemoryNum - (numLEN - tmp);
       if (numLEN < 256) tmp += UnsignedBytes.toInt(ReadWriteIOUtils.readByte(byteBuffer));
-      else tmp += ReadWriteIOUtils.readShort(byteBuffer);
+      else tmp += ReadWriteIOUtils.readInt(byteBuffer);
     }
     int actualLevel = maxLevel - 1;
     while (levelPos[actualLevel] == levelPos[actualLevel + 1]) actualLevel--;
@@ -232,7 +251,7 @@ public class LongKLLSketch extends KLLSketchForQuantile {
     this.N = ReadWriteIOUtils.readLong(inputStream);
     this.maxN = ReadWriteIOUtils.readInt(inputStream);
     this.maxLevel = ReadWriteIOUtils.readByte(inputStream);
-    int numLEN = ReadWriteIOUtils.readShort(inputStream);
+    int numLEN = ReadWriteIOUtils.readInt(inputStream);
     this.maxSerializeNum = numLEN;
 
     K = calcK(maxN, maxLevel);
@@ -246,7 +265,7 @@ public class LongKLLSketch extends KLLSketchForQuantile {
       //      System.out.println("\t\ttmp:"+tmp+"\t\tnumLen:"+numLEN+"\t\tmemMemNum:"+maxMemoryNum);
       levelPos[i] = maxMemoryNum - (numLEN - tmp);
       if (numLEN < 256) tmp += UnsignedBytes.toInt(ReadWriteIOUtils.readByte(inputStream));
-      else tmp += ReadWriteIOUtils.readShort(inputStream);
+      else tmp += ReadWriteIOUtils.readInt(inputStream);
     }
     int actualLevel = maxLevel - 1;
     while (levelPos[actualLevel] == levelPos[actualLevel + 1]) actualLevel--;
@@ -259,10 +278,26 @@ public class LongKLLSketch extends KLLSketchForQuantile {
     this.N = ReadWriteIOUtils.readLong(byteBuffer);
     this.maxN = ReadWriteIOUtils.readInt(byteBuffer);
     this.maxLevel = ReadWriteIOUtils.readByte(byteBuffer);
+    //    System.out.println("\t\t[DEBUG deserialize sketch]\tmaxLevel=" + maxLevel);
 
-    int numLEN = ReadWriteIOUtils.readShort(byteBuffer);
+    int numLEN = ReadWriteIOUtils.readInt(byteBuffer);
     maxSerializeNum = numLEN;
 
+    sketchBuffer = byteBuffer.slice();
+    int bytesToRead = 0;
+    if (numLEN < 256) bytesToRead = maxLevel;
+    else bytesToRead = maxLevel * 4;
+    bytesToRead += numLEN * 8;
+    sketchBuffer.limit(bytesToRead);
+    byteBuffer.position(byteBuffer.position() + bytesToRead);
+    //    return;
+
+  }
+
+  public void deserializeFromBuffer() {
+    if (sketchBuffer == null) return;
+    //    System.out.println("\t\tdelay deseri sketch. bytes:" + sketchBuffer.capacity());
+    int numLEN = maxSerializeNum;
     K = calcK(maxN, maxLevel);
     maxMemoryNum = numLEN;
     num = new long[maxMemoryNum];
@@ -272,13 +307,15 @@ public class LongKLLSketch extends KLLSketchForQuantile {
 
     for (int i = 0, tmp = 0; i < maxLevel; i++) {
       levelPos[i] = maxMemoryNum - (numLEN - tmp);
-      if (numLEN < 256) tmp += UnsignedBytes.toInt(ReadWriteIOUtils.readByte(byteBuffer));
-      else tmp += ReadWriteIOUtils.readShort(byteBuffer);
+      if (numLEN < 256) tmp += UnsignedBytes.toInt(ReadWriteIOUtils.readByte(sketchBuffer));
+      else tmp += ReadWriteIOUtils.readInt(sketchBuffer);
     }
     int actualLevel = maxLevel - 1;
     while (levelPos[actualLevel] == levelPos[actualLevel + 1]) actualLevel--;
     calcLevelMaxSize(actualLevel + 1);
     for (int i = 0; i < numLEN; i++)
-      num[maxMemoryNum - numLEN + i] = ReadWriteIOUtils.readLong(byteBuffer);
+      num[maxMemoryNum - numLEN + i] = ReadWriteIOUtils.readLong(sketchBuffer);
+
+    sketchBuffer = null;
   }
 }

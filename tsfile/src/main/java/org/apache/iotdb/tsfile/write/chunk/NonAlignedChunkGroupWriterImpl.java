@@ -88,6 +88,7 @@ public class NonAlignedChunkGroupWriterImpl implements IChunkGroupWriter {
 
   @Override
   public int write(Tablet tablet) throws WriteProcessException {
+    System.out.println("\t\t[NonAlignedCGWriter] write tablet:N=" + tablet.rowSize);
     int pointCount = 0;
     List<MeasurementSchema> timeseries = tablet.getSchemas();
     for (int row = 0; row < tablet.rowSize; row++) {
