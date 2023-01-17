@@ -28,7 +28,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.DoubleStatistics;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.IBatchDataIterator;
-import org.apache.iotdb.tsfile.utils.HeapLongKLLSketch;
+import org.apache.iotdb.tsfile.utils.HeapLongStrictKLLSketch;
 import org.apache.iotdb.tsfile.utils.KLLSketchForQuantile;
 import org.apache.iotdb.tsfile.utils.LongKLLSketch;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -41,13 +41,13 @@ import java.util.List;
 
 import static org.apache.iotdb.tsfile.file.metadata.enums.TSDataType.DOUBLE;
 
-public class KLLStatSingleAggrResult extends AggregateResult {
+public class KLLStatChunkAvailAggrResult extends AggregateResult {
   private TSDataType seriesDataType;
   private int iteration;
   private long pageKLLNum, statNum;
   private long cntL, cntR, lastL;
   private long n, K1, heapN;
-  private HeapLongKLLSketch heapKLL;
+  private HeapLongStrictKLLSketch heapKLL;
   private boolean hasFinalResult;
   private List<KLLSketchForQuantile> pageKLL;
   private int pageKLLIndex;
@@ -99,8 +99,9 @@ public class KLLStatSingleAggrResult extends AggregateResult {
     return (n & 1) == 0;
   }
 
-  public KLLStatSingleAggrResult(TSDataType seriesDataType) throws UnSupportedDataTypeException {
-    super(DOUBLE, AggregationType.EXACT_MEDIAN_KLL_STAT_SINGLE);
+  public KLLStatChunkAvailAggrResult(TSDataType seriesDataType)
+      throws UnSupportedDataTypeException {
+    super(DOUBLE, AggregationType.CHUNK_STAT_AVAIL);
     this.seriesDataType = seriesDataType;
     reset();
   }
@@ -193,14 +194,14 @@ public class KLLStatSingleAggrResult extends AggregateResult {
   public void startIteration() {
     heapN = statNum = 0;
     if (iteration == 0) { // first iteration
-      heapKLL = new HeapLongKLLSketch(maxMemoryByte);
+      heapKLL = new HeapLongStrictKLLSketch(maxMemoryByte);
       lastL = cntL = Long.MIN_VALUE;
       cntR = Long.MAX_VALUE;
       n = 0;
       pageKLLNum = 0;
       pageKLLIndex = 0;
     } else {
-      heapKLL = new HeapLongKLLSketch(maxMemoryByte);
+      heapKLL = new HeapLongStrictKLLSketch(maxMemoryByte);
       pageKLLNum = 0;
       pageKLL = null;
       System.out.println(
@@ -222,7 +223,7 @@ public class KLLStatSingleAggrResult extends AggregateResult {
   @Override
   public void finishIteration() {
     System.out.println(
-        "\t[KLL STAT Single DEBUG]"
+        "\t[STAT CHUNK AVAIL DEBUG]"
             + "finish iteration "
             + iteration
             + " cntL,R:"
@@ -236,7 +237,7 @@ public class KLLStatSingleAggrResult extends AggregateResult {
             + "\tK1:"
             + K1);
     System.out.println(
-        "\t[KLL STAT Single DEBUG]"
+        "\t[STAT CHUNK AVAIL DEBUG]"
             + " statNum:"
             + statNum
             + " pageKllNum:"
@@ -245,6 +246,7 @@ public class KLLStatSingleAggrResult extends AggregateResult {
             + heapN);
     iteration++;
     if (n == 0) {
+      setDoubleValue(0.0);
       hasFinalResult = true;
       return;
     }
@@ -255,16 +257,16 @@ public class KLLStatSingleAggrResult extends AggregateResult {
     }
     long K2 = K1 + 1; // hasTwoMedians() ? (K1 + 1) : K1;
 
-    System.out.println("\t[KLL STAT Single DEBUG]" + " K1,K2:" + K1 + ", " + K2);
+    System.out.println("\t[STAT CHUNK AVAIL DEBUG]" + " K1,K2:" + K1 + ", " + K2);
     if (pageKLLNum == 0) { // all in heap
-      System.out.println("\t[KLL STAT Single DEBUG]" + " calc by heap only. N:" + heapKLL.getN());
+      System.out.println("\t[STAT CHUNK AVAIL DEBUG]" + " calc by heap only. N:" + heapKLL.getN());
       heapKLL.show();
 
       double v1 = longToResult(heapKLL.findMinValueWithRank(K1 - 1));
       //      System.out.println("\t[KLL STAT DEBUG]" + "v1:" + v1);
       double v2 = longToResult(heapKLL.findMinValueWithRank(K2 - 1));
       double ans = 0.5 * (v1 + v2);
-      setDoubleValue(ans);
+      setDoubleValue(0.0);
       hasFinalResult = true;
       return;
     }
@@ -274,13 +276,14 @@ public class KLLStatSingleAggrResult extends AggregateResult {
     mergePageKLL();
     heapKLL.show();
     System.out.println(
-        "\t[KLL STAT Single DEBUG] after merge. heapN:" + heapKLL.getN() + "\tn_true:" + n);
+        "\t[STAT CHUNK AVAIL DEBUG] after merge. heapN:" + heapKLL.getN() + "\tn_true:" + n);
     double v1 = longToResult(heapKLL.findMinValueWithRank(K1 - 1));
     double v2 = longToResult(heapKLL.findMinValueWithRank(K2 - 1));
     double ans = 0.5 * (v1 + v2);
-    setDoubleValue(ans);
+    setDoubleValue(1.0 - 1.0 * heapN / heapKLL.getN());
     hasFinalResult = true;
-    System.out.println("\t[KLL STAT Single DEBUG]" + " est_stats_err:" + approximateStatAvgError());
+    System.out.println(
+        "\t[STAT CHUNK AVAIL DEBUG]" + " est_stats_err:" + approximateStatAvgError());
   }
 
   @Override
@@ -306,7 +309,9 @@ public class KLLStatSingleAggrResult extends AggregateResult {
   //      heapKLL.mergeWithTempSpace(bigger_sketch);
   //    } else a.set(pos0, bigger_sketch);
   //  }
-  private void addSketch(KLLSketchForQuantile sketch) {
+  public void addSketch(KLLSketchForQuantile sketch) {
+    n += sketch.getN();
+    pageKLLNum++;
     TOT_SKETCH_N += sketch.getN();
     TOT_SKETCH_SIZE += sketch.getNumLen();
     if (SKETCH_SIZE < 0) {
@@ -331,8 +336,8 @@ public class KLLStatSingleAggrResult extends AggregateResult {
   }
 
   private void mergePageKLL() {
-    HeapLongKLLSketch tmpSketch = heapKLL;
-    heapKLL = new HeapLongKLLSketch(maxMemoryByte);
+    HeapLongStrictKLLSketch tmpSketch = heapKLL;
+    heapKLL = new HeapLongStrictKLLSketch(maxMemoryByte);
     heapKLL.mergeWithTempSpace(tmpSketch);
     heapKLL.mergeWithTempSpace(pageKLL);
   }
@@ -353,23 +358,30 @@ public class KLLStatSingleAggrResult extends AggregateResult {
                 "Unsupported data type in aggregation MEDIAN : %s", statistics.getType()));
     }
     if (iteration == 0) {
-      n += statistics.getCount();
+      //      n += statistics.getCount();
       //      if (statistics.getType() == DOUBLE) {
       //      }
       if (statistics.getType() == DOUBLE) {
         DoubleStatistics stat = (DoubleStatistics) statistics;
         if (stat.getSummaryNum() > 0) {
-          pageKLLNum += stat.getSummaryNum();
+          //          pageKLLNum += stat.getSummaryNum();
           statNum += 1;
           for (KLLSketchForQuantile sketch : stat.getKllSketchList()) {
+            //            System.out.println("\t[STRICT STAT CHUNK AVAIL DEBUG] pageTime:"+);
+            //            if (sketch.getN() > 10000)
+            //              System.out.println(
+            //                  "\t[STRICT KLL STAT DEBUG] updateResultFromStatistics\tstatN:"
+            //                      + sketch.getN()
+            //                      + "\tstatNumLen:"
+            //                      + sketch.getNumLen());
 
             ((LongKLLSketch) sketch).deserializeFromBuffer();
             addSketch(sketch);
           }
-          //          System.out.println(
-          //              "\t[KLL STAT Single DEBUG] updateResultFromStatistics. pageN:"
-          //                  + stat.getKllSketch().getN());
-          //          stat.getKllSketch().show();
+          //                System.out.println(
+          //                    "\t[STAT CHUNK AVAIL DEBUG] updateResultFromStatistics. pageN:"
+          //                        + stat.getKllSketch().getN());
+          //                stat.getKllSketch().show();
           return;
         } else System.out.println("\t\t\t\t!!!!!![ERROR!] no KLL in stat!");
       }
@@ -497,11 +509,12 @@ public class KLLStatSingleAggrResult extends AggregateResult {
   public boolean canUpdateFromStatistics(Statistics statistics) {
     if ((seriesDataType == DOUBLE) && iteration == 0) {
       DoubleStatistics doubleStats = (DoubleStatistics) statistics;
-      //      System.out.println(
-      //          "\t[DEBUG][KLL STAT SINGLE]\tcanUseStat? count:"
-      //              + doubleStats.getCount()
-      //              + " KLLNum:"
-      //              + doubleStats.getKllSketchNum());
+      //      if (statistics.getCount() > 10000)
+      //        System.out.println(
+      //            "\t[DEBUG][STRICT KLL STAT DEBUG]\tcanUseStat? count:"
+      //                + doubleStats.getCount()
+      //                + " summaryNum:"
+      //                + doubleStats.getSummaryNum());
       if (doubleStats.getSummaryNum() > 0) return true;
     }
     return false;

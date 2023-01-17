@@ -20,10 +20,7 @@ package org.apache.iotdb.tsfile.file.metadata.statistics;
 
 import org.apache.iotdb.tsfile.exception.filter.StatisticsClassException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.utils.LongKLLSketch;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
-import org.apache.iotdb.tsfile.utils.SamplingHeapForStatMerge;
-import org.apache.iotdb.tsfile.utils.TDigestForStatMerge;
+import org.apache.iotdb.tsfile.utils.*;
 
 import com.google.common.hash.BloomFilter;
 import com.google.common.hash.Funnels;
@@ -48,7 +45,9 @@ public class DoubleStatistics extends Statistics<Double> {
   private double sumValue;
   private int summaryNum = 0;
   private LongKLLSketch kllSketch = null;
-  private List<LongKLLSketch> kllSketchList = null;
+  private List<KLLSketchForQuantile> kllSketchList = null;
+  //  public ByteBuffer chunkSketchBuffer;
+  //  public boolean hasChunkSketchBuffer = false;
   private TDigestForStatMerge tDigest = null;
   private List<TDigestForStatMerge> tDigestList = null;
   private SamplingHeapForStatMerge sampling = null;
@@ -57,6 +56,13 @@ public class DoubleStatistics extends Statistics<Double> {
   private BloomFilter<Long> bf = null;
   private List<BloomFilter<Long>> bfList = null;
   private MutableLongList MinTimeMaxTimeCountList = null;
+  private boolean LSMFile = false;
+
+  public boolean hasSegTreeBySketch = false;
+  public SegTreeBySketch segTreeBySketch = null;
+  //  private int lsmLevel = 0;
+  //  public List<KLLSketchForQuantile> lsmSketch = null;
+  //  private MutableLongList lsmMinTMaxT = null;
 
   static final int DOUBLE_STATISTICS_FIXED_RAM_SIZE = 90;
 
@@ -170,7 +176,18 @@ public class DoubleStatistics extends Statistics<Double> {
   //  public LongKLLSketch getKllSketch() {
   //    return kllSketch;
   //  }
-  public List<LongKLLSketch> getKllSketchList() {
+  public void setKLLSketch(KLLSketchForQuantile sketch) {
+    LSMFile = true;
+    summaryNum = 1;
+    kllSketchList = new ArrayList<>();
+    kllSketchList.add(sketch);
+  }
+
+  public KLLSketchForQuantile getOneKllSketch() {
+    return kllSketchList.get(0);
+  }
+
+  public List<KLLSketchForQuantile> getKllSketchList() {
     return kllSketchList;
   }
 
@@ -337,7 +354,7 @@ public class DoubleStatistics extends Statistics<Double> {
     if (doubleStat.summaryNum > 0) {
       this.summaryNum = 1;
       if (SUMMARY_TYPE == 0) {
-        this.kllSketch = doubleStat.kllSketchList.get(pageID);
+        this.kllSketch = (LongKLLSketch) (doubleStat.kllSketchList.get(pageID));
         this.kllSketchList = new ArrayList<>(1);
         this.kllSketchList.add(this.kllSketch);
       }
@@ -493,7 +510,7 @@ public class DoubleStatistics extends Statistics<Double> {
   }
 
   @Override
-  int serializeChunkMetadataStat(OutputStream outputStream) throws IOException {
+  int serializeSketchStat(OutputStream outputStream) throws IOException {
     //    System.out.println("\t\t\t\t\t[DEBUG DOUBLE stat] serializeStats
     // hashmap:"+serializeHashMap);
     int byteLen = 0;
@@ -504,10 +521,17 @@ public class DoubleStatistics extends Statistics<Double> {
     byteLen += ReadWriteIOUtils.write(sumValue, outputStream);
     byteLen += ReadWriteIOUtils.write(summaryNum, outputStream);
     byteLen += ReadWriteIOUtils.write(bfNum, outputStream);
+    byteLen += ReadWriteIOUtils.write(hasSegTreeBySketch, outputStream);
+    if (hasSegTreeBySketch) {
+      byteLen += segTreeBySketch.serializeSegTree(outputStream);
+      return byteLen;
+    }
     if (summaryNum > 0) {
       if (SUMMARY_TYPE == 0)
-        for (LongKLLSketch sketch : kllSketchList) {
-          int tmp = sketch.serialize(outputStream);
+        for (KLLSketchForQuantile sketch : kllSketchList) {
+          LongKLLSketch diskSketch =
+              !LSMFile ? ((LongKLLSketch) sketch) : (new LongKLLSketch(sketch));
+          int tmp = diskSketch.serialize(outputStream);
           byteLen += tmp;
           //        System.out.println("\t[DEBUG][DoubleStat serializeStats]:\tbytes:" + tmp);
           //        sketch.show();
@@ -554,6 +578,7 @@ public class DoubleStatistics extends Statistics<Double> {
     byteLen += ReadWriteIOUtils.write(sumValue, outputStream);
     byteLen += ReadWriteIOUtils.write(0, outputStream);
     byteLen += ReadWriteIOUtils.write(0, outputStream);
+    byteLen += ReadWriteIOUtils.write(false, outputStream);
     return byteLen;
   }
 
@@ -566,6 +591,7 @@ public class DoubleStatistics extends Statistics<Double> {
     this.sumValue = ReadWriteIOUtils.readDouble(inputStream);
     this.summaryNum = ReadWriteIOUtils.readInt(inputStream);
     this.bfNum = ReadWriteIOUtils.readInt(inputStream);
+    this.hasSegTreeBySketch = ReadWriteIOUtils.readBool(inputStream);
     if (this.summaryNum > 0) {
       if (SUMMARY_TYPE == 0) {
         this.kllSketchList = new ArrayList<>(summaryNum);
@@ -601,10 +627,21 @@ public class DoubleStatistics extends Statistics<Double> {
     this.sumValue = ReadWriteIOUtils.readDouble(byteBuffer);
     this.summaryNum = ReadWriteIOUtils.readInt(byteBuffer);
     this.bfNum = ReadWriteIOUtils.readInt(byteBuffer);
+    this.hasSegTreeBySketch = ReadWriteIOUtils.readBool(byteBuffer);
+    if (hasSegTreeBySketch) {
+      this.segTreeBySketch = new SegTreeBySketch(byteBuffer);
+      return;
+    }
     if (this.summaryNum > 0) {
+      //      System.out.println(
+      //          "\t\t\t[Stat Deserialize]\tsketch\tsumNum=" + summaryNum + "\tstartT:" +
+      // getStartTime());
       if (SUMMARY_TYPE == 0) {
         this.kllSketchList = new ArrayList<>(summaryNum);
         for (int i = 0; i < summaryNum; i++) this.kllSketchList.add(new LongKLLSketch(byteBuffer));
+        //        for (int i = 0; i < summaryNum; i++)
+        //          System.out.println("\t\t\t\t\tsketch numLen:" +
+        // this.kllSketchList.get(i).getNumLen());
       }
       if (SUMMARY_TYPE == 1) {
         this.tDigestList = new ArrayList<>(summaryNum);

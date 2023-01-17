@@ -30,7 +30,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
-import it.unimi.dsi.fastutil.doubles.DoubleArrayList;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -44,14 +43,14 @@ import java.util.Random;
 
 import static org.junit.Assert.fail;
 
-public class InsertCsvDataIT {
+public class InsertUnseqDataIT {
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
   private static Session session;
   private static int originCompactionThreadNum;
   private static final List<String> deviceList = new ArrayList<>();
   private static final List<Integer> sizeList = new ArrayList<>();
-  private static final int baseSize = 8192 * 6713;
   private static final int TABLET_SIZE = 8192;
+  private static final int baseSize = TABLET_SIZE * 6713; // (30 * 30  * 30  - 1);
   private static final int deviceNumL = 0, deviceNumR = 1;
   private static final List<String> seriesList = new ArrayList<>();
   private static final List<TSDataType> dataTypeList = new ArrayList<>();
@@ -62,7 +61,7 @@ public class InsertCsvDataIT {
   @BeforeClass
   public static void setUp() throws Exception {
     for (int i = deviceNumL; i < deviceNumR; i++) {
-      deviceList.add("root.Summary1.d" + i);
+      deviceList.add("root.testU1.d" + i);
       sizeList.add(baseSize * (i + 1));
     }
     for (int i = 0; i < series_num; i++) {
@@ -118,8 +117,16 @@ public class InsertCsvDataIT {
       String device = deviceList.get(deviceID);
       int TABLET_NUM = (baseSize / TABLET_SIZE) * (deviceID + 1);
       long TOTAL_SIZE = baseSize * (deviceID + 1);
-      for (int i = 0; i < TABLET_NUM; i++) {
+
+      //      Tablet unSeqTablet = new Tablet(device, schemaList, 1);
+      //      unSeqTablet.timestamps[0]=1L<<40;
+      //      ((double[]) unSeqTablet.values[0])[0]=-2.33;
+      //      session.insertTablet(unSeqTablet);
+      //      session.executeNonQueryStatement("flush");
+
+      for (int i = -1; i < TABLET_NUM; i++) {
         long BASE_TIME = (long) i * TABLET_SIZE;
+        if (i < 0) BASE_TIME = 1L << 40;
         Tablet tablet = new Tablet(device, schemaList, TABLET_SIZE);
 
         long[] timestamps = tablet.timestamps;
@@ -164,145 +171,69 @@ public class InsertCsvDataIT {
 
   private static void insertDataFromTXT()
       throws IoTDBConnectionException, StatementExecutionException, IOException {
-    final int TEST_CASE = 1;
-    String[] fileList = new String[10], sgName = new String[10];
-    String sketch_size = "4096T4";
-    fileList[0] = "1_bitcoin.csv";
-    sgName[0] = "root.bitcoin" + sketch_size;
-    fileList[1] = "2_SpacecraftThruster.txt";
-    sgName[1] = "root.thruster" + sketch_size;
-    fileList[2] = "3_taxipredition8M.txt";
-    sgName[2] = "root.taxi" + sketch_size;
-    fileList[3] = "4_wh.csv";
-    sgName[3] = "root.wh" + sketch_size;
-    //    fileList[1] = "tmp_3_55.txt";
-    //    fileList[2] = "tmp_0_55.txt";
-    //    fileList[3] = "tmp_2_55.txt";
-    //    fileList[4] = "tmp_1_60.txt";
-    //    fileList[5] = "tmp_0_131.txt";
-    //    fileList[6] = "tmp_1_131.txt";
-    //    fileList[7] = "tmp_0_356.txt";
-    for (int fileID : new int[] {0}) {
-      System.out.println("\t\t" + fileList[fileID] + "\t" + sketch_size + "\t\t");
-      System.out.print("\t\t\t");
+    long START_TIME = new Date().getTime();
 
-      String filename = fileList[fileID];
-      String folder = "D:\\Study\\Lab\\iotdb\\add_quantile_to_aggregation\\test_project_2";
-      String filepath = folder + "\\" + filename;
-      DoubleArrayList vv = new DoubleArrayList();
+    String[] fileList = new String[10];
+    fileList[0] = "tmp_1_55.txt";
+    fileList[1] = "tmp_3_55.txt";
+    fileList[2] = "tmp_0_55.txt";
+    fileList[3] = "tmp_2_55.txt";
+    fileList[4] = "tmp_1_60.txt";
+    fileList[5] = "tmp_0_131.txt";
+    fileList[6] = "tmp_1_131.txt";
+    fileList[7] = "tmp_0_356.txt";
 
-      for (int T = 0; T < TEST_CASE; T++) {
-        try {
-          session.executeNonQueryStatement("delete storage group " + sgName[fileID]);
-          Thread.sleep(4000);
-        } catch (Exception e) {
-          // no-op
-        }
-        File file = new File(filepath);
-        BufferedInputStream fis = null;
-        fis = new BufferedInputStream(new FileInputStream(file));
-        BufferedReader reader =
-            new BufferedReader(
-                new InputStreamReader(fis, StandardCharsets.UTF_8), 50 * 1024 * 1024);
-        reader.readLine(); // ignore first line!
-
-        long START_TIME = new Date().getTime();
-
-        String series = "s0";
-        session.createTimeseries(
-            sgName[fileID] + ".d0.s0", TSDataType.DOUBLE, TSEncoding.PLAIN, CompressionType.SNAPPY);
-        MeasurementSchema schema =
-            new MeasurementSchema(series, TSDataType.DOUBLE, TSEncoding.PLAIN);
-        List<MeasurementSchema> schemaList = new ArrayList<>();
-        schemaList.add(schema);
-
-        //        Random random = new Random(233);
-
-        int chunk_num = 0;
-        String device = sgName[fileID] + ".d0";
-        long CNT_TIME = 0; // new Date().getTime();
-        long INGEST_TIME = 0;
-        while (true) {
-          vv.clear();
-          for (String tmps = reader.readLine();
-              tmps != null && vv.size() < TABLET_SIZE * 1000;
-              tmps = reader.readLine()) vv.add(Double.parseDouble(tmps));
-
-          INGEST_TIME -= new Date().getTime();
-          for (int i = 0; i < vv.size() / TABLET_SIZE; i++) {
-            Tablet tablet = new Tablet(device, schemaList, TABLET_SIZE);
-            long[] timestamps = tablet.timestamps;
-            Object[] values = tablet.values;
-            for (int j = 0; j < TABLET_SIZE; j++) {
-              int row = tablet.rowSize++;
-              timestamps[row] = CNT_TIME++;
-              ((double[]) values[0])[row] = vv.getDouble(i * TABLET_SIZE + j);
-            }
-            session.insertTablet(tablet);
-            if (++chunk_num == 6713) break;
-          }
-          INGEST_TIME += new Date().getTime();
-          if (chunk_num == 6713) break;
-          if (vv.size() < TABLET_SIZE) break;
-        }
-        System.out.print("\t" + INGEST_TIME);
-        System.out.flush();
-      }
-      System.out.println();
-    }
-  }
-
-  private static void append(int chunkToAppend)
-      throws IoTDBConnectionException, StatementExecutionException, IOException {
-    final int TEST_CASE = 1;
-    String[] fileList = new String[10], sgName = new String[10];
-    String sketch_size = "4096T32";
-    fileList[0] = "1_bitcoin.csv";
-    sgName[0] = "root.bitcoin" + sketch_size;
-    fileList[1] = "2_SpacecraftThruster.txt";
-    sgName[1] = "root.thruster" + sketch_size;
-    fileList[2] = "3_taxipredition8M.txt";
-    sgName[2] = "root.taxi" + sketch_size;
-    fileList[3] = "4_wh.csv";
-    sgName[3] = "root.wh" + sketch_size;
-    for (int fileID : new int[] {1}) {
-      System.out.println("APPEND to\t\t" + fileList[fileID] + "\t" + sketch_size + "\t\t");
-      System.out.print("\t\t\t");
-
-      String series = "s0";
+    for (int i = 0; i < 8; i++) {
+      String series = "s" + i;
+      session.createTimeseries(
+          "root.real.d0." + series, TSDataType.DOUBLE, TSEncoding.PLAIN, CompressionType.SNAPPY);
       MeasurementSchema schema = new MeasurementSchema(series, TSDataType.DOUBLE, TSEncoding.PLAIN);
       List<MeasurementSchema> schemaList = new ArrayList<>();
       schemaList.add(schema);
 
-      //        Random random = new Random(233);
-
-      int chunk_num = 0;
-      String device = sgName[fileID] + ".d0";
-      long CNT_TIME = new Date().getTime();
-      long INGEST_TIME = 0;
       Random random = new Random(233);
+      String filename = fileList[i];
+      String folder = "E:\\real-world data\\Kaggle";
+      String filepath = folder + "\\" + filename;
+      File file = new File(filepath);
+      BufferedInputStream fis = null;
+      fis = new BufferedInputStream(new FileInputStream(file));
+      BufferedReader reader =
+          new BufferedReader(new InputStreamReader(fis, StandardCharsets.UTF_8), 50 * 1024 * 1024);
+      reader.readLine(); // ignore first line!
 
-      INGEST_TIME -= new Date().getTime();
-      for (int i = 0; i < chunkToAppend; i++) {
+      String device = "root.real.d0";
+      long CNT_TIME = i * real_data_series_base_time;
+      String tmps;
+      boolean over_flag = false;
+      while (!over_flag) {
         Tablet tablet = new Tablet(device, schemaList, TABLET_SIZE);
         long[] timestamps = tablet.timestamps;
         Object[] values = tablet.values;
         for (int j = 0; j < TABLET_SIZE; j++) {
-          int row = tablet.rowSize++;
-          timestamps[row] = CNT_TIME++;
-          ((double[]) values[0])[row] = random.nextGaussian();
+          if ((tmps = reader.readLine()) != null) {
+            int row = tablet.rowSize++;
+            timestamps[row] = CNT_TIME;
+            ((double[]) values[0])[row] = Double.parseDouble(tmps);
+            CNT_TIME++;
+          } else {
+            over_flag = true;
+            break;
+          }
         }
-        session.insertTablet(tablet);
+        if (!over_flag) {
+          session.insertTablet(tablet);
+        }
       }
     }
+    System.out.println("\t\t[WRITE FINISH]:\t" + (new Date().getTime() - START_TIME));
   }
 
   @Test
   public void insertDATA() {
     try {
-      //      prepareTimeSeriesData();
-      insertDataFromTXT();
-      //      append(5);
+      prepareTimeSeriesData();
+      //      insertDataFromTXT();
       //      insertDataFromTXT();
       //      insertDataFromTXT(3, 3, 0);
     } catch (IoTDBConnectionException | StatementExecutionException | IOException e) {

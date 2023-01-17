@@ -158,6 +158,15 @@ public class IoTDBDescriptor {
               properties.getProperty(
                   "aggregation_strategy", Integer.toString(conf.getAggregationStrategy()))));
 
+      conf.setNoUpdate(
+          Boolean.parseBoolean(
+              properties.getProperty("no_update", Boolean.toString(conf.getNoUpdate()))));
+
+      conf.setOnlyUsePageSynopsis(
+          Boolean.parseBoolean(
+              properties.getProperty(
+                  "only_use_page_synopsis", Boolean.toString(conf.getOnlyUsePageSynopsis()))));
+
       conf.setRpcThriftCompressionEnable(
           Boolean.parseBoolean(
               properties.getProperty(
@@ -1015,12 +1024,38 @@ public class IoTDBDescriptor {
 
     TSFileDescriptor.getInstance()
         .getConfig()
+        .setSketchSizeRatio(
+            Integer.parseInt(
+                properties.getProperty(
+                    "sketch_size_ratio",
+                    Integer.toString(
+                        TSFileDescriptor.getInstance().getConfig().getSketchSizeRatio()))));
+    TSFileDescriptor.getInstance()
+        .getConfig()
+        .setSynopsisForWholeChunkWhenFlush(
+            Boolean.parseBoolean(
+                properties.getProperty(
+                    "synopsis_for_whole_chunk_when_flush",
+                    Boolean.toString(
+                        TSFileDescriptor.getInstance()
+                            .getConfig()
+                            .getSynopsisForWholeChunkWhenFlush()))));
+    TSFileDescriptor.getInstance()
+        .getConfig()
         .setEnableSynopsis(
             Boolean.parseBoolean(
                 properties.getProperty(
                     "enable_synopsis",
                     Boolean.toString(
                         TSFileDescriptor.getInstance().getConfig().isEnableSynopsis()))));
+    TSFileDescriptor.getInstance()
+        .getConfig()
+        .setEnableSSTSketch(
+            Boolean.parseBoolean(
+                properties.getProperty(
+                    "enable_SST_sketch",
+                    Boolean.toString(
+                        TSFileDescriptor.getInstance().getConfig().isEnableSSTSketch()))));
     TSFileDescriptor.getInstance()
         .getConfig()
         .setEnableBloomFilter(

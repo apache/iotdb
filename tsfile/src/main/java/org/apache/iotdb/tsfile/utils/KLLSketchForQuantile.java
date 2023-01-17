@@ -17,9 +17,11 @@ public abstract class KLLSketchForQuantile {
 
   public KLLSketchForQuantile() {}
 
-  protected abstract int calcMaxMemoryNum(int maxMemoryByte);
+  protected int calcMaxMemoryNum(int maxMemoryByte) {
+    return 0;
+  }
 
-  protected abstract void calcLevelMaxSize(int setLevel);
+  protected void calcLevelMaxSize(int setLevel) {}
 
   public int getLevelSize(int level) {
     return levelPos[level + 1] - levelPos[level];
@@ -55,7 +57,7 @@ public abstract class KLLSketchForQuantile {
     //    System.out.println("\t\t\t"+x);
   }
 
-  protected abstract void compact();
+  protected void compact() {}
 
   protected int getNextRand01() { // xor shift *
     XORSHIFT ^= XORSHIFT >>> 12;
@@ -150,5 +152,9 @@ public abstract class KLLSketchForQuantile {
       level0Sorted = true;
     }
     return num[L + K];
+  }
+
+  public void active() {
+    // no-op
   }
 }

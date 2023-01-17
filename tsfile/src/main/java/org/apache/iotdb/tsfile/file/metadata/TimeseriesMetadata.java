@@ -72,6 +72,9 @@ public class TimeseriesMetadata implements ITimeSeriesMetadata {
 
   private ArrayList<IChunkMetadata> chunkMetadataList;
 
+  public ByteBuffer cMDBuffer;
+  public boolean hasCMDBuffer = false;
+
   public TimeseriesMetadata() {}
 
   public TimeseriesMetadata(
@@ -96,7 +99,10 @@ public class TimeseriesMetadata implements ITimeSeriesMetadata {
     this.dataType = timeseriesMetadata.dataType;
     this.statistics = timeseriesMetadata.statistics;
     this.modified = timeseriesMetadata.modified;
-    this.chunkMetadataList = new ArrayList<>(timeseriesMetadata.chunkMetadataList);
+    if (timeseriesMetadata.hasCMDBuffer) {
+      this.cMDBuffer = timeseriesMetadata.cMDBuffer;
+      this.hasCMDBuffer = true;
+    } else this.chunkMetadataList = new ArrayList<>(timeseriesMetadata.getChunkMetadataList());
   }
 
   public static TimeseriesMetadata deserializeFrom(ByteBuffer buffer, boolean needChunkMetadata)
@@ -109,15 +115,18 @@ public class TimeseriesMetadata implements ITimeSeriesMetadata {
     timeseriesMetaData.setDataSizeOfChunkMetaDataList(chunkMetaDataListDataSize);
     timeseriesMetaData.setStatistics(Statistics.deserialize(buffer, timeseriesMetaData.dataType));
     if (needChunkMetadata) {
-      ByteBuffer byteBuffer = buffer.slice();
-      byteBuffer.limit(chunkMetaDataListDataSize);
-      timeseriesMetaData.chunkMetadataList = new ArrayList<>();
-      while (byteBuffer.hasRemaining()) {
-        timeseriesMetaData.chunkMetadataList.add(
-            ChunkMetadata.deserializeFrom(byteBuffer, timeseriesMetaData));
-      }
-      // minimize the storage of an ArrayList instance.
-      timeseriesMetaData.chunkMetadataList.trimToSize();
+      timeseriesMetaData.cMDBuffer = buffer.slice();
+      timeseriesMetaData.cMDBuffer.limit(chunkMetaDataListDataSize);
+      timeseriesMetaData.hasCMDBuffer = true;
+      //      ByteBuffer byteBuffer = buffer.slice();
+      //      byteBuffer.limit(chunkMetaDataListDataSize);
+      //      timeseriesMetaData.chunkMetadataList = new ArrayList<>();
+      //      while (byteBuffer.hasRemaining()) {
+      //        timeseriesMetaData.chunkMetadataList.add(
+      //            ChunkMetadata.deserializeFrom(byteBuffer, timeseriesMetaData));
+      //      }
+      //      // minimize the storage of an ArrayList instance.
+      //      timeseriesMetaData.chunkMetadataList.trimToSize();
     }
     buffer.position(buffer.position() + chunkMetaDataListDataSize);
     return timeseriesMetaData;
@@ -137,7 +146,7 @@ public class TimeseriesMetadata implements ITimeSeriesMetadata {
     byteLen += ReadWriteIOUtils.write(dataType, outputStream);
     byteLen +=
         ReadWriteForEncodingUtils.writeUnsignedVarInt(chunkMetaDataListDataSize, outputStream);
-    byteLen += statistics.serialize(outputStream);
+    byteLen += statistics.serialize(outputStream, true);
     chunkMetadataListBuffer.writeTo(outputStream);
     byteLen += chunkMetadataListBuffer.size();
     return byteLen;
@@ -206,6 +215,20 @@ public class TimeseriesMetadata implements ITimeSeriesMetadata {
   }
 
   public List<IChunkMetadata> getChunkMetadataList() {
+    if (hasCMDBuffer) {
+      //      System.out.println("\t\t\t[TSMD]\tgetCMDList from delayed buffer.");
+      chunkMetadataList = new ArrayList<>();
+      try {
+        while (cMDBuffer.hasRemaining()) {
+          chunkMetadataList.add(ChunkMetadata.deserializeFrom(cMDBuffer, this));
+        }
+      } catch (IOException e) {
+        // no-op
+      }
+      // minimize the storage of an ArrayList instance.
+      chunkMetadataList.trimToSize();
+      hasCMDBuffer = false;
+    }
     return chunkMetadataList;
   }
 
@@ -260,7 +283,7 @@ public class TimeseriesMetadata implements ITimeSeriesMetadata {
         + ", isSeq="
         + isSeq
         + ", chunkMetadataList="
-        + chunkMetadataList
+        + getChunkMetadataList()
         + '}';
   }
 }

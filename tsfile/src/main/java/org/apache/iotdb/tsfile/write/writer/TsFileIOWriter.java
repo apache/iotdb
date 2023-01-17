@@ -23,37 +23,26 @@ import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.MetaMarker;
 import org.apache.iotdb.tsfile.file.header.ChunkGroupHeader;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
-import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetadata;
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
-import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
-import org.apache.iotdb.tsfile.file.metadata.MetadataIndexConstructor;
-import org.apache.iotdb.tsfile.file.metadata.MetadataIndexNode;
-import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
-import org.apache.iotdb.tsfile.file.metadata.TsFileMetadata;
+import org.apache.iotdb.tsfile.file.metadata.*;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.file.metadata.statistics.DoubleStatistics;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.utils.BytesUtils;
-import org.apache.iotdb.tsfile.utils.PublicBAOS;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+import org.apache.iotdb.tsfile.utils.*;
 
+import it.unimi.dsi.fastutil.longs.LongArrayList;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
 import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.TreeMap;
+import java.util.*;
 
 /**
  * TsFileIOWriter is used to construct metadata and write data stored in memory to output stream.
@@ -328,6 +317,9 @@ public class TsFileIOWriter implements AutoCloseable {
    */
   private void flushOneChunkMetadata(Path path, List<IChunkMetadata> chunkMetadataList)
       throws IOException {
+    int chunkNum = chunkMetadataList.size(),
+        lsmLevel = (int) Math.round(Math.log(chunkNum) / Math.log(30));
+    System.out.println("\t[DEBUG flushOneChunkMetadata]\tchunkNum=" + chunkMetadataList.size());
     // create TimeseriesMetaData
     PublicBAOS publicBAOS = new PublicBAOS();
     TSDataType dataType = chunkMetadataList.get(chunkMetadataList.size() - 1).getDataType();
@@ -342,6 +334,58 @@ public class TsFileIOWriter implements AutoCloseable {
       }
       chunkMetadataListLength += chunkMetadata.serializeTo(publicBAOS, serializeStatistic);
       seriesStatistics.mergeStatistics(chunkMetadata.getStatistics());
+    }
+    //    int addKLLLevel =
+    //        lsmLevel
+    //            * (int)
+    //                Math.round(
+    //                    Math.log(30.0 /
+    // TSFileDescriptor.getInstance().getConfig().getSketchSizeRatio())
+    //                        / Math.log(2));
+    //    if (TSFileDescriptor.getInstance().getConfig().isEnableSSTSketch()
+    //        && lsmLevel > 0
+    //        && addKLLLevel > 0) {
+    //      KLLSketchForLSMFile lsmSketch = new KLLSketchForLSMFile();
+    //      for (IChunkMetadata chunkMetadata : chunkMetadataList)
+    //        lsmSketch.addSubSketch(
+    //            ((DoubleStatistics) (chunkMetadata.getStatistics())).getOneKllSketch());
+    //      lsmSketch.compactSubSketches(addKLLLevel);
+    //      lsmSketch.show();
+    //      System.out.println(
+    //          "\t\t[DEBUG] compactingSketchForLSM\tN:"
+    //              + lsmSketch.getN()
+    //              + "\tnumLen:"
+    //              + lsmSketch.getNumLen());
+    //      ((DoubleStatistics) seriesStatistics).setKLLSketch(lsmSketch);
+    //    }
+    if (TSFileDescriptor.getInstance().getConfig().isEnableSSTSketch() && lsmLevel > 0) {
+      ObjectArrayList<KLLSketchForQuantile> leaves =
+          new ObjectArrayList<>(chunkMetadataList.size());
+      LongArrayList leafMinT = new LongArrayList(), leafMaxT = new LongArrayList();
+      for (IChunkMetadata chunkMetadata : chunkMetadataList) {
+        ObjectArrayList<KLLSketchForQuantile> chunk_sketches = new ObjectArrayList<>();
+        int tmpNumLen = 0;
+        for (KLLSketchForQuantile chunkSketch :
+            ((DoubleStatistics) (chunkMetadata.getStatistics())).getKllSketchList()) {
+          ((LongKLLSketch) chunkSketch).deserializeFromBuffer();
+          chunk_sketches.add(chunkSketch);
+          tmpNumLen += chunkSketch.getNumLen();
+        }
+        HeapLongKLLSketch leafSketch = new HeapLongKLLSketch(tmpNumLen * 8);
+        leafSketch.mergeWithTempSpace(chunk_sketches);
+        leaves.add(leafSketch);
+        leafMinT.add(chunkMetadata.getStartTime());
+        leafMaxT.add(chunkMetadata.getEndTime());
+      }
+      SegTreeBySketch segTreeBySketch =
+          new SegTreeBySketch(
+              leaves,
+              leafMinT,
+              leafMaxT,
+              TSFileDescriptor.getInstance().getConfig().getSketchSizeRatio());
+      segTreeBySketch.show();
+      ((DoubleStatistics) seriesStatistics).segTreeBySketch = segTreeBySketch;
+      ((DoubleStatistics) seriesStatistics).hasSegTreeBySketch = true;
     }
 
     TimeseriesMetadata timeseriesMetadata =

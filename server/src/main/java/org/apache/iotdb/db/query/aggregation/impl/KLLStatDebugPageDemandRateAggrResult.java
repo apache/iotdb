@@ -30,7 +30,6 @@ import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.IBatchDataIterator;
 import org.apache.iotdb.tsfile.utils.HeapLongKLLSketch;
 import org.apache.iotdb.tsfile.utils.KLLSketchForQuantile;
-import org.apache.iotdb.tsfile.utils.LongKLLSketch;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.IOException;
@@ -398,7 +397,7 @@ public class KLLStatDebugPageDemandRateAggrResult extends AggregateResult {
           // stat.getKllSketch().getN());
           //          addSketch(stat.getKllSketch(), pageKLL, pageKLLMemoryByte);
           pageKLLNum += stat.getKllSketchNum();
-          for (LongKLLSketch sketch : stat.getKllSketchList()) addSketch(sketch);
+          for (KLLSketchForQuantile sketch : stat.getKllSketchList()) addSketch(sketch);
           //          heapKLL.mergeWithTempSpace(stat.getKllSketch());
           return;
         } else System.out.println("\t\t\t\t!!!!!![ERROR!] no KLL in stat!");

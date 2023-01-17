@@ -24,6 +24,7 @@ from iotdb.utils.IoTDBConstants import TSDataType, TSEncoding, Compressor
 from iotdb.utils.Tablet import Tablet
 import pandas as pd
 import numpy as np
+import time
 
 # creating session connection.
 ip = "127.0.0.1"
@@ -33,12 +34,7 @@ password_ = "root"
 session = Session(ip, port_, username_, password_, fetch_size=1024, zone_id="UTC+8")
 session.open(False)
 
-grp = "tx_syn_04"
-# syn_01: 1024
-# syn_02: 512
-# syn_03: 256
-# syn_04: 128
-# syn_05: false
+grp = "bt_syn_01"
 
 # set and delete storage groups
 session.delete_storage_group("root." + grp)
@@ -55,33 +51,51 @@ print(
     session.check_time_series_exists("root." + grp + ".d_01.s_01"),
 )
 
-# df = pd.read_csv("~/LSM-Quantile/wh.csv")
+df = pd.read_csv("D:\\Study\\Lab\\iotdb\\add_quantile_to_aggregation\\test_project_2\\1_bitcoin.csv")
+data = df["bitcoin dataset"].tolist()
+# df = pd.read_csv("../../4_wh.csv")
 # data = df["value"].tolist()
-# data = [[datum] for datum in data]
-df = pd.read_csv("~/LSM-Quantile/taxi.txt")
-data = (np.array(df)).tolist()
-data = [[datum[0]] for datum in data]
-data = data[:50000000]
-batch = 81920
+data = [[datum] for datum in data]
+# df = pd.read_csv("../../SpacecraftThruster.txt")
+# df = pd.read_csv("../../4_taxipredition8M.txt")
+# data = (np.array(df)).tolist()
+# data = [[datum[0]] for datum in data]
+batch = 8192
 print(data[:10])
 print(type(data[0]))
+print(len(data))
 
 measurements_ = ["s_01"]
 data_types_ = [
     TSDataType.DOUBLE
 ]
 
-for i in range(int(len(data) / batch)):
+values_ = range(batch)
+timestamps_ = range(1<<40,(1<<40)+batch)
+tablet_ = Tablet(
+    "root." + grp + ".d_01", measurements_, data_types_, values_, timestamps_
+)
+session.insert_tablet(tablet_)
+session.execute_non_query_statement("flush")
+
+total_time = 0
+for i in range(6713):
     if i % 100 == 0:
         print("Iter: " + str(i))
-# insert one tablet into the database.
+    # insert one tablet into the database.
     values_ = data[i * batch : (i + 1) * batch] # Non-ASCII text will cause error since bytes can only hold 0-128 nums.
     timestamps_ = list(range(i * batch, (i + 1) * batch))
+    if len(timestamps_) != len(values_):
+        break
     tablet_ = Tablet(
         "root." + grp + ".d_01", measurements_, data_types_, values_, timestamps_
     )
+    curr_time = time.time()
     session.insert_tablet(tablet_)
+    total_time += (time.time() - curr_time)
     # session.execute_non_query_statement("flush")
+
+print(total_time)
 
 # close session connection.
 session.close()

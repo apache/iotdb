@@ -49,8 +49,8 @@ public class InsertDataIT {
   private static int originCompactionThreadNum;
   private static final List<String> deviceList = new ArrayList<>();
   private static final List<Integer> sizeList = new ArrayList<>();
-  private static final int baseSize = 4096 * 20000;
-  private static final int TABLET_SIZE = 4096 * 20;
+  private static final int TABLET_SIZE = 8192;
+  private static final int baseSize = TABLET_SIZE * 1500; // (30 * 30  * 30  - 1);
   private static final int deviceNumL = 0, deviceNumR = 1;
   private static final List<String> seriesList = new ArrayList<>();
   private static final List<TSDataType> dataTypeList = new ArrayList<>();
@@ -61,7 +61,7 @@ public class InsertDataIT {
   @BeforeClass
   public static void setUp() throws Exception {
     for (int i = deviceNumL; i < deviceNumR; i++) {
-      deviceList.add("root.Summary1.d" + i);
+      deviceList.add("root.test1500.SSTd" + i);
       sizeList.add(baseSize * (i + 1));
     }
     for (int i = 0; i < series_num; i++) {

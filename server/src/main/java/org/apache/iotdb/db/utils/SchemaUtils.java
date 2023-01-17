@@ -216,6 +216,8 @@ public class SchemaUtils {
       case SQLConstant.TDIGEST_STAT_SINGLE:
       case SQLConstant.SAMPLING_STAT_SINGLE:
       case SQLConstant.STRICT_KLL_STAT_SINGLE:
+      case SQLConstant.DDSKETCH_SINGLE:
+      case SQLConstant.CHUNK_STAT_AVAIL:
         return TSDataType.DOUBLE;
       case SQLConstant.LAST_VALUE:
       case SQLConstant.FIRST_VALUE:
