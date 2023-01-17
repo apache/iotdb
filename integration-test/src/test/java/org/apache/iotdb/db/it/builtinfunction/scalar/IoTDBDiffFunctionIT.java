@@ -32,6 +32,7 @@ import org.junit.runner.RunWith;
 
 import static org.apache.iotdb.db.it.utils.TestUtils.prepareData;
 import static org.apache.iotdb.db.it.utils.TestUtils.resultSetEqualTest;
+import static org.apache.iotdb.itbase.constant.TestConstant.DEVICE;
 import static org.apache.iotdb.itbase.constant.TestConstant.TIMESTAMP_STR;
 
 @RunWith(IoTDBTestRunner.class)
@@ -48,6 +49,10 @@ public class IoTDBDiffFunctionIT {
         "INSERT INTO root.test(timestamp,s1) values(4, 4)",
         "INSERT INTO root.test(timestamp,s1,s2) values(5, 5, 5)",
         "INSERT INTO root.test(timestamp,s2) values(6, 6)",
+        "CREATE TIMESERIES root.test2.s1 WITH DATATYPE=INT32, ENCODING=PLAIN",
+        "CREATE TIMESERIES root.test2.s2 WITH DATATYPE=FLOAT, ENCODING=PLAIN",
+        "INSERT INTO root.test2(timestamp,s1,s2) values(1, 1, 1)",
+        "INSERT INTO root.test2(timestamp,s1,s2) values(2, 2, 2)",
         "flush"
       };
 
@@ -72,6 +77,24 @@ public class IoTDBDiffFunctionIT {
           "1,null,null,", "2,1.0,null,", "3,null,2.0,", "4,2.0,null,", "5,1.0,2.0,", "6,null,1.0,"
         };
     resultSetEqualTest("select Diff(s1), diff(s2) from root.test", expectedHeader, retArray);
+
+    // align by device
+    expectedHeader = new String[] {TIMESTAMP_STR, DEVICE, "Diff(s1)", "diff(s2)"};
+    retArray =
+        new String[] {
+          "1,root.test,null,null,",
+          "2,root.test,1.0,null,",
+          "3,root.test,null,2.0,",
+          "4,root.test,2.0,null,",
+          "5,root.test,1.0,2.0,",
+          "6,root.test,null,1.0,",
+          "1,root.test2,null,null,",
+          "2,root.test2,1.0,1.0,",
+        };
+    resultSetEqualTest(
+        "select Diff(s1), diff(s2) from root.test, root.test2 align by device",
+        expectedHeader,
+        retArray);
   }
 
   @Test
@@ -95,6 +118,30 @@ public class IoTDBDiffFunctionIT {
         "select Diff(s1, 'ignoreNull'='false'), diff(s2, 'ignoreNull'='false') from root.test",
         expectedHeader,
         retArray);
+
+    // align by device
+    expectedHeader =
+        new String[] {
+          TIMESTAMP_STR,
+          DEVICE,
+          "Diff(s1, \"ignoreNull\"=\"false\")",
+          "diff(s2, \"ignoreNull\"=\"false\")"
+        };
+    retArray =
+        new String[] {
+          "1,root.test,null,null,",
+          "2,root.test,1.0,null,",
+          "3,root.test,null,null,",
+          "4,root.test,null,null,",
+          "5,root.test,1.0,null,",
+          "6,root.test,null,1.0,",
+          "1,root.test2,null,null,",
+          "2,root.test2,1.0,1.0,",
+        };
+    resultSetEqualTest(
+        "select Diff(s1, 'ignoreNull'='false'), diff(s2, 'ignoreNull'='false') from root.test, root.test2 align by device",
+        expectedHeader,
+        retArray);
   }
 
   // [change_points] is not mappable function, so this calculation use old transformer
@@ -108,6 +155,24 @@ public class IoTDBDiffFunctionIT {
         };
     resultSetEqualTest(
         "select change_points(s1), diff(s2) from root.test", expectedHeader, retArray);
+
+    // align by device
+    expectedHeader = new String[] {TIMESTAMP_STR, DEVICE, "change_points(s1)", "diff(s2)"};
+    retArray =
+        new String[] {
+          "1,root.test,1,null,",
+          "2,root.test,2,null,",
+          "3,root.test,null,2.0,",
+          "4,root.test,4,null,",
+          "5,root.test,5,2.0,",
+          "6,root.test,null,1.0,",
+          "1,root.test2,1,null,",
+          "2,root.test2,2,1.0,",
+        };
+    resultSetEqualTest(
+        "select change_points(s1), diff(s2) from root.test, root.test2 align by device",
+        expectedHeader,
+        retArray);
   }
 
   @Test
@@ -122,6 +187,26 @@ public class IoTDBDiffFunctionIT {
         new String[] {"1,1,null,", "2,2,null,", "4,4,null,", "5,5,null,", "6,null,1.0,"};
     resultSetEqualTest(
         "select change_points(s1), diff(s2, 'ignoreNull'='false') from root.test",
+        expectedHeader,
+        retArray);
+
+    // align by device
+    expectedHeader =
+        new String[] {
+          TIMESTAMP_STR, DEVICE, "change_points(s1)", "diff(s2, \"ignoreNull\"=\"false\")"
+        };
+    retArray =
+        new String[] {
+          "1,root.test,1,null,",
+          "2,root.test,2,null,",
+          "4,root.test,4,null,",
+          "5,root.test,5,null,",
+          "6,root.test,null,1.0,",
+          "1,root.test2,1,null,",
+          "2,root.test2,2,1.0,",
+        };
+    resultSetEqualTest(
+        "select change_points(s1), diff(s2, 'ignoreNull'='false') from root.test, root.test2 align by device",
         expectedHeader,
         retArray);
   }

@@ -162,10 +162,7 @@ public class TypeInferenceUtils {
     if (funcName == null) {
       throw new IllegalArgumentException("ScalarFunction Name must not be null");
     }
-    if (!verifyIsScalarFunctionDataTypeMatched(funcName, dataType)) {
-      throw new SemanticException(
-          "Scalar functions [DIFF] only support numeric data types [INT32, INT64, FLOAT, DOUBLE]");
-    }
+    verifyIsScalarFunctionDataTypeMatched(funcName, dataType);
 
     switch (funcName.toLowerCase()) {
       case SqlConstant.DIFF:
@@ -175,11 +172,16 @@ public class TypeInferenceUtils {
     }
   }
 
-  private static boolean verifyIsScalarFunctionDataTypeMatched(
-      String funcName, TSDataType dataType) {
+  private static void verifyIsScalarFunctionDataTypeMatched(String funcName, TSDataType dataType) {
     switch (funcName.toLowerCase()) {
       case SqlConstant.DIFF:
-        return dataType.isNumeric();
+        if (dataType.isNumeric()) {
+          return;
+        }
+        throw new SemanticException(
+            String.format(
+                "Scalar function [%s] only support numeric data types [INT32, INT64, FLOAT, DOUBLE]",
+                funcName));
       default:
         throw new IllegalArgumentException("Invalid Scalar function: " + funcName);
     }

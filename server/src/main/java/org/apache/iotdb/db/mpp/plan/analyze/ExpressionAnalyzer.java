@@ -1269,35 +1269,35 @@ public class ExpressionAnalyzer {
     }
   }
 
-  public static boolean isDeviceViewNeedSpecialProcess(Expression predicate) {
-    if (predicate instanceof TernaryExpression) {
-      TernaryExpression ternaryExpression = (TernaryExpression) predicate;
+  public static boolean isDeviceViewNeedSpecialProcess(Expression expression) {
+    if (expression instanceof TernaryExpression) {
+      TernaryExpression ternaryExpression = (TernaryExpression) expression;
       return isDeviceViewNeedSpecialProcess(ternaryExpression.getFirstExpression())
           || isDeviceViewNeedSpecialProcess(ternaryExpression.getSecondExpression())
           || isDeviceViewNeedSpecialProcess(ternaryExpression.getThirdExpression());
-    } else if (predicate instanceof BinaryExpression) {
-      BinaryExpression binaryExpression = (BinaryExpression) predicate;
+    } else if (expression instanceof BinaryExpression) {
+      BinaryExpression binaryExpression = (BinaryExpression) expression;
       return isDeviceViewNeedSpecialProcess(binaryExpression.getLeftExpression())
           || isDeviceViewNeedSpecialProcess(binaryExpression.getRightExpression());
-    } else if (predicate instanceof UnaryExpression) {
-      return isDeviceViewNeedSpecialProcess(((UnaryExpression) predicate).getExpression());
-    } else if (predicate instanceof FunctionExpression) {
-      if (((FunctionExpression) predicate).isBuiltInScalarFunction()
+    } else if (expression instanceof UnaryExpression) {
+      return isDeviceViewNeedSpecialProcess(((UnaryExpression) expression).getExpression());
+    } else if (expression instanceof FunctionExpression) {
+      if (((FunctionExpression) expression).isBuiltInScalarFunction()
           && BuiltinScalarFunction.DEVICE_VIEW_SPECIAL_PROCESS_FUNCTIONS.contains(
-              ((FunctionExpression) predicate).getFunctionName().toLowerCase())) {
+              ((FunctionExpression) expression).getFunctionName().toLowerCase())) {
         return true;
       }
-      for (Expression expression : predicate.getExpressions()) {
-        if (isDeviceViewNeedSpecialProcess(expression)) {
+      for (Expression child : expression.getExpressions()) {
+        if (isDeviceViewNeedSpecialProcess(child)) {
           return true;
         }
       }
       return false;
-    } else if (predicate instanceof LeafOperand) {
+    } else if (expression instanceof LeafOperand) {
       return false;
     } else {
       throw new IllegalArgumentException(
-          "unsupported expression type: " + predicate.getExpressionType());
+          "unsupported expression type: " + expression.getExpressionType());
     }
   }
 }

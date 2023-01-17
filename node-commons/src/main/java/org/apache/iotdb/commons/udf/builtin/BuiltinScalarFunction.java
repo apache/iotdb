@@ -46,6 +46,11 @@ public enum BuiltinScalarFunction {
               .map(BuiltinScalarFunction::getFunctionName)
               .collect(Collectors.toList()));
 
+  /**
+   * We shouldn't apply these functions to each DataRegion for one device, because these functions
+   * need all data to calculate correct result. So we need to collect all data for one device in one
+   * DataRegion, and then apply these functions to only that one DataRegion.
+   */
   public static final Set<String> DEVICE_VIEW_SPECIAL_PROCESS_FUNCTIONS = ImmutableSet.of("diff");
 
   public static Set<String> getNativeFunctionNames() {
