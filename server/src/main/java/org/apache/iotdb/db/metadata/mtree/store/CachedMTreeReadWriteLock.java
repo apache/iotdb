@@ -54,6 +54,7 @@ public class CachedMTreeReadWriteLock {
   private final Lock lock = new ReentrantLock();
   private final Condition okToRead = lock.newCondition();
   private final Condition okToWrite = lock.newCondition();
+  private long stampAllocator = 0;
 
   private Thread exclusiveOwnerThread;
   private final Map<Long, Integer> readCnt = new HashMap<>();
@@ -137,13 +138,15 @@ public class CachedMTreeReadWriteLock {
     return allocateStamp;
   }
 
-  /** Allocate unique stamp based on system current time */
+  /**
+   * Allocate unique stamp based on stampAllocator. Because stamp is non-negative, overflow needs to
+   * be avoided.
+   */
   private long allocateUniqueStamp() {
-    long allocateStamp;
-    do {
-      allocateStamp = System.currentTimeMillis();
-    } while (readCnt.containsKey(allocateStamp));
-    return allocateStamp;
+    if (++stampAllocator < 0) {
+      stampAllocator = 1;
+    }
+    return stampAllocator;
   }
 
   /**
@@ -210,7 +213,7 @@ public class CachedMTreeReadWriteLock {
   }
 
   /** Unlock WriteLock */
-  void unlockWrite() {
+  public void unlockWrite() {
     lock.lock();
     try {
       writeCnt--;
