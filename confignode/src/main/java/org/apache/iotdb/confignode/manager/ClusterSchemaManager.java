@@ -334,8 +334,8 @@ public class ClusterSchemaManager {
           (int)
               Math.ceil(
                   (double) totalCpuCoreNum
-                      / (double) (storageGroupNum * COMMON_CONFIG.getDataReplicationFactor()));
-      if (leastDataRegionGroupNum < COMMON_CONFIG.getLeastDataRegionGroupNum()) {
+                      / (double) (storageGroupNum * CONF.getDataReplicationFactor()));
+      if (leastDataRegionGroupNum < CONF.getLeastDataRegionGroupNum()) {
         // The leastDataRegionGroupNum should be the maximum integer that satisfy:
         // 1 <= leastDataRegionGroupNum <= 5(default)
         CONF.setLeastDataRegionGroupNum(leastDataRegionGroupNum);
