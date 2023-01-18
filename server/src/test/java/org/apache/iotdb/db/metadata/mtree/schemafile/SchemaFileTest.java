@@ -671,7 +671,7 @@ public class SchemaFileTest {
     sf.writeMNode(ent2);
 
     Assert.assertEquals(
-        getSegAddr(sf, getSegAddrInContainer(ent2), "e2m0") + 1,
+        getSegAddr(sf, getSegAddrInContainer(ent2), "e2m0") + 65536,
         getSegAddr(sf, getSegAddrInContainer(ent3), "e3m0"));
     Assert.assertEquals(
         getSegAddr(sf, getSegAddrInContainer(ent2), "e2m0") + 2,
