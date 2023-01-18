@@ -40,7 +40,7 @@ import static org.junit.Assert.assertTrue;
 
 public class MessageDigestEncryptTest {
   private static final String providerClass =
-      "org.apache.iotdb.db.security.encrypt.MessageDigestEncrypt";
+      "org.apache.iotdb.commons.security.encrypt.MessageDigestEncrypt";
 
   private File testFolder;
   private LocalFileUserManager manager;

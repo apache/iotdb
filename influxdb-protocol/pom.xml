@@ -82,6 +82,8 @@
                     <systemProperties>
                         <IOTDB_CONF>src/test/resources</IOTDB_CONF>
                     </systemProperties>
+                    <reuseForks>false</reuseForks>
+                    <runOrder>random</runOrder>
                 </configuration>
             </plugin>
             <plugin>
@@ -100,6 +102,8 @@
                 <configuration>
                     <skipTests>${influxdb.test.skip}</skipTests>
                     <skipITs>${influxdb.it.skip}</skipITs>
+                    <reuseForks>false</reuseForks>
+                    <runOrder>random</runOrder>
                 </configuration>
             </plugin>
         </plugins>
