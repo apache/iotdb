@@ -90,6 +90,8 @@ public class CommonConfig {
   private int leastSchemaRegionGroupNum = 1;
   // The least number of DataRegionGroup for each Database
   private int leastDataRegionGroupNum = 5;
+  // Indicate whether user has set the leastDataRegionGroupNum, if true, lock it
+  private boolean leastDataRegionGroupNumSetByUser = false;
 
   // DataPartition within the same SeriesPartitionSlot will inherit the allocation result of the
   // previous TimePartitionSlot if set true
@@ -786,6 +788,14 @@ public class CommonConfig {
 
   public void setLeastDataRegionGroupNum(int leastDataRegionGroupNum) {
     this.leastDataRegionGroupNum = leastDataRegionGroupNum;
+  }
+
+  public boolean isLeastDataRegionGroupNumSetByUser() {
+    return leastDataRegionGroupNumSetByUser;
+  }
+
+  public void setLeastDataRegionGroupNumSetByUser(boolean leastDataRegionGroupNumSetByUser) {
+    this.leastDataRegionGroupNumSetByUser = leastDataRegionGroupNumSetByUser;
   }
 
   public boolean isEnableDataPartitionInheritPolicy() {

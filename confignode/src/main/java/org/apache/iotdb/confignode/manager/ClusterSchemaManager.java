@@ -330,18 +330,20 @@ public class ClusterSchemaManager {
     // Adjust least_data_region_group_num
     // TODO: The least_data_region_group_num should be maintained separately by different
     // TODO: StorageGroup
-    int leastDataRegionGroupNum =
-        (int)
-            Math.ceil(
-                (double) totalCpuCoreNum
-                    / (double) (storageGroupNum * COMMON_CONFIG.getDataReplicationFactor()));
-    if (leastDataRegionGroupNum < COMMON_CONFIG.getLeastDataRegionGroupNum()) {
-      // The leastDataRegionGroupNum should be the maximum integer that satisfy:
-      // 1 <= leastDataRegionGroupNum <= 5(default)
-      COMMON_CONFIG.setLeastDataRegionGroupNum(leastDataRegionGroupNum);
-      LOGGER.info(
-          "[AdjustRegionGroupNum] The least number of DataRegionGroups per Database is adjusted to: {}",
-          leastDataRegionGroupNum);
+    if (!COMMON_CONFIG.isLeastDataRegionGroupNumSetByUser()) {
+      int leastDataRegionGroupNum =
+          (int)
+              Math.ceil(
+                  (double) totalCpuCoreNum
+                      / (double) (storageGroupNum * COMMON_CONFIG.getDataReplicationFactor()));
+      if (leastDataRegionGroupNum < COMMON_CONFIG.getLeastDataRegionGroupNum()) {
+        // The leastDataRegionGroupNum should be the maximum integer that satisfy:
+        // 1 <= leastDataRegionGroupNum <= 5(default)
+        COMMON_CONFIG.setLeastDataRegionGroupNum(leastDataRegionGroupNum);
+        LOGGER.info(
+            "[AdjustRegionGroupNum] The least number of DataRegionGroups per Database is adjusted to: {}",
+            leastDataRegionGroupNum);
+      }
     }
 
     AdjustMaxRegionGroupNumPlan adjustMaxRegionGroupNumPlan = new AdjustMaxRegionGroupNumPlan();

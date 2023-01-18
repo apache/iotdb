@@ -301,10 +301,14 @@ public class CommonDescriptor {
                 "data_region_group_per_database",
                 String.valueOf(CONF.getDataRegionGroupPerDatabase()).trim())));
 
-    CONF.setLeastDataRegionGroupNum(
-        Integer.parseInt(
-            properties.getProperty(
-                "least_data_region_group_num", String.valueOf(CONF.getLeastDataRegionGroupNum()))));
+    if (properties.getProperty("least_data_region_group_num") != null) {
+      CONF.setLeastDataRegionGroupNum(
+          Integer.parseInt(
+              properties.getProperty(
+                  "least_data_region_group_num",
+                  String.valueOf(CONF.getLeastDataRegionGroupNum()))));
+      CONF.setLeastDataRegionGroupNumSetByUser(true);
+    }
 
     CONF.setEnableDataPartitionInheritPolicy(
         Boolean.parseBoolean(
