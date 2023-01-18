@@ -230,6 +230,8 @@
                 <artifactId>maven-surefire-plugin</artifactId>
                 <configuration>
                     <skipTests>${commons.ut.skip}</skipTests>
+                    <reuseForks>false</reuseForks>
+                    <runOrder>random</runOrder>
                 </configuration>
             </plugin>
             <plugin>
@@ -248,6 +250,8 @@
                 <configuration>
                     <skipTests>${commons.test.skip}</skipTests>
                     <skipITs>${commons.it.skip}</skipITs>
+                    <reuseForks>false</reuseForks>
+                    <runOrder>random</runOrder>
                 </configuration>
             </plugin>
         </plugins>

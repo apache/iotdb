@@ -16,25 +16,23 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.confignode.manager;
 
-package org.apache.iotdb.commons.service.metric.enums;
+import org.junit.Assert;
+import org.junit.Test;
 
-public enum Operation {
-  EXECUTE_JDBC_BATCH("EXECUTE_JDBC_BATCH"),
-  EXECUTE_ONE_SQL_IN_BATCH("EXECUTE_ONE_SQL_IN_BATCH"),
-  EXECUTE_ROWS_PLAN_IN_BATCH("EXECUTE_ROWS_PLAN_IN_BATCH"),
-  EXECUTE_MULTI_TIMESERIES_PLAN_IN_BATCH("EXECUTE_MULTI_TIMESERIES_PLAN_IN_BATCH"),
-  EXECUTE_RPC_BATCH_INSERT("EXECUTE_RPC_BATCH_INSERT"),
-  EXECUTE_QUERY("EXECUTE_QUERY"),
-  EXECUTE_SELECT_INTO("EXECUTE_SELECT_INTO");
+public class ClusterSchemaManagerTest {
 
-  public String getName() {
-    return name;
-  }
+  @Test
+  public void testCalcMaxRegionGroupNum() {
 
-  String name;
+    // The maxRegionGroupNum should be great or equal to the leastRegionGroupNum
+    Assert.assertEquals(100, ClusterSchemaManager.calcMaxRegionGroupNum(100, 1.0, 3, 1, 3, 0));
 
-  Operation(String name) {
-    this.name = name;
+    // The maxRegionGroupNum should be great or equal to the allocatedRegionGroupCount
+    Assert.assertEquals(100, ClusterSchemaManager.calcMaxRegionGroupNum(3, 1.0, 6, 2, 3, 100));
+
+    // (resourceWeight * resource) / (createdStorageGroupNum * replicationFactor)
+    Assert.assertEquals(20, ClusterSchemaManager.calcMaxRegionGroupNum(3, 1.0, 120, 2, 3, 5));
   }
 }
