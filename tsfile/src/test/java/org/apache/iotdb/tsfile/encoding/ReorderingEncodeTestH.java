@@ -11,12 +11,12 @@ import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Objects;
 
-public class ReorderingEncodeDeltaTTTest {
+import static org.codehaus.groovy.runtime.DefaultGroovyMethods.sort;
+
+public class ReorderingEncodeTestH {
 
   static int DeviationOutlierThreshold = 8;
   static int OutlierThreshold = 0;
-  static int tt_count = 0;
-  static int sum_count = 0;
   public static int zigzag(int num){
     if(num<0){
       return 2*(-num)-1;
@@ -139,174 +139,112 @@ public class ReorderingEncodeDeltaTTTest {
     }
   }
 
-//  public static void splitTimeStamp(ArrayList<ArrayList<Integer>> ts_block, int block_size, int td,
-//                                    ArrayList<Integer> deviation_list,ArrayList<Integer> result){
-//    int deviation_max = Integer.MIN_VALUE;
-//    int max_bit_width_deviation;
-//    int r0;
-//    int d0;
-//
-//    // split timestamp into intervals and deviations
-//
-//    //address other timestamps and values
-//    for(int j=block_size-1;j>0;j--) {
-//      int delta_interval = (ts_block.get(j).get(0) - ts_block.get(j-1).get(0))/td;
-//      ArrayList<Integer> tmp = ts_block.get(j);
-//      tmp.add(delta_interval);
-//      ts_block.set(j,tmp);
-//    }
-//
-//
-//    // address timestamp0
-//    r0 = ts_block.get(0).get(0) /td;
-//    d0 = ts_block.get(0).get(0) %td;
-//    if(d0 >= (td/2)){
-//      d0 -= td;
-//      r0 ++;
-//    }
-//    d0 = zigzag(d0);
-////    deviation_list.add(d0);
-//    if(d0 > deviation_max){
-//      deviation_max = d0;
-//    }
-//    ArrayList<Integer> tmp0 = ts_block.get(0);
-//    tmp0.add(0);
-////    System.out.println(tmp0);
-//    ts_block.set(0,tmp0);
-//
-//    for(int j=1;j<block_size;j++){
-//      int interval = ts_block.get(j).get(2) + ts_block.get(j-1).get(2);
-//      ArrayList<Integer> tmp;
-//      tmp = ts_block.get(j);
-//      tmp.set(2,interval);
-//      ts_block.set(j,tmp);
-//    }
-////    System.out.println(ts_block);
-//    quickSort2(ts_block,0,block_size-1);
-//
-//    for(int j=block_size-1;j>0;j--){
-//      int interval = ts_block.get(j).get(2);
-//      int value = ts_block.get(j).get(1);
-//
-//      int delta_interval = ts_block.get(j).get(2) - ts_block.get(j-1).get(2);
-//      int deviation = (ts_block.get(j).get(0) - ts_block.get(j-1).get(0))-delta_interval*td;
-//      deviation = zigzag(deviation);
-//      deviation_list.add(deviation);
-//      if(deviation > deviation_max){
-//        deviation_max = deviation;
-//      }
-//
-//      ArrayList<Integer> tmp = new ArrayList<>();
-//      tmp.add(interval);
-//      tmp.add(value);
-//      ts_block.set(j,tmp);
-//    }
-//    tmp0 = new ArrayList<>();
-//    tmp0.add(ts_block.get(0).get(2));
-//    tmp0.add(ts_block.get(0).get(1));
-//    ts_block.set(0,tmp0);
-//
-//
-//    max_bit_width_deviation = getBitWith(deviation_max);
-//    result.add(max_bit_width_deviation);
-//    result.add(r0);
-//    result.add(d0);
-//  }
+  public static void quickSort22(ArrayList<ArrayList<Integer>> ts_block, int low, int high) {
+    if(low>=high)
+      return;
+    ArrayList<Integer> pivot = ts_block.get(low);
+    int l = low;
+    int r = high;
+    ArrayList<Integer> temp;
+    while(l<r){
+      while (l < r && (ts_block.get(r).get(0) > pivot.get(0)||
+              (Objects.equals(ts_block.get(r).get(0), pivot.get(0)) &&ts_block.get(r).get(1) >= pivot.get(1)))) {
+        r--;
+      }
+      while (l < r && ts_block.get(l).get(0) < pivot.get(0)||
+              (Objects.equals(ts_block.get(l).get(0), pivot.get(0)) &&ts_block.get(l).get(1) < pivot.get(1))) {
+        l++;
+//        System.out.println(l);
+      }
+      if (l < r) {
+        temp = ts_block.get(l);
+        ts_block.set(l, ts_block.get(r));
+        ts_block.set(r, temp);
+      }
+    }
+    ts_block.set(low, ts_block.get(l));
+    ts_block.set(l, pivot);
+    if (low < l) {
+      quickSort22(ts_block, low, l - 1);
+    }
+    if (r < high) {
+      quickSort22(ts_block,r + 1, high);
+    }
+  }
+
   public static void splitTimeStamp(ArrayList<ArrayList<Integer>> ts_block, int block_size, int td,
-                                  ArrayList<Integer> deviation_list,ArrayList<Integer> result){
-  int deviation_max = Integer.MIN_VALUE;
-  int delta_t_max = Integer.MIN_VALUE;
-  int delta_t_min = Integer.MAX_VALUE;
-  int delta_interval_max = Integer.MIN_VALUE;
-  int delta_interval_min = Integer.MAX_VALUE;
-  int max_bit_width_deviation=0;
+                                    ArrayList<Integer> deviation_list,ArrayList<Integer> result){
+    int deviation_max = Integer.MIN_VALUE;
+    int max_bit_width_deviation;
+    int r0;
+    int d0;
 
-  int r0 = 0;
-  int d0 = 0;
-  ArrayList<ArrayList<Integer>> ts_block_raw = (ArrayList<ArrayList<Integer>>) ts_block.clone();
-  // split timestamp into intervals and deviations
+    // split timestamp into intervals and deviations
+
+    //address other timestamps and values
+    for(int j=block_size-1;j>0;j--) {
+      int delta_interval = (ts_block.get(j).get(0) - ts_block.get(j-1).get(0))/td;
+      ArrayList<Integer> tmp = ts_block.get(j);
+      tmp.add(delta_interval);
+      ts_block.set(j,tmp);
+    }
+
+
+    // address timestamp0
+    r0 = ts_block.get(0).get(0) /td;
+    d0 = ts_block.get(0).get(0) %td;
+    if(d0 >= (td/2)){
+      d0 -= td;
+      r0 ++;
+    }
+    d0 = zigzag(d0);
+//    deviation_list.add(d0);
+    if(d0 > deviation_max){
+      deviation_max = d0;
+    }
+    ArrayList<Integer> tmp0 = ts_block.get(0);
+    tmp0.add(0);
+//    System.out.println(tmp0);
+    ts_block.set(0,tmp0);
+
+    for(int j=1;j<block_size;j++){
+      int interval = ts_block.get(j).get(2) + ts_block.get(j-1).get(2);
+      ArrayList<Integer> tmp;
+      tmp = ts_block.get(j);
+      tmp.set(2,interval);
+      ts_block.set(j,tmp);
+    }
 //    System.out.println(ts_block);
-  //address other timestamps and values
+    quickSort2(ts_block,0,block_size-1);
 
-  for(int j=block_size-1;j>0;j--) {
-    int delta_t = ts_block.get(j).get(0) - ts_block.get(j-1).get(0);
-    if(delta_t>delta_t_max){
-      delta_t_max = delta_t;
+    for(int j=block_size-1;j>0;j--){
+      int interval = ts_block.get(j).get(2);
+      int value = ts_block.get(j).get(1);
+
+      int delta_interval = ts_block.get(j).get(2) - ts_block.get(j-1).get(2);
+      int deviation = (ts_block.get(j).get(0) - ts_block.get(j-1).get(0))-delta_interval*td;
+      deviation = zigzag(deviation);
+      deviation_list.add(deviation);
+      if(deviation > deviation_max){
+        deviation_max = deviation;
+      }
+
+      ArrayList<Integer> tmp = new ArrayList<>();
+      tmp.add(interval);
+      tmp.add(value);
+      ts_block.set(j,tmp);
     }
-    if(delta_t <delta_t_min){
-      delta_t_min = delta_t;
-    }
-    int delta_interval = delta_t/td;
-    if(delta_interval >delta_interval_max){
-      delta_interval_max = delta_interval;
-    }
-    if(delta_interval < delta_interval_min){
-      delta_interval_min = delta_interval;
-    }
+    tmp0 = new ArrayList<>();
+    tmp0.add(ts_block.get(0).get(2));
+    tmp0.add(ts_block.get(0).get(1));
+    ts_block.set(0,tmp0);
 
-    int deviation = (ts_block.get(j).get(0) - ts_block.get(j-1).get(0))%td;
-    if(deviation >= (td/2)){
-      deviation -= td;
-      delta_interval ++;
-    }
-    deviation = zigzag(deviation);
-    deviation_list.add(deviation);
-    if(deviation > deviation_max){
-      deviation_max = deviation;
-    }
 
-    int value = ts_block.get(j).get(1);
-    ArrayList<Integer> tmp = new ArrayList<>();
-    tmp.add(delta_interval);
-    tmp.add(value);
-    ts_block.set(j,tmp);
-  }
-
-  // address timestamp0
-  r0 = ts_block.get(0).get(0) /td;
-  d0 = ts_block.get(0).get(0) %td;
-  if(d0 >= (td/2)){
-    d0 -= td;
-    r0 ++;
-  }
-  d0 = zigzag(d0);
-  if(d0 > deviation_max){
-    deviation_max = d0;
-  }
-
-  int value0 = ts_block.get(0).get(1);
-  ArrayList<Integer> tmp0 = new ArrayList<>();
-  tmp0.add(0);
-  tmp0.add(value0);
-  ts_block.set(0,tmp0);
-
-  for(int j=1;j<block_size-1;j++){
-    int interval = ts_block.get(j).get(0) + ts_block.get(j-1).get(0);
-    int value = ts_block.get(j).get(1);
-    ArrayList<Integer> tmp = new ArrayList<>();
-    tmp.add(interval);
-    tmp.add(value);
-    ts_block.set(j,tmp);
-  }
-  max_bit_width_deviation = getBitWith(deviation_max);
-
-  int max_bit_timestamp = getBitWith(delta_t_max-delta_t_min);
-  int max_bit_interval = getBitWith(delta_interval_max-delta_interval_min);
-  if(max_bit_width_deviation+max_bit_interval+1<max_bit_timestamp){
+    max_bit_width_deviation = getBitWith(deviation_max);
     result.add(max_bit_width_deviation);
     result.add(r0);
     result.add(d0);
-    tt_count ++;
-  }else {
-    result.add(0);
-    result.add(0);
-    result.add(0);
-    ts_block = (ArrayList<ArrayList<Integer>>) ts_block_raw.clone();
-//    System.out.println(ts_block);
   }
-  sum_count ++;
-}
-
   public static ArrayList<ArrayList<Integer>> getEncodeBitsDelta(ArrayList<ArrayList<Integer>> ts_block, int block_size,
                                                       ArrayList<Integer> result, ArrayList<Integer> i_star){
     int timestamp_delta_min = Integer.MAX_VALUE;
@@ -361,6 +299,7 @@ public class ReorderingEncodeDeltaTTTest {
     //System.out.println(max_bit_width_interval);
 //    System.out.println(max_value);
 //    System.out.println(max_bit_width_value);
+
     // calculate error
     int  length = (max_bit_width_interval+max_bit_width_value)*(block_size-1);
     result.clear();
@@ -436,17 +375,17 @@ public class ReorderingEncodeDeltaTTTest {
     }
     return i_star;
   }
-  public static ArrayList<Byte> encode2Bytes(ArrayList<ArrayList<Integer>> ts_block,ArrayList<Integer> deviation_list,ArrayList<Integer> raw_length){
+  public static ArrayList<Byte> encode2Bytes(ArrayList<ArrayList<Integer>> ts_block,ArrayList<Integer> raw_length){
     ArrayList<Byte> encoded_result = new ArrayList<>();
 //    // encode block size (Integer)
 //    byte[] block_size_byte = int2Bytes(ts_block.size());
 //    for (byte b : block_size_byte) encoded_result.add(b);
 
-    // encode r0 and d0 of a block (Integer)
-    byte[] r0_byte = int2Bytes(raw_length.get(6));
-    for (byte b : r0_byte) encoded_result.add(b);
-    byte[] d0_byte = int2Bytes(raw_length.get(7));
-    for (byte b : d0_byte) encoded_result.add(b);
+//    // encode r0 and d0 of a block (Integer)
+//    byte[] r0_byte = int2Bytes(raw_length.get(6));
+//    for (byte b : r0_byte) encoded_result.add(b);
+//    byte[] d0_byte = int2Bytes(raw_length.get(7));
+//    for (byte b : d0_byte) encoded_result.add(b);
 
     // encode min_delta_interval and min_delta_value
     byte[] min_delta_interval_byte = int2Bytes(raw_length.get(3));
@@ -454,43 +393,45 @@ public class ReorderingEncodeDeltaTTTest {
     byte[] min_delta_value_byte = int2Bytes(raw_length.get(4));
     for (byte b : min_delta_value_byte) encoded_result.add(b);
 
-    // encode interval0 and value0
+    // encode timestamp0 and value0
     byte[] interval0_byte = int2Bytes(ts_block.get(0).get(0));
     for (byte b : interval0_byte) encoded_result.add(b);
     byte[] value0_byte = int2Bytes(ts_block.get(0).get(1));
     for (byte b : value0_byte) encoded_result.add(b);
 
-//    System.out.println(ts_block);
-    // encode interval
+    // encode timestamp
     byte[] max_bit_width_interval_byte = int2Bytes(raw_length.get(1));
+//    System.out.println(raw_length.get(1));
     for (byte b : max_bit_width_interval_byte) encoded_result.add(b);
     byte[] timestamp_bytes = bitPacking(ts_block,0,raw_length.get(1));
     for (byte b : timestamp_bytes) encoded_result.add(b);
 
     // encode value
     byte[] max_bit_width_value_byte = int2Bytes(raw_length.get(2));
+//    System.out.println(raw_length.get(2));
     for (byte b : max_bit_width_value_byte) encoded_result.add(b);
     byte[] value_bytes = bitPacking(ts_block,1,raw_length.get(2));
     for (byte b : value_bytes) encoded_result.add(b);
 
-    // encode deviation
-    byte[] max_bit_width_deviation_byte = int2Bytes(raw_length.get(5));
-    for (byte b: max_bit_width_deviation_byte) encoded_result.add(b);
-    byte[] deviation_list_bytes = bitPacking(deviation_list,raw_length.get(5));
-    for (byte b: deviation_list_bytes) encoded_result.add(b);
+//    // encode deviation
+//    byte[] max_bit_width_deviation_byte = int2Bytes(raw_length.get(5));
+//    for (byte b: max_bit_width_deviation_byte) encoded_result.add(b);
+//    byte[] deviation_list_bytes = bitPacking(deviation_list,raw_length.get(5));
+//    for (byte b: deviation_list_bytes) encoded_result.add(b);
 
     return encoded_result;
   }
-  public static ArrayList<Byte> ReorderingDeltaEncoder(ArrayList<ArrayList<Integer>> data,int block_size, int td){
+  public static ArrayList<Byte> ReorderingDeltaEncoder(ArrayList<ArrayList<Integer>> data,int block_size){
     block_size ++;
     int length_all = data.size();
     int block_num = length_all/block_size;
     ArrayList<Byte> encoded_result=new ArrayList<Byte>();
     byte[] block_size_byte = int2Bytes(block_size);
     for (byte b : block_size_byte) encoded_result.add(b);
+
     int count_raw = 0;
     int count_reorder = 0;
-//    System.out.println(block_num);
+
 //    for(int i=0;i<1;i++){
     for(int i=0;i<block_num;i++){
       ArrayList<ArrayList<Integer>> ts_block = new ArrayList<>();
@@ -499,18 +440,10 @@ public class ReorderingEncodeDeltaTTTest {
         ts_block.add(data.get(j+i*block_size));
         ts_block_reorder.add(data.get(j+i*block_size));
       }
-//      System.out.println(ts_block);
-      ArrayList<Integer> deviation_list = new ArrayList<>();
+
+//      ArrayList<Integer> deviation_list = new ArrayList<>();
       ArrayList<Integer> result = new ArrayList<>();
-//      quickSort(ts_block,0,0,block_size-1);
-//      if(td>=16)
-      splitTimeStamp(ts_block,block_size,td,deviation_list,result);
-      System.out.println(ts_block);
-//      else {
-//        result.add(0);
-//        result.add(0);
-//        result.add(0);
-//      }
+//      splitTimeStamp(ts_block,block_size,td,deviation_list,result);
       quickSort(ts_block,0,0,block_size-1);
 
       //ts_block order by interval
@@ -518,15 +451,16 @@ public class ReorderingEncodeDeltaTTTest {
       // time-order
       ArrayList<Integer> raw_length = new ArrayList<>(); // length,max_bit_width_interval,max_bit_width_value,max_bit_width_deviation
       ArrayList<Integer> i_star_ready = new ArrayList<>();
+
       ArrayList<ArrayList<Integer>> ts_block_delta = getEncodeBitsDelta( ts_block,  block_size, raw_length,i_star_ready);
-//      System.out.println(raw_length);
+
 
       // value-order
       quickSort(ts_block,1,0,block_size-1);
       ArrayList<Integer> reorder_length = new ArrayList<>();
       ArrayList<Integer> i_star_ready_reorder = new ArrayList<>();
       ArrayList<ArrayList<Integer>> ts_block_delta_reorder = getEncodeBitsDelta( ts_block,  block_size, reorder_length,i_star_ready_reorder);
-//      System.out.println(reorder_length);
+
 
       if(raw_length.get(0)<=reorder_length.get(0)){
         quickSort(ts_block,0,0,block_size-1);
@@ -562,11 +496,10 @@ public class ReorderingEncodeDeltaTTTest {
 
         ts_block_delta = getEncodeBitsDelta( ts_block,  block_size,raw_length,
                 i_star_ready_reorder);
-//        System.out.println(raw_length);
-        raw_length.add(result.get(0)); // max_bit_width_deviation
-        raw_length.add(result.get(1)); // r0
-        raw_length.add(result.get(2)); // d0
-        ArrayList<Byte> cur_encoded_result = encode2Bytes(ts_block_delta,deviation_list,raw_length);
+//        raw_length.add(result.get(0)); // max_bit_width_deviation
+//        raw_length.add(result.get(1)); // r0
+//        raw_length.add(result.get(2)); // d0
+        ArrayList<Byte> cur_encoded_result = encode2Bytes(ts_block_delta,raw_length);
         encoded_result.addAll(cur_encoded_result);
         count_raw ++;
       }
@@ -604,11 +537,10 @@ public class ReorderingEncodeDeltaTTTest {
 
         ts_block_delta_reorder = getEncodeBitsDelta( ts_block,  block_size,reorder_length,
                 i_star_ready_reorder);
-//        System.out.println(reorder_length);
-        reorder_length.add(result.get(0)); // max_bit_width_deviation
-        reorder_length.add(result.get(1)); // r0
-        reorder_length.add(result.get(2)); // d0
-        ArrayList<Byte> cur_encoded_result = encode2Bytes(ts_block_delta_reorder,deviation_list,reorder_length);
+        //reorder_length.add(result.get(0)); // max_bit_width_deviation
+        //reorder_length.add(result.get(1)); // r0
+        //reorder_length.add(result.get(2)); // d0
+        ArrayList<Byte> cur_encoded_result = encode2Bytes(ts_block_delta_reorder,reorder_length);
         encoded_result.addAll(cur_encoded_result);
         count_reorder ++;
       }
@@ -616,39 +548,6 @@ public class ReorderingEncodeDeltaTTTest {
 //    System.out.println(count_raw);
 //    System.out.println(count_reorder);
     return encoded_result;
-  }
-
-  public static void quickSort22(ArrayList<ArrayList<Integer>> ts_block, int low, int high) {
-    if(low>=high)
-      return;
-    ArrayList<Integer> pivot = ts_block.get(low);
-    int l = low;
-    int r = high;
-    ArrayList<Integer> temp;
-    while(l<r){
-      while (l < r && (ts_block.get(r).get(0) > pivot.get(0)||
-              (Objects.equals(ts_block.get(r).get(0), pivot.get(0)) &&ts_block.get(r).get(1) >= pivot.get(1)))) {
-        r--;
-      }
-      while (l < r && ts_block.get(l).get(0) < pivot.get(0)||
-              (Objects.equals(ts_block.get(l).get(0), pivot.get(0)) &&ts_block.get(l).get(1) < pivot.get(1))) {
-        l++;
-//        System.out.println(l);
-      }
-      if (l < r) {
-        temp = ts_block.get(l);
-        ts_block.set(l, ts_block.get(r));
-        ts_block.set(r, temp);
-      }
-    }
-    ts_block.set(low, ts_block.get(l));
-    ts_block.set(l, pivot);
-    if (low < l) {
-      quickSort22(ts_block, low, l - 1);
-    }
-    if (r < high) {
-      quickSort22(ts_block,r + 1, high);
-    }
   }
 
   public static int bytes2Integer(ArrayList<Byte> encoded, int start, int num) {
@@ -672,47 +571,30 @@ public class ReorderingEncodeDeltaTTTest {
     decode_pos += 4;
 
     while(decode_pos < encoded.size()) {
-      ArrayList<Integer> interval_list = new ArrayList<>();
+      ArrayList<Integer> time_list = new ArrayList<>();
       ArrayList<Integer> value_list = new ArrayList<>();
-      ArrayList<Integer> deviation_list = new ArrayList<>();
 
       ArrayList<ArrayList<Integer>> ts_block = new ArrayList<>();
-
-      int r0 = bytes2Integer(encoded, decode_pos, 4);
-      decode_pos += 4;
-      int d0 = bytes2Integer(encoded, decode_pos, 4);
-      decode_pos += 4;
-
-      if (d0 % 2 == 0) {
-        d0 = d0 / 2;
-      } else {
-        d0 = -(d0 + 1) / 2;
-      }
 
       int min_delta_interval = bytes2Integer(encoded, decode_pos, 4);
       decode_pos += 4;
       int min_delta_value = bytes2Integer(encoded, decode_pos, 4);
       decode_pos += 4;
 
-      int interval0 = bytes2Integer(encoded, decode_pos, 4);
+      int time0 = bytes2Integer(encoded, decode_pos, 4);
       decode_pos += 4;
       int value0 = bytes2Integer(encoded, decode_pos, 4);
       decode_pos += 4;
 
-      int max_bit_width_interval = bytes2Integer(encoded, decode_pos, 4);
+      int max_bit_width_time = bytes2Integer(encoded, decode_pos, 4);
       decode_pos += 4;
-      interval_list = decodebitPacking(encoded,decode_pos,max_bit_width_interval,min_delta_interval,block_size);
-      decode_pos += max_bit_width_interval * (block_size - 1) / 8;
+      time_list = decodebitPacking(encoded,decode_pos,max_bit_width_time,min_delta_interval,block_size);
+      decode_pos += max_bit_width_time * (block_size - 1) / 8;
 
       int max_bit_width_value = bytes2Integer(encoded, decode_pos, 4);
       decode_pos += 4;
       value_list = decodebitPacking(encoded,decode_pos,max_bit_width_value,min_delta_value,block_size);
       decode_pos += max_bit_width_value * (block_size - 1) / 8;
-
-      int max_bit_width_deviation = bytes2Integer(encoded, decode_pos, 4);
-      decode_pos += 4;
-      deviation_list = decodebitPacking(encoded,decode_pos,max_bit_width_deviation,0,block_size);
-      decode_pos += max_bit_width_deviation * (block_size - 1) / 8;
 
 //      for (int i = 0; i < block_size-1; i++) {
 //        ArrayList<Integer> ts_block_tmp = new ArrayList<>();
@@ -727,53 +609,52 @@ public class ReorderingEncodeDeltaTTTest {
 //      tmp_data.add(value0);
 //      data.add(tmp_data);
 
-      int ri_pre = interval0;
+      int ti_pre = time0;
       int vi_pre = value0;
       ArrayList<Integer> ts_block_tmp0 = new ArrayList<>();
-      ts_block_tmp0.add(interval0);
+      ts_block_tmp0.add(time0);
       ts_block_tmp0.add(value0);
       ts_block.add(ts_block_tmp0);
       for (int i = 0; i < block_size-1; i++) {
-        int ri = ri_pre + interval_list.get(i);
-        interval_list.set(i,ri);
-        ri_pre = ri;
+        int ri = ti_pre + time_list.get(i);
+        time_list.set(i,ri);
+        ti_pre = ri;
 
         int vi = vi_pre + value_list.get(i);
         value_list.set(i,vi);
         vi_pre = vi;
 
-        int dev; //zigzag
-        if (deviation_list.get(block_size-1 - i - 1) % 2 == 0) {
-          dev = deviation_list.get(block_size-1 - i - 1) / 2;
-        } else {
-          dev = -(deviation_list.get(block_size-1 - i - 1) + 1) / 2;
-        }
-        deviation_list.set(block_size-1 - i - 1,dev);
-
         ArrayList<Integer> ts_block_tmp = new ArrayList<>();
-        ts_block_tmp.add(interval_list.get(i));
+        ts_block_tmp.add(time_list.get(i));
         ts_block_tmp.add(value_list.get(i));
         ts_block.add(ts_block_tmp);
-      }
-
-      //quickSort(ts_block, 0, 0, block_size-1);
-      quickSort22(ts_block, 0, block_size-1);
-
-      ArrayList<Integer> tmp_data0 = new ArrayList<>();
-      tmp_data0.add(ts_block.get(0).get(0) * td + d0 + r0 * td);
-      tmp_data0.add(ts_block.get(0).get(1));
-      ts_block.set(0,tmp_data0);
-
-      for (int i = 1; i < block_size; i++) {
-        ArrayList<Integer> tmp_datai = new ArrayList<>();
-        tmp_datai.add(ts_block.get(i).get(0) * td + deviation_list.get(i-1) + d0 + r0 * td);
-        tmp_datai.add(ts_block.get(i).get(1));
-        ts_block.set(i,tmp_datai);
       }
 
       quickSort(ts_block, 0, 0, block_size-1);
       data.addAll(ts_block);
 
+//      for(int i=0;i<block_size-1;i++){
+//        for(int j=0;j<block_size-1 -i -1;j++){
+//          if(interval_list.get(j)>interval_list.get(j+1)){
+//            int tmp_1 = interval_list.get(j);
+//            interval_list.set(j,interval_list.get(j+1));
+//            interval_list.set(j,tmp_1);
+//            int tmp_2 = value_list.get(j);
+//            value_list.set(j,value_list.get(j+1));
+//            value_list.set(j,tmp_2);
+//          }
+//        }
+//      }
+
+      //quickSort(ts_block, 0, 0, block_size-1);
+      //quickSort22(ts_block, 0, block_size-1);
+
+//      for (int i = 0; i < block_size; i++) {
+//        ArrayList<Integer> tmp_datai = new ArrayList<>();
+//        tmp_datai.add(ts_block.get(i).get(0));
+//        tmp_datai.add(ts_block.get(i).get(1));
+//        ts_block.set(i,tmp_datai);
+//      }
 
 //      ArrayList<Integer> tmp_data0 = new ArrayList<>();
 //      tmp_data0.add(ts_block.get(0).get(0) * td + d0 + r0 * td);
@@ -851,6 +732,7 @@ public class ReorderingEncodeDeltaTTTest {
     ArrayList<String> input_path_list = new ArrayList<>();
     ArrayList<String> output_path_list = new ArrayList<>();
     ArrayList<Integer> dataset_map_td = new ArrayList<>();
+
 //    input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\Metro-Traffic");
 //    output_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation" +
 //            "\\compression_ratio\\rd_ratio\\Metro-Traffic_ratio.csv");
@@ -870,11 +752,11 @@ public class ReorderingEncodeDeltaTTTest {
 //    input_path_list.add( "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\TH-Climate");
 //    output_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation" +
 //            "\\compression_ratio\\rd_ratio\\TH-Climate_ratio.csv");
-//    dataset_map_td.add(3);
+//    dataset_map_td.add(4);
 //    input_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\TY-Transport");
 //    output_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation" +
 //            "\\compression_ratio\\rd_ratio\\TY-Transport_ratio.csv");
-//    dataset_map_td.add(5);
+//    dataset_map_td.add(6);
 //    input_path_list.add( "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test\\TY-Fuel");
 //    output_path_list.add("C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\result_evaluation" +
 //            "\\compression_ratio\\rd_ratio\\TY-Fuel_ratio.csv");
@@ -884,43 +766,43 @@ public class ReorderingEncodeDeltaTTTest {
 //            "\\compression_ratio\\rd_ratio\\GW-Magnetic_ratio.csv");
 //    dataset_map_td.add(100);
 
-    input_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\mycode-encoding-reorder\\reorder\\iotdb_test\\Metro-Traffic");
-    output_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\mycode-encoding-reorder\\reorder\\result_evaluation" +
+    input_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\iotdb_test\\Metro-Traffic");
+    output_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\result_evaluation" +
             "\\compression_ratio\\rd_ratio\\Metro-Traffic_ratio.csv");
     dataset_map_td.add(3600);
-    input_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\mycode-encoding-reorder\\reorder\\iotdb_test\\Nifty-Stocks");
-    output_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\mycode-encoding-reorder\\reorder\\result_evaluation" +
+    input_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\iotdb_test\\Nifty-Stocks");
+    output_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\result_evaluation" +
             "\\compression_ratio\\rd_ratio\\Nifty-Stocks_ratio.csv");
     dataset_map_td.add(86400);
-    input_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\mycode-encoding-reorder\\reorder\\iotdb_test\\USGS-Earthquakes");
-    output_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\mycode-encoding-reorder\\reorder\\result_evaluation" +
+    input_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\iotdb_test\\USGS-Earthquakes");
+    output_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\result_evaluation" +
             "\\compression_ratio\\rd_ratio\\USGS-Earthquakes_ratio.csv");
     dataset_map_td.add(50);
-    input_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\mycode-encoding-reorder\\reorder\\iotdb_test\\Cyber-Vehicle");
-    output_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\mycode-encoding-reorder\\reorder\\result_evaluation" +
+    input_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\iotdb_test\\Cyber-Vehicle");
+    output_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\result_evaluation" +
             "\\compression_ratio\\rd_ratio\\Cyber-Vehicle_ratio.csv");
     dataset_map_td.add(10);
-    input_path_list.add( "E:\\thu\\Lab\\Group\\31编码论文\\mycode-encoding-reorder\\reorder\\iotdb_test\\TH-Climate");
-    output_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\mycode-encoding-reorder\\reorder\\result_evaluation" +
+    input_path_list.add( "E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\iotdb_test\\TH-Climate");
+    output_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\result_evaluation" +
             "\\compression_ratio\\rd_ratio\\TH-Climate_ratio.csv");
     dataset_map_td.add(3);
-    input_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\mycode-encoding-reorder\\reorder\\iotdb_test\\TY-Transport");
-    output_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\mycode-encoding-reorder\\reorder\\result_evaluation" +
+    input_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\iotdb_test\\TY-Transport");
+    output_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\result_evaluation" +
             "\\compression_ratio\\rd_ratio\\TY-Transport_ratio.csv");
     dataset_map_td.add(5);
-    input_path_list.add( "E:\\thu\\Lab\\Group\\31编码论文\\mycode-encoding-reorder\\reorder\\iotdb_test\\TY-Fuel");
-    output_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\mycode-encoding-reorder\\reorder\\result_evaluation" +
+    input_path_list.add( "E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\iotdb_test\\TY-Fuel");
+    output_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\result_evaluation" +
             "\\compression_ratio\\rd_ratio\\TY-Fuel_ratio.csv");
     dataset_map_td.add(60);
 
-
-//    for(int file_i=0;file_i<input_path_list.size();file_i++){
-    for(int file_i=0;file_i<1;file_i++){
+    for(int file_i=0;file_i<input_path_list.size();file_i++){
+    //for(int file_i=0;file_i<1;file_i++){
       String inputPath = input_path_list.get(file_i);
       String Output =output_path_list.get(file_i);
+//      System.out.println(inputPath);
 
-
-//          String Output = "C:\\Users\\xiaoj\\Desktop\\test_ratio.csv";
+      //    String Output =
+      //            "C:\\Users\\xiaoj\\Desktop\\test_ratio.csv"; // the direction of output compression ratio and
 
       // speed
       int repeatTime = 1; // set repeat time
@@ -948,7 +830,6 @@ public class ReorderingEncodeDeltaTTTest {
 
       for (File f : tempList) {
         InputStream inputStream = Files.newInputStream(f.toPath());
-//        System.out.println(f.toPath());
         CsvReader loader = new CsvReader(inputStream, StandardCharsets.UTF_8);
         ArrayList<ArrayList<Integer>> data = new ArrayList<>();
         ArrayList<ArrayList<Integer>> data_decoded = new ArrayList<>();
@@ -969,11 +850,11 @@ public class ReorderingEncodeDeltaTTTest {
         double compressed_size = 0;
         for (int i = 0; i < repeatTime; i++) {
           long s = System.nanoTime();
-          ArrayList<Byte> buffer = ReorderingDeltaEncoder(data, 256, dataset_map_td.get(file_i));
+          ArrayList<Byte> buffer = ReorderingDeltaEncoder(data, 256);
+//          ArrayList<Byte> buffer = ReorderingDeltaEncoder(data, 256, dataset_map_td.get(file_i));
           long e = System.nanoTime();
           encodeTime += (e - s);
           compressed_size += buffer.size();
-//          System.out.println(buffer.size());
           double ratioTmp =
                   (double) buffer.size() / (double) (data.size() * Integer.BYTES*2);
           ratio += ratioTmp;
@@ -981,48 +862,38 @@ public class ReorderingEncodeDeltaTTTest {
 
           data_decoded = ReorderingDeltaDecoder(buffer,dataset_map_td.get(file_i));
 
-          for(int j=0;j<256;j++){
-            if(!data.get(j).get(0).equals(data_decoded.get(j).get(0))){
-              System.out.println("Wrong Time!");
-              System.out.print(j);
-              System.out.print(" ");
-              System.out.print(data.get(j).get(0));
-              System.out.print(" ");
-              System.out.println(data_decoded.get(j).get(0));
-            }
-            else{
-              System.out.println("Correct Time!");
-              System.out.print(j);
-              System.out.print(" ");
-              System.out.print(data.get(j).get(0));
-              System.out.print(" ");
-              System.out.println(data_decoded.get(j).get(0));
-            }
-            if(!data.get(j).get(1).equals(data_decoded.get(j).get(1))){
-              System.out.println("Wrong Value!");
-              System.out.print(j);
-              System.out.print(" ");
-              System.out.print(data.get(j).get(1));
-              System.out.print(" ");
-              System.out.println(data_decoded.get(j).get(1));
-            }
-            else{
-              System.out.println("Correct Value!");
-              System.out.print(j);
-              System.out.print(" ");
-              System.out.print(data.get(j).get(1));
-              System.out.print(" ");
-              System.out.println(data_decoded.get(j).get(1));
-            }
-          }
-
-//
 //          for(int j=0;j<256;j++){
 //            if(!data.get(j).get(0).equals(data_decoded.get(j).get(0))){
-//              System.out.println("Wrong!");
+//              System.out.println("Wrong Time!");
+//              System.out.print(j);
+//              System.out.print(" ");
+//              System.out.print(data.get(j).get(0));
+//              System.out.print(" ");
+//              System.out.println(data_decoded.get(j).get(0));
+//            }
+//            else{
+//              System.out.println("Correct Time!");
+//              System.out.print(j);
+//              System.out.print(" ");
+//              System.out.print(data.get(j).get(0));
+//              System.out.print(" ");
+//              System.out.println(data_decoded.get(j).get(0));
 //            }
 //            if(!data.get(j).get(1).equals(data_decoded.get(j).get(1))){
-//              System.out.println("Wrong!");
+//              System.out.println("Wrong Value!");
+//              System.out.print(j);
+//              System.out.print(" ");
+//              System.out.print(data.get(j).get(1));
+//              System.out.print(" ");
+//              System.out.println(data_decoded.get(j).get(1));
+//            }
+//            else{
+//              System.out.println("Correct Value!");
+//              System.out.print(j);
+//              System.out.print(" ");
+//              System.out.print(data.get(j).get(1));
+//              System.out.print(" ");
+//              System.out.println(data_decoded.get(j).get(1));
 //            }
 //          }
 
@@ -1046,16 +917,10 @@ public class ReorderingEncodeDeltaTTTest {
                 String.valueOf(ratio)
         };
         writer.writeRecord(record);
+        System.out.println(ratio);
       }
       writer.close();
-      //System.out.println(inputPath);
-      //System.out.println(sum_count);
-      //System.out.println(tt_count);
-      sum_count =0;
-      tt_count =0;
+
     }
-
-
   }
-
 }

@@ -44,6 +44,14 @@ public class ReorderingEncodeRRTest {
     bytes[3] = (byte) integer;
     return bytes;
   }
+  public static byte[] float2Bytes(float f){
+    int value = Float.floatToIntBits(f);
+    byte[] bytes= new byte[4];
+    for(int i=0;i<4;i++){
+      bytes[i] = (byte) ((value >>8*i)& 0xff);
+    }
+    return bytes;
+  }
   public static byte[] double2Bytes(double dou){
       long value = Double.doubleToRawLongBits(dou);
       byte[] bytes= new byte[8];
@@ -225,6 +233,18 @@ public class ReorderingEncodeRRTest {
     ArrayList<ArrayList<Integer>> ts_block_delta = new ArrayList<>();
     theta.clear();
 
+//    for(int i=0;i<ts_block.size();i++){
+//      System.out.println(ts_block.get(i).get(0));
+//    }
+
+//    int ti0 = ts_block.get(0).get(0);
+//    for(int i=0;i<ts_block.size();i++){
+//      ArrayList<Integer> tmp = new ArrayList<>();
+//      tmp.add(ts_block.get(i).get(0) - ti0);
+//      tmp.add(ts_block.get(i).get(1));
+//      ts_block.set(i,tmp);
+//    }
+
     long sum_X_r = 0;
     long sum_Y_r = 0;
     long sum_squ_X_r = 0;
@@ -260,6 +280,9 @@ public class ReorderingEncodeRRTest {
       theta0_v = (double) (sum_squ_X_v*sum_Y_v - sum_X_v*sum_squ_XY_v) / (double) (m_reg*sum_squ_X_v - sum_X_v*sum_X_v);
       theta1_v = (double) (m_reg*sum_squ_XY_v - sum_X_v*sum_Y_v) / (double) (m_reg*sum_squ_X_v - sum_X_v*sum_X_v);
     }
+
+    //theta0_r = 0;
+    //theta1_r = 1;
 
 
     ArrayList<Integer> tmp0 = new ArrayList<>();
@@ -626,6 +649,36 @@ public class ReorderingEncodeRRTest {
     return Double.longBitsToDouble(value);
   }
 
+  public static byte[] float2byte2(float f) {
+    int fbit = Float.floatToIntBits(f);
+    byte[] b = new byte[4];
+    for (int i = 0; i < 4; i++) {
+      b[i] = (byte) (fbit >> (24 - i * 8));
+    }
+    int len = b.length;
+    byte[] dest = new byte[len];
+    System.arraycopy(b, 0, dest, 0, len);
+    byte temp;
+    for (int i = 0; i < len / 2; ++i) {
+      temp = dest[i];
+      dest[i] = dest[len - i - 1];
+      dest[len - i - 1] = temp;
+    }
+    return dest;
+  }
+
+  public static float byte2float2(ArrayList<Byte> b, int index) {
+    int l;
+    l = b.get(index);
+    l &= 0xff;
+    l |= ((long) b.get(index + 1) << 8);
+    l &= 0xffff;
+    l |= ((long) b.get(index + 2) << 16);
+    l &= 0xffffff;
+    l |= ((long) b.get(index + 3) << 24);
+    return Float.intBitsToFloat(l);
+  }
+
   public static int bytes2Integer(ArrayList<Byte> encoded, int start, int num) {
     int value = 0;
     if(num > 4){
@@ -864,37 +917,37 @@ public class ReorderingEncodeRRTest {
 //            "\\compression_ratio\\decoding_time_rr\\GW-Magnetic_ratio.csv");
 //    dataset_map_td.add(100);
 
-    input_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\mycode-encoding-reorder\\reorder\\iotdb_test\\Metro-Traffic");
-    output_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\mycode-encoding-reorder\\reorder\\result_evaluation" +
-            "\\compression_ratio\\rd_ratio\\Metro-Traffic_ratio.csv");
+    input_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\iotdb_test\\Metro-Traffic");
+    output_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\result_evaluation" +
+            "\\compression_ratio\\rr_ratio\\Metro-Traffic_ratio.csv");
     dataset_map_td.add(3600);
-    input_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\mycode-encoding-reorder\\reorder\\iotdb_test\\Nifty-Stocks");
-    output_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\mycode-encoding-reorder\\reorder\\result_evaluation" +
-            "\\compression_ratio\\rd_ratio\\Nifty-Stocks_ratio.csv");
+    input_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\iotdb_test\\Nifty-Stocks");
+    output_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\result_evaluation" +
+            "\\compression_ratio\\rr_ratio\\Nifty-Stocks_ratio.csv");
     dataset_map_td.add(86400);
-    input_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\mycode-encoding-reorder\\reorder\\iotdb_test\\USGS-Earthquakes");
-    output_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\mycode-encoding-reorder\\reorder\\result_evaluation" +
-            "\\compression_ratio\\rd_ratio\\USGS-Earthquakes_ratio.csv");
+    input_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\iotdb_test\\USGS-Earthquakes");
+    output_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\result_evaluation" +
+            "\\compression_ratio\\rr_ratio\\USGS-Earthquakes_ratio.csv");
     dataset_map_td.add(50);
-    input_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\mycode-encoding-reorder\\reorder\\iotdb_test\\Cyber-Vehicle");
-    output_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\mycode-encoding-reorder\\reorder\\result_evaluation" +
-            "\\compression_ratio\\rd_ratio\\Cyber-Vehicle_ratio.csv");
+    input_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\iotdb_test\\Cyber-Vehicle");
+    output_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\result_evaluation" +
+            "\\compression_ratio\\rr_ratio\\Cyber-Vehicle_ratio.csv");
     dataset_map_td.add(10);
-    input_path_list.add( "E:\\thu\\Lab\\Group\\31编码论文\\mycode-encoding-reorder\\reorder\\iotdb_test\\TH-Climate");
-    output_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\mycode-encoding-reorder\\reorder\\result_evaluation" +
-            "\\compression_ratio\\rd_ratio\\TH-Climate_ratio.csv");
+    input_path_list.add( "E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\iotdb_test\\TH-Climate");
+    output_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\result_evaluation" +
+            "\\compression_ratio\\rr_ratio\\TH-Climate_ratio.csv");
     dataset_map_td.add(3);
-    input_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\mycode-encoding-reorder\\reorder\\iotdb_test\\TY-Transport");
-    output_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\mycode-encoding-reorder\\reorder\\result_evaluation" +
-            "\\compression_ratio\\rd_ratio\\TY-Transport_ratio.csv");
+    input_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\iotdb_test\\TY-Transport");
+    output_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\result_evaluation" +
+            "\\compression_ratio\\rr_ratio\\TY-Transport_ratio.csv");
     dataset_map_td.add(5);
-    input_path_list.add( "E:\\thu\\Lab\\Group\\31编码论文\\mycode-encoding-reorder\\reorder\\iotdb_test\\TY-Fuel");
-    output_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\mycode-encoding-reorder\\reorder\\result_evaluation" +
-            "\\compression_ratio\\rd_ratio\\TY-Fuel_ratio.csv");
+    input_path_list.add( "E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\iotdb_test\\TY-Fuel");
+    output_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\result_evaluation" +
+            "\\compression_ratio\\rr_ratio\\TY-Fuel_ratio.csv");
     dataset_map_td.add(60);
 
-    for(int file_i=0;file_i<1;file_i++){
-    //for(int file_i=0;file_i<input_path_list.size();file_i++){
+    //for(int file_i=0;file_i<1;file_i++){
+    for(int file_i=0;file_i<input_path_list.size();file_i++){
 
       String inputPath = input_path_list.get(file_i);
       String Output =output_path_list.get(file_i);
@@ -1014,6 +1067,7 @@ public class ReorderingEncodeRRTest {
                 String.valueOf(compressed_size),
                 String.valueOf(ratio)
         };
+        System.out.println(ratio);
         writer.writeRecord(record);
       }
       writer.close();
