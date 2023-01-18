@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.engine.trigger.utils;
 
-import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 
 import org.apache.commons.pool2.impl.GenericObjectPool;
 import org.fusesource.mqtt.client.BlockingConnection;
@@ -51,7 +51,7 @@ public class MQTTConnectionPool extends GenericObjectPool<BlockingConnection> {
   private MQTTConnectionPool(MQTTConnectionFactory factory, int size) {
     super(factory);
     setMaxTotal(
-        Math.min(size, CommonDescriptor.getInstance().getConf().getTriggerForwardMQTTPoolSize()));
+        Math.min(size, IoTDBDescriptor.getInstance().getConfig().getTriggerForwardMQTTPoolSize()));
     setMinIdle(1);
   }
 

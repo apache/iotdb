@@ -18,9 +18,9 @@
  */
 package org.apache.iotdb.db.engine.cache;
 
-import org.apache.iotdb.commons.conf.CommonConfig;
-import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.utils.BloomFilter;
@@ -43,10 +43,10 @@ public class BloomFilterCache {
 
   private static final Logger logger = LoggerFactory.getLogger(BloomFilterCache.class);
   private static final Logger DEBUG_LOGGER = LoggerFactory.getLogger("QUERY_DEBUG");
-  private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConf();
+  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final long MEMORY_THRESHOLD_IN_BLOOM_FILTER_CACHE =
-      COMMON_CONFIG.getAllocateMemoryForBloomFilterCache();
-  private static final boolean CACHE_ENABLE = COMMON_CONFIG.isMetaDataCacheEnable();
+      config.getAllocateMemoryForBloomFilterCache();
+  private static final boolean CACHE_ENABLE = config.isMetaDataCacheEnable();
   private final AtomicLong entryAverageSize = new AtomicLong(0);
 
   private final LoadingCache<BloomFilterCacheKey, BloomFilter> lruCache;

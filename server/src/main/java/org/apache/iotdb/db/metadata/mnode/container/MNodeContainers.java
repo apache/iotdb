@@ -48,7 +48,7 @@ public class MNodeContainers {
 
   public static IMNodeContainer getNewMNodeContainer() {
     if (IoTDBDescriptor.getInstance()
-        .getConf()
+        .getConfig()
         .getSchemaEngineMode()
         .equals(SchemaEngineMode.Schema_File.toString())) {
       return new CachedMNodeContainer();

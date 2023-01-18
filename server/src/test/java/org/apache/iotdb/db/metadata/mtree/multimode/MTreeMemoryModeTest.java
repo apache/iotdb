@@ -25,7 +25,9 @@ import org.apache.iotdb.db.metadata.schemaregion.SchemaEngineMode;
 public class MTreeMemoryModeTest extends MTreeBelowSGTest {
   @Override
   protected void setConfig() {
-    IoTDBDescriptor.getInstance().getConf().setSchemaEngineMode(SchemaEngineMode.Memory.toString());
+    IoTDBDescriptor.getInstance()
+        .getConfig()
+        .setSchemaEngineMode(SchemaEngineMode.Memory.toString());
   }
 
   @Override

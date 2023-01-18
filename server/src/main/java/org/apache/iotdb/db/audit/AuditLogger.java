@@ -55,7 +55,7 @@ public class AuditLogger {
   private static final String ADDRESS = "address";
   private static final String AUDIT_LOG_DEVICE = "root.__system.audit._%s";
   private static final Coordinator COORDINATOR = Coordinator.getInstance();
-  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConf();
+  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final List<AuditLogStorage> auditLogStorageList = config.getAuditLogStorage();
 
   private static final List<AuditLogOperation> auditLogOperationList =

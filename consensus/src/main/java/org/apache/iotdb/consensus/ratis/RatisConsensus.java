@@ -239,7 +239,7 @@ class RatisConsensus implements IConsensus {
     }
 
     // current Peer is group leader and in ReadOnly State
-    if (isLeader(consensusGroupId) && CommonDescriptor.getInstance().getConf().isReadOnly()) {
+    if (isLeader(consensusGroupId) && CommonDescriptor.getInstance().getConfig().isReadOnly()) {
       try {
         forceStepDownLeader(raftGroup);
       } catch (Exception e) {

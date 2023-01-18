@@ -60,7 +60,7 @@ public class MockSchemaFile implements ISchemaFile {
         new StorageGroupMNode(
             null,
             storageGroupPath.getTailNode(),
-            CommonDescriptor.getInstance().getConf().getDefaultTtlInMs());
+            CommonDescriptor.getInstance().getConfig().getDefaultTTLInMs());
     writeMNode(storageGroupMNode);
     return cloneMNode(storageGroupMNode);
   }

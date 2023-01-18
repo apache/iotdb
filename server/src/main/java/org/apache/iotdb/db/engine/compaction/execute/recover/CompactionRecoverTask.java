@@ -275,7 +275,7 @@ public class CompactionRecoverTask {
    * the file is not found, it will return null.
    */
   private File getFileFromDataDirs(String filePath) {
-    String[] dataDirs = IoTDBDescriptor.getInstance().getConf().getDnDataDirs();
+    String[] dataDirs = IoTDBDescriptor.getInstance().getConfig().getDataDirs();
     for (String dataDir : dataDirs) {
       File f = new File(dataDir, filePath);
       if (f.exists()) {
@@ -304,7 +304,7 @@ public class CompactionRecoverTask {
             "{} [Compaction][ExceptionHandler] target file {} is not complete, and some source files is lost, do nothing. Set allowCompaction to false",
             fullStorageGroupName,
             targetFileIdentifier.getFilePath());
-        CommonDescriptor.getInstance().getConf().setNodeStatus(NodeStatus.ReadOnly);
+        CommonDescriptor.getInstance().getConfig().setNodeStatus(NodeStatus.ReadOnly);
         return false;
       }
     }

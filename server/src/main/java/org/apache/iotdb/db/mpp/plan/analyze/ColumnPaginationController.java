@@ -19,13 +19,14 @@
 
 package org.apache.iotdb.db.mpp.plan.analyze;
 
-import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.sql.PathNumOverLimitException;
 
 /** apply MaxQueryDeduplicatedPathNum and SLIMIT & SOFFSET */
 public class ColumnPaginationController {
 
-  private int curLimit = CommonDescriptor.getInstance().getConf().getMaxDeduplicatedPathNum() + 1;
+  private int curLimit =
+      IoTDBDescriptor.getInstance().getConfig().getMaxQueryDeduplicatedPathNum() + 1;
   private int curOffset;
 
   // records the path number that the SchemaProcessor totally returned
@@ -68,7 +69,7 @@ public class ColumnPaginationController {
 
   public void consumeLimit() {
     consumed++;
-    if (consumed > CommonDescriptor.getInstance().getConf().getMaxDeduplicatedPathNum()) {
+    if (consumed > IoTDBDescriptor.getInstance().getConfig().getMaxQueryDeduplicatedPathNum()) {
       throw new PathNumOverLimitException();
     }
 

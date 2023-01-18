@@ -19,9 +19,9 @@
 
 package org.apache.iotdb.db.mpp.execution.operator.process;
 
-import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.udf.service.UDFClassLoaderManager;
 import org.apache.iotdb.commons.udf.service.UDFManagementService;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.mpp.common.NodeRef;
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
@@ -59,11 +59,11 @@ public class TransformOperator implements ProcessOperator {
   private static final Logger LOGGER = LoggerFactory.getLogger(TransformOperator.class);
 
   protected final float udfReaderMemoryBudgetInMB =
-      CommonDescriptor.getInstance().getConf().getUdfReaderMemoryBudgetInMB();
+      IoTDBDescriptor.getInstance().getConfig().getUdfReaderMemoryBudgetInMB();
   protected final float udfTransformerMemoryBudgetInMB =
-      CommonDescriptor.getInstance().getConf().getUdfTransformerMemoryBudgetInMB();
+      IoTDBDescriptor.getInstance().getConfig().getUdfTransformerMemoryBudgetInMB();
   protected final float udfCollectorMemoryBudgetInMB =
-      CommonDescriptor.getInstance().getConf().getUdfCollectorMemoryBudgetInMB();
+      IoTDBDescriptor.getInstance().getConfig().getUdfCollectorMemoryBudgetInMB();
 
   protected final OperatorContext operatorContext;
   protected final Operator inputOperator;

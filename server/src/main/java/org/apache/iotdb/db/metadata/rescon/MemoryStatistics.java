@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.metadata.rescon;
 
-import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -53,7 +53,7 @@ public class MemoryStatistics {
   private MemoryStatistics() {}
 
   public void init() {
-    memoryCapacity = CommonDescriptor.getInstance().getConf().getAllocateMemoryForSchemaRegion();
+    memoryCapacity = IoTDBDescriptor.getInstance().getConfig().getAllocateMemoryForSchemaRegion();
     memoryUsage.getAndSet(0);
     allowToCreateNewSeries = true;
   }

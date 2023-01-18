@@ -18,11 +18,11 @@
  */
 package org.apache.iotdb.db.metadata.tag;
 
-import org.apache.iotdb.commons.conf.CommonConfig;
-import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.metadata.MetadataConstant;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
@@ -63,7 +63,7 @@ public class TagManager {
       "before deleting it, tag key is %s, tag value is %s, tlog offset is %d, contains key %b";
 
   private static final Logger logger = LoggerFactory.getLogger(TagManager.class);
-  private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConf();
+  private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   private String sgSchemaDirPath;
   private TagLogFile tagLogFile;
@@ -126,7 +126,7 @@ public class TagManager {
   }
 
   public boolean recoverIndex(long offset, IMeasurementMNode measurementMNode) throws IOException {
-    Map<String, String> tags = tagLogFile.readTag(COMMON_CONFIG.getTagAttributeTotalSize(), offset);
+    Map<String, String> tags = tagLogFile.readTag(config.getTagAttributeTotalSize(), offset);
     if (tags == null || tags.isEmpty()) {
       return false;
     } else {
@@ -290,7 +290,7 @@ public class TagManager {
       return;
     }
     Map<String, String> tagMap =
-        tagLogFile.readTag(COMMON_CONFIG.getTagAttributeTotalSize(), node.getOffset());
+        tagLogFile.readTag(config.getTagAttributeTotalSize(), node.getOffset());
     if (tagMap != null) {
       for (Map.Entry<String, String> entry : tagMap.entrySet()) {
         if (tagIndex.containsKey(entry.getKey())
@@ -334,7 +334,7 @@ public class TagManager {
       throws MetadataException, IOException {
 
     Pair<Map<String, String>, Map<String, String>> pair =
-        tagLogFile.read(COMMON_CONFIG.getTagAttributeTotalSize(), leafMNode.getOffset());
+        tagLogFile.read(config.getTagAttributeTotalSize(), leafMNode.getOffset());
 
     if (tagsMap != null) {
       for (Map.Entry<String, String> entry : tagsMap.entrySet()) {
@@ -398,7 +398,7 @@ public class TagManager {
       throws MetadataException, IOException {
 
     Pair<Map<String, String>, Map<String, String>> pair =
-        tagLogFile.read(COMMON_CONFIG.getTagAttributeTotalSize(), leafMNode.getOffset());
+        tagLogFile.read(config.getTagAttributeTotalSize(), leafMNode.getOffset());
 
     for (Map.Entry<String, String> entry : attributesMap.entrySet()) {
       String key = entry.getKey();
@@ -426,7 +426,7 @@ public class TagManager {
       throws MetadataException, IOException {
 
     Pair<Map<String, String>, Map<String, String>> pair =
-        tagLogFile.read(COMMON_CONFIG.getTagAttributeTotalSize(), leafMNode.getOffset());
+        tagLogFile.read(config.getTagAttributeTotalSize(), leafMNode.getOffset());
 
     for (Map.Entry<String, String> entry : tagsMap.entrySet()) {
       String key = entry.getKey();
@@ -455,7 +455,7 @@ public class TagManager {
       Set<String> keySet, PartialPath fullPath, IMeasurementMNode leafMNode)
       throws MetadataException, IOException {
     Pair<Map<String, String>, Map<String, String>> pair =
-        tagLogFile.read(COMMON_CONFIG.getTagAttributeTotalSize(), leafMNode.getOffset());
+        tagLogFile.read(config.getTagAttributeTotalSize(), leafMNode.getOffset());
 
     Map<String, String> deleteTag = new HashMap<>();
     for (String key : keySet) {
@@ -527,7 +527,7 @@ public class TagManager {
       throws MetadataException, IOException {
     // tags, attributes
     Pair<Map<String, String>, Map<String, String>> pair =
-        tagLogFile.read(COMMON_CONFIG.getTagAttributeTotalSize(), leafMNode.getOffset());
+        tagLogFile.read(config.getTagAttributeTotalSize(), leafMNode.getOffset());
     Map<String, String> oldTagValue = new HashMap<>();
     Map<String, String> newTagValue = new HashMap<>();
 
@@ -597,7 +597,7 @@ public class TagManager {
       throws MetadataException, IOException {
     // tags, attributes
     Pair<Map<String, String>, Map<String, String>> pair =
-        tagLogFile.read(COMMON_CONFIG.getTagAttributeTotalSize(), leafMNode.getOffset());
+        tagLogFile.read(config.getTagAttributeTotalSize(), leafMNode.getOffset());
 
     // current name has existed
     if (pair.left.containsKey(newKey) || pair.right.containsKey(newKey)) {
@@ -659,7 +659,7 @@ public class TagManager {
 
   public Pair<Map<String, String>, Map<String, String>> readTagFile(long tagFileOffset)
       throws IOException {
-    return tagLogFile.read(COMMON_CONFIG.getTagAttributeTotalSize(), tagFileOffset);
+    return tagLogFile.read(config.getTagAttributeTotalSize(), tagFileOffset);
   }
 
   /**

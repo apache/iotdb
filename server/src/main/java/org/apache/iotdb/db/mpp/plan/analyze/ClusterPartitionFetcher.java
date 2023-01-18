@@ -24,8 +24,6 @@ import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
-import org.apache.iotdb.commons.conf.CommonConfig;
-import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.ConfigNodeRegionId;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.partition.DataPartition;
@@ -44,6 +42,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
 import org.apache.iotdb.db.client.ConfigNodeClient;
 import org.apache.iotdb.db.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.client.ConfigNodeInfo;
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
 import org.apache.iotdb.db.mpp.plan.analyze.cache.PartitionCache;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
@@ -65,7 +65,7 @@ import java.util.Map;
 public class ClusterPartitionFetcher implements IPartitionFetcher {
 
   private static final Logger logger = LoggerFactory.getLogger(ClusterPartitionFetcher.class);
-  private static final CommonConfig config = CommonDescriptor.getInstance().getConf();
+  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   private final SeriesPartitionExecutor partitionExecutor;
 
@@ -88,7 +88,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
   private ClusterPartitionFetcher() {
     this.partitionExecutor =
         SeriesPartitionExecutor.getSeriesPartitionExecutor(
-            config.getSeriesPartitionExecutorClass(), config.getSeriesSlotNum());
+            config.getSeriesPartitionExecutorClass(), config.getSeriesPartitionSlotNum());
     this.partitionCache = new PartitionCache();
   }
 
@@ -385,16 +385,16 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
 
     return new SchemaPartition(
         regionReplicaMap,
-        CommonDescriptor.getInstance().getConf().getSeriesPartitionExecutorClass(),
-        CommonDescriptor.getInstance().getConf().getSeriesSlotNum());
+        IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionExecutorClass(),
+        IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionSlotNum());
   }
 
   private SchemaNodeManagementPartition parseSchemaNodeManagementPartitionResp(
       TSchemaNodeManagementResp schemaNodeManagementResp) {
     return new SchemaNodeManagementPartition(
         schemaNodeManagementResp.getSchemaRegionMap(),
-        CommonDescriptor.getInstance().getConf().getSeriesPartitionExecutorClass(),
-        CommonDescriptor.getInstance().getConf().getSeriesSlotNum(),
+        IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionExecutorClass(),
+        IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionSlotNum(),
         schemaNodeManagementResp.getMatchedNode());
   }
 
@@ -422,6 +422,8 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
     }
 
     return new DataPartition(
-        regionReplicaSet, config.getSeriesPartitionExecutorClass(), config.getSeriesSlotNum());
+        regionReplicaSet,
+        config.getSeriesPartitionExecutorClass(),
+        config.getSeriesPartitionSlotNum());
   }
 }

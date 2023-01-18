@@ -17,8 +17,8 @@
 
 package org.apache.iotdb.db.protocol.rest.impl;
 
-import org.apache.iotdb.commons.conf.CommonConfig;
-import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.rest.IoTDBRestServiceDescriptor;
 import org.apache.iotdb.db.mpp.plan.Coordinator;
 import org.apache.iotdb.db.mpp.plan.analyze.ClusterPartitionFetcher;
@@ -51,7 +51,7 @@ import java.time.ZoneId;
 
 public class RestApiServiceImpl extends RestApiService {
 
-  private static final CommonConfig config = CommonDescriptor.getInstance().getConf();
+  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   private static final Coordinator COORDINATOR = Coordinator.getInstance();
 

@@ -47,7 +47,7 @@ public class RPCService extends ThriftService implements RPCServiceMBean {
           NoSuchMethodException, InvocationTargetException {
     impl =
         (IClientRPCServiceWithHandler)
-            Class.forName(IoTDBDescriptor.getInstance().getConf().getRpcImplClassName())
+            Class.forName(IoTDBDescriptor.getInstance().getConfig().getRpcImplClassName())
                 .getDeclaredConstructor()
                 .newInstance();
     initSyncedServiceImpl(null);
@@ -56,19 +56,19 @@ public class RPCService extends ThriftService implements RPCServiceMBean {
 
   @Override
   public void initThriftServiceThread() throws IllegalAccessException {
-    IoTDBConfig config = IoTDBDescriptor.getInstance().getConf();
+    IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
     try {
       thriftServiceThread =
           new ThriftServiceThread(
               processor,
               getID().getName(),
               ThreadName.CLIENT_RPC_PROCESSOR.getName(),
-              config.getDnRpcAddress(),
-              config.getDnRpcPort(),
-              config.getDnRpcMaxConcurrentClientNum(),
+              config.getRpcAddress(),
+              config.getRpcPort(),
+              config.getRpcMaxConcurrentClientNum(),
               config.getThriftServerAwaitTimeForStopService(),
               new RPCServiceThriftHandler(impl),
-              IoTDBDescriptor.getInstance().getConf().isDnRpcThriftCompressionEnable());
+              IoTDBDescriptor.getInstance().getConfig().isRpcThriftCompressionEnable());
     } catch (RPCServiceException e) {
       throw new IllegalAccessException(e.getMessage());
     }
@@ -78,12 +78,12 @@ public class RPCService extends ThriftService implements RPCServiceMBean {
 
   @Override
   public String getBindIP() {
-    return IoTDBDescriptor.getInstance().getConf().getDnRpcAddress();
+    return IoTDBDescriptor.getInstance().getConfig().getRpcAddress();
   }
 
   @Override
   public int getBindPort() {
-    return IoTDBDescriptor.getInstance().getConf().getDnRpcPort();
+    return IoTDBDescriptor.getInstance().getConfig().getRpcPort();
   }
 
   @Override

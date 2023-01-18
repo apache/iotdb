@@ -22,7 +22,6 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
-import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.file.SystemFileFactory;
@@ -61,10 +60,7 @@ public class ConfigNodeRegionStateMachine
 
   private static final ExecutorService threadPool =
       IoTDBThreadPoolFactory.newCachedThreadPool("CQ-recovery");
-
-  private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConf();
-  private static final ConfigNodeConfig CONFIG_NODE_CONFIG =
-      ConfigNodeDescriptor.getInstance().getConf();
+  private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
   private final ConfigPlanExecutor executor;
   private ConfigManager configManager;
   private LogWriter logWriter;
@@ -73,16 +69,12 @@ public class ConfigNodeRegionStateMachine
   private int endIndex;
 
   private static final String CURRENT_FILE_DIR =
-      CONFIG_NODE_CONFIG.getCnConsensusDir()
-          + File.separator
-          + "simple"
-          + File.separator
-          + "current";
+      CONF.getConsensusDir() + File.separator + "simple" + File.separator + "current";
   private static final String PROGRESS_FILE_PATH =
       CURRENT_FILE_DIR + File.separator + "log_inprogress_";
   private static final String FILE_PATH = CURRENT_FILE_DIR + File.separator + "log_";
   private static final long LOG_FILE_MAX_SIZE =
-      COMMON_CONFIG.getConfigNodeSimpleConsensusLogSegmentSizeMax();
+      CONF.getConfigNodeSimpleConsensusLogSegmentSizeMax();
   private final TEndPoint currentNodeTEndPoint;
 
   public ConfigNodeRegionStateMachine(ConfigManager configManager, ConfigPlanExecutor executor) {
@@ -90,8 +82,8 @@ public class ConfigNodeRegionStateMachine
     this.configManager = configManager;
     this.currentNodeTEndPoint =
         new TEndPoint()
-            .setIp(ConfigNodeDescriptor.getInstance().getConf().getCnInternalAddress())
-            .setPort(ConfigNodeDescriptor.getInstance().getConf().getCnConsensusPort());
+            .setIp(ConfigNodeDescriptor.getInstance().getConf().getInternalAddress())
+            .setPort(ConfigNodeDescriptor.getInstance().getConf().getConsensusPort());
   }
 
   public ConfigManager getConfigManager() {
@@ -138,8 +130,7 @@ public class ConfigNodeRegionStateMachine
       result = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
     }
 
-    if (ConsensusFactory.SIMPLE_CONSENSUS.equals(
-        COMMON_CONFIG.getConfigNodeConsensusProtocolClass().getProtocol())) {
+    if (ConsensusFactory.SIMPLE_CONSENSUS.equals(CONF.getConfigNodeConsensusProtocolClass())) {
       writeLogForSimpleConsensus(plan);
     }
     return result;
@@ -235,8 +226,7 @@ public class ConfigNodeRegionStateMachine
 
   @Override
   public void start() {
-    if (ConsensusFactory.SIMPLE_CONSENSUS.equals(
-        COMMON_CONFIG.getConfigNodeConsensusProtocolClass().getProtocol())) {
+    if (ConsensusFactory.SIMPLE_CONSENSUS.equals(CONF.getConfigNodeConsensusProtocolClass())) {
       initStandAloneConfigNode();
     }
   }
@@ -248,7 +238,7 @@ public class ConfigNodeRegionStateMachine
 
   @Override
   public boolean isReadOnly() {
-    return CommonDescriptor.getInstance().getConf().isReadOnly();
+    return CommonDescriptor.getInstance().getConfig().isReadOnly();
   }
 
   @Override

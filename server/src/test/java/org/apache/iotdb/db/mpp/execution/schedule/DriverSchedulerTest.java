@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.mpp.execution.schedule;
 
-import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.common.QueryId;
@@ -41,7 +41,7 @@ public class DriverSchedulerTest {
 
   private final DriverScheduler manager = DriverScheduler.getInstance();
   private static final long QUERY_TIMEOUT_MS =
-      CommonDescriptor.getInstance().getConf().getQueryTimeoutThreshold();
+      IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold();
 
   @After
   public void tearDown() {

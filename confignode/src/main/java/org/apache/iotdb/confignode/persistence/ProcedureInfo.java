@@ -46,7 +46,7 @@ public class ProcedureInfo {
 
   private final ProcedureFactory procedureFactory = ProcedureFactory.getInstance();
   private final String procedureWalDir =
-      CommonDescriptor.getInstance().getConf().getProcedureWalFolder();
+      CommonDescriptor.getInstance().getConfig().getProcedureWalFolder();
   private final ConcurrentHashMap<Long, ProcedureWAL> procWALMap = new ConcurrentHashMap<>();
 
   public void load(List<Procedure> procedureList) {

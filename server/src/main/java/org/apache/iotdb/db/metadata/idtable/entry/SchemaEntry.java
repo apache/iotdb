@@ -46,7 +46,7 @@ public class SchemaEntry {
   private long schema;
 
   /** This static field will not occupy memory */
-  private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConf();
+  private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   @TestOnly
   public SchemaEntry(TSDataType dataType) {

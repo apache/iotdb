@@ -52,7 +52,7 @@ public class ConfigNodeRemoveCheck {
 
   public ConfigNodeRemoveCheck() {
     systemPropertiesFile =
-        new File(CONF.getCnSystemDir() + File.separator + ConfigNodeConstant.SYSTEM_FILE_NAME);
+        new File(CONF.getSystemDir() + File.separator + ConfigNodeConstant.SYSTEM_FILE_NAME);
     systemProperties = new Properties();
   }
 
