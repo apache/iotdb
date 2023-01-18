@@ -18,8 +18,6 @@
  */
 package org.apache.iotdb.db.rescon;
 
-import org.apache.iotdb.commons.conf.CommonConfig;
-import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -72,16 +70,15 @@ public class ResourceManagerTest {
   List<TsFileResource> seqResources = new ArrayList<>();
   List<TsFileResource> unseqResources = new ArrayList<>();
 
-  private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConf();
-  private static final IoTDBConfig IOTDB_CONFIG = IoTDBDescriptor.getInstance().getConf();
+  private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
   private final TsFileResourceManager tsFileResourceManager = TsFileResourceManager.getInstance();
   private long prevTimeIndexMemoryThreshold;
   private TimeIndexLevel timeIndexLevel;
 
   @Before
   public void setUp() throws IOException, WriteProcessException, MetadataException {
-    prevTimeIndexMemoryThreshold = COMMON_CONFIG.getAllocateMemoryForTimeIndex();
-    timeIndexLevel = IOTDB_CONFIG.getTimeIndexLevel();
+    prevTimeIndexMemoryThreshold = CONFIG.getAllocateMemoryForTimeIndex();
+    timeIndexLevel = CONFIG.getTimeIndexLevel();
     prepareSeries();
   }
 
@@ -90,7 +87,7 @@ public class ResourceManagerTest {
     removeFiles();
     seqResources.clear();
     unseqResources.clear();
-    IOTDB_CONFIG.setTimeIndexLevel(String.valueOf(timeIndexLevel));
+    CONFIG.setTimeIndexLevel(String.valueOf(timeIndexLevel));
     tsFileResourceManager.setTimeIndexMemoryThreshold(prevTimeIndexMemoryThreshold);
     ChunkCache.getInstance().clear();
     TimeSeriesMetadataCache.getInstance().clear();

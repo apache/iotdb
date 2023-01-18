@@ -21,8 +21,6 @@ package org.apache.iotdb.confignode.service;
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.conf.CommonConfig;
-import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.service.JMXService;
 import org.apache.iotdb.commons.service.RegisterManager;
@@ -57,9 +55,7 @@ public class ConfigNode implements ConfigNodeMBean {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ConfigNode.class);
 
-  private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConf();
-  private static final ConfigNodeConfig CONFIG_NODE_CONFIG =
-      ConfigNodeDescriptor.getInstance().getConf();
+  private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
 
   private static final int STARTUP_RETRY_NUM = 10;
   private static final int SCHEDULE_WAITING_RETRY_NUM = 20;
@@ -100,8 +96,8 @@ public class ConfigNode implements ConfigNodeMBean {
         LOGGER.info("{} is in restarting process...", ConfigNodeConstant.GLOBAL_NAME);
 
         /* Always restore ClusterName and ConfigNodeId first */
-        COMMON_CONFIG.setClusterName(SystemPropertiesUtils.loadClusterNameWhenRestarted());
-        CONFIG_NODE_CONFIG.setConfigNodeId(SystemPropertiesUtils.loadConfigNodeIdWhenRestarted());
+        CONF.setClusterName(SystemPropertiesUtils.loadClusterNameWhenRestarted());
+        CONF.setConfigNodeId(SystemPropertiesUtils.loadConfigNodeIdWhenRestarted());
 
         if (!SystemPropertiesUtils.isSeedConfigNode()) {
           // The non-seed-ConfigNodes should send restart request
@@ -113,7 +109,7 @@ public class ConfigNode implements ConfigNodeMBean {
         LOGGER.info(
             "{} has successfully restarted and joined the cluster: {}.",
             ConfigNodeConstant.GLOBAL_NAME,
-            COMMON_CONFIG.getClusterName());
+            CONF.getClusterName());
         return;
       }
 
@@ -124,7 +120,7 @@ public class ConfigNode implements ConfigNodeMBean {
             ConfigNodeConstant.GLOBAL_NAME);
 
         /* Always set ClusterId and ConfigNodeId before initConsensusManager */
-        CONFIG_NODE_CONFIG.setConfigNodeId(SEED_CONFIG_NODE_ID);
+        CONF.setConfigNodeId(SEED_CONFIG_NODE_ID);
         configManager.initConsensusManager();
 
         // Persistence system parameters after the consensusGroup is built,
@@ -137,12 +133,8 @@ public class ConfigNode implements ConfigNodeMBean {
             .applyConfigNode(
                 new TConfigNodeLocation(
                     SEED_CONFIG_NODE_ID,
-                    new TEndPoint(
-                        CONFIG_NODE_CONFIG.getCnInternalAddress(),
-                        CONFIG_NODE_CONFIG.getCnInternalPort()),
-                    new TEndPoint(
-                        CONFIG_NODE_CONFIG.getCnInternalAddress(),
-                        CONFIG_NODE_CONFIG.getCnConsensusPort())));
+                    new TEndPoint(CONF.getInternalAddress(), CONF.getInternalPort()),
+                    new TEndPoint(CONF.getInternalAddress(), CONF.getConsensusPort())));
         // We always set up Seed-ConfigNode's RPC service lastly to ensure that
         // the external service is not provided until Seed-ConfigNode is fully initialized
         setUpRPCService();
@@ -151,7 +143,7 @@ public class ConfigNode implements ConfigNodeMBean {
         LOGGER.info(
             "{} has successfully started and joined the cluster: {}.",
             ConfigNodeConstant.GLOBAL_NAME,
-            COMMON_CONFIG.getClusterName());
+            CONF.getClusterName());
         return;
       }
 
@@ -165,8 +157,8 @@ public class ConfigNode implements ConfigNodeMBean {
       LOGGER.info(
           "{} {} has registered successfully. Waiting for the leader's scheduling to join the cluster: {}.",
           ConfigNodeConstant.GLOBAL_NAME,
-          CONFIG_NODE_CONFIG.getConfigNodeId(),
-          COMMON_CONFIG.getClusterName());
+          CONF.getConfigNodeId(),
+          CONF.getClusterName());
 
       boolean isJoinedCluster = false;
       for (int retry = 0; retry < SCHEDULE_WAITING_RETRY_NUM; retry++) {
@@ -245,15 +237,11 @@ public class ConfigNode implements ConfigNodeMBean {
         new TConfigNodeRegisterReq(
             new TConfigNodeLocation(
                 INIT_NON_SEED_CONFIG_NODE_ID,
-                new TEndPoint(
-                    CONFIG_NODE_CONFIG.getCnInternalAddress(),
-                    CONFIG_NODE_CONFIG.getCnInternalPort()),
-                new TEndPoint(
-                    CONFIG_NODE_CONFIG.getCnInternalAddress(),
-                    CONFIG_NODE_CONFIG.getCnConsensusPort())),
+                new TEndPoint(CONF.getInternalAddress(), CONF.getInternalPort()),
+                new TEndPoint(CONF.getInternalAddress(), CONF.getConsensusPort())),
             configManager.getClusterParameters());
 
-    TEndPoint targetConfigNode = CONFIG_NODE_CONFIG.getCnTargetConfigNode();
+    TEndPoint targetConfigNode = CONF.getTargetConfigNode();
     if (targetConfigNode == null) {
       LOGGER.error(
           "Please set the cn_target_config_node_list parameter in iotdb-confignode.properties file.");
@@ -281,7 +269,7 @@ public class ConfigNode implements ConfigNodeMBean {
           throw new StartupException("The result of register ConfigNode is empty!");
         }
         /* Always set ConfigNodeId before initConsensusManager */
-        CONFIG_NODE_CONFIG.setConfigNodeId(resp.getConfigNodeId());
+        CONF.setConfigNodeId(resp.getConfigNodeId());
         configManager.initConsensusManager();
         return;
       } else if (status.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
@@ -306,17 +294,13 @@ public class ConfigNode implements ConfigNodeMBean {
   private void sendRestartConfigNodeRequest() throws IOException, StartupException {
     TConfigNodeRestartReq req =
         new TConfigNodeRestartReq(
-            COMMON_CONFIG.getClusterName(),
+            CONF.getClusterName(),
             new TConfigNodeLocation(
-                CONFIG_NODE_CONFIG.getConfigNodeId(),
-                new TEndPoint(
-                    CONFIG_NODE_CONFIG.getCnInternalAddress(),
-                    CONFIG_NODE_CONFIG.getCnInternalPort()),
-                new TEndPoint(
-                    CONFIG_NODE_CONFIG.getCnInternalAddress(),
-                    CONFIG_NODE_CONFIG.getCnConsensusPort())));
+                CONF.getConfigNodeId(),
+                new TEndPoint(CONF.getInternalAddress(), CONF.getInternalPort()),
+                new TEndPoint(CONF.getInternalAddress(), CONF.getConsensusPort())));
 
-    TEndPoint targetConfigNode = CONFIG_NODE_CONFIG.getCnTargetConfigNode();
+    TEndPoint targetConfigNode = CONF.getTargetConfigNode();
     if (targetConfigNode == null) {
       LOGGER.error(
           "Please set the cn_target_config_node_list parameter in iotdb-confignode.properties file.");

@@ -20,8 +20,6 @@
 package org.apache.iotdb.db.consensus;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
-import org.apache.iotdb.commons.conf.CommonConfig;
-import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.IConsensus;
@@ -43,8 +41,7 @@ import java.util.concurrent.TimeUnit;
  */
 public class SchemaRegionConsensusImpl {
 
-  private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConf();
-  private static final IoTDBConfig IOTDB_CONFIG = IoTDBDescriptor.getInstance().getConf();
+  private static final IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
 
   private static IConsensus INSTANCE = null;
 
@@ -59,94 +56,85 @@ public class SchemaRegionConsensusImpl {
     if (INSTANCE == null) {
       INSTANCE =
           ConsensusFactory.getConsensusImpl(
-                  COMMON_CONFIG.getSchemaRegionConsensusProtocolClass().getProtocol(),
+                  conf.getSchemaRegionConsensusProtocolClass(),
                   ConsensusConfig.newBuilder()
-                      .setThisNodeId(IOTDB_CONFIG.getDataNodeId())
+                      .setThisNodeId(conf.getDataNodeId())
                       .setThisNode(
                           new TEndPoint(
-                              IOTDB_CONFIG.getDnInternalAddress(),
-                              IOTDB_CONFIG.getDnSchemaRegionConsensusPort()))
+                              conf.getInternalAddress(), conf.getSchemaRegionConsensusPort()))
                       .setRatisConfig(
                           RatisConfig.newBuilder()
                               .setSnapshot(
                                   RatisConfig.Snapshot.newBuilder()
                                       .setAutoTriggerThreshold(
-                                          COMMON_CONFIG
-                                              .getSchemaRegionRatisSnapshotTriggerThreshold())
+                                          conf.getSchemaRatisConsensusSnapshotTriggerThreshold())
                                       .build())
                               .setLog(
                                   RatisConfig.Log.newBuilder()
                                       .setUnsafeFlushEnabled(
-                                          COMMON_CONFIG.isSchemaRegionRatisLogUnsafeFlushEnable())
+                                          conf.isSchemaRatisConsensusLogUnsafeFlushEnable())
                                       .setSegmentSizeMax(
                                           SizeInBytes.valueOf(
-                                              COMMON_CONFIG
-                                                  .getSchemaRegionRatisLogSegmentSizeMax()))
+                                              conf.getSchemaRatisConsensusLogSegmentSizeMax()))
                                       .setPreserveNumsWhenPurge(
-                                          COMMON_CONFIG.getSchemaRegionRatisPreserveLogsWhenPurge())
+                                          conf.getSchemaRatisConsensusPreserveWhenPurge())
                                       .build())
                               .setGrpc(
                                   RatisConfig.Grpc.newBuilder()
                                       .setFlowControlWindow(
                                           SizeInBytes.valueOf(
-                                              COMMON_CONFIG
-                                                  .getSchemaRegionRatisGrpcFlowControlWindow()))
+                                              conf.getSchemaRatisConsensusGrpcFlowControlWindow()))
                                       .build())
                               .setRpc(
                                   RatisConfig.Rpc.newBuilder()
                                       .setTimeoutMin(
                                           TimeDuration.valueOf(
-                                              COMMON_CONFIG
-                                                  .getSchemaRegionRatisRpcLeaderElectionTimeoutMinMs(),
+                                              conf
+                                                  .getSchemaRatisConsensusLeaderElectionTimeoutMinMs(),
                                               TimeUnit.MILLISECONDS))
                                       .setTimeoutMax(
                                           TimeDuration.valueOf(
-                                              COMMON_CONFIG
-                                                  .getSchemaRegionRatisRpcLeaderElectionTimeoutMaxMs(),
+                                              conf
+                                                  .getSchemaRatisConsensusLeaderElectionTimeoutMaxMs(),
                                               TimeUnit.MILLISECONDS))
                                       .setRequestTimeout(
                                           TimeDuration.valueOf(
-                                              COMMON_CONFIG.getSchemaRegionRatisRequestTimeoutMs(),
+                                              conf.getSchemaRatisConsensusRequestTimeoutMs(),
                                               TimeUnit.MILLISECONDS))
                                       .setFirstElectionTimeoutMin(
                                           TimeDuration.valueOf(
-                                              COMMON_CONFIG.getRatisFirstElectionTimeoutMinMs(),
+                                              conf.getRatisFirstElectionTimeoutMinMs(),
                                               TimeUnit.MILLISECONDS))
                                       .setFirstElectionTimeoutMax(
                                           TimeDuration.valueOf(
-                                              COMMON_CONFIG.getRatisFirstElectionTimeoutMaxMs(),
+                                              conf.getRatisFirstElectionTimeoutMaxMs(),
                                               TimeUnit.MILLISECONDS))
                                       .build())
                               .setClient(
                                   RatisConfig.Client.newBuilder()
                                       .setClientRequestTimeoutMillis(
-                                          COMMON_CONFIG.getSchemaRegionRatisRequestTimeoutMs())
+                                          conf.getDataRatisConsensusRequestTimeoutMs())
                                       .setClientMaxRetryAttempt(
-                                          COMMON_CONFIG.getSchemaRegionRatisMaxRetryAttempts())
+                                          conf.getDataRatisConsensusMaxRetryAttempts())
                                       .setClientRetryInitialSleepTimeMs(
-                                          COMMON_CONFIG.getSchemaRegionRatisInitialSleepTimeMs())
+                                          conf.getDataRatisConsensusInitialSleepTimeMs())
                                       .setClientRetryMaxSleepTimeMs(
-                                          COMMON_CONFIG.getSchemaRegionRatisMaxSleepTimeMs())
+                                          conf.getDataRatisConsensusMaxSleepTimeMs())
                                       .setCoreClientNumForEachNode(
-                                          IOTDB_CONFIG
-                                              .getDnCoreClientCountForEachNodeInClientManager())
-                                      .setMaxClientNumForEachNode(
-                                          IOTDB_CONFIG
-                                              .getDnMaxClientCountForEachNodeInClientManager())
+                                          conf.getCoreClientNumForEachNode())
+                                      .setMaxClientNumForEachNode(conf.getMaxClientNumForEachNode())
                                       .build())
                               .setImpl(
                                   RatisConfig.Impl.newBuilder()
-                                      .setTriggerSnapshotFileSize(
-                                          COMMON_CONFIG.getSchemaRegionRatisLogMax())
+                                      .setTriggerSnapshotFileSize(conf.getSchemaRatisLogMax())
                                       .build())
                               .setLeaderLogAppender(
                                   RatisConfig.LeaderLogAppender.newBuilder()
                                       .setBufferByteLimit(
-                                          COMMON_CONFIG
-                                              .getSchemaRegionRatisConsensusLogAppenderBufferSize())
+                                          conf.getSchemaRatisConsensusLogAppenderBufferSizeMax())
                                       .build())
                               .build())
-                      .setStorageDir(IOTDB_CONFIG.getSchemaRegionConsensusDir())
+                      .setStorageDir(conf.getSchemaRegionConsensusDir())
                       .build(),
                   gid ->
                       new SchemaRegionStateMachine(
@@ -156,7 +144,7 @@ public class SchemaRegionConsensusImpl {
                       new IllegalArgumentException(
                           String.format(
                               ConsensusFactory.CONSTRUCT_FAILED_MSG,
-                              COMMON_CONFIG.getSchemaRegionConsensusProtocolClass())));
+                              conf.getSchemaRegionConsensusProtocolClass())));
     }
     return INSTANCE;
   }

@@ -136,7 +136,7 @@ public class SchemaFile implements ISchemaFile {
         sgName,
         schemaRegionId,
         true,
-        CommonDescriptor.getInstance().getConf().getDefaultTtlInMs(),
+        CommonDescriptor.getInstance().getConfig().getDefaultTTLInMs(),
         false);
   }
 
@@ -467,7 +467,7 @@ public class SchemaFile implements ISchemaFile {
         sgName,
         schemaRegionId,
         false,
-        CommonDescriptor.getInstance().getConf().getDefaultTtlInMs(),
+        CommonDescriptor.getInstance().getConfig().getDefaultTTLInMs(),
         false);
   }
 

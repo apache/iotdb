@@ -66,9 +66,9 @@ public class AlignedSeriesCompactionExecutor {
       CompactionTaskManager.getInstance().getMergeWriteRateLimiter();
 
   private final long chunkSizeThreshold =
-      IoTDBDescriptor.getInstance().getConf().getTargetChunkSize();
+      IoTDBDescriptor.getInstance().getConfig().getTargetChunkSize();
   private final long chunkPointNumThreshold =
-      IoTDBDescriptor.getInstance().getConf().getTargetChunkPointNum();
+      IoTDBDescriptor.getInstance().getConfig().getTargetChunkPointNum();
 
   public AlignedSeriesCompactionExecutor(
       String device,

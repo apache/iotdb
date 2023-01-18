@@ -28,7 +28,7 @@ import com.google.common.collect.ImmutableList;
 import java.util.List;
 
 public class ColumnHeaderConstant {
-  private static final CommonConfig commonConfig = CommonDescriptor.getInstance().getConf();
+  private static final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
 
   // column names for query statement
   public static final String TIME = "Time";

@@ -54,7 +54,7 @@ public class SchemaRegionStateMachine extends BaseStateMachine {
 
   @Override
   public boolean isReadOnly() {
-    return CommonDescriptor.getInstance().getConf().isReadOnly();
+    return CommonDescriptor.getInstance().getConfig().isReadOnly();
   }
 
   @Override

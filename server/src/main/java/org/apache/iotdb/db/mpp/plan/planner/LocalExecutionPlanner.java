@@ -18,8 +18,8 @@
  */
 package org.apache.iotdb.db.mpp.plan.planner;
 
-import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.mpp.exception.MemoryNotEnoughException;
@@ -52,7 +52,7 @@ public class LocalExecutionPlanner {
 
   /** allocated memory for operator execution */
   private long freeMemoryForOperators =
-      CommonDescriptor.getInstance().getConf().getAllocateMemoryForOperators();
+      IoTDBDescriptor.getInstance().getConfig().getAllocateMemoryForOperators();
 
   public static LocalExecutionPlanner getInstance() {
     return InstanceHolder.INSTANCE;
@@ -110,7 +110,7 @@ public class LocalExecutionPlanner {
       throws MemoryNotEnoughException {
 
     // if it is disabled, just return
-    if (!CommonDescriptor.getInstance().getConf().isEnableQueryMemoryEstimation()) {
+    if (!IoTDBDescriptor.getInstance().getConfig().isEnableQueryMemoryEstimation()) {
       return;
     }
 

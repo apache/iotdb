@@ -146,7 +146,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
 
   private static final int RETRY_INTERVAL_MS = 1000;
 
-  private long connectionTimeout;
+  private final long connectionTimeout;
 
   private IConfigNodeRPCService.Iface client;
 
@@ -160,7 +160,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
 
   private int cursor = 0;
 
-  private final IoTDBConfig config = IoTDBDescriptor.getInstance().getConf();
+  private final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   ClientManager<ConfigNodeRegionId, ConfigNodeClient> clientManager;
 

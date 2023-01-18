@@ -44,7 +44,7 @@ public class IDTableManager {
 
   /** system dir */
   private final String systemDir =
-      FilePathUtils.regularizePath(IoTDBDescriptor.getInstance().getConf().getDnSystemDir())
+      FilePathUtils.regularizePath(IoTDBDescriptor.getInstance().getConfig().getSystemDir())
           + "databases";
 
   // region IDManager Singleton

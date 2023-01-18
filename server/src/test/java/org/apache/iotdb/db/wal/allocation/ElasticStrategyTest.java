@@ -22,8 +22,6 @@ import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowNode;
@@ -45,9 +43,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 public class ElasticStrategyTest {
-
-  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConf();
-  private static final CommonConfig commonConfig = CommonDescriptor.getInstance().getConf();
+  private static final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
   private final String[] walDirs =
       new String[] {
         TestConstant.BASE_OUTPUT_PATH.concat("wal_test1"),
@@ -58,9 +54,9 @@ public class ElasticStrategyTest {
 
   @Before
   public void setUp() throws Exception {
-    prevWalDirs = config.getDnWalDirs();
+    prevWalDirs = commonConfig.getWalDirs();
     EnvironmentUtils.envSetUp();
-    config.setDnWalDirs(walDirs);
+    commonConfig.setWalDirs(walDirs);
   }
 
   @After
@@ -69,7 +65,7 @@ public class ElasticStrategyTest {
     for (String walDir : walDirs) {
       EnvironmentUtils.cleanDir(walDir);
     }
-    config.setDnWalDirs(prevWalDirs);
+    commonConfig.setWalDirs(prevWalDirs);
   }
 
   @Test

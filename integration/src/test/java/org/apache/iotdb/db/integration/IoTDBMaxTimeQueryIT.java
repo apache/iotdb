@@ -67,27 +67,28 @@ public class IoTDBMaxTimeQueryIT {
   public static void setUp() throws Exception {
     EnvironmentUtils.envSetUp();
     // TODO When the aligned time series support compaction, we need to set compaction to true
-    enableSeqSpaceCompaction = IoTDBDescriptor.getInstance().getConf().isEnableSeqSpaceCompaction();
+    enableSeqSpaceCompaction =
+        IoTDBDescriptor.getInstance().getConfig().isEnableSeqSpaceCompaction();
     enableUnseqSpaceCompaction =
-        IoTDBDescriptor.getInstance().getConf().isEnableUnseqSpaceCompaction();
+        IoTDBDescriptor.getInstance().getConfig().isEnableUnseqSpaceCompaction();
     enableCrossSpaceCompaction =
-        IoTDBDescriptor.getInstance().getConf().isEnableCrossSpaceCompaction();
+        IoTDBDescriptor.getInstance().getConfig().isEnableCrossSpaceCompaction();
     numOfPointsPerPage = TSFileDescriptor.getInstance().getConfig().getMaxNumberOfPointsInPage();
-    IoTDBDescriptor.getInstance().getConf().setEnableSeqSpaceCompaction(false);
-    IoTDBDescriptor.getInstance().getConf().setEnableUnseqSpaceCompaction(false);
-    IoTDBDescriptor.getInstance().getConf().setEnableCrossSpaceCompaction(false);
+    IoTDBDescriptor.getInstance().getConfig().setEnableSeqSpaceCompaction(false);
+    IoTDBDescriptor.getInstance().getConfig().setEnableUnseqSpaceCompaction(false);
+    IoTDBDescriptor.getInstance().getConfig().setEnableCrossSpaceCompaction(false);
     TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(2);
     insertData();
   }
 
   @AfterClass
   public static void tearDown() throws Exception {
-    IoTDBDescriptor.getInstance().getConf().setEnableSeqSpaceCompaction(enableSeqSpaceCompaction);
+    IoTDBDescriptor.getInstance().getConfig().setEnableSeqSpaceCompaction(enableSeqSpaceCompaction);
     IoTDBDescriptor.getInstance()
-        .getConf()
+        .getConfig()
         .setEnableUnseqSpaceCompaction(enableUnseqSpaceCompaction);
     IoTDBDescriptor.getInstance()
-        .getConf()
+        .getConfig()
         .setEnableCrossSpaceCompaction(enableCrossSpaceCompaction);
     TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(numOfPointsPerPage);
     EnvironmentUtils.cleanEnv();

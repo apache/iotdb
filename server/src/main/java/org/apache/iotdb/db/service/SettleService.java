@@ -64,7 +64,7 @@ public class SettleService implements IService {
   @Override
   public void start() {
     if (settleThreadPool == null) {
-      int settleThreadNum = IoTDBDescriptor.getInstance().getConf().getSettleThreadNum();
+      int settleThreadNum = IoTDBDescriptor.getInstance().getConfig().getSettleThreadNum();
       settleThreadPool =
           IoTDBThreadPoolFactory.newFixedThreadPool(
               settleThreadNum, ThreadName.SETTLE_SERVICE.getName());

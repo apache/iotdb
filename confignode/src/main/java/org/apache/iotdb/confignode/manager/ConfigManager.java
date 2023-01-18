@@ -40,6 +40,7 @@ import org.apache.iotdb.commons.sync.pipe.PipeMessage;
 import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.StatusUtils;
+import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.conf.SystemPropertiesUtils;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
@@ -178,7 +179,8 @@ public class ConfigManager implements IManager {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ConfigManager.class);
 
-  private static final CommonConfig COMMON_CONF = CommonDescriptor.getInstance().getConf();
+  private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
+  private static final CommonConfig COMMON_CONF = CommonDescriptor.getInstance().getConfig();
 
   /** Manage PartitionTable read/write requests through the ConsensusLayer */
   private volatile ConsensusManager consensusManager;
@@ -420,25 +422,24 @@ public class ConfigManager implements IManager {
 
   public TClusterParameters getClusterParameters() {
     TClusterParameters clusterParameters = new TClusterParameters();
-    clusterParameters.setClusterName(COMMON_CONF.getClusterName());
+    clusterParameters.setClusterName(CONF.getClusterName());
     clusterParameters.setConfigNodeConsensusProtocolClass(
-        COMMON_CONF.getConfigNodeConsensusProtocolClass().getProtocol());
+        CONF.getConfigNodeConsensusProtocolClass());
     clusterParameters.setDataRegionConsensusProtocolClass(
-        COMMON_CONF.getDataRegionConsensusProtocolClass().getProtocol());
+        CONF.getDataRegionConsensusProtocolClass());
     clusterParameters.setSchemaRegionConsensusProtocolClass(
-        COMMON_CONF.getSchemaRegionConsensusProtocolClass().getProtocol());
-    clusterParameters.setSeriesPartitionSlotNum(COMMON_CONF.getSeriesSlotNum());
-    clusterParameters.setSeriesPartitionExecutorClass(
-        COMMON_CONF.getSeriesPartitionExecutorClass());
-    clusterParameters.setDefaultTTL(COMMON_CONF.getDefaultTtlInMs());
-    clusterParameters.setTimePartitionInterval(COMMON_CONF.getTimePartitionInterval());
-    clusterParameters.setDataReplicationFactor(COMMON_CONF.getDataReplicationFactor());
-    clusterParameters.setSchemaReplicationFactor(COMMON_CONF.getSchemaReplicationFactor());
-    clusterParameters.setDataRegionPerProcessor(COMMON_CONF.getDataRegionPerProcessor());
-    clusterParameters.setSchemaRegionPerDataNode(COMMON_CONF.getSchemaRegionPerDataNode());
+        CONF.getSchemaRegionConsensusProtocolClass());
+    clusterParameters.setSeriesPartitionSlotNum(CONF.getSeriesSlotNum());
+    clusterParameters.setSeriesPartitionExecutorClass(CONF.getSeriesPartitionExecutorClass());
+    clusterParameters.setDefaultTTL(COMMON_CONF.getDefaultTTLInMs());
+    clusterParameters.setTimePartitionInterval(CONF.getTimePartitionInterval());
+    clusterParameters.setDataReplicationFactor(CONF.getDataReplicationFactor());
+    clusterParameters.setSchemaReplicationFactor(CONF.getSchemaReplicationFactor());
+    clusterParameters.setDataRegionPerProcessor(CONF.getDataRegionPerProcessor());
+    clusterParameters.setSchemaRegionPerDataNode(CONF.getSchemaRegionPerDataNode());
     clusterParameters.setDiskSpaceWarningThreshold(COMMON_CONF.getDiskSpaceWarningThreshold());
-    clusterParameters.setReadConsistencyLevel(COMMON_CONF.getReadConsistencyLevel());
-    clusterParameters.setLeastDataRegionGroupNum(COMMON_CONF.getLeastDataRegionGroupNum());
+    clusterParameters.setReadConsistencyLevel(CONF.getReadConsistencyLevel());
+    clusterParameters.setLeastDataRegionGroupNum(CONF.getLeastDataRegionGroupNum());
     return clusterParameters;
   }
 
@@ -878,69 +879,64 @@ public class ConfigManager implements IManager {
 
     if (!clusterParameters
         .getConfigNodeConsensusProtocolClass()
-        .equals(COMMON_CONF.getConfigNodeConsensusProtocolClass().getProtocol())) {
+        .equals(CONF.getConfigNodeConsensusProtocolClass())) {
       return errorStatus.setMessage(
           errorPrefix + "config_node_consensus_protocol_class" + errorSuffix);
     }
     if (!clusterParameters
         .getDataRegionConsensusProtocolClass()
-        .equals(COMMON_CONF.getDataRegionConsensusProtocolClass().getProtocol())) {
+        .equals(CONF.getDataRegionConsensusProtocolClass())) {
       return errorStatus.setMessage(
           errorPrefix + "data_region_consensus_protocol_class" + errorSuffix);
     }
     if (!clusterParameters
         .getSchemaRegionConsensusProtocolClass()
-        .equals(COMMON_CONF.getSchemaRegionConsensusProtocolClass().getProtocol())) {
+        .equals(CONF.getSchemaRegionConsensusProtocolClass())) {
       return errorStatus.setMessage(
           errorPrefix + "schema_region_consensus_protocol_class" + errorSuffix);
     }
 
-    if (clusterParameters.getSeriesPartitionSlotNum() != COMMON_CONF.getSeriesSlotNum()) {
+    if (clusterParameters.getSeriesPartitionSlotNum() != CONF.getSeriesSlotNum()) {
       return errorStatus.setMessage(errorPrefix + "series_partition_slot_num" + errorSuffix);
     }
     if (!clusterParameters
         .getSeriesPartitionExecutorClass()
-        .equals(COMMON_CONF.getSeriesPartitionExecutorClass())) {
+        .equals(CONF.getSeriesPartitionExecutorClass())) {
       return errorStatus.setMessage(errorPrefix + "series_partition_executor_class" + errorSuffix);
     }
 
     if (clusterParameters.getDefaultTTL()
-        != CommonDescriptor.getInstance().getConf().getDefaultTtlInMs()) {
+        != CommonDescriptor.getInstance().getConfig().getDefaultTTLInMs()) {
       return errorStatus.setMessage(errorPrefix + "default_ttl" + errorSuffix);
     }
-    if (clusterParameters.getTimePartitionInterval() != COMMON_CONF.getTimePartitionInterval()) {
+    if (clusterParameters.getTimePartitionInterval() != CONF.getTimePartitionInterval()) {
       return errorStatus.setMessage(errorPrefix + "time_partition_interval" + errorSuffix);
     }
 
-    if (clusterParameters.getSchemaReplicationFactor()
-        != COMMON_CONF.getSchemaReplicationFactor()) {
+    if (clusterParameters.getSchemaReplicationFactor() != CONF.getSchemaReplicationFactor()) {
       return errorStatus.setMessage(errorPrefix + "schema_replication_factor" + errorSuffix);
     }
-    if (clusterParameters.getDataReplicationFactor() != COMMON_CONF.getDataReplicationFactor()) {
+    if (clusterParameters.getDataReplicationFactor() != CONF.getDataReplicationFactor()) {
       return errorStatus.setMessage(errorPrefix + "data_replication_factor" + errorSuffix);
     }
 
-    if (clusterParameters.getSchemaRegionPerDataNode()
-        != COMMON_CONF.getSchemaRegionPerDataNode()) {
+    if (clusterParameters.getSchemaRegionPerDataNode() != CONF.getSchemaRegionPerDataNode()) {
       return errorStatus.setMessage(errorPrefix + "schema_region_per_data_node" + errorSuffix);
     }
-    if (clusterParameters.getDataRegionPerProcessor() != COMMON_CONF.getDataRegionPerProcessor()) {
+    if (clusterParameters.getDataRegionPerProcessor() != CONF.getDataRegionPerProcessor()) {
       return errorStatus.setMessage(errorPrefix + "data_region_per_processor" + errorSuffix);
     }
 
-    if (!clusterParameters
-        .getReadConsistencyLevel()
-        .equals(COMMON_CONF.getReadConsistencyLevel())) {
+    if (!clusterParameters.getReadConsistencyLevel().equals(CONF.getReadConsistencyLevel())) {
       return errorStatus.setMessage(errorPrefix + "read_consistency_level" + errorSuffix);
     }
 
     if (clusterParameters.getDiskSpaceWarningThreshold()
-        != CommonDescriptor.getInstance().getConf().getDiskSpaceWarningThreshold()) {
+        != CommonDescriptor.getInstance().getConfig().getDiskSpaceWarningThreshold()) {
       return errorStatus.setMessage(errorPrefix + "disk_space_warning_threshold" + errorSuffix);
     }
 
-    if (clusterParameters.getLeastDataRegionGroupNum()
-        != COMMON_CONF.getLeastDataRegionGroupNum()) {
+    if (clusterParameters.getLeastDataRegionGroupNum() != CONF.getLeastDataRegionGroupNum()) {
       return errorStatus.setMessage(errorPrefix + "least_data_region_group_num" + errorSuffix);
     }
 

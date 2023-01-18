@@ -77,7 +77,7 @@ public class TsFileResource {
 
   private static final Logger DEBUG_LOGGER = LoggerFactory.getLogger("QUERY_DEBUG");
 
-  private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConf();
+  private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
   /** this tsfile */
   private File file;

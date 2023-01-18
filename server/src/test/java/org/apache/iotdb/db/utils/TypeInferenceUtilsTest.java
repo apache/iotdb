@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.utils;
 
-import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
@@ -78,20 +78,20 @@ public class TypeInferenceUtilsTest {
       "271840880000000000000000",
     };
     TSDataType[] encodings = {
-      CommonDescriptor.getInstance().getConf().getIntegerStringInferType(),
+      IoTDBDescriptor.getInstance().getConfig().getIntegerStringInferType(),
       TSDataType.TEXT,
-      CommonDescriptor.getInstance().getConf().getFloatingStringInferType(),
+      IoTDBDescriptor.getInstance().getConfig().getFloatingStringInferType(),
       TSDataType.BOOLEAN,
       TSDataType.FLOAT,
-      CommonDescriptor.getInstance().getConf().getIntegerStringInferType(),
-      CommonDescriptor.getInstance().getConf().getFloatingStringInferType(),
-      CommonDescriptor.getInstance().getConf().getLongStringInferType(),
-      CommonDescriptor.getInstance().getConf().getBooleanStringInferType(),
-      CommonDescriptor.getInstance().getConf().getIntegerStringInferType(),
-      CommonDescriptor.getInstance().getConf().getIntegerStringInferType(),
-      CommonDescriptor.getInstance().getConf().getLongStringInferType(),
-      CommonDescriptor.getInstance().getConf().getIntegerStringInferType(),
-      CommonDescriptor.getInstance().getConf().getLongStringInferType(),
+      IoTDBDescriptor.getInstance().getConfig().getIntegerStringInferType(),
+      IoTDBDescriptor.getInstance().getConfig().getFloatingStringInferType(),
+      IoTDBDescriptor.getInstance().getConfig().getLongStringInferType(),
+      IoTDBDescriptor.getInstance().getConfig().getBooleanStringInferType(),
+      IoTDBDescriptor.getInstance().getConfig().getIntegerStringInferType(),
+      IoTDBDescriptor.getInstance().getConfig().getIntegerStringInferType(),
+      IoTDBDescriptor.getInstance().getConfig().getLongStringInferType(),
+      IoTDBDescriptor.getInstance().getConfig().getIntegerStringInferType(),
+      IoTDBDescriptor.getInstance().getConfig().getLongStringInferType(),
     };
 
     for (int i = 0; i < values.length; i++) {

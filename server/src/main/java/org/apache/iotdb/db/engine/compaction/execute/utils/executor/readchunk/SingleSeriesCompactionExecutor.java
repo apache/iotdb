@@ -64,13 +64,14 @@ public class SingleSeriesCompactionExecutor {
   private long maxEndTimestamp = Long.MIN_VALUE;
   private long pointCountInChunkWriter = 0;
 
-  private final long targetChunkSize = IoTDBDescriptor.getInstance().getConf().getTargetChunkSize();
+  private final long targetChunkSize =
+      IoTDBDescriptor.getInstance().getConfig().getTargetChunkSize();
   private final long targetChunkPointNum =
-      IoTDBDescriptor.getInstance().getConf().getTargetChunkPointNum();
+      IoTDBDescriptor.getInstance().getConfig().getTargetChunkPointNum();
   private final long chunkSizeLowerBound =
-      IoTDBDescriptor.getInstance().getConf().getChunkSizeLowerBoundInCompaction();
+      IoTDBDescriptor.getInstance().getConfig().getChunkSizeLowerBoundInCompaction();
   private final long chunkPointNumLowerBound =
-      IoTDBDescriptor.getInstance().getConf().getChunkPointNumLowerBoundInCompaction();
+      IoTDBDescriptor.getInstance().getConfig().getChunkPointNumLowerBoundInCompaction();
 
   public SingleSeriesCompactionExecutor(
       PartialPath series,

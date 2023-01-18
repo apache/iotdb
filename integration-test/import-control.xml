@@ -36,13 +36,12 @@
   <allow pkg="org\.apache\.commons\.lang3.*" regex="true"/>
   <allow pkg="org\.slf4j.*" regex="true" />
   <allow pkg="org\.apache\.iotdb\.tools.*" regex="true"/>
-  <allow pkg="org\.apache\.iotdb\.commons\.conf.*" regex="true" />
   <subpackage name="db.it">
     <disallow pkg="org.apache.iotdb.jdbc.*"/>
     <allow class="org.apache.iotdb.db.constant.TestConstant" />
     <allow class="org.apache.iotdb.db.tools.watermark.WatermarkDetector" />
     <allow class="org.apache.iotdb.db.utils.MathUtils" />
-    <allow class="org.apache.iotdb.commons.wal.WALMode" />
+    <allow class="org.apache.iotdb.db.wal.utils.WALMode" />
     <allow class="org.fusesource.mqtt.client.QoS" />
     <allow class="org.apache.iotdb.commons.path.PartialPath" />
     <allow pkg="java.text"/>

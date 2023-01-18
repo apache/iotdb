@@ -26,13 +26,13 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
-import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.SchemaNodeManagementPartition;
 import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
 
 import java.util.ArrayList;
@@ -44,10 +44,10 @@ import java.util.Map;
 public class FakePartitionFetcherImpl implements IPartitionFetcher {
 
   private final String seriesSlotExecutorName =
-      CommonDescriptor.getInstance().getConf().getSeriesPartitionExecutorClass();
+      IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionExecutorClass();
 
   private final int seriesPartitionSlotNum =
-      CommonDescriptor.getInstance().getConf().getSeriesSlotNum();
+      IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionSlotNum();
 
   private final SeriesPartitionExecutor partitionExecutor =
       SeriesPartitionExecutor.getSeriesPartitionExecutor(
@@ -61,8 +61,8 @@ public class FakePartitionFetcherImpl implements IPartitionFetcher {
 
     SchemaPartition schemaPartition =
         new SchemaPartition(
-            CommonDescriptor.getInstance().getConf().getSeriesPartitionExecutorClass(),
-            CommonDescriptor.getInstance().getConf().getSeriesSlotNum());
+            IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionExecutorClass(),
+            IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionSlotNum());
     Map<String, Map<TSeriesPartitionSlot, TRegionReplicaSet>> schemaPartitionMap = new HashMap<>();
 
     Map<TSeriesPartitionSlot, TRegionReplicaSet> regionMap = new HashMap<>();
@@ -129,8 +129,8 @@ public class FakePartitionFetcherImpl implements IPartitionFetcher {
 
     DataPartition dataPartition =
         new DataPartition(
-            CommonDescriptor.getInstance().getConf().getSeriesPartitionExecutorClass(),
-            CommonDescriptor.getInstance().getConf().getSeriesSlotNum());
+            IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionExecutorClass(),
+            IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionSlotNum());
     Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>>
         dataPartitionMap = new HashMap<>();
     Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>> sgPartitionMap =
@@ -228,8 +228,8 @@ public class FakePartitionFetcherImpl implements IPartitionFetcher {
     // only test root.sg
     DataPartition dataPartition =
         new DataPartition(
-            CommonDescriptor.getInstance().getConf().getSeriesPartitionExecutorClass(),
-            CommonDescriptor.getInstance().getConf().getSeriesSlotNum());
+            IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionExecutorClass(),
+            IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionSlotNum());
 
     Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>>
         dataPartitionMap = new HashMap<>();

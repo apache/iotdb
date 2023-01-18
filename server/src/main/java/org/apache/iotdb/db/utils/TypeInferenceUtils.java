@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.utils;
 
-import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.SqlConstant;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
@@ -30,19 +30,19 @@ import org.apache.commons.lang3.StringUtils;
 public class TypeInferenceUtils {
 
   private static final TSDataType booleanStringInferType =
-      CommonDescriptor.getInstance().getConf().getBooleanStringInferType();
+      IoTDBDescriptor.getInstance().getConfig().getBooleanStringInferType();
 
   private static final TSDataType integerStringInferType =
-      CommonDescriptor.getInstance().getConf().getIntegerStringInferType();
+      IoTDBDescriptor.getInstance().getConfig().getIntegerStringInferType();
 
   private static final TSDataType longStringInferType =
-      CommonDescriptor.getInstance().getConf().getLongStringInferType();
+      IoTDBDescriptor.getInstance().getConfig().getLongStringInferType();
 
   private static final TSDataType floatingStringInferType =
-      CommonDescriptor.getInstance().getConf().getFloatingStringInferType();
+      IoTDBDescriptor.getInstance().getConfig().getFloatingStringInferType();
 
   private static final TSDataType nanStringInferType =
-      CommonDescriptor.getInstance().getConf().getNanStringInferType();
+      IoTDBDescriptor.getInstance().getConfig().getNanStringInferType();
 
   private TypeInferenceUtils() {}
 
@@ -155,6 +155,35 @@ public class TypeInferenceUtils {
         return true;
       default:
         throw new IllegalArgumentException("Invalid Aggregation function: " + aggrFuncName);
+    }
+  }
+
+  public static TSDataType getScalarFunctionDataType(String funcName, TSDataType dataType) {
+    if (funcName == null) {
+      throw new IllegalArgumentException("ScalarFunction Name must not be null");
+    }
+    verifyIsScalarFunctionDataTypeMatched(funcName, dataType);
+
+    switch (funcName.toLowerCase()) {
+      case SqlConstant.DIFF:
+        return TSDataType.DOUBLE;
+      default:
+        throw new IllegalArgumentException("Invalid Scalar function: " + funcName);
+    }
+  }
+
+  private static void verifyIsScalarFunctionDataTypeMatched(String funcName, TSDataType dataType) {
+    switch (funcName.toLowerCase()) {
+      case SqlConstant.DIFF:
+        if (dataType.isNumeric()) {
+          return;
+        }
+        throw new SemanticException(
+            String.format(
+                "Scalar function [%s] only support numeric data types [INT32, INT64, FLOAT, DOUBLE]",
+                funcName));
+      default:
+        throw new IllegalArgumentException("Invalid Scalar function: " + funcName);
     }
   }
 

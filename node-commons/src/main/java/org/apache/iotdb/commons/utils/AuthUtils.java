@@ -77,10 +77,8 @@ public class AuthUtils {
    */
   public static boolean validatePassword(String originPassword, String encryptPassword) {
     return AsymmetricEncryptFactory.getEncryptProvider(
-            CommonDescriptor.getInstance().getConf().getIotdbServerEncryptDecryptProvider(),
-            CommonDescriptor.getInstance()
-                .getConf()
-                .getIotdbServerEncryptDecryptProviderParameter())
+            CommonDescriptor.getInstance().getConfig().getEncryptDecryptProvider(),
+            CommonDescriptor.getInstance().getConfig().getEncryptDecryptProviderParameter())
         .validate(originPassword, encryptPassword);
   }
 
@@ -202,10 +200,8 @@ public class AuthUtils {
    */
   public static String encryptPassword(String password) {
     return AsymmetricEncryptFactory.getEncryptProvider(
-            CommonDescriptor.getInstance().getConf().getIotdbServerEncryptDecryptProvider(),
-            CommonDescriptor.getInstance()
-                .getConf()
-                .getIotdbServerEncryptDecryptProviderParameter())
+            CommonDescriptor.getInstance().getConfig().getEncryptDecryptProvider(),
+            CommonDescriptor.getInstance().getConfig().getEncryptDecryptProviderParameter())
         .encrypt(password);
   }
 

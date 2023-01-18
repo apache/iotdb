@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.utils;
 
-import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.query.control.SessionManager;
@@ -455,7 +454,7 @@ public class DateTimeUtils {
         str,
         toZoneOffset(zoneId),
         0,
-        CommonDescriptor.getInstance().getConf().getTimestampPrecision());
+        IoTDBDescriptor.getInstance().getConfig().getTimestampPrecision());
   }
 
   public static long convertDatetimeStrToLong(
@@ -533,7 +532,7 @@ public class DateTimeUtils {
 
   public static long convertDurationStrToLong(long currentTime, String duration) {
     return convertDurationStrToLong(
-        currentTime, duration, CommonDescriptor.getInstance().getConf().getTimestampPrecision());
+        currentTime, duration, IoTDBDescriptor.getInstance().getConfig().getTimestampPrecision());
   }
 
   /**
@@ -653,8 +652,8 @@ public class DateTimeUtils {
   }
 
   public static long currentTime() {
-    long startupNano = IoTDBDescriptor.getInstance().getConf().getStartUpNanosecond();
-    String timePrecision = CommonDescriptor.getInstance().getConf().getTimestampPrecision();
+    long startupNano = IoTDBDescriptor.getInstance().getConfig().getStartUpNanosecond();
+    String timePrecision = IoTDBDescriptor.getInstance().getConfig().getTimestampPrecision();
     switch (timePrecision) {
       case "ns":
         return System.currentTimeMillis() * 1000_000 + (System.nanoTime() - startupNano) % 1000_000;
@@ -666,7 +665,7 @@ public class DateTimeUtils {
   }
 
   public static String convertLongToDate(long timestamp) {
-    String timePrecision = CommonDescriptor.getInstance().getConf().getTimestampPrecision();
+    String timePrecision = IoTDBDescriptor.getInstance().getConfig().getTimestampPrecision();
     switch (timePrecision) {
       case "ns":
         timestamp /= 1000_000_000;

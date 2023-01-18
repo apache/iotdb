@@ -16,30 +16,20 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.commons.loadbalance;
+package org.apache.iotdb.db.wal.utils;
 
-import java.io.IOException;
-
-public enum LeaderDistributionPolicy {
-  GREEDY("GREEDY"),
-  MIN_COST_FLOW("MIN_COST_FLOW");
-
-  private final String policy;
-
-  LeaderDistributionPolicy(String policy) {
-    this.policy = policy;
-  }
-
-  public String getPolicy() {
-    return policy;
-  }
-
-  public static LeaderDistributionPolicy parse(String policy) throws IOException {
-    for (LeaderDistributionPolicy leaderDistributionPolicy : LeaderDistributionPolicy.values()) {
-      if (leaderDistributionPolicy.policy.equals(policy)) {
-        return leaderDistributionPolicy;
-      }
-    }
-    throw new IOException(String.format("LeaderDistributionPolicy %s doesn't exist.", policy));
-  }
+/** Write mode of wal */
+public enum WALMode {
+  /** disable wal */
+  DISABLE,
+  /**
+   * submit wal synchronously, write request will not return until its wal is flushed to the disk
+   * successfully
+   */
+  SYNC,
+  /**
+   * submit wal asynchronously, write request will return immediately no matter its wal is flushed
+   * to the disk successfully
+   */
+  ASYNC,
 }

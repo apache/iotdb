@@ -56,6 +56,11 @@ public class AnomalyIT {
         Statement statement = connection.createStatement()) {
       statement.addBatch("create database root.vehicle");
       statement.addBatch(
+          "create timeseries root.vehicle.d0.s0 with "
+              + "datatype=float, "
+              + "encoding=plain, "
+              + "compression=uncompressed");
+      statement.addBatch(
           "create timeseries root.vehicle.d1.s1 with "
               + "datatype=int32, "
               + "encoding=plain, "
@@ -175,6 +180,7 @@ public class AnomalyIT {
               + "datatype=double, "
               + "encoding=plain, "
               + "compression=uncompressed");
+
       statement.executeBatch();
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
@@ -184,6 +190,46 @@ public class AnomalyIT {
   private static void generateData() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
+      statement.addBatch(
+          String.format("insert into root.vehicle.d0(timestamp,s0) values(%d,%f)", 100, 56.0));
+      statement.addBatch(
+          String.format("insert into root.vehicle.d0(timestamp,s0) values(%d,%f)", 200, 55.1));
+      statement.addBatch(
+          String.format("insert into root.vehicle.d0(timestamp,s0) values(%d,%f)", 300, 54.2));
+      statement.addBatch(
+          String.format("insert into root.vehicle.d0(timestamp,s0) values(%d,%f)", 400, 56.3));
+      statement.addBatch(
+          String.format("insert into root.vehicle.d0(timestamp,s0) values(%d,%f)", 500, 60.0));
+      statement.addBatch(
+          String.format("insert into root.vehicle.d0(timestamp,s0) values(%d,%f)", 600, 60.5));
+      statement.addBatch(
+          String.format("insert into root.vehicle.d0(timestamp,s0) values(%d,%f)", 700, 64.5));
+      statement.addBatch(
+          String.format("insert into root.vehicle.d0(timestamp,s0) values(%d,%f)", 800, 69.0));
+      statement.addBatch(
+          String.format("insert into root.vehicle.d0(timestamp,s0) values(%d,%f)", 900, 64.2));
+      statement.addBatch(
+          String.format("insert into root.vehicle.d0(timestamp,s0) values(%d,%f)", 1000, 62.3));
+      statement.addBatch(
+          String.format("insert into root.vehicle.d0(timestamp,s0) values(%d,%f)", 1100, 58.0));
+      statement.addBatch(
+          String.format("insert into root.vehicle.d0(timestamp,s0) values(%d,%f)", 1200, 58.9));
+      statement.addBatch(
+          String.format("insert into root.vehicle.d0(timestamp,s0) values(%d,%f)", 1300, 52.0));
+      statement.addBatch(
+          String.format("insert into root.vehicle.d0(timestamp,s0) values(%d,%f)", 1400, 62.3));
+      statement.addBatch(
+          String.format("insert into root.vehicle.d0(timestamp,s0) values(%d,%f)", 1500, 61.0));
+      statement.addBatch(
+          String.format("insert into root.vehicle.d0(timestamp,s0) values(%d,%f)", 1600, 64.2));
+      statement.addBatch(
+          String.format("insert into root.vehicle.d0(timestamp,s0) values(%d,%f)", 1700, 61.8));
+      statement.addBatch(
+          String.format("insert into root.vehicle.d0(timestamp,s0) values(%d,%f)", 1800, 64.0));
+      statement.addBatch(
+          String.format("insert into root.vehicle.d0(timestamp,s0) values(%d,%f)", 1900, 63.0));
+      statement.addBatch(
+          String.format("insert into root.vehicle.d0(timestamp,s0) values(%d,%f)", 2000, 59.0));
       statement.addBatch(
           String.format(
               "insert into root.vehicle.d1(timestamp,s1,s2,s3,s4) values(%d,%d,%d,%d,%d)",
@@ -513,6 +559,8 @@ public class AnomalyIT {
       statement.execute("create function range as 'org.apache.iotdb.library.anomaly.UDTFRange'");
       statement.execute(
           "create function TwoSidedFilter as 'org.apache.iotdb.library.anomaly.UDTFTwoSidedFilter'");
+      statement.execute(
+          "create function outlier as 'org.apache.iotdb.library.anomaly.UDTFOutlier'");
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -1498,6 +1546,24 @@ public class AnomalyIT {
       Assert.assertEquals(950.0, result22, 0.01);
       Assert.assertEquals(1059.0, result23, 0.01);
       Assert.assertFalse(resultSet.next());
+    } catch (SQLException throwable) {
+      fail(throwable.getMessage());
+    }
+  }
+
+  @Test
+  public void testOutlier1() {
+    String sqlStr =
+        "select outlier(d0.s0, \"r\"=\"5\", \"k\"=\"4\", \"w\"=\"10\", \"s\"=\"5\") from root.vehicle";
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      ResultSet resultSet = statement.executeQuery(sqlStr);
+      resultSet.next();
+      double result1 = resultSet.getDouble(2);
+      resultSet.next();
+      double result2 = resultSet.getDouble(2);
+      Assert.assertEquals(69.0, result1, 0.01);
+      Assert.assertEquals(52.0, result2, 0.01);
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }

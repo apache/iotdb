@@ -76,7 +76,7 @@ public class SessionManager implements SessionManagerMBean {
       TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V3;
 
   private static final boolean enableAuditLog =
-      IoTDBDescriptor.getInstance().getConf().isEnableAuditLog();
+      IoTDBDescriptor.getInstance().getConfig().isEnableAuditLog();
 
   protected SessionManager() {
     // singleton
