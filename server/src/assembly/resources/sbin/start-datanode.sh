@@ -18,6 +18,9 @@
 # under the License.
 #
 
+echo ---------------------
+echo "Starting IoTDB DataNode"
+echo ---------------------
 
 source "$(dirname "$0")/iotdb-common.sh"
 
@@ -133,10 +136,6 @@ if [ "x$SHOW_VERSION" != "x" ]; then
     exec "$JAVA" -cp "$CLASSPATH" $IOTDB_JVM_OPTS "-Dlogback.configurationFile=${IOTDB_LOG_CONFIG}" "$classname"
     exit 0
 fi
-
-echo ---------------------
-echo "Starting IoTDB DataNode"
-echo ---------------------
 
 #initEnv is in iotdb-common.sh
 initEnv

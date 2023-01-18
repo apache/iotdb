@@ -18,6 +18,11 @@
 # under the License.
 #
 
+fore_ground=true
+if [ "$1" = "-d" ]; then
+  fore_ground=false
+fi
+
 if [ -z "${IOTDB_HOME}" ]; then
   export IOTDB_HOME="`dirname "$0"`/.."
 fi
@@ -36,6 +41,11 @@ else
   exit 0
 fi
 
-nohup bash "$CONFIGNODE_START_PATH" >/dev/null 2>&1 &
+bash "$CONFIGNODE_START_PATH" -d
+echo " "
 sleep 3
-bash "$DATANODE_START_PATH"
+if [ $fore_ground = "true" ]; then
+  bash "$DATANODE_START_PATH"
+else
+  bash "$DATANODE_START_PATH" -d
+fi
