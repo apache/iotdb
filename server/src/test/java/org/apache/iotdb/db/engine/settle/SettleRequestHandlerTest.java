@@ -54,7 +54,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class SettleRequestHandlerTest {
-  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConf();
+  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   private SettleRequestHandler reqHandler;
   private String storageGroup = "root.sg.d1";

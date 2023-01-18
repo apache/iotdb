@@ -26,8 +26,6 @@ import org.apache.iotdb.commons.client.sync.SyncDataNodeMPPDataExchangeServiceCl
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.IoTThreadFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
-import org.apache.iotdb.commons.conf.CommonConfig;
-import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.runtime.RPCServiceException;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.service.ThriftService;
@@ -49,18 +47,16 @@ public class MPPDataExchangeService extends ThriftService implements MPPDataExch
 
   private static final Logger LOGGER = LoggerFactory.getLogger(MPPDataExchangeService.class);
 
-  private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConf();
-
   private final MPPDataExchangeManager mppDataExchangeManager;
   private final ExecutorService executorService;
 
   private MPPDataExchangeService() {
-    IoTDBConfig config = IoTDBDescriptor.getInstance().getConf();
+    IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
     executorService =
         IoTDBThreadPoolFactory.newThreadPool(
-            COMMON_CONFIG.getMppDataExchangeCorePoolSize(),
-            COMMON_CONFIG.getMppDataExchangeMaxPoolSize(),
-            COMMON_CONFIG.getMppDataExchangeKeepAliveTimeInMs(),
+            config.getMppDataExchangeCorePoolSize(),
+            config.getMppDataExchangeMaxPoolSize(),
+            config.getMppDataExchangeKeepAliveTimeInMs(),
             TimeUnit.MILLISECONDS,
             // TODO: Use a priority queue.
             new LinkedBlockingQueue<>(),
@@ -90,7 +86,7 @@ public class MPPDataExchangeService extends ThriftService implements MPPDataExch
   @Override
   public void initThriftServiceThread() throws IllegalAccessException {
     try {
-      IoTDBConfig config = IoTDBDescriptor.getInstance().getConf();
+      IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
       thriftServiceThread =
           new ThriftServiceThread(
               processor,
@@ -98,7 +94,7 @@ public class MPPDataExchangeService extends ThriftService implements MPPDataExch
               ThreadName.MPP_DATA_EXCHANGE_RPC_PROCESSOR.getName(),
               getBindIP(),
               getBindPort(),
-              config.getDnRpcMaxConcurrentClientNum(),
+              config.getRpcMaxConcurrentClientNum(),
               config.getThriftServerAwaitTimeForStopService(),
               new MPPDataExchangeServiceThriftHandler(),
               // TODO: hard coded compress strategy
@@ -113,12 +109,12 @@ public class MPPDataExchangeService extends ThriftService implements MPPDataExch
 
   @Override
   public String getBindIP() {
-    return IoTDBDescriptor.getInstance().getConf().getDnInternalAddress();
+    return IoTDBDescriptor.getInstance().getConfig().getInternalAddress();
   }
 
   @Override
   public int getBindPort() {
-    return IoTDBDescriptor.getInstance().getConf().getDnMppDataExchangePort();
+    return IoTDBDescriptor.getInstance().getConfig().getMppDataExchangePort();
   }
 
   @Override

@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.integration;
 
-import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.integration.env.ConfigFactory;
 import org.apache.iotdb.integration.env.EnvFactory;
 import org.apache.iotdb.itbase.category.ClusterTest;
@@ -53,7 +53,7 @@ public class IoTDBMultiOverlappedPageIT {
   @BeforeClass
   public static void setUp() throws Exception {
     beforeMemtableSizeThreshold =
-        CommonDescriptor.getInstance().getConf().getMemtableSizeThreshold();
+        IoTDBDescriptor.getInstance().getConfig().getMemtableSizeThreshold();
     ConfigFactory.getConfig().setMemtableSizeThreshold(1024 * 16);
     // max_number_of_points_in_page = 10
     beforeMaxNumberOfPointsInPage =

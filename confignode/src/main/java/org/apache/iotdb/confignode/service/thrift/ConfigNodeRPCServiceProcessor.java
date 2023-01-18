@@ -31,6 +31,7 @@ import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.conf.ConfigNodeConstant;
+import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.conf.SystemPropertiesUtils;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
@@ -275,19 +276,19 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
 
     // Set default configurations if necessary
     if (!storageGroupSchema.isSetTTL()) {
-      storageGroupSchema.setTTL(CommonDescriptor.getInstance().getConf().getDefaultTtlInMs());
+      storageGroupSchema.setTTL(CommonDescriptor.getInstance().getConfig().getDefaultTTLInMs());
     }
     if (!storageGroupSchema.isSetSchemaReplicationFactor()) {
       storageGroupSchema.setSchemaReplicationFactor(
-          CommonDescriptor.getInstance().getConf().getSchemaReplicationFactor());
+          ConfigNodeDescriptor.getInstance().getConf().getSchemaReplicationFactor());
     }
     if (!storageGroupSchema.isSetDataReplicationFactor()) {
       storageGroupSchema.setDataReplicationFactor(
-          CommonDescriptor.getInstance().getConf().getDataReplicationFactor());
+          ConfigNodeDescriptor.getInstance().getConf().getDataReplicationFactor());
     }
     if (!storageGroupSchema.isSetTimePartitionInterval()) {
       storageGroupSchema.setTimePartitionInterval(
-          CommonDescriptor.getInstance().getConf().getTimePartitionInterval());
+          ConfigNodeDescriptor.getInstance().getConf().getTimePartitionInterval());
     }
 
     // Initialize the maxSchemaRegionGroupCount and maxDataRegionGroupCount as 0
@@ -486,7 +487,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
     LOGGER.info(
         "{} has successfully started and joined the cluster: {}.",
         ConfigNodeConstant.GLOBAL_NAME,
-        CommonDescriptor.getInstance().getConf().getClusterName());
+        ConfigNodeDescriptor.getInstance().getConf().getClusterName());
     return StatusUtils.OK;
   }
 

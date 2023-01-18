@@ -71,10 +71,10 @@ public class TsFileSplitTool {
    * default is 100
    */
   private final long chunkPointNumLowerBoundInCompaction =
-      IoTDBDescriptor.getInstance().getConf().getChunkPointNumLowerBoundInCompaction();
+      IoTDBDescriptor.getInstance().getConfig().getChunkPointNumLowerBoundInCompaction();
 
   private static long targetSplitFileSize =
-      IoTDBDescriptor.getInstance().getConf().getTargetCompactionFileSize();
+      IoTDBDescriptor.getInstance().getConfig().getTargetCompactionFileSize();
 
   private static String levelNum = "10";
 

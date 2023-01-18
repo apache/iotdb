@@ -18,14 +18,14 @@
  */
 package org.apache.iotdb.db.wal.buffer;
 
-import org.apache.iotdb.commons.conf.CommonConfig;
-import org.apache.iotdb.commons.conf.CommonDescriptor;
-import org.apache.iotdb.commons.wal.WALMode;
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.db.wal.utils.WALMode;
 
 /** This entry class stores info for persistence */
 public class WALInfoEntry extends WALEntry {
-  private static final CommonConfig config = CommonDescriptor.getInstance().getConf();
+  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   /** wal entry type 1 byte, memTable id 8 bytes */
   public static final int FIXED_SERIALIZED_SIZE = Byte.BYTES + Long.BYTES;

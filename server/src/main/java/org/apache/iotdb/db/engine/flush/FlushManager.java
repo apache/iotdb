@@ -39,7 +39,7 @@ import java.util.concurrent.ConcurrentLinkedDeque;
 public class FlushManager implements FlushManagerMBean, IService {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(FlushManager.class);
-  private final IoTDBConfig config = IoTDBDescriptor.getInstance().getConf();
+  private final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   private ConcurrentLinkedDeque<TsFileProcessor> tsFileProcessorQueue =
       new ConcurrentLinkedDeque<>();

@@ -51,28 +51,29 @@ public class IoTDBSyncReceiverLoaderIT {
   @Before
   public void setUp() throws Exception {
     EnvironmentUtils.envSetUp();
-    enableSeqSpaceCompaction = IoTDBDescriptor.getInstance().getConf().isEnableSeqSpaceCompaction();
+    enableSeqSpaceCompaction =
+        IoTDBDescriptor.getInstance().getConfig().isEnableSeqSpaceCompaction();
     enableUnseqSpaceCompaction =
-        IoTDBDescriptor.getInstance().getConf().isEnableUnseqSpaceCompaction();
+        IoTDBDescriptor.getInstance().getConfig().isEnableUnseqSpaceCompaction();
     enableCrossSpaceCompaction =
-        IoTDBDescriptor.getInstance().getConf().isEnableCrossSpaceCompaction();
-    IoTDBDescriptor.getInstance().getConf().setEnableSeqSpaceCompaction(false);
-    IoTDBDescriptor.getInstance().getConf().setEnableUnseqSpaceCompaction(false);
-    IoTDBDescriptor.getInstance().getConf().setEnableCrossSpaceCompaction(false);
+        IoTDBDescriptor.getInstance().getConfig().isEnableCrossSpaceCompaction();
+    IoTDBDescriptor.getInstance().getConfig().setEnableSeqSpaceCompaction(false);
+    IoTDBDescriptor.getInstance().getConfig().setEnableUnseqSpaceCompaction(false);
+    IoTDBDescriptor.getInstance().getConfig().setEnableCrossSpaceCompaction(false);
     SyncTestUtil.insertData();
     EnvironmentUtils.shutdownDaemon();
-    File srcDir = new File(IoTDBDescriptor.getInstance().getConf().getDnDataDirs()[0]);
+    File srcDir = new File(IoTDBDescriptor.getInstance().getConfig().getDataDirs()[0]);
     FileUtils.moveDirectory(srcDir, tmpDir);
   }
 
   @After
   public void tearDown() throws Exception {
-    IoTDBDescriptor.getInstance().getConf().setEnableSeqSpaceCompaction(enableSeqSpaceCompaction);
+    IoTDBDescriptor.getInstance().getConfig().setEnableSeqSpaceCompaction(enableSeqSpaceCompaction);
     IoTDBDescriptor.getInstance()
-        .getConf()
+        .getConfig()
         .setEnableUnseqSpaceCompaction(enableUnseqSpaceCompaction);
     IoTDBDescriptor.getInstance()
-        .getConf()
+        .getConfig()
         .setEnableCrossSpaceCompaction(enableCrossSpaceCompaction);
     FileUtils.deleteDirectory(tmpDir);
     EnvironmentUtils.cleanEnv();

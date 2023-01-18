@@ -20,13 +20,13 @@ package org.apache.iotdb.db.mpp.plan.planner.plan;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
-import org.apache.iotdb.commons.conf.CommonConfig;
-import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.runtime.SerializationRunTimeException;
 import org.apache.iotdb.commons.partition.ExecutorType;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.common.SessionInfo;
 import org.apache.iotdb.db.mpp.plan.analyze.QueryType;
@@ -50,7 +50,7 @@ public class FragmentInstance implements IConsensusRequest {
 
   private final Logger logger = LoggerFactory.getLogger(FragmentInstance.class);
 
-  private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConf();
+  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   private final FragmentInstanceId id;
   private final QueryType type;
@@ -84,7 +84,7 @@ public class FragmentInstance implements IConsensusRequest {
     this.timeFilter = timeFilter;
     this.id = id;
     this.type = type;
-    this.timeOut = timeOut > 0 ? timeOut : COMMON_CONFIG.getQueryTimeoutThreshold();
+    this.timeOut = timeOut > 0 ? timeOut : config.getQueryTimeoutThreshold();
     this.isRoot = false;
     this.sessionInfo = sessionInfo;
   }

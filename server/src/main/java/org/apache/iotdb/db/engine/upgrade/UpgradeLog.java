@@ -35,14 +35,13 @@ public class UpgradeLog {
 
   private static final Logger logger = LoggerFactory.getLogger(UpgradeLog.class);
 
-  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConf();
+  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final String UPGRADE_DIR = "upgrade";
   private static final String UPGRADE_LOG_NAME = "upgrade.txt";
   private static BufferedWriter upgradeLogWriter;
   private static File upgradeLogPath =
       SystemFileFactory.INSTANCE.getFile(
-          SystemFileFactory.INSTANCE.getFile(config.getDnSystemDir(), UPGRADE_DIR),
-          UPGRADE_LOG_NAME);
+          SystemFileFactory.INSTANCE.getFile(config.getSystemDir(), UPGRADE_DIR), UPGRADE_LOG_NAME);
 
   public static boolean createUpgradeLog() {
     try {

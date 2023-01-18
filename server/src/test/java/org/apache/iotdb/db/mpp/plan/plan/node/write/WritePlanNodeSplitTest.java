@@ -24,7 +24,6 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
-import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
@@ -70,12 +69,12 @@ public class WritePlanNodeSplitTest {
   @Before
   public void setUp() {
     prevTimePartitionInterval =
-        IoTDBDescriptor.getInstance().getConf().getDnTimePartitionInterval();
-    IoTDBDescriptor.getInstance().getConf().setDnTimePartitionInterval(100);
+        IoTDBDescriptor.getInstance().getConfig().getTimePartitionInterval();
+    IoTDBDescriptor.getInstance().getConfig().setTimePartitionInterval(100);
     TimePartitionUtils.setTimePartitionInterval(100);
 
-    executorClassName = CommonDescriptor.getInstance().getConf().getSeriesPartitionExecutorClass();
-    seriesSlotPartitionNum = CommonDescriptor.getInstance().getConf().getSeriesSlotNum();
+    executorClassName = IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionExecutorClass();
+    seriesSlotPartitionNum = IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionSlotNum();
     partitionExecutor =
         SeriesPartitionExecutor.getSeriesPartitionExecutor(
             executorClassName, seriesSlotPartitionNum);
@@ -306,6 +305,6 @@ public class WritePlanNodeSplitTest {
   @After
   public void tearDown() {
     TimePartitionUtils.setTimePartitionInterval(prevTimePartitionInterval);
-    IoTDBDescriptor.getInstance().getConf().setDnTimePartitionInterval(prevTimePartitionInterval);
+    IoTDBDescriptor.getInstance().getConfig().setTimePartitionInterval(prevTimePartitionInterval);
   }
 }

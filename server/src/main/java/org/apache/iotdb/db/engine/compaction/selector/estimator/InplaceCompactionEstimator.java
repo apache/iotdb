@@ -41,7 +41,7 @@ public class InplaceCompactionEstimator extends AbstractCrossSpaceEstimator {
 
   // the number of timeseries being compacted at the same time
   private final int concurrentSeriesNum =
-      IoTDBDescriptor.getInstance().getConf().getSubCompactionTaskNum();
+      IoTDBDescriptor.getInstance().getConfig().getSubCompactionTaskNum();
 
   /** Total metadata size of each file. */
   private final Map<TsFileResource, Long> fileMetaSizeMap = new HashMap<>();

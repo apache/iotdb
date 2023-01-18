@@ -168,7 +168,7 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
             timePartition,
             true);
 
-        if (IoTDBDescriptor.getInstance().getConf().isEnableCompactionValidation()
+        if (IoTDBDescriptor.getInstance().getConfig().isEnableCompactionValidation()
             && !CompactionUtils.validateTsFileResources(
                 tsFileManager, storageGroupName, timePartition)) {
           LOGGER.error(

@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.engine.trigger.utils;
 
-import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 
 import org.apache.http.impl.conn.PoolingHttpClientConnectionManager;
 
@@ -36,11 +36,11 @@ public class HTTPConnectionPool {
           clientConnectionManager = new PoolingHttpClientConnectionManager();
           // Set the max number of connections
           clientConnectionManager.setMaxTotal(
-              CommonDescriptor.getInstance().getConf().getTriggerForwardHTTPPoolSize());
+              IoTDBDescriptor.getInstance().getConfig().getTriggerForwardHTTPPoolSize());
           // Set the maximum number of connections per host and the specified number of connections
           // per website, which will not affect the access of other websites
           clientConnectionManager.setDefaultMaxPerRoute(
-              CommonDescriptor.getInstance().getConf().getTriggerForwardHTTPPOOLMaxPerRoute());
+              IoTDBDescriptor.getInstance().getConfig().getTriggerForwardHTTPPOOLMaxPerRoute());
         }
       }
     }

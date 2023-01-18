@@ -93,10 +93,10 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
       try {
         c =
             (Class<BasicAuthorizer>)
-                Class.forName(CommonDescriptor.getInstance().getConf().getAuthorizerProvider());
+                Class.forName(CommonDescriptor.getInstance().getConfig().getAuthorizerProvider());
         logger.info(
             "Authorizer provider class: {}",
-            CommonDescriptor.getInstance().getConf().getAuthorizerProvider());
+            CommonDescriptor.getInstance().getConfig().getAuthorizerProvider());
         instance = c.getDeclaredConstructor().newInstance();
       } catch (Exception e) {
         // startup failed.

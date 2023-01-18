@@ -19,9 +19,9 @@
 
 package org.apache.iotdb.db.trigger.service;
 
-import org.apache.iotdb.commons.conf.CommonConfig;
-import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.file.SystemFileFactory;
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,7 +31,7 @@ import java.io.IOException;
 public class TriggerClassLoaderManager {
   private static final Logger LOGGER = LoggerFactory.getLogger(TriggerClassLoaderManager.class);
 
-  private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConf();
+  private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
   /** The dir that stores jar files. */
   private final String libRoot;
@@ -70,8 +70,8 @@ public class TriggerClassLoaderManager {
 
     static {
       try {
-        SystemFileFactory.INSTANCE.makeDirIfNecessary(COMMON_CONFIG.getTriggerDir());
-        INSTANCE = new TriggerClassLoaderManager(COMMON_CONFIG.getTriggerDir());
+        SystemFileFactory.INSTANCE.makeDirIfNecessary(CONFIG.getTriggerDir());
+        INSTANCE = new TriggerClassLoaderManager(CONFIG.getTriggerDir());
       } catch (IOException e) {
         throw new RuntimeException(e);
       }

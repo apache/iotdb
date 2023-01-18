@@ -18,8 +18,6 @@
  */
 package org.apache.iotdb.db.metadata.schemaregion;
 
-import org.apache.iotdb.commons.conf.CommonConfig;
-import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
@@ -120,8 +118,7 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
 
   private static final Logger logger = LoggerFactory.getLogger(SchemaRegionSchemaFileImpl.class);
 
-  private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConf();
-  protected static final IoTDBConfig IOTDB_CONFIG = IoTDBDescriptor.getInstance().getConf();
+  protected static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   private boolean isRecovering = true;
   private volatile boolean initialized = false;
@@ -159,7 +156,7 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
     storageGroupFullPath = storageGroup.getFullPath();
     this.schemaRegionId = schemaRegionId;
 
-    storageGroupDirPath = IOTDB_CONFIG.getSchemaDir() + File.separator + storageGroupFullPath;
+    storageGroupDirPath = config.getSchemaDir() + File.separator + storageGroupFullPath;
     schemaRegionDirPath = storageGroupDirPath + File.separator + schemaRegionId.getId();
 
     this.seriesNumerMonitor = seriesNumerMonitor;
@@ -184,10 +181,9 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
           new MTreeBelowSGCachedImpl(
               new PartialPath(storageGroupFullPath), tagManager::readTags, schemaRegionId.getId());
 
-      if (!(IOTDB_CONFIG.isClusterMode()
-          && COMMON_CONFIG
+      if (!(config.isClusterMode()
+          && config
               .getSchemaRegionConsensusProtocolClass()
-              .getProtocol()
               .equals(ConsensusFactory.RATIS_CONSENSUS))) {
         usingMLog = true;
         initMLog();
@@ -239,7 +235,7 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
             schemaRegionDirPath,
             MetadataConstant.METADATA_LOG,
             new FakeCRC32Serializer<>(new SchemaRegionPlanSerializer()),
-            COMMON_CONFIG.getSyncMlogPeriodInMs() == 0);
+            config.getSyncMlogPeriodInMs() == 0);
   }
 
   public void writeToMLog(ISchemaRegionPlan schemaRegionPlan) throws IOException {
@@ -600,8 +596,7 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
     }
 
     // update id table if not in recovering or disable id table log file
-    if (IOTDB_CONFIG.isEnableIDTable()
-        && (!isRecovering || !IOTDB_CONFIG.isEnableIDTableLogFile())) {
+    if (config.isEnableIDTable() && (!isRecovering || !config.isEnableIDTableLogFile())) {
       IDTable idTable = IDTableManager.getInstance().getIDTable(plan.getPath().getDevicePath());
       idTable.createTimeseries(plan);
     }
@@ -746,8 +741,7 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
     }
 
     // update id table if not in recovering or disable id table log file
-    if (IOTDB_CONFIG.isEnableIDTable()
-        && (!isRecovering || !IOTDB_CONFIG.isEnableIDTableLogFile())) {
+    if (config.isEnableIDTable() && (!isRecovering || !config.isEnableIDTableLogFile())) {
       IDTable idTable = IDTableManager.getInstance().getIDTable(plan.getDevicePath());
       idTable.createAlignedTimeseries(plan);
     }

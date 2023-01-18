@@ -20,10 +20,10 @@ package org.apache.iotdb.db.wal.recover;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
+import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.DataRegionException;
 import org.apache.iotdb.db.exception.runtime.StorageEngineFailureException;
 import org.apache.iotdb.db.wal.exception.WALRecoverException;
@@ -48,8 +48,7 @@ import java.util.concurrent.Future;
 /** First set allVsgScannedLatch, then call recover method. */
 public class WALRecoverManager {
   private static final Logger logger = LoggerFactory.getLogger(WALRecoverManager.class);
-
-  private static final IoTDBConfig IOTDB_CONFIG = IoTDBDescriptor.getInstance().getConf();
+  private static final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
 
   /** true when the recover procedure has started */
   private volatile boolean hasStarted = false;
@@ -68,7 +67,7 @@ public class WALRecoverManager {
     try {
       // collect wal nodes' information
       List<File> walNodeDirs = new ArrayList<>();
-      for (String walDir : IOTDB_CONFIG.getDnWalDirs()) {
+      for (String walDir : commonConfig.getWalDirs()) {
         File walDirFile = SystemFileFactory.INSTANCE.getFile(walDir);
         File[] nodeDirs = walDirFile.listFiles(File::isDirectory);
         if (nodeDirs == null) {

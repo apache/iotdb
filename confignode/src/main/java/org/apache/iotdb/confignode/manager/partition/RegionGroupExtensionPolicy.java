@@ -16,10 +16,32 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.commons.utils.datastructure;
+package org.apache.iotdb.confignode.manager.partition;
 
-public enum TVListSortAlgorithm {
-  TIM,
-  QUICK,
-  BACKWARD
+import java.io.IOException;
+
+public enum RegionGroupExtensionPolicy {
+  CUSTOM("CUSTOM"),
+
+  AUTO("AUTO");
+
+  private final String policy;
+
+  RegionGroupExtensionPolicy(String policy) {
+    this.policy = policy;
+  }
+
+  public String getPolicy() {
+    return policy;
+  }
+
+  public static RegionGroupExtensionPolicy parse(String policy) throws IOException {
+    for (RegionGroupExtensionPolicy extensionPolicy : RegionGroupExtensionPolicy.values()) {
+      if (extensionPolicy.policy.equals(policy)) {
+        return extensionPolicy;
+      }
+    }
+    throw new IOException(
+        String.format("DataRegionGroupExtensionPolicy %s doesn't exist.", policy));
+  }
 }

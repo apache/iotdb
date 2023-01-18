@@ -60,7 +60,7 @@ public class SnapshotLoader {
   private DataRegion loadSnapshot() {
     try {
       return new DataRegion(
-          IoTDBDescriptor.getInstance().getConf().getDnSystemDir()
+          IoTDBDescriptor.getInstance().getConfig().getSystemDir()
               + File.separator
               + "databases"
               + File.separator
@@ -171,7 +171,7 @@ public class SnapshotLoader {
   }
 
   private void deleteAllFilesInDataDirs() throws IOException {
-    String[] dataDirPaths = IoTDBDescriptor.getInstance().getConf().getDnDataDirs();
+    String[] dataDirPaths = IoTDBDescriptor.getInstance().getConfig().getDataDirs();
 
     // delete
     List<File> timePartitions = new ArrayList<>();
@@ -250,7 +250,7 @@ public class SnapshotLoader {
     }
     FolderManager folderManager =
         new FolderManager(
-            Arrays.asList(IoTDBDescriptor.getInstance().getConf().getDnDataDirs()),
+            Arrays.asList(IoTDBDescriptor.getInstance().getConfig().getDataDirs()),
             DirectoryStrategyType.SEQUENCE_STRATEGY);
     File[] timePartitionFolders = seqFileDir.listFiles();
     if (timePartitionFolders != null) {
@@ -318,7 +318,7 @@ public class SnapshotLoader {
     String snapshotId = logAnalyzer.getSnapshotId();
     int loggedFileNum = logAnalyzer.getTotalFileCountInSnapshot();
     Set<String> fileInfoSet = logAnalyzer.getFileInfoSet();
-    String[] dataDirs = IoTDBDescriptor.getInstance().getConf().getDnDataDirs();
+    String[] dataDirs = IoTDBDescriptor.getInstance().getConfig().getDataDirs();
     int fileCnt = 0;
     for (String dataDir : dataDirs) {
       String snapshotDir =
@@ -454,7 +454,7 @@ public class SnapshotLoader {
     SnapshotLogAnalyzer analyzer = new SnapshotLogAnalyzer(logFile);
     try {
       String snapshotId = analyzer.getSnapshotId();
-      String[] dataDirs = IoTDBDescriptor.getInstance().getConf().getDnDataDirs();
+      String[] dataDirs = IoTDBDescriptor.getInstance().getConfig().getDataDirs();
       List<File> fileList = new LinkedList<>();
       for (String dataDir : dataDirs) {
         String snapshotDir =

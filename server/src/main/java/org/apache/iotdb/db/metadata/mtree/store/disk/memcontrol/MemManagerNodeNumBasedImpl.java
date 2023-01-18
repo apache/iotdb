@@ -37,7 +37,7 @@ public class MemManagerNodeNumBasedImpl implements IMemManager {
 
   @Override
   public void init() {
-    capacity = IoTDBDescriptor.getInstance().getConf().getCachedMNodeSizeInSchemaFileMode();
+    capacity = IoTDBDescriptor.getInstance().getConfig().getCachedMNodeSizeInSchemaFileMode();
   }
 
   @Override

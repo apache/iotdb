@@ -23,7 +23,6 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
-import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.ConfigNodeRegionId;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.trigger.TriggerInformation;
@@ -33,6 +32,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TTriggerState;
 import org.apache.iotdb.db.client.ConfigNodeClient;
 import org.apache.iotdb.db.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.client.ConfigNodeInfo;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.plan.Coordinator;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
@@ -75,7 +75,7 @@ public class TriggerFireVisitor extends PlanVisitor<TriggerFireResult, TriggerEv
    * How many times should we retry when error occurred during firing a trigger on another datanode
    */
   private static final int FIRE_RETRY_NUM =
-      CommonDescriptor.getInstance().getConf().getStatefulTriggerRetryNumWhenNotFound();
+      IoTDBDescriptor.getInstance().getConfig().getRetryNumToFindStatefulTrigger();
 
   @Override
   public TriggerFireResult process(PlanNode node, TriggerEvent context) {

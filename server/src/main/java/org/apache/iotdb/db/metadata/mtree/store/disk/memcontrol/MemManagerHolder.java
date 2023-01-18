@@ -26,7 +26,7 @@ public class MemManagerHolder {
   private static IMemManager memManagerInstance;
 
   public static void initMemManagerInstance() {
-    if (IoTDBDescriptor.getInstance().getConf().getCachedMNodeSizeInSchemaFileMode() >= 0) {
+    if (IoTDBDescriptor.getInstance().getConfig().getCachedMNodeSizeInSchemaFileMode() >= 0) {
       memManagerInstance = new MemManagerNodeNumBasedImpl();
     } else {
       memManagerInstance = new MemManagerNodeEstimatedSizeBasedImpl();

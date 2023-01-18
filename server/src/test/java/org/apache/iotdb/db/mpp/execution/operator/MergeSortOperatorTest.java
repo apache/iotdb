@@ -104,8 +104,8 @@ public class MergeSortOperatorTest {
 
   @Before
   public void setUp() throws MetadataException, IOException, WriteProcessException {
-    dataNodeId = IoTDBDescriptor.getInstance().getConf().getDataNodeId();
-    IoTDBDescriptor.getInstance().getConf().setDataNodeId(0);
+    dataNodeId = IoTDBDescriptor.getInstance().getConfig().getDataNodeId();
+    IoTDBDescriptor.getInstance().getConfig().setDataNodeId(0);
     SeriesReaderTestUtil.setUp(
         measurementSchemas, deviceIds, seqResources, unSeqResources, MERGE_SORT_OPERATOR_TEST_SG);
   }
@@ -113,7 +113,7 @@ public class MergeSortOperatorTest {
   @After
   public void tearDown() throws IOException {
     SeriesReaderTestUtil.tearDown(seqResources, unSeqResources);
-    IoTDBDescriptor.getInstance().getConf().setDataNodeId(dataNodeId);
+    IoTDBDescriptor.getInstance().getConfig().setDataNodeId(dataNodeId);
   }
 
   long getValue(long expectedTime) {

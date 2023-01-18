@@ -48,7 +48,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 public class CheckpointManagerTest {
-  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConf();
+  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final String identifier = String.valueOf(Integer.MAX_VALUE);
   private static final String logDirectory = TestConstant.BASE_OUTPUT_PATH.concat("wal-test");
   private CheckpointManager checkpointManager;

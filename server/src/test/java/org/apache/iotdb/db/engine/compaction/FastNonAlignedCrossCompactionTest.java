@@ -61,8 +61,8 @@ public class FastNonAlignedCrossCompactionTest extends AbstractCompactionTest {
   public void setUp()
       throws IOException, WriteProcessException, MetadataException, InterruptedException {
     super.setUp();
-    IoTDBDescriptor.getInstance().getConf().setTargetChunkSize(512);
-    IoTDBDescriptor.getInstance().getConf().setTargetChunkPointNum(100);
+    IoTDBDescriptor.getInstance().getConfig().setTargetChunkSize(512);
+    IoTDBDescriptor.getInstance().getConfig().setTargetChunkPointNum(100);
     TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(30);
     TSFileDescriptor.getInstance().getConfig().setMaxDegreeOfIndexNode(3);
   }
@@ -264,7 +264,7 @@ public class FastNonAlignedCrossCompactionTest extends AbstractCompactionTest {
 
   @Test
   public void test2() throws MetadataException, IOException {
-    IoTDBDescriptor.getInstance().getConf().setChunkPointNumLowerBoundInCompaction(1000);
+    IoTDBDescriptor.getInstance().getConfig().setChunkPointNumLowerBoundInCompaction(1000);
     List<PartialPath> timeserisPathList = new ArrayList<>();
     List<TSDataType> tsDataTypes = new ArrayList<>();
     // seq file 1

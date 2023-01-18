@@ -18,11 +18,8 @@
  */
 package org.apache.iotdb.db.wal.node;
 
-import org.apache.iotdb.commons.conf.CommonConfig;
-import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.commons.wal.WALMode;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.TestConstant;
@@ -36,6 +33,7 @@ import org.apache.iotdb.db.wal.io.WALReader;
 import org.apache.iotdb.db.wal.recover.CheckpointRecoverUtils;
 import org.apache.iotdb.db.wal.utils.WALFileStatus;
 import org.apache.iotdb.db.wal.utils.WALFileUtils;
+import org.apache.iotdb.db.wal.utils.WALMode;
 import org.apache.iotdb.db.wal.utils.listener.WALFlushListener;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -67,9 +65,7 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 public class WALNodeTest {
-
-  private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConf();
-  private static final IoTDBConfig IOTDB_CONFIG = IoTDBDescriptor.getInstance().getConf();
+  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final String identifier = String.valueOf(Integer.MAX_VALUE);
   private static final String logDirectory = TestConstant.BASE_OUTPUT_PATH.concat("wal-test");
   private static final String devicePath = "root.test_sg.test_d";
@@ -81,18 +77,18 @@ public class WALNodeTest {
   @Before
   public void setUp() throws Exception {
     EnvironmentUtils.cleanDir(logDirectory);
-    prevMode = COMMON_CONFIG.getWalMode();
-    isClusterMode = IOTDB_CONFIG.isClusterMode();
-    COMMON_CONFIG.setWalMode(WALMode.SYNC);
-    IOTDB_CONFIG.setClusterMode(true);
+    prevMode = config.getWalMode();
+    isClusterMode = config.isClusterMode();
+    config.setWalMode(WALMode.SYNC);
+    config.setClusterMode(true);
     walNode = new WALNode(identifier, logDirectory);
   }
 
   @After
   public void tearDown() throws Exception {
     walNode.close();
-    COMMON_CONFIG.setWalMode(prevMode);
-    IOTDB_CONFIG.setClusterMode(isClusterMode);
+    config.setWalMode(prevMode);
+    config.setClusterMode(isClusterMode);
     EnvironmentUtils.cleanDir(logDirectory);
   }
 

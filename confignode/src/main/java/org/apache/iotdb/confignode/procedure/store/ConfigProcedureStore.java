@@ -41,7 +41,7 @@ public class ConfigProcedureStore implements IProcedureStore {
   private volatile boolean isRunning = false;
   private final ProcedureInfo procedureInfo;
   private final String procedureWalDir =
-      CommonDescriptor.getInstance().getConf().getProcedureWalFolder();
+      CommonDescriptor.getInstance().getConfig().getProcedureWalFolder();
   private final ConfigManager configManager;
 
   public ConfigProcedureStore(ConfigManager configManager, ProcedureInfo procedureInfo) {
