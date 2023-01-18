@@ -54,9 +54,12 @@ import java.util.concurrent.ExecutorService;
 import java.util.function.Supplier;
 
 import static org.apache.iotdb.db.mpp.common.FragmentInstanceId.createFullId;
-import static org.apache.iotdb.db.mpp.metric.DataExchangeMetricSet.GET_DATA_BLOCK_TASK_SERVER;
-import static org.apache.iotdb.db.mpp.metric.DataExchangeMetricSet.ON_ACKNOWLEDGE_DATA_BLOCK_EVENT_TASK_SERVER;
-import static org.apache.iotdb.db.mpp.metric.DataExchangeMetricSet.SEND_NEW_DATA_BLOCK_EVENT_TASK_SERVER;
+import static org.apache.iotdb.db.mpp.metric.DataExchangeCostMetricSet.GET_DATA_BLOCK_TASK_SERVER;
+import static org.apache.iotdb.db.mpp.metric.DataExchangeCostMetricSet.ON_ACKNOWLEDGE_DATA_BLOCK_EVENT_TASK_SERVER;
+import static org.apache.iotdb.db.mpp.metric.DataExchangeCostMetricSet.SEND_NEW_DATA_BLOCK_EVENT_TASK_SERVER;
+import static org.apache.iotdb.db.mpp.metric.DataExchangeCountMetricSet.GET_DATA_BLOCK_NUM_SERVER;
+import static org.apache.iotdb.db.mpp.metric.DataExchangeCountMetricSet.ON_ACKNOWLEDGE_DATA_BLOCK_NUM_SERVER;
+import static org.apache.iotdb.db.mpp.metric.DataExchangeCountMetricSet.SEND_NEW_DATA_BLOCK_NUM_SERVER;
 
 public class MPPDataExchangeManager implements IMPPDataExchangeManager {
 
@@ -118,6 +121,8 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
       } finally {
         QUERY_METRICS.recordDataExchangeCost(
             GET_DATA_BLOCK_TASK_SERVER, System.nanoTime() - startTime);
+        QUERY_METRICS.recordDataBlockNum(
+            GET_DATA_BLOCK_NUM_SERVER, req.getEndSequenceId() - req.getStartSequenceId());
       }
     }
 
@@ -150,6 +155,8 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
       } finally {
         QUERY_METRICS.recordDataExchangeCost(
             ON_ACKNOWLEDGE_DATA_BLOCK_EVENT_TASK_SERVER, System.nanoTime() - startTime);
+        QUERY_METRICS.recordDataBlockNum(
+            ON_ACKNOWLEDGE_DATA_BLOCK_NUM_SERVER, e.getEndSequenceId() - e.getStartSequenceId());
       }
     }
 
@@ -192,6 +199,7 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
       } finally {
         QUERY_METRICS.recordDataExchangeCost(
             SEND_NEW_DATA_BLOCK_EVENT_TASK_SERVER, System.nanoTime() - startTime);
+        QUERY_METRICS.recordDataBlockNum(SEND_NEW_DATA_BLOCK_NUM_SERVER, e.getBlockSizes().size());
       }
     }
 

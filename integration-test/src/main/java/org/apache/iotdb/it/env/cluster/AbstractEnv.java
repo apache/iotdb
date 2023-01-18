@@ -30,6 +30,7 @@ import org.apache.iotdb.confignode.rpc.thrift.IConfigNodeRPCService;
 import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
 import org.apache.iotdb.isession.ISession;
 import org.apache.iotdb.isession.SessionConfig;
+import org.apache.iotdb.isession.pool.ISessionPool;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestLogger;
 import org.apache.iotdb.itbase.env.BaseEnv;
@@ -346,7 +347,24 @@ public abstract class AbstractEnv implements BaseEnv {
   }
 
   @Override
-  public SessionPool getSessionPool(int maxSize) {
+  public ISession getSessionConnection(List<String> nodeUrls) throws IoTDBConnectionException {
+    Session session =
+        new Session(
+            nodeUrls,
+            SessionConfig.DEFAULT_USER,
+            SessionConfig.DEFAULT_PASSWORD,
+            SessionConfig.DEFAULT_FETCH_SIZE,
+            null,
+            SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
+            SessionConfig.DEFAULT_MAX_FRAME_SIZE,
+            SessionConfig.DEFAULT_REDIRECTION_MODE,
+            SessionConfig.DEFAULT_VERSION);
+    session.open();
+    return session;
+  }
+
+  @Override
+  public ISessionPool getSessionPool(int maxSize) {
     DataNodeWrapper dataNode =
         this.dataNodeWrapperList.get(rand.nextInt(this.dataNodeWrapperList.size()));
     return new SessionPool(

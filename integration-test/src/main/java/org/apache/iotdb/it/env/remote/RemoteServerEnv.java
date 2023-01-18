@@ -26,6 +26,8 @@ import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.confignode.rpc.thrift.IConfigNodeRPCService;
 import org.apache.iotdb.isession.ISession;
+import org.apache.iotdb.isession.SessionConfig;
+import org.apache.iotdb.isession.pool.ISessionPool;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.env.cluster.ConfigNodeWrapper;
 import org.apache.iotdb.it.env.cluster.DataNodeWrapper;
@@ -36,11 +38,13 @@ import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.jdbc.Constant;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.session.Session;
+import org.apache.iotdb.session.pool.SessionPool;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.Collections;
 import java.util.List;
 
 import static org.apache.iotdb.jdbc.Config.VERSION;
@@ -151,8 +155,44 @@ public class RemoteServerEnv implements BaseEnv {
   }
 
   @Override
+  public ISessionPool getSessionPool(int maxSize) {
+    return new SessionPool(
+        SessionConfig.DEFAULT_HOST,
+        SessionConfig.DEFAULT_PORT,
+        SessionConfig.DEFAULT_USER,
+        SessionConfig.DEFAULT_PASSWORD,
+        maxSize,
+        SessionConfig.DEFAULT_FETCH_SIZE,
+        60_000,
+        false,
+        null,
+        SessionConfig.DEFAULT_REDIRECTION_MODE,
+        SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS,
+        SessionConfig.DEFAULT_VERSION,
+        SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
+        SessionConfig.DEFAULT_MAX_FRAME_SIZE);
+  }
+
+  @Override
   public ISession getSessionConnection() throws IoTDBConnectionException {
     Session session = new Session(ip_addr, Integer.parseInt(port));
+    session.open();
+    return session;
+  }
+
+  @Override
+  public ISession getSessionConnection(List<String> nodeUrls) throws IoTDBConnectionException {
+    Session session =
+        new Session(
+            Collections.singletonList(ip_addr + ":" + port),
+            SessionConfig.DEFAULT_USER,
+            SessionConfig.DEFAULT_PASSWORD,
+            SessionConfig.DEFAULT_FETCH_SIZE,
+            null,
+            SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
+            SessionConfig.DEFAULT_MAX_FRAME_SIZE,
+            SessionConfig.DEFAULT_REDIRECTION_MODE,
+            SessionConfig.DEFAULT_VERSION);
     session.open();
     return session;
   }
