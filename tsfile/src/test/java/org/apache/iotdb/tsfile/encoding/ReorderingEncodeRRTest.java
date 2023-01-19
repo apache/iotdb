@@ -225,6 +225,31 @@ public class ReorderingEncodeRRTest {
 //    result.add(r0);
 //    result.add(d0);
 //  }
+
+  public static void splitTimeStamp2(ArrayList<ArrayList<Integer>> ts_block, int td,
+                                    ArrayList<Integer> deviation_list,ArrayList<Integer> result){
+
+    int max_deviation = Integer.MIN_VALUE;
+
+    int t0 = ts_block.get(0).get(0);
+    for(int i=0;i<ts_block.size();i++){
+      ArrayList<Integer> tmp = new ArrayList<>();
+      int interval_i = (ts_block.get(i).get(0) - t0) / td;
+      int deviation_i = ts_block.get(i).get(0) - t0 - interval_i * td;
+      tmp.add(t0 + interval_i);
+      tmp.add(ts_block.get(i).get(1));
+      ts_block.set(i,tmp);
+
+      deviation_list.add(zigzag(deviation_i));
+      if(zigzag(deviation_i)>max_deviation){
+        max_deviation = zigzag(deviation_i);
+      }
+    }
+
+    int max_bit_width_deviation = getBitWith(max_deviation);
+    result.add(max_bit_width_deviation);
+  }
+
   public static ArrayList<ArrayList<Integer>> getEncodeBitsRegression(ArrayList<ArrayList<Integer>> ts_block, int block_size,
                                                                  ArrayList<Integer> result, ArrayList<Integer> i_star,
                                                                       ArrayList<Double> theta){
@@ -341,8 +366,8 @@ public class ReorderingEncodeRRTest {
     result.add(max_bit_width_interval);
     result.add(max_bit_width_value);
 
-    result.add(timestamp_delta_min);
-    result.add(value_delta_min);
+//    result.add(timestamp_delta_min);
+//    result.add(value_delta_min);
 
     theta0_r += timestamp_delta_min;
     theta0_v += value_delta_min;
@@ -430,7 +455,7 @@ public class ReorderingEncodeRRTest {
   }
 
   public static ArrayList<Byte> encode2Bytes(ArrayList<ArrayList<Integer>> ts_block,
-                                             ArrayList<Integer> raw_length,ArrayList<Double> theta){
+                                             ArrayList<Integer> raw_length,ArrayList<Double> theta,ArrayList<Integer> deviation_list,ArrayList<Integer> result2){
     ArrayList<Byte> encoded_result = new ArrayList<>();
 //    // encode block size (Integer)
 //    byte[] block_size_byte = int2Bytes(ts_block.size());
@@ -476,15 +501,15 @@ public class ReorderingEncodeRRTest {
     byte[] value_bytes = bitPacking(ts_block,1,raw_length.get(2));
     for (byte b : value_bytes) encoded_result.add(b);
 
-//    // encode deviation
-//    byte[] max_bit_width_deviation_byte = int2Bytes(raw_length.get(5));
-//    for (byte b: max_bit_width_deviation_byte) encoded_result.add(b);
-//    byte[] deviation_list_bytes = bitPacking(deviation_list,raw_length.get(5));
-//    for (byte b: deviation_list_bytes) encoded_result.add(b);
+    // encode deviation
+    byte[] max_bit_width_deviation_byte = int2Bytes(result2.get(0));
+    for (byte b: max_bit_width_deviation_byte) encoded_result.add(b);
+    byte[] deviation_list_bytes = bitPacking(deviation_list,result2.get(0));
+    for (byte b: deviation_list_bytes) encoded_result.add(b);
 
     return encoded_result;
   }
-  public static ArrayList<Byte> ReorderingRegressionEncoder(ArrayList<ArrayList<Integer>> data,int block_size){
+  public static ArrayList<Byte> ReorderingRegressionEncoder(ArrayList<ArrayList<Integer>> data,int block_size,int td){
     block_size ++;
     int length_all = data.size();
     int block_num = length_all/block_size;
@@ -503,6 +528,10 @@ public class ReorderingEncodeRRTest {
         ts_block.add(data.get(j+i*block_size));
         ts_block_reorder.add(data.get(j+i*block_size));
       }
+
+      ArrayList<Integer> deviation_list = new ArrayList<>();
+      ArrayList<Integer> result2 = new ArrayList<>();
+      splitTimeStamp2(ts_block,td,deviation_list,result2);
 
       quickSort(ts_block,0,0,block_size-1);
 
@@ -558,7 +587,8 @@ public class ReorderingEncodeRRTest {
 
         ts_block_delta = getEncodeBitsRegression( ts_block,  block_size,raw_length,
                 i_star_ready_reorder,theta);
-        ArrayList<Byte> cur_encoded_result = encode2Bytes(ts_block_delta,raw_length,theta);
+        ArrayList<Byte> cur_encoded_result = encode2Bytes(ts_block_delta,raw_length,theta,
+                deviation_list,result2);
         encoded_result.addAll(cur_encoded_result);
 
       }
@@ -596,7 +626,8 @@ public class ReorderingEncodeRRTest {
 
         ts_block_delta_reorder = getEncodeBitsRegression( ts_block,  block_size,reorder_length,
                 i_star_ready_reorder,theta_reorder);
-        ArrayList<Byte> cur_encoded_result = encode2Bytes(ts_block_delta_reorder,reorder_length,theta_reorder);
+        ArrayList<Byte> cur_encoded_result = encode2Bytes(ts_block_delta_reorder,reorder_length,theta_reorder,
+                deviation_list,result2);
         encoded_result.addAll(cur_encoded_result);
       }
     }
@@ -702,6 +733,7 @@ public class ReorderingEncodeRRTest {
     while(decode_pos < encoded.size()) {
       ArrayList<Integer> time_list = new ArrayList<>();
       ArrayList<Integer> value_list = new ArrayList<>();
+      ArrayList<Integer> deviation_list = new ArrayList<>();
 
       ArrayList<ArrayList<Integer>> ts_block = new ArrayList<>();
 
@@ -729,6 +761,11 @@ public class ReorderingEncodeRRTest {
       value_list = decodebitPacking(encoded,decode_pos,max_bit_width_value,0,block_size);
       decode_pos += max_bit_width_value * (block_size - 1) / 8;
 
+      int max_bit_width_deviation = bytes2Integer(encoded, decode_pos, 4);
+      decode_pos += 4;
+      deviation_list = decodebitPacking(encoded,decode_pos,max_bit_width_deviation,0,block_size);
+      decode_pos += max_bit_width_deviation * (block_size - 1) / 8;
+
 //      for (int i = 0; i < block_size-1; i++) {
 //        ArrayList<Integer> ts_block_tmp = new ArrayList<>();
 //        ts_block_tmp.add(interval_list.get(i));
@@ -744,10 +781,6 @@ public class ReorderingEncodeRRTest {
 
       int ti_pre = time0;
       int vi_pre = value0;
-      ArrayList<Integer> ts_block_tmp0 = new ArrayList<>();
-      ts_block_tmp0.add(time0);
-      ts_block_tmp0.add(value0);
-      ts_block.add(ts_block_tmp0);
       for (int i = 0; i < block_size-1; i++) {
         int ti = (int) (theta1_r * ti_pre + theta0_r + time_list.get(i));
         time_list.set(i,ti);
@@ -757,8 +790,20 @@ public class ReorderingEncodeRRTest {
         value_list.set(i,vi);
         vi_pre = vi;
 
+        //ArrayList<Integer> ts_block_tmp = new ArrayList<>();
+        //ts_block_tmp.add(time_list.get(i));
+        //ts_block_tmp.add(value_list.get(i));
+        //ts_block.add(ts_block_tmp);
+      }
+
+      ArrayList<Integer> ts_block_tmp0 = new ArrayList<>();
+      ts_block_tmp0.add(time0);
+      ts_block_tmp0.add(value0);
+      ts_block.add(ts_block_tmp0);
+      for (int i=0;i<block_size-1;i++){
+        int ti = (time_list.get(i) - time0) * td  + time0 + deviation_list.get(i);
         ArrayList<Integer> ts_block_tmp = new ArrayList<>();
-        ts_block_tmp.add(time_list.get(i));
+        ts_block_tmp.add(ti);
         ts_block_tmp.add(value_list.get(i));
         ts_block.add(ts_block_tmp);
       }
@@ -945,6 +990,10 @@ public class ReorderingEncodeRRTest {
     output_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\result_evaluation" +
             "\\compression_ratio\\rr_ratio\\TY-Fuel_ratio.csv");
     dataset_map_td.add(60);
+    input_path_list.add( "E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\iotdb_test\\GW-Magnetic");
+    output_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\result_evaluation" +
+            "\\compression_ratio\\rr_ratio\\GW-Magnetic_ratio.csv");
+    dataset_map_td.add(100);
 
     //for(int file_i=0;file_i<1;file_i++){
     for(int file_i=0;file_i<input_path_list.size();file_i++){
@@ -1002,7 +1051,7 @@ public class ReorderingEncodeRRTest {
         double compressed_size = 0;
         for (int i = 0; i < repeatTime; i++) {
           long s = System.nanoTime();
-          ArrayList<Byte> buffer = ReorderingRegressionEncoder(data, 256);
+          ArrayList<Byte> buffer = ReorderingRegressionEncoder(data, 256,dataset_map_td.get(file_i));
           long e = System.nanoTime();
           encodeTime += (e - s);
           compressed_size += buffer.size();
