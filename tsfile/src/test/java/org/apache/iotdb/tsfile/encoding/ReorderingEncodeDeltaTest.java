@@ -340,24 +340,42 @@ public class ReorderingEncodeDeltaTest {
   }
   public static int getIStar(ArrayList<ArrayList<Integer>> ts_block, int block_size,
                              ArrayList<Integer> raw_length, int index){
+    int timestamp_delta_min = Integer.MAX_VALUE;
+    int value_delta_min = Integer.MAX_VALUE;
+    int timestamp_delta_max = Integer.MIN_VALUE;
+    int value_delta_max = Integer.MIN_VALUE;
+    int timestamp_delta_max_index = -1;
+    int value_delta_max_index = -1;
+
     int i_star_bit_width = 33;
     int i_star = 0;
 
     for(int j = 1;j<block_size;j++){
-      int epsilon_r_j = getBitWith( ts_block.get(j).get(0) - ts_block.get(j-1).get(0));
-      int epsilon_v_j = getBitWith (ts_block.get(j).get(1) - ts_block.get(j-1).get(1));
-      if(index == 1){
-        if(epsilon_v_j<=raw_length.get(2) && epsilon_r_j < i_star_bit_width && epsilon_r_j < raw_length.get(1)){
-          i_star_bit_width = epsilon_r_j;
-          i_star = j;
-        }
-      }else{
-        if(epsilon_v_j<raw_length.get(2) && epsilon_v_j < i_star_bit_width && epsilon_r_j <= raw_length.get(1)){
-          i_star_bit_width = epsilon_v_j;
-          i_star = j;
-        }
+      int epsilon_r_j = ts_block.get(j).get(0) - ts_block.get(j-1).get(0);
+      int epsilon_v_j = ts_block.get(j).get(1) - ts_block.get(j-1).get(1);
+      if(epsilon_r_j < timestamp_delta_min){
+        timestamp_delta_min = epsilon_r_j;
+      }
+      if(epsilon_v_j < value_delta_min){
+        value_delta_min = epsilon_v_j;
+      }
+      if(epsilon_r_j > timestamp_delta_max){
+        timestamp_delta_max = epsilon_r_j;
+        timestamp_delta_max_index = j;
+      }
+      if(epsilon_v_j > value_delta_max){
+        value_delta_max = epsilon_v_j;
+        value_delta_max_index =j;
       }
     }
+    int timestamp_delta_max_value = ts_block.get(timestamp_delta_max_index).get(0) - ts_block.get(timestamp_delta_max_index-1).get(0)
+            -  timestamp_delta_min;
+    int value_delta_max_value = ts_block.get(value_delta_max_index).get(0) - ts_block.get(value_delta_max_index-1).get(0)
+            -  value_delta_min;
+    if(timestamp_delta_max_value<=value_delta_max_value)
+      i_star = timestamp_delta_max_index;
+    else
+      i_star = value_delta_max_index;
     return i_star;
   }
   public static ArrayList<Byte> encode2Bytes(ArrayList<ArrayList<Integer>> ts_block,ArrayList<Integer> raw_length){
@@ -387,7 +405,7 @@ public class ReorderingEncodeDeltaTest {
 
     // encode value
     byte[] max_bit_width_value_byte = int2Bytes(raw_length.get(2));
-//    System.out.println(raw_length.get(2));
+    System.out.println(raw_length.get(2)+raw_length.get(1));
     for (byte b : max_bit_width_value_byte) encoded_result.add(b);
     byte[] value_bytes = bitPacking(ts_block,1,raw_length.get(2));
     for (byte b : value_bytes) encoded_result.add(b);
@@ -440,7 +458,7 @@ public class ReorderingEncodeDeltaTest {
         int i_star = i_star_ready.get(1);
         int j_star;
         count_raw ++;
-//        i_star =getIStar(ts_block,block_size,raw_length,0);
+        i_star =getIStar(ts_block,block_size,raw_length,0);
         j_star =getJStar(ts_block,i_star,block_size,raw_length,0);
         int adjust_count = 0;
         while(j_star!=0){
@@ -484,7 +502,7 @@ public class ReorderingEncodeDeltaTest {
         int j_star = 0;
         ArrayList<Integer> j_star_list =new ArrayList<>();
         count_reorder ++;
-//        i_star =getIStar(ts_block,block_size,raw_length,0);
+        i_star =getIStar(ts_block,block_size,raw_length,0);
         j_star =getJStar(ts_block,i_star,block_size,raw_length,0);
         int adjust_count = 0;
         while(j_star != 0){
@@ -731,8 +749,8 @@ public class ReorderingEncodeDeltaTest {
             "\\compression_ratio\\rd_ratio\\GW-Magnetic_ratio.csv");
     dataset_map_td.add(100);
 
-    for(int file_i=0;file_i<input_path_list.size();file_i++){
-//    for(int file_i=0;file_i<1;file_i++){
+//    for(int file_i=0;file_i<input_path_list.size();file_i++){
+    for(int file_i=0;file_i<1;file_i++){
       String inputPath = input_path_list.get(file_i);
       String Output =output_path_list.get(file_i);
 

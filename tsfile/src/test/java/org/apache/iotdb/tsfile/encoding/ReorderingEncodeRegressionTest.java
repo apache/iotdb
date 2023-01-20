@@ -264,6 +264,7 @@ public class ReorderingEncodeRegressionTest {
     }
     return j_star;
   }
+  
   public static int getIStar(ArrayList<ArrayList<Integer>> ts_block, int block_size,
                              ArrayList<Integer> raw_length, int index, ArrayList<Double> theta){
     int i_star_bit_width = 33;
@@ -315,12 +316,14 @@ public class ReorderingEncodeRegressionTest {
 
     // encode interval
     byte[] max_bit_width_interval_byte = int2Bytes(raw_length.get(1));
+//    System.out.println(raw_length.get(1));
     for (byte b : max_bit_width_interval_byte) encoded_result.add(b);
     byte[] timestamp_bytes = bitPacking(ts_block,0,raw_length.get(1));
     for (byte b : timestamp_bytes) encoded_result.add(b);
 
     // encode value
     byte[] max_bit_width_value_byte = int2Bytes(raw_length.get(2));
+    System.out.println(raw_length.get(2)+raw_length.get(1));
     for (byte b : max_bit_width_value_byte) encoded_result.add(b);
     byte[] value_bytes = bitPacking(ts_block,1,raw_length.get(2));
     for (byte b : value_bytes) encoded_result.add(b);
@@ -375,7 +378,7 @@ public class ReorderingEncodeRegressionTest {
         int i_star = i_star_ready.get(1);
         int j_star = 0;
         count_raw ++;
-//        i_star =getIStar(ts_block,block_size,raw_length,0,theta);
+        i_star =getIStar(ts_block,block_size,raw_length,0,theta);
         j_star =getJStar(ts_block,i_star,block_size,raw_length,0,theta);
         int adjust_count = 0;
         while(j_star!=0){
@@ -419,7 +422,7 @@ public class ReorderingEncodeRegressionTest {
         int j_star = 0;
         ArrayList<Integer> j_star_list =new ArrayList<>();
         count_reorder ++;
-        i_star =getIStar(ts_block,block_size,raw_length,0,theta);
+//        i_star =getIStar(ts_block,block_size,raw_length,0,theta);
         j_star =getJStar(ts_block,i_star,block_size,raw_length,0,theta);
         int adjust_count = 0;
         while(j_star != 0){
@@ -512,8 +515,8 @@ public class ReorderingEncodeRegressionTest {
             "\\compression_ratio\\regression_ratio\\GW-Magnetic_ratio.csv");
     dataset_map_td.add(100);
 
-    for(int file_i=0;file_i<input_path_list.size();file_i++){
-//      for(int file_i=1;file_i<2;file_i++){
+//    for(int file_i=0;file_i<input_path_list.size();file_i++){
+      for(int file_i=0;file_i<1;file_i++){
       String inputPath = input_path_list.get(file_i);
       String Output =output_path_list.get(file_i);
 
