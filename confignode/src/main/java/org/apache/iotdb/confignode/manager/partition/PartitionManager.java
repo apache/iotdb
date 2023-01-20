@@ -587,9 +587,8 @@ public class PartitionManager {
     // Filter RegionGroups that have Disabled status
     List<Pair<Long, TConsensusGroupId>> result = new ArrayList<>();
     for (Pair<Long, TConsensusGroupId> slotsCounter : regionGroupSlotsCounter) {
-      // Use Running or Available RegionGroups
       RegionGroupStatus status = getRegionGroupStatus(slotsCounter.getRight());
-      if (RegionGroupStatus.Running.equals(status) || RegionGroupStatus.Available.equals(status)) {
+      if (!RegionGroupStatus.Disabled.equals(status)) {
         result.add(slotsCounter);
       }
     }
@@ -598,10 +597,25 @@ public class PartitionManager {
       throw new NoAvailableRegionGroupException(type);
     }
 
-    result.sort(Comparator.comparingLong(Pair::getLeft));
+    result.sort(new PartitionComparator());
     return result;
   }
 
+  class PartitionComparator implements Comparator<Pair<Long, TConsensusGroupId>> {
+
+    @Override
+    public int compare(Pair<Long, TConsensusGroupId> o1, Pair<Long, TConsensusGroupId> o2) {
+      // Use partition number as first priority
+      if (o1.getLeft() < o2.getLeft()) {
+        return -1;
+      } else if (o1.getLeft() > o2.getLeft()) {
+        return 1;
+      } else {
+        // Use RegionGroup status as second priority, Running > Available > Discouraged
+        return getRegionGroupStatus(o1.getRight()).compareTo(getRegionGroupStatus(o2.getRight()));
+      }
+    }
+  }
   /**
    * Only leader use this interface
    *

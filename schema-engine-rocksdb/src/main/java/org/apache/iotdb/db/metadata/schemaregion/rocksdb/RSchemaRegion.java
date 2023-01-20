@@ -46,7 +46,6 @@ import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.plan.schemaregion.read.IShowDevicesPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.read.IShowNodesPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.read.IShowTimeSeriesPlan;
-import org.apache.iotdb.db.metadata.plan.schemaregion.result.ShowDevicesResult;
 import org.apache.iotdb.db.metadata.plan.schemaregion.result.ShowTimeSeriesResult;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IActivateTemplateInClusterPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.ICreateAlignedTimeSeriesPlan;
@@ -54,7 +53,9 @@ import org.apache.iotdb.db.metadata.plan.schemaregion.write.ICreateTimeSeriesPla
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IDeactivateTemplatePlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IPreDeactivateTemplatePlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IRollbackPreDeactivateTemplatePlan;
+import org.apache.iotdb.db.metadata.query.info.IDeviceSchemaInfo;
 import org.apache.iotdb.db.metadata.query.info.INodeSchemaInfo;
+import org.apache.iotdb.db.metadata.query.info.ITimeSeriesSchemaInfo;
 import org.apache.iotdb.db.metadata.query.reader.ISchemaReader;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaRegionUtils;
@@ -912,57 +913,10 @@ public class RSchemaRegion implements ISchemaRegion {
   }
 
   @Override
-  public List<ShowDevicesResult> getMatchedDevices(IShowDevicesPlan plan) throws MetadataException {
-    List<ShowDevicesResult> res = Collections.synchronizedList(new ArrayList<>());
-    BiFunction<byte[], byte[], Boolean> function =
-        (a, b) -> {
-          String fullPath = RSchemaUtils.getPathByInnerName(new String(a));
-          res.add(new ShowDevicesResult(fullPath, RSchemaUtils.isAligned(b)));
-          return true;
-        };
-    traverseOutcomeBasins(
-        plan.getPath().getNodes(), MAX_PATH_DEPTH, function, new Character[] {NODE_TYPE_ENTITY});
-
-    return res;
-  }
-
-  public List<MeasurementPath> getMeasurementPaths(
-      PartialPath pathPattern, boolean isPrefixMath, boolean withTags) throws MetadataException {
-    if (withTags) {
-      Map<MeasurementPath, Pair<Map<String, String>, Map<String, String>>> results =
-          getMatchedMeasurementPathWithTags(pathPattern.getNodes());
-      return new ArrayList<>(results.keySet());
-    }
-    List<MeasurementPath> allResult = Collections.synchronizedList(new ArrayList<>());
-    BiFunction<byte[], byte[], Boolean> function =
-        (a, b) -> {
-          allResult.add(
-              new RMeasurementMNode(
-                      RSchemaUtils.getPathByInnerName(new String(a)), b, readWriteHandler)
-                  .getMeasurementPath());
-          return true;
-        };
-    traverseOutcomeBasins(
-        pathPattern.getNodes(), MAX_PATH_DEPTH, function, new Character[] {NODE_TYPE_MEASUREMENT});
-
-    return allResult;
-  }
-
-  @Override
   public List<MeasurementPath> fetchSchema(
       PartialPath pathPattern, Map<Integer, Template> templateMap, boolean withTags)
       throws MetadataException {
     throw new UnsupportedOperationException();
-  }
-
-  @Override
-  public List<ShowTimeSeriesResult> showTimeseries(IShowTimeSeriesPlan plan)
-      throws MetadataException {
-    if (plan.getKey() != null && plan.getValue() != null) {
-      return showTimeseriesWithIndex(plan);
-    } else {
-      return showTimeseriesWithoutIndex(plan);
-    }
   }
 
   private List<ShowTimeSeriesResult> showTimeseriesWithIndex(IShowTimeSeriesPlan plan) {
@@ -1545,6 +1499,18 @@ public class RSchemaRegion implements ISchemaRegion {
   @Override
   public long countPathsUsingTemplate(int templateId, PathPatternTree patternTree)
       throws MetadataException {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public ISchemaReader<IDeviceSchemaInfo> getDeviceReader(IShowDevicesPlan showDevicesPlan)
+      throws MetadataException {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public ISchemaReader<ITimeSeriesSchemaInfo> getTimeSeriesReader(
+      IShowTimeSeriesPlan showTimeSeriesPlan) throws MetadataException {
     throw new UnsupportedOperationException();
   }
 

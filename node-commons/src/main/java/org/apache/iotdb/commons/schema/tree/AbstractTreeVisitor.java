@@ -350,7 +350,7 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R>
     this.throwable = e;
   }
 
-  protected Throwable getFailure() {
+  public Throwable getFailure() {
     return throwable;
   }
 

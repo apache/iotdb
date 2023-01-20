@@ -21,6 +21,7 @@ package org.apache.iotdb.db.mpp.execution.schedule;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.common.QueryId;
 import org.apache.iotdb.db.mpp.execution.driver.IDriver;
+import org.apache.iotdb.db.mpp.execution.schedule.queue.multilevelqueue.Priority;
 import org.apache.iotdb.db.mpp.execution.schedule.task.DriverTaskId;
 
 import java.util.List;
@@ -59,5 +60,5 @@ public interface IDriverScheduler {
    * @return the schedule priority.
    * @throws IllegalStateException if the instance has already been cleared.
    */
-  double getSchedulePriority(DriverTaskId driverTaskID);
+  Priority getSchedulePriority(DriverTaskId driverTaskID);
 }
