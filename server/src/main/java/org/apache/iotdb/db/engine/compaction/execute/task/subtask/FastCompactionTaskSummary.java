@@ -48,7 +48,10 @@ public class FastCompactionTaskSummary extends CompactionTaskSummary {
   @Override
   public String toString() {
     return String.format(
-        "CHUNK_NONE_OVERLAP num is {}, CHUNK_NONE_OVERLAP_BUT_DESERIALIZE num is {}, CHUNK_OVERLAP_OR_MODIFIED num is {}, PAGE_NONE_OVERLAP num is {}, PAGE_NONE_OVERLAP_BUT_DESERIALIZE num is {}, PAGE_OVERLAP_OR_MODIFIED num is {}, PAGE_FAKE_OVERLAP num is {}.",
+        "CHUNK_NONE_OVERLAP num is %d, CHUNK_NONE_OVERLAP_BUT_DESERIALIZE num is %d,"
+            + " CHUNK_OVERLAP_OR_MODIFIED num is %d, PAGE_NONE_OVERLAP num is %d,"
+            + " PAGE_NONE_OVERLAP_BUT_DESERIALIZE num is %d, PAGE_OVERLAP_OR_MODIFIED num is %d,"
+            + " PAGE_FAKE_OVERLAP num is %d.",
         CHUNK_NONE_OVERLAP,
         CHUNK_NONE_OVERLAP_BUT_DESERIALIZE,
         CHUNK_OVERLAP_OR_MODIFIED,

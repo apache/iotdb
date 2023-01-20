@@ -138,11 +138,10 @@ public class CompactionTaskSummary {
   public String toString() {
     String startTimeInStr = new SimpleDateFormat().format(new Date(startTime));
     return String.format(
-        "Task start time: %s, time cost: %.2f s, total process chunk num: %d, "
+        "Task start time: %s, total process chunk num: %d, "
             + "directly flush chunk num: %d, merge chunk num: %d, deserialize chunk num: %d,"
             + " total process point num: %d",
         startTimeInStr,
-        timeCost / 1000.0d,
         processChunkNum,
         directlyFlushChunkNum,
         mergedChunkNum,
