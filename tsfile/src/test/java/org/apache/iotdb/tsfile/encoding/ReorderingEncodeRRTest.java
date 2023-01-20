@@ -483,7 +483,7 @@ public class ReorderingEncodeRRTest {
 
     return encoded_result;
   }
-  public static ArrayList<Byte> ReorderingRegressionEncoder(ArrayList<ArrayList<Integer>> data, int block_size){
+  public static ArrayList<Byte> ReorderingRegressionEncoder(ArrayList<ArrayList<Integer>> data, int block_size, ArrayList<Integer> flag){
     block_size ++;
     int length_all = data.size();
     int block_num = length_all/block_size;
@@ -524,6 +524,7 @@ public class ReorderingEncodeRRTest {
               i_star_ready_reorder,theta_reorder);
 
       if(raw_length.get(0)<=reorder_length.get(0)){
+        flag.set(0,flag.get(0)+1);
         quickSort(ts_block,0,0,block_size-1);
 //        System.out.println(ts_block);
         int i_star = i_star_ready.get(1);
@@ -552,6 +553,7 @@ public class ReorderingEncodeRRTest {
           ts_block.set(j_star,tmp_tv);
           i_star =getIStar(ts_block,block_size,raw_length,0,theta);
           j_star =getJStar(ts_block,i_star,block_size,raw_length,0,theta);
+          flag.set(2,flag.get(2)+1);
           System.out.println("adjust");
         }
 
@@ -562,6 +564,7 @@ public class ReorderingEncodeRRTest {
 
       }
       else{
+        flag.set(1,flag.get(1)+1);
         // adjust to reduce max_bit_width_r
 //        System.out.println(ts_block);
         int i_star = i_star_ready_reorder.get(0);
@@ -587,6 +590,7 @@ public class ReorderingEncodeRRTest {
               ts_block.set(u-1,tmp_tv_cur);
             }
           }
+          flag.set(2,flag.get(2)+1);
           System.out.println("adjust");
           ts_block.set(j_star,tmp_tv);
           i_star =getIStar(ts_block,block_size,reorder_length,0,theta);
@@ -1005,7 +1009,16 @@ public class ReorderingEncodeRRTest {
         double compressed_size = 0;
         for (int i = 0; i < repeatTime; i++) {
           long s = System.nanoTime();
-          ArrayList<Byte> buffer = ReorderingRegressionEncoder(data, 256);
+          ArrayList<Integer> flag = new ArrayList<>();
+          flag.add(0);
+          flag.add(0);
+          flag.add(0);
+          ArrayList<Byte> buffer = ReorderingRegressionEncoder(data, 256,flag);
+          System.out.print(flag.get(0));
+          System.out.print(" ");
+          System.out.print(flag.get(1));
+          System.out.print(" ");
+          System.out.println(flag.get(2));
           long e = System.nanoTime();
           encodeTime += (e - s);
           compressed_size += buffer.size();
