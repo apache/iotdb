@@ -18,7 +18,9 @@
  */
 package org.apache.iotdb.db.engine.compaction.execute.task.subtask;
 
-public class SubCompactionTaskSummary {
+import org.apache.iotdb.db.engine.compaction.execute.task.CompactionTaskSummary;
+
+public class FastCompactionTaskSummary extends CompactionTaskSummary {
   public int CHUNK_NONE_OVERLAP;
   public int CHUNK_NONE_OVERLAP_BUT_DESERIALIZE;
   public int CHUNK_OVERLAP_OR_MODIFIED;
@@ -28,7 +30,7 @@ public class SubCompactionTaskSummary {
   public int PAGE_FAKE_OVERLAP;
   public int PAGE_NONE_OVERLAP_BUT_DESERIALIZE;
 
-  public void increase(SubCompactionTaskSummary summary) {
+  public void increase(FastCompactionTaskSummary summary) {
     this.CHUNK_NONE_OVERLAP += summary.CHUNK_NONE_OVERLAP;
     this.CHUNK_NONE_OVERLAP_BUT_DESERIALIZE += summary.CHUNK_NONE_OVERLAP_BUT_DESERIALIZE;
     this.CHUNK_OVERLAP_OR_MODIFIED += summary.CHUNK_OVERLAP_OR_MODIFIED;
@@ -36,5 +38,26 @@ public class SubCompactionTaskSummary {
     this.PAGE_OVERLAP_OR_MODIFIED += summary.PAGE_OVERLAP_OR_MODIFIED;
     this.PAGE_FAKE_OVERLAP += summary.PAGE_FAKE_OVERLAP;
     this.PAGE_NONE_OVERLAP_BUT_DESERIALIZE += summary.PAGE_NONE_OVERLAP_BUT_DESERIALIZE;
+    this.processChunkNum += summary.processChunkNum;
+    this.processPointNum += summary.processPointNum;
+    this.directlyFlushChunkNum += summary.directlyFlushChunkNum;
+    this.mergedChunkNum += summary.mergedChunkNum;
+    this.deserializeChunkCount += summary.deserializeChunkCount;
+  }
+
+  @Override
+  public String toString() {
+    return String.format(
+        "CHUNK_NONE_OVERLAP num is %d, CHUNK_NONE_OVERLAP_BUT_DESERIALIZE num is %d,"
+            + " CHUNK_OVERLAP_OR_MODIFIED num is %d, PAGE_NONE_OVERLAP num is %d,"
+            + " PAGE_NONE_OVERLAP_BUT_DESERIALIZE num is %d, PAGE_OVERLAP_OR_MODIFIED num is %d,"
+            + " PAGE_FAKE_OVERLAP num is %d.",
+        CHUNK_NONE_OVERLAP,
+        CHUNK_NONE_OVERLAP_BUT_DESERIALIZE,
+        CHUNK_OVERLAP_OR_MODIFIED,
+        PAGE_NONE_OVERLAP,
+        PAGE_NONE_OVERLAP_BUT_DESERIALIZE,
+        PAGE_OVERLAP_OR_MODIFIED,
+        PAGE_FAKE_OVERLAP);
   }
 }
