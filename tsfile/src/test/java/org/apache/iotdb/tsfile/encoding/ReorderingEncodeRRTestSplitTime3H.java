@@ -260,9 +260,8 @@ public class ReorderingEncodeRRTestSplitTime3H {
     return n;
   }
 
-  public static void splitTimeStamp3(ArrayList<ArrayList<Integer>> ts_block, int td,
-                                     ArrayList<Integer> deviation_list,ArrayList<Integer> result){
-    int max_deviation = Integer.MIN_VALUE;
+  public static void splitTimeStamp3(ArrayList<ArrayList<Integer>> ts_block, int td,ArrayList<Integer> result){
+    //int max_deviation = Integer.MIN_VALUE;
 
     int td_common = 0;
     for(int i=1;i<ts_block.size();i++){
@@ -290,19 +289,19 @@ public class ReorderingEncodeRRTestSplitTime3H {
     for(int i=0;i<ts_block.size();i++){
       ArrayList<Integer> tmp = new ArrayList<>();
       int interval_i = (ts_block.get(i).get(0) - t0) / td;
-      int deviation_i = ts_block.get(i).get(0) - t0 - interval_i * td;
+      //int deviation_i = ts_block.get(i).get(0) - t0 - interval_i * td;
       tmp.add(t0 + interval_i);
       tmp.add(ts_block.get(i).get(1));
       ts_block.set(i,tmp);
 
-      deviation_list.add(zigzag(deviation_i));
-      if(zigzag(deviation_i)>max_deviation){
-        max_deviation = zigzag(deviation_i);
-      }
+      //deviation_list.add(zigzag(deviation_i));
+      //if(zigzag(deviation_i)>max_deviation){
+      //  max_deviation = zigzag(deviation_i);
+      //}
     }
 
-    int max_bit_width_deviation = getBitWith(max_deviation);
-    result.add(max_bit_width_deviation);
+    //int max_bit_width_deviation = getBitWith(max_deviation);
+    //result.add(max_bit_width_deviation);
     result.add(td_common);
   }
 
@@ -510,7 +509,7 @@ public class ReorderingEncodeRRTestSplitTime3H {
   }
 
   public static ArrayList<Byte> encode2Bytes(ArrayList<ArrayList<Integer>> ts_block,
-                                             ArrayList<Integer> raw_length,ArrayList<Double> theta,ArrayList<Integer> deviation_list,ArrayList<Integer> result2){
+                             ArrayList<Integer> raw_length,ArrayList<Double> theta,ArrayList<Integer> result2){
     ArrayList<Byte> encoded_result = new ArrayList<>();
 //    // encode block size (Integer)
 //    byte[] block_size_byte = int2Bytes(ts_block.size());
@@ -557,12 +556,12 @@ public class ReorderingEncodeRRTestSplitTime3H {
     for (byte b : value_bytes) encoded_result.add(b);
 
     // encode deviation
-    //byte[] max_bit_width_deviation_byte = int2Bytes(result2.get(0));
+    //byte[] max_bit_width_deviation_byte = int2Bytes(result2.get(1));
     //for (byte b: max_bit_width_deviation_byte) encoded_result.add(b);
-    //byte[] deviation_list_bytes = bitPacking(deviation_list,result2.get(0));
+    //byte[] deviation_list_bytes = bitPacking(deviation_list,result2.get(1));
     //for (byte b: deviation_list_bytes) encoded_result.add(b);
 
-    byte[] td_common_byte = int2Bytes(result2.get(1));
+    byte[] td_common_byte = int2Bytes(result2.get(0));
     for (byte b: td_common_byte) encoded_result.add(b);
 
     return encoded_result;
@@ -588,9 +587,9 @@ public class ReorderingEncodeRRTestSplitTime3H {
         ts_block_reorder.add(data.get(j+i*block_size));
       }
 
-      ArrayList<Integer> deviation_list = new ArrayList<>();
+      //ArrayList<Integer> deviation_list = new ArrayList<>();
       ArrayList<Integer> result2 = new ArrayList<>();
-      splitTimeStamp3(ts_block,td,deviation_list,result2);
+      splitTimeStamp3(ts_block,td,result2);
 
       quickSort(ts_block,0,0,block_size-1);
 
@@ -648,8 +647,7 @@ public class ReorderingEncodeRRTestSplitTime3H {
 
         ts_block_delta = getEncodeBitsRegression( ts_block,  block_size,raw_length,
                 i_star_ready_reorder,theta);
-        ArrayList<Byte> cur_encoded_result = encode2Bytes(ts_block_delta,raw_length,theta,
-                deviation_list,result2);
+        ArrayList<Byte> cur_encoded_result = encode2Bytes(ts_block_delta,raw_length,theta,result2);
         encoded_result.addAll(cur_encoded_result);
 
       }
@@ -689,8 +687,7 @@ public class ReorderingEncodeRRTestSplitTime3H {
 
         ts_block_delta_reorder = getEncodeBitsRegression( ts_block,  block_size,reorder_length,
                 i_star_ready_reorder,theta_reorder);
-        ArrayList<Byte> cur_encoded_result = encode2Bytes(ts_block_delta_reorder,reorder_length,theta_reorder,
-                deviation_list,result2);
+        ArrayList<Byte> cur_encoded_result = encode2Bytes(ts_block_delta_reorder,reorder_length,theta_reorder, result2);
         encoded_result.addAll(cur_encoded_result);
       }
     }
@@ -807,7 +804,7 @@ public class ReorderingEncodeRRTestSplitTime3H {
     while(decode_pos < encoded.size()) {
       ArrayList<Integer> time_list = new ArrayList<>();
       ArrayList<Integer> value_list = new ArrayList<>();
-      ArrayList<Integer> deviation_list = new ArrayList<>();
+      //ArrayList<Integer> deviation_list = new ArrayList<>();
 
       ArrayList<ArrayList<Integer>> ts_block = new ArrayList<>();
 

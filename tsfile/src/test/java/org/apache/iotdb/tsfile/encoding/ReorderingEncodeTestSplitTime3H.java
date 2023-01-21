@@ -280,8 +280,8 @@ public class ReorderingEncodeTestSplitTime3H {
   }
 
   public static void splitTimeStamp3(ArrayList<ArrayList<Integer>> ts_block, int td,
-                                     ArrayList<Integer> deviation_list,ArrayList<Integer> result){
-    int max_deviation = Integer.MIN_VALUE;
+                                     ArrayList<Integer> result){
+    //int max_deviation = Integer.MIN_VALUE;
 
     int td_common = 0;
     for(int i=1;i<ts_block.size();i++){
@@ -309,19 +309,19 @@ public class ReorderingEncodeTestSplitTime3H {
     for(int i=0;i<ts_block.size();i++){
       ArrayList<Integer> tmp = new ArrayList<>();
       int interval_i = (ts_block.get(i).get(0) - t0) / td;
-      int deviation_i = ts_block.get(i).get(0) - t0 - interval_i * td;
+      //int deviation_i = ts_block.get(i).get(0) - t0 - interval_i * td;
       tmp.add(t0 + interval_i);
       tmp.add(ts_block.get(i).get(1));
       ts_block.set(i,tmp);
 
-      deviation_list.add(zigzag(deviation_i));
-      if(zigzag(deviation_i)>max_deviation){
-        max_deviation = zigzag(deviation_i);
-      }
+      //deviation_list.add(zigzag(deviation_i));
+      //if(zigzag(deviation_i)>max_deviation){
+      //  max_deviation = zigzag(deviation_i);
+      //}
     }
 
-    int max_bit_width_deviation = getBitWith(max_deviation);
-    result.add(max_bit_width_deviation);
+    //int max_bit_width_deviation = getBitWith(max_deviation);
+    //result.add(max_bit_width_deviation);
     result.add(td_common);
   }
 
@@ -456,7 +456,7 @@ public class ReorderingEncodeTestSplitTime3H {
     return i_star;
   }
   public static ArrayList<Byte> encode2Bytes(ArrayList<ArrayList<Integer>> ts_block,ArrayList<Integer> raw_length,
-                                             ArrayList<Integer> deviation_list,ArrayList<Integer> result2){
+                                            ArrayList<Integer> result2){
     ArrayList<Byte> encoded_result = new ArrayList<>();
 //    // encode block size (Integer)
 //    byte[] block_size_byte = int2Bytes(ts_block.size());
@@ -500,7 +500,7 @@ public class ReorderingEncodeTestSplitTime3H {
     //byte[] deviation_list_bytes = bitPacking(deviation_list,result2.get(0));
     //for (byte b: deviation_list_bytes) encoded_result.add(b);
 
-    byte[] td_common_byte = int2Bytes(result2.get(1));
+    byte[] td_common_byte = int2Bytes(result2.get(0));
     for (byte b: td_common_byte) encoded_result.add(b);
 
     return encoded_result;
@@ -526,9 +526,9 @@ public class ReorderingEncodeTestSplitTime3H {
         ts_block_reorder.add(data.get(j+i*block_size));
       }
 
-      ArrayList<Integer> deviation_list = new ArrayList<>();
+      //ArrayList<Integer> deviation_list = new ArrayList<>();
       ArrayList<Integer> result2 = new ArrayList<>();
-      splitTimeStamp3(ts_block,td,deviation_list,result2);
+      splitTimeStamp3(ts_block,td,result2);
 
 //      ArrayList<Integer> deviation_list = new ArrayList<>();
       ArrayList<Integer> result = new ArrayList<>();
@@ -590,7 +590,7 @@ public class ReorderingEncodeTestSplitTime3H {
 //        raw_length.add(result.get(0)); // max_bit_width_deviation
 //        raw_length.add(result.get(1)); // r0
 //        raw_length.add(result.get(2)); // d0
-        ArrayList<Byte> cur_encoded_result = encode2Bytes(ts_block_delta,raw_length,deviation_list,result2);
+        ArrayList<Byte> cur_encoded_result = encode2Bytes(ts_block_delta,raw_length,result2);
         encoded_result.addAll(cur_encoded_result);
         count_raw ++;
       }
@@ -633,7 +633,7 @@ public class ReorderingEncodeTestSplitTime3H {
         //reorder_length.add(result.get(0)); // max_bit_width_deviation
         //reorder_length.add(result.get(1)); // r0
         //reorder_length.add(result.get(2)); // d0
-        ArrayList<Byte> cur_encoded_result = encode2Bytes(ts_block_delta_reorder,reorder_length,deviation_list,result2);
+        ArrayList<Byte> cur_encoded_result = encode2Bytes(ts_block_delta_reorder,reorder_length,result2);
         encoded_result.addAll(cur_encoded_result);
         count_reorder ++;
       }
@@ -677,7 +677,7 @@ public class ReorderingEncodeTestSplitTime3H {
     while(decode_pos < encoded.size()) {
       ArrayList<Integer> time_list = new ArrayList<>();
       ArrayList<Integer> value_list = new ArrayList<>();
-      ArrayList<Integer> deviation_list = new ArrayList<>();
+      //ArrayList<Integer> deviation_list = new ArrayList<>();
 
       ArrayList<ArrayList<Integer>> ts_block = new ArrayList<>();
 
@@ -892,34 +892,34 @@ public class ReorderingEncodeTestSplitTime3H {
     output_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\result_evaluation" +
             "\\compression_ratio\\rd_ratio\\Metro-Traffic_ratio.csv");
     dataset_map_td.add(3600);
-//    input_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\iotdb_test\\Nifty-Stocks");
-//    output_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\result_evaluation" +
-//            "\\compression_ratio\\rd_ratio\\Nifty-Stocks_ratio.csv");
-//    dataset_map_td.add(86400);
-//    input_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\iotdb_test\\USGS-Earthquakes");
-//    output_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\result_evaluation" +
-//            "\\compression_ratio\\rd_ratio\\USGS-Earthquakes_ratio.csv");
-//    dataset_map_td.add(50);
-//    input_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\iotdb_test\\Cyber-Vehicle");
-//    output_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\result_evaluation" +
-//            "\\compression_ratio\\rd_ratio\\Cyber-Vehicle_ratio.csv");
-//    dataset_map_td.add(10);
-//    input_path_list.add( "E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\iotdb_test\\TH-Climate");
-//    output_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\result_evaluation" +
-//            "\\compression_ratio\\rd_ratio\\TH-Climate_ratio.csv");
-//    dataset_map_td.add(3);
-//    input_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\iotdb_test\\TY-Transport");
-//    output_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\result_evaluation" +
-//            "\\compression_ratio\\rd_ratio\\TY-Transport_ratio.csv");
-//    dataset_map_td.add(5);
-//    input_path_list.add( "E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\iotdb_test\\TY-Fuel");
-//    output_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\result_evaluation" +
-//            "\\compression_ratio\\rd_ratio\\TY-Fuel_ratio.csv");
-//    dataset_map_td.add(60);
-//    input_path_list.add( "E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\iotdb_test\\GW-Magnetic");
-//    output_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\result_evaluation" +
-//            "\\compression_ratio\\rd_ratio\\GW-Magnetic_ratio.csv");
-//    dataset_map_td.add(100);
+    input_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\iotdb_test\\Nifty-Stocks");
+    output_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\result_evaluation" +
+            "\\compression_ratio\\rd_ratio\\Nifty-Stocks_ratio.csv");
+    dataset_map_td.add(86400);
+    input_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\iotdb_test\\USGS-Earthquakes");
+    output_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\result_evaluation" +
+            "\\compression_ratio\\rd_ratio\\USGS-Earthquakes_ratio.csv");
+    dataset_map_td.add(50);
+    input_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\iotdb_test\\Cyber-Vehicle");
+    output_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\result_evaluation" +
+            "\\compression_ratio\\rd_ratio\\Cyber-Vehicle_ratio.csv");
+    dataset_map_td.add(10);
+    input_path_list.add( "E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\iotdb_test\\TH-Climate");
+    output_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\result_evaluation" +
+            "\\compression_ratio\\rd_ratio\\TH-Climate_ratio.csv");
+    dataset_map_td.add(3);
+    input_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\iotdb_test\\TY-Transport");
+    output_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\result_evaluation" +
+            "\\compression_ratio\\rd_ratio\\TY-Transport_ratio.csv");
+    dataset_map_td.add(5);
+    input_path_list.add( "E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\iotdb_test\\TY-Fuel");
+    output_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\result_evaluation" +
+            "\\compression_ratio\\rd_ratio\\TY-Fuel_ratio.csv");
+    dataset_map_td.add(60);
+    input_path_list.add( "E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\iotdb_test\\GW-Magnetic");
+    output_path_list.add("E:\\thu\\Lab\\Group\\31编码论文\\encoding-reorder\\reorder\\result_evaluation" +
+            "\\compression_ratio\\rd_ratio\\GW-Magnetic_ratio.csv");
+    dataset_map_td.add(100);
 
     for(int file_i=0;file_i<input_path_list.size();file_i++){
     //for(int file_i=0;file_i<1;file_i++){
