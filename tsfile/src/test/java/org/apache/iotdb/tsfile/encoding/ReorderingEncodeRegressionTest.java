@@ -264,7 +264,7 @@ public class ReorderingEncodeRegressionTest {
     }
     return j_star;
   }
-  
+
   public static int getIStar(ArrayList<ArrayList<Integer>> ts_block, int block_size,
                              ArrayList<Integer> raw_length, int index, ArrayList<Double> theta){
     int i_star_bit_width = 33;

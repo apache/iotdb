@@ -300,42 +300,285 @@ public class ReorderingEncodeDeltaTest {
 
     return ts_block_delta;
   }
-  public static int getJStar(ArrayList<ArrayList<Integer>> ts_block, int i_star, int block_size,
+  public static int getJStar(ArrayList<ArrayList<Integer>> ts_block, int alpha, int block_size,
                                     ArrayList<Integer> raw_length, int index){
+    int timestamp_delta_min = Integer.MAX_VALUE;
+    int value_delta_min = Integer.MAX_VALUE;
+    int raw_timestamp_delta_max = Integer.MIN_VALUE;
+    int raw_value_delta_max = Integer.MIN_VALUE;
+    int raw_timestamp_delta_max_index = -1;
+    int raw_value_delta_max_index = -1;
+    int raw_bit_width_timestamp = 0;
+    int raw_bit_width_value = 0;
     int j_star_bit_width = 33;
-    int j_star = 0;
-    if(i_star == block_size - 1 || i_star == 0)
-      return 0;
-    int delta_r_i_star_plus_1 = ts_block.get(i_star+1).get(0) - ts_block.get(i_star-1).get(0);
-    int delta_v_i_star_plus_1 = ts_block.get(i_star+1).get(1) - ts_block.get(i_star-1).get(1);
-    if(delta_r_i_star_plus_1 > raw_length.get(1) || delta_v_i_star_plus_1 >raw_length.get(2))
-      return 0;
+    int j_star = -1;
+
+    for(int i = 1;i<block_size;i++){
+      int delta_t_i = ts_block.get(i).get(0) - ts_block.get(i-1).get(0);
+      int delta_v_i = ts_block.get(i).get(1) - ts_block.get(i-1).get(1);
+      if(delta_t_i < timestamp_delta_min){
+        timestamp_delta_min = delta_t_i;
+      }
+      if(delta_v_i < value_delta_min){
+        value_delta_min = delta_v_i;
+      }
+
+      if(delta_t_i > raw_timestamp_delta_max){
+        raw_timestamp_delta_max = delta_t_i;
+        raw_timestamp_delta_max_index = i;
+      }
+      if(delta_v_i > raw_value_delta_max){
+        raw_value_delta_max = delta_v_i;
+        raw_value_delta_max_index = i;
+      }
+    }
+
+    raw_bit_width_timestamp = getBitWith(raw_timestamp_delta_max-timestamp_delta_min);
+    raw_bit_width_value = getBitWith(raw_value_delta_max-value_delta_min);
+
+    // alpha == 1
+    if(alpha==0){
+      for(int j = 1;j<block_size;j++){
+          int delta_r_j = ts_block.get(j).get(0) - ts_block.get(alpha).get(0);
+          int delta_v_j = ts_block.get(j).get(1) - ts_block.get(alpha).get(1);
+
+          int delta_r_i_star = ts_block.get(alpha).get(0) - ts_block.get(j-1).get(0);
+          int delta_v_i_star = ts_block.get(alpha).get(1) - ts_block.get(j-1).get(1);
+
+          // if it has to increase max bit width, then continue loop j
+          if((delta_r_j > raw_timestamp_delta_max || delta_r_i_star > raw_timestamp_delta_max)&&
+                  (delta_v_j > raw_value_delta_max || delta_v_i_star > raw_value_delta_max) ){
+            continue;
+          }
+
+          // if alpha+1 and j influence max bit width, recompute raw_timestamp_delta_max
+          if(alpha+1 == raw_timestamp_delta_max_index || j == raw_timestamp_delta_max_index ){
+            for(int i = 1;i<block_size;i++){
+              int delta_t_i = ts_block.get(i).get(0) - ts_block.get(i-1).get(0);
+              if(delta_t_i > raw_timestamp_delta_max){
+                raw_timestamp_delta_max = delta_t_i;
+                raw_timestamp_delta_max_index = i;
+              }
+            }
+          }
+          if(alpha+1 == raw_value_delta_max_index || j == raw_value_delta_max_index ){
+            for(int i = 1;i<block_size;i++){
+              int delta_v_i = ts_block.get(i).get(1) - ts_block.get(i-1).get(1);
+              if(delta_v_i > raw_value_delta_max){
+                raw_value_delta_max = delta_v_i;
+                raw_value_delta_max_index =i;
+              }
+            }
+          }
+          int new_bit_width_timestamp = getBitWith(raw_timestamp_delta_max-timestamp_delta_min);
+          int new_bit_width_value = getBitWith(raw_timestamp_delta_max-timestamp_delta_min);
+          if((new_bit_width_timestamp + new_bit_width_value) <= (raw_bit_width_timestamp+raw_bit_width_value) ){
+            raw_bit_width_timestamp = new_bit_width_timestamp;
+            raw_bit_width_value = new_bit_width_value;
+            j_star = j;
+          }
+      }
+
+      int delta_r_i_star = ts_block.get(alpha).get(0) - ts_block.get(block_size-1).get(0);
+      int delta_v_i_star = ts_block.get(alpha).get(1) - ts_block.get(block_size-1).get(1);
+
+      // if it has to increase max bit width, then continue loop j
+      if((delta_r_i_star > raw_timestamp_delta_max)&&(delta_v_i_star > raw_value_delta_max) ){
+        return j_star;
+      }
+
+      // if alpha,alpha+1 and j influence max bit width, recompute raw_timestamp_delta_max
+      if(block_size-1 == raw_timestamp_delta_max_index ){
+        for(int i = 1;i<block_size;i++){
+          int delta_t_i = ts_block.get(i).get(0) - ts_block.get(i-1).get(0);
+          if(delta_t_i > raw_timestamp_delta_max){
+            raw_timestamp_delta_max = delta_t_i;
+            raw_timestamp_delta_max_index = i;
+          }
+        }
+      }
+      if(block_size-1 == raw_value_delta_max_index ){
+        for(int i = 1;i<block_size;i++){
+          int delta_v_i = ts_block.get(i).get(1) - ts_block.get(i-1).get(1);
+          if(delta_v_i > raw_value_delta_max){
+            raw_value_delta_max = delta_v_i;
+            raw_value_delta_max_index =i;
+          }
+        }
+      }
+      int new_bit_width_timestamp = getBitWith(raw_timestamp_delta_max-timestamp_delta_min);
+      int new_bit_width_value = getBitWith(raw_timestamp_delta_max-timestamp_delta_min);
+      if((new_bit_width_timestamp + new_bit_width_value) <= (raw_bit_width_timestamp+raw_bit_width_value)){
+        raw_bit_width_timestamp = new_bit_width_timestamp;
+        raw_bit_width_value = new_bit_width_value;
+        j_star = block_size-1;
+      }
+
+      return j_star;
+    }
+
+    // alpha == n
+    if(alpha == block_size-1){
+      for(int j = 1;j<block_size-1;j++){
+        int delta_r_j = ts_block.get(j).get(0) - ts_block.get(alpha).get(0);
+        int delta_v_j = ts_block.get(j).get(1) - ts_block.get(alpha).get(1);
+
+        int delta_r_i_star = ts_block.get(alpha).get(0) - ts_block.get(j-1).get(0);
+        int delta_v_i_star = ts_block.get(alpha).get(1) - ts_block.get(j-1).get(1);
+
+        // if it has to increase max bit width, then continue loop j
+        if((delta_r_j > raw_timestamp_delta_max || delta_r_i_star > raw_timestamp_delta_max)&&
+                (delta_v_j > raw_value_delta_max || delta_v_i_star > raw_value_delta_max) ){
+          continue;
+        }
+
+        // if alpha and j influence max bit width, recompute raw_timestamp_delta_max
+        if(alpha+1 == raw_timestamp_delta_max_index || j == raw_timestamp_delta_max_index ){
+          for(int i = 1;i<block_size;i++){
+            int delta_t_i = ts_block.get(i).get(0) - ts_block.get(i-1).get(0);
+            if(delta_t_i > raw_timestamp_delta_max){
+              raw_timestamp_delta_max = delta_t_i;
+              raw_timestamp_delta_max_index = i;
+            }
+          }
+        }
+        if(alpha+1 == raw_value_delta_max_index || j == raw_value_delta_max_index ){
+          for(int i = 1;i<block_size;i++){
+            int delta_v_i = ts_block.get(i).get(1) - ts_block.get(i-1).get(1);
+            if(delta_v_i > raw_value_delta_max){
+              raw_value_delta_max = delta_v_i;
+              raw_value_delta_max_index =i;
+            }
+          }
+        }
+        int new_bit_width_timestamp = getBitWith(raw_timestamp_delta_max-timestamp_delta_min);
+        int new_bit_width_value = getBitWith(raw_timestamp_delta_max-timestamp_delta_min);
+        if((new_bit_width_timestamp + new_bit_width_value) <= (raw_bit_width_timestamp+raw_bit_width_value) ){
+          raw_bit_width_timestamp = new_bit_width_timestamp;
+          raw_bit_width_value = new_bit_width_value;
+          j_star = j;
+        }
+      }
+
+      // if alpha,alpha+1 and j influence max bit width, recompute raw_timestamp_delta_max
+      if(alpha == raw_timestamp_delta_max_index ){
+        for(int i = 1;i<block_size;i++){
+          int delta_t_i = ts_block.get(i).get(0) - ts_block.get(i-1).get(0);
+          if(delta_t_i > raw_timestamp_delta_max){
+            raw_timestamp_delta_max = delta_t_i;
+            raw_timestamp_delta_max_index = i;
+          }
+        }
+      }
+      if(alpha == raw_value_delta_max_index ){
+        for(int i = 1;i<block_size;i++){
+          int delta_v_i = ts_block.get(i).get(1) - ts_block.get(i-1).get(1);
+          if(delta_v_i > raw_value_delta_max){
+            raw_value_delta_max = delta_v_i;
+            raw_value_delta_max_index =i;
+          }
+        }
+      }
+      int new_bit_width_timestamp = getBitWith(raw_timestamp_delta_max-timestamp_delta_min);
+      int new_bit_width_value = getBitWith(raw_timestamp_delta_max-timestamp_delta_min);
+      if((new_bit_width_timestamp + new_bit_width_value) <= (raw_bit_width_timestamp+raw_bit_width_value)){
+        raw_bit_width_timestamp = new_bit_width_timestamp;
+        raw_bit_width_value = new_bit_width_value;
+        j_star = block_size-1;
+      }
+
+      return j_star;
+    }
+
+
+    // alpha != 1 and alpha != n
+    int delta_r_i_star_plus_1 = ts_block.get(alpha+1).get(0) - ts_block.get(alpha-1).get(0);
+    int delta_v_i_star_plus_1 = ts_block.get(alpha+1).get(1) - ts_block.get(alpha-1).get(1);
+
+    if((delta_r_i_star_plus_1 > raw_timestamp_delta_max )&& (delta_v_i_star_plus_1 > raw_value_delta_max) ){
+      return -1;
+    }
+
+
     for(int j = 1;j<block_size;j++){
-      if(j!=i_star){
-        int delta_r_j = ts_block.get(j).get(0) - ts_block.get(i_star).get(0);
-        int delta_v_j = ts_block.get(j).get(1) - ts_block.get(i_star).get(1);
-        int delta_r_i_star = ts_block.get(i_star).get(0) - ts_block.get(j-1).get(0);
-        int delta_v_i_star = ts_block.get(i_star).get(1) - ts_block.get(j-1).get(1);
-        if(delta_r_j > raw_length.get(1) || delta_v_j >raw_length.get(2) ||
-                delta_r_i_star > raw_length.get(1) || delta_v_i_star >raw_length.get(2)  )
-          return 0;
-        int max_r = getBitWith(max3(delta_r_i_star_plus_1,delta_r_j,delta_r_i_star));
-        int max_v = getBitWith(max3(delta_v_i_star_plus_1,delta_v_j,delta_v_i_star));
-        // adjust r
-        if(index == 1){
-          if(max_v<=raw_length.get(2) && max_r < j_star_bit_width && max_r < raw_length.get(1)){
-            j_star_bit_width = max_r;
-            j_star = j;
+      if(j!=alpha){
+        int delta_r_j = ts_block.get(j).get(0) - ts_block.get(alpha).get(0);
+        int delta_v_j = ts_block.get(j).get(1) - ts_block.get(alpha).get(1);
+
+        int delta_r_i_star = ts_block.get(alpha).get(0) - ts_block.get(j-1).get(0);
+        int delta_v_i_star = ts_block.get(alpha).get(1) - ts_block.get(j-1).get(1);
+
+        // if it has to increase max bit width, then continue loop j
+        if((delta_r_j > raw_timestamp_delta_max || delta_r_i_star > raw_timestamp_delta_max)&&
+                (delta_v_j > raw_value_delta_max || delta_v_i_star > raw_value_delta_max) ){
+          continue;
+        }
+
+        // if alpha,alpha+1 and j influence max bit width, recompute raw_timestamp_delta_max
+        if(alpha+1 == raw_timestamp_delta_max_index || j == raw_timestamp_delta_max_index || alpha == raw_timestamp_delta_max_index){
+          for(int i = 1;i<block_size;i++){
+            int delta_t_i = ts_block.get(i).get(0) - ts_block.get(i-1).get(0);
+            if(delta_t_i > raw_timestamp_delta_max){
+              raw_timestamp_delta_max = delta_t_i;
+              raw_timestamp_delta_max_index = i;
+            }
           }
-        }else{
-          if(max_v<raw_length.get(2) && max_v < j_star_bit_width && max_r <= raw_length.get(1)){
-            j_star_bit_width = max_v;
-            j_star = j;
+        }
+        if(alpha+1 == raw_value_delta_max_index || j == raw_value_delta_max_index || alpha == raw_value_delta_max_index){
+          for(int i = 1;i<block_size;i++){
+            int delta_v_i = ts_block.get(i).get(1) - ts_block.get(i-1).get(1);
+            if(delta_v_i > raw_value_delta_max){
+              raw_value_delta_max = delta_v_i;
+              raw_value_delta_max_index =i;
+            }
           }
+        }
+        int new_bit_width_timestamp = getBitWith(raw_timestamp_delta_max-timestamp_delta_min);
+        int new_bit_width_value = getBitWith(raw_timestamp_delta_max-timestamp_delta_min);
+        if((new_bit_width_timestamp + new_bit_width_value) <= (raw_bit_width_timestamp+raw_bit_width_value) ){
+          raw_bit_width_timestamp = new_bit_width_timestamp;
+          raw_bit_width_value = new_bit_width_value;
+          j_star = j;
         }
 
       }
     }
+
+    int delta_r_i_star = ts_block.get(alpha).get(0) - ts_block.get(block_size-1).get(0);
+    int delta_v_i_star = ts_block.get(alpha).get(1) - ts_block.get(block_size-1).get(1);
+
+    // if it has to increase max bit width, then continue loop j
+    if((delta_r_i_star > raw_timestamp_delta_max)&&(delta_v_i_star > raw_value_delta_max) ){
+      return j_star;
+    }
+
+    // if block_size-1 influences max bit width, recompute raw_timestamp_delta_max
+    if( block_size-1 == raw_timestamp_delta_max_index || alpha == raw_timestamp_delta_max_index){
+      for(int i = 1;i<block_size;i++){
+        int delta_t_i = ts_block.get(i).get(0) - ts_block.get(i-1).get(0);
+        if(delta_t_i > raw_timestamp_delta_max){
+          raw_timestamp_delta_max = delta_t_i;
+          raw_timestamp_delta_max_index = i;
+        }
+      }
+    }
+    if( block_size-1 == raw_value_delta_max_index || alpha == raw_value_delta_max_index){
+      for(int i = 1;i<block_size;i++){
+        int delta_v_i = ts_block.get(i).get(1) - ts_block.get(i-1).get(1);
+        if(delta_v_i > raw_value_delta_max){
+          raw_value_delta_max = delta_v_i;
+          raw_value_delta_max_index =i;
+        }
+      }
+    }
+    int new_bit_width_timestamp = getBitWith(raw_timestamp_delta_max-timestamp_delta_min);
+    int new_bit_width_value = getBitWith(raw_timestamp_delta_max-timestamp_delta_min);
+    if((new_bit_width_timestamp + new_bit_width_value) <= (raw_bit_width_timestamp+raw_bit_width_value)){
+      raw_bit_width_timestamp = new_bit_width_timestamp;
+      raw_bit_width_value = new_bit_width_value;
+      j_star = block_size-1;
+    }
+
     return j_star;
   }
   public static int getIStar(ArrayList<ArrayList<Integer>> ts_block, int block_size,
@@ -405,7 +648,7 @@ public class ReorderingEncodeDeltaTest {
 
     // encode value
     byte[] max_bit_width_value_byte = int2Bytes(raw_length.get(2));
-    System.out.println(raw_length.get(2)+raw_length.get(1));
+//    System.out.println(raw_length.get(2)+raw_length.get(1));
     for (byte b : max_bit_width_value_byte) encoded_result.add(b);
     byte[] value_bytes = bitPacking(ts_block,1,raw_length.get(2));
     for (byte b : value_bytes) encoded_result.add(b);
@@ -461,7 +704,7 @@ public class ReorderingEncodeDeltaTest {
         i_star =getIStar(ts_block,block_size,raw_length,0);
         j_star =getJStar(ts_block,i_star,block_size,raw_length,0);
         int adjust_count = 0;
-        while(j_star!=0){
+        while(j_star!=-1){
           if(adjust_count < block_size/2){
             adjust_count ++;
           }else {
@@ -505,7 +748,7 @@ public class ReorderingEncodeDeltaTest {
         i_star =getIStar(ts_block,block_size,raw_length,0);
         j_star =getJStar(ts_block,i_star,block_size,raw_length,0);
         int adjust_count = 0;
-        while(j_star != 0){
+        while(j_star != -1){
           if(adjust_count < block_size/2){
             adjust_count ++;
           }else {
