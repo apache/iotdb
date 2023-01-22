@@ -11,7 +11,7 @@ import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Objects;
 
-public class ReorderingEncodeRRTestSplitTime3H {
+public class ReorderingEncodeRRTestFloatSplitTime3H {
 
   static int DeviationOutlierThreshold = 8;
   static int OutlierThreshold = 0;
@@ -306,7 +306,7 @@ public class ReorderingEncodeRRTestSplitTime3H {
   }
 
   public static ArrayList<ArrayList<Integer>> getEncodeBitsRegression(ArrayList<ArrayList<Integer>> ts_block, int block_size,
-                     ArrayList<Integer> result, ArrayList<Integer> i_star, ArrayList<Double> theta){
+                     ArrayList<Integer> result, ArrayList<Integer> i_star, ArrayList<Float> theta){
     int timestamp_delta_min = Integer.MAX_VALUE;
     int value_delta_min = Integer.MAX_VALUE;
     ArrayList<ArrayList<Integer>> ts_block_delta = new ArrayList<>();
@@ -346,18 +346,18 @@ public class ReorderingEncodeRRTestSplitTime3H {
     }
 
     int m_reg = block_size -1;
-    double theta0_r = 0.0;
-    double theta1_r = 1.0;
-    if((double)(m_reg*sum_squ_X_r) != (double)(sum_X_r*sum_X_r) ){
-      theta0_r = (double) (sum_squ_X_r*sum_Y_r - sum_X_r*sum_squ_XY_r) / (double) (m_reg*sum_squ_X_r - sum_X_r*sum_X_r);
-      theta1_r = (double) (m_reg*sum_squ_XY_r - sum_X_r*sum_Y_r) / (double) (m_reg*sum_squ_X_r - sum_X_r*sum_X_r);
+    float theta0_r = 0.0F;
+    float theta1_r = 1.0F;
+    if(m_reg*sum_squ_X_r != sum_X_r*sum_X_r ){
+      theta0_r = (float) (sum_squ_X_r*sum_Y_r - sum_X_r*sum_squ_XY_r) / (float) (m_reg*sum_squ_X_r - sum_X_r*sum_X_r);
+      theta1_r = (float) (m_reg*sum_squ_XY_r - sum_X_r*sum_Y_r) / (float) (m_reg*sum_squ_X_r - sum_X_r*sum_X_r);
     }
 
-    double theta0_v = 0.0;
-    double theta1_v = 1.0;
-    if((double)(m_reg*sum_squ_X_v) != (double)(sum_X_v*sum_X_v) ){
-      theta0_v = (double) (sum_squ_X_v*sum_Y_v - sum_X_v*sum_squ_XY_v) / (double) (m_reg*sum_squ_X_v - sum_X_v*sum_X_v);
-      theta1_v = (double) (m_reg*sum_squ_XY_v - sum_X_v*sum_Y_v) / (double) (m_reg*sum_squ_X_v - sum_X_v*sum_X_v);
+    float theta0_v = 0.0F;
+    float theta1_v = 1.0F;
+    if(m_reg*sum_squ_X_v != sum_X_v*sum_X_v ){
+      theta0_v = (float) (sum_squ_X_v*sum_Y_v - sum_X_v*sum_squ_XY_v) / (float) (m_reg*sum_squ_X_v - sum_X_v*sum_X_v);
+      theta1_v = (float) (m_reg*sum_squ_XY_v - sum_X_v*sum_Y_v) / (float) (m_reg*sum_squ_X_v - sum_X_v*sum_X_v);
     }
 
     //theta0_r = 0;
@@ -437,7 +437,7 @@ public class ReorderingEncodeRRTestSplitTime3H {
     return ts_block_delta;
   }
   public static int getJStar(ArrayList<ArrayList<Integer>> ts_block, int i_star, int block_size,
-                                    ArrayList<Integer> raw_length, int index, ArrayList<Double> theta){
+                                    ArrayList<Integer> raw_length, int index, ArrayList<Float> theta){
     int j_star_bit_width = 33;
     int j_star = 0;
     double theta0_r = theta.get(0);
@@ -482,7 +482,7 @@ public class ReorderingEncodeRRTestSplitTime3H {
     return j_star;
   }
   public static int getIStar(ArrayList<ArrayList<Integer>> ts_block, int block_size,
-                             ArrayList<Integer> raw_length, int index, ArrayList<Double> theta){
+                             ArrayList<Integer> raw_length, int index, ArrayList<Float> theta){
     int i_star_bit_width = 33;
     int i_star = 0;
     double theta0_r = theta.get(0);
@@ -509,7 +509,7 @@ public class ReorderingEncodeRRTestSplitTime3H {
   }
 
   public static ArrayList<Byte> encode2Bytes(ArrayList<ArrayList<Integer>> ts_block,
-                             ArrayList<Integer> raw_length,ArrayList<Double> theta,ArrayList<Integer> result2){
+                             ArrayList<Integer> raw_length,ArrayList<Float> theta,ArrayList<Integer> result2){
     ArrayList<Byte> encoded_result = new ArrayList<>();
 //    // encode block size (Integer)
 //    byte[] block_size_byte = int2Bytes(ts_block.size());
@@ -534,13 +534,13 @@ public class ReorderingEncodeRRTestSplitTime3H {
 //    for (byte b : min_delta_value_byte) encoded_result.add(b);
 
     // encode theta
-    byte[] theta0_r_byte = double2Bytes(theta.get(0));
+    byte[] theta0_r_byte = float2byte2(theta.get(0));
     for (byte b : theta0_r_byte) encoded_result.add(b);
-    byte[] theta1_r_byte = double2Bytes(theta.get(1));
+    byte[] theta1_r_byte = float2byte2(theta.get(1));
     for (byte b : theta1_r_byte) encoded_result.add(b);
-    byte[] theta0_v_byte = double2Bytes(theta.get(2));
+    byte[] theta0_v_byte = float2byte2(theta.get(2));
     for (byte b : theta0_v_byte) encoded_result.add(b);
-    byte[] theta1_v_byte = double2Bytes(theta.get(3));
+    byte[] theta1_v_byte = float2byte2(theta.get(3));
     for (byte b : theta1_v_byte) encoded_result.add(b);
 
     // encode interval
@@ -598,7 +598,7 @@ public class ReorderingEncodeRRTestSplitTime3H {
       // time-order
       ArrayList<Integer> raw_length = new ArrayList<>(); // length,max_bit_width_interval,max_bit_width_value,max_bit_width_deviation
       ArrayList<Integer> i_star_ready = new ArrayList<>();
-      ArrayList<Double> theta = new ArrayList<>();
+      ArrayList<Float> theta = new ArrayList<>();
       ArrayList<ArrayList<Integer>> ts_block_delta = getEncodeBitsRegression( ts_block,  block_size, raw_length,
               i_star_ready,theta);
 
@@ -607,7 +607,7 @@ public class ReorderingEncodeRRTestSplitTime3H {
       quickSort(ts_block,1,0,block_size-1);
       ArrayList<Integer> reorder_length = new ArrayList<>();
       ArrayList<Integer> i_star_ready_reorder = new ArrayList<>();
-      ArrayList<Double> theta_reorder = new ArrayList<>();
+      ArrayList<Float> theta_reorder = new ArrayList<>();
       ArrayList<ArrayList<Integer>> ts_block_delta_reorder = getEncodeBitsRegression( ts_block,  block_size, reorder_length,
               i_star_ready_reorder,theta_reorder);
 
@@ -813,14 +813,14 @@ public class ReorderingEncodeRRTestSplitTime3H {
       int value0 = bytes2Integer(encoded, decode_pos, 4);
       decode_pos += 4;
 
-      double theta0_r = bytes2Double(encoded, decode_pos, 8);
-      decode_pos += 8;
-      double theta1_r = bytes2Double(encoded, decode_pos, 8);
-      decode_pos += 8;
-      double theta0_v = bytes2Double(encoded, decode_pos, 8);
-      decode_pos += 8;
-      double theta1_v = bytes2Double(encoded, decode_pos, 8);
-      decode_pos += 8;
+      float theta0_r = byte2float2(encoded, decode_pos);
+      decode_pos += 4;
+      double theta1_r = byte2float2(encoded, decode_pos);
+      decode_pos += 4;
+      double theta0_v = byte2float2(encoded, decode_pos);
+      decode_pos += 4;
+      double theta1_v = byte2float2(encoded, decode_pos);
+      decode_pos += 4;
 
       int max_bit_width_time = bytes2Integer(encoded, decode_pos, 4);
       decode_pos += 4;
@@ -1202,7 +1202,7 @@ public class ReorderingEncodeRRTestSplitTime3H {
                 String.valueOf(compressed_size),
                 String.valueOf(ratio)
         };
-        //System.out.println(ratio);
+        System.out.println(ratio);
         writer.writeRecord(record);
       }
       writer.close();
