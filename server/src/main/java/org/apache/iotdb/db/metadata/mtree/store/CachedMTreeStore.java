@@ -88,6 +88,7 @@ public class CachedMTreeStore implements IMTreeStore {
 
     hasFlushTask = false;
     hasReleaseTask = false;
+    ensureMemoryStatus();
   }
 
   @Override
@@ -424,6 +425,7 @@ public class CachedMTreeStore implements IMTreeStore {
 
     hasFlushTask = false;
     hasReleaseTask = false;
+    ensureMemoryStatus();
   }
 
   private void ensureMemoryStatus() {
