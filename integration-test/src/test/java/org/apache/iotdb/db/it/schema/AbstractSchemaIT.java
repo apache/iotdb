@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.it.schema;
 
-import org.apache.iotdb.it.env.ConfigFactory;
+import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunnerWithParametersFactory;
 
 import net.jcip.annotations.NotThreadSafe;
@@ -42,9 +42,6 @@ import java.util.Arrays;
 public abstract class AbstractSchemaIT {
 
   protected SchemaTestMode schemaTestMode;
-  private String defaultSchemaEngineMode;
-  private int defaultCachedMNodeSizeInSchemaFileMode;
-  private String defaultSchemaMemoryAllocate;
 
   @Parameterized.Parameters(name = "SchemaEngineMode={0}")
   public static Iterable<SchemaTestMode> data() {
@@ -60,34 +57,28 @@ public abstract class AbstractSchemaIT {
   }
 
   public void setUp() throws Exception {
-    defaultSchemaEngineMode = ConfigFactory.getConfig().getSchemaEngineMode();
-    defaultCachedMNodeSizeInSchemaFileMode =
-        ConfigFactory.getConfig().getCachedMNodeSizeInSchemaFileMode();
-    defaultSchemaMemoryAllocate = ConfigFactory.getConfig().getSchemaMemoryAllocate();
     switch (schemaTestMode) {
       case Memory:
-        ConfigFactory.getConfig().setSchemaEngineMode("Memory");
+        EnvFactory.getEnv().getConfig().getCommonConfig().setSchemaEngineMode("Memory");
         break;
       case SchemaFileFullMemory:
-        ConfigFactory.getConfig().setSchemaEngineMode("Schema_File");
+        EnvFactory.getEnv().getConfig().getCommonConfig().setSchemaEngineMode("Schema_File");
         break;
       case SchemaFilePartialMemory:
-        ConfigFactory.getConfig().setSchemaEngineMode("Schema_File");
-        ConfigFactory.getConfig().setSchemaMemoryAllocate("5:10000:5000:5000");
-        //        ConfigFactory.getConfig().setCachedMNodeSizeInSchemaFileMode(3);
+        EnvFactory.getEnv().getConfig().getCommonConfig().setSchemaEngineMode("Schema_File");
+        EnvFactory.getEnv()
+            .getConfig()
+            .getCommonConfig()
+            .setSchemaMemoryAllocate("1:10000:5000:5000");
         break;
       case SchemaFileNonMemory:
-        ConfigFactory.getConfig().setSchemaEngineMode("Schema_File");
-        ConfigFactory.getConfig().setCachedMNodeSizeInSchemaFileMode(0);
+        EnvFactory.getEnv().getConfig().getCommonConfig().setSchemaEngineMode("Schema_File");
+        EnvFactory.getEnv().getConfig().getCommonConfig().setCachedMNodeSizeInSchemaFileMode(0);
         break;
     }
   }
 
-  public void tearDown() throws Exception {
-    ConfigFactory.getConfig().setSchemaEngineMode(defaultSchemaEngineMode);
-    ConfigFactory.getConfig()
-        .setCachedMNodeSizeInSchemaFileMode(defaultCachedMNodeSizeInSchemaFileMode);
-  }
+  public void tearDown() throws Exception {}
 
   enum SchemaTestMode {
     Memory,

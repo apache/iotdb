@@ -343,4 +343,18 @@ public class MppSharedCommonConfig implements CommonConfig {
     dnConfig.setSeriesSlotNum(seriesSlotNum);
     return this;
   }
+
+  @Override
+  public CommonConfig setCachedMNodeSizeInSchemaFileMode(int cachedMNodeSizeInSchemaFileMode) {
+    dnConfig.setCachedMNodeSizeInSchemaFileMode(cachedMNodeSizeInSchemaFileMode);
+    cnConfig.setCachedMNodeSizeInSchemaFileMode(cachedMNodeSizeInSchemaFileMode);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setSchemaMemoryAllocate(String schemaMemoryAllocate) {
+    dnConfig.setSchemaMemoryAllocate(schemaMemoryAllocate);
+    cnConfig.setSchemaMemoryAllocate(schemaMemoryAllocate);
+    return this;
+  }
 }

@@ -246,4 +246,14 @@ public class RemoteCommonConfig implements CommonConfig {
   public CommonConfig setSeriesSlotNum(int seriesSlotNum) {
     return this;
   }
+
+  @Override
+  public CommonConfig setSchemaMemoryAllocate(String schemaMemoryAllocate) {
+    return this;
+  }
+
+  @Override
+  public CommonConfig setCachedMNodeSizeInSchemaFileMode(int cachedMNodeSizeInSchemaFileMode) {
+    return this;
+  }
 }
